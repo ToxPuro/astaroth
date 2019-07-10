@@ -42,6 +42,8 @@ __constant__ Grid globalGrid;
 #define DEVICE_1D_COMPDOMAIN_IDX(i, j, k) ((i) + (j)*DCONST_INT(AC_nx) + (k)*DCONST_INT(AC_nxy))
 #include "kernels/kernels.cuh"
 
+static dim3 rk3_tpb = (dim3){32, 1, 4};
+
 #if PACKED_DATA_TRANSFERS // Defined in device.cuh
 // #include "kernels/pack_unpack.cuh"
 #endif
@@ -109,10 +111,10 @@ printDeviceInfo(const Device device)
     printf("    Local L1 cache supported: %d\n", props.localL1CacheSupported);
     printf("    Global L1 cache supported: %d\n", props.globalL1CacheSupported);
     printf("    L2 size: %d KiB\n", props.l2CacheSize / (1024));
-//MV: props.totalConstMem and props.sharedMemPerBlock cause assembler error
-//MV: while compiling in TIARA gp cluster. Therefore commeted out. 
-//!!    printf("    Total const mem: %ld KiB\n", props.totalConstMem / (1024));
-//!!    printf("    Shared mem per block: %ld KiB\n", props.sharedMemPerBlock / (1024));
+    // MV: props.totalConstMem and props.sharedMemPerBlock cause assembler error
+    // MV: while compiling in TIARA gp cluster. Therefore commeted out.
+    //!!    printf("    Total const mem: %ld KiB\n", props.totalConstMem / (1024));
+    //!!    printf("    Shared mem per block: %ld KiB\n", props.sharedMemPerBlock / (1024));
     printf("  Other\n");
     printf("    Warp size: %d\n", props.warpSize);
     // printf("    Single to double perf. ratio: %dx\n",
@@ -153,7 +155,7 @@ createDevice(const int id, const AcMeshInfo device_config, Device* device_handle
 
     // Concurrency
     for (int i = 0; i < NUM_STREAM_TYPES; ++i) {
-        cudaStreamCreate(&device->streams[i]);
+        cudaStreamCreateWithFlags(&device->streams[i], cudaStreamNonBlocking);
     }
 
     // Memory
@@ -183,6 +185,11 @@ createDevice(const int id, const AcMeshInfo device_config, Device* device_handle
 
     printf("Created device %d (%p)\n", device->id, device);
     *device_handle = device;
+
+    // Autoptimize
+    if (id == 0)
+        autoOptimize(device);
+
     return AC_SUCCESS;
 }
 
@@ -270,7 +277,24 @@ rkStep(const Device device, const StreamType stream_type, const int step_number,
        const int3& end, const AcReal dt)
 {
     cudaSetDevice(device->id);
-    rk3_step_async(device->streams[stream_type], step_number, start, end, dt, &device->vba);
+
+    // const dim3 tpb(32, 1, 4);
+    const dim3 tpb = rk3_tpb;
+
+    const int3 n = end - start;
+    const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
+                   (unsigned int)ceil(n.y / AcReal(tpb.y)), //
+                   (unsigned int)ceil(n.z / AcReal(tpb.z)));
+
+    if (step_number == 0)
+        solve<0><<<bpg, tpb, 0, device->streams[stream_type]>>>(start, end, device->vba, dt);
+    else if (step_number == 1)
+        solve<1><<<bpg, tpb, 0, device->streams[stream_type]>>>(start, end, device->vba, dt);
+    else
+        solve<2><<<bpg, tpb, 0, device->streams[stream_type]>>>(start, end, device->vba, dt);
+
+    ERRCHK_CUDA_KERNEL();
+
     return AC_SUCCESS;
 }
 
@@ -392,6 +416,84 @@ loadGlobalGrid(const Device device, const Grid grid)
     cudaSetDevice(device->id);
     ERRCHK_CUDA_ALWAYS(
         cudaMemcpyToSymbol(globalGrid, &grid, sizeof(grid), 0, cudaMemcpyHostToDevice));
+    return AC_SUCCESS;
+}
+
+AcResult
+autoOptimize(const Device device)
+{
+    cudaSetDevice(device->id);
+
+    // RK3
+    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
+    const int3 end   = start + (int3){device->local_config.int_params[AC_nx], //
+                                    device->local_config.int_params[AC_ny], //
+                                    device->local_config.int_params[AC_nz]};
+
+    dim3 best_dims(0, 0, 0);
+    float best_time = INFINITY;
+
+    for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) {
+        for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
+            for (int x = WARP_SIZE; x <= MAX_THREADS_PER_BLOCK; x += WARP_SIZE) {
+
+                if (x > end.x - start.x || y > end.y - start.y || z > end.z - start.z)
+                    break;
+                if (x * y * z > MAX_THREADS_PER_BLOCK)
+                    break;
+
+                if (x * y * z * REGISTERS_PER_THREAD > MAX_REGISTERS_PER_BLOCK)
+                    break;
+
+                if (((x * y * z) % WARP_SIZE) != 0)
+                    continue;
+
+                const dim3 tpb(x, y, z);
+                const int3 n = end - start;
+                const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
+                               (unsigned int)ceil(n.y / AcReal(tpb.y)), //
+                               (unsigned int)ceil(n.z / AcReal(tpb.z)));
+
+                cudaDeviceSynchronize();
+                if (cudaGetLastError() != cudaSuccess) // resets the error if any
+                    continue;
+
+                // printf("(%d, %d, %d)\n", x, y, z);
+
+                cudaEvent_t tstart, tstop;
+                cudaEventCreate(&tstart);
+                cudaEventCreate(&tstop);
+
+                cudaEventRecord(tstart); // ---------------------------------------- Timing start
+
+                for (int i = 0; i < NUM_ITERATIONS; ++i)
+                    solve<2><<<bpg, tpb>>>(start, end, device->vba, FLT_EPSILON);
+
+                cudaEventRecord(tstop); // ----------------------------------------- Timing end
+                cudaEventSynchronize(tstop);
+                float milliseconds = 0;
+                cudaEventElapsedTime(&milliseconds, tstart, tstop);
+
+                ERRCHK_CUDA_KERNEL_ALWAYS();
+                if (milliseconds < best_time) {
+                    best_time = milliseconds;
+                    best_dims = tpb;
+                }
+            }
+        }
+    }
+#if VERBOSE_PRINTING
+    printf("Auto-optimization done. The best threadblock dimensions for rkStep: (%d, %d, %d) %f ms\n", best_dims.x, best_dims.y, best_dims.z,
+           double(best_time) / NUM_ITERATIONS);
+#endif
+    /*
+    FILE* fp = fopen("../config/rk3_tbdims.cuh", "w");
+    ERRCHK(fp);
+    fprintf(fp, "%d, %d, %d\n", best_dims.x, best_dims.y, best_dims.z);
+    fclose(fp);
+    */
+
+    rk3_tpb = best_dims;
     return AC_SUCCESS;
 }
 

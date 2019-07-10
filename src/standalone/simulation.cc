@@ -205,7 +205,6 @@ run_simulation(void)
     write_mesh_info(&mesh_info);
     print_diagnostics(0, AcReal(.0), t_step, diag_file);
 
-    acSynchronize();
     acStore(mesh);
     save_mesh(*mesh, 0, t_step);
 
@@ -216,16 +215,6 @@ run_simulation(void)
     AcReal bin_save_t = mesh_info.real_params[AC_bin_save_t];
     AcReal bin_crit_t = bin_save_t;
 
-#if LFORCING
-    // Forcing properties
-    AcReal relhel    = mesh_info.real_params[AC_relhel];
-    AcReal magnitude = mesh_info.real_params[AC_forcing_magnitude];
-    AcReal kmin      = mesh_info.real_params[AC_kmin];
-    AcReal kmax      = mesh_info.real_params[AC_kmax];
-
-    AcReal kaver = (kmax - kmin) / AcReal(2.0);
-#endif
-
     /* initialize random seed: */
     srand(312256655);
 
@@ -235,28 +224,8 @@ run_simulation(void)
         const AcReal dt   = host_timestep(umax, mesh_info);
 
 #if LFORCING
-        // Generate a forcing vector before canculating an integration step.
-
-        // Generate forcing wave vector k_force
-        AcReal3 k_force;
-        k_force = helical_forcing_k_generator(kmax, kmin);
-
-        // Randomize the phase
-        AcReal phase = AcReal(2.0) * AcReal(M_PI) * get_random_number_01();
-
-        // Generate e for k. Needed for the sake of isotrophy.
-        AcReal3 e_force;
-        if ((k_force.y == 0.0) && (k_force.z == 0.0)) {
-            e_force = (AcReal3){0.0, 1.0, 0.0};
-        }
-        else {
-            e_force = (AcReal3){1.0, 0.0, 0.0};
-        }
-        helical_forcing_e_generator(&e_force, k_force);
-
-        AcReal3 ff_hel_re, ff_hel_im;
-        helical_forcing_special_vector(&ff_hel_re, &ff_hel_im, k_force, e_force, relhel);
-        acForcingVec(magnitude, k_force, ff_hel_re, ff_hel_im, phase, kaver);
+        const ForcingParams forcing_params = generateForcingParams(mesh_info);
+        loadForcingParamsToDevice(forcing_params);
 #endif
 
         acIntegrate(dt);
@@ -305,8 +274,6 @@ run_simulation(void)
                 acSynchronize();
                 acStore(mesh);
             */
-
-            acSynchronize();
             acStore(mesh);
 
             save_mesh(*mesh, i, t_step);

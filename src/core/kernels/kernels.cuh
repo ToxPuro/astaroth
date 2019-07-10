@@ -707,30 +707,6 @@ read_out(const int idx, AcReal* __restrict__ field[], const int3 handle)
  * =============================================================================
  */
 
-AcResult
-rk3_step_async(const cudaStream_t stream, const int& step_number, const int3& start,
-               const int3& end, const AcReal dt, VertexBufferArray* buffer)
-{
-    const dim3 tpb(32, 1, 4);
-
-    const int nx = end.x - start.x;
-    const int ny = end.y - start.y;
-    const int nz = end.z - start.z;
-
-    const dim3 bpg((unsigned int)ceil(nx / AcReal(tpb.x)), (unsigned int)ceil(ny / AcReal(tpb.y)),
-                   (unsigned int)ceil(nz / AcReal(tpb.z)));
-
-    if (step_number == 0)
-        solve<0><<<bpg, tpb, 0, stream>>>(start, end, *buffer, dt);
-    else if (step_number == 1)
-        solve<1><<<bpg, tpb, 0, stream>>>(start, end, *buffer, dt);
-    else
-        solve<2><<<bpg, tpb, 0, stream>>>(start, end, *buffer, dt);
-
-    ERRCHK_CUDA_KERNEL();
-    return AC_SUCCESS;
-}
-
 ////////////////REDUCE///////////////////////////
 #include "src/core/math_utils.h" // is_power_of_two
 
@@ -921,6 +897,7 @@ reduce_scal(const cudaStream_t stream, const ReductionType rtype, const int3& st
         ERROR("Unrecognized rtype");
     }
     // clang-format on
+    cudaStreamSynchronize(stream);
     AcReal result;
     cudaMemcpy(&result, reduce_result, sizeof(AcReal), cudaMemcpyDeviceToHost);
     return result;
@@ -971,6 +948,8 @@ reduce_vec(const cudaStream_t stream, const ReductionType rtype, const int3& sta
         ERROR("Unrecognized rtype");
     }
     // clang-format on
+
+    cudaStreamSynchronize(stream);
     AcReal result;
     cudaMemcpy(&result, reduce_result, sizeof(AcReal), cudaMemcpyDeviceToHost);
     return result;

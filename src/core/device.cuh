@@ -27,15 +27,6 @@
 #pragma once
 #include "astaroth.h"
 
-// clang-format off
-typedef enum {
-    STREAM_PRIMARY,
-    STREAM_SECONDARY,
-    NUM_STREAM_TYPES,
-    STREAM_ALL
-} StreamType;
-// clang-format on
-
 typedef struct {
     int3 m;
     int3 n;
@@ -98,6 +89,9 @@ AcResult loadDeviceConstant(const Device device, const AcRealParam param, const 
 
 /** */
 AcResult loadGlobalGrid(const Device device, const Grid grid);
+
+/** */
+AcResult autoOptimize(const Device device);
 
 // #define PACKED_DATA_TRANSFERS (1) %JP: placeholder for optimized ghost zone packing and transfers
 #if PACKED_DATA_TRANSFERS

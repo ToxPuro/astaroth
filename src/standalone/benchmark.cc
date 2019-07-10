@@ -116,10 +116,12 @@ run_benchmark(void)
         std::vector<double> results;
         results.reserve(NUM_ITERS);
 
+        // Optimize
+        // acAutoOptimize();
+
         // Warmup
         for (int i = 0; i < 10; ++i) {
             acIntegrate(0);
-            acSynchronize();
         }
 
         Timer t;
@@ -129,11 +131,10 @@ run_benchmark(void)
             const AcReal dt = FLT_EPSILON; // TODO NOTE: time to timestep not measured
 #if GEN_BENCHMARK_RK3 == 1
             acIntegrateStep(2, dt);
+            acSynchronizeStream(STREAM_ALL);
 #else // GEN_BENCHMARK_FULL
             acIntegrate(dt);
 #endif
-            acSynchronize();
-
             const double ms_elapsed = timer_diff_nsec(t) / 1e6;
             results.push_back(ms_elapsed);
         }
