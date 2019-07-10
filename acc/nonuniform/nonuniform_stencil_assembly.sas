@@ -4,15 +4,47 @@ value(in Scalar vertex)
     return vertex[vertexIdx];
 }
 
-//
+Preprocessed Vector
+dgrid(Vector zeta, const int der_degree)
+{
+    return (Vector){
+    grid_function(a_grid,(zeta.x - zeta_star.x), der_degree)/
+    (grid_function(a_grid,(MAX_GRID_POINTS_X - zeta_star.x), 0) 
+   + grid_function(a_grid,(zeta_star.x - MIN_GRID_POINTS_X), 0)), 
+
+    grid_function(a_grid,(zeta.y - zeta_star.y), der_degree)/
+    (grid_function(a_grid,(MAX_GRID_POINTS_Y - zeta_star.y), 0) 
+   + grid_function(a_grid,(zeta_star.y - MIN_GRID_POINTS_Y), 0)),
+
+    grid_function(a_grid,(zeta.z - zeta_star.z), der_degree)/
+    (grid_function(a_grid,(MAX_GRID_POINTS_Z - zeta_star.z), 0) 
+   + grid_function(a_grid,(zeta_star.z - MIN_GRID_POINTS_z), 0))
+    };
+}
+
 Preprocessed Vector
 dzeta1()
 {
 
- globalVertexIdx.x
+    Vector zeta = (Vector) { globalVertexIdx.x, globalVertexIdx.y, globalVertexIdx.z};
 
-    return  (Vector){ , , }; //Testing first with just one derection
+    Vector _dgrid = dgrid(zeta, 1);
+
+    return  (Vector){Scalar(1.0)/_dgrid.x, Scalar(1.0)/_dgrid.y, Scalar(1.0)/_dgrid.z}; 
 }
+
+Preprocessed Vector
+dzeta2()
+{
+    Vector zeta = (Vector) { globalVertexIdx.x, globalVertexIdx.y, globalVertexIdx.z};
+
+    Vector _dgrid = dgrid(zeta, 1);
+    Vector _ddgrid = dgrid(zeta, 2);
+
+    return  (Vector){-_ddgrid.x/(_dgrid.x), -_ddgrid.y/(_dgrid.y), -_ddgrid.z/(_dgrid.z)}; 
+
+}
+
 
 //For nonuniform grid. 
 Preprocessed Vector
