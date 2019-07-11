@@ -387,7 +387,8 @@ swapBuffers(const Device device)
 }
 
 AcResult
-loadDeviceConstant(const Device device, const AcIntParam param, const int value)
+loadDeviceConstant(const Device device, const StreamType stream_type, const AcIntParam param,
+                   const int value)
 {
     cudaSetDevice(device->id);
     // CUDA 10 apparently creates only a single name for a device constant (d_mesh_info here)
@@ -395,18 +396,21 @@ loadDeviceConstant(const Device device, const AcIntParam param, const int value)
     // Therefore we have to obfuscate the code a bit and compute the offset address before
     // invoking cudaMemcpyToSymbol.
     const size_t offset = (size_t)&d_mesh_info.int_params[param] - (size_t)&d_mesh_info;
-    ERRCHK_CUDA_ALWAYS(
-        cudaMemcpyToSymbol(d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbolAsync(d_mesh_info, &value, sizeof(value), offset,
+                                               cudaMemcpyHostToDevice,
+                                               device->streams[stream_type]));
     return AC_SUCCESS;
 }
 
 AcResult
-loadDeviceConstant(const Device device, const AcRealParam param, const AcReal value)
+loadDeviceConstant(const Device device, const StreamType stream_type, const AcRealParam param,
+                   const AcReal value)
 {
     cudaSetDevice(device->id);
     const size_t offset = (size_t)&d_mesh_info.real_params[param] - (size_t)&d_mesh_info;
-    ERRCHK_CUDA_ALWAYS(
-        cudaMemcpyToSymbol(d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbolAsync(d_mesh_info, &value, sizeof(value), offset,
+                                               cudaMemcpyHostToDevice,
+                                               device->streams[stream_type]));
     return AC_SUCCESS;
 }
 
@@ -431,7 +435,8 @@ autoOptimize(const Device device)
                                     device->local_config.int_params[AC_nz]};
 
     dim3 best_dims(0, 0, 0);
-    float best_time = INFINITY;
+    float best_time          = INFINITY;
+    const int num_iterations = 10;
 
     for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) {
         for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
@@ -466,7 +471,7 @@ autoOptimize(const Device device)
 
                 cudaEventRecord(tstart); // ---------------------------------------- Timing start
 
-                for (int i = 0; i < NUM_ITERATIONS; ++i)
+                for (int i = 0; i < num_iterations; ++i)
                     solve<2><<<bpg, tpb>>>(start, end, device->vba, FLT_EPSILON);
 
                 cudaEventRecord(tstop); // ----------------------------------------- Timing end
@@ -483,8 +488,9 @@ autoOptimize(const Device device)
         }
     }
 #if VERBOSE_PRINTING
-    printf("Auto-optimization done. The best threadblock dimensions for rkStep: (%d, %d, %d) %f ms\n", best_dims.x, best_dims.y, best_dims.z,
-           double(best_time) / NUM_ITERATIONS);
+    printf(
+        "Auto-optimization done. The best threadblock dimensions for rkStep: (%d, %d, %d) %f ms\n",
+        best_dims.x, best_dims.y, best_dims.z, double(best_time) / num_iterations);
 #endif
     /*
     FILE* fp = fopen("../config/rk3_tbdims.cuh", "w");
