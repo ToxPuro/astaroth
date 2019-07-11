@@ -1,7 +1,26 @@
+
+
+
 Preprocessed Scalar
 value(in Scalar vertex)
 {
     return vertex[vertexIdx];
+}
+
+
+Preprocessed Scalar
+grid_function(const AcReal a_grid, const AcReal zeta, const int der_degree)
+{
+
+    //Using now sinh() as an example.
+    if (der_degree == 0) {
+        sinh(AcReal*zeta);
+    } else if (der_degree == 1) {
+        a_grid*cosh(AcReal*zeta);
+    } else if (der_degree == 2) {
+        (a_grid*a_grid)*sinh(AcReal*zeta);
+    }
+
 }
 
 Preprocessed Vector
