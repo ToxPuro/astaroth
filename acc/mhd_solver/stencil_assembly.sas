@@ -6,16 +6,16 @@ value(in Scalar vertex)
 
 #if LNONUNIFORM
 Preprocessed Scalar
-grid_function(const AcReal a_grid, const AcReal zeta, const int der_degree)
+grid_function(const Scalar a_grid, const Scalar zeta, const int der_degree)
 {
 
     //Using now sinh() as an example.
     if (der_degree == 0) {
-        sinh(AcReal*zeta);
+        sinh(zeta);
     } else if (der_degree == 1) {
-        a_grid*cosh(AcReal*zeta);
+        a_grid*cosh(zeta);
     } else if (der_degree == 2) {
-        (a_grid*a_grid)*sinh(AcReal*zeta);
+        (a_grid*a_grid)*sinh(zeta);
     }
 
 }
