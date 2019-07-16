@@ -11,11 +11,11 @@ grid_function(const Scalar a_grid, const Scalar zeta, const int der_degree)
 
     //Using now sinh() as an example.
     if (der_degree == 0) {
-        sinh(zeta);
+       return sinh(zeta);
     } else if (der_degree == 1) {
-        a_grid*cosh(zeta);
+       return a_grid*cosh(zeta);
     } else if (der_degree == 2) {
-        (a_grid*a_grid)*sinh(zeta);
+       return (a_grid*a_grid)*sinh(zeta);
     }
 
 }
@@ -25,16 +25,16 @@ dgrid(Vector zeta, const int der_degree)
 {
     return (Vector){
     grid_function(a_grid,(zeta.x - zeta_star.x), der_degree)/
-    (grid_function(a_grid,(DCONST_INT(AC_nx) - int(1) - zeta_star.x), 0) 
-   + grid_function(a_grid,(zeta_star.x - int(0)), 0)), 
+    (grid_function(a_grid,(Scalar(DCONST_INT(AC_nx)) - Scalar(1) - zeta_star.x), 0) 
+   + grid_function(a_grid,(zeta_star.x - Scalar(0)), 0)), 
 
     grid_function(a_grid,(zeta.y - zeta_star.y), der_degree)/
-    (grid_function(a_grid,(DCONST_INT(AC_ny) - int(1) - zeta_star.y), 0) 
-   + grid_function(a_grid,(zeta_star.y - int(0)), 0)),
+    (grid_function(a_grid,(Scalar(DCONST_INT(AC_ny)) - Scalar(1) - zeta_star.y), 0) 
+   + grid_function(a_grid,(zeta_star.y - Scalar(0)), 0)),
 
     grid_function(a_grid,(zeta.z - zeta_star.z), der_degree)/
-    (grid_function(a_grid,(DCONST_INT(AC_nz) - int(1) - zeta_star.z), 0) 
-   + grid_function(a_grid,(zeta_star.z - int(0)), 0))
+    (grid_function(a_grid,(Scalar(DCONST_INT(AC_nz)) - Scalar(1) - zeta_star.z), 0) 
+   + grid_function(a_grid,(zeta_star.z - Scalar(0)), 0))
     };
 }
 
