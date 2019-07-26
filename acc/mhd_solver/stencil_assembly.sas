@@ -123,6 +123,73 @@ der6z_upwd(in Scalar vertex)
 #endif
 
 #if LNONUNIFORM
+
+// Experimental method 
+Preprocessed Scalar
+derxy_bruteforce(in Scalar vertex)
+{
+    const Scalar coefficients[] =  {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
+    const Scalar offset = 3;
+
+    const Scalar inv_ds = DCONST_REAL(AC_inv_dsx)*DCONST_REAL(AC_inv_dsy);
+
+
+    Scalar derivative = 0.0;
+    for (int i= -3; i <= 3; ++i) {
+        for (int j= -3; j <= 3; ++j) {
+            Scalar coeff_ij = coefficients[abs(i)] * coefficients[abs(j)];
+            sum_tot = sum_tot + coeff_ij*vertex[vertexIdx.x+i, vertexIdx.y+j, vertexIdx.z];
+        }
+    }   
+
+    return derivative;
+}
+
+// Experimental method 
+Preprocessed Scalar
+derxz_bruteforce(in Scalar  vertex)
+{
+    const Scalar coefficients[] = {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
+    const Scalar offset = 3;
+
+    const Scalar inv_ds = DCONST_REAL(AC_inv_dsx)*DCONST_REAL(AC_inv_dsz);
+
+    Scalar derivative = 0.0;
+    for (int i= -3; i <= 3; ++i) {
+        for (int j= -3; j <= 3; ++j) {
+            Scalar coeff_ij = coefficients[abs(i)] * coefficients[abs(j)];
+            sum_tot = sum_tot + coeff_ij*vertex[vertexIdx.x+i, vertexIdx.y, vertexIdx.z+j];
+        }
+    }   
+
+    return derivative;
+}
+
+// Experimental method 
+Preprocessed Scalar
+deryz_bruteforce(in Scalar  vertex)
+{
+    const Scalar coefficients[] = {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
+    const Scalar offset = 3;
+
+    const Scalar inv_ds = DCONST_REAL(AC_inv_dsy)*DCONST_REAL(AC_inv_dsz);
+
+    Scalar derivative = 0.0;
+    for (int i= -3; i <= 3; ++i) {
+        for (int j= -3; j <= 3; ++j) {
+            Scalar coeff_ij = coefficients[abs(i)] * coefficients[abs(j)];
+            sum_tot = sum_tot + coeff_ij*vertex[vertexIdx, vertexIdx.y+i, vertexIdx.z+j];
+        }
+    }   
+
+    return derivative;
+}
+
+
+
+
+
+
 Preprocessed Matrix
 hessian(in Scalar vertex)
 {
@@ -136,14 +203,18 @@ hessian(in Scalar vertex)
     Scalar dzeta2z_p_dzeta1z = dzeta2().z / dzeta1().z;
 
     //derxy(vertexIdx, vertex), derxz(vertexIdx, vertex), deryz(vertexIdx, vertex) = Scalar(0.0) 
-    //WARNINGG: Cross derivatives not supported yet!
     //We will require a stencil which does not assume an equidistant grid
     hessian.row[0] = (Vector){dzeta1x_t_dzeta1x*derxx(vertexIdx, vertex) 
-                            + dzeta2x_p_dzeta1x*derx(vertexIdx, vertex), Scalar(0.0), Scalar(0.0)};
-    hessian.row[1] = (Vector){hessian.row[0].y, dzeta1y_t_dzeta1y*deryy(vertexIdx, vertex) 
-                                              + dzeta2y_p_dzeta1y*dery(vertexIdx, vertex), Scalar(0.0)};
-    hessian.row[2] = (Vector){hessian.row[0].z, hessian.row[1].z, dzeta1z_t_dzeta1z*derzz(vertexIdx, vertex)  
-                                                                + dzeta2z_p_dzeta1z*derz(vertexIdx, vertex)};
+                            + dzeta2x_p_dzeta1x*derx(vertexIdx, vertex), 
+                             (dzeta1().x * dzeta1().y)*derxy_bruteforce(vertex), 
+                             (dzeta1().x * dzeta1().z)*derxz_bruteforce(vertex)};
+    hessian.row[1] = (Vector){hessian.row[0].y, 
+                              dzeta1y_t_dzeta1y*deryy(vertexIdx, vertex) 
+                            + dzeta2y_p_dzeta1y*dery(vertexIdx, vertex), 
+                             (dzeta1().y * dzeta1().z)*deryz_bruteforce(vertex)};
+    hessian.row[2] = (Vector){hessian.row[0].z, hessian.row[1].z, 
+                              dzeta1z_t_dzeta1z*derzz(vertexIdx, vertex)  
+                            + dzeta2z_p_dzeta1z*derz(vertexIdx, vertex)};
 
     return hessian;
 }
