@@ -53,22 +53,21 @@ grid_geometry(const AcReal zeta, const AcReal zeta_star, const AcReal z0,
 
     AcReal denominator;
     denominator = grid_function(a_grid, (zeta - zeta_star), 0) 
-                + grid_function(a_grid, (zeta_star - int(0)), 0)
+                + grid_function(a_grid, (zeta_star - int(0)), 0);
     
     AcReal nominator;
     nominator   = grid_function(a_grid, (Ngrid - int(1) - zeta_star), 0) 
-                + grid_function(a_grid, (zeta_star - int(0)), 0)
+                + grid_function(a_grid, (zeta_star - int(0)), 0);
 
     return z0 + AxisLength*(nominator/denominator);
 
 }
-mesh_info.real_params[AC_ny]
 
 // Calculated the grid geometry function for all directions
 AcReal3
-grid_geometry_xyz(const AcReal3 zeta)
+grid_geometry_xyz(const AcReal3 zeta, const AcMeshInfo& mesh_info)
 {
-    return (Vector){
+    return (AcReal3){
     grid_geometry_xyz(zeta.x, zeta_star.x, mesh_info.real_params[AC_xorig], 
                       mesh_info.real_params[AC_xlen], a_grid, mesh_info.int_params[AC_nx]),
 
