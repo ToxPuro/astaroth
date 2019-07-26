@@ -130,10 +130,17 @@
 #include "math_utils.h"               // sum for reductions
 #include "standalone/config_loader.h" // update_config
 
-const char* intparam_names[]  = {AC_FOR_BUILTIN_INT_PARAM_TYPES(AC_GEN_STR)
-                                    AC_FOR_USER_INT_PARAM_TYPES(AC_GEN_STR)};
-const char* realparam_names[] = {AC_FOR_REAL_PARAM_TYPES(AC_GEN_STR)};
-const char* vtxbuf_names[]    = {AC_FOR_VTXBUF_HANDLES(AC_GEN_STR)};
+#define AC_GEN_STR(X) #X
+const char* intparam_names[]   = {AC_FOR_BUILTIN_INT_PARAM_TYPES(AC_GEN_STR) //
+                                AC_FOR_USER_INT_PARAM_TYPES(AC_GEN_STR)};
+const char* int3param_names[]  = {AC_FOR_BUILTIN_INT3_PARAM_TYPES(AC_GEN_STR) //
+                                 AC_FOR_USER_INT3_PARAM_TYPES(AC_GEN_STR)};
+const char* realparam_names[]  = {AC_FOR_BUILTIN_REAL_PARAM_TYPES(AC_GEN_STR) //
+                                 AC_FOR_USER_REAL_PARAM_TYPES(AC_GEN_STR)};
+const char* real3param_names[] = {AC_FOR_BUILTIN_REAL3_PARAM_TYPES(AC_GEN_STR) //
+                                  AC_FOR_USER_REAL3_PARAM_TYPES(AC_GEN_STR)};
+const char* vtxbuf_names[]     = {AC_FOR_VTXBUF_HANDLES(AC_GEN_STR)};
+#undef AC_GEN_STR
 
 static const int MAX_NUM_DEVICES       = 32;
 static int num_devices                 = 0;
@@ -289,6 +296,29 @@ acInit(const AcMeshInfo& config)
         createDevice(i, subgrid_config, &devices[i]);
         loadGlobalGrid(devices[i], grid);
         printDeviceInfo(devices[i]);
+    }
+
+    // Enable peer access
+    for (int i = 0; i < num_devices; ++i) {
+        const int front = (i + 1) % num_devices;
+        const int back  = (i - 1 + num_devices) % num_devices;
+
+        int can_access_front, can_access_back;
+        cudaDeviceCanAccessPeer(&can_access_front, i, front);
+        cudaDeviceCanAccessPeer(&can_access_back, i, back);
+#if VERBOSE_PRINTING
+        printf(
+            "Trying to enable peer access from %d to %d (can access: %d) and %d (can access: %d)\n",
+            i, front, can_access_front, back, can_access_back);
+#endif
+
+        cudaSetDevice(i);
+        if (can_access_front) {
+            ERRCHK_CUDA_ALWAYS(cudaDeviceEnablePeerAccess(front, 0));
+        }
+        if (can_access_back) {
+            ERRCHK_CUDA_ALWAYS(cudaDeviceEnablePeerAccess(back, 0));
+        }
     }
 
     acSynchronizeStream(STREAM_ALL);
@@ -536,7 +566,7 @@ acLoadWithOffset(const AcMesh& host_mesh, const int3& src, const int num_vertice
 AcResult
 acLoad(const AcMesh& host_mesh)
 {
-    acLoadWithOffset(host_mesh, (int3){0, 0, 0}, AC_VTXBUF_SIZE(host_mesh.info));
+    acLoadWithOffset(host_mesh, (int3){0, 0, 0}, acVertexBufferSize(host_mesh.info));
     acSynchronizeStream(STREAM_ALL);
     return AC_SUCCESS;
 }
@@ -575,7 +605,7 @@ acStoreWithOffset(const int3& src, const int num_vertices, AcMesh* host_mesh)
 AcResult
 acStore(AcMesh* host_mesh)
 {
-    acStoreWithOffset((int3){0, 0, 0}, AC_VTXBUF_SIZE(host_mesh->info), host_mesh);
+    acStoreWithOffset((int3){0, 0, 0}, acVertexBufferSize(host_mesh->info), host_mesh);
     acSynchronizeStream(STREAM_ALL);
     return AC_SUCCESS;
 }
