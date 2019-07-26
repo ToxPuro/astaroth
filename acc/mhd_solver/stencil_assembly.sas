@@ -129,10 +129,7 @@ Preprocessed Scalar
 derxy_bruteforce(in Scalar vertex)
 {
     const Scalar coefficients[] =  {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
-    const Scalar offset = 3;
-
     const Scalar inv_ds = DCONST_REAL(AC_inv_dsx)*DCONST_REAL(AC_inv_dsy);
-
 
     Scalar derivative = 0.0;
     for (int i= -3; i <= 3; ++i) {
@@ -150,8 +147,6 @@ Preprocessed Scalar
 derxz_bruteforce(in Scalar  vertex)
 {
     const Scalar coefficients[] = {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
-    const Scalar offset = 3;
-
     const Scalar inv_ds = DCONST_REAL(AC_inv_dsx)*DCONST_REAL(AC_inv_dsz);
 
     Scalar derivative = 0.0;
@@ -170,8 +165,6 @@ Preprocessed Scalar
 deryz_bruteforce(in Scalar  vertex)
 {
     const Scalar coefficients[] = {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
-    const Scalar offset = 3;
-
     const Scalar inv_ds = DCONST_REAL(AC_inv_dsy)*DCONST_REAL(AC_inv_dsz);
 
     Scalar derivative = 0.0;
@@ -184,10 +177,6 @@ deryz_bruteforce(in Scalar  vertex)
 
     return derivative;
 }
-
-
-
-
 
 
 Preprocessed Matrix
