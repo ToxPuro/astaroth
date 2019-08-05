@@ -136,9 +136,11 @@ derxy_bruteforce(int3 vertexIdx, in Scalar vertex)
     for (int i= -3; i <= 3; ++i) {
         for (int j= -3; j <= 3; ++j) {
             Scalar coeff_ij = coefficients[abs(i)] * coefficients[abs(j)];
-            derivative = derivative + coeff_ij*inv_ds*vertex[vertexIdx.x+i, vertexIdx.y+j, vertexIdx.z];
+            derivative = derivative + coeff_ij*vertex[vertexIdx.x+i, vertexIdx.y+j, vertexIdx.z];
         }
-    }   
+    }  
+
+    derivative = derivative * inv_ds;
 
     return derivative;
 }
@@ -154,9 +156,11 @@ derxz_bruteforce(int3 vertexIdx, in Scalar  vertex)
     for (int i= -3; i <= 3; ++i) {
         for (int j= -3; j <= 3; ++j) {
             Scalar coeff_ij = coefficients[abs(i)] * coefficients[abs(j)];
-            derivative = derivative + coeff_ij*inv_ds*vertex[vertexIdx.x+i, vertexIdx.y, vertexIdx.z+j];
+            derivative = derivative + coeff_ij*vertex[vertexIdx.x+i, vertexIdx.y, vertexIdx.z+j];
         }
-    }   
+    }
+
+    derivative = derivative * inv_ds;
 
     return derivative;
 }
@@ -172,9 +176,11 @@ deryz_bruteforce(int3 vertexIdx, in Scalar  vertex)
     for (int i= -3; i <= 3; ++i) {
         for (int j= -3; j <= 3; ++j) {
             Scalar coeff_ij = coefficients[abs(i)] * coefficients[abs(j)];
-            derivative = derivative + coeff_ij*inv_ds*vertex[vertexIdx.x, vertexIdx.y+i, vertexIdx.z+j];
+            derivative = derivative + coeff_ij*vertex[vertexIdx.x, vertexIdx.y+i, vertexIdx.z+j];
         }
     }   
+ 
+    derivative = derivative * inv_ds;
 
     return derivative;
 }
