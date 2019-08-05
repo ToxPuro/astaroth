@@ -126,7 +126,7 @@ der6z_upwd(in Scalar vertex)
 
 // Experimental method 
 Scalar
-derxy_bruteforce(in Scalar vertex)
+derxy_bruteforce(int3 vertexIdx, in Scalar vertex)
 {
     const Scalar coefficients[] =  {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
     const Scalar inv_ds = DCONST_REAL(AC_inv_dsx)*DCONST_REAL(AC_inv_dsy);
@@ -144,7 +144,7 @@ derxy_bruteforce(in Scalar vertex)
 
 // Experimental method 
 Scalar
-derxz_bruteforce(in Scalar  vertex)
+derxz_bruteforce(int3 vertexIdx, in Scalar  vertex)
 {
     const Scalar coefficients[] = {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
     const Scalar inv_ds = DCONST_REAL(AC_inv_dsx)*DCONST_REAL(AC_inv_dsz);
@@ -162,7 +162,7 @@ derxz_bruteforce(in Scalar  vertex)
 
 // Experimental method 
 Scalar
-deryz_bruteforce(in Scalar  vertex)
+deryz_bruteforce(int3 vertexIdx, in Scalar  vertex)
 {
     const Scalar coefficients[] = {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
     const Scalar inv_ds = DCONST_REAL(AC_inv_dsy)*DCONST_REAL(AC_inv_dsz);
@@ -195,12 +195,12 @@ hessian(in Scalar vertex)
     //We will require a stencil which does not assume an equidistant grid
     hessian.row[0] = (Vector){dzeta1x_t_dzeta1x*derxx(vertexIdx, vertex) 
                             + dzeta2x_p_dzeta1x*derx(vertexIdx, vertex), 
-                             (dzeta1().x * dzeta1().y)*derxy_bruteforce(vertex), 
-                             (dzeta1().x * dzeta1().z)*derxz_bruteforce(vertex)};
+                             (dzeta1().x * dzeta1().y)*derxy_bruteforce(vertexIdx, vertex), 
+                             (dzeta1().x * dzeta1().z)*derxz_bruteforce(vertexIdx, vertex)};
     hessian.row[1] = (Vector){hessian.row[0].y, 
                               dzeta1y_t_dzeta1y*deryy(vertexIdx, vertex) 
                             + dzeta2y_p_dzeta1y*dery(vertexIdx, vertex), 
-                             (dzeta1().y * dzeta1().z)*deryz_bruteforce(vertex)};
+                             (dzeta1().y * dzeta1().z)*deryz_bruteforce(vertexIdx, vertex)};
     hessian.row[2] = (Vector){hessian.row[0].z, hessian.row[1].z, 
                               dzeta1z_t_dzeta1z*derzz(vertexIdx, vertex)  
                             + dzeta2z_p_dzeta1z*derz(vertexIdx, vertex)};
