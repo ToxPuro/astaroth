@@ -5,7 +5,7 @@ value(in Scalar vertex)
 }
 
 #if LNONUNIFORM
-Preprocessed Scalar
+Scalar
 grid_function(const Scalar a_grid, const Scalar zeta, const int der_degree)
 {
 
@@ -20,7 +20,7 @@ grid_function(const Scalar a_grid, const Scalar zeta, const int der_degree)
 
 }
 
-Preprocessed Vector
+Vector
 dgrid(Vector zeta, const int der_degree)
 {
     return (Vector){
@@ -39,7 +39,7 @@ dgrid(Vector zeta, const int der_degree)
 }
 
 //First derivative of the grid
-Preprocessed Vector
+Vector
 dzeta1()
 {
 
@@ -51,7 +51,7 @@ dzeta1()
 }
 
 //Second derivative of the grid
-Preprocessed Vector
+Vector
 dzeta2()
 {
     Vector zeta = (Vector) { globalVertexIdx.x, globalVertexIdx.y, globalVertexIdx.z};
@@ -125,7 +125,7 @@ der6z_upwd(in Scalar vertex)
 #if LNONUNIFORM
 
 // Experimental method 
-Preprocessed Scalar
+Scalar
 derxy_bruteforce(in Scalar vertex)
 {
     const Scalar coefficients[] =  {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
@@ -135,7 +135,7 @@ derxy_bruteforce(in Scalar vertex)
     for (int i= -3; i <= 3; ++i) {
         for (int j= -3; j <= 3; ++j) {
             Scalar coeff_ij = coefficients[abs(i)] * coefficients[abs(j)];
-            sum_tot = sum_tot + coeff_ij*vertex[vertexIdx.x+i, vertexIdx.y+j, vertexIdx.z];
+            derivative = derivative + coeff_ij*vertex[vertexIdx.x+i, vertexIdx.y+j, vertexIdx.z];
         }
     }   
 
@@ -143,7 +143,7 @@ derxy_bruteforce(in Scalar vertex)
 }
 
 // Experimental method 
-Preprocessed Scalar
+Scalar
 derxz_bruteforce(in Scalar  vertex)
 {
     const Scalar coefficients[] = {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
@@ -153,7 +153,7 @@ derxz_bruteforce(in Scalar  vertex)
     for (int i= -3; i <= 3; ++i) {
         for (int j= -3; j <= 3; ++j) {
             Scalar coeff_ij = coefficients[abs(i)] * coefficients[abs(j)];
-            sum_tot = sum_tot + coeff_ij*vertex[vertexIdx.x+i, vertexIdx.y, vertexIdx.z+j];
+            derivative = derivative + coeff_ij*vertex[vertexIdx.x+i, vertexIdx.y, vertexIdx.z+j];
         }
     }   
 
@@ -161,7 +161,7 @@ derxz_bruteforce(in Scalar  vertex)
 }
 
 // Experimental method 
-Preprocessed Scalar
+Scalar
 deryz_bruteforce(in Scalar  vertex)
 {
     const Scalar coefficients[] = {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
@@ -171,7 +171,7 @@ deryz_bruteforce(in Scalar  vertex)
     for (int i= -3; i <= 3; ++i) {
         for (int j= -3; j <= 3; ++j) {
             Scalar coeff_ij = coefficients[abs(i)] * coefficients[abs(j)];
-            sum_tot = sum_tot + coeff_ij*vertex[vertexIdx, vertexIdx.y+i, vertexIdx.z+j];
+            derivative = derivative + coeff_ij*vertex[vertexIdx, vertexIdx.y+i, vertexIdx.z+j];
         }
     }   
 
