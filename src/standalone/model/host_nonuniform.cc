@@ -41,6 +41,8 @@ grid_function(const AcReal a_grid, const AcReal zeta, const int der_degree)
         return a_grid*cosh(zeta);
     } else if (der_degree == 2) {
         return (a_grid*a_grid)*sinh(zeta);
+    } else {
+        return AcReal(0.0); //Dummy. Should not be used.
     }
 
 }
@@ -63,25 +65,37 @@ grid_geometry(const AcReal zeta, const AcReal zeta_star, const AcReal z0,
 
 }
 
+//Solve for zeta_star TODO currently a dummy
+AcReal3
+solve_zeta_star()
+{
+    return (AcReal3){
+        0.0, 0.0, 0.0 
+    };
+}
+
 // Calculated the grid geometry function for all directions
 AcReal3
 grid_geometry_xyz(const AcReal3 zeta, const AcMeshInfo& mesh_info)
 {
+
+    const AcReal3 zeta_star = solve_zeta_star(); // "Centre point" of the grid.   TODO: Solve!! 
+    const AcReal a_grid = 1.0;                   // A scaling factor for the grid TODO: Define in astaroth.conf!!!
+
     return (AcReal3){
-    grid_geometry_xyz(zeta.x, zeta_star.x, mesh_info.real_params[AC_xorig], 
-                      mesh_info.real_params[AC_xlen], a_grid, mesh_info.int_params[AC_nx]),
+    grid_geometry(zeta.x, zeta_star.x, mesh_info.real_params[AC_xorig], 
+                  mesh_info.real_params[AC_xlen], a_grid, mesh_info.int_params[AC_nx]),
 
-    grid_geometry_xyz(zeta.y, zeta_star.y, mesh_info.real_params[AC_yorig], 
-                      mesh_info.real_params[AC_ylen], a_grid, mesh_info.int_params[AC_ny]),
+    grid_geometry(zeta.y, zeta_star.y, mesh_info.real_params[AC_yorig], 
+                  mesh_info.real_params[AC_ylen], a_grid, mesh_info.int_params[AC_ny]),
 
-    grid_geometry_xyz(zeta.z, zeta_star.z, mesh_info.real_params[AC_zorig], 
-                      mesh_info.real_params[AC_zlen], a_grid, mesh_info.int_params[AC_nz])
+    grid_geometry(zeta.z, zeta_star.z, mesh_info.real_params[AC_zorig], 
+                  mesh_info.real_params[AC_zlen], a_grid, mesh_info.int_params[AC_nz])
     };
 }
 
 //TODO: 
 
-//Solve for zeta_star 
 
 //Loads parameters to GPU 
 
