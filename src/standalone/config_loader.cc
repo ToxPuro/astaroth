@@ -34,6 +34,10 @@
 #include "core/errchk.h"
 #include "core/math_utils.h"
 
+#if LNONUNIFORM
+#include "standalone/model/host_nonuniform.h"
+#endif
+
 static inline void
 print(const AcMeshInfo& config)
 {
@@ -119,6 +123,14 @@ update_config(AcMeshInfo* config)
     config->real_params[AC_xorig] = AcReal(.5) * config->real_params[AC_xlen];
     config->real_params[AC_yorig] = AcReal(.5) * config->real_params[AC_ylen];
     config->real_params[AC_zorig] = AcReal(.5) * config->real_params[AC_zlen];
+
+#if LNONUNIFORM
+    //Non-nonform grid pre-computed coefficients
+    AcReal3 zeta_star = solve_zeta_star();
+    config->real_params[AC_zeta_star_x] = zeta_star.x;
+    config->real_params[AC_zeta_star_y] = zeta_star.y;
+    config->real_params[AC_zeta_star_z] = zeta_star.z;
+#endif
 
     /* Additional helper params */
     // Int helpers

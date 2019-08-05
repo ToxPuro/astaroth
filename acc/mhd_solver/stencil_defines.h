@@ -113,12 +113,17 @@
         FUNC(AC_ff_hel_imx),\
         FUNC(AC_ff_hel_imy),\
         FUNC(AC_ff_hel_imz),\
+	/* Nonuniform grid */\
+        FUNC(AC_grid_scale_coeff),\
         /* Additional helper params */\
         /* (deduced from other params do not set these directly!) */\
         FUNC(AC_G_CONST),\
         FUNC(AC_GM_star),\
         FUNC(AC_sq2GM_star),\
         FUNC(AC_cs2_sound), \
+        FUNC(AC_zeta_star_x),\
+        FUNC(AC_zeta_star_y),\
+        FUNC(AC_zeta_star_z),\
         FUNC(AC_inv_dsx), \
         FUNC(AC_inv_dsy), \
         FUNC(AC_inv_dsz),

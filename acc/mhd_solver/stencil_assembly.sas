@@ -24,6 +24,12 @@ grid_function(const Scalar a_grid, const Scalar zeta, const int der_degree)
 Vector
 dgrid(Vector zeta, const int der_degree)
 {
+    Vector zeta_star = (Vector){DCONST_REAL(AC_zeta_star_x), 
+                                DCONST_REAL(AC_zeta_star_y), 
+                                DCONST_REAL(AC_zeta_star_z)};
+
+    Scalar a_grid = DCONST_REAL(AC_grid_scale_coeff) ; 
+
     return (Vector){
     grid_function(a_grid,(zeta.x - zeta_star.x), der_degree)/
     (grid_function(a_grid,(Scalar(DCONST_INT(AC_nx)) - Scalar(1) - zeta_star.x), 0) 

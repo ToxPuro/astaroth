@@ -24,7 +24,7 @@
  * Detailed info.
  *
  */
-#include "host_forcing.h"
+#include "host_nonuniform.h"
 
 #include "core/math_utils.h"
 
