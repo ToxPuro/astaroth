@@ -18,6 +18,7 @@ grid_function(const Scalar a_grid, const Scalar zeta, const int der_degree)
        return (a_grid*a_grid)*sinh(zeta);
     }
 
+    return Scalar(0.0); //Dummy value. Not to be used. 
 }
 
 Vector
@@ -135,7 +136,7 @@ derxy_bruteforce(int3 vertexIdx, in Scalar vertex)
     for (int i= -3; i <= 3; ++i) {
         for (int j= -3; j <= 3; ++j) {
             Scalar coeff_ij = coefficients[abs(i)] * coefficients[abs(j)];
-            derivative = derivative + coeff_ij*vertex[vertexIdx.x+i, vertexIdx.y+j, vertexIdx.z];
+            derivative = derivative + coeff_ij*inv_ds*vertex[vertexIdx.x+i, vertexIdx.y+j, vertexIdx.z];
         }
     }   
 
@@ -153,7 +154,7 @@ derxz_bruteforce(int3 vertexIdx, in Scalar  vertex)
     for (int i= -3; i <= 3; ++i) {
         for (int j= -3; j <= 3; ++j) {
             Scalar coeff_ij = coefficients[abs(i)] * coefficients[abs(j)];
-            derivative = derivative + coeff_ij*vertex[vertexIdx.x+i, vertexIdx.y, vertexIdx.z+j];
+            derivative = derivative + coeff_ij*inv_ds*vertex[vertexIdx.x+i, vertexIdx.y, vertexIdx.z+j];
         }
     }   
 
@@ -171,7 +172,7 @@ deryz_bruteforce(int3 vertexIdx, in Scalar  vertex)
     for (int i= -3; i <= 3; ++i) {
         for (int j= -3; j <= 3; ++j) {
             Scalar coeff_ij = coefficients[abs(i)] * coefficients[abs(j)];
-            derivative = derivative + coeff_ij*vertex[vertexIdx, vertexIdx.y+i, vertexIdx.z+j];
+            derivative = derivative + coeff_ij*inv_ds*vertex[vertexIdx.x, vertexIdx.y+i, vertexIdx.z+j];
         }
     }   
 
