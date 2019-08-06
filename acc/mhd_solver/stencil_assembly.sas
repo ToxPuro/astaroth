@@ -47,7 +47,7 @@ dgrid(Vector zeta, const int der_degree)
 
 //First derivative of the grid
 Vector
-dzeta1()
+dzeta1(int3 globalVertexIdx)
 {
 
     Vector zeta = (Vector) { globalVertexIdx.x, globalVertexIdx.y, globalVertexIdx.z};
@@ -59,7 +59,7 @@ dzeta1()
 
 //Second derivative of the grid
 Vector
-dzeta2()
+dzeta2(int3 globalVertexIdx)
 {
     Vector zeta = (Vector) { globalVertexIdx.x, globalVertexIdx.y, globalVertexIdx.z};
 
@@ -74,9 +74,10 @@ dzeta2()
 Preprocessed Vector
 gradient(in Scalar vertex)
 {
-    return (Vector){dzeta1().x * derx(vertexIdx, vertex),
-                    dzeta1().y * dery(vertexIdx, vertex),
-                    dzeta1().z * derz(vertexIdx, vertex)};
+    Vector dzeta1_val = dzeta1(globalVertexIdx);
+    return (Vector){dzeta1_val.x * derx(vertexIdx, vertex),
+                    dzeta1_val.y * dery(vertexIdx, vertex),
+                    dzeta1_val.z * derz(vertexIdx, vertex)};
 }
 #else
 Preprocessed Vector
@@ -197,23 +198,24 @@ hessian(in Scalar vertex)
 {
     Matrix hessian;
 
-    Scalar dzeta1x_t_dzeta1x = dzeta1().x * dzeta1().x;
-    Scalar dzeta2x_p_dzeta1x = dzeta2().x / dzeta1().x;
-    Scalar dzeta1y_t_dzeta1y = dzeta1().y * dzeta1().y;
-    Scalar dzeta2y_p_dzeta1y = dzeta2().y / dzeta1().y;
-    Scalar dzeta1z_t_dzeta1z = dzeta1().z * dzeta1().z;
-    Scalar dzeta2z_p_dzeta1z = dzeta2().z / dzeta1().z;
+    Vector dzeta1_val = dzeta1(globalVertexIdx);
+    Vector dzeta2_val = dzeta2(globalVertexIdx);
 
-    //derxy(vertexIdx, vertex), derxz(vertexIdx, vertex), deryz(vertexIdx, vertex) = Scalar(0.0) 
-    //We will require a stencil which does not assume an equidistant grid
+    Scalar dzeta1x_t_dzeta1x = dzeta1_val.x * dzeta1_val.x;
+    Scalar dzeta2x_p_dzeta1x = dzeta2_val.x / dzeta1_val.x;
+    Scalar dzeta1y_t_dzeta1y = dzeta1_val.y * dzeta1_val.y;
+    Scalar dzeta2y_p_dzeta1y = dzeta2_val.y / dzeta1_val.y;
+    Scalar dzeta1z_t_dzeta1z = dzeta1_val.z * dzeta1_val.z;
+    Scalar dzeta2z_p_dzeta1z = dzeta2_val.z / dzeta1_val.z;
+
     hessian.row[0] = (Vector){dzeta1x_t_dzeta1x*derxx(vertexIdx, vertex) 
                             + dzeta2x_p_dzeta1x*derx(vertexIdx, vertex), 
-                             (dzeta1().x * dzeta1().y)*derxy_bruteforce(vertexIdx, vertex), 
-                             (dzeta1().x * dzeta1().z)*derxz_bruteforce(vertexIdx, vertex)};
+                             (dzeta1_val.x * dzeta1_val.y)*derxy_bruteforce(vertexIdx, vertex), 
+                             (dzeta1_val.x * dzeta1_val.z)*derxz_bruteforce(vertexIdx, vertex)};
     hessian.row[1] = (Vector){hessian.row[0].y, 
                               dzeta1y_t_dzeta1y*deryy(vertexIdx, vertex) 
                             + dzeta2y_p_dzeta1y*dery(vertexIdx, vertex), 
-                             (dzeta1().y * dzeta1().z)*deryz_bruteforce(vertexIdx, vertex)};
+                             (dzeta1_val.y * dzeta1_val.z)*deryz_bruteforce(vertexIdx, vertex)};
     hessian.row[2] = (Vector){hessian.row[0].z, hessian.row[1].z, 
                               dzeta1z_t_dzeta1z*derzz(vertexIdx, vertex)  
                             + dzeta2z_p_dzeta1z*derz(vertexIdx, vertex)};
