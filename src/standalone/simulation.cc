@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2018, Johannes Pekkilae, Miikka Vaeisalae.
+    Copyright (C) 2014-2019, Johannes Pekkilae, Miikka Vaeisalae.
 
     This file is part of Astaroth.
 
@@ -27,8 +27,9 @@
 #include "run.h"
 
 #include "config_loader.h"
-#include "core/errchk.h"
-#include "core/math_utils.h"
+#include "src/core/errchk.h"
+#include "src/core/math_utils.h"
+#include "model/host_forcing.h"
 #include "model/host_memory.h"
 #include "model/host_timestep.h"
 #include "model/model_reduce.h"
@@ -38,27 +39,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-/*
-// DEPRECATED: TODO remove
-static inline void
-print_diagnostics(const AcMesh& mesh, const int& step, const AcReal& dt)
-{
-    const int max_name_width = 16;
-    printf("Step %d, dt %e s\n", step, double(dt));
-    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "uu total",
-    double(model_reduce_vec(mesh, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)),
-    double(model_reduce_vec(mesh, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)),
-    double(model_reduce_vec(mesh, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)));
-
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
-        double(model_reduce_scal(mesh, RTYPE_MAX, VertexBufferHandle(i))),
-        double(model_reduce_scal(mesh, RTYPE_MIN, VertexBufferHandle(i))),
-        double(model_reduce_scal(mesh, RTYPE_RMS, VertexBufferHandle(i))));
-    }
-}
-*/
 
 // Write all setting info into a separate ascii file. This is done to guarantee
 // that we have the data specifi information in the thing, even though in
@@ -120,7 +100,7 @@ save_mesh(const AcMesh& save_mesh, const int step, const AcReal t_step)
     FILE* save_ptr;
 
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        const size_t n = AC_VTXBUF_SIZE(save_mesh.info);
+        const size_t n = acVertexBufferSize(save_mesh.info);
 
         const char* buffername = vtxbuf_names[w];
         char cstep[11];
@@ -202,7 +182,7 @@ run_simulation(void)
     load_config(&mesh_info);
 
     AcMesh* mesh = acmesh_create(mesh_info);
-    //TODO: This need to be possible to define in astaroth.conf 
+    // TODO: This need to be possible to define in astaroth.conf
     acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, mesh);
 
     acInit(mesh_info);
@@ -225,22 +205,57 @@ run_simulation(void)
     write_mesh_info(&mesh_info);
     print_diagnostics(0, AcReal(.0), t_step, diag_file);
 
-    acSynchronize();
     acStore(mesh);
     save_mesh(*mesh, 0, t_step);
 
-    const int max_steps  = mesh_info.int_params[AC_max_steps];
-    const int save_steps = mesh_info.int_params[AC_save_steps];
+    const int max_steps      = mesh_info.int_params[AC_max_steps];
+    const int save_steps     = mesh_info.int_params[AC_save_steps];
     const int bin_save_steps = mesh_info.int_params[AC_bin_steps]; // TODO Get from mesh_info
 
     AcReal bin_save_t = mesh_info.real_params[AC_bin_save_t];
     AcReal bin_crit_t = bin_save_t;
 
+    /* initialize random seed: */
+    srand(312256655);
+
+    //TODO_SINK. init_sink_particle()
+    //  Initialize the basic variables of the sink particle to a suitable initial value.
+    //  1. Location of the particle
+    //  2. Mass of the particle
+    //  (3. Velocity of the particle)
+    //  This at the level of Host in this case. 
+    //  acUpdate_sink_particle() will do the similar trick to the device. 
+
     /* Step the simulation */
     for (int i = 1; i < max_steps; ++i) {
         const AcReal umax = acReduceVec(RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
         const AcReal dt   = host_timestep(umax, mesh_info);
+
+#if LFORCING
+        const ForcingParams forcing_params = generateForcingParams(mesh_info);
+        loadForcingParamsToDevice(forcing_params);
+#endif
+
+       //TODO_SINK acUpdate_sink_particle()
+       //  Update properties of the sing particle for acIntegrate(). Essentially:
+       //  1. Location of the particle
+       //  2. Mass of the particle
+       //  (3. Velocity of the particle)
+       //  These can be used for calculating he gravitational field. 
+
         acIntegrate(dt);
+       //TODO_SINK acAdvect_sink_particle()
+       //  THIS IS OPTIONAL. We will start from unmoving particle. 
+       //  1. Calculate the equation of motion for the sink particle. 
+       //  NOTE: Might require embedding with acIntegrate(dt). 
+
+       //TODO_SINK acAccrete_sink_particle()
+       //  Calculate accretion of the sink particle from the surrounding medium 
+       //  1. Transfer density into sink particle mass
+       //  2. Transfer momentum into sink particle 
+       //  (OPTIONAL: Affection the motion of the particle)
+       //  NOTE: Might require embedding with acIntegrate(dt).
+       //  This is the hardest part. Please see Lee et al. ApJ 783 (2014) for reference. 
 
         t_step += dt;
 
@@ -286,8 +301,6 @@ run_simulation(void)
                 acSynchronize();
                 acStore(mesh);
             */
-
-            acSynchronize();
             acStore(mesh);
 
             save_mesh(*mesh, i, t_step);

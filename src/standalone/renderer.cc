@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2018, Johannes Pekkilae, Miikka Vaeisalae.
+    Copyright (C) 2014-2019, Johannes Pekkilae, Miikka Vaeisalae.
 
     This file is part of Astaroth.
 
@@ -26,13 +26,15 @@
  */
 #include "run.h"
 
+#if AC_BUILD_RT_VISUALIZATION
 #include <SDL.h>    // Note: using local version in src/3rdparty dir
 #include <math.h>   // ceil
 #include <string.h> // memcpy
 
 #include "config_loader.h"
-#include "core/errchk.h"
-#include "core/math_utils.h"
+#include "src/core/errchk.h"
+#include "src/core/math_utils.h"
+#include "model/host_forcing.h"
 #include "model/host_memory.h"
 #include "model/host_timestep.h"
 #include "model/model_reduce.h"
@@ -161,7 +163,7 @@ draw_vertex_buffer(const AcMesh& mesh, const VertexBufferHandle& vertex_buffer, 
         for (int i = 0; i < mesh.info.int_params[AC_mx]; ++i) {
             ERRCHK(i < datasurface_width && j < datasurface_height);
 
-            const int idx       = AC_VTXBUF_IDX(i, j, k, mesh.info);
+            const int idx       = acVertexBufferIdx(i, j, k, mesh.info);
             const uint8_t shade = (uint8_t)(
                 255.f * (fabsf(float(mesh.vertex_buffer[vertex_buffer][idx]) - mid)) / range);
             uint8_t color[4]            = {0, 0, 0, 255};
@@ -218,7 +220,7 @@ draw_vertex_buffer_vec(const AcMesh& mesh, const VertexBufferHandle& vertex_buff
         for (int i = 0; i < mesh.info.int_params[AC_mx]; ++i) {
             ERRCHK(i < datasurface_width && j < datasurface_height);
 
-            const int idx   = AC_VTXBUF_IDX(i, j, k, mesh.info);
+            const int idx   = acVertexBufferIdx(i, j, k, mesh.info);
             const uint8_t r = (uint8_t)(
                 255.f * (fabsf(float(mesh.vertex_buffer[vertex_buffer_a][idx]) - mid)) / range);
             const uint8_t g = (uint8_t)(
@@ -382,6 +384,12 @@ run_renderer(void)
 #if 1
         const AcReal umax = acReduceVec(RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
         const AcReal dt   = host_timestep(umax, mesh_info);
+
+#if LFORCING
+        const ForcingParams forcing_params = generateForcingParams(mesh->info);
+        loadForcingParamsToDevice(forcing_params);
+#endif
+
         acIntegrate(dt);
 #else
         ModelMesh* model_mesh = modelmesh_create(mesh->info);
@@ -405,7 +413,7 @@ run_renderer(void)
             const int num_vertices = mesh->info.int_params[AC_mxy];
             const int3 dst         = (int3){0, 0, k_slice};
             acStoreWithOffset(dst, num_vertices, mesh);
-            acSynchronize();
+            acSynchronizeStream(STREAM_ALL);
             renderer_draw(*mesh); // Bottleneck is here
             printf("Step #%d, dt: %f\n", steps, double(dt));
             timer_reset(&frame_timer);
@@ -421,3 +429,12 @@ run_renderer(void)
 
     return 0;
 }
+#else // BUILD_RT_VISUALIZATION == 0
+#include "src/core/errchk.h"
+int
+run_renderer(void)
+{
+    WARNING("Real-time visualization module not built. Set BUILD_RT_VISUALIZATION=ON with cmake.");
+    return 1;
+}
+#endif // BUILD_RT_VISUALIZATION

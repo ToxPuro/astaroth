@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2018, Johannes Pekkilae, Miikka Vaeisalae.
+    Copyright (C) 2014-2019, Johannes Pekkilae, Miikka Vaeisalae.
 
     This file is part of Astaroth.
 
@@ -43,6 +43,9 @@ typedef struct {
     ModelScalar value;
     ModelVector gradient;
     ModelMatrix hessian;
+#if LUPWD
+    ModelVector upwind;
+#endif
 } ModelScalarData;
 
 typedef struct {
@@ -68,7 +71,7 @@ get(const AcRealParam param)
 static inline int
 IDX(const int i, const int j, const int k)
 {
-    return AC_VTXBUF_IDX(i, j, k, (*mesh_info));
+    return acVertexBufferIdx(i, j, k, (*mesh_info));
 }
 
 /*
@@ -273,6 +276,53 @@ derzz(const int i, const int j, const int k, const ModelScalar* arr)
     return second_derivative(pencil, get(AC_inv_dsz));
 }
 
+#if LUPWD
+static inline ModelScalar
+der6x_upwd(const int i, const int j, const int k, const ModelScalar* arr)
+{
+    ModelScalar inv_ds = get(AC_inv_dsx);
+
+    return ModelScalar(1.0/60.0)*inv_ds* (
+          -ModelScalar(    20.0)* arr[IDX(i,   j,   k)]
+          +ModelScalar(    15.0)*(arr[IDX(i+1, j,   k)]
+          +                       arr[IDX(i-1, j,   k)])
+          -ModelScalar(     6.0)*(arr[IDX(i+2, j,   k)]
+          +                       arr[IDX(i-2, j,   k)])
+          +                       arr[IDX(i+3, j,   k)]
+          +                       arr[IDX(i-3, j,   k)]);
+}
+
+static inline ModelScalar
+der6y_upwd(const int i, const int j, const int k, const ModelScalar* arr)
+{
+    ModelScalar inv_ds = get(AC_inv_dsy);
+
+    return ModelScalar(1.0/60.0)*inv_ds* (
+          -ModelScalar(    20.0)* arr[IDX(i,   j,   k)]
+          +ModelScalar(    15.0)*(arr[IDX(i,   j+1, k)]
+          +                       arr[IDX(i,   j-1, k)])
+          -ModelScalar(     6.0)*(arr[IDX(i,   j+2, k)]
+          +                       arr[IDX(i,   j-2, k)])
+          +                       arr[IDX(i,   j+3, k)]
+          +                       arr[IDX(i,   j-3, k)]);
+}
+
+static inline ModelScalar
+der6z_upwd(const int i, const int j, const int k, const ModelScalar* arr)
+{
+    ModelScalar inv_ds = get(AC_inv_dsz);
+
+    return ModelScalar(1.0/60.0)*inv_ds* (
+          -ModelScalar(    20.0)* arr[IDX(i,   j,   k  )]
+          +ModelScalar(    15.0)*(arr[IDX(i,   j,   k+1)]
+          +                       arr[IDX(i,   j,   k-1)])
+          -ModelScalar(     6.0)*(arr[IDX(i,   j,   k+2)]
+          +                       arr[IDX(i,   j,   k-2)])
+          +                       arr[IDX(i,   j,   k+3)]
+          +                       arr[IDX(i,   j,   k-3)]);
+}
+#endif
+
 static inline ModelScalar
 compute_value(const int i, const int j, const int k, const ModelScalar* arr)
 {
@@ -285,17 +335,13 @@ compute_gradient(const int i, const int j, const int k, const ModelScalar* arr)
     return (ModelVector){derx(i, j, k, arr), dery(i, j, k, arr), derz(i, j, k, arr)};
 }
 
-static inline ModelMatrix
-compute_second_deriv(const int i, const int j, const int k, const ModelScalar* arr)
+#if LUPWD
+static inline ModelVector
+compute_upwind(const int i, const int j, const int k, const ModelScalar* arr)
 {
-    ModelMatrix hessian;
-
-    hessian.row[0] = (ModelVector){derxx(i, j, k, arr), 0, 0};
-    hessian.row[1] = (ModelVector){0, deryy(i, j, k, arr), 0};
-    hessian.row[2] = (ModelVector){0, 0, derzz(i, j, k, arr)};
-
-    return hessian;
+    return (ModelVector){der6x_upwd(i, j, k, arr), der6y_upwd(i, j, k, arr), der6z_upwd(i, j, k, arr)};
 }
+#endif
 
 static inline ModelMatrix
 compute_hessian(const int i, const int j, const int k, const ModelScalar* arr)
@@ -320,6 +366,10 @@ read_data(const int i, const int j, const int k, ModelScalar* buf[], const int h
     // No significant effect on performance even though we do not need the
     // diagonals with all arrays
     data.hessian = compute_hessian(i, j, k, buf[handle]);
+
+#if LUPWD
+    data.upwind   = compute_upwind(i, j, k, buf[handle]);
+#endif
 
     return data;
 }
@@ -366,19 +416,7 @@ gradients(const ModelVectorData& data)
     return (ModelMatrix){gradient(data.x), gradient(data.y), gradient(data.z)};
 }
 
-static inline ModelScalar
-val2ue(const int i, const int j, const int k, ModelScalar* vertex)
-{
-    return vertex[IDX(i, j, k)];
-}
-static inline ModelVector
-gradien2t(const int i, const int j, const int k, ModelScalar* vertex)
-{
-    return (ModelVector){vertex[IDX(i - 1, j, k)] + vertex[IDX(i, j, k)] + vertex[IDX(i + 1, j, k)],
-                         vertex[IDX(i, j - 1, k)] + vertex[IDX(i, j, k)] + vertex[IDX(i, j + 1, k)],
-                         vertex[IDX(i, j, k - 1)] + vertex[IDX(i, j, k)] +
-                             vertex[IDX(i, j, k + 1)]};
-}
+
 
 /*
  * =============================================================================
@@ -528,10 +566,27 @@ contract(const ModelMatrix& mat)
  * Stencil Processing Stage (equations)
  * =============================================================================
  */
+
+#if LUPWD
+ModelScalar
+upwd_der6(const ModelVectorData& uu, const ModelScalarData& lnrho)
+{
+    ModelScalar uux = fabs(value(uu).x);
+    ModelScalar uuy = fabs(value(uu).y);
+    ModelScalar uuz = fabs(value(uu).z);
+    return uux*lnrho.upwind.x + uuy*lnrho.upwind.y + uuz*lnrho.upwind.z;
+}
+#endif
+
 static inline ModelScalar
 continuity(const ModelVectorData& uu, const ModelScalarData& lnrho)
 {
-    return -dot(value(uu), gradient(lnrho)) - divergence(uu);
+    return -dot(value(uu), gradient(lnrho))
+#if LUPWD
+           //This is a corrective hyperdiffusion term for upwinding.
+           + upwd_der6(uu, lnrho)
+#endif
+           - divergence(uu);
 }
 
 static inline ModelScalar
@@ -553,11 +608,6 @@ normalized(const ModelVector& vec)
     return inv_len * vec;
 }
 
-// Note: LNT0 and LNRHO0 must be set very carefully: if the magnitude is different that other values
-// in the mesh, then we will inherently lose precision
-#define LNT0 (ModelScalar(0.0))
-#define LNRHO0 (ModelScalar(0.0))
-
 #define H_CONST (ModelScalar(0.0))
 #define C_CONST (ModelScalar(0.0))
 
@@ -571,9 +621,10 @@ momentum(const ModelVectorData& uu, const ModelScalarData& lnrho
 {
 #if LENTROPY
     const ModelMatrix S   = stress_tensor(uu);
-    const ModelScalar cs2 = get(AC_cs2_sound) * expl(get(AC_gamma) * value(ss) / get(AC_cp_sound) +
-                                                     (get(AC_gamma) - 1) * (value(lnrho) - LNRHO0));
-    const ModelVector j   = (ModelScalar(1.) / get(AC_mu0)) *
+    const ModelScalar cs2 = get(AC_cs2_sound) *
+                            expl(get(AC_gamma) * value(ss) / get(AC_cp_sound) +
+                                 (get(AC_gamma) - 1) * (value(lnrho) - get(AC_lnrho0)));
+    const ModelVector j = (ModelScalar(1.) / get(AC_mu0)) *
                           (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
     const ModelVector B       = curl(aa);
     const ModelScalar inv_rho = ModelScalar(1.) / expl(value(lnrho));
@@ -587,38 +638,18 @@ momentum(const ModelVectorData& uu, const ModelScalarData& lnrho
                                                ModelScalar(2.) * mul(S, gradient(lnrho))) +
                             get(AC_zeta) * gradient_of_divergence(uu);
     return mom;
-#endif
-
-#if 0
+#else
+    // !!!!!!!!!!!!!!!!%JP: NOTE TODO IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!
+    // NOT CHECKED FOR CORRECTNESS: USE AT YOUR OWN RISK
     const ModelMatrix S = stress_tensor(uu);
 
-    //#if LENTROPY
-    //const ModelScalar lnrho0 = 1; // TODO correct lnrho0
-    const ModelScalar cs02 = get(AC_cs2_sound); // TODO better naming
-    const ModelScalar cs2 = cs02;// * expl(get(AC_gamma) * value(ss) / get(AC_cp_sound) + (get(AC_gamma)-ModelScalar(1.l)) * (value(lnrho) - lnrho0));
-
-    mom = -mul(gradients(uu), value(uu)) -
-    cs2 * ((ModelScalar(1.) / get(AC_cp_sound)) * gradient(ss) + gradient(lnrho)) +
-    get(AC_nu_visc) *
-    (laplace_vec(uu) + ModelScalar(1.l / 3.l) * gradient_of_divergence(uu) +
-      ModelScalar(2.l) * mul(S, gradient(lnrho))) + get(AC_zeta) * gradient_of_divergence(uu);
-
-    const ModelVector grad_div = gradient_of_divergence(aa);
-    const ModelVector lap = laplace_vec(aa);
-    const ModelVector j = (ModelScalar(1.l) / get(AC_mu0)) * (grad_div - lap);
-    const ModelVector B = curl(aa);
-    mom = mom + (ModelScalar(1.l) / expl(value(lnrho))) * cross(j, B);
-    //#else // Basic hydro
-        const ModelScalar cs02 = get(AC_cs2_sound);
-        mom = -mul(gradients(uu), value(uu)) -
-          cs02 * gradient(lnrho) +
-          get(AC_nu_visc) *
-              (laplace_vec(uu) + ModelScalar(1. / 3.) * gradient_of_divergence(uu) +
-               ModelScalar(2.) * mul(S, gradient(lnrho))) + get(AC_zeta) * gradient_of_divergence(uu);
-    //#endif
+    const ModelVector mom = -mul(gradients(uu), value(uu)) - get(AC_cs2_sound) * gradient(lnrho) +
+                            get(AC_nu_visc) * (laplace_vec(uu) +
+                                               ModelScalar(1. / 3.) * gradient_of_divergence(uu) +
+                                               ModelScalar(2.) * mul(S, gradient(lnrho))) +
+                            get(AC_zeta) * gradient_of_divergence(uu);
     return mom;
 #endif
-    return (ModelVector){NAN, NAN, NAN}; // TODO HYDRO ONLY MODEL SOLUTION
 }
 
 static inline ModelVector
@@ -642,8 +673,8 @@ induction(const ModelVectorData& uu, const ModelVectorData& aa)
 static inline ModelScalar
 lnT(const ModelScalarData& ss, const ModelScalarData& lnrho)
 {
-    const ModelScalar lnT = LNT0 + get(AC_gamma) * value(ss) / get(AC_cp_sound) +
-                            (get(AC_gamma) - ModelScalar(1.)) * (value(lnrho) - LNRHO0);
+    const ModelScalar lnT = get(AC_lnT0) + get(AC_gamma) * value(ss) / get(AC_cp_sound) +
+                            (get(AC_gamma) - ModelScalar(1.)) * (value(lnrho) - get(AC_lnrho0));
     return lnT;
 }
 
@@ -697,46 +728,112 @@ entropy(const ModelScalarData& ss, const ModelVectorData& uu, const ModelScalarD
     */
 }
 
-static bool
+static inline bool
 is_valid(const ModelScalar a)
 {
     return !isnan(a) && !isinf(a);
 }
 
-static bool
+static inline bool
 is_valid(const ModelVector& a)
 {
     return is_valid(a.x) && is_valid(a.y) && is_valid(a.z);
 }
 
-static inline ModelVector
-forcing(int3 globalVertexIdx)
+#if LFORCING
+ModelVector
+simple_vortex_forcing(ModelVector a, ModelVector b, ModelScalar magnitude)
 {
-    // source (origin)
+    return magnitude * cross(normalized(b - a), (ModelVector){0, 0, 1}); // Vortex
+}
+
+ModelVector
+simple_outward_flow_forcing(ModelVector a, ModelVector b, ModelScalar magnitude)
+{
+    return magnitude * (1 / length(b - a)) * normalized(b - a); // Outward flow
+}
+
+// The Pencil Code forcing_hel_noshear(), manual Eq. 222, inspired forcing function with adjustable
+// helicity
+ModelVector
+helical_forcing(ModelScalar magnitude, ModelVector k_force, ModelVector xx, ModelVector ff_re,
+                ModelVector ff_im, ModelScalar phi)
+{
+    (void)magnitude; // WARNING: unused
+    xx.x = xx.x*(2.0*M_PI/(get(AC_dsx)*get(AC_nx)));
+    xx.y = xx.y*(2.0*M_PI/(get(AC_dsy)*get(AC_ny)));
+    xx.z = xx.z*(2.0*M_PI/(get(AC_dsz)*get(AC_nz)));
+
+    ModelScalar cos_phi = cosl(phi);
+    ModelScalar sin_phi = sinl(phi);
+    ModelScalar cos_k_dot_x     = cosl(dot(k_force, xx));
+    ModelScalar sin_k_dot_x     = sinl(dot(k_force, xx));
+    // Phase affect only the x-component
+    //Scalar real_comp       = cos_k_dot_x;
+    //Scalar imag_comp       = sin_k_dot_x;
+    ModelScalar real_comp_phase = cos_k_dot_x*cos_phi - sin_k_dot_x*sin_phi;
+    ModelScalar imag_comp_phase = cos_k_dot_x*sin_phi + sin_k_dot_x*cos_phi;
+
+
+    ModelVector force = (ModelVector){ ff_re.x*real_comp_phase - ff_im.x*imag_comp_phase,
+                             ff_re.y*real_comp_phase - ff_im.y*imag_comp_phase,
+                             ff_re.z*real_comp_phase - ff_im.z*imag_comp_phase};
+
+    return force;
+}
+
+ModelVector
+forcing(int3 globalVertexIdx, ModelScalar dt)
+{
     ModelVector a = ModelScalar(.5) * (ModelVector){get(AC_nx) * get(AC_dsx),
                                                     get(AC_ny) * get(AC_dsy),
-                                                    get(AC_nz) * get(AC_dsz)};
-    // sink (current index)
-    ModelVector b = (ModelVector){(globalVertexIdx.x - get(AC_nx_min)) * get(AC_dsx),
-                                  (globalVertexIdx.y - get(AC_ny_min)) * get(AC_dsy),
-                                  (globalVertexIdx.z - get(AC_nz_min)) * get(AC_dsz)};
+                                                    get(AC_nz) * get(AC_dsz)}; // source (origin)
+    (void)a;                                                                   // WARNING: not used
+    ModelVector xx        = (ModelVector){(globalVertexIdx.x - get(AC_nx_min)) * get(AC_dsx),
+                                   (globalVertexIdx.y - get(AC_ny_min)) * get(AC_dsy),
+                                   (globalVertexIdx.z - get(AC_nz_min)) *
+                                       get(AC_dsz)}; // sink (current index)
+    const ModelScalar cs2 = get(AC_cs2_sound);
+    const ModelScalar cs  = sqrtl(cs2);
 
-    ModelScalar magnitude = 0.05;
-    // Vector c = magnitude * (1 / length(b - a)) * normalized(b - a); // Outward flow
-    ModelVector c = magnitude * cross(normalized(b - a), (ModelVector){0, 0, 1}); // Vortex
-    if (is_valid(c)) {
-        return c;
+    // Placeholders until determined properly
+    ModelScalar magnitude = get(AC_forcing_magnitude);
+    ModelScalar phase     = get(AC_forcing_phase);
+    ModelVector k_force   = (ModelVector){get(AC_k_forcex), get(AC_k_forcey), get(AC_k_forcez)};
+    ModelVector ff_re = (ModelVector){get(AC_ff_hel_rex), get(AC_ff_hel_rey), get(AC_ff_hel_rez)};
+    ModelVector ff_im = (ModelVector){get(AC_ff_hel_imx), get(AC_ff_hel_imy), get(AC_ff_hel_imz)};
+
+    (void)phase;   // WARNING: unused with simple forcing. Should be defined in helical_forcing
+    (void)k_force; // WARNING: unused with simple forcing. Should be defined in helical_forcing
+    (void)ff_re;   // WARNING: unused with simple forcing. Should be defined in helical_forcing
+    (void)ff_im;   // WARNING: unused with simple forcing. Should be defined in helical_forcing
+
+    // Determine that forcing funtion type at this point.
+    // ModelVector force = simple_vortex_forcing(a, xx, magnitude);
+    // ModelVector force = simple_outward_flow_forcing(a, xx, magnitude);
+    ModelVector force = helical_forcing(magnitude, k_force, xx, ff_re, ff_im, phase);
+
+    // Scaling N = magnitude*cs*sqrtl(k*cs/dt)  * dt
+    const ModelScalar NN = cs * sqrtl(get(AC_kaver) * cs);
+    // MV: Like in the Pencil Code. I don't understandf the logic here.
+    force.x = sqrtl(dt) * NN * force.x;
+    force.y = sqrtl(dt) * NN * force.y;
+    force.z = sqrtl(dt) * NN * force.z;
+
+    if (is_valid(force)) {
+        return force;
     }
     else {
         return (ModelVector){0, 0, 0};
     }
 }
+#endif
 
 static void
 solve_alpha_step(const int step_number, const ModelScalar dt, const int i, const int j, const int k,
                  ModelMesh& in, ModelMesh* out)
 {
-    const int idx = AC_VTXBUF_IDX(i, j, k, in.info);
+    const int idx = acVertexBufferIdx(i, j, k, in.info);
 
     const ModelScalarData lnrho = read_data(i, j, k, in.vertex_buffer, VTXBUF_LNRHO);
     const ModelVectorData uu    = read_data(i, j, k, in.vertex_buffer,
@@ -745,7 +842,7 @@ solve_alpha_step(const int step_number, const ModelScalar dt, const int i, const
     ModelScalar rate_of_change[NUM_VTXBUF_HANDLES] = {0};
     rate_of_change[VTXBUF_LNRHO]                   = continuity(uu, lnrho);
 
-#if LINDUCTION
+#if LMAGNETIC
     const ModelVectorData aa  = read_data(i, j, k, in.vertex_buffer,
                                          (int3){VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ});
     const ModelVector aa_res  = induction(uu, aa);
@@ -784,7 +881,7 @@ static void
 solve_beta_step(const int step_number, const ModelScalar dt, const int i, const int j, const int k,
                 const ModelMesh& in, ModelMesh* out)
 {
-    const int idx = AC_VTXBUF_IDX(i, j, k, in.info);
+    const int idx = acVertexBufferIdx(i, j, k, in.info);
 
     // Williamson (1980) NOTE: older version of astaroth used inhomogenous
     const ModelScalar beta[] = {ModelScalar(1. / 3.), ModelScalar(15. / 16.),
@@ -793,12 +890,13 @@ solve_beta_step(const int step_number, const ModelScalar dt, const int i, const 
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
         out->vertex_buffer[w][idx] += beta[step_number] * in.vertex_buffer[w][idx];
 
+    (void)dt; // Suppress unused variable warning if forcing not used
 #if LFORCING
     if (step_number == 2) {
-        ModelVector force = forcing((int3){i, j, k});
-        out->vertex_buffer[VTXBUF_UUX][idx] += force.x * dt;
-        out->vertex_buffer[VTXBUF_UUY][idx] += force.y * dt;
-        out->vertex_buffer[VTXBUF_UUZ][idx] += force.z * dt;
+        ModelVector force = forcing((int3){i, j, k}, dt);
+        out->vertex_buffer[VTXBUF_UUX][idx] += force.x;
+        out->vertex_buffer[VTXBUF_UUY][idx] += force.y;
+        out->vertex_buffer[VTXBUF_UUZ][idx] += force.z;
     }
 #endif
 }

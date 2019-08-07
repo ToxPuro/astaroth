@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2018, Johannes Pekkilae, Miikka Vaeisalae.
+    Copyright (C) 2014-2019, Johannes Pekkilae, Miikka Vaeisalae.
 
     This file is part of Astaroth.
 
@@ -28,6 +28,12 @@
 
 #include "errchk.h"
 
+// Device info
+#define REGISTERS_PER_THREAD (255)
+#define MAX_REGISTERS_PER_BLOCK (65536)
+#define MAX_THREADS_PER_BLOCK (1024)
+#define WARP_SIZE (32)
+
 typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
@@ -37,10 +43,20 @@ __constant__ AcMeshInfo d_mesh_info;
 __constant__ int3 d_multigpu_offset;
 __constant__ Grid globalGrid;
 #define DCONST_INT(X) (d_mesh_info.int_params[X])
+#define DCONST_INT3(X) (d_mesh_info.int3_params[X])
 #define DCONST_REAL(X) (d_mesh_info.real_params[X])
+#define DCONST_REAL3(X) (d_mesh_info.real3_params[X])
 #define DEVICE_VTXBUF_IDX(i, j, k) ((i) + (j)*DCONST_INT(AC_mx) + (k)*DCONST_INT(AC_mxy))
 #define DEVICE_1D_COMPDOMAIN_IDX(i, j, k) ((i) + (j)*DCONST_INT(AC_nx) + (k)*DCONST_INT(AC_nxy))
-#include "kernels/kernels.cuh"
+#include "kernels/boundconds.cuh"
+#include "kernels/integration.cuh"
+#include "kernels/reductions.cuh"
+
+static dim3 rk3_tpb = (dim3){32, 1, 4};
+
+#if PACKED_DATA_TRANSFERS // Defined in device.cuh
+// #include "kernels/pack_unpack.cuh"
+#endif
 
 struct device_s {
     int id;
@@ -53,6 +69,11 @@ struct device_s {
     VertexBufferArray vba;
     AcReal* reduce_scratchpad;
     AcReal* reduce_result;
+
+#if PACKED_DATA_TRANSFERS
+// Declare memory for buffers needed for packed data transfers here
+// AcReal* data_packing_buffer;
+#endif
 };
 
 AcResult
@@ -87,6 +108,7 @@ printDeviceInfo(const Device device)
     printf("    Peak Memory Bandwidth (GiB/s): %f\n",
            2 * (props.memoryClockRate * 1e3) * props.memoryBusWidth / (8. * 1024. * 1024. * 1024.));
     printf("    ECC enabled: %d\n", props.ECCEnabled);
+
     // Memory usage
     size_t free_bytes, total_bytes;
     cudaMemGetInfo(&free_bytes, &total_bytes);
@@ -99,8 +121,10 @@ printDeviceInfo(const Device device)
     printf("    Local L1 cache supported: %d\n", props.localL1CacheSupported);
     printf("    Global L1 cache supported: %d\n", props.globalL1CacheSupported);
     printf("    L2 size: %d KiB\n", props.l2CacheSize / (1024));
-    printf("    Total const mem: %ld KiB\n", props.totalConstMem / (1024));
-    printf("    Shared mem per block: %ld KiB\n", props.sharedMemPerBlock / (1024));
+    // MV: props.totalConstMem and props.sharedMemPerBlock cause assembler error
+    // MV: while compiling in TIARA gp cluster. Therefore commeted out.
+    //!!    printf("    Total const mem: %ld KiB\n", props.totalConstMem / (1024));
+    //!!    printf("    Shared mem per block: %ld KiB\n", props.sharedMemPerBlock / (1024));
     printf("  Other\n");
     printf("    Warp size: %d\n", props.warpSize);
     // printf("    Single to double perf. ratio: %dx\n",
@@ -141,18 +165,22 @@ createDevice(const int id, const AcMeshInfo device_config, Device* device_handle
 
     // Concurrency
     for (int i = 0; i < NUM_STREAM_TYPES; ++i) {
-        cudaStreamCreate(&device->streams[i]);
+        cudaStreamCreateWithPriority(&device->streams[i], cudaStreamNonBlocking, 0);
     }
 
     // Memory
-    const size_t vba_size_bytes = AC_VTXBUF_SIZE_BYTES(device_config);
+    const size_t vba_size_bytes = acVertexBufferSizeBytes(device_config);
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         ERRCHK_CUDA_ALWAYS(cudaMalloc(&device->vba.in[i], vba_size_bytes));
         ERRCHK_CUDA_ALWAYS(cudaMalloc(&device->vba.out[i], vba_size_bytes));
     }
     ERRCHK_CUDA_ALWAYS(
-        cudaMalloc(&device->reduce_scratchpad, AC_VTXBUF_COMPDOMAIN_SIZE_BYTES(device_config)));
+        cudaMalloc(&device->reduce_scratchpad, acVertexBufferCompdomainSizeBytes(device_config)));
     ERRCHK_CUDA_ALWAYS(cudaMalloc(&device->reduce_result, sizeof(AcReal)));
+
+#if PACKED_DATA_TRANSFERS
+// Allocate data required for packed transfers here (cudaMalloc)
+#endif
 
     // Device constants
     ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(d_mesh_info, &device_config, sizeof(device_config), 0,
@@ -167,6 +195,11 @@ createDevice(const int id, const AcMeshInfo device_config, Device* device_handle
 
     printf("Created device %d (%p)\n", device->id, device);
     *device_handle = device;
+
+    // Autoptimize
+    if (id == 0)
+        autoOptimize(device);
+
     return AC_SUCCESS;
 }
 
@@ -184,9 +217,14 @@ destroyDevice(Device device)
     cudaFree(device->reduce_scratchpad);
     cudaFree(device->reduce_result);
 
+#if PACKED_DATA_TRANSFERS
+// Free data required for packed tranfers here (cudaFree)
+#endif
+
     // Concurrency
-    for (int i = 0; i < NUM_STREAM_TYPES; ++i)
+    for (int i = 0; i < NUM_STREAM_TYPES; ++i) {
         cudaStreamDestroy(device->streams[i]);
+    }
 
     // Destroy Device
     free(device);
@@ -249,7 +287,24 @@ rkStep(const Device device, const StreamType stream_type, const int step_number,
        const int3& end, const AcReal dt)
 {
     cudaSetDevice(device->id);
-    rk3_step_async(device->streams[stream_type], step_number, start, end, dt, &device->vba);
+
+    // const dim3 tpb(32, 1, 4);
+    const dim3 tpb = rk3_tpb;
+
+    const int3 n = end - start;
+    const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
+                   (unsigned int)ceil(n.y / AcReal(tpb.y)), //
+                   (unsigned int)ceil(n.z / AcReal(tpb.z)));
+
+    if (step_number == 0)
+        solve<0><<<bpg, tpb, 0, device->streams[stream_type]>>>(start, end, device->vba, dt);
+    else if (step_number == 1)
+        solve<1><<<bpg, tpb, 0, device->streams[stream_type]>>>(start, end, device->vba, dt);
+    else
+        solve<2><<<bpg, tpb, 0, device->streams[stream_type]>>>(start, end, device->vba, dt);
+
+    ERRCHK_CUDA_KERNEL();
+
     return AC_SUCCESS;
 }
 
@@ -290,8 +345,8 @@ AcResult
 copyMeshToDevice(const Device device, const StreamType stream_type, const AcMesh& host_mesh,
                  const int3& src, const int3& dst, const int num_vertices)
 {
-    const size_t src_idx = AC_VTXBUF_IDX(src.x, src.y, src.z, host_mesh.info);
-    const size_t dst_idx = AC_VTXBUF_IDX(dst.x, dst.y, dst.z, device->local_config);
+    const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, host_mesh.info);
+    const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, device->local_config);
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         loadWithOffset(device, stream_type, &host_mesh.vertex_buffer[i][src_idx],
                        num_vertices * sizeof(AcReal), &device->vba.in[i][dst_idx]);
@@ -303,8 +358,8 @@ AcResult
 copyMeshToHost(const Device device, const StreamType stream_type, const int3& src, const int3& dst,
                const int num_vertices, AcMesh* host_mesh)
 {
-    const size_t src_idx = AC_VTXBUF_IDX(src.x, src.y, src.z, device->local_config);
-    const size_t dst_idx = AC_VTXBUF_IDX(dst.x, dst.y, dst.z, host_mesh->info);
+    const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, device->local_config);
+    const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, host_mesh->info);
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         storeWithOffset(device, stream_type, &device->vba.in[i][src_idx],
                         num_vertices * sizeof(AcReal), &host_mesh->vertex_buffer[i][dst_idx]);
@@ -317,8 +372,8 @@ copyMeshDeviceToDevice(const Device src_device, const StreamType stream_type, co
                        Device dst_device, const int3& dst, const int num_vertices)
 {
     cudaSetDevice(src_device->id);
-    const size_t src_idx = AC_VTXBUF_IDX(src.x, src.y, src.z, src_device->local_config);
-    const size_t dst_idx = AC_VTXBUF_IDX(dst.x, dst.y, dst.z, dst_device->local_config);
+    const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, src_device->local_config);
+    const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, dst_device->local_config);
 
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         ERRCHK_CUDA(cudaMemcpyPeerAsync(&dst_device->vba.in[i][dst_idx], dst_device->id,
@@ -342,7 +397,8 @@ swapBuffers(const Device device)
 }
 
 AcResult
-loadDeviceConstant(const Device device, const AcIntParam param, const int value)
+loadDeviceConstant(const Device device, const StreamType stream_type, const AcIntParam param,
+                   const int value)
 {
     cudaSetDevice(device->id);
     // CUDA 10 apparently creates only a single name for a device constant (d_mesh_info here)
@@ -350,18 +406,21 @@ loadDeviceConstant(const Device device, const AcIntParam param, const int value)
     // Therefore we have to obfuscate the code a bit and compute the offset address before
     // invoking cudaMemcpyToSymbol.
     const size_t offset = (size_t)&d_mesh_info.int_params[param] - (size_t)&d_mesh_info;
-    ERRCHK_CUDA_ALWAYS(
-        cudaMemcpyToSymbol(d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbolAsync(d_mesh_info, &value, sizeof(value), offset,
+                                               cudaMemcpyHostToDevice,
+                                               device->streams[stream_type]));
     return AC_SUCCESS;
 }
 
 AcResult
-loadDeviceConstant(const Device device, const AcRealParam param, const AcReal value)
+loadDeviceConstant(const Device device, const StreamType stream_type, const AcRealParam param,
+                   const AcReal value)
 {
     cudaSetDevice(device->id);
     const size_t offset = (size_t)&d_mesh_info.real_params[param] - (size_t)&d_mesh_info;
-    ERRCHK_CUDA_ALWAYS(
-        cudaMemcpyToSymbol(d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbolAsync(d_mesh_info, &value, sizeof(value), offset,
+                                               cudaMemcpyHostToDevice,
+                                               device->streams[stream_type]));
     return AC_SUCCESS;
 }
 
@@ -373,3 +432,93 @@ loadGlobalGrid(const Device device, const Grid grid)
         cudaMemcpyToSymbol(globalGrid, &grid, sizeof(grid), 0, cudaMemcpyHostToDevice));
     return AC_SUCCESS;
 }
+
+AcResult
+autoOptimize(const Device device)
+{
+    cudaSetDevice(device->id);
+
+    // RK3
+    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
+    const int3 end   = start + (int3){device->local_config.int_params[AC_nx], //
+                                    device->local_config.int_params[AC_ny], //
+                                    device->local_config.int_params[AC_nz]};
+
+    dim3 best_dims(0, 0, 0);
+    float best_time          = INFINITY;
+    const int num_iterations = 10;
+
+    for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) {
+        for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
+            for (int x = WARP_SIZE; x <= MAX_THREADS_PER_BLOCK; x += WARP_SIZE) {
+
+                if (x > end.x - start.x || y > end.y - start.y || z > end.z - start.z)
+                    break;
+                if (x * y * z > MAX_THREADS_PER_BLOCK)
+                    break;
+
+                if (x * y * z * REGISTERS_PER_THREAD > MAX_REGISTERS_PER_BLOCK)
+                    break;
+
+                if (((x * y * z) % WARP_SIZE) != 0)
+                    continue;
+
+                const dim3 tpb(x, y, z);
+                const int3 n = end - start;
+                const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
+                               (unsigned int)ceil(n.y / AcReal(tpb.y)), //
+                               (unsigned int)ceil(n.z / AcReal(tpb.z)));
+
+                cudaDeviceSynchronize();
+                if (cudaGetLastError() != cudaSuccess) // resets the error if any
+                    continue;
+
+                // printf("(%d, %d, %d)\n", x, y, z);
+
+                cudaEvent_t tstart, tstop;
+                cudaEventCreate(&tstart);
+                cudaEventCreate(&tstop);
+
+                cudaEventRecord(tstart); // ---------------------------------------- Timing start
+
+                for (int i = 0; i < num_iterations; ++i)
+                    solve<2><<<bpg, tpb>>>(start, end, device->vba, FLT_EPSILON);
+
+                cudaEventRecord(tstop); // ----------------------------------------- Timing end
+                cudaEventSynchronize(tstop);
+                float milliseconds = 0;
+                cudaEventElapsedTime(&milliseconds, tstart, tstop);
+
+                ERRCHK_CUDA_KERNEL_ALWAYS();
+                if (milliseconds < best_time) {
+                    best_time = milliseconds;
+                    best_dims = tpb;
+                }
+            }
+        }
+    }
+#if VERBOSE_PRINTING
+    printf(
+        "Auto-optimization done. The best threadblock dimensions for rkStep: (%d, %d, %d) %f ms\n",
+        best_dims.x, best_dims.y, best_dims.z, double(best_time) / num_iterations);
+#endif
+    /*
+    FILE* fp = fopen("../config/rk3_tbdims.cuh", "w");
+    ERRCHK(fp);
+    fprintf(fp, "%d, %d, %d\n", best_dims.x, best_dims.y, best_dims.z);
+    fclose(fp);
+    */
+
+    rk3_tpb = best_dims;
+    return AC_SUCCESS;
+}
+
+#if PACKED_DATA_TRANSFERS
+// Functions for calling packed data transfers
+#endif
+
+/*
+ * =============================================================================
+ * Revised interface
+ * =============================================================================
+ */

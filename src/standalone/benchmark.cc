@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2018, Johannes Pekkilae, Miikka Vaeisalae.
+    Copyright (C) 2014-2019, Johannes Pekkilae, Miikka Vaeisalae.
 
     This file is part of Astaroth.
 
@@ -40,6 +40,48 @@
 #include <math.h>
 #include <vector>
 
+int
+run_benchmark(void)
+{
+    const int nn        = 256;
+    const int num_iters = 100;
+
+    AcMeshInfo mesh_info;
+    load_config(&mesh_info);
+    mesh_info.int_params[AC_nx] = nn;
+    mesh_info.int_params[AC_ny] = mesh_info.int_params[AC_nx];
+    mesh_info.int_params[AC_nz] = mesh_info.int_params[AC_nx];
+    update_config(&mesh_info);
+
+    AcMesh* mesh = acmesh_create(mesh_info);
+    acmesh_init_to(INIT_TYPE_ABC_FLOW, mesh);
+
+    acInit(mesh_info);
+    acLoad(*mesh);
+
+    // Warmup
+    for (int i = 0; i < 10; ++i) {
+        acIntegrate(0);
+    }
+
+    Timer total_time;
+    timer_reset(&total_time);
+    for (int i = 0; i < num_iters; ++i) {
+        const AcReal dt = FLT_EPSILON;
+        acIntegrate(dt);
+    }
+    acSynchronizeStream(STREAM_ALL);
+    const double ms_elapsed = timer_diff_nsec(total_time) / 1e6;
+    printf("vertices: %d^3, iterations: %d\n", nn, num_iters);
+    printf("Total time: %f ms\n", ms_elapsed);
+
+    acQuit();
+    acmesh_destroy(mesh);
+
+    return AC_SUCCESS;
+}
+
+#if 0 // Old single-GPU benchmark
 static bool
 smaller_than(const double& a, const double& b)
 {
@@ -116,26 +158,25 @@ run_benchmark(void)
         std::vector<double> results;
         results.reserve(NUM_ITERS);
 
+        // Optimize
+        // acAutoOptimize();
+
         // Warmup
         for (int i = 0; i < 10; ++i) {
             acIntegrate(0);
-            acSynchronize();
         }
 
         Timer t;
         for (int i = 0; i < NUM_ITERS; ++i) {
 
             timer_reset(&t);
+            const AcReal dt = FLT_EPSILON; // TODO NOTE: time to timestep not measured
 #if GEN_BENCHMARK_RK3 == 1
-            acIntegrateStep(2, FLT_EPSILON);
+            acIntegrateStep(2, dt);
+            acSynchronizeStream(STREAM_ALL);
 #else // GEN_BENCHMARK_FULL
-            // const AcReal umax = acReduceVec(RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
-            const AcReal dt = AcReal(
-                1e-2); // TODO adaptive timestep //host_timestep(umax, mesh_info);
             acIntegrate(dt);
 #endif
-            acSynchronize();
-
             const double ms_elapsed = timer_diff_nsec(t) / 1e6;
             results.push_back(ms_elapsed);
         }
@@ -163,13 +204,14 @@ run_benchmark(void)
 
     return 0;
 }
+#endif // single-GPU benchmark
 
 /*
 
 #if AUTO_OPTIMIZE
 const char* benchmark_path = "benchmark.out";
 
-#include "core/kernels/rk3_threadblock.conf"
+#include "src/core/kernels/rk3_threadblock.conf"
 static int
 write_result_to_file(const float& ms_per_step)
 {

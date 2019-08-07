@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2018, Johannes Pekkilae, Miikka Vaeisalae.
+    Copyright (C) 2014-2019, Johannes Pekkilae, Miikka Vaeisalae.
 
     This file is part of Astaroth.
 
@@ -31,15 +31,15 @@
 #include <stdio.h>  // print
 #include <string.h> // memset
 
-#include "core/errchk.h"
-#include "core/math_utils.h"
+#include "src/core/errchk.h"
+#include "src/core/math_utils.h"
 
 static inline void
 print(const AcMeshInfo& config)
 {
-    for (int i = 0; i < NUM_INT_PARAM_TYPES; ++i)
+    for (int i = 0; i < NUM_INT_PARAMS; ++i)
         printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
-    for (int i = 0; i < NUM_REAL_PARAM_TYPES; ++i)
+    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
         printf("[%s]: %g\n", realparam_names[i], double(config.real_params[i]));
 }
 
@@ -77,9 +77,9 @@ parse_config(const char* path, AcMeshInfo* config)
             continue;
 
         int idx = -1;
-        if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAM_TYPES)) >= 0)
+        if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0)
             config->int_params[idx] = atoi(value);
-        else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAM_TYPES)) >= 0)
+        else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAMS)) >= 0)
             config->real_params[idx] = AcReal(atof(value));
     }
 

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2018, Johannes Pekkilae, Miikka Vaeisalae.
+    Copyright (C) 2014-2019, Johannes Pekkilae, Miikka Vaeisalae.
 
     This file is part of Astaroth.
 
@@ -40,7 +40,9 @@
         FUNC(INIT_TYPE_RAYLEIGH_BENARD)
 // clang-format on
 
+#define AC_GEN_ID(X) X
 typedef enum { AC_FOR_INIT_TYPES(AC_GEN_ID), NUM_INIT_TYPES } InitType;
+#undef AC_GEN_ID
 
 extern const char* init_type_names[]; // Defined in host_memory.cc
 

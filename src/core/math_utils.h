@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2018, Johannes Pekkilae, Miikka Vaeisalae.
+    Copyright (C) 2014-2019, Johannes Pekkilae, Miikka Vaeisalae.
 
     This file is part of Astaroth.
 
@@ -25,7 +25,10 @@
  *
  */
 #pragma once
-#include <math.h>   // isnan, isinf
+#include <cmath>
+using namespace std; // Potentially bad practice to declare namespace std here
+// #include <math.h>   // isnan, isinf // Overloads incorrect/bugged with GCC <= 6.0
+// #include <tgmath.h> // Even this does not work
 #include <stdlib.h> // rand
 
 template <class T>
@@ -40,6 +43,18 @@ static inline const T
 min(const T& a, const T& b)
 {
     return a < b ? a : b;
+}
+
+static inline const int3
+max(const int3& a, const int3& b)
+{
+    return (int3){max(a.x, b.x), max(a.y, b.y), max(a.z, b.z)};
+}
+
+static inline const int3
+min(const int3& a, const int3& b)
+{
+    return (int3){min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)};
 }
 
 template <class T>

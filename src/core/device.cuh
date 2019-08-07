@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2018, Johannes Pekkilae, Miikka Vaeisalae.
+    Copyright (C) 2014-2019, Johannes Pekkilae, Miikka Vaeisalae.
 
     This file is part of Astaroth.
 
@@ -26,15 +26,6 @@
  */
 #pragma once
 #include "astaroth.h"
-
-// clang-format off
-typedef enum {
-    STREAM_PRIMARY,
-    STREAM_SECONDARY,
-    NUM_STREAM_TYPES,
-    STREAM_ALL
-} StreamType;
-// clang-format on
 
 typedef struct {
     int3 m;
@@ -91,10 +82,26 @@ AcResult copyMeshDeviceToDevice(const Device src, const StreamType stream_type, 
 AcResult swapBuffers(const Device device);
 
 /** */
-AcResult loadDeviceConstant(const Device device, const AcIntParam param, const int value);
+AcResult loadDeviceConstant(const Device device, const StreamType stream_type,
+                            const AcIntParam param, const int value);
 
 /** */
-AcResult loadDeviceConstant(const Device device, const AcRealParam param, const AcReal value);
+AcResult loadDeviceConstant(const Device device, const StreamType stream_type,
+                            const AcRealParam param, const AcReal value);
 
 /** */
 AcResult loadGlobalGrid(const Device device, const Grid grid);
+
+/** */
+AcResult autoOptimize(const Device device);
+
+// #define PACKED_DATA_TRANSFERS (1) %JP: placeholder for optimized ghost zone packing and transfers
+#if PACKED_DATA_TRANSFERS
+// Declarations used for packed data transfers
+#endif
+
+/*
+ * =============================================================================
+ * Revised interface
+ * =============================================================================
+ */
