@@ -28,11 +28,10 @@
 #define LDENSITY (1)
 #define LHYDRO (1)
 #define LMAGNETIC (1)
-#define LENTROPY (1)
+#define LENTROPY (0)
 #define LTEMPERATURE (0)
-#define LFORCING (1)
+#define LFORCING (0)
 #define LUPWD (0)
-#define LNONUNIFORM (1)
 
 #define AC_THERMAL_CONDUCTIVITY (AcReal(0.001)) // TODO: make an actual config parameter
 
@@ -113,17 +112,12 @@
         FUNC(AC_ff_hel_imx),\
         FUNC(AC_ff_hel_imy),\
         FUNC(AC_ff_hel_imz),\
-	/* Nonuniform grid */\
-        FUNC(AC_grid_scale_coeff),\
         /* Additional helper params */\
         /* (deduced from other params do not set these directly!) */\
         FUNC(AC_G_CONST),\
         FUNC(AC_GM_star),\
         FUNC(AC_sq2GM_star),\
         FUNC(AC_cs2_sound), \
-        FUNC(AC_zeta_star_x),\
-        FUNC(AC_zeta_star_y),\
-        FUNC(AC_zeta_star_z),\
         FUNC(AC_inv_dsx), \
         FUNC(AC_inv_dsy), \
         FUNC(AC_inv_dsz),
