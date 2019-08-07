@@ -26,7 +26,7 @@
  */
 #include "host_forcing.h"
 
-#include "core/math_utils.h"
+#include "src/core/math_utils.h"
 
 // The is a wrapper for genering random numbers with a chosen system.
 AcReal
@@ -233,6 +233,30 @@ loadForcingParamsToDevice(const ForcingParams& forcing_params)
     configuration. */
 void
 loadForcingParamsToHost(const ForcingParams& forcing_params, AcMesh* mesh)
+{
+    // %JP: Left some regex magic here in case we need to modify the ForcingParams struct
+    // acLoadDeviceConstant\(([A-Za-z_]*), ([a-z_.]*)\);
+    // mesh->info.real_params[$1] = $2;
+    mesh->info.real_params[AC_forcing_magnitude] = forcing_params.magnitude;
+    mesh->info.real_params[AC_forcing_phase]     = forcing_params.phase;
+
+    mesh->info.real_params[AC_k_forcex] = forcing_params.k_force.x;
+    mesh->info.real_params[AC_k_forcey] = forcing_params.k_force.y;
+    mesh->info.real_params[AC_k_forcez] = forcing_params.k_force.z;
+
+    mesh->info.real_params[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
+    mesh->info.real_params[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
+    mesh->info.real_params[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
+
+    mesh->info.real_params[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
+    mesh->info.real_params[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
+    mesh->info.real_params[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
+
+    mesh->info.real_params[AC_kaver] = forcing_params.kaver;
+}
+
+void
+loadForcingParamsToHost(const ForcingParams& forcing_params, ModelMesh* mesh)
 {
     // %JP: Left some regex magic here in case we need to modify the ForcingParams struct
     // acLoadDeviceConstant\(([A-Za-z_]*), ([a-z_.]*)\);
