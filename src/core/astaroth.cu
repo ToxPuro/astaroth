@@ -219,6 +219,36 @@ acLoadWithOffset(const AcMesh& host_mesh, const int3& src, const int num_vertice
 }
 
 AcResult
+acLoadYZPlate(const int3& start, const int3& end, AcMesh* host_mesh, AcReal* yzPlateBuffer)
+{
+    int kmin, kmax, nzloc=subgrid.n.z;
+    size_t src_idx;
+
+    int i,j,k,ind,iv;
+    for (int id = 0; id <= num_devices; ++id) {
+
+        kmin=max( NGHOST, start.z-id*nzloc );
+        kmax=min( NGHOST+nzloc, end.z-id*nzloc );
+
+        ind=0;
+        for (k=kmin; k<=kmax; k++) {
+            for (j=start.y; j<=end.y; j++) {
+               for (i=start.x; i<end.x; i++) {
+                   src_idx = AC_VTXBUF_IDX(i,j,k,host_mesh->info);
+                   for (iv = 0; iv < NUM_VTXBUF_HANDLES; ++iv) {
+                       yzPlateBuffer[ind] = host_mesh->vertex_buffer[iv][src_idx];
+                   }
+                   ind++;
+               }
+            }
+        }
+        //copyMeshToDevice(devices[id], STREAM_PRIMARY, yzPlateBuffer, da, da_local, copy_cells);
+    }
+
+    return AC_SUCCESS;
+}
+
+AcResult
 acStoreWithOffset(const int3& src, const int num_vertices, AcMesh* host_mesh)
 {
     // See acLoadWithOffset() for an explanation of the index mapping
@@ -284,14 +314,18 @@ acIntegrateStep(const int& isubstep, const AcReal& dt)
 AcResult
 acIntegrateStepWithOffset(const int& isubstep, const AcReal& dt, const int3& start, const int3& end)
 {
-    /*
-    // A skeleton function for computing integrations with arbitrary subblocks
-    // Uncommenting the following should work with a single GPU.
-    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
-    const int3 end   = (int3){NGHOST + subgrid.n.x, NGHOST + subgrid.n.y,
-                              NGHOST + subgrid.n.z};
-    */
-    rkStep(devices[0], STREAM_PRIMARY, isubstep, start, end, dt);
+    int kmin, kmax, nzloc=subgrid.n.z;
+    int idev_start=floor(((double)(start.z-NGHOST))/nzloc);
+    int idev_end=floor(((double)(end.z-NGHOST))/nzloc);
+
+    for (int id = idev_start; id <= idev_end; ++id) {
+
+        kmin=max( NGHOST, start.z-id*nzloc );
+        kmax=min( NGHOST+nzloc, end.z-id*nzloc );
+
+        rkStep(devices[id], STREAM_PRIMARY, isubstep, 
+               (int3){start.x,start.y,kmin}, (int3){start.x,start.y,kmax}, dt);
+    }
     return AC_SUCCESS;
 }
 
