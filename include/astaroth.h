@@ -351,6 +351,7 @@ AcResult acInit(const AcMeshInfo& mesh_info);
 /** Splits the host_mesh and distributes it among the GPUs in the node */
 AcResult acLoad(const AcMesh& host_mesh);
 AcResult acLoadWithOffset(const AcMesh& host_mesh, const int3& start, const int num_vertices);
+AcResult acLoadYZPlate(const int3& start, const int3& end, AcMesh* host_mesh, AcReal *yzPlateBuffer);
 
 /** Does all three steps of the RK3 integration and computes the boundary
 conditions when necessary. Note that the boundary conditions are not applied
