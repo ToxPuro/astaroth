@@ -19,6 +19,7 @@
 // #include "astaroth_defines.h"
 #include "astaroth.h"
 
+#include "errchk.h"
 #include "math_utils.h" // int3 + int3
 
 #define AC_GEN_STR(X) #X
@@ -80,6 +81,19 @@ acLoadYZPlate(const int3& start, const int3& end, AcMesh* host_mesh, AcReal* yzP
 
     return AC_SUCCESS;
 }
+
+AcResult
+acCheckDeviceAvailability(void)
+{
+    int device_count; // Separate from num_devices to avoid side effects
+    ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&device_count));
+    if (device_count > 0)
+        return AC_SUCCESS;
+    else
+        return AC_FAILURE;
+}
+
+>>>>>>> e79e1207f2cb06250d2e97a10c4b7097f0120644
 AcResult
 acSynchronize(void)
 {
