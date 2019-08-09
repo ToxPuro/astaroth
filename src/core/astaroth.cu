@@ -24,11 +24,11 @@
 
 #define AC_GEN_STR(X) #X
 const char* intparam_names[]   = {AC_FOR_BUILTIN_INT_PARAM_TYPES(AC_GEN_STR) //
-                                AC_FOR_USER_INT_PARAM_TYPES(AC_GEN_STR)};
+                                  AC_FOR_USER_INT_PARAM_TYPES(AC_GEN_STR)};
 const char* int3param_names[]  = {AC_FOR_BUILTIN_INT3_PARAM_TYPES(AC_GEN_STR) //
-                                 AC_FOR_USER_INT3_PARAM_TYPES(AC_GEN_STR)};
+                                  AC_FOR_USER_INT3_PARAM_TYPES(AC_GEN_STR)};
 const char* realparam_names[]  = {AC_FOR_BUILTIN_REAL_PARAM_TYPES(AC_GEN_STR) //
-                                 AC_FOR_USER_REAL_PARAM_TYPES(AC_GEN_STR)};
+                                  AC_FOR_USER_REAL_PARAM_TYPES(AC_GEN_STR)};
 const char* real3param_names[] = {AC_FOR_BUILTIN_REAL3_PARAM_TYPES(AC_GEN_STR) //
                                   AC_FOR_USER_REAL3_PARAM_TYPES(AC_GEN_STR)};
 const char* vtxbuf_names[]     = {AC_FOR_VTXBUF_HANDLES(AC_GEN_STR)};
@@ -55,31 +55,7 @@ acQuit(void)
 AcResult
 acLoadYZPlate(const int3& start, const int3& end, AcMesh* host_mesh, AcReal* yzPlateBuffer)
 {
-    int kmin, kmax, nzloc=subgrid.n.z;
-    size_t src_idx;
-
-    int i,j,k,ind,iv;
-    for (int id = 0; id <= num_devices; ++id) {
-
-        kmin=max( NGHOST, start.z-id*nzloc );
-        kmax=min( NGHOST+nzloc, end.z-id*nzloc );
-
-        ind=0;
-        for (k=kmin; k<=kmax; k++) {
-            for (j=start.y; j<=end.y; j++) {
-               for (i=start.x; i<end.x; i++) {
-                   src_idx = AC_VTXBUF_IDX(i,j,k,host_mesh->info);
-                   for (iv = 0; iv < NUM_VTXBUF_HANDLES; ++iv) {
-                       yzPlateBuffer[ind] = host_mesh->vertex_buffer[iv][src_idx];
-                   }
-                   ind++;
-               }
-            }
-        }
-        //copyMeshToDevice(devices[id], STREAM_PRIMARY, yzPlateBuffer, da, da_local, copy_cells);
-    }
-
-    return AC_SUCCESS;
+    return acNodeLoadYZPlate(nodes[0], start, end, host_mesh, yzPlateBuffer);
 }
 
 AcResult
@@ -93,7 +69,6 @@ acCheckDeviceAvailability(void)
         return AC_FAILURE;
 }
 
->>>>>>> e79e1207f2cb06250d2e97a10c4b7097f0120644
 AcResult
 acSynchronize(void)
 {

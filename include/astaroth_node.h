@@ -119,6 +119,8 @@ AcResult acNodeReduceVec(const Node node, const Stream stream_type, const Reduct
                          const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                          const VertexBufferHandle vtxbuf2, AcReal* result);
 
+AcResult acNodeLoadYZPlate(const Node node, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* yzPlateBuffer);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

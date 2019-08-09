@@ -1,15 +1,16 @@
 // clang-format off
-#ifdef PENCIL_ASTAROTH
+//#ifdef PENCIL_ASTAROTH
 
-  #include "../cparam.inc_c.h"
+  //#include "../../../cparam.inc_c.h"
+  #include "/homeappl/home/mreinhar/git/pencil-code/samples/gputest/src/cparam_c.h"
+  #include "/homeappl/home/mreinhar/git/pencil-code/samples/gputest/src/cdata_c.h"
   #define STENCIL_ORDER (2*NGHOST)
 
-  #include "PC_moduleflags.h"
+  #include "/homeappl/home/mreinhar/git/pencil-code/samples/gputest/src/astaroth/PC_moduleflags.h"
 
   #define CONFIG_PATH
-  #define AC_MULTIGPU_ENABLED (false)
 
   #define USER_PROVIDED_DEFINES
 
-#endif
+//#endif
 // clang-format on

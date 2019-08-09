@@ -23,7 +23,6 @@ extern "C" {
 #endif
 
 #include "astaroth_defines.h"
-
 #include "astaroth_device.h"
 #include "astaroth_node.h"
 

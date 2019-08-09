@@ -816,3 +816,34 @@ acNodeReduceVec(const Node node, const Stream stream, const ReductionType rtype,
     *result = simple_final_reduce_scal(node, rtype, results, node->num_devices);
     return AC_SUCCESS;
 }
+
+AcResult
+acNodeLoadYZPlate(const Node node, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* yzPlateBuffer)
+{
+    int kmin, kmax, nzloc=node->subgrid.n.z;
+    size_t src_idx;
+
+    int i,j,k,ind,iv;
+    for (int id = 0; id <= node->num_devices; ++id) {
+
+        kmin=max( NGHOST,       start.z-id*nzloc );
+        kmax=min( NGHOST+nzloc, end.z  -id*nzloc );
+
+        ind=0;
+        for (k=kmin; k<=kmax; k++) {
+            for (j=start.y; j<=end.y; j++) {
+               for (i=start.x; i<end.x; i++) {
+                   src_idx = acVertexBufferIdx(i,j,k,host_mesh->info);
+                   for (iv = 0; iv < NUM_VTXBUF_HANDLES; ++iv) {
+                       yzPlateBuffer[ind] = host_mesh->vertex_buffer[iv][src_idx];
+                   }
+                   ind++;
+               }
+            }
+        }
+        //copyMeshToDevice(devices[id], STREAM_PRIMARY, yzPlateBuffer, da, da_local, copy_cells);
+    }
+
+    return AC_SUCCESS;
+}
+
