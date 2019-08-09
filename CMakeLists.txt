@@ -28,6 +28,7 @@ option(BUILD_MPI_TEST           "Builds a C program to test whether MPI works"  
 option(DOUBLE_PRECISION         "Generates double precision code"                           OFF)
 option(MULTIGPU_ENABLED         "If enabled, uses all the available GPUs"                   ON)
 option(ALTER_CONF               "If enabled, loads astaroth.conf from the build directory"  OFF)
+option(SHARED                   "Creates shared library"                                    OFF)
 
 ## Build types
 # Available types (case-sensitive):

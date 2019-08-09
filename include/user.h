@@ -1,6 +1,9 @@
 // clang-format off
 //#ifdef PENCIL_ASTAROTH
 
+#if AC_DOUBLE_PRECISION == 1
+  #define DOUBLE_PRECISION
+#endif
   //#include "../../../cparam.inc_c.h"
   #include "/homeappl/home/mreinhar/git/pencil-code/samples/gputest/src/cparam_c.h"
   #include "/homeappl/home/mreinhar/git/pencil-code/samples/gputest/src/cdata_c.h"
