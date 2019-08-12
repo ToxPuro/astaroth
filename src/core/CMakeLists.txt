@@ -34,7 +34,7 @@ else ()
 endif ()
 
 ## Create and link the library
-if (SHARED)
+if (BUILD_SHARED)
     cuda_add_library(astaroth_core SHARED astaroth.cu device.cu node.cu)
 else ()
     cuda_add_library(astaroth_core STATIC astaroth.cu device.cu node.cu)

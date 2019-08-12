@@ -25,10 +25,10 @@ option(BUILD_STANDALONE         "Builds the standalone Astaroth"                
 option(BUILD_RT_VISUALIZATION   "Builds the module for real-time visualization using SDL2"  OFF)
 option(BUILD_C_API_TEST         "Builds a C program to test whether the API is conformant"  OFF)
 option(BUILD_MPI_TEST           "Builds a C program to test whether MPI works"              OFF)
+option(BUILD_SHARED             "Creates shared library"                                    OFF)
 option(DOUBLE_PRECISION         "Generates double precision code"                           OFF)
 option(MULTIGPU_ENABLED         "If enabled, uses all the available GPUs"                   ON)
 option(ALTER_CONF               "If enabled, loads astaroth.conf from the build directory"  OFF)
-option(SHARED                   "Creates shared library"                                    OFF)
 
 ## Build types
 # Available types (case-sensitive):
