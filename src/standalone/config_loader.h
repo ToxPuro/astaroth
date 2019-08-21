@@ -25,6 +25,10 @@
 #pragma once
 #include "astaroth.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Loads data from the config file */
 int load_config(AcMeshInfo* config);
 
@@ -32,3 +36,7 @@ int load_config(AcMeshInfo* config);
  * ny and nz. Must be called after modifying the config struct or otherwise
  * contents of the struct will be incorrect */
 void update_config(AcMeshInfo* config);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

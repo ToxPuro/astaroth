@@ -57,7 +57,7 @@ ac_srand(const uint32_t seed)
 */
 
 AcMesh*
-acmesh_create(const AcMeshInfo& mesh_info)
+acmesh_create(const AcMeshInfo mesh_info)
 {
     AcMesh* mesh = (AcMesh*)malloc(sizeof(*mesh));
     mesh->info   = mesh_info;
@@ -535,7 +535,7 @@ gaussian_radial_explosion(AcMesh* mesh)
 }
 
 void
-acmesh_init_to(const InitType& init_type, AcMesh* mesh)
+acmesh_init_to(const InitType init_type, AcMesh* mesh)
 {
     srand(123456789);
 
@@ -700,7 +700,7 @@ acmesh_destroy(AcMesh* mesh)
 }
 
 ModelMesh*
-modelmesh_create(const AcMeshInfo& mesh_info)
+modelmesh_create(const AcMeshInfo mesh_info)
 {
     ModelMesh* mesh = (ModelMesh*)malloc(sizeof(*mesh));
     mesh->info      = mesh_info;
@@ -725,7 +725,7 @@ modelmesh_destroy(ModelMesh* mesh)
 
 #include <string.h> // memcpy
 void
-acmesh_to_modelmesh(const AcMesh& acmesh, ModelMesh* modelmesh)
+acmesh_to_modelmesh(const AcMesh acmesh, ModelMesh* modelmesh)
 {
     ERRCHK(sizeof(acmesh.info) == sizeof(modelmesh->info));
     memcpy(&modelmesh->info, &acmesh.info, sizeof(acmesh.info));
@@ -736,7 +736,7 @@ acmesh_to_modelmesh(const AcMesh& acmesh, ModelMesh* modelmesh)
 }
 
 void
-modelmesh_to_acmesh(const ModelMesh& modelmesh, AcMesh* acmesh)
+modelmesh_to_acmesh(const ModelMesh modelmesh, AcMesh* acmesh)
 {
     ERRCHK(sizeof(acmesh->info) == sizeof(modelmesh.info));
     memcpy(&acmesh->info, &modelmesh.info, sizeof(modelmesh.info));

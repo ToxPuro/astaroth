@@ -157,6 +157,7 @@ main(void)
         acmesh_to_modelmesh(*main_mesh, model_mesh);
     }
 
+    /*
     AcMeshInfo submesh_info = mesh_info;
     submesh_info.int_params[AC_nz] /= num_processes;
     update_config(&submesh_info);
@@ -167,13 +168,14 @@ main(void)
     distribute_mesh(main_mesh, submesh);
     gather_mesh(submesh, main_mesh);
     /////////////////////////
-    // Autotest
-    bool is_acceptable = verify_meshes(*model_mesh, *main_mesh);
-    /////
-
     acmesh_destroy(submesh);
+    */
 
     if (process_id == 0) {
+        assert(main_mesh);
+        assert(model_mesh);
+        acPrintMeshInfo(main_mesh->info);
+        bool is_acceptable = verify_meshes(*model_mesh, *main_mesh);
         modelmesh_destroy(model_mesh);
         acmesh_destroy(main_mesh);
     }

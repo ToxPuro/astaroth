@@ -28,6 +28,10 @@
 #include "astaroth.h"
 #include "modelmesh.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // clang-format off
 #define AC_FOR_INIT_TYPES(FUNC)\
         FUNC(INIT_TYPE_RANDOM), \
@@ -46,15 +50,19 @@ typedef enum { AC_FOR_INIT_TYPES(AC_GEN_ID), NUM_INIT_TYPES } InitType;
 
 extern const char* init_type_names[]; // Defined in host_memory.cc
 
-AcMesh* acmesh_create(const AcMeshInfo& mesh_info);
+AcMesh* acmesh_create(const AcMeshInfo mesh_info);
 
 void acmesh_clear(AcMesh* mesh);
 
-void acmesh_init_to(const InitType& type, AcMesh* mesh);
+void acmesh_init_to(const InitType type, AcMesh* mesh);
 
 void acmesh_destroy(AcMesh* mesh);
 
-ModelMesh* modelmesh_create(const AcMeshInfo& mesh_info);
+ModelMesh* modelmesh_create(const AcMeshInfo mesh_info);
 void modelmesh_destroy(ModelMesh* mesh);
-void acmesh_to_modelmesh(const AcMesh& acmesh, ModelMesh* modelmesh);
-void modelmesh_to_acmesh(const ModelMesh& model, AcMesh* acmesh);
+void acmesh_to_modelmesh(const AcMesh acmesh, ModelMesh* modelmesh);
+void modelmesh_to_acmesh(const ModelMesh model, AcMesh* acmesh);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

@@ -25,6 +25,9 @@
  *
  */
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int run_autotest(void);
 
@@ -33,3 +36,7 @@ int run_simulation(void);
 int run_benchmark(void);
 
 int run_renderer(void);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
