@@ -320,9 +320,12 @@ get_data_range(const ModelMesh& model)
 #if GEN_TEST_RESULT == 1
 static FILE* test_result = NULL;
 #endif
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-static bool
-verify_meshes(const ModelMesh& model, const AcMesh& candidate)
+bool
+verify_meshes(const ModelMesh model, const AcMesh candidate)
 {
     bool retval = true;
 
@@ -383,7 +386,7 @@ verify_meshes(const ModelMesh& model, const AcMesh& candidate)
                      vtxbuf_names[VertexBufferHandle(w)]);
     }
 
-#if GEN_TEST_RESULT == 1
+#if 0 // GEN_TEST_RESULT == 1 // Segfaults if absolutely no errors found
     const ModelScalar rel_err = get_relative_error(err.model, err.candidate);
     const ModelScalar abs_err = get_absolute_error(err.model, err.candidate);
     fprintf(test_result, "%.3Lg & %.3Lg\n", abs_err, rel_err);
@@ -394,6 +397,9 @@ verify_meshes(const ModelMesh& model, const AcMesh& candidate)
 
     return retval;
 }
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 int
 check_rk3(const AcMeshInfo& mesh_info)
