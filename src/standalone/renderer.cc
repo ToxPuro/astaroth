@@ -457,7 +457,7 @@ renderer_quit(void)
     return run_renderer();
 }
 extern "C" void
-check_input(const float dt)
+check_input(const float /*dt*/)
 {
     run_renderer();
 }

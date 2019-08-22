@@ -233,11 +233,35 @@ main(void)
     MPI_Barrier(MPI_COMM_WORLD);
 
     //////////////////// GPU ONLY STUFF
-    Node node;
-    acNodeCreate(0, submesh_info, &node);
+    // Node node;
+    // acNodeCreate(0, submesh_info, &node);
+    Device device;
+    acDeviceCreate(0, submesh_info, &device);
     const AcReal dt = FLT_EPSILON;
 
     for (int isubstep = 0; isubstep < 3; ++isubstep) {
+        acDeviceSynchronizeStream(device, STREAM_ALL);
+        acDeviceLoadMesh(device, STREAM_DEFAULT, *submesh);
+        {
+            const int3 start = (int3){NGHOST, NGHOST, NGHOST};
+            const int3 end   = (int3){submesh_info.int_params[AC_nx_max],
+                                    submesh_info.int_params[AC_ny_max],
+                                    submesh_info.int_params[AC_nz_max]};
+            acDeviceIntegrateSubstep(device, STREAM_DEFAULT, isubstep, start, end, dt);
+        }
+        acDeviceSwapBuffers(device);
+        {
+            const int3 start = (int3){0, 0, NGHOST};
+            const int3 end = (int3){submesh_info.int_params[AC_mx], submesh_info.int_params[AC_my],
+                                    submesh_info.int_params[AC_nz_max]};
+            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, start, end);
+        }
+        acDeviceStoreMesh(device, STREAM_DEFAULT, submesh);
+        MPI_Barrier(MPI_COMM_WORLD);
+        communicate_halos(submesh);
+        // acDeviceCommunicateHalosMPI(device);
+        MPI_Barrier(MPI_COMM_WORLD);
+        /*
         acNodeSynchronizeStream(node, STREAM_ALL);
         acNodeLoadMesh(node, STREAM_DEFAULT, *submesh);
         const int3 start = (int3){NGHOST, NGHOST, NGHOST};
@@ -252,7 +276,9 @@ main(void)
         acNodeSynchronizeStream(node, STREAM_DEFAULT);
         MPI_Barrier(MPI_COMM_WORLD);
         communicate_halos(submesh);
+        // acDeviceCommunicateHalosMPI();
         MPI_Barrier(MPI_COMM_WORLD);
+        */
     }
     //////////////////// GPU ONLY STUFF
     //// GATHER
@@ -263,7 +289,8 @@ main(void)
 
     fflush(stdout);
     MPI_Barrier(MPI_COMM_WORLD);
-    acNodeDestroy(node);
+    acDeviceDestroy(device);
+    // acNodeDestroy(node);
 
     //////////// RENDER
     /*
