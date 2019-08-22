@@ -189,6 +189,28 @@ main(void)
 {
     MPI_Init(NULL, NULL);
 
+//// Borrowing start (from OpenMPI examples)
+#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+    printf("This MPI library has CUDA-aware support.\n", MPIX_CUDA_AWARE_SUPPORT);
+#elif defined(MPIX_CUDA_AWARE_SUPPORT) && !MPIX_CUDA_AWARE_SUPPORT
+    printf("This MPI library does not have CUDA-aware support.\n");
+#else
+    printf("This MPI library cannot determine if there is CUDA-aware support.\n");
+#endif /* MPIX_CUDA_AWARE_SUPPORT */
+
+    printf("Run time check:\n");
+#if defined(MPIX_CUDA_AWARE_SUPPORT)
+    if (1 == MPIX_Query_cuda_support()) {
+        printf("This MPI library has CUDA-aware support.\n");
+    }
+    else {
+        printf("This MPI library does not have CUDA-aware support.\n");
+    }
+#else  /* !defined(MPIX_CUDA_AWARE_SUPPORT) */
+    printf("This MPI library cannot determine if there is CUDA-aware support.\n");
+#endif /* MPIX_CUDA_AWARE_SUPPORT */
+       //////// Borrowing end
+
     int num_processes, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &num_processes);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
@@ -236,7 +258,8 @@ main(void)
     // Node node;
     // acNodeCreate(0, submesh_info, &node);
     Device device;
-    acDeviceCreate(0, submesh_info, &device);
+    int todo_replace_with_real_pid = 0; // TODO
+    acDeviceCreate(todo_replace_with_real_pid, submesh_info, &device);
     const AcReal dt = FLT_EPSILON;
 
     for (int isubstep = 0; isubstep < 3; ++isubstep) {
@@ -258,8 +281,8 @@ main(void)
         }
         acDeviceStoreMesh(device, STREAM_DEFAULT, submesh);
         MPI_Barrier(MPI_COMM_WORLD);
-        communicate_halos(submesh);
-        // acDeviceCommunicateHalosMPI(device);
+        // communicate_halos(submesh);
+        acDeviceCommunicateHalosMPI(device);
         MPI_Barrier(MPI_COMM_WORLD);
         /*
         acNodeSynchronizeStream(node, STREAM_ALL);

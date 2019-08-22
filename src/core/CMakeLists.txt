@@ -18,6 +18,7 @@ set(CUDA_ARCH_FLAGS -gencode arch=compute_37,code=sm_37
                     -lineinfo
                     -ftz=true # Flush denormalized floats to zero
                     -std=c++11
+                    -I/usr/lib/openmpi/include
                     )# --compiler-options ${OpenMP_CXX_FLAGS})
                     #--maxrregcount=255
                     # -Xptxas -dlcm=ca opt-in to cache all global loads to L1/texture cache

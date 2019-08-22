@@ -681,7 +681,7 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
     return AC_SUCCESS;
 }
 
-#if 0 // AC_MPI_ENABLED == 1
+#if AC_MPI_ENABLED == 1
 #include <mpi.h>
 AcResult
 acDeviceCommunicateHalosMPI(const Device device)
