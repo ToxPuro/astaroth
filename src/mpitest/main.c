@@ -319,7 +319,7 @@ main(void)
         ///
 
         bool is_acceptable = verify_meshes(*model_mesh, *main_mesh);
-        printf("%s\n", is_acceptable ? "Alles gut!" : "FUCK!");
+        printf("%s\n", is_acceptable ? "OK!" : "FAIL!");
         modelmesh_destroy(model_mesh);
         acmesh_destroy(main_mesh);
     }
