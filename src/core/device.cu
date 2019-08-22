@@ -115,7 +115,7 @@ AcResult
 acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_handle)
 {
     cudaSetDevice(id);
-    cudaDeviceReset();
+    // cudaDeviceReset();
 
     // Create Device
     struct device_s* device = (struct device_s*)malloc(sizeof(*device));
