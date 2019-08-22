@@ -26,15 +26,18 @@
  */
 #pragma once
 #include "astaroth.h"
-#include "modelmesh.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void model_rk3(const ModelScalar dt, ModelMesh* mesh);
+int renderer_init(const int mx, const int my);
 
-void model_rk3_step(const int step_number, const ModelScalar dt, ModelMesh* mesh);
+int renderer_draw(const AcMesh mesh);
+
+int renderer_quit(void);
+
+void check_input(const float dt);
 
 #ifdef __cplusplus
 } // extern "C"

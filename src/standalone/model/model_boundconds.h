@@ -28,4 +28,12 @@
 #include "astaroth.h"
 #include "modelmesh.h"
 
-void boundconds(const AcMeshInfo& mesh_info, ModelMesh* mesh);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void boundconds(const AcMeshInfo mesh_info, ModelMesh* mesh);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

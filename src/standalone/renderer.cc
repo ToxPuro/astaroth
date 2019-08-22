@@ -24,6 +24,7 @@
  * Detailed info.
  *
  */
+#include "renderer.h"
 #include "run.h"
 
 #if AC_BUILD_RT_VISUALIZATION
@@ -97,8 +98,8 @@ project_ortho(const float2& pos, const float2& bbox, const float2& wdims)
  * =============================================================================
  */
 
-static int
-renderer_init(const int& mx, const int& my)
+extern "C" int
+renderer_init(const int mx, const int my)
 {
     // Init video
     SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
@@ -248,8 +249,8 @@ draw_vertex_buffer_vec(const AcMesh& mesh, const VertexBufferHandle& vertex_buff
     return 0;
 }
 
-static int
-renderer_draw(const AcMesh& mesh)
+extern "C" int
+renderer_draw(const AcMesh mesh)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
         draw_vertex_buffer(mesh, VertexBufferHandle(i), i);
@@ -276,7 +277,7 @@ renderer_draw(const AcMesh& mesh)
     return 0;
 }
 
-static int
+extern "C" int
 renderer_quit(void)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
@@ -323,8 +324,8 @@ running(AcMesh* mesh)
     return true;
 }
 
-static void
-check_input(const float& dt)
+extern "C" void
+check_input(const float dt)
 {
     /* Camera movement */
     const float camera_translate_rate = 1000.f / camera.scale;
@@ -432,10 +433,32 @@ run_renderer(void)
 }
 #else // BUILD_RT_VISUALIZATION == 0
 #include "src/core/errchk.h"
-int
+extern "C" int
 run_renderer(void)
 {
     WARNING("Real-time visualization module not built. Set BUILD_RT_VISUALIZATION=ON with cmake.");
     return 1;
+}
+extern "C" int
+renderer_init(const int /*mx*/, const int /*my*/)
+{
+    return run_renderer();
+}
+
+extern "C" int
+renderer_draw(const AcMesh /*mesh*/)
+{
+    return run_renderer();
+}
+
+extern "C" int
+renderer_quit(void)
+{
+    return run_renderer();
+}
+extern "C" void
+check_input(const float dt)
+{
+    run_renderer();
 }
 #endif // BUILD_RT_VISUALIZATION

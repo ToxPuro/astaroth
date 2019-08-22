@@ -29,7 +29,7 @@
 #include "src/core/errchk.h"
 
 void
-boundconds(const AcMeshInfo& mesh_info, ModelMesh* mesh)
+boundconds(const AcMeshInfo mesh_info, ModelMesh* mesh)
 {
 #pragma omp parallel for
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
