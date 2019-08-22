@@ -35,6 +35,7 @@
 #include "config_loader.h"
 #include "model/host_memory.h"
 #include "model/model_boundconds.h"
+#include "model/model_rk3.h"
 
 static void
 distribute_mesh(const AcMesh* src, AcMesh* dst)
@@ -219,15 +220,50 @@ main(void)
 
     AcMesh* submesh = acmesh_create(submesh_info);
 
-    /////////////////////
+    /*
+    ///////////////////// Working basic CPU
     distribute_mesh(main_mesh, submesh);
     communicate_halos(submesh);
     gather_mesh(submesh, main_mesh);
     /////////////////////////
+    */
+
+    ///// DISTRIBUTE
+    distribute_mesh(main_mesh, submesh);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    //////////////////// GPU ONLY STUFF
+    Node node;
+    acNodeCreate(0, submesh_info, &node);
+    const AcReal dt = FLT_EPSILON;
+
+    for (int isubstep = 0; isubstep < 3; ++isubstep) {
+        acNodeSynchronizeStream(node, STREAM_ALL);
+        acNodeLoadMesh(node, STREAM_DEFAULT, *submesh);
+        const int3 start = (int3){NGHOST, NGHOST, NGHOST};
+        const int3 end   = (int3){submesh_info.int_params[AC_nx_max],
+                                submesh_info.int_params[AC_ny_max],
+                                submesh_info.int_params[AC_nz_max]};
+
+        acNodeIntegrateSubstep(node, STREAM_DEFAULT, isubstep, start, end, dt);
+        acNodeSwapBuffers(node);
+        acNodePeriodicBoundconds(node, STREAM_DEFAULT);
+        acNodeStoreMesh(node, STREAM_DEFAULT, submesh);
+        acNodeSynchronizeStream(node, STREAM_DEFAULT);
+        MPI_Barrier(MPI_COMM_WORLD);
+        communicate_halos(submesh);
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+    //////////////////// GPU ONLY STUFF
+    //// GATHER
+    gather_mesh(submesh, main_mesh);
+    /////////////
+
     acmesh_destroy(submesh);
 
     fflush(stdout);
     MPI_Barrier(MPI_COMM_WORLD);
+    acNodeDestroy(node);
 
     //////////// RENDER
     /*
@@ -249,6 +285,12 @@ main(void)
     if (pid == 0) {
         assert(main_mesh);
         assert(model_mesh);
+
+        // Integrate step
+        model_rk3(dt, model_mesh);
+        boundconds(mesh_info, model_mesh);
+        ///
+
         bool is_acceptable = verify_meshes(*model_mesh, *main_mesh);
         printf("%s\n", is_acceptable ? "Alles gut!" : "FUCK!");
         modelmesh_destroy(model_mesh);
