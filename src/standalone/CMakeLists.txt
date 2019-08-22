@@ -10,15 +10,6 @@ file (GLOB SOURCES "*.cc" "model/*.cc")
 
 ## Find packages
 find_package(OpenMP REQUIRED)
-if (BUILD_RT_VISUALIZATION)
-    add_definitions(-DAC_BUILD_RT_VISUALIZATION=1)
-    # SDL 2
-    set(SDL2_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/3rdparty/SDL2/include/)
-    set(SDL2_LIBRARY_DIR ${CMAKE_SOURCE_DIR}/3rdparty/SDL2/build/)
-    set(SDL2_LIBRARY "SDL2")
-    include_directories(${SDL2_INCLUDE_DIR})
-    link_directories(${SDL2_LIBRARY_DIR})
-endif ()
 
 ## Compilation flags
 add_compile_options(-pipe ${OpenMP_CXX_FLAGS})

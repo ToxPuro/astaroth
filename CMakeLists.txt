@@ -24,7 +24,7 @@ option(BUILD_DEBUG              "Builds the program with extensive error checkin
 option(BUILD_STANDALONE         "Builds the standalone Astaroth"                            ON)
 option(BUILD_RT_VISUALIZATION   "Builds the module for real-time visualization using SDL2"  OFF)
 option(BUILD_C_API_TEST         "Builds a C program to test whether the API is conformant"  OFF)
-option(BUILD_MPI_TEST           "Builds a C program to test whether MPI works"              OFF)
+option(BUILD_MPI_TEST           "Builds a C program to test whether MPI works"              ON)
 option(DOUBLE_PRECISION         "Generates double precision code"                           OFF)
 option(MULTIGPU_ENABLED         "If enabled, uses all the available GPUs"                   ON)
 option(ALTER_CONF               "If enabled, loads astaroth.conf from the build directory"  OFF)
@@ -50,6 +50,16 @@ endif ()
 ## Include directories
 include_directories(.)
 include_directories(include)
+
+if (BUILD_RT_VISUALIZATION)
+    add_definitions(-DAC_BUILD_RT_VISUALIZATION=1)
+    # SDL 2
+    set(SDL2_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/3rdparty/SDL2/include/)
+    set(SDL2_LIBRARY_DIR ${CMAKE_SOURCE_DIR}/3rdparty/SDL2/build/)
+    set(SDL2_LIBRARY "SDL2")
+    include_directories(${SDL2_INCLUDE_DIR})
+    link_directories(${SDL2_LIBRARY_DIR})
+endif ()
 
 ## Subdirectories
 add_subdirectory(src/core) # The core library
