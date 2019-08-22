@@ -335,13 +335,16 @@ verify_meshes(const ModelMesh model, const AcMesh candidate)
 
     const ModelScalar range = get_data_range(model);
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        const size_t n = acVertexBufferSize(model.info);
+        // const size_t n = acVertexBufferSize(model.info);
 
         // Maximum errors
         ErrorInfo max_abs_error = ErrorInfo();
         ErrorInfo max_rel_error = ErrorInfo();
 
-        for (size_t i = 0; i < n; ++i) {
+        const size_t start = acVertexBufferIdx(0, 0, 0, model.info);
+        const size_t end   = acVertexBufferSize(model.info);
+
+        for (size_t i = start; i < end; ++i) {
             const ModelScalar model_val = model.vertex_buffer[VertexBufferHandle(w)][i];
             const AcReal cand_val       = candidate.vertex_buffer[VertexBufferHandle(w)][i];
 
