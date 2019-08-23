@@ -40,14 +40,40 @@ typedef struct {
 } VertexBufferArray;
 
 __constant__ AcMeshInfo d_mesh_info;
-#define DCONST_INT(X) (d_mesh_info.int_params[X])
-#define DCONST_INT3(X) (d_mesh_info.int3_params[X])
-#define DCONST_REAL(X) (d_mesh_info.real_params[X])
-#define DCONST_REAL3(X) (d_mesh_info.real3_params[X])
+static inline int __device__
+DCONST(const AcIntParam param)
+{
+    return d_mesh_info.int_params[param];
+}
+static inline int3 __device__
+DCONST(const AcInt3Param param)
+{
+    return d_mesh_info.int3_params[param];
+}
+static inline AcReal __device__
+DCONST(const AcRealParam param)
+{
+    return d_mesh_info.real_params[param];
+}
+static inline AcReal3 __device__
+DCONST(const AcReal3Param param)
+{
+    return d_mesh_info.real3_params[param];
+}
+#define DCONST_INT(x) DCONST(x)
+#define DCONST_INT3(x) DCONST(x)
+#define DCONST_REAL(x) DCONST(x)
+#define DCONST_REAL3(x) DCONST(x)
 #define DEVICE_VTXBUF_IDX(i, j, k) ((i) + (j)*DCONST_INT(AC_mx) + (k)*DCONST_INT(AC_mxy))
 #define DEVICE_1D_COMPDOMAIN_IDX(i, j, k) ((i) + (j)*DCONST_INT(AC_nx) + (k)*DCONST_INT(AC_nxy))
 #define globalGridN (d_mesh_info.int3_params[AC_global_grid_n])
+//#define globalMeshM // Placeholder
+//#define localMeshN // Placeholder
+//#define localMeshM // Placeholder
+//#define localMeshN_min // Placeholder
+//#define globalMeshN_min // Placeholder
 #define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
+//#define d_multinode_offset (d_mesh_info.int3_params[AC_multinode_offset]) // Placeholder
 #include "kernels/boundconds.cuh"
 #include "kernels/integration.cuh"
 #include "kernels/reductions.cuh"
@@ -123,8 +149,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 #endif
 
     // Device constants
-    ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(d_mesh_info, &device_config, sizeof(device_config), 0,
-                                          cudaMemcpyHostToDevice));
+    acDeviceLoadMeshInfo(device, STREAM_DEFAULT, device_config);
 
     printf("Created device %d (%p)\n", device->id, device);
     *device_handle = device;
@@ -331,13 +356,62 @@ acDeviceSwapBuffers(const Device device)
 }
 
 AcResult
-acDeviceLoadConstant(const Device device, const Stream stream, const AcRealParam param,
-                     const AcReal value)
+acDeviceLoadScalarConstant(const Device device, const Stream stream, const AcRealParam param,
+                           const AcReal value)
 {
     cudaSetDevice(device->id);
     const size_t offset = (size_t)&d_mesh_info.real_params[param] - (size_t)&d_mesh_info;
     ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_mesh_info, &value, sizeof(value), offset,
                                         cudaMemcpyHostToDevice, device->streams[stream]));
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceLoadVectorConstant(const Device device, const Stream stream, const AcReal3Param param,
+                           const AcReal3 value)
+{
+    cudaSetDevice(device->id);
+    const size_t offset = (size_t)&d_mesh_info.real3_params[param] - (size_t)&d_mesh_info;
+    ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_mesh_info, &value, sizeof(value), offset,
+                                        cudaMemcpyHostToDevice, device->streams[stream]));
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceLoadIntConstant(const Device device, const Stream stream, const AcIntParam param,
+                        const int value)
+{
+    cudaSetDevice(device->id);
+    const size_t offset = (size_t)&d_mesh_info.int_params[param] - (size_t)&d_mesh_info;
+    ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_mesh_info, &value, sizeof(value), offset,
+                                        cudaMemcpyHostToDevice, device->streams[stream]));
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceLoadInt3Constant(const Device device, const Stream stream, const AcInt3Param param,
+                         const int3 value)
+{
+    cudaSetDevice(device->id);
+    const size_t offset = (size_t)&d_mesh_info.int3_params[param] - (size_t)&d_mesh_info;
+    ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_mesh_info, &value, sizeof(value), offset,
+                                        cudaMemcpyHostToDevice, device->streams[stream]));
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceLoadMeshInfo(const Device device, const Stream stream, const AcMeshInfo device_config)
+{
+    cudaSetDevice(device->id);
+
+    ERRCHK_ALWAYS(device_config.int_params[AC_nx] == device->local_config.int_params[AC_nx]);
+    ERRCHK_ALWAYS(device_config.int_params[AC_ny] == device->local_config.int_params[AC_ny]);
+    ERRCHK_ALWAYS(device_config.int_params[AC_nz] == device->local_config.int_params[AC_nz]);
+    ERRCHK_ALWAYS(device_config.int_params[AC_multigpu_offset] ==
+                  device->local_config.int_params[AC_multigpu_offset]);
+
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbolAsync(d_mesh_info, &device_config, sizeof(device_config),
+                                               0, cudaMemcpyHostToDevice, device->streams[stream]));
     return AC_SUCCESS;
 }
 
