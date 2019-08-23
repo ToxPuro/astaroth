@@ -210,7 +210,7 @@ createGrid(const AcMeshInfo config)
 AcResult
 acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
 {
-    struct node_s* node = (struct node_s*)malloc(sizeof(*node));
+    struct node_s* node = (struct node_s*)malloc(sizeof(node_s));  //sizeof(*node)
     node->id            = id;
     node->config        = node_config;
 
@@ -300,7 +300,7 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
     }
     acNodeSynchronizeStream(node, STREAM_ALL);
 
-    *node_handle = node;
+    *node_handle = node; 
     return AC_SUCCESS;
 }
 

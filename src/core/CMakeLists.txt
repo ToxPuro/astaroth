@@ -20,7 +20,8 @@ set(CUDA_ARCH_FLAGS -gencode arch=compute_37,code=sm_37
                     # =cg to opt out
 
 
-set(CUDA_WARNING_FLAGS --compiler-options -Wall,-Wextra,-Werror,-Wdouble-promotion,-Wfloat-conversion) # -Wshadow
+#set(CUDA_WARNING_FLAGS --compiler-options -Wall,-Wextra,-Werror,-Wdouble-promotion,-Wfloat-conversion) # -Wshadow
+set(CUDA_WARNING_FLAGS --compiler-options -Wall,-Wextra,-Wdouble-promotion,-Wfloat-conversion) # -Wshadow
 
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${CUDA_ARCH_FLAGS} ${CUDA_WARNING_FLAGS})
 set(CUDA_NVCC_FLAGS_RELEASE)
@@ -31,6 +32,18 @@ if (MULTIGPU_ENABLED)
     add_definitions(-DAC_MULTIGPU_ENABLED=1)
 else ()
     add_definitions(-DAC_MULTIGPU_ENABLED=0)
+endif ()
+
+if (VERBOSE_PRINTING)
+    add_definitions(-DVERBOSE_PRINTING=1)
+else ()
+    add_definitions(-DVERBOSE_PRINTING=0)
+endif ()
+
+if (AUTO_OPTIMIZATION)
+    add_definitions(-DAUTO_OPTIMIZATION=1)
+else ()
+    add_definitions(-DAUTO_OPTIMIZATION=0)
 endif ()
 
 ## Create and link the library

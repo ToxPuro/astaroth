@@ -121,9 +121,11 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     acDevicePrintInfo(device);
 
     // Check that the code was compiled for the proper GPU architecture
+#if VERBOSE_PRINTING
     printf("Trying to run a dummy kernel. If this fails, make sure that your\n"
-           "device supports the CUDA architecture you are compiling for.\n"
-           "Running dummy kernel... ");
+           "device supports the CUDA architecture you are compiling for.\n")
+#endif
+    printf("Running dummy kernel... ");
     fflush(stdout);
     dummy_kernel<<<1, 1>>>();
     ERRCHK_CUDA_KERNEL_ALWAYS();
@@ -154,11 +156,12 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     printf("Created device %d (%p)\n", device->id, device);
     *device_handle = device;
 
+#if AUTO_OPTIMIZATION
     // Autoptimize
     if (id == 0) {
         acDeviceAutoOptimize(device);
     }
-
+#endif
     return AC_SUCCESS;
 }
 
@@ -195,6 +198,7 @@ acDevicePrintInfo(const Device device)
 {
     const int device_id = device->id;
 
+#if VERBOSE_PRINTING
     cudaDeviceProp props;
     cudaGetDeviceProperties(&props, device_id);
     printf("--------------------------------------------------\n");
@@ -246,6 +250,7 @@ acDevicePrintInfo(const Device device)
     // versions
     printf("    Stream priorities supported: %d\n", props.streamPrioritiesSupported);
     printf("--------------------------------------------------\n");
+#endif
 
     return AC_SUCCESS;
 }
@@ -258,12 +263,12 @@ acDeviceAutoOptimize(const Device device)
     // RK3
     const int3 start = (int3){NGHOST, NGHOST, NGHOST};
     const int3 end   = start + (int3){device->local_config.int_params[AC_nx], //
-                                    device->local_config.int_params[AC_ny], //
-                                    device->local_config.int_params[AC_nz]};
+                                      device->local_config.int_params[AC_ny], //
+                                      device->local_config.int_params[AC_nz]};
 
     dim3 best_dims(0, 0, 0);
     float best_time          = INFINITY;
-    const int num_iterations = 10;
+    const int num_iterations = 1; //10;
 
     for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) {
         for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
@@ -314,11 +319,11 @@ acDeviceAutoOptimize(const Device device)
             }
         }
     }
-#if VERBOSE_PRINTING
+//#if VERBOSE_PRINTING
     printf(
         "Auto-optimization done. The best threadblock dimensions for rkStep: (%d, %d, %d) %f ms\n",
         best_dims.x, best_dims.y, best_dims.z, double(best_time) / num_iterations);
-#endif
+//#endif
     /*
     FILE* fp = fopen("../config/rk3_tbdims.cuh", "w");
     ERRCHK(fp);

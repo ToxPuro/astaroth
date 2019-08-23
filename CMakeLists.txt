@@ -29,6 +29,8 @@ option(BUILD_SHARED             "Creates shared library"                        
 option(DOUBLE_PRECISION         "Generates double precision code"                           OFF)
 option(MULTIGPU_ENABLED         "If enabled, uses all the available GPUs"                   ON)
 option(ALTER_CONF               "If enabled, loads astaroth.conf from the build directory"  OFF)
+option(VERBOSE_PRINTING         "If enabled, prints configuration"                          ON)
+option(AUTO_OPTIMIZATION        "If enabled, auto-optimization is run"                      ON)
 
 ## Build types
 # Available types (case-sensitive):
