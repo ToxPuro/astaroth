@@ -54,7 +54,12 @@ acPrintMeshInfo(const AcMeshInfo config)
 AcResult
 acInit(const AcMeshInfo mesh_info)
 {
-    return acNodeCreate(0, mesh_info, &nodes[0]);
+    grid_n = (int3){mesh_info.int_params[AC_nx], mesh_info.int_params[AC_ny],
+                    mesh_info.int_params[AC_nz]};
+    AcResult res= acNodeCreate(0, mesh_info, &nodes[0]);
+printf("Result= %d\n", res);
+    //return acNodeCreate(0, mesh_info, &nodes[0]);
+    return res;
 }
 
 AcResult
