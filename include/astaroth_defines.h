@@ -44,8 +44,6 @@ typedef struct {
 } double3;
 #endif // __CUDACC__
 
-#include "stencil_defines.h"
-
 // Library flags
 #define VERBOSE_PRINTING (1)
 
@@ -67,6 +65,8 @@ typedef float3 AcReal3;
 typedef struct {
     AcReal3 row[3];
 } AcMatrix;
+
+#include "stencil_defines.h" // User-defined header
 
 // clang-format off
 #define AC_FOR_BUILTIN_INT_PARAM_TYPES(FUNC)\
@@ -214,6 +214,9 @@ acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
            j * info.int_params[AC_mx] + //
            k * info.int_params[AC_mx] * info.int_params[AC_my];
 }
+
+/** Prints all parameters inside AcMeshInfo */
+void acPrintMeshInfo(const AcMeshInfo config);
 
 /*
 static inline int

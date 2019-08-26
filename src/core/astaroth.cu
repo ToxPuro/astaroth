@@ -16,8 +16,10 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-// #include "astaroth_defines.h"
 #include "astaroth.h"
+
+#include "errchk.h"
+#include "math_utils.h" // int3 + int3
 
 #define AC_GEN_STR(X) #X
 const char* intparam_names[]   = {AC_FOR_BUILTIN_INT_PARAM_TYPES(AC_GEN_STR) //
@@ -34,6 +36,21 @@ const char* vtxbuf_names[]     = {AC_FOR_VTXBUF_HANDLES(AC_GEN_STR)};
 static const int num_nodes = 1;
 static Node nodes[num_nodes];
 
+void
+acPrintMeshInfo(const AcMeshInfo config)
+{
+    for (int i = 0; i < NUM_INT_PARAMS; ++i)
+        printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
+    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
+        printf("[%s]: (%d, %d, %d)\n", int3param_names[i], config.int3_params[i].x,
+               config.int3_params[i].y, config.int3_params[i].z);
+    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
+        printf("[%s]: %g\n", realparam_names[i], double(config.real_params[i]));
+    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
+        printf("[%s]: (%g, %g, %g)\n", real3param_names[i], double(config.real3_params[i].x),
+               double(config.real3_params[i].y), double(config.real3_params[i].z));
+}
+
 AcResult
 acInit(const AcMeshInfo mesh_info)
 {
@@ -44,6 +61,23 @@ AcResult
 acQuit(void)
 {
     return acNodeDestroy(nodes[0]);
+}
+
+AcResult
+acCheckDeviceAvailability(void)
+{
+    int device_count; // Separate from num_devices to avoid side effects
+    ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&device_count));
+    if (device_count > 0)
+        return AC_SUCCESS;
+    else
+        return AC_FAILURE;
+}
+
+AcResult
+acSynchronize(void)
+{
+    return acNodeSynchronizeStream(nodes[0], STREAM_ALL);
 }
 
 AcResult
@@ -73,11 +107,24 @@ acStore(AcMesh* host_mesh)
 AcResult
 acIntegrate(const AcReal dt)
 {
-    /*
-    acNodeIntegrate(nodes[0], dt);
-    return acBoundcondStep();
-    */
     return acNodeIntegrate(nodes[0], dt);
+}
+
+AcResult
+acIntegrateStep(const int isubstep, const AcReal dt)
+{
+    DeviceConfiguration config;
+    acNodeQueryDeviceConfiguration(nodes[0], &config);
+
+    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
+    const int3 end   = start + config.grid.n;
+    return acNodeIntegrateSubstep(nodes[0], STREAM_DEFAULT, isubstep, start, end, dt);
+}
+
+AcResult
+acIntegrateStepWithOffset(const int isubstep, const AcReal dt, const int3 start, const int3 end)
+{
+    return acNodeIntegrateSubstep(nodes[0], STREAM_DEFAULT, isubstep, start, end, dt);
 }
 
 AcResult
@@ -107,4 +154,16 @@ AcResult
 acStoreWithOffset(const int3 dst, const size_t num_vertices, AcMesh* host_mesh)
 {
     return acNodeStoreMeshWithOffset(nodes[0], STREAM_DEFAULT, dst, dst, num_vertices, host_mesh);
+}
+
+AcResult
+acLoadWithOffset(const AcMesh host_mesh, const int3 src, const int num_vertices)
+{
+    return acNodeLoadMeshWithOffset(nodes[0], STREAM_DEFAULT, host_mesh, src, src, num_vertices);
+}
+
+AcResult
+acSynchronizeMesh(void)
+{
+    return acNodeSynchronizeMesh(nodes[0], STREAM_DEFAULT);
 }

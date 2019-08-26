@@ -131,11 +131,6 @@
 
 static const int MAX_NUM_DEVICES = 32;
 
-typedef struct {
-    int3 m;
-    int3 n;
-} Grid;
-
 struct node_s {
     int id;
 
@@ -334,10 +329,12 @@ acNodePrintInfo(const Node node)
 AcResult
 acNodeQueryDeviceConfiguration(const Node node, DeviceConfiguration* config)
 {
-    (void)node;
-    (void)config;
-    WARNING("Not implemented");
-    return AC_FAILURE;
+    config->num_devices = node->num_devices;
+    config->devices     = node->devices;
+    config->grid        = node->grid;
+    config->subgrid     = node->subgrid;
+
+    return AC_SUCCESS;
 }
 
 AcResult
@@ -432,7 +429,7 @@ acNodeLoadConstant(const Node node, const Stream stream, const AcRealParam param
     acNodeSynchronizeStream(node, stream);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
-        acDeviceLoadConstant(node->devices[i], stream, param, value);
+        acDeviceLoadScalarConstant(node->devices[i], stream, param, value);
     }
     return AC_SUCCESS;
 }

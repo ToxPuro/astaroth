@@ -38,15 +38,6 @@
 #include "standalone/model/host_nonuniform.h"
 #endif
 
-static inline void
-print(const AcMeshInfo& config)
-{
-    for (int i = 0; i < NUM_INT_PARAMS; ++i)
-        printf("[%s]: %d\n", intparam_names[i], config.int_params[i]);
-    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
-        printf("[%s]: %g\n", realparam_names[i], double(config.real_params[i]));
-}
-
 /**
  \brief Find the index of the keyword in names
  \return Index in range 0...n if the keyword is in names. -1 if the keyword was
@@ -167,7 +158,7 @@ update_config(AcMeshInfo* config)
 #if VERBOSE_PRINTING // Defined in astaroth.h
     printf("###############################################################\n");
     printf("Config dimensions recalculated:\n");
-    print(*config);
+    acPrintMeshInfo(*config);
     printf("###############################################################\n");
 #endif
 }
