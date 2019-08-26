@@ -300,7 +300,7 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
     }
     acNodeSynchronizeStream(node, STREAM_ALL);
 
-    *node_handle = node; 
+    *node_handle = node;
     return AC_SUCCESS;
 }
 

@@ -319,11 +319,9 @@ acDeviceAutoOptimize(const Device device)
             }
         }
     }
-//#if VERBOSE_PRINTING
     printf(
         "Auto-optimization done. The best threadblock dimensions for rkStep: (%d, %d, %d) %f ms\n",
         best_dims.x, best_dims.y, best_dims.z, double(best_time) / num_iterations);
-//#endif
     /*
     FILE* fp = fopen("../config/rk3_tbdims.cuh", "w");
     ERRCHK(fp);

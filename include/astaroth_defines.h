@@ -45,7 +45,6 @@ typedef struct {
 #endif // __CUDACC__
 
 // Library flags
-//  #define VERBOSE_PRINTING (1)
 
 // Built-in types and parameters
 #if AC_DOUBLE_PRECISION == 1
