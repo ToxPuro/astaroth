@@ -258,12 +258,10 @@ main(void)
     // Node node;
     // acNodeCreate(0, submesh_info, &node);
     Device device;
-    int todo_replace_with_real_pid = 0; // TODO
-    // int real_device_id = pid % num_devices_per_node;
-    // and call mpirun with flags which assign exactly as many processes per node as
-    // there are GPUs
-    acDeviceCreate(todo_replace_with_real_pid, submesh_info, &device);
-    const AcReal dt = FLT_EPSILON;
+    // NOTE: assumes that every node has the same number of devices
+    const int device_id = pid % acGetNumDevicesPerNode();
+    acDeviceCreate(device_id, submesh_info, &device);
+    const AcReal dt = FLT_EPSILON; // TODO multi-node reduction calls and proper timestepping
 
     for (int isubstep = 0; isubstep < 3; ++isubstep) {
         acDeviceSynchronizeStream(device, STREAM_ALL);
