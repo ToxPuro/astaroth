@@ -201,13 +201,9 @@ Vector
 helical_forcing(Scalar magnitude, Vector k_force, Vector xx, Vector ff_re, Vector ff_im, Scalar phi)
 {
     // JP: This looks wrong:
-    //    1) Should it be AC_dsx * AC_nx instead of AC_dsx * AC_ny?
-    //    2) Should you also use globalGrid.n instead of the local n?
-    //    MV: You are rigth. Made a quickfix. I did not see the error  because multigpu is split
-    //        in z direction not y direction.
     //    3) Also final point: can we do this with vectors/quaternions instead?
     //       Tringonometric functions are much more expensive and inaccurate/
-    //    MV: Good idea. No an immediate priority.
+    //    MV: Good idea. Not an immediate priority.
     // Fun related article:
     // https://randomascii.wordpress.com/2014/10/09/intel-underestimates-error-bounds-by-1-3-quintillion/
     xx.x = xx.x * (2.0 * M_PI / (AC_dsx * globalGridN.x));

@@ -26,23 +26,23 @@ grid_function(const Scalar a_grid, const Scalar zeta, const int der_degree)
 Vector
 dgrid(Vector zeta, const int der_degree)
 {
-    Vector zeta_star = (Vector){DCONST_REAL(AC_zeta_star_x), 
-                                DCONST_REAL(AC_zeta_star_y), 
-                                DCONST_REAL(AC_zeta_star_z)};
+    Vector zeta_star = (Vector){AC_zeta_star_x, 
+                                AC_zeta_star_y, 
+                                AC_zeta_star_z};
 
-    Scalar a_grid = DCONST_REAL(AC_grid_scale_coeff) ; 
+    Scalar a_grid = AC_grid_scale_coeff; 
 
     return (Vector){
     grid_function(a_grid,(zeta.x - zeta_star.x), der_degree)/
-    (grid_function(a_grid,(Scalar(DCONST_INT(AC_nx)) - Scalar(1) - zeta_star.x), 0) 
+    (grid_function(a_grid,(Scalar(AC_nx) - Scalar(1) - zeta_star.x), 0) 
    + grid_function(a_grid,(zeta_star.x - Scalar(0)), 0)), 
 
     grid_function(a_grid,(zeta.y - zeta_star.y), der_degree)/
-    (grid_function(a_grid,(Scalar(DCONST_INT(AC_ny)) - Scalar(1) - zeta_star.y), 0) 
+    (grid_function(a_grid,(Scalar(AC_ny) - Scalar(1) - zeta_star.y), 0) 
    + grid_function(a_grid,(zeta_star.y - Scalar(0)), 0)),
 
     grid_function(a_grid,(zeta.z - zeta_star.z), der_degree)/
-    (grid_function(a_grid,(Scalar(DCONST_INT(AC_nz)) - Scalar(1) - zeta_star.z), 0) 
+    (grid_function(a_grid,(Scalar(AC_nz) - Scalar(1) - zeta_star.z), 0) 
    + grid_function(a_grid,(zeta_star.z - Scalar(0)), 0))
     };
 }
@@ -146,7 +146,7 @@ Scalar
 derxy_bruteforce(int3 vertexIdx, in Scalar vertex)
 {
     const Scalar coefficients[] =  {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
-    const Scalar inv_ds = DCONST_REAL(AC_inv_dsx)*DCONST_REAL(AC_inv_dsy);
+    const Scalar inv_ds = AC_inv_dsx*AC_inv_dsy;
 
     Scalar derivative = 0.0;
     for (int i= -3; i <= 3; ++i) {
@@ -166,7 +166,7 @@ Scalar
 derxz_bruteforce(int3 vertexIdx, in Scalar  vertex)
 {
     const Scalar coefficients[] = {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
-    const Scalar inv_ds = DCONST_REAL(AC_inv_dsx)*DCONST_REAL(AC_inv_dsz);
+    const Scalar inv_ds = AC_inv_dsx*AC_inv_dsz;
 
     Scalar derivative = 0.0;
     for (int i= -3; i <= 3; ++i) {
@@ -186,7 +186,7 @@ Scalar
 deryz_bruteforce(int3 vertexIdx, in Scalar  vertex)
 {
     const Scalar coefficients[] = {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
-    const Scalar inv_ds = DCONST_REAL(AC_inv_dsy)*DCONST_REAL(AC_inv_dsz);
+    const Scalar inv_ds = AC_inv_dsy*AC_inv_dsz;
 
     Scalar derivative = 0.0;
     for (int i= -3; i <= 3; ++i) {
