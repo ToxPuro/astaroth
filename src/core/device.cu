@@ -39,26 +39,49 @@ typedef struct {
     AcReal* out[NUM_VTXBUF_HANDLES];
 } VertexBufferArray;
 
+struct device_s {
+    int id;
+    AcMeshInfo local_config;
+
+    // Concurrency
+    cudaStream_t streams[NUM_STREAM_TYPES];
+
+    // Memory
+    VertexBufferArray vba;
+    AcReal* reduce_scratchpad;
+    AcReal* reduce_result;
+
+#if PACKED_DATA_TRANSFERS
+// Declare memory for buffers needed for packed data transfers here
+// AcReal* data_packing_buffer;
+#endif
+};
+
 __constant__ AcMeshInfo d_mesh_info;
-static inline int __device__
+static int __device__ __forceinline__
 DCONST(const AcIntParam param)
 {
     return d_mesh_info.int_params[param];
 }
-static inline int3 __device__
+static int3 __device__ __forceinline__
 DCONST(const AcInt3Param param)
 {
     return d_mesh_info.int3_params[param];
 }
-static inline AcReal __device__
+static AcReal __device__ __forceinline__
 DCONST(const AcRealParam param)
 {
     return d_mesh_info.real_params[param];
 }
-static inline AcReal3 __device__
+static AcReal3 __device__ __forceinline__
 DCONST(const AcReal3Param param)
 {
     return d_mesh_info.real3_params[param];
+}
+constexpr VertexBufferHandle
+DCONST(const VertexBufferHandle handle)
+{
+    return handle;
 }
 #define DCONST_INT(x) DCONST(x)
 #define DCONST_INT3(x) DCONST(x)
@@ -84,26 +107,8 @@ static dim3 rk3_tpb(32, 1, 4);
 // #include "kernels/pack_unpack.cuh"
 #endif
 
-struct device_s {
-    int id;
-    AcMeshInfo local_config;
-
-    // Concurrency
-    cudaStream_t streams[NUM_STREAM_TYPES];
-
-    // Memory
-    VertexBufferArray vba;
-    AcReal* reduce_scratchpad;
-    AcReal* reduce_result;
-
-#if PACKED_DATA_TRANSFERS
-// Declare memory for buffers needed for packed data transfers here
-// AcReal* data_packing_buffer;
-#endif
-};
-
 // clang-format off
-static __global__ void dummy_kernel(void) {}
+static __global__ void dummy_kernel(void) { DCONST((AcIntParam)0); DCONST((AcInt3Param)0); DCONST((AcRealParam)0); DCONST((AcReal3Param)0); }
 // clang-format on
 
 AcResult
@@ -298,8 +303,9 @@ acDeviceAutoOptimize(const Device device)
 
                 cudaEventRecord(tstart); // ---------------------------------------- Timing start
 
+                acDeviceLoadScalarConstant(device, STREAM_DEFAULT, AC_dt, FLT_EPSILON);
                 for (int i = 0; i < num_iterations; ++i)
-                    solve<2><<<bpg, tpb>>>(start, end, device->vba, FLT_EPSILON);
+                    solve<2><<<bpg, tpb>>>(start, end, device->vba);
 
                 cudaEventRecord(tstop); // ----------------------------------------- Timing end
                 cudaEventSynchronize(tstop);
@@ -595,12 +601,13 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
                    (unsigned int)ceil(n.y / AcReal(tpb.y)), //
                    (unsigned int)ceil(n.z / AcReal(tpb.z)));
 
+    acDeviceLoadScalarConstant(device, stream, AC_dt, dt);
     if (step_number == 0)
-        solve<0><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba, dt);
+        solve<0><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
     else if (step_number == 1)
-        solve<1><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba, dt);
+        solve<1><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
     else
-        solve<2><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba, dt);
+        solve<2><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
 
     ERRCHK_CUDA_KERNEL();
 
