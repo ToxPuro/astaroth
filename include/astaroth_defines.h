@@ -65,7 +65,15 @@ typedef struct {
     AcReal3 row[3];
 } AcMatrix;
 
+#ifdef __cplusplus
+} // extern "C"
+#endif
+
 #include "stencil_defines.h" // User-defined header
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // clang-format off
 #define AC_FOR_BUILTIN_INT_PARAM_TYPES(FUNC)\
@@ -84,6 +92,7 @@ typedef struct {
         FUNC(AC_mxy),\
         FUNC(AC_nxy),\
         FUNC(AC_nxyz),\
+        FUNC(AC_yz_plate_bufsize),\
 
 #define AC_FOR_BUILTIN_INT3_PARAM_TYPES(FUNC)\
         FUNC(AC_global_grid_n),\

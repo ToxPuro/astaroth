@@ -435,6 +435,18 @@ acNodeLoadConstant(const Node node, const Stream stream, const AcRealParam param
 }
 
 AcResult
+acNodeLoadVectorConstant(const Node node, const Stream stream, const AcReal3Param param,
+                         const AcReal3 value)
+{
+    acNodeSynchronizeStream(node, stream);
+    // #pragma omp parallel for
+    for (int i = 0; i < node->num_devices; ++i) {
+        acDeviceLoadVectorConstant(node->devices[i], stream, param, value);
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
 acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream, const AcMesh host_mesh,
                                  const VertexBufferHandle vtxbuf_handle, const int3 src,
                                  const int3 dst, const int num_vertices)

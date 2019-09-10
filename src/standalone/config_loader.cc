@@ -102,11 +102,12 @@ update_config(AcMeshInfo* config)
     config->real_params[AC_dsmin]   = min(
         config->real_params[AC_dsx], min(config->real_params[AC_dsy], config->real_params[AC_dsz]));
 
-    // Real grid coordanates (DEFINE FOR GRID WITH THE GHOST ZONES)
+    // Real grid coordinates (DEFINE FOR GRID WITH THE GHOST ZONES); MR: problematic for non-uniform grid
     config->real_params[AC_xlen] = config->real_params[AC_dsx] * config->int_params[AC_mx];
     config->real_params[AC_ylen] = config->real_params[AC_dsy] * config->int_params[AC_my];
     config->real_params[AC_zlen] = config->real_params[AC_dsz] * config->int_params[AC_mz];
-
+    
+    //MR: too specific
     config->real_params[AC_xorig] = AcReal(.5) * config->real_params[AC_xlen];
     config->real_params[AC_yorig] = AcReal(.5) * config->real_params[AC_ylen];
     config->real_params[AC_zorig] = AcReal(.5) * config->real_params[AC_zlen];

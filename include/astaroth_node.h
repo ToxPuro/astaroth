@@ -73,13 +73,15 @@ AcResult acNodeSwapBuffers(const Node node);
 AcResult acNodeLoadConstant(const Node node, const Stream stream, const AcRealParam param,
                             const AcReal value);
 
+AcResult acNodeLoadVectorConstant(const Node node, const Stream stream, const AcReal3Param param,
+                                  const AcReal3 value);
+
 /** Deprecated ? Might be useful though if the user wants to load only one vtxbuf. But in this case
  * the user should supply a AcReal* instead of vtxbuf_handle */
 AcResult acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream,
                                           const AcMesh host_mesh,
                                           const VertexBufferHandle vtxbuf_handle, const int3 src,
                                           const int3 dst, const int num_vertices);
-
 /** */
 AcResult acNodeLoadMeshWithOffset(const Node node, const Stream stream, const AcMesh host_mesh,
                                   const int3 src, const int3 dst, const int num_vertices);

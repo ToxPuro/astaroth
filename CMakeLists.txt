@@ -31,6 +31,7 @@ option(MULTIGPU_ENABLED         "If enabled, uses all the available GPUs"       
 option(ALTER_CONF               "If enabled, loads astaroth.conf from the build directory"  OFF)
 option(VERBOSE_PRINTING         "If enabled, prints configuration"                          ON)
 option(AUTO_OPTIMIZATION        "If enabled, auto-optimization is run"                      ON)
+option(PACKED_DATA_TRANSFERS    "Enables kernel for packed data transfers"                  OFF)
 
 ## Build types
 # Available types (case-sensitive):

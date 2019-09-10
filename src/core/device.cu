@@ -80,8 +80,8 @@ DCONST(const AcReal3Param param)
 
 static dim3 rk3_tpb(32, 1, 4);
 
-#if PACKED_DATA_TRANSFERS // Defined in device.cuh
-// #include "kernels/pack_unpack.cuh"
+#if PACKED_DATA_TRANSFERS // Defined by CMake settings.
+   #include "kernels/pack_unpack.cuh"
 #endif
 
 struct device_s {
@@ -98,7 +98,7 @@ struct device_s {
 
 #if PACKED_DATA_TRANSFERS
 // Declare memory for buffers needed for packed data transfers here
-// AcReal* data_packing_buffer;
+    AcReal* yz_plate_buffer;
 #endif
 };
 
@@ -123,7 +123,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     // Check that the code was compiled for the proper GPU architecture
 #if VERBOSE_PRINTING
     printf("Trying to run a dummy kernel. If this fails, make sure that your\n"
-           "device supports the CUDA architecture you are compiling for.\n")
+           "device supports the CUDA architecture you are compiling for.\n");
 #endif
     printf("Running dummy kernel... ");
     fflush(stdout);
@@ -148,6 +148,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
 #if PACKED_DATA_TRANSFERS
 // Allocate data required for packed transfers here (cudaMalloc)
+    cudaMalloc(&device->yz_plate_buffer, device->local_config.int_params[AC_yz_plate_bufsize]*sizeof(AcReal));
 #endif
 
     // Device constants
@@ -181,6 +182,7 @@ acDeviceDestroy(Device device)
 
 #if PACKED_DATA_TRANSFERS
 // Free data required for packed tranfers here (cudaFree)
+    cudaFree(device->yz_plate_buffer);
 #endif
 
     // Concurrency

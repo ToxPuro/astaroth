@@ -18,13 +18,13 @@
 */
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "astaroth_defines.h"
 #include "astaroth_device.h"
 #include "astaroth_node.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
 #include "astaroth_grid.h"
@@ -62,6 +62,9 @@ AcResult acSynchronizeMesh(void);
 /** Loads a constant to the memories of the devices visible to the caller */
 AcResult acLoadDeviceConstant(const AcRealParam param, const AcReal value);
 
+/** Loads a constant to the memories of the devices visible to the caller */
+AcResult acLoadVectorConstant(const AcReal3Param param, const AcReal3 value);
+
 /** Loads an AcMesh to the devices visible to the caller */
 AcResult acLoad(const AcMesh host_mesh);
 
@@ -98,6 +101,7 @@ AcResult acIntegrateStepWithOffset(const int isubstep, const AcReal dt, const in
 AcResult acSynchronize(void);
 AcResult acLoadWithOffset(const AcMesh host_mesh, const int3 src, const int num_vertices);
 
+AcResult acGetNode(Node * node);
 #ifdef __cplusplus
 } // extern "C"
 #endif

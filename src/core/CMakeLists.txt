@@ -46,6 +46,12 @@ else ()
     add_definitions(-DAUTO_OPTIMIZATION=0)
 endif ()
 
+if (PACKED_DATA_TRANSFERS)
+    add_definitions(-DPACKED_DATA_TRANSFERS=1)
+else ()
+    add_definitions(-DPACKED_DATA_TRANSFERS=0)
+endif ()
+
 ## Create and link the library
 if (BUILD_SHARED)
     cuda_add_library(astaroth_core SHARED astaroth.cu device.cu node.cu)

@@ -30,6 +30,7 @@
 #include <math.h> // isnan, isinf // Overloads incorrect/bugged with GCC <= 6.0
 //#include <tgmath.h> // Even this does not work
 #include <stdlib.h> // rand
+#include "astaroth_defines.h"
 
 template <class T>
 static inline const T
@@ -101,6 +102,18 @@ operator+(const int3& a, const int3& b)
     return (int3){a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
+static HOST_DEVICE_INLINE int3
+operator+(const int3& a, const int b)
+{
+    return (int3){a.x + b, a.y + b, a.z + b};
+}
+
+static HOST_DEVICE_INLINE int3
+operator+(const int a, const int3& b)
+{
+    return (int3){a + b.x, a + b.y, a + b.z};
+}
+
 static HOST_DEVICE_INLINE AcReal3
 operator-(const AcReal3& a, const AcReal3& b)
 {
@@ -111,6 +124,18 @@ static HOST_DEVICE_INLINE int3
 operator-(const int3& a, const int3& b)
 {
     return (int3){a.x - b.x, a.y - b.y, a.z - b.z};
+}
+
+static HOST_DEVICE_INLINE int3
+operator-(const int3& a, const int b)
+{
+    return (int3){a.x - b, a.y - b, a.z - b};
+}
+
+static HOST_DEVICE_INLINE int3
+operator-(const int a, const int3& b)
+{
+    return (int3){a - b.x, a - b.y, a - b.z};
 }
 
 static HOST_DEVICE_INLINE AcReal3
