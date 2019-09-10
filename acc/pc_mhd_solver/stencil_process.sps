@@ -232,7 +232,7 @@ helical_forcing(Scalar magnitude, Vector k_force, Vector xx, Vector ff_re, Vecto
 }
 
 Vector
-forcing(int3 globalVertexIdx, Scalar dt)
+forcing_OLD(int3 globalVertexIdx, Scalar dt)
 {
     Vector a         = Scalar(.5) * (Vector){globalGridN.x * AC_dsx, globalGridN.y * AC_dsy,
                                      globalGridN.z * AC_dsz}; // source (origin)
@@ -267,6 +267,42 @@ forcing(int3 globalVertexIdx, Scalar dt)
     else {
         return (Vector){0, 0, 0};
     }
+}
+
+// PC-style helical forcing with support for profiles
+Vector
+forcing(int3 vertexIdx, int3 globalVertexIdx, Scalar dt, ScalarArray profx, ScalarArray profy,
+        ScalarArray profz, ScalarArray profx_hel, ScalarArray profy_hel, ScalarArray profz_hel)
+{
+    Vector pos = (Vector){(globalVertexIdx.x - DCONST(AC_nx_min)) * AC_dsx,
+                          (globalVertexIdx.y - DCONST(AC_ny_min)) * AC_dsy,
+                          (globalVertexIdx.z - DCONST(AC_nz_min)) * AC_dsz};
+
+    Complex fx = AC_fact * exp(Complex(0, AC_kk.x * AC_k1_ff * pos.z + AC_phase));
+    Complex fy = exp(Complex(0, AC_kk.y * AC_k1_ff * pos.y));
+
+    Complex fz;
+    if (AC_iforcing_zsym == 0) {
+        fz = exp(Complex(0., AC_kk.z * AC_k1_ff * pos.z));
+    }
+    else if (AC_iforcing_zsym == 1) {
+        fz = Complex(cos(AC_kk.z * AC_k1_ff * pos.z), 0);
+    }
+    else if (AC_iforcing_zsym == -1) {
+        fz = Complex(sin(AC_kk.z * AC_k1_ff * pos.z), 0);
+    }
+    else {
+        // Failure
+    }
+
+    Complex fxyz = fx * fy * fz;
+
+    // TODO recheck indices
+    Scalar force_ampl    = profx[vertexIdx.x - NGHOST] * profy[vertexIdx.y] * profz[vertexIdx.z];
+    Scalar prof_hel_ampl = profx_hel[vertexIdx.x - NGHOST] * profy_hel[vertexIdx.y] *
+                           profz_hel[vertexIdx.z];
+
+    return force_ampl * AC_fda * (Complex(AC_coef1.x, prof_hel_ampl * AC_coef2.x) * fxyz).x;
 }
 #endif // LFORCING
 
@@ -315,7 +351,8 @@ solve()
 
 #if LFORCING
     if (step_number == 2) {
-        out_uu = out_uu + forcing(globalVertexIdx, dt);
+        out_uu = out_uu + forcing(vertexIdx, globalVertexIdx, dt, AC_profx, AC_profy, AC_profz,
+                                  AC_profx_hel, AC_profy_hel, AC_profz_hel);
     }
 #endif
 }

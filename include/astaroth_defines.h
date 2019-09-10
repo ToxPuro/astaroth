@@ -70,6 +70,10 @@ typedef struct {
 #endif
 
 #include "stencil_defines.h" // User-defined header
+#ifndef USER_DEFINED
+#define STENCIL_ORDER (6)
+#define NGHOST (STENCIL_ORDER / 2)
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -163,6 +167,11 @@ typedef enum {
 } AcReal3Param;
 
 typedef enum {
+    AC_FOR_SCALARARRAY_HANDLES(AC_GEN_ID) //
+    NUM_SCALARARRAY_HANDLES
+} ScalarArrayHandle;
+
+typedef enum {
     AC_FOR_VTXBUF_HANDLES(AC_GEN_ID) //
     NUM_VTXBUF_HANDLES
 } VertexBufferHandle;
@@ -172,6 +181,7 @@ extern const char* intparam_names[];
 extern const char* int3param_names[];
 extern const char* realparam_names[];
 extern const char* real3param_names[];
+extern const char* scalararray_names[];
 extern const char* vtxbuf_names[];
 
 typedef struct {
