@@ -42,6 +42,10 @@
 #include "src/core/math_utils.h"
 #include "timer_hires.h"
 
+// NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
+#define LFORCING (1)
+#define LSINK (0)
+
 // Window
 SDL_Renderer* renderer      = NULL;
 static SDL_Window* window   = NULL;
@@ -294,6 +298,7 @@ renderer_quit(void)
 }
 
 static int init_type = INIT_TYPE_GAUSSIAN_RADIAL_EXPL;
+// static int init_type = INIT_TYPE_SIMPLE_CORE;
 
 static bool
 running(AcMesh* mesh)
@@ -350,15 +355,19 @@ check_input(const float& dt)
 }
 
 int
-run_renderer(void)
+run_renderer(const char* config_path)
 {
     /* Parse configs */
     AcMeshInfo mesh_info;
-    load_config(&mesh_info);
+    load_config(config_path, &mesh_info);
     renderer_init(mesh_info.int_params[AC_mx], mesh_info.int_params[AC_my]);
 
     AcMesh* mesh = acmesh_create(mesh_info);
     acmesh_init_to(InitType(init_type), mesh);
+
+#if LSINK
+    vertex_buffer_set(VTXBUF_ACCRETION, 0.0, mesh);
+#endif
 
     acInit(mesh_info);
     acLoad(*mesh);
@@ -376,6 +385,9 @@ run_renderer(void)
     int steps                      = 0;
     k_slice                        = mesh->info.int_params[AC_mz] / 2;
     k_slice_max                    = mesh->info.int_params[AC_mz];
+#if LSINK
+    AcReal accreted_mass = 0.0;
+#endif
     while (running(mesh)) {
 
         /* Input */
@@ -383,13 +395,25 @@ run_renderer(void)
         timer_reset(&io_timer);
 
 /* Step the simulation */
-#if 1
-        const AcReal umax = acReduceVec(RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
-        const AcReal dt   = host_timestep(umax, mesh_info);
+#if LSINK
+        const AcReal sum_mass = acReduceScal(RTYPE_SUM, VTXBUF_ACCRETION);
+        accreted_mass         = accreted_mass + sum_mass;
+        AcReal sink_mass      = mesh_info.real_params[AC_M_sink_init] + accreted_mass;
+        printf("sink mass is: %e \n", sink_mass);
+        printf("accreted mass is: %e \n", accreted_mass);
+        acLoadDeviceConstant(AC_M_sink, sink_mass);
+        vertex_buffer_set(VTXBUF_ACCRETION, 0.0, mesh);
+#endif
+
 #if LFORCING
         const ForcingParams forcing_params = generateForcingParams(mesh_info);
         loadForcingParamsToDevice(forcing_params);
 #endif
+
+#if 1
+        const AcReal umax = acReduceVec(RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+        const AcReal dt   = host_timestep(umax, mesh_info);
+
         acIntegrate(dt);
 #else
         ModelMesh* model_mesh = modelmesh_create(mesh->info);
@@ -432,7 +456,7 @@ run_renderer(void)
 #else // BUILD_RT_VISUALIZATION == 0
 #include "src/core/errchk.h"
 int
-run_renderer(void)
+run_renderer(const char* /*config_path*/)
 {
     WARNING("Real-time visualization module not built. Set BUILD_RT_VISUALIZATION=ON with cmake.");
     return 1;
