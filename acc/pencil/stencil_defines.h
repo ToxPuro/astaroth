@@ -42,16 +42,25 @@
  */
 // clang-format off
 #if LFORCING
+
 #define AC_FOR_USER_INT_PARAM_TYPES(FUNC)\
         FUNC(AC_iforcing_zsym), 
+
+#define AC_FORCING_USER_REAL_PARAM_TYPES(FUNC) \
+        FUNC(AC_k1_ff), \
+        FUNC(AC_fact), \
+        FUNC(AC_phase),
+
 #else
 #define AC_FOR_USER_INT_PARAM_TYPES(FUNC)
+#define AC_FORCING_USER_REAL_PARAM_TYPES(FUNC)
 #endif
 
 #define AC_FOR_USER_INT3_PARAM_TYPES(FUNC)
 
 #define AC_BASIC_USER_REAL_PARAM_TYPES(FUNC)\
         /* cparams */\
+        FUNC(AC_dt), \
         FUNC(AC_dsx), \
         FUNC(AC_dsy), \
         FUNC(AC_dsz), \
@@ -73,6 +82,9 @@
         FUNC(AC_star_pos_z),\
         FUNC(AC_M_star),
         /* Run params */
+
+#define AC_BASIC_USER_SCALARARRAY_HANDLES(FUNC)
+
 #if LVISCOSITY
 #define AC_VISCOSITY_USER_REAL_PARAM_TYPES(FUNC)\
         FUNC(AC_nu_visc), \
@@ -80,6 +92,7 @@
 #else
 #define AC_VISCOSITY_USER_REAL_PARAM_TYPES(FUNC)
 #endif
+#define AC_VISCOSITY_USER_SCALARARRAY_HANDLES(FUNC)
 
 #if LMAGNETIC
 #define AC_MAGNETIC_USER_REAL_PARAM_TYPES(FUNC)\
@@ -87,6 +100,7 @@
 #else
 #define AC_MAGNETIC_USER_REAL_PARAM_TYPES(FUNC)
 #endif
+#define AC_MAGNETIC_USER_SCALARARRAY_HANDLES(FUNC)
 
 #if LENTROPY
 #define AC_ENTROPY_USER_REAL_PARAM_TYPES(FUNC) \
@@ -94,6 +108,8 @@
 #else
 #define AC_ENTROPY_USER_REAL_PARAM_TYPES(FUNC)
 #endif
+#define AC_ENTROPY_USER_SCALARARRAY_HANDLES(FUNC)
+
 #define AC_EOS_USER_REAL_PARAM_TYPES(FUNC) \
         FUNC(AC_mu0), \
         FUNC(AC_cs_sound), \
@@ -104,6 +120,9 @@
         FUNC(AC_lnrho0), \
         /* Additional helper params */
         /* (deduced from other params do not set these directly!) */
+
+#define AC_EOS_USER_SCALARARRAY_HANDLES(FUNC)
+
 #define AC_HELPER_USER_REAL_PARAM_TYPES(FUNC) \
         FUNC(AC_G_CONST),\
         FUNC(AC_GM_star),\
@@ -112,25 +131,10 @@
         FUNC(AC_inv_dsx), \
         FUNC(AC_inv_dsy), \
         FUNC(AC_inv_dsz),
-#if LFORCING
-#define AC_FORCING_USER_REAL_PARAM_TYPES(FUNC) \
-        FUNC(AC_k1_ff), \
-        FUNC(AC_fact), \
-        FUNC(AC_forcing_phase),\
-        FUNC(AC_forcing_magnitude),\
-        FUNC(AC_k_forcex),\
-        FUNC(AC_k_forcey),\
-        FUNC(AC_k_forcez),\
-        FUNC(AC_kaver),\
-        FUNC(AC_ff_hel_rex),\
-        FUNC(AC_ff_hel_rey),\
-        FUNC(AC_ff_hel_rez),\
-        FUNC(AC_ff_hel_imx),\
-        FUNC(AC_ff_hel_imy),\
-        FUNC(AC_ff_hel_imz),
-#else
-#define AC_FORCING_USER_REAL_PARAM_TYPES(FUNC)
-#endif
+
+#define AC_HELPER_USER_SCALARARRAY_HANDLES(FUNC)
+
+#define AC_FOR_BUILTIN_REAL3_PARAM_TYPES(FUNC)
 
 #if LFORCING
 #define AC_FOR_USER_REAL3_PARAM_TYPES(FUNC) \
@@ -139,9 +143,19 @@
         FUNC(AC_coef3), \
         FUNC(AC_fda), \
         FUNC(AC_kk), 
+#define AC_FORCING_USER_SCALARARRAY_HANDLES(FUNC) \
+        FUNC(AC_profx_ampl), \
+        FUNC(AC_profy_ampl), \
+        FUNC(AC_profz_ampl), \
+        FUNC(AC_profx_hel), \
+        FUNC(AC_profy_hel), \
+        FUNC(AC_profz_hel),
 #else
 #define AC_FOR_USER_REAL3_PARAM_TYPES(FUNC) 
+#define AC_FORCING_USER_SCALARARRAY_HANDLES(FUNC)
 #endif
+
+#define AC_FOR_BUILTIN_REAL_PARAM_TYPES(FUNC)
 
 #define AC_FOR_USER_REAL_PARAM_TYPES(FUNC) \
         AC_BASIC_USER_REAL_PARAM_TYPES(FUNC) \
@@ -151,6 +165,15 @@
         AC_ENTROPY_USER_REAL_PARAM_TYPES(FUNC) \
         AC_MAGNETIC_USER_REAL_PARAM_TYPES(FUNC) \
         AC_FORCING_USER_REAL_PARAM_TYPES(FUNC)
+
+#define AC_FOR_SCALARARRAY_HANDLES(FUNC) \
+        AC_BASIC_USER_SCALARARRAY_HANDLES(FUNC) \
+        AC_HELPER_USER_SCALARARRAY_HANDLES(FUNC) \
+        AC_VISCOSITY_USER_SCALARARRAY_HANDLES(FUNC) \
+        AC_EOS_USER_SCALARARRAY_HANDLES(FUNC) \
+        AC_ENTROPY_USER_SCALARARRAY_HANDLES(FUNC) \
+        AC_MAGNETIC_USER_SCALARARRAY_HANDLES(FUNC) \
+        AC_FORCING_USER_SCALARARRAY_HANDLES(FUNC)
 
 // clang-format on
 

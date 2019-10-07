@@ -185,5 +185,5 @@ AcResult
 acGetNode(Node * node)
 {
     *node = nodes[0];
-    return (AcResult)1;   //ACSUCCESS;
+    return (AcResult) AC_SUCCESS;
 }

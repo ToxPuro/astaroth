@@ -198,7 +198,9 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     // Device constants
     acDeviceLoadMeshInfo(device, STREAM_DEFAULT, device_config);
 
+#if VERBOSE_PRINTING
     printf("Created device %d (%p)\n", device->id, device);
+#endif
     *device_handle = device;
 
 #if AUTO_OPTIMIZATION
@@ -214,8 +216,9 @@ AcResult
 acDeviceDestroy(Device device)
 {
     cudaSetDevice(device->id);
+#if VERBOSE_PRINTING
     printf("Destroying device %d (%p)\n", device->id, device);
-
+#endif
     // Memory
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         cudaFree(device->vba.in[i]);
@@ -462,7 +465,6 @@ acDeviceLoadScalarArray(const Device device, const Stream stream, const ScalarAr
     ERRCHK(start + num <= max(device->local_config.int_params[AC_mx],
                               max(device->local_config.int_params[AC_my],
                                   device->local_config.int_params[AC_mz])));
-
     ERRCHK_CUDA(cudaMemcpyAsync(&device->vba.profiles[handle][start], data, sizeof(data[0]) * num,
                                 cudaMemcpyHostToDevice, device->streams[stream]));
     return AC_SUCCESS;
