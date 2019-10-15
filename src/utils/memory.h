@@ -37,6 +37,10 @@ AcResult acMeshDestroy(AcMesh* mesh);
 
 AcResult acMeshSet(const AcReal value, AcMesh* mesh);
 
+AcResult acMeshRandomize(AcMesh* mesh);
+
+AcResult acMeshApplyPeriodicBounds(AcMesh* mesh);
+
 AcResult acMeshClear(AcMesh* mesh);
 
 #ifdef __cplusplus
