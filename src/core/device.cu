@@ -126,11 +126,16 @@ static __device__ inline acComplex operator*(const acComplex& a, const acComplex
 }
 //#include <complex>
 
+typedef void (*KernelFunction)(const int3, const int3, VertexBufferArray);
+typedef struct {
+    size_t id;
+    KernelFunction ptr;
+    dim3 tpb;
+} UserFunction;
+
 #include "kernels/boundconds.cuh"
 #include "kernels/integration.cuh"
 #include "kernels/reductions.cuh"
-
-static dim3 rk3_tpb(32, 1, 4);
 
 #if PACKED_DATA_TRANSFERS // Defined in device.cuh
 // #include "kernels/pack_unpack.cuh"
@@ -207,7 +212,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Autoptimize
     if (id == 0) {
-        acDeviceAutoOptimize(device);
+        acDeviceAutoOptimize(device); // Deprecated
     }
 
     return AC_SUCCESS;
@@ -310,85 +315,92 @@ acDeviceAutoOptimize(const Device device)
 {
     cudaSetDevice(device->id);
 
-    // RK3
-    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
-    const int3 end   = start + (int3){device->local_config.int_params[AC_nx], //
-                                    device->local_config.int_params[AC_ny], //
-                                    device->local_config.int_params[AC_nz]};
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
+    for (size_t i = 0; i < ARRAY_SIZE(user_functions); ++i) {
+        // RK3
+        const int3 start = (int3){NGHOST, NGHOST, NGHOST};
+        const int3 end   = start + (int3){device->local_config.int_params[AC_nx], //
+                                        device->local_config.int_params[AC_ny], //
+                                        device->local_config.int_params[AC_nz]};
 
-    dim3 best_dims(0, 0, 0);
-    float best_time          = INFINITY;
-    const int num_iterations = 10;
+        dim3 best_dims(0, 0, 0);
+        float best_time          = INFINITY;
+        const int num_iterations = 10;
 
-    for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) {
-        for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
-            for (int x = WARP_SIZE; x <= MAX_THREADS_PER_BLOCK; x += WARP_SIZE) {
+        for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) {
+            for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
+                for (int x = WARP_SIZE; x <= MAX_THREADS_PER_BLOCK; x += WARP_SIZE) {
 
-                if (x > end.x - start.x || y > end.y - start.y || z > end.z - start.z)
-                    break;
-                if (x * y * z > MAX_THREADS_PER_BLOCK)
-                    break;
+                    if (x > end.x - start.x || y > end.y - start.y || z > end.z - start.z)
+                        break;
+                    if (x * y * z > MAX_THREADS_PER_BLOCK)
+                        break;
 
-                if (x * y * z * REGISTERS_PER_THREAD > MAX_REGISTERS_PER_BLOCK)
-                    break;
+                    if (x * y * z * REGISTERS_PER_THREAD > MAX_REGISTERS_PER_BLOCK)
+                        break;
 
-                if (((x * y * z) % WARP_SIZE) != 0)
-                    continue;
+                    if (((x * y * z) % WARP_SIZE) != 0)
+                        continue;
 
-                const dim3 tpb(x, y, z);
-                const int3 n = end - start;
-                const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
-                               (unsigned int)ceil(n.y / AcReal(tpb.y)), //
-                               (unsigned int)ceil(n.z / AcReal(tpb.z)));
+                    const dim3 tpb(x, y, z);
+                    const int3 n = end - start;
+                    const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
+                                   (unsigned int)ceil(n.y / AcReal(tpb.y)), //
+                                   (unsigned int)ceil(n.z / AcReal(tpb.z)));
 
-                cudaDeviceSynchronize();
-                if (cudaGetLastError() != cudaSuccess) // resets the error if any
-                    continue;
+                    cudaDeviceSynchronize();
+                    if (cudaGetLastError() != cudaSuccess) // resets the error if any
+                        continue;
 
-                // printf("(%d, %d, %d)\n", x, y, z);
+                    // printf("(%d, %d, %d)\n", x, y, z);
 
-                cudaEvent_t tstart, tstop;
-                cudaEventCreate(&tstart);
-                cudaEventCreate(&tstop);
+                    cudaEvent_t tstart, tstop;
+                    cudaEventCreate(&tstart);
+                    cudaEventCreate(&tstop);
 
-                // #ifdef AC_dt
-                acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, FLT_EPSILON);
-                /*#else
-                                ERROR("FATAL ERROR: acDeviceAutoOptimize() or
-                acDeviceIntegrateSubstep() was " "called, but AC_dt was not defined. Either define
-                it or call the generated " "device function acDeviceKernel_<kernel name> which does
-                not require the " "timestep to be defined.\n"); #endif*/
+#if AC_dt >= 0
+                    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, FLT_EPSILON);
+#else
+                    ERROR(
+                        "FATAL ERROR: acDeviceAutoOptimize() or acDeviceIntegrateSubstep() was "
+                        "called, but AC_dt was not defined. Either define it or call the generated "
+                        "device function acDeviceKernel_<kernel name> which does not require the "
+                        "timestep to be defined.\n");
+#endif
+                    cudaEventRecord(
+                        tstart); // ---------------------------------------- Timing start
+                    for (int i = 0; i < num_iterations; ++i)
+                        solve2<<<bpg, tpb>>>(start, end, device->vba);
 
-                cudaEventRecord(tstart); // ---------------------------------------- Timing start
-                for (int i = 0; i < num_iterations; ++i)
-                    solve<2><<<bpg, tpb>>>(start, end, device->vba);
+                    cudaEventRecord(tstop); // ----------------------------------------- Timing end
+                    cudaEventSynchronize(tstop);
+                    float milliseconds = 0;
+                    cudaEventElapsedTime(&milliseconds, tstart, tstop);
 
-                cudaEventRecord(tstop); // ----------------------------------------- Timing end
-                cudaEventSynchronize(tstop);
-                float milliseconds = 0;
-                cudaEventElapsedTime(&milliseconds, tstart, tstop);
-
-                ERRCHK_CUDA_KERNEL_ALWAYS();
-                if (milliseconds < best_time) {
-                    best_time = milliseconds;
-                    best_dims = tpb;
+                    ERRCHK_CUDA_KERNEL_ALWAYS();
+                    if (milliseconds < best_time) {
+                        best_time = milliseconds;
+                        best_dims = tpb;
+                    }
                 }
             }
         }
-    }
 #if VERBOSE_PRINTING
-    printf(
-        "Auto-optimization done. The best threadblock dimensions for rkStep: (%d, %d, %d) %f ms\n",
-        best_dims.x, best_dims.y, best_dims.z, double(best_time) / num_iterations);
+        printf(
+            "Auto-optimization done. The best threadblock dimensions for user function %lu: (%d, "
+            "%d, %d) "
+            "%f ms\n",
+            i, best_dims.x, best_dims.y, best_dims.z, double(best_time) / num_iterations);
 #endif
-    /*
-    FILE* fp = fopen("../config/rk3_tbdims.cuh", "w");
-    ERRCHK(fp);
-    fprintf(fp, "%d, %d, %d\n", best_dims.x, best_dims.y, best_dims.z);
-    fclose(fp);
-    */
+        /*
+        FILE* fp = fopen("../config/rk3_tbdims.cuh", "w");
+        ERRCHK(fp);
+        fprintf(fp, "%d, %d, %d\n", best_dims.x, best_dims.y, best_dims.z);
+        fclose(fp);
+        */
 
-    rk3_tpb = best_dims;
+        user_functions[i].tpb = best_dims; // TODO
+    }
     return AC_SUCCESS;
 }
 
@@ -665,28 +677,30 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
 {
     cudaSetDevice(device->id);
 
-    const dim3 tpb = rk3_tpb;
+    ERRCHK_ALWAYS(ARRAY_SIZE(user_functions) >= (size_t)step_number);
+    const dim3 tpb = user_functions[step_number].tpb;
 
     const int3 n = end - start;
     const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
                    (unsigned int)ceil(n.y / AcReal(tpb.y)), //
                    (unsigned int)ceil(n.z / AcReal(tpb.z)));
 
-    //#ifdef AC_dt
+#if AC_dt >= 0
     acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
-    /*#else
-        (void)dt;
-        ERROR("FATAL ERROR: acDeviceAutoOptimize() or acDeviceIntegrateSubstep() was "
-              "called, but AC_dt was not defined. Either define it or call the generated "
-              "device function acDeviceKernel_<kernel name> which does not require the "
-              "timestep to be defined.\n");
-    #endif*/
     if (step_number == 0)
-        solve<0><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
+        solve0<<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
     else if (step_number == 1)
-        solve<1><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
+        solve1<<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
     else
-        solve<2><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
+        solve2<<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
+#else
+    (void)dt;
+    (void)stream;
+    ERROR("FATAL ERROR: acDeviceAutoOptimize() or acDeviceIntegrateSubstep() was "
+          "called, but AC_dt was not defined. Either define it or call the generated "
+          "device function acDeviceKernel_<kernel name> which does not require the "
+          "timestep to be defined.\n");
+#endif
 
     ERRCHK_CUDA_KERNEL();
 

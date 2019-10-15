@@ -52,45 +52,6 @@ IDX(const int3 idx)
 #define make_int3(a, b, c)                                                                         \
     (int3) { (int)a, (int)b, (int)c }
 
-template <int step_number>
-static __device__ __forceinline__ AcReal
-rk3_integrate(const AcReal state_previous, const AcReal state_current, const AcReal rate_of_change,
-              const AcReal dt)
-{
-    // Williamson (1980)
-    const AcReal alpha[] = {0, AcReal(.0), AcReal(-5. / 9.), AcReal(-153. / 128.)};
-    const AcReal beta[]  = {0, AcReal(1. / 3.), AcReal(15. / 16.), AcReal(8. / 15.)};
-
-    // Note the indexing: +1 to avoid an unnecessary warning about "out-of-bounds"
-    // access (when accessing beta[step_number-1] even when step_number >= 1)
-    switch (step_number) {
-    case 0:
-        return state_current + beta[step_number + 1] * rate_of_change * dt;
-    case 1: // Fallthrough
-    case 2:
-        return state_current +
-               beta[step_number + 1] * (alpha[step_number + 1] * (AcReal(1.) / beta[step_number]) *
-                                            (state_current - state_previous) +
-                                        rate_of_change * dt);
-    default:
-        return NAN;
-    }
-}
-
-template <int step_number>
-static __device__ __forceinline__ AcReal3
-rk3_integrate(const AcReal3 state_previous, const AcReal3 state_current,
-              const AcReal3 rate_of_change, const AcReal dt)
-{
-    return (AcReal3){
-        rk3_integrate<step_number>(state_previous.x, state_current.x, rate_of_change.x, dt),
-        rk3_integrate<step_number>(state_previous.y, state_current.y, rate_of_change.y, dt),
-        rk3_integrate<step_number>(state_previous.z, state_current.z, rate_of_change.z, dt)};
-}
-
-#define rk3(state_previous, state_current, rate_of_change, dt)                                     \
-    rk3_integrate<step_number>(state_previous, value(state_current), rate_of_change, dt)
-
 static __device__ void
 write(AcReal* __restrict__ out[], const int handle, const int idx, const AcReal value)
 {
@@ -136,11 +97,11 @@ read_out(const int idx, AcReal* __restrict__ field[], const int3 handle)
     if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z)                      \
         return;                                                                                    \
                                                                                                    \
-    assert(vertexIdx.x < DCONST_INT(AC_nx_max) && vertexIdx.y < DCONST_INT(AC_ny_max) &&           \
-           vertexIdx.z < DCONST_INT(AC_nz_max));                                                   \
+    assert(vertexIdx.x < DCONST(AC_nx_max) && vertexIdx.y < DCONST(AC_ny_max) &&                   \
+           vertexIdx.z < DCONST(AC_nz_max));                                                       \
                                                                                                    \
-    assert(vertexIdx.x >= DCONST_INT(AC_nx_min) && vertexIdx.y >= DCONST_INT(AC_ny_min) &&         \
-           vertexIdx.z >= DCONST_INT(AC_nz_min));                                                  \
+    assert(vertexIdx.x >= DCONST(AC_nx_min) && vertexIdx.y >= DCONST(AC_ny_min) &&                 \
+           vertexIdx.z >= DCONST(AC_nz_min));                                                      \
                                                                                                    \
     const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);
 

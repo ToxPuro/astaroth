@@ -354,3 +354,40 @@ normalized(const Vector vec)
     const Scalar inv_len = reciprocal_len(vec);
     return inv_len * vec;
 }
+
+Device Scalar
+rk3_integrate(const int step_number, const Scalar state_previous, const Scalar state_current,
+              const Scalar rate_of_change, const Scalar dt)
+{
+    // Williamson (1980)
+    const Scalar alpha[] = {0, 0.0, -5.0 / 9.0, -153.0 / 128.0};
+    const Scalar beta[]  = {0, 1.0 / 3.0, 15.0 / 16.0, 8.0 / 15.0};
+
+    if (step_number == 0) {
+        return state_current + beta[step_number + 1] * rate_of_change * dt;
+    }
+    else if (step_number == 1 || step_number == 2) {
+        // Note the indexing: +1 to avoid an unnecessary warning about "out-of-bounds"
+        // access (when accessing beta[step_number-1] even when step_number >= 1)
+        return state_current +
+               beta[step_number + 1] * (alpha[step_number + 1] * (1.0 / beta[step_number]) *
+                                            (state_current - state_previous) +
+                                        rate_of_change * dt);
+    }
+    else {
+        return NAN;
+    }
+}
+
+Device Vector
+rk3_integrate(const int step_number, const Vector state_previous, const Vector state_current,
+              const Vector rate_of_change, const Scalar dt)
+{
+    return (Vector){
+        rk3_integrate(step_number, state_previous.x, state_current.x, rate_of_change.x, dt),
+        rk3_integrate(step_number, state_previous.y, state_current.y, rate_of_change.y, dt),
+        rk3_integrate(step_number, state_previous.z, state_current.z, rate_of_change.z, dt)};
+}
+
+#define rk3(step_number, state_previous, state_current, rate_of_change, dt)                        \
+    rk3_integrate(step_number, state_previous, value(state_current), rate_of_change, dt)

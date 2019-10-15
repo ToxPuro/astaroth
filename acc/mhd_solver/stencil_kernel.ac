@@ -654,37 +654,115 @@ in ScalarField accretion(VTXBUF_ACCRETION);
 out ScalarField out_accretion(VTXBUF_ACCRETION);
 #endif
 
+#undef STEP_NUMBER
+#define STEP_NUMBER (0)
 Kernel void
-solve()
+solve0()
 {
     Scalar dt = AC_dt;
-    out_lnrho = rk3(out_lnrho, lnrho, continuity(globalVertexIdx, uu, lnrho, dt), dt);
+    out_lnrho = rk3(STEP_NUMBER, out_lnrho, lnrho, continuity(globalVertexIdx, uu, lnrho, dt), dt);
 
 #if LMAGNETIC
-    out_aa = rk3(out_aa, aa, induction(uu, aa), dt);
+    out_aa = rk3(STEP_NUMBER, out_aa, aa, induction(uu, aa), dt);
 #endif
 
 #if LENTROPY
-    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, ss, aa, dt), dt);
-    out_ss = rk3(out_ss, ss, entropy(ss, uu, lnrho, aa), dt);
+    out_uu = rk3(STEP_NUMBER, out_uu, uu, momentum(globalVertexIdx, uu, lnrho, ss, aa, dt), dt);
+    out_ss = rk3(STEP_NUMBER, out_ss, ss, entropy(ss, uu, lnrho, aa), dt);
 #elif LTEMPERATURE
-    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, tt, dt), dt);
-    out_tt = rk3(out_tt, tt, heat_transfer(uu, lnrho, tt), dt);
+    out_uu = rk3(STEP_NUMBER, out_uu, uu, momentum(globalVertexIdx, uu, lnrho, tt, dt), dt);
+    out_tt = rk3(STEP_NUMBER, out_tt, tt, heat_transfer(uu, lnrho, tt), dt);
 #else
-    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, dt), dt);
+    out_uu = rk3(STEP_NUMBER, out_uu, uu, momentum(globalVertexIdx, uu, lnrho, dt), dt);
 #endif
 
 #if LFORCING
-    if (step_number == 2) {
+    if (STEP_NUMBER == 2) {
         out_uu = out_uu + forcing(globalVertexIdx, dt);
     }
 #endif
 
 #if LSINK
-    out_accretion = rk3(out_accretion, accretion, sink_accretion(globalVertexIdx, lnrho, dt),
+    out_accretion = rk3(STEP_NUMBER, out_accretion, accretion, sink_accretion(globalVertexIdx, lnrho, dt),
                         dt); // unit now is rho!
 
-    if (step_number == 2) {
+    if (STEP_NUMBER == 2) {
+        out_accretion = out_accretion * AC_dsx * AC_dsy * AC_dsz; // unit is now mass!
+    }
+#endif
+}
+
+#undef STEP_NUMBER
+#define STEP_NUMBER (1)
+Kernel void
+solve1()
+{
+    Scalar dt = AC_dt;
+    out_lnrho = rk3(STEP_NUMBER, out_lnrho, lnrho, continuity(globalVertexIdx, uu, lnrho, dt), dt);
+
+#if LMAGNETIC
+    out_aa = rk3(STEP_NUMBER, out_aa, aa, induction(uu, aa), dt);
+#endif
+
+#if LENTROPY
+    out_uu = rk3(STEP_NUMBER, out_uu, uu, momentum(globalVertexIdx, uu, lnrho, ss, aa, dt), dt);
+    out_ss = rk3(STEP_NUMBER, out_ss, ss, entropy(ss, uu, lnrho, aa), dt);
+#elif LTEMPERATURE
+    out_uu = rk3(STEP_NUMBER, out_uu, uu, momentum(globalVertexIdx, uu, lnrho, tt, dt), dt);
+    out_tt = rk3(STEP_NUMBER, out_tt, tt, heat_transfer(uu, lnrho, tt), dt);
+#else
+    out_uu = rk3(STEP_NUMBER, out_uu, uu, momentum(globalVertexIdx, uu, lnrho, dt), dt);
+#endif
+
+#if LFORCING
+    if (STEP_NUMBER == 2) {
+        out_uu = out_uu + forcing(globalVertexIdx, dt);
+    }
+#endif
+
+#if LSINK
+    out_accretion = rk3(STEP_NUMBER, out_accretion, accretion, sink_accretion(globalVertexIdx, lnrho, dt),
+                        dt); // unit now is rho!
+
+    if (STEP_NUMBER == 2) {
+        out_accretion = out_accretion * AC_dsx * AC_dsy * AC_dsz; // unit is now mass!
+    }
+#endif
+}
+
+#undef STEP_NUMBER
+#define STEP_NUMBER (2)
+Kernel void
+solve2()
+{
+    Scalar dt = AC_dt;
+    out_lnrho = rk3(STEP_NUMBER, out_lnrho, lnrho, continuity(globalVertexIdx, uu, lnrho, dt), dt);
+
+#if LMAGNETIC
+    out_aa = rk3(STEP_NUMBER, out_aa, aa, induction(uu, aa), dt);
+#endif
+
+#if LENTROPY
+    out_uu = rk3(STEP_NUMBER, out_uu, uu, momentum(globalVertexIdx, uu, lnrho, ss, aa, dt), dt);
+    out_ss = rk3(STEP_NUMBER, out_ss, ss, entropy(ss, uu, lnrho, aa), dt);
+#elif LTEMPERATURE
+    out_uu = rk3(STEP_NUMBER, out_uu, uu, momentum(globalVertexIdx, uu, lnrho, tt, dt), dt);
+    out_tt = rk3(STEP_NUMBER, out_tt, tt, heat_transfer(uu, lnrho, tt), dt);
+#else
+    out_uu = rk3(STEP_NUMBER, out_uu, uu, momentum(globalVertexIdx, uu, lnrho, dt), dt);
+#endif
+
+#if LFORCING
+    if (STEP_NUMBER == 2) {
+        out_uu = out_uu + forcing(globalVertexIdx, dt);
+    }
+#endif
+
+#if LSINK
+    out_accretion = rk3(STEP_NUMBER, out_accretion, accretion, sink_accretion(globalVertexIdx, lnrho, dt),
+                        dt); // unit now is rho!
+
+    if (STEP_NUMBER == 2) {
         out_accretion = out_accretion * AC_dsx * AC_dsy * AC_dsz; // unit is now mass!
     }
 #endif

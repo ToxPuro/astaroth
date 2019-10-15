@@ -68,7 +68,7 @@ static const char* translation_table[TRANSLATION_TABLE_SIZE] = {
     [SCALARARRAY] = "const AcReal* __restrict__",
     [COMPLEX]     = "acComplex",
     // Type qualifiers
-    [KERNEL]       = "template <int step_number>  static __global__",
+    [KERNEL]       = "static __global__",
     [DEVICE]       = "static __device__ __forceinline__",
     [PREPROCESSED] = "static __device__ __forceinline__",
     [CONSTANT]     = "const",
@@ -636,11 +636,56 @@ generate_header(void)
 static void
 generate_library_hooks(void)
 {
+    fprintf(CUDAHEADER, "extern UserFunction user_functions[];\n");
+
+    // UserFunction enum
+    fprintf(CUDAHEADER, "typedef enum {\n");
     for (int i = 0; i < num_symbols[current_nest]; ++i) {
         if (symbol_table[i].type_qualifier == KERNEL) {
-            fprintf(CUDAHEADER, "GEN_DEVICE_FUNC_HOOK(%s)\n", symbol_table[i].identifier);
+            fprintf(CUDAHEADER, "\tUSERFUNC_%s,\n", symbol_table[i].identifier);
         }
     }
+    fprintf(CUDAHEADER, "\tNUM_USERFUNCS\n} UserFuncId;\n");
+
+    // User function definitions
+    for (int i = 0; i < num_symbols[current_nest]; ++i) {
+        if (symbol_table[i].type_qualifier == KERNEL) {
+            fprintf(CUDAHEADER,
+                    "AcResult acDeviceKernel_%s(const Device device, const Stream stream, "
+                    "const int3 start, const int3 end)\n",
+                    symbol_table[i].identifier);
+            fprintf(
+                CUDAHEADER,
+                "{  cudaSetDevice(device->id);                                                                 \
+                                                                                                                   \
+                        const dim3 tpb = user_functions[USERFUNC_%s].tpb;                                              \
+                                                                                                                   \
+                        const int3 n = end - start;                                                                \
+                        const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)),                                    \
+                                       (unsigned int)ceil(n.y / AcReal(tpb.y)),                                    \
+                                       (unsigned int)ceil(n.z / AcReal(tpb.z)));                                   \
+                                                                                                                   \
+                        %s<<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);                   \
+                        ERRCHK_CUDA_KERNEL();                                                                      \
+                                                                                                                   \
+                        return AC_SUCCESS;   }",
+                symbol_table[i].identifier, symbol_table[i].identifier);
+        }
+    }
+
+    // UserFunction array
+    fprintf(CUDAHEADER, "UserFunction user_functions[] = {\n");
+    for (int i = 0; i < num_symbols[current_nest]; ++i) {
+        if (symbol_table[i].type_qualifier == KERNEL) {
+            fprintf(CUDAHEADER, "\t(UserFunction){USERFUNC_%s, %s, (dim3){32, 1, 4}},\n",
+                    symbol_table[i].identifier, symbol_table[i].identifier);
+        }
+    }
+    fprintf(CUDAHEADER, "};\n");
+
+    // HACK
+    if (!symboltable_lookup("AC_dt"))
+        fprintf(CUDAHEADER, "#define AC_dt (-1) // Was not defined by the user\n");
 }
 
 int
@@ -656,6 +701,7 @@ main(int argc, char** argv)
 
     DSLHEADER  = fopen(dslheader_filename, "w+");
     CUDAHEADER = fopen(cudaheader_filename, "w+");
+
     assert(DSLHEADER);
     assert(CUDAHEADER);
 
@@ -694,5 +740,6 @@ main(int argc, char** argv)
 
     fprintf(stdout, "-- Generated %s\n", dslheader_filename);
     fprintf(stdout, "-- Generated %s\n", cudaheader_filename);
+
     return EXIT_SUCCESS;
 }
