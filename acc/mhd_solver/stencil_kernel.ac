@@ -358,7 +358,6 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
     const Vector j   = (1.0 / AC_mu0) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
     const Vector B = curl(aa);
-    // TODO: DOES INTHERMAL VERSTION INCLUDE THE MAGNETIC FIELD?
     const Scalar inv_rho = 1.0 / exp(value(lnrho));
 
     // Regex replace CPU constants with get\(AC_([a-zA-Z_0-9]*)\)
@@ -418,10 +417,21 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar d
 
     // Isothermal: we have constant speed of sound
 
+#if LMAGNETIC
+    // Magnetic forces
+    const Vector j   = (1.0 / AC_mu0) *
+                     (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
+    const Vector B = curl(aa);
+    const Scalar inv_rho = 1.0 / exp(value(lnrho));
+#endif
+
     mom = -mul(gradients(uu), value(uu)) - AC_cs2_sound * gradient(lnrho) +
           AC_nu_visc * (laplace_vec(uu) + (1.0 / 3.0) * gradient_of_divergence(uu) +
                         2.0 * mul(S, gradient(lnrho))) +
           AC_zeta * gradient_of_divergence(uu)
+#if LMAGNETIC
+          + inv_rho * cross(j, B) 
+#endif
 #if LSINK
           + sink_gravity(globalVertexIdx)
           // Corresponding loss of momentum
@@ -671,6 +681,7 @@ solve()
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, tt, dt), dt);
     out_tt = rk3(out_tt, tt, heat_transfer(uu, lnrho, tt), dt);
 #else
+    // TODO: figure out how to call in a convenient way with or without B-field
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, dt), dt);
 #endif
 
