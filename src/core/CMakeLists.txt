@@ -7,11 +7,11 @@ find_package(CUDA REQUIRED)
 # find_package(OpenMP REQUIRED)
 
 ## Architecture and optimization flags
-set(CUDA_ARCH_FLAGS -gencode arch=compute_37,code=sm_37
-                    -gencode arch=compute_50,code=sm_50
+set(CUDA_ARCH_FLAGS #-gencode arch=compute_37,code=sm_37
+                    #-gencode arch=compute_50,code=sm_50
                     -gencode arch=compute_60,code=sm_60
-                    -gencode arch=compute_61,code=sm_61
-                    -gencode arch=compute_70,code=sm_70
+                    #-gencode arch=compute_61,code=sm_61
+                    #-gencode arch=compute_70,code=sm_70
                     -lineinfo
                     -ftz=true # Flush denormalized floats to zero
                     -std=c++11
@@ -20,17 +20,17 @@ set(CUDA_ARCH_FLAGS -gencode arch=compute_37,code=sm_37
                     # -Xptxas -dlcm=ca opt-in to cache all global loads to L1/texture cache
                     # =cg to opt out
 
-set(CUDA_WARNING_FLAGS --compiler-options -Wall,-Wextra,-Werror,-Wdouble-promotion,-Wfloat-conversion) # -Wshadow
+#set(CUDA_WARNING_FLAGS --compiler-options -Wall,-Wextra,-Werror,-Wdouble-promotion,-Wfloat-conversion) # -Wshadow
 
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${CUDA_ARCH_FLAGS} ${CUDA_WARNING_FLAGS})
 set(CUDA_NVCC_FLAGS_RELEASE)
 set(CUDA_NVCC_FLAGS_DEBUG --device-debug --generate-line-info --ptxas-options=-v)
 
 if (MPI_ENABLED)
-    find_package(MPI REQUIRED)
+    #find_package(MPI REQUIRED)
 
     add_definitions(-DAC_MPI_ENABLED=1)
-    cuda_include_directories(${MPI_C_INCLUDE_PATH})
+    #cuda_include_directories(${MPI_C_INCLUDE_PATH})
 
     add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf") # Hack, cmake doesnt propagate properly from utils. Probably because utils is compiled after core
 endif ()
@@ -48,5 +48,6 @@ if (MULTIGPU_ENABLED)
 endif ()
 
 if (MPI_ENABLED)
-    target_link_libraries(astaroth_core ${MPI_C_LIBRARIES} astaroth_utils)
+    #target_link_libraries(astaroth_core ${MPI_C_LIBRARIES} astaroth_utils)
+    target_link_libraries(astaroth_core astaroth_utils)
 endif ()

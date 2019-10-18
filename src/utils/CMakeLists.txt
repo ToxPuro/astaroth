@@ -3,7 +3,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 ## Compilation flags
-add_compile_options(-Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow)
+#add_compile_options(-Wall -Wextra -Werror -Wdouble-promotion -Wshadow)
 
 ## Compile
 add_library(astaroth_utils STATIC config_loader.c memory.c verification.c)
