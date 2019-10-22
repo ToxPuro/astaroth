@@ -784,7 +784,7 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
 
 // Needs mx * my * NGHOST * NUM_VTXBUF_HANDLES threads
 static __global__ void
-pack_data(VertexBufferArray vba, const int3 start, AcReal* buffer)
+pack_data(const VertexBufferArray vba, const int3 src, AcReal* __restrict__ buffer)
 {
     const int3 m = (int3){
         DCONST(AC_mx),
@@ -797,7 +797,7 @@ pack_data(VertexBufferArray vba, const int3 start, AcReal* buffer)
     if (vertexIdx >= m.x * m.y * NGHOST * NUM_VTXBUF_HANDLES)
         return;
 
-    const int vba_idx    = DEVICE_VTXBUF_IDX(start) + (vertexIdx % blockSize);
+    const int vba_idx    = IDX(src) + (vertexIdx % block_size);
     const int vba_handle = vertexIdx / block_size;
 
     const int buf_idx = vertexIdx;
@@ -806,7 +806,7 @@ pack_data(VertexBufferArray vba, const int3 start, AcReal* buffer)
 }
 
 static __global__ void
-unpack_data(VertexBufferArray vba, const int3 start, AcReal* buffer)
+unpack_data(const AcReal* __restrict__ buffer, VertexBufferArray vba, const int3 dst)
 {
     const int3 m = (int3){
         DCONST(AC_mx),
@@ -819,7 +819,7 @@ unpack_data(VertexBufferArray vba, const int3 start, AcReal* buffer)
     if (vertexIdx >= m.x * m.y * NGHOST * NUM_VTXBUF_HANDLES)
         return;
 
-    const int vba_idx    = DEVICE_VTXBUF_IDX(start) + (vertexIdx % blockSize);
+    const int vba_idx    = IDX(dst) + (vertexIdx % block_size);
     const int vba_handle = vertexIdx / block_size;
 
     const int buf_idx = vertexIdx;
@@ -1226,9 +1226,9 @@ acHostCommunicateHalosMPI(AcMesh* submesh)
 static AcResult
 acDeviceBoundcondStepMPI_ok_working(const Device device, AcMesh* submesh)
 {
-    const size_t mx    = device->local_config.int_params[AC_mx];
-    const size_t my    = device->local_config.int_params[AC_my];
-    const size_t mz    = device->local_config.int_params[AC_mz];
+    const int mx       = device->local_config.int_params[AC_mx];
+    const int my       = device->local_config.int_params[AC_my];
+    const int mz       = device->local_config.int_params[AC_mz];
     const size_t count = mx * my * NGHOST;
 
     // MPI Irecv
@@ -1335,9 +1335,9 @@ acDeviceBoundcondStepMPI_ok_working(const Device device, AcMesh* submesh)
 static AcResult
 acDeviceBoundcondStepMPI_best_yet(const Device device, AcMesh* submesh)
 {
-    const size_t mx    = device->local_config.int_params[AC_mx];
-    const size_t my    = device->local_config.int_params[AC_my];
-    const size_t mz    = device->local_config.int_params[AC_mz];
+    const int mx       = device->local_config.int_params[AC_mx];
+    const int my       = device->local_config.int_params[AC_my];
+    const int mz       = device->local_config.int_params[AC_mz];
     const size_t count = mx * my * NGHOST;
 
     // MPI Irecv
@@ -1402,7 +1402,7 @@ acDeviceBoundcondStepMPI_best_yet(const Device device, AcMesh* submesh)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         // Front plate GPU->CPU
         const int3 start = (int3){0, 0, NGHOST};
-        const int3 end   = (int3){mx, my, 2 * NGHOST};
+        // const int3 end   = (int3){mx, my, 2 * NGHOST};
         acDeviceStoreVertexBufferWithOffset(device, (Stream)i, (VertexBufferHandle)i, start, start,
                                             count, submesh);
         // MPI Isend
@@ -1424,7 +1424,7 @@ acDeviceBoundcondStepMPI_best_yet(const Device device, AcMesh* submesh)
         // Back plate GPU->CPU
 
         const int3 start = (int3){0, 0, mz - 2 * NGHOST};
-        const int3 end   = (int3){mx, my, mz - NGHOST};
+        // const int3 end   = (int3){mx, my, mz - NGHOST};
         acDeviceStoreVertexBufferWithOffset(device, (Stream)i, (VertexBufferHandle)i, start, start,
                                             count, submesh);
         acDeviceSynchronizeStream(device, (Stream)i);
@@ -1515,9 +1515,9 @@ acDeviceBoundcondStepMPI(const Device device, AcMesh* submesh)
     acDeviceSynchronizeStream(device, STREAM_ALL);
     MPI_Barrier(MPI_COMM_WORLD);
 
-    const size_t mx    = device->local_config.int_params[AC_mx];
-    const size_t my    = device->local_config.int_params[AC_my];
-    const size_t mz    = device->local_config.int_params[AC_mz];
+    const int mx       = device->local_config.int_params[AC_mx];
+    const int my       = device->local_config.int_params[AC_my];
+    const int mz       = device->local_config.int_params[AC_mz];
     const size_t count = mx * my * NGHOST;
 
     // MPI Irecv
@@ -1556,7 +1556,7 @@ acDeviceBoundcondStepMPI(const Device device, AcMesh* submesh)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         // Front plate GPU->CPU
         const int3 start = (int3){0, 0, NGHOST};
-        const int3 end   = (int3){mx, my, 2 * NGHOST};
+        // const int3 end   = (int3){mx, my, 2 * NGHOST};
         acDeviceStoreVertexBufferWithOffset(device, (Stream)i, (VertexBufferHandle)i, start, start,
                                             count, submesh);
         // MPI Isend
@@ -1578,7 +1578,7 @@ acDeviceBoundcondStepMPI(const Device device, AcMesh* submesh)
         // Back plate GPU->CPU
 
         const int3 start = (int3){0, 0, mz - 2 * NGHOST};
-        const int3 end   = (int3){mx, my, mz - NGHOST};
+        // const int3 end   = (int3){mx, my, mz - NGHOST};
         acDeviceStoreVertexBufferWithOffset(device, (Stream)i, (VertexBufferHandle)i, start, start,
                                             count, submesh);
         acDeviceSynchronizeStream(device, (Stream)i);
@@ -1661,36 +1661,21 @@ acDeviceRunMPITest(void)
     MPI_Get_processor_name(processor_name, &name_len);
     printf("Processor %s. Process %d of %d.\n", processor_name, pid, num_processes);
 
-    // Check MPI support
-    //// Borrowing start (from OpenMPI examples)
-#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-    printf("This MPI library has CUDA-aware support.\n", MPIX_CUDA_AWARE_SUPPORT);
-#elif defined(MPIX_CUDA_AWARE_SUPPORT) && !MPIX_CUDA_AWARE_SUPPORT
-    printf("This MPI library does not have CUDA-aware support.\n");
+#ifdef MPIX_CUDA_AWARE_SUPPORT
+    if (MPIX_Query_cuda_support())
+        printf("CUDA-aware MPI supported (MPIX)\n");
+    else
+        WARNING("CUDA-aware MPI not supported with this MPI library (MPIX)\n");
 #else
-    printf("This MPI library cannot determine if there is CUDA-aware support.\n");
-#endif /* MPIX_CUDA_AWARE_SUPPORT */
+    printf("MPIX_CUDA_AWARE_SUPPORT was not defined. Do not know wheter CUDA-aware MPI is "
+           "supported\n");
+#endif
 
-    printf("Run time check:\n");
-#if defined(MPIX_CUDA_AWARE_SUPPORT)
-    if (1 == MPIX_Query_cuda_support()) {
-        printf("This MPI library has CUDA-aware support.\n");
-    }
-    else {
-        printf("This MPI library does not have CUDA-aware support.\n");
-    }
-#else  /* !defined(MPIX_CUDA_AWARE_SUPPORT) */
-    printf("This MPI library cannot determine if there is CUDA-aware support.\n");
-#endif /* MPIX_CUDA_AWARE_SUPPORT */
-    //////// Borrowing end
+    if (getenv("MPICH_RDMA_ENABLED_CUDA") && atoi(getenv("MPICH_RDMA_ENABLED_CUDA")))
+        printf("CUDA-aware MPI supported (MPICH)\n");
+    else
+        WARNING("MPICH not used or this MPI library does not support CUDA-aware MPI\n");
 
-    int direct = getenv("MPICH_RDMA_ENABLED_CUDA") == NULL
-                     ? 0
-                     : atoi(getenv("MPICH_RDMA_ENABLED_CUDA"));
-    if (direct != 1) {
-        printf("MPICH_RDMA_ENABLED_CUDA not enabled!\n");
-        exit(EXIT_FAILURE);
-    }
     // Create model and candidate meshes
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
@@ -1725,13 +1710,6 @@ acDeviceRunMPITest(void)
     submesh_info.int3_params[AC_multigpu_offset] = (int3){0, 0, pid * submesh_nz};
     acUpdateConfig(&submesh_info);
 
-    // Helper dims
-    const int3 subgrid_m = (int3){
-        submesh_info.int_params[AC_mx],
-        submesh_info.int_params[AC_my],
-        submesh_info.int_params[AC_mz],
-    };
-
     // Create submesh
     AcMesh submesh;
     acMeshCreate(submesh_info, &submesh);
@@ -1763,6 +1741,14 @@ acDeviceRunMPITest(void)
         printf("Time per step: %f ms\n", ms_elapsed / num_iters);
     }
     ////////////////////////////// Timer end
+    const cudaStream_t default_stream = device->streams[STREAM_DEFAULT];
+    const int block_size = submesh_info.int_params[AC_mx] * submesh_info.int_params[AC_my] * NGHOST;
+    const dim3 tpb(256, 1, 1);
+    const dim3 bpg((uint)ceil((block_size * NUM_VTXBUF_HANDLES) / (float)tpb.x), 1, 1);
+    const int3 src = (int3){0, 0, 0}; // TODO
+    const int3 dst = (int3){0, 0, 0}; // TODO
+    pack_data<<<bpg, tpb, 0, default_stream>>>(device->vba, src, device->inner[0]);
+    unpack_data<<<bpg, tpb, 0, default_stream>>>(device->inner[0], device->vba, dst);
 
     acDeviceStoreMesh(device, STREAM_DEFAULT, &submesh);
     acDeviceDestroy(device);
