@@ -464,7 +464,7 @@ acNodeLoadVectorConstant(const Node node, const Stream stream, const AcReal3Para
     acNodeSynchronizeStream(node, stream);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
-        acDeviceLoadVectorConstant(node->devices[i], stream, param, value);
+        acDeviceLoadVectorUniform(node->devices[i], stream, param, value);
     }
     return AC_SUCCESS;
 }
