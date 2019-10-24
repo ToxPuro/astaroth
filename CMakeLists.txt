@@ -42,10 +42,14 @@ add_subdirectory(acc)
 # build directory!
 # NO! ../acc/mhd_solver
 # YES! acc/mhd_solver
-
-if (NOT DEFINED DSL_MODULE_DIR)
+set(DSL_MODULE $ENV{DSL_MODULE})
+if (DEFINED DSL_MODULE)
+    set(DSL_MODULE_DIR ${CMAKE_SOURCE_DIR}/acc/${DSL_MODULE})
+else ()
+#if (NOT DEFINED DSL_MODULE_DIR)
     set(DSL_MODULE_DIR ${CMAKE_SOURCE_DIR}/acc/mhd_solver)
 endif ()
+
 get_filename_component(DSL_MODULE_DIR ${DSL_MODULE_DIR} REALPATH)
 message(STATUS "DSL module dir: ${DSL_MODULE_DIR}")
 set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
