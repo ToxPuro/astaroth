@@ -190,8 +190,9 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
         cudaMalloc(&device->reduce_scratchpad, acVertexBufferCompdomainSizeBytes(device_config)));
     ERRCHK_CUDA_ALWAYS(cudaMalloc(&device->reduce_result, sizeof(AcReal)));
 
+// Allocate any data buffer required for packed transfers here (cudaMalloc)
 #if PACKED_DATA_TRANSFERS
-// Allocate data required for packed transfers here (cudaMalloc)
+// Buffer for packed transfer of YZ plates.
     cudaMalloc(&device->yz_plate_buffer, device->local_config.int_params[AC_yz_plate_bufsize]*sizeof(AcReal));
 #endif
 
@@ -750,4 +751,29 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
 
 #if PACKED_DATA_TRANSFERS
 // Functions for calling packed data transfers
+AcResult
+acDeviceLoadYZBuffer(const Device device, int3 start, int3 end, const Stream stream, AcReal* buffer)
+{
+    const int size_x=end.x-start.x+1, size_y=end.y-start.y+1, size_z=end.z-start.z+1;
+    const int block_size = size_x*size_y*size_z;
+    const int bufsiz = block_size*sizeof(AcReal);
+    //const int bufsiz=device->local_config.int_params[AC_yz_plate_bufsize]*sizeof(AcReal);
+
+//return AC_SUCCESS; //!!!
+printf("acDeviceLoadYZBuffer:start,end= %d %d %d %d %d %d \n", start.x, start.y, start.z, end.x, end.y, end.z);
+printf("acDeviceLoadYZBuffer:bufsiz,block_size= %u %u\n",bufsiz,block_size);
+printf("cDeviceLoadYZBuffer:device->yz_plate_buffer= %p \n", device->yz_plate_buffer);
+printf("cDeviceLoadYZBuffer:buffer= %p \n", buffer);
+    ERRCHK_CUDA(
+        cudaMemcpyAsync(device->yz_plate_buffer, buffer, bufsiz,
+                        cudaMemcpyHostToDevice, device->streams[stream]);
+    )
+//  unpacking in global memory; done by GPU kernel "unpackOyzPlates".
+
+    const dim3 tpb(256, 1, 1);
+    const dim3 bpg((uint)ceil((block_size * NUM_VTXBUF_HANDLES) / (float)tpb.x), 1, 1);
+
+    unpackOyzPlates<<<bpg, tpb, 0, device->streams[stream]>>>(device->yz_plate_buffer, device->vba, start, end);
+    return AC_SUCCESS;
+}
 #endif

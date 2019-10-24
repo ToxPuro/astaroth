@@ -465,6 +465,7 @@ acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream, const AcM
 
         const int3 da = max(s0, d0);
         const int3 db = min(s1, d1);
+        
         /*
         printf("Device %d\n", i);
         printf("\ts0: "); printInt3(s0); printf("\n");
@@ -485,7 +486,7 @@ acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream, const AcM
             acDeviceLoadVertexBufferWithOffset(node->devices[i], stream, host_mesh, vtxbuf_handle,
                                                da_global, da_local, copy_cells);
         }
-        // printf("\n");
+        //printf("\n");
     }
     return AC_SUCCESS;
 }
@@ -833,24 +834,26 @@ acNodeLoadYZPlate(const Node node, const int3 start, const int3 end, AcMesh* hos
     size_t src_idx;
 
     int i,j,k,ind,iv;
+
     for (int id = 0; id < node->num_devices; ++id) {
 
-        kmin=max( NGHOST,       start.z-id*nzloc );
-        kmax=min( NGHOST+nzloc, end.z  -id*nzloc );
+        kmin=max( NGHOST,         start.z-id*nzloc );
+        kmax=min( NGHOST+nzloc-1, end.z  -id*nzloc );
 
-        ind=0;
-        for (iv = 0; iv < NUM_VTXBUF_HANDLES; ++iv) {
-        for (k=kmin; k<=kmax; k++) {
-            for (j=start.y; j<=end.y; j++) {
-               for (i=start.x; i<=end.x; i++) {
-                   src_idx = acVertexBufferIdx(i,j,k,host_mesh->info);
-                   yzPlateBuffer[ind] = host_mesh->vertex_buffer[iv][src_idx];
-                   ind++;
-               }
+	ind=0;
+	for (iv = 0; iv < NUM_VTXBUF_HANDLES; ++iv) {
+	    for (k=kmin; k<=kmax; k++) {
+               for (j=start.y; j<=end.y; j++) {
+	           for (i=start.x; i<=end.x; i++) {
+	       	       src_idx = acVertexBufferIdx(i,j,k,host_mesh->info);
+		       yzPlateBuffer[ind] = host_mesh->vertex_buffer[iv][src_idx];
+		       ind++;
+	           }
+	       }
             }
-        }
-        }
-        //copyMeshToDevice(devices[id], STREAM_PRIMARY, yzPlateBuffer, da, da_local, copy_cells);
+	}
+	int3 startDev=(int3){start.x,start.y,kmin}, endDev=(int3){end.x,end.y,kmax};
+        acDeviceLoadYZBuffer(node->devices[id], startDev, endDev, STREAM_DEFAULT, yzPlateBuffer);
     }
 
     return AC_SUCCESS;
