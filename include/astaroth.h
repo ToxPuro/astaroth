@@ -72,7 +72,7 @@ AcResult acLoad(const AcMesh host_mesh);
 AcResult acStore(AcMesh* host_mesh);
 
 // Loads a YZ-plate 
-AcResult acLoadYZPlate(const int3& start, const int3& end, AcMesh* host_mesh, AcReal *yzPlateBuffer);
+AcResult acLoadYZPlate(const int3 start, const int3 end, AcMesh* host_mesh, AcReal *yzPlateBuffer);
  
 /** Performs Runge-Kutta 3 integration. Note: Boundary conditions are not applied after the final
  * substep and the user is responsible for calling acBoundcondStep before reading the data. */
