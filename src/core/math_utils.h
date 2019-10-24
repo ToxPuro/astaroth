@@ -114,7 +114,7 @@ operator+(const int a, const int3& b)
     return (int3){a + b.x, a + b.y, a + b.z};
 }
 
-static HOST_DEVICE_INLINE AcReal3
+static HOST_DEVICE_INLINE void
 operator+=(AcReal3& lhs, const AcReal3& rhs)
 {
     lhs.x += rhs.x;
