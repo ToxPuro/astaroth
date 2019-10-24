@@ -21,20 +21,33 @@
 
 import numpy as np
 
+def set_dtype(endian, AcRealSize):
+    if endian == 0:
+        en = '>'
+    elif endian == 1: 
+        en = '<'
+    type_instruction = en + 'f' + str(AcRealSize)
+    print("type_instruction", type_instruction)
+    my_dtype = np.dtype(type_instruction)
+    return my_dtype
+
 def read_bin(fname, fdir, fnum, minfo, numtype=np.longdouble):
     '''Read in a floating point array'''
     filename = fdir + fname + '_' + fnum + '.mesh'
     datas = np.DataSource()
     read_ok = datas.exists(filename)
+
+    my_dtype = set_dtype(minfo.contents['endian'], minfo.contents['AcRealSize'])
+
     if read_ok:
         print(filename)
-        array = np.fromfile(filename, dtype=numtype)
+        array = np.fromfile(filename, dtype=my_dtype)
 
         timestamp = array[0]
 
         array = np.reshape(array[1:], (minfo.contents['AC_mx'], 
-                                   minfo.contents['AC_my'], 
-                                   minfo.contents['AC_mz']), order='F')
+                                       minfo.contents['AC_my'], 
+                                       minfo.contents['AC_mz']), order='F')
     else:
         array = None
         timestamp = None
@@ -51,10 +64,22 @@ def read_meshtxt(fdir, fname):
         line = line.split()
         if line[0] == 'int':
             contents[line[1]] = np.int(line[2])
+            print(line[1], contents[line[1]])
+        elif line[0] == 'size_t':
+            contents[line[1]] = np.int(line[2])
+            print(line[1], contents[line[1]])
+        elif line[0] == 'int3':
+            contents[line[1]] = [np.int(line[2]), np.int(line[3]), np.int(line[4])]
+            print(line[1], contents[line[1]])
         elif line[0] == 'real':
             contents[line[1]] = np.float(line[2])
+            print(line[1], contents[line[1]])
+        elif line[0] == 'real3':
+            contents[line[1]] = [np.float(line[2]), np.float(line[3]), np.float(line[4])]
+            print(line[1], contents[line[1]])
         else: 
-            print('ERROR: ' + line[0] +' no recognized!')
+            print(line)
+            print('ERROR: ' + line[0] +' not recognized!')
 
     return contents
 
@@ -78,6 +103,8 @@ class Mesh:
         if self.ok:
 
             self.ss, timestamp, ok = read_bin('VTXBUF_ENTROPY', fdir, fnum, self.minfo)
+
+            self.accretion, timestamp, ok = read_bin('VTXBUF_ACCRETION', fdir, fnum, self.minfo)
  
             #TODO Generalize is a dict. Do not hardcode!  
             uux, timestamp, ok = read_bin('VTXBUF_UUX', fdir, fnum, self.minfo)
@@ -116,6 +143,7 @@ def parse_ts(fdir, fname):
         line[i] = line[i].replace('VTXBUF_', "")
         line[i] = line[i].replace('UU', "uu")
         line[i] = line[i].replace('_total', "tot")
+        line[i] = line[i].replace('ACCRETION', "acc")
         line[i] = line[i].replace('A', "aa")
         line[i] = line[i].replace('LNRHO', "lnrho")
         line[i] = line[i].replace('ENTROPY', "ss")

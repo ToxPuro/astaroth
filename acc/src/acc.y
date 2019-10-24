@@ -14,13 +14,13 @@ int yyget_lineno();
 %}
 
 %token CONSTANT IN OUT UNIFORM
-%token IDENTIFIER NUMBER
+%token IDENTIFIER NUMBER REAL_NUMBER DOUBLE_NUMBER
 %token RETURN
 %token SCALAR VECTOR MATRIX SCALARFIELD SCALARARRAY
 %token VOID INT INT3 COMPLEX
 %token IF ELSE FOR WHILE ELIF
-%token LEQU LAND LOR LLEQU
-%token KERNEL PREPROCESSED
+%token LAND LOR BINARY_OP
+%token KERNEL DEVICE PREPROCESSED
 %token INPLACE_INC INPLACE_DEC
 
 %%
@@ -66,6 +66,7 @@ compound_statement: '{' '}'                                                     
 statement: selection_statement                                                          { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
          | iteration_statement                                                          { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
          | exec_statement ';'                                                           { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); $$->postfix = ';'; }
+         //| compound_statement                                                           { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); } // shift-reduce conflict, would be needed only for nested compound statements. TODO remove
          ;
 
 selection_statement: IF expression else_selection_statement                             { $$ = astnode_create(NODE_UNKNOWN, $2, $3); $$->prefix = IF; }
@@ -79,11 +80,11 @@ else_selection_statement: compound_statement                                    
 elif_selection_statement: ELIF expression else_selection_statement                      { $$ = astnode_create(NODE_UNKNOWN, $2, $3); $$->prefix = ELIF; }
                         ;
 
-iteration_statement: WHILE expression compound_statement                                { $$ = astnode_create(NODE_UNKNOWN, $2, $3); $$->prefix = WHILE; }
-                   | FOR for_expression compound_statement                              { $$ = astnode_create(NODE_UNKNOWN, $2, $3); $$->prefix = FOR; }
+iteration_statement: WHILE expression compound_statement                                { $$ = astnode_create(NODE_ITERATION_STATEMENT, $2, $3); $$->prefix = WHILE; }
+                   | FOR for_expression compound_statement                              { $$ = astnode_create(NODE_ITERATION_STATEMENT, $2, $3); $$->prefix = FOR; }
                    ;
 
-for_expression: '(' for_init_param for_other_params ')'                                 { $$ = astnode_create(NODE_UNKNOWN, $2, $3); $$->prefix = '('; $$->postfix = ')'; }
+for_expression: '(' for_init_param for_other_params ')'                                 { $$ = astnode_create(NODE_FOR_EXPRESSION, $2, $3); $$->prefix = '('; $$->postfix = ')'; }
               ;
 
 for_init_param: expression ';'                                                          { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); $$->postfix = ';'; }
@@ -115,20 +116,20 @@ return_statement: /* Empty */                                                   
  * =============================================================================
  */
 
-declaration_list: declaration                                                           { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
-                | declaration_list ',' declaration                                      { $$ = astnode_create(NODE_UNKNOWN, $1, $3); $$->infix = ','; }
+declaration_list: declaration                                                           { $$ = astnode_create(NODE_DECLARATION_LIST, $1, NULL); }
+                | declaration_list ',' declaration                                      { $$ = astnode_create(NODE_DECLARATION_LIST, $1, $3); $$->infix = ','; }
                 ;
 
 declaration: type_declaration identifier                                                { $$ = astnode_create(NODE_DECLARATION, $1, $2); } // Note: accepts only one type qualifier. Good or not?
            | type_declaration array_declaration                                         { $$ = astnode_create(NODE_DECLARATION, $1, $2); }
            ;
 
-array_declaration: identifier '[' ']'                                                   { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); $$->infix = '['; $$->postfix = ']'; }
-                 | identifier '[' expression ']'                                        { $$ = astnode_create(NODE_UNKNOWN, $1, $3); $$->infix = '['; $$->postfix = ']'; }
+array_declaration: identifier '[' ']'                                                   { $$ = astnode_create(NODE_ARRAY_DECLARATION, $1, NULL); $$->infix = '['; $$->postfix = ']'; }
+                 | identifier '[' expression ']'                                        { $$ = astnode_create(NODE_ARRAY_DECLARATION, $1, $3); $$->infix = '['; $$->postfix = ']'; }
                  ;
 
-type_declaration: type_specifier                                                        { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
-                | type_qualifier type_specifier                                         { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+type_declaration: type_specifier                                                        { $$ = astnode_create(NODE_TYPE_DECLARATION, $1, NULL); }
+                | type_qualifier type_specifier                                         { $$ = astnode_create(NODE_TYPE_DECLARATION, $1, $2); }
                 ;
 
 /*
@@ -183,10 +184,9 @@ binary_operator: '+'                                                            
                | '*'                                                                    { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); $$->infix = yytext[0]; }
                | '<'                                                                    { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); $$->infix = yytext[0]; }
                | '>'                                                                    { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); $$->infix = yytext[0]; }
-               | LEQU                                                                   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); }
                | LAND                                                                   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); }
                | LOR                                                                    { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); }
-               | LLEQU                                                                  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); }
+               | BINARY_OP                                                              { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); }
                ;
 
 unary_operator: '-' /* C-style casts are disallowed, would otherwise be defined here */ { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); $$->infix = yytext[0]; }
@@ -196,6 +196,7 @@ unary_operator: '-' /* C-style casts are disallowed, would otherwise be defined 
               ;
 
 type_qualifier: KERNEL                                                                  { $$ = astnode_create(NODE_TYPE_QUALIFIER, NULL, NULL); $$->token = KERNEL; }
+              | DEVICE                                                                  { $$ = astnode_create(NODE_TYPE_QUALIFIER, NULL, NULL); $$->token = DEVICE; }
               | PREPROCESSED                                                            { $$ = astnode_create(NODE_TYPE_QUALIFIER, NULL, NULL); $$->token = PREPROCESSED; }
               | CONSTANT                                                                { $$ = astnode_create(NODE_TYPE_QUALIFIER, NULL, NULL); $$->token = CONSTANT; }
               | IN                                                                      { $$ = astnode_create(NODE_TYPE_QUALIFIER, NULL, NULL); $$->token = IN; }
@@ -217,7 +218,9 @@ type_specifier: VOID                                                            
 identifier: IDENTIFIER                                                                  { $$ = astnode_create(NODE_IDENTIFIER, NULL, NULL); astnode_set_buffer(yytext, $$); }
           ;
 
-number: NUMBER                                                                          { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); }
+number: REAL_NUMBER                                                                     { $$ = astnode_create(NODE_REAL_NUMBER, NULL, NULL); astnode_set_buffer(yytext, $$); }
+      | DOUBLE_NUMBER                                                                   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->buffer[strlen($$->buffer) - 1] = '\0'; }
+      | NUMBER                                                                          { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); }
       ;
 
 return: RETURN                                                                          { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); }
@@ -235,4 +238,5 @@ int
 yyerror(const char* str)
 {
     fprintf(stderr, "%s on line %d when processing char %d: [%s]\n", str, yyget_lineno(), *yytext, yytext);
+    return EXIT_FAILURE;
 }

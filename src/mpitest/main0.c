@@ -26,13 +26,12 @@
 #include <string.h>
 
 #include "astaroth.h"
-#include "autotest.h"
 
 #include <mpi.h>
 
-// From Astaroth Standalone
-#include "config_loader.h"
-#include "model/host_memory.h"
+// From Astaroth Utils
+#include "src/utils/config_loader.h"
+#include "src/utils/memory.h"
 
 static void
 distribute_mesh(const AcMesh* src, AcMesh* dst)
@@ -145,8 +144,7 @@ main(void)
     printf("Processor %s. Process %d of %d.\n", processor_name, process_id, num_processes);
 
     AcMeshInfo mesh_info;
-    load_config(&mesh_info);
-    update_config(&mesh_info);
+    acLoadConfig(AC_DEFAULT_CONFIG, &mesh_info);
 
     AcMesh* main_mesh     = NULL;
     ModelMesh* model_mesh = NULL;

@@ -102,6 +102,9 @@ AcResult acSynchronize(void);
 AcResult acLoadWithOffset(const AcMesh host_mesh, const int3 src, const int num_vertices);
 
 AcResult acGetNode(Node * node);
+/** */
+int acGetNumDevicesPerNode(void);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

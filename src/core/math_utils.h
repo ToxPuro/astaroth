@@ -115,6 +115,14 @@ operator+(const int a, const int3& b)
 }
 
 static HOST_DEVICE_INLINE AcReal3
+operator+=(AcReal3& lhs, const AcReal3& rhs)
+{
+    lhs.x += rhs.x;
+    lhs.y += rhs.y;
+    lhs.z += rhs.z;
+}
+
+static HOST_DEVICE_INLINE AcReal3
 operator-(const AcReal3& a, const AcReal3& b)
 {
     return (AcReal3){a.x - b.x, a.y - b.y, a.z - b.z};
@@ -142,6 +150,14 @@ static HOST_DEVICE_INLINE AcReal3
 operator-(const AcReal3& a)
 {
     return (AcReal3){-a.x, -a.y, -a.z};
+}
+
+static HOST_DEVICE_INLINE void
+operator-=(AcReal3& lhs, const AcReal3& rhs)
+{
+    lhs.x -= rhs.x;
+    lhs.y -= rhs.y;
+    lhs.z -= rhs.z;
 }
 
 static HOST_DEVICE_INLINE AcReal3 operator*(const AcReal& a, const AcReal3& b)
@@ -179,7 +195,7 @@ cross(const AcReal3& a, const AcReal3& b)
 }
 
 static HOST_DEVICE_INLINE bool
-is_valid(const AcReal a)
+is_valid(const AcReal& a)
 {
     return !isnan(a) && !isinf(a);
 }

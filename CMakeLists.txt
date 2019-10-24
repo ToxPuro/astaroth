@@ -18,20 +18,49 @@ find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PA
 ## Project settings
 project(astaroth C CXX)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 ## Options
 option(BUILD_DEBUG              "Builds the program with extensive error checking"          OFF)
 option(BUILD_STANDALONE         "Builds the standalone Astaroth"                            ON)
+option(BUILD_UTILS              "Builds the utility library"                                ON)
 option(BUILD_RT_VISUALIZATION   "Builds the module for real-time visualization using SDL2"  OFF)
 option(BUILD_C_API_TEST         "Builds a C program to test whether the API is conformant"  OFF)
 option(BUILD_MPI_TEST           "Builds a C program to test whether MPI works"              OFF)
 option(BUILD_SHARED             "Creates shared library"                                    OFF)
 option(DOUBLE_PRECISION         "Generates double precision code"                           OFF)
 option(MULTIGPU_ENABLED         "If enabled, uses all the available GPUs"                   ON)
-option(ALTER_CONF               "If enabled, loads astaroth.conf from the build directory"  OFF)
 option(VERBOSE_PRINTING         "If enabled, prints configuration"                          ON)
 option(AUTO_OPTIMIZATION        "If enabled, auto-optimization is run"                      ON)
 option(PACKED_DATA_TRANSFERS    "Enables kernel for packed data transfers"                  OFF)
+option(MPI_ENABLED              "Enables additional functions for MPI communciation"        OFF)
+
+## Compile the Astaroth Code Compiler
+add_subdirectory(acc)
+
+# NOTE: Manually defined DSL_MODULE_DIR must be set relative to the project root, not the actual
+# build directory!
+# NO! ../acc/mhd_solver
+# YES! acc/mhd_solver
+
+if (NOT DEFINED DSL_MODULE_DIR)
+    set(DSL_MODULE_DIR ${CMAKE_SOURCE_DIR}/acc/mhd_solver)
+endif ()
+get_filename_component(DSL_MODULE_DIR ${DSL_MODULE_DIR} REALPATH)
+message(STATUS "DSL module dir: ${DSL_MODULE_DIR}")
+set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
+                "acc/src/*"
+                "${PROJECT_BINARY_DIR}/acc")
+set(DSL_HEADERS "${PROJECT_BINARY_DIR}/user_kernels.h"
+                "${PROJECT_BINARY_DIR}/user_defines.h")
+add_custom_command (
+    COMMENT "Building ACC objects ${DSL_MODULE_DIR}"
+    COMMAND ${CMAKE_SOURCE_DIR}/scripts/compile_acc_module.sh ${DSL_MODULE_DIR}
+    DEPENDS ${DSL_SOURCES}
+    OUTPUT ${DSL_HEADERS}
+)
+add_custom_target(dsl_headers ALL DEPENDS ${DSL_HEADERS})
+add_dependencies(dsl_headers acc)
 
 ## Build types
 # Available types (case-sensitive):
@@ -44,6 +73,15 @@ else ()
 endif()
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
+if (BUILD_RT_VISUALIZATION)
+## SDL2
+execute_process (
+    COMMAND ./setup_dependencies.sh
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/3rdparty
+)
+add_subdirectory(3rdparty/SDL2)
+endif ()
+
 ## Defines
 if (DOUBLE_PRECISION)
     add_definitions(-DAC_DOUBLE_PRECISION=1)
@@ -54,6 +92,7 @@ endif ()
 ## Include directories
 include_directories(.)
 include_directories(include)
+include_directories(${CMAKE_BINARY_DIR})
 
 ## Subdirectories
 add_subdirectory(src/core) # The core library
@@ -68,4 +107,8 @@ endif ()
 
 if (BUILD_MPI_TEST)
     add_subdirectory(src/mpitest)
+endif ()
+
+if (BUILD_UTILS)
+    add_subdirectory(src/utils)
 endif ()

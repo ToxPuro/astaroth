@@ -11,6 +11,7 @@ set(CUDA_ARCH_FLAGS -gencode arch=compute_37,code=sm_37
                     -gencode arch=compute_50,code=sm_50
                     -gencode arch=compute_60,code=sm_60
                     -gencode arch=compute_61,code=sm_61
+                    -gencode arch=compute_70,code=sm_70
                     -lineinfo
                     -ftz=true # Flush denormalized floats to zero
                     -std=c++11
@@ -19,19 +20,20 @@ set(CUDA_ARCH_FLAGS -gencode arch=compute_37,code=sm_37
                     # -Xptxas -dlcm=ca opt-in to cache all global loads to L1/texture cache
                     # =cg to opt out
 
-
-#set(CUDA_WARNING_FLAGS --compiler-options -Wall,-Wextra,-Werror,-Wdouble-promotion,-Wfloat-conversion) # -Wshadow
-set(CUDA_WARNING_FLAGS --compiler-options -Wall,-Wextra,-Wdouble-promotion,-Wfloat-conversion) # -Wshadow
+set(CUDA_WARNING_FLAGS --compiler-options -Wall,-Wextra,-Werror,-Wdouble-promotion,-Wfloat-conversion) # -Wshadow
+#set(CUDA_WARNING_FLAGS --compiler-options -Wall,-Wextra,-Wdouble-promotion,-Wfloat-conversion) # -Wshadow
 
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${CUDA_ARCH_FLAGS} ${CUDA_WARNING_FLAGS})
 set(CUDA_NVCC_FLAGS_RELEASE)
 set(CUDA_NVCC_FLAGS_DEBUG --device-debug --generate-line-info --ptxas-options=-v)
 
-## Definitions
-if (MULTIGPU_ENABLED)
-    add_definitions(-DAC_MULTIGPU_ENABLED=1)
-else ()
-    add_definitions(-DAC_MULTIGPU_ENABLED=0)
+if (MPI_ENABLED)
+    find_package(MPI REQUIRED)
+
+    add_definitions(-DAC_MPI_ENABLED=1)
+    cuda_include_directories(${MPI_C_INCLUDE_PATH})
+
+    add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf") # Hack, cmake doesnt propagate properly from utils. Probably because utils is compiled after core
 endif ()
 
 if (VERBOSE_PRINTING)
@@ -55,8 +57,19 @@ endif ()
 ## Create and link the library
 if (BUILD_SHARED)
     cuda_add_library(astaroth_core SHARED astaroth.cu device.cu node.cu)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON) # fpic for shared libraries
 else ()
     cuda_add_library(astaroth_core STATIC astaroth.cu device.cu node.cu)
 endif ()
 target_include_directories(astaroth_core PRIVATE .)
 target_link_libraries(astaroth_core m)
+add_dependencies(astaroth_core dsl_headers)
+
+## Definitions
+if (MULTIGPU_ENABLED)
+    add_definitions(-DAC_MULTIGPU_ENABLED=1)
+endif ()
+
+if (MPI_ENABLED)
+    target_link_libraries(astaroth_core ${MPI_C_LIBRARIES} astaroth_utils)
+endif ()

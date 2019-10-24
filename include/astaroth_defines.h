@@ -69,7 +69,7 @@ typedef struct {
 } // extern "C"
 #endif
 
-#include "stencil_defines.h" // User-defined header
+#include "user_defines.h" // User-defined header
 #ifndef USER_DEFINED
 #define STENCIL_ORDER (6)
 #define NGHOST (STENCIL_ORDER / 2)
@@ -81,7 +81,7 @@ extern "C" {
 
 // clang-format off
 #define AC_FOR_BUILTIN_INT_PARAM_TYPES(FUNC)\
-        FUNC(AC_nx), \
+/*        FUNC(AC_nx), \
         FUNC(AC_ny), \
         FUNC(AC_nz), \
         FUNC(AC_mx), \
@@ -97,10 +97,9 @@ extern "C" {
         FUNC(AC_nxy),\
         FUNC(AC_nxyz),\
         FUNC(AC_yz_plate_bufsize),\
+*/
 
-#define AC_FOR_BUILTIN_INT3_PARAM_TYPES(FUNC)\
-        FUNC(AC_global_grid_n),\
-        FUNC(AC_multigpu_offset),
+#define AC_FOR_BUILTIN_INT3_PARAM_TYPES(FUNC)
 
 #define AC_FOR_BUILTIN_REAL_PARAM_TYPES(FUNC)
 
@@ -137,9 +136,9 @@ typedef enum {
     STREAM_14,
     STREAM_15,
     STREAM_16,
-    NUM_STREAM_TYPES
+    NUM_STREAMS
 } Stream;
-#define STREAM_ALL (NUM_STREAM_TYPES)
+#define STREAM_ALL (NUM_STREAMS)
 
 #define AC_GEN_ID(X) X
 typedef enum {

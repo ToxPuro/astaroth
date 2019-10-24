@@ -187,3 +187,11 @@ acGetNode(Node * node)
     *node = nodes[0];
     return (AcResult) AC_SUCCESS;
 }
+
+int
+acGetNumDevicesPerNode(void)
+{
+    int num_devices;
+    ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&num_devices));
+    return num_devices;
+}

@@ -1,4 +1,5 @@
 %option yylineno
+%option noyywrap
 
 D [0-9]
 L [a-zA-Z_]
@@ -21,6 +22,7 @@ L [a-zA-Z_]
 "ScalarArray" { return SCALARARRAY; }
 
 "Kernel"       { return KERNEL; } /* Function specifiers */
+"Device"       { return DEVICE; }
 "Preprocessed" { return PREPROCESSED; }
 
 "const"     { return CONSTANT; }
@@ -36,20 +38,22 @@ L [a-zA-Z_]
 
 "return"    { return RETURN; }
 
-{D}+"."?{D}*[flud]? { return NUMBER; } /* Literals */
-"."{D}+[flud]?      { return NUMBER; }
+{D}+"."{D}+         { return REAL_NUMBER; } /* Literals */
+{D}+"."{D}+d+       { return DOUBLE_NUMBER; }
+{D}+"."{D}+f+       { return NUMBER; }
+{D}+[lu]*           { return NUMBER; }
 {L}({L}|{D})*       { return IDENTIFIER; }
 \"(.)*\"            { return IDENTIFIER; } /* String */
 
-"=="                { return LEQU; }/* Logic operations */
-"&&"                { return LAND; }
+"&&"                { return LAND; } /* Logical operations */
 "||"                { return LOR; }
-"<="                { return LLEQU; }
+
+[<>/*+-=]"="        { return BINARY_OP; } /* Generic binary operations */
 
 "++"                { return INPLACE_INC; }
 "--"                { return INPLACE_DEC; }
 
-[-+*/;=\[\]{}(),\.<>] { return yytext[0]; } /* Characters */
+[-+*/;=\[\]{}(),\.<>|&] { return yytext[0]; } /* Characters */
 
 
 "//".*              { /* Skip regular comments */ }

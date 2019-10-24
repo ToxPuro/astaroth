@@ -46,20 +46,20 @@ AcResult acDeviceSynchronizeStream(const Device device, const Stream stream);
 AcResult acDeviceSwapBuffers(const Device device);
 
 /** */
-AcResult acDeviceLoadScalarConstant(const Device device, const Stream stream,
-                                    const AcRealParam param, const AcReal value);
+AcResult acDeviceLoadScalarUniform(const Device device, const Stream stream,
+                                   const AcRealParam param, const AcReal value);
 
 /** */
-AcResult acDeviceLoadVectorConstant(const Device device, const Stream stream,
-                                    const AcReal3Param param, const AcReal3 value);
+AcResult acDeviceLoadVectorUniform(const Device device, const Stream stream,
+                                   const AcReal3Param param, const AcReal3 value);
 
 /** */
-AcResult acDeviceLoadIntConstant(const Device device, const Stream stream, const AcIntParam param,
-                                 const int value);
+AcResult acDeviceLoadIntUniform(const Device device, const Stream stream, const AcIntParam param,
+                                const int value);
 
 /** */
-AcResult acDeviceLoadInt3Constant(const Device device, const Stream stream, const AcInt3Param param,
-                                  const int3 value);
+AcResult acDeviceLoadInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
+                                 const int3 value);
 
 /** */
 AcResult acDeviceLoadScalarArray(const Device device, const Stream stream,
@@ -85,7 +85,7 @@ AcResult acDeviceLoadMeshWithOffset(const Device device, const Stream stream,
 AcResult acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh host_mesh,
                                   const VertexBufferHandle vtxbuf_handle);
 
-/** Deprecated */
+/** */
 AcResult acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mesh);
 
 AcResult acDeviceLoadYZBuffer(const Device device, int3 startDev, int3 endDev, const Stream stream, AcReal* buffer);
@@ -104,7 +104,7 @@ AcResult acDeviceStoreMeshWithOffset(const Device device, const Stream stream, c
 AcResult acDeviceStoreVertexBuffer(const Device device, const Stream stream,
                                    const VertexBufferHandle vtxbuf_handle, AcMesh* host_mesh);
 
-/** Deprecated */
+/** */
 AcResult acDeviceStoreMesh(const Device device, const Stream stream, AcMesh* host_mesh);
 
 /** */
@@ -122,7 +122,7 @@ AcResult acDeviceTransferMeshWithOffset(const Device src_device, const Stream st
 AcResult acDeviceTransferVertexBuffer(const Device src_device, const Stream stream,
                                       const VertexBufferHandle vtxbuf_handle, Device dst_device);
 
-/** Deprecated */
+/** */
 AcResult acDeviceTransferMesh(const Device src_device, const Stream stream, Device dst_device);
 
 /** */
@@ -144,6 +144,9 @@ AcResult acDeviceReduceScal(const Device device, const Stream stream, const Redu
 AcResult acDeviceReduceVec(const Device device, const Stream stream_type, const ReductionType rtype,
                            const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                            const VertexBufferHandle vtxbuf2, AcReal* result);
+
+/** */
+AcResult acDeviceRunMPITest(void);
 
 #ifdef __cplusplus
 } // extern "C"

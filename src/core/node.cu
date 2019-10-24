@@ -224,10 +224,10 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
         WARNING("More devices found than MAX_NUM_DEVICES. Using only MAX_NUM_DEVICES");
         node->num_devices = MAX_NUM_DEVICES;
     }
-    if (!AC_MULTIGPU_ENABLED) {
-        WARNING("MULTIGPU_ENABLED was false. Using only one device");
-        node->num_devices = 1; // Use only one device if multi-GPU is not enabled
-    }
+#if AC_MULTIGPU_ENABLED != 1
+    WARNING("MULTIGPU_ENABLED was false. Using only one device");
+    node->num_devices = 1; // Use only one device if multi-GPU is not enabled
+#endif
     // Check that node->num_devices is divisible with AC_nz. This makes decomposing the
     // problem domain to multiple GPUs much easier since we do not have to worry
     // about remainders
@@ -308,6 +308,29 @@ AcResult
 acNodeDestroy(Node node)
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
+
+    // Disable peer access
+    for (int i = 0; i < node->num_devices; ++i) {
+        const int front = (i + 1) % node->num_devices;
+        const int back  = (i - 1 + node->num_devices) % node->num_devices;
+
+        int can_access_front, can_access_back;
+        cudaDeviceCanAccessPeer(&can_access_front, i, front);
+        cudaDeviceCanAccessPeer(&can_access_back, i, back);
+#if VERBOSE_PRINTING
+        printf("Trying to disable peer access from %d to %d (can access: %d) and %d (can access: "
+               "%d)\n",
+               i, front, can_access_front, back, can_access_back);
+#endif
+
+        cudaSetDevice(i);
+        if (can_access_front) {
+            ERRCHK_CUDA_ALWAYS(cudaDeviceDisablePeerAccess(front));
+        }
+        if (can_access_back) {
+            ERRCHK_CUDA_ALWAYS(cudaDeviceDisablePeerAccess(back));
+        }
+    }
 
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
@@ -429,7 +452,7 @@ acNodeLoadConstant(const Node node, const Stream stream, const AcRealParam param
     acNodeSynchronizeStream(node, stream);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
-        acDeviceLoadScalarConstant(node->devices[i], stream, param, value);
+        acDeviceLoadScalarUniform(node->devices[i], stream, param, value);
     }
     return AC_SUCCESS;
 }
