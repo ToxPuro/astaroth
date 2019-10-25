@@ -65,39 +65,16 @@ typedef struct {
     AcReal3 row[3];
 } AcMatrix;
 
-#ifdef __cplusplus
-} // extern "C"
-#endif
-
 #include "user_defines.h" // User-defined header
+
 #ifndef USER_DEFINED
 #define STENCIL_ORDER (6)
 #define NGHOST (STENCIL_ORDER / 2)
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // clang-format off
-#define AC_FOR_BUILTIN_INT_PARAM_TYPES(FUNC)\
-/*        FUNC(AC_nx), \
-        FUNC(AC_ny), \
-        FUNC(AC_nz), \
-        FUNC(AC_mx), \
-        FUNC(AC_my), \
-        FUNC(AC_mz), \
-        FUNC(AC_nx_min), \
-        FUNC(AC_ny_min), \
-        FUNC(AC_nz_min), \
-        FUNC(AC_nx_max), \
-        FUNC(AC_ny_max), \
-        FUNC(AC_nz_max), \
-        FUNC(AC_mxy),\
-        FUNC(AC_nxy),\
-        FUNC(AC_nxyz),\
-        FUNC(AC_yz_plate_bufsize),\
-*/
+#define AC_FOR_BUILTIN_INT_PARAM_TYPES(FUNC)
+        //FUNC(AC_yz_plate_bufsize),\
 
 #define AC_FOR_BUILTIN_INT3_PARAM_TYPES(FUNC)
 
