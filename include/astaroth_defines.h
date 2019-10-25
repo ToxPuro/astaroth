@@ -74,7 +74,7 @@ typedef struct {
 
 // clang-format off
 #define AC_FOR_BUILTIN_INT_PARAM_TYPES(FUNC)
-        //FUNC(AC_yz_plate_bufsize),\
+        //FUNC(AC_yz_plate_bufsize),
 
 #define AC_FOR_BUILTIN_INT3_PARAM_TYPES(FUNC)
 

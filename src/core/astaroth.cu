@@ -67,7 +67,7 @@ acQuit(void)
 AcResult
 acLoadYZPlate(const int3& start, const int3& end, AcMesh* host_mesh, AcReal* yzPlateBuffer)
 {
-    return acNodeLoadYZPlate(nodes[0], start, end, host_mesh, yzPlateBuffer);
+    return acNodeLoadYZPlate(nodes[0], STREAM_DEFAULT, start, end, host_mesh, yzPlateBuffer);
 }
 
 AcResult

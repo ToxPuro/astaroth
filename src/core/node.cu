@@ -851,7 +851,7 @@ acNodeReduceVec(const Node node, const Stream stream, const ReductionType rtype,
 }
 
 AcResult
-acNodeLoadYZPlate(const Node node, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* yzPlateBuffer)
+acNodeLoadYZPlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* yzPlateBuffer)
 {
     int kmin, kmax, nzloc=node->subgrid.n.z;
     size_t src_idx;
@@ -876,7 +876,7 @@ acNodeLoadYZPlate(const Node node, const int3 start, const int3 end, AcMesh* hos
             }
 	}
 	int3 startDev=(int3){start.x,start.y,kmin}, endDev=(int3){end.x,end.y,kmax};
-        acDeviceLoadYZBuffer(node->devices[id], startDev, endDev, STREAM_DEFAULT, yzPlateBuffer);
+        acDeviceLoadYZBuffer(node->devices[id], startDev, endDev, stream, yzPlateBuffer);
     }
 
     return AC_SUCCESS;
