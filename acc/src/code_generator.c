@@ -675,6 +675,9 @@ main(int argc, char** argv)
     add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT, "AC_mxy");
     add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT, "AC_nxy");
     add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT, "AC_nxyz");
+    add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT, "AC_xy_plate_bufsize");
+    add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT, "AC_xz_plate_bufsize");
+    add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT, "AC_yz_plate_bufsize");
 
     add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT3, "AC_global_grid_n");
     add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT3, "AC_multigpu_offset");

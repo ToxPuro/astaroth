@@ -88,7 +88,11 @@ AcResult acDeviceLoadVertexBuffer(const Device device, const Stream stream, cons
 /** */
 AcResult acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mesh);
 
-AcResult acDeviceLoadYZBuffer(const Device device, int3 startDev, int3 endDev, const Stream stream, AcReal* buffer);
+/** */
+AcResult acDeviceLoadPlateBuffer(const Device device, int3 startDev, int3 endDev, const Stream stream, AcReal* buffer, PlateType plate);
+
+/** */
+AcResult acDeviceStorePlateBuffer(const Device device, int3 startDev, int3 endDev, const Stream stream, AcReal* buffer, PlateType plate);
 
 /** */
 AcResult acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,

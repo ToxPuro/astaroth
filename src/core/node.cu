@@ -489,8 +489,8 @@ acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream, const AcM
         const int3 da = max(s0, d0);
         const int3 db = min(s1, d1);
         
+        //printf("LoadVertexBuffer: Device %d\n", i);
         /*
-        printf("Device %d\n", i);
         printf("\ts0: "); printInt3(s0); printf("\n");
         printf("\td0: "); printInt3(d0); printf("\n");
         printf("\tda: "); printInt3(da); printf("\n");
@@ -562,6 +562,7 @@ acNodeStoreVertexBufferWithOffset(const Node node, const Stream stream,
         (void)dst;           // TODO fix
         const int3 s1 = gridIdx3d(node->grid, gridIdx(node->grid, s0) + num_vertices);
 
+        //printf("StoreVertexBuffer: Device %d\n", i);
         const int3 da = max(s0, d0);
         const int3 db = min(s1, d1);
         if (db.z >= da.z) {
@@ -851,13 +852,16 @@ acNodeReduceVec(const Node node, const Stream stream, const ReductionType rtype,
 }
 
 AcResult
-acNodeLoadYZPlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* yzPlateBuffer)
+acNodeLoadPlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate)
 {
     int kmin, kmax, nzloc=node->subgrid.n.z;
-    size_t src_idx;
+    size_t start_idx;
 
-    int i,j,k,ind,iv;
+    int j,k,ind,iv;
+    int3 startDev,endDev;
+    void *src, *dest;
 
+    int xsiz=end.x-start.x;
     for (int id = 0; id < node->num_devices; ++id) {
 
         kmin=max( NGHOST,         start.z-id*nzloc );
@@ -865,20 +869,93 @@ acNodeLoadYZPlate(const Node node, const Stream stream, const int3 start, const 
 
 	ind=0;
 	for (iv = 0; iv < NUM_VTXBUF_HANDLES; ++iv) {
-	    for (k=kmin; k<=kmax; k++) {
-               for (j=start.y; j<=end.y; j++) {
-	           for (i=start.x; i<=end.x; i++) {
-	       	       src_idx = acVertexBufferIdx(i,j,k,host_mesh->info);
-		       yzPlateBuffer[ind] = host_mesh->vertex_buffer[iv][src_idx];
-		       ind++;
-	           }
+	    for (k=kmin; k<kmax; k++) {
+               for (j=start.y; j<end.y; j++) {
+
+                   start_idx = acVertexBufferIdx(start.x,j,k,host_mesh->info);
+                   dest=&plateBuffer[ind];
+                   src=&(host_mesh->vertex_buffer[iv][start_idx]);
+                   memcpy(dest,src,xsiz*sizeof(AcReal));
+                   ind+=xsiz;
 	       }
             }
 	}
-	int3 startDev=(int3){start.x,start.y,kmin}, endDev=(int3){end.x,end.y,kmax};
-        acDeviceLoadYZBuffer(node->devices[id], startDev, endDev, stream, yzPlateBuffer);
+	startDev=(int3){start.x,start.y,kmin}; endDev=(int3){end.x,end.y,kmax};
+        acDeviceLoadPlateBuffer(node->devices[id], startDev, endDev, stream, plateBuffer, plate);
     }
 
     return AC_SUCCESS;
 }
 
+AcResult
+acNodeLoadPlateXcomp(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate)
+{
+    int kmin, kmax, nzloc=node->subgrid.n.z;
+    size_t start_idx;
+
+    int k,ind,iv;
+    int3 startDev,endDev;
+    void *src, *dest;
+
+    int xsiz=end.x-start.x, ysiz=end.y-start.y, siz=xsiz*ysiz;
+    for (int id = 0; id < node->num_devices; ++id) {
+
+        kmin=max( NGHOST,         start.z-id*nzloc );
+        kmax=min( NGHOST+nzloc-1, end.z  -id*nzloc );
+
+        ind=0;
+        for (iv = 0; iv < NUM_VTXBUF_HANDLES; ++iv) {
+            for (k=kmin; k<kmax; k++) {
+
+                start_idx = acVertexBufferIdx(start.x,start.y,k,host_mesh->info);
+                dest=&plateBuffer[ind];
+                src=&(host_mesh->vertex_buffer[iv][start_idx]);
+                memcpy(dest,src,siz*sizeof(AcReal));
+                ind+=siz;
+            }
+        }
+        startDev=(int3){start.x,start.y,kmin}; endDev=(int3){end.x,end.y,kmax};
+        acDeviceLoadPlateBuffer(node->devices[id], startDev, endDev, stream, plateBuffer, plate);
+    }
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acNodeStorePlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate)
+{
+    int kmin, kmax, nzloc=node->subgrid.n.z;
+    size_t start_idx;
+
+    int j,k,ind,iv;
+    int3 startDev,endDev;
+    void *src, *dest;
+
+    int xsiz=end.x-start.x;
+
+    for (int id = 0; id < node->num_devices; ++id) {
+
+        kmin=max( NGHOST,       start.z-id*nzloc );
+        kmax=min( NGHOST+nzloc, end.z  -id*nzloc );  // end is exclusive
+
+        startDev=(int3){start.x,start.y,kmin}; endDev=(int3){end.x,end.y,kmax};
+        acDeviceStorePlateBuffer(node->devices[id], startDev, endDev, stream, plateBuffer, plate);
+
+        ind=0;
+        for (iv = 0; iv < NUM_VTXBUF_HANDLES; ++iv) {
+            for (k=kmin; k<kmax; k++) {
+               for (j=start.y; j<end.y; j++) {
+                   start_idx = acVertexBufferIdx(start.x,j,k,host_mesh->info);
+//if (iv==0) printf("j,k,start_idx= %d %d %d \n",j,k,start_idx);
+
+                   src=&plateBuffer[ind];
+                   dest=&(host_mesh->vertex_buffer[iv][start_idx]);
+                   memcpy(dest,src,xsiz*sizeof(AcReal));
+                   ind+=xsiz;
+               }
+            }
+        }
+    }
+
+    return AC_SUCCESS;
+}

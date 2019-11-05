@@ -67,9 +67,11 @@ typedef struct {
 
 #include "user_defines.h" // User-defined header
 
-#ifndef USER_DEFINED
-#define STENCIL_ORDER (6)
-#define NGHOST (STENCIL_ORDER / 2)
+#ifndef NGHOST
+  #define STENCIL_ORDER (6)
+  #define NGHOST (STENCIL_ORDER / 2)
+#else
+  #define STENCIL_ORDER (2*NGHOST)
 #endif
 
 // clang-format off
@@ -116,6 +118,9 @@ typedef enum {
     NUM_STREAMS
 } Stream;
 #define STREAM_ALL (NUM_STREAMS)
+
+enum {AC_H2D, AC_D2H};
+typedef enum {AC_XY, AC_XZ, AC_YZ, NUM_PLATE_BUFFERS} PlateType;
 
 #define AC_GEN_ID(X) X
 typedef enum {

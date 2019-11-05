@@ -127,12 +127,23 @@ AcResult acNodePeriodicBoundconds(const Node node, const Stream stream);
 /** */
 AcResult acNodeReduceScal(const Node node, const Stream stream, const ReductionType rtype,
                           const VertexBufferHandle vtxbuf_handle, AcReal* result);
+
 /** */
 AcResult acNodeReduceVec(const Node node, const Stream stream_type, const ReductionType rtype,
                          const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                          const VertexBufferHandle vtxbuf2, AcReal* result);
 
-AcResult acNodeLoadYZPlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* yzPlateBuffer);
+/** */
+AcResult acNodeLoadPlate(const Node node, const Stream stream, const int3 start, const int3 end, 
+                         AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate);
+
+/** */
+AcResult acNodeLoadPlateXcomp(const Node node, const Stream stream, const int3 start, const int3 end, 
+                              AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate);
+
+/** */
+AcResult acNodeStorePlate(const Node node, const Stream stream, const int3 start, const int3 end, 
+                          AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate);
 
 #ifdef __cplusplus
 } // extern "C"

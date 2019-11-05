@@ -54,9 +54,9 @@ struct device_s {
     AcReal* reduce_result;
 
 #if PACKED_DATA_TRANSFERS
-// Declare memory for buffers needed for packed data transfers here
+// Declare memory for buffers in device memory needed for packed data transfers.
 // AcReal* data_packing_buffer;
-    AcReal* yz_plate_buffer;
+    AcReal *plate_buffers[NUM_PLATE_BUFFERS];
 #endif
 #if AC_MPI_ENABLED
     // Declare memory for buffers needed for packed data transfers here
@@ -209,8 +209,14 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
 // Allocate any data buffer required for packed transfers here (cudaMalloc)
 #if PACKED_DATA_TRANSFERS
-// Buffer for packed transfer of YZ plates.
-    cudaMalloc(&device->yz_plate_buffer, device->local_config.int_params[AC_yz_plate_bufsize]*sizeof(AcReal));
+// Buffer for packed transfer of halo plates.
+    ERRCHK_CUDA_ALWAYS(
+        cudaMalloc(&(device->plate_buffers[AC_XY]), device->local_config.int_params[AC_xy_plate_bufsize]*sizeof(AcReal)));
+    ERRCHK_CUDA_ALWAYS(
+        cudaMalloc(&(device->plate_buffers[AC_XZ]), device->local_config.int_params[AC_xz_plate_bufsize]*sizeof(AcReal)));
+    ERRCHK_CUDA_ALWAYS(
+        cudaMalloc(&(device->plate_buffers[AC_YZ]), device->local_config.int_params[AC_yz_plate_bufsize]*sizeof(AcReal)));
+//printf("pointers= %u %u %u \n", device->plate_buffers[AC_XY], device->plate_buffers[AC_XZ], device->plate_buffers[AC_YZ]);
 #endif
 #if AC_MPI_ENABLED
     // Allocate data required for packed transfers here (cudaMalloc)
@@ -265,7 +271,9 @@ acDeviceDestroy(Device device)
 
 #if PACKED_DATA_TRANSFERS
 // Free data required for packed tranfers here (cudaFree)
-    cudaFree(device->yz_plate_buffer);
+    for (int i=0; i<NUM_PLATE_BUFFERS; i++)
+       cudaFree(device->plate_buffers[i]);
+
 #endif
 #if AC_MPI_ENABLED
     // Free data required for packed tranfers here (cudaFree)
@@ -722,8 +730,10 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
               "device function acDeviceKernel_<kernel name> which does not require the "
               "timestep to be defined.\n");
     #endif*/
-    if (step_number == 0)
+    if (step_number == 0){
+//printf("start-end: %d %d %d %d %d %d \n",start.x,end.x,start.y,end.y,start.z,end.z);
         solve<0><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
+    }
     else if (step_number == 1)
         solve<1><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
     else
@@ -1312,20 +1322,20 @@ acDeviceRunMPITest(void)
 #if PACKED_DATA_TRANSFERS // DEPRECATED, see AC_MPI_ENABLED instead
 // Functions for calling packed data transfers
 AcResult
-acDeviceLoadYZBuffer(const Device device, int3 start, int3 end, const Stream stream, AcReal* buffer)
+acDeviceLoadPlateBuffer(const Device device, int3 start, int3 end, const Stream stream, AcReal* buffer, PlateType plate)
 {
-    const int size_x=end.x-start.x+1, size_y=end.y-start.y+1, size_z=end.z-start.z+1;
+    const int size_x=end.x-start.x, size_y=end.y-start.y, size_z=end.z-start.z;
     const int block_size = size_x*size_y*size_z;
-    const int bufsiz = block_size*sizeof(AcReal);
-    //const int bufsiz=device->local_config.int_params[AC_yz_plate_bufsize]*sizeof(AcReal);
+    const int bufsiz = block_size*NUM_VTXBUF_HANDLES*sizeof(AcReal);
 
-//return AC_SUCCESS; //!!!
+/*
 printf("acDeviceLoadYZBuffer:start,end= %d %d %d %d %d %d \n", start.x, start.y, start.z, end.x, end.y, end.z);
 printf("acDeviceLoadYZBuffer:bufsiz,block_size= %u %u\n",bufsiz,block_size);
 printf("cDeviceLoadYZBuffer:device->yz_plate_buffer= %p \n", device->yz_plate_buffer);
 printf("cDeviceLoadYZBuffer:buffer= %p \n", buffer);
+*/
     ERRCHK_CUDA(
-        cudaMemcpyAsync(device->yz_plate_buffer, buffer, bufsiz,
+        cudaMemcpyAsync(device->plate_buffers[plate], buffer, bufsiz,
                         cudaMemcpyHostToDevice, device->streams[stream]);
     )
 //  unpacking in global memory; done by GPU kernel "unpackOyzPlates".
@@ -1333,7 +1343,33 @@ printf("cDeviceLoadYZBuffer:buffer= %p \n", buffer);
     const dim3 tpb(256, 1, 1);
     const dim3 bpg((uint)ceil((block_size * NUM_VTXBUF_HANDLES) / (float)tpb.x), 1, 1);
 
-    unpackOyzPlates<<<bpg, tpb, 0, device->streams[stream]>>>(device->yz_plate_buffer, device->vba, start, end);
+    packUnpackPlate<AC_H2D><<<bpg, tpb, 0, device->streams[stream]>>>(device->plate_buffers[plate], device->vba, start, end);
     return AC_SUCCESS;
 }
+
+AcResult
+acDeviceStorePlateBuffer(const Device device, int3 start, int3 end, const Stream stream, AcReal* buffer, PlateType plate)
+{
+    const int size_x=end.x-start.x, size_y=end.y-start.y, size_z=end.z-start.z;
+    const int block_size = size_x*size_y*size_z;
+    const int bufsiz = block_size*NUM_VTXBUF_HANDLES*sizeof(AcReal);
+
+/*
+printf("acDeviceStorePlateBuffer:start,end,type= %d %d %d %d %d %d %d\n", start.x, start.y, start.z, end.x, end.y, end.z, plate);
+printf("acDeviceLoadYZBuffer:bufsiz,block_size= %u %u\n",bufsiz,block_size);
+printf("cDeviceLoadYZBuffer:device->yz_plate_buffer= %p \n", device->yz_plate_buffer);
+printf("cDeviceLoadYZBuffer:buffer= %p \n", buffer);
+*/
+//  packing from global memory; done by GPU kernel "packYZPlates".
+
+    const dim3 tpb(256, 1, 1);
+    const dim3 bpg((uint)ceil((block_size * NUM_VTXBUF_HANDLES) / (float)tpb.x), 1, 1);
+
+    packUnpackPlate<AC_D2H><<<bpg, tpb, 0, device->streams[stream]>>>(device->plate_buffers[plate], device->vba, start, end);
+    ERRCHK_CUDA(cudaMemcpyAsync(buffer,device->plate_buffers[plate], bufsiz,
+                                cudaMemcpyDeviceToHost, device->streams[stream]);
+    )
+    return AC_SUCCESS;
+}
+
 #endif
