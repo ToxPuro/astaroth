@@ -1210,7 +1210,7 @@ acDeviceRunMPITest(void)
     //info.int_params[AC_nz]                          = 32768;
     acUpdateConfig(&info);
 
-#define VERIFY (0)
+#define VERIFY (1)
 
 #if VERIFY
     AcMesh model, candidate;
