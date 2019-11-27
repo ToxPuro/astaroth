@@ -1202,10 +1202,17 @@ acDeviceRunMPITest(void)
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
     // Large mesh dim
-    const int nn           = 512;
+    const int nn           = 256;
     info.int_params[AC_nx] = info.int_params[AC_ny] = info.int_params[AC_nz] = nn;
+    //info.int_params[AC_nz]                                                   = 256 * num_processes;
+    //const int nn           = 32;
+    //info.int_params[AC_nx] = info.int_params[AC_ny] = nn;
+    //info.int_params[AC_nz]                          = 32768;
     acUpdateConfig(&info);
 
+#define VERIFY (0)
+
+#if VERIFY
     AcMesh model, candidate;
 
     // Master CPU
@@ -1216,6 +1223,7 @@ acDeviceRunMPITest(void)
         acMeshRandomize(&model);
     }
     assert(info.int_params[AC_nz] % num_processes == 0);
+#endif
 
     /// DECOMPOSITION
     AcMeshInfo submesh_info                    = info;
@@ -1233,9 +1241,9 @@ acDeviceRunMPITest(void)
     AcMesh submesh;
     acMeshCreate(submesh_info, &submesh);
     acMeshRandomize(&submesh);
+#if VERIFY
     acDeviceDistributeMeshMPI(model, &submesh);
-
-#define VERIFY (0)
+#endif
 
 // Master CPU
 #if VERIFY
@@ -1276,7 +1284,7 @@ acDeviceRunMPITest(void)
         sprintf(buf, "procs_%d.bench", num_processes);
         FILE* fp = fopen(buf, "w");
         ERRCHK_ALWAYS(fp);
-        fprintf(fp, "%d, %g", num_processes, ms_elapsed);
+        fprintf(fp, "%d, %g", num_processes, ms_elapsed / num_iters);
         fclose(fp);
     }
     ////////////////////////////// Timer end
@@ -1285,17 +1293,19 @@ acDeviceRunMPITest(void)
     acDeviceDestroy(device);
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if VERIFY
     acDeviceGatherMeshMPI(submesh, &candidate);
+#endif
     acMeshDestroy(&submesh);
 
+#if VERIFY
     // Master CPU
     if (pid == 0) {
-#if VERIFY
         acVerifyMesh(model, candidate);
-#endif
         acMeshDestroy(&model);
         acMeshDestroy(&candidate);
     }
+#endif
 
     MPI_Finalize();
     return AC_FAILURE;
