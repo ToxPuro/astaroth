@@ -1,13 +1,12 @@
 #include <stdderiv.h>
+#include <../../../PC_moduleflags.h>
 
-#define LDENSITY (1)
-#define LHYDRO (1)
-#define LMAGNETIC (1)
-#define LENTROPY (1)
-#define LTEMPERATURE (0)
-#define LFORCING (1)
-#define LUPWD (1)
+#define LUPWD (0)
 #define LSINK (0)
+#define LGRAVITY (0)
+#ifndef LTEMPERATURE
+  #define LTEMPERATURE (0)
+#endif
 
 #define AC_THERMAL_CONDUCTIVITY (0.001) // TODO: make an actual config parameter
 #define H_CONST (0)                     // TODO: make an actual config parameter
@@ -66,6 +65,7 @@ uniform Scalar AC_lnT0;
 uniform Scalar AC_lnrho0;
 uniform Scalar AC_zeta;
 uniform Scalar AC_trans;
+uniform Scalar AC_chi;
 //  Other
 uniform Scalar AC_bin_save_t;
 //  Initial condition params
@@ -97,36 +97,48 @@ uniform Scalar AC_GM_star;
 uniform Scalar AC_unit_mass;
 uniform Scalar AC_sq2GM_star;
 uniform Scalar AC_cs2_sound;
+#if LFORCING
+  //#include <pcstyleforcing.h>
+uniform Vector AC_kk;
+uniform Vector AC_coef1;
+uniform Vector AC_coef2;
+uniform Vector AC_coef3;
+uniform Vector AC_fda;
 
+uniform Scalar AC_k1_ff;
+uniform Scalar AC_phase;
+uniform Scalar AC_fact;
+
+uniform ScalarArray AC_profx_ampl;
+uniform ScalarArray AC_profy_ampl;
+uniform ScalarArray AC_profz_ampl;
+uniform ScalarArray AC_profx_hel;
+uniform ScalarArray AC_profy_hel;
+uniform ScalarArray AC_profz_hel;
+
+uniform int AC_iforcing_zsym;
+
+#endif
 /*
  * =============================================================================
  * User-defined vertex buffers
  * =============================================================================
  */
+#if LHYDRO
+uniform ScalarField VTXBUF_UUX;
+uniform ScalarField VTXBUF_UUY;
+uniform ScalarField VTXBUF_UUZ;
+#endif
+#if LDENSITY
+uniform ScalarField VTXBUF_LNRHO;
+#endif
 #if LENTROPY
-uniform ScalarField VTXBUF_LNRHO;
-uniform ScalarField VTXBUF_UUX;
-uniform ScalarField VTXBUF_UUY;
-uniform ScalarField VTXBUF_UUZ;
-uniform ScalarField VTXBUF_AX;
-uniform ScalarField VTXBUF_AY;
-uniform ScalarField VTXBUF_AZ;
 uniform ScalarField VTXBUF_ENTROPY;
-#elif LMAGNETIC
-uniform ScalarField VTXBUF_LNRHO;
-uniform ScalarField VTXBUF_UUX;
-uniform ScalarField VTXBUF_UUY;
-uniform ScalarField VTXBUF_UUZ;
+#endif
+#if LMAGNETIC
 uniform ScalarField VTXBUF_AX;
 uniform ScalarField VTXBUF_AY;
 uniform ScalarField VTXBUF_AZ;
-#elif LHYDRO
-uniform ScalarField VTXBUF_LNRHO;
-uniform ScalarField VTXBUF_UUX;
-uniform ScalarField VTXBUF_UUY;
-uniform ScalarField VTXBUF_UUZ;
-#else
-uniform ScalarField VTXBUF_LNRHO;
 #endif
 
 #if LSINK
@@ -207,8 +219,8 @@ sink_gravity(int3 globalVertexIdx)
     if (accretion_switch == 1) {
         Vector force_gravity;
         const Vector grid_pos  = (Vector){(globalVertexIdx.x - AC_nx_min) * AC_dsx,
-                                         (globalVertexIdx.y - AC_ny_min) * AC_dsy,
-                                         (globalVertexIdx.z - AC_nz_min) * AC_dsz};
+                                          (globalVertexIdx.y - AC_ny_min) * AC_dsy,
+                                          (globalVertexIdx.z - AC_nz_min) * AC_dsz};
         const Scalar sink_mass = AC_M_sink;
         const Vector sink_pos  = (Vector){AC_sink_pos_x, AC_sink_pos_y, AC_sink_pos_z};
         const Scalar distance  = length(grid_pos - sink_pos);
@@ -354,18 +366,20 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
 {
     const Matrix S   = stress_tensor(uu);
     const Scalar cs2 = AC_cs2_sound * exp(AC_gamma * value(ss) / AC_cp_sound +
-                                          (AC_gamma - 1) * (value(lnrho) - AC_lnrho0));
+                                         (AC_gamma - 1) * (value(lnrho) - AC_lnrho0));
+#if LMAGNETIC
     const Vector j   = (1.0 / AC_mu0) *
-                     (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
+                       (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
     const Vector B = curl(aa);
-    // TODO: DOES INTHERMAL VERSTION INCLUDE THE MAGNETIC FIELD?
     const Scalar inv_rho = 1.0 / exp(value(lnrho));
-
+#endif
     // Regex replace CPU constants with get\(AC_([a-zA-Z_0-9]*)\)
     // \1
-    const Vector mom = -mul(gradients(uu), value(uu)) -
-                       cs2 * ((1.0 / AC_cp_sound) * gradient(ss) + gradient(lnrho)) +
+    const Vector mom = -mul(gradients(uu), value(uu)) 
+                       -cs2 * ((1.0 / AC_cp_sound) * gradient(ss) + gradient(lnrho)) +
+#if LMAGNETIC
                        inv_rho * cross(j, B) +
+#endif
                        AC_nu_visc * (laplace_vec(uu) + (1.0 / 3.0) * gradient_of_divergence(uu) +
                                      2.0 * mul(S, gradient(lnrho))) +
                        AC_zeta * gradient_of_divergence(uu)
@@ -376,10 +390,9 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
                        - //(1.0 / ( (AC_dsx*AC_dsy*AC_dsz) * exp(value(lnrho)))) *  //
                          // Correction factor by unit mass
                        sink_accretion_velocity(globalVertexIdx, uu, dt) // As in Lee et al.(2014)
-        ;
-#else
-        ;
 #endif
+                       ;
+//printf("kernel: AC_nu_visc=  %f \n", AC_nu_visc);
     return mom;
 }
 #elif LTEMPERATURE
@@ -410,18 +423,28 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
 }
 #else
 Device Vector
-momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar dt)
+momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in VectorField aa, Scalar dt)
 {
     Vector mom;
 
     const Matrix S = stress_tensor(uu);
-
+#if LMAGNETIC
+    const Vector j = (1.0 / AC_mu0) *
+                     (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
+    const Vector B = curl(aa);
+    const Scalar inv_rho = 1.0 / exp(value(lnrho));
+#endif
     // Isothermal: we have constant speed of sound
 
-    mom = -mul(gradients(uu), value(uu)) - AC_cs2_sound * gradient(lnrho) +
+    mom = -mul(gradients(uu), value(uu)) 
+          - (Vector){dot(gradient(uu.x),value(uu)), dot(gradient(uu.y),value(uu)), dot(gradient(uu.z),value(uu))}         
+          - AC_cs2_sound * gradient(lnrho) +
           AC_nu_visc * (laplace_vec(uu) + (1.0 / 3.0) * gradient_of_divergence(uu) +
                         2.0 * mul(S, gradient(lnrho))) +
           AC_zeta * gradient_of_divergence(uu)
+#if LMAGNETIC
+                      + inv_rho * cross(j, B) 
+#endif
 #if LSINK
           + sink_gravity(globalVertexIdx)
           // Corresponding loss of momentum
@@ -441,6 +464,7 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar d
 }
 #endif
 
+#if LMAGNETIC
 Device Vector
 induction(in VectorField uu, in VectorField aa)
 {
@@ -457,8 +481,10 @@ induction(in VectorField uu, in VectorField aa)
 
     return ind;
 }
+#endif
 
 #if LENTROPY
+
 Device Scalar
 lnT(in ScalarField ss, in ScalarField lnrho)
 {
@@ -481,8 +507,8 @@ heat_conduction(in ScalarField ss, in ScalarField lnrho)
     const Vector third_term = AC_gamma * (inv_AC_cp_sound * gradient(ss) + gradient(lnrho)) +
                               grad_ln_chi;
 
-    const Scalar chi = AC_THERMAL_CONDUCTIVITY / (exp(value(lnrho)) * AC_cp_sound);
-    return AC_cp_sound * chi * (first_term + dot(second_term, third_term));
+    //!!!const Scalar chi = AC_THERMAL_CONDUCTIVITY / (exp(value(lnrho)) * AC_cp_sound);
+    return AC_cp_sound * AC_chi * (first_term + dot(second_term, third_term));
 }
 
 Device Scalar
@@ -497,16 +523,14 @@ entropy(in ScalarField ss, in VectorField uu, in ScalarField lnrho, in VectorFie
     const Matrix S      = stress_tensor(uu);
     const Scalar inv_pT = 1.0 / (exp(value(lnrho)) * exp(lnT(ss, lnrho)));
     const Vector j      = (1.0 / AC_mu0) *
-                     (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
-    const Scalar RHS = H_CONST - C_CONST + AC_eta * (AC_mu0)*dot(j, j) +
+                          (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
+    const Scalar RHS = H_CONST - C_CONST + AC_eta * AC_mu0 * dot(j, j) +
                        2.0 * exp(value(lnrho)) * AC_nu_visc * contract(S) +
                        AC_zeta * exp(value(lnrho)) * divergence(uu) * divergence(uu);
 
     return -dot(value(uu), gradient(ss)) + inv_pT * RHS + heat_conduction(ss, lnrho);
 }
-#endif
-
-#if LTEMPERATURE
+#elif LTEMPERATURE
 Device Scalar
 heat_transfer(in VectorField uu, in ScalarField lnrho, in ScalarField tt)
 {
@@ -518,9 +542,52 @@ heat_transfer(in VectorField uu, in ScalarField lnrho, in ScalarField tt)
            (AC_gamma - 1) * value(tt) * divergence(uu);
 }
 #endif
-
 #if LFORCING
-  //#include <pcstyleforcing.h>
+
+Device Vector
+pcforcing(int3 vertexIdx, int3 globalVertexIdx, const Scalar dt, ScalarArray profx_ampl, ScalarArray profy_ampl,
+          ScalarArray profz_ampl, ScalarArray profx_hel, ScalarArray profy_hel, ScalarArray profz_hel)
+{
+    Vector pos = (Vector){(globalVertexIdx.x - AC_nx_min) * AC_dsx + AC_xorig + AC_dsx/2,
+                          (globalVertexIdx.y - AC_ny_min) * AC_dsy + AC_yorig + AC_dsy/2,
+                          (globalVertexIdx.z - AC_nz_min) * AC_dsz + AC_zorig + AC_dsz/2};
+    Complex fx = AC_fact * exp(Complex(0.0, AC_kk.x * AC_k1_ff * pos.x + AC_phase));
+//printf("fx= %d %f %f %f %f %f %f \n", globalVertexIdx.x, pos.x, AC_kk.x, AC_k1_ff, AC_phase, fx.x,fx.y);
+//printf("fx= %d %e %e %e \n", globalVertexIdx.x, pos.x, fx.x,fx.y);
+    Complex fy = exp(Complex(0.0, AC_kk.y * AC_k1_ff * pos.y));
+    Complex fz;
+
+    if (AC_iforcing_zsym == 0) {
+        fz = exp(Complex(0.0, AC_kk.z * AC_k1_ff * pos.z));
+    }
+    else if (AC_iforcing_zsym == 1) {
+        fz = Complex(cos(AC_kk.z * AC_k1_ff * pos.z), 0.0);
+    }
+    else if (AC_iforcing_zsym == -1) {
+        fz = Complex(sin(AC_kk.z * AC_k1_ff * pos.z), 0.0);
+    }
+    else {
+      // Failure
+    }
+
+    Complex fxyz = fx * fy * fz;
+     // TODO recheck indices
+    Scalar force_ampl    = profx_ampl[vertexIdx.x - NGHOST] * profy_ampl[vertexIdx.y] * profz_ampl[vertexIdx.z];
+    Scalar prof_hel_ampl =  profx_hel[vertexIdx.x - NGHOST] *  profy_hel[vertexIdx.y] *  profz_hel[vertexIdx.z];
+
+    Vector rhs;
+
+    rhs.x = force_ampl * AC_fda.x * (Complex(AC_coef1.x, prof_hel_ampl * AC_coef2.x) * fxyz).x;
+    rhs.y = force_ampl * AC_fda.y * (Complex(AC_coef1.y, prof_hel_ampl * AC_coef2.y) * fxyz).x;
+    rhs.z = force_ampl * AC_fda.z * (Complex(AC_coef1.z, prof_hel_ampl * AC_coef2.z) * fxyz).x;
+/*
+    rhs.x = AC_fda.x * (Complex(AC_coef1.x, AC_coef2.x) * fxyz).x;
+    rhs.y = AC_fda.y * (Complex(AC_coef1.y, AC_coef2.y) * fxyz).x;
+    rhs.z = AC_fda.z * (Complex(AC_coef1.z, AC_coef2.z) * fxyz).x;
+*/
+    return rhs;
+}
+
 #endif
 
 // Declare input and output arrays using locations specified in the
@@ -567,16 +634,18 @@ solve()
 #elif LTEMPERATURE
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, tt, dt), dt);
     out_tt = rk3(out_tt, tt, heat_transfer(uu, lnrho, tt), dt);
+#elif LMAGNETIC
+    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, aa, dt), dt);
 #else
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, dt), dt);
 #endif
 
 #if LFORCING
-    /*if (step_number == 2) {
+    if (step_number == 2) {
         out_uu = out_uu + 
-                 pcforcing(vertexIdx, globalVertexIdx, dt, profx_ampl, profy_ampl, profz_ampl,
-                                                           profx_hel,  profy_hel,  profz_hel)
-    }*/
+                 pcforcing(vertexIdx, globalVertexIdx, dt, AC_profx_ampl, AC_profy_ampl, AC_profz_ampl,
+                                                           AC_profx_hel,  AC_profy_hel,  AC_profz_hel);
+    }
 #endif
 
 #if LSINK
