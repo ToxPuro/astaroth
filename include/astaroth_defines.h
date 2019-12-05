@@ -120,7 +120,7 @@ typedef enum {
 #define STREAM_ALL (NUM_STREAMS)
 
 enum {AC_H2D, AC_D2H};
-typedef enum {AC_XY, AC_XZ, AC_YZ, NUM_PLATE_BUFFERS} PlateType;
+typedef enum {AC_XY, AC_XZ, AC_YZ, AC_FRONT, AC_BACK, NUM_PLATE_BUFFERS} PlateType;
 
 #define AC_GEN_ID(X) X
 typedef enum {
@@ -211,7 +211,8 @@ acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
     return i +                          //
            j * info.int_params[AC_mx] + //
-           k * info.int_params[AC_mx] * info.int_params[AC_my];
+           //k * info.int_params[AC_mx] * info.int_params[AC_my];
+           k * info.int_params[AC_mxy];
 }
 
 /** Prints all parameters inside AcMeshInfo */
