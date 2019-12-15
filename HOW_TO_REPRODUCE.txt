@@ -1,0 +1,27 @@
+
+Building and running:
+mkdir build
+cd build
+cmake -DCMAKE_C_COMPILER=$(which mpicc) -DCMAKE_CXX_COMPILER=$(which mpicxx) -DBUILD_STANDALONE=ON ..
+make -j
+./ac_run -b # To run P2P benchmark
+./ac_run -t # To run P2P verification
+srun <flags> ./mpirun # To run MPI benchmark and verification. Note: requires that the user spawns exactly one MPI task per GPU. For example with 2 nodes with 4 GPUs each: Spawn a total of 8 tasks, 4 tasks per node and allocate 4 GPUs per node. srun is a part of the Slurm Workload Manager. On systems where Slurm is not available, one should use mpirun or equivalent.
+
+
+
+Switching between strong and weak scaling tests:
+    - There is a flag "#define BENCH_STRONG_SCALING (1)" in both src/standalone/benchmark.c and src/core/device.cc.
+    - Set this flag to 1 for strong scaling tests, or 0 for weak, and recompile.
+
+
+
+
+
+
+
+
+
+
+
+
