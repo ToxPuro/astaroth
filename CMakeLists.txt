@@ -12,8 +12,8 @@
 
 ## CMake settings
 cmake_minimum_required (VERSION 3.9) # Need >= 3.8 for first-class CUDA support and >= 3.9 for MPI
-find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
-find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
+#find_program(CMAKE_C_COMPILER NAMES $ENV{CC} mpicc PATHS ENV PATH NO_DEFAULT_PATH)
+#find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} mpicxx PATHS ENV PATH NO_DEFAULT_PATH)
 
 ## Project settings
 project(astaroth C CXX CUDA)
@@ -22,14 +22,14 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 ## Options
 option(BUILD_DEBUG              "Builds the program with extensive error checking"          OFF)
-option(BUILD_STANDALONE         "Builds the standalone Astaroth"                            ON)
+option(BUILD_STANDALONE         "Builds the standalone Astaroth"                            OFF)
 option(BUILD_UTILS              "Builds the utility library"                                ON)
 option(BUILD_RT_VISUALIZATION   "Builds the module for real-time visualization using SDL2"  OFF)
 option(BUILD_C_API_TEST         "Builds a C program to test whether the API is conformant"  OFF)
-option(BUILD_MPI_TEST           "Builds a C program to test whether MPI works"              OFF)
-option(DOUBLE_PRECISION         "Generates double precision code"                           OFF)
+option(BUILD_MPI_TEST           "Builds a C program to test whether MPI works"              ON)
+option(DOUBLE_PRECISION         "Generates double precision code"                           ON)
 option(MULTIGPU_ENABLED         "If enabled, uses all the available GPUs"                   ON)
-option(MPI_ENABLED              "Enables additional functions for MPI communciation"        OFF)
+option(MPI_ENABLED              "Enables additional functions for MPI communciation"        ON)
 
 ## Compile the Astaroth Code Compiler
 add_subdirectory(acc)

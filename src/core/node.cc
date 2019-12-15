@@ -276,7 +276,6 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
         acDevicePrintInfo(node->devices[i]);
     }
 
-    /*
     // Enable peer access
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
@@ -300,7 +299,7 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
             WARNCHK_CUDA_ALWAYS(cudaDeviceEnablePeerAccess(back, 0));
         }
     }
-    */
+
     acNodeSynchronizeStream(node, STREAM_ALL);
 
     *node_handle = node;
@@ -311,7 +310,7 @@ AcResult
 acNodeDestroy(Node node)
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
-    /*
+
     // Disable peer access
     for (int i = 0; i < node->num_devices; ++i) {
         const int front = (i + 1) % node->num_devices;
@@ -334,7 +333,6 @@ acNodeDestroy(Node node)
             WARNCHK_CUDA_ALWAYS(cudaDeviceDisablePeerAccess(back));
         }
     }
-    */
 
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
