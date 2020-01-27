@@ -1197,6 +1197,7 @@ acDeviceCommunicateHalosMPI(const Device device)
         acPackCommData(device, sidexz_a0s, &sidexz_data);
         acPackCommData(device, sideyz_a0s, &sideyz_data);
 
+        /*
         acTransferCommDataToHost(device, &corner_data);
         acTransferCommDataToHost(device, &edgex_data);
         acTransferCommDataToHost(device, &edgey_data);
@@ -1204,6 +1205,7 @@ acDeviceCommunicateHalosMPI(const Device device)
         acTransferCommDataToHost(device, &sidexy_data);
         acTransferCommDataToHost(device, &sidexz_data);
         acTransferCommDataToHost(device, &sideyz_data);
+        */
 
         acTransferCommData(device, corner_a0s, corner_b0s, &corner_data);
         acTransferCommData(device, edgex_a0s, edgex_b0s, &edgex_data);
@@ -1221,6 +1223,7 @@ acDeviceCommunicateHalosMPI(const Device device)
         acTransferCommDataWait(sidexz_data);
         acTransferCommDataWait(sideyz_data);
 
+        /*
         acTransferCommDataToDevice(device, &corner_data);
         acTransferCommDataToDevice(device, &edgex_data);
         acTransferCommDataToDevice(device, &edgey_data);
@@ -1228,6 +1231,7 @@ acDeviceCommunicateHalosMPI(const Device device)
         acTransferCommDataToDevice(device, &sidexy_data);
         acTransferCommDataToDevice(device, &sidexz_data);
         acTransferCommDataToDevice(device, &sideyz_data);
+        */
 
         acUnpackCommData(device, corner_b0s, &corner_data);
         acUnpackCommData(device, edgex_b0s, &edgex_data);
@@ -1252,6 +1256,7 @@ acDeviceCommunicateHalosMPI(const Device device)
     acPackCommData(device, sidexz_a0s, &sidexz_data);
     acPackCommData(device, sideyz_a0s, &sideyz_data);
 
+    /*
     acTransferCommDataToHost(device, &corner_data);
     acTransferCommDataToHost(device, &edgex_data);
     acTransferCommDataToHost(device, &edgey_data);
@@ -1259,6 +1264,7 @@ acDeviceCommunicateHalosMPI(const Device device)
     acTransferCommDataToHost(device, &sidexy_data);
     acTransferCommDataToHost(device, &sidexz_data);
     acTransferCommDataToHost(device, &sideyz_data);
+    */
 
     acTransferCommData(device, corner_a0s, corner_b0s, &corner_data);
     acTransferCommData(device, edgex_a0s, edgex_b0s, &edgex_data);
@@ -1276,6 +1282,7 @@ acDeviceCommunicateHalosMPI(const Device device)
     acTransferCommDataWait(sidexz_data);
     acTransferCommDataWait(sideyz_data);
 
+    /*
     acTransferCommDataToDevice(device, &corner_data);
     acTransferCommDataToDevice(device, &edgex_data);
     acTransferCommDataToDevice(device, &edgey_data);
@@ -1283,6 +1290,7 @@ acDeviceCommunicateHalosMPI(const Device device)
     acTransferCommDataToDevice(device, &sidexy_data);
     acTransferCommDataToDevice(device, &sidexz_data);
     acTransferCommDataToDevice(device, &sideyz_data);
+    */
 
     acUnpackCommData(device, corner_b0s, &corner_data);
     acUnpackCommData(device, edgex_b0s, &edgex_data);
