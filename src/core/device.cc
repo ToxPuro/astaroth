@@ -517,7 +517,7 @@ acCreatePackedData(const int3 dims)
     data.dims = dims;
 
     const size_t bytes = dims.x * dims.y * dims.z * sizeof(data.data[0]) * NUM_VTXBUF_HANDLES;
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&data.data, bytes));
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&(data.data), bytes));
 
     return data;
 }
@@ -997,7 +997,7 @@ acTransferCommData(const Device device, //
                             // PackedData src = data->srcs[a_idx];
                             // PackedData dst = data->dsts[b_idx];
                             // PackedData src = data->srcs_host[a_idx];
-                            PackedData dst = data->dsts_host[b_idx];
+                            PackedData dst = data->dsts[b_idx];
 
                             const int3 pid3d = getPid3D(pid, decomp);
                             MPI_Irecv(dst.data, count, datatype, getPid(pid3d - neighbor, decomp),
@@ -1031,7 +1031,7 @@ acTransferCommData(const Device device, //
 
                             // PackedData src = data->srcs[a_idx];
                             // PackedData dst = data->dsts[b_idx];
-                            PackedData src = data->srcs_host[a_idx];
+                            PackedData src = data->srcs[a_idx];
                             // PackedData dst = data->dsts_host[b_idx];
 
                             const int3 pid3d = getPid3D(pid, decomp);
@@ -1292,56 +1292,6 @@ acDeviceCommunicateHalosMPI(const Device device)
     acUnpackCommData(device, sidexz_b0s, &sidexz_data);
     acUnpackCommData(device, sideyz_b0s, &sideyz_data);
 
-    /*
-    acPackCommData(device, corner_a0s, &corner_data);
-    acPackCommData(device, edgex_a0s, &edgex_data);
-    acPackCommData(device, edgey_a0s, &edgey_data);
-    acPackCommData(device, edgez_a0s, &edgez_data);
-    acPackCommData(device, sidexy_a0s, &sidexy_data);
-    acPackCommData(device, sidexz_a0s, &sidexz_data);
-    acPackCommData(device, sideyz_a0s, &sideyz_data);
-
-    acTransferCommDataToHost(device, &corner_data);
-    acTransferCommDataToHost(device, &edgex_data);
-    acTransferCommDataToHost(device, &edgey_data);
-    acTransferCommDataToHost(device, &edgez_data);
-    acTransferCommDataToHost(device, &sidexy_data);
-    acTransferCommDataToHost(device, &sidexz_data);
-    acTransferCommDataToHost(device, &sideyz_data);
-
-    acTransferCommData(device, corner_a0s, corner_b0s, &corner_data);
-    acTransferCommData(device, edgex_a0s, edgex_b0s, &edgex_data);
-    acTransferCommData(device, edgey_a0s, edgey_b0s, &edgey_data);
-    acTransferCommData(device, edgez_a0s, edgez_b0s, &edgez_data);
-    acTransferCommData(device, sidexy_a0s, sidexy_b0s, &sidexy_data);
-    acTransferCommData(device, sidexz_a0s, sidexz_b0s, &sidexz_data);
-    acTransferCommData(device, sideyz_a0s, sideyz_b0s, &sideyz_data);
-
-    acTransferCommDataWait(corner_data);
-    acTransferCommDataWait(edgex_data);
-    acTransferCommDataWait(edgey_data);
-    acTransferCommDataWait(edgez_data);
-    acTransferCommDataWait(sidexy_data);
-    acTransferCommDataWait(sidexz_data);
-    acTransferCommDataWait(sideyz_data);
-
-    acTransferCommDataToDevice(device, &corner_data);
-    acTransferCommDataToDevice(device, &edgex_data);
-    acTransferCommDataToDevice(device, &edgey_data);
-    acTransferCommDataToDevice(device, &edgez_data);
-    acTransferCommDataToDevice(device, &sidexy_data);
-    acTransferCommDataToDevice(device, &sidexz_data);
-    acTransferCommDataToDevice(device, &sideyz_data);
-
-    acUnpackCommData(device, corner_b0s, &corner_data);
-    acUnpackCommData(device, edgex_b0s, &edgex_data);
-    acUnpackCommData(device, edgey_b0s, &edgey_data);
-    acUnpackCommData(device, edgez_b0s, &edgez_data);
-    acUnpackCommData(device, sidexy_b0s, &sidexy_data);
-    acUnpackCommData(device, sidexz_b0s, &sidexz_data);
-    acUnpackCommData(device, sideyz_b0s, &sideyz_data);
-    */
-
     cudaDeviceSynchronize();
     MPI_Barrier(MPI_COMM_WORLD);
     int pid;
@@ -1433,11 +1383,13 @@ acDeviceRunMPITest(void)
 
     Device device;
     acDeviceCreate(pid % devices_per_node, submesh_info, &device);
+    MPI_Barrier(MPI_COMM_WORLD);
     // TODO enable peer access
     ////////////////////////////////////////////////////////////////
 
     // DISTRIBUTE & LOAD //////////////////////////////////////////
     acDeviceDistributeMeshMPI(model, decomposition, &submesh);
+    MPI_Barrier(MPI_COMM_WORLD);
     acDeviceLoadMesh(device, STREAM_DEFAULT, submesh);
     ///////////////////////////////////////////////////////////////
 
@@ -1447,8 +1399,6 @@ acDeviceRunMPITest(void)
     //////////////////////////////////////////////////////////////
 
     // TIMING START //////////////////////////////////////////////
-    acDeviceSynchronizeStream(device, STREAM_ALL);
-    MPI_Barrier(MPI_COMM_WORLD);
     Timer t;
     timer_reset(&t);
     //////////////////////////////////////////////////////////////

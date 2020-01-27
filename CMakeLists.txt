@@ -1,14 +1,14 @@
 ## CMake settings
 cmake_minimum_required(VERSION 3.9) # Required for first-class CUDA support
-find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
-find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
+#find_program(CMAKE_C_COMPILER NAMES $ENV{CC} mpicc PATHS ENV PATH NO_DEFAULT_PATH)
+#find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} mpicxx PATHS ENV PATH NO_DEFAULT_PATH)
 
 ## Project settings
 project(astaroth C CXX CUDA)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Project-wide compilation flags
-set(COMMON_FLAGS "-mavx -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow")
+#set(COMMON_FLAGS "-mavx -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_C_STANDARD 11)
@@ -29,9 +29,9 @@ message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
 ## Options
 option(DOUBLE_PRECISION "Generates double precision code."                    OFF)
-option(BUILD_SAMPLES    "Builds projects in samples subdirectory."            OFF)
-option(BUILD_STANDALONE "Builds standalone Astaroth."                         ON)
-option(MPI_ENABLED      "Enables additional functions for MPI communciation." OFF)
+option(BUILD_SAMPLES    "Builds projects in samples subdirectory."            ON)
+option(BUILD_STANDALONE "Builds standalone Astaroth."                         OFF)
+option(MPI_ENABLED      "Enables additional functions for MPI communciation." ON)
 option(MULTIGPU_ENABLED "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
 
 ## Options (DEPRECATED)
