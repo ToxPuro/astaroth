@@ -11,11 +11,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 set(COMMON_FLAGS "-mavx -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 11)
 
 find_package(CUDA) # Still required for various macros, such as cuda_select_nvcc_...
 cuda_select_nvcc_arch_flags(ARCHLIST Common) # Common architectures depend on the available CUDA version. Listed here: https://github.com/Kitware/CMake/blob/master/Modules/FindCUDA/select_compute_arch.cmake
 string(REPLACE ";" " " CUDA_ARCH_FLAGS "${ARCHLIST}")
-set(COMMON_FLAGS_CUDA "-mavx,-Wall,-Wextra,-Werror,-Wdouble-promotion,-Wfloat-conversion,-Wshadow ")
+set(COMMON_FLAGS_CUDA "-mavx,-Wall,-Wextra,-Werror,-Wdouble-promotion,-Wfloat-conversion,-Wshadow")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${CUDA_ARCH_FLAGS} -ccbin=${CMAKE_CXX_COMPILER} --compiler-options=${COMMON_FLAGS_CUDA}")
 
 
@@ -26,16 +28,17 @@ endif()
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
 ## Options
-option(DOUBLE_PRECISION "Generates double precision code."                   OFF)
-option(BUILD_SAMPLES    "Builds projects in samples subdirectory"            OFF)
-option(BUILD_STANDALONE "Builds standalone Astaroth"                         ON)
-option(MPI_ENABLED      "Enables additional functions for MPI communciation" OFF)
+option(DOUBLE_PRECISION "Generates double precision code."                    OFF)
+option(BUILD_SAMPLES    "Builds projects in samples subdirectory."            OFF)
+option(BUILD_STANDALONE "Builds standalone Astaroth."                         ON)
+option(MPI_ENABLED      "Enables additional functions for MPI communciation." OFF)
+option(MULTIGPU_ENABLED "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
 
 ## Options (DEPRECATED)
 # option(BUILD_DEBUG              "Builds the program with extensive error checking"          OFF)
 # option(BUILD_UTILS              "Builds the utility library"                                ON)
 # option(BUILD_RT_VISUALIZATION   "Builds the module for real-time visualization using SDL2"  OFF)
-option(MULTIGPU_ENABLED "If enabled, uses all the available GPUs (Affects Legacy & Node layers only)" OFF)
+
 
 ## Compile ACC
 add_subdirectory(acc)
