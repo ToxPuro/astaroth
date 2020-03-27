@@ -1,7 +1,7 @@
 #include <stdderiv.h>
 #include <../../../PC_moduleflags.h>
 
-#define LUPWD (0)
+#define LUPWD (1)
 #define LSINK (0)
 #define LGRAVITY (0)
 #ifndef LTEMPERATURE
@@ -552,7 +552,8 @@ pcforcing(int3 vertexIdx, int3 globalVertexIdx, const Scalar dt, ScalarArray pro
                           (globalVertexIdx.y - AC_ny_min) * AC_dsy + AC_yorig + AC_dsy/2,
                           (globalVertexIdx.z - AC_nz_min) * AC_dsz + AC_zorig + AC_dsz/2};
     Complex fx = AC_fact * exp(Complex(0.0, AC_kk.x * AC_k1_ff * pos.x + AC_phase));
-//printf("fx= %d %f %f %f %f %f %f \n", globalVertexIdx.x, pos.x, AC_kk.x, AC_k1_ff, AC_phase, fx.x,fx.y);
+//printf("globalVertexIdx.z= %d \n", globalVertexIdx.z);
+//, pos.x, AC_kk.x, AC_k1_ff, AC_phase, fx.x,fx.y);
 //printf("fx= %d %e %e %e \n", globalVertexIdx.x, pos.x, fx.x,fx.y);
     Complex fy = exp(Complex(0.0, AC_kk.y * AC_k1_ff * pos.y));
     Complex fz;
@@ -576,7 +577,6 @@ pcforcing(int3 vertexIdx, int3 globalVertexIdx, const Scalar dt, ScalarArray pro
     Scalar prof_hel_ampl =  profx_hel[vertexIdx.x - NGHOST] *  profy_hel[vertexIdx.y] *  profz_hel[vertexIdx.z];
 
     Vector rhs;
-
     rhs.x = force_ampl * AC_fda.x * (Complex(AC_coef1.x, prof_hel_ampl * AC_coef2.x) * fxyz).x;
     rhs.y = force_ampl * AC_fda.y * (Complex(AC_coef1.y, prof_hel_ampl * AC_coef2.y) * fxyz).x;
     rhs.z = force_ampl * AC_fda.z * (Complex(AC_coef1.z, prof_hel_ampl * AC_coef2.z) * fxyz).x;

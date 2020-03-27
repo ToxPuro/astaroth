@@ -141,7 +141,7 @@ static size_t current_nest           = 0;
 static Symbol*
 symboltable_lookup(const char* identifier)
 {
-    // TODO assert tha symbol not function! cannot be since we allow overloads->conflicts if not
+    // TODO assert that symbol not function! cannot be since we allow overloads->conflicts if not
     // explicit
 
     if (!identifier)

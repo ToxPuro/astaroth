@@ -76,6 +76,10 @@ AcResult acNodeLoadConstant(const Node node, const Stream stream, const AcRealPa
 AcResult acNodeLoadVectorConstant(const Node node, const Stream stream, const AcReal3Param param,
                                   const AcReal3 value);
 
+/** */
+AcResult acNodeLoadScalarArray(const Node node, const Stream stream, const ScalarArrayHandle handle,
+                               const AcReal* data, const int3 num);
+
 /** Deprecated ? Might be useful though if the user wants to load only one vtxbuf. But in this case
  * the user should supply a AcReal* instead of vtxbuf_handle */
 AcResult acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream,
@@ -145,6 +149,8 @@ AcResult acNodeLoadPlateXcomp(const Node node, const Stream stream, const int3 s
 AcResult acNodeStorePlate(const Node node, const Stream stream, const int3 start, const int3 end, 
                           AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate);
 
+/** */
+AcResult acNodeStoreIXYPlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, PlateType plate);
 #ifdef __cplusplus
 } // extern "C"
 #endif

@@ -95,6 +95,9 @@ AcResult acDeviceLoadPlateBuffer(const Device device, int3 startDev, int3 endDev
 AcResult acDeviceStorePlateBuffer(const Device device, int3 startDev, int3 endDev, const Stream stream, AcReal* buffer, PlateType plate);
 
 /** */
+AcResult acDeviceStoreIXYPlate(const Device device, int3 start, int3 end, int src_offset, const Stream stream, AcMesh *host_mesh);
+
+/** */
 AcResult acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
                                              const VertexBufferHandle vtxbuf_handle, const int3 src,
                                              const int3 dst, const int num_vertices,

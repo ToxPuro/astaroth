@@ -301,11 +301,11 @@ acDevicePrintInfo(const Device device)
 {
     const int device_id = device->id;
 
-#if VERBOSE_PRINTING
     cudaDeviceProp props;
     cudaGetDeviceProperties(&props, device_id);
     printf("--------------------------------------------------\n");
-    printf("Device Number: %d\n", device_id);
+    printf("Device ID: %d\n", device_id);
+#if VERBOSE_PRINTING
     const size_t bus_id_max_len = 128;
     char bus_id[bus_id_max_len];
     cudaDeviceGetPCIBusId(bus_id, bus_id_max_len, device_id);
@@ -538,6 +538,11 @@ acDeviceLoadMeshInfo(const Device device, const Stream stream, const AcMeshInfo 
     ERRCHK_ALWAYS(device_config.int_params[AC_multigpu_offset] ==
                   device->local_config.int_params[AC_multigpu_offset]);
 
+//printf("NUM_REAL_PARAMS= %d \n",NUM_REAL_PARAMS);
+//printf("dsx= %.14f \n", device_config.real_params[AC_dsx]);
+#if LFORCING
+//printf("acDeviceLoadMeshInfo:k1_ff= %.14f \n", device_config.real_params[AC_k1_ff]);
+#endif
     ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbolAsync(d_mesh_info, &device_config, sizeof(device_config),
                                                0, cudaMemcpyHostToDevice, device->streams[stream]));
     return AC_SUCCESS;
@@ -731,14 +736,14 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
               "timestep to be defined.\n");
     #endif*/
     if (step_number == 0){
-//printf("start-end: %d %d %d %d %d %d \n",start.x,end.x,start.y,end.y,start.z,end.z);
         solve<0><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
     }
     else if (step_number == 1)
         solve<1><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
-    else
+    else{
+//printf("acDeviceIntegrateSubstep:start-end= %d %d %d %d %d %d %d \n",device->id,start.x,end.x,start.y,end.y,start.z,end.z);
         solve<2><<<bpg, tpb, 0, device->streams[stream]>>>(start, end, device->vba);
-
+    }
     ERRCHK_CUDA_KERNEL();
 
     return AC_SUCCESS;
@@ -1334,10 +1339,12 @@ printf("acDeviceLoadYZBuffer:bufsiz,block_size= %u %u\n",bufsiz,block_size);
 printf("cDeviceLoadYZBuffer:device->yz_plate_buffer= %p \n", device->yz_plate_buffer);
 printf("cDeviceLoadYZBuffer:buffer= %p \n", buffer);
 */
+    cudaSetDevice(device->id);
+
     ERRCHK_CUDA(
         cudaMemcpyAsync(device->plate_buffers[plate], buffer, bufsiz,
-                        cudaMemcpyHostToDevice, device->streams[stream]);
-    )
+                        cudaMemcpyHostToDevice, device->streams[stream])
+    );
 //  unpacking in global memory; done by GPU kernel "unpackOyzPlates".
 
     const dim3 tpb(256, 1, 1);
@@ -1365,11 +1372,35 @@ printf("cDeviceLoadYZBuffer:buffer= %p \n", buffer);
     const dim3 tpb(256, 1, 1);
     const dim3 bpg((uint)ceil((block_size * NUM_VTXBUF_HANDLES) / (float)tpb.x), 1, 1);
 
+    cudaSetDevice(device->id);
+
     packUnpackPlate<AC_D2H><<<bpg, tpb, 0, device->streams[stream]>>>(device->plate_buffers[plate], device->vba, start, end);
     ERRCHK_CUDA(cudaMemcpyAsync(buffer,device->plate_buffers[plate], bufsiz,
-                                cudaMemcpyDeviceToHost, device->streams[stream]);
-    )
+                                cudaMemcpyDeviceToHost, device->streams[stream])
+    );
     return AC_SUCCESS;
 }
 
+AcResult
+acDeviceStoreIXYPlate(const Device device, int3 start, int3 end, int src_offset, const Stream stream, AcMesh *host_mesh)
+{
+    cudaSetDevice(device->id);     // use first device
+
+    int px=host_mesh->info.int_params[AC_mx]*sizeof(AcReal), sx=host_mesh->info.int_params[AC_nx]*sizeof(AcReal);
+
+    size_t start_idx;
+    void *dest, *src;
+
+    for (int iv = 0; iv < NUM_VTXBUF_HANDLES; ++iv) {
+      for (int k=start.z; k<end.z; k++){
+
+        start_idx = acVertexBufferIdx(start.x,start.y,k,host_mesh->info);
+        dest=&(host_mesh->vertex_buffer[iv][start_idx]);
+        src=&device->vba.out[iv][start_idx+src_offset];
+        cudaMemcpy2DAsync(dest, px, src, px, sx, host_mesh->info.int_params[AC_ny],
+                          cudaMemcpyDeviceToHost, device->streams[stream]);
+      }
+    }
+    return AC_SUCCESS;
+}
 #endif
