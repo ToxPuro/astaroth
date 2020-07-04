@@ -207,12 +207,7 @@ main(int argc, char** argv)
                 results[nth_percentile * num_iters], 100 * nth_percentile);
 
         char path[4096] = "";
-        if (test == TEST_STRONG_SCALING)
-            strncpy(path, "strong_scaling.csv", sizeof(path));
-        else if (test == TEST_WEAK_SCALING)
-            strncpy(path, "weak_scaling.csv", sizeof(path));
-        else
-            ERROR("Invalid test type");
+        sprintf(path, "%s_%d.csv", test == TEST_STRONG_SCALING ? "strong" : "weak", nprocs);
 
         FILE* fp = fopen(path, "a");
         ERRCHK_ALWAYS(fp);
@@ -224,7 +219,7 @@ main(int argc, char** argv)
     }
 
     /*
-const size_t num_iters      = 100;
+const size_t num_iters      = 1000;
 const double nth_percentile = 0.90;
 
 std::vector<double> results; // ms
