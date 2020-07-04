@@ -1,6 +1,9 @@
 #!/bin/bash
 
-SRUN="srun --account=project_2000403 --mem=32000 -t 00:14:59 -p gpu --exclusive"
+SRUN="srun --account=project_2000403 --mem=32000 -t 00:14:59 -p gpu"
+#SRUN="srun --account=project_2000403 --mem=32000 -t 00:14:59 -p gpu --exclusive"
+# SLURM bug #1: Exclusive flag invalidates -ntasks-per-socket
+# SLURM bug #2: ntasks-per-socket does not work w/ sbath, only interactive srun
 
 SRUN_1="$SRUN --gres=gpu:v100:1 --ntasks-per-socket=1 -n 1 -N 1"
 SRUN_2="$SRUN --gres=gpu:v100:2 --ntasks-per-socket=1 -n 2 -N 1"
