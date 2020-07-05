@@ -29,7 +29,9 @@ main(void)
         fprintf(fp, "#SBATCH --gres=gpu:v100:%d\n", gpus_per_node);
         fprintf(fp, "#SBATCH -n %d\n", nprocs);
         fprintf(fp, "#SBATCH -N %d\n", nodes);
-        fprintf(fp, "#SBATCH --exclusive\n");
+        //fprintf(fp, "#SBATCH --exclusive\n");
+        if (nprocs > 4)
+            fprintf(fp, "#SBATCH --ntasks-per-socket=2\n");
 
         // Modules
         fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake hpcx-mpi/2.5.0-cuda nccl\n");
