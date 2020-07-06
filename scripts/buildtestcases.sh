@@ -36,8 +36,18 @@ load_default_case() {
   sed -i 's/const size_t num_iters      = .*;/const size_t num_iters      = 1000;/' samples/benchmark/main.cc
 }
 
-# $1 grid size
 srun_all() {
+    sbatch benchmark_1.sh
+    sbatch benchmark_2.sh
+    sbatch benchmark_4.sh
+    sbatch benchmark_8.sh
+    sbatch benchmark_16.sh
+    sbatch benchmark_32.sh
+    sbatch benchmark_64.sh
+}
+
+# $1 grid size
+srun_all2() {
   $SRUN_1 ./benchmark $1 $1 $1 &
   $SRUN_2 ./benchmark $1 $1 $1 &
   $SRUN_4 ./benchmark $1 $1 $1 &
@@ -72,10 +82,26 @@ create_case "meshsize_1792" 1792
 load_default_case
 sed -i 's/MPI_DECOMPOSITION_AXES (.)/MPI_DECOMPOSITION_AXES (1)/' src/core/device.cc
 create_case "decomp_1D" 256
+sed -i 's/MPI_COMPUTE_ENABLED (.)/MPI_COMPUTE_ENABLED (0)/' src/core/device.cc
+sed -i 's/MPI_COMM_ENABLED (.)/MPI_COMM_ENABLED (1)/' src/core/device.cc
+sed -i 's/MPI_INCL_CORNERS (.)/MPI_INCL_CORNERS (0)/' src/core/device.cc
+create_case "decomp_1D_comm" 256
+
+load_default_case
 sed -i 's/MPI_DECOMPOSITION_AXES (.)/MPI_DECOMPOSITION_AXES (2)/' src/core/device.cc
 create_case "decomp_2D" 256
+sed -i 's/MPI_COMPUTE_ENABLED (.)/MPI_COMPUTE_ENABLED (0)/' src/core/device.cc
+sed -i 's/MPI_COMM_ENABLED (.)/MPI_COMM_ENABLED (1)/' src/core/device.cc
+sed -i 's/MPI_INCL_CORNERS (.)/MPI_INCL_CORNERS (0)/' src/core/device.cc
+create_case "decomp_2D_comm" 256
+
+load_default_case
 sed -i 's/MPI_DECOMPOSITION_AXES (.)/MPI_DECOMPOSITION_AXES (3)/' src/core/device.cc
 create_case "decomp_3D" 256
+sed -i 's/MPI_COMPUTE_ENABLED (.)/MPI_COMPUTE_ENABLED (0)/' src/core/device.cc
+sed -i 's/MPI_COMM_ENABLED (.)/MPI_COMM_ENABLED (1)/' src/core/device.cc
+sed -i 's/MPI_INCL_CORNERS (.)/MPI_INCL_CORNERS (0)/' src/core/device.cc
+create_case "decomp_3D_comm" 256
 
 # Stencil order
 load_default_case
