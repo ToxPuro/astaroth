@@ -73,8 +73,11 @@ load_default_case
 create_case "meshsize_256" 256
 
 sed -i 's/const size_t num_iters      = .*;/const size_t num_iters      = 100;/' samples/benchmark/main.cc
+sed -i 's/const int nx = [0-9]*;/const int nx = 512;/' samples/genbenchmarkscripts/main.c
 create_case "meshsize_512" 512
+sed -i 's/const int nx = [0-9]*;/const int nx = 1024;/' samples/genbenchmarkscripts/main.c
 create_case "meshsize_1024" 1024
+sed -i 's/const int nx = [0-9]*;/const int nx = 1792;/' samples/genbenchmarkscripts/main.c
 create_case "meshsize_1792" 1792
 
 
@@ -151,8 +154,11 @@ create_case "timings_comp" 256
 # Weak scaling
 load_default_case
 sed -i 's/const TestType test = .*;/const TestType test = TEST_WEAK_SCALING;/' samples/benchmark/main.cc
+sed -i 's/const int nx = [0-9]*;/const int nx = 128;/' samples/genbenchmarkscripts/main.c
 create_case "weak_128" 128
+sed -i 's/const int nx = [0-9]*;/const int nx = 256;/' samples/genbenchmarkscripts/main.c
 create_case "weak_256" 256
+sed -i 's/const int nx = [0-9]*;/const int nx = 448;/' samples/genbenchmarkscripts/main.c
 create_case "weak_448" 448
 
 load_default_case
