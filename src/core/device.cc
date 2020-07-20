@@ -12,7 +12,7 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
 #define MPI_GPUDIRECT_DISABLED (0) // Buffer through host memory, deprecated
-#define MPI_DECOMPOSITION_AXES (3)
+//#define MPI_DECOMPOSITION_AXES (3)
 #define MPI_COMPUTE_ENABLED (1)
 #define MPI_COMM_ENABLED (1)
 #define MPI_INCL_CORNERS (0)
@@ -20,6 +20,7 @@
 #define MPI_USE_CUDA_DRIVER_PINNING (0) // Pin with cuPointerSetAttribute, otherwise cudaMallocHost
 
 #include <cuda.h> // CUDA driver API (needed if MPI_USE_CUDA_DRIVER_PINNING is set)
+
 
 AcResult
 acDevicePrintInfo(const Device device)
@@ -125,7 +126,6 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     device->id           = id;
     device->local_config = device_config;
     acDevicePrintInfo(device);
-
     // Check that the code was compiled for the proper GPU architecture
     printf("Trying to run a dummy kernel. If this fails, make sure that your\n"
            "device supports the CUDA architecture you are compiling for.\n"
@@ -498,14 +498,13 @@ Basic steps:
     - sync and start again
   3) Gather the mesh to rank 0 for postprocessing
 */
+
 #include <mpi.h>
-
 #include <stdint.h>
+#include "astaroth_decomp.h"
+#include "rerouted_data.h"
 
-typedef struct {
-    uint64_t x, y, z;
-} uint3_64;
-
+/*
 static uint3_64
 operator+(const uint3_64& a, const uint3_64& b)
 {
@@ -594,7 +593,6 @@ morton1D(const uint3_64 pid)
 
     return i;
 }
-
 static uint3_64
 decompose(const uint64_t target)
 {
@@ -605,7 +603,6 @@ decompose(const uint64_t target)
     ERRCHK_ALWAYS(p.x * p.y * p.z == target);
     return p;
 }
-
 static uint3_64
 wrap(const int3 i, const uint3_64 n)
 {
@@ -630,8 +627,7 @@ getPid3D(const uint64_t pid, const uint3_64 decomp)
     ERRCHK_ALWAYS(getPid(make_int3(pid3D), decomp) == (int)pid);
     return (int3){(int)pid3D.x, (int)pid3D.y, (int)pid3D.z};
 }
-
-/** Assumes that contiguous pids are on the same node and there is one process per GPU. */
+// Assumes that contiguous pids are on the same node and there is one process per GPU.
 static inline bool
 onTheSameNode(const uint64_t pid_a, const uint64_t pid_b)
 {
@@ -643,7 +639,9 @@ onTheSameNode(const uint64_t pid_a, const uint64_t pid_b)
 
     return node_a == node_b;
 }
+*/
 
+/*
 static PackedData
 acCreatePackedData(const int3 dims)
 {
@@ -669,7 +667,7 @@ acCreatePackedData(const int3 dims)
 
     return data;
 }
-
+*/
 static AcResult
 acDestroyPackedData(PackedData* data)
 {
@@ -764,7 +762,6 @@ acDeviceDistributeMeshMPI(const AcMesh src, const uint3_64 decomposition, AcMesh
     MPI_Barrier(MPI_COMM_WORLD);
     printf("Distributing mesh...\n");
     fflush(stdout);
-
     MPI_Datatype datatype = MPI_FLOAT;
     if (sizeof(AcReal) == 8)
         datatype = MPI_DOUBLE;
@@ -799,7 +796,6 @@ acDeviceDistributeMeshMPI(const AcMesh src, const uint3_64 decomposition, AcMesh
             }
         }
     }
-
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         // For pencils
         for (int k = NGHOST; k < NGHOST + nn.z; ++k) {
@@ -928,7 +924,7 @@ typedef struct {
     size_t count;
 
     cudaStream_t* streams;
-    MPI_Request* send_reqs;
+    //MPI_Request* send_reqs;
     MPI_Request* recv_reqs;
 } CommData;
 
@@ -945,12 +941,12 @@ acCreateCommData(const Device device, const int3 dims, const size_t count)
     data.count = count;
 
     data.streams   = (cudaStream_t*)malloc(count * sizeof(cudaStream_t));
-    data.send_reqs = (MPI_Request*)malloc(count * sizeof(MPI_Request));
+    //data.send_reqs = (MPI_Request*)malloc(count * sizeof(MPI_Request));
     data.recv_reqs = (MPI_Request*)malloc(count * sizeof(MPI_Request));
 
     ERRCHK_ALWAYS(data.srcs);
     ERRCHK_ALWAYS(data.dsts);
-    ERRCHK_ALWAYS(data.send_reqs);
+    //ERRCHK_ALWAYS(data.send_reqs);
     ERRCHK_ALWAYS(data.recv_reqs);
 
 #if MPI_GPUDIRECT_DISABLED
@@ -1003,7 +999,7 @@ acDestroyCommData(const Device device, CommData* data)
 #endif
 
     free(data->streams);
-    free(data->send_reqs);
+    //free(data->send_reqs);
     free(data->recv_reqs);
 
     data->count = -1;
@@ -1037,6 +1033,7 @@ acPackCommData(const Device device, const int3* b0s, CommData* data)
 
     for (size_t i = 0; i < data->count; ++i) {
         const int3 a0 = mod(b0s[i] - nghost, nn) + nghost;
+        //printf("b0:(%d,%d,%d) a0:(%d,%d,%d)\n",b0s[i].x,b0s[i].y,b0s[i].z,a0.x,a0.y,a0.z );
         acKernelPackData(data->streams[i], device->vba, a0, data->srcs[i]);
     }
 }
@@ -1097,6 +1094,7 @@ acTransferCommData(const Device device, //
 {
     cudaSetDevice(device->id);
 
+    //NOTE: is this ok? I thought this was controlled by a compilation flag
     MPI_Datatype datatype = MPI_FLOAT;
     if (sizeof(AcReal) == 8)
         datatype = MPI_DOUBLE;
@@ -1117,6 +1115,8 @@ acTransferCommData(const Device device, //
     const size_t blockcount = data->count;
     const size_t count      = dims.x * dims.y * dims.z * NUM_VTXBUF_HANDLES;
 
+    int devices_per_node = -1;
+    cudaGetDeviceCount(&devices_per_node);
     for (size_t b0_idx = 0; b0_idx < blockcount; ++b0_idx) {
 
         const int3 b0       = b0s[b0_idx];
@@ -1134,8 +1134,16 @@ acTransferCommData(const Device device, //
             dst->pinned = false;
         }
         else {
+	    //Receive messages that are redundant through local neighbors
+            int rerouted_src = halo_rerouted_through(npid, pid, neighbor, OUTGOING, decomp, devices_per_node);
+	    if (rerouted_src != -1){
+                int tag = (neighbor.x+1)*9 + (neighbor.y+1)*3 + neighbor.z +1 + 8;
+                MPI_Irecv(dst->data, count, datatype, rerouted_src, tag, //
+                      MPI_COMM_WORLD, &data->recv_reqs[b0_idx]);
+            }else{
             MPI_Irecv(dst->data_pinned, count, datatype, npid, b0_idx, //
                       MPI_COMM_WORLD, &data->recv_reqs[b0_idx]);
+            }
             dst->pinned = true;
         }
     }
@@ -1152,25 +1160,219 @@ acTransferCommData(const Device device, //
         PackedData* src = &data->srcs[b0_idx];
         if (onTheSameNode(pid, npid) || !MPI_USE_PINNED) {
             cudaStreamSynchronize(data->streams[b0_idx]);
+            MPI_Request req;
             MPI_Isend(src->data, count, datatype, npid, b0_idx, //
-                      MPI_COMM_WORLD, &data->send_reqs[b0_idx]);
+                      MPI_COMM_WORLD, &req);
+            MPI_Request_free(&req);
         }
         else {
-            acPinPackedData(device, data->streams[b0_idx], src);
-            cudaStreamSynchronize(data->streams[b0_idx]);
-            MPI_Isend(src->data_pinned, count, datatype, npid, b0_idx, //
-                      MPI_COMM_WORLD, &data->send_reqs[b0_idx]);
+	    //Only send messages that aren't redundant
+            int rerouted_dest = halo_rerouted_through(pid,npid,neighbor,OUTGOING,decomp, devices_per_node);
+            //pinning moved here for debugging
+	    if (rerouted_dest == -1){
+                acPinPackedData(device, data->streams[b0_idx], src);
+                cudaStreamSynchronize(data->streams[b0_idx]);
+                MPI_Request req;
+                MPI_Isend(src->data_pinned, count, datatype, npid, b0_idx, //
+                      MPI_COMM_WORLD, &req);
+                MPI_Request_free(&req);
+	    }else{
+                //MPI_Request_free(&data->send_reqs[b0_idx]);
+            }
         }
+        /*
+        //if (pid == 0){
+            const int node_from = pid / devices_per_node;
+            const int node_to = npid / devices_per_node;
+            if (node_from == node_to){
+                fprintf(stderr, "type=local; halo_id=(%d,%d,%d); "
+				"x=%d; y=%d; z=%d; "
+				"from=%d:%d; to=%d:%d; "
+				"size=%d\n",
+				neighbor.x, neighbor.y, neighbor.z,
+				b0.x, b0.y, b0.z,
+				node_from, pid, node_to, npid,
+				(int)count);
+            }else{
+		//TODO: Change local_postman to something more sensible
+		//local route
+		//local halo source
+		//local owner (of the data)
+		//local neighbor , in line with earlier use of the word in codebase
+		//local face target (eh)
+                int local_postman = halo_rerouted_through(pid,neighbor,OUTGOING, decomp, devices_per_node);
+                fprintf(stderr,
+			"type=remote; halo_id=(%d,%d,%d); "
+			"x=%d; y=%d; z=%d; "
+			"from=%d:%d; to=%d:%d; "
+			"size=%d; redundant=%s; contained_by=%d\n",
+			neighbor.x, neighbor.y, neighbor.z,
+			b0.x, b0.y, b0.z,
+			node_from, pid, node_to, npid,
+			(int)count,( local_postman != -1)?"true":"false", local_postman);
+     		           
+            }   
+        //}
+        //
+        */
     }
 
     return AC_SUCCESS;
+}
+
+/*
+static std::vector<ReroutedData>*
+acGenerateRerouteData(const Device device,
+    const int3* b0s,
+    const CommData* parent_data)
+{
+
+    std::vector<ReroutedData>* children;
+    cudaSetDevice(device->id);
+
+    int nprocs, pid;
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    const uint3_64 decomp = decompose(nprocs);
+    
+    const int3 nn = (int3){
+        device->local_config.int_params[AC_nx],
+        device->local_config.int_params[AC_ny],
+        device->local_config.int_params[AC_nz],
+    };
+
+    const int3 pid3d        = getPid3D(pid, decomp);
+    const int3 dims         = parent_data->dims;
+    const size_t blockcount = parent_data->count;
+
+
+#if AC_DOUBLE_PRECISION == 1
+    MPI_Datatype datatype = MPI_DOUBLE;
+#else
+    MPI_Datatype datatype = MPI_FLOAT;
+#endif
+
+    int devices_per_node = -1;
+    cudaGetDeviceCount(&devices_per_node);
+    //END copy paste
+    
+    int local_node = pid/devices_per_node;
+    //TODO: maybe make this global, or at least move to GridIntegrate
+
+    for (size_t b0_idx = 0; b0_idx < blockcount; ++b0_idx) {
+        const int3 b0 = b0s[b0_idx];
+        const int3 neighbor = (int3){
+            b0.x < NGHOST ? -1 : b0.x >= NGHOST + nn.x ? 1 : 0,
+            b0.y < NGHOST ? -1 : b0.y >= NGHOST + nn.y ? 1 : 0,
+            b0.z < NGHOST ? -1 : b0.z >= NGHOST + nn.z ? 1 : 0,
+        };
+
+        const int3 origin_pid3d = make_int3(wrap(pid3d + neighbor, decomp));
+        const int origin_pid = getPid(origin_pid3d, decomp);
+        if (origin_pid/devices_per_node == local_node)
+            continue;
+
+        PackedData* containing_data = &parent_data->dsts[b0_idx];
+        const int3 origin_halo_coords = neighbor;
+
+        std::vector<ReroutedData> rerouted_data;
+        rerouted_data.reserve(8);
+        find_rerouted_edges(origin_pid3d, origin_halo_coords, dims, decomp, local_node, devices_per_node, rerouted_data);
+        find_rerouted_corners(origin_pid3d, origin_halo_coords, dims, decomp, local_node, devices_per_node, rerouted_data);
+
+    }
+}
+
+*/
+
+static void
+acRerouteCommData(const Device device, 
+                            const int3* b0s,//TODO:rename?
+                            const CommData* parent_data,
+                            const bool include_corners
+                            //std::vector<ReroutedData>* segment_data
+                            )
+{
+
+    fflush(stdout);
+    cudaSetDevice(device->id);
+    
+    int nprocs, pid;
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    const uint3_64 decomp = decompose(nprocs);
+    
+    const int3 nn = (int3){
+        device->local_config.int_params[AC_nx],
+        device->local_config.int_params[AC_ny],
+        device->local_config.int_params[AC_nz],
+    };
+
+    const int3 pid3d        = getPid3D(pid, decomp);
+    const int3 dims         = parent_data->dims;
+    const size_t blockcount = parent_data->count;
+
+#if AC_DOUBLE_PRECISION == 1
+    MPI_Datatype datatype = MPI_DOUBLE;
+#else
+    MPI_Datatype datatype = MPI_FLOAT;
+#endif
+
+    int devices_per_node = -1;
+    cudaGetDeviceCount(&devices_per_node);
+    //END copy paste
+    
+    int local_node = pid/devices_per_node;
+    //TODO: maybe make this global, or at least move to GridIntegrate
+
+    for (size_t b0_idx = 0; b0_idx < blockcount; ++b0_idx) {
+        const int3 b0 = b0s[b0_idx];
+        const int3 neighbor = (int3){
+            b0.x < NGHOST ? -1 : b0.x >= NGHOST + nn.x ? 1 : 0,
+            b0.y < NGHOST ? -1 : b0.y >= NGHOST + nn.y ? 1 : 0,
+            b0.z < NGHOST ? -1 : b0.z >= NGHOST + nn.z ? 1 : 0,
+        };
+
+        const int3 origin_pid3d = make_int3(wrap(pid3d + neighbor, decomp));
+        const int origin_pid = getPid(origin_pid3d, decomp);
+        if (origin_pid/devices_per_node == local_node)
+            continue;
+
+        PackedData* containing_data = &parent_data->dsts[b0_idx];
+        const int3 origin_halo_coords = neighbor;
+
+        std::vector<ReroutedData> rerouted_data;
+        rerouted_data.reserve(8);
+        find_rerouted_edges(origin_pid3d, origin_halo_coords, dims, decomp, local_node, devices_per_node, rerouted_data);
+        if (include_corners){
+            find_rerouted_corners(origin_pid3d, origin_halo_coords, dims, decomp, local_node, devices_per_node, rerouted_data);
+        }
+        for(auto& rerouted_segment: rerouted_data){
+            
+
+            acKernelExtractPackedData(parent_data->streams[b0_idx], *containing_data, rerouted_segment.offset, rerouted_segment.packedData);
+            //acPinPackedData(device, parent_data->streams[b0_idx], &rerouted_segment.packedData);
+
+        }
+        cudaStreamSynchronize(parent_data->streams[b0_idx]);
+        for(auto& rerouted_segment: rerouted_data){
+
+            const int dest = getPid(origin_pid3d - rerouted_segment.haloCoords, decomp);
+            const int3 new_dims = rerouted_segment.packedData.dims;
+            const size_t count = new_dims.x * new_dims.y * new_dims.z * NUM_VTXBUF_HANDLES;
+            int tag = (rerouted_segment.haloCoords.x+1)*9 + (rerouted_segment.haloCoords.y+1)*3 + rerouted_segment.haloCoords.z + 1 + 8;
+	    MPI_Request req;
+            MPI_Isend(rerouted_segment.packedData.data, count, datatype, dest, tag, MPI_COMM_WORLD, &req);
+            MPI_Request_free(&req);
+        }
+    }
 }
 
 static void
 acTransferCommDataWait(const CommData data)
 {
     for (size_t i = 0; i < data.count; ++i) {
-        MPI_Wait(&data.send_reqs[i], MPI_STATUS_IGNORE);
+        //MPI_Wait(&data.send_reqs[i], MPI_STATUS_IGNORE);
         MPI_Wait(&data.recv_reqs[i], MPI_STATUS_IGNORE);
     }
 }
@@ -1316,7 +1518,6 @@ acGridLoadMesh(const AcMesh host_mesh, const Stream stream)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
-
     acDeviceDistributeMeshMPI(host_mesh, grid.decomposition, &grid.submesh);
     acDeviceLoadMesh(grid.device, stream, grid.submesh);
 
@@ -1462,6 +1663,15 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 #if MPI_INCL_CORNERS
         acPackCommData(device, corner_b0s, &corner_data); // Do not rm: required for corners
 #endif                                                    // MPI_INCL_CORNERS
+
+//TODO: determine child segments, extract (repack), resend
+
+        acRerouteCommData(device,sidexy_b0s, &sidexy_data,MPI_INCL_CORNERS?true:false);
+        acRerouteCommData(device,sidexz_b0s, &sidexz_data,MPI_INCL_CORNERS?true:false);
+        acRerouteCommData(device,sideyz_b0s, &sideyz_data,MPI_INCL_CORNERS?true:false);
+
+// END new optimisations
+
         acUnpackCommData(device, sidexy_b0s, &sidexy_data);
         acUnpackCommData(device, sidexz_b0s, &sidexz_data);
         acUnpackCommData(device, sideyz_b0s, &sideyz_data);
@@ -1652,13 +1862,22 @@ acGridPeriodicBoundconds(const Stream stream)
     acTransferCommData(device, sidexz_b0s, &sidexz_data);
     acTransferCommData(device, sideyz_b0s, &sideyz_data);
 
-    acTransferCommDataWait(corner_data);
-    acTransferCommDataWait(edgex_data);
-    acTransferCommDataWait(edgey_data);
-    acTransferCommDataWait(edgez_data);
     acTransferCommDataWait(sidexy_data);
     acTransferCommDataWait(sidexz_data);
     acTransferCommDataWait(sideyz_data);
+
+    acUnpinCommData(device, &sidexy_data);
+    acUnpinCommData(device, &sidexz_data);
+    acUnpinCommData(device, &sideyz_data);
+
+    acRerouteCommData(device,sidexy_b0s, &sidexy_data,true);
+    acRerouteCommData(device,sidexz_b0s, &sidexz_data,true);
+    acRerouteCommData(device,sideyz_b0s, &sideyz_data,true);
+
+    acTransferCommDataWait(edgex_data);
+    acTransferCommDataWait(edgey_data);
+    acTransferCommDataWait(edgez_data);
+    acTransferCommDataWait(corner_data);
 
 #if MPI_GPUDIRECT_DISABLED
     acTransferCommDataToDevice(device, &corner_data);
@@ -1674,9 +1893,6 @@ acGridPeriodicBoundconds(const Stream stream)
     acUnpinCommData(device, &edgex_data);
     acUnpinCommData(device, &edgey_data);
     acUnpinCommData(device, &edgez_data);
-    acUnpinCommData(device, &sidexy_data);
-    acUnpinCommData(device, &sidexz_data);
-    acUnpinCommData(device, &sideyz_data);
 
     acUnpackCommData(device, corner_b0s, &corner_data);
     acUnpackCommData(device, edgex_b0s, &edgex_data);

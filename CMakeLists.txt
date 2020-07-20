@@ -1,9 +1,15 @@
 ## CMake settings
 # V3.9 required for first-class CUDA support
 # V3.17 required for the FindCUDAToolkit package
-cmake_minimum_required(VERSION 3.17)
-find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
-find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
+cmake_minimum_required(VERSION 3.17) 
+
+option(TAU "Use tau wrappers to add instrumentation for performance measurements" OFF)
+IF (TAU)
+    message(STATUS "Using tau compiler wrappers")
+    find_program(CMAKE_C_COMPILER tau_gcc PATHS ${CMAKE_SOURCE_DIR}/.tau/bin/* REQUIRED)
+    find_program(CMAKE_CXX_COMPILER tau_g++ PATHS ${CMAKE_SOURCE_DIR}/.tau/bin/* REQUIRED)
+endif()
+
 
 ## Project settings
 project(astaroth C CXX CUDA)
@@ -55,8 +61,7 @@ message(STATUS "AC module dir: ${DSL_MODULE_DIR}")
 file(GLOB DSL_SOURCES ${DSL_MODULE_DIR}/*
                       ${CMAKE_SOURCE_DIR}/acc/stdlib/*)
 set(DSL_HEADERS "${PROJECT_BINARY_DIR}/user_kernels.h"
-                "${PROJECT_BINARY_DIR}/user_defines.h"
-                "${PROJECT_BINARY_DIR}/astaroth.f90")
+                "${PROJECT_BINARY_DIR}/user_defines.h")
 
 add_custom_command (
     COMMENT "Building ACC objects ${DSL_MODULE_DIR}"
@@ -97,12 +102,16 @@ if (BUILD_SAMPLES)
     add_subdirectory(samples/cpptest)
     add_subdirectory(samples/mpitest)
     add_subdirectory(samples/benchmark)
-    add_subdirectory(samples/bwtest)
-    add_subdirectory(samples/genbenchmarkscripts)
     add_subdirectory(samples/mpi_reduce_bench)
-    add_subdirectory(samples/fortrantest)
+    add_custom_target(copy-mpibench-script ALL
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_SOURCE_DIR}/samples/mpi_reduce_bench/mpibench.sh
+        ${CMAKE_CURRENT_BINARY_DIR}/mpibench.sh)
+    IF (NOT TAU )
+        add_subdirectory(samples/bwtest)
+    endif()
+    add_subdirectory(samples/genbenchmarkscripts)
 endif()
-
 if (BUILD_STANDALONE)
     add_subdirectory(src/standalone)
 endif()

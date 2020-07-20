@@ -16,6 +16,12 @@ typedef struct {
     bool pinned = false; // Set if data was received to pinned memory
 } PackedData;
 
+
+PackedData acCreatePackedData(const int3 dims);
+
+void acPrintPackedData(const PackedData packed, const int print_src, const int from, const int to, const int through, const int3 halo_coords, const int real);
+
+
 typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
@@ -61,6 +67,10 @@ AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba
 /** */
 AcResult acKernelUnpackData(const cudaStream_t stream, const PackedData packed,
                             const int3 vba_start, VertexBufferArray vba);
+
+
+AcResult acKernelExtractPackedData(const cudaStream_t stream, const PackedData packed,
+                                   const int3 offset, PackedData extracted);
 
 /** */
 AcReal acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,

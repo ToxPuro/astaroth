@@ -109,8 +109,10 @@ acDeviceLoadScalarUniform(const Device device, const Stream stream, const AcReal
     }
 
     if (!is_valid(value)) {
+#if AC_VERBOSE
         fprintf(stderr, "WARNING: Passed an invalid value %g to device constant %s. Skipping.\n",
                 (double)value, realparam_names[param]);
+#endif
         return AC_FAILURE;
     }
 
