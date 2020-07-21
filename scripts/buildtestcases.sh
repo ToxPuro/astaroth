@@ -7,13 +7,16 @@ SRUN="srun --account=project_2000403 --mem=32000 -t 00:14:59 -p gpu"
 
 SRUN_1="$SRUN --gres=gpu:v100:1 --ntasks-per-socket=1 -n 1 -N 1"
 SRUN_2="$SRUN --gres=gpu:v100:2 --ntasks-per-socket=1 -n 2 -N 1"
-SRUN_4="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 4 -N 1"
-SRUN_8="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 8 -N 2"
-SRUN_16="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 16 -N 4"
-SRUN_32="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 32 -N 8"
-SRUN_64="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 64 -N 16"
+SRUN_4="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 4 -N 1 --cpus-per-task=10"
+SRUN_8="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 8 -N 2 --cpus-per-task=10"
+SRUN_16="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 16 -N 4 --cpus-per-task=10"
+SRUN_32="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 32 -N 8 --cpus-per-task=10"
+SRUN_64="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 64 -N 16 --cpus-per-task=10"
 
 load_default_case() {
+  # Pinned or RDMA
+  sed -i 's/#define MPI_USE_PINNED ([0-9]*)/#define MPI_USE_PINNED (0)/' src/core/device.cc
+
   # Mesh size
   sed -i 's/const int nx = [0-9]*;/const int nx = 256;/' samples/genbenchmarkscripts/main.c
 
@@ -159,6 +162,7 @@ create_case "weak_128" 128
 sed -i 's/const int nx = [0-9]*;/const int nx = 256;/' samples/genbenchmarkscripts/main.c
 create_case "weak_256" 256
 sed -i 's/const int nx = [0-9]*;/const int nx = 448;/' samples/genbenchmarkscripts/main.c
+sed -i 's/const size_t num_iters      = .*;/const size_t num_iters      = 100;/' samples/benchmark/main.cc
 create_case "weak_448" 448
 
 load_default_case
