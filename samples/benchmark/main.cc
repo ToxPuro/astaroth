@@ -212,9 +212,8 @@ main(int argc, char** argv)
         FILE* fp = fopen(path, "a");
         ERRCHK_ALWAYS(fp);
         // Format
-        // nprocs, measured (ms)
-        fprintf(fp, "%d, %g\n", nprocs, results[nth_percentile * num_iters]);
-
+        // nprocs, min, 50th perc, 90th perc, max
+        fprintf(fp, "%d, %g, %g, %g, %g\n", nprocs, results[0], results[0.5 * num_iters], results[nth_percentile * num_iters], results[num_iters-1]);
         fclose(fp);
     }
 

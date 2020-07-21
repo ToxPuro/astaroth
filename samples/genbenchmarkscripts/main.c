@@ -34,19 +34,25 @@ main(void)
             fprintf(fp, "#SBATCH --ntasks-per-socket=2\n");
 
         // Modules
-        fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake hpcx-mpi/2.5.0-cuda nccl\n");
+        // OpenMPI
+        fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake openmpi nccl\n");
+        // HPCX
+        //fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake hpcx-mpi/2.5.0-cuda nccl\n");
         fprintf(fp, "export UCX_MEMTYPE_CACHE=n\n");
 
         // Profile and run
-        fprintf(fp, "mkdir -p profile_%d\n", nprocs);
+        //fprintf(fp, "mkdir -p profile_%d\n", nprocs);
 
         const int nx = 256; // max size 1792;
         const int ny = nx;
         const int nz = nx;
+        /*
         fprintf(fp,
                 //"srun nvprof --annotate-mpi openmpi -o profile_%d/%%p.nvprof ./benchmark %d %d "
                 //"%d\n",
                 "srun ./benchmark %d %d %d\n", nx, ny, nz);
+        */
+        fprintf(fp, "srun ./benchmark %d %d %d\n", nx, ny, nz);
 
         fclose(fp);
     }
