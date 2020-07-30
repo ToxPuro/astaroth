@@ -10,7 +10,8 @@ project(astaroth C CXX CUDA)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Project-wide compilation flags
-set(COMMON_FLAGS "-mavx -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow")
+#set(COMMON_FLAGS "-mavx -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow")
+set(COMMON_FLAGS "-mavx -Wdouble-promotion -Wfloat-conversion")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_C_STANDARD 11)
@@ -35,12 +36,21 @@ option(BUILD_SAMPLES    "Builds projects in samples subdirectory."            OF
 option(BUILD_STANDALONE "Builds standalone Astaroth."                         ON)
 option(MPI_ENABLED      "Enables additional functions for MPI communciation." OFF)
 option(MULTIGPU_ENABLED "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
+option(EAGER "Uses asynchronous continuations from Boost for eager integration" ON)
 
 ## Options (DEPRECATED)
 # option(BUILD_DEBUG              "Builds the program with extensive error checking"          OFF)
 # option(BUILD_UTILS              "Builds the utility library"                                ON)
 # option(BUILD_RT_VISUALIZATION   "Builds the module for real-time visualization using SDL2"  OFF)
 
+if(EAGER)
+    find_package(Boost REQUIRED COMPONENTS thread) #Used for asynchronous continuations (future.then) and composition (when_all)
+    add_compile_definitions(BOOST_THREAD_PROVIDES_FUTURE)
+    add_compile_definitions(BOOST_THREAD_PROVIDES_FUTURE_CONTINUATION)
+    add_compile_definitions(BOOST_THREAD_PROVIDES_FUTURE_WHEN_ALL_WHEN_ANY)
+    add_compile_definitions(BOOST_RESULT_OF_USE_DECLTYPE)
+    add_compile_definitions(AC_EAGER)
+endif()
 
 ## Compile ACC
 add_subdirectory(acc)

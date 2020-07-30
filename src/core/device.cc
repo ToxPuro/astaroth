@@ -8,6 +8,12 @@
 #include "timer_hires.h"
 
 #include "kernels/kernels.h"
+#include <boost/thread.hpp>
+#include <boost/chrono.hpp>
+#include <thread>
+#include <mutex>
+#include <future>
+#include <chrono>
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
@@ -1166,6 +1172,46 @@ acTransferCommData(const Device device, //
     return AC_SUCCESS;
 }
 
+
+#include <iostream>
+
+static void
+acTransferCommDataTest(const Device device, const CommData data, std::mutex& m)
+{
+
+    //std::cout << "Testing from " << std::this_thread::get_id() << '\n';
+    int sends_done = 0;
+    int recvs_done = 0;
+    cudaSetDevice(device->id);
+    while (true){
+        m.lock();
+        if (!sends_done){
+
+            MPI_Testall(data.count, data.send_reqs,&sends_done,MPI_STATUSES_IGNORE);
+            /*
+            for (size_t i = 0; i < data.count; ++i) {
+                MPI_Test(data.send_reqs,&sends_done,MPI_STATUSES_IGNORE);
+            }
+            */
+        }
+        if (!recvs_done){
+            MPI_Testall(data.count, data.recv_reqs,&recvs_done,MPI_STATUSES_IGNORE);
+            /*
+            for (size_t i = 0; i < data.count; ++i) {
+                MPI_Test(data.recv_reqs,&recvs_done,MPI_STATUSES_IGNORE);
+            }
+            */
+        }
+        m.unlock();
+        if (recvs_done && sends_done)
+            break;
+        
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+        //boost::this_thread::sleep_for(boost::chrono::microseconds(1));
+    }
+}
+
+
 static void
 acTransferCommDataWait(const CommData data)
 {
@@ -1468,12 +1514,122 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 #endif // MPI_COMPUTE_ENABLED
 
 #if MPI_COMM_ENABLED
+#if AC_EAGER
+
+        //TODO: add MPI_COMPUTE_ENABLED checks aroudn the last .then
+
+//ERROR: in cudaMemcpyAsync: ret:: invalid argument
+
+/*
+        auto edgex_ftr = boost::async([&]{acTransferCommDataWait(edgex_data);})
+                         .then([&](boost::future<void>&& r){acUnpinCommData(device, &edgex_data);})
+                         .then([&](boost::future<void>&& r){acUnpackCommData(device, edgex_b0s, &edgex_data);})
+                         .share();
+
+        auto edgey_ftr = boost::async([&]{acTransferCommDataWait(edgey_data);})
+                         .then([&](boost::future<void>&& r){acUnpinCommData(device, &edgey_data);})
+                         .then([&](boost::future<void>&& r){acUnpackCommData(device, edgey_b0s, &edgey_data);})
+                         .share();
+
+        auto edgez_ftr = boost::async([&]{acTransferCommDataWait(edgez_data);})
+                         .then([&](boost::future<void>&& r){acUnpinCommData(device, &edgez_data);})
+                         .then([&](boost::future<void>&& r){acUnpackCommData(device, edgez_b0s, &edgez_data);})
+                         .share();
+*/
+//Same error
+/*
+        auto edgex_ftr = boost::async([&]{
+                                acTransferCommDataWait(edgex_data);
+                                acUnpinCommData(device, &edgex_data);
+                                acUnpackCommData(device, edgex_b0s, &edgex_data);
+                            }).share();
+        
+        auto edgey_ftr = boost::async([&]{
+                                acTransferCommDataWait(edgey_data);
+                                acUnpinCommData(device, &edgey_data);
+                                acUnpackCommData(device, edgey_b0s, &edgey_data);
+                            }).share();
+        
+        auto edgez_ftr = boost::async([&]{
+                                acTransferCommDataWait(edgez_data);
+                                acUnpinCommData(device, &edgez_data);
+                                acUnpackCommData(device, edgez_b0s, &edgez_data);
+                            }).share();
+*/
+
+        /*
+        auto edgex_ftr = boost::async([&]{acTransferCommDataWait(edgex_data);});
+        auto edgey_ftr = boost::async([&]{acTransferCommDataWait(edgey_data);});
+        auto edgez_ftr = boost::async([&]{acTransferCommDataWait(edgez_data);});
+        
+
+        edgex_ftr.wait();
+        edgey_ftr.wait();
+        edgez_ftr.wait();
+        */
+        //acTransferCommDataWait(edgex_data);
+        
+        std::mutex m;
+
+        /*
+        std::cout << "Launching from " << std::this_thread::get_id() << '\n';
+        std::cout << "Launching from " << std::this_thread::get_id() << '\n';
+        std::cout << "Launching from " << std::this_thread::get_id() << '\n';
+        std::cout << "Launching from " << std::this_thread::get_id() << '\n';
+        std::cout << "===============" << '\n';
+        */
+
+        /*
+        //Threads work if we use mutexes
+        //However mutexes incur a cost... hmm
+        std::thread tx{[&]{
+            acTransferCommDataTest(device, edgex_data,m);
+        }};
+        
+        std::thread ty{[&]{
+            acTransferCommDataTest(device, edgey_data,m);
+        }};
+
+        std::thread tz{[&]{
+            acTransferCommDataTest(device, edgez_data,m);
+        }};
+        tx.join();
+        ty.join();
+        tz.join();
+        */
+
+        auto edgex_ftr = boost::async([&]{
+            acTransferCommDataTest(device,edgex_data,m);
+            //acTransferCommDataWait(edgex_data);
+        });
+        
+        auto edgey_ftr = boost::async([&]{
+            acTransferCommDataTest(device,edgey_data,m);
+            //acTransferCommDataWait(edgey_data);
+        });
+        
+        auto edgez_ftr = boost::async([&]{
+            acTransferCommDataTest(device,edgez_data,m);
+            //acTransferCommDataWait(edgez_data);
+        });
+        edgex_ftr.wait();
+        edgey_ftr.wait();
+        edgez_ftr.wait();
+
+        acUnpinCommData(device, &edgex_data);
+        acUnpackCommData(device, edgex_b0s, &edgex_data);
+        acUnpinCommData(device, &edgey_data);
+        acUnpackCommData(device, edgey_b0s, &edgey_data);
+        acUnpinCommData(device, &edgez_data);
+        acUnpackCommData(device, edgez_b0s, &edgez_data);
+#else
         acTransferCommDataWait(edgex_data);
         acUnpinCommData(device, &edgex_data);
         acTransferCommDataWait(edgey_data);
         acUnpinCommData(device, &edgey_data);
         acTransferCommDataWait(edgez_data);
         acUnpinCommData(device, &edgez_data);
+#endif
 
 #if MPI_INCL_CORNERS
         acTransferCommData(device, corner_b0s, &corner_data); // Do not rm: required for corners
@@ -1481,9 +1637,12 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 #endif                                                        // MPI_COMM_ENABLED
 
 #if MPI_COMPUTE_ENABLED
+#ifndef AC_EAGER
+        printf("Not eager");
         acUnpackCommData(device, edgex_b0s, &edgex_data);
         acUnpackCommData(device, edgey_b0s, &edgey_data);
         acUnpackCommData(device, edgez_b0s, &edgez_data);
+#endif
 #endif // MPI_COMPUTE_ENABLED
 
 #if MPI_COMM_ENABLED
@@ -1509,7 +1668,16 @@ acGridIntegrate(const Stream stream, const AcReal dt)
         acSyncCommData(corner_data); // Do not rm: required for corners
 #endif                               // MPI_INCL_CORNERS
 
+
+//1. Figure out the data dependencies
+//== map b0s and CommDatas to cases below
+//2. Wait any
+//3. Futurize
+
 #if MPI_COMPUTE_ENABLED
+
+#if AC_EAGER
+
         { // Front
             const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
             const int3 m2 = m1 + (int3){nn.x, nn.y, NGHOST};
@@ -1540,6 +1708,39 @@ acGridIntegrate(const Stream stream, const AcReal dt)
             const int3 m2 = m1 + (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(device, STREAM_5, isubstep, m1, m2, dt);
         }
+#else
+        { // Front
+            const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
+            const int3 m2 = m1 + (int3){nn.x, nn.y, NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m2, dt);
+        }
+        { // Back
+            const int3 m1 = (int3){NGHOST, NGHOST, nn.z};
+            const int3 m2 = m1 + (int3){nn.x, nn.y, NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m2, dt);
+        }
+        { // Bottom
+            const int3 m1 = (int3){NGHOST, NGHOST, 2 * NGHOST};
+            const int3 m2 = m1 + (int3){nn.x, NGHOST, nn.z - 2 * NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_2, isubstep, m1, m2, dt);
+        }
+        { // Top
+            const int3 m1 = (int3){NGHOST, nn.y, 2 * NGHOST};
+            const int3 m2 = m1 + (int3){nn.x, NGHOST, nn.z - 2 * NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_3, isubstep, m1, m2, dt);
+        }
+        { // Left
+            const int3 m1 = (int3){NGHOST, 2 * NGHOST, 2 * NGHOST};
+            const int3 m2 = m1 + (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_4, isubstep, m1, m2, dt);
+        }
+        { // Right
+            const int3 m1 = (int3){nn.x, 2 * NGHOST, 2 * NGHOST};
+            const int3 m2 = m1 + (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_5, isubstep, m1, m2, dt);
+        }
+
+#endif
 #endif // MPI_COMPUTE_ENABLED
         acDeviceSwapBuffers(device);
     }

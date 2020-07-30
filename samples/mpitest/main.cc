@@ -30,7 +30,41 @@
 int
 main(void)
 {
-    MPI_Init(NULL, NULL);
+    int provided = 0;
+    MPI_Init_thread(NULL, NULL, MPI_THREAD_SERIALIZED, &provided);
+
+    switch(provided){
+    case MPI_THREAD_SINGLE:
+        printf("MPI_THREAD_SINGLE\n");
+        printf("MPI_THREAD_SINGLE\n");
+        printf("MPI_THREAD_SINGLE\n");
+        printf("MPI_THREAD_SINGLE\n");
+        break;
+    case MPI_THREAD_FUNNELED:
+        printf("MPI_THREAD_FUNNELED\n");
+        printf("MPI_THREAD_FUNNELED\n");
+        printf("MPI_THREAD_FUNNELED\n");
+        printf("MPI_THREAD_FUNNELED\n");
+        break;
+    case MPI_THREAD_SERIALIZED:
+        printf("MPI_THREAD_SERIALIZED\n");
+        printf("MPI_THREAD_SERIALIZED\n");
+        printf("MPI_THREAD_SERIALIZED\n");
+        printf("MPI_THREAD_SERIALIZED\n");
+        break;
+    case MPI_THREAD_MULTIPLE:
+        printf("MPI_THREAD_MULTIPLE\n");
+        printf("MPI_THREAD_MULTIPLE\n");
+        printf("MPI_THREAD_MULTIPLE\n");
+        printf("MPI_THREAD_MULTIPLE\n");
+        break;
+    default:
+        printf("UNKNOWN THREAD MODE\n");
+        printf("UNKNOWN THREAD MODE\n");
+        printf("UNKNOWN THREAD MODE\n");
+        printf("UNKNOWN THREAD MODE\n");
+    }
+
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
