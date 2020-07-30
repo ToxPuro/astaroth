@@ -1492,12 +1492,14 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 #endif // MPI_COMPUTE_ENABLED
 
 #if MPI_COMM_ENABLED
+#ifndef AC_EAGER
         acTransferCommDataWait(sidexy_data);
         acUnpinCommData(device, &sidexy_data);
         acTransferCommDataWait(sidexz_data);
         acUnpinCommData(device, &sidexz_data);
         acTransferCommDataWait(sideyz_data);
         acUnpinCommData(device, &sideyz_data);
+#endif //AC_EAGER
 
         acTransferCommData(device, edgex_b0s, &edgex_data);
         acTransferCommData(device, edgey_b0s, &edgey_data);
@@ -1507,121 +1509,61 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 #if MPI_COMPUTE_ENABLED
 #if MPI_INCL_CORNERS
         acPackCommData(device, corner_b0s, &corner_data); // Do not rm: required for corners
-#endif                                                    // MPI_INCL_CORNERS
+#endif // MPI_INCL_CORNERS
+#ifndef AC_EAGER
         acUnpackCommData(device, sidexy_b0s, &sidexy_data);
         acUnpackCommData(device, sidexz_b0s, &sidexz_data);
         acUnpackCommData(device, sideyz_b0s, &sideyz_data);
+#endif // AC_EAGER
 #endif // MPI_COMPUTE_ENABLED
 
 #if MPI_COMM_ENABLED
 #if AC_EAGER
 
         //TODO: add MPI_COMPUTE_ENABLED checks aroudn the last .then
-
-//ERROR: in cudaMemcpyAsync: ret:: invalid argument
-
-/*
-        auto edgex_ftr = boost::async([&]{acTransferCommDataWait(edgex_data);})
-                         .then([&](boost::future<void>&& r){acUnpinCommData(device, &edgex_data);})
-                         .then([&](boost::future<void>&& r){acUnpackCommData(device, edgex_b0s, &edgex_data);})
-                         .share();
-
-        auto edgey_ftr = boost::async([&]{acTransferCommDataWait(edgey_data);})
-                         .then([&](boost::future<void>&& r){acUnpinCommData(device, &edgey_data);})
-                         .then([&](boost::future<void>&& r){acUnpackCommData(device, edgey_b0s, &edgey_data);})
-                         .share();
-
-        auto edgez_ftr = boost::async([&]{acTransferCommDataWait(edgez_data);})
-                         .then([&](boost::future<void>&& r){acUnpinCommData(device, &edgez_data);})
-                         .then([&](boost::future<void>&& r){acUnpackCommData(device, edgez_b0s, &edgez_data);})
-                         .share();
-*/
-//Same error
-/*
-        auto edgex_ftr = boost::async([&]{
-                                acTransferCommDataWait(edgex_data);
-                                acUnpinCommData(device, &edgex_data);
-                                acUnpackCommData(device, edgex_b0s, &edgex_data);
-                            }).share();
-        
-        auto edgey_ftr = boost::async([&]{
-                                acTransferCommDataWait(edgey_data);
-                                acUnpinCommData(device, &edgey_data);
-                                acUnpackCommData(device, edgey_b0s, &edgey_data);
-                            }).share();
-        
-        auto edgez_ftr = boost::async([&]{
-                                acTransferCommDataWait(edgez_data);
-                                acUnpinCommData(device, &edgez_data);
-                                acUnpackCommData(device, edgez_b0s, &edgez_data);
-                            }).share();
-*/
-
-        /*
-        auto edgex_ftr = boost::async([&]{acTransferCommDataWait(edgex_data);});
-        auto edgey_ftr = boost::async([&]{acTransferCommDataWait(edgey_data);});
-        auto edgez_ftr = boost::async([&]{acTransferCommDataWait(edgez_data);});
-        
-
-        edgex_ftr.wait();
-        edgey_ftr.wait();
-        edgez_ftr.wait();
-        */
-        //acTransferCommDataWait(edgex_data);
-        
         std::mutex m;
+        auto sidexy_ftr = boost::async([&]{
+            acTransferCommDataTest(device,sidexy_data,m);
+            acUnpinCommData(device, &sidexy_data);
+            acUnpackCommData(device, sidexy_b0s, &sidexy_data);
+            acSyncCommData(sidexy_data);
+        }).share();
 
-        /*
-        std::cout << "Launching from " << std::this_thread::get_id() << '\n';
-        std::cout << "Launching from " << std::this_thread::get_id() << '\n';
-        std::cout << "Launching from " << std::this_thread::get_id() << '\n';
-        std::cout << "Launching from " << std::this_thread::get_id() << '\n';
-        std::cout << "===============" << '\n';
-        */
+        auto sidexz_ftr = boost::async([&]{
+            acTransferCommDataTest(device,sidexz_data,m);
+            acUnpinCommData(device, &sidexz_data);
+            acUnpackCommData(device, sidexz_b0s, &sidexz_data);
+            acSyncCommData(sidexz_data);
+        }).share();
 
-        /*
-        //Threads work if we use mutexes
-        //However mutexes incur a cost... hmm
-        std::thread tx{[&]{
-            acTransferCommDataTest(device, edgex_data,m);
-        }};
-        
-        std::thread ty{[&]{
-            acTransferCommDataTest(device, edgey_data,m);
-        }};
-
-        std::thread tz{[&]{
-            acTransferCommDataTest(device, edgez_data,m);
-        }};
-        tx.join();
-        ty.join();
-        tz.join();
-        */
+        auto sideyz_ftr = boost::async([&]{
+            acTransferCommDataTest(device,sideyz_data,m);
+            acUnpinCommData(device, &sideyz_data);
+            acUnpackCommData(device, sideyz_b0s, &sideyz_data);
+            acSyncCommData(sideyz_data);
+        }).share();
 
         auto edgex_ftr = boost::async([&]{
             acTransferCommDataTest(device,edgex_data,m);
-            //acTransferCommDataWait(edgex_data);
-        });
+            acUnpinCommData(device, &edgex_data);
+            acUnpackCommData(device, edgex_b0s, &edgex_data);
+            acSyncCommData(edgex_data);
+        }).share();
         
         auto edgey_ftr = boost::async([&]{
             acTransferCommDataTest(device,edgey_data,m);
-            //acTransferCommDataWait(edgey_data);
-        });
+            acUnpinCommData(device, &edgey_data);
+            acUnpackCommData(device, edgey_b0s, &edgey_data);
+            acSyncCommData(edgey_data);
+        }).share();
         
         auto edgez_ftr = boost::async([&]{
             acTransferCommDataTest(device,edgez_data,m);
-            //acTransferCommDataWait(edgez_data);
-        });
-        edgex_ftr.wait();
-        edgey_ftr.wait();
-        edgez_ftr.wait();
+            acUnpinCommData(device, &edgez_data);
+            acUnpackCommData(device, edgez_b0s, &edgez_data);
+            acSyncCommData(edgez_data);
+        }).share();
 
-        acUnpinCommData(device, &edgex_data);
-        acUnpackCommData(device, edgex_b0s, &edgex_data);
-        acUnpinCommData(device, &edgey_data);
-        acUnpackCommData(device, edgey_b0s, &edgey_data);
-        acUnpinCommData(device, &edgez_data);
-        acUnpackCommData(device, edgez_b0s, &edgez_data);
 #else
         acTransferCommDataWait(edgex_data);
         acUnpinCommData(device, &edgex_data);
@@ -1661,9 +1603,12 @@ acGridIntegrate(const Stream stream, const AcReal dt)
         acSyncCommData(sidexy_data);
         acSyncCommData(sidexz_data);
         acSyncCommData(sideyz_data);
+#ifndef AC_EAGER
         acSyncCommData(edgex_data);
         acSyncCommData(edgey_data);
         acSyncCommData(edgez_data);
+#endif
+
 #if MPI_INCL_CORNERS
         acSyncCommData(corner_data); // Do not rm: required for corners
 #endif                               // MPI_INCL_CORNERS
@@ -1678,36 +1623,149 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 
 #if AC_EAGER
 
-        { // Front
-            const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
-            const int3 m2 = m1 + (int3){nn.x, nn.y, NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m2, dt);
-        }
-        { // Back
-            const int3 m1 = (int3){NGHOST, NGHOST, nn.z};
-            const int3 m2 = m1 + (int3){nn.x, nn.y, NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m2, dt);
-        }
-        { // Bottom
-            const int3 m1 = (int3){NGHOST, NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){nn.x, NGHOST, nn.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_2, isubstep, m1, m2, dt);
-        }
-        { // Top
-            const int3 m1 = (int3){NGHOST, nn.y, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){nn.x, NGHOST, nn.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_3, isubstep, m1, m2, dt);
-        }
-        { // Left
+        /*
+        sidexy_ftr.wait();
+        sidexz_ftr.wait();
+        sideyz_ftr.wait();
+        edgex_ftr.wait();
+        edgey_ftr.wait();
+        edgez_ftr.wait();
+        */
+        //2* a continuation per side CommData for the image of each side (3*2)
+        //4* a continuation per edge CommData for the image of the edges (3*4)
+        //8* continuations that depend on all sides and edges (and corners) (8)
+
+        auto x_comm_ftr = boost::when_all(sidexy_ftr,sidexz_ftr,edgex_ftr);
+        auto y_comm_ftr = boost::when_all(sidexy_ftr,sideyz_ftr,edgey_ftr);
+        auto z_comm_ftr = boost::when_all(sidexz_ftr,sideyz_ftr,edgez_ftr);
+        auto all_comm_ftr = boost::when_all(sidexy_ftr,sidexz_ftr,sideyz_ftr,edgex_ftr,edgey_ftr,edgez_ftr);
+
+        //These below don't technically need to be futures, but it may make fine grained integration of the inner domain possible
+        
+        //3 sets of inner faces of the outer domain
+        auto outer_xy_ftr = sidexy_ftr.then([&](boost::shared_future<void>&& r){ // Front, i.e. xy
+            const int3 offset = (int3){nn.x - 2*NGHOST, nn.y -2*NGHOST, NGHOST};
+            {
+            const int3 m1 = (int3){2*NGHOST, 2*NGHOST, NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+            }
+            {
+            const int3 m1 = (int3){2*NGHOST, 2*NGHOST, nn.z};
+            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+            }
+        });
+
+        auto outer_xz_ftr = sidexz_ftr.then([&](boost::shared_future<void>&& r){ // Bottom, i.e. xz
+            const int3 offset = (int3){nn.x - 2*NGHOST, NGHOST, nn.z - 2 * NGHOST};
+            {
+            const int3 m1 = (int3){2*NGHOST, NGHOST, 2 * NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_2, isubstep, m1, m1+offset, dt);
+            }
+            {
+            const int3 m1 = (int3){2*NGHOST, nn.y, 2 * NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_3, isubstep, m1, m1 + offset, dt);
+            }
+        });
+
+        auto outer_yz_ftr = sideyz_ftr.then([&](boost::shared_future<void>&& r){ // Left, i.e. yz
+            const int3 offset = (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
+            {
             const int3 m1 = (int3){NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_4, isubstep, m1, m2, dt);
-        }
-        { // Right
+            acDeviceIntegrateSubstep(device, STREAM_4, isubstep, m1, m1+offset, dt);
+            }
+            {
             const int3 m1 = (int3){nn.x, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_5, isubstep, m1, m2, dt);
-        }
+            acDeviceIntegrateSubstep(device, STREAM_5, isubstep, m1, m1+offset, dt);
+            }
+        });
+        
+        //3 sets of edges in the outer domain shell
+        auto outer_x_ftr = x_comm_ftr.then([&](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){ 
+            const int3 offset = (int3){nn.x - 2*NGHOST, NGHOST, NGHOST};
+            {
+            const int3 m1 = (int3){2*NGHOST, NGHOST, NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+            }
+            {
+            const int3 m1 = (int3){2*NGHOST, nn.y, NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+            }
+            {
+            const int3 m1 = (int3){2*NGHOST, NGHOST, nn.z};
+            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+            }
+            {
+            const int3 m1 = (int3){2*NGHOST, nn.y, nn.z};
+            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+            }
+            });
+
+        auto outer_y_ftr = y_comm_ftr.then([&](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){ 
+            const int3 offset = (int3){NGHOST, nn.y - 2*NGHOST, NGHOST};
+            {
+            const int3 m1 = (int3){NGHOST, 2*NGHOST, NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+            }
+            {
+            const int3 m1 = (int3){nn.x,2*NGHOST, NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+            }
+            {
+            const int3 m1 = (int3){NGHOST, 2*NGHOST, nn.z};
+            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+            }
+            {
+            const int3 m1 = (int3){nn.x,2*NGHOST , nn.z};
+            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+            }
+        });
+        
+
+        auto outer_z_ftr = z_comm_ftr.then([&](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){ 
+            const int3 offset = (int3){NGHOST, NGHOST, nn.z - 2*NGHOST};
+            {
+            const int3 m1 = (int3){NGHOST, NGHOST, 2*NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+            }
+            {
+            const int3 m1 = (int3){nn.x, NGHOST, 2*NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+            }
+            {
+            const int3 m1 = (int3){NGHOST, nn.y, 2*NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+            }
+            {
+            const int3 m1 = (int3){nn.x, nn.y, 2*NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+            }
+        });
+        
+        //The last one especially doesn't necessarily have to be asynchronous, but maybe we can free up some resources?
+        
+        auto outer_corners_ftr = all_comm_ftr.then([&](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>>>&& r){ 
+            const int3 offset = (int3){NGHOST, NGHOST, NGHOST};
+            const int3 m1s[8] = {
+                (int3){NGHOST, NGHOST, NGHOST},
+                (int3){nn.x, NGHOST, NGHOST},
+                (int3){NGHOST, nn.y, NGHOST},
+                (int3){NGHOST, NGHOST, nn.z},
+                (int3){nn.x, nn.y, NGHOST},
+                (int3){nn.x, NGHOST, nn.z},
+                (int3){NGHOST, nn.y, nn.z},
+                (int3){nn.x, nn.y, nn.z}
+            };
+            for (size_t i = 0; i < 8 ;i++){
+                acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1s[i], m1s[i]+offset, dt);
+            }
+        });
+        outer_xy_ftr.wait();
+        outer_xz_ftr.wait();
+        outer_yz_ftr.wait();
+        outer_x_ftr.wait();
+        outer_y_ftr.wait();
+        outer_z_ftr.wait();
+        outer_corners_ftr.wait();
 #else
         { // Front
             const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
