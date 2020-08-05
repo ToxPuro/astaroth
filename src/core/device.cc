@@ -18,6 +18,17 @@
 #define MPI_USE_PINNED (0)              // Do inter-node comm with pinned memory
 #define MPI_USE_CUDA_DRIVER_PINNING (0) // Pin with cuPointerSetAttribute, otherwise cudaMallocHost
 
+#if AC_EAGER
+
+#include <boost/thread.hpp>
+#include <boost/chrono.hpp>
+#include <thread>
+#include <mutex>
+#include <future>
+#include <chrono>
+
+#endif
+
 #include <cuda.h> // CUDA driver API (needed if MPI_USE_CUDA_DRIVER_PINNING is set)
 
 AcResult
@@ -643,6 +654,16 @@ onTheSameNode(const uint64_t pid_a, const uint64_t pid_b)
     return node_a == node_b;
 }
 
+static inline int3
+b0_to_halo_coords(const int3 b0){
+    return (int3){
+        b0.x < NGHOST ? -1 : b0.x > NGHOST ? 1 : 0,
+        b0.y < NGHOST ? -1 : b0.y > NGHOST ? 1 : 0,
+        b0.z < NGHOST ? -1 : b0.z > NGHOST ? 1 : 0,
+    };
+}
+
+
 static PackedData
 acCreatePackedData(const int3 dims)
 {
@@ -1119,12 +1140,7 @@ acTransferCommData(const Device device, //
     for (size_t b0_idx = 0; b0_idx < blockcount; ++b0_idx) {
 
         const int3 b0       = b0s[b0_idx];
-        const int3 neighbor = (int3){
-            b0.x < NGHOST ? -1 : b0.x >= NGHOST + nn.x ? 1 : 0,
-            b0.y < NGHOST ? -1 : b0.y >= NGHOST + nn.y ? 1 : 0,
-            b0.z < NGHOST ? -1 : b0.z >= NGHOST + nn.z ? 1 : 0,
-        };
-        const int npid = getPid(pid3d + neighbor, decomp);
+        const int npid = getPid(pid3d + b0_to_halo_coords(b0), decomp);
 
         PackedData* dst = &data->dsts[b0_idx];
         if (onTheSameNode(pid, npid) || !MPI_USE_PINNED) {
@@ -1141,12 +1157,7 @@ acTransferCommData(const Device device, //
 
     for (size_t b0_idx = 0; b0_idx < blockcount; ++b0_idx) {
         const int3 b0       = b0s[b0_idx];
-        const int3 neighbor = (int3){
-            b0.x < NGHOST ? -1 : b0.x >= NGHOST + nn.x ? 1 : 0,
-            b0.y < NGHOST ? -1 : b0.y >= NGHOST + nn.y ? 1 : 0,
-            b0.z < NGHOST ? -1 : b0.z >= NGHOST + nn.z ? 1 : 0,
-        };
-        const int npid = getPid(pid3d - neighbor, decomp);
+        const int npid = getPid(pid3d - b0_to_halo_coords(b0), decomp);
 
         PackedData* src = &data->srcs[b0_idx];
         if (onTheSameNode(pid, npid) || !MPI_USE_PINNED) {
@@ -1170,6 +1181,70 @@ acTransferCommDataWait(const CommData data)
 {
     MPI_Waitall(data.count, data.recv_reqs, MPI_STATUSES_IGNORE);
     MPI_Waitall(data.count, data.send_reqs, MPI_STATUSES_IGNORE);
+}
+
+
+static void
+acTransferCommDataTest(const Device device, const CommData data, std::mutex& m)
+{
+
+    int sends_done = 0;
+    int recvs_done = 0;
+    cudaSetDevice(device->id);
+    while (!sends_done || !recvs_done){
+        m.lock();
+        if (!sends_done)
+            MPI_Testall(data.count, data.send_reqs,&sends_done,MPI_STATUSES_IGNORE);
+        if (!recvs_done)
+            MPI_Testall(data.count, data.recv_reqs,&recvs_done,MPI_STATUSES_IGNORE);
+        m.unlock();
+    }
+}
+
+static void
+acTransferTestAll(const Device device, MPI_Request* requests, int count, std::mutex& m)
+{
+
+    int reqs_done = 0;
+    cudaSetDevice(device->id);
+    while (!reqs_done){
+        m.lock();
+        MPI_Testall(count, requests,&reqs_done,MPI_STATUSES_IGNORE);
+        m.unlock();
+    }
+}
+
+
+static void
+acTransferTestOne(const Device device, MPI_Request& request, std::mutex& m)
+{
+
+    int req_done = 0;
+    cudaSetDevice(device->id);
+    while (request != MPI_REQUEST_NULL){
+        m.lock();
+        MPI_Test(&request, &req_done, MPI_STATUS_IGNORE);
+        m.unlock();
+    }
+}
+
+static void
+acCreateCommFutures(Device device, const CommData* comm_data, const int3* b0s, boost::shared_future<void> out_segment_futures[3][3][3], std::mutex& m)
+{
+    for (size_t i = 0; i < comm_data->count ; i++){
+        PackedData data = comm_data->dsts[i];
+        const int3 b0 = b0s[i];
+        const int3 p = b0_to_halo_coords(b0);
+        const cudaStream_t stream = comm_data->streams[i];
+        out_segment_futures[p.x+1][p.y+1][p.z+1] = boost::async([=,&data,&b0,&m]{
+            acTransferTestOne(device,comm_data->recv_reqs[i], m);
+            data.pinned = false;
+            acUnpinPackedData(device, stream ,&data);
+            cudaSetDevice(device->id);
+            acKernelUnpackData(stream,data,b0,device->vba);
+            cudaStreamSynchronize(stream);
+        }).share();
+    }
 }
 
 typedef struct {
@@ -1550,6 +1625,348 @@ acGridIntegratePipelined(const Stream stream, const AcReal dt)
 }
 */
 
+#if AC_EAGER
+
+
+AcResult
+acGridIntegrate(const Stream stream, const AcReal dt)
+{
+    ERRCHK(grid.initialized);
+    acGridSynchronizeStream(stream);
+
+    const Device device = grid.device;
+    const int3 nn       = grid.nn;
+#if MPI_INCL_CORNERS
+    CommData corner_data = grid.corner_data; // Do not rm: required for corners
+#endif                                       // MPI_INCL_CORNERS
+    CommData edgex_data  = grid.edgex_data;
+    CommData edgey_data  = grid.edgey_data;
+    CommData edgez_data  = grid.edgez_data;
+    CommData sidexy_data = grid.sidexy_data;
+    CommData sidexz_data = grid.sidexz_data;
+    CommData sideyz_data = grid.sideyz_data;
+
+    acDeviceSynchronizeStream(device, stream);
+
+// Corners
+#if MPI_INCL_CORNERS
+    // Do not rm: required for corners
+    const int3 corner_b0s[] = {
+        (int3){0, 0, 0},
+        (int3){NGHOST + nn.x, 0, 0},
+        (int3){0, NGHOST + nn.y, 0},
+        (int3){0, 0, NGHOST + nn.z},
+
+        (int3){NGHOST + nn.x, NGHOST + nn.y, 0},
+        (int3){NGHOST + nn.x, 0, NGHOST + nn.z},
+        (int3){0, NGHOST + nn.y, NGHOST + nn.z},
+        (int3){NGHOST + nn.x, NGHOST + nn.y, NGHOST + nn.z},
+    };
+#endif // MPI_INCL_CORNERS
+
+    // Edges X
+    const int3 edgex_b0s[] = {
+        (int3){NGHOST, 0, 0},
+        (int3){NGHOST, NGHOST + nn.y, 0},
+
+        (int3){NGHOST, 0, NGHOST + nn.z},
+        (int3){NGHOST, NGHOST + nn.y, NGHOST + nn.z},
+    };
+
+    // Edges Y
+    const int3 edgey_b0s[] = {
+        (int3){0, NGHOST, 0},
+        (int3){NGHOST + nn.x, NGHOST, 0},
+
+        (int3){0, NGHOST, NGHOST + nn.z},
+        (int3){NGHOST + nn.x, NGHOST, NGHOST + nn.z},
+    };
+
+    // Edges Z
+    const int3 edgez_b0s[] = {
+        (int3){0, 0, NGHOST},
+        (int3){NGHOST + nn.x, 0, NGHOST},
+
+        (int3){0, NGHOST + nn.y, NGHOST},
+        (int3){NGHOST + nn.x, NGHOST + nn.y, NGHOST},
+    };
+
+    // Sides XY
+    const int3 sidexy_b0s[] = {
+        (int3){NGHOST, NGHOST, 0},             //
+        (int3){NGHOST, NGHOST, NGHOST + nn.z}, //
+    };
+
+    // Sides XZ
+    const int3 sidexz_b0s[] = {
+        (int3){NGHOST, 0, NGHOST},             //
+        (int3){NGHOST, NGHOST + nn.y, NGHOST}, //
+    };
+
+    // Sides YZ
+    const int3 sideyz_b0s[] = {
+        (int3){0, NGHOST, NGHOST},             //
+        (int3){NGHOST + nn.x, NGHOST, NGHOST}, //
+    };
+
+    for (int isubstep = 0; isubstep < 3; ++isubstep) {
+
+#if MPI_COMM_ENABLED
+#if MPI_INCL_CORNERS
+        acPackCommData(device, corner_b0s, &corner_data); // Do not rm: required for corners
+#endif                                                    // MPI_INCL_CORNERS
+        acPackCommData(device, edgex_b0s, &edgex_data);
+        acPackCommData(device, edgey_b0s, &edgey_data);
+        acPackCommData(device, edgez_b0s, &edgez_data);
+        acPackCommData(device, sidexy_b0s, &sidexy_data);
+        acPackCommData(device, sidexz_b0s, &sidexz_data);
+        acPackCommData(device, sideyz_b0s, &sideyz_data);
+#endif
+
+#if MPI_COMM_ENABLED
+        MPI_Barrier(MPI_COMM_WORLD);
+
+#if MPI_GPUDIRECT_DISABLED
+#if MPI_INCL_CORNERS
+        acTransferCommDataToHost(device, &corner_data); // Do not rm: required for corners
+#endif                                                  // MPI_INCL_CORNERS
+        acTransferCommDataToHost(device, &edgex_data);
+        acTransferCommDataToHost(device, &edgey_data);
+        acTransferCommDataToHost(device, &edgez_data);
+        acTransferCommDataToHost(device, &sidexy_data);
+        acTransferCommDataToHost(device, &sidexz_data);
+        acTransferCommDataToHost(device, &sideyz_data);
+#endif
+#if MPI_INCL_CORNERS
+        acTransferCommData(device, corner_b0s, &corner_data); // Do not rm: required for corners
+#endif                                                        // MPI_INCL_CORNERS
+        acTransferCommData(device, edgex_b0s, &edgex_data);
+        acTransferCommData(device, edgey_b0s, &edgey_data);
+        acTransferCommData(device, edgez_b0s, &edgez_data);
+        acTransferCommData(device, sidexy_b0s, &sidexy_data);
+        acTransferCommData(device, sidexz_b0s, &sidexz_data);
+        acTransferCommData(device, sideyz_b0s, &sideyz_data);
+#endif // MPI_COMM_ENABLED
+
+#if MPI_COMPUTE_ENABLED
+        //////////// INNER INTEGRATION //////////////
+        {
+            const int3 m1 = (int3){2 * NGHOST, 2 * NGHOST, 2 * NGHOST};
+            const int3 m2 = nn;
+            acDeviceIntegrateSubstep(device, STREAM_26, isubstep, m1, m2, dt);
+        }
+////////////////////////////////////////////
+#endif // MPI_COMPUTE_ENABLED
+
+#if MPI_COMM_ENABLED
+
+        //1. [X]
+        //for each CommData do:
+        //      for each i,b0 coupled to that Commdata do:
+        //              assign segment_futures[b0_to_halo_coords(b0)] = a future waiting on the i:th segment in the CommData
+        //
+        
+        std::mutex m;
+        
+        //Need to initialize?
+        boost::shared_future<void> segments[3][3][3];
+            
+        acCreateCommFutures(device, &edgex_data, edgex_b0s, segments, m);
+        acCreateCommFutures(device, &edgey_data, edgey_b0s, segments, m);
+        acCreateCommFutures(device, &edgez_data, edgez_b0s, segments, m);
+        acCreateCommFutures(device, &sidexy_data, sidexy_b0s, segments, m);
+        acCreateCommFutures(device, &sidexz_data, sidexz_b0s, segments, m);
+        acCreateCommFutures(device, &sideyz_data, sideyz_b0s, segments, m);
+#if MPI_INC_CORNERS
+        acCreateCommFutures(device, corner_data, corner_b0s, segments, m);
+#endif
+#endif // MPI_COMM_ENABLED
+
+#if MPI_COMPUTE_ENABLED
+//////////// OUTER INTEGRATION //////////////
+
+        //2. [ ]
+        //for each b0 coupled to the CommDatas
+        //      figure out dependencies
+        //      wait on dependencies
+        //      do calculation within that area
+        
+#define LEFT 0
+#define DOWN 0
+#define FRONT 0
+#define FACE 1
+#define EDGE 1
+#define RIGHT 2
+#define UP 2
+#define BACK 2
+
+        int3 offset = (int3){nn.x - 2*NGHOST, nn.y -2*NGHOST, NGHOST};
+        auto outer_front_ftr = segments[FACE][FACE][FRONT].then([&,offset](boost::shared_future<void>&& r){ 
+            const int3 m1 = (int3){2*NGHOST, 2*NGHOST, NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+        });
+        auto outer_back_ftr  = segments[FACE][FACE][BACK].then([&,offset](boost::shared_future<void>&& r){ 
+            const int3 m1 = (int3){2*NGHOST, 2*NGHOST, nn.z};
+            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+        });
+
+        offset = (int3){nn.x - 2*NGHOST, NGHOST, nn.z - 2 * NGHOST};
+        auto outer_down_ftr = segments[FACE][DOWN][FACE].then([&,offset](boost::shared_future<void>&& r){ 
+            const int3 m1 = (int3){2*NGHOST, NGHOST, 2 * NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_2, isubstep, m1, m1+offset, dt);
+        });
+        auto outer_up_ftr = segments[FACE][UP][FACE].then([&,offset](boost::shared_future<void>&& r){ 
+            const int3 m1 = (int3){2*NGHOST, nn.y, 2 * NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_3, isubstep, m1, m1 + offset, dt);
+        });
+        
+        offset = (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
+        auto outer_left_ftr = segments[LEFT][FACE][FACE].then([&,offset](boost::shared_future<void>&& r){ 
+            const int3 m1 = (int3){NGHOST, 2 * NGHOST, 2 * NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_4, isubstep, m1, m1+offset, dt);
+        });
+        auto outer_right_ftr = segments[RIGHT][FACE][FACE].then([&,offset](boost::shared_future<void>&& r){ 
+            const int3 m1 = (int3){nn.x, 2 * NGHOST, 2 * NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_5, isubstep, m1, m1+offset, dt);
+        });
+
+
+//Edges x
+
+        offset = (int3){nn.x - 2*NGHOST, NGHOST, NGHOST};
+        auto outer_df_ftr = when_all(segments[FACE][FACE][FRONT],segments[FACE][DOWN][FACE],segments[FACE][DOWN][FRONT])
+         .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
+            const int3 m1 = (int3){2*NGHOST, NGHOST, NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_6, isubstep, m1, m1+offset, dt);
+        });
+        auto outer_uf_ftr = when_all(segments[FACE][FACE][FRONT],segments[FACE][UP][FACE],segments[FACE][UP][FRONT])
+         .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
+            const int3 m1 = (int3){2*NGHOST, nn.y, NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_7, isubstep, m1, m1+offset, dt);
+        });
+        auto outer_db_ftr = when_all(segments[FACE][FACE][BACK],segments[FACE][DOWN][FACE],segments[FACE][DOWN][BACK])
+         .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
+            const int3 m1 = (int3){2*NGHOST, NGHOST, nn.z};
+            acDeviceIntegrateSubstep(device, STREAM_8, isubstep, m1, m1+offset, dt);
+        });
+        auto outer_ub_ftr = when_all(segments[FACE][FACE][BACK],segments[FACE][UP][FACE],segments[FACE][UP][BACK])
+         .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
+            const int3 m1 = (int3){2*NGHOST, nn.y, nn.z};
+            acDeviceIntegrateSubstep(device, STREAM_9, isubstep, m1, m1+offset, dt);
+        });
+
+//Edges y
+
+        offset = (int3){NGHOST, nn.y - 2*NGHOST, NGHOST};
+        auto outer_lf_ftr = when_all(segments[LEFT][FACE][FACE],segments[FACE][FACE][FRONT],segments[LEFT][FACE][FRONT])
+         .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
+            const int3 m1 = (int3){NGHOST, 2*NGHOST, NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_10, isubstep, m1, m1+offset, dt);
+        });
+        auto outer_rf_ftr = when_all(segments[RIGHT][FACE][FACE],segments[FACE][FACE][FRONT],segments[RIGHT][FACE][FRONT])
+         .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
+            const int3 m1 = (int3){nn.x,2*NGHOST, NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_11, isubstep, m1, m1+offset, dt);
+        });
+        auto outer_lb_ftr = when_all(segments[LEFT][FACE][FACE],segments[FACE][FACE][BACK],segments[LEFT][FACE][BACK])
+         .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
+            const int3 m1 = (int3){NGHOST, 2*NGHOST, nn.z};
+            acDeviceIntegrateSubstep(device, STREAM_12, isubstep, m1, m1+offset, dt);
+        });
+        auto outer_rb_ftr = when_all(segments[RIGHT][FACE][FACE],segments[FACE][FACE][BACK],segments[RIGHT][FACE][BACK])
+         .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
+            const int3 m1 = (int3){nn.x,2*NGHOST , nn.z};
+            acDeviceIntegrateSubstep(device, STREAM_13, isubstep, m1, m1+offset, dt);
+        });
+
+//Edges z
+
+        offset = (int3){NGHOST, NGHOST, nn.z - 2*NGHOST};
+        auto outer_ld_ftr = when_all(segments[LEFT][FACE][FACE],segments[FACE][DOWN][FACE],segments[LEFT][DOWN][FACE])
+         .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
+            const int3 m1 = (int3){NGHOST, NGHOST, 2*NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_14, isubstep, m1, m1+offset, dt);
+        });
+        auto outer_rd_ftr = when_all(segments[RIGHT][FACE][FACE],segments[FACE][DOWN][FACE],segments[RIGHT][DOWN][FACE])
+         .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
+            const int3 m1 = (int3){nn.x, NGHOST, 2*NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_15, isubstep, m1, m1+offset, dt);
+        });
+        auto outer_lu_ftr = when_all(segments[LEFT][FACE][FACE],segments[FACE][UP][FACE],segments[LEFT][UP][FACE])
+         .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
+            const int3 m1 = (int3){NGHOST, nn.y, 2*NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_16, isubstep, m1, m1+offset, dt);
+        });
+        auto outer_ru_ftr = when_all(segments[RIGHT][FACE][FACE],segments[FACE][UP][FACE],segments[RIGHT][UP][FACE])
+         .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
+            const int3 m1 = (int3){nn.x, nn.y, 2*NGHOST};
+            acDeviceIntegrateSubstep(device, STREAM_17, isubstep, m1, m1+offset, dt);
+        });
+
+        //TODO: rewrite to separate (maybe, is it really worth it? they're 3^3 grid areas)
+        auto outer_corners_ftr = 
+            when_all(
+                    segments[LEFT][FACE][FACE],segments[FACE][DOWN][FACE],segments[FACE][FACE][FRONT],segments[LEFT][DOWN][EDGE],segments[LEFT][EDGE][FRONT],segments[EDGE][DOWN][FRONT],
+                    segments[RIGHT][FACE][FACE],segments[FACE][UP][FACE],segments[FACE][FACE][BACK],segments[RIGHT][UP][EDGE],segments[RIGHT][EDGE][BACK],segments[EDGE][UP][BACK],
+                    segments[LEFT][UP][EDGE],segments[LEFT][EDGE][BACK],segments[RIGHT][DOWN][EDGE],segments[RIGHT][EDGE][FRONT],segments[EDGE][DOWN][BACK],segments[EDGE][UP][FRONT]
+                    )
+            .then([&](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>,
+                                               boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>,
+                                               boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void>>>&& r){ 
+            const int3 offset = (int3){NGHOST, NGHOST, NGHOST};
+            const int3 m1s[8] = {
+                (int3){NGHOST, NGHOST, NGHOST},
+                (int3){nn.x, NGHOST, NGHOST},
+                (int3){NGHOST, nn.y, NGHOST},
+                (int3){NGHOST, NGHOST, nn.z},
+                (int3){nn.x, nn.y, NGHOST},
+                (int3){nn.x, NGHOST, nn.z},
+                (int3){NGHOST, nn.y, nn.z},
+                (int3){nn.x, nn.y, nn.z}
+            };
+            for (size_t i = 0; i < 8 ;i++){
+                acDeviceIntegrateSubstep(device, STREAM_18+i, isubstep, m1s[i], m1s[i]+offset, dt);
+            }
+        });
+        
+        acTransferTestAll(device,edgex_data.send_reqs, edgex_data.count, m);
+        acTransferTestAll(device,edgey_data.send_reqs, edgey_data.count, m);
+        acTransferTestAll(device,edgez_data.send_reqs, edgez_data.count, m);
+        acTransferTestAll(device,sidexy_data.send_reqs, sidexy_data.count, m);
+        acTransferTestAll(device,sidexz_data.send_reqs, sidexz_data.count, m);
+        acTransferTestAll(device,sideyz_data.send_reqs, sideyz_data.count, m);
+        outer_left_ftr.wait();
+        outer_right_ftr.wait();
+        outer_down_ftr.wait();
+        outer_up_ftr.wait();
+        outer_front_ftr.wait();
+        outer_back_ftr.wait();
+        outer_ld_ftr.wait();
+        outer_lu_ftr.wait();
+        outer_rd_ftr.wait();
+        outer_ru_ftr.wait();
+        outer_lf_ftr.wait();
+        outer_lb_ftr.wait();
+        outer_rf_ftr.wait();
+        outer_rb_ftr.wait();
+        outer_df_ftr.wait();
+        outer_db_ftr.wait();
+        outer_uf_ftr.wait();
+        outer_ub_ftr.wait();
+        outer_corners_ftr.wait();       
+
+#endif // MPI_COMPUTE_ENABLED
+        acDeviceSwapBuffers(device);
+        acDeviceSynchronizeStream(device, STREAM_ALL); // Wait until inner and outer done
+        ////////////////////////////////////////////
+    }
+
+    return AC_SUCCESS;
+}
+
+#else
+
+//Non async
 AcResult
 acGridIntegrate(const Stream stream, const AcReal dt)
 {
@@ -1762,6 +2179,8 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 
     return AC_SUCCESS;
 }
+
+#endif //AC_EAGER (ELSE)
 
 AcResult
 acGridPeriodicBoundconds(const Stream stream)
