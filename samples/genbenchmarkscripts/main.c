@@ -80,9 +80,7 @@ main(void)
             else if (strcmp(files[i], "benchmark_weak_448") == 0)
                 nn = 448;
 
-            fprintf(fp, "cd %s\n", files[i]);
-            fprintf(fp, "srun ./benchmark %d %d %d\n", nn, nn, nn);
-            fprintf(fp, "cd ..\n");
+            fprintf(fp, "$(cd %s && srun ./benchmark %d %d %d && cd ..)\n", files[i], nn, nn, nn);
         }
 
         fclose(fp);

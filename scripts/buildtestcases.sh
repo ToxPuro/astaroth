@@ -126,3 +126,13 @@ sed -i 's/const size_t num_iters      = .*;/const size_t num_iters      = 100;/'
 create_case "weak_448"
 
 load_default_case
+
+
+# Run batch jobs
+sbatch benchmark_meshsize_256/benchmark_1.sh
+sbatch benchmark_meshsize_256/benchmark_2.sh
+sbatch benchmark_meshsize_256/benchmark_4.sh
+sbatch benchmark_meshsize_256/benchmark_8.sh
+sbatch benchmark_meshsize_256/benchmark_16.sh
+sbatch benchmark_meshsize_256/benchmark_32.sh
+sbatch benchmark_meshsize_256/benchmark_64.sh
