@@ -36,10 +36,10 @@ main(void)
 
         // Modules
         // OpenMPI
-        fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake openmpi nccl\n");
+        fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake openmpi/4.0.3-cuda\n");
         // HPCX
         //fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake hpcx-mpi/2.5.0-cuda nccl\n");
-        fprintf(fp, "export UCX_MEMTYPE_CACHE=n\n");
+        //fprintf(fp, "export UCX_MEMTYPE_CACHE=n\n");
 
         // Profile and run
         //fprintf(fp, "mkdir -p profile_%d\n", nprocs);

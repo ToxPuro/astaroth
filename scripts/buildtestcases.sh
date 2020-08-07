@@ -1,18 +1,5 @@
 #!/bin/bash
 
-SRUN="srun --account=project_2000403 --mem=32000 -t 00:14:59 -p gpu"
-#SRUN="srun --account=project_2000403 --mem=32000 -t 00:14:59 -p gpu --exclusive"
-# SLURM bug #1: Exclusive flag invalidates -ntasks-per-socket
-# SLURM bug #2: ntasks-per-socket does not work w/ sbath, only interactive srun
-
-SRUN_1="$SRUN --gres=gpu:v100:1 --ntasks-per-socket=1 -n 1 -N 1"
-SRUN_2="$SRUN --gres=gpu:v100:2 --ntasks-per-socket=1 -n 2 -N 1"
-SRUN_4="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 4 -N 1 --cpus-per-task=10"
-SRUN_8="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 8 -N 2 --cpus-per-task=10"
-SRUN_16="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 16 -N 4 --cpus-per-task=10"
-SRUN_32="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 32 -N 8 --cpus-per-task=10"
-SRUN_64="$SRUN --gres=gpu:v100:4 --ntasks-per-socket=2 -n 64 -N 16 --cpus-per-task=10"
-
 load_default_case() {
   # Pinned or RDMA
   sed -i 's/#define MPI_USE_PINNED ([0-9]*)/#define MPI_USE_PINNED (0)/' src/core/device.cc
@@ -49,17 +36,6 @@ srun_all() {
     sbatch benchmark_64.sh
 }
 
-# $1 grid size
-srun_all2() {
-  $SRUN_1 ./benchmark $1 $1 $1 &
-  $SRUN_2 ./benchmark $1 $1 $1 &
-  $SRUN_4 ./benchmark $1 $1 $1 &
-  $SRUN_8 ./benchmark $1 $1 $1 &
-  $SRUN_16 ./benchmark $1 $1 $1 &
-  $SRUN_32 ./benchmark $1 $1 $1 &
-  $SRUN_64 ./benchmark $1 $1 $1 &
-}
-
 # $1 test name
 # $2 grid size
 create_case() {
@@ -70,6 +46,9 @@ create_case() {
   srun_all $2
   cd ..
 }
+
+# Modules (!!!)
+module load gcc/8.3.0 cuda/10.1.168 cmake openmpi/4.0.3-cuda
 
 # Mesh size
 load_default_case
