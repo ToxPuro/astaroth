@@ -1,5 +1,8 @@
 #pragma once
 
+#include <iostream>
+#include <stdio.h>
+
 static __global__ void
 kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, PackedData packed)
 {
@@ -29,6 +32,7 @@ kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, PackedData p
     //#pragma unroll
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
         packed.data[packed_idx + i * vtxbuf_offset] = vba.in[i][unpacked_idx];
+    
 }
 
 static __global__ void
@@ -71,11 +75,14 @@ acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba, const i
                    (unsigned int)ceil(packed.dims.y / (float)tpb.y),
                    (unsigned int)ceil(packed.dims.z / (float)tpb.z));
 
+	
+
     kernel_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, packed);
     ERRCHK_CUDA_KERNEL();
 
     return AC_SUCCESS;
 }
+
 
 AcResult
 acKernelUnpackData(const cudaStream_t stream, const PackedData packed, const int3 vba_start,
