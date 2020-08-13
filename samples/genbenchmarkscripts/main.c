@@ -31,9 +31,9 @@ main(void)
         fprintf(fp, "#SBATCH --gres=gpu:v100:%d\n", gpus_per_node);
         fprintf(fp, "#SBATCH -n %d\n", nprocs);
         fprintf(fp, "#SBATCH -N %d\n", nodes);
-        // fprintf(fp, "#SBATCH --exclusive\n");
-        if (nprocs > 4)
-            fprintf(fp, "#SBATCH --ntasks-per-socket=2\n");
+        fprintf(fp, "#SBATCH --exclusive\n");
+        //if (nprocs > 4)
+        //    fprintf(fp, "#SBATCH --ntasks-per-socket=2\n");
 
         // Modules
         // OpenMPI
@@ -45,7 +45,6 @@ main(void)
         // Profile and run
         // fprintf(fp, "mkdir -p profile_%d\n", nprocs);
 
-        /*
         const int nx = 256; // max size 1792;
         const int ny = nx;
         const int nz = nx;
@@ -54,9 +53,8 @@ main(void)
                 //"srun nvprof --annotate-mpi openmpi -o profile_%d/%%p.nvprof ./benchmark %d %d "
                 //"%d\n",
                 "srun ./benchmark %d %d %d\n", nx, ny, nz);
-        */
         // fprintf(fp, "srun ./benchmark %d %d %d\n", nx, ny, nz);
-
+        /*
         const char* files[] = {
             "benchmark_decomp_1D",       "benchmark_decomp_2D",      "benchmark_decomp_3D",
             "benchmark_decomp_1D_comm",  "benchmark_decomp_2D_comm", "benchmark_decomp_3D_comm",
@@ -82,7 +80,7 @@ main(void)
 
             fprintf(fp, "$(cd %s && srun ./benchmark %d %d %d && cd ..)\n", files[i], nn, nn, nn);
         }
-
+        */
         fclose(fp);
     }
 

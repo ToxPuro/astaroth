@@ -1010,17 +1010,16 @@ typedef struct DataChannel{
 
     DataChannel(const int3 _segment_id, const int3 _nn, const int _rank, 
                 const int3 pid3d, const uint3_64 decomp, MPI_Request* _recv_req, MPI_Request* _send_req, const Device _device)
-    :segment_id(_segment_id),nn(_nn),rank(_rank),  recv_req(_recv_req), send_req(_send_req),device(_device)
+    :segment_id(_segment_id), nn(_nn), rank(_rank), recv_req(_recv_req), send_req(_send_req), device(_device)
     {
+
 #if MPI_INCL_CORNERS
         active = true;
 #else
-        if (segment_id.x != 0 && segment_id.y != 0 && segment_id.z != 0){
+        if (segment_id.x != 0 && segment_id.y != 0 && segment_id.z != 0)
             active = false;
-        }else{
+        else
             active = true;
-        }
-
 #endif
 
         b0 = segment_id_to_b0(segment_id,nn);
@@ -1029,7 +1028,6 @@ typedef struct DataChannel{
 
         tag = segment_id_to_index(segment_id);
 
-        //std::cout << "Creating rank " << rank << " tag " << tag << std::endl;
         cudaSetDevice(device->id);
         src = acCreatePackedData(dims);
         dst = acCreatePackedData(dims);
@@ -1057,36 +1055,27 @@ typedef struct DataChannel{
         cudaStreamDestroy(stream);
     }
 
-    void Pack()
-    {
-
-        /*
-        std::cout << "pack " << segment_id.x <<":" << segment_id.y <<  ":" << segment_id.z //
-        << " on rank " << rank <<" device " << device->id //
-        << "\n\t b0  :" << b0.x <<":" << b0.y <<  ":" << b0.z //
-        << "\n\t a0  :" <<a0.x <<":" << a0.y << ":" << a0.z
-        << "\n\t tag :" << tag //
-        << "\n\t dims:" <<dims.x <<":" << dims.y << ":" << dims.z 
-        << std::endl;
-        */
-        acKernelPackData(stream, device->vba, a0, src);
-    }
-
-    void Unpack()
-    {
-        acKernelUnpackData(stream, dst, b0, device->vba);
-    }
-
-    void Pin()
+    void pin()
     {
         acPinPackedData(device, stream, &src);
     }
     
-    void Unpin()
+    void unpin()
     {
         src.pinned = false;
         acUnpinPackedData(device, stream, &dst);
     }   
+
+    void Pack()
+    {
+        acKernelPackData(stream, device->vba, a0, src);
+    }
+
+    void Unpack()
+    {   
+        unpin();
+        acKernelUnpackData(stream, dst, b0, device->vba);
+    }
     void Sync()
     {
         cudaStreamSynchronize(stream);
@@ -1113,7 +1102,7 @@ typedef struct DataChannel{
     
     void SendPinned()
     {
-        Pin();
+        pin();
         Sync();
         MPI_Isend(src.data_pinned, msglen, mpi_typ, send_rank, tag, MPI_COMM_WORLD, send_req);
 
@@ -1122,7 +1111,7 @@ typedef struct DataChannel{
     void
     TransferUnPinned()
     {
-        cudaSetDevice(device->id);
+        //cudaSetDevice(device->id);
         ReceiveUnpinned();
         SendUnpinned();
     }
@@ -1130,7 +1119,7 @@ typedef struct DataChannel{
     void
     TransferPinned()
     {
-        cudaSetDevice(device->id);
+        //cudaSetDevice(device->id);
         if (onTheSameNode(rank, recv_rank))
             ReceiveUnpinned();
         else 
@@ -1151,17 +1140,6 @@ typedef struct DataChannel{
         TransferUnpinned();
 #endif
     }
-
-    void
-    ExchangeComplete()
-    {
-#if MPI_COMM_ENABLED
-        Unpin();
-        Unpack();
-#endif
-    }
-
-
 } DataChannel;
 //TODO: maybe don't have to setDevice so aggressively as above, maybe just once before calling all of these
 
@@ -1290,22 +1268,10 @@ acGridQuit(void)
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(STREAM_ALL);
 
-/*
-    acDestroyCommData(grid.device, &grid.corner_data);
-    acDestroyCommData(grid.device, &grid.edgex_data);
-    acDestroyCommData(grid.device, &grid.edgey_data);
-    acDestroyCommData(grid.device, &grid.edgez_data);
-    acDestroyCommData(grid.device, &grid.sidexy_data);
-    acDestroyCommData(grid.device, &grid.sidexz_data);
-    acDestroyCommData(grid.device, &grid.sideyz_data);
-*/
-
     grid.channels.clear();
-    //grid.channels = delete;
     free(grid.recv_reqs);
     free(grid.send_reqs);
-    //delete[] grid.recv_reqs;
-    //delete[] grid.send_reqs;
+
     grid.initialized   = false;
     grid.decomposition = (uint3_64){0, 0, 0};
     acMeshDestroy(&grid.submesh);
@@ -1357,7 +1323,7 @@ acGridIntegratePipelined(const Stream stream, const AcReal dt)
 
         for (int i = 0; i < MAX_NUM_SEGMENTS; i++){
             if (grid.channels[i].active){
-                grid.channels[i].ExchangeStart();
+                grid.channels[i].Transfer();
             }
         }
 
@@ -1372,7 +1338,7 @@ acGridIntegratePipelined(const Stream stream, const AcReal dt)
         for (int n = 0; n < NUM_SEGMENTS; n++){
             int idx;
             MPI_Waitany(MAX_NUM_SEGMENTS, grid.recv_reqs, &idx, MPI_STATUS_IGNORE);
-            grid.channels[idx].ExchangeComplete();
+            grid.channels[idx].Unpack();
         }
         //MPI_Waitall(MAX_NUM_SEGMENTS, grid.recv_reqs, MPI_STATUSES_IGNORE);
         MPI_Waitall(MAX_NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
@@ -1435,18 +1401,19 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     const int3 nn       = grid.nn;
 
     acDeviceSynchronizeStream(device, stream);
-   
+    cudaSetDevice(device->id);
     for (int isubstep = 0; isubstep < 3; ++isubstep) {
-        for (int i = 0; i < MAX_NUM_SEGMENTS; i++){
-            if (grid.channels[i].active){
-                grid.channels[i].Pack();
-            }
+
+        for (auto &channel : grid.channels){
+            if (channel.active)
+                channel.Pack();
         }
+
         MPI_Barrier(MPI_COMM_WORLD);
-        for (int i = 0; i < MAX_NUM_SEGMENTS; i++){
-            if (grid.channels[i].active){
-                grid.channels[i].TransferPinned();
-            }
+        
+        for (auto &channel : grid.channels){
+            if (channel.active)
+                channel.Transfer();
         }
 
 #if MPI_COMPUTE_ENABLED
@@ -1458,23 +1425,21 @@ acGridIntegrate(const Stream stream, const AcReal dt)
         }
         ////////////////////////////////////////////
 #endif // MPI_COMPUTE_ENABLED
+
         for (int n = 0; n < MAX_NUM_SEGMENTS; n++){
             int idx;
             MPI_Status status;
             MPI_Waitany(MAX_NUM_SEGMENTS, grid.recv_reqs, &idx, &status);
             if (grid.channels[idx].active){
-                grid.channels[idx].ExchangeComplete();
+                grid.channels[idx].Unpack();
             }
         }
-        for (int idx = 0; idx < MAX_NUM_SEGMENTS; idx++){
-            if (grid.channels[idx].active){
-                grid.channels[idx].Sync();
-            }
+ 
+        for (auto &channel : grid.channels){
+            if (channel.active)
+                channel.Sync();
         }
 
-        //std::cout << "waited recv" << std::endl;
-        //MPI_Waitall(MAX_NUM_SEGMENTS, grid.recv_reqs, MPI_STATUSES_IGNORE);
-        //std::cout << "waited send" << std::endl;
 #if MPI_COMPUTE_ENABLED
         { // Front
             const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
@@ -1508,9 +1473,9 @@ acGridIntegrate(const Stream stream, const AcReal dt)
         }
         MPI_Waitall(MAX_NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
 #endif // MPI_COMPUTE_ENABLED
+
         acDeviceSwapBuffers(device);
         acDeviceSynchronizeStream(device, STREAM_ALL); // Wait until inner and outer done
-        ////////////////////////////////////////////
     }
 
     return AC_SUCCESS;
@@ -1523,23 +1488,19 @@ acGridPeriodicBoundconds(const Stream stream)
     acGridSynchronizeStream(stream);
 
     MPI_Barrier(MPI_COMM_WORLD);
-        
 
-    for (int i = 0; i < MAX_NUM_SEGMENTS; i++ ){
-        grid.channels[i].Pack();
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-    for (int i = 0; i < MAX_NUM_SEGMENTS; i++ ){
-        grid.channels[i].Transfer();
-    }
-    MPI_Waitall(MAX_NUM_SEGMENTS, grid.recv_reqs, MPI_STATUSES_IGNORE);    
-    for (int i = 0; i < MAX_NUM_SEGMENTS; i++ ){
-        grid.channels[i].ExchangeComplete();
-    }
-    for (int i = 0; i < MAX_NUM_SEGMENTS; i++ ){
-        grid.channels[i].Sync();
-    }
+    for (auto &channel : grid.channels){ channel.Pack(); }
     
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    for (auto &channel : grid.channels){ channel.Transfer(); }
+    
+    MPI_Waitall(MAX_NUM_SEGMENTS, grid.recv_reqs, MPI_STATUSES_IGNORE);    
+
+    for (auto &channel : grid.channels){ channel.Unpack(); }
+
+    for (auto &channel : grid.channels){ channel.Sync(); }
+
     MPI_Waitall(MAX_NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);    
 
     return AC_SUCCESS;
