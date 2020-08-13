@@ -33,7 +33,7 @@ main(void)
         fprintf(fp, "#SBATCH -n %d\n", nprocs);
         fprintf(fp, "#SBATCH -N %d\n", nodes);
         // fprintf(fp, "#SBATCH --exclusive\n");
-        if (nprocs > 4)
+        if (nprocs >= 4)
             fprintf(fp, "#SBATCH --ntasks-per-socket=2\n");
 
         // Modules
