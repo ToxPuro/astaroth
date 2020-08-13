@@ -1403,14 +1403,15 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     acDeviceSynchronizeStream(device, stream);
     cudaSetDevice(device->id);
     for (int isubstep = 0; isubstep < 3; ++isubstep) {
-
+        //start each of the 18 packs on the GPU
         for (auto &channel : grid.channels){
             if (channel.active)
                 channel.Pack();
         }
 
-        MPI_Barrier(MPI_COMM_WORLD);
+        //MPI_Barrier(MPI_COMM_WORLD);
         
+        //transfer (Isend/IRecv)
         for (auto &channel : grid.channels){
             if (channel.active)
                 channel.Transfer();
@@ -1425,7 +1426,8 @@ acGridIntegrate(const Stream stream, const AcReal dt)
         }
         ////////////////////////////////////////////
 #endif // MPI_COMPUTE_ENABLED
-
+        
+        //Complete the separate channels as they come
         for (int n = 0; n < MAX_NUM_SEGMENTS; n++){
             int idx;
             MPI_Status status;
@@ -1434,7 +1436,8 @@ acGridIntegrate(const Stream stream, const AcReal dt)
                 grid.channels[idx].Unpack();
             }
         }
- 
+        
+        //Big sync
         for (auto &channel : grid.channels){
             if (channel.active)
                 channel.Sync();
@@ -1471,9 +1474,9 @@ acGridIntegrate(const Stream stream, const AcReal dt)
             const int3 m2 = m1 + (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(device, STREAM_5, isubstep, m1, m2, dt);
         }
-        MPI_Waitall(MAX_NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
 #endif // MPI_COMPUTE_ENABLED
 
+        MPI_Waitall(MAX_NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
         acDeviceSwapBuffers(device);
         acDeviceSynchronizeStream(device, STREAM_ALL); // Wait until inner and outer done
     }
