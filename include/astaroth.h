@@ -78,6 +78,16 @@ typedef enum {
     STREAM_14,
     STREAM_15,
     STREAM_16,
+    STREAM_17,
+    STREAM_18,
+    STREAM_19,
+    STREAM_20,
+    STREAM_21,
+    STREAM_22,
+    STREAM_23,
+    STREAM_24,
+    STREAM_25,
+    STREAM_26,
     NUM_STREAMS
 } Stream;
 #define STREAM_ALL (NUM_STREAMS)

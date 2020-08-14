@@ -970,6 +970,8 @@ mod(const int3 a, const int3 n)
     return (int3){(int)mod(a.x, n.x), (int)mod(a.y, n.y), (int)mod(a.z, n.z)};
 }
 
+
+//TODO: move these to wherever they belong
 const int3 nghost = (int3){NGHOST,NGHOST,NGHOST};
 
 #include <iostream>
@@ -983,12 +985,81 @@ const int3 nghost = (int3){NGHOST,NGHOST,NGHOST};
 
 #include <signal.h>
 
+typedef struct ComputationalSegment {
+    int3 start;
+    int3 dims;
+    int id;
+    int3 segment_id;
+
+    int total_dependencies;
+    int unfulfilled_dependencies;
+
+    Device device;
+    Stream stream;
+
+    ComputationalSegment(int3 seg_id, int3 nn, Device _device, Stream _stream)
+    :segment_id(seg_id), device(_device), stream(_stream)
+    {
+        //[X] seem fine
+        start = (int3){
+            seg_id.x == -1? NGHOST : seg_id.x == 1? nn.x : NGHOST*2,
+            seg_id.y == -1? NGHOST : seg_id.y == 1? nn.y : NGHOST*2,
+            seg_id.z == -1? NGHOST : seg_id.z == 1? nn.z : NGHOST*2
+        };
+
+        dims = (int3){
+            seg_id.x == 0 ? nn.x - NGHOST*2 : NGHOST,
+            seg_id.y == 0 ? nn.y - NGHOST*2 : NGHOST,
+            seg_id.z == 0 ? nn.z - NGHOST*2 : NGHOST
+        };
+        id = segment_id_to_index(seg_id);
+        int seg_type = (seg_id.x == 0?0:1)+(seg_id.y == 0?0:1)+(seg_id.z == 0?0:1);
+        switch(seg_type){
+        case 1:
+            total_dependencies = 1;
+            break;
+        case 2:
+            total_dependencies = 3;
+            break; 
+        case 3:
+#if MPI_INCL_CORNERS
+            total_dependencies = 7;
+#else
+            total_dependencies = 6;
+#endif
+            break;
+        default:
+            std::cout << "ERROR: invalid seg_type" << seg_type << std::endl;
+        }
+        unfulfilled_dependencies = total_dependencies;
+    }
+
+    void
+    compute(int isubstep, AcReal dt)
+    {
+        cudaSetDevice(device->id);
+        acDeviceIntegrateSubstep(device, stream, isubstep, start, start+dims, dt);
+    }
+
+    void
+    FulfillDependency(int isubstep, AcReal dt)
+    {
+        unfulfilled_dependencies--;
+        if (unfulfilled_dependencies == 0){
+            compute(isubstep, dt);
+            //Is this a stupid side-effect? Should I do this explicitly instead?
+            unfulfilled_dependencies = total_dependencies;
+        }
+    }
+} ComputationalSegment;
+
+
 typedef struct DataChannel{
 
     int3 segment_id; //direction from center of comp domain
     int3 b0; //b0 = recv coordinate within comp domain
     int3 a0; //a0 = send coordinate within comp domain
-    int tag;
+    int3 dims;
     bool active;
 
     int3 nn; //Local gridsize
@@ -996,8 +1067,10 @@ typedef struct DataChannel{
     PackedData src; //The actual buffers
     PackedData dst; //
 
+    std::vector<ComputationalSegment*> dependents;
+
     int rank;
-    int3 dims;
+    int tag;
     int msglen;
     int recv_rank;
     int send_rank;
@@ -1141,7 +1214,7 @@ typedef struct DataChannel{
 #endif
     }
 } DataChannel;
-//TODO: maybe don't have to setDevice so aggressively as above, maybe just once before calling all of these
+
 
 #define MAX_NUM_SEGMENTS 26
 
@@ -1151,7 +1224,6 @@ typedef struct DataChannel{
 #define NUM_SEGMENTS 18
 #endif
 
-
 typedef struct Grid{
     Device device;
     AcMesh submesh;
@@ -1160,6 +1232,7 @@ typedef struct Grid{
 
     int3 nn;
     std::vector<DataChannel> channels;
+    std::vector<ComputationalSegment> outer_segments;
 
     MPI_Request* send_reqs;
     MPI_Request* recv_reqs;
@@ -1246,17 +1319,41 @@ acGridInit(const AcMeshInfo info)
     grid.decomposition = decomposition;
     grid.nn = nn;    
 
+    grid.outer_segments.clear();
+    grid.outer_segments.reserve(MAX_NUM_SEGMENTS);
+
+    for (int idx = 0; idx < MAX_NUM_SEGMENTS; idx++){
+        const int3 seg_id = index_to_segment_id(idx);
+        Stream stream = (Stream)(idx + STREAM_DEFAULT);
+        if (stream >= NUM_STREAMS){
+            std::cout << "ERROR, trying to create computational segment with stream " <<idx << " <= NUM_STREAMS " << NUM_STREAMS ;
+            raise(6);
+        }
+        grid.outer_segments.emplace_back(seg_id, nn, device, stream);
+    }
+    
+    grid.channels.clear();
     grid.channels.reserve(MAX_NUM_SEGMENTS);
     grid.send_reqs = (MPI_Request*) malloc(sizeof(MPI_Request)*MAX_NUM_SEGMENTS);
     grid.recv_reqs = (MPI_Request*) malloc(sizeof(MPI_Request)*MAX_NUM_SEGMENTS);
+
     for (int idx = 0; idx < MAX_NUM_SEGMENTS; idx++){
-        const int3 segment_id = index_to_segment_id(idx);
+        const int3 seg_id = index_to_segment_id(idx);
         grid.recv_reqs[idx] = MPI_REQUEST_NULL;
         grid.send_reqs[idx] = MPI_REQUEST_NULL;
-        grid.channels.emplace_back(segment_id, grid.nn, pid, pid3d, decomposition,  &grid.recv_reqs[idx], &grid.send_reqs[idx], device);
+        grid.channels.emplace_back(seg_id, grid.nn, pid, pid3d, decomposition,  &grid.recv_reqs[idx], &grid.send_reqs[idx], device);
+        //A little ugly, but it gets the job done: loop through all permutations of {-1,0,1}^3 where all nonzero variables match the segment_id
+        //TODO:call reserve on each channel.dependents, either in DataChannels constructor or here
+        for (int x = (seg_id.x == 0? -1:seg_id.x); x< 2&&(seg_id.x ==0 ||seg_id.x == x);x++){
+            for (int y = (seg_id.y == 0? -1:seg_id.y); y< 2&&(seg_id.y ==0 ||seg_id.y == y);y++){
+                for (int z = (seg_id.z == 0? -1:seg_id.z); z< 2&&(seg_id.z ==0 ||seg_id.z == z);z++){
+                    const int dependent_idx = segment_id_to_index((int3){x,y,z});
+                    grid.channels[idx].dependents.push_back(&grid.outer_segments[dependent_idx]);
+                }
+            }
+        }
     }
     grid.initialized = true;
-
 
     acGridSynchronizeStream(STREAM_ALL);
     return AC_SUCCESS;
@@ -1402,6 +1499,7 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 
     acDeviceSynchronizeStream(device, stream);
     cudaSetDevice(device->id);
+    //MPI_Barrier(MPI_COMM_WORLD);
     for (int isubstep = 0; isubstep < 3; ++isubstep) {
         //start each of the 18 packs on the GPU
         for (auto &channel : grid.channels){
@@ -1409,7 +1507,6 @@ acGridIntegrate(const Stream stream, const AcReal dt)
                 channel.Pack();
         }
 
-        //MPI_Barrier(MPI_COMM_WORLD);
         
         //transfer (Isend/IRecv)
         for (auto &channel : grid.channels){
@@ -1432,18 +1529,27 @@ acGridIntegrate(const Stream stream, const AcReal dt)
             int idx;
             MPI_Status status;
             MPI_Waitany(MAX_NUM_SEGMENTS, grid.recv_reqs, &idx, &status);
-            if (grid.channels[idx].active){
+            //Use vector::at instead? it throws though
+            if (grid.channels[idx].active && idx >= 0 && idx < MAX_NUM_SEGMENTS){
                 grid.channels[idx].Unpack();
             }
         }
         
         //Big sync
         for (auto &channel : grid.channels){
-            if (channel.active)
+            if (channel.active){
                 channel.Sync();
+                for (auto &dependent : channel.dependents){
+                    dependent->FulfillDependency(isubstep, dt);
+                }
+            }
         }
+        //for (auto &segment : grid.outer_segments){
+        //    segment.compute(isubstep,dt);
+        //}
 
 #if MPI_COMPUTE_ENABLED
+/*
         { // Front
             const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
             const int3 m2 = m1 + (int3){nn.x, nn.y, NGHOST};
@@ -1474,6 +1580,7 @@ acGridIntegrate(const Stream stream, const AcReal dt)
             const int3 m2 = m1 + (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
             acDeviceIntegrateSubstep(device, STREAM_5, isubstep, m1, m2, dt);
         }
+*/
 #endif // MPI_COMPUTE_ENABLED
 
         MPI_Waitall(MAX_NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
