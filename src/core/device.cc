@@ -3,6 +3,7 @@
 #include <string.h>
 #include <vector>
 #include <iostream>
+#include <chrono>
 
 #include "astaroth_utils.h"
 #include "errchk.h"
@@ -1031,6 +1032,7 @@ typedef struct ComputationalSegment {
     void
     compute(int isubstep, AcReal dt)
     {
+        //std::cout << "Computing " << id <<std::endl;
         cudaSetDevice(device->id);
         acDeviceIntegrateSubstep(device, stream, isubstep, start, start+dims, dt);
     }
@@ -1039,6 +1041,7 @@ typedef struct ComputationalSegment {
     FulfillDependency(int isubstep, AcReal dt)
     {
         unfulfilled_dependencies--;
+        //std::cout << "Dependency " << id <<std::endl;
         if (unfulfilled_dependencies == 0){
             compute(isubstep, dt);
             //Is this a stupid side-effect? Should I do this explicitly instead?
@@ -1184,6 +1187,19 @@ typedef struct DataChannel{
 #else 
         TransferUnpinned();
 #endif
+    }
+
+    void
+    SyncAsync(int isubstep, AcReal dt)
+    {
+        // FulfillDependency is not threadsafe, so this won't necessarily work
+        // 
+        //async{
+            Sync();
+            for (auto &dependent : dependents){
+                dependent->FulfillDependency(isubstep, dt);
+            }
+        //}
     }
 } DataChannel;
 
@@ -1393,20 +1409,45 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 #endif 
         
 #if MPI_COMM_ENABLED
+        std::vector<int> indices;
+        indices.reserve(5);
+        auto start = std::chrono::high_resolution_clock::now();
         //Complete the separate channels as they come
         for (int n = 0; n < NUM_SEGMENTS; n++){
             int idx;
             MPI_Status status;
             MPI_Waitany(NUM_SEGMENTS, grid.recv_reqs, &idx, &status);
             //Use vector::at instead? it throws though
+            int cutoff = 0;//in microseconds 
             if (grid.channels[idx].active && idx >= 0 && idx < NUM_SEGMENTS){
+                auto now = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::microseconds>(now - start).count();
                 grid.channels[idx].Unpack();
-                grid.channels[idx].Sync();
-                for (auto &dependent : grid.channels[idx].dependents){
-                    dependent->FulfillDependency(isubstep, dt);
+                //using a queue
+                if (duration > cutoff && indices.size() > 0){
+                    //std::cout << "After "<< duration <<" ns, the queue has size: " << indices.size() << std::endl;
+                    for (auto &i : indices){
+                        grid.channels[i].Sync();
+                        for (auto &dependent : grid.channels[i].dependents){
+                            dependent->FulfillDependency(isubstep, dt);
+                        }
+                    }
+                    indices.clear();
+                    start = std::chrono::high_resolution_clock::now(); 
                 }
+                indices.push_back(idx);
             }
         }
+        auto now = std::chrono::high_resolution_clock::now();
+        //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(now - start).count();
+        //std::cout << "After "<< duration <<" ns, the queue has size: " << indices.size() << std::endl;
+        for (auto &i : indices){
+            grid.channels[i].Sync();
+            for (auto &dependent : grid.channels[i].dependents){
+                dependent->FulfillDependency(isubstep, dt);
+            }
+        }
+        indices.clear();
 #endif 
         MPI_Waitall(NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
         acDeviceSwapBuffers(device);
