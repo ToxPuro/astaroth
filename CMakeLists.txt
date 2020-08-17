@@ -17,7 +17,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 11)
 
 find_package(CUDA) # Still required for various macros, such as cuda_select_nvcc_...
-cuda_select_nvcc_arch_flags(ARCHLIST Common) # Common architectures depend on the available CUDA version. Listed here: https://github.com/Kitware/CMake/blob/master/Modules/FindCUDA/select_compute_arch.cmake
+cuda_select_nvcc_arch_flags(ARCHLIST Volta) # Common architectures depend on the available CUDA version. Listed here: https://github.com/Kitware/CMake/blob/master/Modules/FindCUDA/select_compute_arch.cmake
 string(REPLACE ";" " " CUDA_ARCH_FLAGS "${ARCHLIST}")
 set(COMMON_FLAGS_CUDA "-mavx,-Wall,-Wextra,-Wdouble-promotion,-Wfloat-conversion,-Wshadow")
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${CUDA_ARCH_FLAGS} -ccbin=${CMAKE_CXX_COMPILER} --compiler-options=${COMMON_FLAGS_CUDA}")
