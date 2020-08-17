@@ -1140,6 +1140,9 @@ acTransferCommData(const Device device, //
         }
     }
 
+    MPI_Barrier(MPI_COMM_WORLD); // Ensure that all recvs have
+// been posted before sending to avoid timeout bug in HPCX 2.5.0
+
     for (size_t b0_idx = 0; b0_idx < blockcount; ++b0_idx) {
         const int3 b0       = b0s[b0_idx];
         const int3 neighbor = (int3){
@@ -1343,7 +1346,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 }
 
 AcResult
-acGridIntegratePipelined(const Stream stream, const AcReal dt)
+acGridIntegrate(const Stream stream, const AcReal dt)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
@@ -1556,7 +1559,7 @@ acGridIntegratePipelined(const Stream stream, const AcReal dt)
 }
 
 AcResult
-acGridIntegrate(const Stream stream, const AcReal dt)
+acGridIntegrateOLD(const Stream stream, const AcReal dt)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);

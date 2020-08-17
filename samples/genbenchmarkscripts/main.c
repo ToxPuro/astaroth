@@ -22,6 +22,7 @@ main(void)
         fprintf(fp, "#SBATCH --time=03:00:00\n");
         fprintf(fp, "#SBATCH --mem=32000\n");
         fprintf(fp, "#SBATCH --partition=gpu\n");
+        fprintf(fp, "#SBATCH --output=benchmark-%d-%%j.out\n", nprocs);
         // fprintf(fp, "#SBATCH --cpus-per-task=10\n");
 
         // nprocs, nodes, gpus
