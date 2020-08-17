@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <vector>
+#include <iostream>
 
 #include "astaroth_utils.h"
 #include "errchk.h"
@@ -19,6 +20,28 @@
 #define MPI_INCL_CORNERS (0)
 #define MPI_USE_PINNED (1)              // Do inter-node comm with pinned memory
 #define MPI_USE_CUDA_DRIVER_PINNING (0) // Pin with cuPointerSetAttribute, otherwise cudaMallocHost
+
+#if AC_DOUBLE_PRECISION == (1)
+#define AC_MPI_TYPE MPI_DOUBLE
+#else
+#define AC_MPI_TYPE MPI_FLOAT
+#endif
+
+#define NUM_SEGMENTS 26
+
+//Computational segments' communications dependencies
+#define NUM_FACE_DEPENDENCIES 1
+#define NUM_EDGE_DEPENDENCIES 3
+#if MPI_INCL_CORNERS
+#define NUM_CORNER_DEPENDENCIES 7
+#else
+#define NUM_CORNER_DEPENDENCIES 6
+#endif
+
+
+
+const int3 nghost = (int3){NGHOST,NGHOST,NGHOST};
+
 
 #include <cuda.h> // CUDA driver API (needed if MPI_USE_CUDA_DRIVER_PINNING is set)
 
@@ -970,26 +993,11 @@ mod(const int3 a, const int3 n)
     return (int3){(int)mod(a.x, n.x), (int)mod(a.y, n.y), (int)mod(a.z, n.z)};
 }
 
-
-//TODO: move these to wherever they belong
-const int3 nghost = (int3){NGHOST,NGHOST,NGHOST};
-
-#include <iostream>
-
-
-#if AC_DOUBLE_PRECISION == (1)
-        MPI_Datatype mpi_typ = MPI_DOUBLE;
-#else
-        MPI_Datatype mpi_typ = MPI_FLOAT;
-#endif
-
-#include <signal.h>
-
 typedef struct ComputationalSegment {
     int3 start;
     int3 dims;
-    int id;
     int3 segment_id;
+    int id;
 
     int total_dependencies;
     int unfulfilled_dependencies;
@@ -998,9 +1006,8 @@ typedef struct ComputationalSegment {
     Stream stream;
 
     ComputationalSegment(int3 seg_id, int3 nn, Device _device, Stream _stream)
-    :segment_id(seg_id), device(_device), stream(_stream)
+    :segment_id(seg_id), id(segment_id_to_index(seg_id)), device(_device), stream(_stream)
     {
-        //[X] seem fine
         start = (int3){
             seg_id.x == -1? NGHOST : seg_id.x == 1? nn.x : NGHOST*2,
             seg_id.y == -1? NGHOST : seg_id.y == 1? nn.y : NGHOST*2,
@@ -1012,25 +1019,12 @@ typedef struct ComputationalSegment {
             seg_id.y == 0 ? nn.y - NGHOST*2 : NGHOST,
             seg_id.z == 0 ? nn.z - NGHOST*2 : NGHOST
         };
-        id = segment_id_to_index(seg_id);
+
         int seg_type = (seg_id.x == 0?0:1)+(seg_id.y == 0?0:1)+(seg_id.z == 0?0:1);
-        switch(seg_type){
-        case 1:
-            total_dependencies = 1;
-            break;
-        case 2:
-            total_dependencies = 3;
-            break; 
-        case 3:
-#if MPI_INCL_CORNERS
-            total_dependencies = 7;
-#else
-            total_dependencies = 6;
-#endif
-            break;
-        default:
-            std::cout << "ERROR: invalid seg_type" << seg_type << std::endl;
+        if (seg_type > 3 || seg_type < 0){
+            throw std::runtime_error("Error creating ComputationalSegment. Segment id is nonsensical");
         }
+        total_dependencies = (int[]){0,NUM_FACE_DEPENDENCIES,NUM_EDGE_DEPENDENCIES, NUM_CORNER_DEPENDENCIES}[seg_type];
         unfulfilled_dependencies = total_dependencies;
     }
 
@@ -1059,10 +1053,7 @@ typedef struct DataChannel{
     int3 segment_id; //direction from center of comp domain
     int3 b0; //b0 = recv coordinate within comp domain
     int3 a0; //a0 = send coordinate within comp domain
-    int3 dims;
     bool active;
-
-    int3 nn; //Local gridsize
 
     PackedData src; //The actual buffers
     PackedData dst; //
@@ -1081,32 +1072,24 @@ typedef struct DataChannel{
     Device device;
     cudaStream_t stream;
 
-    DataChannel(const int3 _segment_id, const int3 _nn, const int _rank, 
+    DataChannel(const int3 _segment_id, const int3 nn, const int _rank, 
                 const int3 pid3d, const uint3_64 decomp, MPI_Request* _recv_req, MPI_Request* _send_req, const Device _device)
-    :segment_id(_segment_id), nn(_nn), rank(_rank), recv_req(_recv_req), send_req(_send_req), device(_device)
+    :segment_id(_segment_id), rank(_rank), recv_req(_recv_req), send_req(_send_req), device(_device)
     {
 
-#if MPI_INCL_CORNERS
-        active = true;
-#else
-        if (segment_id.x != 0 && segment_id.y != 0 && segment_id.z != 0)
-            active = false;
-        else
-            active = true;
-#endif
+        active = ( ( MPI_INCL_CORNERS ) || segment_id.x == 0 || segment_id.y == 0 || segment_id.z == 0) ? true:false;
 
         b0 = segment_id_to_b0(segment_id,nn);
         a0 = mod(b0 - nghost, nn) + nghost;
-        dims = segment_id_to_dims(segment_id,nn);
-
-        tag = segment_id_to_index(segment_id);
+        const int3 dims = segment_id_to_dims(segment_id,nn);
 
         cudaSetDevice(device->id);
         src = acCreatePackedData(dims);
         dst = acCreatePackedData(dims);
  
-
-        msglen      = dims.x * dims.y * dims.z * NUM_VTXBUF_HANDLES;
+//MPI
+        msglen    = dims.x * dims.y * dims.z * NUM_VTXBUF_HANDLES;
+        tag       = segment_id_to_index(segment_id);
         recv_rank = getPid(pid3d + segment_id, decomp);
         send_rank = getPid(pid3d - segment_id, decomp);
 //CUDA
@@ -1115,7 +1098,7 @@ typedef struct DataChannel{
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
 
-    //Copy constructor
+    //Copy constructor, looks like it still gets called somewhere
     //DataChannel(const DataChannel& other) = delete;
 
     ~DataChannel()
@@ -1124,21 +1107,9 @@ typedef struct DataChannel{
 
         acDestroyPackedData(&src);       
         acDestroyPackedData(&dst);
-
+        dependents.clear();
         cudaStreamDestroy(stream);
     }
-
-    void pin()
-    {
-        acPinPackedData(device, stream, &src);
-    }
-    
-    void unpin()
-    {
-        src.pinned = false;
-        acUnpinPackedData(device, stream, &dst);
-    }   
-
     void Pack()
     {
         acKernelPackData(stream, device->vba, a0, src);
@@ -1146,7 +1117,8 @@ typedef struct DataChannel{
 
     void Unpack()
     {   
-        unpin();
+        src.pinned = false;
+        acUnpinPackedData(device, stream, &dst);
         acKernelUnpackData(stream, dst, b0, device->vba);
     }
     void Sync()
@@ -1156,13 +1128,13 @@ typedef struct DataChannel{
     
     void ReceiveUnpinned()
     {
-        MPI_Irecv(dst.data, msglen, mpi_typ, recv_rank, tag, MPI_COMM_WORLD, recv_req);
+        MPI_Irecv(dst.data, msglen, AC_MPI_TYPE, recv_rank, tag, MPI_COMM_WORLD, recv_req);
         dst.pinned = false;
     }
 
     void ReceivePinned()
     {
-        MPI_Irecv(dst.data_pinned, msglen, mpi_typ, recv_rank, tag, MPI_COMM_WORLD, recv_req);
+        MPI_Irecv(dst.data_pinned, msglen, AC_MPI_TYPE, recv_rank, tag, MPI_COMM_WORLD, recv_req);
         dst.pinned = true;
     }
 
@@ -1170,14 +1142,14 @@ typedef struct DataChannel{
     void SendUnpinned()
     {
         Sync();
-        MPI_Isend(src.data, msglen, mpi_typ, send_rank, tag, MPI_COMM_WORLD, send_req);
+        MPI_Isend(src.data, msglen, AC_MPI_TYPE, send_rank, tag, MPI_COMM_WORLD, send_req);
     }
     
     void SendPinned()
     {
-        pin();
+        acPinPackedData(device, stream, &src);
         Sync();
-        MPI_Isend(src.data_pinned, msglen, mpi_typ, send_rank, tag, MPI_COMM_WORLD, send_req);
+        MPI_Isend(src.data_pinned, msglen, AC_MPI_TYPE, send_rank, tag, MPI_COMM_WORLD, send_req);
 
     }
 
@@ -1215,24 +1187,15 @@ typedef struct DataChannel{
     }
 } DataChannel;
 
-
-#define MAX_NUM_SEGMENTS 26
-
-#if MPI_INCL_CORNERS
-#define NUM_SEGMENTS 26
-#else
-#define NUM_SEGMENTS 18
-#endif
-
 typedef struct Grid{
     Device device;
     AcMesh submesh;
     uint3_64 decomposition;
     bool initialized;
 
-    int3 nn;
     std::vector<DataChannel> channels;
     std::vector<ComputationalSegment> outer_segments;
+    ComputationalSegment* inner_domain;
 
     MPI_Request* send_reqs;
     MPI_Request* recv_reqs;
@@ -1299,12 +1262,9 @@ acGridInit(const AcMeshInfo info)
     Device device;
     acDeviceCreate(pid % devices_per_node, submesh_info, &device);
     
-    
     // CPU alloc
     AcMesh submesh;
     acMeshCreate(submesh_info, &submesh);
-
-
 
     // Configure
     const int3 nn = (int3){
@@ -1317,36 +1277,34 @@ acGridInit(const AcMeshInfo info)
     grid.device = device;
     grid.submesh = submesh;
     grid.decomposition = decomposition;
-    grid.nn = nn;    
 
     grid.outer_segments.clear();
-    grid.outer_segments.reserve(MAX_NUM_SEGMENTS);
+    grid.outer_segments.reserve(NUM_SEGMENTS);
 
-    for (int idx = 0; idx < MAX_NUM_SEGMENTS; idx++){
+    for (int idx = 0; idx < NUM_SEGMENTS; idx++){
         const int3 seg_id = index_to_segment_id(idx);
         Stream stream = (Stream)(idx + STREAM_DEFAULT);
-        if (stream >= NUM_STREAMS){
-            std::cout << "ERROR, trying to create computational segment with stream " <<idx << " <= NUM_STREAMS " << NUM_STREAMS ;
-            raise(6);
-        }
         grid.outer_segments.emplace_back(seg_id, nn, device, stream);
     }
     
-    grid.channels.clear();
-    grid.channels.reserve(MAX_NUM_SEGMENTS);
-    grid.send_reqs = (MPI_Request*) malloc(sizeof(MPI_Request)*MAX_NUM_SEGMENTS);
-    grid.recv_reqs = (MPI_Request*) malloc(sizeof(MPI_Request)*MAX_NUM_SEGMENTS);
+    grid.inner_domain = (ComputationalSegment*)malloc(sizeof(ComputationalSegment));
+    *grid.inner_domain = ComputationalSegment((int3){0,0,0}, nn, device, STREAM_26);
 
-    for (int idx = 0; idx < MAX_NUM_SEGMENTS; idx++){
+    grid.channels.clear();
+    grid.channels.reserve(NUM_SEGMENTS);
+    grid.send_reqs = (MPI_Request*) malloc(sizeof(MPI_Request)*NUM_SEGMENTS);
+    grid.recv_reqs = (MPI_Request*) malloc(sizeof(MPI_Request)*NUM_SEGMENTS);
+
+    for (int idx = 0; idx < NUM_SEGMENTS; idx++){
         const int3 seg_id = index_to_segment_id(idx);
         grid.recv_reqs[idx] = MPI_REQUEST_NULL;
         grid.send_reqs[idx] = MPI_REQUEST_NULL;
-        grid.channels.emplace_back(seg_id, grid.nn, pid, pid3d, decomposition,  &grid.recv_reqs[idx], &grid.send_reqs[idx], device);
+        grid.channels.emplace_back(seg_id, nn, pid, pid3d, decomposition,  &grid.recv_reqs[idx], &grid.send_reqs[idx], device);
         //A little ugly, but it gets the job done: loop through all permutations of {-1,0,1}^3 where all nonzero variables match the segment_id
         //TODO:call reserve on each channel.dependents, either in DataChannels constructor or here
-        for (int x = (seg_id.x == 0? -1:seg_id.x); x< 2&&(seg_id.x ==0 ||seg_id.x == x);x++){
-            for (int y = (seg_id.y == 0? -1:seg_id.y); y< 2&&(seg_id.y ==0 ||seg_id.y == y);y++){
-                for (int z = (seg_id.z == 0? -1:seg_id.z); z< 2&&(seg_id.z ==0 ||seg_id.z == z);z++){
+        for (int x = (seg_id.x == 0? -1: seg_id.x); x< 2 && (seg_id.x ==0 || seg_id.x == x); x++){
+            for (int y = (seg_id.y == 0? -1: seg_id.y); y< 2 && (seg_id.y ==0 || seg_id.y == y); y++){
+                for (int z = (seg_id.z == 0?  -1: seg_id.z); z< 2 && (seg_id.z ==0 || seg_id.z == z); z++){
                     const int dependent_idx = segment_id_to_index((int3){x,y,z});
                     grid.channels[idx].dependents.push_back(&grid.outer_segments[dependent_idx]);
                 }
@@ -1404,90 +1362,6 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
     return AC_SUCCESS;
 }
 
-/*
-AcResult
-acGridIntegratePipelined(const Stream stream, const AcReal dt)
-{
-    ERRCHK(grid.initialized);
-    acGridSynchronizeStream(stream);
-
-    const Device device = grid.device;
-    const int3 nn       = grid.nn;
-
-    for (int isubstep = 0; isubstep < 3; ++isubstep) {
-        acDeviceSynchronizeStream(device, STREAM_ALL);
-        MPI_Barrier(MPI_COMM_WORLD);
-
-        for (int i = 0; i < MAX_NUM_SEGMENTS; i++){
-            if (grid.channels[i].active){
-                grid.channels[i].Transfer();
-            }
-        }
-
-#if MPI_COMPUTE_ENABLED
-        //////////// INNER INTEGRATION //////////////
-        {
-            const int3 m1 = (int3){2 * NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = nn;
-            acDeviceIntegrateSubstep(device, STREAM_16, isubstep, m1, m2, dt);
-        }
-#endif // MPI_COMPUTE_ENABLED
-        for (int n = 0; n < NUM_SEGMENTS; n++){
-            int idx;
-            MPI_Waitany(MAX_NUM_SEGMENTS, grid.recv_reqs, &idx, MPI_STATUS_IGNORE);
-            grid.channels[idx].Unpack();
-        }
-        //MPI_Waitall(MAX_NUM_SEGMENTS, grid.recv_reqs, MPI_STATUSES_IGNORE);
-        MPI_Waitall(MAX_NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
-        
-
-        //TODO: test:
-        //1. setDevice here instead of in the funcs
-        //2. Sync after the loop instead of in ExchangeComplete
-
-    
-#if MPI_COMPUTE_ENABLED
-        { // Front
-            const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
-            const int3 m2 = m1 + (int3){nn.x, nn.y, NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m2, dt);
-        }
-        { // Back
-            const int3 m1 = (int3){NGHOST, NGHOST, nn.z};
-            const int3 m2 = m1 + (int3){nn.x, nn.y, NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m2, dt);
-        }
-        { // Bottom
-            const int3 m1 = (int3){NGHOST, NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){nn.x, NGHOST, nn.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_2, isubstep, m1, m2, dt);
-        }
-        { // Top
-            const int3 m1 = (int3){NGHOST, nn.y, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){nn.x, NGHOST, nn.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_3, isubstep, m1, m2, dt);
-        }
-        { // Left
-            const int3 m1 = (int3){NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_4, isubstep, m1, m2, dt);
-        }
-        { // Right
-            const int3 m1 = (int3){nn.x, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_5, isubstep, m1, m2, dt);
-        }
-#endif // MPI_COMPUTE_ENABLED
-        acDeviceSwapBuffers(device);
-    }
-
-    // Does not have to be STREAM_ALL, only the streams used with
-    // acDeviceIntegrateSubstep (less likely to break this way though)
-    acDeviceSynchronizeStream(device, STREAM_ALL); // Wait until inner and outer done
-    return AC_SUCCESS;
-}
-*/
-
 AcResult
 acGridIntegrate(const Stream stream, const AcReal dt)
 {
@@ -1495,99 +1369,50 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     acGridSynchronizeStream(stream);
 
     const Device device = grid.device;
-    const int3 nn       = grid.nn;
 
     acDeviceSynchronizeStream(device, stream);
     cudaSetDevice(device->id);
     //MPI_Barrier(MPI_COMM_WORLD);
+#if MPI_COMM_ENABLED
     for (int isubstep = 0; isubstep < 3; ++isubstep) {
         //start each of the 18 packs on the GPU
         for (auto &channel : grid.channels){
             if (channel.active)
                 channel.Pack();
         }
-
         
         //transfer (Isend/IRecv)
         for (auto &channel : grid.channels){
             if (channel.active)
                 channel.Transfer();
         }
+#endif
 
 #if MPI_COMPUTE_ENABLED
-        //////////// INNER INTEGRATION //////////////
-        {
-            const int3 m1 = (int3){2 * NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = nn;
-            acDeviceIntegrateSubstep(device, STREAM_16, isubstep, m1, m2, dt);
-        }
-        ////////////////////////////////////////////
-#endif // MPI_COMPUTE_ENABLED
+        grid.inner_domain->compute(isubstep,dt);
+#endif 
         
+#if MPI_COMM_ENABLED
         //Complete the separate channels as they come
-        for (int n = 0; n < MAX_NUM_SEGMENTS; n++){
+        for (int n = 0; n < NUM_SEGMENTS; n++){
             int idx;
             MPI_Status status;
-            MPI_Waitany(MAX_NUM_SEGMENTS, grid.recv_reqs, &idx, &status);
+            MPI_Waitany(NUM_SEGMENTS, grid.recv_reqs, &idx, &status);
             //Use vector::at instead? it throws though
-            if (grid.channels[idx].active && idx >= 0 && idx < MAX_NUM_SEGMENTS){
+            if (grid.channels[idx].active && idx >= 0 && idx < NUM_SEGMENTS){
                 grid.channels[idx].Unpack();
-            }
-        }
-        
-        //Big sync
-        for (auto &channel : grid.channels){
-            if (channel.active){
-                channel.Sync();
-                for (auto &dependent : channel.dependents){
+                grid.channels[idx].Sync();
+                for (auto &dependent : grid.channels[idx].dependents){
                     dependent->FulfillDependency(isubstep, dt);
                 }
             }
         }
-        //for (auto &segment : grid.outer_segments){
-        //    segment.compute(isubstep,dt);
-        //}
-
-#if MPI_COMPUTE_ENABLED
-/*
-        { // Front
-            const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
-            const int3 m2 = m1 + (int3){nn.x, nn.y, NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m2, dt);
-        }
-        { // Back
-            const int3 m1 = (int3){NGHOST, NGHOST, nn.z};
-            const int3 m2 = m1 + (int3){nn.x, nn.y, NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m2, dt);
-        }
-        { // Bottom
-            const int3 m1 = (int3){NGHOST, NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){nn.x, NGHOST, nn.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_2, isubstep, m1, m2, dt);
-        }
-        { // Top
-            const int3 m1 = (int3){NGHOST, nn.y, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){nn.x, NGHOST, nn.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_3, isubstep, m1, m2, dt);
-        }
-        { // Left
-            const int3 m1 = (int3){NGHOST, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_4, isubstep, m1, m2, dt);
-        }
-        { // Right
-            const int3 m1 = (int3){nn.x, 2 * NGHOST, 2 * NGHOST};
-            const int3 m2 = m1 + (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_5, isubstep, m1, m2, dt);
-        }
-*/
-#endif // MPI_COMPUTE_ENABLED
-
-        MPI_Waitall(MAX_NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
+#endif 
+        MPI_Waitall(NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
         acDeviceSwapBuffers(device);
         acDeviceSynchronizeStream(device, STREAM_ALL); // Wait until inner and outer done
     }
-
+    //MPI_Waitall(NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
     return AC_SUCCESS;
 }
 
@@ -1605,13 +1430,13 @@ acGridPeriodicBoundconds(const Stream stream)
 
     for (auto &channel : grid.channels){ channel.Transfer(); }
     
-    MPI_Waitall(MAX_NUM_SEGMENTS, grid.recv_reqs, MPI_STATUSES_IGNORE);    
+    MPI_Waitall(NUM_SEGMENTS, grid.recv_reqs, MPI_STATUSES_IGNORE);    
 
     for (auto &channel : grid.channels){ channel.Unpack(); }
 
     for (auto &channel : grid.channels){ channel.Sync(); }
 
-    MPI_Waitall(MAX_NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);    
+    MPI_Waitall(NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);    
 
     return AC_SUCCESS;
 }
