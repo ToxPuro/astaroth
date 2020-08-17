@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Modules (!!!)
-#module load gcc/8.3.0 cuda/10.1.168 cmake openmpi/4.0.3-cuda nccl
-module load gcc/8.3.0 cuda/10.1.168 cmake hpcx-mpi/2.5.0-cuda nccl
-export UCX_MEMTYPE_CACHE=n #  Workaround for bug in hpcx-mpi/2.5.0
+module load gcc/8.3.0 cuda/10.1.168 cmake openmpi/4.0.3-cuda nccl
+#module load gcc/8.3.0 cuda/10.1.168 cmake hpcx-mpi/2.5.0-cuda nccl
+#export UCX_MEMTYPE_CACHE=n #  Workaround for bug in hpcx-mpi/2.5.0
 
 load_default_case() {
   # Pinned or RDMA
