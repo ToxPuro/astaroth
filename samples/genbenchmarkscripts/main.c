@@ -32,15 +32,20 @@ main(void)
         fprintf(fp, "#SBATCH -n %d\n", nprocs);
         fprintf(fp, "#SBATCH -N %d\n", nodes);
         // fprintf(fp, "#SBATCH --exclusive\n");
-        if (nprocs > 4)
+        if (nprocs >= 4)
             fprintf(fp, "#SBATCH --ntasks-per-socket=2\n");
 
         // Modules
         // OpenMPI
-        // fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake openmpi/4.0.3-cuda nccl\n");
+        fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake openmpi/4.0.3-cuda nccl\n");
+        //fprintf(fp, "export UCX_TLS=rc,sm,cuda_copy,gdr_copy,cuda_ipc\n"); // https://www.open-mpi.org/fa
+        //fprintf(fp, "export PSM2_CUDA=1\nexport PSM2_GPUDIRECT=1\n");
+        //if (nprocs >= 32)
+        //    fprintf(fp, "export UCX_TLS=ud_x,cuda_copy,gdr_copy,cuda_ipc\n"); // https://www.open-mpi.org/fa
+
         // HPCX
-        fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake hpcx-mpi/2.5.0-cuda nccl\n");
-        fprintf(fp, "export UCX_MEMTYPE_CACHE=n\n"); // Workaround for bug in hpcx-mpi/2.5.0
+        //fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake hpcx-mpi/2.5.0-cuda nccl\n");
+        //fprintf(fp, "export UCX_MEMTYPE_CACHE=n\n"); // Workaround for bug in hpcx-mpi/2.5.0
 
         // Profile and run
         // fprintf(fp, "mkdir -p profile_%d\n", nprocs);
