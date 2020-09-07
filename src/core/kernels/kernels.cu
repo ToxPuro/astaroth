@@ -106,8 +106,10 @@ acDeviceLoadScalarUniform(const Device device, const Stream stream, const AcReal
     }
 
     if (!is_valid(value)) {
+#if AC_VERBOSE
         fprintf(stderr, "WARNING: Passed an invalid value %g to device constant %s. Skipping.\n",
                 (double)value, realparam_names[param]);
+#endif
         return AC_FAILURE;
     }
 
@@ -130,9 +132,11 @@ acDeviceLoadVectorUniform(const Device device, const Stream stream, const AcReal
     }
 
     if (!is_valid(value)) {
+#if AC_VERBOSE
         fprintf(stderr,
                 "WARNING: Passed an invalid value (%g, %g, %g) to device constant %s. Skipping.\n",
                 (double)value.x, (double)value.y, (double)value.z, real3param_names[param]);
+#endif
         return AC_FAILURE;
     }
 
@@ -155,8 +159,10 @@ acDeviceLoadIntUniform(const Device device, const Stream stream, const AcIntPara
     }
 
     if (!is_valid(value)) {
+#if AC_VERBOSE
         fprintf(stderr, "WARNING: Passed an invalid value %d to device constant %s. Skipping.\n",
                 value, intparam_names[param]);
+#endif
         return AC_FAILURE;
     }
 
@@ -179,10 +185,12 @@ acDeviceLoadInt3Uniform(const Device device, const Stream stream, const AcInt3Pa
     }
 
     if (!is_valid(value.x) || !is_valid(value.y) || !is_valid(value.z)) {
+#if AC_VERBOSE
         fprintf(
             stderr,
             "WARNING: Passed an invalid value (%d, %d, %def) to device constant %s. Skipping.\n",
             value.x, value.y, value.z, int3param_names[param]);
+#endif
         return AC_FAILURE;
     }
 

@@ -21,6 +21,7 @@
 #define MPI_INCL_CORNERS (0)
 #define MPI_USE_PINNED (1)              // Do inter-node comm with pinned memory
 #define MPI_USE_CUDA_DRIVER_PINNING (0) // Pin with cuPointerSetAttribute, otherwise cudaMallocHost
+#define PACK_PIPELINE (0)
 
 #if AC_DOUBLE_PRECISION == (1)
 #define AC_MPI_TYPE MPI_DOUBLE
@@ -33,6 +34,7 @@
 //Computational segments' communications dependencies
 #define NUM_FACE_DEPENDENCIES 1
 #define NUM_EDGE_DEPENDENCIES 3
+
 #if MPI_INCL_CORNERS
 #define NUM_CORNER_DEPENDENCIES 7
 #else
@@ -149,15 +151,20 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     device->id           = id;
     device->local_config = device_config;
+#if AC_VERBOSE
     acDevicePrintInfo(device);
 
     // Check that the code was compiled for the proper GPU architecture
     printf("Trying to run a dummy kernel. If this fails, make sure that your\n"
            "device supports the CUDA architecture you are compiling for.\n"
            "Running dummy kernel... ");
+#endif
+    printf("Testing CUDA... ");
     fflush(stdout);
     acKernelDummy();
     printf("Success!\n");
+    printf("\x1B[32m%s\x1B[0m\n", "OK!");
+    fflush(stdout);
 
     // Concurrency
     for (int i = 0; i < NUM_STREAMS; ++i) {
@@ -188,7 +195,9 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     acDeviceLoadDefaultUniforms(device);
     acDeviceLoadMeshInfo(device, device_config);
 
+#if AC_VERBOSE
     printf("Created device %d (%p)\n", device->id, device);
+#endif
     *device_handle = device;
 
     // Autoptimize
@@ -201,7 +210,9 @@ AcResult
 acDeviceDestroy(Device device)
 {
     cudaSetDevice(device->id);
+#if AC_VERBOSE
     printf("Destroying device %d (%p)\n", device->id, device);
+#endif
     acDeviceSynchronizeStream(device, STREAM_ALL);
 
     // Memory
@@ -833,8 +844,10 @@ static AcResult
 acDeviceDistributeMeshMPI(const AcMesh src, const uint3_64 decomposition, AcMesh* dst)
 {
     MPI_Barrier(MPI_COMM_WORLD);
+#if AC_VERBOSE
     printf("Distributing mesh...\n");
     fflush(stdout);
+#endif
 
     MPI_Datatype datatype = MPI_FLOAT;
     if (sizeof(AcReal) == 8)
@@ -1185,7 +1198,7 @@ typedef struct DataChannel{
 #if MPI_USE_PINNED == (1)
         TransferPinned();
 #else 
-        TransferUnpinned();
+        TransferUnPinned();
 #endif
     }
 
@@ -1389,65 +1402,58 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     acDeviceSynchronizeStream(device, stream);
     cudaSetDevice(device->id);
     //MPI_Barrier(MPI_COMM_WORLD);
-#if MPI_COMM_ENABLED
     for (int isubstep = 0; isubstep < 3; ++isubstep) {
-        //start each of the 18 packs on the GPU
+#if MPI_COMM_ENABLED
+
+#if PACK_PIPELINE
+        for (int i = 0; 0 < NUM_SEGMENTS+1; i++){
+            if (i < NUM_SEGMENTS && grid.channels[i].active){
+                grid.channels[i].Pack();
+            }
+            if (i > 0 && grid.channels[i-1].active){
+                grid.channels[i-1].Transfer();
+            }
+
+        }
+#else
         for (auto &channel : grid.channels){
             if (channel.active)
                 channel.Pack();
         }
         
-        //transfer (Isend/IRecv)
         for (auto &channel : grid.channels){
             if (channel.active)
                 channel.Transfer();
         }
-#endif
+#endif //PACK_PIPELINE
+
+#endif //MPI_COMM_ENABLED
 
 #if MPI_COMPUTE_ENABLED
         grid.inner_domain->compute(isubstep,dt);
 #endif 
         
 #if MPI_COMM_ENABLED
-        std::vector<int> indices;
-        indices.reserve(5);
-        auto start = std::chrono::high_resolution_clock::now();
-        //Complete the separate channels as they come
-        for (int n = 0; n < NUM_SEGMENTS; n++){
-            int idx;
-            MPI_Status status;
-            MPI_Waitany(NUM_SEGMENTS, grid.recv_reqs, &idx, &status);
-            //Use vector::at instead? it throws though
-            int cutoff = 0;//in microseconds 
-            if (grid.channels[idx].active && idx >= 0 && idx < NUM_SEGMENTS){
-                auto now = std::chrono::high_resolution_clock::now();
-                auto duration = std::chrono::duration_cast<std::chrono::microseconds>(now - start).count();
-                grid.channels[idx].Unpack();
-                //using a queue
-                if (duration > cutoff && indices.size() > 0){
-                    //std::cout << "After "<< duration <<" ns, the queue has size: " << indices.size() << std::endl;
-                    for (auto &i : indices){
-                        grid.channels[i].Sync();
-                        for (auto &dependent : grid.channels[i].dependents){
-                            dependent->FulfillDependency(isubstep, dt);
-                        }
-                    }
-                    indices.clear();
-                    start = std::chrono::high_resolution_clock::now(); 
+        //Handle messages as they arrive in a fused loop pipeline
+        int idx, prev_idx;
+        for (int n = 0; n < NUM_SEGMENTS+1; n++){
+            prev_idx = idx;
+            if (n < NUM_SEGMENTS){
+                MPI_Waitany(NUM_SEGMENTS, grid.recv_reqs, &idx, MPI_STATUS_IGNORE);
+                if (grid.channels[idx].active && idx >= 0 && idx < NUM_SEGMENTS){
+                    grid.channels[idx].Unpack();
                 }
-                indices.push_back(idx);
             }
-        }
-        auto now = std::chrono::high_resolution_clock::now();
-        //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(now - start).count();
-        //std::cout << "After "<< duration <<" ns, the queue has size: " << indices.size() << std::endl;
-        for (auto &i : indices){
-            grid.channels[i].Sync();
-            for (auto &dependent : grid.channels[i].dependents){
-                dependent->FulfillDependency(isubstep, dt);
+            if(n > 0){
+                if ( grid.channels[prev_idx].active && prev_idx >= 0 && prev_idx < NUM_SEGMENTS){
+                    grid.channels[prev_idx].Sync();
+                    for (auto &dependent : grid.channels[prev_idx].dependents){
+                        dependent->FulfillDependency(isubstep, dt);
+                    }
+                }
             }
+
         }
-        indices.clear();
 #endif 
         MPI_Waitall(NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
         acDeviceSwapBuffers(device);

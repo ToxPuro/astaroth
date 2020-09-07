@@ -7,7 +7,7 @@ rm -i $OUTPUT
 process_input() {
     echo $1
     #cat $1/*.csv | sort -n
-    cat $1/*.csv | sort -n | awk '!a[$1]++'
+    cat $1/*.csv | sort -k1n -k3n | awk '!a[$1]++'
     echo ""
 } >> $OUTPUT
 

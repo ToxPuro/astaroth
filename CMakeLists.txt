@@ -35,6 +35,7 @@ option(BUILD_SAMPLES    "Builds projects in samples subdirectory."            ON
 option(BUILD_STANDALONE "Builds standalone Astaroth."                         OFF)
 option(MPI_ENABLED      "Enables additional functions for MPI communciation." ON)
 option(MULTIGPU_ENABLED "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." OFF)
+option(VERBOSE          "Enables various status and warning messages"         OFF)
 
 ## Options (DEPRECATED)
 # option(BUILD_DEBUG              "Builds the program with extensive error checking"          OFF)
@@ -68,6 +69,9 @@ add_custom_target(dsl_headers ALL DEPENDS ${DSL_HEADERS})
 ## Global flags
 if (DOUBLE_PRECISION)
     add_definitions(-DAC_DOUBLE_PRECISION=1)
+endif ()
+if (VERBOSE)
+    add_definitions(-DAC_VERBOSE=1)
 endif ()
 if (MPI_ENABLED)
     add_definitions(-DAC_MPI_ENABLED=1)

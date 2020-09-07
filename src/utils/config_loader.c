@@ -126,7 +126,7 @@ acLoadConfig(const char* config_path, AcMeshInfo* config)
 
     parse_config(config_path, config);
     acUpdateBuiltinParams(config);
-#if VERBOSE_PRINTING // Defined in astaroth.h
+#if AC_VERBOSE
     printf("###############################################################\n");
     printf("Config dimensions loaded:\n");
     acPrintMeshInfo(*config);
@@ -137,8 +137,10 @@ acLoadConfig(const char* config_path, AcMeshInfo* config)
     ERRCHK_ALWAYS(sizeof(*config) % sizeof(uint32_t) == 0);
     for (size_t i = 0; i < sizeof(*config) / sizeof(uint32_t); ++i) {
         if (((uint32_t*)config)[i] == (uint32_t)0xFFFFFFFF) {
+#if AC_VERBOSE 
             fprintf(stderr, "Some config values may be uninitialized. "
                             "See that all are defined in astaroth.conf\n");
+#endif
             retval = AC_FAILURE;
         }
     }
