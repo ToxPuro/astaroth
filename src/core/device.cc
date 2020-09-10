@@ -1201,17 +1201,75 @@ acTransferCommDataTest(const Device device, const CommData data, std::mutex& m)
     }
 }
 
+
+static void
+acTransferCommDataTestOne(const Device device, MPI_Request& request1, MPI_Request& request2,  std::mutex& m)
+{
+
+    int req1_done = 0;
+    int req2_done = 0;
+    while (request1 != MPI_REQUEST_NULL || request2 != MPI_REQUEST_NULL){
+        m.lock();
+        cudaSetDevice(device->id);
+        if (request1 != MPI_REQUEST_NULL)
+            MPI_Test(&request1, &req1_done, MPI_STATUS_IGNORE);
+        if (request2 != MPI_REQUEST_NULL)
+            MPI_Test(&request2, &req2_done, MPI_STATUS_IGNORE);
+        m.unlock();
+    }
+}
+
+#include <iostream>
+
+static void
+acWaitAndUnpinSends(const Device device, const CommData* data)
+{
+
+    std::cout << "set device"<< std::endl;
+    cudaSetDevice(device->id);
+    std::cout << "waiting"<< std::endl;
+    MPI_Waitall(data->count, data->send_reqs, MPI_STATUSES_IGNORE);
+}
+
+
+static void
+acTransferWaitAll(const Device device, MPI_Request* requests, int count)
+{
+
+    std::cout << "set device"<< std::endl;
+    cudaSetDevice(device->id);
+    std::cout << "waiting"<< std::endl;
+    MPI_Waitall(count, requests, MPI_STATUSES_IGNORE);
+}
+
+
 static void
 acTransferTestAll(const Device device, MPI_Request* requests, int count, std::mutex& m)
 {
 
     int reqs_done = 0;
+    std::cout << "set device"<< std::endl;
     cudaSetDevice(device->id);
     while (!reqs_done){
         m.lock();
-        MPI_Testall(count, requests,&reqs_done,MPI_STATUSES_IGNORE);
+        MPI_Testall(count, requests, &reqs_done, MPI_STATUSES_IGNORE);
         m.unlock();
     }
+}
+
+
+static void
+acTransferWaitOne(const Device device, MPI_Request& request, std::mutex& m)
+{
+
+    std::cout << "lock"<< std::endl;
+    m.lock();
+    std::cout << "set device"<< std::endl;
+    cudaSetDevice(device->id);
+    std::cout << "waiting on " << &request<< " @ device " << device->id<< std::endl;
+    MPI_Wait(&request, MPI_STATUS_IGNORE);
+    m.unlock();
+    std::cout << "wait done"<< std::endl;
 }
 
 
@@ -1220,29 +1278,37 @@ acTransferTestOne(const Device device, MPI_Request& request, std::mutex& m)
 {
 
     int req_done = 0;
+    //std::cout << "start test"<< std::endl;
     cudaSetDevice(device->id);
-    while (request != MPI_REQUEST_NULL){
+    while (request != MPI_REQUEST_NULL && !req_done){
         m.lock();
         MPI_Test(&request, &req_done, MPI_STATUS_IGNORE);
         m.unlock();
     }
+    //std::cout << "test done"<< std::endl;
 }
 
+
+//TODO: rename to something better
 static void
 acCreateCommFutures(Device device, const CommData* comm_data, const int3* b0s, boost::shared_future<void> out_segment_futures[3][3][3], std::mutex& m)
 {
     for (size_t i = 0; i < comm_data->count ; i++){
-        PackedData data = comm_data->dsts[i];
         const int3 b0 = b0s[i];
         const int3 p = b0_to_halo_coords(b0);
-        const cudaStream_t stream = comm_data->streams[i];
-        out_segment_futures[p.x+1][p.y+1][p.z+1] = boost::async([=,&data,&b0,&m]{
-            acTransferTestOne(device,comm_data->recv_reqs[i], m);
-            data.pinned = false;
-            acUnpinPackedData(device, stream ,&data);
-            cudaSetDevice(device->id);
-            acKernelUnpackData(stream,data,b0,device->vba);
-            cudaStreamSynchronize(stream);
+        out_segment_futures[p.x+1][p.y+1][p.z+1] = boost::async(
+            //[=,&m,&device](){
+            [=,&m](){
+                cudaSetDevice(device->id);
+                //acTransferWaitOne(device,comm_data->recv_reqs[i], m);
+                acTransferTestOne(device,comm_data->recv_reqs[i], m);
+                //acTransferCommDataTestOne(device,comm_data->recv_reqs[i],comm_data->send_reqs[i], m);
+                //std::cout <<"waited"<<std::endl;
+                //comm_data->srcs[i].pinned = false;
+                //acUnpinPackedData(device, comm_data->streams[i] ,&(comm_data->dsts[i]));
+                cudaSetDevice(device->id);
+                acKernelUnpackData(comm_data->streams[i],comm_data->dsts[i],b0s[i],device->vba);
+                cudaStreamSynchronize(comm_data->streams[i]);
         }).share();
     }
 }
@@ -1777,10 +1843,13 @@ acGridIntegrate(const Stream stream, const AcReal dt)
         acCreateCommFutures(device, &sidexy_data, sidexy_b0s, segments, m);
         acCreateCommFutures(device, &sidexz_data, sidexz_b0s, segments, m);
         acCreateCommFutures(device, &sideyz_data, sideyz_b0s, segments, m);
-#if MPI_INC_CORNERS
+#if MPI_INCL_CORNERS
         acCreateCommFutures(device, corner_data, corner_b0s, segments, m);
 #endif
 #endif // MPI_COMM_ENABLED
+
+
+
 
 #if MPI_COMPUTE_ENABLED
 //////////// OUTER INTEGRATION //////////////
@@ -1834,22 +1903,22 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 //Edges x
 
         offset = (int3){nn.x - 2*NGHOST, NGHOST, NGHOST};
-        auto outer_df_ftr = when_all(segments[FACE][FACE][FRONT],segments[FACE][DOWN][FACE],segments[FACE][DOWN][FRONT])
+        auto outer_df_ftr = when_all(segments[FACE][FACE][FRONT],segments[FACE][DOWN][FACE],segments[EDGE][DOWN][FRONT])
          .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
             const int3 m1 = (int3){2*NGHOST, NGHOST, NGHOST};
             acDeviceIntegrateSubstep(device, STREAM_6, isubstep, m1, m1+offset, dt);
         });
-        auto outer_uf_ftr = when_all(segments[FACE][FACE][FRONT],segments[FACE][UP][FACE],segments[FACE][UP][FRONT])
+        auto outer_uf_ftr = when_all(segments[FACE][FACE][FRONT],segments[FACE][UP][FACE],segments[EDGE][UP][FRONT])
          .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
             const int3 m1 = (int3){2*NGHOST, nn.y, NGHOST};
             acDeviceIntegrateSubstep(device, STREAM_7, isubstep, m1, m1+offset, dt);
         });
-        auto outer_db_ftr = when_all(segments[FACE][FACE][BACK],segments[FACE][DOWN][FACE],segments[FACE][DOWN][BACK])
+        auto outer_db_ftr = when_all(segments[FACE][FACE][BACK],segments[FACE][DOWN][FACE],segments[EDGE][DOWN][BACK])
          .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
             const int3 m1 = (int3){2*NGHOST, NGHOST, nn.z};
             acDeviceIntegrateSubstep(device, STREAM_8, isubstep, m1, m1+offset, dt);
         });
-        auto outer_ub_ftr = when_all(segments[FACE][FACE][BACK],segments[FACE][UP][FACE],segments[FACE][UP][BACK])
+        auto outer_ub_ftr = when_all(segments[FACE][FACE][BACK],segments[FACE][UP][FACE],segments[EDGE][UP][BACK])
          .then([&,offset](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){
             const int3 m1 = (int3){2*NGHOST, nn.y, nn.z};
             acDeviceIntegrateSubstep(device, STREAM_9, isubstep, m1, m1+offset, dt);
@@ -1929,12 +1998,14 @@ acGridIntegrate(const Stream stream, const AcReal dt)
             }
         });
         
-        acTransferTestAll(device,edgex_data.send_reqs, edgex_data.count, m);
-        acTransferTestAll(device,edgey_data.send_reqs, edgey_data.count, m);
-        acTransferTestAll(device,edgez_data.send_reqs, edgez_data.count, m);
-        acTransferTestAll(device,sidexy_data.send_reqs, sidexy_data.count, m);
-        acTransferTestAll(device,sidexz_data.send_reqs, sidexz_data.count, m);
-        acTransferTestAll(device,sideyz_data.send_reqs, sideyz_data.count, m);
+        //This fails for some reason
+        acWaitAndUnpinSends(device,&edgex_data);
+        acWaitAndUnpinSends(device,&edgey_data);
+        acWaitAndUnpinSends(device,&edgez_data);
+        acWaitAndUnpinSends(device,&sidexy_data);
+        acWaitAndUnpinSends(device,&sidexz_data);
+        acWaitAndUnpinSends(device,&sideyz_data);
+
         outer_left_ftr.wait();
         outer_right_ftr.wait();
         outer_down_ftr.wait();

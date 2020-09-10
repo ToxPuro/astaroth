@@ -3,8 +3,14 @@
 # V3.17 required for the FindCUDAToolkit package
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
 cmake_minimum_required(VERSION 3.18)
-find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
-find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
+
+option(TAU "Use tau wrappers to add instrumentation for performance measurements" OFF)
+IF (TAU)
+    message(STATUS "Using tau compiler wrappers")
+    find_program(CMAKE_C_COMPILER tau_gcc PATHS ${CMAKE_SOURCE_DIR}/.tau/bin/* REQUIRED)
+    find_program(CMAKE_CXX_COMPILER tau_g++ PATHS ${CMAKE_SOURCE_DIR}/.tau/bin/* REQUIRED)
+endif()
+
 
 ## Project settings
 project(astaroth C CXX CUDA)
@@ -14,8 +20,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 #set(COMMON_FLAGS "-mavx -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow")
 #set(COMMON_FLAGS "-mavx -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion")
 set(COMMON_FLAGS "-mavx -Wdouble-promotion -Wfloat-conversion")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS} -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS} -g")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 11)
 
@@ -116,7 +122,9 @@ if (BUILD_SAMPLES)
     add_subdirectory(samples/cpptest)
     add_subdirectory(samples/mpitest)
     add_subdirectory(samples/benchmark)
+if (NOT TAU)
     add_subdirectory(samples/bwtest)
+endif()
     add_subdirectory(samples/genbenchmarkscripts)
     add_subdirectory(samples/mpi_reduce_bench)
     add_subdirectory(samples/fortrantest)
