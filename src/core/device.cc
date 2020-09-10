@@ -956,6 +956,12 @@ acCreateCommData(const Device device, const int3 dims, const size_t count)
     ERRCHK_ALWAYS(data.dsts_host);
 #endif
 
+
+    //NOTE:Let's think for a bit about this,
+    //Each (side) packed data will have a set of RerouteDatas attached to them, which in turn will have plain PackedDatas
+    //In addition, the plain PackedDatas will never have pinned memory
+    //Either: polymorphism/classes
+    //Or: We have them all in one type, and set to NULL
     for (size_t i = 0; i < count; ++i) {
         data.srcs[i] = acCreatePackedData(dims);
         data.dsts[i] = acCreatePackedData(dims);
@@ -1140,11 +1146,12 @@ acTransferCommData(const Device device, //
                 int tag = (neighbor.x+1)*9 + (neighbor.y+1)*3 + neighbor.z +1 + 8;
                 MPI_Irecv(dst->data, count, datatype, rerouted_src, tag, //
                       MPI_COMM_WORLD, &data->recv_reqs[b0_idx]);
+                dst->pinned = false;
             }else{
             MPI_Irecv(dst->data_pinned, count, datatype, npid, b0_idx, //
                       MPI_COMM_WORLD, &data->recv_reqs[b0_idx]);
-            }
             dst->pinned = true;
+            }
         }
     }
 
@@ -1348,11 +1355,8 @@ acRerouteCommData(const Device device,
             find_rerouted_corners(origin_pid3d, origin_halo_coords, dims, decomp, local_node, devices_per_node, rerouted_data);
         }
         for(auto& rerouted_segment: rerouted_data){
-            
-
             acKernelExtractPackedData(parent_data->streams[b0_idx], *containing_data, rerouted_segment.offset, rerouted_segment.packedData);
             //acPinPackedData(device, parent_data->streams[b0_idx], &rerouted_segment.packedData);
-
         }
         cudaStreamSynchronize(parent_data->streams[b0_idx]);
         for(auto& rerouted_segment: rerouted_data){
@@ -1391,7 +1395,13 @@ typedef struct {
     CommData sidexy_data;
     CommData sidexz_data;
     CommData sideyz_data;
-
+    int3 corner_b0s[];
+    int3 edgex_b0s[];
+    int3 edgey_b0s[];
+    int3 edgez_b0s[];
+    int3 sidexy_b0s[];
+    int3 sidexz_b0s[];
+    int3 sideyz_b0s[];
     // int comm_cart;
 } Grid;
 
