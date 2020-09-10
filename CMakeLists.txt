@@ -44,7 +44,7 @@ option(EAGER "Uses asynchronous continuations from Boost for eager integration" 
 # option(BUILD_RT_VISUALIZATION   "Builds the module for real-time visualization using SDL2"  OFF)
 
 if(EAGER)
-    find_package(Boost REQUIRED COMPONENTS thread) #Used for asynchronous continuations (future.then) and composition (when_all)
+    find_package(Boost 1.68 COMPONENTS thread) #Used for asynchronous continuations (future.then) and composition (when_all)
     add_compile_definitions(BOOST_THREAD_PROVIDES_FUTURE)
     add_compile_definitions(BOOST_THREAD_PROVIDES_FUTURE_CONTINUATION)
     add_compile_definitions(BOOST_THREAD_PROVIDES_FUTURE_WHEN_ALL_WHEN_ANY)

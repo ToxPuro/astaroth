@@ -1186,21 +1186,47 @@ acTransferCommDataTest(const Device device, const CommData data, std::mutex& m)
     while (true){
         m.lock();
         if (!sends_done){
-
             MPI_Testall(data.count, data.send_reqs,&sends_done,MPI_STATUSES_IGNORE);
-            /*
-            for (size_t i = 0; i < data.count; ++i) {
-                MPI_Test(data.send_reqs,&sends_done,MPI_STATUSES_IGNORE);
-            }
-            */
         }
         if (!recvs_done){
             MPI_Testall(data.count, data.recv_reqs,&recvs_done,MPI_STATUSES_IGNORE);
-            /*
-            for (size_t i = 0; i < data.count; ++i) {
-                MPI_Test(data.recv_reqs,&recvs_done,MPI_STATUSES_IGNORE);
+        }
+        m.unlock();
+        if (recvs_done && sends_done)
+            break;
+        
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+        //boost::this_thread::sleep_for(boost::chrono::microseconds(1));
+    }
+}
+
+static void 
+acTransferCommDataTestIndices(const Device device, const CommData data, std::mutex& m, int* b0_indices, size_t count)
+{
+    int sends_done = 0;
+    int recvs_done = 0;
+    cudaSetDevice(device->id);
+    while (true){
+        m.lock();
+        if (!sends_done){
+            //MPI_Testall(data.count, data.send_reqs,&sends_done,MPI_STATUSES_IGNORE);
+            for(size_t i = 0; i < count, i++){
+                b0_idx = b0_indices[i];
+                if (data.send_reqs[b0_idx] != MPI_REQUEST_NULL){
+                    bool send_done = 0;
+                    MPI_Test(data.send_reqs[b0_idx], send_done, MPI_STATUS_IGNORE);
+                }
             }
-            */
+        }
+        if (!recvs_done){
+            //MPI_Testall(data.count, data.recv_reqs,&recvs_done,MPI_STATUSES_IGNORE);
+            for(size_t i = 0; i < count, i++){
+                b0_idx = b0_indices[i];
+                if (data.recv_reqs[b0_idx] != MPI_REQUEST_NULL){
+                    bool send_done = 0;
+                    MPI_Test(data.send_reqs[b0_idx], send_done, MPI_STATUS_IGNORE);
+                }
+            }
         }
         m.unlock();
         if (recvs_done && sends_done)
@@ -1643,7 +1669,7 @@ acGridIntegrate(const Stream stream, const AcReal dt)
         //These below don't technically need to be futures, but it may make fine grained integration of the inner domain possible
         
         //3 sets of inner faces of the outer domain
-        auto outer_xy_ftr = sidexy_ftr.then([&](boost::shared_future<void>&& r){ // Front, i.e. xy
+        auto outer_xy_ftr = sidexy_ftr.then([&](boost::shared_future<void>&& r){ 
             const int3 offset = (int3){nn.x - 2*NGHOST, nn.y -2*NGHOST, NGHOST};
             {
             const int3 m1 = (int3){2*NGHOST, 2*NGHOST, NGHOST};
@@ -1655,7 +1681,7 @@ acGridIntegrate(const Stream stream, const AcReal dt)
             }
         });
 
-        auto outer_xz_ftr = sidexz_ftr.then([&](boost::shared_future<void>&& r){ // Bottom, i.e. xz
+        auto outer_xz_ftr = sidexz_ftr.then([&](boost::shared_future<void>&& r){
             const int3 offset = (int3){nn.x - 2*NGHOST, NGHOST, nn.z - 2 * NGHOST};
             {
             const int3 m1 = (int3){2*NGHOST, NGHOST, 2 * NGHOST};
@@ -1667,7 +1693,7 @@ acGridIntegrate(const Stream stream, const AcReal dt)
             }
         });
 
-        auto outer_yz_ftr = sideyz_ftr.then([&](boost::shared_future<void>&& r){ // Left, i.e. yz
+        auto outer_yz_ftr = sideyz_ftr.then([&](boost::shared_future<void>&& r){ 
             const int3 offset = (int3){NGHOST, nn.y - 2 * NGHOST, nn.z - 2 * NGHOST};
             {
             const int3 m1 = (int3){NGHOST, 2 * NGHOST, 2 * NGHOST};
@@ -1679,24 +1705,23 @@ acGridIntegrate(const Stream stream, const AcReal dt)
             }
         });
         
-        //3 sets of edges in the outer domain shell
         auto outer_x_ftr = x_comm_ftr.then([&](boost::future<std::tuple<boost::shared_future<void>, boost::shared_future<void>, boost::shared_future<void> >>&& r){ 
             const int3 offset = (int3){nn.x - 2*NGHOST, NGHOST, NGHOST};
             {
             const int3 m1 = (int3){2*NGHOST, NGHOST, NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+            acDeviceIntegrateSubstep(device, STREAM_6, isubstep, m1, m1+offset, dt);
             }
             {
             const int3 m1 = (int3){2*NGHOST, nn.y, NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+            acDeviceIntegrateSubstep(device, STREAM_7, isubstep, m1, m1+offset, dt);
             }
             {
             const int3 m1 = (int3){2*NGHOST, NGHOST, nn.z};
-            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+            acDeviceIntegrateSubstep(device, STREAM_8, isubstep, m1, m1+offset, dt);
             }
             {
             const int3 m1 = (int3){2*NGHOST, nn.y, nn.z};
-            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+            acDeviceIntegrateSubstep(device, STREAM_9, isubstep, m1, m1+offset, dt);
             }
             });
 
@@ -1704,19 +1729,19 @@ acGridIntegrate(const Stream stream, const AcReal dt)
             const int3 offset = (int3){NGHOST, nn.y - 2*NGHOST, NGHOST};
             {
             const int3 m1 = (int3){NGHOST, 2*NGHOST, NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+            acDeviceIntegrateSubstep(device, STREAM_10, isubstep, m1, m1+offset, dt);
             }
             {
             const int3 m1 = (int3){nn.x,2*NGHOST, NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+            acDeviceIntegrateSubstep(device, STREAM_11, isubstep, m1, m1+offset, dt);
             }
             {
             const int3 m1 = (int3){NGHOST, 2*NGHOST, nn.z};
-            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+            acDeviceIntegrateSubstep(device, STREAM_12, isubstep, m1, m1+offset, dt);
             }
             {
             const int3 m1 = (int3){nn.x,2*NGHOST , nn.z};
-            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+            acDeviceIntegrateSubstep(device, STREAM_13, isubstep, m1, m1+offset, dt);
             }
         });
         
@@ -1725,19 +1750,19 @@ acGridIntegrate(const Stream stream, const AcReal dt)
             const int3 offset = (int3){NGHOST, NGHOST, nn.z - 2*NGHOST};
             {
             const int3 m1 = (int3){NGHOST, NGHOST, 2*NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+            acDeviceIntegrateSubstep(device, STREAM_14, isubstep, m1, m1+offset, dt);
             }
             {
             const int3 m1 = (int3){nn.x, NGHOST, 2*NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_0, isubstep, m1, m1+offset, dt);
+            acDeviceIntegrateSubstep(device, STREAM_15, isubstep, m1, m1+offset, dt);
             }
             {
             const int3 m1 = (int3){NGHOST, nn.y, 2*NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+            acDeviceIntegrateSubstep(device, STREAM_16, isubstep, m1, m1+offset, dt);
             }
             {
             const int3 m1 = (int3){nn.x, nn.y, 2*NGHOST};
-            acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1, m1+offset, dt);
+            acDeviceIntegrateSubstep(device, STREAM_17, isubstep, m1, m1+offset, dt);
             }
         });
         
@@ -1756,7 +1781,7 @@ acGridIntegrate(const Stream stream, const AcReal dt)
                 (int3){nn.x, nn.y, nn.z}
             };
             for (size_t i = 0; i < 8 ;i++){
-                acDeviceIntegrateSubstep(device, STREAM_1, isubstep, m1s[i], m1s[i]+offset, dt);
+                acDeviceIntegrateSubstep(device, STREAM_18+i, isubstep, m1s[i], m1s[i]+offset, dt);
             }
         });
         outer_xy_ftr.wait();
