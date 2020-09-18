@@ -7,7 +7,7 @@ module load gcc/8.3.0 cuda/10.1.168 openmpi/4.0.3-cuda nccl
 
 load_default_case() {
   # Pinned or RDMA
-  sed -i 's/#define MPI_USE_PINNED ([0-9]*)/#define MPI_USE_PINNED (1)/' src/core/device.cc
+  sed -i 's/#define MPI_USE_PINNED ([0-9]*)/#define MPI_USE_PINNED (0)/' src/core/device.cc
 
   # Stencil order
   sed -i 's/#define STENCIL_ORDER ([0-9]*)/#define STENCIL_ORDER (6)/' acc/stdlib/stdderiv.h

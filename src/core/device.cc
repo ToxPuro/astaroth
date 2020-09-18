@@ -19,7 +19,7 @@
 #define MPI_COMPUTE_ENABLED (1)
 #define MPI_COMM_ENABLED (1)
 #define MPI_INCL_CORNERS (0)
-#define MPI_USE_PINNED (1)              // Do inter-node comm with pinned memory
+#define MPI_USE_PINNED (0)              // Do inter-node comm with pinned memory
 #define MPI_USE_CUDA_DRIVER_PINNING (0) // Pin with cuPointerSetAttribute, otherwise cudaMallocHost
 #define PACK_PIPELINE (0)
 
@@ -1007,19 +1007,21 @@ mod(const int3 a, const int3 n)
     return (int3){(int)mod(a.x, n.x), (int)mod(a.y, n.y), (int)mod(a.z, n.z)};
 }
 
-typedef struct ComputationalSegment {
+typedef struct ComputationTask {
     int3 start;
     int3 dims;
     int3 segment_id;
     int id;
 
+
     int total_dependencies;
     int unfulfilled_dependencies;
+
 
     Device device;
     Stream stream;
 
-    ComputationalSegment(int3 seg_id, int3 nn, Device _device, Stream _stream)
+    ComputationTask(int3 seg_id, int3 nn, Device _device, Stream _stream)
     :segment_id(seg_id), id(segment_id_to_index(seg_id)), device(_device), stream(_stream)
     {
         start = (int3){
@@ -1036,7 +1038,7 @@ typedef struct ComputationalSegment {
 
         int seg_type = (seg_id.x == 0?0:1)+(seg_id.y == 0?0:1)+(seg_id.z == 0?0:1);
         if (seg_type > 3 || seg_type < 0){
-            throw std::runtime_error("Error creating ComputationalSegment. Segment id is nonsensical");
+            throw std::runtime_error("Error creating ComputationTask. Segment id is nonsensical");
         }
         total_dependencies = (int[]){0,NUM_FACE_DEPENDENCIES,NUM_EDGE_DEPENDENCIES, NUM_CORNER_DEPENDENCIES}[seg_type];
         unfulfilled_dependencies = total_dependencies;
@@ -1061,10 +1063,10 @@ typedef struct ComputationalSegment {
             unfulfilled_dependencies = total_dependencies;
         }
     }
-} ComputationalSegment;
+} ComputationTask;
 
 
-typedef struct DataChannel{
+typedef struct HaloExchangeTask{
 
     int3 segment_id; //direction from center of comp domain
     int3 b0; //b0 = recv coordinate within comp domain
@@ -1074,7 +1076,7 @@ typedef struct DataChannel{
     PackedData src; //The actual buffers
     PackedData dst; //
 
-    std::vector<ComputationalSegment*> dependents;
+    std::vector<ComputationTask*> dependents;
 
     int rank;
     int tag;
@@ -1088,7 +1090,7 @@ typedef struct DataChannel{
     Device device;
     cudaStream_t stream;
 
-    DataChannel(const int3 _segment_id, const int3 nn, const int _rank, 
+    HaloExchangeTask(const int3 _segment_id, const int3 nn, const int _rank, 
                 const int3 pid3d, const uint3_64 decomp, MPI_Request* _recv_req, MPI_Request* _send_req, const Device _device)
     :segment_id(_segment_id), rank(_rank), recv_req(_recv_req), send_req(_send_req), device(_device)
     {
@@ -1115,9 +1117,9 @@ typedef struct DataChannel{
     }
 
     //Copy constructor, looks like it still gets called somewhere
-    //DataChannel(const DataChannel& other) = delete;
+    //HaloExchangeTask(const HaloExchangeTask& other) = delete;
 
-    ~DataChannel()
+    ~HaloExchangeTask()
     {
         cudaSetDevice(device->id);
 
@@ -1214,7 +1216,7 @@ typedef struct DataChannel{
             }
         //}
     }
-} DataChannel;
+} HaloExchangeTask;
 
 typedef struct Grid{
     Device device;
@@ -1222,9 +1224,9 @@ typedef struct Grid{
     uint3_64 decomposition;
     bool initialized;
 
-    std::vector<DataChannel> channels;
-    std::vector<ComputationalSegment> outer_segments;
-    ComputationalSegment* inner_domain;
+    std::vector<HaloExchangeTask> halo_exchange_tasks;
+    std::vector<ComputationTask> outer_segments;
+    ComputationTask* inner_domain;
 
     MPI_Request* send_reqs;
     MPI_Request* recv_reqs;
@@ -1316,11 +1318,11 @@ acGridInit(const AcMeshInfo info)
         grid.outer_segments.emplace_back(seg_id, nn, device, stream);
     }
     
-    grid.inner_domain = (ComputationalSegment*)malloc(sizeof(ComputationalSegment));
-    *grid.inner_domain = ComputationalSegment((int3){0,0,0}, nn, device, STREAM_26);
+    grid.inner_domain = (ComputationTask*)malloc(sizeof(ComputationTask));
+    *grid.inner_domain = ComputationTask((int3){0,0,0}, nn, device, STREAM_26);
 
-    grid.channels.clear();
-    grid.channels.reserve(NUM_SEGMENTS);
+    grid.halo_exchange_tasks.clear();
+    grid.halo_exchange_tasks.reserve(NUM_SEGMENTS);
     grid.send_reqs = (MPI_Request*) malloc(sizeof(MPI_Request)*NUM_SEGMENTS);
     grid.recv_reqs = (MPI_Request*) malloc(sizeof(MPI_Request)*NUM_SEGMENTS);
 
@@ -1328,14 +1330,14 @@ acGridInit(const AcMeshInfo info)
         const int3 seg_id = index_to_segment_id(idx);
         grid.recv_reqs[idx] = MPI_REQUEST_NULL;
         grid.send_reqs[idx] = MPI_REQUEST_NULL;
-        grid.channels.emplace_back(seg_id, nn, pid, pid3d, decomposition,  &grid.recv_reqs[idx], &grid.send_reqs[idx], device);
+        grid.halo_exchange_tasks.emplace_back(seg_id, nn, pid, pid3d, decomposition,  &grid.recv_reqs[idx], &grid.send_reqs[idx], device);
         //A little ugly, but it gets the job done: loop through all permutations of {-1,0,1}^3 where all nonzero variables match the segment_id
-        //TODO:call reserve on each channel.dependents, either in DataChannels constructor or here
+        //TODO:call reserve on each halo_exchange_task.dependents, either in the HaloExchangeTask constructor or here
         for (int x = (seg_id.x == 0? -1: seg_id.x); x< 2 && (seg_id.x ==0 || seg_id.x == x); x++){
             for (int y = (seg_id.y == 0? -1: seg_id.y); y< 2 && (seg_id.y ==0 || seg_id.y == y); y++){
                 for (int z = (seg_id.z == 0?  -1: seg_id.z); z< 2 && (seg_id.z ==0 || seg_id.z == z); z++){
                     const int dependent_idx = segment_id_to_index((int3){x,y,z});
-                    grid.channels[idx].dependents.push_back(&grid.outer_segments[dependent_idx]);
+                    grid.halo_exchange_tasks[idx].dependents.push_back(&grid.outer_segments[dependent_idx]);
                 }
             }
         }
@@ -1352,7 +1354,7 @@ acGridQuit(void)
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(STREAM_ALL);
 
-    grid.channels.clear();
+    grid.halo_exchange_tasks.clear();
     free(grid.recv_reqs);
     free(grid.send_reqs);
 
@@ -1401,29 +1403,29 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 
     acDeviceSynchronizeStream(device, stream);
     cudaSetDevice(device->id);
-    //MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
     for (int isubstep = 0; isubstep < 3; ++isubstep) {
 #if MPI_COMM_ENABLED
 
 #if PACK_PIPELINE
         for (int i = 0; 0 < NUM_SEGMENTS+1; i++){
-            if (i < NUM_SEGMENTS && grid.channels[i].active){
-                grid.channels[i].Pack();
+            if (i < NUM_SEGMENTS && grid.halo_exchange_tasks[i].active){
+                grid.halo_exchange_tasks[i].Pack();
             }
-            if (i > 0 && grid.channels[i-1].active){
-                grid.channels[i-1].Transfer();
+            if (i > 0 && grid.halo_exchange_tasks[i-1].active){
+                grid.halo_exchange_tasks[i-1].Transfer();
             }
 
         }
 #else
-        for (auto &channel : grid.channels){
-            if (channel.active)
-                channel.Pack();
+        for (auto &halo_task : grid.halo_exchange_tasks){
+            if (halo_task.active)
+                halo_task.Pack();
         }
         
-        for (auto &channel : grid.channels){
-            if (channel.active)
-                channel.Transfer();
+        for (auto &halo_task : grid.halo_exchange_tasks){
+            if (halo_task.active)
+                halo_task.Transfer();
         }
 #endif //PACK_PIPELINE
 
@@ -1440,14 +1442,14 @@ acGridIntegrate(const Stream stream, const AcReal dt)
             prev_idx = idx;
             if (n < NUM_SEGMENTS){
                 MPI_Waitany(NUM_SEGMENTS, grid.recv_reqs, &idx, MPI_STATUS_IGNORE);
-                if (grid.channels[idx].active && idx >= 0 && idx < NUM_SEGMENTS){
-                    grid.channels[idx].Unpack();
+                if (grid.halo_exchange_tasks[idx].active && idx >= 0 && idx < NUM_SEGMENTS){
+                    grid.halo_exchange_tasks[idx].Unpack();
                 }
             }
             if(n > 0){
-                if ( grid.channels[prev_idx].active && prev_idx >= 0 && prev_idx < NUM_SEGMENTS){
-                    grid.channels[prev_idx].Sync();
-                    for (auto &dependent : grid.channels[prev_idx].dependents){
+                if ( grid.halo_exchange_tasks[prev_idx].active && prev_idx >= 0 && prev_idx < NUM_SEGMENTS){
+                    grid.halo_exchange_tasks[prev_idx].Sync();
+                    for (auto &dependent : grid.halo_exchange_tasks[prev_idx].dependents){
                         dependent->FulfillDependency(isubstep, dt);
                     }
                 }
@@ -1471,17 +1473,17 @@ acGridPeriodicBoundconds(const Stream stream)
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    for (auto &channel : grid.channels){ channel.Pack(); }
+    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.Pack(); }
     
     MPI_Barrier(MPI_COMM_WORLD);
 
-    for (auto &channel : grid.channels){ channel.Transfer(); }
+    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.Transfer(); }
     
     MPI_Waitall(NUM_SEGMENTS, grid.recv_reqs, MPI_STATUSES_IGNORE);    
 
-    for (auto &channel : grid.channels){ channel.Unpack(); }
+    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.Unpack(); }
 
-    for (auto &channel : grid.channels){ channel.Sync(); }
+    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.Sync(); }
 
     MPI_Waitall(NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);    
 
