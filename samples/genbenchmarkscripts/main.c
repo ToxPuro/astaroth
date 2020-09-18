@@ -17,36 +17,42 @@ main(void)
 
         // Boilerplate
         fprintf(fp, "#!/bin/bash\n");
-        fprintf(fp, "#BATCH --job-name=astaroth\n");
-        fprintf(fp, "#SBATCH --account=project_2000403\n");
-        fprintf(fp, "#SBATCH --time=03:00:00\n");
-        fprintf(fp, "#SBATCH --mem=32000\n");
-        fprintf(fp, "#SBATCH --partition=gpu\n");
+        fprintf(fp, "#BATCH --job-name=astaroth\n");        // OK
+        fprintf(fp, "#SBATCH --account=project_2000403\n"); // OK
+        fprintf(fp, "#SBATCH --time=01:30:00\n");           // OK
+        // fprintf(fp, "#SBATCH --mem=32000\n");
+        fprintf(fp, "#SBATCH --partition=gpu\n");    // OK
+        fprintf(fp, "#SBATCH --exclusive\n");        // OK
+        fprintf(fp, "#SBATCH --cpus-per-task=10\n"); // OK
         fprintf(fp, "#SBATCH --output=benchmark-%d-%%j.out\n", nprocs);
+        // HACK: exclude misconfigured nodes on Puhti
+        fprintf(fp, "#SBATCH -x "
+                    "r04g[05-06],r02g02,r14g04,r04g07,r16g07,r18g[02-03],r15g08,r17g06,r13g04\n");
         // fprintf(fp, "#SBATCH --cpus-per-task=10\n");
 
         // nprocs, nodes, gpus
         const int max_gpus_per_node = 4;
         const int gpus_per_node     = nprocs < max_gpus_per_node ? nprocs : max_gpus_per_node;
         const int nodes             = (int)ceil((double)nprocs / max_gpus_per_node);
-        fprintf(fp, "#SBATCH --gres=gpu:v100:%d\n", gpus_per_node);
-        fprintf(fp, "#SBATCH -n %d\n", nprocs);
-        fprintf(fp, "#SBATCH -N %d\n", nodes);
+        fprintf(fp, "#SBATCH --gres=gpu:v100:%d\n", gpus_per_node); // OK
+        fprintf(fp, "#SBATCH -n %d\n", nprocs);                     // OK
+        fprintf(fp, "#SBATCH -N %d\n", nodes);                      // OK
         // fprintf(fp, "#SBATCH --exclusive\n");
-        if (nprocs >= 4)
-            fprintf(fp, "#SBATCH --ntasks-per-socket=2\n");
+        // if (nprocs >= 4)
+        //    fprintf(fp, "#SBATCH --ntasks-per-socket=2\n");
 
         // Modules
         // OpenMPI
         fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake openmpi/4.0.3-cuda nccl\n");
-        //fprintf(fp, "export UCX_TLS=rc,sm,cuda_copy,gdr_copy,cuda_ipc\n"); // https://www.open-mpi.org/fa
-        //fprintf(fp, "export PSM2_CUDA=1\nexport PSM2_GPUDIRECT=1\n");
-        //if (nprocs >= 32)
-        //    fprintf(fp, "export UCX_TLS=ud_x,cuda_copy,gdr_copy,cuda_ipc\n"); // https://www.open-mpi.org/fa
+        // fprintf(fp, "export UCX_TLS=rc,sm,cuda_copy,gdr_copy,cuda_ipc\n"); //
+        // https://www.open-mpi.org/fa fprintf(fp, "export PSM2_CUDA=1\nexport PSM2_GPUDIRECT=1\n");
+        // if (nprocs >= 32)
+        //    fprintf(fp, "export UCX_TLS=ud_x,cuda_copy,gdr_copy,cuda_ipc\n"); //
+        //    https://www.open-mpi.org/fa
 
         // HPCX
-        //fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake hpcx-mpi/2.5.0-cuda nccl\n");
-        //fprintf(fp, "export UCX_MEMTYPE_CACHE=n\n"); // Workaround for bug in hpcx-mpi/2.5.0
+        // fprintf(fp, "module load gcc/8.3.0 cuda/10.1.168 cmake hpcx-mpi/2.5.0-cuda nccl\n");
+        // fprintf(fp, "export UCX_MEMTYPE_CACHE=n\n"); // Workaround for bug in hpcx-mpi/2.5.0
 
         // Profile and run
         // fprintf(fp, "mkdir -p profile_%d\n", nprocs);
@@ -86,7 +92,10 @@ main(void)
             else if (strcmp(files[i], "benchmark_weak_448") == 0)
                 nn = 448;
 
-            fprintf(fp, "$(cd %s && srun ./benchmark %d %d %d && cd ..)\n", files[i], nn, nn, nn);
+            fprintf(fp,
+                    "$(cd %s && UCX_RNDV_THRESH=16384 UCX_RNDV_SCHEME=get_zcopy "
+                    "UCX_MAX_RNDV_RAILS=1 srun ./benchmark %d %d %d && cd ..)\n",
+                    files[i], nn, nn, nn);
         }
 
         fclose(fp);
