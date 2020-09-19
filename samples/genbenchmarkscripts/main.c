@@ -20,7 +20,7 @@ main(void)
         fprintf(fp, "#BATCH --job-name=astaroth\n");        // OK
         fprintf(fp, "#SBATCH --account=project_2000403\n"); // OK
         fprintf(fp, "#SBATCH --time=01:30:00\n");           // OK
-        // fprintf(fp, "#SBATCH --mem=32000\n");
+        fprintf(fp, "#SBATCH --mem=48000\n");
         fprintf(fp, "#SBATCH --partition=gpu\n");    // OK
         fprintf(fp, "#SBATCH --exclusive\n");        // OK
         fprintf(fp, "#SBATCH --cpus-per-task=10\n"); // OK
@@ -92,10 +92,22 @@ main(void)
             else if (strcmp(files[i], "benchmark_weak_448") == 0)
                 nn = 448;
 
-            fprintf(fp,
-                    "$(cd %s && UCX_RNDV_THRESH=16384 UCX_RNDV_SCHEME=get_zcopy "
-                    "UCX_MAX_RNDV_RAILS=1 srun ./benchmark %d %d %d && cd ..)\n",
-                    files[i], nn, nn, nn);
+            // W/ Fredriks tunings 
+            // (may cause Assertion `status == UCS_OK' failed errors)
+            //fprintf(fp,
+            //        "$(cd %s && UCX_RNDV_THRESH=16384 UCX_RNDV_SCHEME=get_zcopy "
+            //        "UCX_MAX_RNDV_RAILS=1 srun ./benchmark %d %d %d && cd ..)\n",
+            //        files[i], nn, nn, nn);
+            if (nodes >= 2) {
+                fprintf(fp,
+                        "$(cd %s && UCX_RNDV_THRESH=16384 UCX_RNDV_SCHEME=get_zcopy UCX_MAX_RNDV_RAILS=1 srun --kill-on-bad-exit=0 ./benchmark %d %d %d && rm -f core.* && cd ..)\n",
+                        files[i], nn, nn, nn);
+
+            } else {
+                fprintf(fp,
+                        "$(cd %s && srun --kill-on-bad-exit=0 ./benchmark %d %d %d && rm -f core.* && cd ..)\n",
+                        files[i], nn, nn, nn);
+            }
         }
 
         fclose(fp);
