@@ -1,5 +1,5 @@
 from ctypes import *
-astaroth = cdll.LoadLibrary('./libastaroth_core_shared.so')
+astaroth = cdll.LoadLibrary('../../build/src/core/libastaroth_core_shared.so')
 
 NUM_INT_PARAMS = 20
 NUM_INT3_PARAMS = 2
