@@ -10,7 +10,11 @@ AcMeshInfo, Stream, AcRealParam, AcReal3Param, AcReal, AcReal3, AcMesh,
 ReductionType, VertexBufferHandle, device, AcIntParam, AcInt3Param, int, int3,
 ScalarArrayHandle, size_t #define
 
-astaroth.grid.acGridInit(info)
+
+class AcIntegrator:
+    def __init__(self, info):
+        astaroth.grid.acGridInit(info)
+
 
 astaroth.grid.acGridQuit()
 
