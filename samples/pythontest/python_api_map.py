@@ -10,96 +10,234 @@ AcMeshInfo, Stream, AcRealParam, AcReal3Param, AcReal, AcReal3, AcMesh,
 ReductionType, VertexBufferHandle, device, AcIntParam, AcInt3Param, int, int3,
 ScalarArrayHandle, size_t #define
 
+import aclib # Library of Astaroth functions
 
+
+#Dratring class wrappter for Grid
+class Grid:
+    def __init__(self):
+        #Somehow we need to interface Struct Grid and python. If we could call C datatypes as  
+        self.device
+        self.submesh
+        self.decomposition
+        self.initialized
+        self.nn = (xx,xx,xx)
+        self.corner_data
+        self.edgex_data
+        self.edgey_data
+        self.edgez_data
+        self.sidexy_data
+        self.sidexz_data
+        self.sideyz_data
+        self.comm_cart
+
+
+# Class wrapper for pythonic usability and higher lever wrapping on connected operations
 class AcIntegrator:
-    def __init__(self, info):
-        astaroth.grid.acGridInit(info)
+    def __init__(self, pid, modelmesh):
+        # Set mesh configurations
+        self.info      = aclib.io.acLoadConfig(AC_DEFAULT_CONFIG)
+        # Set the model mesh as part of the object
+        self.modelmesh = modelmesh
+        # GPU alloc & compute (MV: This thing I do not understand, Now dealing with grid creatively. )
+        self.grid = Grid()
+        self.grid = aclib.grid.acGridInit(self.info, self.grid) 
+
+        # What is STREAM_DEFAULT? Can be just update grid implicitly - can it be seen as a global variable by python?  
+        self.grid = aclib.grid.acGridLoadMesh(STREAM_DEFAULT, self.modelmesh, self.grid)
+
+    def halo_exchange(self)
+        self.grid = aclib.grid.acGridPeriodicBoundconds(STREAM_DEFAULT, self.grid)
+        
+    def quit(self)
+        aclib.grid.acGridQuit()
 
 
-astaroth.grid.acGridQuit()
+aclib.grid.acGridSynchronizeStream(stream)
 
-astaroth.grid.acGridSynchronizeStream(stream)
+aclib.grid.acGridLoadScalarUniform(stream, param, value)
 
-astaroth.grid.acGridLoadScalarUniform(stream, param, value)
+aclib.grid.acGridLoadVectorUniform(stream, param, value)
 
-astaroth.grid.acGridLoadVectorUniform(stream, param, value)
+aclib.grid.acGridLoadMesh(stream, host_mesh)
 
-astaroth.grid.acGridLoadMesh(stream, host_mesh)
+host_mesh = aclib.grid.acGridStoreMesh(stream)
 
-host_mesh = astaroth.grid.acGridStoreMesh(stream)
+aclib.grid.acGridIntegrate(stream, dt)
 
-astaroth.grid.acGridIntegrate(stream, dt)
+aclib.grid.acGridPeriodicBoundconds(stream)
 
-astaroth.grid.acGridPeriodicBoundconds(stream)
-
-result = astaroth.grid.acGridReduceScal(stream, rtype, vtxbuf_handle, result)
+result = aclib.grid.acGridReduceScal(stream, rtype, vtxbuf_handle, result)
  
-result = astaroth.grid.acGridReduceVec(stream,  rtype, vtxbuf0, vtxbuf1, vtxbuf2, result)
+result = aclib.grid.acGridReduceVec(stream,  rtype, vtxbuf0, vtxbuf1, vtxbuf2, result)
 
 
  # Device interface
 
-device = astaroth.device.acDeviceCreate(id, device_config)
+device = aclib.device.acDeviceCreate(id, device_config)
 
-astaroth.device.acDeviceDestroy(device)
+aclib.device.acDeviceDestroy(device)
 
-astaroth.device.acDevicePrintInfo(device)
+aclib.device.acDevicePrintInfo(device)
 
-astaroth.device.acDeviceAutoOptimize(device)
+aclib.device.acDeviceAutoOptimize(device)
 
-astaroth.device.acDeviceSynchronizeStream(device, stream)
+aclib.device.acDeviceSynchronizeStream(device, stream)
 
-astaroth.device.acDeviceSwapBuffers(device)
+aclib.device.acDeviceSwapBuffers(device)
 
-astaroth.device.acDeviceLoadScalarUniform(device, stream, AcRealParam param,  AcReal value)
+aclib.device.acDeviceLoadScalarUniform(device, stream, AcRealParam param,  AcReal value)
 
-astaroth.device.acDeviceLoadVectorUniform(device, stream, AcReal3Param param, AcReal3 value)
+aclib.device.acDeviceLoadVectorUniform(device, stream, AcReal3Param param, AcReal3 value)
 
-astaroth.device.acDeviceLoadIntUniform( device, stream, param, value)
+aclib.device.acDeviceLoadIntUniform( device, stream, param, value)
 
-astaroth.device.acDeviceLoadInt3Uniform(device, stream, param, value)
+aclib.device.acDeviceLoadInt3Uniform(device, stream, param, value)
 
-data = astaroth.device.acDeviceLoadScalarArray(device, stream, ScalarArrayHandle handle, start, num)
+data = aclib.device.acDeviceLoadScalarArray(device, stream, ScalarArrayHandle handle, start, num)
 
-astaroth.device.acDeviceLoadMeshInfo(device, device_config)
+aclib.device.acDeviceLoadMeshInfo(device, device_config)
 
-astaroth.device.acDeviceLoadDefaultUniforms(device)
+aclib.device.acDeviceLoadDefaultUniforms(device)
 
-astaroth.device.acDeviceLoadVertexBufferWithOffset(device, stream, host_mesh, vtxbuf_handle, src, dst, num_vertices)
+aclib.device.acDeviceLoadVertexBufferWithOffset(device, stream, host_mesh, vtxbuf_handle, src, dst, num_vertices)
 
-astaroth.device.acDeviceLoadVertexBuffer(device, stream, host_mesh, vtxbuf_handle)
+aclib.device.acDeviceLoadVertexBuffer(device, stream, host_mesh, vtxbuf_handle)
 
-astaroth.device.acDeviceLoadMesh(device, stream, host_mesh)
+aclib.device.acDeviceLoadMesh(device, stream, host_mesh)
 
-host_mesh = astaroth.device.acDeviceStoreVertexBufferWithOffset(device, stream, vtxbuf_handle, src, dst, num_vertices)
+host_mesh = aclib.device.acDeviceStoreVertexBufferWithOffset(device, stream, vtxbuf_handle, src, dst, num_vertices)
 
-host_mesh = astaroth.device.acDeviceStoreMeshWithOffset(device, stream, src, dst, num_vertices)
+host_mesh = aclib.device.acDeviceStoreMeshWithOffset(device, stream, src, dst, num_vertices)
 
-host_mesh = astaroth.device.acDeviceStoreVertexBuffer(device, stream, vtxbuf_handle, host_mesh)
+host_mesh = aclib.device.acDeviceStoreVertexBuffer(device, stream, vtxbuf_handle, host_mesh)
 
-host_mesh = astaroth.device.acDeviceStoreMesh(device, stream)
+host_mesh = aclib.device.acDeviceStoreMesh(device, stream)
 
-astaroth.device.acDeviceTransferVertexBufferWithOffset(src_device, stream, vtxbuf_handle, src, dst, num_vertices, dst_device)
+aclib.device.acDeviceTransferVertexBufferWithOffset(src_device, stream, vtxbuf_handle, src, dst, num_vertices, dst_device)
 
-astaroth.device.acDeviceTransferVertexBuffer( src_device, stream, vtxbuf_handle, dst_device)
+aclib.device.acDeviceTransferVertexBuffer( src_device, stream, vtxbuf_handle, dst_device)
 
-astaroth.device.acDeviceTransferMesh(src_device, stream, dst_device)
+aclib.device.acDeviceTransferMesh(src_device, stream, dst_device)
 
-astaroth.device.acDeviceIntegrateSubstep(device, stream, step_number, start, end, dt)
+aclib.device.acDeviceIntegrateSubstep(device, stream, step_number, start, end, dt)
 
-astaroth.device.acDevicePeriodicBoundcondStep(device, stream, vtxbuf_handle, start, end)
+aclib.device.acDevicePeriodicBoundcondStep(device, stream, vtxbuf_handle, start, end)
 
-astaroth.device.acDevicePeriodicBoundconds(device, stream, start, end)
+aclib.device.acDevicePeriodicBoundconds(device, stream, start, end)
 
-result = astaroth.device.acDeviceReduceScal(device, stream, rtype, vtxbuf_handle, result)
+result = aclib.device.acDeviceReduceScal(device, stream, rtype, vtxbuf_handle, result)
 
-result = astaroth.device.acDeviceReduceVec(device, stream_type,     rtype, vtxbuf0, vtxbuf1, vtxbuf2)
+result = aclib.device.acDeviceReduceVec(device, stream_type,     rtype, vtxbuf0, vtxbuf1, vtxbuf2)
 
-result = astaroth.device.acDeviceReduceVecScal(device, stream_type, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, result)
+result = aclib.device.acDeviceReduceVecScal(device, stream_type, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, result)
 
 # Helper functions
 
-config = astaroth.helper.acUpdateBuiltinParams(config);
-mesh   = astaroth.helper.acMeshCreate(mesh_info, mesh);
-mesh   = astaroth.helper.acMeshDestroy(mesh);
+config = aclib.helper.acUpdateBuiltinParams(config);
+mesh   = aclib.helper.acMeshCreate(mesh_info, mesh);
+mesh   = aclib.helper.acMeshDestroy(mesh);
 
+
+#For reference to see everything in use. 
+int
+main(void)
+{
+    MPI_Init(NULL, NULL);
+    int nprocs, pid;
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+
+    // Set random seed for reproducibility
+    srand(321654987);
+
+    // CPU alloc
+    AcMeshInfo info;
+    acLoadConfig(AC_DEFAULT_CONFIG, &info);
+
+    AcMesh model, candidate;
+    if (pid == 0) {
+        acMeshCreate(info, &model);
+        acMeshCreate(info, &candidate);
+        acMeshRandomize(&model);
+        acMeshRandomize(&candidate);
+    }
+
+    // GPU alloc & compute
+    acGridInit(info);
+
+    // Boundconds
+    acGridLoadMesh(STREAM_DEFAULT, model);
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    if (pid == 0) {
+        acMeshApplyPeriodicBounds(&model);
+        const AcResult res = acVerifyMesh("Boundconds", model, candidate);
+        ERRCHK_ALWAYS(res == AC_SUCCESS);
+        acMeshRandomize(&model);
+    }
+
+    // Integration
+    acGridLoadMesh(STREAM_DEFAULT, model);
+    acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    if (pid == 0) {
+        acModelIntegrateStep(model, FLT_EPSILON);
+        acMeshApplyPeriodicBounds(&model);
+        const AcResult res = acVerifyMesh("Integration", model, candidate);
+        ERRCHK_ALWAYS(res == AC_SUCCESS);
+        acMeshRandomize(&model);
+    }
+
+    // Scalar reductions
+    acGridLoadMesh(STREAM_DEFAULT, model);
+
+    if (pid == 0) {
+        printf("---Test: Scalar reductions---\n");
+        printf("Warning: testing only RTYPE_MAX and RTYPE_MIN\n");
+        fflush(stdout);
+    }
+    for (size_t i = 0; i < 2; ++i) { // NOTE: 2 instead of NUM_RTYPES
+        const VertexBufferHandle v0 = VTXBUF_UUX;
+        AcReal candval;
+        acGridReduceScal(STREAM_DEFAULT, (ReductionType)i, v0, &candval);
+        if (pid == 0) {
+            const AcReal modelval   = acModelReduceScal(model, (ReductionType)i, v0);
+            Error error             = acGetError(modelval, candval);
+            error.maximum_magnitude = acModelReduceScal(model, RTYPE_MAX, v0);
+            error.minimum_magnitude = acModelReduceScal(model, RTYPE_MIN, v0);
+            ERRCHK_ALWAYS(acEvalError(rtype_names[i], error));
+        }
+    }
+
+    // Vector reductions
+    if (pid == 0) {
+        printf("---Test: Vector reductions---\n");
+        printf("Warning: testing only RTYPE_MAX and RTYPE_MIN\n");
+        fflush(stdout);
+    }
+    for (size_t i = 0; i < 2; ++i) { // NOTE: 2 instead of NUM_RTYPES
+        const VertexBufferHandle v0 = VTXBUF_UUX;
+        const VertexBufferHandle v1 = VTXBUF_UUY;
+        const VertexBufferHandle v2 = VTXBUF_UUZ;
+        AcReal candval;
+        acGridReduceVec(STREAM_DEFAULT, (ReductionType)i, v0, v1, v2, &candval);
+        if (pid == 0) {
+            const AcReal modelval   = acModelReduceVec(model, (ReductionType)i, v0, v1, v2);
+            Error error             = acGetError(modelval, candval);
+            error.maximum_magnitude = acModelReduceVec(model, RTYPE_MAX, v0, v1, v2);
+            error.minimum_magnitude = acModelReduceVec(model, RTYPE_MIN, v0, v1, v1);
+            ERRCHK_ALWAYS(acEvalError(rtype_names[i], error));
+        }
+    }
+
+    if (pid == 0) {
+        acMeshDestroy(&model);
+        acMeshDestroy(&candidate);
+    }
+
+    acGridQuit();
+    MPI_Finalize();
+    return EXIT_SUCCESS;
+}
