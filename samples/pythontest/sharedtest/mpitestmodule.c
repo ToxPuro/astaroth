@@ -11,7 +11,7 @@ mpitest_init(PyObject *self, PyObject *args) {
     initnum = 0; 
     ok = PyArg_ParseTuple(args, "f", initnum);
     
-    MPI_Init(NULL, NULL);
+    //MPI_Init(NULL, NULL);
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
@@ -20,7 +20,7 @@ mpitest_init(PyObject *self, PyObject *args) {
 
     printf("nprocs = %i, pid = %i, myglobal[0] = %f \n", nprocs, pid, myglobal[0]);
 
-    MPI_Finalize();
+    //MPI_Finalize();
 
     return Py_BuildValue("i", ok);
 }
