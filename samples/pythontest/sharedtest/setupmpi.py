@@ -8,11 +8,6 @@ print(mpi_compile_args)
 print(mpi_link_args)
 
 module1 = Extension('mpitest',
-                    #include_dirs = ['/usr/include/'],
-                    #libraries = ['mpi'],
-                    #library_dirs = ['/usr/lib/x86_64-linux-gnu/'],
-                    #library_dirs = ["-pthread -L/usr//lib -L/usr/lib/x86_64-linux-gnu/openmpi/lib -lmpi"]
-                    #library_dirs = ["/usr//lib", "/usr/lib/x86_64-linux-gnu/openmpi/lib"], 
                     extra_compile_args = mpi_compile_args,
                     extra_link_args    = mpi_link_args,
                     sources = ['mpitestmodule.c'])
