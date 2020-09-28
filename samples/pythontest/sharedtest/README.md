@@ -5,7 +5,7 @@ Will only with of `--disable-dlopen` option is used when compiling OpenMPI
 Compilation after downloading the source code
 ```
 tar -xzvf openmpi_source_code.tar.gz 
-cd openmpi-4.0.5
+cd openmpi_source_dir
 ./configure --disable-dlopen --prefix=/path/to/openmpi/
 make all install
 ```
