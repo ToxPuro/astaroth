@@ -9,13 +9,29 @@
 static float myglobal[MYARR];
 
 static PyObject *
-mpitest_init(PyObject *self, PyObject *args) {
+mpitest_mpiinit(PyObject *self, PyObject *args) {
+
+    MPI_Init(NULL,NULL);
+
+    return Py_BuildValue("i", 1);
+}
+
+static PyObject *
+mpitest_mpifinalize(PyObject *self, PyObject *args) {
+
+    MPI_Finalize();
+
+    return Py_BuildValue("i", 1);
+}
+
+
+static PyObject *
+mpitest_setup(PyObject *self, PyObject *args) {
     float initnum;
     int ok;
     initnum = 0; 
     ok = PyArg_ParseTuple(args, "f", initnum);
     
-    //MPI_Init(NULL, NULL);
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
@@ -25,8 +41,6 @@ mpitest_init(PyObject *self, PyObject *args) {
     myglobal[0] = initnum;
 
     printf("Initializing nprocs = %i, pid = %i, myglobal[0] = %f \n", nprocs, pid, myglobal[0]);
-
-    //MPI_Finalize();
 
     return Py_BuildValue("i", ok);
 }
@@ -99,7 +113,7 @@ mpitest_copyval(PyObject *self, PyObject *args) {
 
 
 static PyMethodDef JusttestMethods[] = {
-    {"init",  mpitest_init, METH_VARARGS,
+    {"setup",  mpitest_setup, METH_VARARGS,
      "Initialize global truct"},
     {"makeseries",  mpitest_makeseries, METH_VARARGS,
      "Set values on array"},
@@ -109,6 +123,10 @@ static PyMethodDef JusttestMethods[] = {
      "barrier"},
     {"copyval",  mpitest_copyval, METH_VARARGS,
      "copyval"},
+    {"mpiinit",  mpitest_mpiinit, METH_VARARGS,
+     "mpiinit"},
+    {"mpifinalize",  mpitest_mpifinalize, METH_VARARGS,
+     "mpifinalize"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

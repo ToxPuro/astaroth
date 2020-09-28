@@ -1,8 +1,10 @@
 from distutils.core import setup, Extension
 import os 
 
-mpi_compile_args = os.popen("mpicc --showme:compile").read().strip().split(' ')
-mpi_link_args    = os.popen("mpicc --showme:link").read().strip().split(' ')
+#mpi_compile_args = os.popen("mpicc --showme:compile").read().strip().split(' ')
+#mpi_link_args    = os.popen("mpicc --showme:link").read().strip().split(' ')
+mpi_compile_args = os.popen("/home/mvaisala/pythonenv/openmpi/bin/mpicc --showme:compile").read().strip().split(' ')
+mpi_link_args    = os.popen("/home/mvaisala/pythonenv/openmpi/bin/mpicc --showme:link").read().strip().split(' ')
 
 print(mpi_compile_args)
 print(mpi_link_args)
