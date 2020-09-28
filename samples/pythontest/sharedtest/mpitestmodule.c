@@ -2,7 +2,11 @@
 #include <Python.h>
 #include <mpi.h>
 
-static float myglobal[10];
+#define MYARR 16
+
+#define DEBUG 1 
+
+static float myglobal[MYARR];
 
 static PyObject *
 mpitest_init(PyObject *self, PyObject *args) {
@@ -16,42 +20,95 @@ mpitest_init(PyObject *self, PyObject *args) {
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
+    initnum = pid*MYARR; 
+
     myglobal[0] = initnum;
 
-    printf("nprocs = %i, pid = %i, myglobal[0] = %f \n", nprocs, pid, myglobal[0]);
+    printf("Initializing nprocs = %i, pid = %i, myglobal[0] = %f \n", nprocs, pid, myglobal[0]);
 
     //MPI_Finalize();
 
     return Py_BuildValue("i", ok);
 }
 
-/*
 static PyObject *
-mpitest_multiply(PyObject *self, PyObject *args) {
-    int ok; double coeff;
+mpitest_makeseries(PyObject *self, PyObject *args) {
+    int ok, ind, pid; double coeff;
     ok = PyArg_ParseTuple(args, "d", &coeff);
-    myglobal.n = myglobal.n*(int) coeff; 
-    myglobal.b = myglobal.b*(float) coeff;
-    myglobal.f = myglobal.f*(double) coeff; 
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    for (ind = 0; ind < MYARR; ind++) {
+        myglobal[ind] =  ((float) pid * (float) MYARR ) + ((float) ind*(float) coeff);
+    } 
 
     return Py_BuildValue("i", ok);
 }
 
 static PyObject *
 mpitest_print(PyObject *self, PyObject *args) {
-    printf("%i, %f, %e\n", myglobal.n, myglobal.b, myglobal.f);
+    int ind, pid; 
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    printf("Array, pid = %i, [ ", pid) ;
+    for (ind = 0; ind < MYARR; ind++) {
+        printf("%.1f", myglobal[ind]) ;
+        if (ind == MYARR-1) {
+            printf(" ] \n") ;
+        } else {
+            printf(", ");
+        }
+    }
     return Py_BuildValue("i", 1);
 }
 
-*/
+static PyObject *
+mpitest_barrier(PyObject *self, PyObject *args) {
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    return Py_BuildValue("i", 1);
+}
+
+static PyObject *
+mpitest_copyval(PyObject *self, PyObject *args) {
+    int ok, element;
+    ok = PyArg_ParseTuple(args, "i", &element);
+
+    int pid, nprocs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    
+    float number, sendn;
+    int send_ind, recv_ind;
+    send_ind = pid+1;
+    recv_ind = pid-1;
+    if (send_ind >= nprocs) {send_ind = send_ind - nprocs;}
+    if (recv_ind < 0) {recv_ind = recv_ind + nprocs;}
+
+#if DEBUG
+    printf("pid %i, send_ind %i, recv_ind %i \n", pid, send_ind, recv_ind);
+#endif
+
+    sendn = myglobal[element];
+
+    MPI_Send(&sendn,  1, MPI_FLOAT, send_ind, 0, MPI_COMM_WORLD);
+    MPI_Recv(&number, 1, MPI_FLOAT, recv_ind, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    myglobal[MYARR-1-element] = number;
+
+    return Py_BuildValue("i", ok);
+}
+
 
 static PyMethodDef JusttestMethods[] = {
     {"init",  mpitest_init, METH_VARARGS,
      "Initialize global truct"},
-    //{"multiply",  mpitest_multiply, METH_VARARGS,
-    // "Multiply global truct"},
-    //{"print",  mpitest_print, METH_VARARGS,
-    // "print global struct"},
+    {"makeseries",  mpitest_makeseries, METH_VARARGS,
+     "Set values on array"},
+    {"print",  mpitest_print, METH_VARARGS,
+     "print global struct"},
+    {"barrier",  mpitest_barrier, METH_VARARGS,
+     "barrier"},
+    {"copyval",  mpitest_copyval, METH_VARARGS,
+     "copyval"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
