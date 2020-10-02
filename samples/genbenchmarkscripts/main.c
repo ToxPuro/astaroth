@@ -19,11 +19,11 @@ main(void)
         fprintf(fp, "#!/bin/bash\n");
         fprintf(fp, "#BATCH --job-name=astaroth\n");        // OK
         fprintf(fp, "#SBATCH --account=project_2000403\n"); // OK
-        fprintf(fp, "#SBATCH --time=01:30:00\n");           // OK
-        fprintf(fp, "#SBATCH --mem=48000\n");
-        fprintf(fp, "#SBATCH --partition=gpu\n");    // OK
-        fprintf(fp, "#SBATCH --exclusive\n");        // OK
-        fprintf(fp, "#SBATCH --cpus-per-task=10\n"); // OK
+        fprintf(fp, "#SBATCH --time=04:00:00\n");           // OK
+        fprintf(fp, "#SBATCH --mem=0\n");                   // OK
+        fprintf(fp, "#SBATCH --partition=gpu\n");           // OK
+        fprintf(fp, "#SBATCH --exclusive\n");               // OK
+        fprintf(fp, "#SBATCH --cpus-per-task=10\n");        // OK
         fprintf(fp, "#SBATCH --output=benchmark-%d-%%j.out\n", nprocs);
         // HACK: exclude misconfigured nodes on Puhti
         fprintf(fp, "#SBATCH -x "
@@ -58,7 +58,7 @@ main(void)
         // fprintf(fp, "mkdir -p profile_%d\n", nprocs);
 
         /*
-        const int nx = 256; // max size 1792;
+        const int nx = 256; // max size 2048;
         const int ny = nx;
         const int nz = nx;
 
@@ -73,11 +73,11 @@ main(void)
             "benchmark_decomp_1D",       "benchmark_decomp_2D",      "benchmark_decomp_3D",
             "benchmark_decomp_1D_comm",  "benchmark_decomp_2D_comm", "benchmark_decomp_3D_comm",
             "benchmark_meshsize_256",    "benchmark_meshsize_512",   "benchmark_meshsize_1024",
-            "benchmark_meshsize_1792",   "benchmark_stencilord_2",   "benchmark_stencilord_4",
+            "benchmark_meshsize_2048",   "benchmark_stencilord_2",   "benchmark_stencilord_4",
             "benchmark_stencilord_6",    "benchmark_stencilord_8",   "benchmark_timings_control",
             "benchmark_timings_comp",    "benchmark_timings_comm",   "benchmark_timings_default",
             "benchmark_timings_corners", "benchmark_weak_128",       "benchmark_weak_256",
-            "benchmark_weak_448",
+            "benchmark_weak_512",
         };
         for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
             int nn = 256;
@@ -85,27 +85,30 @@ main(void)
                 nn = 512;
             else if (strcmp(files[i], "benchmark_meshsize_1024") == 0)
                 nn = 1024;
-            else if (strcmp(files[i], "benchmark_meshsize_1792") == 0)
-                nn = 1792;
+            else if (strcmp(files[i], "benchmark_meshsize_2048") == 0)
+                nn = 2048;
             else if (strcmp(files[i], "benchmark_weak_128") == 0)
                 nn = 128;
-            else if (strcmp(files[i], "benchmark_weak_448") == 0)
-                nn = 448;
+            else if (strcmp(files[i], "benchmark_weak_512") == 0)
+                nn = 512;
 
-            // W/ Fredriks tunings 
+            // W/ Fredriks tunings
             // (may cause Assertion `status == UCS_OK' failed errors)
-            //fprintf(fp,
+            // fprintf(fp,
             //        "$(cd %s && UCX_RNDV_THRESH=16384 UCX_RNDV_SCHEME=get_zcopy "
             //        "UCX_MAX_RNDV_RAILS=1 srun ./benchmark %d %d %d && cd ..)\n",
             //        files[i], nn, nn, nn);
             if (nodes >= 2) {
                 fprintf(fp,
-                        "$(cd %s && UCX_RNDV_THRESH=16384 UCX_RNDV_SCHEME=get_zcopy UCX_MAX_RNDV_RAILS=1 srun --kill-on-bad-exit=0 ./benchmark %d %d %d && rm -f core.* && cd ..)\n",
+                        "$(cd %s && UCX_RNDV_THRESH=16384 UCX_RNDV_SCHEME=get_zcopy "
+                        "UCX_MAX_RNDV_RAILS=1 srun --kill-on-bad-exit=0 ./benchmark %d %d %d && rm "
+                        "-f core.* && cd ..)\n",
                         files[i], nn, nn, nn);
-
-            } else {
+            }
+            else {
                 fprintf(fp,
-                        "$(cd %s && srun --kill-on-bad-exit=0 ./benchmark %d %d %d && rm -f core.* && cd ..)\n",
+                        "$(cd %s && srun --kill-on-bad-exit=0 ./benchmark %d %d %d && rm -f core.* "
+                        "&& cd ..)\n",
                         files[i], nn, nn, nn);
             }
         }

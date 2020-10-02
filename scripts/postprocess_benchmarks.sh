@@ -21,7 +21,7 @@ process_input "benchmark_decomp_3D_comm"
 process_input "benchmark_meshsize_256"
 process_input "benchmark_meshsize_512"
 process_input "benchmark_meshsize_1024"
-process_input "benchmark_meshsize_1792"
+process_input "benchmark_meshsize_2048"
 
 process_input "benchmark_stencilord_2"
 process_input "benchmark_stencilord_4"
@@ -36,6 +36,6 @@ process_input "benchmark_timings_corners"
 
 process_input "benchmark_weak_128"
 process_input "benchmark_weak_256"
-process_input "benchmark_weak_448"
+process_input "benchmark_weak_512"
 
 cat $OUTPUT
