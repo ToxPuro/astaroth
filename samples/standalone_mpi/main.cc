@@ -369,7 +369,8 @@ main(int argc, char** argv)
 
 // JP: The following is directly from standalone/simulation.cc and modified to work with MPI
 // However, not extensively tested
-#if 0
+// MV: Starting adaptation now. 
+#if 1
     // Load config to AcMeshInfo
     AcMeshInfo info;
     if (argc > 1) {
@@ -408,8 +409,8 @@ main(int argc, char** argv)
     if (pid == 0) {
         acMeshCreate(info, &mesh);
         // TODO: This need to be possible to define in astaroth.conf
+        // MV: Does this set up the whole mesh or just proc 0 segment? 
         acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, &mesh);
-        // acmesh_init_to(INIT_TYPE_SIMPLE_CORE, mesh); //Initial condition for a collapse test
 
 #if LSINK
         acVertexBufferSet(VTXBUF_ACCRETION, 0.0, &mesh);
@@ -477,6 +478,9 @@ main(int argc, char** argv)
 
         // JP: !!! WARNING !!! acVertexBufferSet operates in host memory. The mesh is
         // never loaded to device memory. Is this intended?
+	// MV: Good find! This might be a bug. I think the intention was to set
+	// MV: VTXBUF_ACCRETION to 0 in the beginning of the time step (TODO
+	// MV: correct) 
         if (pid == 0)
             acVertexBufferSet(VTXBUF_ACCRETION, 0.0, mesh);
 
