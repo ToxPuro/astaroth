@@ -32,22 +32,38 @@
 
 static PyObject *
 astaroth_acDeviceCreate(PyObject *self, PyObject *args) {
+    AcResult acres;
+    int ok, id;
+    Device device;
+    AcMeshInfo device_config;
+    ok = PyArg_ParseTuple(args, "i??", id, device_config, device); // TODO: Figure out unit definitions. 
+    //acres = acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device);
+    acres = acDeviceCreate(id, device_config, &device);
 
-
-    return Py_BuildValue("i", 1);
+    return Py_BuildValue("i", acres);
 }
 
 static PyObject *
 astaroth_acDevicePrintInfo(PyObject *self, PyObject *args) {
+    AcResult acres;
+    int ok;
+    Device device;
+    ok = PyArg_ParseTuple(args, "?", device); // TODO: Figure out unit definitions. 
+    //acres = acDevicePrintInfo(const Device device);
+    acres = acDevicePrintInfo(device);
 
-
-    return Py_BuildValue("i", 1);
+    return Py_BuildValue("i", acres);
 }
 static PyObject *
 astaroth_acDeviceDestroy(PyObject *self, PyObject *args) {
+    AcResult acres;
+    int ok;
+    Device device;
+    ok = PyArg_ParseTuple(args, "?", device); // TODO: Figure out unit definitions. 
+    //acres = acDeviceDestroy(Device device);
+    acres = acDeviceDestroy(device);
 
-
-    return Py_BuildValue("i", 1);
+    return Py_BuildValue("i", acres);
 }
 
 static PyMethodDef AstarothMethods[] = {
