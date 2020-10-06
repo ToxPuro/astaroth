@@ -137,6 +137,13 @@ operator-(const AcReal3& a)
     return (AcReal3){-a.x, -a.y, -a.z};
 }
 
+static HOST_DEVICE_INLINE int3
+operator-(const int3& a)
+{
+    return (int3){-a.x, -a.y, -a.z};
+}
+
+
 static HOST_DEVICE_INLINE void
 operator-=(AcReal3& lhs, const AcReal3& rhs)
 {

@@ -20,7 +20,7 @@ main(void)
         fprintf(fp, "#BATCH --job-name=astaroth\n");
         fprintf(fp, "#SBATCH --account=project_2000403\n");
         fprintf(fp, "#SBATCH --time=04:00:00\n");
-        fprintf(fp, "#SBATCH --mem=32000\n");
+        fprintf(fp, "#SBATCH --mem=48000\n");
         fprintf(fp, "#SBATCH --partition=gpu\n");
         fprintf(fp, "#SBATCH --output=benchmark-%d-%%j.out\n", nprocs);
         // fprintf(fp, "#SBATCH --cpus-per-task=10\n");
@@ -32,6 +32,7 @@ main(void)
         fprintf(fp, "#SBATCH --gres=gpu:v100:%d\n", gpus_per_node);
         fprintf(fp, "#SBATCH -n %d\n", nprocs);
         fprintf(fp, "#SBATCH -N %d\n", nodes);
+        fprintf(fp, "#SBATCH -x r02g02,r03g[01,03,08],r04g[01,03-07],r13g[01-04],r14g[04,06-08],r15g08,r16g07,r17g06,r18g[02-05]\n");
         //fprintf(fp, "#SBATCH --exclusive\n");
         if (nprocs >= 4)
             fprintf(fp, "#SBATCH --ntasks-per-socket=2\n");
@@ -85,8 +86,13 @@ main(void)
                 nn = 128;
             else if (strcmp(files[i], "benchmark_weak_448") == 0)
                 nn = 448;
-
-            fprintf(fp, "$(cd %s && srun ./benchmark %d %d %d && cd ..)\n", files[i], nn, nn, nn);
+            
+            if (nodes > 1){
+                fprintf(fp, "$(cd %s && UCX_RNDV_THRESH=16384 UCX_RNDV_SCHEME=get_zcopy UCX_MAX_RNDV_RAILS=1 srun ./benchmark %d %d %d && cd ..)\n",
+                files[i], nn, nn, nn);
+            } else {
+                fprintf(fp, "$(cd %s && srun ./benchmark %d %d %d && cd ..)\n", files[i], nn, nn, nn);
+            }
         }
 
         fclose(fp);

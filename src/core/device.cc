@@ -2,8 +2,9 @@
 
 #include <string.h>
 #include <vector>
+//TODO: remove iostream once debugging messages are cleaned up
 #include <iostream>
-#include <chrono>
+#include <utility>
 
 #include "astaroth_utils.h"
 #include "errchk.h"
@@ -31,15 +32,22 @@
 
 #define NUM_SEGMENTS 26
 
-//Computational segments' communications dependencies
-#define NUM_FACE_DEPENDENCIES 1
-#define NUM_EDGE_DEPENDENCIES 3
+//Computational task dependencies
+#define NUM_COMPUTE_FACE_DEPENDENCIES 1
+#define NUM_COMPUTE_EDGE_DEPENDENCIES 3
 
 #if MPI_INCL_CORNERS
-#define NUM_CORNER_DEPENDENCIES 7
+#define NUM_COMPUTE_CORNER_DEPENDENCIES 7
 #else
-#define NUM_CORNER_DEPENDENCIES 6
+#define NUM_COMPUTE_CORNER_DEPENDENCIES 6
 #endif
+
+//Send task dependencies
+#define NUM_SEND_FACE_DEPENDENCIES 9
+#define NUM_SEND_EDGE_DEPENDENCIES 3
+
+#define NUM_SEND_CORNER_DEPENDENCIES 1
+
 
 
 
@@ -684,47 +692,62 @@ onTheSameNode(const uint64_t pid_a, const uint64_t pid_b)
 }
 
 static inline int3
-b0_to_segment_id(const int3 b0){
+segment_id_to_halo_segment_position(const int3 seg_id, const int3 grid_dimensions)
+{
     return (int3){
-        b0.x < NGHOST ? -1 : b0.x > NGHOST ? 1 : 0,
-        b0.y < NGHOST ? -1 : b0.y > NGHOST ? 1 : 0,
-        b0.z < NGHOST ? -1 : b0.z > NGHOST ? 1 : 0,
+        seg_id.x < 0 ? 0 : seg_id.x > 0 ? NGHOST + grid_dimensions.x : NGHOST,
+        seg_id.y < 0 ? 0 : seg_id.y > 0 ? NGHOST + grid_dimensions.y : NGHOST,
+        seg_id.z < 0 ? 0 : seg_id.z > 0 ? NGHOST + grid_dimensions.z : NGHOST,
+    };
+}
+
+
+static inline int3
+segment_id_to_local_segment_position(const int3 seg_id, const int3 grid_dimensions)
+{
+    return (int3){
+        seg_id.x > 0 ?  grid_dimensions.x : NGHOST,
+        seg_id.y > 0 ?  grid_dimensions.y : NGHOST,
+        seg_id.z > 0 ?  grid_dimensions.z : NGHOST,
     };
 }
 
 static inline int3
-segment_id_to_b0(const int3 h_id, const int3 nn){
+segment_id_to_dims(const int3 seg_id, const int3 grid_dimensions)
+{
     return (int3){
-        h_id.x < 0 ? 0 : h_id.x > 0 ? NGHOST + nn.x : NGHOST,
-        h_id.y < 0 ? 0 : h_id.y > 0 ? NGHOST + nn.y : NGHOST,
-        h_id.z < 0 ? 0 : h_id.z > 0 ? NGHOST + nn.z : NGHOST,
-    };
-}
-
-static inline int3
-segment_id_to_dims(const int3 h_id, const int3 nn){
-    return (int3){
-        h_id.x == 0? nn.x : NGHOST,
-        h_id.y == 0? nn.y : NGHOST,
-        h_id.z == 0? nn.z : NGHOST,
+        seg_id.x == 0? grid_dimensions.x : NGHOST,
+        seg_id.y == 0? grid_dimensions.y : NGHOST,
+        seg_id.z == 0? grid_dimensions.z : NGHOST,
     };
 }
 
 //Maps non-zero three-valued (-1,0,1) halo segment coords to a flat index from 0 to 25.
 static inline int
-segment_id_to_index(const int3 h_id){
-    return ((3+h_id.x)%3)*9 + ((3+h_id.y)%3)*3 + (3+h_id.z)%3 - 1;
+segment_id_to_index(const int3 seg_id){
+    return ((3+seg_id.x)%3)*9 + ((3+seg_id.y)%3)*3 + (3+seg_id.z)%3 - 1;
 }
 
 static inline int3
-index_to_segment_id(const int index){
-    int idx = index+1;
-    int3 segment_id = (int3){idx/9, (idx%9)/3, idx%3};
+index_to_segment_id(int index)
+{
+    index++;
+    int3 segment_id = (int3){index/9, (index%9)/3, index%3};
     segment_id.x = segment_id.x>1?-1:segment_id.x;
     segment_id.y = segment_id.y>1?-1:segment_id.y;
     segment_id.z = segment_id.z>1?-1:segment_id.z;
     return segment_id;
 }
+
+static inline int
+segment_type(const int3 seg_id){
+    int seg_type = (seg_id.x == 0?0:1)+(seg_id.y == 0?0:1)+(seg_id.z == 0?0:1);
+    if (seg_type > 3 || seg_type < 0){
+        throw std::runtime_error("Invalid segment id");
+    }
+    return seg_type; 
+}
+
 
 static PackedData
 acCreatePackedData(const int3 dims)
@@ -1013,34 +1036,31 @@ typedef struct ComputationTask {
     int3 segment_id;
     int id;
 
-
     int total_dependencies;
     int unfulfilled_dependencies;
-
+    
+    //std::vector<HaloExchangeTask> dependents;
 
     Device device;
     Stream stream;
 
-    ComputationTask(int3 seg_id, int3 nn, Device _device, Stream _stream)
-    :segment_id(seg_id), id(segment_id_to_index(seg_id)), device(_device), stream(_stream)
+    ComputationTask(int3 _segment_id, int3 nn, Device _device, Stream _stream)
+    :segment_id(_segment_id), id(segment_id_to_index(_segment_id)), device(_device), stream(_stream)
     {
         start = (int3){
-            seg_id.x == -1? NGHOST : seg_id.x == 1? nn.x : NGHOST*2,
-            seg_id.y == -1? NGHOST : seg_id.y == 1? nn.y : NGHOST*2,
-            seg_id.z == -1? NGHOST : seg_id.z == 1? nn.z : NGHOST*2
+            segment_id.x == -1? NGHOST : segment_id.x == 1? nn.x : NGHOST*2,
+            segment_id.y == -1? NGHOST : segment_id.y == 1? nn.y : NGHOST*2,
+            segment_id.z == -1? NGHOST : segment_id.z == 1? nn.z : NGHOST*2
         };
 
         dims = (int3){
-            seg_id.x == 0 ? nn.x - NGHOST*2 : NGHOST,
-            seg_id.y == 0 ? nn.y - NGHOST*2 : NGHOST,
-            seg_id.z == 0 ? nn.z - NGHOST*2 : NGHOST
+            segment_id.x == 0 ? nn.x - NGHOST*2 : NGHOST,
+            segment_id.y == 0 ? nn.y - NGHOST*2 : NGHOST,
+            segment_id.z == 0 ? nn.z - NGHOST*2 : NGHOST
         };
 
-        int seg_type = (seg_id.x == 0?0:1)+(seg_id.y == 0?0:1)+(seg_id.z == 0?0:1);
-        if (seg_type > 3 || seg_type < 0){
-            throw std::runtime_error("Error creating ComputationTask. Segment id is nonsensical");
-        }
-        total_dependencies = (int[]){0,NUM_FACE_DEPENDENCIES,NUM_EDGE_DEPENDENCIES, NUM_CORNER_DEPENDENCIES}[seg_type];
+        int seg_type = segment_type(segment_id);
+        total_dependencies = (int[]){0,NUM_COMPUTE_FACE_DEPENDENCIES,NUM_COMPUTE_EDGE_DEPENDENCIES, NUM_COMPUTE_CORNER_DEPENDENCIES}[seg_type];
         unfulfilled_dependencies = total_dependencies;
     }
 
@@ -1066,51 +1086,141 @@ typedef struct ComputationTask {
 } ComputationTask;
 
 
+#define BUFFER_CHAIN_LENGTH 2
+
+//HaloMessage contains all information needed to send or receive a single message
+//It's really just a wrapped PackedData, and I feel like an MPI_Request should be added to that struct instead
+
+typedef struct HaloMessage {
+    PackedData buffer;
+    MPI_Request *request;
+    int length;
+
+    HaloMessage(){
+        
+    }
+
+    HaloMessage(int3 dims, MPI_Request* _req)
+        :request(_req)
+    {
+        *request = MPI_REQUEST_NULL;
+        buffer = acCreatePackedData(dims);
+        length = dims.x * dims.y * dims.z * NUM_VTXBUF_HANDLES;
+    }
+
+/*
+    ~HaloMessage(){
+        std::cout<< "Destroying halo msg\n";
+        acDestroyPackedData(&buffer);
+        //For now, the grid takes care of freeing MPI requests
+    }
+*/
+} HaloMessage;
+
+typedef struct MessageBufferSwapChain {
+    int buf_idx;
+    std::vector<HaloMessage> buffers; //NAMING: buffer used twice already on different levels
+    MessageBufferSwapChain()
+        :buf_idx(0)
+    {
+        buffers.reserve(BUFFER_CHAIN_LENGTH);
+    }
+/*
+    ~MessageBufferSwapChain(){
+        std::cout<< "Destroying swap chain\n";
+        wait_all();
+        //buffers.clear();
+    }
+*/
+    void add_buffer(HaloMessage buffer){
+        buffers.push_back(buffer);
+    }
+    
+    void emplace_buffer(int3 dims, MPI_Request* req){
+        buffers.emplace_back(dims,req);
+    }
+    //May block to wait for a free buffer
+
+    HaloMessage get_current_buffer(){
+        return buffers[buf_idx];
+    }
+
+    HaloMessage get_fresh_buffer(){
+        
+        buf_idx = (buf_idx + 1) % BUFFER_CHAIN_LENGTH;
+        //std::cout << "Buffer idx " << buf_idx <<std::endl;
+        MPI_Request* req = buffers[buf_idx].request;
+        //std::cout << "request " << *req << " at address " << req << std::endl;
+        if (*req != MPI_REQUEST_NULL){
+            MPI_Wait(req, MPI_STATUS_IGNORE);
+        }
+        return buffers[buf_idx];
+    }
+
+    void wait_all(){
+        //TODO:IMPLEMENT
+        std::cout << "WARNING, waiting for buffer chain not implemented! \n"; 
+    }
+} MessageBufferSwapChain;
+
 typedef struct HaloExchangeTask{
-
+    
     int3 segment_id; //direction from center of comp domain
-    int3 b0; //b0 = recv coordinate within comp domain
-    int3 a0; //a0 = send coordinate within comp domain
+    //TODO: rename b0 and a0 to halo_coord and grid_coord respectively
+    int3 halo_segment_position;
+    int3 local_segment_position;
     bool active;
+    bool is_node_local_exchange;
 
-    PackedData src; //The actual buffers
-    PackedData dst; //
+    //MessageBufferSwapChain recv_buffers;
+    HaloMessage* recv_buffer;
+    MessageBufferSwapChain send_buffers;
 
     std::vector<ComputationTask*> dependents;
 
-    int rank;
-    int tag;
+    int send_tag;
+    int recv_tag;
     int msglen;
-    int recv_rank;
-    int send_rank;
-    
-    MPI_Request* recv_req;
-    MPI_Request* send_req;
+    int rank;
+    int neighbor_rank;
 
     Device device;
     cudaStream_t stream;
 
-    HaloExchangeTask(const int3 _segment_id, const int3 nn, const int _rank, 
-                const int3 pid3d, const uint3_64 decomp, MPI_Request* _recv_req, MPI_Request* _send_req, const Device _device)
-    :segment_id(_segment_id), rank(_rank), recv_req(_recv_req), send_req(_send_req), device(_device)
+    HaloExchangeTask(const Device _device, const int _rank, const int3 _segment_id, const uint3_64 decomposition, const int3 grid_dimensions, MPI_Request* recv_requests, MPI_Request* send_requests)
+        :rank(_rank), segment_id(_segment_id), device(_device)
     {
 
-        active = ( ( MPI_INCL_CORNERS ) || segment_id.x == 0 || segment_id.y == 0 || segment_id.z == 0) ? true:false;
+        int seg_type = segment_type(segment_id);
+        active = (( MPI_INCL_CORNERS ) || seg_type != 3)? true:false;
 
-        b0 = segment_id_to_b0(segment_id,nn);
-        a0 = mod(b0 - nghost, nn) + nghost;
-        const int3 dims = segment_id_to_dims(segment_id,nn);
+        //total_dependencies = (int[]){0,NUM_SEND_FACE_DEPENDENCIES,NUM_SEND_EDGE_DEPENDENCIES, NUM_SEND_CORNER_DEPENDENCIES}[seg_type];
+        //unfulfilled_dependencies = total_dependencies;
 
-        cudaSetDevice(device->id);
-        src = acCreatePackedData(dims);
-        dst = acCreatePackedData(dims);
- 
+//Coordinates
+        halo_segment_position = segment_id_to_halo_segment_position(segment_id, grid_dimensions);
+        local_segment_position = segment_id_to_local_segment_position(segment_id, grid_dimensions);
+
 //MPI
-        msglen    = dims.x * dims.y * dims.z * NUM_VTXBUF_HANDLES;
-        tag       = segment_id_to_index(segment_id);
-        recv_rank = getPid(pid3d + segment_id, decomp);
-        send_rank = getPid(pid3d - segment_id, decomp);
+        const int3 domain_coordinates = getPid3D(rank, decomposition);
+        const int3 segment_dimensions = segment_id_to_dims(segment_id, grid_dimensions);
+
+        neighbor_rank = getPid(domain_coordinates + segment_id, decomposition);
+        
+        send_tag = segment_id_to_index(segment_id);
+        recv_tag = segment_id_to_index(-segment_id);
+
+
+        recv_buffer = (HaloMessage*) malloc(sizeof(HaloMessage));
+        *recv_buffer = HaloMessage(segment_dimensions,&(recv_requests[send_tag]));        
+    
+        send_buffers = MessageBufferSwapChain();
+        for (int i = 0; i < BUFFER_CHAIN_LENGTH; i++){
+            send_buffers.emplace_buffer(segment_dimensions,&(send_requests[i*NUM_SEGMENTS+send_tag]));
+        }
 //CUDA
+        cudaSetDevice(device->id);
+
         int low_prio, high_prio;
         cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
@@ -1122,100 +1232,107 @@ typedef struct HaloExchangeTask{
     ~HaloExchangeTask()
     {
         cudaSetDevice(device->id);
-
-        acDestroyPackedData(&src);       
-        acDestroyPackedData(&dst);
         dependents.clear();
         cudaStreamDestroy(stream);
     }
-    void Pack()
+    
+    friend std::ostream& operator<<(std::ostream& os, HaloExchangeTask const & hxt){
+            return os
+                    << "{\"segment_id\": [" << hxt.segment_id.x <<","<< hxt.segment_id.y << ","<<hxt.segment_id.z << "]," 
+                    << "\n\"rank\":" << hxt.rank  <<","
+                    << "\n\"neighbor_rank\":" << hxt.neighbor_rank  <<","
+                    << "\n\"send_tag\": " << hxt.send_tag << ", \"recv_tag\": " << hxt.recv_tag <<","
+                    << "\n\"local position\": ["<< hxt.local_segment_position.x <<"," <<hxt.local_segment_position.y << ","<<hxt.local_segment_position.z << "],"
+                    << "\n\"halo position\": ["<< hxt.halo_segment_position.x <<"," <<hxt.halo_segment_position.y << ","<<hxt.halo_segment_position.z << "]}";
+    }
+    
+    void pack()
     {
-        acKernelPackData(stream, device->vba, a0, src);
+        auto msg = send_buffers.get_fresh_buffer();
+        //auto msg = *send_buffer;
+        acKernelPackData(stream, device->vba, local_segment_position, msg.buffer);
     }
 
-    void Unpack()
+    void unpack()
     {   
-        src.pinned = false;
-        acUnpinPackedData(device, stream, &dst);
-        acKernelUnpackData(stream, dst, b0, device->vba);
+        //auto msg = recv_buffers.get_current_buffer();
+        auto msg = *recv_buffer;
+        msg.buffer.pinned = false;
+        acUnpinPackedData(device, stream, &(msg.buffer));
+        acKernelUnpackData(stream, msg.buffer, halo_segment_position, device->vba);
     }
-    void Sync()
+    void sync()
     {
         cudaStreamSynchronize(stream);
     }
     
-    void ReceiveUnpinned()
+    void receiveDevice()
     {
-        MPI_Irecv(dst.data, msglen, AC_MPI_TYPE, recv_rank, tag, MPI_COMM_WORLD, recv_req);
-        dst.pinned = false;
+        //auto msg = recv_buffers.get_fresh_buffer();
+        auto msg = *recv_buffer;
+        MPI_Irecv(msg.buffer.data, msg.length, AC_MPI_TYPE, neighbor_rank, recv_tag, MPI_COMM_WORLD, msg.request);
+        msg.buffer.pinned = false;
     }
 
-    void ReceivePinned()
+    void receiveHost()
     {
-        MPI_Irecv(dst.data_pinned, msglen, AC_MPI_TYPE, recv_rank, tag, MPI_COMM_WORLD, recv_req);
-        dst.pinned = true;
+        //auto msg = recv_buffers.get_fresh_buffer();
+        auto msg = *recv_buffer;
+        MPI_Irecv(msg.buffer.data_pinned, msg.length, AC_MPI_TYPE, neighbor_rank, recv_tag, MPI_COMM_WORLD, msg.request);
+        msg.buffer.pinned = true;
     }
 
 
-    void SendUnpinned()
+    void sendDevice()
     {
-        Sync();
-        MPI_Isend(src.data, msglen, AC_MPI_TYPE, send_rank, tag, MPI_COMM_WORLD, send_req);
-    }
-    
-    void SendPinned()
-    {
-        acPinPackedData(device, stream, &src);
-        Sync();
-        MPI_Isend(src.data_pinned, msglen, AC_MPI_TYPE, send_rank, tag, MPI_COMM_WORLD, send_req);
-
-    }
-
-    void
-    TransferUnPinned()
-    {
-        //cudaSetDevice(device->id);
-        ReceiveUnpinned();
-        SendUnpinned();
-    }
-
-    void
-    TransferPinned()
-    {
-        //cudaSetDevice(device->id);
-        if (onTheSameNode(rank, recv_rank))
-            ReceiveUnpinned();
-        else 
-            ReceivePinned();
-
-        if (onTheSameNode(rank, send_rank))
-            SendUnpinned();
-        else 
-            SendPinned();
+        sync();
+        auto msg = send_buffers.get_current_buffer();
+        //auto msg = *send_buffer;
+        MPI_Isend(msg.buffer.data, msg.length, AC_MPI_TYPE, neighbor_rank, send_tag, MPI_COMM_WORLD, msg.request);
     }
     
+    void sendHost()
+    {
+        auto msg = send_buffers.get_current_buffer();
+        //auto msg = *send_buffer;
+        acPinPackedData(device, stream, &msg.buffer);
+        sync();
+        MPI_Isend(msg.buffer.data_pinned, msg.length, AC_MPI_TYPE, neighbor_rank, send_tag, MPI_COMM_WORLD, msg.request);
+    }
+
     void
-    Transfer()
+    exchangeDevice()
+    {
+        //cudaSetDevice(device->id);
+        receiveDevice();
+        sendDevice();
+    }
+
+    void
+    exchangeHost()
+    {
+        //cudaSetDevice(device->id);
+        //TODO: is it sensible to always use CUDA memory for node-local exchanges?
+        //What if MPI doesn't support CUDA? 
+        if (is_node_local_exchange){
+            receiveDevice();
+            sendDevice();
+        }else{ 
+            receiveHost();
+            sendHost();
+        }
+    }
+    
+    void
+    exchange()
     {
 #if MPI_USE_PINNED == (1)
-        TransferPinned();
+        exchangeHost();
 #else 
-        TransferUnPinned();
+        exchangeDevice();
 #endif
     }
 
-    void
-    SyncAsync(int isubstep, AcReal dt)
-    {
-        // FulfillDependency is not threadsafe, so this won't necessarily work
-        // 
-        //async{
-            Sync();
-            for (auto &dependent : dependents){
-                dependent->FulfillDependency(isubstep, dt);
-            }
-        //}
-    }
 } HaloExchangeTask;
 
 typedef struct Grid{
@@ -1228,8 +1345,19 @@ typedef struct Grid{
     std::vector<ComputationTask> outer_segments;
     ComputationTask* inner_domain;
 
-    MPI_Request* send_reqs;
     MPI_Request* recv_reqs;
+    MPI_Request* send_reqs;
+
+    /*
+    void swapSendBuffers(){
+        //noop if back_send_reqs consists of MPI_REQUEST_NULLs
+        MPI_Waitall(NUM_SEGMENTS, back_send_reqs, MPI_STATUSES_IGNORE);
+        std::swap(send_reqs,back_send_reqs);
+        for (auto &halo_task: halo_exchange_tasks){
+            halo_task.swapSendBuffers();
+        }
+    }
+    */
 
 } Grid;
 
@@ -1298,7 +1426,7 @@ acGridInit(const AcMeshInfo info)
     acMeshCreate(submesh_info, &submesh);
 
     // Configure
-    const int3 nn = (int3){
+    const int3 grid_dimensions = (int3){
         device->local_config.int_params[AC_nx],
         device->local_config.int_params[AC_ny],
         device->local_config.int_params[AC_nz],
@@ -1313,35 +1441,46 @@ acGridInit(const AcMeshInfo info)
     grid.outer_segments.reserve(NUM_SEGMENTS);
 
     for (int idx = 0; idx < NUM_SEGMENTS; idx++){
-        const int3 seg_id = index_to_segment_id(idx);
+        const int3 segment_id = index_to_segment_id(idx);
         Stream stream = (Stream)(idx + STREAM_DEFAULT);
-        grid.outer_segments.emplace_back(seg_id, nn, device, stream);
+        grid.outer_segments.emplace_back(segment_id, grid_dimensions, device, stream);
     }
     
     grid.inner_domain = (ComputationTask*)malloc(sizeof(ComputationTask));
-    *grid.inner_domain = ComputationTask((int3){0,0,0}, nn, device, STREAM_26);
+    *grid.inner_domain = ComputationTask((int3){0,0,0}, grid_dimensions, device, STREAM_26);
 
     grid.halo_exchange_tasks.clear();
     grid.halo_exchange_tasks.reserve(NUM_SEGMENTS);
-    grid.send_reqs = (MPI_Request*) malloc(sizeof(MPI_Request)*NUM_SEGMENTS);
+    
     grid.recv_reqs = (MPI_Request*) malloc(sizeof(MPI_Request)*NUM_SEGMENTS);
+    //grid.recv_reqs = (MPI_Request*) malloc(sizeof(MPI_Request)*NUM_SEGMENTS*BUFFER_CHAIN_LENGTH);
+    grid.send_reqs = (MPI_Request*) malloc(sizeof(MPI_Request)*NUM_SEGMENTS*BUFFER_CHAIN_LENGTH);
 
-    for (int idx = 0; idx < NUM_SEGMENTS; idx++){
-        const int3 seg_id = index_to_segment_id(idx);
-        grid.recv_reqs[idx] = MPI_REQUEST_NULL;
-        grid.send_reqs[idx] = MPI_REQUEST_NULL;
-        grid.halo_exchange_tasks.emplace_back(seg_id, nn, pid, pid3d, decomposition,  &grid.recv_reqs[idx], &grid.send_reqs[idx], device);
-        //A little ugly, but it gets the job done: loop through all permutations of {-1,0,1}^3 where all nonzero variables match the segment_id
-        //TODO:call reserve on each halo_exchange_task.dependents, either in the HaloExchangeTask constructor or here
-        for (int x = (seg_id.x == 0? -1: seg_id.x); x< 2 && (seg_id.x ==0 || seg_id.x == x); x++){
-            for (int y = (seg_id.y == 0? -1: seg_id.y); y< 2 && (seg_id.y ==0 || seg_id.y == y); y++){
-                for (int z = (seg_id.z == 0?  -1: seg_id.z); z< 2 && (seg_id.z ==0 || seg_id.z == z); z++){
-                    const int dependent_idx = segment_id_to_index((int3){x,y,z});
-                    grid.halo_exchange_tasks[idx].dependents.push_back(&grid.outer_segments[dependent_idx]);
-                }
+
+    for (int i = 0; i < NUM_SEGMENTS; i++){
+        grid.halo_exchange_tasks.emplace_back(device, pid, index_to_segment_id(i),
+                                              decomposition, grid_dimensions,
+                                              grid.recv_reqs, grid.send_reqs);
+   
+    }
+
+    for (int halo_exchange_idx = 0; halo_exchange_idx  < NUM_SEGMENTS; halo_exchange_idx++){
+
+        const int3 halo_seg_id = index_to_segment_id(halo_exchange_idx);
+
+        for (int compute_idx = 0; compute_idx < NUM_SEGMENTS; compute_idx++){
+
+            const int3 compute_seg_id = index_to_segment_id(compute_idx);
+
+            if (  ((halo_seg_id.x == 0) || (halo_seg_id.x == compute_seg_id.x))
+                &&((halo_seg_id.y == 0) || (halo_seg_id.y == compute_seg_id.y))
+                &&((halo_seg_id.z == 0) || (halo_seg_id.z == compute_seg_id.z))){
+
+                grid.halo_exchange_tasks[halo_exchange_idx].dependents.push_back(&grid.outer_segments[compute_idx]);
             }
         }
     }
+    
     grid.initialized = true;
 
     acGridSynchronizeStream(STREAM_ALL);
@@ -1355,8 +1494,27 @@ acGridQuit(void)
     acGridSynchronizeStream(STREAM_ALL);
 
     grid.halo_exchange_tasks.clear();
+
+    //MPI_Waitall(NUM_SEGMENTS, grid.recv_reqs, MPI_STATUSES_IGNORE);
+    //MPI_Waitall(NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
+        
+    for (int i = 0; i < NUM_SEGMENTS; i++){
+        MPI_Request* req = &(grid.recv_reqs[i]);
+        if (*req != MPI_REQUEST_NULL)
+            MPI_Request_free(req);    
+    }
+
+    for (int i = 0; i < NUM_SEGMENTS*BUFFER_CHAIN_LENGTH; i++){
+        MPI_Request* req = &(grid.send_reqs[i]);
+        if (*req != MPI_REQUEST_NULL)
+            MPI_Request_free(req);    
+    }
+
     free(grid.recv_reqs);
     free(grid.send_reqs);
+
+    grid.outer_segments.clear();
+    free(grid.inner_domain);
 
     grid.initialized   = false;
     grid.decomposition = (uint3_64){0, 0, 0};
@@ -1398,37 +1556,24 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
-
     const Device device = grid.device;
 
     acDeviceSynchronizeStream(device, stream);
     cudaSetDevice(device->id);
     MPI_Barrier(MPI_COMM_WORLD);
+
     for (int isubstep = 0; isubstep < 3; ++isubstep) {
+        
 #if MPI_COMM_ENABLED
-
-#if PACK_PIPELINE
-        for (int i = 0; 0 < NUM_SEGMENTS+1; i++){
-            if (i < NUM_SEGMENTS && grid.halo_exchange_tasks[i].active){
-                grid.halo_exchange_tasks[i].Pack();
-            }
-            if (i > 0 && grid.halo_exchange_tasks[i-1].active){
-                grid.halo_exchange_tasks[i-1].Transfer();
-            }
-
-        }
-#else
         for (auto &halo_task : grid.halo_exchange_tasks){
             if (halo_task.active)
-                halo_task.Pack();
+                halo_task.pack();
         }
         
         for (auto &halo_task : grid.halo_exchange_tasks){
             if (halo_task.active)
-                halo_task.Transfer();
+                halo_task.exchange();
         }
-#endif //PACK_PIPELINE
-
 #endif //MPI_COMM_ENABLED
 
 #if MPI_COMPUTE_ENABLED
@@ -1441,27 +1586,37 @@ acGridIntegrate(const Stream stream, const AcReal dt)
         for (int n = 0; n < NUM_SEGMENTS+1; n++){
             prev_idx = idx;
             if (n < NUM_SEGMENTS){
+                //TODO: this needs fixin
                 MPI_Waitany(NUM_SEGMENTS, grid.recv_reqs, &idx, MPI_STATUS_IGNORE);
+                //idx = recv index in send order
                 if (grid.halo_exchange_tasks[idx].active && idx >= 0 && idx < NUM_SEGMENTS){
-                    grid.halo_exchange_tasks[idx].Unpack();
+                    grid.halo_exchange_tasks[idx].unpack();
                 }
             }
             if(n > 0){
                 if ( grid.halo_exchange_tasks[prev_idx].active && prev_idx >= 0 && prev_idx < NUM_SEGMENTS){
-                    grid.halo_exchange_tasks[prev_idx].Sync();
+                    grid.halo_exchange_tasks[prev_idx].sync();
                     for (auto &dependent : grid.halo_exchange_tasks[prev_idx].dependents){
                         dependent->FulfillDependency(isubstep, dt);
                     }
                 }
             }
-
         }
+        /*
+        for (auto & task : grid.outer_segments){
+            task.compute(isubstep,dt);
+        }
+        */
 #endif 
-        MPI_Waitall(NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
+        //MPI_Waitall(NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
+        //grid.swapSendBuffers();
         acDeviceSwapBuffers(device);
         acDeviceSynchronizeStream(device, STREAM_ALL); // Wait until inner and outer done
     }
-    //MPI_Waitall(NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
+
+    MPI_Waitall(NUM_SEGMENTS*BUFFER_CHAIN_LENGTH, grid.send_reqs, MPI_STATUSES_IGNORE);
+    //<-... send
+    //
     return AC_SUCCESS;
 }
 
@@ -1473,17 +1628,17 @@ acGridPeriodicBoundconds(const Stream stream)
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.Pack(); }
+    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.pack(); }
     
     MPI_Barrier(MPI_COMM_WORLD);
 
-    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.Transfer(); }
+    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.exchange(); }
     
     MPI_Waitall(NUM_SEGMENTS, grid.recv_reqs, MPI_STATUSES_IGNORE);    
 
-    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.Unpack(); }
+    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.unpack(); }
 
-    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.Sync(); }
+    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.sync(); }
 
     MPI_Waitall(NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);    
 
