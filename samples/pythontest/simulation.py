@@ -22,7 +22,13 @@
 # Example draft of who simulation mode would run in Python
 # Based on astaroth/samples/standalone_mpi/main.cc 
 
+import sys 
+
+sys.runcommand("cmake ...")  # Run Cmake before 
+
+
 from mpi4py import MPI # For booting up MPI in Python.
+#print a warning if now same MPI librari in use. 
 import astaroth        # Astaroth API invocation as a C extension.
 import actools         # Python library for helpful host-level tools.
 
@@ -43,9 +49,9 @@ for t_step in range(0, 100):
     dt = actools.calc_timestep(mesh)
     astaroth.cGridIntegrate(STREAM_DEFAULT, dt)
 
-    astaroth.acGridReduceVec(STREAM_DEFAULT, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, uumin)
-    astaroth.acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, uumax)
-    astaroth.acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, uurms)
+    astaroth.acGridReduceVec(astaroth.interpreter_constants["STREAM_DEFAULT"], RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, uumin)
+    astaroth.acGridReduceVec(astaroth.STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, uumax)
+    astaroth.acGridReduceVec(astaroth.STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, uurms)
 
     print("Step %d, dt: %g\n" % (t_step, dt))
     print("%*s: %.3e, %.3e, %.3e\n UU" % (uumin, uumax, uurms))
