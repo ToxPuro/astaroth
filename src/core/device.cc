@@ -1170,7 +1170,6 @@ typedef struct HaloExchangeTask{
     int3 halo_segment_position;
     int3 local_segment_position;
     bool active;
-    bool is_node_local_exchange;
 
     //MessageBufferSwapChain recv_buffers;
     HaloMessage* recv_buffer;
@@ -1182,7 +1181,8 @@ typedef struct HaloExchangeTask{
     int recv_tag;
     int msglen;
     int rank;
-    int neighbor_rank;
+    int send_rank;
+    int recv_rank;
 
     Device device;
     cudaStream_t stream;
@@ -1196,19 +1196,25 @@ typedef struct HaloExchangeTask{
 
         //total_dependencies = (int[]){0,NUM_SEND_FACE_DEPENDENCIES,NUM_SEND_EDGE_DEPENDENCIES, NUM_SEND_CORNER_DEPENDENCIES}[seg_type];
         //unfulfilled_dependencies = total_dependencies;
+        
+        //foreign = segment_id => pipeline
+        //foreign = -segment_id => mirror-symmetrical
+        const int3 foreign_segment_id = -segment_id;
 
 //Coordinates
         halo_segment_position = segment_id_to_halo_segment_position(segment_id, grid_dimensions);
-        local_segment_position = segment_id_to_local_segment_position(segment_id, grid_dimensions);
+        local_segment_position = segment_id_to_local_segment_position(-foreign_segment_id, grid_dimensions);
 
 //MPI
         const int3 domain_coordinates = getPid3D(rank, decomposition);
         const int3 segment_dimensions = segment_id_to_dims(segment_id, grid_dimensions);
+        
 
-        neighbor_rank = getPid(domain_coordinates + segment_id, decomposition);
+        send_rank = getPid(domain_coordinates + segment_id, decomposition);
+        recv_rank = getPid(domain_coordinates - foreign_segment_id, decomposition);
         
         send_tag = segment_id_to_index(segment_id);
-        recv_tag = segment_id_to_index(-segment_id);
+        recv_tag = segment_id_to_index(foreign_segment_id);
 
 
         recv_buffer = (HaloMessage*) malloc(sizeof(HaloMessage));
@@ -1236,6 +1242,7 @@ typedef struct HaloExchangeTask{
         cudaStreamDestroy(stream);
     }
     
+/*
     friend std::ostream& operator<<(std::ostream& os, HaloExchangeTask const & hxt){
             return os
                     << "{\"segment_id\": [" << hxt.segment_id.x <<","<< hxt.segment_id.y << ","<<hxt.segment_id.z << "]," 
@@ -1245,7 +1252,7 @@ typedef struct HaloExchangeTask{
                     << "\n\"local position\": ["<< hxt.local_segment_position.x <<"," <<hxt.local_segment_position.y << ","<<hxt.local_segment_position.z << "],"
                     << "\n\"halo position\": ["<< hxt.halo_segment_position.x <<"," <<hxt.halo_segment_position.y << ","<<hxt.halo_segment_position.z << "]}";
     }
-    
+  */  
     void pack()
     {
         auto msg = send_buffers.get_fresh_buffer();
@@ -1270,7 +1277,7 @@ typedef struct HaloExchangeTask{
     {
         //auto msg = recv_buffers.get_fresh_buffer();
         auto msg = *recv_buffer;
-        MPI_Irecv(msg.buffer.data, msg.length, AC_MPI_TYPE, neighbor_rank, recv_tag, MPI_COMM_WORLD, msg.request);
+        MPI_Irecv(msg.buffer.data, msg.length, AC_MPI_TYPE, recv_rank, recv_tag, MPI_COMM_WORLD, msg.request);
         msg.buffer.pinned = false;
     }
 
@@ -1278,7 +1285,7 @@ typedef struct HaloExchangeTask{
     {
         //auto msg = recv_buffers.get_fresh_buffer();
         auto msg = *recv_buffer;
-        MPI_Irecv(msg.buffer.data_pinned, msg.length, AC_MPI_TYPE, neighbor_rank, recv_tag, MPI_COMM_WORLD, msg.request);
+        MPI_Irecv(msg.buffer.data_pinned, msg.length, AC_MPI_TYPE, recv_rank, recv_tag, MPI_COMM_WORLD, msg.request);
         msg.buffer.pinned = true;
     }
 
@@ -1288,7 +1295,7 @@ typedef struct HaloExchangeTask{
         sync();
         auto msg = send_buffers.get_current_buffer();
         //auto msg = *send_buffer;
-        MPI_Isend(msg.buffer.data, msg.length, AC_MPI_TYPE, neighbor_rank, send_tag, MPI_COMM_WORLD, msg.request);
+        MPI_Isend(msg.buffer.data, msg.length, AC_MPI_TYPE, send_rank, send_tag, MPI_COMM_WORLD, msg.request);
     }
     
     void sendHost()
@@ -1297,7 +1304,7 @@ typedef struct HaloExchangeTask{
         //auto msg = *send_buffer;
         acPinPackedData(device, stream, &msg.buffer);
         sync();
-        MPI_Isend(msg.buffer.data_pinned, msg.length, AC_MPI_TYPE, neighbor_rank, send_tag, MPI_COMM_WORLD, msg.request);
+        MPI_Isend(msg.buffer.data_pinned, msg.length, AC_MPI_TYPE, send_rank, send_tag, MPI_COMM_WORLD, msg.request);
     }
 
     void
@@ -1313,14 +1320,17 @@ typedef struct HaloExchangeTask{
     {
         //cudaSetDevice(device->id);
         //TODO: is it sensible to always use CUDA memory for node-local exchanges?
-        //What if MPI doesn't support CUDA? 
-        if (is_node_local_exchange){
+        //What if the MPI lib doesn't support CUDA? 
+        
+        if (onTheSameNode(rank,recv_rank))
             receiveDevice();
-            sendDevice();
-        }else{ 
+        else
             receiveHost();
+
+        if (onTheSameNode(rank,send_rank))
+            sendDevice();
+        else 
             sendHost();
-        }
     }
     
     void
@@ -1461,12 +1471,22 @@ acGridInit(const AcMeshInfo info)
         grid.halo_exchange_tasks.emplace_back(device, pid, index_to_segment_id(i),
                                               decomposition, grid_dimensions,
                                               grid.recv_reqs, grid.send_reqs);
-   
-    }
 
+        const int3 seg_id = index_to_segment_id(i);
+        for (int x = (seg_id.x == 0? -1: seg_id.x); x< 2 && (seg_id.x ==0 || seg_id.x == x); x++){
+            for (int y = (seg_id.y == 0? -1: seg_id.y); y< 2 && (seg_id.y ==0 || seg_id.y == y); y++){
+                for (int z = (seg_id.z == 0?  -1: seg_id.z); z< 2 && (seg_id.z ==0 || seg_id.z == z); z++){
+                    const int dependent_idx = segment_id_to_index((int3){x,y,z});
+                    grid.halo_exchange_tasks[i].dependents.push_back(&grid.outer_segments[dependent_idx]);
+                }
+            }
+        }
+    }
+    /*
     for (int halo_exchange_idx = 0; halo_exchange_idx  < NUM_SEGMENTS; halo_exchange_idx++){
 
-        const int3 halo_seg_id = index_to_segment_id(halo_exchange_idx);
+        const int3 local_seg_id = index_to_segment_id(halo_exchange_idx);
+        const int3 halo_seg_id = -local_seg_id;
 
         for (int compute_idx = 0; compute_idx < NUM_SEGMENTS; compute_idx++){
 
@@ -1480,7 +1500,7 @@ acGridInit(const AcMeshInfo info)
             }
         }
     }
-    
+    */
     grid.initialized = true;
 
     acGridSynchronizeStream(STREAM_ALL);
@@ -1586,9 +1606,7 @@ acGridIntegrate(const Stream stream, const AcReal dt)
         for (int n = 0; n < NUM_SEGMENTS+1; n++){
             prev_idx = idx;
             if (n < NUM_SEGMENTS){
-                //TODO: this needs fixin
                 MPI_Waitany(NUM_SEGMENTS, grid.recv_reqs, &idx, MPI_STATUS_IGNORE);
-                //idx = recv index in send order
                 if (grid.halo_exchange_tasks[idx].active && idx >= 0 && idx < NUM_SEGMENTS){
                     grid.halo_exchange_tasks[idx].unpack();
                 }
@@ -1602,12 +1620,10 @@ acGridIntegrate(const Stream stream, const AcReal dt)
                 }
             }
         }
-        /*
-        for (auto & task : grid.outer_segments){
-            task.compute(isubstep,dt);
-        }
-        */
 #endif 
+        //for (auto &task : grid.outer_segments){
+        //    task.compute(isubstep,dt);
+        //}
         //MPI_Waitall(NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
         //grid.swapSendBuffers();
         acDeviceSwapBuffers(device);
