@@ -30,6 +30,7 @@
 #include "errchk.h"
 #include "host_forcing.h"
 #include "host_memory.h"
+#include "math_utils.h"
 
 #include <string.h>
 #include <sys/stat.h>
@@ -241,7 +242,7 @@ print_diagnostics_host(const AcMesh mesh, const int step, const AcReal dt, const
 // JP: EXECUTES ON MULTIPLE GPUS, MUST BE CALLED FROM ALL PROCS
 static inline void
 print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* diag_file,
-                  const AcReal sink_mass, const AcReal accreted_mass)
+                  const AcReal sink_mass, const AcReal accreted_mass, int* found_nan)
 {
 
     AcReal buf_rms, buf_max, buf_min;
@@ -287,6 +288,10 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
         printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
                double(buf_min), double(buf_rms), double(buf_max));
         fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+
+        if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
+            *found_nan = 1;
+        }
     }
 
     if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
@@ -437,9 +442,9 @@ main(int argc, char** argv)
     AcReal t_step           = 0.0;
     FILE* diag_file         = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
-    //int found_nan = 0, found_stop = 0; // Nan or inf finder to give an error signal
-    //int dtcounter = 0;
-    //AcReal dt_typical    = 0.0;
+    int found_nan = 0, found_stop = 0; // Nan or inf finder to give an error signal
+    int dtcounter = 0;
+    AcReal dt_typical    = 0.0;
 
     AcMesh mesh;
     ///////////////////////////////// PROC 0 BLOCK START ///////////////////////////////////////////
@@ -544,9 +549,9 @@ main(int argc, char** argv)
 
         t_step += dt;
 
-        //if (i < start_step + 100) {
-        //   dt_typical = dt;
-        //}
+        if (i < start_step + 100) {
+           dt_typical = dt;
+        }
 
         /* Save the simulation state and print diagnostics */
         if ((i % save_steps) == 0) {
@@ -557,7 +562,7 @@ main(int argc, char** argv)
                 timeseries.ts.
             */
 
-            print_diagnostics(i, dt, t_step, diag_file, sink_mass, accreted_mass);
+            print_diagnostics(i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
 #if LSINK
             printf("sink mass is: %.15e \n", double(sink_mass));
             printf("accreted mass is: %.15e \n", double(accreted_mass));
@@ -601,7 +606,7 @@ main(int argc, char** argv)
             }
         }
 
-        /*
+        
         // End loop if dt is too low
         if (dt < dt_typical/AcReal(1e5)) {
             if (dtcounter > 10) {
@@ -644,7 +649,6 @@ main(int argc, char** argv)
                 save_mesh(mesh, i, t_step);
             break;
         }
-        */      
 
     }
     //////Save the final snapshot
