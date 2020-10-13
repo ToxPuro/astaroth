@@ -45,6 +45,7 @@ AC_unit_length   = 1.496e+13
 
 print("sys.argv", sys.argv)
 
+
 meshdir  = "$HOME/astaroth/build/"
 
 
@@ -184,12 +185,11 @@ if '1d' in sys.argv:
 
 
 if 'sl' in sys.argv:
-    #maxfiles = 200002
-    #stride = 10000
-    maxfiles = 500000001
-    stride = 1
-    for i in range(0, maxfiles, stride):
-        #mesh = ad.read.Mesh(i, fdir=meshdir) 
+    mesh_file_numbers = ad.read.parse_directory(meshdir)
+    print(mesh_file_numbers)
+    maxfiles = np.amax(mesh_file_numbers)
+ 
+    for i in mesh_file_numbers:
         mesh = ad.read.Mesh(i, fdir=meshdir) 
         print(" %i / %i" % (i, maxfiles))
         if mesh.ok:
@@ -238,7 +238,7 @@ if 'sl' in sys.argv:
                 vis.slices.plot_3(mesh, mesh.uu[2],         title = r'$u_z$', bitmap = True, fname = 'uuz')
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$N_\mathrm{col}$', bitmap = True, fname = 'colden', slicetype = 'sum')
                 vis.slices.plot_3(mesh, uu_tot,             title = r'$|u|$', bitmap = True, fname = 'uutot')
-                vis.slices.plot_3(mesh, mesh.accretion,     title = r'$Accretion$', bitmap = True, fname = 'accretion')
+                #vis.slices.plot_3(mesh, mesh.accretion,     title = r'$Accretion$', bitmap = True, fname = 'accretion')
                 vis.slices.plot_3(mesh, aa_tot,             title = r'$\|A\|$', bitmap = True, fname = 'aatot')
                 vis.slices.plot_3(mesh, mesh.aa[0],         title = r'$A_x$', bitmap = True, fname = 'aax')
                 vis.slices.plot_3(mesh, mesh.aa[1],         title = r'$A_y$', bitmap = True, fname = 'aay')

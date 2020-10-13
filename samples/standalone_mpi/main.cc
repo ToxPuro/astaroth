@@ -69,7 +69,7 @@ write_info(const AcMeshInfo* config)
     fprintf(infotxt, "rm *.list *.mesh *.ts purge.sh\n");
     fclose(infotxt);
 
-    infotxt = fopen("info.list", "w");
+    infotxt = fopen("mesh_info.list", "w");
 
     // Determine endianness
     unsigned int EE      = 1;
@@ -281,8 +281,11 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
 AcReal
 calc_timestep(const AcMeshInfo info)
 {
+
     AcReal uumax;
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumax);
+    AcReal vAmax = 0.0;
+    // TODO acGridReduceVecScal(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &vAmax);
 
     const long double cdt  = info.real_params[AC_cdt];
     const long double cdtv = info.real_params[AC_cdtv];
@@ -291,7 +294,7 @@ calc_timestep(const AcMeshInfo info)
     const long double nu_visc   = info.real_params[AC_nu_visc];
     const long double eta       = info.real_params[AC_eta];
     const long double chi       = 0; // info.real_params[AC_chi]; // TODO not calculated
-    const long double gamma     = info.real_params[AC_gamma];
+    const long double gamma     = info.real_params[AC_gamma]; //TODO this does not make sense here at all. 
     const long double dsmin     = info.real_params[AC_dsmin];
 
     // Old ones from legacy Astaroth
@@ -300,13 +303,15 @@ calc_timestep(const AcMeshInfo info)
 
     // New, closer to the actual Courant timestep
     // See Pencil Code user manual p. 38 (timestep section)
-    const long double uu_dt   = cdt * dsmin / (fabsl(uumax) + sqrtl(cs2_sound + 0.0l));
+    //const long double uu_dt   = cdt * dsmin / (fabsl(uumax) + sqrtl(cs2_sound + 0.0l));
+    const long double uu_dt   = cdt * dsmin / (fabsl(uumax) + sqrtl(cs2_sound + vAmax*vAmax));
     const long double visc_dt = cdtv * dsmin * dsmin / max(max(nu_visc, eta), max(gamma, chi));
 
     const long double dt = min(uu_dt, visc_dt);
     ERRCHK_ALWAYS(is_valid((AcReal)dt));
     return AcReal(dt);
 }
+
 
 int
 main(int argc, char** argv)
@@ -322,7 +327,7 @@ main(int argc, char** argv)
 
     // Set random seed for reproducibility
     srand(321654987);
-
+#if 0
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     load_config(AC_DEFAULT_CONFIG, &info);
@@ -366,6 +371,7 @@ main(int argc, char** argv)
 
     acGridQuit();
     /////////////// Simple example END
+#endif
 
 // JP: The following is directly from standalone/simulation.cc and modified to work with MPI
 // However, not extensively tested
@@ -464,9 +470,7 @@ main(int argc, char** argv)
     AcReal accreted_mass = 0.0;
     AcReal sink_mass     = 0.0;
     for (int i = start_step + 1; i < max_steps; ++i) {
-        AcReal umax;
-        acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &umax);
-        const AcReal dt = host_timestep(umax, info);
+        const AcReal dt = calc_timestep(info);
 
 #if LSINK
         AcReal sum_mass;
