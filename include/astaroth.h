@@ -314,6 +314,11 @@ AcResult acGridReduceScal(const Stream stream, const ReductionType rtype,
 AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
                          const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                          const VertexBufferHandle vtxbuf2, AcReal* result);
+
+AcResult acGridReduceVecScal(const Stream stream, const ReductionType rtype, 
+                             const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                             const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3, 
+                             AcReal* result);
 #endif // AC_MPI_ENABLED
 
 /*

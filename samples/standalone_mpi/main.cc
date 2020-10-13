@@ -60,6 +60,7 @@
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
 #define LFORCING (0)
 #define LSINK (0)
+#define LBFIELD (0)
 
 // Write all setting info into a separate ascii file. This is done to guarantee
 // that we have the data specifi information in the thing, even though in
@@ -259,6 +260,24 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
     fprintf(diag_file, "%d %e %e %e %e %e ", step, double(t_step), double(dt), double(buf_min),
             double(buf_rms), double(buf_max));
 
+#if LBFIELD
+    acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, BFIELDX, BFIELDY, BFIELDZ, &buf_max);
+    acGridReduceVec(STREAM_DEFAULT, RTYPE_MIN, BFIELDX, BFIELDY, BFIELDZ, &buf_min);
+    acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, BFIELDX, BFIELDY, BFIELDZ, &buf_rms);
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_max);
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MIN, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_min);
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_rms);
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+#endif
+
     // Calculate rms, min and max from the variables as scalars
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VertexBufferHandle(i), &buf_max);
@@ -288,10 +307,13 @@ AcReal
 calc_timestep(const AcMeshInfo info)
 {
 
-    AcReal uumax;
+    AcReal uumax, vAmax = 0.0;
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumax);
-    AcReal vAmax = 0.0;
-    // TODO acGridReduceVecScal(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &vAmax);
+
+#if LBFIELD
+    // Set vAmax to non-zero
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &vAmax);
+#endif
 
     const long double cdt  = info.real_params[AC_cdt];
     const long double cdtv = info.real_params[AC_cdtv];
@@ -415,9 +437,9 @@ main(int argc, char** argv)
     AcReal t_step           = 0.0;
     FILE* diag_file         = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
-    int found_nan = 0, found_stop = 0; // Nan or inf finder to give an error signal
-    int dtcounter = 0;
-    AcReal dt_typical    = 0.0;
+    //int found_nan = 0, found_stop = 0; // Nan or inf finder to give an error signal
+    //int dtcounter = 0;
+    //AcReal dt_typical    = 0.0;
 
     AcMesh mesh;
     ///////////////////////////////// PROC 0 BLOCK START ///////////////////////////////////////////
@@ -438,6 +460,10 @@ main(int argc, char** argv)
         // Generate the title row.
         if (start_step == 0) {
             fprintf(diag_file, "step  t_step  dt  uu_total_min  uu_total_rms  uu_total_max  ");
+#if LBFIELD
+            fprintf(diag_file, "bb_total_min  bb_total_rms  bb_total_max  ");
+            fprintf(diag_file, "vA_total_min  vA_total_rms  vA_total_max  ");
+#endif
             for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
                 fprintf(diag_file, "%s_min  %s_rms  %s_max  ", vtxbuf_names[i], vtxbuf_names[i],
                         vtxbuf_names[i]);
@@ -518,9 +544,9 @@ main(int argc, char** argv)
 
         t_step += dt;
 
-        if (i < start_step + 100) {
-           dt_typical = dt;
-        }
+        //if (i < start_step + 100) {
+        //   dt_typical = dt;
+        //}
 
         /* Save the simulation state and print diagnostics */
         if ((i % save_steps) == 0) {
@@ -574,6 +600,8 @@ main(int argc, char** argv)
                 break;
             }
         }
+
+        /*
         // End loop if dt is too low
         if (dt < dt_typical/AcReal(1e5)) {
             if (dtcounter > 10) {
@@ -590,6 +618,7 @@ main(int argc, char** argv)
             dtcounter = 0;
         }
 
+        
         // End loop if nan is found
         if (found_nan > 0) {
             printf("Found nan at t = %e \n", double(t_step));
@@ -615,9 +644,9 @@ main(int argc, char** argv)
                 save_mesh(mesh, i, t_step);
             break;
         }
+        */      
 
     }
-
     //////Save the final snapshot
     ////acSynchronize();
     ////acStore(mesh);

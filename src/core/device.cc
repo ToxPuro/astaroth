@@ -1997,13 +1997,13 @@ acMPIReduceScal(const AcReal local_result, const ReductionType rtype, AcReal* re
 {
 
     MPI_Op op;
-    if (rtype == RTYPE_MAX) {
+    if (rtype == RTYPE_MAX || rtype == RTYPE_ALFVEN_MAX) {
         op = MPI_MAX;
     }
-    else if (rtype == RTYPE_MIN) {
+    else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN) {
         op = MPI_MIN;
     }
-    else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM) {
+    else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM || rtype == RTYPE_ALFVEN_RMS) {
         op = MPI_SUM;
     }
     else {
@@ -2069,6 +2069,25 @@ acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBuff
 
     return acMPIReduceScal(local_result, rtype, result);
 }
+
+AcResult acGridReduceVecScal(const Stream stream, const ReductionType rtype, 
+                             const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                             const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3, 
+                             AcReal* result)
+{
+    ERRCHK(grid.initialized);
+
+    const Device device = grid.device;
+
+    acGridSynchronizeStream(STREAM_ALL);
+    // MPI_Barrier(MPI_COMM_WORLD);
+
+    AcReal local_result;
+    acDeviceReduceVecScal(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, &local_result);
+
+    return acMPIReduceScal(local_result, rtype, result);
+}
+
 
 //MV: for MPI we will need acGridReduceVecScal() to get Alfven speeds etc. TODO 
 
