@@ -31,6 +31,12 @@
 #include "host_forcing.h"
 #include "host_memory.h"
 
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#include <unistd.h>
+
 #define fprintf(...)                                                                               \
     {                                                                                              \
         int tmppid;                                                                                \
@@ -409,13 +415,15 @@ main(int argc, char** argv)
     AcReal t_step           = 0.0;
     FILE* diag_file         = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
+    int found_nan = 0, found_stop = 0; // Nan or inf finder to give an error signal
+    int dtcounter = 0;
+    AcReal dt_typical    = 0.0;
 
     AcMesh mesh;
     ///////////////////////////////// PROC 0 BLOCK START ///////////////////////////////////////////
     if (pid == 0) {
         acMeshCreate(info, &mesh);
         // TODO: This need to be possible to define in astaroth.conf
-        // MV: Does this set up the whole mesh or just proc 0 segment? 
         acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, &mesh);
 
 #if LSINK
@@ -510,6 +518,10 @@ main(int argc, char** argv)
 
         t_step += dt;
 
+        if (i < start_step + 100) {
+           dt_typical = dt;
+        }
+
         /* Save the simulation state and print diagnostics */
         if ((i % save_steps) == 0) {
 
@@ -562,6 +574,48 @@ main(int argc, char** argv)
                 break;
             }
         }
+        // End loop if dt is too low
+        if (dt < dt_typical/AcReal(1e5)) {
+            if (dtcounter > 10) {
+                printf("dt = %e TOO LOW! Ending run at t = %#e \n", double(dt), double(t_step));
+                acGridPeriodicBoundconds(STREAM_DEFAULT);
+                acGridStoreMesh(STREAM_DEFAULT, &mesh);
+                if (pid == 0)
+                    save_mesh(mesh, i, t_step);
+                break;
+            } else {
+                dtcounter += 1;
+            }
+        } else {
+            dtcounter = 0;
+        }
+
+        // End loop if nan is found
+        if (found_nan > 0) {
+            printf("Found nan at t = %e \n", double(t_step));
+            acGridPeriodicBoundconds(STREAM_DEFAULT);
+            acGridStoreMesh(STREAM_DEFAULT, &mesh);
+            if (pid == 0)
+                save_mesh(mesh, i, t_step);
+            break;
+        }
+
+        // End loop if STOP file is found
+        if( access("STOP", F_OK ) != -1 ) {
+            found_stop = 1;
+        } else {
+            found_stop = 0;
+        }       
+ 
+        if (found_stop == 1) {
+            printf("Found STOP file at t = %e \n", double(t_step));
+            acGridPeriodicBoundconds(STREAM_DEFAULT);
+            acGridStoreMesh(STREAM_DEFAULT, &mesh);
+            if (pid == 0)
+                save_mesh(mesh, i, t_step);
+            break;
+        }
+
     }
 
     //////Save the final snapshot
