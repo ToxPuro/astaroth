@@ -253,7 +253,44 @@ class MeshInfo():
         self.contents = read_meshtxt(fdir, 'mesh_info.list', dbg_output) 
 
 class Mesh:
-    '''Class tha contains all 3d mesh data'''
+    '''
+    Class that contains all 3d mesh data
+
+    Arguments
+
+    fnum: snaphot number
+
+    Optional arguments
+
+    fdir = ""         : path to the snapshot file
+
+    only_info = False : get only the minfo. 
+
+    pdiag = True      : plot diagnostic output
+
+    Return
+
+    self.minfo     : all mesh parameters
+
+    self.framenum  : Frame number as string
+
+    self.lnrho     : density \ln \rho
+ 
+    self.ss        : entropy
+
+    self.accretion : accretion buffer
+
+    self.uu        : velocity (ux, uy, uz)
+
+    self.aa        : Vector potential (ax, ay, az) 
+  
+    self.bb        : Magnetic field (bx, by, bz)
+  
+    self.oo        : Vorticity (ox, oy, oz)
+
+    selg.jj        : Conductivity (jx, jy, jz) 
+
+    '''
 
     def __init__(self, fnum, fdir="", only_info = False, pdiag = True):
         fnum = str(fnum)
