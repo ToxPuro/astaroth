@@ -124,6 +124,7 @@
  *
  */
 #include "astaroth.h"
+#include "kernels/kernels.h"
 
 #include "errchk.h"
 #include "math_utils.h"
@@ -629,7 +630,7 @@ acNodeIntegrateSubstep(const Node node, const Stream stream, const int isubstep,
         if (db.z >= da.z) {
             const int3 da_local = da - (int3){0, 0, i * node->subgrid.n.z};
             const int3 db_local = db - (int3){0, 0, i * node->subgrid.n.z};
-            acDeviceIntegrateSubstep(node->devices[i], stream, isubstep, da_local, db_local, dt);
+            acDeviceIntegrateSubstep(node->devices[i], node->devices[i]->vba, stream, isubstep, da_local, db_local, dt);
         }
     }
     return AC_SUCCESS;
@@ -713,7 +714,7 @@ acNodeIntegrate(const Node node, const AcReal dt)
         for (int i = 0; i < node->num_devices; ++i) {
             const int3 m1 = (int3){2 * NGHOST, 2 * NGHOST, 2 * NGHOST};
             const int3 m2 = node->subgrid.n;
-            acDeviceIntegrateSubstep(node->devices[i], STREAM_16, isubstep, m1, m2, dt);
+            acDeviceIntegrateSubstep(node->devices[i], node->devices[i]->vba, STREAM_16, isubstep, m1, m2, dt);
         }
 
         for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
@@ -728,39 +729,39 @@ acNodeIntegrate(const Node node, const AcReal dt)
         for (int i = 0; i < node->num_devices; ++i) { // Front
             const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
             const int3 m2 = m1 + (int3){node->subgrid.n.x, node->subgrid.n.y, NGHOST};
-            acDeviceIntegrateSubstep(node->devices[i], STREAM_0, isubstep, m1, m2, dt);
+            acDeviceIntegrateSubstep(node->devices[i], node->devices[i]->vba, STREAM_0, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Back
             const int3 m1 = (int3){NGHOST, NGHOST, node->subgrid.n.z};
             const int3 m2 = m1 + (int3){node->subgrid.n.x, node->subgrid.n.y, NGHOST};
-            acDeviceIntegrateSubstep(node->devices[i], STREAM_1, isubstep, m1, m2, dt);
+            acDeviceIntegrateSubstep(node->devices[i], node->devices[i]->vba, STREAM_1, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Bottom
             const int3 m1 = (int3){NGHOST, NGHOST, 2 * NGHOST};
             const int3 m2 = m1 + (int3){node->subgrid.n.x, NGHOST, node->subgrid.n.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(node->devices[i], STREAM_2, isubstep, m1, m2, dt);
+            acDeviceIntegrateSubstep(node->devices[i], node->devices[i]->vba, STREAM_2, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Top
             const int3 m1 = (int3){NGHOST, node->subgrid.n.y, 2 * NGHOST};
             const int3 m2 = m1 + (int3){node->subgrid.n.x, NGHOST, node->subgrid.n.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(node->devices[i], STREAM_3, isubstep, m1, m2, dt);
+            acDeviceIntegrateSubstep(node->devices[i], node->devices[i]->vba, STREAM_3, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Left
             const int3 m1 = (int3){NGHOST, 2 * NGHOST, 2 * NGHOST};
             const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
                                         node->subgrid.n.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(node->devices[i], STREAM_4, isubstep, m1, m2, dt);
+            acDeviceIntegrateSubstep(node->devices[i], node->devices[i]->vba, STREAM_4, isubstep, m1, m2, dt);
         }
         // #pragma omp parallel for
         for (int i = 0; i < node->num_devices; ++i) { // Right
             const int3 m1 = (int3){node->subgrid.n.x, 2 * NGHOST, 2 * NGHOST};
             const int3 m2 = m1 + (int3){NGHOST, node->subgrid.n.y - 2 * NGHOST,
                                         node->subgrid.n.z - 2 * NGHOST};
-            acDeviceIntegrateSubstep(node->devices[i], STREAM_5, isubstep, m1, m2, dt);
+            acDeviceIntegrateSubstep(node->devices[i], node->devices[i]->vba, STREAM_5, isubstep, m1, m2, dt);
         }
         acNodeSwapBuffers(node);
     }

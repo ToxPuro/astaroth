@@ -16,12 +16,14 @@ typedef struct {
     bool pinned = false; // Set if data was received to pinned memory
 } PackedData;
 
+/*
 typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
 
     AcReal* profiles[NUM_SCALARARRAY_HANDLES];
 } VertexBufferArray;
+*/
 
 struct device_s {
     int id;

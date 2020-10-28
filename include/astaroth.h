@@ -147,6 +147,16 @@ typedef struct {
     AcMeshInfo info;
 } AcMesh;
 
+//VertexBufferArray
+
+
+typedef struct {
+    AcReal* in[NUM_VTXBUF_HANDLES];
+    AcReal* out[NUM_VTXBUF_HANDLES];
+
+    AcReal* profiles[NUM_SCALARARRAY_HANDLES];
+} VertexBufferArray;
+
 // Device
 typedef struct device_s* Device; // Opaque pointer to device_s. Analogous to dispatchable handles
                                  // in Vulkan, f.ex. VkDevice
@@ -562,7 +572,7 @@ AcResult acDeviceTransferVertexBuffer(const Device src_device, const Stream stre
 AcResult acDeviceTransferMesh(const Device src_device, const Stream stream, Device dst_device);
 
 /** */
-AcResult acDeviceIntegrateSubstep(const Device device, const Stream stream, const int step_number,
+AcResult acDeviceIntegrateSubstep(const Device device, const VertexBufferArray vba,const Stream stream, const int step_number,
                                   const int3 start, const int3 end, const AcReal dt);
 /** */
 AcResult acDevicePeriodicBoundcondStep(const Device device, const Stream stream,
@@ -585,4 +595,32 @@ AcResult acDeviceRunMPITest(void);
 
 #ifdef __cplusplus
 } // extern "C"
+#endif
+
+
+
+/* Definitions for polymorphic observer patterns.
+ * Task is both an observer and a subject of other Tasks
+ * Needed to implement task dependencies.*/
+#ifdef __cplusplus
+#include <vector>
+class Task{
+    private:
+    std::vector<Task*> dependents;
+
+    protected:
+    size_t total_dependencies;
+    size_t active_dependencies;
+    size_t allowed_triggers;
+    
+    public:
+    virtual ~Task(){
+        //delete dependents;
+    }
+    void register_dependent(Task* t);
+    void notify_dependents(int isubstep, AcReal dt);
+    void notify(int isubstep, AcReal dt);
+    void set_trigger_limit(size_t trigger_limit);
+    virtual void execute(int isubstep, AcReal dt) = 0;
+};
 #endif
