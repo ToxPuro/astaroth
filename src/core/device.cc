@@ -1177,11 +1177,8 @@ typedef struct HaloExchangeTask : public Task{
     int3 local_segment_position;
     bool active;
 
-    //MessageBufferSwapChain recv_buffers;
     MessageBufferSwapChain recv_buffers;
     MessageBufferSwapChain send_buffers;
-
-    //std::vector<ComputationTask*> dependents;
 
     int send_tag;
     int recv_tag;
@@ -1204,7 +1201,7 @@ typedef struct HaloExchangeTask : public Task{
         //total_dependencies = (int[]){0,NUM_SEND_FACE_DEPENDENCIES,NUM_SEND_EDGE_DEPENDENCIES, NUM_SEND_CORNER_DEPENDENCIES}[seg_type];
         //unfulfilled_dependencies = total_dependencies;
         
-        //foreign = segment_id => pipeline
+        //foreign = segment_id => wrap-symmetrical (pipeline)
         //foreign = -segment_id => mirror-symmetrical
         const int3 foreign_segment_id = segment_id;
 
@@ -1285,6 +1282,18 @@ typedef struct HaloExchangeTask : public Task{
     {
         cudaStreamSynchronize(stream);
     }
+
+    void wait_recv()
+    {
+        auto msg = recv_buffers.get_current_buffer();
+        MPI_Wait(msg.request,MPI_STATUS_IGNORE);
+    }
+
+    void wait_send()
+    {
+        auto msg = send_buffers.get_current_buffer();
+        MPI_Wait(msg.request,MPI_STATUS_IGNORE);
+    }
     
     void receiveDevice()
     {
@@ -1324,16 +1333,14 @@ typedef struct HaloExchangeTask : public Task{
         }
     }
 
-    void
-    exchangeDevice()
+    void exchangeDevice()
     {
         //cudaSetDevice(device->id);
         receiveDevice();
         sendDevice();
     }
 
-    void
-    exchangeHost()
+    void exchangeHost()
     {
         //cudaSetDevice(device->id);
         receiveHost();
@@ -1357,8 +1364,7 @@ typedef struct HaloExchangeTask : public Task{
 #endif
     }
    
-    void
-    exchange()
+    void exchange()
     {
 #if MPI_USE_PINNED == (1)
         exchangeHost();
@@ -1366,7 +1372,7 @@ typedef struct HaloExchangeTask : public Task{
         exchangeDevice();
 #endif
     }
-
+    
     //TODO: finish
     void execute(int isubstep, AcReal dt){
         swap_buffers();
@@ -1382,6 +1388,11 @@ typedef struct Grid{
     bool initialized;
 
     std::vector<HaloExchangeTask> halo_exchange_tasks;
+
+    std::vector<HaloExchangeTask> face_exchange_tasks;
+    std::vector<HaloExchangeTask> edge_exchange_tasks;
+    std::vector<HaloExchangeTask> corner_exchange_tasks;
+
     std::vector<ComputationTask> outer_segments;
     ComputationTask* inner_domain;
 
@@ -1394,9 +1405,13 @@ typedef struct Grid{
     MPI_Request* curr_send_reqs;
     MPI_Request* back_send_reqs;
 
+    size_t buf_idx = 0;
+
     void swapRecvBuffers(){
+        //TODO: assumption BUFFER_CHAIN_LENGTH = 2 in these swaps
         std::swap(curr_recv_reqs,back_recv_reqs);
         std::swap(curr_send_reqs,back_send_reqs);
+        buf_idx = (buf_idx + 1) % BUFFER_CHAIN_LENGTH;
     }
 } Grid;
 
@@ -1493,7 +1508,7 @@ acGridInit(const AcMeshInfo info)
     grid.recv_reqs = new MPI_Request[NUM_SEGMENTS*BUFFER_CHAIN_LENGTH];
     grid.send_reqs = new MPI_Request[NUM_SEGMENTS*BUFFER_CHAIN_LENGTH];
 
-    //This below assumes BUFFER_CHAIN_LENGTH = 2 (or maybe it's the swapRecvBuffers that does that)
+    //This below assumes BUFFER_CHAIN_LENGTH > 1 
     grid.curr_recv_reqs = grid.recv_reqs;
     grid.back_recv_reqs = &grid.recv_reqs[NUM_SEGMENTS];
     grid.curr_send_reqs = grid.send_reqs;
@@ -1501,11 +1516,11 @@ acGridInit(const AcMeshInfo info)
 
 
     for (int i = 0; i < NUM_SEGMENTS; i++){
-        grid.halo_exchange_tasks.emplace_back(device, pid, index_to_segment_id(i),
+        const int3 seg_id = index_to_segment_id(i);
+        grid.halo_exchange_tasks.emplace_back(device, pid, seg_id,
                                               decomposition, grid_dimensions,
                                               grid.recv_reqs, grid.send_reqs);
-
-        const int3 seg_id = index_to_segment_id(i);
+        
         for (int j = 0; j < NUM_SEGMENTS; j++){
             const int3 compute_seg_id = index_to_segment_id(j);
             if (  ((seg_id.x == 0) || (seg_id.x == compute_seg_id.x))
@@ -1531,9 +1546,6 @@ acGridQuit(void)
 
     grid.halo_exchange_tasks.clear();
 
-    //MPI_Waitall(NUM_SEGMENTS, grid.recv_reqs, MPI_STATUSES_IGNORE);
-    //MPI_Waitall(NUM_SEGMENTS, grid.send_reqs, MPI_STATUSES_IGNORE);
-        
     for (int i = 0; i < NUM_SEGMENTS*BUFFER_CHAIN_LENGTH; i++){
         MPI_Request* req = &(grid.recv_reqs[i]);
         if (*req != MPI_REQUEST_NULL){
@@ -1625,7 +1637,6 @@ acGridIntegrate(const Stream stream, const AcReal dt)
         for (auto &halo_task : grid.halo_exchange_tasks){
             if (halo_task.active){
                 halo_task.send();
-                //halo_task.exchange();
             }
         }
 #endif //MPI_COMM_ENABLED
@@ -1647,10 +1658,14 @@ acGridIntegrate(const Stream stream, const AcReal dt)
                         grid.halo_exchange_tasks[idx].unpack();
                         //forward receive
                     }else{
-                        std::cout << "unexpected waitany " << idx <<std::endl;
+                        std::cout << "unexpected waitany " << idx << " should be inactive"<< std::endl;
                         n--;
                         continue;
                     }
+                }else {
+                    std::cout << "unexpected waitany " << idx << " out of array bounds" << std::endl;
+                    n--;
+                    continue;
                 }
             }
             if(n > 0){
@@ -1667,6 +1682,7 @@ acGridIntegrate(const Stream stream, const AcReal dt)
         grid.swapRecvBuffers();
         
         /*
+        //TODO: try to get vba swapping isolated in tasks, currently reading device->vba, instead of their own vba
         for (auto &task : grid.halo_exchange_tasks){
             task.swap_buffers();
         }
@@ -1688,31 +1704,36 @@ acGridPeriodicBoundconds(const Stream stream)
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.pack(); }
-    
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    //TODO: figure out how to tell if the tasks are ready or not
+    //Active halo exchange tasks
     for (auto &halo_task : grid.halo_exchange_tasks){
         if (halo_task.active){
+            halo_task.pack();
             halo_task.send();
-        }else{
-            halo_task.exchange();
         }
     }
-
     MPI_Waitall(NUM_SEGMENTS, grid.curr_recv_reqs, MPI_STATUSES_IGNORE);    
-
-    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.unpack(); }
-
-    for (auto &halo_task : grid.halo_exchange_tasks){ halo_task.sync(); }
-
     for (auto &halo_task : grid.halo_exchange_tasks){
-        if( halo_task.active){
+        if (halo_task.active){
+            halo_task.unpack();
+            halo_task.sync();
             halo_task.receive();
         }
     }
 
+    //Inactive halo exchange tasks
+    for (auto &halo_task : grid.halo_exchange_tasks){
+        if( !halo_task.active){
+            halo_task.pack();
+            halo_task.exchange();
+        }
+    }
+    for (auto &halo_task : grid.halo_exchange_tasks){
+        if( !halo_task.active){
+            halo_task.wait_recv();
+            halo_task.unpack();
+            halo_task.sync();
+        }
+    }
 
     MPI_Waitall(NUM_SEGMENTS*BUFFER_CHAIN_LENGTH, grid.send_reqs, MPI_STATUSES_IGNORE);    
 
