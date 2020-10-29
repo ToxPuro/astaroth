@@ -107,7 +107,7 @@ main(int argc, char** argv)
         }
     }
 
-    const TestType test = TEST_WEAK_SCALING;
+    const TestType test = TEST_STRONG_SCALING;
     if (test == TEST_WEAK_SCALING) {
         uint3_64 decomp = decompose(nprocs);
         info.int_params[AC_nx] *= decomp.x;
@@ -159,7 +159,7 @@ main(int argc, char** argv)
     }*/
 
     // Percentiles
-    const size_t num_iters      = 100;
+    const size_t num_iters      = 10;
     const double nth_percentile = 0.90;
     std::vector<double> results; // ms
     results.reserve(num_iters);
@@ -172,6 +172,7 @@ main(int argc, char** argv)
     Timer t;
     const AcReal dt = FLT_EPSILON;
 
+    /*
     for (size_t i = 0; i < num_iters; ++i) {
         acGridSynchronizeStream(STREAM_ALL);
         timer_reset(&t);
@@ -180,7 +181,12 @@ main(int argc, char** argv)
         acGridSynchronizeStream(STREAM_ALL);
         results.push_back(timer_diff_nsec(t) / 1e6);
         acGridSynchronizeStream(STREAM_ALL);
-    }
+    }*/
+    timer_reset(&t);
+    acGridSynchronizeStream(STREAM_ALL);
+    acGridIntegrateNSteps(STREAM_DEFAULT, dt, num_iters);
+    acGridSynchronizeStream(STREAM_ALL);
+    results.push_back(timer_diff_nsec(t) / 1e6 / num_iters);
 
     if (!pid) {
         std::sort(results.begin(), results.end(),

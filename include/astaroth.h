@@ -307,6 +307,10 @@ AcResult acGridStoreMesh(const Stream stream, AcMesh* host_mesh);
 AcResult acGridIntegrate(const Stream stream, const AcReal dt);
 
 /** */
+AcResult
+acGridIntegrateNSteps(const Stream stream, const AcReal dt, const size_t nsteps);
+
+/** */
 AcResult acGridPeriodicBoundconds(const Stream stream);
 
 /** TODO */

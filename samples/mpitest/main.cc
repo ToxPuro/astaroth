@@ -69,11 +69,17 @@ main(void)
 
     // Integration
     acGridLoadMesh(STREAM_DEFAULT, model);
-    acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+
+    const size_t nsteps = 5;
+    //for (size_t i = 0; i < nsteps; ++i)
+    //    acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+    acGridIntegrateNSteps(STREAM_DEFAULT, FLT_EPSILON, nsteps);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (pid == 0) {
-        acModelIntegrateStep(model, FLT_EPSILON);
+        for (size_t i = 0; i < nsteps; ++i)
+            acModelIntegrateStep(model, FLT_EPSILON);
+
         acMeshApplyPeriodicBounds(&model);
         const AcResult res = acVerifyMesh("Integration", model, candidate);
         ERRCHK_ALWAYS(res == AC_SUCCESS);
