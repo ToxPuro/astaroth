@@ -136,3 +136,35 @@ sbatch benchmark_meshsize_256/benchmark_8.sh
 sbatch benchmark_meshsize_256/benchmark_16.sh
 sbatch benchmark_meshsize_256/benchmark_32.sh
 sbatch benchmark_meshsize_256/benchmark_64.sh
+
+sbatch --begin=now+12hours benchmark_meshsize_256/benchmark_1.sh
+sbatch --begin=now+12hours benchmark_meshsize_256/benchmark_2.sh
+sbatch --begin=now+12hours benchmark_meshsize_256/benchmark_4.sh
+sbatch --begin=now+12hours benchmark_meshsize_256/benchmark_8.sh
+sbatch --begin=now+12hours benchmark_meshsize_256/benchmark_16.sh
+sbatch --begin=now+12hours benchmark_meshsize_256/benchmark_32.sh
+sbatch --begin=now+12hours benchmark_meshsize_256/benchmark_64.sh
+
+sbatch --begin=now+24hours benchmark_meshsize_256/benchmark_1.sh
+sbatch --begin=now+24hours benchmark_meshsize_256/benchmark_2.sh
+sbatch --begin=now+24hours benchmark_meshsize_256/benchmark_4.sh
+sbatch --begin=now+24hours benchmark_meshsize_256/benchmark_8.sh
+sbatch --begin=now+24hours benchmark_meshsize_256/benchmark_16.sh
+sbatch --begin=now+24hours benchmark_meshsize_256/benchmark_32.sh
+sbatch --begin=now+24hours benchmark_meshsize_256/benchmark_64.sh
+
+sbatch --begin=now+36hours benchmark_meshsize_256/benchmark_1.sh
+sbatch --begin=now+36hours benchmark_meshsize_256/benchmark_2.sh
+sbatch --begin=now+36hours benchmark_meshsize_256/benchmark_4.sh
+sbatch --begin=now+36hours benchmark_meshsize_256/benchmark_8.sh
+sbatch --begin=now+36hours benchmark_meshsize_256/benchmark_16.sh
+sbatch --begin=now+36hours benchmark_meshsize_256/benchmark_32.sh
+sbatch --begin=now+36hours benchmark_meshsize_256/benchmark_64.sh
+
+sbatch --begin=now+48hours benchmark_meshsize_256/benchmark_1.sh
+sbatch --begin=now+48hours benchmark_meshsize_256/benchmark_2.sh
+sbatch --begin=now+48hours benchmark_meshsize_256/benchmark_4.sh
+sbatch --begin=now+48hours benchmark_meshsize_256/benchmark_8.sh
+sbatch --begin=now+48hours benchmark_meshsize_256/benchmark_16.sh
+sbatch --begin=now+48hours benchmark_meshsize_256/benchmark_32.sh
+sbatch --begin=now+48hours benchmark_meshsize_256/benchmark_64.sh
