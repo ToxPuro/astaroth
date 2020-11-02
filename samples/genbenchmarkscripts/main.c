@@ -19,7 +19,7 @@ main(void)
         fprintf(fp, "#!/bin/bash\n");
         fprintf(fp, "#BATCH --job-name=astaroth\n");        // OK
         fprintf(fp, "#SBATCH --account=project_2000403\n"); // OK
-        fprintf(fp, "#SBATCH --time=04:00:00\n");           // OK
+        fprintf(fp, "#SBATCH --time=03:00:00\n");           // OK
         fprintf(fp, "#SBATCH --mem=0\n");                   // OK
         fprintf(fp, "#SBATCH --partition=gpu\n");           // OK
         fprintf(fp, "#SBATCH --exclusive\n");               // OK

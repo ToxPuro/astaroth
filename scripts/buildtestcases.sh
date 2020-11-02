@@ -46,7 +46,6 @@ create_case "meshsize_512"
 create_case "meshsize_1024"
 create_case "meshsize_2048"
 
-
 # Decomposition
 load_default_case
 sed -i 's/MPI_DECOMPOSITION_AXES (.)/MPI_DECOMPOSITION_AXES (1)/' src/core/device.cc
@@ -124,8 +123,6 @@ create_case "weak_128"
 create_case "weak_256"
 sed -i 's/const size_t num_iters      = .*;/const size_t num_iters      = 100;/' samples/benchmark/main.cc
 create_case "weak_512"
-
-load_default_case
 
 
 # Run batch jobs
