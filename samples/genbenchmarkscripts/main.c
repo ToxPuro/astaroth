@@ -113,6 +113,21 @@ main(void)
             }
         }
 
+        // Autotests
+        if (nodes >= 2) {
+            fprintf(fp,
+                    "$(cd benchmark_meshsize_256 && UCX_RNDV_THRESH=16384 UCX_RNDV_SCHEME=get_zcopy "
+                    "UCX_MAX_RNDV_RAILS=1 srun --kill-on-bad-exit=0 ./mpitest && rm "
+                    "-f core.* && cd ..)\n");
+        }
+        else {
+            fprintf(fp,
+                    "$(cd benchmark_meshsize_256 && srun --kill-on-bad-exit=0 ./mpitest && rm -f core.* "
+                    "&& cd ..)\n");
+        }
+
+
+
         fclose(fp);
     }
 
