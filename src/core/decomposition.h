@@ -2,7 +2,7 @@
 #if AC_MPI_ENABLED
 #include "astaroth.h"
 
-#include <stdint.h>
+#include <stdint.h> //uint64_t
 
 #include "math_utils.h"
 #include "errchk.h"

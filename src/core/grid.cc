@@ -29,8 +29,8 @@
 
 #include <mpi.h>
 #include <vector>
-#include <utility>
-#include <cstring>
+#include <utility> //std::swap
+#include <cstring> //memcpy
 
 #include "decomposition.h" //getPid3D, morton3D
 #include "errchk.h"
