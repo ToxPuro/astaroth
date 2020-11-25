@@ -10,7 +10,7 @@
  *                   the halo partition (wrapped by HaloMessage)
  * struct Grid contains information about the local GPU device, decomposition, the
  *             total mesh dimensions and CommDatas
- 
+
  * Basic steps:
  *   1) Distribute the mesh among ranks
  *   2) Integrate & communicate
@@ -23,14 +23,13 @@
  * The nitty gritty of the MPI communication is defined in task.cc
  */
 
-
 #include "astaroth.h"
 #include "task.h"
 
-#include <mpi.h>
-#include <vector>
-#include <utility> //std::swap
 #include <cstring> //memcpy
+#include <mpi.h>
+#include <utility> //std::swap
+#include <vector>
 
 #include "decomposition.h" //getPid3D, morton3D
 #include "errchk.h"
@@ -51,7 +50,7 @@ decompose(const uint64_t target)
 }
 
 /* Internal interface to grid (a global variable)  */
-typedef struct Grid{
+typedef struct Grid {
     Device device;
     AcMesh submesh;
     uint3_64 decomposition;
@@ -81,8 +80,9 @@ typedef struct Grid{
 static Grid grid = {};
 
 static void
-gridSwapRequestBuffers(){
-    //Assumption SWAP_CHAIN_LENGTH = 2 in these swaps
+gridSwapRequestBuffers()
+{
+    // Assumption SWAP_CHAIN_LENGTH = 2 in these swaps
     std::swap(grid.curr_recv_reqs, grid.back_recv_reqs);
     std::swap(grid.curr_send_reqs, grid.back_send_reqs);
 }
@@ -161,14 +161,14 @@ acGridInit(const AcMeshInfo info)
 
     Device device;
     acDeviceCreate(pid % devices_per_node, submesh_info, &device);
- 
+
     // CPU alloc
     AcMesh submesh;
     acMeshCreate(submesh_info, &submesh);
 
     // Setup the global grid structure
-    grid.device = device;
-    grid.submesh = submesh;
+    grid.device        = device;
+    grid.submesh       = submesh;
     grid.decomposition = decomposition;
 
     // Configure
@@ -183,43 +183,43 @@ acGridInit(const AcMeshInfo info)
     grid.computation_tasks.clear();
     grid.computation_tasks.reserve(NUM_SEGMENTS);
 
-    for (int idx = 0; idx < NUM_SEGMENTS; idx++){
+    for (int idx = 0; idx < NUM_SEGMENTS; idx++) {
         const int3 segment_id = index_to_segment_id(idx);
-        Stream stream = (Stream)(idx + STREAM_DEFAULT);
+        Stream stream         = (Stream)(idx + STREAM_DEFAULT);
         grid.computation_tasks.emplace_back(segment_id, grid_dimensions, device, stream);
     }
- 
-    grid.inner_integration_task = new ComputationTask((int3){0,0,0}, grid_dimensions, device, STREAM_26);
+
+    grid.inner_integration_task = new ComputationTask((int3){0, 0, 0}, grid_dimensions, device,
+                                                      STREAM_26);
 
     grid.halo_exchange_tasks.clear();
     grid.halo_exchange_tasks.reserve(NUM_SEGMENTS);
- 
-    grid.recv_reqs = new MPI_Request[NUM_SEGMENTS*SWAP_CHAIN_LENGTH];
-    grid.send_reqs = new MPI_Request[NUM_SEGMENTS*SWAP_CHAIN_LENGTH];
 
-    //This below assumes SWAP_CHAIN_LENGTH == 2
+    grid.recv_reqs = new MPI_Request[NUM_SEGMENTS * SWAP_CHAIN_LENGTH];
+    grid.send_reqs = new MPI_Request[NUM_SEGMENTS * SWAP_CHAIN_LENGTH];
+
+    // This below assumes SWAP_CHAIN_LENGTH == 2
     grid.curr_recv_reqs = grid.recv_reqs;
     grid.back_recv_reqs = &grid.recv_reqs[NUM_SEGMENTS];
     grid.curr_send_reqs = grid.send_reqs;
     grid.back_send_reqs = &grid.send_reqs[NUM_SEGMENTS];
 
-    for (int i = 0; i < NUM_SEGMENTS; i++){
+    for (int i = 0; i < NUM_SEGMENTS; i++) {
         const int3 seg_id = index_to_segment_id(i);
-        grid.halo_exchange_tasks.emplace_back(device, pid, seg_id,
-                                              decomposition, grid_dimensions,
+        grid.halo_exchange_tasks.emplace_back(device, pid, seg_id, decomposition, grid_dimensions,
                                               grid.recv_reqs, grid.send_reqs);
- 
-        for (int j = 0; j < NUM_SEGMENTS; j++){
+
+        for (int j = 0; j < NUM_SEGMENTS; j++) {
             const int3 compute_seg_id = index_to_segment_id(j);
-            if (  ((seg_id.x == 0) || (seg_id.x == compute_seg_id.x))
-                &&((seg_id.y == 0) || (seg_id.y == compute_seg_id.y))
-                &&((seg_id.z == 0) || (seg_id.z == compute_seg_id.z))){
+            if (((seg_id.x == 0) || (seg_id.x == compute_seg_id.x)) &&
+                ((seg_id.y == 0) || (seg_id.y == compute_seg_id.y)) &&
+                ((seg_id.z == 0) || (seg_id.z == compute_seg_id.z))) {
 
                 grid.halo_exchange_tasks[i].register_dependent(&grid.computation_tasks[j]);
             }
         }
     }
- 
+
     grid.initialized = true;
 
     acGridSynchronizeStream(STREAM_ALL);
@@ -234,18 +234,18 @@ acGridQuit(void)
 
     grid.halo_exchange_tasks.clear();
 
-    for (int i = 0; i < NUM_SEGMENTS*SWAP_CHAIN_LENGTH; i++){
+    for (int i = 0; i < NUM_SEGMENTS * SWAP_CHAIN_LENGTH; i++) {
         MPI_Request* req = &(grid.recv_reqs[i]);
-        if (*req != MPI_REQUEST_NULL){
+        if (*req != MPI_REQUEST_NULL) {
             MPI_Cancel(req);
             MPI_Request_free(req);
         }
     }
 
-    for (int i = 0; i < NUM_SEGMENTS*SWAP_CHAIN_LENGTH; i++){
+    for (int i = 0; i < NUM_SEGMENTS * SWAP_CHAIN_LENGTH; i++) {
         MPI_Request* req = &(grid.send_reqs[i]);
-        if (*req != MPI_REQUEST_NULL){
-            MPI_Wait(req,MPI_STATUS_IGNORE);
+        if (*req != MPI_REQUEST_NULL) {
+            MPI_Wait(req, MPI_STATUS_IGNORE);
             MPI_Request_free(req);
         }
     }
@@ -329,7 +329,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     const int src_idx = acVertexBufferIdx(i, j, k, host_mesh.info);
                     const int dst_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
                     memcpy(&grid.submesh.vertex_buffer[vtxbuf][dst_idx], //
-                           &host_mesh.vertex_buffer[vtxbuf][src_idx],  //
+                           &host_mesh.vertex_buffer[vtxbuf][src_idx],    //
                            count * sizeof(host_mesh.vertex_buffer[i][0]));
                 }
             }
@@ -359,8 +359,8 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                                                               host_mesh.info);
 
                         // Send
-                        MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_MPI_TYPE, tgt_pid, 0,
-                                 MPI_COMM_WORLD);
+                        MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_MPI_TYPE,
+                                 tgt_pid, 0, MPI_COMM_WORLD);
                     }
                 }
             }
@@ -417,8 +417,8 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                     const int count   = mm.x;
                     const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
                     const int dst_idx = acVertexBufferIdx(i, j, k, host_mesh->info);
-                    memcpy(&host_mesh->vertex_buffer[vtxbuf][dst_idx], //
-                           &grid.submesh.vertex_buffer[vtxbuf][src_idx],  //
+                    memcpy(&host_mesh->vertex_buffer[vtxbuf][dst_idx],   //
+                           &grid.submesh.vertex_buffer[vtxbuf][src_idx], //
                            count * sizeof(grid.submesh.vertex_buffer[i][0]));
                 }
             }
@@ -448,8 +448,8 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 
                         // Recv
                         MPI_Status status;
-                        MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx], count, AC_MPI_TYPE, tgt_pid, 0,
-                                 MPI_COMM_WORLD, &status);
+                        MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx], count, AC_MPI_TYPE,
+                                 tgt_pid, 0, MPI_COMM_WORLD, &status);
                     }
                 }
             }
@@ -467,70 +467,68 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     const Device device = grid.device;
     acDeviceSynchronizeStream(device, stream);
     cudaSetDevice(device->id);
- 
+
     MPI_Barrier(MPI_COMM_WORLD);
 
-    for (auto &halo_task : grid.halo_exchange_tasks){
+    for (auto& halo_task : grid.halo_exchange_tasks) {
         if (halo_task.active)
             halo_task.set_trigger_limit(3);
     }
 
-    for (auto &compute_task : grid.computation_tasks){
+    for (auto& compute_task : grid.computation_tasks) {
         compute_task.set_trigger_limit(3);
     }
 
     for (int isubstep = 0; isubstep < 3; ++isubstep) {
- 
+
 #if MPI_COMM_ENABLED
-        for (auto &halo_task : grid.halo_exchange_tasks){
-            if (halo_task.active){
+        for (auto& halo_task : grid.halo_exchange_tasks) {
+            if (halo_task.active) {
                 halo_task.pack();
             }
         }
- 
-        for (auto &halo_task : grid.halo_exchange_tasks){
-            if (halo_task.active){
+
+        for (auto& halo_task : grid.halo_exchange_tasks) {
+            if (halo_task.active) {
                 halo_task.send();
             }
         }
-#endif //MPI_COMM_ENABLED
+#endif // MPI_COMM_ENABLED
 
 #if MPI_COMPUTE_ENABLED
-        grid.inner_integration_task->execute(isubstep,dt);
+        grid.inner_integration_task->execute(isubstep, dt);
 #endif
- 
+
 #if MPI_COMM_ENABLED
-        //Handle messages as they arrive in a fused loop pipeline
+        // Handle messages as they arrive in a fused loop pipeline
         int idx, prev_idx;
 
-        for (int n = 0; n < NUM_ACTIVE_SEGMENTS+1; n++){
+        for (int n = 0; n < NUM_ACTIVE_SEGMENTS + 1; n++) {
             prev_idx = idx;
-            if (n < NUM_ACTIVE_SEGMENTS){
+            if (n < NUM_ACTIVE_SEGMENTS) {
                 MPI_Waitany(NUM_SEGMENTS, grid.curr_recv_reqs, &idx, MPI_STATUS_IGNORE);
                 ERRCHK(idx >= 0 && idx < NUM_SEGMENTS && grid.halo_exchange_tasks[idx].active);
                 grid.halo_exchange_tasks[idx].unpack();
             }
-            if(n > 0){
-                if ( grid.halo_exchange_tasks[prev_idx].active && prev_idx >= 0 && prev_idx < NUM_SEGMENTS){
-                    grid.halo_exchange_tasks[prev_idx].sync();
-                    grid.halo_exchange_tasks[prev_idx].receive();
+            if (n > 0) {
+                grid.halo_exchange_tasks[prev_idx].sync();
+                grid.halo_exchange_tasks[prev_idx].receive();
 #if MPI_COMPUTE_ENABLED
-                    grid.halo_exchange_tasks[prev_idx].notify_dependents(isubstep, dt);
+                grid.halo_exchange_tasks[prev_idx].notify_dependents(isubstep, dt);
 #endif
-                }
             }
         }
-#else //if no comms, just compute all segments
-        for (auto &comp_task : grid.computation_tasks){
-            comp_task.execute(isubstep,dt);
+#else  // if no comms, just compute all segments
+        for (auto& comp_task : grid.computation_tasks) {
+            comp_task.execute(isubstep, dt);
         }
-#endif //MPI_COMM_ENABLED
+#endif // MPI_COMM_ENABLED
 
         gridSwapRequestBuffers();
         acDeviceSwapBuffers(device);
         acDeviceSynchronizeStream(device, STREAM_ALL); // Wait until inner and outer done
     }
-    MPI_Waitall(NUM_SEGMENTS*SWAP_CHAIN_LENGTH, grid.send_reqs, MPI_STATUSES_IGNORE);
+    MPI_Waitall(NUM_SEGMENTS * SWAP_CHAIN_LENGTH, grid.send_reqs, MPI_STATUSES_IGNORE);
     return AC_SUCCESS;
 }
 
@@ -540,39 +538,39 @@ acGridPeriodicBoundconds(const Stream stream)
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
 
-    //Active halo exchange tasks
-    for (auto &halo_task : grid.halo_exchange_tasks){
-        if (halo_task.active){
+    // Active halo exchange tasks
+    for (auto& halo_task : grid.halo_exchange_tasks) {
+        if (halo_task.active) {
             halo_task.pack();
             halo_task.send();
         }
     }
 
     MPI_Waitall(NUM_SEGMENTS, grid.curr_recv_reqs, MPI_STATUSES_IGNORE);
-    for (auto &halo_task : grid.halo_exchange_tasks){
-        if (halo_task.active){
+    for (auto& halo_task : grid.halo_exchange_tasks) {
+        if (halo_task.active) {
             halo_task.unpack();
             halo_task.sync();
             halo_task.receive();
         }
     }
 
-    //Inactive halo exchange tasks (i.e. possibly corners)
-    for (auto &halo_task : grid.halo_exchange_tasks){
-        if( !halo_task.active){
+    // Inactive halo exchange tasks (i.e. possibly corners)
+    for (auto& halo_task : grid.halo_exchange_tasks) {
+        if (!halo_task.active) {
             halo_task.pack();
             halo_task.exchange();
         }
     }
-    for (auto &halo_task : grid.halo_exchange_tasks){
-        if( !halo_task.active){
+    for (auto& halo_task : grid.halo_exchange_tasks) {
+        if (!halo_task.active) {
             halo_task.wait_recv();
             halo_task.unpack();
             halo_task.sync();
         }
     }
 
-    MPI_Waitall(NUM_SEGMENTS*SWAP_CHAIN_LENGTH, grid.send_reqs, MPI_STATUSES_IGNORE);
+    MPI_Waitall(NUM_SEGMENTS * SWAP_CHAIN_LENGTH, grid.send_reqs, MPI_STATUSES_IGNORE);
     gridSwapRequestBuffers();
     return AC_SUCCESS;
 }
@@ -640,5 +638,5 @@ acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBuff
 
     return reduceScal(local_result, rtype, result);
 }
-//MV: for MPI we will need acGridReduceVecScal() to get Alfven speeds etc. TODO 
+// MV: for MPI we will need acGridReduceVecScal() to get Alfven speeds etc. TODO
 #endif // AC_MPI_ENABLED

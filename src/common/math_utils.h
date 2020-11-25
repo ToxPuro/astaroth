@@ -36,13 +36,10 @@
 #define sqrt(x) sqrtf(x)
 #endif
 
-typedef struct uint3_64{
+typedef struct uint3_64 {
     uint64_t x, y, z;
-    explicit inline constexpr operator int3() const {
-        return (int3){ (int)x, (int)y, (int)z };
-    }
+    explicit inline constexpr operator int3() const { return (int3){(int)x, (int)y, (int)z}; }
 } uint3_64;
-
 
 template <class T>
 static inline const T
@@ -109,7 +106,7 @@ is_power_of_two(const unsigned val)
 #define HOST_DEVICE_INLINE inline
 #endif // __CUDACC__
 
-//int3 arithmetic
+// int3 arithmetic
 
 static HOST_DEVICE_INLINE int3
 operator-(const int3& a)
@@ -141,7 +138,7 @@ operator*(const int& a, const int3& b)
     return (int3){a * b.x, a * b.y, a * b.z};
 }
 
-//uint3_64 arithmetic
+// uint3_64 arithmetic
 
 static inline uint3_64
 operator+(const uint3_64& a, const uint3_64& b)
@@ -149,7 +146,7 @@ operator+(const uint3_64& a, const uint3_64& b)
     return (uint3_64){a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
-//AcReal arithmetic
+// AcReal arithmetic
 
 static HOST_DEVICE_INLINE AcReal3
 operator-(const AcReal3& a)

@@ -4,8 +4,8 @@
 
 #include <stdint.h> //uint64_t
 
-#include "math_utils.h"
 #include "errchk.h"
+#include "math_utils.h"
 
 #define MPI_DECOMPOSITION_AXES (3)
 
