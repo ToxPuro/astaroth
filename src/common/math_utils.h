@@ -26,6 +26,7 @@
  */
 #pragma once
 #include <math.h>   // isnan, isinf
+#include <stdint.h> // uint64_t
 #include <stdlib.h> // rand
 
 #if AC_DOUBLE_PRECISION != 1
@@ -34,6 +35,14 @@
 #define cos(x) cosf(x)
 #define sqrt(x) sqrtf(x)
 #endif
+
+typedef struct uint3_64{
+    uint64_t x, y, z;
+    explicit inline constexpr operator int3() const {
+        return (int3){ (int)x, (int)y, (int)z };
+    }
+} uint3_64;
+
 
 template <class T>
 static inline const T
@@ -75,6 +84,13 @@ clamp(const T& val, const T& min, const T& max)
     return val < min ? min : val > max ? max : val;
 }
 
+static inline uint64_t
+mod(const int a, const int b)
+{
+    const int r = a % b;
+    return r < 0 ? r + b : r;
+}
+
 static inline AcReal
 randr()
 {
@@ -93,10 +109,18 @@ is_power_of_two(const unsigned val)
 #define HOST_DEVICE_INLINE inline
 #endif // __CUDACC__
 
-static HOST_DEVICE_INLINE AcReal3
-operator+(const AcReal3& a, const AcReal3& b)
+//int3 arithmetic
+
+static HOST_DEVICE_INLINE int3
+operator-(const int3& a)
 {
-    return (AcReal3){a.x + b.x, a.y + b.y, a.z + b.z};
+    return (int3){-a.x, -a.y, -a.z};
+}
+
+static HOST_DEVICE_INLINE int3
+operator-(const int3& a, const int3& b)
+{
+    return (int3){a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
 static HOST_DEVICE_INLINE int3
@@ -111,12 +135,26 @@ operator*(const int3& a, const int3& b)
     return (int3){a.x * b.x, a.y * b.y, a.z * b.z};
 }
 
-static HOST_DEVICE_INLINE void
-operator+=(AcReal3& lhs, const AcReal3& rhs)
+static HOST_DEVICE_INLINE int3
+operator*(const int& a, const int3& b)
 {
-    lhs.x += rhs.x;
-    lhs.y += rhs.y;
-    lhs.z += rhs.z;
+    return (int3){a * b.x, a * b.y, a * b.z};
+}
+
+//uint3_64 arithmetic
+
+static inline uint3_64
+operator+(const uint3_64& a, const uint3_64& b)
+{
+    return (uint3_64){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+//AcReal arithmetic
+
+static HOST_DEVICE_INLINE AcReal3
+operator-(const AcReal3& a)
+{
+    return (AcReal3){-a.x, -a.y, -a.z};
 }
 
 static HOST_DEVICE_INLINE AcReal3
@@ -125,16 +163,10 @@ operator-(const AcReal3& a, const AcReal3& b)
     return (AcReal3){a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
-static HOST_DEVICE_INLINE int3
-operator-(const int3& a, const int3& b)
-{
-    return (int3){a.x - b.x, a.y - b.y, a.z - b.z};
-}
-
 static HOST_DEVICE_INLINE AcReal3
-operator-(const AcReal3& a)
+operator+(const AcReal3& a, const AcReal3& b)
 {
-    return (AcReal3){-a.x, -a.y, -a.z};
+    return (AcReal3){a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
 static HOST_DEVICE_INLINE void
@@ -145,10 +177,12 @@ operator-=(AcReal3& lhs, const AcReal3& rhs)
     lhs.z -= rhs.z;
 }
 
-static HOST_DEVICE_INLINE int3
-operator*(const int& a, const int3& b)
+static HOST_DEVICE_INLINE void
+operator+=(AcReal3& lhs, const AcReal3& rhs)
 {
-    return (int3){a * b.x, a * b.y, a * b.z};
+    lhs.x += rhs.x;
+    lhs.y += rhs.y;
+    lhs.z += rhs.z;
 }
 
 static HOST_DEVICE_INLINE AcReal3

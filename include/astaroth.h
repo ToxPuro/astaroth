@@ -33,12 +33,22 @@ typedef double3 AcReal3;
 #define AC_REAL_MAX (DBL_MAX)
 #define AC_REAL_MIN (DBL_MIN)
 #define AC_REAL_EPSILON (DBL_EPSILON)
+
+#if AC_MPI_ENABLED
+#define AC_MPI_TYPE MPI_DOUBLE
+#endif
+
 #else
 typedef float AcReal;
 typedef float3 AcReal3;
 #define AC_REAL_MAX (FLT_MAX)
 #define AC_REAL_MIN (FLT_MIN)
 #define AC_REAL_EPSILON (FLT_EPSILON)
+
+#if AC_MPI_ENABLED
+#define AC_MPI_TYPE MPI_FLOAT
+#endif
+
 #endif
 
 typedef struct {

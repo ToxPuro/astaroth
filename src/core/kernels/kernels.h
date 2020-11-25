@@ -1,13 +1,6 @@
 #pragma once
 #include "astaroth.h"
 
-#if AC_MPI_ENABLED
-#include <mpi.h>
-#include <stdbool.h>
-
-#define MPI_GPUDIRECT_DISABLED (0)
-#endif // AC_MPI_ENABLED
-
 typedef AcReal AcRealPacked;
 
 typedef struct {
