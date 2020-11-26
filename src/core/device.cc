@@ -278,6 +278,26 @@ acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mes
 }
 
 AcResult
+acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBufferHandle handle, const AcReal value)
+{
+    acDeviceSynchronizeStream(device, stream);
+
+    const size_t count = acVertexBufferSize(device->local_config);
+    AcReal* data = (AcReal*) malloc(sizeof(AcReal) * count);
+    ERRCHK_ALWAYS(data);
+
+    for (size_t i = 0; i < count; ++i)
+        data[i] = value;
+
+    // Set both in and out for safety (not strictly needed)
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.in[handle], data, sizeof(data[0]) * count, cudaMemcpyHostToDevice, device->streams[stream]));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.out[handle], data, sizeof(data[0]) * count, cudaMemcpyHostToDevice, device->streams[stream]));
+
+    free(data);
+    return AC_SUCCESS;
+}
+
+AcResult
 acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
                                     const VertexBufferHandle vtxbuf_handle, const int3 src,
                                     const int3 dst, const int num_vertices, AcMesh* host_mesh)
@@ -415,6 +435,27 @@ acDevicePeriodicBoundconds(const Device device, const Stream stream, const int3 
     }
     return AC_SUCCESS;
 }
+
+AcResult
+acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
+                              const VertexBufferHandle vtxbuf_handle, const int3 start,
+                              const int3 end, const AcMeshInfo config, const int3 bindex)
+{
+    cudaSetDevice(device->id);
+    return acKernelGeneralBoundconds(device->streams[stream], start, end,
+                                     device->vba.in[vtxbuf_handle], vtxbuf_handle, config, bindex);
+}
+
+AcResult
+acDeviceGeneralBoundconds(const Device device, const Stream stream, const int3 start,
+                           const int3 end, const AcMeshInfo config, const int3 bindex)
+{
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        acDeviceGeneralBoundcondStep(device, stream, (VertexBufferHandle)i, start, end, config, bindex);
+    }
+    return AC_SUCCESS;
+}
+
 
 AcResult
 acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,

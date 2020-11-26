@@ -59,6 +59,11 @@ typedef struct {
 
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
 
+// Neming the associated number of the boundary condition types
+typedef enum { AC_BOUNDCOND_PERIODIC = 0, 
+               AC_BOUNDCOND_SYMMETRIC = 1, 
+               AC_BOUNDCOND_ANTISYMMETRIC = 2 } AcBoundcond;
+
 #define AC_GEN_ID(X) X,
 typedef enum {
     AC_FOR_RTYPES(AC_GEN_ID) //
@@ -230,6 +235,9 @@ AcResult acLoadDeviceConstant(const AcRealParam param, const AcReal value);
 /** Loads an AcMesh to the devices visible to the caller */
 AcResult acLoad(const AcMesh host_mesh);
 
+/** Sets the whole mesh to some value */
+AcResult acSetVertexBuffer(const VertexBufferHandle handle, const AcReal value);
+
 /** Stores the AcMesh distributed among the devices visible to the caller back to the host*/
 AcResult acStore(AcMesh* host_mesh);
 
@@ -237,9 +245,18 @@ AcResult acStore(AcMesh* host_mesh);
  * substep and the user is responsible for calling acBoundcondStep before reading the data. */
 AcResult acIntegrate(const AcReal dt);
 
+/** Performs Runge-Kutta 3 integration. Note: Boundary conditions are not applied after the final
+ * substep and the user is responsible for calling acBoundcondStep before reading the data.
+ * Has customizable boundary conditions. */
+AcResult acIntegrateGBC(const AcMeshInfo config, const AcReal dt);
+
 /** Applies periodic boundary conditions for the Mesh distributed among the devices visible to
  * the caller*/
 AcResult acBoundcondStep(void);
+
+/** Applies general outer boundary conditions for the Mesh distributed among the devices visible to
+ * the caller*/
+AcResult acBoundcondStepGBC(const AcMeshInfo config);
 
 /** Does a scalar reduction with the data stored in some vertex buffer */
 AcReal acReduceScal(const ReductionType rtype, const VertexBufferHandle vtxbuf_handle);
@@ -317,7 +334,19 @@ AcResult acGridStoreMesh(const Stream stream, AcMesh* host_mesh);
 AcResult acGridIntegrate(const Stream stream, const AcReal dt);
 
 /** */
+/*   MV: Commented out for a while, but save for the future when standalone_MPI
+         works with periodic boundary conditions. 
+AcResult
+acGridIntegrateNonperiodic(const Stream stream, const AcReal dt)
+
+AcResult acGridIntegrateNonperiodic(const Stream stream, const AcReal dt);
+*/
+
+/** */
 AcResult acGridPeriodicBoundconds(const Stream stream);
+
+/** */
+AcResult acGridGeneralBoundconds(const Device device, const Stream stream);
 
 /** TODO */
 AcResult acGridReduceScal(const Stream stream, const ReductionType rtype,
@@ -416,6 +445,9 @@ AcResult acNodeLoadVertexBuffer(const Node node, const Stream stream, const AcMe
 /** */
 AcResult acNodeLoadMesh(const Node node, const Stream stream, const AcMesh host_mesh);
 
+/** */
+AcResult acNodeSetVertexBuffer(const Node node, const Stream stream, const VertexBufferHandle handle, const AcReal value);
+
 /** Deprecated ? */
 AcResult acNodeStoreVertexBufferWithOffset(const Node node, const Stream stream,
                                            const VertexBufferHandle vtxbuf_handle, const int3 src,
@@ -441,11 +473,21 @@ AcResult acNodeIntegrateSubstep(const Node node, const Stream stream, const int 
 AcResult acNodeIntegrate(const Node node, const AcReal dt);
 
 /** */
+AcResult acNodeIntegrateGBC(const Node node, const AcMeshInfo config, const AcReal dt);
+
+/** */
 AcResult acNodePeriodicBoundcondStep(const Node node, const Stream stream,
                                      const VertexBufferHandle vtxbuf_handle);
 
 /** */
 AcResult acNodePeriodicBoundconds(const Node node, const Stream stream);
+
+/** */
+AcResult acNodeGeneralBoundcondStep(const Node node, const Stream stream,   
+                                    const VertexBufferHandle vtxbuf_handle, const AcMeshInfo config);
+
+/** */
+AcResult acNodeGeneralBoundconds(const Node node, const Stream stream, const AcMeshInfo config);
 
 /** */
 AcResult acNodeReduceScal(const Node node, const Stream stream, const ReductionType rtype,
@@ -529,6 +571,9 @@ AcResult acDeviceLoadVertexBuffer(const Device device, const Stream stream, cons
 AcResult acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mesh);
 
 /** */
+AcResult acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBufferHandle handle, const AcReal value);
+
+/** */
 AcResult acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
                                              const VertexBufferHandle vtxbuf_handle, const int3 src,
                                              const int3 dst, const int num_vertices,
@@ -576,6 +621,16 @@ AcResult acDevicePeriodicBoundconds(const Device device, const Stream stream, co
                                     const int3 end);
 
 /** */
+AcResult acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
+                                      const VertexBufferHandle vtxbuf_handle, const int3 start,
+                                      const int3 end, const AcMeshInfo config, const int3 bindex);
+
+/** */
+AcResult acDeviceGeneralBoundconds(const Device device, const Stream stream, const int3 start,
+                                   const int3 end, const AcMeshInfo config, const int3 bindex);
+
+
+/** */
 AcResult acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
                             const VertexBufferHandle vtxbuf_handle, AcReal* result);
 /** */
@@ -595,16 +650,16 @@ AcResult acDeviceRunMPITest(void);
  * =============================================================================
  */
 /** Updates the built-in parameters based on nx, ny and nz */
-AcResult acUpdateBuiltinParams(AcMeshInfo* config);
+AcResult acHostUpdateBuiltinParams(AcMeshInfo* config);
 
 /** Creates a mesh stored in host memory */
-AcResult acMeshCreate(const AcMeshInfo mesh_info, AcMesh* mesh);
+AcResult acHostMeshCreate(const AcMeshInfo mesh_info, AcMesh* mesh);
 
 /** Randomizes a host mesh */
-AcResult acMeshRandomize(AcMesh* mesh);
+AcResult acHostMeshRandomize(AcMesh* mesh);
 
 /** Destroys a mesh stored in host memory */
-AcResult acMeshDestroy(AcMesh* mesh);
+AcResult acHostMeshDestroy(AcMesh* mesh);
 
 #ifdef __cplusplus
 } // extern "C"

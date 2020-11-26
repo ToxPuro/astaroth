@@ -75,6 +75,12 @@ acLoad(const AcMesh host_mesh)
 }
 
 AcResult
+acSetVertexBuffer(const VertexBufferHandle handle, const AcReal value)
+{
+    return acNodeSetVertexBuffer(nodes[0], STREAM_DEFAULT, handle, value);
+}
+
+AcResult
 acStore(AcMesh* host_mesh)
 {
     return acNodeStoreMesh(nodes[0], STREAM_DEFAULT, host_mesh);
@@ -85,6 +91,13 @@ acIntegrate(const AcReal dt)
 {
     return acNodeIntegrate(nodes[0], dt);
 }
+
+AcResult
+acIntegrateGBC(const AcMeshInfo config, const AcReal dt)
+{
+    return acNodeIntegrateGBC(nodes[0], config, dt);
+}
+
 
 AcResult
 acIntegrateStep(const int isubstep, const AcReal dt)
@@ -107,6 +120,12 @@ AcResult
 acBoundcondStep(void)
 {
     return acNodePeriodicBoundconds(nodes[0], STREAM_DEFAULT);
+}
+
+AcResult
+acBoundcondStepGBC(const AcMeshInfo config)
+{
+    return acNodeGeneralBoundconds(nodes[0], STREAM_DEFAULT, config);
 }
 
 AcReal
@@ -169,7 +188,7 @@ acGetNode(void)
 }
 
 AcResult
-acUpdateBuiltinParams(AcMeshInfo* config)
+acHostUpdateBuiltinParams(AcMeshInfo* config)
 {
     config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER;
     ///////////// PAD TEST
@@ -208,7 +227,7 @@ acUpdateBuiltinParams(AcMeshInfo* config)
 }
 
 AcResult
-acMeshCreate(const AcMeshInfo info, AcMesh* mesh)
+acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 {
     mesh->info = info;
 
@@ -228,7 +247,7 @@ randf(void)
 }
 
 AcResult
-acMeshRandomize(AcMesh* mesh)
+acHostMeshRandomize(AcMesh* mesh)
 {
     const int n = acVertexBufferSize(mesh->info);
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
@@ -239,7 +258,7 @@ acMeshRandomize(AcMesh* mesh)
 }
 
 AcResult
-acMeshDestroy(AcMesh* mesh)
+acHostMeshDestroy(AcMesh* mesh)
 {
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
         free(mesh->vertex_buffer[w]);
