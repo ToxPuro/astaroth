@@ -9,7 +9,7 @@
 
 #define MPI_DECOMPOSITION_AXES (3)
 
-static uint3_64
+static inline uint3_64
 morton3D(const uint64_t pid)
 {
     uint64_t i, j, k;
@@ -45,7 +45,7 @@ morton3D(const uint64_t pid)
     return (uint3_64){i, j, k};
 }
 
-static uint64_t
+static inline uint64_t
 morton1D(const uint3_64 pid)
 {
     uint64_t i = 0;
@@ -79,7 +79,18 @@ morton1D(const uint3_64 pid)
     return i;
 }
 
-static uint3_64
+static inline uint3_64
+decompose(const uint64_t target)
+{
+    // This is just so beautifully elegant. Complex and efficient decomposition
+    // in just one line of code.
+    uint3_64 p = morton3D(target - 1) + (uint3_64){1, 1, 1};
+
+    ERRCHK_ALWAYS(p.x * p.y * p.z == target);
+    return p;
+}
+
+static inline uint3_64
 wrap(const int3 i, const uint3_64 n)
 {
     return (uint3_64){
@@ -89,14 +100,14 @@ wrap(const int3 i, const uint3_64 n)
     };
 }
 
-static int
+static inline int
 getPid(const int3 pid_raw, const uint3_64 decomp)
 {
     const uint3_64 pid = wrap(pid_raw, decomp);
     return (int)morton1D(pid);
 }
 
-static int3
+static inline int3
 getPid3D(const uint64_t pid, const uint3_64 decomp)
 {
     const uint3_64 pid3D = morton3D(pid);

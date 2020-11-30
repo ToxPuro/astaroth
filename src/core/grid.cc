@@ -8,8 +8,8 @@
  *
  * struct PackedData is used for packing and unpacking. Holds the actual data in
  *                   the halo partition (wrapped by HaloMessage)
- * struct Grid contains information about the local GPU device, decomposition, the
- *             total mesh dimensions and CommDatas
+ * struct Grid contains information about the local GPU device, decomposition, 
+ *             the total mesh dimensions, tasks, and MPI requests
 
  * Basic steps:
  *   1) Distribute the mesh among ranks
@@ -37,17 +37,6 @@
 
 #define MPI_COMPUTE_ENABLED (1)
 #define MPI_COMM_ENABLED (1)
-
-static uint3_64
-decompose(const uint64_t target)
-{
-    // This is just so beautifully elegant. Complex and efficient decomposition
-    // in just one line of code.
-    uint3_64 p = morton3D(target - 1) + (uint3_64){1, 1, 1};
-
-    ERRCHK_ALWAYS(p.x * p.y * p.z == target);
-    return p;
-}
 
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
@@ -139,6 +128,12 @@ acGridInit(const AcMeshInfo info)
     ERRCHK_ALWAYS(info.int_params[AC_nx] % decomposition.x == 0);
     ERRCHK_ALWAYS(info.int_params[AC_ny] % decomposition.y == 0);
     ERRCHK_ALWAYS(info.int_params[AC_nz] % decomposition.z == 0);
+
+    //Check that mixed precision is correctly configured, AcRealPacked == AC_MPI_TYPE
+    //CAN BE REMOVED IF MIXED PRECISION IS SUPPORTED AS A PREPROCESSOR FLAG
+    int mpi_type_size;
+    MPI_Type_size(AC_MPI_TYPE,&mpi_type_size);
+    ERRCHK_ALWAYS(sizeof(AcRealPacked) == mpi_type_size);
 
     const int submesh_nx                       = info.int_params[AC_nx] / decomposition.x;
     const int submesh_ny                       = info.int_params[AC_ny] / decomposition.y;
