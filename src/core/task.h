@@ -3,9 +3,10 @@
 
 #include <mpi.h>
 #include <vector>
+#include <string>
 
 #include "decomposition.h"   //getPid and friends
-#include "kernels/kernels.h" //PackedData
+#include "kernels/kernels.h" //PackedData, VertexBufferArray
 
 #define MPI_USE_PINNED (0)   // Do inter-node comm with pinned (host) memory
 #define MPI_INCL_CORNERS (0) // Include the 3D corners of subdomains in halo
@@ -113,16 +114,20 @@ class Task {
     size_t total_dependencies;
     size_t active_dependencies;
     size_t allowed_triggers;
+    bool started;
 
   public:
+    std::string name;
     virtual ~Task()
     {
         // delete dependents;
     }
     void register_dependent(Task* t);
+    void set_trigger_limit(size_t trigger_limit);
     void notify_dependents(int isubstep, AcReal dt);
     void notify(int isubstep, AcReal dt);
-    void set_trigger_limit(size_t trigger_limit);
+    void update(int isubstep, AcReal dt);
+    virtual bool test() = 0;
     virtual void execute(int isubstep, AcReal dt) = 0;
 };
 
@@ -134,11 +139,15 @@ typedef class ComputationTask : public Task {
     int3 segment_id;
 
     Device device;
+    VertexBufferArray vba;
     Stream stream;
 
   public:
     ComputationTask(int3 _segment_id, int3 nn, Device _device, Stream _stream);
+    void swapBuffers();
+    void syncDeviceState();
     void execute(int isubstep, AcReal dt);
+    bool test();
 } ComputationTask;
 
 // Communication
@@ -181,6 +190,8 @@ typedef class HaloExchangeTask : public Task {
     int recv_rank;
 
     Device device;
+    VertexBufferArray recv_vba;
+    VertexBufferArray send_vba;
     cudaStream_t stream;
 
   public:
@@ -211,5 +222,9 @@ typedef class HaloExchangeTask : public Task {
     void send();
     void exchange();
 
+    void swapSendVBA();
+    void swapRecvVBA();
+    void syncDeviceState();
     void execute(int isubstep, AcReal dt);
+    bool test();
 } HaloExchangeTask;

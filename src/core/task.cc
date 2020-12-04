@@ -21,6 +21,7 @@
 
 #include <mpi.h>
 #include <vector>
+#include <iostream>
 
 #include "decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //PackedData
@@ -89,6 +90,12 @@ Task::register_dependent(Task* t)
 }
 
 void
+Task::set_trigger_limit(size_t trigger_limit)
+{
+    allowed_triggers = trigger_limit;
+}
+
+void
 Task::notify_dependents(int isubstep, AcReal dt)
 {
     for (auto& d : dependents) {
@@ -100,17 +107,21 @@ void
 Task::notify(int isubstep, AcReal dt)
 {
     active_dependencies--;
-    if (active_dependencies == 0 && allowed_triggers > 0) {
+    if (active_dependencies == 0){
         active_dependencies = total_dependencies;
-        allowed_triggers--;
-        execute(isubstep, dt);
+        if (allowed_triggers > 0) {
+            allowed_triggers--;
+            execute(isubstep, dt);
+        }
     }
 }
 
 void
-Task::set_trigger_limit(size_t trigger_limit)
+Task::update(int isubstep, AcReal dt)
 {
-    allowed_triggers = trigger_limit;
+    if (test()){
+        notify_dependents(isubstep, dt);
+    }
 }
 
 /* Computation */
@@ -128,6 +139,17 @@ Task::set_trigger_limit(size_t trigger_limit)
 ComputationTask::ComputationTask(int3 _segment_id, int3 nn, Device _device, Stream _stream)
     : segment_id(_segment_id), device(_device), stream(_stream)
 {
+    name = "Compute task";
+    //Copy VBA's CUDA-pointers over
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        vba.in[i] = device->vba.in[i];
+        vba.out[i] = device->vba.out[i];
+    }    
+
+    for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
+        vba.profiles[i] = device->vba.profiles[i];
+    }
+
     start = (int3){segment_id.x == -1 ? NGHOST : segment_id.x == 1 ? nn.x : NGHOST * 2,
                    segment_id.y == -1 ? NGHOST : segment_id.y == 1 ? nn.y : NGHOST * 2,
                    segment_id.z == -1 ? NGHOST : segment_id.z == 1 ? nn.z : NGHOST * 2};
@@ -140,13 +162,55 @@ ComputationTask::ComputationTask(int3 _segment_id, int3 nn, Device _device, Stre
     // clang-format off
     total_dependencies  = (int[]){0, COMPUTE_FACE_DEPS, COMPUTE_EDGE_DEPS,COMPUTE_CORNER_DEPS}[seg_type];
     active_dependencies = total_dependencies;
+    started = false;
 }
 
 void
 ComputationTask::execute(int isubstep, AcReal dt)
 {
     cudaSetDevice(device->id);
-    acDeviceIntegrateSubstep(device, stream, isubstep, start, start + dims, dt);
+    acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
+    acKernelIntegrateSubstep(device->streams[stream], isubstep, start, start + dims, vba);
+    swapBuffers();
+    started = true;
+    //notify_dependents(isubstep, dt);
+    //acDeviceIntegrateSubstep(device, stream, isubstep, start, start + dims, dt);
+}
+
+void
+ComputationTask::syncDeviceState()
+{
+    cudaSetDevice(device->id);
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        vba.in[i]  = device->vba.in[i];
+        vba.out[i] = device->vba.out[i];
+    }
+}
+
+
+void
+ComputationTask::swapBuffers()
+{
+    cudaSetDevice(device->id);
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        AcReal* tmp        = vba.in[i];
+        vba.in[i]  = vba.out[i];
+        vba.out[i] = tmp;
+    }
+}
+
+bool
+ComputationTask::test()
+{
+    if (!started){
+        return false;
+    }
+    cudaError_t err = cudaStreamQuery(device->streams[stream]);
+    if(err == cudaSuccess) {
+        started = false;
+        return true;
+    }
+    return false;
 }
 
 /*  Communication   */
@@ -209,12 +273,26 @@ HaloExchangeTask::HaloExchangeTask(const Device _device, const int _rank, const 
                                    MPI_Request* recv_requests, MPI_Request* send_requests)
     : segment_id(_segment_id), rank(_rank), device(_device)
 {
+    
+    name = "Halo exchange task";
+    //Copy VBA's CUDA-pointers over
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        recv_vba.in[i] = device->vba.in[i];
+        send_vba.in[i] = device->vba.in[i];
+        recv_vba.out[i] = device->vba.out[i];
+        send_vba.out[i] = device->vba.out[i];
+    }    
+
+    for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
+        recv_vba.profiles[i] = device->vba.profiles[i];
+        send_vba.profiles[i] = device->vba.profiles[i];
+    }
 
     int seg_type = segment_type(segment_id);
     active       = ((MPI_INCL_CORNERS) || seg_type != 3) ? true : false;
 
-    // total_dependencies = (int[]){0,SEND_FACE_DEPS,SEND_EDGE_DEPS,SEND_CORNER_DEPS}[seg_type];
-    // unfulfilled_dependencies = total_dependencies;
+    total_dependencies = (int[]){0,SEND_FACE_DEPS,SEND_EDGE_DEPS,SEND_CORNER_DEPS}[seg_type];
+    active_dependencies = total_dependencies;
     const int3 foreign_segment_id = segment_id;
 
     // Coordinates
@@ -269,7 +347,8 @@ void
 HaloExchangeTask::pack()
 {
     auto msg = send_buffers->get_fresh_buffer();
-    acKernelPackData(stream, device->vba, local_segment_coordinates, msg->buffer);
+    acKernelPackData(stream, send_vba, local_segment_coordinates, msg->buffer);
+    swapSendVBA();
 }
 
 void
@@ -278,7 +357,8 @@ HaloExchangeTask::unpack()
     auto msg           = recv_buffers->get_current_buffer();
     msg->buffer.pinned = false;
     acUnpinPackedData(device, stream, &(msg->buffer));
-    acKernelUnpackData(stream, msg->buffer, halo_segment_coordinates, device->vba);
+    acKernelUnpackData(stream, msg->buffer, halo_segment_coordinates, recv_vba);
+    swapRecvVBA();
 }
 
 void
@@ -396,12 +476,57 @@ HaloExchangeTask::exchange()
 #endif
 }
 
+void
+HaloExchangeTask::swapSendVBA()
+{
+    cudaSetDevice(device->id);
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        AcReal* tmp        = send_vba.in[i];
+        send_vba.in[i]  = send_vba.out[i];
+        send_vba.out[i] = tmp;
+    }
+}
+
+
+void
+HaloExchangeTask::swapRecvVBA()
+{
+    cudaSetDevice(device->id);
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        AcReal* tmp        = recv_vba.in[i];
+        recv_vba.in[i]  = recv_vba.out[i];
+        recv_vba.out[i] = tmp;
+    }
+}
+
+void
+HaloExchangeTask::syncDeviceState()
+{
+    cudaSetDevice(device->id);
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        recv_vba.in[i]  = device->vba.in[i];
+        send_vba.in[i]  = device->vba.in[i];
+        recv_vba.out[i] = device->vba.out[i];
+        send_vba.out[i] = device->vba.out[i];
+    }
+}
+
 // TODO: Implement exchanges for HaloExchangeTasks
 void
 HaloExchangeTask::execute(int isubstep, AcReal dt)
 {
     dt = isubstep * dt;
-    // swap_buffers();
-    // exchange();
+    sync();
+    pack();
+    send();
 }
+
+bool
+HaloExchangeTask::test()
+{
+    //TODO: currently using MPI_Waitany, not this function.
+    //May be cleaner to use the task interface.
+    return false;
+}
+
 #endif // AC_MPI_ENABLED
