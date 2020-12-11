@@ -152,6 +152,32 @@ uniform ScalarField BFIELDY;
 uniform ScalarField BFIELDZ;
 #endif
 
+!SHOCK VISCOSTY DRAFT
+
+Preprocessed Scalar
+der6x_upwd(in ScalarField vertex)
+{
+    Scalar inv_ds = AC_inv_dsx;
+
+    //Negatice Divergences 
+
+    //MAX of 5 fields . In Pencil Code shock_max5(f,maxf)
+
+    //Smoothing -> uterm. In Pencil Code shock_smooth_farray(f,smoothf)
+     
+    f_shock = uterm*(min_ds*min_ds);
+
+    zeta_shock = nu_shock*f_shock;
+
+    return zeta_shock; 
+           
+}
+
+
+
+!SHOCK VISCOSTY DRAFT
+
+
 #if LUPWD
 
 Preprocessed Scalar
