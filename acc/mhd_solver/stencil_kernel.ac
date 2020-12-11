@@ -155,21 +155,74 @@ uniform ScalarField BFIELDZ;
 !SHOCK VISCOSTY DRAFT
 
 Preprocessed Scalar
-der6x_upwd(in ScalarField vertex)
+shock_viscosity(in VectorField uu)
 {
     Scalar inv_ds = AC_inv_dsx;
 
-    //Negatice Divergences 
+    //Negatice Divergences
+    //REPEAR FOR SUFFICICENT LARGE AREA 
+    divu_neg[i,j,k] = - derx(vertexIdx, uu.x) + derx(vertexIdx, uu.y) + derx(vertexIdx, uu.z)
+   
 
+    // QUESTION TO FRED: Which is preferred? 
     //MAX of 5 fields . In Pencil Code shock_max5(f,maxf)
+    // Take a maximum of two zones in any direction 
+    max_divu[i,j,k] = max( divu_neg[i-2, j  , k  ],
+                           divu_neg[i-1, j  , k  ],
+                           divu_neg[i+1, j  , k  ],
+                           divu_neg[i+2, j  , k  ],
+                           divu_neg[i  , j-2, k  ],
+                           divu_neg[i  , j-1, k  ],
+                           divu_neg[i  , j  , k  ],
+                           divu_neg[i  , j+1, k  ],
+                           divu_neg[i  , j+2, k  ],
+                           divu_neg[i  , j  , k-2],
+                           divu_neg[i  , j  , k-1],
+                           divu_neg[i  , j  , k+1],
+                           divu_neg[i  , j  , k+2] )
 
+    //ALTERNATIVE!!
+    //MAX of 3 fields . In Pencil Code shock_max3(f,maxf)
+    // Take a maximum of a surrounding stencil
+    // Take a maximum of one zone in any direction 
+    max_divu[i,j,k] = max( divu_neg[i-1, j  , k  ],
+                           divu_neg[i+1, j  , k  ],
+                           divu_neg[i  , j-1, k  ],
+                           divu_neg[i  , j  , k  ],
+                           divu_neg[i  , j+1, k  ],
+                           divu_neg[i  , j  , k-1],
+                           divu_neg[i  , j  , k+1],
+
+
+    // QUESTION TO FRED: Smoothing tensil is smaller in PC than in Fred's
+    //                   paper. Which is preferred? 
     //Smoothing -> uterm. In Pencil Code shock_smooth_farray(f,smoothf)
-     
+    // But Fred's paper has 19 point stencil?
+    uterm =   0.25*max_divu[i-1, j  , k  ]  
+            +  0.5*max_divu[i  , j  , k  ]  
+            + 0.25*max_divu[i+1, j  , k  ]  
+
+    uterm =   0.25*max_divu[i  , j-1, k  ]  
+            +  0.5*uterm     
+            + 0.25*max_divu[i  , j+1, k  ]  
+
+    uterm =   0.25*max_divu[i  , j  , k-1]  
+            +  0.5*uterm     
+            + 0.25*max_divu[i  , j  , k+1]  
+
     f_shock = uterm*(min_ds*min_ds);
 
     zeta_shock = nu_shock*f_shock;
 
-    return zeta_shock; 
+    //The result will match the array index. Is there actually any need to save a VTXBUF for shock unless for diagnostics? 
+
+    if (zeta_shock >= Scalar(0.0) {
+
+        return zeta_shock; 
+    } 
+    else {
+        return Scalar(0.0)
+    }
            
 }
 
