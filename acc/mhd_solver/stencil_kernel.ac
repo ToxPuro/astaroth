@@ -153,6 +153,122 @@ uniform ScalarField BFIELDZ;
 #endif
 
 !SHOCK VISCOSTY DRAFT
+Preprocessed Scalar
+shock_viscosity3(in VectorField uu)
+{
+    int3 vertexIdx_p1_p0_p0 = (int3){vertexIdx.x+1, vertexIdx.y  , vertexIdx.z  };                   
+    int3 vertexIdx_p0_p1_p0 = (int3){vertexIdx.x  , vertexIdx.y+1, vertexIdx.z  };               
+    int3 vertexIdx_p0_p0_p1 = (int3){vertexIdx.x  , vertexIdx.y  , vertexIdx.z+1};                   
+    int3 vertexIdx_m1_p0_p0 = (int3){vertexIdx.x-1, vertexIdx.y  , vertexIdx.z  };               
+    int3 vertexIdx_p0_m1_p0 = (int3){vertexIdx.x  , vertexIdx.y-1, vertexIdx.z  };               
+    int3 vertexIdx_p0_p0_m1 = (int3){vertexIdx.x  , vertexIdx.y  , vertexIdx.z-1};               
+    int3 vertexIdx_m1_p0_p0 = (int3){vertexIdx.x-1, vertexIdx.y  , vertexIdx.z  };               
+    int3 vertexIdx_m1_p1_p0 = (int3){vertexIdx.x-1, vertexIdx.y+1, vertexIdx.z  };               
+    int3 vertexIdx_m1_p0_p1 = (int3){vertexIdx.x-1, vertexIdx.y  , vertexIdx.z+1};               
+    int3 vertexIdx_m2_p0_p0 = (int3){vertexIdx.x-2, vertexIdx.y  , vertexIdx.z  };                               
+    int3 vertexIdx_m1_m1_p0 = (int3){vertexIdx.x-1, vertexIdx.y-1, vertexIdx.z  };               
+    int3 vertexIdx_m1_p0_m1 = (int3){vertexIdx.x-1, vertexIdx.y  , vertexIdx.z-1};               
+    int3 vertexIdx_p2_p0_p0 = (int3){vertexIdx.x+2, vertexIdx.y  , vertexIdx.z  };               
+    int3 vertexIdx_p1_p1_p0 = (int3){vertexIdx.x+1, vertexIdx.y+1, vertexIdx.z  };               
+    int3 vertexIdx_p1_p0_p1 = (int3){vertexIdx.x+1, vertexIdx.y  , vertexIdx.z+1};               
+    int3 vertexIdx_p1_m1_p0 = (int3){vertexIdx.x+1, vertexIdx.y-1, vertexIdx.z  };               
+    int3 vertexIdx_p1_p0_m1 = (int3){vertexIdx.x+1, vertexIdx.y  , vertexIdx.z-1};               
+    int3 vertexIdx_p0_m1_p1 = (int3){vertexIdx.x  , vertexIdx.y-1, vertexIdx.z+1};               
+    int3 vertexIdx_p0_m2_p0 = (int3){vertexIdx.x  , vertexIdx.y-2, vertexIdx.z  };               
+    int3 vertexIdx_p0_m1_m1 = (int3){vertexIdx.x  , vertexIdx.y-1, vertexIdx.z-1};               
+    int3 vertexIdx_p0_p2_p0 = (int3){vertexIdx.x  , vertexIdx.y+2, vertexIdx.z  };               
+    int3 vertexIdx_p0_p1_p1 = (int3){vertexIdx.x  , vertexIdx.y+1, vertexIdx.z+1};               
+    int3 vertexIdx_p0_p1_m1 = (int3){vertexIdx.x  , vertexIdx.y+1, vertexIdx.z-1};               
+    int3 vertexIdx_p0_p0_m2 = (int3){vertexIdx.x  , vertexIdx.y  , vertexIdx.z-2};               
+    int3 vertexIdx_p0_p0_p2 = (int3){vertexIdx.x  , vertexIdx.y  , vertexIdx.z+2};               
+
+    //Divergences
+    // 0, 0, 0 max point
+    Scalar divu_p0_p0_p0 = derx(vertexIdx         , uu.x) + derx(vertexIdx         , uu.y) + derx(vertexIdx         , uu.z);
+    Scalar divu_p1_p0_p0 = derx(vertexIdx_p1_p0_p0, uu.x) + derx(vertexIdx_p1_p0_p0, uu.y) + derx(vertexIdx_p1_p0_p0, uu.z);
+    Scalar divu_p0_p1_p0 = derx(vertexIdx_p0_p1_p0, uu.x) + derx(vertexIdx_p0_p1_p0, uu.y) + derx(vertexIdx_p0_p1_p0, uu.z);
+    Scalar divu_p0_p0_p1 = derx(vertexIdx_p0_p0_p1, uu.x) + derx(vertexIdx_p0_p0_p1, uu.y) + derx(vertexIdx_p0_p0_p1, uu.z);
+    Scalar divu_m1_p0_p0 = derx(vertexIdx_m1_p0_p0, uu.x) + derx(vertexIdx_m1_p0_p0, uu.y) + derx(vertexIdx_m1_p0_p0, uu.z);
+    Scalar divu_p0_m1_p0 = derx(vertexIdx_p0_m1_p0, uu.x) + derx(vertexIdx_p0_m1_p0, uu.y) + derx(vertexIdx_p0_m1_p0, uu.z);
+    Scalar divu_p0_p0_m1 = derx(vertexIdx_p0_p0_m1, uu.x) + derx(vertexIdx_p0_p0_m1, uu.y) + derx(vertexIdx_p0_p0_m1, uu.z);
+  
+    //-1, 0, 0 max point
+    Scalar divu_m1_p0_p0 = derx(vertexIdx_m1_p0_p0, uu.x) + derx(vertexIdx_m1_p0_p0, uu.y) + derx(vertexIdx_m1_p0_p0, uu.z);
+    Scalar divu_m1_p1_p0 = derx(vertexIdx_m1_p1_p0, uu.x) + derx(vertexIdx_m1_p1_p0, uu.y) + derx(vertexIdx_m1_p1_p0, uu.z);
+    Scalar divu_m1_p0_p1 = derx(vertexIdx_m1_p0_p1, uu.x) + derx(vertexIdx_m1_p0_p1, uu.y) + derx(vertexIdx_m1_p0_p1, uu.z);
+    Scalar divu_m2_p0_p0 = derx(vertexIdx_m2_p0_p0, uu.x) + derx(vertexIdx_m2_p0_p0, uu.y) + derx(vertexIdx_m2_p0_p0, uu.z);
+    Scalar divu_m1_m1_p0 = derx(vertexIdx_m1_m1_p0, uu.x) + derx(vertexIdx_m1_m1_p0, uu.y) + derx(vertexIdx_m1_m1_p0, uu.z);
+    Scalar divu_m1_p0_m1 = derx(vertexIdx_m1_p0_m1, uu.x) + derx(vertexIdx_m1_p0_m1, uu.y) + derx(vertexIdx_m1_p0_m1, uu.z);
+
+    // 1, 0, 0 max point
+    Scalar divu_p2_p0_p0 = derx(vertexIdx_p2_p0_p0, uu.x) + derx(vertexIdx_p2_p0_p0, uu.y) + derx(vertexIdx_p2_p0_p0, uu.z);
+    Scalar divu_p1_p1_p0 = derx(vertexIdx_p1_p1_p0, uu.x) + derx(vertexIdx_p1_p1_p0, uu.y) + derx(vertexIdx_p1_p1_p0, uu.z);
+    Scalar divu_p1_p0_p1 = derx(vertexIdx_p1_p0_p1, uu.x) + derx(vertexIdx_p1_p0_p1, uu.y) + derx(vertexIdx_p1_p0_p1, uu.z);
+    Scalar divu_p1_m1_p0 = derx(vertexIdx_p1_m1_p0, uu.x) + derx(vertexIdx_p1_m1_p0, uu.y) + derx(vertexIdx_p1_m1_p0, uu.z);
+    Scalar divu_p1_p0_m1 = derx(vertexIdx_p1_p0_m1, uu.x) + derx(vertexIdx_p1_p0_m1, uu.y) + derx(vertexIdx_p1_p0_m1, uu.z);
+
+    // 0,-1, 0 max point
+    Scalar divu_p0_m1_p1 = derx(vertexIdx_p0_m1_p1, uu.x) + derx(vertexIdx_p0_m1_p1, uu.y) + derx(vertexIdx_p0_m1_p1, uu.z);
+    Scalar divu_p0_m2_p0 = derx(vertexIdx_p0_m2_p0, uu.x) + derx(vertexIdx_p0_m2_p0, uu.y) + derx(vertexIdx_p0_m2_p0, uu.z);
+    Scalar divu_p0_m1_m1 = derx(vertexIdx_p0_m1_m1, uu.x) + derx(vertexIdx_p0_m1_m1, uu.y) + derx(vertexIdx_p0_m1_m1, uu.z);
+
+    // 0, 1, 0 max point
+    Scalar divu_p0_p2_p0 = derx(vertexIdx_p0_p2_p0, uu.x) + derx(vertexIdx_p0_p2_p0, uu.y) + derx(vertexIdx_p0_p2_p0, uu.z);
+    Scalar divu_p0_p1_p1 = derx(vertexIdx_p0_p1_p1, uu.x) + derx(vertexIdx_p0_p1_p1, uu.y) + derx(vertexIdx_p0_p1_p1, uu.z);
+    Scalar divu_p0_p1_m1 = derx(vertexIdx_p0_p1_m1, uu.x) + derx(vertexIdx_p0_p1_m1, uu.y) + derx(vertexIdx_p0_p1_m1, uu.z);
+
+    // 0, 0,-1 max point
+    Scalar divu_p0_p0_m2 = derx(vertexIdx_p0_p0_m2, uu.x) + derx(vertexIdx_p0_p0_m2, uu.y) + derx(vertexIdx_p0_p0_m2, uu.z);
+
+    // 0, 0, 1 max point
+    Scalar divu_p0_p0_p2 = derx(vertexIdx_p0_p0_p2, uu.x) + derx(vertexIdx_p0_p0_p2, uu.y) + derx(vertexIdx_p0_p0_p2, uu.z);
+
+    //MAX of 3 fields . In Pencil Code shock_max3(f,maxf)
+    // Take a maximum of a surrounding stencil
+    // Take a maximum of one zone in any direction 
+    //TODO max8()
+    // 0, 0, 0 max point
+    Scalar maxneg_divu_p0_p0_p0 = max8(0.0, -divu_p0_p0_p0, -divu_p1_p0_p0, -divu_p0_p1_p0, -divu_p0_p0_p1, -divu_m1_p0_p0, -divu_p0_m1_p0, -divu_p0_p0_m1);
+                                                                                                                                     
+    //-1, 0, 0 max point                                                                                                             
+    Scalar maxneg_divu_m1_p0_p0 = max8(0.0, -divu_m1_p0_p0, -divu_p0_p0_p0, -divu_m1_p1_p0, -divu_m1_p0_p1, -divu_m2_p0_p0, -divu_m1_m1_p0, -divu_m1_p0_m1);
+                                                                                                                                     
+    // 1, 0, 0 max point                                                                                                             
+    Scalar maxneg_divu_p1_p0_p0 = max8(0.0, -divu_p1_p0_p0, -divu_p2_p0_p0, -divu_p1_p1_p0, -divu_p1_p0_p1, -divu_p0_p0_p0, -divu_p1_m1_p0, -divu_p1_p0_m1);
+                                                                                                                                     
+    // 0,-1, 0 max point                                                                                                             
+    Scalar maxneg_divu_p0_m1_p0 = max8(0.0, -divu_p0_m1_p0, -divu_p1_m1_p0, -divu_p0_p0_p0, -divu_p0_m1_p1, -divu_m1_m1_p0, -divu_p0_m2_p0, -divu_p0_m1_m1);
+                                                                                                                                     
+    // 0, 1, 0 max point                                                                                                             
+    Scalar maxneg_divu_p0_p1_p0 = max8(0.0, -divu_p0_p1_p0, -divu_p1_p1_p0, -divu_p0_p2_p0, -divu_p0_p1_p1, -divu_m1_p1_p0, -divu_p0_p0_p0, -divu_p0_p1_m1);
+                                                                                                                                     
+    // 0, 0,-1 max point                                                                                                             
+    Scalar maxneg_divu_p0_p0_m1 = max8(0.0, -divu_p0_p0_m1, -divu_p1_p0_m1, -divu_p0_p1_m1, -divu_p0_p0_p0, -divu_m1_p0_m1, -divu_p0_m1_m1, -divu_p0_p0_m2);
+                                                                                                                                     
+    // 0, 0, 1 max point                                                                                                             
+    Scalar maxneg_divu_p0_p0_p1 = max8(0.0, -divu_p0_p0_p1, -divu_p1_p0_p1, -divu_p0_p1_p1, -divu_p0_p0_p2, -divu_m1_p0_p1, -divu_p0_m1_p1, -divu_p0_p0_p0);
+
+
+    // QUESTION TO FRED: Smoothing tensil is smaller in PC than in Fred's
+    //                   paper. Which is preferred? 
+    //Smoothing -> uterm. In Pencil Code shock_smooth_farray(f,smoothf)
+    // But Fred's paper has 19 point stencil?
+    Scalar divusmooth =   0.25*maxneg_divu_m1_p0_p0 + 0.5*maxneg_divu_p0_p0_p0 + 0.25*maxneg_divu_p1_p0_p0;  
+    divusmooth        =   0.25*maxneg_divu_p0_m1_p0 + 0.5*uterm                + 0.25*maxneg_divu_p0_p1_p0;  
+    divusmooth        =   0.25*maxneg_divu_p0_p0_m1 + 0.5*uterm                + 0.25*maxneg_divu_p0_p0_p1;  
+
+    //TODO max3()
+    Scalar min_ds = min3(AC_inv_dsx, AC_inv_dsy, AC_inv_dsz)
+
+    f_shock = uterm*(min_ds*min_ds);
+
+    zeta_shock = nu_shock*f_shock;
+
+    //The result will match the array index. Is there actually any need to save a VTXBUF for shock unless for diagnostics? 
+
+    return zeta_shock; 
+           
+}
 
 Preprocessed Scalar
 shock_viscosity(in VectorField uu)
