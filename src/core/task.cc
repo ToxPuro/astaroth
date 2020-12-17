@@ -9,9 +9,9 @@
  * Each shell segment is assigned a ComputationTask.
  * ComputationTasks integrate their segment of the domain.
  *
- * After a task has been completed, its dependent tasks can be started with notify_dependents()
+ * After a task has been completed, its dependent tasks can be started with notifyDependents()
  * E.g. ComputationTasks may depend on HaloExchangeTasks because they're waiting to receive data.
- * Vv. HaloExchangeTasks may depend on ComputationTasks because they're waiting for data to send.
+ * Vv.  HaloExchangeTasksmay depend on ComputationTasks because they're waiting for data to send.
  *
  * This all happens in grid.cc:GridIntegrate
  */
@@ -84,101 +84,30 @@ acUnpinPackedData(const Device device, const cudaStream_t stream, PackedData* dd
 
 // Tasks are encapsulated pieces of work that have a clear set of dependencies (and dependents).
 void
-Task::register_dependent(Task* t)
+Task::logStateChangedEvent(int tag, std::string from, std::string to)
 {
-    dependents.push_back(t);
+    int seg_type = segment_type(index_to_segment_id(tag));
+    /*
+       std::cout<< "{"
+             <<"\"msg_type\":\"state_changed_event\","
+             <<"\"rank\":"<<rank
+             <<",\"substep\":"<<substep_counter.count
+             <<",\"task_type\":\""<<task_type<<"\""
+             <<",\"tag\":"<<tag
+             <<",\"seg_id\":["
+                 <<segment_id.x<<","
+                 <<segment_id.y<<","
+                 <<segment_id.z<<"],"
+             <<"\"seg_type\":"<<seg_type<<","
+             <<"\"from\":\""<<from<<"\""<<","
+             <<"\"to\":\""<<to<<"\""
+             <<"}"<<std::endl;
+    */
+    
 }
 
 void
-Task::set_trigger_limit(size_t trigger_limit)
-{
-    allowed_triggers = trigger_limit;
-}
-
-void
-Task::notify_dependents(int isubstep, AcReal dt)
-{
-    for (auto& d : dependents) {
-        d->notify(isubstep, dt);
-    }
-}
-
-void
-Task::notify(int isubstep, AcReal dt)
-{
-    active_dependencies--;
-    if (active_dependencies == 0){
-        active_dependencies = total_dependencies;
-        if (allowed_triggers > 0) {
-            allowed_triggers--;
-            execute(isubstep, dt);
-        }
-    }
-}
-
-void
-Task::update(int isubstep, AcReal dt)
-{
-    if (test()){
-        notify_dependents(isubstep, dt);
-    }
-}
-
-/* Computation */
-
-// Computation task dependencies
-#define COMPUTE_FACE_DEPS (1)
-#define COMPUTE_EDGE_DEPS (3)
-
-#if MPI_INCL_CORNERS
-#define COMPUTE_CORNER_DEPS (7)
-#else
-#define COMPUTE_CORNER_DEPS (6)
-#endif
-
-ComputationTask::ComputationTask(int3 _segment_id, int3 nn, Device _device, Stream _stream)
-    : segment_id(_segment_id), device(_device), stream(_stream)
-{
-    name = "Compute task";
-    //Copy VBA's CUDA-pointers over
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        vba.in[i] = device->vba.in[i];
-        vba.out[i] = device->vba.out[i];
-    }    
-
-    for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
-        vba.profiles[i] = device->vba.profiles[i];
-    }
-
-    start = (int3){segment_id.x == -1 ? NGHOST : segment_id.x == 1 ? nn.x : NGHOST * 2,
-                   segment_id.y == -1 ? NGHOST : segment_id.y == 1 ? nn.y : NGHOST * 2,
-                   segment_id.z == -1 ? NGHOST : segment_id.z == 1 ? nn.z : NGHOST * 2};
-
-    dims = (int3){segment_id.x == 0 ? nn.x - NGHOST * 2 : NGHOST,
-                  segment_id.y == 0 ? nn.y - NGHOST * 2 : NGHOST,
-                  segment_id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
-
-    int seg_type = segment_type(segment_id);
-    // clang-format off
-    total_dependencies  = (int[]){0, COMPUTE_FACE_DEPS, COMPUTE_EDGE_DEPS,COMPUTE_CORNER_DEPS}[seg_type];
-    active_dependencies = total_dependencies;
-    started = false;
-}
-
-void
-ComputationTask::execute(int isubstep, AcReal dt)
-{
-    cudaSetDevice(device->id);
-    acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
-    acKernelIntegrateSubstep(device->streams[stream], isubstep, start, start + dims, vba);
-    swapBuffers();
-    started = true;
-    //notify_dependents(isubstep, dt);
-    //acDeviceIntegrateSubstep(device, stream, isubstep, start, start + dims, dt);
-}
-
-void
-ComputationTask::syncDeviceState()
+Task::synchronizeWithDevice()
 {
     cudaSetDevice(device->id);
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
@@ -187,11 +116,10 @@ ComputationTask::syncDeviceState()
     }
 }
 
-
+//Swap local vba
 void
-ComputationTask::swapBuffers()
+Task::swapVBA()
 {
-    cudaSetDevice(device->id);
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         AcReal* tmp        = vba.in[i];
         vba.in[i]  = vba.out[i];
@@ -199,26 +127,179 @@ ComputationTask::swapBuffers()
     }
 }
 
+void
+Task::schedule(size_t substeps, AcReal dt_)
+{
+    substep_counter.start_counting_to(substeps);
+    dependencyCounter.extend_to(substeps,0);
+    dependencyCounter.reset_counts();
+    dt = dt_;
+}
+
+bool
+Task::isFinished()
+{
+    return substep_counter.is_finished();
+}
+
+void
+Task::update()
+{
+    if (isFinished()) return;
+    
+    bool ready = (state == iteration_first_step) ? dependencyCounter.is_finished(substep_counter.count) : test();
+    if (ready){
+        advance();
+        if (state == iteration_first_step){
+            swapVBA();
+            notifyDependents();
+            substep_counter.increment();
+        }
+    }
+}
+
+void
+Task::registerDependent(Task* t, size_t offset)
+{
+    dependents.emplace_back(t,offset);
+/*
+    if (rank == 0){
+        std::cout << "{"
+        <<"\"msg_type\":\"dependency_registration\","
+
+        <<"\"prerequisite\":{"
+            <<"\"seg_id\":["
+                <<this->segment_id.x<<","
+                <<this->segment_id.y<<","
+                <<this->segment_id.z<<"],"
+            <<"\"task_type\":"<<"\""<<this->task_type<<"\""
+        <<"},"
+
+        <<"\"dependent\":{"
+            <<"\"seg_id\":["
+                <<t->segment_id.x<<","
+                <<t->segment_id.y<<","
+                <<t->segment_id.z<<"],"
+            <<"\"task_type\":"<<"\""<<t->task_type<<"\""
+        <<"},"
+
+        <<"\"offset\":"<<offset
+        <<"}"<< std::endl;
+    }
+*/
+    t->dependOn(offset);
+}
+
+void
+Task::dependOn(size_t offset)
+{
+    dependencyCounter.increment_target(offset);
+}
+
+void
+Task::notifyDependents()
+{
+    for (auto& d : dependents) {
+        d.first->notify(substep_counter.count, d.second);
+    }
+}
+
+void
+Task::notify(size_t substep, size_t offset)
+{
+    dependencyCounter.increment(substep+offset, offset);
+}
+/* Computation */
+
+ComputationTask::ComputationTask(int3 segment_id_, int3 nn, Device device_, Stream stream_)
+    : stream(stream_)
+{
+    segment_id = segment_id_;
+    device = device_;
+    task_type = "compute";
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    //Copy VBA's CUDA-pointers over
+    synchronizeWithDevice();
+
+    start = (int3){segment_id.x == -1 ? NGHOST : segment_id.x == 1 ? nn.x : NGHOST * 2,
+                   segment_id.y == -1 ? NGHOST : segment_id.y == 1 ? nn.y : NGHOST * 2,
+                   segment_id.z == -1 ? NGHOST : segment_id.z == 1 ? nn.z : NGHOST * 2};
+
+    dims = (int3){segment_id.x == 0 ? nn.x - NGHOST * 2 : NGHOST,
+                  segment_id.y == 0 ? nn.y - NGHOST * 2 : NGHOST,
+                  segment_id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
+    /*
+    if (rank == 0){
+        std::cout << "{"
+                <<"\"msg_type\":\"task_definition\","
+                << "\"task_type\":\"compute\","
+                << "\"segment_index\":" << segment_index(segment_id)
+                << ","
+                << "\"segment_id\":["
+                << segment_id.x<<","
+                << segment_id.y<<","
+                << segment_id.z
+                << "],"
+                << "\"start\":["
+                << start.x<<","
+                << start.y<<","
+                << start.z
+                << "],"
+                << "\"dims\":["
+                << dims.x<<","
+                << dims.y<<","
+                << dims.z
+                << "]"
+                << "}" <<std::endl;
+    }
+    */
+}
+
+void
+ComputationTask::compute()
+{
+    cudaSetDevice(device->id);
+    acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
+    acKernelIntegrateSubstep(device->streams[stream], substep_counter.count, start, start + dims, vba);
+}
+
 bool
 ComputationTask::test()
 {
-    if (!started){
-        return false;
+    switch (static_cast<ComputeState>(state)){
+        case ComputeState::Running:
+        {
+            cudaError_t err = cudaStreamQuery(device->streams[stream]);
+            return err == cudaSuccess;
+        }
+        default:
+            return false;
     }
-    cudaError_t err = cudaStreamQuery(device->streams[stream]);
-    if(err == cudaSuccess) {
-        started = false;
-        return true;
+}
+
+void
+ComputationTask::advance()
+{
+    switch (static_cast<ComputeState>(state)){
+        case ComputeState::Waiting_for_halo:
+        {
+            logStateChangedEvent(segment_index(segment_id),"waiting", "running");
+            cudaDeviceSynchronize();
+            compute();
+            state = static_cast<int>(ComputeState::Running);
+            break;
+        }
+        case ComputeState::Running:
+        {
+            logStateChangedEvent(segment_index(segment_id),"running", "waiting");
+            state = static_cast<int>(ComputeState::Waiting_for_halo);
+            break;
+        }
     }
-    return false;
 }
 
 /*  Communication   */
-
-// Send task dependencies
-#define SEND_FACE_DEPS (9)
-#define SEND_EDGE_DEPS (3)
-#define SEND_CORNER_DEPS (1)
 
 // HaloMessage contains all information needed to send or receive a single message
 // Wraps PackedData. These two structs could be folded together.
@@ -268,34 +349,25 @@ MessageBufferSwapChain::get_fresh_buffer()
 }
 
 // HaloExchangeTask
-HaloExchangeTask::HaloExchangeTask(const Device _device, const int _rank, const int3 _segment_id,
+HaloExchangeTask::HaloExchangeTask(const Device device_, const int rank_, const int3 segment_id_,
                                    const uint3_64 decomposition, const int3 grid_dimensions,
                                    MPI_Request* recv_requests, MPI_Request* send_requests)
-    : segment_id(_segment_id), rank(_rank), device(_device)
 {
-    
-    name = "Halo exchange task";
-    //Copy VBA's CUDA-pointers over
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        recv_vba.in[i] = device->vba.in[i];
-        send_vba.in[i] = device->vba.in[i];
-        recv_vba.out[i] = device->vba.out[i];
-        send_vba.out[i] = device->vba.out[i];
-    }    
+    segment_id = segment_id_;
+    rank = rank_;
+    device = device_;
+    task_type = "halo";
 
-    for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
-        recv_vba.profiles[i] = device->vba.profiles[i];
-        send_vba.profiles[i] = device->vba.profiles[i];
-    }
+    //Copy VBA's CUDA-pointers over
+    synchronizeWithDevice();
 
     int seg_type = segment_type(segment_id);
     active       = ((MPI_INCL_CORNERS) || seg_type != 3) ? true : false;
-
-    total_dependencies = (int[]){0,SEND_FACE_DEPS,SEND_EDGE_DEPS,SEND_CORNER_DEPS}[seg_type];
-    active_dependencies = total_dependencies;
-    const int3 foreign_segment_id = segment_id;
+    
+    const int3 foreign_segment_id = -segment_id;
 
     // Coordinates
+    //These names are bad and confusing?
     halo_segment_coordinates  = halo_segment_position(segment_id, grid_dimensions);
     local_segment_coordinates = local_segment_position(-foreign_segment_id, grid_dimensions);
 
@@ -327,7 +399,41 @@ HaloExchangeTask::HaloExchangeTask(const Device _device, const int _rank, const 
     int low_prio, high_prio;
     cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
     cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-
+/*
+    if (active && rank == 0){
+    std::cout   << "{"
+                <<"\"msg_type\":\"task_definition\","
+                << "\"task_type\":\"halo\","
+                <<"\"segment_index\":" << segment_index(segment_id)
+                <<","
+                << "\"segment_id\":["
+                <<segment_id.x<<","
+                <<segment_id.y<<","
+                <<segment_id.z
+                <<"],"
+                << "\"foreign_segment_id\":["
+                <<foreign_segment_id.x<<","
+                <<foreign_segment_id.y<<","
+                <<foreign_segment_id.z
+                <<"],"
+                << "\"halo_segment_coordinates\":["
+                <<halo_segment_coordinates.x<<","
+                <<halo_segment_coordinates.y<<","
+                <<halo_segment_coordinates.z
+                <<"],"
+                << "\"local_segment_coordinates\":["
+                <<local_segment_coordinates.x<<","
+                <<local_segment_coordinates.y<<","
+                <<local_segment_coordinates.z
+                <<"],"
+                <<"\"dims\":["
+                <<segment_dimensions.x<<","
+                <<segment_dimensions.y<<","
+                <<segment_dimensions.z
+                <<"]"
+                << "}" <<std::endl;
+    }
+*/
     // Post receive immediately, this avoids unexpected messages
     if (active) {
         receive();
@@ -347,18 +453,17 @@ void
 HaloExchangeTask::pack()
 {
     auto msg = send_buffers->get_fresh_buffer();
-    acKernelPackData(stream, send_vba, local_segment_coordinates, msg->buffer);
-    swapSendVBA();
+    acKernelPackData(stream, vba, local_segment_coordinates, msg->buffer);
 }
 
 void
 HaloExchangeTask::unpack()
 {
+    
     auto msg           = recv_buffers->get_current_buffer();
     msg->buffer.pinned = false;
     acUnpinPackedData(device, stream, &(msg->buffer));
-    acKernelUnpackData(stream, msg->buffer, halo_segment_coordinates, recv_vba);
-    swapRecvVBA();
+    acKernelUnpackData(stream, msg->buffer, halo_segment_coordinates, vba);
 }
 
 void
@@ -476,57 +581,78 @@ HaloExchangeTask::exchange()
 #endif
 }
 
-void
-HaloExchangeTask::swapSendVBA()
-{
-    cudaSetDevice(device->id);
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        AcReal* tmp        = send_vba.in[i];
-        send_vba.in[i]  = send_vba.out[i];
-        send_vba.out[i] = tmp;
-    }
-}
-
-
-void
-HaloExchangeTask::swapRecvVBA()
-{
-    cudaSetDevice(device->id);
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        AcReal* tmp        = recv_vba.in[i];
-        recv_vba.in[i]  = recv_vba.out[i];
-        recv_vba.out[i] = tmp;
-    }
-}
-
-void
-HaloExchangeTask::syncDeviceState()
-{
-    cudaSetDevice(device->id);
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        recv_vba.in[i]  = device->vba.in[i];
-        send_vba.in[i]  = device->vba.in[i];
-        recv_vba.out[i] = device->vba.out[i];
-        send_vba.out[i] = device->vba.out[i];
-    }
-}
-
-// TODO: Implement exchanges for HaloExchangeTasks
-void
-HaloExchangeTask::execute(int isubstep, AcReal dt)
-{
-    dt = isubstep * dt;
-    sync();
-    pack();
-    send();
-}
-
 bool
 HaloExchangeTask::test()
 {
-    //TODO: currently using MPI_Waitany, not this function.
-    //May be cleaner to use the task interface.
-    return false;
+    switch(static_cast<HaloExchangeState>(state)){
+        case HaloExchangeState::Packing:
+        {
+            cudaError_t err = cudaStreamQuery(stream);
+            if (err == cudaSuccess){
+                return true;
+            }
+            if (err == cudaErrorNotReady){
+                return false;
+            }
+            return false;
+        }
+        case HaloExchangeState::Unpacking:
+        {
+            cudaError_t err = cudaStreamQuery(stream);
+            if (err == cudaSuccess){
+                //TODO: test if these trigger (the cudaErrorNotReadies)
+                return true;
+            }
+            if (err == cudaErrorNotReady){
+                return false;
+            }
+            return false;
+        }
+        case HaloExchangeState::Receiving:
+        {
+            //TODO: see if current buffer is the correct buffer, when do we swap buffers?
+            auto msg = recv_buffers->get_current_buffer();
+            int request_complete;
+            MPI_Test(msg->request, &request_complete, MPI_STATUS_IGNORE);   
+            return request_complete?true:false;
+        }
+        default:
+        {
+            ERROR("Invalid state for HaloExchangeTask");
+            return false;
+        }
+    }
 }
 
+void
+HaloExchangeTask::advance()
+{
+    switch(static_cast<HaloExchangeState>(state)){
+        case HaloExchangeState::Waiting_for_compute:
+            logStateChangedEvent(send_tag,  "waiting", "packing");
+            pack();
+            state = static_cast<int>(HaloExchangeState::Packing);
+            break;
+        case HaloExchangeState::Packing:
+            logStateChangedEvent(send_tag, "packing", "receiving");
+            sync();
+            send();
+            state = static_cast<int>(HaloExchangeState::Receiving);
+            break;
+        case HaloExchangeState::Receiving:
+            logStateChangedEvent(send_tag, "receiving", "unpacking");
+            sync();
+            unpack();
+            state = static_cast<int>(HaloExchangeState::Unpacking);
+            break;
+        case HaloExchangeState::Unpacking:
+            logStateChangedEvent(send_tag, "unpacking", "waiting");
+            receive();
+            sync();
+            state = static_cast<int>(HaloExchangeState::Waiting_for_compute);
+            break;
+        default:
+            ERROR("Invalid state for HaloExchangeTask");
+    }
+}
 #endif // AC_MPI_ENABLED

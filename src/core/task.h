@@ -99,6 +99,113 @@ segment_type(const int3 seg_id)
 
 /* Task interface */
 
+
+struct Counter {
+    size_t target;
+    size_t count;
+
+    void
+    increment(){
+        ++count;
+    }
+
+    void
+    reset()
+    {
+        count = 0;
+    }
+
+    bool
+    is_finished()
+    {
+        return count == target;
+    }
+
+    void
+    start_counting_to(size_t new_target)
+    {
+        target = new_target;
+        count = 0;
+    }
+
+    void
+    increment_target()
+    {
+        ++target;
+    }
+};
+
+
+struct DependencyCounter {
+private:
+    size_t iterations_scheduled;
+    size_t max_offset;
+    std::vector<size_t> targets;
+    std::vector<std::vector<size_t>> counts;
+public:
+
+    void
+    extend_to(size_t iterations, size_t offset)
+    {
+        iterations_scheduled = iterations>iterations_scheduled?iterations:iterations_scheduled;
+        max_offset = offset>max_offset?offset:max_offset;
+
+        targets.resize(max_offset+1, 0);
+
+        counts.resize(iterations_scheduled);
+        for (size_t i=0; i<iterations_scheduled; i++){
+            size_t num_buckets = i < iterations_scheduled? i+1: iterations_scheduled+1;
+            counts[i].resize(num_buckets,0);
+        }
+    }
+    
+    void
+    increment(size_t iteration, size_t offset)
+    {
+        if (iteration < iterations_scheduled){
+            counts[iteration][offset]++;
+        }
+    }
+
+    void
+    increment_target(size_t offset)
+    {
+        extend_to(1,offset);
+        targets[offset]++;
+    }
+
+    void
+    reset_counts(){
+        for (auto& count: counts){
+            for (auto& bucket : count){
+                bucket = 0;
+            }
+        }
+    }
+
+    void
+    reset_all(){
+        for (auto& target : targets){
+            target = 0;
+        }
+        for (auto& count: counts){
+            for (auto& bucket : count){
+                bucket = 0;
+            }
+        }
+    }
+    bool
+    is_finished(size_t iteration)
+    {
+        bool ready = true;
+        for (size_t i = 0;i <= iteration && i<=max_offset; i++){
+            ready &= counts[iteration][i] >= targets[i];
+        }
+        return ready;
+    }
+};
+
+
 /**
  * Tasks may depend on other Tasks.
  *
@@ -108,45 +215,62 @@ segment_type(const int3 seg_id)
  */
 class Task {
   private:
-    std::vector<Task*> dependents;
+    std::vector<std::pair<Task*,size_t>> dependents;
 
   protected:
-    size_t total_dependencies;
-    size_t active_dependencies;
-    size_t allowed_triggers;
-    bool started;
+    VertexBufferArray vba;
+    Device device;
+    int rank;
+    int3 segment_id;
+
+    std::string task_type;
+
+    DependencyCounter dependencyCounter;
+    Counter substep_counter;
+    int state;
 
   public:
-    std::string name;
+    static const int iteration_first_step = 0;
+
+    AcReal dt;
+
     virtual ~Task()
     {
         // delete dependents;
     }
-    void register_dependent(Task* t);
-    void set_trigger_limit(size_t trigger_limit);
-    void notify_dependents(int isubstep, AcReal dt);
-    void notify(int isubstep, AcReal dt);
-    void update(int isubstep, AcReal dt);
+    void update();
+    bool isFinished();
+
+    void registerDependent(Task* t, size_t offset);
+    void dependOn(size_t offset);
+    void schedule(size_t substeps, AcReal dt_);
+
+    void notifyDependents();
+    void notify(size_t substep, size_t offset);
+    void logStateChangedEvent(int tag, std::string b, std::string c);
+    
+    void synchronizeWithDevice();
+    void swapVBA();
     virtual bool test() = 0;
-    virtual void execute(int isubstep, AcReal dt) = 0;
+    virtual void advance() = 0;
 };
 
 // Computation
+enum class ComputeState {Waiting_for_halo = Task::iteration_first_step, Running};
+
 typedef class ComputationTask : public Task {
   private:
     int3 start;
     int3 dims;
-    int3 segment_id;
+    //int3 segment_id;
 
-    Device device;
-    VertexBufferArray vba;
     Stream stream;
 
   public:
-    ComputationTask(int3 _segment_id, int3 nn, Device _device, Stream _stream);
-    void swapBuffers();
-    void syncDeviceState();
-    void execute(int isubstep, AcReal dt);
+    ComputationTask(int3 segment_id_, int3 nn, Device device_, Stream stream_);
+
+    void compute();
+    void advance();
     bool test();
 } ComputationTask;
 
@@ -156,7 +280,7 @@ typedef struct HaloMessage {
     MPI_Request* request;
     int length;
 
-    HaloMessage(int3 dims, MPI_Request* _req);
+    HaloMessage(int3 dims, MPI_Request* req_);
     ~HaloMessage();
     HaloMessage(const HaloMessage& other) = delete;
 } HaloMessage;
@@ -173,9 +297,11 @@ typedef struct MessageBufferSwapChain {
     HaloMessage* get_fresh_buffer();
 } MessageBufferSwapChain;
 
+enum class HaloExchangeState {Waiting_for_compute = Task::iteration_first_step, Packing, Receiving, Unpacking};
+
 typedef class HaloExchangeTask : public Task {
   private:
-    int3 segment_id;
+    //int3 segment_id;
     int3 halo_segment_coordinates;
     int3 local_segment_coordinates;
 
@@ -185,19 +311,16 @@ typedef class HaloExchangeTask : public Task {
     int send_tag;
     int recv_tag;
     int msglen;
-    int rank;
+    //int rank;
     int send_rank;
     int recv_rank;
 
-    Device device;
-    VertexBufferArray recv_vba;
-    VertexBufferArray send_vba;
     cudaStream_t stream;
 
   public:
     bool active;
 
-    HaloExchangeTask(const Device _device, const int _rank, const int3 _segment_id,
+    HaloExchangeTask(const Device device_, const int rank_, const int3 segment_id_,
                      const uint3_64 decomposition, const int3 grid_dimensions,
                      MPI_Request* recv_requests, MPI_Request* send_requests);
     ~HaloExchangeTask();
@@ -222,9 +345,6 @@ typedef class HaloExchangeTask : public Task {
     void send();
     void exchange();
 
-    void swapSendVBA();
-    void swapRecvVBA();
-    void syncDeviceState();
-    void execute(int isubstep, AcReal dt);
+    void advance();
     bool test();
 } HaloExchangeTask;

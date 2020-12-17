@@ -179,14 +179,15 @@ acGridInit(const AcMeshInfo info)
     grid.computation_tasks.clear();
     grid.computation_tasks.reserve(NUM_SEGMENTS);
 
+    grid.inner_integration_task = new ComputationTask((int3){0, 0, 0}, grid_dimensions, device,
+                                                      STREAM_26);
+    //TODO: here we have missed the dependencies between computation tasks, only capturing the core's deps
     for (int idx = 0; idx < NUM_SEGMENTS; idx++) {
         const int3 segment_id = index_to_segment_id(idx);
         Stream stream         = (Stream)(idx + STREAM_DEFAULT);
         grid.computation_tasks.emplace_back(segment_id, grid_dimensions, device, stream);
     }
 
-    grid.inner_integration_task = new ComputationTask((int3){0, 0, 0}, grid_dimensions, device,
-                                                      STREAM_26);
 
     grid.halo_exchange_tasks.clear();
     grid.halo_exchange_tasks.reserve(NUM_SEGMENTS);
@@ -200,32 +201,45 @@ acGridInit(const AcMeshInfo info)
     grid.curr_send_reqs = grid.send_reqs;
     grid.back_send_reqs = &grid.send_reqs[NUM_SEGMENTS];
 
+
     for (int i = 0; i < NUM_SEGMENTS; i++) {
         const int3 seg_id = index_to_segment_id(i);
         grid.halo_exchange_tasks.emplace_back(device, pid, seg_id, decomposition, grid_dimensions,
                                               grid.recv_reqs, grid.send_reqs);
+    }
 
+    //Dependencies
+    for (int i = 0; i < NUM_SEGMENTS; i++) {
+        const int3 seg_a = index_to_segment_id(i);
         for (int j = 0; j < NUM_SEGMENTS; j++) {
-            const int3 compute_seg_id = index_to_segment_id(j);
-            if (((seg_id.x == 0) || (seg_id.x == compute_seg_id.x)) &&
-                ((seg_id.y == 0) || (seg_id.y == compute_seg_id.y)) &&
-                ((seg_id.z == 0) || (seg_id.z == compute_seg_id.z))) {
-                const int3 send_seg_id = -seg_id;
-                int k = segment_index(send_seg_id);
-                if (pid == 0){
-                    /*
-                    print_int3(seg_id);
-                    //std::cout << "->";
-                    print_int3(compute_seg_id);
-                    //std::cout << "->";
-                    print_int3(send_seg_id);
-                    //std::cout << std::endl; 
-*/
+            const int3 seg_b = index_to_segment_id(j);
+            if (((seg_a.x == 0) || (seg_a.x == seg_b.x)) &&
+                ((seg_a.y == 0) || (seg_a.y == seg_b.y)) &&
+                ((seg_a.z == 0) || (seg_a.z == seg_b.z))) {
+                if (grid.halo_exchange_tasks[i].active){
+                    grid.halo_exchange_tasks[i].registerDependent(&grid.computation_tasks[j], 0);
+                    grid.computation_tasks[j].registerDependent(&grid.halo_exchange_tasks[i], 1);
                 }
-                grid.halo_exchange_tasks[i].register_dependent(&grid.computation_tasks[j]);
-                grid.computation_tasks[j].register_dependent(&grid.halo_exchange_tasks[k]);
+            }
+            if (grid.halo_exchange_tasks[i].active){
+                //grid.halo_exchange_tasks[i].registerDependent(&grid.computation_tasks[j], 0);
+                //grid.computation_tasks[j].registerDependent(&grid.halo_exchange_tasks[i], 1);
             }
         }
+    }
+    
+    for (int i = 0; i < NUM_SEGMENTS; i++) {
+        const int3 seg_a = index_to_segment_id(i);
+        for (int j = 0; j < NUM_SEGMENTS; j++) {
+            const int3 seg_b = index_to_segment_id(j);
+            if (((seg_a.x == 0) || (seg_b.x == 0) || (seg_a.x == seg_b.x)) &&
+                ((seg_a.y == 0) || (seg_b.y == 0) || (seg_a.y == seg_b.y)) &&
+                ((seg_a.z == 0) || (seg_b.z == 0) || (seg_a.z == seg_b.z))){
+                    grid.computation_tasks[j].registerDependent(&grid.computation_tasks[i], 1);
+            }
+        }
+        grid.computation_tasks[i].registerDependent(grid.inner_integration_task, 1);
+        grid.inner_integration_task->registerDependent(&grid.computation_tasks[i], 1);
     }
 
     grid.initialized = true;
@@ -477,99 +491,47 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     const Device device = grid.device;
     acDeviceSynchronizeStream(device, stream);
     cudaSetDevice(device->id);
-    int rank; 
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);   
 
     MPI_Barrier(MPI_COMM_WORLD);
-    //std::cout <<"Barrier, rank "<<rank<<std::endl;
-    
+
+    size_t num_substeps = 3;    
+
     for (auto& halo_task : grid.halo_exchange_tasks) {
         if (halo_task.active){
-            halo_task.set_trigger_limit(2);
-            halo_task.syncDeviceState();
+            halo_task.schedule(num_substeps, dt);
         }
     }
 
     for (auto& compute_task : grid.computation_tasks) {
-        compute_task.set_trigger_limit(3);
-        compute_task.syncDeviceState();
+        compute_task.schedule(num_substeps, dt);
     }
-    grid.inner_integration_task->syncDeviceState();
+    grid.inner_integration_task->schedule(num_substeps, dt);
 
-#if MPI_COMM_ENABLED
-        for (auto& halo_task : grid.halo_exchange_tasks) {
-            if (halo_task.active) {
-                halo_task.pack();
+    bool ready;
+    do{
+        ready = true;
+        grid.inner_integration_task->update();
+        for (auto& halo_task: grid.halo_exchange_tasks){
+            if (halo_task.active){
+                halo_task.update();
+                ready &= halo_task.isFinished();
             }
         }
-
-        for (auto& halo_task : grid.halo_exchange_tasks) {
-            if (halo_task.active) {
-                halo_task.send();
-            }
+        for (auto& compute_task: grid.computation_tasks){
+                compute_task.update();
+                ready &= compute_task.isFinished();
         }
-#endif // MPI_COMM_ENABLED
-
-    for (int isubstep = 0; isubstep < 3; ++isubstep) {
-#if MPI_COMPUTE_ENABLED
-        grid.inner_integration_task->execute(isubstep, dt);
-#endif
-
-#if MPI_COMM_ENABLED
-        // Handle messages as they arrive in a fused loop pipeline
-        int idx, prev_idx;
-
-        //std::cout <<"Waiting for halo, " << isubstep<< ", rank "<<rank<<std::endl;
-        fflush(stdout);
-        for (int n = 0; n < NUM_ACTIVE_SEGMENTS + 1; n++) {
-            prev_idx = idx;
-            if (n < NUM_ACTIVE_SEGMENTS) {
-                MPI_Waitany(NUM_SEGMENTS, grid.curr_recv_reqs, &idx, MPI_STATUS_IGNORE);
-                ERRCHK(idx >= 0 && idx < NUM_SEGMENTS && grid.halo_exchange_tasks[idx].active);
-                //std::cout << "Received halo seg " << idx <<". Step " << isubstep << " rank "<<rank << std::endl;
-                fflush(stdout);
-                grid.halo_exchange_tasks[idx].unpack();
-            }
-            if (n > 0) {
-                grid.halo_exchange_tasks[prev_idx].sync();
-                grid.halo_exchange_tasks[prev_idx].receive();
-#if MPI_COMPUTE_ENABLED
-                grid.halo_exchange_tasks[prev_idx].notify_dependents(isubstep, dt);
-#endif
-                //Find finished comp tasks and start sending their 
-                for (auto& comp_task : grid.computation_tasks) {
-                    comp_task.update(isubstep, dt);
-                }
-            }
-        }
-        //std::cout <<"Waited for halo, " << isubstep<< ", rank "<<rank<<std::endl;
-        fflush(stdout);
-#else  // if no comms, just compute all segments
-        for (auto& comp_task : grid.computation_tasks) {
-            comp_task.execute(isubstep, dt);
-        }
-#endif // MPI_COMM_ENABLED
-
-        gridSwapRequestBuffers();
-        acDeviceSwapBuffers(device);
-        //std::cout <<"Sync " << isubstep<< ", rank "<<rank<<std::endl;
-        fflush(stdout);
-        acDeviceSynchronizeStream(device, STREAM_ALL); // Wait until inner and outer done
+        ready &= grid.inner_integration_task->isFinished();
+    } while (!ready);
         
-        //All remaining comp tasks have now finished, start sending related halo segments
-        //Something is off here... not being sent...
-        for (auto& comp_task : grid.computation_tasks) {
-            comp_task.update(isubstep, dt);
-        }
-        //std::cout <<"Comp tasks finished, " << isubstep<< ", rank "<<rank<<std::endl;
-        fflush(stdout);
-    }
-    //
-    //std::cout <<"Waiting, rank "<<rank<<std::endl;
-    fflush(stdout);
+    
+    //if (num_substeps%2!=0){
+    gridSwapRequestBuffers();
+    acDeviceSwapBuffers(device);
+    //}
+    acDeviceSynchronizeStream(device, STREAM_ALL); // Wait until inner and outer done
     MPI_Waitall(NUM_SEGMENTS * SWAP_CHAIN_LENGTH, grid.send_reqs, MPI_STATUSES_IGNORE);
-    //std::cout <<"Waited, rank "<<rank<<std::endl;
-    fflush(stdout);
+    MPI_Barrier(MPI_COMM_WORLD);
     return AC_SUCCESS;
 }
 
@@ -582,7 +544,7 @@ acGridPeriodicBoundconds(const Stream stream)
     // Active halo exchange tasks
     for (auto& halo_task : grid.halo_exchange_tasks) {
         if (halo_task.active) {
-            halo_task.syncDeviceState();
+            halo_task.synchronizeWithDevice();
             halo_task.pack();
             halo_task.send();
         }
@@ -600,7 +562,7 @@ acGridPeriodicBoundconds(const Stream stream)
     // Inactive halo exchange tasks (i.e. possibly corners)
     for (auto& halo_task : grid.halo_exchange_tasks) {
         if (!halo_task.active) {
-            halo_task.syncDeviceState();
+            halo_task.synchronizeWithDevice();
             halo_task.pack();
             halo_task.exchange();
         }
