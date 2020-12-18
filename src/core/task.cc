@@ -259,8 +259,6 @@ ComputationTask::ComputationTask(int3 segment_id_, int3 nn, Device device_, Stre
 void
 ComputationTask::compute()
 {
-    cudaSetDevice(device->id);
-    acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
     acKernelIntegrateSubstep(device->streams[stream], substep_counter.count, start, start + dims, vba);
 }
 
@@ -285,7 +283,6 @@ ComputationTask::advance()
         case ComputeState::Waiting_for_halo:
         {
             logStateChangedEvent(segment_index(segment_id),"waiting", "running");
-            cudaDeviceSynchronize();
             compute();
             state = static_cast<int>(ComputeState::Running);
             break;

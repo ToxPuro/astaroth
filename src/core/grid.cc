@@ -123,6 +123,7 @@ acGridInit(const AcMeshInfo info)
     printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, pid, nprocs, pid3d.x,
            pid3d.y, pid3d.z);
     printf("Decomposition: %lu, %lu, %lu\n", decomposition.x, decomposition.y, decomposition.z);
+    printf("Mesh size: %d, %d, %d\n", info.int_params[AC_nx],info.int_params[AC_ny],info.int_params[AC_nz]);
     fflush(stdout);
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -268,7 +269,7 @@ acGridQuit(void)
         MPI_Request* req = &(grid.send_reqs[i]);
         if (*req != MPI_REQUEST_NULL) {
             MPI_Wait(req, MPI_STATUS_IGNORE);
-            MPI_Request_free(req);
+            //MPI_Request_free(req);
         }
     }
 
@@ -489,10 +490,10 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
     const Device device = grid.device;
+
+    acGridLoadScalarUniform(stream, AC_dt, dt);
     acDeviceSynchronizeStream(device, stream);
     cudaSetDevice(device->id);
-
-    MPI_Barrier(MPI_COMM_WORLD);
 
     size_t num_substeps = 3;    
 
@@ -529,9 +530,8 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     gridSwapRequestBuffers();
     acDeviceSwapBuffers(device);
     //}
-    acDeviceSynchronizeStream(device, STREAM_ALL); // Wait until inner and outer done
-    MPI_Waitall(NUM_SEGMENTS * SWAP_CHAIN_LENGTH, grid.send_reqs, MPI_STATUSES_IGNORE);
-    MPI_Barrier(MPI_COMM_WORLD);
+    //acDeviceSynchronizeStream(device, STREAM_ALL); // Wait until inner and outer done
+    //MPI_Waitall(NUM_SEGMENTS * SWAP_CHAIN_LENGTH, grid.send_reqs, MPI_STATUSES_IGNORE);
     return AC_SUCCESS;
 }
 
