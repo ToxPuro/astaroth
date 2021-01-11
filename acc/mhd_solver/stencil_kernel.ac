@@ -260,7 +260,7 @@ shock_viscosity3(in VectorField uu)
     //TODO max3()
     Scalar min_ds = min3(AC_inv_dsx, AC_inv_dsy, AC_inv_dsz)
 
-    f_shock = uterm*(min_ds*min_ds);
+    Scalar f_shock = uterm*(min_ds*min_ds);
 
     zeta_shock = nu_shock*f_shock;
 
