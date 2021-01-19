@@ -156,65 +156,198 @@ interpolate(Scalar direction, in ScalarField vertex)
     // TODO PPM interpolation
 #endif
 
-    return ;
+    return mat;
+    
+}
+
+// Extact velocity primitives from momentum
+Preprocessed Matrix 
+get_primitives_velocity(Matrix rho, Matrix rhouu_comp)
+{
+    Matrix mat;
+    
+    // Right Values x, y, z
+    mat.row[0] = (Vector){rhouu_comp.row[0].x/rho.row[0].x, 
+                          rhouu_comp.row[0].y/rho.row[0].y, 
+                          rhouu_comp.row[0].z/rho.row[0].z};
+    // Left Values x, y, z                                
+    mat.row[1] = (Vector){rhouu_comp.row[1].x/rho.row[1].x, 
+                          rhouu_comp.row[1].y/rho.row[1].y, 
+                          rhouu_comp.row[1].z/rho.row[1].z};
+
+    return mat;
+    
+}
+
+// Extact velocity primitives from momentum
+Preprocessed Matrix 
+get_primitives_pressure(Matrix rho, Matrix energy)
+{
+    Matrix mat;
+    
+    // Right Values x, y, z
+    mat.row[0] = (Vector){(AC_gamma_m1)*rho.row[0].x*energy.row[0].x, 
+                          (AC_gamma_m1)*rho.row[0].y*energy.row[0].y, 
+                          (AC_gamma_m1)*rho.row[0].z*energy.row[0].z};
+    // Left Values x, y, z                                    
+    mat.row[1] = (Vector){(AC_gamma_m1)*rho.row[1].x*energy.row[1].x, 
+                          (AC_gamma_m1)*rho.row[1].y*energy.row[1].y, 
+                          (AC_gamma_m1)*rho.row[1].z*energy.row[1].z};
+
+    return mat;
     
 }
 
 Scalar
-riemann_caller(in ScalarField rho, in ScalarField rhouux, in ScalarField rhouuy, in ScalarField rhouuz, in ScalarField energy)
-{
-    Scalar rho_LR[12], rhouux_LR[12], rhouuy_LR[12], rhouuz_LR[12], energy_LR[12]; // Conserved variables
-    Scalar rho_LR[12],    uux_LR[12],    uuy_LR[12],    uuz_LR[12],     pp_LR[12]; // Primitives
+Roe_hydro_adiabatic_a_1(Roe_uux, Roe_uuy, Roe_uuz, Roe_HH, rhoL, rhoR, rhouuxL, rhouuyR, rhouuyL, rhouuyR, rhouuzL, rhouuzR, energyL, energyR)
+{   
+    Scalar vv2      = Roe_uux*Roe_uux + Roe_uuy*Roe_uuy + Roe_uuz*Roe_uuz;
+    Scalar cs_adiab = AC_gamma_m1*(Roe_HH-vv2/Scalar(2.0));
+    Scalar An       = Scalar(1.0)/(Scalar(2.0)*cs_adiab*cs_adiab);
 
+    return An*AC_gamma_m1*( (vv2/Scalar(2.0) + Roe_uux*cs_adiab/AC_gamma_m1)*(rhoL    - rhoR   ) + 
+                           -(Roe_uux + cs_adiab/AC_gamma_m1)                *(rhouuxL - rhouuxR) +
+                           - Roe_uuy                                        *(rhouuyL - rhouuyR) +
+                           - Roe_uuz                                        *(rhouuzL - rhouuzR) +
+                           + Scalar(1.0)                                    *(energyL - energyR) 
+                          );
+} 
+
+Scalar
+Roe_hydro_adiabatic_a_2(Roe_uuy, rhoL, rhoR, rhouuxL, rhouuyR)
+{   
+    return ( - Roe_uuy                                       *(rhoL    - rhoR   ) + 
+             + Scalar(1.0)                                   *(rhouuyL - rhouuyR) 
+           );
+} 
+
+Scalar
+Roe_hydro_adiabatic_a_3(Roe_uuz, rhoL, rhoR, rhouuxL, rhouuyR)
+{   
+    return ( - Roe_uuz                                       *(rhoL    - rhoR   ) + 
+             + Scalar(z.0)                                   *(rhouuzL - rhouuzR) 
+           );
+} 
+
+Scalar
+Roe_hydro_adiabatic_a_4(Roe_uux, Roe_uuy, Roe_uuz, Roe_HH, rhoL, rhoR, rhouuxL, rhouuyR, rhouuyL, rhouuyR, rhouuzL, rhouuzR, energyL, energyR)
+{   
+    Scalar vv2      = Roe_uux*Roe_uux + Roe_uuy*Roe_uuy + Roe_uuz*Roe_uuz;
+    Scalar cs_adiab = AC_gamma_m1*(Roe_HH-vv2/Scalar(2.0)); 
+    Scalar An       = Scalar(1.0)/(Scalar(2.0)*cs_adiab*cs_adiab);
+
+    return (AC_gamma_m1/(cs_adiab*cs_adiab))*( (cs_adiab*cs_adiab)*(Scalar(1.0)/AC_gamma_m1 - An*vv2)*(rhoL    - rhoR   ) + 
+                                              + Roe_uux                                              *(rhouuxL - rhouuxR) +
+                                              + Roe_uuy                                              *(rhouuyL - rhouuyR) +
+                                              + Roe_uuz                                              *(rhouuzL - rhouuzR) +
+                                              - Scalar(1.0)                                          *(energyL - energyR) 
+                                             );
+} 
+
+Scalar
+Roe_hydro_adiabatic_a_5(Roe_uux, Roe_uuy, Roe_uuz, Roe_HH, rhoL, rhoR, rhouuxL, rhouuyR, rhouuyL, rhouuyR, rhouuzL, rhouuzR, energyL, energyR)
+{   
+    Scalar vv2      = Roe_uux*Roe_uux + Roe_uuy*Roe_uuy + Roe_uuz*Roe_uuz;
+    Scalar cs_adiab = AC_gamma_m1*(Roe_HH-vv2/Scalar(2.0));
+    Scalar An       = Scalar(1.0)/(Scalar(2.0)*cs_adiab*cs_adiab);
+
+    return An*AC_gamma_m1*( (vv2/Scalar(2.0) - Roe_uux*cs_adiab/AC_gamma_m1)*(rhoL    - rhoR   ) + 
+                           -(Roe_uux - cs_adiab/AC_gamma_m1)                *(rhouuxL - rhouuxR) +
+                           - Roe_uuy                                        *(rhouuyL - rhouuyR) +
+                           - Roe_uuz                                        *(rhouuzL - rhouuzR) +
+                           + Scalar(1.0)                                    *(energyL - energyR) 
+                          );
+}
+
+Scalar
+Roe_eigen_lam_1(Roe_uux, Roe_uuy, Roe_uuz, Roe_HH)
+{
+    Scalar vv2      = Roe_uux*Roe_uux + Roe_uuy*Roe_uuy + Roe_uuz*Roe_uuz;
+    Scalar cs_adiab = AC_gamma_m1*(Roe_HH-vv2/Scalar(2.0));
+
+    return (Roe_uux - Roe_uux)
+} 
+Scalar
+Roe_eigen_lam_2(Roe_uux)
+{
+    return Roe_uux;
+} 
+Scalar
+Roe_eigen_lam_3(Roe_uux)
+{
+    return Roe_uux;
+} 
+Scalar
+Roe_eigen_lam_4(Roe_uux)
+{
+    return Roe_uux;
+} 
+Scalar
+Roe_eigen_lam_5(Roe_uux, Roe_uuy, Roe_uuz, Roe_HH)
+{
+    Scalar vv2      = Roe_uux*Roe_uux + Roe_uuy*Roe_uuy + Roe_uuz*Roe_uuz;
+    Scalar cs_adiab = AC_gamma_m1*(Roe_HH-vv2/Scalar(2.0));
+
+    return (Roe_uux + Roe_uux)
+} 
+
+Scalar
+riemann_continuity(in ScalarField rho, in ScalarField rhouux, in ScalarField rhouuy, in ScalarField rhouuz, in ScalarField energy)
+{
     // Interpolate the stencils
-    Matrix rho_pos = interpolate( 1.0, rho);
-    Matrix rho_neg = interpolate(-1.0, rho);
-    
+    Matrix rho_pos    = interpolate( 1.0, rho);
+    Matrix rho_neg    = interpolate(-1.0, rho);
+    Matrix rhouux_pos = interpolate( 1.0, rhouux);
+    Matrix rhouux_neg = interpolate(-1.0, rhouux);
+    Matrix rhouuy_pos = interpolate( 1.0, rhouuy);
+    Matrix rhouuy_neg = interpolate(-1.0, rhouuy);
+    Matrix rhouuz_pos = interpolate( 1.0, rhouuz);
+    Matrix rhouuz_neg = interpolate(-1.0, rhouuz);
+    Matrix energy_pos = interpolate( 1.0, energy);
+    Matrix energy_neg = interpolate(-1.0, energy);
+ 
     // Fetch primitives
+    Matrix uux_pos = get_primitives_velocity(rho_pos, rhouux_pos)
+    Matrix uux_neg = get_primitives_velocity(rho_neg, rhouux_neg)
+    Matrix uuy_pos = get_primitives_velocity(rho_pos, rhouuy_pos)
+    Matrix uuy_neg = get_primitives_velocity(rho_neg, rhouuy_neg)
+    Matrix uuz_pos = get_primitives_velocity(rho_pos, rhouuz_pos)
+    Matrix uuz_neg = get_primitives_velocity(rho_neg, rhouuz_neg)
+    Matrix pp_pos  = get_primitives_pressure(rho_pos, energy_pos)
+    Matrix pp_neg  = get_primitives_pressure(rho_neg, energy_neg)
 
     // Solve riemann problems. 
+    // Roe method 
+
+    // DRAFT FOR SINGLE LEFT-RIGHT BOUNDARY (+x-direction) 
+
+    // MAKE INTO SUBROUTINE KERNEL! 
+    Scalar basic_flux_Right = rho_pos.row[0].x
+    Scalar basic_flux_Left  = rho_pos.row[1].x
+
+    Scalar Roe_term1 = Roe_hydro_adiabatic_a_1(Roe_uux, Roe_uuy, Roe_uuz, Roe_HH, rhoL, rhoR, rhouuxL, rhouuyR, rhouuyL, rhouuyR, rhouuzL, rhouuzR, energyL, energyR)
+                       *abs(Roe_eigen_lam_1(Roe_uux, Roe_uuy, Roe_uuz, Roe_HH));
+    Scalar Roe_term2 = Scalar(0.0);
+    Scalar Roe_term3 = Scalar(0.0);
+    Scalar Roe_term4 = Roe_hydro_adiabatic_a_4(Roe_uux, Roe_uuy, Roe_uuz, Roe_HH, rhoL, rhoR, rhouuxL, rhouuyR, rhouuyL, rhouuyR, rhouuzL, rhouuzR, energyL, energyR)
+                       *abs(Roe_eigen_lam_4(Roe_uux));
+    Scalar Roe_term5 = Roe_hydro_adiabatic_a_5(Roe_uux, Roe_uuy, Roe_uuz, Roe_HH, rhoL, rhoR, rhouuxL, rhouuyR, rhouuyL, rhouuyR, rhouuzL, rhouuzR, energyL, energyR)
+                       *abs(Roe_eigen_lam_5(Roe_uux, Roe_uuy, Roe_uuz, Roe_HH));
+
+    Scalar Roe_term  = Roe_term1 + Roe_term2 + Roe_term3 + Roe_term4 + Roe_term5; 
     
+    Scalar flux_roe  = Scalar(0.5)*(basic_flux_Left - basic_flux_Right + Roe_term);
 
-    return 1.0;   
+    return flux_roe;   
 }
 
 
-//Preprocessed Scalar
-//der6x_upwd(in ScalarField vertex)
-//{
-//    Scalar inv_ds = AC_inv_dsx;
-//
-//    return (Scalar){(1.0 / 60.0) * inv_ds *
-//                    (-20.0 * vertex[vertexIdx.x, vertexIdx.y, vertexIdx.z] +
-//                     15.0 * (vertex[vertexIdx.x + 1, vertexIdx.y, vertexIdx.z] +
-//                             vertex[vertexIdx.x - 1, vertexIdx.y, vertexIdx.z]) -
-//                     6.0 * (vertex[vertexIdx.x + 2, vertexIdx.y, vertexIdx.z] +
-//                            vertex[vertexIdx.x - 2, vertexIdx.y, vertexIdx.z]) +
-//                     vertex[vertexIdx.x + 3, vertexIdx.y, vertexIdx.z] +
-//                     vertex[vertexIdx.x - 3, vertexIdx.y, vertexIdx.z])};
-//}
-//
 //Device Scalar
-//upwd_der6(in VectorField uu, in ScalarField lnrho)
+//continuity(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar dt)
 //{
-//    Scalar uux = fabs(value(uu).x);
-//    Scalar uuy = fabs(value(uu).y);
-//    Scalar uuz = fabs(value(uu).z);
-//    return (Scalar){uux * der6x_upwd(lnrho) + uuy * der6y_upwd(lnrho) + uuz * der6z_upwd(lnrho)};
+//    return -dot(value(uu), gradient(lnrho))
+//           - divergence(uu);
 //}
-
-//Device Matrix
-//gradients(in VectorField uu)
-//{
-//    return (Matrix){gradient(uu.x), gradient(uu.y), gradient(uu.z)};
-//}
-
-Device Scalar
-continuity(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar dt)
-{
-    return -dot(value(uu), gradient(lnrho))
-           - divergence(uu);
-}
 
 in ScalarField  rho(VTXBUF_RHO);
 out ScalarField out_rho(VTXBUF_RHO);
