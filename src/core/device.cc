@@ -20,6 +20,16 @@
 
 #include <cuda.h> // CUDA driver API (needed if MPI_USE_CUDA_DRIVER_PINNING is set)
 
+#define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
+    AcResult acDevice_##ID(const Device device, const Stream stream, const int3 start,             \
+                           const int3 end)                                                         \
+    {                                                                                              \
+        cudaSetDevice(device->id);                                                                 \
+        return acKernel_##ID(device->streams[stream], start, end, device->vba);                    \
+    }
+
+#include "user_kernels.h"
+
 AcResult
 acDevicePrintInfo(const Device device)
 {
@@ -295,20 +305,23 @@ acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mes
 }
 
 AcResult
-acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBufferHandle handle, const AcReal value)
+acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBufferHandle handle,
+                        const AcReal value)
 {
     acDeviceSynchronizeStream(device, stream);
 
     const size_t count = acVertexBufferSize(device->local_config);
-    AcReal* data = (AcReal*) malloc(sizeof(AcReal) * count);
+    AcReal* data       = (AcReal*)malloc(sizeof(AcReal) * count);
     ERRCHK_ALWAYS(data);
 
     for (size_t i = 0; i < count; ++i)
         data[i] = value;
 
     // Set both in and out for safety (not strictly needed)
-    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.in[handle], data, sizeof(data[0]) * count, cudaMemcpyHostToDevice, device->streams[stream]));
-    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.out[handle], data, sizeof(data[0]) * count, cudaMemcpyHostToDevice, device->streams[stream]));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.in[handle], data, sizeof(data[0]) * count,
+                                       cudaMemcpyHostToDevice, device->streams[stream]));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.out[handle], data, sizeof(data[0]) * count,
+                                       cudaMemcpyHostToDevice, device->streams[stream]));
 
     free(data);
     return AC_SUCCESS;
@@ -455,8 +468,8 @@ acDevicePeriodicBoundconds(const Device device, const Stream stream, const int3 
 
 AcResult
 acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
-                              const VertexBufferHandle vtxbuf_handle, const int3 start,
-                              const int3 end, const AcMeshInfo config, const int3 bindex)
+                             const VertexBufferHandle vtxbuf_handle, const int3 start,
+                             const int3 end, const AcMeshInfo config, const int3 bindex)
 {
     cudaSetDevice(device->id);
     return acKernelGeneralBoundconds(device->streams[stream], start, end,
@@ -465,14 +478,14 @@ acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
 
 AcResult
 acDeviceGeneralBoundconds(const Device device, const Stream stream, const int3 start,
-                           const int3 end, const AcMeshInfo config, const int3 bindex)
+                          const int3 end, const AcMeshInfo config, const int3 bindex)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        acDeviceGeneralBoundcondStep(device, stream, (VertexBufferHandle)i, start, end, config, bindex);
+        acDeviceGeneralBoundcondStep(device, stream, (VertexBufferHandle)i, start, end, config,
+                                     bindex);
     }
     return AC_SUCCESS;
 }
-
 
 AcResult
 acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
@@ -517,8 +530,9 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
 
 AcResult
 acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionType rtype,
-                  const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                  const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3, AcReal* result)
+                      const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                      const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
+                      AcReal* result)
 {
     cudaSetDevice(device->id);
 
@@ -530,12 +544,12 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
                             device->local_config.int_params[AC_ny_max],
                             device->local_config.int_params[AC_nz_max]};
 
-    *result = acKernelReduceVecScal(device->streams[stream], rtype, start, end, device->vba.in[vtxbuf0],
-                                    device->vba.in[vtxbuf1], device->vba.in[vtxbuf2], device->vba.in[vtxbuf3],
+    *result = acKernelReduceVecScal(device->streams[stream], rtype, start, end,
+                                    device->vba.in[vtxbuf0], device->vba.in[vtxbuf1],
+                                    device->vba.in[vtxbuf2], device->vba.in[vtxbuf3],
                                     device->reduce_scratchpad, device->reduce_result);
     return AC_SUCCESS;
 }
-
 
 #if AC_MPI_ENABLED
 /**
@@ -1175,9 +1189,11 @@ acTransferCommData(const Device device, //
     MPI_Datatype datatype = MPI_FLOAT;
     if (sizeof(data->srcs[0].data[0]) == 2) {
         datatype = MPI_SHORT; // TODO CONFIRM THAT IS CORRECTLY CAST TO HALF
-    } else if (sizeof(data->srcs[0].data[0]) == 4) {
+    }
+    else if (sizeof(data->srcs[0].data[0]) == 4) {
         datatype = MPI_FLOAT;
-    } else {
+    }
+    else {
         datatype = MPI_DOUBLE;
     }
 
@@ -1199,12 +1215,14 @@ acTransferCommData(const Device device, //
 
     for (size_t b0_idx = 0; b0_idx < blockcount; ++b0_idx) {
 
-        const int3 b0       = b0s[b0_idx];
-        const int3 neighbor = (int3){
+        const int3 b0 = b0s[b0_idx];
+        // clang-format off
+        const int3 neighbor = (int3){ 
             b0.x < NGHOST ? -1 : b0.x >= NGHOST + nn.x ? 1 : 0,
             b0.y < NGHOST ? -1 : b0.y >= NGHOST + nn.y ? 1 : 0,
             b0.z < NGHOST ? -1 : b0.z >= NGHOST + nn.z ? 1 : 0,
         };
+        // clang-format on
         const int npid = getPid(pid3d + neighbor, decomp);
 
         PackedData* dst = &data->dsts[b0_idx];
@@ -1221,12 +1239,14 @@ acTransferCommData(const Device device, //
     }
 
     for (size_t b0_idx = 0; b0_idx < blockcount; ++b0_idx) {
-        const int3 b0       = b0s[b0_idx];
+        const int3 b0 = b0s[b0_idx];
+        // clang-format off
         const int3 neighbor = (int3){
             b0.x < NGHOST ? -1 : b0.x >= NGHOST + nn.x ? 1 : 0,
             b0.y < NGHOST ? -1 : b0.y >= NGHOST + nn.y ? 1 : 0,
             b0.z < NGHOST ? -1 : b0.z >= NGHOST + nn.z ? 1 : 0,
         };
+        // clang-format on
         const int npid = getPid(pid3d - neighbor, decomp);
 
         PackedData* src = &data->srcs[b0_idx];
@@ -1475,19 +1495,19 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 }
 
 /*   MV: Commented out for a while, but save for the future when standalone_MPI
-         works with periodic boundary conditions. 
+         works with periodic boundary conditions.
 AcResult
 acGridGeneralBoundconds(const Device device, const Stream stream)
 {
-    // Non-periodic Boundary conditions 
-    // Check the position in MPI frame 
+    // Non-periodic Boundary conditions
+    // Check the position in MPI frame
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
     const uint3_64 decomposition = decompose(nprocs);
     const int3 pid3d             = getPid3D(pid, decomposition);
 
-    // Set outer boudaries after substep computation. 
+    // Set outer boudaries after substep computation.
     const int3 m1 = (int3){0, 0, 0};
     const int3 m2 = grid.nn;
     const int3 pid3d = getPid3D(pid, decomposition);
@@ -1508,7 +1528,7 @@ acGridGeneralBoundconds(const Device device, const Stream stream)
     else if  (pid3d.z == 0)                                      { bindex.z = 2; }
     else if                    (pid3d.z == decomposition.z - 1)  { bindex.z = 3; }
 
-    
+
     if (bindex.x != 1) && (bindex.y != 1) && (bindex.z != 1) {
         acDeviceGeneralBoundconds(device, stream, m1, m2, bindex);
     }
@@ -1950,7 +1970,7 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 }
 
 /*   MV: Commented out for a while, but save for the future when standalone_MPI
-         works with periodic boundary conditions. 
+         works with periodic boundary conditions.
 AcResult
 acGridIntegrateNonperiodic(const Stream stream, const AcReal dt)
 {
@@ -2127,7 +2147,7 @@ acGridIntegrateNonperiodic(const Stream stream, const AcReal dt)
         acSyncCommData(sideyz_data);
 #endif // MPI_COMM_ENABLED
 
-        // Invoke outer edge boundary conditions. 
+        // Invoke outer edge boundary conditions.
         acGridGeneralBoundconds(device, stream)
 
 #if MPI_COMPUTE_ENABLED
@@ -2168,14 +2188,13 @@ acGridIntegrateNonperiodic(const Stream stream, const AcReal dt)
 
     }
 
-    
-    
+
+
 
     return AC_SUCCESS;
 }
 
 */
-
 
 AcResult
 acGridPeriodicBoundconds(const Stream stream)
@@ -2402,6 +2421,6 @@ acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBuff
     return acMPIReduceScal(local_result, rtype, result);
 }
 
-//MV: for MPI we will need acGridReduceVecScal() to get Alfven speeds etc. TODO 
+// MV: for MPI we will need acGridReduceVecScal() to get Alfven speeds etc. TODO
 
 #endif // AC_MPI_ENABLED
