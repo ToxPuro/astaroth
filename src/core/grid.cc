@@ -53,8 +53,8 @@ typedef struct Grid {
     std::vector<HaloExchangeTask> edge_exchange_tasks;
     std::vector<HaloExchangeTask> corner_exchange_tasks;
 
-    std::vector<ComputationTask> computation_tasks;
-    ComputationTask* inner_integration_task;
+    std::vector<ComputeTask> compute_tasks;
+    ComputeTask* inner_integration_task;
 
     MPI_Request* recv_reqs;
     MPI_Request* send_reqs;
@@ -177,16 +177,16 @@ acGridInit(const AcMeshInfo info)
 
     grid.nn = grid_dimensions;
 
-    grid.computation_tasks.clear();
-    grid.computation_tasks.reserve(NUM_SEGMENTS);
+    grid.compute_tasks.clear();
+    grid.compute_tasks.reserve(NUM_SEGMENTS);
 
-    grid.inner_integration_task = new ComputationTask((int3){0, 0, 0}, grid_dimensions, device,
+    grid.inner_integration_task = new ComputeTask((int3){0, 0, 0}, grid_dimensions, device,
                                                       STREAM_26);
-    //TODO: here we have missed the dependencies between computation tasks, only capturing the core's deps
+    //TODO: here we have missed the dependencies between compute tasks, only capturing the core's deps
     for (int idx = 0; idx < NUM_SEGMENTS; idx++) {
         const int3 segment_id = index_to_segment_id(idx);
         Stream stream         = (Stream)(idx + STREAM_DEFAULT);
-        grid.computation_tasks.emplace_back(segment_id, grid_dimensions, device, stream);
+        grid.compute_tasks.emplace_back(segment_id, grid_dimensions, device, stream);
     }
 
 
@@ -218,13 +218,13 @@ acGridInit(const AcMeshInfo info)
                 ((seg_a.y == 0) || (seg_a.y == seg_b.y)) &&
                 ((seg_a.z == 0) || (seg_a.z == seg_b.z))) {
                 if (grid.halo_exchange_tasks[i].active){
-                    grid.halo_exchange_tasks[i].registerDependent(&grid.computation_tasks[j], 0);
-                    grid.computation_tasks[j].registerDependent(&grid.halo_exchange_tasks[i], 1);
+                    grid.halo_exchange_tasks[i].registerDependent(&grid.compute_tasks[j], 0);
+                    grid.compute_tasks[j].registerDependent(&grid.halo_exchange_tasks[i], 1);
                 }
             }
             if (grid.halo_exchange_tasks[i].active){
-                //grid.halo_exchange_tasks[i].registerDependent(&grid.computation_tasks[j], 0);
-                //grid.computation_tasks[j].registerDependent(&grid.halo_exchange_tasks[i], 1);
+                //grid.halo_exchange_tasks[i].registerDependent(&grid.compute_tasks[j], 0);
+                //grid.compute_tasks[j].registerDependent(&grid.halo_exchange_tasks[i], 1);
             }
         }
     }
@@ -236,11 +236,11 @@ acGridInit(const AcMeshInfo info)
             if (((seg_a.x == 0) || (seg_b.x == 0) || (seg_a.x == seg_b.x)) &&
                 ((seg_a.y == 0) || (seg_b.y == 0) || (seg_a.y == seg_b.y)) &&
                 ((seg_a.z == 0) || (seg_b.z == 0) || (seg_a.z == seg_b.z))){
-                    grid.computation_tasks[j].registerDependent(&grid.computation_tasks[i], 1);
+                    grid.compute_tasks[j].registerDependent(&grid.compute_tasks[i], 1);
             }
         }
-        grid.computation_tasks[i].registerDependent(grid.inner_integration_task, 1);
-        grid.inner_integration_task->registerDependent(&grid.computation_tasks[i], 1);
+        grid.compute_tasks[i].registerDependent(grid.inner_integration_task, 1);
+        grid.inner_integration_task->registerDependent(&grid.compute_tasks[i], 1);
     }
 
     grid.initialized = true;
@@ -276,7 +276,7 @@ acGridQuit(void)
     delete[] grid.recv_reqs;
     delete[] grid.send_reqs;
 
-    grid.computation_tasks.clear();
+    grid.compute_tasks.clear();
     delete grid.inner_integration_task;
 
     grid.initialized   = false;
@@ -495,18 +495,18 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     acDeviceSynchronizeStream(device, stream);
     cudaSetDevice(device->id);
 
-    size_t num_substeps = 3;    
+    size_t num_iterations = 3;    
 
     for (auto& halo_task : grid.halo_exchange_tasks) {
         if (halo_task.active){
-            halo_task.schedule(num_substeps, dt);
+            halo_task.setIterationParams(0,num_iterations, dt);
         }
     }
 
-    for (auto& compute_task : grid.computation_tasks) {
-        compute_task.schedule(num_substeps, dt);
+    for (auto& compute_task : grid.compute_tasks) {
+        compute_task.setIterationParams(0,num_iterations, dt);
     }
-    grid.inner_integration_task->schedule(num_substeps, dt);
+    grid.inner_integration_task->setIterationParams(0, num_iterations, dt);
 
     bool ready;
     do{
@@ -518,7 +518,7 @@ acGridIntegrate(const Stream stream, const AcReal dt)
                 ready &= halo_task.isFinished();
             }
         }
-        for (auto& compute_task: grid.computation_tasks){
+        for (auto& compute_task: grid.compute_tasks){
                 compute_task.update();
                 ready &= compute_task.isFinished();
         }
@@ -526,12 +526,10 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     } while (!ready);
         
     
-    //if (num_substeps%2!=0){
-    gridSwapRequestBuffers();
-    acDeviceSwapBuffers(device);
-    //}
-    //acDeviceSynchronizeStream(device, STREAM_ALL); // Wait until inner and outer done
-    //MPI_Waitall(NUM_SEGMENTS * SWAP_CHAIN_LENGTH, grid.send_reqs, MPI_STATUSES_IGNORE);
+    if (num_iterations%2!=0){
+        gridSwapRequestBuffers();
+        acDeviceSwapBuffers(device);
+    }
     return AC_SUCCESS;
 }
 
@@ -544,7 +542,7 @@ acGridPeriodicBoundconds(const Stream stream)
     // Active halo exchange tasks
     for (auto& halo_task : grid.halo_exchange_tasks) {
         if (halo_task.active) {
-            halo_task.synchronizeWithDevice();
+            halo_task.syncVBA();
             halo_task.pack();
             halo_task.send();
         }
@@ -562,7 +560,7 @@ acGridPeriodicBoundconds(const Stream stream)
     // Inactive halo exchange tasks (i.e. possibly corners)
     for (auto& halo_task : grid.halo_exchange_tasks) {
         if (!halo_task.active) {
-            halo_task.synchronizeWithDevice();
+            halo_task.syncVBA();
             halo_task.pack();
             halo_task.exchange();
         }

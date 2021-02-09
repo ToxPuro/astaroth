@@ -6,12 +6,12 @@
  * A HaloExchangeTask sends local data as a halo to a neighbor
  * and receives halo data from a (possibly different) neighbor.
  *
- * Each shell segment is assigned a ComputationTask.
- * ComputationTasks integrate their segment of the domain.
+ * Each shell segment is assigned a ComputeTask.
+ * ComputeTasks integrate their segment of the domain.
  *
  * After a task has been completed, its dependent tasks can be started with notifyDependents()
- * E.g. ComputationTasks may depend on HaloExchangeTasks because they're waiting to receive data.
- * Vv.  HaloExchangeTasksmay depend on ComputationTasks because they're waiting for data to send.
+ * E.g. ComputeTasks may depend on HaloExchangeTasks because they're waiting to receive data.
+ * Vv.  HaloExchangeTasksmay depend on ComputeTasks because they're waiting for data to send.
  *
  * This all happens in grid.cc:GridIntegrate
  */
@@ -80,34 +80,72 @@ acUnpinPackedData(const Device device, const cudaStream_t stream, PackedData* dd
     ERRCHK_CUDA(cudaMemcpyAsync(ddata->data, ddata->data_pinned, bytes, cudaMemcpyDefault, stream));
 }
 
-/*   Task interface    */
+/* Task interface                                 *
+ * Tasks are encapsulated pieces of work that have*
+ * a clear set of dependencies (and dependents).  */
 
-// Tasks are encapsulated pieces of work that have a clear set of dependencies (and dependents).
 void
-Task::logStateChangedEvent(int tag, std::string from, std::string to)
+Task::registerDependent(Task* t, size_t offset)
 {
-    int seg_type = segment_type(index_to_segment_id(tag));
-    /*
-       std::cout<< "{"
-             <<"\"msg_type\":\"state_changed_event\","
-             <<"\"rank\":"<<rank
-             <<",\"substep\":"<<substep_counter.count
-             <<",\"task_type\":\""<<task_type<<"\""
-             <<",\"tag\":"<<tag
-             <<",\"seg_id\":["
-                 <<segment_id.x<<","
-                 <<segment_id.y<<","
-                 <<segment_id.z<<"],"
-             <<"\"seg_type\":"<<seg_type<<","
-             <<"\"from\":\""<<from<<"\""<<","
-             <<"\"to\":\""<<to<<"\""
-             <<"}"<<std::endl;
-    */
-    
+    dependents.emplace_back(t,offset);
+    t->registerPrerequisite(offset);
 }
 
 void
-Task::synchronizeWithDevice()
+Task::registerPrerequisite(size_t offset)
+{
+    dependency_counter.increment_target(offset);
+}
+
+void
+Task::setIterationParams(size_t begin, size_t end, AcReal dt_)
+{
+    loop_counter.first = begin;
+    loop_counter.second = end;
+
+    dependency_counter.extend_to(end, 0);
+    dependency_counter.reset_counts();
+    dt = dt_;
+}
+
+bool
+Task::isFinished()
+{
+    return loop_counter.first == loop_counter.second;
+}
+
+void
+Task::update()
+{
+    if (isFinished()) return;
+    
+    bool ready = (state == wait_state) ? dependency_counter.iteration_finished(loop_counter.first) : test();
+    if (ready){
+        advance();
+        if (state == wait_state){
+            swapVBA();
+            notifyDependents();
+            loop_counter.first++;
+        }
+    }
+}
+
+void
+Task::notifyDependents()
+{
+    for (auto& d : dependents) {
+        d.first->satisfyDependency(loop_counter.first, d.second);
+    }
+}
+
+void
+Task::satisfyDependency(size_t iteration, size_t offset)
+{
+    dependency_counter.increment(iteration+offset, offset);
+}
+
+void
+Task::syncVBA()
 {
     cudaSetDevice(device->id);
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
@@ -116,7 +154,6 @@ Task::synchronizeWithDevice()
     }
 }
 
-//Swap local vba
 void
 Task::swapVBA()
 {
@@ -127,100 +164,30 @@ Task::swapVBA()
     }
 }
 
-void
-Task::schedule(size_t substeps, AcReal dt_)
-{
-    substep_counter.start_counting_to(substeps);
-    dependencyCounter.extend_to(substeps,0);
-    dependencyCounter.reset_counts();
-    dt = dt_;
-}
-
 bool
-Task::isFinished()
-{
-    return substep_counter.is_finished();
-}
-
-void
-Task::update()
-{
-    if (isFinished()) return;
-    
-    bool ready = (state == iteration_first_step) ? dependencyCounter.is_finished(substep_counter.count) : test();
-    if (ready){
-        advance();
-        if (state == iteration_first_step){
-            swapVBA();
-            notifyDependents();
-            substep_counter.increment();
-        }
+Task::poll_stream()
+{      
+    cudaError_t err = cudaStreamQuery(stream);
+    if (err == cudaSuccess){
+        return true;
     }
-}
-
-void
-Task::registerDependent(Task* t, size_t offset)
-{
-    dependents.emplace_back(t,offset);
-/*
-    if (rank == 0){
-        std::cout << "{"
-        <<"\"msg_type\":\"dependency_registration\","
-
-        <<"\"prerequisite\":{"
-            <<"\"seg_id\":["
-                <<this->segment_id.x<<","
-                <<this->segment_id.y<<","
-                <<this->segment_id.z<<"],"
-            <<"\"task_type\":"<<"\""<<this->task_type<<"\""
-        <<"},"
-
-        <<"\"dependent\":{"
-            <<"\"seg_id\":["
-                <<t->segment_id.x<<","
-                <<t->segment_id.y<<","
-                <<t->segment_id.z<<"],"
-            <<"\"task_type\":"<<"\""<<t->task_type<<"\""
-        <<"},"
-
-        <<"\"offset\":"<<offset
-        <<"}"<< std::endl;
+    if (err == cudaErrorNotReady){
+        return false;
     }
-*/
-    t->dependOn(offset);
+    return false;
 }
 
-void
-Task::dependOn(size_t offset)
-{
-    dependencyCounter.increment_target(offset);
-}
-
-void
-Task::notifyDependents()
-{
-    for (auto& d : dependents) {
-        d.first->notify(substep_counter.count, d.second);
-    }
-}
-
-void
-Task::notify(size_t substep, size_t offset)
-{
-    dependencyCounter.increment(substep+offset, offset);
-}
 /* Computation */
-
-ComputationTask::ComputationTask(int3 segment_id_, int3 nn, Device device_, Stream stream_)
-    : stream(stream_)
+ComputeTask::ComputeTask(int3 segment_id_, int3 nn, Device device_, Stream stream_id)
 {
     segment_id = segment_id_;
     device = device_;
+    stream = device->streams[stream_id];
     task_type = "compute";
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     //Copy VBA's CUDA-pointers over
-    synchronizeWithDevice();
+    syncVBA();
 
     start = (int3){segment_id.x == -1 ? NGHOST : segment_id.x == 1 ? nn.x : NGHOST * 2,
                    segment_id.y == -1 ? NGHOST : segment_id.y == 1 ? nn.y : NGHOST * 2,
@@ -229,67 +196,41 @@ ComputationTask::ComputationTask(int3 segment_id_, int3 nn, Device device_, Stre
     dims = (int3){segment_id.x == 0 ? nn.x - NGHOST * 2 : NGHOST,
                   segment_id.y == 0 ? nn.y - NGHOST * 2 : NGHOST,
                   segment_id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
-    /*
-    if (rank == 0){
-        std::cout << "{"
-                <<"\"msg_type\":\"task_definition\","
-                << "\"task_type\":\"compute\","
-                << "\"segment_index\":" << segment_index(segment_id)
-                << ","
-                << "\"segment_id\":["
-                << segment_id.x<<","
-                << segment_id.y<<","
-                << segment_id.z
-                << "],"
-                << "\"start\":["
-                << start.x<<","
-                << start.y<<","
-                << start.z
-                << "],"
-                << "\"dims\":["
-                << dims.x<<","
-                << dims.y<<","
-                << dims.z
-                << "]"
-                << "}" <<std::endl;
-    }
-    */
 }
 
 void
-ComputationTask::compute()
+ComputeTask::compute()
 {
-    acKernelIntegrateSubstep(device->streams[stream], substep_counter.count, start, start + dims, vba);
+    size_t substep = loop_counter.first % 3;
+    acKernelIntegrateSubstep(stream, substep, start, start + dims, vba);
 }
 
 bool
-ComputationTask::test()
+ComputeTask::test()
 {
     switch (static_cast<ComputeState>(state)){
         case ComputeState::Running:
         {
-            cudaError_t err = cudaStreamQuery(device->streams[stream]);
-            return err == cudaSuccess;
+            return poll_stream();
         }
         default:
+            ERROR("ComputeTask in an invalid state.");
             return false;
     }
 }
 
 void
-ComputationTask::advance()
+ComputeTask::advance()
 {
     switch (static_cast<ComputeState>(state)){
         case ComputeState::Waiting_for_halo:
         {
-            logStateChangedEvent(segment_index(segment_id),"waiting", "running");
             compute();
             state = static_cast<int>(ComputeState::Running);
             break;
         }
         case ComputeState::Running:
         {
-            logStateChangedEvent(segment_index(segment_id),"running", "waiting");
             state = static_cast<int>(ComputeState::Waiting_for_halo);
             break;
         }
@@ -356,7 +297,7 @@ HaloExchangeTask::HaloExchangeTask(const Device device_, const int rank_, const 
     task_type = "halo";
 
     //Copy VBA's CUDA-pointers over
-    synchronizeWithDevice();
+    syncVBA();
 
     int seg_type = segment_type(segment_id);
     active       = ((MPI_INCL_CORNERS) || seg_type != 3) ? true : false;
@@ -396,41 +337,7 @@ HaloExchangeTask::HaloExchangeTask(const Device device_, const int rank_, const 
     int low_prio, high_prio;
     cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
     cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-/*
-    if (active && rank == 0){
-    std::cout   << "{"
-                <<"\"msg_type\":\"task_definition\","
-                << "\"task_type\":\"halo\","
-                <<"\"segment_index\":" << segment_index(segment_id)
-                <<","
-                << "\"segment_id\":["
-                <<segment_id.x<<","
-                <<segment_id.y<<","
-                <<segment_id.z
-                <<"],"
-                << "\"foreign_segment_id\":["
-                <<foreign_segment_id.x<<","
-                <<foreign_segment_id.y<<","
-                <<foreign_segment_id.z
-                <<"],"
-                << "\"halo_segment_coordinates\":["
-                <<halo_segment_coordinates.x<<","
-                <<halo_segment_coordinates.y<<","
-                <<halo_segment_coordinates.z
-                <<"],"
-                << "\"local_segment_coordinates\":["
-                <<local_segment_coordinates.x<<","
-                <<local_segment_coordinates.y<<","
-                <<local_segment_coordinates.z
-                <<"],"
-                <<"\"dims\":["
-                <<segment_dimensions.x<<","
-                <<segment_dimensions.y<<","
-                <<segment_dimensions.z
-                <<"]"
-                << "}" <<std::endl;
-    }
-*/
+    
     // Post receive immediately, this avoids unexpected messages
     if (active) {
         receive();
@@ -584,30 +491,14 @@ HaloExchangeTask::test()
     switch(static_cast<HaloExchangeState>(state)){
         case HaloExchangeState::Packing:
         {
-            cudaError_t err = cudaStreamQuery(stream);
-            if (err == cudaSuccess){
-                return true;
-            }
-            if (err == cudaErrorNotReady){
-                return false;
-            }
-            return false;
+            return poll_stream();
         }
         case HaloExchangeState::Unpacking:
         {
-            cudaError_t err = cudaStreamQuery(stream);
-            if (err == cudaSuccess){
-                //TODO: test if these trigger (the cudaErrorNotReadies)
-                return true;
-            }
-            if (err == cudaErrorNotReady){
-                return false;
-            }
-            return false;
+            return poll_stream();
         }
-        case HaloExchangeState::Receiving:
+        case HaloExchangeState::Exchanging:
         {
-            //TODO: see if current buffer is the correct buffer, when do we swap buffers?
             auto msg = recv_buffers->get_current_buffer();
             int request_complete;
             MPI_Test(msg->request, &request_complete, MPI_STATUS_IGNORE);   
@@ -615,7 +506,7 @@ HaloExchangeTask::test()
         }
         default:
         {
-            ERROR("Invalid state for HaloExchangeTask");
+            ERROR("HaloExchangeTask in an invalid state.");
             return false;
         }
     }
@@ -626,24 +517,20 @@ HaloExchangeTask::advance()
 {
     switch(static_cast<HaloExchangeState>(state)){
         case HaloExchangeState::Waiting_for_compute:
-            logStateChangedEvent(send_tag,  "waiting", "packing");
             pack();
             state = static_cast<int>(HaloExchangeState::Packing);
             break;
         case HaloExchangeState::Packing:
-            logStateChangedEvent(send_tag, "packing", "receiving");
             sync();
             send();
-            state = static_cast<int>(HaloExchangeState::Receiving);
+            state = static_cast<int>(HaloExchangeState::Exchanging);
             break;
-        case HaloExchangeState::Receiving:
-            logStateChangedEvent(send_tag, "receiving", "unpacking");
+        case HaloExchangeState::Exchanging:
             sync();
             unpack();
             state = static_cast<int>(HaloExchangeState::Unpacking);
             break;
         case HaloExchangeState::Unpacking:
-            logStateChangedEvent(send_tag, "unpacking", "waiting");
             receive();
             sync();
             state = static_cast<int>(HaloExchangeState::Waiting_for_compute);

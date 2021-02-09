@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 
+#include "math_utils.h"      //max. Also included in decomposition.h
 #include "decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //PackedData, VertexBufferArray
 
@@ -99,46 +100,9 @@ segment_type(const int3 seg_id)
 
 /* Task interface */
 
-
-struct Counter {
-    size_t target;
-    size_t count;
-
-    void
-    increment(){
-        ++count;
-    }
-
-    void
-    reset()
-    {
-        count = 0;
-    }
-
-    bool
-    is_finished()
-    {
-        return count == target;
-    }
-
-    void
-    start_counting_to(size_t new_target)
-    {
-        target = new_target;
-        count = 0;
-    }
-
-    void
-    increment_target()
-    {
-        ++target;
-    }
-};
-
-
 struct DependencyCounter {
 private:
-    size_t iterations_scheduled;
+    size_t num_iterations;
     size_t max_offset;
     std::vector<size_t> targets;
     std::vector<std::vector<size_t>> counts;
@@ -147,14 +111,14 @@ public:
     void
     extend_to(size_t iterations, size_t offset)
     {
-        iterations_scheduled = iterations>iterations_scheduled?iterations:iterations_scheduled;
-        max_offset = offset>max_offset?offset:max_offset;
-
+        max_offset = max(offset,max_offset);
         targets.resize(max_offset+1, 0);
 
-        counts.resize(iterations_scheduled);
-        for (size_t i=0; i<iterations_scheduled; i++){
-            size_t num_buckets = i < iterations_scheduled? i+1: iterations_scheduled+1;
+        num_iterations = max(iterations,num_iterations);
+        counts.resize(num_iterations);
+
+        for (size_t i=0; i<num_iterations; i++){
+            size_t num_buckets = max(i, num_iterations) + 1;
             counts[i].resize(num_buckets,0);
         }
     }
@@ -162,7 +126,7 @@ public:
     void
     increment(size_t iteration, size_t offset)
     {
-        if (iteration < iterations_scheduled){
+        if (iteration < num_iterations){
             counts[iteration][offset]++;
         }
     }
@@ -188,14 +152,14 @@ public:
         for (auto& target : targets){
             target = 0;
         }
-        for (auto& count: counts){
+        for (auto& count : counts){
             for (auto& bucket : count){
                 bucket = 0;
             }
         }
     }
     bool
-    is_finished(size_t iteration)
+    iteration_finished(size_t iteration)
     {
         bool ready = true;
         for (size_t i = 0;i <= iteration && i<=max_offset; i++){
@@ -220,59 +184,60 @@ class Task {
   protected:
     VertexBufferArray vba;
     Device device;
+    cudaStream_t stream;
+
     int rank;
     int3 segment_id;
 
     std::string task_type;
 
-    DependencyCounter dependencyCounter;
-    Counter substep_counter;
+    std::pair<size_t,size_t> loop_counter;
+    DependencyCounter dependency_counter;
     int state;
 
+    bool poll_stream();
   public:
-    static const int iteration_first_step = 0;
+    static const int wait_state = 0;
 
     AcReal dt;
 
     virtual ~Task()
     {
-        // delete dependents;
+        //delete dependents;
     }
+    virtual bool test() = 0;
+    virtual void advance() = 0;
+
+    void registerDependent(Task* t, size_t offset);
+    void registerPrerequisite(size_t offset);
+
+    void setIterationParams(size_t begin, size_t end, AcReal dt_);
     void update();
     bool isFinished();
 
-    void registerDependent(Task* t, size_t offset);
-    void dependOn(size_t offset);
-    void schedule(size_t substeps, AcReal dt_);
-
     void notifyDependents();
-    void notify(size_t substep, size_t offset);
-    void logStateChangedEvent(int tag, std::string b, std::string c);
+    void satisfyDependency(size_t iteration, size_t offset);
     
-    void synchronizeWithDevice();
+    void syncVBA();
     void swapVBA();
-    virtual bool test() = 0;
-    virtual void advance() = 0;
+
 };
 
-// Computation
-enum class ComputeState {Waiting_for_halo = Task::iteration_first_step, Running};
+// Compute tasks
+enum class ComputeState {Waiting_for_halo = Task::wait_state, Running};
 
-typedef class ComputationTask : public Task {
+typedef class ComputeTask : public Task {
   private:
     int3 start;
     int3 dims;
-    //int3 segment_id;
-
-    Stream stream;
 
   public:
-    ComputationTask(int3 segment_id_, int3 nn, Device device_, Stream stream_);
+    ComputeTask(int3 segment_id_, int3 nn, Device device_, Stream stream_id);
 
     void compute();
     void advance();
     bool test();
-} ComputationTask;
+} ComputeTask;
 
 // Communication
 typedef struct HaloMessage {
@@ -297,11 +262,10 @@ typedef struct MessageBufferSwapChain {
     HaloMessage* get_fresh_buffer();
 } MessageBufferSwapChain;
 
-enum class HaloExchangeState {Waiting_for_compute = Task::iteration_first_step, Packing, Receiving, Unpacking};
+enum class HaloExchangeState {Waiting_for_compute = Task::wait_state, Packing, Exchanging, Unpacking};
 
 typedef class HaloExchangeTask : public Task {
   private:
-    //int3 segment_id;
     int3 halo_segment_coordinates;
     int3 local_segment_coordinates;
 
@@ -315,7 +279,7 @@ typedef class HaloExchangeTask : public Task {
     int send_rank;
     int recv_rank;
 
-    cudaStream_t stream;
+    //cudaStream_t stream;
 
   public:
     bool active;
@@ -326,24 +290,25 @@ typedef class HaloExchangeTask : public Task {
     ~HaloExchangeTask();
     // HaloExchangeTask(const HaloExchangeTask& other) = delete;
 
-    void pack();
-    void unpack();
 
     void sync();
     void wait_send();
     void wait_recv();
 
-    void receiveDevice();
-    void sendDevice();
-    void exchangeDevice();
+    void pack();
+    void unpack();
 
-    void receiveHost();
+    void send();
+    void sendDevice();
     void sendHost();
-    void exchangeHost();
 
     void receive();
-    void send();
+    void receiveDevice();
+    void receiveHost();
+
     void exchange();
+    void exchangeDevice();
+    void exchangeHost();
 
     void advance();
     bool test();
