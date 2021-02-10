@@ -80,9 +80,29 @@ acUnpinPackedData(const Device device, const cudaStream_t stream, PackedData* dd
     ERRCHK_CUDA(cudaMemcpyAsync(ddata->data, ddata->data_pinned, bytes, cudaMemcpyDefault, stream));
 }
 
-/* Task interface                                 *
- * Tasks are encapsulated pieces of work that have*
- * a clear set of dependencies (and dependents).  */
+/* Task interface */
+/*
+void
+Task::logStateChangedEvent(std::string from, std::string to)
+{   
+    //NOTE: the keys used here don't reflect terminology in Astaroth
+    //because the messages are read by a python tool which expects these keys.
+    std::cout<< "{"
+         <<"\"msg_type\":\"state_changed_event\","
+         <<"\"rank\":"<<rank
+         <<",\"substep\":"<<loop_cntr.i
+         <<",\"task_type\":\""<<task_type<<"\""
+         <<",\"tag\":"<<output_region->tag
+         <<",\"seg_id\":["
+             <<output_region->id.x<<","
+             <<output_region->id.y<<","
+             <<output_region->id.z<<"],"
+         <<"\"seg_type\":"<<output_region->facet_class<<","
+         <<"\"from\":\""<<from<<"\""<<","
+         <<"\"to\":\""<<to<<"\""
+         <<"}"<<std::endl;
+}
+*/
 
 void
 Task::registerDependent(Task* t, size_t offset)
@@ -94,38 +114,64 @@ Task::registerDependent(Task* t, size_t offset)
 void
 Task::registerPrerequisite(size_t offset)
 {
-    dependency_counter.increment_target(offset);
+    dep_cntr.max_offset = max(dep_cntr.max_offset, offset);
+    dep_cntr.targets.resize(dep_cntr.max_offset+1, 0);
+    dep_cntr.targets[offset]++;
 }
 
 void
-Task::setIterationParams(size_t begin, size_t end, AcReal dt_)
+Task::setIterationParams(size_t begin, size_t end)
 {
-    loop_counter.first = begin;
-    loop_counter.second = end;
+    loop_cntr.i = begin;
+    loop_cntr.end = end;
+    
+    //Ensure dependency counter has enough space to count all iterations
+    dep_cntr.num_iters = max(dep_cntr.num_iters, end);
+    dep_cntr.counts.resize(dep_cntr.num_iters);
 
-    dependency_counter.extend_to(end, 0);
-    dependency_counter.reset_counts();
-    dt = dt_;
+    for (size_t i=0; i<dep_cntr.num_iters; i++){
+        size_t num_buckets = max(i, dep_cntr.num_iters) + 1;
+        dep_cntr.counts[i].resize(num_buckets,0);
+    }
+
+    //Reset counts
+    for (auto& count: dep_cntr.counts){
+        for (auto& bucket : count){
+            bucket = 0;
+        }
+    }
 }
 
 bool
 Task::isFinished()
 {
-    return loop_counter.first == loop_counter.second;
+    return loop_cntr.i == loop_cntr.end;
 }
 
 void
 Task::update()
 {
     if (isFinished()) return;
-    
-    bool ready = (state == wait_state) ? dependency_counter.iteration_finished(loop_counter.first) : test();
+        
+    bool ready;
+    if (state == wait_state) {
+        ready = true;
+        for (size_t i = 0;i <= loop_cntr.i && i<= dep_cntr.max_offset; i++){
+            size_t cnt = dep_cntr.counts[loop_cntr.i][i];
+            size_t tgt = dep_cntr.targets[i];
+            
+            ready &= dep_cntr.counts[loop_cntr.i][i] >= dep_cntr.targets[i];
+        }
+    } else {
+        ready = test();
+    }
+
     if (ready){
         advance();
         if (state == wait_state){
             swapVBA();
             notifyDependents();
-            loop_counter.first++;
+            loop_cntr.i++;
         }
     }
 }
@@ -134,14 +180,16 @@ void
 Task::notifyDependents()
 {
     for (auto& d : dependents) {
-        d.first->satisfyDependency(loop_counter.first, d.second);
+        d.first->satisfyDependency(loop_cntr.i, d.second);
     }
 }
 
 void
 Task::satisfyDependency(size_t iteration, size_t offset)
 {
-    dependency_counter.increment(iteration+offset, offset);
+    if (iteration+offset < dep_cntr.num_iters){
+        dep_cntr.counts[iteration+offset][offset]++;
+    }
 }
 
 void
@@ -178,31 +226,22 @@ Task::poll_stream()
 }
 
 /* Computation */
-ComputeTask::ComputeTask(int3 segment_id_, int3 nn, Device device_, Stream stream_id)
+ComputeTask::ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id)
 {
-    segment_id = segment_id_;
+    //task_type = "compute";
     device = device_;
     stream = device->streams[stream_id];
-    task_type = "compute";
-
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    //Copy VBA's CUDA-pointers over
     syncVBA();
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    start = (int3){segment_id.x == -1 ? NGHOST : segment_id.x == 1 ? nn.x : NGHOST * 2,
-                   segment_id.y == -1 ? NGHOST : segment_id.y == 1 ? nn.y : NGHOST * 2,
-                   segment_id.z == -1 ? NGHOST : segment_id.z == 1 ? nn.z : NGHOST * 2};
-
-    dims = (int3){segment_id.x == 0 ? nn.x - NGHOST * 2 : NGHOST,
-                  segment_id.y == 0 ? nn.y - NGHOST * 2 : NGHOST,
-                  segment_id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
+    output_region = new Region(RegionFamily::Compute, region_tag, nn);
 }
 
 void
 ComputeTask::compute()
 {
-    size_t substep = loop_counter.first % 3;
-    acKernelIntegrateSubstep(stream, substep, start, start + dims, vba);
+    size_t substep = loop_cntr.i % 3;
+    acKernelIntegrateSubstep(stream, substep, output_region->position, output_region->position + output_region->dims, vba);
 }
 
 bool
@@ -225,12 +264,14 @@ ComputeTask::advance()
     switch (static_cast<ComputeState>(state)){
         case ComputeState::Waiting_for_halo:
         {
+            //logStateChangedEvent("waiting", "running"); 
             compute();
             state = static_cast<int>(ComputeState::Running);
             break;
         }
         case ComputeState::Running:
         {
+            //logStateChangedEvent("running", "waiting"); 
             state = static_cast<int>(ComputeState::Waiting_for_halo);
             break;
         }
@@ -287,58 +328,39 @@ MessageBufferSwapChain::get_fresh_buffer()
 }
 
 // HaloExchangeTask
-HaloExchangeTask::HaloExchangeTask(const Device device_, const int rank_, const int3 segment_id_,
-                                   const uint3_64 decomposition, const int3 grid_dimensions,
+HaloExchangeTask::HaloExchangeTask(const Device device_, const int halo_region_tag,
+                                   const int3 nn, const uint3_64 decomp,
                                    MPI_Request* recv_requests, MPI_Request* send_requests)
 {
-    segment_id = segment_id_;
-    rank = rank_;
+    //task_type = "halo";
     device = device_;
-    task_type = "halo";
-
-    //Copy VBA's CUDA-pointers over
-    syncVBA();
-
-    int seg_type = segment_type(segment_id);
-    active       = ((MPI_INCL_CORNERS) || seg_type != 3) ? true : false;
-    
-    const int3 foreign_segment_id = -segment_id;
-
-    // Coordinates
-    //These names are bad and confusing?
-    halo_segment_coordinates  = halo_segment_position(segment_id, grid_dimensions);
-    local_segment_coordinates = local_segment_position(-foreign_segment_id, grid_dimensions);
-
-    // MPI
-    // domain coordinates are the 3D process coordinates (or id) in the decomposition
-    const int3 coarse_grid_coordinates = getPid3D(rank, decomposition);
-    const int3 segment_dimensions      = segment_dims(segment_id, grid_dimensions);
-
-    send_rank = getPid(coarse_grid_coordinates + segment_id, decomposition);
-    recv_rank = getPid(coarse_grid_coordinates - foreign_segment_id, decomposition);
-
-    send_tag = segment_index(segment_id);
-    recv_tag = segment_index(foreign_segment_id);
-
-    // Note: send_tag is also the index in the buffer set
-    // That's why both recv buffers and send buffers are indexed by it
-    recv_buffers = new MessageBufferSwapChain();
-    for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        recv_buffers->add_buffer(segment_dimensions, &(recv_requests[i * NUM_SEGMENTS + send_tag]));
+    //Create stream for packing/unpacking
+    {
+        cudaSetDevice(device->id);
+        int low_prio, high_prio;
+        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
+    syncVBA();
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    output_region = new Region(RegionFamily::Incoming, halo_region_tag, nn);
+    outgoing_message_region = new Region(RegionFamily::Outgoing, halo_region_tag, nn);
+    
+    counterpart_rank = getPid(getPid3D(rank,decomp) + output_region->id, decomp);
+    send_tag = outgoing_message_region->tag;
+    recv_tag = Region::id_to_tag(-output_region->id);
+
+    // Note: send_tag is also the index for both buffer sets.
+    recv_buffers = new MessageBufferSwapChain();
     send_buffers = new MessageBufferSwapChain();
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        send_buffers->add_buffer(segment_dimensions, &(send_requests[i * NUM_SEGMENTS + send_tag]));
+        recv_buffers->add_buffer(output_region->dims, &(recv_requests[i * NUM_SEGMENTS + send_tag]));
+        send_buffers->add_buffer(outgoing_message_region->dims, &(send_requests[i * NUM_SEGMENTS + send_tag]));
     }
-    // CUDA
-    cudaSetDevice(device->id);
 
-    int low_prio, high_prio;
-    cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
-    cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
-    
     // Post receive immediately, this avoids unexpected messages
+    active = ((MPI_INCL_CORNERS) || output_region->facet_class != 3) ? true : false;
     if (active) {
         receive();
     }
@@ -357,7 +379,7 @@ void
 HaloExchangeTask::pack()
 {
     auto msg = send_buffers->get_fresh_buffer();
-    acKernelPackData(stream, vba, local_segment_coordinates, msg->buffer);
+    acKernelPackData(stream, vba, outgoing_message_region->position, msg->buffer);
 }
 
 void
@@ -367,7 +389,7 @@ HaloExchangeTask::unpack()
     auto msg           = recv_buffers->get_current_buffer();
     msg->buffer.pinned = false;
     acUnpinPackedData(device, stream, &(msg->buffer));
-    acKernelUnpackData(stream, msg->buffer, halo_segment_coordinates, vba);
+    acKernelUnpackData(stream, msg->buffer, output_region->position, vba);
 }
 
 void
@@ -394,7 +416,7 @@ void
 HaloExchangeTask::receiveDevice()
 {
     auto msg = recv_buffers->get_fresh_buffer();
-    MPI_Irecv(msg->buffer.data, msg->length, AC_MPI_TYPE, recv_rank, recv_tag + HALO_TAG_OFFSET,
+    MPI_Irecv(msg->buffer.data, msg->length, AC_MPI_TYPE, counterpart_rank, recv_tag + HALO_TAG_OFFSET,
               MPI_COMM_WORLD, msg->request);
     msg->buffer.pinned = false;
 }
@@ -402,12 +424,12 @@ HaloExchangeTask::receiveDevice()
 void
 HaloExchangeTask::receiveHost()
 {
-    if (onTheSameNode(rank, recv_rank)) {
+    if (onTheSameNode(rank, counterpart_rank)) {
         receiveDevice();
     }
     else {
         auto msg = recv_buffers->get_fresh_buffer();
-        MPI_Irecv(msg->buffer.data_pinned, msg->length, AC_MPI_TYPE, recv_rank,
+        MPI_Irecv(msg->buffer.data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
                   recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
         msg->buffer.pinned = true;
     }
@@ -418,7 +440,7 @@ HaloExchangeTask::sendDevice()
 {
     auto msg = send_buffers->get_current_buffer();
     sync();
-    MPI_Isend(msg->buffer.data, msg->length, AC_MPI_TYPE, send_rank, send_tag + HALO_TAG_OFFSET,
+    MPI_Isend(msg->buffer.data, msg->length, AC_MPI_TYPE, counterpart_rank, send_tag + HALO_TAG_OFFSET,
               MPI_COMM_WORLD, msg->request);
 }
 
@@ -427,14 +449,14 @@ HaloExchangeTask::sendHost()
 {
     // POSSIBLE COMPAT ISSUE: is it sensible to always use CUDA memory for node-local exchanges?
     // What if the MPI lib doesn't support CUDA?
-    if (onTheSameNode(rank, send_rank)) {
+    if (onTheSameNode(rank, counterpart_rank)) {
         sendDevice();
     }
     else {
         auto msg = send_buffers->get_current_buffer();
         acPinPackedData(device, stream, &(msg->buffer));
         sync();
-        MPI_Isend(msg->buffer.data_pinned, msg->length, AC_MPI_TYPE, send_rank,
+        MPI_Isend(msg->buffer.data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
                   send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
     }
 }
@@ -517,20 +539,24 @@ HaloExchangeTask::advance()
 {
     switch(static_cast<HaloExchangeState>(state)){
         case HaloExchangeState::Waiting_for_compute:
+            //logStateChangedEvent("waiting", "packing");
             pack();
             state = static_cast<int>(HaloExchangeState::Packing);
             break;
         case HaloExchangeState::Packing:
+            //logStateChangedEvent("packing", "receiving");
             sync();
             send();
             state = static_cast<int>(HaloExchangeState::Exchanging);
             break;
         case HaloExchangeState::Exchanging:
+            //logStateChangedEvent("receiving", "unpacking");
             sync();
             unpack();
             state = static_cast<int>(HaloExchangeState::Unpacking);
             break;
         case HaloExchangeState::Unpacking:
+            //logStateChangedEvent("unpacking", "waiting");
             receive();
             sync();
             state = static_cast<int>(HaloExchangeState::Waiting_for_compute);

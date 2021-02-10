@@ -115,21 +115,21 @@ acGridInit(const AcMeshInfo info)
     MPI_Get_processor_name(processor_name, &name_len);
 
     // Decompose
-    AcMeshInfo submesh_info      = info;
-    const uint3_64 decomposition = decompose(nprocs);
-    const int3 pid3d             = getPid3D(pid, decomposition);
+    AcMeshInfo submesh_info = info;
+    const uint3_64 decomp   = decompose(nprocs);
+    const int3 pid3d        = getPid3D(pid, decomp);
 
     MPI_Barrier(MPI_COMM_WORLD);
     printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, pid, nprocs, pid3d.x,
            pid3d.y, pid3d.z);
-    printf("Decomposition: %lu, %lu, %lu\n", decomposition.x, decomposition.y, decomposition.z);
+    printf("Decomposition: %lu, %lu, %lu\n", decomp.x, decomp.y, decomp.z);
     printf("Mesh size: %d, %d, %d\n", info.int_params[AC_nx],info.int_params[AC_ny],info.int_params[AC_nz]);
     fflush(stdout);
     MPI_Barrier(MPI_COMM_WORLD);
 
-    ERRCHK_ALWAYS(info.int_params[AC_nx] % decomposition.x == 0);
-    ERRCHK_ALWAYS(info.int_params[AC_ny] % decomposition.y == 0);
-    ERRCHK_ALWAYS(info.int_params[AC_nz] % decomposition.z == 0);
+    ERRCHK_ALWAYS(info.int_params[AC_nx] % decomp.x == 0);
+    ERRCHK_ALWAYS(info.int_params[AC_ny] % decomp.y == 0);
+    ERRCHK_ALWAYS(info.int_params[AC_nz] % decomp.z == 0);
 
     //Check that mixed precision is correctly configured, AcRealPacked == AC_MPI_TYPE
     //CAN BE REMOVED IF MIXED PRECISION IS SUPPORTED AS A PREPROCESSOR FLAG
@@ -137,9 +137,9 @@ acGridInit(const AcMeshInfo info)
     MPI_Type_size(AC_MPI_TYPE,&mpi_type_size);
     ERRCHK_ALWAYS(sizeof(AcRealPacked) == mpi_type_size);
 
-    const int submesh_nx                       = info.int_params[AC_nx] / decomposition.x;
-    const int submesh_ny                       = info.int_params[AC_ny] / decomposition.y;
-    const int submesh_nz                       = info.int_params[AC_nz] / decomposition.z;
+    const int submesh_nx                       = info.int_params[AC_nx] / decomp.x;
+    const int submesh_ny                       = info.int_params[AC_ny] / decomp.y;
+    const int submesh_nz                       = info.int_params[AC_nz] / decomp.z;
     submesh_info.int_params[AC_nx]             = submesh_nx;
     submesh_info.int_params[AC_ny]             = submesh_ny;
     submesh_info.int_params[AC_nz]             = submesh_nz;
@@ -166,30 +166,28 @@ acGridInit(const AcMeshInfo info)
     // Setup the global grid structure
     grid.device        = device;
     grid.submesh       = submesh;
-    grid.decomposition = decomposition;
+    grid.decomposition = decomp;
 
     // Configure
-    const int3 grid_dimensions = (int3){
+    const int3 nn = (int3){
         device->local_config.int_params[AC_nx],
         device->local_config.int_params[AC_ny],
         device->local_config.int_params[AC_nz],
     };
 
-    grid.nn = grid_dimensions;
+    grid.nn = nn;
 
+    //Create compute tasks
     grid.compute_tasks.clear();
     grid.compute_tasks.reserve(NUM_SEGMENTS);
 
-    grid.inner_integration_task = new ComputeTask((int3){0, 0, 0}, grid_dimensions, device,
-                                                      STREAM_26);
-    //TODO: here we have missed the dependencies between compute tasks, only capturing the core's deps
-    for (int idx = 0; idx < NUM_SEGMENTS; idx++) {
-        const int3 segment_id = index_to_segment_id(idx);
-        Stream stream         = (Stream)(idx + STREAM_DEFAULT);
-        grid.compute_tasks.emplace_back(segment_id, grid_dimensions, device, stream);
+    grid.inner_integration_task = new ComputeTask(device, Region::id_to_tag((int3){0,0,0}), nn, STREAM_26);
+
+    for (int tag = 0; tag < NUM_SEGMENTS; tag++) {
+        grid.compute_tasks.emplace_back(device, tag, nn, (Stream)(tag + STREAM_DEFAULT));
     }
 
-
+    //Create halo exchange tasks
     grid.halo_exchange_tasks.clear();
     grid.halo_exchange_tasks.reserve(NUM_SEGMENTS);
 
@@ -203,44 +201,43 @@ acGridInit(const AcMeshInfo info)
     grid.back_send_reqs = &grid.send_reqs[NUM_SEGMENTS];
 
 
-    for (int i = 0; i < NUM_SEGMENTS; i++) {
-        const int3 seg_id = index_to_segment_id(i);
-        grid.halo_exchange_tasks.emplace_back(device, pid, seg_id, decomposition, grid_dimensions,
+    for (int tag = 0; tag < NUM_SEGMENTS; tag++) {
+        grid.halo_exchange_tasks.emplace_back(device, tag, nn, decomp,
                                               grid.recv_reqs, grid.send_reqs);
     }
-
     //Dependencies
-    for (int i = 0; i < NUM_SEGMENTS; i++) {
-        const int3 seg_a = index_to_segment_id(i);
-        for (int j = 0; j < NUM_SEGMENTS; j++) {
-            const int3 seg_b = index_to_segment_id(j);
-            if (((seg_a.x == 0) || (seg_a.x == seg_b.x)) &&
-                ((seg_a.y == 0) || (seg_a.y == seg_b.y)) &&
-                ((seg_a.z == 0) || (seg_a.z == seg_b.z))) {
-                if (grid.halo_exchange_tasks[i].active){
-                    grid.halo_exchange_tasks[i].registerDependent(&grid.compute_tasks[j], 0);
-                    grid.compute_tasks[j].registerDependent(&grid.halo_exchange_tasks[i], 1);
+    for (auto& halo_task: grid.halo_exchange_tasks){
+        if (halo_task.active){
+            int3 h_id = halo_task.output_region->id;
+            for (auto& comp_task: grid.compute_tasks){
+                int3 c_id = comp_task.output_region->id;
+                if (((h_id.x == 0) || (h_id.x == c_id.x)) &&
+                    ((h_id.y == 0) || (h_id.y == c_id.y)) &&
+                    ((h_id.z == 0) || (h_id.z == c_id.z))) {
+
+                    //Comp tasks depend on halo tasks in the same iteration, offset = 0
+                    //Halo tasks depend on comp tasks in the prev iteration, offset = 1
+                    halo_task.registerDependent(&comp_task,0);
+                    comp_task.registerDependent(&halo_task,1);
                 }
-            }
-            if (grid.halo_exchange_tasks[i].active){
-                //grid.halo_exchange_tasks[i].registerDependent(&grid.compute_tasks[j], 0);
-                //grid.compute_tasks[j].registerDependent(&grid.halo_exchange_tasks[i], 1);
             }
         }
     }
-    
-    for (int i = 0; i < NUM_SEGMENTS; i++) {
-        const int3 seg_a = index_to_segment_id(i);
-        for (int j = 0; j < NUM_SEGMENTS; j++) {
-            const int3 seg_b = index_to_segment_id(j);
-            if (((seg_a.x == 0) || (seg_b.x == 0) || (seg_a.x == seg_b.x)) &&
-                ((seg_a.y == 0) || (seg_b.y == 0) || (seg_a.y == seg_b.y)) &&
-                ((seg_a.z == 0) || (seg_b.z == 0) || (seg_a.z == seg_b.z))){
-                    grid.compute_tasks[j].registerDependent(&grid.compute_tasks[i], 1);
+
+    for (auto& comp_task_1: grid.compute_tasks){
+        int3 c1_id = comp_task_1.output_region->id;
+        for (auto& comp_task_2: grid.compute_tasks){
+            int3 c2_id = comp_task_2.output_region->id;
+            if (((c1_id.x == 0) || (c2_id.x == 0) || (c1_id.x == c2_id.x)) &&
+                ((c1_id.y == 0) || (c2_id.y == 0) || (c1_id.y == c2_id.y)) &&
+                ((c1_id.z == 0) || (c2_id.z == 0) || (c1_id.z == c2_id.z))){
+ 
+                //Comp tasks depend on comp tasks from the prev iteration, offset = 1
+                comp_task_1.registerDependent(&comp_task_2,1);
             }
         }
-        grid.compute_tasks[i].registerDependent(grid.inner_integration_task, 1);
-        grid.inner_integration_task->registerDependent(&grid.compute_tasks[i], 1);
+        comp_task_1.registerDependent(grid.inner_integration_task, 1);
+        grid.inner_integration_task->registerDependent(&comp_task_1, 1);
     }
 
     grid.initialized = true;
@@ -499,30 +496,33 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 
     for (auto& halo_task : grid.halo_exchange_tasks) {
         if (halo_task.active){
-            halo_task.setIterationParams(0,num_iterations, dt);
+            halo_task.setIterationParams(0,num_iterations);
         }
     }
 
     for (auto& compute_task : grid.compute_tasks) {
-        compute_task.setIterationParams(0,num_iterations, dt);
+        compute_task.setIterationParams(0,num_iterations);
     }
-    grid.inner_integration_task->setIterationParams(0, num_iterations, dt);
-
+    grid.inner_integration_task->setIterationParams(0, num_iterations);
+    
     bool ready;
     do{
         ready = true;
+
         grid.inner_integration_task->update();
+        ready &= grid.inner_integration_task->isFinished();
+
         for (auto& halo_task: grid.halo_exchange_tasks){
             if (halo_task.active){
                 halo_task.update();
                 ready &= halo_task.isFinished();
             }
         }
+
         for (auto& compute_task: grid.compute_tasks){
                 compute_task.update();
                 ready &= compute_task.isFinished();
         }
-        ready &= grid.inner_integration_task->isFinished();
     } while (!ready);
         
     
@@ -579,7 +579,7 @@ acGridPeriodicBoundconds(const Stream stream)
 }
 
 static AcResult
-reduceScal(const AcReal local_result, const ReductionType rtype, AcReal* result)
+distributedScalarReduction(const AcReal local_result, const ReductionType rtype, AcReal* result)
 {
 
     MPI_Op op;
@@ -625,7 +625,7 @@ acGridReduceScal(const Stream stream, const ReductionType rtype,
     AcReal local_result;
     acDeviceReduceScal(device, stream, rtype, vtxbuf_handle, &local_result);
 
-    return reduceScal(local_result, rtype, result);
+    return distributedScalarReduction(local_result, rtype, result);
 }
 
 AcResult
@@ -639,7 +639,7 @@ acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBuff
     AcReal local_result;
     acDeviceReduceVec(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, &local_result);
 
-    return reduceScal(local_result, rtype, result);
+    return distributedScalarReduction(local_result, rtype, result);
 }
 
 /*   MV: Commented out for a while, but save for the future when standalone_MPI

@@ -12,6 +12,9 @@
 #define MPI_USE_PINNED (0)   // Do inter-node comm with pinned (host) memory
 #define MPI_INCL_CORNERS (0) // Include the 3D corners of subdomains in halo
 
+#define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
+static_assert(SWAP_CHAIN_LENGTH == 2);
+
 #define NUM_SEGMENTS (26)
 
 // clang-format off
@@ -22,184 +25,158 @@
 #endif
 // clang-format on
 
-#define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
-static_assert(SWAP_CHAIN_LENGTH == 2);
 
-/*   Segments   */
-
-/**
- * Segments are identified by a non-zero segment id of type {-1,0,1}^3
- * A segment's id describes its position the segment topology of the subdomain
+/**   
+ * Regions
+ * -------
  *
- * The first two functions are maps to and from {-1,0,1}^3 - space and counting numbers
- * The rest of the functions use the segment id to find properties of the segment
+ * Regions are identified by a non-zero region id of type {-1,0,1}^3
+ * A region's id describes its position the region topology of the subdomain.
+ *
+ * There are three families of regions: Incoming message regions, outgoing
+ * message regions, and compute regions. The three families each cover some
+ * zone of data, as follows:
+ *  - Compute: entire inner domain
+ *  - Outgoing: the shell of the inner domain
+ *  - Incoming: the halo
+ * The names of the families have been chosen to represent the constituent
+ * regions' purpose in the context of tasks that use them.
+ *
+ * A triplet in {-1,0,1}^3 identifies each specific region in a family.
+ * There is a mapping between integers in {-1,...,25} and the identifiers.
+ * The integer form is e.g. used as part of the tag used to identify a region
+ * in an MPI message.
  */
 
-// clang-format off
-static inline int
-segment_index(const int3 seg_id)
-{
-    return ((3+seg_id.x)%3)*9 + ((3+seg_id.y)%3)*3 + (3+seg_id.z)%3 - 1;
-}
+enum class RegionFamily {Incoming, Outgoing, Compute};
 
-static inline int3
-index_to_segment_id(int index)
-{
-    int3 segment_id = (int3){
-                        ( index + 1)      / 9,
-                        ((index + 1) % 9) / 3,
-                        ( index + 1) % 3  / 1 };
-    segment_id.x    = segment_id.x == 2 ? -1 : segment_id.x;
-    segment_id.y    = segment_id.y == 2 ? -1 : segment_id.y;
-    segment_id.z    = segment_id.z == 2 ? -1 : segment_id.z;
-    ERRCHK_ALWAYS(segment_index(segment_id) == index);
-    return segment_id;
-}
+struct Region {
 
-static inline int3
-halo_segment_position(const int3 seg_id, const int3 grid_dimensions)
-{
-    return (int3){
-        seg_id.x == -1 ? 0 : seg_id.x == 1 ? NGHOST + grid_dimensions.x : NGHOST,
-        seg_id.y == -1 ? 0 : seg_id.y == 1 ? NGHOST + grid_dimensions.y : NGHOST,
-        seg_id.z == -1 ? 0 : seg_id.z == 1 ? NGHOST + grid_dimensions.z : NGHOST,
-    };
-}
+    int3 position;
+    int3 dims;
 
-static inline int3
-local_segment_position(const int3 seg_id, const int3 grid_dimensions)
-{
-    return (int3){
-        seg_id.x == 1 ? grid_dimensions.x : NGHOST,
-        seg_id.y == 1 ? grid_dimensions.y : NGHOST,
-        seg_id.z == 1 ? grid_dimensions.z : NGHOST,
-    };
-}
-
-static inline int3
-segment_dims(const int3 seg_id, const int3 grid_dimensions)
-{
-    return (int3){
-        seg_id.x == 0 ? grid_dimensions.x : NGHOST,
-        seg_id.y == 0 ? grid_dimensions.y : NGHOST,
-        seg_id.z == 0 ? grid_dimensions.z : NGHOST,
-    };
-}
-
-// Corner=3, Edge=2, Face=1, Core=0
-static inline int
-segment_type(const int3 seg_id)
-{
-    int seg_type = (seg_id.x == 0 ? 0 : 1) +
-                   (seg_id.y == 0 ? 0 : 1) +
-                   (seg_id.z == 0 ? 0 : 1);
-    ERRCHK_ALWAYS(seg_type <= 3 && seg_type >= 0);
-    return seg_type;
-}
-// clang-format on
-
-/* Task interface */
-
-struct DependencyCounter {
-private:
-    size_t num_iterations;
-    size_t max_offset;
-    std::vector<size_t> targets;
-    std::vector<std::vector<size_t>> counts;
-public:
-
-    void
-    extend_to(size_t iterations, size_t offset)
+    RegionFamily family;
+    int3 id;
+    size_t facet_class;
+    int tag;
+    
+    static int id_to_tag(int3 _id)
     {
-        max_offset = max(offset,max_offset);
-        targets.resize(max_offset+1, 0);
+        return ((3+_id.x)%3)*9 + ((3+_id.y)%3)*3 + (3+_id.z)%3 - 1;
+    }
 
-        num_iterations = max(iterations,num_iterations);
-        counts.resize(num_iterations);
+    static int3 tag_to_id(int _tag)
+    {
+        int3 _id = (int3){(_tag + 1)/9, ((_tag + 1) % 9)/3, (_tag + 1) % 3};
+        _id.x    = _id.x == 2 ? -1 : _id.x;
+        _id.y    = _id.y == 2 ? -1 : _id.y;
+        _id.z    = _id.z == 2 ? -1 : _id.z;
+        ERRCHK_ALWAYS(id_to_tag(_id) == _tag);
+        return _id;
+    }
 
-        for (size_t i=0; i<num_iterations; i++){
-            size_t num_buckets = max(i, num_iterations) + 1;
-            counts[i].resize(num_buckets,0);
+    Region(RegionFamily _family, int _tag, int3 nn)
+        : family(_family), tag(_tag)
+    {
+        id = tag_to_id(tag);
+        facet_class = (id.x == 0 ? 0 : 1) +
+                      (id.y == 0 ? 0 : 1) +
+                      (id.z == 0 ? 0 : 1);
+        ERRCHK_ALWAYS(facet_class <= 3);
+
+
+        switch (family){
+            case RegionFamily::Compute:
+            {
+                position = (int3){
+                    id.x == -1 ? NGHOST : id.x == 1 ? nn.x : NGHOST * 2,
+                    id.y == -1 ? NGHOST : id.y == 1 ? nn.y : NGHOST * 2,
+                    id.z == -1 ? NGHOST : id.z == 1 ? nn.z : NGHOST * 2};
+                dims = (int3){
+                    id.x == 0 ? nn.x - NGHOST * 2 : NGHOST,
+                    id.y == 0 ? nn.y - NGHOST * 2 : NGHOST,
+                    id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
+                break;
+            }
+            case RegionFamily::Incoming:
+            {
+                position = (int3){
+                    id.x == -1 ? 0 : id.x == 1 ? NGHOST + nn.x : NGHOST,
+                    id.y == -1 ? 0 : id.y == 1 ? NGHOST + nn.y : NGHOST,
+                    id.z == -1 ? 0 : id.z == 1 ? NGHOST + nn.z : NGHOST};
+                dims = (int3){
+                    id.x == 0 ? nn.x : NGHOST,
+                    id.y == 0 ? nn.y : NGHOST,
+                    id.z == 0 ? nn.z : NGHOST};
+                break;
+            }
+            case RegionFamily::Outgoing:
+            {
+                position = (int3){
+                    id.x == 1 ? nn.x : NGHOST,
+                    id.y == 1 ? nn.y : NGHOST,
+                    id.z == 1 ? nn.z : NGHOST};
+                dims = (int3){
+                    id.x == 0 ? nn.x : NGHOST,
+                    id.y == 0 ? nn.y : NGHOST,
+                    id.z == 0 ? nn.z : NGHOST};
+                break;
+            }
+            default:
+            {
+                ERROR("Unknown region family.");
+            }
         }
+    }
+
+    Region(RegionFamily _family, int3 _id, int3 nn)
+    : Region{_family, id_to_tag(_id) , nn}
+    {
+        ERRCHK_ALWAYS(_id.x == id.x && _id.y == id.y && _id.z == id.z);
     }
     
-    void
-    increment(size_t iteration, size_t offset)
-    {
-        if (iteration < num_iterations){
-            counts[iteration][offset]++;
-        }
-    }
-
-    void
-    increment_target(size_t offset)
-    {
-        extend_to(1,offset);
-        targets[offset]++;
-    }
-
-    void
-    reset_counts(){
-        for (auto& count: counts){
-            for (auto& bucket : count){
-                bucket = 0;
-            }
-        }
-    }
-
-    void
-    reset_all(){
-        for (auto& target : targets){
-            target = 0;
-        }
-        for (auto& count : counts){
-            for (auto& bucket : count){
-                bucket = 0;
-            }
-        }
-    }
-    bool
-    iteration_finished(size_t iteration)
-    {
-        bool ready = true;
-        for (size_t i = 0;i <= iteration && i<=max_offset; i++){
-            ready &= counts[iteration][i] >= targets[i];
-        }
-        return ready;
-    }
 };
 
-
 /**
- * Tasks may depend on other Tasks.
+ * Task interface 
+ * --------------
  *
- * Each task is tied to a segment.
- * The existence of a dependency-relationship between two tasks is deduced from their segment ids.
- * This happens in grid.cc:GridInit()
+ * Each task is tied to an output region (and input regions, but they are not explicit members of Task).
+ * Tasks may depend on other Tasks.
+ * The existence of dependency between two tasks is deduced from their input and output regions.
+ * At the moment, this is done explicitly by comparing region ids and happens in grid.cc:GridInit()
  */
 class Task {
   private:
     std::vector<std::pair<Task*,size_t>> dependents;
 
   protected:
-    VertexBufferArray vba;
     Device device;
     cudaStream_t stream;
-
+    VertexBufferArray vba;
     int rank;
-    int3 segment_id;
 
-    std::string task_type;
-
-    std::pair<size_t,size_t> loop_counter;
-    DependencyCounter dependency_counter;
     int state;
 
-    bool poll_stream();
-  public:
-    static const int wait_state = 0;
+    struct {
+        size_t num_iters;
+        size_t max_offset;
+        std::vector<size_t> targets;
+        std::vector<std::vector<size_t>> counts;
+    } dep_cntr;
 
-    AcReal dt;
+    struct{
+        size_t i;
+        size_t end;
+    } loop_cntr;
+
+    bool poll_stream();
+
+  public:
+    Region* output_region;
+    //std::string task_type;
+
+    static const int wait_state = 0;
 
     virtual ~Task()
     {
@@ -211,7 +188,7 @@ class Task {
     void registerDependent(Task* t, size_t offset);
     void registerPrerequisite(size_t offset);
 
-    void setIterationParams(size_t begin, size_t end, AcReal dt_);
+    void setIterationParams(size_t begin, size_t end);
     void update();
     bool isFinished();
 
@@ -220,6 +197,8 @@ class Task {
     
     void syncVBA();
     void swapVBA();
+
+    //void logStateChangedEvent(std::string b, std::string c);
 
 };
 
@@ -232,7 +211,7 @@ typedef class ComputeTask : public Task {
     int3 dims;
 
   public:
-    ComputeTask(int3 segment_id_, int3 nn, Device device_, Stream stream_id);
+    ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id);
 
     void compute();
     void advance();
@@ -266,26 +245,21 @@ enum class HaloExchangeState {Waiting_for_compute = Task::wait_state, Packing, E
 
 typedef class HaloExchangeTask : public Task {
   private:
-    int3 halo_segment_coordinates;
-    int3 local_segment_coordinates;
+    Region* outgoing_message_region;
 
     MessageBufferSwapChain* recv_buffers;
     MessageBufferSwapChain* send_buffers;
 
+    int counterpart_rank;
     int send_tag;
     int recv_tag;
     int msglen;
-    //int rank;
-    int send_rank;
-    int recv_rank;
-
-    //cudaStream_t stream;
 
   public:
     bool active;
 
-    HaloExchangeTask(const Device device_, const int rank_, const int3 segment_id_,
-                     const uint3_64 decomposition, const int3 grid_dimensions,
+    HaloExchangeTask(const Device device_, const int halo_region_tag,
+                     const int3 nn, const uint3_64 decomp,
                      MPI_Request* recv_requests, MPI_Request* send_requests);
     ~HaloExchangeTask();
     // HaloExchangeTask(const HaloExchangeTask& other) = delete;
