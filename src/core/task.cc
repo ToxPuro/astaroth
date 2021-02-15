@@ -158,10 +158,10 @@ Task::update()
     if (state == wait_state) {
         ready = true;
         for (size_t i = 0; i <= loop_cntr.i && i <= dep_cntr.max_offset; i++) {
-            size_t cnt = dep_cntr.counts[loop_cntr.i][i];
-            size_t tgt = dep_cntr.targets[i];
+            size_t count = dep_cntr.counts[loop_cntr.i][i];
+            size_t target = dep_cntr.targets[i];
 
-            ready &= dep_cntr.counts[loop_cntr.i][i] >= dep_cntr.targets[i];
+            ready &= count >= target;
         }
     }
     else {

@@ -33,7 +33,6 @@ main(void)
     acGridLoadMesh(STREAM_DEFAULT, model);
 
     const AcReal dt = FLT_EPSILON;
-    const size_t nsteps = 10;
     acGridIntegrate(STREAM_DEFAULT, dt);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
