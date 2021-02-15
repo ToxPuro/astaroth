@@ -43,7 +43,6 @@ AcResult acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, 
                                    AcReal* vtxbuf, const VertexBufferHandle vtxbuf_handle,
                                    const AcMeshInfo config, const int3 bindex);
 
-
 /** */
 AcResult acKernelDummy(void);
 
@@ -75,8 +74,8 @@ AcReal acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, c
 /** */
 AcReal acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,
                              const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
-                             const AcReal* vtxbuf2, const AcReal* vtxbuf3, AcReal* scratchpad, AcReal* reduce_result);
-
+                             const AcReal* vtxbuf2, const AcReal* vtxbuf3, AcReal* scratchpad,
+                             AcReal* reduce_result);
 
 #ifdef __cplusplus
 } // extern "C"

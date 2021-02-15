@@ -42,16 +42,16 @@ Basic steps:
 #include "errchk.h"
 #include "timer_hires.h"
 
-#include "math_utils.h"
 #include "decomposition.h" //getPid3D, morton3D
 #include "kernels/kernels.h"
+#include "math_utils.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
 #define MPI_COMPUTE_ENABLED (1)
 #define MPI_COMM_ENABLED (1)
 #define MPI_INCL_CORNERS (0)
-#define MPI_USE_PINNED (0)              // Do inter-node comm with pinned memory
+#define MPI_USE_PINNED (0) // Do inter-node comm with pinned memory
 
 static PackedData
 acCreatePackedData(const int3 dims)
@@ -244,9 +244,11 @@ acTransferCommData(const Device device, //
     MPI_Datatype datatype = MPI_FLOAT;
     if (sizeof(data->srcs[0].data[0]) == 2) {
         datatype = MPI_SHORT; // TODO CONFIRM THAT IS CORRECTLY CAST TO HALF
-    } else if (sizeof(data->srcs[0].data[0]) == 4) {
+    }
+    else if (sizeof(data->srcs[0].data[0]) == 4) {
         datatype = MPI_FLOAT;
-    } else {
+    }
+    else {
         datatype = MPI_DOUBLE;
     }
 
@@ -270,9 +272,15 @@ acTransferCommData(const Device device, //
 
         const int3 b0       = b0s[b0_idx];
         const int3 neighbor = (int3){
-            b0.x < NGHOST ? -1 : b0.x >= NGHOST + nn.x ? 1 : 0,
-            b0.y < NGHOST ? -1 : b0.y >= NGHOST + nn.y ? 1 : 0,
-            b0.z < NGHOST ? -1 : b0.z >= NGHOST + nn.z ? 1 : 0,
+            b0.x < NGHOST           ? -1
+            : b0.x >= NGHOST + nn.x ? 1
+                                    : 0,
+            b0.y < NGHOST           ? -1
+            : b0.y >= NGHOST + nn.y ? 1
+                                    : 0,
+            b0.z < NGHOST           ? -1
+            : b0.z >= NGHOST + nn.z ? 1
+                                    : 0,
         };
         const int npid = getPid(pid3d + neighbor, decomp);
 
@@ -292,9 +300,15 @@ acTransferCommData(const Device device, //
     for (size_t b0_idx = 0; b0_idx < blockcount; ++b0_idx) {
         const int3 b0       = b0s[b0_idx];
         const int3 neighbor = (int3){
-            b0.x < NGHOST ? -1 : b0.x >= NGHOST + nn.x ? 1 : 0,
-            b0.y < NGHOST ? -1 : b0.y >= NGHOST + nn.y ? 1 : 0,
-            b0.z < NGHOST ? -1 : b0.z >= NGHOST + nn.z ? 1 : 0,
+            b0.x < NGHOST           ? -1
+            : b0.x >= NGHOST + nn.x ? 1
+                                    : 0,
+            b0.y < NGHOST           ? -1
+            : b0.y >= NGHOST + nn.y ? 1
+                                    : 0,
+            b0.z < NGHOST           ? -1
+            : b0.z >= NGHOST + nn.z ? 1
+                                    : 0,
         };
         const int npid = getPid(pid3d - neighbor, decomp);
 
@@ -321,8 +335,6 @@ acTransferCommDataWait(const CommData data)
     MPI_Waitall(data.count, data.recv_reqs, MPI_STATUSES_IGNORE);
     MPI_Waitall(data.count, data.send_reqs, MPI_STATUSES_IGNORE);
 }
-
-
 
 /* Internal interface to grid (a global variable)  */
 typedef struct {

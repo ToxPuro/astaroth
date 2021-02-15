@@ -98,7 +98,6 @@ acIntegrateGBC(const AcMeshInfo config, const AcReal dt)
     return acNodeIntegrateGBC(nodes[0], config, dt);
 }
 
-
 AcResult
 acIntegrateStep(const int isubstep, const AcReal dt)
 {
@@ -147,7 +146,7 @@ acReduceVec(const ReductionType rtype, const VertexBufferHandle a, const VertexB
 
 AcReal
 acReduceVecScal(const ReductionType rtype, const VertexBufferHandle a, const VertexBufferHandle b,
-            const VertexBufferHandle c, const VertexBufferHandle d)
+                const VertexBufferHandle c, const VertexBufferHandle d)
 {
     AcReal result;
     acNodeReduceVecScal(nodes[0], STREAM_DEFAULT, rtype, a, b, c, d, &result);

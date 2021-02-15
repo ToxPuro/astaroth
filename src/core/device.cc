@@ -1,8 +1,8 @@
 #include "astaroth.h"
 
 #include "errchk.h"
-#include "math_utils.h"
 #include "kernels/kernels.h"
+#include "math_utils.h"
 
 AcResult
 acDevicePrintInfo(const Device device)
@@ -278,20 +278,23 @@ acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mes
 }
 
 AcResult
-acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBufferHandle handle, const AcReal value)
+acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBufferHandle handle,
+                        const AcReal value)
 {
     acDeviceSynchronizeStream(device, stream);
 
     const size_t count = acVertexBufferSize(device->local_config);
-    AcReal* data = (AcReal*) malloc(sizeof(AcReal) * count);
+    AcReal* data       = (AcReal*)malloc(sizeof(AcReal) * count);
     ERRCHK_ALWAYS(data);
 
     for (size_t i = 0; i < count; ++i)
         data[i] = value;
 
     // Set both in and out for safety (not strictly needed)
-    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.in[handle], data, sizeof(data[0]) * count, cudaMemcpyHostToDevice, device->streams[stream]));
-    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.out[handle], data, sizeof(data[0]) * count, cudaMemcpyHostToDevice, device->streams[stream]));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.in[handle], data, sizeof(data[0]) * count,
+                                       cudaMemcpyHostToDevice, device->streams[stream]));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.out[handle], data, sizeof(data[0]) * count,
+                                       cudaMemcpyHostToDevice, device->streams[stream]));
 
     free(data);
     return AC_SUCCESS;
@@ -438,8 +441,8 @@ acDevicePeriodicBoundconds(const Device device, const Stream stream, const int3 
 
 AcResult
 acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
-                              const VertexBufferHandle vtxbuf_handle, const int3 start,
-                              const int3 end, const AcMeshInfo config, const int3 bindex)
+                             const VertexBufferHandle vtxbuf_handle, const int3 start,
+                             const int3 end, const AcMeshInfo config, const int3 bindex)
 {
     cudaSetDevice(device->id);
     return acKernelGeneralBoundconds(device->streams[stream], start, end,
@@ -448,14 +451,14 @@ acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
 
 AcResult
 acDeviceGeneralBoundconds(const Device device, const Stream stream, const int3 start,
-                           const int3 end, const AcMeshInfo config, const int3 bindex)
+                          const int3 end, const AcMeshInfo config, const int3 bindex)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        acDeviceGeneralBoundcondStep(device, stream, (VertexBufferHandle)i, start, end, config, bindex);
+        acDeviceGeneralBoundcondStep(device, stream, (VertexBufferHandle)i, start, end, config,
+                                     bindex);
     }
     return AC_SUCCESS;
 }
-
 
 AcResult
 acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
@@ -500,8 +503,9 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
 
 AcResult
 acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionType rtype,
-                  const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                  const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3, AcReal* result)
+                      const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                      const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
+                      AcReal* result)
 {
     cudaSetDevice(device->id);
 
@@ -513,8 +517,9 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
                             device->local_config.int_params[AC_ny_max],
                             device->local_config.int_params[AC_nz_max]};
 
-    *result = acKernelReduceVecScal(device->streams[stream], rtype, start, end, device->vba.in[vtxbuf0],
-                                    device->vba.in[vtxbuf1], device->vba.in[vtxbuf2], device->vba.in[vtxbuf3],
+    *result = acKernelReduceVecScal(device->streams[stream], rtype, start, end,
+                                    device->vba.in[vtxbuf0], device->vba.in[vtxbuf1],
+                                    device->vba.in[vtxbuf2], device->vba.in[vtxbuf3],
                                     device->reduce_scratchpad, device->reduce_result);
     return AC_SUCCESS;
 }

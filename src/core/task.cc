@@ -19,9 +19,9 @@
 #include "task.h"
 #include "astaroth.h"
 
+#include <iostream>
 #include <mpi.h>
 #include <vector>
-#include <iostream>
 
 #include "decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //PackedData
@@ -84,7 +84,7 @@ acUnpinPackedData(const Device device, const cudaStream_t stream, PackedData* dd
 /*
 void
 Task::logStateChangedEvent(std::string from, std::string to)
-{   
+{
     //NOTE: the keys used here don't reflect terminology in Astaroth
     //because the messages are read by a python tool which expects these keys.
     std::cout<< "{"
@@ -107,7 +107,7 @@ Task::logStateChangedEvent(std::string from, std::string to)
 void
 Task::registerDependent(Task* t, size_t offset)
 {
-    dependents.emplace_back(t,offset);
+    dependents.emplace_back(t, offset);
     t->registerPrerequisite(offset);
 }
 
@@ -115,28 +115,28 @@ void
 Task::registerPrerequisite(size_t offset)
 {
     dep_cntr.max_offset = max(dep_cntr.max_offset, offset);
-    dep_cntr.targets.resize(dep_cntr.max_offset+1, 0);
+    dep_cntr.targets.resize(dep_cntr.max_offset + 1, 0);
     dep_cntr.targets[offset]++;
 }
 
 void
 Task::setIterationParams(size_t begin, size_t end)
 {
-    loop_cntr.i = begin;
+    loop_cntr.i   = begin;
     loop_cntr.end = end;
-    
-    //Ensure dependency counter has enough space to count all iterations
+
+    // Ensure dependency counter has enough space to count all iterations
     dep_cntr.num_iters = max(dep_cntr.num_iters, end);
     dep_cntr.counts.resize(dep_cntr.num_iters);
 
-    for (size_t i=0; i<dep_cntr.num_iters; i++){
+    for (size_t i = 0; i < dep_cntr.num_iters; i++) {
         size_t num_buckets = max(i, dep_cntr.num_iters) + 1;
-        dep_cntr.counts[i].resize(num_buckets,0);
+        dep_cntr.counts[i].resize(num_buckets, 0);
     }
 
-    //Reset counts
-    for (auto& count: dep_cntr.counts){
-        for (auto& bucket : count){
+    // Reset counts
+    for (auto& count : dep_cntr.counts) {
+        for (auto& bucket : count) {
             bucket = 0;
         }
     }
@@ -151,24 +151,26 @@ Task::isFinished()
 void
 Task::update()
 {
-    if (isFinished()) return;
-        
+    if (isFinished())
+        return;
+
     bool ready;
     if (state == wait_state) {
         ready = true;
-        for (size_t i = 0;i <= loop_cntr.i && i<= dep_cntr.max_offset; i++){
+        for (size_t i = 0; i <= loop_cntr.i && i <= dep_cntr.max_offset; i++) {
             size_t cnt = dep_cntr.counts[loop_cntr.i][i];
             size_t tgt = dep_cntr.targets[i];
-            
+
             ready &= dep_cntr.counts[loop_cntr.i][i] >= dep_cntr.targets[i];
         }
-    } else {
+    }
+    else {
         ready = test();
     }
 
-    if (ready){
+    if (ready) {
         advance();
-        if (state == wait_state){
+        if (state == wait_state) {
             swapVBA();
             notifyDependents();
             loop_cntr.i++;
@@ -187,8 +189,8 @@ Task::notifyDependents()
 void
 Task::satisfyDependency(size_t iteration, size_t offset)
 {
-    if (iteration+offset < dep_cntr.num_iters){
-        dep_cntr.counts[iteration+offset][offset]++;
+    if (iteration + offset < dep_cntr.num_iters) {
+        dep_cntr.counts[iteration + offset][offset]++;
     }
 }
 
@@ -206,20 +208,20 @@ void
 Task::swapVBA()
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        AcReal* tmp        = vba.in[i];
-        vba.in[i]  = vba.out[i];
-        vba.out[i] = tmp;
+        AcReal* tmp = vba.in[i];
+        vba.in[i]   = vba.out[i];
+        vba.out[i]  = tmp;
     }
 }
 
 bool
 Task::poll_stream()
-{      
+{
     cudaError_t err = cudaStreamQuery(stream);
-    if (err == cudaSuccess){
+    if (err == cudaSuccess) {
         return true;
     }
-    if (err == cudaErrorNotReady){
+    if (err == cudaErrorNotReady) {
         return false;
     }
     return false;
@@ -228,7 +230,7 @@ Task::poll_stream()
 /* Computation */
 ComputeTask::ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id)
 {
-    //task_type = "compute";
+    // task_type = "compute";
     device = device_;
     stream = device->streams[stream_id];
     syncVBA();
@@ -241,40 +243,38 @@ void
 ComputeTask::compute()
 {
     size_t substep = loop_cntr.i % 3;
-    acKernelIntegrateSubstep(stream, substep, output_region->position, output_region->position + output_region->dims, vba);
+    acKernelIntegrateSubstep(stream, substep, output_region->position,
+                             output_region->position + output_region->dims, vba);
 }
 
 bool
 ComputeTask::test()
 {
-    switch (static_cast<ComputeState>(state)){
-        case ComputeState::Running:
-        {
-            return poll_stream();
-        }
-        default:
-            ERROR("ComputeTask in an invalid state.");
-            return false;
+    switch (static_cast<ComputeState>(state)) {
+    case ComputeState::Running: {
+        return poll_stream();
+    }
+    default:
+        ERROR("ComputeTask in an invalid state.");
+        return false;
     }
 }
 
 void
 ComputeTask::advance()
 {
-    switch (static_cast<ComputeState>(state)){
-        case ComputeState::Waiting_for_halo:
-        {
-            //logStateChangedEvent("waiting", "running"); 
-            compute();
-            state = static_cast<int>(ComputeState::Running);
-            break;
-        }
-        case ComputeState::Running:
-        {
-            //logStateChangedEvent("running", "waiting"); 
-            state = static_cast<int>(ComputeState::Waiting_for_halo);
-            break;
-        }
+    switch (static_cast<ComputeState>(state)) {
+    case ComputeState::Waiting_for_halo: {
+        // logStateChangedEvent("waiting", "running");
+        compute();
+        state = static_cast<int>(ComputeState::Running);
+        break;
+    }
+    case ComputeState::Running: {
+        // logStateChangedEvent("running", "waiting");
+        state = static_cast<int>(ComputeState::Waiting_for_halo);
+        break;
+    }
     }
 }
 
@@ -328,13 +328,13 @@ MessageBufferSwapChain::get_fresh_buffer()
 }
 
 // HaloExchangeTask
-HaloExchangeTask::HaloExchangeTask(const Device device_, const int halo_region_tag,
-                                   const int3 nn, const uint3_64 decomp,
-                                   MPI_Request* recv_requests, MPI_Request* send_requests)
+HaloExchangeTask::HaloExchangeTask(const Device device_, const int halo_region_tag, const int3 nn,
+                                   const uint3_64 decomp, MPI_Request* recv_requests,
+                                   MPI_Request* send_requests)
 {
-    //task_type = "halo";
+    // task_type = "halo";
     device = device_;
-    //Create stream for packing/unpacking
+    // Create stream for packing/unpacking
     {
         cudaSetDevice(device->id);
         int low_prio, high_prio;
@@ -344,19 +344,21 @@ HaloExchangeTask::HaloExchangeTask(const Device device_, const int halo_region_t
     syncVBA();
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    output_region = new Region(RegionFamily::Incoming, halo_region_tag, nn);
+    output_region           = new Region(RegionFamily::Incoming, halo_region_tag, nn);
     outgoing_message_region = new Region(RegionFamily::Outgoing, halo_region_tag, nn);
-    
-    counterpart_rank = getPid(getPid3D(rank,decomp) + output_region->id, decomp);
-    send_tag = outgoing_message_region->tag;
-    recv_tag = Region::id_to_tag(-output_region->id);
+
+    counterpart_rank = getPid(getPid3D(rank, decomp) + output_region->id, decomp);
+    send_tag         = outgoing_message_region->tag;
+    recv_tag         = Region::id_to_tag(-output_region->id);
 
     // Note: send_tag is also the index for both buffer sets.
     recv_buffers = new MessageBufferSwapChain();
     send_buffers = new MessageBufferSwapChain();
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        recv_buffers->add_buffer(output_region->dims, &(recv_requests[i * NUM_SEGMENTS + send_tag]));
-        send_buffers->add_buffer(outgoing_message_region->dims, &(send_requests[i * NUM_SEGMENTS + send_tag]));
+        recv_buffers->add_buffer(output_region->dims,
+                                 &(recv_requests[i * NUM_SEGMENTS + send_tag]));
+        send_buffers->add_buffer(outgoing_message_region->dims,
+                                 &(send_requests[i * NUM_SEGMENTS + send_tag]));
     }
 
     // Post receive immediately, this avoids unexpected messages
@@ -385,7 +387,7 @@ HaloExchangeTask::pack()
 void
 HaloExchangeTask::unpack()
 {
-    
+
     auto msg           = recv_buffers->get_current_buffer();
     msg->buffer.pinned = false;
     acUnpinPackedData(device, stream, &(msg->buffer));
@@ -416,8 +418,8 @@ void
 HaloExchangeTask::receiveDevice()
 {
     auto msg = recv_buffers->get_fresh_buffer();
-    MPI_Irecv(msg->buffer.data, msg->length, AC_MPI_TYPE, counterpart_rank, recv_tag + HALO_TAG_OFFSET,
-              MPI_COMM_WORLD, msg->request);
+    MPI_Irecv(msg->buffer.data, msg->length, AC_MPI_TYPE, counterpart_rank,
+              recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
     msg->buffer.pinned = false;
 }
 
@@ -440,8 +442,8 @@ HaloExchangeTask::sendDevice()
 {
     auto msg = send_buffers->get_current_buffer();
     sync();
-    MPI_Isend(msg->buffer.data, msg->length, AC_MPI_TYPE, counterpart_rank, send_tag + HALO_TAG_OFFSET,
-              MPI_COMM_WORLD, msg->request);
+    MPI_Isend(msg->buffer.data, msg->length, AC_MPI_TYPE, counterpart_rank,
+              send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
 }
 
 void
@@ -510,59 +512,55 @@ HaloExchangeTask::exchange()
 bool
 HaloExchangeTask::test()
 {
-    switch(static_cast<HaloExchangeState>(state)){
-        case HaloExchangeState::Packing:
-        {
-            return poll_stream();
-        }
-        case HaloExchangeState::Unpacking:
-        {
-            return poll_stream();
-        }
-        case HaloExchangeState::Exchanging:
-        {
-            auto msg = recv_buffers->get_current_buffer();
-            int request_complete;
-            MPI_Test(msg->request, &request_complete, MPI_STATUS_IGNORE);   
-            return request_complete?true:false;
-        }
-        default:
-        {
-            ERROR("HaloExchangeTask in an invalid state.");
-            return false;
-        }
+    switch (static_cast<HaloExchangeState>(state)) {
+    case HaloExchangeState::Packing: {
+        return poll_stream();
+    }
+    case HaloExchangeState::Unpacking: {
+        return poll_stream();
+    }
+    case HaloExchangeState::Exchanging: {
+        auto msg = recv_buffers->get_current_buffer();
+        int request_complete;
+        MPI_Test(msg->request, &request_complete, MPI_STATUS_IGNORE);
+        return request_complete ? true : false;
+    }
+    default: {
+        ERROR("HaloExchangeTask in an invalid state.");
+        return false;
+    }
     }
 }
 
 void
 HaloExchangeTask::advance()
 {
-    switch(static_cast<HaloExchangeState>(state)){
-        case HaloExchangeState::Waiting_for_compute:
-            //logStateChangedEvent("waiting", "packing");
-            pack();
-            state = static_cast<int>(HaloExchangeState::Packing);
-            break;
-        case HaloExchangeState::Packing:
-            //logStateChangedEvent("packing", "receiving");
-            sync();
-            send();
-            state = static_cast<int>(HaloExchangeState::Exchanging);
-            break;
-        case HaloExchangeState::Exchanging:
-            //logStateChangedEvent("receiving", "unpacking");
-            sync();
-            unpack();
-            state = static_cast<int>(HaloExchangeState::Unpacking);
-            break;
-        case HaloExchangeState::Unpacking:
-            //logStateChangedEvent("unpacking", "waiting");
-            receive();
-            sync();
-            state = static_cast<int>(HaloExchangeState::Waiting_for_compute);
-            break;
-        default:
-            ERROR("Invalid state for HaloExchangeTask");
+    switch (static_cast<HaloExchangeState>(state)) {
+    case HaloExchangeState::Waiting_for_compute:
+        // logStateChangedEvent("waiting", "packing");
+        pack();
+        state = static_cast<int>(HaloExchangeState::Packing);
+        break;
+    case HaloExchangeState::Packing:
+        // logStateChangedEvent("packing", "receiving");
+        sync();
+        send();
+        state = static_cast<int>(HaloExchangeState::Exchanging);
+        break;
+    case HaloExchangeState::Exchanging:
+        // logStateChangedEvent("receiving", "unpacking");
+        sync();
+        unpack();
+        state = static_cast<int>(HaloExchangeState::Unpacking);
+        break;
+    case HaloExchangeState::Unpacking:
+        // logStateChangedEvent("unpacking", "waiting");
+        receive();
+        sync();
+        state = static_cast<int>(HaloExchangeState::Waiting_for_compute);
+        break;
+    default:
+        ERROR("Invalid state for HaloExchangeTask");
     }
 }
 #endif // AC_MPI_ENABLED

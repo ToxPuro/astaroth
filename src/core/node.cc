@@ -537,7 +537,8 @@ acNodeLoadMesh(const Node node, const Stream stream, const AcMesh host_mesh)
 }
 
 AcResult
-acNodeSetVertexBuffer(const Node node, const Stream stream, const VertexBufferHandle handle, const AcReal value)
+acNodeSetVertexBuffer(const Node node, const Stream stream, const VertexBufferHandle handle,
+                      const AcReal value)
 {
     acNodeSynchronizeStream(node, stream);
 
@@ -669,11 +670,12 @@ local_boundcondstep(const Node node, const Stream stream, const VertexBufferHand
 }
 
 static AcResult
-local_boundcondstep_GBC(const Node node, const Stream stream, const VertexBufferHandle vtxbuf, const AcMeshInfo config) 
+local_boundcondstep_GBC(const Node node, const Stream stream, const VertexBufferHandle vtxbuf,
+                        const AcMeshInfo config)
 {
     acNodeSynchronizeStream(node, stream);
 
-    int3 bindex = {-1, -1, -1}; //Dummy for node level. Relevant only for MPI. 
+    int3 bindex = {-1, -1, -1}; // Dummy for node level. Relevant only for MPI.
 
     if (node->num_devices > 1) {
         // Local boundary conditions
@@ -690,7 +692,6 @@ local_boundcondstep_GBC(const Node node, const Stream stream, const VertexBuffer
     }
     return AC_SUCCESS;
 }
-
 
 static AcResult
 global_boundcondstep(const Node node, const Stream stream, const VertexBufferHandle vtxbuf_handle)
@@ -805,7 +806,7 @@ acNodeIntegrate(const Node node, const AcReal dt)
 }
 
 AcResult
-acNodeIntegrateGBC(const Node node, const AcMeshInfo config, const AcReal dt) 
+acNodeIntegrateGBC(const Node node, const AcMeshInfo config, const AcReal dt)
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
     // xxx|OOO OOOOOOOOO OOO|xxx
@@ -898,20 +899,19 @@ acNodePeriodicBoundcondStep(const Node node, const Stream stream,
 }
 
 AcResult
-acNodeGeneralBoundcondStep(const Node node, const Stream stream,   
+acNodeGeneralBoundcondStep(const Node node, const Stream stream,
                            const VertexBufferHandle vtxbuf_handle, const AcMeshInfo config)
 {
     local_boundcondstep_GBC(node, stream, vtxbuf_handle, config);
     acNodeSynchronizeVertexBuffer(node, stream, vtxbuf_handle);
 
     global_boundcondstep(node, stream, vtxbuf_handle);
-  
 
     return AC_SUCCESS;
 }
 
 AcResult
-acNodePeriodicBoundconds(const Node node, const Stream stream) 
+acNodePeriodicBoundconds(const Node node, const Stream stream)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         acNodePeriodicBoundcondStep(node, stream, (VertexBufferHandle)i);
@@ -920,7 +920,7 @@ acNodePeriodicBoundconds(const Node node, const Stream stream)
 }
 
 AcResult
-acNodeGeneralBoundconds(const Node node, const Stream stream, const AcMeshInfo config) 
+acNodeGeneralBoundconds(const Node node, const Stream stream, const AcMeshInfo config)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         acNodeGeneralBoundcondStep(node, stream, (VertexBufferHandle)i, config);
@@ -940,7 +940,8 @@ simple_final_reduce_scal(const Node node, const ReductionType& rtype, const AcRe
         else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN) {
             res = min(res, results[i]);
         }
-        else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM || rtype == RTYPE_ALFVEN_RMS) {
+        else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM ||
+                 rtype == RTYPE_ALFVEN_RMS) {
             res = sum(res, results[i]);
         }
         else {
@@ -990,8 +991,8 @@ acNodeReduceVec(const Node node, const Stream stream, const ReductionType rtype,
 
 AcResult
 acNodeReduceVecScal(const Node node, const Stream stream, const ReductionType rtype,
-                const VertexBufferHandle a, const VertexBufferHandle b, const VertexBufferHandle c,
-                const VertexBufferHandle d, AcReal* result)
+                    const VertexBufferHandle a, const VertexBufferHandle b,
+                    const VertexBufferHandle c, const VertexBufferHandle d, AcReal* result)
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
 
@@ -1004,4 +1005,3 @@ acNodeReduceVecScal(const Node node, const Stream stream, const ReductionType rt
     *result = simple_final_reduce_scal(node, rtype, results, node->num_devices);
     return AC_SUCCESS;
 }
-

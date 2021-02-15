@@ -8,7 +8,7 @@
  *
  * struct PackedData is used for packing and unpacking. Holds the actual data in
  *                   the halo partition (wrapped by HaloMessage)
- * struct Grid contains information about the local GPU device, decomposition, 
+ * struct Grid contains information about the local GPU device, decomposition,
  *             the total mesh dimensions, tasks, and MPI requests
 
  * Basic steps:
@@ -34,7 +34,6 @@
 #include "decomposition.h" //getPid3D, morton3D
 #include "errchk.h"
 #include "math_utils.h"
-
 
 #define MPI_COMPUTE_ENABLED (1)
 #define MPI_COMM_ENABLED (1)
@@ -123,7 +122,8 @@ acGridInit(const AcMeshInfo info)
     printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, pid, nprocs, pid3d.x,
            pid3d.y, pid3d.z);
     printf("Decomposition: %lu, %lu, %lu\n", decomp.x, decomp.y, decomp.z);
-    printf("Mesh size: %d, %d, %d\n", info.int_params[AC_nx],info.int_params[AC_ny],info.int_params[AC_nz]);
+    printf("Mesh size: %d, %d, %d\n", info.int_params[AC_nx], info.int_params[AC_ny],
+           info.int_params[AC_nz]);
     fflush(stdout);
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -131,10 +131,10 @@ acGridInit(const AcMeshInfo info)
     ERRCHK_ALWAYS(info.int_params[AC_ny] % decomp.y == 0);
     ERRCHK_ALWAYS(info.int_params[AC_nz] % decomp.z == 0);
 
-    //Check that mixed precision is correctly configured, AcRealPacked == AC_MPI_TYPE
-    //CAN BE REMOVED IF MIXED PRECISION IS SUPPORTED AS A PREPROCESSOR FLAG
+    // Check that mixed precision is correctly configured, AcRealPacked == AC_MPI_TYPE
+    // CAN BE REMOVED IF MIXED PRECISION IS SUPPORTED AS A PREPROCESSOR FLAG
     int mpi_type_size;
-    MPI_Type_size(AC_MPI_TYPE,&mpi_type_size);
+    MPI_Type_size(AC_MPI_TYPE, &mpi_type_size);
     ERRCHK_ALWAYS(sizeof(AcRealPacked) == mpi_type_size);
 
     const int submesh_nx                       = info.int_params[AC_nx] / decomp.x;
@@ -177,17 +177,18 @@ acGridInit(const AcMeshInfo info)
 
     grid.nn = nn;
 
-    //Create compute tasks
+    // Create compute tasks
     grid.compute_tasks.clear();
     grid.compute_tasks.reserve(NUM_SEGMENTS);
 
-    grid.inner_integration_task = new ComputeTask(device, Region::id_to_tag((int3){0,0,0}), nn, STREAM_26);
+    grid.inner_integration_task = new ComputeTask(device, Region::id_to_tag((int3){0, 0, 0}), nn,
+                                                  STREAM_26);
 
     for (int tag = 0; tag < NUM_SEGMENTS; tag++) {
         grid.compute_tasks.emplace_back(device, tag, nn, (Stream)(tag + STREAM_DEFAULT));
     }
 
-    //Create halo exchange tasks
+    // Create halo exchange tasks
     grid.halo_exchange_tasks.clear();
     grid.halo_exchange_tasks.reserve(NUM_SEGMENTS);
 
@@ -200,40 +201,39 @@ acGridInit(const AcMeshInfo info)
     grid.curr_send_reqs = grid.send_reqs;
     grid.back_send_reqs = &grid.send_reqs[NUM_SEGMENTS];
 
-
     for (int tag = 0; tag < NUM_SEGMENTS; tag++) {
-        grid.halo_exchange_tasks.emplace_back(device, tag, nn, decomp,
-                                              grid.recv_reqs, grid.send_reqs);
+        grid.halo_exchange_tasks.emplace_back(device, tag, nn, decomp, grid.recv_reqs,
+                                              grid.send_reqs);
     }
-    //Dependencies
-    for (auto& halo_task: grid.halo_exchange_tasks){
-        if (halo_task.active){
+    // Dependencies
+    for (auto& halo_task : grid.halo_exchange_tasks) {
+        if (halo_task.active) {
             int3 h_id = halo_task.output_region->id;
-            for (auto& comp_task: grid.compute_tasks){
+            for (auto& comp_task : grid.compute_tasks) {
                 int3 c_id = comp_task.output_region->id;
                 if (((h_id.x == 0) || (h_id.x == c_id.x)) &&
                     ((h_id.y == 0) || (h_id.y == c_id.y)) &&
                     ((h_id.z == 0) || (h_id.z == c_id.z))) {
 
-                    //Comp tasks depend on halo tasks in the same iteration, offset = 0
-                    //Halo tasks depend on comp tasks in the prev iteration, offset = 1
-                    halo_task.registerDependent(&comp_task,0);
-                    comp_task.registerDependent(&halo_task,1);
+                    // Comp tasks depend on halo tasks in the same iteration, offset = 0
+                    // Halo tasks depend on comp tasks in the prev iteration, offset = 1
+                    halo_task.registerDependent(&comp_task, 0);
+                    comp_task.registerDependent(&halo_task, 1);
                 }
             }
         }
     }
 
-    for (auto& comp_task_1: grid.compute_tasks){
+    for (auto& comp_task_1 : grid.compute_tasks) {
         int3 c1_id = comp_task_1.output_region->id;
-        for (auto& comp_task_2: grid.compute_tasks){
+        for (auto& comp_task_2 : grid.compute_tasks) {
             int3 c2_id = comp_task_2.output_region->id;
             if (((c1_id.x == 0) || (c2_id.x == 0) || (c1_id.x == c2_id.x)) &&
                 ((c1_id.y == 0) || (c2_id.y == 0) || (c1_id.y == c2_id.y)) &&
-                ((c1_id.z == 0) || (c2_id.z == 0) || (c1_id.z == c2_id.z))){
- 
-                //Comp tasks depend on comp tasks from the prev iteration, offset = 1
-                comp_task_1.registerDependent(&comp_task_2,1);
+                ((c1_id.z == 0) || (c2_id.z == 0) || (c1_id.z == c2_id.z))) {
+
+                // Comp tasks depend on comp tasks from the prev iteration, offset = 1
+                comp_task_1.registerDependent(&comp_task_2, 1);
             }
         }
         comp_task_1.registerDependent(grid.inner_integration_task, 1);
@@ -266,7 +266,7 @@ acGridQuit(void)
         MPI_Request* req = &(grid.send_reqs[i]);
         if (*req != MPI_REQUEST_NULL) {
             MPI_Wait(req, MPI_STATUS_IGNORE);
-            //MPI_Request_free(req);
+            // MPI_Request_free(req);
         }
     }
 
@@ -492,41 +492,40 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     acDeviceSynchronizeStream(device, stream);
     cudaSetDevice(device->id);
 
-    size_t num_iterations = 3;    
+    size_t num_iterations = 3;
 
     for (auto& halo_task : grid.halo_exchange_tasks) {
-        if (halo_task.active){
-            halo_task.setIterationParams(0,num_iterations);
+        if (halo_task.active) {
+            halo_task.setIterationParams(0, num_iterations);
         }
     }
 
     for (auto& compute_task : grid.compute_tasks) {
-        compute_task.setIterationParams(0,num_iterations);
+        compute_task.setIterationParams(0, num_iterations);
     }
     grid.inner_integration_task->setIterationParams(0, num_iterations);
-    
+
     bool ready;
-    do{
+    do {
         ready = true;
 
         grid.inner_integration_task->update();
         ready &= grid.inner_integration_task->isFinished();
 
-        for (auto& halo_task: grid.halo_exchange_tasks){
-            if (halo_task.active){
+        for (auto& halo_task : grid.halo_exchange_tasks) {
+            if (halo_task.active) {
                 halo_task.update();
                 ready &= halo_task.isFinished();
             }
         }
 
-        for (auto& compute_task: grid.compute_tasks){
-                compute_task.update();
-                ready &= compute_task.isFinished();
+        for (auto& compute_task : grid.compute_tasks) {
+            compute_task.update();
+            ready &= compute_task.isFinished();
         }
     } while (!ready);
-        
-    
-    if (num_iterations%2!=0){
+
+    if (num_iterations % 2 != 0) {
         gridSwapRequestBuffers();
         acDeviceSwapBuffers(device);
     }
