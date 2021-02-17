@@ -108,7 +108,7 @@ kernel_filter_vec(const __restrict__ AcReal* src0, const __restrict__ AcReal* sr
 template <FilterFuncVecScal filter>
 static __global__ void
 kernel_filter_vec_scal(const __restrict__ AcReal* src0, const __restrict__ AcReal* src1,
-                       const __restrict__ AcReal* src2, const __restrict__ AcReal* src3,  
+                       const __restrict__ AcReal* src2, const __restrict__ AcReal* src3,
                        const int3 start, const int3 end, AcReal* dst)
 {
     const int3 src_idx = (int3){start.x + threadIdx.x + blockIdx.x * blockDim.x,
@@ -129,10 +129,11 @@ kernel_filter_vec_scal(const __restrict__ AcReal* src0, const __restrict__ AcRea
     assert(dst_idx.x < nx && dst_idx.y < ny && dst_idx.z < nz);
     assert(dst_idx.x + dst_idx.y * nx + dst_idx.z * nx * ny < nx * ny * nz);
 
-    dst[dst_idx.x + dst_idx.y * nx + dst_idx.z * nx * ny] = filter(
-        src0[IDX(src_idx)], src1[IDX(src_idx)], src2[IDX(src_idx)], src3[IDX(src_idx)]);
+    dst[dst_idx.x + dst_idx.y * nx + dst_idx.z * nx * ny] = filter(src0[IDX(src_idx)],
+                                                                   src1[IDX(src_idx)],
+                                                                   src2[IDX(src_idx)],
+                                                                   src3[IDX(src_idx)]);
 }
-
 
 template <ReduceFunc reduce>
 static __global__ void
@@ -294,7 +295,8 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
 AcReal
 acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,
                       const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
-                      const AcReal* vtxbuf2, const AcReal* vtxbuf3, AcReal* scratchpad, AcReal* reduce_result)
+                      const AcReal* vtxbuf2, const AcReal* vtxbuf3, AcReal* scratchpad,
+                      AcReal* reduce_result)
 {
     const unsigned nx        = end.x - start.x;
     const unsigned ny        = end.y - start.y;
@@ -315,7 +317,7 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
     ERRCHK(tpb_reduce <= num_elems);
     ERRCHK(nx * ny * nz % 2 == 0);
 
-    //NOTE: currently this has been made to only calculate afven speeds from the diagnostics. 
+    // NOTE: currently this has been made to only calculate afven speeds from the diagnostics.
 
     // clang-format off
     if (rtype == RTYPE_ALFVEN_MAX) {
@@ -340,4 +342,3 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
     cudaMemcpy(&result, reduce_result, sizeof(AcReal), cudaMemcpyDeviceToHost);
     return result;
 }
-

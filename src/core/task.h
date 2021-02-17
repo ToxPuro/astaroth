@@ -82,24 +82,24 @@ struct Region {
 
         switch (family) {
         case RegionFamily::Compute: {
-            //clang-format off
+            // clang-format off
             position = (int3){
                         id.x == -1  ? NGHOST : id.x == 1 ? nn.x : NGHOST * 2,
                         id.y == -1  ? NGHOST : id.y == 1 ? nn.y : NGHOST * 2,
                         id.z == -1  ? NGHOST : id.z == 1 ? nn.z : NGHOST * 2};
-            //clang-format on
+            // clang-format on
             dims = (int3){id.x == 0 ? nn.x - NGHOST * 2 : NGHOST,
                           id.y == 0 ? nn.y - NGHOST * 2 : NGHOST,
                           id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
             break;
         }
         case RegionFamily::Incoming: {
-            //clang-format off
+            // clang-format off
             position = (int3){
                         id.x == -1  ? 0 : id.x == 1 ? NGHOST + nn.x : NGHOST,
                         id.y == -1  ? 0 : id.y == 1 ? NGHOST + nn.y : NGHOST,
                         id.z == -1  ? 0 : id.z == 1 ? NGHOST + nn.z : NGHOST};
-            //clang-format on
+            // clang-format on
             dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
                           id.z == 0 ? nn.z : NGHOST};
             break;

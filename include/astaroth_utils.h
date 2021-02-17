@@ -64,7 +64,7 @@ AcReal acHostReduceScal(const AcMesh mesh, const ReductionType rtype, const Vert
 
 /** */
 AcReal acHostReduceVec(const AcMesh mesh, const ReductionType rtype, const VertexBufferHandle a,
-                        const VertexBufferHandle b, const VertexBufferHandle c);
+                       const VertexBufferHandle b, const VertexBufferHandle c);
 
 Error acGetError(const AcReal model, const AcReal candidate);
 
@@ -72,7 +72,8 @@ bool acEvalError(const char* label, const Error error);
 
 AcResult acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate);
 
-AcResult acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candidate, const size_t z);
+AcResult acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candidate,
+                               const size_t z);
 
 AcResult acMeshDiffWrite(const char* path, const AcMesh model, const AcMesh candidate);
 

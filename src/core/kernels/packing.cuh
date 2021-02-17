@@ -90,4 +90,3 @@ acKernelUnpackData(const cudaStream_t stream, const PackedData packed, const int
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
 }
-
