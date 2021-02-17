@@ -1,6 +1,13 @@
 #pragma once
 #include "astaroth.h"
 
+#if AC_MPI_ENABLED
+#include <mpi.h>
+#include <stdbool.h>
+
+#define MPI_GPUDIRECT_DISABLED (0)
+#endif // AC_MPI_ENABLED
+
 typedef AcReal AcRealPacked;
 
 typedef struct {
@@ -76,6 +83,12 @@ AcReal acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtyp
                              const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
                              const AcReal* vtxbuf2, const AcReal* vtxbuf3, AcReal* scratchpad,
                              AcReal* reduce_result);
+
+#define GEN_KERNEL_FUNC_DECL(ID)                                                                   \
+    AcResult acKernel_##ID(const cudaStream_t stream, const int3 start, const int3 end,            \
+                           VertexBufferArray vba);
+
+#include "user_kernel_decl.h"
 
 #ifdef __cplusplus
 } // extern "C"

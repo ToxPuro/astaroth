@@ -4,6 +4,16 @@
 #include "kernels/kernels.h"
 #include "math_utils.h"
 
+#define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
+    AcResult acDevice_##ID(const Device device, const Stream stream, const int3 start,             \
+                           const int3 end)                                                         \
+    {                                                                                              \
+        cudaSetDevice(device->id);                                                                 \
+        return acKernel_##ID(device->streams[stream], start, end, device->vba);                    \
+    }
+
+#include "user_kernels.h"
+
 AcResult
 acDevicePrintInfo(const Device device)
 {
