@@ -60,9 +60,11 @@ typedef struct {
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
 
 // Neming the associated number of the boundary condition types
-typedef enum { AC_BOUNDCOND_PERIODIC = 0, 
-               AC_BOUNDCOND_SYMMETRIC = 1, 
-               AC_BOUNDCOND_ANTISYMMETRIC = 2 } AcBoundcond;
+typedef enum {
+    AC_BOUNDCOND_PERIODIC      = 0,
+    AC_BOUNDCOND_SYMMETRIC     = 1,
+    AC_BOUNDCOND_ANTISYMMETRIC = 2
+} AcBoundcond;
 
 #define AC_GEN_ID(X) X,
 typedef enum {
@@ -265,10 +267,11 @@ AcReal acReduceScal(const ReductionType rtype, const VertexBufferHandle vtxbuf_h
 AcReal acReduceVec(const ReductionType rtype, const VertexBufferHandle a,
                    const VertexBufferHandle b, const VertexBufferHandle c);
 
-/** Does a reduction for an operation which requires a vector and a scalar with vertex buffers 
+/** Does a reduction for an operation which requires a vector and a scalar with vertex buffers
  *  * where the vector components are (a, b, c) and scalr is (d) */
 AcReal acReduceVecScal(const ReductionType rtype, const VertexBufferHandle a,
-                       const VertexBufferHandle b, const VertexBufferHandle c, const VertexBufferHandle d);
+                       const VertexBufferHandle b, const VertexBufferHandle c,
+                       const VertexBufferHandle d);
 
 /** Stores a subset of the mesh stored across the devices visible to the caller back to host memory.
  */
@@ -335,7 +338,7 @@ AcResult acGridIntegrate(const Stream stream, const AcReal dt);
 
 /** */
 /*   MV: Commented out for a while, but save for the future when standalone_MPI
-         works with periodic boundary conditions. 
+         works with periodic boundary conditions.
 AcResult
 acGridIntegrateNonperiodic(const Stream stream, const AcReal dt)
 
@@ -446,7 +449,8 @@ AcResult acNodeLoadVertexBuffer(const Node node, const Stream stream, const AcMe
 AcResult acNodeLoadMesh(const Node node, const Stream stream, const AcMesh host_mesh);
 
 /** */
-AcResult acNodeSetVertexBuffer(const Node node, const Stream stream, const VertexBufferHandle handle, const AcReal value);
+AcResult acNodeSetVertexBuffer(const Node node, const Stream stream,
+                               const VertexBufferHandle handle, const AcReal value);
 
 /** Deprecated ? */
 AcResult acNodeStoreVertexBufferWithOffset(const Node node, const Stream stream,
@@ -483,8 +487,9 @@ AcResult acNodePeriodicBoundcondStep(const Node node, const Stream stream,
 AcResult acNodePeriodicBoundconds(const Node node, const Stream stream);
 
 /** */
-AcResult acNodeGeneralBoundcondStep(const Node node, const Stream stream,   
-                                    const VertexBufferHandle vtxbuf_handle, const AcMeshInfo config);
+AcResult acNodeGeneralBoundcondStep(const Node node, const Stream stream,
+                                    const VertexBufferHandle vtxbuf_handle,
+                                    const AcMeshInfo config);
 
 /** */
 AcResult acNodeGeneralBoundconds(const Node node, const Stream stream, const AcMeshInfo config);
@@ -499,8 +504,8 @@ AcResult acNodeReduceVec(const Node node, const Stream stream_type, const Reduct
 /** */
 AcResult acNodeReduceVecScal(const Node node, const Stream stream_type, const ReductionType rtype,
                              const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                             const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3, AcReal* result);
-
+                             const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
+                             AcReal* result);
 
 /*
  * =============================================================================
@@ -571,7 +576,8 @@ AcResult acDeviceLoadVertexBuffer(const Device device, const Stream stream, cons
 AcResult acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mesh);
 
 /** */
-AcResult acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBufferHandle handle, const AcReal value);
+AcResult acDeviceSetVertexBuffer(const Device device, const Stream stream,
+                                 const VertexBufferHandle handle, const AcReal value);
 
 /** */
 AcResult acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
@@ -629,7 +635,6 @@ AcResult acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
 AcResult acDeviceGeneralBoundconds(const Device device, const Stream stream, const int3 start,
                                    const int3 end, const AcMeshInfo config, const int3 bindex);
 
-
 /** */
 AcResult acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
                             const VertexBufferHandle vtxbuf_handle, AcReal* result);
@@ -638,9 +643,10 @@ AcResult acDeviceReduceVec(const Device device, const Stream stream_type, const 
                            const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                            const VertexBufferHandle vtxbuf2, AcReal* result);
 /** */
-AcResult acDeviceReduceVecScal(const Device device, const Stream stream_type, const ReductionType rtype,
-                               const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                               const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3, AcReal* result);
+AcResult acDeviceReduceVecScal(const Device device, const Stream stream_type,
+                               const ReductionType rtype, const VertexBufferHandle vtxbuf0,
+                               const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
+                               const VertexBufferHandle vtxbuf3, AcReal* result);
 /** */
 AcResult acDeviceRunMPITest(void);
 

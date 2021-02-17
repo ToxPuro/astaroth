@@ -39,10 +39,14 @@ ASTNode* root = NULL;
 // Output files
 static FILE* DSLHEADER  = NULL;
 static FILE* CUDAHEADER = NULL;
+static FILE* KHEADER    = NULL;
+static FILE* DHEADER    = NULL;
 static FILE* FHEADER    = NULL;
 
 static const char* dslheader_filename  = "user_defines.h";
-static const char* cudaheader_filename = "user_kernels.h";
+static const char* cudaheader_filename = "user_kernels.cuh";
+static const char* kheader_filename    = "user_kernel_decl.h";
+static const char* dheader_filename    = "user_kernels.h";
 static const char* fheader_filename    = "astaroth.f90";
 
 // Forward declaration of yyparse
@@ -332,7 +336,7 @@ traverse(const ASTNode* node)
         const ASTNode* tdeclaration = node->lhs;
         const int tqualifier        = tdeclaration->rhs ? tdeclaration->lhs->token : 0;
         const int tspecifier        = tdeclaration->rhs ? tdeclaration->rhs->token
-                                                 : tdeclaration->lhs->token;
+                                                        : tdeclaration->lhs->token;
 
         const char* identifier = node->rhs->type == NODE_IDENTIFIER ? node->rhs->buffer
                                                                     : node->rhs->lhs->buffer;
@@ -777,7 +781,17 @@ generate_library_hooks(void)
 {
     for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
         if (symbol_table[i].type_qualifier == KERNEL) {
-            fprintf(CUDAHEADER, "GEN_DEVICE_FUNC_HOOK(%s)\n", symbol_table[i].identifier);
+
+            const char* id = symbol_table[i].identifier;
+            fprintf(CUDAHEADER, "GEN_KERNEL_FUNC_HOOK(%s)\n", id);
+
+            fprintf(KHEADER, "GEN_KERNEL_FUNC_DECL(%s)\n", id);
+            fprintf(DHEADER, "GEN_DEVICE_FUNC_HOOK(%s)\n", id);
+
+            fprintf(DSLHEADER,
+                    "AcResult acDevice_%s(const Device device, const Stream stream, const int3 "
+                    "start, const int3 end);\n",
+                    id);
         }
     }
 }
@@ -795,9 +809,13 @@ main(void)
 
     DSLHEADER  = fopen(dslheader_filename, "w+");
     CUDAHEADER = fopen(cudaheader_filename, "w+");
+    KHEADER    = fopen(kheader_filename, "w+");
+    DHEADER    = fopen(dheader_filename, "w+");
     FHEADER    = fopen(fheader_filename, "w+");
     assert(DSLHEADER);
     assert(CUDAHEADER);
+    assert(KHEADER);
+    assert(DHEADER);
     assert(FHEADER);
 
     // Add built-in param symbols
@@ -818,11 +836,15 @@ main(void)
     // Cleanup
     fclose(DSLHEADER);
     fclose(CUDAHEADER);
+    fclose(KHEADER);
+    fclose(DHEADER);
     fclose(FHEADER);
     astnode_destroy(root);
 
     fprintf(stdout, "-- Generated %s\n", dslheader_filename);
     fprintf(stdout, "-- Generated %s\n", cudaheader_filename);
+    fprintf(stdout, "-- Generated %s\n", kheader_filename);
+    fprintf(stdout, "-- Generated %s\n", dheader_filename);
     fprintf(stdout, "-- Generated %s\n", fheader_filename);
 
     return EXIT_SUCCESS;
