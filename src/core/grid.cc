@@ -35,9 +35,6 @@
 #include "errchk.h"
 #include "math_utils.h"
 
-#define MPI_COMPUTE_ENABLED (1)
-#define MPI_COMM_ENABLED (1)
-
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
     Device device;
