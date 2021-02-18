@@ -104,10 +104,10 @@ read_out(const int idx, AcReal* __restrict__ field[], const int3 handle)
                                                                                                    \
     const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);
 
-#define GEN_DEVICE_FUNC_HOOK(identifier)                                                           \
-    template <int step_number>                                                                     \
-    AcResult acDeviceKernel_##identifier(const cudaStream_t stream, const int3 start,              \
-                                         const int3 end, VertexBufferArray vba)                    \
+// Note: drops the template parameter to conform to C
+#define GEN_KERNEL_FUNC_HOOK(identifier)                                                           \
+    AcResult acKernel_##identifier(const cudaStream_t stream, const int3 start, const int3 end,    \
+                                   VertexBufferArray vba)                                          \
     {                                                                                              \
                                                                                                    \
         const dim3 tpb(32, 1, 4);                                                                  \
@@ -117,13 +117,13 @@ read_out(const int idx, AcReal* __restrict__ field[], const int3 handle)
                        (unsigned int)ceil(n.y / AcReal(tpb.y)),                                    \
                        (unsigned int)ceil(n.z / AcReal(tpb.z)));                                   \
                                                                                                    \
-        identifier<step_number><<<bpg, tpb, 0, stream>>>(start, end, vba);                         \
+        identifier<0><<<bpg, tpb, 0, stream>>>(start, end, vba);                                   \
         ERRCHK_CUDA_KERNEL();                                                                      \
                                                                                                    \
         return AC_SUCCESS;                                                                         \
     }
 
-#include "user_kernels.h"
+#include "user_kernels.cuh"
 
 static dim3 rk3_tpb(32, 1, 4);
 

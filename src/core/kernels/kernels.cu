@@ -224,7 +224,7 @@ acDeviceLoadDefaultUniforms(const Device device)
 {
     cudaSetDevice(device->id);
 
-    // clang-format off
+// clang-format off
     // Scalar
     #define LOAD_DEFAULT_UNIFORM(X) acDeviceLoadScalarUniform(device, STREAM_DEFAULT, X, X##_DEFAULT_VALUE);
     AC_FOR_USER_REAL_PARAM_TYPES(LOAD_DEFAULT_UNIFORM)
