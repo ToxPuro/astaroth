@@ -662,6 +662,29 @@ get_bfield(in VectorField aa)
 }
 #endif
 
+#if LSHOCK
+//Get divergence of velocity for the first pass in shock viscosity. 
+Device Scalar
+divu_shock(in VectorField uu)
+{
+    return divergence(uu);
+}
+
+//Calculate local maximum from divergences. 
+Device Scalar
+max_shock(in VectorField shock)
+{
+    return value(shock);
+}
+
+//Perform smoothing on shock values. 
+Device Scalar
+smooth_shock(in VectorField shock)
+{
+    return value(shock);
+}
+#endif
+
 // Declare input and output arrays using locations specified in the
 // array enum in astaroth.h
 in ScalarField lnrho(VTXBUF_LNRHO);
@@ -701,7 +724,7 @@ out ScalarField out_shock(VTXBUF_SHOCK);
 Kernel void
 shock_1_divu()
 {
-    out_shock = divu_shock(out_shock, shock);
+    out_shock = divu_shock(out_shock, uu);
 }
 
 Kernel void
