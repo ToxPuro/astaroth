@@ -18,7 +18,7 @@
 */
 /**
     Building and running:
-        cmake -DDSL_MODULE_DIR=acc/multikerneltest \
+        cmake -DDSL_MODULE_DIR=samples/multikerneltest \
               -DPROGRAM_MODULE_DIR=samples/multikerneltest \
               -DBUILD_SAMPLES=OFF -DBUILD_UTILS=OFF -DMPI_ENABLED=OFF ..
         make -j
