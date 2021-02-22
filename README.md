@@ -47,6 +47,7 @@ In the base directory, run
 | USE_CUDA_AWARE_MPI | Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory | ON | 
 | MULTIGPU_ENABLED | Enables Astaroth to use multiple GPUs on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only. | ON |
 | DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `acc/mhd_solver` |
+| PROGRAM_MODULE_DIR | Can be used to declare additional host-side program modules (also known as Thrones) | empty |
 | VERBOSE | Enables various non-critical warning and status messages. | OFF |
 | BUILD_UTILS | "Builds the utility library. Depends on `DSL_MODULE_DIR=acc/mhd_solver`". | ON |
 
