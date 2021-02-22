@@ -114,8 +114,8 @@ static const char* intparam_names[] _UNUSED   = {AC_FOR_USER_INT_PARAM_TYPES(AC_
 static const char* int3param_names[] _UNUSED  = {AC_FOR_USER_INT3_PARAM_TYPES(AC_GEN_STR) "-end-"};
 static const char* realparam_names[] _UNUSED  = {AC_FOR_USER_REAL_PARAM_TYPES(AC_GEN_STR) "-end-"};
 static const char* real3param_names[] _UNUSED = {AC_FOR_USER_REAL3_PARAM_TYPES(AC_GEN_STR) "-end-"};
-static const char* scalararray_names[] _UNUSED = {AC_FOR_SCALARARRAY_HANDLES(AC_GEN_STR) "-end-"};
-static const char* vtxbuf_names[] _UNUSED      = {AC_FOR_VTXBUF_HANDLES(AC_GEN_STR) "-end-"};
+static const char* scalarray_names[] _UNUSED  = {AC_FOR_SCALARARRAY_HANDLES(AC_GEN_STR) "-end-"};
+static const char* vtxbuf_names[] _UNUSED     = {AC_FOR_VTXBUF_HANDLES(AC_GEN_STR) "-end-"};
 #undef AC_GEN_STR
 #undef _UNUSED
 
@@ -205,6 +205,62 @@ acPrintMeshInfo(const AcMeshInfo config)
     for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
         printf("[%s]: (%g, %g, %g)\n", real3param_names[i], (double)(config.real3_params[i].x),
                (double)(config.real3_params[i].y), (double)(config.real3_params[i].z));
+}
+
+/** Prints a list of reduction types */
+static inline void
+acQueryRtypes(void)
+{
+    for (int i = 0; i < NUM_RTYPES; ++i)
+        printf("%s (%d)\n", rtype_names[i], i);
+}
+
+/** Prints a list of int parameters */
+static inline void
+acQueryIntparams(void)
+{
+    for (int i = 0; i < NUM_INT_PARAMS; ++i)
+        printf("%s (%d)\n", intparam_names[i], i);
+}
+
+/** Prints a list of int3 parameters */
+static inline void
+acQueryInt3params(void)
+{
+    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
+        printf("%s (%d)\n", int3param_names[i], i);
+}
+
+/** Prints a list of real parameters */
+static inline void
+acQueryRealparams(void)
+{
+    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
+        printf("%s (%d)\n", realparam_names[i], i);
+}
+
+/** Prints a list of real3 parameters */
+static inline void
+acQueryReal3params(void)
+{
+    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
+        printf("%s (%d)\n", real3param_names[i], i);
+}
+
+/** Prints a list of Scalar array handles */
+static inline void
+acQueryScalarrays(void)
+{
+    for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i)
+        printf("%s (%d)\n", scalarray_names[i], i);
+}
+
+/** Prints a list of vertex buffer handles */
+static inline void
+acQueryVtxbufs(void)
+{
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+        printf("%s (%d)\n", vtxbuf_names[i], i);
 }
 
 /*
