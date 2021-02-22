@@ -203,15 +203,27 @@ acDeviceDestroy(Device device)
 }
 
 AcResult
+acDeviceSwapBuffer(const Device device, const VertexBufferHandle handle)
+{
+    cudaSetDevice(device->id);
+
+    AcReal* tmp             = device->vba.in[handle];
+    device->vba.in[handle]  = device->vba.out[handle];
+    device->vba.out[handle] = tmp;
+
+    return AC_SUCCESS;
+}
+
+AcResult
 acDeviceSwapBuffers(const Device device)
 {
     cudaSetDevice(device->id);
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        AcReal* tmp        = device->vba.in[i];
-        device->vba.in[i]  = device->vba.out[i];
-        device->vba.out[i] = tmp;
-    }
-    return AC_SUCCESS;
+
+    int retval = AC_SUCCESS;
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+        retval |= acDeviceSwapBuffer(device, (VertexBufferHandle)i);
+
+    return (AcResult)retval;
 }
 
 AcResult

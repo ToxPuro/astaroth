@@ -584,6 +584,9 @@ AcResult acDeviceAutoOptimize(const Device device);
 AcResult acDeviceSynchronizeStream(const Device device, const Stream stream);
 
 /** */
+AcResult acDeviceSwapBuffer(const Device device, const VertexBufferHandle handle);
+
+/** */
 AcResult acDeviceSwapBuffers(const Device device);
 
 /** */
