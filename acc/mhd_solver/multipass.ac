@@ -754,6 +754,10 @@ solve()
 #if LENTROPY
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, ss, aa, dt), dt);
     out_ss = rk3(out_ss, ss, entropy(ss, uu, lnrho, aa), dt);
+#elif LSHOCK
+    // TODO Add shock viscosity and heating parameters to the code
+    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, ss, aa, shock, dt), dt);
+    out_ss = rk3(out_ss, ss, entropy(ss, uu, lnrho, aa, shock), dt);
 #elif LTEMPERATURE
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, tt, dt), dt);
     out_tt = rk3(out_tt, tt, heat_transfer(uu, lnrho, tt), dt);
