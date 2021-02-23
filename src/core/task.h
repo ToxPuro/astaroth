@@ -144,10 +144,8 @@ class Task {
     int state;
 
     struct {
-        size_t num_iters;
-        size_t max_offset;
+        std::vector<size_t> counts;
         std::vector<size_t> targets;
-        std::vector<std::vector<size_t>> counts;
     } dep_cntr;
 
     struct {
@@ -178,7 +176,7 @@ class Task {
     bool isFinished();
 
     void notifyDependents();
-    void satisfyDependency(size_t iteration, size_t offset);
+    void satisfyDependency(size_t iteration);
 
     void syncVBA();
     void swapVBA();

@@ -62,9 +62,14 @@ Task::registerDependent(Task* t, size_t offset)
 void
 Task::registerPrerequisite(size_t offset)
 {
-    dep_cntr.max_offset = max(dep_cntr.max_offset, offset);
-    dep_cntr.targets.resize(dep_cntr.max_offset + 1, 0);
-    dep_cntr.targets[offset]++;
+    //Ensure targets exist
+    if (offset  >= dep_cntr.targets.size()){
+        size_t initial_val = dep_cntr.targets.empty() ? 0 : dep_cntr.targets.back();
+        dep_cntr.targets.resize(offset + 1, initial_val);
+    }
+    for (; offset < dep_cntr.targets.size(); offset++){ 
+        dep_cntr.targets[offset]++;
+    }
 }
 
 void
@@ -73,21 +78,9 @@ Task::setIterationParams(size_t begin, size_t end)
     loop_cntr.i   = begin;
     loop_cntr.end = end;
 
-    // Ensure dependency counter has enough space to count all iterations
-    dep_cntr.num_iters = max(dep_cntr.num_iters, end);
-    dep_cntr.counts.resize(dep_cntr.num_iters);
-
-    for (size_t i = 0; i < dep_cntr.num_iters; i++) {
-        size_t num_buckets = max(i, dep_cntr.num_iters) + 1;
-        dep_cntr.counts[i].resize(num_buckets, 0);
-    }
-
-    // Reset counts
-    for (auto& count : dep_cntr.counts) {
-        for (auto& bucket : count) {
-            bucket = 0;
-        }
-    }
+    // Reset dependency counter, and ensure it has enough space
+    dep_cntr.counts.resize(0);
+    dep_cntr.counts.resize(end, 0);
 }
 
 bool
@@ -104,13 +97,10 @@ Task::update()
 
     bool ready;
     if (state == wait_state) {
-        ready = true;
-        for (size_t i = 0; i <= loop_cntr.i && i <= dep_cntr.max_offset; i++) {
-            size_t count  = dep_cntr.counts[loop_cntr.i][i];
-            size_t target = dep_cntr.targets[i];
-
-            ready &= count >= target;
-        }
+        size_t offset = min(loop_cntr.i, dep_cntr.targets.size()-1);
+        size_t target = dep_cntr.targets[offset];
+        size_t count  = dep_cntr.counts[loop_cntr.i];
+        ready = (count == target);
     }
     else {
         ready = test();
@@ -129,16 +119,16 @@ Task::update()
 void
 Task::notifyDependents()
 {
-    for (auto& d : dependents) {
-        d.first->satisfyDependency(loop_cntr.i, d.second);
+    for (auto& dependent : dependents) {
+        dependent.first->satisfyDependency(loop_cntr.i+dependent.second);
     }
 }
 
 void
-Task::satisfyDependency(size_t iteration, size_t offset)
+Task::satisfyDependency(size_t iteration)
 {
-    if (iteration + offset < dep_cntr.num_iters) {
-        dep_cntr.counts[iteration + offset][offset]++;
+    if (iteration < loop_cntr.end) {
+        dep_cntr.counts[iteration]++;
     }
 }
 
