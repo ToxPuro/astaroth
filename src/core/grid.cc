@@ -179,10 +179,11 @@ acGridInit(const AcMeshInfo info)
     grid.compute_tasks.reserve(NUM_SEGMENTS);
 
     grid.inner_integration_task = new ComputeTask(device, Region::id_to_tag((int3){0, 0, 0}), nn,
-                                                  STREAM_26);
+                                                  STREAM_26, acKernelIntegrateSubstep);
 
     for (int tag = 0; tag < NUM_SEGMENTS; tag++) {
-        grid.compute_tasks.emplace_back(device, tag, nn, (Stream)(tag + STREAM_DEFAULT));
+        grid.compute_tasks.emplace_back(device, tag, nn, (Stream)(tag + STREAM_DEFAULT),
+                                        acKernelIntegrateSubstep);
     }
 
     // Create halo exchange tasks

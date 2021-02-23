@@ -166,7 +166,7 @@ Task::poll_stream()
 }
 
 /* Computation */
-ComputeTask::ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id)
+ComputeTask::ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id, KernelCallFunc compute_func_)
 {
     // task_type = "compute";
     device = device_;
@@ -175,6 +175,7 @@ ComputeTask::ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     output_region = new Region(RegionFamily::Compute, region_tag, nn);
+    compute_func = compute_func_;
 }
 
 void
@@ -183,7 +184,9 @@ ComputeTask::compute()
     KernelParameters params = KernelParameters{(int)(loop_cntr.i % 3),
                                                output_region->position,
                                                output_region->position + output_region->dims};
-    acKernelIntegrateSubstep(stream, params, vba);
+    
+    compute_func(stream, params, vba);
+    //acKernelIntegrateSubstep(stream, params, vba);
 }
 
 bool

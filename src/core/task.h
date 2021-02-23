@@ -188,8 +188,11 @@ class Task {
 enum class ComputeState { Waiting_for_halo = Task::wait_state, Running };
 
 typedef class ComputeTask : public Task {
+  private:
+    KernelCallFunc compute_func;
+
   public:
-    ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id);
+    ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id, KernelCallFunc compute_func_);
 
     void compute();
     void advance();

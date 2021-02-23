@@ -23,6 +23,8 @@ typedef struct {
     int3 end;
 } KernelParameters;
 
+typedef AcResult (*KernelCallFunc)(const cudaStream_t, const KernelParameters, VertexBufferArray);
+
 struct device_s {
     int id;
     AcMeshInfo local_config;
