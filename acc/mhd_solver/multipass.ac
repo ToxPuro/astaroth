@@ -470,7 +470,11 @@ continuity(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar
 #if LENTROPY
 Device Vector
 momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in ScalarField ss,
-         in VectorField aa, Scalar dt)
+         in VectorField aa, 
+#if LSHOCK
+         in ScalarField shock,
+#endif
+         Scalar dt)
 {
     const Matrix S   = stress_tensor(uu);
     const Scalar cs2 = AC_cs2_sound * exp(AC_gamma * value(ss) / AC_cp_sound +
@@ -489,6 +493,9 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
                        AC_nu_visc * (laplace_vec(uu) + (1.0 / 3.0) * gradient_of_divergence(uu) +
                                      2.0 * mul(S, gradient(lnrho))) +
                        AC_zeta * gradient_of_divergence(uu)
+#if LSHOCK
+                       shock_visc * (gradient_of_divergence(uu) + (gradient(lnrho) + gradient_ln(shock_visc)*divergence(uu))
+#endif
 #if LSINK
                        // Gravity term
                        + sink_gravity(globalVertexIdx)
@@ -615,7 +622,11 @@ heating(const int i, const int j, const int k)
 }
 
 Device Scalar
-entropy(in ScalarField ss, in VectorField uu, in ScalarField lnrho, in VectorField aa)
+entropy(in ScalarField ss, in VectorField uu, in ScalarField lnrho, in VectorField aa
+#if LSHOCK
+, in ScalarField shock
+#endif
+)
 {
     const Matrix S      = stress_tensor(uu);
     const Scalar inv_pT = 1.0 / (exp(value(lnrho)) * exp(lnT(ss, lnrho)));
@@ -623,6 +634,9 @@ entropy(in ScalarField ss, in VectorField uu, in ScalarField lnrho, in VectorFie
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
     const Scalar RHS = H_CONST - C_CONST + AC_eta * (AC_mu0)*dot(j, j) +
                        2.0 * exp(value(lnrho)) * AC_nu_visc * contract(S) +
+#if LSHOCK
+                       shock_visc * (gradient_of_divergence(uu)*gradient_of_divergence(uu))
+#endif
                        AC_zeta * exp(value(lnrho)) * divergence(uu) * divergence(uu);
 
     return -dot(value(uu), gradient(ss)) + inv_pT * RHS + heat_conduction(ss, lnrho);
@@ -832,7 +846,7 @@ shock_2_max()
 Kernel void
 shock_3_smooth()
 {
-    out_shock = smooth_shock(out_shock, shock);
+    out_shock = 1.0*value(shock)*AC_dsmin*AC_dsmin*smooth_shock(out_shock, shock); //Add scaling constant cshock
 }
 
 #endif

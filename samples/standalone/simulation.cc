@@ -43,6 +43,7 @@
 
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
 #define LFORCING (0)
+#define LSHOCK (1)
 
 #ifdef VTXBUF_ACCRETION
 #define LSINK (1)
@@ -441,10 +442,36 @@ run_simulation(const char* config_path)
         loadForcingParamsToDevice(forcing_params);
 #endif
 
+#if LSHOCK
+        const int3 start = (int3){NGHOST, NGHOST, NGHOST};
+        const int3 end   = (int3){config->int_params[AC_mx]-NGHOST, 
+                                  config->int_params[AC_my]-NGHOST, 
+                                  config->int_params[AC_mz]-NGHOST};
+
+        for (int isubstep = 0; i < 3; ++i) {
+            //Call only singe GPU version on for testing the shock viscosity first
+            acDevice_shock_1_divu(device, STREAM_DEFAULT, start, end);
+            acDeviceSwapBuffer(device, VTXBUF_SHOCK);
+            acBoundcondStepGBC(mesh_info); 
+            // TODO: Now calling general boundary conditions. We need to invoke just shock field. 
+
+            acDevice_shock_2_max(device, STREAM_DEFAULT, start, end);
+            acDeviceSwapBuffer(device, VTXBUF_SHOCK);
+            acBoundcondStepGBC(mesh_info);
+
+            acDevice_shock_3_smooth(device, STREAM_DEFAULT, start, end);
+            acDeviceSwapBuffer(device, VTXBUF_SHOCK);
+            acBoundcondStepGBC(mesh_info);
+
+            //RUN SOLVE
+            acDeviceIntegrateSubstep(device, STREAM_DEFAULT, isubstep, start, end, dt);
+        }
+
+#else
         /* Uses now flexible bokundary conditions */
         //acIntegrate(dt);
         acIntegrateGBC(mesh_info, dt);
-
+#endif
 
 
         t_step += dt;
