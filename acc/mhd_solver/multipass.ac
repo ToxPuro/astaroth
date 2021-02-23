@@ -160,6 +160,102 @@ uniform Scalarfield VTXBUF_SHOCK;
 #if LUPWD
 
 Preprocessed Scalar
+smooth_kernel(in ScalarField vertex)
+{
+    int ns = 7;
+    int n_smooth = ns*ns*ns;
+    Scalar smooth_factor[n_smooth];    
+
+    //This would be better set by host! 
+
+    // From Pencil Code src/shock_highorder.f90
+    // Gaussian weights
+    Scalar weights[7];
+    weights[0] = 1.0; 
+    weights[1] = 9.0; 
+    weights[2] = 45.0;
+    weights[3] = 70.0;
+    weights[4] = 45.0;
+    weights[5] = 9.0; 
+    weights[6] = 1.0; 
+
+    // Set kernel values
+    Scalar smooth_norm;
+    int ind = 0; 
+    for (int k = 0; k <= ns; ++k) {
+        for (int j = 0; j <= ns; ++j) {
+            for (int i = 0; i <= ns; ++i) {
+                Scalar value = weights[i]*weights[j]*weights[k]
+                smooth_factor[ind] = value;
+                smooth_norm = smooth_norm + value;
+                ind++;
+            }
+        }
+    }
+
+    // Normalize kernel
+    int ind = 0; 
+    for (int k = 0; k <= ns; ++k) {
+        for (int j = 0; j <= ns; ++j) {
+            for (int i = 0; i <= ns; ++i) {
+                smooth_factor[ind] = smooth_factor[ind]/smooth_norm;
+                ind++;
+            }
+        }
+    }
+
+    int ind = 0;
+    Scalar smoothed = 0.0;
+    for (int k = 0; k <= ns; ++k) {
+        for (int j = 0; j <= ns; ++j) {
+            for (int i = 0; i <= ns; ++i) {
+                iver = -3+i;  
+                jver = -3+j;  
+                kver = -3+k;  
+                smoothed[ind] = smoothed+smooth_factor[ind]*vertex[vertexIdx.x+iver, vertexIdx.y+jver, vertexIdx.z+kver];
+                ind++;
+            }
+        }
+    }
+    return smoothed; 
+}
+
+
+Scalar 
+field_max(Scalar sample[], int sample_size)
+{
+    Scalar max_val = sample[0];
+    for (int i = -2; i <= 2; ++i) {
+        Scalar new_val = samples[i];
+        if (new_val > max_val) new_val = max_val;
+    }
+}
+
+Preprocessed Scalar
+max5(in ScalarField vertex)
+{
+    Scalar samples[15]; //3*5
+    int ind = 0;    
+
+    for (int i = -2; i <= 2; ++i) {
+        samples[ind] = vertex[vertexIdx.x+i, vertexIdx.y, vertexIdx.z];
+        ind++;
+    }
+
+    for (int j = -2; i <= 2; ++i) {
+        samples[ind] = vertex[vertexIdx.x, vertexIdx.y+j, vertexIdx.z];
+        ind++;
+    }
+
+    for (int k = -2; i <= 2; ++i) {
+        samples[ind] = vertex[vertexIdx.x+i, vertexIdx.y, vertexIdx.z+k];
+        ind++;
+    }
+
+    return (Scalar){ field_max(sample, 15) };
+}
+
+Preprocessed Scalar
 der6x_upwd(in ScalarField vertex)
 {
     Scalar inv_ds = AC_inv_dsx;
@@ -667,21 +763,21 @@ get_bfield(in VectorField aa)
 Device Scalar
 divu_shock(in VectorField uu)
 {
-    return divergence(uu);
+    return -divergence(uu);
 }
 
 //Calculate local maximum from divergences. 
 Device Scalar
-max_shock(in VectorField shock)
+max5_shock(in ScalarField shock)
 {
-    return value(shock);
+    return max5(shock);
 }
 
 //Perform smoothing on shock values. 
 Device Scalar
-smooth_shock(in VectorField shock)
+smooth_shock(in ScalarField shock)
 {
-    return value(shock);
+    return smooth_kernel(shock);
 }
 #endif
 
@@ -730,7 +826,7 @@ shock_1_divu()
 Kernel void
 shock_2_max()
 {
-    out_shock = max_shock(out_shock, shock);
+    out_shock = max5_shock(out_shock, shock);
 }
 
 Kernel void
