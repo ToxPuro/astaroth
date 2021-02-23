@@ -38,16 +38,13 @@ endif()
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
 ## Options
-option(DOUBLE_PRECISION "Generates double precision code."                    OFF)
-option(BUILD_SAMPLES    "Builds projects in samples subdirectory."            ON)
-option(MPI_ENABLED      "Enables additional functions for MPI communciation." OFF)
-option(MULTIGPU_ENABLED "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
-option(VERBOSE          "Enables various status and warning messages"         OFF)
-
-## Options (DEPRECATED)
-# option(BUILD_DEBUG              "Builds the program with extensive error checking"          OFF)
-# option(BUILD_UTILS              "Builds the utility library"                                ON)
-# option(BUILD_RT_VISUALIZATION   "Builds the module for real-time visualization using SDL2"  OFF)
+option(DOUBLE_PRECISION   "Generates double precision code."                    OFF)
+option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            ON)
+option(MPI_ENABLED        "Enables additional functions for MPI communciation." OFF)
+option(USE_CUDA_AWARE_MPI "Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory" ON)
+option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
+option(VERBOSE            "Enables various status and warning messages"         OFF)
+option(BUILD_UTILS        "Builds the utility library"                           ON)
 
 
 ## Compile ACC
@@ -86,6 +83,9 @@ if (MPI_ENABLED)
     include_directories(${MPI_C_INCLUDE_DIRS})
     add_definitions(-DAC_MPI_ENABLED=1)
 endif ()
+if (USE_CUDA_AWARE_MPI)
+    add_definitions(-DUSE_CUDA_AWARE_MPI=1)
+endif()
 if (MULTIGPU_ENABLED)
   add_definitions(-DAC_MULTIGPU_ENABLED=1)
 endif()
@@ -99,9 +99,13 @@ include_directories(${CMAKE_BINARY_DIR})                       # DSL headers
 include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # CUDA headers
 
 ## Subdirectories
-add_subdirectory(src/utils)
 add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
+if (BUILD_UTILS)
+    message("Note: utils depends on -DDSL_MODULE_DIR=acc/mhd_solver. Otherwise causes undefined variable errors.")
+    add_subdirectory(src/utils)
+endif()
+
 
 if (BUILD_SAMPLES)
     add_subdirectory(samples/standalone)
@@ -114,9 +118,13 @@ if (BUILD_SAMPLES)
     #add_subdirectory(samples/genbenchmarkscripts)
     #add_subdirectory(samples/mpi_reduce_bench)
     add_subdirectory(samples/fortrantest)
-    add_subdirectory(samples/kerneltest)
 
     #if (MPI_ENABLED)
     #  add_subdirectory(samples/bwtest)
     #endif()
+endif()
+
+# Additional program modules
+if (PROGRAM_MODULE_DIR)
+    add_subdirectory(${PROGRAM_MODULE_DIR})
 endif()

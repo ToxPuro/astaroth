@@ -44,9 +44,12 @@ In the base directory, run
 | DOUBLE_PRECISION | Generates double precision code. | OFF |
 | BUILD_SAMPLES | Builds projects in samples subdirectory. | ON |
 | MPI_ENABLED | Enables acGrid functions for carrying out computations with MPI. | OFF |
+| USE_CUDA_AWARE_MPI | Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory | ON | 
 | MULTIGPU_ENABLED | Enables Astaroth to use multiple GPUs on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only. | ON |
-| DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `astaroth/acc/mhd_solver` |
+| DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `acc/mhd_solver` |
+| PROGRAM_MODULE_DIR | Can be used to declare additional host-side program modules (also known as Thrones) | empty |
 | VERBOSE | Enables various non-critical warning and status messages. | OFF |
+| BUILD_UTILS | "Builds the utility library. Depends on `DSL_MODULE_DIR=acc/mhd_solver`". | ON |
 
 
 ## Standalone Module
@@ -79,6 +82,10 @@ Can I use the code even if I don't make my changes public?
 How do I compile with MPI support?
 
 > Ensure that your MPI implementation has been built with CUDA support and invoke CMake with `cmake -DMPI_ENABLED=ON -DBUILD_SAMPLES=ON ..`. Otherwise the build steps are the same. Assign exactly one process per GPU and run with, for example, `srun --gres=gpu:v100:<ngpus per node> --ntasks-per-socket=<ngpus per node / NICs per node> -n <total number of gpus> -N <number of nodes> ./mpitest` or for `mpirun` the command `mpirun -np <ngpus per node>  ./mpitest` works (at least on a GPU node).
+
+I have issues with MPI
+
+> If your MPI has been setup incorrectly or does not support CUDA-aware communication, you can try building Astaroth without RDMA support with `cmake -DUSE_CUDA_AWARE_MPI=OFF ..`. Note that without CUDA-aware support, communication is routed through CPU memory which gives notably worse performance than communicating directly between GPUs.
 
 How do I contribute?
 

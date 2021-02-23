@@ -11,7 +11,7 @@
  *
  * After a task has been completed, its dependent tasks can be started with notifyDependents()
  * E.g. ComputeTasks may depend on HaloExchangeTasks because they're waiting to receive data.
- * Vv.  HaloExchangeTasksmay depend on ComputeTasks because they're waiting for data to send.
+ * Vv.  HaloExchangeTasks may depend on ComputeTasks because they're waiting for data to send.
  *
  * This all happens in grid.cc:GridIntegrate
  */
@@ -53,6 +53,7 @@ acDestroyPackedData(PackedData* data)
     return AC_SUCCESS;
 }
 
+#if !(USE_CUDA_AWARE_MPI)
 static void
 acPinPackedData(const Device device, const cudaStream_t stream, PackedData* ddata)
 {
@@ -79,6 +80,7 @@ acUnpinPackedData(const Device device, const cudaStream_t stream, PackedData* dd
                          NUM_VTXBUF_HANDLES;
     ERRCHK_CUDA(cudaMemcpyAsync(ddata->data, ddata->data_pinned, bytes, cudaMemcpyDefault, stream));
 }
+#endif
 
 /* Task interface */
 /*
@@ -389,8 +391,9 @@ HaloExchangeTask::unpack()
 {
 
     auto msg           = recv_buffers->get_current_buffer();
-    msg->buffer.pinned = false;
+#if !(USE_CUDA_AWARE_MPI)
     acUnpinPackedData(device, stream, &(msg->buffer));
+#endif
     acKernelUnpackData(stream, msg->buffer, output_region->position, vba);
 }
 
@@ -424,43 +427,12 @@ HaloExchangeTask::receiveDevice()
 }
 
 void
-HaloExchangeTask::receiveHost()
-{
-    if (onTheSameNode(rank, counterpart_rank)) {
-        receiveDevice();
-    }
-    else {
-        auto msg = recv_buffers->get_fresh_buffer();
-        MPI_Irecv(msg->buffer.data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
-                  recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
-        msg->buffer.pinned = true;
-    }
-}
-
-void
 HaloExchangeTask::sendDevice()
 {
     auto msg = send_buffers->get_current_buffer();
     sync();
     MPI_Isend(msg->buffer.data, msg->length, AC_MPI_TYPE, counterpart_rank,
               send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
-}
-
-void
-HaloExchangeTask::sendHost()
-{
-    // POSSIBLE COMPAT ISSUE: is it sensible to always use CUDA memory for node-local exchanges?
-    // What if the MPI lib doesn't support CUDA?
-    if (onTheSameNode(rank, counterpart_rank)) {
-        sendDevice();
-    }
-    else {
-        auto msg = send_buffers->get_current_buffer();
-        acPinPackedData(device, stream, &(msg->buffer));
-        sync();
-        MPI_Isend(msg->buffer.data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
-                  send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
-    }
 }
 
 void
@@ -471,6 +443,26 @@ HaloExchangeTask::exchangeDevice()
     sendDevice();
 }
 
+#if !(USE_CUDA_AWARE_MPI)
+void
+HaloExchangeTask::receiveHost()
+{
+    auto msg = recv_buffers->get_fresh_buffer();
+    MPI_Irecv(msg->buffer.data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
+              recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
+    msg->buffer.pinned = true;
+}
+
+
+void
+HaloExchangeTask::sendHost()
+{
+    auto msg = send_buffers->get_current_buffer();
+    acPinPackedData(device, stream, &(msg->buffer));
+    sync();
+    MPI_Isend(msg->buffer.data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
+              send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
+}
 void
 HaloExchangeTask::exchangeHost()
 {
@@ -478,34 +470,35 @@ HaloExchangeTask::exchangeHost()
     receiveHost();
     sendHost();
 }
+#endif
 
 void
 HaloExchangeTask::receive()
 {
-#if MPI_USE_PINNED == (1)
-    receiveHost();
-#else
+#if USE_CUDA_AWARE_MPI
     receiveDevice();
+#else
+    receiveHost();
 #endif
 }
 
 void
 HaloExchangeTask::send()
 {
-#if MPI_USE_PINNED == (1)
-    sendHost();
-#else
+#if USE_CUDA_AWARE_MPI
     sendDevice();
+#else
+    sendHost();
 #endif
 }
 
 void
 HaloExchangeTask::exchange()
 {
-#if MPI_USE_PINNED == (1)
-    exchangeHost();
-#else
+#if USE_CUDA_AWARE_MPI
     exchangeDevice();
+#else
+    exchangeHost();
 #endif
 }
 

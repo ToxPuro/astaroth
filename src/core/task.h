@@ -9,7 +9,7 @@
 #include "kernels/kernels.h" //PackedData, VertexBufferArray
 #include "math_utils.h"      //max. Also included in decomposition.h
 
-#define MPI_USE_PINNED (0)   // Do inter-node comm with pinned (host) memory
+#define MPI_USE_PINNED (1)   // Do inter-node comm with pinned (host) memory
 #define MPI_INCL_CORNERS (0) // Include the 3D corners of subdomains in halo
 
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
@@ -261,16 +261,18 @@ typedef class HaloExchangeTask : public Task {
     void unpack();
 
     void send();
-    void sendDevice();
-    void sendHost();
-
     void receive();
-    void receiveDevice();
-    void receiveHost();
-
     void exchange();
+
+    void sendDevice();
+    void receiveDevice();
     void exchangeDevice();
+
+#if !(USE_CUDA_AWARE_MPI)
+    void sendHost();
+    void receiveHost();
     void exchangeHost();
+#endif
 
     void advance();
     bool test();
