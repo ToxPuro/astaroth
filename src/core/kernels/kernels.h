@@ -17,6 +17,12 @@ typedef struct {
     AcReal* profiles[NUM_SCALARARRAY_HANDLES];
 } VertexBufferArray;
 
+typedef struct {
+    int step_number;
+    int3 start;
+    int3 end;
+} KernelParameters;
+
 struct device_s {
     int id;
     AcMeshInfo local_config;
@@ -49,8 +55,8 @@ AcResult acKernelDummy(void);
 AcResult acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferArray vba);
 
 /** */
-AcResult acKernelIntegrateSubstep(const cudaStream_t stream, const int step_number,
-                                  const int3 start, const int3 end, VertexBufferArray vba);
+AcResult acKernelIntegrateSubstep(const cudaStream_t stream, const KernelParameters params,
+                                  VertexBufferArray vba);
 
 /** */
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
@@ -77,7 +83,7 @@ AcReal acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtyp
                              AcReal* reduce_result);
 
 #define GEN_KERNEL_FUNC_DECL(ID)                                                                   \
-    AcResult acKernel_##ID(const cudaStream_t stream, const int3 start, const int3 end,            \
+    AcResult acKernel_##ID(const cudaStream_t stream, const KernelParameters params,               \
                            VertexBufferArray vba);
 
 #include "user_kernel_decl.h"

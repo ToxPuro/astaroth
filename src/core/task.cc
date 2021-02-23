@@ -180,9 +180,10 @@ ComputeTask::ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_
 void
 ComputeTask::compute()
 {
-    size_t substep = loop_cntr.i % 3;
-    acKernelIntegrateSubstep(stream, substep, output_region->position,
-                             output_region->position + output_region->dims, vba);
+    KernelParameters params = KernelParameters{(int)(loop_cntr.i % 3),
+                                               output_region->position,
+                                               output_region->position + output_region->dims};
+    acKernelIntegrateSubstep(stream, params, vba);
 }
 
 bool

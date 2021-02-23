@@ -9,7 +9,8 @@
                            const int3 end)                                                         \
     {                                                                                              \
         cudaSetDevice(device->id);                                                                 \
-        return acKernel_##ID(device->streams[stream], start, end, device->vba);                    \
+        return acKernel_##ID(device->streams[stream], KernelParameters{0, start, end},             \
+                             device->vba);\
     }
 
 #include "user_kernels.h"
@@ -438,7 +439,7 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
 {
     cudaSetDevice(device->id);
     acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
-    return acKernelIntegrateSubstep(device->streams[stream], step_number, start, end, device->vba);
+    return acKernelIntegrateSubstep(device->streams[stream], KernelParameters{step_number, start, end}, device->vba);
 }
 
 AcResult
