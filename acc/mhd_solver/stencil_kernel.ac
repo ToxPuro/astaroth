@@ -164,7 +164,7 @@ smooth_kernel(in ScalarField vertex)
     //int n_smooth = ns*ns*ns;
     //Scalar smooth_factor[n_smooth];
     //Explicit numbers because of DSL bug.
-    Scalar smooth_factor[343];
+    //Scalar smooth_factor[343];
 
     //This would be better set by host!
 
@@ -180,37 +180,35 @@ smooth_kernel(in ScalarField vertex)
     weights[5] = 9.0;
     weights[6] = 1.0;
 
+    Scalar smooth_factor;
+    Scalar smooth_norm = 5832000.0; //Based on separate calculations 
 
-    // Weight function
-    //smooth_norm =
+////    // Set kernel values
+////    Scalar smooth_norm;
+////    int ind = 0;
+////    for (int k = 0; k < ns; ++k) {
+////        for (int j = 0; j < ns; ++j) {
+////            for (int i = 0; i < ns; ++i) {
+////                Scalar zzz = weights[i]*weights[j]*weights[k];
+////                smooth_factor[ind] = zzz;
+////                smooth_norm = smooth_norm + zzz;
+////                ++ind;
+////            }
+////        }
+////    }
+////
+////    // Normalize kernel
+////    ind = 0;
+////    for (int k = 0; k < ns; ++k) {
+////        for (int j = 0; j < ns; ++j) {
+////            for (int i = 0; i < ns; ++i) {
+////                smooth_factor[ind] = smooth_factor[ind]/smooth_norm;
+////                ++ind;
+////            }
+////        }
+////    }
 
-
-    // Set kernel values
-    Scalar smooth_norm;
     int ind = 0;
-    for (int k = 0; k < ns; ++k) {
-        for (int j = 0; j < ns; ++j) {
-            for (int i = 0; i < ns; ++i) {
-                Scalar zzz = weights[i]*weights[j]*weights[k];
-                smooth_factor[ind] = zzz;
-                smooth_norm = smooth_norm + zzz;
-                ++ind;
-            }
-        }
-    }
-
-    // Normalize kernel
-    ind = 0;
-    for (int k = 0; k < ns; ++k) {
-        for (int j = 0; j < ns; ++j) {
-            for (int i = 0; i < ns; ++i) {
-                smooth_factor[ind] = smooth_factor[ind]/smooth_norm;
-                ++ind;
-            }
-        }
-    }
-
-    ind = 0;
     Scalar smoothed = 0.0;
     for (int k = 0; k < ns; ++k) {
         for (int j = 0; j < ns; ++j) {
@@ -218,7 +216,9 @@ smooth_kernel(in ScalarField vertex)
                 int iver = -3+i;
                 int jver = -3+j;
                 int kver = -3+k;
-                smoothed = smoothed+smooth_factor[ind]*vertex[vertexIdx.x+iver, vertexIdx.y+jver, vertexIdx.z+kver];
+
+                smooth_factor = (weights[i]*weights[j]*weights[k])/smooth_norm;
+                smoothed = smoothed+smooth_factor*vertex[vertexIdx.x+iver, vertexIdx.y+jver, vertexIdx.z+kver];
                 ++ind;
             }
         }
