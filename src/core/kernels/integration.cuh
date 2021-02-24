@@ -106,8 +106,7 @@ read_out(const int idx, AcReal* __restrict__ field[], const int3 handle)
 
 // Note: drops the template parameter to conform to C
 #define GEN_KERNEL_FUNC_HOOK(identifier)                                                           \
-    AcResult acKernel_##identifier(const cudaStream_t stream, const KernelParameters params,       \
-				   VertexBufferArray vba)   	                                   \
+    AcResult acKernel_##identifier(const KernelParameters params, VertexBufferArray vba)   	   \
     {                                                                                              \
                                                                                                    \
         const dim3 tpb(32, 1, 4);                                                                  \
@@ -117,7 +116,7 @@ read_out(const int idx, AcReal* __restrict__ field[], const int3 handle)
                        (unsigned int)ceil(n.y / AcReal(tpb.y)),                                    \
                        (unsigned int)ceil(n.z / AcReal(tpb.z)));                                   \
                                                                                                    \
-        identifier<0><<<bpg, tpb, 0, stream>>>(params.start, params.end, vba);                     \
+        identifier<0><<<bpg, tpb, 0, params.stream>>>(params.start, params.end, vba);              \
         ERRCHK_CUDA_KERNEL();                                                                      \
                                                                                                    \
         return AC_SUCCESS;                                                                         \
@@ -215,8 +214,7 @@ acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferAr
 }
 
 AcResult
-acKernelIntegrateSubstep(const cudaStream_t stream, const KernelParameters params,
-                         VertexBufferArray vba)
+acKernelIntegrateSubstep(const KernelParameters params, VertexBufferArray vba)
 {
     ERRCHK_ALWAYS(params.step_number >= 0);
     ERRCHK_ALWAYS(params.step_number < 3);
@@ -228,7 +226,7 @@ acKernelIntegrateSubstep(const cudaStream_t stream, const KernelParameters param
                    (unsigned int)ceil(n.z / AcReal(tpb.z)));
 
     //#ifdef AC_dt
-    // acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
+    // acDeviceLoadScalarUniform(device, params.stream, AC_dt, dt);
     /*#else
         (void)dt;
         ERROR("FATAL ERROR: acDeviceAutoOptimize() or acDeviceIntegrateSubstep() was "
@@ -237,11 +235,11 @@ acKernelIntegrateSubstep(const cudaStream_t stream, const KernelParameters param
               "timestep to be defined.\n");
     #endif*/
     if (params.step_number == 0)
-        solve<0><<<bpg, tpb, 0, stream>>>(params.start, params.end, vba);
+        solve<0><<<bpg, tpb, 0, params.stream>>>(params.start, params.end, vba);
     else if (params.step_number == 1)
-        solve<1><<<bpg, tpb, 0, stream>>>(params.start, params.end, vba);
+        solve<1><<<bpg, tpb, 0, params.stream>>>(params.start, params.end, vba);
     else
-        solve<2><<<bpg, tpb, 0, stream>>>(params.start, params.end, vba);
+        solve<2><<<bpg, tpb, 0, params.stream>>>(params.start, params.end, vba);
 
     ERRCHK_CUDA_KERNEL();
 

@@ -52,6 +52,9 @@ typedef struct Grid {
     std::vector<ComputeTask> compute_tasks;
     ComputeTask* inner_integration_task;
 
+    std::vector<Region> regions;
+    std::vector<VariableScope> var_scopes;
+
     MPI_Request* recv_reqs;
     MPI_Request* send_reqs;
 
@@ -174,15 +177,26 @@ acGridInit(const AcMeshInfo info)
 
     grid.nn = nn;
 
+    //Initialize scopes
+    VertexBufferHandle full_variable_scope[NUM_VTXBUF_HANDLES];
+    for (int i = 0;i < NUM_VTXBUF_HANDLES; i++){
+        full_variable_scope[i] = (VertexBufferHandle)i;
+    }
+    grid.var_scopes.emplace_back(full_variable_scope, NUM_VTXBUF_HANDLES);
+ 
+    // TODO: Initialize regions
+
     // Create compute tasks
     grid.compute_tasks.clear();
     grid.compute_tasks.reserve(NUM_SEGMENTS);
 
-    grid.inner_integration_task = new ComputeTask(device, Region::id_to_tag((int3){0, 0, 0}), nn,
+    grid.inner_integration_task = new ComputeTask(device, &(*grid.var_scopes.begin()),
+                                                  Region::id_to_tag((int3){0, 0, 0}), nn,
                                                   STREAM_26, acKernelIntegrateSubstep);
 
     for (int tag = 0; tag < NUM_SEGMENTS; tag++) {
-        grid.compute_tasks.emplace_back(device, tag, nn, (Stream)(tag + STREAM_DEFAULT),
+        grid.compute_tasks.emplace_back(device, &(*grid.var_scopes.begin()),
+                                        tag, nn, (Stream)(tag + STREAM_DEFAULT),
                                         acKernelIntegrateSubstep);
     }
 
@@ -200,8 +214,8 @@ acGridInit(const AcMeshInfo info)
     grid.back_send_reqs = &grid.send_reqs[NUM_SEGMENTS];
 
     for (int tag = 0; tag < NUM_SEGMENTS; tag++) {
-        grid.halo_exchange_tasks.emplace_back(device, tag, nn, decomp, grid.recv_reqs,
-                                              grid.send_reqs);
+        grid.halo_exchange_tasks.emplace_back(device, &(*grid.var_scopes.begin()), tag, nn, decomp,
+                                              grid.recv_reqs, grid.send_reqs);
     }
     // Dependencies
     for (auto& halo_task : grid.halo_exchange_tasks) {

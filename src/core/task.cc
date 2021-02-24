@@ -24,9 +24,35 @@
 #include <vector>
 
 #include "decomposition.h"   //getPid and friends
-#include "kernels/kernels.h" //AcRealPacked
+#include "kernels/kernels.h" //AcRealPacked, ComputeKernel
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
+
+/*
+Astaroth Program
+    Call(shock_divu1, [shock])
+    Call(shock_max2, [shock])
+    Call(shock_smooth3, [shock])
+    Call(integrate, [all fields])
+    Exchange([all fields except shock])
+*/
+
+VariableScope::VariableScope(VertexBufferHandle* h_variables, size_t num_variables_)
+    :num_variables(num_variables_)
+{
+    variables = NULL;
+    size_t scope_size = num_variables*sizeof(VertexBufferHandle);
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&variables, scope_size));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(variables, h_variables, scope_size, cudaMemcpyHostToDevice));
+}
+
+VariableScope::~VariableScope()
+{
+    cudaFree(variables);
+    variables = NULL;
+    num_variables = -1;
+}
+
 /* Task interface */
 
 /*
@@ -166,7 +192,8 @@ Task::poll_stream()
 }
 
 /* Computation */
-ComputeTask::ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id, KernelCallFunc compute_func_)
+ComputeTask::ComputeTask(Device device_, VariableScope* variable_scope_, int region_tag, int3 nn,
+                         Stream stream_id, ComputeKernel compute_func_)
 {
     // task_type = "compute";
     device = device_;
@@ -174,19 +201,22 @@ ComputeTask::ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_
     syncVBA();
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    output_region = new Region(RegionFamily::Compute, region_tag, nn);
+    output_region = new Region(RegionFamily::Compute_output, region_tag, nn);
+    input_region = new Region(RegionFamily::Compute_input, region_tag, nn);
     compute_func = compute_func_;
+    variable_scope = variable_scope_;
+
+    params = KernelParameters{stream, 0, output_region->position,
+                              output_region->position + output_region->dims};
 }
 
 void
 ComputeTask::compute()
 {
-    KernelParameters params = KernelParameters{(int)(loop_cntr.i % 3),
-                                               output_region->position,
-                                               output_region->position + output_region->dims};
-    
-    compute_func(stream, params, vba);
-    //acKernelIntegrateSubstep(stream, params, vba);
+    //IDEA: if we make params.step_number a pointer, we can point it at the loop_cntr..., not a bad idea
+    //We could even make all the members of params pointers to save space... hmm
+    params.step_number = (int)(loop_cntr.i % 3);    
+    compute_func(params, vba);
 }
 
 bool
@@ -224,9 +254,9 @@ ComputeTask::advance()
 
 // HaloMessage contains all information needed to send or receive a single message
 // Wraps PackedData. These two structs could be folded together.
-HaloMessage::HaloMessage(int3 dims, MPI_Request* _req) : request(_req)
+HaloMessage::HaloMessage(int3 dims, size_t num_vars, MPI_Request* _req) : request(_req)
 {
-    length       = dims.x * dims.y * dims.z * NUM_VTXBUF_HANDLES;
+    length       = dims.x * dims.y * dims.z * num_vars;
     size_t bytes = length * sizeof(AcRealPacked);
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&data, bytes));
 #if !(USE_CUDA_AWARE_MPI)
@@ -279,9 +309,9 @@ MessageBufferSwapChain::MessageBufferSwapChain() : buf_idx(SWAP_CHAIN_LENGTH - 1
 MessageBufferSwapChain::~MessageBufferSwapChain() { buffers.clear(); }
 
 void
-MessageBufferSwapChain::add_buffer(int3 dims, MPI_Request* req)
+MessageBufferSwapChain::add_buffer(int3 dims, size_t num_vars, MPI_Request* req)
 {
-    buffers.emplace_back(dims, req);
+    buffers.emplace_back(dims, num_vars, req);
 }
 
 HaloMessage*
@@ -302,9 +332,9 @@ MessageBufferSwapChain::get_fresh_buffer()
 }
 
 // HaloExchangeTask
-HaloExchangeTask::HaloExchangeTask(const Device device_, const int halo_region_tag, const int3 nn,
-                                   const uint3_64 decomp, MPI_Request* recv_requests,
-                                   MPI_Request* send_requests)
+HaloExchangeTask::HaloExchangeTask(const Device device_, VariableScope* variable_scope_,
+                                   const int halo_region_tag, const int3 nn, const uint3_64 decomp,
+                                   MPI_Request* recv_requests, MPI_Request* send_requests)
 {
     // task_type = "halo";
     device = device_;
@@ -318,20 +348,23 @@ HaloExchangeTask::HaloExchangeTask(const Device device_, const int halo_region_t
     syncVBA();
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    output_region           = new Region(RegionFamily::Incoming, halo_region_tag, nn);
-    outgoing_message_region = new Region(RegionFamily::Outgoing, halo_region_tag, nn);
+    output_region = new Region(RegionFamily::Exchange_output, halo_region_tag, nn);
+    input_region  = new Region(RegionFamily::Exchange_input, halo_region_tag, nn);
+
+    variable_scope = variable_scope_;
+    msg_length   = output_region->dims.x * output_region->dims.y * output_region->dims.z * variable_scope->num_variables;
 
     counterpart_rank = getPid(getPid3D(rank, decomp) + output_region->id, decomp);
-    send_tag         = outgoing_message_region->tag;
+    send_tag         = input_region->tag;
     recv_tag         = Region::id_to_tag(-output_region->id);
 
     // Note: send_tag is also the index for both buffer sets.
     recv_buffers = new MessageBufferSwapChain();
     send_buffers = new MessageBufferSwapChain();
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        recv_buffers->add_buffer(output_region->dims,
+        recv_buffers->add_buffer(output_region->dims, variable_scope->num_variables,
                                  &(recv_requests[i * NUM_SEGMENTS + send_tag]));
-        send_buffers->add_buffer(outgoing_message_region->dims,
+        send_buffers->add_buffer(input_region->dims, variable_scope->num_variables,
                                  &(send_requests[i * NUM_SEGMENTS + send_tag]));
     }
 
@@ -355,8 +388,9 @@ void
 HaloExchangeTask::pack()
 {
     auto msg = send_buffers->get_fresh_buffer();
-    acKernelPackData(stream, vba, outgoing_message_region->position, outgoing_message_region->dims,
-                     msg->data);
+    //acKernelPartialPackData(stream, vba, input_region->position, input_region->dims,
+    //                 msg->data, pass->variable_scope, pass->variable_scope_length);
+    acKernelPackData(stream, vba, input_region->position, input_region->dims, msg->data);
 }
 
 void
@@ -367,6 +401,8 @@ HaloExchangeTask::unpack()
 #if !(USE_CUDA_AWARE_MPI)
     msg->unpin(device, stream);
 #endif
+    //acKernelPartialUnpackData(stream, msg->data, output_region->position, output_region->dims, vba,
+    //                          pass->variable_scope, pass->variable_scope_length);
     acKernelUnpackData(stream, msg->data, output_region->position, output_region->dims, vba);
 }
 
@@ -394,7 +430,7 @@ void
 HaloExchangeTask::receiveDevice()
 {
     auto msg = recv_buffers->get_fresh_buffer();
-    MPI_Irecv(msg->data, msg->length, AC_MPI_TYPE, counterpart_rank, recv_tag + HALO_TAG_OFFSET,
+    MPI_Irecv(msg->data, msg_length, AC_MPI_TYPE, counterpart_rank, recv_tag + HALO_TAG_OFFSET,
               MPI_COMM_WORLD, msg->request);
 }
 

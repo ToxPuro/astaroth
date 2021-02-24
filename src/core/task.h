@@ -31,12 +31,13 @@ static_assert(SWAP_CHAIN_LENGTH == 2);
  * Regions are identified by a non-zero region id of type {-1,0,1}^3
  * A region's id describes its position the region topology of the subdomain.
  *
- * There are three families of regions: Incoming message regions, outgoing
+ * There are three families of regions: Exchange_output message regions, outgoing
  * message regions, and compute regions. The three families each cover some
  * zone of data, as follows:
- *  - Compute: entire inner domain
- *  - Outgoing: the shell of the inner domain
- *  - Incoming: the halo
+ *  - Compute_output: entire inner domain
+ *  - Compute_input: the entire extended domain (including the halo)
+ *  - Exchange_input: the shell of the inner domain
+ *  - Exchange_output: the halo
  * The names of the families have been chosen to represent the constituent
  * regions' purpose in the context of tasks that use them.
  *
@@ -46,7 +47,7 @@ static_assert(SWAP_CHAIN_LENGTH == 2);
  * in an MPI message.
  */
 
-enum class RegionFamily { Incoming, Outgoing, Compute };
+enum class RegionFamily { Exchange_output, Exchange_input, Compute_output, Compute_input};
 
 struct Region {
 
@@ -80,7 +81,7 @@ struct Region {
         ERRCHK_ALWAYS(facet_class <= 3);
 
         switch (family) {
-        case RegionFamily::Compute: {
+        case RegionFamily::Compute_output: {
             // clang-format off
             position = (int3){
                         id.x == -1  ? NGHOST : id.x == 1 ? nn.x : NGHOST * 2,
@@ -92,7 +93,19 @@ struct Region {
                           id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
             break;
         }
-        case RegionFamily::Incoming: {
+        case RegionFamily::Compute_input: {
+            // clang-format off
+            position = (int3){
+                        id.x == -1  ? 0 : id.x == 1 ? nn.x - NGHOST : NGHOST ,
+                        id.y == -1  ? 0 : id.y == 1 ? nn.y - NGHOST : NGHOST ,
+                        id.z == -1  ? 0 : id.z == 1 ? nn.z - NGHOST : NGHOST };
+            // clang-format on
+            dims = (int3){id.x == 0 ? nn.x : NGHOST * 3,
+                          id.y == 0 ? nn.y : NGHOST * 3,
+                          id.z == 0 ? nn.z : NGHOST * 3};
+            break;
+        }
+        case RegionFamily::Exchange_output: {
             // clang-format off
             position = (int3){
                         id.x == -1  ? 0 : id.x == 1 ? NGHOST + nn.x : NGHOST,
@@ -103,7 +116,7 @@ struct Region {
                           id.z == 0 ? nn.z : NGHOST};
             break;
         }
-        case RegionFamily::Outgoing: {
+        case RegionFamily::Exchange_input: {
             position = (int3){id.x == 1 ? nn.x : NGHOST, id.y == 1 ? nn.y : NGHOST,
                               id.z == 1 ? nn.z : NGHOST};
             dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
@@ -121,6 +134,14 @@ struct Region {
         ERRCHK_ALWAYS(_id.x == id.x && _id.y == id.y && _id.z == id.z);
     }
 };
+
+struct VariableScope {
+    VertexBufferHandle* variables;
+    size_t num_variables;
+    VariableScope(VertexBufferHandle* variables_, size_t num_variables);
+    ~VariableScope();
+};
+
 
 /**
  * Task interface
@@ -156,8 +177,11 @@ class Task {
     bool poll_stream();
 
   public:
+    int order; //the ordinal position of the task in a serial execution (within its region)
     Region* output_region;
-    // std::string task_type;
+    Region* input_region;
+    VariableScope* variable_scope;
+    
 
     static const int wait_state = 0;
 
@@ -189,10 +213,12 @@ enum class ComputeState { Waiting_for_halo = Task::wait_state, Running };
 
 typedef class ComputeTask : public Task {
   private:
-    KernelCallFunc compute_func;
+    ComputeKernel compute_func;
+    KernelParameters params;
 
   public:
-    ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id, KernelCallFunc compute_func_);
+    ComputeTask(Device device_, VariableScope* variable_scope_, int region_tag, int3 nn,
+                Stream stream_id, ComputeKernel compute_func_);
 
     void compute();
     void advance();
@@ -209,7 +235,7 @@ typedef struct HaloMessage {
 #endif
     MPI_Request* request;
 
-    HaloMessage(int3 dims, MPI_Request* req_);
+    HaloMessage(int3 dims, size_t num_vars, MPI_Request* req_);
     ~HaloMessage();
 #if !(USE_CUDA_AWARE_MPI)
     void pin(const Device device, const cudaStream_t stream);
@@ -224,7 +250,7 @@ typedef struct MessageBufferSwapChain {
     MessageBufferSwapChain();
     ~MessageBufferSwapChain();
 
-    void add_buffer(int3 dims, MPI_Request* req);
+    void add_buffer(int3 dims, size_t num_vars, MPI_Request* req);
     HaloMessage* get_current_buffer();
     HaloMessage* get_fresh_buffer();
 } MessageBufferSwapChain;
@@ -238,21 +264,21 @@ enum class HaloExchangeState {
 
 typedef class HaloExchangeTask : public Task {
   private:
-    Region* outgoing_message_region;
-
-    MessageBufferSwapChain* recv_buffers;
-    MessageBufferSwapChain* send_buffers;
+    int msg_length;
 
     int counterpart_rank;
     int send_tag;
     int recv_tag;
-    int msglen;
+
+    MessageBufferSwapChain* recv_buffers;
+    MessageBufferSwapChain* send_buffers;
 
   public:
     bool active;
 
-    HaloExchangeTask(const Device device_, const int halo_region_tag, const int3 nn,
-                     const uint3_64 decomp, MPI_Request* recv_requests, MPI_Request* send_requests);
+    HaloExchangeTask(const Device device_, VariableScope* variable_scope_,
+                     const int halo_region_tag, const int3 nn, const uint3_64 decomp,
+                     MPI_Request* recv_requests, MPI_Request* send_requests);
     ~HaloExchangeTask();
 
     void sync();
