@@ -341,7 +341,13 @@ run_simulation(const char* config_path)
         read_mesh(*mesh, start_step, &t_step);
     }
  
+#if LSHOCK
+    Device device;
+    acDeviceCreate(0, mesh_info, &device);
+    acDevicePrintInfo(device);
+#else
     acInit(mesh_info);
+#endif
     acLoad(*mesh);
 
     FILE* diag_file;
@@ -393,6 +399,13 @@ run_simulation(const char* config_path)
     /* initialize random seed: */
     srand(312256655);
 
+#if LSHOCK
+    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
+    const int3 end   = (int3){mesh_info.int_params[AC_mx]-NGHOST, 
+                              mesh_info.int_params[AC_my]-NGHOST, 
+                              mesh_info.int_params[AC_mz]-NGHOST};
+#endif
+
     /* Step the simulation */
     AcReal accreted_mass = 0.0;
     AcReal sink_mass     = 0.0;
@@ -443,11 +456,6 @@ run_simulation(const char* config_path)
 #endif
 
 #if LSHOCK
-        const int3 start = (int3){NGHOST, NGHOST, NGHOST};
-        const int3 end   = (int3){config->int_params[AC_mx]-NGHOST, 
-                                  config->int_params[AC_my]-NGHOST, 
-                                  config->int_params[AC_mz]-NGHOST};
-
         for (int isubstep = 0; i < 3; ++i) {
             //Call only singe GPU version on for testing the shock viscosity first
             acDevice_shock_1_divu(device, STREAM_DEFAULT, start, end);
@@ -466,7 +474,6 @@ run_simulation(const char* config_path)
             //RUN SOLVE
             acDeviceIntegrateSubstep(device, STREAM_DEFAULT, isubstep, start, end, dt);
         }
-
 #else
         /* Uses now flexible bokundary conditions */
         //acIntegrate(dt);
@@ -586,7 +593,11 @@ run_simulation(const char* config_path)
 
     ////save_mesh(*mesh, , t_step);
 
+#if LSHOCK
+    acDeviceDestroy(device);
+#else
     acQuit();
+#endif 
     acmesh_destroy(mesh);
 
     fclose(diag_file);

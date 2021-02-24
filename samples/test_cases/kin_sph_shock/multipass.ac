@@ -847,19 +847,19 @@ out ScalarField out_shock(VTXBUF_SHOCK);
 Kernel void
 shock_1_divu()
 {
-    out_shock = divu_shock(out_shock, uu);
+    out_shock = divu_shock(uu);
 }
 
 Kernel void
 shock_2_max()
 {
-    out_shock = max5_shock(out_shock, shock);
+    out_shock = max5_shock(shock);
 }
 
 Kernel void
 shock_3_smooth()
 {
-    out_shock = 1.0*value(shock)*AC_dsmin*AC_dsmin*smooth_shock(out_shock, shock); //Add scaling constant cshock
+    out_shock = 1.0*value(shock)*AC_dsmin*AC_dsmin*smooth_shock(shock); //Add scaling constant cshock
 }
 
 #endif
@@ -875,12 +875,13 @@ solve()
 #endif
 
 #if LENTROPY
-    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, ss, aa, dt), dt);
-    out_ss = rk3(out_ss, ss, entropy(ss, uu, lnrho, aa), dt);
-#elif LSHOCK
-    // TODO Add shock viscosity and heating parameters to the code
+    #if LSHOCK
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, ss, aa, shock, dt), dt);
     out_ss = rk3(out_ss, ss, entropy(ss, uu, lnrho, aa, shock), dt);
+    #else
+    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, ss, aa, dt), dt);
+    out_ss = rk3(out_ss, ss, entropy(ss, uu, lnrho, aa), dt);
+    #endif
 #elif LTEMPERATURE
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, tt, dt), dt);
     out_tt = rk3(out_tt, tt, heat_transfer(uu, lnrho, tt), dt);
