@@ -188,9 +188,9 @@ smooth_kernel(in ScalarField vertex)
     // Set kernel values
     Scalar smooth_norm;
     int ind = 0;
-    for (int k = 0; k <= ns; ++k) {
-        for (int j = 0; j <= ns; ++j) {
-            for (int i = 0; i <= ns; ++i) {
+    for (int k = 0; k < ns; ++k) {
+        for (int j = 0; j < ns; ++j) {
+            for (int i = 0; i < ns; ++i) {
                 Scalar zzz = weights[i]*weights[j]*weights[k];
                 smooth_factor[ind] = zzz;
                 smooth_norm = smooth_norm + zzz;
@@ -201,9 +201,9 @@ smooth_kernel(in ScalarField vertex)
 
     // Normalize kernel
     ind = 0;
-    for (int k = 0; k <= ns; ++k) {
-        for (int j = 0; j <= ns; ++j) {
-            for (int i = 0; i <= ns; ++i) {
+    for (int k = 0; k < ns; ++k) {
+        for (int j = 0; j < ns; ++j) {
+            for (int i = 0; i < ns; ++i) {
                 smooth_factor[ind] = smooth_factor[ind]/smooth_norm;
                 ++ind;
             }
@@ -212,9 +212,9 @@ smooth_kernel(in ScalarField vertex)
 
     ind = 0;
     Scalar smoothed = 0.0;
-    for (int k = 0; k <= ns; ++k) {
-        for (int j = 0; j <= ns; ++j) {
-            for (int i = 0; i <= ns; ++i) {
+    for (int k = 0; k < ns; ++k) {
+        for (int j = 0; j < ns; ++j) {
+            for (int i = 0; i < ns; ++i) {
                 int iver = -3+i;
                 int jver = -3+j;
                 int kver = -3+k;
