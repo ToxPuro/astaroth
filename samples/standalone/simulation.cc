@@ -310,6 +310,69 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
     fprintf(diag_file, "\n");
 }
 
+static inline void
+print_diagnostics_device(const Device device, const int step, const AcReal dt, const AcReal t_step, FILE* diag_file,
+                         const AcReal sink_mass, const AcReal accreted_mass, int* found_nan)
+{
+
+    AcReal buf_rms, buf_max, buf_min;
+    const int max_name_width = 16;
+
+    // Calculate rms, min and max from the velocity vector field
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_max);
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_min);
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_rms);
+
+
+    // MV: The ordering in the earlier version was wrong in terms of variable
+    // MV: name and its diagnostics.
+    printf("Step %d, t_step %.3e, dt %e s\n", step, double(t_step), double(dt));
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "uu total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%d %e %e %e %e %e ", step, double(t_step), double(dt), double(buf_min),
+            double(buf_rms), double(buf_max));
+
+#if LBFIELD
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, BFIELDX, BFIELDY, BFIELDZ, &buf_max);
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MIN, BFIELDX, BFIELDY, BFIELDZ, &buf_min);
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_RMS, BFIELDX, BFIELDY, BFIELDZ, &buf_rms);
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+
+    acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_max)
+    acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MIN, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_min)
+    acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_rms)
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+#endif
+
+    // Calculate rms, min and max from the variables as scalars
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MAX, VertexBufferHandle(i), &buf_max);
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MIN, VertexBufferHandle(i), &buf_min);
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_RMS, VertexBufferHandle(i), &buf_rms);
+
+        printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
+               double(buf_min), double(buf_rms), double(buf_max));
+        fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+
+        if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
+            *found_nan = 1;
+        }
+
+    }
+
+    if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
+        fprintf(diag_file, "%e %e ", double(sink_mass), double(accreted_mass));
+    }
+
+    fprintf(diag_file, "\n");
+}
+
 /*
     MV NOTE: At the moment I have no clear idea how to calculate magnetic
     diagnostic variables from grid. Vector potential measures have a limited
@@ -346,10 +409,14 @@ run_simulation(const char* config_path)
     Device device;
     acDeviceCreate(0, mesh_info, &device);
     acDevicePrintInfo(device);
+    printf("Loading mesh to GPU.\n");
+    acDeviceLoadMesh(device, STREAM_DEFAULT, *mesh);
 #else
     acInit(mesh_info);
-#endif
     acLoad(*mesh);
+#endif
+
+    printf("Mesh loaded to GPU(s).\n");
 
     FILE* diag_file;
     int found_nan = 0, found_stop = 0; // Nan or inf finder to give an error signal
@@ -374,11 +441,17 @@ run_simulation(const char* config_path)
 
     write_mesh_info(&mesh_info);
 
+    printf("Mesh info written to file.\n");
+
     if (start_step == 0) {
 #if LSINK
         print_diagnostics(0, AcReal(.0), t_step, diag_file, mesh_info.real_params[AC_M_sink_init], 0.0, &found_nan);
 #else
+    #if LSHOCK
+        print_diagnostics_device(device, 0, AcReal(.0), t_step, diag_file, -1.0, -1.0, &found_nan);
+    #else
         print_diagnostics(0, AcReal(.0), t_step, diag_file, -1.0, -1.0, &found_nan);
+    #endif
 #endif
     }
 
@@ -498,8 +571,11 @@ run_simulation(const char* config_path)
                 results and saves the diagnostics into a table for ascii file
                 timeseries.ts.
             */
-
+    #if LSHOCK
+            print_diagnostics_device(device, i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
+    #else
             print_diagnostics(i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
+    #endif
 #if LSINK
             printf("sink mass is: %.15e \n", double(sink_mass));
             printf("accreted mass is: %.15e \n", double(accreted_mass));
