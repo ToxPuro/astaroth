@@ -77,6 +77,7 @@ uniform Scalar AC_lnT0;
 uniform Scalar AC_lnrho0;
 uniform Scalar AC_zeta;
 uniform Scalar AC_trans;
+uniform Scalar AC_nu_shock;
 //  Other
 uniform Scalar AC_bin_save_t;
 //  Initial condition params
@@ -494,7 +495,8 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
                                      2.0 * mul(S, gradient(lnrho))) +
                        AC_zeta * gradient_of_divergence(uu)
 #if LSHOCK
-                       shock_visc * (gradient_of_divergence(uu) + (gradient(lnrho) + gradient_ln(shock_visc)*divergence(uu))
+                       + AC_nu_shock * (value(shock)*(divergence(uu)*gradient(lnrho)+gradient_of_divergence(uu))  
+                                        + divergence(uu)*gradient(shock))
 #endif
 #if LSINK
                        // Gravity term
@@ -635,7 +637,7 @@ entropy(in ScalarField ss, in VectorField uu, in ScalarField lnrho, in VectorFie
     const Scalar RHS = H_CONST - C_CONST + AC_eta * (AC_mu0)*dot(j, j) +
                        2.0 * exp(value(lnrho)) * AC_nu_visc * contract(S) +
 #if LSHOCK
-                       shock_visc * (gradient_of_divergence(uu)*gradient_of_divergence(uu))
+                       AC_nu_shock*value(shock) * (gradient_of_divergence(uu)*gradient_of_divergence(uu))
 #endif
                        AC_zeta * exp(value(lnrho)) * divergence(uu) * divergence(uu);
 
