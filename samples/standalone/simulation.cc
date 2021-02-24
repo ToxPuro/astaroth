@@ -455,9 +455,22 @@ run_simulation(const char* config_path)
 #endif
     }
 
+#if LSHOCK
+    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
+    const int3 end   = (int3){mesh_info.int_params[AC_mx]-NGHOST, 
+                              mesh_info.int_params[AC_my]-NGHOST, 
+                              mesh_info.int_params[AC_mz]-NGHOST};
+    const int3 bindex = (int3){0, 0, 0}; //DUMMY
+    const int3 b1 = (int3){0, 0, 0};
+    const int3 b2 = (int3){mesh_info.int_params[AC_mx], mesh_info.int_params[AC_mx], mesh_info.int_params[AC_mx]};
+
+    acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
+    acDeviceStoreMesh(device, STREAM_DEFAULT, mesh);
+#else
     //acBoundcondStep();
     acBoundcondStepGBC(mesh_info);
     acStore(mesh);
+#endif
     if (start_step == 0) {
         save_mesh(*mesh, 0, t_step);
     }
@@ -474,10 +487,6 @@ run_simulation(const char* config_path)
     srand(312256655);
 
 #if LSHOCK
-    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
-    const int3 end   = (int3){mesh_info.int_params[AC_mx]-NGHOST, 
-                              mesh_info.int_params[AC_my]-NGHOST, 
-                              mesh_info.int_params[AC_mz]-NGHOST};
 #endif
 
     /* Step the simulation */
@@ -486,6 +495,8 @@ run_simulation(const char* config_path)
     AcReal uu_freefall = 0.0;
     AcReal dt_typical    = 0.0;
     int dtcounter = 0;
+
+    printf("Starting simulation...\n");
     for (int i = start_step + 1; i < max_steps; ++i) {
 #if LSINK
 
@@ -514,9 +525,20 @@ run_simulation(const char* config_path)
         sink_mass     = -1.0;
 #endif
 
+#if LSHOCK
+        AcReal umax;
+        acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &umax);
+#else 
         const AcReal umax = acReduceVec(RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+#endif
+
 #if LBFIELD
+    #if LSHOCK
+        AcReal vAmax;
+        acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &vAmax) 
+    #else
         const AcReal vAmax = acReduceVecScal(RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO);
+    #endif
         const AcReal uref  = max(max(umax,uu_freefall), vAmax); 
         const AcReal dt   = host_timestep(uref, vAmax, mesh_info);
 #else
@@ -534,16 +556,16 @@ run_simulation(const char* config_path)
             //Call only singe GPU version on for testing the shock viscosity first
             acDevice_shock_1_divu(device, STREAM_DEFAULT, start, end);
             acDeviceSwapBuffer(device, VTXBUF_SHOCK);
-            acBoundcondStepGBC(mesh_info); 
+            acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
             // TODO: Now calling general boundary conditions. We need to invoke just shock field. 
 
             acDevice_shock_2_max(device, STREAM_DEFAULT, start, end);
             acDeviceSwapBuffer(device, VTXBUF_SHOCK);
-            acBoundcondStepGBC(mesh_info);
+            acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
 
             acDevice_shock_3_smooth(device, STREAM_DEFAULT, start, end);
             acDeviceSwapBuffer(device, VTXBUF_SHOCK);
-            acBoundcondStepGBC(mesh_info);
+            acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
 
             //RUN SOLVE
             acDeviceIntegrateSubstep(device, STREAM_DEFAULT, isubstep, start, end, dt);
@@ -603,9 +625,13 @@ run_simulation(const char* config_path)
                 acStore(mesh);
             */
             //acBoundcondStep();
+#if LSHOCK
+            acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
+            acDeviceStoreMesh(device, STREAM_DEFAULT, mesh);
+#else 
             acBoundcondStepGBC(mesh_info);
             acStore(mesh);
-
+#endif
             save_mesh(*mesh, i, t_step);
 
             bin_crit_t += bin_save_t;
@@ -639,9 +665,14 @@ run_simulation(const char* config_path)
         // End loop if nan is found
         if (found_nan > 0) {
             printf("Found nan at t = %e \n", double(t_step));
+#if LSHOCK
+            acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
+            acDeviceStoreMesh(device, STREAM_DEFAULT, mesh);
+#else 
             //acBoundcondStep();
             acBoundcondStepGBC(mesh_info);
             acStore(mesh);
+#endif
             save_mesh(*mesh, i, t_step);
             break;
         }
@@ -655,9 +686,14 @@ run_simulation(const char* config_path)
  
         if (found_stop == 1) {
             printf("Found STOP file at t = %e \n", double(t_step));
+#if LSHOCK
+            acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
+            acDeviceStoreMesh(device, STREAM_DEFAULT, mesh);
+#else 
             //acBoundcondStep();
             acBoundcondStepGBC(mesh_info);
             acStore(mesh);
+#endif 
             save_mesh(*mesh, i, t_step);
             break;
         }
