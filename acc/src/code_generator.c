@@ -427,7 +427,7 @@ traverse(const ASTNode* node)
                 else // Use device constants inside device functions
                     fprintf(CUDAHEADER, "DCONST(%s) ", symbol->identifier);
             }
-            else if (node->parent->type != NODE_DECLARATION) {
+            else if (!inside_declaration) {
                 // Regular symbol translation
                 if (translate(node->token))
                     fprintf(CUDAHEADER, "%s ", translate(node->token));
