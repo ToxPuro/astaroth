@@ -1,3 +1,4 @@
+B
 # Astaroth Specification and User Manual
 
 Copyright (C) 2014-2020, Johannes Pekkila, Miikka Vaisala.
@@ -55,11 +56,13 @@ The foundational work was done in (Väisälä, Pekkilä, 2017) and the library, 
 in this document were introduced in (Pekkilä, 2019). We kindly wish the users of Astaroth to cite
 to these publications in their work.
 
-> [J. Pekkilä, Astaroth: A Library for Stencil Computations on Graphics Processing Units. Master's thesis, Aalto University School of Science, Espoo, Finland, 2019.](http://urn.fi/URN:NBN:fi:aalto-201906233993)
+> [Väisälä, M., Pekkilä, J., Käpylä, M., Rheinhardt, M., Shang, H., & Krasnopolsky, R. “Interaction of Large- and Small-Scale Dynamos in Isotropic Turbulent Flows from GPU-Accelerated Simulations.” The Astrophysical Journal, vol. 907, no. 2, Feb. 2021, p. 83.](https://doi.org/10.3847/1538-4357/abceca)
 
-> [M. S. Väisälä, Magnetic Phenomena of the Interstellar Medium in Theory and Observation. PhD thesis, University of Helsinki, Finland, 2017.](http://urn.fi/URN:ISBN:978-951-51-2778-5)
+> [Pekkilä, J. Astaroth: A Library for Stencil Computations on Graphics Processing Units. Master's thesis, Aalto University School of Science, Espoo, Finland, 2019.](http://urn.fi/URN:NBN:fi:aalto-201906233993)
 
-> [J. Pekkilä, M. S. Väisälä, M. Käpylä, P. J. Käpylä, and O. Anjum, “Methods for compressible fluid simulation on GPUs using high-order finite differences, ”Computer Physics Communications, vol. 217, pp. 11–22, Aug. 2017.](https://doi.org/10.1016/j.cpc.2017.03.011)
+> [Väisälä, M. Magnetic Phenomena of the Interstellar Medium in Theory and Observation. PhD thesis, University of Helsinki, Finland, 2017.](http://urn.fi/URN:ISBN:978-951-51-2778-5)
+
+> [Pekkilä, J., Väisälä, M., Käpylä, M., Käpylä, P. J., and Anjum, O. “Methods for compressible fluid simulation on GPUs using high-order finite differences, ”Computer Physics Communications, vol. 217, pp. 11–22, Aug. 2017.](https://doi.org/10.1016/j.cpc.2017.03.011)
 
 
 
