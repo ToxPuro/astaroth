@@ -82,28 +82,31 @@ typedef enum {
 ```
 
 The API is divided into layers which differ in the level of control provided over the execution.
-There are three primary layers:
+There are two primary layers:
 
 * Device layer
-    * Functions start with acDevice.
     * Provides control over a single GPU.
-    * All functions are asynchronous.
-
-* Node layer
-    * Functions start with acNode.
-    * Provides control over multiple devices in a single node.
-    * All functions are asynchronous and executed concurrently on all devices in the node.
-    * Subsequent functions called in the same stream (see Section #Streams and synchronization) are guaranteed to be synchronous.
+    * Functions start with `acDevice`.
+    * All functions are asynchronous and managed using Streams.
 
 * Grid layer
-    * Functions start with acGrid.
-    * Provides control over all devices on multiple node.
-    * Requires MPI. `MPI_Init()` must be called before calling any acGrid functions.
-    * Streams are used to control concurrency the same way as on acDevice and acNode layers.
+    * Provides control over all devices on multiple node. Uses MPI.
+    * Functions start with `acGrid`.
+    * `MPI_Init()` must be called before calling any acGrid functions.
+    * Streams are used to control concurrency the same way as on the acDevice layer.
 
-Finally, a fourth layer is provided for convenience and backwards compatibility.
+Finally, two additional layers are provided for convenience and backwards compatibility.
+
+* Node layer (backwards compatibility)
+    * Provides control over multiple devices in a single node.
+    * Functions start with `acNode`.
+    * All functions are asynchronous and executed concurrently on all devices in the node.
+    * Subsequent functions called in the same stream (see Section #Streams and synchronization) are guaranteed to be synchronous.
+    * For machines without CUDA-aware MPI support
+    * New applications should opt for the Grid layer instead if possible
 
 * Astaroth layer (deprecated)
+    * Very high-level interace to Astaroth without concurrency control
     * Functions start with `ac` only, f.ex. acInit().
     * Provided for backwards compatibility.
     * Essentially a wrapper for the Node layer.
