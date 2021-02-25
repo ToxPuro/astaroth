@@ -312,8 +312,13 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
 
 static inline void
 print_diagnostics_device(const Device device, const int step, const AcReal dt, const AcReal t_step, FILE* diag_file,
-                         const AcReal sink_mass, const AcReal accreted_mass, int* found_nan)
+                         const AcReal sink_mass, const AcReal accreted_mass, int* found_nan, AcMeshInfo mesh_info)
 {
+
+    const int mx = mesh_info.int_params[AC_nx];
+    const int my = mesh_info.int_params[AC_ny];
+    const int mz = mesh_info.int_params[AC_nz];
+    const int mtot = mx*my*mz;
 
     AcReal buf_rms, buf_max, buf_min;
     const int max_name_width = 16;
@@ -323,6 +328,8 @@ print_diagnostics_device(const Device device, const int step, const AcReal dt, c
     acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_min);
     acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_rms);
 
+    //acDeviceReduceVec calculates only the sum on var**2 
+    buf_rms = sqrt(buf_rms/AcReal(mtot));
 
     // MV: The ordering in the earlier version was wrong in terms of variable
     // MV: name and its diagnostics.
@@ -336,6 +343,7 @@ print_diagnostics_device(const Device device, const int step, const AcReal dt, c
     acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, BFIELDX, BFIELDY, BFIELDZ, &buf_max);
     acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MIN, BFIELDX, BFIELDY, BFIELDZ, &buf_min);
     acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_RMS, BFIELDX, BFIELDY, BFIELDZ, &buf_rms);
+    buf_rms = sqrt(buf_rms/AcReal(mtot));
 
     printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
            double(buf_rms), double(buf_max));
@@ -344,6 +352,7 @@ print_diagnostics_device(const Device device, const int step, const AcReal dt, c
     acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_max)
     acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MIN, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_min)
     acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_rms)
+    buf_rms = sqrt(buf_rms/AcReal(mtot));
 
     printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
            double(buf_rms), double(buf_max));
@@ -355,6 +364,7 @@ print_diagnostics_device(const Device device, const int step, const AcReal dt, c
         acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MAX, VertexBufferHandle(i), &buf_max);
         acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MIN, VertexBufferHandle(i), &buf_min);
         acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_RMS, VertexBufferHandle(i), &buf_rms);
+        buf_rms = sqrt(buf_rms/AcReal(mtot));
 
         printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
                double(buf_min), double(buf_rms), double(buf_max));
@@ -448,7 +458,7 @@ run_simulation(const char* config_path)
         print_diagnostics(0, AcReal(.0), t_step, diag_file, mesh_info.real_params[AC_M_sink_init], 0.0, &found_nan);
 #else
     #if LSHOCK
-        print_diagnostics_device(device, 0, AcReal(.0), t_step, diag_file, -1.0, -1.0, &found_nan);
+        print_diagnostics_device(device, 0, AcReal(.0), t_step, diag_file, -1.0, -1.0, &found_nan, mesh_info);
     #else
         print_diagnostics(0, AcReal(.0), t_step, diag_file, -1.0, -1.0, &found_nan);
     #endif
@@ -594,7 +604,7 @@ run_simulation(const char* config_path)
                 timeseries.ts.
             */
     #if LSHOCK
-            print_diagnostics_device(device, i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
+            print_diagnostics_device(device, i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan, mesh_info);
     #else
             print_diagnostics(i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
     #endif
