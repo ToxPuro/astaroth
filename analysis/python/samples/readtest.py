@@ -59,16 +59,20 @@ meshdir  = "/home/mvaisala/astaroth_projects/shockweek/astaroth/samples/test_cas
 
 
 #Example fixed scaling template
-if (meshdir == "$HOME/astaroth/build/"):
-    rlnrho  = [- 0.08,   0.08]
-    rrho    = [  0.93,   1.08]
-    rNcol   = [  500.0,  530.0]
+if (meshdir == "/home/mvaisala/astaroth_projects/shockweek/astaroth/samples/test_cases/kin_sph_shock/"):
+    rlnrho  = [- 0.2,   0.5]
+    rrho    = [  0.2,   1.8]
+    rNcol   = [  90.0,  160.0]
+
+    rss     = [ 1.0, 4.0]
+  
+    rshock  = [0.0, 1.0]
     
-    ruu_tot = [ 0.0,  0.3]
-    ruu_xyz = [-0.3,  0.3]
+    ruu_tot = [ 0.0,  5.0]
+    ruu_xyz = [-5.3,  5.0]
     
-    raa_tot = [ 0.0,  0.14]
-    raa_xyz = [-0.14, 0.14]
+    raa_tot = [ 1.0,  1.14]
+    raa_xyz = [-1.14, 1.14]
     
     rbb_tot = [ 0.0, 0.3] 
     rbb_xyz = [-0.3, 0.3] 
@@ -328,20 +332,22 @@ if 'sl' in sys.argv:
             if ('lim' in sys.argv) or ('sym' in sys.argv):
                 vis.slices.plot_3(mesh, mesh.lnrho,         title = r'$\ln \rho$', bitmap = True, fname = 'lnrho',      colrange=rlnrho)
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$\rho$', bitmap = True, fname = 'rho',            colrange=rrho)
+                vis.slices.plot_3(mesh, mesh.shock,         title = r'$shock$', bitmap = True, fname = 'shock',         colrange=rshock)
+                vis.slices.plot_3(mesh, mesh.ss,            title = r'$s$', bitmap = True, fname = 'ss',                colrange=rss)
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$N_\mathrm{col}$', bitmap = True, fname = 'colden', slicetype = 'sum', colrange=rNcol)
                 vis.slices.plot_3(mesh, uu_tot,             title = r'$|u|$', bitmap = True, fname = 'uutot',           colrange=ruu_tot)
                 vis.slices.plot_3(mesh, mesh.uu[0],         title = r'$u_x$', bitmap = True, fname = 'uux',             colrange=ruu_xyz)
                 vis.slices.plot_3(mesh, mesh.uu[1],         title = r'$u_y$', bitmap = True, fname = 'uuy',             colrange=ruu_xyz)
                 vis.slices.plot_3(mesh, mesh.uu[2],         title = r'$u_z$', bitmap = True, fname = 'uuz',             colrange=ruu_xyz)
-                vis.slices.plot_3(mesh, aa_tot,             title = r'$\|A\|$', bitmap = True, fname = 'aatot',         colrange=raa_tot)
-                vis.slices.plot_3(mesh, mesh.aa[0],         title = r'$A_x$', bitmap = True, fname = 'aax',             colrange=raa_xyz)
-                vis.slices.plot_3(mesh, mesh.aa[1],         title = r'$A_y$', bitmap = True, fname = 'aay',             colrange=raa_xyz)
-                vis.slices.plot_3(mesh, mesh.aa[2],         title = r'$A_z$', bitmap = True, fname = 'aaz',             colrange=raa_xyz)
+                vis.slices.plot_3(mesh, aa_tot,             title = r'$\|a\|$', bitmap = True, fname = 'aatot',         colrange=raa_tot)
+                vis.slices.plot_3(mesh, mesh.aa[0],         title = r'$a_x$', bitmap = True, fname = 'aax',             colrange=raa_xyz)
+                vis.slices.plot_3(mesh, mesh.aa[1],         title = r'$a_y$', bitmap = True, fname = 'aay',             colrange=raa_xyz)
+                vis.slices.plot_3(mesh, mesh.aa[2],         title = r'$a_z$', bitmap = True, fname = 'aaz',             colrange=raa_xyz)
                 #vis.slices.plot_3(mesh, mesh.accretion,     title = r'$Accretion$', bitmap = True, fname = 'accretion', colrange=[0.0,0.000001])
-                vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot',         colrange=rbb_tot)#, trimghost=3)
-                vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx',             colrange=rbb_xyz)#, trimghost=3)#, bfieldlines=True)
-                vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby',             colrange=rbb_xyz)#, trimghost=3)#, bfieldlines=True)
-                vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz',             colrange=rbb_xyz)#, trimghost=3)#, bfieldlines=True)
+                #vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot',         colrange=rbb_tot)#, trimghost=3)
+                #vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx',             colrange=rbb_xyz)#, trimghost=3)#, bfieldlines=True)
+                #vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby',             colrange=rbb_xyz)#, trimghost=3)#, bfieldlines=True)
+                #vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz',             colrange=rbb_xyz)#, trimghost=3)#, bfieldlines=True)
             else: 
                 vis.slices.plot_3(mesh, mesh.lnrho,         title = r'$\ln \rho$', bitmap = True, fname = 'lnrho')
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$\rho$', bitmap = True, fname = 'rho')
