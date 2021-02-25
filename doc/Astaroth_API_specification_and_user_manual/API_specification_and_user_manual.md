@@ -440,28 +440,6 @@ int mz = info.int_params[AC_mz];
 after initialization.
 
 
-### Decomposition (`acNode` layer)
-
-> **Note:** This section describes implementation details specific to the acNode layer. The acGrid layer is not related to the `GridDims` structure described here.
-
-`GridDims` contains the dimensions of the the mesh decomposed to multiple devices.
-```C
-typedef struct {
-    int3 m; // Size of the simulation domain (includes the ghost zones)
-    int3 n; // Size of the computational domain (without ghost zones)
-} GridDims;
-```
-
-As briefly discussed in the section Data synchronization, a `Mesh` is distributed to multiple
-devices by blocking the data along the *z*-axis. Given the mesh dimensions *(mx, my, mz)*, its
-computational domain *(nx, ny, nz)* and *n* number of devices, then each device is assigned a mesh
-of size *(mx, my, 2 * NGHOST + nz/n)* and a computational domain of size *(nx, ny, nz/n)*.
-
-Let *i* be the device id. The portion of the halos shared by neighboring devices is then
-*(0, 0, i * nz/n)* - *(mx, my, 2 * NGHOST + i * nz/n)*. The functions
-`acNodeSynchronizeVertexBuffer` and `acNodeSynchronizeMesh` communicate these shared areas among
-the devices in the node.
-
 # Astaroth Domain-Specific Language
 
 We designed the Astaroth Domain-specific Language (DSL) for expressing stencil computations in a
