@@ -60,16 +60,16 @@ meshdir  = "/home/mvaisala/astaroth_projects/shockweek/astaroth/samples/test_cas
 
 #Example fixed scaling template
 if (meshdir == "/home/mvaisala/astaroth_projects/shockweek/astaroth/samples/test_cases/kin_sph_shock/"):
-    rlnrho  = [- 0.2,   0.5]
-    rrho    = [  0.2,   1.8]
-    rNcol   = [  90.0,  160.0]
+    rlnrho  = [- 0.8,   0.4]
+    rrho    = [  0.5,   1.4]
+    rNcol   = [ 110.0,  150.0]
 
-    rss     = [ 1.0, 4.0]
+    rss     = [ 1.0, 2.0]
   
-    rshock  = [0.0, 1.0]
+    rshock  = [0.0, 0.03]
     
-    ruu_tot = [ 0.0,  5.0]
-    ruu_xyz = [-5.3,  5.0]
+    ruu_tot = [ 0.0,  1.5]
+    ruu_xyz = [-1.5,  1.5]
     
     raa_tot = [ 1.0,  1.14]
     raa_xyz = [-1.14, 1.14]
