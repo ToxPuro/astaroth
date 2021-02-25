@@ -398,7 +398,8 @@ run_simulation(const char* config_path)
 
     AcMesh* mesh = acmesh_create(mesh_info);
     // TODO: This need to be possible to define in astaroth.conf
-    acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, mesh);
+    //acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, mesh);
+    acmesh_init_to(INIT_TYPE_KICKBALL, mesh);
     // acmesh_init_to(INIT_TYPE_SIMPLE_CORE, mesh); //Initial condition for a collapse test
 
 #if LSINK
@@ -567,26 +568,26 @@ run_simulation(const char* config_path)
         for (int isubstep = 0; isubstep < 3; ++isubstep) {
             //Call only singe GPU version on for testing the shock viscosity first
             acDevice_shock_1_divu(device, STREAM_DEFAULT, start, end);
-            acDeviceSynchronizeStream(device, STREAM_ALL);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
             acDeviceSwapBuffer(device, VTXBUF_SHOCK);
             acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
-            acDeviceSynchronizeStream(device, STREAM_ALL);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
 
             acDevice_shock_2_max(device, STREAM_DEFAULT, start, end);
             acDeviceSwapBuffer(device, VTXBUF_SHOCK);
-            acDeviceSynchronizeStream(device, STREAM_ALL);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
             acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
-            acDeviceSynchronizeStream(device, STREAM_ALL);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
 
             acDevice_shock_3_smooth(device, STREAM_DEFAULT, start, end);
-            acDeviceSynchronizeStream(device, STREAM_ALL);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
             acDeviceSwapBuffer(device, VTXBUF_SHOCK);
-            acDeviceSynchronizeStream(device, STREAM_ALL);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
             acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
 
             //RUN SOLVE
             acDeviceIntegrateSubstep(device, STREAM_DEFAULT, isubstep, start, end, dt);
-            acDeviceSynchronizeStream(device, STREAM_ALL);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
             acDeviceSwapBuffers(device);
             // TO compensate
             acDeviceSwapBuffer(device, VTXBUF_SHOCK);

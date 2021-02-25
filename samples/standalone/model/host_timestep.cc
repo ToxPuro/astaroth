@@ -53,8 +53,11 @@ host_timestep(const AcReal& umax, const AcReal& vAmax, const AcReal& shock_max, 
     //const long double uu_dt   = cdt * dsmin / (fabsl(umax) + sqrtl(cs2_sound + 0.0l));
     const long double uu_dt   = cdt * dsmin / (fabsl(umax) + sqrtl(cs2_sound + vAmax*vAmax));
     const long double visc_dt = cdtv * dsmin * dsmin /
-                                max(max(max(nu_visc, eta),
-                                    max(gamma, chi)),nu_shock*shock_max);
+    //Sum up viscous coefficient instead
+    //                          max(max(max(nu_visc, eta),
+    //                              gamma*chi),nu_shock*shock_max);
+                                (nu_visc + eta + gamma*chi 
+                                 + nu_shock*shock_max);
 
     const long double dt = min(uu_dt, visc_dt);
     return AcReal(timescale) * AcReal(dt);
