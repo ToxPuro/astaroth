@@ -274,11 +274,11 @@ AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
 Finally, there's a library function that is automatically generated for all user-specified `Kernel`
 functions written with the Astaroth DSL,
 ```C
-AcResult acDeviceKernel_##identifier(const Device device, const Stream stream,
+AcResult acDevice_##identifier(const Device device, const Stream stream,
                                      const int3 start, const int3 end);
 ```
 Where `##identifier` is replaced with the name of the user-specified kernel. For example, a device
-function `Kernel solve()` can be called with `acDeviceKernel_solve()` via the API.
+function `Kernel solve()` can be called with `acDevice_solve()` via the API.
 
 ## Stream Synchronization
 
@@ -351,6 +351,7 @@ kernels, we have no way of knowing when the output buffers are complete and can 
 Therefore the user must explicitly state when the input and output buffer should be swapped. This
 is done via the API calls
 ```C
+AcResult acDeviceSwapBuffer(const Device device, const VertexBufferHandle handle);
 AcResult acDeviceSwapBuffers(const Device device);
 AcResult acNodeSwapBuffers(const Node node);
 ```
@@ -557,7 +558,7 @@ to `main` functions of host code.
 Kernels must be declared in stencil processing files. DSL kernels can be called from host code
 using the API function
 ```C
-AcResult acDeviceKernel_##identifier(const Device device, const Stream stream,
+AcResult acDevice_##identifier(const Device device, const Stream stream,
                                      const int3 start, const int3 end);
 ```
 , where ##identifier is the name of the kernel function.
