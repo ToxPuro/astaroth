@@ -498,8 +498,8 @@ acDeviceReduceScal(const Device device, const Stream stream, const ReductionType
 {
     cudaSetDevice(device->id);
 
-    const int3 start = constructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min);
-    const int3 end   = constructInt3Param(AC_nx_max, AC_ny_max, AC_nz_max);
+    const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
+    const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
 
     *result = acKernelReduceScal(device->streams[stream], rtype, start, end,
                                  device->vba.in[vtxbuf_handle], device->reduce_scratchpad,
@@ -514,8 +514,8 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
 {
     cudaSetDevice(device->id);
 
-    const int3 start = constructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min);
-    const int3 end   = constructInt3Param(AC_nx_max, AC_ny_max, AC_nz_max);
+    const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
+    const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
 
     *result = acKernelReduceVec(device->streams[stream], rtype, start, end, device->vba.in[vtxbuf0],
                                 device->vba.in[vtxbuf1], device->vba.in[vtxbuf2],
@@ -531,8 +531,8 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
 {
     cudaSetDevice(device->id);
 
-    const int3 start = constructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min);
-    const int3 end   = constructInt3Param(AC_nx_max, AC_ny_max, AC_nz_max);
+    const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
+    const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
 
     *result = acKernelReduceVecScal(device->streams[stream], rtype, start, end,
                                     device->vba.in[vtxbuf0], device->vba.in[vtxbuf1],
