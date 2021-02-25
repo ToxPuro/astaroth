@@ -407,11 +407,11 @@ AcResult acGridPeriodicBoundconds(const Stream stream);
 /** */
 AcResult acGridGeneralBoundconds(const Device device, const Stream stream);
 
-/** TODO */
+/** */
 AcResult acGridReduceScal(const Stream stream, const ReductionType rtype,
                           const VertexBufferHandle vtxbuf_handle, AcReal* result);
 
-/** TODO */
+/** */
 AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
                          const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                          const VertexBufferHandle vtxbuf2, AcReal* result);
