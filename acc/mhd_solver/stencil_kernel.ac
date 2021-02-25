@@ -160,7 +160,7 @@ uniform ScalarField VTXBUF_SHOCK;
 Preprocessed Scalar
 smooth_kernel(in ScalarField vertex)
 {
-    int ns = 7;
+    const int ns = 7;
     //int n_smooth = ns*ns*ns;
     //Scalar smooth_factor[n_smooth];
     //Explicit numbers because of DSL bug.
@@ -170,8 +170,8 @@ smooth_kernel(in ScalarField vertex)
 
     // From Pencil Code src/shock_highorder.f90
     // Gaussian weights
-    //Scalar weights[ns];
-    Scalar weights[7];
+    Scalar weights[ns];
+    //Scalar weights[7];
     weights[0] = 1.0;
     weights[1] = 9.0;
     weights[2] = 45.0;
@@ -791,7 +791,13 @@ get_bfield(in VectorField aa)
 Device Scalar
 divu_shock(in VectorField uu)
 {
-    return -divergence(uu);
+    // Set discard the values which do not contain negative divergence.
+    Scalar divu = divergence(uu);
+    if (divu >= 0.0) {
+        return -divu;
+    } else {
+        return 0.0; 
+    }
 }
 
 //Calculate local maximum from divergences.
