@@ -27,6 +27,6 @@
 #pragma once
 #include "astaroth.h"
 
-AcReal host_timestep(const AcReal& umax, const AcReal& vAmax, const AcMeshInfo& mesh_info);
+AcReal host_timestep(const AcReal& umax, const AcReal& vAmax, const AcReal& shock_max, const AcMeshInfo& mesh_info);
 
 void set_timescale(const AcReal scale);

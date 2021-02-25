@@ -31,7 +31,7 @@
 static AcReal timescale = AcReal(1.0);
 
 AcReal
-host_timestep(const AcReal& umax, const AcReal& vAmax, const AcMeshInfo& mesh_info)
+host_timestep(const AcReal& umax, const AcReal& vAmax, const AcReal& shock_max, const AcMeshInfo& mesh_info)
 {
     const long double cdt  = mesh_info.real_params[AC_cdt];
     const long double cdtv = mesh_info.real_params[AC_cdtv];
@@ -40,8 +40,9 @@ host_timestep(const AcReal& umax, const AcReal& vAmax, const AcMeshInfo& mesh_in
     const long double nu_visc   = mesh_info.real_params[AC_nu_visc];
     const long double eta       = mesh_info.real_params[AC_eta];
     const long double chi       = 0; // mesh_info.real_params[AC_chi]; // TODO not calculated
-    const long double gamma     = mesh_info.real_params[AC_gamma]; //TODO this does not make sense here at all. 
+    const long double gamma     = 0; //mesh_info.real_params[AC_gamma]; //TODO this does not make sense here at all. 
     const long double dsmin     = mesh_info.real_params[AC_dsmin];
+    const long double nu_shock   = mesh_info.real_params[AC_nu_shock];
 
     // Old ones from legacy Astaroth
     // const long double uu_dt   = cdt * (dsmin / (umax + cs_sound));
@@ -52,8 +53,8 @@ host_timestep(const AcReal& umax, const AcReal& vAmax, const AcMeshInfo& mesh_in
     //const long double uu_dt   = cdt * dsmin / (fabsl(umax) + sqrtl(cs2_sound + 0.0l));
     const long double uu_dt   = cdt * dsmin / (fabsl(umax) + sqrtl(cs2_sound + vAmax*vAmax));
     const long double visc_dt = cdtv * dsmin * dsmin /
-                                max(max(nu_visc, eta),
-                                    max(gamma, chi));
+                                max(max(max(nu_visc, eta),
+                                    max(gamma, chi)),nu_shock*shock_max);
 
     const long double dt = min(uu_dt, visc_dt);
     return AcReal(timescale) * AcReal(dt);

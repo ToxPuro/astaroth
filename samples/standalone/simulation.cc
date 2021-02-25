@@ -536,9 +536,11 @@ run_simulation(const char* config_path)
 #endif
 
 #if LSHOCK
-        AcReal umax;
+        AcReal umax, shock_max;
         acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &umax);
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_SHOCK, &shock_max);
 #else 
+        const AcReal shock_max = 0.0;
         const AcReal umax = acReduceVec(RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
 #endif
 
@@ -550,10 +552,10 @@ run_simulation(const char* config_path)
         const AcReal vAmax = acReduceVecScal(RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO);
     #endif
         const AcReal uref  = max(max(umax,uu_freefall), vAmax); 
-        const AcReal dt   = host_timestep(uref, vAmax, mesh_info);
+        const AcReal dt   = host_timestep(uref, vAmax, shock_max, mesh_info);
 #else
         const AcReal uref  = max(umax,uu_freefall); 
-        const AcReal dt   = host_timestep(uref, 0.0l, mesh_info);
+        const AcReal dt   = host_timestep(uref, 0.0l, shock_max, mesh_info);
 #endif
 
 #if LFORCING
