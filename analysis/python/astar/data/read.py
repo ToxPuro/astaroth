@@ -271,6 +271,8 @@ class Mesh:
 
             self.ss, timestamp, ok = read_bin('VTXBUF_ENTROPY', fdir, fnum, self.minfo, getfilename=pdiag)
 
+            self.shock, timestamp, ok = read_bin('VTXBUF_SHOCK', fdir, fnum, self.minfo, getfilename=pdiag)
+
             self.accretion, timestamp, ok = read_bin('VTXBUF_ACCRETION', fdir, fnum, self.minfo, getfilename=pdiag)
  
             #TODO Generalize is a dict. Do not hardcode!  
