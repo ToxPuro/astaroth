@@ -111,6 +111,7 @@ Finally, two additional layers are provided for convenience and backwards compat
     * Provided for backwards compatibility.
     * Essentially a wrapper for the Node layer.
     * All functions are guaranteed to be synchronous.
+    * At the moment, `samples/standalone/` is using the Astaroth/Node layer, but it will be phased out with `samples/standalone_mpi/` during 2021.  
 
 There are also several helper functions defined in `include/astaroth.h`, which can be used for, say, determining the size or performing index calculations within the simulation domain.
 
