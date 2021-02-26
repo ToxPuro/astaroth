@@ -1,3 +1,4 @@
+B
 # Astaroth Specification and User Manual
 
 Copyright (C) 2014-2020, Johannes Pekkila, Miikka Vaisala.
@@ -55,11 +56,13 @@ The foundational work was done in (Väisälä, Pekkilä, 2017) and the library, 
 in this document were introduced in (Pekkilä, 2019). We kindly wish the users of Astaroth to cite
 to these publications in their work.
 
-> [J. Pekkilä, Astaroth: A Library for Stencil Computations on Graphics Processing Units. Master's thesis, Aalto University School of Science, Espoo, Finland, 2019.](http://urn.fi/URN:NBN:fi:aalto-201906233993)
+> [Väisälä, M., Pekkilä, J., Käpylä, M., Rheinhardt, M., Shang, H., & Krasnopolsky, R. “Interaction of Large- and Small-Scale Dynamos in Isotropic Turbulent Flows from GPU-Accelerated Simulations.” The Astrophysical Journal, vol. 907, no. 2, Feb. 2021, p. 83.](https://doi.org/10.3847/1538-4357/abceca)
 
-> [M. S. Väisälä, Magnetic Phenomena of the Interstellar Medium in Theory and Observation. PhD thesis, University of Helsinki, Finland, 2017.](http://urn.fi/URN:ISBN:978-951-51-2778-5)
+> [Pekkilä, J. Astaroth: A Library for Stencil Computations on Graphics Processing Units. Master's thesis, Aalto University School of Science, Espoo, Finland, 2019.](http://urn.fi/URN:NBN:fi:aalto-201906233993)
 
-> [J. Pekkilä, M. S. Väisälä, M. Käpylä, P. J. Käpylä, and O. Anjum, “Methods for compressible fluid simulation on GPUs using high-order finite differences, ”Computer Physics Communications, vol. 217, pp. 11–22, Aug. 2017.](https://doi.org/10.1016/j.cpc.2017.03.011)
+> [Väisälä, M. Magnetic Phenomena of the Interstellar Medium in Theory and Observation. PhD thesis, University of Helsinki, Finland, 2017.](http://urn.fi/URN:ISBN:978-951-51-2778-5)
+
+> [Pekkilä, J., Väisälä, M., Käpylä, M., Käpylä, P. J., and Anjum, O. “Methods for compressible fluid simulation on GPUs using high-order finite differences, ”Computer Physics Communications, vol. 217, pp. 11–22, Aug. 2017.](https://doi.org/10.1016/j.cpc.2017.03.011)
 
 
 
@@ -79,32 +82,36 @@ typedef enum {
 ```
 
 The API is divided into layers which differ in the level of control provided over the execution.
-There are three primary layers:
+There are two primary layers:
 
 * Device layer
-    * Functions start with acDevice.
     * Provides control over a single GPU.
-    * All functions are asynchronous.
-
-* Node layer
-    * Functions start with acNode.
-    * Provides control over multiple devices in a single node.
-    * All functions are asynchronous and executed concurrently on all devices in the node.
-    * Subsequent functions called in the same stream (see Section #Streams and synchronization) are guaranteed to be synchronous.
+    * Functions start with `acDevice`.
+    * All functions are asynchronous and managed using Streams.
 
 * Grid layer
-    * Functions start with acGrid.
-    * Provides control over all devices on multiple node.
-    * Requires MPI. `MPI_Init()` must be called before calling any acGrid functions.
-    * Streams are used to control concurrency the same way as on acDevice and acNode layers.
+    * Provides control over all devices on multiple node. Uses MPI.
+    * Functions start with `acGrid`.
+    * `MPI_Init()` must be called before calling any acGrid functions.
+    * Streams are used to control concurrency the same way as on the acDevice layer.
 
-Finally, a fourth layer is provided for convenience and backwards compatibility.
+Finally, two additional layers are provided for convenience and backwards compatibility.
+
+* Node layer (backwards compatibility)
+    * Provides control over multiple devices in a single node.
+    * Functions start with `acNode`.
+    * All functions are asynchronous and executed concurrently on all devices in the node.
+    * Subsequent functions called in the same stream (see Section #Streams and synchronization) are guaranteed to be synchronous.
+    * For machines without CUDA-aware MPI support
+    * New applications should opt for the Grid layer instead if possible
 
 * Astaroth layer (deprecated)
+    * Very high-level interace to Astaroth without concurrency control
     * Functions start with `ac` only, f.ex. acInit().
     * Provided for backwards compatibility.
     * Essentially a wrapper for the Node layer.
     * All functions are guaranteed to be synchronous.
+    * At the moment, `samples/standalone/` is using the Astaroth/Node layer, but it will be phased out with `samples/standalone_mpi/` during 2021.  
 
 There are also several helper functions defined in `include/astaroth.h`, which can be used for, say, determining the size or performing index calculations within the simulation domain.
 
@@ -268,11 +275,11 @@ AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
 Finally, there's a library function that is automatically generated for all user-specified `Kernel`
 functions written with the Astaroth DSL,
 ```C
-AcResult acDeviceKernel_##identifier(const Device device, const Stream stream,
+AcResult acDevice_##identifier(const Device device, const Stream stream,
                                      const int3 start, const int3 end);
 ```
 Where `##identifier` is replaced with the name of the user-specified kernel. For example, a device
-function `Kernel solve()` can be called with `acDeviceKernel_solve()` via the API.
+function `Kernel solve()` can be called with `acDevice_solve()` via the API.
 
 ## Stream Synchronization
 
@@ -345,6 +352,7 @@ kernels, we have no way of knowing when the output buffers are complete and can 
 Therefore the user must explicitly state when the input and output buffer should be swapped. This
 is done via the API calls
 ```C
+AcResult acDeviceSwapBuffer(const Device device, const VertexBufferHandle handle);
 AcResult acDeviceSwapBuffers(const Device device);
 AcResult acNodeSwapBuffers(const Node node);
 ```
@@ -432,28 +440,6 @@ int mz = info.int_params[AC_mz];
 ```
 after initialization.
 
-
-### Decomposition (`acNode` layer)
-
-> **Note:** This section describes implementation details specific to the acNode layer. The acGrid layer is not related to the `GridDims` structure described here.
-
-`GridDims` contains the dimensions of the the mesh decomposed to multiple devices.
-```C
-typedef struct {
-    int3 m; // Size of the simulation domain (includes the ghost zones)
-    int3 n; // Size of the computational domain (without ghost zones)
-} GridDims;
-```
-
-As briefly discussed in the section Data synchronization, a `Mesh` is distributed to multiple
-devices by blocking the data along the *z*-axis. Given the mesh dimensions *(mx, my, mz)*, its
-computational domain *(nx, ny, nz)* and *n* number of devices, then each device is assigned a mesh
-of size *(mx, my, 2 * NGHOST + nz/n)* and a computational domain of size *(nx, ny, nz/n)*.
-
-Let *i* be the device id. The portion of the halos shared by neighboring devices is then
-*(0, 0, i * nz/n)* - *(mx, my, 2 * NGHOST + i * nz/n)*. The functions
-`acNodeSynchronizeVertexBuffer` and `acNodeSynchronizeMesh` communicate these shared areas among
-the devices in the node.
 
 # Astaroth Domain-Specific Language
 
@@ -551,7 +537,7 @@ to `main` functions of host code.
 Kernels must be declared in stencil processing files. DSL kernels can be called from host code
 using the API function
 ```C
-AcResult acDeviceKernel_##identifier(const Device device, const Stream stream,
+AcResult acDevice_##identifier(const Device device, const Stream stream,
                                      const int3 start, const int3 end);
 ```
 , where ##identifier is the name of the kernel function.

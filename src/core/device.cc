@@ -482,19 +482,24 @@ acDeviceGeneralBoundconds(const Device device, const Stream stream, const int3 s
     return AC_SUCCESS;
 }
 
+static int3
+constructInt3Param(const Device device, const AcIntParam a, const AcIntParam b, const AcIntParam c)
+{
+    return (int3){
+        device->local_config.int_params[a],
+        device->local_config.int_params[b],
+        device->local_config.int_params[c],
+    };
+}
+
 AcResult
 acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
                    const VertexBufferHandle vtxbuf_handle, AcReal* result)
 {
     cudaSetDevice(device->id);
 
-    const int3 start = (int3){device->local_config.int_params[AC_nx_min],
-                              device->local_config.int_params[AC_ny_min],
-                              device->local_config.int_params[AC_nz_min]};
-
-    const int3 end = (int3){device->local_config.int_params[AC_nx_max],
-                            device->local_config.int_params[AC_ny_max],
-                            device->local_config.int_params[AC_nz_max]};
+    const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
+    const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
 
     *result = acKernelReduceScal(device->streams[stream], rtype, start, end,
                                  device->vba.in[vtxbuf_handle], device->reduce_scratchpad,
@@ -509,13 +514,8 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
 {
     cudaSetDevice(device->id);
 
-    const int3 start = (int3){device->local_config.int_params[AC_nx_min],
-                              device->local_config.int_params[AC_ny_min],
-                              device->local_config.int_params[AC_nz_min]};
-
-    const int3 end = (int3){device->local_config.int_params[AC_nx_max],
-                            device->local_config.int_params[AC_ny_max],
-                            device->local_config.int_params[AC_nz_max]};
+    const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
+    const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
 
     *result = acKernelReduceVec(device->streams[stream], rtype, start, end, device->vba.in[vtxbuf0],
                                 device->vba.in[vtxbuf1], device->vba.in[vtxbuf2],
@@ -531,13 +531,8 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
 {
     cudaSetDevice(device->id);
 
-    const int3 start = (int3){device->local_config.int_params[AC_nx_min],
-                              device->local_config.int_params[AC_ny_min],
-                              device->local_config.int_params[AC_nz_min]};
-
-    const int3 end = (int3){device->local_config.int_params[AC_nx_max],
-                            device->local_config.int_params[AC_ny_max],
-                            device->local_config.int_params[AC_nz_max]};
+    const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
+    const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
 
     *result = acKernelReduceVecScal(device->streams[stream], rtype, start, end,
                                     device->vba.in[vtxbuf0], device->vba.in[vtxbuf1],
