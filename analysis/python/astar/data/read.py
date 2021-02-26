@@ -635,6 +635,7 @@ def parse_ts(fdir, fname, debug = False):
             line[i] = line[i].replace('Y', "y")
             line[i] = line[i].replace('Z', "z")
             line[i] = line[i].replace('vaa', "vA")
+            line[i] = line[i].replace('SHOCK', "shock")
 
         #tsdata = np.loadtxt(fdir+fname,skiprows=1)
         tsdata = np.genfromtxt(fdir+fname,skip_header=1, skip_footer=1)
