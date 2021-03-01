@@ -764,6 +764,20 @@ external acdevicesynchronizestream
     ++counter;
     fprintf(FHEADER, "integer(c_int), parameter :: NUM_REDUCTION_TYPES = %lu\n", counter);
 
+    // Boundcond types
+    fprintf(DSLHEADER, "#define AC_FOR_BCTYPES(FUNC)\\\n");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "AC_BOUNDCOND_PERIODIC");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "AC_BOUNDCOND_SYMMETRIC");
+    fprintf(DSLHEADER, "FUNC(%s)\n", "AC_BOUNDCOND_ANTISYMMETRIC");
+
+    counter = 0;
+    fprintf(FHEADER, "integer(c_int), parameter :: AC_BOUNDCOND_PERIODIC = %lu\n", counter);
+    ++counter;
+    fprintf(FHEADER, "integer(c_int), parameter :: AC_BOUNDCOND_SYMMETRIC = %lu\n", counter);
+    ++counter;
+    fprintf(FHEADER, "integer(c_int), parameter :: AC_BOUNDCOND_ANTISYMMETRIC = %lu\n", counter);
+    ++counter;
+
     // Fortran structs
     const char* fortran_structs = R"(
 type, bind(C) :: AcMeshInfo
