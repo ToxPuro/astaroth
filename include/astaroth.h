@@ -183,12 +183,35 @@ acVertexBufferCompdomainSizeBytes(const AcMeshInfo info)
     return sizeof(AcReal) * acVertexBufferCompdomainSize(info);
 }
 
+static int3
+acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
+                     const AcMeshInfo info)
+{
+    return (int3){
+        info.int_params[a],
+        info.int_params[b],
+        info.int_params[c],
+    };
+}
+
 static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
     return i +                          //
            j * info.int_params[AC_mx] + //
            k * info.int_params[AC_mx] * info.int_params[AC_my];
+}
+
+static inline int3
+acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
+{
+    const int3 mm = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+
+    return (int3){
+        (int)i % mm.x,
+        ((int)i % (mm.x * mm.y)) / mm.x,
+        (int)i / (mm.x * mm.y),
+    };
 }
 
 /** Prints all parameters inside AcMeshInfo */
