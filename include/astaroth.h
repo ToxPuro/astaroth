@@ -235,7 +235,7 @@ acPrintMeshInfo(const AcMeshInfo config)
 static inline void
 acQueryBCtypes(void)
 {
-    for (int i = 0; i < NUM_RTYPES; ++i)
+    for (int i = 0; i < NUM_BCTYPES; ++i)
         printf("%s (%d)\n", bctype_names[i], i);
 }
 
