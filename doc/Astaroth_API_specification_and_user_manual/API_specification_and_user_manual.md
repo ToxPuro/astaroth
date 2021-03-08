@@ -414,7 +414,7 @@ typedef struct {
 } AcMesh;
 ```
 
-`AcMeshInfo` holds all the parameters required to run DSL kernel. The following built-in parameters are available:
+`AcMeshInfo` holds all the parameters required to execute DSL kernels. The following built-in parameters are available:
 
 | Type | Built-in parameter | Description | Required |
 | ---- | --------- | ----------- | -------- |
