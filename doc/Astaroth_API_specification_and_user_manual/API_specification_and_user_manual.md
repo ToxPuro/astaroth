@@ -414,15 +414,14 @@ typedef struct {
 } AcMesh;
 ```
 
-`AcMeshInfo` holds all the parameters required to run DSL kernel, including
-several built-in parameters.
+`AcMeshInfo` holds all the parameters required to run DSL kernel. The following built-in parameters are available:
 
 | Type | Built-in parameter | Description | Required |
 | ---- | --------- | ----------- | -------- |
 | int | AC_nx | Number of cells in the computational domain (x-axis) | YES |
 | int | AC_ny | Number of cells in the computational domain (y-axis) | YES |
 | int | AC_nz | Number of cells in the computational domain (z-axis) | YES |
-| int | AC_bctype_[**bot**\|**top**]_[**x**\|**y**\|**z**] | Boundary conditions used in each ghost zone segment. `top` and `bot` indicate the segments at high and low indices on the selected axis, respectively. | NO |
+| int | AC_bc_type_[**bot**⎮**top**]_[**x**⎮**y**⎮**z**] | Boundary conditions used in each ghost zone segment. `top` and `bot` indicate the segments at high and low indices on the selected axis, respectively. | NO |
 | real | AC_dt | The timestep length when using the built-in RK3 integrator | NO |
 
 
