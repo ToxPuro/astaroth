@@ -414,11 +414,25 @@ typedef struct {
 } AcMesh;
 ```
 
-Several built-in parameters, such as the dimensions of the mesh, and all user-defined parameters
-are defined in the `AcMeshInfo` structure. Before passing AcMeshInfo to an initialization function,
-such as `acDeviceCreate()`, the built-in parameters `AC_nx, AC_ny, AC_nz` must be set. These
-parameters define the dimensions of the computational domain of the mesh. For example,
+`AcMeshInfo` holds all the parameters required to run DSL kernel, including
+several built-in parameters.
+
+| Type | Built-in parameter | Description | Required |
+| ---- | --------- | ----------- | -------- |
+| int | AC_nx | Number of cells in the computational domain (x-axis) | YES |
+| int | AC_ny | Number of cells in the computational domain (y-axis) | YES |
+| int | AC_nz | Number of cells in the computational domain (z-axis) | YES |
+| int | AC_bctype_[**bot**\|**top**]_[**x**\|**y**\|**z**] | Boundary conditions used in each ghost zone segment. `top` and `bot` indicate the segments at high and low indices on the selected axis, respectively. | NO |
+| real | AC_dt | The timestep length when using the built-in RK3 integrator | NO |
+
+
+Before passing `AcMeshInfo` into API functions, at least `AC_nx, AC_ny, AC_nz`
+must be set, others are optional. Astaroth will warn about possibly uninitialized
+parameters when running the code. Initialization is demonstrated in the following
+example:
 ```C
+#include "astaroth.h"
+
 AcMeshInfo info;
 info.int_params[AC_nx] = 128;
 info.int_params[AC_ny] = 64;
@@ -428,17 +442,33 @@ Device device;
 acDeviceCreate(0, info, &device);
 ```
 
-AcMesh is used in loading and storing data from host to device and vice versa. Before calling for
-example `acDeviceLoadMesh()`, one must ensure that all `NUM_VTXBUF_HANDLES` are pointers to valid
-arrays in host memory consisting of `mx * my * mz` elements and stored in order
-`i + j * mx + k * mx * my`, where `i`, `j` and `k` correspond to `x`, `y` and `z` coordinate
-indices, respectively. The mesh dimensions can be queried with
+`AcMesh` is used to load and store data from host to device memory, and vice
+versa. Before calling f.ex. `acDeviceLoadMesh()`, the vertex buffers stored in
+`AcMesh` must point to valid arrays containing `mx * my * mz` elements, which
+can be queried with
 ```C
-int mx = info.int_params[AC_mx];
-int my = info.int_params[AC_my];
-int mz = info.int_params[AC_mz];
+#include "astaroth.h"
+
+AcMeshInfo info;
+info.int_params[AC_nx] = 128;
+info.int_params[AC_ny] = 64;
+info.int_params[AC_nz] = 32;
+acHostUpdateBuiltinParams(&info); // Recalculates mx, my, and mz
+
+// Compact
+int3 mm = acConstructInt3Param(AC_mx, AC_my, AC_mz);
+
+// Or more verbose
+mm.x = info.int_params[AC_mx];
+mm.y = info.int_params[AC_my];
+mm.z = info.int_params[AC_mz];
+
+int number_of_elements = mm.x * mm.y * mm.z;
 ```
-after initialization.
+
+The data must be stored in a row-wise scanline pattern, where the one-dimensional
+index of a spatial index `(i, j, k)` is `i + j * mm.x + k * mm.x * mm.y`.
+
 
 
 # Astaroth Domain-Specific Language
