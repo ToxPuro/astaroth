@@ -278,7 +278,6 @@ acGridQuit(void)
     acHostMeshDestroy(&grid.submesh);
     acDeviceDestroy(grid.device);
 
-    acGridSynchronizeStream(STREAM_ALL);
     return AC_SUCCESS;
 }
 

@@ -31,12 +31,3 @@ Kernel void
 solve()
 {
 } // dummy kernel for integration, hack
-
-// Dummy declarations for bctypes and dt. TODO figure out whether these should be built-in
-uniform int AC_bc_type_top_x;
-uniform int AC_bc_type_bot_x;
-uniform int AC_bc_type_top_y;
-uniform int AC_bc_type_bot_y;
-uniform int AC_bc_type_top_z;
-uniform int AC_bc_type_bot_z;
-uniform Scalar AC_dt;

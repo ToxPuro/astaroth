@@ -493,15 +493,44 @@ traverse(const ASTNode* node)
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 static const char* builtin_int_params[] = {
-    "AC_nx",     "AC_ny",     "AC_nz",     "AC_mx",     "AC_my",
-    "AC_mz",     "AC_nx_min", "AC_ny_min", "AC_nz_min", "AC_nx_max",
-    "AC_ny_max", "AC_nz_max", "AC_mxy",    "AC_nxy",    "AC_nxyz",
+    "AC_nx",
+    "AC_ny",
+    "AC_nz",
+    "AC_mx",
+    "AC_my",
+    "AC_mz",
+    "AC_nx_min",
+    "AC_ny_min",
+    "AC_nz_min",
+    "AC_nx_max",
+    "AC_ny_max",
+    "AC_nz_max",
+    "AC_mxy",
+    "AC_nxy",
+    "AC_nxyz",
+    "AC_bc_type_bot_x",
+    "AC_bc_type_bot_y",
+    "AC_bc_type_bot_z",
+    "AC_bc_type_top_x",
+    "AC_bc_type_top_y",
+    "AC_bc_type_top_z",
+
 };
 
 static const char* builtin_int3_params[] = {
     "AC_global_grid_n",
     "AC_multigpu_offset",
 };
+
+static const char* builtin_real_params[] = {
+    "AC_dt",
+};
+
+/*
+// Add built-in real3 params here and uncomment the other 2x code blocks where
+// builtin_real3_params is referenced
+static const char* builtin_real3_params[] = {};
+*/
 
 static void
 generate_preprocessed_structures(void)
@@ -565,13 +594,24 @@ generate_preprocessed_structures(void)
     fprintf(CUDAHEADER, "#pragma once\n");
 
     // Add built-in params (the best way would be to inject these to user src with AC syntax)
-    for (size_t i = 0; i < ARRAY_SIZE(builtin_int_params); ++i) {
+    for (size_t i = 0; i < ARRAY_SIZE(builtin_int_params); ++i)
         fprintf(CUDAHEADER, "static const int %s_DEFAULT_VALUE = 0;\n", builtin_int_params[i]);
-    }
-    for (size_t i = 0; i < ARRAY_SIZE(builtin_int3_params); ++i) {
+
+    for (size_t i = 0; i < ARRAY_SIZE(builtin_int3_params); ++i)
         fprintf(CUDAHEADER, "static const int3 %s_DEFAULT_VALUE = make_int3(0, 0, 0);\n",
                 builtin_int3_params[i]);
-    }
+
+    for (size_t i = 0; i < ARRAY_SIZE(builtin_real_params); ++i)
+        fprintf(CUDAHEADER, "static const AcReal %s_DEFAULT_VALUE = (AcReal)0.0;\n",
+                builtin_real_params[i]);
+
+    /*
+    for (size_t i = 0; i < ARRAY_SIZE(builtin_real3_params); ++i)
+        fprintf(CUDAHEADER,
+                "static const AcReal3 %s_DEFAULT_VALUE = (AcReal3){(AcReal)0.0, (AcReal)0.0, "
+                "(AcReal)0.0};\n",
+                builtin_real3_params[i]);
+                */
 
     fprintf(CUDAHEADER, "typedef struct {\n");
     for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
@@ -764,6 +804,20 @@ external acdevicesynchronizestream
     ++counter;
     fprintf(FHEADER, "integer(c_int), parameter :: NUM_REDUCTION_TYPES = %lu\n", counter);
 
+    // Boundcond types
+    fprintf(DSLHEADER, "#define AC_FOR_BCTYPES(FUNC)\\\n");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "AC_BOUNDCOND_PERIODIC");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "AC_BOUNDCOND_SYMMETRIC");
+    fprintf(DSLHEADER, "FUNC(%s)\n", "AC_BOUNDCOND_ANTISYMMETRIC");
+
+    counter = 0;
+    fprintf(FHEADER, "integer(c_int), parameter :: AC_BOUNDCOND_PERIODIC = %lu\n", counter);
+    ++counter;
+    fprintf(FHEADER, "integer(c_int), parameter :: AC_BOUNDCOND_SYMMETRIC = %lu\n", counter);
+    ++counter;
+    fprintf(FHEADER, "integer(c_int), parameter :: AC_BOUNDCOND_ANTISYMMETRIC = %lu\n", counter);
+    ++counter;
+
     // Fortran structs
     const char* fortran_structs = R"(
 type, bind(C) :: AcMeshInfo
@@ -824,6 +878,14 @@ main(void)
 
     for (size_t i = 0; i < ARRAY_SIZE(builtin_int3_params); ++i)
         add_symbol(SYMBOLTYPE_OTHER, UNIFORM, INT3, builtin_int3_params[i]);
+
+    for (size_t i = 0; i < ARRAY_SIZE(builtin_real_params); ++i)
+        add_symbol(SYMBOLTYPE_OTHER, UNIFORM, SCALAR, builtin_real_params[i]);
+
+    /*
+    for (size_t i = 0; i < ARRAY_SIZE(builtin_real3_params); ++i)
+        add_symbol(SYMBOLTYPE_OTHER, UNIFORM, VECTOR, builtin_real3_params[i]);
+    */
 
     // Generate
     traverse(root);
