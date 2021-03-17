@@ -8,7 +8,7 @@
 #define LENTROPY (1)
 #define LTEMPERATURE (0)
 #define LFORCING (0)
-#define LUPWD (1)
+#define LUPWD (0)
 #define LSINK (0)
 #define LBFIELD (0)
 #define LSHOCK (0)
