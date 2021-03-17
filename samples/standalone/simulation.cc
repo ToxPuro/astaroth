@@ -43,7 +43,7 @@
 
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
 #define LFORCING (0)
-#define LSHOCK (1)
+#define LSHOCK (0)
 
 #ifdef VTXBUF_ACCRETION
 #define LSINK (1)
