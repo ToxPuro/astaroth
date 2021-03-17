@@ -406,7 +406,9 @@ run_simulation(const char* config_path)
     printf("WARNING! Sink particle is under development. USE AT YOUR OWN RISK!")
     vertex_buffer_set(VTXBUF_ACCRETION, 0.0, mesh);
 #endif
+#if LSHOCK
     vertex_buffer_set(VTXBUF_SHOCK, 0.0, mesh);  
+#endif
 
     // Read old binary if we want to continue from an existing snapshot 
     // WARNING: Explicit specification of step needed!
