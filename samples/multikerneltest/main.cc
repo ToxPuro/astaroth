@@ -60,6 +60,7 @@ main(void)
     // acDevice_solve(device, STREAM_DEFAULT, start, end);
     acDevice_clear(device, STREAM_DEFAULT, start, end);
     acDeviceSwapBuffer(device, VTXBUF_FIBO);
+    // MV NOTE: Boundary conditions after swapping
     acDevice_set(device, STREAM_DEFAULT, start, end);
     acDeviceSwapBuffer(device, VTXBUF_FIBO);
 

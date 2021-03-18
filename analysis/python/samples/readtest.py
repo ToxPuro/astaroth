@@ -55,20 +55,24 @@ AC_unit_length   = 1.496e+13
 
 print("sys.argv", sys.argv)
 
-meshdir  = "$HOME/astaroth/build/"
+meshdir  = "/home/mvaisala/astaroth_projects/shockweek/astaroth/samples/test_cases/kin_sph_shock/"
 
 
 #Example fixed scaling template
-if (meshdir == "$HOME/astaroth/build/"):
-    rlnrho  = [- 0.08,   0.08]
-    rrho    = [  0.93,   1.08]
-    rNcol   = [  500.0,  530.0]
+if (meshdir == "/home/mvaisala/astaroth_projects/shockweek/astaroth/samples/test_cases/kin_sph_shock/"):
+    rlnrho  = [- 0.8,   0.4]
+    rrho    = [  0.5,   1.4]
+    rNcol   = [ 110.0,  150.0]
+
+    rss     = [ 1.0, 2.0]
+  
+    rshock  = [0.0, 0.03]
     
-    ruu_tot = [ 0.0,  0.3]
-    ruu_xyz = [-0.3,  0.3]
+    ruu_tot = [ 0.0,  1.5]
+    ruu_xyz = [-1.5,  1.5]
     
-    raa_tot = [ 0.0,  0.14]
-    raa_xyz = [-0.14, 0.14]
+    raa_tot = [ 1.0,  1.14]
+    raa_xyz = [-1.14, 1.14]
     
     rbb_tot = [ 0.0, 0.3] 
     rbb_xyz = [-0.3, 0.3] 
@@ -328,38 +332,41 @@ if 'sl' in sys.argv:
             if ('lim' in sys.argv) or ('sym' in sys.argv):
                 vis.slices.plot_3(mesh, mesh.lnrho,         title = r'$\ln \rho$', bitmap = True, fname = 'lnrho',      colrange=rlnrho)
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$\rho$', bitmap = True, fname = 'rho',            colrange=rrho)
+                vis.slices.plot_3(mesh, mesh.shock,         title = r'$shock$', bitmap = True, fname = 'shock',         colrange=rshock)
+                vis.slices.plot_3(mesh, mesh.ss,            title = r'$s$', bitmap = True, fname = 'ss',                colrange=rss)
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$N_\mathrm{col}$', bitmap = True, fname = 'colden', slicetype = 'sum', colrange=rNcol)
                 vis.slices.plot_3(mesh, uu_tot,             title = r'$|u|$', bitmap = True, fname = 'uutot',           colrange=ruu_tot)
                 vis.slices.plot_3(mesh, mesh.uu[0],         title = r'$u_x$', bitmap = True, fname = 'uux',             colrange=ruu_xyz)
                 vis.slices.plot_3(mesh, mesh.uu[1],         title = r'$u_y$', bitmap = True, fname = 'uuy',             colrange=ruu_xyz)
                 vis.slices.plot_3(mesh, mesh.uu[2],         title = r'$u_z$', bitmap = True, fname = 'uuz',             colrange=ruu_xyz)
-                vis.slices.plot_3(mesh, aa_tot,             title = r'$\|A\|$', bitmap = True, fname = 'aatot',         colrange=raa_tot)
-                vis.slices.plot_3(mesh, mesh.aa[0],         title = r'$A_x$', bitmap = True, fname = 'aax',             colrange=raa_xyz)
-                vis.slices.plot_3(mesh, mesh.aa[1],         title = r'$A_y$', bitmap = True, fname = 'aay',             colrange=raa_xyz)
-                vis.slices.plot_3(mesh, mesh.aa[2],         title = r'$A_z$', bitmap = True, fname = 'aaz',             colrange=raa_xyz)
+                vis.slices.plot_3(mesh, aa_tot,             title = r'$\|a\|$', bitmap = True, fname = 'aatot',         colrange=raa_tot)
+                vis.slices.plot_3(mesh, mesh.aa[0],         title = r'$a_x$', bitmap = True, fname = 'aax',             colrange=raa_xyz)
+                vis.slices.plot_3(mesh, mesh.aa[1],         title = r'$a_y$', bitmap = True, fname = 'aay',             colrange=raa_xyz)
+                vis.slices.plot_3(mesh, mesh.aa[2],         title = r'$a_z$', bitmap = True, fname = 'aaz',             colrange=raa_xyz)
                 #vis.slices.plot_3(mesh, mesh.accretion,     title = r'$Accretion$', bitmap = True, fname = 'accretion', colrange=[0.0,0.000001])
-                vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot',         colrange=rbb_tot, trimghost=3)
-                vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx',             colrange=rbb_xyz, trimghost=3)#, bfieldlines=True)
-                vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby',             colrange=rbb_xyz, trimghost=3)#, bfieldlines=True)
-                vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz',             colrange=rbb_xyz, trimghost=3)#, bfieldlines=True)
+                #vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot',         colrange=rbb_tot)#, trimghost=3)
+                #vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx',             colrange=rbb_xyz)#, trimghost=3)#, bfieldlines=True)
+                #vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby',             colrange=rbb_xyz)#, trimghost=3)#, bfieldlines=True)
+                #vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz',             colrange=rbb_xyz)#, trimghost=3)#, bfieldlines=True)
             else: 
                 vis.slices.plot_3(mesh, mesh.lnrho,         title = r'$\ln \rho$', bitmap = True, fname = 'lnrho')
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$\rho$', bitmap = True, fname = 'rho')
-                #vis.slices.plot_3(mesh, mesh.ss, title = r'$s$', bitmap = True, fname = 'ss')
+                vis.slices.plot_3(mesh, mesh.shock,         title = r'$shock$', bitmap = True, fname = 'shock')
+                vis.slices.plot_3(mesh, mesh.ss, title = r'$s$', bitmap = True, fname = 'ss')
                 vis.slices.plot_3(mesh, mesh.uu[0],         title = r'$u_x$', bitmap = True, fname = 'uux')#, velfieldlines=True)
                 vis.slices.plot_3(mesh, mesh.uu[1],         title = r'$u_y$', bitmap = True, fname = 'uuy')
                 vis.slices.plot_3(mesh, mesh.uu[2],         title = r'$u_z$', bitmap = True, fname = 'uuz')
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$N_\mathrm{col}$', bitmap = True, fname = 'colden', slicetype = 'sum')
                 vis.slices.plot_3(mesh, uu_tot,             title = r'$|u|$', bitmap = True, fname = 'uutot')
-                vis.slices.plot_3(mesh, mesh.accretion,     title = r'$Accretion$', bitmap = True, fname = 'accretion')
+                #vis.slices.plot_3(mesh, mesh.accretion,     title = r'$Accretion$', bitmap = True, fname = 'accretion')
                 vis.slices.plot_3(mesh, aa_tot,             title = r'$\|A\|$', bitmap = True, fname = 'aatot')
                 vis.slices.plot_3(mesh, mesh.aa[0],         title = r'$A_x$', bitmap = True, fname = 'aax')
                 vis.slices.plot_3(mesh, mesh.aa[1],         title = r'$A_y$', bitmap = True, fname = 'aay')
                 vis.slices.plot_3(mesh, mesh.aa[2],         title = r'$A_z$', bitmap = True, fname = 'aaz')
-                vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot', trimghost=3)
-                vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx',     trimghost=3)#, bfieldlines=True)
-                vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby',     trimghost=3)#, bfieldlines=True)
-                vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz',     trimghost=3)#, bfieldlines=True)
+                #vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot')#, trimghost=3)
+                #vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx')#,     trimghost=3)#, bfieldlines=True)
+                #vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby')#,     trimghost=3)#, bfieldlines=True)
+                #vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz')#,     trimghost=3)#, bfieldlines=True)
                  
             if 'yt' in sys.argv:
                 mesh.yt_conversion()
@@ -430,6 +437,34 @@ if 'sl' in sys.argv:
 
             elif 'rawall' in sys.argv:
                 mesh.export_raw()
+
+if 'aver' in sys.argv:
+    mesh_file_numbers = ad.read.parse_directory(meshdir)
+    print(mesh_file_numbers)
+    maxfiles = np.amax(mesh_file_numbers)
+    for i in mesh_file_numbers:
+        mesh = ad.read.Mesh(i, fdir=meshdir) 
+        print(" %i / %i" % (i, maxfiles))
+        if mesh.ok:
+            uu_tot = np.sqrt(mesh.uu[0]**2.0 + mesh.uu[1]**2.0 + mesh.uu[2]**2.0)
+            aa_tot = np.sqrt(mesh.aa[0]**2.0 + mesh.aa[1]**2.0 + mesh.aa[2]**2.0)
+            mesh.Bfield(trim=True)
+            bb_tot = np.sqrt(mesh.bb[0]**2.0 + mesh.bb[1]**2.0 + mesh.bb[2]**2.0)
+
+            print("mesh.lnrho  MAX",np.amax(mesh.lnrho),"MIN", np.amin(mesh.lnrho),"SUM", np.sum((mesh.lnrho)**2.0),"RMS",np.sqrt(np.mean((mesh.lnrho)**2.0)))
+            print("uu_tot      MAX",np.amax(uu_tot    ),"MIN", np.amin(uu_tot    ),"SUM", np.sum((uu_tot    )**2.0),"RMS",np.sqrt(np.mean((uu_tot    )**2.0)))
+            print("mesh.uu[0]  MAX",np.amax(mesh.uu[0]),"MIN", np.amin(mesh.uu[0]),"SUM", np.sum((mesh.uu[0])**2.0),"RMS",np.sqrt(np.mean((mesh.uu[0])**2.0)))
+            print("mesh.uu[1]  MAX",np.amax(mesh.uu[1]),"MIN", np.amin(mesh.uu[1]),"SUM", np.sum((mesh.uu[1])**2.0),"RMS",np.sqrt(np.mean((mesh.uu[1])**2.0)))
+            print("mesh.uu[2]  MAX",np.amax(mesh.uu[2]),"MIN", np.amin(mesh.uu[2]),"SUM", np.sum((mesh.uu[2])**2.0),"RMS",np.sqrt(np.mean((mesh.uu[2])**2.0)))
+            print("aa_tot      MAX",np.amax(aa_tot    ),"MIN", np.amin(aa_tot    ),"SUM", np.sum((aa_tot    )**2.0),"RMS",np.sqrt(np.mean((aa_tot    )**2.0)))
+            print("mesh.aa[0]  MAX",np.amax(mesh.aa[0]),"MIN", np.amin(mesh.aa[0]),"SUM", np.sum((mesh.aa[0])**2.0),"RMS",np.sqrt(np.mean((mesh.aa[0])**2.0)))
+            print("mesh.aa[1]  MAX",np.amax(mesh.aa[1]),"MIN", np.amin(mesh.aa[1]),"SUM", np.sum((mesh.aa[1])**2.0),"RMS",np.sqrt(np.mean((mesh.aa[1])**2.0)))
+            print("mesh.aa[2]  MAX",np.amax(mesh.aa[2]),"MIN", np.amin(mesh.aa[2]),"SUM", np.sum((mesh.aa[2])**2.0),"RMS",np.sqrt(np.mean((mesh.aa[2])**2.0)))
+            print("bb_tot      MAX",np.amax(bb_tot    ),"MIN", np.amin(bb_tot    ),"SUM", np.sum((bb_tot    )**2.0),"RMS",np.sqrt(np.mean((bb_tot    )**2.0)))
+            print("mesh.bb[0]  MAX",np.amax(mesh.bb[0]),"MIN", np.amin(mesh.bb[0]),"SUM", np.sum((mesh.bb[0])**2.0),"RMS",np.sqrt(np.mean((mesh.bb[0])**2.0)))
+            print("mesh.bb[1]  MAX",np.amax(mesh.bb[1]),"MIN", np.amin(mesh.bb[1]),"SUM", np.sum((mesh.bb[1])**2.0),"RMS",np.sqrt(np.mean((mesh.bb[1])**2.0)))
+            print("mesh.bb[2]  MAX",np.amax(mesh.bb[2]),"MIN", np.amin(mesh.bb[2]),"SUM", np.sum((mesh.bb[2])**2.0),"RMS",np.sqrt(np.mean((mesh.bb[2])**2.0)))
+            print("mesh.shock  MAX",np.amax(mesh.shock),"MIN", np.amin(mesh.shock),"SUM", np.sum((mesh.shock)**2.0),"RMS",np.sqrt(np.mean((mesh.shock)**2.0)))
    
 if "vol" in sys.argv: 
    print("VOLUME RENDERING") 

@@ -43,6 +43,7 @@
 
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
 #define LFORCING (0)
+#define LSHOCK (0)
 
 #ifdef VTXBUF_ACCRETION
 #define LSINK (1)
@@ -309,6 +310,79 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
     fprintf(diag_file, "\n");
 }
 
+static inline void
+print_diagnostics_device(const Device device, const int step, const AcReal dt, const AcReal t_step, FILE* diag_file,
+                         const AcReal sink_mass, const AcReal accreted_mass, int* found_nan, AcMeshInfo mesh_info)
+{
+
+    const int mx = mesh_info.int_params[AC_nx];
+    const int my = mesh_info.int_params[AC_ny];
+    const int mz = mesh_info.int_params[AC_nz];
+    const int mtot = mx*my*mz;
+
+    AcReal buf_rms, buf_max, buf_min;
+    const int max_name_width = 16;
+
+    // Calculate rms, min and max from the velocity vector field
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_max);
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_min);
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_rms);
+
+    //acDeviceReduceVec calculates only the sum on var**2 
+    buf_rms = sqrt(buf_rms/AcReal(mtot));
+
+    // MV: The ordering in the earlier version was wrong in terms of variable
+    // MV: name and its diagnostics.
+    printf("Step %d, t_step %.3e, dt %e s\n", step, double(t_step), double(dt));
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "uu total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%d %e %e %e %e %e ", step, double(t_step), double(dt), double(buf_min),
+            double(buf_rms), double(buf_max));
+
+#if LBFIELD
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, BFIELDX, BFIELDY, BFIELDZ, &buf_max);
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MIN, BFIELDX, BFIELDY, BFIELDZ, &buf_min);
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_RMS, BFIELDX, BFIELDY, BFIELDZ, &buf_rms);
+    buf_rms = sqrt(buf_rms/AcReal(mtot));
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+
+    acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_max)
+    acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MIN, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_min)
+    acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_rms)
+    buf_rms = sqrt(buf_rms/AcReal(mtot));
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+#endif
+
+    // Calculate rms, min and max from the variables as scalars
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MAX, VertexBufferHandle(i), &buf_max);
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MIN, VertexBufferHandle(i), &buf_min);
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_RMS, VertexBufferHandle(i), &buf_rms);
+        buf_rms = sqrt(buf_rms/AcReal(mtot));
+
+        printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
+               double(buf_min), double(buf_rms), double(buf_max));
+        fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+
+        if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
+            *found_nan = 1;
+        }
+
+    }
+
+    if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
+        fprintf(diag_file, "%e %e ", double(sink_mass), double(accreted_mass));
+    }
+
+    fprintf(diag_file, "\n");
+}
+
 /*
     MV NOTE: At the moment I have no clear idea how to calculate magnetic
     diagnostic variables from grid. Vector potential measures have a limited
@@ -325,11 +399,15 @@ run_simulation(const char* config_path)
     AcMesh* mesh = acmesh_create(mesh_info);
     // TODO: This need to be possible to define in astaroth.conf
     acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, mesh);
+    //acmesh_init_to(INIT_TYPE_KICKBALL, mesh);
     // acmesh_init_to(INIT_TYPE_SIMPLE_CORE, mesh); //Initial condition for a collapse test
 
 #if LSINK
     printf("WARNING! Sink particle is under development. USE AT YOUR OWN RISK!")
     vertex_buffer_set(VTXBUF_ACCRETION, 0.0, mesh);
+#endif
+#if LSHOCK
+    vertex_buffer_set(VTXBUF_SHOCK, 0.0, mesh);  
 #endif
 
     // Read old binary if we want to continue from an existing snapshot 
@@ -340,8 +418,18 @@ run_simulation(const char* config_path)
         read_mesh(*mesh, start_step, &t_step);
     }
  
+#if LSHOCK
+    Device device;
+    acDeviceCreate(0, mesh_info, &device);
+    acDevicePrintInfo(device);
+    printf("Loading mesh to GPU.\n");
+    acDeviceLoadMesh(device, STREAM_DEFAULT, *mesh);
+#else
     acInit(mesh_info);
     acLoad(*mesh);
+#endif
+
+    printf("Mesh loaded to GPU(s).\n");
 
     FILE* diag_file;
     int found_nan = 0, found_stop = 0; // Nan or inf finder to give an error signal
@@ -366,17 +454,36 @@ run_simulation(const char* config_path)
 
     write_mesh_info(&mesh_info);
 
+    printf("Mesh info written to file.\n");
+
     if (start_step == 0) {
 #if LSINK
         print_diagnostics(0, AcReal(.0), t_step, diag_file, mesh_info.real_params[AC_M_sink_init], 0.0, &found_nan);
 #else
+    #if LSHOCK
+        print_diagnostics_device(device, 0, AcReal(.0), t_step, diag_file, -1.0, -1.0, &found_nan, mesh_info);
+    #else
         print_diagnostics(0, AcReal(.0), t_step, diag_file, -1.0, -1.0, &found_nan);
+    #endif
 #endif
     }
 
+#if LSHOCK
+    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
+    const int3 end   = (int3){mesh_info.int_params[AC_mx]-NGHOST, 
+                              mesh_info.int_params[AC_my]-NGHOST, 
+                              mesh_info.int_params[AC_mz]-NGHOST};
+    const int3 bindex = (int3){0, 0, 0}; //DUMMY
+    const int3 b1 = (int3){0, 0, 0};
+    const int3 b2 = (int3){mesh_info.int_params[AC_mx], mesh_info.int_params[AC_mx], mesh_info.int_params[AC_mx]};
+
+    acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
+    acDeviceStoreMesh(device, STREAM_DEFAULT, mesh);
+#else
     //acBoundcondStep();
     acBoundcondStepGBC(mesh_info);
     acStore(mesh);
+#endif
     if (start_step == 0) {
         save_mesh(*mesh, 0, t_step);
     }
@@ -392,12 +499,17 @@ run_simulation(const char* config_path)
     /* initialize random seed: */
     srand(312256655);
 
+#if LSHOCK
+#endif
+
     /* Step the simulation */
     AcReal accreted_mass = 0.0;
     AcReal sink_mass     = 0.0;
     AcReal uu_freefall = 0.0;
     AcReal dt_typical    = 0.0;
     int dtcounter = 0;
+
+    printf("Starting simulation...\n");
     for (int i = start_step + 1; i < max_steps; ++i) {
 #if LSINK
 
@@ -426,14 +538,27 @@ run_simulation(const char* config_path)
         sink_mass     = -1.0;
 #endif
 
+#if LSHOCK
+        AcReal umax, shock_max;
+        acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &umax);
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_SHOCK, &shock_max);
+#else 
+        const AcReal shock_max = 0.0;
         const AcReal umax = acReduceVec(RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+#endif
+
 #if LBFIELD
+    #if LSHOCK
+        AcReal vAmax;
+        acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &vAmax) 
+    #else
         const AcReal vAmax = acReduceVecScal(RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO);
+    #endif
         const AcReal uref  = max(max(umax,uu_freefall), vAmax); 
-        const AcReal dt   = host_timestep(uref, vAmax, mesh_info);
+        const AcReal dt   = host_timestep(uref, vAmax, shock_max, mesh_info);
 #else
         const AcReal uref  = max(umax,uu_freefall); 
-        const AcReal dt   = host_timestep(uref, 0.0l, mesh_info);
+        const AcReal dt   = host_timestep(uref, 0.0l, shock_max, mesh_info);
 #endif
 
 #if LFORCING
@@ -441,10 +566,40 @@ run_simulation(const char* config_path)
         loadForcingParamsToDevice(forcing_params);
 #endif
 
+#if LSHOCK
+        for (int isubstep = 0; isubstep < 3; ++isubstep) {
+            //Call only singe GPU version on for testing the shock viscosity first
+            acDevice_shock_1_divu(device, STREAM_DEFAULT, start, end);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
+            acDeviceSwapBuffer(device, VTXBUF_SHOCK);
+            acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
+
+            acDevice_shock_2_max(device, STREAM_DEFAULT, start, end);
+            acDeviceSwapBuffer(device, VTXBUF_SHOCK);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
+            acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
+
+            acDevice_shock_3_smooth(device, STREAM_DEFAULT, start, end);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
+            acDeviceSwapBuffer(device, VTXBUF_SHOCK);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
+            acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
+
+            //RUN SOLVE
+            acDeviceIntegrateSubstep(device, STREAM_DEFAULT, isubstep, start, end, dt);
+            //acDeviceSynchronizeStream(device, STREAM_ALL);
+            acDeviceSwapBuffers(device);
+            // TO compensate
+            acDeviceSwapBuffer(device, VTXBUF_SHOCK);
+            acDeviceSynchronizeStream(device, STREAM_ALL);
+        }
+#else
         /* Uses now flexible bokundary conditions */
         //acIntegrate(dt);
         acIntegrateGBC(mesh_info, dt);
-
+#endif
 
 
         t_step += dt;
@@ -463,8 +618,11 @@ run_simulation(const char* config_path)
                 results and saves the diagnostics into a table for ascii file
                 timeseries.ts.
             */
-
+    #if LSHOCK
+            print_diagnostics_device(device, i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan, mesh_info);
+    #else
             print_diagnostics(i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
+    #endif
 #if LSINK
             printf("sink mass is: %.15e \n", double(sink_mass));
             printf("accreted mass is: %.15e \n", double(accreted_mass));
@@ -492,9 +650,13 @@ run_simulation(const char* config_path)
                 acStore(mesh);
             */
             //acBoundcondStep();
+#if LSHOCK
+            acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
+            acDeviceStoreMesh(device, STREAM_DEFAULT, mesh);
+#else 
             acBoundcondStepGBC(mesh_info);
             acStore(mesh);
-
+#endif
             save_mesh(*mesh, i, t_step);
 
             bin_crit_t += bin_save_t;
@@ -528,9 +690,14 @@ run_simulation(const char* config_path)
         // End loop if nan is found
         if (found_nan > 0) {
             printf("Found nan at t = %e \n", double(t_step));
+#if LSHOCK
+            acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
+            acDeviceStoreMesh(device, STREAM_DEFAULT, mesh);
+#else 
             //acBoundcondStep();
             acBoundcondStepGBC(mesh_info);
             acStore(mesh);
+#endif
             save_mesh(*mesh, i, t_step);
             break;
         }
@@ -544,9 +711,14 @@ run_simulation(const char* config_path)
  
         if (found_stop == 1) {
             printf("Found STOP file at t = %e \n", double(t_step));
+#if LSHOCK
+            acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
+            acDeviceStoreMesh(device, STREAM_DEFAULT, mesh);
+#else 
             //acBoundcondStep();
             acBoundcondStepGBC(mesh_info);
             acStore(mesh);
+#endif 
             save_mesh(*mesh, i, t_step);
             break;
         }
@@ -559,7 +731,11 @@ run_simulation(const char* config_path)
 
     ////save_mesh(*mesh, , t_step);
 
+#if LSHOCK
+    acDeviceDestroy(device);
+#else
     acQuit();
+#endif 
     acmesh_destroy(mesh);
 
     fclose(diag_file);

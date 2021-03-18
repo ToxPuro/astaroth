@@ -53,6 +53,7 @@ def plot_ts(ts, isotherm=False, show_all=False, lnrho=False, uutot=False,
         sink=True
         bb=True
         alfven=True
+        shock=True
 
     if isotherm:
         lnrho=True
@@ -205,4 +206,14 @@ def plot_ts(ts, isotherm=False, show_all=False, lnrho=False, uutot=False,
         yaxis3 = 'accreted_mass'
         plot_min_man_rms(ts, xaxis, yaxis1, yaxis2, yaxis3)
   
+    if shock:
+        plt.figure()
+        xaxis = 't_step'
+        yaxis1 = 'shock_rms'
+        yaxis2 = 'shock_min'
+        yaxis3 = 'shock_max'
+        plot_min_man_rms(ts, xaxis, yaxis1, yaxis2, yaxis3)
+
+
+
     plt.show()

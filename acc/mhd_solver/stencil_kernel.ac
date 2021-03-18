@@ -11,6 +11,7 @@
 #define LUPWD (0)
 #define LSINK (0)
 #define LBFIELD (0)
+#define LSHOCK (0)
 
 #define AC_THERMAL_CONDUCTIVITY (0.001) // TODO: make an actual config parameter
 #define H_CONST (0)                     // TODO: make an actual config parameter
@@ -68,6 +69,7 @@ uniform Scalar AC_lnT0;
 uniform Scalar AC_lnrho0;
 uniform Scalar AC_zeta;
 uniform Scalar AC_trans;
+uniform Scalar AC_nu_shock;
 //  Other
 uniform Scalar AC_bin_save_t;
 //  Initial condition params
@@ -143,6 +145,118 @@ uniform ScalarField BFIELDX;
 uniform ScalarField BFIELDY;
 uniform ScalarField BFIELDZ;
 #endif
+
+#if LSHOCK
+uniform ScalarField VTXBUF_SHOCK;
+
+Preprocessed Scalar
+smooth_kernel(in ScalarField vertex)
+{
+    const int ns = 7;
+    //int n_smooth = ns*ns*ns;
+    //Scalar smooth_factor[n_smooth];
+    //Explicit numbers because of DSL bug.
+    //Scalar smooth_factor[343];
+
+    //This would be better set by host!
+
+    // From Pencil Code src/shock_highorder.f90
+    // Gaussian weights
+    Scalar weights[ns];
+    //Scalar weights[7];
+    weights[0] = 1.0;
+    weights[1] = 9.0;
+    weights[2] = 45.0;
+    weights[3] = 70.0;
+    weights[4] = 45.0;
+    weights[5] = 9.0;
+    weights[6] = 1.0;
+
+    Scalar smooth_factor;
+    Scalar smooth_norm = 5832000.0; //Based on separate calculations 
+
+////    // Set kernel values
+////    Scalar smooth_norm;
+////    int ind = 0;
+////    for (int k = 0; k < ns; ++k) {
+////        for (int j = 0; j < ns; ++j) {
+////            for (int i = 0; i < ns; ++i) {
+////                Scalar zzz = weights[i]*weights[j]*weights[k];
+////                smooth_factor[ind] = zzz;
+////                smooth_norm = smooth_norm + zzz;
+////                ++ind;
+////            }
+////        }
+////    }
+////
+////    // Normalize kernel
+////    ind = 0;
+////    for (int k = 0; k < ns; ++k) {
+////        for (int j = 0; j < ns; ++j) {
+////            for (int i = 0; i < ns; ++i) {
+////                smooth_factor[ind] = smooth_factor[ind]/smooth_norm;
+////                ++ind;
+////            }
+////        }
+////    }
+
+    int ind = 0;
+    Scalar smoothed = 0.0;
+    for (int k = 0; k < ns; ++k) {
+        for (int j = 0; j < ns; ++j) {
+            for (int i = 0; i < ns; ++i) {
+                int iver = -3+i;
+                int jver = -3+j;
+                int kver = -3+k;
+
+                smooth_factor = (weights[i]*weights[j]*weights[k])/smooth_norm;
+                smoothed = smoothed+smooth_factor*vertex[vertexIdx.x+iver, vertexIdx.y+jver, vertexIdx.z+kver];
+                ++ind;
+            }
+        }
+    }
+    return smoothed;
+}
+
+
+Scalar
+field_max(Scalar samples[], int sample_size)
+{
+    Scalar max_val = samples[0];
+    for (int i = 0; i < sample_size; ++i) {
+        Scalar new_val = samples[i];
+        if (new_val > max_val) {
+            max_val = new_val;
+        }
+    }
+    return max_val;
+}
+
+Preprocessed Scalar
+max5(in ScalarField vertex)
+{
+    Scalar samples[15]; //3*5
+    int ind = 0;
+
+    for (int i = -2; i <= 2; ++i) {
+        samples[ind] = vertex[vertexIdx.x+i, vertexIdx.y, vertexIdx.z];
+        ++ind;
+    }
+
+    for (int j = -2; j <= 2; ++j) {
+        samples[ind] = vertex[vertexIdx.x, vertexIdx.y+j, vertexIdx.z];
+        ++ind;
+    }
+
+    for (int k = -2; k <= 2; ++k) {
+        samples[ind] = vertex[vertexIdx.x, vertexIdx.y, vertexIdx.z+k];
+        ++ind;
+    }
+
+    return (Scalar){ field_max(samples, 15) };
+}
+
+#endif 
 
 #if LUPWD
 
@@ -361,7 +475,11 @@ continuity(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar
 #if LENTROPY
 Device Vector
 momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in ScalarField ss,
-         in VectorField aa, Scalar dt)
+         in VectorField aa, 
+#if LSHOCK
+         in ScalarField shock,
+#endif
+         Scalar dt)
 {
     const Matrix S   = stress_tensor(uu);
     const Scalar cs2 = AC_cs2_sound * exp(AC_gamma * value(ss) / AC_cp_sound +
@@ -380,6 +498,10 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
                        AC_nu_visc * (laplace_vec(uu) + (1.0 / 3.0) * gradient_of_divergence(uu) +
                                      2.0 * mul(S, gradient(lnrho))) +
                        AC_zeta * gradient_of_divergence(uu)
+#if LSHOCK
+                       + AC_nu_shock * (value(shock)*(divergence(uu)*gradient(lnrho)+gradient_of_divergence(uu))
+                                        + divergence(uu)*gradient(shock))
+#endif
 #if LSINK
                        // Gravity term
                        + sink_gravity(globalVertexIdx)
@@ -506,7 +628,11 @@ heating(const int i, const int j, const int k)
 }
 
 Device Scalar
-entropy(in ScalarField ss, in VectorField uu, in ScalarField lnrho, in VectorField aa)
+entropy(in ScalarField ss, in VectorField uu, in ScalarField lnrho, in VectorField aa
+#if LSHOCK
+, in ScalarField shock
+#endif
+)
 {
     const Matrix S      = stress_tensor(uu);
     const Scalar inv_pT = 1.0 / (exp(value(lnrho)) * exp(lnT(ss, lnrho)));
@@ -514,6 +640,9 @@ entropy(in ScalarField ss, in VectorField uu, in ScalarField lnrho, in VectorFie
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
     const Scalar RHS = H_CONST - C_CONST + AC_eta * (AC_mu0)*dot(j, j) +
                        2.0 * exp(value(lnrho)) * AC_nu_visc * contract(S) +
+#if LSHOCK
+                       AC_nu_shock*value(shock) * (divergence(uu)*divergence(uu)) +
+#endif
                        AC_zeta * exp(value(lnrho)) * divergence(uu) * divergence(uu);
 
     return -dot(value(uu), gradient(ss)) + inv_pT * RHS + heat_conduction(ss, lnrho);
@@ -649,6 +778,35 @@ get_bfield(in VectorField aa)
 }
 #endif
 
+#if LSHOCK
+//Get divergence of velocity for the first pass in shock viscosity.
+Device Scalar
+divu_shock(in VectorField uu)
+{
+    // Set discard the values which do not contain negative divergence.
+    Scalar divu = divergence(uu);
+    if (divu <= 0.0) {
+        return -divu;
+    } else {
+        return 0.0; 
+    }
+}
+
+//Calculate local maximum from divergences.
+Device Scalar
+max5_shock(in ScalarField shock)
+{
+    return max5(shock);
+}
+
+//Perform smoothing on shock values.
+Device Scalar
+smooth_shock(in ScalarField shock)
+{
+    return smooth_kernel(shock);
+}
+#endif
+
 // Declare input and output arrays using locations specified in the
 // array enum in astaroth.h
 in ScalarField lnrho(VTXBUF_LNRHO);
@@ -681,6 +839,30 @@ out ScalarField out_accretion(VTXBUF_ACCRETION);
 out VectorField b_out(BFIELDX, BFIELDY, BFIELDZ);
 #endif
 
+#if LSHOCK
+in ScalarField shock(VTXBUF_SHOCK);
+out ScalarField out_shock(VTXBUF_SHOCK);
+
+Kernel void
+shock_1_divu()
+{
+    out_shock = divu_shock(uu);
+}
+
+Kernel void
+shock_2_max()
+{
+    out_shock = max5_shock(shock);
+}
+
+Kernel void
+shock_3_smooth()
+{
+    out_shock = 1.0*value(shock)*AC_dsmin*AC_dsmin*smooth_shock(shock); //Add scaling constant cshock
+}
+
+#endif
+
 Kernel void
 solve()
 {
@@ -692,8 +874,13 @@ solve()
 #endif
 
 #if LENTROPY
+    #if LSHOCK
+    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, ss, aa, shock, dt), dt);
+    out_ss = rk3(out_ss, ss, entropy(ss, uu, lnrho, aa, shock), dt);
+    #else
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, ss, aa, dt), dt);
     out_ss = rk3(out_ss, ss, entropy(ss, uu, lnrho, aa), dt);
+    #endif
 #elif LTEMPERATURE
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, tt, dt), dt);
     out_tt = rk3(out_tt, tt, heat_transfer(uu, lnrho, tt), dt);

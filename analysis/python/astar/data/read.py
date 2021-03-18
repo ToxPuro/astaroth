@@ -271,6 +271,8 @@ class Mesh:
 
             self.ss, timestamp, ok = read_bin('VTXBUF_ENTROPY', fdir, fnum, self.minfo, getfilename=pdiag)
 
+            self.shock, timestamp, ok = read_bin('VTXBUF_SHOCK', fdir, fnum, self.minfo, getfilename=pdiag)
+
             self.accretion, timestamp, ok = read_bin('VTXBUF_ACCRETION', fdir, fnum, self.minfo, getfilename=pdiag)
  
             #TODO Generalize is a dict. Do not hardcode!  
@@ -633,6 +635,7 @@ def parse_ts(fdir, fname, debug = False):
             line[i] = line[i].replace('Y', "y")
             line[i] = line[i].replace('Z', "z")
             line[i] = line[i].replace('vaa', "vA")
+            line[i] = line[i].replace('SHOCK', "shock")
 
         #tsdata = np.loadtxt(fdir+fname,skiprows=1)
         tsdata = np.genfromtxt(fdir+fname,skip_header=1, skip_footer=1)
