@@ -11,14 +11,6 @@
 typedef AcReal AcRealPacked;
 
 typedef struct {
-    int3 dims;
-    AcRealPacked* data;
-
-    AcRealPacked* data_pinned;
-    bool pinned = false; // Set if data was received to pinned memory
-} PackedData;
-
-typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
 
@@ -62,11 +54,11 @@ AcResult acKernelIntegrateSubstep(const cudaStream_t stream, const int step_numb
 
 /** */
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
-                          const int3 vba_start, PackedData packed);
+                          const int3 vba_start, const int3 dims, AcRealPacked* packed);
 
 /** */
-AcResult acKernelUnpackData(const cudaStream_t stream, const PackedData packed,
-                            const int3 vba_start, VertexBufferArray vba);
+AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
+                            const int3 vba_start, const int3 dims, VertexBufferArray vba);
 
 /** */
 AcReal acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,

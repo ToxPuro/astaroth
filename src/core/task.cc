@@ -24,65 +24,11 @@
 #include <vector>
 
 #include "decomposition.h"   //getPid and friends
-#include "kernels/kernels.h" //PackedData
+#include "kernels/kernels.h" //AcRealPacked
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
-
-static PackedData
-acCreatePackedData(const int3 dims)
-{
-    PackedData data = {};
-
-    data.dims = dims;
-
-    const size_t bytes = dims.x * dims.y * dims.z * sizeof(data.data[0]) * NUM_VTXBUF_HANDLES;
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&data.data, bytes));
-    ERRCHK_CUDA_ALWAYS(cudaMallocHost((void**)&data.data_pinned, bytes));
-    return data;
-}
-
-static AcResult
-acDestroyPackedData(PackedData* data)
-{
-    cudaFree(data->data_pinned);
-
-    data->dims = (int3){-1, -1, -1};
-    cudaFree(data->data);
-    data->data = NULL;
-
-    return AC_SUCCESS;
-}
-
-#if !(USE_CUDA_AWARE_MPI)
-static void
-acPinPackedData(const Device device, const cudaStream_t stream, PackedData* ddata)
-{
-    cudaSetDevice(device->id);
-    // TODO sync stream
-    ddata->pinned = true;
-
-    const size_t bytes = ddata->dims.x * ddata->dims.y * ddata->dims.z * sizeof(ddata->data[0]) *
-                         NUM_VTXBUF_HANDLES;
-    ERRCHK_CUDA(cudaMemcpyAsync(ddata->data_pinned, ddata->data, bytes, cudaMemcpyDefault, stream));
-}
-
-static void
-acUnpinPackedData(const Device device, const cudaStream_t stream, PackedData* ddata)
-{
-    if (!ddata->pinned) // Unpin iff the data was pinned previously
-        return;
-
-    cudaSetDevice(device->id);
-    // TODO sync stream
-    ddata->pinned = false;
-
-    const size_t bytes = ddata->dims.x * ddata->dims.y * ddata->dims.z * sizeof(ddata->data[0]) *
-                         NUM_VTXBUF_HANDLES;
-    ERRCHK_CUDA(cudaMemcpyAsync(ddata->data, ddata->data_pinned, bytes, cudaMemcpyDefault, stream));
-}
-#endif
-
 /* Task interface */
+
 /*
 void
 Task::logStateChangedEvent(std::string from, std::string to)
@@ -286,11 +232,45 @@ ComputeTask::advance()
 // Wraps PackedData. These two structs could be folded together.
 HaloMessage::HaloMessage(int3 dims, MPI_Request* _req) : request(_req)
 {
+    length       = dims.x * dims.y * dims.z * NUM_VTXBUF_HANDLES;
+    size_t bytes = length * sizeof(AcRealPacked);
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&data, bytes));
+    ERRCHK_CUDA_ALWAYS(cudaMallocHost((void**)&data_pinned, bytes));
     *request = MPI_REQUEST_NULL;
-    buffer   = acCreatePackedData(dims);
-    length   = dims.x * dims.y * dims.z * NUM_VTXBUF_HANDLES;
 }
-HaloMessage::~HaloMessage() { acDestroyPackedData(&buffer); }
+
+HaloMessage::~HaloMessage()
+{
+    length = -1;
+    cudaFree(data);
+    cudaFree(data_pinned);
+    data = NULL;
+}
+
+#if !(USE_CUDA_AWARE_MPI)
+void
+HaloMessage::pin(const Device device, const cudaStream_t stream)
+{
+    // TODO sync stream
+    cudaSetDevice(device->id);
+    pinned       = true;
+    size_t bytes = length * sizeof(AcRealPacked);
+    ERRCHK_CUDA(cudaMemcpyAsync(data_pinned, data, bytes, cudaMemcpyDefault, stream));
+}
+
+void
+HaloMessage::unpin(const Device device, const cudaStream_t stream)
+{
+    // TODO sync stream
+    if (!pinned)
+        return;
+
+    cudaSetDevice(device->id);
+    pinned       = false;
+    size_t bytes = length * sizeof(AcRealPacked);
+    ERRCHK_CUDA(cudaMemcpyAsync(data, data_pinned, bytes, cudaMemcpyDefault, stream));
+}
+#endif
 
 // MessageBufferSwapChain
 MessageBufferSwapChain::MessageBufferSwapChain() : buf_idx(SWAP_CHAIN_LENGTH - 1)
@@ -298,35 +278,29 @@ MessageBufferSwapChain::MessageBufferSwapChain() : buf_idx(SWAP_CHAIN_LENGTH - 1
     buffers.reserve(SWAP_CHAIN_LENGTH);
 }
 
-MessageBufferSwapChain::~MessageBufferSwapChain()
-{
-    for (auto m : buffers) {
-        delete m;
-    }
-    buffers.clear();
-}
+MessageBufferSwapChain::~MessageBufferSwapChain() { buffers.clear(); }
 
 void
 MessageBufferSwapChain::add_buffer(int3 dims, MPI_Request* req)
 {
-    buffers.push_back(new HaloMessage(dims, req));
+    buffers.emplace_back(dims, req);
 }
 
 HaloMessage*
 MessageBufferSwapChain::get_current_buffer()
 {
-    return buffers[buf_idx];
+    return &buffers[buf_idx];
 }
 
 HaloMessage*
 MessageBufferSwapChain::get_fresh_buffer()
 {
     buf_idx          = (buf_idx + 1) % SWAP_CHAIN_LENGTH;
-    MPI_Request* req = buffers[buf_idx]->request;
+    MPI_Request* req = buffers[buf_idx].request;
     if (*req != MPI_REQUEST_NULL) {
         MPI_Wait(req, MPI_STATUS_IGNORE);
     }
-    return buffers[buf_idx];
+    return &buffers[buf_idx];
 }
 
 // HaloExchangeTask
@@ -383,18 +357,19 @@ void
 HaloExchangeTask::pack()
 {
     auto msg = send_buffers->get_fresh_buffer();
-    acKernelPackData(stream, vba, outgoing_message_region->position, msg->buffer);
+    acKernelPackData(stream, vba, outgoing_message_region->position, outgoing_message_region->dims,
+                     msg->data);
 }
 
 void
 HaloExchangeTask::unpack()
 {
 
-    auto msg           = recv_buffers->get_current_buffer();
+    auto msg = recv_buffers->get_current_buffer();
 #if !(USE_CUDA_AWARE_MPI)
-    acUnpinPackedData(device, stream, &(msg->buffer));
+    msg->unpin(device, stream);
 #endif
-    acKernelUnpackData(stream, msg->buffer, output_region->position, vba);
+    acKernelUnpackData(stream, msg->data, output_region->position, output_region->dims, vba);
 }
 
 void
@@ -421,9 +396,9 @@ void
 HaloExchangeTask::receiveDevice()
 {
     auto msg = recv_buffers->get_fresh_buffer();
-    MPI_Irecv(msg->buffer.data, msg->length, AC_MPI_TYPE, counterpart_rank,
-              recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
-    msg->buffer.pinned = false;
+    MPI_Irecv(msg->data, msg->length, AC_MPI_TYPE, counterpart_rank, recv_tag + HALO_TAG_OFFSET,
+              MPI_COMM_WORLD, msg->request);
+    msg->pinned = false;
 }
 
 void
@@ -431,8 +406,8 @@ HaloExchangeTask::sendDevice()
 {
     auto msg = send_buffers->get_current_buffer();
     sync();
-    MPI_Isend(msg->buffer.data, msg->length, AC_MPI_TYPE, counterpart_rank,
-              send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
+    MPI_Isend(msg->data, msg->length, AC_MPI_TYPE, counterpart_rank, send_tag + HALO_TAG_OFFSET,
+              MPI_COMM_WORLD, msg->request);
 }
 
 void
@@ -448,19 +423,18 @@ void
 HaloExchangeTask::receiveHost()
 {
     auto msg = recv_buffers->get_fresh_buffer();
-    MPI_Irecv(msg->buffer.data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
+    MPI_Irecv(msg->data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
               recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
-    msg->buffer.pinned = true;
+    msg->pinned = true;
 }
-
 
 void
 HaloExchangeTask::sendHost()
 {
     auto msg = send_buffers->get_current_buffer();
-    acPinPackedData(device, stream, &(msg->buffer));
+    msg->pin(device, stream);
     sync();
-    MPI_Isend(msg->buffer.data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
+    MPI_Isend(msg->data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
               send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
 }
 void
