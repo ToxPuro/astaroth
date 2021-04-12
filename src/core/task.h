@@ -9,7 +9,6 @@
 #include "kernels/kernels.h" //AcRealPacked, VertexBufferArray
 #include "math_utils.h"      //max. Also included in decomposition.h
 
-#define MPI_USE_PINNED (1)   // Do inter-node comm with pinned (host) memory
 #define MPI_INCL_CORNERS (0) // Include the 3D corners of subdomains in halo
 
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
@@ -203,8 +202,10 @@ typedef class ComputeTask : public Task {
 typedef struct HaloMessage {
     int length;
     AcRealPacked* data;
+#if !(USE_CUDA_AWARE_MPI)
     AcRealPacked* data_pinned;
     bool pinned = false; // Set if data was received to pinned memory
+#endif
     MPI_Request* request;
 
     HaloMessage(int3 dims, MPI_Request* req_);

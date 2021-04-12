@@ -235,7 +235,9 @@ HaloMessage::HaloMessage(int3 dims, MPI_Request* _req) : request(_req)
     length       = dims.x * dims.y * dims.z * NUM_VTXBUF_HANDLES;
     size_t bytes = length * sizeof(AcRealPacked);
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&data, bytes));
+#if !(USE_CUDA_AWARE_MPI)
     ERRCHK_CUDA_ALWAYS(cudaMallocHost((void**)&data_pinned, bytes));
+#endif
     *request = MPI_REQUEST_NULL;
 }
 
@@ -243,7 +245,9 @@ HaloMessage::~HaloMessage()
 {
     length = -1;
     cudaFree(data);
+#if !(USE_CUDA_AWARE_MPI)
     cudaFree(data_pinned);
+#endif
     data = NULL;
 }
 
@@ -398,7 +402,6 @@ HaloExchangeTask::receiveDevice()
     auto msg = recv_buffers->get_fresh_buffer();
     MPI_Irecv(msg->data, msg->length, AC_MPI_TYPE, counterpart_rank, recv_tag + HALO_TAG_OFFSET,
               MPI_COMM_WORLD, msg->request);
-    msg->pinned = false;
 }
 
 void
