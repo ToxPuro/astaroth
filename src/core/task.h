@@ -6,10 +6,9 @@
 #include <vector>
 
 #include "decomposition.h"   //getPid and friends
-#include "kernels/kernels.h" //PackedData, VertexBufferArray
+#include "kernels/kernels.h" //AcRealPacked, VertexBufferArray
 #include "math_utils.h"      //max. Also included in decomposition.h
 
-#define MPI_USE_PINNED (1)   // Do inter-node comm with pinned (host) memory
 #define MPI_INCL_CORNERS (0) // Include the 3D corners of subdomains in halo
 
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
@@ -191,10 +190,6 @@ class Task {
 enum class ComputeState { Waiting_for_halo = Task::wait_state, Running };
 
 typedef class ComputeTask : public Task {
-  private:
-    int3 start;
-    int3 dims;
-
   public:
     ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id);
 
@@ -205,18 +200,25 @@ typedef class ComputeTask : public Task {
 
 // Communication
 typedef struct HaloMessage {
-    PackedData buffer;
-    MPI_Request* request;
     int length;
+    AcRealPacked* data;
+#if !(USE_CUDA_AWARE_MPI)
+    AcRealPacked* data_pinned;
+    bool pinned = false; // Set if data was received to pinned memory
+#endif
+    MPI_Request* request;
 
     HaloMessage(int3 dims, MPI_Request* req_);
     ~HaloMessage();
-    HaloMessage(const HaloMessage& other) = delete;
+#if !(USE_CUDA_AWARE_MPI)
+    void pin(const Device device, const cudaStream_t stream);
+    void unpin(const Device device, const cudaStream_t stream);
+#endif
 } HaloMessage;
 
 typedef struct MessageBufferSwapChain {
     int buf_idx;
-    std::vector<HaloMessage*> buffers;
+    std::vector<HaloMessage> buffers;
 
     MessageBufferSwapChain();
     ~MessageBufferSwapChain();
@@ -251,7 +253,6 @@ typedef class HaloExchangeTask : public Task {
     HaloExchangeTask(const Device device_, const int halo_region_tag, const int3 nn,
                      const uint3_64 decomp, MPI_Request* recv_requests, MPI_Request* send_requests);
     ~HaloExchangeTask();
-    // HaloExchangeTask(const HaloExchangeTask& other) = delete;
 
     void sync();
     void wait_send();

@@ -1,7 +1,7 @@
 #pragma once
 
 static __global__ void
-kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, PackedData packed)
+kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 dims, AcRealPacked* packed)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
@@ -9,9 +9,9 @@ kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, PackedData p
 
     // If within the start-end range (this allows threadblock dims that are not
     // divisible by end - start)
-    if (i_packed >= packed.dims.x || //
-        j_packed >= packed.dims.y || //
-        k_packed >= packed.dims.z) {
+    if (i_packed >= dims.x || //
+        j_packed >= dims.y || //
+        k_packed >= dims.z) {
         return;
     }
 
@@ -20,19 +20,19 @@ kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, PackedData p
     const int k_unpacked = k_packed + vba_start.z;
 
     const int unpacked_idx = DEVICE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked);
-    const int packed_idx   = i_packed +               //
-                           j_packed * packed.dims.x + //
-                           k_packed * packed.dims.x * packed.dims.y;
+    const int packed_idx   = i_packed +        //
+                           j_packed * dims.x + //
+                           k_packed * dims.x * dims.y;
 
-    const size_t vtxbuf_offset = packed.dims.x * packed.dims.y * packed.dims.z;
+    const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
     //#pragma unroll
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
-        packed.data[packed_idx + i * vtxbuf_offset] = vba.in[i][unpacked_idx];
+        packed[packed_idx + i * vtxbuf_offset] = vba.in[i][unpacked_idx];
 }
 
 static __global__ void
-kernel_unpack_data(const PackedData packed, const int3 vba_start, VertexBufferArray vba)
+kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims, VertexBufferArray vba)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
@@ -40,9 +40,9 @@ kernel_unpack_data(const PackedData packed, const int3 vba_start, VertexBufferAr
 
     // If within the start-end range (this allows threadblock dims that are not
     // divisible by end - start)
-    if (i_packed >= packed.dims.x || //
-        j_packed >= packed.dims.y || //
-        k_packed >= packed.dims.z) {
+    if (i_packed >= dims.x || //
+        j_packed >= dims.y || //
+        k_packed >= dims.z) {
         return;
     }
 
@@ -51,42 +51,42 @@ kernel_unpack_data(const PackedData packed, const int3 vba_start, VertexBufferAr
     const int k_unpacked = k_packed + vba_start.z;
 
     const int unpacked_idx = DEVICE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked);
-    const int packed_idx   = i_packed +               //
-                           j_packed * packed.dims.x + //
-                           k_packed * packed.dims.x * packed.dims.y;
+    const int packed_idx   = i_packed +        //
+                           j_packed * dims.x + //
+                           k_packed * dims.x * dims.y;
 
-    const size_t vtxbuf_offset = packed.dims.x * packed.dims.y * packed.dims.z;
+    const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
     //#pragma unroll
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
-        vba.in[i][unpacked_idx] = packed.data[packed_idx + i * vtxbuf_offset];
+        vba.in[i][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
 }
 
 AcResult
 acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba, const int3 vba_start,
-                 PackedData packed)
+                 const int3 dims, AcRealPacked* packed)
 {
     const dim3 tpb(32, 8, 1);
-    const dim3 bpg((unsigned int)ceil(packed.dims.x / (float)tpb.x),
-                   (unsigned int)ceil(packed.dims.y / (float)tpb.y),
-                   (unsigned int)ceil(packed.dims.z / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil(dims.x / (float)tpb.x),
+                   (unsigned int)ceil(dims.y / (float)tpb.y),
+                   (unsigned int)ceil(dims.z / (float)tpb.z));
 
-    kernel_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, packed);
+    kernel_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, dims, packed);
     ERRCHK_CUDA_KERNEL();
 
     return AC_SUCCESS;
 }
 
 AcResult
-acKernelUnpackData(const cudaStream_t stream, const PackedData packed, const int3 vba_start,
-                   VertexBufferArray vba)
+acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed, const int3 vba_start,
+                   const int3 dims, VertexBufferArray vba)
 {
     const dim3 tpb(32, 8, 1);
-    const dim3 bpg((unsigned int)ceil(packed.dims.x / (float)tpb.x),
-                   (unsigned int)ceil(packed.dims.y / (float)tpb.y),
-                   (unsigned int)ceil(packed.dims.z / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil(dims.x / (float)tpb.x),
+                   (unsigned int)ceil(dims.y / (float)tpb.y),
+                   (unsigned int)ceil(dims.z / (float)tpb.z));
 
-    kernel_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, vba);
+    kernel_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba);
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
 }
