@@ -4,6 +4,7 @@
 #include <mpi.h>
 #include <string>
 #include <vector>
+#include <optional>
 
 #include "decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //AcRealPacked, VertexBufferArray
@@ -133,6 +134,7 @@ struct Region {
     {
         ERRCHK_ALWAYS(_id.x == id.x && _id.y == id.y && _id.z == id.z);
     }
+    bool overlaps(Region* other);
 };
 
 struct VariableScope {
@@ -142,6 +144,12 @@ struct VariableScope {
     ~VariableScope();
 };
 
+enum class TaskType { Compute, HaloExchange};
+class TaskDefinition {
+    TaskType task_type;
+    VariableScope* variable_scope;
+    //std::optional<ComputeKernel> kernel; //Only if task_type == Compute
+};
 
 /**
  * Task interface
@@ -217,8 +225,8 @@ typedef class ComputeTask : public Task {
     KernelParameters params;
 
   public:
-    ComputeTask(Device device_, VariableScope* variable_scope_, int region_tag, int3 nn,
-                Stream stream_id, ComputeKernel compute_func_);
+  ComputeTask(ComputeKernel compute_func_, VariableScope* variable_scope_, int order_,
+              int region_tag, int3 nn, Device device_, Stream stream_id);
 
     void compute();
     void advance();
@@ -233,9 +241,9 @@ typedef struct HaloMessage {
     AcRealPacked* data_pinned;
     bool pinned = false; // Set if data was received to pinned memory
 #endif
-    MPI_Request* request;
+    MPI_Request request;
 
-    HaloMessage(int3 dims, size_t num_vars, MPI_Request* req_);
+    HaloMessage(int3 dims, size_t num_vars);
     ~HaloMessage();
 #if !(USE_CUDA_AWARE_MPI)
     void pin(const Device device, const cudaStream_t stream);
@@ -251,6 +259,7 @@ typedef struct MessageBufferSwapChain {
     ~MessageBufferSwapChain();
 
     void add_buffer(int3 dims, size_t num_vars, MPI_Request* req);
+    void add_buffer(int3 dims, size_t num_vars);
     HaloMessage* get_current_buffer();
     HaloMessage* get_fresh_buffer();
 } MessageBufferSwapChain;
@@ -275,10 +284,8 @@ typedef class HaloExchangeTask : public Task {
 
   public:
     bool active;
-
-    HaloExchangeTask(const Device device_, VariableScope* variable_scope_,
-                     const int halo_region_tag, const int3 nn, const uint3_64 decomp,
-                     MPI_Request* recv_requests, MPI_Request* send_requests);
+    HaloExchangeTask(VariableScope* variable_scope_, int order_, int halo_region_tag,
+                     int3 nn, uint3_64 decomp, Device device_);
     ~HaloExchangeTask();
 
     void sync();
