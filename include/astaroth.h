@@ -761,3 +761,71 @@ AcResult acHostMeshDestroy(AcMesh* mesh);
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+
+/** */
+enum TaskType {TaskType_Compute, TaskType_HaloExchange};
+
+/** */
+enum Kernel {Kernel_solve};
+
+/** */
+enum BoundaryCondition {Boundconds_Periodic};
+
+
+/** TaskDefinition is a datatype containing information necessary to generate a set of tasks for some command.*/
+typedef struct TaskDefinition {
+    enum TaskType task_type;
+    union {
+        enum Kernel kernel;
+        enum BoundaryCondition bound_cond;
+    };
+    VertexBufferHandle* variables;
+    size_t n_variables;
+} TaskDefinition;
+
+/** TaskGraph is an opaque datatype containing information necessary to execute a set of commands.*/
+typedef struct TaskGraph TaskGraph;
+
+
+/** */
+TaskDefinition Compute(const enum Kernel kernel_, VertexBufferHandle variable_scope_arr[], const size_t n);
+
+/** */
+TaskDefinition HaloExchange(const enum BoundaryCondition bound_cond_,
+                            VertexBufferHandle variable_scope_arr[], const size_t n);
+
+/** */
+TaskGraph* acGridBuildTaskGraph(const TaskDefinition defs[], const size_t n);
+
+/** */
+AcResult acGridDestroyTaskGraph(TaskGraph* graph);
+
+/** */
+AcResult acGridExecuteTaskGraph(const TaskGraph* graph, const size_t n_iterations);
+
+#ifdef __cplusplus
+/** */
+template<size_t n>
+TaskDefinition
+Compute(Kernel kernel_,VertexBufferHandle (&variable_scope_arr)[n])
+{
+    return Compute(kernel_, variable_scope_arr, n);
+}
+
+/** */
+template<size_t n>
+TaskDefinition
+HaloExchange(BoundaryCondition bound_cond_,VertexBufferHandle (&variable_scope_arr)[n])
+{
+    return HaloExchange(bound_cond_, variable_scope_arr, n);
+}
+
+
+
+template <size_t n>
+TaskGraph* acGridBuildTaskGraph(const TaskDefinition (&defs)[n])
+{
+    return acGridBuildTaskGraph(defs, n);
+}
+#endif

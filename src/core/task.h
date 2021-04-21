@@ -4,7 +4,8 @@
 #include <mpi.h>
 #include <string>
 #include <vector>
-#include <optional>
+#include <memory>
+
 
 #include "decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //AcRealPacked, VertexBufferArray
@@ -15,15 +16,14 @@
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
 static_assert(SWAP_CHAIN_LENGTH == 2);
 
-#define NUM_SEGMENTS (26)
-
-// clang-format off
-#if MPI_INCL_CORNERS
-    #define NUM_ACTIVE_SEGMENTS (26)
-#else
-    #define NUM_ACTIVE_SEGMENTS (18)
-#endif
-// clang-format on
+struct VariableScope {
+    VertexBufferHandle* variables;
+    size_t num_variables;
+    VariableScope(const VertexBufferHandle* variables_, const size_t num_variables_);
+    ~VariableScope();
+    VariableScope(const VariableScope &other) = delete;
+    VariableScope& operator=(const VariableScope& other) = delete;
+};
 
 /**
  * Regions
@@ -51,7 +51,6 @@ static_assert(SWAP_CHAIN_LENGTH == 2);
 enum class RegionFamily { Exchange_output, Exchange_input, Compute_output, Compute_input};
 
 struct Region {
-
     int3 position;
     int3 dims;
 
@@ -59,22 +58,29 @@ struct Region {
     int3 id;
     size_t facet_class;
     int tag;
+ 
+    static constexpr int min_halo_tag = 1;
+    static constexpr int max_halo_tag = 27;
+    static constexpr int n_halo_regions = max_halo_tag - min_halo_tag + 1;
+    static constexpr int min_comp_tag = 0;
+    static constexpr int max_comp_tag = 27;
+    static constexpr int n_comp_regions = max_comp_tag - min_comp_tag + 1;
 
     static int id_to_tag(int3 _id)
     {
-        return ((3 + _id.x) % 3) * 9 + ((3 + _id.y) % 3) * 3 + (3 + _id.z) % 3 - 1;
+        return ((3 + _id.x) % 3) * 9 + ((3 + _id.y) % 3) * 3 + (3 + _id.z) % 3;
     }
 
     static int3 tag_to_id(int _tag)
     {
-        int3 _id = (int3){(_tag + 1) / 9, ((_tag + 1) % 9) / 3, (_tag + 1) % 3};
+        int3 _id = (int3){(_tag) / 9, ((_tag) % 9) / 3, (_tag) % 3};
         _id.x    = _id.x == 2 ? -1 : _id.x;
         _id.y    = _id.y == 2 ? -1 : _id.y;
         _id.z    = _id.z == 2 ? -1 : _id.z;
         ERRCHK_ALWAYS(id_to_tag(_id) == _tag);
         return _id;
     }
-
+   
     Region(RegionFamily _family, int _tag, int3 nn) : family(_family), tag(_tag)
     {
         id          = tag_to_id(tag);
@@ -137,41 +143,27 @@ struct Region {
     bool overlaps(Region* other);
 };
 
-struct VariableScope {
-    VertexBufferHandle* variables;
-    size_t num_variables;
-    VariableScope(VertexBufferHandle* variables_, size_t num_variables);
-    ~VariableScope();
-};
-
-enum class TaskType { Compute, HaloExchange};
-class TaskDefinition {
-    TaskType task_type;
-    VariableScope* variable_scope;
-    //std::optional<ComputeKernel> kernel; //Only if task_type == Compute
-};
 
 /**
  * Task interface
  * --------------
  *
- * Each task is tied to an output region (and input regions, but they are not explicit members of
+ * Eak task is tied to an output region (and input regions, but they are not explicit members of
  * Task). Tasks may depend on other Tasks. The existence of dependency between two tasks is deduced
  * from their input and output regions. At the moment, this is done explicitly by comparing region
  * ids and happens in grid.cc:GridInit()
  */
-class Task {
-  private:
-    std::vector<std::pair<Task*, size_t>> dependents;
-
+typedef class Task {
   protected:
+    std::vector<std::pair<std::weak_ptr<Task>, size_t>> dependents;
     Device device;
     cudaStream_t stream;
     VertexBufferArray vba;
     int rank;
 
     int state;
-
+    
+    
     struct {
         std::vector<size_t> counts;
         std::vector<size_t> targets;
@@ -185,23 +177,20 @@ class Task {
     bool poll_stream();
 
   public:
+    bool active;
     int order; //the ordinal position of the task in a serial execution (within its region)
     Region* output_region;
     Region* input_region;
-    VariableScope* variable_scope;
-    
+    std::shared_ptr<VariableScope> variable_scope;
 
     static const int wait_state = 0;
 
-    virtual ~Task()
-    {
-        // delete dependents;
-    }
     virtual bool test()    = 0;
     virtual void advance() = 0;
 
-    void registerDependent(Task* t, size_t offset);
+    void registerDependent(std::shared_ptr<Task> t, size_t offset);
     void registerPrerequisite(size_t offset);
+    bool isPrerequisiteTo(std::shared_ptr<Task> other);
 
     void setIterationParams(size_t begin, size_t end);
     void update();
@@ -214,7 +203,7 @@ class Task {
     void swapVBA();
 
     // void logStateChangedEvent(std::string b, std::string c);
-};
+} Task;
 
 // Compute tasks
 enum class ComputeState { Waiting_for_halo = Task::wait_state, Running };
@@ -225,9 +214,11 @@ typedef class ComputeTask : public Task {
     KernelParameters params;
 
   public:
-  ComputeTask(ComputeKernel compute_func_, VariableScope* variable_scope_, int order_,
-              int region_tag, int3 nn, Device device_, Stream stream_id);
-
+    ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VariableScope> variable_scope_, int order_,
+                int region_tag, int3 nn, Device device_);
+    ~ComputeTask();
+    ComputeTask(const ComputeTask &other) = delete;
+    ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
     void advance();
     bool test();
@@ -283,10 +274,11 @@ typedef class HaloExchangeTask : public Task {
     MessageBufferSwapChain* send_buffers;
 
   public:
-    bool active;
-    HaloExchangeTask(VariableScope* variable_scope_, int order_, int halo_region_tag,
-                     int3 nn, uint3_64 decomp, Device device_);
+    HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope_, int order_, int tag_0,
+                     int halo_region_tag, int3 nn, uint3_64 decomp, Device device_);
     ~HaloExchangeTask();
+    HaloExchangeTask(const HaloExchangeTask &other) = delete;
+    HaloExchangeTask& operator=(const HaloExchangeTask& other) = delete;
 
     void sync();
     void wait_send();
@@ -312,3 +304,44 @@ typedef class HaloExchangeTask : public Task {
     void advance();
     bool test();
 } HaloExchangeTask;
+
+struct TaskGraph{
+    std::vector<std::shared_ptr<Task>> all_tasks;
+    std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
+    std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;
+};
+/*
+enum class TaskType { Compute, HaloExchange};
+enum class Kernel {solve};
+enum class BoundaryCondition {Periodic};
+
+typedef struct TaskDefinition {
+    TaskType task_type;
+    union {
+        Kernel kernel;
+        BoundaryCondition bound_cond;
+    };
+    VertexBufferHandle variable_scope[];
+    size_t n_vars;
+} TaskDefinition;
+
+typedef struct Compute: public TaskDefinition {
+    template<size_t n>
+    Compute(VertexBufferHandle (&variable_scope_arr)[n], Kernel kernel_)
+    {
+        task_type = TaskType::Compute;
+        variable_scope.insert(variable_scope.end(), &variable_scope_arr[0], &variable_scope_arr[n]);
+        kernel = kernel_;
+    }
+} ComputeTaskDefinition;
+
+typedef struct HaloExchange: public TaskDefinition {
+    template<size_t n>
+    HaloExchange(VertexBufferHandle (&variable_scope_arr)[n], BoundaryCondition bound_cond_)
+    {
+        task_type = TaskType::HaloExchange;
+        variable_scope.insert(variable_scope.end(), &variable_scope_arr[0], &variable_scope_arr[n]);
+        bound_cond = bound_cond_;
+    }
+} HaloExchangeTaskDefinition;
+*/

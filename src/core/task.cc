@@ -19,9 +19,9 @@
 #include "task.h"
 #include "astaroth.h"
 
-#include <iostream>
 #include <mpi.h>
 #include <vector>
+#include <memory>
 
 #include "decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //AcRealPacked, ComputeKernel
@@ -37,7 +37,30 @@ Astaroth Program
     Exchange([all fields except shock])
 */
 
-VariableScope::VariableScope(VertexBufferHandle* h_variables, size_t num_variables_)
+TaskDefinition
+Compute(const Kernel kernel_, VertexBufferHandle variable_scope_arr[], const size_t n)
+{
+    TaskDefinition task_def;
+    task_def.task_type = TaskType_Compute;
+    task_def.kernel = kernel_;
+    task_def.variables = variable_scope_arr;
+    task_def.n_variables = n;
+    return task_def;
+}
+
+TaskDefinition
+HaloExchange(const BoundaryCondition bound_cond_, VertexBufferHandle variable_scope_arr[],
+             const size_t n)
+{
+    TaskDefinition task_def;
+    task_def.task_type = TaskType_HaloExchange;
+    task_def.bound_cond = bound_cond_;
+    task_def.variables = variable_scope_arr;
+    task_def.n_variables = n;
+    return task_def;
+}
+
+VariableScope::VariableScope(const VertexBufferHandle h_variables[], const size_t num_variables_)
     :num_variables(num_variables_)
 {
     variables = NULL;
@@ -53,17 +76,17 @@ VariableScope::~VariableScope()
     num_variables = -1;
 }
 
+
 bool
 Region::overlaps(Region* other)
 {
-    return (this->position.x <= other->position.x + other->dims.x) && 
-           (other->position.x <= this->position.x + this->dims.x) &&
-           (this->position.y <= other->position.y + other->dims.y) && 
-           (other->position.y <= this->position.y + this->dims.y) &&
-           (this->position.z <= other->position.z + other->dims.z) && 
-           (other->position.z <= this->position.z + this->dims.z);
+    return (this->position.x < other->position.x + other->dims.x) && 
+           (other->position.x < this->position.x + this->dims.x) &&
+           (this->position.y < other->position.y + other->dims.y) && 
+           (other->position.y < this->position.y + this->dims.y) &&
+           (this->position.z < other->position.z + other->dims.z) && 
+           (other->position.z < this->position.z + this->dims.z);
 }
-
 /* Task interface */
 
 /*
@@ -90,7 +113,7 @@ Task::logStateChangedEvent(std::string from, std::string to)
 */
 
 void
-Task::registerDependent(Task* t, size_t offset)
+Task::registerDependent(std::shared_ptr<Task> t, size_t offset)
 {
     dependents.emplace_back(t, offset);
     t->registerPrerequisite(offset);
@@ -107,6 +130,17 @@ Task::registerPrerequisite(size_t offset)
     for (; offset < dep_cntr.targets.size(); offset++){ 
         dep_cntr.targets[offset]++;
     }
+}
+
+bool
+Task::isPrerequisiteTo(std::shared_ptr<Task> other)
+{
+    for (auto dep: dependents) {
+        if (dep.first.lock() == other){
+            return true;
+        }
+    }
+    return false;
 }
 
 void
@@ -156,8 +190,9 @@ Task::update()
 void
 Task::notifyDependents()
 {
-    for (auto& dependent : dependents) {
-        dependent.first->satisfyDependency(loop_cntr.i+dependent.second);
+    for (auto& dep : dependents) {
+        std::shared_ptr<Task> dependent = dep.first.lock();
+        dependent->satisfyDependency(loop_cntr.i+dep.second);
     }
 }
 
@@ -203,15 +238,16 @@ Task::poll_stream()
 }
 
 /* Computation */
-ComputeTask::ComputeTask(ComputeKernel compute_func_, VariableScope* variable_scope_, int order_,
-                         int region_tag, int3 nn, Device device_, Stream stream_id)
+ComputeTask::ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VariableScope> variable_scope_, int order_,
+                         int region_tag, int3 nn, Device device_)
 {
     // task_type = "compute";
     device = device_;
-    stream = device->streams[stream_id];
+    stream = device->streams[STREAM_DEFAULT + region_tag];
     syncVBA();
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
+    
+    active = true;
     order = order_;
     output_region = new Region(RegionFamily::Compute_output, region_tag, nn);
     input_region = new Region(RegionFamily::Compute_input, region_tag, nn);
@@ -220,6 +256,11 @@ ComputeTask::ComputeTask(ComputeKernel compute_func_, VariableScope* variable_sc
 
     params = KernelParameters{stream, 0, output_region->position,
                               output_region->position + output_region->dims};
+}
+
+ComputeTask::~ComputeTask()
+{
+    //dependents.clear();
 }
 
 void
@@ -348,8 +389,8 @@ MessageBufferSwapChain::get_fresh_buffer()
 }
 
 // HaloExchangeTask
-HaloExchangeTask::HaloExchangeTask(VariableScope* variable_scope_, int order_,
-                                   int halo_region_tag, int3 nn, uint3_64 decomp,
+HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope_, int order_,
+                                   int tag_0, int halo_region_tag, int3 nn, uint3_64 decomp,
                                    Device device_)
 {
     // task_type = "halo";
@@ -372,8 +413,9 @@ HaloExchangeTask::HaloExchangeTask(VariableScope* variable_scope_, int order_,
     msg_length   = output_region->dims.x * output_region->dims.y * output_region->dims.z * variable_scope->num_variables;
 
     counterpart_rank = getPid(getPid3D(rank, decomp) + output_region->id, decomp);
-    send_tag         = input_region->tag;
-    recv_tag         = Region::id_to_tag(-output_region->id);
+    //MPI tags are namespaced to avoid collisions with other MPI tasks
+    send_tag         = tag_0 + input_region->tag;
+    recv_tag         = tag_0 + Region::id_to_tag(-output_region->id);
 
     // Note: send_tag is also the index for both buffer sets.
     recv_buffers = new MessageBufferSwapChain();
@@ -398,10 +440,11 @@ HaloExchangeTask::~HaloExchangeTask()
     if (msg->request != MPI_REQUEST_NULL) {
         MPI_Cancel(&msg->request);
     }
+
     delete recv_buffers;
     delete send_buffers;
     cudaSetDevice(device->id);
-    // dependents.clear();
+    //dependents.clear();
     cudaStreamDestroy(stream);
 }
 
