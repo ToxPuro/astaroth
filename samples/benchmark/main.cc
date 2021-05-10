@@ -94,7 +94,7 @@ main(int argc, char** argv)
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
-    TestType test = TEST_WEAK_SCALING;
+    TestType test = TEST_STRONG_SCALING;
 
     int opt;
     while ((opt = getopt(argc, argv, "t:")) != -1) {
