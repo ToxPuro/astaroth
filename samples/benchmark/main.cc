@@ -25,6 +25,10 @@
 #include "errchk.h"
 #include "timer_hires.h"
 
+//getopt
+#include <unistd.h>
+#include <string>
+
 #if AC_MPI_ENABLED
 
 #include <mpi.h>
@@ -90,11 +94,33 @@ main(int argc, char** argv)
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
-    if (argc > 1) {
-        if (argc == 4) {
-            const int nx           = atoi(argv[1]);
-            const int ny           = atoi(argv[2]);
-            const int nz           = atoi(argv[3]);
+    TestType test = TEST_WEAK_SCALING;
+
+    int opt;
+    while ((opt = getopt(argc, argv, "t:")) != -1) {
+        switch (opt) {
+            case 't':
+                if (std::string("strong").find(optarg) ==0){
+                    test = TEST_STRONG_SCALING;
+                }else if (std::string("weak").find(optarg) ==0){
+                    test = TEST_WEAK_SCALING;
+                }else {
+                    fprintf(stderr, "Could not parse option -t <type>. <type> should be \"strong\" or \"weak\"\n");
+                    exit(EXIT_FAILURE);
+                }
+                break;
+            default:
+                fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz>.\n");
+                exit(EXIT_FAILURE);
+        }
+    }
+
+    
+    if (argc - optind > 0) {
+        if (argc - optind == 3) {
+            const int nx           = atoi(argv[optind]);
+            const int ny           = atoi(argv[optind+1]);
+            const int nz           = atoi(argv[optind+2]);
             info.int_params[AC_nx] = nx;
             info.int_params[AC_ny] = ny;
             info.int_params[AC_nz] = nz;
@@ -107,12 +133,14 @@ main(int argc, char** argv)
         }
     }
 
-    const TestType test = TEST_STRONG_SCALING;
     if (test == TEST_WEAK_SCALING) {
+        fprintf(stdout, "Running weak scaling benchmarks.\n");
         uint3_64 decomp = decompose(nprocs);
         info.int_params[AC_nx] *= decomp.x;
         info.int_params[AC_ny] *= decomp.y;
         info.int_params[AC_nz] *= decomp.z;
+    } else {
+        fprintf(stdout, "Running strong scaling benchmarks.\n");
     }
 
     /*
