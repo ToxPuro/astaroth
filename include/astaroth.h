@@ -764,21 +764,21 @@ AcResult acHostMeshDestroy(AcMesh* mesh);
 
 
 /** */
-enum TaskType {TaskType_Compute, TaskType_HaloExchange};
+typedef enum TaskType {TaskType_Compute, TaskType_HaloExchange} TaskType;
 
 /** */
-enum Kernel {Kernel_solve};
+typedef enum Kernel {Kernel_solve} Kernel;
 
 /** */
-enum BoundaryCondition {Boundconds_Periodic};
+typedef enum BoundaryCondition {Boundconds_Periodic} BoundaryCondition;
 
 
 /** TaskDefinition is a datatype containing information necessary to generate a set of tasks for some command.*/
 typedef struct TaskDefinition {
-    enum TaskType task_type;
+    TaskType task_type;
     union {
-        enum Kernel kernel;
-        enum BoundaryCondition bound_cond;
+        Kernel kernel;
+        BoundaryCondition bound_cond;
     };
     VertexBufferHandle* variables;
     size_t n_variables;
@@ -789,14 +789,15 @@ typedef struct TaskGraph TaskGraph;
 
 
 /** */
-TaskDefinition Compute(const enum Kernel kernel_, VertexBufferHandle variable_scope_arr[], const size_t n);
+TaskDefinition Compute(const Kernel kernel, VertexBufferHandle variable_scope_arr[],
+                       const size_t n_vars);
 
 /** */
-TaskDefinition HaloExchange(const enum BoundaryCondition bound_cond_,
-                            VertexBufferHandle variable_scope_arr[], const size_t n);
+TaskDefinition HaloExchange(const BoundaryCondition bound_cond,
+                            VertexBufferHandle variable_scope_arr[], const size_t n_vars);
 
 /** */
-TaskGraph* acGridBuildTaskGraph(const TaskDefinition defs[], const size_t n);
+TaskGraph* acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops);
 
 /** */
 AcResult acGridDestroyTaskGraph(TaskGraph* graph);
@@ -808,24 +809,23 @@ AcResult acGridExecuteTaskGraph(const TaskGraph* graph, const size_t n_iteration
 /** */
 template<size_t n>
 TaskDefinition
-Compute(Kernel kernel_,VertexBufferHandle (&variable_scope_arr)[n])
+Compute(Kernel kernel,VertexBufferHandle (&variable_scope_arr)[n])
 {
-    return Compute(kernel_, variable_scope_arr, n);
+    return Compute(kernel, variable_scope_arr, n);
 }
 
 /** */
 template<size_t n>
 TaskDefinition
-HaloExchange(BoundaryCondition bound_cond_,VertexBufferHandle (&variable_scope_arr)[n])
+HaloExchange(BoundaryCondition bound_cond,VertexBufferHandle (&variable_scope_arr)[n])
 {
-    return HaloExchange(bound_cond_, variable_scope_arr, n);
+    return HaloExchange(bound_cond, variable_scope_arr, n);
 }
 
-
-
+/** */
 template <size_t n>
-TaskGraph* acGridBuildTaskGraph(const TaskDefinition (&defs)[n])
+TaskGraph* acGridBuildTaskGraph(const TaskDefinition (&ops)[n])
 {
-    return acGridBuildTaskGraph(defs, n);
+    return acGridBuildTaskGraph(ops, n);
 }
 #endif

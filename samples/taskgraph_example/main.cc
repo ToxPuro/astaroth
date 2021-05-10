@@ -20,44 +20,58 @@ main(void)
     AcMesh mesh;
     if (pid == 0) {
         acHostMeshCreate(info, &mesh);
+        //Create randomized initial conditions
         acHostMeshRandomize(&mesh);
     }
 
+    std::cout << "Loading mesh" <<std::endl;
+    acGridLoadMesh(STREAM_DEFAULT, mesh);
+
+    //Creates a global grid variable and default task graph
     acGridInit(info);
 
     //Example: This does the same as acGridIntegrate()
     
-    std::cout << "Initializing variables"<< std::endl;
-    //First we define what variables we're using.
+    std::cout << "Initializing fields"<< std::endl;
+    //First we define what fields we're using.
     //This parameter is a c-style array but only works with c++ at the moment
     //(the interface relies on templates for safety and array type deduction).
-    VertexBufferHandle all_variables[] = { VTXBUF_LNRHO,
+    VertexBufferHandle all_fields[] = { VTXBUF_LNRHO,
                                            VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
                                            VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ,
                                            VTXBUF_ENTROPY };
+    
+    //Miikka's note: this would be a good quality of life feature
+    //VertexBufferHandle all_fields = ALL_VERTEX_BUFFERS;
+    //or
+    //VertexBufferHandle all_fields = ALL_FIELDS;
 
     std::cout << "Generating graph"<< std::endl;
     //Build a task graph consisting of:
-    // - a halo exchange with periodic boundconds for all variables
-    // - a calculation of the solve kernel touching all variables
+    // - a halo exchange with periodic boundconds for all fields
+    // - a calculation of the solve kernel touching all fields
     //
     //This function call generates tasks for each subregions in the domain
     //and figures out the dependencies between the tasks.
-    TaskGraph* hc_graph = acGridBuildTaskGraph({
-                            HaloExchange(Boundconds_Periodic, all_variables),
-                            Compute(Kernel_solve, all_variables)
-                          });
+    TaskGraph* hc_graph = acGridBuildTaskGraph(
+                          {
+                            HaloExchange(Boundconds_Periodic, all_fields),
+                            Compute(Kernel_solve, all_fields)
+                          }
+                          );
 
     //We can build multiple TaskGraphs, the MPI requests will not collide
     //because MPI tag space has been partitioned into ranges that each HaloExchange step uses.
     TaskGraph* h3_graph = acGridBuildTaskGraph({
-                            HaloExchange(Boundconds_Periodic, all_variables),
-                            HaloExchange(Boundconds_Periodic, all_variables),
-                            HaloExchange(Boundconds_Periodic, all_variables)
+                            HaloExchange(Boundconds_Periodic, all_fields),
+                            HaloExchange(Boundconds_Periodic, all_fields),
+                            HaloExchange(Boundconds_Periodic, all_fields),
+                            //Could also be eg.
+                            /*Compute(Kernel_shock1, all_fields),
+                            Compute(Kernel_shock2, shock_fields),
+                            Compute(Kernel_solve, all_fields)*/
                           });
     
-    std::cout << "Loading mesh" <<std::endl;
-    acGridLoadMesh(STREAM_DEFAULT, mesh);
     std::cout << "Setting time delta"<< std::endl;
     //Set the time delta
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, FLT_EPSILON);

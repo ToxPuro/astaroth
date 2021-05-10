@@ -482,56 +482,29 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 //TODO: generate list of kernels at compile time with acc
 ComputeKernel kernel_lookup[1] = {acKernelIntegrateSubstep};
 
-//TODO:rename n -> something descriptive
-TaskGraph* acGridBuildTaskGraph(const TaskDefinition defs[], const size_t n)
+TaskGraph* acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
 {
     ERRCHK(grid.initialized);
     using Task_vector = std::vector<std::shared_ptr<Task>>;
     using VarScopePtr = std::shared_ptr<VariableScope>;
-    using Order_dependency = std::pair<size_t,size_t>;
 
     TaskGraph* graph = new TaskGraph();
-    graph->comp_tasks.reserve(n*Region::n_comp_regions);
-    graph->halo_tasks.reserve(n*Region::n_halo_regions);
-    graph->all_tasks.reserve(n*max(Region::n_halo_regions, Region::n_comp_regions));
+    graph->comp_tasks.reserve(n_ops*Region::n_comp_regions);
+    graph->halo_tasks.reserve(n_ops*Region::n_halo_regions);
+    graph->all_tasks.reserve(n_ops*max(Region::n_halo_regions, Region::n_comp_regions));
     
-    std::vector<Order_dependency> order_dependencies;
-    order_dependencies.reserve(n);
+    //Create tasks for each operation & store iterators to ranges of tasks belonging to operations
+    std::vector<Task_vector::iterator> op_itors;
+    op_itors.reserve(n_ops);
 
-    for (size_t dependent = 0; dependent < n;dependent++) {
-        std::array<bool,NUM_VTXBUF_HANDLES> dependent_vars{};
-        for (size_t i = 0; i < defs[dependent].n_variables; i++){
-            dependent_vars[(int)defs[dependent].variables[i]] = true;
-        }
-        //look backwards until we've found each variable in task scope       
-        for (size_t j = 0; j < n; j++) {
-            size_t prereq = (dependent-j-1) % n;
-            bool dep_found = false;
-            for (size_t i = 0; i < defs[prereq].n_variables; i++){
-                dep_found = true;
-                dependent_vars[defs[prereq].variables[i]] = false;
-            }
-            if (dep_found) {
-                order_dependencies.emplace_back(prereq, dependent);
-            }
-            
-            if(std::find(begin(dependent_vars), end(dependent_vars), true) != dependent_vars.end()){
-                break;
-            }
-        }
-    }
-    
-    std::vector<Task_vector::iterator> steps;
-    steps.reserve(n);
+    for (size_t i = 0; i < n_ops; i++){
+        VarScopePtr vars = std::make_shared<VariableScope>(ops[i].variables, ops[i].n_variables);
 
-    for (size_t i = 0; i < n; i++){
-        auto& def = defs[i];
-        VarScopePtr vars = std::make_shared<VariableScope>(def.variables, def.n_variables);
-        steps.push_back(graph->all_tasks.end());
-        switch (def.task_type) {
+        op_itors.push_back(graph->all_tasks.end());
+        switch (ops[i].task_type) {
         case TaskType_Compute:
         {
-            ComputeKernel kernel = kernel_lookup[(int)def.kernel];
+            ComputeKernel kernel = kernel_lookup[(int)ops[i].kernel];
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
                 graph->comp_tasks.push_back(std::make_shared<ComputeTask>(kernel, vars, i, tag,
                                                                           grid.nn,grid.device));
@@ -554,16 +527,44 @@ TaskGraph* acGridBuildTaskGraph(const TaskDefinition defs[], const size_t n)
         }
         }
     }
+    op_itors.push_back(graph->all_tasks.end());
 
-    steps.push_back(graph->all_tasks.end());
+    //Find dependencies between operations
+    std::vector<std::pair<size_t,size_t>> op_dependencies;
+    op_dependencies.reserve(n_ops);
 
-    //assign dependencies
-    for (auto& order_dep : order_dependencies) {
-        for (auto prereq = steps[order_dep.first]; prereq != steps[order_dep.first+1]; prereq++){
-            if ((*prereq)->active) {
-                for (auto dependent = steps[order_dep.second]; dependent != steps[order_dep.second+1]; dependent++){
-                    if ((*dependent)->active && (*prereq)->output_region->overlaps((*dependent)->input_region)){
-                        (*prereq)->registerDependent(*dependent, order_dep.first < order_dep.second?0:1);
+    for (size_t dependent = 0; dependent < n_ops;dependent++) {
+        std::array<bool,NUM_VTXBUF_HANDLES> dependent_vars{};
+        for (size_t i = 0; i < ops[dependent].n_variables; i++){
+            dependent_vars[(int)ops[dependent].variables[i]] = true;
+        }
+        //look backwards until we've found each variable in task scope       
+        for (size_t j = 0; j < n_ops; j++) {
+            size_t prereq = (dependent-j-1) % n_ops;
+            bool dep_found = false;
+            for (size_t i = 0; i < ops[prereq].n_variables; i++){
+                dep_found = true;
+                dependent_vars[ops[prereq].variables[i]] = false;
+            }
+            if (dep_found) {
+                op_dependencies.emplace_back(prereq, dependent);
+            }
+            
+            if(std::find(begin(dependent_vars), end(dependent_vars), true) != dependent_vars.end()){
+                break;
+            }
+        }
+    }
+
+    //Assign dependencies between tasks if:
+    // 1. their operations are dependent
+    // 2. their regions overlap
+    for (auto& dep : op_dependencies) {
+        for (auto preq = op_itors[dep.first]; preq != op_itors[dep.first+1]; preq++){
+            if ((*preq)->active) {
+                for (auto dept = op_itors[dep.second]; dept != op_itors[dep.second+1]; dept++){
+                    if ((*dept)->active && (*preq)->output_region->overlaps((*dept)->input_region)){
+                        (*preq)->registerDependent(*dept, dep.first < dep.second?0:1);
                     }
                 }
             }

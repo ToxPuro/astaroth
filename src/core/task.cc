@@ -28,35 +28,26 @@
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
 
-/*
-Astaroth Program
-    Call(shock_divu1, [shock])
-    Call(shock_max2, [shock])
-    Call(shock_smooth3, [shock])
-    Call(integrate, [all fields])
-    Exchange([all fields except shock])
-*/
-
 TaskDefinition
-Compute(const Kernel kernel_, VertexBufferHandle variable_scope_arr[], const size_t n)
+Compute(const Kernel kernel, VertexBufferHandle variable_scope_arr[], const size_t n_vars)
 {
     TaskDefinition task_def;
     task_def.task_type = TaskType_Compute;
-    task_def.kernel = kernel_;
+    task_def.kernel = kernel;
     task_def.variables = variable_scope_arr;
-    task_def.n_variables = n;
+    task_def.n_variables = n_vars;
     return task_def;
 }
 
 TaskDefinition
-HaloExchange(const BoundaryCondition bound_cond_, VertexBufferHandle variable_scope_arr[],
-             const size_t n)
+HaloExchange(const BoundaryCondition bound_cond, VertexBufferHandle variable_scope_arr[],
+             const size_t n_vars)
 {
     TaskDefinition task_def;
     task_def.task_type = TaskType_HaloExchange;
-    task_def.bound_cond = bound_cond_;
+    task_def.bound_cond = bound_cond;
     task_def.variables = variable_scope_arr;
-    task_def.n_variables = n;
+    task_def.n_variables = n_vars;
     return task_def;
 }
 
@@ -76,6 +67,65 @@ VariableScope::~VariableScope()
     num_variables = -1;
 }
 
+Region::Region(RegionFamily _family, int _tag, int3 nn) : family(_family), tag(_tag)
+{
+    id          = tag_to_id(tag);
+    facet_class = (id.x == 0 ? 0 : 1) + (id.y == 0 ? 0 : 1) + (id.z == 0 ? 0 : 1);
+    ERRCHK_ALWAYS(facet_class <= 3);
+
+    switch (family) {
+    case RegionFamily::Compute_output: {
+        // clang-format off
+        position = (int3){
+                    id.x == -1  ? NGHOST : id.x == 1 ? nn.x : NGHOST * 2,
+                    id.y == -1  ? NGHOST : id.y == 1 ? nn.y : NGHOST * 2,
+                    id.z == -1  ? NGHOST : id.z == 1 ? nn.z : NGHOST * 2};
+        // clang-format on
+        dims = (int3){id.x == 0 ? nn.x - NGHOST * 2 : NGHOST,
+                      id.y == 0 ? nn.y - NGHOST * 2 : NGHOST,
+                      id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
+        break;
+    }
+    case RegionFamily::Compute_input: {
+        // clang-format off
+        position = (int3){
+                    id.x == -1  ? 0 : id.x == 1 ? nn.x - NGHOST : NGHOST ,
+                    id.y == -1  ? 0 : id.y == 1 ? nn.y - NGHOST : NGHOST ,
+                    id.z == -1  ? 0 : id.z == 1 ? nn.z - NGHOST : NGHOST };
+        // clang-format on
+        dims = (int3){id.x == 0 ? nn.x : NGHOST * 3,
+                      id.y == 0 ? nn.y : NGHOST * 3,
+                      id.z == 0 ? nn.z : NGHOST * 3};
+        break;
+    }
+    case RegionFamily::Exchange_output: {
+        // clang-format off
+        position = (int3){
+                    id.x == -1  ? 0 : id.x == 1 ? NGHOST + nn.x : NGHOST,
+                    id.y == -1  ? 0 : id.y == 1 ? NGHOST + nn.y : NGHOST,
+                    id.z == -1  ? 0 : id.z == 1 ? NGHOST + nn.z : NGHOST};
+        // clang-format on
+        dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
+                      id.z == 0 ? nn.z : NGHOST};
+        break;
+    }
+    case RegionFamily::Exchange_input: {
+        position = (int3){id.x == 1 ? nn.x : NGHOST, id.y == 1 ? nn.y : NGHOST,
+                          id.z == 1 ? nn.z : NGHOST};
+        dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
+                      id.z == 0 ? nn.z : NGHOST};
+        break;
+    }
+    default: {
+        ERROR("Unknown region family.");
+    }
+    }
+}
+
+Region::Region(RegionFamily _family, int3 _id, int3 nn) : Region{_family, id_to_tag(_id), nn}
+{
+    ERRCHK_ALWAYS(_id.x == id.x && _id.y == id.y && _id.z == id.z);
+}
 
 bool
 Region::overlaps(Region* other)
@@ -87,6 +137,26 @@ Region::overlaps(Region* other)
            (this->position.z < other->position.z + other->dims.z) && 
            (other->position.z < this->position.z + this->dims.z);
 }
+
+
+int
+Region::id_to_tag(int3 _id)
+{
+    return ((3 + _id.x) % 3) * 9 + ((3 + _id.y) % 3) * 3 + (3 + _id.z) % 3;
+}
+
+int3
+Region::tag_to_id(int _tag)
+{
+    int3 _id = (int3){(_tag) / 9, ((_tag) % 9) / 3, (_tag) % 3};
+    _id.x    = _id.x == 2 ? -1 : _id.x;
+    _id.y    = _id.y == 2 ? -1 : _id.y;
+    _id.z    = _id.z == 2 ? -1 : _id.z;
+    ERRCHK_ALWAYS(id_to_tag(_id) == _tag);
+    return _id;
+}
+
+
 /* Task interface */
 
 /*
@@ -241,7 +311,6 @@ Task::poll_stream()
 ComputeTask::ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VariableScope> variable_scope_, int order_,
                          int region_tag, int3 nn, Device device_)
 {
-    // task_type = "compute";
     device = device_;
     stream = device->streams[STREAM_DEFAULT + region_tag];
     syncVBA();
@@ -260,14 +329,14 @@ ComputeTask::ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VariableSc
 
 ComputeTask::~ComputeTask()
 {
-    //dependents.clear();
+    delete output_region;
+    delete input_region;
 }
 
 void
 ComputeTask::compute()
 {
-    //IDEA: if we make params.step_number a pointer, we can point it at the loop_cntr..., not a bad idea
-    //We could even make all the members of params pointers to save space... hmm
+    //IDEA: we could make loop_cntr.i point at params.step_number
     params.step_number = (int)(loop_cntr.i % 3);    
     compute_func(params, vba);
 }
@@ -336,7 +405,6 @@ HaloMessage::~HaloMessage()
 void
 HaloMessage::pin(const Device device, const cudaStream_t stream)
 {
-    // TODO sync stream
     cudaSetDevice(device->id);
     pinned       = true;
     size_t bytes = length * sizeof(AcRealPacked);
@@ -346,7 +414,6 @@ HaloMessage::pin(const Device device, const cudaStream_t stream)
 void
 HaloMessage::unpin(const Device device, const cudaStream_t stream)
 {
-    // TODO sync stream
     if (!pinned)
         return;
 
@@ -393,7 +460,6 @@ HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope
                                    int tag_0, int halo_region_tag, int3 nn, uint3_64 decomp,
                                    Device device_)
 {
-    // task_type = "halo";
     device = device_;
     // Create stream for packing/unpacking
     {
@@ -443,6 +509,9 @@ HaloExchangeTask::~HaloExchangeTask()
 
     delete recv_buffers;
     delete send_buffers;
+
+    delete output_region;
+    delete input_region;
     cudaSetDevice(device->id);
     //dependents.clear();
     cudaStreamDestroy(stream);

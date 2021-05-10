@@ -66,80 +66,11 @@ struct Region {
     static constexpr int max_comp_tag = 27;
     static constexpr int n_comp_regions = max_comp_tag - min_comp_tag + 1;
 
-    static int id_to_tag(int3 _id)
-    {
-        return ((3 + _id.x) % 3) * 9 + ((3 + _id.y) % 3) * 3 + (3 + _id.z) % 3;
-    }
-
-    static int3 tag_to_id(int _tag)
-    {
-        int3 _id = (int3){(_tag) / 9, ((_tag) % 9) / 3, (_tag) % 3};
-        _id.x    = _id.x == 2 ? -1 : _id.x;
-        _id.y    = _id.y == 2 ? -1 : _id.y;
-        _id.z    = _id.z == 2 ? -1 : _id.z;
-        ERRCHK_ALWAYS(id_to_tag(_id) == _tag);
-        return _id;
-    }
+    static int id_to_tag(int3 _id);
+    static int3 tag_to_id(int _tag);
    
-    Region(RegionFamily _family, int _tag, int3 nn) : family(_family), tag(_tag)
-    {
-        id          = tag_to_id(tag);
-        facet_class = (id.x == 0 ? 0 : 1) + (id.y == 0 ? 0 : 1) + (id.z == 0 ? 0 : 1);
-        ERRCHK_ALWAYS(facet_class <= 3);
-
-        switch (family) {
-        case RegionFamily::Compute_output: {
-            // clang-format off
-            position = (int3){
-                        id.x == -1  ? NGHOST : id.x == 1 ? nn.x : NGHOST * 2,
-                        id.y == -1  ? NGHOST : id.y == 1 ? nn.y : NGHOST * 2,
-                        id.z == -1  ? NGHOST : id.z == 1 ? nn.z : NGHOST * 2};
-            // clang-format on
-            dims = (int3){id.x == 0 ? nn.x - NGHOST * 2 : NGHOST,
-                          id.y == 0 ? nn.y - NGHOST * 2 : NGHOST,
-                          id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
-            break;
-        }
-        case RegionFamily::Compute_input: {
-            // clang-format off
-            position = (int3){
-                        id.x == -1  ? 0 : id.x == 1 ? nn.x - NGHOST : NGHOST ,
-                        id.y == -1  ? 0 : id.y == 1 ? nn.y - NGHOST : NGHOST ,
-                        id.z == -1  ? 0 : id.z == 1 ? nn.z - NGHOST : NGHOST };
-            // clang-format on
-            dims = (int3){id.x == 0 ? nn.x : NGHOST * 3,
-                          id.y == 0 ? nn.y : NGHOST * 3,
-                          id.z == 0 ? nn.z : NGHOST * 3};
-            break;
-        }
-        case RegionFamily::Exchange_output: {
-            // clang-format off
-            position = (int3){
-                        id.x == -1  ? 0 : id.x == 1 ? NGHOST + nn.x : NGHOST,
-                        id.y == -1  ? 0 : id.y == 1 ? NGHOST + nn.y : NGHOST,
-                        id.z == -1  ? 0 : id.z == 1 ? NGHOST + nn.z : NGHOST};
-            // clang-format on
-            dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
-                          id.z == 0 ? nn.z : NGHOST};
-            break;
-        }
-        case RegionFamily::Exchange_input: {
-            position = (int3){id.x == 1 ? nn.x : NGHOST, id.y == 1 ? nn.y : NGHOST,
-                              id.z == 1 ? nn.z : NGHOST};
-            dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
-                          id.z == 0 ? nn.z : NGHOST};
-            break;
-        }
-        default: {
-            ERROR("Unknown region family.");
-        }
-        }
-    }
-
-    Region(RegionFamily _family, int3 _id, int3 nn) : Region{_family, id_to_tag(_id), nn}
-    {
-        ERRCHK_ALWAYS(_id.x == id.x && _id.y == id.y && _id.z == id.z);
-    }
+    Region(RegionFamily _family, int _tag, int3 nn);
+    Region(RegionFamily _family, int3 _id, int3 nn);
     bool overlaps(Region* other);
 };
 
