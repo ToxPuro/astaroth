@@ -120,6 +120,7 @@ Region::Region(RegionFamily _family, int _tag, int3 nn) : family(_family), tag(_
         ERROR("Unknown region family.");
     }
     }
+    volume = dims.x * dims.y * dims.z;
 }
 
 Region::Region(RegionFamily _family, int3 _id, int3 nn) : Region{_family, id_to_tag(_id), nn}
@@ -325,6 +326,8 @@ ComputeTask::ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VariableSc
 
     params = KernelParameters{stream, 0, output_region->position,
                               output_region->position + output_region->dims};
+    name = "Compute("+std::to_string(output_region->id.x)+","+std::to_string(output_region->id.y)+","+std::to_string(output_region->id.z)+")";
+    task_type = TaskType_Compute;
 }
 
 ComputeTask::~ComputeTask()
@@ -497,6 +500,8 @@ HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope
     if (active) {
         receive();
     }
+    name = "Halo exchange("+std::to_string(output_region->id.x)+","+std::to_string(output_region->id.y)+","+std::to_string(output_region->id.z)+")";
+    task_type = TaskType_HaloExchange;
 }
 
 HaloExchangeTask::~HaloExchangeTask()

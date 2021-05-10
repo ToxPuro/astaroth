@@ -575,6 +575,34 @@ TaskGraph* acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
     graph->halo_tasks.shrink_to_fit();
     graph->all_tasks.shrink_to_fit();
     
+    //Finally, sort according to a priority. Largest volume = highest priority
+   
+    auto sort_lambda = [] (std::shared_ptr<Task> t1, std::shared_ptr<Task> t2)        
+                            {                                                                                                  
+                                auto comp1 = t1->task_type == TaskType_Compute;
+                                auto comp2 = t2->task_type == TaskType_Compute;
+                                 
+                                auto vol1 = t1->output_region->volume;
+                                auto vol2 = t2->output_region->volume;
+                                auto dim1 = t1->output_region->dims;
+                                auto dim2 = t2->output_region->dims;
+
+                                return vol1 > vol2 || (vol1 == vol2 && ((comp1 && !comp2) || dim1.x < dim2.x || dim1.z > dim2.z));
+                            };
+
+    std::sort(graph->comp_tasks.begin(), graph->comp_tasks.end(), sort_lambda);
+    std::sort(graph->halo_tasks.begin(), graph->halo_tasks.end(), sort_lambda);
+    std::sort(graph->all_tasks.begin(), graph->all_tasks.end(), sort_lambda);
+
+    /*
+    std::cout << "Order"<< std::endl;
+    for (auto t : graph->all_tasks){
+        std::cout << "\t" << t->name
+        <<"\t"<< t->output_region->volume
+        << std::endl;
+    }
+    */
+    
     return graph;
 }
 

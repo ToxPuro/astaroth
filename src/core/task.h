@@ -53,6 +53,7 @@ enum class RegionFamily { Exchange_output, Exchange_input, Compute_output, Compu
 struct Region {
     int3 position;
     int3 dims;
+    size_t volume;
 
     RegionFamily family;
     int3 id;
@@ -91,7 +92,7 @@ typedef class Task {
     cudaStream_t stream;
     VertexBufferArray vba;
     int rank;
-
+    
     int state;
     
     
@@ -109,6 +110,9 @@ typedef class Task {
 
   public:
     bool active;
+    std::string name;
+    TaskType task_type;
+    
     int order; //the ordinal position of the task in a serial execution (within its region)
     Region* output_region;
     Region* input_region;
