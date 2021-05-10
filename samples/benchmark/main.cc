@@ -25,9 +25,9 @@
 #include "errchk.h"
 #include "timer_hires.h"
 
-//getopt
-#include <unistd.h>
+// getopt
 #include <string>
+#include <unistd.h>
 
 #if AC_MPI_ENABLED
 
@@ -99,28 +99,30 @@ main(int argc, char** argv)
     int opt;
     while ((opt = getopt(argc, argv, "t:")) != -1) {
         switch (opt) {
-            case 't':
-                if (std::string("strong").find(optarg) ==0){
-                    test = TEST_STRONG_SCALING;
-                }else if (std::string("weak").find(optarg) ==0){
-                    test = TEST_WEAK_SCALING;
-                }else {
-                    fprintf(stderr, "Could not parse option -t <type>. <type> should be \"strong\" or \"weak\"\n");
-                    exit(EXIT_FAILURE);
-                }
-                break;
-            default:
-                fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz>.\n");
+        case 't':
+            if (std::string("strong").find(optarg) == 0) {
+                test = TEST_STRONG_SCALING;
+            }
+            else if (std::string("weak").find(optarg) == 0) {
+                test = TEST_WEAK_SCALING;
+            }
+            else {
+                fprintf(stderr, "Could not parse option -t <type>. <type> should be \"strong\" or "
+                                "\"weak\"\n");
                 exit(EXIT_FAILURE);
+            }
+            break;
+        default:
+            fprintf(stderr, "Could not parse arguments. Usage: ./benchmark <nx> <ny> <nz>.\n");
+            exit(EXIT_FAILURE);
         }
     }
 
-    
     if (argc - optind > 0) {
         if (argc - optind == 3) {
             const int nx           = atoi(argv[optind]);
-            const int ny           = atoi(argv[optind+1]);
-            const int nz           = atoi(argv[optind+2]);
+            const int ny           = atoi(argv[optind + 1]);
+            const int nz           = atoi(argv[optind + 2]);
             info.int_params[AC_nx] = nx;
             info.int_params[AC_ny] = ny;
             info.int_params[AC_nz] = nz;
@@ -139,7 +141,8 @@ main(int argc, char** argv)
         info.int_params[AC_nx] *= decomp.x;
         info.int_params[AC_ny] *= decomp.y;
         info.int_params[AC_nz] *= decomp.z;
-    } else {
+    }
+    else {
         fprintf(stdout, "Running strong scaling benchmarks.\n");
     }
 
