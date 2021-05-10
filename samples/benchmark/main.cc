@@ -25,9 +25,8 @@
 #include "errchk.h"
 #include "timer_hires.h"
 
-// getopt
 #include <string>
-#include <unistd.h>
+#include <unistd.h> // getopt
 
 #if AC_MPI_ENABLED
 
