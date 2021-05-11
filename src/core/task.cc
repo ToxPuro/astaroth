@@ -55,7 +55,16 @@ Task::logStateChangedEvent(std::string from, std::string to)
 void
 Task::registerDependent(Task* t, size_t offset)
 {
-    dependents.emplace_back(t, offset);
+    try {
+        dependents.emplace_back(t, offset);
+    }
+    catch (const std::length_error& le) {
+        printf("Task (tag:%d, type:%lu) dependent vector threw a length error: %s.\n"
+               "Dependent vector has size: %lu. Max size is: %lu.\n",
+               output_region->tag, output_region->facet_class, le.what(), dependents.size(), dependents.max_size());
+        fflush(stdout);
+        throw le;
+    }
     t->registerPrerequisite(offset);
 }
 
