@@ -163,10 +163,9 @@ class Task {
 
     static const int wait_state = 0;
 
-    virtual ~Task()
-    {
-        // delete dependents;
-    }
+    Task();
+    virtual ~Task(){};
+
     virtual bool test()    = 0;
     virtual void advance() = 0;
 
