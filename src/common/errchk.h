@@ -83,7 +83,7 @@
  * CUDA-specific error checking
  * =============================================================================
  */
-#if defined(__CUDACC__)
+//#if defined(__CUDACC__)
 static inline void
 cuda_assert(cudaError_t code, const char* file, int line, bool abort)
 {
@@ -142,4 +142,4 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
     {                                                                                              \
         cuda_assert((params), __FILE__, __LINE__, false);                                          \
     }
-#endif // __CUDA_RUNTIME_API_H__
+//#endif // __CUDA_RUNTIME_API_H__
