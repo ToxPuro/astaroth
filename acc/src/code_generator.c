@@ -380,7 +380,7 @@ traverse(const ASTNode* node)
                             translate(tspecifier), identifier);
                 }
                 else {
-                    fprintf(CUDAHEADER, "const __restrict__ %s* %s", //
+                    fprintf(CUDAHEADER, "const %s* __restrict__ %s", //
                             translate(tspecifier), identifier);
                 }
             }
