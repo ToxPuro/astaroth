@@ -44,7 +44,8 @@ option(MPI_ENABLED        "Enables additional functions for MPI communciation." 
 option(USE_CUDA_AWARE_MPI "Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory" ON)
 option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
 option(VERBOSE            "Enables various status and warning messages"         OFF)
-option(BUILD_UTILS        "Builds the utility library"                           ON)
+option(BUILD_UTILS        "Builds the utility library"                          ON)
+option(USE_HIP            "Uses HIP instead of CUDA for GPU part"               ON)
 
 
 ## Compile ACC
@@ -89,6 +90,13 @@ endif()
 if (MULTIGPU_ENABLED)
   add_definitions(-DAC_MULTIGPU_ENABLED=1)
 endif()
+
+if(USE_HIP)
+    add_definitions(-DAC_USE_HIP=1)
+else()
+    # todo check if we dont hip here and find cuda
+endif()
+
 
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 
