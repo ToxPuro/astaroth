@@ -34,7 +34,9 @@ acDevicePrintInfo(const Device device)
     printf("  Compute\n");
     printf("    Clock rate (GHz): %g\n", props.clockRate / 1e6); // KHz -> GHz
     printf("    Stream processors: %d\n", props.multiProcessorCount);
+#ifndef AC_USE_HIP
     printf("    SP to DP flops performance ratio: %d:1\n", props.singleToDoublePrecisionPerfRatio);
+#endif
     printf(
         "    Compute mode: %d\n",
         (int)props
@@ -56,8 +58,10 @@ acDevicePrintInfo(const Device device)
     printf("    Gmem memory free (GiB): %.2f\n", free_bytes / (1024.0 * 1024 * 1024));
     printf("    Gmem memory total (GiB): %.2f\n", total_bytes / (1024.0 * 1024 * 1024));
     printf("  Caches\n");
+#ifndef AC_USE_HIP
     printf("    Local L1 cache supported: %d\n", props.localL1CacheSupported);
     printf("    Global L1 cache supported: %d\n", props.globalL1CacheSupported);
+#endif
     printf("    L2 size: %d KiB\n", props.l2CacheSize / (1024));
     // MV: props.totalConstMem and props.sharedMemPerBlock cause assembler error
     // MV: while compiling in TIARA gp cluster. Therefore commeted out.
@@ -68,7 +72,9 @@ acDevicePrintInfo(const Device device)
     // printf("    Single to double perf. ratio: %dx\n",
     // props.singleToDoublePrecisionPerfRatio); //Not supported with older CUDA
     // versions
+#ifndef AC_USE_HIP
     printf("    Stream priorities supported: %d\n", props.streamPrioritiesSupported);
+#endif
     printf("--------------------------------------------------\n");
 
     return AC_SUCCESS;
