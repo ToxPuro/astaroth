@@ -7,7 +7,7 @@ find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
 find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
 
 ## Project settings
-project(astaroth C CXX CUDA)
+project(astaroth C CXX)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Project-wide compilation flags
@@ -17,19 +17,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 11)
 
-## CUDA
-# GPU, compute capability
-# K40, 3.5
-# K80, 3.7
-# P100, 6.0
-# V100, 7.0
-if (NOT CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES 60 70) # Default
-else ()
-    set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
-endif()
-string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options=${CUDA_COMMON_FLAGS}")
 
 ## Build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -45,7 +32,7 @@ option(USE_CUDA_AWARE_MPI "Uses GPUDirect RDMA for direct GPU-GPU communication 
 option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
 option(VERBOSE            "Enables various status and warning messages"         OFF)
 option(BUILD_UTILS        "Builds the utility library"                          ON)
-option(USE_HIP            "Uses HIP instead of CUDA for GPU part"               ON)
+option(USE_HIP            "Uses HIP instead of CUDA for GPU part"               OFF)
 
 
 ## Compile ACC
@@ -94,7 +81,24 @@ endif()
 if(USE_HIP)
     add_definitions(-DAC_USE_HIP=1)
 else()
+    include(CheckLanguage)
+    ## CUDA
+    # GPU, compute capability
+    # K40, 3.5
+    # K80, 3.7
+    # P100, 6.0
+    # V100, 7.0
+    if (NOT CUDA_ARCHITECTURES)
+        set(CMAKE_CUDA_ARCHITECTURES 60 70) # Default
+    else ()
+        set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
+    endif()
+    string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options=${CUDA_COMMON_FLAGS}")
+
     # todo check if we dont hip here and find cuda
+    check_language(CUDA REQUIRED)
+    enable_language(CUDA)
 endif()
 
 
