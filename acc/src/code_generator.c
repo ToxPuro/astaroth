@@ -646,24 +646,24 @@ static void
 generate_headers(void)
 {
     // Fortran interface
-    const char* fortran_interface = R"(
-!  -*-f90-*-  (for emacs)    vim:set filetype=fortran:  (for vim)
-
-! Utils (see astaroth_fortran.cc for definitions)
-external achostupdatebuiltinparams
-external acgetdevicecount
-
-! Device interface (see astaroth_fortran.cc for definitions)
-external acdevicecreate, acdevicedestroy
-external acdeviceprintinfo
-external acdeviceloadmeshinfo
-external acdeviceloadmesh, acdevicestoremesh
-external acdeviceintegratesubstep
-external acdeviceperiodicboundconds
-external acdeviceswapbuffers
-external acdevicereducescal, acdevicereducevec
-external acdevicesynchronizestream
-  )";
+    const char* fortran_interface = "\
+!  -*-f90-*-  (for emacs)    vim:set filetype=fortran:  (for vim)\n\
+\n\
+! Utils (see astaroth_fortran.cc for definitions)\n\
+external achostupdatebuiltinparams\n\
+external acgetdevicecount\n\
+\n\
+! Device interface (see astaroth_fortran.cc for definitions)\n\
+external acdevicecreate, acdevicedestroy\n\
+external acdeviceprintinfo\n\
+external acdeviceloadmeshinfo\n\
+external acdeviceloadmesh, acdevicestoremesh\n\
+external acdeviceintegratesubstep\n\
+external acdeviceperiodicboundconds\n\
+external acdeviceswapbuffers\n\
+external acdevicereducescal, acdevicereducevec\n\
+external acdevicesynchronizestream\n\
+  ";
     fprintf(FHEADER, "%s\n", fortran_interface);
 
     fprintf(DSLHEADER, "#pragma once\n");
@@ -819,14 +819,14 @@ external acdevicesynchronizestream
     ++counter;
 
     // Fortran structs
-    const char* fortran_structs = R"(
-type, bind(C) :: AcMeshInfo
-  integer(c_int), dimension(AC_NUM_INT_PARAMS)      :: int_params
-  integer(c_int), dimension(AC_NUM_INT3_PARAMS, 3)  :: int3_params
-  real, dimension(AC_NUM_REAL_PARAMS)               :: real_params
-  real, dimension(AC_NUM_REAL3_PARAMS, 3)           :: real3_params
-end type AcMeshInfo
-  )";
+    const char* fortran_structs = "\
+type, bind(C) :: AcMeshInfo\n\
+  integer(c_int), dimension(AC_NUM_INT_PARAMS)      :: int_params\n\
+  integer(c_int), dimension(AC_NUM_INT3_PARAMS, 3)  :: int3_params\n\
+  real, dimension(AC_NUM_REAL_PARAMS)               :: real_params\n\
+  real, dimension(AC_NUM_REAL3_PARAMS, 3)           :: real3_params\n\
+end type AcMeshInfo\n\
+  ";
     fprintf(FHEADER, "%s\n", fortran_structs);
 }
 
