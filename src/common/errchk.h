@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <cuda_runtime_api.h>
 
 /*
  * =============================================================================
@@ -82,7 +83,7 @@
  * CUDA-specific error checking
  * =============================================================================
  */
-#if defined(__CUDA_RUNTIME_API_H__)
+#if defined(__CUDACC__)
 static inline void
 cuda_assert(cudaError_t code, const char* file, int line, bool abort)
 {
