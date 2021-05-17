@@ -80,8 +80,10 @@ endif()
 
 if(USE_HIP)
     add_definitions(-DAC_USE_HIP=1)
-    add_definitions(-D__HIP_PLATFORM_HCC__) # and -fopenmp?
+    # add_definitions(-D__HIP_PLATFORM_HCC__) # or __HIP_PLATFORM_NVCC__ and -fopenmp?
     # include_directories("/appl/opt/rocm/rocm-4.0.0/hsa/include/") # For missing hsa/hsa.h
+
+    # TODO hipify step here
 else()
     include(CheckLanguage)
     ## CUDA
