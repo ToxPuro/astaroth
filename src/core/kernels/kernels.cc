@@ -87,7 +87,7 @@ operator*(const acComplex& b, const AcReal& a)
     return (acComplex){a * b.x, a * b.y};
 }
 
-#infdef AC_USE_HIP
+#ifndef AC_USE_HIP
 // for some reason this casues issues since HIP seems to have it defined already..
 static __device__ inline acComplex
 operator*(const acComplex& a, const acComplex& b)
