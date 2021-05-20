@@ -1,11 +1,10 @@
 #pragma once
 #include "astaroth.h"
 
+#include <memory>
 #include <mpi.h>
 #include <string>
 #include <vector>
-#include <memory>
-
 
 #include "decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //AcRealPacked, VertexBufferArray
@@ -21,7 +20,7 @@ struct VariableScope {
     size_t num_variables;
     VariableScope(const VertexBufferHandle* variables_, const size_t num_variables_);
     ~VariableScope();
-    VariableScope(const VariableScope &other) = delete;
+    VariableScope(const VariableScope& other) = delete;
     VariableScope& operator=(const VariableScope& other) = delete;
 };
 
@@ -48,7 +47,7 @@ struct VariableScope {
  * in an MPI message.
  */
 
-enum class RegionFamily { Exchange_output, Exchange_input, Compute_output, Compute_input};
+enum class RegionFamily { Exchange_output, Exchange_input, Compute_output, Compute_input };
 
 struct Region {
     int3 position;
@@ -59,22 +58,21 @@ struct Region {
     int3 id;
     size_t facet_class;
     int tag;
- 
-    static constexpr int min_halo_tag = 1;
-    static constexpr int max_halo_tag = 27;
+
+    static constexpr int min_halo_tag   = 1;
+    static constexpr int max_halo_tag   = 27;
     static constexpr int n_halo_regions = max_halo_tag - min_halo_tag + 1;
-    static constexpr int min_comp_tag = 0;
-    static constexpr int max_comp_tag = 27;
+    static constexpr int min_comp_tag   = 0;
+    static constexpr int max_comp_tag   = 27;
     static constexpr int n_comp_regions = max_comp_tag - min_comp_tag + 1;
 
     static int id_to_tag(int3 _id);
     static int3 tag_to_id(int _tag);
-   
+
     Region(RegionFamily _family, int _tag, int3 nn);
     Region(RegionFamily _family, int3 _id, int3 nn);
     bool overlaps(Region* other);
 };
-
 
 /**
  * Task interface
@@ -91,11 +89,9 @@ typedef class Task {
     Device device;
     cudaStream_t stream;
     VertexBufferArray vba;
-    int rank;
-    
+
     int state;
-    
-    
+
     struct {
         std::vector<size_t> counts;
         std::vector<size_t> targets;
@@ -109,11 +105,12 @@ typedef class Task {
     bool poll_stream();
 
   public:
+    int rank;
     bool active;
     std::string name;
     TaskType task_type;
-    
-    int order; //the ordinal position of the task in a serial execution (within its region)
+
+    int order; // the ordinal position of the task in a serial execution (within its region)
     Region* output_region;
     Region* input_region;
     std::shared_ptr<VariableScope> variable_scope;
@@ -149,10 +146,10 @@ typedef class ComputeTask : public Task {
     KernelParameters params;
 
   public:
-    ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VariableScope> variable_scope_, int order_,
-                int region_tag, int3 nn, Device device_);
+    ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VariableScope> variable_scope_,
+                int order_, int region_tag, int3 nn, Device device_);
     ~ComputeTask();
-    ComputeTask(const ComputeTask &other) = delete;
+    ComputeTask(const ComputeTask& other) = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
     void advance();
@@ -212,7 +209,7 @@ typedef class HaloExchangeTask : public Task {
     HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope_, int order_, int tag_0,
                      int halo_region_tag, int3 nn, uint3_64 decomp, Device device_);
     ~HaloExchangeTask();
-    HaloExchangeTask(const HaloExchangeTask &other) = delete;
+    HaloExchangeTask(const HaloExchangeTask& other) = delete;
     HaloExchangeTask& operator=(const HaloExchangeTask& other) = delete;
 
     void sync();
@@ -240,7 +237,7 @@ typedef class HaloExchangeTask : public Task {
     bool test();
 } HaloExchangeTask;
 
-struct TaskGraph{
+struct TaskGraph {
     std::vector<std::shared_ptr<Task>> all_tasks;
     std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
     std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;

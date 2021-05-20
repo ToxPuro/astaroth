@@ -3,7 +3,6 @@
 
 #if AC_MPI_ENABLED
 #include <mpi.h>
-#include <vector>
 #include <stdbool.h>
 
 #define MPI_GPUDIRECT_DISABLED (0)
