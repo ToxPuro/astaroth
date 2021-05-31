@@ -858,7 +858,7 @@ shock_2_max()
 Kernel void
 shock_3_smooth()
 {
-    out_shock = 1.0*value(shock)*AC_dsmin*AC_dsmin*smooth_shock(shock); //Add scaling constant cshock
+    out_shock = AC_dsmin*AC_dsmin*smooth_shock(shock); //Add scaling constant cshock
 }
 
 #endif
