@@ -29,33 +29,33 @@
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
 
 TaskDefinition
-Compute(const Kernel kernel, VertexBufferHandle variable_scope_arr[], const size_t n_vars)
+Compute(const Kernel kernel, VertexBufferHandle variable_scope_arr[], const size_t num_vars)
 {
     TaskDefinition task_def;
     task_def.task_type   = TaskType_Compute;
     task_def.kernel      = kernel;
     task_def.variables   = variable_scope_arr;
-    task_def.n_variables = n_vars;
+    task_def.num_vars    = num_vars;
     return task_def;
 }
 
 TaskDefinition
 HaloExchange(const BoundaryCondition bound_cond, VertexBufferHandle variable_scope_arr[],
-             const size_t n_vars)
+             const size_t num_vars)
 {
     TaskDefinition task_def;
     task_def.task_type   = TaskType_HaloExchange;
     task_def.bound_cond  = bound_cond;
     task_def.variables   = variable_scope_arr;
-    task_def.n_variables = n_vars;
+    task_def.num_vars    = num_vars;
     return task_def;
 }
 
-VariableScope::VariableScope(const VertexBufferHandle h_variables[], const size_t num_variables_)
-    : num_variables(num_variables_)
+VariableScope::VariableScope(const VertexBufferHandle h_variables[], const size_t num_vars_)
+    : num_vars(num_vars_)
 {
     variables         = NULL;
-    size_t scope_size = num_variables * sizeof(VertexBufferHandle);
+    size_t scope_size = num_vars * sizeof(VertexBufferHandle);
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&variables, scope_size));
     ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(variables, h_variables, scope_size, cudaMemcpyHostToDevice));
 }
@@ -64,7 +64,7 @@ VariableScope::~VariableScope()
 {
     cudaFree(variables);
     variables     = NULL;
-    num_variables = -1;
+    num_vars = -1;
 }
 
 Region::Region(RegionFamily _family, int _tag, int3 nn) : family(_family), tag(_tag)
@@ -128,7 +128,7 @@ Region::Region(RegionFamily _family, int3 _id, int3 nn) : Region{_family, id_to_
 }
 
 bool
-Region::overlaps(Region* other)
+Region::overlaps(const Region* other)
 {
     return (this->position.x < other->position.x + other->dims.x) &&
            (other->position.x < this->position.x + this->dims.x) &&
@@ -179,6 +179,16 @@ Task::logStateChangedEvent(std::string from, std::string to)
          <<"}"<<std::endl;
 }
 */
+
+Task::Task(RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn)
+:state(wait_state), dep_cntr(), loop_cntr(),
+ output_region(std::make_unique<Region>(output_family, region_tag, nn)),
+ input_region(std::make_unique<Region>(input_family, region_tag, nn))
+{
+
+ //output_region = std::make_unique<Region>(output_family, region_tag, nn);
+ //input_region = std::make_unique<Region>(input_family, region_tag, nn);
+}
 
 void
 Task::registerDependent(std::shared_ptr<Task> t, size_t offset)
@@ -309,6 +319,7 @@ Task::poll_stream()
 ComputeTask::ComputeTask(ComputeKernel compute_func_,
                          std::shared_ptr<VariableScope> variable_scope_, int order_, int region_tag,
                          int3 nn, Device device_)
+:Task(RegionFamily::Compute_input, RegionFamily::Compute_output, region_tag, nn)
 {
     device = device_;
     stream = device->streams[STREAM_DEFAULT + region_tag];
@@ -317,8 +328,6 @@ ComputeTask::ComputeTask(ComputeKernel compute_func_,
 
     active         = true;
     order          = order_;
-    output_region  = new Region(RegionFamily::Compute_output, region_tag, nn);
-    input_region   = new Region(RegionFamily::Compute_input, region_tag, nn);
     compute_func   = compute_func_;
     variable_scope = variable_scope_;
 
@@ -327,12 +336,6 @@ ComputeTask::ComputeTask(ComputeKernel compute_func_,
     name   = "Compute(" + std::to_string(output_region->id.x) + "," +
            std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
     task_type = TaskType_Compute;
-}
-
-ComputeTask::~ComputeTask()
-{
-    delete output_region;
-    delete input_region;
 }
 
 void
@@ -426,28 +429,26 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
 }
 #endif
 
-// MessageBufferSwapChain
-MessageBufferSwapChain::MessageBufferSwapChain() : buf_idx(SWAP_CHAIN_LENGTH - 1)
+// HaloMessageSwapChain
+HaloMessageSwapChain::HaloMessageSwapChain(){}
+
+HaloMessageSwapChain::HaloMessageSwapChain(int3 dims, size_t num_vars)
+: buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
     buffers.reserve(SWAP_CHAIN_LENGTH);
-}
-
-MessageBufferSwapChain::~MessageBufferSwapChain() { buffers.clear(); }
-
-void
-MessageBufferSwapChain::add_buffer(int3 dims, size_t num_vars)
-{
-    buffers.emplace_back(dims, num_vars);
+    for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
+        buffers.emplace_back(dims, num_vars);
+    }
 }
 
 HaloMessage*
-MessageBufferSwapChain::get_current_buffer()
+HaloMessageSwapChain::get_current_buffer()
 {
     return &buffers[buf_idx];
 }
 
 HaloMessage*
-MessageBufferSwapChain::get_fresh_buffer()
+HaloMessageSwapChain::get_fresh_buffer()
 {
     buf_idx         = (buf_idx + 1) % SWAP_CHAIN_LENGTH;
     MPI_Request req = buffers[buf_idx].request;
@@ -461,6 +462,9 @@ MessageBufferSwapChain::get_fresh_buffer()
 HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope_, int order_,
                                    int tag_0, int halo_region_tag, int3 nn, uint3_64 decomp,
                                    Device device_)
+:Task(RegionFamily::Exchange_input, RegionFamily::Exchange_output, halo_region_tag, nn),
+  recv_buffers(output_region->dims, variable_scope_->num_vars),
+  send_buffers(input_region->dims, variable_scope_->num_vars)
 {
     device = device_;
     // Create stream for packing/unpacking
@@ -474,26 +478,13 @@ HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     order         = order_;
-    output_region = new Region(RegionFamily::Exchange_output, halo_region_tag, nn);
-    input_region  = new Region(RegionFamily::Exchange_input, halo_region_tag, nn);
 
     variable_scope = variable_scope_;
-    msg_length     = output_region->dims.x * output_region->dims.y * output_region->dims.z *
-                 variable_scope->num_variables;
 
     counterpart_rank = getPid(getPid3D(rank, decomp) + output_region->id, decomp);
     // MPI tags are namespaced to avoid collisions with other MPI tasks
     send_tag = tag_0 + input_region->tag;
     recv_tag = tag_0 + Region::id_to_tag(-output_region->id);
-
-    // Note: send_tag is also the index for both buffer sets.
-    recv_buffers = new MessageBufferSwapChain();
-    send_buffers = new MessageBufferSwapChain();
-    // TODO: move this to MessageBufferSwapChain ctor
-    for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        recv_buffers->add_buffer(output_region->dims, variable_scope->num_variables);
-        send_buffers->add_buffer(input_region->dims, variable_scope->num_variables);
-    }
 
     // Post receive immediately, this avoids unexpected messages
     active = ((MPI_INCL_CORNERS) || output_region->facet_class != 3) ? true : false;
@@ -508,16 +499,11 @@ HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope
 HaloExchangeTask::~HaloExchangeTask()
 {
     // Cancel last eager request
-    auto msg = recv_buffers->get_current_buffer();
+    auto msg = recv_buffers.get_current_buffer();
     if (msg->request != MPI_REQUEST_NULL) {
         MPI_Cancel(&msg->request);
     }
 
-    delete recv_buffers;
-    delete send_buffers;
-
-    delete output_region;
-    delete input_region;
     cudaSetDevice(device->id);
     // dependents.clear();
     cudaStreamDestroy(stream);
@@ -526,7 +512,7 @@ HaloExchangeTask::~HaloExchangeTask()
 void
 HaloExchangeTask::pack()
 {
-    auto msg = send_buffers->get_fresh_buffer();
+    auto msg = send_buffers.get_fresh_buffer();
     // acKernelPartialPackData(stream, vba, input_region->position, input_region->dims,
     //                 msg->data, pass->variable_scope, pass->variable_scope_length);
     acKernelPackData(stream, vba, input_region->position, input_region->dims, msg->data);
@@ -536,7 +522,7 @@ void
 HaloExchangeTask::unpack()
 {
 
-    auto msg = recv_buffers->get_current_buffer();
+    auto msg = recv_buffers.get_current_buffer();
 #if !(USE_CUDA_AWARE_MPI)
     msg->unpin(device, stream);
 #endif
@@ -555,29 +541,29 @@ HaloExchangeTask::sync()
 void
 HaloExchangeTask::wait_recv()
 {
-    auto msg = recv_buffers->get_current_buffer();
+    auto msg = recv_buffers.get_current_buffer();
     MPI_Wait(&msg->request, MPI_STATUS_IGNORE);
 }
 
 void
 HaloExchangeTask::wait_send()
 {
-    auto msg = send_buffers->get_current_buffer();
+    auto msg = send_buffers.get_current_buffer();
     MPI_Wait(&msg->request, MPI_STATUS_IGNORE);
 }
 
 void
 HaloExchangeTask::receiveDevice()
 {
-    auto msg = recv_buffers->get_fresh_buffer();
-    MPI_Irecv(msg->data, msg_length, AC_MPI_TYPE, counterpart_rank, recv_tag + HALO_TAG_OFFSET,
+    auto msg = recv_buffers.get_fresh_buffer();
+    MPI_Irecv(msg->data, msg->length, AC_MPI_TYPE, counterpart_rank, recv_tag + HALO_TAG_OFFSET,
               MPI_COMM_WORLD, &msg->request);
 }
 
 void
 HaloExchangeTask::sendDevice()
 {
-    auto msg = send_buffers->get_current_buffer();
+    auto msg = send_buffers.get_current_buffer();
     sync();
     MPI_Isend(msg->data, msg->length, AC_MPI_TYPE, counterpart_rank, send_tag + HALO_TAG_OFFSET,
               MPI_COMM_WORLD, &msg->request);
@@ -595,7 +581,7 @@ HaloExchangeTask::exchangeDevice()
 void
 HaloExchangeTask::receiveHost()
 {
-    auto msg = recv_buffers->get_fresh_buffer();
+    auto msg = recv_buffers.get_fresh_buffer();
     MPI_Irecv(msg->data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
               recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
     msg->pinned = true;
@@ -604,7 +590,7 @@ HaloExchangeTask::receiveHost()
 void
 HaloExchangeTask::sendHost()
 {
-    auto msg = send_buffers->get_current_buffer();
+    auto msg = send_buffers.get_current_buffer();
     msg->pin(device, stream);
     sync();
     MPI_Isend(msg->data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
@@ -660,7 +646,7 @@ HaloExchangeTask::test()
         return poll_stream();
     }
     case HaloExchangeState::Exchanging: {
-        auto msg = recv_buffers->get_current_buffer();
+        auto msg = recv_buffers.get_current_buffer();
         int request_complete;
         MPI_Test(&msg->request, &request_complete, MPI_STATUS_IGNORE);
         return request_complete ? true : false;

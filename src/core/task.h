@@ -17,8 +17,8 @@ static_assert(SWAP_CHAIN_LENGTH == 2);
 
 struct VariableScope {
     VertexBufferHandle* variables;
-    size_t num_variables;
-    VariableScope(const VertexBufferHandle* variables_, const size_t num_variables_);
+    size_t num_vars;
+    VariableScope(const VertexBufferHandle* variables_, const size_t num_vars_);
     ~VariableScope();
     VariableScope(const VariableScope& other) = delete;
     VariableScope& operator=(const VariableScope& other) = delete;
@@ -71,14 +71,14 @@ struct Region {
 
     Region(RegionFamily _family, int _tag, int3 nn);
     Region(RegionFamily _family, int3 _id, int3 nn);
-    bool overlaps(Region* other);
+    bool overlaps(const Region* other);
 };
 
 /**
  * Task interface
  * --------------
  *
- * Eak task is tied to an output region (and input regions, but they are not explicit members of
+ * Each task is tied to an output region (and input regions, but they are not explicit members of
  * Task). Tasks may depend on other Tasks. The existence of dependency between two tasks is deduced
  * from their input and output regions. At the moment, this is done explicitly by comparing region
  * ids and happens in grid.cc:GridInit()
@@ -111,12 +111,13 @@ typedef class Task {
     TaskType task_type;
 
     int order; // the ordinal position of the task in a serial execution (within its region)
-    Region* output_region;
-    Region* input_region;
+    std::unique_ptr<Region> output_region;
+    std::unique_ptr<Region> input_region;
     std::shared_ptr<VariableScope> variable_scope;
 
     static const int wait_state = 0;
 
+    Task(RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn);
     virtual bool test()    = 0;
     virtual void advance() = 0;
 
@@ -148,7 +149,6 @@ typedef class ComputeTask : public Task {
   public:
     ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VariableScope> variable_scope_,
                 int order_, int region_tag, int3 nn, Device device_);
-    ~ComputeTask();
     ComputeTask(const ComputeTask& other) = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
@@ -174,18 +174,16 @@ typedef struct HaloMessage {
 #endif
 } HaloMessage;
 
-typedef struct MessageBufferSwapChain {
+typedef struct HaloMessageSwapChain {
     int buf_idx;
     std::vector<HaloMessage> buffers;
 
-    MessageBufferSwapChain();
-    ~MessageBufferSwapChain();
+    HaloMessageSwapChain();
+    HaloMessageSwapChain(int3 dims, size_t num_vars);
 
-    void add_buffer(int3 dims, size_t num_vars, MPI_Request* req);
-    void add_buffer(int3 dims, size_t num_vars);
     HaloMessage* get_current_buffer();
     HaloMessage* get_fresh_buffer();
-} MessageBufferSwapChain;
+} HaloMessageSwapChain;
 
 enum class HaloExchangeState {
     Waiting_for_compute = Task::wait_state,
@@ -196,14 +194,12 @@ enum class HaloExchangeState {
 
 typedef class HaloExchangeTask : public Task {
   private:
-    int msg_length;
-
     int counterpart_rank;
     int send_tag;
     int recv_tag;
 
-    MessageBufferSwapChain* recv_buffers;
-    MessageBufferSwapChain* send_buffers;
+    HaloMessageSwapChain recv_buffers;
+    HaloMessageSwapChain send_buffers;
 
   public:
     HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope_, int order_, int tag_0,
@@ -254,7 +250,7 @@ typedef struct TaskDefinition {
         BoundaryCondition bound_cond;
     };
     VertexBufferHandle variable_scope[];
-    size_t n_vars;
+    size_t num_vars;
 } TaskDefinition;
 
 typedef struct Compute: public TaskDefinition {

@@ -176,79 +176,18 @@ acGridInit(const AcMeshInfo info)
 
 #include <iostream>
 void
-acGridTestGraph()
+acGraphWriteDependencies(TaskGraph* graph)
 {
-    /*
-    std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
-    std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;
-    std::vector<std::shared_ptr<Task>> default_tasks;
-
-
-    //Initialize scopes
-    VertexBufferHandle full_variable_scope[NUM_VTXBUF_HANDLES];
-    for (int i = 0;i < NUM_VTXBUF_HANDLES; i++){
-        full_variable_scope[i] = (VertexBufferHandle)i;
-    }
-    std::shared_ptr<VariableScope> var_scope = std::make_shared<VariableScope>(full_variable_scope,
-    NUM_VTXBUF_HANDLES);
-    // Create compute tasks
-    comp_tasks.clear();
-    comp_tasks.reserve(Region::n_comp_regions);
-
-    comp_tasks.push_back(std::make_shared<ComputeTask>(acKernelIntegrateSubstep,var_scope, 1,
-                                                  Region::id_to_tag((int3){0, 0, 0}), grid.nn,
-                                                  grid.device, STREAM_26));
-
-    default_tasks.push_back(comp_tasks.back());
-    for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
-        comp_tasks.push_back(std::make_shared<ComputeTask>(acKernelIntegrateSubstep, var_scope,1,
-                                        tag, grid.nn, grid.device, (Stream)(tag + STREAM_DEFAULT)));
-        default_tasks.push_back(comp_tasks.back());
-    }
-
-    // Create halo exchange tasks
-    halo_tasks.clear();
-    halo_tasks.reserve(Region::n_halo_regions);
-
-    for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
-        halo_tasks.push_back(std::make_shared<HaloExchangeTask>(var_scope, 0, tag, grid.nn,
-    grid.decomposition, grid.device)); default_tasks.push_back(halo_tasks.back());
-    }
-    // Dependencies
-    for (auto& halo_task : halo_tasks) {
-        if (halo_task->active) {
-            for (auto& comp_task : comp_tasks) {
-                if (halo_task->output_region->overlaps(comp_task->input_region)){
-                    // Comp tasks depend on halo tasks in the same iteration, offset = 0
-                    // Halo tasks depend on comp tasks in the prev iteration, offset = 1
-                    halo_task->registerDependent(comp_task, 0);
-                    comp_task->registerDependent(halo_task, 1);
-                }
-            }
-        }
-    }
-
-    for (auto& comp_task_1 : comp_tasks) {
-        for (auto& comp_task_2 : comp_tasks) {
-            if (comp_task_1->output_region->overlaps(comp_task_2->input_region)) {
-                // Comp tasks depend on comp tasks from the prev iteration, offset = 1
-                comp_task_1->registerDependent(comp_task_2, 1);
-            }
-        }
-    }
     //Compare that default_tasks == grid.default_tasks
-    */
-    for (auto& halo_task : grid.default_tasks->comp_tasks) {
-        for (auto& comp_task : grid.default_tasks->halo_tasks) {
-            if (halo_task->isPrerequisiteTo(comp_task)) {
-                std::cout << "H" << halo_task->output_region->tag << " -> C"
-                          << comp_task->output_region->tag << std::endl;
-            }
-            else {
+    for (auto& task : graph->all_tasks) {
+        for (auto& other : graph->all_tasks) {
+            if (task->isPrerequisiteTo(other)) {
+                std::cout << other->name << " -> " << task->name << std::endl;
             }
         }
     }
 
+/*
     for (auto& comp_task1 : grid.default_tasks->comp_tasks) {
         for (auto& halo_task : grid.default_tasks->halo_tasks) {
             if (comp_task1->isPrerequisiteTo(halo_task)) {
@@ -267,6 +206,7 @@ acGridTestGraph()
             }
         }
     }
+*/
 }
 
 AcResult
@@ -499,7 +439,7 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
     op_itors.reserve(n_ops);
 
     for (size_t i = 0; i < n_ops; i++) {
-        VarScopePtr vars = std::make_shared<VariableScope>(ops[i].variables, ops[i].n_variables);
+        VarScopePtr vars = std::make_shared<VariableScope>(ops[i].variables, ops[i].num_vars);
 
         op_itors.push_back(graph->all_tasks.end());
         switch (ops[i].task_type) {
@@ -533,14 +473,14 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
 
     for (size_t dependent = 0; dependent < n_ops; dependent++) {
         std::array<bool, NUM_VTXBUF_HANDLES> dependent_vars{};
-        for (size_t i = 0; i < ops[dependent].n_variables; i++) {
+        for (size_t i = 0; i < ops[dependent].num_vars; i++) {
             dependent_vars[(int)ops[dependent].variables[i]] = true;
         }
         // look backwards until we've found each variable in task scope
         for (size_t j = 0; j < n_ops; j++) {
             size_t prereq  = (dependent - j - 1) % n_ops;
             bool dep_found = false;
-            for (size_t i = 0; i < ops[prereq].n_variables; i++) {
+            for (size_t i = 0; i < ops[prereq].num_vars; i++) {
                 dep_found                                = true;
                 dependent_vars[ops[prereq].variables[i]] = false;
             }
@@ -563,7 +503,7 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
             if ((*preq)->active) {
                 for (auto dept = op_itors[dep.second]; dept != op_itors[dep.second + 1]; dept++) {
                     if ((*dept)->active &&
-                        (*preq)->output_region->overlaps((*dept)->input_region)) {
+                        (*preq)->output_region->overlaps((*dept)->input_region.get())) {
                         (*preq)->registerDependent(*dept, dep.first < dep.second ? 0 : 1);
                     }
                 }
@@ -609,14 +549,14 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
     std::sort(graph->comp_tasks.begin(), graph->comp_tasks.end(), sort_lambda);
     std::sort(graph->halo_tasks.begin(), graph->halo_tasks.end(), sort_lambda);
     std::sort(graph->all_tasks.begin(), graph->all_tasks.end(), sort_lambda);
-
+    /*
     if ((*(graph->all_tasks.begin()))->rank == 0) {
         std::cout << "Order" << std::endl;
         for (auto t : graph->all_tasks) {
             std::cout << "\t" << t->name << "\t" << t->output_region->volume << std::endl;
         }
     }
-
+    */
     return graph;
 }
 

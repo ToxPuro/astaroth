@@ -780,7 +780,7 @@ typedef struct TaskDefinition {
         BoundaryCondition bound_cond;
     };
     VertexBufferHandle* variables;
-    size_t n_variables;
+    size_t num_vars;
 } TaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of commands.*/
@@ -788,11 +788,11 @@ typedef struct TaskGraph TaskGraph;
 
 /** */
 TaskDefinition Compute(const Kernel kernel, VertexBufferHandle variable_scope_arr[],
-                       const size_t n_vars);
+                       const size_t num_vars);
 
 /** */
 TaskDefinition HaloExchange(const BoundaryCondition bound_cond,
-                            VertexBufferHandle variable_scope_arr[], const size_t n_vars);
+                            VertexBufferHandle variable_scope_arr[], const size_t num_vars);
 
 /** */
 TaskGraph* acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops);
@@ -805,26 +805,26 @@ AcResult acGridExecuteTaskGraph(const TaskGraph* graph, const size_t n_iteration
 
 #ifdef __cplusplus
 /** */
-template <size_t n>
+template <size_t num_vars>
 TaskDefinition
-Compute(Kernel kernel, VertexBufferHandle (&variable_scope_arr)[n])
+Compute(Kernel kernel, VertexBufferHandle (&variable_scope_arr)[num_vars])
 {
-    return Compute(kernel, variable_scope_arr, n);
+    return Compute(kernel, variable_scope_arr, num_vars);
 }
 
 /** */
-template <size_t n>
+template <size_t num_vars>
 TaskDefinition
-HaloExchange(BoundaryCondition bound_cond, VertexBufferHandle (&variable_scope_arr)[n])
+HaloExchange(BoundaryCondition bound_cond, VertexBufferHandle (&variable_scope_arr)[num_vars])
 {
-    return HaloExchange(bound_cond, variable_scope_arr, n);
+    return HaloExchange(bound_cond, variable_scope_arr, num_vars);
 }
 
 /** */
-template <size_t n>
+template <size_t num_vars>
 TaskGraph*
-acGridBuildTaskGraph(const TaskDefinition (&ops)[n])
+acGridBuildTaskGraph(const TaskDefinition (&ops)[num_vars])
 {
-    return acGridBuildTaskGraph(ops, n);
+    return acGridBuildTaskGraph(ops, num_vars);
 }
 #endif
