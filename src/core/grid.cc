@@ -165,7 +165,7 @@ acGridInit(const AcMeshInfo info)
     }
 
     TaskDefinition default_task_defs[] = {HaloExchange(Boundconds_Periodic, full_variable_scope),
-                                          Compute(Kernel_solve, full_variable_scope)};
+                                          Compute(Kernel_RK3_solve, full_variable_scope)};
 
     grid.default_tasks = std::shared_ptr<TaskGraph>(acGridBuildTaskGraph(default_task_defs));
     grid.initialized   = true;
@@ -418,9 +418,6 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 
     return AC_SUCCESS;
 }
-
-// TODO: generate list of kernels at compile time with acc
-ComputeKernel kernel_lookup[1] = {acKernelIntegrateSubstep};
 
 TaskGraph*
 acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)

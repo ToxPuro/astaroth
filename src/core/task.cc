@@ -184,11 +184,7 @@ Task::Task(RegionFamily input_family, RegionFamily output_family, int region_tag
 :state(wait_state), dep_cntr(), loop_cntr(),
  output_region(std::make_unique<Region>(output_family, region_tag, nn)),
  input_region(std::make_unique<Region>(input_family, region_tag, nn))
-{
-
- //output_region = std::make_unique<Region>(output_family, region_tag, nn);
- //input_region = std::make_unique<Region>(input_family, region_tag, nn);
-}
+{}
 
 void
 Task::registerDependent(std::shared_ptr<Task> t, size_t offset)

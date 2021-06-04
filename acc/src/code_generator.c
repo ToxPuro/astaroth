@@ -833,9 +833,11 @@ end type AcMeshInfo
 static void
 generate_library_hooks(void)
 {
+    //start with num_kernels = 1 because of special case acKernelIntegrateSubstep
+    size_t num_kernels = 1;
     for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
         if (symbol_table[i].type_qualifier == KERNEL) {
-
+            ++num_kernels;
             const char* id = symbol_table[i].identifier;
             fprintf(CUDAHEADER, "GEN_KERNEL_FUNC_HOOK(%s)\n", id);
 
@@ -848,6 +850,28 @@ generate_library_hooks(void)
                     id);
         }
     }
+
+    //Generate user-facing enums
+    fprintf(DSLHEADER, "typedef enum Kernel {");
+    fprintf(DSLHEADER, "\n\tKernel_RK3_solve");
+    for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+        if (symbol_table[i].type_qualifier == KERNEL) {
+            const char* id = symbol_table[i].identifier;
+            fprintf(DSLHEADER, ",\n\tKernel_%s", id);
+        }
+    }
+    fprintf(DSLHEADER, "\n} Kernel;");
+
+    //Generate kernel lookup table to connect enums with kernel-calling functions
+    fprintf(KHEADER, "const ComputeKernel kernel_lookup[%ld] = {" , num_kernels);
+    fprintf(KHEADER, "\n\tacKernelIntegrateSubstep");
+    for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+        if (symbol_table[i].type_qualifier == KERNEL) {
+            const char* id = symbol_table[i].identifier;
+            fprintf(KHEADER, ",\n\tAC_KERNEL_FUNC_NAME(%s)", id);
+        }
+    }
+    fprintf(KHEADER, " };");
 }
 
 int

@@ -95,7 +95,7 @@ AcReal acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtyp
                              AcReal* reduce_result);
 
 #define GEN_KERNEL_FUNC_DECL(ID)                                                                   \
-    AcResult acKernel_##ID(const KernelParameters params, VertexBufferArray vba);
+    AcResult AC_KERNEL_FUNC_NAME(ID)(const KernelParameters params, VertexBufferArray vba);
 
 #include "user_kernel_decl.h"
 
