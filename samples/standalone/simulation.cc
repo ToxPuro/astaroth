@@ -41,8 +41,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <time.h>
+
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
-#define LFORCING (0)
+#define LFORCING (1)
 #define LSHOCK (0)
 
 #ifdef VTXBUF_ACCRETION

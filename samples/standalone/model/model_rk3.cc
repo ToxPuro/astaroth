@@ -32,10 +32,10 @@
 #include "model_boundconds.h"
 
 // Standalone flags
-#define LDENSITY (1)
+#define LDENSITY (0)
 #define LHYDRO (1)
-#define LMAGNETIC (1)
-#define LENTROPY (1)
+#define LMAGNETIC (0)
+#define LENTROPY (0)
 #define LTEMPERATURE (0)
 #define LFORCING (1)
 #define LUPWD (1)

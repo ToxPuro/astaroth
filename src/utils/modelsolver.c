@@ -33,13 +33,13 @@
 #include "memory.h" // acHostMeshCreate, acHostMeshDestroy, acHostMeshApplyPeriodicBounds
 
 // Standalone flags
-#define LDENSITY (1)
+#define LDENSITY (0)
 #define LHYDRO (1)
-#define LMAGNETIC (1)
-#define LENTROPY (1)
+#define LMAGNETIC (0)
+#define LENTROPY (0)
 #define LTEMPERATURE (0)
-#define LFORCING (0)
-#define LUPWD (0)
+#define LFORCING (1)
+#define LUPWD (1)
 #define AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
 #define R_PI ((Scalar)M_PI)
 
