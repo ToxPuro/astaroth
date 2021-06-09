@@ -41,8 +41,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <time.h>
-
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
 #define LFORCING (1)
 #define LSHOCK (0)
@@ -392,7 +390,7 @@ print_diagnostics_device(const Device device, const int step, const AcReal dt, c
 */
 
 int
-run_simulation(const char* config_path)
+run_simulation(const char* config_path, int seed)
 {
     /* Parse configs */
     AcMeshInfo mesh_info;
@@ -499,7 +497,7 @@ run_simulation(const char* config_path)
     AcReal bin_crit_t = bin_save_t;
 
     /* initialize random seed: */
-    srand(312256655);
+    srand(seed);
 
 #if LSHOCK
 #endif

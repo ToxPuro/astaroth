@@ -93,6 +93,7 @@ typedef enum {
     SIMULATE,
     RENDER,
     CONFIG,
+    SEED,
     NUM_OPTIONS,
 } OptionType;
 
@@ -151,7 +152,10 @@ main(int argc, char* argv[])
     options[SIMULATE]           = createOption("--simulate", "-s", "Runs the simulation.");
     options[RENDER]             = createOption("--render", "-r", "Runs the real-time renderer.");
     options[CONFIG]             = createOption("--config", "-c", "Uses the config file given after this flag instead of the default.");
+    options[SEED]               = createOption("--seed", "-e", "Uses the number given after this flag instead of the default seed for the rng");
     // clang-format on
+
+    int seed = 312256655;
 
     if (argc == 1) {
         print_help(options);
@@ -170,6 +174,19 @@ main(int argc, char* argv[])
                     return EXIT_FAILURE;
                 }
                 break;
+            case SEED:
+                if (i + 1 < argc) {
+                    seed = atoi(argv[i+1]);
+                    // 0 signals failure but is also a legal output for the string "0"
+                    if (seed == 0 && ! strcmp(argv[i+1], "0")) {
+                        printf("invalid seed argument %s, must be an integer\n", argv[i+1]);
+                        return EXIT_FAILURE;
+                    }
+                }
+                else {
+                    printf("Syntax error. Usage: --seed <number>\n");
+                    return EXIT_FAILURE;
+                }
             default:
                 break; // Do nothing
             }
@@ -193,12 +210,13 @@ main(int argc, char* argv[])
                 run_benchmark(config_path);
                 break;
             case SIMULATE:
-                run_simulation(config_path);
+                run_simulation(config_path, seed);
                 break;
             case RENDER:
                 run_renderer(config_path);
                 break;
             case CONFIG:
+            case SEED:
                 ++i;
                 break;
             default:

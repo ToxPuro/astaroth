@@ -28,7 +28,7 @@
 
 int run_autotest(const char* config_path);
 
-int run_simulation(const char* config_path);
+int run_simulation(const char* config_path, int seed);
 
 int run_benchmark(const char* config_path);
 
