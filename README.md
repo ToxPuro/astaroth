@@ -45,6 +45,17 @@ In the base directory, run
 
 > **Tip:** For more information on running the code on Puhti, see [Puhti docs](https://docs.csc.fi/computing/overview/).
 
+## Running on AMD
+
+> **Note:** AMD/HIP support is work in progress. The following commands are subject to change.
+
+1. `git clone https://jpekkila@bitbucket.org/jpekkila/astaroth.git`
+2. `cd astaroth`
+3. `git checkout hip-code-changes-2021-05`
+4. `hipconvertinplace-perl.sh # Converts CUDA into HIP. This can take a while`
+5. `mkdir -p build && cd build`
+6. `cmake -DUSE_HIP=ON .. && make -j && ./ctest`
+
 ## CMake Options
 
 | Option | Description | Default |
@@ -60,6 +71,7 @@ In the base directory, run
 | PROGRAM_MODULE_DIR | Can be used to declare additional host-side program modules (also known as Thrones) | empty |
 | VERBOSE | Enables various non-critical warning and status messages. | OFF |
 | BUILD_UTILS | "Builds the utility library. Depends on `DSL_MODULE_DIR=acc/mhd_solver`". | ON |
+| USE_HIP | "Builds the library with AMD/HIP support instead of CUDA". | OFF |
 
 
 ## Standalone Module
