@@ -3,15 +3,50 @@
 # V3.17 required for the FindCUDAToolkit package
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
 cmake_minimum_required(VERSION 3.18)
-#find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
-#find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
+find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
+
+if(USE_HIP)
+    # NOTE!! WARNING!! HIP-SUPPORT MOSTLY HACKED TOGETHER, TODO CLEANUP	
+    set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -Wshadow") # -DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
+
+    add_definitions(-DAC_USE_HIP=1)
+    add_definitions(-D__HIP_PLATFORM_HCC__) # or __HIP_PLATFORM_NVCC__ and -fopenmp?
+
+    find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} hipcc PATHS ENV PATH NO_DEFAULT_PATH)
+    include_directories("/opt/rocm-4.1.1/include") # Triton (TODO HACK until CMake/HIP support)
+    # include_directories("/appl/opt/rocm/rocm-4.0.0/hsa/include/") # For missing hsa/hsa.h
+    
+    # TODO hipify step here
+else()	
+    find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
+
+    set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow") # -DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
+
+    include(CheckLanguage)
+    ## CUDA
+    # GPU, compute capability
+    # K40, 3.5
+    # K80, 3.7
+    # P100, 6.0
+    # V100, 7.0
+    if (NOT CUDA_ARCHITECTURES)
+        set(CMAKE_CUDA_ARCHITECTURES 60 70) # Default
+    else ()
+        set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
+    endif()
+    string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options=${CUDA_COMMON_FLAGS}")
+
+    # todo check if we dont hip here and find cuda
+    check_language(CUDA REQUIRED)
+    enable_language(CUDA)
+endif()
 
 ## Project settings
 project(astaroth C CXX)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Project-wide compilation flags
-set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow") # -DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_C_STANDARD 11)
@@ -77,37 +112,6 @@ endif()
 if (MULTIGPU_ENABLED)
   add_definitions(-DAC_MULTIGPU_ENABLED=1)
 endif()
-
-if(USE_HIP)
-    add_definitions(-DAC_USE_HIP=1)
-    add_definitions(-D__HIP_PLATFORM_HCC__) # or __HIP_PLATFORM_NVCC__ and -fopenmp?
-
-    find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} hipcc PATHS ENV PATH NO_DEFAULT_PATH)
-    include_directories("/opt/rocm-4.1.1/include") # Triton (TODO HACK until CMake/HIP support)
-    # include_directories("/appl/opt/rocm/rocm-4.0.0/hsa/include/") # For missing hsa/hsa.h
-    
-    # TODO hipify step here
-else()
-    include(CheckLanguage)
-    ## CUDA
-    # GPU, compute capability
-    # K40, 3.5
-    # K80, 3.7
-    # P100, 6.0
-    # V100, 7.0
-    if (NOT CUDA_ARCHITECTURES)
-        set(CMAKE_CUDA_ARCHITECTURES 60 70) # Default
-    else ()
-        set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
-    endif()
-    string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options=${CUDA_COMMON_FLAGS}")
-
-    # todo check if we dont hip here and find cuda
-    check_language(CUDA REQUIRED)
-    enable_language(CUDA)
-endif()
-
 
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 
