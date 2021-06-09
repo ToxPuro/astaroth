@@ -52,6 +52,14 @@ Task::logStateChangedEvent(std::string from, std::string to)
 }
 */
 
+Task::Task() : state(wait_state)
+{
+    dep_cntr.max_offset = 0;
+    dep_cntr.num_iters  = 0;
+    loop_cntr.i         = 0;
+    loop_cntr.end       = 0;
+}
+
 void
 Task::registerDependent(Task* t, size_t offset)
 {
@@ -176,7 +184,7 @@ Task::poll_stream()
 }
 
 /* Computation */
-ComputeTask::ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id)
+ComputeTask::ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id) : Task()
 {
     // task_type = "compute";
     device = device_;
@@ -311,6 +319,7 @@ MessageBufferSwapChain::get_fresh_buffer()
 HaloExchangeTask::HaloExchangeTask(const Device device_, const int halo_region_tag, const int3 nn,
                                    const uint3_64 decomp, MPI_Request* recv_requests,
                                    MPI_Request* send_requests)
+    : Task()
 {
     // task_type = "halo";
     device = device_;
