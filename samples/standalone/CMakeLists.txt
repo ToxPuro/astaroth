@@ -23,7 +23,7 @@ endif ()
 # Compile and link
 add_library(astaroth_standalone STATIC ${SOURCES})
 target_link_libraries(astaroth_standalone PRIVATE OpenMP::OpenMP_CXX astaroth_core ${SDL2_LIBRARY})
-target_compile_options(astaroth_standalone PRIVATE -pipe -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow)
+# target_compile_options(astaroth_standalone PRIVATE -pipe -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow)
 
 add_executable(ac_run main.cc)
 target_link_libraries(ac_run PRIVATE astaroth_standalone)

@@ -3,8 +3,8 @@
 # V3.17 required for the FindCUDAToolkit package
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
 cmake_minimum_required(VERSION 3.18)
-find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
-find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
+#find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
+#find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
 
 ## Project settings
 project(astaroth C CXX)
@@ -82,7 +82,7 @@ if(USE_HIP)
     add_definitions(-DAC_USE_HIP=1)
     add_definitions(-D__HIP_PLATFORM_HCC__) # or __HIP_PLATFORM_NVCC__ and -fopenmp?
 
-    set(CMAKE_CXX_COMPILER hipcc) # TODO HACK (until CMake has built-in support for HIP)
+    find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} hipcc PATHS ENV PATH NO_DEFAULT_PATH)
     include_directories("/opt/rocm-4.1.1/include") # Triton (TODO HACK until CMake/HIP support)
     # include_directories("/appl/opt/rocm/rocm-4.0.0/hsa/include/") # For missing hsa/hsa.h
     
