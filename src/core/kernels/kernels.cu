@@ -13,6 +13,8 @@ DCONST(const AcIntParam param)
 {
     return d_mesh_info.int_params[param];
 }
+/*
+// TODO RE-ENABLE WIP
 static int3 __device__ __forceinline__
 DCONST(const AcInt3Param param)
 {
@@ -33,6 +35,8 @@ DCONST(const VertexBufferHandle handle)
 {
     return handle;
 }
+*/
+
 #define DEVICE_VTXBUF_IDX(i, j, k) ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mxy))
 #define DEVICE_1D_COMPDOMAIN_IDX(i, j, k) ((i) + (j)*DCONST(AC_nx) + (k)*DCONST(AC_nxy))
 #define globalGridN (d_mesh_info.int3_params[AC_global_grid_n])
@@ -50,11 +54,14 @@ IDX(const int i)
     return i;
 }
 
+/*
+// TODO RE-ENABLE WIP
 static __device__ __forceinline__ int
 IDX(const int i, const int j, const int k)
 {
     return DEVICE_VTXBUF_IDX(i, j, k);
 }
+*/
 
 static __device__ __forceinline__ int
 IDX(const int3 idx)
@@ -224,7 +231,9 @@ acDeviceLoadDefaultUniforms(const Device device)
 {
     cudaSetDevice(device->id);
 
-// clang-format off
+    // clang-format off
+    /*
+    // TODO RE-ENABLE WIP
     // Scalar
     #define LOAD_DEFAULT_UNIFORM(X) acDeviceLoadScalarUniform(device, STREAM_DEFAULT, X, X##_DEFAULT_VALUE);
     AC_FOR_USER_REAL_PARAM_TYPES(LOAD_DEFAULT_UNIFORM)
@@ -248,4 +257,8 @@ acDeviceLoadDefaultUniforms(const Device device)
 
     ERRCHK_CUDA_KERNEL_ALWAYS();
     return AC_SUCCESS;
+    */
+    // clang-format on
+    fprintf(stderr, "acDeviceLoadDefaultUniforms disabled\n");
+    return AC_FAILURE;
 }

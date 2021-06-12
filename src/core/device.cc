@@ -12,7 +12,8 @@
         return acKernel_##ID(device->streams[stream], start, end, device->vba);                    \
     }
 
-#include "user_kernels.h"
+// TODO RE-ENABLE WIP
+//#include "user_kernels.h"
 
 AcResult
 acDevicePrintInfo(const Device device)
