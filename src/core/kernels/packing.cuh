@@ -1,6 +1,7 @@
 #pragma once
 static __global__ void
-kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 dims, AcRealPacked* packed)
+kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 dims,
+                 AcRealPacked* packed)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
@@ -31,7 +32,8 @@ kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 d
 }
 
 static __global__ void
-kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims, VertexBufferArray vba)
+kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims,
+                   VertexBufferArray vba)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
@@ -62,8 +64,9 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
 }
 
 static __global__ void
-kernel_partial_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 dims, AcRealPacked* packed,
-		 VertexBufferHandle* variable_scope, size_t var_scope_len)
+kernel_partial_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 dims,
+                         AcRealPacked* packed, VertexBufferHandle* variable_scope,
+                         size_t var_scope_len)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
@@ -89,15 +92,16 @@ kernel_partial_pack_data(const VertexBufferArray vba, const int3 vba_start, cons
     const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
     //#pragma unroll
-    for (int i = 0; i < var_scope_len; ++i){
-        int vtxbuf_id = variable_scope[i];
+    for (int i = 0; i < var_scope_len; ++i) {
+        int vtxbuf_id                          = variable_scope[i];
         packed[packed_idx + i * vtxbuf_offset] = vba.in[vtxbuf_id][unpacked_idx];
     }
 }
 
 static __global__ void
 kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims,
-		   VertexBufferArray vba, VertexBufferHandle* variable_scope, size_t var_scope_len)
+                           VertexBufferArray vba, VertexBufferHandle* variable_scope,
+                           size_t var_scope_len)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
@@ -123,8 +127,8 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
     const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
     //#pragma unroll
-    for (int i = 0; i < var_scope_len; ++i){
-        int vtxbuf_id = variable_scope[i];
+    for (int i = 0; i < var_scope_len; ++i) {
+        int vtxbuf_id                   = variable_scope[i];
         vba.in[vtxbuf_id][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
     }
 }
@@ -159,26 +163,26 @@ acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed, const 
 }
 
 AcResult
-acKernelPartialPackData(const cudaStream_t stream, const VertexBufferArray vba, const int3 vba_start,
-                 const int3 dims, AcRealPacked* packed, VertexBufferHandle* variable_scope,
-		 size_t var_scope_len)
+acKernelPartialPackData(const cudaStream_t stream, const VertexBufferArray vba,
+                        const int3 vba_start, const int3 dims, AcRealPacked* packed,
+                        VertexBufferHandle* variable_scope, size_t var_scope_len)
 {
     const dim3 tpb(32, 8, 1);
     const dim3 bpg((unsigned int)ceil(dims.x / (float)tpb.x),
                    (unsigned int)ceil(dims.y / (float)tpb.y),
                    (unsigned int)ceil(dims.z / (float)tpb.z));
 
-    kernel_partial_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, dims, packed, 
-                                              variable_scope, var_scope_len);
+    kernel_partial_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, dims, packed, variable_scope,
+                                                      var_scope_len);
     ERRCHK_CUDA_KERNEL();
 
     return AC_SUCCESS;
 }
 
 AcResult
-acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked* packed, const int3 vba_start,
-                   const int3 dims, VertexBufferArray vba, VertexBufferHandle* variable_scope,
-		   size_t var_scope_len)
+acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
+                          const int3 vba_start, const int3 dims, VertexBufferArray vba,
+                          VertexBufferHandle* variable_scope, size_t var_scope_len)
 {
     const dim3 tpb(32, 8, 1);
     const dim3 bpg((unsigned int)ceil(dims.x / (float)tpb.x),
@@ -186,7 +190,7 @@ acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
                    (unsigned int)ceil(dims.z / (float)tpb.z));
 
     kernel_partial_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba,
-                                                variable_scope, var_scope_len);
+                                                        variable_scope, var_scope_len);
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
 }

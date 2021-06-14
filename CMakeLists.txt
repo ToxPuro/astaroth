@@ -11,7 +11,7 @@ project(astaroth C CXX CUDA)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Project-wide compilation flags
-set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow") # -DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
+set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -g -Wdouble-promotion -Wfloat-conversion -Wshadow") # -DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
 #set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow") # -DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
@@ -115,6 +115,7 @@ if (BUILD_SAMPLES)
     add_subdirectory(samples/cpptest)
     add_subdirectory(samples/mpitest)
     add_subdirectory(samples/taskgraph_example)
+    add_subdirectory(samples/taskgraph_test)
     add_subdirectory(samples/mpi_fullgriderror_test)
     add_subdirectory(samples/benchmark)
     #add_subdirectory(samples/genbenchmarkscripts)

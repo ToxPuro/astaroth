@@ -792,6 +792,9 @@ TaskDefinition HaloExchange(const BoundaryCondition bound_cond,
                             VertexBufferHandle variable_scope_arr[], const size_t num_vars);
 
 /** */
+TaskGraph* acGridGetDefaultTaskGraph();
+
+/** */
 TaskGraph* acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops);
 
 /** */

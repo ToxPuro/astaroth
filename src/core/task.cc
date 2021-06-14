@@ -1,3 +1,21 @@
+/*
+    Copyright (C) 2020, Oskar Lappi
+
+    This file is part of Astaroth.
+
+    Astaroth is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Astaroth is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #if AC_MPI_ENABLED
 /**
  * Quick overview of tasks
@@ -32,10 +50,10 @@ TaskDefinition
 Compute(const Kernel kernel, VertexBufferHandle variable_scope_arr[], const size_t num_vars)
 {
     TaskDefinition task_def;
-    task_def.task_type   = TaskType_Compute;
-    task_def.kernel      = kernel;
-    task_def.variables   = variable_scope_arr;
-    task_def.num_vars    = num_vars;
+    task_def.task_type = TaskType_Compute;
+    task_def.kernel    = kernel;
+    task_def.variables = variable_scope_arr;
+    task_def.num_vars  = num_vars;
     return task_def;
 }
 
@@ -44,10 +62,10 @@ HaloExchange(const BoundaryCondition bound_cond, VertexBufferHandle variable_sco
              const size_t num_vars)
 {
     TaskDefinition task_def;
-    task_def.task_type   = TaskType_HaloExchange;
-    task_def.bound_cond  = bound_cond;
-    task_def.variables   = variable_scope_arr;
-    task_def.num_vars    = num_vars;
+    task_def.task_type  = TaskType_HaloExchange;
+    task_def.bound_cond = bound_cond;
+    task_def.variables  = variable_scope_arr;
+    task_def.num_vars   = num_vars;
     return task_def;
 }
 
@@ -63,8 +81,8 @@ VariableScope::VariableScope(const VertexBufferHandle h_variables[], const size_
 VariableScope::~VariableScope()
 {
     cudaFree(variables);
-    variables     = NULL;
-    num_vars = -1;
+    variables = NULL;
+    num_vars  = -1;
 }
 
 Region::Region(RegionFamily _family, int _tag, int3 nn) : family(_family), tag(_tag)
@@ -156,35 +174,12 @@ Region::tag_to_id(int _tag)
 }
 
 /* Task interface */
-
-/*
-void
-Task::logStateChangedEvent(std::string from, std::string to)
-{
-    //NOTE: the keys used here don't reflect terminology in Astaroth
-    //because the messages are read by a python tool which expects these keys.
-    std::cout<< "{"
-         <<"\"msg_type\":\"state_changed_event\","
-         <<"\"rank\":"<<rank
-         <<",\"substep\":"<<loop_cntr.i
-         <<",\"task_type\":\""<<task_type<<"\""
-         <<",\"tag\":"<<output_region->tag
-         <<",\"seg_id\":["
-             <<output_region->id.x<<","
-             <<output_region->id.y<<","
-             <<output_region->id.z<<"],"
-         <<"\"seg_type\":"<<output_region->facet_class<<","
-         <<"\"from\":\""<<from<<"\""<<","
-         <<"\"to\":\""<<to<<"\""
-         <<"}"<<std::endl;
-}
-*/
-
 Task::Task(RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn)
-:state(wait_state), dep_cntr(), loop_cntr(),
- output_region(std::make_unique<Region>(output_family, region_tag, nn)),
- input_region(std::make_unique<Region>(input_family, region_tag, nn))
-{}
+    : state(wait_state), dep_cntr(), loop_cntr(),
+      output_region(std::make_unique<Region>(output_family, region_tag, nn)),
+      input_region(std::make_unique<Region>(input_family, region_tag, nn))
+{
+}
 
 void
 Task::registerDependent(std::shared_ptr<Task> t, size_t offset)
@@ -242,10 +237,23 @@ Task::update()
 
     bool ready;
     if (state == wait_state) {
-        size_t offset = min(loop_cntr.i, dep_cntr.targets.size() - 1);
-        size_t target = dep_cntr.targets[offset];
-        size_t count  = dep_cntr.counts[loop_cntr.i];
-        ready         = (count == target);
+        // dep_cntr.targets contains a rising series of targets e.g. {5,10}. The reason that earlier
+        // iterations of a task might have fewer prerequisites in the task graph because the
+        // prerequisites would have been satisfied by work that was performed before the beginning
+        // of the task graph execution.
+        //
+        // Therefore, in the example, dep_cntr.targets = {5,10}:
+        // if the loop counter is 0 or 1, we choose targets[0] (5) and targets[1] (10) respecively
+        // if the loop counter is greater than that (e.g. 3) we select the final target count (10).
+        if (dep_cntr.targets.size() == 0) {
+            ready = true;
+        }
+        else if (loop_cntr.i >= dep_cntr.targets.size()) {
+            ready = (dep_cntr.counts[loop_cntr.i] == dep_cntr.targets.back());
+        }
+        else {
+            ready = (dep_cntr.counts[loop_cntr.i] == dep_cntr.targets[loop_cntr.i]);
+        }
     }
     else {
         ready = test();
@@ -315,7 +323,7 @@ Task::poll_stream()
 ComputeTask::ComputeTask(ComputeKernel compute_func_,
                          std::shared_ptr<VariableScope> variable_scope_, int order_, int region_tag,
                          int3 nn, Device device_)
-:Task(RegionFamily::Compute_input, RegionFamily::Compute_output, region_tag, nn)
+    : Task(RegionFamily::Compute_input, RegionFamily::Compute_output, region_tag, nn)
 {
     device = device_;
     stream = device->streams[STREAM_DEFAULT + region_tag];
@@ -426,10 +434,10 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
 #endif
 
 // HaloMessageSwapChain
-HaloMessageSwapChain::HaloMessageSwapChain(){}
+HaloMessageSwapChain::HaloMessageSwapChain() {}
 
 HaloMessageSwapChain::HaloMessageSwapChain(int3 dims, size_t num_vars)
-: buf_idx(SWAP_CHAIN_LENGTH - 1)
+    : buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
     buffers.reserve(SWAP_CHAIN_LENGTH);
     for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
@@ -458,9 +466,9 @@ HaloMessageSwapChain::get_fresh_buffer()
 HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope_, int order_,
                                    int tag_0, int halo_region_tag, int3 nn, uint3_64 decomp,
                                    Device device_)
-:Task(RegionFamily::Exchange_input, RegionFamily::Exchange_output, halo_region_tag, nn),
-  recv_buffers(output_region->dims, variable_scope_->num_vars),
-  send_buffers(input_region->dims, variable_scope_->num_vars)
+    : Task(RegionFamily::Exchange_input, RegionFamily::Exchange_output, halo_region_tag, nn),
+      recv_buffers(output_region->dims, variable_scope_->num_vars),
+      send_buffers(input_region->dims, variable_scope_->num_vars)
 {
     device = device_;
     // Create stream for packing/unpacking
@@ -473,7 +481,7 @@ HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope
     syncVBA();
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    order         = order_;
+    order = order_;
 
     variable_scope = variable_scope_;
 

@@ -1,3 +1,21 @@
+/*
+    Copyright (C) 2020, Johannes Pekkilä, Miikka Väisälä, Oskar Lappi
+
+    This file is part of Astaroth.
+
+    Astaroth is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Astaroth is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #if AC_MPI_ENABLED
 /**
  * Quick overview of the MPI implementation:
@@ -28,7 +46,6 @@
 
 #include <algorithm>
 #include <cstring> //memcpy
-#include <iostream>
 #include <mpi.h>
 #include <vector>
 
@@ -49,15 +66,6 @@ typedef struct Grid {
 
 static Grid grid = {};
 
-/*
-static void
-gridSwapRequestBuffers()
-{
-    // Assumption SWAP_CHAIN_LENGTH = 2 in these swaps
-    std::swap(grid.curr_recv_reqs, grid.back_recv_reqs);
-    std::swap(grid.curr_send_reqs, grid.back_send_reqs);
-}
-*/
 AcResult
 acGridSynchronizeStream(const Stream stream)
 {
@@ -165,48 +173,13 @@ acGridInit(const AcMeshInfo info)
     }
 
     TaskDefinition default_task_defs[] = {HaloExchange(Boundconds_Periodic, full_variable_scope),
-                                          Compute(Kernel_RK3_solve, full_variable_scope)};
+                                          Compute(Kernel_solve, full_variable_scope)};
 
     grid.default_tasks = std::shared_ptr<TaskGraph>(acGridBuildTaskGraph(default_task_defs));
     grid.initialized   = true;
 
     acGridSynchronizeStream(STREAM_ALL);
     return AC_SUCCESS;
-}
-
-#include <iostream>
-void
-acGraphWriteDependencies(TaskGraph* graph)
-{
-    //Compare that default_tasks == grid.default_tasks
-    for (auto& task : graph->all_tasks) {
-        for (auto& other : graph->all_tasks) {
-            if (task->isPrerequisiteTo(other)) {
-                std::cout << other->name << " -> " << task->name << std::endl;
-            }
-        }
-    }
-
-/*
-    for (auto& comp_task1 : grid.default_tasks->comp_tasks) {
-        for (auto& halo_task : grid.default_tasks->halo_tasks) {
-            if (comp_task1->isPrerequisiteTo(halo_task)) {
-                std::cout << "C" << comp_task1->output_region->tag << " -> H"
-                          << halo_task->output_region->tag << std::endl;
-            }
-            else {
-            }
-        }
-        for (auto& comp_task2 : grid.default_tasks->comp_tasks) {
-            if (comp_task1->isPrerequisiteTo(comp_task2)) {
-                std::cout << "C" << comp_task1->output_region->tag << " -> C"
-                          << comp_task2->output_region->tag << std::endl;
-            }
-            else {
-            }
-        }
-    }
-*/
 }
 
 AcResult
@@ -420,6 +393,13 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 }
 
 TaskGraph*
+acGridGetDefaultTaskGraph()
+{
+    ERRCHK(grid.initialized);
+    return grid.default_tasks.get();
+}
+
+TaskGraph*
 acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
 {
     ERRCHK(grid.initialized);
@@ -469,24 +449,23 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
     op_dependencies.reserve(n_ops);
 
     for (size_t dependent = 0; dependent < n_ops; dependent++) {
-        std::array<bool, NUM_VTXBUF_HANDLES> dependent_vars{};
+        std::array<bool, NUM_VTXBUF_HANDLES> dept_vars{};
         for (size_t i = 0; i < ops[dependent].num_vars; i++) {
-            dependent_vars[(int)ops[dependent].variables[i]] = true;
+            dept_vars[(int)ops[dependent].variables[i]] = true;
         }
         // look backwards until we've found each variable in task scope
         for (size_t j = 0; j < n_ops; j++) {
             size_t prereq  = (dependent - j - 1) % n_ops;
             bool dep_found = false;
             for (size_t i = 0; i < ops[prereq].num_vars; i++) {
-                dep_found                                = true;
-                dependent_vars[ops[prereq].variables[i]] = false;
+                dep_found                           = true;
+                dept_vars[ops[prereq].variables[i]] = false;
             }
             if (dep_found) {
                 op_dependencies.emplace_back(prereq, dependent);
             }
 
-            if (std::find(begin(dependent_vars), end(dependent_vars), true) !=
-                dependent_vars.end()) {
+            if (std::find(begin(dept_vars), end(dept_vars), true) != dept_vars.end()) {
                 break;
             }
         }
@@ -512,24 +491,7 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
     graph->halo_tasks.shrink_to_fit();
     graph->all_tasks.shrink_to_fit();
 
-    // Finally, sort according to a priority. Largest volume = highest priority
-    /*
-    auto sort_lambda = [] (std::shared_ptr<Task> t1, std::shared_ptr<Task> t2)
-                            {
-                                auto comp1 = t1->task_type == TaskType_Compute;
-                                auto comp2 = t2->task_type == TaskType_Compute;
-
-                                auto vol1 = t1->output_region->volume;
-                                auto vol2 = t2->output_region->volume;
-                                auto dim1 = t1->output_region->dims;
-                                auto dim2 = t2->output_region->dims;
-
-                                return vol1 > vol2 || (vol1 == vol2 && ((comp1 && !comp2) || dim1.x
-    < dim2.x || dim1.z > dim2.z));
-                            };
-    */
-
-    // Halo first
+    // Finally sort according to a priority. Larger volumes first and comm before comp
     auto sort_lambda = [](std::shared_ptr<Task> t1, std::shared_ptr<Task> t2) {
         auto comp1 = t1->task_type == TaskType_Compute;
         auto comp2 = t2->task_type == TaskType_Compute;
@@ -546,14 +508,6 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
     std::sort(graph->comp_tasks.begin(), graph->comp_tasks.end(), sort_lambda);
     std::sort(graph->halo_tasks.begin(), graph->halo_tasks.end(), sort_lambda);
     std::sort(graph->all_tasks.begin(), graph->all_tasks.end(), sort_lambda);
-    /*
-    if ((*(graph->all_tasks.begin()))->rank == 0) {
-        std::cout << "Order" << std::endl;
-        for (auto t : graph->all_tasks) {
-            std::cout << "\t" << t->name << "\t" << t->output_region->volume << std::endl;
-        }
-    }
-    */
     return graph;
 }
 

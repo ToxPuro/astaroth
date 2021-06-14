@@ -58,11 +58,11 @@ AcResult acKernelDummy(void);
 AcResult acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferArray vba);
 
 /** */
-AcResult acKernelIntegrateSubstep(const KernelParameters params, VertexBufferArray vba);
-
-/** */
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
                           const int3 vba_start, const int3 dims, AcRealPacked* packed);
+
+/** */
+AcResult acKernelIntegrateSubstep(const KernelParameters params, VertexBufferArray vba);
 
 /** */
 AcResult acKernelPartialPackData(const cudaStream_t stream, const VertexBufferArray vba,

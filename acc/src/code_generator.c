@@ -833,7 +833,7 @@ end type AcMeshInfo
 static void
 generate_library_hooks(void)
 {
-    //start with num_kernels = 1 because of special case acKernelIntegrateSubstep
+    // start with num_kernels = 1 because of special case acKernelIntegrateSubstep
     size_t num_kernels = 1;
     for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
         if (symbol_table[i].type_qualifier == KERNEL) {
@@ -851,24 +851,36 @@ generate_library_hooks(void)
         }
     }
 
-    //Generate user-facing enums
+    // Generate user-facing enums
     fprintf(DSLHEADER, "typedef enum Kernel {");
-    fprintf(DSLHEADER, "\n\tKernel_RK3_solve");
+    bool first_element = true;
     for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
         if (symbol_table[i].type_qualifier == KERNEL) {
             const char* id = symbol_table[i].identifier;
-            fprintf(DSLHEADER, ",\n\tKernel_%s", id);
+            if (first_element) {
+                fprintf(DSLHEADER, "\n\tKernel_%s", id);
+                first_element = false;
+            }
+            else {
+                fprintf(DSLHEADER, ",\n\tKernel_%s", id);
+            }
         }
     }
     fprintf(DSLHEADER, "\n} Kernel;");
 
-    //Generate kernel lookup table to connect enums with kernel-calling functions
-    fprintf(KHEADER, "const ComputeKernel kernel_lookup[%ld] = {" , num_kernels);
-    fprintf(KHEADER, "\n\tacKernelIntegrateSubstep");
+    // Generate kernel lookup table to connect enums with kernel-calling functions
+    fprintf(KHEADER, "const ComputeKernel kernel_lookup[%ld] = {", num_kernels);
+    first_element = true;
     for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
         if (symbol_table[i].type_qualifier == KERNEL) {
             const char* id = symbol_table[i].identifier;
-            fprintf(KHEADER, ",\n\tAC_KERNEL_FUNC_NAME(%s)", id);
+            if (first_element) {
+                fprintf(KHEADER, "\n\tAC_KERNEL_FUNC_NAME(%s)", id);
+                first_element = false;
+            }
+            else {
+                fprintf(KHEADER, ",\n\tAC_KERNEL_FUNC_NAME(%s)", id);
+            }
         }
     }
     fprintf(KHEADER, " };");
