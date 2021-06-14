@@ -181,6 +181,14 @@ Task::Task(RegionFamily input_family, RegionFamily output_family, int region_tag
 {
 }
 
+Task::Task() : state(wait_state)
+{
+    dep_cntr.max_offset = 0;
+    dep_cntr.num_iters  = 0;
+    loop_cntr.i         = 0;
+    loop_cntr.end       = 0;
+}
+
 void
 Task::registerDependent(std::shared_ptr<Task> t, size_t offset)
 {
