@@ -32,6 +32,7 @@ main(int argc, char** argv)
 
     // Init
     acHostMeshRandomize(&model);
+    acHostMeshRandomize(&candidate);
     acHostMeshApplyPeriodicBounds(&model);
 
     // Verify that the mesh was loaded and stored correctly
@@ -41,24 +42,31 @@ main(int argc, char** argv)
     acVerifyMesh("Load/Store", model, candidate);
 
     // Verify that boundconds work correctly
+    acHostMeshRandomize(&model);
+    acLoad(model);
+    acHostMeshApplyPeriodicBounds(&model);
+
     acBoundcondStep();
     acStore(&candidate);
-    acHostMeshApplyPeriodicBounds(&model);
     acVerifyMesh("Boundconds", model, candidate);
 
     // Verify that integration works correctly
     const AcReal dt = FLT_EPSILON;
+
+    acHostMeshRandomize(&model);
+    acLoad(model);
+    acHostIntegrateStep(model, dt);
+    acHostMeshApplyPeriodicBounds(&model);
+
     acIntegrate(dt);
     acBoundcondStep();
     acStore(&candidate);
-
-    acHostIntegrateStep(model, dt);
-    acHostMeshApplyPeriodicBounds(&model);
     acVerifyMesh("Integration", model, candidate);
 
     // Warmup
     for (int i = 0; i < NSAMPLES / 10; ++i)
         acIntegrate(dt);
+    acSynchronize();
 
     // Benchmark
     Timer t;
