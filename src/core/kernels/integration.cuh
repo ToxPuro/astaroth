@@ -85,7 +85,7 @@ gen_kernel(void)
     const int NUM_FIELDS = NUM_VTXBUF_HANDLES;
     for (int field = 0; field < NUM_FIELDS; ++field) {
         for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-
+            /*
             fprintf(fp,
             "{const int i = blockIdx.x * blockDim.x + start.x - STENCIL_ORDER/2;\n"
             "const int j = blockIdx.y * blockDim.y + start.y - STENCIL_ORDER/2;\n"
@@ -103,7 +103,7 @@ gen_kernel(void)
 
             // WRITE BLOCK START
             fprintf(fp, "if (vertexIdx.x < end.x && vertexIdx.y < end.y && vertexIdx.z < end.z) {\n");
-            
+            */
 
             for (int height = 0; height < STENCIL_HEIGHT; ++height) {
                 for (int width = 0; width < STENCIL_WIDTH; ++width) {
@@ -124,14 +124,14 @@ gen_kernel(void)
                             
                             // NON-SMEM
                             fprintf(fp,
-                                    "//processed_stencils[%d][%d] += stencils[%d][%d][%d][%d] * vba.in[%d][IDX(vertexIdx.x + (%d), vertexIdx.y + (%d), vertexIdx.z + (%d))];\n",
+                                    "processed_stencils[%d][%d] += stencils[%d][%d][%d][%d] * vba.in[%d][IDX(vertexIdx.x + (%d), vertexIdx.y + (%d), vertexIdx.z + (%d))];\n",
                                     field, stencil, stencil, depth, height, width, field,
                                     -STENCIL_ORDER / 2 + width, -STENCIL_ORDER / 2 + height,
                                     -STENCIL_ORDER / 2 + depth);
                                     
                                     
                             fprintf(fp,
-                                    "processed_stencils[%d][%d] += stencils[%d][%d][%d][%d] * smem[(threadIdx.x + %d) + (threadIdx.y + %d) * smem_width];\n",
+                                    "//processed_stencils[%d][%d] += stencils[%d][%d][%d][%d] * smem[(threadIdx.x + %d) + (threadIdx.y + %d) * smem_width];\n",
                                     field, stencil, stencil, depth, height, width, width, height);
                         }
                     }
@@ -139,13 +139,13 @@ gen_kernel(void)
             }
 
             // WRITE BLOCK END
-            fprintf(fp, "}\n"); 
+            //fprintf(fp, "}\n"); 
 
-            fprintf(fp, "__syncthreads();}\n");
+            //fprintf(fp, "__syncthreads();}\n");
         }
 
         // WRITE BLOCK START
-        fprintf(fp, "if (vertexIdx.x < end.x && vertexIdx.y < end.y && vertexIdx.z < end.z) {\n");
+        //fprintf(fp, "if (vertexIdx.x < end.x && vertexIdx.y < end.y && vertexIdx.z < end.z) {\n");
 
         /*
         const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);
@@ -158,7 +158,7 @@ gen_kernel(void)
         fprintf(fp,"vba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = processed_stencils[%d][STENCIL_DERYZ];\n", field, field);
 
         // WRITE BLOCK END
-        fprintf(fp, "}\n");
+        //fprintf(fp, "}\n");
 
         // clang-format on
     }
@@ -386,7 +386,7 @@ acKernelIntegrateSubstep(const cudaStream_t stream, const int step_number, const
     ERRCHK_ALWAYS(step_number >= 0);
     ERRCHK_ALWAYS(step_number < 3);
     const dim3 tpb    = rk3_tpb; //(dim3){32, 4, 1};
-    const size_t smem = (tpb.x + STENCIL_ORDER) * (tpb.y + STENCIL_ORDER) * sizeof(AcReal);
+    const size_t smem = 0; //(tpb.x + STENCIL_ORDER) * (tpb.y + STENCIL_ORDER) * sizeof(AcReal);
 
     const int3 n = end - start;
     const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
@@ -442,16 +442,16 @@ acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferAr
                 if (((x * y * z) % WARP_SIZE) != 0)
                     continue;
 
-                if ((x * y * z) < x + STENCIL_ORDER) // WARNING NOTE: Only use if using smem
-                    continue;
+                // if ((x * y * z) < x + STENCIL_ORDER) // WARNING NOTE: Only use if using smem
+                //    continue;
 
                 const dim3 tpb(x, y, z);
                 const int3 n = end - start;
                 const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
                                (unsigned int)ceil(n.y / AcReal(tpb.y)), //
                                (unsigned int)ceil(n.z / AcReal(tpb.z)));
-                const size_t smem = (tpb.x + STENCIL_ORDER) * (tpb.y + STENCIL_ORDER) *
-                                    sizeof(AcReal);
+                const size_t
+                    smem = 0; //(tpb.x + STENCIL_ORDER) * (tpb.y + STENCIL_ORDER) * sizeof(AcReal);
 
                 cudaDeviceSynchronize();
                 if (cudaGetLastError() != cudaSuccess) // resets the error if any
