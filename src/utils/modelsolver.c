@@ -1119,7 +1119,7 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
                     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
                         const int idx = acVertexBufferIdx(i, j, k, mesh.info);
                         // clang-format off
-                        // intermediate_mesh.vertex_buffer[w][idx] = mesh.vertex_buffer[w][idx];
+                        //intermediate_mesh.vertex_buffer[w][idx] = mesh.vertex_buffer[w][idx];
                         //intermediate_mesh.vertex_buffer[w][idx] = derx(i, j, k, mesh.vertex_buffer[w]);
                         //intermediate_mesh.vertex_buffer[w][idx] = derxx(i, j, k, mesh.vertex_buffer[w]);
                         intermediate_mesh.vertex_buffer[w][idx] = deryz(i, j, k, mesh.vertex_buffer[w]);
