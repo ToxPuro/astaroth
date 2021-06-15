@@ -50,6 +50,13 @@ static const AcReal
 ;
 // clang-format on
 
+typedef struct {
+    dim3 tpb;
+    int3 dims;
+} TBConfig;
+
+static TBConfig getOptimalTBConfig(const int3 dims, VertexBufferArray vba);
+
 static __global__ void
 dummy_kernel(void)
 {
@@ -152,8 +159,6 @@ solve(const int3 start, const int3 end, VertexBufferArray vba)
 #endif
 }
 
-static dim3 rk3_tpb(32, 4, 1);
-
 AcResult
 acKernelIntegrateSubstep(const cudaStream_t stream, const int step_number, const int3 start,
                          const int3 end, VertexBufferArray vba)
@@ -192,7 +197,7 @@ acKernelIntegrateSubstep(const cudaStream_t stream, const int step_number, const
 
     ERRCHK_ALWAYS(step_number >= 0);
     ERRCHK_ALWAYS(step_number < 3);
-    const dim3 tpb    = rk3_tpb; //(dim3){32, 4, 1};
+    const dim3 tpb    = getOptimalTBConfig(end - start, vba).tpb;
     const size_t smem = 0; //(tpb.x + STENCIL_ORDER) * (tpb.y + STENCIL_ORDER) * sizeof(AcReal);
 
     const int3 n = end - start;
@@ -215,6 +220,7 @@ acKernelIntegrateSubstep(const cudaStream_t stream, const int step_number, const
 AcResult
 acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferArray vba)
 {
+
 // DEBUG UNROOL
 #if GEN_KERNEL
     gen_kernel(); // Debug TODO REMOVE
@@ -222,6 +228,7 @@ acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferAr
 #endif
     //// DEBUG UNROOLL
 
+#if 0
     // Device info (TODO GENERIC)
 #define REGISTERS_PER_THREAD (255)
 #define MAX_REGISTERS_PER_BLOCK (65536)
@@ -238,8 +245,9 @@ acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferAr
         for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
             for (int x = 4; x <= MAX_THREADS_PER_BLOCK; x += 4) {
 
-                if (x > end.x - start.x || y > end.y - start.y || z > end.z - start.z)
-                    break;
+                // if (x > end.x - start.x || y > end.y - start.y || z > end.z - start.z)
+                //    break;
+
                 if (x * y * z > MAX_THREADS_PER_BLOCK)
                     break;
 
@@ -294,10 +302,120 @@ acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferAr
            best_dims.x, best_dims.y, best_dims.z, double(best_time) / num_iterations);
     //#endif
 
-    rk3_tpb = best_dims;
-
     // Failed to find valid thread block dimensions
     ERRCHK_ALWAYS(rk3_tpb.x * rk3_tpb.y * rk3_tpb.z > 0);
 
     return AC_SUCCESS;
+#endif
+    (void)start;
+    (void)end;
+    (void)vba;
+    fprintf(stderr, "acKernelAutoOptimizeIntegration is deprecated\n");
+    return AC_FAILURE;
+}
+
+TBConfig
+autotune(const int3 dims, VertexBufferArray vba)
+{
+
+    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
+    const int3 end   = start + dims;
+
+    // Device info (TODO GENERIC)
+#define REGISTERS_PER_THREAD (255)
+#define MAX_REGISTERS_PER_BLOCK (65536)
+#define MAX_THREADS_PER_BLOCK (1024)
+#define WARP_SIZE (32)
+
+    printf("Autotuning for (%d, %d, %d)... ", dims.x, dims.y, dims.z);
+    // RK3
+    dim3 best_dims(0, 0, 0);
+    float best_time          = INFINITY;
+    const int num_iterations = 10;
+
+    for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) { // TODO CHECK Z GOES ONLY TO 1
+        for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
+            for (int x = 4; x <= MAX_THREADS_PER_BLOCK; x += 4) {
+
+                // if (x > end.x - start.x || y > end.y - start.y || z > end.z - start.z)
+                //    break;
+
+                if (x * y * z > MAX_THREADS_PER_BLOCK)
+                    break;
+
+                if (x * y * z * REGISTERS_PER_THREAD > MAX_REGISTERS_PER_BLOCK)
+                    break;
+
+                // if (((x * y * z) % WARP_SIZE) != 0)
+                //    continue;
+
+                const dim3 tpb(x, y, z);
+                const int3 n = end - start;
+                const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
+                               (unsigned int)ceil(n.y / AcReal(tpb.y)), //
+                               (unsigned int)ceil(n.z / AcReal(tpb.z)));
+                const size_t smem = 0;
+
+                cudaDeviceSynchronize();
+                if (cudaGetLastError() != cudaSuccess) // resets the error if any
+                    continue;
+
+                // printf("(%d, %d, %d)\n", x, y, z);
+
+                cudaEvent_t tstart, tstop;
+                cudaEventCreate(&tstart);
+                cudaEventCreate(&tstop);
+
+                cudaEventRecord(tstart); // ---------------------------------------- Timing start
+                for (int i = 0; i < num_iterations; ++i)
+                    solve<2><<<bpg, tpb, smem, 0>>>(start, end, vba);
+
+                cudaEventRecord(tstop); // ----------------------------------------- Timing end
+                cudaEventSynchronize(tstop);
+                float milliseconds = 0;
+                cudaEventElapsedTime(&milliseconds, tstart, tstop);
+
+                ERRCHK_CUDA_KERNEL_ALWAYS();
+                // printf("(%d, %d, %d): %.4g ms\n", x, y, z, (double)milliseconds /
+                // num_iterations); fflush(stdout);
+                if (milliseconds < best_time) {
+                    best_time = milliseconds;
+                    best_dims = tpb;
+                }
+            }
+        }
+    }
+    printf("\x1B[32m%s\x1B[0m\n", "OK!");
+    fflush(stdout);
+    //#if AC_VERBOSE
+    printf("Auto-optimization done. The best threadblock dimensions for rkStep (%d, %d, %d): (%d, "
+           "%d, %d) "
+           "%f "
+           "ms\n",
+           dims.x, dims.y, dims.z, best_dims.x, best_dims.y, best_dims.z,
+           double(best_time) / num_iterations);
+    //#endif
+
+    // Failed to find valid thread block dimensions
+    ERRCHK_ALWAYS(best_dims.x * best_dims.y * best_dims.z > 0);
+
+    TBConfig c;
+    c.tpb  = best_dims;
+    c.dims = dims;
+    return c;
+}
+
+#include <vector>
+static std::vector<TBConfig> tbconfigs;
+
+static TBConfig
+getOptimalTBConfig(const int3 dims, VertexBufferArray vba)
+{
+    for (auto c : tbconfigs) {
+        if (c.dims == dims)
+            return c;
+    }
+    TBConfig c = autotune(dims, vba);
+    tbconfigs.push_back(c);
+    return c;
 }
