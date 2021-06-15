@@ -734,6 +734,7 @@ gen_kernel(void)
     FILE* fp = fopen("kernel.out", "w");
     ERRCHK_ALWAYS(fp);
 
+    // clang-format off
     const int NUM_FIELDS = NUM_VTXBUF_HANDLES;
     for (int field = 0; field < NUM_FIELDS; ++field) {
         for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
@@ -755,10 +756,7 @@ gen_kernel(void)
                                                                       */
 
                             fprintf(fp,
-                                    "processed_stencils[%d][%d] += stencils[%d][%d][%d][%d] * "
-                                    "vba.in[%d][IDX(vertexIdx.x + (%d), vertexIdx.y + (%d), "
-                                    "vertexIdx.z "
-                                    "+ (%d))];\n",
+                                    "processed_stencils[%d][%d] += stencils[%d][%d][%d][%d] * vba.in[%d][IDX(vertexIdx.x + (%d), vertexIdx.y + (%d), vertexIdx.z + (%d))];\n",
                                     field, stencil, stencil, depth, height, width, field,
                                     -STENCIL_ORDER / 2 + width, -STENCIL_ORDER / 2 + height,
                                     -STENCIL_ORDER / 2 + depth);
@@ -775,9 +773,9 @@ gen_kernel(void)
         vba.out[field][idx] = processed_stencils[field][STENCIL_DERYZ];
         */
         fprintf(fp,
-                "vba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = "
-                "processed_stencils[%d][STENCIL_DERYZ];\n",
+                "vba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = processed_stencils[%d][STENCIL_DERYZ];\n", 
                 field, field);
+        // clang-format on
     }
 
     fclose(fp);
@@ -814,7 +812,7 @@ solve(const int3 start, const int3 end, VertexBufferArray vba)
     // TODO test: what's the best we can do? And then build from there.
     // THE SIMPLEST POSSIBLE -> Incremental improvements
 
-    AcReal __restrict__ processed_stencils[NUM_FIELDS][NUM_STENCILS] = {0};
+    AcReal processed_stencils[NUM_FIELDS][NUM_STENCILS] = {0};
 #if !GEN_KERNEL
 #include "kernel.out"
 #endif
