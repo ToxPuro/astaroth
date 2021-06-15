@@ -40,6 +40,7 @@ typedef enum {
 #define DERX_0 (0)
 
 // Or simpler, just set nonzeros
+// WARNING TODO FIX NOTE: may be invalid when accessed from host code!
 static __device__ const AcReal
     stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH] = {
         {
@@ -733,8 +734,7 @@ gen_kernel(void)
     FILE* fp = fopen("kernel.out", "w");
     ERRCHK_ALWAYS(fp);
 
-    const int NUM_FIELDS                                = NUM_VTXBUF_HANDLES;
-    AcReal processed_stencils[NUM_FIELDS][NUM_STENCILS] = {0};
+    const int NUM_FIELDS = NUM_VTXBUF_HANDLES;
     for (int field = 0; field < NUM_FIELDS; ++field) {
         for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
             for (int height = 0; height < STENCIL_HEIGHT; ++height) {
@@ -998,8 +998,8 @@ acKernelIntegrateSubstep(const cudaStream_t stream, const int step_number, const
 
     ERRCHK_ALWAYS(step_number >= 0);
     ERRCHK_ALWAYS(step_number < 3);
-    const dim3 tpb    = rk3_tpb; //(dim3){32, 4, 1};
-    const size_t smem = (tpb.x + STENCIL_ORDER) * (tpb.y + STENCIL_ORDER) * sizeof(AcReal);
+    const dim3 tpb = rk3_tpb; //(dim3){32, 4, 1};
+    // const size_t smem = (tpb.x + STENCIL_ORDER) * (tpb.y + STENCIL_ORDER) * sizeof(AcReal);
 
     const int3 n = end - start;
     const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
@@ -1007,11 +1007,11 @@ acKernelIntegrateSubstep(const cudaStream_t stream, const int step_number, const
                    (unsigned int)ceil(n.z / AcReal(tpb.z)));
 
     if (step_number == 0)
-        solve<0><<<bpg, tpb, smem, stream>>>(start, end, vba);
+        solve<0><<<bpg, tpb, 0, stream>>>(start, end, vba);
     else if (step_number == 1)
-        solve<1><<<bpg, tpb, smem, stream>>>(start, end, vba);
+        solve<1><<<bpg, tpb, 0, stream>>>(start, end, vba);
     else
-        solve<2><<<bpg, tpb, smem, stream>>>(start, end, vba);
+        solve<2><<<bpg, tpb, 0, stream>>>(start, end, vba);
 
     ERRCHK_CUDA_KERNEL();
 
@@ -1063,8 +1063,8 @@ acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferAr
                 const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
                                (unsigned int)ceil(n.y / AcReal(tpb.y)), //
                                (unsigned int)ceil(n.z / AcReal(tpb.z)));
-                const size_t smem = (tpb.x + STENCIL_ORDER) * (tpb.y + STENCIL_ORDER) *
-                                    sizeof(AcReal);
+                // const size_t smem = (tpb.x + STENCIL_ORDER) * (tpb.y + STENCIL_ORDER) *
+                //                    sizeof(AcReal);
 
                 cudaDeviceSynchronize();
                 if (cudaGetLastError() != cudaSuccess) // resets the error if any
@@ -1078,7 +1078,7 @@ acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferAr
 
                 cudaEventRecord(tstart); // ---------------------------------------- Timing start
                 for (int i = 0; i < num_iterations; ++i)
-                    solve<2><<<bpg, tpb, smem, 0>>>(start, end, vba);
+                    solve<2><<<bpg, tpb>>>(start, end, vba);
 
                 cudaEventRecord(tstop); // ----------------------------------------- Timing end
                 cudaEventSynchronize(tstop);
