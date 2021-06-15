@@ -119,13 +119,52 @@ first_derivative(const Scalar* pencil, const Scalar inv_ds)
 #endif
 
 #define MID (STENCIL_ORDER / 2)
-    Scalar res = 0;
+
+    Scalar res = coefficients[0] * pencil[MID];
 
     //#pragma unroll
     for (int i = 1; i <= MID; ++i)
         res += coefficients[i] * (pencil[MID + i] - pencil[MID - i]);
 
-    return res * inv_ds;
+    // return res * inv_ds;
+
+    res *= inv_ds;
+    /*
+    Scalar res = 0.0;
+    res += -coefficients[3] * inv_ds * pencil[MID - 3];
+    res += -coefficients[2] * inv_ds * pencil[MID - 2];
+    res += -coefficients[1] * inv_ds * pencil[MID - 1];
+    res += coefficients[0] * inv_ds * pencil[MID];
+    res += coefficients[1] * inv_ds * pencil[MID + 1];
+    res += coefficients[2] * inv_ds * pencil[MID + 2];
+    res += coefficients[3] * inv_ds * pencil[MID + 3];
+    */
+
+    /*
+    // Points:
+    // the first loop is more accurate, the naive way loses something like
+    // 1-2 ulps
+    // Could we avoid this in GPU code by using doubles w/ floats? long
+    // doubles sadly not available
+    long double c0 = 0;
+    long double c1 = 3.0l / 4.0l;
+    long double c2 = -3.0l / 20.0l;
+    long double c3 = 1.0l / 60.0l;
+
+    long double resl = 0.0l;
+    resl += -c3 * inv_ds * pencil[MID - 3];
+    resl += -c2 * inv_ds * pencil[MID - 2];
+    resl += -c1 * inv_ds * pencil[MID - 1];
+    resl += c0 * inv_ds * pencil[MID];
+    resl += c1 * inv_ds * pencil[MID + 1];
+    resl += c2 * inv_ds * pencil[MID + 2];
+    resl += c3 * inv_ds * pencil[MID + 3];
+
+    printf("Diff %.17Lg\n", fabsl(resl - res));
+    exit(0);
+    */
+
+    return res;
 }
 
 static inline Scalar
@@ -706,14 +745,14 @@ induction(const VectorData uu, const VectorData aa)
     // x A)) in order to avoid taking the first derivative twice (did the math,
     // yes this actually works. See pg.28 in arXiv:astro-ph/0109497)
     // u cross B - AC_eta * AC_mu0 * (AC_mu0^-1 * [- laplace A + grad div A ])
-    const Vector B        = curl(aa);
-    //MV: Due to gauge freedom we can reduce the gradient of scalar (divergence) from the equation
-    //const Vector grad_div = gradient_of_divergence(aa);
-    const Vector lap      = laplace_vec(aa);
+    const Vector B = curl(aa);
+    // MV: Due to gauge freedom we can reduce the gradient of scalar (divergence) from the equation
+    // const Vector grad_div = gradient_of_divergence(aa);
+    const Vector lap = laplace_vec(aa);
 
     // Note, AC_mu0 is cancelled out
-    //MV: Due to gauge freedom we can reduce the gradient of scalar (divergence) from the equation
-    //const Vector ind = cross(value(uu), B) - getReal(AC_eta) * (grad_div - lap);
+    // MV: Due to gauge freedom we can reduce the gradient of scalar (divergence) from the equation
+    // const Vector ind = cross(value(uu), B) - getReal(AC_eta) * (grad_div - lap);
     const Vector ind = cross(vecvalue(uu), B) + getReal(AC_eta) * lap;
 
     return ind;
@@ -987,6 +1026,8 @@ checkConfiguration(const AcMeshInfo info)
 AcResult
 acHostIntegrateStep(AcMesh mesh, const AcReal dt)
 {
+    /*
+    // DEBUG
     mesh_info = &(mesh.info);
 
     // Setup built-in parameters
@@ -1037,5 +1078,74 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
 
     acHostMeshDestroy(&intermediate_mesh);
     mesh_info = NULL;
+    */
+
+    mesh_info = &(mesh.info);
+
+    // Setup built-in parameters
+    mesh_info->real_params[AC_inv_dsx]   = (AcReal)(1.0) / mesh_info->real_params[AC_dsx];
+    mesh_info->real_params[AC_inv_dsy]   = (AcReal)(1.0) / mesh_info->real_params[AC_dsy];
+    mesh_info->real_params[AC_inv_dsz]   = (AcReal)(1.0) / mesh_info->real_params[AC_dsz];
+    mesh_info->real_params[AC_cs2_sound] = mesh_info->real_params[AC_cs_sound] *
+                                           mesh_info->real_params[AC_cs_sound];
+    checkConfiguration(*mesh_info);
+
+    AcMesh intermediate_mesh;
+    acHostMeshCreate(mesh.info, &intermediate_mesh);
+
+    const int nx_min = getInt(AC_nx_min);
+    const int nx_max = getInt(AC_nx_max);
+
+    const int ny_min = getInt(AC_ny_min);
+    const int ny_max = getInt(AC_ny_max);
+
+    const int nz_min = getInt(AC_nz_min);
+    const int nz_max = getInt(AC_nz_max);
+
+    for (int step_number = 0; step_number < 3; ++step_number) {
+
+        // Boundconds
+        acHostMeshApplyPeriodicBounds(&mesh);
+
+        // Alpha step
+        // #pragma omp parallel for
+        for (int k = nz_min; k < nz_max; ++k) {
+            for (int j = ny_min; j < ny_max; ++j) {
+                for (int i = nx_min; i < nx_max; ++i) {
+
+                    (void)solve_beta_step;
+                    (void)solve_alpha_step;
+                    (void)dt;
+                    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+                        const int idx = acVertexBufferIdx(i, j, k, mesh.info);
+                        // clang-format off
+                        // intermediate_mesh.vertex_buffer[w][idx] = mesh.vertex_buffer[w][idx];
+                        //intermediate_mesh.vertex_buffer[w][idx] = derx(i, j, k, mesh.vertex_buffer[w]);
+                        //intermediate_mesh.vertex_buffer[w][idx] = derxx(i, j, k, mesh.vertex_buffer[w]);
+                        intermediate_mesh.vertex_buffer[w][idx] = deryz(i, j, k, mesh.vertex_buffer[w]);
+                        // clang-format on
+                    }
+                }
+            }
+        }
+
+        // Beta step
+        // #pragma omp parallel for
+        for (int k = nz_min; k < nz_max; ++k) {
+            for (int j = ny_min; j < ny_max; ++j) {
+                for (int i = nx_min; i < nx_max; ++i) {
+
+                    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+                        const int idx              = acVertexBufferIdx(i, j, k, mesh.info);
+                        mesh.vertex_buffer[w][idx] = intermediate_mesh.vertex_buffer[w][idx];
+                    }
+                }
+            }
+        }
+    }
+
+    acHostMeshDestroy(&intermediate_mesh);
+    mesh_info = NULL;
+
     return AC_SUCCESS;
 }
