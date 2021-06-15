@@ -1,3 +1,4 @@
+#if AC_MPI_ENABLED
 #include "astaroth.h"
 #include "astaroth_debug.h"
 #include "task.h"
@@ -90,3 +91,4 @@ Task::logStateChangedEvent(std::string from, std::string to)
          <<"}"<<std::endl;
 }
 */
+#endif
