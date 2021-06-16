@@ -776,20 +776,19 @@ typedef struct TaskDefinition {
         Kernel kernel;
         BoundaryCondition bound_cond;
     };
-    VertexBufferHandle* variables;
-    size_t num_vars;
+    VertexBufferHandle* scope;
+    size_t scope_length;
 } TaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of commands.*/
 typedef struct TaskGraph TaskGraph;
 
 /** */
-TaskDefinition Compute(const Kernel kernel, VertexBufferHandle variable_scope_arr[],
-                       const size_t num_vars);
+TaskDefinition Compute(const Kernel kernel, VertexBufferHandle scope[], const size_t scope_length);
 
 /** */
-TaskDefinition HaloExchange(const BoundaryCondition bound_cond,
-                            VertexBufferHandle variable_scope_arr[], const size_t num_vars);
+TaskDefinition HaloExchange(const BoundaryCondition bound_cond, VertexBufferHandle scope[],
+                            const size_t scope_length);
 
 /** */
 TaskGraph* acGridGetDefaultTaskGraph();
@@ -805,26 +804,26 @@ AcResult acGridExecuteTaskGraph(const TaskGraph* graph, const size_t n_iteration
 
 #ifdef __cplusplus
 /** */
-template <size_t num_vars>
+template <size_t scope_length>
 TaskDefinition
-Compute(Kernel kernel, VertexBufferHandle (&variable_scope_arr)[num_vars])
+Compute(Kernel kernel, VertexBufferHandle (&scope)[scope_length])
 {
-    return Compute(kernel, variable_scope_arr, num_vars);
+    return Compute(kernel, scope, scope_length);
 }
 
 /** */
-template <size_t num_vars>
+template <size_t scope_length>
 TaskDefinition
-HaloExchange(BoundaryCondition bound_cond, VertexBufferHandle (&variable_scope_arr)[num_vars])
+HaloExchange(BoundaryCondition bound_cond, VertexBufferHandle (&scope)[scope_length])
 {
-    return HaloExchange(bound_cond, variable_scope_arr, num_vars);
+    return HaloExchange(bound_cond, scope, scope_length);
 }
 
 /** */
-template <size_t num_vars>
+template <size_t n_ops>
 TaskGraph*
-acGridBuildTaskGraph(const TaskDefinition (&ops)[num_vars])
+acGridBuildTaskGraph(const TaskDefinition (&ops)[n_ops])
 {
-    return acGridBuildTaskGraph(ops, num_vars);
+    return acGridBuildTaskGraph(ops, n_ops);
 }
 #endif

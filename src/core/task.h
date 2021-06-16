@@ -256,38 +256,3 @@ struct TaskGraph {
     std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
     std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;
 };
-/*
-enum class TaskType { Compute, HaloExchange};
-enum class Kernel {solve};
-enum class BoundaryCondition {Periodic};
-
-typedef struct TaskDefinition {
-    TaskType task_type;
-    union {
-        Kernel kernel;
-        BoundaryCondition bound_cond;
-    };
-    VertexBufferHandle variable_scope[];
-    size_t num_vars;
-} TaskDefinition;
-
-typedef struct Compute: public TaskDefinition {
-    template<size_t n>
-    Compute(VertexBufferHandle (&variable_scope_arr)[n], Kernel kernel_)
-    {
-        task_type = TaskType::Compute;
-        variable_scope.insert(variable_scope.end(), &variable_scope_arr[0], &variable_scope_arr[n]);
-        kernel = kernel_;
-    }
-} ComputeTaskDefinition;
-
-typedef struct HaloExchange: public TaskDefinition {
-    template<size_t n>
-    HaloExchange(VertexBufferHandle (&variable_scope_arr)[n], BoundaryCondition bound_cond_)
-    {
-        task_type = TaskType::HaloExchange;
-        variable_scope.insert(variable_scope.end(), &variable_scope_arr[0], &variable_scope_arr[n]);
-        bound_cond = bound_cond_;
-    }
-} HaloExchangeTaskDefinition;
-*/

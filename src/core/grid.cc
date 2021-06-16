@@ -416,7 +416,7 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
     op_itors.reserve(n_ops);
 
     for (size_t i = 0; i < n_ops; i++) {
-        VarScopePtr vars = std::make_shared<VariableScope>(ops[i].variables, ops[i].num_vars);
+        VarScopePtr vars = std::make_shared<VariableScope>(ops[i].scope, ops[i].scope_length);
 
         op_itors.push_back(graph->all_tasks.end());
         switch (ops[i].task_type) {
@@ -444,22 +444,22 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
     }
     op_itors.push_back(graph->all_tasks.end());
 
-    // Find dependencies between operations
+    // Find dependencies between operations, i.e. check for scope overlap
     std::vector<std::pair<size_t, size_t>> op_dependencies;
     op_dependencies.reserve(n_ops);
 
     for (size_t dependent = 0; dependent < n_ops; dependent++) {
         std::array<bool, NUM_VTXBUF_HANDLES> dept_vars{};
-        for (size_t i = 0; i < ops[dependent].num_vars; i++) {
-            dept_vars[(int)ops[dependent].variables[i]] = true;
+        for (size_t i = 0; i < ops[dependent].scope_length; i++) {
+            dept_vars[(int)ops[dependent].scope[i]] = true;
         }
         // look backwards until we've found each variable in task scope
         for (size_t j = 0; j < n_ops; j++) {
             size_t prereq  = (dependent - j - 1) % n_ops;
             bool dep_found = false;
-            for (size_t i = 0; i < ops[prereq].num_vars; i++) {
-                dep_found                           = true;
-                dept_vars[ops[prereq].variables[i]] = false;
+            for (size_t i = 0; i < ops[prereq].scope_length; i++) {
+                dep_found                       = true;
+                dept_vars[ops[prereq].scope[i]] = false;
             }
             if (dep_found) {
                 op_dependencies.emplace_back(prereq, dependent);
@@ -471,16 +471,17 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
         }
     }
 
-    // Assign dependencies between tasks if:
-    // 1. their operations are dependent
+    // Assign dependencies between tasks if both:
+    // 1. their operations are dependent (scope overlaps)
     // 2. their regions overlap
-    for (auto& dep : op_dependencies) {
-        for (auto preq = op_itors[dep.first]; preq != op_itors[dep.first + 1]; preq++) {
+    for (auto& depcy : op_dependencies) {
+        for (auto preq = op_itors[depcy.first]; preq != op_itors[depcy.first + 1]; preq++) {
             if ((*preq)->active) {
-                for (auto dept = op_itors[dep.second]; dept != op_itors[dep.second + 1]; dept++) {
+                for (auto dept = op_itors[depcy.second]; dept != op_itors[depcy.second + 1];
+                     dept++) {
                     if ((*dept)->active &&
                         (*preq)->output_region->overlaps((*dept)->input_region.get())) {
-                        (*preq)->registerDependent(*dept, dep.first < dep.second ? 0 : 1);
+                        (*preq)->registerDependent(*dept, depcy.first < depcy.second ? 0 : 1);
                     }
                 }
             }
@@ -592,7 +593,6 @@ acGridPeriodicBoundconds(const Stream stream)
     for (auto& halo_task : grid.default_tasks->halo_tasks) {
         halo_task->wait_send();
     }
-    // gridSwapRequestBuffers();
     return AC_SUCCESS;
 }
 

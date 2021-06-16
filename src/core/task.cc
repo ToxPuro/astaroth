@@ -47,25 +47,25 @@
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
 
 TaskDefinition
-Compute(const Kernel kernel, VertexBufferHandle variable_scope_arr[], const size_t num_vars)
+Compute(const Kernel kernel, VertexBufferHandle scope[], const size_t scope_length)
 {
-    TaskDefinition task_def;
-    task_def.task_type = TaskType_Compute;
-    task_def.kernel    = kernel;
-    task_def.variables = variable_scope_arr;
-    task_def.num_vars  = num_vars;
+    TaskDefinition task_def{};
+    task_def.task_type    = TaskType_Compute;
+    task_def.kernel       = kernel;
+    task_def.scope        = scope;
+    task_def.scope_length = scope_length;
     return task_def;
 }
 
 TaskDefinition
-HaloExchange(const BoundaryCondition bound_cond, VertexBufferHandle variable_scope_arr[],
-             const size_t num_vars)
+HaloExchange(const BoundaryCondition bound_cond, VertexBufferHandle scope[],
+             const size_t scope_length)
 {
-    TaskDefinition task_def;
-    task_def.task_type  = TaskType_HaloExchange;
-    task_def.bound_cond = bound_cond;
-    task_def.variables  = variable_scope_arr;
-    task_def.num_vars   = num_vars;
+    TaskDefinition task_def{};
+    task_def.task_type    = TaskType_HaloExchange;
+    task_def.bound_cond   = bound_cond;
+    task_def.scope        = scope;
+    task_def.scope_length = scope_length;
     return task_def;
 }
 
@@ -518,7 +518,7 @@ HaloExchangeTask::pack()
 {
     auto msg = send_buffers.get_fresh_buffer();
     // acKernelPartialPackData(stream, vba, input_region->position, input_region->dims,
-    //                 msg->data, pass->variable_scope, pass->variable_scope_length);
+    //                         msg->data, variable_scope->variables, variable_scope->num_vars);
     acKernelPackData(stream, vba, input_region->position, input_region->dims, msg->data);
 }
 
@@ -531,8 +531,7 @@ HaloExchangeTask::unpack()
     msg->unpin(device, stream);
 #endif
     // acKernelPartialUnpackData(stream, msg->data, output_region->position, output_region->dims,
-    // vba,
-    //                          pass->variable_scope, pass->variable_scope_length);
+    //                           vba, variable_scope->variables, variable_scope->num_vars);
     acKernelUnpackData(stream, msg->data, output_region->position, output_region->dims, vba);
 }
 
