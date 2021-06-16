@@ -667,6 +667,7 @@ upwd_der6(const VectorData uu, const ScalarData lnrho)
 static inline Scalar
 continuity(const VectorData uu, const ScalarData lnrho)
 {
+
     return -dot(vecvalue(uu), gradient(lnrho))
 #if LUPWD
            // This is a corrective hyperdiffusion term for upwinding.
@@ -723,6 +724,7 @@ momentum(const VectorData uu, const ScalarData lnrho
                            (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
                             (Scalar)(2.) * mul(S, gradient(lnrho))) +
                        getReal(AC_zeta) * gradient_of_divergence(uu);
+
     return mom;
 #else
     // !!!!!!!!!!!!!!!!%JP: NOTE TODO IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!
@@ -950,6 +952,17 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
     rate_of_change[VTXBUF_UUZ] = uu_res[2];
 #endif
 
+    /*
+    // DEBUG
+    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        // rate_of_change[w] = continuity(uu, lnrho);
+        // rate_of_change[w] = induction(uu, aa)[0];
+        // rate_of_change[w] = momentum(uu, lnrho, ss, aa)[0];
+        rate_of_change[w] = entropy(ss, uu, lnrho, aa);
+    }
+    // DEBUG
+    */
+
     // Williamson (1980) NOTE: older version of astaroth used inhomogenous
     const Scalar alpha[] = {(Scalar)(.0), (Scalar)(-5. / 9.), (Scalar)(-153. / 128.)};
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
@@ -1026,8 +1039,7 @@ checkConfiguration(const AcMeshInfo info)
 AcResult
 acHostIntegrateStep(AcMesh mesh, const AcReal dt)
 {
-    /*
-    // DEBUG
+
     mesh_info = &(mesh.info);
 
     // Setup built-in parameters
@@ -1078,8 +1090,8 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
 
     acHostMeshDestroy(&intermediate_mesh);
     mesh_info = NULL;
-    */
 
+#if 0
     mesh_info = &(mesh.info);
 
     // Setup built-in parameters
@@ -1116,15 +1128,57 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
                     (void)solve_beta_step;
                     (void)solve_alpha_step;
                     (void)dt;
+
+                    const int idx = acVertexBufferIdx(i, j, k, mesh.info);
+
+                    const ScalarData lnrho = read_scal_data(i, j, k, mesh.vertex_buffer,
+                                                            VTXBUF_LNRHO);
+                    const VectorData uu    = read_vec_data(i, j, k, mesh.vertex_buffer,
+                                                        (int3){VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ});
+                    const VectorData aa    = read_vec_data(i, j, k, mesh.vertex_buffer,
+                                                        (int3){VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ});
+                    const ScalarData ss    = read_scal_data(i, j, k, mesh.vertex_buffer,
+                                                         VTXBUF_ENTROPY);
+
+                    (void)lnrho;
+                    (void)uu;
+                    (void)aa;
+                    (void)ss;
+
+                    /*
+                    Scalar rate_of_change[NUM_VTXBUF_HANDLES] = {0};
+                                        rate_of_change[VTXBUF_LNRHO] = continuity(uu, lnrho);
+
+
+                                        const Vector aa_res       = induction(uu, aa);
+                                        rate_of_change[VTXBUF_AX] = aa_res[0];
+                                        rate_of_change[VTXBUF_AY] = aa_res[1];
+                                        rate_of_change[VTXBUF_AZ] = aa_res[2];
+
+
+                                        const Vector uu_res            = momentum(uu, lnrho, ss,
+                    aa); rate_of_change[VTXBUF_UUX]     = uu_res[0]; rate_of_change[VTXBUF_UUY] =
+                    uu_res[1]; rate_of_change[VTXBUF_UUZ]     = uu_res[2];
+                                        rate_of_change[VTXBUF_ENTROPY] = entropy(ss, uu, lnrho, aa);
+
+                                        //intermediate_mesh.vertex_buffer[VTXBUF_LNRHO][idx] =
+                    rate_of_change[VTXBUF_LNRHO];
+                    */
+
                     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-                        const int idx = acVertexBufferIdx(i, j, k, mesh.info);
                         // clang-format off
                         //intermediate_mesh.vertex_buffer[w][idx] = mesh.vertex_buffer[w][idx];
                         //intermediate_mesh.vertex_buffer[w][idx] = derx(i, j, k, mesh.vertex_buffer[w]);
-                        //intermediate_mesh.vertex_buffer[w][idx] = derxx(i, j, k, mesh.vertex_buffer[w]);
-                        intermediate_mesh.vertex_buffer[w][idx] = deryz(i, j, k, mesh.vertex_buffer[w]);
-                        // clang-format on
+                        //intermediate_mesh.vertex_buffer[w][idx] = derxx(i, j, k,mesh.vertex_buffer[w]);
+                        //intermediate_mesh.vertex_buffer[w][idx] = deryz(i, j, k, mesh.vertex_buffer[w]);
+                        //intermediate_mesh.vertex_buffer[w][idx] = deryz(i, j, k, mesh.vertex_buffer[w]);
+                        //intermediate_mesh.vertex_buffer[w][idx] = continuity(uu, lnrho);
+                        //intermediate_mesh.vertex_buffer[w][idx] = induction(uu, aa)[2];
+                        intermediate_mesh.vertex_buffer[w][idx] = momentum(uu, lnrho, ss, aa)[0];
+                        
                     }
+
+                    // clang-format on
                 }
             }
         }
@@ -1146,6 +1200,7 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
 
     acHostMeshDestroy(&intermediate_mesh);
     mesh_info = NULL;
+#endif
 
     return AC_SUCCESS;
 }

@@ -22,6 +22,8 @@ typedef enum {
 #define STENCIL_MIDY (STENCIL_HEIGHT / 2 + 1)
 #define STENCIL_MIDZ (STENCIL_DEPTH / 2 + 1)
 
+static const int NUM_FIELDS = NUM_VTXBUF_HANDLES;
+
 #define INV_DS (1.0l / 0.04908738521l)
 
 #define DER1_3 (AcReal(INV_DS * 1.0l / 60.0l))
@@ -50,16 +52,20 @@ static const AcReal
 ;
 // clang-format on
 
+typedef struct {
+    dim3 tpb;
+    int3 dims;
+} TBConfig;
+
+static TBConfig getOptimalTBConfig(const int3 dims, VertexBufferArray vba);
+
 static __global__ void
 dummy_kernel(void)
 {
-    /*
-    // TODO RE-ENABLE WIP
     DCONST((AcIntParam)0);
     DCONST((AcInt3Param)0);
     DCONST((AcRealParam)0);
     DCONST((AcReal3Param)0);
-    */
     acComplex a = exp(AcReal(1) * acComplex(1, 1) * AcReal(1));
     a* a;
 }
@@ -82,70 +88,23 @@ gen_kernel(void)
     ERRCHK_ALWAYS(fp);
 
     // clang-format off
-    const int NUM_FIELDS = NUM_VTXBUF_HANDLES;
     for (int field = 0; field < NUM_FIELDS; ++field) {
         for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-
-            fprintf(fp,
-            "{const int i = blockIdx.x * blockDim.x + start.x - STENCIL_ORDER/2;\n"
-            "const int j = blockIdx.y * blockDim.y + start.y - STENCIL_ORDER/2;\n"
-            "const int k = blockIdx.z * blockDim.z + start.z - STENCIL_ORDER/2 + %d;\n"
-            "const int tid = threadIdx.x + threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y;\n"
-            "const int smem_width = blockDim.x + STENCIL_ORDER;\n"
-            "const int smem_height = blockDim.y + STENCIL_ORDER;\n"
-            "if (tid < smem_width) {\n"
-                "\tfor (int height = 0; height < smem_height; ++height) {\n"
-                "\t\tsmem[tid + height * smem_width] = vba.in[%d][IDX(i + tid, j + height, k)];\n"
-                "\t}\n"
-            "}\n"
-            "__syncthreads();\n", depth, field);
-
-
-            // WRITE BLOCK START
-            fprintf(fp, "if (vertexIdx.x < end.x && vertexIdx.y < end.y && vertexIdx.z < end.z) {\n");
-            
 
             for (int height = 0; height < STENCIL_HEIGHT; ++height) {
                 for (int width = 0; width < STENCIL_WIDTH; ++width) {
                     for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
                         if (host_stencils[stencil][depth][height][width] != 0) {
-                            /*
-                            const int i        = vertexIdx.x - STENCIL_ORDER / 2 + width;
-                            const int j        = vertexIdx.y - STENCIL_ORDER / 2 + height;
-                            const int k        = vertexIdx.z - STENCIL_ORDER / 2 + depth;
-                            const int idx      = IDX(i, j, k);
-                            const double value = vba.in[field][idx];
-
-                            for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-                                processed_stencils[field][stencil] += stencils[stencil][depth]
-                                                                              [height][width] *
-                                                                      value;
-                                                                      */
-                            
-                            // NON-SMEM
                             fprintf(fp,
-                                    "//processed_stencils[%d][%d] += stencils[%d][%d][%d][%d] * vba.in[%d][IDX(vertexIdx.x + (%d), vertexIdx.y + (%d), vertexIdx.z + (%d))];\n",
+                                    "processed_stencils[%d][%d] += stencils[%d][%d][%d][%d] * vba.in[%d][IDX(vertexIdx.x + (%d), vertexIdx.y + (%d), vertexIdx.z + (%d))];\n",
                                     field, stencil, stencil, depth, height, width, field,
                                     -STENCIL_ORDER / 2 + width, -STENCIL_ORDER / 2 + height,
                                     -STENCIL_ORDER / 2 + depth);
-                                    
-                                    
-                            fprintf(fp,
-                                    "processed_stencils[%d][%d] += stencils[%d][%d][%d][%d] * smem[(threadIdx.x + %d) + (threadIdx.y + %d) * smem_width];\n",
-                                    field, stencil, stencil, depth, height, width, width, height);
                         }
                     }
                 }
             }
-
-            // WRITE BLOCK END
-            fprintf(fp, "}\n"); 
-
-            fprintf(fp, "__syncthreads();}\n");
         }
-
-        // WRITE BLOCK START
-        fprintf(fp, "if (vertexIdx.x < end.x && vertexIdx.y < end.y && vertexIdx.z < end.z) {\n");
 
         /*
         const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);
@@ -155,10 +114,7 @@ gen_kernel(void)
         vba.out[field][idx] = processed_stencils[field][STENCIL_DERYZ];
         */
         //fprintf(fp,"vba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = processed_stencils[%d][STENCIL_DERYZ];\n", field, field);
-        fprintf(fp,"vba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = processed_stencils[%d][STENCIL_DERYZ];\n", field, field);
-
-        // WRITE BLOCK END
-        fprintf(fp, "}\n");
+        //fprintf(fp,"vba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = processed_stencils[%d][STENCIL_DERYZ];\n", field, field);
 
         // clang-format on
     }
@@ -166,6 +122,252 @@ gen_kernel(void)
     fclose(fp);
 }
 
+static __device__ AcReal
+value(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle handle)
+{
+    return s[handle][STENCIL_VALUE];
+}
+
+static __device__ AcReal3
+value(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+      const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    return (AcReal3){
+        s[x][STENCIL_VALUE],
+        s[y][STENCIL_VALUE],
+        s[z][STENCIL_VALUE],
+    };
+}
+
+static __device__ AcReal3
+gradient(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle handle)
+{
+    return (AcReal3){
+        s[handle][STENCIL_DERX],
+        s[handle][STENCIL_DERY],
+        s[handle][STENCIL_DERZ],
+    };
+}
+
+static __device__ AcMatrix
+gradients(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+          const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    return (AcMatrix){gradient(s, x), gradient(s, y), gradient(s, z)};
+}
+
+static __device__ AcReal
+divergence(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+           const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    return s[x][STENCIL_DERX] + s[y][STENCIL_DERY] + s[z][STENCIL_DERZ];
+}
+
+static __device__ AcReal3
+curl(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+     const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    return (AcReal3){
+        s[z][STENCIL_DERY] - s[y][STENCIL_DERZ],
+        s[x][STENCIL_DERZ] - s[z][STENCIL_DERX],
+        s[y][STENCIL_DERX] - s[x][STENCIL_DERY],
+    };
+}
+
+static __device__ AcReal
+continuity(const AcReal s[NUM_FIELDS][NUM_STENCILS])
+{
+
+    const AcReal3 uu         = value(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    const AcReal3 grad_lnrho = gradient(s, VTXBUF_LNRHO);
+    const AcReal div_uu      = divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+
+    return -dot(uu, grad_lnrho) - div_uu;
+}
+
+static __device__ AcReal
+laplace(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle handle)
+{
+    return s[handle][STENCIL_DERXX] + s[handle][STENCIL_DERYY] + s[handle][STENCIL_DERZZ];
+}
+
+static __device__ AcReal3
+laplace(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+        const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    return (AcReal3){laplace(s, x), laplace(s, y), laplace(s, z)};
+}
+
+static __device__ AcReal3
+induction(const AcReal s[NUM_FIELDS][NUM_STENCILS])
+{
+    const AcReal3 B   = curl(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ);
+    const AcReal3 lap = laplace(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ);
+    const AcReal3 uu  = value(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+
+    return cross(uu, B) + DCONST(AC_eta) * lap;
+}
+
+static __device__ AcMatrix
+stress_tensor(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+              const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    AcMatrix S;
+
+    S.row[0].x = (AcReal)(2. / 3.) * s[x][STENCIL_DERX] -
+                 (AcReal)(1. / 3.) * (s[y][STENCIL_DERY] + s[z][STENCIL_DERZ]);
+    S.row[0].y = (AcReal)(1. / 2.) * (s[x][STENCIL_DERY] + s[y][STENCIL_DERX]);
+    S.row[0].z = (AcReal)(1. / 2.) * (s[x][STENCIL_DERZ] + s[z][STENCIL_DERX]);
+
+    S.row[1].y = (AcReal)(2. / 3.) * s[y][STENCIL_DERY] -
+                 (AcReal)(1. / 3.) * (s[x][STENCIL_DERX] + s[z][STENCIL_DERZ]);
+
+    S.row[1].z = (AcReal)(1. / 2.) * (s[y][STENCIL_DERZ] + s[z][STENCIL_DERY]);
+
+    S.row[2].z = (AcReal)(2. / 3.) * s[z][STENCIL_DERZ] -
+                 (AcReal)(1. / 3.) * (s[x][STENCIL_DERX] + s[y][STENCIL_DERY]);
+
+    S.row[1].x = S.row[0].y;
+    S.row[2].x = S.row[0].z;
+    S.row[2].y = S.row[1].z;
+
+    return S;
+}
+
+static __device__ AcReal3
+gradient_of_divergence(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+                       const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    return (AcReal3){
+        s[x][STENCIL_DERXX] + s[y][STENCIL_DERXY] + s[z][STENCIL_DERXZ],
+        s[x][STENCIL_DERXY] + s[y][STENCIL_DERYY] + s[z][STENCIL_DERYZ],
+        s[x][STENCIL_DERXZ] + s[y][STENCIL_DERYZ] + s[z][STENCIL_DERZZ],
+    };
+}
+
+static __device__ AcReal
+contract(const AcMatrix mat)
+{
+    AcReal res = 0;
+
+#pragma unroll
+    for (int i = 0; i < 3; ++i)
+        res += dot(mat.row[i], mat.row[i]);
+
+    return res;
+}
+
+static __device__ AcReal3
+momentum(const AcReal s[NUM_FIELDS][NUM_STENCILS])
+{
+    const AcReal3 uu       = value(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    const AcMatrix grad_uu = gradients(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    const AcMatrix S       = stress_tensor(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    // NOTE WARNING AC_cs2_sound NOT PROPERLY LOADED TODO FIX
+    const AcReal cs2_sound = DCONST(AC_cs_sound) * DCONST(AC_cs_sound);
+    const AcReal cs2       = cs2_sound *
+                       exp(DCONST(AC_gamma) * value(s, VTXBUF_ENTROPY) / DCONST(AC_cp_sound) +
+                           (DCONST(AC_gamma) - 1) * (value(s, VTXBUF_LNRHO) - DCONST(AC_lnrho0)));
+
+    const AcReal3 j = ((AcReal)(1.) / DCONST(AC_mu0)) *
+                      (gradient_of_divergence(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ) -
+                       laplace(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ));
+    const AcReal3 B      = curl(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ);
+    const AcReal inv_rho = (AcReal)(1.) / exp(value(s, VTXBUF_LNRHO));
+
+    const AcReal3 mom = -mul(grad_uu, uu) -
+                        cs2 * ((AcReal(1.0) / DCONST(AC_cp_sound)) * gradient(s, VTXBUF_ENTROPY) +
+                               gradient(s, VTXBUF_LNRHO)) +
+                        inv_rho * cross(j, B) +
+                        DCONST(AC_nu_visc) *
+                            (laplace(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ) +
+                             (AcReal(1.0) / AcReal(3.0)) *
+                                 gradient_of_divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ) +
+                             AcReal(2.0) * mul(S, gradient(s, VTXBUF_LNRHO))) +
+                        DCONST(AC_zeta) *
+                            gradient_of_divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+
+    return mom;
+}
+
+static __device__ AcReal
+lnT(const AcReal s[NUM_FIELDS][NUM_STENCILS])
+{
+    return DCONST(AC_lnT0) + DCONST(AC_gamma) * value(s, VTXBUF_ENTROPY) / DCONST(AC_cp_sound) +
+           (DCONST(AC_gamma) - AcReal(1.0)) * (value(s, VTXBUF_LNRHO) - DCONST(AC_lnrho0));
+}
+
+static __device__ AcReal
+heat_conduction(const AcReal s[NUM_FIELDS][NUM_STENCILS])
+{
+    const AcReal inv_AC_cp_sound = AcReal(1.0) / DCONST(AC_cp_sound);
+    const AcReal3 grad_ln_chi    = -gradient(s, VTXBUF_LNRHO);
+    const AcReal first_term      = DCONST(AC_gamma) * inv_AC_cp_sound * laplace(s, VTXBUF_ENTROPY) +
+                              (DCONST(AC_gamma) - AcReal(1.0)) * laplace(s, VTXBUF_LNRHO);
+    const AcReal3 second_term = DCONST(AC_gamma) * inv_AC_cp_sound * gradient(s, VTXBUF_ENTROPY) +
+                                (DCONST(AC_gamma) - AcReal(1.0)) * gradient(s, VTXBUF_LNRHO);
+    const AcReal3 third_term = DCONST(AC_gamma) * (inv_AC_cp_sound * gradient(s, VTXBUF_ENTROPY) +
+                                                   gradient(s, VTXBUF_LNRHO)) +
+                               grad_ln_chi;
+    const AcReal chi = (AcReal(0.001)) / (exp(value(s, VTXBUF_LNRHO)) * DCONST(AC_cp_sound));
+    return DCONST(AC_cp_sound) * chi * (first_term + dot(second_term, third_term));
+}
+
+static __device__ AcReal
+entropy(const AcReal s[NUM_FIELDS][NUM_STENCILS])
+{
+    const AcMatrix S    = stress_tensor(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    const AcReal inv_pT = AcReal(1.0) / (exp(value(s, VTXBUF_LNRHO)) * exp(lnT(s)));
+    const AcReal3 j     = (AcReal(1.0) / DCONST(AC_mu0)) *
+                      (gradient_of_divergence(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ) -
+                       laplace(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ));
+    const AcReal RHS = (0) - (0) + DCONST(AC_eta) * (DCONST(AC_mu0)) * dot(j, j) +
+                       AcReal(2.0) * exp(value(s, VTXBUF_LNRHO)) * DCONST(AC_nu_visc) *
+                           contract(S) +
+                       DCONST(AC_zeta) * exp(value(s, VTXBUF_LNRHO)) *
+                           divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ) *
+                           divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    return -dot(value(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ), gradient(s, VTXBUF_ENTROPY)) +
+           inv_pT * RHS + heat_conduction(s);
+}
+
+template <int step_number>
+static __device__ __forceinline__ AcReal
+rk3_integrate(const AcReal state_previous, const AcReal state_current, const AcReal rate_of_change,
+              const AcReal dt)
+{
+    // Williamson (1980)
+    const AcReal alpha[] = {0, AcReal(.0), AcReal(-5. / 9.), AcReal(-153. / 128.)};
+    const AcReal beta[]  = {0, AcReal(1. / 3.), AcReal(15. / 16.), AcReal(8. / 15.)};
+
+    // Note the indexing: +1 to avoid an unnecessary warning about "out-of-bounds"
+    // access (when accessing beta[step_number-1] even when step_number >= 1)
+    switch (step_number) {
+    case 0:
+        return state_current + beta[step_number + 1] * rate_of_change * dt;
+    case 1: // Fallthrough
+    case 2:
+        return state_current +
+               beta[step_number + 1] * (alpha[step_number + 1] * (AcReal(1.) / beta[step_number]) *
+                                            (state_current - state_previous) +
+                                        rate_of_change * dt);
+    default:
+        return NAN;
+    }
+}
+
+template <int step_number>
+static __device__ __forceinline__ AcReal3
+rk3_integrate(const AcReal3 state_previous, const AcReal3 state_current,
+              const AcReal3 rate_of_change, const AcReal dt)
+{
+    return (AcReal3){
+        rk3_integrate<step_number>(state_previous.x, state_current.x, rate_of_change.x, dt),
+        rk3_integrate<step_number>(state_previous.y, state_current.y, rate_of_change.y, dt),
+        rk3_integrate<step_number>(state_previous.z, state_current.z, rate_of_change.z, dt),
+    };
+}
+
 template <int step_number>
 static __global__ void
 solve(const int3 start, const int3 end, VertexBufferArray vba)
@@ -183,7 +385,6 @@ solve(const int3 start, const int3 end, VertexBufferArray vba)
         d_multigpu_offset.z + vertexIdx.z,
     };
 
-    /*
     if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z)
         return;
 
@@ -192,160 +393,82 @@ solve(const int3 start, const int3 end, VertexBufferArray vba)
 
     assert(vertexIdx.x >= DCONST(AC_nx_min) && vertexIdx.y >= DCONST(AC_ny_min) &&
            vertexIdx.z >= DCONST(AC_nz_min));
-    */
 
     assert(blockDim.x * blockDim.y * blockDim.z >= blockDim.x + STENCIL_ORDER); // needed for smem
-
-    const int NUM_FIELDS = NUM_VTXBUF_HANDLES;
-
-    // TODO test: what's the best we can do? And then build from there.
-    // THE SIMPLEST POSSIBLE -> Incremental improvements
 
     AcReal processed_stencils[NUM_FIELDS][NUM_STENCILS] = {0};
 #if !GEN_KERNEL
 #include "kernel.out"
 #endif
-    /*
-        for (int field = 0; field < NUM_FIELDS; ++field) {
-            for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-                for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-                    for (int width = 0; width < STENCIL_WIDTH; ++width) {
-                        const int i        = vertexIdx.x - STENCIL_ORDER / 2 + width;
-                        const int j        = vertexIdx.y - STENCIL_ORDER / 2 + height;
-                        const int k        = vertexIdx.z - STENCIL_ORDER / 2 + depth;
-                        const int idx      = IDX(i, j, k);
-                        const double value = vba.in[field][idx];
 
-    #pragma unroll
-                        for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-                            processed_stencils[field][stencil] +=
-    stencils[stencil][depth][height] [width] * value;
-                        }
-                    }
-                }
-            }
+    const int idx = IDX(vertexIdx);
 
-            const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);
-            // vba.out[field][idx] = processed_stencils[field][STENCIL_VALUE];
-            // vba.out[field][idx] = processed_stencils[field][STENCIL_DERX];
-            // vba.out[field][idx] = processed_stencils[field][STENCIL_DERXX];
-            vba.out[field][idx] = processed_stencils[field][STENCIL_DERYZ];
-        }
-        */
-}
+    AcReal rate_of_change[NUM_FIELDS] = {0};
 
-#if 0
-template <int step_number>
-static __global__ void
-solve(const int3 start, const int3 end, VertexBufferArray vba)
-{
-    const int3 vertexIdx = (int3){
-        threadIdx.x + blockIdx.x * blockDim.x + start.x,
-        threadIdx.y + blockIdx.y * blockDim.y + start.y,
-        threadIdx.z + blockIdx.z * blockDim.z + start.z,
-    };
-    const int3 globalVertexIdx = (int3){
-        d_multigpu_offset.x + vertexIdx.x,
-        d_multigpu_offset.y + vertexIdx.y,
-        d_multigpu_offset.z + vertexIdx.z,
-    };
+    const AcReal cont = continuity(processed_stencils);
+    const AcReal3 mom = momentum(processed_stencils);
+    const AcReal3 ind = induction(processed_stencils);
+    const AcReal entr = entropy(processed_stencils);
 
-    if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z)
-        return;
+    rate_of_change[VTXBUF_LNRHO]   = cont;
+    rate_of_change[VTXBUF_UUX]     = mom.x;
+    rate_of_change[VTXBUF_UUY]     = mom.y;
+    rate_of_change[VTXBUF_UUZ]     = mom.z;
+    rate_of_change[VTXBUF_AX]      = ind.x;
+    rate_of_change[VTXBUF_AY]      = ind.y;
+    rate_of_change[VTXBUF_AZ]      = ind.z;
+    rate_of_change[VTXBUF_ENTROPY] = entr;
 
-    assert(vertexIdx.x < DCONST(AC_nx_max) && vertexIdx.y < DCONST(AC_ny_max) &&
-           vertexIdx.z < DCONST(AC_nz_max));
-
-    assert(vertexIdx.x >= DCONST(AC_nx_min) && vertexIdx.y >= DCONST(AC_ny_min) &&
-           vertexIdx.z >= DCONST(AC_nz_min));
-
-    assert(blockDim.x * blockDim.y * blockDim.z >= blockDim.x + STENCIL_ORDER);
-
-    const int NUM_FIELDS = NUM_VTXBUF_HANDLES;
-
-    // TODO test: what's the best we can do? And then build from there.
-    // THE SIMPLEST POSSIBLE -> Incremental improvements
-
-    AcReal processed_stencils[NUM_FIELDS][NUM_STENCILS] = {0};
-    for (int field = 0; field < NUM_FIELDS; ++field) {
-        for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-            for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-                for (int width = 0; width < STENCIL_WIDTH; ++width) {
-                    const int i        = vertexIdx.x - STENCIL_ORDER / 2 + width;
-                    const int j        = vertexIdx.y - STENCIL_ORDER / 2 + height;
-                    const int k        = vertexIdx.z - STENCIL_ORDER / 2 + depth;
-                    const int idx      = IDX(i, j, k);
-                    const double value = vba.in[field][idx];
-
-#pragma unroll
-                    for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-                        processed_stencils[field][stencil] += stencils[stencil][depth][height]
-                                                                      [width] *
-                                                              value;
-                    }
-                }
-            }
-        }
-
-        const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);
-        // vba.out[field][idx] = processed_stencils[field][STENCIL_VALUE];
-        // vba.out[field][idx] = processed_stencils[field][STENCIL_DERX];
-        // vba.out[field][idx] = processed_stencils[field][STENCIL_DERXX];
-        vba.out[field][idx] = processed_stencils[field][STENCIL_DERYZ];
-    }
+    for (int i = 0; i < NUM_FIELDS; ++i)
+        vba.out[i][idx] = rk3_integrate<step_number>(vba.out[i][idx],
+                                                     processed_stencils[i][STENCIL_VALUE],
+                                                     rate_of_change[i], DCONST(AC_dt));
 
     /*
-    extern __shared__ AcReal smem[];
-    AcReal processed_stencils[NUM_FIELDS][NUM_STENCILS] = {0};
-    for (int field = 0; field < NUM_FIELDS; ++field) {
-        for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+    for (int i = 0; i < NUM_FIELDS; ++i) {
+        // vba.out[i][idx] = processed_stencils[i][STENCIL_DERYZ];
+        // vba.out[i][idx] = continuity(processed_stencils);
+        // vba.out[i][idx] = induction(processed_stencils).z;
+        // const AcReal rate_of_change = continuity(processed_stencils);
+        // const AcReal rate_of_change = induction(processed_stencils).x;
+        // const AcReal rate_of_change = momentum(processed_stencils).x;
+        const AcReal rate_of_change = entropy(processed_stencils);
+        vba.out[i][idx]             = rk3_integrate<step_number>(vba.out[i][idx],
+                                                     processed_stencils[i][STENCIL_VALUE],
+                                                     rate_of_change, DCONST(AC_dt));
+    }*/
 
-            const int3 baseIdx = (int3){
-                blockIdx.x * blockDim.x + start.x,
-                blockIdx.y * blockDim.y + start.y,
-                blockIdx.z * blockDim.z + start.z,
-            };
-            const int smem_idx = threadIdx.x + threadIdx.y * blockDim.x +
-                                 threadIdx.z * blockDim.x * blockDim.y;
-            if (smem_idx < blockDim.x + STENCIL_ORDER) {
-                for (int height = 0; height < blockDim.y + STENCIL_ORDER; ++height) {
-
-                    const int smem_out   = smem_idx + height * (blockDim.x + STENCIL_ORDER);
-                    const int3 vtxbuf_in = baseIdx -
-                                           (int3){STENCIL_ORDER / 2, STENCIL_ORDER / 2,
-                                                  STENCIL_ORDER / 2} +
-                                           (int3){smem_idx, height, depth};
-                    smem[smem_out] = vba.in[field][IDX(vtxbuf_in)];
-                }
-            }
-
-            __syncthreads();
-            for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-                for (int width = 0; width < STENCIL_WIDTH; ++width) {
-                    const int i        = threadIdx.x + width;
-                    const int j        = threadIdx.y + height;
-                    const int idx      = i + j * (blockDim.x + STENCIL_ORDER);
-                    const double value = smem[idx];
-                    for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-                        processed_stencils[field][stencil] += stencils[stencil][depth][height]
-                                                                      [width] *
-                                                              value;
-                    }
-                }
-            }
-        }
-
-        const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);
-        // vba.out[field][idx] = processed_stencils[field][STENCIL_VALUE];
-        // vba.out[field][idx] = processed_stencils[field][STENCIL_DERX];
-        // vba.out[field][idx] = processed_stencils[field][STENCIL_DERXX];
-        vba.out[field][idx] = processed_stencils[field][STENCIL_DERYZ];
+    /*
+    for (int i = 0; i < NUM_FIELDS; ++i) {
+        // vba.out[i][idx] = processed_stencils[i][STENCIL_DERYZ];
+        // vba.out[i][idx] = continuity(processed_stencils);
+        // vba.out[i][idx] = induction(processed_stencils).z;
+        vba.out[i][idx] = momentum(processed_stencils).x;
     }
     */
-}
-#endif
+    /*
+    const AcReal dt                           = DCONST(AC_dt);
+    AcReal rate_of_change[NUM_VTXBUF_HANDLES] = {0};
+    rate_of_change[VTXBUF_LNRHO]              = continuity(processed_stencils);
 
-static dim3 rk3_tpb(32, 4, 1);
+    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
+        vba.out[w][idx] = rk3_integrate<step_number>(vba.out[w][idx],
+                                                     processed_stencils[w][STENCIL_VALUE],
+                                                     rate_of_change[w], dt);
+    */
+
+    /*
+    const AcReal cont = continuity(processed_stencils);
+    vba.out[VTXBUF_LNRHO]
+           [idx] = rk3_integrate<step_number>(vba.out[VTXBUF_LNRHO][IDX(vertexIdx)],
+                                              processed_stencils[VTXBUF_LNRHO][STENCIL_VALUE], cont,
+                                              DCONST(AC_dt));
+
+    vba.out[VTXBUF_UUX][idx]     = rk3_integrate<step_number>(vba.out[VTXBUF_LNRHO][IDX(vertexIdx)],
+                                              processed_stencils[VTXBUF_LNRHO][STENCIL_VALUE], cont,
+                                              DCONST(AC_dt));
+    */
+}
 
 AcResult
 acKernelIntegrateSubstep(const cudaStream_t stream, const int step_number, const int3 start,
@@ -385,8 +508,8 @@ acKernelIntegrateSubstep(const cudaStream_t stream, const int step_number, const
 
     ERRCHK_ALWAYS(step_number >= 0);
     ERRCHK_ALWAYS(step_number < 3);
-    const dim3 tpb    = rk3_tpb; //(dim3){32, 4, 1};
-    const size_t smem = (tpb.x + STENCIL_ORDER) * (tpb.y + STENCIL_ORDER) * sizeof(AcReal);
+    const dim3 tpb    = getOptimalTBConfig(end - start, vba).tpb;
+    const size_t smem = 0; //(tpb.x + STENCIL_ORDER) * (tpb.y + STENCIL_ORDER) * sizeof(AcReal);
 
     const int3 n = end - start;
     const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
@@ -408,6 +531,7 @@ acKernelIntegrateSubstep(const cudaStream_t stream, const int step_number, const
 AcResult
 acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferArray vba)
 {
+
 // DEBUG UNROOL
 #if GEN_KERNEL
     gen_kernel(); // Debug TODO REMOVE
@@ -415,6 +539,7 @@ acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferAr
 #endif
     //// DEBUG UNROOLL
 
+#if 0
     // Device info (TODO GENERIC)
 #define REGISTERS_PER_THREAD (255)
 #define MAX_REGISTERS_PER_BLOCK (65536)
@@ -427,31 +552,28 @@ acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferAr
     float best_time          = INFINITY;
     const int num_iterations = 10;
 
-    for (int z = 1; z <= 1; ++z) { // TODO CHECK Z GOES ONLY TO 1
+    for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) { // TODO CHECK Z GOES ONLY TO 1
         for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
             for (int x = 4; x <= MAX_THREADS_PER_BLOCK; x += 4) {
 
-                if (x > end.x - start.x || y > end.y - start.y || z > end.z - start.z)
-                    break;
+                // if (x > end.x - start.x || y > end.y - start.y || z > end.z - start.z)
+                //    break;
+
                 if (x * y * z > MAX_THREADS_PER_BLOCK)
                     break;
 
-                if (x * y * z * REGISTERS_PER_THREAD > MAX_REGISTERS_PER_BLOCK)
-                    break;
+                // if (x * y * z * REGISTERS_PER_THREAD > MAX_REGISTERS_PER_BLOCK)
+                //    break;
 
-                if (((x * y * z) % WARP_SIZE) != 0)
-                    continue;
-
-                if ((x * y * z) < x + STENCIL_ORDER) // WARNING NOTE: Only use if using smem
-                    continue;
+                // if (((x * y * z) % WARP_SIZE) != 0)
+                //    continue;
 
                 const dim3 tpb(x, y, z);
                 const int3 n = end - start;
                 const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
                                (unsigned int)ceil(n.y / AcReal(tpb.y)), //
                                (unsigned int)ceil(n.z / AcReal(tpb.z)));
-                const size_t smem = (tpb.x + STENCIL_ORDER) * (tpb.y + STENCIL_ORDER) *
-                                    sizeof(AcReal);
+                const size_t smem = 0;
 
                 cudaDeviceSynchronize();
                 if (cudaGetLastError() != cudaSuccess) // resets the error if any
@@ -484,43 +606,130 @@ acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferAr
     }
     printf("\x1B[32m%s\x1B[0m\n", "OK!");
     fflush(stdout);
-#if 1 || AC_VERBOSE // DEBUG always on
+    //#if AC_VERBOSE
     printf("Auto-optimization done. The best threadblock dimensions for rkStep: (%d, %d, %d) "
            "%f "
            "ms\n",
            best_dims.x, best_dims.y, best_dims.z, double(best_time) / num_iterations);
-#endif
-
-    rk3_tpb = best_dims;
+    //#endif
 
     // Failed to find valid thread block dimensions
     ERRCHK_ALWAYS(rk3_tpb.x * rk3_tpb.y * rk3_tpb.z > 0);
 
     return AC_SUCCESS;
+#endif
+    (void)start;
+    (void)end;
+    (void)vba;
+    fprintf(stderr, "acKernelAutoOptimizeIntegration is deprecated\n");
+    return AC_FAILURE;
 }
 
-/*
-#if USE_SMEM
-            extern __shared__ AcReal smem[];
+TBConfig
+autotune(const int3 dims, VertexBufferArray vba)
+{
+    fprintf(stderr, "------------------TODO WARNING FIX autotune HARMFUL!----------------\ndt not "
+                    "set properly and MUST call w/ all possible subdomain sizes before actual "
+                    "simulation with dt = 0, otherwise advances the simulation arbitrarily!!\n");
 
-            const int3 baseIdx = (int3){
-                blockIdx.x * blockDim.x + start.x,
-                blockIdx.y * blockDim.y + start.y,
-                blockIdx.z * blockDim.z + start.z,
-            };
-            for (int height = 0; height < blockDim.y + STENCIL_ORDER; ++height) {
-                const int smem_idx = threadIdx.x + threadIdx.y * blockDim.x +
-                                     threadIdx.z * blockDim.x * blockDim.y;
-                if (smem_idx < blockDim.x + STENCIL_ORDER) {
-                    const int smem_out   = smem_idx + height * (blockDim.y + STENCIL_ORDER);
-                    const int3 vtxbuf_in = baseIdx -
-                                           (int3){STENCIL_ORDER / 2, STENCIL_ORDER / 2,
-                                                  STENCIL_ORDER / 2} +
-                                           (int3){smem_idx, height, depth};
-                    smem[smem_out] = vba.in[field][IDX(vtxbuf_in)];
+    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
+    const int3 end   = start + dims;
+
+    // Device info (TODO GENERIC)
+#define REGISTERS_PER_THREAD (255)
+#define MAX_REGISTERS_PER_BLOCK (65536)
+#define MAX_THREADS_PER_BLOCK (1024)
+#define WARP_SIZE (32)
+
+    printf("Autotuning for (%d, %d, %d)... ", dims.x, dims.y, dims.z);
+    // RK3
+    dim3 best_dims(0, 0, 0);
+    float best_time          = INFINITY;
+    const int num_iterations = 10;
+
+    for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) {
+        for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
+            for (int x = 4; x <= MAX_THREADS_PER_BLOCK; x += 4) {
+
+                // if (x > end.x - start.x || y > end.y - start.y || z > end.z - start.z)
+                //    break;
+
+                if (x * y * z > MAX_THREADS_PER_BLOCK)
+                    break;
+
+                if (x * y * z * REGISTERS_PER_THREAD > MAX_REGISTERS_PER_BLOCK)
+                    break;
+
+                // if (((x * y * z) % WARP_SIZE) != 0)
+                //    continue;
+
+                const dim3 tpb(x, y, z);
+                const int3 n = end - start;
+                const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
+                               (unsigned int)ceil(n.y / AcReal(tpb.y)), //
+                               (unsigned int)ceil(n.z / AcReal(tpb.z)));
+                const size_t smem = 0;
+
+                cudaDeviceSynchronize();
+                if (cudaGetLastError() != cudaSuccess) // resets the error if any
+                    continue;
+
+                // printf("(%d, %d, %d)\n", x, y, z);
+
+                cudaEvent_t tstart, tstop;
+                cudaEventCreate(&tstart);
+                cudaEventCreate(&tstop);
+
+                cudaEventRecord(tstart); // ---------------------------------------- Timing start
+                for (int i = 0; i < num_iterations; ++i)
+                    solve<2><<<bpg, tpb, smem, 0>>>(start, end, vba);
+
+                cudaEventRecord(tstop); // ----------------------------------------- Timing end
+                cudaEventSynchronize(tstop);
+                float milliseconds = 0;
+                cudaEventElapsedTime(&milliseconds, tstart, tstop);
+
+                ERRCHK_CUDA_KERNEL_ALWAYS();
+                // printf("(%d, %d, %d): %.4g ms\n", x, y, z, (double)milliseconds /
+                // num_iterations); fflush(stdout);
+                if (milliseconds < best_time) {
+                    best_time = milliseconds;
+                    best_dims = tpb;
                 }
             }
+        }
+    }
+    printf("\x1B[32m%s\x1B[0m\n", "OK!");
+    fflush(stdout);
+    //#if AC_VERBOSE
+    printf("Auto-optimization done. The best threadblock dimensions for rkStep (%d, %d, %d): (%d, "
+           "%d, %d) "
+           "%f "
+           "ms\n",
+           dims.x, dims.y, dims.z, best_dims.x, best_dims.y, best_dims.z,
+           double(best_time) / num_iterations);
+    //#endif
 
-            __syncthreads();
-#endif
-*/
+    // Failed to find valid thread block dimensions
+    ERRCHK_ALWAYS(best_dims.x * best_dims.y * best_dims.z > 0);
+
+    TBConfig c;
+    c.tpb  = best_dims;
+    c.dims = dims;
+    return c;
+}
+
+#include <vector>
+static std::vector<TBConfig> tbconfigs;
+
+static TBConfig
+getOptimalTBConfig(const int3 dims, VertexBufferArray vba)
+{
+    for (auto c : tbconfigs) {
+        if (c.dims == dims)
+            return c;
+    }
+    TBConfig c = autotune(dims, vba);
+    tbconfigs.push_back(c);
+    return c;
+}

@@ -138,6 +138,12 @@ operator*(const int& a, const int3& b)
     return (int3){a * b.x, a * b.y, a * b.z};
 }
 
+static HOST_DEVICE_INLINE bool
+operator==(const int3& a, const int3& b)
+{
+    return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
 // uint3_64 arithmetic
 
 static inline uint3_64
