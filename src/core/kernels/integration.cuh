@@ -22,6 +22,8 @@ typedef enum {
 #define STENCIL_MIDY (STENCIL_HEIGHT / 2 + 1)
 #define STENCIL_MIDZ (STENCIL_DEPTH / 2 + 1)
 
+static const int NUM_FIELDS = NUM_VTXBUF_HANDLES;
+
 #define INV_DS (1.0l / 0.04908738521l)
 
 #define DER1_3 (AcReal(INV_DS * 1.0l / 60.0l))
@@ -60,13 +62,10 @@ static TBConfig getOptimalTBConfig(const int3 dims, VertexBufferArray vba);
 static __global__ void
 dummy_kernel(void)
 {
-    /*
-    // TODO RE-ENABLE WIP
     DCONST((AcIntParam)0);
     DCONST((AcInt3Param)0);
     DCONST((AcRealParam)0);
     DCONST((AcReal3Param)0);
-    */
     acComplex a = exp(AcReal(1) * acComplex(1, 1) * AcReal(1));
     a* a;
 }
@@ -89,7 +88,6 @@ gen_kernel(void)
     ERRCHK_ALWAYS(fp);
 
     // clang-format off
-    const int NUM_FIELDS = NUM_VTXBUF_HANDLES;
     for (int field = 0; field < NUM_FIELDS; ++field) {
         for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
 
@@ -116,12 +114,258 @@ gen_kernel(void)
         vba.out[field][idx] = processed_stencils[field][STENCIL_DERYZ];
         */
         //fprintf(fp,"vba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = processed_stencils[%d][STENCIL_DERYZ];\n", field, field);
-        fprintf(fp,"vba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = processed_stencils[%d][STENCIL_DERYZ];\n", field, field);
+        //fprintf(fp,"vba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = processed_stencils[%d][STENCIL_DERYZ];\n", field, field);
 
         // clang-format on
     }
 
     fclose(fp);
+}
+
+static __device__ AcReal
+value(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle handle)
+{
+    return s[handle][STENCIL_VALUE];
+}
+
+static __device__ AcReal3
+value(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+      const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    return (AcReal3){
+        s[x][STENCIL_VALUE],
+        s[y][STENCIL_VALUE],
+        s[z][STENCIL_VALUE],
+    };
+}
+
+static __device__ AcReal3
+gradient(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle handle)
+{
+    return (AcReal3){
+        s[handle][STENCIL_DERX],
+        s[handle][STENCIL_DERY],
+        s[handle][STENCIL_DERZ],
+    };
+}
+
+static __device__ AcMatrix
+gradients(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+          const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    return (AcMatrix){gradient(s, x), gradient(s, y), gradient(s, z)};
+}
+
+static __device__ AcReal
+divergence(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+           const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    return s[x][STENCIL_DERX] + s[y][STENCIL_DERY] + s[z][STENCIL_DERZ];
+}
+
+static __device__ AcReal3
+curl(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+     const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    return (AcReal3){
+        s[z][STENCIL_DERY] - s[y][STENCIL_DERZ],
+        s[x][STENCIL_DERZ] - s[z][STENCIL_DERX],
+        s[y][STENCIL_DERX] - s[x][STENCIL_DERY],
+    };
+}
+
+static __device__ AcReal
+continuity(const AcReal s[NUM_FIELDS][NUM_STENCILS])
+{
+
+    const AcReal3 uu         = value(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    const AcReal3 grad_lnrho = gradient(s, VTXBUF_LNRHO);
+    const AcReal div_uu      = divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+
+    return -dot(uu, grad_lnrho) - div_uu;
+}
+
+static __device__ AcReal
+laplace(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle handle)
+{
+    return s[handle][STENCIL_DERXX] + s[handle][STENCIL_DERYY] + s[handle][STENCIL_DERZZ];
+}
+
+static __device__ AcReal3
+laplace(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+        const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    return (AcReal3){laplace(s, x), laplace(s, y), laplace(s, z)};
+}
+
+static __device__ AcReal3
+induction(const AcReal s[NUM_FIELDS][NUM_STENCILS])
+{
+    const AcReal3 B   = curl(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ);
+    const AcReal3 lap = laplace(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ);
+    const AcReal3 uu  = value(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+
+    return cross(uu, B) + DCONST(AC_eta) * lap;
+}
+
+static __device__ AcMatrix
+stress_tensor(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+              const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    AcMatrix S;
+
+    S.row[0].x = (AcReal)(2. / 3.) * s[x][STENCIL_DERX] -
+                 (AcReal)(1. / 3.) * (s[y][STENCIL_DERY] + s[z][STENCIL_DERZ]);
+    S.row[0].y = (AcReal)(1. / 2.) * (s[x][STENCIL_DERY] + s[y][STENCIL_DERX]);
+    S.row[0].z = (AcReal)(1. / 2.) * (s[x][STENCIL_DERZ] + s[z][STENCIL_DERX]);
+
+    S.row[1].y = (AcReal)(2. / 3.) * s[y][STENCIL_DERY] -
+                 (AcReal)(1. / 3.) * (s[x][STENCIL_DERX] + s[z][STENCIL_DERZ]);
+
+    S.row[1].z = (AcReal)(1. / 2.) * (s[y][STENCIL_DERZ] + s[z][STENCIL_DERY]);
+
+    S.row[2].z = (AcReal)(2. / 3.) * s[z][STENCIL_DERZ] -
+                 (AcReal)(1. / 3.) * (s[x][STENCIL_DERX] + s[y][STENCIL_DERY]);
+
+    S.row[1].x = S.row[0].y;
+    S.row[2].x = S.row[0].z;
+    S.row[2].y = S.row[1].z;
+
+    return S;
+}
+
+static __device__ AcReal3
+gradient_of_divergence(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
+                       const VertexBufferHandle y, const VertexBufferHandle z)
+{
+    return (AcReal3){
+        s[x][STENCIL_DERXX] + s[y][STENCIL_DERXY] + s[z][STENCIL_DERXZ],
+        s[x][STENCIL_DERXY] + s[y][STENCIL_DERYY] + s[z][STENCIL_DERYZ],
+        s[x][STENCIL_DERXZ] + s[y][STENCIL_DERYZ] + s[z][STENCIL_DERZZ],
+    };
+}
+
+static __device__ AcReal
+contract(const AcMatrix mat)
+{
+    AcReal res = 0;
+
+#pragma unroll
+    for (int i = 0; i < 3; ++i)
+        res += dot(mat.row[i], mat.row[i]);
+
+    return res;
+}
+
+static __device__ AcReal3
+momentum(const AcReal s[NUM_FIELDS][NUM_STENCILS])
+{
+    const AcReal3 uu       = value(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    const AcMatrix grad_uu = gradients(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    const AcMatrix S       = stress_tensor(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    // NOTE WARNING AC_cs2_sound NOT PROPERLY LOADED TODO FIX
+    const AcReal cs2_sound = DCONST(AC_cs_sound) * DCONST(AC_cs_sound);
+    const AcReal cs2       = cs2_sound *
+                       exp(DCONST(AC_gamma) * value(s, VTXBUF_ENTROPY) / DCONST(AC_cp_sound) +
+                           (DCONST(AC_gamma) - 1) * (value(s, VTXBUF_LNRHO) - DCONST(AC_lnrho0)));
+
+    const AcReal3 j = ((AcReal)(1.) / DCONST(AC_mu0)) *
+                      (gradient_of_divergence(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ) -
+                       laplace(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ));
+    const AcReal3 B      = curl(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ);
+    const AcReal inv_rho = (AcReal)(1.) / exp(value(s, VTXBUF_LNRHO));
+
+    const AcReal3 mom = -mul(grad_uu, uu) -
+                        cs2 * ((AcReal(1.0) / DCONST(AC_cp_sound)) * gradient(s, VTXBUF_ENTROPY) +
+                               gradient(s, VTXBUF_LNRHO)) +
+                        inv_rho * cross(j, B) +
+                        DCONST(AC_nu_visc) *
+                            (laplace(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ) +
+                             (AcReal(1.0) / AcReal(3.0)) *
+                                 gradient_of_divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ) +
+                             AcReal(2.0) * mul(S, gradient(s, VTXBUF_LNRHO))) +
+                        DCONST(AC_zeta) *
+                            gradient_of_divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+
+    return mom;
+}
+
+static __device__ AcReal
+lnT(const AcReal s[NUM_FIELDS][NUM_STENCILS])
+{
+    return DCONST(AC_lnT0) + DCONST(AC_gamma) * value(s, VTXBUF_ENTROPY) / DCONST(AC_cp_sound) +
+           (DCONST(AC_gamma) - AcReal(1.0)) * (value(s, VTXBUF_LNRHO) - DCONST(AC_lnrho0));
+}
+
+static __device__ AcReal
+heat_conduction(const AcReal s[NUM_FIELDS][NUM_STENCILS])
+{
+    const AcReal inv_AC_cp_sound = AcReal(1.0) / DCONST(AC_cp_sound);
+    const AcReal3 grad_ln_chi    = -gradient(s, VTXBUF_LNRHO);
+    const AcReal first_term      = DCONST(AC_gamma) * inv_AC_cp_sound * laplace(s, VTXBUF_ENTROPY) +
+                              (DCONST(AC_gamma) - AcReal(1.0)) * laplace(s, VTXBUF_LNRHO);
+    const AcReal3 second_term = DCONST(AC_gamma) * inv_AC_cp_sound * gradient(s, VTXBUF_ENTROPY) +
+                                (DCONST(AC_gamma) - AcReal(1.0)) * gradient(s, VTXBUF_LNRHO);
+    const AcReal3 third_term = DCONST(AC_gamma) * (inv_AC_cp_sound * gradient(s, VTXBUF_ENTROPY) +
+                                                   gradient(s, VTXBUF_LNRHO)) +
+                               grad_ln_chi;
+    const AcReal chi = (AcReal(0.001)) / (exp(value(s, VTXBUF_LNRHO)) * DCONST(AC_cp_sound));
+    return DCONST(AC_cp_sound) * chi * (first_term + dot(second_term, third_term));
+}
+
+static __device__ AcReal
+entropy(const AcReal s[NUM_FIELDS][NUM_STENCILS])
+{
+    const AcMatrix S    = stress_tensor(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    const AcReal inv_pT = AcReal(1.0) / (exp(value(s, VTXBUF_LNRHO)) * exp(lnT(s)));
+    const AcReal3 j     = (AcReal(1.0) / DCONST(AC_mu0)) *
+                      (gradient_of_divergence(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ) -
+                       laplace(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ));
+    const AcReal RHS = (0) - (0) + DCONST(AC_eta) * (DCONST(AC_mu0)) * dot(j, j) +
+                       AcReal(2.0) * exp(value(s, VTXBUF_LNRHO)) * DCONST(AC_nu_visc) *
+                           contract(S) +
+                       DCONST(AC_zeta) * exp(value(s, VTXBUF_LNRHO)) *
+                           divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ) *
+                           divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    return -dot(value(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ), gradient(s, VTXBUF_ENTROPY)) +
+           inv_pT * RHS + heat_conduction(s);
+}
+
+template <int step_number>
+static __device__ __forceinline__ AcReal
+rk3_integrate(const AcReal state_previous, const AcReal state_current, const AcReal rate_of_change,
+              const AcReal dt)
+{
+    // Williamson (1980)
+    const AcReal alpha[] = {0, AcReal(.0), AcReal(-5. / 9.), AcReal(-153. / 128.)};
+    const AcReal beta[]  = {0, AcReal(1. / 3.), AcReal(15. / 16.), AcReal(8. / 15.)};
+
+    // Note the indexing: +1 to avoid an unnecessary warning about "out-of-bounds"
+    // access (when accessing beta[step_number-1] even when step_number >= 1)
+    switch (step_number) {
+    case 0:
+        return state_current + beta[step_number + 1] * rate_of_change * dt;
+    case 1: // Fallthrough
+    case 2:
+        return state_current +
+               beta[step_number + 1] * (alpha[step_number + 1] * (AcReal(1.) / beta[step_number]) *
+                                            (state_current - state_previous) +
+                                        rate_of_change * dt);
+    default:
+        return NAN;
+    }
+}
+
+template <int step_number>
+static __device__ __forceinline__ AcReal3
+rk3_integrate(const AcReal3 state_previous, const AcReal3 state_current,
+              const AcReal3 rate_of_change, const AcReal dt)
+{
+    return (AcReal3){
+        rk3_integrate<step_number>(state_previous.x, state_current.x, rate_of_change.x, dt),
+        rk3_integrate<step_number>(state_previous.y, state_current.y, rate_of_change.y, dt),
+        rk3_integrate<step_number>(state_previous.z, state_current.z, rate_of_change.z, dt),
+    };
 }
 
 template <int step_number>
@@ -152,11 +396,78 @@ solve(const int3 start, const int3 end, VertexBufferArray vba)
 
     assert(blockDim.x * blockDim.y * blockDim.z >= blockDim.x + STENCIL_ORDER); // needed for smem
 
-    const int NUM_FIELDS                                = NUM_VTXBUF_HANDLES;
     AcReal processed_stencils[NUM_FIELDS][NUM_STENCILS] = {0};
 #if !GEN_KERNEL
 #include "kernel.out"
 #endif
+
+    const int idx = IDX(vertexIdx);
+
+    AcReal rate_of_change[NUM_FIELDS] = {0};
+
+    const AcReal cont = continuity(processed_stencils);
+    const AcReal3 mom = momentum(processed_stencils);
+    const AcReal3 ind = induction(processed_stencils);
+    const AcReal entr = entropy(processed_stencils);
+
+    rate_of_change[VTXBUF_LNRHO]   = cont;
+    rate_of_change[VTXBUF_UUX]     = mom.x;
+    rate_of_change[VTXBUF_UUY]     = mom.y;
+    rate_of_change[VTXBUF_UUZ]     = mom.z;
+    rate_of_change[VTXBUF_AX]      = ind.x;
+    rate_of_change[VTXBUF_AY]      = ind.y;
+    rate_of_change[VTXBUF_AZ]      = ind.z;
+    rate_of_change[VTXBUF_ENTROPY] = entr;
+
+    for (int i = 0; i < NUM_FIELDS; ++i)
+        vba.out[i][idx] = rk3_integrate<step_number>(vba.out[i][idx],
+                                                     processed_stencils[i][STENCIL_VALUE],
+                                                     rate_of_change[i], DCONST(AC_dt));
+
+    /*
+    for (int i = 0; i < NUM_FIELDS; ++i) {
+        // vba.out[i][idx] = processed_stencils[i][STENCIL_DERYZ];
+        // vba.out[i][idx] = continuity(processed_stencils);
+        // vba.out[i][idx] = induction(processed_stencils).z;
+        // const AcReal rate_of_change = continuity(processed_stencils);
+        // const AcReal rate_of_change = induction(processed_stencils).x;
+        // const AcReal rate_of_change = momentum(processed_stencils).x;
+        const AcReal rate_of_change = entropy(processed_stencils);
+        vba.out[i][idx]             = rk3_integrate<step_number>(vba.out[i][idx],
+                                                     processed_stencils[i][STENCIL_VALUE],
+                                                     rate_of_change, DCONST(AC_dt));
+    }*/
+
+    /*
+    for (int i = 0; i < NUM_FIELDS; ++i) {
+        // vba.out[i][idx] = processed_stencils[i][STENCIL_DERYZ];
+        // vba.out[i][idx] = continuity(processed_stencils);
+        // vba.out[i][idx] = induction(processed_stencils).z;
+        vba.out[i][idx] = momentum(processed_stencils).x;
+    }
+    */
+    /*
+    const AcReal dt                           = DCONST(AC_dt);
+    AcReal rate_of_change[NUM_VTXBUF_HANDLES] = {0};
+    rate_of_change[VTXBUF_LNRHO]              = continuity(processed_stencils);
+
+    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
+        vba.out[w][idx] = rk3_integrate<step_number>(vba.out[w][idx],
+                                                     processed_stencils[w][STENCIL_VALUE],
+                                                     rate_of_change[w], dt);
+    */
+
+    /*
+    const AcReal cont = continuity(processed_stencils);
+    vba.out[VTXBUF_LNRHO]
+           [idx] = rk3_integrate<step_number>(vba.out[VTXBUF_LNRHO][IDX(vertexIdx)],
+                                              processed_stencils[VTXBUF_LNRHO][STENCIL_VALUE], cont,
+                                              DCONST(AC_dt));
+
+    vba.out[VTXBUF_UUX][idx]     = rk3_integrate<step_number>(vba.out[VTXBUF_LNRHO][IDX(vertexIdx)],
+                                              processed_stencils[VTXBUF_LNRHO][STENCIL_VALUE], cont,
+                                              DCONST(AC_dt));
+    */
 }
 
 AcResult
@@ -317,6 +628,9 @@ acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferAr
 TBConfig
 autotune(const int3 dims, VertexBufferArray vba)
 {
+    fprintf(stderr, "------------------TODO WARNING FIX autotune HARMFUL!----------------\ndt not "
+                    "set properly and MUST call w/ all possible subdomain sizes before actual "
+                    "simulation with dt = 0, otherwise advances the simulation arbitrarily!!\n");
 
     const int3 start = (int3){NGHOST, NGHOST, NGHOST};
     const int3 end   = start + dims;
@@ -333,7 +647,7 @@ autotune(const int3 dims, VertexBufferArray vba)
     float best_time          = INFINITY;
     const int num_iterations = 10;
 
-    for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) { // TODO CHECK Z GOES ONLY TO 1
+    for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) {
         for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
             for (int x = 4; x <= MAX_THREADS_PER_BLOCK; x += 4) {
 
