@@ -5,6 +5,16 @@
 #define BENCHMARK_RW (0)
 #define GEN_KERNEL (0)
 
+// Device info (TODO GENERIC)
+// Use the maximum available reg count per thread
+#define REGISTERS_PER_THREAD (255)
+#define MAX_REGISTERS_PER_BLOCK (65536)
+#if AC_DOUBLE_PRECISION
+#define MAX_THREADS_PER_BLOCK (MAX_REGISTERS_PER_BLOCK / REGISTERS_PER_THREAD / 2)
+#else
+#define MAX_THREADS_PER_BLOCK (MAX_REGISTERS_PER_BLOCK / REGISTERS_PER_THREAD)
+#endif
+
 typedef enum {
     STENCIL_VALUE,
     STENCIL_DERX,
@@ -685,8 +695,8 @@ calc_roc(const AcReal s[NUM_FIELDS][NUM_STENCILS], AcReal rate_of_change[NUM_FIE
 }
 
 template <int step_number>
-static __global__ void
-solve(const int3 start, const int3 end, VertexBufferArray vba)
+static __global__ __launch_bounds__(MAX_THREADS_PER_BLOCK) //
+    void solve(const int3 start, const int3 end, VertexBufferArray vba)
 {
 #if USE_SMEM
     extern __shared__ AcReal smem[];
@@ -892,12 +902,6 @@ autotune(const int3 dims, VertexBufferArray vba)
     const int3 start = (int3){NGHOST, NGHOST, NGHOST};
     const int3 end   = start + dims;
 
-    // Device info (TODO GENERIC)
-#define REGISTERS_PER_THREAD (255)
-#define MAX_REGISTERS_PER_BLOCK (65536)
-#define MAX_THREADS_PER_BLOCK (1024)
-#define WARP_SIZE (32)
-
     printf("Autotuning for (%d, %d, %d)... ", dims.x, dims.y, dims.z);
     // RK3
     dim3 best_dims(0, 0, 0);
@@ -915,8 +919,8 @@ autotune(const int3 dims, VertexBufferArray vba)
                 // if (x > end.x - start.x || y > end.y - start.y || z > end.z - start.z)
                 //    break;
 
-                // if (x * y * z > MAX_THREADS_PER_BLOCK)
-                //    break;
+                if (x * y * z > MAX_THREADS_PER_BLOCK)
+                    break;
 
                 if (x * y * z * REGISTERS_PER_THREAD > MAX_REGISTERS_PER_BLOCK)
                     break;
