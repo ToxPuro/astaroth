@@ -25,7 +25,6 @@ typedef enum {
 #define STENCIL_MIDY (STENCIL_HEIGHT / 2 + 1)
 #define STENCIL_MIDZ (STENCIL_DEPTH / 2 + 1)
 
-// static const int NUM_FIELDS = NUM_VTXBUF_HANDLES;
 #define NUM_FIELDS (NUM_VTXBUF_HANDLES)
 
 #define INV_DS (1.0l / 0.04908738521l)
