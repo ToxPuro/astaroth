@@ -49,6 +49,18 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 ## Project-wide compilation flags
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
+
+# These do not seem to have any effect
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --offload-arch=gfx908")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -amdgpu-sroa")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -amdgpu-load-store-vectorizer")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -amdgpu-scalarize-global-loads")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -amdgpu-internalize-symbols")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -amdgpu-early-inline-all")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -amdgpu-mode-register")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -amdgpu-dpp-combine")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -amdgpu-aa")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 11)
 
