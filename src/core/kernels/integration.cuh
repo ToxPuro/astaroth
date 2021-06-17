@@ -177,7 +177,6 @@ curl(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
 static __device__ AcReal
 continuity(const AcReal s[NUM_FIELDS][NUM_STENCILS])
 {
-
     const AcReal3 uu         = value(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
     const AcReal3 grad_lnrho = gradient(s, VTXBUF_LNRHO);
     const AcReal div_uu      = divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
@@ -369,6 +368,122 @@ rk3_integrate(const AcReal3 state_previous, const AcReal3 state_current,
 }
 
 template <int step_number>
+static __device__ void
+calc_roc(const AcReal s[NUM_FIELDS][NUM_STENCILS], AcReal rate_of_change[NUM_FIELDS],
+         VertexBufferArray vba, const int idx)
+{
+#define UU VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
+#define AA VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
+#define LNRHO VTXBUF_LNRHO
+#define SS VTXBUF_ENTROPY
+    int handle;
+
+    const AcReal3 uu   = value(s, UU);
+    const AcReal3 aa   = value(s, AA);
+    const AcReal lnrho = value(s, LNRHO);
+    const AcReal ss    = value(s, SS);
+
+    const AcReal3 grad_lnrho = gradient(s, LNRHO);
+    const AcReal div_uu      = divergence(s, UU);
+
+    const AcReal3 B          = curl(s, AA);
+    const AcReal3 laplace_aa = laplace(s, AA);
+
+    const AcReal cs_sound  = DCONST(AC_cs_sound);
+    const AcReal gamma     = DCONST(AC_gamma);
+    const AcReal cp_sound  = DCONST(AC_cp_sound);
+    const AcReal lnrho0    = DCONST(AC_lnrho0);
+    const AcReal mu0       = DCONST(AC_mu0);
+    const AcReal cs2_sound = cs_sound * cs_sound;
+
+    const AcMatrix grad_uu = gradients(s, UU);
+    const AcMatrix S       = stress_tensor(s, UU);
+
+    const AcReal cs2 = cs2_sound * exp(gamma * ss / cp_sound + (gamma - 1) * (lnrho - lnrho0));
+
+    const AcReal3 grad_div_aa = gradient_of_divergence(s, AA);
+    const AcReal3 j           = (grad_div_aa - laplace_aa) / mu0;
+
+    const AcReal nu_visc      = DCONST(AC_nu_visc);
+    const AcReal3 laplace_uu  = laplace(s, UU);
+    const AcReal3 grad_div_uu = gradient_of_divergence(s, UU);
+    const AcReal zeta         = DCONST(AC_zeta);
+    const AcReal3 grad_ss     = gradient(s, SS);
+
+    const AcReal lnT0          = DCONST(AC_lnT0);
+    const AcReal laplace_lnrho = laplace(s, LNRHO);
+    const AcReal laplace_ss    = laplace(s, SS);
+
+    const AcReal3 grad_ln_chi = -grad_lnrho;
+    const AcReal first_term   = gamma * laplace_ss / cp_sound + (gamma - 1) * laplace_lnrho;
+    const AcReal3 second_term = gamma * grad_ss / cp_sound + (gamma - 1) * grad_lnrho;
+    const AcReal3 third_term  = gamma * (grad_ss / cp_sound + grad_lnrho) + grad_ln_chi;
+    const AcReal chi          = (AcReal(0.001)) / (exp(lnrho) * cp_sound);
+
+    rate_of_change[VTXBUF_LNRHO] = -dot(uu, grad_lnrho) - div_uu;
+    handle                       = VTXBUF_LNRHO;
+    vba.out[handle][idx]         = rk3_integrate<step_number>(vba.out[handle][idx],
+                                                      s[handle][STENCIL_VALUE],
+                                                      rate_of_change[handle], DCONST(AC_dt));
+
+    const AcReal3 ind         = cross(uu, B) + DCONST(AC_eta) * laplace_aa;
+    rate_of_change[VTXBUF_AX] = ind.x;
+    rate_of_change[VTXBUF_AY] = ind.y;
+    rate_of_change[VTXBUF_AZ] = ind.z;
+    handle                    = VTXBUF_AX;
+    vba.out[handle][idx]      = rk3_integrate<step_number>(vba.out[handle][idx],
+                                                      s[handle][STENCIL_VALUE],
+                                                      rate_of_change[handle], DCONST(AC_dt));
+    handle                    = VTXBUF_AY;
+    vba.out[handle][idx]      = rk3_integrate<step_number>(vba.out[handle][idx],
+                                                      s[handle][STENCIL_VALUE],
+                                                      rate_of_change[handle], DCONST(AC_dt));
+    handle                    = VTXBUF_AZ;
+    vba.out[handle][idx]      = rk3_integrate<step_number>(vba.out[handle][idx],
+                                                      s[handle][STENCIL_VALUE],
+                                                      rate_of_change[handle], DCONST(AC_dt));
+
+    const AcReal3 mom = -mul(grad_uu, uu) - cs2 * (grad_ss / cp_sound + grad_lnrho) +
+                        cross(j, B) / exp(lnrho) +
+                        nu_visc * (laplace_uu + grad_div_uu / AcReal(3.0) +
+                                   AcReal(2.0) * mul(S, grad_lnrho)) +
+                        zeta * grad_div_uu;
+
+    rate_of_change[VTXBUF_UUX] = mom.x;
+    rate_of_change[VTXBUF_UUY] = mom.y;
+    rate_of_change[VTXBUF_UUZ] = mom.z;
+    handle                     = VTXBUF_UUX;
+    vba.out[handle][idx]       = rk3_integrate<step_number>(vba.out[handle][idx],
+                                                      s[handle][STENCIL_VALUE],
+                                                      rate_of_change[handle], DCONST(AC_dt));
+    handle                     = VTXBUF_UUY;
+    vba.out[handle][idx]       = rk3_integrate<step_number>(vba.out[handle][idx],
+                                                      s[handle][STENCIL_VALUE],
+                                                      rate_of_change[handle], DCONST(AC_dt));
+    handle                     = VTXBUF_UUZ;
+    vba.out[handle][idx]       = rk3_integrate<step_number>(vba.out[handle][idx],
+                                                      s[handle][STENCIL_VALUE],
+                                                      rate_of_change[handle], DCONST(AC_dt));
+
+    const AcReal lnT             = lnT0 + gamma * ss / cp_sound + (gamma - 1) * (lnrho - lnrho0);
+    const AcReal heat_conduction = cp_sound * chi * (first_term + dot(second_term, third_term));
+
+    const AcReal eta           = DCONST(AC_eta);
+    const AcReal divergence_uu = divergence(s, UU);
+    const AcReal inv_pT        = 1 / (exp(lnrho) * exp(lnT));
+    const AcReal RHS = (0) - (0) + eta * mu0 * dot(j, j) + 2 * exp(lnrho) * nu_visc * contract(S) +
+                       zeta * exp(lnrho) * divergence_uu * divergence_uu;
+
+    rate_of_change[VTXBUF_ENTROPY] = -dot(uu, grad_ss) + inv_pT * RHS + heat_conduction;
+    // const AcReal entr              = entropy(s);
+    // rate_of_change[VTXBUF_ENTROPY] = entr;
+    handle               = VTXBUF_ENTROPY;
+    vba.out[handle][idx] = rk3_integrate<step_number>(vba.out[handle][idx],
+                                                      s[handle][STENCIL_VALUE],
+                                                      rate_of_change[handle], DCONST(AC_dt));
+}
+
+template <int step_number>
 static __global__ void
 solve(const int3 start, const int3 end, VertexBufferArray vba)
 {
@@ -404,7 +519,9 @@ solve(const int3 start, const int3 end, VertexBufferArray vba)
     const int idx = IDX(vertexIdx);
 
     AcReal rate_of_change[NUM_FIELDS] = {0};
+    calc_roc<step_number>(processed_stencils, rate_of_change, vba, idx);
 
+    /*
     const AcReal cont = continuity(processed_stencils);
     const AcReal3 mom = momentum(processed_stencils);
     const AcReal3 ind = induction(processed_stencils);
@@ -419,10 +536,12 @@ solve(const int3 start, const int3 end, VertexBufferArray vba)
     rate_of_change[VTXBUF_AZ]      = ind.z;
     rate_of_change[VTXBUF_ENTROPY] = entr;
 
+#pragma unroll
     for (int i = 0; i < NUM_FIELDS; ++i)
         vba.out[i][idx] = rk3_integrate<step_number>(vba.out[i][idx],
                                                      processed_stencils[i][STENCIL_VALUE],
                                                      rate_of_change[i], DCONST(AC_dt));
+                                                     */
 
     /*
     for (int i = 0; i < NUM_FIELDS; ++i) {
