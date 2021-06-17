@@ -1,3 +1,21 @@
+/*
+    Copyright (C) 2014-2020, Johannes Pekkila, Miikka Vaisala.
+
+    This file is part of Astaroth.
+
+    Astaroth is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Astaroth is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "astaroth.h"
 
 #include "errchk.h"
@@ -9,7 +27,8 @@
                            const int3 end)                                                         \
     {                                                                                              \
         cudaSetDevice(device->id);                                                                 \
-        return acKernel_##ID(device->streams[stream], start, end, device->vba);                    \
+        return acKernel_##ID(KernelParameters{device->streams[stream], 0, start, end},             \
+                             device->vba);                                                         \
     }
 
 #include "user_kernels.h"
@@ -438,7 +457,9 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
 {
     cudaSetDevice(device->id);
     acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
-    return acKernelIntegrateSubstep(device->streams[stream], step_number, start, end, device->vba);
+    return acKernelIntegrateSubstep(KernelParameters{device->streams[stream], step_number, start,
+                                                     end},
+                                    device->vba);
 }
 
 AcResult

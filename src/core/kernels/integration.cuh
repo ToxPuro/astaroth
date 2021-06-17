@@ -1,4 +1,5 @@
 #pragma once
+#include "kernels.h"
 
 static_assert(NUM_VTXBUF_HANDLES > 0, "ERROR: At least one uniform ScalarField must be declared.");
 
@@ -78,6 +79,8 @@ read_out(const int idx, AcReal* __restrict__ field[], const int3 handle)
                      read_out(idx, field, handle.z)};
 }
 
+static dim3 rk3_tpb(32, 1, 4);
+
 #define WRITE_OUT(handle, value) (write(buffer.out, handle, idx, value))
 #define READ(handle) (read_data(vertexIdx, globalVertexIdx, buffer.in, handle))
 #define READ_OUT(handle) (read_out(idx, buffer.out, handle))
@@ -106,26 +109,31 @@ read_out(const int idx, AcReal* __restrict__ field[], const int3 handle)
 
 // Note: drops the template parameter to conform to C
 #define GEN_KERNEL_FUNC_HOOK(identifier)                                                           \
-    AcResult acKernel_##identifier(const cudaStream_t stream, const int3 start, const int3 end,    \
-                                   VertexBufferArray vba)                                          \
+    AcResult acKernel_##identifier(const KernelParameters params, VertexBufferArray vba)           \
     {                                                                                              \
                                                                                                    \
-        const dim3 tpb(32, 1, 4);                                                                  \
+        ERRCHK_ALWAYS(params.step_number >= 0);                                                    \
+        ERRCHK_ALWAYS(params.step_number < 3);                                                     \
+        const dim3 tpb = rk3_tpb;                                                                  \
                                                                                                    \
-        const int3 n = end - start;                                                                \
+        const int3 n = params.end - params.start;                                                  \
         const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)),                                    \
                        (unsigned int)ceil(n.y / AcReal(tpb.y)),                                    \
                        (unsigned int)ceil(n.z / AcReal(tpb.z)));                                   \
                                                                                                    \
-        identifier<0><<<bpg, tpb, 0, stream>>>(start, end, vba);                                   \
+        if (params.step_number == 0)                                                               \
+            solve<0><<<bpg, tpb, 0, params.stream>>>(params.start, params.end, vba);               \
+        else if (params.step_number == 1)                                                          \
+            solve<1><<<bpg, tpb, 0, params.stream>>>(params.start, params.end, vba);               \
+        else                                                                                       \
+            solve<2><<<bpg, tpb, 0, params.stream>>>(params.start, params.end, vba);               \
+                                                                                                   \
         ERRCHK_CUDA_KERNEL();                                                                      \
                                                                                                    \
         return AC_SUCCESS;                                                                         \
     }
 
 #include "user_kernels.cuh"
-
-static dim3 rk3_tpb(32, 1, 4);
 
 AcResult
 acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferArray vba)
@@ -215,37 +223,9 @@ acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferAr
 }
 
 AcResult
-acKernelIntegrateSubstep(const cudaStream_t stream, const int step_number, const int3 start,
-                         const int3 end, VertexBufferArray vba)
+acKernelIntegrateSubstep(const KernelParameters params, VertexBufferArray vba)
 {
-    ERRCHK_ALWAYS(step_number >= 0);
-    ERRCHK_ALWAYS(step_number < 3);
-    const dim3 tpb = rk3_tpb;
-
-    const int3 n = end - start;
-    const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
-                   (unsigned int)ceil(n.y / AcReal(tpb.y)), //
-                   (unsigned int)ceil(n.z / AcReal(tpb.z)));
-
-    //#ifdef AC_dt
-    // acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
-    /*#else
-        (void)dt;
-        ERROR("FATAL ERROR: acDeviceAutoOptimize() or acDeviceIntegrateSubstep() was "
-              "called, but AC_dt was not defined. Either define it or call the generated "
-              "device function acDeviceKernel_<kernel name> which does not require the "
-              "timestep to be defined.\n");
-    #endif*/
-    if (step_number == 0)
-        solve<0><<<bpg, tpb, 0, stream>>>(start, end, vba);
-    else if (step_number == 1)
-        solve<1><<<bpg, tpb, 0, stream>>>(start, end, vba);
-    else
-        solve<2><<<bpg, tpb, 0, stream>>>(start, end, vba);
-
-    ERRCHK_CUDA_KERNEL();
-
-    return AC_SUCCESS;
+    return acKernel_solve(params, vba);
 }
 
 static __global__ void

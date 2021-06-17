@@ -1,6 +1,25 @@
+/*
+    Copyright (C) 2020, Oskar Lappi
+
+    This file is part of Astaroth.
+
+    Astaroth is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Astaroth is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #pragma once
 #include "astaroth.h"
 
+#include <memory>
 #include <mpi.h>
 #include <string>
 #include <vector>
@@ -14,15 +33,14 @@
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
 static_assert(SWAP_CHAIN_LENGTH == 2);
 
-#define NUM_SEGMENTS (26)
-
-// clang-format off
-#if MPI_INCL_CORNERS
-    #define NUM_ACTIVE_SEGMENTS (26)
-#else
-    #define NUM_ACTIVE_SEGMENTS (18)
-#endif
-// clang-format on
+struct VariableScope {
+    VertexBufferHandle* variables;
+    size_t num_vars;
+    VariableScope(const VertexBufferHandle* variables_, const size_t num_vars_);
+    ~VariableScope();
+    VariableScope(const VariableScope& other) = delete;
+    VariableScope& operator=(const VariableScope& other) = delete;
+};
 
 /**
  * Regions
@@ -31,12 +49,13 @@ static_assert(SWAP_CHAIN_LENGTH == 2);
  * Regions are identified by a non-zero region id of type {-1,0,1}^3
  * A region's id describes its position the region topology of the subdomain.
  *
- * There are three families of regions: Incoming message regions, outgoing
+ * There are three families of regions: Exchange_output message regions, outgoing
  * message regions, and compute regions. The three families each cover some
  * zone of data, as follows:
- *  - Compute: entire inner domain
- *  - Outgoing: the shell of the inner domain
- *  - Incoming: the halo
+ *  - Compute_output: entire inner domain
+ *  - Compute_input: the entire extended domain (including the halo)
+ *  - Exchange_input: the shell of the inner domain
+ *  - Exchange_output: the halo
  * The names of the families have been chosen to represent the constituent
  * regions' purpose in the context of tasks that use them.
  *
@@ -46,80 +65,31 @@ static_assert(SWAP_CHAIN_LENGTH == 2);
  * in an MPI message.
  */
 
-enum class RegionFamily { Incoming, Outgoing, Compute };
+enum class RegionFamily { Exchange_output, Exchange_input, Compute_output, Compute_input };
 
 struct Region {
-
     int3 position;
     int3 dims;
+    size_t volume;
 
     RegionFamily family;
     int3 id;
     size_t facet_class;
     int tag;
 
-    static int id_to_tag(int3 _id)
-    {
-        return ((3 + _id.x) % 3) * 9 + ((3 + _id.y) % 3) * 3 + (3 + _id.z) % 3 - 1;
-    }
+    static constexpr int min_halo_tag   = 1;
+    static constexpr int max_halo_tag   = 27;
+    static constexpr int n_halo_regions = max_halo_tag - min_halo_tag + 1;
+    static constexpr int min_comp_tag   = 0;
+    static constexpr int max_comp_tag   = 27;
+    static constexpr int n_comp_regions = max_comp_tag - min_comp_tag + 1;
 
-    static int3 tag_to_id(int _tag)
-    {
-        int3 _id = (int3){(_tag + 1) / 9, ((_tag + 1) % 9) / 3, (_tag + 1) % 3};
-        _id.x    = _id.x == 2 ? -1 : _id.x;
-        _id.y    = _id.y == 2 ? -1 : _id.y;
-        _id.z    = _id.z == 2 ? -1 : _id.z;
-        ERRCHK_ALWAYS(id_to_tag(_id) == _tag);
-        return _id;
-    }
+    static int id_to_tag(int3 _id);
+    static int3 tag_to_id(int _tag);
 
-    Region(RegionFamily _family, int _tag, int3 nn) : family(_family), tag(_tag)
-    {
-        id          = tag_to_id(tag);
-        facet_class = (id.x == 0 ? 0 : 1) + (id.y == 0 ? 0 : 1) + (id.z == 0 ? 0 : 1);
-        ERRCHK_ALWAYS(facet_class <= 3);
-
-        switch (family) {
-        case RegionFamily::Compute: {
-            // clang-format off
-            position = (int3){
-                        id.x == -1  ? NGHOST : id.x == 1 ? nn.x : NGHOST * 2,
-                        id.y == -1  ? NGHOST : id.y == 1 ? nn.y : NGHOST * 2,
-                        id.z == -1  ? NGHOST : id.z == 1 ? nn.z : NGHOST * 2};
-            // clang-format on
-            dims = (int3){id.x == 0 ? nn.x - NGHOST * 2 : NGHOST,
-                          id.y == 0 ? nn.y - NGHOST * 2 : NGHOST,
-                          id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
-            break;
-        }
-        case RegionFamily::Incoming: {
-            // clang-format off
-            position = (int3){
-                        id.x == -1  ? 0 : id.x == 1 ? NGHOST + nn.x : NGHOST,
-                        id.y == -1  ? 0 : id.y == 1 ? NGHOST + nn.y : NGHOST,
-                        id.z == -1  ? 0 : id.z == 1 ? NGHOST + nn.z : NGHOST};
-            // clang-format on
-            dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
-                          id.z == 0 ? nn.z : NGHOST};
-            break;
-        }
-        case RegionFamily::Outgoing: {
-            position = (int3){id.x == 1 ? nn.x : NGHOST, id.y == 1 ? nn.y : NGHOST,
-                              id.z == 1 ? nn.z : NGHOST};
-            dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
-                          id.z == 0 ? nn.z : NGHOST};
-            break;
-        }
-        default: {
-            ERROR("Unknown region family.");
-        }
-        }
-    }
-
-    Region(RegionFamily _family, int3 _id, int3 nn) : Region{_family, id_to_tag(_id), nn}
-    {
-        ERRCHK_ALWAYS(_id.x == id.x && _id.y == id.y && _id.z == id.z);
-    }
+    Region(RegionFamily _family, int _tag, int3 nn);
+    Region(RegionFamily _family, int3 _id, int3 nn);
+    bool overlaps(const Region* other);
 };
 
 /**
@@ -131,23 +101,18 @@ struct Region {
  * from their input and output regions. At the moment, this is done explicitly by comparing region
  * ids and happens in grid.cc:GridInit()
  */
-class Task {
-  private:
-    std::vector<std::pair<Task*, size_t>> dependents;
-
+typedef class Task {
   protected:
+    std::vector<std::pair<std::weak_ptr<Task>, size_t>> dependents;
     Device device;
     cudaStream_t stream;
     VertexBufferArray vba;
-    int rank;
 
     int state;
 
     struct {
-        size_t num_iters;
-        size_t max_offset;
+        std::vector<size_t> counts;
         std::vector<size_t> targets;
-        std::vector<std::vector<size_t>> counts;
     } dep_cntr;
 
     struct {
@@ -158,40 +123,52 @@ class Task {
     bool poll_stream();
 
   public:
-    Region* output_region;
-    // std::string task_type;
+    int rank;
+    bool active;
+    std::string name;
+    TaskType task_type;
+
+    int order; // the ordinal position of the task in a serial execution (within its region)
+    std::unique_ptr<Region> output_region;
+    std::unique_ptr<Region> input_region;
+    std::shared_ptr<VariableScope> variable_scope;
 
     static const int wait_state = 0;
 
-    Task();
-    virtual ~Task(){};
-
+    Task(RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn);
     virtual bool test()    = 0;
     virtual void advance() = 0;
 
-    void registerDependent(Task* t, size_t offset);
+    void registerDependent(std::shared_ptr<Task> t, size_t offset);
     void registerPrerequisite(size_t offset);
+    bool isPrerequisiteTo(std::shared_ptr<Task> other);
 
     void setIterationParams(size_t begin, size_t end);
     void update();
     bool isFinished();
 
     void notifyDependents();
-    void satisfyDependency(size_t iteration, size_t offset);
+    void satisfyDependency(size_t iteration);
 
     void syncVBA();
     void swapVBA();
 
     // void logStateChangedEvent(std::string b, std::string c);
-};
+} Task;
 
 // Compute tasks
 enum class ComputeState { Waiting_for_halo = Task::wait_state, Running };
 
 typedef class ComputeTask : public Task {
-  public:
-    ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id);
+  private:
+    ComputeKernel compute_func;
+    KernelParameters params;
 
+  public:
+    ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VariableScope> variable_scope_,
+                int order_, int region_tag, int3 nn, Device device_);
+    ComputeTask(const ComputeTask& other) = delete;
+    ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
     void advance();
     bool test();
@@ -205,9 +182,9 @@ typedef struct HaloMessage {
     AcRealPacked* data_pinned;
     bool pinned = false; // Set if data was received to pinned memory
 #endif
-    MPI_Request* request;
+    MPI_Request request;
 
-    HaloMessage(int3 dims, MPI_Request* req_);
+    HaloMessage(int3 dims, size_t num_vars);
     ~HaloMessage();
 #if !(USE_CUDA_AWARE_MPI)
     void pin(const Device device, const cudaStream_t stream);
@@ -215,17 +192,16 @@ typedef struct HaloMessage {
 #endif
 } HaloMessage;
 
-typedef struct MessageBufferSwapChain {
+typedef struct HaloMessageSwapChain {
     int buf_idx;
     std::vector<HaloMessage> buffers;
 
-    MessageBufferSwapChain();
-    ~MessageBufferSwapChain();
+    HaloMessageSwapChain();
+    HaloMessageSwapChain(int3 dims, size_t num_vars);
 
-    void add_buffer(int3 dims, MPI_Request* req);
     HaloMessage* get_current_buffer();
     HaloMessage* get_fresh_buffer();
-} MessageBufferSwapChain;
+} HaloMessageSwapChain;
 
 enum class HaloExchangeState {
     Waiting_for_compute = Task::wait_state,
@@ -236,22 +212,19 @@ enum class HaloExchangeState {
 
 typedef class HaloExchangeTask : public Task {
   private:
-    Region* outgoing_message_region;
-
-    MessageBufferSwapChain* recv_buffers;
-    MessageBufferSwapChain* send_buffers;
-
     int counterpart_rank;
     int send_tag;
     int recv_tag;
-    int msglen;
+
+    HaloMessageSwapChain recv_buffers;
+    HaloMessageSwapChain send_buffers;
 
   public:
-    bool active;
-
-    HaloExchangeTask(const Device device_, const int halo_region_tag, const int3 nn,
-                     const uint3_64 decomp, MPI_Request* recv_requests, MPI_Request* send_requests);
+    HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope_, int order_, int tag_0,
+                     int halo_region_tag, int3 nn, uint3_64 decomp, Device device_);
     ~HaloExchangeTask();
+    HaloExchangeTask(const HaloExchangeTask& other) = delete;
+    HaloExchangeTask& operator=(const HaloExchangeTask& other) = delete;
 
     void sync();
     void wait_send();
@@ -277,3 +250,9 @@ typedef class HaloExchangeTask : public Task {
     void advance();
     bool test();
 } HaloExchangeTask;
+
+struct TaskGraph {
+    std::vector<std::shared_ptr<Task>> all_tasks;
+    std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
+    std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;
+};

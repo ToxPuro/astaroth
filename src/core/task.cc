@@ -1,3 +1,21 @@
+/*
+    Copyright (C) 2020, Oskar Lappi
+
+    This file is part of Astaroth.
+
+    Astaroth is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Astaroth is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #if AC_MPI_ENABLED
 /**
  * Quick overview of tasks
@@ -19,49 +37,152 @@
 #include "task.h"
 #include "astaroth.h"
 
-#include <iostream>
+#include <memory>
 #include <mpi.h>
 #include <vector>
 
 #include "decomposition.h"   //getPid and friends
-#include "kernels/kernels.h" //AcRealPacked
+#include "kernels/kernels.h" //AcRealPacked, ComputeKernel
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
+
+TaskDefinition
+Compute(const Kernel kernel, VertexBufferHandle scope[], const size_t scope_length)
+{
+    TaskDefinition task_def{};
+    task_def.task_type    = TaskType_Compute;
+    task_def.kernel       = kernel;
+    task_def.scope        = scope;
+    task_def.scope_length = scope_length;
+    return task_def;
+}
+
+TaskDefinition
+HaloExchange(const BoundaryCondition bound_cond, VertexBufferHandle scope[],
+             const size_t scope_length)
+{
+    TaskDefinition task_def{};
+    task_def.task_type    = TaskType_HaloExchange;
+    task_def.bound_cond   = bound_cond;
+    task_def.scope        = scope;
+    task_def.scope_length = scope_length;
+    return task_def;
+}
+
+VariableScope::VariableScope(const VertexBufferHandle h_variables[], const size_t num_vars_)
+    : num_vars(num_vars_)
+{
+    variables         = NULL;
+    size_t scope_size = num_vars * sizeof(VertexBufferHandle);
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&variables, scope_size));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(variables, h_variables, scope_size, cudaMemcpyHostToDevice));
+}
+
+VariableScope::~VariableScope()
+{
+    cudaFree(variables);
+    variables = NULL;
+    num_vars  = -1;
+}
+
+Region::Region(RegionFamily _family, int _tag, int3 nn) : family(_family), tag(_tag)
+{
+    id          = tag_to_id(tag);
+    facet_class = (id.x == 0 ? 0 : 1) + (id.y == 0 ? 0 : 1) + (id.z == 0 ? 0 : 1);
+    ERRCHK_ALWAYS(facet_class <= 3);
+
+    switch (family) {
+    case RegionFamily::Compute_output: {
+        // clang-format off
+        position = (int3){
+                    id.x == -1  ? NGHOST : id.x == 1 ? nn.x : NGHOST * 2,
+                    id.y == -1  ? NGHOST : id.y == 1 ? nn.y : NGHOST * 2,
+                    id.z == -1  ? NGHOST : id.z == 1 ? nn.z : NGHOST * 2};
+        // clang-format on
+        dims = (int3){id.x == 0 ? nn.x - NGHOST * 2 : NGHOST,
+                      id.y == 0 ? nn.y - NGHOST * 2 : NGHOST,
+                      id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
+        break;
+    }
+    case RegionFamily::Compute_input: {
+        // clang-format off
+        position = (int3){
+                    id.x == -1  ? 0 : id.x == 1 ? nn.x - NGHOST : NGHOST ,
+                    id.y == -1  ? 0 : id.y == 1 ? nn.y - NGHOST : NGHOST ,
+                    id.z == -1  ? 0 : id.z == 1 ? nn.z - NGHOST : NGHOST };
+        // clang-format on
+        dims = (int3){id.x == 0 ? nn.x : NGHOST * 3, id.y == 0 ? nn.y : NGHOST * 3,
+                      id.z == 0 ? nn.z : NGHOST * 3};
+        break;
+    }
+    case RegionFamily::Exchange_output: {
+        // clang-format off
+        position = (int3){
+                    id.x == -1  ? 0 : id.x == 1 ? NGHOST + nn.x : NGHOST,
+                    id.y == -1  ? 0 : id.y == 1 ? NGHOST + nn.y : NGHOST,
+                    id.z == -1  ? 0 : id.z == 1 ? NGHOST + nn.z : NGHOST};
+        // clang-format on
+        dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
+                      id.z == 0 ? nn.z : NGHOST};
+        break;
+    }
+    case RegionFamily::Exchange_input: {
+        position = (int3){id.x == 1 ? nn.x : NGHOST, id.y == 1 ? nn.y : NGHOST,
+                          id.z == 1 ? nn.z : NGHOST};
+        dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
+                      id.z == 0 ? nn.z : NGHOST};
+        break;
+    }
+    default: {
+        ERROR("Unknown region family.");
+    }
+    }
+    volume = dims.x * dims.y * dims.z;
+}
+
+Region::Region(RegionFamily _family, int3 _id, int3 nn) : Region{_family, id_to_tag(_id), nn}
+{
+    ERRCHK_ALWAYS(_id.x == id.x && _id.y == id.y && _id.z == id.z);
+}
+
+bool
+Region::overlaps(const Region* other)
+{
+    return (this->position.x < other->position.x + other->dims.x) &&
+           (other->position.x < this->position.x + this->dims.x) &&
+           (this->position.y < other->position.y + other->dims.y) &&
+           (other->position.y < this->position.y + this->dims.y) &&
+           (this->position.z < other->position.z + other->dims.z) &&
+           (other->position.z < this->position.z + this->dims.z);
+}
+
+int
+Region::id_to_tag(int3 _id)
+{
+    return ((3 + _id.x) % 3) * 9 + ((3 + _id.y) % 3) * 3 + (3 + _id.z) % 3;
+}
+
+int3
+Region::tag_to_id(int _tag)
+{
+    int3 _id = (int3){(_tag) / 9, ((_tag) % 9) / 3, (_tag) % 3};
+    _id.x    = _id.x == 2 ? -1 : _id.x;
+    _id.y    = _id.y == 2 ? -1 : _id.y;
+    _id.z    = _id.z == 2 ? -1 : _id.z;
+    ERRCHK_ALWAYS(id_to_tag(_id) == _tag);
+    return _id;
+}
+
 /* Task interface */
-
-/*
-void
-Task::logStateChangedEvent(std::string from, std::string to)
+Task::Task(RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn)
+    : state(wait_state), dep_cntr(), loop_cntr(),
+      output_region(std::make_unique<Region>(output_family, region_tag, nn)),
+      input_region(std::make_unique<Region>(input_family, region_tag, nn))
 {
-    //NOTE: the keys used here don't reflect terminology in Astaroth
-    //because the messages are read by a python tool which expects these keys.
-    std::cout<< "{"
-         <<"\"msg_type\":\"state_changed_event\","
-         <<"\"rank\":"<<rank
-         <<",\"substep\":"<<loop_cntr.i
-         <<",\"task_type\":\""<<task_type<<"\""
-         <<",\"tag\":"<<output_region->tag
-         <<",\"seg_id\":["
-             <<output_region->id.x<<","
-             <<output_region->id.y<<","
-             <<output_region->id.z<<"],"
-         <<"\"seg_type\":"<<output_region->facet_class<<","
-         <<"\"from\":\""<<from<<"\""<<","
-         <<"\"to\":\""<<to<<"\""
-         <<"}"<<std::endl;
-}
-*/
-
-Task::Task() : state(wait_state)
-{
-    dep_cntr.max_offset = 0;
-    dep_cntr.num_iters  = 0;
-    loop_cntr.i         = 0;
-    loop_cntr.end       = 0;
 }
 
 void
-Task::registerDependent(Task* t, size_t offset)
+Task::registerDependent(std::shared_ptr<Task> t, size_t offset)
 {
     dependents.emplace_back(t, offset);
     t->registerPrerequisite(offset);
@@ -70,9 +191,25 @@ Task::registerDependent(Task* t, size_t offset)
 void
 Task::registerPrerequisite(size_t offset)
 {
-    dep_cntr.max_offset = max(dep_cntr.max_offset, offset);
-    dep_cntr.targets.resize(dep_cntr.max_offset + 1, 0);
-    dep_cntr.targets[offset]++;
+    // Ensure targets exist
+    if (offset >= dep_cntr.targets.size()) {
+        size_t initial_val = dep_cntr.targets.empty() ? 0 : dep_cntr.targets.back();
+        dep_cntr.targets.resize(offset + 1, initial_val);
+    }
+    for (; offset < dep_cntr.targets.size(); offset++) {
+        dep_cntr.targets[offset]++;
+    }
+}
+
+bool
+Task::isPrerequisiteTo(std::shared_ptr<Task> other)
+{
+    for (auto dep : dependents) {
+        if (dep.first.lock() == other) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void
@@ -81,21 +218,9 @@ Task::setIterationParams(size_t begin, size_t end)
     loop_cntr.i   = begin;
     loop_cntr.end = end;
 
-    // Ensure dependency counter has enough space to count all iterations
-    dep_cntr.num_iters = max(dep_cntr.num_iters, end);
-    dep_cntr.counts.resize(dep_cntr.num_iters);
-
-    for (size_t i = 0; i < dep_cntr.num_iters; i++) {
-        size_t num_buckets = max(i, dep_cntr.num_iters) + 1;
-        dep_cntr.counts[i].resize(num_buckets, 0);
-    }
-
-    // Reset counts
-    for (auto& count : dep_cntr.counts) {
-        for (auto& bucket : count) {
-            bucket = 0;
-        }
-    }
+    // Reset dependency counter, and ensure it has enough space
+    dep_cntr.counts.resize(0);
+    dep_cntr.counts.resize(end, 0);
 }
 
 bool
@@ -112,12 +237,22 @@ Task::update()
 
     bool ready;
     if (state == wait_state) {
-        ready = true;
-        for (size_t i = 0; i <= loop_cntr.i && i <= dep_cntr.max_offset; i++) {
-            size_t count  = dep_cntr.counts[loop_cntr.i][i];
-            size_t target = dep_cntr.targets[i];
-
-            ready &= count >= target;
+        // dep_cntr.targets contains a rising series of targets e.g. {5,10}. The reason that earlier
+        // iterations of a task might have fewer prerequisites in the task graph because the
+        // prerequisites would have been satisfied by work that was performed before the beginning
+        // of the task graph execution.
+        //
+        // Therefore, in the example, dep_cntr.targets = {5,10}:
+        // if the loop counter is 0 or 1, we choose targets[0] (5) and targets[1] (10) respecively
+        // if the loop counter is greater than that (e.g. 3) we select the final target count (10).
+        if (dep_cntr.targets.size() == 0) {
+            ready = true;
+        }
+        else if (loop_cntr.i >= dep_cntr.targets.size()) {
+            ready = (dep_cntr.counts[loop_cntr.i] == dep_cntr.targets.back());
+        }
+        else {
+            ready = (dep_cntr.counts[loop_cntr.i] == dep_cntr.targets[loop_cntr.i]);
         }
     }
     else {
@@ -137,16 +272,17 @@ Task::update()
 void
 Task::notifyDependents()
 {
-    for (auto& d : dependents) {
-        d.first->satisfyDependency(loop_cntr.i, d.second);
+    for (auto& dep : dependents) {
+        std::shared_ptr<Task> dependent = dep.first.lock();
+        dependent->satisfyDependency(loop_cntr.i + dep.second);
     }
 }
 
 void
-Task::satisfyDependency(size_t iteration, size_t offset)
+Task::satisfyDependency(size_t iteration)
 {
-    if (iteration + offset < dep_cntr.num_iters) {
-        dep_cntr.counts[iteration + offset][offset]++;
+    if (iteration < loop_cntr.end) {
+        dep_cntr.counts[iteration]++;
     }
 }
 
@@ -184,23 +320,34 @@ Task::poll_stream()
 }
 
 /* Computation */
-ComputeTask::ComputeTask(Device device_, int region_tag, int3 nn, Stream stream_id) : Task()
+ComputeTask::ComputeTask(ComputeKernel compute_func_,
+                         std::shared_ptr<VariableScope> variable_scope_, int order_, int region_tag,
+                         int3 nn, Device device_)
+    : Task(RegionFamily::Compute_input, RegionFamily::Compute_output, region_tag, nn)
 {
-    // task_type = "compute";
     device = device_;
-    stream = device->streams[stream_id];
+    stream = device->streams[STREAM_DEFAULT + region_tag];
     syncVBA();
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    output_region = new Region(RegionFamily::Compute, region_tag, nn);
+    active         = true;
+    order          = order_;
+    compute_func   = compute_func_;
+    variable_scope = variable_scope_;
+
+    params = KernelParameters{stream, 0, output_region->position,
+                              output_region->position + output_region->dims};
+    name   = "Compute(" + std::to_string(output_region->id.x) + "," +
+           std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
+    task_type = TaskType_Compute;
 }
 
 void
 ComputeTask::compute()
 {
-    size_t substep = loop_cntr.i % 3;
-    acKernelIntegrateSubstep(stream, substep, output_region->position,
-                             output_region->position + output_region->dims, vba);
+    // IDEA: we could make loop_cntr.i point at params.step_number
+    params.step_number = (int)(loop_cntr.i % 3);
+    compute_func(params, vba);
 }
 
 bool
@@ -238,19 +385,23 @@ ComputeTask::advance()
 
 // HaloMessage contains all information needed to send or receive a single message
 // Wraps PackedData. These two structs could be folded together.
-HaloMessage::HaloMessage(int3 dims, MPI_Request* _req) : request(_req)
+HaloMessage::HaloMessage(int3 dims, size_t num_vars)
 {
-    length       = dims.x * dims.y * dims.z * NUM_VTXBUF_HANDLES;
+    length       = dims.x * dims.y * dims.z * num_vars;
     size_t bytes = length * sizeof(AcRealPacked);
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&data, bytes));
 #if !(USE_CUDA_AWARE_MPI)
     ERRCHK_CUDA_ALWAYS(cudaMallocHost((void**)&data_pinned, bytes));
 #endif
-    *request = MPI_REQUEST_NULL;
+    request = MPI_REQUEST_NULL;
 }
 
 HaloMessage::~HaloMessage()
 {
+    if (request != MPI_REQUEST_NULL) {
+        MPI_Wait(&request, MPI_STATUS_IGNORE);
+    }
+
     length = -1;
     cudaFree(data);
 #if !(USE_CUDA_AWARE_MPI)
@@ -263,7 +414,6 @@ HaloMessage::~HaloMessage()
 void
 HaloMessage::pin(const Device device, const cudaStream_t stream)
 {
-    // TODO sync stream
     cudaSetDevice(device->id);
     pinned       = true;
     size_t bytes = length * sizeof(AcRealPacked);
@@ -273,7 +423,6 @@ HaloMessage::pin(const Device device, const cudaStream_t stream)
 void
 HaloMessage::unpin(const Device device, const cudaStream_t stream)
 {
-    // TODO sync stream
     if (!pinned)
         return;
 
@@ -284,44 +433,43 @@ HaloMessage::unpin(const Device device, const cudaStream_t stream)
 }
 #endif
 
-// MessageBufferSwapChain
-MessageBufferSwapChain::MessageBufferSwapChain() : buf_idx(SWAP_CHAIN_LENGTH - 1)
+// HaloMessageSwapChain
+HaloMessageSwapChain::HaloMessageSwapChain() {}
+
+HaloMessageSwapChain::HaloMessageSwapChain(int3 dims, size_t num_vars)
+    : buf_idx(SWAP_CHAIN_LENGTH - 1)
 {
     buffers.reserve(SWAP_CHAIN_LENGTH);
-}
-
-MessageBufferSwapChain::~MessageBufferSwapChain() { buffers.clear(); }
-
-void
-MessageBufferSwapChain::add_buffer(int3 dims, MPI_Request* req)
-{
-    buffers.emplace_back(dims, req);
+    for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
+        buffers.emplace_back(dims, num_vars);
+    }
 }
 
 HaloMessage*
-MessageBufferSwapChain::get_current_buffer()
+HaloMessageSwapChain::get_current_buffer()
 {
     return &buffers[buf_idx];
 }
 
 HaloMessage*
-MessageBufferSwapChain::get_fresh_buffer()
+HaloMessageSwapChain::get_fresh_buffer()
 {
-    buf_idx          = (buf_idx + 1) % SWAP_CHAIN_LENGTH;
-    MPI_Request* req = buffers[buf_idx].request;
-    if (*req != MPI_REQUEST_NULL) {
-        MPI_Wait(req, MPI_STATUS_IGNORE);
+    buf_idx         = (buf_idx + 1) % SWAP_CHAIN_LENGTH;
+    MPI_Request req = buffers[buf_idx].request;
+    if (req != MPI_REQUEST_NULL) {
+        MPI_Wait(&req, MPI_STATUS_IGNORE);
     }
     return &buffers[buf_idx];
 }
 
 // HaloExchangeTask
-HaloExchangeTask::HaloExchangeTask(const Device device_, const int halo_region_tag, const int3 nn,
-                                   const uint3_64 decomp, MPI_Request* recv_requests,
-                                   MPI_Request* send_requests)
-    : Task()
+HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope_, int order_,
+                                   int tag_0, int halo_region_tag, int3 nn, uint3_64 decomp,
+                                   Device device_)
+    : Task(RegionFamily::Exchange_input, RegionFamily::Exchange_output, halo_region_tag, nn),
+      recv_buffers(output_region->dims, variable_scope_->num_vars),
+      send_buffers(input_region->dims, variable_scope_->num_vars)
 {
-    // task_type = "halo";
     device = device_;
     // Create stream for packing/unpacking
     {
@@ -333,34 +481,33 @@ HaloExchangeTask::HaloExchangeTask(const Device device_, const int halo_region_t
     syncVBA();
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    output_region           = new Region(RegionFamily::Incoming, halo_region_tag, nn);
-    outgoing_message_region = new Region(RegionFamily::Outgoing, halo_region_tag, nn);
+    order = order_;
+
+    variable_scope = variable_scope_;
 
     counterpart_rank = getPid(getPid3D(rank, decomp) + output_region->id, decomp);
-    send_tag         = outgoing_message_region->tag;
-    recv_tag         = Region::id_to_tag(-output_region->id);
-
-    // Note: send_tag is also the index for both buffer sets.
-    recv_buffers = new MessageBufferSwapChain();
-    send_buffers = new MessageBufferSwapChain();
-    for (int i = 0; i < SWAP_CHAIN_LENGTH; i++) {
-        recv_buffers->add_buffer(output_region->dims,
-                                 &(recv_requests[i * NUM_SEGMENTS + send_tag]));
-        send_buffers->add_buffer(outgoing_message_region->dims,
-                                 &(send_requests[i * NUM_SEGMENTS + send_tag]));
-    }
+    // MPI tags are namespaced to avoid collisions with other MPI tasks
+    send_tag = tag_0 + input_region->tag;
+    recv_tag = tag_0 + Region::id_to_tag(-output_region->id);
 
     // Post receive immediately, this avoids unexpected messages
     active = ((MPI_INCL_CORNERS) || output_region->facet_class != 3) ? true : false;
     if (active) {
         receive();
     }
+    name = "Halo exchange(" + std::to_string(output_region->id.x) + "," +
+           std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
+    task_type = TaskType_HaloExchange;
 }
 
 HaloExchangeTask::~HaloExchangeTask()
 {
-    delete recv_buffers;
-    delete send_buffers;
+    // Cancel last eager request
+    auto msg = recv_buffers.get_current_buffer();
+    if (msg->request != MPI_REQUEST_NULL) {
+        MPI_Cancel(&msg->request);
+    }
+
     cudaSetDevice(device->id);
     // dependents.clear();
     cudaStreamDestroy(stream);
@@ -369,19 +516,22 @@ HaloExchangeTask::~HaloExchangeTask()
 void
 HaloExchangeTask::pack()
 {
-    auto msg = send_buffers->get_fresh_buffer();
-    acKernelPackData(stream, vba, outgoing_message_region->position, outgoing_message_region->dims,
-                     msg->data);
+    auto msg = send_buffers.get_fresh_buffer();
+    // acKernelPartialPackData(stream, vba, input_region->position, input_region->dims,
+    //                         msg->data, variable_scope->variables, variable_scope->num_vars);
+    acKernelPackData(stream, vba, input_region->position, input_region->dims, msg->data);
 }
 
 void
 HaloExchangeTask::unpack()
 {
 
-    auto msg = recv_buffers->get_current_buffer();
+    auto msg = recv_buffers.get_current_buffer();
 #if !(USE_CUDA_AWARE_MPI)
     msg->unpin(device, stream);
 #endif
+    // acKernelPartialUnpackData(stream, msg->data, output_region->position, output_region->dims,
+    //                           vba, variable_scope->variables, variable_scope->num_vars);
     acKernelUnpackData(stream, msg->data, output_region->position, output_region->dims, vba);
 }
 
@@ -394,32 +544,32 @@ HaloExchangeTask::sync()
 void
 HaloExchangeTask::wait_recv()
 {
-    auto msg = recv_buffers->get_current_buffer();
-    MPI_Wait(msg->request, MPI_STATUS_IGNORE);
+    auto msg = recv_buffers.get_current_buffer();
+    MPI_Wait(&msg->request, MPI_STATUS_IGNORE);
 }
 
 void
 HaloExchangeTask::wait_send()
 {
-    auto msg = send_buffers->get_current_buffer();
-    MPI_Wait(msg->request, MPI_STATUS_IGNORE);
+    auto msg = send_buffers.get_current_buffer();
+    MPI_Wait(&msg->request, MPI_STATUS_IGNORE);
 }
 
 void
 HaloExchangeTask::receiveDevice()
 {
-    auto msg = recv_buffers->get_fresh_buffer();
+    auto msg = recv_buffers.get_fresh_buffer();
     MPI_Irecv(msg->data, msg->length, AC_MPI_TYPE, counterpart_rank, recv_tag + HALO_TAG_OFFSET,
-              MPI_COMM_WORLD, msg->request);
+              MPI_COMM_WORLD, &msg->request);
 }
 
 void
 HaloExchangeTask::sendDevice()
 {
-    auto msg = send_buffers->get_current_buffer();
+    auto msg = send_buffers.get_current_buffer();
     sync();
     MPI_Isend(msg->data, msg->length, AC_MPI_TYPE, counterpart_rank, send_tag + HALO_TAG_OFFSET,
-              MPI_COMM_WORLD, msg->request);
+              MPI_COMM_WORLD, &msg->request);
 }
 
 void
@@ -434,20 +584,20 @@ HaloExchangeTask::exchangeDevice()
 void
 HaloExchangeTask::receiveHost()
 {
-    auto msg = recv_buffers->get_fresh_buffer();
+    auto msg = recv_buffers.get_fresh_buffer();
     MPI_Irecv(msg->data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
-              recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
+              recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
     msg->pinned = true;
 }
 
 void
 HaloExchangeTask::sendHost()
 {
-    auto msg = send_buffers->get_current_buffer();
+    auto msg = send_buffers.get_current_buffer();
     msg->pin(device, stream);
     sync();
     MPI_Isend(msg->data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
-              send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, msg->request);
+              send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
 }
 void
 HaloExchangeTask::exchangeHost()
@@ -499,9 +649,9 @@ HaloExchangeTask::test()
         return poll_stream();
     }
     case HaloExchangeState::Exchanging: {
-        auto msg = recv_buffers->get_current_buffer();
+        auto msg = recv_buffers.get_current_buffer();
         int request_complete;
-        MPI_Test(msg->request, &request_complete, MPI_STATUS_IGNORE);
+        MPI_Test(&msg->request, &request_complete, MPI_STATUS_IGNORE);
         return request_complete ? true : false;
     }
     default: {

@@ -1,3 +1,21 @@
+/*
+    Copyright (C) 2020, Johannes Pekkilä, Miikka Väisälä, Oskar Lappi
+
+    This file is part of Astaroth.
+
+    Astaroth is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Astaroth is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #if AC_MPI_ENABLED
 /**
  * Quick overview of the MPI implementation:
@@ -26,9 +44,9 @@
 #include "astaroth.h"
 #include "task.h"
 
+#include <algorithm>
 #include <cstring> //memcpy
 #include <mpi.h>
-#include <utility> //std::swap
 #include <vector>
 
 #include "decomposition.h" //getPid3D, morton3D
@@ -42,36 +60,11 @@ typedef struct Grid {
     uint3_64 decomposition;
     bool initialized;
     int3 nn;
-
-    std::vector<HaloExchangeTask> halo_exchange_tasks;
-
-    std::vector<HaloExchangeTask> face_exchange_tasks;
-    std::vector<HaloExchangeTask> edge_exchange_tasks;
-    std::vector<HaloExchangeTask> corner_exchange_tasks;
-
-    std::vector<ComputeTask> compute_tasks;
-    ComputeTask* inner_integration_task;
-
-    MPI_Request* recv_reqs;
-    MPI_Request* send_reqs;
-
-    MPI_Request* curr_recv_reqs;
-    MPI_Request* back_recv_reqs;
-
-    MPI_Request* curr_send_reqs;
-    MPI_Request* back_send_reqs;
-
+    std::shared_ptr<TaskGraph> default_tasks;
+    size_t mpi_tag_space_count;
 } Grid;
 
 static Grid grid = {};
-
-static void
-gridSwapRequestBuffers()
-{
-    // Assumption SWAP_CHAIN_LENGTH = 2 in these swaps
-    std::swap(grid.curr_recv_reqs, grid.back_recv_reqs);
-    std::swap(grid.curr_send_reqs, grid.back_send_reqs);
-}
 
 AcResult
 acGridSynchronizeStream(const Stream stream)
@@ -166,78 +159,24 @@ acGridInit(const AcMeshInfo info)
     grid.decomposition = decomp;
 
     // Configure
-    const int3 nn = (int3){
+    grid.nn = (int3){
         device->local_config.int_params[AC_nx],
         device->local_config.int_params[AC_ny],
         device->local_config.int_params[AC_nz],
     };
 
-    grid.nn = nn;
+    grid.mpi_tag_space_count = 0;
 
-    // Create compute tasks
-    grid.compute_tasks.clear();
-    grid.compute_tasks.reserve(NUM_SEGMENTS);
-
-    grid.inner_integration_task = new ComputeTask(device, Region::id_to_tag((int3){0, 0, 0}), nn,
-                                                  STREAM_26);
-
-    for (int tag = 0; tag < NUM_SEGMENTS; tag++) {
-        grid.compute_tasks.emplace_back(device, tag, nn, (Stream)(tag + STREAM_DEFAULT));
+    VertexBufferHandle full_variable_scope[NUM_VTXBUF_HANDLES];
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
+        full_variable_scope[i] = (VertexBufferHandle)i;
     }
 
-    // Create halo exchange tasks
-    grid.halo_exchange_tasks.clear();
-    grid.halo_exchange_tasks.reserve(NUM_SEGMENTS);
+    TaskDefinition default_task_defs[] = {HaloExchange(Boundconds_Periodic, full_variable_scope),
+                                          Compute(Kernel_solve, full_variable_scope)};
 
-    grid.recv_reqs = new MPI_Request[NUM_SEGMENTS * SWAP_CHAIN_LENGTH];
-    grid.send_reqs = new MPI_Request[NUM_SEGMENTS * SWAP_CHAIN_LENGTH];
-
-    // This below assumes SWAP_CHAIN_LENGTH == 2
-    grid.curr_recv_reqs = grid.recv_reqs;
-    grid.back_recv_reqs = &grid.recv_reqs[NUM_SEGMENTS];
-    grid.curr_send_reqs = grid.send_reqs;
-    grid.back_send_reqs = &grid.send_reqs[NUM_SEGMENTS];
-
-    for (int tag = 0; tag < NUM_SEGMENTS; tag++) {
-        grid.halo_exchange_tasks.emplace_back(device, tag, nn, decomp, grid.recv_reqs,
-                                              grid.send_reqs);
-    }
-    // Dependencies
-    for (auto& halo_task : grid.halo_exchange_tasks) {
-        if (halo_task.active) {
-            int3 h_id = halo_task.output_region->id;
-            for (auto& comp_task : grid.compute_tasks) {
-                int3 c_id = comp_task.output_region->id;
-                if (((h_id.x == 0) || (h_id.x == c_id.x)) &&
-                    ((h_id.y == 0) || (h_id.y == c_id.y)) &&
-                    ((h_id.z == 0) || (h_id.z == c_id.z))) {
-
-                    // Comp tasks depend on halo tasks in the same iteration, offset = 0
-                    // Halo tasks depend on comp tasks in the prev iteration, offset = 1
-                    halo_task.registerDependent(&comp_task, 0);
-                    comp_task.registerDependent(&halo_task, 1);
-                }
-            }
-        }
-    }
-
-    for (auto& comp_task_1 : grid.compute_tasks) {
-        int3 c1_id = comp_task_1.output_region->id;
-        for (auto& comp_task_2 : grid.compute_tasks) {
-            int3 c2_id = comp_task_2.output_region->id;
-            if (((c1_id.x == 0) || (c2_id.x == 0) || (c1_id.x == c2_id.x)) &&
-                ((c1_id.y == 0) || (c2_id.y == 0) || (c1_id.y == c2_id.y)) &&
-                ((c1_id.z == 0) || (c2_id.z == 0) || (c1_id.z == c2_id.z))) {
-
-                // Comp tasks depend on comp tasks from the prev iteration, offset = 1
-                comp_task_1.registerDependent(&comp_task_2, 1);
-            }
-        }
-        comp_task_1.registerDependent(grid.inner_integration_task, 1);
-        grid.inner_integration_task->registerDependent(&comp_task_1, 1);
-    }
-
-    grid.initialized = true;
+    grid.default_tasks = std::shared_ptr<TaskGraph>(acGridBuildTaskGraph(default_task_defs));
+    grid.initialized   = true;
 
     acGridSynchronizeStream(STREAM_ALL);
     return AC_SUCCESS;
@@ -249,29 +188,7 @@ acGridQuit(void)
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(STREAM_ALL);
 
-    grid.halo_exchange_tasks.clear();
-
-    for (int i = 0; i < NUM_SEGMENTS * SWAP_CHAIN_LENGTH; i++) {
-        MPI_Request* req = &(grid.recv_reqs[i]);
-        if (*req != MPI_REQUEST_NULL) {
-            MPI_Cancel(req);
-            MPI_Request_free(req);
-        }
-    }
-
-    for (int i = 0; i < NUM_SEGMENTS * SWAP_CHAIN_LENGTH; i++) {
-        MPI_Request* req = &(grid.send_reqs[i]);
-        if (*req != MPI_REQUEST_NULL) {
-            MPI_Wait(req, MPI_STATUS_IGNORE);
-            // MPI_Request_free(req);
-        }
-    }
-
-    delete[] grid.recv_reqs;
-    delete[] grid.send_reqs;
-
-    grid.compute_tasks.clear();
-    delete grid.inner_integration_task;
+    grid.default_tasks = nullptr;
 
     grid.initialized   = false;
     grid.decomposition = (uint3_64){0, 0, 0};
@@ -475,57 +392,174 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
     return AC_SUCCESS;
 }
 
-#include <iostream>
+TaskGraph*
+acGridGetDefaultTaskGraph()
+{
+    ERRCHK(grid.initialized);
+    return grid.default_tasks.get();
+}
+
+TaskGraph*
+acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
+{
+    ERRCHK(grid.initialized);
+    using Task_vector = std::vector<std::shared_ptr<Task>>;
+    using VarScopePtr = std::shared_ptr<VariableScope>;
+
+    TaskGraph* graph = new TaskGraph();
+    graph->comp_tasks.reserve(n_ops * Region::n_comp_regions);
+    graph->halo_tasks.reserve(n_ops * Region::n_halo_regions);
+    graph->all_tasks.reserve(n_ops * max(Region::n_halo_regions, Region::n_comp_regions));
+
+    // Create tasks for each operation & store iterators to ranges of tasks belonging to operations
+    std::vector<Task_vector::iterator> op_itors;
+    op_itors.reserve(n_ops);
+
+    for (size_t i = 0; i < n_ops; i++) {
+        VarScopePtr vars = std::make_shared<VariableScope>(ops[i].scope, ops[i].scope_length);
+
+        op_itors.push_back(graph->all_tasks.end());
+        switch (ops[i].task_type) {
+        case TaskType_Compute: {
+            ComputeKernel kernel = kernel_lookup[(int)ops[i].kernel];
+            for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
+                graph->comp_tasks.push_back(
+                    std::make_shared<ComputeTask>(kernel, vars, i, tag, grid.nn, grid.device));
+                graph->all_tasks.push_back(graph->comp_tasks.back());
+            }
+            break;
+        }
+        case TaskType_HaloExchange: {
+            int tag_0 = grid.mpi_tag_space_count * Region::max_halo_tag;
+            for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
+                graph->halo_tasks.push_back(
+                    std::make_shared<HaloExchangeTask>(vars, i, tag_0, tag, grid.nn,
+                                                       grid.decomposition, grid.device));
+                graph->all_tasks.push_back(graph->halo_tasks.back());
+            }
+            grid.mpi_tag_space_count++;
+            break;
+        }
+        }
+    }
+    op_itors.push_back(graph->all_tasks.end());
+
+    // Find dependencies between operations, i.e. check for scope overlap
+    std::vector<std::pair<size_t, size_t>> op_dependencies;
+    op_dependencies.reserve(n_ops);
+
+    for (size_t dependent = 0; dependent < n_ops; dependent++) {
+        std::array<bool, NUM_VTXBUF_HANDLES> dept_vars{};
+        for (size_t i = 0; i < ops[dependent].scope_length; i++) {
+            dept_vars[(int)ops[dependent].scope[i]] = true;
+        }
+        // look backwards until we've found each variable in task scope
+        for (size_t j = 0; j < n_ops; j++) {
+            size_t prereq  = (dependent - j - 1) % n_ops;
+            bool dep_found = false;
+            for (size_t i = 0; i < ops[prereq].scope_length; i++) {
+                dep_found                       = true;
+                dept_vars[ops[prereq].scope[i]] = false;
+            }
+            if (dep_found) {
+                op_dependencies.emplace_back(prereq, dependent);
+            }
+
+            if (std::find(begin(dept_vars), end(dept_vars), true) != dept_vars.end()) {
+                break;
+            }
+        }
+    }
+
+    // Assign dependencies between tasks if both:
+    // 1. their operations are dependent (scope overlaps)
+    // 2. their regions overlap
+    for (auto& depcy : op_dependencies) {
+        for (auto preq = op_itors[depcy.first]; preq != op_itors[depcy.first + 1]; preq++) {
+            if ((*preq)->active) {
+                for (auto dept = op_itors[depcy.second]; dept != op_itors[depcy.second + 1];
+                     dept++) {
+                    if ((*dept)->active &&
+                        (*preq)->output_region->overlaps((*dept)->input_region.get())) {
+                        (*preq)->registerDependent(*dept, depcy.first < depcy.second ? 0 : 1);
+                    }
+                }
+            }
+        }
+    }
+
+    graph->comp_tasks.shrink_to_fit();
+    graph->halo_tasks.shrink_to_fit();
+    graph->all_tasks.shrink_to_fit();
+
+    // Finally sort according to a priority. Larger volumes first and comm before comp
+    auto sort_lambda = [](std::shared_ptr<Task> t1, std::shared_ptr<Task> t2) {
+        auto comp1 = t1->task_type == TaskType_Compute;
+        auto comp2 = t2->task_type == TaskType_Compute;
+
+        auto vol1 = t1->output_region->volume;
+        auto vol2 = t2->output_region->volume;
+        auto dim1 = t1->output_region->dims;
+        auto dim2 = t2->output_region->dims;
+
+        return vol1 > vol2 ||
+               (vol1 == vol2 && ((!comp1 && comp2) || dim1.x < dim2.x || dim1.z > dim2.z));
+    };
+
+    std::sort(graph->comp_tasks.begin(), graph->comp_tasks.end(), sort_lambda);
+    std::sort(graph->halo_tasks.begin(), graph->halo_tasks.end(), sort_lambda);
+    std::sort(graph->all_tasks.begin(), graph->all_tasks.end(), sort_lambda);
+    return graph;
+}
+
+AcResult
+acGridDestroyTaskGraph(TaskGraph* graph)
+{
+    graph->all_tasks.clear();
+    graph->comp_tasks.clear();
+    graph->halo_tasks.clear();
+    delete graph;
+    return AC_SUCCESS;
+}
+
+AcResult
+acGridExecuteTaskGraph(const TaskGraph* graph, size_t n_iterations)
+{
+    ERRCHK(grid.initialized);
+    // acGridSynchronizeStream(stream);
+    // acDeviceSynchronizeStream(grid.device, stream);
+    cudaSetDevice(grid.device->id);
+
+    for (auto& task : graph->all_tasks) {
+        if (task->active) {
+            task->setIterationParams(0, n_iterations);
+        }
+    }
+
+    bool ready;
+    do {
+        ready = true;
+        for (auto& task : graph->all_tasks) {
+            if (task->active) {
+                task->update();
+                ready &= task->isFinished();
+            }
+        }
+    } while (!ready);
+
+    if (n_iterations % 2 != 0) {
+        acDeviceSwapBuffers(grid.device);
+    }
+    return AC_SUCCESS;
+}
 
 AcResult
 acGridIntegrate(const Stream stream, const AcReal dt)
 {
     ERRCHK(grid.initialized);
-    acGridSynchronizeStream(stream);
-    const Device device = grid.device;
-
     acGridLoadScalarUniform(stream, AC_dt, dt);
-    acDeviceSynchronizeStream(device, stream);
-    cudaSetDevice(device->id);
-
-    size_t num_iterations = 3;
-
-    for (auto& halo_task : grid.halo_exchange_tasks) {
-        if (halo_task.active) {
-            halo_task.setIterationParams(0, num_iterations);
-        }
-    }
-
-    for (auto& compute_task : grid.compute_tasks) {
-        compute_task.setIterationParams(0, num_iterations);
-    }
-    grid.inner_integration_task->setIterationParams(0, num_iterations);
-
-    bool ready;
-    do {
-        ready = true;
-
-        grid.inner_integration_task->update();
-        ready &= grid.inner_integration_task->isFinished();
-
-        for (auto& halo_task : grid.halo_exchange_tasks) {
-            if (halo_task.active) {
-                halo_task.update();
-                ready &= halo_task.isFinished();
-            }
-        }
-
-        for (auto& compute_task : grid.compute_tasks) {
-            compute_task.update();
-            ready &= compute_task.isFinished();
-        }
-    } while (!ready);
-
-    if (num_iterations % 2 != 0) {
-        gridSwapRequestBuffers();
-        acDeviceSwapBuffers(device);
-    }
-    return AC_SUCCESS;
+    acDeviceSynchronizeStream(grid.device, stream);
+    return acGridExecuteTaskGraph(grid.default_tasks.get(), 3);
 }
 
 AcResult
@@ -534,42 +568,31 @@ acGridPeriodicBoundconds(const Stream stream)
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
 
-    // Active halo exchange tasks
-    for (auto& halo_task : grid.halo_exchange_tasks) {
-        if (halo_task.active) {
-            halo_task.syncVBA();
-            halo_task.pack();
-            halo_task.send();
+    // Active halo exchange tasks use send() instead of exchange() because there is an active eager
+    // receive that needs to be used. A new eager receive is posted after the exchange.
+    for (auto& halo_task : grid.default_tasks->halo_tasks) {
+        halo_task->syncVBA();
+        halo_task->pack();
+        if (halo_task->active) {
+            halo_task->send();
+        }
+        else {
+            halo_task->exchange();
         }
     }
 
-    MPI_Waitall(NUM_SEGMENTS, grid.curr_recv_reqs, MPI_STATUSES_IGNORE);
-    for (auto& halo_task : grid.halo_exchange_tasks) {
-        if (halo_task.active) {
-            halo_task.unpack();
-            halo_task.sync();
-            halo_task.receive();
+    for (auto& halo_task : grid.default_tasks->halo_tasks) {
+        halo_task->wait_recv();
+        halo_task->unpack();
+        halo_task->sync();
+        if (halo_task->active) {
+            halo_task->receive();
         }
     }
 
-    // Inactive halo exchange tasks (i.e. possibly corners)
-    for (auto& halo_task : grid.halo_exchange_tasks) {
-        if (!halo_task.active) {
-            halo_task.syncVBA();
-            halo_task.pack();
-            halo_task.exchange();
-        }
+    for (auto& halo_task : grid.default_tasks->halo_tasks) {
+        halo_task->wait_send();
     }
-    for (auto& halo_task : grid.halo_exchange_tasks) {
-        if (!halo_task.active) {
-            halo_task.wait_recv();
-            halo_task.unpack();
-            halo_task.sync();
-        }
-    }
-
-    MPI_Waitall(NUM_SEGMENTS * SWAP_CHAIN_LENGTH, grid.send_reqs, MPI_STATUSES_IGNORE);
-    gridSwapRequestBuffers();
     return AC_SUCCESS;
 }
 
