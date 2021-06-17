@@ -1,6 +1,8 @@
 #pragma once
 
+// Choose USE_SMEM or BENCHMARK_RW and generate kernel, then rerun w/ GEN_KERNEL (0)
 #define USE_SMEM (0)
+#define BENCHMARK_RW (0)
 #define GEN_KERNEL (0)
 
 typedef enum {
@@ -150,6 +152,23 @@ gen_kernel(void)
         // WRITE BLOCK END
         //fprintf(fp, "}\n");
 
+        #if BENCHMARK_RW
+        fprintf(fp, "if (vertexIdx.x < end.x && vertexIdx.y < end.y && vertexIdx.z < end.z) {\n");
+        fprintf(fp,
+        "\tvba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = \n"
+        "\tprocessed_stencils[%d][STENCIL_VALUE] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERX] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERY] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERZ] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERXX] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERYY] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERZZ] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERXY] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERXZ] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERYZ];\n", field, field, field, field, field, field, field, field, field, field, field);
+        fprintf(fp, "}\n");
+        #endif
+
         // clang-format on
     }
 
@@ -220,6 +239,23 @@ gen_kernel(void)
         // WRITE BLOCK END
         //fprintf(fp, "}\n");
 
+        #if BENCHMARK_RW
+        fprintf(fp, "if (vertexIdx.x < end.x && vertexIdx.y < end.y && vertexIdx.z < end.z) {\n");
+        fprintf(fp,
+        "\tvba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = \n"
+        "\tprocessed_stencils[%d][STENCIL_VALUE] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERX] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERY] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERZ] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERXX] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERYY] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERZZ] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERXY] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERXZ] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERYZ];\n", field, field, field, field, field, field, field, field, field, field, field);
+        fprintf(fp, "}\n");
+        #endif
+
         // clang-format on
     }
 
@@ -262,6 +298,23 @@ gen_kernel(void)
         */
         //fprintf(fp,"vba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = processed_stencils[%d][STENCIL_DERYZ];\n", field, field);
         //fprintf(fp,"vba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = processed_stencils[%d][STENCIL_DERYZ];\n", field, field);
+
+        #if BENCHMARK_RW
+        fprintf(fp, "if (vertexIdx.x < end.x && vertexIdx.y < end.y && vertexIdx.z < end.z) {\n");
+        fprintf(fp,
+        "\tvba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = \n"
+        "\tprocessed_stencils[%d][STENCIL_VALUE] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERX] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERY] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERZ] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERXX] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERYY] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERZZ] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERXY] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERXZ] + \n"
+        "\tprocessed_stencils[%d][STENCIL_DERYZ];\n", field, field, field, field, field, field, field, field, field, field, field);
+        fprintf(fp, "}\n");
+        #endif
 
         // clang-format on
     }
@@ -670,6 +723,7 @@ solve(const int3 start, const int3 end, VertexBufferArray vba)
 
     const int idx = IDX(vertexIdx);
 
+#if !BENCHMARK_RW
 #if USE_SMEM // WRITE BLOCK START
     if (vertexIdx.x < end.x && vertexIdx.y < end.y && vertexIdx.z < end.z) {
 #endif
@@ -746,6 +800,7 @@ cont, DCONST(AC_dt));
 #if USE_SMEM // WRITE BLOCK END
     }
 #endif
+#endif // BENCHMARK_RW
 }
 
 AcResult
