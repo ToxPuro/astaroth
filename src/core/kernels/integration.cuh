@@ -282,15 +282,15 @@ gen_kernel(void)
 
     // clang-format off
     for (int field = 0; field < NUM_FIELDS; ++field) {
+        fprintf(fp, "{\n\tconst AcReal* __restrict__ in = vba.in[%d];\n", field);
         for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-
             for (int height = 0; height < STENCIL_HEIGHT; ++height) {
                 for (int width = 0; width < STENCIL_WIDTH; ++width) {
                     for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
                         if (host_stencils[stencil][depth][height][width] != 0) {
                             fprintf(fp,
-                                    "processed_stencils[%d][%d] += stencils[%d][%d][%d][%d] * vba.in[%d][IDX(vertexIdx.x + (%d), vertexIdx.y + (%d), vertexIdx.z + (%d))];\n",
-                                    field, stencil, stencil, depth, height, width, field,
+                                    "\tprocessed_stencils[%d][%d] += stencils[%d][%d][%d][%d] * in[IDX(vertexIdx.x + (%d), vertexIdx.y + (%d), vertexIdx.z + (%d))];\n",
+                                    field, stencil, stencil, depth, height, width,
                                     -STENCIL_ORDER / 2 + width, -STENCIL_ORDER / 2 + height,
                                     -STENCIL_ORDER / 2 + depth);
                         }
@@ -298,6 +298,7 @@ gen_kernel(void)
                 }
             }
         }
+        fprintf(fp, "}\n");
 
         /*
         const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);
