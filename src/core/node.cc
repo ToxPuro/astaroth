@@ -726,6 +726,7 @@ global_boundcondstep(const Node node, const Stream stream, const VertexBufferHan
     return AC_SUCCESS;
 }
 
+#if AC_MULTIGPU_ENABLED
 AcResult
 acNodeIntegrate(const Node node, const AcReal dt)
 {
@@ -804,6 +805,32 @@ acNodeIntegrate(const Node node, const AcReal dt)
     acNodeSynchronizeStream(node, STREAM_ALL);
     return AC_SUCCESS;
 }
+
+#else
+AcResult
+acNodeIntegrate(const Node node, const AcReal dt)
+{
+    const Device device = node->devices[0];
+
+    for (int isubstep = 0; isubstep < 3; ++isubstep) {
+
+        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+        for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+            acDevicePeriodicBoundcondStep(device, (Stream)i, (VertexBufferHandle)i, (int3){0, 0, 0},
+                                          node->subgrid.m);
+
+        for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+            acDeviceSynchronizeStream(device, (Stream)i);
+
+        const int3 m1 = (int3){NGHOST, NGHOST, NGHOST};
+        const int3 m2 = m1 + node->subgrid.n;
+        acDeviceIntegrateSubstep(device, STREAM_DEFAULT, isubstep, m1, m2, dt);
+        acNodeSwapBuffers(node);
+    }
+    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+    return AC_SUCCESS;
+}
+#endif
 
 AcResult
 acNodeIntegrateGBC(const Node node, const AcMeshInfo config, const AcReal dt)
