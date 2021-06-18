@@ -739,29 +739,55 @@ static __global__ __launch_bounds__(MAX_THREADS_PER_BLOCK) //
     if (vertexIdx.x < end.x && vertexIdx.y < end.y && vertexIdx.z < end.z) {
 #endif
         AcReal rate_of_change[NUM_FIELDS] = {0};
-        calc_roc<step_number>(processed_stencils, rate_of_change, vba, idx);
+        // calc_roc<step_number>(processed_stencils, rate_of_change, vba, idx);
 
-/*
-const AcReal cont = continuity(processed_stencils);
-const AcReal3 mom = momentum(processed_stencils);
-const AcReal3 ind = induction(processed_stencils);
-const AcReal entr = entropy(processed_stencils);
+        const AcReal cont = continuity(processed_stencils);
+        const AcReal3 mom = momentum(processed_stencils);
+        const AcReal3 ind = induction(processed_stencils);
+        const AcReal entr = entropy(processed_stencils);
 
-rate_of_change[VTXBUF_LNRHO]   = cont;
-rate_of_change[VTXBUF_UUX]     = mom.x;
-rate_of_change[VTXBUF_UUY]     = mom.y;
-rate_of_change[VTXBUF_UUZ]     = mom.z;
-rate_of_change[VTXBUF_AX]      = ind.x;
-rate_of_change[VTXBUF_AY]      = ind.y;
-rate_of_change[VTXBUF_AZ]      = ind.z;
-rate_of_change[VTXBUF_ENTROPY] = entr;
+        rate_of_change[VTXBUF_LNRHO]   = cont;
+        rate_of_change[VTXBUF_UUX]     = mom.x;
+        rate_of_change[VTXBUF_UUY]     = mom.y;
+        rate_of_change[VTXBUF_UUZ]     = mom.z;
+        rate_of_change[VTXBUF_AX]      = ind.x;
+        rate_of_change[VTXBUF_AY]      = ind.y;
+        rate_of_change[VTXBUF_AZ]      = ind.z;
+        rate_of_change[VTXBUF_ENTROPY] = entr;
 
-#pragma unroll
-for (int i = 0; i < NUM_FIELDS; ++i)
-    vba.out[i][idx] = rk3_integrate<step_number>(vba.out[i][idx],
-                                                 processed_stencils[i][STENCIL_VALUE],
-                                                 rate_of_change[i], DCONST(AC_dt));
-                                                 */
+        // Manually unrolled
+        vba.out[0][idx] = rk3_integrate<step_number>(vba.out[0][idx],
+                                                     processed_stencils[0][STENCIL_VALUE],
+                                                     rate_of_change[0], DCONST(AC_dt));
+        vba.out[1][idx] = rk3_integrate<step_number>(vba.out[1][idx],
+                                                     processed_stencils[1][STENCIL_VALUE],
+                                                     rate_of_change[1], DCONST(AC_dt));
+        vba.out[2][idx] = rk3_integrate<step_number>(vba.out[2][idx],
+                                                     processed_stencils[2][STENCIL_VALUE],
+                                                     rate_of_change[2], DCONST(AC_dt));
+        vba.out[3][idx] = rk3_integrate<step_number>(vba.out[3][idx],
+                                                     processed_stencils[3][STENCIL_VALUE],
+                                                     rate_of_change[3], DCONST(AC_dt));
+        vba.out[4][idx] = rk3_integrate<step_number>(vba.out[4][idx],
+                                                     processed_stencils[4][STENCIL_VALUE],
+                                                     rate_of_change[4], DCONST(AC_dt));
+        vba.out[5][idx] = rk3_integrate<step_number>(vba.out[5][idx],
+                                                     processed_stencils[5][STENCIL_VALUE],
+                                                     rate_of_change[5], DCONST(AC_dt));
+        vba.out[6][idx] = rk3_integrate<step_number>(vba.out[6][idx],
+                                                     processed_stencils[6][STENCIL_VALUE],
+                                                     rate_of_change[6], DCONST(AC_dt));
+        vba.out[7][idx] = rk3_integrate<step_number>(vba.out[7][idx],
+                                                     processed_stencils[7][STENCIL_VALUE],
+                                                     rate_of_change[7], DCONST(AC_dt));
+
+        /*
+    #pragma unroll
+            for (int i = 0; i < NUM_FIELDS; ++i)
+                vba.out[i][idx] = rk3_integrate<step_number>(vba.out[i][idx],
+                                                             processed_stencils[i][STENCIL_VALUE],
+                                                             rate_of_change[i], DCONST(AC_dt));
+        */
 
 /*
 for (int i = 0; i < NUM_FIELDS; ++i) {
