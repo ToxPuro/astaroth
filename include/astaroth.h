@@ -447,6 +447,53 @@ AcResult acGridReduceScal(const Stream stream, const ReductionType rtype,
 AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
                          const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                          const VertexBufferHandle vtxbuf2, AcReal* result);
+
+/*
+ * =============================================================================
+ * (Grid) Task interface
+ * =============================================================================
+ */
+
+/** */
+typedef enum TaskType { TaskType_Compute, TaskType_HaloExchange } TaskType;
+
+/** */
+typedef enum BoundaryCondition { Boundconds_Periodic } BoundaryCondition;
+
+/** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
+ * some command.*/
+typedef struct TaskDefinition {
+    TaskType task_type;
+    union {
+        Kernel kernel;
+        BoundaryCondition bound_cond;
+    };
+    VertexBufferHandle* scope;
+    size_t scope_length;
+} TaskDefinition;
+
+/** TaskGraph is an opaque datatype containing information necessary to execute a set of commands.*/
+typedef struct TaskGraph TaskGraph;
+
+/** */
+TaskDefinition Compute(const Kernel kernel, VertexBufferHandle scope[], const size_t scope_length);
+
+/** */
+TaskDefinition HaloExchange(const BoundaryCondition bound_cond, VertexBufferHandle scope[],
+                            const size_t scope_length);
+
+/** */
+TaskGraph* acGridGetDefaultTaskGraph();
+
+/** */
+TaskGraph* acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops);
+
+/** */
+AcResult acGridDestroyTaskGraph(TaskGraph* graph);
+
+/** */
+AcResult acGridExecuteTaskGraph(const TaskGraph* graph, const size_t n_iterations);
+
 #endif // AC_MPI_ENABLED
 
 /*
@@ -762,47 +809,14 @@ AcResult acHostMeshDestroy(AcMesh* mesh);
 } // extern "C"
 #endif
 
-/** */
-typedef enum TaskType { TaskType_Compute, TaskType_HaloExchange } TaskType;
-
-/** */
-typedef enum BoundaryCondition { Boundconds_Periodic } BoundaryCondition;
-
-/** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
- * some command.*/
-typedef struct TaskDefinition {
-    TaskType task_type;
-    union {
-        Kernel kernel;
-        BoundaryCondition bound_cond;
-    };
-    VertexBufferHandle* scope;
-    size_t scope_length;
-} TaskDefinition;
-
-/** TaskGraph is an opaque datatype containing information necessary to execute a set of commands.*/
-typedef struct TaskGraph TaskGraph;
-
-/** */
-TaskDefinition Compute(const Kernel kernel, VertexBufferHandle scope[], const size_t scope_length);
-
-/** */
-TaskDefinition HaloExchange(const BoundaryCondition bound_cond, VertexBufferHandle scope[],
-                            const size_t scope_length);
-
-/** */
-TaskGraph* acGridGetDefaultTaskGraph();
-
-/** */
-TaskGraph* acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops);
-
-/** */
-AcResult acGridDestroyTaskGraph(TaskGraph* graph);
-
-/** */
-AcResult acGridExecuteTaskGraph(const TaskGraph* graph, const size_t n_iterations);
-
 #ifdef __cplusplus
+
+/*
+ * =============================================================================
+ * Safer C++ interface for TaskGraphs
+ * =============================================================================
+ */
+
 /** */
 template <size_t scope_length>
 TaskDefinition
