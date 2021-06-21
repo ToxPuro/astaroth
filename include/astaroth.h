@@ -766,7 +766,7 @@ AcResult acHostMeshDestroy(AcMesh* mesh);
 typedef enum TaskType { TaskType_Compute, TaskType_HaloExchange } TaskType;
 
 /** */
-typedef enum BoundaryCondition { Boundconds_Periodic } BoundaryCondition;
+typedef enum BoundaryCondition { Boundconds_Periodic, Boundconds_Symmetric } BoundaryCondition;
 
 /** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
  * some command.*/

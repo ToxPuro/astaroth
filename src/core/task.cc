@@ -357,9 +357,10 @@ ComputeTask::test()
     case ComputeState::Running: {
         return poll_stream();
     }
-    default:
+    default: {
         ERROR("ComputeTask in an invalid state.");
         return false;
+    }
     }
 }
 
@@ -367,7 +368,7 @@ void
 ComputeTask::advance()
 {
     switch (static_cast<ComputeState>(state)) {
-    case ComputeState::Waiting_for_halo: {
+    case ComputeState::Waiting: {
         // logStateChangedEvent("waiting", "running");
         compute();
         state = static_cast<int>(ComputeState::Running);
@@ -375,9 +376,11 @@ ComputeTask::advance()
     }
     case ComputeState::Running: {
         // logStateChangedEvent("running", "waiting");
-        state = static_cast<int>(ComputeState::Waiting_for_halo);
+        state = static_cast<int>(ComputeState::Waiting);
         break;
     }
+    default:
+        ERROR("ComputeTask in an invalid state.");
     }
 }
 
@@ -665,7 +668,7 @@ void
 HaloExchangeTask::advance()
 {
     switch (static_cast<HaloExchangeState>(state)) {
-    case HaloExchangeState::Waiting_for_compute:
+    case HaloExchangeState::Waiting:
         // logStateChangedEvent("waiting", "packing");
         pack();
         state = static_cast<int>(HaloExchangeState::Packing);
@@ -686,10 +689,76 @@ HaloExchangeTask::advance()
         // logStateChangedEvent("unpacking", "waiting");
         receive();
         sync();
-        state = static_cast<int>(HaloExchangeState::Waiting_for_compute);
+        state = static_cast<int>(HaloExchangeState::Waiting);
         break;
     default:
-        ERROR("Invalid state for HaloExchangeTask");
+        ERROR("HaloExchangeTask in an invalid state.");
     }
+}
+
+
+BoundaryConditionTask::BoundaryConditionTask(BoundaryCondition boundcond_,
+                                             VertexBufferHandle variable_, int order_,
+                                             int region_tag, int3 nn, Device device_)
+    : Task(RegionFamily::Exchange_input, RegionFamily::Exchange_output, region_tag, nn),
+      boundcond(boundcond_), variable(variable_)
+{
+    device = device_;
+    // Create stream for boundary condition task
+    {
+        cudaSetDevice(device->id);
+        int low_prio, high_prio;
+        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+    }
+    syncVBA();
+    
+    order = order_;
+    active         = true;
+
+    name = "Boundary condition(" + std::to_string(output_region->id.x) + "," +
+           std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
+    task_type = TaskType_HaloExchange;
+
+}
+
+bool
+BoundaryConditionTask::test()
+{
+    switch (static_cast<BoundaryConditionState>(state)) {
+    case BoundaryConditionState::Running: {
+        return poll_stream();
+    }
+    default: {
+        ERROR("BoundaryConditionTask in an invalid state.");
+        return false;
+    }
+    }
+
+}
+
+void
+BoundaryConditionTask::advance()
+{
+    switch (static_cast<BoundaryConditionState>(state)) {
+    case BoundaryConditionState::Waiting:
+        // logStateChangedEvent("waiting", "running");
+        switch (boundcond) {
+            case Boundconds_Symmetric:
+                acKernelSymmetricBoundconds(stream, input_region->id, input_region->dims, vba.in[variable]);
+                break;
+            default:
+                ERROR("BoundaryCondition not implemented yet.");
+        }       
+        state = static_cast<int>(BoundaryConditionState::Running);
+        break;
+    case BoundaryConditionState::Running:
+        // logStateChangedEvent("running", "waiting");
+        state = static_cast<int>(BoundaryConditionState::Waiting);
+        break;
+    default:
+        ERROR("BoundaryConditionTask in an invalid state.");
+    }
+
 }
 #endif // AC_MPI_ENABLED

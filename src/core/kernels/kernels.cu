@@ -95,6 +95,7 @@ operator*(const acComplex& a, const acComplex& b)
 
 // Kernels /////////////////////////////////////////////////////////////////////
 #include "boundconds.cuh"
+#include "boundconds_old.cuh"
 #include "integration.cuh"
 #include "packing.cuh"
 #include "reductions.cuh"

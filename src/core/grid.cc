@@ -175,8 +175,8 @@ acGridInit(const AcMeshInfo info)
     TaskDefinition default_task_defs[] = {HaloExchange(Boundconds_Periodic, full_variable_scope),
                                           Compute(Kernel_solve, full_variable_scope)};
 
-    grid.default_tasks = std::shared_ptr<TaskGraph>(acGridBuildTaskGraph(default_task_defs));
     grid.initialized   = true;
+    grid.default_tasks = std::shared_ptr<TaskGraph>(acGridBuildTaskGraph(default_task_defs));
 
     acGridSynchronizeStream(STREAM_ALL);
     return AC_SUCCESS;
@@ -402,40 +402,63 @@ acGridGetDefaultTaskGraph()
 TaskGraph*
 acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
 {
-    ERRCHK(grid.initialized);
+    //ERRCHK(grid.initialized);
     using Task_vector = std::vector<std::shared_ptr<Task>>;
     using VarScopePtr = std::shared_ptr<VariableScope>;
 
     TaskGraph* graph = new TaskGraph();
+    graph->num_swaps = 0;
     graph->comp_tasks.reserve(n_ops * Region::n_comp_regions);
     graph->halo_tasks.reserve(n_ops * Region::n_halo_regions);
-    graph->all_tasks.reserve(n_ops * max(Region::n_halo_regions, Region::n_comp_regions));
+    graph->all_tasks.reserve(n_ops * NUM_VTXBUF_HANDLES * max(Region::n_halo_regions, Region::n_comp_regions));
 
     // Create tasks for each operation & store iterators to ranges of tasks belonging to operations
     std::vector<Task_vector::iterator> op_itors;
     op_itors.reserve(n_ops);
 
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int3 nn = grid.nn;
+    uint3_64 decomp = grid.decomposition;
+    int3 pid3d = getPid3D(rank, grid.decomposition);
+    Device device = grid.device;
+
     for (size_t i = 0; i < n_ops; i++) {
-        VarScopePtr vars = std::make_shared<VariableScope>(ops[i].scope, ops[i].scope_length);
+        auto op = ops[i];
+        VarScopePtr vars = std::make_shared<VariableScope>(op.scope, op.scope_length);
 
         op_itors.push_back(graph->all_tasks.end());
-        switch (ops[i].task_type) {
+        switch (op.task_type) {
         case TaskType_Compute: {
-            ComputeKernel kernel = kernel_lookup[(int)ops[i].kernel];
+            ComputeKernel kernel = kernel_lookup[(int)op.kernel];
+            graph->num_swaps++;
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
                 graph->comp_tasks.push_back(
-                    std::make_shared<ComputeTask>(kernel, vars, i, tag, grid.nn, grid.device));
+                    std::make_shared<ComputeTask>(kernel, vars, i, tag, nn, device));
                 graph->all_tasks.push_back(graph->comp_tasks.back());
             }
             break;
         }
         case TaskType_HaloExchange: {
-            int tag_0 = grid.mpi_tag_space_count * Region::max_halo_tag;
+            int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
+            BoundaryCondition bc = op.bound_cond;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
-                graph->halo_tasks.push_back(
-                    std::make_shared<HaloExchangeTask>(vars, i, tag_0, tag, grid.nn,
-                                                       grid.decomposition, grid.device));
-                graph->all_tasks.push_back(graph->halo_tasks.back());
+                int3 tgt = pid3d + Region::tag_to_id(tag);
+                if (bc != Boundconds_Periodic && (
+                    tgt.x == -1 || tgt.y == -1 || tgt.z == -1 ||
+                    tgt.x == (int) decomp.x || tgt.y == (int)decomp.y || tgt.z == (int)decomp.z)){
+                    //For now, create separate tasks for each field
+                    for (size_t j = 0; j < op.scope_length; j++) {
+                        VertexBufferHandle var = op.scope[j];
+                        graph->all_tasks.push_back(
+                            std::make_shared<BoundaryConditionTask>(bc, var, j, tag, nn, device));
+                    }
+                } else {
+                    graph->halo_tasks.push_back(
+                        std::make_shared<HaloExchangeTask>(vars, i, tag0, tag, nn, decomp, device));
+                    graph->all_tasks.push_back(graph->halo_tasks.back());
+                }
             }
             grid.mpi_tag_space_count++;
             break;
@@ -463,6 +486,7 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
             }
             if (dep_found) {
                 op_dependencies.emplace_back(prereq, dependent);
+                //printf("dep: %lu -> %lu\n",prereq, dependent);
             }
 
             if (std::find(begin(dept_vars), end(dept_vars), true) != dept_vars.end()) {
@@ -475,6 +499,7 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
     // 1. their operations are dependent (scope overlaps)
     // 2. their regions overlap
     for (auto& depcy : op_dependencies) {
+        //printf("assigning dep: %lu -> %lu\n",depcy.first, depcy.second);
         for (auto preq = op_itors[depcy.first]; preq != op_itors[depcy.first + 1]; preq++) {
             if ((*preq)->active) {
                 for (auto dept = op_itors[depcy.second]; dept != op_itors[depcy.second + 1];
@@ -547,7 +572,7 @@ acGridExecuteTaskGraph(const TaskGraph* graph, size_t n_iterations)
         }
     } while (!ready);
 
-    if (n_iterations % 2 != 0) {
+    if (graph->num_swaps * n_iterations % 2 != 0) {
         acDeviceSwapBuffers(grid.device);
     }
     return AC_SUCCESS;

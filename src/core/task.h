@@ -157,7 +157,7 @@ typedef class Task {
 } Task;
 
 // Compute tasks
-enum class ComputeState { Waiting_for_halo = Task::wait_state, Running };
+enum class ComputeState { Waiting = Task::wait_state, Running };
 
 typedef class ComputeTask : public Task {
   private:
@@ -204,7 +204,7 @@ typedef struct HaloMessageSwapChain {
 } HaloMessageSwapChain;
 
 enum class HaloExchangeState {
-    Waiting_for_compute = Task::wait_state,
+    Waiting = Task::wait_state,
     Packing,
     Exchanging,
     Unpacking
@@ -251,7 +251,24 @@ typedef class HaloExchangeTask : public Task {
     bool test();
 } HaloExchangeTask;
 
+enum class BoundaryConditionState {
+    Waiting = Task::wait_state,
+    Running
+};
+
+typedef class BoundaryConditionTask : public Task {
+  private:
+    BoundaryCondition boundcond;
+    VertexBufferHandle variable;
+  public:
+    BoundaryConditionTask(BoundaryCondition boundcond_, VertexBufferHandle variable_, int order_,
+                          int region_tag, int3 nn, Device device_);
+    void advance();
+    bool test();
+} BoundaryConditionTask;
+
 struct TaskGraph {
+    size_t num_swaps;
     std::vector<std::shared_ptr<Task>> all_tasks;
     std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
     std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;
