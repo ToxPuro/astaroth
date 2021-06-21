@@ -15,6 +15,11 @@
 #define MAX_THREADS_PER_BLOCK (MAX_REGISTERS_PER_BLOCK / REGISTERS_PER_THREAD)
 #endif
 
+#define UU s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
+#define AA s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
+#define LNRHO s, VTXBUF_LNRHO
+#define SS s, VTXBUF_ENTROPY
+
 typedef enum {
     STENCIL_VALUE,
     STENCIL_DERX,
@@ -402,9 +407,9 @@ laplace(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
 static __device__ __forceinline__ AcReal3
 induction(const AcReal s[NUM_FIELDS][NUM_STENCILS])
 {
-    const AcReal3 B   = curl(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ);
-    const AcReal3 lap = laplace(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ);
-    const AcReal3 uu  = value(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    const AcReal3 B   = curl(AA);
+    const AcReal3 lap = laplace(AA);
+    const AcReal3 uu  = value(UU);
 
     return cross(uu, B) + DCONST(AC_eta) * lap;
 }
@@ -455,9 +460,9 @@ contract(const AcMatrix mat)
 static __device__ AcReal
 continuity(const AcReal s[NUM_FIELDS][NUM_STENCILS])
 {
-    const AcReal3 uu         = value(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
-    const AcReal3 grad_lnrho = gradient(s, VTXBUF_LNRHO);
-    const AcReal div_uu      = divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    const AcReal3 uu         = value(UU);
+    const AcReal3 grad_lnrho = gradient(LNRHO);
+    const AcReal div_uu      = divergence(UU);
 
     return -dot(uu, grad_lnrho) - div_uu;
 }
@@ -465,32 +470,27 @@ continuity(const AcReal s[NUM_FIELDS][NUM_STENCILS])
 static __device__ AcReal3
 momentum(const AcReal s[NUM_FIELDS][NUM_STENCILS])
 {
-    const AcReal3 uu       = value(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
-    const AcMatrix grad_uu = gradients(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
-    const AcMatrix S       = stress_tensor(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+    const AcReal3 uu       = value(UU);
+    const AcMatrix grad_uu = gradients(UU);
+    const AcMatrix S       = stress_tensor(UU);
     // NOTE WARNING AC_cs2_sound NOT PROPERLY LOADED TODO FIX
     const AcReal cs2_sound = DCONST(AC_cs_sound) * DCONST(AC_cs_sound);
-    const AcReal cs2       = cs2_sound *
-                       exp(DCONST(AC_gamma) * value(s, VTXBUF_ENTROPY) / DCONST(AC_cp_sound) +
-                           (DCONST(AC_gamma) - 1) * (value(s, VTXBUF_LNRHO) - DCONST(AC_lnrho0)));
+    const AcReal cs2       = cs2_sound * exp(DCONST(AC_gamma) * value(SS) / DCONST(AC_cp_sound) +
+                                       (DCONST(AC_gamma) - 1) * (value(LNRHO) - DCONST(AC_lnrho0)));
 
-    const AcReal3 j = ((AcReal)(1.) / DCONST(AC_mu0)) *
-                      (gradient_of_divergence(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ) -
-                       laplace(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ));
-    const AcReal3 B      = curl(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ);
-    const AcReal inv_rho = (AcReal)(1.) / exp(value(s, VTXBUF_LNRHO));
+    const AcReal3 j = ((AcReal)(1.) / DCONST(AC_mu0)) * (gradient_of_divergence(AA) - laplace(AA));
+    const AcReal3 B = curl(AA);
+    const AcReal inv_rho = (AcReal)(1.) / exp(value(LNRHO));
 
     const AcReal3 mom = -mul(grad_uu, uu) -
-                        cs2 * ((AcReal(1.0) / DCONST(AC_cp_sound)) * gradient(s, VTXBUF_ENTROPY) +
-                               gradient(s, VTXBUF_LNRHO)) +
+                        cs2 *
+                            ((AcReal(1.0) / DCONST(AC_cp_sound)) * gradient(SS) + gradient(LNRHO)) +
                         inv_rho * cross(j, B) +
                         DCONST(AC_nu_visc) *
-                            (laplace(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ) +
-                             (AcReal(1.0) / AcReal(3.0)) *
-                                 gradient_of_divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ) +
-                             AcReal(2.0) * mul(S, gradient(s, VTXBUF_LNRHO))) +
-                        DCONST(AC_zeta) *
-                            gradient_of_divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+                            (laplace(UU) +
+                             (AcReal(1.0) / AcReal(3.0)) * gradient_of_divergence(UU) +
+                             AcReal(2.0) * mul(S, gradient(LNRHO))) +
+                        DCONST(AC_zeta) * gradient_of_divergence(UU);
 
     return mom;
 }
@@ -498,42 +498,36 @@ momentum(const AcReal s[NUM_FIELDS][NUM_STENCILS])
 static __device__ __forceinline__ AcReal
 lnT(const AcReal s[NUM_FIELDS][NUM_STENCILS])
 {
-    return DCONST(AC_lnT0) + DCONST(AC_gamma) * value(s, VTXBUF_ENTROPY) / DCONST(AC_cp_sound) +
-           (DCONST(AC_gamma) - AcReal(1.0)) * (value(s, VTXBUF_LNRHO) - DCONST(AC_lnrho0));
+    return DCONST(AC_lnT0) + DCONST(AC_gamma) * value(SS) / DCONST(AC_cp_sound) +
+           (DCONST(AC_gamma) - AcReal(1.0)) * (value(LNRHO) - DCONST(AC_lnrho0));
 }
 
 static __device__ AcReal
 heat_conduction(const AcReal s[NUM_FIELDS][NUM_STENCILS])
 {
     const AcReal inv_AC_cp_sound = AcReal(1.0) / DCONST(AC_cp_sound);
-    const AcReal3 grad_ln_chi    = -gradient(s, VTXBUF_LNRHO);
-    const AcReal first_term      = DCONST(AC_gamma) * inv_AC_cp_sound * laplace(s, VTXBUF_ENTROPY) +
-                              (DCONST(AC_gamma) - AcReal(1.0)) * laplace(s, VTXBUF_LNRHO);
-    const AcReal3 second_term = DCONST(AC_gamma) * inv_AC_cp_sound * gradient(s, VTXBUF_ENTROPY) +
-                                (DCONST(AC_gamma) - AcReal(1.0)) * gradient(s, VTXBUF_LNRHO);
-    const AcReal3 third_term = DCONST(AC_gamma) * (inv_AC_cp_sound * gradient(s, VTXBUF_ENTROPY) +
-                                                   gradient(s, VTXBUF_LNRHO)) +
+    const AcReal3 grad_ln_chi    = -gradient(LNRHO);
+    const AcReal first_term      = DCONST(AC_gamma) * inv_AC_cp_sound * laplace(SS) +
+                              (DCONST(AC_gamma) - AcReal(1.0)) * laplace(LNRHO);
+    const AcReal3 second_term = DCONST(AC_gamma) * inv_AC_cp_sound * gradient(SS) +
+                                (DCONST(AC_gamma) - AcReal(1.0)) * gradient(LNRHO);
+    const AcReal3 third_term = DCONST(AC_gamma) *
+                                   (inv_AC_cp_sound * gradient(SS) + gradient(LNRHO)) +
                                grad_ln_chi;
-    const AcReal chi = (AcReal(0.001)) / (exp(value(s, VTXBUF_LNRHO)) * DCONST(AC_cp_sound));
+    const AcReal chi = (AcReal(0.001)) / (exp(value(LNRHO)) * DCONST(AC_cp_sound));
     return DCONST(AC_cp_sound) * chi * (first_term + dot(second_term, third_term));
 }
 
 static __device__ AcReal
 entropy(const AcReal s[NUM_FIELDS][NUM_STENCILS])
 {
-    const AcMatrix S    = stress_tensor(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
-    const AcReal inv_pT = AcReal(1.0) / (exp(value(s, VTXBUF_LNRHO)) * exp(lnT(s)));
-    const AcReal3 j     = (AcReal(1.0) / DCONST(AC_mu0)) *
-                      (gradient_of_divergence(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ) -
-                       laplace(s, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ));
+    const AcMatrix S    = stress_tensor(UU);
+    const AcReal inv_pT = AcReal(1.0) / (exp(value(LNRHO)) * exp(lnT(s)));
+    const AcReal3 j  = (AcReal(1.0) / DCONST(AC_mu0)) * (gradient_of_divergence(AA) - laplace(AA));
     const AcReal RHS = (0) - (0) + DCONST(AC_eta) * (DCONST(AC_mu0)) * dot(j, j) +
-                       AcReal(2.0) * exp(value(s, VTXBUF_LNRHO)) * DCONST(AC_nu_visc) *
-                           contract(S) +
-                       DCONST(AC_zeta) * exp(value(s, VTXBUF_LNRHO)) *
-                           divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ) *
-                           divergence(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
-    return -dot(value(s, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ), gradient(s, VTXBUF_ENTROPY)) +
-           inv_pT * RHS + heat_conduction(s);
+                       AcReal(2.0) * exp(value(LNRHO)) * DCONST(AC_nu_visc) * contract(S) +
+                       DCONST(AC_zeta) * exp(value(LNRHO)) * divergence(UU) * divergence(UU);
+    return -dot(value(UU), gradient(SS)) + inv_pT * RHS + heat_conduction(s);
 }
 
 template <int step_number>
@@ -566,22 +560,18 @@ static __device__ void
 calc_roc(const AcReal s[NUM_FIELDS][NUM_STENCILS], AcReal rate_of_change[NUM_FIELDS],
          VertexBufferArray vba, const int idx)
 {
-#define UU VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
-#define AA VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
-#define LNRHO VTXBUF_LNRHO
-#define SS VTXBUF_ENTROPY
     int handle;
 
-    const AcReal3 uu   = value(s, UU);
-    const AcReal3 aa   = value(s, AA);
-    const AcReal lnrho = value(s, LNRHO);
-    const AcReal ss    = value(s, SS);
+    const AcReal3 uu   = value(UU);
+    const AcReal3 aa   = value(AA);
+    const AcReal lnrho = value(LNRHO);
+    const AcReal ss    = value(SS);
 
-    const AcReal3 grad_lnrho = gradient(s, LNRHO);
-    const AcReal div_uu      = divergence(s, UU);
+    const AcReal3 grad_lnrho = gradient(LNRHO);
+    const AcReal div_uu      = divergence(UU);
 
-    const AcReal3 B          = curl(s, AA);
-    const AcReal3 laplace_aa = laplace(s, AA);
+    const AcReal3 B          = curl(AA);
+    const AcReal3 laplace_aa = laplace(AA);
 
     const AcReal cs_sound  = DCONST(AC_cs_sound);
     const AcReal gamma     = DCONST(AC_gamma);
@@ -590,23 +580,23 @@ calc_roc(const AcReal s[NUM_FIELDS][NUM_STENCILS], AcReal rate_of_change[NUM_FIE
     const AcReal mu0       = DCONST(AC_mu0);
     const AcReal cs2_sound = cs_sound * cs_sound;
 
-    const AcMatrix grad_uu = gradients(s, UU);
-    const AcMatrix S       = stress_tensor(s, UU);
+    const AcMatrix grad_uu = gradients(UU);
+    const AcMatrix S       = stress_tensor(UU);
 
     const AcReal cs2 = cs2_sound * exp(gamma * ss / cp_sound + (gamma - 1) * (lnrho - lnrho0));
 
-    const AcReal3 grad_div_aa = gradient_of_divergence(s, AA);
+    const AcReal3 grad_div_aa = gradient_of_divergence(AA);
     const AcReal3 j           = (grad_div_aa - laplace_aa) / mu0;
 
     const AcReal nu_visc      = DCONST(AC_nu_visc);
-    const AcReal3 laplace_uu  = laplace(s, UU);
-    const AcReal3 grad_div_uu = gradient_of_divergence(s, UU);
+    const AcReal3 laplace_uu  = laplace(UU);
+    const AcReal3 grad_div_uu = gradient_of_divergence(UU);
     const AcReal zeta         = DCONST(AC_zeta);
-    const AcReal3 grad_ss     = gradient(s, SS);
+    const AcReal3 grad_ss     = gradient(SS);
 
     const AcReal lnT0          = DCONST(AC_lnT0);
-    const AcReal laplace_lnrho = laplace(s, LNRHO);
-    const AcReal laplace_ss    = laplace(s, SS);
+    const AcReal laplace_lnrho = laplace(LNRHO);
+    const AcReal laplace_ss    = laplace(SS);
 
     const AcReal3 grad_ln_chi = -grad_lnrho;
     const AcReal first_term   = gamma * laplace_ss / cp_sound + (gamma - 1) * laplace_lnrho;
@@ -663,7 +653,7 @@ calc_roc(const AcReal s[NUM_FIELDS][NUM_STENCILS], AcReal rate_of_change[NUM_FIE
     const AcReal heat_conduction = cp_sound * chi * (first_term + dot(second_term, third_term));
 
     const AcReal eta           = DCONST(AC_eta);
-    const AcReal divergence_uu = divergence(s, UU);
+    const AcReal divergence_uu = divergence(UU);
     const AcReal inv_pT        = 1 / (exp(lnrho) * exp(lnT));
     const AcReal RHS = (0) - (0) + eta * mu0 * dot(j, j) + 2 * exp(lnrho) * nu_visc * contract(S) +
                        zeta * exp(lnrho) * divergence_uu * divergence_uu;
