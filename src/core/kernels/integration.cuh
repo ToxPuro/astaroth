@@ -562,18 +562,6 @@ rk3_integrate(const AcReal state_previous, const AcReal state_current, const AcR
 }
 
 template <int step_number>
-static __device__ __forceinline__ AcReal3
-rk3_integrate(const AcReal3 state_previous, const AcReal3 state_current,
-              const AcReal3 rate_of_change, const AcReal dt)
-{
-    return (AcReal3){
-        rk3_integrate<step_number>(state_previous.x, state_current.x, rate_of_change.x, dt),
-        rk3_integrate<step_number>(state_previous.y, state_current.y, rate_of_change.y, dt),
-        rk3_integrate<step_number>(state_previous.z, state_current.z, rate_of_change.z, dt),
-    };
-}
-
-template <int step_number>
 static __device__ void
 calc_roc(const AcReal s[NUM_FIELDS][NUM_STENCILS], AcReal rate_of_change[NUM_FIELDS],
          VertexBufferArray vba, const int idx)
@@ -750,30 +738,30 @@ static __global__ __launch_bounds__(MAX_THREADS_PER_BLOCK) //
         rate_of_change[VTXBUF_ENTROPY] = entr;
 
         // Manually unrolled
-        vba.out[0][idx] = rk3_integrate<step_number>(vba.out[0][idx],
-                                                     processed_stencils[0][STENCIL_VALUE],
-                                                     rate_of_change[0], DCONST(AC_dt));
-        vba.out[1][idx] = rk3_integrate<step_number>(vba.out[1][idx],
-                                                     processed_stencils[1][STENCIL_VALUE],
-                                                     rate_of_change[1], DCONST(AC_dt));
-        vba.out[2][idx] = rk3_integrate<step_number>(vba.out[2][idx],
-                                                     processed_stencils[2][STENCIL_VALUE],
-                                                     rate_of_change[2], DCONST(AC_dt));
-        vba.out[3][idx] = rk3_integrate<step_number>(vba.out[3][idx],
-                                                     processed_stencils[3][STENCIL_VALUE],
-                                                     rate_of_change[3], DCONST(AC_dt));
-        vba.out[4][idx] = rk3_integrate<step_number>(vba.out[4][idx],
-                                                     processed_stencils[4][STENCIL_VALUE],
-                                                     rate_of_change[4], DCONST(AC_dt));
-        vba.out[5][idx] = rk3_integrate<step_number>(vba.out[5][idx],
-                                                     processed_stencils[5][STENCIL_VALUE],
-                                                     rate_of_change[5], DCONST(AC_dt));
-        vba.out[6][idx] = rk3_integrate<step_number>(vba.out[6][idx],
-                                                     processed_stencils[6][STENCIL_VALUE],
-                                                     rate_of_change[6], DCONST(AC_dt));
-        vba.out[7][idx] = rk3_integrate<step_number>(vba.out[7][idx],
-                                                     processed_stencils[7][STENCIL_VALUE],
-                                                     rate_of_change[7], DCONST(AC_dt));
+        AcReal* __restrict__ out0 = vba.out[0];
+        AcReal* __restrict__ out1 = vba.out[1];
+        AcReal* __restrict__ out2 = vba.out[2];
+        AcReal* __restrict__ out3 = vba.out[3];
+        AcReal* __restrict__ out4 = vba.out[4];
+        AcReal* __restrict__ out5 = vba.out[5];
+        AcReal* __restrict__ out6 = vba.out[6];
+        AcReal* __restrict__ out7 = vba.out[7];
+        out0[idx] = rk3_integrate<step_number>(out0[idx], processed_stencils[0][STENCIL_VALUE],
+                                               rate_of_change[0], DCONST(AC_dt));
+        out1[idx] = rk3_integrate<step_number>(out1[idx], processed_stencils[1][STENCIL_VALUE],
+                                               rate_of_change[1], DCONST(AC_dt));
+        out2[idx] = rk3_integrate<step_number>(out2[idx], processed_stencils[2][STENCIL_VALUE],
+                                               rate_of_change[2], DCONST(AC_dt));
+        out3[idx] = rk3_integrate<step_number>(out3[idx], processed_stencils[3][STENCIL_VALUE],
+                                               rate_of_change[3], DCONST(AC_dt));
+        out4[idx] = rk3_integrate<step_number>(out4[idx], processed_stencils[4][STENCIL_VALUE],
+                                               rate_of_change[4], DCONST(AC_dt));
+        out5[idx] = rk3_integrate<step_number>(out5[idx], processed_stencils[5][STENCIL_VALUE],
+                                               rate_of_change[5], DCONST(AC_dt));
+        out6[idx] = rk3_integrate<step_number>(out6[idx], processed_stencils[6][STENCIL_VALUE],
+                                               rate_of_change[6], DCONST(AC_dt));
+        out7[idx] = rk3_integrate<step_number>(out7[idx], processed_stencils[7][STENCIL_VALUE],
+                                               rate_of_change[7], DCONST(AC_dt));
 
         /*
     #pragma unroll
@@ -782,52 +770,6 @@ static __global__ __launch_bounds__(MAX_THREADS_PER_BLOCK) //
                                                              processed_stencils[i][STENCIL_VALUE],
                                                              rate_of_change[i], DCONST(AC_dt));
         */
-
-/*
-for (int i = 0; i < NUM_FIELDS; ++i) {
-    // vba.out[i][idx] = processed_stencils[i][STENCIL_DERYZ];
-    // vba.out[i][idx] = continuity(processed_stencils);
-    // vba.out[i][idx] = induction(processed_stencils).z;
-    // const AcReal rate_of_change = continuity(processed_stencils);
-    // const AcReal rate_of_change = induction(processed_stencils).x;
-    // const AcReal rate_of_change = momentum(processed_stencils).x;
-    const AcReal rate_of_change = entropy(processed_stencils);
-    vba.out[i][idx]             = rk3_integrate<step_number>(vba.out[i][idx],
-                                                 processed_stencils[i][STENCIL_VALUE],
-                                                 rate_of_change, DCONST(AC_dt));
-}*/
-
-/*
-for (int i = 0; i < NUM_FIELDS; ++i) {
-    // vba.out[i][idx] = processed_stencils[i][STENCIL_DERYZ];
-    // vba.out[i][idx] = continuity(processed_stencils);
-    // vba.out[i][idx] = induction(processed_stencils).z;
-    vba.out[i][idx] = momentum(processed_stencils).x;
-}
-*/
-/*
-const AcReal dt                           = DCONST(AC_dt);
-AcReal rate_of_change[NUM_VTXBUF_HANDLES] = {0};
-rate_of_change[VTXBUF_LNRHO]              = continuity(processed_stencils);
-
-for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
-    vba.out[w][idx] = rk3_integrate<step_number>(vba.out[w][idx],
-                                                 processed_stencils[w][STENCIL_VALUE],
-                                                 rate_of_change[w], dt);
-*/
-
-/*
-const AcReal cont = continuity(processed_stencils);
-vba.out[VTXBUF_LNRHO]
-       [idx] = rk3_integrate<step_number>(vba.out[VTXBUF_LNRHO][IDX(vertexIdx)],
-                                          processed_stencils[VTXBUF_LNRHO][STENCIL_VALUE],
-cont, DCONST(AC_dt));
-
-vba.out[VTXBUF_UUX][idx]     =
-rk3_integrate<step_number>(vba.out[VTXBUF_LNRHO][IDX(vertexIdx)],
-                                          processed_stencils[VTXBUF_LNRHO][STENCIL_VALUE],
-cont, DCONST(AC_dt));
-*/
 #if USE_SMEM // WRITE BLOCK END
     }
 #endif
