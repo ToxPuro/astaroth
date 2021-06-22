@@ -68,10 +68,7 @@ main(void)
     VertexBufferHandle all_fields[NUM_VTXBUF_HANDLES] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
                                                          VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,  VTXBUF_ENTROPY};
 
-    TaskGraph* symmetric_bc_graph = acGridBuildTaskGraph({
-                                        HaloExchange(Boundconds_Symmetric, all_fields),
-                                        Compute(Kernel_solve, all_fields)
-                                    });
+    TaskGraph* symmetric_bc_graph = acGridBuildTaskGraph({HaloExchange(Boundconds_Symmetric, all_fields)});
 
     acGridExecuteTaskGraph(symmetric_bc_graph, 1);
     acGridSynchronizeStream(STREAM_ALL);

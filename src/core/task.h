@@ -124,18 +124,18 @@ typedef class Task {
 
   public:
     int rank;
+    int order; // the ordinal position of the task in a serial execution (within its region)
     bool active;
     std::string name;
     TaskType task_type;
 
-    int order; // the ordinal position of the task in a serial execution (within its region)
     std::unique_ptr<Region> output_region;
     std::unique_ptr<Region> input_region;
     std::shared_ptr<VariableScope> variable_scope;
 
     static const int wait_state = 0;
 
-    Task(RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn);
+    Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn, Device device_);
     virtual bool test()    = 0;
     virtual void advance() = 0;
 

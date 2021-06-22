@@ -174,11 +174,12 @@ Region::tag_to_id(int _tag)
 }
 
 /* Task interface */
-Task::Task(RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn)
-    : state(wait_state), dep_cntr(), loop_cntr(),
+Task::Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn, Device device_)
+    : device(device_), state(wait_state), dep_cntr(), loop_cntr(), order(order_), active(true),
       output_region(std::make_unique<Region>(output_family, region_tag, nn)),
       input_region(std::make_unique<Region>(input_family, region_tag, nn))
 {
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 }
 
 void
@@ -323,15 +324,11 @@ Task::poll_stream()
 ComputeTask::ComputeTask(ComputeKernel compute_func_,
                          std::shared_ptr<VariableScope> variable_scope_, int order_, int region_tag,
                          int3 nn, Device device_)
-    : Task(RegionFamily::Compute_input, RegionFamily::Compute_output, region_tag, nn)
+    : Task(order_, RegionFamily::Compute_input, RegionFamily::Compute_output, region_tag, nn, device_)
 {
-    device = device_;
     stream = device->streams[STREAM_DEFAULT + region_tag];
     syncVBA();
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    active         = true;
-    order          = order_;
     compute_func   = compute_func_;
     variable_scope = variable_scope_;
 
@@ -469,11 +466,10 @@ HaloMessageSwapChain::get_fresh_buffer()
 HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope_, int order_,
                                    int tag_0, int halo_region_tag, int3 nn, uint3_64 decomp,
                                    Device device_)
-    : Task(RegionFamily::Exchange_input, RegionFamily::Exchange_output, halo_region_tag, nn),
+    : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, halo_region_tag, nn, device_),
       recv_buffers(output_region->dims, variable_scope_->num_vars),
       send_buffers(input_region->dims, variable_scope_->num_vars)
 {
-    device = device_;
     // Create stream for packing/unpacking
     {
         cudaSetDevice(device->id);
@@ -482,9 +478,6 @@ HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
     syncVBA();
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    order = order_;
 
     variable_scope = variable_scope_;
 
@@ -699,10 +692,9 @@ HaloExchangeTask::advance()
 BoundaryConditionTask::BoundaryConditionTask(BoundaryCondition boundcond_,
                                              VertexBufferHandle variable_, int order_,
                                              int region_tag, int3 nn, Device device_)
-    : Task(RegionFamily::Exchange_input, RegionFamily::Exchange_output, region_tag, nn),
+    : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, region_tag, nn, device_),
       boundcond(boundcond_), variable(variable_)
 {
-    device = device_;
     // Create stream for boundary condition task
     {
         cudaSetDevice(device->id);
@@ -711,9 +703,6 @@ BoundaryConditionTask::BoundaryConditionTask(BoundaryCondition boundcond_,
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
     syncVBA();
-
-    order  = order_;
-    active = true;
 
     name = "Boundary condition(" + std::to_string(output_region->id.x) + "," +
            std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";

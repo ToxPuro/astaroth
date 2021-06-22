@@ -27,18 +27,21 @@
  * struct PackedData is used for packing and unpacking. Holds the actual data in
  *                   the halo partition (wrapped by HaloMessage)
  * struct Grid contains information about the local GPU device, decomposition,
- *             the total mesh dimensions, tasks, and MPI requests
+ *             the total mesh dimensions, default tasks, and MPI requests
+ * struct TaskGraph contains *Tasks*, encapsulated pieces of work that depend on each other.
+ *                  Users can create their own TaskGraphs, but the struct implementation is
+ *                  hidden from them.
 
  * Basic steps:
  *   1) Distribute the mesh among ranks
  *   2) Integrate & communicate
  *     - start inner integration and at the same time, pack halo data and send it to neighbors
  *     - as halo data is received and unpacked, integrate segments whose dependencies are ready
- *     - sync and start again
+ *     - tasks in the task graph are run for three iterations. They are started early as possible
  *   3) Gather the mesh to rank 0 for postprocessing
  *
  * This file contains the grid interface, with algorithms and high level functionality
- * The nitty gritty of the MPI communication is defined in task.cc
+ * The nitty gritty of the MPI communication and the Task interface is defined in task.h/task.cc
  */
 
 #include "astaroth.h"
@@ -408,6 +411,11 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
 
     TaskGraph* graph = new TaskGraph();
     graph->num_swaps = 0;
+    //NOTE: this function is sensitive to iterator invalidation. 
+    //make sure graph->all_tasks has enough capacity upfront, otherwise you will see segfaults.
+    //
+    //Any design change that increases the number of elements in graph->all_tasks needs to increase
+    //its reserved capacity as well.
     graph->comp_tasks.reserve(n_ops * Region::n_comp_regions);
     graph->halo_tasks.reserve(n_ops * Region::n_halo_regions);
     graph->all_tasks.reserve(n_ops * NUM_VTXBUF_HANDLES *
