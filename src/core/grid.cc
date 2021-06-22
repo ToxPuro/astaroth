@@ -28,8 +28,8 @@
  *                   the halo partition (wrapped by HaloMessage)
  * struct Grid contains information about the local GPU device, decomposition,
  *             the total mesh dimensions, default tasks, and MPI requests
- * struct TaskGraph contains *Tasks*, encapsulated pieces of work that depend on each other.
- *                  Users can create their own TaskGraphs, but the struct implementation is
+ * struct AcTaskGraph contains *Tasks*, encapsulated pieces of work that depend on each other.
+ *                  Users can create their own AcTaskGraphs, but the struct implementation is
  *                  hidden from them.
 
  * Basic steps:
@@ -63,7 +63,7 @@ typedef struct Grid {
     uint3_64 decomposition;
     bool initialized;
     int3 nn;
-    std::shared_ptr<TaskGraph> default_tasks;
+    std::shared_ptr<AcTaskGraph> default_tasks;
     size_t mpi_tag_space_count;
 } Grid;
 
@@ -175,11 +175,11 @@ acGridInit(const AcMeshInfo info)
         full_variable_scope[i] = (VertexBufferHandle)i;
     }
 
-    TaskDefinition default_task_defs[] = {HaloExchange(Boundconds_Periodic, full_variable_scope),
+    AcTaskDefinition default_task_defs[] = {HaloExchange(Boundconds_Periodic, full_variable_scope),
                                           Compute(Kernel_solve, full_variable_scope)};
 
     grid.initialized   = true;
-    grid.default_tasks = std::shared_ptr<TaskGraph>(acGridBuildTaskGraph(default_task_defs));
+    grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_task_defs));
 
     acGridSynchronizeStream(STREAM_ALL);
     return AC_SUCCESS;
@@ -395,21 +395,21 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
     return AC_SUCCESS;
 }
 
-TaskGraph*
+AcTaskGraph*
 acGridGetDefaultTaskGraph()
 {
     ERRCHK(grid.initialized);
     return grid.default_tasks.get();
 }
 
-TaskGraph*
-acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
+AcTaskGraph*
+acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 {
     // ERRCHK(grid.initialized);
     using Task_vector = std::vector<std::shared_ptr<Task>>;
     using VarScopePtr = std::shared_ptr<VariableScope>;
 
-    TaskGraph* graph = new TaskGraph();
+    AcTaskGraph* graph = new AcTaskGraph();
     graph->num_swaps = 0;
     //NOTE: this function is sensitive to iterator invalidation. 
     //make sure graph->all_tasks has enough capacity upfront, otherwise you will see segfaults.
@@ -451,7 +451,8 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
         }
         case TaskType_HaloExchange: {
             int tag0             = grid.mpi_tag_space_count * Region::max_halo_tag;
-            BoundaryCondition bc = op.bound_cond;
+            AcBoundaryCondition bc = op.bound_cond;
+            //TODO: limit to one process OR fix multiprocess symmetric boundconds
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 int3 tgt = pid3d + Region::tag_to_id(tag);
                 if (bc != Boundconds_Periodic &&
@@ -548,7 +549,7 @@ acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops)
 }
 
 AcResult
-acGridDestroyTaskGraph(TaskGraph* graph)
+acGridDestroyTaskGraph(AcTaskGraph* graph)
 {
     graph->all_tasks.clear();
     graph->comp_tasks.clear();
@@ -558,7 +559,7 @@ acGridDestroyTaskGraph(TaskGraph* graph)
 }
 
 AcResult
-acGridExecuteTaskGraph(const TaskGraph* graph, size_t n_iterations)
+acGridExecuteTaskGraph(const AcTaskGraph* graph, size_t n_iterations)
 {
     ERRCHK(grid.initialized);
     // acGridSynchronizeStream(stream);

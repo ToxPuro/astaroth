@@ -46,10 +46,10 @@
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
 
-TaskDefinition
-Compute(const Kernel kernel, VertexBufferHandle scope[], const size_t scope_length)
+AcTaskDefinition
+Compute(const AcKernel kernel, VertexBufferHandle scope[], const size_t scope_length)
 {
-    TaskDefinition task_def{};
+    AcTaskDefinition task_def{};
     task_def.task_type    = TaskType_Compute;
     task_def.kernel       = kernel;
     task_def.scope        = scope;
@@ -57,11 +57,11 @@ Compute(const Kernel kernel, VertexBufferHandle scope[], const size_t scope_leng
     return task_def;
 }
 
-TaskDefinition
-HaloExchange(const BoundaryCondition bound_cond, VertexBufferHandle scope[],
+AcTaskDefinition
+HaloExchange(const AcBoundaryCondition bound_cond, VertexBufferHandle scope[],
              const size_t scope_length)
 {
-    TaskDefinition task_def{};
+    AcTaskDefinition task_def{};
     task_def.task_type    = TaskType_HaloExchange;
     task_def.bound_cond   = bound_cond;
     task_def.scope        = scope;
@@ -689,7 +689,7 @@ HaloExchangeTask::advance()
     }
 }
 
-BoundaryConditionTask::BoundaryConditionTask(BoundaryCondition boundcond_,
+BoundaryConditionTask::BoundaryConditionTask(AcBoundaryCondition boundcond_,
                                              VertexBufferHandle variable_, int order_,
                                              int region_tag, int3 nn, Device device_)
     : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, region_tag, nn, device_),

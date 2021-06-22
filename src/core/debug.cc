@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 static void
-graphWriteDependencies(FILE* fp, const TaskGraph* graph)
+graphWriteDependencies(FILE* fp, const AcTaskGraph* graph)
 {
     // Compare that default_tasks == grid.default_tasks
     for (auto& task : graph->all_tasks) {
@@ -19,13 +19,13 @@ graphWriteDependencies(FILE* fp, const TaskGraph* graph)
 }
 
 void
-acGraphPrintDependencies(const TaskGraph* graph)
+acGraphPrintDependencies(const AcTaskGraph* graph)
 {
     graphWriteDependencies(stdout, graph);
 }
 
 void
-acGraphWriteDependencies(const char* path, const TaskGraph* graph)
+acGraphWriteDependencies(const char* path, const AcTaskGraph* graph)
 {
     FILE* fp;
     fp = fopen(path, "w");
@@ -39,7 +39,7 @@ acGraphWriteDependencies(const char* path, const TaskGraph* graph)
 }
 
 static void
-graphWriteOrder(FILE* fp, const TaskGraph* graph)
+graphWriteOrder(FILE* fp, const AcTaskGraph* graph)
 {
     if ((*(graph->all_tasks.begin()))->rank == 0) {
         fprintf(fp, "Order\n");
@@ -50,13 +50,13 @@ graphWriteOrder(FILE* fp, const TaskGraph* graph)
 }
 
 void
-acGraphPrintOrder(const TaskGraph* graph)
+acGraphPrintOrder(const AcTaskGraph* graph)
 {
     graphWriteOrder(stdout, graph);
 }
 
 void
-acGraphWriteOrder(const char* path, const TaskGraph* graph)
+acGraphWriteOrder(const char* path, const AcTaskGraph* graph)
 {
     FILE* fp;
     fp = fopen(path, "w");

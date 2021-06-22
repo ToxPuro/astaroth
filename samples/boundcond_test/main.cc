@@ -5,39 +5,65 @@
 #if AC_MPI_ENABLED
 #include <iostream>
 #include <mpi.h>
+#include <cstring>
 
 #define RED "\x1B[31m"
 #define GRN "\x1B[32m"
 #define RESET "\x1B[0m"
 
 bool
-test_mirror(AcReal* field, int3 direction, int3 dims, int3 domain_start, int3 ghost_start, AcMeshInfo info)
+test_mirror(AcMesh mesh, int3 direction, int3 dims, int3 domain_start, int3 ghost_start, AcMeshInfo info)
 {
+    bool passed = true;
 
-    for (int x = 0; x < dims.x; x++){
-        for (int y = 0; y < dims.y; y++){
-            for (int z = 0; z < dims.z; z++){
-                int3 dom = int3{domain_start.x+x,domain_start.y+y,domain_start.z+z};
-                int3 ghost = int3{
-                                (direction.x ==0)? dom.x: ghost_start.x+dims.x-x-1,
-                                (direction.y ==0)? dom.y: ghost_start.y+dims.y-y-1,
-                                (direction.z ==0)? dom.z: ghost_start.z+dims.z-z-1
-                            };
-                int idx_dom = acVertexBufferIdx(dom.x, dom.y, dom.z, info);
-                int idx_ghost = acVertexBufferIdx(ghost.x, ghost.y, ghost.z, info);
+    int col_width[4] = {0,0,0,0};
 
-                if (field[idx_dom] != field[idx_ghost]){
-                    printf("%sERROR%s:Symmetric boundconds not satisfied.\n",RED,RESET);
-                    printf("%d (%3d,%3d,%3d) != (%3d,%3d,%3d) %d\n",idx_dom, dom.x,dom.y,dom.z,ghost.x,ghost.y,ghost.z,idx_ghost);
-                    printf("\t %f != %f\n",field[idx_dom], field[idx_ghost]);
-                    return false;
-                }
-
-            }
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++){
+        int s_len = strlen(vtxbuf_names[i]);
+        if (col_width[i%4] < s_len){
+            col_width[i%4] = s_len;
         }
     }
 
-    return true;
+    printf("\n(%2d,%2d,%d):\n\t",direction.x,direction.y,direction.z);
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++){
+        AcReal* field = mesh.vertex_buffer[i];
+        size_t errors = 0;
+        size_t total = 0;
+        for (int x = 0; x < dims.x; x++){
+            for (int y = 0; y < dims.y; y++){
+                for (int z = 0; z < dims.z; z++){
+                    int3 dom = int3{domain_start.x+x,domain_start.y+y,domain_start.z+z};
+                    int3 ghost = int3{
+                                    (direction.x ==0)? dom.x: ghost_start.x+dims.x-x-1,
+                                    (direction.y ==0)? dom.y: ghost_start.y+dims.y-y-1,
+                                    (direction.z ==0)? dom.z: ghost_start.z+dims.z-z-1
+                                };
+                    int idx_dom = acVertexBufferIdx(dom.x, dom.y, dom.z, info);
+                    int idx_ghost = acVertexBufferIdx(ghost.x, ghost.y, ghost.z, info);
+                    total++;
+                    if (field[idx_dom] != field[idx_ghost]){
+                        errors++;
+                        /*printf("\n\t%sERROR%s at boundary (%2d,%2d,%2d):",RED,RESET,direction.x,direction.y,direction.z);
+                        printf("domain[(%3d,%3d,%3d)] = %f != ghost[(%3d,%3d,%3d)] = %f",dom.x,dom.y,dom.z, field[idx_dom], ghost.x,ghost.y,ghost.z,field[idx_ghost]);
+                        printf("\n\tdomain[%d]!= ghost[%d]",idx_dom, idx_ghost);
+                        fflush(stdout);
+                        */
+                    }
+
+                    
+
+                }
+            }
+        }
+        passed &= (errors == 0);
+        printf("%*s: %s %lu/%lu. %s", col_width[i%4], vtxbuf_names[i], (errors > 0 ? RED:GRN), (total-errors), total, RESET);
+        if ((i+1)%4 == 0) {
+            printf("\n\t");
+        }
+    }
+    printf("\n");
+    return passed;
 }
 
 int
@@ -68,100 +94,102 @@ main(void)
     VertexBufferHandle all_fields[NUM_VTXBUF_HANDLES] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
                                                          VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,  VTXBUF_ENTROPY};
 
-    TaskGraph* symmetric_bc_graph = acGridBuildTaskGraph({HaloExchange(Boundconds_Symmetric, all_fields)});
+    AcTaskGraph* symmetric_bc_graph = acGridBuildTaskGraph({HaloExchange(Boundconds_Symmetric, all_fields)});
 
     acGridExecuteTaskGraph(symmetric_bc_graph, 1);
     acGridSynchronizeStream(STREAM_ALL);
     acGridStoreMesh(STREAM_DEFAULT, &mesh);
+    bool faces_passed = true;
+    bool edges_passed = true;
+    bool corners_passed = true;
+    if (pid == 0) {
+        AcMeshInfo submesh_info = info;
+        const int3 nn = int3{
+            (int)(info.int_params[AC_nx]),
+            (int)(info.int_params[AC_ny]),
+            (int)(info.int_params[AC_nz]),
+        };
 
-    const int3 nn = (int3){
-        info.int_params[AC_nx],
-        info.int_params[AC_ny],
-        info.int_params[AC_nz],
-    };
-   
-    bool passed = true;
-    printf("\nTesting boundconds.\n");
-    /*Symmetric boundconds*/
-    printf("---Face symmetry---\n");
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++){
-        bool good = true;
-        printf("\t%-14s ",vtxbuf_names[i]);
+        printf("\nTesting boundconds.\n");
+        /*Symmetric boundconds*/
+        printf("---Face symmetry---\n");
         //faces
-        good &= test_mirror(mesh.vertex_buffer[i], int3{1,0,0}, int3{NGHOST, nn.y,nn.z}, int3{nn.x-1,NGHOST,NGHOST}, int3{nn.x+NGHOST,NGHOST,NGHOST}, info);
-        good &= test_mirror(mesh.vertex_buffer[i], int3{0,1,0}, int3{nn.x,NGHOST,nn.z}, int3{NGHOST,nn.y-1,NGHOST}, int3{NGHOST,nn.y+NGHOST,NGHOST}, info);
-        good &= test_mirror(mesh.vertex_buffer[i], int3{0,0,1}, int3{nn.x,nn.y,NGHOST}, int3{NGHOST,NGHOST,nn.z-1}, int3{NGHOST,NGHOST,nn.z+NGHOST}, info);
+        faces_passed &= test_mirror(mesh, int3{1,0,0}, int3{NGHOST, nn.y,nn.z}, int3{nn.x-1,NGHOST,NGHOST}, int3{nn.x+NGHOST,NGHOST,NGHOST}, submesh_info);
+        faces_passed &= test_mirror(mesh, int3{0,1,0}, int3{nn.x,NGHOST,nn.z}, int3{NGHOST,nn.y-1,NGHOST}, int3{NGHOST,nn.y+NGHOST,NGHOST}, submesh_info);
+        faces_passed &= test_mirror(mesh, int3{0,0,1}, int3{nn.x,nn.y,NGHOST}, int3{NGHOST,NGHOST,nn.z-1}, int3{NGHOST,NGHOST,nn.z+NGHOST}, submesh_info);
 
-        good &= test_mirror(mesh.vertex_buffer[i], int3{-1,0,0}, int3{NGHOST,nn.y,nn.z}, int3{NGHOST+1,NGHOST,NGHOST}, int3{0,NGHOST,NGHOST}, info);
-        good &= test_mirror(mesh.vertex_buffer[i], int3{0,-1,0}, int3{nn.x,NGHOST,nn.z}, int3{NGHOST,NGHOST+1,NGHOST}, int3{NGHOST,0,NGHOST}, info);
-        good &= test_mirror(mesh.vertex_buffer[i], int3{0,0,-1}, int3{nn.x,nn.y,NGHOST}, int3{NGHOST,NGHOST,NGHOST+1}, int3{NGHOST,NGHOST,0}, info);
-        passed &= good;
-        if (good) {
-            printf("%sOK!%s\n",GRN,RESET);
-        }
-    }
-    printf("---Edge symmetry---\n");
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++){
-        bool good = true;
-        printf("\t%-14s ",vtxbuf_names[i]);
+        faces_passed &= test_mirror(mesh, int3{-1,0,0}, int3{NGHOST,nn.y,nn.z}, int3{NGHOST+1,NGHOST,NGHOST}, int3{0,NGHOST,NGHOST}, submesh_info);
+        faces_passed &= test_mirror(mesh, int3{0,-1,0}, int3{nn.x,NGHOST,nn.z}, int3{NGHOST,NGHOST+1,NGHOST}, int3{NGHOST,0,NGHOST}, submesh_info);
+        faces_passed &= test_mirror(mesh, int3{0,0,-1}, int3{nn.x,nn.y,NGHOST}, int3{NGHOST,NGHOST,NGHOST+1}, int3{NGHOST,NGHOST,0}, submesh_info);
+
+        printf("---Edge symmetry---\n");
         //edges
-        good &= test_mirror(mesh.vertex_buffer[i], int3{1,1,0}, int3{NGHOST,NGHOST,nn.z}, int3{nn.x-1,nn.y-1,NGHOST}, int3{nn.x+NGHOST,nn.y+NGHOST,NGHOST}, info);
-        good &= test_mirror(mesh.vertex_buffer[i], int3{1,0,1}, int3{NGHOST,nn.y,NGHOST}, int3{nn.x-1,NGHOST,nn.z-1}, int3{nn.x+NGHOST,NGHOST,nn.z+NGHOST}, info); 
-        good &= test_mirror(mesh.vertex_buffer[i], int3{0,1,1}, int3{nn.x,NGHOST,NGHOST}, int3{NGHOST,nn.y-1,nn.z-1}, int3{NGHOST,nn.y+NGHOST,nn.z+NGHOST}, info);
+        edges_passed &= test_mirror(mesh, int3{1,1,0}, int3{NGHOST,NGHOST,nn.z}, int3{nn.x-1,nn.y-1,NGHOST}, int3{nn.x+NGHOST,nn.y+NGHOST,NGHOST}, submesh_info);
+        edges_passed &= test_mirror(mesh, int3{1,0,1}, int3{NGHOST,nn.y,NGHOST}, int3{nn.x-1,NGHOST,nn.z-1}, int3{nn.x+NGHOST,NGHOST,nn.z+NGHOST}, submesh_info); 
+        edges_passed &= test_mirror(mesh, int3{0,1,1}, int3{nn.x,NGHOST,NGHOST}, int3{NGHOST,nn.y-1,nn.z-1}, int3{NGHOST,nn.y+NGHOST,nn.z+NGHOST}, submesh_info);
         
-        good &= test_mirror(mesh.vertex_buffer[i], int3{1,-1,0}, int3{NGHOST,NGHOST,nn.z}, int3{nn.x-1,NGHOST+1,NGHOST}, int3{nn.x+NGHOST,0,NGHOST}, info);
-        good &= test_mirror(mesh.vertex_buffer[i], int3{1,0,-1}, int3{NGHOST,nn.y,NGHOST}, int3{nn.x-1,NGHOST,NGHOST+1}, int3{nn.x+NGHOST,NGHOST,0}, info); 
-        good &= test_mirror(mesh.vertex_buffer[i], int3{0,1,-1}, int3{nn.x,NGHOST,NGHOST}, int3{NGHOST,nn.y-1,NGHOST+1}, int3{NGHOST,nn.y+NGHOST,0}, info); 
+        edges_passed &= test_mirror(mesh, int3{1,-1,0}, int3{NGHOST,NGHOST,nn.z}, int3{nn.x-1,NGHOST+1,NGHOST}, int3{nn.x+NGHOST,0,NGHOST}, submesh_info);
+        edges_passed &= test_mirror(mesh, int3{1,0,-1}, int3{NGHOST,nn.y,NGHOST}, int3{nn.x-1,NGHOST,NGHOST+1}, int3{nn.x+NGHOST,NGHOST,0}, submesh_info); 
+        edges_passed &= test_mirror(mesh, int3{0,1,-1}, int3{nn.x,NGHOST,NGHOST}, int3{NGHOST,nn.y-1,NGHOST+1}, int3{NGHOST,nn.y+NGHOST,0}, submesh_info); 
 
-        good &= test_mirror(mesh.vertex_buffer[i], int3{-1,1,0}, int3{NGHOST,NGHOST,nn.z}, int3{NGHOST+1,nn.y-1,NGHOST}, int3{0,nn.y+NGHOST,NGHOST}, info);
-        good &= test_mirror(mesh.vertex_buffer[i], int3{-1,0,1}, int3{NGHOST,nn.y,NGHOST}, int3{NGHOST+1,NGHOST,nn.z-1}, int3{0,NGHOST,nn.z+NGHOST}, info);
-        good &= test_mirror(mesh.vertex_buffer[i], int3{0,-1,1}, int3{nn.x,NGHOST,NGHOST}, int3{NGHOST,NGHOST+1,nn.z-1}, int3{NGHOST,0,nn.z+NGHOST}, info);
+        edges_passed &= test_mirror(mesh, int3{-1,1,0}, int3{NGHOST,NGHOST,nn.z}, int3{NGHOST+1,nn.y-1,NGHOST}, int3{0,nn.y+NGHOST,NGHOST}, submesh_info);
+        edges_passed &= test_mirror(mesh, int3{-1,0,1}, int3{NGHOST,nn.y,NGHOST}, int3{NGHOST+1,NGHOST,nn.z-1}, int3{0,NGHOST,nn.z+NGHOST}, submesh_info);
+        edges_passed &= test_mirror(mesh, int3{0,-1,1}, int3{nn.x,NGHOST,NGHOST}, int3{NGHOST,NGHOST+1,nn.z-1}, int3{NGHOST,0,nn.z+NGHOST}, submesh_info);
 
-        good &= test_mirror(mesh.vertex_buffer[i], int3{-1,-1,0}, int3{NGHOST,NGHOST,nn.z}, int3{NGHOST+1,NGHOST+1,NGHOST}, int3{0,0,NGHOST}, info);
-        good &= test_mirror(mesh.vertex_buffer[i], int3{-1,0,-1}, int3{NGHOST,nn.y,NGHOST}, int3{NGHOST+1,NGHOST,NGHOST+1}, int3{0,NGHOST,0}, info);
-        good &= test_mirror(mesh.vertex_buffer[i], int3{0,-1,-1}, int3{nn.x,NGHOST,NGHOST}, int3{NGHOST,NGHOST+1,NGHOST+1}, int3{NGHOST,0,0}, info);
-        if (good) {
-            printf("%sOK!%s\n",GRN,RESET);
-        }        
-        passed &= good;
-    }
-    printf("---Corner symmetry---\n");
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++){
-        bool good = true;
-        printf("\t%-14s ",vtxbuf_names[i]);
+        edges_passed &= test_mirror(mesh, int3{-1,-1,0}, int3{NGHOST,NGHOST,nn.z}, int3{NGHOST+1,NGHOST+1,NGHOST}, int3{0,0,NGHOST}, submesh_info);
+        edges_passed &= test_mirror(mesh, int3{-1,0,-1}, int3{NGHOST,nn.y,NGHOST}, int3{NGHOST+1,NGHOST,NGHOST+1}, int3{0,NGHOST,0}, submesh_info);
+        edges_passed &= test_mirror(mesh, int3{0,-1,-1}, int3{nn.x,NGHOST,NGHOST}, int3{NGHOST,NGHOST+1,NGHOST+1}, int3{NGHOST,0,0}, submesh_info);
+
+        printf("---Corner symmetry---\n");
+        corners_passed = true;
         //corners
-        good &= test_mirror(mesh.vertex_buffer[i], int3{ 1, 1, 1}, int3{NGHOST,NGHOST,NGHOST}, int3{nn.x-1,nn.y-1,nn.z-1}, int3{nn.x+NGHOST,nn.y+NGHOST,nn.z+NGHOST}, info);
+        corners_passed &= test_mirror(mesh, int3{ 1, 1, 1}, int3{NGHOST,NGHOST,NGHOST}, int3{nn.x-1,nn.y-1,nn.z-1}, int3{nn.x+NGHOST,nn.y+NGHOST,nn.z+NGHOST}, submesh_info);
 
-        good &= test_mirror(mesh.vertex_buffer[i], int3{ 1, 1,-1}, int3{NGHOST,NGHOST,NGHOST}, int3{nn.x-1,nn.y-1,NGHOST+1}, int3{nn.x+NGHOST,nn.y+NGHOST,0}, info);
-        good &= test_mirror(mesh.vertex_buffer[i], int3{ 1,-1, 1}, int3{NGHOST,NGHOST,NGHOST}, int3{nn.x-1,NGHOST+1,nn.z-1}, int3{nn.x+NGHOST,0,nn.z+NGHOST}, info); 
-        good &= test_mirror(mesh.vertex_buffer[i], int3{-1, 1, 1}, int3{NGHOST,NGHOST,NGHOST}, int3{NGHOST+1,nn.y-1,nn.z-1}, int3{0,nn.y+NGHOST,nn.z+NGHOST}, info);
+        corners_passed &= test_mirror(mesh, int3{ 1, 1,-1}, int3{NGHOST,NGHOST,NGHOST}, int3{nn.x-1,nn.y-1,NGHOST+1}, int3{nn.x+NGHOST,nn.y+NGHOST,0}, submesh_info);
+        corners_passed &= test_mirror(mesh, int3{ 1,-1, 1}, int3{NGHOST,NGHOST,NGHOST}, int3{nn.x-1,NGHOST+1,nn.z-1}, int3{nn.x+NGHOST,0,nn.z+NGHOST}, submesh_info); 
+        corners_passed &= test_mirror(mesh, int3{-1, 1, 1}, int3{NGHOST,NGHOST,NGHOST}, int3{NGHOST+1,nn.y-1,nn.z-1}, int3{0,nn.y+NGHOST,nn.z+NGHOST}, submesh_info);
 
-        good &= test_mirror(mesh.vertex_buffer[i], int3{-1, 1,-1}, int3{NGHOST,NGHOST,NGHOST}, int3{NGHOST+1,nn.y-1,NGHOST+1}, int3{0,nn.y+NGHOST,0}, info);
-        good &= test_mirror(mesh.vertex_buffer[i], int3{ 1,-1,-1}, int3{NGHOST,NGHOST,NGHOST}, int3{nn.x-1,NGHOST+1,NGHOST+1}, int3{nn.x+NGHOST,0,0}, info); 
-        good &= test_mirror(mesh.vertex_buffer[i], int3{-1,-1, 1}, int3{NGHOST,NGHOST,NGHOST}, int3{NGHOST+1,NGHOST+1,nn.z-1}, int3{0,0,nn.z+NGHOST}, info);
+        corners_passed &= test_mirror(mesh, int3{-1, 1,-1}, int3{NGHOST,NGHOST,NGHOST}, int3{NGHOST+1,nn.y-1,NGHOST+1}, int3{0,nn.y+NGHOST,0}, submesh_info);
+        corners_passed &= test_mirror(mesh, int3{ 1,-1,-1}, int3{NGHOST,NGHOST,NGHOST}, int3{nn.x-1,NGHOST+1,NGHOST+1}, int3{nn.x+NGHOST,0,0}, submesh_info); 
+        corners_passed &= test_mirror(mesh, int3{-1,-1, 1}, int3{NGHOST,NGHOST,NGHOST}, int3{NGHOST+1,NGHOST+1,nn.z-1}, int3{0,0,nn.z+NGHOST}, submesh_info);
 
-        good &= test_mirror(mesh.vertex_buffer[i], int3{-1,-1,-1}, int3{NGHOST,NGHOST,NGHOST}, int3{NGHOST+1,NGHOST+1,NGHOST+1}, int3{0,0,0}, info);
-        if (good) {
-            printf("%sOK!%s\n",GRN,RESET);
-        }        
-        passed &= good;
-    }
+        corners_passed &= test_mirror(mesh, int3{-1,-1,-1}, int3{NGHOST,NGHOST,NGHOST}, int3{NGHOST+1,NGHOST+1,NGHOST+1}, int3{0,0,0}, submesh_info);
 
-    /*As more boundary conditions are added, add tests for them here*/
+        /*As more boundary conditions are added, add tests for them here*/
+
+    } //if pid == 0
 
     acGridDestroyTaskGraph(symmetric_bc_graph);
     acGridQuit();
     MPI_Finalize();
+    
+    if (pid == 0) {
+        printf("\nSymmetric boundary condition test:\n");
+        if (faces_passed) {
+            printf("\t%sFaces PASSED%s\n",GRN,RESET);
+        } else {
+            printf("\t%sFaces FAILED%s\n",RED,RESET);
+        }
+        if (edges_passed) {
+            printf("\t%sEdges PASSED%s\n",GRN,RESET);
+        } else {
+            printf("\t%sEdges FAILED%s\n",RED,RESET);
+        }
+        if (corners_passed) {
+            printf("\t%sCorners PASSED%s\n",GRN,RESET);
+        } else {
+            printf("\t%sCorners FAILED%s\n",RED,RESET);
+        }
 
-    printf("\nSymmetric boundary condition test: ");
-    if (passed) {
-        printf("%sPASSED%s\n",GRN,RESET);
-        return 0;
-    }else {
-        printf("%sFAILED%s\n",RED,RESET);
-        return 1;
+        if (faces_passed && edges_passed && corners_passed) {
+            printf("\n%sPASSED%s\n",GRN,RESET);
+            return 0;
+        }else {
+            printf("\n%sFAILED%s\n",RED,RESET);
+            return 1;
+        }
     }
-
+    return 0;
 }
 
 #else

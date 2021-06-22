@@ -127,7 +127,7 @@ typedef class Task {
     int order; // the ordinal position of the task in a serial execution (within its region)
     bool active;
     std::string name;
-    TaskType task_type;
+    AcTaskType task_type;
 
     std::unique_ptr<Region> output_region;
     std::unique_ptr<Region> input_region;
@@ -258,16 +258,16 @@ enum class BoundaryConditionState {
 
 typedef class BoundaryConditionTask : public Task {
   private:
-    BoundaryCondition boundcond;
+    AcBoundaryCondition boundcond;
     VertexBufferHandle variable;
   public:
-    BoundaryConditionTask(BoundaryCondition boundcond_, VertexBufferHandle variable_, int order_,
+    BoundaryConditionTask(AcBoundaryCondition boundcond_, VertexBufferHandle variable_, int order_,
                           int region_tag, int3 nn, Device device_);
     void advance();
     bool test();
 } BoundaryConditionTask;
 
-struct TaskGraph {
+struct AcTaskGraph {
     size_t num_swaps;
     std::vector<std::shared_ptr<Task>> all_tasks;
     std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
