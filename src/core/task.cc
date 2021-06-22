@@ -696,7 +696,6 @@ HaloExchangeTask::advance()
     }
 }
 
-
 BoundaryConditionTask::BoundaryConditionTask(BoundaryCondition boundcond_,
                                              VertexBufferHandle variable_, int order_,
                                              int region_tag, int3 nn, Device device_)
@@ -712,14 +711,13 @@ BoundaryConditionTask::BoundaryConditionTask(BoundaryCondition boundcond_,
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
     syncVBA();
-    
-    order = order_;
-    active         = true;
+
+    order  = order_;
+    active = true;
 
     name = "Boundary condition(" + std::to_string(output_region->id.x) + "," +
            std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
     task_type = TaskType_HaloExchange;
-
 }
 
 bool
@@ -734,7 +732,6 @@ BoundaryConditionTask::test()
         return false;
     }
     }
-
 }
 
 void
@@ -744,12 +741,13 @@ BoundaryConditionTask::advance()
     case BoundaryConditionState::Waiting:
         // logStateChangedEvent("waiting", "running");
         switch (boundcond) {
-            case Boundconds_Symmetric:
-                acKernelSymmetricBoundconds(stream, input_region->id, input_region->dims, vba.in[variable]);
-                break;
-            default:
-                ERROR("BoundaryCondition not implemented yet.");
-        }       
+        case Boundconds_Symmetric:
+            acKernelSymmetricBoundconds(stream, input_region->id, input_region->dims,
+                                        vba.in[variable]);
+            break;
+        default:
+            ERROR("BoundaryCondition not implemented yet.");
+        }
         state = static_cast<int>(BoundaryConditionState::Running);
         break;
     case BoundaryConditionState::Running:
@@ -759,6 +757,5 @@ BoundaryConditionTask::advance()
     default:
         ERROR("BoundaryConditionTask in an invalid state.");
     }
-
 }
 #endif // AC_MPI_ENABLED
