@@ -182,13 +182,13 @@ gen_kernel_out(void)
     fclose(fp);
 }
 
-static __device__ __forceinline__ AcReal
+static __device__ AcReal
 value(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle handle)
 {
     return s[handle][STENCIL_VALUE];
 }
 
-static __device__ __forceinline__ AcReal3
+static __device__ AcReal3
 value(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
       const VertexBufferHandle y, const VertexBufferHandle z)
 {
@@ -199,7 +199,7 @@ value(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
     };
 }
 
-static __device__ __forceinline__ AcReal3
+static __device__ AcReal3
 gradient(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle handle)
 {
     return (AcReal3){
@@ -209,21 +209,21 @@ gradient(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle hand
     };
 }
 
-static __device__ __forceinline__ AcMatrix
+static __device__ AcMatrix
 gradients(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
           const VertexBufferHandle y, const VertexBufferHandle z)
 {
     return (AcMatrix){gradient(s, x), gradient(s, y), gradient(s, z)};
 }
 
-static __device__ __forceinline__ AcReal
+static __device__ AcReal
 divergence(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
            const VertexBufferHandle y, const VertexBufferHandle z)
 {
     return s[x][STENCIL_DERX] + s[y][STENCIL_DERY] + s[z][STENCIL_DERZ];
 }
 
-static __device__ __forceinline__ AcReal3
+static __device__ AcReal3
 curl(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
      const VertexBufferHandle y, const VertexBufferHandle z)
 {
@@ -234,20 +234,20 @@ curl(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
     };
 }
 
-static __device__ __forceinline__ AcReal
+static __device__ AcReal
 laplace(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle handle)
 {
     return s[handle][STENCIL_DERXX] + s[handle][STENCIL_DERYY] + s[handle][STENCIL_DERZZ];
 }
 
-static __device__ __forceinline__ AcReal3
+static __device__ AcReal3
 laplace(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
         const VertexBufferHandle y, const VertexBufferHandle z)
 {
     return (AcReal3){laplace(s, x), laplace(s, y), laplace(s, z)};
 }
 
-static __device__ __forceinline__ AcReal3
+static __device__ AcReal3
 induction(const AcReal s[NUM_FIELDS][NUM_STENCILS])
 {
     const AcReal3 B   = curl(AA);
@@ -257,7 +257,7 @@ induction(const AcReal s[NUM_FIELDS][NUM_STENCILS])
     return cross(uu, B) + DCONST(AC_eta) * lap;
 }
 
-static __device__ __forceinline__ AcMatrix
+static __device__ AcMatrix
 stress_tensor(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
               const VertexBufferHandle y, const VertexBufferHandle z)
 {
@@ -283,7 +283,7 @@ stress_tensor(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle
     return S;
 }
 
-static __device__ __forceinline__ AcReal3
+static __device__ AcReal3
 gradient_of_divergence(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBufferHandle x,
                        const VertexBufferHandle y, const VertexBufferHandle z)
 {
@@ -294,7 +294,7 @@ gradient_of_divergence(const AcReal s[NUM_FIELDS][NUM_STENCILS], const VertexBuf
     };
 }
 
-static __device__ __forceinline__ AcReal
+static __device__ AcReal
 contract(const AcMatrix mat)
 {
     return dot(mat.row[0], mat.row[0]) + dot(mat.row[1], mat.row[1]) + dot(mat.row[2], mat.row[2]);
@@ -338,7 +338,7 @@ momentum(const AcReal s[NUM_FIELDS][NUM_STENCILS])
     return mom;
 }
 
-static __device__ __forceinline__ AcReal
+static __device__ AcReal
 lnT(const AcReal s[NUM_FIELDS][NUM_STENCILS])
 {
     return DCONST(AC_lnT0) + DCONST(AC_gamma) * value(SS) / DCONST(AC_cp_sound) +
@@ -374,7 +374,7 @@ entropy(const AcReal s[NUM_FIELDS][NUM_STENCILS])
 }
 
 template <int step_number>
-static __device__ __forceinline__ AcReal
+static __device__ AcReal
 rk3_integrate(const AcReal state_previous, const AcReal state_current, const AcReal rate_of_change,
               const AcReal dt)
 {
