@@ -123,31 +123,14 @@ gen_kernel_in(void)
         }
         fprintf(fp, "}\n");
 
-        /*
-        const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);
-        // vba.out[field][idx] = processed_stencils[field][STENCIL_VALUE];
-        // vba.out[field][idx] = processed_stencils[field][STENCIL_DERX];
-        // vba.out[field][idx] = processed_stencils[field][STENCIL_DERXX];
-        vba.out[field][idx] = processed_stencils[field][STENCIL_DERYZ];
-        */
-        //fprintf(fp,"vba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = processed_stencils[%d][STENCIL_DERYZ];\n", field, field);
-        //fprintf(fp,"vba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = processed_stencils[%d][STENCIL_DERYZ];\n", field, field);
-
         #if BENCHMARK_RW
         fprintf(fp, "if (vertexIdx.x < end.x && vertexIdx.y < end.y && vertexIdx.z < end.z) {\n");
         fprintf(fp,
-        "\tvba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = \n"
-        "\tprocessed_stencils[%d][STENCIL_VALUE] + \n"
-        "\tprocessed_stencils[%d][STENCIL_DERX] + \n"
-        "\tprocessed_stencils[%d][STENCIL_DERY] + \n"
-        "\tprocessed_stencils[%d][STENCIL_DERZ] + \n"
-        "\tprocessed_stencils[%d][STENCIL_DERXX] + \n"
-        "\tprocessed_stencils[%d][STENCIL_DERYY] + \n"
-        "\tprocessed_stencils[%d][STENCIL_DERZZ] + \n"
-        "\tprocessed_stencils[%d][STENCIL_DERXY] + \n"
-        "\tprocessed_stencils[%d][STENCIL_DERXZ] + \n"
-        "\tprocessed_stencils[%d][STENCIL_DERYZ];\n", field, field, field, field, field, field, field, field, field, field, field);
-        fprintf(fp, "}\n");
+        "\tvba.out[%d][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] = \n", field);
+        for (int stencil = 0; stencil < NUM_STENCILS; ++stencil)
+            fprintf(fp, "\t+ processed_stencils[%d][%d]\n", field, stencil);
+
+        fprintf(fp, ";}\n");
         #endif
 
         // clang-format on
@@ -419,6 +402,7 @@ static __global__ __launch_bounds__(MAX_THREADS_PER_BLOCK) //
 #include "kernel.in"
 #endif
 
+#if !BENCHMARK_RW
     AcReal __restrict__ rate_of_change[NUM_FIELDS] = {0};
 
     const AcReal cont = continuity(processed_stencils);
@@ -438,6 +422,7 @@ static __global__ __launch_bounds__(MAX_THREADS_PER_BLOCK) //
 #if !GEN_KERNEL
 #include "kernel.out"
 #endif
+#endif // BENCHMARK_RW
 }
 
 AcResult
