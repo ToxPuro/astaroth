@@ -170,15 +170,6 @@ gen_kernel_out(void)
                 i, i, i, i, i, i);
     }
 
-    /*
-    fprintf(fp, "for (int i = 0; i < NUM_FIELDS; ++i)\n"
-                "    vba.out[i][idx] = rk3_integrate<step_number>(vba.out[i][idx],\n"
-                "                                                 "
-                "processed_stencils[i][STENCIL_VALUE],\n"
-                "                                                 rate_of_change[i], "
-                "DCONST(AC_dt));\n");
-                */
-
     fclose(fp);
 }
 
