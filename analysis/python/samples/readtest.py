@@ -1,5 +1,5 @@
 '''
-    Copyright (C) 2014-2020, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -22,10 +22,14 @@ import pylab as plt
 import numpy as np 
 import sys
 
+import gc
+
 import os
 import pandas as pd
 
 from mpl_toolkits.mplot3d import Axes3D
+
+import pyvista as pv
 
 #Optional YT interface
 try:
@@ -55,7 +59,7 @@ AC_unit_length   = 1.496e+13
 
 print("sys.argv", sys.argv)
 
-meshdir  = "/home/mvaisala/astaroth_projects/shockweek/astaroth/samples/test_cases/kin_sph_shock/"
+meshdir  = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir/"
 
 
 #Example fixed scaling template
@@ -332,8 +336,8 @@ if 'sl' in sys.argv:
             if ('lim' in sys.argv) or ('sym' in sys.argv):
                 vis.slices.plot_3(mesh, mesh.lnrho,         title = r'$\ln \rho$', bitmap = True, fname = 'lnrho',      colrange=rlnrho)
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$\rho$', bitmap = True, fname = 'rho',            colrange=rrho)
-                vis.slices.plot_3(mesh, mesh.shock,         title = r'$shock$', bitmap = True, fname = 'shock',         colrange=rshock)
-                vis.slices.plot_3(mesh, mesh.ss,            title = r'$s$', bitmap = True, fname = 'ss',                colrange=rss)
+                #vis.slices.plot_3(mesh, mesh.shock,         title = r'$shock$', bitmap = True, fname = 'shock',         colrange=rshock)
+                #vis.slices.plot_3(mesh, mesh.ss,            title = r'$s$', bitmap = True, fname = 'ss',                colrange=rss)
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$N_\mathrm{col}$', bitmap = True, fname = 'colden', slicetype = 'sum', colrange=rNcol)
                 vis.slices.plot_3(mesh, uu_tot,             title = r'$|u|$', bitmap = True, fname = 'uutot',           colrange=ruu_tot)
                 vis.slices.plot_3(mesh, mesh.uu[0],         title = r'$u_x$', bitmap = True, fname = 'uux',             colrange=ruu_xyz)
@@ -351,8 +355,8 @@ if 'sl' in sys.argv:
             else: 
                 vis.slices.plot_3(mesh, mesh.lnrho,         title = r'$\ln \rho$', bitmap = True, fname = 'lnrho')
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$\rho$', bitmap = True, fname = 'rho')
-                vis.slices.plot_3(mesh, mesh.shock,         title = r'$shock$', bitmap = True, fname = 'shock')
-                vis.slices.plot_3(mesh, mesh.ss, title = r'$s$', bitmap = True, fname = 'ss')
+                #vis.slices.plot_3(mesh, mesh.shock,         title = r'$shock$', bitmap = True, fname = 'shock')
+                #vis.slices.plot_3(mesh, mesh.ss, title = r'$s$', bitmap = True, fname = 'ss')
                 vis.slices.plot_3(mesh, mesh.uu[0],         title = r'$u_x$', bitmap = True, fname = 'uux')#, velfieldlines=True)
                 vis.slices.plot_3(mesh, mesh.uu[1],         title = r'$u_y$', bitmap = True, fname = 'uuy')
                 vis.slices.plot_3(mesh, mesh.uu[2],         title = r'$u_z$', bitmap = True, fname = 'uuz')
@@ -363,10 +367,10 @@ if 'sl' in sys.argv:
                 vis.slices.plot_3(mesh, mesh.aa[0],         title = r'$A_x$', bitmap = True, fname = 'aax')
                 vis.slices.plot_3(mesh, mesh.aa[1],         title = r'$A_y$', bitmap = True, fname = 'aay')
                 vis.slices.plot_3(mesh, mesh.aa[2],         title = r'$A_z$', bitmap = True, fname = 'aaz')
-                #vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot')#, trimghost=3)
-                #vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx')#,     trimghost=3)#, bfieldlines=True)
-                #vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby')#,     trimghost=3)#, bfieldlines=True)
-                #vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz')#,     trimghost=3)#, bfieldlines=True)
+                vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot', trimaxis=3)#, trimghost=3)
+                vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
+                vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
+                vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
                  
             if 'yt' in sys.argv:
                 mesh.yt_conversion()
@@ -437,6 +441,13 @@ if 'sl' in sys.argv:
 
             elif 'rawall' in sys.argv:
                 mesh.export_raw()
+
+            
+            del uu_tot   
+            del aa_tot   
+            del bb_tot  
+            del mesh   
+            gc.collect()  
 
 if 'aver' in sys.argv:
     mesh_file_numbers = ad.read.parse_directory(meshdir)
@@ -573,3 +584,39 @@ if 'getvtk' in sys.argv:
         if mesh.ok:
             #mesh.Bfield()
             mesh.export_vtk_ascii(Beq = myBeq)
+
+if '3drend' in sys.argv:
+    mesh_file_numbers = ad.read.parse_directory(meshdir)
+    mesh_file_numbers = mesh_file_numbers[-1:]
+    print(mesh_file_numbers)
+    maxfiles = np.amax(mesh_file_numbers)
+    
+    for i in mesh_file_numbers:
+        mesh = ad.read.Mesh(i, fdir=meshdir) 
+        print(" %i / %i" % (i, maxfiles))
+        if mesh.ok:
+            mesh.Bfield(trim=False)
+            mesh.lnrho = mesh.lnrho[3:-3,3:-3,3:-3] 
+            mesh.uu = (mesh.uu[0][3:-3,3:-3,3:-3], mesh.uu[1][3:-3,3:-3,3:-3], mesh.uu[2][3:-3,3:-3,3:-3])
+            mesh.aa = (mesh.aa[0][3:-3,3:-3,3:-3], mesh.aa[1][3:-3,3:-3,3:-3], mesh.aa[2][3:-3,3:-3,3:-3])
+            mesh.bb = (mesh.bb[0][3:-3,3:-3,3:-3], mesh.bb[1][3:-3,3:-3,3:-3], mesh.bb[2][3:-3,3:-3,3:-3])
+
+            print(mesh.lnrho.shape)
+
+            grid = pv.UniformGrid()
+            grid.dimensions = np.array(mesh.lnrho.shape) + 1
+            grid.origin = (128, 128, 128)  # The centre of the dataset
+            grid.spacing = (1, 1, 1)  
+            grid.cell_arrays["Bx"] = mesh.bb[1].flatten(order="F")  # Flatten the array!
+
+            del mesh   
+            gc.collect()  
+            
+            grid.plot(show_edges=False, cmap="inferno") 
+            
+            grid.plot(volume=True, cmap="inferno", opacity="sigmoid")
+
+            del grid    
+            gc.collect()  
+             
+    
