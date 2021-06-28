@@ -5,6 +5,8 @@
 
 #include "timer_hires.h"
 
+#include <cuda_profiler_api.h>
+
 #define NSAMPLES (100)
 
 int
@@ -70,6 +72,7 @@ main(int argc, char** argv)
     acVerifyMesh("Integration", model, candidate);
 
     // Benchmark
+    cudaProfilerStart();
     Timer t;
     timer_reset(&t);
     for (int i = 0; i < NSAMPLES; ++i)
@@ -77,6 +80,7 @@ main(int argc, char** argv)
     acSynchronize();
     const double ms_elapsed = timer_diff_nsec(t) / 1e6;
     printf("Average integration time: %.4g ms\n", ms_elapsed / NSAMPLES);
+    cudaProfilerStop();
 
     // Destroy
     acQuit();
