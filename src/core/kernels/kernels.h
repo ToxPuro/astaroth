@@ -73,7 +73,7 @@ AcResult acKernelIntegrateSubstep(const KernelParameters params, VertexBufferArr
 /** */
 AcResult acKernelPartialPackData(const cudaStream_t stream, const VertexBufferArray vba,
                                  const int3 vba_start, const int3 dims, AcRealPacked* packed,
-                                 VertexBufferHandle variable_scope[], size_t var_scope_len);
+                                 VertexBufferHandle vtxbufs[], size_t num_vtxbufs);
 
 /** */
 AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
@@ -82,7 +82,7 @@ AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packe
 /** */
 AcResult acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
                                    const int3 vba_start, const int3 dims, VertexBufferArray vba,
-                                   VertexBufferHandle variable_scope[], size_t var_scope_len);
+                                   VertexBufferHandle vtxbufs[], size_t num_vtxbufs);
 
 /** */
 AcReal acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,

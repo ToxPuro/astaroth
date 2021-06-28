@@ -47,38 +47,38 @@
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
 
 AcTaskDefinition
-Compute(const AcKernel kernel, VertexBufferHandle scope[], const size_t scope_length)
+Compute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
 {
     AcTaskDefinition task_def{};
     task_def.task_type    = TaskType_Compute;
     task_def.kernel       = kernel;
-    task_def.scope        = scope;
-    task_def.scope_length = scope_length;
+    task_def.vtxbuf_dependencies        = vtxbuf_dependencies;
+    task_def.num_vtxbufs = num_vtxbufs;
     return task_def;
 }
 
 AcTaskDefinition
-HaloExchange(const AcBoundaryCondition bound_cond, VertexBufferHandle scope[],
-             const size_t scope_length)
+HaloExchange(const AcBoundaryCondition bound_cond, VertexBufferHandle vtxbuf_dependencies[],
+             const size_t num_vtxbufs)
 {
     AcTaskDefinition task_def{};
     task_def.task_type    = TaskType_HaloExchange;
     task_def.bound_cond   = bound_cond;
-    task_def.scope        = scope;
-    task_def.scope_length = scope_length;
+    task_def.vtxbuf_dependencies        = vtxbuf_dependencies;
+    task_def.num_vtxbufs = num_vtxbufs;
     return task_def;
 }
 
-VariableScope::VariableScope(const VertexBufferHandle h_variables[], const size_t num_vars_)
+VtxbufSet::VtxbufSet(const VertexBufferHandle h_variables[], const size_t num_vars_)
     : num_vars(num_vars_)
 {
     variables         = NULL;
-    size_t scope_size = num_vars * sizeof(VertexBufferHandle);
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&variables, scope_size));
-    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(variables, h_variables, scope_size, cudaMemcpyHostToDevice));
+    size_t num_bytes = num_vars * sizeof(VertexBufferHandle);
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&variables, num_bytes));
+    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(variables, h_variables, num_bytes, cudaMemcpyHostToDevice));
 }
 
-VariableScope::~VariableScope()
+VtxbufSet::~VtxbufSet()
 {
     cudaFree(variables);
     variables = NULL;
@@ -330,7 +330,7 @@ Task::poll_stream()
 
 /* Computation */
 ComputeTask::ComputeTask(ComputeKernel compute_func_,
-                         std::shared_ptr<VariableScope> variable_scope_, int order_, int region_tag,
+                         std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_, int region_tag,
                          int3 nn, Device device_)
     : Task(order_, RegionFamily::Compute_input, RegionFamily::Compute_output, region_tag, nn, device_)
 {
@@ -338,7 +338,7 @@ ComputeTask::ComputeTask(ComputeKernel compute_func_,
     syncVBA();
 
     compute_func   = compute_func_;
-    variable_scope = variable_scope_;
+    vtxbuf_dependencies = vtxbuf_dependencies_;
 
     params = KernelParameters{stream, 0, output_region->position,
                               output_region->position + output_region->dims};
@@ -471,12 +471,12 @@ HaloMessageSwapChain::get_fresh_buffer()
 }
 
 // HaloExchangeTask
-HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope_, int order_,
+HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_,
                                    int tag_0, int halo_region_tag, int3 nn, uint3_64 decomp,
                                    Device device_)
     : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, halo_region_tag, nn, device_),
-      recv_buffers(output_region->dims, variable_scope_->num_vars),
-      send_buffers(input_region->dims, variable_scope_->num_vars)
+      recv_buffers(output_region->dims, vtxbuf_dependencies_->num_vars),
+      send_buffers(input_region->dims, vtxbuf_dependencies_->num_vars)
 {
     // Create stream for packing/unpacking
     {
@@ -487,7 +487,7 @@ HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope
     }
     syncVBA();
 
-    variable_scope = variable_scope_;
+    vtxbuf_dependencies = vtxbuf_dependencies_;
 
     counterpart_rank = getPid(getPid3D(rank, decomp) + output_region->id, decomp);
     // MPI tags are namespaced to avoid collisions with other MPI tasks
@@ -522,7 +522,7 @@ HaloExchangeTask::pack()
 {
     auto msg = send_buffers.get_fresh_buffer();
     // acKernelPartialPackData(stream, vba, input_region->position, input_region->dims,
-    //                         msg->data, variable_scope->variables, variable_scope->num_vars);
+    //                         msg->data, vtxbuf_dependencies->variables, vtxbuf_dependencies->num_vars);
     acKernelPackData(stream, vba, input_region->position, input_region->dims, msg->data);
 }
 
@@ -535,7 +535,7 @@ HaloExchangeTask::unpack()
     msg->unpin(device, stream);
 #endif
     // acKernelPartialUnpackData(stream, msg->data, output_region->position, output_region->dims,
-    //                           vba, variable_scope->variables, variable_scope->num_vars);
+    //                           vba, vtxbuf_dependencies->variables, vtxbuf_dependencies->num_vars);
     acKernelUnpackData(stream, msg->data, output_region->position, output_region->dims, vba);
 }
 

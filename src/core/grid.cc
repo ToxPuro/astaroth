@@ -170,13 +170,13 @@ acGridInit(const AcMeshInfo info)
 
     grid.mpi_tag_space_count = 0;
 
-    VertexBufferHandle full_variable_scope[NUM_VTXBUF_HANDLES];
+    VertexBufferHandle full_variable_vtxbuf_dependencies[NUM_VTXBUF_HANDLES];
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
-        full_variable_scope[i] = (VertexBufferHandle)i;
+        full_variable_vtxbuf_dependencies[i] = (VertexBufferHandle)i;
     }
 
-    AcTaskDefinition default_task_defs[] = {HaloExchange(Boundconds_Periodic, full_variable_scope),
-                                          Compute(Kernel_solve, full_variable_scope)};
+    AcTaskDefinition default_task_defs[] = {HaloExchange(Boundconds_Periodic, full_variable_vtxbuf_dependencies),
+                                          Compute(Kernel_solve, full_variable_vtxbuf_dependencies)};
 
     grid.initialized   = true;
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_task_defs));
@@ -406,7 +406,6 @@ AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 {
     // ERRCHK(grid.initialized);
-    using VarScopePtr = std::shared_ptr<VariableScope>;
 
     AcTaskGraph* graph = new AcTaskGraph();
     graph->num_swaps = 0;
@@ -427,7 +426,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
     for (size_t i = 0; i < n_ops; i++) {
         auto op          = ops[i];
-        VarScopePtr vars = std::make_shared<VariableScope>(op.scope, op.scope_length);
+        std::shared_ptr<VtxbufSet> vtxbuf_deps = std::make_shared<VtxbufSet>(op.vtxbuf_dependencies, op.num_vtxbufs);
 
         op_indices.push_back(graph->all_tasks.size());
         switch (op.task_type) {
@@ -436,7 +435,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             graph->num_swaps++;
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
                 graph->all_tasks.push_back(
-                    std::make_shared<ComputeTask>(kernel, vars, i, tag, nn, device));
+                    std::make_shared<ComputeTask>(kernel, vtxbuf_deps, i, tag, nn, device));
             }
             break;
         }
@@ -450,15 +449,14 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                     (tgt.x == -1 || tgt.y == -1 || tgt.z == -1 || tgt.x == (int)decomp.x ||
                      tgt.y == (int)decomp.y || tgt.z == (int)decomp.z)) {
                     // For now, create separate tasks for each field
-                    for (size_t j = 0; j < op.scope_length; j++) {
-                        VertexBufferHandle var = op.scope[j];
+                    for (size_t j = 0; j < op.num_vtxbufs; j++) {
                         graph->all_tasks.push_back(
-                            std::make_shared<BoundaryConditionTask>(bc, var, j, tag, nn, device));
+                            std::make_shared<BoundaryConditionTask>(bc, op.vtxbuf_dependencies[j], j, tag, nn, device));
                     }
                 }
                 else {
                     graph->halo_tasks.push_back(
-                        std::make_shared<HaloExchangeTask>(vars, i, tag0, tag, nn, decomp, device));
+                        std::make_shared<HaloExchangeTask>(vtxbuf_deps, i, tag0, tag, nn, decomp, device));
                     graph->all_tasks.push_back(graph->halo_tasks.back());
                 }
             }
@@ -469,37 +467,37 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     }
     op_indices.push_back(graph->all_tasks.size());
 
-    // Find dependencies between operations, i.e. check for scope overlap
+    // Find dependencies between operations, i.e. check for vtxbuf_dependencies overlap
     // TODO: write about how this 
     std::vector<std::pair<size_t, size_t>> op_dependencies;
     op_dependencies.reserve(n_ops);
 
     for (size_t dependent = 0; dependent < n_ops; dependent++) {
-        std::array<bool, NUM_VTXBUF_HANDLES> dept_vars{};
-        for (size_t i = 0; i < ops[dependent].scope_length; i++) {
-            dept_vars[(int)ops[dependent].scope[i]] = true;
+        std::array<bool, NUM_VTXBUF_HANDLES> dept_vtxbufs{};
+        for (size_t i = 0; i < ops[dependent].num_vtxbufs; i++) {
+            dept_vtxbufs[(int)ops[dependent].vtxbuf_dependencies[i]] = true;
         }
-        // look backwards until we've found each variable in task scope
+        // look backwards until we've found each variable in task vtxbuf_dependencies
         for (size_t j = 0; j < n_ops; j++) {
             size_t prereq  = (dependent - j - 1) % n_ops;
             bool dep_found = false;
-            for (size_t i = 0; i < ops[prereq].scope_length; i++) {
+            for (size_t i = 0; i < ops[prereq].num_vtxbufs; i++) {
                 dep_found                       = true;
-                dept_vars[ops[prereq].scope[i]] = false;
+                dept_vtxbufs[ops[prereq].vtxbuf_dependencies[i]] = false;
             }
             if (dep_found) {
                 op_dependencies.emplace_back(prereq, dependent);
                 // printf("dep: %lu -> %lu\n",prereq, dependent);
             }
 
-            if (std::find(begin(dept_vars), end(dept_vars), true) != dept_vars.end()) {
+            if (std::find(begin(dept_vtxbufs), end(dept_vtxbufs), true) != dept_vtxbufs.end()) {
                 break;
             }
         }
     }
 
     // Assign dependencies between tasks if both:
-    // 1. their operations are dependent (scope overlaps)
+    // 1. their operations are dependent (vtxbuf_dependencies overlaps)
     // 2. their regions overlap
     for (auto& depcy : op_dependencies) {
         // printf("assigning dep: %lu -> %lu\n",depcy.first, depcy.second);

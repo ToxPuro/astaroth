@@ -33,22 +33,13 @@
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
 static_assert(SWAP_CHAIN_LENGTH == 2);
 
-
-/**
- * Variable scope
- * --------------
- *
- *  A variable scope is...
- *  TODO: write explanation of var scope
- */
-
-struct VariableScope {
+struct VtxbufSet {
     VertexBufferHandle* variables;
     size_t num_vars;
-    VariableScope(const VertexBufferHandle* variables_, const size_t num_vars_);
-    ~VariableScope();
-    VariableScope(const VariableScope& other) = delete;
-    VariableScope& operator=(const VariableScope& other) = delete;
+    VtxbufSet(const VertexBufferHandle* variables_, const size_t num_vars_);
+    ~VtxbufSet();
+    VtxbufSet(const VtxbufSet& other) = delete;
+    VtxbufSet& operator=(const VtxbufSet& other) = delete;
 };
 
 /**
@@ -145,7 +136,7 @@ typedef class Task {
 
     std::unique_ptr<Region> output_region;
     std::unique_ptr<Region> input_region;
-    std::shared_ptr<VariableScope> variable_scope;
+    std::shared_ptr<VtxbufSet> vtxbuf_dependencies;
 
     static const int wait_state = 0;
 
@@ -179,7 +170,7 @@ typedef class ComputeTask : public Task {
     KernelParameters params;
 
   public:
-    ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VariableScope> variable_scope_,
+    ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VtxbufSet> vtxbuf_dependencies_,
                 int order_, int region_tag, int3 nn, Device device_);
     ComputeTask(const ComputeTask& other) = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
@@ -234,7 +225,7 @@ typedef class HaloExchangeTask : public Task {
     HaloMessageSwapChain send_buffers;
 
   public:
-    HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope_, int order_, int tag_0,
+    HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_, int tag_0,
                      int halo_region_tag, int3 nn, uint3_64 decomp, Device device_);
     ~HaloExchangeTask();
     HaloExchangeTask(const HaloExchangeTask& other) = delete;

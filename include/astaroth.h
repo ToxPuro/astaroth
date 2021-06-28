@@ -468,19 +468,19 @@ typedef struct AcTaskDefinition {
         AcKernel kernel;
         AcBoundaryCondition bound_cond;
     };
-    VertexBufferHandle* scope;
-    size_t scope_length;
+    VertexBufferHandle* vtxbuf_dependencies;
+    size_t num_vtxbufs;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of commands.*/
 typedef struct AcTaskGraph AcTaskGraph;
 
 /** */
-AcTaskDefinition Compute(const AcKernel kernel, VertexBufferHandle scope[], const size_t scope_length);
+AcTaskDefinition Compute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs);
 
 /** */
-AcTaskDefinition HaloExchange(const AcBoundaryCondition bound_cond, VertexBufferHandle scope[],
-                              const size_t scope_length);
+AcTaskDefinition HaloExchange(const AcBoundaryCondition bound_cond, VertexBufferHandle vtxbuf_dependencies[],
+                              const size_t num_vtxbufs);
 
 /** */
 AcTaskGraph* acGridGetDefaultTaskGraph();
@@ -812,19 +812,19 @@ AcResult acHostMeshDestroy(AcMesh* mesh);
 
 #ifdef __cplusplus
 /** */
-template <size_t scope_length>
+template <size_t num_vtxbufs>
 AcTaskDefinition
-Compute(AcKernel kernel, VertexBufferHandle (&scope)[scope_length])
+Compute(AcKernel kernel, VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
 {
-    return Compute(kernel, scope, scope_length);
+    return Compute(kernel, vtxbuf_dependencies, num_vtxbufs);
 }
 
 /** */
-template <size_t scope_length>
+template <size_t num_vtxbufs>
 AcTaskDefinition
-HaloExchange(AcBoundaryCondition bound_cond, VertexBufferHandle (&scope)[scope_length])
+HaloExchange(AcBoundaryCondition bound_cond, VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
 {
-    return HaloExchange(bound_cond, scope, scope_length);
+    return HaloExchange(bound_cond, vtxbuf_dependencies, num_vtxbufs);
 }
 
 /** */
