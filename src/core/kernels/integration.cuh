@@ -60,7 +60,7 @@ typedef enum {
 #define DERX_0 (0)
 
 // clang-format off
-static __device__ const AcReal
+static __device__ const AcReal __restrict__
     stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH] =
 #include "stencils.in" // Nice hack 8-)
 
@@ -148,7 +148,7 @@ gen_kernel_out(void)
     for (int i = 0; i < NUM_FIELDS; ++i) {
         fprintf(fp,
                 "AcReal* __restrict__ out%d = vba.out[%d];\n"
-                "out%d[idx] = rk3_integrate<step_number>(out%d[idx], "
+                "out%d[idx] = rk3_integrate(step_number, out%d[idx], "
                 "processed_stencils[%d][STENCIL_VALUE], rate_of_change[%d], DCONST(AC_dt));\n",
                 i, i, i, i, i, i);
     }
@@ -347,10 +347,9 @@ entropy(const AcReal s[NUM_FIELDS][NUM_STENCILS])
     return -dot(value(UU), gradient(SS)) + inv_pT * RHS + heat_conduction(s);
 }
 
-template <int step_number>
 static __device__ AcReal
-rk3_integrate(const AcReal state_previous, const AcReal state_current, const AcReal rate_of_change,
-              const AcReal dt)
+rk3_integrate(const int step_number, const AcReal state_previous, const AcReal state_current,
+              const AcReal rate_of_change, const AcReal dt)
 {
     // Williamson (1980)
     const AcReal alpha[] = {0, AcReal(.0), AcReal(-5. / 9.), AcReal(-153. / 128.)};
