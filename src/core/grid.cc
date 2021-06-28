@@ -406,25 +406,16 @@ AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 {
     // ERRCHK(grid.initialized);
-    using Task_vector = std::vector<std::shared_ptr<Task>>;
     using VarScopePtr = std::shared_ptr<VariableScope>;
 
     AcTaskGraph* graph = new AcTaskGraph();
     graph->num_swaps = 0;
-    //NOTE: this function is sensitive to iterator invalidation. 
-    //make sure graph->all_tasks has enough capacity upfront, otherwise you will see segfaults.
-    //
-    //Any design change that increases the number of elements in graph->all_tasks needs to increase
-    //its reserved capacity as well.
-    //TODO: remove comp_tasks
-    graph->comp_tasks.reserve(n_ops * Region::n_comp_regions);
     graph->halo_tasks.reserve(n_ops * Region::n_halo_regions);
-    graph->all_tasks.reserve(n_ops * NUM_VTXBUF_HANDLES *
-                             max(Region::n_halo_regions, Region::n_comp_regions));
+    graph->all_tasks.reserve(n_ops * max(Region::n_halo_regions, Region::n_comp_regions));
 
-    // Create tasks for each operation & store iterators to ranges of tasks belonging to operations
-    std::vector<Task_vector::iterator> op_itors;
-    op_itors.reserve(n_ops);
+    // Create tasks for each operation & store indices to ranges of tasks belonging to operations
+    std::vector<size_t> op_indices;
+    op_indices.reserve(n_ops);
 
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -438,15 +429,14 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         auto op          = ops[i];
         VarScopePtr vars = std::make_shared<VariableScope>(op.scope, op.scope_length);
 
-        op_itors.push_back(graph->all_tasks.end());
+        op_indices.push_back(graph->all_tasks.size());
         switch (op.task_type) {
         case TaskType_Compute: {
             ComputeKernel kernel = kernel_lookup[(int)op.kernel];
             graph->num_swaps++;
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
-                graph->comp_tasks.push_back(
+                graph->all_tasks.push_back(
                     std::make_shared<ComputeTask>(kernel, vars, i, tag, nn, device));
-                graph->all_tasks.push_back(graph->comp_tasks.back());
             }
             break;
         }
@@ -477,7 +467,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         }
         }
     }
-    op_itors.push_back(graph->all_tasks.end());
+    op_indices.push_back(graph->all_tasks.size());
 
     // Find dependencies between operations, i.e. check for scope overlap
     // TODO: write about how this 
@@ -513,21 +503,21 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     // 2. their regions overlap
     for (auto& depcy : op_dependencies) {
         // printf("assigning dep: %lu -> %lu\n",depcy.first, depcy.second);
-        for (auto preq = op_itors[depcy.first]; preq != op_itors[depcy.first + 1]; preq++) {
-            if ((*preq)->active) {
-                for (auto dept = op_itors[depcy.second]; dept != op_itors[depcy.second + 1];
-                     dept++) {
-                    if ((*dept)->active &&
-                        (*preq)->output_region->overlaps((*dept)->input_region.get())) {
+        for (auto i = op_indices[depcy.first]; i != op_indices[depcy.first + 1]; i++) {
+            auto preq = graph->all_tasks[i];
+            if (preq->active) {
+                for (auto j = op_indices[depcy.second]; j != op_indices[depcy.second + 1]; j++) {
+                    auto dept = graph->all_tasks[j];
+                    if (dept->active &&
+                        preq->output_region->overlaps(dept->input_region.get())) {
                         //Only allowed offsets at the moment are 0 or 1.
-                        (*preq)->registerDependent(*dept, depcy.first < depcy.second ? 0 : 1);
+                        preq->registerDependent(dept, depcy.first < depcy.second ? 0 : 1);
                     }
                 }
             }
         }
     }
 
-    graph->comp_tasks.shrink_to_fit();
     graph->halo_tasks.shrink_to_fit();
     graph->all_tasks.shrink_to_fit();
 
@@ -545,7 +535,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                (vol1 == vol2 && ((!comp1 && comp2) || dim1.x < dim2.x || dim1.z > dim2.z));
     };
 
-    std::sort(graph->comp_tasks.begin(), graph->comp_tasks.end(), sort_lambda);
     std::sort(graph->halo_tasks.begin(), graph->halo_tasks.end(), sort_lambda);
     std::sort(graph->all_tasks.begin(), graph->all_tasks.end(), sort_lambda);
     return graph;
@@ -555,7 +544,6 @@ AcResult
 acGridDestroyTaskGraph(AcTaskGraph* graph)
 {
     graph->all_tasks.clear();
-    graph->comp_tasks.clear();
     graph->halo_tasks.clear();
     delete graph;
     return AC_SUCCESS;
