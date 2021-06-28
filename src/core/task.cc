@@ -88,6 +88,10 @@ VariableScope::~VariableScope()
 Region::Region(RegionFamily _family, int _tag, int3 nn) : family(_family), tag(_tag)
 {
     id          = tag_to_id(tag);
+    //facet class 0 = inner core
+    //facet class 1 = face
+    //facet class 2 = edge
+    //facet class 3 = corner
     facet_class = (id.x == 0 ? 0 : 1) + (id.y == 0 ? 0 : 1) + (id.z == 0 ? 0 : 1);
     ERRCHK_ALWAYS(facet_class <= 3);
 
@@ -231,7 +235,7 @@ Task::isFinished()
 }
 
 void
-Task::update()
+Task::update(bool do_swapVBA)
 {
     if (isFinished())
         return;
@@ -246,6 +250,7 @@ Task::update()
         // Therefore, in the example, dep_cntr.targets = {5,10}:
         // if the loop counter is 0 or 1, we choose targets[0] (5) and targets[1] (10) respecively
         // if the loop counter is greater than that (e.g. 3) we select the final target count (10).
+
         if (dep_cntr.targets.size() == 0) {
             ready = true;
         }
@@ -263,7 +268,9 @@ Task::update()
     if (ready) {
         advance();
         if (state == wait_state) {
-            swapVBA();
+            if (do_swapVBA) {
+                swapVBA();
+            }
             notifyDependents();
             loop_cntr.i++;
         }
@@ -317,6 +324,7 @@ Task::poll_stream()
     if (err == cudaErrorNotReady) {
         return false;
     }
+    //TODO: print out the cuda error
     return false;
 }
 

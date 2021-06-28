@@ -416,6 +416,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     //
     //Any design change that increases the number of elements in graph->all_tasks needs to increase
     //its reserved capacity as well.
+    //TODO: remove comp_tasks
     graph->comp_tasks.reserve(n_ops * Region::n_comp_regions);
     graph->halo_tasks.reserve(n_ops * Region::n_halo_regions);
     graph->all_tasks.reserve(n_ops * NUM_VTXBUF_HANDLES *
@@ -479,6 +480,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     op_itors.push_back(graph->all_tasks.end());
 
     // Find dependencies between operations, i.e. check for scope overlap
+    // TODO: write about how this 
     std::vector<std::pair<size_t, size_t>> op_dependencies;
     op_dependencies.reserve(n_ops);
 
@@ -517,6 +519,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                      dept++) {
                     if ((*dept)->active &&
                         (*preq)->output_region->overlaps((*dept)->input_region.get())) {
+                        //Only allowed offsets at the moment are 0 or 1.
                         (*preq)->registerDependent(*dept, depcy.first < depcy.second ? 0 : 1);
                     }
                 }
@@ -572,18 +575,20 @@ acGridExecuteTaskGraph(const AcTaskGraph* graph, size_t n_iterations)
         }
     }
 
+    bool do_swapVBA = (graph->num_swaps * n_iterations % 2) != 0;
+
     bool ready;
     do {
         ready = true;
         for (auto& task : graph->all_tasks) {
             if (task->active) {
-                task->update();
+                task->update(do_swapVBA);
                 ready &= task->isFinished();
             }
         }
     } while (!ready);
 
-    if (graph->num_swaps * n_iterations % 2 != 0) {
+    if (do_swapVBA){
         acDeviceSwapBuffers(grid.device);
     }
     return AC_SUCCESS;

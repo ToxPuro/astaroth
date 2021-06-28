@@ -33,6 +33,15 @@
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
 static_assert(SWAP_CHAIN_LENGTH == 2);
 
+
+/**
+ * Variable scope
+ * --------------
+ *
+ *  A variable scope is...
+ *  TODO: write explanation of var scope
+ */
+
 struct VariableScope {
     VertexBufferHandle* variables;
     size_t num_vars;
@@ -74,8 +83,13 @@ struct Region {
 
     RegionFamily family;
     int3 id;
-    size_t facet_class;
     int tag;
+
+    //facet class 0 = inner core
+    //facet class 1 = face
+    //facet class 2 = edge
+    //facet class 3 = corner
+    size_t facet_class;
 
     static constexpr int min_halo_tag   = 1;
     static constexpr int max_halo_tag   = 27;
@@ -103,13 +117,13 @@ struct Region {
  */
 typedef class Task {
   protected:
-    std::vector<std::pair<std::weak_ptr<Task>, size_t>> dependents;
     Device device;
     cudaStream_t stream;
     VertexBufferArray vba;
 
     int state;
 
+    std::vector<std::pair<std::weak_ptr<Task>, size_t>> dependents;
     struct {
         std::vector<size_t> counts;
         std::vector<size_t> targets;
@@ -123,7 +137,7 @@ typedef class Task {
     bool poll_stream();
 
   public:
-    int rank;
+    int rank;  // MPI rank
     int order; // the ordinal position of the task in a serial execution (within its region)
     bool active;
     std::string name;
@@ -144,7 +158,7 @@ typedef class Task {
     bool isPrerequisiteTo(std::shared_ptr<Task> other);
 
     void setIterationParams(size_t begin, size_t end);
-    void update();
+    void update(bool do_swapVBA);
     bool isFinished();
 
     void notifyDependents();
