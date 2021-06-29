@@ -611,11 +611,11 @@ if '3drend' in sys.argv:
             grid.origin = (128, 128, 128)  # The centre of the dataset
             grid.spacing = (1, 1, 1)  
             #grid.cell_arrays["Bx"] = mesh.bb[1].flatten(order="F")  # Flatten the array!
-            #grid.cell_arrays["rho"] = np.exp(mesh.lnrho).flatten(order="F")  # Flatten the array!
+            grid.cell_arrays["rho"] = np.exp(mesh.lnrho).flatten(order="F")  # Flatten the array!
             #grid.cell_arrays["Btot"] = np.sqrt(mesh.bb[0]**2.0 + mesh.bb[1]**2.0 + mesh.bb[2]**2.0).flatten(order="F")  # Flatten the array!
             #grid.cell_arrays["Utot"] = np.sqrt(mesh.uu[0]**2.0 + mesh.uu[1]**2.0 + mesh.uu[2]**2.0).flatten(order="F")  # Flatten the array!
             #grid.cell_arrays["j_tot"] = np.sqrt(mesh.jj[0]**2.0 + mesh.jj[1]**2.0 + mesh.jj[2]**2.0).flatten(order="F")  # Flatten the array!
-            grid.cell_arrays["j_xy"] = np.sqrt(mesh.jj[0]**2.0 + mesh.jj[1]**2.0).flatten(order="F")  # Flatten the array!
+            #grid.cell_arrays["j_xy"] = np.sqrt(mesh.jj[0]**2.0 + mesh.jj[1]**2.0).flatten(order="F")  # Flatten the array!
 
             del mesh   
             gc.collect()  
@@ -633,7 +633,7 @@ if '3drend' in sys.argv:
             pp = pv.Plotter()
             pp.background_color="black"
 
-            pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear")#, clim = [1.0, 200.0]) # Pseudodisk j_xy, B0 = 30,3000 muG 
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear")#, clim = [1.0, 200.0]) # Pseudodisk j_xy, B0 = 30,3000 muG 
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear")#, clim = [1.0, 200.0]) # Pseudodisk j_xy, B0 = 30,3000 muG 
              
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear", clim = [1.0, 200.0]) # Pseudodisk j_tot, B0 = 3000 muG 
@@ -645,6 +645,16 @@ if '3drend' in sys.argv:
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[0.3, 40.0]) # Pseudodisk Btot, B0 = 30 muG 
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[18.9, 30.0]) # Pseudodisk Btot, B0 = 3000 muG 
 
+            aaa = np.arange(256)
+            opwave = np.cos(3.0*((aaa/256)*2.0*np.pi))
+            #opwave[np.where(opwave < 0.0)] = 0.0
+            opwave = np.abs(opwave)
+            opwave = opwave[::2]
+            scale = np.linspace(0.0, 1.0, num = opwave.size)
+            opwave = opwave*scale
+            print(opwave)  
+            
+            pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[0.0, 20.0], opacity=opwave) # Pseudodisk rho 
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[0.0, 20.0], opacity=[0.0, 0.5, 0.9, 0.95, 1.0]) # Pseudodisk rho 
 
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity=[0.0, 0.0, 0.0, 0.2, 1.0], clim=[0.9, 1.1])
