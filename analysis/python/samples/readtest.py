@@ -59,7 +59,9 @@ AC_unit_length   = 1.496e+13
 
 print("sys.argv", sys.argv)
 
-meshdir  = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir/"
+#meshdir  = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir/"
+meshdir  = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir2/"
+meshdir  = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir3/"
 
 
 #Example fixed scaling template
@@ -595,11 +597,12 @@ if '3drend' in sys.argv:
         mesh = ad.read.Mesh(i, fdir=meshdir) 
         print(" %i / %i" % (i, maxfiles))
         if mesh.ok:
-            mesh.Bfield(trim=False)
+            mesh.Bfield(trim=False, get_jj=True)
             mesh.lnrho = mesh.lnrho[3:-3,3:-3,3:-3] 
             mesh.uu = (mesh.uu[0][3:-3,3:-3,3:-3], mesh.uu[1][3:-3,3:-3,3:-3], mesh.uu[2][3:-3,3:-3,3:-3])
             mesh.aa = (mesh.aa[0][3:-3,3:-3,3:-3], mesh.aa[1][3:-3,3:-3,3:-3], mesh.aa[2][3:-3,3:-3,3:-3])
             mesh.bb = (mesh.bb[0][3:-3,3:-3,3:-3], mesh.bb[1][3:-3,3:-3,3:-3], mesh.bb[2][3:-3,3:-3,3:-3])
+            mesh.jj = (mesh.jj[0][3:-3,3:-3,3:-3], mesh.jj[1][3:-3,3:-3,3:-3], mesh.jj[2][3:-3,3:-3,3:-3])
 
             print(mesh.lnrho.shape)
 
@@ -607,16 +610,51 @@ if '3drend' in sys.argv:
             grid.dimensions = np.array(mesh.lnrho.shape) + 1
             grid.origin = (128, 128, 128)  # The centre of the dataset
             grid.spacing = (1, 1, 1)  
-            grid.cell_arrays["Bx"] = mesh.bb[1].flatten(order="F")  # Flatten the array!
+            #grid.cell_arrays["Bx"] = mesh.bb[1].flatten(order="F")  # Flatten the array!
+            #grid.cell_arrays["rho"] = np.exp(mesh.lnrho).flatten(order="F")  # Flatten the array!
+            #grid.cell_arrays["Btot"] = np.sqrt(mesh.bb[0]**2.0 + mesh.bb[1]**2.0 + mesh.bb[2]**2.0).flatten(order="F")  # Flatten the array!
+            #grid.cell_arrays["Utot"] = np.sqrt(mesh.uu[0]**2.0 + mesh.uu[1]**2.0 + mesh.uu[2]**2.0).flatten(order="F")  # Flatten the array!
+            #grid.cell_arrays["j_tot"] = np.sqrt(mesh.jj[0]**2.0 + mesh.jj[1]**2.0 + mesh.jj[2]**2.0).flatten(order="F")  # Flatten the array!
+            grid.cell_arrays["j_xy"] = np.sqrt(mesh.jj[0]**2.0 + mesh.jj[1]**2.0).flatten(order="F")  # Flatten the array!
 
             del mesh   
             gc.collect()  
             
-            grid.plot(show_edges=False, cmap="inferno") 
-            
-            grid.plot(volume=True, cmap="inferno", opacity="sigmoid")
+            ###ppp = pv.Plotter()
+            ###ppp.add_mesh_slice(grid, cmap="plasma", assign_to_axis='x', implicit=False)            
+            ###ppp.add_mesh_slice(grid, cmap="plasma", assign_to_axis='y', implicit=False)            
+            ###ppp.add_mesh_slice(grid, cmap="plasma", assign_to_axis='z', implicit=False)            
+            ###ppp.show() 
+            ####grid.plot(show_edges=False, cmap="inferno") 
 
-            del grid    
+            ###del ppp
+            ###gc.collect()  
+           
+            pp = pv.Plotter()
+            pp.background_color="black"
+
+            pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear")#, clim = [1.0, 200.0]) # Pseudodisk j_xy, B0 = 30,3000 muG 
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear")#, clim = [1.0, 200.0]) # Pseudodisk j_xy, B0 = 30,3000 muG 
+             
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear", clim = [1.0, 200.0]) # Pseudodisk j_tot, B0 = 3000 muG 
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear")#, clim = [1.0, 200.0]) # Pseudodisk j_tot, B0 = 30 muG 
+
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[3.5, 4.0], opacity = [0.0,1.0])#, opacity=[0.0, 0.1, 0.75, 0.8, 1.0]) # Pseudodisk Utot, B0 = 30 muG 
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[1.0, 6.0]) # Pseudodisk Utot, B0 = 3000 muG 
+
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[0.3, 40.0]) # Pseudodisk Btot, B0 = 30 muG 
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[18.9, 30.0]) # Pseudodisk Btot, B0 = 3000 muG 
+
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[0.0, 20.0], opacity=[0.0, 0.5, 0.9, 0.95, 1.0]) # Pseudodisk rho 
+
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity=[0.0, 0.0, 0.0, 0.2, 1.0], clim=[0.9, 1.1])
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear", clim=[-0.5, 0.5])
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity=[1.0, 0.25, 0.0, 0.25, 1.0], clim=[-0.5, 0.5])
+            pp.show()
+
+            pp.deep_clean()
+
+            del grid, pp     
             gc.collect()  
              
     
