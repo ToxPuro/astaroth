@@ -65,7 +65,7 @@ struct VtxbufSet {
  * in an MPI message.
  */
 
-enum class RegionFamily { Exchange_output, Exchange_input, Compute_output, Compute_input };
+enum class RegionFamily { Exchange_output, Exchange_input, Compute_output, Compute_input, None };
 
 struct Region {
     int3 position;
@@ -89,11 +89,14 @@ struct Region {
     static constexpr int max_comp_tag   = 27;
     static constexpr int n_comp_regions = max_comp_tag - min_comp_tag + 1;
 
-    static int id_to_tag(int3 _id);
-    static int3 tag_to_id(int _tag);
+    static int id_to_tag(int3 id_);
+    static int3 tag_to_id(int tag_);
 
-    Region(RegionFamily _family, int _tag, int3 nn);
-    Region(RegionFamily _family, int3 _id, int3 nn);
+    Region(RegionFamily family_, int tag_, int3 nn);
+    Region(RegionFamily family_, int3 id_, int3 nn);
+    Region(int3 position_, int3 dims_, int tag);
+
+    Region translate(int3 translation);    
     bool overlaps(const Region* other);
 };
 
@@ -264,10 +267,12 @@ enum class BoundaryConditionState {
 typedef class BoundaryConditionTask : public Task {
   private:
     AcBoundaryCondition boundcond;
+    int3 boundary_normal;
     VertexBufferHandle variable;
   public:
-    BoundaryConditionTask(AcBoundaryCondition boundcond_, VertexBufferHandle variable_, int order_,
+    BoundaryConditionTask(AcBoundaryCondition boundcond_, int3 boundary_normal_, VertexBufferHandle variable_, int order_,
                           int region_tag, int3 nn, Device device_);
+    void populate_boundary_region();
     void advance();
     bool test();
 } BoundaryConditionTask;

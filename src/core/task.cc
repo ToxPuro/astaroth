@@ -85,7 +85,7 @@ VtxbufSet::~VtxbufSet()
     num_vars  = -1;
 }
 
-Region::Region(RegionFamily _family, int _tag, int3 nn) : family(_family), tag(_tag)
+Region::Region(RegionFamily family_, int tag_, int3 nn) : family(family_), tag(tag_)
 {
     id          = tag_to_id(tag);
     //facet class 0 = inner core
@@ -144,9 +144,22 @@ Region::Region(RegionFamily _family, int _tag, int3 nn) : family(_family), tag(_
     volume = dims.x * dims.y * dims.z;
 }
 
-Region::Region(RegionFamily _family, int3 _id, int3 nn) : Region{_family, id_to_tag(_id), nn}
+Region::Region(RegionFamily family_, int3 id_, int3 nn) : Region{family_, id_to_tag(id_), nn}
 {
-    ERRCHK_ALWAYS(_id.x == id.x && _id.y == id.y && _id.z == id.z);
+    ERRCHK_ALWAYS(id_.x == id.x && id_.y == id.y && id_.z == id.z);
+}
+
+Region::Region(int3 position_, int3 dims_, int tag_)
+: position(position_), dims(dims_), family(RegionFamily::None), tag(tag_)
+{
+    id = tag_to_id(tag);
+    facet_class = (id.x == 0 ? 0 : 1) + (id.y == 0 ? 0 : 1) + (id.z == 0 ? 0 : 1);
+}
+
+Region
+Region::translate(int3 translation)
+{
+    return Region(this->position+translation, this->dims, this->tag);
 }
 
 bool
@@ -697,11 +710,11 @@ HaloExchangeTask::advance()
     }
 }
 
-BoundaryConditionTask::BoundaryConditionTask(AcBoundaryCondition boundcond_,
+BoundaryConditionTask::BoundaryConditionTask(AcBoundaryCondition boundcond_, int3 boundary_normal_,
                                              VertexBufferHandle variable_, int order_,
                                              int region_tag, int3 nn, Device device_)
     : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, region_tag, nn, device_),
-      boundcond(boundcond_), variable(variable_)
+      boundcond(boundcond_), boundary_normal(boundary_normal_), variable(variable_)
 {
     // Create stream for boundary condition task
     {
@@ -711,10 +724,32 @@ BoundaryConditionTask::BoundaryConditionTask(AcBoundaryCondition boundcond_,
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
     syncVBA();
-
+    
+    int3 translation = int3{output_region->dims.x*(-boundary_normal.x),
+                            output_region->dims.y*(-boundary_normal.y),
+                            output_region->dims.z*(-boundary_normal.z)};
+    
+    input_region = std::make_unique<Region>(output_region->translate(translation));    
+   
     name = "Boundary condition(" + std::to_string(output_region->id.x) + "," +
            std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
-    task_type = TaskType_HaloExchange;
+    task_type = TaskType_BoundaryCondition;
+
+    
+}
+
+void
+BoundaryConditionTask::populate_boundary_region()
+{
+    switch (boundcond) {
+    case Boundconds_Symmetric:
+        acKernelSymmetricBoundconds(stream, input_region->id, boundary_normal, input_region->dims,
+                                    vba.in[variable]);
+        break;
+    default:
+        ERROR("BoundaryCondition not implemented yet.");
+    }
+
 }
 
 bool
@@ -737,14 +772,7 @@ BoundaryConditionTask::advance()
     switch (static_cast<BoundaryConditionState>(state)) {
     case BoundaryConditionState::Waiting:
         // logStateChangedEvent("waiting", "running");
-        switch (boundcond) {
-        case Boundconds_Symmetric:
-            acKernelSymmetricBoundconds(stream, input_region->id, input_region->dims,
-                                        vba.in[variable]);
-            break;
-        default:
-            ERROR("BoundaryCondition not implemented yet.");
-        }
+        populate_boundary_region();
         state = static_cast<int>(BoundaryConditionState::Running);
         break;
     case BoundaryConditionState::Running:

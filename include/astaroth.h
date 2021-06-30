@@ -455,7 +455,7 @@ AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
  */
 
 /** */
-typedef enum AcTaskType { TaskType_Compute, TaskType_HaloExchange } AcTaskType;
+typedef enum AcTaskType { TaskType_Compute, TaskType_HaloExchange, TaskType_BoundaryCondition } AcTaskType;
 
 /** */
 typedef enum AcBoundaryCondition { Boundconds_Periodic, Boundconds_Symmetric } AcBoundaryCondition;

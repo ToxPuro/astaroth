@@ -402,11 +402,37 @@ acGridGetDefaultTaskGraph()
     return grid.default_tasks.get();
 }
 
+std::vector<AcTaskDefinition> transform_ops(const AcTaskDefinition ops[], const size_t n_ops)
+{
+    std::vector<AcTaskDefinition> transformed_ops;
+    for (size_t i = 0; i < n_ops; i++) {
+        AcTaskDefinition op = ops[i];
+        switch (op.task_type) {
+        case TaskType_HaloExchange:
+            transformed_ops.push_back(op);
+            if (op.bound_cond != Boundconds_Periodic){
+                AcTaskDefinition bc_op = op;
+                bc_op.task_type = TaskType_BoundaryCondition;
+                transformed_ops.push_back(bc_op);
+            }
+            break;
+        default:
+            transformed_ops.push_back(op);
+            break;
+        }
+    }   
+
+    return transformed_ops;
+}
+
 AcTaskGraph*
-acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
+acGridBuildTaskGraph(const AcTaskDefinition ops_raw[], const size_t n_ops_raw)
 {
     // ERRCHK(grid.initialized);
+    std::vector<AcTaskDefinition> ops = transform_ops(ops_raw, n_ops_raw);
 
+    const size_t n_ops = ops.size();
+    
     AcTaskGraph* graph = new AcTaskGraph();
     graph->num_swaps = 0;
     graph->halo_tasks.reserve(n_ops * Region::n_halo_regions);
@@ -424,43 +450,76 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     int3 pid3d      = getPid3D(rank, grid.decomposition);
     Device device   = grid.device;
 
+    auto region_at_boundary = [&decomp, &pid3d](int tag) -> bool
+    {
+        int3 neighbor = pid3d + Region::tag_to_id(tag);
+        return neighbor.x == -1 || neighbor.x == (int)decomp.x
+            || neighbor.y == -1 || neighbor.y == (int)decomp.y
+            || neighbor.z == -1 || neighbor.z == (int)decomp.z;
+    };
+    auto boundary_normal = [&decomp, &pid3d](int tag) -> int3
+    {
+        int3 neighbor = pid3d + Region::tag_to_id(tag);
+        return int3{
+            neighbor.x == -1? -1: neighbor.x == (int)decomp.x? 1: 0,
+            neighbor.y == -1? -1: neighbor.y == (int)decomp.y? 1: 0,
+            neighbor.z == -1? -1: neighbor.z == (int)decomp.z? 1: 0
+        };
+    };
+
     for (size_t i = 0; i < n_ops; i++) {
         auto op          = ops[i];
         std::shared_ptr<VtxbufSet> vtxbuf_deps = std::make_shared<VtxbufSet>(op.vtxbuf_dependencies, op.num_vtxbufs);
 
         op_indices.push_back(graph->all_tasks.size());
+        
+        //if num swaps are odd so far, perform a VBA swap
+        bool do_swap = (graph->num_swaps % 2 != 0);
+        
+
         switch (op.task_type) {
         case TaskType_Compute: {
             ComputeKernel kernel = kernel_lookup[(int)op.kernel];
-            graph->num_swaps++;
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
-                graph->all_tasks.push_back(
-                    std::make_shared<ComputeTask>(kernel, vtxbuf_deps, i, tag, nn, device));
+                auto task = std::make_shared<ComputeTask>(kernel, vtxbuf_deps, i, tag, nn, device);
+                if (do_swap) {
+                    task->swapVBA();
+                }
+                graph->all_tasks.push_back(task);
             }
+            graph->num_swaps++;
             break;
         }
         case TaskType_HaloExchange: {
             int tag0             = grid.mpi_tag_space_count * Region::max_halo_tag;
             AcBoundaryCondition bc = op.bound_cond;
-            //TODO: limit to one process OR fix multiprocess symmetric boundconds
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
-                int3 tgt = pid3d + Region::tag_to_id(tag);
-                if (bc != Boundconds_Periodic &&
-                    (tgt.x == -1 || tgt.y == -1 || tgt.z == -1 || tgt.x == (int)decomp.x ||
-                     tgt.y == (int)decomp.y || tgt.z == (int)decomp.z)) {
-                    // For now, create separate tasks for each field
-                    for (size_t j = 0; j < op.num_vtxbufs; j++) {
-                        graph->all_tasks.push_back(
-                            std::make_shared<BoundaryConditionTask>(bc, op.vtxbuf_dependencies[j], j, tag, nn, device));
+                if (bc == Boundconds_Periodic || !region_at_boundary(tag)){
+                    auto task = std::make_shared<HaloExchangeTask>(vtxbuf_deps, i, tag0, tag, nn, decomp, device);
+                    if (do_swap) {
+                        task->swapVBA();
                     }
-                }
-                else {
-                    graph->halo_tasks.push_back(
-                        std::make_shared<HaloExchangeTask>(vtxbuf_deps, i, tag0, tag, nn, decomp, device));
-                    graph->all_tasks.push_back(graph->halo_tasks.back());
+                    graph->halo_tasks.push_back(task);
+                    graph->all_tasks.push_back(task);
                 }
             }
             grid.mpi_tag_space_count++;
+            break;
+        }
+        case TaskType_BoundaryCondition: {
+            AcBoundaryCondition bc = op.bound_cond;
+            for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
+                if (region_at_boundary(tag)){
+                    // For now, create separate tasks for each field
+                    for (size_t j = 0; j < op.num_vtxbufs; j++) {
+                        auto task = std::make_shared<BoundaryConditionTask>(bc, boundary_normal(tag), op.vtxbuf_dependencies[j], j, tag, nn, device);
+                        if (do_swap) {
+                            task->swapVBA();
+                        }
+                        graph->all_tasks.push_back(task);
+                    }
+                }
+            }
             break;
         }
         }
