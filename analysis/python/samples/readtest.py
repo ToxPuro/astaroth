@@ -59,10 +59,10 @@ AC_unit_length   = 1.496e+13
 
 print("sys.argv", sys.argv)
 
-#meshdir  = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir/"
-meshdir  = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir2/"
-meshdir  = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir3/"
-
+#meshdir = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir/"
+#meshdir = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir2/"
+#meshdir = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir3/"
+meshdir = "/media/mvaisala/e75642e6-fe9c-463f-b0e6-8f2c57dd7f00/mvaisala/simdata1/"
 
 #Example fixed scaling template
 if (meshdir == "/home/mvaisala/astaroth_projects/shockweek/astaroth/samples/test_cases/kin_sph_shock/"):
@@ -589,20 +589,25 @@ if 'getvtk' in sys.argv:
 
 if '3drend' in sys.argv:
     mesh_file_numbers = ad.read.parse_directory(meshdir)
-    mesh_file_numbers = mesh_file_numbers[-1:]
+    #mesh_file_numbers = mesh_file_numbers[-1:]
     print(mesh_file_numbers)
+    print(len(mesh_file_numbers))
     maxfiles = np.amax(mesh_file_numbers)
     
+    azimuth   = 0.0 
+    elevation = 0.0
     for i in mesh_file_numbers:
         mesh = ad.read.Mesh(i, fdir=meshdir) 
         print(" %i / %i" % (i, maxfiles))
         if mesh.ok:
+            um = mesh.minfo.contents['AC_unit_magnetic']
             mesh.Bfield(trim=False, get_jj=True)
             mesh.lnrho = mesh.lnrho[3:-3,3:-3,3:-3] 
             mesh.uu = (mesh.uu[0][3:-3,3:-3,3:-3], mesh.uu[1][3:-3,3:-3,3:-3], mesh.uu[2][3:-3,3:-3,3:-3])
             mesh.aa = (mesh.aa[0][3:-3,3:-3,3:-3], mesh.aa[1][3:-3,3:-3,3:-3], mesh.aa[2][3:-3,3:-3,3:-3])
-            mesh.bb = (mesh.bb[0][3:-3,3:-3,3:-3], mesh.bb[1][3:-3,3:-3,3:-3], mesh.bb[2][3:-3,3:-3,3:-3])
+            mesh.bb = (mesh.bb[0][3:-3,3:-3,3:-3]*um, mesh.bb[1][3:-3,3:-3,3:-3]*um, mesh.bb[2][3:-3,3:-3,3:-3]*um)
             mesh.jj = (mesh.jj[0][3:-3,3:-3,3:-3], mesh.jj[1][3:-3,3:-3,3:-3], mesh.jj[2][3:-3,3:-3,3:-3])
+
 
             print(mesh.lnrho.shape)
 
@@ -611,12 +616,14 @@ if '3drend' in sys.argv:
             grid.origin = (128, 128, 128)  # The centre of the dataset
             grid.spacing = (1, 1, 1)  
             #grid.cell_arrays["Bx"] = mesh.bb[1].flatten(order="F")  # Flatten the array!
-            grid.cell_arrays["rho"] = np.exp(mesh.lnrho).flatten(order="F")  # Flatten the array!
+            #grid.cell_arrays["rho"] = np.exp(mesh.lnrho).flatten(order="F")  # Flatten the array!
             #grid.cell_arrays["Btot"] = np.sqrt(mesh.bb[0]**2.0 + mesh.bb[1]**2.0 + mesh.bb[2]**2.0).flatten(order="F")  # Flatten the array!
+            grid.cell_arrays["Btot"] = np.sqrt(mesh.bb[0]**2.0 + mesh.bb[1]**2.0).flatten(order="F")  # Flatten the array!
             #grid.cell_arrays["Utot"] = np.sqrt(mesh.uu[0]**2.0 + mesh.uu[1]**2.0 + mesh.uu[2]**2.0).flatten(order="F")  # Flatten the array!
             #grid.cell_arrays["j_tot"] = np.sqrt(mesh.jj[0]**2.0 + mesh.jj[1]**2.0 + mesh.jj[2]**2.0).flatten(order="F")  # Flatten the array!
             #grid.cell_arrays["j_xy"] = np.sqrt(mesh.jj[0]**2.0 + mesh.jj[1]**2.0).flatten(order="F")  # Flatten the array!
 
+            filename = '3drender_%s.png' % (mesh.framenum)
             del mesh   
             gc.collect()  
             
@@ -630,8 +637,19 @@ if '3drend' in sys.argv:
             ###del ppp
             ###gc.collect()  
            
-            pp = pv.Plotter()
+            pp = pv.Plotter(off_screen=True)
+            #pp = pv.Plotter()
             pp.background_color="black"
+
+            aaa = np.arange(256)
+            opwave = np.cos(3.0*((aaa/256)*2.0*np.pi))
+            #opwave[np.where(opwave < 0.0)] = 0.0
+            opwave = np.abs(opwave)
+            opwave = opwave[::2]
+            scale = np.linspace(0.0, 1.0, num = opwave.size)
+            opwave = opwave*scale
+            print(opwave)  
+
 
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear")#, clim = [1.0, 200.0]) # Pseudodisk j_xy, B0 = 30,3000 muG 
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear")#, clim = [1.0, 200.0]) # Pseudodisk j_xy, B0 = 30,3000 muG 
@@ -645,22 +663,36 @@ if '3drend' in sys.argv:
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[0.3, 40.0]) # Pseudodisk Btot, B0 = 30 muG 
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[18.9, 30.0]) # Pseudodisk Btot, B0 = 3000 muG 
 
-            aaa = np.arange(256)
-            opwave = np.cos(3.0*((aaa/256)*2.0*np.pi))
-            #opwave[np.where(opwave < 0.0)] = 0.0
-            opwave = np.abs(opwave)
-            opwave = opwave[::2]
-            scale = np.linspace(0.0, 1.0, num = opwave.size)
-            opwave = opwave*scale
-            print(opwave)  
+            clim= [1e-6, 1000e-6]
+            pp.add_volume(grid, mapper='gpu', cmap="plasma_r",clim= [1e-6, 1000e-6]) # Pseudodisk Bxy, B0 = 3000 muG 
+
+            valuerange = [0.0, 20.0]
+            valuerange = [0.0, 10.0]
+            opwave     = 'linear'
+            colormap   = 'plasma_r'
             
-            pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[0.0, 20.0], opacity=opwave) # Pseudodisk rho 
+            #pp.add_volume(grid, mapper='gpu', cmap=colormap, clim=valuerange, opacity=opwave) # Pseudodisk rho 
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[0.0, 20.0], opacity=[0.0, 0.5, 0.9, 0.95, 1.0]) # Pseudodisk rho 
 
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity=[0.0, 0.0, 0.0, 0.2, 1.0], clim=[0.9, 1.1])
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear", clim=[-0.5, 0.5])
             #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity=[1.0, 0.25, 0.0, 0.25, 1.0], clim=[-0.5, 0.5])
-            pp.show()
+
+            print(pp.camera.position)
+            print(pp.camera.focal_point)
+            print(pp.camera.azimuth)
+            #azimuth   += 10.0# np.pi/16.0 
+            #elevation += 5.0# np.pi/32.0
+            azimuth   += 5.0# np.pi/16.0 
+            elevation += 0.25# np.pi/32.0
+            pp.camera.azimuth   =  azimuth  
+            pp.camera.elevation =  elevation
+            print(pp.camera.azimuth)
+            print(pp.camera.elevation)
+            pp.camera.zoom(1.6)
+
+
+            pp.show(screenshot=filename)
 
             pp.deep_clean()
 
