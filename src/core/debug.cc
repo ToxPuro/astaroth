@@ -69,26 +69,32 @@ acGraphWriteOrder(const char* path, const AcTaskGraph* graph)
     graphWriteOrder(fp, graph);
 }
 
-/*
+#define AC_DEBUG_TASK_TRANSITIONS (1)
+
+#ifdef AC_DEBUG_TASK_TRANSITIONS
+#include <iostream>
+#endif
 void
 Task::logStateChangedEvent(std::string from, std::string to)
 {
-    //NOTE: the keys used here don't reflect terminology in Astaroth
-    //because the messages are read by a python tool which expects these keys.
+    #ifdef AC_DEBUG_TASK_TRANSITIONS
+    if (rank == 0) {
     std::cout<< "{"
          <<"\"msg_type\":\"state_changed_event\","
          <<"\"rank\":"<<rank
          <<",\"substep\":"<<loop_cntr.i
+         <<",\"order\":"<<order
          <<",\"task_type\":\""<<task_type<<"\""
          <<",\"tag\":"<<output_region->tag
          <<",\"seg_id\":["
              <<output_region->id.x<<","
              <<output_region->id.y<<","
              <<output_region->id.z<<"],"
-         <<"\"seg_type\":"<<output_region->facet_class<<","
+         //<<"\"seg_type\":"<<output_region->facet_class<<","
          <<"\"from\":\""<<from<<"\""<<","
          <<"\"to\":\""<<to<<"\""
          <<"}"<<std::endl;
+    }
+    #endif
 }
-*/
 #endif

@@ -1,4 +1,5 @@
 #include "astaroth.h"
+#include "astaroth_debug.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
 
@@ -10,6 +11,9 @@
 #define RED "\x1B[31m"
 #define GRN "\x1B[32m"
 #define RESET "\x1B[0m"
+
+#define debug_bc_errors 1
+#define debug_bc_values 0
 
 bool
 test_mirror(AcMesh mesh, int3 direction, int3 dims, int3 domain_start, int3 ghost_start, AcMeshInfo info)
@@ -24,9 +28,9 @@ test_mirror(AcMesh mesh, int3 direction, int3 dims, int3 domain_start, int3 ghos
             col_width[i%4] = s_len;
         }
     }
-
     printf("\n(%2d,%2d,%d):\n\t",direction.x,direction.y,direction.z);
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++){
+        bool first_error = true;
         AcReal* field = mesh.vertex_buffer[i];
         size_t errors = 0;
         size_t total = 0;
@@ -44,11 +48,19 @@ test_mirror(AcMesh mesh, int3 direction, int3 dims, int3 domain_start, int3 ghos
                     total++;
                     if (field[idx_dom] != field[idx_ghost]){
                         errors++;
-                        /*printf("\n\t%sERROR%s at boundary (%2d,%2d,%2d):",RED,RESET,direction.x,direction.y,direction.z);
-                        printf("domain[(%3d,%3d,%3d)] = %f != ghost[(%3d,%3d,%3d)] = %f",dom.x,dom.y,dom.z, field[idx_dom], ghost.x,ghost.y,ghost.z,field[idx_ghost]);
-                        printf("\n\tdomain[%d]!= ghost[%d]",idx_dom, idx_ghost);
-                        fflush(stdout);
-                        */
+                        #if debug_bc_errors
+                        if (first_error){
+                            first_error = false;
+                            printf("\n\t%sERROR%s at boundary (%2d,%2d,%2d):",RED,RESET,direction.x,direction.y,direction.z);
+                            printf("domain[(%3d,%3d,%3d)] = %f != ghost[(%3d,%3d,%3d)] = %f\n",dom.x,dom.y,dom.z, field[idx_dom], ghost.x,ghost.y,ghost.z,field[idx_ghost]);
+                            //printf("\n\tdomain[%d]!= ghost[%d]",idx_dom, idx_ghost);
+                            fflush(stdout);
+                        }
+                        #endif
+                    } else {
+                        #if debug_bc_values
+                        printf("domain[(%3d,%3d,%3d)] = %f != ghost[(%3d,%3d,%3d)] = %f\n",dom.x,dom.y,dom.z, field[idx_dom], ghost.x,ghost.y,ghost.z,field[idx_ghost]);
+                        #endif
                     }
 
                     
@@ -94,7 +106,12 @@ main(void)
     VertexBufferHandle all_fields[NUM_VTXBUF_HANDLES] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
                                                          VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,  VTXBUF_ENTROPY};
 
-    AcTaskGraph* symmetric_bc_graph = acGridBuildTaskGraph({HaloExchange(Boundconds_Symmetric, all_fields)});
+    AcTaskGraph* symmetric_bc_graph = acGridBuildTaskGraph({
+                                                    Compute(Kernel_set_zero, all_fields),
+                                                    Compute(Kernel_set_one, all_fields),
+                                                    Compute(Kernel_set_two, all_fields),
+                                                    HaloExchange(Boundconds_Symmetric, all_fields)
+                                                });
 
     acGridExecuteTaskGraph(symmetric_bc_graph, 1);
     acGridSynchronizeStream(STREAM_ALL);
@@ -103,6 +120,8 @@ main(void)
     bool edges_passed = true;
     bool corners_passed = true;
     if (pid == 0) {
+        //acGraphPrintDependencies(symmetric_bc_graph);
+#if 1
         AcMeshInfo submesh_info = info;
         const int3 nn = int3{
             (int)(info.int_params[AC_nx]),
@@ -111,7 +130,7 @@ main(void)
         };
 
         printf("\nTesting boundconds.\n");
-        /*Symmetric boundconds*/
+        //Symmetric boundconds
         printf("---Face symmetry---\n");
         //faces
         faces_passed &= test_mirror(mesh, int3{1,0,0}, int3{NGHOST, nn.y,nn.z}, int3{nn.x-1,NGHOST,NGHOST}, int3{nn.x+NGHOST,NGHOST,NGHOST}, submesh_info);
@@ -154,9 +173,8 @@ main(void)
         corners_passed &= test_mirror(mesh, int3{-1,-1, 1}, int3{NGHOST,NGHOST,NGHOST}, int3{NGHOST+1,NGHOST+1,nn.z-1}, int3{0,0,nn.z+NGHOST}, submesh_info);
 
         corners_passed &= test_mirror(mesh, int3{-1,-1,-1}, int3{NGHOST,NGHOST,NGHOST}, int3{NGHOST+1,NGHOST+1,NGHOST+1}, int3{0,0,0}, submesh_info);
-
-        /*As more boundary conditions are added, add tests for them here*/
-
+#endif
+        //As more boundary conditions are added, add tests for them here
     } //if pid == 0
 
     acGridDestroyTaskGraph(symmetric_bc_graph);

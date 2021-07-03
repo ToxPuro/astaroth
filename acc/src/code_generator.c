@@ -833,8 +833,7 @@ end type AcMeshInfo
 static void
 generate_library_hooks(void)
 {
-    // start with num_kernels = 1 because of special case acKernelIntegrateSubstep
-    size_t num_kernels = 1;
+    size_t num_kernels = 0;
     for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
         if (symbol_table[i].type_qualifier == KERNEL) {
             ++num_kernels;

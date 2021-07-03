@@ -461,9 +461,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_raw[], const size_t n_ops_raw)
     {
         int3 neighbor = pid3d + Region::tag_to_id(tag);
         return int3{
-            neighbor.x == -1? -1: neighbor.x == (int)decomp.x? 1: 0,
-            neighbor.y == -1? -1: neighbor.y == (int)decomp.y? 1: 0,
-            neighbor.z == -1? -1: neighbor.z == (int)decomp.z? 1: 0
+           ( neighbor.x == -1)? -1: (neighbor.x == (int)decomp.x ? 1: 0),
+           ( neighbor.y == -1)? -1: (neighbor.y == (int)decomp.y ? 1: 0),
+           ( neighbor.z == -1)? -1: (neighbor.z == (int)decomp.z ? 1: 0)
         };
     };
 
@@ -512,7 +512,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_raw[], const size_t n_ops_raw)
                 if (region_at_boundary(tag)){
                     // For now, create separate tasks for each field
                     for (size_t j = 0; j < op.num_vtxbufs; j++) {
-                        auto task = std::make_shared<BoundaryConditionTask>(bc, boundary_normal(tag), op.vtxbuf_dependencies[j], j, tag, nn, device);
+                        auto task = std::make_shared<BoundaryConditionTask>(bc, boundary_normal(tag), op.vtxbuf_dependencies[j], i, tag, nn, device);
                         if (do_swap) {
                             task->swapVBA();
                         }

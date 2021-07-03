@@ -97,6 +97,7 @@ struct Region {
     Region(int3 position_, int3 dims_, int tag);
 
     Region translate(int3 translation);    
+    Region pad(int3 padding);    
     bool overlaps(const Region* other);
 };
 
@@ -161,7 +162,7 @@ typedef class Task {
     void syncVBA();
     void swapVBA();
 
-    // void logStateChangedEvent(std::string b, std::string c);
+    void logStateChangedEvent(std::string b, std::string c);
 } Task;
 
 // Compute tasks

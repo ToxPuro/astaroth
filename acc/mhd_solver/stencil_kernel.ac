@@ -909,3 +909,53 @@ solve()
     }
 #endif
 }
+
+Kernel void
+set_zero()
+{
+    out_lnrho = 0.0;
+    out_uu = (Vector){0.0,0.0,0.0};
+#if LMAGNETIC
+    out_aa = (Vector){0.0,0.0,0.0};
+#endif
+#if LENTROPY
+    out_ss = 0.0;
+#endif
+#if LTEMPERATURE
+    out_tt = 0.0;
+#endif
+
+}
+
+Kernel void
+set_one()
+{
+    out_lnrho = 1.0;
+    out_uu = (Vector){1.0,1.0,1.0};
+#if LMAGNETIC
+    out_aa = (Vector){1.0,1.0,1.0};
+#endif
+#if LENTROPY
+    out_ss = 1.0;
+#endif
+#if LTEMPERATURE
+    out_tt = 1.0;
+#endif
+}
+
+Kernel void
+set_two()
+{
+    out_lnrho = 2.0;
+    out_uu = (Vector){2.0,2.0,2.0};
+#if LMAGNETIC
+    out_aa = (Vector){2,2,2};
+#endif
+#if LENTROPY
+    out_ss = 2.0;
+#endif
+#if LTEMPERATURE
+    out_tt = 2.0;
+#endif
+}
+

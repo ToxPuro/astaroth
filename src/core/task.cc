@@ -162,6 +162,25 @@ Region::translate(int3 translation)
     return Region(this->position+translation, this->dims, this->tag);
 }
 
+//Pad a region in a certain direction
+Region
+Region::pad(int3 padding)
+{
+    int3 translation = int3{
+        padding.x < 0? padding.x:0,
+        padding.y < 0? padding.y:0,
+        padding.z < 0? padding.z:0
+    };
+    
+    int3 growth = int3{
+        abs(padding.x),
+        abs(padding.y),
+        abs(padding.z)
+    };
+
+    return Region(this->position+translation, this->dims+growth, this->tag);
+}
+
 bool
 Region::overlaps(const Region* other)
 {
@@ -355,7 +374,7 @@ ComputeTask::ComputeTask(ComputeKernel compute_func_,
 
     params = KernelParameters{stream, 0, output_region->position,
                               output_region->position + output_region->dims};
-    name   = "Compute(" + std::to_string(output_region->id.x) + "," +
+    name   = "Compute "+std::to_string(order_)+".(" + std::to_string(output_region->id.x) + "," +
            std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
     task_type = TaskType_Compute;
 }
@@ -387,13 +406,13 @@ ComputeTask::advance()
 {
     switch (static_cast<ComputeState>(state)) {
     case ComputeState::Waiting: {
-        // logStateChangedEvent("waiting", "running");
+        logStateChangedEvent("waiting", "running");
         compute();
         state = static_cast<int>(ComputeState::Running);
         break;
     }
     case ComputeState::Running: {
-        // logStateChangedEvent("running", "waiting");
+        logStateChangedEvent("running", "waiting");
         state = static_cast<int>(ComputeState::Waiting);
         break;
     }
@@ -512,7 +531,7 @@ HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencie
     if (active) {
         receive();
     }
-    name = "Halo exchange(" + std::to_string(output_region->id.x) + "," +
+    name = "Halo exchange "+std::to_string(order_)+".(" + std::to_string(output_region->id.x) + "," +
            std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
     task_type = TaskType_HaloExchange;
 }
@@ -683,24 +702,24 @@ HaloExchangeTask::advance()
 {
     switch (static_cast<HaloExchangeState>(state)) {
     case HaloExchangeState::Waiting:
-        // logStateChangedEvent("waiting", "packing");
+        logStateChangedEvent("waiting", "packing");
         pack();
         state = static_cast<int>(HaloExchangeState::Packing);
         break;
     case HaloExchangeState::Packing:
-        // logStateChangedEvent("packing", "receiving");
+        logStateChangedEvent("packing", "receiving");
         sync();
         send();
         state = static_cast<int>(HaloExchangeState::Exchanging);
         break;
     case HaloExchangeState::Exchanging:
-        // logStateChangedEvent("receiving", "unpacking");
+        logStateChangedEvent("receiving", "unpacking");
         sync();
         unpack();
         state = static_cast<int>(HaloExchangeState::Unpacking);
         break;
     case HaloExchangeState::Unpacking:
-        // logStateChangedEvent("unpacking", "waiting");
+        logStateChangedEvent("unpacking", "waiting");
         receive();
         sync();
         state = static_cast<int>(HaloExchangeState::Waiting);
@@ -731,8 +750,9 @@ BoundaryConditionTask::BoundaryConditionTask(AcBoundaryCondition boundcond_, int
     
     input_region = std::make_unique<Region>(output_region->translate(translation));    
    
-    name = "Boundary condition(" + std::to_string(output_region->id.x) + "," +
-           std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
+    name = "Boundary condition "+std::to_string(order_)+".(" + std::to_string(output_region->id.x) + "," +
+           std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")"+".("+
+            std::to_string(boundary_normal.x) + ","+std::to_string(boundary_normal.y) + ","+std::to_string(boundary_normal.z) + ")";
     task_type = TaskType_BoundaryCondition;
 
     
@@ -771,12 +791,12 @@ BoundaryConditionTask::advance()
 {
     switch (static_cast<BoundaryConditionState>(state)) {
     case BoundaryConditionState::Waiting:
-        // logStateChangedEvent("waiting", "running");
+        logStateChangedEvent("waiting", "running");
         populate_boundary_region();
         state = static_cast<int>(BoundaryConditionState::Running);
         break;
     case BoundaryConditionState::Running:
-        // logStateChangedEvent("running", "waiting");
+        logStateChangedEvent("running", "waiting");
         state = static_cast<int>(BoundaryConditionState::Waiting);
         break;
     default:
