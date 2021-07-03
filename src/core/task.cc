@@ -748,7 +748,8 @@ BoundaryConditionTask::BoundaryConditionTask(AcBoundaryCondition boundcond_, int
                             output_region->dims.y*(-boundary_normal.y),
                             output_region->dims.z*(-boundary_normal.z)};
     
-    input_region = std::make_unique<Region>(output_region->translate(translation));    
+    Region translated = output_region->translate(translation);
+    input_region = std::make_unique<Region>(translated.pad(-boundary_normal));
    
     name = "Boundary condition "+std::to_string(order_)+".(" + std::to_string(output_region->id.x) + "," +
            std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")"+".("+

@@ -162,7 +162,7 @@ typedef class Task {
     void syncVBA();
     void swapVBA();
 
-    void logStateChangedEvent(std::string b, std::string c);
+    void logStateChangedEvent(const char* from, const char* to);
 } Task;
 
 // Compute tasks
