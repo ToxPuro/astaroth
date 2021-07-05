@@ -29,7 +29,12 @@ import pandas as pd
 
 from mpl_toolkits.mplot3d import Axes3D
 
-import pyvista as pv
+try:
+    import pyvista as pv
+    pv_present = True 
+except ImportError:
+    pv_present = False
+    print("No support for PyVista in your system!")
 
 #Optional YT interface
 try:
@@ -39,17 +44,10 @@ except ImportError:
     yt_present = False
 
 
-##mesh = ad.read.Mesh(500, fdir="/tiara/home/mvaisala/astaroth-code/astaroth_2.0/build/")
-##
-##print(np.shape(mesh.uu))
-##print(np.shape(mesh.lnrho))
-##
-##uu_tot = np.sqrt(mesh.uu[0]**2.0 + mesh.uu[1]**2.0 + mesh.uu[2]**2.0)
-##vis.slices.plot_3(mesh, uu_tot, title = r'$|u|$', bitmap = True, fname = 'uutot')
-##
-##vis.slices.plot_3(mesh, mesh.lnrho, title = r'$\ln \rho$', bitmap = True, fname = 'lnrho')
-##
-##print(mesh.minfo.contents)
+'''
+This file is currently somewhat messy collection of varius data visualiations.
+Some of them  work better than others. User discretion is adviced. 
+'''
 
 
 AC_unit_density  =  1e-17
@@ -59,10 +57,7 @@ AC_unit_length   = 1.496e+13
 
 print("sys.argv", sys.argv)
 
-#meshdir = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir/"
-#meshdir = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir2/"
-#meshdir = "/home/mvaisala/astaroth_projects/3dtest/astaroth/analysis/python/sampledir3/"
-meshdir = "/media/mvaisala/e75642e6-fe9c-463f-b0e6-8f2c57dd7f00/mvaisala/simdata1/"
+meshdir = "/my/data/directory/"
 
 #Example fixed scaling template
 if (meshdir == "/home/mvaisala/astaroth_projects/shockweek/astaroth/samples/test_cases/kin_sph_shock/"):
@@ -587,7 +582,10 @@ if 'getvtk' in sys.argv:
             #mesh.Bfield()
             mesh.export_vtk_ascii(Beq = myBeq)
 
-if '3drend' in sys.argv:
+'''
+3d rendering with PyVista. Very rought implementation. Please customize for your own purposed. 
+'''
+if ('3drend' in sys.argv) and pv_present:
     mesh_file_numbers = ad.read.parse_directory(meshdir)
     #mesh_file_numbers = mesh_file_numbers[-1:]
     print(mesh_file_numbers)
