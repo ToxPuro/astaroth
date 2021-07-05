@@ -370,7 +370,7 @@ traverse(const ASTNode* node)
         }
         else if (stype == SYMBOLTYPE_FUNCTION_PARAMETER) {
             tmp = tmp->parent;
-            assert(tmp->type = NODE_FUNCTION_DECLARATION);
+            assert(tmp->type == NODE_FUNCTION_DECLARATION);
 
             // TODO FIX not to use symboltable_lookup
             const Symbol* parent_function = symboltable_lookup(tmp->lhs->rhs->buffer);
