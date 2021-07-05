@@ -1,12 +1,19 @@
 #pragma once
 static __global__ void
-kernel_symmetric_boundconds(const int3 region_id, const int3 normal, const int3 dims, AcReal* vtxbuf)
+kernel_symmetric_boundconds(const int3 region_id, const int3 normal, const int3 dims,
+                            AcReal* vtxbuf)
 {
     // The only reason a lot of these are const and not constexpr is DCONST(AC_n*) is not a compile
     // time expression
-    const int start_x = (region_id.x == 1 ? NGHOST + DCONST(AC_nx) : region_id.x == -1 ? 0 : NGHOST);
-    const int start_y = (region_id.y == 1 ? NGHOST + DCONST(AC_ny) : region_id.y == -1 ? 0 : NGHOST);
-    const int start_z = (region_id.z == 1 ? NGHOST + DCONST(AC_nz) : region_id.z == -1 ? 0 : NGHOST);
+    const int start_x = (region_id.x == 1    ? NGHOST + DCONST(AC_nx)
+                         : region_id.x == -1 ? 0
+                                             : NGHOST);
+    const int start_y = (region_id.y == 1    ? NGHOST + DCONST(AC_ny)
+                         : region_id.y == -1 ? 0
+                                             : NGHOST);
+    const int start_z = (region_id.z == 1    ? NGHOST + DCONST(AC_nz)
+                         : region_id.z == -1 ? 0
+                                             : NGHOST);
 
     const int i_dst = start_x + threadIdx.x + blockIdx.x * blockDim.x;
     const int j_dst = start_y + threadIdx.y + blockIdx.y * blockDim.y;

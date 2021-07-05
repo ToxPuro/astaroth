@@ -50,10 +50,10 @@ AcTaskDefinition
 Compute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
 {
     AcTaskDefinition task_def{};
-    task_def.task_type    = TaskType_Compute;
-    task_def.kernel       = kernel;
-    task_def.vtxbuf_dependencies        = vtxbuf_dependencies;
-    task_def.num_vtxbufs = num_vtxbufs;
+    task_def.task_type           = TaskType_Compute;
+    task_def.kernel              = kernel;
+    task_def.vtxbuf_dependencies = vtxbuf_dependencies;
+    task_def.num_vtxbufs         = num_vtxbufs;
     return task_def;
 }
 
@@ -62,17 +62,17 @@ HaloExchange(const AcBoundcond bound_cond, VertexBufferHandle vtxbuf_dependencie
              const size_t num_vtxbufs)
 {
     AcTaskDefinition task_def{};
-    task_def.task_type    = TaskType_HaloExchange;
-    task_def.bound_cond   = bound_cond;
-    task_def.vtxbuf_dependencies        = vtxbuf_dependencies;
-    task_def.num_vtxbufs = num_vtxbufs;
+    task_def.task_type           = TaskType_HaloExchange;
+    task_def.bound_cond          = bound_cond;
+    task_def.vtxbuf_dependencies = vtxbuf_dependencies;
+    task_def.num_vtxbufs         = num_vtxbufs;
     return task_def;
 }
 
 VtxbufSet::VtxbufSet(const VertexBufferHandle h_variables[], const size_t num_vars_)
     : num_vars(num_vars_)
 {
-    variables         = NULL;
+    variables        = NULL;
     size_t num_bytes = num_vars * sizeof(VertexBufferHandle);
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&variables, num_bytes));
     ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(variables, h_variables, num_bytes, cudaMemcpyHostToDevice));
@@ -87,11 +87,11 @@ VtxbufSet::~VtxbufSet()
 
 Region::Region(RegionFamily family_, int tag_, int3 nn) : family(family_), tag(tag_)
 {
-    id          = tag_to_id(tag);
-    //facet class 0 = inner core
-    //facet class 1 = face
-    //facet class 2 = edge
-    //facet class 3 = corner
+    id = tag_to_id(tag);
+    // facet class 0 = inner core
+    // facet class 1 = face
+    // facet class 2 = edge
+    // facet class 3 = corner
     facet_class = (id.x == 0 ? 0 : 1) + (id.y == 0 ? 0 : 1) + (id.z == 0 ? 0 : 1);
     ERRCHK_ALWAYS(facet_class <= 3);
 
@@ -150,16 +150,16 @@ Region::Region(RegionFamily family_, int3 id_, int3 nn) : Region{family_, id_to_
 }
 
 Region::Region(int3 position_, int3 dims_, int tag_)
-: position(position_), dims(dims_), family(RegionFamily::None), tag(tag_)
+    : position(position_), dims(dims_), family(RegionFamily::None), tag(tag_)
 {
-    id = tag_to_id(tag);
+    id          = tag_to_id(tag);
     facet_class = (id.x == 0 ? 0 : 1) + (id.y == 0 ? 0 : 1) + (id.z == 0 ? 0 : 1);
 }
 
 Region
 Region::translate(int3 translation)
 {
-    return Region(this->position+translation, this->dims, this->tag);
+    return Region(this->position + translation, this->dims, this->tag);
 }
 
 bool
@@ -191,7 +191,8 @@ Region::tag_to_id(int _tag)
 }
 
 /* Task interface */
-Task::Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn, Device device_)
+Task::Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag,
+           int3 nn, Device device_)
     : device(device_), state(wait_state), dep_cntr(), loop_cntr(), order(order_), active(true),
       output_region(std::make_unique<Region>(output_family, region_tag, nn)),
       input_region(std::make_unique<Region>(input_family, region_tag, nn))
@@ -337,25 +338,26 @@ Task::poll_stream()
     if (err == cudaErrorNotReady) {
         return false;
     }
-    //TODO: print out the cuda error
+    // TODO: print out the cuda error
     return false;
 }
 
 /* Computation */
 ComputeTask::ComputeTask(ComputeKernel compute_func_,
-                         std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_, int region_tag,
-                         int3 nn, Device device_)
-    : Task(order_, RegionFamily::Compute_input, RegionFamily::Compute_output, region_tag, nn, device_)
+                         std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_,
+                         int region_tag, int3 nn, Device device_)
+    : Task(order_, RegionFamily::Compute_input, RegionFamily::Compute_output, region_tag, nn,
+           device_)
 {
     stream = device->streams[STREAM_DEFAULT + region_tag];
     syncVBA();
 
-    compute_func   = compute_func_;
+    compute_func        = compute_func_;
     vtxbuf_dependencies = vtxbuf_dependencies_;
 
     params = KernelParameters{stream, 0, output_region->position,
                               output_region->position + output_region->dims};
-    name   = "Compute "+std::to_string(order_)+".(" + std::to_string(output_region->id.x) + "," +
+    name = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region->id.x) + "," +
            std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
     task_type = TaskType_Compute;
 }
@@ -487,7 +489,8 @@ HaloMessageSwapChain::get_fresh_buffer()
 HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_,
                                    int tag_0, int halo_region_tag, int3 nn, uint3_64 decomp,
                                    Device device_)
-    : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, halo_region_tag, nn, device_),
+    : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, halo_region_tag, nn,
+           device_),
       recv_buffers(output_region->dims, vtxbuf_dependencies_->num_vars),
       send_buffers(input_region->dims, vtxbuf_dependencies_->num_vars)
 {
@@ -512,8 +515,9 @@ HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencie
     if (active) {
         receive();
     }
-    name = "Halo exchange "+std::to_string(order_)+".(" + std::to_string(output_region->id.x) + "," +
-           std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
+    name = "Halo exchange " + std::to_string(order_) + ".(" + std::to_string(output_region->id.x) +
+           "," + std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) +
+           ")";
     task_type = TaskType_HaloExchange;
 }
 
@@ -535,7 +539,8 @@ HaloExchangeTask::pack()
 {
     auto msg = send_buffers.get_fresh_buffer();
     // acKernelPartialPackData(stream, vba, input_region->position, input_region->dims,
-    //                         msg->data, vtxbuf_dependencies->variables, vtxbuf_dependencies->num_vars);
+    //                         msg->data, vtxbuf_dependencies->variables,
+    //                         vtxbuf_dependencies->num_vars);
     acKernelPackData(stream, vba, input_region->position, input_region->dims, msg->data);
 }
 
@@ -548,7 +553,8 @@ HaloExchangeTask::unpack()
     msg->unpin(device, stream);
 #endif
     // acKernelPartialUnpackData(stream, msg->data, output_region->position, output_region->dims,
-    //                           vba, vtxbuf_dependencies->variables, vtxbuf_dependencies->num_vars);
+    //                           vba, vtxbuf_dependencies->variables,
+    //                           vtxbuf_dependencies->num_vars);
     acKernelUnpackData(stream, msg->data, output_region->position, output_region->dims, vba);
 }
 
@@ -713,7 +719,8 @@ HaloExchangeTask::advance()
 BoundaryConditionTask::BoundaryConditionTask(AcBoundcond boundcond_, int3 boundary_normal_,
                                              VertexBufferHandle variable_, int order_,
                                              int region_tag, int3 nn, Device device_)
-    : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, region_tag, nn, device_),
+    : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, region_tag, nn,
+           device_),
       boundcond(boundcond_), boundary_normal(boundary_normal_), variable(variable_)
 {
     // Create stream for boundary condition task
@@ -724,20 +731,18 @@ BoundaryConditionTask::BoundaryConditionTask(AcBoundcond boundcond_, int3 bounda
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
     syncVBA();
-    
-    int3 translation = int3{(output_region->dims.x+1)*(-boundary_normal.x),
-                            (output_region->dims.y+1)*(-boundary_normal.y),
-                            (output_region->dims.z+1)*(-boundary_normal.z)};
-    
+
+    int3 translation = int3{(output_region->dims.x + 1) * (-boundary_normal.x),
+                            (output_region->dims.y + 1) * (-boundary_normal.y),
+                            (output_region->dims.z + 1) * (-boundary_normal.z)};
+
     input_region = std::make_unique<Region>(output_region->translate(translation));
 
-   
-    name = "Boundary condition "+std::to_string(order_)+".(" + std::to_string(output_region->id.x) + "," +
-           std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")"+".("+
-            std::to_string(boundary_normal.x) + ","+std::to_string(boundary_normal.y) + ","+std::to_string(boundary_normal.z) + ")";
+    name = "Boundary condition " + std::to_string(order_) + ".(" +
+           std::to_string(output_region->id.x) + "," + std::to_string(output_region->id.y) + "," +
+           std::to_string(output_region->id.z) + ")" + ".(" + std::to_string(boundary_normal.x) +
+           "," + std::to_string(boundary_normal.y) + "," + std::to_string(boundary_normal.z) + ")";
     task_type = TaskType_BoundaryCondition;
-
-    
 }
 
 void
@@ -751,7 +756,6 @@ BoundaryConditionTask::populate_boundary_region()
     default:
         ERROR("BoundaryCondition not implemented yet.");
     }
-
 }
 
 bool

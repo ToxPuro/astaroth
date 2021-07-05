@@ -74,10 +74,12 @@ acGraphWriteOrder(const char* path, const AcTaskGraph* graph)
 void
 Task::logStateChangedEvent(const char* from, const char* to)
 {
-    //This line is here to stop the compiler from complaining about unused variables
-    if (from == to){;}
+    // This line is here to stop the compiler from complaining about unused variables
+    if (from == to) {
+        ;
+    }
 
-    #if AC_DEBUG_TASK_TRANSITIONS == 1
+#if AC_DEBUG_TASK_TRANSITIONS == 1
     printf("{"
            "\"msg_type\":\"state_changed_event\","
            "\"rank\":%d,"
@@ -89,9 +91,8 @@ Task::logStateChangedEvent(const char* from, const char* to)
            "\"from\":\"%s\","
            "\"to\":\"%s\""
            "}\n",
-           rank, loop_cntr.i, order, task_type, output_region->tag,
-           output_region->id.x, output_region->id.y, output_region->id.z,
-           from, to);
-    #endif
+           rank, loop_cntr.i, order, task_type, output_region->tag, output_region->id.x,
+           output_region->id.y, output_region->id.z, from, to);
+#endif
 }
 #endif

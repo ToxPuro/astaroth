@@ -455,7 +455,11 @@ AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
  */
 
 /** */
-typedef enum AcTaskType { TaskType_Compute, TaskType_HaloExchange, TaskType_BoundaryCondition } AcTaskType;
+typedef enum AcTaskType {
+    TaskType_Compute,
+    TaskType_HaloExchange,
+    TaskType_BoundaryCondition
+} AcTaskType;
 
 /** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
  * some command.*/
@@ -473,11 +477,12 @@ typedef struct AcTaskDefinition {
 typedef struct AcTaskGraph AcTaskGraph;
 
 /** */
-AcTaskDefinition Compute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs);
+AcTaskDefinition Compute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[],
+                         const size_t num_vtxbufs);
 
 /** */
-AcTaskDefinition HaloExchange(const AcBoundcond bound_cond, VertexBufferHandle vtxbuf_dependencies[],
-                              const size_t num_vtxbufs);
+AcTaskDefinition HaloExchange(const AcBoundcond bound_cond,
+                              VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs);
 
 /** */
 AcTaskGraph* acGridGetDefaultTaskGraph();
@@ -490,7 +495,6 @@ AcResult acGridDestroyTaskGraph(AcTaskGraph* graph);
 
 /** */
 AcResult acGridExecuteTaskGraph(const AcTaskGraph* graph, const size_t n_iterations);
-
 
 #endif // AC_MPI_ENABLED
 

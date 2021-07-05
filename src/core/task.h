@@ -76,10 +76,10 @@ struct Region {
     int3 id;
     int tag;
 
-    //facet class 0 = inner core
-    //facet class 1 = face
-    //facet class 2 = edge
-    //facet class 3 = corner
+    // facet class 0 = inner core
+    // facet class 1 = face
+    // facet class 2 = edge
+    // facet class 3 = corner
     size_t facet_class;
 
     static constexpr int min_halo_tag   = 1;
@@ -96,7 +96,7 @@ struct Region {
     Region(RegionFamily family_, int3 id_, int3 nn);
     Region(int3 position_, int3 dims_, int tag);
 
-    Region translate(int3 translation);    
+    Region translate(int3 translation);
     bool overlaps(const Region* other);
 };
 
@@ -143,7 +143,8 @@ typedef class Task {
 
     static const int wait_state = 0;
 
-    Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn, Device device_);
+    Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn,
+         Device device_);
     virtual bool test()    = 0;
     virtual void advance() = 0;
 
@@ -211,12 +212,7 @@ typedef struct HaloMessageSwapChain {
     HaloMessage* get_fresh_buffer();
 } HaloMessageSwapChain;
 
-enum class HaloExchangeState {
-    Waiting = Task::wait_state,
-    Packing,
-    Exchanging,
-    Unpacking
-};
+enum class HaloExchangeState { Waiting = Task::wait_state, Packing, Exchanging, Unpacking };
 
 typedef class HaloExchangeTask : public Task {
   private:
@@ -259,19 +255,18 @@ typedef class HaloExchangeTask : public Task {
     bool test();
 } HaloExchangeTask;
 
-enum class BoundaryConditionState {
-    Waiting = Task::wait_state,
-    Running
-};
+enum class BoundaryConditionState { Waiting = Task::wait_state, Running };
 
 typedef class BoundaryConditionTask : public Task {
   private:
     AcBoundcond boundcond;
     int3 boundary_normal;
     VertexBufferHandle variable;
+
   public:
-    BoundaryConditionTask(AcBoundcond boundcond_, int3 boundary_normal_, VertexBufferHandle variable_, int order_,
-                          int region_tag, int3 nn, Device device_);
+    BoundaryConditionTask(AcBoundcond boundcond_, int3 boundary_normal_,
+                          VertexBufferHandle variable_, int order_, int region_tag, int3 nn,
+                          Device device_);
     void populate_boundary_region();
     void advance();
     bool test();
