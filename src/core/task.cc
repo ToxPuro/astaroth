@@ -73,8 +73,8 @@ BoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
 {
     AcTaskDefinition task_def{};
     task_def.task_type           = TaskType_BoundaryCondition;
-    task_def.boundary = boundary;
-    task_def.bound_cond = bound_cond;
+    task_def.boundary            = boundary;
+    task_def.bound_cond          = bound_cond;
     task_def.vtxbuf_dependencies = vtxbuf_dependencies;
     task_def.num_vtxbufs         = num_vtxbufs;
     return task_def;
