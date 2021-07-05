@@ -97,7 +97,6 @@ struct Region {
     Region(int3 position_, int3 dims_, int tag);
 
     Region translate(int3 translation);    
-    Region pad(int3 padding);    
     bool overlaps(const Region* other);
 };
 
@@ -267,11 +266,11 @@ enum class BoundaryConditionState {
 
 typedef class BoundaryConditionTask : public Task {
   private:
-    AcBoundaryCondition boundcond;
+    AcBoundcond boundcond;
     int3 boundary_normal;
     VertexBufferHandle variable;
   public:
-    BoundaryConditionTask(AcBoundaryCondition boundcond_, int3 boundary_normal_, VertexBufferHandle variable_, int order_,
+    BoundaryConditionTask(AcBoundcond boundcond_, int3 boundary_normal_, VertexBufferHandle variable_, int order_,
                           int region_tag, int3 nn, Device device_);
     void populate_boundary_region();
     void advance();

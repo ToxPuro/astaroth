@@ -930,16 +930,17 @@ set_zero()
 Kernel void
 set_one()
 {
-    out_lnrho = 1.0;
-    out_uu = (Vector){1.0,1.0,1.0};
+    
+    out_lnrho = 1.0*(globalVertexIdx.x + globalVertexIdx.y + globalVertexIdx.z);
+    out_uu = (Vector){2.0,3.0,4.0};
 #if LMAGNETIC
-    out_aa = (Vector){1.0,1.0,1.0};
+    out_aa = (Vector){5.0,6.0,7.0};
 #endif
 #if LENTROPY
-    out_ss = 1.0;
+    out_ss = 8.0;
 #endif
 #if LTEMPERATURE
-    out_tt = 1.0;
+    out_tt = 9.0;
 #endif
 }
 

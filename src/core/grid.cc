@@ -175,7 +175,7 @@ acGridInit(const AcMeshInfo info)
         full_variable_vtxbuf_dependencies[i] = (VertexBufferHandle)i;
     }
 
-    AcTaskDefinition default_task_defs[] = {HaloExchange(Boundconds_Periodic, full_variable_vtxbuf_dependencies),
+    AcTaskDefinition default_task_defs[] = {HaloExchange(AC_BOUNDCOND_PERIODIC, full_variable_vtxbuf_dependencies),
                                           Compute(Kernel_solve, full_variable_vtxbuf_dependencies)};
 
     grid.initialized   = true;
@@ -410,7 +410,7 @@ std::vector<AcTaskDefinition> transform_ops(const AcTaskDefinition ops[], const 
         switch (op.task_type) {
         case TaskType_HaloExchange:
             transformed_ops.push_back(op);
-            if (op.bound_cond != Boundconds_Periodic){
+            if (op.bound_cond != AC_BOUNDCOND_PERIODIC){
                 AcTaskDefinition bc_op = op;
                 bc_op.task_type = TaskType_BoundaryCondition;
                 transformed_ops.push_back(bc_op);
@@ -492,9 +492,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_raw[], const size_t n_ops_raw)
         }
         case TaskType_HaloExchange: {
             int tag0             = grid.mpi_tag_space_count * Region::max_halo_tag;
-            AcBoundaryCondition bc = op.bound_cond;
+            AcBoundcond bc = op.bound_cond;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
-                if (bc == Boundconds_Periodic || !region_at_boundary(tag)){
+                if (bc == AC_BOUNDCOND_PERIODIC || !region_at_boundary(tag)){
                     auto task = std::make_shared<HaloExchangeTask>(vtxbuf_deps, i, tag0, tag, nn, decomp, device);
                     if (do_swap) {
                         task->swapVBA();
@@ -507,7 +507,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_raw[], const size_t n_ops_raw)
             break;
         }
         case TaskType_BoundaryCondition: {
-            AcBoundaryCondition bc = op.bound_cond;
+            AcBoundcond bc = op.bound_cond;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (region_at_boundary(tag)){
                     // For now, create separate tasks for each field
@@ -527,7 +527,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_raw[], const size_t n_ops_raw)
     op_indices.push_back(graph->all_tasks.size());
 
     // Find dependencies between operations, i.e. check for vtxbuf_dependencies overlap
-    // TODO: write about how this 
+    // TODO: write about how this works
     std::vector<std::pair<size_t, size_t>> op_dependencies;
     op_dependencies.reserve(n_ops);
 

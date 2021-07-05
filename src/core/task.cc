@@ -58,7 +58,7 @@ Compute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[], const s
 }
 
 AcTaskDefinition
-HaloExchange(const AcBoundaryCondition bound_cond, VertexBufferHandle vtxbuf_dependencies[],
+HaloExchange(const AcBoundcond bound_cond, VertexBufferHandle vtxbuf_dependencies[],
              const size_t num_vtxbufs)
 {
     AcTaskDefinition task_def{};
@@ -160,25 +160,6 @@ Region
 Region::translate(int3 translation)
 {
     return Region(this->position+translation, this->dims, this->tag);
-}
-
-//Pad a region in a certain direction
-Region
-Region::pad(int3 padding)
-{
-    int3 translation = int3{
-        padding.x < 0? padding.x:0,
-        padding.y < 0? padding.y:0,
-        padding.z < 0? padding.z:0
-    };
-    
-    int3 growth = int3{
-        abs(padding.x),
-        abs(padding.y),
-        abs(padding.z)
-    };
-
-    return Region(this->position+translation, this->dims+growth, this->tag);
 }
 
 bool
@@ -729,7 +710,7 @@ HaloExchangeTask::advance()
     }
 }
 
-BoundaryConditionTask::BoundaryConditionTask(AcBoundaryCondition boundcond_, int3 boundary_normal_,
+BoundaryConditionTask::BoundaryConditionTask(AcBoundcond boundcond_, int3 boundary_normal_,
                                              VertexBufferHandle variable_, int order_,
                                              int region_tag, int3 nn, Device device_)
     : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, region_tag, nn, device_),
@@ -744,12 +725,12 @@ BoundaryConditionTask::BoundaryConditionTask(AcBoundaryCondition boundcond_, int
     }
     syncVBA();
     
-    int3 translation = int3{output_region->dims.x*(-boundary_normal.x),
-                            output_region->dims.y*(-boundary_normal.y),
-                            output_region->dims.z*(-boundary_normal.z)};
+    int3 translation = int3{(output_region->dims.x+1)*(-boundary_normal.x),
+                            (output_region->dims.y+1)*(-boundary_normal.y),
+                            (output_region->dims.z+1)*(-boundary_normal.z)};
     
-    Region translated = output_region->translate(translation);
-    input_region = std::make_unique<Region>(translated.pad(-boundary_normal));
+    input_region = std::make_unique<Region>(output_region->translate(translation));
+
    
     name = "Boundary condition "+std::to_string(order_)+".(" + std::to_string(output_region->id.x) + "," +
            std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")"+".("+
@@ -763,8 +744,8 @@ void
 BoundaryConditionTask::populate_boundary_region()
 {
     switch (boundcond) {
-    case Boundconds_Symmetric:
-        acKernelSymmetricBoundconds(stream, input_region->id, boundary_normal, input_region->dims,
+    case AC_BOUNDCOND_SYMMETRIC:
+        acKernelSymmetricBoundconds(stream, output_region->id, boundary_normal, output_region->dims,
                                     vba.in[variable]);
         break;
     default:

@@ -457,16 +457,13 @@ AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
 /** */
 typedef enum AcTaskType { TaskType_Compute, TaskType_HaloExchange, TaskType_BoundaryCondition } AcTaskType;
 
-/** */
-typedef enum AcBoundaryCondition { Boundconds_Periodic, Boundconds_Symmetric } AcBoundaryCondition;
-
 /** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
  * some command.*/
 typedef struct AcTaskDefinition {
     AcTaskType task_type;
     union {
         AcKernel kernel;
-        AcBoundaryCondition bound_cond;
+        AcBoundcond bound_cond;
     };
     VertexBufferHandle* vtxbuf_dependencies;
     size_t num_vtxbufs;
@@ -479,7 +476,7 @@ typedef struct AcTaskGraph AcTaskGraph;
 AcTaskDefinition Compute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs);
 
 /** */
-AcTaskDefinition HaloExchange(const AcBoundaryCondition bound_cond, VertexBufferHandle vtxbuf_dependencies[],
+AcTaskDefinition HaloExchange(const AcBoundcond bound_cond, VertexBufferHandle vtxbuf_dependencies[],
                               const size_t num_vtxbufs);
 
 /** */
@@ -822,7 +819,7 @@ Compute(AcKernel kernel, VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
 /** */
 template <size_t num_vtxbufs>
 AcTaskDefinition
-HaloExchange(AcBoundaryCondition bound_cond, VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
+HaloExchange(AcBoundcond bound_cond, VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
 {
     return HaloExchange(bound_cond, vtxbuf_dependencies, num_vtxbufs);
 }

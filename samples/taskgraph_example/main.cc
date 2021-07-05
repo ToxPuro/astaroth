@@ -52,14 +52,14 @@ main(void)
     // This function call generates tasks for each subregions in the domain
     // and figures out the dependencies between the tasks.
     AcTaskGraph* hc_graph = acGridBuildTaskGraph(
-        {HaloExchange(Boundconds_Periodic, all_fields), Compute(Kernel_solve, all_fields)});
+        {HaloExchange(AC_BOUNDCOND_PERIODIC, all_fields), Compute(Kernel_solve, all_fields)});
 
     // We can build multiple TaskGraphs, the MPI requests will not collide
     // because MPI tag space has been partitioned into ranges that each HaloExchange step uses.
     AcTaskGraph* h3_graph = acGridBuildTaskGraph({
-        HaloExchange(Boundconds_Periodic, all_fields),
-        HaloExchange(Boundconds_Periodic, all_fields),
-        HaloExchange(Boundconds_Periodic, all_fields),
+        HaloExchange(AC_BOUNDCOND_PERIODIC, all_fields),
+        HaloExchange(AC_BOUNDCOND_PERIODIC, all_fields),
+        HaloExchange(AC_BOUNDCOND_PERIODIC, all_fields),
         // Could also be eg.
         /*Compute(Kernel_shock1, all_fields),
         Compute(Kernel_shock2, shock_fields),
