@@ -52,19 +52,23 @@ main(void)
     // This function call generates tasks for each subregions in the domain
     // and figures out the dependencies between the tasks.
     AcTaskGraph* hc_graph = acGridBuildTaskGraph(
-        {HaloExchange(AC_BOUNDCOND_PERIODIC, all_fields), Compute(Kernel_solve, all_fields)});
+        {
+            HaloExchange(all_fields),
+            //BoundaryCondition(Boundary_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+            Compute(Kernel_solve, all_fields)
+        });
 
     // We can build multiple TaskGraphs, the MPI requests will not collide
     // because MPI tag space has been partitioned into ranges that each HaloExchange step uses.
-    AcTaskGraph* h3_graph = acGridBuildTaskGraph({
-        HaloExchange(AC_BOUNDCOND_PERIODIC, all_fields),
-        HaloExchange(AC_BOUNDCOND_PERIODIC, all_fields),
-        HaloExchange(AC_BOUNDCOND_PERIODIC, all_fields),
-        // Could also be eg.
-        /*Compute(Kernel_shock1, all_fields),
+    /*
+    AcTaskGraph* shock_graph = acGridBuildTaskGraph({
+        HaloExchange(all_fields),
+        BoundaryCondition(Boundary_XYZ, AC_BOUNDCOND_SYMMETRIC, all_fields),
+        Compute(Kernel_shock1, all_fields),
         Compute(Kernel_shock2, shock_fields),
-        Compute(Kernel_solve, all_fields)*/
+        Compute(Kernel_solve, all_fields)
     });
+    */
 
     std::cout << "Setting time delta" << std::endl;
     // Set the time delta
@@ -75,14 +79,13 @@ main(void)
     // Execute the task graph for three iterations.
     acGridExecuteTaskGraph(hc_graph, 3);
 
-    std::cout << "Executing taskgraph Halo->Halo->Halo for 10 iterations" << std::endl;
-    // Execute the task graph for ten iterations.
-    acGridExecuteTaskGraph(h3_graph, 10);
+    // Execute the task graph for three iterations.
+    //acGridExecuteTaskGraph(shock_graph, 3);
     // End example
 
     std::cout << "Destroying grid" << std::endl;
     acGridDestroyTaskGraph(hc_graph);
-    acGridDestroyTaskGraph(h3_graph);
+    //acGridDestroyTaskGraph(shock_graph);
     acGridQuit();
     MPI_Finalize();
     return EXIT_SUCCESS;

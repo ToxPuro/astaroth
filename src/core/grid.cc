@@ -170,18 +170,18 @@ acGridInit(const AcMeshInfo info)
 
     grid.mpi_tag_space_count = 0;
 
-    VertexBufferHandle full_variable_vtxbuf_dependencies[NUM_VTXBUF_HANDLES];
+    VertexBufferHandle all_vtxbufs[NUM_VTXBUF_HANDLES];
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
-        full_variable_vtxbuf_dependencies[i] = (VertexBufferHandle)i;
+        all_vtxbufs[i] = (VertexBufferHandle)i;
     }
 
-    AcTaskDefinition default_task_defs[] = {HaloExchange(AC_BOUNDCOND_PERIODIC,
-                                                         full_variable_vtxbuf_dependencies),
-                                            Compute(Kernel_solve,
-                                                    full_variable_vtxbuf_dependencies)};
+    AcTaskDefinition default_ops[] = {HaloExchange(all_vtxbufs),
+                                      BoundaryCondition(Boundary_XYZ, AC_BOUNDCOND_PERIODIC,
+                                                        all_vtxbufs),
+                                      Compute(Kernel_solve, all_vtxbufs)};
 
     grid.initialized   = true;
-    grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_task_defs));
+    grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
 
     acGridSynchronizeStream(STREAM_ALL);
     return AC_SUCCESS;
@@ -404,37 +404,118 @@ acGridGetDefaultTaskGraph()
     return grid.default_tasks.get();
 }
 
-std::vector<AcTaskDefinition>
-transform_ops(const AcTaskDefinition ops[], const size_t n_ops)
+static void
+check_ops(const AcTaskDefinition ops[], const size_t n_ops)
 {
-    std::vector<AcTaskDefinition> transformed_ops;
+    if (n_ops == 0) {
+        ERROR("\nIncorrect task graph {}:\n - Task graph is empty.\n")
+    }
+
+    bool found_halo_exchange = false;
+    unsigned int boundaries_defined = 0x00;
+    bool found_compute = false;
+    
+    bool boundary_condition_before_halo_exchange = false;
+    bool compute_before_halo_exchange = false;
+    bool compute_before_boundary_condition = false;
+
+    bool error = false;
+    bool warning = false;
+
+
+    std::string task_graph_repr = "{";
+
+
     for (size_t i = 0; i < n_ops; i++) {
         AcTaskDefinition op = ops[i];
         switch (op.task_type) {
         case TaskType_HaloExchange:
-            transformed_ops.push_back(op);
-            if (op.bound_cond != AC_BOUNDCOND_PERIODIC) {
-                AcTaskDefinition bc_op = op;
-                bc_op.task_type        = TaskType_BoundaryCondition;
-                transformed_ops.push_back(bc_op);
-            }
+            found_halo_exchange = true;
+            task_graph_repr += "HaloExchange,";
             break;
-        default:
-            transformed_ops.push_back(op);
+        case TaskType_BoundaryCondition:
+            if (!found_halo_exchange) {
+                boundary_condition_before_halo_exchange = true;
+                error = true;
+            }
+            boundaries_defined |= (unsigned int)op.boundary;
+            task_graph_repr += "BoundCond,";
+            break;
+        case TaskType_Compute:
+            if (!found_halo_exchange) {
+                compute_before_halo_exchange = true;
+                warning = true;
+            }
+            if (boundaries_defined != Boundary_XYZ) {
+                compute_before_boundary_condition = true;
+                warning = true;
+            }
+            found_compute = true;
+            task_graph_repr += "Compute,";
             break;
         }
     }
 
-    return transformed_ops;
+    task_graph_repr += "}";
+
+    std::string msg = "";
+
+    if (!found_halo_exchange) {
+        msg += " - No halo exchange defined in task graph.\n";
+        error = true;
+    }
+
+    if (boundaries_defined != Boundary_XYZ) {
+        error = true;
+    }
+    if ((boundaries_defined & Boundary_X_top) != Boundary_X_top){
+        msg += " - Boundary conditions not defined for top X boundary.\n";
+    }
+    if ((boundaries_defined & Boundary_X_bot) != Boundary_X_bot){
+        msg += " - Boundary conditions not defined for bottom X boundary.\n";
+    }
+    if ((boundaries_defined & Boundary_Y_top) != Boundary_Y_top){
+        msg += " - Boundary conditions not defined for top Y boundary.\n";
+    }
+    if ((boundaries_defined & Boundary_Y_bot) != Boundary_Y_bot){
+        msg += " - Boundary conditions not defined for bottom Y boundary.\n";
+    }
+    if ((boundaries_defined & Boundary_Z_top) != Boundary_Z_top){
+        msg += " - Boundary conditions not defined for top Z boundary.\n";
+    }
+    if ((boundaries_defined & Boundary_Z_bot) != Boundary_Z_bot){
+        msg += " - Boundary conditions not defined for bottom Z boundary.\n";
+    }
+
+    if (!found_compute) {
+        msg += " - No compute kernel defined in task graph.\n";
+        warning = true;
+    }
+
+    if (found_halo_exchange && boundary_condition_before_halo_exchange){
+        msg += " - Boundary condition before halo exchange. Halo exchange must come first.\n";
+    }
+    if (boundaries_defined == Boundary_XYZ && compute_before_boundary_condition) {
+        msg += " - Compute ordered before boundary conditions. Boundary conditions must usually be resolved before running kernels.\n";
+    }
+    if (found_halo_exchange && compute_before_halo_exchange) {
+        msg += " - Compute ordered before halo exchange. Halo exchange must usually be performed before running kernels.\n";
+    }
+    
+    
+    if (error) {
+        ERROR(("\nIncorrect task graph "+task_graph_repr+":\n"+msg).c_str())
+    }
+    if (warning) {
+        WARNING(("\nUnusual task graph "+task_graph_repr+":\n"+msg).c_str())
+    }
 }
 
 AcTaskGraph*
-acGridBuildTaskGraph(const AcTaskDefinition ops_raw[], const size_t n_ops_raw)
+acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 {
     // ERRCHK(grid.initialized);
-    std::vector<AcTaskDefinition> ops = transform_ops(ops_raw, n_ops_raw);
-
-    const size_t n_ops = ops.size();
+    check_ops(ops, n_ops);
 
     AcTaskGraph* graph = new AcTaskGraph();
     graph->num_swaps   = 0;
@@ -476,6 +557,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_raw[], const size_t n_ops_raw)
         bool do_swap = (graph->num_swaps % 2 != 0);
 
         switch (op.task_type) {
+
         case TaskType_Compute: {
             ComputeKernel kernel = kernel_lookup[(int)op.kernel];
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
@@ -488,11 +570,11 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_raw[], const size_t n_ops_raw)
             graph->num_swaps++;
             break;
         }
+
         case TaskType_HaloExchange: {
             int tag0       = grid.mpi_tag_space_count * Region::max_halo_tag;
-            AcBoundcond bc = op.bound_cond;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
-                if (bc == AC_BOUNDCOND_PERIODIC || !region_at_boundary(tag)) {
+                if (!region_at_boundary(tag)) {
                     auto task = std::make_shared<HaloExchangeTask>(vtxbuf_deps, i, tag0, tag, nn,
                                                                    decomp, device);
                     if (do_swap) {
@@ -505,22 +587,35 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_raw[], const size_t n_ops_raw)
             grid.mpi_tag_space_count++;
             break;
         }
+
         case TaskType_BoundaryCondition: {
             AcBoundcond bc = op.bound_cond;
+            int tag0       = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (region_at_boundary(tag)) {
-                    // For now, create separate tasks for each field
-                    for (size_t j = 0; j < op.num_vtxbufs; j++) {
-                        auto task = std::make_shared<
-                            BoundaryConditionTask>(bc, boundary_normal(tag),
-                                                   op.vtxbuf_dependencies[j], i, tag, nn, device);
+                    if (bc == AC_BOUNDCOND_PERIODIC) {
+                        auto task = std::make_shared<HaloExchangeTask>(vtxbuf_deps, i, tag0, tag, nn,
+                                                                       decomp, device);
                         if (do_swap) {
                             task->swapVBA();
                         }
+                        graph->halo_tasks.push_back(task);
                         graph->all_tasks.push_back(task);
+                    } else {
+                        // For now, create separate boundary condition tasks for each vertex buffer
+                        for (size_t j = 0; j < op.num_vtxbufs; j++) {
+                            auto task = std::make_shared<BoundaryConditionTask>(bc, boundary_normal(tag),
+                                                       op.vtxbuf_dependencies[j], i, tag, nn, device);
+                            if (do_swap) {
+                                task->swapVBA();
+                            }
+                            graph->all_tasks.push_back(task);
+                        }
+            
                     }
                 }
             }
+            grid.mpi_tag_space_count++;
             break;
         }
         }
@@ -546,19 +641,13 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_raw[], const size_t n_ops_raw)
         }
         // look backwards until we've found each variable in task vtxbuf_dependencies
         for (size_t j = 0; j < n_ops; j++) {
-            size_t prereq  = (dependent - j - 1) % n_ops;
-            bool dep_found = false;
+            size_t prereq  = (n_ops + dependent - j - 1) % n_ops;
             for (size_t i = 0; i < ops[prereq].num_vtxbufs; i++) {
-                dep_found                                        = true;
-                dept_vtxbufs[ops[prereq].vtxbuf_dependencies[i]] = false;
-            }
-            if (dep_found) {
-                op_dependencies.emplace_back(prereq, dependent);
-                // printf("dep: %lu -> %lu\n",prereq, dependent);
-            }
-
-            if (std::find(begin(dept_vtxbufs), end(dept_vtxbufs), true) != dept_vtxbufs.end()) {
-                break;
+                //If a vtxbuf is in both prereq and dependents, add a dependency to the list
+                if (dept_vtxbufs[ops[prereq].vtxbuf_dependencies[i]]){
+                    op_dependencies.emplace_back(prereq, dependent);
+                    break;
+                }
             }
         }
     }
@@ -566,7 +655,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_raw[], const size_t n_ops_raw)
     // We take the list of dependent operations from the previous step and check the task regions 
     // if two task's input and output regions overlap: we have a task dependency
     for (auto& depcy : op_dependencies) {
-        // printf("assigning dep: %lu -> %lu\n",depcy.first, depcy.second);
         for (auto i = op_indices[depcy.first]; i != op_indices[depcy.first + 1]; i++) {
             auto preq = graph->all_tasks[i];
             if (preq->active) {
@@ -575,7 +663,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops_raw[], const size_t n_ops_raw)
                     if (dept->active && preq->output_region->overlaps(dept->input_region.get())) {
                         // Only allowed offsets at the moment are 0 or 1.
                         preq->registerDependent(dept, depcy.first < depcy.second ? 0 : 1);
-                    }
+                    } 
                 }
             }
         }

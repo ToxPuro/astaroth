@@ -461,6 +461,24 @@ typedef enum AcTaskType {
     TaskType_BoundaryCondition
 } AcTaskType;
 
+#define BIT(pos) (1U << (pos))
+
+typedef enum AcBoundary {
+    Boundary_X_top = 0x01,
+    Boundary_X_bot = 0x02,
+    Boundary_X = Boundary_X_top | Boundary_X_bot,
+    Boundary_Y_top = 0x04,
+    Boundary_Y_bot = 0x08,
+    Boundary_Y = Boundary_Y_top | Boundary_Y_bot,
+    Boundary_Z_top = 0x10,
+    Boundary_Z_bot = 0x20,
+    Boundary_Z = Boundary_Z_top | Boundary_Z_bot,
+    Boundary_XY = Boundary_X | Boundary_Y,
+    Boundary_XZ = Boundary_X | Boundary_Z,
+    Boundary_YZ = Boundary_Y | Boundary_Z,
+    Boundary_XYZ = Boundary_X | Boundary_Y | Boundary_Z
+} AcBoundary;
+
 /** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
  * some command.*/
 typedef struct AcTaskDefinition {
@@ -469,6 +487,7 @@ typedef struct AcTaskDefinition {
         AcKernel kernel;
         AcBoundcond bound_cond;
     };
+    AcBoundary boundary;
     VertexBufferHandle* vtxbuf_dependencies;
     size_t num_vtxbufs;
 } AcTaskDefinition;
@@ -481,8 +500,11 @@ AcTaskDefinition Compute(const AcKernel kernel, VertexBufferHandle vtxbuf_depend
                          const size_t num_vtxbufs);
 
 /** */
-AcTaskDefinition HaloExchange(const AcBoundcond bound_cond,
-                              VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs);
+AcTaskDefinition HaloExchange(VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs);
+
+/** */
+AcTaskDefinition BoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
+                                   VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs);
 
 /** */
 AcTaskGraph* acGridGetDefaultTaskGraph();
@@ -823,9 +845,17 @@ Compute(AcKernel kernel, VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
 /** */
 template <size_t num_vtxbufs>
 AcTaskDefinition
-HaloExchange(AcBoundcond bound_cond, VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
+HaloExchange(VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
 {
-    return HaloExchange(bound_cond, vtxbuf_dependencies, num_vtxbufs);
+    return HaloExchange(vtxbuf_dependencies, num_vtxbufs);
+}
+
+/** */
+template <size_t num_vtxbufs>
+AcTaskDefinition
+BoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond, VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
+{
+    return BoundaryCondition(boundary, bound_cond, vtxbuf_dependencies, num_vtxbufs);
 }
 
 /** */

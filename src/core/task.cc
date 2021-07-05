@@ -58,12 +58,23 @@ Compute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[], const s
 }
 
 AcTaskDefinition
-HaloExchange(const AcBoundcond bound_cond, VertexBufferHandle vtxbuf_dependencies[],
-             const size_t num_vtxbufs)
+HaloExchange(VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
 {
     AcTaskDefinition task_def{};
     task_def.task_type           = TaskType_HaloExchange;
-    task_def.bound_cond          = bound_cond;
+    task_def.vtxbuf_dependencies = vtxbuf_dependencies;
+    task_def.num_vtxbufs         = num_vtxbufs;
+    return task_def;
+}
+
+AcTaskDefinition
+BoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
+                  VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
+{
+    AcTaskDefinition task_def{};
+    task_def.task_type           = TaskType_BoundaryCondition;
+    task_def.boundary = boundary;
+    task_def.bound_cond = bound_cond;
     task_def.vtxbuf_dependencies = vtxbuf_dependencies;
     task_def.num_vtxbufs         = num_vtxbufs;
     return task_def;

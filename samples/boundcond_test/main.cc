@@ -107,11 +107,13 @@ main(void)
                                                          VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,  VTXBUF_ENTROPY};
 
     AcTaskGraph* symmetric_bc_graph = acGridBuildTaskGraph({
-                                                    HaloExchange(AC_BOUNDCOND_SYMMETRIC, all_fields),
+                                                    HaloExchange(all_fields),
+                                                    BoundaryCondition(Boundary_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
                                                     Compute(Kernel_solve, all_fields),
                                                     Compute(Kernel_solve, all_fields),
                                                     Compute(Kernel_solve, all_fields),
-                                                    HaloExchange(AC_BOUNDCOND_SYMMETRIC, all_fields)
+                                                    HaloExchange(all_fields),
+                                                    BoundaryCondition(Boundary_XYZ, AC_BOUNDCOND_SYMMETRIC, all_fields)
                                                 });
 
     acGridExecuteTaskGraph(symmetric_bc_graph, 1);
