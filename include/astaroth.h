@@ -834,6 +834,7 @@ AcResult acHostMeshDestroy(AcMesh* mesh);
 #endif
 
 #ifdef __cplusplus
+#if AC_MPI_ENABLED
 /** */
 template <size_t num_vtxbufs>
 AcTaskDefinition
@@ -865,4 +866,5 @@ acGridBuildTaskGraph(const AcTaskDefinition (&ops)[n_ops])
 {
     return acGridBuildTaskGraph(ops, n_ops);
 }
+#endif
 #endif
