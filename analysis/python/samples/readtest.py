@@ -1,5 +1,5 @@
 '''
-    Copyright (C) 2014-2020, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -22,10 +22,19 @@ import pylab as plt
 import numpy as np 
 import sys
 
+import gc
+
 import os
 import pandas as pd
 
 from mpl_toolkits.mplot3d import Axes3D
+
+try:
+    import pyvista as pv
+    pv_present = True 
+except ImportError:
+    pv_present = False
+    print("No support for PyVista in your system!")
 
 #Optional YT interface
 try:
@@ -35,17 +44,10 @@ except ImportError:
     yt_present = False
 
 
-##mesh = ad.read.Mesh(500, fdir="/tiara/home/mvaisala/astaroth-code/astaroth_2.0/build/")
-##
-##print(np.shape(mesh.uu))
-##print(np.shape(mesh.lnrho))
-##
-##uu_tot = np.sqrt(mesh.uu[0]**2.0 + mesh.uu[1]**2.0 + mesh.uu[2]**2.0)
-##vis.slices.plot_3(mesh, uu_tot, title = r'$|u|$', bitmap = True, fname = 'uutot')
-##
-##vis.slices.plot_3(mesh, mesh.lnrho, title = r'$\ln \rho$', bitmap = True, fname = 'lnrho')
-##
-##print(mesh.minfo.contents)
+'''
+This file is currently somewhat messy collection of varius data visualiations.
+Some of them  work better than others. User discretion is adviced. 
+'''
 
 
 AC_unit_density  =  1e-17
@@ -55,8 +57,7 @@ AC_unit_length   = 1.496e+13
 
 print("sys.argv", sys.argv)
 
-meshdir  = "/home/mvaisala/astaroth_projects/shockweek/astaroth/samples/test_cases/kin_sph_shock/"
-
+meshdir = "/my/data/directory/"
 
 #Example fixed scaling template
 if (meshdir == "/home/mvaisala/astaroth_projects/shockweek/astaroth/samples/test_cases/kin_sph_shock/"):
@@ -332,8 +333,8 @@ if 'sl' in sys.argv:
             if ('lim' in sys.argv) or ('sym' in sys.argv):
                 vis.slices.plot_3(mesh, mesh.lnrho,         title = r'$\ln \rho$', bitmap = True, fname = 'lnrho',      colrange=rlnrho)
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$\rho$', bitmap = True, fname = 'rho',            colrange=rrho)
-                vis.slices.plot_3(mesh, mesh.shock,         title = r'$shock$', bitmap = True, fname = 'shock',         colrange=rshock)
-                vis.slices.plot_3(mesh, mesh.ss,            title = r'$s$', bitmap = True, fname = 'ss',                colrange=rss)
+                #vis.slices.plot_3(mesh, mesh.shock,         title = r'$shock$', bitmap = True, fname = 'shock',         colrange=rshock)
+                #vis.slices.plot_3(mesh, mesh.ss,            title = r'$s$', bitmap = True, fname = 'ss',                colrange=rss)
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$N_\mathrm{col}$', bitmap = True, fname = 'colden', slicetype = 'sum', colrange=rNcol)
                 vis.slices.plot_3(mesh, uu_tot,             title = r'$|u|$', bitmap = True, fname = 'uutot',           colrange=ruu_tot)
                 vis.slices.plot_3(mesh, mesh.uu[0],         title = r'$u_x$', bitmap = True, fname = 'uux',             colrange=ruu_xyz)
@@ -351,8 +352,8 @@ if 'sl' in sys.argv:
             else: 
                 vis.slices.plot_3(mesh, mesh.lnrho,         title = r'$\ln \rho$', bitmap = True, fname = 'lnrho')
                 vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$\rho$', bitmap = True, fname = 'rho')
-                vis.slices.plot_3(mesh, mesh.shock,         title = r'$shock$', bitmap = True, fname = 'shock')
-                vis.slices.plot_3(mesh, mesh.ss, title = r'$s$', bitmap = True, fname = 'ss')
+                #vis.slices.plot_3(mesh, mesh.shock,         title = r'$shock$', bitmap = True, fname = 'shock')
+                #vis.slices.plot_3(mesh, mesh.ss, title = r'$s$', bitmap = True, fname = 'ss')
                 vis.slices.plot_3(mesh, mesh.uu[0],         title = r'$u_x$', bitmap = True, fname = 'uux')#, velfieldlines=True)
                 vis.slices.plot_3(mesh, mesh.uu[1],         title = r'$u_y$', bitmap = True, fname = 'uuy')
                 vis.slices.plot_3(mesh, mesh.uu[2],         title = r'$u_z$', bitmap = True, fname = 'uuz')
@@ -363,10 +364,10 @@ if 'sl' in sys.argv:
                 vis.slices.plot_3(mesh, mesh.aa[0],         title = r'$A_x$', bitmap = True, fname = 'aax')
                 vis.slices.plot_3(mesh, mesh.aa[1],         title = r'$A_y$', bitmap = True, fname = 'aay')
                 vis.slices.plot_3(mesh, mesh.aa[2],         title = r'$A_z$', bitmap = True, fname = 'aaz')
-                #vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot')#, trimghost=3)
-                #vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx')#,     trimghost=3)#, bfieldlines=True)
-                #vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby')#,     trimghost=3)#, bfieldlines=True)
-                #vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz')#,     trimghost=3)#, bfieldlines=True)
+                vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot', trimaxis=3)#, trimghost=3)
+                vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
+                vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
+                vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
                  
             if 'yt' in sys.argv:
                 mesh.yt_conversion()
@@ -437,6 +438,13 @@ if 'sl' in sys.argv:
 
             elif 'rawall' in sys.argv:
                 mesh.export_raw()
+
+            
+            del uu_tot   
+            del aa_tot   
+            del bb_tot  
+            del mesh   
+            gc.collect()  
 
 if 'aver' in sys.argv:
     mesh_file_numbers = ad.read.parse_directory(meshdir)
@@ -573,3 +581,120 @@ if 'getvtk' in sys.argv:
         if mesh.ok:
             #mesh.Bfield()
             mesh.export_vtk_ascii(Beq = myBeq)
+
+'''
+3d rendering with PyVista. Very rought implementation. Please customize for your own purposed. 
+'''
+if ('3drend' in sys.argv) and pv_present:
+    mesh_file_numbers = ad.read.parse_directory(meshdir)
+    #mesh_file_numbers = mesh_file_numbers[-1:]
+    print(mesh_file_numbers)
+    print(len(mesh_file_numbers))
+    maxfiles = np.amax(mesh_file_numbers)
+    
+    azimuth   = 0.0 
+    elevation = 0.0
+    for i in mesh_file_numbers:
+        mesh = ad.read.Mesh(i, fdir=meshdir) 
+        print(" %i / %i" % (i, maxfiles))
+        if mesh.ok:
+            um = mesh.minfo.contents['AC_unit_magnetic']
+            mesh.Bfield(trim=False, get_jj=True)
+            mesh.lnrho = mesh.lnrho[3:-3,3:-3,3:-3] 
+            mesh.uu = (mesh.uu[0][3:-3,3:-3,3:-3], mesh.uu[1][3:-3,3:-3,3:-3], mesh.uu[2][3:-3,3:-3,3:-3])
+            mesh.aa = (mesh.aa[0][3:-3,3:-3,3:-3], mesh.aa[1][3:-3,3:-3,3:-3], mesh.aa[2][3:-3,3:-3,3:-3])
+            mesh.bb = (mesh.bb[0][3:-3,3:-3,3:-3]*um, mesh.bb[1][3:-3,3:-3,3:-3]*um, mesh.bb[2][3:-3,3:-3,3:-3]*um)
+            mesh.jj = (mesh.jj[0][3:-3,3:-3,3:-3], mesh.jj[1][3:-3,3:-3,3:-3], mesh.jj[2][3:-3,3:-3,3:-3])
+
+
+            print(mesh.lnrho.shape)
+
+            grid = pv.UniformGrid()
+            grid.dimensions = np.array(mesh.lnrho.shape) + 1
+            grid.origin = (128, 128, 128)  # The centre of the dataset
+            grid.spacing = (1, 1, 1)  
+            #grid.cell_arrays["Bx"] = mesh.bb[1].flatten(order="F")  # Flatten the array!
+            #grid.cell_arrays["rho"] = np.exp(mesh.lnrho).flatten(order="F")  # Flatten the array!
+            #grid.cell_arrays["Btot"] = np.sqrt(mesh.bb[0]**2.0 + mesh.bb[1]**2.0 + mesh.bb[2]**2.0).flatten(order="F")  # Flatten the array!
+            grid.cell_arrays["Btot"] = np.sqrt(mesh.bb[0]**2.0 + mesh.bb[1]**2.0).flatten(order="F")  # Flatten the array!
+            #grid.cell_arrays["Utot"] = np.sqrt(mesh.uu[0]**2.0 + mesh.uu[1]**2.0 + mesh.uu[2]**2.0).flatten(order="F")  # Flatten the array!
+            #grid.cell_arrays["j_tot"] = np.sqrt(mesh.jj[0]**2.0 + mesh.jj[1]**2.0 + mesh.jj[2]**2.0).flatten(order="F")  # Flatten the array!
+            #grid.cell_arrays["j_xy"] = np.sqrt(mesh.jj[0]**2.0 + mesh.jj[1]**2.0).flatten(order="F")  # Flatten the array!
+
+            filename = '3drender_%s.png' % (mesh.framenum)
+            del mesh   
+            gc.collect()  
+            
+            ###ppp = pv.Plotter()
+            ###ppp.add_mesh_slice(grid, cmap="plasma", assign_to_axis='x', implicit=False)            
+            ###ppp.add_mesh_slice(grid, cmap="plasma", assign_to_axis='y', implicit=False)            
+            ###ppp.add_mesh_slice(grid, cmap="plasma", assign_to_axis='z', implicit=False)            
+            ###ppp.show() 
+            ####grid.plot(show_edges=False, cmap="inferno") 
+
+            ###del ppp
+            ###gc.collect()  
+           
+            pp = pv.Plotter(off_screen=True)
+            #pp = pv.Plotter()
+            pp.background_color="black"
+
+            aaa = np.arange(256)
+            opwave = np.cos(3.0*((aaa/256)*2.0*np.pi))
+            #opwave[np.where(opwave < 0.0)] = 0.0
+            opwave = np.abs(opwave)
+            opwave = opwave[::2]
+            scale = np.linspace(0.0, 1.0, num = opwave.size)
+            opwave = opwave*scale
+            print(opwave)  
+
+
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear")#, clim = [1.0, 200.0]) # Pseudodisk j_xy, B0 = 30,3000 muG 
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear")#, clim = [1.0, 200.0]) # Pseudodisk j_xy, B0 = 30,3000 muG 
+             
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear", clim = [1.0, 200.0]) # Pseudodisk j_tot, B0 = 3000 muG 
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear")#, clim = [1.0, 200.0]) # Pseudodisk j_tot, B0 = 30 muG 
+
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[3.5, 4.0], opacity = [0.0,1.0])#, opacity=[0.0, 0.1, 0.75, 0.8, 1.0]) # Pseudodisk Utot, B0 = 30 muG 
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[1.0, 6.0]) # Pseudodisk Utot, B0 = 3000 muG 
+
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[0.3, 40.0]) # Pseudodisk Btot, B0 = 30 muG 
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[18.9, 30.0]) # Pseudodisk Btot, B0 = 3000 muG 
+
+            clim= [1e-6, 1000e-6]
+            pp.add_volume(grid, mapper='gpu', cmap="plasma_r",clim= [1e-6, 1000e-6]) # Pseudodisk Bxy, B0 = 3000 muG 
+
+            valuerange = [0.0, 20.0]
+            valuerange = [0.0, 10.0]
+            opwave     = 'linear'
+            colormap   = 'plasma_r'
+            
+            #pp.add_volume(grid, mapper='gpu', cmap=colormap, clim=valuerange, opacity=opwave) # Pseudodisk rho 
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", clim=[0.0, 20.0], opacity=[0.0, 0.5, 0.9, 0.95, 1.0]) # Pseudodisk rho 
+
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity=[0.0, 0.0, 0.0, 0.2, 1.0], clim=[0.9, 1.1])
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity="linear", clim=[-0.5, 0.5])
+            #pp.add_volume(grid, mapper='gpu', cmap="plasma", opacity=[1.0, 0.25, 0.0, 0.25, 1.0], clim=[-0.5, 0.5])
+
+            print(pp.camera.position)
+            print(pp.camera.focal_point)
+            print(pp.camera.azimuth)
+            #azimuth   += 10.0# np.pi/16.0 
+            #elevation += 5.0# np.pi/32.0
+            azimuth   += 5.0# np.pi/16.0 
+            elevation += 0.25# np.pi/32.0
+            pp.camera.azimuth   =  azimuth  
+            pp.camera.elevation =  elevation
+            print(pp.camera.azimuth)
+            print(pp.camera.elevation)
+            pp.camera.zoom(1.6)
+
+
+            pp.show(screenshot=filename)
+
+            pp.deep_clean()
+
+            del grid, pp     
+            gc.collect()  
+             
+    

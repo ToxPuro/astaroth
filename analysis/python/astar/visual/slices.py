@@ -26,7 +26,7 @@ CM_INFERNO = plt.get_cmap('inferno')
 
 def plot_3(mesh, input_grid, title = '', fname = 'default', bitmap=False,
 	   slicetype = 'middle', colrange=None, colormap=CM_INFERNO ,
-           contourplot=False, points_from_centre = -1, bfieldlines=False, velfieldlines=False, trimghost = 0):
+           contourplot=False, points_from_centre = -1, bfieldlines=False, velfieldlines=False, trimghost = 0, trimaxis = 0 ):
 
     fig = plt.figure(figsize=(8, 8))
     grid = gridspec.GridSpec(2, 3, wspace=0.4, hspace=0.4, width_ratios=[1,1, 0.15])
@@ -52,9 +52,9 @@ def plot_3(mesh, input_grid, title = '', fname = 'default', bitmap=False,
                         trimghost : xz_slice.shape[1]-trimghost]
     xy_slice = xy_slice[trimghost : xy_slice.shape[0]-trimghost,
                         trimghost : xy_slice.shape[1]-trimghost]
-    mesh_xx_tmp  = mesh.xx[trimghost : mesh.xx.shape[0]-trimghost] 
-    mesh_yy_tmp  = mesh.yy[trimghost : mesh.yy.shape[0]-trimghost]  
-    mesh_zz_tmp  = mesh.zz[trimghost : mesh.zz.shape[0]-trimghost] 
+    mesh_xx_tmp  = mesh.xx[(trimghost + trimaxis) : mesh.xx.shape[0]-(trimghost + trimaxis)] 
+    mesh_yy_tmp  = mesh.yy[(trimghost + trimaxis) : mesh.yy.shape[0]-(trimghost + trimaxis)]  
+    mesh_zz_tmp  = mesh.zz[(trimghost + trimaxis) : mesh.zz.shape[0]-(trimghost + trimaxis)] 
 
     #Set the coulourscale
     cmin = np.amin([yz_slice.min(), xz_slice.min(), xy_slice.min()])
