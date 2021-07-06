@@ -329,11 +329,11 @@ main(int argc, char** argv)
     update_config(&info);
 
     AcMesh mesh;
+    acGridInit(info);
     if (pid == 0) {
         acHostMeshCreate(info, &mesh);
         acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, &mesh);
     }
-    acGridInit(info);
     acGridLoadMesh(STREAM_DEFAULT, mesh);
 
     for (int t_step = 0; t_step < 100; ++t_step) {
