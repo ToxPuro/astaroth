@@ -480,7 +480,7 @@ typedef enum AcBoundary {
 } AcBoundary;
 
 /** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
- * some command.*/
+ * some operation.*/
 typedef struct AcTaskDefinition {
     AcTaskType task_type;
     union {
@@ -492,7 +492,7 @@ typedef struct AcTaskDefinition {
     size_t num_vtxbufs;
 } AcTaskDefinition;
 
-/** TaskGraph is an opaque datatype containing information necessary to execute a set of commands.*/
+/** TaskGraph is an opaque datatype containing information necessary to execute a set of operation.*/
 typedef struct AcTaskGraph AcTaskGraph;
 
 /** */
