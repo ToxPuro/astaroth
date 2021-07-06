@@ -323,6 +323,7 @@ main(int argc, char** argv)
     // Set random seed for reproducibility
     srand(321654987);
 
+#if 0
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     load_config(AC_DEFAULT_CONFIG, &info);
@@ -367,9 +368,11 @@ main(int argc, char** argv)
     acGridQuit();
     /////////////// Simple example END
 
+#endif
+
 // JP: The following is directly from standalone/simulation.cc and modified to work with MPI
 // However, not extensively tested
-#if 0
+#if 1
     // Load config to AcMeshInfo
     AcMeshInfo info;
     if (argc > 1) {
@@ -465,7 +468,7 @@ main(int argc, char** argv)
     for (int i = start_step + 1; i < max_steps; ++i) {
         AcReal umax;
         acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &umax);
-        const AcReal dt = host_timestep(umax, info);
+        const AcReal dt = calc_timestep(info);
 
 #if LSINK
         AcReal sum_mass;
