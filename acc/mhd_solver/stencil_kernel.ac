@@ -17,6 +17,62 @@
 #define H_CONST (0)                     // TODO: make an actual config parameter
 #define C_CONST (0)                     // TODO: make an actual config parameter
 
+// MV: Hack. Communicate physics defines to astaroth constant variables so that
+// MV: the main program can see them. This will avoid the need to define these
+// MV: flags in multiple places.  
+
+#if LDENSITY
+uniform int AC_ldensity = 1;
+#else
+uniform int AC_ldensity = 0;
+#endif
+#if LHYDRO 
+uniform int AC_lhydro = 1;
+#else
+uniform int AC_lhydro = 0;
+#endif
+#if LMAGNETIC
+uniform int AC_lmagnetic = 1;
+#else
+uniform int AC_lmagnetic = 0;
+#endif
+#if LENTROPY 
+uniform int AC_lentropy = 1;
+#else
+uniform int AC_lentropy = 0;
+#endif
+#if LTEMPERATURE
+uniform int AC_ltempereture = 1;
+#else
+uniform int AC_ltempereture = 0;
+#endif
+#if LFORCING 
+uniform int AC_lforcing = 1;
+#else
+uniform int AC_lforcing = 0;
+#endif
+#if LUPWD 
+uniform int AC_lupwd = 1;
+#else
+uniform int AC_lupwd = 0;
+#endif
+#if LSINK 
+uniform int AC_lsink = 1;
+#else
+uniform int AC_lsink = 0;
+#endif
+#if LBFIELD 
+uniform int AC_lbfied = 1;
+#else
+uniform int AC_lbfied = 0;
+#endif
+#if LSHOCK 
+uniform int AC_lshock = 1;
+#else
+uniform int AC_lshock = 0;
+#endif
+
+
 // Int params
 uniform int AC_max_steps;
 uniform int AC_save_steps;

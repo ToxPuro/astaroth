@@ -52,8 +52,19 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
-#define LFORCING (0)
 #define LSINK (0)
+/*  MV NOTES
+    It was possible to compensate LFORCING with AC_lforcing instead by the current hack 
+    However it as not possible to do so for LSINK because if in LSINK = 0 in
+    DSL, then VTXBUF_ACCRETION will be undefined. We need to disccus how to
+    communicate the preprocessor states of DSL for the rest of the code. PLEASE
+    NOTE that VTXBUF_ACCRETION or other such enumerator values cannot be checked
+    with #ifdef. 
+ */
+
+////#ifdef AC_FOR_VTXBUF_HANDLES
+////#endif
+
 
 // Write all setting info into a separate ascii file. This is done to guarantee
 // that we have the data specifi information in the thing, even though in
@@ -396,8 +407,6 @@ main(int argc, char** argv)
         acHostUpdateBuiltinParams(&info);
     }
 
-    printf("lforcing %i", LFORCING);
-
     const int start_step     = info.int_params[AC_start_step];
     const int max_steps      = info.int_params[AC_max_steps];
     const int save_steps     = info.int_params[AC_save_steps];
@@ -417,6 +426,7 @@ main(int argc, char** argv)
         // TODO: This need to be possible to define in astaroth.conf
         acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, &mesh);
         // acmesh_init_to(INIT_TYPE_SIMPLE_CORE, mesh); //Initial condition for a collapse test
+
 
 #if LSINK
         acVertexBufferSet(VTXBUF_ACCRETION, 0.0, &mesh);
@@ -500,10 +510,10 @@ main(int argc, char** argv)
         sink_mass = -1.0;
 #endif
 
-#if LFORCING
-        const ForcingParams forcing_params = generateForcingParams(info);
-        loadForcingParamsToGrid(forcing_params);
-#endif
+        if (info.int_params[AC_lforcing] == 1) {
+            const ForcingParams forcing_params = generateForcingParams(info);
+            loadForcingParamsToGrid(forcing_params);
+        }
 
         acGridIntegrate(STREAM_DEFAULT, dt);
 
