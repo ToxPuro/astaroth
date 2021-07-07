@@ -203,8 +203,8 @@ Region::tag_to_id(int _tag)
 
 /* Task interface */
 Task::Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag,
-           int3 nn, Device device_)
-    : device(device_), state(wait_state), dep_cntr(), loop_cntr(), order(order_), active(true),
+           int3 nn, Device device_, bool is_vba_inverted_)
+    : device(device_), is_vba_inverted(is_vba_inverted_), state(wait_state), dep_cntr(), loop_cntr(), order(order_), active(true),
       output_region(std::make_unique<Region>(output_family, region_tag, nn)),
       input_region(std::make_unique<Region>(input_family, region_tag, nn))
 {
@@ -324,8 +324,13 @@ Task::syncVBA()
 {
     cudaSetDevice(device->id);
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        vba.in[i]  = device->vba.in[i];
-        vba.out[i] = device->vba.out[i];
+        if (is_vba_inverted) {
+            vba.in[i]  = device->vba.out[i];
+            vba.out[i] = device->vba.in[i];
+        } else {
+            vba.in[i]  = device->vba.in[i];
+            vba.out[i] = device->vba.out[i];
+        }
     }
 }
 
@@ -356,9 +361,9 @@ Task::poll_stream()
 /* Computation */
 ComputeTask::ComputeTask(ComputeKernel compute_func_,
                          std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_,
-                         int region_tag, int3 nn, Device device_)
+                         int region_tag, int3 nn, Device device_, bool is_vba_inverted_)
     : Task(order_, RegionFamily::Compute_input, RegionFamily::Compute_output, region_tag, nn,
-           device_)
+           device_, is_vba_inverted_)
 {
     stream = device->streams[STREAM_DEFAULT + region_tag];
     syncVBA();
@@ -499,9 +504,9 @@ HaloMessageSwapChain::get_fresh_buffer()
 // HaloExchangeTask
 HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_,
                                    int tag_0, int halo_region_tag, int3 nn, uint3_64 decomp,
-                                   Device device_)
+                                   Device device_, bool is_vba_inverted_)
     : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, halo_region_tag, nn,
-           device_),
+           device_, is_vba_inverted_),
       recv_buffers(output_region->dims, vtxbuf_dependencies_->num_vars),
       send_buffers(input_region->dims, vtxbuf_dependencies_->num_vars)
 {
@@ -729,9 +734,9 @@ HaloExchangeTask::advance()
 
 BoundaryConditionTask::BoundaryConditionTask(AcBoundcond boundcond_, int3 boundary_normal_,
                                              VertexBufferHandle variable_, int order_,
-                                             int region_tag, int3 nn, Device device_)
+                                             int region_tag, int3 nn, Device device_, bool is_vba_inverted_)
     : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, region_tag, nn,
-           device_),
+           device_, is_vba_inverted_),
       boundcond(boundcond_), boundary_normal(boundary_normal_), variable(variable_)
 {
     // Create stream for boundary condition task

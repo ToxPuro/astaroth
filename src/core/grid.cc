@@ -565,10 +565,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         case TaskType_Compute: {
             ComputeKernel kernel = kernel_lookup[(int)op.kernel];
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
-                auto task = std::make_shared<ComputeTask>(kernel, vtxbuf_deps, i, tag, nn, device);
-                if (do_swap) {
-                    task->swapVBA();
-                }
+                auto task = std::make_shared<ComputeTask>(kernel, vtxbuf_deps, i, tag, nn, device, do_swap);
                 graph->all_tasks.push_back(task);
             }
             graph->num_swaps++;
@@ -580,10 +577,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (!region_at_boundary(tag, Boundary_XYZ)) {
                     auto task = std::make_shared<HaloExchangeTask>(vtxbuf_deps, i, tag0, tag, nn,
-                                                                   decomp, device);
-                    if (do_swap) {
-                        task->swapVBA();
-                    }
+                                                                   decomp, device, do_swap);
                     graph->halo_tasks.push_back(task);
                     graph->all_tasks.push_back(task);
                 }
@@ -599,10 +593,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                 if (region_at_boundary(tag, op.boundary)) {
                     if (bc == AC_BOUNDCOND_PERIODIC) {
                         auto task = std::make_shared<HaloExchangeTask>(vtxbuf_deps, i, tag0, tag,
-                                                                       nn, decomp, device);
-                        if (do_swap) {
-                            task->swapVBA();
-                        }
+                                                                       nn, decomp, device, do_swap);
                         graph->halo_tasks.push_back(task);
                         graph->all_tasks.push_back(task);
                     }
@@ -612,10 +603,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                             auto task = std::make_shared<
                                 BoundaryConditionTask>(bc, boundary_normal(tag),
                                                        op.vtxbuf_dependencies[j], i, tag, nn,
-                                                       device);
-                            if (do_swap) {
-                                task->swapVBA();
-                            }
+                                                       device, do_swap);
                             graph->all_tasks.push_back(task);
                         }
                     }
@@ -715,6 +703,7 @@ acGridExecuteTaskGraph(const AcTaskGraph* graph, size_t n_iterations)
 
     for (auto& task : graph->all_tasks) {
         if (task->active) {
+            task->syncVBA();
             task->setIterationParams(0, n_iterations);
         }
     }

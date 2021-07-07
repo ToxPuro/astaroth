@@ -115,6 +115,8 @@ typedef class Task {
     cudaStream_t stream;
     VertexBufferArray vba;
 
+    bool is_vba_inverted;
+
     int state;
 
     std::vector<std::pair<std::weak_ptr<Task>, size_t>> dependents;
@@ -129,7 +131,7 @@ typedef class Task {
     } loop_cntr;
 
     bool poll_stream();
-
+    
   public:
     int rank;  // MPI rank
     int order; // the ordinal position of the task in a serial execution (within its region)
@@ -144,7 +146,7 @@ typedef class Task {
     static const int wait_state = 0;
 
     Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn,
-         Device device_);
+         Device device_, bool is_vba_inverted_);
     virtual bool test()    = 0;
     virtual void advance() = 0;
 
@@ -175,7 +177,7 @@ typedef class ComputeTask : public Task {
 
   public:
     ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VtxbufSet> vtxbuf_dependencies_,
-                int order_, int region_tag, int3 nn, Device device_);
+                int order_, int region_tag, int3 nn, Device device_, bool is_vba_inverted_);
     ComputeTask(const ComputeTask& other) = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
@@ -225,7 +227,7 @@ typedef class HaloExchangeTask : public Task {
 
   public:
     HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_, int tag_0,
-                     int halo_region_tag, int3 nn, uint3_64 decomp, Device device_);
+                     int halo_region_tag, int3 nn, uint3_64 decomp, Device device_, bool is_vba_inverted_);
     ~HaloExchangeTask();
     HaloExchangeTask(const HaloExchangeTask& other) = delete;
     HaloExchangeTask& operator=(const HaloExchangeTask& other) = delete;
@@ -266,7 +268,7 @@ typedef class BoundaryConditionTask : public Task {
   public:
     BoundaryConditionTask(AcBoundcond boundcond_, int3 boundary_normal_,
                           VertexBufferHandle variable_, int order_, int region_tag, int3 nn,
-                          Device device_);
+                          Device device_, bool is_vba_inverted_);
     void populate_boundary_region();
     void advance();
     bool test();
