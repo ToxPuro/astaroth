@@ -69,7 +69,7 @@ write_info(const AcMeshInfo* config)
     fprintf(infotxt, "rm *.list *.mesh *.ts purge.sh\n");
     fclose(infotxt);
 
-    infotxt = fopen("info.list", "w");
+    infotxt = fopen("mesh_info.list", "w");
 
     // Determine endianness
     unsigned int EE      = 1;
@@ -237,6 +237,7 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
                   const AcReal sink_mass, const AcReal accreted_mass)
 {
 
+
     AcReal buf_rms, buf_max, buf_min;
     const int max_name_width = 16;
 
@@ -372,6 +373,7 @@ main(int argc, char** argv)
 
 // JP: The following is directly from standalone/simulation.cc and modified to work with MPI
 // However, not extensively tested
+// MV 2021-07-07, I am now inspecting this line by line 
 #if 1
     // Load config to AcMeshInfo
     AcMeshInfo info;
@@ -393,6 +395,8 @@ main(int argc, char** argv)
         load_config(AC_DEFAULT_CONFIG, &info);
         acHostUpdateBuiltinParams(&info);
     }
+
+    printf("lforcing %i", LFORCING);
 
     const int start_step     = info.int_params[AC_start_step];
     const int max_steps      = info.int_params[AC_max_steps];
