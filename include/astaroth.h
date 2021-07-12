@@ -57,6 +57,7 @@ typedef struct {
 
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
 
+
 // Device
 typedef struct device_s* Device; // Opaque pointer to device_s. Analogous to dispatchable handles
                                  // in Vulkan, f.ex. VkDevice
@@ -105,6 +106,12 @@ typedef enum {
     AC_FOR_VTXBUF_HANDLES(AC_GEN_ID) //
     NUM_VTXBUF_HANDLES
 } VertexBufferHandle;
+
+typedef enum { 
+    AC_FOR_INIT_TYPES(AC_GEN_ID) // 
+    NUM_INIT_TYPES 
+} InitType;
+
 #undef AC_GEN_ID
 
 #define _UNUSED __attribute__((unused)) // Does not give a warning if unused

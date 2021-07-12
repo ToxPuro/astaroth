@@ -818,6 +818,41 @@ external acdevicesynchronizestream
     fprintf(FHEADER, "integer(c_int), parameter :: AC_BOUNDCOND_ANTISYMMETRIC = %lu\n", counter);
     ++counter;
 
+    // Defines for initial conditions in host_memory. Moved here to work with astaroth.conf 
+    fprintf(DSLHEADER, "#define AC_FOR_INIT_TYPES(FUNC)\\\n");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "INIT_TYPE_RANDOM");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "INIT_TYPE_XWAVE");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "INIT_TYPE_GAUSSIAN_RADIAL_EXPL");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "INIT_TYPE_ABC_FLOW"); 
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "INIT_TYPE_SIMPLE_CORE");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "INIT_TYPE_KICKBALL");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "INIT_TYPE_VEDGE");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "INIT_TYPE_VEDGEX");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "INIT_TYPE_RAYLEIGH_TAYLOR");
+    fprintf(DSLHEADER, "FUNC(%s)\n",   "INIT_TYPE_RAYLEIGH_BENARD");
+
+    counter = 0;
+    fprintf(FHEADER, "integer(c_int), parameter :: INIT_TYPE_RANDOM = %lu\n", counter);
+    ++counter;
+    fprintf(FHEADER, "integer(c_int), parameter :: INIT_TYPE_XWAVE = %lu\n", counter);
+    ++counter;
+    fprintf(FHEADER, "integer(c_int), parameter :: INIT_TYPE_GAUSSIAN_RADIAL_EXPL = %lu\n", counter);
+    ++counter;
+    fprintf(FHEADER, "integer(c_int), parameter :: INIT_TYPE_ABC_FLOW = %lu\n", counter); 
+    ++counter;
+    fprintf(FHEADER, "integer(c_int), parameter :: INIT_TYPE_SIMPLE_CORE = %lu\n", counter);
+    ++counter;
+    fprintf(FHEADER, "integer(c_int), parameter :: INIT_TYPE_KICKBALL = %lu\n", counter);
+    ++counter;
+    fprintf(FHEADER, "integer(c_int), parameter :: INIT_TYPE_VEDGE = %lu\n", counter);
+    ++counter;
+    fprintf(FHEADER, "integer(c_int), parameter :: INIT_TYPE_VEDGEX = %lu\n", counter);
+    ++counter;
+    fprintf(FHEADER, "integer(c_int), parameter :: INIT_TYPE_RAYLEIGH_TAYLOR = %lu\n", counter);
+    ++counter;
+    fprintf(FHEADER, "integer(c_int), parameter :: INIT_TYPE_RAYLEIGH_BENARD = %lu\n", counter);
+    ++counter;
+
     // Fortran structs
     const char* fortran_structs = R"(
 type, bind(C) :: AcMeshInfo

@@ -28,6 +28,7 @@
 #include "astaroth.h"
 #include "modelmesh.h"
 
+/*
 // clang-format off
 #define AC_FOR_INIT_TYPES(FUNC)\
         FUNC(INIT_TYPE_RANDOM), \
@@ -45,6 +46,7 @@
 #define AC_GEN_ID(X) X
 typedef enum { AC_FOR_INIT_TYPES(AC_GEN_ID), NUM_INIT_TYPES } InitType;
 #undef AC_GEN_ID
+*/
 
 extern const char* init_type_names[]; // Defined in host_memory.cc
 

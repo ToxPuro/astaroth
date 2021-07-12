@@ -137,6 +137,9 @@ uniform Scalar AC_lnrho_out;
 uniform Scalar AC_ampl_aa;
 uniform Scalar AC_init_k_wave;
 uniform Scalar AC_init_sigma_hel;
+
+uniform int AC_init_type;
+
 //  Forcing parameters. User configured.
 uniform Scalar AC_forcing_magnitude;
 uniform Scalar AC_relhel;

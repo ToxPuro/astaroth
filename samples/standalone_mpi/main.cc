@@ -419,13 +419,17 @@ main(int argc, char** argv)
     FILE* diag_file         = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
 
+    // MV 2021-07-12 OK so far. 
+    //
+    const int init_type     = info.int_params[AC_init_type];
+
     AcMesh mesh;
     ///////////////////////////////// PROC 0 BLOCK START ///////////////////////////////////////////
     if (pid == 0) {
         acHostMeshCreate(info, &mesh);
         // TODO: This need to be possible to define in astaroth.conf
-        acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, &mesh);
-        // acmesh_init_to(INIT_TYPE_SIMPLE_CORE, mesh); //Initial condition for a collapse test
+        // acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, &mesh);
+        acmesh_init_to( (InitType) init_type, &mesh);
 
 
 #if LSINK
@@ -578,6 +582,7 @@ main(int argc, char** argv)
     ////acStore(mesh);
 
     ////save_mesh(*mesh, , t_step);
+    printf("INIT TYPE %i %i \n", init_type, INIT_TYPE_GAUSSIAN_RADIAL_EXPL)
 
     acGridQuit();
     if (pid == 0)
