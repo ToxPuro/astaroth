@@ -420,7 +420,7 @@ main(int argc, char** argv)
     ERRCHK_ALWAYS(diag_file);
 
     // MV 2021-07-12 OK so far. 
-    //
+    // MV 2021-07-13 AC_init_type input works now. 
     const int init_type     = info.int_params[AC_init_type];
 
     AcMesh mesh;
@@ -582,7 +582,6 @@ main(int argc, char** argv)
     ////acStore(mesh);
 
     ////save_mesh(*mesh, , t_step);
-    printf("INIT TYPE %i %i \n", init_type, INIT_TYPE_GAUSSIAN_RADIAL_EXPL)
 
     acGridQuit();
     if (pid == 0)

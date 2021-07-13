@@ -49,14 +49,60 @@ find_str(const char keyword[], const char* names[], const int& n)
     return -1;
 }
 
+static bool
+is_bctype(const int idx)
+{
+    return idx == AC_bc_type_top_x || idx == AC_bc_type_bot_x || //
+           idx == AC_bc_type_top_y || idx == AC_bc_type_bot_y || //
+           idx == AC_bc_type_top_z || idx == AC_bc_type_bot_z;
+}
+
+static bool
+is_initcondtype(const int idx)
+{
+    return idx == AC_init_type;
+}
+
+static int
+parse_intparam(const size_t idx, const char* value)
+{
+    if (is_bctype(idx)) {
+        int bctype = -1;
+        if ((bctype = find_str(value, bctype_names, NUM_BCTYPES)) >= 0)
+            return bctype;
+        else {
+            fprintf(stderr, "Error: Invalid BC type: %s, do not know what to do with it.\n", value);
+            fprintf(stdout, "Valid BC types:\n");
+            acQueryBCtypes();
+            ERROR("Invalid boundary condition type found in config");
+            return 0;
+        }
+    }
+    else if (is_initcondtype(idx)) {
+        int initcondtype = -1;
+        if ((initcondtype = find_str(value, initcondtype_names, NUM_INIT_TYPES)) >= 0) 
+            return initcondtype;
+        else {
+            fprintf(stderr, "Error: Invalid initial condition type: %s, do not know what to do with it.\n", value);
+            fprintf(stdout, "Valid initial condition types:\n");
+            acQueryInitcondtypes();
+            ERROR("Invalid initial condition type found in config");
+            return 0;
+        }
+    }
+    else {
+        return atoi(value);
+    }
+}
+
 static void
 parse_config(const char* path, AcMeshInfo* config)
 {
     FILE* fp;
     fp = fopen(path, "r");
     // For knowing which .conf file will be used
-    printf("Config file path: \n %s \n ", path);
-    ERRCHK(fp != NULL);
+    printf("Config file path: %s\n", path);
+    ERRCHK_ALWAYS(fp != NULL);
 
     const size_t BUF_SIZE = 128;
     char keyword[BUF_SIZE];
@@ -68,10 +114,10 @@ parse_config(const char* path, AcMeshInfo* config)
             continue;
 
         int idx = -1;
-        if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0)
-            config->int_params[idx] = atoi(value);
+        if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0) 
+            config->int_params[idx] = parse_intparam(idx, value);
         else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAMS)) >= 0)
-            config->real_params[idx] = AcReal(atof(value));
+            config->real_params[idx] = (AcReal)(atof(value));
     }
 
     fclose(fp);

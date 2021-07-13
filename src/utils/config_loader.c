@@ -54,6 +54,12 @@ is_bctype(const int idx)
            idx == AC_bc_type_top_z || idx == AC_bc_type_bot_z;
 }
 
+static bool
+is_initcondtype(const int idx)
+{
+    return idx == AC_init_type;
+}
+
 static int
 parse_intparam(const size_t idx, const char* value)
 {
@@ -66,6 +72,18 @@ parse_intparam(const size_t idx, const char* value)
             fprintf(stdout, "Valid BC types:\n");
             acQueryBCtypes();
             ERROR("Invalid boundary condition type found in config");
+            return 0;
+        }
+    }
+    else if (is_initcondtype(idx)) {
+        int initcondtype = -1;
+        if ((initcondtype = find_str(value, initcondtype_names, NUM_INIT_TYPES)) >= 0) 
+            return initcondtype;
+        else {
+            fprintf(stderr, "Error: Invalid initial condition type: %s, do not know what to do with it.\n", value);
+            fprintf(stdout, "Valid initial condition types:\n");
+            acQueryInitcondtypes();
+            ERROR("Invalid initial condition type found in config");
             return 0;
         }
     }
@@ -93,7 +111,7 @@ parse_config(const char* path, AcMeshInfo* config)
             continue;
 
         int idx = -1;
-        if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0)
+        if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0) 
             config->int_params[idx] = parse_intparam(idx, value);
         else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAMS)) >= 0)
             config->real_params[idx] = (AcReal)(atof(value));
