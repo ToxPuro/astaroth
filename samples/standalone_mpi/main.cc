@@ -382,9 +382,6 @@ main(int argc, char** argv)
 
 #endif
 
-// JP: The following is directly from standalone/simulation.cc and modified to work with MPI
-// However, not extensively tested
-// MV 2021-07-07, I am now inspecting this line by line 
 #if 1
     // Load config to AcMeshInfo
     AcMeshInfo info;
@@ -419,16 +416,12 @@ main(int argc, char** argv)
     FILE* diag_file         = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
 
-    // MV 2021-07-12 OK so far. 
-    // MV 2021-07-13 AC_init_type input works now. 
     const int init_type     = info.int_params[AC_init_type];
 
     AcMesh mesh;
     ///////////////////////////////// PROC 0 BLOCK START ///////////////////////////////////////////
     if (pid == 0) {
         acHostMeshCreate(info, &mesh);
-        // TODO: This need to be possible to define in astaroth.conf
-        // acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, &mesh);
         acmesh_init_to( (InitType) init_type, &mesh);
 
 
@@ -518,6 +511,10 @@ main(int argc, char** argv)
             const ForcingParams forcing_params = generateForcingParams(info);
             loadForcingParamsToGrid(forcing_params);
         }
+        // MV 2021-07-13 Code seems fine in terms of functionality
+        // MV TODO: Make it possible, using the task system, to run shock viscosity.
+        // MV TODO: Make it possible, using the task system, to run nonperiodic boundaty conditions.
+        // MV TODO: See if there are other features from the normal standalone which I would like to include. 
 
         acGridIntegrate(STREAM_DEFAULT, dt);
 
