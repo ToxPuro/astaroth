@@ -7,10 +7,10 @@
 #define LMAGNETIC (1)
 #define LENTROPY (1)
 #define LTEMPERATURE (0)
-#define LFORCING (0)
-#define LUPWD (0)
+#define LFORCING (1)
+#define LUPWD (1)
 #define LSINK (0)
-#define LBFIELD (0)
+#define LBFIELD (1)
 #define LSHOCK (0)
 
 #define AC_THERMAL_CONDUCTIVITY (0.001) // TODO: make an actual config parameter
@@ -21,6 +21,7 @@
 // MV: the main program can see them. This will avoid the need to define these
 // MV: flags in multiple places.  
 
+// MV: This did not work out because information is not tranmitted to the main program!
 #if LDENSITY
 uniform int AC_ldensity = 1;
 #else

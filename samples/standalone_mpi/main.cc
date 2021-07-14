@@ -53,13 +53,15 @@
 
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
 #define LSINK (0)
+#define LFORCING (1)
 /*  MV NOTES
     It was possible to compensate LFORCING with AC_lforcing instead by the current hack 
     However it as not possible to do so for LSINK because if in LSINK = 0 in
     DSL, then VTXBUF_ACCRETION will be undefined. We need to disccus how to
     communicate the preprocessor states of DSL for the rest of the code. PLEASE
     NOTE that VTXBUF_ACCRETION or other such enumerator values cannot be checked
-    with #ifdef. 
+    with #ifdef.
+    UPDATE: It did not work with AC_lforcing either. 
  */
 
 ////#ifdef AC_FOR_VTXBUF_HANDLES
@@ -507,10 +509,12 @@ main(int argc, char** argv)
         sink_mass = -1.0;
 #endif
 
-        if (info.int_params[AC_lforcing] == 1) {
+#if LFORCING
+        //if (info.int_params[AC_lforcing] == 1) {
             const ForcingParams forcing_params = generateForcingParams(info);
             loadForcingParamsToGrid(forcing_params);
-        }
+        //}
+#endif
         // MV 2021-07-13 Code seems fine in terms of functionality
         // MV TODO: Make it possible, using the task system, to run shock viscosity.
         // MV TODO: Make it possible, using the task system, to run nonperiodic boundaty conditions.
