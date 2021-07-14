@@ -31,6 +31,8 @@
 #include "host_forcing.h"
 #include "host_memory.h"
 
+#include "math_utils.h"
+
 #define fprintf(...)                                                                               \
     {                                                                                              \
         int tmppid;                                                                                \
@@ -247,7 +249,7 @@ print_diagnostics_host(const AcMesh mesh, const int step, const AcReal dt, const
 // JP: EXECUTES ON MULTIPLE GPUS, MUST BE CALLED FROM ALL PROCS
 static inline void
 print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* diag_file,
-                  const AcReal sink_mass, const AcReal accreted_mass)
+                  const AcReal sink_mass, const AcReal accreted_mass, int* found_nan)
 {
 
 
@@ -276,6 +278,10 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
         printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
                double(buf_min), double(buf_rms), double(buf_max));
         fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+
+        if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
+            *found_nan = 1;
+        }
     }
 
     if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
@@ -420,6 +426,8 @@ main(int argc, char** argv)
 
     const int init_type     = info.int_params[AC_init_type];
 
+    int found_nan = 0; // Nan or inf finder to give an error signal
+
     AcMesh mesh;
     ///////////////////////////////// PROC 0 BLOCK START ///////////////////////////////////////////
     if (pid == 0) {
@@ -533,7 +541,7 @@ main(int argc, char** argv)
                 timeseries.ts.
             */
 
-            print_diagnostics(i, dt, t_step, diag_file, sink_mass, accreted_mass);
+            print_diagnostics(i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
 #if LSINK
             printf("sink mass is: %.15e \n", double(sink_mass));
             printf("accreted mass is: %.15e \n", double(accreted_mass));
@@ -573,8 +581,24 @@ main(int argc, char** argv)
         if (max_time > AcReal(0.0)) {
             if (t_step >= max_time) {
                 printf("Time limit reached! at t = %e \n", double(t_step));
+                acGridPeriodicBoundconds(STREAM_DEFAULT);
+                acGridStoreMesh(STREAM_DEFAULT, &mesh);
+
+                if (pid == 0)
+                    save_mesh(mesh, i, t_step);
                 break;
             }
+        }
+
+        // End loop if nan is found
+        if (found_nan > 0) {
+            printf("Found nan at t = %e \n", double(t_step));
+            acGridPeriodicBoundconds(STREAM_DEFAULT);
+            acGridStoreMesh(STREAM_DEFAULT, &mesh);
+
+            if (pid == 0)
+                save_mesh(mesh, i, t_step);
+            break;
         }
     }
 
