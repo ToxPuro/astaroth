@@ -427,6 +427,7 @@ main(int argc, char** argv)
     const int init_type     = info.int_params[AC_init_type];
 
     int found_nan = 0; // Nan or inf finder to give an error signal
+    int istep = 0;
 
     AcMesh mesh;
     ///////////////////////////////// PROC 0 BLOCK START ///////////////////////////////////////////
@@ -577,15 +578,12 @@ main(int argc, char** argv)
             bin_crit_t += bin_save_t;
         }
 
+    istep = i; 
+
         // End loop if max time reached.
         if (max_time > AcReal(0.0)) {
             if (t_step >= max_time) {
                 printf("Time limit reached! at t = %e \n", double(t_step));
-                acGridPeriodicBoundconds(STREAM_DEFAULT);
-                acGridStoreMesh(STREAM_DEFAULT, &mesh);
-
-                if (pid == 0)
-                    save_mesh(mesh, i, t_step);
                 break;
             }
         }
@@ -593,14 +591,15 @@ main(int argc, char** argv)
         // End loop if nan is found
         if (found_nan > 0) {
             printf("Found nan at t = %e \n", double(t_step));
-            acGridPeriodicBoundconds(STREAM_DEFAULT);
-            acGridStoreMesh(STREAM_DEFAULT, &mesh);
-
-            if (pid == 0)
-                save_mesh(mesh, i, t_step);
             break;
         }
     }
+    //Save data after the loop ends
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridStoreMesh(STREAM_DEFAULT, &mesh);
+
+    if (pid == 0)
+        save_mesh(mesh, istep, t_step);
 
     //////Save the final snapshot
     ////acSynchronize();
