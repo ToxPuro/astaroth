@@ -56,6 +56,7 @@
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
 #define LSINK (0)
 #define LFORCING (1)
+#define LBFIELD (1)
 /*  MV NOTES
     It was possible to compensate LFORCING with AC_lforcing instead by the current hack 
     However it as not possible to do so for LSINK because if in LSINK = 0 in
@@ -225,6 +226,23 @@ print_diagnostics_host(const AcMesh mesh, const int step, const AcReal dt, const
            double(buf_rms), double(buf_max));
     fprintf(diag_file, "%d %e %e %e %e %e ", step, double(t_step), double(dt), double(buf_min),
             double(buf_rms), double(buf_max));
+#if LBFIELD
+    buf_max = acHostReduceVec(mesh, RTYPE_MAX, BFIELDX, BFIELDY, BFIELDZ);
+    buf_min = acHostReduceVec(mesh, RTYPE_MIN, BFIELDX, BFIELDY, BFIELDZ);
+    buf_rms = acHostReduceVec(mesh, RTYPE_RMS, BFIELDX, BFIELDY, BFIELDZ);
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+
+    buf_max = acHostReduceVecScal(mesh, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO);
+    buf_min = acHostReduceVecScal(mesh, RTYPE_ALFVEN_MIN, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO);
+    buf_rms = acHostReduceVecScal(mesh, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO);
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+#endif
 
     // Calculate rms, min and max from the variables as scalars
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
@@ -262,12 +280,28 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
     acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_rms);
 
     // MV: The ordering in the earlier version was wrong in terms of variable
-    // MV: name and its diagnostics.
-    printf("Step %d, t_step %.3e, dt %e s\n", step, double(t_step), double(dt));
     printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "uu total", double(buf_min),
            double(buf_rms), double(buf_max));
     fprintf(diag_file, "%d %e %e %e %e %e ", step, double(t_step), double(dt), double(buf_min),
             double(buf_rms), double(buf_max));
+
+#if LBFIELD
+    acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, BFIELDX, BFIELDY, BFIELDZ, &buf_max);
+    acGridReduceVec(STREAM_DEFAULT, RTYPE_MIN, BFIELDX, BFIELDY, BFIELDZ, &buf_min);
+    acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, BFIELDX, BFIELDY, BFIELDZ, &buf_rms);
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_max);
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MIN, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_min);
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_rms);
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+#endif
 
     // Calculate rms, min and max from the variables as scalars
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
@@ -302,7 +336,13 @@ AcReal
 calc_timestep(const AcMeshInfo info)
 {
     AcReal uumax;
+    AcReal vAmax = 0.0;
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumax);
+
+#if LBFIELD
+    acGridReduceVecScal(RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &vAmax);
+#endif
+
 
     const long double cdt  = info.real_params[AC_cdt];
     const long double cdtv = info.real_params[AC_cdtv];
@@ -320,8 +360,8 @@ calc_timestep(const AcMeshInfo info)
 
     // New, closer to the actual Courant timestep
     // See Pencil Code user manual p. 38 (timestep section)
-    const long double uu_dt   = cdt * dsmin / (fabsl(uumax) + sqrtl(cs2_sound + 0.0l));
-    const long double visc_dt = cdtv * dsmin * dsmin / max(max(nu_visc, eta), max(gamma, chi));
+    const long double uu_dt   = cdt * dsmin / (fabsl(uumax) + sqrtl(cs2_sound + vAmax*vAmax));
+    const long double visc_dt = cdtv * dsmin * dsmin / max(max(nu_visc, eta), gamma*chi);
 
     const long double dt = min(uu_dt, visc_dt);
     ERRCHK_ALWAYS(is_valid((AcReal)dt));
@@ -448,6 +488,10 @@ main(int argc, char** argv)
         // Generate the title row.
         if (start_step == 0) {
             fprintf(diag_file, "step  t_step  dt  uu_total_min  uu_total_rms  uu_total_max  ");
+#if LBFIELD
+            fprintf(diag_file, "bb_total_min  bb_total_rms  bb_total_max  ");
+            fprintf(diag_file, "vA_total_min  vA_total_rms  vA_total_max  ");
+#endif
             for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
                 fprintf(diag_file, "%s_min  %s_rms  %s_max  ", vtxbuf_names[i], vtxbuf_names[i],
                         vtxbuf_names[i]);
@@ -488,9 +532,8 @@ main(int argc, char** argv)
     AcReal accreted_mass = 0.0;
     AcReal sink_mass     = 0.0;
     for (int i = start_step + 1; i < max_steps; ++i) {
-        AcReal umax;
-        acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &umax);
         const AcReal dt = calc_timestep(info);
+
 
 #if LSINK
         AcReal sum_mass;
