@@ -58,6 +58,7 @@ AC_unit_length   = 1.496e+13
 print("sys.argv", sys.argv)
 
 meshdir = "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"
+meshdir = "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/TEMPDATA/"
 
 #Example fixed scaling template
 if (meshdir == "/home/mvaisala/astaroth_projects/shockweek/astaroth/samples/test_cases/kin_sph_shock/"):
@@ -723,3 +724,25 @@ if ('3drend' in sys.argv) and pv_present:
             gc.collect()  
              
     
+if 'npyconvert' in sys.argv:
+    mesh_file_numbers = ad.read.parse_directory(meshdir)
+    print(mesh_file_numbers)
+    maxfiles = np.amax(mesh_file_numbers)
+    for i in mesh_file_numbers:
+        mesh = ad.read.Mesh(i, fdir=meshdir) 
+        print(" %i / %i" % (i, maxfiles))
+        if mesh.ok:
+            if hasattr(mesh, 'lnrho'): 
+                if mesh.lnrho is not None: 
+                    np.save('density_%s.npy' % (mesh.framenum), np.exp(mesh.lnrho[3:-3]))
+            if hasattr(mesh, 'uu'): 
+                if mesh.uu[0] is not None:
+                    np.save('velocity_x_%s.npy' % (mesh.framenum), mesh.uu[0][3:-3])
+                    np.save('velocity_y_%s.npy' % (mesh.framenum), mesh.uu[1][3:-3])
+                    np.save('velocity_z_%s.npy' % (mesh.framenum), mesh.uu[2][3:-3])
+            if hasattr(mesh, 'aa'): 
+                if mesh.aa[0] is not None:
+                    mesh.Bfield(trim=True)
+                    np.save('bfield_x_%s.npy' % (mesh.framenum), mesh.bb[0])
+                    np.save('bfield_y_%s.npy' % (mesh.framenum), mesh.bb[1])
+                    np.save('bfield_z_%s.npy' % (mesh.framenum), mesh.bb[2])
