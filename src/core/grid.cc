@@ -565,7 +565,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         case TaskType_Compute: {
             ComputeKernel kernel = kernel_lookup[(int)op.kernel];
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
-                auto task = std::make_shared<ComputeTask>(kernel, vtxbuf_deps, i, tag, nn, device, do_swap);
+                auto task = std::make_shared<ComputeTask>(kernel, vtxbuf_deps, i, tag, nn, device,
+                                                          do_swap);
                 graph->all_tasks.push_back(task);
             }
             graph->num_swaps++;

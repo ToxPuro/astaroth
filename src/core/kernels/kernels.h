@@ -51,7 +51,6 @@ AcResult acKernelPeriodicBoundconds(const cudaStream_t stream, const int3 start,
 AcResult acKernelSymmetricBoundconds(const cudaStream_t stream, const int3 region_id,
                                      const int3 normal, const int3 dims, AcReal* vtxbuf);
 
-
 /** */
 AcResult acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int3 end,
                                    AcReal* vtxbuf, const VertexBufferHandle vtxbuf_handle,

@@ -204,7 +204,8 @@ Region::tag_to_id(int _tag)
 /* Task interface */
 Task::Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag,
            int3 nn, Device device_, bool is_vba_inverted_)
-    : device(device_), is_vba_inverted(is_vba_inverted_), state(wait_state), dep_cntr(), loop_cntr(), order(order_), active(true),
+    : device(device_), is_vba_inverted(is_vba_inverted_), state(wait_state), dep_cntr(),
+      loop_cntr(), order(order_), active(true),
       output_region(std::make_unique<Region>(output_family, region_tag, nn)),
       input_region(std::make_unique<Region>(input_family, region_tag, nn))
 {
@@ -327,7 +328,8 @@ Task::syncVBA()
         if (is_vba_inverted) {
             vba.in[i]  = device->vba.out[i];
             vba.out[i] = device->vba.in[i];
-        } else {
+        }
+        else {
             vba.in[i]  = device->vba.in[i];
             vba.out[i] = device->vba.out[i];
         }
@@ -734,7 +736,8 @@ HaloExchangeTask::advance()
 
 BoundaryConditionTask::BoundaryConditionTask(AcBoundcond boundcond_, int3 boundary_normal_,
                                              VertexBufferHandle variable_, int order_,
-                                             int region_tag, int3 nn, Device device_, bool is_vba_inverted_)
+                                             int region_tag, int3 nn, Device device_,
+                                             bool is_vba_inverted_)
     : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, region_tag, nn,
            device_, is_vba_inverted_),
       boundcond(boundcond_), boundary_normal(boundary_normal_), variable(variable_)
