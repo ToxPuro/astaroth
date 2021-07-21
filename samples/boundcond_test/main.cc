@@ -53,8 +53,8 @@ test_mirror(AcMesh mesh, int3 direction, int3 dims, int3 domain_start, int3 ghos
                             printf("\n\t%sERROR%s at boundary (%2d,%2d,%2d):", RED, RESET,
                                    direction.x, direction.y, direction.z);
                             printf("domain[(%3d,%3d,%3d)] = %f != ghost[(%3d,%3d,%3d)] = %f\n",
-                                   dom.x, dom.y, dom.z, field[idx_dom], ghost.x, ghost.y, ghost.z,
-                                   field[idx_ghost]);
+                                   dom.x, dom.y, dom.z, (double)field[idx_dom], ghost.x, ghost.y,
+                                   ghost.z, (double)field[idx_ghost]);
                             // printf("\n\tdomain[%d]!= ghost[%d]",idx_dom, idx_ghost);
                             fflush(stdout);
                         }
