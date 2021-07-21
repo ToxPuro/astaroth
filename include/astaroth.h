@@ -437,7 +437,7 @@ AcResult acGridIntegrateNonperiodic(const Stream stream, const AcReal dt);
 AcResult acGridPeriodicBoundconds(const Stream stream);
 
 /** */
-AcResult ACGRIDGENERALBOUNDCONDS(const Device device, const Stream stream);
+AcResult acGridGeneralBoundconds(const Device device, const Stream stream);
 
 /** */
 AcResult acGridReduceScal(const Stream stream, const ReductionType rtype,
