@@ -47,7 +47,7 @@
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
 
 AcTaskDefinition
-Compute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
+acCompute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
 {
     AcTaskDefinition task_def{};
     task_def.task_type           = TaskType_Compute;
@@ -58,7 +58,7 @@ Compute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[], const s
 }
 
 AcTaskDefinition
-HaloExchange(VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
+acHaloExchange(VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
 {
     AcTaskDefinition task_def{};
     task_def.task_type           = TaskType_HaloExchange;
@@ -68,8 +68,8 @@ HaloExchange(VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
 }
 
 AcTaskDefinition
-BoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                  VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
+acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
+                    VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
 {
     AcTaskDefinition task_def{};
     task_def.task_type           = TaskType_BoundaryCondition;

@@ -52,21 +52,19 @@ main(void)
     // This function call generates tasks for each subregions in the domain
     // and figures out the dependencies between the tasks.
     AcTaskGraph* hc_graph = acGridBuildTaskGraph(
-        {
-            HaloExchange(all_fields),
-            //BoundaryCondition(Boundary_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
-            Compute(Kernel_solve, all_fields)
-        });
+        {acHaloExchange(all_fields),
+         // acBoundaryCondition(Boundary_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+         acCompute(Kernel_solve, all_fields)});
 
     // We can build multiple TaskGraphs, the MPI requests will not collide
     // because MPI tag space has been partitioned into ranges that each HaloExchange step uses.
     /*
     AcTaskGraph* shock_graph = acGridBuildTaskGraph({
-        HaloExchange(all_fields),
-        BoundaryCondition(Boundary_XYZ, AC_BOUNDCOND_SYMMETRIC, all_fields),
-        Compute(Kernel_shock1, all_fields),
-        Compute(Kernel_shock2, shock_fields),
-        Compute(Kernel_solve, all_fields)
+        acHaloExchange(all_fields),
+        acBoundaryCondition(Boundary_XYZ, AC_BOUNDCOND_SYMMETRIC, all_fields),
+        acCompute(Kernel_shock1, all_fields),
+        acCompute(Kernel_shock2, shock_fields),
+        acCompute(Kernel_solve, all_fields)
     });
     */
 
@@ -80,12 +78,12 @@ main(void)
     acGridExecuteTaskGraph(hc_graph, 3);
 
     // Execute the task graph for three iterations.
-    //acGridExecuteTaskGraph(shock_graph, 3);
+    // acGridExecuteTaskGraph(shock_graph, 3);
     // End example
 
     std::cout << "Destroying grid" << std::endl;
     acGridDestroyTaskGraph(hc_graph);
-    //acGridDestroyTaskGraph(shock_graph);
+    // acGridDestroyTaskGraph(shock_graph);
     acGridQuit();
     MPI_Finalize();
     return EXIT_SUCCESS;

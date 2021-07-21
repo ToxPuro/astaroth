@@ -175,10 +175,10 @@ acGridInit(const AcMeshInfo info)
         all_vtxbufs[i] = (VertexBufferHandle)i;
     }
 
-    AcTaskDefinition default_ops[] = {HaloExchange(all_vtxbufs),
-                                      BoundaryCondition(Boundary_XYZ, AC_BOUNDCOND_PERIODIC,
-                                                        all_vtxbufs),
-                                      Compute(Kernel_solve, all_vtxbufs)};
+    AcTaskDefinition default_ops[] = {acHaloExchange(all_vtxbufs),
+                                      acBoundaryCondition(Boundary_XYZ, AC_BOUNDCOND_PERIODIC,
+                                                          all_vtxbufs),
+                                      acCompute(Kernel_solve, all_vtxbufs)};
 
     grid.initialized   = true;
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));

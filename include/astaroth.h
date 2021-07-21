@@ -497,16 +497,16 @@ typedef struct AcTaskDefinition {
 typedef struct AcTaskGraph AcTaskGraph;
 
 /** */
-AcTaskDefinition Compute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[],
-                         const size_t num_vtxbufs);
+AcTaskDefinition acCompute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[],
+                           const size_t num_vtxbufs);
 
 /** */
-AcTaskDefinition HaloExchange(VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs);
+AcTaskDefinition acHaloExchange(VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs);
 
 /** */
-AcTaskDefinition BoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                                   VertexBufferHandle vtxbuf_dependencies[],
-                                   const size_t num_vtxbufs);
+AcTaskDefinition acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
+                                     VertexBufferHandle vtxbuf_dependencies[],
+                                     const size_t num_vtxbufs);
 
 /** */
 AcTaskGraph* acGridGetDefaultTaskGraph();
@@ -840,25 +840,25 @@ AcResult acHostMeshDestroy(AcMesh* mesh);
 /** */
 template <size_t num_vtxbufs>
 AcTaskDefinition
-Compute(AcKernel kernel, VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
+acCompute(AcKernel kernel, VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
 {
-    return Compute(kernel, vtxbuf_dependencies, num_vtxbufs);
+    return acCompute(kernel, vtxbuf_dependencies, num_vtxbufs);
 }
 
 /** */
 template <size_t num_vtxbufs>
-AcTaskDefinition HaloExchange(VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
+AcTaskDefinition acHaloExchange(VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
 {
-    return HaloExchange(vtxbuf_dependencies, num_vtxbufs);
+    return acHaloExchange(vtxbuf_dependencies, num_vtxbufs);
 }
 
 /** */
 template <size_t num_vtxbufs>
 AcTaskDefinition
-BoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                  VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
+acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
+                    VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
 {
-    return BoundaryCondition(boundary, bound_cond, vtxbuf_dependencies, num_vtxbufs);
+    return acBoundaryCondition(boundary, bound_cond, vtxbuf_dependencies, num_vtxbufs);
 }
 
 /** */
