@@ -857,11 +857,11 @@ generate_library_hooks(void)
         if (symbol_table[i].type_qualifier == KERNEL) {
             const char* id = symbol_table[i].identifier;
             if (first_element) {
-                fprintf(DSLHEADER, "\n\tKernel_%s", id);
+                fprintf(DSLHEADER, "\n\tKERNEL_%s", id);
                 first_element = false;
             }
             else {
-                fprintf(DSLHEADER, ",\n\tKernel_%s", id);
+                fprintf(DSLHEADER, ",\n\tKERNEL_%s", id);
             }
         }
     }

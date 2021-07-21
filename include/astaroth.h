@@ -437,7 +437,7 @@ AcResult acGridIntegrateNonperiodic(const Stream stream, const AcReal dt);
 AcResult acGridPeriodicBoundconds(const Stream stream);
 
 /** */
-AcResult acGridGeneralBoundconds(const Device device, const Stream stream);
+AcResult ACGRIDGENERALBOUNDCONDS(const Device device, const Stream stream);
 
 /** */
 AcResult acGridReduceScal(const Stream stream, const ReductionType rtype,
@@ -455,28 +455,24 @@ AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
  */
 
 /** */
-typedef enum AcTaskType {
-    TaskType_Compute,
-    TaskType_HaloExchange,
-    TaskType_BoundaryCondition
-} AcTaskType;
+typedef enum AcTaskType { TASKTYPE_COMPUTE, TASKTYPE_HALOEXCHANGE, TASKTYPE_BOUNDCOND } AcTaskType;
 
 #define BIT(pos) (1U << (pos))
 
 typedef enum AcBoundary {
-    Boundary_X_top = 0x01,
-    Boundary_X_bot = 0x02,
-    Boundary_X     = Boundary_X_top | Boundary_X_bot,
-    Boundary_Y_top = 0x04,
-    Boundary_Y_bot = 0x08,
-    Boundary_Y     = Boundary_Y_top | Boundary_Y_bot,
-    Boundary_Z_top = 0x10,
-    Boundary_Z_bot = 0x20,
-    Boundary_Z     = Boundary_Z_top | Boundary_Z_bot,
-    Boundary_XY    = Boundary_X | Boundary_Y,
-    Boundary_XZ    = Boundary_X | Boundary_Z,
-    Boundary_YZ    = Boundary_Y | Boundary_Z,
-    Boundary_XYZ   = Boundary_X | Boundary_Y | Boundary_Z
+    BOUNDARY_X_TOP = 0x01,
+    BOUNDARY_X_BOT = 0x02,
+    BOUNDARY_X     = BOUNDARY_X_TOP | BOUNDARY_X_BOT,
+    BOUNDARY_Y_TOP = 0x04,
+    BOUNDARY_Y_BOT = 0x08,
+    BOUNDARY_Y     = BOUNDARY_Y_TOP | BOUNDARY_Y_BOT,
+    BOUNDARY_Z_TOP = 0x10,
+    BOUNDARY_Z_BOT = 0x20,
+    BOUNDARY_Z     = BOUNDARY_Z_TOP | BOUNDARY_Z_BOT,
+    BOUNDARY_XY    = BOUNDARY_X | BOUNDARY_Y,
+    BOUNDARY_XZ    = BOUNDARY_X | BOUNDARY_Z,
+    BOUNDARY_YZ    = BOUNDARY_Y | BOUNDARY_Z,
+    BOUNDARY_XYZ   = BOUNDARY_X | BOUNDARY_Y | BOUNDARY_Z
 } AcBoundary;
 
 /** TaskDefinition is a datatype containing information necessary to generate a set of tasks for

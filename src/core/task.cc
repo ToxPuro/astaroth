@@ -50,7 +50,7 @@ AcTaskDefinition
 acCompute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
 {
     AcTaskDefinition task_def{};
-    task_def.task_type           = TaskType_Compute;
+    task_def.task_type           = TASKTYPE_COMPUTE;
     task_def.kernel              = kernel;
     task_def.vtxbuf_dependencies = vtxbuf_dependencies;
     task_def.num_vtxbufs         = num_vtxbufs;
@@ -61,7 +61,7 @@ AcTaskDefinition
 acHaloExchange(VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
 {
     AcTaskDefinition task_def{};
-    task_def.task_type           = TaskType_HaloExchange;
+    task_def.task_type           = TASKTYPE_HALOEXCHANGE;
     task_def.vtxbuf_dependencies = vtxbuf_dependencies;
     task_def.num_vtxbufs         = num_vtxbufs;
     return task_def;
@@ -72,7 +72,7 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
                     VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
 {
     AcTaskDefinition task_def{};
-    task_def.task_type           = TaskType_BoundaryCondition;
+    task_def.task_type           = TASKTYPE_BOUNDCOND;
     task_def.boundary            = boundary;
     task_def.bound_cond          = bound_cond;
     task_def.vtxbuf_dependencies = vtxbuf_dependencies;
@@ -377,7 +377,7 @@ ComputeTask::ComputeTask(ComputeKernel compute_func_,
                               output_region->position + output_region->dims};
     name = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region->id.x) + "," +
            std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
-    task_type = TaskType_Compute;
+    task_type = TASKTYPE_COMPUTE;
 }
 
 void
@@ -536,7 +536,7 @@ HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencie
     name = "Halo exchange " + std::to_string(order_) + ".(" + std::to_string(output_region->id.x) +
            "," + std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) +
            ")";
-    task_type = TaskType_HaloExchange;
+    task_type = TASKTYPE_HALOEXCHANGE;
 }
 
 HaloExchangeTask::~HaloExchangeTask()
@@ -761,7 +761,7 @@ BoundaryConditionTask::BoundaryConditionTask(AcBoundcond boundcond_, int3 bounda
            std::to_string(output_region->id.x) + "," + std::to_string(output_region->id.y) + "," +
            std::to_string(output_region->id.z) + ")" + ".(" + std::to_string(boundary_normal.x) +
            "," + std::to_string(boundary_normal.y) + "," + std::to_string(boundary_normal.z) + ")";
-    task_type = TaskType_BoundaryCondition;
+    task_type = TASKTYPE_BOUNDCOND;
 }
 
 void

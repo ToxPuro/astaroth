@@ -112,10 +112,10 @@ main(void)
 
     AcTaskGraph* symmetric_bc_graph = acGridBuildTaskGraph(
         {acHaloExchange(all_fields),
-         acBoundaryCondition(Boundary_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
-         acCompute(Kernel_solve, all_fields), acCompute(Kernel_solve, all_fields),
-         acCompute(Kernel_solve, all_fields), acHaloExchange(all_fields),
-         acBoundaryCondition(Boundary_XYZ, AC_BOUNDCOND_SYMMETRIC, all_fields)});
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+         acCompute(KERNEL_solve, all_fields), acCompute(KERNEL_solve, all_fields),
+         acCompute(KERNEL_solve, all_fields), acHaloExchange(all_fields),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_SYMMETRIC, all_fields)});
 
     acGridExecuteTaskGraph(symmetric_bc_graph, 1);
     acGridSynchronizeStream(STREAM_ALL);
