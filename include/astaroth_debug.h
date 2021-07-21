@@ -1,5 +1,7 @@
+#if AC_MPI_ENABLED
 /** */
-void acGraphPrintDependencies(const TaskGraph* graph);
+void acGraphPrintDependencies(const AcTaskGraph* graph);
 
 /** */
-void acGraphWriteDependencies(const char* path, const TaskGraph* graph);
+void acGraphWriteDependencies(const char* path, const AcTaskGraph* graph);
+#endif

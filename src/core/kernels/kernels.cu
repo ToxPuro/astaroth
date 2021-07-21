@@ -95,6 +95,7 @@ operator*(const acComplex& a, const acComplex& b)
 
 // Kernels /////////////////////////////////////////////////////////////////////
 #include "boundconds.cuh"
+#include "boundconds_miikka_GBC.cuh"
 #include "integration.cuh"
 #include "packing.cuh"
 #include "reductions.cuh"
@@ -224,7 +225,7 @@ acDeviceLoadDefaultUniforms(const Device device)
 {
     cudaSetDevice(device->id);
 
-    // clang-format off
+// clang-format off
     // Scalar
     #define LOAD_DEFAULT_UNIFORM(X) acDeviceLoadScalarUniform(device, STREAM_DEFAULT, X, X##_DEFAULT_VALUE);
     AC_FOR_USER_REAL_PARAM_TYPES(LOAD_DEFAULT_UNIFORM)

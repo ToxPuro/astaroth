@@ -833,8 +833,7 @@ end type AcMeshInfo
 static void
 generate_library_hooks(void)
 {
-    // start with num_kernels = 1 because of special case acKernelIntegrateSubstep
-    size_t num_kernels = 1;
+    size_t num_kernels = 0;
     for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
         if (symbol_table[i].type_qualifier == KERNEL) {
             ++num_kernels;
@@ -852,21 +851,21 @@ generate_library_hooks(void)
     }
 
     // Generate user-facing enums
-    fprintf(DSLHEADER, "typedef enum Kernel {");
+    fprintf(DSLHEADER, "typedef enum AcKernel {");
     bool first_element = true;
     for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
         if (symbol_table[i].type_qualifier == KERNEL) {
             const char* id = symbol_table[i].identifier;
             if (first_element) {
-                fprintf(DSLHEADER, "\n\tKernel_%s", id);
+                fprintf(DSLHEADER, "\n\tKERNEL_%s", id);
                 first_element = false;
             }
             else {
-                fprintf(DSLHEADER, ",\n\tKernel_%s", id);
+                fprintf(DSLHEADER, ",\n\tKERNEL_%s", id);
             }
         }
     }
-    fprintf(DSLHEADER, "\n} Kernel;");
+    fprintf(DSLHEADER, "\n} AcKernel;");
 
     // Generate kernel lookup table to connect enums with kernel-calling functions
     fprintf(KHEADER, "const ComputeKernel kernel_lookup[%ld] = {", num_kernels);

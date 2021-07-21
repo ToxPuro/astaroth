@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 static void
-graphWriteDependencies(FILE* fp, const TaskGraph* graph)
+graphWriteDependencies(FILE* fp, const AcTaskGraph* graph)
 {
     // Compare that default_tasks == grid.default_tasks
     for (auto& task : graph->all_tasks) {
@@ -19,13 +19,13 @@ graphWriteDependencies(FILE* fp, const TaskGraph* graph)
 }
 
 void
-acGraphPrintDependencies(const TaskGraph* graph)
+acGraphPrintDependencies(const AcTaskGraph* graph)
 {
     graphWriteDependencies(stdout, graph);
 }
 
 void
-acGraphWriteDependencies(const char* path, const TaskGraph* graph)
+acGraphWriteDependencies(const char* path, const AcTaskGraph* graph)
 {
     FILE* fp;
     fp = fopen(path, "w");
@@ -39,7 +39,7 @@ acGraphWriteDependencies(const char* path, const TaskGraph* graph)
 }
 
 static void
-graphWriteOrder(FILE* fp, const TaskGraph* graph)
+graphWriteOrder(FILE* fp, const AcTaskGraph* graph)
 {
     if ((*(graph->all_tasks.begin()))->rank == 0) {
         fprintf(fp, "Order\n");
@@ -50,13 +50,13 @@ graphWriteOrder(FILE* fp, const TaskGraph* graph)
 }
 
 void
-acGraphPrintOrder(const TaskGraph* graph)
+acGraphPrintOrder(const AcTaskGraph* graph)
 {
     graphWriteOrder(stdout, graph);
 }
 
 void
-acGraphWriteOrder(const char* path, const TaskGraph* graph)
+acGraphWriteOrder(const char* path, const AcTaskGraph* graph)
 {
     FILE* fp;
     fp = fopen(path, "w");
@@ -69,26 +69,30 @@ acGraphWriteOrder(const char* path, const TaskGraph* graph)
     graphWriteOrder(fp, graph);
 }
 
-/*
+#define AC_DEBUG_TASK_TRANSITIONS (0)
+
 void
-Task::logStateChangedEvent(std::string from, std::string to)
+Task::logStateChangedEvent(const char* from, const char* to)
 {
-    //NOTE: the keys used here don't reflect terminology in Astaroth
-    //because the messages are read by a python tool which expects these keys.
-    std::cout<< "{"
-         <<"\"msg_type\":\"state_changed_event\","
-         <<"\"rank\":"<<rank
-         <<",\"substep\":"<<loop_cntr.i
-         <<",\"task_type\":\""<<task_type<<"\""
-         <<",\"tag\":"<<output_region->tag
-         <<",\"seg_id\":["
-             <<output_region->id.x<<","
-             <<output_region->id.y<<","
-             <<output_region->id.z<<"],"
-         <<"\"seg_type\":"<<output_region->facet_class<<","
-         <<"\"from\":\""<<from<<"\""<<","
-         <<"\"to\":\""<<to<<"\""
-         <<"}"<<std::endl;
+    // This line is here to stop the compiler from complaining about unused variables
+    if (from == to) {
+        ;
+    }
+
+#if AC_DEBUG_TASK_TRANSITIONS == 1
+    printf("{"
+           "\"msg_type\":\"state_changed_event\","
+           "\"rank\":%d,"
+           "\"iteration\":%lu,"
+           "\"task_order\":%d,"
+           "\"task_type\":%d,"
+           "\"tag\":%d,"
+           "\"region_id\":[%d,%d,%d],"
+           "\"from\":\"%s\","
+           "\"to\":\"%s\""
+           "}\n",
+           rank, loop_cntr.i, order, task_type, output_region->tag, output_region->id.x,
+           output_region->id.y, output_region->id.z, from, to);
+#endif
 }
-*/
 #endif
