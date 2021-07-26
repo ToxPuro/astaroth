@@ -464,6 +464,13 @@ AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
                          const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                          const VertexBufferHandle vtxbuf2, AcReal* result);
 
+/** */
+AcResult acGridReduceVecScal(const Stream stream, const ReductionType rtype, 
+                             const VertexBufferHandle vtxbuf0,
+                             const VertexBufferHandle vtxbuf1, 
+                             const VertexBufferHandle vtxbuf2, 
+                             const VertexBufferHandle vtxbuf3, AcReal* result);
+
 /*
  * =============================================================================
  * Task interface (part of the grid interface)

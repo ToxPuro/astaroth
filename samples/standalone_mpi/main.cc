@@ -280,6 +280,7 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
     acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_rms);
 
     // MV: The ordering in the earlier version was wrong in terms of variable
+    printf("Step %d, t_step %.3e, dt %e s\n", step, double(t_step), double(dt));
     printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "uu total", double(buf_min),
            double(buf_rms), double(buf_max));
     fprintf(diag_file, "%d %e %e %e %e %e ", step, double(t_step), double(dt), double(buf_min),
@@ -340,7 +341,7 @@ calc_timestep(const AcMeshInfo info)
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumax);
 
 #if LBFIELD
-    acGridReduceVecScal(RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &vAmax);
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &vAmax);
 #endif
 
 

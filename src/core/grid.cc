@@ -776,13 +776,13 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
 {
 
     MPI_Op op;
-    if (rtype == RTYPE_MAX) {
+    if (rtype == RTYPE_MAX || rtype == RTYPE_ALFVEN_MAX) {
         op = MPI_MAX;
     }
-    else if (rtype == RTYPE_MIN) {
+    else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN) {
         op = MPI_MIN;
     }
-    else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM) {
+    else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM || rtype == RTYPE_ALFVEN_RMS) {
         op = MPI_SUM;
     }
     else {
@@ -796,7 +796,7 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     MPI_Reduce(&local_result, &mpi_res, 1, AC_MPI_TYPE, op, 0, MPI_COMM_WORLD);
 
     if (rank == 0) {
-        if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP) {
+        if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS) {
             const AcReal inv_n = AcReal(1.) /
                                  (grid.nn.x * grid.decomposition.x * grid.nn.y *
                                   grid.decomposition.y * grid.nn.z * grid.decomposition.z);
@@ -831,6 +831,21 @@ acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBuff
 
     AcReal local_result;
     acDeviceReduceVec(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, &local_result);
+
+    return distributedScalarReduction(local_result, rtype, result);
+}
+
+AcResult
+acGridReduceVecScal(const Stream stream, const ReductionType rtype, const VertexBufferHandle vtxbuf0,
+                    const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2, 
+                    const VertexBufferHandle vtxbuf3, AcReal* result)
+{
+    ERRCHK(grid.initialized);
+    const Device device = grid.device;
+    acGridSynchronizeStream(STREAM_ALL);
+
+    AcReal local_result;
+    acDeviceReduceVecScal(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, &local_result);
 
     return distributedScalarReduction(local_result, rtype, result);
 }
@@ -1102,5 +1117,4 @@ acGridIntegrateNonperiodic(const Stream stream, const AcReal dt)
 }
 */
 
-// MV: for MPI we will need acGridReduceVecScal() to get Alfven speeds etc. TODO
 #endif // AC_MPI_ENABLED
