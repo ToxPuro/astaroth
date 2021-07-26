@@ -29,7 +29,7 @@ main(void)
     acGridLoadMesh(STREAM_DEFAULT, mesh);
 
     printf("Printing dependencies in default task graph\n\n");
-    TaskGraph* default_graph = acGridGetDefaultTaskGraph();
+    AcTaskGraph* default_graph = acGridGetDefaultTaskGraph();
     acGraphPrintDependencies(default_graph);
 
     acGridQuit();

@@ -33,13 +33,13 @@
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
 static_assert(SWAP_CHAIN_LENGTH == 2);
 
-struct VariableScope {
+struct VtxbufSet {
     VertexBufferHandle* variables;
     size_t num_vars;
-    VariableScope(const VertexBufferHandle* variables_, const size_t num_vars_);
-    ~VariableScope();
-    VariableScope(const VariableScope& other) = delete;
-    VariableScope& operator=(const VariableScope& other) = delete;
+    VtxbufSet(const VertexBufferHandle* variables_, const size_t num_vars_);
+    ~VtxbufSet();
+    VtxbufSet(const VtxbufSet& other) = delete;
+    VtxbufSet& operator=(const VtxbufSet& other) = delete;
 };
 
 /**
@@ -65,7 +65,7 @@ struct VariableScope {
  * in an MPI message.
  */
 
-enum class RegionFamily { Exchange_output, Exchange_input, Compute_output, Compute_input };
+enum class RegionFamily { Exchange_output, Exchange_input, Compute_output, Compute_input, None };
 
 struct Region {
     int3 position;
@@ -74,8 +74,13 @@ struct Region {
 
     RegionFamily family;
     int3 id;
-    size_t facet_class;
     int tag;
+
+    // facet class 0 = inner core
+    // facet class 1 = face
+    // facet class 2 = edge
+    // facet class 3 = corner
+    size_t facet_class;
 
     static constexpr int min_halo_tag   = 1;
     static constexpr int max_halo_tag   = 27;
@@ -84,11 +89,14 @@ struct Region {
     static constexpr int max_comp_tag   = 27;
     static constexpr int n_comp_regions = max_comp_tag - min_comp_tag + 1;
 
-    static int id_to_tag(int3 _id);
-    static int3 tag_to_id(int _tag);
+    static int id_to_tag(int3 id_);
+    static int3 tag_to_id(int tag_);
 
-    Region(RegionFamily _family, int _tag, int3 nn);
-    Region(RegionFamily _family, int3 _id, int3 nn);
+    Region(RegionFamily family_, int tag_, int3 nn);
+    Region(RegionFamily family_, int3 id_, int3 nn);
+    Region(int3 position_, int3 dims_, int tag);
+
+    Region translate(int3 translation);
     bool overlaps(const Region* other);
 };
 
@@ -103,13 +111,15 @@ struct Region {
  */
 typedef class Task {
   protected:
-    std::vector<std::pair<std::weak_ptr<Task>, size_t>> dependents;
     Device device;
     cudaStream_t stream;
     VertexBufferArray vba;
 
+    bool is_vba_inverted;
+
     int state;
 
+    std::vector<std::pair<std::weak_ptr<Task>, size_t>> dependents;
     struct {
         std::vector<size_t> counts;
         std::vector<size_t> targets;
@@ -123,19 +133,20 @@ typedef class Task {
     bool poll_stream();
 
   public:
-    int rank;
+    int rank;  // MPI rank
+    int order; // the ordinal position of the task in a serial execution (within its region)
     bool active;
     std::string name;
-    TaskType task_type;
+    AcTaskType task_type;
 
-    int order; // the ordinal position of the task in a serial execution (within its region)
     std::unique_ptr<Region> output_region;
     std::unique_ptr<Region> input_region;
-    std::shared_ptr<VariableScope> variable_scope;
+    std::shared_ptr<VtxbufSet> vtxbuf_dependencies;
 
     static const int wait_state = 0;
 
-    Task(RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn);
+    Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn,
+         Device device_, bool is_vba_inverted_);
     virtual bool test()    = 0;
     virtual void advance() = 0;
 
@@ -144,7 +155,7 @@ typedef class Task {
     bool isPrerequisiteTo(std::shared_ptr<Task> other);
 
     void setIterationParams(size_t begin, size_t end);
-    void update();
+    void update(bool do_swapVBA);
     bool isFinished();
 
     void notifyDependents();
@@ -153,11 +164,11 @@ typedef class Task {
     void syncVBA();
     void swapVBA();
 
-    // void logStateChangedEvent(std::string b, std::string c);
+    void logStateChangedEvent(const char* from, const char* to);
 } Task;
 
 // Compute tasks
-enum class ComputeState { Waiting_for_halo = Task::wait_state, Running };
+enum class ComputeState { Waiting = Task::wait_state, Running };
 
 typedef class ComputeTask : public Task {
   private:
@@ -165,8 +176,8 @@ typedef class ComputeTask : public Task {
     KernelParameters params;
 
   public:
-    ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VariableScope> variable_scope_,
-                int order_, int region_tag, int3 nn, Device device_);
+    ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VtxbufSet> vtxbuf_dependencies_,
+                int order_, int region_tag, int3 nn, Device device_, bool is_vba_inverted_);
     ComputeTask(const ComputeTask& other) = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
@@ -203,12 +214,7 @@ typedef struct HaloMessageSwapChain {
     HaloMessage* get_fresh_buffer();
 } HaloMessageSwapChain;
 
-enum class HaloExchangeState {
-    Waiting_for_compute = Task::wait_state,
-    Packing,
-    Exchanging,
-    Unpacking
-};
+enum class HaloExchangeState { Waiting = Task::wait_state, Packing, Exchanging, Unpacking };
 
 typedef class HaloExchangeTask : public Task {
   private:
@@ -220,8 +226,9 @@ typedef class HaloExchangeTask : public Task {
     HaloMessageSwapChain send_buffers;
 
   public:
-    HaloExchangeTask(std::shared_ptr<VariableScope> variable_scope_, int order_, int tag_0,
-                     int halo_region_tag, int3 nn, uint3_64 decomp, Device device_);
+    HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_, int tag_0,
+                     int halo_region_tag, int3 nn, uint3_64 decomp, Device device_,
+                     bool is_vba_inverted_);
     ~HaloExchangeTask();
     HaloExchangeTask(const HaloExchangeTask& other) = delete;
     HaloExchangeTask& operator=(const HaloExchangeTask& other) = delete;
@@ -251,7 +258,25 @@ typedef class HaloExchangeTask : public Task {
     bool test();
 } HaloExchangeTask;
 
-struct TaskGraph {
+enum class BoundaryConditionState { Waiting = Task::wait_state, Running };
+
+typedef class BoundaryConditionTask : public Task {
+  private:
+    AcBoundcond boundcond;
+    int3 boundary_normal;
+    VertexBufferHandle variable;
+
+  public:
+    BoundaryConditionTask(AcBoundcond boundcond_, int3 boundary_normal_,
+                          VertexBufferHandle variable_, int order_, int region_tag, int3 nn,
+                          Device device_, bool is_vba_inverted_);
+    void populate_boundary_region();
+    void advance();
+    bool test();
+} BoundaryConditionTask;
+
+struct AcTaskGraph {
+    size_t num_swaps;
     std::vector<std::shared_ptr<Task>> all_tasks;
     std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
     std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;

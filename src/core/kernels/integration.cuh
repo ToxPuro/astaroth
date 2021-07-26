@@ -122,11 +122,11 @@ static dim3 rk3_tpb(32, 1, 4);
                        (unsigned int)ceil(n.z / AcReal(tpb.z)));                                   \
                                                                                                    \
         if (params.step_number == 0)                                                               \
-            solve<0><<<bpg, tpb, 0, params.stream>>>(params.start, params.end, vba);               \
+            identifier<0><<<bpg, tpb, 0, params.stream>>>(params.start, params.end, vba);          \
         else if (params.step_number == 1)                                                          \
-            solve<1><<<bpg, tpb, 0, params.stream>>>(params.start, params.end, vba);               \
+            identifier<1><<<bpg, tpb, 0, params.stream>>>(params.start, params.end, vba);          \
         else                                                                                       \
-            solve<2><<<bpg, tpb, 0, params.stream>>>(params.start, params.end, vba);               \
+            identifier<2><<<bpg, tpb, 0, params.stream>>>(params.start, params.end, vba);          \
                                                                                                    \
         ERRCHK_CUDA_KERNEL();                                                                      \
                                                                                                    \

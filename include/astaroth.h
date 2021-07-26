@@ -463,6 +463,75 @@ AcResult acGridReduceScal(const Stream stream, const ReductionType rtype,
 AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
                          const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                          const VertexBufferHandle vtxbuf2, AcReal* result);
+
+/*
+ * =============================================================================
+ * Task interface (part of the grid interface)
+ * =============================================================================
+ */
+
+/** */
+typedef enum AcTaskType { TASKTYPE_COMPUTE, TASKTYPE_HALOEXCHANGE, TASKTYPE_BOUNDCOND } AcTaskType;
+
+#define BIT(pos) (1U << (pos))
+
+typedef enum AcBoundary {
+    BOUNDARY_X_TOP = 0x01,
+    BOUNDARY_X_BOT = 0x02,
+    BOUNDARY_X     = BOUNDARY_X_TOP | BOUNDARY_X_BOT,
+    BOUNDARY_Y_TOP = 0x04,
+    BOUNDARY_Y_BOT = 0x08,
+    BOUNDARY_Y     = BOUNDARY_Y_TOP | BOUNDARY_Y_BOT,
+    BOUNDARY_Z_TOP = 0x10,
+    BOUNDARY_Z_BOT = 0x20,
+    BOUNDARY_Z     = BOUNDARY_Z_TOP | BOUNDARY_Z_BOT,
+    BOUNDARY_XY    = BOUNDARY_X | BOUNDARY_Y,
+    BOUNDARY_XZ    = BOUNDARY_X | BOUNDARY_Z,
+    BOUNDARY_YZ    = BOUNDARY_Y | BOUNDARY_Z,
+    BOUNDARY_XYZ   = BOUNDARY_X | BOUNDARY_Y | BOUNDARY_Z
+} AcBoundary;
+
+/** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
+ * some operation.*/
+typedef struct AcTaskDefinition {
+    AcTaskType task_type;
+    union {
+        AcKernel kernel;
+        AcBoundcond bound_cond;
+    };
+    AcBoundary boundary;
+    VertexBufferHandle* vtxbuf_dependencies;
+    size_t num_vtxbufs;
+} AcTaskDefinition;
+
+/** TaskGraph is an opaque datatype containing information necessary to execute a set of
+ * operation.*/
+typedef struct AcTaskGraph AcTaskGraph;
+
+/** */
+AcTaskDefinition acCompute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[],
+                           const size_t num_vtxbufs);
+
+/** */
+AcTaskDefinition acHaloExchange(VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs);
+
+/** */
+AcTaskDefinition acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
+                                     VertexBufferHandle vtxbuf_dependencies[],
+                                     const size_t num_vtxbufs);
+
+/** */
+AcTaskGraph* acGridGetDefaultTaskGraph();
+
+/** */
+AcTaskGraph* acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops);
+
+/** */
+AcResult acGridDestroyTaskGraph(AcTaskGraph* graph);
+
+/** */
+AcResult acGridExecuteTaskGraph(const AcTaskGraph* graph, const size_t n_iterations);
+
 #endif // AC_MPI_ENABLED
 
 /*
@@ -778,68 +847,38 @@ AcResult acHostMeshDestroy(AcMesh* mesh);
 } // extern "C"
 #endif
 
-/** */
-typedef enum TaskType { TaskType_Compute, TaskType_HaloExchange } TaskType;
-
-/** */
-typedef enum BoundaryCondition { Boundconds_Periodic } BoundaryCondition;
-
-/** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
- * some command.*/
-typedef struct TaskDefinition {
-    TaskType task_type;
-    union {
-        Kernel kernel;
-        BoundaryCondition bound_cond;
-    };
-    VertexBufferHandle* scope;
-    size_t scope_length;
-} TaskDefinition;
-
-/** TaskGraph is an opaque datatype containing information necessary to execute a set of commands.*/
-typedef struct TaskGraph TaskGraph;
-
-/** */
-TaskDefinition Compute(const Kernel kernel, VertexBufferHandle scope[], const size_t scope_length);
-
-/** */
-TaskDefinition HaloExchange(const BoundaryCondition bound_cond, VertexBufferHandle scope[],
-                            const size_t scope_length);
-
-/** */
-TaskGraph* acGridGetDefaultTaskGraph();
-
-/** */
-TaskGraph* acGridBuildTaskGraph(const TaskDefinition ops[], const size_t n_ops);
-
-/** */
-AcResult acGridDestroyTaskGraph(TaskGraph* graph);
-
-/** */
-AcResult acGridExecuteTaskGraph(const TaskGraph* graph, const size_t n_iterations);
-
 #ifdef __cplusplus
+#if AC_MPI_ENABLED
 /** */
-template <size_t scope_length>
-TaskDefinition
-Compute(Kernel kernel, VertexBufferHandle (&scope)[scope_length])
+template <size_t num_vtxbufs>
+AcTaskDefinition
+acCompute(AcKernel kernel, VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
 {
-    return Compute(kernel, scope, scope_length);
+    return acCompute(kernel, vtxbuf_dependencies, num_vtxbufs);
 }
 
 /** */
-template <size_t scope_length>
-TaskDefinition
-HaloExchange(BoundaryCondition bound_cond, VertexBufferHandle (&scope)[scope_length])
+template <size_t num_vtxbufs>
+AcTaskDefinition acHaloExchange(VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
 {
-    return HaloExchange(bound_cond, scope, scope_length);
+    return acHaloExchange(vtxbuf_dependencies, num_vtxbufs);
+}
+
+/** */
+template <size_t num_vtxbufs>
+AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
+                    VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
+{
+    return acBoundaryCondition(boundary, bound_cond, vtxbuf_dependencies, num_vtxbufs);
 }
 
 /** */
 template <size_t n_ops>
-TaskGraph*
-acGridBuildTaskGraph(const TaskDefinition (&ops)[n_ops])
+AcTaskGraph*
+acGridBuildTaskGraph(const AcTaskDefinition (&ops)[n_ops])
 {
     return acGridBuildTaskGraph(ops, n_ops);
 }
+#endif
 #endif

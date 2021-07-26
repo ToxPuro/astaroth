@@ -46,6 +46,11 @@ extern "C" {
 /** */
 AcResult acKernelPeriodicBoundconds(const cudaStream_t stream, const int3 start, const int3 end,
                                     AcReal* vtxbuf);
+
+/** */
+AcResult acKernelSymmetricBoundconds(const cudaStream_t stream, const int3 region_id,
+                                     const int3 normal, const int3 dims, AcReal* vtxbuf);
+
 /** */
 AcResult acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int3 end,
                                    AcReal* vtxbuf, const VertexBufferHandle vtxbuf_handle,
@@ -67,7 +72,7 @@ AcResult acKernelIntegrateSubstep(const KernelParameters params, VertexBufferArr
 /** */
 AcResult acKernelPartialPackData(const cudaStream_t stream, const VertexBufferArray vba,
                                  const int3 vba_start, const int3 dims, AcRealPacked* packed,
-                                 VertexBufferHandle variable_scope[], size_t var_scope_len);
+                                 VertexBufferHandle vtxbufs[], size_t num_vtxbufs);
 
 /** */
 AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
@@ -76,7 +81,7 @@ AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packe
 /** */
 AcResult acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
                                    const int3 vba_start, const int3 dims, VertexBufferArray vba,
-                                   VertexBufferHandle variable_scope[], size_t var_scope_len);
+                                   VertexBufferHandle vtxbufs[], size_t num_vtxbufs);
 
 /** */
 AcReal acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,
