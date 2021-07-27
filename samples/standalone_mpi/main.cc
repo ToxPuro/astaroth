@@ -26,6 +26,8 @@
 #include <mpi.h>
 #include <string.h>
 
+#include <unistd.h>
+
 #include "config_loader.h"
 #include "errchk.h"
 #include "host_forcing.h"
@@ -483,6 +485,7 @@ main(int argc, char** argv)
 
     int found_nan = 0; // Nan or inf finder to give an error signal
     int istep = 0;
+    int found_stop = 0;
 
     AcMesh mesh;
     ///////////////////////////////// PROC 0 BLOCK START ///////////////////////////////////////////
@@ -638,6 +641,17 @@ main(int argc, char** argv)
 
     istep = i; 
 
+        // Ensures that are known beyond rank 0. 
+        MPI_Bcast(&found_nan, 1, MPI_INT, 0, MPI_COMM_WORLD); 
+
+        if (access("STOP", F_OK) != -1) {
+            found_stop = 1;
+        }
+        else {
+            found_stop = 0;
+        }
+
+
         // End loop if max time reached.
         if (max_time > AcReal(0.0)) {
             if (t_step >= max_time) {
@@ -651,6 +665,12 @@ main(int argc, char** argv)
             printf("Found nan at t = %e \n", double(t_step));
             break;
         }
+
+        if (found_stop == 1) {
+            printf("Found STOP file at t = %e \n", double(t_step));
+            break;
+        }
+
     }
     //Save data after the loop ends
     acGridPeriodicBoundconds(STREAM_DEFAULT);
