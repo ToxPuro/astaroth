@@ -336,9 +336,12 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
 AcReal
 calc_timestep(const AcMeshInfo info)
 {
-    AcReal uumax;
+    AcReal uumax = 0.0;
     AcReal vAmax = 0.0;
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumax);
+    //TODO ERROR: uumax is currently only seen by the rank 0 process which will
+    //lead to asyncronizity in the timestep leading to deadlocks! The resulting
+    //dt in rank 0 should be broadcasted to others. 
 
 #if LBFIELD
     acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &vAmax);
