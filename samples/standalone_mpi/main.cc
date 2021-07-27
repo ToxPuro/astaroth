@@ -341,10 +341,21 @@ calc_timestep(const AcMeshInfo info)
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumax);
     //TODO ERROR: uumax is currently only seen by the rank 0 process which will
     //lead to asyncronizity in the timestep leading to deadlocks! The resulting
-    //dt in rank 0 should be broadcasted to others. 
+    //dt or uumax and vAmax in rank 0 should be broadcasted to others.
+    //SOLUTION: broadcast uumax and vAmax to all ranks
+    //NOTE: It would be also possible to edit contents of
+    //acGridReduceVecScal(), but for the sake of coherence, with less risk of
+    //interfering things elsewhere, I have deiced to try out this approach
+    //first, as it is not too complicated anyway.   
+
+    // MPI_Bcast to share uumax with all ranks
+    MPI_Bcast(&uumax, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD); 
 
 #if LBFIELD
     acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &vAmax);
+
+    // MPI_Bcast to share vAmax with all ranks
+    MPI_Bcast(&vAmax, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD); 
 #endif
 
 
