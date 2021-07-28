@@ -52,20 +52,19 @@ add_subdirectory(acc)
 
 ## Compile AC headers
 if (NOT DEFINED DSL_MODULE_DIR)
-    set(DSL_MODULE_DIR ${CMAKE_SOURCE_DIR}/acc/mhd_solver) # Default
+    set(DSL_MODULE_DIR ${CMAKE_SOURCE_DIR}/dsl) # Default
 endif ()
 get_filename_component(DSL_MODULE_DIR ${DSL_MODULE_DIR} REALPATH)
-message(STATUS "AC module dir: ${DSL_MODULE_DIR}")
+message(STATUS "DSL module dir: ${DSL_MODULE_DIR}")
 
-file(GLOB DSL_SOURCES ${DSL_MODULE_DIR}/*
-                      ${CMAKE_SOURCE_DIR}/acc/stdlib/*)
+file(GLOB DSL_SOURCES ${DSL_MODULE_DIR}/mhdsolver.ac)
 set(DSL_HEADERS "${PROJECT_BINARY_DIR}/user_kernels.h"
                 "${PROJECT_BINARY_DIR}/user_defines.h"
-                "${PROJECT_BINARY_DIR}/astaroth.f90")
+                "${PROJECT_BINARY_DIR}/user_declarations.h")
 
 add_custom_command (
     COMMENT "Building ACC objects ${DSL_MODULE_DIR}"
-    COMMAND ${CMAKE_SOURCE_DIR}/acc/compile_acc_module.sh ${DSL_MODULE_DIR}
+    COMMAND acc/acc ${DSL_SOURCES}
     DEPENDS ${DSL_SOURCES} acc
     OUTPUT ${DSL_HEADERS}
 )
@@ -106,7 +105,6 @@ if (BUILD_UTILS)
     add_subdirectory(src/utils)
 endif()
 
-
 if (BUILD_SAMPLES)
     add_subdirectory(samples/standalone)
     add_subdirectory(samples/standalone_mpi)
@@ -122,7 +120,7 @@ if (BUILD_SAMPLES)
     #add_subdirectory(samples/genbenchmarkscripts)
     #add_subdirectory(samples/mpi_reduce_bench)
     add_subdirectory(samples/fortrantest)
-
+    
     #if (MPI_ENABLED)
     #  add_subdirectory(samples/bwtest)
     #endif()

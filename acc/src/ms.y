@@ -52,7 +52,11 @@ main(int argc, char** argv)
         if (error)
             return EXIT_FAILURE;
 
-        generate(root, stdout);
+        // generate(root, stdout);
+        FILE* fp = fopen("user_kernels.h", "w");
+        assert(fp);
+        generate(root, fp);
+        fclose(fp);
     
         fclose(yyin);
         return EXIT_SUCCESS;
