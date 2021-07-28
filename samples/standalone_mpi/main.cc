@@ -556,6 +556,8 @@ main(int argc, char** argv)
                                        VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,  VTXBUF_ENTROPY, 
                                        VTXBUF_SHOCK};
 
+    VertexBufferHandle shock_uu_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_SHOCK};
+
     VertexBufferHandle shock_field[] = {VTXBUF_SHOCK};
 
     // Build a task graph consisting of:
@@ -567,7 +569,7 @@ main(int argc, char** argv)
     AcTaskGraph* hc_graph = acGridBuildTaskGraph(
         {acHaloExchange(all_fields),
          acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
-         acCompute(KERNEL_shock_1_divu, shock_field),
+         acCompute(KERNEL_shock_1_divu, shock_uu_fields),
          acHaloExchange(shock_field),
          acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
          acCompute(KERNEL_shock_2_max, shock_field),
