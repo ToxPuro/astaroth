@@ -556,6 +556,8 @@ main(int argc, char** argv)
                                        VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,  VTXBUF_ENTROPY, 
                                        VTXBUF_SHOCK};
 
+    VertexBufferHandle shock_field[] = {VTXBUF_SHOCK};
+
     // Build a task graph consisting of:
     // - a halo exchange with periodic boundconds for all fields
     // - a calculation of the solve kernel touching all fields
@@ -565,6 +567,15 @@ main(int argc, char** argv)
     AcTaskGraph* hc_graph = acGridBuildTaskGraph(
         {acHaloExchange(all_fields),
          acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+         acCompute(KERNEL_shock_1_divu, shock_field),
+         acHaloExchange(shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acCompute(KERNEL_shock_2_max, shock_field),
+         acHaloExchange(shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acCompute(KERNEL_shock_3_smooth, shock_field),
+         acHaloExchange(shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
          acCompute(KERNEL_solve, all_fields)});
 
     // We can build multiple TaskGraphs, the MPI requests will not collide
