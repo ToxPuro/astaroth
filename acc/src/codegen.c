@@ -7,6 +7,8 @@
 #include "ast.h"
 #include "tab.h"
 
+static const size_t stencil_order = 6;
+
 // Symbols
 #define MAX_ID_LEN (256)
 typedef struct {
@@ -297,6 +299,9 @@ gen_user_defines(const ASTNode* root, const char* out)
 
   fprintf(fp, "#pragma once\n");
 
+  fprintf(fp, "#define STENCIL_ORDER (%lu)\n", stencil_order);
+  fprintf(fp, "#define NGHOST (STENCIL_ORDER / 2)\n");
+
   symboltable_reset();
   traverse(root, NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL, fp);
 
@@ -400,14 +405,14 @@ generate(const ASTNode* root, FILE* stream)
   fprintf(stencilgen,
           "#include <stdio.h>\n"
           "#include <stdlib.h>\n"
-          "#define STENCIL_ORDER (6)\n"
+          "#define STENCIL_ORDER (%lu)\n"
           "#define NN (STENCIL_ORDER+1)\n"
           "#define STENCIL_DEPTH (NN)\n"
           "#define STENCIL_HEIGHT (NN)\n"
           "#define STENCIL_WIDTH (NN)\n"
           "#define NUM_STENCILS (%lu)\n"
           "#define NUM_FIELDS (%lu)\n",
-          num_stencils, num_fields);
+          stencil_order, num_stencils, num_fields);
   fprintf(stencilgen, "static char* "
                       "stencils[][NN][NN][NN] = {");
   traverse(root,
