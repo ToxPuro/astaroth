@@ -1,13 +1,24 @@
 ## CMake settings
-cmake_minimum_required (VERSION 3.5.1)
-find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
+cmake_minimum_required(VERSION 3.0)
 
 ## Project settings
 project(acc C)
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_WARNING_FLAGS} -Wno-error=sign-compare")
 
+## Compilation flags
+add_compile_options(-mavx -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow)
+
+## Find dependencies
+find_package(BISON)
+find_package(FLEX)
+
+bison_target(parser src/ms.y ${PROJECT_BINARY_DIR}/tab.c VERBOSE COMPILE_FLAGS -Wcounterexamples)
+flex_target(scanner src/ms.l ${PROJECT_BINARY_DIR}/yy.c)
+add_flex_bison_dependency(scanner parser)
+
+## Include directories
 include_directories(src)
-add_subdirectory(src)
+include_directories(${PROJECT_BINARY_DIR})
+
+## Executable
+add_executable(acc src/codegen.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})

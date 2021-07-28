@@ -1,0 +1,492 @@
+#include "codegen.h"
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "ast.h"
+#include "tab.h"
+
+// Symbols
+#define MAX_ID_LEN (256)
+typedef struct {
+  NodeType type;
+  char tqualifier[MAX_ID_LEN];
+  char tspecifier[MAX_ID_LEN];
+  char identifier[MAX_ID_LEN];
+} Symbol;
+
+#define SYMBOL_TABLE_SIZE (65536)
+static Symbol symbol_table[SYMBOL_TABLE_SIZE] = {};
+
+#define MAX_NESTS (32)
+static size_t num_symbols[MAX_NESTS] = {};
+static size_t current_nest           = 0;
+
+static Symbol*
+symboltable_lookup(const char* identifier)
+{
+  if (!identifier)
+    return NULL;
+
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (strcmp(identifier, symbol_table[i].identifier) == 0)
+      return &symbol_table[i];
+
+  return NULL;
+}
+
+static void
+add_symbol(const NodeType type, const char* tqualifier, const char* tspecifier,
+           const char* id)
+{
+  assert(num_symbols[current_nest] < SYMBOL_TABLE_SIZE);
+
+  symbol_table[num_symbols[current_nest]].type          = type;
+  symbol_table[num_symbols[current_nest]].tqualifier[0] = '\0';
+  symbol_table[num_symbols[current_nest]].tspecifier[0] = '\0';
+
+  if (tqualifier)
+    strcpy(symbol_table[num_symbols[current_nest]].tqualifier, tqualifier);
+  if (tspecifier)
+    strcpy(symbol_table[num_symbols[current_nest]].tspecifier, tspecifier);
+
+  strcpy(symbol_table[num_symbols[current_nest]].identifier, id);
+
+  ++num_symbols[current_nest];
+}
+
+static void
+symboltable_reset(void)
+{
+  current_nest              = 0;
+  num_symbols[current_nest] = 0;
+
+  // Add built-in variables (TODO consider NODE_BUILTIN)
+  add_symbol(NODE_FUNCTION_ID, 0, 0, "print");           // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, 0, 0, "threadIdx");       // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, 0, 0, "blockIdx");        // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, 0, 0, "vertexIdx");       // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, 0, 0, "globalVertexIdx"); // TODO REMOVE
+  // add_symbol(NODE_UNKNOWN, 0, 0, "true");
+  // add_symbol(NODE_UNKNOWN, 0, 0, "false");
+
+  add_symbol(NODE_FUNCTION_ID, 0, 0, "previous");
+  add_symbol(NODE_FUNCTION_ID, 0, 0, "write");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, 0, 0, "real3");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, 0, 0, "Field3"); // TODO RECHECK
+  // add_symbol(NODE_FUNCTION_ID, 0, 0, "Matrix"); // TODO RECHECK
+  // add_symbol(NODE_FUNCTION_ID, 0, 0, "Matrix"); // TODO RECHECK
+  // add_symbol(NODE_FUNCTION_ID, 0, 0, "previous"); // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, 0, 0, "dot");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, 0, 0, "cross"); // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, 0, 0, "exp");   // TODO RECHECK
+}
+
+static inline void
+print_symbol_table(void)
+{
+  printf("\n---\n");
+  printf("Symbol table:\n");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+    printf("%lu: ", i);
+    printf("%s ", symbol_table[i].identifier);
+
+    if (strlen(symbol_table[i].tspecifier) > 0)
+      printf("(%s) ", symbol_table[i].tspecifier);
+    else
+      printf("(auto) ");
+
+    if (symbol_table[i].type & NODE_FUNCTION_ID)
+      printf("(%s function)",
+             symbol_table[i].type & NODE_KFUNCTION_ID ? "kernel" : "device");
+
+    printf("\n");
+  }
+  printf("---\n");
+}
+
+static const ASTNode*
+get_parent_node(const NodeType type, const ASTNode* node)
+{
+  if (node->type & type)
+    return node;
+  else if (node->parent)
+    return get_parent_node(type, node->parent);
+  else
+    return NULL;
+}
+
+static const ASTNode*
+get_node(const NodeType type, const ASTNode* node)
+{
+  assert(node);
+
+  if (node->type & type)
+    return node;
+  else if (node->lhs && get_node(type, node->lhs))
+    return get_node(type, node->lhs);
+  else if (node->rhs && get_node(type, node->rhs))
+    return get_node(type, node->rhs);
+  else
+    return NULL;
+}
+
+static void
+traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
+{
+  if (node->type & exclude)
+    stream = NULL;
+
+  // Do not translate tqualifiers or tspecifiers immediately
+  if (node->parent &&
+      (node->parent->type & NODE_TQUAL || node->parent->type & NODE_TSPEC))
+    return;
+
+  // Prefix translation
+  if (stream)
+    if (node->prefix)
+      fprintf(stream, "%s", node->prefix);
+
+  // Prefix logic
+  if (node->type & NODE_BEGIN_SCOPE) {
+    assert(current_nest < MAX_NESTS);
+
+    ++current_nest;
+    num_symbols[current_nest] = num_symbols[current_nest - 1];
+  }
+
+  // Traverse LHS
+  if (node->lhs)
+    traverse(node->lhs, exclude, stream);
+
+  // Infix translation
+  if (stream)
+    if (node->infix)
+      fprintf(stream, "%s", node->infix);
+
+  if (node->buffer) {
+    if (node->token == IDENTIFIER) {
+
+      const Symbol* symbol = symboltable_lookup(node->buffer);
+      // TODO REMOVE BELOW--------------------------------
+      // Though note that symbol table search must be reversed!!
+      if (symbol && node->type & NODE_FUNCTION_PARAM) {
+        fprintf(stderr,
+                "Error! Symbol '%s' already present in symbol table. Shadowing "
+                "is not allowed.\n",
+                node->buffer);
+        assert(0);
+      }
+      // TODO REMOVE ABOVE--------------------------------------
+      else if (!symbol) {
+        char* tspec = NULL;
+        char* tqual = NULL;
+
+        const ASTNode* decl = get_parent_node(NODE_DECLARATION, node);
+        if (decl) {
+          const ASTNode* tspec_node = get_node(NODE_TSPEC, decl);
+          const ASTNode* tqual_node = get_node(NODE_TQUAL, decl);
+
+          if (tspec_node && tspec_node->lhs)
+            tspec = tspec_node->lhs->buffer;
+
+          if (tqual_node && tqual_node->lhs)
+            tqual = tqual_node->lhs->buffer;
+        }
+
+        if (stream) {
+          const ASTNode* is_dconst = get_parent_node(NODE_DCONST, node);
+          if (is_dconst)
+            fprintf(stream, "__device__ ");
+
+          if (tqual)
+            fprintf(stream, "%s ", tqual);
+
+          if (tspec)
+            fprintf(stream, "%s ", tspec);
+          else if (!(node->type & NODE_KFUNCTION_ID) &&
+                   !get_parent_node(NODE_STENCIL, node) &&
+                   !(node->type & NODE_MEMBER_ID))
+            fprintf(stream, "auto ");
+        }
+        if (!(node->type & NODE_MEMBER_ID))
+          add_symbol(node->type, tqual, tspec, node->buffer);
+      }
+    }
+    if (stream)
+      fprintf(stream, "%s", node->buffer);
+  }
+
+  // Traverse RHS
+  if (node->rhs)
+    traverse(node->rhs, exclude, stream);
+
+  // Postfix logic
+  if (node->type & NODE_BEGIN_SCOPE) {
+    assert(current_nest > 0);
+    --current_nest;
+  }
+
+  // Postfix translation
+  if (stream) {
+    if (node->postfix)
+      fprintf(stream, "%s", node->postfix);
+  }
+}
+
+static void
+gen_dconsts(const ASTNode* root, FILE* stream)
+{
+  symboltable_reset();
+  traverse(root, NODE_FUNCTION | NODE_FIELD | NODE_STENCIL | NODE_HOSTDEFINE,
+           stream);
+  /*
+  symboltable_reset();
+  traverse(root, 0, NULL);
+
+  // Device constants
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (!(symbol_table[i].type & NODE_FUNCTION_ID) &&
+        !(symbol_table[i].type & NODE_FIELD_ID) &&
+        !(symbol_table[i].type & NODE_STENCIL_ID)) {
+      fprintf(stream, "__device__ %s %s;", symbol_table[i].tspecifier,
+              symbol_table[i].identifier);
+    }
+    */
+}
+
+static void
+gen_kernels(const ASTNode* node, const char* sdefinitions,
+            const char* dfunctions, const char* sfunctions)
+{
+  assert(node);
+
+  if (node->type & NODE_KFUNCTION) {
+
+    const size_t len = 64 * 1024 * 1024;
+    char* prefix     = malloc(len);
+    assert(prefix);
+
+    assert(node->rhs);
+    assert(node->rhs->rhs);
+    ASTNode* compound_statement = node->rhs->rhs;
+
+    strcat(prefix, compound_statement->prefix);
+    strcat(prefix, sdefinitions);
+    strcat(prefix, sfunctions);
+    strcat(prefix, dfunctions);
+
+    astnode_set_prefix(prefix, compound_statement);
+    free(prefix);
+  }
+
+  if (node->lhs)
+    gen_kernels(node->lhs, sdefinitions, dfunctions, sfunctions);
+
+  if (node->rhs)
+    gen_kernels(node->rhs, sdefinitions, dfunctions, sfunctions);
+}
+
+// Generate User Defines
+static void
+gen_user_defines(const ASTNode* root, const char* out)
+{
+  FILE* fp = fopen(out, "w");
+  assert(fp);
+
+  fprintf(fp, "#pragma once\n");
+
+  symboltable_reset();
+  traverse(root, NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL, fp);
+
+  symboltable_reset();
+  traverse(root, 0, NULL);
+
+  // Fields
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_FIELD_ID)
+      fprintf(fp, "%s,", symbol_table[i].identifier);
+  fprintf(fp, "NUM_FIELDS} Field;");
+
+  /*
+  fprintf(fp, "const char* field_names[] = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_FIELD_ID)
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+  */
+
+  // Device constants
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (!(symbol_table[i].type & NODE_FUNCTION_ID) &&
+        !(symbol_table[i].type & NODE_FIELD_ID) &&
+        !(symbol_table[i].type & NODE_STENCIL_ID)) {
+      fprintf(fp, "extern __device__ %s %s;", symbol_table[i].tspecifier,
+              symbol_table[i].identifier);
+    }
+
+  fclose(fp);
+
+  symboltable_reset();
+}
+
+static void
+gen_user_kernels(const ASTNode* root, const char* out)
+{
+  symboltable_reset();
+  traverse(root, 0, NULL);
+
+  FILE* fp = fopen(out, "w");
+  assert(fp);
+
+  fprintf(fp, "#pragma once\n");
+
+  // Kernels
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_KFUNCTION_ID)
+      fprintf(fp,
+              "__global__ void %s(const int3 start, const int3 end, "
+              "VertexBufferArray vba);",
+              symbol_table[i].identifier);
+
+  fclose(fp);
+
+  symboltable_reset();
+}
+
+void
+generate(const ASTNode* root, FILE* stream)
+{
+  assert(root);
+
+  gen_user_defines(root, "user_defines.h");
+  gen_user_kernels(root, "user_declarations.h");
+
+  // Fill the symbol table
+  traverse(root, 0, NULL);
+  // print_symbol_table();
+
+  // Generate kernels.cu
+  fprintf(stream, "#pragma once\n");
+
+  size_t num_stencils = 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_STENCIL_ID)
+      ++num_stencils;
+
+  size_t num_fields = 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_FIELD_ID)
+      ++num_fields;
+
+  // Device constants
+  gen_dconsts(root, stream);
+
+  // Stencils
+  fprintf(stream, "typedef enum{");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_STENCIL_ID)
+      fprintf(stream, "stencil_%s,", symbol_table[i].identifier);
+  fprintf(stream, "NUM_STENCILS} Stencil;");
+
+  // Stencil generator
+  symboltable_reset();
+#define STENCILGEN_SRC "stencilgen.c"
+#define STENCILGEN_EXEC "stencilgen.out"
+  FILE* stencilgen = fopen(STENCILGEN_SRC, "w");
+  assert(stencilgen);
+  fprintf(stencilgen,
+          "#include <stdio.h>\n"
+          "#include <stdlib.h>\n"
+          "#define STENCIL_ORDER (6)\n"
+          "#define NN (STENCIL_ORDER+1)\n"
+          "#define STENCIL_DEPTH (NN)\n"
+          "#define STENCIL_HEIGHT (NN)\n"
+          "#define STENCIL_WIDTH (NN)\n"
+          "#define NUM_STENCILS (%lu)\n"
+          "#define NUM_FIELDS (%lu)\n",
+          num_stencils, num_fields);
+  fprintf(stencilgen, "static char* "
+                      "stencils[][NN][NN][NN] = {");
+  traverse(root,
+           NODE_STENCIL_ID | NODE_DCONST | NODE_FIELD | NODE_FUNCTION |
+               NODE_HOSTDEFINE,
+           stencilgen);
+  fprintf(stencilgen, "};");
+  const char* stencilgen_main = R"(
+int main(void) {
+  for (int field = 0; field < NUM_FIELDS; ++field) {
+      printf("{\n\tconst AcReal* __restrict__ in = vba.in[%%d];\n", field);
+      for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+          for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+              for (int width = 0; width < STENCIL_WIDTH; ++width) {
+                  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+                      if (stencils[stencil][depth][height][width] != 0) {
+                          printf("\tprocessed_stencils[%%d][%%d] += %%s * in[IDX(vertexIdx.x + (%%d), vertexIdx.y + (%%d), vertexIdx.z + (%%d))];\n",
+                                  field, stencil, stencils[stencil][depth][height][width],
+                                  -STENCIL_ORDER / 2 + width, -STENCIL_ORDER / 2 + height,
+                                  -STENCIL_ORDER / 2 + depth);
+                      }
+                  }
+              }
+          }
+      }
+      printf("}\n");
+  }
+}
+                      )";
+  fprintf(stencilgen, stencilgen_main);
+  fclose(stencilgen);
+
+  // Compile
+  system("gcc -std=c11 -Wall -Wextra -Wdouble-promotion "
+         "-Wfloat-conversion -Wshadow " STENCILGEN_SRC " "
+         "-o " STENCILGEN_EXEC);
+
+  // Generate stencils
+  FILE* proc = popen("./" STENCILGEN_EXEC, "r");
+  assert(proc);
+
+  char sdefinitions[1 * 1024 * 1024];
+  char buf[4096];
+  while (fgets(buf, sizeof(buf), proc))
+    strcat(sdefinitions, buf);
+
+  pclose(proc);
+
+  // Device functions
+  symboltable_reset();
+  char* dfunctions;
+  size_t sizeloc;
+  FILE* dfunc_fp = open_memstream(&dfunctions, &sizeloc);
+  traverse(root,
+           NODE_DCONST | NODE_FIELD | NODE_STENCIL | NODE_KFUNCTION |
+               NODE_HOSTDEFINE,
+           dfunc_fp);
+  fflush(dfunc_fp);
+
+  // Stencil functions
+  char sfunctions[1024 * 1024];
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_STENCIL_ID) {
+      sprintf(buf,
+              "#define %s(field) (processed_stencils[(field)][stencil_%s])\n",
+              symbol_table[i].identifier, symbol_table[i].identifier);
+      strcat(sfunctions, buf);
+    }
+
+  // Kernels
+  symboltable_reset();
+  gen_kernels(root, sdefinitions, dfunctions, sfunctions);
+  fclose(dfunc_fp); // Frees dfunctions also
+
+  symboltable_reset();
+  traverse(root,
+           NODE_DCONST | NODE_FIELD | NODE_STENCIL | NODE_DFUNCTION |
+               NODE_HOSTDEFINE,
+           stream);
+
+  // print_symbol_table();
+}

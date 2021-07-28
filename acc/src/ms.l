@@ -1,0 +1,61 @@
+%option yylineno
+%option noyywrap
+%option noinput
+%option nounput
+
+D [0-9]
+L [a-zA-Z_]
+
+%{
+#include "tab.h"
+%}
+
+%%
+
+"int"                   { return INT; } /* Type specifiers */
+"real"                  { return REAL; }
+"Matrix"                { return MATRIX; }
+"Field"                 { return FIELD; }
+"Stencil"               { return STENCIL; }
+
+"Kernel"                { return KERNEL; } /* Type qualifiers */
+
+"if"        { return IF; } /* Keywords */
+"else if"   { return ELIF; }
+"else"      { return ELSE; }
+"while"     { return WHILE; }
+"for"       { return FOR; }
+"in"        { return IN; }
+"break"     { return BREAK; }
+"continue"  { return CONTINUE; }
+"return"    { return RETURN; }
+
+"hostdefine".*        { return HOSTDEFINE; }
+
+{L}({L}|{D})*             { return IDENTIFIER; }   /* Literals */
+\"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */
+[+-/*|&!%]?=              { return ASSIGNOP; }     /* Assignment */
+[/*-+<>%]                 { return BINARY_OP; }    /* Operators */
+(&&)|(\|\|)|(<<)          { return BINARY_OP; }    /* Operators */
+(==)                      { return BINARY_OP; }    /* Operators */
+"++"|"--"                 { return INPLACE_OP; }
+[-+*/:;=\[\]{}(),\.<>|&]  { return yytext[0]; }    /* Characters */
+{D}+[.]{D}*               { return REALNUMBER; }
+{D}+[.]?{D}*(e[-]?{D}+)   { return REALNUMBER; }
+{D}+[.]?{D}*(e[-]?{D}+)?[d]  { return DOUBLENUMBER; } /* Numbers */
+{D}+[.]?{D}*(e[-]?{D}+)?[f]?  { return NUMBER; } /* Numbers */
+
+
+
+"#".*               { /* Skip regular comments */ }
+[ \t\n\v\r]+        { /* Ignore whitespace, tabs and newlines */ }
+.                   { fprintf(stderr, "unrecognized char %d: [%c]\n", *yytext, *yytext); }
+
+%%
+
+/*
+[.]{D}+                   { return REALNUMBER; }
+[.]?{D}+(e[-]?{D}+)       { return REALNUMBER; }
+{D}?[.]+{D}*(e[-]?{D}+)?[f]?  { return NUMBER; }
+{D}?[.]+{D}*(e[-]?{D}+)?[d]  { return DOUBLENUMBER; }
+*/
