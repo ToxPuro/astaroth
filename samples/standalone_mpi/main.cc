@@ -59,6 +59,7 @@
 #define LSINK (0)
 #define LFORCING (1)
 #define LBFIELD (1)
+#define LSHOCK (1)
 /*  MV NOTES
     It was possible to compensate LFORCING with AC_lforcing instead by the current hack 
     However it as not possible to do so for LSINK because if in LSINK = 0 in
@@ -546,6 +547,39 @@ main(int argc, char** argv)
     /* initialize random seed: */
     srand(312256655);
 
+#if LSHOCK
+    // From taskgraph example 
+    // First we define what fields we're using.
+    // This parameter is a c-style array but only works with c++ at the moment
+    //(the interface relies on templates for safety and array type deduction).
+    VertexBufferHandle all_fields[] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+                                       VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,  VTXBUF_ENTROPY, 
+                                       VTXBUF_SHOCK};
+
+    // Build a task graph consisting of:
+    // - a halo exchange with periodic boundconds for all fields
+    // - a calculation of the solve kernel touching all fields
+    //
+    // This function call generates tasks for each subregions in the domain
+    // and figures out the dependencies between the tasks.
+    AcTaskGraph* hc_graph = acGridBuildTaskGraph(
+        {acHaloExchange(all_fields),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+         acCompute(KERNEL_solve, all_fields)});
+
+    // We can build multiple TaskGraphs, the MPI requests will not collide
+    // because MPI tag space has been partitioned into ranges that each HaloExchange step uses.
+    /*
+    AcTaskGraph* shock_graph = acGridBuildTaskGraph({
+        acHaloExchange(all_fields),
+        acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_SYMMETRIC, all_fields),
+        acCompute(KERNEL_shock1, all_fields),
+        acCompute(KERNEL_shock2, shock_fields),
+        acCompute(KERNEL_solve, all_fields)
+    });
+    */
+#endif
+
     /* Step the simulation */
     AcReal accreted_mass = 0.0;
     AcReal sink_mass     = 0.0;
@@ -590,7 +624,17 @@ main(int argc, char** argv)
         // MV TODO: Make it possible, using the task system, to run nonperiodic boundaty conditions.
         // MV TODO: See if there are other features from the normal standalone which I would like to include. 
 
+#if LSINK
+        // Set the time delta
+        acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, dt);
+        acGridSynchronizeStream(STREAM_DEFAULT);
+
+        // Execute the task graph for three iterations.
+        acGridExecuteTaskGraph(hc_graph, 3);
+#else
+
         acGridIntegrate(STREAM_DEFAULT, dt);
+#endif
 
         t_step += dt;
 
@@ -685,6 +729,9 @@ main(int argc, char** argv)
 
     ////save_mesh(*mesh, , t_step);
 
+#if LSHOCK
+    acGridDestroyTaskGraph(hc_graph);
+#endif
     acGridQuit();
     if (pid == 0)
         acHostMeshDestroy(&mesh);
