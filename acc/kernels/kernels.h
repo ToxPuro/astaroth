@@ -3,8 +3,7 @@
 
 #include "datatypes.h"
 
-extern __device__ dim3 mm;
-extern __device__ dim3 multigpu_offset;
+typedef AcReal AcRealPacked;
 
 #define IDX(i, j, k) ((i) + (j)*mm.x + (k)*mm.x * mm.y)
 
@@ -67,9 +66,44 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
   }
 #endif // __CUDA_RUNTIME_API_H__
 
-typedef AcReal AcRealPacked;
-
 #include "user_defines.h"
+
+typedef struct {
+  int int_params[NUM_INT_PARAMS];
+  int3 int3_params[NUM_INT3_PARAMS];
+  AcReal real_params[NUM_REAL_PARAMS];
+  AcReal3 real3_params[NUM_REAL3_PARAMS];
+} AcMeshInfo;
+
+extern __device__ AcMeshInfo d_mesh_info;
+
+// Astaroth 2.0 backwards compatibility START
+static int __device__ __forceinline__
+DCONST(const AcIntParam param)
+{
+  return d_mesh_info.int_params[param];
+}
+static int3 __device__ __forceinline__
+DCONST(const AcInt3Param param)
+{
+  return d_mesh_info.int3_params[param];
+}
+static AcReal __device__ __forceinline__
+DCONST(const AcRealParam param)
+{
+  return d_mesh_info.real_params[param];
+}
+static AcReal3 __device__ __forceinline__
+DCONST(const AcReal3Param param)
+{
+  return d_mesh_info.real3_params[param];
+}
+static __device__ constexpr VertexBufferHandle
+DCONST(const VertexBufferHandle handle)
+{
+  return handle;
+}
+// Astaroth 2.0 backwards compatibility END
 
 typedef struct {
   AcReal* in[NUM_FIELDS];

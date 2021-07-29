@@ -254,9 +254,6 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 static void
 gen_dconsts(const ASTNode* root, FILE* stream)
 {
-  // Astaroth 2.0 backwards compatibility
-  fprintf(stream, "__device__ AcMeshInfo d_mesh_info;");
-
   fprintf(stream, "/*"); // Astaroth 2.0 backwards compatibility
   symboltable_reset();
   traverse(root, NODE_FUNCTION | NODE_FIELD | NODE_STENCIL | NODE_HOSTDEFINE,
@@ -400,14 +397,6 @@ gen_user_defines(const ASTNode* root, const char* out)
         !strcmp(symbol_table[i].tspecifier, "AcReal3"))
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
-
-  fprintf(fp, "typedef struct {"
-              "int int_params[NUM_INT_PARAMS];"
-              "int3 int3_params[NUM_INT3_PARAMS];"
-              "AcReal real_params[NUM_REAL_PARAMS];"
-              "AcReal3 real3_params[NUM_REAL3_PARAMS];"
-              "} AcMeshInfo;");
-  fprintf(fp, "extern __device__ AcMeshInfo d_mesh_info;");
 
   // Backwards compatibility
   fprintf(fp, "\n// Redefined for backwards compatibility START\n");
