@@ -398,9 +398,11 @@ gen_user_defines(const ASTNode* root, const char* out)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
 
-  // Backwards compatibility
+  // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
+  // START-----------------------------
   fprintf(fp, "\n// Redefined for backwards compatibility START\n");
   fprintf(fp, "#define NUM_VTXBUF_HANDLES (NUM_FIELDS)\n");
+  fprintf(fp, "typedef Field VertexBufferHandle;\n");
   fprintf(fp, "static const char** vtxbuf_names = field_names;\n");
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK END-----------------------------
 

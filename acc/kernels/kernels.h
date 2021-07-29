@@ -5,8 +5,6 @@
 
 typedef AcReal AcRealPacked;
 
-#define IDX(i, j, k) ((i) + (j)*mm.x + (k)*mm.x * mm.y)
-
 #if defined(__CUDA_RUNTIME_API_H__)
 static inline void
 cuda_assert(cudaError_t code, const char* file, int line, bool abort)
@@ -76,6 +74,9 @@ typedef struct {
 } AcMeshInfo;
 
 extern __device__ AcMeshInfo d_mesh_info;
+extern __device__ dim3 mm;
+extern __device__ dim3 multigpu_offset;
+#define IDX(i, j, k) ((i) + (j)*mm.x + (k)*mm.x * mm.y)
 
 // Astaroth 2.0 backwards compatibility START
 static int __device__ __forceinline__
