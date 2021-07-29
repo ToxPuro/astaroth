@@ -103,6 +103,9 @@ print_symbol_table(void)
       printf("(%s function)",
              symbol_table[i].type & NODE_KFUNCTION_ID ? "kernel" : "device");
 
+    if (symbol_table[i].type & NODE_DCONST_ID)
+      printf("(dconst)");
+
     printf("\n");
   }
   printf("---\n");
@@ -216,8 +219,19 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
           add_symbol(node->type, tqual, tspec, node->buffer);
       }
     }
+    /*
     if (stream)
       fprintf(stream, "%s", node->buffer);
+    */
+    // Astaroth 2.0 backwards compatibility START
+    if (stream) {
+      const Symbol* symbol = symboltable_lookup(node->buffer);
+      if (symbol && symbol->type & NODE_DCONST_ID)
+        fprintf(stream, "DCONST(%s)", node->buffer);
+      else
+        fprintf(stream, "%s", node->buffer);
+    }
+    // Astaroth 2.0 backwards compatibility END
   }
 
   // Traverse RHS
@@ -240,9 +254,15 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 static void
 gen_dconsts(const ASTNode* root, FILE* stream)
 {
+  // Astaroth 2.0 backwards compatibility
+  fprintf(stream, "__device__ AcMeshInfo d_mesh_info;");
+
+  fprintf(stream, "/*"); // Astaroth 2.0 backwards compatibility
   symboltable_reset();
   traverse(root, NODE_FUNCTION | NODE_FIELD | NODE_STENCIL | NODE_HOSTDEFINE,
            stream);
+  fprintf(stream, "*/"); // Astaroth 2.0 backwards compatibility
+
   /*
   symboltable_reset();
   traverse(root, 0, NULL);
@@ -298,39 +318,115 @@ gen_user_defines(const ASTNode* root, const char* out)
   assert(fp);
 
   fprintf(fp, "#pragma once\n");
-
   fprintf(fp, "#define STENCIL_ORDER (%lu)\n", stencil_order);
-  fprintf(fp, "#define NGHOST (STENCIL_ORDER / 2)\n");
 
   symboltable_reset();
-  traverse(root, NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL, fp);
+  traverse(root, NODE_DCONST | NODE_FIELD | NODE_FUNCTION | NODE_STENCIL, fp);
 
   symboltable_reset();
   traverse(root, 0, NULL);
 
-  // Fields
+  // Enums
   fprintf(fp, "typedef enum {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_FIELD_ID)
       fprintf(fp, "%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_FIELDS} Field;");
 
-  /*
-  fprintf(fp, "const char* field_names[] = {");
+  // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK START---------------------------
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_DCONST_ID &&
+        !strcmp(symbol_table[i].tspecifier, "int"))
+      fprintf(fp, "%s,", symbol_table[i].identifier);
+  fprintf(fp, "NUM_INT_PARAMS} AcIntParam;");
+
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_DCONST_ID &&
+        !strcmp(symbol_table[i].tspecifier, "int3"))
+      fprintf(fp, "%s,", symbol_table[i].identifier);
+  fprintf(fp, "NUM_INT3_PARAMS} AcInt3Param;");
+
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_DCONST_ID &&
+        !strcmp(symbol_table[i].tspecifier, "AcReal"))
+      fprintf(fp, "%s,", symbol_table[i].identifier);
+  fprintf(fp, "NUM_REAL_PARAMS} AcRealParam;");
+
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_DCONST_ID &&
+        !strcmp(symbol_table[i].tspecifier, "AcReal3"))
+      fprintf(fp, "%s,", symbol_table[i].identifier);
+  fprintf(fp, "NUM_REAL3_PARAMS} AcReal3Param;");
+
+  // Enum strings (convenience)
+  fprintf(fp, "static const char* field_names[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_FIELD_ID)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
-  */
+
+  fprintf(fp,
+          "static const char* intparam_names[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_DCONST_ID &&
+        !strcmp(symbol_table[i].tspecifier, "int"))
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+
+  fprintf(fp,
+          "static const char* int3param_names[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_DCONST_ID &&
+        !strcmp(symbol_table[i].tspecifier, "int3"))
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+
+  fprintf(fp,
+          "static const char* realparam_names[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_DCONST_ID &&
+        !strcmp(symbol_table[i].tspecifier, "AcReal"))
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+
+  fprintf(fp,
+          "static const char* real3param_names[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_DCONST_ID &&
+        !strcmp(symbol_table[i].tspecifier, "AcReal3"))
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+
+  fprintf(fp, "typedef struct {"
+              "int int_params[NUM_INT_PARAMS];"
+              "int3 int3_params[NUM_INT3_PARAMS];"
+              "AcReal real_params[NUM_REAL_PARAMS];"
+              "AcReal3 real3_params[NUM_REAL3_PARAMS];"
+              "} AcMeshInfo;");
+  fprintf(fp, "extern __device__ AcMeshInfo d_mesh_info;");
+
+  // Backwards compatibility
+  fprintf(fp, "\n// Redefined for backwards compatibility START\n");
+  fprintf(fp, "#define NUM_VTXBUF_HANDLES (NUM_FIELDS)\n");
+  fprintf(fp, "static const char** vtxbuf_names = field_names;\n");
+  // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK END-----------------------------
 
   // Device constants
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  // Would be cleaner to declare dconsts as extern and refer to the symbols
+  // directly instead of using handles like above, but for backwards
+  // compatibility and user convenience commented out for now
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
     if (!(symbol_table[i].type & NODE_FUNCTION_ID) &&
         !(symbol_table[i].type & NODE_FIELD_ID) &&
         !(symbol_table[i].type & NODE_STENCIL_ID)) {
-      fprintf(fp, "extern __device__ %s %s;", symbol_table[i].tspecifier,
+      fprintf(fp, "// extern __device__ %s %s;\n", symbol_table[i].tspecifier,
               symbol_table[i].identifier);
     }
+  }
 
   fclose(fp);
 

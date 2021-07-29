@@ -26,11 +26,10 @@ typedef enum {
   NODE_FIELD          = (1 << 12),
   NODE_FIELD_ID       = (1 << 13),
   NODE_KFUNCTION_ID   = (1 << 14),
-  NODE_VARIABLE       = (1 << 15),
-  NODE_VARIABLE_ID    = (1 << 16),
-  NODE_DCONST         = (1 << 17),
-  NODE_MEMBER_ID      = (1 << 18),
-  NODE_HOSTDEFINE     = (1 << 19),
+  NODE_DCONST         = (1 << 15),
+  NODE_DCONST_ID      = (1 << 16),
+  NODE_MEMBER_ID      = (1 << 17),
+  NODE_HOSTDEFINE     = (1 << 18),
 } NodeType;
 
 typedef struct astnode_s {

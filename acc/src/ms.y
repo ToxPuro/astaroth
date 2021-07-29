@@ -80,15 +80,26 @@ root: program { root = astnode_create(NODE_UNKNOWN, $1, NULL); }
     ;
 
 program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); }
-       | program variable_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); 
-         assert($$->rhs);
+       | program variable_definition {
+            $$ = astnode_create(NODE_UNKNOWN, $1, $2); 
+            
+            ASTNode* variable_definition = $$->rhs;
+            assert(variable_definition);
 
-            // Set NODE_FIELD
-            const ASTNode* tspec = get_node(NODE_TSPEC, $$->rhs);
-            if (tspec && tspec->lhs && tspec->lhs->token == FIELD)
-                $$->rhs->type |= NODE_FIELD;
-            else 
-                $$->rhs->type |= NODE_DCONST;
+            ASTNode* declaration = get_node(NODE_DECLARATION, variable_definition);
+            assert(declaration);
+
+            ASTNode* declaration_list = declaration->rhs;
+            assert(declaration_list);
+
+            const ASTNode* is_field = get_node_by_token(FIELD, $$->rhs);
+            if (is_field) {
+                variable_definition->type |= NODE_FIELD;
+                set_identifier_type(NODE_FIELD_ID, declaration_list);
+            } else {
+                variable_definition->type |= NODE_DCONST;
+                set_identifier_type(NODE_DCONST_ID, declaration_list);
+            }
          }
        | program function_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
        | program stencil_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
@@ -225,22 +236,11 @@ expression_list: expression                     { $$ = astnode_create(NODE_UNKNO
  * Definitions and Declarations
  * =============================================================================
 */
-variable_definition: declaration { $$ = astnode_create(NODE_VARIABLE, $1, NULL); astnode_set_postfix(";", $$); }
-                   | assignment  { $$ = astnode_create(NODE_VARIABLE, $1, NULL); astnode_set_postfix(";", $$); }
+variable_definition: declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
+                   | assignment  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
                    ;
 
-declaration: type_declaration declaration_list {
-                $$ = astnode_create(NODE_DECLARATION, $1, $2);
-
-                ASTNode* tspec = get_node(NODE_TSPEC, $$);
-                if (tspec) {
-                    set_identifier_type(NODE_VARIABLE_ID, $$->rhs);
-
-                    ASTNode* is_field = get_node_by_token(FIELD, $$->lhs);
-                    if (is_field)
-                        set_identifier_type(NODE_FIELD_ID, $$->rhs);
-                }
-            }
+declaration: type_declaration declaration_list { $$ = astnode_create(NODE_DECLARATION, $1, $2); }
            ;
 
 declaration_list: declaration_postfix_expression                      { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }

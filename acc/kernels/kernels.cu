@@ -2,16 +2,40 @@
 
 #include "math_utils.h"
 
-__device__ dim3 mm;
-__device__ dim3 multigpu_offset;
+// __device__ dim3 mm;
+// __device__ dim3 multigpu_offset;
 
-// typedef AcReal real;
-// typedef AcReal3 real3;
-// typedef int Field;
-// typedef int3 Field3;
 #define Field3(x, y, z) make_int3((x), (y), (z))
 #define real3(i, j, k) ((AcReal3){(i), (j), (k)})
 #define print printf // TODO is this a good idea?
+
+// Astaroth 2.0 backwards compatibility START
+static int __device__ __forceinline__
+DCONST(const AcIntParam param)
+{
+  return d_mesh_info.int_params[param];
+}
+static int3 __device__ __forceinline__
+DCONST(const AcInt3Param param)
+{
+  return d_mesh_info.int3_params[param];
+}
+static AcReal __device__ __forceinline__
+DCONST(const AcRealParam param)
+{
+  return d_mesh_info.real_params[param];
+}
+static AcReal3 __device__ __forceinline__
+DCONST(const AcReal3Param param)
+{
+  return d_mesh_info.real3_params[param];
+}
+static __device__ constexpr VertexBufferHandle
+DCONST(const VertexBufferHandle handle)
+{
+  return handle;
+}
+// Astaroth 2.0 backwards compatibility END
 #include "user_kernels.h"
 
 AcResult
