@@ -1,3 +1,4 @@
+#include <float.h> // FLT_EPSILON
 #include <stdlib.h>
 
 #include "astaroth.h"
