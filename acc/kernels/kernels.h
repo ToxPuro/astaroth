@@ -2,67 +2,11 @@
 #include <stdio.h>
 
 #include "datatypes.h"
+#include "errchk.h"
+
+#include <cuda_runtime_api.h> // cudaStream_t
 
 typedef AcReal AcRealPacked;
-
-#if defined(__CUDA_RUNTIME_API_H__)
-static inline void
-cuda_assert(cudaError_t code, const char* file, int line, bool abort)
-{
-  if (code != cudaSuccess) {
-    time_t terr;
-    time(&terr);
-    fprintf(stderr, "%s", ctime(&terr));
-    fprintf(stderr, "\tCUDA error in file %s line %d: %s\n", file, line,
-            cudaGetErrorString(code));
-    fflush(stderr);
-
-    if (abort)
-      exit(code);
-  }
-}
-
-#ifdef NDEBUG
-#undef ERRCHK
-#undef WARNCHK
-#define ERRCHK(params)
-#define WARNCHK(params)
-#define ERRCHK_CUDA(params) params
-#define WARNCHK_CUDA(params) params
-#define ERRCHK_CUDA_KERNEL()
-#else
-#define ERRCHK_CUDA(params)                                                    \
-  {                                                                            \
-    cuda_assert((params), __FILE__, __LINE__, true);                           \
-  }
-#define WARNCHK_CUDA(params)                                                   \
-  {                                                                            \
-    cuda_assert((params), __FILE__, __LINE__, false);                          \
-  }
-
-#define ERRCHK_CUDA_KERNEL()                                                   \
-  {                                                                            \
-    ERRCHK_CUDA(cudaPeekAtLastError());                                        \
-    ERRCHK_CUDA(cudaDeviceSynchronize());                                      \
-  }
-#endif
-
-#define ERRCHK_CUDA_ALWAYS(params)                                             \
-  {                                                                            \
-    cuda_assert((params), __FILE__, __LINE__, true);                           \
-  }
-
-#define ERRCHK_CUDA_KERNEL_ALWAYS()                                            \
-  {                                                                            \
-    ERRCHK_CUDA_ALWAYS(cudaPeekAtLastError());                                 \
-    ERRCHK_CUDA_ALWAYS(cudaDeviceSynchronize());                               \
-  }
-
-#define WARNCHK_CUDA_ALWAYS(params)                                            \
-  {                                                                            \
-    cuda_assert((params), __FILE__, __LINE__, false);                          \
-  }
-#endif // __CUDA_RUNTIME_API_H__
 
 #include "user_defines.h"
 
@@ -74,11 +18,9 @@ typedef struct {
 } AcMeshInfo;
 
 extern __device__ AcMeshInfo d_mesh_info;
-extern __device__ dim3 mm;
-extern __device__ dim3 multigpu_offset;
-#define IDX(i, j, k) ((i) + (j)*mm.x + (k)*mm.x * mm.y)
 
 // Astaroth 2.0 backwards compatibility START
+#ifdef __cplusplus
 static int __device__ __forceinline__
 DCONST(const AcIntParam param)
 {
@@ -104,6 +46,10 @@ DCONST(const VertexBufferHandle handle)
 {
   return handle;
 }
+//#define IDX(i, j, k) ((i) + (j)*mm.x + (k)*mm.x * mm.y)
+#define IDX(i, j, k)                                                           \
+  ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mx) * DCONST(AC_my))
+#endif // __cplusplus
 // Astaroth 2.0 backwards compatibility END
 
 typedef struct {

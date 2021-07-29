@@ -65,24 +65,46 @@ symboltable_reset(void)
   num_symbols[current_nest] = 0;
 
   // Add built-in variables (TODO consider NODE_BUILTIN)
-  add_symbol(NODE_FUNCTION_ID, 0, 0, "print");           // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, 0, 0, "threadIdx");       // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, 0, 0, "blockIdx");        // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, 0, 0, "vertexIdx");       // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, 0, 0, "globalVertexIdx"); // TODO REMOVE
-  // add_symbol(NODE_UNKNOWN, 0, 0, "true");
-  // add_symbol(NODE_UNKNOWN, 0, 0, "false");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "print");           // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "threadIdx");       // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "blockIdx");        // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vertexIdx");       // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "globalVertexIdx"); // TODO REMOVE
+  // add_symbol(NODE_UNKNOWN, NULL, NULL, "true");
+  // add_symbol(NODE_UNKNOWN, NULL, NULL, "false");
 
-  add_symbol(NODE_FUNCTION_ID, 0, 0, "previous");
-  add_symbol(NODE_FUNCTION_ID, 0, 0, "write");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, 0, 0, "real3");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, 0, 0, "Field3"); // TODO RECHECK
-  // add_symbol(NODE_FUNCTION_ID, 0, 0, "Matrix"); // TODO RECHECK
-  // add_symbol(NODE_FUNCTION_ID, 0, 0, "Matrix"); // TODO RECHECK
-  // add_symbol(NODE_FUNCTION_ID, 0, 0, "previous"); // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, 0, 0, "dot");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, 0, 0, "cross"); // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, 0, 0, "exp");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "previous");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "real3");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "Field3"); // TODO RECHECK
+  // add_symbol(NODE_FUNCTION_ID, NULL, NULL, "Matrix"); // TODO RECHECK
+  // add_symbol(NODE_FUNCTION_ID, NULL, NULL, "Matrix"); // TODO RECHECK
+  // add_symbol(NODE_FUNCTION_ID, NULL, NULL, "previous"); // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "dot");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cross"); // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "exp");   // TODO RECHECK
+
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_mx");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_my");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_mz");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nx");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_ny");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nz");
+
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nx_min");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_ny_min");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nz_min");
+
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nx_max");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_ny_max");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nz_max");
+
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_mxy");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nxy");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nxyz");
+
+  add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_multigpu_offset");
+  add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_global_grid_n");
 }
 
 static inline void
