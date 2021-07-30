@@ -24,7 +24,7 @@
  * Detailed info.
  *
  */
- #include "astaroth.h"
+#include "astaroth.h"
 
 #include <math.h>
 
@@ -39,8 +39,7 @@
 // Function pointer definitions
 typedef AcReal (*ReduceFunc)(const AcReal, const AcReal);
 typedef AcReal (*ReduceInitialScalFunc)(const AcReal);
-typedef AcReal (*ReduceInitialVecFunc)(const AcReal, const AcReal,
-                                            const AcReal);
+typedef AcReal (*ReduceInitialVecFunc)(const AcReal, const AcReal, const AcReal);
 
 // clang-format off
 /* Comparison funcs */
@@ -122,9 +121,9 @@ acHostReduceScal(const AcMesh mesh, const ReductionType rtype, const VertexBuffe
         for (int j = mesh.info.int_params[AC_ny_min]; j < mesh.info.int_params[AC_ny_max]; ++j) {
             for (int i = mesh.info.int_params[AC_nx_min]; i < mesh.info.int_params[AC_nx_max];
                  ++i) {
-                const int idx              = acVertexBufferIdx(i, j, k, mesh.info);
+                const int idx         = acVertexBufferIdx(i, j, k, mesh.info);
                 const AcReal curr_val = reduce_initial(mesh.vertex_buffer[a][idx]);
-                res                        = reduce(res, curr_val);
+                res                   = reduce(res, curr_val);
             }
         }
     }
@@ -140,7 +139,7 @@ acHostReduceScal(const AcMesh mesh, const ReductionType rtype, const VertexBuffe
 
 AcReal
 acHostReduceVec(const AcMesh mesh, const ReductionType rtype, const VertexBufferHandle a,
-                 const VertexBufferHandle b, const VertexBufferHandle c)
+                const VertexBufferHandle b, const VertexBufferHandle c)
 {
     // AcReal (*reduce_initial)(AcReal, AcReal, AcReal);
     ReduceInitialVecFunc reduce_initial;
@@ -190,11 +189,11 @@ acHostReduceVec(const AcMesh mesh, const ReductionType rtype, const VertexBuffer
         for (int j = mesh.info.int_params[AC_ny_min]; j < mesh.info.int_params[AC_ny_max]; j++) {
             for (int i = mesh.info.int_params[AC_nx_min]; i < mesh.info.int_params[AC_nx_max];
                  i++) {
-                const int idx              = acVertexBufferIdx(i, j, k, mesh.info);
+                const int idx         = acVertexBufferIdx(i, j, k, mesh.info);
                 const AcReal curr_val = reduce_initial(mesh.vertex_buffer[a][idx],
-                                                            mesh.vertex_buffer[b][idx],
-                                                            mesh.vertex_buffer[c][idx]);
-                res                        = reduce(res, curr_val);
+                                                       mesh.vertex_buffer[b][idx],
+                                                       mesh.vertex_buffer[c][idx]);
+                res                   = reduce(res, curr_val);
             }
         }
     }

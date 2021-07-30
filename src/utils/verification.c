@@ -56,7 +56,8 @@ acGetError(const AcReal model, const AcReal candidate)
         const long double machine_epsilon = 0.5l * powl(base, -(p - 1));
         error.abs_error                   = fabsl((long double)model - (long double)candidate);
         error.ulp_error                   = error.abs_error / ulp;
-        error.rel_error                   = fabsl(1.0l - (long double)candidate / (long double)model) / machine_epsilon;
+        error.rel_error = fabsl(1.0l - (long double)candidate / (long double)model) /
+                          machine_epsilon;
     }
 
     error.maximum_magnitude = error.minimum_magnitude = 0;
@@ -181,12 +182,12 @@ acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candida
     const size_t my = info.int_params[AC_my];
     for (size_t y = 0; y < my; ++y) {
         for (size_t x = 0; x < mx; ++x) {
-            const size_t idx = acVertexBufferIdx(x, y, z, info);
+            const size_t idx                = acVertexBufferIdx(x, y, z, info);
             const VertexBufferHandle vtxbuf = VTXBUF_UUX;
-            const AcReal m = model.vertex_buffer[vtxbuf][idx];
-            const AcReal c = candidate.vertex_buffer[vtxbuf][idx];
-            const Error error = acGetError(m, c);
-            fprintf(fp, "%Lg ", error.ulp_error); //error.abs_error);
+            const AcReal m                  = model.vertex_buffer[vtxbuf][idx];
+            const AcReal c                  = candidate.vertex_buffer[vtxbuf][idx];
+            const Error error               = acGetError(m, c);
+            fprintf(fp, "%Lg ", error.ulp_error); // error.abs_error);
         }
         fprintf(fp, "\n");
     }
@@ -194,7 +195,6 @@ acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candida
     fclose(fp);
     return AC_SUCCESS;
 }
-
 
 /** Writes out the entire diff of two meshes */
 AcResult
@@ -211,12 +211,12 @@ acMeshDiffWrite(const char* path, const AcMesh model, const AcMesh candidate)
     for (size_t z = 0; z < mz; ++z) {
         for (size_t y = 0; y < my; ++y) {
             for (size_t x = 0; x < mx; ++x) {
-                const size_t idx = acVertexBufferIdx(x, y, z, info);
+                const size_t idx                = acVertexBufferIdx(x, y, z, info);
                 const VertexBufferHandle vtxbuf = VTXBUF_UUX;
-                const AcReal m = model.vertex_buffer[vtxbuf][idx];
-                const AcReal c = candidate.vertex_buffer[vtxbuf][idx];
-                const Error error = acGetError(m, c);
-                fprintf(fp, "%Lg ", error.ulp_error); //error.abs_error);
+                const AcReal m                  = model.vertex_buffer[vtxbuf][idx];
+                const AcReal c                  = candidate.vertex_buffer[vtxbuf][idx];
+                const Error error               = acGetError(m, c);
+                fprintf(fp, "%Lg ", error.ulp_error); // error.abs_error);
             }
             fprintf(fp, "\n");
         }
@@ -227,5 +227,3 @@ acMeshDiffWrite(const char* path, const AcMesh model, const AcMesh candidate)
     fclose(fp);
     return AC_SUCCESS;
 }
-
-

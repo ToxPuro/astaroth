@@ -667,8 +667,9 @@ momentum(const VectorData uu, const ScalarData lnrho
 )
 {
 #if LENTROPY
-    const Matrix S   = stress_tensor(uu);
-    const Scalar cs2 = getReal(AC_cs2_sound) *
+    const Matrix S         = stress_tensor(uu);
+    const Scalar cs2_sound = AC_cs_sound * AC_cs_sound;
+    const Scalar cs2       = cs2_sound *
                        exp(getReal(AC_gamma) * value(ss) / getReal(AC_cp_sound) +
                            (getReal(AC_gamma) - 1) * (value(lnrho) - getReal(AC_lnrho0)));
     const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
@@ -706,14 +707,14 @@ induction(const VectorData uu, const VectorData aa)
     // x A)) in order to avoid taking the first derivative twice (did the math,
     // yes this actually works. See pg.28 in arXiv:astro-ph/0109497)
     // u cross B - AC_eta * AC_mu0 * (AC_mu0^-1 * [- laplace A + grad div A ])
-    const Vector B        = curl(aa);
-    //MV: Due to gauge freedom we can reduce the gradient of scalar (divergence) from the equation
-    //const Vector grad_div = gradient_of_divergence(aa);
-    const Vector lap      = laplace_vec(aa);
+    const Vector B = curl(aa);
+    // MV: Due to gauge freedom we can reduce the gradient of scalar (divergence) from the equation
+    // const Vector grad_div = gradient_of_divergence(aa);
+    const Vector lap = laplace_vec(aa);
 
     // Note, AC_mu0 is cancelled out
-    //MV: Due to gauge freedom we can reduce the gradient of scalar (divergence) from the equation
-    //const Vector ind = cross(value(uu), B) - getReal(AC_eta) * (grad_div - lap);
+    // MV: Due to gauge freedom we can reduce the gradient of scalar (divergence) from the equation
+    // const Vector ind = cross(value(uu), B) - getReal(AC_eta) * (grad_div - lap);
     const Vector ind = cross(vecvalue(uu), B) + getReal(AC_eta) * lap;
 
     return ind;
@@ -981,7 +982,7 @@ checkConfiguration(const AcMeshInfo info)
     ERRCHK_ALWAYS(is_valid(info.real_params[AC_inv_dsx]));
     ERRCHK_ALWAYS(is_valid(info.real_params[AC_inv_dsy]));
     ERRCHK_ALWAYS(is_valid(info.real_params[AC_inv_dsz]));
-    ERRCHK_ALWAYS(is_valid(info.real_params[AC_cs2_sound]));
+    // ERRCHK_ALWAYS(is_valid(info.real_params[AC_cs2_sound]));
 }
 
 AcResult
@@ -990,11 +991,11 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
     mesh_info = &(mesh.info);
 
     // Setup built-in parameters
-    mesh_info->real_params[AC_inv_dsx]   = (AcReal)(1.0) / mesh_info->real_params[AC_dsx];
-    mesh_info->real_params[AC_inv_dsy]   = (AcReal)(1.0) / mesh_info->real_params[AC_dsy];
-    mesh_info->real_params[AC_inv_dsz]   = (AcReal)(1.0) / mesh_info->real_params[AC_dsz];
-    mesh_info->real_params[AC_cs2_sound] = mesh_info->real_params[AC_cs_sound] *
-                                           mesh_info->real_params[AC_cs_sound];
+    mesh_info->real_params[AC_inv_dsx] = (AcReal)(1.0) / mesh_info->real_params[AC_dsx];
+    mesh_info->real_params[AC_inv_dsy] = (AcReal)(1.0) / mesh_info->real_params[AC_dsy];
+    mesh_info->real_params[AC_inv_dsz] = (AcReal)(1.0) / mesh_info->real_params[AC_dsz];
+    // mesh_info->real_params[AC_cs2_sound] = mesh_info->real_params[AC_cs_sound] *
+    //                                       mesh_info->real_params[AC_cs_sound];
     checkConfiguration(*mesh_info);
 
     AcMesh intermediate_mesh;
