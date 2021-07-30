@@ -1,6 +1,6 @@
 #pragma once
 
-#include "acc/kernels/kernels.h"
+#include "acc_runtime.h"
 #define NGHOST (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
 
 typedef struct {
@@ -54,6 +54,7 @@ typedef int Stream;
     FUNC(RTYPE_ALFVEN_MIN)                                                                         \
     FUNC(RTYPE_ALFVEN_RMS)                                                                         \
     FUNC(RTYPE_SUM)
+
 #define AC_FOR_BCTYPES(FUNC)                                                                       \
     FUNC(AC_BOUNDCOND_PERIODIC)                                                                    \
     FUNC(AC_BOUNDCOND_SYMMETRIC)                                                                   \
