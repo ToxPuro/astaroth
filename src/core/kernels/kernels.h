@@ -8,15 +8,6 @@
 #define MPI_GPUDIRECT_DISABLED (0)
 #endif // AC_MPI_ENABLED
 
-typedef AcReal AcRealPacked;
-
-typedef struct {
-    AcReal* in[NUM_VTXBUF_HANDLES];
-    AcReal* out[NUM_VTXBUF_HANDLES];
-
-    AcReal* profiles[NUM_SCALARARRAY_HANDLES];
-} VertexBufferArray;
-
 struct device_s {
     int id;
     AcMeshInfo local_config;
@@ -60,14 +51,16 @@ AcResult acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, 
 AcResult acKernelDummy(void);
 
 /** */
-AcResult acKernelAutoOptimizeIntegration(const int3 start, const int3 end, VertexBufferArray vba);
+// AcResult acKernelAutoOptimizeIntegration(const int3 start, const int3 end,
+// VertexBufferArray vba);
 
 /** */
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
                           const int3 vba_start, const int3 dims, AcRealPacked* packed);
 
 /** */
-AcResult acKernelIntegrateSubstep(const KernelParameters params, VertexBufferArray vba);
+// AcResult acKernelIntegrateSubstep(const KernelParameters params,
+// VertexBufferArray vba);
 
 /** */
 AcResult acKernelPartialPackData(const cudaStream_t stream, const VertexBufferArray vba,
@@ -99,10 +92,8 @@ AcReal acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtyp
                              const AcReal* vtxbuf2, const AcReal* vtxbuf3, AcReal* scratchpad,
                              AcReal* reduce_result);
 
-#define GEN_KERNEL_FUNC_DECL(ID)                                                                   \
-    AcResult AC_KERNEL_FUNC_NAME(ID)(const KernelParameters params, VertexBufferArray vba);
-
-#include "user_kernel_decl.h"
+//#define GEN_KERNEL_FUNC_DECL(ID) AcResult AC_KERNEL_FUNC_NAME(ID)(const
+// KernelParameters params, VertexBufferArray vba);
 
 #ifdef __cplusplus
 } // extern "C"
