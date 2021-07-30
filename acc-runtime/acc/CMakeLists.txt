@@ -12,13 +12,13 @@ add_compile_options(-mavx -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conve
 find_package(BISON)
 find_package(FLEX)
 
-bison_target(parser src/ms.y ${PROJECT_BINARY_DIR}/tab.c VERBOSE COMPILE_FLAGS -Wcounterexamples)
-flex_target(scanner src/ms.l ${PROJECT_BINARY_DIR}/yy.c)
+bison_target(parser ms.y ${PROJECT_BINARY_DIR}/tab.c VERBOSE COMPILE_FLAGS -Wcounterexamples)
+flex_target(scanner ms.l ${PROJECT_BINARY_DIR}/yy.c)
 add_flex_bison_dependency(scanner parser)
 
 ## Include directories
-include_directories(src)
+include_directories(.)
 include_directories(${PROJECT_BINARY_DIR})
 
 ## Executable
-add_executable(acc src/codegen.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
+add_executable(acc codegen.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})

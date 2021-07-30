@@ -17,41 +17,6 @@ typedef struct {
   AcReal3 real3_params[NUM_REAL3_PARAMS];
 } AcMeshInfo;
 
-extern __device__ AcMeshInfo d_mesh_info;
-
-// Astaroth 2.0 backwards compatibility START
-#ifdef __cplusplus
-static int __device__ __forceinline__
-DCONST(const AcIntParam param)
-{
-  return d_mesh_info.int_params[param];
-}
-static int3 __device__ __forceinline__
-DCONST(const AcInt3Param param)
-{
-  return d_mesh_info.int3_params[param];
-}
-static AcReal __device__ __forceinline__
-DCONST(const AcRealParam param)
-{
-  return d_mesh_info.real_params[param];
-}
-static AcReal3 __device__ __forceinline__
-DCONST(const AcReal3Param param)
-{
-  return d_mesh_info.real3_params[param];
-}
-static __device__ constexpr VertexBufferHandle
-DCONST(const VertexBufferHandle handle)
-{
-  return handle;
-}
-//#define IDX(i, j, k) ((i) + (j)*mm.x + (k)*mm.x * mm.y)
-#define IDX(i, j, k)                                                           \
-  ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mx) * DCONST(AC_my))
-#endif // __cplusplus
-// Astaroth 2.0 backwards compatibility END
-
 typedef struct {
   AcReal* in[NUM_FIELDS];
   AcReal* out[NUM_FIELDS];

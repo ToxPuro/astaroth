@@ -84,6 +84,8 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cross"); // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "exp");   // TODO RECHECK
 
+  // Astaroth 2.0 backwards compatibility START
+  // (should be actually built-in externs in acc-runtime/api/acc-runtime.h)
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_mx");
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_my");
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_mz");
@@ -105,6 +107,24 @@ symboltable_reset(void)
 
   add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_multigpu_offset");
   add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_global_grid_n");
+
+  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsx");
+  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsy");
+  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsz");
+
+  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_inv_dsx");
+  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_inv_dsy");
+  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_inv_dsz");
+
+  // (BC types do not belong here, BCs not handled with the DSL)
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_bot_x");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_bot_y");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_bot_z");
+
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_top_x");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_top_y");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_top_z");
+  // Astaroth 2.0 backwards compatibility END
 }
 
 static inline void
@@ -585,9 +605,16 @@ int main(void) {
   char sfunctions[1024 * 1024];
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_STENCIL_ID) {
+      const char* id = symbol_table[i].identifier;
       sprintf(buf,
               "#define %s(field) (processed_stencils[(field)][stencil_%s])\n",
-              symbol_table[i].identifier, symbol_table[i].identifier);
+              id, id);
+      /*
+      sprintf(buf,
+              "auto %s = [processed_stencils](Field field) { return "
+              "processed_stencils[field][stencil_%s]; };",
+              id, id);
+              */
       strcat(sfunctions, buf);
     }
 
