@@ -441,11 +441,18 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "};");
 
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
-  // START-----------------------------
   fprintf(fp, "\n// Redefined for backwards compatibility START\n");
   fprintf(fp, "#define NUM_VTXBUF_HANDLES (NUM_FIELDS)\n");
   fprintf(fp, "typedef Field VertexBufferHandle;\n");
   fprintf(fp, "static const char** vtxbuf_names = field_names;\n");
+
+  // This is not really needed any more, the kernel function pointer is now
+  // exposed in the API, so one could use that directly instead of handles.
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_KFUNCTION_ID)
+      fprintf(fp, "KERNEL_%s,", symbol_table[i].identifier);
+  fprintf(fp, "NUM_KERNELS} AcKernel;");
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK END-----------------------------
 
   // Device constants
