@@ -2,11 +2,103 @@ int AC_step_number
 real AC_dt
 real INV_DS  = 1. / 0.04908738521 // TODO
 
+/*
 real AC_cs_sound, AC_cp_sound
 real AC_gamma, AC_nu_visc, AC_zeta, AC_eta
 real AC_lnrho0, AC_mu0, AC_lnT0
+*/
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ,VTXBUF_ENTROPY
+
+// Additional params needed by standalone & standalone_mpi
+// Int params
+int AC_max_steps
+int AC_save_steps
+int AC_bin_steps
+int AC_start_step
+
+// Real params
+real AC_max_time
+// Spacing
+real AC_dsmin
+// physical grid
+real AC_xlen
+real AC_ylen
+real AC_zlen
+real AC_xorig
+real AC_yorig
+real AC_zorig
+// Physical units
+real AC_unit_density
+real AC_unit_velocity
+real AC_unit_length
+real AC_unit_magnetic
+// properties of gravitating star
+real AC_star_pos_x
+real AC_star_pos_y
+real AC_star_pos_z
+real AC_M_star
+// properties of sink particle
+real AC_sink_pos_x
+real AC_sink_pos_y
+real AC_sink_pos_z
+real AC_M_sink
+real AC_M_sink_init
+real AC_M_sink_Msun
+real AC_soft
+real AC_accretion_range
+real AC_switch_accretion
+//  Run params
+real AC_cdt
+real AC_cdtv
+real AC_cdts
+real AC_nu_visc
+real AC_cs_sound
+real AC_eta
+real AC_mu0
+real AC_cp_sound
+real AC_gamma
+real AC_cv_sound
+real AC_lnT0
+real AC_lnrho0
+real AC_zeta
+real AC_trans
+real AC_nu_shock
+//  Other
+real AC_bin_save_t
+//  Initial condition params
+real AC_ampl_lnrho
+real AC_ampl_uu
+real AC_angl_uu
+real AC_lnrho_edge
+real AC_lnrho_out
+real AC_ampl_aa
+real AC_init_k_wave
+real AC_init_sigma_hel
+//  Forcing parameters. User configured.
+real AC_forcing_magnitude
+real AC_relhel
+real AC_kmin
+real AC_kmax
+//  Forcing parameters. Set by the generator.
+real AC_forcing_phase
+real AC_k_forcex
+real AC_k_forcey
+real AC_k_forcez
+real AC_kaver
+real AC_ff_hel_rex
+real AC_ff_hel_rey
+real AC_ff_hel_rez
+real AC_ff_hel_imx
+real AC_ff_hel_imy
+real AC_ff_hel_imz
+//  Additional helper params  //  (deduced from other params do not set these directly!)
+real AC_G_const
+real AC_GM_star
+real AC_unit_mass
+real AC_sq2GM_star
+real AC_cs2_sound
+//
 
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
 #define AA Field3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
