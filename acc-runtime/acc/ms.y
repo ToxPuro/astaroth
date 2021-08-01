@@ -36,7 +36,7 @@ main(int argc, char** argv)
 
     if (argc == 2) {
         // Preprocess
-        const char* in = "tmpfile984849486456014524.preprocessed";
+        const char* in = "user_kernels.ac.preprocessed";
 
         const size_t cmdlen = 4096;
         char cmd[cmdlen];

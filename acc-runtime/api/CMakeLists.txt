@@ -10,7 +10,7 @@ if (NOT DEFINED DSL_MODULE_DIR)
     set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/dsl) # Default
 endif ()
 
-set(DSL_SOURCES "${DSL_MODULE_DIR}/mhdsolver.ac")
+set(DSL_SOURCES "${DSL_MODULE_DIR}/*.ac")
 set(DSL_HEADERS "user_kernels.h"
                 "user_defines.h"
                 "user_declarations.h")

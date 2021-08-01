@@ -3,8 +3,6 @@
 #include "math_utils.h"
 
 __device__ AcMeshInfo d_mesh_info;
-//__device__ dim3 mm;
-//__device__ dim3 multigpu_offset;
 
 // Astaroth 2.0 backwards compatibility START
 #define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
@@ -33,25 +31,25 @@ DCONST(const AcReal3Param param)
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
   ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mxy))
 
-static __device__ constexpr int
+__device__ constexpr int
 IDX(const int i)
 {
   return i;
 }
 
-static __device__ __forceinline__ int
+__device__ __forceinline__ int
 IDX(const int i, const int j, const int k)
 {
   return DEVICE_VTXBUF_IDX(i, j, k);
 }
 
-static __device__ __forceinline__ int
+__device__ __forceinline__ int
 IDX(const int3 idx)
 {
   return DEVICE_VTXBUF_IDX(idx.x, idx.y, idx.z);
 }
 /*
-static __device__ constexpr inline VertexBufferHandle
+__device__ constexpr inline VertexBufferHandle
 DCONST(const VertexBufferHandle handle)
 {
   return handle;

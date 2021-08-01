@@ -152,3 +152,16 @@ a = previous(field) // The value of 'a' is undefined
 > Note: Parameters are passed by value
 
 > Note: Shadowing is not allowed
+
+# Debugging
+
+As ACC is in active development, compiler bugs and cryptic error messages are
+expected. In case of issues, please check the following files in the build directory.
+
+1. `user_kernels.ac.preprocessed`. The DSL file after preprocessing.
+1. `user_defines.h`. The project-wide defines generated with the DSL.
+1. `user_declarations.h`. Forward declarations of user kernels.
+1. `user_kernels.h`. The final CUDA kernels generated with acc.
+
+To make inspecting the generated code easier, we recommend using an
+autoformatting tool, for example, `clang-format` or GNU `indent`.
