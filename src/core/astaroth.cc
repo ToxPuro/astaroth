@@ -18,7 +18,6 @@
 */
 #include "astaroth.h"
 
-#include "errchk.h"
 #include "math_utils.h"
 
 static const int max_num_nodes   = 1;
@@ -189,6 +188,10 @@ acGetNode(void)
 AcResult
 acHostUpdateBuiltinParams(AcMeshInfo* config)
 {
+    ERRCHK_ALWAYS(config->int_params[AC_nx] > 0);
+    ERRCHK_ALWAYS(config->int_params[AC_ny] > 0);
+    ERRCHK_ALWAYS(config->int_params[AC_nz] > 0);
+
     config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER;
     ///////////// PAD TEST
     // config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER + PAD_SIZE;
@@ -198,22 +201,27 @@ acHostUpdateBuiltinParams(AcMeshInfo* config)
 
     // Bounds for the computational domain, i.e. nx_min <= i < nx_max
     config->int_params[AC_nx_min] = STENCIL_ORDER / 2;
-    config->int_params[AC_nx_max] = config->int_params[AC_nx_min] + config->int_params[AC_nx];
     config->int_params[AC_ny_min] = STENCIL_ORDER / 2;
-    config->int_params[AC_ny_max] = config->int_params[AC_ny] + STENCIL_ORDER / 2;
     config->int_params[AC_nz_min] = STENCIL_ORDER / 2;
-    config->int_params[AC_nz_max] = config->int_params[AC_nz] + STENCIL_ORDER / 2;
 
-// These do not have to be defined by empty projects any more.
-// These should be set only if stdderiv.h is included
+    config->int_params[AC_nx_max] = config->int_params[AC_nx_min] + config->int_params[AC_nx];
+    config->int_params[AC_ny_max] = config->int_params[AC_ny_min] + config->int_params[AC_ny];
+    config->int_params[AC_nz_max] = config->int_params[AC_nz_min] + config->int_params[AC_nz];
+
 #ifdef AC_dsx
+    ERRCHK_ALWAYS(config->real_params[AC_dsx] > 0);
     config->real_params[AC_inv_dsx] = (AcReal)(1.) / config->real_params[AC_dsx];
+    ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsx]));
 #endif
 #ifdef AC_dsy
+    ERRCHK_ALWAYS(config->real_params[AC_dsy] > 0);
     config->real_params[AC_inv_dsy] = (AcReal)(1.) / config->real_params[AC_dsy];
+    ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsy]));
 #endif
 #ifdef AC_dsz
+    ERRCHK_ALWAYS(config->real_params[AC_dsz] > 0);
     config->real_params[AC_inv_dsz] = (AcReal)(1.) / config->real_params[AC_dsz];
+    ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsz]));
 #endif
 
     /* Additional helper params */

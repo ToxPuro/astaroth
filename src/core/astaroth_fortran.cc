@@ -1,7 +1,6 @@
 #include "astaroth_fortran.h"
 
 #include "astaroth.h"
-#include "errchk.h"
 
 /**
  * Utils

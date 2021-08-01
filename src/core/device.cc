@@ -18,9 +18,7 @@
 */
 #include "astaroth.h"
 
-#include "errchk.h"
 #include "kernels/kernels.h"
-#include "math_utils.h"
 
 #define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
     AcResult acDevice_##ID(const Device device, const Stream stream, const int3 start,             \
@@ -30,8 +28,6 @@
         return acKernel_##ID(KernelParameters{device->streams[stream], 0, start, end},             \
                              device->vba);                                                         \
     }
-
-#include "user_kernels.h"
 
 AcResult
 acDevicePrintInfo(const Device device)
@@ -93,6 +89,7 @@ acDevicePrintInfo(const Device device)
     return AC_SUCCESS;
 }
 
+/*
 AcResult
 acDeviceAutoOptimize(const Device device)
 {
@@ -109,6 +106,7 @@ acDeviceAutoOptimize(const Device device)
     };
     return acKernelAutoOptimizeIntegration(start, end, device->vba);
 }
+*/
 
 AcResult
 acDeviceSynchronizeStream(const Device device, const Stream stream)
@@ -162,6 +160,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.in[i], vba_size_bytes));
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.out[i], vba_size_bytes));
     }
+    /*
     // VBA Profiles
     const size_t profile_size_bytes = sizeof(AcReal) * max(device_config.int_params[AC_mx],
                                                            max(device_config.int_params[AC_my],
@@ -169,6 +168,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.profiles[i], profile_size_bytes));
     }
+    */
 
     // Reductions
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->reduce_scratchpad,
@@ -176,16 +176,13 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->reduce_result, sizeof(AcReal)));
 
     // Device constants
-    acDeviceLoadDefaultUniforms(device);
+    // acDeviceLoadDefaultUniforms(device); // TODO recheck
     acDeviceLoadMeshInfo(device, device_config);
 
 #if AC_VERBOSE
     printf("Created device %d (%p)\n", device->id, device);
 #endif
     *device_handle = device;
-
-    // Autoptimize
-    acDeviceAutoOptimize(device);
 
     return AC_SUCCESS;
 }
@@ -204,9 +201,11 @@ acDeviceDestroy(Device device)
         cudaFree(device->vba.in[i]);
         cudaFree(device->vba.out[i]);
     }
+    /*
     for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
         cudaFree(device->vba.profiles[i]);
     }
+    */
 
     cudaFree(device->reduce_scratchpad);
     cudaFree(device->reduce_result);
@@ -245,6 +244,7 @@ acDeviceSwapBuffers(const Device device)
     return (AcResult)retval;
 }
 
+/*
 AcResult
 acDeviceLoadScalarArray(const Device device, const Stream stream, const ScalarArrayHandle handle,
                         const size_t start, const AcReal* data, const size_t num)
@@ -262,6 +262,7 @@ acDeviceLoadScalarArray(const Device device, const Stream stream, const ScalarAr
                                 cudaMemcpyHostToDevice, device->streams[stream]));
     return AC_SUCCESS;
 }
+*/
 
 AcResult
 acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream, const AcMesh host_mesh,
@@ -456,10 +457,10 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
                          const int3 start, const int3 end, const AcReal dt)
 {
     cudaSetDevice(device->id);
+
     acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
-    return acKernelIntegrateSubstep(KernelParameters{device->streams[stream], step_number, start,
-                                                     end},
-                                    device->vba);
+    acDeviceLoadIntUniform(device, stream, AC_step_number, step_number);
+    return acLaunchKernel(solve, device->streams[stream], start, end, device->vba);
 }
 
 AcResult

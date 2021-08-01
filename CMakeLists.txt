@@ -46,30 +46,6 @@ option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer
 option(VERBOSE            "Enables various status and warning messages"         OFF)
 option(BUILD_UTILS        "Builds the utility library"                           ON)
 
-
-## Compile ACC
-add_subdirectory(acc)
-
-## Compile AC headers
-if (NOT DEFINED DSL_MODULE_DIR)
-    set(DSL_MODULE_DIR ${CMAKE_SOURCE_DIR}/dsl) # Default
-endif ()
-get_filename_component(DSL_MODULE_DIR ${DSL_MODULE_DIR} REALPATH)
-message(STATUS "DSL module dir: ${DSL_MODULE_DIR}")
-
-file(GLOB DSL_SOURCES ${DSL_MODULE_DIR}/mhdsolver.ac)
-set(DSL_HEADERS "${PROJECT_BINARY_DIR}/user_kernels.h"
-                "${PROJECT_BINARY_DIR}/user_defines.h"
-                "${PROJECT_BINARY_DIR}/user_declarations.h")
-
-add_custom_command (
-    COMMENT "Building ACC objects ${DSL_MODULE_DIR}"
-    COMMAND acc/acc ${DSL_SOURCES}
-    DEPENDS ${DSL_SOURCES} acc
-    OUTPUT ${DSL_HEADERS}
-)
-add_custom_target(dsl_headers ALL DEPENDS ${DSL_HEADERS})
-
 ## Global flags
 if (DOUBLE_PRECISION)
     add_definitions(-DAC_DOUBLE_PRECISION=1)
@@ -93,15 +69,17 @@ add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 
 ## Includes
 include_directories(include)                                   # Library headers
-include_directories(src/common)                                # Common headers
-include_directories(${CMAKE_BINARY_DIR})                       # DSL headers
+include_directories(acc-runtime/api)                           # DSL API
+include_directories(${CMAKE_BINARY_DIR}/acc-runtime)           # DSL headers
 include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # CUDA headers
 
 ## Subdirectories
+add_subdirectory(acc-runtime)
 add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
+
 if (BUILD_UTILS)
-    message("Note: utils depends on -DDSL_MODULE_DIR=acc/mhd_solver. Otherwise causes undefined variable errors.")
+    message("Note: utils depends on -DDSL_MODULE_DIR=<path-to-mhd-solver>. Otherwise causes undefined variable errors.")
     add_subdirectory(src/utils)
 endif()
 

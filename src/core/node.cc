@@ -125,7 +125,6 @@
  */
 #include "astaroth.h"
 
-#include "errchk.h"
 #include "math_utils.h"
 
 static const int MAX_NUM_DEVICES = 32;
