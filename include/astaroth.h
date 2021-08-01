@@ -779,3 +779,39 @@ AcResult acHostMeshDestroy(AcMesh* mesh);
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+#ifdef __cplusplus
+#if AC_MPI_ENABLED
+/** */
+template <size_t num_vtxbufs>
+AcTaskDefinition
+acCompute(AcKernel kernel, VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
+{
+    return acCompute(kernel, vtxbuf_dependencies, num_vtxbufs);
+}
+
+/** */
+template <size_t num_vtxbufs>
+AcTaskDefinition acHaloExchange(VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
+{
+    return acHaloExchange(vtxbuf_dependencies, num_vtxbufs);
+}
+
+/** */
+template <size_t num_vtxbufs>
+AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
+                    VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
+{
+    return acBoundaryCondition(boundary, bound_cond, vtxbuf_dependencies, num_vtxbufs);
+}
+
+/** */
+template <size_t n_ops>
+AcTaskGraph*
+acGridBuildTaskGraph(const AcTaskDefinition (&ops)[n_ops])
+{
+    return acGridBuildTaskGraph(ops, n_ops);
+}
+#endif
+#endif
