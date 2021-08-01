@@ -361,19 +361,18 @@ Task::poll_stream()
 }
 
 /* Computation */
-ComputeTask::ComputeTask(ComputeKernel compute_func_,
-                         std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_,
-                         int region_tag, int3 nn, Device device_, bool is_vba_inverted_)
+ComputeTask::ComputeTask(Kernel kernel_, std::shared_ptr<VtxbufSet> vtxbuf_dependencies_,
+                         int order_, int region_tag, int3 nn, Device device_, bool is_vba_inverted_)
     : Task(order_, RegionFamily::Compute_input, RegionFamily::Compute_output, region_tag, nn,
            device_, is_vba_inverted_)
 {
     stream = device->streams[STREAM_DEFAULT + region_tag];
     syncVBA();
 
-    compute_func        = compute_func_;
+    // compute_func        = compute_func_;
     vtxbuf_dependencies = vtxbuf_dependencies_;
 
-    params = KernelParameters{stream, 0, output_region->position,
+    params = KernelParameters{kernel_, stream, 0, output_region->position,
                               output_region->position + output_region->dims};
     name = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region->id.x) + "," +
            std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
@@ -385,7 +384,7 @@ ComputeTask::compute()
 {
     // IDEA: we could make loop_cntr.i point at params.step_number
     params.step_number = (int)(loop_cntr.i % 3);
-    compute_func(params, vba);
+    acKernel(params, vba);
 }
 
 bool

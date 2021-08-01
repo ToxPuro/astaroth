@@ -6,8 +6,6 @@
 
 #include <cuda_runtime_api.h> // cudaStream_t
 
-typedef AcReal AcRealPacked;
-
 #include "user_defines.h"
 
 typedef struct {
@@ -22,13 +20,13 @@ typedef struct {
   AcReal* out[NUM_FIELDS];
 } VertexBufferArray;
 
+typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "user_declarations.h"
-
-typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 
 AcResult acLaunchKernel(Kernel func, const cudaStream_t stream,
                         const int3 start, const int3 end,

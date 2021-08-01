@@ -72,10 +72,8 @@ acDeviceLoadVectorUniform(const Device device, const Stream stream, const AcReal
 }
 
 AcResult
-acDeviceLoadIntUniform(const Device device, const Stream stream, const AcIntParam param,
-                       const int value)
+acLoadIntUniform(const cudaStream_t stream, const AcIntParam param, const int value)
 {
-    cudaSetDevice(device->id);
     if (param < 0 || param >= NUM_INT_PARAMS) {
         fprintf(stderr, "WARNING: invalid AcIntParam %d\n", param);
         return AC_FAILURE;
@@ -91,8 +89,16 @@ acDeviceLoadIntUniform(const Device device, const Stream stream, const AcIntPara
 
     const size_t offset = (size_t)&d_mesh_info.int_params[param] - (size_t)&d_mesh_info;
     ERRCHK_CUDA(cudaMemcpyToSymbolAsync(d_mesh_info, &value, sizeof(value), offset,
-                                        cudaMemcpyHostToDevice, device->streams[stream]));
+                                        cudaMemcpyHostToDevice, stream));
     return AC_SUCCESS;
+}
+
+AcResult
+acDeviceLoadIntUniform(const Device device, const Stream stream, const AcIntParam param,
+                       const int value)
+{
+    cudaSetDevice(device->id);
+    return acLoadIntUniform(device->streams[stream], param, value);
 }
 
 AcResult
@@ -154,3 +160,13 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo device_config)
 #include "boundconds_miikka_GBC.cuh"
 #include "packing.cuh"
 #include "reductions.cuh"
+
+AcResult
+acKernel(const KernelParameters params, VertexBufferArray vba)
+{
+#ifdef AC_step_number
+    acLoadIntUniform(params.stream, AC_step_number, params.step_number);
+#endif
+    acLaunchKernel(params.kernel, params.stream, params.start, params.end, vba);
+    return AC_SUCCESS;
+}

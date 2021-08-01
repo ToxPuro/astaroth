@@ -21,14 +21,15 @@ struct device_s {
     AcReal* reduce_result;
 };
 
+typedef AcReal AcRealPacked;
+
 typedef struct {
+    Kernel kernel;
     cudaStream_t stream;
     int step_number;
     int3 start;
     int3 end;
 } KernelParameters;
-
-typedef AcResult (*ComputeKernel)(const KernelParameters, VertexBufferArray);
 
 #ifdef __cplusplus
 extern "C" {
@@ -92,8 +93,8 @@ AcReal acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtyp
                              const AcReal* vtxbuf2, const AcReal* vtxbuf3, AcReal* scratchpad,
                              AcReal* reduce_result);
 
-//#define GEN_KERNEL_FUNC_DECL(ID) AcResult AC_KERNEL_FUNC_NAME(ID)(const
-// KernelParameters params, VertexBufferArray vba);
+// Astaroth 2.0 backwards compatibility.
+AcResult acKernel(const KernelParameters params, VertexBufferArray vba);
 
 #ifdef __cplusplus
 } // extern "C"

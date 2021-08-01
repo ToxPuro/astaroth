@@ -172,12 +172,12 @@ enum class ComputeState { Waiting = Task::wait_state, Running };
 
 typedef class ComputeTask : public Task {
   private:
-    ComputeKernel compute_func;
+    // ComputeKernel compute_func;
     KernelParameters params;
 
   public:
-    ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VtxbufSet> vtxbuf_dependencies_,
-                int order_, int region_tag, int3 nn, Device device_, bool is_vba_inverted_);
+    ComputeTask(Kernel kernel_, std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_,
+                int region_tag, int3 nn, Device device_, bool is_vba_inverted_);
     ComputeTask(const ComputeTask& other) = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();

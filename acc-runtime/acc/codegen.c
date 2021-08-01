@@ -445,14 +445,6 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "#define NUM_VTXBUF_HANDLES (NUM_FIELDS)\n");
   fprintf(fp, "typedef Field VertexBufferHandle;\n");
   fprintf(fp, "static const char** vtxbuf_names = field_names;\n");
-
-  // This is not really needed any more, the kernel function pointer is now
-  // exposed in the API, so one could use that directly instead of handles.
-  fprintf(fp, "typedef enum {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_KFUNCTION_ID)
-      fprintf(fp, "KERNEL_%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_KERNELS} AcKernel;");
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK END-----------------------------
 
   // Device constants
@@ -491,6 +483,22 @@ gen_user_kernels(const ASTNode* root, const char* out)
               "__global__ void %s(const int3 start, const int3 end, "
               "VertexBufferArray vba);",
               symbol_table[i].identifier);
+
+  // Astaroth 2.0 backwards compatibility START
+  // This is not really needed any more, the kernel function pointer is now
+  // exposed in the API, so one could use that directly instead of handles.
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_KFUNCTION_ID)
+      fprintf(fp, "KERNEL_%s,", symbol_table[i].identifier);
+  fprintf(fp, "NUM_KERNELS} AcKernel;");
+
+  fprintf(fp, "static const Kernel kernel_lookup[] = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_KFUNCTION_ID)
+      fprintf(fp, "%s,", symbol_table[i].identifier); // Host layer handle
+  fprintf(fp, "};");
+  // Astaroth 2.0 backwards compatibility END
 
   fclose(fp);
 
