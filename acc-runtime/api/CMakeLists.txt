@@ -9,9 +9,9 @@ endif()
 if (NOT DEFINED DSL_MODULE_DIR)
     set(DSL_MODULE_DIR ${CMAKE_SOURCE_DIR}/acc/dsl) # Default
 else()
-get_filename_component(resolved_module_dir "${DSL_MODULE_DIR}" REALPATH
-                       BASE_DIR ${CMAKE_BINARY_DIR})
-set(DSL_MODULE_DIR ${resolved_module_dir})
+    get_filename_component(resolved_module_dir "${DSL_MODULE_DIR}" REALPATH
+                           BASE_DIR ${CMAKE_BINARY_DIR})
+    set(DSL_MODULE_DIR ${resolved_module_dir})
 endif ()
 
 set(DSL_SOURCES "${DSL_MODULE_DIR}/*.ac")
