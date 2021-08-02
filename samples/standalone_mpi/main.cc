@@ -637,7 +637,7 @@ main(int argc, char** argv)
         // MV TODO: Make it possible, using the task system, to run nonperiodic boundaty conditions.
         // MV TODO: See if there are other features from the normal standalone which I would like to include. 
 
-#if LSINK
+#if LSHOCK
         // Set the time delta
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, dt);
         acGridSynchronizeStream(STREAM_DEFAULT);
