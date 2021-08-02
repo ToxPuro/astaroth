@@ -26,15 +26,16 @@ hostdefine ONE  (1) // Visible in both device and host code
 
 Variables
 ```
-var = 1
+real var    // Explicit type declaration
+real dconst // The type of device constants must be explicitly specified
+
+var = 1    // The type of local variables can be left out (implicit typing)
 var = 1.0  // Implicit precision (determined based on compilation flags)
 var = 1.   // Trailing zero can be left out
 var = 1e3  // E notation
 var = 1.f  // Explicit single-precision
 var = 0.1d // Explicit double-precision
 var = "Hello"
-
-real var // Explicit type declaration
 ```
 
 Arrays
@@ -54,12 +55,11 @@ Looping
 ```
 arr = 1, 2, 3
 for var in arr {
-    // print var // TODO check
+    print("%d\n", var)
 }
 
 i = 0
 while i < 3 {
-    // print arr[i] // TODO check
     i += 1
 }
 
@@ -161,7 +161,7 @@ expected. In case of issues, please check the following files in the build direc
 1. `user_kernels.ac.preprocessed`. The DSL file after preprocessing.
 1. `user_defines.h`. The project-wide defines generated with the DSL.
 1. `user_declarations.h`. Forward declarations of user kernels.
-1. `user_kernels.h`. The final CUDA kernels generated with acc.
+1. `user_kernels.h`. The generated CUDA kernels.
 
-To make inspecting the generated code easier, we recommend using an
+To make inspecting the code easier, we recommend using an
 autoformatting tool, for example, `clang-format` or GNU `indent`.

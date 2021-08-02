@@ -8,6 +8,8 @@ real AC_gamma, AC_nu_visc, AC_zeta, AC_eta
 real AC_lnrho0, AC_mu0, AC_lnT0
 */
 
+hostdefine HOST_VISIBLE_DEFINE (1)
+
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ,VTXBUF_ENTROPY
 
 // Additional params needed by standalone & standalone_mpi
