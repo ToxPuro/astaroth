@@ -88,16 +88,16 @@ Stencils
 ```
 // Format
 Stencil <identifier> {
-    [x][y][z] = coefficient,
+    [z][y][x] = coefficient,
     ...
 }
 // where [x][y][z] is the x/y/z offset from current position.
 
 // For example,
 Stencil example {
-    [-1][0][0] = a,
+    [0][0][-1] = a,
     [0][0][0] = b
-    [1][0][0] = c,
+    [0][0][1] = c,
 }
 // is calculated equivalently to
 example(field) {
@@ -108,12 +108,12 @@ example(field) {
 
 // Real-world example
 Stencil derx {
-    [-3][0][0] = -DER1_3,
-    [-2][0][0] = -DER1_2,
-    [-1][0][0] = -DER1_1,
-    [1][0][0]  = DER1_1,
-    [2][0][0]  = DER1_2,
-    [3][0][0]  = DER1_3
+    [0][0][-3] = -DER1_3,
+    [0][0][-2] = -DER1_2,
+    [0][0][-1] = -DER1_1,
+    [0][0][1]  = DER1_1,
+    [0][0][2]  = DER1_2,
+    [0][0][3]  = DER1_3
 }
 
 Stencil dery {
@@ -123,8 +123,8 @@ Stencil dery {
 }
 
 Stencil derz {
-    [0][0][-3] = -DER1_3,
-    [0][0][-2] = ...
+    [-3][0][0] = -DER1_3,
+    [-2][0][0] = ...
 }
 
 gradient(field) {
