@@ -84,6 +84,8 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cross"); // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "exp");   // TODO RECHECK
 
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_FIELDS");
+
   // Astaroth 2.0 backwards compatibility START
   // (should be actually built-in externs in acc-runtime/api/acc-runtime.h)
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_mx");
