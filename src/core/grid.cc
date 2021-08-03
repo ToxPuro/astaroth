@@ -709,7 +709,8 @@ acGridExecuteTaskGraph(const AcTaskGraph* graph, size_t n_iterations)
         }
     }
 
-    bool do_swapVBA = (graph->num_swaps * n_iterations % 2) != 0;
+    bool do_swapVBA =  (graph->num_swaps % 2) != 0;
+    bool do_acDeviceSwapBuffers = (( graph->num_swaps * n_iterations ) % 2) != 0;
 
     bool ready;
     do {
@@ -722,7 +723,7 @@ acGridExecuteTaskGraph(const AcTaskGraph* graph, size_t n_iterations)
         }
     } while (!ready);
 
-    if (do_swapVBA) {
+    if (do_acDeviceSwapBuffers) {
         acDeviceSwapBuffers(grid.device);
     }
     return AC_SUCCESS;

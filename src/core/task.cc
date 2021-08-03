@@ -367,7 +367,14 @@ ComputeTask::ComputeTask(ComputeKernel compute_func_,
     : Task(order_, RegionFamily::Compute_input, RegionFamily::Compute_output, region_tag, nn,
            device_, is_vba_inverted_)
 {
-    stream = device->streams[STREAM_DEFAULT + region_tag];
+    //stream = device->streams[STREAM_DEFAULT + region_tag];
+    {
+        cudaSetDevice(device->id);
+        int low_prio, high_prio;
+        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+    }
+
     syncVBA();
 
     compute_func        = compute_func_;
