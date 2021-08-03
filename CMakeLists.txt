@@ -97,7 +97,7 @@ if (BUILD_SAMPLES)
     add_subdirectory(samples/boundcond_test)
     #add_subdirectory(samples/genbenchmarkscripts)
     #add_subdirectory(samples/mpi_reduce_bench)
-    add_subdirectory(samples/fortrantest)
+    #add_subdirectory(samples/fortrantest)
     
     #if (MPI_ENABLED)
     #  add_subdirectory(samples/bwtest)
