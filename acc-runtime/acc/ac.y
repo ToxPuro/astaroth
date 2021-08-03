@@ -41,7 +41,11 @@ main(int argc, char** argv)
         const size_t cmdlen = 4096;
         char cmd[cmdlen];
         snprintf(cmd, cmdlen, "gcc -x c -E %s > %s", argv[1], in);
-        system(cmd);
+        const int retval = system(cmd);
+        if (retval == -1) {
+            fprintf(stderr, "Catastrophic error: preprocessing failed.\n");
+            assert(retval != -1);
+        }
 
         // Generate code
         yyin = fopen(in, "r");
