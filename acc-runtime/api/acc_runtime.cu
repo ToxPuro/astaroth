@@ -48,15 +48,17 @@ IDX(const int3 idx)
 {
   return DEVICE_VTXBUF_IDX(idx.x, idx.y, idx.z);
 }
-/*
-__device__ constexpr inline VertexBufferHandle
-DCONST(const VertexBufferHandle handle)
-{
-  return handle;
-}*/
-//#define IDX(i, j, k) ((i) + (j)*mm.x + (k)*mm.x * mm.y)
-// #define IDX(i, j, k) ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mx) *
-// DCONST(AC_my)) Astaroth 2.0 backwards compatibility END
+
+// Device info (TODO GENERIC)
+// Use the maximum available reg count per thread
+#define REGISTERS_PER_THREAD (255)
+#define MAX_REGISTERS_PER_BLOCK (65536)
+#if AC_DOUBLE_PRECISION
+#define MAX_THREADS_PER_BLOCK                                                  \
+  (MAX_REGISTERS_PER_BLOCK / REGISTERS_PER_THREAD / 2)
+#else
+#define MAX_THREADS_PER_BLOCK (MAX_REGISTERS_PER_BLOCK / REGISTERS_PER_THREAD)
+#endif
 
 #define Field3(x, y, z) make_int3((x), (y), (z))
 #define real3(i, j, k) ((AcReal3){(i), (j), (k)})
