@@ -222,62 +222,67 @@ simple_uniform_core(AcMesh* mesh)
 
     const double ampl_lnrho = mesh->info.real_params[AC_ampl_lnrho];
 
-    const double xorig = mesh->info.real_params[AC_xorig];
-    const double yorig = mesh->info.real_params[AC_yorig];
-    const double zorig = mesh->info.real_params[AC_zorig];
+    const double xorig   = mesh->info.real_params[AC_xorig];
+    const double yorig   = mesh->info.real_params[AC_yorig];
+    const double zorig   = mesh->info.real_params[AC_zorig];
 
-    const double G_const     = mesh->info.real_params[AC_G_const];
+    const double G_const = mesh->info.real_params[AC_G_const]; 
     const double M_sink_init = mesh->info.real_params[AC_M_sink_init];
-    const double cs2_sound   = mesh->info.real_params[AC_cs2_sound];
+    const double cs2_sound = mesh->info.real_params[AC_cs2_sound];
 
-    const double RR_inner_bound = mesh->info.real_params[AC_soft] / AcReal(2.0);
-    const double core_coeff     = (exp(ampl_lnrho) * cs2_sound) / (double(4.0) * M_PI * G_const);
+    const double RR_inner_bound = mesh->info.real_params[AC_soft]/AcReal(2.0);
+    const double core_coeff   = (exp(ampl_lnrho)  * cs2_sound) / (double(4.0)*M_PI * G_const);
 
     double xx, yy, zz, RR;
     double core_profile;
 
-    // TEMPORARY TEST INPUT PARAMETERS
-    const double core_radius = DX * 32.0;
-    const double trans       = DX * 12.0;
-    // const double epsilon = DX*2.0;
+    //TEMPORARY TEST INPUT PARAMETERS
+    const double core_radius = DX*32.0;
+    const double trans = DX*12.0;
+    //const double epsilon = DX*2.0;
     const double vel_scale = mesh->info.real_params[AC_ampl_uu];
     double abso_vel;
 
     RR = 1.0;
     printf("%e %e %e \n", RR, trans, core_radius);
+     
 
     for (int k = 0; k < mz; k++) {
         for (int j = 0; j < my; j++) {
             for (int i = 0; i < mx; i++) {
-                int idx = i + j * mx + k * mx * my;
-                xx      = DX * double(i) - xorig;
-                yy      = DY * double(j) - yorig;
-                zz      = DZ * double(k) - zorig;
+                int idx = i + j*mx + k*mx*my;
+                xx     = DX * double(i) - xorig;
+                yy     = DY * double(j) - yorig;
+                zz     = DZ * double(k) - zorig;
 
-                RR = sqrt(xx * xx + yy * yy + zz * zz);
-
+                RR     = sqrt(xx*xx + yy*yy + zz*zz);
+                     
                 if (RR >= RR_inner_bound) {
-                    abso_vel     = vel_scale * sqrt(2.0 * G_const * M_sink_init / RR);
-                    core_profile = pow(RR, -2.0); // double(1.0);
-                }
-                else {
-                    abso_vel = vel_scale * sqrt(2.0 * AC_G_const * AC_M_sink_init / RR_inner_bound);
-                    core_profile = pow(RR_inner_bound, -2.0); // double(1.0);
+                    abso_vel = vel_scale * sqrt(2.0 * G_const 
+                                                    * M_sink_init / RR);
+                    core_profile = pow(RR, -2.0);   //double(1.0);
+                } else {
+                    abso_vel = vel_scale * sqrt(2.0 * AC_G_const 
+                                                    * AC_M_sink_init / RR_inner_bound);
+                    core_profile = pow(RR_inner_bound, -2.0);   //double(1.0);
                 }
 
-                if (RR <= sqrt(DX * DX + DY * DY + DZ * DZ)) {
+               if (RR <= sqrt(DX*DX + DY*DY + DZ*DZ)) {
                     abso_vel = 0.0;
-                    RR       = 1.0;
-                }
+                    RR = 1.0;
+               }
 
-                mesh->vertex_buffer[VTXBUF_LNRHO][idx] = AcReal(log(core_coeff * core_profile));
+
+                mesh->vertex_buffer[VTXBUF_LNRHO][idx] = AcReal(log(core_coeff*core_profile));
                 mesh->vertex_buffer[VTXBUF_UUX][idx]   = AcReal(-abso_vel * (yy / RR));
-                mesh->vertex_buffer[VTXBUF_UUY][idx]   = AcReal(abso_vel * (xx / RR));
+                mesh->vertex_buffer[VTXBUF_UUY][idx]   = AcReal( abso_vel * (xx / RR));
                 mesh->vertex_buffer[VTXBUF_UUZ][idx]   = AcReal(0.0);
+
             }
         }
     }
 }
+
 
 // This is the initial condition type for the infalling vedge in the pseudodisk
 // model.
@@ -571,10 +576,9 @@ kickball(AcMesh* mesh)
                     }
 
                     uu_radial = AMPL_UU *
-                                exp(-pow((rr - UU_SHELL_R), 2.0) / (2.0 * pow(WIDTH_UU, 2.0))) *
-                                exp(-pow((theta - M_PI / 2.0), 2.0) /
-                                    (2.0 * pow(M_PI / 4.0, 2.0))) *
-                                exp(-pow((phi - M_PI / 2.0), 2.0) / (2.0 * pow(M_PI / 4.0, 2.0)));
+                                exp(-pow((rr - UU_SHELL_R), 2.0) / (2.0 * pow(WIDTH_UU, 2.0)))
+                                * exp(-pow((theta - M_PI/2.0), 2.0) / (2.0 * pow(M_PI/4.0, 2.0)))
+                                * exp(-pow((phi - M_PI/2.0), 2.0) / (2.0 * pow(M_PI/4.0, 2.0)));
                 }
                 else {
                     uu_radial = 0.0; // TODO: There will be a discontinuity in
@@ -583,7 +587,7 @@ kickball(AcMesh* mesh)
                 }
 
                 // Determine the carthesian velocity components and lnrho
-
+      
                 uu_x[idx] = AcReal(uu_radial * sin(theta) * cos(phi));
                 uu_y[idx] = AcReal(uu_radial * sin(theta) * sin(phi));
                 uu_z[idx] = AcReal(uu_radial * cos(theta));
@@ -591,6 +595,7 @@ kickball(AcMesh* mesh)
         }
     }
 }
+
 
 void
 gaussian_radial_explosion(AcMesh* mesh)
