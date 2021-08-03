@@ -569,13 +569,13 @@ generate(const ASTNode* root, FILE* stream)
   const char* stencilgen_main = R"(
 int main(void) {
   for (int field = 0; field < NUM_FIELDS; ++field) {
-      printf("{\n\tconst AcReal* __restrict__ in = vba.in[%%d];\n", field);
+      printf("{\n\tconst AcReal* __restrict__ in = vba.in[%d];\n", field);
       for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
           for (int height = 0; height < STENCIL_HEIGHT; ++height) {
               for (int width = 0; width < STENCIL_WIDTH; ++width) {
                   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
                       if (stencils[stencil][depth][height][width] != 0) {
-                          printf("\tprocessed_stencils[%%d][%%d] += %%s * in[IDX(vertexIdx.x + (%%d), vertexIdx.y + (%%d), vertexIdx.z + (%%d))];\n",
+                          printf("\tprocessed_stencils[%d][%d] += %s * in[IDX(vertexIdx.x + (%d), vertexIdx.y + (%d), vertexIdx.z + (%d))];\n",
                                   field, stencil, stencils[stencil][depth][height][width],
                                   -STENCIL_ORDER / 2 + width, -STENCIL_ORDER / 2 + height,
                                   -STENCIL_ORDER / 2 + depth);
@@ -588,7 +588,7 @@ int main(void) {
   }
 }
                       )";
-  fprintf(stencilgen, stencilgen_main);
+  fprintf(stencilgen, "%s", stencilgen_main);
   fclose(stencilgen);
 
   // Compile
