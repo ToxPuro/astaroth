@@ -1,0 +1,21 @@
+// Global variables and defines
+
+// Comment test
+
+/*
+    Block comment test
+*/
+
+dt = 1.
+dtt = 1e6
+dttt = 1e-128
+dtttt = 1.f
+dttttt = 0.2d
+step = 0
+int dsx = 0
+real dsy
+Field lnrho
+Field ux, uy, uz
+real a, b, c, d
+
+inv_dsx  = 1. / 0.04908738521
