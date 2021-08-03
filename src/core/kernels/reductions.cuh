@@ -54,7 +54,7 @@ dsquared_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d)
 #include <assert.h>
 template <FilterFunc filter>
 static __global__ void
-kernel_filter(const __restrict__ AcReal* src, const int3 start, const int3 end, AcReal* dst)
+kernel_filter(const AcReal* __restrict__ src, const int3 start, const int3 end, AcReal* dst)
 {
     const int3 src_idx = (int3){start.x + threadIdx.x + blockIdx.x * blockDim.x,
                                 start.y + threadIdx.y + blockIdx.y * blockDim.y,
@@ -79,8 +79,8 @@ kernel_filter(const __restrict__ AcReal* src, const int3 start, const int3 end, 
 
 template <FilterFuncVec filter>
 static __global__ void
-kernel_filter_vec(const __restrict__ AcReal* src0, const __restrict__ AcReal* src1,
-                  const __restrict__ AcReal* src2, const int3 start, const int3 end, AcReal* dst)
+kernel_filter_vec(const AcReal* __restrict__ src0, const AcReal* __restrict__ src1,
+                  const AcReal* __restrict__ src2, const int3 start, const int3 end, AcReal* dst)
 {
     const int3 src_idx = (int3){start.x + threadIdx.x + blockIdx.x * blockDim.x,
                                 start.y + threadIdx.y + blockIdx.y * blockDim.y,
@@ -107,8 +107,8 @@ kernel_filter_vec(const __restrict__ AcReal* src0, const __restrict__ AcReal* sr
 
 template <FilterFuncVecScal filter>
 static __global__ void
-kernel_filter_vec_scal(const __restrict__ AcReal* src0, const __restrict__ AcReal* src1,
-                       const __restrict__ AcReal* src2, const __restrict__ AcReal* src3,
+kernel_filter_vec_scal(const AcReal* __restrict__ src0, const AcReal* __restrict__ src1,
+                       const AcReal* __restrict__ src2, const AcReal* __restrict__ src3,
                        const int3 start, const int3 end, AcReal* dst)
 {
     const int3 src_idx = (int3){start.x + threadIdx.x + blockIdx.x * blockDim.x,
@@ -167,7 +167,7 @@ kernel_reduce(AcReal* scratchpad, const int num_elems)
 
 template <ReduceFunc reduce>
 static __global__ void
-kernel_reduce_block(const __restrict__ AcReal* scratchpad, const int num_blocks,
+kernel_reduce_block(const AcReal* __restrict__ scratchpad, const int num_blocks,
                     const int block_size, AcReal* result)
 {
     const int idx = threadIdx.x + blockIdx.x * blockDim.x;
