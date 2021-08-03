@@ -301,7 +301,7 @@ typedef struct AcMatrix {
 
   HOST_DEVICE AcMatrix operator-()
   {
-    return (AcMatrix){-row(0), -row(1), -row(2)};
+    return AcMatrix(-row(0), -row(1), -row(2));
   }
 } AcMatrix;
 
