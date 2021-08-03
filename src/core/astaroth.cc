@@ -208,21 +208,24 @@ acHostUpdateBuiltinParams(AcMeshInfo* config)
     config->int_params[AC_ny_max] = config->int_params[AC_ny_min] + config->int_params[AC_ny];
     config->int_params[AC_nz_max] = config->int_params[AC_nz_min] + config->int_params[AC_nz];
 
-#ifdef AC_dsx
-    ERRCHK_ALWAYS(config->real_params[AC_dsx] > 0);
-    config->real_params[AC_inv_dsx] = (AcReal)(1.) / config->real_params[AC_dsx];
-    ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsx]));
-#endif
-#ifdef AC_dsy
-    ERRCHK_ALWAYS(config->real_params[AC_dsy] > 0);
-    config->real_params[AC_inv_dsy] = (AcReal)(1.) / config->real_params[AC_dsy];
-    ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsy]));
-#endif
-#ifdef AC_dsz
-    ERRCHK_ALWAYS(config->real_params[AC_dsz] > 0);
-    config->real_params[AC_inv_dsz] = (AcReal)(1.) / config->real_params[AC_dsz];
-    ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsz]));
-#endif
+    /*
+    #ifdef AC_dsx
+        printf("HELLO!\n");
+        ERRCHK_ALWAYS(config->real_params[AC_dsx] > 0);
+        config->real_params[AC_inv_dsx] = (AcReal)(1.) / config->real_params[AC_dsx];
+        ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsx]));
+    #endif
+    #ifdef AC_dsy
+        ERRCHK_ALWAYS(config->real_params[AC_dsy] > 0);
+        config->real_params[AC_inv_dsy] = (AcReal)(1.) / config->real_params[AC_dsy];
+        ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsy]));
+    #endif
+    #ifdef AC_dsz
+        ERRCHK_ALWAYS(config->real_params[AC_dsz] > 0);
+        config->real_params[AC_inv_dsz] = (AcReal)(1.) / config->real_params[AC_dsz];
+        ERRCHK_ALWAYS(is_valid(config->real_params[AC_inv_dsz]));
+    #endif
+    */
 
     /* Additional helper params */
     // Int helpers

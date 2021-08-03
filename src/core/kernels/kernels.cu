@@ -127,9 +127,12 @@ acDeviceLoadInt3Uniform(const Device device, const Stream stream, const AcInt3Pa
 }
 
 AcResult
-acDeviceLoadMeshInfo(const Device device, const AcMeshInfo device_config)
+acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
 {
     cudaSetDevice(device->id);
+
+    AcMeshInfo device_config = config;
+    acHostUpdateBuiltinParams(&device_config);
 
     ERRCHK_ALWAYS(device_config.int_params[AC_nx] == device->local_config.int_params[AC_nx]);
     ERRCHK_ALWAYS(device_config.int_params[AC_ny] == device->local_config.int_params[AC_ny]);

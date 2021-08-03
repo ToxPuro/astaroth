@@ -214,7 +214,7 @@ derx(const int i, const int j, const int k, const Scalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
-    return first_derivative(pencil, getReal(AC_inv_dsx));
+    return first_derivative(pencil, ((AcReal)1. / getReal(AC_dsx)));
 }
 
 static inline Scalar
@@ -225,7 +225,7 @@ derxx(const int i, const int j, const int k, const Scalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
-    return second_derivative(pencil, getReal(AC_inv_dsx));
+    return second_derivative(pencil, ((AcReal)1. / getReal(AC_dsx)));
 }
 
 static inline Scalar
@@ -243,7 +243,8 @@ derxy(const int i, const int j, const int k, const Scalar* arr)
         pencil_b[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, //
                                    j + STENCIL_ORDER / 2 - offset, k)];
 
-    return cross_derivative(pencil_a, pencil_b, getReal(AC_inv_dsx), getReal(AC_inv_dsy));
+    return cross_derivative(pencil_a, pencil_b, ((AcReal)1. / getReal(AC_dsx)),
+                            ((AcReal)1. / getReal(AC_dsy)));
 }
 
 static inline Scalar
@@ -261,7 +262,8 @@ derxz(const int i, const int j, const int k, const Scalar* arr)
         pencil_b[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j,
                                    k + STENCIL_ORDER / 2 - offset)];
 
-    return cross_derivative(pencil_a, pencil_b, getReal(AC_inv_dsx), getReal(AC_inv_dsz));
+    return cross_derivative(pencil_a, pencil_b, ((AcReal)1. / getReal(AC_dsx)),
+                            ((AcReal)1. / getReal(AC_dsz)));
 }
 
 static inline Scalar
@@ -272,7 +274,7 @@ dery(const int i, const int j, const int k, const Scalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
-    return first_derivative(pencil, getReal(AC_inv_dsy));
+    return first_derivative(pencil, ((AcReal)1. / getReal(AC_dsy)));
 }
 
 static inline Scalar
@@ -283,7 +285,7 @@ deryy(const int i, const int j, const int k, const Scalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
-    return second_derivative(pencil, getReal(AC_inv_dsy));
+    return second_derivative(pencil, ((AcReal)1. / getReal(AC_dsy)));
 }
 
 static inline Scalar
@@ -301,7 +303,8 @@ deryz(const int i, const int j, const int k, const Scalar* arr)
         pencil_b[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2,
                                    k + STENCIL_ORDER / 2 - offset)];
 
-    return cross_derivative(pencil_a, pencil_b, getReal(AC_inv_dsy), getReal(AC_inv_dsz));
+    return cross_derivative(pencil_a, pencil_b, ((AcReal)1. / getReal(AC_dsy)),
+                            ((AcReal)1. / getReal(AC_dsz)));
 }
 
 static inline Scalar
@@ -312,7 +315,7 @@ derz(const int i, const int j, const int k, const Scalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
-    return first_derivative(pencil, getReal(AC_inv_dsz));
+    return first_derivative(pencil, ((AcReal)1. / getReal(AC_dsz)));
 }
 
 static inline Scalar
@@ -323,14 +326,14 @@ derzz(const int i, const int j, const int k, const Scalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
-    return second_derivative(pencil, getReal(AC_inv_dsz));
+    return second_derivative(pencil, ((AcReal)1. / getReal(AC_dsz)));
 }
 
 #if LUPWD
 static inline Scalar
 der6x_upwd(const int i, const int j, const int k, const Scalar* arr)
 {
-    Scalar inv_ds = getReal(AC_inv_dsx);
+    Scalar inv_ds = ((AcReal)1. / getReal(AC_dsx));
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
            (-(Scalar)(20.0) * arr[IDX(i, j, k)] +
@@ -342,7 +345,7 @@ der6x_upwd(const int i, const int j, const int k, const Scalar* arr)
 static inline Scalar
 der6y_upwd(const int i, const int j, const int k, const Scalar* arr)
 {
-    Scalar inv_ds = getReal(AC_inv_dsy);
+    Scalar inv_ds = ((AcReal)1. / getReal(AC_dsy));
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
            (-(Scalar)(20.0) * arr[IDX(i, j, k)] +
@@ -354,7 +357,7 @@ der6y_upwd(const int i, const int j, const int k, const Scalar* arr)
 static inline Scalar
 der6z_upwd(const int i, const int j, const int k, const Scalar* arr)
 {
-    Scalar inv_ds = getReal(AC_inv_dsz);
+    Scalar inv_ds = ((AcReal)1. / getReal(AC_dsz));
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
            (-(Scalar)(20.0) * arr[IDX(i, j, k)] +
@@ -668,7 +671,7 @@ momentum(const VectorData uu, const ScalarData lnrho
 {
 #if LENTROPY
     const Matrix S         = stress_tensor(uu);
-    const Scalar cs2_sound = AC_cs_sound * AC_cs_sound;
+    const Scalar cs2_sound = getReal(AC_cs_sound) * getReal(AC_cs_sound);
     const Scalar cs2       = cs2_sound *
                        exp(getReal(AC_gamma) * value(ss) / getReal(AC_cp_sound) +
                            (getReal(AC_gamma) - 1) * (value(lnrho) - getReal(AC_lnrho0)));
@@ -979,9 +982,9 @@ checkConfiguration(const AcMeshInfo info)
     }
 #endif
 
-    ERRCHK_ALWAYS(is_valid(info.real_params[AC_inv_dsx]));
-    ERRCHK_ALWAYS(is_valid(info.real_params[AC_inv_dsy]));
-    ERRCHK_ALWAYS(is_valid(info.real_params[AC_inv_dsz]));
+    ERRCHK_ALWAYS(is_valid((AcReal)1. / info.real_params[AC_dsx]));
+    ERRCHK_ALWAYS(is_valid((AcReal)1. / info.real_params[AC_dsy]));
+    ERRCHK_ALWAYS(is_valid((AcReal)1. / info.real_params[AC_dsz]));
     // ERRCHK_ALWAYS(is_valid(info.real_params[AC_cs2_sound]));
 }
 
@@ -991,9 +994,9 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
     mesh_info = &(mesh.info);
 
     // Setup built-in parameters
-    mesh_info->real_params[AC_inv_dsx] = (AcReal)(1.0) / mesh_info->real_params[AC_dsx];
-    mesh_info->real_params[AC_inv_dsy] = (AcReal)(1.0) / mesh_info->real_params[AC_dsy];
-    mesh_info->real_params[AC_inv_dsz] = (AcReal)(1.0) / mesh_info->real_params[AC_dsz];
+    // mesh_info->real_params[AC_inv_dsx] = (AcReal)(1.0) / mesh_info->real_params[AC_dsx];
+    // mesh_info->real_params[AC_inv_dsy] = (AcReal)(1.0) / mesh_info->real_params[AC_dsy];
+    // mesh_info->real_params[AC_inv_dsz] = (AcReal)(1.0) / mesh_info->real_params[AC_dsz];
     // mesh_info->real_params[AC_cs2_sound] = mesh_info->real_params[AC_cs_sound] *
     //                                       mesh_info->real_params[AC_cs_sound];
     checkConfiguration(*mesh_info);

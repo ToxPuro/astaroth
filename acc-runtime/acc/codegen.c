@@ -110,13 +110,13 @@ symboltable_reset(void)
   add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_multigpu_offset");
   add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_global_grid_n");
 
-  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsx");
-  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsy");
-  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsz");
+  // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsx");
+  // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsy");
+  // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsz");
 
-  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_inv_dsx");
-  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_inv_dsy");
-  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_inv_dsz");
+  // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_inv_dsx");
+  // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_inv_dsy");
+  // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_inv_dsz");
 
   // (BC types do not belong here, BCs not handled with the DSL)
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_bot_x");
