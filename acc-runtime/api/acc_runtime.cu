@@ -108,15 +108,3 @@ GEN_STORE_UNIFORM(AcReal)
 GEN_STORE_UNIFORM(AcReal3)
 GEN_STORE_UNIFORM(int)
 GEN_STORE_UNIFORM(int3)
-
-/*
-int
-main(void)
-{
-  printf("Launching kernel... \n");
-  acLaunchKernel(solve, 0, (int3){0, 0, 0}, (int3){1, 0, 0},
-                 (VertexBufferArray){0});
-  printf("done\n");
-  return EXIT_SUCCESS;
-}
-*/

@@ -25,12 +25,15 @@ add_custom_command (
     DEPENDS ${DSL_SOURCES} acc
     OUTPUT ${DSL_HEADERS}
 )
-add_custom_target(dsl_headers ALL DEPENDS ${DSL_HEADERS})
+add_custom_target(acc-runtime-headers ALL DEPENDS ${DSL_HEADERS})
 
-add_library(acc-runtime acc_runtime.cu)
-include_directories(${PROJECT_BINARY_DIR})
+option(BUILD_ACC_RUNTIME_LIBRARY "Builds the standalone acc runtime library" OFF)
+if (BUILD_ACC_RUNTIME_LIBRARY)
+    add_library(acc-runtime acc_runtime.cu)
+    include_directories(${PROJECT_BINARY_DIR})
 
-add_dependencies(acc-runtime acc)
-add_dependencies(acc-runtime dsl_headers)
+    add_dependencies(acc-runtime acc)
+    add_dependencies(acc-runtime acc-runtime-headers)
 
-target_compile_features(acc-runtime PRIVATE cxx_std_17)
+    target_compile_features(acc-runtime PRIVATE cxx_std_17)
+endif()
