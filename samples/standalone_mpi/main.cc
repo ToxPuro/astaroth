@@ -401,54 +401,6 @@ main(int argc, char** argv)
     // Set random seed for reproducibility
     srand(321654987);
 
-#if 0
-    AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    load_config(AC_DEFAULT_CONFIG, &info);
-    update_config(&info);
-
-    AcMesh mesh;
-    acGridInit(info);
-    if (pid == 0) {
-        acHostMeshCreate(info, &mesh);
-        acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, &mesh);
-    }
-    acGridLoadMesh(STREAM_DEFAULT, mesh);
-
-    for (int t_step = 0; t_step < 100; ++t_step) {
-        const AcReal dt = calc_timestep(info);
-        acGridIntegrate(STREAM_DEFAULT, dt);
-
-        if (1) { // Diag step
-            AcReal uumin, uumax, uurms;
-            acGridReduceVec(STREAM_DEFAULT, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumin);
-            acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumax);
-            acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uurms);
-
-            printf("Step %d, dt: %g\n", t_step, (double)dt);
-            printf("%*s: %.3e, %.3e, %.3e\n", 16, "UU", (double)uumin, (double)uumax,
-                   (double)uurms);
-
-            for (size_t vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
-                AcReal scalmin, scalmax, scalrms;
-                acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)vtxbuf, &scalmin);
-                acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)vtxbuf, &scalmax);
-                acGridReduceScal(STREAM_DEFAULT, RTYPE_RMS, (VertexBufferHandle)vtxbuf, &scalrms);
-
-                printf("%*s: %.3e, %.3e, %.3e\n", 16, vtxbuf_names[vtxbuf], (double)scalmin,
-                       (double)scalmax, (double)scalrms);
-            }
-        }
-    }
-    if (pid == 0)
-        acHostMeshDestroy(&mesh);
-
-    acGridQuit();
-    /////////////// Simple example END
-
-#endif
-
-#if 1
     // Load config to AcMeshInfo
     AcMeshInfo info;
     if (argc > 1) {
@@ -556,9 +508,18 @@ main(int argc, char** argv)
                                        VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,  VTXBUF_ENTROPY, 
                                        VTXBUF_SHOCK};
 
-    VertexBufferHandle shock_uu_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_SHOCK};
+    //VertexBufferHandle shock_uu_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_SHOCK};
 
-    VertexBufferHandle shock_field[] = {VTXBUF_SHOCK};
+    //VertexBufferHandle shock_field[] = {VTXBUF_SHOCK};
+
+    AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
+                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+                                                        all_fields),
+                                    acCompute(KERNEL_solve, all_fields)};
+
+    AcTaskGraph* hc_graph = acGridBuildTaskGraph(shock_ops); 
+
+    acGridSynchronizeStream(STREAM_ALL);
 
     // Build a task graph consisting of:
     // - a halo exchange with periodic boundconds for all fields
@@ -566,19 +527,19 @@ main(int argc, char** argv)
     //
     // This function call generates tasks for each subregions in the domain
     // and figures out the dependencies between the tasks.
-    AcTaskGraph* hc_graph = acGridBuildTaskGraph(
-        {acHaloExchange(all_fields),
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
-         acCompute(KERNEL_shock_1_divu, shock_uu_fields),
-         acHaloExchange(shock_field),
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
-         acCompute(KERNEL_shock_2_max, shock_field),
-         acHaloExchange(shock_field),
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
-         acCompute(KERNEL_shock_3_smooth, shock_field),
-         acHaloExchange(shock_field),
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
-         acCompute(KERNEL_solve, all_fields)});
+    //AcTaskGraph* hc_graph = acGridBuildTaskGraph(
+    //    {acHaloExchange(all_fields),
+    //     acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+         //acCompute(KERNEL_shock_1_divu, shock_uu_fields),
+         //acHaloExchange(shock_field),
+         //acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         //acCompute(KERNEL_shock_2_max, shock_field),
+         //acHaloExchange(shock_field),
+         //acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         //acCompute(KERNEL_shock_3_smooth, shock_field),
+         //acHaloExchange(shock_field),
+         //acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+    //     acCompute(KERNEL_solve, all_fields)});
 
     // We can build multiple TaskGraphs, the MPI requests will not collide
     // because MPI tag space has been partitioned into ranges that each HaloExchange step uses.
@@ -641,7 +602,7 @@ main(int argc, char** argv)
         // Set the time delta
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, dt);
         acGridSynchronizeStream(STREAM_DEFAULT);
-
+ 
         // Execute the task graph for three iterations.
         acGridExecuteTaskGraph(hc_graph, 3);
 #else
@@ -749,7 +710,6 @@ main(int argc, char** argv)
     if (pid == 0)
         acHostMeshDestroy(&mesh);
     fclose(diag_file);
-#endif
 
     MPI_Finalize();
     return EXIT_SUCCESS;
