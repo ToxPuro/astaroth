@@ -592,9 +592,14 @@ int main(void) {
   fclose(stencilgen);
 
   // Compile
-  system("gcc -std=c11 -Wall -Wextra -Wdouble-promotion "
-         "-Wfloat-conversion -Wshadow " STENCILGEN_SRC " "
-         "-o " STENCILGEN_EXEC);
+  const int retval = system("gcc -std=c11 -Wall -Wextra -Wdouble-promotion "
+                            "-Wfloat-conversion -Wshadow " STENCILGEN_SRC " "
+                            "-o " STENCILGEN_EXEC);
+  if (retval == -1) {
+    fprintf(stderr,
+            "Catastrophic error: could not compile the stencil generator.\n");
+    assert(retval != -1);
+  }
 
   // Generate stencils
   FILE* proc = popen("./" STENCILGEN_EXEC, "r");
