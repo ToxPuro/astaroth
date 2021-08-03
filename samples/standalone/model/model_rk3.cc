@@ -31,6 +31,10 @@
 #include "host_memory.h"
 #include "model_boundconds.h"
 
+#define inv_dsx ((AcReal)1. / get(AC_dsx))
+#define inv_dsy ((AcReal)1. / get(AC_dsy))
+#define inv_dsz ((AcReal)1. / get(AC_dsz))
+
 // Standalone flags
 #define LDENSITY (1)
 #define LHYDRO (1)
@@ -144,8 +148,8 @@ cross_derivative(const ModelScalar* pencil_a, const ModelScalar* pencil_b,
 #if STENCIL_ORDER == 2
     const ModelScalar coefficients[] = {0, 1.0 / 4.0};
 #elif STENCIL_ORDER == 4
-    const ModelScalar coefficients[] = {
-        0, 1.0 / 32.0, 1.0 / 64.0}; // TODO correct coefficients, these are just placeholders
+    const ModelScalar coefficients[] =
+        {0, 1.0 / 32.0, 1.0 / 64.0}; // TODO correct coefficients, these are just placeholders
 #elif STENCIL_ORDER == 6
     const ModelScalar fac            = (1. / 720.);
     const ModelScalar coefficients[] = {0.0 * fac, 270.0 * fac, -27.0 * fac, 2.0 * fac};
@@ -174,7 +178,7 @@ derx(const int i, const int j, const int k, const ModelScalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
-    return first_derivative(pencil, get(AC_inv_dsx));
+    return first_derivative(pencil, inv_dsx);
 }
 
 static inline ModelScalar
@@ -185,7 +189,7 @@ derxx(const int i, const int j, const int k, const ModelScalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
-    return second_derivative(pencil, get(AC_inv_dsx));
+    return second_derivative(pencil, inv_dsx);
 }
 
 static inline ModelScalar
@@ -203,7 +207,7 @@ derxy(const int i, const int j, const int k, const ModelScalar* arr)
         pencil_b[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j + STENCIL_ORDER / 2 - offset,
                                    k)];
 
-    return cross_derivative(pencil_a, pencil_b, get(AC_inv_dsx), get(AC_inv_dsy));
+    return cross_derivative(pencil_a, pencil_b, inv_dsx, inv_dsy);
 }
 
 static inline ModelScalar
@@ -221,7 +225,7 @@ derxz(const int i, const int j, const int k, const ModelScalar* arr)
         pencil_b[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j,
                                    k + STENCIL_ORDER / 2 - offset)];
 
-    return cross_derivative(pencil_a, pencil_b, get(AC_inv_dsx), get(AC_inv_dsz));
+    return cross_derivative(pencil_a, pencil_b, inv_dsx, inv_dsz);
 }
 
 static inline ModelScalar
@@ -232,7 +236,7 @@ dery(const int i, const int j, const int k, const ModelScalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
-    return first_derivative(pencil, get(AC_inv_dsy));
+    return first_derivative(pencil, inv_dsy);
 }
 
 static inline ModelScalar
@@ -243,7 +247,7 @@ deryy(const int i, const int j, const int k, const ModelScalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
-    return second_derivative(pencil, get(AC_inv_dsy));
+    return second_derivative(pencil, inv_dsy);
 }
 
 static inline ModelScalar
@@ -261,7 +265,7 @@ deryz(const int i, const int j, const int k, const ModelScalar* arr)
         pencil_b[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2,
                                    k + STENCIL_ORDER / 2 - offset)];
 
-    return cross_derivative(pencil_a, pencil_b, get(AC_inv_dsy), get(AC_inv_dsz));
+    return cross_derivative(pencil_a, pencil_b, inv_dsy, inv_dsz);
 }
 
 static inline ModelScalar
@@ -272,7 +276,7 @@ derz(const int i, const int j, const int k, const ModelScalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
-    return first_derivative(pencil, get(AC_inv_dsz));
+    return first_derivative(pencil, inv_dsz);
 }
 
 static inline ModelScalar
@@ -283,14 +287,14 @@ derzz(const int i, const int j, const int k, const ModelScalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
-    return second_derivative(pencil, get(AC_inv_dsz));
+    return second_derivative(pencil, inv_dsz);
 }
 
 #if LUPWD
 static inline ModelScalar
 der6x_upwd(const int i, const int j, const int k, const ModelScalar* arr)
 {
-    ModelScalar inv_ds = get(AC_inv_dsx);
+    ModelScalar inv_ds = inv_dsx;
 
     return ModelScalar(1.0 / 60.0) * inv_ds *
            (-ModelScalar(20.0) * arr[IDX(i, j, k)] +
@@ -302,7 +306,7 @@ der6x_upwd(const int i, const int j, const int k, const ModelScalar* arr)
 static inline ModelScalar
 der6y_upwd(const int i, const int j, const int k, const ModelScalar* arr)
 {
-    ModelScalar inv_ds = get(AC_inv_dsy);
+    ModelScalar inv_ds = inv_dsy;
 
     return ModelScalar(1.0 / 60.0) * inv_ds *
            (-ModelScalar(20.0) * arr[IDX(i, j, k)] +
@@ -314,7 +318,7 @@ der6y_upwd(const int i, const int j, const int k, const ModelScalar* arr)
 static inline ModelScalar
 der6z_upwd(const int i, const int j, const int k, const ModelScalar* arr)
 {
-    ModelScalar inv_ds = get(AC_inv_dsz);
+    ModelScalar inv_ds = inv_dsz;
 
     return ModelScalar(1.0 / 60.0) * inv_ds *
            (-ModelScalar(20.0) * arr[IDX(i, j, k)] +
@@ -442,7 +446,8 @@ operator-(const ModelVector& a)
     return (ModelVector){-a.x, -a.y, -a.z};
 }
 
-static inline ModelVector operator*(const ModelScalar a, const ModelVector& b)
+static inline ModelVector
+operator*(const ModelScalar a, const ModelVector& b)
 {
     return (ModelVector){a * b.x, a * b.y, a * b.z};
 }
@@ -517,10 +522,10 @@ curl(const ModelVectorData& vec)
 static inline ModelVector
 gradient_of_divergence(const ModelVectorData& vec)
 {
-    return (ModelVector){
-        hessian(vec.x).row[0].x + hessian(vec.y).row[0].y + hessian(vec.z).row[0].z,
-        hessian(vec.x).row[1].x + hessian(vec.y).row[1].y + hessian(vec.z).row[1].z,
-        hessian(vec.x).row[2].x + hessian(vec.y).row[2].y + hessian(vec.z).row[2].z};
+    return (
+        ModelVector){hessian(vec.x).row[0].x + hessian(vec.y).row[0].y + hessian(vec.z).row[0].z,
+                     hessian(vec.x).row[1].x + hessian(vec.y).row[1].y + hessian(vec.z).row[1].z,
+                     hessian(vec.x).row[2].x + hessian(vec.y).row[2].y + hessian(vec.z).row[2].z};
 }
 
 // Takes uu gradients and returns S
