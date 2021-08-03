@@ -36,21 +36,22 @@ acGetError(const AcReal model, const AcReal candidate)
     error.model     = model;
     error.candidate = candidate;
 
-    if (error.model == error.candidate || fabsl(model - candidate) == 0) { // If exact
+    if (error.model == error.candidate ||
+        fabsl((long double)model - (long double)candidate) == 0) { // If exact
         error.abs_error = 0;
         error.rel_error = 0;
         error.ulp_error = 0;
     }
     else if (!is_valid(error.model) || !is_valid(error.candidate)) {
-        error.abs_error = INFINITY;
-        error.rel_error = INFINITY;
-        error.ulp_error = INFINITY;
+        error.abs_error = (long double)INFINITY;
+        error.rel_error = (long double)INFINITY;
+        error.ulp_error = (long double)INFINITY;
     }
     else {
         const int base = 2;
         const int p    = sizeof(AcReal) == 4 ? 24 : 53; // Bits in the significant
 
-        const long double e = floorl(logl(fabsl(error.model)) / logl(2));
+        const long double e = floorl(logl(fabsl((long double)error.model)) / logl(2));
 
         const long double ulp             = powl(base, e - (p - 1));
         const long double machine_epsilon = 0.5l * powl(base, -(p - 1));
@@ -87,7 +88,7 @@ acEvalError(const char* label, const Error error)
     bool acceptable;
     if (error.ulp_error < max_ulp_error)
         acceptable = true;
-    else if (error.abs_error < error.minimum_magnitude * AC_REAL_EPSILON)
+    else if (error.abs_error < (long double)error.minimum_magnitude * (long double)AC_REAL_EPSILON)
         acceptable = true;
     else
         acceptable = false;
