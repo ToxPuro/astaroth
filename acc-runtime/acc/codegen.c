@@ -129,7 +129,7 @@ symboltable_reset(void)
   // Astaroth 2.0 backwards compatibility END
 }
 
-static inline void
+void
 print_symbol_table(void)
 {
   printf("\n---\n");
@@ -566,28 +566,29 @@ generate(const ASTNode* root, FILE* stream)
                NODE_HOSTDEFINE,
            stencilgen);
   fprintf(stencilgen, "};");
-  const char* stencilgen_main = R"(
-int main(void) {
-  for (int field = 0; field < NUM_FIELDS; ++field) {
-      printf("{\n\tconst AcReal* __restrict__ in = vba.in[%d];\n", field);
-      for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-          for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-              for (int width = 0; width < STENCIL_WIDTH; ++width) {
-                  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-                      if (stencils[stencil][depth][height][width] != 0) {
-                          printf("\tprocessed_stencils[%d][%d] += %s * in[IDX(vertexIdx.x + (%d), vertexIdx.y + (%d), vertexIdx.z + (%d))];\n",
-                                  field, stencil, stencils[stencil][depth][height][width],
-                                  -STENCIL_ORDER / 2 + width, -STENCIL_ORDER / 2 + height,
-                                  -STENCIL_ORDER / 2 + depth);
-                      }
-                  }
-              }
-          }
-      }
-      printf("}\n");
-  }
-}
-                      )";
+  // clang-format off
+  const char* stencilgen_main =
+"int main(void) {\n"
+"  for (int field = 0; field < NUM_FIELDS; ++field) {\n"
+"      printf(\"{\tconst AcReal* __restrict__ in = vba.in[%d];\", field);\n"
+"      for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {\n"
+"          for (int height = 0; height < STENCIL_HEIGHT; ++height) {\n"
+"              for (int width = 0; width < STENCIL_WIDTH; ++width) {\n"
+"                  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {\n"
+"                      if (stencils[stencil][depth][height][width] != 0) {\n"
+"                          printf(\"\tprocessed_stencils[%d][%d] += %s * in[IDX(vertexIdx.x + (%d), vertexIdx.y + (%d), vertexIdx.z + (%d))];\",\n"
+"                                  field, stencil, stencils[stencil][depth][height][width],\n"
+"                                  -STENCIL_ORDER / 2 + width, -STENCIL_ORDER / 2 + height,\n"
+"                                  -STENCIL_ORDER / 2 + depth);\n"
+"                      }\n"
+"                  }\n"
+"              }\n"
+"          }\n"
+"      }\n"
+"      printf(\"}\\n\");\n"
+"  }\n"
+"}";
+  // clang-format on
   fprintf(stencilgen, "%s", stencilgen_main);
   fclose(stencilgen);
 
