@@ -60,23 +60,23 @@ print("sys.argv", sys.argv)
 meshdir = "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"
 
 #Example fixed scaling template
-if (meshdir == "/home/mvaisala/astaroth_projects/shockweek/astaroth/samples/test_cases/kin_sph_shock/"):
-    rlnrho  = [- 0.8,   0.4]
-    rrho    = [  0.5,   1.4]
-    rNcol   = [ 110.0,  150.0]
+if (meshdir == "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"):
+    rlnrho  = [- 1e-2,   5e-3]
+    rrho    = [  0.99,   1.01]
+    rNcol   = [ 133.9,  134.1]
 
-    rss     = [ 1.0, 2.0]
+    rss     = [-2.0e-4, 2.0e-4]
   
     rshock  = [0.0, 0.03]
     
-    ruu_tot = [ 0.0,  1.5]
-    ruu_xyz = [-1.5,  1.5]
+    ruu_tot = [ 0.0 ,  0.15]
+    ruu_xyz = [-0.15,  0.15]
     
-    raa_tot = [ 1.0,  1.14]
-    raa_xyz = [-1.14, 1.14]
+    raa_tot = [0.0, 4e-11]
+    raa_xyz = [-4e-11, 4e-11]
     
-    rbb_tot = [ 0.0, 0.3] 
-    rbb_xyz = [-0.3, 0.3] 
+    rbb_tot = [ 6e-10, 6e-10] 
+    rbb_xyz = [-6e-10, 6e-10] 
 
 
 if "xtopbound" in sys.argv: 
@@ -358,10 +358,10 @@ if 'sl' in sys.argv:
                         vis.slices.plot_3(mesh, mesh.aa[0],         title = r'$a_x$', bitmap = True, fname = 'aax',             colrange=raa_xyz)
                         vis.slices.plot_3(mesh, mesh.aa[1],         title = r'$a_y$', bitmap = True, fname = 'aay',             colrange=raa_xyz)
                         vis.slices.plot_3(mesh, mesh.aa[2],         title = r'$a_z$', bitmap = True, fname = 'aaz',             colrange=raa_xyz)
-                        vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot',         colrange=rbb_tot)#, trimghost=3)
-                        vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx',             colrange=rbb_xyz)#, trimghost=3)#, bfieldlines=True)
-                        vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby',             colrange=rbb_xyz)#, trimghost=3)#, bfieldlines=True)
-                        vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz',             colrange=rbb_xyz)#, trimghost=3)#, bfieldlines=True)
+                        vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot',         colrange=rbb_tot, trimaxis=3)#, trimghost=3)
+                        vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx',             colrange=rbb_xyz, trimaxis=3)#, trimghost=3)#, bfieldlines=True)
+                        vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby',             colrange=rbb_xyz, trimaxis=3)#, trimghost=3)#, bfieldlines=True)
+                        vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz',             colrange=rbb_xyz, trimaxis=3)#, trimghost=3)#, bfieldlines=True)
             else:
                 if hasattr(mesh, 'lnrho'): 
                     if mesh.lnrho is not None: 
