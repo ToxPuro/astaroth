@@ -1,0 +1,40 @@
+#pragma once
+
+#define __HIP_PLATFORM_HCC__
+
+#define CUresult hipError_t
+#define cudaError_t hipError_t
+#define cudaSuccess hipSuccess
+#define cudaStream_t hipStream_t
+#define cudaGetErrorString hipGetErrorString
+#define cuFloatComplex hipFloatComplex
+#define make_cuFloatComplex make_hipFloatComplex
+#define cuDoubleComplex hipDoubleComplex
+#define make_cuDoubleComplex make_hipDoubleComplex
+#define cudaPeekAtLastError hipPeekAtLastError
+#define cudaGetLastError hipGetLastError
+#define cudaDeviceSynchronize hipDeviceSynchronize
+#define cudaEvent_t hipEvent_t
+#define cudaEventCreate hipEventCreate
+#define cudaEventRecord hipEventRecord
+#define cudaEventSynchronize hipEventSynchronize
+#define cudaEventElapsedTime hipEventElapsedTime
+#define cudaStreamSynchronize hipStreamSynchronize
+#define cudaStreamCreate hipStreamCreate
+#define cudaStreamCreateWithPriority hipStreamCreateWithPriority
+#define cudaStreamDestroy hipStreamDestroy
+#define cudaMemcpyDeviceToHost hipMemcpyDeviceToHost
+#define cudaMemcpyHostToDevice hipMemcpyHostToDevice
+#define cudaSetDevice hipSetDevice
+#define cudaMemcpy hipMemcpy
+#define cudaMemcpyAsync hipMemcpyAsync
+#define cudaMemcpyToSymbolAsync hipMemcpyToSymbolAsync
+#define cudaMalloc hipMalloc
+#define cudaFree hipFree
+#define cudaDeviceProp hipDeviceProp_t
+#define cudaGetDeviceCount hipGetDeviceCount
+#define cudaDeviceGetPCIBusId hipDeviceGetPCIBusId
+#define cudaMemGetInfo hipMemGetInfo
+#define cudaStreamNonBlocking hipStreamNonBlocking
+#define cudaMemcpyPeerAsync hipMemcpyPeerAsync
+#define cudaGetDeviceProperties hipGetDeviceProperties

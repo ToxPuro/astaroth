@@ -5,9 +5,6 @@ cmake_minimum_required(VERSION 3.0)
 project(acc C)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
-## Compilation flags
-add_compile_options(-mavx -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow)
-
 ## Find dependencies
 find_package(BISON)
 find_package(FLEX)
@@ -22,3 +19,6 @@ include_directories(${PROJECT_BINARY_DIR})
 
 ## Executable
 add_executable(acc codegen.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
+
+## Compilation flags
+target_compile_options(acc PRIVATE -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow)

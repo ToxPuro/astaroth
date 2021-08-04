@@ -1,19 +1,17 @@
-## ACC runtime library
+## Options
+option(BUILD_ACC_RUNTIME_LIBRARY "Builds the standalone acc runtime library" OFF)
+option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
 
-if (NOT CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES 60 70) # Default
-else ()
-    set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
-endif()
-
+## DSL module dir
 if (NOT DEFINED DSL_MODULE_DIR)
     set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/samples/mhd) # Default
 else()
     get_filename_component(resolved_module_dir "${DSL_MODULE_DIR}" REALPATH
                            BASE_DIR ${CMAKE_BINARY_DIR})
     set(DSL_MODULE_DIR ${resolved_module_dir})
-endif ()
+endif()
 
+## Generate acc-runtime-headers
 set(DSL_SOURCES "${DSL_MODULE_DIR}/*.ac")
 set(DSL_HEADERS "user_kernels.h"
                 "user_defines.h"
@@ -27,8 +25,27 @@ add_custom_command (
 )
 add_custom_target(acc-runtime-headers ALL DEPENDS ${DSL_HEADERS})
 
-option(BUILD_ACC_RUNTIME_LIBRARY "Builds the standalone acc runtime library" OFF)
+if (USE_HIP)
+    add_definitions(-DAC_USE_HIP=1)
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0)
+endif()
+
+## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)
+    if (USE_HIP)
+        enable_language(CXX)
+        set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE CXX)
+    else()
+        enable_language(CUDA)
+
+        # Set device code architecture
+        if (NOT CUDA_ARCHITECTURES)
+            set(CMAKE_CUDA_ARCHITECTURES 70) # Default
+        else ()
+            set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
+        endif()
+    endif()
+
     add_library(acc-runtime acc_runtime.cu)
     include_directories(${PROJECT_BINARY_DIR})
 

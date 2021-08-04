@@ -1,6 +1,10 @@
 #pragma once
 #include <stdio.h>
 
+#if AC_USE_HIP
+#include "hip.h"
+#endif
+
 #include "datatypes.h"
 #include "errchk.h"
 
