@@ -56,6 +56,8 @@ In the base directory, run
 5. `mkdir -p build && cd build`
 6. `cmake -DUSE_HIP=ON .. && make -j && ./ctest`
 
+> **Note:** Can also try `cmake -DMULTIGPU_ENABLED=OFF -DUSE_HIP=ON -DCMAKE_C_COMPILER=$(which hipcc) -DCMAKE_CXX_COMPILER=$(which hipcc) .. && make -j`
+
 ## CMake Options
 
 | Option | Description | Default |
