@@ -60,6 +60,8 @@ In the base directory, run
 | PROGRAM_MODULE_DIR | Can be used to declare additional host-side program modules (also known as Thrones) | empty |
 | VERBOSE | Enables various non-critical warning and status messages. | OFF |
 | BUILD_UTILS | "Builds the utility library. Depends on `DSL_MODULE_DIR=acc/mhd_solver`". | ON |
+| BUILD_ACC_RUNTIME_LIBRARY | "Builds the standalone acc runtime library" | OFF |
+| USE_HIP | "Use HIP as the underlying GPGPU library instead of CUDA" | OFF |
 
 
 ## Standalone Module
