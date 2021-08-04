@@ -34,9 +34,12 @@ endif()
 if (BUILD_ACC_RUNTIME_LIBRARY)
     if (USE_HIP)
         enable_language(CXX)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
         set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE CXX)
     else()
         enable_language(CUDA)
+        string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
+        set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow --compiler-options=${CUDA_COMMON_FLAGS}")
 
         # Set device code architecture
         if (NOT CUDA_ARCHITECTURES)
