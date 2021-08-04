@@ -17,6 +17,7 @@ if(USE_HIP)
     # include_directories("/appl/opt/rocm/rocm-4.0.0/hsa/include/") # For missing hsa/hsa.h
     
     # Conversion from CUDA to HIP
+    # For future reference: https://github.com/ROCm-Developer-Tools/HIPIFY/blob/c8731779a31292b09e6f71614ae9c0e34038c5c5/doc/markdown/CUDA_Driver_API_functions_supported_by_HIP.md
     add_compile_definitions(CUresult=hipError_t)
     add_compile_definitions(cudaError_t=hipError_t)
     add_compile_definitions(cudaSuccess=hipSuccess)
