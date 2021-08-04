@@ -51,6 +51,8 @@ exp(const acComplex& val)
 {
   return acComplex(exp(val.x) * cos(val.y), exp(val.x) * sin(val.y));
 }
+
+/*
 static HOST_DEVICE_INLINE acComplex
 operator*(const AcReal& a, const acComplex& b)
 {
@@ -68,6 +70,7 @@ operator*(const acComplex& a, const acComplex& b)
 {
   return (acComplex){a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x};
 }
+*/
 
 typedef struct uint3_64 {
   uint64_t x, y, z;

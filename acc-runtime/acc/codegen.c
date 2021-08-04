@@ -295,14 +295,12 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
   }
 }
 
-static void
+void
 gen_dconsts(const ASTNode* root, FILE* stream)
 {
-  fprintf(stream, "/*"); // Astaroth 2.0 backwards compatibility
   symboltable_reset();
   traverse(root, NODE_FUNCTION | NODE_FIELD | NODE_STENCIL | NODE_HOSTDEFINE,
            stream);
-  fprintf(stream, "*/"); // Astaroth 2.0 backwards compatibility
 
   /*
   symboltable_reset();
@@ -533,7 +531,7 @@ generate(const ASTNode* root, FILE* stream)
       ++num_fields;
 
   // Device constants
-  gen_dconsts(root, stream);
+  //gen_dconsts(root, stream);
 
   // Stencils
   fprintf(stream, "typedef enum{");

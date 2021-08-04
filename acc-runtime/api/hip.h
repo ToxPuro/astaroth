@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef __HIP_PLATFORM_HCC__
 #define __HIP_PLATFORM_HCC__
+#endif
 
 #define CUresult hipError_t
 #define cudaError_t hipError_t
@@ -29,6 +31,7 @@
 #define cudaMemcpy hipMemcpy
 #define cudaMemcpyAsync hipMemcpyAsync
 #define cudaMemcpyToSymbolAsync hipMemcpyToSymbolAsync
+#define cudaMemcpyFromSymbolAsync hipMemcpyFromSymbolAsync
 #define cudaMalloc hipMalloc
 #define cudaFree hipFree
 #define cudaDeviceProp hipDeviceProp_t

@@ -11,7 +11,8 @@ project(astaroth C CXX)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Project-wide compilation flags
-set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow") # -DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
+# -Werror TODO readd
+set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_C_STANDARD 11)
@@ -36,8 +37,6 @@ option(BUILD_UTILS        "Builds the utility library"                          
 if (USE_HIP)
     add_definitions(-DAC_USE_HIP=1)
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0)
-
-    set_source_files_properties(src/core/kernels/kernels.cu PROPERTIES LANGUAGE CXX)
 else ()
     enable_language(CUDA)
 

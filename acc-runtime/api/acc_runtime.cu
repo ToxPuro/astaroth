@@ -5,6 +5,10 @@
 #include "errchk.h"
 #include "math_utils.h"
 
+#if AC_USE_HIP
+#include <hip/hip_runtime.h> // Needed in files that include kernels
+#endif
+
 // Device info (TODO GENERIC)
 // Use the maximum available reg count per thread
 #define REGISTERS_PER_THREAD (255)
@@ -87,9 +91,9 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
   const int3 n = end - start;
 
   const dim3 tpb = getOptimalTBConfig(kernel, n, vba).tpb;
-  const dim3 bpg((unsigned int)ceil(n.x / AcReal(tpb.x)), //
-                 (unsigned int)ceil(n.y / AcReal(tpb.y)), //
-                 (unsigned int)ceil(n.z / AcReal(tpb.z)));
+  const dim3 bpg((unsigned int)ceil(n.x / double(tpb.x)), //
+                 (unsigned int)ceil(n.y / double(tpb.y)), //
+                 (unsigned int)ceil(n.z / double(tpb.z)));
   const size_t smem = 0;
 
   kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
@@ -158,9 +162,9 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
           break;
 
         const dim3 tpb(x, y, z);
-        const dim3 bpg((unsigned int)ceil(dims.x / AcReal(tpb.x)), //
-                       (unsigned int)ceil(dims.y / AcReal(tpb.y)), //
-                       (unsigned int)ceil(dims.z / AcReal(tpb.z)));
+        const dim3 bpg((unsigned int)ceil(dims.x / double(tpb.x)), //
+                       (unsigned int)ceil(dims.y / double(tpb.y)), //
+                       (unsigned int)ceil(dims.z / double(tpb.z)));
 
         cudaEvent_t tstart, tstop;
         cudaEventCreate(&tstart);

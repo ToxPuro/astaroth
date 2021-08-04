@@ -1,8 +1,8 @@
 #include "kernels.h"
 
-static_assert(NUM_VTXBUF_HANDLES > 0, "ERROR: At least one uniform ScalarField must be declared.");
-
 #include "acc_runtime.cu"
+
+static_assert(NUM_VTXBUF_HANDLES > 0, "ERROR: At least one uniform ScalarField must be declared.");
 
 static __global__ void
 dummy_kernel(void)
@@ -11,7 +11,7 @@ dummy_kernel(void)
     DCONST((AcInt3Param)0);
     DCONST((AcRealParam)0);
     DCONST((AcReal3Param)0);
-    acComplex a = exp(AcReal(1) * acComplex(1, 1) * AcReal(1));
+    acComplex a = exp(acComplex(1, 1) * AcReal(1));
     a* a;
 }
 

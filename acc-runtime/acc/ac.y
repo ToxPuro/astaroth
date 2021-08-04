@@ -392,7 +392,7 @@ function_definition: declaration function_body {
                                 "    if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z)\n"
                                 "        return;"
                                 "\n"
-                                "    AcReal __restrict__ processed_stencils[NUM_FIELDS][NUM_STENCILS] = {{0}};\n"
+                                "    AcReal processed_stencils[NUM_FIELDS][NUM_STENCILS] = {{0}};\n"
                                 , compound_statement);
                                         astnode_set_postfix(
                                 "\n#undef previous\n"
