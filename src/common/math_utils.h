@@ -100,7 +100,7 @@ is_power_of_two(const unsigned val)
     return val && !(val & (val - 1));
 }
 
-#ifdef __CUDACC__
+#if defined(__CUDACC__) || defined(__HIPCC__)
 #define HOST_DEVICE_INLINE __host__ __device__ __forceinline__
 #else
 #define HOST_DEVICE_INLINE inline

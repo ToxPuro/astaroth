@@ -1,7 +1,13 @@
 #include "kernels.h"
 
 #include <assert.h>
+
+#if AC_USE_HIP
+#include <hip/hip_complex.h>
+#include <hip/hip_runtime.h> // Needed in files that include kernels
+#else
 #include <cuComplex.h>
+#endif
 
 #include "errchk.h"
 #include "math_utils.h"

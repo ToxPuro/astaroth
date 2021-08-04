@@ -29,7 +29,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+
+#ifdef __CUDACC__
 #include <cuda_runtime_api.h>
+#else
+#include <hip/hip_runtime_api.h>
+#endif
 
 /*
  * =============================================================================

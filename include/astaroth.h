@@ -17,7 +17,13 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-#include <cuda_runtime_api.h> // Vector types
+
+#ifdef __CUDACC__
+#include <cuda_runtime_api.h>
+#else
+#include <hip/hip_runtime_api.h>
+#endif
+
 #include <float.h>            // FLT_EPSILON, etc
 #include <stdio.h>            // printf
 #include <stdlib.h>           // size_t

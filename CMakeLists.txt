@@ -16,7 +16,48 @@ if(USE_HIP)
     include_directories("/opt/rocm-4.1.1/include") # Triton (TODO HACK until CMake/HIP support)
     # include_directories("/appl/opt/rocm/rocm-4.0.0/hsa/include/") # For missing hsa/hsa.h
     
-    # TODO hipify step here
+    # Conversion from CUDA to HIP
+    add_compile_definitions(CUresult=hipError_t)
+    add_compile_definitions(cudaError_t=hipError_t)
+    add_compile_definitions(cudaSuccess=hipSuccess)
+    add_compile_definitions(cudaStream_t=hipStream_t)
+    add_compile_definitions(cudaGetErrorString=hipGetErrorString)
+    add_compile_definitions(cuFloatComplex=hipFloatComplex)
+    add_compile_definitions(make_cuFloatComplex=make_hipFloatComplex)
+    add_compile_definitions(cuDoubleComplex=hipDoubleComplex)
+    add_compile_definitions(make_cuDoubleComplex=make_hipDoubleComplex)
+    add_compile_definitions(cudaPeekAtLastError=hipPeekAtLastError)
+    add_compile_definitions(cudaGetLastError=hipGetLastError)
+    add_compile_definitions(cudaDeviceSynchronize=hipDeviceSynchronize)
+
+    add_compile_definitions(cudaEvent_t=hipEvent_t)
+    add_compile_definitions(cudaEventCreate=hipEventCreate)
+    add_compile_definitions(cudaEventRecord=hipEventRecord)
+    add_compile_definitions(cudaEventSynchronize=hipEventSynchronize)
+    add_compile_definitions(cudaEventElapsedTime=hipEventElapsedTime)
+    add_compile_definitions(cudaStreamSynchronize=hipStreamSynchronize)
+    add_compile_definitions(cudaStreamCreate=hipStreamCreate)
+    add_compile_definitions(cudaStreamCreateWithPriority=hipStreamCreateWithPriority)
+    add_compile_definitions(cudaStreamDestroy=hipStreamDestroy)
+    add_compile_definitions(cudaMemcpyDeviceToHost=hipMemcpyDeviceToHost)
+    add_compile_definitions(cudaMemcpyHostToDevice=hipMemcpyHostToDevice)
+    add_compile_definitions(cudaSetDevice=hipSetDevice)
+
+    add_compile_definitions(cudaMemcpy=hipMemcpy)
+    add_compile_definitions(cudaMemcpyAsync=hipMemcpyAsync)
+    add_compile_definitions(cudaMemcpyToSymbolAsync=hipMemcpyToSymbolAsync)
+    
+    add_compile_definitions(cudaMalloc=hipMalloc)
+    add_compile_definitions(cudaFree=hipFree)
+
+
+	add_compile_definitions(cudaDeviceProp=hipDeviceProp_t)
+	add_compile_definitions(cudaGetDeviceCount=hipGetDeviceCount)
+	add_compile_definitions(cudaDeviceGetPCIBusId=hipDeviceGetPCIBusId)
+	add_compile_definitions(cudaMemGetInfo=hipMemGetInfo)
+	add_compile_definitions(cudaStreamNonBlocking=hipStreamNonBlocking)
+	add_compile_definitions(cudaMemcpyPeerAsync=hipMemcpyPeerAsync)
+	add_compile_definitions(cudaGetDeviceProperties=hipGetDeviceProperties)
 else()	
     find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
 
@@ -73,7 +114,7 @@ message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
 ## Options
 option(DOUBLE_PRECISION   "Generates double precision code."                    OFF)
-option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            ON)
+option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            OFF)
 option(MPI_ENABLED        "Enables additional functions for MPI communciation." OFF)
 option(USE_CUDA_AWARE_MPI "Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory" ON)
 option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
@@ -141,7 +182,7 @@ if (BUILD_UTILS)
     add_subdirectory(src/utils)
 endif()
 
-
+add_subdirectory(samples/benchmark-device)
 if (BUILD_SAMPLES)
     add_subdirectory(samples/standalone)
     add_subdirectory(samples/standalone_mpi)
