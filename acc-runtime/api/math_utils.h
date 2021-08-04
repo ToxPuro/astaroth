@@ -38,7 +38,7 @@
 #define sqrt(x) sqrtf(x)
 #endif
 
-#ifdef __CUDACC__
+#if defined(__CUDACC__) || defined(__HIPCC__)
 #define HOST_DEVICE __host__ __device__
 #define HOST_DEVICE_INLINE __host__ __device__ __forceinline__
 #else

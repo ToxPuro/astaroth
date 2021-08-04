@@ -25,14 +25,12 @@ add_custom_command (
 )
 add_custom_target(acc-runtime-headers ALL DEPENDS ${DSL_HEADERS})
 
-if (USE_HIP)
-    add_definitions(-DAC_USE_HIP=1)
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0)
-endif()
-
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)
     if (USE_HIP)
+        add_definitions(-DAC_USE_HIP=1)
+        list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0)
+
         enable_language(CXX)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
         set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE CXX)

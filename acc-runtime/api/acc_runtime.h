@@ -3,12 +3,13 @@
 
 #if AC_USE_HIP
 #include "hip.h"
+#include <hip/hip_runtime_api.h>
+#else
+#include <cuda_runtime_api.h> // cudaStream_t
 #endif
 
 #include "datatypes.h"
 #include "errchk.h"
-
-#include <cuda_runtime_api.h> // cudaStream_t
 
 #include "user_defines.h"
 

@@ -30,7 +30,12 @@
 #include <stdlib.h>
 #include <time.h>
 
+#if AC_USE_HIP
+#include "hip.h"
+#include <hip/hip_runtime_api.h>
+#else
 #include <cuda_runtime_api.h> // cuda_assert
+#endif
 
 /*
  * =============================================================================

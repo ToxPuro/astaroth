@@ -1,8 +1,14 @@
 #pragma once
 
+#include <float.h> // DBL/FLT_EPSILON
+
+#if AC_USE_HIP
+#include "hip.h"
+#include <hip/hip_complex.h>
+#else
 #include <cuComplex.h>    // CUDA complex types
-#include <float.h>        // DBL/FLT_EPSILON
 #include <vector_types.h> // CUDA vector types
+#endif
 
 #if AC_DOUBLE_PRECISION
 typedef double AcReal;
