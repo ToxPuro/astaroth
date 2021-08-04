@@ -559,7 +559,9 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
                                      2.0 * mul(S, gradient(lnrho))) +
                        AC_zeta * gradient_of_divergence(uu)
 #if LSHOCK
-                       + AC_nu_shock * (value(shock)*(divergence(uu)*gradient(lnrho)+gradient_of_divergence(uu))
+//WARNING! Zero coefficiend added just for the sake of testing, and should be
+//WARNING! removed when shock calculaton actually works!
+                       + 0.0*AC_nu_shock * (value(shock)*(divergence(uu)*gradient(lnrho)+gradient_of_divergence(uu))
                                         + divergence(uu)*gradient(shock))
 #endif
 #if LSINK
@@ -701,7 +703,9 @@ entropy(in ScalarField ss, in VectorField uu, in ScalarField lnrho, in VectorFie
     const Scalar RHS = H_CONST - C_CONST + AC_eta * (AC_mu0)*dot(j, j) +
                        2.0 * exp(value(lnrho)) * AC_nu_visc * contract(S) +
 #if LSHOCK
-                       AC_nu_shock*value(shock) * (divergence(uu)*divergence(uu)) +
+//WARNING! Zero coefficiend added just for the sake of testing, and should be
+//WARNING! removed when shock calculaton actually works!
+                       0.0*AC_nu_shock*value(shock) * (divergence(uu)*divergence(uu)) +
 #endif
                        AC_zeta * exp(value(lnrho)) * divergence(uu) * divergence(uu);
 
