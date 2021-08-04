@@ -13,9 +13,12 @@ if(USE_HIP)
     add_definitions(-D__HIP_PLATFORM_HCC__) # or __HIP_PLATFORM_NVCC__ and -fopenmp?
 
     find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} hipcc PATHS ENV PATH NO_DEFAULT_PATH)
-    include_directories("/opt/rocm-4.1.1/include") # Triton (TODO HACK until CMake/HIP support)
+    # include_directories("/opt/rocm-4.1.1/include") # Triton (TODO HACK until CMake/HIP support)
     # include_directories("/appl/opt/rocm/rocm-4.0.0/hsa/include/") # For missing hsa/hsa.h
     
+    #list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0)
+
     # TODO hipify step here
 else()	
     find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
