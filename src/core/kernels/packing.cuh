@@ -136,9 +136,9 @@ acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba, const i
                  const int3 dims, AcRealPacked* packed)
 {
     const dim3 tpb(32, 8, 1);
-    const dim3 bpg((unsigned int)ceil(dims.x / (float)tpb.x),
-                   (unsigned int)ceil(dims.y / (float)tpb.y),
-                   (unsigned int)ceil(dims.z / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
 
     kernel_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, dims, packed);
     ERRCHK_CUDA_KERNEL();
@@ -151,9 +151,9 @@ acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed, const 
                    const int3 dims, VertexBufferArray vba)
 {
     const dim3 tpb(32, 8, 1);
-    const dim3 bpg((unsigned int)ceil(dims.x / (float)tpb.x),
-                   (unsigned int)ceil(dims.y / (float)tpb.y),
-                   (unsigned int)ceil(dims.z / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
 
     kernel_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba);
     ERRCHK_CUDA_KERNEL();
@@ -166,9 +166,9 @@ acKernelPartialPackData(const cudaStream_t stream, const VertexBufferArray vba,
                         VertexBufferHandle* vtxbufs, size_t num_vtxbufs)
 {
     const dim3 tpb(32, 8, 1);
-    const dim3 bpg((unsigned int)ceil(dims.x / (float)tpb.x),
-                   (unsigned int)ceil(dims.y / (float)tpb.y),
-                   (unsigned int)ceil(dims.z / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
 
     kernel_partial_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, dims, packed, vtxbufs,
                                                       num_vtxbufs);
@@ -183,9 +183,9 @@ acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
                           VertexBufferHandle* vtxbufs, size_t num_vtxbufs)
 {
     const dim3 tpb(32, 8, 1);
-    const dim3 bpg((unsigned int)ceil(dims.x / (float)tpb.x),
-                   (unsigned int)ceil(dims.y / (float)tpb.y),
-                   (unsigned int)ceil(dims.z / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
 
     kernel_partial_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba, vtxbufs,
                                                         num_vtxbufs);
