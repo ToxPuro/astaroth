@@ -26,4 +26,6 @@ typedef cuFloatComplex acComplex;
 #define AC_MPI_TYPE (MPI_FLOAT)
 #endif
 
+#define REAL_PI ((AcReal)M_PI)
+
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
