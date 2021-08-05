@@ -46,6 +46,16 @@
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
 
+#if AC_USE_HIP
+template<typename T, typename... Args>
+std::unique_ptr<T> make_unique(Args&&... args)
+{
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
+#else
+using std::make_unique;
+#endif
+
 AcTaskDefinition
 acCompute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
 {
@@ -206,8 +216,8 @@ Task::Task(int order_, RegionFamily input_family, RegionFamily output_family, in
            int3 nn, Device device_, bool is_vba_inverted_)
     : device(device_), is_vba_inverted(is_vba_inverted_), state(wait_state), dep_cntr(),
       loop_cntr(), order(order_), active(true),
-      output_region(std::make_unique<Region>(output_family, region_tag, nn)),
-      input_region(std::make_unique<Region>(input_family, region_tag, nn))
+      output_region(make_unique<Region>(output_family, region_tag, nn)),
+      input_region(make_unique<Region>(input_family, region_tag, nn))
 {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 }
@@ -754,7 +764,7 @@ BoundaryConditionTask::BoundaryConditionTask(AcBoundcond boundcond_, int3 bounda
                             (output_region->dims.y + 1) * (-boundary_normal.y),
                             (output_region->dims.z + 1) * (-boundary_normal.z)};
 
-    input_region = std::make_unique<Region>(output_region->translate(translation));
+    input_region = make_unique<Region>(output_region->translate(translation));
 
     name = "Boundary condition " + std::to_string(order_) + ".(" +
            std::to_string(output_region->id.x) + "," + std::to_string(output_region->id.y) + "," +
