@@ -3,8 +3,12 @@
 # V3.17 required for the FindCUDAToolkit package
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
 cmake_minimum_required(VERSION 3.18)
-#find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
-#find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
+
+if (USE_HIP)
+    find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
+    set(CMAKE_C_COMPILER ${CMAKE_HIP_COMPILER})
+    set(CMAKE_CXX_COMPILER ${CMAKE_HIP_COMPILER})
+endif()
 
 ## Project settings
 project(astaroth C CXX)
@@ -12,7 +16,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Project-wide compilation flags
 # -Werror TODO readd
-set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
+set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_C_STANDARD 11)
@@ -36,7 +40,10 @@ option(BUILD_UTILS        "Builds the utility library"                          
 ## CUDA/HIP
 if (USE_HIP)
     add_definitions(-DAC_USE_HIP=1)
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0)
+    
+    set(GPU_TARGETS "gfx908" CACHE STRING "GPU target")
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0) 
+    find_package(hip)
 else ()
     enable_language(CUDA)
 
