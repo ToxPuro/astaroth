@@ -174,9 +174,9 @@ acKernelPeriodicBoundconds(const cudaStream_t stream, const int3 start, const in
                            AcReal* vtxbuf)
 {
     const dim3 tpb(8, 2, 8);
-    const dim3 bpg((unsigned int)ceil((end.x - start.x) / (float)tpb.x),
-                   (unsigned int)ceil((end.y - start.y) / (float)tpb.y),
-                   (unsigned int)ceil((end.z - start.z) / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil((end.x - start.x) / (double)tpb.x),
+                   (unsigned int)ceil((end.y - start.y) / (double)tpb.y),
+                   (unsigned int)ceil((end.z - start.z) / (double)tpb.z));
 
     kernel_periodic_boundconds<<<bpg, tpb, 0, stream>>>(start, end, vtxbuf);
     ERRCHK_CUDA_KERNEL();
@@ -189,9 +189,9 @@ acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int
                           const AcMeshInfo config, const int3 bindex)
 {
     const dim3 tpb(8, 2, 8);
-    const dim3 bpg((unsigned int)ceil((end.x - start.x) / (float)tpb.x),
-                   (unsigned int)ceil((end.y - start.y) / (float)tpb.y),
-                   (unsigned int)ceil((end.z - start.z) / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil((end.x - start.x) / (double)tpb.x),
+                   (unsigned int)ceil((end.y - start.y) / (double)tpb.y),
+                   (unsigned int)ceil((end.z - start.z) / (double)tpb.z));
 
     int3 bc_top = {config.int_params[AC_bc_type_top_x], config.int_params[AC_bc_type_top_y],
                    config.int_params[AC_bc_type_top_z]};

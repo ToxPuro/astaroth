@@ -47,7 +47,7 @@ static __device__ inline AcReal
 dlength_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d) { return sqrt(a*a + b*b + c*c)/sqrt(AcReal(4.0)*REAL_PI*exp(d)); }
 
 static __device__ inline AcReal
-dsquared_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d) { return (dsquared(a) + dsquared(b) + dsquared(c))/(AcReal(4.0)*M_PI*exp(d)); }
+dsquared_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d) { return (dsquared(a) + dsquared(b) + dsquared(c))/(AcReal(4.0)*REAL_PI*exp(d)); }
 
 // clang-format on
 
@@ -247,9 +247,9 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
     const unsigned num_elems = nx * ny * nz;
 
     const dim3 tpb_filter(32, 4, 1);
-    const dim3 bpg_filter((unsigned int)ceil(nx / AcReal(tpb_filter.x)),
-                          (unsigned int)ceil(ny / AcReal(tpb_filter.y)),
-                          (unsigned int)ceil(nz / AcReal(tpb_filter.z)));
+    const dim3 bpg_filter((unsigned int)ceil(nx / double(tpb_filter.x)),
+                          (unsigned int)ceil(ny / double(tpb_filter.y)),
+                          (unsigned int)ceil(nz / double(tpb_filter.z)));
 
     const int tpb_reduce = 128;
     const int bpg_reduce = num_elems / tpb_reduce;
@@ -304,9 +304,9 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
     const unsigned num_elems = nx * ny * nz;
 
     const dim3 tpb_filter(32, 4, 1);
-    const dim3 bpg_filter((unsigned int)ceil(nx / AcReal(tpb_filter.x)),
-                          (unsigned int)ceil(ny / AcReal(tpb_filter.y)),
-                          (unsigned int)ceil(nz / AcReal(tpb_filter.z)));
+    const dim3 bpg_filter((unsigned int)ceil(nx / double(tpb_filter.x)),
+                          (unsigned int)ceil(ny / double(tpb_filter.y)),
+                          (unsigned int)ceil(nz / double(tpb_filter.z)));
 
     const int tpb_reduce = 128;
     const int bpg_reduce = num_elems / tpb_reduce;

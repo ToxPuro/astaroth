@@ -50,9 +50,9 @@ acKernelSymmetricBoundconds(const cudaStream_t stream, const int3 region_id, con
 {
 
     const dim3 tpb(8, 8, 8);
-    const dim3 bpg((unsigned int)ceil((dims.x) / (float)tpb.x),
-                   (unsigned int)ceil((dims.y) / (float)tpb.y),
-                   (unsigned int)ceil((dims.z) / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
 
     kernel_symmetric_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
     return AC_SUCCESS;
