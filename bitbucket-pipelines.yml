@@ -35,8 +35,8 @@ pipelines:
           - ../../tests/syntaxtest.sh
           - cd ../../../
           - mkdir -p build && cd build
-          - cmake -DBUILD_UTILS=ON -DBUILD_RT_VISUALIZATION=OFF -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=OFF -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=OFF .. # Single precision
+          - cmake -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=OFF -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=OFF .. # Single precision
           - make -j
           - rm -rf *
-          - cmake -DDSL_MODULE_DIR="../acc-runtime/samples/mhd" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_RT_VISUALIZATION=OFF -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Double precision
+          - cmake -DDSL_MODULE_DIR="../acc-runtime/samples/mhd" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Double precision
           - make -j
