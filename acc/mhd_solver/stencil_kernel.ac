@@ -559,9 +559,7 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
                                      2.0 * mul(S, gradient(lnrho))) +
                        AC_zeta * gradient_of_divergence(uu)
 #if LSHOCK
-//WARNING! Zero coefficiend added just for the sake of testing, and should be
-//WARNING! removed when shock calculaton actually works!
-                       + 0.0*AC_nu_shock * (value(shock)*(divergence(uu)*gradient(lnrho)+gradient_of_divergence(uu))
+                       + AC_nu_shock * (value(shock)*(divergence(uu)*gradient(lnrho)+gradient_of_divergence(uu))
                                         + divergence(uu)*gradient(shock))
 #endif
 #if LSINK
@@ -703,9 +701,7 @@ entropy(in ScalarField ss, in VectorField uu, in ScalarField lnrho, in VectorFie
     const Scalar RHS = H_CONST - C_CONST + AC_eta * (AC_mu0)*dot(j, j) +
                        2.0 * exp(value(lnrho)) * AC_nu_visc * contract(S) +
 #if LSHOCK
-//WARNING! Zero coefficiend added just for the sake of testing, and should be
-//WARNING! removed when shock calculaton actually works!
-                       0.0*AC_nu_shock*value(shock) * (divergence(uu)*divergence(uu)) +
+                       AC_nu_shock*value(shock) * (divergence(uu)*divergence(uu)) +
 #endif
                        AC_zeta * exp(value(lnrho)) * divergence(uu) * divergence(uu);
 
@@ -911,18 +907,57 @@ Kernel void
 shock_1_divu()
 {
     out_shock = divu_shock(uu);
+
+    // Do these so that the buffers keep in synch
+    out_uu    = value(uu);
+    out_lnrho = value(lnrho);
+#if LMAGNETIC
+    out_aa    = value(aa);
+#endif
+#if LENTROPY
+    out_ss    = value(ss);
+#endif
+#if LTEMPERATURE
+    out_tt    = value(tt);
+#endif
 }
 
 Kernel void
 shock_2_max()
 {
     out_shock = max5_shock(shock);
+
+    // Do these so that the buffers keep in synch
+    out_uu    = value(uu);
+    out_lnrho = value(lnrho);
+#if LMAGNETIC
+    out_aa    = value(aa);
+#endif
+#if LENTROPY
+    out_ss    = value(ss);
+#endif
+#if LTEMPERATURE
+    out_tt    = value(tt);
+#endif
 }
 
 Kernel void
 shock_3_smooth()
 {
     out_shock = AC_dsmin*AC_dsmin*smooth_shock(shock); //Add scaling constant cshock
+
+    // Do these so that the buffers keep in synch
+    out_uu    = value(uu);
+    out_lnrho = value(lnrho);
+#if LMAGNETIC
+    out_aa    = value(aa);
+#endif
+#if LENTROPY
+    out_ss    = value(ss);
+#endif
+#if LTEMPERATURE
+    out_tt    = value(tt);
+#endif
 }
 
 #endif
@@ -972,4 +1007,8 @@ solve()
         b_out = get_bfield(aa);
     }
 #endif
+
+#if LSHOCK
+    out_shock = value(shock);
+#endif 
 }
