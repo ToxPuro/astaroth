@@ -341,6 +341,7 @@ calc_timestep(const AcMeshInfo info)
 {
     AcReal uumax = 0.0;
     AcReal vAmax = 0.0;
+    AcReal shock_max = 0.0;
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumax);
     //TODO ERROR: uumax is currently only seen by the rank 0 process which will
     //lead to asyncronizity in the timestep leading to deadlocks! The resulting
@@ -361,6 +362,13 @@ calc_timestep(const AcMeshInfo info)
     MPI_Bcast(&vAmax, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD); 
 #endif
 
+#if LSHOCK
+    acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_SHOCK, &shock_max);
+
+    // MPI_Bcast to share vAmax with all ranks
+    MPI_Bcast(&shock_max, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD); 
+#endif
+
 
     const long double cdt  = info.real_params[AC_cdt];
     const long double cdtv = info.real_params[AC_cdtv];
@@ -371,6 +379,7 @@ calc_timestep(const AcMeshInfo info)
     const long double chi       = 0; // info.real_params[AC_chi]; // TODO not calculated
     const long double gamma     = info.real_params[AC_gamma];
     const long double dsmin     = info.real_params[AC_dsmin];
+    const long double nu_shock  = info.real_params[AC_nu_shock];
 
     // Old ones from legacy Astaroth
     // const long double uu_dt   = cdt * (dsmin / (uumax + cs_sound));
@@ -379,7 +388,7 @@ calc_timestep(const AcMeshInfo info)
     // New, closer to the actual Courant timestep
     // See Pencil Code user manual p. 38 (timestep section)
     const long double uu_dt   = cdt * dsmin / (fabsl(uumax) + sqrtl(cs2_sound + vAmax*vAmax));
-    const long double visc_dt = cdtv * dsmin * dsmin / max(max(nu_visc, eta), gamma*chi);
+    const long double visc_dt = cdtv * dsmin * dsmin / (max(max(nu_visc, eta), gamma*chi) + nu_shock*shock_max);
 
     const long double dt = min(uu_dt, visc_dt);
     ERRCHK_ALWAYS(is_valid((AcReal)dt));
