@@ -531,7 +531,7 @@ generate(const ASTNode* root, FILE* stream)
       ++num_fields;
 
   // Device constants
-  //gen_dconsts(root, stream);
+  // gen_dconsts(root, stream);
 
   // Stencils
   fprintf(stream, "typedef enum{");
@@ -565,6 +565,38 @@ generate(const ASTNode* root, FILE* stream)
            stencilgen);
   fprintf(stencilgen, "};");
   // clang-format off
+const char* stencilgen_main = 
+"int main(void) {\n"
+"printf(\"const AcReal __restrict__ stencils[NUM_STENCILS][%d][%d][%d]={\", STENCIL_DEPTH, STENCIL_WIDTH, STENCIL_HEIGHT);"
+"for(int stencil=0;stencil<NUM_STENCILS;++stencil){"
+"for(int depth=0;depth<STENCIL_DEPTH;++depth){"
+"for(int height=0;height<STENCIL_HEIGHT;++height){"
+"for(int width=0;width<STENCIL_WIDTH;++width){"
+"printf(\"%s,\",stencils[stencil][depth][height][width]?stencils[stencil][depth][height][width]:\"0\");"
+"}"
+"}"
+"}"
+"}"
+"printf(\"};\");"
+"for(int field=0;field<NUM_FIELDS;++field){"
+"printf(\"{const AcReal* __restrict__ in=vba.in[%d];\",field);"
+"for(int depth=0;depth<STENCIL_DEPTH;++depth){"
+"for(int height=0;height<STENCIL_HEIGHT;++height){"
+"for(int width=0;width<STENCIL_WIDTH;++width){"
+"for(int stencil=0;stencil<NUM_STENCILS;++stencil){"
+"if(stencils[stencil][depth][height][width]){"
+"printf(\"processed_stencils[%d][%d]+=stencils[%d][%d][%d][%d]*in[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d),vertexIdx.z+(%d))];\","
+"field,stencil,stencil,depth,height,width,-STENCIL_ORDER/2+width,-STENCIL_ORDER/2+height,-STENCIL_ORDER/2+depth);"
+"}"
+"}"
+"}"
+"}"
+"}"
+"printf(\"}\\n\");"
+"}"
+"}";
+
+/*
   const char* stencilgen_main =
 "int main(void) {\n"
 "  for (int field = 0; field < NUM_FIELDS; ++field) {\n"
@@ -586,6 +618,7 @@ generate(const ASTNode* root, FILE* stream)
 "      printf(\"}\\n\");\n"
 "  }\n"
 "}";
+*/
   // clang-format on
   fprintf(stencilgen, "%s", stencilgen_main);
   fclose(stencilgen);
