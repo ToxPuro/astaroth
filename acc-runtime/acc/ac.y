@@ -399,7 +399,7 @@ function_definition: declaration function_body {
                                 "#undef write\n"
                                 "}", compound_statement);
                         } else {
-                            astnode_set_infix("=[&, processed_stencils]", $$);
+                            astnode_set_infix("=[&]", $$);
                             astnode_set_postfix(";", $$);
                             $$->type |= NODE_DFUNCTION;
                             //set_identifier_type(NODE_DFUNCTION_ID, fn_identifier);
