@@ -108,7 +108,7 @@ main(void)
 
     VertexBufferHandle all_fields[NUM_VTXBUF_HANDLES] = {VTXBUF_LNRHO, VTXBUF_UUX,    VTXBUF_UUY,
                                                          VTXBUF_UUZ,   VTXBUF_AX,     VTXBUF_AY,
-                                                         VTXBUF_AZ,    VTXBUF_ENTROPY};
+                                                         VTXBUF_AZ};//,    VTXBUF_ENTROPY};
 
     AcTaskGraph* symmetric_bc_graph = acGridBuildTaskGraph(
         {acHaloExchange(all_fields),

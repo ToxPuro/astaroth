@@ -514,7 +514,7 @@ main(int argc, char** argv)
     // This parameter is a c-style array but only works with c++ at the moment
     //(the interface relies on templates for safety and array type deduction).
     VertexBufferHandle all_fields[] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
-                                       VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,  VTXBUF_ENTROPY, 
+                                       VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ, // VTXBUF_ENTROPY, 
                                        VTXBUF_SHOCK, BFIELDX, BFIELDY, BFIELDZ};
 
     //VertexBufferHandle shock_uu_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_SHOCK};

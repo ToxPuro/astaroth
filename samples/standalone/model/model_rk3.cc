@@ -35,7 +35,7 @@
 #define LDENSITY (1)
 #define LHYDRO (1)
 #define LMAGNETIC (1)
-#define LENTROPY (1)
+#define LENTROPY (0)
 #define LTEMPERATURE (0)
 #define LFORCING (1)
 #define LUPWD (1)

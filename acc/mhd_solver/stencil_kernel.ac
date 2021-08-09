@@ -5,7 +5,7 @@
 // MV: Currenly only magnetic with entropy. Support for isothermal MHD required
 // MV: (matter of switch combination).
 #define LMAGNETIC (1)
-#define LENTROPY (1)
+#define LENTROPY (0)
 #define LTEMPERATURE (0)
 #define LFORCING (1)
 #define LUPWD (1)
@@ -547,7 +547,6 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
     const Vector j   = (1.0 / AC_mu0) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
     const Vector B = curl(aa);
-    // TODO: DOES INTHERMAL VERSTION INCLUDE THE MAGNETIC FIELD?
     const Scalar inv_rho = 1.0 / exp(value(lnrho));
 
     // Regex replace CPU constants with get\(AC_([a-zA-Z_0-9]*)\)
@@ -603,11 +602,24 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
 }
 #else
 Device Vector
-momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar dt)
+momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, 
+#if LMAGNETIC
+         in VectorField aa, 
+#endif
+#if LSHOCK
+         in ScalarField shock,
+#endif
+         Scalar dt)
 {
     Vector mom;
 
     const Matrix S = stress_tensor(uu);
+#if LMAGNETIC
+    const Vector j   = (1.0 / AC_mu0) *
+                     (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
+    const Vector B = curl(aa);
+    const Scalar inv_rho = 1.0 / exp(value(lnrho));
+#endif
 
     // Isothermal: we have constant speed of sound
 
@@ -615,6 +627,13 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar d
           AC_nu_visc * (laplace_vec(uu) + (1.0 / 3.0) * gradient_of_divergence(uu) +
                         2.0 * mul(S, gradient(lnrho))) +
           AC_zeta * gradient_of_divergence(uu)
+#if LMAGNETIC
+          + inv_rho * cross(j, B) 
+#endif
+#if LSHOCK
+          + AC_nu_shock * (value(shock)*(divergence(uu)*gradient(lnrho)+gradient_of_divergence(uu))
+                           + divergence(uu)*gradient(shock))
+#endif
 #if LSINK
           + sink_gravity(globalVertexIdx)
           // Corresponding loss of momentum
@@ -984,7 +1003,19 @@ solve()
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, tt, dt), dt);
     out_tt = rk3(out_tt, tt, heat_transfer(uu, lnrho, tt), dt);
 #else
+    #if LMAGNETIC
+        #if LSHOCK
+    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, aa, shock, dt), dt);
+        #else
+    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, aa, dt), dt);
+        #endif
+    #else
+        #if LSHOCK
+    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, shock, dt), dt);
+        #else
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, dt), dt);
+        #endif
+    #endif
 #endif
 
 #if LFORCING
