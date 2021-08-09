@@ -566,8 +566,10 @@ generate(const ASTNode* root, FILE* stream)
   fprintf(stencilgen, "};");
   // clang-format off
 const char* stencilgen_main = 
-"int main(void) {\n"
-"printf(\"const AcReal __restrict__ stencils[NUM_STENCILS][%d][%d][%d]={\", STENCIL_DEPTH, STENCIL_WIDTH, STENCIL_HEIGHT);"
+"int main(int argc, char** argv) {\n"
+"(void)argv;/*Unused*/"
+"if(argc>1){"
+"printf(\"static __device__ const AcReal __restrict__ stencils[NUM_STENCILS][%d][%d][%d]={\", STENCIL_DEPTH, STENCIL_WIDTH, STENCIL_HEIGHT);"
 "for(int stencil=0;stencil<NUM_STENCILS;++stencil){"
 "for(int depth=0;depth<STENCIL_DEPTH;++depth){"
 "for(int height=0;height<STENCIL_HEIGHT;++height){"
@@ -577,7 +579,8 @@ const char* stencilgen_main =
 "}"
 "}"
 "}"
-"printf(\"};\");"
+"printf(\"};\\n\");"
+"} else {"
 "for(int field=0;field<NUM_FIELDS;++field){"
 "printf(\"{const AcReal* __restrict__ in=vba.in[%d];\",field);"
 "for(int depth=0;depth<STENCIL_DEPTH;++depth){"
@@ -594,31 +597,8 @@ const char* stencilgen_main =
 "}"
 "printf(\"}\\n\");"
 "}"
+"}"
 "}";
-
-/*
-  const char* stencilgen_main =
-"int main(void) {\n"
-"  for (int field = 0; field < NUM_FIELDS; ++field) {\n"
-"      printf(\"{\tconst AcReal* __restrict__ in = vba.in[%d];\", field);\n"
-"      for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {\n"
-"          for (int height = 0; height < STENCIL_HEIGHT; ++height) {\n"
-"              for (int width = 0; width < STENCIL_WIDTH; ++width) {\n"
-"                  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {\n"
-"                      if (stencils[stencil][depth][height][width] != 0) {\n"
-"                          printf(\"\tprocessed_stencils[%d][%d] += %s * in[IDX(vertexIdx.x + (%d), vertexIdx.y + (%d), vertexIdx.z + (%d))];\",\n"
-"                                  field, stencil, stencils[stencil][depth][height][width],\n"
-"                                  -STENCIL_ORDER / 2 + width, -STENCIL_ORDER / 2 + height,\n"
-"                                  -STENCIL_ORDER / 2 + depth);\n"
-"                      }\n"
-"                  }\n"
-"              }\n"
-"          }\n"
-"      }\n"
-"      printf(\"}\\n\");\n"
-"  }\n"
-"}";
-*/
   // clang-format on
   fprintf(stencilgen, "%s", stencilgen_main);
   fclose(stencilgen);
@@ -633,12 +613,21 @@ const char* stencilgen_main =
     assert(retval != -1);
   }
 
-  // Generate stencils
-  FILE* proc = popen("./" STENCILGEN_EXEC, "r");
+  // Generate stencil definitions
+  FILE* proc = popen("./" STENCILGEN_EXEC " -stencils", "r");
+  assert(proc);
+
+  char buf[4096];
+  while (fgets(buf, sizeof(buf), proc))
+    fprintf(stream, "%s", buf);
+
+  pclose(proc);
+
+  // Generate stencil FMADs
+  proc = popen("./" STENCILGEN_EXEC, "r");
   assert(proc);
 
   char sdefinitions[1 * 1024 * 1024];
-  char buf[4096];
   while (fgets(buf, sizeof(buf), proc))
     strcat(sdefinitions, buf);
 
