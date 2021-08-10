@@ -61,22 +61,22 @@ meshdir = "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"
 
 #Example fixed scaling template
 if (meshdir == "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"):
-    rlnrho  = [- 6e-2,   4e-2]
-    rrho    = [  0.95,   1.05]
-    rNcol   = [ 130.0,  137.0]
+    rlnrho  = [  0.0025,  0.0015]
+    rrho    = [  0.9975,  1.0015]
+    rNcol   = [133.92, 134.6]
 
     rss     = [4.0e-2, 5.0e-2]
   
-    rshock  = [0.0, 0.03]
+    rshock  = [5e-6, 3.5e-5]
     
-    ruu_tot = [ 0.0,  0.3]
-    ruu_xyz = [-0.3,  0.3]
+    ruu_tot = [ 0.0 ,  0.07]
+    ruu_xyz = [-0.07,  0.07]
     
-    raa_tot = [  0.0, 1e-8]
-    raa_xyz = [-1e-8, 1e-8]
+    raa_tot = [ 0.0, 4.0e-11]
+    raa_xyz = [-4.0e-11, 4.0e-11]
     
-    rbb_tot = [   0.0  , 1.0e-8 ] 
-    rbb_xyz = [-1.0e-8 , 1.0e-8 ]
+    rbb_tot = [ 0.0, 6.0e-10] 
+    rbb_xyz = [-6.0e-10, 6.0e-10]
 
 
 if "xtopbound" in sys.argv: 
@@ -470,6 +470,49 @@ if 'sl' in sys.argv:
             del bb_tot  
             del mesh   
             gc.collect()  
+
+if 'diff' in sys.argv:
+    mesh_file_numbers = ad.read.parse_directory(meshdir)
+    print(mesh_file_numbers)
+    maxfiles = np.amax(mesh_file_numbers)
+    for i, meshnum in enumerate(mesh_file_numbers):
+        if i > 0:
+            mesh  = ad.read.Mesh(meshnum, fdir=meshdir) 
+            mesh2 = ad.read.Mesh(mesh_file_numbers[i-1], fdir=meshdir) 
+            print(" %i / %i" % (meshnum, maxfiles))
+            if mesh.ok:
+                if hasattr(mesh, 'aa'): 
+                    mesh.Bfield(trim=True)
+                    mesh2.Bfield(trim=True)
+
+                    if hasattr(mesh, 'lnrho'): 
+                        if mesh.lnrho is not None: 
+                            vis.slices.plot_3(mesh, mesh.lnrho-mesh2.lnrho,         title = r'$\ln \rho$', bitmap = True, fname = 'diff_lnrho')
+                            vis.slices.plot_3(mesh, np.exp(mesh.lnrho)-np.exp(mesh2.lnrho), title = r'$\rho$', bitmap = True, fname = 'diff_rho')
+                    if hasattr(mesh, 'shock'):
+                        if mesh.shock is not None: 
+                            vis.slices.plot_3(mesh, mesh.shock-mesh2.shock,         title = r'$shock$', bitmap = True, fname = 'diff_shock')
+                    if hasattr(mesh, 'ss'): 
+                        if mesh.ss is not None: 
+                            vis.slices.plot_3(mesh, mesh.ss-mesh2.ss, title = r'$s$', bitmap = True, fname = 'diff_ss')
+                    if hasattr(mesh, 'uu'): 
+                        if mesh.uu[0] is not None: 
+                            vis.slices.plot_3(mesh, mesh.uu[0]-mesh2.uu[0],         title = r'$u_x$', bitmap = True, fname = 'diff_uux')#, velfieldlines=True)
+                            vis.slices.plot_3(mesh, mesh.uu[1]-mesh2.uu[1],         title = r'$u_y$', bitmap = True, fname = 'diff_uuy')
+                            vis.slices.plot_3(mesh, mesh.uu[2]-mesh2.uu[2],         title = r'$u_z$', bitmap = True, fname = 'diff_uuz')
+                    if hasattr(mesh, 'aa'): 
+                        if mesh.aa[0] is not None: 
+                            vis.slices.plot_3(mesh, mesh.aa[0]-mesh2.aa[0],         title = r'$A_x$', bitmap = True, fname = 'diff_aax')
+                            vis.slices.plot_3(mesh, mesh.aa[1]-mesh2.aa[1],         title = r'$A_y$', bitmap = True, fname = 'diff_aay')
+                            vis.slices.plot_3(mesh, mesh.aa[2]-mesh2.aa[2],         title = r'$A_z$', bitmap = True, fname = 'diff_aaz')
+                            vis.slices.plot_3(mesh, mesh.bb[0]-mesh2.bb[0],         title = r'$B_x$', bitmap = True, fname = 'diff_bbx', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
+                            vis.slices.plot_3(mesh, mesh.bb[1]-mesh2.bb[1],         title = r'$B_y$', bitmap = True, fname = 'diff_bby', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
+                            vis.slices.plot_3(mesh, mesh.bb[2]-mesh2.bb[2],         title = r'$B_z$', bitmap = True, fname = 'diff_bbz', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
+                
+                del mesh   
+                del mesh2   
+                gc.collect()  
+
 
 if 'aver' in sys.argv:
     mesh_file_numbers = ad.read.parse_directory(meshdir)
