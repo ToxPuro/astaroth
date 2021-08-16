@@ -40,10 +40,10 @@ var = "Hello"
 
 Arrays
 ```
+// Note: Arrays have fixed length
 arr = 1, 2, 3
 arr = 1.0, 2.0, 3.0
 arr = "a", "b", "c"
-arr += "d" # Append
 ```
 
 Printing
@@ -63,8 +63,9 @@ while i < 3 {
     i += 1
 }
 
-for i in 0:10 // Note: 10 is exclusive
+for i in 0:10 { // Note: 10 is exclusive
   print("%d", i)
+}
 ```
 
 Functions
@@ -72,7 +73,6 @@ Functions
 func(param) {
     print("%s", param)
 }
-func("Hello!")
 
 func2(val) {
     return val
@@ -80,7 +80,7 @@ func2(val) {
 
 # Note `Kernel` type qualifier
 Kernel func3() {
-
+    func("Hello!")
 }
 ```
 
@@ -91,7 +91,7 @@ Stencil <identifier> {
     [z][y][x] = coefficient,
     ...
 }
-// where [x][y][z] is the x/y/z offset from current position.
+// where [z][y][x] is the x/y/z offset from current position.
 
 // For example,
 Stencil example {
