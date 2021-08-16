@@ -33,45 +33,74 @@ main(int argc, char** argv)
 
     // Init
     acHostMeshRandomize(&model);
+    acHostMeshRandomize(&candidate);
     acHostMeshApplyPeriodicBounds(&model);
 
     // Verify that the mesh was loaded and stored correctly
-    acInit(info);
-    acLoad(model);
-    acStore(&candidate);
+    Device device;
+    acDeviceCreate(0, info, &device);
+    acDeviceLoadMesh(device, STREAM_DEFAULT, model);
+    acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
     acVerifyMesh("Load/Store", model, candidate);
 
     // Verify that boundconds work correctly
-    acBoundcondStep();
-    acStore(&candidate);
+    const int3 m_min = (int3){0, 0, 0};
+    const int3 m_max = (int3){
+        info.int_params[AC_mx],
+        info.int_params[AC_my],
+        info.int_params[AC_mz],
+    };
+    const int3 n_min = (int3){STENCIL_ORDER / 2, STENCIL_ORDER / 2, STENCIL_ORDER / 2};
+    const int3 n_max = (int3){
+        n_min.x + info.int_params[AC_nx],
+        n_min.y + info.int_params[AC_ny],
+        n_min.z + info.int_params[AC_nz],
+    };
+    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
+    acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
+    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
     acHostMeshApplyPeriodicBounds(&model);
     acVerifyMesh("Boundconds", model, candidate);
 
     // Verify that integration works correctly
     const AcReal dt = FLT_EPSILON;
-    acIntegrate(dt);
-    acBoundcondStep();
-    acStore(&candidate);
+    for (int i = 0; i < 3; ++i) {
+        acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, n_min, n_max, dt);
+        acDeviceSwapBuffers(device);
+        acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
+    }
+    acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
+    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
 
     acHostIntegrateStep(model, dt);
     acHostMeshApplyPeriodicBounds(&model);
     acVerifyMesh("Integration", model, candidate);
 
     // Warmup
-    for (int i = 0; i < NSAMPLES / 10; ++i)
-        acIntegrate(dt);
+    for (int j = 0; j < NSAMPLES / 10; ++j) {
+        for (int step = 0; step < 3; ++step) {
+            acDeviceIntegrateSubstep(device, STREAM_DEFAULT, step, n_min, n_max, dt);
+            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
+        }
+    }
+    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
 
     // Benchmark
     Timer t;
     timer_reset(&t);
-    for (int i = 0; i < NSAMPLES; ++i)
-        acIntegrate(dt);
-    acSynchronize();
+    for (int i = 0; i < NSAMPLES; ++i) {
+        for (int step = 0; step < 3; ++step) {
+            acDeviceIntegrateSubstep(device, STREAM_DEFAULT, step, n_min, n_max, dt);
+            acDeviceSwapBuffers(device);
+            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
+        }
+    }
+    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
     const double ms_elapsed = timer_diff_nsec(t) / 1e6;
     printf("Average integration time: %.4g ms\n", ms_elapsed / NSAMPLES);
 
     // Destroy
-    acQuit();
+    acDeviceDestroy(device);
     acHostMeshDestroy(&model);
     acHostMeshDestroy(&candidate);
 
