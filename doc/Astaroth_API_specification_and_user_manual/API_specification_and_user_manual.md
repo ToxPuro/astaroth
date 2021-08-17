@@ -272,14 +272,15 @@ AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
                          const VertexBufferHandle vtxbuf2, AcReal* result);
 ```
 
-Finally, there's a library function that is automatically generated for all user-specified `Kernel`
-functions written with the Astaroth DSL,
+Finally, kernels generated from DSL sources can be launched manually by using
+the acc-runtime API function
 ```C
-AcResult acDevice_##identifier(const Device device, const Stream stream,
-                                     const int3 start, const int3 end);
+AcResult acLaunchKernel(Kernel func, const cudaStream_t stream,
+                        const int3 start, const int3 end,
+                        VertexBufferArray vba);
 ```
-Where `##identifier` is replaced with the name of the user-specified kernel. For example, a device
-function `Kernel solve()` can be called with `acDevice_solve()` via the API.
+For example, a kernel named `kernel` defined in the DSL code can be launched by calling
+`acLaunchKernel(dsl_kernel, ...)`.
 
 ## Stream Synchronization
 
@@ -470,7 +471,7 @@ index of a spatial index `(i, j, k)` is `i + j * mm.x + k * mm.x * mm.y`.
 
 
 
-# Astaroth Domain-Specific Language
+# Astaroth Domain-Specific Language 2.0 (**DEPRECATED**. See acc-runtime/README.md for the Astaroth 3.0 DSL syntax)
 
 We designed the Astaroth Domain-specific Language (DSL) for expressing stencil computations in a
 high-level language that can be translated into efficient GPU kernels. The benefits of creating a

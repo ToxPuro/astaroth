@@ -1,19 +1,47 @@
-# Building and running
+# Building ACC runtime (incl. DSL files)
+
+The DSL source files should have a postfix `*.ac` and there should be only one
+`.ac` file per directory.
 
     * `mkdir build`
 
     * `cd build`
 
-    * `cmake ..`
+    * `cmake -DDSL_MODULE_DIR=<optional path to the dir containing DSL sources> ..`
 
     * `make -j`
 
-And create an executable script file that looks like this (note the shebang #!):
 
-```
-#!<PATH TO ACC BINARY DIR>/acc
-print "Hello!"
-```
+## Debugging
+
+As ACC is in active development, compiler bugs and cryptic error messages are
+expected. In case of issues, please check the following files in the build directory.
+
+1. `user_kernels.ac.preprocessed`. The DSL file after preprocessing.
+1. `user_defines.h`. The project-wide defines generated with the DSL.
+1. `user_declarations.h`. Forward declarations of user kernels.
+1. `user_kernels.h`. The generated CUDA kernels.
+
+To make inspecting the code easier, we recommend using an
+autoformatting tool, for example, `clang-format` or GNU `indent`.
+
+
+# The Astaroth Domain-Specific Language
+
+The Astaroth Domain-Specific Language (DSL) is a high-level GPGPU language
+designed for improved productivity and performance in stencil computations. The
+Astaroth DSL compiler (acc) is a source-to-source compiler, which converts
+DSL kernels into CUDA/HIP kernels. The generated kernels provide performance
+that is on-par with hand-tuned low-level GPGPU code in stencil computations.
+Special care has been taken to ensure efficient code generation in use cases
+encountered in computational physics, where there are multiple coupled fields,
+which makes manual caching notoriously difficult.
+
+The Astaroth DSL is based on the stream processing model, where an array of
+instructions is executed on streams of data in parallel. A kernel is a small
+GPU program, which defines the operations performed on a number of data streams.
+In our case, data streams correspond to a vertices in a grid, similar to how
+vertex shaders operate in graphics shading languages.
 
 # Syntax
 
@@ -38,6 +66,8 @@ var = 0.1d // Explicit double-precision
 var = "Hello"
 ```
 
+> Note: Shadowing is not allowed, all identifiers within a scope must be unique
+
 Arrays
 ```
 // Note: Arrays have fixed length
@@ -48,6 +78,7 @@ arr = "a", "b", "c"
 
 Printing
 ```
+// print is the same as `printf` in the C programming language
 print("Hello from thread (%d, %d, %d)\n", vertexIdx.x, vertexIdx.y, vertexIdx.z)
 ```
 
@@ -83,6 +114,10 @@ Kernel func3() {
     func("Hello!")
 }
 ```
+
+> Note: Function parameters are **passed by reference**
+
+> Note: Overloading is not allowed, all function identifiers must be unique
 
 Stencils
 ```
@@ -149,19 +184,3 @@ write(field, 0)
 a = previous(field) // The value of 'a' is undefined
 ```
 
-> Note: Parameters are passed by value
-
-> Note: Shadowing is not allowed
-
-# Debugging
-
-As ACC is in active development, compiler bugs and cryptic error messages are
-expected. In case of issues, please check the following files in the build directory.
-
-1. `user_kernels.ac.preprocessed`. The DSL file after preprocessing.
-1. `user_defines.h`. The project-wide defines generated with the DSL.
-1. `user_declarations.h`. Forward declarations of user kernels.
-1. `user_kernels.h`. The generated CUDA kernels.
-
-To make inspecting the code easier, we recommend using an
-autoformatting tool, for example, `clang-format` or GNU `indent`.
