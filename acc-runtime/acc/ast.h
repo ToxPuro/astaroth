@@ -30,6 +30,7 @@ typedef enum {
   NODE_DCONST_ID      = (1 << 16),
   NODE_MEMBER_ID      = (1 << 17),
   NODE_HOSTDEFINE     = (1 << 18),
+  NODE_ASSIGNMENT     = (1 << 19),
 } NodeType;
 
 typedef struct astnode_s {

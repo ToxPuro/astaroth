@@ -104,6 +104,12 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 variable_definition->type |= NODE_DCONST;
                 set_identifier_type(NODE_DCONST_ID, declaration_list);
             }
+
+            ASTNode* assignment = get_node(NODE_ASSIGNMENT, variable_definition);
+            if (assignment) {
+                fprintf(stderr, "FATAL ERROR: Device constant assignment is not supported. Load the value at runtime with ac[Grid|Device]Load[Int|Int3|Real|Real3]Uniform-type API functions or use #define.\n");
+                assert(!assignment);
+            }
          }
        | program function_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
        | program stencil_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
@@ -264,7 +270,7 @@ type_declaration: /* Empty */                   { $$ = astnode_create(NODE_UNKNO
                 | type_qualifier type_specifier { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
                 ;
 
-assignment: declaration assignment_body { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+assignment: declaration assignment_body { $$ = astnode_create(NODE_ASSIGNMENT, $1, $2); }
           ;
 
 assignment_body: assignment_op expression_list {
