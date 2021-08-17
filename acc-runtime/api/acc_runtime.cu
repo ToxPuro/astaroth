@@ -20,7 +20,7 @@
 #define MAX_THREADS_PER_BLOCK (MAX_REGISTERS_PER_BLOCK / REGISTERS_PER_THREAD)
 #endif
 
-__device__ AcMeshInfo d_mesh_info;
+__device__ __constant__ AcMeshInfo d_mesh_info;
 
 // Astaroth 2.0 backwards compatibility START
 #define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
@@ -149,7 +149,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 
   dim3 best_tpb(0, 0, 0);
   float best_time     = INFINITY;
-  const int num_iters = 10;
+  const int num_iters = 2;
 
   for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) {
     for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
