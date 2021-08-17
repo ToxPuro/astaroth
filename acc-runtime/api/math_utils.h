@@ -36,6 +36,8 @@
 #define sin(x) sinf(x)
 #define cos(x) cosf(x)
 #define sqrt(x) sqrtf(x)
+#define isnan(x) isnanf(x)
+#define isinf(x) isinff(x)
 #endif
 
 #if defined(__CUDACC__) || defined(__HIPCC__)
