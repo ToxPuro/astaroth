@@ -289,12 +289,12 @@ typedef struct AcMatrix {
     data[2][2] = row2.z;
   }
 
-  HOST_DEVICE AcReal3 row(const int row)
+  HOST_DEVICE AcReal3 row(const int row) const
   {
     return (AcReal3){data[row][0], data[row][1], data[row][2]};
   }
 
-  HOST_DEVICE AcReal3 operator*(const AcReal3& v)
+  HOST_DEVICE AcReal3 operator*(const AcReal3& v) const
   {
     return (AcReal3){
         dot(row(0), v),
@@ -303,7 +303,7 @@ typedef struct AcMatrix {
     };
   }
 
-  HOST_DEVICE AcMatrix operator-()
+  HOST_DEVICE AcMatrix operator-() const
   {
     return AcMatrix(-row(0), -row(1), -row(2));
   }
