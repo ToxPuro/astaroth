@@ -471,7 +471,7 @@ if 'sl' in sys.argv:
             del mesh   
             gc.collect()  
 
-if 'diff' in sys.argv:
+if 'diffall' in sys.argv:
     mesh_file_numbers = ad.read.parse_directory(meshdir)
     print(mesh_file_numbers)
     maxfiles = np.amax(mesh_file_numbers)
