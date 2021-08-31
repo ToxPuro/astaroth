@@ -114,8 +114,7 @@ typedef class Task {
     Device device;
     cudaStream_t stream;
     VertexBufferArray vba;
-
-    bool is_vba_inverted;
+    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset;
 
     int state;
 
@@ -146,7 +145,8 @@ typedef class Task {
     static const int wait_state = 0;
 
     Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn,
-         Device device_, bool is_vba_inverted_);
+         Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+
     virtual bool test()    = 0;
     virtual void advance() = 0;
 
@@ -155,14 +155,14 @@ typedef class Task {
     bool isPrerequisiteTo(std::shared_ptr<Task> other);
 
     void setIterationParams(size_t begin, size_t end);
-    void update(bool do_swapVBA);
+    void update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps);
     bool isFinished();
 
     void notifyDependents();
     void satisfyDependency(size_t iteration);
 
     void syncVBA();
-    void swapVBA();
+    void swapVBA(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps);
 
     void logStateChangedEvent(const char* from, const char* to);
 } Task;
@@ -176,8 +176,8 @@ typedef class ComputeTask : public Task {
     KernelParameters params;
 
   public:
-    ComputeTask(ComputeKernel compute_func_, std::shared_ptr<VtxbufSet> vtxbuf_dependencies_,
-                int order_, int region_tag, int3 nn, Device device_, bool is_vba_inverted_);
+    ComputeTask(ComputeKernel compute_func_, int order_, int region_tag, int3 nn, Device device_,
+                std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     ComputeTask(const ComputeTask& other) = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
@@ -228,7 +228,7 @@ typedef class HaloExchangeTask : public Task {
   public:
     HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_, int tag_0,
                      int halo_region_tag, int3 nn, uint3_64 decomp, Device device_,
-                     bool is_vba_inverted_);
+                     std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     ~HaloExchangeTask();
     HaloExchangeTask(const HaloExchangeTask& other) = delete;
     HaloExchangeTask& operator=(const HaloExchangeTask& other) = delete;
@@ -269,14 +269,14 @@ typedef class BoundaryConditionTask : public Task {
   public:
     BoundaryConditionTask(AcBoundcond boundcond_, int3 boundary_normal_,
                           VertexBufferHandle variable_, int order_, int region_tag, int3 nn,
-                          Device device_, bool is_vba_inverted_);
+                          Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     void populate_boundary_region();
     void advance();
     bool test();
 } BoundaryConditionTask;
 
 struct AcTaskGraph {
-    size_t num_swaps;
+    std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps;
     std::vector<std::shared_ptr<Task>> all_tasks;
     std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
     std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;
