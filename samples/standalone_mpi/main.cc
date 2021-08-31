@@ -524,14 +524,14 @@ main(int argc, char** argv)
     AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
                                     acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
                                     acCompute(KERNEL_shock_1_divu, shock_field),
-                                    acHaloExchange(shock_field),
-                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+                                    acHaloExchange(all_fields),
+                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
                                     acCompute(KERNEL_shock_2_max, shock_field),
-                                    acHaloExchange(shock_field),
-                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+                                    acHaloExchange(all_fields),
+                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
                                     acCompute(KERNEL_shock_3_smooth, shock_field),
-                                    acHaloExchange(shock_field),
-                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+                                    acHaloExchange(all_fields),
+                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
                                     acCompute(KERNEL_solve, all_fields)};
 
     AcTaskGraph* hc_graph = acGridBuildTaskGraph(shock_ops); 
