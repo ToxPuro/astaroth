@@ -519,19 +519,19 @@ main(int argc, char** argv)
 
     //VertexBufferHandle shock_uu_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_SHOCK};
 
-    //VertexBufferHandle shock_field[] = {VTXBUF_SHOCK};
+    VertexBufferHandle shock_field[] = {VTXBUF_SHOCK};
 
     AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
                                     acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
-                                    acCompute(KERNEL_shock_1_divu, all_fields),
-                                    acHaloExchange(all_fields),
-                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
-                                    acCompute(KERNEL_shock_2_max, all_fields),
-                                    acHaloExchange(all_fields),
-                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
-                                    acCompute(KERNEL_shock_3_smooth, all_fields),
-                                    acHaloExchange(all_fields),
-                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+                                    acCompute(KERNEL_shock_1_divu, shock_field),
+                                    acHaloExchange(shock_field),
+                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+                                    acCompute(KERNEL_shock_2_max, shock_field),
+                                    acHaloExchange(shock_field),
+                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+                                    acCompute(KERNEL_shock_3_smooth, shock_field),
+                                    acHaloExchange(shock_field),
+                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
                                     acCompute(KERNEL_solve, all_fields)};
 
     AcTaskGraph* hc_graph = acGridBuildTaskGraph(shock_ops); 
