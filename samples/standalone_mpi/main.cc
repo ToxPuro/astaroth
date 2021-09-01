@@ -520,19 +520,44 @@ main(int argc, char** argv)
     //VertexBufferHandle shock_uu_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_SHOCK};
 
     VertexBufferHandle shock_field[] = {VTXBUF_SHOCK};
+    //VertexBufferHandle shock_field[] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+    //                                   VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,  
+    //                                   BFIELDX, BFIELDY, BFIELDZ};
 
+    //BASIC AcTaskDefinition ALTERNATIVES:
+
+    // This works OK 
+    //AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
+    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+    //                                acCompute(KERNEL_solve, all_fields)};
+
+    // This causes the chess board error
+    //AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
+    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+    //                                acCompute(KERNEL_shock_1_divu, shock_field),
+    //                                acCompute(KERNEL_shock_2_max, shock_field),
+    //                                acCompute(KERNEL_shock_3_smooth, shock_field),
+    //                                acCompute(KERNEL_solve, all_fields)};
+
+    // Causes communication related error 
     AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
                                     acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
                                     acCompute(KERNEL_shock_1_divu, shock_field),
-                                    acHaloExchange(all_fields),
-                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+                                    acHaloExchange(shock_field),
+                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
                                     acCompute(KERNEL_shock_2_max, shock_field),
-                                    acHaloExchange(all_fields),
-                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+                                    acHaloExchange(shock_field),
+                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
                                     acCompute(KERNEL_shock_3_smooth, shock_field),
-                                    acHaloExchange(all_fields),
-                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+                                    acHaloExchange(shock_field),
+                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
                                     acCompute(KERNEL_solve, all_fields)};
+
+    //AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
+    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+    //                                acCompute(KERNEL_shock_1_divu, shock_field),
+    //                                acCompute(KERNEL_shock_2_max, shock_field),
+    //                                acCompute(KERNEL_solve, all_fields)};
 
     AcTaskGraph* hc_graph = acGridBuildTaskGraph(shock_ops); 
 
