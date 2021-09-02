@@ -61,22 +61,22 @@ meshdir = "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"
 
 #Example fixed scaling template
 if (meshdir == "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"):
-    rlnrho  = [  0.0025,  0.0015]
-    rrho    = [  0.9975,  1.0015]
-    rNcol   = [133.92, 134.6]
+    rlnrho  = [ -1.0,   0.7]
+    rrho    = [  0.4,   2.0]
+    rNcol   = [100.0, 170.0]
 
     rss     = [4.0e-2, 5.0e-2]
   
-    rshock  = [5e-6, 3.5e-5]
+    rshock  = [  0.0, 0.03]
     
-    ruu_tot = [ 0.0 ,  0.07]
-    ruu_xyz = [-0.07,  0.07]
+    ruu_tot = [ 0.0 , 2.0]
+    ruu_xyz = [-1.5,  1.5]
     
-    raa_tot = [ 0.0, 4.0e-11]
-    raa_xyz = [-4.0e-11, 4.0e-11]
+    raa_tot = [ 0.0, 1.0e-8]
+    raa_xyz = [-1.0e-8, 1.0e-8]
     
-    rbb_tot = [ 0.0, 6.0e-10] 
-    rbb_xyz = [-6.0e-10, 6.0e-10]
+    rbb_tot = [ 0.0, 2.0e-8 ] 
+    rbb_xyz = [-2.0e-8 , 2.0e-8 ]
 
 
 if "xtopbound" in sys.argv: 
