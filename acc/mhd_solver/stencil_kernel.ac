@@ -926,57 +926,18 @@ Kernel void
 shock_1_divu()
 {
     out_shock = divu_shock(uu);
-
-    // Do these so that the buffers keep in synch
-    out_uu    = value(uu);
-    out_lnrho = value(lnrho);
-#if LMAGNETIC
-    out_aa    = value(aa);
-#endif
-#if LENTROPY
-    out_ss    = value(ss);
-#endif
-#if LTEMPERATURE
-    out_tt    = value(tt);
-#endif
 }
 
 Kernel void
 shock_2_max()
 {
     out_shock = max5_shock(shock);
-
-    // Do these so that the buffers keep in synch
-    out_uu    = value(uu);
-    out_lnrho = value(lnrho);
-#if LMAGNETIC
-    out_aa    = value(aa);
-#endif
-#if LENTROPY
-    out_ss    = value(ss);
-#endif
-#if LTEMPERATURE
-    out_tt    = value(tt);
-#endif
 }
 
 Kernel void
 shock_3_smooth()
 {
     out_shock = AC_dsmin*AC_dsmin*smooth_shock(shock); //Add scaling constant cshock
-
-    // Do these so that the buffers keep in synch
-    out_uu    = value(uu);
-    out_lnrho = value(lnrho);
-#if LMAGNETIC
-    out_aa    = value(aa);
-#endif
-#if LENTROPY
-    out_ss    = value(ss);
-#endif
-#if LTEMPERATURE
-    out_tt    = value(tt);
-#endif
 }
 
 #endif
