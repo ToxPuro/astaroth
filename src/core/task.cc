@@ -39,9 +39,11 @@
 
 #include <memory>
 #include <mpi.h>
+#include <stdlib.h>
 #include <vector>
 
 #include "decomposition.h"   //getPid and friends
+#include "errchk.h"
 #include "kernels/kernels.h" //AcRealPacked, ComputeKernel
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
@@ -364,6 +366,7 @@ Task::poll_stream()
             " (probably occured in the CUDA kernel):\n\t%s\n",
                     name.c_str(), cudaGetErrorString(err));
     fflush(stderr);
+    exit(EXIT_FAILURE);
     return false;
 }
 
