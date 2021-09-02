@@ -517,7 +517,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     check_ops(ops, n_ops);
 
     AcTaskGraph* graph = new AcTaskGraph();
-    graph->num_swaps   = 0;
     graph->halo_tasks.reserve(n_ops * Region::n_halo_regions);
     graph->all_tasks.reserve(n_ops * max(Region::n_halo_regions, Region::n_comp_regions));
 
@@ -536,12 +535,12 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     auto region_at_boundary = [&decomp, &pid3d](int tag, AcBoundary boundary) -> bool {
         int3 neighbor = pid3d + Region::tag_to_id(tag);
 
-        return (((boundary & BOUNDARY_X_BOT) == BOUNDARY_X_BOT) && neighbor.x == -1) ||
-               (((boundary & BOUNDARY_X_TOP) == BOUNDARY_X_TOP) && neighbor.x == (int)decomp.x) ||
-               (((boundary & BOUNDARY_Y_BOT) == BOUNDARY_Y_BOT) && neighbor.y == -1) ||
-               (((boundary & BOUNDARY_Y_TOP) == BOUNDARY_Y_TOP) && neighbor.y == (int)decomp.y) ||
-               (((boundary & BOUNDARY_Z_BOT) == BOUNDARY_Z_BOT) && neighbor.z == -1) ||
-               (((boundary & BOUNDARY_Z_TOP) == BOUNDARY_Z_TOP) && neighbor.z == (int)decomp.z);
+        return (((boundary & BOUNDARY_X_BOT) != 0) && neighbor.x == -1) ||
+               (((boundary & BOUNDARY_X_TOP) != 0) && neighbor.x == (int)decomp.x) ||
+               (((boundary & BOUNDARY_Y_BOT) != 0) && neighbor.y == -1) ||
+               (((boundary & BOUNDARY_Y_TOP) != 0) && neighbor.y == (int)decomp.y) ||
+               (((boundary & BOUNDARY_Z_BOT) != 0) && neighbor.z == -1) ||
+               (((boundary & BOUNDARY_Z_TOP) != 0) && neighbor.z == (int)decomp.z);
     };
     auto boundary_normal = [&decomp, &pid3d](int tag) -> int3 {
         int3 neighbor = pid3d + Region::tag_to_id(tag);
@@ -550,26 +549,28 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                     (neighbor.z == -1) ? -1 : (neighbor.z == (int)decomp.z ? 1 : 0)};
     };
 
+    // The tasks start at different offsets from the beginning of the iteration
+    // this array of bools keep track of that state
+    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset{};
+
     for (size_t i = 0; i < n_ops; i++) {
         auto op                                = ops[i];
         std::shared_ptr<VtxbufSet> vtxbuf_deps = std::make_shared<VtxbufSet>(op.vtxbuf_dependencies,
                                                                              op.num_vtxbufs);
 
         op_indices.push_back(graph->all_tasks.size());
-
-        // if num swaps are odd so far, perform a VBA swap
-        bool do_swap = (graph->num_swaps % 2 != 0);
-
         switch (op.task_type) {
 
         case TASKTYPE_COMPUTE: {
             Kernel kernel = kernel_lookup[(int)op.kernel];
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
-                auto task = std::make_shared<ComputeTask>(kernel, vtxbuf_deps, i, tag, nn, device,
-                                                          do_swap);
+                auto task = std::make_shared<ComputeTask>(kernel, i, tag, nn, device, swap_offset);
                 graph->all_tasks.push_back(task);
             }
-            graph->num_swaps++;
+            for (size_t buf = 0; buf < op.num_vtxbufs; buf++) {
+                swap_offset[op.vtxbuf_dependencies[buf]] = !swap_offset
+                                                               [op.vtxbuf_dependencies[buf]];
+            }
             break;
         }
 
@@ -578,7 +579,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (!region_at_boundary(tag, BOUNDARY_XYZ)) {
                     auto task = std::make_shared<HaloExchangeTask>(vtxbuf_deps, i, tag0, tag, nn,
-                                                                   decomp, device, do_swap);
+                                                                   decomp, device, swap_offset);
                     graph->halo_tasks.push_back(task);
                     graph->all_tasks.push_back(task);
                 }
@@ -594,7 +595,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                 if (region_at_boundary(tag, op.boundary)) {
                     if (bc == AC_BOUNDCOND_PERIODIC) {
                         auto task = std::make_shared<HaloExchangeTask>(vtxbuf_deps, i, tag0, tag,
-                                                                       nn, decomp, device, do_swap);
+                                                                       nn, decomp, device,
+                                                                       swap_offset);
                         graph->halo_tasks.push_back(task);
                         graph->all_tasks.push_back(task);
                     }
@@ -604,7 +606,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                             auto task = std::make_shared<
                                 BoundaryConditionTask>(bc, boundary_normal(tag),
                                                        op.vtxbuf_dependencies[j], i, tag, nn,
-                                                       device, do_swap);
+                                                       device, swap_offset);
                             graph->all_tasks.push_back(task);
                         }
                     }
@@ -616,6 +618,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         }
     }
     op_indices.push_back(graph->all_tasks.size());
+    graph->vtxbuf_swaps = swap_offset;
 
     // Task A depends on task B if:
     // 1. their operations are dependent (touch the same vertex buffers)
@@ -627,6 +630,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     // In order to generate a list of dependent operations, we check for vtxbuf_dependencies overlap
     std::vector<std::pair<size_t, size_t>> op_dependencies;
     op_dependencies.reserve(n_ops);
+    op_dependencies.clear();
 
     for (size_t dependent = 0; dependent < n_ops; dependent++) {
         std::array<bool, NUM_VTXBUF_HANDLES> dept_vtxbufs{};
@@ -636,15 +640,23 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         // look backwards until we've found each variable in task vtxbuf_dependencies
         for (size_t j = 0; j < n_ops; j++) {
             size_t prereq = (n_ops + dependent - j - 1) % n_ops;
-            for (size_t i = 0; i < ops[prereq].num_vtxbufs; i++) {
+            // TEMPORARY: for now all operations are dependent.
+            // Once info about input v. output vertexbuffers per kernel/boundcond
+            // are generated, the lower for loop can be used instead
+            op_dependencies.emplace_back(prereq, dependent);
+
+            /*for (size_t i = 0; i < ops[prereq].num_vtxbufs; i++) {
                 // If a vtxbuf is in both prereq and dependents, add a dependency to the list
                 if (dept_vtxbufs[ops[prereq].vtxbuf_dependencies[i]]) {
                     op_dependencies.emplace_back(prereq, dependent);
                     break;
                 }
-            }
+            }*/
         }
     }
+
+    graph->halo_tasks.shrink_to_fit();
+    graph->all_tasks.shrink_to_fit();
 
     // We take the list of dependent operations from the previous step and check the task regions
     // if two task's input and output regions overlap: we have a task dependency
@@ -662,9 +674,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             }
         }
     }
-
-    graph->halo_tasks.shrink_to_fit();
-    graph->all_tasks.shrink_to_fit();
 
     // Finally sort according to a priority. Larger volumes first and comm before comp
     auto sort_lambda = [](std::shared_ptr<Task> t1, std::shared_ptr<Task> t2) {
@@ -709,21 +718,23 @@ acGridExecuteTaskGraph(const AcTaskGraph* graph, size_t n_iterations)
         }
     }
 
-    bool do_swapVBA = (graph->num_swaps * n_iterations % 2) != 0;
-
     bool ready;
     do {
         ready = true;
         for (auto& task : graph->all_tasks) {
             if (task->active) {
-                task->update(do_swapVBA);
+                task->update(graph->vtxbuf_swaps);
                 ready &= task->isFinished();
             }
         }
     } while (!ready);
 
-    if (do_swapVBA) {
-        acDeviceSwapBuffers(grid.device);
+    if (n_iterations % 2 != 0) {
+        for (size_t i = 0; i < NUM_VTXBUF_HANDLES; i++) {
+            if (graph->vtxbuf_swaps[i]) {
+                acDeviceSwapBuffer(grid.device, (VertexBufferHandle)i);
+            }
+        }
     }
     return AC_SUCCESS;
 }
