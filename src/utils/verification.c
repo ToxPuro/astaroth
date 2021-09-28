@@ -166,3 +166,30 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
 
     return errors_found ? AC_FAILURE : AC_SUCCESS;
 }
+
+AcResult
+acMeshWriteErrorSlice(const char* path, const AcMesh model, const AcMesh candidate, const size_t z)
+{
+    const AcMeshInfo info = model.info;
+    ERRCHK_ALWAYS((int)z < info.int_params[AC_mz]);
+
+    FILE* fp = fopen(path, "w");
+    ERRCHK_ALWAYS(fp);
+
+    const size_t mx = info.int_params[AC_mx];
+    const size_t my = info.int_params[AC_my];
+    for (size_t y = 0; y < my; ++y) {
+        for (size_t x = 0; x < mx; ++x) {
+            const size_t idx = acVertexBufferIdx(x, y, z, info);
+            const VertexBufferHandle vtxbuf = VTXBUF_UUX;
+            const AcReal m = model.vertex_buffer[vtxbuf][idx];
+            const AcReal c = candidate.vertex_buffer[vtxbuf][idx];
+            const Error error = acGetError(m, c);
+            fprintf(fp, "%Lg ", error.ulp_error); //error.abs_error);
+        }
+        fprintf(fp, "\n");
+    }
+
+    fclose(fp);
+    return AC_SUCCESS;
+}

@@ -564,23 +564,23 @@ morton3D(const uint64_t pid)
     if (MPI_DECOMPOSITION_AXES == 3) {
         for (int bit = 0; bit <= 21; ++bit) {
             const uint64_t mask = 0x1l << 3 * bit;
-            k |= ((pid & (mask << 0)) >> 2 * bit) >> 0;
+            i |= ((pid & (mask << 0)) >> 2 * bit) >> 0;
             j |= ((pid & (mask << 1)) >> 2 * bit) >> 1;
-            i |= ((pid & (mask << 2)) >> 2 * bit) >> 2;
+            k |= ((pid & (mask << 2)) >> 2 * bit) >> 2;
         }
     }
     // Just a quick copy/paste for other decomp dims
     else if (MPI_DECOMPOSITION_AXES == 2) {
         for (int bit = 0; bit <= 21; ++bit) {
             const uint64_t mask = 0x1l << 2 * bit;
-            j |= ((pid & (mask << 0)) >> 1 * bit) >> 0;
-            k |= ((pid & (mask << 1)) >> 1 * bit) >> 1;
+            i |= ((pid & (mask << 0)) >> 1 * bit) >> 0;
+            j |= ((pid & (mask << 1)) >> 1 * bit) >> 1;
         }
     }
     else if (MPI_DECOMPOSITION_AXES == 1) {
         for (int bit = 0; bit <= 21; ++bit) {
             const uint64_t mask = 0x1l << 1 * bit;
-            k |= ((pid & (mask << 0)) >> 0 * bit) >> 0;
+            i |= ((pid & (mask << 0)) >> 0 * bit) >> 0;
         }
     }
     else {
@@ -599,22 +599,22 @@ morton1D(const uint3_64 pid)
     if (MPI_DECOMPOSITION_AXES == 3) {
         for (int bit = 0; bit <= 21; ++bit) {
             const uint64_t mask = 0x1l << bit;
-            i |= ((pid.z & mask) << 0) << 2 * bit;
+            i |= ((pid.x & mask) << 0) << 2 * bit;
             i |= ((pid.y & mask) << 1) << 2 * bit;
-            i |= ((pid.x & mask) << 2) << 2 * bit;
+            i |= ((pid.z & mask) << 2) << 2 * bit;
         }
     }
     else if (MPI_DECOMPOSITION_AXES == 2) {
         for (int bit = 0; bit <= 21; ++bit) {
             const uint64_t mask = 0x1l << bit;
-            i |= ((pid.y & mask) << 0) << 1 * bit;
-            i |= ((pid.z & mask) << 1) << 1 * bit;
+            i |= ((pid.x & mask) << 0) << 1 * bit;
+            i |= ((pid.y & mask) << 1) << 1 * bit;
         }
     }
     else if (MPI_DECOMPOSITION_AXES == 1) {
         for (int bit = 0; bit <= 21; ++bit) {
             const uint64_t mask = 0x1l << bit;
-            i |= ((pid.z & mask) << 0) << 0 * bit;
+            i |= ((pid.x & mask) << 0) << 0 * bit;
         }
     }
     else {

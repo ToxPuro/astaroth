@@ -72,6 +72,8 @@ bool acEvalError(const char* label, const Error error);
 
 AcResult acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate);
 
+AcResult acMeshWriteErrorSlice(const char* path, const AcMesh model, const AcMesh candidate, const size_t z);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

@@ -246,3 +246,25 @@ acMeshDestroy(AcMesh* mesh)
 
     return AC_SUCCESS;
 }
+
+AcResult
+acMeshWriteSlice(const char* path, const AcMesh mesh, const size_t z)
+{
+    const AcMeshInfo info = mesh.info;
+    ERRCHK_ALWAYS((int)z < info.int_params[AC_mz]);
+
+    FILE* fp = fopen(path, "w");
+    ERRCHK_ALWAYS(fp);
+
+    const size_t mx = info.int_params[AC_mx];
+    const size_t my = info.int_params[AC_my];
+    for (size_t y = 0; y < my; ++y) {
+        for (size_t x = 0; x < mx; ++x) {
+            fprintf(fp, "%g ", (double)mesh.vertex_buffer[VTXBUF_UUX][acVertexBufferIdx(x, y, z, info)]);
+        }
+        fprintf(fp, "\n");
+    }
+
+    fclose(fp);
+    return AC_SUCCESS;
+}
