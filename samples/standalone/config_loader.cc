@@ -173,6 +173,7 @@ load_config(const char* config_path, AcMeshInfo* config)
 
     // sizeof(config) must be a multiple of 4 bytes for this to work
     ERRCHK(sizeof(*config) % sizeof(uint32_t) == 0);
+
     for (size_t i = 0; i < sizeof(*config) / sizeof(uint32_t); ++i) {
         if (((uint32_t*)config)[i] == (uint32_t)0xFFFFFFFF) {
             WARNING("Some config values may be uninitialized. "
@@ -180,5 +181,53 @@ load_config(const char* config_path, AcMeshInfo* config)
             retval = -1;
         }
     }
+
+    char onebits[100]; // big enough for acreal3
+    memset(onebits, (uint8_t)0xFF, sizeof(onebits));
+
+    if (NUM_INT3_PARAMS > 0) { //if NUM_INT3_PARAMS is zero, the loop will cause a compiler warning/error
+        for (size_t i=0; i<NUM_INT3_PARAMS; i++) {
+            if (memcmp(config->int3_params + i, onebits, sizeof(int3)) == 0){
+                char warning[1000];
+                sprintf(warning,"detected uninitialized config int3 value: %s", int3param_names[i]);
+                WARNING(warning);
+                retval = -1;
+            }
+        }
+    }
+    for (size_t i=0; i<NUM_INT_PARAMS; i++) {
+        if (memcmp(config->int_params + i, onebits, sizeof(int)) == 0){
+            char warning[1000];
+            sprintf(warning,"detected uninitialized config int value: %s", intparam_names[i]);
+            WARNING(warning);
+            retval = -1;
+        }
+    }
+    for (size_t i=0; i<NUM_REAL_PARAMS; i++) {
+        if (memcmp(config->real_params + i, onebits, sizeof(AcReal)) == 0){
+            char warning[1000];
+            sprintf(warning,"detected uninitialized config real value: %s", realparam_names[i]);
+            WARNING(warning);
+            retval = -1;
+        }
+    }
+    for (int i=0; i<NUM_REAL3_PARAMS; i++) {
+        if (memcmp(config->real3_params + i, onebits, sizeof(AcReal3)) == 0){
+            char warning[1000];
+            sprintf(warning,"detected uninitialized config real3 value: %s", real3param_names[i]);
+            WARNING(warning);
+            retval = -1;
+        }
+    }
+
+    for (size_t i = 0; i < sizeof(*config) / sizeof(uint32_t); ++i) {
+        if (((uint32_t*)config)[i] == (uint32_t)0xFFFFFFFF) {
+            WARNING("Some config values may be uninitialized. "
+                    "See that all are defined in astaroth.conf\n");
+            retval = -1;
+            break;
+        }
+    }
+
     return retval;
 }

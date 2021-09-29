@@ -28,7 +28,7 @@
 
 int run_autotest(const char* config_path);
 
-int run_simulation(const char* config_path, int seed);
+int run_simulation(const char* config_path, int seed, const char *timestep_read_file_path, const char *timestep_write_file_path, int analyze_steps);
 
 int run_benchmark(const char* config_path);
 

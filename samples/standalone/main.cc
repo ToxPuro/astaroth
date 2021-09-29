@@ -94,6 +94,9 @@ typedef enum {
     RENDER,
     CONFIG,
     SEED,
+    WRITE_TIMESTEP_FILE,
+    READ_TIMESTEP_FILE,
+    ANALYZE_STEPS,
     NUM_OPTIONS,
 } OptionType;
 
@@ -153,9 +156,21 @@ main(int argc, char* argv[])
     options[RENDER]             = createOption("--render", "-r", "Runs the real-time renderer.");
     options[CONFIG]             = createOption("--config", "-c", "Uses the config file given after this flag instead of the default.");
     options[SEED]               = createOption("--seed", "-e", "Uses the number given after this flag instead of the default seed for the rng");
+    options[WRITE_TIMESTEP_FILE] = createOption("--write_timestep_file", "-w", "record the timesteps used in this file");
+    options[READ_TIMESTEP_FILE] = createOption("--read_timestep_file", "-f", "Use timesteps from this file (instead of calculating them on the fly)");
+    options[ANALYZE_STEPS]      = createOption("--analyze_steps", "-a", "send every a-th timestep dump to be analyzed by a python server");
     // clang-format on
 
+    int analyze_steps = -1;
     int seed = 312256655;
+    char *write_timestep_file = NULL; // NULL is valid, meaning no recording
+    char *read_timestep_file = NULL; // NULL is valid, meaning calculate the timesteps on the fly
+
+    printf("there are %d values in argv, they are:\n", argc);
+    for (int i=0; i<argc; i++) {
+        printf(argv[i]);
+        printf("\n");
+    }
 
     if (argc == 1) {
         print_help(options);
@@ -164,6 +179,7 @@ main(int argc, char* argv[])
         char* config_path = NULL;
         for (int i = 1; i < argc; ++i) {
             const int option = findOption(argv[i], options);
+            printf("option %s in position %d maps to intvalue %d, description is %s\n", argv[i], i, option, options[option].description);
             switch (option) {
             case CONFIG:
                 if (i + 1 < argc) {
@@ -173,6 +189,7 @@ main(int argc, char* argv[])
                     printf("Syntax error. Usage: --config <config path>.\n");
                     return EXIT_FAILURE;
                 }
+                i++;
                 break;
             case SEED:
                 if (i + 1 < argc) {
@@ -187,7 +204,39 @@ main(int argc, char* argv[])
                     printf("Syntax error. Usage: --seed <number>\n");
                     return EXIT_FAILURE;
                 }
+                i++;
+                break;
+            case WRITE_TIMESTEP_FILE:
+                if (i + 1 < argc) {
+                    write_timestep_file = strdup(argv[i + 1]);
+                }
+                else {
+                    printf("Syntax error. Usage: --write_timestep_file <write_timestep_file path>.\n");
+                    return EXIT_FAILURE;
+                }
+                i++;
+                break;
+            case READ_TIMESTEP_FILE:
+                if (i + 1 < argc) {
+                    read_timestep_file = strdup(argv[i + 1]);
+                }
+                else {
+                    printf("Syntax error. Usage: --read_timestep_file <read_timestep_file path>.\n");
+                    return EXIT_FAILURE;
+                }
+                i++;
+                break;
+            case ANALYZE_STEPS:
+                if (i+1 < argc) {
+                    analyze_steps = atoi(argv[i+1]);
+                }
+                else {
+                    printf("Syntax error. Usage: --analyze_steps <n> to analyze every n-th timestep by sending it to python\n");
+                }
+                i++;
+                break;
             default:
+                fprintf(stderr, "other option %s\n", argv[i]);// this is not an error
                 break; // Do nothing
             }
         }
@@ -195,7 +244,11 @@ main(int argc, char* argv[])
             config_path = strdup(AC_DEFAULT_CONFIG);
 
         printf("Config path: %s\n", config_path);
+        printf("using seed: %d\n", seed);
+        printf("reading timesteps from: %s\n", read_timestep_file);
+        printf("recording timesteps in: %s\n", write_timestep_file);
         ERRCHK_ALWAYS(config_path);
+        //ERRCHK_ALWAYS((read_timestep_file && !write_timestep_file) || (!read_timestep_file && write_timestep_file))
 
         for (int i = 1; i < argc; ++i) {
             const int option = findOption(argv[i], options);
@@ -210,18 +263,23 @@ main(int argc, char* argv[])
                 run_benchmark(config_path);
                 break;
             case SIMULATE:
-                run_simulation(config_path, seed);
+                run_simulation(config_path, seed, read_timestep_file, write_timestep_file, analyze_steps);
                 break;
             case RENDER:
                 run_renderer(config_path);
                 break;
+            // these options have an extra parameter that shouldnt go through the switch-case
+            case WRITE_TIMESTEP_FILE:
+            case READ_TIMESTEP_FILE:
+            case ANALYZE_STEPS:
             case CONFIG:
             case SEED:
                 ++i;
                 break;
             default:
                 printf("Invalid option %s\n", argv[i]);
-                break; // Do nothing
+                //break; // Do nothing <-- original astaroth
+                return EXIT_FAILURE; //<-- I like this better...
             }
         }
 

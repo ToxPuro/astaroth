@@ -1,5 +1,13 @@
 #include <stdderiv.h>
 
+// achieve low mach number -> sort of incompressible
+// sound speed is input param
+// mach number speed / sound speed (speed is u_rms)
+// change cs_sound in astaroth.conf (never change here) and change forcing amplitude to lower mach number
+
+// make fixed time step:
+// 
+
 #define LDENSITY (0)
 #define LHYDRO (1)
 // MV: Currenly only magnetic with entropy. Support for isothermal MHD required

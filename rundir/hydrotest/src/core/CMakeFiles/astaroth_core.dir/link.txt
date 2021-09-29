@@ -1,0 +1,2 @@
+/usr/bin/ar qc libastaroth_core.a CMakeFiles/astaroth_core.dir/device.cc.o CMakeFiles/astaroth_core.dir/grid.cc.o CMakeFiles/astaroth_core.dir/task.cc.o CMakeFiles/astaroth_core.dir/node.cc.o CMakeFiles/astaroth_core.dir/astaroth.cc.o CMakeFiles/astaroth_core.dir/astaroth_fortran.cc.o
+/usr/bin/ranlib libastaroth_core.a

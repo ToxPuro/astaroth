@@ -1,0 +1,1 @@
+GEN_DEVICE_FUNC_HOOK(solve)

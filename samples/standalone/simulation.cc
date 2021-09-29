@@ -27,19 +27,25 @@
 #include "run.h"
 
 #include "config_loader.h"
+#include "errchk.h"
+#include "math_utils.h"
 #include "model/host_forcing.h"
 #include "model/host_memory.h"
 #include "model/host_timestep.h"
 #include "model/model_reduce.h"
 #include "model/model_rk3.h"
-#include "errchk.h"
-#include "math_utils.h"
+#include "model/timestepfile.h"
 #include "timer_hires.h"
 
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <cassert>
+#include <fcntl.h>
+
+#define FIFO_DATA_PATH "/users/julianlagg/pipe2py_data"
+#define FIFO_STATUS_PATH "/users/julianlagg/pipe2py_status"
 
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
 #define LFORCING (1)
@@ -74,10 +80,10 @@ write_mesh_info(const AcMeshInfo* config)
     infotxt = fopen("mesh_info.list", "w");
 
     // Determine endianness
-    unsigned int EE = 1;
-    char *CC = (char*) &EE;
-    const int endianness = (int) *CC; 
-    // endianness = 0 -> big endian 
+    unsigned int EE      = 1;
+    char* CC             = (char*)&EE;
+    const int endianness = (int)*CC;
+    // endianness = 0 -> big endian
     // endianness = 1 -> little endian
 
     fprintf(infotxt, "size_t %s %lu \n", "AcRealSize", sizeof(AcReal));
@@ -86,30 +92,183 @@ write_mesh_info(const AcMeshInfo* config)
 
     // JP: this could be done shorter and with smaller chance for errors with the following
     // (modified from acPrintMeshInfo() in astaroth.cu)
-    // MV: Now adapted into working condition. E.g. removed useless / harmful formatting. 
+    // MV: Now adapted into working condition. E.g. removed useless / harmful formatting.
 
     for (int i = 0; i < NUM_INT_PARAMS; ++i)
         fprintf(infotxt, "int %s %d\n", intparam_names[i], config->int_params[i]);
 
     for (int i = 0; i < NUM_INT3_PARAMS; ++i)
         fprintf(infotxt, "int3 %s  %d %d %d\n", int3param_names[i], config->int3_params[i].x,
-                                                                        config->int3_params[i].y,
-                                                                        config->int3_params[i].z);
+                config->int3_params[i].y, config->int3_params[i].z);
 
     for (int i = 0; i < NUM_REAL_PARAMS; ++i)
         fprintf(infotxt, "real %s %g\n", realparam_names[i], double(config->real_params[i]));
 
     for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
         fprintf(infotxt, "real3 %s  %g %g %g\n", real3param_names[i],
-                                                    double(config->real3_params[i].x),
-                                                    double(config->real3_params[i].y),
-                                                    double(config->real3_params[i].z));
+                double(config->real3_params[i].x), double(config->real3_params[i].y),
+                double(config->real3_params[i].z));
 
     fclose(infotxt);
 }
 
+// todo: benchmark the save_mesh function
+// todo: write save function with faster performance -> chunking and async?
 
-// This funtion writes a run state into a set of C binaries. 
+static void
+send_velocity_field(const AcMesh& save_mesh, const int timestep, const AcReal phys_time, int data_fd,
+                    int status_fd)
+{
+
+
+    // static int num_readys = 0;
+
+    const int stride = 4;
+
+    for (int w = 0; w < NUM_VTXBUF_HANDLES; w++) {
+        const char* buffername = vtxbuf_names[w];
+        // fprintf(stderr, "maybe sending buffer %s\n", buffername);
+        // there has to be a better way to check if we are in the right field, but not right now
+        if (strcmp(buffername, "VTXBUF_UUX") == 0 || strcmp(buffername, "VTXBUF_UUY") == 0 ||
+            strcmp(buffername, "VTXBUF_UUZ") == 0) {
+            
+            // fprintf(stderr, "sending buffer %s\n", buffername);
+
+
+            // send header, packed densely with the following:
+            //
+            // int32 floatsize in bytes
+            // int32 nx/stride
+            // int32 ny/stride
+            // int32 nz/stride <-- so that the tuple of these sizes is the array dimensions at the
+            // receiver int32 timestep double phystime <-- always double to keep header size
+            // constant char[100] name (null-terminated)
+
+            const int mx = save_mesh.info.int_params[AC_mx];
+            const int my = save_mesh.info.int_params[AC_my];
+            const int mz = save_mesh.info.int_params[AC_mz];
+
+            const int nx = mx - 6;
+            const int ny = my - 6;
+            const int nz = mz - 6; // this hardcodes the stencil order, bad!
+
+            assert(strlen(buffername) <= 99);
+            char header[5 * 4 + 8 + 100] = {0};
+            char* s                      = &header[0];
+            int32_t floatsize            = sizeof(float); // <--- for now always send as float32?
+            memmove(s, &floatsize, 4);
+            s += 4;
+            int32_t nx_rcv = nx / stride;
+            assert(nx % stride == 0);
+            memmove(s, &nx_rcv, 4);
+            s += 4;
+            int32_t ny_rcv = ny / stride;
+            assert(ny % stride == 0);
+            memmove(s, &ny_rcv, 4);
+            s += 4;
+            int32_t nz_rcv = nz / stride;
+            assert(nz % stride == 0);
+            memmove(s, &nz_rcv, 4);
+            s += 4;
+            memmove(s, &timestep, 4);
+            s += 4;
+            memmove(s, &phys_time, 8);
+            s += 8;
+            strcpy(s, buffername);
+            // wait for ready-signal
+            int32_t status = 0;
+            // fprintf(stderr, "reading status no %d for the header\n", ++num_readys);
+            int bytes_read = read(status_fd, &status, 4);
+            (void)bytes_read;
+            // printf("status is: %d, bytes_read is: %d\n", status, bytes_read);
+            assert(status == 1);     // the python-listener-program should never send other data
+            assert(bytes_read == 4); // reading more than 4 bytes is impossible for a read-call
+            // reading 0 bytes happens if there is no data in the pipe and noone has the pipe open
+            // for writing;  a return value of -1 indicates an error. return values other than
+            // [-1,0,4] would greatly confuse me.
+
+            // fprintf(stderr, "writing header...");
+            write(data_fd, header, 5 * 4 + 8 + 100);
+            // fprintf(stderr, "done writing header\n");
+
+
+            assert(nx % stride == 0);
+            assert(ny % stride == 0);
+            assert(nz % stride == 0);
+
+            // send data in blocks of blocksize BYTES (not numbers)
+            const int blocksize  = 4096;
+            const size_t msg_sz  = ((nx / stride) * (ny / stride) * (nz / stride) * sizeof(float));
+            (void)msg_sz; // only used in assert, dont want an unused warning
+            const int num_blocks = msg_sz / blocksize;
+            assert(msg_sz % blocksize == 0);
+            assert(blocksize % sizeof(float) == 0);
+
+            printf("SENT HEADER: %s; %d; %d; %d; %d; %d; %lf\n", buffername, nx_rcv, ny_rcv, nz_rcv, floatsize, timestep, phys_time);
+            printf("sending %d blocks of size %d byte ", num_blocks, blocksize);
+
+            char* buf  = (char*)malloc(blocksize);
+            size_t bufi = 0;
+            for (int zi = 3; zi < mz - 3; zi+=stride) {
+                for (int yi = 3; yi < my - 3; yi+=stride) {
+                    for (int xi = 3; xi < mx - 3; xi+=stride) {
+                        size_t index = acVertexBufferIdx(xi, yi, zi, save_mesh.info);
+                        float value = float(save_mesh.vertex_buffer[w][index]);
+                        memcpy(buf+bufi, &value, sizeof(float));
+                        bufi += sizeof(float);
+                        if (bufi == blocksize) {
+                            bufi = 0;
+                            // wait for ready-signal
+                            // fprintf(stderr, "reading status no %d for the array\n", ++num_readys);
+                            bytes_read = read(status_fd, &status, 4);
+                            assert(status == 1);
+                            assert(bytes_read == 4);
+
+                            // send buffer
+                            printf("."); fflush(stdout);
+                            write(data_fd, buf, blocksize);
+
+                            
+                            // FILE *f = fopen("written_by_cc.txt", "w");
+                            // float *float_arr = (float*) malloc(blocksize);
+                            // for (unsigned b=0; b<blocksize; b++) {
+                            //     memcpy(float_arr+b, buf+b*sizeof(float), sizeof(float));
+                            // }
+                            // for (unsigned b=0; b<10; b++) {
+                            //     fprintf(f, "%lf\n", double(float_arr[b]) );
+                            // }
+                            // fclose(f);
+                            // exit(1);
+                        }
+                    }
+                }
+            }
+            free(buf);
+            printf(" DONE\n");
+        }
+    }
+
+
+    // fprintf(stderr, "FINISHED send_velocity_field\n");
+
+}
+
+static void
+init_pipe2py(int *data_fd, int *status_fd){
+
+
+    *data_fd = open(FIFO_DATA_PATH, O_WRONLY);
+    *status_fd = open(FIFO_STATUS_PATH, O_RDONLY);
+
+}
+
+static void
+close_pipe2py(int data_fd, int status_fd) {
+    close(data_fd);
+    close(status_fd);
+}
+
+// This funtion writes a run state into a set of C binaries.
 static inline void
 save_mesh(const AcMesh& save_mesh, const int step, const AcReal t_step)
 {
@@ -140,7 +299,7 @@ save_mesh(const AcMesh& save_mesh, const int step, const AcReal t_step)
         fwrite(&write_long_buf, sizeof(AcReal), 1, save_ptr);
         // Grid data
         for (size_t i = 0; i < n; ++i) {
-            const AcReal point_val     = save_mesh.vertex_buffer[VertexBufferHandle(w)][i];
+            const AcReal point_val = save_mesh.vertex_buffer[VertexBufferHandle(w)][i];
             AcReal write_long_buf2 = (AcReal)point_val;
             fwrite(&write_long_buf2, sizeof(AcReal), 1, save_ptr);
         }
@@ -149,7 +308,7 @@ save_mesh(const AcMesh& save_mesh, const int step, const AcReal t_step)
 }
 
 /*
-// This funtion writes a run state into a set of C binaries. 
+// This funtion writes a run state into a set of C binaries.
 static inline void
 save_slice_cut(const AcMesh& save_mesh, const int step, const AcReal t_step)
 {
@@ -183,7 +342,7 @@ save_slice_cut(const AcMesh& save_mesh, const int step, const AcReal t_step)
         strcat(bin_filename_yz, cstep);
         strcat(bin_filename_yz, ".myz");
 
-        printf("Slice files %s, %s, %s, \n", 
+        printf("Slice files %s, %s, %s, \n",
                bin_filename_xy, bin_filename_xz, bin_filename_yz);
 
         save_ptr = fopen(bin_filename, "wb");
@@ -202,9 +361,8 @@ save_slice_cut(const AcMesh& save_mesh, const int step, const AcReal t_step)
 }
 */
 
-
 // This funtion reads a run state from a set of C binaries.
-static inline void 
+static inline void
 read_mesh(AcMesh& read_mesh, const int step, AcReal* t_step)
 {
     FILE* read_ptr;
@@ -300,7 +458,6 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
         if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
             *found_nan = 1;
         }
-
     }
 
     if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
@@ -311,25 +468,29 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
 }
 
 static inline void
-print_diagnostics_device(const Device device, const int step, const AcReal dt, const AcReal t_step, FILE* diag_file,
-                         const AcReal sink_mass, const AcReal accreted_mass, int* found_nan, AcMeshInfo mesh_info)
+print_diagnostics_device(const Device device, const int step, const AcReal dt, const AcReal t_step,
+                         FILE* diag_file, const AcReal sink_mass, const AcReal accreted_mass,
+                         int* found_nan, AcMeshInfo mesh_info)
 {
 
-    const int mx = mesh_info.int_params[AC_nx];
-    const int my = mesh_info.int_params[AC_ny];
-    const int mz = mesh_info.int_params[AC_nz];
-    const int mtot = mx*my*mz;
+    const int mx   = mesh_info.int_params[AC_nx];
+    const int my   = mesh_info.int_params[AC_ny];
+    const int mz   = mesh_info.int_params[AC_nz];
+    const int mtot = mx * my * mz;
 
     AcReal buf_rms, buf_max, buf_min;
     const int max_name_width = 16;
 
     // Calculate rms, min and max from the velocity vector field
-    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_max);
-    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_min);
-    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_rms);
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+                      &buf_max);
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+                      &buf_min);
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+                      &buf_rms);
 
-    //acDeviceReduceVec calculates only the sum on var**2 
-    buf_rms = sqrt(buf_rms/AcReal(mtot));
+    // acDeviceReduceVec calculates only the sum on var**2
+    buf_rms = sqrt(buf_rms / AcReal(mtot));
 
     // MV: The ordering in the earlier version was wrong in terms of variable
     // MV: name and its diagnostics.
@@ -343,16 +504,19 @@ print_diagnostics_device(const Device device, const int step, const AcReal dt, c
     acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, BFIELDX, BFIELDY, BFIELDZ, &buf_max);
     acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MIN, BFIELDX, BFIELDY, BFIELDZ, &buf_min);
     acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_RMS, BFIELDX, BFIELDY, BFIELDZ, &buf_rms);
-    buf_rms = sqrt(buf_rms/AcReal(mtot));
+    buf_rms = sqrt(buf_rms / AcReal(mtot));
 
     printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
            double(buf_rms), double(buf_max));
     fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
 
-    acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_max)
-    acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MIN, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_min)
-    acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_rms)
-    buf_rms = sqrt(buf_rms/AcReal(mtot));
+    acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ,
+                          VTXBUF_LNRHO, &buf_max)
+        acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MIN, BFIELDX, BFIELDY, BFIELDZ,
+                              VTXBUF_LNRHO, &buf_min)
+            acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY,
+                                  BFIELDZ, VTXBUF_LNRHO, &buf_rms)
+                buf_rms = sqrt(buf_rms / AcReal(mtot));
 
     printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
            double(buf_rms), double(buf_max));
@@ -364,7 +528,7 @@ print_diagnostics_device(const Device device, const int step, const AcReal dt, c
         acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MAX, VertexBufferHandle(i), &buf_max);
         acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MIN, VertexBufferHandle(i), &buf_min);
         acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_RMS, VertexBufferHandle(i), &buf_rms);
-        buf_rms = sqrt(buf_rms/AcReal(mtot));
+        buf_rms = sqrt(buf_rms / AcReal(mtot));
 
         printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
                double(buf_min), double(buf_rms), double(buf_max));
@@ -373,7 +537,6 @@ print_diagnostics_device(const Device device, const int step, const AcReal dt, c
         if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
             *found_nan = 1;
         }
-
     }
 
     if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
@@ -390,34 +553,56 @@ print_diagnostics_device(const Device device, const int step, const AcReal dt, c
 */
 
 int
-run_simulation(const char* config_path, int seed)
+run_simulation(const char* config_path, int seed, const char* timestep_read_file_path,
+               const char* timestep_write_file_path, int analyze_steps)
 {
+
+    fprintf(stderr, "STARTING simulation");
+
+    int data_fd = -1;
+    int status_fd = -1;
+
+    if (analyze_steps > 0) {
+        init_pipe2py(&data_fd, &status_fd);
+    }
     /* Parse configs */
     AcMeshInfo mesh_info;
     load_config(config_path, &mesh_info);
 
+    // open files if necessary
+    FILE* timestep_read_file = NULL;
+    if (timestep_read_file_path) {
+        timestep_read_file = open_read_file(timestep_read_file_path);
+        ERRCHK(timestep_read_file); // NULL indicates open failed
+    }
+    FILE* timestep_write_file = NULL;
+    if (timestep_write_file_path) {
+        timestep_write_file = init_write_file(timestep_write_file_path);
+        ERRCHK(timestep_write_file); // NULL indicates init failed
+    }
+
     AcMesh* mesh = acmesh_create(mesh_info);
     // TODO: This need to be possible to define in astaroth.conf
     acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, mesh);
-    //acmesh_init_to(INIT_TYPE_KICKBALL, mesh);
+    // acmesh_init_to(INIT_TYPE_KICKBALL, mesh);
     // acmesh_init_to(INIT_TYPE_SIMPLE_CORE, mesh); //Initial condition for a collapse test
 
 #if LSINK
     printf("WARNING! Sink particle is under development. USE AT YOUR OWN RISK!")
-    vertex_buffer_set(VTXBUF_ACCRETION, 0.0, mesh);
+        vertex_buffer_set(VTXBUF_ACCRETION, 0.0, mesh);
 #endif
 #if LSHOCK
-    vertex_buffer_set(VTXBUF_SHOCK, 0.0, mesh);  
+    vertex_buffer_set(VTXBUF_SHOCK, 0.0, mesh);
 #endif
 
-    // Read old binary if we want to continue from an existing snapshot 
+    // Read old binary if we want to continue from an existing snapshot
     // WARNING: Explicit specification of step needed!
     const int start_step = mesh_info.int_params[AC_start_step];
-    AcReal t_step = 0.0;
-    if (start_step > 0) { 
+    AcReal t_step        = 0.0;
+    if (start_step > 0) {
         read_mesh(*mesh, start_step, &t_step);
     }
- 
+
 #if LSHOCK
     Device device;
     acDeviceCreate(0, mesh_info, &device);
@@ -458,29 +643,32 @@ run_simulation(const char* config_path, int seed)
 
     if (start_step == 0) {
 #if LSINK
-        print_diagnostics(0, AcReal(.0), t_step, diag_file, mesh_info.real_params[AC_M_sink_init], 0.0, &found_nan);
+        print_diagnostics(0, AcReal(.0), t_step, diag_file, mesh_info.real_params[AC_M_sink_init],
+                          0.0, &found_nan);
 #else
-    #if LSHOCK
-        print_diagnostics_device(device, 0, AcReal(.0), t_step, diag_file, -1.0, -1.0, &found_nan, mesh_info);
-    #else
+#if LSHOCK
+        print_diagnostics_device(device, 0, AcReal(.0), t_step, diag_file, -1.0, -1.0, &found_nan,
+                                 mesh_info);
+#else
         print_diagnostics(0, AcReal(.0), t_step, diag_file, -1.0, -1.0, &found_nan);
-    #endif
+#endif
 #endif
     }
 
 #if LSHOCK
-    const int3 start = (int3){NGHOST, NGHOST, NGHOST};
-    const int3 end   = (int3){mesh_info.int_params[AC_mx]-NGHOST, 
-                              mesh_info.int_params[AC_my]-NGHOST, 
-                              mesh_info.int_params[AC_mz]-NGHOST};
-    const int3 bindex = (int3){0, 0, 0}; //DUMMY
-    const int3 b1 = (int3){0, 0, 0};
-    const int3 b2 = (int3){mesh_info.int_params[AC_mx], mesh_info.int_params[AC_mx], mesh_info.int_params[AC_mx]};
+    const int3 start  = (int3){NGHOST, NGHOST, NGHOST};
+    const int3 end    = (int3){mesh_info.int_params[AC_mx] - NGHOST,
+                            mesh_info.int_params[AC_my] - NGHOST,
+                            mesh_info.int_params[AC_mz] - NGHOST};
+    const int3 bindex = (int3){0, 0, 0}; // DUMMY
+    const int3 b1     = (int3){0, 0, 0};
+    const int3 b2     = (int3){mesh_info.int_params[AC_mx], mesh_info.int_params[AC_mx],
+                           mesh_info.int_params[AC_mx]};
 
     acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
     acDeviceStoreMesh(device, STREAM_DEFAULT, mesh);
 #else
-    //acBoundcondStep();
+    // acBoundcondStep();
     acBoundcondStepGBC(mesh_info);
     acStore(mesh);
 #endif
@@ -490,11 +678,11 @@ run_simulation(const char* config_path, int seed)
 
     const int max_steps      = mesh_info.int_params[AC_max_steps];
     const int save_steps     = mesh_info.int_params[AC_save_steps];
-    const int bin_save_steps = mesh_info.int_params[AC_bin_steps]; 
+    const int bin_save_steps = mesh_info.int_params[AC_bin_steps];
 
-    const AcReal max_time   = mesh_info.real_params[AC_max_time]; 
+    const AcReal max_time   = mesh_info.real_params[AC_max_time];
     const AcReal bin_save_t = mesh_info.real_params[AC_bin_save_t];
-    AcReal bin_crit_t = bin_save_t;
+    AcReal bin_crit_t       = bin_save_t;
 
     /* initialize random seed: */
     srand(seed);
@@ -505,9 +693,9 @@ run_simulation(const char* config_path, int seed)
     /* Step the simulation */
     AcReal accreted_mass = 0.0;
     AcReal sink_mass     = 0.0;
-    AcReal uu_freefall = 0.0;
+    AcReal uu_freefall   = 0.0;
     AcReal dt_typical    = 0.0;
-    int dtcounter = 0;
+    int dtcounter        = 0;
 
     printf("Starting simulation...\n");
     for (int i = start_step + 1; i < max_steps; ++i) {
@@ -518,7 +706,8 @@ run_simulation(const char* config_path, int seed)
         sink_mass             = 0.0;
         sink_mass             = mesh_info.real_params[AC_M_sink_init] + accreted_mass;
         acLoadDeviceConstant(AC_M_sink, sink_mass);
-        vertex_buffer_set(VTXBUF_ACCRETION, 0.0, mesh); //TODO THIS IS A BUG! WILL ONLY SET HOST BUFFER 0! 
+        vertex_buffer_set(VTXBUF_ACCRETION, 0.0,
+                          mesh); // TODO THIS IS A BUG! WILL ONLY SET HOST BUFFER 0!
 
         int on_off_switch;
         if (i < 1) {
@@ -529,36 +718,49 @@ run_simulation(const char* config_path, int seed)
         }
         acLoadDeviceConstant(AC_switch_accretion, on_off_switch);
 
-        //Adjust courant condition for free fall velocity
-        const AcReal RR = mesh_info.real_params[AC_soft]*mesh_info.real_params[AC_soft];
-        const AcReal SQ2GM = sqrt(AcReal(2.0)*mesh_info.real_params[AC_G_const]*sink_mass);
-        uu_freefall = fabs(SQ2GM / sqrt(RR));
+        // Adjust courant condition for free fall velocity
+        const AcReal RR    = mesh_info.real_params[AC_soft] * mesh_info.real_params[AC_soft];
+        const AcReal SQ2GM = sqrt(AcReal(2.0) * mesh_info.real_params[AC_G_const] * sink_mass);
+        uu_freefall        = fabs(SQ2GM / sqrt(RR));
 #else
-        accreted_mass = -1.0;
-        sink_mass     = -1.0;
+        accreted_mass          = -1.0;
+        sink_mass              = -1.0;
 #endif
 
 #if LSHOCK
         AcReal umax, shock_max;
-        acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &umax);
+        acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+                          &umax);
         acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_SHOCK, &shock_max);
-#else 
+#else
         const AcReal shock_max = 0.0;
-        const AcReal umax = acReduceVec(RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+        const AcReal umax      = acReduceVec(RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
 #endif
 
 #if LBFIELD
-    #if LSHOCK
+#if LSHOCK
         AcReal vAmax;
-        acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &vAmax) 
-    #else
-        const AcReal vAmax = acReduceVecScal(RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO);
-    #endif
-        const AcReal uref  = max(max(umax,uu_freefall), vAmax); 
-        const AcReal dt   = host_timestep(uref, vAmax, shock_max, mesh_info);
+        acDeviceReduceVecScal(device, STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ,
+                              VTXBUF_LNRHO, &vAmax)
 #else
-        const AcReal uref  = max(umax,uu_freefall); 
-        const AcReal dt   = host_timestep(uref, 0.0l, shock_max, mesh_info);
+        const AcReal vAmax = acReduceVecScal(RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ,
+                                             VTXBUF_LNRHO);
+#endif
+            const AcReal uref = max(max(umax, uu_freefall), vAmax);
+        const AcReal dt       = host_timestep(uref, vAmax, shock_max, mesh_info);
+#else
+        const AcReal uref      = max(umax, uu_freefall);
+
+        AcReal dt;
+        if (timestep_read_file) {
+            next_timestep_from_file(timestep_read_file, &dt);
+        }
+        else {
+            dt = host_timestep(uref, 0.0l, shock_max, mesh_info);
+        }
+        if (timestep_write_file) {
+            record_timestep(timestep_write_file, dt);
+        }
 #endif
 
 #if LFORCING
@@ -568,28 +770,28 @@ run_simulation(const char* config_path, int seed)
 
 #if LSHOCK
         for (int isubstep = 0; isubstep < 3; ++isubstep) {
-            //Call only singe GPU version on for testing the shock viscosity first
+            // Call only singe GPU version on for testing the shock viscosity first
             acDevice_shock_1_divu(device, STREAM_DEFAULT, start, end);
-            //acDeviceSynchronizeStream(device, STREAM_ALL);
+            // acDeviceSynchronizeStream(device, STREAM_ALL);
             acDeviceSwapBuffer(device, VTXBUF_SHOCK);
             acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
-            //acDeviceSynchronizeStream(device, STREAM_ALL);
+            // acDeviceSynchronizeStream(device, STREAM_ALL);
 
             acDevice_shock_2_max(device, STREAM_DEFAULT, start, end);
             acDeviceSwapBuffer(device, VTXBUF_SHOCK);
-            //acDeviceSynchronizeStream(device, STREAM_ALL);
+            // acDeviceSynchronizeStream(device, STREAM_ALL);
             acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
-            //acDeviceSynchronizeStream(device, STREAM_ALL);
+            // acDeviceSynchronizeStream(device, STREAM_ALL);
 
             acDevice_shock_3_smooth(device, STREAM_DEFAULT, start, end);
-            //acDeviceSynchronizeStream(device, STREAM_ALL);
+            // acDeviceSynchronizeStream(device, STREAM_ALL);
             acDeviceSwapBuffer(device, VTXBUF_SHOCK);
-            //acDeviceSynchronizeStream(device, STREAM_ALL);
+            // acDeviceSynchronizeStream(device, STREAM_ALL);
             acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
 
-            //RUN SOLVE
+            // RUN SOLVE
             acDeviceIntegrateSubstep(device, STREAM_DEFAULT, isubstep, start, end, dt);
-            //acDeviceSynchronizeStream(device, STREAM_ALL);
+            // acDeviceSynchronizeStream(device, STREAM_ALL);
             acDeviceSwapBuffers(device);
             // TO compensate
             acDeviceSwapBuffer(device, VTXBUF_SHOCK);
@@ -597,18 +799,16 @@ run_simulation(const char* config_path, int seed)
         }
 #else
         /* Uses now flexible bokundary conditions */
-        //acIntegrate(dt);
+        // acIntegrate(dt);
         acIntegrateGBC(mesh_info, dt);
 #endif
-
 
         t_step += dt;
 
         /* Get the sense of a typical timestep */
         if (i < start_step + 100) {
-           dt_typical = dt;
-        }        
-
+            dt_typical = dt;
+        }
 
         /* Save the simulation state and print diagnostics */
         if ((i % save_steps) == 0) {
@@ -618,11 +818,12 @@ run_simulation(const char* config_path, int seed)
                 results and saves the diagnostics into a table for ascii file
                 timeseries.ts.
             */
-    #if LSHOCK
-            print_diagnostics_device(device, i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan, mesh_info);
-    #else
+#if LSHOCK
+            print_diagnostics_device(device, i, dt, t_step, diag_file, sink_mass, accreted_mass,
+                                     &found_nan, mesh_info);
+#else
             print_diagnostics(i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
-    #endif
+#endif
 #if LSINK
             printf("sink mass is: %.15e \n", double(sink_mass));
             printf("accreted mass is: %.15e \n", double(accreted_mass));
@@ -633,6 +834,7 @@ run_simulation(const char* config_path, int seed)
                 simulations. (TODO)
             */
         }
+
 
         /* Save the simulation state and print diagnostics */
         if ((i % bin_save_steps) == 0 || t_step >= bin_crit_t) {
@@ -649,11 +851,11 @@ run_simulation(const char* config_path, int seed)
                 acBoundcondStep();
                 acStore(mesh);
             */
-            //acBoundcondStep();
+            // acBoundcondStep();
 #if LSHOCK
             acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
             acDeviceStoreMesh(device, STREAM_DEFAULT, mesh);
-#else 
+#else
             acBoundcondStepGBC(mesh_info);
             acStore(mesh);
 #endif
@@ -662,28 +864,38 @@ run_simulation(const char* config_path, int seed)
             bin_crit_t += bin_save_t;
         }
 
-        // End loop if max time reached. 
+        // send data to analyze. Definitely not safe with multiple mpi-ranks as I dont know how the mesh is distributed
+        if (analyze_steps > 0 &&  i%analyze_steps==0 ) {
+            fprintf(stderr, "now saving mesh\n");
+            acBoundcondStepGBC(mesh_info);
+            acStore(mesh);
+            fprintf(stderr, "NOW CALLING send_velocity_field");
+            send_velocity_field(*mesh, i, t_step, data_fd, status_fd);
+        }
+
+        // End loop if max time reached.
         if (max_time > AcReal(0.0)) {
             if (t_step >= max_time) {
                 printf("Time limit reached! at t = %e \n", double(t_step));
                 break;
-                
             }
         }
 
         // End loop if dt is too low
-        if (dt < dt_typical/AcReal(1e5)) {
+        if (dt < dt_typical / AcReal(1e5)) {
             if (dtcounter > 10) {
                 printf("dt = %e TOO LOW! Ending run at t = %#e \n", double(dt), double(t_step));
-                //acBoundcondStep();
+                // acBoundcondStep();
                 acBoundcondStepGBC(mesh_info);
                 acStore(mesh);
                 save_mesh(*mesh, i, t_step);
                 break;
-            } else {
+            }
+            else {
                 dtcounter += 1;
             }
-        } else {
+        }
+        else {
             dtcounter = 0;
         }
 
@@ -693,8 +905,8 @@ run_simulation(const char* config_path, int seed)
 #if LSHOCK
             acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
             acDeviceStoreMesh(device, STREAM_DEFAULT, mesh);
-#else 
-            //acBoundcondStep();
+#else
+            // acBoundcondStep();
             acBoundcondStepGBC(mesh_info);
             acStore(mesh);
 #endif
@@ -703,26 +915,26 @@ run_simulation(const char* config_path, int seed)
         }
 
         // End loop if STOP file is found
-        if( access("STOP", F_OK ) != -1 ) {
+        if (access("STOP", F_OK) != -1) {
             found_stop = 1;
-        } else {
+        }
+        else {
             found_stop = 0;
-        }       
- 
+        }
+
         if (found_stop == 1) {
             printf("Found STOP file at t = %e \n", double(t_step));
 #if LSHOCK
             acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
             acDeviceStoreMesh(device, STREAM_DEFAULT, mesh);
-#else 
-            //acBoundcondStep();
+#else
+            // acBoundcondStep();
             acBoundcondStepGBC(mesh_info);
             acStore(mesh);
-#endif 
+#endif
             save_mesh(*mesh, i, t_step);
             break;
         }
-
     }
 
     //////Save the final snapshot
@@ -735,10 +947,18 @@ run_simulation(const char* config_path, int seed)
     acDeviceDestroy(device);
 #else
     acQuit();
-#endif 
+#endif
     acmesh_destroy(mesh);
 
+    if (analyze_steps > 0) {
+        close_pipe2py(data_fd, status_fd);
+    }
+
     fclose(diag_file);
+    if (timestep_write_file != NULL)
+        close_timestep_file(timestep_write_file);
+    if (timestep_read_file != NULL)
+        close_timestep_file(timestep_read_file);
 
     return 0;
 }

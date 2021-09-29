@@ -45,6 +45,7 @@ def read_bin(fname, fdir, fnum, minfo, numtype=np.longdouble, getfilename=True):
     '''Read in a floating point array'''
     filename = fdir + fname + '_' + fnum + '.mesh'
     datas = np.DataSource()
+    print(filename)
     read_ok = datas.exists(filename)
 
     my_dtype = set_dtype(minfo.contents['endian'], minfo.contents['AcRealSize'], print_type=getfilename)

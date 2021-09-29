@@ -1,0 +1,698 @@
+
+
+
+
+
+
+
+
+       
+
+
+
+
+uniform Scalar AC_dsx = 0.04908738521;
+uniform Scalar AC_dsy = 0.04908738521;
+uniform Scalar AC_dsz = 0.04908738521;
+uniform Scalar AC_inv_dsx = 1.0 / AC_dsx;
+uniform Scalar AC_inv_dsy = 1.0 / AC_dsy;
+uniform Scalar AC_inv_dsz = 1.0 / AC_dsz;
+
+Scalar
+first_derivative(Scalar pencil[], Scalar inv_ds)
+{
+
+
+
+
+
+    Scalar coefficients[] = {0, 3.0 / 4.0, -3.0 / 20.0, 1.0 / 60.0};
+
+
+
+
+
+
+    Scalar res = 0;
+
+    for (int i = 1; i <= ((6) / 2); ++i) {
+        res += coefficients[i] * (pencil[((6) / 2) + i] - pencil[((6) / 2) - i]);
+    }
+
+    return res * inv_ds;
+}
+
+Scalar
+second_derivative(Scalar pencil[], Scalar inv_ds)
+{
+
+
+
+
+
+    Scalar coefficients[] = {-49.0 / 18.0, 3.0 / 2.0, -3.0 / 20.0, 1.0 / 90.0};
+
+
+
+
+
+    Scalar res = coefficients[0] * pencil[((6) / 2)];
+
+    for (int i = 1; i <= ((6) / 2); ++i) {
+        res += coefficients[i] * (pencil[((6) / 2) + i] + pencil[((6) / 2) - i]);
+    }
+
+    return res * inv_ds * inv_ds;
+}
+
+Scalar
+cross_derivative(Scalar pencil_a[], Scalar pencil_b[], Scalar inv_ds_a, Scalar inv_ds_b)
+{
+
+
+
+
+
+
+    Scalar fac = 1.0 / 720.0;
+    Scalar coefficients[] = {0.0 * fac, 270.0 * fac, -27.0 * fac, 2.0 * fac};
+
+
+
+
+
+
+    Scalar res = 0.0;
+
+    for (int i = 1; i <= ((6) / 2); ++i) {
+        res += coefficients[i] *
+               (pencil_a[((6) / 2) + i] + pencil_a[((6) / 2) - i] - pencil_b[((6) / 2) + i] - pencil_b[((6) / 2) - i]);
+    }
+    return res * inv_ds_a * inv_ds_b;
+}
+
+Scalar
+derx(int3 vertexIdx, in ScalarField arr)
+{
+    Scalar pencil[(6) + 1];
+
+    for (int offset = 0; offset < (6) + 1; ++offset) {
+        pencil[offset] = arr[vertexIdx.x + offset - (6) / 2, vertexIdx.y, vertexIdx.z];
+    }
+
+    return first_derivative(pencil, AC_inv_dsx);
+}
+
+Scalar
+derxx(int3 vertexIdx, in ScalarField arr)
+{
+    Scalar pencil[(6) + 1];
+
+    for (int offset = 0; offset < (6) + 1; ++offset) {
+        pencil[offset] = arr[vertexIdx.x + offset - (6) / 2, vertexIdx.y, vertexIdx.z];
+    }
+
+    return second_derivative(pencil, AC_inv_dsx);
+}
+
+Scalar
+derxy(int3 vertexIdx, in ScalarField arr)
+{
+    Scalar pencil_a[(6) + 1];
+
+    for (int offset = 0; offset < (6) + 1; ++offset) {
+        pencil_a[offset] = arr[vertexIdx.x + offset - (6) / 2,
+                               vertexIdx.y + offset - (6) / 2, vertexIdx.z];
+    }
+
+    Scalar pencil_b[(6) + 1];
+
+    for (int offset = 0; offset < (6) + 1; ++offset) {
+        pencil_b[offset] = arr[vertexIdx.x + offset - (6) / 2,
+                               vertexIdx.y + (6) / 2 - offset, vertexIdx.z];
+    }
+
+    return cross_derivative(pencil_a, pencil_b, AC_inv_dsx, AC_inv_dsy);
+}
+
+Scalar
+derxz(int3 vertexIdx, in ScalarField arr)
+{
+    Scalar pencil_a[(6) + 1];
+
+    for (int offset = 0; offset < (6) + 1; ++offset) {
+        pencil_a[offset] = arr[vertexIdx.x + offset - (6) / 2, vertexIdx.y,
+                               vertexIdx.z + offset - (6) / 2];
+    }
+
+    Scalar pencil_b[(6) + 1];
+    for (int offset = 0; offset < (6) + 1; ++offset) {
+        pencil_b[offset] = arr[vertexIdx.x + offset - (6) / 2, vertexIdx.y,
+                               vertexIdx.z + (6) / 2 - offset];
+    }
+
+    return cross_derivative(pencil_a, pencil_b, AC_inv_dsx, AC_inv_dsz);
+}
+
+Scalar
+dery(int3 vertexIdx, in ScalarField arr)
+{
+    Scalar pencil[(6) + 1];
+
+    for (int offset = 0; offset < (6) + 1; ++offset) {
+        pencil[offset] = arr[vertexIdx.x, vertexIdx.y + offset - (6) / 2, vertexIdx.z];
+    }
+
+    return first_derivative(pencil, AC_inv_dsy);
+}
+
+Scalar
+deryy(int3 vertexIdx, in ScalarField arr)
+{
+    Scalar pencil[(6) + 1];
+
+    for (int offset = 0; offset < (6) + 1; ++offset) {
+        pencil[offset] = arr[vertexIdx.x, vertexIdx.y + offset - (6) / 2, vertexIdx.z];
+    }
+
+    return second_derivative(pencil, AC_inv_dsy);
+}
+
+Scalar
+deryz(int3 vertexIdx, in ScalarField arr)
+{
+    Scalar pencil_a[(6) + 1];
+
+    for (int offset = 0; offset < (6) + 1; ++offset) {
+        pencil_a[offset] = arr[vertexIdx.x, vertexIdx.y + offset - (6) / 2,
+                               vertexIdx.z + offset - (6) / 2];
+    }
+
+    Scalar pencil_b[(6) + 1];
+
+    for (int offset = 0; offset < (6) + 1; ++offset) {
+        pencil_b[offset] = arr[vertexIdx.x, vertexIdx.y + offset - (6) / 2,
+                               vertexIdx.z + (6) / 2 - offset];
+    }
+
+    return cross_derivative(pencil_a, pencil_b, AC_inv_dsy, AC_inv_dsz);
+}
+
+Scalar
+derz(int3 vertexIdx, in ScalarField arr)
+{
+    Scalar pencil[(6) + 1];
+
+    for (int offset = 0; offset < (6) + 1; ++offset) {
+        pencil[offset] = arr[vertexIdx.x, vertexIdx.y, vertexIdx.z + offset - (6) / 2];
+    }
+
+    return first_derivative(pencil, AC_inv_dsz);
+}
+
+Scalar
+derzz(int3 vertexIdx, in ScalarField arr)
+{
+    Scalar pencil[(6) + 1];
+
+    for (int offset = 0; offset < (6) + 1; ++offset) {
+        pencil[offset] = arr[vertexIdx.x, vertexIdx.y, vertexIdx.z + offset - (6) / 2];
+    }
+
+    return second_derivative(pencil, AC_inv_dsz);
+}
+
+Preprocessed Scalar
+value(in ScalarField vertex)
+{
+    return vertex[vertexIdx];
+}
+
+Device Vector
+value(in VectorField uu)
+{
+    return (Vector){value(uu.x), value(uu.y), value(uu.z)};
+}
+
+Preprocessed Vector
+gradient(in ScalarField vertex)
+{
+    assert(AC_dsx > 0);
+    assert(AC_dsy > 0);
+    assert(AC_dsz > 0);
+
+    assert(AC_inv_dsx > 0);
+    assert(AC_inv_dsy > 0);
+    assert(AC_inv_dsz > 0);
+
+    return (Vector){derx(vertexIdx, vertex), dery(vertexIdx, vertex), derz(vertexIdx, vertex)};
+}
+
+Preprocessed Matrix
+hessian(in ScalarField vertex)
+{
+    assert(AC_dsx > 0);
+    assert(AC_dsy > 0);
+    assert(AC_dsz > 0);
+
+    assert(AC_inv_dsx > 0);
+    assert(AC_inv_dsy > 0);
+    assert(AC_inv_dsz > 0);
+
+    Matrix mat;
+
+    mat.row[0] = (Vector){derxx(vertexIdx, vertex), derxy(vertexIdx, vertex),
+                          derxz(vertexIdx, vertex)};
+    mat.row[1] = (Vector){mat.row[0].y, deryy(vertexIdx, vertex), deryz(vertexIdx, vertex)};
+    mat.row[2] = (Vector){mat.row[0].z, mat.row[1].z, derzz(vertexIdx, vertex)};
+
+    return mat;
+}
+
+
+
+Device Scalar
+laplace(in ScalarField data)
+{
+    return hessian(data).row[0].x + hessian(data).row[1].y + hessian(data).row[2].z;
+}
+
+Device Scalar
+divergence(in VectorField vec)
+{
+    return gradient(vec.x).x + gradient(vec.y).y + gradient(vec.z).z;
+}
+
+Device Vector
+laplace_vec(in VectorField vec)
+{
+    return (Vector){laplace(vec.x), laplace(vec.y), laplace(vec.z)};
+}
+
+Device Vector
+curl(in VectorField vec)
+{
+    return (Vector){gradient(vec.z).y - gradient(vec.y).z, gradient(vec.x).z - gradient(vec.z).x,
+                    gradient(vec.y).x - gradient(vec.x).y};
+}
+
+Device Vector
+gradient_of_divergence(in VectorField vec)
+{
+    return (Vector){hessian(vec.x).row[0].x + hessian(vec.y).row[0].y + hessian(vec.z).row[0].z,
+                    hessian(vec.x).row[1].x + hessian(vec.y).row[1].y + hessian(vec.z).row[1].z,
+                    hessian(vec.x).row[2].x + hessian(vec.y).row[2].y + hessian(vec.z).row[2].z};
+}
+
+
+Device Matrix
+stress_tensor(in VectorField vec)
+{
+    Matrix S;
+
+    S.row[0].x = (2.0 / 3.0) * gradient(vec.x).x -
+                 (1.0 / 3.0) * (gradient(vec.y).y + gradient(vec.z).z);
+    S.row[0].y = (1.0 / 2.0) * (gradient(vec.x).y + gradient(vec.y).x);
+    S.row[0].z = (1.0 / 2.0) * (gradient(vec.x).z + gradient(vec.z).x);
+
+    S.row[1].y = (2.0 / 3.0) * gradient(vec.y).y -
+                 (1.0 / 3.0) * (gradient(vec.x).x + gradient(vec.z).z);
+
+    S.row[1].z = (1.0 / 2.0) * (gradient(vec.y).z + gradient(vec.z).y);
+
+    S.row[2].z = (2.0 / 3.0) * gradient(vec.z).z -
+                 (1.0 / 3.0) * (gradient(vec.x).x + gradient(vec.y).y);
+
+    S.row[1].x = S.row[0].y;
+    S.row[2].x = S.row[0].z;
+    S.row[2].y = S.row[1].z;
+
+    return S;
+}
+
+Device Scalar
+contract(const Matrix mat)
+{
+    Scalar res = 0;
+
+    for (int i = 0; i < 3; ++i) {
+        res += dot(mat.row[i], mat.row[i]);
+    }
+
+    return res;
+}
+
+
+
+Device Scalar
+length(const Vector vec)
+{
+    return sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+}
+
+Device Scalar
+reciprocal_len(const Vector vec)
+{
+    return rsqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+}
+
+Device Vector
+normalized(const Vector vec)
+{
+    const Scalar inv_len = reciprocal_len(vec);
+    return inv_len * vec;
+}
+
+
+uniform int AC_max_steps;
+uniform int AC_save_steps;
+uniform int AC_bin_steps;
+uniform int AC_start_step;
+
+
+uniform Scalar AC_max_time;
+
+uniform Scalar AC_dsmin;
+
+uniform Scalar AC_xlen;
+uniform Scalar AC_ylen;
+uniform Scalar AC_zlen;
+uniform Scalar AC_xorig;
+uniform Scalar AC_yorig;
+uniform Scalar AC_zorig;
+
+uniform Scalar AC_unit_density;
+uniform Scalar AC_unit_velocity;
+uniform Scalar AC_unit_length;
+uniform Scalar AC_unit_magnetic;
+
+uniform Scalar AC_star_pos_x;
+uniform Scalar AC_star_pos_y;
+uniform Scalar AC_star_pos_z;
+uniform Scalar AC_M_star;
+
+uniform Scalar AC_sink_pos_x;
+uniform Scalar AC_sink_pos_y;
+uniform Scalar AC_sink_pos_z;
+uniform Scalar AC_M_sink;
+uniform Scalar AC_M_sink_init;
+uniform Scalar AC_M_sink_Msun;
+uniform Scalar AC_soft;
+uniform Scalar AC_accretion_range;
+uniform Scalar AC_switch_accretion;
+
+uniform Scalar AC_cdt;
+uniform Scalar AC_cdtv;
+uniform Scalar AC_cdts;
+uniform Scalar AC_nu_visc;
+uniform Scalar AC_cs_sound = 1.0;
+uniform Scalar AC_eta;
+uniform Scalar AC_mu0;
+uniform Scalar AC_cp_sound;
+uniform Scalar AC_gamma;
+uniform Scalar AC_cv_sound;
+uniform Scalar AC_lnT0;
+uniform Scalar AC_lnrho0;
+uniform Scalar AC_zeta;
+uniform Scalar AC_trans;
+uniform Scalar AC_nu_shock;
+
+uniform Scalar AC_bin_save_t;
+
+uniform Scalar AC_ampl_lnrho;
+uniform Scalar AC_ampl_uu;
+uniform Scalar AC_angl_uu;
+uniform Scalar AC_lnrho_edge;
+uniform Scalar AC_lnrho_out;
+uniform Scalar AC_ampl_aa;
+uniform Scalar AC_init_k_wave;
+uniform Scalar AC_init_sigma_hel;
+
+uniform Scalar AC_forcing_magnitude;
+uniform Scalar AC_relhel;
+uniform Scalar AC_kmin;
+uniform Scalar AC_kmax;
+
+uniform Scalar AC_forcing_phase;
+uniform Scalar AC_k_forcex;
+uniform Scalar AC_k_forcey;
+uniform Scalar AC_k_forcez;
+uniform Scalar AC_kaver;
+uniform Scalar AC_ff_hel_rex;
+uniform Scalar AC_ff_hel_rey;
+uniform Scalar AC_ff_hel_rez;
+uniform Scalar AC_ff_hel_imx;
+uniform Scalar AC_ff_hel_imy;
+uniform Scalar AC_ff_hel_imz;
+
+uniform Scalar AC_G_const;
+uniform Scalar AC_GM_star;
+uniform Scalar AC_unit_mass;
+uniform Scalar AC_sq2GM_star;
+uniform Scalar AC_cs2_sound = AC_cs_sound * AC_cs_sound;
+
+uniform ScalarField VTXBUF_LNRHO;
+uniform ScalarField VTXBUF_UUX;
+uniform ScalarField VTXBUF_UUY;
+uniform ScalarField VTXBUF_UUZ;
+
+Preprocessed Scalar
+der6x_upwd(in ScalarField vertex)
+{
+    Scalar inv_ds = AC_inv_dsx;
+
+    return (Scalar){(1.0 / 60.0) * inv_ds *
+                    (-20.0 * vertex[vertexIdx.x, vertexIdx.y, vertexIdx.z] +
+                     15.0 * (vertex[vertexIdx.x + 1, vertexIdx.y, vertexIdx.z] +
+                             vertex[vertexIdx.x - 1, vertexIdx.y, vertexIdx.z]) -
+                     6.0 * (vertex[vertexIdx.x + 2, vertexIdx.y, vertexIdx.z] +
+                            vertex[vertexIdx.x - 2, vertexIdx.y, vertexIdx.z]) +
+                     vertex[vertexIdx.x + 3, vertexIdx.y, vertexIdx.z] +
+                     vertex[vertexIdx.x - 3, vertexIdx.y, vertexIdx.z])};
+}
+
+Preprocessed Scalar
+der6y_upwd(in ScalarField vertex)
+{
+    Scalar inv_ds = AC_inv_dsy;
+
+    return (Scalar){(1.0 / 60.0) * inv_ds *
+                    (-20.0 * vertex[vertexIdx.x, vertexIdx.y, vertexIdx.z] +
+                     15.0 * (vertex[vertexIdx.x, vertexIdx.y + 1, vertexIdx.z] +
+                             vertex[vertexIdx.x, vertexIdx.y - 1, vertexIdx.z]) -
+                     6.0 * (vertex[vertexIdx.x, vertexIdx.y + 2, vertexIdx.z] +
+                            vertex[vertexIdx.x, vertexIdx.y - 2, vertexIdx.z]) +
+                     vertex[vertexIdx.x, vertexIdx.y + 3, vertexIdx.z] +
+                     vertex[vertexIdx.x, vertexIdx.y - 3, vertexIdx.z])};
+}
+
+Preprocessed Scalar
+der6z_upwd(in ScalarField vertex)
+{
+    Scalar inv_ds = AC_inv_dsz;
+
+    return (Scalar){(1.0 / 60.0) * inv_ds *
+                    (-20.0 * vertex[vertexIdx.x, vertexIdx.y, vertexIdx.z] +
+                     15.0 * (vertex[vertexIdx.x, vertexIdx.y, vertexIdx.z + 1] +
+                             vertex[vertexIdx.x, vertexIdx.y, vertexIdx.z - 1]) -
+                     6.0 * (vertex[vertexIdx.x, vertexIdx.y, vertexIdx.z + 2] +
+                            vertex[vertexIdx.x, vertexIdx.y, vertexIdx.z - 2]) +
+                     vertex[vertexIdx.x, vertexIdx.y, vertexIdx.z + 3] +
+                     vertex[vertexIdx.x, vertexIdx.y, vertexIdx.z - 3])};
+}
+
+
+
+
+Device Scalar
+upwd_der6(in VectorField uu, in ScalarField lnrho)
+{
+    Scalar uux = fabs(value(uu).x);
+    Scalar uuy = fabs(value(uu).y);
+    Scalar uuz = fabs(value(uu).z);
+    return (Scalar){uux * der6x_upwd(lnrho) + uuy * der6y_upwd(lnrho) + uuz * der6z_upwd(lnrho)};
+}
+
+
+Device Matrix
+gradients(in VectorField uu)
+{
+    return (Matrix){gradient(uu.x), gradient(uu.y), gradient(uu.z)};
+}
+
+Device Scalar
+continuity(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar dt)
+{
+    return -dot(value(uu), gradient(lnrho))
+
+
+           + upwd_der6(uu, lnrho)
+
+
+
+
+           - divergence(uu);
+}
+
+Device Vector
+momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar dt)
+{
+    Vector mom;
+
+    const Matrix S = stress_tensor(uu);
+
+
+
+    mom = -mul(gradients(uu), value(uu)) - AC_cs2_sound * gradient(lnrho) +
+          AC_nu_visc * (laplace_vec(uu) + (1.0 / 3.0) * gradient_of_divergence(uu) +
+                        2.0 * mul(S, gradient(lnrho))) +
+          AC_zeta * gradient_of_divergence(uu)
+
+        ;
+
+
+
+
+
+
+    return mom;
+}
+
+
+Device Vector
+induction(in VectorField uu, in VectorField aa)
+{
+
+
+
+
+    const Vector B = curl(aa);
+
+
+    const Vector lap = laplace_vec(aa);
+
+
+
+
+    const Vector ind = cross(value(uu), B) + AC_eta * lap;
+
+    return ind;
+}
+
+Device Vector
+simple_vortex_forcing(Vector a, Vector b, Scalar magnitude)
+{
+    int accretion_switch = AC_switch_accretion;
+
+    if (accretion_switch == 0) {
+        return magnitude * cross(normalized(b - a), (Vector){0, 0, 1});
+    }
+    else {
+        return (Vector){0, 0, 0};
+    }
+}
+Device Vector
+simple_outward_flow_forcing(Vector a, Vector b, Scalar magnitude)
+{
+    int accretion_switch = AC_switch_accretion;
+    if (accretion_switch == 0) {
+        return magnitude * (1 / length(b - a)) * normalized(b - a);
+    }
+    else {
+        return (Vector){0, 0, 0};
+    }
+}
+
+
+
+Device Vector
+helical_forcing(Scalar magnitude, Vector k_force, Vector xx, Vector ff_re, Vector ff_im, Scalar phi)
+{
+
+    xx.x = xx.x * (2.0 * M_PI / (AC_dsx * globalGridN.x));
+    xx.y = xx.y * (2.0 * M_PI / (AC_dsy * globalGridN.y));
+    xx.z = xx.z * (2.0 * M_PI / (AC_dsz * globalGridN.z));
+
+    Scalar cos_phi = cos(phi);
+    Scalar sin_phi = sin(phi);
+    Scalar cos_k_dot_x = cos(dot(k_force, xx));
+    Scalar sin_k_dot_x = sin(dot(k_force, xx));
+
+
+
+    Scalar real_comp_phase = cos_k_dot_x * cos_phi - sin_k_dot_x * sin_phi;
+    Scalar imag_comp_phase = cos_k_dot_x * sin_phi + sin_k_dot_x * cos_phi;
+
+    Vector force = (Vector){ff_re.x * real_comp_phase - ff_im.x * imag_comp_phase,
+                            ff_re.y * real_comp_phase - ff_im.y * imag_comp_phase,
+                            ff_re.z * real_comp_phase - ff_im.z * imag_comp_phase};
+
+    return force;
+}
+
+Device Vector
+forcing(int3 globalVertexIdx, Scalar dt)
+{
+    int accretion_switch = AC_switch_accretion;
+    if (accretion_switch == 0) {
+
+        Vector a = 0.5 * (Vector){globalGridN.x * AC_dsx, globalGridN.y * AC_dsy,
+                                  globalGridN.z * AC_dsz};
+        Vector xx = (Vector){(globalVertexIdx.x - AC_nx_min) * AC_dsx,
+                             (globalVertexIdx.y - AC_ny_min) * AC_dsy,
+                             (globalVertexIdx.z - AC_nz_min) * AC_dsz};
+        const Scalar cs2 = AC_cs2_sound;
+        const Scalar cs = sqrt(cs2);
+
+
+        Scalar magnitude = AC_forcing_magnitude;
+        Scalar phase = AC_forcing_phase;
+        Vector k_force = (Vector){AC_k_forcex, AC_k_forcey, AC_k_forcez};
+        Vector ff_re = (Vector){AC_ff_hel_rex, AC_ff_hel_rey, AC_ff_hel_rez};
+        Vector ff_im = (Vector){AC_ff_hel_imx, AC_ff_hel_imy, AC_ff_hel_imz};
+
+
+
+
+        Vector force = helical_forcing(magnitude, k_force, xx, ff_re, ff_im, phase);
+
+
+        const Scalar NN = cs * magnitude * sqrt(AC_kaver * cs);
+
+        force.x = sqrt(dt) * NN * force.x;
+        force.y = sqrt(dt) * NN * force.y;
+        force.z = sqrt(dt) * NN * force.z;
+
+        if (is_valid(force)) {
+            return force;
+        }
+        else {
+            return (Vector){0, 0, 0};
+        }
+    }
+    else {
+        return (Vector){0, 0, 0};
+    }
+}
+
+in ScalarField lnrho(VTXBUF_LNRHO);
+out ScalarField out_lnrho(VTXBUF_LNRHO);
+
+in VectorField uu(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+out VectorField out_uu(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
+
+Kernel void
+solve()
+{
+    Scalar dt = AC_dt;
+    out_lnrho = rk3(out_lnrho, lnrho, continuity(globalVertexIdx, uu, lnrho, dt), dt);
+
+    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, dt), dt);
+
+
+
+    if (step_number == 2) {
+        out_uu = out_uu + forcing(globalVertexIdx, dt);
+    }
+
+}

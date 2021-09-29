@@ -1,0 +1,101 @@
+typedef char __nv_bool;
+# 209 "/appl/spack/install-tree/gcc-4.8.5/gcc-9.1.0-vpjht2/lib/gcc/x86_64-pc-linux-gnu/9.1.0/include/stddef.h" 3
+typedef unsigned long size_t;
+#include "crt/device_runtime.h"
+# 254 "/appl/spack/install-tree/gcc-4.8.5/gcc-9.1.0-vpjht2/include/c++/9.1.0/x86_64-pc-linux-gnu/bits/c++config.h" 3
+typedef unsigned long _ZSt6size_t;
+# 75 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaMalloc(void **, size_t);
+# 80 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaFuncGetAttributes(struct cudaFuncAttributes *, const void *);
+# 85 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaDeviceGetAttribute(int *, enum cudaDeviceAttr, int);
+# 90 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaGetDevice(int *);
+# 95 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaOccupancyMaxActiveBlocksPerMultiprocessor(int *, const void *, int, size_t);
+# 100 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int *, const void *, int, size_t, unsigned);
+#include "common_functions.h"
+# 75 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaMalloc(
+# 75 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+void **p, 
+# 75 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+size_t s){
+# 76 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+{
+# 77 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 78 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+}}
+# 80 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaFuncGetAttributes(
+# 80 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+struct cudaFuncAttributes *p, 
+# 80 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+const void *c){
+# 81 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+{
+# 82 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 83 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+}}
+# 85 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaDeviceGetAttribute(
+# 85 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int *value, 
+# 85 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+enum cudaDeviceAttr attr, 
+# 85 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int device){
+# 86 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+{
+# 87 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 88 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+}}
+# 90 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaGetDevice(
+# 90 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int *device){
+# 91 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+{
+# 92 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 93 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+}}
+# 95 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+# 95 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int *numBlocks, 
+# 95 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+const void *func, 
+# 95 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int blockSize, 
+# 95 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+size_t dynamicSmemSize){
+# 96 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+{
+# 97 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 98 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+}}
+# 100 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(
+# 100 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int *numBlocks, 
+# 100 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+const void *func, 
+# 100 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+int blockSize, 
+# 100 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+size_t dynamicSmemSize, 
+# 100 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+unsigned flags){
+# 101 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+{
+# 102 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 103 "/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/bin/../targets/x86_64-linux/include/cuda_device_runtime_api.h"
+}}

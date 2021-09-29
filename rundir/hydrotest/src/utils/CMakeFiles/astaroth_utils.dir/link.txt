@@ -1,0 +1,2 @@
+/usr/bin/ar qc libastaroth_utils.a CMakeFiles/astaroth_utils.dir/config_loader.c.o CMakeFiles/astaroth_utils.dir/memory.c.o CMakeFiles/astaroth_utils.dir/verification.c.o CMakeFiles/astaroth_utils.dir/modelsolver.c.o CMakeFiles/astaroth_utils.dir/modelreduce.c.o
+/usr/bin/ranlib libastaroth_utils.a

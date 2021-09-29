@@ -1,0 +1,1 @@
+GEN_KERNEL_FUNC_DECL(solve)

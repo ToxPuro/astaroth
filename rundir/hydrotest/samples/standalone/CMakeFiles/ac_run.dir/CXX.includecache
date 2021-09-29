@@ -1,0 +1,32 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../../src/common/errchk.h
+stdbool.h
+-
+stdio.h
+-
+stdlib.h
+-
+time.h
+-
+
+/users/julianlagg/astaroth/samples/standalone/main.cc
+stdio.h
+-
+stdlib.h
+-
+string.h
+-
+run.h
+/users/julianlagg/astaroth/samples/standalone/run.h
+errchk.h
+/users/julianlagg/astaroth/samples/standalone/errchk.h
+
+/users/julianlagg/astaroth/samples/standalone/run.h
+

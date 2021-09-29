@@ -1,0 +1,2 @@
+/usr/bin/ar qc libastaroth_kernels.a CMakeFiles/astaroth_kernels.dir/kernels.cu.o
+/usr/bin/ranlib libastaroth_kernels.a

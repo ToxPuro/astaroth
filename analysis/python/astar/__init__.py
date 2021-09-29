@@ -21,4 +21,7 @@
 # compatibility towards the future.
 
 import numpy as np 
-import pylab as plt
+try:
+    import pylab as plt
+except:
+    import matplotlib.pyplot as plt

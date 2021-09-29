@@ -1,0 +1,1 @@
+/appl/spack/install-tree/gcc-4.8.5/gcc-9.1.0-vpjht2/bin/gcc  -DOMPI_SKIP_MPICXX -Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow  -Wno-error=sign-compare -O3 -DNDEBUG CMakeFiles/acc.dir/code_generator.c.o CMakeFiles/acc.dir/acc.tab.c.o CMakeFiles/acc.dir/acc.yy.c.o -o ../acc 
