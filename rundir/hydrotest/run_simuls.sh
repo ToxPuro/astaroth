@@ -4,17 +4,16 @@ set -e # just soldier on, some runs will fail...
 SRC=/users/julianlagg/astaroth/rundir/hydrotest
 
 start_time=`date +%s`
-j=0
-for i in {1..20}
+j=1
+for i in 1
 do
-    for f in 0.01 0.02 0.04 0.05 0.06 0.09 0.1 0.11 0.12
+    for f in $(python -c "import numpy as np; print(' '.join(list(map(str,np.linspace(0.01,0.2,15)))))") 
     do
-        for v in 0.002 0.003 0.005 0.007 0.008
+        for v in $(python -c "import numpy as np; print(' '.join(list(map(str,np.linspace(0.0001,0.02,15)))))") 
         do
             rm -rf /scratch/project_2000403/lyapunov/*
-            srun --account=Project_2000403 --gres=gpu:v100:4 --mem=24000 -t 00:15:00 -p gpu python3 $SRC/simul.py --forcing=$f --visc=$v --hel=1.0 --ana_dir_name=sample_$j --fixedseed=500$i
+            srun --account=Project_2000403 --gres=gpu:v100:4 --mem=24000 -t 00:05:00 -p gputest python3 $SRC/simul.py --forcing=$f --visc=$v --hel=1.0 --ana_dir_name=old_wave_$j --fixedseed=500$j
             sleep 1
-            echo i=$i
             let "j+=1"
         done
     done

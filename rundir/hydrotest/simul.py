@@ -18,11 +18,14 @@ parser.add_argument("--visc", type=float)
 parser.add_argument("--fixedseed", type=int, default=123456)
 parser.add_argument("--ana_dir_name", type=str)
 
+#todo: make this independent of the scratch and make the pipe_dir variable in some way
+
 args = parser.parse_args()
 
 adj_conf_path = "/users/julianlagg/astaroth/rundir/adjustable.conf"
 astar_exec = "/users/julianlagg/astaroth/rundir/hydrotest/ac_run"
 working_scratch_dir = "/scratch/project_2000403/lyapunov"
+pipe_dir = "/users/julianlagg"
 
 
 random.seed(sum([r*2**(i*8) for i,r in enumerate(os.getrandom(4))]))
@@ -72,8 +75,8 @@ core_opts = {
     "viscosity" : args.visc,
     "forcing_magnitude" : args.forcing,
     "relhel" : args.hel,
-    "forcing_kmin" : 2.8,
-    "forcing_kmax" : 3.2,
+    "forcing_kmin" : 0.8,
+    "forcing_kmax" : 1.2,
     "nx" : 128
 }
 
@@ -94,11 +97,11 @@ with open("core_options.json", "w") as f:
     json.dump(core_opts, f)
 
 n_runs = 5
-baserun_len = 10000
+baserun_len = 5000
 baserun_dump_freq = baserun_len
-perturbation_len = 5
+perturbation_len = 1
 perturbation_dump_freq = 1
-final_len = 30
+final_len = 20
 final_dump_freq = 5
 
 with open("timebounds.json", "w") as f:
@@ -122,7 +125,7 @@ with open("timesteps.json", "w") as f:
     p["first_perturb"] = next_int(baserun_len, perturbation_dump_freq)
     p["first_final"] = next_int(baserun_len+perturbation_len, final_dump_freq)
     
-    # todo: this is actually WRONG for certain combinations of freqs...
+    # todo: this is actually WRONG for certain combinations of freqs, or is it?
     perturb_steps = range(p["first_perturb"], p["first_perturb"]+perturbation_len, perturbation_dump_freq)
 
     final_steps = range(p["first_final"], p["first_final"]+final_len, final_dump_freq)
@@ -142,7 +145,7 @@ final_run_op = {**core_opts,
 "start_step": baserun_len+perturbation_len, "steps": final_len+1, "bin_steps": final_len}
 
 def run_ac(name, opts, seed, analyze_freq=-1,
- in_dir =None, silent=False, timestep_file_path=None, dictate_timestep=None):
+ in_dir =None, silent=False, timestep_file_path=None, dictate_timestep=None, pipe_path=pipe_dir):
 
     if in_dir is not None:
         old_dir = os.getcwd()
@@ -172,13 +175,15 @@ def run_ac(name, opts, seed, analyze_freq=-1,
     role = "write" if dictate_timestep else "read"
     ts_cmd = f" --{role}_timestep_file {timestep_file_path} " if timestep_file_path else ""
 
+    pipe_cmd = " --pipe_dir " + pipe_path
+
     make_adjusted_conf(opts, conf)
     print(f"running in dir {os.getcwd()} with seed {seed}")
     if silent:
         ret_code = os.system(
             f"bash -c" +
             f" '{astar_exec} --seed {seed} --analyze_steps {analyze_freq}" +
-            ts_cmd +
+            ts_cmd + pipe_cmd +
             f" -s -c {conf} " + 
             f"> {stdout} 2> {stderr} '"
         )
@@ -186,7 +191,7 @@ def run_ac(name, opts, seed, analyze_freq=-1,
         ret_code = os.system(
             f"bash -c" +  
             f" '{astar_exec} --seed {seed} --analyze_steps {analyze_freq}" +
-            ts_cmd + 
+            ts_cmd +  pipe_cmd +
             f" -s -c {conf} " + 
             f"> >(tee {stdout}) 2> >(tee {stderr} >&2)' "
         )
@@ -251,7 +256,7 @@ with open("analysis_options.json", "w") as f:
 # start analysis server (dirty for now)
 print("starting server")
 with open("server_stdout.txt", "w") as f, open("server_stderr.txt", "w") as e:
-    server_process = subprocess.Popen(["python3", "/users/julianlagg/astaroth/rundir/hydrotest/variance_live_analyzer.py"], stdout=f, stderr=e)
+    server_process = subprocess.Popen(["python3", "/users/julianlagg/astaroth/rundir/hydrotest/variance_live_analyzer.py", "--pipe_dir", pipe_dir], stdout=f, stderr=e)
 from time import sleep
 sleep(2)
 print("started server")

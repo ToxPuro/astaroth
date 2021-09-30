@@ -1,1 +1,1 @@
-{"num_simuls": 5, "first_perturb": 501, "first_final": 510, "timesteps": [501, 502, 503, 504, 505, 510, 515, 520, 525]}
+{"num_simuls": 5, "first_perturb": 10001, "first_final": 10010, "timesteps": [10001, 10002, 10003, 10004, 10005, 10010, 10015, 10020, 10025, 10030, 10035]}

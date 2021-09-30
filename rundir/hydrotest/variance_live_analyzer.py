@@ -7,11 +7,17 @@ import json
 import csv
 import os
 import logging
+import argparse
+import sys
 
 
 try: # wrap all code in a try-catch, because astaroth-pipe breaks exception-handling for some reason
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pipe_dir", type=str)
+    args = parser.parse_args(sys.argv[1:])
+
     print("doing init")
-    ap.init_astaroth_pipe()
+    ap.init_astaroth_pipe(args.pipe_dir)
     print("done init")
 
 

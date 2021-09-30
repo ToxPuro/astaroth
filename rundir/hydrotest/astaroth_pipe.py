@@ -5,10 +5,11 @@ import numpy as np
 from multiprocessing import Process
 from time import sleep
 
-data_fname = "/users/julianlagg/pipe2py_data"
-status_fname = "/users/julianlagg/pipe2py_status"
-internal_start_fname = "/users/julianlagg/pipe2py_internal_start"
-internal_fin_fname = "/users/julianlagg/pipe2py_internal_fin"
+
+data_fname = "pipe2py_data"
+status_fname = "pipe2py_status"
+internal_start_fname = "pipe2py_internal_start"
+internal_fin_fname = "pipe2py_internal_fin"
 
 internal_start_msg = b"start"
 internal_finish_msg = b"fin"
@@ -34,10 +35,15 @@ def test_output():
     print("stderr visible 2  ???", file=sys.stderr)
     print("stdout visible 2 ??")
 
-def init_astaroth_pipe():
+def init_astaroth_pipe(pipe_folder):
 
-
+    global data_fname, status_fname, internal_fin_fname, internal_start_fname
+    data_fname = pipe_folder + "/" + data_fname
+    status_fname = pipe_folder + "/" + status_fname 
+    internal_fin_fname = pipe_folder + "/" + internal_fin_fname 
+    internal_start_fname = pipe_folder + "/" + internal_start_fname 
     global data_fd, status_fd, listener, internal_start_fd, internal_fin_fd
+
 
     os.system(f"rm -f {data_fname} {status_fname} {internal_start_fname} {internal_fin_fname}")
 

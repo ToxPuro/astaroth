@@ -44,8 +44,8 @@
 #include <cassert>
 #include <fcntl.h>
 
-#define FIFO_DATA_PATH "/users/julianlagg/pipe2py_data"
-#define FIFO_STATUS_PATH "/users/julianlagg/pipe2py_status"
+#define FIFO_DATA_PATH "/pipe2py_data"
+#define FIFO_STATUS_PATH "/pipe2py_status"
 
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
 #define LFORCING (1)
@@ -254,11 +254,21 @@ send_velocity_field(const AcMesh& save_mesh, const int timestep, const AcReal ph
 }
 
 static void
-init_pipe2py(int *data_fd, int *status_fd){
+init_pipe2py(int *data_fd, int *status_fd, const char*pipe_folder){
 
+    char * datapath= (char*)calloc(strlen(pipe_folder) + strlen(FIFO_DATA_PATH)+ 1, sizeof(char));
+    datapath[0] = '\0'; //technically unnecessary I guess
+    strcat(datapath, pipe_folder);
+    strcat(datapath, FIFO_DATA_PATH);
+    *data_fd = open(datapath, O_WRONLY);
+    free(datapath);
 
-    *data_fd = open(FIFO_DATA_PATH, O_WRONLY);
-    *status_fd = open(FIFO_STATUS_PATH, O_RDONLY);
+    char * statuspath = (char*)calloc(strlen(pipe_folder)+strlen(FIFO_STATUS_PATH)+1, sizeof(char));
+    statuspath[0] = '\0'; //technically unnecessary I guess
+    strcat(statuspath, pipe_folder);
+    strcat(statuspath, FIFO_STATUS_PATH);
+    *status_fd = open(statuspath, O_RDONLY);
+    free(statuspath);
 
 }
 
@@ -554,7 +564,7 @@ print_diagnostics_device(const Device device, const int step, const AcReal dt, c
 
 int
 run_simulation(const char* config_path, int seed, const char* timestep_read_file_path,
-               const char* timestep_write_file_path, int analyze_steps)
+               const char* timestep_write_file_path, int analyze_steps, const char* pipe_dir)
 {
 
     fprintf(stderr, "STARTING simulation");
@@ -563,7 +573,7 @@ run_simulation(const char* config_path, int seed, const char* timestep_read_file
     int status_fd = -1;
 
     if (analyze_steps > 0) {
-        init_pipe2py(&data_fd, &status_fd);
+        init_pipe2py(&data_fd, &status_fd, pipe_dir);
     }
     /* Parse configs */
     AcMeshInfo mesh_info;
@@ -752,15 +762,20 @@ run_simulation(const char* config_path, int seed, const char* timestep_read_file
         const AcReal uref      = max(umax, uu_freefall);
 
         AcReal dt;
+        printf("getting timestep: ");
         if (timestep_read_file) {
             next_timestep_from_file(timestep_read_file, &dt);
+            printf("from file %lf", dt);
         }
         else {
             dt = host_timestep(uref, 0.0l, shock_max, mesh_info);
+            printf("calculated %lf", dt);
         }
         if (timestep_write_file) {
+            printf(" - recording it.");
             record_timestep(timestep_write_file, dt);
         }
+        printf("\n");
 #endif
 
 #if LFORCING
@@ -869,8 +884,12 @@ run_simulation(const char* config_path, int seed, const char* timestep_read_file
             fprintf(stderr, "now saving mesh\n");
             acBoundcondStepGBC(mesh_info);
             acStore(mesh);
-            fprintf(stderr, "NOW CALLING send_velocity_field");
+            fprintf(stderr, "NOW CALLING send_velocity_field\n");
+            printf("SEND velo-field for i=%d, real=%lf\n", i, t_step);
             send_velocity_field(*mesh, i, t_step, data_fd, status_fd);
+        }
+        else {
+            printf("NOT sending velo-fields for i=%d, real=%lf\n", i, t_step);
         }
 
         // End loop if max time reached.

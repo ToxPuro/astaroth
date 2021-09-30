@@ -97,6 +97,7 @@ typedef enum {
     WRITE_TIMESTEP_FILE,
     READ_TIMESTEP_FILE,
     ANALYZE_STEPS,
+    PIPE_DIR,
     NUM_OPTIONS,
 } OptionType;
 
@@ -159,12 +160,14 @@ main(int argc, char* argv[])
     options[WRITE_TIMESTEP_FILE] = createOption("--write_timestep_file", "-w", "record the timesteps used in this file");
     options[READ_TIMESTEP_FILE] = createOption("--read_timestep_file", "-f", "Use timesteps from this file (instead of calculating them on the fly)");
     options[ANALYZE_STEPS]      = createOption("--analyze_steps", "-a", "send every a-th timestep dump to be analyzed by a python server");
+    options[PIPE_DIR]           = createOption("--pipe_dir", "-p", "directory to use for communication pipes to the python process");
     // clang-format on
 
     int analyze_steps = -1;
     int seed = 312256655;
     char *write_timestep_file = NULL; // NULL is valid, meaning no recording
     char *read_timestep_file = NULL; // NULL is valid, meaning calculate the timesteps on the fly
+    char *pipe_dir = NULL; //NULL is invalid (except maybe if analyze_steps isnt used?)
 
     printf("there are %d values in argv, they are:\n", argc);
     for (int i=0; i<argc; i++) {
@@ -226,6 +229,16 @@ main(int argc, char* argv[])
                 }
                 i++;
                 break;
+            case PIPE_DIR:
+                if (i+1 < argc) {
+                    pipe_dir = strdup(argv[i+1]);
+                }
+                else {
+                    printf("Syntax error. Usage: --pipe_dir <dir_to_use>.\n");
+                    return EXIT_FAILURE;
+                }
+                i++;
+                break;
             case ANALYZE_STEPS:
                 if (i+1 < argc) {
                     analyze_steps = atoi(argv[i+1]);
@@ -263,7 +276,7 @@ main(int argc, char* argv[])
                 run_benchmark(config_path);
                 break;
             case SIMULATE:
-                run_simulation(config_path, seed, read_timestep_file, write_timestep_file, analyze_steps);
+                run_simulation(config_path, seed, read_timestep_file, write_timestep_file, analyze_steps, pipe_dir);
                 break;
             case RENDER:
                 run_renderer(config_path);
@@ -273,6 +286,7 @@ main(int argc, char* argv[])
             case READ_TIMESTEP_FILE:
             case ANALYZE_STEPS:
             case CONFIG:
+            case PIPE_DIR:
             case SEED:
                 ++i;
                 break;
