@@ -1,1 +1,1 @@
-{"save_steps": 25, "viscosity": 0.002, "forcing_magnitude": 0.01, "relhel": 1.0, "forcing_kmin": 2.8, "forcing_kmax": 3.2, "nx": 128, "ny": 128, "nz": 128, "dsx": 0.04908738521234052, "dsy": 0.04908738521234052, "dsz": 0.04908738521234052}
+{"save_steps": 25, "viscosity": 0.02, "forcing_magnitude": 0.0015, "relhel": 1.0, "forcing_kmin": 0.8, "forcing_kmax": 1.2, "nx": 128, "ny": 128, "nz": 128, "dsx": 0.04908738521234052, "dsy": 0.04908738521234052, "dsz": 0.04908738521234052}

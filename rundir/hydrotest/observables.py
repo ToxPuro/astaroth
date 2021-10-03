@@ -65,9 +65,9 @@ def calc_Re_real(u_rms, kf, nu):
     return u_rms / (kf*nu)
 
 
-def calc_Re_mesh(u_rms, dxyz, nu):
+def calc_Re_mesh(u_rms, kf, dxyz, nu):
 
-    return u_rms
+    return calc_Re_real(u_rms, kf, nu)*dxyz
 
 def calc_Mach(ux, uy, uz):
 

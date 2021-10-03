@@ -96,12 +96,12 @@ complete_nx(core_opts)
 with open("core_options.json", "w") as f:
     json.dump(core_opts, f)
 
-n_runs = 5
-baserun_len = 5000
+n_runs = 40
+baserun_len = 10000
 baserun_dump_freq = baserun_len
 perturbation_len = 1
 perturbation_dump_freq = 1
-final_len = 20
+final_len = 60
 final_dump_freq = 5
 
 with open("timebounds.json", "w") as f:
@@ -145,7 +145,7 @@ final_run_op = {**core_opts,
 "start_step": baserun_len+perturbation_len, "steps": final_len+1, "bin_steps": final_len}
 
 def run_ac(name, opts, seed, analyze_freq=-1,
- in_dir =None, silent=False, timestep_file_path=None, dictate_timestep=None, pipe_path=pipe_dir):
+ in_dir =None, silent=False, timestep_file_path=None, dictate_timestep=None, pipe_path=pipe_dir, use_gdb=False):
 
     if in_dir is not None:
         old_dir = os.getcwd()
@@ -177,12 +177,15 @@ def run_ac(name, opts, seed, analyze_freq=-1,
 
     pipe_cmd = " --pipe_dir " + pipe_path
 
+    gdb_cmd = " gdb -ex=r --args " if use_gdb else ""
+
     make_adjusted_conf(opts, conf)
     print(f"running in dir {os.getcwd()} with seed {seed}")
+    
     if silent:
         ret_code = os.system(
             f"bash -c" +
-            f" '{astar_exec} --seed {seed} --analyze_steps {analyze_freq}" +
+            f" ' {gdb_cmd} {astar_exec} --seed {seed} --analyze_steps {analyze_freq}" +
             ts_cmd + pipe_cmd +
             f" -s -c {conf} " + 
             f"> {stdout} 2> {stderr} '"
@@ -190,7 +193,7 @@ def run_ac(name, opts, seed, analyze_freq=-1,
     else:
         ret_code = os.system(
             f"bash -c" +  
-            f" '{astar_exec} --seed {seed} --analyze_steps {analyze_freq}" +
+            f" ' {gdb_cmd} {astar_exec} --seed {seed} --analyze_steps {analyze_freq}" +
             ts_cmd +  pipe_cmd +
             f" -s -c {conf} " + 
             f"> >(tee {stdout}) 2> >(tee {stderr} >&2)' "
@@ -275,7 +278,8 @@ for i in range(n_runs):
 
     print("==============now running perturbation")
     run_ac("perturbation", perturb_run_op, random.randrange(0,2**31), analyze_freq=perturbation_dump_freq,
-     in_dir=perturb_run_dir, timestep_file_path=os.path.abspath("perturb.ts"), dictate_timestep=timestep_dictate_perturb)
+     in_dir=perturb_run_dir, timestep_file_path=os.path.abspath("perturb.ts"), dictate_timestep=timestep_dictate_perturb,
+     )
     timestep_dictate_perturb = False
     print("=========perturbation ran somehow")
     perturbed_meshes = glob(f"{perturb_run_dir}/*{perturbation_len}.mesh")

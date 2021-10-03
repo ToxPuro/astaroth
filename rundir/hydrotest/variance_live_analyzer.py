@@ -99,7 +99,7 @@ try: # wrap all code in a try-catch, because astaroth-pipe breaks exception-hand
             urms_new = ob.calc_urms(*velos.values())
             mach_new = ob.calc_Mach(*velos.values())
             re_new = ob.calc_Re_real(urms_new, kf, nu)
-            re_mesh_new = ob.calc_Re_mesh(urms_new, dsxyz, nu)
+            re_mesh_new = ob.calc_Re_mesh(urms_new, kf, dsxyz, nu)
 
 
             ir[ts]["urms"].add(urms_new)
