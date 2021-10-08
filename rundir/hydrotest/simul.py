@@ -96,8 +96,8 @@ complete_nx(core_opts)
 with open("core_options.json", "w") as f:
     json.dump(core_opts, f)
 
-n_runs = 40
-baserun_len = 10000
+n_runs = 30
+baserun_len = 15000
 baserun_dump_freq = baserun_len
 perturbation_len = 1
 perturbation_dump_freq = 1
