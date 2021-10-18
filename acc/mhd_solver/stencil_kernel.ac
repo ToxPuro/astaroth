@@ -22,56 +22,57 @@
 // MV: flags in multiple places.  
 
 // MV: This did not work out because information is not tranmitted to the main program!
-#if LDENSITY
-uniform int AC_ldensity = 1;
-#else
-uniform int AC_ldensity = 0;
-#endif
-#if LHYDRO 
-uniform int AC_lhydro = 1;
-#else
-uniform int AC_lhydro = 0;
-#endif
-#if LMAGNETIC
-uniform int AC_lmagnetic = 1;
-#else
-uniform int AC_lmagnetic = 0;
-#endif
-#if LENTROPY 
-uniform int AC_lentropy = 1;
-#else
-uniform int AC_lentropy = 0;
-#endif
-#if LTEMPERATURE
-uniform int AC_ltempereture = 1;
-#else
-uniform int AC_ltempereture = 0;
-#endif
-#if LFORCING 
-uniform int AC_lforcing = 1;
-#else
-uniform int AC_lforcing = 0;
-#endif
-#if LUPWD 
-uniform int AC_lupwd = 1;
-#else
-uniform int AC_lupwd = 0;
-#endif
-#if LSINK 
-uniform int AC_lsink = 1;
-#else
-uniform int AC_lsink = 0;
-#endif
-#if LBFIELD 
-uniform int AC_lbfied = 1;
-#else
-uniform int AC_lbfied = 0;
-#endif
-#if LSHOCK 
-uniform int AC_lshock = 1;
-#else
-uniform int AC_lshock = 0;
-#endif
+// MV: COmmented out to remember the idea later 
+//#if LDENSITY
+//uniform int AC_ldensity = 1;
+//#else
+//uniform int AC_ldensity = 0;
+//#endif
+//#if LHYDRO 
+//uniform int AC_lhydro = 1;
+//#else
+//uniform int AC_lhydro = 0;
+//#endif
+//#if LMAGNETIC
+//uniform int AC_lmagnetic = 1;
+//#else
+//uniform int AC_lmagnetic = 0;
+//#endif
+//#if LENTROPY 
+//uniform int AC_lentropy = 1;
+//#else
+//uniform int AC_lentropy = 0;
+//#endif
+//#if LTEMPERATURE
+//uniform int AC_ltempereture = 1;
+//#else
+//uniform int AC_ltempereture = 0;
+//#endif
+//#if LFORCING 
+//uniform int AC_lforcing = 1;
+//#else
+//uniform int AC_lforcing = 0;
+//#endif
+//#if LUPWD 
+//uniform int AC_lupwd = 1;
+//#else
+//uniform int AC_lupwd = 0;
+//#endif
+//#if LSINK 
+//uniform int AC_lsink = 1;
+//#else
+//uniform int AC_lsink = 0;
+//#endif
+//#if LBFIELD 
+//uniform int AC_lbfied = 1;
+//#else
+//uniform int AC_lbfied = 0;
+//#endif
+//#if LSHOCK 
+//uniform int AC_lshock = 1;
+//#else
+//uniform int AC_lshock = 0;
+//#endif
 
 
 // Int params
