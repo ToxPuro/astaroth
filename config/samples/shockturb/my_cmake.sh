@@ -13,7 +13,7 @@ git rev-parse HEAD > COMMIT_CODE.log
 # In the case you compile in astaroth/build/ directory. Otherwise change ".." to
 # the correct path to astaroth/CMakeLists.txt
 
-cmake -DDOUBLE_PRECISION=ON -DMPI_ENABLED=ON -DUSE_CUDA_AWARE_MPI=ON ..
+cmake -DDOUBLE_PRECISION=ON -DMPI_ENABLED=ON -DUSE_CUDA_AWARE_MPI=ON ../../..
 
 # Standard compilation
 
