@@ -57,9 +57,9 @@
 
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
 #define LSINK (0)
-#define LFORCING (1)
+#define LFORCING (0)
 #define LBFIELD (1)
-#define LSHOCK (1)
+#define LSHOCK (0)
 /*  MV NOTES
     It was possible to compensate LFORCING with AC_lforcing instead by the current hack 
     However it as not possible to do so for LSINK because if in LSINK = 0 in
