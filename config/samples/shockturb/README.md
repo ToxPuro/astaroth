@@ -1,6 +1,6 @@
 Created by *Miikka Väisälä*, at 2021/10
 
-# Purpose of this simualtion setup 
+# Purpose of this simulation setup 
 
 This simulation was made to test that mpi, shock viscosity and task scheduling
 system work together with periodic boundary conditions. The simulation runs
@@ -18,7 +18,7 @@ test to see that the code is working as expected.**
 At the moment you need to set the switches manually. Default master branch
 configuration will have different LSWITCHES.
 
-## In `acc/mhd_solver/stencil_kernel.ac`
+* In `acc/mhd_solver/stencil_kernel.ac`
 
 ```
 LDENSITY (1)
@@ -33,7 +33,7 @@ LBFIELD (1)
 LSHOCK (1)
 ```
 
-## In `samples/standalone_mpi/main.cc`
+* In `samples/standalone_mpi/main.cc`
 
 ```
 LSINK (0)
