@@ -380,6 +380,169 @@ inflow_freefall_x(AcMesh* mesh)
 }
 
 void
+kickball(AcMesh* mesh)
+{
+    AcReal* uu_x = mesh->vertex_buffer[VTXBUF_UUX];
+    AcReal* uu_y = mesh->vertex_buffer[VTXBUF_UUY];
+    AcReal* uu_z = mesh->vertex_buffer[VTXBUF_UUZ];
+
+    const int mx = mesh->info.int_params[AC_mx];
+    const int my = mesh->info.int_params[AC_my];
+
+    const int nx_min = mesh->info.int_params[AC_nx_min];
+    const int nx_max = mesh->info.int_params[AC_nx_max];
+    const int ny_min = mesh->info.int_params[AC_ny_min];
+    const int ny_max = mesh->info.int_params[AC_ny_max];
+    const int nz_min = mesh->info.int_params[AC_nz_min];
+    const int nz_max = mesh->info.int_params[AC_nz_max];
+
+    const double DX = mesh->info.real_params[AC_dsx];
+    const double DY = mesh->info.real_params[AC_dsy];
+    const double DZ = mesh->info.real_params[AC_dsz];
+
+    const double xorig = double(XORIG) - 0.000001;
+    const double yorig = double(YORIG) - 0.000001;
+    const double zorig = double(ZORIG) - 0.000001;
+
+    const double INIT_LOC_UU_X = 0.0;
+    const double INIT_LOC_UU_Y = 0.0;
+    const double INIT_LOC_UU_Z = 0.0;
+
+    const double AMPL_UU    = mesh->info.real_params[AC_ampl_uu];
+    const double UU_SHELL_R = 0.8;
+    const double WIDTH_UU   = 0.2;
+
+    // Outward explosion with gaussian initial velocity profile.
+    int idx;
+    double xx, yy, zz, rr2, rr, theta = 0.0, phi = 0.0;
+    double uu_radial;
+
+    // double theta_old = 0.0;
+
+    for (int k = nz_min; k < nz_max; k++) {
+        for (int j = ny_min; j < ny_max; j++) {
+            for (int i = nx_min; i < nx_max; i++) {
+                // Calculate the value of velocity in a particular radius.
+                idx = i + j * mx + k * mx * my;
+                // Determine the coordinates
+                xx = DX * (i - nx_min) - xorig;
+                xx = xx - INIT_LOC_UU_X;
+
+                yy = DY * (j - ny_min) - yorig;
+                yy = yy - INIT_LOC_UU_Y;
+
+                zz = DZ * (k - nz_min) - zorig;
+                zz = zz - INIT_LOC_UU_Z;
+
+                rr2 = pow(xx, 2.0) + pow(yy, 2.0) + pow(zz, 2.0);
+                rr  = sqrt(rr2);
+
+                // Origin is different!
+                double xx_abs, yy_abs, zz_abs;
+                if (rr > 0.0) {
+                    // theta range [0, PI]
+                    if (zz >= 0.0) {
+                        theta = acos(zz / rr);
+                        if (theta > M_PI / 2.0 || theta < 0.0) {
+                            printf("Explosion THETA WRONG: zz = %.3f, rr = "
+                                   "%.3f, theta = %.3e/PI, M_PI = %.3e\n",
+                                   zz, rr, theta / M_PI, M_PI);
+                        }
+                    }
+                    else {
+                        zz_abs = -zz; // Needs a posite value for acos
+                        theta  = M_PI - acos(zz_abs / rr);
+                        if (theta < M_PI / 2.0 || theta > 2 * M_PI) {
+                            printf("Explosion THETA WRONG: zz = %.3f, rr = "
+                                   "%.3f, theta = %.3e/PI, M_PI = %.3e\n",
+                                   zz, rr, theta / M_PI, M_PI);
+                        }
+                    }
+
+                    // phi range [0, 2*PI]i
+                    if (xx != 0.0) {
+                        if (xx < 0.0 && yy >= 0.0) {
+                            //-+
+                            xx_abs = -xx; // Needs a posite value for atan
+                            phi    = M_PI - atan(yy / xx_abs);
+                            if (phi < (M_PI / 2.0) || phi > M_PI) {
+                                printf("Explosion PHI WRONG -+: xx = %.3f, yy "
+                                       "= %.3f, phi = %.3e/PI, M_PI = %.3e\n",
+                                       xx, yy, phi / M_PI, M_PI);
+                            }
+                        }
+                        else if (xx > 0.0 && yy < 0.0) {
+                            //+-
+                            yy_abs = -yy;
+                            phi    = 2.0 * M_PI - atan(yy_abs / xx);
+                            if (phi < (3.0 * M_PI) / 2.0 || phi > (2.0 * M_PI + 1e-6)) {
+                                printf("Explosion PHI WRONG +-: xx = %.3f, yy "
+                                       "= %.3f, phi = %.3e/PI, M_PI = %.3e\n",
+                                       xx, yy, phi / M_PI, M_PI);
+                            }
+                        }
+                        else if (xx < 0.0 && yy < 0.0) {
+                            //--
+                            yy_abs = -yy;
+                            xx_abs = -xx;
+                            phi    = M_PI + atan(yy_abs / xx_abs);
+                            if (phi < M_PI || phi > ((3.0 * M_PI) / 2.0 + 1e-6)) {
+                                printf("Explosion PHI WRONG --: xx = %.3f, yy "
+                                       "= %.3f, xx_abs = %.3f, yy_abs = %.3f, "
+                                       "phi = %.3e, (3.0*M_PI)/2.0 = %.3e\n",
+                                       xx, yy, xx_abs, yy_abs, phi, (3.0 * M_PI) / 2.0);
+                            }
+                        }
+                        else {
+                            //++
+                            phi = atan(yy / xx);
+                            if (phi < 0 || phi > M_PI / 2.0) {
+                                printf("Explosion PHI WRONG --: xx = %.3f, yy = "
+                                       "%.3f, phi = %.3e, (3.0*M_PI)/2.0 = %.3e\n",
+                                       xx, yy, phi, (3.0 * M_PI) / 2.0);
+                            }
+                        }
+                    }
+                    else { // To avoid div by zero with atan
+                        if (yy > 0.0) {
+                            phi = M_PI / 2.0;
+                        }
+                        else if (yy < 0.0) {
+                            phi = (3.0 * M_PI) / 2.0;
+                        }
+                        else {
+                            phi = 0.0;
+                        }
+                    }
+
+                    // Set zero for explicit safekeeping
+                    if (xx == 0.0 && yy == 0.0) {
+                        phi = 0.0;
+                    }
+
+                    uu_radial = AMPL_UU *
+                                exp(-pow((rr - UU_SHELL_R), 2.0) / (2.0 * pow(WIDTH_UU, 2.0))) *
+                                exp(-pow((theta - M_PI / 2.0), 2.0) /
+                                    (2.0 * pow(M_PI / 4.0, 2.0))) *
+                                exp(-pow((phi - M_PI / 2.0), 2.0) / (2.0 * pow(M_PI / 4.0, 2.0)));
+                }
+                else {
+                    uu_radial = 0.0; // TODO: There will be a discontinuity in
+                                     // the origin... Should the shape of the
+                                     // distribution be different?
+                }
+
+                // Determine the carthesian velocity components and lnrho
+
+                uu_x[idx] = AcReal(uu_radial * sin(theta) * cos(phi));
+                uu_y[idx] = AcReal(uu_radial * sin(theta) * sin(phi));
+                uu_z[idx] = AcReal(uu_radial * cos(theta));
+            }
+        }
+    }
+}
+
+void
 gaussian_radial_explosion(AcMesh* mesh)
 {
     AcReal* uu_x = mesh->vertex_buffer[VTXBUF_UUX];
@@ -577,13 +740,18 @@ acmesh_init_to(const InitType& init_type, AcMesh* mesh)
     switch (init_type) {
     case INIT_TYPE_RANDOM: {
         acHostMeshClear(mesh);
-        const AcReal range = AcReal(0.01);
+        const AcReal range = AcReal(1e-10);
         for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
             for (int i = 0; i < n; ++i)
                 mesh->vertex_buffer[w][i] = 2 * range * randr() - range;
 
         break;
     }
+    case INIT_TYPE_KICKBALL:
+        acHostMeshClear(mesh);
+        acHostVertexBufferSet(VTXBUF_LNRHO, mesh->info.real_params[AC_ampl_lnrho], mesh);
+        kickball(mesh);
+        break;
     case INIT_TYPE_GAUSSIAN_RADIAL_EXPL:
         acHostMeshClear(mesh);
         acHostVertexBufferSet(VTXBUF_LNRHO, mesh->info.real_params[AC_ampl_lnrho], mesh);

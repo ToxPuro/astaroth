@@ -26,10 +26,14 @@
 #include <mpi.h>
 #include <string.h>
 
+#include <unistd.h>
+
 #include "config_loader.h"
 #include "errchk.h"
 #include "host_forcing.h"
 #include "host_memory.h"
+
+#include "math_utils.h"
 
 #define fprintf(...)                                                                               \
     {                                                                                              \
@@ -52,8 +56,22 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
-#define LFORCING (0)
 #define LSINK (0)
+#define LFORCING (0)
+#define LBFIELD (0)
+#define LSHOCK (0)
+/*  MV NOTES
+    It was possible to compensate LFORCING with AC_lforcing instead by the current hack
+    However it as not possible to do so for LSINK because if in LSINK = 0 in
+    DSL, then VTXBUF_ACCRETION will be undefined. We need to disccus how to
+    communicate the preprocessor states of DSL for the rest of the code. PLEASE
+    NOTE that VTXBUF_ACCRETION or other such enumerator values cannot be checked
+    with #ifdef.
+    UPDATE: It did not work with AC_lforcing either.
+ */
+
+////#ifdef AC_FOR_VTXBUF_HANDLES
+////#endif
 
 // Write all setting info into a separate ascii file. This is done to guarantee
 // that we have the data specifi information in the thing, even though in
@@ -69,7 +87,7 @@ write_info(const AcMeshInfo* config)
     fprintf(infotxt, "rm *.list *.mesh *.ts purge.sh\n");
     fclose(infotxt);
 
-    infotxt = fopen("info.list", "w");
+    infotxt = fopen("mesh_info.list", "w");
 
     // Determine endianness
     unsigned int EE      = 1;
@@ -210,6 +228,23 @@ print_diagnostics_host(const AcMesh mesh, const int step, const AcReal dt, const
            double(buf_rms), double(buf_max));
     fprintf(diag_file, "%d %e %e %e %e %e ", step, double(t_step), double(dt), double(buf_min),
             double(buf_rms), double(buf_max));
+#if LBFIELD
+    buf_max = acHostReduceVec(mesh, RTYPE_MAX, BFIELDX, BFIELDY, BFIELDZ);
+    buf_min = acHostReduceVec(mesh, RTYPE_MIN, BFIELDX, BFIELDY, BFIELDZ);
+    buf_rms = acHostReduceVec(mesh, RTYPE_RMS, BFIELDX, BFIELDY, BFIELDZ);
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+
+    buf_max = acHostReduceVecScal(mesh, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO);
+    buf_min = acHostReduceVecScal(mesh, RTYPE_ALFVEN_MIN, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO);
+    buf_rms = acHostReduceVecScal(mesh, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO);
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+#endif
 
     // Calculate rms, min and max from the variables as scalars
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
@@ -234,7 +269,7 @@ print_diagnostics_host(const AcMesh mesh, const int step, const AcReal dt, const
 // JP: EXECUTES ON MULTIPLE GPUS, MUST BE CALLED FROM ALL PROCS
 static inline void
 print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* diag_file,
-                  const AcReal sink_mass, const AcReal accreted_mass)
+                  const AcReal sink_mass, const AcReal accreted_mass, int* found_nan)
 {
 
     AcReal buf_rms, buf_max, buf_min;
@@ -246,12 +281,32 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
     acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_rms);
 
     // MV: The ordering in the earlier version was wrong in terms of variable
-    // MV: name and its diagnostics.
     printf("Step %d, t_step %.3e, dt %e s\n", step, double(t_step), double(dt));
     printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "uu total", double(buf_min),
            double(buf_rms), double(buf_max));
     fprintf(diag_file, "%d %e %e %e %e %e ", step, double(t_step), double(dt), double(buf_min),
             double(buf_rms), double(buf_max));
+
+#if LBFIELD
+    acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, BFIELDX, BFIELDY, BFIELDZ, &buf_max);
+    acGridReduceVec(STREAM_DEFAULT, RTYPE_MIN, BFIELDX, BFIELDY, BFIELDZ, &buf_min);
+    acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, BFIELDX, BFIELDY, BFIELDZ, &buf_rms);
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
+                        &buf_max);
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MIN, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
+                        &buf_min);
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
+                        &buf_rms);
+
+    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
+           double(buf_rms), double(buf_max));
+    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+#endif
 
     // Calculate rms, min and max from the variables as scalars
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
@@ -262,6 +317,10 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
         printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
                double(buf_min), double(buf_rms), double(buf_max));
         fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+
+        if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
+            *found_nan = 1;
+        }
     }
 
     if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
@@ -281,8 +340,36 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
 AcReal
 calc_timestep(const AcMeshInfo info)
 {
-    AcReal uumax;
+    AcReal uumax     = 0.0;
+    AcReal vAmax     = 0.0;
+    AcReal shock_max = 0.0;
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumax);
+    // TODO ERROR: uumax is currently only seen by the rank 0 process which will
+    // lead to asyncronizity in the timestep leading to deadlocks! The resulting
+    // dt or uumax and vAmax in rank 0 should be broadcasted to others.
+    // SOLUTION: broadcast uumax and vAmax to all ranks
+    // NOTE: It would be also possible to edit contents of
+    // acGridReduceVecScal(), but for the sake of coherence, with less risk of
+    // interfering things elsewhere, I have deiced to try out this approach
+    // first, as it is not too complicated anyway.
+
+    // MPI_Bcast to share uumax with all ranks
+    MPI_Bcast(&uumax, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD);
+
+#if LBFIELD
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
+                        &vAmax);
+
+    // MPI_Bcast to share vAmax with all ranks
+    MPI_Bcast(&vAmax, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD);
+#endif
+
+#if LSHOCK
+    acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_SHOCK, &shock_max);
+
+    // MPI_Bcast to share vAmax with all ranks
+    MPI_Bcast(&shock_max, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD);
+#endif
 
     const long double cdt  = info.real_params[AC_cdt];
     const long double cdtv = info.real_params[AC_cdtv];
@@ -293,6 +380,7 @@ calc_timestep(const AcMeshInfo info)
     const long double chi       = 0; // info.real_params[AC_chi]; // TODO not calculated
     const long double gamma     = info.real_params[AC_gamma];
     const long double dsmin     = info.real_params[AC_dsmin];
+    const long double nu_shock  = info.real_params[AC_nu_shock];
 
     // Old ones from legacy Astaroth
     // const long double uu_dt   = cdt * (dsmin / (uumax + cs_sound));
@@ -300,8 +388,9 @@ calc_timestep(const AcMeshInfo info)
 
     // New, closer to the actual Courant timestep
     // See Pencil Code user manual p. 38 (timestep section)
-    const long double uu_dt   = cdt * dsmin / (fabsl(uumax) + sqrtl(cs2_sound + 0.0l));
-    const long double visc_dt = cdtv * dsmin * dsmin / max(max(nu_visc, eta), max(gamma, chi));
+    const long double uu_dt   = cdt * dsmin / (fabsl(uumax) + sqrtl(cs2_sound + vAmax * vAmax));
+    const long double visc_dt = cdtv * dsmin * dsmin /
+                                (max(max(nu_visc, eta), gamma * chi) + nu_shock * shock_max);
 
     const long double dt = min(uu_dt, visc_dt);
     ERRCHK_ALWAYS(is_valid((AcReal)dt));
@@ -323,53 +412,6 @@ main(int argc, char** argv)
     // Set random seed for reproducibility
     srand(321654987);
 
-    AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    load_config(AC_DEFAULT_CONFIG, &info);
-    update_config(&info);
-
-    AcMesh mesh;
-    if (pid == 0) {
-        acHostMeshCreate(info, &mesh);
-        acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, &mesh);
-    }
-    acGridInit(info);
-    acGridLoadMesh(STREAM_DEFAULT, mesh);
-
-    for (int t_step = 0; t_step < 100; ++t_step) {
-        const AcReal dt = calc_timestep(info);
-        acGridIntegrate(STREAM_DEFAULT, dt);
-
-        if (1) { // Diag step
-            AcReal uumin, uumax, uurms;
-            acGridReduceVec(STREAM_DEFAULT, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumin);
-            acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumax);
-            acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uurms);
-
-            printf("Step %d, dt: %g\n", t_step, (double)dt);
-            printf("%*s: %.3e, %.3e, %.3e\n", 16, "UU", (double)uumin, (double)uumax,
-                   (double)uurms);
-
-            for (size_t vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
-                AcReal scalmin, scalmax, scalrms;
-                acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)vtxbuf, &scalmin);
-                acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)vtxbuf, &scalmax);
-                acGridReduceScal(STREAM_DEFAULT, RTYPE_RMS, (VertexBufferHandle)vtxbuf, &scalrms);
-
-                printf("%*s: %.3e, %.3e, %.3e\n", 16, vtxbuf_names[vtxbuf], (double)scalmin,
-                       (double)scalmax, (double)scalrms);
-            }
-        }
-    }
-    if (pid == 0)
-        acHostMeshDestroy(&mesh);
-
-    acGridQuit();
-    /////////////// Simple example END
-
-// JP: The following is directly from standalone/simulation.cc and modified to work with MPI
-// However, not extensively tested
-#if 0
     // Load config to AcMeshInfo
     AcMeshInfo info;
     if (argc > 1) {
@@ -403,13 +445,17 @@ main(int argc, char** argv)
     FILE* diag_file         = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
 
+    const int init_type = info.int_params[AC_init_type];
+
+    int found_nan  = 0; // Nan or inf finder to give an error signal
+    int istep      = 0;
+    int found_stop = 0;
+
     AcMesh mesh;
     ///////////////////////////////// PROC 0 BLOCK START ///////////////////////////////////////////
     if (pid == 0) {
         acHostMeshCreate(info, &mesh);
-        // TODO: This need to be possible to define in astaroth.conf
-        acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, &mesh);
-        // acmesh_init_to(INIT_TYPE_SIMPLE_CORE, mesh); //Initial condition for a collapse test
+        acmesh_init_to((InitType)init_type, &mesh);
 
 #if LSINK
         acVertexBufferSet(VTXBUF_ACCRETION, 0.0, &mesh);
@@ -423,6 +469,10 @@ main(int argc, char** argv)
         // Generate the title row.
         if (start_step == 0) {
             fprintf(diag_file, "step  t_step  dt  uu_total_min  uu_total_rms  uu_total_max  ");
+#if LBFIELD
+            fprintf(diag_file, "bb_total_min  bb_total_rms  bb_total_max  ");
+            fprintf(diag_file, "vA_total_min  vA_total_rms  vA_total_max  ");
+#endif
             for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
                 fprintf(diag_file, "%s_min  %s_rms  %s_max  ", vtxbuf_names[i], vtxbuf_names[i],
                         vtxbuf_names[i]);
@@ -459,13 +509,100 @@ main(int argc, char** argv)
     /* initialize random seed: */
     srand(312256655);
 
+#if LSHOCK
+    // From taskgraph example
+    // First we define what fields we're using.
+    // This parameter is a c-style array but only works with c++ at the moment
+    //(the interface relies on templates for safety and array type deduction).
+    VertexBufferHandle all_fields[] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+                                       VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ, // VTXBUF_ENTROPY,
+                                       VTXBUF_SHOCK, BFIELDX,    BFIELDY,    BFIELDZ};
+
+    // VertexBufferHandle shock_uu_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_SHOCK};
+
+    VertexBufferHandle shock_field[] = {VTXBUF_SHOCK};
+    // VertexBufferHandle shock_field[] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+    //                                   VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,
+    //                                   BFIELDX, BFIELDY, BFIELDZ};
+
+    // BASIC AcTaskDefinition ALTERNATIVES:
+
+    // This works OK
+    // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
+    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+    //                                all_fields), acCompute(KERNEL_solve, all_fields)};
+
+    // This causes the chess board error
+    // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
+    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+    //                                all_fields), acCompute(KERNEL_shock_1_divu, shock_field),
+    //                                acCompute(KERNEL_shock_2_max, shock_field),
+    //                                acCompute(KERNEL_shock_3_smooth, shock_field),
+    //                                acCompute(KERNEL_solve, all_fields)};
+
+    // Causes communication related error
+    AcTaskDefinition shock_ops[] =
+        {acHaloExchange(all_fields),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+         acCompute(KERNEL_shock_1_divu, shock_field),
+         acHaloExchange(shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acCompute(KERNEL_shock_2_max, shock_field),
+         acHaloExchange(shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acCompute(KERNEL_shock_3_smooth, shock_field),
+         acHaloExchange(shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acCompute(KERNEL_solve, all_fields)};
+
+    // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
+    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+    //                                all_fields), acCompute(KERNEL_shock_1_divu, shock_field),
+    //                                acCompute(KERNEL_shock_2_max, shock_field),
+    //                                acCompute(KERNEL_solve, all_fields)};
+
+    AcTaskGraph* hc_graph = acGridBuildTaskGraph(shock_ops);
+
+    acGridSynchronizeStream(STREAM_ALL);
+
+    // Build a task graph consisting of:
+    // - a halo exchange with periodic boundconds for all fields
+    // - a calculation of the solve kernel touching all fields
+    //
+    // This function call generates tasks for each subregions in the domain
+    // and figures out the dependencies between the tasks.
+    // AcTaskGraph* hc_graph = acGridBuildTaskGraph(
+    //    {acHaloExchange(all_fields),
+    //     acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+    // acCompute(KERNEL_shock_1_divu, shock_uu_fields),
+    // acHaloExchange(shock_field),
+    // acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+    // acCompute(KERNEL_shock_2_max, shock_field),
+    // acHaloExchange(shock_field),
+    // acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+    // acCompute(KERNEL_shock_3_smooth, shock_field),
+    // acHaloExchange(shock_field),
+    // acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+    //     acCompute(KERNEL_solve, all_fields)});
+
+    // We can build multiple TaskGraphs, the MPI requests will not collide
+    // because MPI tag space has been partitioned into ranges that each HaloExchange step uses.
+    /*
+    AcTaskGraph* shock_graph = acGridBuildTaskGraph({
+        acHaloExchange(all_fields),
+        acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_SYMMETRIC, all_fields),
+        acCompute(KERNEL_shock1, all_fields),
+        acCompute(KERNEL_shock2, shock_fields),
+        acCompute(KERNEL_solve, all_fields)
+    });
+    */
+#endif
+
     /* Step the simulation */
     AcReal accreted_mass = 0.0;
     AcReal sink_mass     = 0.0;
     for (int i = start_step + 1; i < max_steps; ++i) {
-        AcReal umax;
-        acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &umax);
-        const AcReal dt = host_timestep(umax, info);
+        const AcReal dt = calc_timestep(info);
 
 #if LSINK
         AcReal sum_mass;
@@ -494,11 +631,28 @@ main(int argc, char** argv)
 #endif
 
 #if LFORCING
+        // if (info.int_params[AC_lforcing] == 1) {
         const ForcingParams forcing_params = generateForcingParams(info);
         loadForcingParamsToGrid(forcing_params);
+        //}
 #endif
+        // MV 2021-07-13 Code seems fine in terms of functionality
+        // MV TODO: Make it possible, using the task system, to run shock viscosity.
+        // MV TODO: Make it possible, using the task system, to run nonperiodic boundaty conditions.
+        // MV TODO: See if there are other features from the normal standalone which I would like to
+        // include.
+
+#if LSHOCK
+        // Set the time delta
+        acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, dt);
+        acGridSynchronizeStream(STREAM_DEFAULT);
+
+        // Execute the task graph for three iterations.
+        acGridExecuteTaskGraph(hc_graph, 3);
+#else
 
         acGridIntegrate(STREAM_DEFAULT, dt);
+#endif
 
         t_step += dt;
 
@@ -511,7 +665,7 @@ main(int argc, char** argv)
                 timeseries.ts.
             */
 
-            print_diagnostics(i, dt, t_step, diag_file, sink_mass, accreted_mass);
+            print_diagnostics(i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
 #if LSINK
             printf("sink mass is: %.15e \n", double(sink_mass));
             printf("accreted mass is: %.15e \n", double(accreted_mass));
@@ -547,6 +701,18 @@ main(int argc, char** argv)
             bin_crit_t += bin_save_t;
         }
 
+        istep = i;
+
+        // Ensures that are known beyond rank 0.
+        MPI_Bcast(&found_nan, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+        if (access("STOP", F_OK) != -1) {
+            found_stop = 1;
+        }
+        else {
+            found_stop = 0;
+        }
+
         // End loop if max time reached.
         if (max_time > AcReal(0.0)) {
             if (t_step >= max_time) {
@@ -554,19 +720,38 @@ main(int argc, char** argv)
                 break;
             }
         }
+
+        // End loop if nan is found
+        if (found_nan > 0) {
+            printf("Found nan at t = %e \n", double(t_step));
+            break;
+        }
+
+        if (found_stop == 1) {
+            printf("Found STOP file at t = %e \n", double(t_step));
+            break;
+        }
     }
+    // Save data after the loop ends
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridStoreMesh(STREAM_DEFAULT, &mesh);
 
-    //////Save the final snapshot
-    ////acSynchronize();
-    ////acStore(mesh);
+    if (pid == 0)
+        save_mesh(mesh, istep, t_step);
 
-    ////save_mesh(*mesh, , t_step);
+        //////Save the final snapshot
+        ////acSynchronize();
+        ////acStore(mesh);
 
+        ////save_mesh(*mesh, , t_step);
+
+#if LSHOCK
+    acGridDestroyTaskGraph(hc_graph);
+#endif
     acGridQuit();
     if (pid == 0)
         acHostMeshDestroy(&mesh);
     fclose(diag_file);
-#endif
 
     MPI_Finalize();
     return EXIT_SUCCESS;

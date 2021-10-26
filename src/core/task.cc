@@ -340,6 +340,10 @@ void
 Task::swapVBA(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+
+        // printf("vtxbuf_swaps %i VTXBUF number %i (VTXBUF_SHOCK %i) \n", vtxbuf_swaps[i], i,
+        // VTXBUF_SHOCK);
+
         if (vtxbuf_swaps[i]) {
             AcReal* tmp = vba.in[i];
             vba.in[i]   = vba.out[i];
