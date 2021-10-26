@@ -32,6 +32,5 @@ ModelScalar model_reduce_scal(const ModelMesh& mesh, const ReductionType& rtype,
                               const VertexBufferHandle& a);
 
 ModelScalar model_reduce_vec(const ModelMesh& mesh, const ReductionType& rtype,
-                             const VertexBufferHandle& a,
-                             const VertexBufferHandle& b,
+                             const VertexBufferHandle& a, const VertexBufferHandle& b,
                              const VertexBufferHandle& c);

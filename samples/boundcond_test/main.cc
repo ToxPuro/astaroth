@@ -106,9 +106,9 @@ main(void)
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, FLT_EPSILON);
     acGridSynchronizeStream(STREAM_DEFAULT);
 
-    VertexBufferHandle all_fields[NUM_VTXBUF_HANDLES] = {VTXBUF_LNRHO, VTXBUF_UUX,    VTXBUF_UUY,
-                                                         VTXBUF_UUZ,   VTXBUF_AX,     VTXBUF_AY,
-                                                         VTXBUF_AZ};//,    VTXBUF_ENTROPY};
+    VertexBufferHandle all_fields[NUM_VTXBUF_HANDLES] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY,
+                                                         VTXBUF_UUZ,   VTXBUF_AX,  VTXBUF_AY,
+                                                         VTXBUF_AZ}; //,    VTXBUF_ENTROPY};
 
     AcTaskGraph* symmetric_bc_graph = acGridBuildTaskGraph(
         {acHaloExchange(all_fields),

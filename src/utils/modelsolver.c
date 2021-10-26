@@ -706,14 +706,14 @@ induction(const VectorData uu, const VectorData aa)
     // x A)) in order to avoid taking the first derivative twice (did the math,
     // yes this actually works. See pg.28 in arXiv:astro-ph/0109497)
     // u cross B - AC_eta * AC_mu0 * (AC_mu0^-1 * [- laplace A + grad div A ])
-    const Vector B        = curl(aa);
-    //MV: Due to gauge freedom we can reduce the gradient of scalar (divergence) from the equation
-    //const Vector grad_div = gradient_of_divergence(aa);
-    const Vector lap      = laplace_vec(aa);
+    const Vector B = curl(aa);
+    // MV: Due to gauge freedom we can reduce the gradient of scalar (divergence) from the equation
+    // const Vector grad_div = gradient_of_divergence(aa);
+    const Vector lap = laplace_vec(aa);
 
     // Note, AC_mu0 is cancelled out
-    //MV: Due to gauge freedom we can reduce the gradient of scalar (divergence) from the equation
-    //const Vector ind = cross(value(uu), B) - getReal(AC_eta) * (grad_div - lap);
+    // MV: Due to gauge freedom we can reduce the gradient of scalar (divergence) from the equation
+    // const Vector ind = cross(value(uu), B) - getReal(AC_eta) * (grad_div - lap);
     const Vector ind = cross(vecvalue(uu), B) + getReal(AC_eta) * lap;
 
     return ind;

@@ -61,18 +61,17 @@
 #define LBFIELD (1)
 #define LSHOCK (0)
 /*  MV NOTES
-    It was possible to compensate LFORCING with AC_lforcing instead by the current hack 
+    It was possible to compensate LFORCING with AC_lforcing instead by the current hack
     However it as not possible to do so for LSINK because if in LSINK = 0 in
     DSL, then VTXBUF_ACCRETION will be undefined. We need to disccus how to
     communicate the preprocessor states of DSL for the rest of the code. PLEASE
     NOTE that VTXBUF_ACCRETION or other such enumerator values cannot be checked
     with #ifdef.
-    UPDATE: It did not work with AC_lforcing either. 
+    UPDATE: It did not work with AC_lforcing either.
  */
 
 ////#ifdef AC_FOR_VTXBUF_HANDLES
 ////#endif
-
 
 // Write all setting info into a separate ascii file. This is done to guarantee
 // that we have the data specifi information in the thing, even though in
@@ -273,7 +272,6 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
                   const AcReal sink_mass, const AcReal accreted_mass, int* found_nan)
 {
 
-
     AcReal buf_rms, buf_max, buf_min;
     const int max_name_width = 16;
 
@@ -298,9 +296,12 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
            double(buf_rms), double(buf_max));
     fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
 
-    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_max);
-    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MIN, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_min);
-    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &buf_rms);
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
+                        &buf_max);
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MIN, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
+                        &buf_min);
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
+                        &buf_rms);
 
     printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
            double(buf_rms), double(buf_max));
@@ -339,36 +340,36 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
 AcReal
 calc_timestep(const AcMeshInfo info)
 {
-    AcReal uumax = 0.0;
-    AcReal vAmax = 0.0;
+    AcReal uumax     = 0.0;
+    AcReal vAmax     = 0.0;
     AcReal shock_max = 0.0;
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &uumax);
-    //TODO ERROR: uumax is currently only seen by the rank 0 process which will
-    //lead to asyncronizity in the timestep leading to deadlocks! The resulting
-    //dt or uumax and vAmax in rank 0 should be broadcasted to others.
-    //SOLUTION: broadcast uumax and vAmax to all ranks
-    //NOTE: It would be also possible to edit contents of
-    //acGridReduceVecScal(), but for the sake of coherence, with less risk of
-    //interfering things elsewhere, I have deiced to try out this approach
-    //first, as it is not too complicated anyway.   
+    // TODO ERROR: uumax is currently only seen by the rank 0 process which will
+    // lead to asyncronizity in the timestep leading to deadlocks! The resulting
+    // dt or uumax and vAmax in rank 0 should be broadcasted to others.
+    // SOLUTION: broadcast uumax and vAmax to all ranks
+    // NOTE: It would be also possible to edit contents of
+    // acGridReduceVecScal(), but for the sake of coherence, with less risk of
+    // interfering things elsewhere, I have deiced to try out this approach
+    // first, as it is not too complicated anyway.
 
     // MPI_Bcast to share uumax with all ranks
-    MPI_Bcast(&uumax, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD); 
+    MPI_Bcast(&uumax, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD);
 
 #if LBFIELD
-    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO, &vAmax);
+    acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
+                        &vAmax);
 
     // MPI_Bcast to share vAmax with all ranks
-    MPI_Bcast(&vAmax, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD); 
+    MPI_Bcast(&vAmax, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD);
 #endif
 
 #if LSHOCK
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_SHOCK, &shock_max);
 
     // MPI_Bcast to share vAmax with all ranks
-    MPI_Bcast(&shock_max, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD); 
+    MPI_Bcast(&shock_max, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD);
 #endif
-
 
     const long double cdt  = info.real_params[AC_cdt];
     const long double cdtv = info.real_params[AC_cdtv];
@@ -387,8 +388,9 @@ calc_timestep(const AcMeshInfo info)
 
     // New, closer to the actual Courant timestep
     // See Pencil Code user manual p. 38 (timestep section)
-    const long double uu_dt   = cdt * dsmin / (fabsl(uumax) + sqrtl(cs2_sound + vAmax*vAmax));
-    const long double visc_dt = cdtv * dsmin * dsmin / (max(max(nu_visc, eta), gamma*chi) + nu_shock*shock_max);
+    const long double uu_dt   = cdt * dsmin / (fabsl(uumax) + sqrtl(cs2_sound + vAmax * vAmax));
+    const long double visc_dt = cdtv * dsmin * dsmin /
+                                (max(max(nu_visc, eta), gamma * chi) + nu_shock * shock_max);
 
     const long double dt = min(uu_dt, visc_dt);
     ERRCHK_ALWAYS(is_valid((AcReal)dt));
@@ -443,18 +445,17 @@ main(int argc, char** argv)
     FILE* diag_file         = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
 
-    const int init_type     = info.int_params[AC_init_type];
+    const int init_type = info.int_params[AC_init_type];
 
-    int found_nan = 0; // Nan or inf finder to give an error signal
-    int istep = 0;
+    int found_nan  = 0; // Nan or inf finder to give an error signal
+    int istep      = 0;
     int found_stop = 0;
 
     AcMesh mesh;
     ///////////////////////////////// PROC 0 BLOCK START ///////////////////////////////////////////
     if (pid == 0) {
         acHostMeshCreate(info, &mesh);
-        acmesh_init_to( (InitType) init_type, &mesh);
-
+        acmesh_init_to((InitType)init_type, &mesh);
 
 #if LSINK
         acVertexBufferSet(VTXBUF_ACCRETION, 0.0, &mesh);
@@ -509,57 +510,58 @@ main(int argc, char** argv)
     srand(312256655);
 
 #if LSHOCK
-    // From taskgraph example 
+    // From taskgraph example
     // First we define what fields we're using.
     // This parameter is a c-style array but only works with c++ at the moment
     //(the interface relies on templates for safety and array type deduction).
     VertexBufferHandle all_fields[] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
-                                       VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ, // VTXBUF_ENTROPY, 
-                                       VTXBUF_SHOCK, BFIELDX, BFIELDY, BFIELDZ};
+                                       VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ, // VTXBUF_ENTROPY,
+                                       VTXBUF_SHOCK, BFIELDX,    BFIELDY,    BFIELDZ};
 
-    //VertexBufferHandle shock_uu_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_SHOCK};
+    // VertexBufferHandle shock_uu_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_SHOCK};
 
     VertexBufferHandle shock_field[] = {VTXBUF_SHOCK};
-    //VertexBufferHandle shock_field[] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
-    //                                   VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,  
+    // VertexBufferHandle shock_field[] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+    //                                   VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,
     //                                   BFIELDX, BFIELDY, BFIELDZ};
 
-    //BASIC AcTaskDefinition ALTERNATIVES:
+    // BASIC AcTaskDefinition ALTERNATIVES:
 
-    // This works OK 
-    //AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
-    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
-    //                                acCompute(KERNEL_solve, all_fields)};
+    // This works OK
+    // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
+    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+    //                                all_fields), acCompute(KERNEL_solve, all_fields)};
 
     // This causes the chess board error
-    //AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
-    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
-    //                                acCompute(KERNEL_shock_1_divu, shock_field),
+    // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
+    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+    //                                all_fields), acCompute(KERNEL_shock_1_divu, shock_field),
     //                                acCompute(KERNEL_shock_2_max, shock_field),
     //                                acCompute(KERNEL_shock_3_smooth, shock_field),
     //                                acCompute(KERNEL_solve, all_fields)};
 
-    // Causes communication related error 
-    AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
-                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
-                                    acCompute(KERNEL_shock_1_divu, shock_field),
-                                    acHaloExchange(shock_field),
-                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
-                                    acCompute(KERNEL_shock_2_max, shock_field),
-                                    acHaloExchange(shock_field),
-                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
-                                    acCompute(KERNEL_shock_3_smooth, shock_field),
-                                    acHaloExchange(shock_field),
-                                    acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
-                                    acCompute(KERNEL_solve, all_fields)};
+    // Causes communication related error
+    AcTaskDefinition shock_ops[] =
+        {acHaloExchange(all_fields),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+         acCompute(KERNEL_shock_1_divu, shock_field),
+         acHaloExchange(shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acCompute(KERNEL_shock_2_max, shock_field),
+         acHaloExchange(shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acCompute(KERNEL_shock_3_smooth, shock_field),
+         acHaloExchange(shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acCompute(KERNEL_solve, all_fields)};
 
-    //AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
-    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
-    //                                acCompute(KERNEL_shock_1_divu, shock_field),
+    // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
+    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+    //                                all_fields), acCompute(KERNEL_shock_1_divu, shock_field),
     //                                acCompute(KERNEL_shock_2_max, shock_field),
     //                                acCompute(KERNEL_solve, all_fields)};
 
-    AcTaskGraph* hc_graph = acGridBuildTaskGraph(shock_ops); 
+    AcTaskGraph* hc_graph = acGridBuildTaskGraph(shock_ops);
 
     acGridSynchronizeStream(STREAM_ALL);
 
@@ -569,18 +571,18 @@ main(int argc, char** argv)
     //
     // This function call generates tasks for each subregions in the domain
     // and figures out the dependencies between the tasks.
-    //AcTaskGraph* hc_graph = acGridBuildTaskGraph(
+    // AcTaskGraph* hc_graph = acGridBuildTaskGraph(
     //    {acHaloExchange(all_fields),
     //     acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
-         //acCompute(KERNEL_shock_1_divu, shock_uu_fields),
-         //acHaloExchange(shock_field),
-         //acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
-         //acCompute(KERNEL_shock_2_max, shock_field),
-         //acHaloExchange(shock_field),
-         //acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
-         //acCompute(KERNEL_shock_3_smooth, shock_field),
-         //acHaloExchange(shock_field),
-         //acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+    // acCompute(KERNEL_shock_1_divu, shock_uu_fields),
+    // acHaloExchange(shock_field),
+    // acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+    // acCompute(KERNEL_shock_2_max, shock_field),
+    // acHaloExchange(shock_field),
+    // acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+    // acCompute(KERNEL_shock_3_smooth, shock_field),
+    // acHaloExchange(shock_field),
+    // acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
     //     acCompute(KERNEL_solve, all_fields)});
 
     // We can build multiple TaskGraphs, the MPI requests will not collide
@@ -601,7 +603,6 @@ main(int argc, char** argv)
     AcReal sink_mass     = 0.0;
     for (int i = start_step + 1; i < max_steps; ++i) {
         const AcReal dt = calc_timestep(info);
-
 
 #if LSINK
         AcReal sum_mass;
@@ -630,21 +631,22 @@ main(int argc, char** argv)
 #endif
 
 #if LFORCING
-        //if (info.int_params[AC_lforcing] == 1) {
-            const ForcingParams forcing_params = generateForcingParams(info);
-            loadForcingParamsToGrid(forcing_params);
+        // if (info.int_params[AC_lforcing] == 1) {
+        const ForcingParams forcing_params = generateForcingParams(info);
+        loadForcingParamsToGrid(forcing_params);
         //}
 #endif
         // MV 2021-07-13 Code seems fine in terms of functionality
         // MV TODO: Make it possible, using the task system, to run shock viscosity.
         // MV TODO: Make it possible, using the task system, to run nonperiodic boundaty conditions.
-        // MV TODO: See if there are other features from the normal standalone which I would like to include. 
+        // MV TODO: See if there are other features from the normal standalone which I would like to
+        // include.
 
 #if LSHOCK
         // Set the time delta
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, dt);
         acGridSynchronizeStream(STREAM_DEFAULT);
- 
+
         // Execute the task graph for three iterations.
         acGridExecuteTaskGraph(hc_graph, 3);
 #else
@@ -699,10 +701,10 @@ main(int argc, char** argv)
             bin_crit_t += bin_save_t;
         }
 
-    istep = i; 
+        istep = i;
 
-        // Ensures that are known beyond rank 0. 
-        MPI_Bcast(&found_nan, 1, MPI_INT, 0, MPI_COMM_WORLD); 
+        // Ensures that are known beyond rank 0.
+        MPI_Bcast(&found_nan, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
         if (access("STOP", F_OK) != -1) {
             found_stop = 1;
@@ -710,7 +712,6 @@ main(int argc, char** argv)
         else {
             found_stop = 0;
         }
-
 
         // End loop if max time reached.
         if (max_time > AcReal(0.0)) {
@@ -730,20 +731,19 @@ main(int argc, char** argv)
             printf("Found STOP file at t = %e \n", double(t_step));
             break;
         }
-
     }
-    //Save data after the loop ends
+    // Save data after the loop ends
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &mesh);
 
     if (pid == 0)
         save_mesh(mesh, istep, t_step);
 
-    //////Save the final snapshot
-    ////acSynchronize();
-    ////acStore(mesh);
+        //////Save the final snapshot
+        ////acSynchronize();
+        ////acStore(mesh);
 
-    ////save_mesh(*mesh, , t_step);
+        ////save_mesh(*mesh, , t_step);
 
 #if LSHOCK
     acGridDestroyTaskGraph(hc_graph);

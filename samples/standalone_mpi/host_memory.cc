@@ -521,9 +521,10 @@ kickball(AcMesh* mesh)
                     }
 
                     uu_radial = AMPL_UU *
-                                exp(-pow((rr - UU_SHELL_R), 2.0) / (2.0 * pow(WIDTH_UU, 2.0)))
-                                * exp(-pow((theta - M_PI/2.0), 2.0) / (2.0 * pow(M_PI/4.0, 2.0)))
-                                * exp(-pow((phi - M_PI/2.0), 2.0) / (2.0 * pow(M_PI/4.0, 2.0)));
+                                exp(-pow((rr - UU_SHELL_R), 2.0) / (2.0 * pow(WIDTH_UU, 2.0))) *
+                                exp(-pow((theta - M_PI / 2.0), 2.0) /
+                                    (2.0 * pow(M_PI / 4.0, 2.0))) *
+                                exp(-pow((phi - M_PI / 2.0), 2.0) / (2.0 * pow(M_PI / 4.0, 2.0)));
                 }
                 else {
                     uu_radial = 0.0; // TODO: There will be a discontinuity in
@@ -532,7 +533,7 @@ kickball(AcMesh* mesh)
                 }
 
                 // Determine the carthesian velocity components and lnrho
-      
+
                 uu_x[idx] = AcReal(uu_radial * sin(theta) * cos(phi));
                 uu_y[idx] = AcReal(uu_radial * sin(theta) * sin(phi));
                 uu_z[idx] = AcReal(uu_radial * cos(theta));

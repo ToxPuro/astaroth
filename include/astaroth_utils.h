@@ -67,7 +67,8 @@ AcReal acHostReduceVec(const AcMesh mesh, const ReductionType rtype, const Verte
                        const VertexBufferHandle b, const VertexBufferHandle c);
 /** */
 AcReal acHostReduceVecScal(const AcMesh mesh, const ReductionType rtype, const VertexBufferHandle a,
-                           const VertexBufferHandle b, const VertexBufferHandle c, const VertexBufferHandle d);
+                           const VertexBufferHandle b, const VertexBufferHandle c,
+                           const VertexBufferHandle d);
 
 Error acGetError(const AcReal model, const AcReal candidate);
 

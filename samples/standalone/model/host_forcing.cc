@@ -171,14 +171,12 @@ helical_forcing_special_vector(AcReal3* ff_hel_re, AcReal3* ff_hel_im, const AcR
     //                       k_cross_k_cross_e.z/denominator};
 
     // See PC forcing.f90 forcing_hel_both()
-    *ff_hel_im = (AcReal3){kabs * k_cross_e.x / denominator, 
-                           kabs * k_cross_e.y / denominator,
+    *ff_hel_im = (AcReal3){kabs * k_cross_e.x / denominator, kabs * k_cross_e.y / denominator,
                            kabs * k_cross_e.z / denominator};
 
-    *ff_hel_re = (AcReal3){relhel * k_cross_k_cross_e.x / denominator, 
+    *ff_hel_re = (AcReal3){relhel * k_cross_k_cross_e.x / denominator,
                            relhel * k_cross_k_cross_e.y / denominator,
                            relhel * k_cross_k_cross_e.z / denominator};
-
 }
 
 // Tool for loading forcing vector information into the device memory

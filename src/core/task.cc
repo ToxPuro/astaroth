@@ -42,7 +42,7 @@
 #include <stdlib.h>
 #include <vector>
 
-#include "decomposition.h"   //getPid and friends
+#include "decomposition.h" //getPid and friends
 #include "errchk.h"
 #include "kernels/kernels.h" //AcRealPacked, ComputeKernel
 
@@ -341,8 +341,9 @@ Task::swapVBA(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
 
-        //printf("vtxbuf_swaps %i VTXBUF number %i (VTXBUF_SHOCK %i) \n", vtxbuf_swaps[i], i, VTXBUF_SHOCK);
- 
+        // printf("vtxbuf_swaps %i VTXBUF number %i (VTXBUF_SHOCK %i) \n", vtxbuf_swaps[i], i,
+        // VTXBUF_SHOCK);
+
         if (vtxbuf_swaps[i]) {
             AcReal* tmp = vba.in[i];
             vba.in[i]   = vba.out[i];
@@ -364,7 +365,7 @@ Task::poll_stream()
     fprintf(stderr,
             "CUDA error in task %s while polling CUDA stream"
             " (probably occured in the CUDA kernel):\n\t%s\n",
-                    name.c_str(), cudaGetErrorString(err));
+            name.c_str(), cudaGetErrorString(err));
     fflush(stderr);
     exit(EXIT_FAILURE);
     return false;
@@ -527,11 +528,11 @@ HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencie
            device_, swap_offset_),
       recv_buffers(output_region->dims, NUM_VTXBUF_HANDLES),
       send_buffers(input_region->dims, NUM_VTXBUF_HANDLES)
-      //Below are for partial halo exchanges.
-      //TODO: enable partial halo exchanges when
-      //vtxbuf_dependencies_->num_vars < NUM_VTXBUF_HANDLES (see performance first)
-      //recv_buffers(output_region->dims, vtxbuf_dependencies_->num_vars),
-      //send_buffers(input_region->dims, vtxbuf_dependencies_->num_vars)
+// Below are for partial halo exchanges.
+// TODO: enable partial halo exchanges when
+// vtxbuf_dependencies_->num_vars < NUM_VTXBUF_HANDLES (see performance first)
+// recv_buffers(output_region->dims, vtxbuf_dependencies_->num_vars),
+// send_buffers(input_region->dims, vtxbuf_dependencies_->num_vars)
 {
     // Create stream for packing/unpacking
     {

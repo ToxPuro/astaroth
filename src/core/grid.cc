@@ -793,7 +793,8 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN) {
         op = MPI_MIN;
     }
-    else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM || rtype == RTYPE_ALFVEN_RMS) {
+    else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM ||
+             rtype == RTYPE_ALFVEN_RMS) {
         op = MPI_SUM;
     }
     else {
@@ -847,9 +848,10 @@ acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBuff
 }
 
 AcResult
-acGridReduceVecScal(const Stream stream, const ReductionType rtype, const VertexBufferHandle vtxbuf0,
-                    const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2, 
-                    const VertexBufferHandle vtxbuf3, AcReal* result)
+acGridReduceVecScal(const Stream stream, const ReductionType rtype,
+                    const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                    const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
+                    AcReal* result)
 {
     ERRCHK(grid.initialized);
     const Device device = grid.device;

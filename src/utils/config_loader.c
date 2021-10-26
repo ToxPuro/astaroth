@@ -77,10 +77,12 @@ parse_intparam(const size_t idx, const char* value)
     }
     else if (is_initcondtype(idx)) {
         int initcondtype = -1;
-        if ((initcondtype = find_str(value, initcondtype_names, NUM_INIT_TYPES)) >= 0) 
+        if ((initcondtype = find_str(value, initcondtype_names, NUM_INIT_TYPES)) >= 0)
             return initcondtype;
         else {
-            fprintf(stderr, "Error: Invalid initial condition type: %s, do not know what to do with it.\n", value);
+            fprintf(stderr,
+                    "Error: Invalid initial condition type: %s, do not know what to do with it.\n",
+                    value);
             fprintf(stdout, "Valid initial condition types:\n");
             acQueryInitcondtypes();
             ERROR("Invalid initial condition type found in config");
@@ -111,7 +113,7 @@ parse_config(const char* path, AcMeshInfo* config)
             continue;
 
         int idx = -1;
-        if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0) 
+        if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0)
             config->int_params[idx] = parse_intparam(idx, value);
         else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAMS)) >= 0)
             config->real_params[idx] = (AcReal)(atof(value));

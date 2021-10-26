@@ -57,7 +57,6 @@ typedef struct {
 
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
 
-
 // Device
 typedef struct device_s* Device; // Opaque pointer to device_s. Analogous to dispatchable handles
                                  // in Vulkan, f.ex. VkDevice
@@ -107,9 +106,9 @@ typedef enum {
     NUM_VTXBUF_HANDLES
 } VertexBufferHandle;
 
-typedef enum { 
-    AC_FOR_INIT_TYPES(AC_GEN_ID) // 
-    NUM_INIT_TYPES 
+typedef enum {
+    AC_FOR_INIT_TYPES(AC_GEN_ID) //
+    NUM_INIT_TYPES
 } InitType;
 
 #undef AC_GEN_ID
@@ -465,11 +464,10 @@ AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
                          const VertexBufferHandle vtxbuf2, AcReal* result);
 
 /** */
-AcResult acGridReduceVecScal(const Stream stream, const ReductionType rtype, 
-                             const VertexBufferHandle vtxbuf0,
-                             const VertexBufferHandle vtxbuf1, 
-                             const VertexBufferHandle vtxbuf2, 
-                             const VertexBufferHandle vtxbuf3, AcReal* result);
+AcResult acGridReduceVecScal(const Stream stream, const ReductionType rtype,
+                             const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                             const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
+                             AcReal* result);
 
 /*
  * =============================================================================

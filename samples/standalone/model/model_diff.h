@@ -121,8 +121,8 @@ der2_scal(const int& i, const int& j, const int& k, const AcMeshInfo& mesh_info,
 }
 
 static MODEL_REAL
-laplace_scal(const int& i, const int& j, const int& k,
-             const AcMeshInfo& mesh_info, const MODEL_REAL* scal)
+laplace_scal(const int& i, const int& j, const int& k, const AcMeshInfo& mesh_info,
+             const MODEL_REAL* scal)
 {
     return der2_scal<AXIS_X>(i, j, k, mesh_info, scal) +
            der2_scal<AXIS_Y>(i, j, k, mesh_info, scal) +
@@ -130,10 +130,9 @@ laplace_scal(const int& i, const int& j, const int& k,
 }
 
 static void
-laplace_vec(const int& i, const int& j, const int& k,
-            const AcMeshInfo& mesh_info, const MODEL_REAL* vec_x,
-            const MODEL_REAL* vec_y, const MODEL_REAL* vec_z, MODEL_REAL* laplace_x,
-            MODEL_REAL* laplace_y, MODEL_REAL* laplace_z)
+laplace_vec(const int& i, const int& j, const int& k, const AcMeshInfo& mesh_info,
+            const MODEL_REAL* vec_x, const MODEL_REAL* vec_y, const MODEL_REAL* vec_z,
+            MODEL_REAL* laplace_x, MODEL_REAL* laplace_y, MODEL_REAL* laplace_z)
 {
     *laplace_x = laplace_scal(i, j, k, mesh_info, vec_x);
     *laplace_y = laplace_scal(i, j, k, mesh_info, vec_y);
@@ -150,8 +149,8 @@ div_vec(const int& i, const int& j, const int& k, const AcMeshInfo& mesh_info,
 }
 
 static void
-grad(const int& i, const int& j, const int& k, const AcMeshInfo& mesh_info,
-     const MODEL_REAL* scal, MODEL_REAL* res_x, MODEL_REAL* res_y, MODEL_REAL* res_z)
+grad(const int& i, const int& j, const int& k, const AcMeshInfo& mesh_info, const MODEL_REAL* scal,
+     MODEL_REAL* res_x, MODEL_REAL* res_y, MODEL_REAL* res_z)
 {
     *res_x = der_scal<AXIS_X>(i, j, k, mesh_info, scal);
     *res_y = der_scal<AXIS_Y>(i, j, k, mesh_info, scal);
@@ -159,15 +158,14 @@ grad(const int& i, const int& j, const int& k, const AcMeshInfo& mesh_info,
 }
 
 static MODEL_REAL
-vec_dot_nabla_scal(const int& i, const int& j, const int& k,
-                   const AcMeshInfo& mesh_info, const MODEL_REAL* vec_x,
-                   const MODEL_REAL* vec_y, const MODEL_REAL* vec_z, const MODEL_REAL* scal)
+vec_dot_nabla_scal(const int& i, const int& j, const int& k, const AcMeshInfo& mesh_info,
+                   const MODEL_REAL* vec_x, const MODEL_REAL* vec_y, const MODEL_REAL* vec_z,
+                   const MODEL_REAL* scal)
 {
     const int idx = acVertexBufferIdx(i, j, k, mesh_info);
     MODEL_REAL ddx_scal, ddy_scal, ddz_scal;
     grad(i, j, k, mesh_info, scal, &ddx_scal, &ddy_scal, &ddz_scal);
-    return vec_x[idx] * ddx_scal + vec_y[idx] * ddy_scal +
-           vec_z[idx] * ddz_scal;
+    return vec_x[idx] * ddx_scal + vec_y[idx] * ddy_scal + vec_z[idx] * ddz_scal;
 }
 
 /*
@@ -179,8 +177,8 @@ typedef enum { DERNM_XY, DERNM_YZ, DERNM_XZ } DernmType;
 
 template <DernmType dernm>
 static MODEL_REAL
-dernm_scal(const int& i, const int& j, const int& k,
-           const AcMeshInfo& mesh_info, const MODEL_REAL* scal)
+dernm_scal(const int& i, const int& j, const int& k, const AcMeshInfo& mesh_info,
+           const MODEL_REAL* scal)
 {
 
     MODEL_REAL fac;
@@ -256,10 +254,9 @@ dernm_scal(const int& i, const int& j, const int& k,
 }
 
 static void
-grad_div_vec(const int& i, const int& j, const int& k,
-             const AcMeshInfo& mesh_info, const MODEL_REAL* vec_x,
-             const MODEL_REAL* vec_y, const MODEL_REAL* vec_z, MODEL_REAL* gdvx,
-             MODEL_REAL* gdvy, MODEL_REAL* gdvz)
+grad_div_vec(const int& i, const int& j, const int& k, const AcMeshInfo& mesh_info,
+             const MODEL_REAL* vec_x, const MODEL_REAL* vec_y, const MODEL_REAL* vec_z,
+             MODEL_REAL* gdvx, MODEL_REAL* gdvy, MODEL_REAL* gdvz)
 {
     *gdvx = der2_scal<AXIS_X>(i, j, k, mesh_info, vec_x) +
             dernm_scal<DERNM_XY>(i, j, k, mesh_info, vec_y) +
@@ -275,42 +272,36 @@ grad_div_vec(const int& i, const int& j, const int& k,
 }
 
 static void
-S_grad_lnrho(const int& i, const int& j, const int& k,
-             const AcMeshInfo& mesh_info, const MODEL_REAL* vec_x,
-             const MODEL_REAL* vec_y, const MODEL_REAL* vec_z, const MODEL_REAL* lnrho,
-             MODEL_REAL* sgrhox, MODEL_REAL* sgrhoy, MODEL_REAL* sgrhoz)
+S_grad_lnrho(const int& i, const int& j, const int& k, const AcMeshInfo& mesh_info,
+             const MODEL_REAL* vec_x, const MODEL_REAL* vec_y, const MODEL_REAL* vec_z,
+             const MODEL_REAL* lnrho, MODEL_REAL* sgrhox, MODEL_REAL* sgrhoy, MODEL_REAL* sgrhoz)
 {
     const MODEL_REAL c23 = MODEL_REAL(2. / 3.);
     const MODEL_REAL c13 = MODEL_REAL(1. / 3.);
 
     const MODEL_REAL Sxx = c23 * der_scal<AXIS_X>(i, j, k, mesh_info, vec_x) -
-                       c13 * (der_scal<AXIS_Y>(i, j, k, mesh_info, vec_y) +
-                              der_scal<AXIS_Z>(i, j, k, mesh_info, vec_z));
-    const MODEL_REAL Sxy = MODEL_REAL(.5) *
-                       (der_scal<AXIS_Y>(i, j, k, mesh_info, vec_x) +
-                        der_scal<AXIS_X>(i, j, k, mesh_info, vec_y));
-    const MODEL_REAL Sxz = MODEL_REAL(.5) *
-                       (der_scal<AXIS_Z>(i, j, k, mesh_info, vec_x) +
-                        der_scal<AXIS_X>(i, j, k, mesh_info, vec_z));
+                           c13 * (der_scal<AXIS_Y>(i, j, k, mesh_info, vec_y) +
+                                  der_scal<AXIS_Z>(i, j, k, mesh_info, vec_z));
+    const MODEL_REAL Sxy = MODEL_REAL(.5) * (der_scal<AXIS_Y>(i, j, k, mesh_info, vec_x) +
+                                             der_scal<AXIS_X>(i, j, k, mesh_info, vec_y));
+    const MODEL_REAL Sxz = MODEL_REAL(.5) * (der_scal<AXIS_Z>(i, j, k, mesh_info, vec_x) +
+                                             der_scal<AXIS_X>(i, j, k, mesh_info, vec_z));
 
     const MODEL_REAL Syx = Sxy;
     const MODEL_REAL Syy = c23 * der_scal<AXIS_Y>(i, j, k, mesh_info, vec_y) -
-                       c13 * (der_scal<AXIS_X>(i, j, k, mesh_info, vec_x) +
-                              der_scal<AXIS_Z>(i, j, k, mesh_info, vec_z));
-    const MODEL_REAL Syz = MODEL_REAL(.5) *
-                       (der_scal<AXIS_Z>(i, j, k, mesh_info, vec_y) +
-                        der_scal<AXIS_Y>(i, j, k, mesh_info, vec_z));
+                           c13 * (der_scal<AXIS_X>(i, j, k, mesh_info, vec_x) +
+                                  der_scal<AXIS_Z>(i, j, k, mesh_info, vec_z));
+    const MODEL_REAL Syz = MODEL_REAL(.5) * (der_scal<AXIS_Z>(i, j, k, mesh_info, vec_y) +
+                                             der_scal<AXIS_Y>(i, j, k, mesh_info, vec_z));
 
     const MODEL_REAL Szx = Sxz;
     const MODEL_REAL Szy = Syz;
-    const MODEL_REAL Szz = c23 *
-                           der_scal<AXIS_Z>(
-                               i, j, k, mesh_info,
-                               vec_z) // replaced from "c23*der_scal<AXIS_Z>(i,
-                                      // j, k, mesh_info, vec_x)"! TODO recheck
-                                      // that ddz_uu_z is the correct one
-                       - c13 * (der_scal<AXIS_X>(i, j, k, mesh_info, vec_x) +
-                                der_scal<AXIS_Y>(i, j, k, mesh_info, vec_y));
+    const MODEL_REAL Szz = c23 * der_scal<AXIS_Z>(i, j, k, mesh_info,
+                                                  vec_z) // replaced from "c23*der_scal<AXIS_Z>(i,
+                                                         // j, k, mesh_info, vec_x)"! TODO recheck
+                                                         // that ddz_uu_z is the correct one
+                           - c13 * (der_scal<AXIS_X>(i, j, k, mesh_info, vec_x) +
+                                    der_scal<AXIS_Y>(i, j, k, mesh_info, vec_y));
 
     // Grad lnrho
 
@@ -337,17 +328,16 @@ nu_const(const int& i, const int& j, const int& k, const AcMeshInfo& mesh_info,
     // gx = gy =gz = .0f;
 
     MODEL_REAL sgrhox, sgrhoy, sgrhoz;
-    S_grad_lnrho(i, j, k, mesh_info, vec_x, vec_y, vec_z, scal, &sgrhox,
-                 &sgrhoy, &sgrhoz);
+    S_grad_lnrho(i, j, k, mesh_info, vec_x, vec_y, vec_z, scal, &sgrhox, &sgrhoy, &sgrhoz);
     // sgrhox = sgrhoy = sgrhoz = .0f;
 
     *visc_x = mesh_info.real_params[AC_nu_visc] *
-              (lx + MODEL_REAL(1. / 3.) * gx + MODEL_REAL(2.) * sgrhox)
-              + mesh_info.real_params[AC_zeta] * gx;
+                  (lx + MODEL_REAL(1. / 3.) * gx + MODEL_REAL(2.) * sgrhox) +
+              mesh_info.real_params[AC_zeta] * gx;
     *visc_y = mesh_info.real_params[AC_nu_visc] *
-              (ly + MODEL_REAL(1. / 3.) * gy + MODEL_REAL(2.) * sgrhoy)
-              + mesh_info.real_params[AC_zeta] * gy;
+                  (ly + MODEL_REAL(1. / 3.) * gy + MODEL_REAL(2.) * sgrhoy) +
+              mesh_info.real_params[AC_zeta] * gy;
     *visc_z = mesh_info.real_params[AC_nu_visc] *
-              (lz + MODEL_REAL(1. / 3.) * gz + MODEL_REAL(2.) * sgrhoz)
-              + mesh_info.real_params[AC_zeta] * gz;
+                  (lz + MODEL_REAL(1. / 3.) * gz + MODEL_REAL(2.) * sgrhoz) +
+              mesh_info.real_params[AC_zeta] * gz;
 }
