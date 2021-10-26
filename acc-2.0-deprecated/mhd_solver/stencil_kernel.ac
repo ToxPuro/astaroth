@@ -17,6 +17,63 @@
 #define H_CONST (0)                     // TODO: make an actual config parameter
 #define C_CONST (0)                     // TODO: make an actual config parameter
 
+// MV: Hack. Communicate physics defines to astaroth constant variables so that
+// MV: the main program can see them. This will avoid the need to define these
+// MV: flags in multiple places.
+
+// MV: This did not work out because information is not tranmitted to the main program!
+// MV: COmmented out to remember the idea later
+//#if LDENSITY
+// uniform int AC_ldensity = 1;
+//#else
+// uniform int AC_ldensity = 0;
+//#endif
+//#if LHYDRO
+// uniform int AC_lhydro = 1;
+//#else
+// uniform int AC_lhydro = 0;
+//#endif
+//#if LMAGNETIC
+// uniform int AC_lmagnetic = 1;
+//#else
+// uniform int AC_lmagnetic = 0;
+//#endif
+//#if LENTROPY
+// uniform int AC_lentropy = 1;
+//#else
+// uniform int AC_lentropy = 0;
+//#endif
+//#if LTEMPERATURE
+// uniform int AC_ltempereture = 1;
+//#else
+// uniform int AC_ltempereture = 0;
+//#endif
+//#if LFORCING
+// uniform int AC_lforcing = 1;
+//#else
+// uniform int AC_lforcing = 0;
+//#endif
+//#if LUPWD
+// uniform int AC_lupwd = 1;
+//#else
+// uniform int AC_lupwd = 0;
+//#endif
+//#if LSINK
+// uniform int AC_lsink = 1;
+//#else
+// uniform int AC_lsink = 0;
+//#endif
+//#if LBFIELD
+// uniform int AC_lbfied = 1;
+//#else
+// uniform int AC_lbfied = 0;
+//#endif
+//#if LSHOCK
+// uniform int AC_lshock = 1;
+//#else
+// uniform int AC_lshock = 0;
+//#endif
+
 // Int params
 uniform int AC_max_steps;
 uniform int AC_save_steps;
@@ -81,6 +138,9 @@ uniform Scalar AC_lnrho_out;
 uniform Scalar AC_ampl_aa;
 uniform Scalar AC_init_k_wave;
 uniform Scalar AC_init_sigma_hel;
+
+uniform int AC_init_type;
+
 //  Forcing parameters. User configured.
 uniform Scalar AC_forcing_magnitude;
 uniform Scalar AC_relhel;
@@ -487,8 +547,7 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
                                           (AC_gamma - 1) * (value(lnrho) - AC_lnrho0));
     const Vector j   = (1.0 / AC_mu0) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
-    const Vector B = curl(aa);
-    // TODO: DOES INTHERMAL VERSTION INCLUDE THE MAGNETIC FIELD?
+    const Vector B       = curl(aa);
     const Scalar inv_rho = 1.0 / exp(value(lnrho));
 
     // Regex replace CPU constants with get\(AC_([a-zA-Z_0-9]*)\)
@@ -545,11 +604,24 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
 }
 #else
 Device Vector
-momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar dt)
+momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho,
+#if LMAGNETIC
+         in VectorField aa,
+#endif
+#if LSHOCK
+         in ScalarField shock,
+#endif
+         Scalar dt)
 {
     Vector mom;
 
     const Matrix S = stress_tensor(uu);
+#if LMAGNETIC
+    const Vector j = (1.0 / AC_mu0) *
+                     (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
+    const Vector B       = curl(aa);
+    const Scalar inv_rho = 1.0 / exp(value(lnrho));
+#endif
 
     // Isothermal: we have constant speed of sound
 
@@ -557,6 +629,14 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar d
           AC_nu_visc * (laplace_vec(uu) + (1.0 / 3.0) * gradient_of_divergence(uu) +
                         2.0 * mul(S, gradient(lnrho))) +
           AC_zeta * gradient_of_divergence(uu)
+#if LMAGNETIC
+          + inv_rho * cross(j, B)
+#endif
+#if LSHOCK
+          + AC_nu_shock *
+                (value(shock) * (divergence(uu) * gradient(lnrho) + gradient_of_divergence(uu)) +
+                 divergence(uu) * gradient(shock))
+#endif
 #if LSINK
           + sink_gravity(globalVertexIdx)
           // Corresponding loss of momentum
@@ -889,7 +969,19 @@ solve()
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, tt, dt), dt);
     out_tt = rk3(out_tt, tt, heat_transfer(uu, lnrho, tt), dt);
 #else
+#if LMAGNETIC
+#if LSHOCK
+    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, aa, shock, dt), dt);
+#else
+    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, aa, dt), dt);
+#endif
+#else
+#if LSHOCK
+    out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, shock, dt), dt);
+#else
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, dt), dt);
+#endif
+#endif
 #endif
 
 #if LFORCING
@@ -911,5 +1003,9 @@ solve()
     if (step_number == 2) {
         b_out = get_bfield(aa);
     }
+#endif
+
+#if LSHOCK
+    out_shock = value(shock);
 #endif
 }

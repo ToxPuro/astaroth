@@ -37,7 +37,7 @@ main(void)
     // This parameter is a c-style array but only works with c++ at the moment
     //(the interface relies on templates for safety and array type deduction).
     VertexBufferHandle all_fields[] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
-                                       VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,  VTXBUF_ENTROPY};
+                                       VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ}; //,  VTXBUF_ENTROPY};
 
     // Miikka's note: this would be a good quality of life feature
     // VertexBufferHandle all_fields = ALL_VERTEX_BUFFERS;
@@ -53,7 +53,7 @@ main(void)
     // and figures out the dependencies between the tasks.
     AcTaskGraph* hc_graph = acGridBuildTaskGraph(
         {acHaloExchange(all_fields),
-         // acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
          acCompute(KERNEL_solve, all_fields)});
 
     // We can build multiple TaskGraphs, the MPI requests will not collide

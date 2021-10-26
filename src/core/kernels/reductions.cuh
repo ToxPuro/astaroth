@@ -44,10 +44,10 @@ static __device__ inline AcReal
 dexp_squared_vec(const AcReal& a, const AcReal& b, const AcReal& c) { return dexp_squared(a) + dexp_squared(b) + dexp_squared(c); }
 
 static __device__ inline AcReal
-dlength_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d) { return sqrt(a*a + b*b + c*c)/sqrt(AcReal(4.0)*REAL_PI*exp(d)); }
+dlength_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d) { return sqrt(a*a + b*b + c*c)/sqrt(exp(d)); }
 
 static __device__ inline AcReal
-dsquared_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d) { return (dsquared(a) + dsquared(b) + dsquared(c))/(AcReal(4.0)*REAL_PI*exp(d)); }
+dsquared_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d) { return (dsquared(a) + dsquared(b) + dsquared(c))/(exp(d)); }
 
 // clang-format on
 

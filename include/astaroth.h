@@ -71,12 +71,19 @@ typedef enum {
     AC_FOR_RTYPES(AC_GEN_ID) //
     NUM_RTYPES
 } ReductionType;
+
+typedef enum {
+    AC_FOR_INIT_TYPES(AC_GEN_ID) //
+    NUM_INIT_TYPES
+} InitType;
+
 #undef AC_GEN_ID
 
 #define _UNUSED __attribute__((unused)) // Does not give a warning if unused
 #define AC_GEN_STR(X) #X,
-static const char* bctype_names[] _UNUSED = {AC_FOR_BCTYPES(AC_GEN_STR) "-end-"};
-static const char* rtype_names[] _UNUSED  = {AC_FOR_RTYPES(AC_GEN_STR) "-end-"};
+static const char* bctype_names[] _UNUSED       = {AC_FOR_BCTYPES(AC_GEN_STR) "-end-"};
+static const char* rtype_names[] _UNUSED        = {AC_FOR_RTYPES(AC_GEN_STR) "-end-"};
+static const char* initcondtype_names[] _UNUSED = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
 #undef AC_GEN_STR
 #undef _UNUSED
 
@@ -182,6 +189,14 @@ acQueryBCtypes(void)
 {
     for (int i = 0; i < NUM_BCTYPES; ++i)
         printf("%s (%d)\n", bctype_names[i], i);
+}
+
+/** Prints a list of initial condition condition types */
+static inline void
+acQueryInitcondtypes(void)
+{
+    for (int i = 0; i < NUM_INIT_TYPES; ++i)
+        printf("%s (%d)\n", initcondtype_names[i], i);
 }
 
 /** Prints a list of reduction types */
@@ -394,6 +409,12 @@ AcResult acGridReduceScal(const Stream stream, const ReductionType rtype,
 AcResult acGridReduceVec(const Stream stream, const ReductionType rtype,
                          const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                          const VertexBufferHandle vtxbuf2, AcReal* result);
+
+/** */
+AcResult acGridReduceVecScal(const Stream stream, const ReductionType rtype,
+                             const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                             const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
+                             AcReal* result);
 
 /*
  * =============================================================================

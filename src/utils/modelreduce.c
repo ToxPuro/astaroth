@@ -40,6 +40,7 @@
 typedef AcReal (*ReduceFunc)(const AcReal, const AcReal);
 typedef AcReal (*ReduceInitialScalFunc)(const AcReal);
 typedef AcReal (*ReduceInitialVecFunc)(const AcReal, const AcReal, const AcReal);
+typedef AcReal (*ReduceInitialVecScalFunc)(const AcReal, const AcReal, const AcReal, const AcReal);
 
 // clang-format off
 /* Comparison funcs */
@@ -70,6 +71,12 @@ exp_squared_scal(const AcReal a) { return exp(a)*exp(a); }
 
 static inline AcReal
 exp_squared_vec(const AcReal a, const AcReal b, const AcReal c) { return exp_squared_scal(a) + exp_squared_scal(b) + exp_squared_scal(c); }
+
+static inline AcReal
+length_alf(const AcReal a, const AcReal b, const AcReal c, const AcReal d) { return sqrt(a*a + b*b + c*c)/sqrt(exp(d)); }
+
+static inline AcReal
+squared_alf(const AcReal a, const AcReal b, const AcReal c, const AcReal d) { return (squared_scal(a) + squared_scal(b) + squared_scal(c))/(exp(d)); }
 // clang-format on
 
 AcReal
@@ -193,6 +200,70 @@ acHostReduceVec(const AcMesh mesh, const ReductionType rtype, const VertexBuffer
                 const AcReal curr_val = reduce_initial(mesh.vertex_buffer[a][idx],
                                                        mesh.vertex_buffer[b][idx],
                                                        mesh.vertex_buffer[c][idx]);
+                res                   = reduce(res, curr_val);
+            }
+        }
+    }
+
+    if (solve_mean) {
+        const AcReal inv_n = (AcReal)1.0 / mesh.info.int_params[AC_nxyz];
+        return sqrt(inv_n * res);
+    }
+    else {
+        return res;
+    }
+}
+
+AcReal
+acHostReduceVecScal(const AcMesh mesh, const ReductionType rtype, const VertexBufferHandle a,
+                    const VertexBufferHandle b, const VertexBufferHandle c,
+                    const VertexBufferHandle d)
+{
+    // AcReal (*reduce_initial)(AcReal, AcReal, AcReal);
+    ReduceInitialVecScalFunc reduce_initial;
+    ReduceFunc reduce;
+
+    bool solve_mean = false;
+
+    switch (rtype) {
+    case RTYPE_ALFVEN_MAX:
+        reduce_initial = length_alf;
+        reduce         = max;
+        break;
+    case RTYPE_ALFVEN_MIN:
+        reduce_initial = length_alf;
+        reduce         = min;
+        break;
+    case RTYPE_ALFVEN_RMS:
+        reduce_initial = squared_alf;
+        reduce         = sum;
+        solve_mean     = true;
+        break;
+    default:
+        ERROR("Unrecognized RTYPE");
+    }
+
+    const int initial_idx = acVertexBufferIdx(mesh.info.int_params[AC_nx_min],
+                                              mesh.info.int_params[AC_ny_min],
+                                              mesh.info.int_params[AC_nz_min], mesh.info);
+
+    AcReal res;
+    if (rtype == RTYPE_MAX || rtype == RTYPE_MIN)
+        res = reduce_initial(mesh.vertex_buffer[a][initial_idx], mesh.vertex_buffer[b][initial_idx],
+                             mesh.vertex_buffer[c][initial_idx],
+                             mesh.vertex_buffer[d][initial_idx]);
+    else
+        res = 0;
+
+    for (int k = mesh.info.int_params[AC_nz_min]; k < mesh.info.int_params[AC_nz_max]; k++) {
+        for (int j = mesh.info.int_params[AC_ny_min]; j < mesh.info.int_params[AC_ny_max]; j++) {
+            for (int i = mesh.info.int_params[AC_nx_min]; i < mesh.info.int_params[AC_nx_max];
+                 i++) {
+                const int idx         = acVertexBufferIdx(i, j, k, mesh.info);
+                const AcReal curr_val = reduce_initial(mesh.vertex_buffer[a][idx],
+                                                       mesh.vertex_buffer[b][idx],
+                                                       mesh.vertex_buffer[c][idx],
+                                                       mesh.vertex_buffer[d][idx]);
                 res                   = reduce(res, curr_val);
             }
         }
