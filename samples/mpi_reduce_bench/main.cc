@@ -32,10 +32,10 @@
 #include <algorithm>
 #include <string.h>
 
-#include <string>
-#include <vector>
 #include <chrono>
 #include <ctime>
+#include <string>
+#include <vector>
 
 int
 main(int argc, char** argv)
@@ -51,30 +51,35 @@ main(int argc, char** argv)
 
     char* benchmark_label;
 
-    if (argc > 1){
+    if (argc > 1) {
         benchmark_label = argv[1];
-    } else {
-        auto timestamp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    }
+    else {
+        auto timestamp  = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         benchmark_label = std::ctime(&timestamp);
         benchmark_label[strcspn(benchmark_label, "\n")] = '\0';
     }
-    
-    //clang-format off
-    std::vector<AcScalReductionTestCase> scalarReductionTests {
-        acCreateScalReductionTestCase("Scalar MAX"    , VTXBUF_UUX, RTYPE_MAX),
-        acCreateScalReductionTestCase("Scalar MIN"    , VTXBUF_UUX, RTYPE_MIN),
-        acCreateScalReductionTestCase("Scalar RMS"    , VTXBUF_UUX, RTYPE_RMS),
-        acCreateScalReductionTestCase("Scalar RMS_EXP", VTXBUF_UUX, RTYPE_RMS_EXP),
-        acCreateScalReductionTestCase("Scalar SUM"    , VTXBUF_UUX, RTYPE_SUM)
-    };
 
-    std::vector<AcVecReductionTestCase> vectorReductionTests {
-        acCreateVecReductionTestCase("Vector MAX"    , VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, RTYPE_MAX),
-        acCreateVecReductionTestCase("Vector MIN"    , VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, RTYPE_MIN),
-        acCreateVecReductionTestCase("Vector RMS"    , VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, RTYPE_RMS),
-        acCreateVecReductionTestCase("Vector RMS_EXP", VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, RTYPE_RMS_EXP),
-        acCreateVecReductionTestCase("Vector SUM"    , VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, RTYPE_SUM)
-    };
+    //clang-format off
+    std::vector<AcScalReductionTestCase>
+        scalarReductionTests{acCreateScalReductionTestCase("Scalar MAX", VTXBUF_UUX, RTYPE_MAX),
+                             acCreateScalReductionTestCase("Scalar MIN", VTXBUF_UUX, RTYPE_MIN),
+                             acCreateScalReductionTestCase("Scalar RMS", VTXBUF_UUX, RTYPE_RMS),
+                             acCreateScalReductionTestCase("Scalar RMS_EXP", VTXBUF_UUX,
+                                                           RTYPE_RMS_EXP),
+                             acCreateScalReductionTestCase("Scalar SUM", VTXBUF_UUX, RTYPE_SUM)};
+
+    std::vector<AcVecReductionTestCase>
+        vectorReductionTests{acCreateVecReductionTestCase("Vector MAX", VTXBUF_UUX, VTXBUF_UUY,
+                                                          VTXBUF_UUZ, RTYPE_MAX),
+                             acCreateVecReductionTestCase("Vector MIN", VTXBUF_UUX, VTXBUF_UUY,
+                                                          VTXBUF_UUZ, RTYPE_MIN),
+                             acCreateVecReductionTestCase("Vector RMS", VTXBUF_UUX, VTXBUF_UUY,
+                                                          VTXBUF_UUZ, RTYPE_RMS),
+                             acCreateVecReductionTestCase("Vector RMS_EXP", VTXBUF_UUX, VTXBUF_UUY,
+                                                          VTXBUF_UUZ, RTYPE_RMS_EXP),
+                             acCreateVecReductionTestCase("Vector SUM", VTXBUF_UUX, VTXBUF_UUY,
+                                                          VTXBUF_UUZ, RTYPE_SUM)};
     //clang-format on
 
     // GPU alloc & compute
@@ -111,10 +116,11 @@ main(int argc, char** argv)
 
             FILE* fp = fopen(path, "a");
             ERRCHK_ALWAYS(fp);
-            
+
             // Format
             // benchmark label, test label, nprocs, measured (ms)
-            fprintf(fp, "\"%s\",\"%s\", %d, %g\n", benchmark_label, testCase.label, nprocs, results[nth_percentile * num_iters]);
+            fprintf(fp, "\"%s\",\"%s\", %d, %g\n", benchmark_label, testCase.label, nprocs,
+                    results[nth_percentile * num_iters]);
             fclose(fp);
         }
     }
@@ -128,7 +134,8 @@ main(int argc, char** argv)
             acGridSynchronizeStream(STREAM_ALL);
             timer_reset(&t);
             acGridSynchronizeStream(STREAM_ALL);
-            acGridReduceVec(STREAM_DEFAULT, testCase.rtype, testCase.a, testCase.b, testCase.c, &testCase.candidate);
+            acGridReduceVec(STREAM_DEFAULT, testCase.rtype, testCase.a, testCase.b, testCase.c,
+                            &testCase.candidate);
             acGridSynchronizeStream(STREAM_ALL);
             results.push_back(timer_diff_nsec(t) / 1e6);
             acGridSynchronizeStream(STREAM_ALL);
@@ -146,10 +153,11 @@ main(int argc, char** argv)
 
             FILE* fp = fopen(path, "a");
             ERRCHK_ALWAYS(fp);
-            
+
             // Format
             // benchmark label, test label, nprocs, measured (ms)
-            fprintf(fp, "\"%s\",\"%s\", %d, %g\n", benchmark_label, testCase.label, nprocs, results[nth_percentile * num_iters]);
+            fprintf(fp, "\"%s\",\"%s\", %d, %g\n", benchmark_label, testCase.label, nprocs,
+                    results[nth_percentile * num_iters]);
             fclose(fp);
         }
     }

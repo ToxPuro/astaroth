@@ -168,9 +168,11 @@ draw_vertex_buffer(const AcMesh& mesh, const VertexBufferHandle& vertex_buffer, 
         for (int i = 0; i < mesh.info.int_params[AC_mx]; ++i) {
             ERRCHK(i < datasurface_width && j < datasurface_height);
 
-            const int idx       = acVertexBufferIdx(i, j, k, mesh.info);
-            const uint8_t shade = (uint8_t)(
-                255.f * (fabsf(float(mesh.vertex_buffer[vertex_buffer][idx]) - mid)) / range);
+            const int idx               = acVertexBufferIdx(i, j, k, mesh.info);
+            const uint8_t shade         = (uint8_t)(255.f *
+                                            (fabsf(float(mesh.vertex_buffer[vertex_buffer][idx]) -
+                                                   mid)) /
+                                            range);
             uint8_t color[4]            = {0, 0, 0, 255};
             color[tile % 3]             = shade;
             const uint32_t mapped_color = SDL_MapRGBA(surfaces[vertex_buffer]->format, color[0],
@@ -211,12 +213,12 @@ draw_vertex_buffer_vec(const AcMesh& mesh, const VertexBufferHandle& vertex_buff
             min(model_reduce_scal(mesh, RTYPE_MIN, vertex_buffer_b),
                 model_reduce_scal(mesh, RTYPE_MIN, vertex_buffer_c))));
     */
-    const float maxx  = float(max(
-        acReduceScal(RTYPE_MAX, vertex_buffer_a),
-        max(acReduceScal(RTYPE_MAX, vertex_buffer_b), acReduceScal(RTYPE_MAX, vertex_buffer_c))));
-    const float minn  = float(min(
-        acReduceScal(RTYPE_MIN, vertex_buffer_a),
-        min(acReduceScal(RTYPE_MIN, vertex_buffer_b), acReduceScal(RTYPE_MIN, vertex_buffer_c))));
+    const float maxx  = float(max(acReduceScal(RTYPE_MAX, vertex_buffer_a),
+                                 max(acReduceScal(RTYPE_MAX, vertex_buffer_b),
+                                     acReduceScal(RTYPE_MAX, vertex_buffer_c))));
+    const float minn  = float(min(acReduceScal(RTYPE_MIN, vertex_buffer_a),
+                                 min(acReduceScal(RTYPE_MIN, vertex_buffer_b),
+                                     acReduceScal(RTYPE_MIN, vertex_buffer_c))));
     const float range = fabsf(maxx - minn);
     const float mid   = maxx - .5f * range;
 
@@ -225,13 +227,19 @@ draw_vertex_buffer_vec(const AcMesh& mesh, const VertexBufferHandle& vertex_buff
         for (int i = 0; i < mesh.info.int_params[AC_mx]; ++i) {
             ERRCHK(i < datasurface_width && j < datasurface_height);
 
-            const int idx   = acVertexBufferIdx(i, j, k, mesh.info);
-            const uint8_t r = (uint8_t)(
-                255.f * (fabsf(float(mesh.vertex_buffer[vertex_buffer_a][idx]) - mid)) / range);
-            const uint8_t g = (uint8_t)(
-                255.f * (fabsf(float(mesh.vertex_buffer[vertex_buffer_b][idx]) - mid)) / range);
-            const uint8_t b = (uint8_t)(
-                255.f * (fabsf(float(mesh.vertex_buffer[vertex_buffer_c][idx]) - mid)) / range);
+            const int idx               = acVertexBufferIdx(i, j, k, mesh.info);
+            const uint8_t r             = (uint8_t)(255.f *
+                                        (fabsf(float(mesh.vertex_buffer[vertex_buffer_a][idx]) -
+                                               mid)) /
+                                        range);
+            const uint8_t g             = (uint8_t)(255.f *
+                                        (fabsf(float(mesh.vertex_buffer[vertex_buffer_b][idx]) -
+                                               mid)) /
+                                        range);
+            const uint8_t b             = (uint8_t)(255.f *
+                                        (fabsf(float(mesh.vertex_buffer[vertex_buffer_c][idx]) -
+                                               mid)) /
+                                        range);
             const uint32_t mapped_color = SDL_MapRGBA(surfaces[vertex_buffer_a]->format, r, g, b,
                                                       255);
             set_pixel(i, j, mapped_color, surfaces[vertex_buffer_a]);
