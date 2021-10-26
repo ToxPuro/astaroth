@@ -126,6 +126,7 @@ symboltable_reset(void)
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_top_x");
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_top_y");
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_top_z");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_init_type");
   // Astaroth 2.0 backwards compatibility END
 }
 
@@ -565,7 +566,7 @@ generate(const ASTNode* root, FILE* stream)
            stencilgen);
   fprintf(stencilgen, "};");
   // clang-format off
-const char* stencilgen_main = 
+const char* stencilgen_main =
 "int main(int argc, char** argv) {\n"
 "(void)argv;/*Unused*/"
 "if(argc>1){"

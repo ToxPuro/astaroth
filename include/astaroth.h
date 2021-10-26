@@ -60,6 +60,18 @@ typedef int Stream;
     FUNC(AC_BOUNDCOND_SYMMETRIC)                                                                   \
     FUNC(AC_BOUNDCOND_ANTISYMMETRIC)
 
+#define AC_FOR_INIT_TYPES(FUNC)                                                                    \
+    FUNC(INIT_TYPE_RANDOM)                                                                         \
+    FUNC(INIT_TYPE_XWAVE)                                                                          \
+    FUNC(INIT_TYPE_GAUSSIAN_RADIAL_EXPL)                                                           \
+    FUNC(INIT_TYPE_ABC_FLOW)                                                                       \
+    FUNC(INIT_TYPE_SIMPLE_CORE)                                                                    \
+    FUNC(INIT_TYPE_KICKBALL)                                                                       \
+    FUNC(INIT_TYPE_VEDGE)                                                                          \
+    FUNC(INIT_TYPE_VEDGEX)                                                                         \
+    FUNC(INIT_TYPE_RAYLEIGH_TAYLOR)                                                                \
+    FUNC(INIT_TYPE_RAYLEIGH_BENARD)
+
 #define AC_GEN_ID(X) X,
 // Naming the associated number of the boundary condition types
 typedef enum {
