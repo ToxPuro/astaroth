@@ -740,7 +740,7 @@ acmesh_init_to(const InitType& init_type, AcMesh* mesh)
     switch (init_type) {
     case INIT_TYPE_RANDOM: {
         acHostMeshClear(mesh);
-        const AcReal range = AcReal(0.01);
+        const AcReal range = AcReal(1e-10);
         for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
             for (int i = 0; i < n; ++i)
                 mesh->vertex_buffer[w][i] = 2 * range * randr() - range;
