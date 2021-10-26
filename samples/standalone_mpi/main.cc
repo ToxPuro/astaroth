@@ -58,7 +58,7 @@
 // NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
 #define LSINK (0)
 #define LFORCING (0)
-#define LBFIELD (1)
+#define LBFIELD (0)
 #define LSHOCK (0)
 /*  MV NOTES
     It was possible to compensate LFORCING with AC_lforcing instead by the current hack
