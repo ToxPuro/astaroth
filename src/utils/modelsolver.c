@@ -32,7 +32,8 @@
 #include "errchk.h"
 #include "memory.h" // acHostMeshCreate, acHostMeshDestroy, acHostMeshApplyPeriodicBounds
 
-// Standalone flags
+/*
+// Standalone flags (currently defined in the DSL)
 #define LDENSITY (1)
 #define LHYDRO (1)
 #define LMAGNETIC (1)
@@ -42,6 +43,7 @@
 #define LUPWD (0)
 #define AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
 #define R_PI ((Scalar)M_PI)
+*/
 
 typedef AcReal Scalar;
 // typedef AcReal3 Vector;
