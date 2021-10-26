@@ -99,8 +99,9 @@ update_config(AcMeshInfo* config)
     config->real_params[AC_inv_dsx] = AcReal(1.) / config->real_params[AC_dsx];
     config->real_params[AC_inv_dsy] = AcReal(1.) / config->real_params[AC_dsy];
     config->real_params[AC_inv_dsz] = AcReal(1.) / config->real_params[AC_dsz];
-    config->real_params[AC_dsmin]   = min(
-        config->real_params[AC_dsx], min(config->real_params[AC_dsy], config->real_params[AC_dsz]));
+    config->real_params[AC_dsmin]   = min(config->real_params[AC_dsx],
+                                        min(config->real_params[AC_dsy],
+                                            config->real_params[AC_dsz]));
 
     // Real grid coordanates (DEFINE FOR GRID WITH THE GHOST ZONES)
     config->real_params[AC_xlen] = config->real_params[AC_dsx] * config->int_params[AC_mx];

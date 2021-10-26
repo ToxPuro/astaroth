@@ -8,7 +8,6 @@
 
 #include <mpi.h>
 
-
 int
 main(void)
 {
@@ -43,7 +42,7 @@ main(void)
 
         acMeshDiffWrite("full_grid_error.out", model, candidate);
     }
-    
+
     acGridQuit();
     MPI_Finalize();
     return EXIT_SUCCESS;

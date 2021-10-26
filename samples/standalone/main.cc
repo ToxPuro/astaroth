@@ -28,8 +28,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "run.h"
 #include "errchk.h"
+#include "run.h"
 
 // Write all errors from stderr to an <errorlog_name> in the current working
 // directory

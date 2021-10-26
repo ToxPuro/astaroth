@@ -144,8 +144,8 @@ cross_derivative(const ModelScalar* pencil_a, const ModelScalar* pencil_b,
 #if STENCIL_ORDER == 2
     const ModelScalar coefficients[] = {0, 1.0 / 4.0};
 #elif STENCIL_ORDER == 4
-    const ModelScalar coefficients[] = {
-        0, 1.0 / 32.0, 1.0 / 64.0}; // TODO correct coefficients, these are just placeholders
+    const ModelScalar coefficients[] =
+        {0, 1.0 / 32.0, 1.0 / 64.0}; // TODO correct coefficients, these are just placeholders
 #elif STENCIL_ORDER == 6
     const ModelScalar fac            = (1. / 720.);
     const ModelScalar coefficients[] = {0.0 * fac, 270.0 * fac, -27.0 * fac, 2.0 * fac};
@@ -442,7 +442,8 @@ operator-(const ModelVector& a)
     return (ModelVector){-a.x, -a.y, -a.z};
 }
 
-static inline ModelVector operator*(const ModelScalar a, const ModelVector& b)
+static inline ModelVector
+operator*(const ModelScalar a, const ModelVector& b)
 {
     return (ModelVector){a * b.x, a * b.y, a * b.z};
 }
@@ -517,10 +518,10 @@ curl(const ModelVectorData& vec)
 static inline ModelVector
 gradient_of_divergence(const ModelVectorData& vec)
 {
-    return (ModelVector){
-        hessian(vec.x).row[0].x + hessian(vec.y).row[0].y + hessian(vec.z).row[0].z,
-        hessian(vec.x).row[1].x + hessian(vec.y).row[1].y + hessian(vec.z).row[1].z,
-        hessian(vec.x).row[2].x + hessian(vec.y).row[2].y + hessian(vec.z).row[2].z};
+    return (
+        ModelVector){hessian(vec.x).row[0].x + hessian(vec.y).row[0].y + hessian(vec.z).row[0].z,
+                     hessian(vec.x).row[1].x + hessian(vec.y).row[1].y + hessian(vec.z).row[1].z,
+                     hessian(vec.x).row[2].x + hessian(vec.y).row[2].y + hessian(vec.z).row[2].z};
 }
 
 // Takes uu gradients and returns S
