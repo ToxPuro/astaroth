@@ -19,61 +19,60 @@
 
 // MV: Hack. Communicate physics defines to astaroth constant variables so that
 // MV: the main program can see them. This will avoid the need to define these
-// MV: flags in multiple places.  
+// MV: flags in multiple places.
 
 // MV: This did not work out because information is not tranmitted to the main program!
-// MV: COmmented out to remember the idea later 
+// MV: COmmented out to remember the idea later
 //#if LDENSITY
-//uniform int AC_ldensity = 1;
+// uniform int AC_ldensity = 1;
 //#else
-//uniform int AC_ldensity = 0;
+// uniform int AC_ldensity = 0;
 //#endif
-//#if LHYDRO 
-//uniform int AC_lhydro = 1;
+//#if LHYDRO
+// uniform int AC_lhydro = 1;
 //#else
-//uniform int AC_lhydro = 0;
+// uniform int AC_lhydro = 0;
 //#endif
 //#if LMAGNETIC
-//uniform int AC_lmagnetic = 1;
+// uniform int AC_lmagnetic = 1;
 //#else
-//uniform int AC_lmagnetic = 0;
+// uniform int AC_lmagnetic = 0;
 //#endif
-//#if LENTROPY 
-//uniform int AC_lentropy = 1;
+//#if LENTROPY
+// uniform int AC_lentropy = 1;
 //#else
-//uniform int AC_lentropy = 0;
+// uniform int AC_lentropy = 0;
 //#endif
 //#if LTEMPERATURE
-//uniform int AC_ltempereture = 1;
+// uniform int AC_ltempereture = 1;
 //#else
-//uniform int AC_ltempereture = 0;
+// uniform int AC_ltempereture = 0;
 //#endif
-//#if LFORCING 
-//uniform int AC_lforcing = 1;
+//#if LFORCING
+// uniform int AC_lforcing = 1;
 //#else
-//uniform int AC_lforcing = 0;
+// uniform int AC_lforcing = 0;
 //#endif
-//#if LUPWD 
-//uniform int AC_lupwd = 1;
+//#if LUPWD
+// uniform int AC_lupwd = 1;
 //#else
-//uniform int AC_lupwd = 0;
+// uniform int AC_lupwd = 0;
 //#endif
-//#if LSINK 
-//uniform int AC_lsink = 1;
+//#if LSINK
+// uniform int AC_lsink = 1;
 //#else
-//uniform int AC_lsink = 0;
+// uniform int AC_lsink = 0;
 //#endif
-//#if LBFIELD 
-//uniform int AC_lbfied = 1;
+//#if LBFIELD
+// uniform int AC_lbfied = 1;
 //#else
-//uniform int AC_lbfied = 0;
+// uniform int AC_lbfied = 0;
 //#endif
-//#if LSHOCK 
-//uniform int AC_lshock = 1;
+//#if LSHOCK
+// uniform int AC_lshock = 1;
 //#else
-//uniform int AC_lshock = 0;
+// uniform int AC_lshock = 0;
 //#endif
-
 
 // Int params
 uniform int AC_max_steps;
@@ -214,17 +213,17 @@ Preprocessed Scalar
 smooth_kernel(in ScalarField vertex)
 {
     const int ns = 7;
-    //int n_smooth = ns*ns*ns;
-    //Scalar smooth_factor[n_smooth];
-    //Explicit numbers because of DSL bug.
-    //Scalar smooth_factor[343];
+    // int n_smooth = ns*ns*ns;
+    // Scalar smooth_factor[n_smooth];
+    // Explicit numbers because of DSL bug.
+    // Scalar smooth_factor[343];
 
-    //This would be better set by host!
+    // This would be better set by host!
 
     // From Pencil Code src/shock_highorder.f90
     // Gaussian weights
     Scalar weights[ns];
-    //Scalar weights[7];
+    // Scalar weights[7];
     weights[0] = 1.0;
     weights[1] = 9.0;
     weights[2] = 45.0;
@@ -234,51 +233,52 @@ smooth_kernel(in ScalarField vertex)
     weights[6] = 1.0;
 
     Scalar smooth_factor;
-    Scalar smooth_norm = 5832000.0; //Based on separate calculations 
+    Scalar smooth_norm = 5832000.0; // Based on separate calculations
 
-////    // Set kernel values
-////    Scalar smooth_norm;
-////    int ind = 0;
-////    for (int k = 0; k < ns; ++k) {
-////        for (int j = 0; j < ns; ++j) {
-////            for (int i = 0; i < ns; ++i) {
-////                Scalar zzz = weights[i]*weights[j]*weights[k];
-////                smooth_factor[ind] = zzz;
-////                smooth_norm = smooth_norm + zzz;
-////                ++ind;
-////            }
-////        }
-////    }
-////
-////    // Normalize kernel
-////    ind = 0;
-////    for (int k = 0; k < ns; ++k) {
-////        for (int j = 0; j < ns; ++j) {
-////            for (int i = 0; i < ns; ++i) {
-////                smooth_factor[ind] = smooth_factor[ind]/smooth_norm;
-////                ++ind;
-////            }
-////        }
-////    }
+    ////    // Set kernel values
+    ////    Scalar smooth_norm;
+    ////    int ind = 0;
+    ////    for (int k = 0; k < ns; ++k) {
+    ////        for (int j = 0; j < ns; ++j) {
+    ////            for (int i = 0; i < ns; ++i) {
+    ////                Scalar zzz = weights[i]*weights[j]*weights[k];
+    ////                smooth_factor[ind] = zzz;
+    ////                smooth_norm = smooth_norm + zzz;
+    ////                ++ind;
+    ////            }
+    ////        }
+    ////    }
+    ////
+    ////    // Normalize kernel
+    ////    ind = 0;
+    ////    for (int k = 0; k < ns; ++k) {
+    ////        for (int j = 0; j < ns; ++j) {
+    ////            for (int i = 0; i < ns; ++i) {
+    ////                smooth_factor[ind] = smooth_factor[ind]/smooth_norm;
+    ////                ++ind;
+    ////            }
+    ////        }
+    ////    }
 
-    int ind = 0;
+    int ind         = 0;
     Scalar smoothed = 0.0;
     for (int k = 0; k < ns; ++k) {
         for (int j = 0; j < ns; ++j) {
             for (int i = 0; i < ns; ++i) {
-                int iver = -3+i;
-                int jver = -3+j;
-                int kver = -3+k;
+                int iver = -3 + i;
+                int jver = -3 + j;
+                int kver = -3 + k;
 
-                smooth_factor = (weights[i]*weights[j]*weights[k])/smooth_norm;
-                smoothed = smoothed+smooth_factor*vertex[vertexIdx.x+iver, vertexIdx.y+jver, vertexIdx.z+kver];
+                smooth_factor = (weights[i] * weights[j] * weights[k]) / smooth_norm;
+                smoothed      = smoothed +
+                           smooth_factor *
+                               vertex[vertexIdx.x + iver, vertexIdx.y + jver, vertexIdx.z + kver];
                 ++ind;
             }
         }
     }
     return smoothed;
 }
-
 
 Scalar
 field_max(Scalar samples[], int sample_size)
@@ -296,28 +296,28 @@ field_max(Scalar samples[], int sample_size)
 Preprocessed Scalar
 max5(in ScalarField vertex)
 {
-    Scalar samples[15]; //3*5
+    Scalar samples[15]; // 3*5
     int ind = 0;
 
     for (int i = -2; i <= 2; ++i) {
-        samples[ind] = vertex[vertexIdx.x+i, vertexIdx.y, vertexIdx.z];
+        samples[ind] = vertex[vertexIdx.x + i, vertexIdx.y, vertexIdx.z];
         ++ind;
     }
 
     for (int j = -2; j <= 2; ++j) {
-        samples[ind] = vertex[vertexIdx.x, vertexIdx.y+j, vertexIdx.z];
+        samples[ind] = vertex[vertexIdx.x, vertexIdx.y + j, vertexIdx.z];
         ++ind;
     }
 
     for (int k = -2; k <= 2; ++k) {
-        samples[ind] = vertex[vertexIdx.x, vertexIdx.y, vertexIdx.z+k];
+        samples[ind] = vertex[vertexIdx.x, vertexIdx.y, vertexIdx.z + k];
         ++ind;
     }
 
-    return (Scalar){ field_max(samples, 15) };
+    return (Scalar){field_max(samples, 15)};
 }
 
-#endif 
+#endif
 
 #if LUPWD
 
@@ -536,7 +536,7 @@ continuity(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, Scalar
 #if LENTROPY
 Device Vector
 momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in ScalarField ss,
-         in VectorField aa, 
+         in VectorField aa,
 #if LSHOCK
          in ScalarField shock,
 #endif
@@ -547,7 +547,7 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
                                           (AC_gamma - 1) * (value(lnrho) - AC_lnrho0));
     const Vector j   = (1.0 / AC_mu0) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
-    const Vector B = curl(aa);
+    const Vector B       = curl(aa);
     const Scalar inv_rho = 1.0 / exp(value(lnrho));
 
     // Regex replace CPU constants with get\(AC_([a-zA-Z_0-9]*)\)
@@ -559,8 +559,9 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
                                      2.0 * mul(S, gradient(lnrho))) +
                        AC_zeta * gradient_of_divergence(uu)
 #if LSHOCK
-                       + AC_nu_shock * (value(shock)*(divergence(uu)*gradient(lnrho)+gradient_of_divergence(uu))
-                                        + divergence(uu)*gradient(shock))
+                       + AC_nu_shock * (value(shock) * (divergence(uu) * gradient(lnrho) +
+                                                        gradient_of_divergence(uu)) +
+                                        divergence(uu) * gradient(shock))
 #endif
 #if LSINK
                        // Gravity term
@@ -603,9 +604,9 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, in Scala
 }
 #else
 Device Vector
-momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho, 
+momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho,
 #if LMAGNETIC
-         in VectorField aa, 
+         in VectorField aa,
 #endif
 #if LSHOCK
          in ScalarField shock,
@@ -616,9 +617,9 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho,
 
     const Matrix S = stress_tensor(uu);
 #if LMAGNETIC
-    const Vector j   = (1.0 / AC_mu0) *
+    const Vector j = (1.0 / AC_mu0) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
-    const Vector B = curl(aa);
+    const Vector B       = curl(aa);
     const Scalar inv_rho = 1.0 / exp(value(lnrho));
 #endif
 
@@ -629,11 +630,12 @@ momentum(int3 globalVertexIdx, in VectorField uu, in ScalarField lnrho,
                         2.0 * mul(S, gradient(lnrho))) +
           AC_zeta * gradient_of_divergence(uu)
 #if LMAGNETIC
-          + inv_rho * cross(j, B) 
+          + inv_rho * cross(j, B)
 #endif
 #if LSHOCK
-          + AC_nu_shock * (value(shock)*(divergence(uu)*gradient(lnrho)+gradient_of_divergence(uu))
-                           + divergence(uu)*gradient(shock))
+          + AC_nu_shock *
+                (value(shock) * (divergence(uu) * gradient(lnrho) + gradient_of_divergence(uu)) +
+                 divergence(uu) * gradient(shock))
 #endif
 #if LSINK
           + sink_gravity(globalVertexIdx)
@@ -710,7 +712,8 @@ heating(const int i, const int j, const int k)
 Device Scalar
 entropy(in ScalarField ss, in VectorField uu, in ScalarField lnrho, in VectorField aa
 #if LSHOCK
-, in ScalarField shock
+        ,
+        in ScalarField shock
 #endif
 )
 {
@@ -721,7 +724,7 @@ entropy(in ScalarField ss, in VectorField uu, in ScalarField lnrho, in VectorFie
     const Scalar RHS = H_CONST - C_CONST + AC_eta * (AC_mu0)*dot(j, j) +
                        2.0 * exp(value(lnrho)) * AC_nu_visc * contract(S) +
 #if LSHOCK
-                       AC_nu_shock*value(shock) * (divergence(uu)*divergence(uu)) +
+                       AC_nu_shock * value(shock) * (divergence(uu) * divergence(uu)) +
 #endif
                        AC_zeta * exp(value(lnrho)) * divergence(uu) * divergence(uu);
 
@@ -859,7 +862,7 @@ get_bfield(in VectorField aa)
 #endif
 
 #if LSHOCK
-//Get divergence of velocity for the first pass in shock viscosity.
+// Get divergence of velocity for the first pass in shock viscosity.
 Device Scalar
 divu_shock(in VectorField uu)
 {
@@ -867,19 +870,20 @@ divu_shock(in VectorField uu)
     Scalar divu = divergence(uu);
     if (divu <= 0.0) {
         return -divu;
-    } else {
-        return 0.0; 
+    }
+    else {
+        return 0.0;
     }
 }
 
-//Calculate local maximum from divergences.
+// Calculate local maximum from divergences.
 Device Scalar
 max5_shock(in ScalarField shock)
 {
     return max5(shock);
 }
 
-//Perform smoothing on shock values.
+// Perform smoothing on shock values.
 Device Scalar
 smooth_shock(in ScalarField shock)
 {
@@ -938,7 +942,7 @@ shock_2_max()
 Kernel void
 shock_3_smooth()
 {
-    out_shock = AC_dsmin*AC_dsmin*smooth_shock(shock); //Add scaling constant cshock
+    out_shock = AC_dsmin * AC_dsmin * smooth_shock(shock); // Add scaling constant cshock
 }
 
 #endif
@@ -954,30 +958,30 @@ solve()
 #endif
 
 #if LENTROPY
-    #if LSHOCK
+#if LSHOCK
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, ss, aa, shock, dt), dt);
     out_ss = rk3(out_ss, ss, entropy(ss, uu, lnrho, aa, shock), dt);
-    #else
+#else
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, ss, aa, dt), dt);
     out_ss = rk3(out_ss, ss, entropy(ss, uu, lnrho, aa), dt);
-    #endif
+#endif
 #elif LTEMPERATURE
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, tt, dt), dt);
     out_tt = rk3(out_tt, tt, heat_transfer(uu, lnrho, tt), dt);
 #else
-    #if LMAGNETIC
-        #if LSHOCK
+#if LMAGNETIC
+#if LSHOCK
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, aa, shock, dt), dt);
-        #else
+#else
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, aa, dt), dt);
-        #endif
-    #else
-        #if LSHOCK
+#endif
+#else
+#if LSHOCK
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, shock, dt), dt);
-        #else
+#else
     out_uu = rk3(out_uu, uu, momentum(globalVertexIdx, uu, lnrho, dt), dt);
-        #endif
-    #endif
+#endif
+#endif
 #endif
 
 #if LFORCING
@@ -1003,5 +1007,5 @@ solve()
 
 #if LSHOCK
     out_shock = value(shock);
-#endif 
+#endif
 }
