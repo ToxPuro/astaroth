@@ -359,12 +359,22 @@ gen_user_defines(const ASTNode* root, const char* out)
 
   fprintf(fp, "#pragma once\n");
   fprintf(fp, "#define STENCIL_ORDER (%lu)\n", stencil_order);
+  fprintf(fp, "#define STENCIL_DEPTH (%lu)\n", stencil_order + 1);
+  fprintf(fp, "#define STENCIL_WIDTH (%lu)\n", stencil_order + 1);
+  fprintf(fp, "#define STENCIL_HEIGHT (%lu)\n", stencil_order + 1);
 
   symboltable_reset();
   traverse(root, NODE_DCONST | NODE_FIELD | NODE_FUNCTION | NODE_STENCIL, fp);
 
   symboltable_reset();
   traverse(root, 0, NULL);
+
+  // Num stencils
+  size_t num_stencils = 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_STENCIL_ID)
+      ++num_stencils;
+  fprintf(fp, "#define NUM_STENCILS (%lu)\n", num_stencils);
 
   // Enums
   fprintf(fp, "typedef enum {");
@@ -539,7 +549,8 @@ generate(const ASTNode* root, FILE* stream)
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_STENCIL_ID)
       fprintf(stream, "stencil_%s,", symbol_table[i].identifier);
-  fprintf(stream, "NUM_STENCILS} Stencil;");
+  fprintf(stream, "} Stencil;");
+  // fprintf(stream, "NUM_STENCILS} Stencil;"); // defined now in user_defines.h
 
   // Stencil generator
   symboltable_reset();
@@ -570,7 +581,7 @@ const char* stencilgen_main =
 "int main(int argc, char** argv) {\n"
 "(void)argv;/*Unused*/"
 "if(argc>1){"
-"printf(\"static __device__ const AcReal /*__restrict__*/ stencils[NUM_STENCILS][%d][%d][%d]={\", STENCIL_DEPTH, STENCIL_WIDTH, STENCIL_HEIGHT);"
+"printf(\"static __device__ const AcReal /*__restrict__*/ stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_WIDTH][STENCIL_HEIGHT]={\");"
 "for(int stencil=0;stencil<NUM_STENCILS;++stencil){"
 "printf(\"{\");"
 "for(int depth=0;depth<STENCIL_DEPTH;++depth){"
