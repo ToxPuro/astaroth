@@ -1,11 +1,8 @@
-# Astaroth - A Multi-GPU Library for Generic Stencil Computations {#mainpage}
+# Astaroth - A Scalable Multi-GPU Library for Stencil Computations {#mainpage}
 
 [Specification](doc/Astaroth_API_specification_and_user_manual/API_specification_and_user_manual.md) | [Contributing](CONTRIBUTING.md) | [Licence](LICENCE.md) | [Repository](https://bitbucket.org/jpekkila/astaroth) | [Issue Tracker](https://bitbucket.org/jpekkila/astaroth/issues?status=new&status=open) | [Wiki](https://bitbucket.org/jpekkila/astaroth/wiki/Home)
 
-Astaroth is a multi-GPU library for three-dimensional stencil computations. It is designed especially for performing high-order stencil
-computations in structured grids, where several coupled fields are updated each time step. Astaroth consists of a multi-GPU and single-GPU
-APIs and provides a domain-specific language for translating high-level descriptions of stencil computations into efficient GPU code. This
-makes Astaroth especially suitable for multiphysics simulations.
+Astaroth is a multi-GPU library designed for high-order stencil computations with a special focus on the requirements of multiphysics applications on modern HPC systems. It provides a multi-GPU and single-GPU APIs, a domain-specific language for expressing stencil codes in a high-level syntax, and an optimizing compiler that translates DSL sources into CUDA/HIP subroutines that exhibit near handtuned performance.
 
 Astaroth is licenced under the terms of the GNU General Public Licence, version 3, or later
 (see [LICENCE.txt](LICENCE.md)). For contributing guidelines,
@@ -54,7 +51,7 @@ In the base directory, run
 | DOUBLE_PRECISION | Generates double precision code. | OFF |
 | BUILD_SAMPLES | Builds projects in samples subdirectory. | ON |
 | MPI_ENABLED | Enables acGrid functions for carrying out computations with MPI. | OFF |
-| USE_CUDA_AWARE_MPI | Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory | ON | 
+| USE_CUDA_AWARE_MPI | Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory | ON |
 | MULTIGPU_ENABLED | Enables Astaroth to use multiple GPUs on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only. | ON |
 | DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `acc/mhd_solver` |
 | PROGRAM_MODULE_DIR | Can be used to declare additional host-side program modules (also known as Thrones) | empty |
