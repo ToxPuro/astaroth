@@ -167,9 +167,16 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
 AcResult
 acKernel(const KernelParameters params, VertexBufferArray vba)
 {
-#ifdef AC_step_number
+#ifndef AC_step_number
+    (void)params; // Unused
+    (void)vba;    // Unused
+    ERROR("acKernel() called but AC_step_number not defined!");
+    return AC_FAILURE;
+#else
+
+    // TODO: Why is AC_step_number loaded here??
     acLoadIntUniform(params.stream, AC_step_number, params.step_number);
-#endif
     acLaunchKernel(params.kernel, params.stream, params.start, params.end, vba);
     return AC_SUCCESS;
+#endif
 }
