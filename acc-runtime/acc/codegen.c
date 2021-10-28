@@ -7,7 +7,10 @@
 #include "ast.h"
 #include "tab.h"
 
-static const size_t stencil_order = 6;
+static const size_t stencil_order  = 6;
+static const size_t stencil_depth  = stencil_order + 1;
+static const size_t stencil_width  = stencil_order + 1;
+static const size_t stencil_height = stencil_order + 1;
 
 // Symbols
 #define MAX_ID_LEN (256)
@@ -359,9 +362,9 @@ gen_user_defines(const ASTNode* root, const char* out)
 
   fprintf(fp, "#pragma once\n");
   fprintf(fp, "#define STENCIL_ORDER (%lu)\n", stencil_order);
-  fprintf(fp, "#define STENCIL_DEPTH (%lu)\n", stencil_order + 1);
-  fprintf(fp, "#define STENCIL_WIDTH (%lu)\n", stencil_order + 1);
-  fprintf(fp, "#define STENCIL_HEIGHT (%lu)\n", stencil_order + 1);
+  fprintf(fp, "#define STENCIL_DEPTH (%lu)\n", stencil_depth);
+  fprintf(fp, "#define STENCIL_HEIGHT (%lu)\n", stencil_height);
+  fprintf(fp, "#define STENCIL_WIDTH (%lu)\n", stencil_width);
 
   symboltable_reset();
   traverse(root, NODE_DCONST | NODE_FIELD | NODE_FUNCTION | NODE_STENCIL, fp);
@@ -562,15 +565,16 @@ generate(const ASTNode* root, FILE* stream)
           "#include <stdio.h>\n"
           "#include <stdlib.h>\n"
           "#define STENCIL_ORDER (%lu)\n"
-          "#define NN (STENCIL_ORDER+1)\n"
-          "#define STENCIL_DEPTH (NN)\n"
-          "#define STENCIL_HEIGHT (NN)\n"
-          "#define STENCIL_WIDTH (NN)\n"
+          "#define STENCIL_DEPTH (%lu)\n"
+          "#define STENCIL_HEIGHT (%lu)\n"
+          "#define STENCIL_WIDTH (%lu)\n"
           "#define NUM_STENCILS (%lu)\n"
           "#define NUM_FIELDS (%lu)\n",
-          stencil_order, num_stencils, num_fields);
-  fprintf(stencilgen, "static char* "
-                      "stencils[][NN][NN][NN] = {");
+          stencil_order, stencil_depth, stencil_height, stencil_width,
+          num_stencils, num_fields);
+  fprintf(stencilgen,
+          "static char* "
+          "stencils[][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH] = {");
   traverse(root,
            NODE_STENCIL_ID | NODE_DCONST | NODE_FIELD | NODE_FUNCTION |
                NODE_HOSTDEFINE,
@@ -581,7 +585,7 @@ const char* stencilgen_main =
 "int main(int argc, char** argv) {\n"
 "(void)argv;/*Unused*/"
 "if(argc>1){"
-"printf(\"static __device__ const AcReal /*__restrict__*/ stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_WIDTH][STENCIL_HEIGHT]={\");"
+"printf(\"static __device__ const AcReal /*__restrict__*/ stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={\");"
 "for(int stencil=0;stencil<NUM_STENCILS;++stencil){"
 "printf(\"{\");"
 "for(int depth=0;depth<STENCIL_DEPTH;++depth){"
