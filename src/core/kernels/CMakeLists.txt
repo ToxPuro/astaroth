@@ -4,5 +4,5 @@ if (USE_HIP)
 endif()
 
 add_library(kernels STATIC kernels.cu)
-add_dependencies(kernels acc-runtime-headers)
+target_link_libraries(kernels PUBLIC acc-runtime-headers)
 target_compile_features(kernels PRIVATE cxx_std_17)

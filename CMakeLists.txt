@@ -40,7 +40,7 @@ option(BUILD_UTILS        "Builds the utility library"                          
 ## CUDA/HIP
 if (USE_HIP)
     add_definitions(-DAC_USE_HIP=1)
-    
+
     set(GPU_TARGETS "gfx908" CACHE STRING "GPU target")
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm) # Default path
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0) # Triton
@@ -83,8 +83,6 @@ add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 
 ## Includes
 include_directories(include)                                   # Library headers
-include_directories(acc-runtime/api)                           # DSL API
-include_directories(${CMAKE_BINARY_DIR}/acc-runtime)           # DSL headers
 include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # CUDA headers
 
 ## Subdirectories
@@ -112,7 +110,7 @@ if (BUILD_SAMPLES)
     #add_subdirectory(samples/genbenchmarkscripts)
     #add_subdirectory(samples/mpi_reduce_bench)
     #add_subdirectory(samples/fortrantest)
-    
+
     #if (MPI_ENABLED)
     #  add_subdirectory(samples/bwtest)
     #endif()

@@ -19,11 +19,11 @@ set(DSL_HEADERS "user_kernels.h"
 add_custom_command (
     COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
     COMMAND ${PROJECT_BINARY_DIR}/acc/acc ${DSL_SOURCES}
-    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
     DEPENDS ${DSL_SOURCES} acc
     OUTPUT ${DSL_HEADERS}
 )
-add_custom_target(acc-runtime-headers ALL DEPENDS ${DSL_HEADERS})
+add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
+target_include_directories(acc-runtime-headers INTERFACE . ${CMAKE_CURRENT_BINARY_DIR})
 
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)
@@ -49,9 +49,7 @@ if (BUILD_ACC_RUNTIME_LIBRARY)
 
     add_library(acc-runtime acc_runtime.cu)
     include_directories(${PROJECT_BINARY_DIR})
-
-    add_dependencies(acc-runtime acc)
-    add_dependencies(acc-runtime acc-runtime-headers)
+    target_link_libraries(acc-runtime acc-runtime-headers)
 
     target_compile_features(acc-runtime PRIVATE cxx_std_17)
 endif()
