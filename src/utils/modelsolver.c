@@ -32,6 +32,7 @@
 #include "errchk.h"
 #include "memory.h" // acHostMeshCreate, acHostMeshDestroy, acHostMeshApplyPeriodicBounds
 
+#ifdef AC_dsx
 /*
 // Standalone flags (currently defined in the DSL)
 #define LDENSITY (1)
@@ -1045,3 +1046,13 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
     mesh_info = NULL;
     return AC_SUCCESS;
 }
+#else
+AcResult
+acHostIntegrateStep(AcMesh mesh, const AcReal dt)
+{
+    (void)mesh; // Unused
+    (void)dt;   // Unused
+    ERROR("Parameters required by acHostIntegrateStep not defined.");
+    return AC_FAILURE;
+}
+#endif

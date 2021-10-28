@@ -462,11 +462,22 @@ AcResult
 acDeviceIntegrateSubstep(const Device device, const Stream stream, const int step_number,
                          const int3 start, const int3 end, const AcReal dt)
 {
+#ifndef AC_dt
+    (void)device;      // Unused
+    (void)stream;      // Unused
+    (void)step_number; // Unused
+    (void)start;       // Unused
+    (void)end;         // Unused
+    (void)dt;          // Unused
+    ERROR("acDeviceIntegrateSubstep() called but AC_dt not defined!");
+    return AC_FAILURE;
+#else
     cudaSetDevice(device->id);
 
     acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
     acDeviceLoadIntUniform(device, stream, AC_step_number, step_number);
     return acLaunchKernel(solve, device->streams[stream], start, end, device->vba);
+#endif
 }
 
 AcResult

@@ -173,6 +173,8 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
 AcResult
 acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candidate, const size_t z)
 {
+    ERRCHK_ALWAYS(NUM_VTXBUF_HANDLES > 0);
+
     const AcMeshInfo info = model.info;
     ERRCHK_ALWAYS((int)z < info.int_params[AC_mz]);
 
@@ -184,7 +186,7 @@ acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candida
     for (size_t y = 0; y < my; ++y) {
         for (size_t x = 0; x < mx; ++x) {
             const size_t idx                = acVertexBufferIdx(x, y, z, info);
-            const VertexBufferHandle vtxbuf = VTXBUF_UUX;
+            const VertexBufferHandle vtxbuf = 0;
             const AcReal m                  = model.vertex_buffer[vtxbuf][idx];
             const AcReal c                  = candidate.vertex_buffer[vtxbuf][idx];
             const Error error               = acGetError(m, c);
@@ -201,6 +203,8 @@ acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candida
 AcResult
 acMeshDiffWrite(const char* path, const AcMesh model, const AcMesh candidate)
 {
+    ERRCHK_ALWAYS(NUM_VTXBUF_HANDLES > 0);
+
     const AcMeshInfo info = model.info;
 
     FILE* fp = fopen(path, "w");
@@ -213,7 +217,7 @@ acMeshDiffWrite(const char* path, const AcMesh model, const AcMesh candidate)
         for (size_t y = 0; y < my; ++y) {
             for (size_t x = 0; x < mx; ++x) {
                 const size_t idx                = acVertexBufferIdx(x, y, z, info);
-                const VertexBufferHandle vtxbuf = VTXBUF_UUX;
+                const VertexBufferHandle vtxbuf = 0;
                 const AcReal m                  = model.vertex_buffer[vtxbuf][idx];
                 const AcReal c                  = candidate.vertex_buffer[vtxbuf][idx];
                 const Error error               = acGetError(m, c);
