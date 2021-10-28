@@ -1,19 +1,17 @@
-Field VTXBUF_blur
+Field IMAGE0
 
-/*
-int AC_step_number
-real AC_dt
+#define COEFF (1. / 7.)
 
-// Dummy
-Kernel solve() {
-
-}
-*/
-
-Stencil value {
-    [0][0][0] = 1
+Stencil blur {
+  [-1][0][0] = COEFF,
+  [1][0][0]  = COEFF,
+  [0][-1][0] = COEFF,
+  [0][1][0]  = COEFF,
+  [0][0][-1] = COEFF,
+  [0][0][1]  = COEFF,
+  [0][0][0]  = COEFF
 }
 
-Kernel blur() {
-
+Kernel blur_kernel() {
+  write(IMAGE0, blur(IMAGE0))
 }
