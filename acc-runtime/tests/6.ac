@@ -1,6 +1,6 @@
 int step
 real dt
-real INV_DS  = 1. / 0.04908738521
+real INV_DS//  = 1. / 0.04908738521
 
 real cs_sound, cp_sound
 real ac_gamma, nu_visc, zeta, eta
@@ -181,7 +181,7 @@ stress_tensor(v) {
     S.data[2][0] = S.data[0][2]
     S.data[2][1] = S.data[1][2]
     S.data[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
-    
+
     return S
 }
 
@@ -212,13 +212,13 @@ momentum() {
     B = curl(aa)
     inv_rho = 1. / exp(current(lnrho))
 
-    mom = - gradients(uu) * veccurrent(uu)    
+    mom = - gradients(uu) * veccurrent(uu)
           - cs2 * ((1. / cp_sound) * gradient(ss) + gradient(lnrho))
           + inv_rho * cross(j, B)
           + nu_visc * (veclaplace(uu) + (1. / 3.) * gradient_of_divergence(uu)
                        + 2. * S * gradient(lnrho))
           + zeta * gradient_of_divergence(uu)
-        
+
     return mom
 }
 
@@ -231,7 +231,7 @@ lnT() {
 heat_conduction() {
     inv_cp_sound = 1. / cp_sound
     grad_ln_chi = -gradient(lnrho)
-    
+
     first_term = ac_gamma * inv_cp_sound * laplace(ss) + (ac_gamma - 1.) * laplace(lnrho)
     second_term = ac_gamma * inv_cp_sound * gradient(ss) + (ac_gamma - 1.) * gradient(lnrho)
     third_term = ac_gamma * (inv_cp_sound * gradient(ss) + gradient(lnrho)) + grad_ln_chi

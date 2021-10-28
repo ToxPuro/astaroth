@@ -1,6 +1,6 @@
 int step_number
 real AC_dt
-real INV_DS  = 1. / 0.04908738521 // TODO
+#define INV_DS  (1. / 0.04908738521)
 
 real AC_cs_sound, AC_cp_sound
 real AC_gamma, AC_nu_visc, AC_zeta, AC_eta
@@ -181,7 +181,7 @@ stress_tensor(v) {
     S.data[2][0] = S.data[0][2]
     S.data[2][1] = S.data[1][2]
     S.data[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
-    
+
     return S
 }
 
@@ -212,13 +212,13 @@ momentum() {
     B = curl(AA)
     inv_rho = 1. / exp(value(VTXBUF_LNRHO))
 
-    mom = - gradients(UU) * vecvalue(UU)    
+    mom = - gradients(UU) * vecvalue(UU)
           - cs2 * ((1. / AC_cp_sound) * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO))
           + inv_rho * cross(j, B)
           + AC_nu_visc * (veclaplace(UU) + (1. / 3.) * gradient_of_divergence(UU)
                        + 2. * S * gradient(VTXBUF_LNRHO))
           + AC_zeta * gradient_of_divergence(UU)
-        
+
     return mom
 }
 
@@ -231,7 +231,7 @@ lnT() {
 heat_conduction() {
     inv_AC_cp_sound = 1. / AC_cp_sound
     grad_ln_chi = -gradient(VTXBUF_LNRHO)
-    
+
     first_term = AC_gamma * inv_AC_cp_sound * laplace(VTXBUF_ENTROPY) + (AC_gamma - 1.) * laplace(VTXBUF_LNRHO)
     second_term = AC_gamma * inv_AC_cp_sound * gradient(VTXBUF_ENTROPY) + (AC_gamma - 1.) * gradient(VTXBUF_LNRHO)
     third_term = AC_gamma * (inv_AC_cp_sound * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO)) + grad_ln_chi

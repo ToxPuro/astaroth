@@ -1,9 +1,9 @@
 // A Working Program
 
 int step
-real dt = 1e-3
+real dt// = 1e-3
 
-real INV_DS  = 1. / 0.04908738521
+real INV_DS//  = 1. / 0.04908738521
 
 Field lnrho, ux, uy, uz
 
