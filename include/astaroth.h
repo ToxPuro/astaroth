@@ -795,7 +795,7 @@ AcResult acDeviceRunMPITest(void);
 /** */
 AcResult
 acDeviceLoadStencils(const Device device, const Stream stream,
-                     AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_WIDTH][STENCIL_HEIGHT]);
+                     AcReal stencil[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
 
 /*
  * =============================================================================

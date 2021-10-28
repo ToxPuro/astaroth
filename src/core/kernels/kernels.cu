@@ -158,6 +158,20 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
     return AC_SUCCESS;
 }
 
+AcResult
+acDeviceLoadStencils(const Device device, const Stream stream,
+                     AcReal stencil[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    cudaSetDevice(device->id);
+
+    const size_t bytes = sizeof(stencil[0][0][0][0]) * NUM_STENCILS * STENCIL_DEPTH *
+                         STENCIL_HEIGHT * STENCIL_WIDTH;
+    ERRCHK_CUDA(cudaMemcpyToSymbolAsync(stencils, stencil, bytes, 0, cudaMemcpyHostToDevice,
+                                        device->streams[stream]));
+
+    return AC_FAILURE;
+}
+
 // Built-in kernels
 #include "boundconds.cuh"
 #include "boundconds_miikka_GBC.cuh"

@@ -579,12 +579,3 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
                                     device->reduce_scratchpad, device->reduce_result);
     return AC_SUCCESS;
 }
-
-AcResult
-acDeviceLoadStencils(const Device device, const Stream stream,
-                     AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_WIDTH][STENCIL_HEIGHT])
-{
-    cudaSetDevice(device->id);
-
-    return AC_FAILURE;
-}
