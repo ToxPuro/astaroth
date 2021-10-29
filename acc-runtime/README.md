@@ -15,8 +15,8 @@ The DSL source files should have a postfix `*.ac` and there should be only one
 ## Debugging
 
 As ACC is in active development, compiler bugs and cryptic error messages are
-expected. In case of issues, please check the following files in the 
-`${CMAKE_PROJECT_DIR}/acc-runtime-api` directory.
+expected. In case of issues, please check the following files in 
+`acc-runtime/api` in the build directory.
 
 1. `user_kernels.ac.preprocessed`. The DSL file after preprocessing.
 1. `user_defines.h`. The project-wide defines generated with the DSL.
