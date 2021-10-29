@@ -167,7 +167,7 @@ gradient(field) {
 }
 ```
 
-> Note: Stencil coefficients supplied in the DSL source must be compile-time constants. To set up coefficients at runtime, use the function API function `acDeviceLoadStencils()`.
+> Note: Stencil coefficients supplied in the DSL source must be compile-time constants. To set up coefficients at runtime, use the API function `acDeviceLoadStencils()`.
 
 
 Built-in variables and functions
