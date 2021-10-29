@@ -181,16 +181,16 @@ acDeviceLoadStencils(const Device device, const Stream stream,
 AcResult
 acKernel(const KernelParameters params, VertexBufferArray vba)
 {
-#ifndef AC_step_number
-    (void)params; // Unused
-    (void)vba;    // Unused
-    ERROR("acKernel() called but AC_step_number not defined!");
-    return AC_FAILURE;
-#else
-
+    /*
+  #ifndef AC_step_number // TODO: does not work, enums are not 'defines'
+      (void)params; // Unused
+      (void)vba;    // Unused
+      ERROR("acKernel() called but AC_step_number not defined!");
+      return AC_FAILURE;
+  #else */
     // TODO: Why is AC_step_number loaded here??
     acLoadIntUniform(params.stream, AC_step_number, params.step_number);
     acLaunchKernel(params.kernel, params.stream, params.start, params.end, vba);
     return AC_SUCCESS;
-#endif
+    //#endif
 }
