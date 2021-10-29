@@ -97,7 +97,7 @@ endif()
 
 if (BUILD_SAMPLES)
     # add_subdirectory(samples/standalone)
-    # add_subdirectory(samples/standalone_mpi)
+    add_subdirectory(samples/standalone_mpi)
     add_subdirectory(samples/ctest)
     add_subdirectory(samples/cpptest)
     add_subdirectory(samples/mpitest)
