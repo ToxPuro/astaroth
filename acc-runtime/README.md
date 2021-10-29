@@ -115,7 +115,7 @@ Kernel func3() {
 }
 ```
 
-> Note: Function parameters are **passed by reference**
+> Note: Function parameters are **passed by ???** (Currently **value***, but may likely change to **reference** in the near future)
 
 > Note: Overloading is not allowed, all function identifiers must be unique
 
