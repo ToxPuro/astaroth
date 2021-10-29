@@ -39,6 +39,7 @@ main(int argc, char** argv)
     // Verify that the mesh was loaded and stored correctly
     Device device;
     acDeviceCreate(0, info, &device);
+    acDevicePrintInfo(device);
     acDeviceLoadMesh(device, STREAM_DEFAULT, model);
     acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
     acVerifyMesh("Load/Store", model, candidate);
