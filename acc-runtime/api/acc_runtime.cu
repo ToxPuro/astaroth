@@ -151,6 +151,14 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   float best_time     = INFINITY;
   const int num_iters = 2;
 
+  // TODO idea #1:
+  // Choose tpb.x s.t. it is at most 'dims.x' rounded upward to the nearest
+  // multiple of the warp size
+  // xmax = min(MAX_THREADS_PER_BLOCK, (1 + floor((dims.x-1)/ warp_size))
+
+  // TODO idea #2:
+  // Break if x*y*z > round_up_to_multiple_of_warp_size(dim.x * dim.y * dim.z)
+
   for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) {
     for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
       for (int x = 1; x <= MAX_THREADS_PER_BLOCK; ++x) {
