@@ -70,6 +70,10 @@ IDX(const int3 idx)
 #define Field3(x, y, z) make_int3((x), (y), (z))
 #define real3(i, j, k) ((AcReal3){(i), (j), (k)})
 #define print printf // TODO is this a good idea?
+//#define len(arr) sizeof(arr) / sizeof(arr[0]) // Leads to bugs if the user
+// passes an array into a device function and then calls len (need to modify
+// the compiler to always pass arrays to functions as references before
+// re-enabling)
 
 #include "user_kernels.h"
 

@@ -80,12 +80,14 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "real3");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "Field3"); // TODO RECHECK
+  // add_symbol(NODE_FUNCTION_ID, NULL, NULL, "string"); // TODO RECHECK
   // add_symbol(NODE_FUNCTION_ID, NULL, NULL, "Matrix"); // TODO RECHECK
   // add_symbol(NODE_FUNCTION_ID, NULL, NULL, "Matrix"); // TODO RECHECK
   // add_symbol(NODE_FUNCTION_ID, NULL, NULL, "previous"); // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "dot");   // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cross"); // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "exp");   // TODO RECHECK
+  // add_symbol(NODE_FUNCTION_ID, NULL, NULL, "len");   // TODO RECHECK
 
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_FIELDS");
 
