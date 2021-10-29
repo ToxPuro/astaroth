@@ -15,7 +15,7 @@ The DSL source files should have a postfix `*.ac` and there should be only one
 ## Debugging
 
 As ACC is in active development, compiler bugs and cryptic error messages are
-expected. In case of issues, please check the following files in 
+expected. In case of issues, please check the following files in
 `acc-runtime/api` in the build directory.
 
 1. `user_kernels.ac.preprocessed`. The DSL file after preprocessing.
@@ -58,23 +58,22 @@ Variables
 real var    // Explicit type declaration
 real dconst // The type of device constants must be explicitly specified
 
-var = 1    // The type of local variables can be left out (implicit typing)
-var = 1.0  // Implicit precision (determined based on compilation flags)
-var = 1.   // Trailing zero can be left out
-var = 1e3  // E notation
-var = 1.f  // Explicit single-precision
-var = 0.1d // Explicit double-precision
-var = "Hello"
+var0 = 1    // The type of local variables can be left out (implicit typing)
+var1 = 1.0  // Implicit precision (determined based on compilation flags)
+var2 = 1.   // Trailing zero can be left out
+var3 = 1e3  // E notation
+var4 = 1.f  // Explicit single-precision
+var5 = 0.1d // Explicit double-precision
+var6 = "Hello"
 ```
 
 > Note: Shadowing is not allowed, all identifiers within a scope must be unique
 
 Arrays
 ```
-// Note: Arrays have fixed length
-arr = 1, 2, 3
-arr = 1.0, 2.0, 3.0
-arr = "a", "b", "c"
+int arr0 = 1, 2, 3 // The type of arrays must be explicitly specified
+real arr1 = 1.0, 2.0, 3.0
+// len(arr1) // Length of an array **(disabled in the current build)**
 ```
 
 Printing
@@ -85,7 +84,7 @@ print("Hello from thread (%d, %d, %d)\n", vertexIdx.x, vertexIdx.y, vertexIdx.z)
 
 Looping
 ```
-arr = 1, 2, 3
+int arr = 1, 2, 3
 for var in arr {
     print("%d\n", var)
 }
@@ -168,6 +167,9 @@ gradient(field) {
 }
 ```
 
+> Note: Stencil coefficients supplied in the DSL source must be compile-time constants. To set up coefficients at runtime, use the function API function `acDeviceLoadStencils()`.
+
+
 Built-in variables and functions
 ```
 // Variables
@@ -180,8 +182,5 @@ dim3 globalVertexIdx // The current vertex index across multiple devices
 write(Field, real) // Writes a real value to the output field at 'vertexIdx'
 
 // Advanced functions (should avoid, dangerous)
-real previous(Field) // Returns the value in the output buffer. Read after write results in undefined behaviour.
-write(field, 0)
-a = previous(field) // The value of 'a' is undefined
+real previous(Field) // Returns the value in the output buffer. Read after write() results in undefined behaviour.
 ```
-
