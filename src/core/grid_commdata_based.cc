@@ -1,3 +1,21 @@
+/*
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+
+    This file is part of Astaroth.
+
+    Astaroth is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Astaroth is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #if AC_MPI_ENABLED
 
 /**
@@ -272,15 +290,9 @@ acTransferCommData(const Device device, //
 
         const int3 b0       = b0s[b0_idx];
         const int3 neighbor = (int3){
-            b0.x < NGHOST           ? -1
-            : b0.x >= NGHOST + nn.x ? 1
-                                    : 0,
-            b0.y < NGHOST           ? -1
-            : b0.y >= NGHOST + nn.y ? 1
-                                    : 0,
-            b0.z < NGHOST           ? -1
-            : b0.z >= NGHOST + nn.z ? 1
-                                    : 0,
+            b0.x < NGHOST ? -1 : b0.x >= NGHOST + nn.x ? 1 : 0,
+            b0.y < NGHOST ? -1 : b0.y >= NGHOST + nn.y ? 1 : 0,
+            b0.z < NGHOST ? -1 : b0.z >= NGHOST + nn.z ? 1 : 0,
         };
         const int npid = getPid(pid3d + neighbor, decomp);
 
@@ -300,15 +312,9 @@ acTransferCommData(const Device device, //
     for (size_t b0_idx = 0; b0_idx < blockcount; ++b0_idx) {
         const int3 b0       = b0s[b0_idx];
         const int3 neighbor = (int3){
-            b0.x < NGHOST           ? -1
-            : b0.x >= NGHOST + nn.x ? 1
-                                    : 0,
-            b0.y < NGHOST           ? -1
-            : b0.y >= NGHOST + nn.y ? 1
-                                    : 0,
-            b0.z < NGHOST           ? -1
-            : b0.z >= NGHOST + nn.z ? 1
-                                    : 0,
+            b0.x < NGHOST ? -1 : b0.x >= NGHOST + nn.x ? 1 : 0,
+            b0.y < NGHOST ? -1 : b0.y >= NGHOST + nn.y ? 1 : 0,
+            b0.z < NGHOST ? -1 : b0.z >= NGHOST + nn.z ? 1 : 0,
         };
         const int npid = getPid(pid3d - neighbor, decomp);
 
