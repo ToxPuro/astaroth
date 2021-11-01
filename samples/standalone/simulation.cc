@@ -397,6 +397,11 @@ read_mesh(AcMesh& read_mesh, const int step, AcReal* t_step)
 
         read_ptr = fopen(bin_filename, "rb");
 
+        if (read_ptr == NULL) {
+            printf("failed to open savefile %s, exiting astaroth.\n", bin_filename);
+            exit(1);
+        }
+
         // Start file with time stamp
         size_t result;
         result = fread(t_step, sizeof(AcReal), 1, read_ptr);

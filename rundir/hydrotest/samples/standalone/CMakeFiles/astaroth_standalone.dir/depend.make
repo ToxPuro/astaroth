@@ -50,6 +50,15 @@ samples/standalone/CMakeFiles/astaroth_standalone.dir/benchmark.cc.o: user_defin
 samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: ../../include/astaroth.h
 samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: ../../src/common/errchk.h
 samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: ../../src/common/math_utils.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/builtin_types.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/crt/host_defines.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/cuda_device_runtime_api.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/cuda_runtime_api.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/device_types.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/driver_types.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/surface_types.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/texture_types.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/vector_types.h
 samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: ../../samples/standalone/config_loader.cc
 samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: ../../samples/standalone/config_loader.h
 samples/standalone/CMakeFiles/astaroth_standalone.dir/config_loader.cc.o: user_defines.h
@@ -91,6 +100,15 @@ samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_memory.cc.o: us
 
 samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: ../../include/astaroth.h
 samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: ../../src/common/math_utils.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/builtin_types.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/crt/host_defines.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/cuda_device_runtime_api.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/cuda_runtime_api.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/device_types.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/driver_types.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/surface_types.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/texture_types.h
+samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: /appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/include/vector_types.h
 samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: ../../samples/standalone/model/host_timestep.cc
 samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: ../../samples/standalone/model/host_timestep.h
 samples/standalone/CMakeFiles/astaroth_standalone.dir/model/host_timestep.cc.o: user_defines.h

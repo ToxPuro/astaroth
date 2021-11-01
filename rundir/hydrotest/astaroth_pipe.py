@@ -23,7 +23,7 @@ internal_fin_fd = None
 # data gets send in chunks of blocksize bytes
 # at most presend_ready chunks will be in the pipe at any moment
 blocksize = 4096
-presend_ready = 10
+presend_ready = 0
 
 listener = None
 
@@ -44,25 +44,40 @@ def init_astaroth_pipe(pipe_folder):
     internal_start_fname = pipe_folder + "/" + internal_start_fname 
     global data_fd, status_fd, listener, internal_start_fd, internal_fin_fd
 
+    #os.system(f"rm -f {data_fname} {status_fname} {internal_start_fname} {internal_fin_fname}")
 
-    os.system(f"rm -f {data_fname} {status_fname} {internal_start_fname} {internal_fin_fname}")
+    #os.mkfifo(data_fname)
+    #os.mkfifo(status_fname)
+    #os.mkfifo(internal_start_fname)
+    #os.mkfifo(internal_fin_fname)
 
-    os.mkfifo(data_fname)
-    os.mkfifo(status_fname)
-
-    os.mkfifo(internal_start_fname)
-    os.mkfifo(internal_fin_fname)
-
+    print("opening data pipe for reading")
     data_fd = open(data_fname, "rb", 0)
+    print("opening status pipe for writing")
     status_fd = open(status_fname, "wb", 0)
 
 
     # spawn a process to match the other end of the pipe (and never do anything with it)
 
+    print("spawning listener process")
+    #listener = Process(target=lambda:print("print in process"))
     listener = Process(target=dummy_listener)
-    listener.start()
+    print("starting listener process")
+    try:
+        print("in try")
+        listener.start()
+        print("in try 2")
+    except Exception as e:
+        print("in except")
+        print(e)
+    else:
+        print("start did not throw")
+    finally:
+        print("listener start did something")
 
 
+
+    print("opening internal pipes")
     internal_start_fd = open(internal_start_fname, "rb", 0)
     internal_fin_fd = open(internal_fin_fname, "wb", 0)
 
@@ -77,7 +92,9 @@ def init_astaroth_pipe(pipe_folder):
 def dummy_listener():
 
 
+    print("opening datapipe for writing (in the dummy)", flush=True)
     data_fd_write_end = open(data_fname, "wb", 0)
+    print("opening statuspipe for reading (in the dummy)")
     status_fd_read_end = open(status_fname, "rb", 0)
 
     internal_start_fd_dummy_side = open(internal_start_fname, "wb", 0)

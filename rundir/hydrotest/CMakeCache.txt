@@ -31,7 +31,7 @@ CMAKE_AR:FILEPATH=/usr/bin/ar
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=
+CMAKE_BUILD_TYPE:STRING=Release
 
 //Enable/Disable color output during build.
 CMAKE_COLOR_MAKEFILE:BOOL=ON
@@ -424,6 +424,9 @@ CUDA_nvml_LIBRARY:FILEPATH=/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2
 //Path to a library.
 CUDA_nvrtc_LIBRARY:FILEPATH=/appl/spack/install-tree/gcc-9.1.0/cuda-11.1.0-vvfuk2/lib64/libnvrtc.so
 
+//No help, variable specified on the command line.
+DEBUG:UNINITIALIZED=ON
+
 //Generates double precision code.
 DOUBLE_PRECISION:BOOL=ON
 
@@ -494,6 +497,8 @@ BISON_EXECUTABLE-ADVANCED:INTERNAL=1
 CMAKE_ADDR2LINE-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_AR
 CMAKE_AR-ADVANCED:INTERNAL=1
+//MODIFIED property for variable: CMAKE_BUILD_TYPE
+CMAKE_BUILD_TYPE-MODIFIED:INTERNAL=ON
 //This is the directory where this CMakeCache.txt was created
 CMAKE_CACHEFILE_DIR:INTERNAL=/users/julianlagg/astaroth/rundir/hydrotest
 //Major version of cmake used to create the current loaded cache

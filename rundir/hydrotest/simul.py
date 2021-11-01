@@ -1,15 +1,15 @@
+print("starting simul.py")
+from enum import unique
 import os
 import itertools as it
-import numpy as np
 import os.path
-import re
 from glob import glob
 import random
 import json
-from datetime import datetime
-from time import time
 import argparse
 import subprocess
+from simul_util import *
+print("finished imports")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--hel", type=float)
@@ -17,58 +17,29 @@ parser.add_argument("--forcing", type=float)
 parser.add_argument("--visc", type=float)
 parser.add_argument("--fixedseed", type=int, default=123456)
 parser.add_argument("--ana_dir_name", type=str)
-
-#todo: make this independent of the scratch and make the pipe_dir variable in some way
-
 args = parser.parse_args()
 
-adj_conf_path = "/users/julianlagg/astaroth/rundir/adjustable.conf"
-astar_exec = "/users/julianlagg/astaroth/rundir/hydrotest/ac_run"
-working_scratch_dir = "/scratch/project_2000403/lyapunov"
-pipe_dir = "/users/julianlagg"
-
-
+# does not depend on time
 random.seed(sum([r*2**(i*8) for i,r in enumerate(os.getrandom(4))]))
 
+#unique_name = "".join([random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789") for _ in range(30)])
 
-def ossystemnofail(command):
-    err = os.system(command)
-    if err != 0:
-        print("FAILED COMMAND:", command)
-        print("executed in directory ", os.getcwd(), ", got nonzero exit code ", err)
-    assert(err == 0)
+# can use name of analysis directory as name on scratch dir, as that name should be unique anyways
+unique_name = args.ana_dir_name
+working_scratch_dir = "/scratch/project_2000403/lyapunov/"+unique_name
+os.mkdir(working_scratch_dir) # will throw if it already exists
+# do everything on scratch, not home
+os.chdir(working_scratch_dir)
 
-def make_adjusted_conf(opts, outname):
+set_pipe_dir("/users/julianlagg/astar_pipes/"+unique_name)
 
-    used_params = {k : False for k in opts.keys()}
-
-    def replace(match):
-        param = match.group(1)
-        if param in opts:
-            used_params[param] = True
-            val = opts[param]
-            if isinstance(val, float):
-                return format(val, ".12f").rstrip("0")
-            return str(opts[param])
-        elif param == "max_steps":
-            used_params["steps"] = True
-            return str(opts["steps"] + opts["start_step"])
-        else:
-            raise ValueError("adjustable conf has unreplacable parameter: "+match.group(1))
-
-
-    with open(adj_conf_path, "r") as f:
-        adj_conf_s = f.read()
-
-    rex = r"@(\w+)@"
-    conf = re.sub(rex, replace, adj_conf_s)
-
-    unused_params = [name for name,used in used_params.items() if not used ]
-    if len(unused_params) > 0:
-        raise ValueError(f"failed find a place to use the following parameters for astaroth configuration: {unused_params}")
-
-    with open(outname, "w") as f:
-        f.write(conf)
+n_runs = 30
+baserun_len = 12000
+baserun_dump_freq = baserun_len
+perturbation_len = 1
+perturbation_dump_freq = 1
+final_len = 70
+final_dump_freq = 5
 
 core_opts = {
     "save_steps" : 25,
@@ -79,30 +50,13 @@ core_opts = {
     "forcing_kmax" : 1.2,
     "nx" : 128
 }
-
-
-def complete_nx(opts):
-    assert("nx" in opts)
-    assert(opts["nx"] in [2**i for i in range(20)]) # we need powers of 2 (and not crazy high)
-    opts["ny"] = opts["nx"]
-    opts["nz"] = opts["nx"]
-    dsxyz = 2*np.pi/opts["nx"]
-    opts["dsx"] = dsxyz
-    opts["dsy"] = dsxyz
-    opts["dsz"] = dsxyz
-
 complete_nx(core_opts)
+
+
+
 
 with open("core_options.json", "w") as f:
     json.dump(core_opts, f)
-
-n_runs = 30
-baserun_len = 15000
-baserun_dump_freq = baserun_len
-perturbation_len = 1
-perturbation_dump_freq = 1
-final_len = 60
-final_dump_freq = 5
 
 with open("timebounds.json", "w") as f:
     json.dump( {
@@ -142,84 +96,9 @@ base_run_op = {**core_opts,
 perturb_run_op = {**core_opts,
 "start_step": baserun_len, "steps": perturbation_len+1, "bin_steps": perturbation_len}
 final_run_op = {**core_opts,
-"start_step": baserun_len+perturbation_len, "steps": final_len+1, "bin_steps": final_len}
-
-def run_ac(name, opts, seed, analyze_freq=-1,
- in_dir =None, silent=False, timestep_file_path=None, dictate_timestep=None, pipe_path=pipe_dir, use_gdb=False):
-
-    if in_dir is not None:
-        old_dir = os.getcwd()
-        os.chdir(in_dir)
-    print("simulating in directory ", os.getcwd())
-    info = {}
-    info["conf_options"] = opts.copy()
-    info["seed"] = seed
-    info["started_on"] = str(datetime.now())
-    info["finished"] = False
-    info["name"] = name
-
-    info_json = f"{name}.json"
-    with open(info_json, "w") as f:
-        f.write(json.dumps(info, indent=4))
+"start_step": baserun_len+perturbation_len, "steps": final_len+1, "bin_steps": final_len+10} # there is no reason to dump final
 
 
-    conf = f"{name}.conf"
-    stdout = f"{name}.stdout"
-    stderr = f"{name}.stderr"
-
-    start = time()
-
-    # if we have a timestep_file, we need to know its role
-    # if we have a role for the timestepfile we need a file
-    assert((timestep_file_path==None) == (dictate_timestep==None) )
-    role = "write" if dictate_timestep else "read"
-    ts_cmd = f" --{role}_timestep_file {timestep_file_path} " if timestep_file_path else ""
-
-    pipe_cmd = " --pipe_dir " + pipe_path
-
-    gdb_cmd = " gdb -ex=r --args " if use_gdb else ""
-
-    make_adjusted_conf(opts, conf)
-    print(f"running in dir {os.getcwd()} with seed {seed}")
-    
-    if silent:
-        ret_code = os.system(
-            f"bash -c" +
-            f" ' {gdb_cmd} {astar_exec} --seed {seed} --analyze_steps {analyze_freq}" +
-            ts_cmd + pipe_cmd +
-            f" -s -c {conf} " + 
-            f"> {stdout} 2> {stderr} '"
-        )
-    else:
-        ret_code = os.system(
-            f"bash -c" +  
-            f" ' {gdb_cmd} {astar_exec} --seed {seed} --analyze_steps {analyze_freq}" +
-            ts_cmd +  pipe_cmd +
-            f" -s -c {conf} " + 
-            f"> >(tee {stdout}) 2> >(tee {stderr} >&2)' "
-        )
-        
-
-    end = time()
-
-    info["ret_code"] = ret_code
-    info["stderr_empty"] = (os.system(f"[ -s {stderr} ]")==0)
-    info["finished"] = True
-    info["time"] = end-start
-
-
-    with open(info_json, "w") as f:
-        f.write(json.dumps(info, indent=4))
-    
-    if info["ret_code"] != 0:
-        print("nonzero exit code from simulation in dir ", os.getcwd())
-        exit(ret_code)
-
-    if in_dir is not None:
-        os.chdir(old_dir)
-
-# do everything on scratch, not home
-os.chdir(working_scratch_dir)
 
 
 baserundir = "baserun"
@@ -232,7 +111,10 @@ os.chdir("..")
 ###
 
 os.chdir(baserundir)
-baserun_meshes = glob(f"*{baserun_len}.mesh")
+baserun_meshes = glob(f"*_{baserun_len}.mesh") #globs ALL the meshes (x,y,z,rho)
+if len(baserun_meshes) != 4:
+    print(f"saw {len(baserun_meshes)} instead of 4, maybe the baserun didnt complete?")
+    exit(1)
 os.chdir("..")
 
 # glob final files
@@ -259,9 +141,9 @@ with open("analysis_options.json", "w") as f:
 # start analysis server (dirty for now)
 print("starting server")
 with open("server_stdout.txt", "w") as f, open("server_stderr.txt", "w") as e:
-    server_process = subprocess.Popen(["python3", "/users/julianlagg/astaroth/rundir/hydrotest/variance_live_analyzer.py", "--pipe_dir", pipe_dir], stdout=f, stderr=e)
-from time import sleep
-sleep(2)
+    server_process = subprocess.Popen(["python3", "/users/julianlagg/astaroth/rundir/hydrotest/variance_live_analyzer.py", "--pipe_dir", get_pipe_dir()], stdout=f, stderr=e)
+import time
+time.sleep(3)
 print("started server")
 
 # other runs
@@ -282,7 +164,8 @@ for i in range(n_runs):
      )
     timestep_dictate_perturb = False
     print("=========perturbation ran somehow")
-    perturbed_meshes = glob(f"{perturb_run_dir}/*{perturbation_len}.mesh")
+    perturbed_meshes = glob(f"{perturb_run_dir}/*_{final_run_op['start_step']}.mesh") # all meshes (x,y,z,rho)
+    assert(len(perturbed_meshes)==4)
     assert(len(perturbed_meshes) == len(baserun_meshes))
     final_run_dir = f"final_run_{num}"
     print("making dir for final run")
@@ -301,6 +184,22 @@ for i in range(n_runs):
     timestep_dictate_final = False
     print("final ran somehow")
 
+    os.system(f"rm {perturb_run_dir}/*.mesh")
+    os.system(f"rm {final_run_dir}/*.mesh")
+
 print("waiting for server-process to finish")
 server_process.wait()
-print("server-process finished")
+
+print("server-process finished, doing cleanup")
+os.chdir("..")
+os.system(f"rm -rf {working_scratch_dir}")
+
+# mark the output files as having completed until here
+print("OK")
+print("OK", file=sys.stderr)
+
+
+# os.system("rm perturb_run_*/*.mesh") # should be unnecessary
+# os.system("rm final_run_*/*.mesh") # should be unnecessary
+# os.system("rm baserun/*.mesh")
+# print("removed all .mesh files, finishing")
