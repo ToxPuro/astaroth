@@ -2,8 +2,13 @@
 # V3.9 required for first-class CUDA support
 # V3.17 required for the FindCUDAToolkit package
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
-# V3.21 required for first-class HIP support
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.18)
+
+if (USE_HIP)
+    find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
+    set(CMAKE_C_COMPILER ${CMAKE_HIP_COMPILER})
+    set(CMAKE_CXX_COMPILER ${CMAKE_HIP_COMPILER})
+endif()
 
 ## Project settings
 project(astaroth C CXX)
@@ -34,16 +39,13 @@ option(BUILD_UTILS        "Builds the utility library"                          
 
 ## CUDA/HIP
 if (USE_HIP)
-    enable_language(HIP)
+    add_definitions(-DAC_USE_HIP=1)
 
     set(GPU_TARGETS "gfx908" CACHE STRING "GPU target")
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm) # Default path
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0) # Triton
+
     find_package(hip)
-   
-    set(CMAKE_HIP_FLAGS "${CMAKE_HIP_FLAGS} ${COMMON_FLAGS}")
- 
-    add_definitions(-DAC_USE_HIP=1)
 else ()
     enable_language(CUDA)
 
