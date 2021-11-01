@@ -28,11 +28,12 @@ target_include_directories(acc-runtime-headers INTERFACE . ${CMAKE_CURRENT_BINAR
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)
     if (USE_HIP)
-        enable_language(HIP)
-        set(CMAKE_HIP_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
-       	set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE HIP)
-        
         add_definitions(-DAC_USE_HIP=1)
+        list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0)
+
+        enable_language(CXX)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
+        set_source_files_properties(acc_runtime.cu PROPERTIES LANGUAGE CXX)
     else()
         enable_language(CUDA)
         string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
@@ -47,6 +48,7 @@ if (BUILD_ACC_RUNTIME_LIBRARY)
     endif()
 
     add_library(acc-runtime acc_runtime.cu)
+    include_directories(${PROJECT_BINARY_DIR})
     target_link_libraries(acc-runtime acc-runtime-headers)
 
     target_compile_features(acc-runtime PRIVATE cxx_std_17)
