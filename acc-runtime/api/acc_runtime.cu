@@ -197,21 +197,21 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                        (unsigned int)ceil(dims.z / double(tpb.z)));
 
         cudaEvent_t tstart, tstop;
-        ERRCHK(cudaEventCreate(&tstart));
-        ERRCHK(cudaEventCreate(&tstop));
+        cudaEventCreate(&tstart);
+        cudaEventCreate(&tstop);
 
-        ERRCHK(cudaDeviceSynchronize());
-        ERRCHK(cudaEventRecord(tstart)); // Timing start
+        cudaDeviceSynchronize();
+        cudaEventRecord(tstart); // Timing start
         for (int i = 0; i < num_iters; ++i)
           kernel<<<bpg, tpb>>>(start, end, vba);
-        ERRCHK(cudaEventRecord(tstop)); // Timing stop
-        ERRCHK(cudaEventSynchronize(tstop));
+        cudaEventRecord(tstop); // Timing stop
+        cudaEventSynchronize(tstop);
 
         if (cudaGetLastError() != cudaSuccess) // Discard failed runs
           continue;
 
         float milliseconds = 0;
-        ERRCHK(cudaEventElapsedTime(&milliseconds, tstart, tstop));
+        cudaEventElapsedTime(&milliseconds, tstart, tstop);
 
         if (milliseconds < best_time) {
           best_time = milliseconds;
