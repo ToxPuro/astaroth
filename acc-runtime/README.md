@@ -73,7 +73,7 @@ Arrays
 ```
 int arr0 = 1, 2, 3 // The type of arrays must be explicitly specified
 real arr1 = 1.0, 2.0, 3.0
-// len(arr1) // Length of an array **(disabled in the current build)**
+len(arr1) // Length of an array
 ```
 
 Printing
@@ -115,7 +115,7 @@ Kernel func3() {
 }
 ```
 
-> Note: Function parameters are **passed by ???** (Currently **value***, but may likely change to **reference** in the near future)
+> Note: Function parameters are **passed by constant reference**
 
 > Note: Overloading is not allowed, all function identifiers must be unique
 
