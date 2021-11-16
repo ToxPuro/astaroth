@@ -27,6 +27,16 @@ To make inspecting the code easier, we recommend using an
 autoformatting tool, for example, `clang-format` or GNU `indent`.
 
 
+## Known issues
+
+  * The final function call of a kernel gets dropped due to an unknown reason. For instance:
+  ```
+  Kernel kernel() {
+    ...
+    device_function(...) // This call is not present in `user_kernels.h`
+  }
+  ```
+
 # The Astaroth Domain-Specific Language
 
 The Astaroth Domain-Specific Language (DSL) is a high-level GPGPU language
