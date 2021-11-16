@@ -32,7 +32,7 @@
 #include "errchk.h"
 #include "memory.h" // acHostMeshCreate, acHostMeshDestroy, acHostMeshApplyPeriodicBounds
 
-//#ifdef AC_dsx // TODO: does not work, enums are not 'defines'
+#if AC_INTEGRATION_ENABLED
 /*
 // Standalone flags (currently defined in the DSL)
 #define LDENSITY (1)
@@ -1046,8 +1046,8 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
     mesh_info = NULL;
     return AC_SUCCESS;
 }
-/*
-#else
+
+#else  // AC_INTEGRATION_ENABLED == 0
 AcResult
 acHostIntegrateStep(AcMesh mesh, const AcReal dt)
 {
@@ -1056,4 +1056,4 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
     ERROR("Parameters required by acHostIntegrateStep not defined.");
     return AC_FAILURE;
 }
-#endif */
+#endif // AC_INTEGRATION_ENABLED
