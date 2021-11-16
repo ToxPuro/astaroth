@@ -459,6 +459,14 @@ acDeviceTransferMesh(const Device src_device, const Stream stream, Device dst_de
 }
 
 AcResult
+acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kernel,
+                     const int3 start, const int3 end)
+{
+    cudaSetDevice(device->id);
+    return acLaunchKernel(kernel, device->streams[stream], start, end, device->vba);
+}
+
+AcResult
 acDeviceIntegrateSubstep(const Device device, const Stream stream, const int step_number,
                          const int3 start, const int3 end, const AcReal dt)
 {

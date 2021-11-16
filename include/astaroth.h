@@ -815,6 +815,9 @@ AcResult
 acDeviceLoadStencils(const Device device, const Stream stream,
                      AcReal stencil[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
 
+AcResult acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kernel,
+                              const int3 start, const int3 end);
+
 /*
  * =============================================================================
  * Helper functions
