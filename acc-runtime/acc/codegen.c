@@ -233,73 +233,68 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
   if (node->lhs)
     traverse(node->lhs, exclude, stream);
 
+  // Add symbols to symbol table
+  if (node->buffer && node->token == IDENTIFIER) {
+    const Symbol* symbol = symboltable_lookup(node->buffer);
+    if (symbol && node->type & NODE_FUNCTION_PARAM) {
+      // Do not allow shadowing.
+      //
+      // Note that if we want to allow shadowing, then the symbol table must
+      // be searched in reverse order
+      fprintf(stderr,
+              "Error! Symbol '%s' already present in symbol table. Shadowing "
+              "is not allowed.\n",
+              node->buffer);
+      assert(0);
+    }
+    else if (!symbol) {
+      char* tspec = NULL;
+      char* tqual = NULL;
+
+      const ASTNode* decl = get_parent_node(NODE_DECLARATION, node);
+      if (decl) {
+        const ASTNode* tspec_node = get_node(NODE_TSPEC, decl);
+        const ASTNode* tqual_node = get_node(NODE_TQUAL, decl);
+
+        if (tspec_node && tspec_node->lhs)
+          tspec = tspec_node->lhs->buffer;
+
+        if (tqual_node && tqual_node->lhs)
+          tqual = tqual_node->lhs->buffer;
+      }
+
+      if (stream) {
+        const ASTNode* is_dconst = get_parent_node(NODE_DCONST, node);
+        if (is_dconst)
+          fprintf(stream, "__device__ ");
+
+        if (tqual)
+          fprintf(stream, "%s ", tqual);
+
+        if (tspec)
+          fprintf(stream, "%s ", tspec);
+        else if (!(node->type & NODE_KFUNCTION_ID) &&
+                 !get_parent_node(NODE_STENCIL, node) &&
+                 !(node->type & NODE_MEMBER_ID))
+          fprintf(stream, "auto ");
+      }
+      if (!(node->type & NODE_MEMBER_ID))
+        add_symbol(node->type, tqual, tspec, node->buffer);
+    }
+  }
+
   // Infix translation
   if (stream)
     if (node->infix)
       fprintf(stream, "%s", node->infix);
 
-  if (node->buffer) {
-    if (node->token == IDENTIFIER) {
-
-      const Symbol* symbol = symboltable_lookup(node->buffer);
-      // TODO REMOVE BELOW--------------------------------
-      // Though note that symbol table search must be reversed!!
-      if (symbol && node->type & NODE_FUNCTION_PARAM) {
-        fprintf(stderr,
-                "Error! Symbol '%s' already present in symbol table. Shadowing "
-                "is not allowed.\n",
-                node->buffer);
-        assert(0);
-      }
-      // TODO REMOVE ABOVE--------------------------------------
-      else if (!symbol) {
-        char* tspec = NULL;
-        char* tqual = NULL;
-
-        const ASTNode* decl = get_parent_node(NODE_DECLARATION, node);
-        if (decl) {
-          const ASTNode* tspec_node = get_node(NODE_TSPEC, decl);
-          const ASTNode* tqual_node = get_node(NODE_TQUAL, decl);
-
-          if (tspec_node && tspec_node->lhs)
-            tspec = tspec_node->lhs->buffer;
-
-          if (tqual_node && tqual_node->lhs)
-            tqual = tqual_node->lhs->buffer;
-        }
-
-        if (stream) {
-          const ASTNode* is_dconst = get_parent_node(NODE_DCONST, node);
-          if (is_dconst)
-            fprintf(stream, "__device__ ");
-
-          if (tqual)
-            fprintf(stream, "%s ", tqual);
-
-          if (tspec)
-            fprintf(stream, "%s ", tspec);
-          else if (!(node->type & NODE_KFUNCTION_ID) &&
-                   !get_parent_node(NODE_STENCIL, node) &&
-                   !(node->type & NODE_MEMBER_ID))
-            fprintf(stream, "auto ");
-        }
-        if (!(node->type & NODE_MEMBER_ID))
-          add_symbol(node->type, tqual, tspec, node->buffer);
-      }
-    }
-    /*
-    if (stream)
+  // Translate buffer body
+  if (stream && node->buffer) {
+    const Symbol* symbol = symboltable_lookup(node->buffer);
+    if (symbol && symbol->type & NODE_DCONST_ID)
+      fprintf(stream, "DCONST(%s)", node->buffer);
+    else
       fprintf(stream, "%s", node->buffer);
-    */
-    // Astaroth 2.0 backwards compatibility START
-    if (stream) {
-      const Symbol* symbol = symboltable_lookup(node->buffer);
-      if (symbol && symbol->type & NODE_DCONST_ID)
-        fprintf(stream, "DCONST(%s)", node->buffer);
-      else
-        fprintf(stream, "%s", node->buffer);
-    }
-    // Astaroth 2.0 backwards compatibility END
   }
 
   // Traverse RHS
@@ -406,7 +401,8 @@ gen_user_defines(const ASTNode* root, const char* out)
       fprintf(fp, "%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_FIELDS} Field;");
 
-  // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK START---------------------------
+  // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
+  // START---------------------------
   fprintf(fp, "typedef enum {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_DCONST_ID &&
@@ -479,7 +475,8 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "#define NUM_VTXBUF_HANDLES (NUM_FIELDS)\n");
   fprintf(fp, "typedef Field VertexBufferHandle;\n");
   fprintf(fp, "static const char** vtxbuf_names = field_names;\n");
-  // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK END-----------------------------
+  // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
+  // END-----------------------------
 
   // Device constants
   // Would be cleaner to declare dconsts as extern and refer to the symbols
@@ -573,7 +570,8 @@ generate(const ASTNode* root, FILE* stream)
     if (symbol_table[i].type & NODE_STENCIL_ID)
       fprintf(stream, "stencil_%s,", symbol_table[i].identifier);
   fprintf(stream, "} Stencil;");
-  // fprintf(stream, "NUM_STENCILS} Stencil;"); // defined now in user_defines.h
+  // fprintf(stream, "NUM_STENCILS} Stencil;"); // defined now in
+  // user_defines.h
 
   // Stencil generator
   symboltable_reset();

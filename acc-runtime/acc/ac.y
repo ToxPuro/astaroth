@@ -26,6 +26,8 @@ cleanup(void)
 }
 
 void set_identifier_type(const NodeType type, ASTNode* curr);
+void set_identifier_prefix(const char* prefix, ASTNode* curr);
+void set_identifier_infix(const char* infix, ASTNode* curr);
 ASTNode* get_node(const NodeType type, ASTNode* node);
 ASTNode* get_node_by_token(const int token, ASTNode* node);
 
@@ -61,7 +63,7 @@ main(int argc, char** argv)
         assert(fp);
         generate(root, fp);
         fclose(fp);
-    
+
         fclose(yyin);
         return EXIT_SUCCESS;
     } else {
@@ -85,8 +87,8 @@ root: program { root = astnode_create(NODE_UNKNOWN, $1, NULL); }
 
 program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); }
        | program variable_definition {
-            $$ = astnode_create(NODE_UNKNOWN, $1, $2); 
-            
+            $$ = astnode_create(NODE_UNKNOWN, $1, $2);
+
             ASTNode* variable_definition = $$->rhs;
             assert(variable_definition);
 
@@ -374,7 +376,7 @@ function_definition: declaration function_body {
 
                             // Kernel function parameters
                             astnode_set_prefix("(const int3 start, const int3 end, VertexBufferArray vba", $$->rhs);
-                            
+
                             // Set kernel built-in variables
                             ASTNode* compound_statement = $$->rhs->rhs;
                             assert(compound_statement);
@@ -409,6 +411,13 @@ function_definition: declaration function_body {
                             astnode_set_postfix(";", $$);
                             $$->type |= NODE_DFUNCTION;
                             //set_identifier_type(NODE_DFUNCTION_ID, fn_identifier);
+                            
+                            // Pass device function parameters by const reference
+                            if ($$->rhs->lhs) {
+                                set_identifier_prefix("const ", $$->rhs->lhs);
+                                set_identifier_infix("&", $$->rhs->lhs);
+                            }
+
                         }
                     }
                    ;
@@ -442,7 +451,7 @@ stencil_index_list: stencil_index            { $$ = astnode_create(NODE_UNKNOWN,
 stencilpoint_list: stencilpoint                       { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
                  | stencilpoint_list ',' stencilpoint { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(",", $$); }
                  ;
-                
+
 stencil_body: '{' stencilpoint_list '}' { $$ = astnode_create(NODE_UNKNOWN, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("},", $$); }
             ;
 
@@ -476,6 +485,36 @@ set_identifier_type(const NodeType type, ASTNode* curr)
         set_identifier_type(type, curr->rhs);
     if (curr->lhs)
         set_identifier_type(type, curr->lhs);
+}
+
+void
+set_identifier_prefix(const char* prefix, ASTNode* curr)
+{
+    assert(curr);
+    if (curr->token == IDENTIFIER) {
+        astnode_set_prefix(prefix, curr);
+        return;
+    }
+
+    if (curr->rhs)
+      set_identifier_prefix(prefix, curr->rhs);
+    if (curr->lhs)
+      set_identifier_prefix(prefix, curr->lhs);
+}
+
+void
+set_identifier_infix(const char* infix, ASTNode* curr)
+{
+    assert(curr);
+    if (curr->token == IDENTIFIER) {
+        astnode_set_infix(infix, curr);
+        return;
+    }
+
+    if (curr->rhs)
+      set_identifier_infix(infix, curr->rhs);
+    if (curr->lhs)
+      set_identifier_infix(infix, curr->lhs);
 }
 
 ASTNode*
