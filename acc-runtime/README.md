@@ -29,13 +29,14 @@ autoformatting tool, for example, `clang-format` or GNU `indent`.
 
 ## Known issues
 
-  * The final function call of a kernel gets dropped due to an unknown reason. For instance:
+  * The final function call of a kernel gets sometimes dropped due to an unknown reason. For instance:
   ```
   Kernel kernel() {
     ...
     device_function(...) // This call is not present in `user_kernels.h`
   }
   ```
+  If you're able to reproduce this, please create a bitbucket issue with the incorrectly translated DSL code.
 
 # The Astaroth Domain-Specific Language
 
