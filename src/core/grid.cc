@@ -544,9 +544,31 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     };
     auto boundary_normal = [&decomp, &pid3d](int tag) -> int3 {
         int3 neighbor = pid3d + Region::tag_to_id(tag);
-        return int3{(neighbor.x == -1) ? -1 : (neighbor.x == (int)decomp.x ? 1 : 0),
-                    (neighbor.y == -1) ? -1 : (neighbor.y == (int)decomp.y ? 1 : 0),
-                    (neighbor.z == -1) ? -1 : (neighbor.z == (int)decomp.z ? 1 : 0)};
+        if (neighbor.z == -1){
+            return int3{0,0,-1};
+        }
+        else if(neighbor.z == (int)decomp.z) {
+            return int3{0,0,1};
+        }
+        else if (neighbor.y == -1){
+            return int3{0,-1,0};
+        }
+        else if(neighbor.y == (int)decomp.y) {
+            return int3{0,1,0};
+        }
+        else if (neighbor.x == -1){
+            return int3{-1,0,0};
+        }
+        else if(neighbor.x == (int)decomp.x) {
+            return int3{1,0,0};
+        }
+        else {
+            //Something went wrong, this tag does not identify a boundary region.
+            return int3{0,0,0};
+        }
+        //return int3{(neighbor.x == -1) ? -1 : (neighbor.x == (int)decomp.x ? 1 : 0),
+        //            (neighbor.y == -1) ? -1 : (neighbor.y == (int)decomp.y ? 1 : 0),
+        //            (neighbor.z == -1) ? -1 : (neighbor.z == (int)decomp.z ? 1 : 0)};
     };
 
     // The tasks start at different offsets from the beginning of the iteration
