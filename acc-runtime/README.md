@@ -180,6 +180,8 @@ gradient(field) {
 
 > Note: Stencil coefficients supplied in the DSL source must be compile-time constants. To set up coefficients at runtime, use the API function `acDeviceLoadStencils()`.
 
+> Note: To reduce redundant communication or to enable larger stencils, the stencil order can be changed by modifying `static const size_t stencil_order = ...` in `acc-runtime/acc/codegen.c`. Modifying the stencil order with the DSL is currently not supported.
+
 
 Built-in variables and functions
 ```
