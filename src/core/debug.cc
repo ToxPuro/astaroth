@@ -44,7 +44,7 @@ graphWriteOrder(FILE* fp, const AcTaskGraph* graph)
     if ((*(graph->all_tasks.begin()))->rank == 0) {
         fprintf(fp, "Order\n");
         for (auto t : graph->all_tasks) {
-            fprintf(fp, "\t%s\t%lu\n", t->name.c_str(), t->output_region->volume);
+            fprintf(fp, "\t%s\t%lu\n", t->name.c_str(), t->output_region.volume);
         }
     }
 }

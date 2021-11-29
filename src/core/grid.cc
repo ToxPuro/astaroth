@@ -170,15 +170,15 @@ acGridInit(const AcMeshInfo info)
 
     grid.mpi_tag_space_count = 0;
 
-    VertexBufferHandle all_vtxbufs[NUM_VTXBUF_HANDLES];
+    Field all_fields[NUM_VTXBUF_HANDLES];
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
-        all_vtxbufs[i] = (VertexBufferHandle)i;
+        all_fields[i] = (Field)i;
     }
 
-    AcTaskDefinition default_ops[] = {acHaloExchange(all_vtxbufs),
+    AcTaskDefinition default_ops[] = {acHaloExchange(all_fields),
                                       acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
-                                                          all_vtxbufs),
-                                      acCompute(KERNEL_solve, all_vtxbufs)};
+                                                          all_fields),
+                                      acCompute(KERNEL_solve, all_fields)};
 
     grid.initialized   = true;
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
@@ -577,21 +577,18 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
     for (size_t i = 0; i < n_ops; i++) {
         auto op                                = ops[i];
-        std::shared_ptr<VtxbufSet> vtxbuf_deps = std::make_shared<VtxbufSet>(op.vtxbuf_dependencies,
-                                                                             op.num_vtxbufs);
-
         op_indices.push_back(graph->all_tasks.size());
+
         switch (op.task_type) {
 
         case TASKTYPE_COMPUTE: {
-            Kernel kernel = kernel_lookup[(int)op.kernel];
+            //Kernel kernel = kernel_lookup[(int)op.kernel];
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
-                auto task = std::make_shared<ComputeTask>(kernel, i, tag, nn, device, swap_offset);
+                auto task = std::make_shared<ComputeTask>(op, i, tag, nn, device, swap_offset);
                 graph->all_tasks.push_back(task);
             }
-            for (size_t buf = 0; buf < op.num_vtxbufs; buf++) {
-                swap_offset[op.vtxbuf_dependencies[buf]] = !swap_offset
-                                                               [op.vtxbuf_dependencies[buf]];
+            for (size_t buf = 0; buf < op.num_fields_out; buf++) {
+                swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
             }
             break;
         }
@@ -600,7 +597,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (!region_at_boundary(tag, BOUNDARY_XYZ)) {
-                    auto task = std::make_shared<HaloExchangeTask>(vtxbuf_deps, i, tag0, tag, nn,
+                    auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, nn,
                                                                    decomp, device, swap_offset);
                     graph->halo_tasks.push_back(task);
                     graph->all_tasks.push_back(task);
@@ -616,21 +613,17 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (region_at_boundary(tag, op.boundary)) {
                     if (bc == AC_BOUNDCOND_PERIODIC) {
-                        auto task = std::make_shared<HaloExchangeTask>(vtxbuf_deps, i, tag0, tag,
+                        auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag,
                                                                        nn, decomp, device,
                                                                        swap_offset);
                         graph->halo_tasks.push_back(task);
                         graph->all_tasks.push_back(task);
                     }
                     else {
-                        // For now, create separate boundary condition tasks for each vertex buffer
-                        for (size_t j = 0; j < op.num_vtxbufs; j++) {
-                            auto task = std::make_shared<
-                                BoundaryConditionTask>(bc, boundary_normal(tag),
-                                                       op.vtxbuf_dependencies[j], i, tag, nn,
-                                                       device, swap_offset);
-                            graph->all_tasks.push_back(task);
-                        }
+                        auto task = std::make_shared<BoundaryConditionTask>(op, boundary_normal(tag),
+                                                                            i, tag, nn, device, swap_offset);
+                        graph->all_tasks.push_back(task);
+
                     }
                 }
             }
@@ -642,55 +635,24 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     op_indices.push_back(graph->all_tasks.size());
     graph->vtxbuf_swaps = swap_offset;
 
-    // Task A depends on task B if:
-    // 1. their operations are dependent (touch the same vertex buffers)
-    // 2. the output region of A overlaps with the input region of B
-
-    // If two operations use data in the same vertex buffer: they are dependent
-    // (except for hypothetical cases where the operations cover different regions)
-    //
-    // In order to generate a list of dependent operations, we check for vtxbuf_dependencies overlap
-    std::vector<std::pair<size_t, size_t>> op_dependencies;
-    op_dependencies.reserve(n_ops);
-    op_dependencies.clear();
-
-    for (size_t dependent = 0; dependent < n_ops; dependent++) {
-        std::array<bool, NUM_VTXBUF_HANDLES> dept_vtxbufs{};
-        for (size_t i = 0; i < ops[dependent].num_vtxbufs; i++) {
-            dept_vtxbufs[(int)ops[dependent].vtxbuf_dependencies[i]] = true;
-        }
-        // look backwards until we've found each variable in task vtxbuf_dependencies
-        for (size_t j = 0; j < n_ops; j++) {
-            size_t prereq = (n_ops + dependent - j - 1) % n_ops;
-            // TEMPORARY: for now all operations are dependent.
-            // Once info about input v. output vertexbuffers per kernel/boundcond
-            // are generated, the lower for loop can be used instead
-            op_dependencies.emplace_back(prereq, dependent);
-
-            /*for (size_t i = 0; i < ops[prereq].num_vtxbufs; i++) {
-                // If a vtxbuf is in both prereq and dependents, add a dependency to the list
-                if (dept_vtxbufs[ops[prereq].vtxbuf_dependencies[i]]) {
-                    op_dependencies.emplace_back(prereq, dependent);
-                    break;
-                }
-            }*/
-        }
-    }
-
     graph->halo_tasks.shrink_to_fit();
     graph->all_tasks.shrink_to_fit();
 
-    // We take the list of dependent operations from the previous step and check the task regions
-    // if two task's input and output regions overlap: we have a task dependency
-    for (auto& depcy : op_dependencies) {
-        for (auto i = op_indices[depcy.first]; i != op_indices[depcy.first + 1]; i++) {
-            auto preq = graph->all_tasks[i];
-            if (preq->active) {
-                for (auto j = op_indices[depcy.second]; j != op_indices[depcy.second + 1]; j++) {
-                    auto dept = graph->all_tasks[j];
-                    if (dept->active && preq->output_region->overlaps(dept->input_region.get())) {
-                        // Only allowed offsets at the moment are 0 or 1.
-                        preq->registerDependent(dept, depcy.first < depcy.second ? 0 : 1);
+    // Task A depends on task B if the output data of A overlaps with the input data of B.
+    // In other words, if the input and output regions overlap: we have a task dependency
+    for (size_t dept_op = 0; dept_op < n_ops; dept_op++) {
+        for (size_t offset = 0; offset < n_ops; offset++) {
+            size_t preq_op = (n_ops + dept_op - offset - 1) % n_ops;
+            for (auto i = op_indices[preq_op]; i != op_indices[preq_op + 1]; i++) {
+                auto preq_task = graph->all_tasks[i];
+                if (preq_task->active) {
+                    for (auto j = op_indices[dept_op]; j != op_indices[dept_op + 1]; j++) {
+                        auto dept_task = graph->all_tasks[j];
+                        if (dept_task->active && preq_task->output_region.overlaps(&(dept_task->input_region))) {
+                            // offset of 0 -> dependency in the same iteration
+                            // offset of 1 -> dependency from preq_task in iteration k to dept_task in iteration k+1
+                            preq_task->registerDependent(dept_task, preq_op < dept_op ? 0 : 1);
+                        }
                     }
                 }
             }
@@ -702,10 +664,10 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         auto comp1 = t1->task_type == TASKTYPE_COMPUTE;
         auto comp2 = t2->task_type == TASKTYPE_COMPUTE;
 
-        auto vol1 = t1->output_region->volume;
-        auto vol2 = t2->output_region->volume;
-        auto dim1 = t1->output_region->dims;
-        auto dim2 = t2->output_region->dims;
+        auto vol1 = t1->output_region.volume;
+        auto vol2 = t2->output_region.volume;
+        auto dim1 = t1->output_region.dims;
+        auto dim2 = t2->output_region.dims;
 
         return vol1 > vol2 ||
                (vol1 == vol2 && ((!comp1 && comp2) || dim1.x < dim2.x || dim1.z > dim2.z));

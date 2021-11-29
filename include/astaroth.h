@@ -76,7 +76,11 @@ typedef int Stream;
 #define AC_FOR_BCTYPES(FUNC)                                                                       \
     FUNC(AC_BOUNDCOND_PERIODIC)                                                                    \
     FUNC(AC_BOUNDCOND_SYMMETRIC)                                                                   \
-    FUNC(AC_BOUNDCOND_ANTISYMMETRIC)
+    FUNC(AC_BOUNDCOND_ENTROPY_1)                                                                   \
+    FUNC(AC_BOUNDCOND_ANTISYMMETRIC)                                                               \
+    FUNC(AC_BOUNDCOND_ADD_ONE)                                                                     \
+    FUNC(AC_BOUNDCOND_ADD_TWO)                                                                     \
+    FUNC(AC_BOUNDCOND_ADD_FOUR)                                                                     
 
 #define AC_FOR_INIT_TYPES(FUNC)                                                                    \
     FUNC(INIT_TYPE_RANDOM)                                                                         \
@@ -482,8 +486,12 @@ typedef struct AcTaskDefinition {
         AcBoundcond bound_cond;
     };
     AcBoundary boundary;
-    VertexBufferHandle* vtxbuf_dependencies;
-    size_t num_vtxbufs;
+
+    Field* fields_in;
+    size_t num_fields_in;
+
+    Field* fields_out;
+    size_t num_fields_out;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
@@ -491,16 +499,17 @@ typedef struct AcTaskDefinition {
 typedef struct AcTaskGraph AcTaskGraph;
 
 /** */
-AcTaskDefinition acCompute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[],
-                           const size_t num_vtxbufs);
+AcTaskDefinition acCompute(const AcKernel kernel, VertexBufferHandle fields_in[],
+                           const size_t num_fields_in, VertexBufferHandle fields_out[],
+                           const size_t num_fields_out);
 
 /** */
-AcTaskDefinition acHaloExchange(VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs);
+AcTaskDefinition acHaloExchange(VertexBufferHandle fields[], const size_t num_fields);
 
 /** */
 AcTaskDefinition acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                                     VertexBufferHandle vtxbuf_dependencies[],
-                                     const size_t num_vtxbufs);
+                                     VertexBufferHandle fields_in[], const size_t num_fields_in,
+                                     VertexBufferHandle fields_out[], const size_t num_fields_out);
 
 /** */
 AcTaskGraph* acGridGetDefaultTaskGraph();
@@ -841,28 +850,49 @@ AcResult acHostMeshDestroy(AcMesh* mesh);
 
 #ifdef __cplusplus
 #if AC_MPI_ENABLED
-/** */
-template <size_t num_vtxbufs>
+/** Backwards compatible interface, input fields = output fields*/
+template <size_t num_fields>
 AcTaskDefinition
-acCompute(AcKernel kernel, VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
+acCompute(AcKernel kernel, VertexBufferHandle (&fields)[num_fields])
 {
-    return acCompute(kernel, vtxbuf_dependencies, num_vtxbufs);
+    return acCompute(kernel, fields, num_fields, fields, num_fields);
+}
+
+template <size_t num_fields_in, size_t num_fields_out>
+AcTaskDefinition
+acCompute(AcKernel kernel, VertexBufferHandle (&fields_in)[num_fields_in],
+          VertexBufferHandle (&fields_out)[num_fields_out])
+{
+    return acCompute(kernel, fields_in, num_fields_in, fields_out, num_fields_out);
 }
 
 /** */
-template <size_t num_vtxbufs>
-AcTaskDefinition acHaloExchange(VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
+template <size_t num_fields>
+AcTaskDefinition acHaloExchange(VertexBufferHandle (&fields)[num_fields])
 {
-    return acHaloExchange(vtxbuf_dependencies, num_vtxbufs);
+    return acHaloExchange(fields, num_fields);
 }
 
-/** */
-template <size_t num_vtxbufs>
+/** Backwards compatible interface, input fields = output fields*/
+template <size_t num_fields>
 AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                    VertexBufferHandle (&vtxbuf_dependencies)[num_vtxbufs])
+                    VertexBufferHandle (&fields)[num_fields])
 {
-    return acBoundaryCondition(boundary, bound_cond, vtxbuf_dependencies, num_vtxbufs);
+    return acBoundaryCondition(boundary, bound_cond, fields, num_fields,
+                               fields, num_fields);
+}
+
+
+/** */
+template <size_t num_fields_in, size_t num_fields_out>
+AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
+                    VertexBufferHandle (&fields_in)[num_fields_in],
+                    VertexBufferHandle (&fields_out)[num_fields_out])
+{
+    return acBoundaryCondition(boundary, bound_cond, fields_in, num_fields_in,
+                               fields_out, num_fields_out);
 }
 
 /** */

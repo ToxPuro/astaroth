@@ -33,15 +33,6 @@
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
 static_assert(SWAP_CHAIN_LENGTH == 2);
 
-struct VtxbufSet {
-    VertexBufferHandle* variables;
-    size_t num_vars;
-    VtxbufSet(const VertexBufferHandle* variables_, const size_t num_vars_);
-    ~VtxbufSet();
-    VtxbufSet(const VtxbufSet& other) = delete;
-    VtxbufSet& operator=(const VtxbufSet& other) = delete;
-};
-
 /**
  * Regions
  * -------
@@ -76,6 +67,8 @@ struct Region {
     int3 id;
     int tag;
 
+    std::vector<Field> fields;
+
     // facet class 0 = inner core
     // facet class 1 = face
     // facet class 2 = edge
@@ -92,9 +85,9 @@ struct Region {
     static int id_to_tag(int3 id_);
     static int3 tag_to_id(int tag_);
 
-    Region(RegionFamily family_, int tag_, int3 nn);
-    Region(RegionFamily family_, int3 id_, int3 nn);
-    Region(int3 position_, int3 dims_, int tag);
+    Region(RegionFamily family_, int tag_, int3 nn, std::vector<Field> fields_);
+    Region(RegionFamily family_, int3 id_, int3 nn, std::vector<Field> fields_);
+    Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_);
 
     Region translate(int3 translation);
     bool overlaps(const Region* other);
@@ -138,13 +131,12 @@ typedef class Task {
     std::string name;
     AcTaskType task_type;
 
-    std::unique_ptr<Region> output_region;
-    std::unique_ptr<Region> input_region;
-    std::shared_ptr<VtxbufSet> vtxbuf_dependencies;
+    Region input_region;
+    Region output_region;
 
     static const int wait_state = 0;
 
-    Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn,
+    Task(int order_, Region input_region_, Region output_region,
          Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
 
     virtual bool test()    = 0;
@@ -176,7 +168,7 @@ typedef class ComputeTask : public Task {
     KernelParameters params;
 
   public:
-    ComputeTask(Kernel kernel_, int order_, int region_tag, int3 nn, Device device_,
+    ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     ComputeTask(const ComputeTask& other) = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
@@ -226,7 +218,7 @@ typedef class HaloExchangeTask : public Task {
     HaloMessageSwapChain send_buffers;
 
   public:
-    HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_, int tag_0,
+    HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0,
                      int halo_region_tag, int3 nn, uint3_64 decomp, Device device_,
                      std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     ~HaloExchangeTask();
@@ -264,11 +256,11 @@ typedef class BoundaryConditionTask : public Task {
   private:
     AcBoundcond boundcond;
     int3 boundary_normal;
-    VertexBufferHandle variable;
+    //VertexBufferHandle variable;
 
   public:
-    BoundaryConditionTask(AcBoundcond boundcond_, int3 boundary_normal_,
-                          VertexBufferHandle variable_, int order_, int region_tag, int3 nn,
+    BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_,
+                          int order_, int region_tag, int3 nn,
                           Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     void populate_boundary_region();
     void advance();
