@@ -789,6 +789,13 @@ BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_
     //TODO: input_region is now set twice, overwritten here
     input_region = Region(output_region.translate(translation));
 
+    boundary_dims = int3{
+            boundary_normal.x == 0 ? output_region.dims.x : 1,
+            boundary_normal.y == 0 ? output_region.dims.y : 1,
+            boundary_normal.z == 0 ? output_region.dims.z : 1,
+    };
+                        
+
     name = "Boundary condition " + std::to_string(order_) + ".(" +
            std::to_string(output_region.id.x) + "," + std::to_string(output_region.id.y) + "," +
            std::to_string(output_region.id.z) + ")" + ".(" + std::to_string(boundary_normal.x) +
@@ -799,30 +806,20 @@ BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_
 void
 BoundaryConditionTask::populate_boundary_region()
 {
+    //TODO: could assign a separate stream to each launch of symmetric boundconds
+    //      currently they are on a single stream
     switch (boundcond) {
     case AC_BOUNDCOND_SYMMETRIC:
         for (auto variable : output_region.fields){
-            acKernelSymmetricBoundconds(stream, output_region.id, boundary_normal, output_region.dims,
+            acKernelSymmetricBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
                                     vba.in[variable]);
         }
         break;
-    case AC_BOUNDCOND_ADD_ONE:
-        for (auto variable : output_region.fields){
-            acKernelAddOneBoundconds(stream, output_region.id, boundary_normal, output_region.dims,
-                                    vba.in[variable]);
-        }
+    case AC_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE:
+        acKernelEntropyConstantTemperatureBoundconds(stream, output_region.id, boundary_normal, boundary_dims, vba);
         break;
-    case AC_BOUNDCOND_ADD_TWO:
-        for (auto variable : output_region.fields){
-            acKernelAddTwoBoundconds(stream, output_region.id, boundary_normal, output_region.dims,
-                                    vba.in[variable]);
-        }
-        break;
-    case AC_BOUNDCOND_ADD_FOUR:
-        for (auto variable : output_region.fields){
-            acKernelAddFourBoundconds(stream, output_region.id, boundary_normal, output_region.dims,
-                                    vba.in[variable]);
-        }
+    case AC_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION:
+        acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(stream, output_region.id, boundary_normal, boundary_dims, vba);
         break;
     default:
         ERROR("BoundaryCondition not implemented yet.");

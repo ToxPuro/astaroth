@@ -256,7 +256,7 @@ typedef class BoundaryConditionTask : public Task {
   private:
     AcBoundcond boundcond;
     int3 boundary_normal;
-    //VertexBufferHandle variable;
+    int3 boundary_dims;
 
   public:
     BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_,

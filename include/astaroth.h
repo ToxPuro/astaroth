@@ -76,11 +76,9 @@ typedef int Stream;
 #define AC_FOR_BCTYPES(FUNC)                                                                       \
     FUNC(AC_BOUNDCOND_PERIODIC)                                                                    \
     FUNC(AC_BOUNDCOND_SYMMETRIC)                                                                   \
-    FUNC(AC_BOUNDCOND_ENTROPY_1)                                                                   \
     FUNC(AC_BOUNDCOND_ANTISYMMETRIC)                                                               \
-    FUNC(AC_BOUNDCOND_ADD_ONE)                                                                     \
-    FUNC(AC_BOUNDCOND_ADD_TWO)                                                                     \
-    FUNC(AC_BOUNDCOND_ADD_FOUR)                                                                     
+    FUNC(AC_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE)                                                \
+    FUNC(AC_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION)                                                 \
 
 #define AC_FOR_INIT_TYPES(FUNC)                                                                    \
     FUNC(INIT_TYPE_RANDOM)                                                                         \

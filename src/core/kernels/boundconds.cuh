@@ -13,45 +13,40 @@ static __global__ void
 kernel_symmetric_boundconds(const int3 region_id, const int3 normal, const int3 dims,
                             AcReal* vtxbuf)
 {
-    // The only reason a lot of these are const and not constexpr is DCONST(AC_n*) is not a compile
-    // time expression
-    const int start_x = (region_id.x == 1    ? NGHOST + DCONST(AC_nx)
-                         : region_id.x == -1 ? 0
-                                             : NGHOST);
-    const int start_y = (region_id.y == 1    ? NGHOST + DCONST(AC_ny)
-                         : region_id.y == -1 ? 0
-                                             : NGHOST);
-    const int start_z = (region_id.z == 1    ? NGHOST + DCONST(AC_nz)
-                         : region_id.z == -1 ? 0
-                                             : NGHOST);
-
-    const int i_dst = start_x + threadIdx.x + blockIdx.x * blockDim.x;
-    const int j_dst = start_y + threadIdx.y + blockIdx.y * blockDim.y;
-    const int k_dst = start_z + threadIdx.z + blockIdx.z * blockDim.z;
-
-    // If within the start-end range (this allows threadblock dims that are not
-    // divisible by end - start)
-    if (i_dst >= start_x + dims.x || j_dst >= start_y + dims.y || k_dst >= start_z + dims.z)
+    const int3 vertexIdx = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+    
+    if (vertexIdx.x >= dims.x || vertexIdx.y >= dims.y || vertexIdx.z >= dims.z) {
         return;
+    }
 
-    const int mirror_x = normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1 : normal.x == -1 ? NGHOST : -1;
-    const int mirror_y = normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1 : normal.y == -1 ? NGHOST : -1;
-    const int mirror_z = normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1 : normal.z == -1 ? NGHOST : -1;
+    const int3 start = (int3){
+        (region_id.x == 1 ? NGHOST + DCONST(AC_nx) : region_id.x == -1 ? 0 : NGHOST),
+        (region_id.y == 1 ? NGHOST + DCONST(AC_ny) : region_id.y == -1 ? 0 : NGHOST),
+        (region_id.z == 1 ? NGHOST + DCONST(AC_nz) : region_id.z == -1 ? 0 : NGHOST)
+    };
 
-    const bool mask_x = (normal.x == 0);
-    const bool mask_y = (normal.y == 0);
-    const bool mask_z = (normal.z == 0);
+    const int3 boundary = int3{
+        normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1 : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
+        normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1 : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+        normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1 : normal.z == -1 ? NGHOST : start.z + vertexIdx.z
+    };
 
-    const int i_src = mask_x ? i_dst : mirror_x * 2 - i_dst;
-    const int j_src = mask_y ? j_dst : mirror_y * 2 - j_dst;
-    const int k_src = mask_z ? k_dst : mirror_z * 2 - k_dst;
+    int3 domain = boundary;
+    int3 ghost = boundary;
 
-    const int src_idx = DEVICE_VTXBUF_IDX(i_src, j_src, k_src);
-    const int dst_idx = DEVICE_VTXBUF_IDX(i_dst, j_dst, k_dst);
+    for (size_t i = 0; i < NGHOST; i++) {
+        domain = domain - normal;
+        ghost = ghost + normal;
 
-    vtxbuf[dst_idx] = vtxbuf[src_idx];
-    // For antisymmetric boundconds:
-    // vtxbuf[dst_idx]   = sign * vtxbuf[src_idx];
+        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        int ghost_idx = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        
+        vtxbuf[ghost_idx] = vtxbuf[domain_idx];
+    }
 }
 
 AcResult
@@ -76,59 +71,72 @@ acKernelSymmetricBoundconds(const cudaStream_t stream, const int3 region_id, con
 
 
 static __global__ void
-kernel_entropy_boundconds(const int3 region_id, const int3 normal, const int3 dims,
-                            VertexBufferArray vba)
+kernel_entropy_const_temperature_boundconds(const int3 region_id, const int3 normal,
+                                            const int3 dims, VertexBufferArray vba)
 {
-    // The only reason a lot of these are const and not constexpr is DCONST(AC_n*) is not a compile
-    // time expression
-    const int start_x = (region_id.x == 1    ? NGHOST + DCONST(AC_nx)
-                         : region_id.x == -1 ? 0
-                                             : NGHOST);
-    const int start_y = (region_id.y == 1    ? NGHOST + DCONST(AC_ny)
-                         : region_id.y == -1 ? 0
-                                             : NGHOST);
-    const int start_z = (region_id.z == 1    ? NGHOST + DCONST(AC_nz)
-                         : region_id.z == -1 ? 0
-                                             : NGHOST);
 
-    const int i_dst = start_x + threadIdx.x + blockIdx.x * blockDim.x;
-    const int j_dst = start_y + threadIdx.y + blockIdx.y * blockDim.y;
-    const int k_dst = start_z + threadIdx.z + blockIdx.z * blockDim.z;
-
-    // If within the start-end range (this allows threadblock dims that are not
-    // divisible by end - start)
-    if (i_dst >= start_x + dims.x || j_dst >= start_y + dims.y || k_dst >= start_z + dims.z)
+    const int3 vertexIdx = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+    
+    if (vertexIdx.x >= dims.x || vertexIdx.y >= dims.y || vertexIdx.z >= dims.z) {
         return;
+    }
 
-    const int mirror_x = normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1 : normal.x == -1 ? NGHOST : -1;
-    const int mirror_y = normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1 : normal.y == -1 ? NGHOST : -1;
-    const int mirror_z = normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1 : normal.z == -1 ? NGHOST : -1;
+    const int3 start = (int3){
+        (region_id.x == 1 ? NGHOST + DCONST(AC_nx) : region_id.x == -1 ? 0 : NGHOST),
+        (region_id.y == 1 ? NGHOST + DCONST(AC_ny) : region_id.y == -1 ? 0 : NGHOST),
+        (region_id.z == 1 ? NGHOST + DCONST(AC_nz) : region_id.z == -1 ? 0 : NGHOST)
+    };
 
-    const bool mask_x = (normal.x == 0);
-    const bool mask_y = (normal.y == 0);
-    const bool mask_z = (normal.z == 0);
+    const int3 boundary = int3{
+        normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1 : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
+        normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1 : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+        normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1 : normal.z == -1 ? NGHOST : start.z + vertexIdx.z
+    };
 
-    const int i_src = mask_x ? i_dst : mirror_x * 2 - i_dst;
-    const int j_src = mask_y ? j_dst : mirror_y * 2 - j_dst;
-    const int k_src = mask_z ? k_dst : mirror_z * 2 - k_dst;
-
-    const int src_idx    = DEVICE_VTXBUF_IDX(i_src, j_src, k_src);
-    const int dst_idx    = DEVICE_VTXBUF_IDX(i_dst, j_dst, k_dst);
-    const int mirror_idx = DEVICE_VTXBUF_IDX(mirror_x, mirror_y, mirror_z);
+    int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
 
 
-    //Same as lnT(), except we are reading the values from the boundary (mirror_idx)
-    AcReal lnT_boundary = DCONST(AC_lnT0)+DCONST(AC_gamma)*vba.in[VTXBUF_ENTROPY][mirror_idx]/DCONST(AC_cp_sound)+(DCONST(AC_gamma)-AcReal(1.))*(vba.in[VTXBUF_LNRHO][mirror_idx]-DCONST(AC_lnrho0));
+    AcReal lnrho_diff = vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0);
+    AcReal gas_constant = DCONST(AC_cp_sound) -  DCONST(AC_cv_sound);
 
-    vba.in[VTXBUF_ENTROPY][dst_idx] = - vba.in[VTXBUF_ENTROPY][src_idx]
-                      + 2 * DCONST(AC_cv_sound)
-                          * (lnT_boundary - DCONST(AC_lnT0))
-                      - (DCONST(AC_cp_sound) -  DCONST(AC_cv_sound))
-                          * (vba.in[VTXBUF_LNRHO][src_idx] + vba.in[VTXBUF_LNRHO][dst_idx] - 2*DCONST(AC_lnrho0));
+    //Same as lnT(), except we are reading the values from the boundary
+    AcReal lnT_boundary =  DCONST(AC_lnT0)
+                         + DCONST(AC_gamma)
+                            * vba.in[VTXBUF_ENTROPY][boundary_idx]
+                            / DCONST(AC_cp_sound)
+                         + (DCONST(AC_gamma) - AcReal(1.)) * lnrho_diff;
+
+
+    AcReal tmp = AcReal(2.0) * DCONST(AC_cv_sound) * (lnT_boundary - DCONST(AC_lnT0));
+    
+    vba.in[VTXBUF_ENTROPY][boundary_idx] = AcReal(0.5)*tmp - gas_constant*lnrho_diff;
+
+    //Set the values in the halo
+    int3 domain = boundary;
+    int3 ghost = boundary;
+
+    for (size_t i = 0; i < NGHOST; i++) {
+        domain = domain - normal;
+        ghost = ghost + normal;
+
+        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        int ghost_idx = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+
+        vba.in[VTXBUF_ENTROPY][ghost_idx] = - vba.in[VTXBUF_ENTROPY][domain_idx] + tmp
+                                            - gas_constant * (
+                                                     vba.in[VTXBUF_LNRHO][domain_idx]
+                                                   + vba.in[VTXBUF_LNRHO][ghost_idx]
+                                                   - 2*DCONST(AC_lnrho0)
+                                              );
+    }
 }
 
 AcResult
-acKernelEntropyBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+acKernelEntropyConstantTemperatureBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
                             const int3 dims, VertexBufferArray vba)
 {
 
@@ -137,64 +145,117 @@ acKernelEntropyBoundconds(const cudaStream_t stream, const int3 region_id, const
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
-    kernel_entropy_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vba);
+    kernel_entropy_const_temperature_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vba);
     return AC_SUCCESS;
 }
 
-
-/************************
- *                      *
- *  Dummy test kernels  *
- *                      *
- ************************/
-
-#pragma once
 static __global__ void
-kernel_add_one_boundconds(const int3 region_id, const int3 normal, const int3 dims,
-                            AcReal* vtxbuf)
+kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 region_id, const int3 normal,
+                                                                  const int3 dims, VertexBufferArray vba)
 {
-    // The only reason a lot of these are const and not constexpr is DCONST(AC_n*) is not a compile
-    // time expression
-    const int start_x = (region_id.x == 1    ? NGHOST + DCONST(AC_nx)
-                         : region_id.x == -1 ? 0
-                                             : NGHOST);
-    const int start_y = (region_id.y == 1    ? NGHOST + DCONST(AC_ny)
-                         : region_id.y == -1 ? 0
-                                             : NGHOST);
-    const int start_z = (region_id.z == 1    ? NGHOST + DCONST(AC_nz)
-                         : region_id.z == -1 ? 0
-                                             : NGHOST);
 
-    const int i_dst = start_x + threadIdx.x + blockIdx.x * blockDim.x;
-    const int j_dst = start_y + threadIdx.y + blockIdx.y * blockDim.y;
-    const int k_dst = start_z + threadIdx.z + blockIdx.z * blockDim.z;
-
-    // If within the start-end range (this allows threadblock dims that are not
-    // divisible by end - start)
-    if (i_dst >= start_x + dims.x || j_dst >= start_y + dims.y || k_dst >= start_z + dims.z)
+    const int3 vertexIdx = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+    
+    if (vertexIdx.x >= dims.x || vertexIdx.y >= dims.y || vertexIdx.z >= dims.z) {
         return;
+    }
 
-    const int mirror_x = normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1 : normal.x == -1 ? NGHOST : -1;
-    const int mirror_y = normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1 : normal.y == -1 ? NGHOST : -1;
-    const int mirror_z = normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1 : normal.z == -1 ? NGHOST : -1;
+    const int3 start = (int3){
+        (region_id.x == 1 ? NGHOST + DCONST(AC_nx) : region_id.x == -1 ? 0 : NGHOST),
+        (region_id.y == 1 ? NGHOST + DCONST(AC_ny) : region_id.y == -1 ? 0 : NGHOST),
+        (region_id.z == 1 ? NGHOST + DCONST(AC_nz) : region_id.z == -1 ? 0 : NGHOST)
+    };
 
-    const bool mask_x = (normal.x == 0);
-    const bool mask_y = (normal.y == 0);
-    const bool mask_z = (normal.z == 0);
+    const int3 boundary = int3{
+        normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1 : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
+        normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1 : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+        normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1 : normal.z == -1 ? NGHOST : start.z + vertexIdx.z
+    };
 
-    const int i_src = mask_x ? i_dst : mirror_x * 2 - i_dst;
-    const int j_src = mask_y ? j_dst : mirror_y * 2 - j_dst;
-    const int k_src = mask_z ? k_dst : mirror_z * 2 - k_dst;
+    int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
 
-    const int src_idx = DEVICE_VTXBUF_IDX(i_src, j_src, k_src);
-    const int dst_idx = DEVICE_VTXBUF_IDX(i_dst, j_dst, k_dst);
+    AcReal rho_boundary = exp(vba.in[VTXBUF_LNRHO][boundary_idx]);
 
-    vtxbuf[dst_idx] = vtxbuf[src_idx] + 1.0f;
+    AcReal gamma_m1 = DCONST(AC_gamma); //(?)
+
+    // cs20*exp(gamma_m1*(f(l1,:,:,ilnrho)-lnrho0)+cv1*f(l1,:,:,iss))/(gamma_m1*cp)
+    AcReal T_boundary   = DCONST(AC_cs2_sound)
+                            * exp(
+                                DCONST(AC_gamma)    * (vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0))
+                              + DCONST(AC_cv_sound) *  vba.in[VTXBUF_ENTROPY][boundary_idx]
+                              )
+                            / gamma_m1*DCONST(AC_cp_sound);
+
+
+    //dlnrhodx_yz= coeffs_1_x(1)*(f(l1+1,:,:,ilnrho)-f(l1-1,:,:,ilnrho)) &
+    //            +coeffs_1_x(2)*(f(l1+2,:,:,ilnrho)-f(l1-2,:,:,ilnrho)) &
+    //            +coeffs_1_x(3)*(f(l1+3,:,:,ilnrho)-f(l1-3,:,:,ilnrho))
+    //TODO: derivatives in the normal direction
+    
+
+    AcReal c[3] = {
+                    (AcReal(1.)/(AcReal(0.04908738521)))*(AcReal(3.)/AcReal(4.)),
+                    (AcReal(1.)/(AcReal(0.04908738521)))*(-AcReal(3.)/AcReal(20.)),
+                    (AcReal(1.)/(AcReal(0.04908738521)))*(AcReal(1.)/AcReal(60.))
+                  };
+
+    AcReal der_lnrho_boundary = 0;
+
+    int3 left = boundary;
+    int3 right = boundary;
+    int3 abs_normal = int3{abs(normal.x),abs(normal.y),abs(normal.z)};
+
+    for(int i = 0; i < 3; i++) {
+        left = left - abs_normal;
+        right = right - abs_normal;
+        int left_idx = DEVICE_VTXBUF_IDX(left.x, left.y, left.z);
+        int right_idx = DEVICE_VTXBUF_IDX(right.x, right.y, right.z);
+        der_lnrho_boundary += c[i] * (vba.in[VTXBUF_LNRHO][right_idx] - vba.in[VTXBUF_LNRHO][left_idx]);
+    }
+
+    //dsdx_yz=-cv*((sigmaSBt/hcond0_kramers)*TT_yz**(3-6.5*nkramers)*rho_yz**(2.*nkramers) &
+    //        +gamma_m1*dlnrhodx_yz)
+    
+    AcReal sigmaSBt = 1.0;              //not set yet I believe
+    AcReal hcond0_kramers = 1.0;        //
+    AcReal nkramers = 1.0;              //
+
+    AcReal der_ss_boundary = -DCONST(AC_cv_sound)*(sigmaSBt/hcond0_kramers)*pow(T_boundary,AcReal(3.0)-AcReal(6.5)*nkramers)*pow(rho_boundary, AcReal(2.0)*nkramers) + gamma_m1*der_lnrho_boundary;
+
+    AcReal d;
+    if (normal.x != 0) {
+        d = DCONST(AC_xlen);
+    }
+    else if (normal.y != 0){
+        d = DCONST(AC_ylen);
+    }
+    else if (normal.z != 0){
+        d = DCONST(AC_zlen);
+    }
+
+    int3 domain = boundary;
+    int3 ghost = boundary;
+
+    for (size_t i = 0; i < NGHOST; i++) {
+        domain = domain - normal;
+        ghost = ghost + normal;
+
+        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        int ghost_idx = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        
+        AcReal distance = AcReal(2*(i+1))*d;
+
+        vba.in[VTXBUF_ENTROPY][ghost_idx] = vba.in[VTXBUF_ENTROPY][domain_idx]-distance*der_ss_boundary;
+    }
 }
 
 AcResult
-acKernelAddOneBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
-                            const int3 dims, AcReal* vtxbuf)
+acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                            const int3 dims, VertexBufferArray vba)
 {
 
     const dim3 tpb(8, 8, 8);
@@ -202,124 +263,11 @@ acKernelAddOneBoundconds(const cudaStream_t stream, const int3 region_id, const 
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
-    kernel_add_one_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
+    kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vba);
     return AC_SUCCESS;
 }
-//Dummy test kernel
-#pragma once
-static __global__ void
-kernel_add_two_boundconds(const int3 region_id, const int3 normal, const int3 dims,
-                            AcReal* vtxbuf)
-{
-    // The only reason a lot of these are const and not constexpr is DCONST(AC_n*) is not a compile
-    // time expression
-    const int start_x = (region_id.x == 1    ? NGHOST + DCONST(AC_nx)
-                         : region_id.x == -1 ? 0
-                                             : NGHOST);
-    const int start_y = (region_id.y == 1    ? NGHOST + DCONST(AC_ny)
-                         : region_id.y == -1 ? 0
-                                             : NGHOST);
-    const int start_z = (region_id.z == 1    ? NGHOST + DCONST(AC_nz)
-                         : region_id.z == -1 ? 0
-                                             : NGHOST);
 
-    const int i_dst = start_x + threadIdx.x + blockIdx.x * blockDim.x;
-    const int j_dst = start_y + threadIdx.y + blockIdx.y * blockDim.y;
-    const int k_dst = start_z + threadIdx.z + blockIdx.z * blockDim.z;
 
-    // If within the start-end range (this allows threadblock dims that are not
-    // divisible by end - start)
-    if (i_dst >= start_x + dims.x || j_dst >= start_y + dims.y || k_dst >= start_z + dims.z)
-        return;
 
-    const int mirror_x = normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1 : normal.x == -1 ? NGHOST : -1;
-    const int mirror_y = normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1 : normal.y == -1 ? NGHOST : -1;
-    const int mirror_z = normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1 : normal.z == -1 ? NGHOST : -1;
-
-    const bool mask_x = (normal.x == 0);
-    const bool mask_y = (normal.y == 0);
-    const bool mask_z = (normal.z == 0);
-
-    const int i_src = mask_x ? i_dst : mirror_x * 2 - i_dst;
-    const int j_src = mask_y ? j_dst : mirror_y * 2 - j_dst;
-    const int k_src = mask_z ? k_dst : mirror_z * 2 - k_dst;
-
-    const int src_idx = DEVICE_VTXBUF_IDX(i_src, j_src, k_src);
-    const int dst_idx = DEVICE_VTXBUF_IDX(i_dst, j_dst, k_dst);
-
-    vtxbuf[dst_idx] = vtxbuf[src_idx] + 2.0f;
-}
-
-AcResult
-acKernelAddTwoBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
-                            const int3 dims, AcReal* vtxbuf)
-{
-
-    const dim3 tpb(8, 8, 8);
-    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
-                   (unsigned int)ceil(dims.y / (double)tpb.y),
-                   (unsigned int)ceil(dims.z / (double)tpb.z));
-
-    kernel_add_two_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
-    return AC_SUCCESS;
-}
-//Dummy test kernel
-#pragma once
-static __global__ void
-kernel_add_four_boundconds(const int3 region_id, const int3 normal, const int3 dims,
-                            AcReal* vtxbuf)
-{
-    // The only reason a lot of these are const and not constexpr is DCONST(AC_n*) is not a compile
-    // time expression
-    const int start_x = (region_id.x == 1    ? NGHOST + DCONST(AC_nx)
-                         : region_id.x == -1 ? 0
-                                             : NGHOST);
-    const int start_y = (region_id.y == 1    ? NGHOST + DCONST(AC_ny)
-                         : region_id.y == -1 ? 0
-                                             : NGHOST);
-    const int start_z = (region_id.z == 1    ? NGHOST + DCONST(AC_nz)
-                         : region_id.z == -1 ? 0
-                                             : NGHOST);
-
-    const int i_dst = start_x + threadIdx.x + blockIdx.x * blockDim.x;
-    const int j_dst = start_y + threadIdx.y + blockIdx.y * blockDim.y;
-    const int k_dst = start_z + threadIdx.z + blockIdx.z * blockDim.z;
-
-    // If within the start-end range (this allows threadblock dims that are not
-    // divisible by end - start)
-    if (i_dst >= start_x + dims.x || j_dst >= start_y + dims.y || k_dst >= start_z + dims.z)
-        return;
-
-    const int mirror_x = normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1 : normal.x == -1 ? NGHOST : -1;
-    const int mirror_y = normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1 : normal.y == -1 ? NGHOST : -1;
-    const int mirror_z = normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1 : normal.z == -1 ? NGHOST : -1;
-
-    const bool mask_x = (normal.x == 0);
-    const bool mask_y = (normal.y == 0);
-    const bool mask_z = (normal.z == 0);
-
-    const int i_src = mask_x ? i_dst : mirror_x * 2 - i_dst;
-    const int j_src = mask_y ? j_dst : mirror_y * 2 - j_dst;
-    const int k_src = mask_z ? k_dst : mirror_z * 2 - k_dst;
-
-    const int src_idx = DEVICE_VTXBUF_IDX(i_src, j_src, k_src);
-    const int dst_idx = DEVICE_VTXBUF_IDX(i_dst, j_dst, k_dst);
-
-    vtxbuf[dst_idx] = vtxbuf[src_idx] + 4.0f;
-}
-
-AcResult
-acKernelAddFourBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
-                            const int3 dims, AcReal* vtxbuf)
-{
-
-    const dim3 tpb(8, 8, 8);
-    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
-                   (unsigned int)ceil(dims.y / (double)tpb.y),
-                   (unsigned int)ceil(dims.z / (double)tpb.z));
-
-    kernel_add_four_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
-    return AC_SUCCESS;
-}
 
 }//extern "C"

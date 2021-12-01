@@ -15,10 +15,6 @@
 #define debug_bc_errors 1
 #define debug_bc_values 0
 
-
-
-
-
 bool
 test_simple_bc(AcMesh mesh, int3 direction, int3 dims, int3 domain_start, int3 ghost_start,
             AcMeshInfo info, AcReal offset)
@@ -69,13 +65,11 @@ test_simple_bc(AcMesh mesh, int3 direction, int3 dims, int3 domain_start, int3 g
                         }
 #endif
                     }
-                    else {
 #if debug_bc_values
-                        printf("domain[(%3d,%3d,%3d)] = %f != ghost[(%3d,%3d,%3d)] = %f\n", dom.x,
-                               dom.y, dom.z, field[idx_dom], ghost.x, ghost.y, ghost.z,
-                               field[idx_ghost]);
+                    printf("domain[(%3d,%3d,%3d)] = %f != ghost[(%3d,%3d,%3d)] = %f\n", dom.x,
+                           dom.y, dom.z, field[idx_dom], ghost.x, ghost.y, ghost.z,
+                           field[idx_ghost]);
 #endif
-                    }
                 }
             }
         }
@@ -295,168 +289,6 @@ main(void)
             ret_val = 1;
         }
     }
-
-//Dummy test for arbitrary calculations, tests that the dependencies work
-    AcTaskGraph* add_one_bc_graph = acGridBuildTaskGraph(
-        {
-         acHaloExchange(all_fields),                                            //0
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),  //1
-         acCompute(KERNEL_solve, all_fields),                                   //2
-         acCompute(KERNEL_solve, all_fields),                                   //3
-         acCompute(KERNEL_solve, all_fields),                                   //4
-         acHaloExchange(all_fields),                                            //5
-         acBoundaryCondition(BOUNDARY_X, AC_BOUNDCOND_ADD_ONE, all_fields),     //6
-         acBoundaryCondition(BOUNDARY_Y, AC_BOUNDCOND_ADD_TWO, all_fields),     //7
-         acBoundaryCondition(BOUNDARY_Z, AC_BOUNDCOND_ADD_FOUR, all_fields)});   //8
-
-    acGridExecuteTaskGraph(add_one_bc_graph, 1);
-    acGridSynchronizeStream(STREAM_ALL);
-    acGridStoreMesh(STREAM_DEFAULT, &mesh);
-
-    faces_passed   = true;
-    edges_passed   = true;
-    corners_passed = true;
- 
- 
-    if (pid == 0) {
-        // acGraphPrintDependencies(symmetric_bc_graph);
-#if 1
-
-        printf("\nTesting arbitrary.\n");
-
-        // Symmetric boundconds
-        printf("---Face ghost zones---\n");
-        // faces
-        faces_passed &= test_simple_bc(mesh, int3{1, 0, 0}, int3{NGHOST, nn.y, nn.z},
-                                    int3{nn.x - 1, NGHOST, NGHOST},
-                                    int3{nn.x + NGHOST, NGHOST, NGHOST}, submesh_info,1.0);
-        faces_passed &= test_simple_bc(mesh, int3{0, 1, 0}, int3{nn.x, NGHOST, nn.z},
-                                    int3{NGHOST, nn.y - 1, NGHOST},
-                                    int3{NGHOST, nn.y + NGHOST, NGHOST}, submesh_info,2.0);
-        faces_passed &= test_simple_bc(mesh, int3{0, 0, 1}, int3{nn.x, nn.y, NGHOST},
-                                    int3{NGHOST, NGHOST, nn.z - 1},
-                                    int3{NGHOST, NGHOST, nn.z + NGHOST}, submesh_info,4.0);
-
-        faces_passed &= test_simple_bc(mesh, int3{-1, 0, 0}, int3{NGHOST, nn.y, nn.z},
-                                    int3{NGHOST + 1, NGHOST, NGHOST}, int3{0, NGHOST, NGHOST},
-                                    submesh_info,1.0);
-        faces_passed &= test_simple_bc(mesh, int3{0, -1, 0}, int3{nn.x, NGHOST, nn.z},
-                                    int3{NGHOST, NGHOST + 1, NGHOST}, int3{NGHOST, 0, NGHOST},
-                                    submesh_info,2.0);
-        faces_passed &= test_simple_bc(mesh, int3{0, 0, -1}, int3{nn.x, nn.y, NGHOST},
-                                    int3{NGHOST, NGHOST, NGHOST + 1}, int3{NGHOST, NGHOST, 0},
-                                    submesh_info,4.0);
-
-        printf("---Edge ghost zones---\n");
-        // edges
-        edges_passed &= test_simple_bc(mesh, int3{1, 1, 0}, int3{NGHOST, NGHOST, nn.z},
-                                    int3{nn.x - 1, nn.y - 1, NGHOST},
-                                    int3{nn.x + NGHOST, nn.y + NGHOST, NGHOST}, submesh_info,3.0);
-        edges_passed &= test_simple_bc(mesh, int3{1, 0, 1}, int3{NGHOST, nn.y, NGHOST},
-                                    int3{nn.x - 1, NGHOST, nn.z - 1},
-                                    int3{nn.x + NGHOST, NGHOST, nn.z + NGHOST}, submesh_info,5.0);
-        edges_passed &= test_simple_bc(mesh, int3{0, 1, 1}, int3{nn.x, NGHOST, NGHOST},
-                                    int3{NGHOST, nn.y - 1, nn.z - 1},
-                                    int3{NGHOST, nn.y + NGHOST, nn.z + NGHOST}, submesh_info,6.0);
-
-        edges_passed &= test_simple_bc(mesh, int3{1, -1, 0}, int3{NGHOST, NGHOST, nn.z},
-                                    int3{nn.x - 1, NGHOST + 1, NGHOST},
-                                    int3{nn.x + NGHOST, 0, NGHOST}, submesh_info,3.0);
-        edges_passed &= test_simple_bc(mesh, int3{1, 0, -1}, int3{NGHOST, nn.y, NGHOST},
-                                    int3{nn.x - 1, NGHOST, NGHOST + 1},
-                                    int3{nn.x + NGHOST, NGHOST, 0}, submesh_info,5.0);
-        edges_passed &= test_simple_bc(mesh, int3{0, 1, -1}, int3{nn.x, NGHOST, NGHOST},
-                                    int3{NGHOST, nn.y - 1, NGHOST + 1},
-                                    int3{NGHOST, nn.y + NGHOST, 0}, submesh_info,6.0);
-
-        edges_passed &= test_simple_bc(mesh, int3{-1, 1, 0}, int3{NGHOST, NGHOST, nn.z},
-                                    int3{NGHOST + 1, nn.y - 1, NGHOST},
-                                    int3{0, nn.y + NGHOST, NGHOST}, submesh_info,3.0);
-        edges_passed &= test_simple_bc(mesh, int3{-1, 0, 1}, int3{NGHOST, nn.y, NGHOST},
-                                    int3{NGHOST + 1, NGHOST, nn.z - 1},
-                                    int3{0, NGHOST, nn.z + NGHOST}, submesh_info,5.0);
-        edges_passed &= test_simple_bc(mesh, int3{0, -1, 1}, int3{nn.x, NGHOST, NGHOST},
-                                    int3{NGHOST, NGHOST + 1, nn.z - 1},
-                                    int3{NGHOST, 0, nn.z + NGHOST}, submesh_info,6.0);
-
-        edges_passed &= test_simple_bc(mesh, int3{-1, -1, 0}, int3{NGHOST, NGHOST, nn.z},
-                                    int3{NGHOST + 1, NGHOST + 1, NGHOST}, int3{0, 0, NGHOST},
-                                    submesh_info, 3.0);
-        edges_passed &= test_simple_bc(mesh, int3{-1, 0, -1}, int3{NGHOST, nn.y, NGHOST},
-                                    int3{NGHOST + 1, NGHOST, NGHOST + 1}, int3{0, NGHOST, 0},
-                                    submesh_info, 5.0);
-        edges_passed &= test_simple_bc(mesh, int3{0, -1, -1}, int3{nn.x, NGHOST, NGHOST},
-                                    int3{NGHOST, NGHOST + 1, NGHOST + 1}, int3{NGHOST, 0, 0},
-                                    submesh_info, 6.0);
-
-        printf("---Corner ghost zones---\n");
-        corners_passed = true;
-        // corners
-        corners_passed &= test_simple_bc(mesh, int3{1, 1, 1}, int3{NGHOST, NGHOST, NGHOST},
-                                      int3{nn.x - 1, nn.y - 1, nn.z - 1},
-                                      int3{nn.x + NGHOST, nn.y + NGHOST, nn.z + NGHOST},
-                                      submesh_info, 7.0);
-
-        corners_passed &= test_simple_bc(mesh, int3{1, 1, -1}, int3{NGHOST, NGHOST, NGHOST},
-                                      int3{nn.x - 1, nn.y - 1, NGHOST + 1},
-                                      int3{nn.x + NGHOST, nn.y + NGHOST, 0}, submesh_info, 7.0);
-        corners_passed &= test_simple_bc(mesh, int3{1, -1, 1}, int3{NGHOST, NGHOST, NGHOST},
-                                      int3{nn.x - 1, NGHOST + 1, nn.z - 1},
-                                      int3{nn.x + NGHOST, 0, nn.z + NGHOST}, submesh_info, 7.0);
-        corners_passed &= test_simple_bc(mesh, int3{-1, 1, 1}, int3{NGHOST, NGHOST, NGHOST},
-                                      int3{NGHOST + 1, nn.y - 1, nn.z - 1},
-                                      int3{0, nn.y + NGHOST, nn.z + NGHOST}, submesh_info, 7.0);
-
-        corners_passed &= test_simple_bc(mesh, int3{-1, 1, -1}, int3{NGHOST, NGHOST, NGHOST},
-                                      int3{NGHOST + 1, nn.y - 1, NGHOST + 1},
-                                      int3{0, nn.y + NGHOST, 0}, submesh_info, 7.0);
-        corners_passed &= test_simple_bc(mesh, int3{1, -1, -1}, int3{NGHOST, NGHOST, NGHOST},
-                                      int3{nn.x - 1, NGHOST + 1, NGHOST + 1},
-                                      int3{nn.x + NGHOST, 0, 0}, submesh_info, 7.0);
-        corners_passed &= test_simple_bc(mesh, int3{-1, -1, 1}, int3{NGHOST, NGHOST, NGHOST},
-                                      int3{NGHOST + 1, NGHOST + 1, nn.z - 1},
-                                      int3{0, 0, nn.z + NGHOST}, submesh_info, 7.0);
-
-        corners_passed &= test_simple_bc(mesh, int3{-1, -1, -1}, int3{NGHOST, NGHOST, NGHOST},
-                                      int3{NGHOST + 1, NGHOST + 1, NGHOST + 1}, int3{0, 0, 0},
-                                      submesh_info, 7.0);
-#endif
-        // As more boundary conditions are added, add tests for them here
-    } // if pid == 0
-
-    acGridDestroyTaskGraph(add_one_bc_graph);
-
-    if (pid == 0) {
-        printf("\nAdd one boundary condition test:\n");
-        if (faces_passed) {
-            printf("\t%sFaces PASSED%s\n", GRN, RESET);
-        }
-        else {
-            printf("\t%sFaces FAILED%s\n", RED, RESET);
-        }
-        if (edges_passed) {
-            printf("\t%sEdges PASSED%s\n", GRN, RESET);
-        }
-        else {
-            printf("\t%sEdges FAILED%s\n", RED, RESET);
-        }
-        if (corners_passed) {
-            printf("\t%sCorners PASSED%s\n", GRN, RESET);
-        }
-        else {
-            printf("\t%sCorners FAILED%s\n", RED, RESET);
-        }
-
-        if (faces_passed && edges_passed && corners_passed) {
-            printf("\n%sPASSED%s\n", GRN, RESET);
-            ret_val = (ret_val == 0)?0:1;
-        }
-        else {
-            printf("\n%sFAILED%s\n", RED, RESET);
-            ret_val = 1;
-        }
-    }  
-
     //End
     acGridQuit();
     MPI_Finalize();

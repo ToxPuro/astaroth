@@ -61,23 +61,13 @@ AcResult acKernelPeriodicBoundconds(const cudaStream_t stream, const int3 start,
 AcResult acKernelSymmetricBoundconds(const cudaStream_t stream, const int3 region_id,
                                      const int3 normal, const int3 dims, AcReal* vtxbuf);
 
-
-/*************************************************************************
- * Arbitrary kernels for testing                                         *
- * that the values in the boundaries are calculated in the correct order *
- *************************************************************************/
+/** */
+AcResult acKernelEntropyConstantTemperatureBoundconds(const cudaStream_t stream, const int3 region_id,
+                                                      const int3 normal, const int3 dims, VertexBufferArray vba);
 
 /** */
-AcResult acKernelAddOneBoundconds(const cudaStream_t stream, const int3 region_id,
-                                     const int3 normal, const int3 dims, AcReal* vtxbuf);
-
-/** */
-AcResult acKernelAddTwoBoundconds(const cudaStream_t stream, const int3 region_id,
-                                     const int3 normal, const int3 dims, AcReal* vtxbuf);
-
-/** */
-AcResult acKernelAddFourBoundconds(const cudaStream_t stream, const int3 region_id,
-                                     const int3 normal, const int3 dims, AcReal* vtxbuf);
+AcResult acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(const cudaStream_t stream, const int3 region_id,
+                                                                       const int3 normal, const int3 dims, VertexBufferArray vba);
 
 /** */
 AcResult acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int3 end,
