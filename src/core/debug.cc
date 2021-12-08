@@ -2,20 +2,61 @@
 #include "astaroth.h"
 #include "astaroth_debug.h"
 #include "task.h"
+
 #include <stdio.h>
+#include <string>
+
+static void
+writeTaskKey(FILE* fp, const Task* task)
+{
+    fprintf(fp,"{");
+    fprintf(fp,"\"order\":%d,",task->order);
+    fprintf(fp,"\"tag\":%d,",task->output_region.tag);
+    fprintf(fp,"\"task_type\":");
+    switch (task->task_type) {
+    case TASKTYPE_COMPUTE:
+        fprintf(fp, "\"COMPUTE\"");
+        break;
+    case TASKTYPE_HALOEXCHANGE:
+        fprintf(fp, "\"HALOEXCHANGE\"");
+        break;
+    case TASKTYPE_BOUNDCOND:
+        fprintf(fp, "\"BOUNDCOND\"");
+        break;
+    default:
+        fprintf(fp, "\"UNKNOWN\"");
+        break;
+    }
+    fprintf(fp, "}");
+}
 
 static void
 graphWriteDependencies(FILE* fp, const AcTaskGraph* graph)
 {
-    // Compare that default_tasks == grid.default_tasks
-    for (auto& task : graph->all_tasks) {
-        for (auto& other : graph->all_tasks) {
-            if (task->isPrerequisiteTo(other)) {
-                // std::cout << other->name << " -> " << task->name << std::endl;
-                fprintf(fp, "\t%s -> %s\n", other->name.c_str(), task->name.c_str());
+    fprintf(fp, "[");
+    bool first_item = true;
+    for (auto& prerequisite : graph->all_tasks) {
+        if (prerequisite->active){
+            for (auto& dependency : prerequisite->dependents) {
+                    if (first_item) {
+                        first_item = false;
+                    } else {
+                        fprintf(fp, ",");
+                    }
+                    std::shared_ptr<Task> dependent = dependency.first.lock();
+                    fprintf(fp, "\n\t{\n");
+                    fprintf(fp, "\t\t\"prerequisite\":");
+                    writeTaskKey(fp, prerequisite.get());
+                    fprintf(fp, ",\n");
+                    fprintf(fp, "\t\t\"dependent\":");
+                    writeTaskKey(fp, dependent.get());
+                    fprintf(fp, ",\n");
+                    fprintf(fp, "\t\t\"offset\":\"%lu\"\n", dependency.second);
+                    fprintf(fp, "\t}");
             }
         }
     }
+    fprintf(fp, "\n]\n");
 }
 
 void
@@ -34,8 +75,8 @@ acGraphWriteDependencies(const char* path, const AcTaskGraph* graph)
         fprintf(stderr, "file \"%s\" could not be opened\n", path);
         return;
     }
-
     graphWriteDependencies(fp, graph);
+    fclose(fp);
 }
 
 static void
@@ -69,30 +110,42 @@ acGraphWriteOrder(const char* path, const AcTaskGraph* graph)
     graphWriteOrder(fp, graph);
 }
 
-#define AC_DEBUG_TASK_TRANSITIONS (0)
+void
+acGraphEnableTrace(const char* trace_filepath, AcTaskGraph * const graph)
+{
+    if (graph->trace_file.fp != NULL){
+        fclose(graph->trace_file.fp);
+    }
+    graph->trace_file.enabled = true;
+    graph->trace_file.filepath = trace_filepath;
+    graph->trace_file.fp = fopen(trace_filepath, "w");
+
+}
 
 void
-Task::logStateChangedEvent(const char* from, const char* to)
+acGraphDisableTrace(AcTaskGraph * const graph)
 {
-    // This line is here to stop the compiler from complaining about unused variables
-    if (from == to) {
-        ;
+    if (graph->trace_file.fp != NULL){
+        fclose(graph->trace_file.fp);
     }
+    graph->trace_file.enabled = false;
+    graph->trace_file.filepath = "";
+    graph->trace_file.fp = NULL;
+}
 
-#if AC_DEBUG_TASK_TRANSITIONS == 1
-    printf("{"
-           "\"msg_type\":\"state_changed_event\","
-           "\"rank\":%d,"
-           "\"iteration\":%lu,"
-           "\"task_order\":%d,"
-           "\"task_type\":%d,"
-           "\"tag\":%d,"
-           "\"region_id\":[%d,%d,%d],"
-           "\"from\":\"%s\","
-           "\"to\":\"%s\""
-           "}\n",
-           rank, loop_cntr.i, order, task_type, output_region->tag, output_region->id.x,
-           output_region->id.y, output_region->id.z, from, to);
-#endif
+void
+TraceFile::trace(const Task* task, const std::string old_state, const std::string new_state) const
+{
+    if (enabled) {
+        fprintf(fp,"{");
+        fprintf(fp,"\"msg_type\":\"state_changed_event\",");
+        fprintf(fp,"\"task\":");
+        writeTaskKey(fp, task);
+        fprintf(fp,",");
+        fprintf(fp,"\"iteration\":%lu,",task->loop_cntr.i);
+        fprintf(fp,"\"from\":\"%s\",",old_state.c_str());
+        fprintf(fp,"\"to\":\"%s\"",new_state.c_str());
+        fprintf(fp,"}\n");
+    }
 }
 #endif

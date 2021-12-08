@@ -268,7 +268,7 @@ Task::isFinished()
 }
 
 void
-Task::update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps)
+Task::update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps, const TraceFile *trace_file)
 {
     if (isFinished())
         return;
@@ -299,7 +299,7 @@ Task::update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps)
     }
 
     if (ready) {
-        advance();
+        advance(trace_file);
         if (state == wait_state) {
             swapVBA(vtxbuf_swaps);
             notifyDependents();
@@ -425,17 +425,17 @@ ComputeTask::test()
 }
 
 void
-ComputeTask::advance()
+ComputeTask::advance(const TraceFile* trace_file)
 {
     switch (static_cast<ComputeState>(state)) {
     case ComputeState::Waiting: {
-        logStateChangedEvent("waiting", "running");
+        trace_file->trace(this, "waiting", "running");
         compute();
         state = static_cast<int>(ComputeState::Running);
         break;
     }
     case ComputeState::Running: {
-        logStateChangedEvent("running", "waiting");
+        trace_file->trace(this, "running", "waiting");
         state = static_cast<int>(ComputeState::Waiting);
         break;
     }
@@ -731,28 +731,28 @@ HaloExchangeTask::test()
 }
 
 void
-HaloExchangeTask::advance()
+HaloExchangeTask::advance(const TraceFile *trace_file)
 {
     switch (static_cast<HaloExchangeState>(state)) {
     case HaloExchangeState::Waiting:
-        logStateChangedEvent("waiting", "packing");
+        trace_file->trace(this, "waiting", "packing");
         pack();
         state = static_cast<int>(HaloExchangeState::Packing);
         break;
     case HaloExchangeState::Packing:
-        logStateChangedEvent("packing", "receiving");
+        trace_file->trace(this, "packing", "receiving");
         sync();
         send();
         state = static_cast<int>(HaloExchangeState::Exchanging);
         break;
     case HaloExchangeState::Exchanging:
-        logStateChangedEvent("receiving", "unpacking");
+        trace_file->trace(this, "receiving", "unpacking");
         sync();
         unpack();
         state = static_cast<int>(HaloExchangeState::Unpacking);
         break;
     case HaloExchangeState::Unpacking:
-        logStateChangedEvent("unpacking", "waiting");
+        trace_file->trace(this, "unpacking", "waiting");
         receive();
         sync();
         state = static_cast<int>(HaloExchangeState::Waiting);
@@ -841,20 +841,21 @@ BoundaryConditionTask::test()
 }
 
 void
-BoundaryConditionTask::advance()
+BoundaryConditionTask::advance(const TraceFile *trace_file)
 {
     switch (static_cast<BoundaryConditionState>(state)) {
     case BoundaryConditionState::Waiting:
-        logStateChangedEvent("waiting", "running");
+        trace_file->trace(this, "waiting", "running");
         populate_boundary_region();
         state = static_cast<int>(BoundaryConditionState::Running);
         break;
     case BoundaryConditionState::Running:
-        logStateChangedEvent("running", "waiting");
+        trace_file->trace(this, "running", "waiting");
         state = static_cast<int>(BoundaryConditionState::Waiting);
         break;
     default:
         ERROR("BoundaryConditionTask in an invalid state.");
     }
 }
+
 #endif // AC_MPI_ENABLED

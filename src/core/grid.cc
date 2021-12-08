@@ -707,7 +707,7 @@ acGridExecuteTaskGraph(const AcTaskGraph* graph, size_t n_iterations)
         ready = true;
         for (auto& task : graph->all_tasks) {
             if (task->active) {
-                task->update(graph->vtxbuf_swaps);
+                task->update(graph->vtxbuf_swaps, &(graph->trace_file));
                 ready &= task->isFinished();
             }
         }

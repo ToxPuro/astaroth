@@ -33,6 +33,8 @@
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
 static_assert(SWAP_CHAIN_LENGTH == 2);
 
+struct TraceFile;
+
 /**
  * Regions
  * -------
@@ -111,6 +113,7 @@ typedef class Task {
 
     int state;
 
+  public:
     std::vector<std::pair<std::weak_ptr<Task>, size_t>> dependents;
     struct {
         std::vector<size_t> counts;
@@ -122,9 +125,6 @@ typedef class Task {
         size_t end;
     } loop_cntr;
 
-    bool poll_stream();
-
-  public:
     int rank;  // MPI rank
     int order; // the ordinal position of the task in a serial execution (within its region)
     bool active;
@@ -136,18 +136,22 @@ typedef class Task {
 
     static const int wait_state = 0;
 
+  protected:
+    bool poll_stream();
+
+  public:
     Task(int order_, Region input_region_, Region output_region,
          Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
 
     virtual bool test()    = 0;
-    virtual void advance() = 0;
+    virtual void advance(const TraceFile *trace_file) = 0;
 
     void registerDependent(std::shared_ptr<Task> t, size_t offset);
     void registerPrerequisite(size_t offset);
     bool isPrerequisiteTo(std::shared_ptr<Task> other);
 
     void setIterationParams(size_t begin, size_t end);
-    void update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps);
+    void update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps, const TraceFile *trace_file);
     bool isFinished();
 
     void notifyDependents();
@@ -173,7 +177,7 @@ typedef class ComputeTask : public Task {
     ComputeTask(const ComputeTask& other) = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
-    void advance();
+    void advance(const TraceFile *trace_file);
     bool test();
 } ComputeTask;
 
@@ -246,7 +250,7 @@ typedef class HaloExchangeTask : public Task {
     void exchangeHost();
 #endif
 
-    void advance();
+    void advance(const TraceFile *trace_file);
     bool test();
 } HaloExchangeTask;
 
@@ -263,13 +267,22 @@ typedef class BoundaryConditionTask : public Task {
                           int order_, int region_tag, int3 nn,
                           Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     void populate_boundary_region();
-    void advance();
+    void advance(const TraceFile *trace_file);
     bool test();
 } BoundaryConditionTask;
+
+struct TraceFile {
+    bool enabled;
+    std::string filepath;
+    FILE* fp;
+    void trace(const Task* task, const std::string old_state, const std::string new_state) const;
+};
 
 struct AcTaskGraph {
     std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps;
     std::vector<std::shared_ptr<Task>> all_tasks;
     std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
     std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;
+
+    TraceFile trace_file;   
 };
