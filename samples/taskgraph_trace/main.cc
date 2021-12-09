@@ -38,6 +38,11 @@ main(void)
     std::string dependencies_file_path = "dependencies_pid_" + std::to_string(pid);
     acGraphWriteDependencies(dependencies_file_path.c_str(), default_tasks);
 
+    //warm up the kernels and get all the auto-optimizations out of the way
+    for (int i = 0; i < 100; i++){
+       acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+    }
+
     std::string trace_file_path ="trace_pid_"+ std::to_string(pid);
     acGraphEnableTrace(trace_file_path.c_str(), default_tasks);
     //End trace setup

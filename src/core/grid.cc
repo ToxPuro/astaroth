@@ -55,6 +55,7 @@
 #include "decomposition.h" //getPid3D, morton3D
 #include "errchk.h"
 #include "math_utils.h"
+#include "timer_hires.h"
 
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
@@ -688,12 +689,16 @@ acGridDestroyTaskGraph(AcTaskGraph* graph)
 }
 
 AcResult
-acGridExecuteTaskGraph(const AcTaskGraph* graph, size_t n_iterations)
+acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
 {
     ERRCHK(grid.initialized);
     // acGridSynchronizeStream(stream);
     // acDeviceSynchronizeStream(grid.device, stream);
     cudaSetDevice(grid.device->id);
+
+    if (graph->trace_file.enabled) {
+        timer_reset(&(graph->trace_file.timer));
+    }
 
     for (auto& task : graph->all_tasks) {
         if (task->active) {

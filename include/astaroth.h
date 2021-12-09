@@ -519,7 +519,7 @@ AcTaskGraph* acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_o
 AcResult acGridDestroyTaskGraph(AcTaskGraph* graph);
 
 /** */
-AcResult acGridExecuteTaskGraph(const AcTaskGraph* graph, const size_t n_iterations);
+AcResult acGridExecuteTaskGraph(AcTaskGraph* graph, const size_t n_iterations);
 
 #endif // AC_MPI_ENABLED
 

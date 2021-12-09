@@ -27,6 +27,7 @@
 #include "decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //AcRealPacked, VertexBufferArray
 #include "math_utils.h"      //max. Also included in decomposition.h
+#include "timer_hires.h"
 
 #define MPI_INCL_CORNERS (0) // Include the 3D corners of subdomains in halo
 
@@ -275,6 +276,7 @@ struct TraceFile {
     bool enabled;
     std::string filepath;
     FILE* fp;
+    Timer timer;
     void trace(const Task* task, const std::string old_state, const std::string new_state) const;
 };
 

@@ -143,6 +143,7 @@ TraceFile::trace(const Task* task, const std::string old_state, const std::strin
         writeTaskKey(fp, task);
         fprintf(fp,",");
         fprintf(fp,"\"iteration\":%lu,",task->loop_cntr.i);
+        fprintf(fp,"\"timestamp\":%lu,",timer_diff_nsec(this->timer));
         fprintf(fp,"\"from\":\"%s\",",old_state.c_str());
         fprintf(fp,"\"to\":\"%s\"",new_state.c_str());
         fprintf(fp,"}\n");
