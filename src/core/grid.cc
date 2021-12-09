@@ -51,6 +51,7 @@
 #include <cstring> //memcpy
 #include <mpi.h>
 #include <vector>
+#include <queue>
 
 #include "decomposition.h" //getPid3D, morton3D
 #include "errchk.h"
@@ -639,20 +640,68 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     graph->halo_tasks.shrink_to_fit();
     graph->all_tasks.shrink_to_fit();
 
-    // Task A depends on task B if the output data of A overlaps with the input data of B.
-    // In other words, if the input and output regions overlap: we have a task dependency
-    for (size_t dept_op = 0; dept_op < n_ops; dept_op++) {
-        for (size_t offset = 0; offset < n_ops; offset++) {
+    //In order to reduce redundant dependencies, we keep track of which tasks are connected
+    size_t n_tasks = graph->all_tasks.size();
+    size_t adjacancy_matrix_size = n_tasks*n_tasks;
+    bool adjacent[adjacancy_matrix_size]{};
+
+    auto bfs = [&adjacent, &op_indices, n_tasks](size_t preq, size_t dept, size_t preq_op, size_t dept_op){
+        if (adjacent[preq*n_tasks + dept]){
+            return true;
+        }
+        size_t start_op = preq_op + 1;
+        size_t end_op = dept_op;
+
+        size_t start_node = op_indices[start_op];
+        size_t end_node = op_indices[end_op];
+        if (end_node < start_node) {
+            end_node += n_tasks;
+        }
+        size_t n_nodes =  end_node - start_node;
+        bool visited[n_nodes]{};
+        
+        std::queue<size_t> walk;
+        walk.push(preq);
+        while (!walk.empty()){
+            size_t curr = walk.front();
+            walk.pop();
+            if (curr == dept){
+                return true;
+            }
+            if (adjacent[curr*n_tasks+dept]){
+                return true;
+            }
+            for (size_t i = 0; i < n_nodes; i++){
+                size_t neighbor = (start_node + i) % n_tasks;
+                if (adjacent[curr*n_tasks+neighbor]){
+                    if (!visited[i]){
+                        walk.push(neighbor);
+                        visited[i] = true;
+                    }
+                }
+            }
+        }
+        return false;
+    };
+
+    for (size_t offset = 0; offset < n_ops; offset++) {
+        for (size_t dept_op = 0; dept_op < n_ops; dept_op++) {
             size_t preq_op = (n_ops + dept_op - offset - 1) % n_ops;
             for (auto i = op_indices[preq_op]; i != op_indices[preq_op + 1]; i++) {
                 auto preq_task = graph->all_tasks[i];
                 if (preq_task->active) {
                     for (auto j = op_indices[dept_op]; j != op_indices[dept_op + 1]; j++) {
                         auto dept_task = graph->all_tasks[j];
-                        if (dept_task->active && preq_task->output_region.overlaps(&(dept_task->input_region))) {
+                        // Task A depends on task B if the output data of A overlaps with the input data of B.
+                        // In other words, if the input and output regions overlap: we have a task dependency
+                        if (dept_task->active
+                            && preq_task->output_region.overlaps(&(dept_task->input_region))) {
                             // offset of 0 -> dependency in the same iteration
                             // offset of 1 -> dependency from preq_task in iteration k to dept_task in iteration k+1
-                            preq_task->registerDependent(dept_task, preq_op < dept_op ? 0 : 1);
+                            if (!bfs(i,j, preq_op, dept_op)){
+                                preq_task->registerDependent(dept_task, preq_op < dept_op ? 0 : 1);
+                                adjacent[i*n_tasks+j] = true;
+                            }
                         }
                     }
                 }
@@ -774,7 +823,6 @@ acGridPeriodicBoundconds(const Stream stream)
 static AcResult
 distributedScalarReduction(const AcReal local_result, const ReductionType rtype, AcReal* result)
 {
-
     MPI_Op op;
     if (rtype == RTYPE_MAX || rtype == RTYPE_ALFVEN_MAX) {
         op = MPI_MAX;
