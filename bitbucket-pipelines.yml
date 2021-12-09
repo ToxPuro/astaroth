@@ -32,8 +32,6 @@ pipelines:
           - cmake -DDSL_MODULE_DIR="acc/mhd_solver" -DBUILD_STANDALONE=ON -DBUILD_UTILS=ON -DBUILD_RT_VISUALIZATION=OFF -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=OFF -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=OFF .. # Single precision
           - make -j
           - rm -rf *
-          # WORKAROUND: mpi stopped being linked properly on Ubuntu 20.04 and cmake cannot find it any longer
-          - ln -s /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi.so.* /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi.so # Will possibly break in the future, TODO remove
           - cmake -DDSL_MODULE_DIR="acc/mhd_solver" -DVERBOSE=ON -DBUILD_STANDALONE=ON -DBUILD_UTILS=ON -DBUILD_RT_VISUALIZATION=OFF -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Double precision
           - make -j
           # - ./ac_run -t
