@@ -195,8 +195,6 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
     //dlnrhodx_yz= coeffs_1_x(1)*(f(l1+1,:,:,ilnrho)-f(l1-1,:,:,ilnrho)) &
     //            +coeffs_1_x(2)*(f(l1+2,:,:,ilnrho)-f(l1-2,:,:,ilnrho)) &
     //            +coeffs_1_x(3)*(f(l1+3,:,:,ilnrho)-f(l1-3,:,:,ilnrho))
-    //TODO: derivatives in the normal direction
-    
 
     AcReal c[3] = {
                     (AcReal(1.)/(AcReal(0.04908738521)))*(AcReal(3.)/AcReal(4.)),
@@ -221,11 +219,7 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
     //dsdx_yz=-cv*((sigmaSBt/hcond0_kramers)*TT_yz**(3-6.5*nkramers)*rho_yz**(2.*nkramers) &
     //        +gamma_m1*dlnrhodx_yz)
     
-    AcReal sigmaSBt = 1.0;              //not set yet I believe
-    AcReal hcond0_kramers = 0.0;        //
-    AcReal nkramers = 0.0;              //
-
-    AcReal der_ss_boundary = -DCONST(AC_cv_sound)*(sigmaSBt/hcond0_kramers)*pow(T_boundary,AcReal(3.0)-AcReal(6.5)*nkramers)*pow(rho_boundary, AcReal(2.0)*nkramers) + gamma_m1*der_lnrho_boundary;
+    AcReal der_ss_boundary = -DCONST(AC_cv_sound)*(DCONST(AC_sigma_SBt)/DCONST(AC_hcond0_kramers))*pow(T_boundary,AcReal(3.0)-AcReal(6.5)*DCONST(AC_n_kramers))*pow(rho_boundary, AcReal(2.0)*DCONST(AC_n_kramers)) + gamma_m1*der_lnrho_boundary;
 
     AcReal d;
     if (normal.x != 0) {
