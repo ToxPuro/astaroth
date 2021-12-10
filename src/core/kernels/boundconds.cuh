@@ -180,13 +180,14 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
 
     AcReal rho_boundary = exp(vba.in[VTXBUF_LNRHO][boundary_idx]);
 
-    AcReal gamma_m1 = DCONST(AC_gamma); //(?)
+    AcReal gamma_m1 = DCONST(AC_gamma) - AcReal(1.0);
+    AcReal cv1 = DCONST(AC_gamma) / DCONST(AC_cp_sound);
 
     // cs20*exp(gamma_m1*(f(l1,:,:,ilnrho)-lnrho0)+cv1*f(l1,:,:,iss))/(gamma_m1*cp)
     AcReal T_boundary   = DCONST(AC_cs2_sound)
                             * exp(
-                                DCONST(AC_gamma)    * (vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0))
-                              + DCONST(AC_cv_sound) *  vba.in[VTXBUF_ENTROPY][boundary_idx]
+                                gamma_m1 * (vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0))
+                              + cv1 *  vba.in[VTXBUF_ENTROPY][boundary_idx]
                               )
                             / gamma_m1*DCONST(AC_cp_sound);
 
@@ -221,8 +222,8 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
     //        +gamma_m1*dlnrhodx_yz)
     
     AcReal sigmaSBt = 1.0;              //not set yet I believe
-    AcReal hcond0_kramers = 1.0;        //
-    AcReal nkramers = 1.0;              //
+    AcReal hcond0_kramers = 0.0;        //
+    AcReal nkramers = 0.0;              //
 
     AcReal der_ss_boundary = -DCONST(AC_cv_sound)*(sigmaSBt/hcond0_kramers)*pow(T_boundary,AcReal(3.0)-AcReal(6.5)*nkramers)*pow(rho_boundary, AcReal(2.0)*nkramers) + gamma_m1*der_lnrho_boundary;
 
