@@ -645,38 +645,31 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     size_t adjacancy_matrix_size = n_tasks*n_tasks;
     bool adjacent[adjacancy_matrix_size]{};
 
-    auto bfs = [&adjacent, &op_indices, n_tasks](size_t preq, size_t dept, size_t preq_op, size_t dept_op){
-        if (adjacent[preq*n_tasks + dept]){
-            return true;
-        }
-        size_t start_op = preq_op + 1;
-        size_t end_op = dept_op;
+    //...and check if there is already a forward path that connects two tasks
+    auto forward_search = [&adjacent, &op_indices, n_tasks, n_ops](size_t preq, size_t dept, size_t preq_op, size_t path_len){
 
-        size_t start_node = op_indices[start_op];
-        size_t end_node = op_indices[end_op];
-        if (end_node < start_node) {
-            end_node += n_tasks;
-        }
-        size_t n_nodes =  end_node - start_node;
-        bool visited[n_nodes]{};
-        
-        std::queue<size_t> walk;
-        walk.push(preq);
+        bool visited[n_tasks]{};
+        size_t start_op = (preq_op + 1) % n_ops;
+
+        struct walk_node {
+            size_t node;
+            size_t op_offset;
+        };
+        std::queue<walk_node> walk;
+        walk.push({preq, 0});
+
         while (!walk.empty()){
-            size_t curr = walk.front();
+            auto curr = walk.front();
             walk.pop();
-            if (curr == dept){
+            if (adjacent[curr.node*n_tasks+dept]){
                 return true;
             }
-            if (adjacent[curr*n_tasks+dept]){
-                return true;
-            }
-            for (size_t i = 0; i < n_nodes; i++){
-                size_t neighbor = (start_node + i) % n_tasks;
-                if (adjacent[curr*n_tasks+neighbor]){
-                    if (!visited[i]){
-                        walk.push(neighbor);
-                        visited[i] = true;
+            for (size_t op_offset = curr.op_offset; op_offset < path_len; op_offset++){
+                size_t op = (start_op + op_offset) % n_ops;
+                for (size_t neighbor = op_indices[op]; neighbor != op_indices[op + 1]; neighbor++){
+                    if (!visited[neighbor] && adjacent[curr.node*n_tasks + neighbor]){
+                            walk.push({neighbor,op_offset});
+                            visited[neighbor] = true;
                     }
                 }
             }
@@ -684,21 +677,24 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         return false;
     };
 
-    for (size_t offset = 0; offset < n_ops; offset++) {
+    //We walk through all tasks, and compare tasks from pairs of operations at
+    //a time. Pairs are considered in order of increasing distance between the 
+    //operations in the pair. The final set of pairs that are considered are
+    //self-equal pairs, since the operations form a cycle when iterated over
+    for (size_t op_offset = 0; op_offset < n_ops; op_offset++) {
         for (size_t dept_op = 0; dept_op < n_ops; dept_op++) {
-            size_t preq_op = (n_ops + dept_op - offset - 1) % n_ops;
+            size_t preq_op = (n_ops + dept_op - op_offset - 1) % n_ops;
             for (auto i = op_indices[preq_op]; i != op_indices[preq_op + 1]; i++) {
                 auto preq_task = graph->all_tasks[i];
                 if (preq_task->active) {
                     for (auto j = op_indices[dept_op]; j != op_indices[dept_op + 1]; j++) {
                         auto dept_task = graph->all_tasks[j];
-                        // Task A depends on task B if the output data of A overlaps with the input data of B.
-                        // In other words, if the input and output regions overlap: we have a task dependency
+                        // Task A depends on task B if the output region of A overlaps with the input region of B.
                         if (dept_task->active
                             && preq_task->output_region.overlaps(&(dept_task->input_region))) {
-                            // offset of 0 -> dependency in the same iteration
-                            // offset of 1 -> dependency from preq_task in iteration k to dept_task in iteration k+1
-                            if (!bfs(i,j, preq_op, dept_op)){
+                            // iteration offset of 0 -> dependency in the same iteration
+                            // iteration offset of 1 -> dependency from preq_task in iteration k to dept_task in iteration k+1
+                            if (!forward_search(i,j, preq_op, op_offset)){
                                 preq_task->registerDependent(dept_task, preq_op < dept_op ? 0 : 1);
                                 adjacent[i*n_tasks+j] = true;
                             }
