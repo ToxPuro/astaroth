@@ -1,11 +1,11 @@
 #pragma once
-//#include "user_defines.h"
 
 extern "C" {
 
 /**************************
  *                        *
- *  Symmetric boundconds  *
+ *   Generic boundconds   *
+ *      (Any vtxbuf)      *
  *                        *
  **************************/
 
@@ -62,6 +62,144 @@ acKernelSymmetricBoundconds(const cudaStream_t stream, const int3 region_id, con
     kernel_symmetric_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
     return AC_SUCCESS;
 }
+
+
+//Boundcond "a2"
+//Does not set the boundary value itself, mainly used for density
+
+static __global__ void
+kernel_a2_boundconds(const int3 region_id, const int3 normal, const int3 dims, AcReal* vtxbuf)
+{
+
+    const int3 vertexIdx = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+    
+    if (vertexIdx.x >= dims.x || vertexIdx.y >= dims.y || vertexIdx.z >= dims.z) {
+        return;
+    }
+
+    const int3 start = (int3){
+        (region_id.x == 1 ? NGHOST + DCONST(AC_nx) : region_id.x == -1 ? 0 : NGHOST),
+        (region_id.y == 1 ? NGHOST + DCONST(AC_ny) : region_id.y == -1 ? 0 : NGHOST),
+        (region_id.z == 1 ? NGHOST + DCONST(AC_nz) : region_id.z == -1 ? 0 : NGHOST)
+    };
+
+    const int3 boundary = int3{
+        normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1 : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
+        normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1 : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+        normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1 : normal.z == -1 ? NGHOST : start.z + vertexIdx.z
+    };
+
+    int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
+
+    AcReal boundary_val = vtxbuf[boundary_idx];
+
+    int3 domain = boundary;
+    int3 ghost = boundary;
+
+    for (size_t i = 0; i < NGHOST; i++) {
+        domain = domain - normal;
+        ghost = ghost + normal;
+
+        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        int ghost_idx = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        
+        vtxbuf[ghost_idx] = 2*boundary_val - vtxbuf[domain_idx];
+    }
+}
+
+AcResult
+acKernelA2Boundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                     const int3 dims, AcReal* vtxbuf)
+{
+
+    const dim3 tpb(8, 8, 8);
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
+
+    kernel_a2_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
+    return AC_SUCCESS;
+}
+
+//Constant derivative at boundary
+//Sets the normal derivative at the boundary to a value 
+
+#ifndef AC_CONSTANT_DERIVATIVE_BOUNDCOND_VALUE
+#       define AC_CONSTANT_DERIVATIVE_BOUNDCOND_VALUE 0.0
+#endif
+
+static __global__ void
+kernel_constant_derivative_boundconds(const int3 region_id, const int3 normal, const int3 dims, AcReal* vtxbuf)
+{
+
+    const int3 vertexIdx = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+    
+    if (vertexIdx.x >= dims.x || vertexIdx.y >= dims.y || vertexIdx.z >= dims.z) {
+        return;
+    }
+
+    const int3 start = (int3){
+        (region_id.x == 1 ? NGHOST + DCONST(AC_nx) : region_id.x == -1 ? 0 : NGHOST),
+        (region_id.y == 1 ? NGHOST + DCONST(AC_ny) : region_id.y == -1 ? 0 : NGHOST),
+        (region_id.z == 1 ? NGHOST + DCONST(AC_nz) : region_id.z == -1 ? 0 : NGHOST)
+    };
+
+    const int3 boundary = int3{
+        normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1 : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
+        normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1 : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+        normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1 : normal.z == -1 ? NGHOST : start.z + vertexIdx.z
+    };
+
+    int3 domain = boundary;
+    int3 ghost = boundary;
+
+    AcReal d;
+    if (normal.x != 0) {
+        d = DCONST(AC_dsx);
+    }
+    else if (normal.y != 0){
+        d = DCONST(AC_dsy);
+    }
+    else if (normal.z != 0){
+        d = DCONST(AC_dsz);
+    }
+
+    for (size_t i = 0; i < NGHOST; i++) {
+        domain = domain - normal;
+        ghost = ghost + normal;
+
+        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        int ghost_idx = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+
+        AcReal distance = AcReal(2*(i+1))*d;
+        
+        vtxbuf[ghost_idx] = vtxbuf[domain_idx] + distance * (AC_CONSTANT_DERIVATIVE_BOUNDCOND_VALUE);
+    }
+}
+
+AcResult
+acKernelConstantDerivativeBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                                     const int3 dims, AcReal* vtxbuf)
+{
+
+    const dim3 tpb(8, 8, 8);
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
+
+    kernel_constant_derivative_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
+    return AC_SUCCESS;
+}
+
+
 
 /************************
  *                      *
@@ -223,13 +361,13 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
 
     AcReal d;
     if (normal.x != 0) {
-        d = DCONST(AC_xlen);
+        d = DCONST(AC_dsx);
     }
     else if (normal.y != 0){
-        d = DCONST(AC_ylen);
+        d = DCONST(AC_dsy);
     }
     else if (normal.z != 0){
-        d = DCONST(AC_zlen);
+        d = DCONST(AC_dsz);
     }
 
     int3 domain = boundary;
@@ -261,6 +399,7 @@ acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(const cudaStream_t
     kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vba);
     return AC_SUCCESS;
 }
+
 
 
 

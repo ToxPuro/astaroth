@@ -53,6 +53,8 @@ typedef struct {
 extern "C" {
 #endif
 
+// Generic boundconds
+
 /** */
 AcResult acKernelPeriodicBoundconds(const cudaStream_t stream, const int3 start, const int3 end,
                                     AcReal* vtxbuf);
@@ -60,6 +62,18 @@ AcResult acKernelPeriodicBoundconds(const cudaStream_t stream, const int3 start,
 /** */
 AcResult acKernelSymmetricBoundconds(const cudaStream_t stream, const int3 region_id,
                                      const int3 normal, const int3 dims, AcReal* vtxbuf);
+
+/** */
+AcResult
+acKernelA2Boundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                     const int3 dims, AcReal* vtxbuf);
+
+/** */
+AcResult
+acKernelConstantDerivativeBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                                     const int3 dims, AcReal* vtxbuf);
+
+// Entropy boundconds
 
 /** */
 AcResult acKernelEntropyConstantTemperatureBoundconds(const cudaStream_t stream, const int3 region_id,
