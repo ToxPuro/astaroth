@@ -60,12 +60,12 @@ using std::make_unique;
 #endif
 
 AcTaskDefinition
-acCompute(const AcKernel kernel,VertexBufferHandle fields_in[], const size_t num_fields_in,
-          VertexBufferHandle fields_out[], const size_t num_fields_out)
+acCompute(const AcKernel kernel,Field fields_in[], const size_t num_fields_in,
+          Field fields_out[], const size_t num_fields_out)
 {
     AcTaskDefinition task_def{};
-    task_def.task_type           = TASKTYPE_COMPUTE;
-    task_def.kernel              = kernel;
+    task_def.task_type      = TASKTYPE_COMPUTE;
+    task_def.kernel         = kernel;
     task_def.fields_in      = fields_in;
     task_def.num_fields_in  = num_fields_in;
     task_def.fields_out     = fields_out;
@@ -74,10 +74,10 @@ acCompute(const AcKernel kernel,VertexBufferHandle fields_in[], const size_t num
 }
 
 AcTaskDefinition
-acHaloExchange(VertexBufferHandle fields[], const size_t num_fields)
+acHaloExchange(Field fields[], const size_t num_fields)
 {
     AcTaskDefinition task_def{};
-    task_def.task_type       = TASKTYPE_HALOEXCHANGE;
+    task_def.task_type      = TASKTYPE_HALOEXCHANGE;
     task_def.fields_in      = fields;
     task_def.num_fields_in  = num_fields;
     task_def.fields_out     = fields;
@@ -87,17 +87,36 @@ acHaloExchange(VertexBufferHandle fields[], const size_t num_fields)
 
 AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                    VertexBufferHandle fields_in[], const size_t num_fields_in,
-                    VertexBufferHandle fields_out[], const size_t num_fields_out)
+                           Field fields[], const size_t num_fields,
+                           AcRealParam arguments[], const size_t num_arguments)
 {
     AcTaskDefinition task_def{};
-    task_def.task_type       = TASKTYPE_BOUNDCOND;
-    task_def.boundary        = boundary;
-    task_def.bound_cond      = bound_cond;
-    task_def.fields_in      = fields_in;
-    task_def.num_fields_in  = num_fields_in;
-    task_def.fields_out     = fields_out;
-    task_def.num_fields_out = num_fields_out;
+    task_def.task_type      = TASKTYPE_BOUNDCOND;
+    task_def.boundary       = boundary;
+    task_def.bound_cond     = bound_cond;
+    task_def.fields_in      = fields;
+    task_def.num_fields_in  = num_fields;
+    task_def.fields_out     = fields;
+    task_def.num_fields_out = num_fields;
+    task_def.arguments      = arguments;
+    task_def.num_arguments  = num_arguments;
+    return task_def;
+}
+
+AcTaskDefinition
+acSpecialBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond)
+{
+    AcTaskDefinition task_def{};
+    task_def.task_type      = TASKTYPE_BOUNDCOND;
+    task_def.boundary       = boundary;
+    task_def.bound_cond     = bound_cond;
+    //TODO: look these up from a table
+    task_def.fields_in      = nullptr;
+    task_def.num_fields_in  = 0;
+    task_def.fields_out     = nullptr;
+    task_def.num_fields_out = 0;
+    task_def.arguments      = nullptr;
+    task_def.num_arguments  = 0;
     return task_def;
 }
 

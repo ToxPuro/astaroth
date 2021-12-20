@@ -490,6 +490,9 @@ typedef struct AcTaskDefinition {
 
     Field* fields_out;
     size_t num_fields_out;
+
+    AcRealParam* arguments;
+    size_t       num_arguments;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
@@ -497,17 +500,20 @@ typedef struct AcTaskDefinition {
 typedef struct AcTaskGraph AcTaskGraph;
 
 /** */
-AcTaskDefinition acCompute(const AcKernel kernel, VertexBufferHandle fields_in[],
-                           const size_t num_fields_in, VertexBufferHandle fields_out[],
+AcTaskDefinition acCompute(const AcKernel kernel, Field fields_in[],
+                           const size_t num_fields_in, Field fields_out[],
                            const size_t num_fields_out);
 
 /** */
-AcTaskDefinition acHaloExchange(VertexBufferHandle fields[], const size_t num_fields);
+AcTaskDefinition acHaloExchange(Field fields[], const size_t num_fields);
 
 /** */
 AcTaskDefinition acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                                     VertexBufferHandle fields_in[], const size_t num_fields_in,
-                                     VertexBufferHandle fields_out[], const size_t num_fields_out);
+                                     Field fields[], const size_t num_fields,
+                                     AcRealParam arguments[], const size_t num_arguments);
+
+/** */
+AcTaskDefinition acSpecialBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond);
 
 /** */
 AcTaskGraph* acGridGetDefaultTaskGraph();
@@ -871,26 +877,25 @@ AcTaskDefinition acHaloExchange(VertexBufferHandle (&fields)[num_fields])
     return acHaloExchange(fields, num_fields);
 }
 
-/** Backwards compatible interface, input fields = output fields*/
+/** */
 template <size_t num_fields>
 AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                    VertexBufferHandle (&fields)[num_fields])
+                    Field (&fields)[num_fields])
 {
     return acBoundaryCondition(boundary, bound_cond, fields, num_fields,
-                               fields, num_fields);
+                               nullptr, 0);
 }
 
 
 /** */
-template <size_t num_fields_in, size_t num_fields_out>
+template <size_t num_fields, size_t num_arguments>
 AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                    VertexBufferHandle (&fields_in)[num_fields_in],
-                    VertexBufferHandle (&fields_out)[num_fields_out])
+                    Field (&fields)[num_fields], AcRealParam (&arguments)[num_arguments])
 {
-    return acBoundaryCondition(boundary, bound_cond, fields_in, num_fields_in,
-                               fields_out, num_fields_out);
+    return acBoundaryCondition(boundary, bound_cond, fields, num_fields,
+                               arguments, num_arguments);
 }
 
 /** */

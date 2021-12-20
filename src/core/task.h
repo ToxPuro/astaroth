@@ -54,7 +54,7 @@ struct TraceFile;
  * regions' purpose in the context of tasks that use them.
  *
  * A triplet in {-1,0,1}^3 identifies each specific region in a family.
- * There is a mapping between integers in {-1,...,25} and the identifiers.
+ * There is a mapping between integers in {0,...,27} and the identifiers.
  * The integer form is e.g. used as part of the tag used to identify a region
  * in an MPI message.
  */
