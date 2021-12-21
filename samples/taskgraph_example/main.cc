@@ -53,7 +53,7 @@ main(void)
     // and figures out the dependencies between the tasks.
     AcTaskGraph* hc_graph = acGridBuildTaskGraph(
         {acHaloExchange(all_fields),
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
          acCompute(KERNEL_solve, all_fields)});
 
     // We can build multiple TaskGraphs, the MPI requests will not collide
@@ -61,7 +61,7 @@ main(void)
     /*
     AcTaskGraph* shock_graph = acGridBuildTaskGraph({
         acHaloExchange(all_fields),
-        acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_SYMMETRIC, all_fields),
+        acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, all_fields),
         acCompute(KERNEL_shock1, all_fields),
         acCompute(KERNEL_shock2, shock_fields),
         acCompute(KERNEL_solve, all_fields)

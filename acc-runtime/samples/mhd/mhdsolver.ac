@@ -83,13 +83,13 @@ real AC_lnrho0
 real AC_zeta
 real AC_trans
 real AC_nu_shock
+
 //  Parameters used for Blackbody radiation boundary conditions
-//  If you know of a better way to categorize these, please do.
-//    Regards,
-//    Oskar, not-a-physicist
+//  Only used in boundary conditions at the moment
 real AC_hcond0_kramers
 real AC_n_kramers
 real AC_sigma_SBt
+
 //  Other
 real AC_bin_save_t
 //  Initial condition params

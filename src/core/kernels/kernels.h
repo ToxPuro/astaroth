@@ -71,7 +71,7 @@ acKernelA2Boundconds(const cudaStream_t stream, const int3 region_id, const int3
 /** */
 AcResult
 acKernelConstantDerivativeBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
-                                     const int3 dims, AcReal* vtxbuf);
+                                     const int3 dims, AcReal* vtxbuf, AcRealParam der_val_param);
 
 // Entropy boundconds
 

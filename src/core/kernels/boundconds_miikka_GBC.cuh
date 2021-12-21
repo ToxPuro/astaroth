@@ -207,15 +207,15 @@ acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int
                              // more possible later
     {
 
-        if (bc_top.x == AC_BOUNDCOND_SYMMETRIC) {
+        if (bc_top.x == BOUNDCOND_SYMMETRIC) {
             kernel_symmetric_boundconds<<<bpg, tpb, 0, stream>>>(start, end, vtxbuf, bindex, 1);
             ERRCHK_CUDA_KERNEL();
         }
-        else if (bc_top.x == AC_BOUNDCOND_ANTISYMMETRIC) {
+        else if (bc_top.x == BOUNDCOND_ANTISYMMETRIC) {
             kernel_symmetric_boundconds<<<bpg, tpb, 0, stream>>>(start, end, vtxbuf, bindex, -1);
             ERRCHK_CUDA_KERNEL();
         }
-        else if (bc_top.x == AC_BOUNDCOND_PERIODIC) {
+        else if (bc_top.x == BOUNDCOND_PERIODIC) {
             kernel_periodic_boundconds<<<bpg, tpb, 0, stream>>>(start, end, vtxbuf);
             ERRCHK_CUDA_KERNEL();
         }

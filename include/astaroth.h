@@ -74,11 +74,15 @@ typedef int Stream;
     FUNC(RTYPE_SUM)
 
 #define AC_FOR_BCTYPES(FUNC)                                                                       \
-    FUNC(AC_BOUNDCOND_PERIODIC)                                                                    \
-    FUNC(AC_BOUNDCOND_SYMMETRIC)                                                                   \
-    FUNC(AC_BOUNDCOND_ANTISYMMETRIC)                                                               \
-    FUNC(AC_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE)                                                \
-    FUNC(AC_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION)                                                 \
+    FUNC(BOUNDCOND_PERIODIC)                                                                       \
+    FUNC(BOUNDCOND_SYMMETRIC)                                                                      \
+    FUNC(BOUNDCOND_ANTISYMMETRIC)                                                                  \
+    FUNC(BOUNDCOND_A2)                                                                             \
+    FUNC(BOUNDCOND_CONSTANT_DERIVATIVE)                                                            \
+
+#define AC_FOR_SPECIAL_MHD_BCTYPES(FUNC)                                                           \
+    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE)                                       \
+    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION)                                        \
 
 #define AC_FOR_INIT_TYPES(FUNC)                                                                    \
     FUNC(INIT_TYPE_RANDOM)                                                                         \
@@ -100,6 +104,11 @@ typedef enum {
 } AcBoundcond;
 
 typedef enum {
+    AC_FOR_SPECIAL_MHD_BCTYPES(AC_GEN_ID) //
+    NUM_SPECIAL_MHD_BCTYPES,
+} AcSpecialMHDBoundcond;
+
+typedef enum {
     AC_FOR_RTYPES(AC_GEN_ID) //
     NUM_RTYPES
 } ReductionType;
@@ -113,9 +122,10 @@ typedef enum {
 
 #define _UNUSED __attribute__((unused)) // Does not give a warning if unused
 #define AC_GEN_STR(X) #X,
-static const char* bctype_names[] _UNUSED       = {AC_FOR_BCTYPES(AC_GEN_STR) "-end-"};
-static const char* rtype_names[] _UNUSED        = {AC_FOR_RTYPES(AC_GEN_STR) "-end-"};
-static const char* initcondtype_names[] _UNUSED = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
+static const char* bctype_names[] _UNUSED         = {AC_FOR_BCTYPES(AC_GEN_STR) "-end-"};
+static const char* special_bctype_names[] _UNUSED = {AC_FOR_SPECIAL_MHD_BCTYPES(AC_GEN_STR) "-end-"};
+static const char* rtype_names[] _UNUSED          = {AC_FOR_RTYPES(AC_GEN_STR) "-end-"};
+static const char* initcondtype_names[] _UNUSED   = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
 #undef AC_GEN_STR
 #undef _UNUSED
 
@@ -455,9 +465,7 @@ AcResult acGridReduceVecScal(const Stream stream, const ReductionType rtype,
  */
 
 /** */
-typedef enum AcTaskType { TASKTYPE_COMPUTE, TASKTYPE_HALOEXCHANGE, TASKTYPE_BOUNDCOND } AcTaskType;
-
-#define BIT(pos) (1U << (pos))
+typedef enum AcTaskType { TASKTYPE_COMPUTE, TASKTYPE_HALOEXCHANGE, TASKTYPE_BOUNDCOND, TASKTYPE_SPECIAL_MHD_BOUNDCOND } AcTaskType;
 
 typedef enum AcBoundary {
     BOUNDARY_X_TOP = 0x01,
@@ -482,6 +490,7 @@ typedef struct AcTaskDefinition {
     union {
         AcKernel kernel;
         AcBoundcond bound_cond;
+        AcSpecialMHDBoundcond special_mhd_bound_cond;
     };
     AcBoundary boundary;
 
@@ -491,12 +500,12 @@ typedef struct AcTaskDefinition {
     Field* fields_out;
     size_t num_fields_out;
 
-    AcRealParam* arguments;
-    size_t       num_arguments;
+    AcRealParam* parameters;
+    size_t       num_parameters;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
- * operation.*/
+ * operations.*/
 typedef struct AcTaskGraph AcTaskGraph;
 
 /** */
@@ -510,10 +519,14 @@ AcTaskDefinition acHaloExchange(Field fields[], const size_t num_fields);
 /** */
 AcTaskDefinition acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
                                      Field fields[], const size_t num_fields,
-                                     AcRealParam arguments[], const size_t num_arguments);
+                                     AcRealParam parameters[], const size_t num_parameters);
 
-/** */
-AcTaskDefinition acSpecialBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond);
+/** SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD implementation).
+    They launch specially written CUDA kernels that implement the specific boundary condition procedure
+    They are a stop-gap temporary solution. The sensible solution is to replace them
+    with a task type that runs a boundary condition procedure written in the Astaroth DSL.
+*/
+AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond);
 
 /** */
 AcTaskGraph* acGridGetDefaultTaskGraph();
@@ -889,13 +902,13 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
 
 
 /** */
-template <size_t num_fields, size_t num_arguments>
+template <size_t num_fields, size_t num_parameters>
 AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                    Field (&fields)[num_fields], AcRealParam (&arguments)[num_arguments])
+                    Field (&fields)[num_fields], AcRealParam (&parameters)[num_parameters])
 {
     return acBoundaryCondition(boundary, bound_cond, fields, num_fields,
-                               arguments, num_arguments);
+                               parameters, num_parameters);
 }
 
 /** */

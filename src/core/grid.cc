@@ -178,7 +178,7 @@ acGridInit(const AcMeshInfo info)
     }
 
     AcTaskDefinition default_ops[] = {acHaloExchange(all_fields),
-                                      acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+                                      acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
                                                           all_fields),
                                       acCompute(KERNEL_solve, all_fields)};
 
@@ -434,6 +434,7 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
             task_graph_repr += "HaloExchange,";
             break;
         case TASKTYPE_BOUNDCOND:
+        case TASKTYPE_SPECIAL_MHD_BOUNDCOND:
             if (!found_halo_exchange) {
                 boundary_condition_before_halo_exchange = true;
                 error                                   = true;
@@ -614,7 +615,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             int tag0       = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (region_at_boundary(tag, op.boundary)) {
-                    if (bc == AC_BOUNDCOND_PERIODIC) {
+                    if (bc == BOUNDCOND_PERIODIC) {
                         auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag,
                                                                        nn, decomp, device,
                                                                        swap_offset);
@@ -632,6 +633,17 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             grid.mpi_tag_space_count++;
             break;
         }
+
+        case TASKTYPE_SPECIAL_MHD_BOUNDCOND: {
+            for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
+                if (region_at_boundary(tag, op.boundary)) {
+                        auto task = std::make_shared<SpecialMHDBoundaryConditionTask>(op, boundary_normal(tag),
+                                                                                      i, tag, nn, device, swap_offset);
+                        graph->all_tasks.push_back(task);
+                }
+            }
+            break;
+        }
         }
     }
     op_indices.push_back(graph->all_tasks.size());
@@ -647,7 +659,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
     //...and check if there is already a forward path that connects two tasks
     auto forward_search = [&adjacent, &op_indices, n_tasks, n_ops](size_t preq, size_t dept, size_t preq_op, size_t path_len){
-
         bool visited[n_tasks]{};
         size_t start_op = (preq_op + 1) % n_ops;
 

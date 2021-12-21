@@ -128,12 +128,8 @@ acKernelA2Boundconds(const cudaStream_t stream, const int3 region_id, const int3
 //Constant derivative at boundary
 //Sets the normal derivative at the boundary to a value 
 
-#ifndef AC_CONSTANT_DERIVATIVE_BOUNDCOND_VALUE
-#       define AC_CONSTANT_DERIVATIVE_BOUNDCOND_VALUE 0.0
-#endif
-
 static __global__ void
-kernel_constant_derivative_boundconds(const int3 region_id, const int3 normal, const int3 dims, AcReal* vtxbuf)
+kernel_constant_derivative_boundconds(const int3 region_id, const int3 normal, const int3 dims, AcReal* vtxbuf, AcRealParam der_val_param)
 {
 
     const int3 vertexIdx = (int3){
@@ -181,13 +177,13 @@ kernel_constant_derivative_boundconds(const int3 region_id, const int3 normal, c
 
         AcReal distance = AcReal(2*(i+1))*d;
         
-        vtxbuf[ghost_idx] = vtxbuf[domain_idx] + distance * (AC_CONSTANT_DERIVATIVE_BOUNDCOND_VALUE);
+        vtxbuf[ghost_idx] = vtxbuf[domain_idx] + distance * DCONST(der_val_param);
     }
 }
 
 AcResult
 acKernelConstantDerivativeBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
-                                     const int3 dims, AcReal* vtxbuf)
+                                     const int3 dims, AcReal* vtxbuf, AcRealParam der_val_param)
 {
 
     const dim3 tpb(8, 8, 8);
@@ -195,7 +191,7 @@ acKernelConstantDerivativeBoundconds(const cudaStream_t stream, const int3 regio
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
-    kernel_constant_derivative_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
+    kernel_constant_derivative_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf, der_val_param);
     return AC_SUCCESS;
 }
 

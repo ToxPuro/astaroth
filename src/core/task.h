@@ -88,8 +88,8 @@ struct Region {
     static int id_to_tag(int3 id_);
     static int3 tag_to_id(int tag_);
 
-    Region(RegionFamily family_, int tag_, int3 nn, std::vector<Field> fields_);
-    Region(RegionFamily family_, int3 id_, int3 nn, std::vector<Field> fields_);
+    Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields);
+    Region(RegionFamily family_, int3 id_, int3 nn, Field fields_[], size_t num_fields);
     Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_);
 
     Region translate(int3 translation);
@@ -134,6 +134,8 @@ typedef class Task {
 
     Region input_region;
     Region output_region;
+    
+    std::vector<AcRealParam> input_parameters;
 
     static const int wait_state = 0;
 
@@ -271,6 +273,32 @@ typedef class BoundaryConditionTask : public Task {
     void advance(const TraceFile *trace_file);
     bool test();
 } BoundaryConditionTask;
+
+
+// SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD implementation).
+// They launch specially written CUDA kernels that implement the specific boundary condition procedure
+// They are a stop-gap temporary solution. The sensible solution is to replace them
+// with a task type that runs a boundary condition procedure written in the Astaroth DSL.
+enum class SpecialMHDBoundaryConditionState { Waiting = Task::wait_state, Running };
+
+typedef class SpecialMHDBoundaryConditionTask : public Task {
+  private:
+    AcSpecialMHDBoundcond boundcond;
+    int3 boundary_normal;
+    int3 boundary_dims;
+
+  public:
+    SpecialMHDBoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_,
+                          int order_, int region_tag, int3 nn,
+                          Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    void populate_boundary_region();
+    void advance(const TraceFile *trace_file);
+    bool test();
+} SpecialMHDBoundaryConditionTask;
+
+// A TaskGraph is a graph structure of tasks that will be executed
+// The tasks have dependencies, which are defined both within an iteration and between iterations
+// This allows the graph to be executed for any number of iterations
 
 struct TraceFile {
     bool enabled;
