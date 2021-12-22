@@ -197,6 +197,7 @@ acKernelConstantDerivativeBoundconds(const cudaStream_t stream, const int3 regio
 
 
 
+#ifdef AC_INTEGRATION_ENABLED
 /************************
  *                      *
  *  Entropy boundconds  *
@@ -395,9 +396,6 @@ acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(const cudaStream_t
     kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vba);
     return AC_SUCCESS;
 }
-
-
-
-
+#endif //AC_INTEGRATION_ENABLED
 
 }//extern "C"

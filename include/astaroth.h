@@ -80,9 +80,13 @@ typedef int Stream;
     FUNC(BOUNDCOND_A2)                                                                             \
     FUNC(BOUNDCOND_CONSTANT_DERIVATIVE)                                                            \
 
+#ifdef AC_INTEGRATION_ENABLED
+
 #define AC_FOR_SPECIAL_MHD_BCTYPES(FUNC)                                                           \
     FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE)                                       \
     FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION)                                        \
+
+#endif
 
 #define AC_FOR_INIT_TYPES(FUNC)                                                                    \
     FUNC(INIT_TYPE_RANDOM)                                                                         \
@@ -103,10 +107,12 @@ typedef enum {
     NUM_BCTYPES,
 } AcBoundcond;
 
+#ifdef AC_INTEGRATION_ENABLED
 typedef enum {
     AC_FOR_SPECIAL_MHD_BCTYPES(AC_GEN_ID) //
     NUM_SPECIAL_MHD_BCTYPES,
 } AcSpecialMHDBoundcond;
+#endif
 
 typedef enum {
     AC_FOR_RTYPES(AC_GEN_ID) //
@@ -123,9 +129,13 @@ typedef enum {
 #define _UNUSED __attribute__((unused)) // Does not give a warning if unused
 #define AC_GEN_STR(X) #X,
 static const char* bctype_names[] _UNUSED         = {AC_FOR_BCTYPES(AC_GEN_STR) "-end-"};
-static const char* special_bctype_names[] _UNUSED = {AC_FOR_SPECIAL_MHD_BCTYPES(AC_GEN_STR) "-end-"};
 static const char* rtype_names[] _UNUSED          = {AC_FOR_RTYPES(AC_GEN_STR) "-end-"};
 static const char* initcondtype_names[] _UNUSED   = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
+
+#ifdef AC_INTEGRATION_ENABLED
+static const char* special_bctype_names[] _UNUSED = {AC_FOR_SPECIAL_MHD_BCTYPES(AC_GEN_STR) "-end-"};
+#endif
+
 #undef AC_GEN_STR
 #undef _UNUSED
 
@@ -490,7 +500,9 @@ typedef struct AcTaskDefinition {
     union {
         AcKernel kernel;
         AcBoundcond bound_cond;
+#ifdef AC_INTEGRATION_ENABLED
         AcSpecialMHDBoundcond special_mhd_bound_cond;
+#endif
     };
     AcBoundary boundary;
 
@@ -521,12 +533,14 @@ AcTaskDefinition acBoundaryCondition(const AcBoundary boundary, const AcBoundcon
                                      Field fields[], const size_t num_fields,
                                      AcRealParam parameters[], const size_t num_parameters);
 
+#ifdef AC_INTEGRAION_ENABLED
 /** SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD implementation).
     They launch specially written CUDA kernels that implement the specific boundary condition procedure
     They are a stop-gap temporary solution. The sensible solution is to replace them
     with a task type that runs a boundary condition procedure written in the Astaroth DSL.
 */
 AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond);
+#endif
 
 /** */
 AcTaskGraph* acGridGetDefaultTaskGraph();

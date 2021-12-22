@@ -75,6 +75,7 @@ acKernelConstantDerivativeBoundconds(const cudaStream_t stream, const int3 regio
 
 // Entropy boundconds
 
+#ifdef AC_INTEGRATION_ENABLED
 /** */
 AcResult acKernelEntropyConstantTemperatureBoundconds(const cudaStream_t stream, const int3 region_id,
                                                       const int3 normal, const int3 dims, VertexBufferArray vba);
@@ -82,6 +83,7 @@ AcResult acKernelEntropyConstantTemperatureBoundconds(const cudaStream_t stream,
 /** */
 AcResult acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(const cudaStream_t stream, const int3 region_id,
                                                                        const int3 normal, const int3 dims, VertexBufferArray vba);
+#endif
 
 /** */
 AcResult acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int3 end,

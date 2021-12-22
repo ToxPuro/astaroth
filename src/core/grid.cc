@@ -635,6 +635,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         }
 
         case TASKTYPE_SPECIAL_MHD_BOUNDCOND: {
+            #ifdef AC_INTEGRATION_ENABLED
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (region_at_boundary(tag, op.boundary)) {
                         auto task = std::make_shared<SpecialMHDBoundaryConditionTask>(op, boundary_normal(tag),
@@ -642,6 +643,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                         graph->all_tasks.push_back(task);
                 }
             }
+            #endif
             break;
         }
         }

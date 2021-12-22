@@ -104,8 +104,10 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
     return task_def;
 }
 
+
+#ifdef AC_INTEGRATION_ENABLED
 AcTaskDefinition
-acSpecialBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond)
+acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond)
 {
     AcTaskDefinition task_def{};
     task_def.task_type              = TASKTYPE_SPECIAL_MHD_BOUNDCOND;
@@ -120,6 +122,7 @@ acSpecialBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcon
     task_def.num_parameters = 0;
     return task_def;
 }
+#endif
 
 Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields)
     : family(family_), tag(tag_), fields(fields_, fields_+num_fields)
@@ -887,7 +890,7 @@ BoundaryConditionTask::advance(const TraceFile *trace_file)
     }
 }
 
-
+#ifdef AC_INTEGRATION_ENABLED
 // SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD implementation).
 // They launch specially written CUDA kernels that implement the specific boundary condition procedure
 // They are a stop-gap temporary solution. The sensible solution is to replace them
@@ -980,4 +983,5 @@ SpecialMHDBoundaryConditionTask::advance(const TraceFile *trace_file)
         ERROR("SpecialMHDBoundaryConditionTask in an invalid state.");
     }
 }
+#endif // AC_INTEGRATION_ENABLED
 #endif // AC_MPI_ENABLED

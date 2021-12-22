@@ -275,6 +275,7 @@ typedef class BoundaryConditionTask : public Task {
 } BoundaryConditionTask;
 
 
+#ifdef AC_INTEGRATION_ENABLED
 // SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD implementation).
 // They launch specially written CUDA kernels that implement the specific boundary condition procedure
 // They are a stop-gap temporary solution. The sensible solution is to replace them
@@ -295,6 +296,7 @@ typedef class SpecialMHDBoundaryConditionTask : public Task {
     void advance(const TraceFile *trace_file);
     bool test();
 } SpecialMHDBoundaryConditionTask;
+#endif
 
 // A TaskGraph is a graph structure of tasks that will be executed
 // The tasks have dependencies, which are defined both within an iteration and between iterations
