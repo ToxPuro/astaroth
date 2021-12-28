@@ -129,7 +129,7 @@ acKernelA2Boundconds(const cudaStream_t stream, const int3 region_id, const int3
 //Sets the normal derivative at the boundary to a value 
 
 static __global__ void
-kernel_constant_derivative_boundconds(const int3 region_id, const int3 normal, const int3 dims, AcReal* vtxbuf, AcRealParam der_val_param)
+kernel_prescribed_derivative_boundconds(const int3 region_id, const int3 normal, const int3 dims, AcReal* vtxbuf, AcRealParam der_val_param)
 {
 
     const int3 vertexIdx = (int3){
@@ -182,8 +182,8 @@ kernel_constant_derivative_boundconds(const int3 region_id, const int3 normal, c
 }
 
 AcResult
-acKernelConstantDerivativeBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
-                                     const int3 dims, AcReal* vtxbuf, AcRealParam der_val_param)
+acKernelPrescribedDerivativeBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                                       const int3 dims, AcReal* vtxbuf, AcRealParam der_val_param)
 {
 
     const dim3 tpb(8, 8, 8);
@@ -191,7 +191,7 @@ acKernelConstantDerivativeBoundconds(const cudaStream_t stream, const int3 regio
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
-    kernel_constant_derivative_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf, der_val_param);
+    kernel_prescribed_derivative_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf, der_val_param);
     return AC_SUCCESS;
 }
 
@@ -272,7 +272,7 @@ kernel_entropy_const_temperature_boundconds(const int3 region_id, const int3 nor
 
 AcResult
 acKernelEntropyConstantTemperatureBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
-                            const int3 dims, VertexBufferArray vba)
+                                             const int3 dims, VertexBufferArray vba)
 {
 
     const dim3 tpb(8, 8, 8);
@@ -394,6 +394,111 @@ acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(const cudaStream_t
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
     kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vba);
+    return AC_SUCCESS;
+}
+
+static __global__ void
+kernel_entropy_prescribed_heat_flux_boundconds(const int3 region_id, const int3 normal,
+                                               const int3 dims, VertexBufferArray vba, AcRealParam F_param)
+{
+
+    const int3 vertexIdx = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+    
+    if (vertexIdx.x >= dims.x || vertexIdx.y >= dims.y || vertexIdx.z >= dims.z) {
+        return;
+    }
+
+    const int3 start = (int3){
+        (region_id.x == 1 ? NGHOST + DCONST(AC_nx) : region_id.x == -1 ? 0 : NGHOST),
+        (region_id.y == 1 ? NGHOST + DCONST(AC_ny) : region_id.y == -1 ? 0 : NGHOST),
+        (region_id.z == 1 ? NGHOST + DCONST(AC_nz) : region_id.z == -1 ? 0 : NGHOST)
+    };
+
+    const int3 boundary = int3{
+        normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1 : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
+        normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1 : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+        normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1 : normal.z == -1 ? NGHOST : start.z + vertexIdx.z
+    };
+
+    int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
+
+    AcReal rho_boundary = exp(vba.in[VTXBUF_LNRHO][boundary_idx]);
+
+    AcReal cp = DCONST(AC_cp_sound);
+    AcReal cv = DCONST(AC_cv_sound);
+
+    AcReal gamma_m1 = DCONST(AC_gamma) - AcReal(1.0);
+    AcReal cv1 = DCONST(AC_gamma) / cp;
+
+    // cs20*exp(gamma_m1*(f(l1,:,:,ilnrho)-lnrho0)+cv1*f(l1,:,:,iss))
+    AcReal cs2_boundary   = DCONST(AC_cs2_sound)
+                            * exp(
+                                gamma_m1 * (vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0))
+                              + cv1 *  vba.in[VTXBUF_ENTROPY][boundary_idx]
+                              );
+    
+    AcReal F_boundary = DCONST(F_param);
+    #if (L_HEAT_CONDUCTION_CHICONST)
+        //TODO: use chi in the calculation
+        AcReal chi = DCONST(AC_chi);
+        AcReal tmp = F_boundary/(rho_boundary * chi * cs2_boundary);
+    #elif (L_HEAT_CONDUCTION_KRAMERS)
+        AcReal n_kramers = DCONST(AC_n_kramers);
+        AcReal hcond0_kramers = DCONST(AC_hcond0_kramers);
+        AcReal tmp = F_boundary * pow(rho_boundary, AcReal(2.0)*n_kramers) * pow(cp*gamma_m1, AcReal(6.5)*n_kramers)
+                        / (hcond0_kramers * pow(cs2_boundary, AcReal(6.5)*n_kramers + AcReal(1.0)));
+    #else
+        //NOTE: FbotKbot, FtopKtop, ... = F_param, just like Fbot, Ftop, ... = F_param
+        //If both are needed, it would be preferable if they were separate boundary conditions
+        //and that the switch would be between them in the main program that creates the task graph
+        //
+        //In fact that would be a better way to implement this, rather than having one boundary condition take care of three cases
+        AcReal tmp = F_boundary/cs2_boundary;
+    #endif
+
+    AcReal d;
+    if (normal.x != 0) {
+        d = DCONST(AC_dsx);
+    }
+    else if (normal.y != 0){
+        d = DCONST(AC_dsy);
+    }
+    else if (normal.z != 0){
+        d = DCONST(AC_dsz);
+    }
+
+    int3 domain = boundary;
+    int3 ghost = boundary;
+
+    for (size_t i = 0; i < NGHOST; i++) {
+        domain = domain - normal;
+        ghost = ghost + normal;
+
+        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        int ghost_idx = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        
+        AcReal distance = AcReal(2*(i+1))*d;
+
+        AcReal rho_diff = vba.in[VTXBUF_LNRHO][ghost_idx] - vba.in[VTXBUF_LNRHO][domain_idx];
+        vba.in[VTXBUF_ENTROPY][ghost_idx] = vba.in[VTXBUF_ENTROPY][domain_idx]+ cp * (cp-cv) * (rho_diff+distance*tmp);
+    }
+}
+
+AcResult
+acKernelEntropyPrescribedHeatFluxBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                                            const int3 dims, VertexBufferArray vba, AcRealParam F_param)
+{
+
+    const dim3 tpb(8, 8, 8);
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
+
+    kernel_entropy_prescribed_heat_flux_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vba, F_param);
     return AC_SUCCESS;
 }
 #endif //AC_INTEGRATION_ENABLED

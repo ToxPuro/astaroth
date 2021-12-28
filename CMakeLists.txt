@@ -16,7 +16,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Project-wide compilation flags
 # -Werror TODO readd
-set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
+set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result -g") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_C_STANDARD 11)

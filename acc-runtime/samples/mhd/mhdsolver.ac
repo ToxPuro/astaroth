@@ -84,6 +84,9 @@ real AC_zeta
 real AC_trans
 real AC_nu_shock
 
+//  Parameters for boundary conditions
+real AC_boundary_derivative
+
 //  Parameters used for Blackbody radiation boundary conditions
 //  Only used in boundary conditions at the moment
 real AC_hcond0_kramers

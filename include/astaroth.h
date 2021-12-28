@@ -78,13 +78,14 @@ typedef int Stream;
     FUNC(BOUNDCOND_SYMMETRIC)                                                                      \
     FUNC(BOUNDCOND_ANTISYMMETRIC)                                                                  \
     FUNC(BOUNDCOND_A2)                                                                             \
-    FUNC(BOUNDCOND_CONSTANT_DERIVATIVE)                                                            \
+    FUNC(BOUNDCOND_PRESCRIBED_DERIVATIVE)                                                          \
 
 #ifdef AC_INTEGRATION_ENABLED
 
 #define AC_FOR_SPECIAL_MHD_BCTYPES(FUNC)                                                           \
     FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE)                                       \
     FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION)                                        \
+    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX)                                       \
 
 #endif
 
@@ -884,22 +885,22 @@ AcResult acHostMeshDestroy(AcMesh* mesh);
 /** Backwards compatible interface, input fields = output fields*/
 template <size_t num_fields>
 AcTaskDefinition
-acCompute(AcKernel kernel, VertexBufferHandle (&fields)[num_fields])
+acCompute(AcKernel kernel, Field (&fields)[num_fields])
 {
     return acCompute(kernel, fields, num_fields, fields, num_fields);
 }
 
 template <size_t num_fields_in, size_t num_fields_out>
 AcTaskDefinition
-acCompute(AcKernel kernel, VertexBufferHandle (&fields_in)[num_fields_in],
-          VertexBufferHandle (&fields_out)[num_fields_out])
+acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in],
+          Field (&fields_out)[num_fields_out])
 {
     return acCompute(kernel, fields_in, num_fields_in, fields_out, num_fields_out);
 }
 
 /** */
 template <size_t num_fields>
-AcTaskDefinition acHaloExchange(VertexBufferHandle (&fields)[num_fields])
+AcTaskDefinition acHaloExchange(Field (&fields)[num_fields])
 {
     return acHaloExchange(fields, num_fields);
 }

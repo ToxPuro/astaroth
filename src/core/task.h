@@ -143,7 +143,7 @@ typedef class Task {
     bool poll_stream();
 
   public:
-    Task(int order_, Region input_region_, Region output_region,
+    Task(int order_, Region input_region_, Region output_region, AcTaskDefinition op,
          Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
 
     virtual bool test()    = 0;

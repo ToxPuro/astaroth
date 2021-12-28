@@ -61,7 +61,7 @@ using std::make_unique;
 #endif
 
 AcTaskDefinition
-acCompute(const AcKernel kernel,Field fields_in[], const size_t num_fields_in,
+acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
           Field fields_out[], const size_t num_fields_out)
 {
     AcTaskDefinition task_def{};
@@ -232,12 +232,13 @@ Region::tag_to_id(int _tag)
 }
 
 /* Task interface */
-Task::Task(int order_, Region input_region_, Region output_region_,
+Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefinition op,
            Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : device(device_), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
       order(order_), active(true),
       input_region(input_region_),
-      output_region(output_region_)
+      output_region(output_region_),
+      input_parameters(op.parameters, op.parameters+op.num_parameters)
 {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 }
@@ -404,7 +405,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
                          std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_, Region(RegionFamily::Compute_input, region_tag, nn, op.fields_in,op.num_fields_in),
            Region(RegionFamily::Compute_output, region_tag, nn, op.fields_out,op.num_fields_out),
-           device_, swap_offset_)
+           op, device_, swap_offset_)
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
     {
@@ -556,7 +557,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_,
     : Task(order_,
            Region(RegionFamily::Exchange_input, halo_region_tag, nn, op.fields_in, op.num_fields_in),
            Region(RegionFamily::Exchange_output, halo_region_tag, nn, op.fields_out, op.num_fields_out),
-           device_, swap_offset_),
+           op, device_, swap_offset_),
       recv_buffers(output_region.dims, NUM_VTXBUF_HANDLES),
       send_buffers(input_region.dims, NUM_VTXBUF_HANDLES)
 // Below are for partial halo exchanges.
@@ -792,8 +793,7 @@ BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_
     : Task(order_, 
            Region(RegionFamily::Exchange_input, region_tag, nn, op.fields_in, op.num_fields_in),
            Region(RegionFamily::Exchange_output, region_tag, nn, op.fields_out, op.num_fields_out),
-
-           device_, swap_offset_),
+           op, device_, swap_offset_),
       boundcond(op.bound_cond), boundary_normal(boundary_normal_)
 {
     // Create stream for boundary condition task
@@ -845,10 +845,10 @@ BoundaryConditionTask::populate_boundary_region()
                                         vba.in[variable]);
         break;
     }   
-    case BOUNDCOND_CONSTANT_DERIVATIVE:
+    case BOUNDCOND_PRESCRIBED_DERIVATIVE:
     {
-        acKernelConstantDerivativeBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                                             vba.in[variable], input_parameters[0]);
+        acKernelPrescribedDerivativeBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+                                               vba.in[variable], input_parameters[0]);
         break;
     }   
     default:
@@ -902,7 +902,7 @@ SpecialMHDBoundaryConditionTask::SpecialMHDBoundaryConditionTask(AcTaskDefinitio
     : Task(order_, 
            Region(RegionFamily::Exchange_input, region_tag, nn, op.fields_in, op.num_fields_in),
            Region(RegionFamily::Exchange_output, region_tag, nn, op.fields_out, op.num_fields_out),
-           device_, swap_offset_),
+           op, device_, swap_offset_),
       boundcond(op.special_mhd_bound_cond), boundary_normal(boundary_normal_)
 {
     // Create stream for boundary condition task
@@ -941,12 +941,18 @@ SpecialMHDBoundaryConditionTask::populate_boundary_region()
     //TODO: could assign a separate stream to each launch of symmetric boundconds
     //      currently they are on a single stream
     switch (boundcond) {
-    case SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE:
+    case SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE:{
         acKernelEntropyConstantTemperatureBoundconds(stream, output_region.id, boundary_normal, boundary_dims, vba);
         break;
-    case SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION:
+    }
+    case SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION:{
         acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(stream, output_region.id, boundary_normal, boundary_dims, vba);
         break;
+    }
+    case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX:{
+        acKernelEntropyPrescribedHeatFluxBoundconds(stream, output_region.id, boundary_normal, boundary_dims, vba, input_parameters[0]);
+        break;
+    }
     default:
         ERROR("SpecialMHDBoundaryCondition not implemented yet.");
     }
