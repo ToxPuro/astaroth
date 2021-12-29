@@ -89,6 +89,9 @@ AcResult
 acKernelEntropyPrescribedHeatFluxBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
                                             const int3 dims, VertexBufferArray vba, AcRealParam F_param);
 
+AcResult
+acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                                                              const int3 dims, VertexBufferArray vba, AcRealParam hcond_param, AcRealParam F_param);
 
 #endif
 

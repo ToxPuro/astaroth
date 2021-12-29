@@ -849,6 +849,7 @@ BoundaryConditionTask::populate_boundary_region()
     {
         acKernelPrescribedDerivativeBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
                                                vba.in[variable], input_parameters[0]);
+        assert(input_parameters.size() == 1);
         break;
     }   
     default:
@@ -905,6 +906,9 @@ SpecialMHDBoundaryConditionTask::SpecialMHDBoundaryConditionTask(AcTaskDefinitio
            op, device_, swap_offset_),
       boundcond(op.special_mhd_bound_cond), boundary_normal(boundary_normal_)
 {
+    //TODO: the input regions for some of these will be weird, because they will depend on the ghost zone of other fields
+    // This is not currently reflected
+
     // Create stream for boundary condition task
     {
         cudaSetDevice(device->id);
@@ -951,8 +955,15 @@ SpecialMHDBoundaryConditionTask::populate_boundary_region()
     }
     case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX:{
         acKernelEntropyPrescribedHeatFluxBoundconds(stream, output_region.id, boundary_normal, boundary_dims, vba, input_parameters[0]);
+        assert(input_parameters.size() == 1);
         break;
     }
+    case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_NORMAL_AND_TURBULENT_HEAT_FLUX:{
+        assert(input_parameters.size() == 2);
+        acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(stream, output_region.id, boundary_normal, boundary_dims, vba, input_parameters[0], input_parameters[1]);
+        break;
+    }
+
     default:
         ERROR("SpecialMHDBoundaryCondition not implemented yet.");
     }
