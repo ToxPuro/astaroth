@@ -535,13 +535,14 @@ AcTaskDefinition acBoundaryCondition(const AcBoundary boundary, const AcBoundcon
                                      Field fields[], const size_t num_fields,
                                      AcRealParam parameters[], const size_t num_parameters);
 
-#ifdef AC_INTEGRAION_ENABLED
+#ifdef AC_INTEGRATION_ENABLED
 /** SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD implementation).
     They launch specially written CUDA kernels that implement the specific boundary condition procedure
     They are a stop-gap temporary solution. The sensible solution is to replace them
     with a task type that runs a boundary condition procedure written in the Astaroth DSL.
 */
-AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond, AcRealParam parameters[], const size_t num_parameters);
+AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond,
+                                               AcRealParam parameters[], const size_t num_parameters);
 #endif
 
 /** */
@@ -927,24 +928,25 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
                                parameters, num_parameters);
 }
 
-#if AC_INTEGRAION_ENABLED
+#if AC_INTEGRATION_ENABLED
+/** */
+template <size_t num_fields>
+AcTaskDefinition
+acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond)
+{
+    return acSpecialMHDBoundaryCondition(boundary, bound_cond, nullptr, 0);
+}
+
+
+
 /** */
 template <size_t num_fields, size_t num_parameters>
 AcTaskDefinition
 acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond,
                               AcRealParam (&parameters)[num_parameters])
 {
-    return acBoundaryCondition(boundary, bound_cond, parameters, num_parameters);
+    return acSpecialMHDBoundaryCondition(boundary, bound_cond, parameters, num_parameters);
 }
-
-/** */
-template <size_t num_fields, size_t num_parameters>
-AcTaskDefinition
-acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond)
-{
-    return acBoundaryCondition(boundary, bound_cond, nullptr, 0);
-}
-
 
 #endif
 

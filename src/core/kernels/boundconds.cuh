@@ -1,5 +1,6 @@
 #pragma once
 
+extern "C" {
 /**************************
  *                        *
  *   Generic boundconds   *
@@ -7,7 +8,6 @@
  *                        *
  **************************/
 
-template <int factor>
 static __global__ void
 kernel_symmetric_boundconds(const int3 region_id, const int3 normal, const int3 dims,
                             AcReal* vtxbuf)
@@ -44,7 +44,7 @@ kernel_symmetric_boundconds(const int3 region_id, const int3 normal, const int3 
         int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
         int ghost_idx = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
         
-        vtxbuf[ghost_idx] = factor*vtxbuf[domain_idx];
+        vtxbuf[ghost_idx] = vtxbuf[domain_idx];
     }
 }
 
@@ -58,8 +58,49 @@ acKernelSymmetricBoundconds(const cudaStream_t stream, const int3 region_id, con
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
-    kernel_symmetric_boundconds<1><<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
+    kernel_symmetric_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
     return AC_SUCCESS;
+}
+
+
+static __global__ void
+kernel_antisymmetric_boundconds(const int3 region_id, const int3 normal, const int3 dims,
+                            AcReal* vtxbuf)
+{
+    const int3 vertexIdx = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+    
+    if (vertexIdx.x >= dims.x || vertexIdx.y >= dims.y || vertexIdx.z >= dims.z) {
+        return;
+    }
+
+    const int3 start = (int3){
+        (region_id.x == 1 ? NGHOST + DCONST(AC_nx) : region_id.x == -1 ? 0 : NGHOST),
+        (region_id.y == 1 ? NGHOST + DCONST(AC_ny) : region_id.y == -1 ? 0 : NGHOST),
+        (region_id.z == 1 ? NGHOST + DCONST(AC_nz) : region_id.z == -1 ? 0 : NGHOST)
+    };
+
+    const int3 boundary = int3{
+        normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1 : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
+        normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1 : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+        normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1 : normal.z == -1 ? NGHOST : start.z + vertexIdx.z
+    };
+
+    int3 domain = boundary;
+    int3 ghost = boundary;
+
+    for (size_t i = 0; i < NGHOST; i++) {
+        domain = domain - normal;
+        ghost = ghost + normal;
+
+        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        int ghost_idx = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        
+        vtxbuf[ghost_idx] = -vtxbuf[domain_idx];
+    }
 }
 
 AcResult
@@ -72,7 +113,7 @@ acKernelAntiSymmetricBoundconds(const cudaStream_t stream, const int3 region_id,
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
-    kernel_symmetric_boundconds<-1><<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
+    kernel_antisymmetric_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
     return AC_SUCCESS;
 }
 
@@ -209,7 +250,6 @@ acKernelPrescribedDerivativeBoundconds(const cudaStream_t stream, const int3 reg
 }
 
 #ifdef AC_INTEGRATION_ENABLED
-extern "C" {
 
 /************************
  *                      *
@@ -626,6 +666,5 @@ acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(const cudaStream_t
     return AC_SUCCESS;
 }
 
-} //extern "C"
 #endif //AC_INTEGRATION_ENABLED
-
+} //extern "C"
