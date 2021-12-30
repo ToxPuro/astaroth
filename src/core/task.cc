@@ -107,7 +107,8 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
 
 #ifdef AC_INTEGRATION_ENABLED
 AcTaskDefinition
-acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond)
+acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond,
+                              AcRealParam parameters[], const size_t num_parameters)
 {
     AcTaskDefinition task_def{};
     task_def.task_type              = TASKTYPE_SPECIAL_MHD_BOUNDCOND;
@@ -118,8 +119,8 @@ acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBound
     task_def.num_fields_in  = 0;
     task_def.fields_out     = nullptr;
     task_def.num_fields_out = 0;
-    task_def.parameters     = nullptr;
-    task_def.num_parameters = 0;
+    task_def.parameters     = parameters;
+    task_def.num_parameters = num_parameters;
     return task_def;
 }
 #endif
@@ -836,20 +837,26 @@ BoundaryConditionTask::populate_boundary_region()
     case BOUNDCOND_SYMMETRIC:
     {
         acKernelSymmetricBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+                                    vba.in[variable]);
+        break;
+    }
+    case BOUNDCOND_ANTISYMMETRIC:
+    {
+        acKernelAntiSymmetricBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
                                         vba.in[variable]);
         break;
     }   
     case BOUNDCOND_A2:
     {
         acKernelA2Boundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                                        vba.in[variable]);
+                             vba.in[variable]);
         break;
     }   
     case BOUNDCOND_PRESCRIBED_DERIVATIVE:
     {
+        assert(input_parameters.size() == 1);
         acKernelPrescribedDerivativeBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
                                                vba.in[variable], input_parameters[0]);
-        assert(input_parameters.size() == 1);
         break;
     }   
     default:
@@ -954,8 +961,8 @@ SpecialMHDBoundaryConditionTask::populate_boundary_region()
         break;
     }
     case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX:{
-        acKernelEntropyPrescribedHeatFluxBoundconds(stream, output_region.id, boundary_normal, boundary_dims, vba, input_parameters[0]);
         assert(input_parameters.size() == 1);
+        acKernelEntropyPrescribedHeatFluxBoundconds(stream, output_region.id, boundary_normal, boundary_dims, vba, input_parameters[0]);
         break;
     }
     case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_NORMAL_AND_TURBULENT_HEAT_FLUX:{

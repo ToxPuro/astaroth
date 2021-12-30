@@ -64,6 +64,10 @@ AcResult acKernelSymmetricBoundconds(const cudaStream_t stream, const int3 regio
                                      const int3 normal, const int3 dims, AcReal* vtxbuf);
 
 /** */
+AcResult acKernelAntiSymmetricBoundconds(const cudaStream_t stream, const int3 region_id,
+                                         const int3 normal, const int3 dims, AcReal* vtxbuf);
+
+/** */
 AcResult
 acKernelA2Boundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
                      const int3 dims, AcReal* vtxbuf);

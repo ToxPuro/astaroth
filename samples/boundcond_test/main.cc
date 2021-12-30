@@ -624,6 +624,7 @@ main(void)
          all_fields[i] = (VertexBufferHandle)i;
     }
 
+    // Symmetric bc
     AcTaskGraph* symmetric_bc_graph = acGridBuildTaskGraph(
         {
          acHaloExchange(all_fields),
@@ -636,6 +637,20 @@ main(void)
     test_cases.push_back(SimpleTestCase{"Symmetric boundconds", symmetric_bc_graph, mirror});
 
 
+    // AntiSymmetric bc
+    AcTaskGraph* antisymmetric_bc_graph = acGridBuildTaskGraph(
+        {
+         acHaloExchange(all_fields),
+         acBoundaryCondition(BOUNDARY_X, BOUNDCOND_ANTISYMMETRIC, all_fields),
+         acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_ANTISYMMETRIC, all_fields),
+         acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, all_fields)});
+
+    auto antimirror = [](AcReal , AcReal domain_val, size_t, AcMeshInfo){ return -domain_val; };
+
+    test_cases.push_back(SimpleTestCase{"AntiSymmetric boundconds", antisymmetric_bc_graph, antimirror});
+
+
+    // Prescribed derivative bc
     AcRealParam bc_param[1] = {AC_boundary_derivative};
      
     AcTaskGraph* prescribed_der_bc_graph = acGridBuildTaskGraph(
@@ -670,7 +685,17 @@ main(void)
 
     test_cases.push_back(SimpleTestCase{"Relative antisymmetry boundconds", relative_antisymmetry_bc_graph, a2_func});
 
-    //Comparison test cases (harder to test by comparing functionality)
+    // Running the simple tests
+    std::vector<TestResult> test_results;
+    for (const auto &test: test_cases){
+        test_results.push_back(RunSimpleTest(test, info));
+    }
+
+    /********************************************************************
+    *                                                                   *
+    * Comparison test cases (harder to test by comparing functionality) *
+    *                                                                   *
+    *********************************************************************/
     /*
     std::vector<MeshCompareTestCase> comparison_test_cases;
     
@@ -680,29 +705,21 @@ main(void)
     acGridSynchronizeStream(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &mesh);
     comparison_test_cases.push_back(MeshCompareTestCase{"Testing the comparison test using an idempotent boundcond", relative_antisymmetry_bc_graph, mesh, mesh});
-    */
 
-    // Running the tests
-    std::vector<TestResult> test_results;
-    for (const auto &test: test_cases){
-        test_results.push_back(RunSimpleTest(test, info));
-    }
-
-    /*   
     for (const auto &test: comparison_test_cases){
         test_results.push_back(RunMeshCompareTest(test));
     }
+
+    for (const auto &test: comparison_test_cases){
+        //
+        //acGridDestroyTaskGraph(test.task_graph);
+    }
     */
 
-    // Cleanup
+    // Cleanup and test output
     for (const auto &test: test_cases){
         acGridDestroyTaskGraph(test.task_graph);
     }
-    /*for (const auto &test: comparison_test_cases){
-        //
-        //acGridDestroyTaskGraph(test.task_graph);
-    }*/
-
     if (pid == 0){
         for (const auto &result: test_results){
             PrintTestResult(result);

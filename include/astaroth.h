@@ -541,7 +541,7 @@ AcTaskDefinition acBoundaryCondition(const AcBoundary boundary, const AcBoundcon
     They are a stop-gap temporary solution. The sensible solution is to replace them
     with a task type that runs a boundary condition procedure written in the Astaroth DSL.
 */
-AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond);
+AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond, AcRealParam parameters[], const size_t num_parameters);
 #endif
 
 /** */
@@ -926,6 +926,27 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
     return acBoundaryCondition(boundary, bound_cond, fields, num_fields,
                                parameters, num_parameters);
 }
+
+#if AC_INTEGRAION_ENABLED
+/** */
+template <size_t num_fields, size_t num_parameters>
+AcTaskDefinition
+acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond,
+                              AcRealParam (&parameters)[num_parameters])
+{
+    return acBoundaryCondition(boundary, bound_cond, parameters, num_parameters);
+}
+
+/** */
+template <size_t num_fields, size_t num_parameters>
+AcTaskDefinition
+acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond)
+{
+    return acBoundaryCondition(boundary, bound_cond, nullptr, 0);
+}
+
+
+#endif
 
 /** */
 template <size_t n_ops>

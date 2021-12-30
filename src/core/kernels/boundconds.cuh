@@ -1,7 +1,5 @@
 #pragma once
 
-extern "C" {
-
 /**************************
  *                        *
  *   Generic boundconds   *
@@ -9,6 +7,7 @@ extern "C" {
  *                        *
  **************************/
 
+template <int factor>
 static __global__ void
 kernel_symmetric_boundconds(const int3 region_id, const int3 normal, const int3 dims,
                             AcReal* vtxbuf)
@@ -45,7 +44,7 @@ kernel_symmetric_boundconds(const int3 region_id, const int3 normal, const int3 
         int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
         int ghost_idx = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
         
-        vtxbuf[ghost_idx] = vtxbuf[domain_idx];
+        vtxbuf[ghost_idx] = factor*vtxbuf[domain_idx];
     }
 }
 
@@ -59,7 +58,21 @@ acKernelSymmetricBoundconds(const cudaStream_t stream, const int3 region_id, con
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
-    kernel_symmetric_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
+    kernel_symmetric_boundconds<1><<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
+    return AC_SUCCESS;
+}
+
+AcResult
+acKernelAntiSymmetricBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                            const int3 dims, AcReal* vtxbuf)
+{
+
+    const dim3 tpb(8, 8, 8);
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
+
+    kernel_symmetric_boundconds<-1><<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
     return AC_SUCCESS;
 }
 
@@ -195,9 +208,9 @@ acKernelPrescribedDerivativeBoundconds(const cudaStream_t stream, const int3 reg
     return AC_SUCCESS;
 }
 
-
-
 #ifdef AC_INTEGRATION_ENABLED
+extern "C" {
+
 /************************
  *                      *
  *  Entropy boundconds  *
@@ -613,7 +626,6 @@ acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(const cudaStream_t
     return AC_SUCCESS;
 }
 
-
+} //extern "C"
 #endif //AC_INTEGRATION_ENABLED
 
-}//extern "C"
