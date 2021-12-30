@@ -415,7 +415,7 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
 
     bool found_halo_exchange        = false;
     unsigned int boundaries_defined = 0x00;
-    bool found_compute              = false;
+    //bool found_compute              = false;
 
     bool boundary_condition_before_halo_exchange = false;
     bool compute_before_halo_exchange            = false;
@@ -451,7 +451,7 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
                 compute_before_boundary_condition = true;
                 warning                           = true;
             }
-            found_compute = true;
+            //found_compute = true;
             task_graph_repr += "Compute,";
             break;
         }
@@ -488,10 +488,13 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
         msg += " - Boundary conditions not defined for bottom Z boundary.\n";
     }
 
+    // This warning is probably unnecessary
+    /*
     if (!found_compute) {
-        msg += " - No compute kernel defined in task graph.\n";
-        warning = true;
+        //msg += " - No compute kernel defined in task graph.\n";
+        //warning = true;
     }
+    */
 
     if (found_halo_exchange && boundary_condition_before_halo_exchange) {
         msg += " - Boundary condition before halo exchange. Halo exchange must come first.\n";
