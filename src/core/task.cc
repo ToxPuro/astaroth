@@ -472,7 +472,6 @@ ComputeTask::advance(const TraceFile* trace_file)
 /*  Communication   */
 
 // HaloMessage contains all information needed to send or receive a single message
-// Wraps PackedData. These two structs could be folded together.
 HaloMessage::HaloMessage(int3 dims, size_t num_vars)
 {
     length       = dims.x * dims.y * dims.z * num_vars;

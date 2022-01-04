@@ -164,7 +164,10 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     const size_t vba_size_bytes = acVertexBufferSizeBytes(device_config);
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.in[i], vba_size_bytes));
+        ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.in[i], 0, vba_size_bytes));
+
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.out[i], vba_size_bytes));
+        ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.out[i], 0, vba_size_bytes));
     }
     /*
     // VBA Profiles
@@ -173,13 +176,18 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
                                                                device_config.int_params[AC_mz]));
     for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.profiles[i], profile_size_bytes));
+        ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.profiles[i], 0, profile_size_bytes));
     }
     */
 
     // Reductions
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->reduce_scratchpad,
                                   acVertexBufferCompdomainSizeBytes(device_config)));
+
+    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->reduce_scratchpad, 0, acVertexBufferCompdomainSizeBytes(device_config)));
+
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->reduce_result, sizeof(AcReal)));
+    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->reduce_result, 0, sizeof(AcReal)));
 
     // Device constants
     // acDeviceLoadDefaultUniforms(device); // TODO recheck
@@ -332,7 +340,7 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
     acDeviceSynchronizeStream(device, stream);
 
     const size_t count = acVertexBufferSize(device->local_config);
-    AcReal* data       = (AcReal*)malloc(sizeof(AcReal) * count);
+    AcReal* data       = (AcReal*)calloc(count, sizeof(AcReal));
     ERRCHK_ALWAYS(data);
 
     for (size_t i = 0; i < count; ++i)
