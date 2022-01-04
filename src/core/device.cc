@@ -184,7 +184,8 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->reduce_scratchpad,
                                   acVertexBufferCompdomainSizeBytes(device_config)));
 
-    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->reduce_scratchpad, 0, acVertexBufferCompdomainSizeBytes(device_config)));
+    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->reduce_scratchpad, 0,
+                                  acVertexBufferCompdomainSizeBytes(device_config)));
 
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->reduce_result, sizeof(AcReal)));
     ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->reduce_result, 0, sizeof(AcReal)));

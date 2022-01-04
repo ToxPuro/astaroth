@@ -9,10 +9,10 @@
 static void
 writeTaskKey(FILE* fp, const Task* task)
 {
-    fprintf(fp,"{");
-    fprintf(fp,"\"order\":%d,",task->order);
-    fprintf(fp,"\"tag\":%d,",task->output_region.tag);
-    fprintf(fp,"\"task_type\":");
+    fprintf(fp, "{");
+    fprintf(fp, "\"order\":%d,", task->order);
+    fprintf(fp, "\"tag\":%d,", task->output_region.tag);
+    fprintf(fp, "\"task_type\":");
     switch (task->task_type) {
     case TASKTYPE_COMPUTE:
         fprintf(fp, "\"COMPUTE\"");
@@ -36,23 +36,24 @@ graphWriteDependencies(FILE* fp, const AcTaskGraph* graph)
     fprintf(fp, "[");
     bool first_item = true;
     for (auto& prerequisite : graph->all_tasks) {
-        if (prerequisite->active){
+        if (prerequisite->active) {
             for (auto& dependency : prerequisite->dependents) {
-                    if (first_item) {
-                        first_item = false;
-                    } else {
-                        fprintf(fp, ",");
-                    }
-                    std::shared_ptr<Task> dependent = dependency.first.lock();
-                    fprintf(fp, "\n\t{\n");
-                    fprintf(fp, "\t\t\"prerequisite\":");
-                    writeTaskKey(fp, prerequisite.get());
-                    fprintf(fp, ",\n");
-                    fprintf(fp, "\t\t\"dependent\":");
-                    writeTaskKey(fp, dependent.get());
-                    fprintf(fp, ",\n");
-                    fprintf(fp, "\t\t\"offset\":\"%lu\"\n", dependency.second);
-                    fprintf(fp, "\t}");
+                if (first_item) {
+                    first_item = false;
+                }
+                else {
+                    fprintf(fp, ",");
+                }
+                std::shared_ptr<Task> dependent = dependency.first.lock();
+                fprintf(fp, "\n\t{\n");
+                fprintf(fp, "\t\t\"prerequisite\":");
+                writeTaskKey(fp, prerequisite.get());
+                fprintf(fp, ",\n");
+                fprintf(fp, "\t\t\"dependent\":");
+                writeTaskKey(fp, dependent.get());
+                fprintf(fp, ",\n");
+                fprintf(fp, "\t\t\"offset\":\"%lu\"\n", dependency.second);
+                fprintf(fp, "\t}");
             }
         }
     }
@@ -111,42 +112,41 @@ acGraphWriteOrder(const char* path, const AcTaskGraph* graph)
 }
 
 void
-acGraphEnableTrace(const char* trace_filepath, AcTaskGraph * const graph)
+acGraphEnableTrace(const char* trace_filepath, AcTaskGraph* const graph)
 {
-    if (graph->trace_file.fp != NULL){
+    if (graph->trace_file.fp != NULL) {
         fclose(graph->trace_file.fp);
     }
-    graph->trace_file.enabled = true;
+    graph->trace_file.enabled  = true;
     graph->trace_file.filepath = trace_filepath;
-    graph->trace_file.fp = fopen(trace_filepath, "w");
-
+    graph->trace_file.fp       = fopen(trace_filepath, "w");
 }
 
 void
-acGraphDisableTrace(AcTaskGraph * const graph)
+acGraphDisableTrace(AcTaskGraph* const graph)
 {
-    if (graph->trace_file.fp != NULL){
+    if (graph->trace_file.fp != NULL) {
         fclose(graph->trace_file.fp);
     }
-    graph->trace_file.enabled = false;
+    graph->trace_file.enabled  = false;
     graph->trace_file.filepath = "";
-    graph->trace_file.fp = NULL;
+    graph->trace_file.fp       = NULL;
 }
 
 void
 TraceFile::trace(const Task* task, const std::string old_state, const std::string new_state) const
 {
     if (enabled) {
-        fprintf(fp,"{");
-        fprintf(fp,"\"msg_type\":\"state_changed_event\",");
-        fprintf(fp,"\"task\":");
+        fprintf(fp, "{");
+        fprintf(fp, "\"msg_type\":\"state_changed_event\",");
+        fprintf(fp, "\"task\":");
         writeTaskKey(fp, task);
-        fprintf(fp,",");
-        fprintf(fp,"\"iteration\":%lu,",task->loop_cntr.i);
-        fprintf(fp,"\"timestamp\":%lu,",timer_diff_nsec(this->timer));
-        fprintf(fp,"\"from\":\"%s\",",old_state.c_str());
-        fprintf(fp,"\"to\":\"%s\"",new_state.c_str());
-        fprintf(fp,"}\n");
+        fprintf(fp, ",");
+        fprintf(fp, "\"iteration\":%lu,", task->loop_cntr.i);
+        fprintf(fp, "\"timestamp\":%lu,", timer_diff_nsec(this->timer));
+        fprintf(fp, "\"from\":\"%s\",", old_state.c_str());
+        fprintf(fp, "\"to\":\"%s\"", new_state.c_str());
+        fprintf(fp, "}\n");
     }
 }
 #endif

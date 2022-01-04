@@ -78,7 +78,7 @@ typedef int Stream;
     FUNC(BOUNDCOND_SYMMETRIC)                                                                      \
     FUNC(BOUNDCOND_ANTISYMMETRIC)                                                                  \
     FUNC(BOUNDCOND_A2)                                                                             \
-    FUNC(BOUNDCOND_PRESCRIBED_DERIVATIVE)                                                          \
+    FUNC(BOUNDCOND_PRESCRIBED_DERIVATIVE)
 
 #ifdef AC_INTEGRATION_ENABLED
 
@@ -86,7 +86,7 @@ typedef int Stream;
     FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE)                                       \
     FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION)                                        \
     FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX)                                       \
-    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_NORMAL_AND_TURBULENT_HEAT_FLUX)                  \
+    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_NORMAL_AND_TURBULENT_HEAT_FLUX)
 
 #endif
 
@@ -130,12 +130,13 @@ typedef enum {
 
 #define _UNUSED __attribute__((unused)) // Does not give a warning if unused
 #define AC_GEN_STR(X) #X,
-static const char* bctype_names[] _UNUSED         = {AC_FOR_BCTYPES(AC_GEN_STR) "-end-"};
-static const char* rtype_names[] _UNUSED          = {AC_FOR_RTYPES(AC_GEN_STR) "-end-"};
-static const char* initcondtype_names[] _UNUSED   = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
+static const char* bctype_names[] _UNUSED       = {AC_FOR_BCTYPES(AC_GEN_STR) "-end-"};
+static const char* rtype_names[] _UNUSED        = {AC_FOR_RTYPES(AC_GEN_STR) "-end-"};
+static const char* initcondtype_names[] _UNUSED = {AC_FOR_INIT_TYPES(AC_GEN_STR) "-end-"};
 
 #ifdef AC_INTEGRATION_ENABLED
-static const char* special_bctype_names[] _UNUSED = {AC_FOR_SPECIAL_MHD_BCTYPES(AC_GEN_STR) "-end-"};
+static const char* special_bctype_names[] _UNUSED = {
+    AC_FOR_SPECIAL_MHD_BCTYPES(AC_GEN_STR) "-end-"};
 #endif
 
 #undef AC_GEN_STR
@@ -477,7 +478,12 @@ AcResult acGridReduceVecScal(const Stream stream, const ReductionType rtype,
  */
 
 /** */
-typedef enum AcTaskType { TASKTYPE_COMPUTE, TASKTYPE_HALOEXCHANGE, TASKTYPE_BOUNDCOND, TASKTYPE_SPECIAL_MHD_BOUNDCOND } AcTaskType;
+typedef enum AcTaskType {
+    TASKTYPE_COMPUTE,
+    TASKTYPE_HALOEXCHANGE,
+    TASKTYPE_BOUNDCOND,
+    TASKTYPE_SPECIAL_MHD_BOUNDCOND
+} AcTaskType;
 
 typedef enum AcBoundary {
     BOUNDARY_X_TOP = 0x01,
@@ -515,7 +521,7 @@ typedef struct AcTaskDefinition {
     size_t num_fields_out;
 
     AcRealParam* parameters;
-    size_t       num_parameters;
+    size_t num_parameters;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
@@ -523,9 +529,8 @@ typedef struct AcTaskDefinition {
 typedef struct AcTaskGraph AcTaskGraph;
 
 /** */
-AcTaskDefinition acCompute(const AcKernel kernel, Field fields_in[],
-                           const size_t num_fields_in, Field fields_out[],
-                           const size_t num_fields_out);
+AcTaskDefinition acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
+                           Field fields_out[], const size_t num_fields_out);
 
 /** */
 AcTaskDefinition acHaloExchange(Field fields[], const size_t num_fields);
@@ -536,13 +541,16 @@ AcTaskDefinition acBoundaryCondition(const AcBoundary boundary, const AcBoundcon
                                      AcRealParam parameters[], const size_t num_parameters);
 
 #ifdef AC_INTEGRATION_ENABLED
-/** SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD implementation).
-    They launch specially written CUDA kernels that implement the specific boundary condition procedure
-    They are a stop-gap temporary solution. The sensible solution is to replace them
-    with a task type that runs a boundary condition procedure written in the Astaroth DSL.
+/** SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the
+   MHD implementation). They launch specially written CUDA kernels that implement the specific
+   boundary condition procedure They are a stop-gap temporary solution. The sensible solution is to
+   replace them with a task type that runs a boundary condition procedure written in the Astaroth
+   DSL.
 */
-AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond,
-                                               AcRealParam parameters[], const size_t num_parameters);
+AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary,
+                                               const AcSpecialMHDBoundcond bound_cond,
+                                               AcRealParam parameters[],
+                                               const size_t num_parameters);
 #endif
 
 /** */
@@ -894,15 +902,15 @@ acCompute(AcKernel kernel, Field (&fields)[num_fields])
 
 template <size_t num_fields_in, size_t num_fields_out>
 AcTaskDefinition
-acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in],
-          Field (&fields_out)[num_fields_out])
+acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out])
 {
     return acCompute(kernel, fields_in, num_fields_in, fields_out, num_fields_out);
 }
 
 /** */
 template <size_t num_fields>
-AcTaskDefinition acHaloExchange(Field (&fields)[num_fields])
+AcTaskDefinition
+acHaloExchange(Field (&fields)[num_fields])
 {
     return acHaloExchange(fields, num_fields);
 }
@@ -913,10 +921,8 @@ AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
                     Field (&fields)[num_fields])
 {
-    return acBoundaryCondition(boundary, bound_cond, fields, num_fields,
-                               nullptr, 0);
+    return acBoundaryCondition(boundary, bound_cond, fields, num_fields, nullptr, 0);
 }
-
 
 /** */
 template <size_t num_fields, size_t num_parameters>
@@ -924,8 +930,8 @@ AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
                     Field (&fields)[num_fields], AcRealParam (&parameters)[num_parameters])
 {
-    return acBoundaryCondition(boundary, bound_cond, fields, num_fields,
-                               parameters, num_parameters);
+    return acBoundaryCondition(boundary, bound_cond, fields, num_fields, parameters,
+                               num_parameters);
 }
 
 #if AC_INTEGRATION_ENABLED
@@ -936,8 +942,6 @@ acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBound
 {
     return acSpecialMHDBoundaryCondition(boundary, bound_cond, nullptr, 0);
 }
-
-
 
 /** */
 template <size_t num_fields, size_t num_parameters>

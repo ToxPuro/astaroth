@@ -37,11 +37,11 @@
 #include "task.h"
 #include "astaroth.h"
 
+#include <cassert>
 #include <memory>
 #include <mpi.h>
 #include <stdlib.h>
 #include <vector>
-#include <cassert>
 
 #include "decomposition.h" //getPid and friends
 #include "errchk.h"
@@ -61,8 +61,8 @@ using std::make_unique;
 #endif
 
 AcTaskDefinition
-acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
-          Field fields_out[], const size_t num_fields_out)
+acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
+          const size_t num_fields_out)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
@@ -87,9 +87,8 @@ acHaloExchange(Field fields[], const size_t num_fields)
 }
 
 AcTaskDefinition
-acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                           Field fields[], const size_t num_fields,
-                           AcRealParam parameters[], const size_t num_parameters)
+acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond, Field fields[],
+                    const size_t num_fields, AcRealParam parameters[], const size_t num_parameters)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_BOUNDCOND;
@@ -104,7 +103,6 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
     return task_def;
 }
 
-
 #ifdef AC_INTEGRATION_ENABLED
 AcTaskDefinition
 acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond,
@@ -114,7 +112,7 @@ acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBound
     task_def.task_type              = TASKTYPE_SPECIAL_MHD_BOUNDCOND;
     task_def.boundary               = boundary;
     task_def.special_mhd_bound_cond = bound_cond;
-    //TODO: look these up from a table
+    // TODO: look these up from a table
     task_def.fields_in      = nullptr;
     task_def.num_fields_in  = 0;
     task_def.fields_out     = nullptr;
@@ -126,7 +124,7 @@ acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBound
 #endif
 
 Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields)
-    : family(family_), tag(tag_), fields(fields_, fields_+num_fields)
+    : family(family_), tag(tag_), fields(fields_, fields_ + num_fields)
 {
     id = tag_to_id(tag);
     // facet class 0 = inner core
@@ -236,10 +234,8 @@ Region::tag_to_id(int _tag)
 Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefinition op,
            Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : device(device_), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
-      order(order_), active(true),
-      input_region(input_region_),
-      output_region(output_region_),
-      input_parameters(op.parameters, op.parameters+op.num_parameters)
+      order(order_), active(true), input_region(input_region_), output_region(output_region_),
+      input_parameters(op.parameters, op.parameters + op.num_parameters)
 {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 }
@@ -293,7 +289,7 @@ Task::isFinished()
 }
 
 void
-Task::update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps, const TraceFile *trace_file)
+Task::update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps, const TraceFile* trace_file)
 {
     if (isFinished())
         return;
@@ -404,8 +400,9 @@ Task::poll_stream()
 /* Computation */
 ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
                          std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
-    : Task(order_, Region(RegionFamily::Compute_input, region_tag, nn, op.fields_in,op.num_fields_in),
-           Region(RegionFamily::Compute_output, region_tag, nn, op.fields_out,op.num_fields_out),
+    : Task(order_,
+           Region(RegionFamily::Compute_input, region_tag, nn, op.fields_in, op.num_fields_in),
+           Region(RegionFamily::Compute_output, region_tag, nn, op.fields_out, op.num_fields_out),
            op, device_, swap_offset_)
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
@@ -419,10 +416,10 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
     syncVBA();
 
     // compute_func = compute_func_;
-    
+
     params = KernelParameters{kernel_lookup[(int)op.kernel], stream, 0, output_region.position,
                               output_region.position + output_region.dims};
-    name = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
+    name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
 }
@@ -550,13 +547,14 @@ HaloMessageSwapChain::get_fresh_buffer()
 }
 
 // HaloExchangeTask
-HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_,
-                                   int tag_0, int halo_region_tag, int3 nn, uint3_64 decomp,
-                                   Device device_,
+HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag,
+                                   int3 nn, uint3_64 decomp, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Exchange_input, halo_region_tag, nn, op.fields_in, op.num_fields_in),
-           Region(RegionFamily::Exchange_output, halo_region_tag, nn, op.fields_out, op.num_fields_out),
+           Region(RegionFamily::Exchange_input, halo_region_tag, nn, op.fields_in,
+                  op.num_fields_in),
+           Region(RegionFamily::Exchange_output, halo_region_tag, nn, op.fields_out,
+                  op.num_fields_out),
            op, device_, swap_offset_),
       recv_buffers(output_region.dims, NUM_VTXBUF_HANDLES),
       send_buffers(input_region.dims, NUM_VTXBUF_HANDLES)
@@ -755,7 +753,7 @@ HaloExchangeTask::test()
 }
 
 void
-HaloExchangeTask::advance(const TraceFile *trace_file)
+HaloExchangeTask::advance(const TraceFile* trace_file)
 {
     switch (static_cast<HaloExchangeState>(state)) {
     case HaloExchangeState::Waiting:
@@ -786,11 +784,10 @@ HaloExchangeTask::advance(const TraceFile *trace_file)
     }
 }
 
-BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_,
-                                             int order_,
+BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
                                              int region_tag, int3 nn, Device device_,
                                              std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
-    : Task(order_, 
+    : Task(order_,
            Region(RegionFamily::Exchange_input, region_tag, nn, op.fields_in, op.num_fields_in),
            Region(RegionFamily::Exchange_output, region_tag, nn, op.fields_out, op.num_fields_out),
            op, device_, swap_offset_),
@@ -809,15 +806,14 @@ BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_
                             (output_region.dims.y + 1) * (-boundary_normal.y),
                             (output_region.dims.z + 1) * (-boundary_normal.z)};
 
-    //TODO: input_region is now set twice, overwritten here
+    // TODO: input_region is now set twice, overwritten here
     input_region = Region(output_region.translate(translation));
 
     boundary_dims = int3{
-            boundary_normal.x == 0 ? output_region.dims.x : 1,
-            boundary_normal.y == 0 ? output_region.dims.y : 1,
-            boundary_normal.z == 0 ? output_region.dims.z : 1,
+        boundary_normal.x == 0 ? output_region.dims.x : 1,
+        boundary_normal.y == 0 ? output_region.dims.y : 1,
+        boundary_normal.z == 0 ? output_region.dims.z : 1,
     };
-                        
 
     name = "Boundary condition " + std::to_string(order_) + ".(" +
            std::to_string(output_region.id.x) + "," + std::to_string(output_region.id.y) + "," +
@@ -829,39 +825,35 @@ BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_
 void
 BoundaryConditionTask::populate_boundary_region()
 {
-    //TODO: could assign a separate stream to each launch
-    //      currently they are on a single stream
-    for (auto variable : output_region.fields){
-    switch (boundcond) {
-    case BOUNDCOND_SYMMETRIC:
-    {
-        acKernelSymmetricBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                                    vba.in[variable]);
-        break;
-    }
-    case BOUNDCOND_ANTISYMMETRIC:
-    {
-        acKernelAntiSymmetricBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+    // TODO: could assign a separate stream to each launch
+    //       currently they are on a single stream
+    for (auto variable : output_region.fields) {
+        switch (boundcond) {
+        case BOUNDCOND_SYMMETRIC: {
+            acKernelSymmetricBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
                                         vba.in[variable]);
-        break;
-    }   
-    case BOUNDCOND_A2:
-    {
-        acKernelA2Boundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                             vba.in[variable]);
-        break;
-    }   
-    case BOUNDCOND_PRESCRIBED_DERIVATIVE:
-    {
-        assert(input_parameters.size() == 1);
-        acKernelPrescribedDerivativeBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                                               vba.in[variable], input_parameters[0]);
-        break;
-    }   
-    default:
-        ERROR("BoundaryCondition not implemented yet.");
-    }
-
+            break;
+        }
+        case BOUNDCOND_ANTISYMMETRIC: {
+            acKernelAntiSymmetricBoundconds(stream, output_region.id, boundary_normal,
+                                            boundary_dims, vba.in[variable]);
+            break;
+        }
+        case BOUNDCOND_A2: {
+            acKernelA2Boundconds(stream, output_region.id, boundary_normal, boundary_dims,
+                                 vba.in[variable]);
+            break;
+        }
+        case BOUNDCOND_PRESCRIBED_DERIVATIVE: {
+            assert(input_parameters.size() == 1);
+            acKernelPrescribedDerivativeBoundconds(stream, output_region.id, boundary_normal,
+                                                   boundary_dims, vba.in[variable],
+                                                   input_parameters[0]);
+            break;
+        }
+        default:
+            ERROR("BoundaryCondition not implemented yet.");
+        }
     }
 }
 
@@ -880,7 +872,7 @@ BoundaryConditionTask::test()
 }
 
 void
-BoundaryConditionTask::advance(const TraceFile *trace_file)
+BoundaryConditionTask::advance(const TraceFile* trace_file)
 {
     switch (static_cast<BoundaryConditionState>(state)) {
     case BoundaryConditionState::Waiting:
@@ -898,22 +890,22 @@ BoundaryConditionTask::advance(const TraceFile *trace_file)
 }
 
 #ifdef AC_INTEGRATION_ENABLED
-// SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD implementation).
-// They launch specially written CUDA kernels that implement the specific boundary condition procedure
-// They are a stop-gap temporary solution. The sensible solution is to replace them
-// with a task type that runs a boundary condition procedure written in the Astaroth DSL.
-SpecialMHDBoundaryConditionTask::SpecialMHDBoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_,
-                                             int order_,
-                                             int region_tag, int3 nn, Device device_,
-                                             std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
-    : Task(order_, 
+// SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD
+// implementation). They launch specially written CUDA kernels that implement the specific boundary
+// condition procedure They are a stop-gap temporary solution. The sensible solution is to replace
+// them with a task type that runs a boundary condition procedure written in the Astaroth DSL.
+SpecialMHDBoundaryConditionTask::SpecialMHDBoundaryConditionTask(
+    AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, int3 nn, Device device_,
+    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+    : Task(order_,
            Region(RegionFamily::Exchange_input, region_tag, nn, op.fields_in, op.num_fields_in),
            Region(RegionFamily::Exchange_output, region_tag, nn, op.fields_out, op.num_fields_out),
            op, device_, swap_offset_),
       boundcond(op.special_mhd_bound_cond), boundary_normal(boundary_normal_)
 {
-    //TODO: the input regions for some of these will be weird, because they will depend on the ghost zone of other fields
-    // This is not currently reflected
+    // TODO: the input regions for some of these will be weird, because they will depend on the
+    // ghost zone of other fields
+    //  This is not currently reflected
 
     // Create stream for boundary condition task
     {
@@ -928,15 +920,14 @@ SpecialMHDBoundaryConditionTask::SpecialMHDBoundaryConditionTask(AcTaskDefinitio
                             (output_region.dims.y + 1) * (-boundary_normal.y),
                             (output_region.dims.z + 1) * (-boundary_normal.z)};
 
-    //TODO: input_region is now set twice, overwritten here
+    // TODO: input_region is now set twice, overwritten here
     input_region = Region(output_region.translate(translation));
 
     boundary_dims = int3{
-            boundary_normal.x == 0 ? output_region.dims.x : 1,
-            boundary_normal.y == 0 ? output_region.dims.y : 1,
-            boundary_normal.z == 0 ? output_region.dims.z : 1,
+        boundary_normal.x == 0 ? output_region.dims.x : 1,
+        boundary_normal.y == 0 ? output_region.dims.y : 1,
+        boundary_normal.z == 0 ? output_region.dims.z : 1,
     };
-                        
 
     name = "Special MHD Boundary condition " + std::to_string(order_) + ".(" +
            std::to_string(output_region.id.x) + "," + std::to_string(output_region.id.y) + "," +
@@ -948,25 +939,33 @@ SpecialMHDBoundaryConditionTask::SpecialMHDBoundaryConditionTask(AcTaskDefinitio
 void
 SpecialMHDBoundaryConditionTask::populate_boundary_region()
 {
-    //TODO: could assign a separate stream to each launch of symmetric boundconds
-    //      currently they are on a single stream
+    // TODO: could assign a separate stream to each launch of symmetric boundconds
+    //       currently they are on a single stream
     switch (boundcond) {
-    case SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE:{
-        acKernelEntropyConstantTemperatureBoundconds(stream, output_region.id, boundary_normal, boundary_dims, vba);
+    case SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE: {
+        acKernelEntropyConstantTemperatureBoundconds(stream, output_region.id, boundary_normal,
+                                                     boundary_dims, vba);
         break;
     }
-    case SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION:{
-        acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(stream, output_region.id, boundary_normal, boundary_dims, vba);
+    case SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION: {
+        acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(stream, output_region.id,
+                                                                      boundary_normal,
+                                                                      boundary_dims, vba);
         break;
     }
-    case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX:{
+    case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX: {
         assert(input_parameters.size() == 1);
-        acKernelEntropyPrescribedHeatFluxBoundconds(stream, output_region.id, boundary_normal, boundary_dims, vba, input_parameters[0]);
+        acKernelEntropyPrescribedHeatFluxBoundconds(stream, output_region.id, boundary_normal,
+                                                    boundary_dims, vba, input_parameters[0]);
         break;
     }
-    case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_NORMAL_AND_TURBULENT_HEAT_FLUX:{
+    case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_NORMAL_AND_TURBULENT_HEAT_FLUX: {
         assert(input_parameters.size() == 2);
-        acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(stream, output_region.id, boundary_normal, boundary_dims, vba, input_parameters[0], input_parameters[1]);
+        acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(stream, output_region.id,
+                                                                      boundary_normal,
+                                                                      boundary_dims, vba,
+                                                                      input_parameters[0],
+                                                                      input_parameters[1]);
         break;
     }
 
@@ -990,7 +989,7 @@ SpecialMHDBoundaryConditionTask::test()
 }
 
 void
-SpecialMHDBoundaryConditionTask::advance(const TraceFile *trace_file)
+SpecialMHDBoundaryConditionTask::advance(const TraceFile* trace_file)
 {
     switch (static_cast<SpecialMHDBoundaryConditionState>(state)) {
     case SpecialMHDBoundaryConditionState::Waiting:
