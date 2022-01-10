@@ -290,9 +290,15 @@ acTransferCommData(const Device device, //
 
         const int3 b0       = b0s[b0_idx];
         const int3 neighbor = (int3){
-            b0.x < NGHOST ? -1 : b0.x >= NGHOST + nn.x ? 1 : 0,
-            b0.y < NGHOST ? -1 : b0.y >= NGHOST + nn.y ? 1 : 0,
-            b0.z < NGHOST ? -1 : b0.z >= NGHOST + nn.z ? 1 : 0,
+            b0.x < NGHOST           ? -1
+            : b0.x >= NGHOST + nn.x ? 1
+                                    : 0,
+            b0.y < NGHOST           ? -1
+            : b0.y >= NGHOST + nn.y ? 1
+                                    : 0,
+            b0.z < NGHOST           ? -1
+            : b0.z >= NGHOST + nn.z ? 1
+                                    : 0,
         };
         const int npid = getPid(pid3d + neighbor, decomp);
 
@@ -312,9 +318,15 @@ acTransferCommData(const Device device, //
     for (size_t b0_idx = 0; b0_idx < blockcount; ++b0_idx) {
         const int3 b0       = b0s[b0_idx];
         const int3 neighbor = (int3){
-            b0.x < NGHOST ? -1 : b0.x >= NGHOST + nn.x ? 1 : 0,
-            b0.y < NGHOST ? -1 : b0.y >= NGHOST + nn.y ? 1 : 0,
-            b0.z < NGHOST ? -1 : b0.z >= NGHOST + nn.z ? 1 : 0,
+            b0.x < NGHOST           ? -1
+            : b0.x >= NGHOST + nn.x ? 1
+                                    : 0,
+            b0.y < NGHOST           ? -1
+            : b0.y >= NGHOST + nn.y ? 1
+                                    : 0,
+            b0.z < NGHOST           ? -1
+            : b0.z >= NGHOST + nn.z ? 1
+                                    : 0,
         };
         const int npid = getPid(pid3d - neighbor, decomp);
 
@@ -588,9 +600,9 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                              j + tgt_pid3d.y * nn.y, //
-                                                              k + tgt_pid3d.z * nn.z, //
-                                                              host_mesh.info);
+                                                                 j + tgt_pid3d.y * nn.y, //
+                                                                 k + tgt_pid3d.z * nn.z, //
+                                                                 host_mesh.info);
 
                         // Send
                         MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_MPI_TYPE,
@@ -676,9 +688,9 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                              j + tgt_pid3d.y * nn.y, //
-                                                              k + tgt_pid3d.z * nn.z, //
-                                                              host_mesh->info);
+                                                                 j + tgt_pid3d.y * nn.y, //
+                                                                 k + tgt_pid3d.z * nn.z, //
+                                                                 host_mesh->info);
 
                         // Recv
                         MPI_Status status;

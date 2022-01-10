@@ -134,7 +134,7 @@ typedef class Task {
 
     Region input_region;
     Region output_region;
-    
+
     std::vector<AcRealParam> input_parameters;
 
     static const int wait_state = 0;
@@ -146,15 +146,15 @@ typedef class Task {
     Task(int order_, Region input_region_, Region output_region, AcTaskDefinition op,
          Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
 
-    virtual bool test()    = 0;
-    virtual void advance(const TraceFile *trace_file) = 0;
+    virtual bool test()                               = 0;
+    virtual void advance(const TraceFile* trace_file) = 0;
 
     void registerDependent(std::shared_ptr<Task> t, size_t offset);
     void registerPrerequisite(size_t offset);
     bool isPrerequisiteTo(std::shared_ptr<Task> other);
 
     void setIterationParams(size_t begin, size_t end);
-    void update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps, const TraceFile *trace_file);
+    void update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps, const TraceFile* trace_file);
     bool isFinished();
 
     void notifyDependents();
@@ -180,7 +180,7 @@ typedef class ComputeTask : public Task {
     ComputeTask(const ComputeTask& other) = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
-    void advance(const TraceFile *trace_file);
+    void advance(const TraceFile* trace_file);
     bool test();
 } ComputeTask;
 
@@ -225,8 +225,8 @@ typedef class HaloExchangeTask : public Task {
     HaloMessageSwapChain send_buffers;
 
   public:
-    HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0,
-                     int halo_region_tag, int3 nn, uint3_64 decomp, Device device_,
+    HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag, int3 nn,
+                     uint3_64 decomp, Device device_,
                      std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     ~HaloExchangeTask();
     HaloExchangeTask(const HaloExchangeTask& other) = delete;
@@ -253,7 +253,7 @@ typedef class HaloExchangeTask : public Task {
     void exchangeHost();
 #endif
 
-    void advance(const TraceFile *trace_file);
+    void advance(const TraceFile* trace_file);
     bool test();
 } HaloExchangeTask;
 
@@ -266,20 +266,19 @@ typedef class BoundaryConditionTask : public Task {
     int3 boundary_dims;
 
   public:
-    BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_,
-                          int order_, int region_tag, int3 nn,
-                          Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag,
+                          int3 nn, Device device_,
+                          std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     void populate_boundary_region();
-    void advance(const TraceFile *trace_file);
+    void advance(const TraceFile* trace_file);
     bool test();
 } BoundaryConditionTask;
 
-
 #ifdef AC_INTEGRATION_ENABLED
-// SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD implementation).
-// They launch specially written CUDA kernels that implement the specific boundary condition procedure
-// They are a stop-gap temporary solution. The sensible solution is to replace them
-// with a task type that runs a boundary condition procedure written in the Astaroth DSL.
+// SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD
+// implementation). They launch specially written CUDA kernels that implement the specific boundary
+// condition procedure They are a stop-gap temporary solution. The sensible solution is to replace
+// them with a task type that runs a boundary condition procedure written in the Astaroth DSL.
 enum class SpecialMHDBoundaryConditionState { Waiting = Task::wait_state, Running };
 
 typedef class SpecialMHDBoundaryConditionTask : public Task {
@@ -289,11 +288,11 @@ typedef class SpecialMHDBoundaryConditionTask : public Task {
     int3 boundary_dims;
 
   public:
-    SpecialMHDBoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_,
-                          int order_, int region_tag, int3 nn,
-                          Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    SpecialMHDBoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
+                                    int region_tag, int3 nn, Device device_,
+                                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     void populate_boundary_region();
-    void advance(const TraceFile *trace_file);
+    void advance(const TraceFile* trace_file);
     bool test();
 } SpecialMHDBoundaryConditionTask;
 #endif
@@ -316,5 +315,5 @@ struct AcTaskGraph {
     std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
     std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;
 
-    TraceFile trace_file;   
+    TraceFile trace_file;
 };
