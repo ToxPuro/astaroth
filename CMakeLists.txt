@@ -3,8 +3,8 @@
 # V3.17 required for the FindCUDAToolkit package
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
 cmake_minimum_required(VERSION 3.18)
-find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
-find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
+#find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
+#find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
 
 ## Project settings
 project(astaroth C CXX CUDA)
