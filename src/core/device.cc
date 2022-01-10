@@ -161,12 +161,14 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Memory
     // VBA in/out
+    const size_t vba_size       = acVertexBufferSize(device_config);
     const size_t vba_size_bytes = acVertexBufferSizeBytes(device_config);
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.in[i], vba_size_bytes));
-        ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.in[i], 0, vba_size_bytes));
-
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.out[i], vba_size_bytes));
+
+        // Set vba.in data to all-nan and vba.out to 0
+        acKernelFlush(device->vba.in[i], vba_size);
         ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.out[i], 0, vba_size_bytes));
     }
     /*
