@@ -45,81 +45,81 @@ kernel_symmetric_boundconds(const int3 start, const int3 end, AcReal* vtxbuf, co
 
         // Pick up the mirroring value.
         if ((i_dst < boundlocx0)) {
-            i_src = 2.0f * boundlocx0 - i_dst;
+            i_src = (AcReal)2.0 * boundlocx0 - i_dst;
         }
         else if ((i_dst > boundlocx1)) {
-            i_src = 2.0f * boundlocx1 - i_dst;
+            i_src = (AcReal)2.0 * boundlocx1 - i_dst;
         }
 
         // Pick up the mirroring value.
         if ((j_dst < boundlocy0)) {
-            j_src = 2.0f * boundlocy0 - j_dst;
+            j_src = (AcReal)2.0 * boundlocy0 - j_dst;
         }
         else if ((j_dst > boundlocx1)) {
-            j_src = 2.0f * boundlocy1 - j_dst;
+            j_src = (AcReal)2.0 * boundlocy1 - j_dst;
         }
 
         // Pick up the mirroring value.
         if ((k_dst < boundlocz0)) {
-            k_src = 2.0f * boundlocz0 - k_dst;
+            k_src = (AcReal)2.0 * boundlocz0 - k_dst;
         }
         else if ((k_dst > boundlocz1)) {
-            k_src = 2.0f * boundlocz1 - k_dst;
+            k_src = (AcReal)2.0 * boundlocz1 - k_dst;
         }
 
         // Edges
         if ((i_dst < boundlocx0) && (j_dst < boundlocy0)) {
-            i_src = 2.0f * boundlocx0 - i_dst;
-            j_src = 2.0f * boundlocy0 - j_dst;
+            i_src = (AcReal)2.0 * boundlocx0 - i_dst;
+            j_src = (AcReal)2.0 * boundlocy0 - j_dst;
             // if ((k_dst == 50)) printf("i_dst %i j_dst %i k_dst %i i_src %i j_src %i k_src %i
             // bsize %i \n", i_dst, j_dst, k_dst, i_src, j_src, k_src, bsize);
         }
         else if ((i_dst < boundlocx0) && (k_dst < boundlocz0)) {
-            i_src = 2.0f * boundlocx0 - i_dst;
-            k_src = 2.0f * boundlocz0 - k_dst;
+            i_src = (AcReal)2.0 * boundlocx0 - i_dst;
+            k_src = (AcReal)2.0 * boundlocz0 - k_dst;
         }
         else if ((j_dst < boundlocy0) && (k_dst < boundlocz0)) {
-            j_src = 2.0f * boundlocy0 - j_dst;
-            k_src = 2.0f * boundlocz0 - k_dst;
+            j_src = (AcReal)2.0 * boundlocy0 - j_dst;
+            k_src = (AcReal)2.0 * boundlocz0 - k_dst;
         }
         else if ((i_dst > boundlocx1) && (j_dst > boundlocx1)) {
-            i_src = 2.0f * boundlocx1 - i_dst;
-            j_src = 2.0f * boundlocy1 - j_dst;
+            i_src = (AcReal)2.0 * boundlocx1 - i_dst;
+            j_src = (AcReal)2.0 * boundlocy1 - j_dst;
         }
         else if ((i_dst > boundlocx1) && (k_dst > boundlocz1)) {
-            i_src = 2.0f * boundlocx1 - i_dst;
-            k_src = 2.0f * boundlocz1 - k_dst;
+            i_src = (AcReal)2.0 * boundlocx1 - i_dst;
+            k_src = (AcReal)2.0 * boundlocz1 - k_dst;
         }
         else if ((j_dst > boundlocy1) && (k_dst > boundlocz1)) {
-            j_src = 2.0f * boundlocy1 - j_dst;
-            k_src = 2.0f * boundlocz1 - k_dst;
+            j_src = (AcReal)2.0 * boundlocy1 - j_dst;
+            k_src = (AcReal)2.0 * boundlocz1 - k_dst;
         }
         else if ((i_dst > boundlocx1) && (k_dst < boundlocz0)) {
-            i_src = 2.0f * boundlocx1 - i_dst;
-            k_src = 2.0f * boundlocz0 - k_dst;
+            i_src = (AcReal)2.0 * boundlocx1 - i_dst;
+            k_src = (AcReal)2.0 * boundlocz0 - k_dst;
         }
         else if ((i_dst > boundlocx1) && (j_dst < bsize)) {
-            i_src = 2.0f * boundlocx1 - i_dst;
-            j_src = 2.0f * boundlocy0 - j_dst;
+            i_src = (AcReal)2.0 * boundlocx1 - i_dst;
+            j_src = (AcReal)2.0 * boundlocy0 - j_dst;
         }
         else if ((i_dst < boundlocx0) && (k_dst > boundlocz1)) {
-            i_src = 2.0f * boundlocx0 - i_dst;
-            k_src = 2.0f * boundlocz1 - k_dst;
+            i_src = (AcReal)2.0 * boundlocx0 - i_dst;
+            k_src = (AcReal)2.0 * boundlocz1 - k_dst;
         }
         else if ((i_dst < boundlocx0) && (j_dst > boundlocy1)) {
-            i_src = 2.0f * boundlocx0 - i_dst;
-            j_src = 2.0f * boundlocy1 - j_dst;
+            i_src = (AcReal)2.0 * boundlocx0 - i_dst;
+            j_src = (AcReal)2.0 * boundlocy1 - j_dst;
         }
         else if ((j_dst > boundlocy1) && (k_dst < boundlocz0)) {
-            j_src = 2.0f * boundlocy1 - j_dst;
-            k_src = 2.0f * boundlocz0 - k_dst;
+            j_src = (AcReal)2.0 * boundlocy1 - j_dst;
+            k_src = (AcReal)2.0 * boundlocz0 - k_dst;
         }
     }
 
     const int src_idx = DEVICE_VTXBUF_IDX(i_src, j_src, k_src);
     const int dst_idx = DEVICE_VTXBUF_IDX(i_dst, j_dst, k_dst);
-    vtxbuf[dst_idx]   = sign * vtxbuf[src_idx] * 0.0 +
-                      1.0; // sign = 1 symmetric, sign = -1 antisymmetric
+    vtxbuf[dst_idx]   = sign * vtxbuf[src_idx] * (AcReal)0.0 +
+                      (AcReal)1.0; // sign = 1 symmetric, sign = -1 antisymmetric
 }
 
 static __global__ void
