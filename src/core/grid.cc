@@ -180,7 +180,10 @@ acGridInit(const AcMeshInfo info)
     AcTaskDefinition default_ops[] = {acHaloExchange(all_fields),
                                       acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
                                                           all_fields),
-                                      acCompute(KERNEL_solve, all_fields)};
+#ifdef AC_INTEGRATION_ENABLED
+                                      acCompute(KERNEL_solve, all_fields)
+#endif // AC_INTEGRATION_ENABLED
+    };
 
     grid.initialized   = true;
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
@@ -294,9 +297,9 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                                 j + tgt_pid3d.y * nn.y, //
-                                                                 k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh.info);
+                                                              j + tgt_pid3d.y * nn.y, //
+                                                              k + tgt_pid3d.z * nn.z, //
+                                                              host_mesh.info);
 
                         // Send
                         MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_MPI_TYPE,
@@ -382,9 +385,9 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                                 j + tgt_pid3d.y * nn.y, //
-                                                                 k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh->info);
+                                                              j + tgt_pid3d.y * nn.y, //
+                                                              k + tgt_pid3d.z * nn.z, //
+                                                              host_mesh->info);
 
                         // Recv
                         MPI_Status status;
@@ -796,6 +799,7 @@ acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
     return AC_SUCCESS;
 }
 
+#ifdef AC_INTEGRATION_ENABLED
 AcResult
 acGridIntegrate(const Stream stream, const AcReal dt)
 {
@@ -804,6 +808,7 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     acDeviceSynchronizeStream(grid.device, stream);
     return acGridExecuteTaskGraph(grid.default_tasks.get(), 3);
 }
+#endif // AC_INTEGRATION_ENABLED
 
 AcResult
 acGridPeriodicBoundconds(const Stream stream)
