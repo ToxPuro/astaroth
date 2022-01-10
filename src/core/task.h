@@ -27,20 +27,14 @@
 #include "decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //AcRealPacked, VertexBufferArray
 #include "math_utils.h"      //max. Also included in decomposition.h
+#include "timer_hires.h"
 
 #define MPI_INCL_CORNERS (0) // Include the 3D corners of subdomains in halo
 
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
 static_assert(SWAP_CHAIN_LENGTH == 2);
 
-struct VtxbufSet {
-    VertexBufferHandle* variables;
-    size_t num_vars;
-    VtxbufSet(const VertexBufferHandle* variables_, const size_t num_vars_);
-    ~VtxbufSet();
-    VtxbufSet(const VtxbufSet& other) = delete;
-    VtxbufSet& operator=(const VtxbufSet& other) = delete;
-};
+struct TraceFile;
 
 /**
  * Regions
@@ -60,7 +54,7 @@ struct VtxbufSet {
  * regions' purpose in the context of tasks that use them.
  *
  * A triplet in {-1,0,1}^3 identifies each specific region in a family.
- * There is a mapping between integers in {-1,...,25} and the identifiers.
+ * There is a mapping between integers in {0,...,27} and the identifiers.
  * The integer form is e.g. used as part of the tag used to identify a region
  * in an MPI message.
  */
@@ -75,6 +69,8 @@ struct Region {
     RegionFamily family;
     int3 id;
     int tag;
+
+    std::vector<Field> fields;
 
     // facet class 0 = inner core
     // facet class 1 = face
@@ -92,9 +88,9 @@ struct Region {
     static int id_to_tag(int3 id_);
     static int3 tag_to_id(int tag_);
 
-    Region(RegionFamily family_, int tag_, int3 nn);
-    Region(RegionFamily family_, int3 id_, int3 nn);
-    Region(int3 position_, int3 dims_, int tag);
+    Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields);
+    Region(RegionFamily family_, int3 id_, int3 nn, Field fields_[], size_t num_fields);
+    Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_);
 
     Region translate(int3 translation);
     bool overlaps(const Region* other);
@@ -118,6 +114,7 @@ typedef class Task {
 
     int state;
 
+  public:
     std::vector<std::pair<std::weak_ptr<Task>, size_t>> dependents;
     struct {
         std::vector<size_t> counts;
@@ -129,33 +126,35 @@ typedef class Task {
         size_t end;
     } loop_cntr;
 
-    bool poll_stream();
-
-  public:
     int rank;  // MPI rank
     int order; // the ordinal position of the task in a serial execution (within its region)
     bool active;
     std::string name;
     AcTaskType task_type;
 
-    std::unique_ptr<Region> output_region;
-    std::unique_ptr<Region> input_region;
-    std::shared_ptr<VtxbufSet> vtxbuf_dependencies;
+    Region input_region;
+    Region output_region;
+
+    std::vector<AcRealParam> input_parameters;
 
     static const int wait_state = 0;
 
-    Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag, int3 nn,
+  protected:
+    bool poll_stream();
+
+  public:
+    Task(int order_, Region input_region_, Region output_region, AcTaskDefinition op,
          Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
 
-    virtual bool test()    = 0;
-    virtual void advance() = 0;
+    virtual bool test()                               = 0;
+    virtual void advance(const TraceFile* trace_file) = 0;
 
     void registerDependent(std::shared_ptr<Task> t, size_t offset);
     void registerPrerequisite(size_t offset);
     bool isPrerequisiteTo(std::shared_ptr<Task> other);
 
     void setIterationParams(size_t begin, size_t end);
-    void update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps);
+    void update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps, const TraceFile* trace_file);
     bool isFinished();
 
     void notifyDependents();
@@ -176,12 +175,12 @@ typedef class ComputeTask : public Task {
     KernelParameters params;
 
   public:
-    ComputeTask(Kernel kernel_, int order_, int region_tag, int3 nn, Device device_,
+    ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     ComputeTask(const ComputeTask& other) = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
-    void advance();
+    void advance(const TraceFile* trace_file);
     bool test();
 } ComputeTask;
 
@@ -226,8 +225,8 @@ typedef class HaloExchangeTask : public Task {
     HaloMessageSwapChain send_buffers;
 
   public:
-    HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_, int tag_0,
-                     int halo_region_tag, int3 nn, uint3_64 decomp, Device device_,
+    HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag, int3 nn,
+                     uint3_64 decomp, Device device_,
                      std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     ~HaloExchangeTask();
     HaloExchangeTask(const HaloExchangeTask& other) = delete;
@@ -254,7 +253,7 @@ typedef class HaloExchangeTask : public Task {
     void exchangeHost();
 #endif
 
-    void advance();
+    void advance(const TraceFile* trace_file);
     bool test();
 } HaloExchangeTask;
 
@@ -264,20 +263,57 @@ typedef class BoundaryConditionTask : public Task {
   private:
     AcBoundcond boundcond;
     int3 boundary_normal;
-    VertexBufferHandle variable;
+    int3 boundary_dims;
 
   public:
-    BoundaryConditionTask(AcBoundcond boundcond_, int3 boundary_normal_,
-                          VertexBufferHandle variable_, int order_, int region_tag, int3 nn,
-                          Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag,
+                          int3 nn, Device device_,
+                          std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     void populate_boundary_region();
-    void advance();
+    void advance(const TraceFile* trace_file);
     bool test();
 } BoundaryConditionTask;
+
+#ifdef AC_INTEGRATION_ENABLED
+// SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD
+// implementation). They launch specially written CUDA kernels that implement the specific boundary
+// condition procedure They are a stop-gap temporary solution. The sensible solution is to replace
+// them with a task type that runs a boundary condition procedure written in the Astaroth DSL.
+enum class SpecialMHDBoundaryConditionState { Waiting = Task::wait_state, Running };
+
+typedef class SpecialMHDBoundaryConditionTask : public Task {
+  private:
+    AcSpecialMHDBoundcond boundcond;
+    int3 boundary_normal;
+    int3 boundary_dims;
+
+  public:
+    SpecialMHDBoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
+                                    int region_tag, int3 nn, Device device_,
+                                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    void populate_boundary_region();
+    void advance(const TraceFile* trace_file);
+    bool test();
+} SpecialMHDBoundaryConditionTask;
+#endif
+
+// A TaskGraph is a graph structure of tasks that will be executed
+// The tasks have dependencies, which are defined both within an iteration and between iterations
+// This allows the graph to be executed for any number of iterations
+
+struct TraceFile {
+    bool enabled;
+    std::string filepath;
+    FILE* fp;
+    Timer timer;
+    void trace(const Task* task, const std::string old_state, const std::string new_state) const;
+};
 
 struct AcTaskGraph {
     std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps;
     std::vector<std::shared_ptr<Task>> all_tasks;
     std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
     std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;
+
+    TraceFile trace_file;
 };

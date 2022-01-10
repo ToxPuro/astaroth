@@ -241,9 +241,9 @@ acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 {
     mesh->info = info;
 
-    const size_t bytes = acVertexBufferSizeBytes(mesh->info);
+    const size_t n_cells = acVertexBufferSize(mesh->info);
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        mesh->vertex_buffer[w] = (AcReal*)malloc(bytes);
+        mesh->vertex_buffer[w] = (AcReal*)calloc(n_cells, sizeof(AcReal));
         ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
     }
 

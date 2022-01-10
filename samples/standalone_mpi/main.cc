@@ -529,12 +529,12 @@ main(int argc, char** argv)
 
     // This works OK
     // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
-    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+    //                                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
     //                                all_fields), acCompute(KERNEL_solve, all_fields)};
 
     // This causes the chess board error
     // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
-    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+    //                                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
     //                                all_fields), acCompute(KERNEL_shock_1_divu, shock_field),
     //                                acCompute(KERNEL_shock_2_max, shock_field),
     //                                acCompute(KERNEL_shock_3_smooth, shock_field),
@@ -543,20 +543,20 @@ main(int argc, char** argv)
     // Causes communication related error
     AcTaskDefinition shock_ops[] =
         {acHaloExchange(all_fields),
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
          acCompute(KERNEL_shock_1_divu, shock_field),
          acHaloExchange(shock_field),
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
          acCompute(KERNEL_shock_2_max, shock_field),
          acHaloExchange(shock_field),
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
          acCompute(KERNEL_shock_3_smooth, shock_field),
          acHaloExchange(shock_field),
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
          acCompute(KERNEL_solve, all_fields)};
 
     // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
-    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+    //                                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
     //                                all_fields), acCompute(KERNEL_shock_1_divu, shock_field),
     //                                acCompute(KERNEL_shock_2_max, shock_field),
     //                                acCompute(KERNEL_solve, all_fields)};
@@ -573,16 +573,16 @@ main(int argc, char** argv)
     // and figures out the dependencies between the tasks.
     // AcTaskGraph* hc_graph = acGridBuildTaskGraph(
     //    {acHaloExchange(all_fields),
-    //     acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+    //     acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
     // acCompute(KERNEL_shock_1_divu, shock_uu_fields),
     // acHaloExchange(shock_field),
-    // acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+    // acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
     // acCompute(KERNEL_shock_2_max, shock_field),
     // acHaloExchange(shock_field),
-    // acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+    // acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
     // acCompute(KERNEL_shock_3_smooth, shock_field),
     // acHaloExchange(shock_field),
-    // acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+    // acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
     //     acCompute(KERNEL_solve, all_fields)});
 
     // We can build multiple TaskGraphs, the MPI requests will not collide
@@ -590,7 +590,7 @@ main(int argc, char** argv)
     /*
     AcTaskGraph* shock_graph = acGridBuildTaskGraph({
         acHaloExchange(all_fields),
-        acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_SYMMETRIC, all_fields),
+        acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, all_fields),
         acCompute(KERNEL_shock1, all_fields),
         acCompute(KERNEL_shock2, shock_fields),
         acCompute(KERNEL_solve, all_fields)

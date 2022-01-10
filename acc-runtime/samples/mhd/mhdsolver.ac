@@ -83,6 +83,19 @@ real AC_lnrho0
 real AC_zeta
 real AC_trans
 real AC_nu_shock
+
+//  Parameters for generic boundary conditions, this is a dummy variable for testing, please use different ones for each field
+real AC_boundary_derivative
+
+//  Parameters only used in boundary conditions at the moment
+//  If you feel they should be elsewhere, please move them
+real AC_hcond0_kramers
+real AC_n_kramers
+real AC_sigma_SBt
+real AC_chi
+real AC_chi_t
+real AC_chi_t_prof1
+
 //  Other
 real AC_bin_save_t
 //  Initial condition params
