@@ -14,6 +14,14 @@ endif()
 project(astaroth C CXX)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
+# Needs to be here before setting the compilation flags for some unknown reason,
+# otherwise MPI not found
+if (MPI_ENABLED)
+    find_package(MPI REQUIRED COMPONENTS C)
+    include_directories(${MPI_C_INCLUDE_DIRS})
+    add_definitions(-DAC_MPI_ENABLED=1)
+endif ()
+
 ## Project-wide compilation flags
 # -Werror TODO readd
 set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
@@ -76,11 +84,6 @@ if (DOUBLE_PRECISION)
 endif ()
 if (VERBOSE)
     add_definitions(-DAC_VERBOSE=1)
-endif ()
-if (MPI_ENABLED)
-    find_package(MPI REQUIRED COMPONENTS C)
-    include_directories(${MPI_C_INCLUDE_DIRS})
-    add_definitions(-DAC_MPI_ENABLED=1)
 endif ()
 if (USE_CUDA_AWARE_MPI)
     add_definitions(-DUSE_CUDA_AWARE_MPI=1)
