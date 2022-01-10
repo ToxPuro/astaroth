@@ -49,8 +49,18 @@ if (USE_HIP)
 else ()
     enable_language(CUDA)
 
-    string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --compiler-options=${CUDA_COMMON_FLAGS}")
+    # Commented out CUDA host compiler flags: seem to be ignored anyways
+    #string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
+    #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -forward-unknown-to-host-compiler -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow --compiler-options=${CUDA_COMMON_FLAGS}")
+
+    # To inspect ptx, run
+    # nvcc -c ../src/core/kernels/kernels.cu -I acc-runtime/api/ -I ../include/ -I ../acc-runtime/api/ -ptx -Xptxas=-Werror,--warn-on-double-precision-use
+    # Additional compilation info: --resource-usage
+
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --Werror all-warnings")
+    if (NOT DOUBLE_PRECISION)
+      set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas=-Werror,--warn-on-double-precision-use")
+    endif()
 
     # Set device code architecture
     if (NOT CUDA_ARCHITECTURES)
