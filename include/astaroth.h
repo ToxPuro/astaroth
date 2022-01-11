@@ -433,6 +433,11 @@ AcResult acGridLoadVectorUniform(const Stream stream, const AcReal3Param param,
                                  const AcReal3 value);
 
 /** */
+AcResult
+acGridLoadStencils(const Stream stream,
+                   AcReal stencil[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+
+/** */
 AcResult acGridLoadMesh(const Stream stream, const AcMesh host_mesh);
 
 /** */
@@ -908,9 +913,7 @@ acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out
 }
 
 /** */
-template <size_t num_fields>
-AcTaskDefinition
-acHaloExchange(Field (&fields)[num_fields])
+template <size_t num_fields> AcTaskDefinition acHaloExchange(Field (&fields)[num_fields])
 {
     return acHaloExchange(fields, num_fields);
 }

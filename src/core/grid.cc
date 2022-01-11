@@ -236,6 +236,24 @@ acGridLoadVectorUniform(const Stream stream, const AcReal3Param param, const AcR
     return AC_SUCCESS;
 }
 
+AcResult
+acGridLoadStencils(const Stream stream,
+                   AcReal stencil[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    ERRCHK(grid.initialized);
+    acGridSynchronizeStream(stream);
+
+    const int root_proc    = 0;
+    const size_t num_elems = NUM_STENCILS * STENCIL_DEPTH * STENCIL_HEIGHT * STENCIL_WIDTH;
+
+    MPI_Bcast(stencil, num_elems, AC_MPI_TYPE, root_proc, MPI_COMM_WORLD);
+    acDeviceLoadStencils(grid.device, stream, stencil);
+
+    fprintf(stderr,
+            "Warning: acGridLoadStencils called. The function is not yet thoroughly tested\n");
+    return AC_SUCCESS;
+}
+
 // TODO: do with packed data
 AcResult
 acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
@@ -297,9 +315,9 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                                 j + tgt_pid3d.y * nn.y, //
-                                                                 k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh.info);
+                                                              j + tgt_pid3d.y * nn.y, //
+                                                              k + tgt_pid3d.z * nn.z, //
+                                                              host_mesh.info);
 
                         // Send
                         MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_MPI_TYPE,
@@ -385,9 +403,9 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                                 j + tgt_pid3d.y * nn.y, //
-                                                                 k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh->info);
+                                                              j + tgt_pid3d.y * nn.y, //
+                                                              k + tgt_pid3d.z * nn.z, //
+                                                              host_mesh->info);
 
                         // Recv
                         MPI_Status status;

@@ -205,7 +205,9 @@ acDeviceLoadStencils(const Device device, const Stream stream,
     ERRCHK_CUDA(cudaMemcpyToSymbolAsync(stencils, stencil, bytes, 0, cudaMemcpyHostToDevice,
                                         device->streams[stream]));
 
-    return AC_FAILURE;
+    fprintf(stderr,
+            "Warning: acDeviceLoadStencils called. The function is not yet thoroughly tested\n");
+    return AC_SUCCESS;
 }
 
 // Built-in kernels
