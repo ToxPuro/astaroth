@@ -17,6 +17,10 @@ solve()
     b = 2. * 8.
     c = -fn(1, 2)
     d = fn(3,4)
+
+    real arr1 = 1.0, 2.0, 3.0
+    print("Length of an array: %lu\n", len(arr1))
+
     fn(1)
     return fn(5)
 }

@@ -31,4 +31,7 @@ Kernel kernel() {
 
   int arr0 = 1, 2, 3
   real arr1 = 1.0, 2.0, 3.0
+
+  var7 = real(1)        // Cast
+  vec0 = real3(1, 2, 3) // Cast
 }
