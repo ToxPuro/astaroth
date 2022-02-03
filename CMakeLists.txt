@@ -103,7 +103,6 @@ add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
 
 if (BUILD_UTILS)
-    message("Note: utils depends on -DDSL_MODULE_DIR=<path-to-mhd-solver>. Otherwise causes undefined variable errors.")
     add_subdirectory(src/utils)
 endif()
 
@@ -143,7 +142,6 @@ if (BUILD_SAMPLES)
   #if (MPI_ENABLED)
   #  add_subdirectory(samples/bwtest)
   #endif()
-  endif()
 endif()
 
 # Additional program modules
