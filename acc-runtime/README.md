@@ -87,6 +87,12 @@ real arr1 = 1.0, 2.0, 3.0
 len(arr1) // Length of an array
 ```
 
+Casting
+```
+var7 = real(1)        // Cast
+vec0 = real3(1, 2, 3) // Cast
+```
+
 Printing
 ```
 // print is the same as `printf` in the C programming language

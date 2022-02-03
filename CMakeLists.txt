@@ -58,7 +58,8 @@ else ()
     # nvcc -c ../src/core/kernels/kernels.cu -I acc-runtime/api/ -I ../include/ -I ../acc-runtime/api/ -ptx -Xptxas=-Werror,--warn-on-double-precision-use
     # Additional compilation info: --resource-usage
 
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --Werror all-warnings")
+    # Not supported with older CUDA
+    # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --Werror all-warnings")
     if (NOT DOUBLE_PRECISION)
       set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas=-Werror,--warn-on-double-precision-use")
     endif()
