@@ -6,6 +6,15 @@
 
 #include "timer_hires.h"
 
+#if !BLUR_KERNEL_AVAILABLE
+int
+main(void)
+{
+    fprintf(stderr, "blur_kernel() was not available. Must build with `cmake "
+                    "-DDSL_MODULE_DIR=<path/to/blur.ac> -DBUILD_MHD_SAMPLES=OFF ..\n");
+    return EXIT_FAILURE;
+}
+#else
 #define NSAMPLES (100)
 
 int
@@ -27,7 +36,8 @@ main(int argc, char** argv)
 
     AcMesh mesh;
     acHostMeshCreate(info, &mesh);
-    acHostMeshRandomize(&mesh);
+    // acHostMeshRandomize(&mesh);
+    acHostMeshSet(1, &mesh);
 
     Device device;
     acDeviceCreate(0, info, &device);
@@ -48,11 +58,36 @@ main(int argc, char** argv)
     acDeviceSwapBuffers(device);
 
     acDeviceStoreMesh(device, STREAM_DEFAULT, &mesh);
+    printf("Store complete\n");
 
-    printf("Store done\n");
+    const bool print_bounds = true;
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        for (int k = nn_min.z; k < nn_max.z; ++k) {
+            printf("==== DEPTH %d ====\n", k);
+            if (print_bounds) {
+                for (int j = 0; j < info.int_params[AC_my]; ++j) {
+                    for (int i = 0; i < info.int_params[AC_mx]; ++i) {
+                        printf("%.3g ",
+                               (double)mesh.vertex_buffer[w][acVertexBufferIdx(i, j, k, info)]);
+                    }
+                    printf("\n");
+                }
+            }
+            else {
+                for (int j = nn_min.y; j < nn_max.y; ++j) {
+                    for (int i = nn_min.x; i < nn_max.x; ++i) {
+                        printf("%.3g ",
+                               (double)mesh.vertex_buffer[w][acVertexBufferIdx(i, j, k, info)]);
+                    }
+                    printf("\n");
+                }
+            }
+        }
+    }
 
     acDeviceDestroy(device);
     acHostMeshDestroy(&mesh);
 
     return EXIT_SUCCESS;
 }
+#endif

@@ -1,3 +1,4 @@
+hostdefine BLUR_KERNEL_AVAILABLE (1)
 Field IMAGE0
 
 #define COEFF (1. / 7.)
