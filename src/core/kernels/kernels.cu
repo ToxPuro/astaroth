@@ -215,6 +215,7 @@ acDeviceLoadStencils(const Device device, const Stream stream,
 #include "boundconds_miikka_GBC.cuh"
 #include "packing.cuh"
 #include "reductions.cuh"
+#include "volume_copy.cuh"
 
 AcResult
 acKernel(const KernelParameters params, VertexBufferArray vba)
