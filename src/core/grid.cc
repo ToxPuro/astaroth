@@ -945,6 +945,8 @@ acGridReduceVecScal(const Stream stream, const ReductionType rtype,
 AcResult
 acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const AccessType type)
 {
+#define BUFFER_DISK_WRITE_THROUGH_CPU (1)
+
     ERRCHK(grid.initialized);
 
     acGridSynchronizeStream(STREAM_ALL); // Possibly unnecessary
@@ -965,6 +967,14 @@ acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const 
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
                            out_volume);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+
+// ---------------------------------------
+// Buffer through CPU
+#if BUFFER_DISK_WRITE_THROUGH_CPU
+        const size_t count = acVertexBufferCompdomainSizeBytes(info);
+        cudaMemcpy(grid.submesh.vertex_buffer[vtxbuf], out, count, cudaMemcpyDeviceToHost);
+#endif
+        // ----------------------------------------
     }
 
     MPI_Datatype subarray;
@@ -990,7 +1000,15 @@ acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const 
 
     MPI_Status status;
 
-    AcReal* arr         = device->vba.out[vtxbuf];
+#if BUFFER_DISK_WRITE_THROUGH_CPU
+    // ---------------------------------------
+    // Buffer through CPU
+    AcReal* arr = grid.submesh.vertex_buffer[vtxbuf];
+    // ----------------------------------------
+#else
+    AcReal* arr = device->vba.out[vtxbuf];
+#endif
+
     const size_t nelems = nn_sub.x * nn_sub.y * nn_sub.z;
     if (type == ACCESS_READ) {
         ERRCHK_ALWAYS(MPI_File_read_all(file, arr, nelems, AC_MPI_TYPE, &status) == MPI_SUCCESS);
@@ -1004,13 +1022,21 @@ acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const 
     MPI_Type_free(&subarray);
 
     if (type == ACCESS_READ) {
-        const AcReal* in     = device->vba.out[vtxbuf];
+        AcReal* in           = device->vba.out[vtxbuf];
         const int3 in_offset = (int3){0, 0, 0};
         const int3 in_volume = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
 
         AcReal* out           = device->vba.in[vtxbuf];
         const int3 out_offset = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
         const int3 out_volume = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+
+#if BUFFER_DISK_WRITE_THROUGH_CPU
+        // ---------------------------------------
+        // Buffer through CPU
+        const size_t count = acVertexBufferCompdomainSizeBytes(info);
+        cudaMemcpy(in, grid.submesh.vertex_buffer[vtxbuf], count, cudaMemcpyHostToDevice);
+        // ----------------------------------------
+#endif
 
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
                            out_volume);
