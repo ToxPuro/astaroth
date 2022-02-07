@@ -64,17 +64,69 @@ main(int argc, char** argv)
     acVerifyMesh("Boundconds", model, candidate);
 
     // Verify that integration works correctly
-    const AcReal dt = FLT_EPSILON;
+    const AcReal dt            = (AcReal)FLT_EPSILON;
+    const bool alt_integration = false;
+
+    // DRYRUN START
     for (int i = 0; i < 3; ++i) {
+        /*
         acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, n_min, n_max, dt);
         acDeviceSwapBuffers(device);
         acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
+        */
+        const int3 start = n_min;
+        const int3 end   = n_max;
+        acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
+        acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, i);
+
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, solve, start, end);
+        acDeviceSwapBuffers(device);
+        acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
+
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, alt_solve_intermediate, start, end);
+        acDeviceSwapBuffers(device);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, alt_solve_final, start, end);
+        acDeviceSwapBuffers(device);
+        acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
+    }
+    acDeviceLoadMesh(device, STREAM_DEFAULT, model);
+    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
+    ///////////////////////////// DRYRUN END
+
+    const size_t nsteps = 1;
+    for (size_t j = 0; j < nsteps; ++j) {
+        for (int i = 0; i < 3; ++i) {
+            /*
+            acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, n_min, n_max, dt);
+            acDeviceSwapBuffers(device);
+            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
+            */
+            const int3 start = n_min;
+            const int3 end   = n_max;
+            acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
+            acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, i);
+
+            if (alt_integration) {
+                acDeviceLaunchKernel(device, STREAM_DEFAULT, alt_solve_intermediate, start, end);
+                acDeviceSwapBuffers(device);
+                acDeviceLaunchKernel(device, STREAM_DEFAULT, alt_solve_final, start, end);
+                acDeviceSwapBuffers(device);
+                acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
+            }
+            else {
+                acDeviceLaunchKernel(device, STREAM_DEFAULT, solve, start, end);
+                acDeviceSwapBuffers(device);
+                acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
+            }
+        }
     }
     acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
     acDeviceSynchronizeStream(device, STREAM_DEFAULT);
 
-    acHostIntegrateStep(model, dt);
-    acHostMeshApplyPeriodicBounds(&model);
+    for (size_t j = 0; j < nsteps; ++j) {
+        acHostIntegrateStep(model, dt);
+        acHostMeshApplyPeriodicBounds(&model);
+    }
     acVerifyMesh("Integration", model, candidate);
 
     // Warmup
