@@ -204,8 +204,17 @@ write(Field, real) // Writes a real value to the output field at 'vertexIdx'
 real previous(Field) // Returns the value in the output buffer. Read after write() results in undefined behaviour.
 ```
 
+# Interaction with the Astaroth Core and Utils libraries
+
+## Loading and storing stencil coefficients at runtime
+
+The stencil coefficients defined in the DSL syntax must be known at compile time for simplicity. However, the Astaroth Runtime API provides the functions `acLoadStencil` and `acStoreStencil` for loading/storing stencil coefficients at runtime. This is useful for, say, trying out different coefficients without the need for recompilation and for setting the coefficients programmatically if deemed too cumbersome by hand.
+
+See also the functions `acDeviceLoadStencil` and `acDeviceStoreStencil` provided by the Astaroth Core library.
+
+
 ## Additional physics-specific API functions
 
-To enable additional API functions for integration (`acIntegrate` function family) and MHD-specific tasks (automated testing, MHD samples), one must set `hostdefine AC_INTEGRATION_ENABLED (1)` in the DSL file.
+To enable additional API functions in the Astaroth Core library for integration (`acIntegrate` function family) and MHD-specific tasks (automated testing, MHD samples), one must set `hostdefine AC_INTEGRATION_ENABLED (1)` in the DSL file.
 
 > Note: The extended API depends on several hardcoded fields and device constants. It is not recommended to enable it unless you work on the MHD sample case (`acc-runtime/samples/mhd`) or its derivatives.
