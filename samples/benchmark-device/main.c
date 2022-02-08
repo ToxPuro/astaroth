@@ -121,12 +121,13 @@ main(int argc, char** argv)
         }
     }
     acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
-    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
 
     for (size_t j = 0; j < nsteps; ++j) {
         acHostIntegrateStep(model, dt);
         acHostMeshApplyPeriodicBounds(&model);
     }
+
+    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
     acVerifyMesh("Integration", model, candidate);
 
     // Warmup
