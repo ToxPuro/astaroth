@@ -56,3 +56,8 @@ system runs MPI.
 It the case you get strange MPI errors, it might be that your particular system
 has not been configured for GPUDirect RDMA. To run Astaroth without GPUDirect
 RDMA, please set `-DUSE_CUDA_AWARE_MPI=OFF` in `my_cmake.sh`. 
+
+On one machine we run into an issue that a wrong version of gcc was found. In
+that case please either set flags `-DCMAKE_C_COMPILER=/path/to/gcc/`
+`-DCMAKE_CXX_COMPILER=/path/to/gcc/` or set the environmental variables CC and
+CXX with a correct path to your compiler. 
