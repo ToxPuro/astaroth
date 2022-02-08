@@ -203,3 +203,9 @@ write(Field, real) // Writes a real value to the output field at 'vertexIdx'
 // Advanced functions (should avoid, dangerous)
 real previous(Field) // Returns the value in the output buffer. Read after write() results in undefined behaviour.
 ```
+
+## Additional physics-specific API functions
+
+To enable additional API functions for integration (`acIntegrate` function family) and MHD-specific tasks (automated testing, MHD samples), one must set `hostdefine AC_INTEGRATION_ENABLED (1)` in the DSL file.
+
+> Note: The extended API depends on several hardcoded fields and device constants. It is not recommended to enable it unless you work on the MHD sample case (`acc-runtime/samples/mhd`) or its derivatives.
