@@ -387,12 +387,19 @@ gen_user_defines(const ASTNode* root, const char* out)
   symboltable_reset();
   traverse(root, 0, NULL);
 
-  // Num stencils
+  // Stencils
+  fprintf(fp, "typedef enum{");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_STENCIL_ID)
+      fprintf(fp, "stencil_%s,", symbol_table[i].identifier);
+  fprintf(fp, "NUM_STENCILS} Stencil;");
+  /*
   size_t num_stencils = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_STENCIL_ID)
       ++num_stencils;
   fprintf(fp, "#define NUM_STENCILS (%lu)\n", num_stencils);
+  */
 
   // Enums
   fprintf(fp, "typedef enum {");
@@ -565,11 +572,14 @@ generate(const ASTNode* root, FILE* stream)
   // gen_dconsts(root, stream);
 
   // Stencils
+  /*
+  // Defined now in user_defines.h
   fprintf(stream, "typedef enum{");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_STENCIL_ID)
       fprintf(stream, "stencil_%s,", symbol_table[i].identifier);
   fprintf(stream, "} Stencil;");
+  */
   // fprintf(stream, "NUM_STENCILS} Stencil;"); // defined now in
   // user_defines.h
 
@@ -603,7 +613,7 @@ const char* stencilgen_main =
 "int main(int argc, char** argv) {\n"
 "(void)argv;/*Unused*/"
 "if(argc>1){"
-"printf(\"static __device__ const AcReal /*__restrict__*/ stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={\");"
+"printf(\"static __device__ /*const*/ AcReal /*__restrict__*/ stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={\");"
 "for(int stencil=0;stencil<NUM_STENCILS;++stencil){"
 "printf(\"{\");"
 "for(int depth=0;depth<STENCIL_DEPTH;++depth){"

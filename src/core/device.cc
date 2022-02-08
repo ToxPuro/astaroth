@@ -478,6 +478,23 @@ acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kern
 }
 
 AcResult
+acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
+                    const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    cudaSetDevice(device->id);
+    return acLoadStencil(stencil, device->streams[stream], data);
+}
+
+/** */
+AcResult
+acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,
+                     AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    cudaSetDevice(device->id);
+    return acStoreStencil(stencil, device->streams[stream], data);
+}
+
+AcResult
 acDeviceIntegrateSubstep(const Device device, const Stream stream, const int step_number,
                          const int3 start, const int3 end, const AcReal dt)
 {
