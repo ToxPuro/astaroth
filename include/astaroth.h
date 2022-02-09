@@ -471,8 +471,6 @@ AcResult acGridReduceVecScal(const Stream stream, const ReductionType rtype,
                              const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
                              AcReal* result);
 
-AcResult acGridWriteMeshToDisk(const VertexBufferHandle vtxbuf, const char* path);
-
 typedef enum {
     ACCESS_READ,
     ACCESS_WRITE,
