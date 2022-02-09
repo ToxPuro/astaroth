@@ -236,24 +236,6 @@ acGridLoadVectorUniform(const Stream stream, const AcReal3Param param, const AcR
     return AC_SUCCESS;
 }
 
-AcResult
-acGridLoadStencils(const Stream stream,
-                   AcReal stencil[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-    ERRCHK(grid.initialized);
-    acGridSynchronizeStream(stream);
-
-    const int root_proc    = 0;
-    const size_t num_elems = NUM_STENCILS * STENCIL_DEPTH * STENCIL_HEIGHT * STENCIL_WIDTH;
-
-    MPI_Bcast(stencil, num_elems, AC_MPI_TYPE, root_proc, MPI_COMM_WORLD);
-    acDeviceLoadStencils(grid.device, stream, stencil);
-
-    fprintf(stderr,
-            "Warning: acGridLoadStencils called. The function is not yet thoroughly tested\n");
-    return AC_SUCCESS;
-}
-
 // TODO: do with packed data
 AcResult
 acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
@@ -940,6 +922,70 @@ acGridReduceVecScal(const Stream stream, const ReductionType rtype,
     acDeviceReduceVecScal(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, &local_result);
 
     return distributedScalarReduction(local_result, rtype, result);
+}
+
+/** */
+AcResult
+acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3 start, const int3 end)
+{
+    ERRCHK(grid.initialized);
+
+    acGridSynchronizeStream(stream);
+    return acDeviceLaunchKernel(grid.device, stream, kernel, start, end);
+}
+
+/** */
+AcResult
+acGridLoadStencil(const Stream stream, const Stencil stencil,
+                  const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    ERRCHK(grid.initialized);
+
+    acGridSynchronizeStream(stream);
+    return acDeviceLoadStencil(grid.device, stream, stencil, data);
+}
+
+/** */
+AcResult
+acGridStoreStencil(const Stream stream, const Stencil stencil,
+                   AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    ERRCHK(grid.initialized);
+
+    acGridSynchronizeStream(stream);
+    return acDeviceStoreStencil(grid.device, stream, stencil, data);
+}
+
+/** */
+AcResult
+acGridLoadStencils(const Stream stream,
+                   const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    ERRCHK(grid.initialized);
+    ERRCHK((int)AC_SUCCESS == 0);
+    ERRCHK((int)AC_FAILURE == 1);
+
+    int retval = 0;
+    for (size_t i = 0; i < NUM_STENCILS; ++i)
+        retval |= acGridLoadStencil(stream, (Stencil)i, data[i]);
+
+    return (AcResult)retval;
+}
+
+/** */
+AcResult
+acGridStoreStencils(const Stream stream,
+                    AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    ERRCHK(grid.initialized);
+    ERRCHK((int)AC_SUCCESS == 0);
+    ERRCHK((int)AC_FAILURE == 1);
+
+    int retval = 0;
+    for (size_t i = 0; i < NUM_STENCILS; ++i)
+        retval |= acGridStoreStencil(stream, (Stencil)i, data[i]);
+
+    return (AcResult)retval;
 }
 
 AcResult

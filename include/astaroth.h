@@ -433,11 +433,6 @@ AcResult acGridLoadVectorUniform(const Stream stream, const AcReal3Param param,
                                  const AcReal3 value);
 
 /** */
-AcResult
-acGridLoadStencils(const Stream stream,
-                   AcReal stencil[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
-
-/** */
 AcResult acGridLoadMesh(const Stream stream, const AcMesh host_mesh);
 
 /** */
@@ -579,6 +574,28 @@ AcResult acGridDestroyTaskGraph(AcTaskGraph* graph);
 
 /** */
 AcResult acGridExecuteTaskGraph(AcTaskGraph* graph, const size_t n_iterations);
+
+/** */
+AcResult acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3 start,
+                            const int3 end);
+
+/** */
+AcResult acGridLoadStencil(const Stream stream, const Stencil stencil,
+                           const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+
+/** */
+AcResult acGridStoreStencil(const Stream stream, const Stencil stencil,
+                            AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+
+/** */
+AcResult
+acGridLoadStencils(const Stream stream,
+                   const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+
+/** */
+AcResult
+acGridStoreStencils(const Stream stream,
+                    AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
 
 #endif // AC_MPI_ENABLED
 
@@ -877,12 +894,16 @@ AcResult acDeviceReduceVecScal(const Device device, const Stream stream_type,
 AcResult acDeviceRunMPITest(void);
 
 /** */
-AcResult
-acDeviceLoadStencils(const Device device, const Stream stream,
-                     AcReal stencil[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
-
 AcResult acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kernel,
                               const int3 start, const int3 end);
+
+/** */
+AcResult acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
+                             const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+
+/** */
+AcResult acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,
+                              AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
 
 /** */
 AcResult acDeviceVolumeCopy(const Device device, const Stream stream,                     //

@@ -124,6 +124,34 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
   return AC_SUCCESS;
 }
 
+AcResult
+acLoadStencil(const Stencil stencil, const cudaStream_t stream,
+              const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+  ERRCHK_ALWAYS(stencil < NUM_STENCILS);
+
+  const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
+                       STENCIL_WIDTH;
+  const cudaError_t retval = cudaMemcpyToSymbolAsync(
+      stencils, data, bytes, stencil * bytes, cudaMemcpyHostToDevice, stream);
+
+  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+};
+
+AcResult
+acStoreStencil(const Stencil stencil, const cudaStream_t stream,
+               AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+  ERRCHK_ALWAYS(stencil < NUM_STENCILS);
+
+  const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
+                       STENCIL_WIDTH;
+  const cudaError_t retval = cudaMemcpyFromSymbolAsync(
+      data, stencils, bytes, stencil * bytes, cudaMemcpyDeviceToHost, stream);
+
+  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+};
+
 #define GEN_LOAD_UNIFORM(TYPE)                                                 \
   GEN_LOAD_UNIFORM_DECLARATION(TYPE)                                           \
   {                                                                            \
