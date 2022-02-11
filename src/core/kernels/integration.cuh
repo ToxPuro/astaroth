@@ -28,6 +28,7 @@
 #include "src/core/math_utils.h"
 
 #include <assert.h>
+#define ORDER 3
 
 static_assert(NUM_VTXBUF_HANDLES > 0, "ERROR: At least one uniform ScalarField must be declared.");
 
@@ -57,10 +58,19 @@ static __device__ __forceinline__ AcReal
 rk3_integrate(const AcReal state_previous, const AcReal state_current, const AcReal rate_of_change,
               const AcReal dt)
 {
+#if ORDER == 1
+    // Euler
+    const AcReal alpha[]={ 0, 0.0, 0.0, 0.0};
+    const AcReal beta[] ={ 0, 1.0, 0.0, 0.0};
+#elif ORDER == 2
+    const AcReal alpha[]={ 0,     0.0, -1.0/2.0, 0.0 };
+    const AcReal beta[] ={ 0, 1.0/2.0,      1.0, 0.0 };
+#elif ORDER == 3
     // Williamson (1980)
     const AcReal alpha[] = {0, AcReal(.0), AcReal(-5. / 9.), AcReal(-153. / 128.)};
     const AcReal beta[]  = {0, AcReal(1. / 3.), AcReal(15. / 16.), AcReal(8. / 15.)};
 
+#endif
     // Note the indexing: +1 to avoid an unnecessary warning about "out-of-bounds"
     // access (when accessing beta[step_number-1] even when step_number >= 1)
     switch (step_number) {

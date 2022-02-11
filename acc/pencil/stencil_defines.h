@@ -34,7 +34,7 @@
   #include "/homeappl/home/mreinhar/git/pencil-code/samples/gputest/src/astaroth/PC_moduleflags.h"
 
   #define CONFIG_PATH
-  #define LUPWD (1)
+  #define LUPWD (0)
 /*
  * =============================================================================
  * User-defined parameters
