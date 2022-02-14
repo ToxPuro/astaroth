@@ -15,6 +15,9 @@ hostdefine LENTROPY (1)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
 hostdefine LUPWD (0)
+hostdefine LSINK (0) 
+hostdefine LBFIELD (0) 
+hostdefine LSHOCK (0) 
 hostdefine AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
 hostdefine R_PI ((Scalar)M_PI)
 
