@@ -63,23 +63,23 @@ AcResult
 acStoreStencil(const Stencil stencil, const cudaStream_t stream,
                AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
 
-#define GEN_LOAD_UNIFORM_DECLARATION(TYPE)                                     \
-  AcResult acLoad##TYPE##Uniform(const cudaStream_t stream, TYPE symbol,       \
-                                 const TYPE value)
+AcResult acLoadRealUniform(const cudaStream_t stream, const AcRealParam param,
+                           const AcReal value);
+AcResult acLoadReal3Uniform(const cudaStream_t stream, const AcReal3Param param,
+                            const AcReal3 value);
+AcResult acLoadIntUniform(const cudaStream_t stream, const AcIntParam param,
+                          const int value);
+AcResult acLoadInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
+                           const int3 value);
 
-#define GEN_STORE_UNIFORM_DECLARATION(TYPE)                                    \
-  AcResult acStore##TYPE##Uniform(const cudaStream_t stream, TYPE* dst,        \
-                                  const TYPE symbol)
-
-GEN_LOAD_UNIFORM_DECLARATION(AcReal);
-GEN_LOAD_UNIFORM_DECLARATION(AcReal3);
-GEN_LOAD_UNIFORM_DECLARATION(int);
-GEN_LOAD_UNIFORM_DECLARATION(int3);
-
-GEN_STORE_UNIFORM_DECLARATION(AcReal);
-GEN_STORE_UNIFORM_DECLARATION(AcReal3);
-GEN_STORE_UNIFORM_DECLARATION(int);
-GEN_STORE_UNIFORM_DECLARATION(int3);
+AcResult acStoreRealUniform(const cudaStream_t stream, const AcRealParam param,
+                            AcReal* value);
+AcResult acStoreReal3Uniform(const cudaStream_t stream,
+                             const AcReal3Param param, AcReal3* value);
+AcResult acStoreIntUniform(const cudaStream_t stream, const AcIntParam param,
+                           int* value);
+AcResult acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
+                            int3* value);
 
 #ifdef __cplusplus
 } // extern "C"

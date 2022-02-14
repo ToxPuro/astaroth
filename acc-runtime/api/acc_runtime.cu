@@ -152,31 +152,97 @@ acStoreStencil(const Stencil stencil, const cudaStream_t stream,
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 };
 
-#define GEN_LOAD_UNIFORM(TYPE)                                                 \
-  GEN_LOAD_UNIFORM_DECLARATION(TYPE)                                           \
-  {                                                                            \
-    cudaError_t retval = cudaMemcpyToSymbolAsync(                              \
-        symbol, &value, sizeof(value), 0, cudaMemcpyHostToDevice, stream);     \
-    return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;                    \
+#define GEN_LOAD_UNIFORM(LABEL_UPPER, LABEL_LOWER)                             \
+  ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
+                                                                               \
+  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
+                        (size_t)&d_mesh_info;                                  \
+                                                                               \
+  const cudaError_t retval = cudaMemcpyToSymbolAsync(                          \
+      d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice,      \
+      stream);                                                                 \
+  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+
+AcResult
+acLoadRealUniform(const cudaStream_t stream, const AcRealParam param,
+                  const AcReal value)
+{
+  if (isnan(value)) {
+    fprintf(stderr,
+            "WARNING: Passed an invalid value %g to device constant %s. "
+            "Skipping.\n",
+            (double)value, realparam_names[param]);
+    return AC_FAILURE;
   }
+  GEN_LOAD_UNIFORM(REAL, real);
+}
 
-#define GEN_STORE_UNIFORM(TYPE)                                                \
-  GEN_STORE_UNIFORM_DECLARATION(TYPE)                                          \
-  {                                                                            \
-    cudaError_t retval = cudaMemcpyFromSymbolAsync(                            \
-        dst, symbol, sizeof(*dst), 0, cudaMemcpyDeviceToHost, stream);         \
-    return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;                    \
+AcResult
+acLoadReal3Uniform(const cudaStream_t stream, const AcReal3Param param,
+                   const AcReal3 value)
+{
+  if (isnan(value.x) | isnan(value.y) | isnan(value.z)) {
+    fprintf(stderr,
+            "WARNING: Passed an invalid value (%g, %g, %g) to device constant "
+            "%s. Skipping.\n",
+            (double)value.x, (double)value.y, (double)value.z,
+            real3param_names[param]);
+    return AC_FAILURE;
   }
+  GEN_LOAD_UNIFORM(REAL3, real3);
+}
 
-GEN_LOAD_UNIFORM(AcReal)
-GEN_LOAD_UNIFORM(AcReal3)
-GEN_LOAD_UNIFORM(int)
-GEN_LOAD_UNIFORM(int3)
+AcResult
+acLoadIntUniform(const cudaStream_t stream, const AcIntParam param,
+                 const int value)
+{
+  GEN_LOAD_UNIFORM(INT, int);
+}
 
-GEN_STORE_UNIFORM(AcReal)
-GEN_STORE_UNIFORM(AcReal3)
-GEN_STORE_UNIFORM(int)
-GEN_STORE_UNIFORM(int3)
+AcResult
+acLoadInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
+                  const int3 value)
+{
+  GEN_LOAD_UNIFORM(INT3, int3);
+}
+
+#define GEN_STORE_UNIFORM(LABEL_UPPER, LABEL_LOWER)                            \
+  ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
+                                                                               \
+  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
+                        (size_t)&d_mesh_info;                                  \
+                                                                               \
+  const cudaError_t retval = cudaMemcpyFromSymbolAsync(                        \
+      value, d_mesh_info, sizeof(*value), offset, cudaMemcpyDeviceToHost,      \
+      stream);                                                                 \
+  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+
+AcResult
+acStoreRealUniform(const cudaStream_t stream, const AcRealParam param,
+                   AcReal* value)
+{
+  GEN_STORE_UNIFORM(REAL, real);
+}
+
+AcResult
+acStoreReal3Uniform(const cudaStream_t stream, const AcReal3Param param,
+                    AcReal3* value)
+{
+  GEN_STORE_UNIFORM(REAL3, real3);
+}
+
+AcResult
+acStoreIntUniform(const cudaStream_t stream, const AcIntParam param, int* value)
+{
+  GEN_STORE_UNIFORM(INT, int);
+}
+
+AcResult
+acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
+                   int3* value)
+{
+  GEN_STORE_UNIFORM(INT3, int3);
+}
 
 static TBConfig
 autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
