@@ -95,25 +95,6 @@ acDevicePrintInfo(const Device device)
     return AC_SUCCESS;
 }
 
-/*
-AcResult
-acDeviceAutoOptimize(const Device device)
-{
-    cudaSetDevice(device->id);
-    const int3 start = (int3){
-        device->local_config.int_params[AC_nx_min],
-        device->local_config.int_params[AC_ny_min],
-        device->local_config.int_params[AC_nz_min],
-    };
-    const int3 end = (int3){
-        device->local_config.int_params[AC_nx_max],
-        device->local_config.int_params[AC_ny_max],
-        device->local_config.int_params[AC_nz_max],
-    };
-    return acKernelAutoOptimizeIntegration(start, end, device->vba);
-}
-*/
-
 AcResult
 acDeviceLoadScalarUniform(const Device device, const Stream stream, const AcRealParam param,
                           const AcReal value)
