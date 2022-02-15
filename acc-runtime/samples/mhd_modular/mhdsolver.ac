@@ -14,7 +14,7 @@ hostdefine LMAGNETIC (1)
 hostdefine LENTROPY (1)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
-hostdefine LUPWD (0)
+hostdefine LUPWD (1)
 hostdefine LSINK (0) 
 hostdefine LBFIELD (0) 
 hostdefine LSHOCK (0) 
@@ -153,6 +153,11 @@ real AC_cs2_sound
 #define DERX_1 (270. / 720.)
 #define DERX_0 (0)
 
+#define DER6UPWD_3 (1. / 60.)
+#define DER6UPWD_2 (-1. / 10.)
+#define DER6UPWD_1 (1. / 4.)
+#define DER6UPWD_0 (-1. / 3.)
+
 Stencil value {
     [0][0][0] = 1
 }
@@ -263,12 +268,50 @@ Stencil deryz {
     [3][-3][0] = -AC_inv_dsy * AC_inv_dsz * DERX_3
 }
 
+Stencil der6x_upwd {
+    [0][0][-3] =  AC_inv_dsx * DER6UPWD_3,
+    [0][0][-2] =  AC_inv_dsx * DER6UPWD_2,
+    [0][0][-1] =  AC_inv_dsx * DER6UPWD_1,
+    [0][0][0]  =  AC_inv_dsx * DER6UPWD_0,
+    [0][0][1]  =  AC_inv_dsx * DER6UPWD_1,
+    [0][0][2]  =  AC_inv_dsx * DER6UPWD_2,
+    [0][0][3]  =  AC_inv_dsx * DER6UPWD_3
+}
+
+Stencil der6y_upwd {
+    [0][-3][0] =  AC_inv_dsy * DER6UPWD_3,
+    [0][-2][0] = -AC_inv_dsy * DER6UPWD_2,
+    [0][-1][0] =  AC_inv_dsy * DER6UPWD_1,
+    [0][0][0]  = -AC_inv_dsy * DER6UPWD_0,
+    [0][1][0]  =  AC_inv_dsy * DER6UPWD_1,
+    [0][2][0]  = -AC_inv_dsy * DER6UPWD_2,
+    [0][3][0]  =  AC_inv_dsy * DER6UPWD_3
+}
+
+Stencil der6z_upwd {
+    [-3][0][0] =  AC_inv_dsz * DER6UPWD_3,
+    [-2][0][0] = -AC_inv_dsz * DER6UPWD_2,
+    [-1][0][0] =  AC_inv_dsz * DER6UPWD_1,
+    [0][0][0]  = -AC_inv_dsz * DER6UPWD_0,
+    [1][0][0]  =  AC_inv_dsz * DER6UPWD_1,
+    [2][0][0]  = -AC_inv_dsz * DER6UPWD_2,
+    [3][0][0]  =  AC_inv_dsz * DER6UPWD_3  
+}
+
 vecvalue(v) {
     return real3(value(v.x), value(v.y), value(v.z))
 }
 
+vecvalue_abs(v) {
+    return real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
+}
+
 gradient(s) {
     return real3(derx(s), dery(s), derz(s))
+}
+
+gradient6_upwd(s) {
+    return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
 }
 
 gradients(v) {
@@ -329,6 +372,10 @@ contract(mat) {
 
 continuity() {
     return -dot(vecvalue(UU), gradient(VTXBUF_LNRHO)) - divergence(UU)
+#if LUPWD
+           + dot(vecvalue_abs(UU), gradient6_upwd(VTXBUF_LNRHO))
+#endif     
+
 }
 
 momentum() {

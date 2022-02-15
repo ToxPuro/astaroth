@@ -31,16 +31,6 @@ LUPWD (1)
 LSINK (0)
 LBFIELD (1)
 LSHOCK (1)
-```
-
-* In `samples/standalone_mpi/main.cc`
-
-```
-LSINK (0)
-LFORCING (1)
-LBFIELD (1)
-LSHOCK (1)
-```
 
 # Setting up and compiling.
 

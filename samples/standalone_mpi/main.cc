@@ -55,23 +55,11 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
-// NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
-#define LSINK (0)
-#define LFORCING (0)
-#define LBFIELD (0)
-#define LSHOCK (0)
-/*  MV NOTES
-    It was possible to compensate LFORCING with AC_lforcing instead by the current hack
-    However it as not possible to do so for LSINK because if in LSINK = 0 in
-    DSL, then VTXBUF_ACCRETION will be undefined. We need to disccus how to
-    communicate the preprocessor states of DSL for the rest of the code. PLEASE
-    NOTE that VTXBUF_ACCRETION or other such enumerator values cannot be checked
-    with #ifdef.
-    UPDATE: It did not work with AC_lforcing either.
- */
-
-////#ifdef AC_FOR_VTXBUF_HANDLES
-////#endif
+// MV: I commented this out because now can be defined in DSL
+//// #define LSINK (0)
+//// #define LFORCING (0)
+//// #define LBFIELD (0)
+//// #define LSHOCK (0)
 
 // Write all setting info into a separate ascii file. This is done to guarantee
 // that we have the data specifi information in the thing, even though in
