@@ -199,6 +199,7 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
 #include "boundconds_miikka_GBC.cuh"
 #include "packing.cuh"
 #include "reductions.cuh"
+#include "volume_copy.cuh"
 
 AcResult
 acKernel(const KernelParameters params, VertexBufferArray vba)

@@ -691,5 +691,16 @@ acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(
     return AC_SUCCESS;
 }
 
+#else
+AcResult
+acKernelPrescribedDerivativeBoundconds(const cudaStream_t stream, const int3 region_id,
+                                       const int3 normal, const int3 dims, AcReal* vtxbuf,
+                                       AcRealParam der_val_param)
+{
+    fprintf(stderr, "acKernelPrescribedDerivativeBoundconds() called but AC_INTEGRATION_ENABLED "
+                    "was false\n");
+    return AC_FAILURE;
+}
+
 #endif // AC_INTEGRATION_ENABLED
 } // extern "C"

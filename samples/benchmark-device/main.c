@@ -64,16 +64,17 @@ main(int argc, char** argv)
     acVerifyMesh("Boundconds", model, candidate);
 
     // Verify that integration works correctly
-    const AcReal dt            = (AcReal)FLT_EPSILON;
-    const bool alt_integration = false;
+    const AcReal dt = (AcReal)FLT_EPSILON;
+    // const bool alt_integration = false; // Uncomment to test one- and two-pass integration
 
     // DRYRUN START
     for (int i = 0; i < 3; ++i) {
-        /*
         acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, n_min, n_max, dt);
         acDeviceSwapBuffers(device);
         acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-        */
+
+        /*
+        // Uncomment to test one- and two-pass integration
         const int3 start = n_min;
         const int3 end   = n_max;
         acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
@@ -88,6 +89,7 @@ main(int argc, char** argv)
         acDeviceLaunchKernel(device, STREAM_DEFAULT, alt_solve_final, start, end);
         acDeviceSwapBuffers(device);
         acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
+        */
     }
     acDeviceLoadMesh(device, STREAM_DEFAULT, model);
     acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
@@ -96,11 +98,12 @@ main(int argc, char** argv)
     const size_t nsteps = 1;
     for (size_t j = 0; j < nsteps; ++j) {
         for (int i = 0; i < 3; ++i) {
-            /*
+
             acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, n_min, n_max, dt);
             acDeviceSwapBuffers(device);
             acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-            */
+            /*
+            // Uncomment to test one- and two-pass integration
             const int3 start = n_min;
             const int3 end   = n_max;
             acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
@@ -118,6 +121,7 @@ main(int argc, char** argv)
                 acDeviceSwapBuffers(device);
                 acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
             }
+            */
         }
     }
     acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);

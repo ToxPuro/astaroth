@@ -615,3 +615,13 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
                                     device->reduce_scratchpad, device->reduce_result);
     return AC_SUCCESS;
 }
+
+AcResult
+acDeviceVolumeCopy(const Device device, const Stream stream,                     //
+                   const AcReal* in, const int3 in_offset, const int3 in_volume, //
+                   AcReal* out, const int3 out_offset, const int3 out_volume)
+{
+    cudaSetDevice(device->id);
+    return acKernelVolumeCopy(device->streams[stream], in, in_offset, in_volume, out, out_offset,
+                              out_volume);
+}

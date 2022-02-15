@@ -471,6 +471,14 @@ AcResult acGridReduceVecScal(const Stream stream, const ReductionType rtype,
                              const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
                              AcReal* result);
 
+typedef enum {
+    ACCESS_READ,
+    ACCESS_WRITE,
+} AccessType;
+
+AcResult acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path,
+                                const AccessType type);
+
 /*
  * =============================================================================
  * Task interface (part of the grid interface)
@@ -894,6 +902,11 @@ AcResult acDeviceLoadStencil(const Device device, const Stream stream, const Ste
 /** */
 AcResult acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,
                               AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+
+/** */
+AcResult acDeviceVolumeCopy(const Device device, const Stream stream,                     //
+                            const AcReal* in, const int3 in_offset, const int3 in_volume, //
+                            AcReal* out, const int3 out_offset, const int3 out_volume);
 
 /*
  * =============================================================================

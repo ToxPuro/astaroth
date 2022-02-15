@@ -112,7 +112,7 @@ if (BUILD_SAMPLES)
   add_subdirectory(samples/cpptest)
   #add_subdirectory(samples/benchmark)
   add_subdirectory(samples/benchmark-device)
-  #add_subdirectory(samples/mpi-io)
+  add_subdirectory(samples/mpi-io)
 
   if (BUILD_MHD_SAMPLES)
     # add_subdirectory(samples/standalone)
