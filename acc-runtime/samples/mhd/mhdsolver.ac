@@ -15,9 +15,9 @@ hostdefine LENTROPY (1)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
 hostdefine LUPWD (0)
-hostdefine LSINK (0) 
-hostdefine LBFIELD (0) 
-hostdefine LSHOCK (0) 
+hostdefine LSINK (0)
+hostdefine LBFIELD (0)
+hostdefine LSHOCK (0)
 hostdefine AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
 hostdefine R_PI ((Scalar)M_PI)
 
@@ -415,6 +415,7 @@ Kernel solve() {
     write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
 }
 
+/*
 rk3_intermediate(w, roc) {
     real alpha = 0., -5./9., -153. / 128.
 
@@ -462,3 +463,4 @@ Kernel alt_solve_final() {
     write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY)))
     write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ)))
 }
+*/
