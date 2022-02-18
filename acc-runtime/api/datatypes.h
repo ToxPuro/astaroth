@@ -34,14 +34,14 @@ typedef double3 AcReal3;
 typedef cuDoubleComplex acComplex;
 #define acComplex(x, y) make_cuDoubleComplex(x, y)
 #define AC_REAL_EPSILON (DBL_EPSILON)
-#define AC_MPI_TYPE (MPI_DOUBLE)
+#define AC_REAL_MPI_TYPE (MPI_DOUBLE)
 #else
 typedef float AcReal;
 typedef float3 AcReal3;
 typedef cuFloatComplex acComplex;
 #define acComplex(x, y) make_cuFloatComplex(x, y)
 #define AC_REAL_EPSILON (FLT_EPSILON)
-#define AC_MPI_TYPE (MPI_FLOAT)
+#define AC_REAL_MPI_TYPE (MPI_FLOAT)
 #endif
 
 #define REAL_PI ((AcReal)M_PI)

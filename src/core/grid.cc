@@ -126,10 +126,10 @@ acGridInit(const AcMeshInfo info)
     ERRCHK_ALWAYS(info.int_params[AC_ny] % decomp.y == 0);
     ERRCHK_ALWAYS(info.int_params[AC_nz] % decomp.z == 0);
 
-    // Check that mixed precision is correctly configured, AcRealPacked == AC_MPI_TYPE
+    // Check that mixed precision is correctly configured, AcRealPacked == AC_REAL_MPI_TYPE
     // CAN BE REMOVED IF MIXED PRECISION IS SUPPORTED AS A PREPROCESSOR FLAG
     int mpi_type_size;
-    MPI_Type_size(AC_MPI_TYPE, &mpi_type_size);
+    MPI_Type_size(AC_REAL_MPI_TYPE, &mpi_type_size);
     ERRCHK_ALWAYS(sizeof(AcRealPacked) == mpi_type_size);
 
     const int submesh_nx                       = info.int_params[AC_nx] / decomp.x;
@@ -216,7 +216,7 @@ acGridLoadScalarUniform(const Stream stream, const AcRealParam param, const AcRe
 
     const int root_proc = 0;
     AcReal buffer       = value;
-    MPI_Bcast(&buffer, 1, AC_MPI_TYPE, root_proc, MPI_COMM_WORLD);
+    MPI_Bcast(&buffer, 1, AC_REAL_MPI_TYPE, root_proc, MPI_COMM_WORLD);
 
     return acDeviceLoadScalarUniform(grid.device, stream, param, buffer);
 }
@@ -229,7 +229,7 @@ acGridLoadVectorUniform(const Stream stream, const AcReal3Param param, const AcR
 
     const int root_proc = 0;
     AcReal3 buffer      = value;
-    MPI_Bcast(&buffer, 3, AC_MPI_TYPE, root_proc, MPI_COMM_WORLD);
+    MPI_Bcast(&buffer, 3, AC_REAL_MPI_TYPE, root_proc, MPI_COMM_WORLD);
 
     return acDeviceLoadVectorUniform(grid.device, stream, param, buffer);
 }
@@ -315,7 +315,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     const int dst_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
                     // Recv
                     MPI_Status status;
-                    MPI_Recv(&grid.submesh.vertex_buffer[vtxbuf][dst_idx], count, AC_MPI_TYPE, 0, 0,
+                    MPI_Recv(&grid.submesh.vertex_buffer[vtxbuf][dst_idx], count, AC_REAL_MPI_TYPE, 0, 0,
                              MPI_COMM_WORLD, &status);
                 }
                 else {
@@ -327,7 +327,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                                                               host_mesh.info);
 
                         // Send
-                        MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_MPI_TYPE,
+                        MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
                                  tgt_pid, 0, MPI_COMM_WORLD);
                     }
                 }
@@ -403,7 +403,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                 if (pid != 0) {
                     // Send
                     const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
-                    MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_MPI_TYPE, 0, 0,
+                    MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE, 0, 0,
                              MPI_COMM_WORLD);
                 }
                 else {
@@ -416,7 +416,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 
                         // Recv
                         MPI_Status status;
-                        MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx], count, AC_MPI_TYPE,
+                        MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx], count, AC_REAL_MPI_TYPE,
                                  tgt_pid, 0, MPI_COMM_WORLD, &status);
                     }
                 }
@@ -891,7 +891,7 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     AcReal mpi_res;
-    MPI_Reduce(&local_result, &mpi_res, 1, AC_MPI_TYPE, op, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&local_result, &mpi_res, 1, AC_REAL_MPI_TYPE, op, 0, MPI_COMM_WORLD);
 
     if (rank == 0) {
         if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS) {
@@ -1052,7 +1052,7 @@ acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const 
     const int arr_nn[]     = {nn.z, nn.y, nn.x};
     const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
     const int arr_offset[] = {offset.z, offset.y, offset.x};
-    MPI_Type_create_subarray(3, arr_nn, arr_nn_sub, arr_offset, MPI_ORDER_C, AC_MPI_TYPE,
+    MPI_Type_create_subarray(3, arr_nn, arr_nn_sub, arr_offset, MPI_ORDER_C, AC_REAL_MPI_TYPE,
                              &subarray);
     MPI_Type_commit(&subarray);
 
@@ -1066,7 +1066,7 @@ acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const 
 
     ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &file) == MPI_SUCCESS);
 
-    ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_MPI_TYPE, subarray, "native", MPI_INFO_NULL) ==
+    ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native", MPI_INFO_NULL) ==
                   MPI_SUCCESS);
 
     MPI_Status status;
@@ -1082,10 +1082,10 @@ acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const 
 
     const size_t nelems = nn_sub.x * nn_sub.y * nn_sub.z;
     if (type == ACCESS_READ) {
-        ERRCHK_ALWAYS(MPI_File_read_all(file, arr, nelems, AC_MPI_TYPE, &status) == MPI_SUCCESS);
+        ERRCHK_ALWAYS(MPI_File_read_all(file, arr, nelems, AC_REAL_MPI_TYPE, &status) == MPI_SUCCESS);
     }
     else {
-        ERRCHK_ALWAYS(MPI_File_write_all(file, arr, nelems, AC_MPI_TYPE, &status) == MPI_SUCCESS);
+        ERRCHK_ALWAYS(MPI_File_write_all(file, arr, nelems, AC_REAL_MPI_TYPE, &status) == MPI_SUCCESS);
     }
 
     ERRCHK_ALWAYS(MPI_File_close(&file) == MPI_SUCCESS);
