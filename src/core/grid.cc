@@ -218,8 +218,7 @@ acGridLoadScalarUniform(const Stream stream, const AcRealParam param, const AcRe
     AcReal buffer       = value;
     MPI_Bcast(&buffer, 1, AC_MPI_TYPE, root_proc, MPI_COMM_WORLD);
 
-    acDeviceLoadScalarUniform(grid.device, stream, param, buffer);
-    return AC_SUCCESS;
+    return acDeviceLoadScalarUniform(grid.device, stream, param, buffer);
 }
 
 AcResult
@@ -232,11 +231,37 @@ acGridLoadVectorUniform(const Stream stream, const AcReal3Param param, const AcR
     AcReal3 buffer      = value;
     MPI_Bcast(&buffer, 3, AC_MPI_TYPE, root_proc, MPI_COMM_WORLD);
 
-    acDeviceLoadVectorUniform(grid.device, stream, param, buffer);
-    return AC_SUCCESS;
+    return acDeviceLoadVectorUniform(grid.device, stream, param, buffer);
 }
 
-// TODO: do with packed data
+/*
+// Not tested
+AcResult
+acGridLoadIntUniform(const Stream stream, const AcIntParam param, const int value)
+{
+    ERRCHK(grid.initialized);
+    acGridSynchronizeStream(stream);
+
+    const int root_proc = 0;
+    int buffer          = value;
+    MPI_Bcast(&buffer, 1, MPI_INT, root_proc, MPI_COMM_WORLD);
+
+    return acDeviceLoadIntUniform(grid.device, stream, param, buffer);
+}
+
+AcResult
+acGridLoadInt3Uniform(const Stream stream, const Int3Param param, const int3 value)
+{
+    ERRCHK(grid.initialized);
+    acGridSynchronizeStream(stream);
+
+    const int root_proc = 0;
+    int3 buffer         = value;
+    MPI_Bcast(&buffer, 3, MPI_INT, root_proc, MPI_COMM_WORLD);
+
+    return acDeviceLoadInt3Uniform(grid.device, stream, param, buffer);
+}*/
+
 AcResult
 acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
 {

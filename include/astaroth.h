@@ -786,6 +786,22 @@ AcResult acDeviceLoadInt3Uniform(const Device device, const Stream stream, const
                                  const int3 value);
 
 /** */
+AcResult acDeviceStoreScalarUniform(const Device device, const Stream stream,
+                                    const AcRealParam param, AcReal* value);
+
+/** */
+AcResult acDeviceStoreVectorUniform(const Device device, const Stream stream,
+                                    const AcReal3Param param, AcReal3* value);
+
+/** */
+AcResult acDeviceStoreIntUniform(const Device device, const Stream stream, const AcIntParam param,
+                                 int* value);
+
+/** */
+AcResult acDeviceStoreInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
+                                  int3* value);
+
+/** */
 /*
 AcResult acDeviceLoadScalarArray(const Device device, const Stream stream,
                                  const ScalarArrayHandle handle, const size_t start,

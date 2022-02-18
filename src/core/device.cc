@@ -128,6 +128,38 @@ acDeviceLoadInt3Uniform(const Device device, const Stream stream, const AcInt3Pa
 }
 
 AcResult
+acDeviceStoreScalarUniform(const Device device, const Stream stream, const AcRealParam param,
+                           AcReal* value)
+{
+    cudaSetDevice(device->id);
+    return acStoreRealUniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceStoreVectorUniform(const Device device, const Stream stream, const AcReal3Param param,
+                           AcReal3* value)
+{
+    cudaSetDevice(device->id);
+    return acStoreReal3Uniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceStoreIntUniform(const Device device, const Stream stream, const AcIntParam param,
+                        int* value)
+{
+    cudaSetDevice(device->id);
+    return acStoreIntUniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceStoreInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
+                         int3* value)
+{
+    cudaSetDevice(device->id);
+    return acStoreInt3Uniform(device->streams[stream], param, value);
+}
+
+AcResult
 acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
 {
     cudaSetDevice(device->id);
