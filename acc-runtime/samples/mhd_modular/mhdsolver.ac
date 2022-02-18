@@ -16,9 +16,9 @@ hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
 hostdefine LUPWD (1)
 #define LUPWD (1)
-hostdefine LSINK (0) 
-hostdefine LBFIELD (0) 
-hostdefine LSHOCK (0) 
+hostdefine LSINK (0)
+hostdefine LBFIELD (0)
+hostdefine LSHOCK (0)
 hostdefine AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
 hostdefine R_PI ((Scalar)M_PI)
 
@@ -296,7 +296,7 @@ Stencil der6z_upwd {
     [0][0][0]  = -AC_inv_dsz * DER6UPWD_0,
     [1][0][0]  =  AC_inv_dsz * DER6UPWD_1,
     [2][0][0]  = -AC_inv_dsz * DER6UPWD_2,
-    [3][0][0]  =  AC_inv_dsz * DER6UPWD_3  
+    [3][0][0]  =  AC_inv_dsz * DER6UPWD_3
 }
 
 vecvalue(v) {
@@ -399,14 +399,14 @@ Device Vector
 forcing()
 {
     xx = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
-               (globalVertexIdx.y - AC_ny_min) * AC_dsy, 
-               (globalVertexIdx.z - AC_nz_min) * AC_dsz) 
+               (globalVertexIdx.y - AC_ny_min) * AC_dsy,
+               (globalVertexIdx.z - AC_nz_min) * AC_dsz)
     cs  = sqrt(AC_cs2_sound)
 
     // Placeholders until determined properly
-    k_force   = real3(AC_k_forcex,   AC_k_forcey,   AC_k_forcez  ) 
-    ff_re     = real3(AC_ff_hel_rex, AC_ff_hel_rey, AC_ff_hel_rez) 
-    ff_im     = real3(AC_ff_hel_imx, AC_ff_hel_imy, AC_ff_hel_imz) 
+    k_force   = real3(AC_k_forcex,   AC_k_forcey,   AC_k_forcez  )
+    ff_re     = real3(AC_ff_hel_rex, AC_ff_hel_rey, AC_ff_hel_rez)
+    ff_im     = real3(AC_ff_hel_imx, AC_ff_hel_imy, AC_ff_hel_imz)
 
     // Determine that forcing funtion type at this point.
     force = helical_forcing(AC_forcing_magnitude, k_force, xx, ff_re,
@@ -414,15 +414,15 @@ forcing()
 
     // Scaling N = magnitude*cs*sqrt(k*cs/dt)  * dt
     NN = cs * AC_forcing_magnitude * sqrt(AC_kaver * cs)
-    // sqrt(dt) because 1/sqrt(dt)*dt = sqrt(dt) 
+    // sqrt(dt) because 1/sqrt(dt)*dt = sqrt(dt)
     force.x = sqrt(AC_dt) * NN * force.x
     force.y = sqrt(AC_dt) * NN * force.y
     force.z = sqrt(AC_dt) * NN * force.z
     // Workaround for matching the units at solve()
     force.x = force.x * AC_dt
     force.y = force.y * AC_dt
-    force.z = force.z * AC_dt 
- 
+    force.z = force.z * AC_dt
+
     if is_valid(force) {
         return force
     }
@@ -437,7 +437,7 @@ continuity() {
     return -dot(vecvalue(UU), gradient(VTXBUF_LNRHO)) - divergence(UU)
 #if LUPWD
            + dot(vecvalue_abs(UU), gradient6_upwd(VTXBUF_LNRHO))
-#endif     
+#endif
 
 }
 
@@ -518,8 +518,8 @@ Kernel solve() {
     ind = induction()
 
 #if LFORCING
-    //Add the forcing component to the velocity field at the last integration step. 
-    //TODO check that forcing() is in units U/T. 
+    //Add the forcing component to the velocity field at the last integration step.
+    //TODO check that forcing() is in units U/T.
     if AC_step_number == 2 {
         mom = mom + forcing();
     }
