@@ -37,20 +37,51 @@ main(int argc, char** argv)
     atexit(&cleanup);
 
     if (argc == 2) {
-        // Preprocess
-        const char* in = "user_kernels.ac.preprocessed";
 
-        const size_t cmdlen = 4096;
-        char cmd[cmdlen];
-        snprintf(cmd, cmdlen, "gcc -x c -E %s > %s", argv[1], in);
-        const int retval = system(cmd);
-        if (retval == -1) {
-            fprintf(stderr, "Catastrophic error: preprocessing failed.\n");
-            assert(retval != -1);
+        const char* stage0 = argv[1];
+        const char* stage1 = "user_kernels.ac.preprocessed0";
+        const char* stage2 = "user_kernels.ac.preprocessed1";
+        // Preprocess hostdefines
+        {
+          FILE* in = fopen(stage0, "r");
+          assert(in);
+          FILE* out = fopen(stage1, "w");
+          assert(out);
+
+          const size_t  len = 4096;
+          char buf[len];
+          while (fgets(buf, len, in)) {
+            fprintf(out, "%s", buf);
+
+            char* line = buf;
+            while (strlen(line) > 0 && line[0] == ' ')
+              ++line;
+
+            if (!strncmp(line, "hostdefine", strlen("hostdefine"))) {
+              while (strlen(line) > 0 && line[0] != ' ')
+                ++line;
+
+                fprintf(out, "#define%s", line);
+            }
+          }
+          fclose(in);
+          fclose(out);
+        }
+
+        {
+          // Preprocess everything else
+          const size_t cmdlen = 4096;
+          char cmd[cmdlen];
+          snprintf(cmd, cmdlen, "gcc -x c -E %s > %s", stage1, stage2);
+          const int retval = system(cmd);
+          if (retval == -1) {
+              fprintf(stderr, "Catastrophic error: preprocessing failed.\n");
+              assert(retval != -1);
+          }
         }
 
         // Generate code
-        yyin = fopen(in, "r");
+        yyin = fopen(stage2, "r");
         if (!yyin)
             return EXIT_FAILURE;
 
@@ -411,7 +442,7 @@ function_definition: declaration function_body {
                             astnode_set_postfix(";", $$);
                             $$->type |= NODE_DFUNCTION;
                             //set_identifier_type(NODE_DFUNCTION_ID, fn_identifier);
-                            
+
                             // Pass device function parameters by const reference
                             if ($$->rhs->lhs) {
                                 set_identifier_prefix("const ", $$->rhs->lhs);
