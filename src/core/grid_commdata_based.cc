@@ -519,7 +519,7 @@ acGridLoadScalarUniform(const Stream stream, const AcRealParam param, const AcRe
 
     const int root_proc = 0;
     AcReal buffer       = value;
-    MPI_Bcast(&buffer, 1, AC_MPI_TYPE, root_proc, MPI_COMM_WORLD);
+    MPI_Bcast(&buffer, 1, AC_REAL_MPI_TYPE, root_proc, MPI_COMM_WORLD);
 
     acDeviceLoadScalarUniform(grid.device, stream, param, buffer);
     return AC_SUCCESS;
@@ -533,7 +533,7 @@ acGridLoadVectorUniform(const Stream stream, const AcReal3Param param, const AcR
 
     const int root_proc = 0;
     AcReal3 buffer      = value;
-    MPI_Bcast(&buffer, 3, AC_MPI_TYPE, root_proc, MPI_COMM_WORLD);
+    MPI_Bcast(&buffer, 3, AC_REAL_MPI_TYPE, root_proc, MPI_COMM_WORLD);
 
     acDeviceLoadVectorUniform(grid.device, stream, param, buffer);
     return AC_SUCCESS;
@@ -593,7 +593,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     const int dst_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
                     // Recv
                     MPI_Status status;
-                    MPI_Recv(&grid.submesh.vertex_buffer[vtxbuf][dst_idx], count, AC_MPI_TYPE, 0, 0,
+                    MPI_Recv(&grid.submesh.vertex_buffer[vtxbuf][dst_idx], count, AC_REAL_MPI_TYPE, 0, 0,
                              MPI_COMM_WORLD, &status);
                 }
                 else {
@@ -605,7 +605,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                                                                  host_mesh.info);
 
                         // Send
-                        MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_MPI_TYPE,
+                        MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
                                  tgt_pid, 0, MPI_COMM_WORLD);
                     }
                 }
@@ -681,7 +681,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                 if (pid != 0) {
                     // Send
                     const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
-                    MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_MPI_TYPE, 0, 0,
+                    MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE, 0, 0,
                              MPI_COMM_WORLD);
                 }
                 else {
@@ -694,7 +694,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 
                         // Recv
                         MPI_Status status;
-                        MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx], count, AC_MPI_TYPE,
+                        MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx], count, AC_REAL_MPI_TYPE,
                                  tgt_pid, 0, MPI_COMM_WORLD, &status);
                     }
                 }
@@ -1088,7 +1088,7 @@ reduceScal(const AcReal local_result, const ReductionType rtype, AcReal* result)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     AcReal mpi_res;
-    MPI_Reduce(&local_result, &mpi_res, 1, AC_MPI_TYPE, op, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&local_result, &mpi_res, 1, AC_REAL_MPI_TYPE, op, 0, MPI_COMM_WORLD);
 
     if (rank == 0) {
         if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP) {

@@ -342,21 +342,21 @@ calc_timestep(const AcMeshInfo info)
     // first, as it is not too complicated anyway.
 
     // MPI_Bcast to share uumax with all ranks
-    MPI_Bcast(&uumax, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&uumax, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
 
 #if LBFIELD
     acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
                         &vAmax);
 
     // MPI_Bcast to share vAmax with all ranks
-    MPI_Bcast(&vAmax, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&vAmax, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
 #endif
 
 #if LSHOCK
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_SHOCK, &shock_max);
 
     // MPI_Bcast to share vAmax with all ranks
-    MPI_Bcast(&shock_max, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&shock_max, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
 #endif
 
     const long double cdt  = info.real_params[AC_cdt];
