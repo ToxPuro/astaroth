@@ -132,7 +132,7 @@ Kernel func3() {
 }
 ```
 
-> Note: Function parameters are **passed by constant reference**
+> Note: Function parameters are **passed by constant reference**. Therefore input parameters **cannot be modified** and one may need to allocate temporary storage for intermediate values when performing more complex calculations.
 
 > Note: Overloading is not allowed, all function identifiers must be unique
 
@@ -196,6 +196,7 @@ dim3 threadIdx       // Current thread index within a thread block (see CUDA doc
 dim3 blockIdx        // Current thread block index (see CUDA docs)
 dim3 vertexIdx       // The current vertex index within a single device
 dim3 globalVertexIdx // The current vertex index across multiple devices
+dim3 globalGridN     // The total size of the computational domain (incl. all subdomains of all processes)
 
 // Functions
 write(Field, real) // Writes a real value to the output field at 'vertexIdx'
@@ -215,6 +216,6 @@ See also the functions `acDeviceLoadStencil`, `acDeviceStoreStencil`, `acGridLoa
 
 ## Additional physics-specific API functions
 
-To enable additional API functions in the Astaroth Core library for integration (`acIntegrate` function family) and MHD-specific tasks (automated testing, MHD samples), one must set `hostdefine AC_INTEGRATION_ENABLED (1)` in the DSL file.
+To enable additional API functions in the Astaroth Core library for integration (`acIntegrate` function family) and MHD-specific tasks (automated testing, MHD samples), one must set `hostdefine AC_INTEGRATION_ENABLED (1)` in the DSL file. Note that if used in the DSL code, the hostdefine must not define anything that is not visible at compile-time. For example, `hostdefine R_PI (M_PI)`, where `M_PI` is defined is some host header, `M_PI` will not be visible in the DSL code and will result in a compilation error. Additionally, code such as `#if M_PI` will be always false in the DSL source if `M_PI` is not visible in the DSL file.
 
 > Note: The extended API depends on several hardcoded fields and device constants. It is not recommended to enable it unless you work on the MHD sample case (`acc-runtime/samples/mhd`) or its derivatives.
