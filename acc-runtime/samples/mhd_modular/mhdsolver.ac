@@ -13,13 +13,16 @@ hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
 hostdefine LENTROPY (1)
 hostdefine LTEMPERATURE (0)
-hostdefine LFORCING (0)
+hostdefine LFORCING (1)
 hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (0)
 hostdefine LSHOCK (0)
 hostdefine AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
 hostdefine R_PI ((Scalar)M_PI)
+
+//workaround for now 
+#define TEMPORARY_PI (3.14159265358979323846)
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ,VTXBUF_ENTROPY
 
@@ -374,16 +377,21 @@ contract(mat) {
 #if LFORCING
 // The Pencil Code forcing_hel_noshear(), manual Eq. 222, inspired forcing function with adjustable
 // helicity
-helical_forcing(magnitude, k_force, xx, ff_re, ff_im, phi)
+helical_forcing(k_force, xx, ff_re, ff_im, phi)
 {
-    xx.x = xx.x * (2.0 * M_PI / (AC_dsx * globalGridN.x))
-    xx.y = xx.y * (2.0 * M_PI / (AC_dsy * globalGridN.y))
-    xx.z = xx.z * (2.0 * M_PI / (AC_dsz * globalGridN.z))
+    //xx.x = xx.x * (2.0 * TEMPORARY_PI / (AC_dsx * globalGridN.x))
+    //xx.y = xx.y * (2.0 * TEMPORARY_PI / (AC_dsy * globalGridN.y))
+    //xx.z = xx.z * (2.0 * TEMPORARY_PI / (AC_dsz * globalGridN.z))
+    //WORKAROUND because globalGridN is missing in Astaroth 3
+    yy = real3(0,0,0)
+    yy.x = xx.x * (2.0 * TEMPORARY_PI / (AC_dsx * AC_nx))
+    yy.y = xx.y * (2.0 * TEMPORARY_PI / (AC_dsy * AC_ny))
+    yy.z = xx.z * (2.0 * TEMPORARY_PI / (AC_dsz * AC_nz))
 
     cos_phi     = cos(phi)
     sin_phi     = sin(phi)
-    cos_k_dot_x = cos(dot(k_force, xx))
-    sin_k_dot_x = sin(dot(k_force, xx))
+    cos_k_dot_x = cos(dot(k_force, yy))
+    sin_k_dot_x = sin(dot(k_force, yy))
     real_comp_phase = cos_k_dot_x * cos_phi - sin_k_dot_x * sin_phi
     imag_comp_phase = cos_k_dot_x * sin_phi + sin_k_dot_x * cos_phi
 
@@ -394,7 +402,6 @@ helical_forcing(magnitude, k_force, xx, ff_re, ff_im, phi)
     return force
 }
 
-Device Vector
 forcing()
 {
     xx = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
@@ -408,8 +415,7 @@ forcing()
     ff_im     = real3(AC_ff_hel_imx, AC_ff_hel_imy, AC_ff_hel_imz)
 
     // Determine that forcing funtion type at this point.
-    force = helical_forcing(AC_forcing_magnitude, k_force, xx, ff_re,
-                            ff_im, AC_forcing_phase)
+    force = helical_forcing(k_force, xx, ff_re, ff_im, AC_forcing_phase)
 
     // Scaling N = magnitude*cs*sqrt(k*cs/dt)  * dt
     NN = cs * AC_forcing_magnitude * sqrt(AC_kaver * cs)
@@ -422,12 +428,7 @@ forcing()
     force.y = force.y * AC_dt
     force.z = force.z * AC_dt
 
-    if is_valid(force) {
-        return force
-    }
-    else {
-        return real3(0, 0, 0);
-    }
+    return force
 }
 #endif // LFORCING
 
@@ -520,7 +521,7 @@ Kernel solve() {
     //Add the forcing component to the velocity field at the last integration step.
     //TODO check that forcing() is in units U/T.
     if AC_step_number == 2 {
-        mom = mom + forcing();
+        mom = mom + forcing()
     }
 #endif
 
