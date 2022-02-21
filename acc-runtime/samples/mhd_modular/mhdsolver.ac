@@ -19,10 +19,7 @@ hostdefine LSINK (0)
 hostdefine LBFIELD (0)
 hostdefine LSHOCK (0)
 hostdefine AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
-hostdefine R_PI ((Scalar)M_PI)
-
-//workaround for now 
-#define TEMPORARY_PI (3.14159265358979323846)
+hostdefine R_PI (AC_REAL_PI)
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ,VTXBUF_ENTROPY
 
@@ -379,14 +376,14 @@ contract(mat) {
 // helicity
 helical_forcing(k_force, xx, ff_re, ff_im, phi)
 {
-    //xx.x = xx.x * (2.0 * TEMPORARY_PI / (AC_dsx * globalGridN.x))
-    //xx.y = xx.y * (2.0 * TEMPORARY_PI / (AC_dsy * globalGridN.y))
-    //xx.z = xx.z * (2.0 * TEMPORARY_PI / (AC_dsz * globalGridN.z))
+    //xx.x = xx.x * (2.0 * R_PI / (AC_dsx * globalGridN.x))
+    //xx.y = xx.y * (2.0 * R_PI / (AC_dsy * globalGridN.y))
+    //xx.z = xx.z * (2.0 * R_PI / (AC_dsz * globalGridN.z))
     //WORKAROUND because globalGridN is missing in Astaroth 3
     yy = real3(0,0,0)
-    yy.x = xx.x * (2.0 * TEMPORARY_PI / (AC_dsx * AC_nx))
-    yy.y = xx.y * (2.0 * TEMPORARY_PI / (AC_dsy * AC_ny))
-    yy.z = xx.z * (2.0 * TEMPORARY_PI / (AC_dsz * AC_nz))
+    yy.x = xx.x * (2.0 * R_PI / (AC_dsx * AC_nx))
+    yy.y = xx.y * (2.0 * R_PI / (AC_dsy * AC_ny))
+    yy.z = xx.z * (2.0 * R_PI / (AC_dsz * AC_nz))
 
     cos_phi     = cos(phi)
     sin_phi     = sin(phi)
