@@ -13,7 +13,9 @@ L [a-zA-Z_]
 %%
 
 "int"                   { return INT; } /* Type specifiers */
+"int3"                  { return INT3; }
 "real"                  { return REAL; }
+"real3"                 { return REAL3; }
 "Matrix"                { return MATRIX; }
 "Field"                 { return FIELD; }
 "Stencil"               { return STENCIL; }
