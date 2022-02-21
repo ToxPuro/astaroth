@@ -430,6 +430,8 @@ function_definition: declaration function_body {
                                 "        d_multigpu_offset.z + vertexIdx.z,\n"
                                 "    };\n"
                                 "    (void)globalVertexIdx; // Silence unused warning\n"
+                                "    const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];"
+                                "    (void)globalGridN; // Silence unused warning\n"
                                 "    const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);\n"
                                 "\n"
                                 "    if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z)\n"

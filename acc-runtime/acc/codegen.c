@@ -91,6 +91,8 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "blockIdx");        // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vertexIdx");       // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "globalVertexIdx"); // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "globalGridN");     // TODO REMOVE
+
   // add_symbol(NODE_UNKNOWN, NULL, NULL, "true");
   // add_symbol(NODE_UNKNOWN, NULL, NULL, "false");
 
