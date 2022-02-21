@@ -199,11 +199,27 @@ dim3 globalVertexIdx // The current vertex index across multiple devices
 dim3 globalGridN     // The total size of the computational domain (incl. all subdomains of all processes)
 
 // Functions
-write(Field, real) // Writes a real value to the output field at 'vertexIdx'
+void write(Field, real)  // Writes a real value to the output field at 'vertexIdx'
+void print("int: %d", 0) // Printing. Uses the same syntax as printf() in C
+real dot(real3, real3)   // Dot product
+real3 cross(real3 a, real3 b) // Right-hand-side cross product a x b
+size_t len(arr) // Returns the length of an array `arr`
+
+// Trigonometric functions
+exp
+sin
+cos
+sqrt
+fabs
 
 // Advanced functions (should avoid, dangerous)
 real previous(Field) // Returns the value in the output buffer. Read after write() results in undefined behaviour.
+
+// Constants
+real AC_REAL_PI // Value of pi using the same precision as `real`
 ```
+
+> See astaroth/acc-runtime/acc/codegen.c, function `symboltable_reset` for an up-to-date list of all built-in symbols.
 
 # Interaction with the Astaroth Core and Utils libraries
 
