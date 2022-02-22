@@ -942,6 +942,7 @@ SpecialMHDBoundaryConditionTask::populate_boundary_region()
     // TODO: could assign a separate stream to each launch of symmetric boundconds
     //       currently they are on a single stream
     switch (boundcond) {
+#if LENTROPY
     case SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE: {
         acKernelEntropyConstantTemperatureBoundconds(stream, output_region.id, boundary_normal,
                                                      boundary_dims, vba);
@@ -968,6 +969,7 @@ SpecialMHDBoundaryConditionTask::populate_boundary_region()
                                                                       input_parameters[1]);
         break;
     }
+#endif
 
     default:
         ERROR("SpecialMHDBoundaryCondition not implemented yet.");

@@ -266,6 +266,7 @@ acKernelPrescribedDerivativeBoundconds(const cudaStream_t stream, const int3 reg
  *                      *
  ************************/
 
+#if LENTROPY
 static __global__ void
 kernel_entropy_const_temperature_boundconds(const int3 region_id, const int3 normal,
                                             const int3 dims, VertexBufferArray vba)
@@ -690,6 +691,7 @@ acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(
         bpg, tpb, 0, stream>>>(region_id, normal, dims, vba, hcond_param, F_param);
     return AC_SUCCESS;
 }
+#endif
 
 #else
 AcResult
