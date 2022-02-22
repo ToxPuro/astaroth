@@ -95,24 +95,101 @@ acDevicePrintInfo(const Device device)
     return AC_SUCCESS;
 }
 
-/*
 AcResult
-acDeviceAutoOptimize(const Device device)
+acDeviceLoadScalarUniform(const Device device, const Stream stream, const AcRealParam param,
+                          const AcReal value)
 {
     cudaSetDevice(device->id);
-    const int3 start = (int3){
-        device->local_config.int_params[AC_nx_min],
-        device->local_config.int_params[AC_ny_min],
-        device->local_config.int_params[AC_nz_min],
-    };
-    const int3 end = (int3){
-        device->local_config.int_params[AC_nx_max],
-        device->local_config.int_params[AC_ny_max],
-        device->local_config.int_params[AC_nz_max],
-    };
-    return acKernelAutoOptimizeIntegration(start, end, device->vba);
+    return acLoadRealUniform(device->streams[stream], param, value);
 }
-*/
+
+AcResult
+acDeviceLoadVectorUniform(const Device device, const Stream stream, const AcReal3Param param,
+                          const AcReal3 value)
+{
+    cudaSetDevice(device->id);
+    return acLoadReal3Uniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceLoadIntUniform(const Device device, const Stream stream, const AcIntParam param,
+                       const int value)
+{
+    cudaSetDevice(device->id);
+    return acLoadIntUniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceLoadInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
+                        const int3 value)
+{
+    cudaSetDevice(device->id);
+    return acLoadInt3Uniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceStoreScalarUniform(const Device device, const Stream stream, const AcRealParam param,
+                           AcReal* value)
+{
+    cudaSetDevice(device->id);
+    return acStoreRealUniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceStoreVectorUniform(const Device device, const Stream stream, const AcReal3Param param,
+                           AcReal3* value)
+{
+    cudaSetDevice(device->id);
+    return acStoreReal3Uniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceStoreIntUniform(const Device device, const Stream stream, const AcIntParam param,
+                        int* value)
+{
+    cudaSetDevice(device->id);
+    return acStoreIntUniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceStoreInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
+                         int3* value)
+{
+    cudaSetDevice(device->id);
+    return acStoreInt3Uniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
+{
+    cudaSetDevice(device->id);
+
+    AcMeshInfo device_config = config;
+    acHostUpdateBuiltinParams(&device_config);
+
+    ERRCHK_ALWAYS(device_config.int_params[AC_nx] == device->local_config.int_params[AC_nx]);
+    ERRCHK_ALWAYS(device_config.int_params[AC_ny] == device->local_config.int_params[AC_ny]);
+    ERRCHK_ALWAYS(device_config.int_params[AC_nz] == device->local_config.int_params[AC_nz]);
+    ERRCHK_ALWAYS(device_config.int_params[AC_multigpu_offset] ==
+                  device->local_config.int_params[AC_multigpu_offset]);
+
+    for (int i = 0; i < NUM_INT_PARAMS; ++i)
+        acDeviceLoadIntUniform(device, STREAM_DEFAULT, (AcIntParam)i, device_config.int_params[i]);
+
+    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
+        acDeviceLoadInt3Uniform(device, STREAM_DEFAULT, (AcInt3Param)i,
+                                device_config.int3_params[i]);
+
+    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
+        acDeviceLoadScalarUniform(device, STREAM_DEFAULT, (AcRealParam)i,
+                                  device_config.real_params[i]);
+
+    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
+        acDeviceLoadVectorUniform(device, STREAM_DEFAULT, (AcReal3Param)i,
+                                  device_config.real3_params[i]);
+
+    return AC_SUCCESS;
+}
 
 AcResult
 acDeviceSynchronizeStream(const Device device, const Stream stream)

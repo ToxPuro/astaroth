@@ -218,8 +218,7 @@ acGridLoadScalarUniform(const Stream stream, const AcRealParam param, const AcRe
     AcReal buffer       = value;
     MPI_Bcast(&buffer, 1, AC_REAL_MPI_TYPE, root_proc, MPI_COMM_WORLD);
 
-    acDeviceLoadScalarUniform(grid.device, stream, param, buffer);
-    return AC_SUCCESS;
+    return acDeviceLoadScalarUniform(grid.device, stream, param, buffer);
 }
 
 AcResult
@@ -232,11 +231,35 @@ acGridLoadVectorUniform(const Stream stream, const AcReal3Param param, const AcR
     AcReal3 buffer      = value;
     MPI_Bcast(&buffer, 3, AC_REAL_MPI_TYPE, root_proc, MPI_COMM_WORLD);
 
-    acDeviceLoadVectorUniform(grid.device, stream, param, buffer);
-    return AC_SUCCESS;
+    return acDeviceLoadVectorUniform(grid.device, stream, param, buffer);
 }
 
-// TODO: do with packed data
+AcResult
+acGridLoadIntUniform(const Stream stream, const AcIntParam param, const int value)
+{
+    ERRCHK(grid.initialized);
+    acGridSynchronizeStream(stream);
+
+    const int root_proc = 0;
+    int buffer          = value;
+    MPI_Bcast(&buffer, 1, MPI_INT, root_proc, MPI_COMM_WORLD);
+
+    return acDeviceLoadIntUniform(grid.device, stream, param, buffer);
+}
+
+AcResult
+acGridLoadInt3Uniform(const Stream stream, const AcInt3Param param, const int3 value)
+{
+    ERRCHK(grid.initialized);
+    acGridSynchronizeStream(stream);
+
+    const int root_proc = 0;
+    int3 buffer         = value;
+    MPI_Bcast(&buffer, 3, MPI_INT, root_proc, MPI_COMM_WORLD);
+
+    return acDeviceLoadInt3Uniform(grid.device, stream, param, buffer);
+}
+
 AcResult
 acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
 {
@@ -290,8 +313,8 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     const int dst_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
                     // Recv
                     MPI_Status status;
-                    MPI_Recv(&grid.submesh.vertex_buffer[vtxbuf][dst_idx], count, AC_REAL_MPI_TYPE, 0, 0,
-                             MPI_COMM_WORLD, &status);
+                    MPI_Recv(&grid.submesh.vertex_buffer[vtxbuf][dst_idx], count, AC_REAL_MPI_TYPE,
+                             0, 0, MPI_COMM_WORLD, &status);
                 }
                 else {
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
@@ -378,8 +401,8 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                 if (pid != 0) {
                     // Send
                     const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
-                    MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE, 0, 0,
-                             MPI_COMM_WORLD);
+                    MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
+                             0, 0, MPI_COMM_WORLD);
                 }
                 else {
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
@@ -391,8 +414,8 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 
                         // Recv
                         MPI_Status status;
-                        MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx], count, AC_REAL_MPI_TYPE,
-                                 tgt_pid, 0, MPI_COMM_WORLD, &status);
+                        MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx], count,
+                                 AC_REAL_MPI_TYPE, tgt_pid, 0, MPI_COMM_WORLD, &status);
                     }
                 }
             }
@@ -1057,10 +1080,12 @@ acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const 
 
     const size_t nelems = nn_sub.x * nn_sub.y * nn_sub.z;
     if (type == ACCESS_READ) {
-        ERRCHK_ALWAYS(MPI_File_read_all(file, arr, nelems, AC_REAL_MPI_TYPE, &status) == MPI_SUCCESS);
+        ERRCHK_ALWAYS(MPI_File_read_all(file, arr, nelems, AC_REAL_MPI_TYPE, &status) ==
+                      MPI_SUCCESS);
     }
     else {
-        ERRCHK_ALWAYS(MPI_File_write_all(file, arr, nelems, AC_REAL_MPI_TYPE, &status) == MPI_SUCCESS);
+        ERRCHK_ALWAYS(MPI_File_write_all(file, arr, nelems, AC_REAL_MPI_TYPE, &status) ==
+                      MPI_SUCCESS);
     }
 
     ERRCHK_ALWAYS(MPI_File_close(&file) == MPI_SUCCESS);

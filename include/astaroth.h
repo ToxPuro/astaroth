@@ -433,6 +433,12 @@ AcResult acGridLoadVectorUniform(const Stream stream, const AcReal3Param param,
                                  const AcReal3 value);
 
 /** */
+AcResult acGridLoadIntUniform(const Stream stream, const AcIntParam param, const int value);
+
+/** */
+AcResult acGridLoadInt3Uniform(const Stream stream, const AcInt3Param param, const int3 value);
+
+/** */
 AcResult acGridLoadMesh(const Stream stream, const AcMesh host_mesh);
 
 /** */
@@ -784,6 +790,22 @@ AcResult acDeviceLoadIntUniform(const Device device, const Stream stream, const 
 /** */
 AcResult acDeviceLoadInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
                                  const int3 value);
+
+/** */
+AcResult acDeviceStoreScalarUniform(const Device device, const Stream stream,
+                                    const AcRealParam param, AcReal* value);
+
+/** */
+AcResult acDeviceStoreVectorUniform(const Device device, const Stream stream,
+                                    const AcReal3Param param, AcReal3* value);
+
+/** */
+AcResult acDeviceStoreIntUniform(const Device device, const Stream stream, const AcIntParam param,
+                                 int* value);
+
+/** */
+AcResult acDeviceStoreInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
+                                  int3* value);
 
 /** */
 /*
