@@ -10,18 +10,22 @@ real AC_lnrho0, AC_mu0, AC_lnT0
 hostdefine AC_INTEGRATION_ENABLED (1) // Enables acIntegrate() and other non-generic library functions
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
-hostdefine LMAGNETIC (1)
+hostdefine LMAGNETIC (0)
 hostdefine LENTROPY (0)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (1)
 hostdefine LUPWD (1)
 hostdefine LSINK (0)
-hostdefine LBFIELD (1)
+hostdefine LBFIELD (0)
 hostdefine LSHOCK (0)
 hostdefine AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
 hostdefine R_PI (AC_REAL_PI)
 
-Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
+Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
+
+#if LMAGNETIC
+VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
+#endif
 
 #if LENTROPY 
 Field VTXBUF_ENTROPY
@@ -144,7 +148,10 @@ real AC_cs2_sound
 //
 
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
+
+#if LMAGNETIC
 #define AA Field3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
+#endif
 
 #define DER1_3 (1. / 60.)
 #define DER1_2 (-3. / 20.)
@@ -342,9 +349,11 @@ veclaplace(v) {
     return real3(laplace(v.x), laplace(v.y), laplace(v.z))
 }
 
+#if LMAGNETIC
 induction() {
     return cross(vecvalue(UU), curl(AA)) + AC_eta * veclaplace(AA)
 }
+#endif
 
 stress_tensor(v) {
     Matrix S
@@ -451,9 +460,11 @@ momentum() {
     cs2 = cs2_sound
 #endif
 
+#if LMAGNETIC
     j = (1. / AC_mu0) * (gradient_of_divergence(AA) - veclaplace(AA))
     B = curl(AA)
     inv_rho = 1. / exp(value(VTXBUF_LNRHO))
+#endif
 
     mom = - gradients(UU) * vecvalue(UU)
 #if LENTROPY 
@@ -461,7 +472,9 @@ momentum() {
 #else
           - cs2 * gradient(VTXBUF_LNRHO)
 #endif
+#if LMAGNETIC
           + inv_rho * cross(j, B)
+#endif
           + AC_nu_visc * (veclaplace(UU) + (1. / 3.) * gradient_of_divergence(UU)
                        + 2. * S * gradient(VTXBUF_LNRHO))
           + AC_zeta * gradient_of_divergence(UU)
@@ -493,7 +506,11 @@ heat_conduction() {
 entropy() {
     S = stress_tensor(UU)
     inv_pT = 1. / (exp(value(VTXBUF_LNRHO)) * exp(lnT()))
+#if LMAGNETIC
     j = (1. / AC_mu0) * (gradient_of_divergence(AA) - veclaplace(AA))
+#else
+    j = real3(0,0,0)
+#endif
     RHS = (0) - (0) + AC_eta * AC_mu0 * dot(j, j) +
                        2. * exp(value(VTXBUF_LNRHO)) * AC_nu_visc * contract(S) +
                        AC_zeta * exp(value(VTXBUF_LNRHO)) * divergence(UU) * divergence(UU)
@@ -529,7 +546,6 @@ Kernel solve() {
 #endif 
 
     mom = momentum()
-    ind = induction()
 
 #if LFORCING
     //Add the forcing component to the velocity field at the last integration step.
@@ -543,9 +559,12 @@ Kernel solve() {
     write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
     write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
 
+#if LMAGNETIC
+    ind = induction()
     write(VTXBUF_AX, rk3(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x))
     write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
     write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
+#endif
 
 #if LBFIELD
     if AC_step_number == 2 {
