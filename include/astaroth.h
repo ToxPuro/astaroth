@@ -433,6 +433,12 @@ AcResult acGridLoadVectorUniform(const Stream stream, const AcReal3Param param,
                                  const AcReal3 value);
 
 /** */
+AcResult acGridLoadIntUniform(const Stream stream, const AcIntParam param, const int value);
+
+/** */
+AcResult acGridLoadInt3Uniform(const Stream stream, const AcInt3Param param, const int3 value);
+
+/** */
 AcResult acGridLoadMesh(const Stream stream, const AcMesh host_mesh);
 
 /** */
