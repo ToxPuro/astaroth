@@ -16,12 +16,16 @@ hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (1)
 hostdefine LUPWD (1)
 hostdefine LSINK (0)
-hostdefine LBFIELD (0)
+hostdefine LBFIELD (1)
 hostdefine LSHOCK (0)
 hostdefine AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
 hostdefine R_PI (AC_REAL_PI)
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ,VTXBUF_ENTROPY
+
+#if LBFIELD
+Field BFIELDX, BFIELDY, BFIELDZ
+#endif
 
 // Additional params needed by standalone & standalone_mpi
 // Int params
@@ -525,53 +529,64 @@ Kernel solve() {
     write(VTXBUF_AX, rk3(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x))
     write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
     write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
-}
 
-rk3_intermediate(w, roc) {
-    real alpha = 0., -5./9., -153. / 128.
-
-    // return alpha[AC_step_number] * w + roc * AC_dt
-
-    // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below
-    if AC_step_number > 0 {
-        return alpha[AC_step_number] * w + roc * AC_dt
-    } else {
-        return roc * AC_dt
+#if LBFIELD
+    if AC_step_number == 2 {
+        bfield = curl(AA) 
+        write(BFIELDX, bfield.x)
+        write(BFIELDY, bfield.y)
+        write(BFIELDZ, bfield.z)
     }
+#endif
+
 }
 
-rk3_final(f, w) {
-    real beta = 1. / 3., 15./ 16., 8. / 15.
-    return f + beta[AC_step_number] * w
-}
-
-
-Kernel alt_solve_intermediate() {
-    write(VTXBUF_LNRHO, rk3_intermediate(previous(VTXBUF_LNRHO), continuity()))
-    write(VTXBUF_ENTROPY, rk3_intermediate(previous(VTXBUF_ENTROPY), entropy()))
-
-    mom = momentum()
-    ind = induction()
-
-    write(VTXBUF_UUX, rk3_intermediate(previous(VTXBUF_UUX), mom.x))
-    write(VTXBUF_UUY, rk3_intermediate(previous(VTXBUF_UUY), mom.y))
-    write(VTXBUF_UUZ, rk3_intermediate(previous(VTXBUF_UUZ), mom.z))
-
-    write(VTXBUF_AX, rk3_intermediate(previous(VTXBUF_AX), ind.x))
-    write(VTXBUF_AY, rk3_intermediate(previous(VTXBUF_AY), ind.y))
-    write(VTXBUF_AZ, rk3_intermediate(previous(VTXBUF_AZ), ind.z))
-}
-
-Kernel alt_solve_final() {
-    write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO)))
-    write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY)))
-
-
-    write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX)))
-    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY)))
-    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ)))
-
-    write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX)))
-    write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY)))
-    write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ)))
-}
+// Commented out because optional/experimental
+//rk3_intermediate(w, roc) {
+//    real alpha = 0., -5./9., -153. / 128.
+//
+//    // return alpha[AC_step_number] * w + roc * AC_dt
+//
+//    // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below
+//    if AC_step_number > 0 {
+//        return alpha[AC_step_number] * w + roc * AC_dt
+//    } else {
+//        return roc * AC_dt
+//    }
+//}
+//
+//rk3_final(f, w) {
+//    real beta = 1. / 3., 15./ 16., 8. / 15.
+//    return f + beta[AC_step_number] * w
+//}
+//
+//
+//Kernel alt_solve_intermediate() {
+//    write(VTXBUF_LNRHO, rk3_intermediate(previous(VTXBUF_LNRHO), continuity()))
+//    write(VTXBUF_ENTROPY, rk3_intermediate(previous(VTXBUF_ENTROPY), entropy()))
+//
+//    mom = momentum()
+//    ind = induction()
+//
+//    write(VTXBUF_UUX, rk3_intermediate(previous(VTXBUF_UUX), mom.x))
+//    write(VTXBUF_UUY, rk3_intermediate(previous(VTXBUF_UUY), mom.y))
+//    write(VTXBUF_UUZ, rk3_intermediate(previous(VTXBUF_UUZ), mom.z))
+//
+//    write(VTXBUF_AX, rk3_intermediate(previous(VTXBUF_AX), ind.x))
+//    write(VTXBUF_AY, rk3_intermediate(previous(VTXBUF_AY), ind.y))
+//    write(VTXBUF_AZ, rk3_intermediate(previous(VTXBUF_AZ), ind.z))
+//}
+//
+//Kernel alt_solve_final() {
+//    write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO)))
+//    write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY)))
+//
+//
+//    write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX)))
+//    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY)))
+//    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ)))
+//
+//    write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX)))
+//    write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY)))
+//    write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ)))
+//}
