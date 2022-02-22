@@ -668,7 +668,11 @@ static inline Vector
 momentum(const VectorData uu, const ScalarData lnrho
 #if LENTROPY
          ,
-         const ScalarData ss, const VectorData aa
+         const ScalarData ss
+#endif
+#if LMAGNETIC
+         ,
+         const VectorData aa
 #endif
 )
 {
@@ -678,15 +682,18 @@ momentum(const VectorData uu, const ScalarData lnrho
     const Scalar cs2       = cs2_sound *
                        exp(getReal(AC_gamma) * value(ss) / getReal(AC_cp_sound) +
                            (getReal(AC_gamma) - 1) * (value(lnrho) - getReal(AC_lnrho0)));
+#if LMAGNETIC
     const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
     const Vector B       = curl(aa);
     const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
-
+#endif
     const Vector mom = -mul(gradients(uu), vecvalue(uu)) -
                        cs2 * (((Scalar)(1.) / getReal(AC_cp_sound)) * gradient(ss) +
                               gradient(lnrho)) +
+#if LMAGNETIC
                        inv_rho * cross(j, B) +
+#endif
                        getReal(AC_nu_visc) *
                            (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
                             (Scalar)(2.) * mul(S, gradient(lnrho))) +
@@ -754,12 +761,20 @@ heat_conduction(const ScalarData ss, const ScalarData lnrho)
 }
 
 static inline Scalar
+#if LMAGNETIC
 entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho, const VectorData aa)
+#else
+entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho)
+#endif 
 {
     const Matrix S      = stress_tensor(uu);
     const Scalar inv_pT = (Scalar)(1.) / (exp(value(lnrho)) * exp(lnT(ss, lnrho)));
+#if LMAGNETIC
     const Vector j      = ((Scalar)(1.) / getReal(AC_mu0)) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
+#else
+    const Vector j      = (Vector){0.0,0.0,0.0};
+#endif 
     const Scalar RHS = H_CONST - C_CONST + getReal(AC_eta) * getReal(AC_mu0) * dot(j, j) +
                        (Scalar)(2.) * exp(value(lnrho)) * getReal(AC_nu_visc) * contract(S) +
                        getReal(AC_zeta) * exp(value(lnrho)) * divergence(uu) * divergence(uu);
@@ -906,11 +921,19 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
 #endif
 #if LENTROPY
     const ScalarData ss            = read_scal_data(i, j, k, in.vertex_buffer, VTXBUF_ENTROPY);
+#if LMAGNETIC
     const Vector uu_res            = momentum(uu, lnrho, ss, aa);
+#else
+    const Vector uu_res            = momentum(uu, lnrho, ss);
+#endif
     rate_of_change[VTXBUF_UUX]     = uu_res[0];
     rate_of_change[VTXBUF_UUY]     = uu_res[1];
     rate_of_change[VTXBUF_UUZ]     = uu_res[2];
+#if LMAGNETIC
     rate_of_change[VTXBUF_ENTROPY] = entropy(ss, uu, lnrho, aa);
+#else
+    rate_of_change[VTXBUF_ENTROPY] = entropy(ss, uu, lnrho);
+#endif
 #else
     const Vector uu_res        = momentum(uu, lnrho);
     rate_of_change[VTXBUF_UUX] = uu_res[0];
