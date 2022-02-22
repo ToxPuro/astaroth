@@ -376,14 +376,10 @@ contract(mat) {
 // helicity
 helical_forcing(k_force, xx, ff_re, ff_im, phi)
 {
-    //xx.x = xx.x * (2.0 * R_PI / (AC_dsx * globalGridN.x))
-    //xx.y = xx.y * (2.0 * R_PI / (AC_dsy * globalGridN.y))
-    //xx.z = xx.z * (2.0 * R_PI / (AC_dsz * globalGridN.z))
-    //WORKAROUND because globalGridN is missing in Astaroth 3
-    yy = real3(0,0,0)
-    yy.x = xx.x * (2.0 * R_PI / (AC_dsx * AC_nx))
-    yy.y = xx.y * (2.0 * R_PI / (AC_dsy * AC_ny))
-    yy.z = xx.z * (2.0 * R_PI / (AC_dsz * AC_nz))
+    real3 yy
+    yy.x = xx.x * (2.0 * R_PI / (AC_dsx * globalGridN.x))
+    yy.y = xx.y * (2.0 * R_PI / (AC_dsy * globalGridN.x))
+    yy.z = xx.z * (2.0 * R_PI / (AC_dsz * globalGridN.x))
 
     cos_phi     = cos(phi)
     sin_phi     = sin(phi)
