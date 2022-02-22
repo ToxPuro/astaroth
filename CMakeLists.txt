@@ -113,12 +113,12 @@ if (BUILD_SAMPLES)
   #add_subdirectory(samples/benchmark)
   add_subdirectory(samples/benchmark-device)
   add_subdirectory(samples/mpi-io)
-  add_subdirectory(samples/stencil-loader)
 
   if (BUILD_MHD_SAMPLES)
     # add_subdirectory(samples/standalone)
     add_subdirectory(samples/standalone_mpi)
     add_subdirectory(samples/mpitest)
+    add_subdirectory(samples/stencil-loader)
   endif()
 
   # add_subdirectory(samples/standalone)
