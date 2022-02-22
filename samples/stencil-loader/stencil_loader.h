@@ -3,20 +3,20 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 
-#define DER1_3 (1. / 60.)
-#define DER1_2 (-3. / 20.)
-#define DER1_1 (3. / 4.)
-#define DER1_0 (0)
+#define DER1_3 (AcReal)(1. / 60.)
+#define DER1_2 (AcReal)(-3. / 20.)
+#define DER1_1 (AcReal)(3. / 4.)
+#define DER1_0 (AcReal)(0)
 
-#define DER2_3 (1. / 90.)
-#define DER2_2 (-3. / 20.)
-#define DER2_1 (3. / 2.)
-#define DER2_0 (-49. / 18.)
+#define DER2_3 (AcReal)(1. / 90.)
+#define DER2_2 (AcReal)(-3. / 20.)
+#define DER2_1 (AcReal)(3. / 2.)
+#define DER2_0 (AcReal)(-49. / 18.)
 
-#define DERX_3 (2. / 720.)
-#define DERX_2 (-27. / 720.)
-#define DERX_1 (270. / 720.)
-#define DERX_0 (0)
+#define DERX_3 (AcReal)(2. / 720.)
+#define DERX_2 (AcReal)(-27. / 720.)
+#define DERX_1 (AcReal)(270. / 720.)
+#define DERX_0 (AcReal)(0)
 
 #define MID (STENCIL_ORDER / 2)
 
