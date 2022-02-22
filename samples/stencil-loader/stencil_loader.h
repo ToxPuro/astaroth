@@ -20,7 +20,6 @@
 
 #define MID (STENCIL_ORDER / 2)
 
-// NOT WORKING, TODO RECHECK!
 void
 load_stencil_from_config(const AcMeshInfo info)
 {
@@ -89,7 +88,6 @@ load_stencil_from_config(const AcMeshInfo info)
     Stencil value {
         [0][0][0] = 1
     }
-
 
     Stencil derx {
         [0][0][-3] = -AC_inv_dsx * DER1_3,
