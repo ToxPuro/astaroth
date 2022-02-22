@@ -61,7 +61,7 @@ else ()
     # Not supported with older CUDA
     # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --Werror all-warnings")
     if (NOT DOUBLE_PRECISION)
-      set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas=-Werror,--warn-on-double-precision-use")
+      set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas=--warn-on-double-precision-use") # -Werror,
     endif()
 
     # Set device code architecture
