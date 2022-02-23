@@ -17,9 +17,12 @@ hostdefine LFORCING (1)
 hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1)
-hostdefine LSHOCK (0)
+hostdefine LSHOCK (1)
 hostdefine AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
 hostdefine R_PI (AC_REAL_PI)
+
+#define WORKAROUND_IDX(i, j, k) ((i) + (j)*(AC_mx) + (k)*(AC_mxy))
+
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 
@@ -181,6 +184,64 @@ Stencil value {
     [0][0][0] = 1
 }
 
+// A hax to access close by stencil values
+Stencil value_xm3 {
+    [0][0][-3] = 1
+}
+Stencil value_xm2 {
+    [0][0][-2] = 1
+}
+Stencil value_xm1 {
+    [0][0][-1] = 1
+}
+Stencil value_xp1 {
+    [0][0][1] = 1
+}
+Stencil value_xp2 {
+    [0][0][2] = 1
+}
+Stencil value_xp3 {
+    [0][0][3] = 1
+}
+
+Stencil value_ym3 {
+    [0][-3][0] = 1
+}
+Stencil value_ym2 {
+    [0][-2][0] = 1
+}
+Stencil value_ym1 {
+    [0][-1][0] = 1
+}
+Stencil value_yp1 {
+    [0][1][0] = 1
+}
+Stencil value_yp2 {
+    [0][2][0] = 1
+}
+Stencil value_yp3 {
+    [0][3][0] = 1
+}
+
+Stencil value_zm3 {
+    [-3][0][0] = 1
+}
+Stencil value_zm2 {
+    [-2][0][0] = 1
+}
+Stencil value_zm1 {
+    [-1][0][0] = 1
+}
+Stencil value_zp1 {
+    [1][0][0] = 1
+}
+Stencil value_zp2 {
+    [2][0][0] = 1
+}
+Stencil value_zp3 {
+    [3][0][0] = 1
+}
+
 //MV: Based on the standard rules of multiplications, why -AC_inv_dsx etc could
 //MV: not be outside of the stencil operation? 
 
@@ -336,7 +397,8 @@ smooth_kernel(field)
                 kver = -3 + k
 
                 smooth_factor = (weights[i] * weights[j] * weights[k]) / smooth_norm
-                smoothed      = smoothed + smooth_factor * field[IDX(vertexIdx.x+iver, vertexIdx.y+jver, vertexIdx.z+kver)]
+                int ind = WORKAROUND_IDX(vertexIdx.x+iver, vertexIdx.y+jver, vertexIdx.z+kver)
+                smoothed = smoothed + smooth_factor * field[ind]
             }
         }
     }
@@ -345,25 +407,46 @@ smooth_kernel(field)
 
 max5(field)
 {
-    maxval = field[IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)]
+    //int ind = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)
+    //maxval = field[ind]
    
+    ////Cross implementation 
+    //for i in -2:3 {
+    //    int ind = IDX(vertexIdx.x + i, vertexIdx.y, vertexIdx.z) 
+    //    sample = field[ind]
+    //    if sample > maxval {
+    //        maxval = sample
+    //    }
+    //}
+
+    //for j in -2:3 {
+    //    int ind = IDX(vertexIdx.x, vertexIdx.y + j, vertexIdx.z) 
+    //    sample = field[ind]
+    //    if sample > maxval {
+    //        maxval = sample
+    //    }
+    //}
+
+    //for k in -2:3 {
+    //    int ind = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z + k)
+    //    sample = field[ind]
+    //    if sample > maxval {
+    //        maxval = sample
+    //    }
+    //}
+    //int ind = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)
+    //maxval = field[ind]
+  
+    //HAX 
     //Cross implementation 
-    for i in -2:3 {
-        sample = field[IDX(vertexIdx.x + i, vertexIdx.y, vertexIdx.z)]
-        if sample > maxval {
-            maxval = sample
-        }
-    }
+    maxval    = value(field)
 
-    for j in -2:3 {
-        sample = field[IDX(vertexIdx.x, vertexIdx.y + j, vertexIdx.z)]
-        if sample > maxval {
-            maxval = sample
-        }
-    }
+    maxvector = value_xm3(field), value_xm2(field), value_xm1(field), value_xp1(field), value_xp2(field), value_xp3(field), 
+                value_ym3(field), value_ym2(field), value_ym1(field), value_yp1(field), value_yp2(field), value_yp3(field),
+                value_zm3(field), value_zm2(field), value_zm1(field), value_zp1(field), value_zp2(field), value_zp3(field) 
 
-    for k in -2:3 {
-        sample = field[IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z + k)]
+    for ind in 0:len(maxvector) {
+        sample = maxvector[ind]
         if sample > maxval {
             maxval = sample
         }
@@ -597,7 +680,7 @@ divu_shock()
 {
     // Set discard the values which do not contain negative divergence.
     divu = divergence(UU)
-    if divu <= 0.0 {
+    if divu < 0.0 {
         return -divu
     }
     else {
