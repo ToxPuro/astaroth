@@ -24,7 +24,7 @@ hostdefine R_PI (AC_REAL_PI)
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 
 #if LMAGNETIC
-VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
+Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
 #endif
 
 #if LENTROPY 
@@ -33,6 +33,10 @@ Field VTXBUF_ENTROPY
 
 #if LBFIELD
 Field BFIELDX, BFIELDY, BFIELDZ
+#endif
+
+#if LSHOCK 
+Field VTXBUF_SHOCK
 #endif
 
 // Additional params needed by standalone & standalone_mpi
@@ -177,6 +181,8 @@ Stencil value {
     [0][0][0] = 1
 }
 
+//MV: Based on the standard rules of multiplications, why -AC_inv_dsx etc could
+//MV: not be outside of the stencil operation? 
 
 Stencil derx {
     [0][0][-3] = -AC_inv_dsx * DER1_3,
@@ -312,6 +318,72 @@ Stencil der6z_upwd {
     [2][0][0]  = -AC_inv_dsz * DER6UPWD_2,
     [3][0][0]  =  AC_inv_dsz * DER6UPWD_3
 }
+
+smooth_kernel(field)
+{
+    // From Pencil Code src/shock_highorder.f90
+    // Gaussian weights
+    real weights = 1.0, 9.0, 45.0, 70.0, 45.0, 9.0, 1.0
+
+    smooth_norm = 5832000.0 // Based on separate calculations
+
+    smoothed = 0.0
+    for k in 0:len(weights) {
+        for j in 0:len(weights) {
+            for i in 0:len(weights) {
+                iver = -3 + i
+                jver = -3 + j
+                kver = -3 + k
+
+                smooth_factor = (weights[i] * weights[j] * weights[k]) / smooth_norm
+                smoothed      = smoothed + smooth_factor * field[IDX(vertexIdx.x+iver, vertexIdx.y+jver, vertexIdx.z+kver)]
+            }
+        }
+    }
+    return smoothed
+}
+
+max5(field)
+{
+    maxval = field[IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)]
+   
+    //Cross implementation 
+    for i in -2:3 {
+        sample = field[IDX(vertexIdx.x + i, vertexIdx.y, vertexIdx.z)]
+        if sample > maxval {
+            maxval = sample
+        }
+    }
+
+    for j in -2:3 {
+        sample = field[IDX(vertexIdx.x, vertexIdx.y + j, vertexIdx.z)]
+        if sample > maxval {
+            maxval = sample
+        }
+    }
+
+    for k in -2:3 {
+        sample = field[IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z + k)]
+        if sample > maxval {
+            maxval = sample
+        }
+    }
+
+    ////Square implementation (commented out)
+    //for k in -2:3 {
+    //   for j in -2:3 {
+    //      for i in -2:3 {
+    //         sample = field[IDX(vertexIdx.x + i, vertexIdx.y + j, vertexIdx.z + k)]
+    //         if sample > maxval {
+    //             maxval = sample
+    //         }
+    //      }
+    //   }
+    //}
+
+    return maxval
+}
+
 
 vecvalue(v) {
     return real3(value(v.x), value(v.y), value(v.z))
@@ -518,6 +590,51 @@ entropy() {
     return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
 }
 #endif
+
+#if LSHOCK
+// Get divergence of velocity for the first pass in shock viscosity.
+divu_shock()
+{
+    // Set discard the values which do not contain negative divergence.
+    divu = divergence(UU)
+    if divu <= 0.0 {
+        return -divu
+    }
+    else {
+        return 0.0
+    }
+}
+
+// Calculate local maximum from divergences.
+max5_shock()
+{
+    return max5(VTXBUF_SHOCK)
+}
+
+// Perform smoothing on shock values.
+smooth_shock()
+{
+    return smooth_kernel(VTXBUF_SHOCK)
+}
+
+Kernel shock_1_divu()
+{
+    write(VTXBUF_SHOCK, divu_shock())
+}
+
+Kernel shock_2_max()
+{
+    write(VTXBUF_SHOCK, max5_shock())
+}
+
+Kernel shock_3_smooth()
+{
+    dsmin = DSX //Here assuming that all spacing are equal
+    out_shock = dsmin*dsmin*smooth_shock() //Add scaling constant cshock
+}
+
+#endif
+
 
 rk3(s0, s1, roc) {
     /*

@@ -703,8 +703,16 @@ momentum(const VectorData uu, const ScalarData lnrho
     // !!!!!!!!!!!!!!!!%JP: NOTE TODO IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!
     // NOT CHECKED FOR CORRECTNESS: USE AT YOUR OWN RISK
     const Matrix S = stress_tensor(uu);
-
+#if LMAGNETIC
+    const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
+                     (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
+    const Vector B       = curl(aa);
+    const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
+#endif
     const Vector mom = -mul(gradients(uu), vecvalue(uu)) - getReal(AC_cs2_sound) * gradient(lnrho) +
+#if LMAGNETIC
+                       inv_rho * cross(j, B) +
+#endif
                        getReal(AC_nu_visc) *
                            (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
                             (Scalar)(2.) * mul(S, gradient(lnrho))) +
@@ -935,7 +943,11 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
     rate_of_change[VTXBUF_ENTROPY] = entropy(ss, uu, lnrho);
 #endif
 #else
+#if LMAGNETIC
+    const Vector uu_res        = momentum(uu, lnrho, aa);
+#else
     const Vector uu_res        = momentum(uu, lnrho);
+#endif
     rate_of_change[VTXBUF_UUX] = uu_res[0];
     rate_of_change[VTXBUF_UUY] = uu_res[1];
     rate_of_change[VTXBUF_UUZ] = uu_res[2];
