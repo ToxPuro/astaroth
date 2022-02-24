@@ -1290,10 +1290,6 @@ forcing()
     force.x = sqrt(AC_dt) * NN * force.x
     force.y = sqrt(AC_dt) * NN * force.y
     force.z = sqrt(AC_dt) * NN * force.z
-    // Workaround for matching the units at solve()
-    force.x = force.x * AC_dt
-    force.y = force.y * AC_dt
-    force.z = force.z * AC_dt
 
     return force
 }
@@ -1451,15 +1447,17 @@ Kernel solve() {
 
 #if LFORCING
     //Add the forcing component to the velocity field at the last integration step.
-    //TODO check that forcing() is in units U/T.
     if AC_step_number == 2 {
-        mom = mom + forcing()
+        forcing_step = forcing()
     }
-#endif
-
+    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x) + forcing_step.x)
+    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z) + forcing_step.z)
+#else 
     write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
     write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
     write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
+endif
 
 #if LMAGNETIC
     ind = induction()
