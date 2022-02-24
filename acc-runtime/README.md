@@ -221,6 +221,22 @@ real AC_REAL_PI // Value of pi using the same precision as `real`
 
 > See astaroth/acc-runtime/acc/codegen.c, function `symboltable_reset` for an up-to-date list of all built-in symbols.
 
+# Advanced
+
+The input and output arrays can also be accessed without declaring a `Stencil` as follows.
+
+```
+Field field0
+
+Kernel kernel() {
+  // The example showcases two ways of accessing a field element without the Stencil structure
+  a = FIELD_IN[field0][IDX(vertexIdx)] // Note that IDX() here accepts the 3D spatial index
+  b = FIELD_OUT[field0][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] // And also individual index components
+}
+```
+
+> Note: Accessing field elements using `FIELD_IN` and `FIELD_OUT` does not cache the reads and is significantly less efficient than using `Stencil`s.
+
 # Interaction with the Astaroth Core and Utils libraries
 
 ## Loading and storing stencil coefficients at runtime

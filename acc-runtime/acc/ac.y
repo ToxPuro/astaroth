@@ -48,7 +48,6 @@ main(int argc, char** argv)
         strcpy(stage0, argv[1]);
 
         const char* dir = dirname(argv[1]); // WARNING: dirname has side effects!
-        printf("dir %s, stage0 %s\n", dir, stage0);
 
         const char* stage1 = "user_kernels.ac.preprocessed0";
         const char* stage2 = "user_kernels.ac.preprocessed1";
@@ -444,6 +443,8 @@ function_definition: declaration function_body {
                                 "    const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];"
                                 "    (void)globalGridN; // Silence unused warning\n"
                                 "    const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);\n"
+                                "    #define FIELD_IN  (vba.in)\n"
+                                "    #define FIELD_OUT (vba.out)\n"
                                 "\n"
                                 "    if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z)\n"
                                 "        return;"
