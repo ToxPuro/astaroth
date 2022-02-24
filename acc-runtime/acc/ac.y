@@ -2,6 +2,7 @@
 //#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
+#include <libgen.h> // dirname
 
 #include "ast.h"
 #include "codegen.h"
@@ -36,9 +37,19 @@ main(int argc, char** argv)
 {
     atexit(&cleanup);
 
+    if (argc > 2) {
+      fprintf(stderr, "Error multiple .ac files passed to acc, can only process one at a time. Ensure that DSL_MODULE_DIR contains only one .ac file.\n");
+      return EXIT_FAILURE;
+    }
+
     if (argc == 2) {
 
-        const char* stage0 = argv[1];
+        char stage0[strlen(argv[1])];
+        strcpy(stage0, argv[1]);
+
+        const char* dir = dirname(argv[1]); // WARNING: dirname has side effects!
+        printf("dir %s, stage0 %s\n", dir, stage0);
+
         const char* stage1 = "user_kernels.ac.preprocessed0";
         const char* stage2 = "user_kernels.ac.preprocessed1";
         // Preprocess hostdefines
@@ -72,7 +83,7 @@ main(int argc, char** argv)
           // Preprocess everything else
           const size_t cmdlen = 4096;
           char cmd[cmdlen];
-          snprintf(cmd, cmdlen, "gcc -x c -E %s > %s", stage1, stage2);
+          snprintf(cmd, cmdlen, "gcc -I%s -x c -E %s > %s", dir, stage1, stage2);
           const int retval = system(cmd);
           if (retval == -1) {
               fprintf(stderr, "Catastrophic error: preprocessing failed.\n");
