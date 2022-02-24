@@ -23,9 +23,9 @@
 #include "astaroth_utils.h"
 #include "errchk.h"
 
-#include "stencil_loader.h"
-
 #if AC_MPI_ENABLED
+
+#include "stencil_loader.h"
 
 #include <mpi.h>
 #include <vector>
