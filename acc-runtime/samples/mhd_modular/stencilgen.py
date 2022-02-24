@@ -102,7 +102,7 @@ for k, weightsk in enumerate(weights):
             stencil_index  = "[%i][%i][%i]" % (kver, jver, iver)
             coeff_label    = "SMOOTH_%s%s_%s%s_%s%s" % (label_x, deg_x, label_y, deg_y, label_z, deg_z)
 
-            stencil_line = stencil_index + " = " + coeff_label
+            stencil_line = stencil_index + " = " + coeff_label + ","
             print(stencil_line)
 
 print("}")
