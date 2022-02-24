@@ -1447,6 +1447,7 @@ Kernel solve() {
 
 #if LFORCING
     //Add the forcing component to the velocity field at the last integration step.
+    real3 forcing_step
     if AC_step_number == 2 {
         forcing_step = forcing()
     }
@@ -1457,7 +1458,7 @@ Kernel solve() {
     write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
     write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
     write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
-endif
+#endif
 
 #if LMAGNETIC
     ind = induction()
