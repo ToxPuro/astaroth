@@ -690,7 +690,7 @@ Stencil smooth_kernel {
 [3][3][0] = SMOOTH_XC0_YP3_ZP3,
 [3][3][1] = SMOOTH_XP1_YP3_ZP3,
 [3][3][2] = SMOOTH_XP2_YP3_ZP3,
-[3][3][3] = SMOOTH_XP3_YP3_ZP3,
+[3][3][3] = SMOOTH_XP3_YP3_ZP3
 }
 
 

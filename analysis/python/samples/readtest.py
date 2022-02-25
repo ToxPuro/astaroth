@@ -58,6 +58,7 @@ AC_unit_length   = 1.496e+13
 print("sys.argv", sys.argv)
 
 meshdir = "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"
+meshdir = "/tiara/ara/data/mvaisala/202202_acc3test/astaroth/config/samples/shockturb/"
 
 #Example fixed scaling template
 if (meshdir == "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"):
