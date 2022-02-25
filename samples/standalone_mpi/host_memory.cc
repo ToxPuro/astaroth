@@ -747,6 +747,16 @@ acmesh_init_to(const InitType& init_type, AcMesh* mesh)
 
         break;
     }
+    case INIT_TYPE_AA_RANDOM: {
+        acHostMeshClear(mesh);
+        const AcReal range = AcReal(1e-10);
+        for (int i = 0; i < n; ++i) {
+            mesh->vertex_buffer[VTXBUF_AX][i] = 2 * range * randr() - range;
+            mesh->vertex_buffer[VTXBUF_AY][i] = 2 * range * randr() - range;
+            mesh->vertex_buffer[VTXBUF_AZ][i] = 2 * range * randr() - range;
+            }
+        break;
+    }
     case INIT_TYPE_KICKBALL:
         acHostMeshClear(mesh);
         acHostVertexBufferSet(VTXBUF_LNRHO, mesh->info.real_params[AC_ampl_lnrho], mesh);

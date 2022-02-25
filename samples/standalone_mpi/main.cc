@@ -591,7 +591,8 @@ main(int argc, char** argv)
     AcReal sink_mass     = 0.0;
     for (int i = start_step + 1; i < max_steps; ++i) {
         const AcReal dt = calc_timestep(info);
-
+        acGridLoadScalarUniform(STREAM_DEFAULT, AC_current_time, t_step);
+  
 #if LSINK
         AcReal sum_mass;
         acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, VTXBUF_ACCRETION, &sum_mass);

@@ -134,6 +134,7 @@ real AC_unit_mass
 real AC_sq2GM_star
 real AC_cs2_sound
 //
+real AC_current_time
 
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
 #define AA Field3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)

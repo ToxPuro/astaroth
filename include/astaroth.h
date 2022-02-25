@@ -92,6 +92,7 @@ typedef int Stream;
 
 #define AC_FOR_INIT_TYPES(FUNC)                                                                    \
     FUNC(INIT_TYPE_RANDOM)                                                                         \
+    FUNC(INIT_TYPE_AA_RANDOM)                                                                         \
     FUNC(INIT_TYPE_XWAVE)                                                                          \
     FUNC(INIT_TYPE_GAUSSIAN_RADIAL_EXPL)                                                           \
     FUNC(INIT_TYPE_ABC_FLOW)                                                                       \

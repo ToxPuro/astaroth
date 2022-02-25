@@ -134,6 +134,7 @@ real AC_forcing_magnitude
 real AC_relhel
 real AC_kmin
 real AC_kmax
+real AC_switch_forcing
 //  Forcing parameters. Set by the generator.
 real AC_forcing_phase
 real AC_k_forcex
@@ -153,6 +154,7 @@ real AC_unit_mass
 real AC_sq2GM_star
 real AC_cs2_sound
 //
+real AC_current_time
 
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
 
@@ -769,7 +771,9 @@ Kernel solve() {
     //Important to init to zero here: ohterwise will produce numerical garbage! 
     forcing_step = real3(0.0, 0.0, 0.0)
     if AC_step_number == 2 {
-        forcing_step = forcing()
+        if AC_current_time > AC_switch_forcing {
+            forcing_step = forcing()
+        }
     }
     write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x) + forcing_step.x)
     write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y) + forcing_step.y)
