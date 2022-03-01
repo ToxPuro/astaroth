@@ -235,7 +235,7 @@ Kernel kernel() {
 }
 ```
 
-> Note: Accessing field elements using `FIELD_IN` and `FIELD_OUT` does not cache the reads and is significantly less efficient than using `Stencil`s.
+> Note: Accessing field elements using `FIELD_IN` and `FIELD_OUT` does not cache the reads and is significantly less efficient than using a `Stencil`.
 
 # Interaction with the Astaroth Core and Utils libraries
 
