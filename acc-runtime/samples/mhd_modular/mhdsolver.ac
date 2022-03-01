@@ -417,43 +417,24 @@ Stencil der6z_upwd {
 
 max5(field)
 {
-    //int ind = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)
-    //maxval = field[ind]
-   
-    ////Cross implementation 
-    //for i in -2:3 {
-    //    int ind = IDX(vertexIdx.x + i, vertexIdx.y, vertexIdx.z) 
-    //    sample = field[ind]
-    //    if sample > maxval {
-    //        maxval = sample
-    //    }
-    //}
-
-    //for j in -2:3 {
-    //    int ind = IDX(vertexIdx.x, vertexIdx.y + j, vertexIdx.z) 
-    //    sample = field[ind]
-    //    if sample > maxval {
-    //        maxval = sample
-    //    }
-    //}
-
-    //for k in -2:3 {
-    //    int ind = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z + k)
-    //    sample = field[ind]
-    //    if sample > maxval {
-    //        maxval = sample
-    //    }
-    //}
-    //int ind = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)
-    //maxval = field[ind]
-  
-    //HAX 
-    //Cross implementation 
     maxval    = value(field)
 
-    real maxvector = value_xm3(field), value_xm2(field), value_xm1(field), value_xp1(field), value_xp2(field), value_xp3(field), 
-                     value_ym3(field), value_ym2(field), value_ym1(field), value_yp1(field), value_yp2(field), value_yp3(field),
-                     value_zm3(field), value_zm2(field), value_zm1(field), value_zp1(field), value_zp2(field), value_zp3(field) 
+    //real maxvector = value_xm3(field), value_xm2(field), value_xm1(field), value_xp1(field), value_xp2(field), value_xp3(field), 
+    //                 value_ym3(field), value_ym2(field), value_ym1(field), value_yp1(field), value_yp2(field), value_yp3(field),
+    //                 value_zm3(field), value_zm2(field), value_zm1(field), value_zp1(field), value_zp2(field), value_zp3(field) 
+
+    //Maxvector with all fields!
+
+    //Using 55 point stencil to find the nearby max. having full square is
+    //numerically too expensive! Or does not finish compilation.  
+    real maxvector = value_XM3_YM3_ZM3(field), value_XP3_YM3_ZM3(field), value_XC0_YC0_ZM3(field), value_XM3_YP3_ZM3(field), value_XP3_YP3_ZM3(field), value_XM2_YM2_ZM2(field), value_XP2_YM2_ZM2(field), 
+                     value_XC0_YC0_ZM2(field), value_XM2_YP2_ZM2(field), value_XP2_YP2_ZM2(field), value_XM1_YM1_ZM1(field), value_XP1_YM1_ZM1(field), value_XC0_YC0_ZM1(field), value_XM1_YP1_ZM1(field), 
+                     value_XP1_YP1_ZM1(field), value_XC0_YM3_ZC0(field), value_XC0_YM2_ZC0(field), value_XC0_YM1_ZC0(field), value_XM3_YC0_ZC0(field), value_XM2_YC0_ZC0(field), value_XM1_YC0_ZC0(field), 
+                     value_XC0_YC0_ZC0(field), value_XP1_YC0_ZC0(field), value_XP2_YC0_ZC0(field), value_XP3_YC0_ZC0(field), value_XC0_YP1_ZC0(field), value_XC0_YP2_ZC0(field), value_XC0_YP3_ZC0(field), 
+                     value_XM1_YM1_ZP1(field), value_XP1_YM1_ZP1(field), value_XC0_YC0_ZP1(field), value_XM1_YP1_ZP1(field), value_XP1_YP1_ZP1(field), value_XM2_YM2_ZP2(field), value_XP2_YM2_ZP2(field), 
+                     value_XC0_YC0_ZP2(field), value_XM2_YP2_ZP2(field), value_XP2_YP2_ZP2(field), value_XM3_YM3_ZP3(field), value_XP3_YM3_ZP3(field), value_XC0_YC0_ZP3(field), value_XM3_YP3_ZP3(field), 
+                     value_XP3_YP3_ZP3(field) 
+                      
 
     for ind in 0:len(maxvector) {
         sample = maxvector[ind]
@@ -461,18 +442,6 @@ max5(field)
             maxval = sample
         }
     }
-
-    ////Square implementation (commented out)
-    //for k in -2:3 {
-    //   for j in -2:3 {
-    //      for i in -2:3 {
-    //         sample = field[IDX(vertexIdx.x + i, vertexIdx.y + j, vertexIdx.z + k)]
-    //         if sample > maxval {
-    //             maxval = sample
-    //         }
-    //      }
-    //   }
-    //}
 
     return maxval
 }

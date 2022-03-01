@@ -102,13 +102,76 @@ for k, weightsk in enumerate(weights):
             stencil_index  = "[%i][%i][%i]" % (kver, jver, iver)
             coeff_label    = "SMOOTH_%s%s_%s%s_%s%s" % (label_x, deg_x, label_y, deg_y, label_z, deg_z)
 
-            stencil_line = stencil_index + " = " + coeff_label + ","
+            if (i == 6) and (j == 6) and (k ==6):
+                stencil_line = stencil_index + " = " + coeff_label 
+            else:
+                stencil_line = stencil_index + " = " + coeff_label + ","
             print(stencil_line)
 
 print("}")
 print("")
 print("")
 print("")
+
+####for k, deg_z in enumerate(coord_deg):
+####    for j, deg_y in enumerate(coord_deg):
+####        for i, deg_x in enumerate(coord_deg):
+####            label_x = coord_axx[i] 
+####            label_y = coord_axy[j] 
+####            label_z = coord_axz[k] 
+####            iver    = -3 + i;
+####            jver    = -3 + j;
+####            kver    = -3 + k;
+####
+####            stencil_index  = "[%i][%i][%i]" % (kver, jver, iver)
+####            coeff_label    = "Stencil value_%s%s_%s%s_%s%s {" % (label_x, deg_x, label_y, deg_y, label_z, deg_z)
+####
+####            print(coeff_label)
+####            print(stencil_index + " = 1")
+####            print("}")
+####
+####print("")
+####print("")
+####print("")
+
+for k, deg_z in enumerate(coord_deg):
+    for j, deg_y in enumerate(coord_deg):
+        for i, deg_x in enumerate(coord_deg):
+            label_x = coord_axx[i] 
+            label_y = coord_axy[j] 
+            label_z = coord_axz[k] 
+            iver    = -3 + i;
+            jver    = -3 + j;
+            kver    = -3 + k;
+            
+            cross_test = iver*jver*kver
+            if jver != 0:
+                ijdiag = abs(float(iver)/float(jver))
+            else:
+                ijdiag = 666.0
+            if kver != 0:
+                jkdiag = abs(float(jver)/float(kver))
+                ikdiag = abs(float(iver)/float(kver))
+            else:
+                jkdiag = 666.0
+                ikdiag = 666.0
+
+            if  (( (ijdiag == 1.0) and (jkdiag == 1.0) and (ikdiag == 1.0)) or 
+                 ( (iver == 0) and (jver == 0) ) or
+                 ( (iver == 0) and (kver == 0) ) or
+                 ( (jver == 0) and (kver == 0) )):
+
+                stencil_index  = "[%i][%i][%i]" % (kver, jver, iver)
+                coeff_label    = "Stencil value_%s%s_%s%s_%s%s {" % (label_x, deg_x, label_y, deg_y, label_z, deg_z)
+
+                print(coeff_label)
+                print(stencil_index + " = 1")
+                print("}")
+
+print("")
+print("")
+print("")
+
 
 #please pipe the result with > to get the stencil file. 
 
