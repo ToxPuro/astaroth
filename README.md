@@ -15,7 +15,9 @@ see [Contributing](CONTRIBUTING.md).
 ## Dependencies
 Relative recent versions of
 
-`gcc cmake cuda flex bison`.
+`gcc cmake flex bison`
+
+and either `nvcc` (NVIDIA) or `hipcc` (AMD). The library is built for NVIDIA by default, but AMD support can be enabled by passing `-DUSE_HIP=ON` to CMake.
 
 ## Building
 
