@@ -79,6 +79,24 @@ if (meshdir == "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/")
     rbb_tot = [ 0.0, 2.0e-8 ] 
     rbb_xyz = [-2.0e-8 , 2.0e-8 ]
 
+if (meshdir == "/tiara/ara/data/mvaisala/202202_acc3test/astaroth/config/samples/shockturb/"):
+    rlnrho  = [ -1.0,   0.5]
+    rrho    = [  0.5,   1.75]
+    rNcol   = [115.0, 150.0]
+
+    rss     = [4.0e-2, 5.0e-2]
+  
+    rshock  = [  0.0, 5.0]
+    
+    ruu_tot = [ 0.0 , 1.6]
+    ruu_xyz = [-0.8,  0.8]
+    
+    raa_tot = [ 0.0, 1.0e-8]
+    raa_xyz = [-1.0e-8, 1.0e-8]
+    
+    rbb_tot = [ 0.0, 2.0e-8 ] 
+    rbb_xyz = [-2.0e-8 , 2.0e-8 ]
+
 
 if "xtopbound" in sys.argv: 
     for i in range(0, 171):

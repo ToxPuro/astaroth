@@ -1,3 +1,4 @@
+import numpy as np
 
 weights = [1.0, 9.0, 45.0, 70.0, 45.0, 9.0, 1.0]
 
@@ -113,6 +114,7 @@ print("")
 print("")
 print("")
 
+#These approahes do not work beceaseu compilation time becomes unfeasible and if freezes over at the tartup optimization stage.
 ####for k, deg_z in enumerate(coord_deg):
 ####    for j, deg_y in enumerate(coord_deg):
 ####        for i, deg_x in enumerate(coord_deg):
@@ -134,43 +136,69 @@ print("")
 ####print("")
 ####print("")
 
-for k, deg_z in enumerate(coord_deg):
-    for j, deg_y in enumerate(coord_deg):
-        for i, deg_x in enumerate(coord_deg):
-            label_x = coord_axx[i] 
-            label_y = coord_axy[j] 
-            label_z = coord_axz[k] 
-            iver    = -3 + i;
-            jver    = -3 + j;
-            kver    = -3 + k;
-            
-            cross_test = iver*jver*kver
-            if jver != 0:
-                ijdiag = abs(float(iver)/float(jver))
-            else:
-                ijdiag = 666.0
-            if kver != 0:
-                jkdiag = abs(float(jver)/float(kver))
-                ikdiag = abs(float(iver)/float(kver))
-            else:
-                jkdiag = 666.0
-                ikdiag = 666.0
+####for k, deg_z in enumerate(coord_deg):
+####    for j, deg_y in enumerate(coord_deg):
+####        for i, deg_x in enumerate(coord_deg):
+####            label_x = coord_axx[i] 
+####            label_y = coord_axy[j] 
+####            label_z = coord_axz[k] 
+####            iver    = -3 + i;
+####            jver    = -3 + j;
+####            kver    = -3 + k;
+####            
+####            cross_test = iver*jver*kver
+####            if jver != 0:
+####                ijdiag = abs(float(iver)/float(jver))
+####            else:
+####                ijdiag = 666.0
+####            if kver != 0:
+####                jkdiag = abs(float(jver)/float(kver))
+####                ikdiag = abs(float(iver)/float(kver))
+####            else:
+####                jkdiag = 666.0
+####                ikdiag = 666.0
+####
+####            if  (( (ijdiag == 1.0) and (jkdiag == 1.0) and (ikdiag == 1.0)) or 
+####                 ( (iver == 0) and (jver == 0) ) or
+####                 ( (iver == 0) and (kver == 0) ) or
+####                 ( (jver == 0) and (kver == 0) )):
+####
+####                stencil_index  = "[%i][%i][%i]" % (kver, jver, iver)
+####                coeff_label    = "Stencil value_%s%s_%s%s_%s%s {" % (label_x, deg_x, label_y, deg_y, label_z, deg_z)
+####
+####                print(coeff_label)
+####                print(stencil_index + " = 1")
+####                print("}")
+####
+####print("")
+####print("")
+####print("")
 
-            if  (( (ijdiag == 1.0) and (jkdiag == 1.0) and (ikdiag == 1.0)) or 
-                 ( (iver == 0) and (jver == 0) ) or
-                 ( (iver == 0) and (kver == 0) ) or
-                 ( (jver == 0) and (kver == 0) )):
-
-                stencil_index  = "[%i][%i][%i]" % (kver, jver, iver)
-                coeff_label    = "Stencil value_%s%s_%s%s_%s%s {" % (label_x, deg_x, label_y, deg_y, label_z, deg_z)
-
-                print(coeff_label)
-                print(stencil_index + " = 1")
-                print("}")
-
-print("")
-print("")
-print("")
+####for k, deg_z in enumerate(coord_deg):
+####    for j, deg_y in enumerate(coord_deg):
+####        for i, deg_x in enumerate(coord_deg):
+####            label_x = coord_axx[i] 
+####            label_y = coord_axy[j] 
+####            label_z = coord_axz[k] 
+####            iver    = -3 + i;
+####            jver    = -3 + j;
+####            kver    = -3 + k;
+####
+####            irr = np.float(iver*iver + jver*jver + kver*kver)
+####            ir  = np.sqrt(irr)
+####            
+####            if ir <= 3.0:
+####                stencil_index  = "[%i][%i][%i]" % (kver, jver, iver)
+####                coeff_label    = "Stencil value_%s%s_%s%s_%s%s {" % (label_x, deg_x, label_y, deg_y, label_z, deg_z)
+####
+####                #print(ir,irr, iver, jver, kver)
+####                print(coeff_label)
+####                print(stencil_index + " = 1")
+####                print("}")
+####
+####print("")
+####print("")
+####print("")
 
 
 #please pipe the result with > to get the stencil file. 

@@ -427,22 +427,65 @@ max5(field)
 
     //Using 55 point stencil to find the nearby max. having full square is
     //numerically too expensive! Or does not finish compilation.  
-    real maxvector = value_XM3_YM3_ZM3(field), value_XP3_YM3_ZM3(field), value_XC0_YC0_ZM3(field), value_XM3_YP3_ZM3(field), value_XP3_YP3_ZM3(field), value_XM2_YM2_ZM2(field), value_XP2_YM2_ZM2(field), 
-                     value_XC0_YC0_ZM2(field), value_XM2_YP2_ZM2(field), value_XP2_YP2_ZM2(field), value_XM1_YM1_ZM1(field), value_XP1_YM1_ZM1(field), value_XC0_YC0_ZM1(field), value_XM1_YP1_ZM1(field), 
-                     value_XP1_YP1_ZM1(field), value_XC0_YM3_ZC0(field), value_XC0_YM2_ZC0(field), value_XC0_YM1_ZC0(field), value_XM3_YC0_ZC0(field), value_XM2_YC0_ZC0(field), value_XM1_YC0_ZC0(field), 
-                     value_XC0_YC0_ZC0(field), value_XP1_YC0_ZC0(field), value_XP2_YC0_ZC0(field), value_XP3_YC0_ZC0(field), value_XC0_YP1_ZC0(field), value_XC0_YP2_ZC0(field), value_XC0_YP3_ZC0(field), 
-                     value_XM1_YM1_ZP1(field), value_XP1_YM1_ZP1(field), value_XC0_YC0_ZP1(field), value_XM1_YP1_ZP1(field), value_XP1_YP1_ZP1(field), value_XM2_YM2_ZP2(field), value_XP2_YM2_ZP2(field), 
-                     value_XC0_YC0_ZP2(field), value_XM2_YP2_ZP2(field), value_XP2_YP2_ZP2(field), value_XM3_YM3_ZP3(field), value_XP3_YM3_ZP3(field), value_XC0_YC0_ZP3(field), value_XM3_YP3_ZP3(field), 
-                     value_XP3_YP3_ZP3(field) 
-                      
+    //real maxvector = value_XM3_YM3_ZM3(field), value_XP3_YM3_ZM3(field), value_XC0_YC0_ZM3(field), value_XM3_YP3_ZM3(field), value_XP3_YP3_ZM3(field), value_XM2_YM2_ZM2(field), value_XP2_YM2_ZM2(field), 
+    //                 value_XC0_YC0_ZM2(field), value_XM2_YP2_ZM2(field), value_XP2_YP2_ZM2(field), value_XM1_YM1_ZM1(field), value_XP1_YM1_ZM1(field), value_XC0_YC0_ZM1(field), value_XM1_YP1_ZM1(field), 
+    //                 value_XP1_YP1_ZM1(field), value_XC0_YM3_ZC0(field), value_XC0_YM2_ZC0(field), value_XC0_YM1_ZC0(field), value_XM3_YC0_ZC0(field), value_XM2_YC0_ZC0(field), value_XM1_YC0_ZC0(field), 
+    //                 value_XC0_YC0_ZC0(field), value_XP1_YC0_ZC0(field), value_XP2_YC0_ZC0(field), value_XP3_YC0_ZC0(field), value_XC0_YP1_ZC0(field), value_XC0_YP2_ZC0(field), value_XC0_YP3_ZC0(field), 
+    //                 value_XM1_YM1_ZP1(field), value_XP1_YM1_ZP1(field), value_XC0_YC0_ZP1(field), value_XM1_YP1_ZP1(field), value_XP1_YP1_ZP1(field), value_XM2_YM2_ZP2(field), value_XP2_YM2_ZP2(field), 
+    //                 value_XC0_YC0_ZP2(field), value_XM2_YP2_ZP2(field), value_XP2_YP2_ZP2(field), value_XM3_YM3_ZP3(field), value_XP3_YM3_ZP3(field), value_XC0_YC0_ZP3(field), value_XM3_YP3_ZP3(field), 
+    //                 value_XP3_YP3_ZP3(field) 
+    //Max radius style stencil   
+    
+    // Too big to compile               
+    //real maxvector = value_XC0_YC0_ZM3(field), value_XM1_YM2_ZM2(field), value_XC0_YM2_ZM2(field), value_XP1_YM2_ZM2(field), 
+    //                 value_XM2_YM1_ZM2(field), value_XM1_YM1_ZM2(field), value_XC0_YM1_ZM2(field), value_XP1_YM1_ZM2(field), 
+    //                 value_XP2_YM1_ZM2(field), value_XM2_YC0_ZM2(field), value_XM1_YC0_ZM2(field), value_XC0_YC0_ZM2(field), 
+    //                 value_XP1_YC0_ZM2(field), value_XP2_YC0_ZM2(field), value_XM2_YP1_ZM2(field), value_XM1_YP1_ZM2(field), 
+    //                 value_XC0_YP1_ZM2(field), value_XP1_YP1_ZM2(field), value_XP2_YP1_ZM2(field), value_XM1_YP2_ZM2(field), 
+    //                 value_XC0_YP2_ZM2(field), value_XP1_YP2_ZM2(field), value_XM2_YM2_ZM1(field), value_XM1_YM2_ZM1(field), 
+    //                 value_XC0_YM2_ZM1(field), value_XP1_YM2_ZM1(field), value_XP2_YM2_ZM1(field), value_XM2_YM1_ZM1(field), 
+    //                 value_XM1_YM1_ZM1(field), value_XC0_YM1_ZM1(field), value_XP1_YM1_ZM1(field), value_XP2_YM1_ZM1(field), 
+    //                 value_XM2_YC0_ZM1(field), value_XM1_YC0_ZM1(field), value_XC0_YC0_ZM1(field), value_XP1_YC0_ZM1(field), 
+    //                 value_XP2_YC0_ZM1(field), value_XM2_YP1_ZM1(field), value_XM1_YP1_ZM1(field), value_XC0_YP1_ZM1(field), 
+    //                 value_XP1_YP1_ZM1(field), value_XP2_YP1_ZM1(field), value_XM2_YP2_ZM1(field), value_XM1_YP2_ZM1(field), 
+    //                 value_XC0_YP2_ZM1(field), value_XP1_YP2_ZM1(field), value_XP2_YP2_ZM1(field), value_XC0_YM3_ZC0(field), 
+    //                 value_XM2_YM2_ZC0(field), value_XM1_YM2_ZC0(field), value_XC0_YM2_ZC0(field), value_XP1_YM2_ZC0(field), 
+    //                 value_XP2_YM2_ZC0(field), value_XM2_YM1_ZC0(field), value_XM1_YM1_ZC0(field), value_XC0_YM1_ZC0(field), 
+    //                 value_XP1_YM1_ZC0(field), value_XP2_YM1_ZC0(field), value_XM3_YC0_ZC0(field), value_XM2_YC0_ZC0(field), 
+    //                 value_XM1_YC0_ZC0(field), value_XC0_YC0_ZC0(field), value_XP1_YC0_ZC0(field), value_XP2_YC0_ZC0(field), 
+    //                 value_XP3_YC0_ZC0(field), value_XM2_YP1_ZC0(field), value_XM1_YP1_ZC0(field), value_XC0_YP1_ZC0(field), 
+    //                 value_XP1_YP1_ZC0(field), value_XP2_YP1_ZC0(field), value_XM2_YP2_ZC0(field), value_XM1_YP2_ZC0(field), 
+    //                 value_XC0_YP2_ZC0(field), value_XP1_YP2_ZC0(field), value_XP2_YP2_ZC0(field), value_XC0_YP3_ZC0(field), 
+    //                 value_XM2_YM2_ZP1(field), value_XM1_YM2_ZP1(field), value_XC0_YM2_ZP1(field), value_XP1_YM2_ZP1(field), 
+    //                 value_XP2_YM2_ZP1(field), value_XM2_YM1_ZP1(field), value_XM1_YM1_ZP1(field), value_XC0_YM1_ZP1(field), 
+    //                 value_XP1_YM1_ZP1(field), value_XP2_YM1_ZP1(field), value_XM2_YC0_ZP1(field), value_XM1_YC0_ZP1(field), 
+    //                 value_XC0_YC0_ZP1(field), value_XP1_YC0_ZP1(field), value_XP2_YC0_ZP1(field), value_XM2_YP1_ZP1(field), 
+    //                 value_XM1_YP1_ZP1(field), value_XC0_YP1_ZP1(field), value_XP1_YP1_ZP1(field), value_XP2_YP1_ZP1(field), 
+    //                 value_XM2_YP2_ZP1(field), value_XM1_YP2_ZP1(field), value_XC0_YP2_ZP1(field), value_XP1_YP2_ZP1(field), 
+    //                 value_XP2_YP2_ZP1(field), value_XM1_YM2_ZP2(field), value_XC0_YM2_ZP2(field), value_XP1_YM2_ZP2(field), 
+    //                 value_XM2_YM1_ZP2(field), value_XM1_YM1_ZP2(field), value_XC0_YM1_ZP2(field), value_XP1_YM1_ZP2(field), 
+    //                 value_XP2_YM1_ZP2(field), value_XM2_YC0_ZP2(field), value_XM1_YC0_ZP2(field), value_XC0_YC0_ZP2(field), 
+    //                 value_XP1_YC0_ZP2(field), value_XP2_YC0_ZP2(field), value_XM2_YP1_ZP2(field), value_XM1_YP1_ZP2(field), 
+    //                 value_XC0_YP1_ZP2(field), value_XP1_YP1_ZP2(field), value_XP2_YP1_ZP2(field), value_XM1_YP2_ZP2(field), 
+    //                 value_XC0_YP2_ZP2(field), value_XP1_YP2_ZP2(field), value_XC0_YC0_ZP3(field) 
 
-    for ind in 0:len(maxvector) {
-        sample = maxvector[ind]
-        if sample > maxval {
-            maxval = sample
+    //for ind in 0:len(maxvector) {
+    //    sample = maxvector[ind]
+    //    if sample > maxval {
+    //        maxval = sample
+    //    }
+    //}
+
+    for iz in -3:4 {
+        for iy in -3:4 {
+            for ix in -3:4 {
+                sample = FIELD_IN[field][IDX(vertexIdx.x+ix, vertexIdx.y+iy, vertexIdx.z+iz)] // And also individual index components
+                if sample > maxval {
+                    maxval = sample
+                }
+            }
         }
     }
-
     return maxval
 }
 
