@@ -18,7 +18,7 @@ test to see that the code is working as expected.**
 At the moment you need to set the switches manually. Default master branch
 configuration will have different LSWITCHES.
 
-* In `acc/mhd_solver/stencil_kernel.ac`
+* In `../../../acc-runtime/samples/mhd_modular/mhdsolver.ac`
 
 ```
 LDENSITY (1)
