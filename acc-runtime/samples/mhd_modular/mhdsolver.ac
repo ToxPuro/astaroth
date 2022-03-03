@@ -174,10 +174,10 @@ real AC_current_time
 #define DERX_1 (270. / 720.)
 #define DERX_0 (0)
 
-#define DER6UPWD_3 (  1. / 60.)  OK
-#define DER6UPWD_2 ( -6. / 60.)  OK 
-#define DER6UPWD_1 ( 15. / 60.)  OK   
-#define DER6UPWD_0 (-20. / 60.)  OK
+#define DER6UPWD_3 (  1. / 60.)  
+#define DER6UPWD_2 ( -6. / 60.)   
+#define DER6UPWD_1 ( 15. / 60.)     
+#define DER6UPWD_0 (-20. / 60.)  
 
 #if LSHOCK
 
