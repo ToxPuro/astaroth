@@ -21,6 +21,8 @@ L [a-zA-Z_]
 "Stencil"               { return STENCIL; }
 
 "Kernel"                { return KERNEL; } /* Type qualifiers */
+"Sum"                   { return SUM; }
+"Max"                   { return MAX; }
 
 "if"        { return IF; } /* Keywords */
 "else if"   { return ELIF; }

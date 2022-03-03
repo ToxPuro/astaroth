@@ -139,7 +139,7 @@ Kernel func3() {
 Stencils
 ```
 // Format
-Stencil <identifier> {
+<Optional reduction operation> Stencil <identifier> {
     [z][y][x] = coefficient,
     ...
 }
@@ -151,14 +151,31 @@ Stencil example {
     [0][0][0] = b
     [0][0][1] = c,
 }
-// is calculated equivalently to
+
+// Which is equivalent to
+Sum Stencil example {
+    ...
+}
+
+// and is calculated equivalently to
 example(field) {
     return  a * field[IDX(vertexIdx.x - 1, vertexIdx.y, vertexIdx.z)] +
             b * field[IDX(vertexIdx.x,     vertexIdx.y, vertexIdx.z)] +
             c * field[IDX(vertexIdx.x + 1, vertexIdx.y, vertexIdx.z)]
 }
 
+By default, the binary operation for reducing `Stencil` elements is `Sum` (as above). Currently supported operations are `Sum` and `Max`. See the up-to-date list of the supported operations in `acc-runtime/acc/ac.y` rule `type_qualifier`.
+
 // Real-world example
+Max Stencil largest_neighbor {
+    [1][0][0]  = 1,
+    [-1][0][0] = 1,
+    [0][1][0]  = 1,
+    [0][-1][0] = 1,
+    [0][0][1]  = 1,
+    [0][0][-1] = 1,
+}
+
 Stencil derx {
     [0][0][-3] = -DER1_3,
     [0][0][-2] = -DER1_2,

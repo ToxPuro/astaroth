@@ -170,9 +170,10 @@ print_symbol_table(void)
     printf("%s ", symbol_table[i].identifier);
 
     if (strlen(symbol_table[i].tspecifier) > 0)
-      printf("(%s) ", symbol_table[i].tspecifier);
-    else
-      printf("(auto) ");
+      printf("(tspec: %s) ", symbol_table[i].tspecifier);
+
+    if (strlen(symbol_table[i].tqualifier) > 0)
+      printf("(tqual: %s) ", symbol_table[i].tqualifier);
 
     if (symbol_table[i].type & NODE_FUNCTION_ID)
       printf("(%s function)",
@@ -180,6 +181,9 @@ print_symbol_table(void)
 
     if (symbol_table[i].type & NODE_DCONST_ID)
       printf("(dconst)");
+
+    if (symbol_table[i].type & NODE_STENCIL_ID)
+      printf("(stencil)");
 
     printf("\n");
   }
@@ -575,23 +579,22 @@ generate(const ASTNode* root, FILE* stream)
     if (symbol_table[i].type & NODE_FIELD_ID)
       ++num_fields;
 
-  // Device constants
-  // gen_dconsts(root, stream);
+      // Device constants
+      // gen_dconsts(root, stream);
 
-  // Stencils
-  /*
-  // Defined now in user_defines.h
-  fprintf(stream, "typedef enum{");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_STENCIL_ID)
-      fprintf(stream, "stencil_%s,", symbol_table[i].identifier);
-  fprintf(stream, "} Stencil;");
-  */
-  // fprintf(stream, "NUM_STENCILS} Stencil;"); // defined now in
-  // user_defines.h
+      // Stencils
+      /*
+      // Defined now in user_defines.h
+      fprintf(stream, "typedef enum{");
+      for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+        if (symbol_table[i].type & NODE_STENCIL_ID)
+          fprintf(stream, "stencil_%s,", symbol_table[i].identifier);
+      fprintf(stream, "} Stencil;");
+      */
+      // fprintf(stream, "NUM_STENCILS} Stencil;"); // defined now in
+      // user_defines.h
 
-  // Stencil generator
-  symboltable_reset();
+      // Stencil generator
 #define STENCILGEN_SRC "stencilgen.c"
 #define STENCILGEN_EXEC "stencilgen.out"
   FILE* stencilgen = fopen(STENCILGEN_SRC, "w");
@@ -607,9 +610,36 @@ generate(const ASTNode* root, FILE* stream)
           "#define NUM_FIELDS (%lu)\n",
           stencil_order, stencil_depth, stencil_height, stencil_width,
           num_stencils, num_fields);
-  fprintf(stencilgen,
-          "static char* "
-          "stencils[][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH] = {");
+
+  // Stencil ops
+  symboltable_reset();
+  traverse(root, 0, NULL);
+  { // Unary (non-functional, default string 'val')
+    fprintf(stencilgen,
+            "static const char* stencil_unary_ops[NUM_STENCILS] = {");
+    for (size_t i = 0; i < num_stencils; ++i)
+      fprintf(stencilgen, "\"val\",");
+    fprintf(stencilgen, "};");
+  }
+
+  { // Binary
+    fprintf(stencilgen, "static const char* "
+                        "stencil_binary_ops[NUM_STENCILS] = {");
+    for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+      const Symbol symbol = symbol_table[i];
+      if (symbol.type == NODE_STENCIL_ID) {
+        fprintf(stencilgen, "\"%s\",",
+                strlen(symbol.tqualifier) ? symbol.tqualifier : "sum");
+      }
+    }
+    fprintf(stencilgen, "};");
+  }
+
+  // Stencil coefficients
+  symboltable_reset();
+  fprintf(stencilgen, "static char* "
+                      "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]["
+                      "STENCIL_WIDTH] = {");
   traverse(root,
            NODE_STENCIL_ID | NODE_DCONST | NODE_FIELD | NODE_FUNCTION |
                NODE_HOSTDEFINE,
@@ -638,6 +668,7 @@ const char* stencilgen_main =
   "}"
   "printf(\"};\\n\");"
 "} else {" // Generate stencil reductions
+  "int stencil_initialized[NUM_FIELDS][NUM_STENCILS]={0};"
   "for(int field=0;field<NUM_FIELDS;++field){"
     "printf(\"{const AcReal* __restrict__ in=vba.in[%d];\",field);"
     "for(int depth=0;depth<STENCIL_DEPTH;++depth){"
@@ -645,8 +676,14 @@ const char* stencilgen_main =
         "for(int width=0;width<STENCIL_WIDTH;++width){"
           "for(int stencil=0;stencil<NUM_STENCILS;++stencil){"
             "if(stencils[stencil][depth][height][width]){"
-              "printf(\"processed_stencils[%d][%d]+=stencils[%d][%d][%d][%d]*in[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d),vertexIdx.z+(%d))];\","
-              "field,stencil,stencil,depth,height,width,-STENCIL_ORDER/2+width,-STENCIL_ORDER/2+height,-STENCIL_ORDER/2+depth);"
+              "if (!stencil_initialized[field][stencil]) {"
+                "printf(\"processed_stencils[%d][%d]=%s(stencils[%d][%d][%d][%d]*in[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d),vertexIdx.z+(%d))]);\","
+                         "field,stencil,stencil_unary_ops[stencil],stencil,depth,height,width,-STENCIL_ORDER/2+width,-STENCIL_ORDER/2+height,-STENCIL_ORDER/2+depth);"
+                "stencil_initialized[field][stencil] = 1;"
+              "} else {"
+                "printf(\"processed_stencils[%d][%d]=%s(processed_stencils[%d][%d],stencils[%d][%d][%d][%d]*in[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d),vertexIdx.z+(%d))]);\","
+                         "field,stencil,stencil_binary_ops[stencil],field,stencil,stencil,depth,height,width,-STENCIL_ORDER/2+width,-STENCIL_ORDER/2+height,-STENCIL_ORDER/2+depth);"
+              "}"
             "}"
           "}"
         "}"
@@ -655,7 +692,7 @@ const char* stencilgen_main =
   "printf(\"}\\n\");"
 "}"
 "}"
-"}";
+"return EXIT_SUCCESS;}";
   // clang-format on
   fprintf(stencilgen, "%s", stencilgen_main);
   fclose(stencilgen);
@@ -674,7 +711,7 @@ const char* stencilgen_main =
   FILE* proc = popen("./" STENCILGEN_EXEC " -stencils", "r");
   assert(proc);
 
-  char buf[4096];
+  char buf[4096] = {0};
   while (fgets(buf, sizeof(buf), proc))
     fprintf(stream, "%s", buf);
 
@@ -684,7 +721,7 @@ const char* stencilgen_main =
   proc = popen("./" STENCILGEN_EXEC, "r");
   assert(proc);
 
-  char sdefinitions[1 * 1024 * 1024];
+  char sdefinitions[1 * 1024 * 1024] = {0};
   while (fgets(buf, sizeof(buf), proc))
     strcat(sdefinitions, buf);
 
@@ -702,7 +739,7 @@ const char* stencilgen_main =
   fflush(dfunc_fp);
 
   // Stencil functions
-  char sfunctions[1024 * 1024];
+  char sfunctions[1024 * 1024] = {0};
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_STENCIL_ID) {
       const char* id = symbol_table[i].identifier;
