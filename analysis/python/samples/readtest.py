@@ -620,9 +620,42 @@ if (("bline" in sys.argv) or ("uline" in sys.argv)):
 
 
 if 'ts' in sys.argv:
-   ts = ad.read.TimeSeries(fdir=meshdir)
+   ts      = ad.read.TimeSeries(fdir=meshdir)
    vis.lineplot.plot_ts(ts, show_all=True)
    #vis.lineplot.plot_ts(ts, isotherm=True)
+
+if 'tscomp' in sys.argv:
+   ts = ad.read.TimeSeries(fdir=meshdir)
+   ts_orig = ad.read.TimeSeries(fdir=meshdir, fname="a2_timeseries.ts")
+
+   print(ts.var.items())
+   print(ts_orig.var.items())
+
+   plt.figure()
+   plt.plot(ts.var['t_step'][:-1],      ts.var["uutot_rms"][:-1], label="uu_total_rms")
+   plt.plot(ts_orig.var['t_step'][:-1], ts_orig.var["uutot_rms"][:-1], label="uu_total_rms (orig)")
+   #plt.xlabel(xaxis)
+   plt.legend()
+
+   plt.figure()
+   plt.plot(ts.var['t_step'][:-1],      ts.var["bbtot_rms"][:-1], label="bb_total_rms")
+   plt.plot(ts_orig.var['t_step'][:-1], ts_orig.var["bbtot_rms"][:-1], label="bb_total_rms (orig)")
+   #plt.xlabel(xaxis)
+   plt.legend()
+
+   plt.figure()
+   plt.plot(ts.var['t_step'][:-1],      ts.var["shock_rms"][:-1], label="VTXBUF_SHOCK_rms")
+   plt.plot(ts_orig.var['t_step'][:-1], ts_orig.var["shock_rms"][:-1], label="VTXBUF_SHOCK_rms (orig)")
+   #plt.xlabel(xaxis)
+   plt.legend()
+
+   plt.figure()
+   plt.plot(ts.var['t_step'][:-1],      ts.var["lnrho_max"][:-1], label="lnrho_max")
+   plt.plot(ts_orig.var['t_step'][:-1], ts_orig.var["lnrho_max"][:-1], label="lnrho max (orig)")
+   #plt.xlabel(xaxis)
+   plt.legend()
+
+   plt.show()
 
 
 if 'getvtk' in sys.argv:
