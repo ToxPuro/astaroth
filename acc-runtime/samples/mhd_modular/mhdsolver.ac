@@ -11,13 +11,13 @@ hostdefine AC_INTEGRATION_ENABLED (1) // Enables acIntegrate() and other non-gen
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
-hostdefine LENTROPY (0)
+hostdefine LENTROPY (1)
 hostdefine LTEMPERATURE (0)
-hostdefine LFORCING (1)
-hostdefine LUPWD (1)
+hostdefine LFORCING (0)
+hostdefine LUPWD (0)
 hostdefine LSINK (0)
-hostdefine LBFIELD (1)
-hostdefine LSHOCK (1)
+hostdefine LBFIELD (0)
+hostdefine LSHOCK (0)
 hostdefine AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
 hostdefine R_PI (AC_REAL_PI)
 
