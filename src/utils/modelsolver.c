@@ -773,16 +773,16 @@ static inline Scalar
 entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho, const VectorData aa)
 #else
 entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho)
-#endif 
+#endif
 {
     const Matrix S      = stress_tensor(uu);
     const Scalar inv_pT = (Scalar)(1.) / (exp(value(lnrho)) * exp(lnT(ss, lnrho)));
 #if LMAGNETIC
-    const Vector j      = ((Scalar)(1.) / getReal(AC_mu0)) *
+    const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
 #else
-    const Vector j      = (Vector){0.0,0.0,0.0};
-#endif 
+    const Vector j             = (Vector){0.0, 0.0, 0.0};
+#endif
     const Scalar RHS = H_CONST - C_CONST + getReal(AC_eta) * getReal(AC_mu0) * dot(j, j) +
                        (Scalar)(2.) * exp(value(lnrho)) * getReal(AC_nu_visc) * contract(S) +
                        getReal(AC_zeta) * exp(value(lnrho)) * divergence(uu) * divergence(uu);
@@ -928,15 +928,15 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
     rate_of_change[VTXBUF_AZ] = aa_res[2];
 #endif
 #if LENTROPY
-    const ScalarData ss            = read_scal_data(i, j, k, in.vertex_buffer, VTXBUF_ENTROPY);
+    const ScalarData ss = read_scal_data(i, j, k, in.vertex_buffer, VTXBUF_ENTROPY);
 #if LMAGNETIC
-    const Vector uu_res            = momentum(uu, lnrho, ss, aa);
+    const Vector uu_res = momentum(uu, lnrho, ss, aa);
 #else
     const Vector uu_res            = momentum(uu, lnrho, ss);
 #endif
-    rate_of_change[VTXBUF_UUX]     = uu_res[0];
-    rate_of_change[VTXBUF_UUY]     = uu_res[1];
-    rate_of_change[VTXBUF_UUZ]     = uu_res[2];
+    rate_of_change[VTXBUF_UUX] = uu_res[0];
+    rate_of_change[VTXBUF_UUY] = uu_res[1];
+    rate_of_change[VTXBUF_UUZ] = uu_res[2];
 #if LMAGNETIC
     rate_of_change[VTXBUF_ENTROPY] = entropy(ss, uu, lnrho, aa);
 #else
@@ -946,7 +946,7 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
 #if LMAGNETIC
     const Vector uu_res        = momentum(uu, lnrho, aa);
 #else
-    const Vector uu_res        = momentum(uu, lnrho);
+    const Vector uu_res = momentum(uu, lnrho);
 #endif
     rate_of_change[VTXBUF_UUX] = uu_res[0];
     rate_of_change[VTXBUF_UUY] = uu_res[1];
