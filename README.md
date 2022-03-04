@@ -12,6 +12,10 @@ see [Contributing](CONTRIBUTING.md).
 ## System Requirements
 * An NVIDIA GPU with support for compute capability 3.0 or higher (Kepler architecture or newer)
 
+Or
+
+* an AMD GPU that has HIP support
+
 ## Dependencies
 Relative recent versions of
 
