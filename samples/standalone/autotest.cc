@@ -1,5 +1,5 @@
 /*
-   Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+   Copyright (C) 2014-2022, Johannes Pekkila, Miikka Vaisala.
 
    This file is part of Astaroth.
 
@@ -273,7 +273,7 @@ check_reductions(const AcMeshInfo& config)
 
             // Vec
             model     = model_reduce_vec(*modelmesh, ReductionType(rtype), VTXBUF_UUX, VTXBUF_UUY,
-                                     VTXBUF_UUZ);
+                                         VTXBUF_UUZ);
             candidate = acReduceVec(ReductionType(rtype), VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
             print_result(model, candidate, range, "UUXYZ vec");
 
@@ -696,7 +696,7 @@ run_autotest(void)
 
             { // Check scalar max reduction
                 ModelScalar model         = model_reduce_scal(*model_mesh, (ReductionType)RTYPE_MAX,
-                                                      VTXBUF_UUX);
+                                                              VTXBUF_UUX);
                 AcReal candidate          = acReduceScal((ReductionType)RTYPE_MAX, VTXBUF_UUX);
                 Error scalar_reduce_error = get_error(model, candidate);
                 char scalar_reduce_path[MAX_PATH_LEN];
@@ -710,7 +710,7 @@ run_autotest(void)
                 ModelScalar model = model_reduce_vec(*model_mesh, (ReductionType)RTYPE_MAX,
                                                      VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
                 AcReal candidate  = acReduceVec((ReductionType)RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY,
-                                               VTXBUF_UUZ);
+                                                VTXBUF_UUZ);
                 Error vector_reduce_error = get_error(model, candidate);
                 char vector_reduce_path[MAX_PATH_LEN];
                 sprintf(vector_reduce_path, "%s_vector_reduce_%s.testresult",

@@ -115,18 +115,15 @@ test_simple_bc(AcMesh mesh, int3 direction, int3 dims, int3 domain_start, int3 g
 
                     int3 dom = int3{domain_start.x + x, domain_start.y + y, domain_start.z + z};
 
-                    int3 boundary = int3{(direction.x == 0)
-                                             ? dom.x
-                                             : (direction.x == 1) ? domain_start.x + dims.x
-                                                                  : domain_start.x - 1,
-                                         (direction.y == 0)
-                                             ? dom.y
-                                             : (direction.y == 1) ? domain_start.y + dims.y
-                                                                  : domain_start.y - 1,
-                                         (direction.z == 0)
-                                             ? dom.z
-                                             : (direction.z == 1) ? domain_start.z + dims.z
-                                                                  : domain_start.z - 1};
+                    int3 boundary = int3{(direction.x == 0)   ? dom.x
+                                         : (direction.x == 1) ? domain_start.x + dims.x
+                                                              : domain_start.x - 1,
+                                         (direction.y == 0)   ? dom.y
+                                         : (direction.y == 1) ? domain_start.y + dims.y
+                                                              : domain_start.y - 1,
+                                         (direction.z == 0)   ? dom.z
+                                         : (direction.z == 1) ? domain_start.z + dims.z
+                                                              : domain_start.z - 1};
 
                     int3 ghost = int3{(direction.x == 0) ? dom.x : ghost_start.x + dims.x - x - 1,
                                       (direction.y == 0) ? dom.y : ghost_start.y + dims.y - y - 1,
