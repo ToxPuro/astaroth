@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2020, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -18,9 +18,7 @@
 */
 #include "astaroth.h"
 
-#include "errchk.h"
 #include "kernels/kernels.h"
-#include "math_utils.h"
 
 #define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
     AcResult acDevice_##ID(const Device device, const Stream stream, const int3 start,             \
@@ -30,8 +28,6 @@
         return acKernel_##ID(KernelParameters{device->streams[stream], 0, start, end},             \
                              device->vba);                                                         \
     }
-
-#include "user_kernels.h"
 
 AcResult
 acDevicePrintInfo(const Device device)
@@ -53,7 +49,9 @@ acDevicePrintInfo(const Device device)
     printf("  Compute\n");
     printf("    Clock rate (GHz): %g\n", props.clockRate / 1e6); // KHz -> GHz
     printf("    Stream processors: %d\n", props.multiProcessorCount);
+#if !AC_USE_HIP
     printf("    SP to DP flops performance ratio: %d:1\n", props.singleToDoublePrecisionPerfRatio);
+#endif
     printf(
         "    Compute mode: %d\n",
         (int)props
@@ -75,8 +73,10 @@ acDevicePrintInfo(const Device device)
     printf("    Gmem memory free (GiB): %.2f\n", free_bytes / (1024.0 * 1024 * 1024));
     printf("    Gmem memory total (GiB): %.2f\n", total_bytes / (1024.0 * 1024 * 1024));
     printf("  Caches\n");
+#if !AC_USE_HIP
     printf("    Local L1 cache supported: %d\n", props.localL1CacheSupported);
     printf("    Global L1 cache supported: %d\n", props.globalL1CacheSupported);
+#endif
     printf("    L2 size: %d KiB\n", props.l2CacheSize / (1024));
     // MV: props.totalConstMem and props.sharedMemPerBlock cause assembler error
     // MV: while compiling in TIARA gp cluster. Therefore commeted out.
@@ -87,27 +87,108 @@ acDevicePrintInfo(const Device device)
     // printf("    Single to double perf. ratio: %dx\n",
     // props.singleToDoublePrecisionPerfRatio); //Not supported with older CUDA
     // versions
+#if !AC_USE_HIP
     printf("    Stream priorities supported: %d\n", props.streamPrioritiesSupported);
+#endif
     printf("--------------------------------------------------\n");
 
     return AC_SUCCESS;
 }
 
 AcResult
-acDeviceAutoOptimize(const Device device)
+acDeviceLoadScalarUniform(const Device device, const Stream stream, const AcRealParam param,
+                          const AcReal value)
 {
     cudaSetDevice(device->id);
-    const int3 start = (int3){
-        device->local_config.int_params[AC_nx_min],
-        device->local_config.int_params[AC_ny_min],
-        device->local_config.int_params[AC_nz_min],
-    };
-    const int3 end = (int3){
-        device->local_config.int_params[AC_nx_max],
-        device->local_config.int_params[AC_ny_max],
-        device->local_config.int_params[AC_nz_max],
-    };
-    return acKernelAutoOptimizeIntegration(start, end, device->vba);
+    return acLoadRealUniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceLoadVectorUniform(const Device device, const Stream stream, const AcReal3Param param,
+                          const AcReal3 value)
+{
+    cudaSetDevice(device->id);
+    return acLoadReal3Uniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceLoadIntUniform(const Device device, const Stream stream, const AcIntParam param,
+                       const int value)
+{
+    cudaSetDevice(device->id);
+    return acLoadIntUniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceLoadInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
+                        const int3 value)
+{
+    cudaSetDevice(device->id);
+    return acLoadInt3Uniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceStoreScalarUniform(const Device device, const Stream stream, const AcRealParam param,
+                           AcReal* value)
+{
+    cudaSetDevice(device->id);
+    return acStoreRealUniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceStoreVectorUniform(const Device device, const Stream stream, const AcReal3Param param,
+                           AcReal3* value)
+{
+    cudaSetDevice(device->id);
+    return acStoreReal3Uniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceStoreIntUniform(const Device device, const Stream stream, const AcIntParam param,
+                        int* value)
+{
+    cudaSetDevice(device->id);
+    return acStoreIntUniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceStoreInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
+                         int3* value)
+{
+    cudaSetDevice(device->id);
+    return acStoreInt3Uniform(device->streams[stream], param, value);
+}
+
+AcResult
+acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
+{
+    cudaSetDevice(device->id);
+
+    AcMeshInfo device_config = config;
+    acHostUpdateBuiltinParams(&device_config);
+
+    ERRCHK_ALWAYS(device_config.int_params[AC_nx] == device->local_config.int_params[AC_nx]);
+    ERRCHK_ALWAYS(device_config.int_params[AC_ny] == device->local_config.int_params[AC_ny]);
+    ERRCHK_ALWAYS(device_config.int_params[AC_nz] == device->local_config.int_params[AC_nz]);
+    ERRCHK_ALWAYS(device_config.int_params[AC_multigpu_offset] ==
+                  device->local_config.int_params[AC_multigpu_offset]);
+
+    for (int i = 0; i < NUM_INT_PARAMS; ++i)
+        acDeviceLoadIntUniform(device, STREAM_DEFAULT, (AcIntParam)i, device_config.int_params[i]);
+
+    for (int i = 0; i < NUM_INT3_PARAMS; ++i)
+        acDeviceLoadInt3Uniform(device, STREAM_DEFAULT, (AcInt3Param)i,
+                                device_config.int3_params[i]);
+
+    for (int i = 0; i < NUM_REAL_PARAMS; ++i)
+        acDeviceLoadScalarUniform(device, STREAM_DEFAULT, (AcRealParam)i,
+                                  device_config.real_params[i]);
+
+    for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
+        acDeviceLoadVectorUniform(device, STREAM_DEFAULT, (AcReal3Param)i,
+                                  device_config.real3_params[i]);
+
+    return AC_SUCCESS;
 }
 
 AcResult
@@ -140,11 +221,11 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 #if AC_VERBOSE
     acDevicePrintInfo(device);
     printf("Trying to run a dummy kernel. If this fails, make sure that your\n"
-           "device supports the CUDA architecture you are compiling for.\n");
+           "device supports the GPU architecture you are compiling for.\n");
 #endif
 
     // Check that the code was compiled for the proper GPU architecture
-    printf("Testing CUDA... ");
+    printf("Running a test kernel... ");
     fflush(stdout);
     acKernelDummy();
     printf("\x1B[32m%s\x1B[0m\n", "OK!");
@@ -157,35 +238,45 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Memory
     // VBA in/out
+    const size_t vba_size       = acVertexBufferSize(device_config);
     const size_t vba_size_bytes = acVertexBufferSizeBytes(device_config);
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.in[i], vba_size_bytes));
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.out[i], vba_size_bytes));
+
+        // Set vba.in data to all-nan and vba.out to 0
+        acKernelFlush(device->vba.in[i], vba_size);
+        ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.out[i], 0, vba_size_bytes));
     }
+    /*
     // VBA Profiles
     const size_t profile_size_bytes = sizeof(AcReal) * max(device_config.int_params[AC_mx],
                                                            max(device_config.int_params[AC_my],
                                                                device_config.int_params[AC_mz]));
     for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.profiles[i], profile_size_bytes));
+        ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.profiles[i], 0, profile_size_bytes));
     }
+    */
 
     // Reductions
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->reduce_scratchpad,
                                   acVertexBufferCompdomainSizeBytes(device_config)));
+
+    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->reduce_scratchpad, 0,
+                                  acVertexBufferCompdomainSizeBytes(device_config)));
+
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->reduce_result, sizeof(AcReal)));
+    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->reduce_result, 0, sizeof(AcReal)));
 
     // Device constants
-    acDeviceLoadDefaultUniforms(device);
+    // acDeviceLoadDefaultUniforms(device); // TODO recheck
     acDeviceLoadMeshInfo(device, device_config);
 
 #if AC_VERBOSE
     printf("Created device %d (%p)\n", device->id, device);
 #endif
     *device_handle = device;
-
-    // Autoptimize
-    acDeviceAutoOptimize(device);
 
     return AC_SUCCESS;
 }
@@ -204,9 +295,11 @@ acDeviceDestroy(Device device)
         cudaFree(device->vba.in[i]);
         cudaFree(device->vba.out[i]);
     }
+    /*
     for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
         cudaFree(device->vba.profiles[i]);
     }
+    */
 
     cudaFree(device->reduce_scratchpad);
     cudaFree(device->reduce_result);
@@ -245,6 +338,7 @@ acDeviceSwapBuffers(const Device device)
     return (AcResult)retval;
 }
 
+/*
 AcResult
 acDeviceLoadScalarArray(const Device device, const Stream stream, const ScalarArrayHandle handle,
                         const size_t start, const AcReal* data, const size_t num)
@@ -262,6 +356,7 @@ acDeviceLoadScalarArray(const Device device, const Stream stream, const ScalarAr
                                 cudaMemcpyHostToDevice, device->streams[stream]));
     return AC_SUCCESS;
 }
+*/
 
 AcResult
 acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream, const AcMesh host_mesh,
@@ -325,7 +420,7 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
     acDeviceSynchronizeStream(device, stream);
 
     const size_t count = acVertexBufferSize(device->local_config);
-    AcReal* data       = (AcReal*)malloc(sizeof(AcReal) * count);
+    AcReal* data       = (AcReal*)calloc(count, sizeof(AcReal));
     ERRCHK_ALWAYS(data);
 
     for (size_t i = 0; i < count; ++i)
@@ -452,14 +547,50 @@ acDeviceTransferMesh(const Device src_device, const Stream stream, Device dst_de
 }
 
 AcResult
+acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kernel,
+                     const int3 start, const int3 end)
+{
+    cudaSetDevice(device->id);
+    return acLaunchKernel(kernel, device->streams[stream], start, end, device->vba);
+}
+
+AcResult
+acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
+                    const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    cudaSetDevice(device->id);
+    return acLoadStencil(stencil, device->streams[stream], data);
+}
+
+/** */
+AcResult
+acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,
+                     AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    cudaSetDevice(device->id);
+    return acStoreStencil(stencil, device->streams[stream], data);
+}
+
+AcResult
 acDeviceIntegrateSubstep(const Device device, const Stream stream, const int step_number,
                          const int3 start, const int3 end, const AcReal dt)
 {
+#if AC_INTEGRATION_ENABLED
     cudaSetDevice(device->id);
+
     acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
-    return acKernelIntegrateSubstep(KernelParameters{device->streams[stream], step_number, start,
-                                                     end},
-                                    device->vba);
+    acDeviceLoadIntUniform(device, stream, AC_step_number, step_number);
+    return acLaunchKernel(solve, device->streams[stream], start, end, device->vba);
+#else
+    (void)device;      // Unused
+    (void)stream;      // Unused
+    (void)step_number; // Unused
+    (void)start;       // Unused
+    (void)end;         // Unused
+    (void)dt;          // Unused
+    ERROR("acDeviceIntegrateSubstep() called but AC_dt not defined!");
+    return AC_FAILURE;
+#endif
 }
 
 AcResult
@@ -560,4 +691,14 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
                                     device->vba.in[vtxbuf2], device->vba.in[vtxbuf3],
                                     device->reduce_scratchpad, device->reduce_result);
     return AC_SUCCESS;
+}
+
+AcResult
+acDeviceVolumeCopy(const Device device, const Stream stream,                     //
+                   const AcReal* in, const int3 in_offset, const int3 in_volume, //
+                   AcReal* out, const int3 out_offset, const int3 out_volume)
+{
+    cudaSetDevice(device->id);
+    return acKernelVolumeCopy(device->streams[stream], in, in_offset, in_volume, out, out_offset,
+                              out_volume);
 }

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2020, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -32,7 +32,9 @@
 #include "errchk.h"
 #include "memory.h" // acHostMeshCreate, acHostMeshDestroy, acHostMeshApplyPeriodicBounds
 
-// Standalone flags
+#if AC_INTEGRATION_ENABLED
+/*
+// Standalone flags (currently defined in the DSL)
 #define LDENSITY (1)
 #define LHYDRO (1)
 #define LMAGNETIC (1)
@@ -42,6 +44,7 @@
 #define LUPWD (0)
 #define AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
 #define R_PI ((Scalar)M_PI)
+*/
 
 typedef AcReal Scalar;
 // typedef AcReal3 Vector;
@@ -214,7 +217,7 @@ derx(const int i, const int j, const int k, const Scalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
-    return first_derivative(pencil, getReal(AC_inv_dsx));
+    return first_derivative(pencil, ((AcReal)1. / getReal(AC_dsx)));
 }
 
 static inline Scalar
@@ -225,7 +228,7 @@ derxx(const int i, const int j, const int k, const Scalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
-    return second_derivative(pencil, getReal(AC_inv_dsx));
+    return second_derivative(pencil, ((AcReal)1. / getReal(AC_dsx)));
 }
 
 static inline Scalar
@@ -243,7 +246,8 @@ derxy(const int i, const int j, const int k, const Scalar* arr)
         pencil_b[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, //
                                    j + STENCIL_ORDER / 2 - offset, k)];
 
-    return cross_derivative(pencil_a, pencil_b, getReal(AC_inv_dsx), getReal(AC_inv_dsy));
+    return cross_derivative(pencil_a, pencil_b, ((AcReal)1. / getReal(AC_dsx)),
+                            ((AcReal)1. / getReal(AC_dsy)));
 }
 
 static inline Scalar
@@ -261,7 +265,8 @@ derxz(const int i, const int j, const int k, const Scalar* arr)
         pencil_b[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j,
                                    k + STENCIL_ORDER / 2 - offset)];
 
-    return cross_derivative(pencil_a, pencil_b, getReal(AC_inv_dsx), getReal(AC_inv_dsz));
+    return cross_derivative(pencil_a, pencil_b, ((AcReal)1. / getReal(AC_dsx)),
+                            ((AcReal)1. / getReal(AC_dsz)));
 }
 
 static inline Scalar
@@ -272,7 +277,7 @@ dery(const int i, const int j, const int k, const Scalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
-    return first_derivative(pencil, getReal(AC_inv_dsy));
+    return first_derivative(pencil, ((AcReal)1. / getReal(AC_dsy)));
 }
 
 static inline Scalar
@@ -283,7 +288,7 @@ deryy(const int i, const int j, const int k, const Scalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
-    return second_derivative(pencil, getReal(AC_inv_dsy));
+    return second_derivative(pencil, ((AcReal)1. / getReal(AC_dsy)));
 }
 
 static inline Scalar
@@ -301,7 +306,8 @@ deryz(const int i, const int j, const int k, const Scalar* arr)
         pencil_b[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2,
                                    k + STENCIL_ORDER / 2 - offset)];
 
-    return cross_derivative(pencil_a, pencil_b, getReal(AC_inv_dsy), getReal(AC_inv_dsz));
+    return cross_derivative(pencil_a, pencil_b, ((AcReal)1. / getReal(AC_dsy)),
+                            ((AcReal)1. / getReal(AC_dsz)));
 }
 
 static inline Scalar
@@ -312,7 +318,7 @@ derz(const int i, const int j, const int k, const Scalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
-    return first_derivative(pencil, getReal(AC_inv_dsz));
+    return first_derivative(pencil, ((AcReal)1. / getReal(AC_dsz)));
 }
 
 static inline Scalar
@@ -323,14 +329,14 @@ derzz(const int i, const int j, const int k, const Scalar* arr)
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
-    return second_derivative(pencil, getReal(AC_inv_dsz));
+    return second_derivative(pencil, ((AcReal)1. / getReal(AC_dsz)));
 }
 
 #if LUPWD
 static inline Scalar
 der6x_upwd(const int i, const int j, const int k, const Scalar* arr)
 {
-    Scalar inv_ds = getReal(AC_inv_dsx);
+    Scalar inv_ds = ((AcReal)1. / getReal(AC_dsx));
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
            (-(Scalar)(20.0) * arr[IDX(i, j, k)] +
@@ -342,7 +348,7 @@ der6x_upwd(const int i, const int j, const int k, const Scalar* arr)
 static inline Scalar
 der6y_upwd(const int i, const int j, const int k, const Scalar* arr)
 {
-    Scalar inv_ds = getReal(AC_inv_dsy);
+    Scalar inv_ds = ((AcReal)1. / getReal(AC_dsy));
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
            (-(Scalar)(20.0) * arr[IDX(i, j, k)] +
@@ -354,7 +360,7 @@ der6y_upwd(const int i, const int j, const int k, const Scalar* arr)
 static inline Scalar
 der6z_upwd(const int i, const int j, const int k, const Scalar* arr)
 {
-    Scalar inv_ds = getReal(AC_inv_dsz);
+    Scalar inv_ds = ((AcReal)1. / getReal(AC_dsz));
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
            (-(Scalar)(20.0) * arr[IDX(i, j, k)] +
@@ -662,24 +668,32 @@ static inline Vector
 momentum(const VectorData uu, const ScalarData lnrho
 #if LENTROPY
          ,
-         const ScalarData ss, const VectorData aa
+         const ScalarData ss
+#endif
+#if LMAGNETIC
+         ,
+         const VectorData aa
 #endif
 )
 {
 #if LENTROPY
-    const Matrix S   = stress_tensor(uu);
-    const Scalar cs2 = getReal(AC_cs2_sound) *
+    const Matrix S         = stress_tensor(uu);
+    const Scalar cs2_sound = getReal(AC_cs_sound) * getReal(AC_cs_sound);
+    const Scalar cs2       = cs2_sound *
                        exp(getReal(AC_gamma) * value(ss) / getReal(AC_cp_sound) +
                            (getReal(AC_gamma) - 1) * (value(lnrho) - getReal(AC_lnrho0)));
+#if LMAGNETIC
     const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
     const Vector B       = curl(aa);
     const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
-
+#endif
     const Vector mom = -mul(gradients(uu), vecvalue(uu)) -
                        cs2 * (((Scalar)(1.) / getReal(AC_cp_sound)) * gradient(ss) +
                               gradient(lnrho)) +
+#if LMAGNETIC
                        inv_rho * cross(j, B) +
+#endif
                        getReal(AC_nu_visc) *
                            (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
                             (Scalar)(2.) * mul(S, gradient(lnrho))) +
@@ -689,8 +703,16 @@ momentum(const VectorData uu, const ScalarData lnrho
     // !!!!!!!!!!!!!!!!%JP: NOTE TODO IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!
     // NOT CHECKED FOR CORRECTNESS: USE AT YOUR OWN RISK
     const Matrix S = stress_tensor(uu);
-
+#if LMAGNETIC
+    const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
+                     (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
+    const Vector B       = curl(aa);
+    const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
+#endif
     const Vector mom = -mul(gradients(uu), vecvalue(uu)) - getReal(AC_cs2_sound) * gradient(lnrho) +
+#if LMAGNETIC
+                       inv_rho * cross(j, B) +
+#endif
                        getReal(AC_nu_visc) *
                            (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
                             (Scalar)(2.) * mul(S, gradient(lnrho))) +
@@ -742,17 +764,26 @@ heat_conduction(const ScalarData ss, const ScalarData lnrho)
     const Vector third_term = getReal(AC_gamma) * (inv_cp_sound * gradient(ss) + gradient(lnrho)) +
                               grad_ln_chi;
 
-    const Scalar chi = AC_THERMAL_CONDUCTIVITY / (exp(value(lnrho)) * getReal(AC_cp_sound));
+    const Scalar chi = (AcReal)(AC_THERMAL_CONDUCTIVITY) /
+                       (exp(value(lnrho)) * getReal(AC_cp_sound));
     return getReal(AC_cp_sound) * chi * (first_term + dot(second_term, third_term));
 }
 
 static inline Scalar
+#if LMAGNETIC
 entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho, const VectorData aa)
+#else
+entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho)
+#endif
 {
     const Matrix S      = stress_tensor(uu);
     const Scalar inv_pT = (Scalar)(1.) / (exp(value(lnrho)) * exp(lnT(ss, lnrho)));
-    const Vector j      = ((Scalar)(1.) / getReal(AC_mu0)) *
+#if LMAGNETIC
+    const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
+#else
+    const Vector j             = (Vector){0.0, 0.0, 0.0};
+#endif
     const Scalar RHS = H_CONST - C_CONST + getReal(AC_eta) * getReal(AC_mu0) * dot(j, j) +
                        (Scalar)(2.) * exp(value(lnrho)) * getReal(AC_nu_visc) * contract(S) +
                        getReal(AC_zeta) * exp(value(lnrho)) * divergence(uu) * divergence(uu);
@@ -884,28 +915,40 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
 
     const ScalarData lnrho = read_scal_data(i, j, k, in.vertex_buffer, VTXBUF_LNRHO);
     const VectorData uu    = read_vec_data(i, j, k, in.vertex_buffer,
-                                        (int3){VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ});
+                                           (int3){VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ});
 
     Scalar rate_of_change[NUM_VTXBUF_HANDLES] = {0};
     rate_of_change[VTXBUF_LNRHO]              = continuity(uu, lnrho);
 
 #if LMAGNETIC
     const VectorData aa       = read_vec_data(i, j, k, in.vertex_buffer,
-                                        (int3){VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ});
+                                              (int3){VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ});
     const Vector aa_res       = induction(uu, aa);
     rate_of_change[VTXBUF_AX] = aa_res[0];
     rate_of_change[VTXBUF_AY] = aa_res[1];
     rate_of_change[VTXBUF_AZ] = aa_res[2];
 #endif
 #if LENTROPY
-    const ScalarData ss            = read_scal_data(i, j, k, in.vertex_buffer, VTXBUF_ENTROPY);
-    const Vector uu_res            = momentum(uu, lnrho, ss, aa);
-    rate_of_change[VTXBUF_UUX]     = uu_res[0];
-    rate_of_change[VTXBUF_UUY]     = uu_res[1];
-    rate_of_change[VTXBUF_UUZ]     = uu_res[2];
+    const ScalarData ss = read_scal_data(i, j, k, in.vertex_buffer, VTXBUF_ENTROPY);
+#if LMAGNETIC
+    const Vector uu_res = momentum(uu, lnrho, ss, aa);
+#else
+    const Vector uu_res            = momentum(uu, lnrho, ss);
+#endif
+    rate_of_change[VTXBUF_UUX] = uu_res[0];
+    rate_of_change[VTXBUF_UUY] = uu_res[1];
+    rate_of_change[VTXBUF_UUZ] = uu_res[2];
+#if LMAGNETIC
     rate_of_change[VTXBUF_ENTROPY] = entropy(ss, uu, lnrho, aa);
 #else
-    const Vector uu_res        = momentum(uu, lnrho);
+    rate_of_change[VTXBUF_ENTROPY] = entropy(ss, uu, lnrho);
+#endif
+#else
+#if LMAGNETIC
+    const Vector uu_res        = momentum(uu, lnrho, aa);
+#else
+    const Vector uu_res = momentum(uu, lnrho);
+#endif
     rate_of_change[VTXBUF_UUX] = uu_res[0];
     rate_of_change[VTXBUF_UUY] = uu_res[1];
     rate_of_change[VTXBUF_UUZ] = uu_res[2];
@@ -922,6 +965,15 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
                                          rate_of_change[w] * dt;
         }
     }
+
+    if (step_number == 2) {
+#if LBFIELD
+        const Vector bfield = curl(aa);
+        out->vertex_buffer[BFIELDX][idx] = bfield[0];
+        out->vertex_buffer[BFIELDY][idx] = bfield[1];
+        out->vertex_buffer[BFIELDZ][idx] = bfield[2];
+#endif
+    }
 }
 
 static void
@@ -937,14 +989,19 @@ solve_beta_step(const AcMesh in, const int step_number, const Scalar dt, const i
         out->vertex_buffer[w][idx] += beta[step_number] * in.vertex_buffer[w][idx];
 
     (void)dt; // Suppress unused variable warning if forcing not used
-#if LFORCING
     if (step_number == 2) {
+#if LFORCING
         Vector force = forcing((int3){i, j, k}, dt);
         out->vertex_buffer[VTXBUF_UUX][idx] += force[0];
         out->vertex_buffer[VTXBUF_UUY][idx] += force[1];
         out->vertex_buffer[VTXBUF_UUZ][idx] += force[2];
-    }
 #endif
+#if LBFIELD
+        out->vertex_buffer[BFIELDX][idx] = in.vertex_buffer[BFIELDX][idx];
+        out->vertex_buffer[BFIELDY][idx] = in.vertex_buffer[BFIELDY][idx];
+        out->vertex_buffer[BFIELDZ][idx] = in.vertex_buffer[BFIELDZ][idx];
+#endif
+    }
 }
 
 // Checks whether the parameters passed in an AcMeshInfo are valid
@@ -978,10 +1035,10 @@ checkConfiguration(const AcMeshInfo info)
     }
 #endif
 
-    ERRCHK_ALWAYS(is_valid(info.real_params[AC_inv_dsx]));
-    ERRCHK_ALWAYS(is_valid(info.real_params[AC_inv_dsy]));
-    ERRCHK_ALWAYS(is_valid(info.real_params[AC_inv_dsz]));
-    ERRCHK_ALWAYS(is_valid(info.real_params[AC_cs2_sound]));
+    ERRCHK_ALWAYS(is_valid((AcReal)1. / info.real_params[AC_dsx]));
+    ERRCHK_ALWAYS(is_valid((AcReal)1. / info.real_params[AC_dsy]));
+    ERRCHK_ALWAYS(is_valid((AcReal)1. / info.real_params[AC_dsz]));
+    // ERRCHK_ALWAYS(is_valid(info.real_params[AC_cs2_sound]));
 }
 
 AcResult
@@ -990,11 +1047,11 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
     mesh_info = &(mesh.info);
 
     // Setup built-in parameters
-    mesh_info->real_params[AC_inv_dsx]   = (AcReal)(1.0) / mesh_info->real_params[AC_dsx];
-    mesh_info->real_params[AC_inv_dsy]   = (AcReal)(1.0) / mesh_info->real_params[AC_dsy];
-    mesh_info->real_params[AC_inv_dsz]   = (AcReal)(1.0) / mesh_info->real_params[AC_dsz];
-    mesh_info->real_params[AC_cs2_sound] = mesh_info->real_params[AC_cs_sound] *
-                                           mesh_info->real_params[AC_cs_sound];
+    // mesh_info->real_params[AC_inv_dsx] = (AcReal)(1.0) / mesh_info->real_params[AC_dsx];
+    // mesh_info->real_params[AC_inv_dsy] = (AcReal)(1.0) / mesh_info->real_params[AC_dsy];
+    // mesh_info->real_params[AC_inv_dsz] = (AcReal)(1.0) / mesh_info->real_params[AC_dsz];
+    // mesh_info->real_params[AC_cs2_sound] = mesh_info->real_params[AC_cs_sound] *
+    //                                       mesh_info->real_params[AC_cs_sound];
     checkConfiguration(*mesh_info);
 
     AcMesh intermediate_mesh;
@@ -1039,3 +1096,14 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
     mesh_info = NULL;
     return AC_SUCCESS;
 }
+
+#else  // AC_INTEGRATION_ENABLED == 0
+AcResult
+acHostIntegrateStep(AcMesh mesh, const AcReal dt)
+{
+    (void)mesh; // Unused
+    (void)dt;   // Unused
+    ERROR("Parameters required by acHostIntegrateStep not defined.");
+    return AC_FAILURE;
+}
+#endif // AC_INTEGRATION_ENABLED

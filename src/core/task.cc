@@ -37,6 +37,7 @@
 #include "task.h"
 #include "astaroth.h"
 
+#include <cassert>
 #include <memory>
 #include <mpi.h>
 #include <stdlib.h>
@@ -48,57 +49,82 @@
 
 #define HALO_TAG_OFFSET (100) //"Namespacing" the MPI tag space to avoid collisions
 
+#if AC_USE_HIP
+template <typename T, typename... Args>
+std::unique_ptr<T>
+make_unique(Args&&... args)
+{
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
+#else
+using std::make_unique;
+#endif
+
 AcTaskDefinition
-acCompute(const AcKernel kernel, VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
+acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
+          const size_t num_fields_out)
 {
     AcTaskDefinition task_def{};
-    task_def.task_type           = TASKTYPE_COMPUTE;
-    task_def.kernel              = kernel;
-    task_def.vtxbuf_dependencies = vtxbuf_dependencies;
-    task_def.num_vtxbufs         = num_vtxbufs;
+    task_def.task_type      = TASKTYPE_COMPUTE;
+    task_def.kernel         = kernel;
+    task_def.fields_in      = fields_in;
+    task_def.num_fields_in  = num_fields_in;
+    task_def.fields_out     = fields_out;
+    task_def.num_fields_out = num_fields_out;
     return task_def;
 }
 
 AcTaskDefinition
-acHaloExchange(VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
+acHaloExchange(Field fields[], const size_t num_fields)
 {
     AcTaskDefinition task_def{};
-    task_def.task_type           = TASKTYPE_HALOEXCHANGE;
-    task_def.vtxbuf_dependencies = vtxbuf_dependencies;
-    task_def.num_vtxbufs         = num_vtxbufs;
+    task_def.task_type      = TASKTYPE_HALOEXCHANGE;
+    task_def.fields_in      = fields;
+    task_def.num_fields_in  = num_fields;
+    task_def.fields_out     = fields;
+    task_def.num_fields_out = num_fields;
     return task_def;
 }
 
 AcTaskDefinition
-acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
-                    VertexBufferHandle vtxbuf_dependencies[], const size_t num_vtxbufs)
+acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond, Field fields[],
+                    const size_t num_fields, AcRealParam parameters[], const size_t num_parameters)
 {
     AcTaskDefinition task_def{};
-    task_def.task_type           = TASKTYPE_BOUNDCOND;
-    task_def.boundary            = boundary;
-    task_def.bound_cond          = bound_cond;
-    task_def.vtxbuf_dependencies = vtxbuf_dependencies;
-    task_def.num_vtxbufs         = num_vtxbufs;
+    task_def.task_type      = TASKTYPE_BOUNDCOND;
+    task_def.boundary       = boundary;
+    task_def.bound_cond     = bound_cond;
+    task_def.fields_in      = fields;
+    task_def.num_fields_in  = num_fields;
+    task_def.fields_out     = fields;
+    task_def.num_fields_out = num_fields;
+    task_def.parameters     = parameters;
+    task_def.num_parameters = num_parameters;
     return task_def;
 }
 
-VtxbufSet::VtxbufSet(const VertexBufferHandle h_variables[], const size_t num_vars_)
-    : num_vars(num_vars_)
+#ifdef AC_INTEGRATION_ENABLED
+AcTaskDefinition
+acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond,
+                              AcRealParam parameters[], const size_t num_parameters)
 {
-    variables        = NULL;
-    size_t num_bytes = num_vars * sizeof(VertexBufferHandle);
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&variables, num_bytes));
-    ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(variables, h_variables, num_bytes, cudaMemcpyHostToDevice));
+    AcTaskDefinition task_def{};
+    task_def.task_type              = TASKTYPE_SPECIAL_MHD_BOUNDCOND;
+    task_def.boundary               = boundary;
+    task_def.special_mhd_bound_cond = bound_cond;
+    // TODO: look these up from a table
+    task_def.fields_in      = nullptr;
+    task_def.num_fields_in  = 0;
+    task_def.fields_out     = nullptr;
+    task_def.num_fields_out = 0;
+    task_def.parameters     = parameters;
+    task_def.num_parameters = num_parameters;
+    return task_def;
 }
+#endif
 
-VtxbufSet::~VtxbufSet()
-{
-    cudaFree(variables);
-    variables = NULL;
-    num_vars  = -1;
-}
-
-Region::Region(RegionFamily family_, int tag_, int3 nn) : family(family_), tag(tag_)
+Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields)
+    : family(family_), tag(tag_), fields(fields_, fields_ + num_fields)
 {
     id = tag_to_id(tag);
     // facet class 0 = inner core
@@ -157,13 +183,14 @@ Region::Region(RegionFamily family_, int tag_, int3 nn) : family(family_), tag(t
     volume = dims.x * dims.y * dims.z;
 }
 
-Region::Region(RegionFamily family_, int3 id_, int3 nn) : Region{family_, id_to_tag(id_), nn}
+Region::Region(RegionFamily family_, int3 id_, int3 nn, Field fields_[], size_t num_fields)
+    : Region{family_, id_to_tag(id_), nn, fields_, num_fields}
 {
     ERRCHK_ALWAYS(id_.x == id.x && id_.y == id.y && id_.z == id.z);
 }
 
-Region::Region(int3 position_, int3 dims_, int tag_)
-    : position(position_), dims(dims_), family(RegionFamily::None), tag(tag_)
+Region::Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_)
+    : position(position_), dims(dims_), family(RegionFamily::None), tag(tag_), fields(fields_)
 {
     id          = tag_to_id(tag);
     facet_class = (id.x == 0 ? 0 : 1) + (id.y == 0 ? 0 : 1) + (id.z == 0 ? 0 : 1);
@@ -172,7 +199,7 @@ Region::Region(int3 position_, int3 dims_, int tag_)
 Region
 Region::translate(int3 translation)
 {
-    return Region(this->position + translation, this->dims, this->tag);
+    return Region(this->position + translation, this->dims, this->tag, this->fields);
 }
 
 bool
@@ -204,12 +231,11 @@ Region::tag_to_id(int _tag)
 }
 
 /* Task interface */
-Task::Task(int order_, RegionFamily input_family, RegionFamily output_family, int region_tag,
-           int3 nn, Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefinition op,
+           Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : device(device_), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
-      order(order_), active(true),
-      output_region(std::make_unique<Region>(output_family, region_tag, nn)),
-      input_region(std::make_unique<Region>(input_family, region_tag, nn))
+      order(order_), active(true), input_region(input_region_), output_region(output_region_),
+      input_parameters(op.parameters, op.parameters + op.num_parameters)
 {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 }
@@ -263,7 +289,7 @@ Task::isFinished()
 }
 
 void
-Task::update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps)
+Task::update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps, const TraceFile* trace_file)
 {
     if (isFinished())
         return;
@@ -294,7 +320,7 @@ Task::update(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps)
     }
 
     if (ready) {
-        advance();
+        advance(trace_file);
         if (state == wait_state) {
             swapVBA(vtxbuf_swaps);
             notifyDependents();
@@ -372,10 +398,12 @@ Task::poll_stream()
 }
 
 /* Computation */
-ComputeTask::ComputeTask(ComputeKernel compute_func_, int order_, int region_tag, int3 nn,
-                         Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
-    : Task(order_, RegionFamily::Compute_input, RegionFamily::Compute_output, region_tag, nn,
-           device_, swap_offset_)
+ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
+                         std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+    : Task(order_,
+           Region(RegionFamily::Compute_input, region_tag, nn, op.fields_in, op.num_fields_in),
+           Region(RegionFamily::Compute_output, region_tag, nn, op.fields_out, op.num_fields_out),
+           op, device_, swap_offset_)
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];
     {
@@ -387,12 +415,12 @@ ComputeTask::ComputeTask(ComputeKernel compute_func_, int order_, int region_tag
 
     syncVBA();
 
-    compute_func = compute_func_;
+    // compute_func = compute_func_;
 
-    params = KernelParameters{stream, 0, output_region->position,
-                              output_region->position + output_region->dims};
-    name = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region->id.x) + "," +
-           std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) + ")";
+    params = KernelParameters{kernel_lookup[(int)op.kernel], stream, 0, output_region.position,
+                              output_region.position + output_region.dims};
+    name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
+           std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
 }
 
@@ -401,7 +429,7 @@ ComputeTask::compute()
 {
     // IDEA: we could make loop_cntr.i point at params.step_number
     params.step_number = (int)(loop_cntr.i % 3);
-    compute_func(params, vba);
+    acKernel(params, vba);
 }
 
 bool
@@ -419,17 +447,17 @@ ComputeTask::test()
 }
 
 void
-ComputeTask::advance()
+ComputeTask::advance(const TraceFile* trace_file)
 {
     switch (static_cast<ComputeState>(state)) {
     case ComputeState::Waiting: {
-        logStateChangedEvent("waiting", "running");
+        trace_file->trace(this, "waiting", "running");
         compute();
         state = static_cast<int>(ComputeState::Running);
         break;
     }
     case ComputeState::Running: {
-        logStateChangedEvent("running", "waiting");
+        trace_file->trace(this, "running", "waiting");
         state = static_cast<int>(ComputeState::Waiting);
         break;
     }
@@ -441,7 +469,6 @@ ComputeTask::advance()
 /*  Communication   */
 
 // HaloMessage contains all information needed to send or receive a single message
-// Wraps PackedData. These two structs could be folded together.
 HaloMessage::HaloMessage(int3 dims, size_t num_vars)
 {
     length       = dims.x * dims.y * dims.z * num_vars;
@@ -520,19 +547,22 @@ HaloMessageSwapChain::get_fresh_buffer()
 }
 
 // HaloExchangeTask
-HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencies_, int order_,
-                                   int tag_0, int halo_region_tag, int3 nn, uint3_64 decomp,
-                                   Device device_,
+HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag,
+                                   int3 nn, uint3_64 decomp, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
-    : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, halo_region_tag, nn,
-           device_, swap_offset_),
-      recv_buffers(output_region->dims, NUM_VTXBUF_HANDLES),
-      send_buffers(input_region->dims, NUM_VTXBUF_HANDLES)
+    : Task(order_,
+           Region(RegionFamily::Exchange_input, halo_region_tag, nn, op.fields_in,
+                  op.num_fields_in),
+           Region(RegionFamily::Exchange_output, halo_region_tag, nn, op.fields_out,
+                  op.num_fields_out),
+           op, device_, swap_offset_),
+      recv_buffers(output_region.dims, NUM_VTXBUF_HANDLES),
+      send_buffers(input_region.dims, NUM_VTXBUF_HANDLES)
 // Below are for partial halo exchanges.
 // TODO: enable partial halo exchanges when
 // vtxbuf_dependencies_->num_vars < NUM_VTXBUF_HANDLES (see performance first)
-// recv_buffers(output_region->dims, vtxbuf_dependencies_->num_vars),
-// send_buffers(input_region->dims, vtxbuf_dependencies_->num_vars)
+// recv_buffers(output_region.dims, vtxbuf_dependencies_->num_vars),
+// send_buffers(input_region.dims, vtxbuf_dependencies_->num_vars)
 {
     // Create stream for packing/unpacking
     {
@@ -543,20 +573,18 @@ HaloExchangeTask::HaloExchangeTask(std::shared_ptr<VtxbufSet> vtxbuf_dependencie
     }
     syncVBA();
 
-    vtxbuf_dependencies = vtxbuf_dependencies_;
-
-    counterpart_rank = getPid(getPid3D(rank, decomp) + output_region->id, decomp);
+    counterpart_rank = getPid(getPid3D(rank, decomp) + output_region.id, decomp);
     // MPI tags are namespaced to avoid collisions with other MPI tasks
-    send_tag = tag_0 + input_region->tag;
-    recv_tag = tag_0 + Region::id_to_tag(-output_region->id);
+    send_tag = tag_0 + input_region.tag;
+    recv_tag = tag_0 + Region::id_to_tag(-output_region.id);
 
     // Post receive immediately, this avoids unexpected messages
-    active = ((MPI_INCL_CORNERS) || output_region->facet_class != 3) ? true : false;
+    active = ((MPI_INCL_CORNERS) || output_region.facet_class != 3) ? true : false;
     if (active) {
         receive();
     }
-    name = "Halo exchange " + std::to_string(order_) + ".(" + std::to_string(output_region->id.x) +
-           "," + std::to_string(output_region->id.y) + "," + std::to_string(output_region->id.z) +
+    name = "Halo exchange " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) +
+           "," + std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) +
            ")";
     task_type = TASKTYPE_HALOEXCHANGE;
 }
@@ -578,10 +606,10 @@ void
 HaloExchangeTask::pack()
 {
     auto msg = send_buffers.get_fresh_buffer();
-    // acKernelPartialPackData(stream, vba, input_region->position, input_region->dims,
+    // acKernelPartialPackData(stream, vba, input_region.position, input_region.dims,
     //                         msg->data, vtxbuf_dependencies->variables,
     //                         vtxbuf_dependencies->num_vars);
-    acKernelPackData(stream, vba, input_region->position, input_region->dims, msg->data);
+    acKernelPackData(stream, vba, input_region.position, input_region.dims, msg->data);
 }
 
 void
@@ -592,10 +620,10 @@ HaloExchangeTask::unpack()
 #if !(USE_CUDA_AWARE_MPI)
     msg->unpin(device, stream);
 #endif
-    // acKernelPartialUnpackData(stream, msg->data, output_region->position, output_region->dims,
+    // acKernelPartialUnpackData(stream, msg->data, output_region.position, output_region.dims,
     //                           vba, vtxbuf_dependencies->variables,
     //                           vtxbuf_dependencies->num_vars);
-    acKernelUnpackData(stream, msg->data, output_region->position, output_region->dims, vba);
+    acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims, vba);
 }
 
 void
@@ -622,7 +650,7 @@ void
 HaloExchangeTask::receiveDevice()
 {
     auto msg = recv_buffers.get_fresh_buffer();
-    MPI_Irecv(msg->data, msg->length, AC_MPI_TYPE, counterpart_rank, recv_tag + HALO_TAG_OFFSET,
+    MPI_Irecv(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank, recv_tag + HALO_TAG_OFFSET,
               MPI_COMM_WORLD, &msg->request);
 }
 
@@ -631,7 +659,7 @@ HaloExchangeTask::sendDevice()
 {
     auto msg = send_buffers.get_current_buffer();
     sync();
-    MPI_Isend(msg->data, msg->length, AC_MPI_TYPE, counterpart_rank, send_tag + HALO_TAG_OFFSET,
+    MPI_Isend(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank, send_tag + HALO_TAG_OFFSET,
               MPI_COMM_WORLD, &msg->request);
 }
 
@@ -648,7 +676,7 @@ void
 HaloExchangeTask::receiveHost()
 {
     auto msg = recv_buffers.get_fresh_buffer();
-    MPI_Irecv(msg->data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
+    MPI_Irecv(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
               recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
     msg->pinned = true;
 }
@@ -659,7 +687,7 @@ HaloExchangeTask::sendHost()
     auto msg = send_buffers.get_current_buffer();
     msg->pin(device, stream);
     sync();
-    MPI_Isend(msg->data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
+    MPI_Isend(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
               send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
 }
 void
@@ -725,28 +753,28 @@ HaloExchangeTask::test()
 }
 
 void
-HaloExchangeTask::advance()
+HaloExchangeTask::advance(const TraceFile* trace_file)
 {
     switch (static_cast<HaloExchangeState>(state)) {
     case HaloExchangeState::Waiting:
-        logStateChangedEvent("waiting", "packing");
+        trace_file->trace(this, "waiting", "packing");
         pack();
         state = static_cast<int>(HaloExchangeState::Packing);
         break;
     case HaloExchangeState::Packing:
-        logStateChangedEvent("packing", "receiving");
+        trace_file->trace(this, "packing", "receiving");
         sync();
         send();
         state = static_cast<int>(HaloExchangeState::Exchanging);
         break;
     case HaloExchangeState::Exchanging:
-        logStateChangedEvent("receiving", "unpacking");
+        trace_file->trace(this, "receiving", "unpacking");
         sync();
         unpack();
         state = static_cast<int>(HaloExchangeState::Unpacking);
         break;
     case HaloExchangeState::Unpacking:
-        logStateChangedEvent("unpacking", "waiting");
+        trace_file->trace(this, "unpacking", "waiting");
         receive();
         sync();
         state = static_cast<int>(HaloExchangeState::Waiting);
@@ -756,13 +784,14 @@ HaloExchangeTask::advance()
     }
 }
 
-BoundaryConditionTask::BoundaryConditionTask(AcBoundcond boundcond_, int3 boundary_normal_,
-                                             VertexBufferHandle variable_, int order_,
+BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
                                              int region_tag, int3 nn, Device device_,
                                              std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
-    : Task(order_, RegionFamily::Exchange_input, RegionFamily::Exchange_output, region_tag, nn,
-           device_, swap_offset_),
-      boundcond(boundcond_), boundary_normal(boundary_normal_), variable(variable_)
+    : Task(order_,
+           Region(RegionFamily::Exchange_input, region_tag, nn, op.fields_in, op.num_fields_in),
+           Region(RegionFamily::Exchange_output, region_tag, nn, op.fields_out, op.num_fields_out),
+           op, device_, swap_offset_),
+      boundcond(op.bound_cond), boundary_normal(boundary_normal_)
 {
     // Create stream for boundary condition task
     {
@@ -773,15 +802,22 @@ BoundaryConditionTask::BoundaryConditionTask(AcBoundcond boundcond_, int3 bounda
     }
     syncVBA();
 
-    int3 translation = int3{(output_region->dims.x + 1) * (-boundary_normal.x),
-                            (output_region->dims.y + 1) * (-boundary_normal.y),
-                            (output_region->dims.z + 1) * (-boundary_normal.z)};
+    int3 translation = int3{(output_region.dims.x + 1) * (-boundary_normal.x),
+                            (output_region.dims.y + 1) * (-boundary_normal.y),
+                            (output_region.dims.z + 1) * (-boundary_normal.z)};
 
-    input_region = std::make_unique<Region>(output_region->translate(translation));
+    // TODO: input_region is now set twice, overwritten here
+    input_region = Region(output_region.translate(translation));
+
+    boundary_dims = int3{
+        boundary_normal.x == 0 ? output_region.dims.x : 1,
+        boundary_normal.y == 0 ? output_region.dims.y : 1,
+        boundary_normal.z == 0 ? output_region.dims.z : 1,
+    };
 
     name = "Boundary condition " + std::to_string(order_) + ".(" +
-           std::to_string(output_region->id.x) + "," + std::to_string(output_region->id.y) + "," +
-           std::to_string(output_region->id.z) + ")" + ".(" + std::to_string(boundary_normal.x) +
+           std::to_string(output_region.id.x) + "," + std::to_string(output_region.id.y) + "," +
+           std::to_string(output_region.id.z) + ")" + ".(" + std::to_string(boundary_normal.x) +
            "," + std::to_string(boundary_normal.y) + "," + std::to_string(boundary_normal.z) + ")";
     task_type = TASKTYPE_BOUNDCOND;
 }
@@ -789,13 +825,35 @@ BoundaryConditionTask::BoundaryConditionTask(AcBoundcond boundcond_, int3 bounda
 void
 BoundaryConditionTask::populate_boundary_region()
 {
-    switch (boundcond) {
-    case AC_BOUNDCOND_SYMMETRIC:
-        acKernelSymmetricBoundconds(stream, output_region->id, boundary_normal, output_region->dims,
-                                    vba.in[variable]);
-        break;
-    default:
-        ERROR("BoundaryCondition not implemented yet.");
+    // TODO: could assign a separate stream to each launch
+    //       currently they are on a single stream
+    for (auto variable : output_region.fields) {
+        switch (boundcond) {
+        case BOUNDCOND_SYMMETRIC: {
+            acKernelSymmetricBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+                                        vba.in[variable]);
+            break;
+        }
+        case BOUNDCOND_ANTISYMMETRIC: {
+            acKernelAntiSymmetricBoundconds(stream, output_region.id, boundary_normal,
+                                            boundary_dims, vba.in[variable]);
+            break;
+        }
+        case BOUNDCOND_A2: {
+            acKernelA2Boundconds(stream, output_region.id, boundary_normal, boundary_dims,
+                                 vba.in[variable]);
+            break;
+        }
+        case BOUNDCOND_PRESCRIBED_DERIVATIVE: {
+            assert(input_parameters.size() == 1);
+            acKernelPrescribedDerivativeBoundconds(stream, output_region.id, boundary_normal,
+                                                   boundary_dims, vba.in[variable],
+                                                   input_parameters[0]);
+            break;
+        }
+        default:
+            ERROR("BoundaryCondition not implemented yet.");
+        }
     }
 }
 
@@ -814,20 +872,140 @@ BoundaryConditionTask::test()
 }
 
 void
-BoundaryConditionTask::advance()
+BoundaryConditionTask::advance(const TraceFile* trace_file)
 {
     switch (static_cast<BoundaryConditionState>(state)) {
     case BoundaryConditionState::Waiting:
-        logStateChangedEvent("waiting", "running");
+        trace_file->trace(this, "waiting", "running");
         populate_boundary_region();
         state = static_cast<int>(BoundaryConditionState::Running);
         break;
     case BoundaryConditionState::Running:
-        logStateChangedEvent("running", "waiting");
+        trace_file->trace(this, "running", "waiting");
         state = static_cast<int>(BoundaryConditionState::Waiting);
         break;
     default:
         ERROR("BoundaryConditionTask in an invalid state.");
     }
 }
+
+#ifdef AC_INTEGRATION_ENABLED
+// SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD
+// implementation). They launch specially written CUDA kernels that implement the specific boundary
+// condition procedure They are a stop-gap temporary solution. The sensible solution is to replace
+// them with a task type that runs a boundary condition procedure written in the Astaroth DSL.
+SpecialMHDBoundaryConditionTask::SpecialMHDBoundaryConditionTask(
+    AcTaskDefinition op, int3 boundary_normal_, int order_, int region_tag, int3 nn, Device device_,
+    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+    : Task(order_,
+           Region(RegionFamily::Exchange_input, region_tag, nn, op.fields_in, op.num_fields_in),
+           Region(RegionFamily::Exchange_output, region_tag, nn, op.fields_out, op.num_fields_out),
+           op, device_, swap_offset_),
+      boundcond(op.special_mhd_bound_cond), boundary_normal(boundary_normal_)
+{
+    // TODO: the input regions for some of these will be weird, because they will depend on the
+    // ghost zone of other fields
+    //  This is not currently reflected
+
+    // Create stream for boundary condition task
+    {
+        cudaSetDevice(device->id);
+        int low_prio, high_prio;
+        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+    }
+    syncVBA();
+
+    int3 translation = int3{(output_region.dims.x + 1) * (-boundary_normal.x),
+                            (output_region.dims.y + 1) * (-boundary_normal.y),
+                            (output_region.dims.z + 1) * (-boundary_normal.z)};
+
+    // TODO: input_region is now set twice, overwritten here
+    input_region = Region(output_region.translate(translation));
+
+    boundary_dims = int3{
+        boundary_normal.x == 0 ? output_region.dims.x : 1,
+        boundary_normal.y == 0 ? output_region.dims.y : 1,
+        boundary_normal.z == 0 ? output_region.dims.z : 1,
+    };
+
+    name = "Special MHD Boundary condition " + std::to_string(order_) + ".(" +
+           std::to_string(output_region.id.x) + "," + std::to_string(output_region.id.y) + "," +
+           std::to_string(output_region.id.z) + ")" + ".(" + std::to_string(boundary_normal.x) +
+           "," + std::to_string(boundary_normal.y) + "," + std::to_string(boundary_normal.z) + ")";
+    task_type = TASKTYPE_SPECIAL_MHD_BOUNDCOND;
+}
+
+void
+SpecialMHDBoundaryConditionTask::populate_boundary_region()
+{
+    // TODO: could assign a separate stream to each launch of symmetric boundconds
+    //       currently they are on a single stream
+    switch (boundcond) {
+#if LENTROPY
+    case SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE: {
+        acKernelEntropyConstantTemperatureBoundconds(stream, output_region.id, boundary_normal,
+                                                     boundary_dims, vba);
+        break;
+    }
+    case SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION: {
+        acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(stream, output_region.id,
+                                                                      boundary_normal,
+                                                                      boundary_dims, vba);
+        break;
+    }
+    case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX: {
+        assert(input_parameters.size() == 1);
+        acKernelEntropyPrescribedHeatFluxBoundconds(stream, output_region.id, boundary_normal,
+                                                    boundary_dims, vba, input_parameters[0]);
+        break;
+    }
+    case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_NORMAL_AND_TURBULENT_HEAT_FLUX: {
+        assert(input_parameters.size() == 2);
+        acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(stream, output_region.id,
+                                                                      boundary_normal,
+                                                                      boundary_dims, vba,
+                                                                      input_parameters[0],
+                                                                      input_parameters[1]);
+        break;
+    }
+#endif
+
+    default:
+        ERROR("SpecialMHDBoundaryCondition not implemented yet.");
+    }
+}
+
+bool
+SpecialMHDBoundaryConditionTask::test()
+{
+    switch (static_cast<SpecialMHDBoundaryConditionState>(state)) {
+    case SpecialMHDBoundaryConditionState::Running: {
+        return poll_stream();
+    }
+    default: {
+        ERROR("SpecialMHDBoundaryConditionTask in an invalid state.");
+        return false;
+    }
+    }
+}
+
+void
+SpecialMHDBoundaryConditionTask::advance(const TraceFile* trace_file)
+{
+    switch (static_cast<SpecialMHDBoundaryConditionState>(state)) {
+    case SpecialMHDBoundaryConditionState::Waiting:
+        trace_file->trace(this, "waiting", "running");
+        populate_boundary_region();
+        state = static_cast<int>(SpecialMHDBoundaryConditionState::Running);
+        break;
+    case SpecialMHDBoundaryConditionState::Running:
+        trace_file->trace(this, "running", "waiting");
+        state = static_cast<int>(SpecialMHDBoundaryConditionState::Waiting);
+        break;
+    default:
+        ERROR("SpecialMHDBoundaryConditionTask in an invalid state.");
+    }
+}
+#endif // AC_INTEGRATION_ENABLED
 #endif // AC_MPI_ENABLED

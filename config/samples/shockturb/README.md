@@ -18,7 +18,7 @@ test to see that the code is working as expected.**
 At the moment you need to set the switches manually. Default master branch
 configuration will have different LSWITCHES.
 
-* In `acc/mhd_solver/stencil_kernel.ac`
+* In `../../../acc-runtime/samples/mhd_modular/mhdsolver.ac`
 
 ```
 LDENSITY (1)
@@ -31,16 +31,6 @@ LUPWD (1)
 LSINK (0)
 LBFIELD (1)
 LSHOCK (1)
-```
-
-* In `samples/standalone_mpi/main.cc`
-
-```
-LSINK (0)
-LFORCING (1)
-LBFIELD (1)
-LSHOCK (1)
-```
 
 # Setting up and compiling.
 
@@ -56,3 +46,8 @@ system runs MPI.
 It the case you get strange MPI errors, it might be that your particular system
 has not been configured for GPUDirect RDMA. To run Astaroth without GPUDirect
 RDMA, please set `-DUSE_CUDA_AWARE_MPI=OFF` in `my_cmake.sh`. 
+
+On one machine we run into an issue that a wrong version of gcc was found. In
+that case please either set flags `-DCMAKE_C_COMPILER=/path/to/gcc/`
+`-DCMAKE_CXX_COMPILER=/path/to/gcc/` or set the environmental variables CC and
+CXX with a correct path to your compiler. 

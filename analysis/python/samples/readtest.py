@@ -58,6 +58,7 @@ AC_unit_length   = 1.496e+13
 print("sys.argv", sys.argv)
 
 meshdir = "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"
+meshdir = "/tiara/ara/data/mvaisala/202202_acc3test/astaroth/config/samples/shockturb/"
 
 #Example fixed scaling template
 if (meshdir == "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"):
@@ -77,6 +78,24 @@ if (meshdir == "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/")
     
     rbb_tot = [ 0.0, 2.0e-8 ] 
     rbb_xyz = [-2.0e-8 , 2.0e-8 ]
+
+if (meshdir == "/tiara/ara/data/mvaisala/202202_acc3test/astaroth/config/samples/shockturb/"):
+    rlnrho  = [ -0.8,   0.6]
+    rrho    = [  0.5,   2.0 ]
+    rNcol   = [100.0, 170.0]
+
+    rss     = [4.0e-2, 5.0e-2]
+  
+    rshock  = [  0.0, 0.03]
+    
+    ruu_tot = [ 0.0 , 1.6]
+    ruu_xyz = [-1.5,  1.5]
+    
+    raa_tot = [ 0.0, 6.0e-9]
+    raa_xyz = [-4.0e-9, 4.0e-9]
+    
+    rbb_tot = [ 0.0, 4.0e-8 ] 
+    rbb_xyz = [-3.0e-8 , 3.0e-8 ]
 
 
 if "xtopbound" in sys.argv: 
@@ -601,9 +620,48 @@ if (("bline" in sys.argv) or ("uline" in sys.argv)):
 
 
 if 'ts' in sys.argv:
-   ts = ad.read.TimeSeries(fdir=meshdir)
+   ts      = ad.read.TimeSeries(fdir=meshdir)
    vis.lineplot.plot_ts(ts, show_all=True)
    #vis.lineplot.plot_ts(ts, isotherm=True)
+
+if 'tscomp' in sys.argv:
+   ts = ad.read.TimeSeries(fdir=meshdir)
+   ts_orig = ad.read.TimeSeries(fdir=meshdir, fname="a2_timeseries.ts")
+
+   print(ts.var.items())
+   print(ts_orig.var.items())
+
+   plt.figure()
+   plt.plot(ts.var['t_step'][:-1],      ts.var["uutot_rms"][:-1], label="uu_total_rms")
+   plt.plot(ts_orig.var['t_step'][:-1], ts_orig.var["uutot_rms"][:-1], label="uu_total_rms (orig)")
+   #plt.xlabel(xaxis)
+   plt.legend()
+
+   plt.figure()
+   plt.plot(ts.var['t_step'][:-1],      ts.var["bbtot_rms"][:-1], label="bb_total_rms")
+   plt.plot(ts_orig.var['t_step'][:-1], ts_orig.var["bbtot_rms"][:-1], label="bb_total_rms (orig)")
+   #plt.xlabel(xaxis)
+   plt.legend()
+
+   plt.figure()
+   plt.plot(ts.var['t_step'][:-1],      ts.var["shock_rms"][:-1], label="VTXBUF_SHOCK_rms")
+   plt.plot(ts_orig.var['t_step'][:-1], ts_orig.var["shock_rms"][:-1], label="VTXBUF_SHOCK_rms (orig)")
+   #plt.xlabel(xaxis)
+   plt.legend()
+
+   plt.figure()
+   plt.plot(ts.var['t_step'][:-1],      ts.var["shock_max"][:-1], label="VTXBUF_SHOCK_max")
+   plt.plot(ts_orig.var['t_step'][:-1], ts_orig.var["shock_max"][:-1], label="VTXBUF_SHOCK_max (orig)")
+   #plt.xlabel(xaxis)
+   plt.legend()
+
+   plt.figure()
+   plt.plot(ts.var['t_step'][:-1],      ts.var["lnrho_max"][:-1], label="lnrho_max")
+   plt.plot(ts_orig.var['t_step'][:-1], ts_orig.var["lnrho_max"][:-1], label="lnrho max (orig)")
+   #plt.xlabel(xaxis)
+   plt.legend()
+
+   plt.show()
 
 
 if 'getvtk' in sys.argv:

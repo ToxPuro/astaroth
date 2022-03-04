@@ -1,3 +1,21 @@
+/*
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala, Oskar Lappi.
+
+    This file is part of Astaroth.
+
+    Astaroth is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Astaroth is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include "astaroth_utils.h"
 
 #include <math.h>
@@ -36,21 +54,22 @@ acGetError(const AcReal model, const AcReal candidate)
     error.model     = model;
     error.candidate = candidate;
 
-    if (error.model == error.candidate || fabsl(model - candidate) == 0) { // If exact
+    if (error.model == error.candidate ||
+        fabsl((long double)model - (long double)candidate) == 0) { // If exact
         error.abs_error = 0;
         error.rel_error = 0;
         error.ulp_error = 0;
     }
     else if (!is_valid(error.model) || !is_valid(error.candidate)) {
-        error.abs_error = INFINITY;
-        error.rel_error = INFINITY;
-        error.ulp_error = INFINITY;
+        error.abs_error = (long double)INFINITY;
+        error.rel_error = (long double)INFINITY;
+        error.ulp_error = (long double)INFINITY;
     }
     else {
         const int base = 2;
         const int p    = sizeof(AcReal) == 4 ? 24 : 53; // Bits in the significant
 
-        const long double e = floorl(logl(fabsl(error.model)) / logl(2));
+        const long double e = floorl(logl(fabsl((long double)error.model)) / logl(2));
 
         const long double ulp             = powl(base, e - (p - 1));
         const long double machine_epsilon = 0.5l * powl(base, -(p - 1));
@@ -87,7 +106,7 @@ acEvalError(const char* label, const Error error)
     bool acceptable;
     if (error.ulp_error < max_ulp_error)
         acceptable = true;
-    else if (error.abs_error < error.minimum_magnitude * AC_REAL_EPSILON)
+    else if (error.abs_error < (long double)error.minimum_magnitude * (long double)AC_REAL_EPSILON)
         acceptable = true;
     else
         acceptable = false;
@@ -172,6 +191,8 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
 AcResult
 acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candidate, const size_t z)
 {
+    ERRCHK_ALWAYS(NUM_VTXBUF_HANDLES > 0);
+
     const AcMeshInfo info = model.info;
     ERRCHK_ALWAYS((int)z < info.int_params[AC_mz]);
 
@@ -183,7 +204,7 @@ acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candida
     for (size_t y = 0; y < my; ++y) {
         for (size_t x = 0; x < mx; ++x) {
             const size_t idx                = acVertexBufferIdx(x, y, z, info);
-            const VertexBufferHandle vtxbuf = VTXBUF_UUX;
+            const VertexBufferHandle vtxbuf = 0;
             const AcReal m                  = model.vertex_buffer[vtxbuf][idx];
             const AcReal c                  = candidate.vertex_buffer[vtxbuf][idx];
             const Error error               = acGetError(m, c);
@@ -200,6 +221,8 @@ acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candida
 AcResult
 acMeshDiffWrite(const char* path, const AcMesh model, const AcMesh candidate)
 {
+    ERRCHK_ALWAYS(NUM_VTXBUF_HANDLES > 0);
+
     const AcMeshInfo info = model.info;
 
     FILE* fp = fopen(path, "w");
@@ -212,7 +235,7 @@ acMeshDiffWrite(const char* path, const AcMesh model, const AcMesh candidate)
         for (size_t y = 0; y < my; ++y) {
             for (size_t x = 0; x < mx; ++x) {
                 const size_t idx                = acVertexBufferIdx(x, y, z, info);
-                const VertexBufferHandle vtxbuf = VTXBUF_UUX;
+                const VertexBufferHandle vtxbuf = 0;
                 const AcReal m                  = model.vertex_buffer[vtxbuf][idx];
                 const AcReal c                  = candidate.vertex_buffer[vtxbuf][idx];
                 const Error error               = acGetError(m, c);

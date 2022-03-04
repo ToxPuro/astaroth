@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2020, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -55,23 +55,11 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
-// NEED TO BE DEFINED HERE. IS NOT NOTICED BY compile_acc call.
-#define LSINK (0)
-#define LFORCING (0)
-#define LBFIELD (0)
-#define LSHOCK (0)
-/*  MV NOTES
-    It was possible to compensate LFORCING with AC_lforcing instead by the current hack
-    However it as not possible to do so for LSINK because if in LSINK = 0 in
-    DSL, then VTXBUF_ACCRETION will be undefined. We need to disccus how to
-    communicate the preprocessor states of DSL for the rest of the code. PLEASE
-    NOTE that VTXBUF_ACCRETION or other such enumerator values cannot be checked
-    with #ifdef.
-    UPDATE: It did not work with AC_lforcing either.
- */
-
-////#ifdef AC_FOR_VTXBUF_HANDLES
-////#endif
+// MV: I commented this out because now can be defined in DSL
+//// #define LSINK (0)
+//// #define LFORCING (0)
+//// #define LBFIELD (0)
+//// #define LSHOCK (0)
 
 // Write all setting info into a separate ascii file. This is done to guarantee
 // that we have the data specifi information in the thing, even though in
@@ -354,21 +342,21 @@ calc_timestep(const AcMeshInfo info)
     // first, as it is not too complicated anyway.
 
     // MPI_Bcast to share uumax with all ranks
-    MPI_Bcast(&uumax, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&uumax, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
 
 #if LBFIELD
     acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
                         &vAmax);
 
     // MPI_Bcast to share vAmax with all ranks
-    MPI_Bcast(&vAmax, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&vAmax, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
 #endif
 
 #if LSHOCK
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_SHOCK, &shock_max);
 
     // MPI_Bcast to share vAmax with all ranks
-    MPI_Bcast(&shock_max, 1, AC_MPI_TYPE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&shock_max, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
 #endif
 
     const long double cdt  = info.real_params[AC_cdt];
@@ -529,12 +517,12 @@ main(int argc, char** argv)
 
     // This works OK
     // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
-    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+    //                                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
     //                                all_fields), acCompute(KERNEL_solve, all_fields)};
 
     // This causes the chess board error
     // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
-    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+    //                                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
     //                                all_fields), acCompute(KERNEL_shock_1_divu, shock_field),
     //                                acCompute(KERNEL_shock_2_max, shock_field),
     //                                acCompute(KERNEL_shock_3_smooth, shock_field),
@@ -543,20 +531,20 @@ main(int argc, char** argv)
     // Causes communication related error
     AcTaskDefinition shock_ops[] =
         {acHaloExchange(all_fields),
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
          acCompute(KERNEL_shock_1_divu, shock_field),
          acHaloExchange(shock_field),
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
          acCompute(KERNEL_shock_2_max, shock_field),
          acHaloExchange(shock_field),
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
          acCompute(KERNEL_shock_3_smooth, shock_field),
          acHaloExchange(shock_field),
-         acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
          acCompute(KERNEL_solve, all_fields)};
 
     // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
-    //                                acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC,
+    //                                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
     //                                all_fields), acCompute(KERNEL_shock_1_divu, shock_field),
     //                                acCompute(KERNEL_shock_2_max, shock_field),
     //                                acCompute(KERNEL_solve, all_fields)};
@@ -573,16 +561,16 @@ main(int argc, char** argv)
     // and figures out the dependencies between the tasks.
     // AcTaskGraph* hc_graph = acGridBuildTaskGraph(
     //    {acHaloExchange(all_fields),
-    //     acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, all_fields),
+    //     acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
     // acCompute(KERNEL_shock_1_divu, shock_uu_fields),
     // acHaloExchange(shock_field),
-    // acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+    // acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
     // acCompute(KERNEL_shock_2_max, shock_field),
     // acHaloExchange(shock_field),
-    // acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+    // acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
     // acCompute(KERNEL_shock_3_smooth, shock_field),
     // acHaloExchange(shock_field),
-    // acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_PERIODIC, shock_field),
+    // acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
     //     acCompute(KERNEL_solve, all_fields)});
 
     // We can build multiple TaskGraphs, the MPI requests will not collide
@@ -590,7 +578,7 @@ main(int argc, char** argv)
     /*
     AcTaskGraph* shock_graph = acGridBuildTaskGraph({
         acHaloExchange(all_fields),
-        acBoundaryCondition(BOUNDARY_XYZ, AC_BOUNDCOND_SYMMETRIC, all_fields),
+        acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, all_fields),
         acCompute(KERNEL_shock1, all_fields),
         acCompute(KERNEL_shock2, shock_fields),
         acCompute(KERNEL_solve, all_fields)
@@ -603,7 +591,8 @@ main(int argc, char** argv)
     AcReal sink_mass     = 0.0;
     for (int i = start_step + 1; i < max_steps; ++i) {
         const AcReal dt = calc_timestep(info);
-
+        acGridLoadScalarUniform(STREAM_DEFAULT, AC_current_time, t_step);
+  
 #if LSINK
         AcReal sum_mass;
         acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, VTXBUF_ACCRETION, &sum_mass);

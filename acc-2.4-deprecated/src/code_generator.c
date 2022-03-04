@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2020, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -806,16 +806,16 @@ external acdevicesynchronizestream
 
     // Boundcond types
     fprintf(DSLHEADER, "#define AC_FOR_BCTYPES(FUNC)\\\n");
-    fprintf(DSLHEADER, "FUNC(%s)\\\n", "AC_BOUNDCOND_PERIODIC");
-    fprintf(DSLHEADER, "FUNC(%s)\\\n", "AC_BOUNDCOND_SYMMETRIC");
-    fprintf(DSLHEADER, "FUNC(%s)\n", "AC_BOUNDCOND_ANTISYMMETRIC");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "BOUNDCOND_PERIODIC");
+    fprintf(DSLHEADER, "FUNC(%s)\\\n", "BOUNDCOND_SYMMETRIC");
+    fprintf(DSLHEADER, "FUNC(%s)\n", "BOUNDCOND_ANTISYMMETRIC");
 
     counter = 0;
-    fprintf(FHEADER, "integer(c_int), parameter :: AC_BOUNDCOND_PERIODIC = %lu\n", counter);
+    fprintf(FHEADER, "integer(c_int), parameter :: BOUNDCOND_PERIODIC = %lu\n", counter);
     ++counter;
-    fprintf(FHEADER, "integer(c_int), parameter :: AC_BOUNDCOND_SYMMETRIC = %lu\n", counter);
+    fprintf(FHEADER, "integer(c_int), parameter :: BOUNDCOND_SYMMETRIC = %lu\n", counter);
     ++counter;
-    fprintf(FHEADER, "integer(c_int), parameter :: AC_BOUNDCOND_ANTISYMMETRIC = %lu\n", counter);
+    fprintf(FHEADER, "integer(c_int), parameter :: BOUNDCOND_ANTISYMMETRIC = %lu\n", counter);
     ++counter;
 
     // Defines for initial conditions in host_memory. Moved here to work with astaroth.conf

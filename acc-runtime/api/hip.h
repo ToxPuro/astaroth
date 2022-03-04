@@ -1,0 +1,65 @@
+/*
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+
+    This file is part of Astaroth.
+
+    Astaroth is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Astaroth is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
+*/
+#pragma once
+
+#ifndef __HIP_PLATFORM_HCC__
+#define __HIP_PLATFORM_HCC__
+#endif
+
+#define CUresult hipError_t
+#define cudaError_t hipError_t
+#define cudaSuccess hipSuccess
+#define cudaStream_t hipStream_t
+#define cudaGetErrorString hipGetErrorString
+#define cuFloatComplex hipFloatComplex
+#define make_cuFloatComplex make_hipFloatComplex
+#define cuDoubleComplex hipDoubleComplex
+#define make_cuDoubleComplex make_hipDoubleComplex
+#define cudaPeekAtLastError hipPeekAtLastError
+#define cudaGetLastError hipGetLastError
+#define cudaDeviceSynchronize hipDeviceSynchronize
+#define cudaEvent_t hipEvent_t
+#define cudaEventCreate hipEventCreate
+#define cudaEventRecord hipEventRecord
+#define cudaEventSynchronize hipEventSynchronize
+#define cudaEventElapsedTime hipEventElapsedTime
+#define cudaStreamSynchronize hipStreamSynchronize
+#define cudaStreamCreate hipStreamCreate
+#define cudaStreamCreateWithPriority hipStreamCreateWithPriority
+#define cudaStreamDestroy hipStreamDestroy
+#define cudaMemcpyDeviceToHost hipMemcpyDeviceToHost
+#define cudaMemcpyHostToDevice hipMemcpyHostToDevice
+#define cudaSetDevice hipSetDevice
+#define cudaMemcpy hipMemcpy
+#define cudaMemcpyAsync hipMemcpyAsync
+#define cudaMemcpyToSymbolAsync hipMemcpyToSymbolAsync
+#define cudaMemcpyFromSymbolAsync hipMemcpyFromSymbolAsync
+#define cudaMalloc hipMalloc
+#define cudaFree hipFree
+#define cudaDeviceProp hipDeviceProp_t
+#define cudaGetDeviceCount hipGetDeviceCount
+#define cudaDeviceGetPCIBusId hipDeviceGetPCIBusId
+#define cudaMemGetInfo hipMemGetInfo
+#define cudaStreamNonBlocking hipStreamNonBlocking
+#define cudaMemcpyPeerAsync hipMemcpyPeerAsync
+#define cudaGetDeviceProperties hipGetDeviceProperties
+
+#define cudaStreamQuery hipStreamQuery
+#define cudaErrorNotReady hipErrorNotReady
+#define cudaDeviceGetStreamPriorityRange hipDeviceGetStreamPriorityRange

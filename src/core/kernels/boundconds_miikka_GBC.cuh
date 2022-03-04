@@ -45,81 +45,81 @@ kernel_symmetric_boundconds(const int3 start, const int3 end, AcReal* vtxbuf, co
 
         // Pick up the mirroring value.
         if ((i_dst < boundlocx0)) {
-            i_src = 2.0f * boundlocx0 - i_dst;
+            i_src = (AcReal)2.0 * boundlocx0 - i_dst;
         }
         else if ((i_dst > boundlocx1)) {
-            i_src = 2.0f * boundlocx1 - i_dst;
+            i_src = (AcReal)2.0 * boundlocx1 - i_dst;
         }
 
         // Pick up the mirroring value.
         if ((j_dst < boundlocy0)) {
-            j_src = 2.0f * boundlocy0 - j_dst;
+            j_src = (AcReal)2.0 * boundlocy0 - j_dst;
         }
         else if ((j_dst > boundlocx1)) {
-            j_src = 2.0f * boundlocy1 - j_dst;
+            j_src = (AcReal)2.0 * boundlocy1 - j_dst;
         }
 
         // Pick up the mirroring value.
         if ((k_dst < boundlocz0)) {
-            k_src = 2.0f * boundlocz0 - k_dst;
+            k_src = (AcReal)2.0 * boundlocz0 - k_dst;
         }
         else if ((k_dst > boundlocz1)) {
-            k_src = 2.0f * boundlocz1 - k_dst;
+            k_src = (AcReal)2.0 * boundlocz1 - k_dst;
         }
 
         // Edges
         if ((i_dst < boundlocx0) && (j_dst < boundlocy0)) {
-            i_src = 2.0f * boundlocx0 - i_dst;
-            j_src = 2.0f * boundlocy0 - j_dst;
+            i_src = (AcReal)2.0 * boundlocx0 - i_dst;
+            j_src = (AcReal)2.0 * boundlocy0 - j_dst;
             // if ((k_dst == 50)) printf("i_dst %i j_dst %i k_dst %i i_src %i j_src %i k_src %i
             // bsize %i \n", i_dst, j_dst, k_dst, i_src, j_src, k_src, bsize);
         }
         else if ((i_dst < boundlocx0) && (k_dst < boundlocz0)) {
-            i_src = 2.0f * boundlocx0 - i_dst;
-            k_src = 2.0f * boundlocz0 - k_dst;
+            i_src = (AcReal)2.0 * boundlocx0 - i_dst;
+            k_src = (AcReal)2.0 * boundlocz0 - k_dst;
         }
         else if ((j_dst < boundlocy0) && (k_dst < boundlocz0)) {
-            j_src = 2.0f * boundlocy0 - j_dst;
-            k_src = 2.0f * boundlocz0 - k_dst;
+            j_src = (AcReal)2.0 * boundlocy0 - j_dst;
+            k_src = (AcReal)2.0 * boundlocz0 - k_dst;
         }
         else if ((i_dst > boundlocx1) && (j_dst > boundlocx1)) {
-            i_src = 2.0f * boundlocx1 - i_dst;
-            j_src = 2.0f * boundlocy1 - j_dst;
+            i_src = (AcReal)2.0 * boundlocx1 - i_dst;
+            j_src = (AcReal)2.0 * boundlocy1 - j_dst;
         }
         else if ((i_dst > boundlocx1) && (k_dst > boundlocz1)) {
-            i_src = 2.0f * boundlocx1 - i_dst;
-            k_src = 2.0f * boundlocz1 - k_dst;
+            i_src = (AcReal)2.0 * boundlocx1 - i_dst;
+            k_src = (AcReal)2.0 * boundlocz1 - k_dst;
         }
         else if ((j_dst > boundlocy1) && (k_dst > boundlocz1)) {
-            j_src = 2.0f * boundlocy1 - j_dst;
-            k_src = 2.0f * boundlocz1 - k_dst;
+            j_src = (AcReal)2.0 * boundlocy1 - j_dst;
+            k_src = (AcReal)2.0 * boundlocz1 - k_dst;
         }
         else if ((i_dst > boundlocx1) && (k_dst < boundlocz0)) {
-            i_src = 2.0f * boundlocx1 - i_dst;
-            k_src = 2.0f * boundlocz0 - k_dst;
+            i_src = (AcReal)2.0 * boundlocx1 - i_dst;
+            k_src = (AcReal)2.0 * boundlocz0 - k_dst;
         }
         else if ((i_dst > boundlocx1) && (j_dst < bsize)) {
-            i_src = 2.0f * boundlocx1 - i_dst;
-            j_src = 2.0f * boundlocy0 - j_dst;
+            i_src = (AcReal)2.0 * boundlocx1 - i_dst;
+            j_src = (AcReal)2.0 * boundlocy0 - j_dst;
         }
         else if ((i_dst < boundlocx0) && (k_dst > boundlocz1)) {
-            i_src = 2.0f * boundlocx0 - i_dst;
-            k_src = 2.0f * boundlocz1 - k_dst;
+            i_src = (AcReal)2.0 * boundlocx0 - i_dst;
+            k_src = (AcReal)2.0 * boundlocz1 - k_dst;
         }
         else if ((i_dst < boundlocx0) && (j_dst > boundlocy1)) {
-            i_src = 2.0f * boundlocx0 - i_dst;
-            j_src = 2.0f * boundlocy1 - j_dst;
+            i_src = (AcReal)2.0 * boundlocx0 - i_dst;
+            j_src = (AcReal)2.0 * boundlocy1 - j_dst;
         }
         else if ((j_dst > boundlocy1) && (k_dst < boundlocz0)) {
-            j_src = 2.0f * boundlocy1 - j_dst;
-            k_src = 2.0f * boundlocz0 - k_dst;
+            j_src = (AcReal)2.0 * boundlocy1 - j_dst;
+            k_src = (AcReal)2.0 * boundlocz0 - k_dst;
         }
     }
 
     const int src_idx = DEVICE_VTXBUF_IDX(i_src, j_src, k_src);
     const int dst_idx = DEVICE_VTXBUF_IDX(i_dst, j_dst, k_dst);
-    vtxbuf[dst_idx]   = sign * vtxbuf[src_idx] * 0.0 +
-                      1.0; // sign = 1 symmetric, sign = -1 antisymmetric
+    vtxbuf[dst_idx]   = sign * vtxbuf[src_idx] * (AcReal)0.0 +
+                      (AcReal)1.0; // sign = 1 symmetric, sign = -1 antisymmetric
 }
 
 static __global__ void
@@ -174,9 +174,9 @@ acKernelPeriodicBoundconds(const cudaStream_t stream, const int3 start, const in
                            AcReal* vtxbuf)
 {
     const dim3 tpb(8, 2, 8);
-    const dim3 bpg((unsigned int)ceil((end.x - start.x) / (float)tpb.x),
-                   (unsigned int)ceil((end.y - start.y) / (float)tpb.y),
-                   (unsigned int)ceil((end.z - start.z) / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil((end.x - start.x) / (double)tpb.x),
+                   (unsigned int)ceil((end.y - start.y) / (double)tpb.y),
+                   (unsigned int)ceil((end.z - start.z) / (double)tpb.z));
 
     kernel_periodic_boundconds<<<bpg, tpb, 0, stream>>>(start, end, vtxbuf);
     ERRCHK_CUDA_KERNEL();
@@ -189,9 +189,9 @@ acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int
                           const AcMeshInfo config, const int3 bindex)
 {
     const dim3 tpb(8, 2, 8);
-    const dim3 bpg((unsigned int)ceil((end.x - start.x) / (float)tpb.x),
-                   (unsigned int)ceil((end.y - start.y) / (float)tpb.y),
-                   (unsigned int)ceil((end.z - start.z) / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil((end.x - start.x) / (double)tpb.x),
+                   (unsigned int)ceil((end.y - start.y) / (double)tpb.y),
+                   (unsigned int)ceil((end.z - start.z) / (double)tpb.z));
 
     int3 bc_top = {config.int_params[AC_bc_type_top_x], config.int_params[AC_bc_type_top_y],
                    config.int_params[AC_bc_type_top_z]};
@@ -207,15 +207,15 @@ acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int
                              // more possible later
     {
 
-        if (bc_top.x == AC_BOUNDCOND_SYMMETRIC) {
+        if (bc_top.x == BOUNDCOND_SYMMETRIC) {
             kernel_symmetric_boundconds<<<bpg, tpb, 0, stream>>>(start, end, vtxbuf, bindex, 1);
             ERRCHK_CUDA_KERNEL();
         }
-        else if (bc_top.x == AC_BOUNDCOND_ANTISYMMETRIC) {
+        else if (bc_top.x == BOUNDCOND_ANTISYMMETRIC) {
             kernel_symmetric_boundconds<<<bpg, tpb, 0, stream>>>(start, end, vtxbuf, bindex, -1);
             ERRCHK_CUDA_KERNEL();
         }
-        else if (bc_top.x == AC_BOUNDCOND_PERIODIC) {
+        else if (bc_top.x == BOUNDCOND_PERIODIC) {
             kernel_periodic_boundconds<<<bpg, tpb, 0, stream>>>(start, end, vtxbuf);
             ERRCHK_CUDA_KERNEL();
         }

@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2020, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -125,7 +125,6 @@
  */
 #include "astaroth.h"
 
-#include "errchk.h"
 #include "math_utils.h"
 
 static const int MAX_NUM_DEVICES = 32;

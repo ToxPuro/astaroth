@@ -1,3 +1,21 @@
+/*
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+
+    This file is part of Astaroth.
+
+    Astaroth is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Astaroth is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #pragma once
 static __global__ void
 kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 dims,
@@ -136,9 +154,9 @@ acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba, const i
                  const int3 dims, AcRealPacked* packed)
 {
     const dim3 tpb(32, 8, 1);
-    const dim3 bpg((unsigned int)ceil(dims.x / (float)tpb.x),
-                   (unsigned int)ceil(dims.y / (float)tpb.y),
-                   (unsigned int)ceil(dims.z / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
 
     kernel_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, dims, packed);
     ERRCHK_CUDA_KERNEL();
@@ -151,9 +169,9 @@ acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed, const 
                    const int3 dims, VertexBufferArray vba)
 {
     const dim3 tpb(32, 8, 1);
-    const dim3 bpg((unsigned int)ceil(dims.x / (float)tpb.x),
-                   (unsigned int)ceil(dims.y / (float)tpb.y),
-                   (unsigned int)ceil(dims.z / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
 
     kernel_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba);
     ERRCHK_CUDA_KERNEL();
@@ -166,9 +184,9 @@ acKernelPartialPackData(const cudaStream_t stream, const VertexBufferArray vba,
                         VertexBufferHandle* vtxbufs, size_t num_vtxbufs)
 {
     const dim3 tpb(32, 8, 1);
-    const dim3 bpg((unsigned int)ceil(dims.x / (float)tpb.x),
-                   (unsigned int)ceil(dims.y / (float)tpb.y),
-                   (unsigned int)ceil(dims.z / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
 
     kernel_partial_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, dims, packed, vtxbufs,
                                                       num_vtxbufs);
@@ -183,9 +201,9 @@ acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
                           VertexBufferHandle* vtxbufs, size_t num_vtxbufs)
 {
     const dim3 tpb(32, 8, 1);
-    const dim3 bpg((unsigned int)ceil(dims.x / (float)tpb.x),
-                   (unsigned int)ceil(dims.y / (float)tpb.y),
-                   (unsigned int)ceil(dims.z / (float)tpb.z));
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
 
     kernel_partial_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba, vtxbufs,
                                                         num_vtxbufs);

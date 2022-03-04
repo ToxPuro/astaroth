@@ -1,4 +1,8 @@
 ## Astaroth Kernels
-add_library(astaroth_kernels STATIC kernels.cu)
-add_dependencies(astaroth_kernels dsl_headers)
-target_compile_features(astaroth_kernels PRIVATE cxx_std_11)
+if (USE_HIP)
+    set_source_files_properties(kernels.cu PROPERTIES LANGUAGE CXX)
+endif()
+
+add_library(kernels STATIC kernels.cu)
+target_link_libraries(kernels PUBLIC acc-runtime-headers)
+target_compile_features(kernels PRIVATE cxx_std_17)

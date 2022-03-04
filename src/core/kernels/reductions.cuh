@@ -1,3 +1,21 @@
+/*
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+
+    This file is part of Astaroth.
+
+    Astaroth is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Astaroth is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #pragma once
 
 /*
@@ -54,7 +72,7 @@ dsquared_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d)
 #include <assert.h>
 template <FilterFunc filter>
 static __global__ void
-kernel_filter(const __restrict__ AcReal* src, const int3 start, const int3 end, AcReal* dst)
+kernel_filter(const AcReal* __restrict__ src, const int3 start, const int3 end, AcReal* dst)
 {
     const int3 src_idx = (int3){start.x + threadIdx.x + blockIdx.x * blockDim.x,
                                 start.y + threadIdx.y + blockIdx.y * blockDim.y,
@@ -79,8 +97,8 @@ kernel_filter(const __restrict__ AcReal* src, const int3 start, const int3 end, 
 
 template <FilterFuncVec filter>
 static __global__ void
-kernel_filter_vec(const __restrict__ AcReal* src0, const __restrict__ AcReal* src1,
-                  const __restrict__ AcReal* src2, const int3 start, const int3 end, AcReal* dst)
+kernel_filter_vec(const AcReal* __restrict__ src0, const AcReal* __restrict__ src1,
+                  const AcReal* __restrict__ src2, const int3 start, const int3 end, AcReal* dst)
 {
     const int3 src_idx = (int3){start.x + threadIdx.x + blockIdx.x * blockDim.x,
                                 start.y + threadIdx.y + blockIdx.y * blockDim.y,
@@ -107,8 +125,8 @@ kernel_filter_vec(const __restrict__ AcReal* src0, const __restrict__ AcReal* sr
 
 template <FilterFuncVecScal filter>
 static __global__ void
-kernel_filter_vec_scal(const __restrict__ AcReal* src0, const __restrict__ AcReal* src1,
-                       const __restrict__ AcReal* src2, const __restrict__ AcReal* src3,
+kernel_filter_vec_scal(const AcReal* __restrict__ src0, const AcReal* __restrict__ src1,
+                       const AcReal* __restrict__ src2, const AcReal* __restrict__ src3,
                        const int3 start, const int3 end, AcReal* dst)
 {
     const int3 src_idx = (int3){start.x + threadIdx.x + blockIdx.x * blockDim.x,
@@ -167,7 +185,7 @@ kernel_reduce(AcReal* scratchpad, const int num_elems)
 
 template <ReduceFunc reduce>
 static __global__ void
-kernel_reduce_block(const __restrict__ AcReal* scratchpad, const int num_blocks,
+kernel_reduce_block(const AcReal* __restrict__ scratchpad, const int num_blocks,
                     const int block_size, AcReal* result)
 {
     const int idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -192,9 +210,9 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const i
     const unsigned num_elems = nx * ny * nz;
 
     const dim3 tpb_filter(32, 4, 1);
-    const dim3 bpg_filter((unsigned int)ceil(nx / AcReal(tpb_filter.x)),
-                          (unsigned int)ceil(ny / AcReal(tpb_filter.y)),
-                          (unsigned int)ceil(nz / AcReal(tpb_filter.z)));
+    const dim3 bpg_filter((unsigned int)ceil(nx / double(tpb_filter.x)),
+                          (unsigned int)ceil(ny / double(tpb_filter.y)),
+                          (unsigned int)ceil(nz / double(tpb_filter.z)));
 
     const int tpb_reduce = 128;
     const int bpg_reduce = num_elems / tpb_reduce;
@@ -247,9 +265,9 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
     const unsigned num_elems = nx * ny * nz;
 
     const dim3 tpb_filter(32, 4, 1);
-    const dim3 bpg_filter((unsigned int)ceil(nx / AcReal(tpb_filter.x)),
-                          (unsigned int)ceil(ny / AcReal(tpb_filter.y)),
-                          (unsigned int)ceil(nz / AcReal(tpb_filter.z)));
+    const dim3 bpg_filter((unsigned int)ceil(nx / double(tpb_filter.x)),
+                          (unsigned int)ceil(ny / double(tpb_filter.y)),
+                          (unsigned int)ceil(nz / double(tpb_filter.z)));
 
     const int tpb_reduce = 128;
     const int bpg_reduce = num_elems / tpb_reduce;
@@ -304,9 +322,9 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
     const unsigned num_elems = nx * ny * nz;
 
     const dim3 tpb_filter(32, 4, 1);
-    const dim3 bpg_filter((unsigned int)ceil(nx / AcReal(tpb_filter.x)),
-                          (unsigned int)ceil(ny / AcReal(tpb_filter.y)),
-                          (unsigned int)ceil(nz / AcReal(tpb_filter.z)));
+    const dim3 bpg_filter((unsigned int)ceil(nx / double(tpb_filter.x)),
+                          (unsigned int)ceil(ny / double(tpb_filter.y)),
+                          (unsigned int)ceil(nz / double(tpb_filter.z)));
 
     const int tpb_reduce = 128;
     const int bpg_reduce = num_elems / tpb_reduce;
