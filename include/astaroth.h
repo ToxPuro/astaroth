@@ -92,7 +92,7 @@ typedef int Stream;
 
 #define AC_FOR_INIT_TYPES(FUNC)                                                                    \
     FUNC(INIT_TYPE_RANDOM)                                                                         \
-    FUNC(INIT_TYPE_AA_RANDOM)                                                                         \
+    FUNC(INIT_TYPE_AA_RANDOM)                                                                      \
     FUNC(INIT_TYPE_XWAVE)                                                                          \
     FUNC(INIT_TYPE_GAUSSIAN_RADIAL_EXPL)                                                           \
     FUNC(INIT_TYPE_ABC_FLOW)                                                                       \
@@ -970,7 +970,9 @@ acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out
 }
 
 /** */
-template <size_t num_fields> AcTaskDefinition acHaloExchange(Field (&fields)[num_fields])
+template <size_t num_fields>
+AcTaskDefinition
+acHaloExchange(Field (&fields)[num_fields])
 {
     return acHaloExchange(fields, num_fields);
 }

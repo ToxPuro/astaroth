@@ -171,7 +171,7 @@ draw_vertex_buffer(const AcMesh& mesh, const VertexBufferHandle& vertex_buffer, 
             const int idx               = acVertexBufferIdx(i, j, k, mesh.info);
             const uint8_t shade         = (uint8_t)(255.f *
                                             (fabsf(float(mesh.vertex_buffer[vertex_buffer][idx]) -
-                                                   mid)) /
+                                                           mid)) /
                                             range);
             uint8_t color[4]            = {0, 0, 0, 255};
             color[tile % 3]             = shade;
@@ -214,11 +214,11 @@ draw_vertex_buffer_vec(const AcMesh& mesh, const VertexBufferHandle& vertex_buff
                 model_reduce_scal(mesh, RTYPE_MIN, vertex_buffer_c))));
     */
     const float maxx  = float(max(acReduceScal(RTYPE_MAX, vertex_buffer_a),
-                                 max(acReduceScal(RTYPE_MAX, vertex_buffer_b),
-                                     acReduceScal(RTYPE_MAX, vertex_buffer_c))));
+                                  max(acReduceScal(RTYPE_MAX, vertex_buffer_b),
+                                      acReduceScal(RTYPE_MAX, vertex_buffer_c))));
     const float minn  = float(min(acReduceScal(RTYPE_MIN, vertex_buffer_a),
-                                 min(acReduceScal(RTYPE_MIN, vertex_buffer_b),
-                                     acReduceScal(RTYPE_MIN, vertex_buffer_c))));
+                                  min(acReduceScal(RTYPE_MIN, vertex_buffer_b),
+                                      acReduceScal(RTYPE_MIN, vertex_buffer_c))));
     const float range = fabsf(maxx - minn);
     const float mid   = maxx - .5f * range;
 
@@ -230,15 +230,15 @@ draw_vertex_buffer_vec(const AcMesh& mesh, const VertexBufferHandle& vertex_buff
             const int idx               = acVertexBufferIdx(i, j, k, mesh.info);
             const uint8_t r             = (uint8_t)(255.f *
                                         (fabsf(float(mesh.vertex_buffer[vertex_buffer_a][idx]) -
-                                               mid)) /
+                                                           mid)) /
                                         range);
             const uint8_t g             = (uint8_t)(255.f *
                                         (fabsf(float(mesh.vertex_buffer[vertex_buffer_b][idx]) -
-                                               mid)) /
+                                                           mid)) /
                                         range);
             const uint8_t b             = (uint8_t)(255.f *
                                         (fabsf(float(mesh.vertex_buffer[vertex_buffer_c][idx]) -
-                                               mid)) /
+                                                           mid)) /
                                         range);
             const uint32_t mapped_color = SDL_MapRGBA(surfaces[vertex_buffer_a]->format, r, g, b,
                                                       255);
@@ -425,7 +425,7 @@ run_renderer(const char* config_path)
 #else
         ModelMesh* model_mesh = modelmesh_create(mesh->info);
         const AcReal umax     = AcReal(
-            model_reduce_vec(*model_mesh, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ));
+                model_reduce_vec(*model_mesh, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ));
         const AcReal dt = host_timestep(umax, mesh_info);
         acmesh_to_modelmesh(*mesh, model_mesh);
         model_rk3(dt, model_mesh);

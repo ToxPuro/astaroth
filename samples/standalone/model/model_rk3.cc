@@ -841,14 +841,14 @@ solve_alpha_step(const int step_number, const ModelScalar dt, const int i, const
 
     const ModelScalarData lnrho = read_data(i, j, k, in.vertex_buffer, VTXBUF_LNRHO);
     const ModelVectorData uu    = read_data(i, j, k, in.vertex_buffer,
-                                         (int3){VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ});
+                                            (int3){VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ});
 
     ModelScalar rate_of_change[NUM_VTXBUF_HANDLES] = {0};
     rate_of_change[VTXBUF_LNRHO]                   = continuity(uu, lnrho);
 
 #if LMAGNETIC
     const ModelVectorData aa  = read_data(i, j, k, in.vertex_buffer,
-                                         (int3){VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ});
+                                          (int3){VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ});
     const ModelVector aa_res  = induction(uu, aa);
     rate_of_change[VTXBUF_AX] = aa_res.x;
     rate_of_change[VTXBUF_AY] = aa_res.y;

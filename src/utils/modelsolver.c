@@ -968,7 +968,7 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
 
     if (step_number == 2) {
 #if LBFIELD
-        const Vector bfield = curl(aa);
+        const Vector bfield              = curl(aa);
         out->vertex_buffer[BFIELDX][idx] = bfield[0];
         out->vertex_buffer[BFIELDY][idx] = bfield[1];
         out->vertex_buffer[BFIELDZ][idx] = bfield[2];

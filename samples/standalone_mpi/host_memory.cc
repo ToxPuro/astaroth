@@ -754,7 +754,7 @@ acmesh_init_to(const InitType& init_type, AcMesh* mesh)
             mesh->vertex_buffer[VTXBUF_AX][i] = 2 * range * randr() - range;
             mesh->vertex_buffer[VTXBUF_AY][i] = 2 * range * randr() - range;
             mesh->vertex_buffer[VTXBUF_AZ][i] = 2 * range * randr() - range;
-            }
+        }
         break;
     }
     case INIT_TYPE_KICKBALL:
