@@ -4,7 +4,7 @@ option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF
 
 ## DSL module dir
 if (NOT DEFINED DSL_MODULE_DIR)
-    set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/samples/mhd) # Default
+    set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/samples/mhd_modular) # Default
 else()
     get_filename_component(resolved_module_dir "${DSL_MODULE_DIR}" REALPATH
                            BASE_DIR ${CMAKE_BINARY_DIR})
