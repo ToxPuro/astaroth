@@ -965,6 +965,15 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
                                          rate_of_change[w] * dt;
         }
     }
+
+    if (step_number == 2) {
+#if LBFIELD
+        const Vector bfield = curl(aa);
+        out->vertex_buffer[BFIELDX][idx] = bfield[0];
+        out->vertex_buffer[BFIELDY][idx] = bfield[1];
+        out->vertex_buffer[BFIELDZ][idx] = bfield[2];
+#endif
+    }
 }
 
 static void
@@ -980,14 +989,19 @@ solve_beta_step(const AcMesh in, const int step_number, const Scalar dt, const i
         out->vertex_buffer[w][idx] += beta[step_number] * in.vertex_buffer[w][idx];
 
     (void)dt; // Suppress unused variable warning if forcing not used
-#if LFORCING
     if (step_number == 2) {
+#if LFORCING
         Vector force = forcing((int3){i, j, k}, dt);
         out->vertex_buffer[VTXBUF_UUX][idx] += force[0];
         out->vertex_buffer[VTXBUF_UUY][idx] += force[1];
         out->vertex_buffer[VTXBUF_UUZ][idx] += force[2];
-    }
 #endif
+#if LBFIELD
+        out->vertex_buffer[BFIELDX][idx] = in.vertex_buffer[BFIELDX][idx];
+        out->vertex_buffer[BFIELDY][idx] = in.vertex_buffer[BFIELDY][idx];
+        out->vertex_buffer[BFIELDZ][idx] = in.vertex_buffer[BFIELDZ][idx];
+#endif
+    }
 }
 
 // Checks whether the parameters passed in an AcMeshInfo are valid
