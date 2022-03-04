@@ -650,6 +650,12 @@ if 'tscomp' in sys.argv:
    plt.legend()
 
    plt.figure()
+   plt.plot(ts.var['t_step'][:-1],      ts.var["shock_max"][:-1], label="VTXBUF_SHOCK_max")
+   plt.plot(ts_orig.var['t_step'][:-1], ts_orig.var["shock_max"][:-1], label="VTXBUF_SHOCK_max (orig)")
+   #plt.xlabel(xaxis)
+   plt.legend()
+
+   plt.figure()
    plt.plot(ts.var['t_step'][:-1],      ts.var["lnrho_max"][:-1], label="lnrho_max")
    plt.plot(ts_orig.var['t_step'][:-1], ts_orig.var["lnrho_max"][:-1], label="lnrho max (orig)")
    #plt.xlabel(xaxis)
