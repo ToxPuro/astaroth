@@ -92,7 +92,7 @@ typedef int Stream;
 
 #define AC_FOR_INIT_TYPES(FUNC)                                                                    \
     FUNC(INIT_TYPE_RANDOM)                                                                         \
-    FUNC(INIT_TYPE_AA_RANDOM)                                                                         \
+    FUNC(INIT_TYPE_AA_RANDOM)                                                                      \
     FUNC(INIT_TYPE_XWAVE)                                                                          \
     FUNC(INIT_TYPE_GAUSSIAN_RADIAL_EXPL)                                                           \
     FUNC(INIT_TYPE_ABC_FLOW)                                                                       \
@@ -482,6 +482,11 @@ typedef enum {
     ACCESS_READ,
     ACCESS_WRITE,
 } AccessType;
+
+AcResult acGridVolumeCopy(const VertexBufferHandle vtxbuf, const AccessType type);
+
+AcResult acGridAccessMeshOnDiskAsync(const VertexBufferHandle vtxbuf, const char* path,
+                                     const AccessType type);
 
 AcResult acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path,
                                 const AccessType type);

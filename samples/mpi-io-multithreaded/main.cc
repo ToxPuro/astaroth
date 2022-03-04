@@ -52,7 +52,8 @@ write_async(void)
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char file[4096] = "";
         sprintf(file, "field-%lu.out", i);
-        acGridAccessMeshOnDisk((VertexBufferHandle)i, file, ACCESS_WRITE);
+        // acGridAccessMeshOnDisk((VertexBufferHandle)i, file, ACCESS_WRITE);
+        acGridAccessMeshOnDiskAsync((VertexBufferHandle)i, file, ACCESS_WRITE);
     }
 }
 
@@ -60,6 +61,9 @@ void
 launch_disk_io(void)
 {
     if (!future.valid()) { // Complete
+        for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+            acGridVolumeCopy((VertexBufferHandle)i, ACCESS_WRITE);
+
         future = std::async(std::launch::async, write_async);
     }
     else { // Not complete
