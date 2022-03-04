@@ -1,6 +1,6 @@
 # Astaroth - A Scalable Multi-GPU Library for Stencil Computations {#mainpage}
 
-[Astaroth DSL](acc-runtime/README.md) | [API specification](doc/Astaroth_API_specification_and_user_manual/API_specification_and_user_manual.md) | [Contributing](CONTRIBUTING.md) | [Licence](LICENCE.md) | [Repository](https://bitbucket.org/jpekkila/astaroth) | [Issue Tracker](https://bitbucket.org/jpekkila/astaroth/issues?status=new&status=open) | [Wiki](https://bitbucket.org/jpekkila/astaroth/wiki/Home)
+[API specification](doc/Astaroth_API_specification_and_user_manual/API_specification_and_user_manual.md)| [Astaroth DSL](acc-runtime/README.md) | [Contributing](CONTRIBUTING.md) | [Licence](LICENCE.md) | [Repository](https://bitbucket.org/jpekkila/astaroth) | [Issue Tracker](https://bitbucket.org/jpekkila/astaroth/issues?status=new&status=open) | [Wiki](https://bitbucket.org/jpekkila/astaroth/wiki/Home)
 
 Astaroth is a multi-GPU library designed for high-order stencil computations with a special focus on the requirements of multiphysics applications on modern HPC systems. It provides a multi-GPU and single-GPU APIs, a domain-specific language for expressing stencil codes in a high-level syntax, and an optimizing compiler that translates DSL sources into CUDA/HIP subroutines that exhibit near handtuned performance.
 
