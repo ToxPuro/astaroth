@@ -174,31 +174,53 @@ print("")
 ####print("")
 ####print("")
 
-####for k, deg_z in enumerate(coord_deg):
-####    for j, deg_y in enumerate(coord_deg):
-####        for i, deg_x in enumerate(coord_deg):
-####            label_x = coord_axx[i] 
-####            label_y = coord_axy[j] 
-####            label_z = coord_axz[k] 
-####            iver    = -3 + i;
-####            jver    = -3 + j;
-####            kver    = -3 + k;
-####
-####            irr = np.float(iver*iver + jver*jver + kver*kver)
-####            ir  = np.sqrt(irr)
-####            
-####            if ir <= 3.0:
-####                stencil_index  = "[%i][%i][%i]" % (kver, jver, iver)
-####                coeff_label    = "Stencil value_%s%s_%s%s_%s%s {" % (label_x, deg_x, label_y, deg_y, label_z, deg_z)
-####
-####                #print(ir,irr, iver, jver, kver)
-####                print(coeff_label)
-####                print(stencil_index + " = 1")
-####                print("}")
-####
-####print("")
-####print("")
-####print("")
+#Cube maximum stencil
+if 0: 
+    print("Max Stencil max5 {")
+    for k, deg_z in enumerate(coord_deg):
+        for j, deg_y in enumerate(coord_deg):
+            for i, deg_x in enumerate(coord_deg):
+                iver    = -3 + i;
+                jver    = -3 + j;
+                kver    = -3 + k;
+    
+                stencil_index  = "[%i][%i][%i]" % (kver, jver, iver)
+    
+                if (i == 6) and (j == 6) and (k ==6):
+                    print(stencil_index + " = 1,")
+                else:
+                    print(stencil_index + " = 1")
+    
+    print("}")
+    
+    print("")
+    print("")
+    print("")
+
+#Sphere maximum stencil 
+if 1: 
+    print("Max Stencil max5 {")
+    for k, deg_z in enumerate(coord_deg):
+        for j, deg_y in enumerate(coord_deg):
+            for i, deg_x in enumerate(coord_deg):
+                iver    = -3 + i;
+                jver    = -3 + j;
+                kver    = -3 + k;
+    
+                irr = np.float(iver*iver + jver*jver + kver*kver)
+                ir  = np.sqrt(irr)
+                
+                if ir <= 3.0:
+                    stencil_index  = "[%i][%i][%i]" % (kver, jver, iver)
+    
+                    #REMOVE THE LAST COMMA BY HAND!!!
+                    print(stencil_index + " = 1,")
+    
+    print("}")
+    
+    print("")
+    print("")
+    print("")
 
 
 #please pipe the result with > to get the stencil file. 
