@@ -1,4 +1,3 @@
-B
 # Astaroth Specification and User Manual
 
 Copyright (C) 2014-2022, Johannes Pekkila, Miikka Vaisala.
