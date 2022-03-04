@@ -59,10 +59,10 @@ In the base directory, run
 | MPI_ENABLED | Enables acGrid functions for carrying out computations with MPI. | OFF |
 | USE_CUDA_AWARE_MPI | Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory | ON |
 | MULTIGPU_ENABLED | Enables Astaroth to use multiple GPUs on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only. | ON |
-| DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `acc/mhd_solver` |
+| DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `acc-runtime/samples/mhd_modular` |
 | PROGRAM_MODULE_DIR | Can be used to declare additional host-side program modules (also known as Thrones) | empty |
 | VERBOSE | Enables various non-critical warning and status messages. | OFF |
-| BUILD_UTILS | "Builds the utility library. Depends on `DSL_MODULE_DIR=acc/mhd_solver`". | ON |
+| BUILD_UTILS | "Builds the utility library. | ON |
 | BUILD_ACC_RUNTIME_LIBRARY | "Builds the standalone acc runtime library" | OFF |
 | USE_HIP | "Use HIP as the underlying GPGPU library instead of CUDA" | OFF |
 
@@ -86,7 +86,8 @@ See `analysis/python/` directory of existing data visualization and analysis scr
 
 * `astaroth/include/astaroth.h`: Astaroth main header. Contains the interface for accessing single- and multi-GPU layers.
 * `astaroth/include/astaroth_utils.h`: Utility library header. Provides functions for performing common tasks on host, such as allocating and verifying meshes.
-* `<build directory>/astaroth.f90`: Fortran interface to Astaroth. Generated when building the library.
+* `acc-runtime/api/acc_runtime.h`: Low-level single-GPU library for running kernels generated from user-defined DSL files.
+* ~~`<build directory>/astaroth.f90`: Fortran interface to Astaroth. Generated when building the library.~~ (not available at the moment)
 
 ## FAQ
 
