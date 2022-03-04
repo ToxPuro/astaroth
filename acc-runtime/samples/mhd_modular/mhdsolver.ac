@@ -179,11 +179,11 @@ real AC_current_time
 #define DER6UPWD_1 ( 15. / 60.)     
 #define DER6UPWD_0 (-20. / 60.)  
 
-//////#if LSHOCK
-//////
-//////#include "smooth_kernel.ach" 
-//////
-//////#endif 
+#if LSHOCK
+
+#include "smooth_kernel.ach" 
+
+#endif 
 
 Stencil value {
     [0][0][0] = 1
@@ -385,29 +385,30 @@ Stencil der6z_upwd {
     [3][0][0]  =  AC_inv_dsz * DER6UPWD_3
 }
 
-smooth_kernel(field)
-{
-    // From Pencil Code src/shock_highorder.f90
-    // Gaussian weights
-    real weights = 1.0, 9.0, 45.0, 70.0, 45.0, 9.0, 1.0
-
-    smooth_norm = 5832000.0 // Based on separate calculations
-
-    smoothed = 0.0
-    for k in 0:len(weights) {
-        for j in 0:len(weights) {
-            for i in 0:len(weights) {
-                iver = -3 + i
-                jver = -3 + j
-                kver = -3 + k
-
-                smooth_factor = (weights[i] * weights[j] * weights[k]) / smooth_norm
-                smoothed = smoothed + smooth_factor * FIELD_IN[field][IDX(vertexIdx.x+iver, vertexIdx.y+jver, vertexIdx.z+kver)]
-            }
-        }
-    }
-    return smoothed
-}
+//// This is now donw with a stencil. See smooth_kernel.ach 
+////smooth_kernel(field)
+////{
+////    // From Pencil Code src/shock_highorder.f90
+////    // Gaussian weights
+////    real weights = 1.0, 9.0, 45.0, 70.0, 45.0, 9.0, 1.0
+////
+////    smooth_norm = 5832000.0 // Based on separate calculations
+////
+////    smoothed = 0.0
+////    for k in 0:len(weights) {
+////        for j in 0:len(weights) {
+////            for i in 0:len(weights) {
+////                iver = -3 + i
+////                jver = -3 + j
+////                kver = -3 + k
+////
+////                smooth_factor = (weights[i] * weights[j] * weights[k]) / smooth_norm
+////                smoothed = smoothed + smooth_factor * FIELD_IN[field][IDX(vertexIdx.x+iver, vertexIdx.y+jver, vertexIdx.z+kver)]
+////            }
+////        }
+////    }
+////    return smoothed
+////}
 
 #if LSHOCK
 
