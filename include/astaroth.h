@@ -483,6 +483,14 @@ typedef enum {
     ACCESS_WRITE,
 } AccessType;
 
+AcResult acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* path,
+                                           const AccessType type);
+
+AcResult acGridDiskAccessLaunch(const AccessType type);
+
+AcResult acGridDiskAccessSync(void);
+
+/*
 AcResult acGridVolumeCopy(const VertexBufferHandle vtxbuf, const AccessType type);
 
 AcResult acGridAccessMeshOnDiskAsync(const VertexBufferHandle vtxbuf, const char* path,
@@ -490,6 +498,7 @@ AcResult acGridAccessMeshOnDiskAsync(const VertexBufferHandle vtxbuf, const char
 
 AcResult acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path,
                                 const AccessType type);
+                                */
 
 /*
  * =============================================================================

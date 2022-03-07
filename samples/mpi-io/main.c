@@ -81,21 +81,22 @@ main(int argc, char** argv)
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char file[4096] = "";
         sprintf(file, "field-%lu.out", i);
-        acGridAccessMeshOnDisk((VertexBufferHandle)i, file, ACCESS_WRITE);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_WRITE);
     }
 
     // Scramble
     acHostMeshRandomize(&candidate);
     acGridLoadMesh(STREAM_DEFAULT, candidate);
-    acGridAccessMeshOnDisk(0, "field-tmp.out",
-                           ACCESS_WRITE); // Hacky, indirectly scramble vba.out to catch false
-                                          // positives if the MPI calls fail completely.
+    acGridAccessMeshOnDiskSynchronous(0, "field-tmp.out",
+                                      ACCESS_WRITE); // Hacky, indirectly scramble vba.out to catch
+                                                     // false positives if the MPI calls fail
+                                                     // completely.
 
     // Read
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char file[4096] = "";
         sprintf(file, "field-%lu.out", i);
-        acGridAccessMeshOnDisk((VertexBufferHandle)i, file, ACCESS_READ);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_READ);
     }
 
     acGridPeriodicBoundconds(STREAM_DEFAULT);

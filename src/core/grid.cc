@@ -1118,8 +1118,105 @@ acGridAccessMeshOnDiskAsync(const VertexBufferHandle vtxbuf, const char* path,
     return AC_SUCCESS;
 }
 
+/*
+
+    write:
+        sync transfer to host
+        async write to disk
+    read:
+        async read from disk
+        sync transfer to device
+
+    sync:
+        complete write or read locally  (future.get() and status complete)
+        complete write or read globally (MPI_Barrier)
+
+    static:
+        future
+        status
+
+    static std::future<void> future;
+    static AccessType access_type;
+    static bool complete = true;
+*/
+
+#include <chrono>
+#include <future>
+
+static std::future<void> future;
+static AccessType access_type = ACCESS_WRITE;
+static bool complete          = true;
+
 AcResult
-acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const AccessType type)
+acGridDiskAccessSync(void)
+{
+    ERRCHK(grid.initialized);
+
+    // Sync and mark as completed
+    if (future.valid())
+        future.get();
+
+    if (access_type == ACCESS_READ)
+        for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+            acGridVolumeCopy((VertexBufferHandle)i, ACCESS_READ);
+
+    acGridSynchronizeStream(STREAM_ALL);
+    access_type = ACCESS_WRITE;
+    complete    = true;
+    return AC_SUCCESS;
+}
+
+static void
+write_async(void)
+{
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        char file[4096] = "";
+        sprintf(file, "field-%lu.out", i); // Note: could use vtxbuf_names[i]
+        acGridAccessMeshOnDiskAsync((VertexBufferHandle)i, file, ACCESS_WRITE);
+    }
+}
+
+static void
+read_async(void)
+{
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        char file[4096] = "";
+        sprintf(file, "field-%lu.out", i); // Note: could use vtxbuf_names[i]
+        acGridAccessMeshOnDiskAsync((VertexBufferHandle)i, file, ACCESS_READ);
+    }
+}
+
+AcResult
+acGridDiskAccessLaunch(const AccessType type)
+{
+    ERRCHK_ALWAYS(grid.initialized);
+
+    acGridDiskAccessSync();
+    ERRCHK_ALWAYS(!future.valid());
+
+    ERRCHK_ALWAYS(complete);
+    complete    = false;
+    access_type = type;
+
+    if (type == ACCESS_WRITE) {
+        for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+            acGridVolumeCopy((VertexBufferHandle)i, ACCESS_WRITE);
+
+        future = std::async(std::launch::async, write_async);
+    }
+    else if (type == ACCESS_READ) {
+        future = std::async(std::launch::async, read_async);
+    }
+    else {
+        ERROR("Unknown access type in acGridDiskAccessLaunch");
+        return AC_FAILURE;
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* path,
+                                  const AccessType type)
 {
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 

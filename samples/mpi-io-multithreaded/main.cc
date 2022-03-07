@@ -44,6 +44,7 @@ main(void)
 
 #include <unistd.h>
 
+/*
 static std::future<void> future;
 
 void
@@ -52,7 +53,7 @@ write_async(void)
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char file[4096] = "";
         sprintf(file, "field-%lu.out", i);
-        // acGridAccessMeshOnDisk((VertexBufferHandle)i, file, ACCESS_WRITE);
+        // acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_WRITE);
         acGridAccessMeshOnDiskAsync((VertexBufferHandle)i, file, ACCESS_WRITE);
     }
 }
@@ -72,6 +73,7 @@ launch_disk_io(void)
             future.get(); // Mark as completed
     }
 }
+*/
 
 int
 main(int argc, char** argv)
@@ -128,10 +130,11 @@ main(int argc, char** argv)
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char file[4096] = "";
         sprintf(file, "field-%lu.out", i);
-        acGridAccessMeshOnDisk((VertexBufferHandle)i, file, ACCESS_WRITE);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_WRITE);
     }
     */
-    launch_disk_io();
+    /*
+    // launch_disk_io();
 
     auto status = future.wait_for(std::chrono::milliseconds(0));
     printf("Waiting");
@@ -143,19 +146,23 @@ main(int argc, char** argv)
     }
     printf("\n");
     future.get(); // Sync
+    */
+    acGridDiskAccessLaunch(ACCESS_WRITE);
+    acGridDiskAccessSync();
 
     // Scramble
     acHostMeshRandomize(&candidate);
     acGridLoadMesh(STREAM_DEFAULT, candidate);
-    acGridAccessMeshOnDisk((VertexBufferHandle)0, "field-tmp.out",
-                           ACCESS_WRITE); // Hacky, indirectly scramble vba.out to catch false
+    acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)0, "field-tmp.out",
+                                      ACCESS_WRITE); // Hacky, indirectly scramble vba.out to catch
+                                                     // false
     // positives if the MPI calls fail completely.
 
     // Read
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char file[4096] = "";
         sprintf(file, "field-%lu.out", i);
-        acGridAccessMeshOnDisk((VertexBufferHandle)i, file, ACCESS_READ);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_READ);
     }
 
     acGridPeriodicBoundconds(STREAM_DEFAULT);
