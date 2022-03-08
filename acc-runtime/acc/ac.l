@@ -13,6 +13,7 @@ L [a-zA-Z_]
 %%
 
 "int"                   { return INT; } /* Type specifiers */
+"uint"                  { return UINT; }
 "int3"                  { return INT3; }
 "real"                  { return REAL; }
 "real3"                 { return REAL3; }
@@ -39,8 +40,8 @@ L [a-zA-Z_]
 {L}({L}|{D})*             { return IDENTIFIER; }   /* Literals */
 \"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */
 [+-/*|&!%]?=              { return ASSIGNOP; }     /* Assignment */
-[/*-+<>%]                 { return BINARY_OP; }    /* Operators */
-(&&)|(\|\|)|(<<)          { return BINARY_OP; }    /* Operators */
+[/*-+<>%^]                { return BINARY_OP; }    /* Operators */
+(&&)|(\|\|)|(<<)|(>>)     { return BINARY_OP; }    /* Operators */
 (==)                      { return BINARY_OP; }    /* Operators */
 "++"|"--"                 { return INPLACE_OP; }
 [-+*/:;=\[\]{}(),\.<>|&]  { return yytext[0]; }    /* Characters */

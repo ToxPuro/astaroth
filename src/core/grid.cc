@@ -957,6 +957,13 @@ acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3 start, c
     return acDeviceLaunchKernel(grid.device, stream, kernel, start, end);
 }
 
+AcResult
+acGridSwapBuffers(void)
+{
+    ERRCHK(grid.initialized);
+    return acDeviceSwapBuffers(grid.device);
+}
+
 /** */
 AcResult
 acGridLoadStencil(const Stream stream, const Stencil stencil,
