@@ -16,6 +16,12 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 '''
+
+# The following cripts are based on what was originally published in 
+# Väisälä M.S., Pekkilä J., Käpylä M.J., Rheinhardt M., Shang H., 
+# Krasnopolsky R., 2021, Astrophysical Journal, 907, 83. 
+# doi:10.3847/1538-4357/abceca
+
 import astar.data as ad
 import astar.visual as vis
 import pylab as plt 
