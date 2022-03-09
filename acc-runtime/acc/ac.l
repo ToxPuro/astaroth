@@ -42,7 +42,7 @@ L [a-zA-Z_]
 [+-/*|&!%]?=              { return ASSIGNOP; }     /* Assignment */
 [/*-+<>%^]                { return BINARY_OP; }    /* Operators */
 (&&)|(\|\|)|(<<)|(>>)     { return BINARY_OP; }    /* Operators */
-(==)                      { return BINARY_OP; }    /* Operators */
+(==)|(>=)|(<=)            { return BINARY_OP; }    /* Operators */
 "++"|"--"                 { return INPLACE_OP; }
 [-+*/:;=\[\]{}(),\.<>|&]  { return yytext[0]; }    /* Characters */
 {D}+[.]{D}*               { return REALNUMBER; }
