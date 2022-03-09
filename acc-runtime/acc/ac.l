@@ -43,7 +43,6 @@ L [a-zA-Z_]
 [/*-+<>%^]                { return BINARY_OP; }    /* Operators */
 (&&)|(\|\|)|(<<)|(>>)     { return BINARY_OP; }    /* Operators */
 (==)|(>=)|(<=)            { return BINARY_OP; }    /* Operators */
-"++"|"--"                 { return INPLACE_OP; }
 [-+*/:;=\[\]{}(),\.<>|&]  { return yytext[0]; }    /* Characters */
 {D}+[.]{D}*               { return REALNUMBER; }
 {D}+[.]?{D}*(e[-]?{D}+)   { return REALNUMBER; }

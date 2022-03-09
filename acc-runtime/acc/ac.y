@@ -116,7 +116,7 @@ main(int argc, char** argv)
 
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
-%token BINARY_OP INPLACE_OP ASSIGNOP
+%token BINARY_OP ASSIGNOP
 %token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL
 %token KERNEL SUM MAX
 %token HOSTDEFINE
@@ -249,7 +249,6 @@ binary_op: '+'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 
 unary_op: '-'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
         | '!'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
-        | INPLACE_OP { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
         ;
 
 assignment_op: ASSIGNOP    { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
