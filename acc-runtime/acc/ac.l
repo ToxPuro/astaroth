@@ -39,10 +39,10 @@ L [a-zA-Z_]
 
 {L}({L}|{D})*             { return IDENTIFIER; }   /* Literals */
 \"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */
-[+-/*|&!%]?=              { return ASSIGNOP; }     /* Assignment */
+[+-/*|&%]?=               { return ASSIGNOP; }     /* Assignment */
 [/*-+<>%^]                { return BINARY_OP; }    /* Operators */
 (&&)|(\|\|)|(<<)|(>>)     { return BINARY_OP; }    /* Operators */
-(==)|(>=)|(<=)            { return BINARY_OP; }    /* Operators */
+(==)|(>=)|(<=)|(!=)       { return BINARY_OP; }    /* Operators */
 [-+*/:;=\[\]{}(),\.<>|&]  { return yytext[0]; }    /* Characters */
 {D}+[.]{D}*               { return REALNUMBER; }
 {D}+[.]?{D}*(e[-]?{D}+)   { return REALNUMBER; }
