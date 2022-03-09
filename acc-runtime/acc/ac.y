@@ -116,8 +116,8 @@ main(int argc, char** argv)
 
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
-%token BINARY_OP INPLACE_OP ASSIGNOP
-%token INT INT3 REAL REAL3 MATRIX FIELD STENCIL
+%token BINARY_OP ASSIGNOP
+%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL
 %token KERNEL SUM MAX
 %token HOSTDEFINE
 
@@ -181,6 +181,7 @@ while: WHILE           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 for: FOR               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 in: IN                 { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 int: INT               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int3: INT3             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 real: REAL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 real3: REAL3           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal3", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -218,6 +219,7 @@ hostdefine: HOSTDEFINE {
  * =============================================================================
 */
 type_specifier: int     { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | uint   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | int3    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real3   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
@@ -247,7 +249,6 @@ binary_op: '+'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 
 unary_op: '-'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
         | '!'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
-        | INPLACE_OP { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
         ;
 
 assignment_op: ASSIGNOP    { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }

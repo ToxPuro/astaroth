@@ -448,6 +448,8 @@ AcResult acGridStoreMesh(const Stream stream, AcMesh* host_mesh);
 /** */
 AcResult acGridIntegrate(const Stream stream, const AcReal dt);
 
+AcResult acGridSwapBuffers(void);
+
 /** */
 /*   MV: Commented out for a while, but save for the future when standalone_MPI
          works with periodic boundary conditions.

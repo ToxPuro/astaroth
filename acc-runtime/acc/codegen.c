@@ -116,6 +116,9 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "FIELD_OUT");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "IDX");
 
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "true");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "false");
+
   // Astaroth 2.0 backwards compatibility START
   // (should be actually built-in externs in acc-runtime/api/acc-runtime.h)
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_mx");
