@@ -15,7 +15,7 @@ Kernel kernel() {
   f *= -1
   g /= -1 * -1 / (-1 * -1)
   + 1
-  h -= ++a
+  h -= (a + 1)
   y = fn(1, 2) * -fn(fn(1, 2, c)) * fn()
   yy = real(1)
 
