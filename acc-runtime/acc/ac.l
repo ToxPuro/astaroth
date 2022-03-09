@@ -39,7 +39,8 @@ L [a-zA-Z_]
 
 {L}({L}|{D})*             { return IDENTIFIER; }   /* Literals */
 \"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */
-[+-/*|&%]?=               { return ASSIGNOP; }     /* Assignment */
+[+-/*|&%^]?=              { return ASSIGNOP; }     /* Assignment */
+(<<=)|(>>=)               { return ASSIGNOP; }     /* Assignment */
 [/*-+<>|&%^]              { return BINARY_OP; }    /* Operators */
 (&&)|(\|\|)|(<<)|(>>)     { return BINARY_OP; }    /* Operators */
 (==)|(>=)|(<=)|(!=)       { return BINARY_OP; }    /* Operators */
