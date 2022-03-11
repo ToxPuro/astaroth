@@ -39,46 +39,9 @@ main(void)
 
 #include <mpi.h>
 
-#include <chrono>
-#include <future>
-
-#include <unistd.h>
-
-/*
-static std::future<void> future;
-
-void
-write_async(void)
-{
-    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        char file[4096] = "";
-        sprintf(file, "field-%lu.out", i);
-        // acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_WRITE);
-        acGridAccessMeshOnDiskAsync((VertexBufferHandle)i, file, ACCESS_WRITE);
-    }
-}
-
-void
-launch_disk_io(void)
-{
-    if (!future.valid()) { // Complete
-        for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
-            acGridVolumeCopy((VertexBufferHandle)i, ACCESS_WRITE);
-
-        future = std::async(std::launch::async, write_async);
-    }
-    else { // Not complete
-        const auto status = future.wait_for(std::chrono::milliseconds(0));
-        if (status == std::future_status::ready)
-            future.get(); // Mark as completed
-    }
-}
-*/
-
 int
 main(int argc, char** argv)
 {
-    // MPI_Init(NULL, NULL);
     int thread_support_level;
     MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &thread_support_level);
     if (thread_support_level < MPI_THREAD_MULTIPLE) {
@@ -105,76 +68,86 @@ main(int argc, char** argv)
         acHostUpdateBuiltinParams(&info);
     }
 
-    // Alloc
     AcMesh model, candidate;
-    acHostMeshCreate(info, &model);
-    acHostMeshCreate(info, &candidate);
+    if (!pid) {
+        acHostMeshCreate(info, &model);
+        acHostMeshCreate(info, &candidate);
 
-    // Init
-    acHostMeshRandomize(&model);
-    acHostMeshRandomize(&candidate);
-    acHostMeshApplyPeriodicBounds(&model);
+        acHostMeshRandomize(&model);
+        acHostMeshRandomize(&candidate);
+    }
 
     acGridInit(info);
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
 
+    // Test load/store and boundconds
     if (!pid) {
+        acHostMeshApplyPeriodicBounds(&model);
         const AcResult res = acVerifyMesh("CPU-GPU Load/store", model, candidate);
-        ERRCHK_ALWAYS(res == AC_SUCCESS);
+        WARNCHK_ALWAYS(res == AC_SUCCESS);
     }
 
-    /*
-    // Write
-    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        char file[4096] = "";
-        sprintf(file, "field-%lu.out", i);
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_WRITE);
-    }
-    */
-    /*
-    // launch_disk_io();
-
-    auto status = future.wait_for(std::chrono::milliseconds(0));
-    printf("Waiting");
-    while (status != std::future_status::ready) {
-        printf(".");
-        fflush(stdout);
-        usleep(100000);
-        status = future.wait_for(std::chrono::milliseconds(0));
-    }
-    printf("\n");
-    future.get(); // Sync
-    */
-    acGridDiskAccessLaunch(ACCESS_WRITE);
-    acGridDiskAccessSync();
-
-    // Scramble
-    acHostMeshRandomize(&candidate);
-    acGridLoadMesh(STREAM_DEFAULT, candidate);
-    acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)0, "field-tmp.out",
-                                      ACCESS_WRITE); // Hacky, indirectly scramble vba.out to catch
-                                                     // false
-    // positives if the MPI calls fail completely.
-
-    // Read
-    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        char file[4096] = "";
-        sprintf(file, "field-%lu.out", i);
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_READ);
-    }
-
+    // Test integration step
+    const AcReal dt = (AcReal)FLT_EPSILON;
+    acGridIntegrate(STREAM_DEFAULT, dt);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
-
     if (!pid) {
-        const AcResult res = acVerifyMesh("MPI-IO disk read/write", model, candidate);
-        ERRCHK_ALWAYS(res == AC_SUCCESS);
+        acHostIntegrateStep(model, dt);
+        acHostMeshApplyPeriodicBounds(&model);
+        const AcResult res = acVerifyMesh("Integration step", model, candidate);
+        WARNCHK_ALWAYS(res == AC_SUCCESS);
     }
 
-    acGridQuit();
+    // Test synchronous read/write
+    //// Write
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        char buf[4096] = "";
+        sprintf(buf, "%s.out", vtxbuf_names[i]);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, buf, ACCESS_WRITE);
+    }
+    //// Scramble buffers
+    acGridIntegrate(STREAM_DEFAULT, dt);
+    acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)0, "test.out", ACCESS_READ);
+    //// Read
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        char buf[4096] = "";
+        sprintf(buf, "%s.out", vtxbuf_names[i]);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, buf, ACCESS_READ);
+    }
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    if (!pid) {
+        const AcResult res = acVerifyMesh("Synchronous read/write", model, candidate);
+        WARNCHK_ALWAYS(res == AC_SUCCESS);
+    }
 
+    // Test asynchronous read/write
+    //// Write
+    acGridDiskAccessLaunch(ACCESS_WRITE);
+    //// Scramble buffers
+    for (size_t i = 0; i < 10; ++i)
+        acGridIntegrate(STREAM_DEFAULT, dt);
+
+    acGridDiskAccessSync();
+
+    //// Read
+    acGridDiskAccessLaunch(ACCESS_READ);
+    acGridDiskAccessSync();
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    if (!pid) {
+        const AcResult res = acVerifyMesh("Asynchronous read/write", model, candidate);
+        WARNCHK_ALWAYS(res == AC_SUCCESS);
+    }
+
+    if (!pid) {
+        acHostMeshDestroy(&model);
+        acHostMeshDestroy(&candidate);
+    }
+    acGridQuit();
     MPI_Finalize();
     return EXIT_SUCCESS;
 }
