@@ -56,7 +56,9 @@ AcResult acHostMeshApplyPeriodicBounds(AcMesh* mesh);
 /** */
 AcResult acHostMeshClear(AcMesh* mesh);
 
-/** */
+/** Applies a full integration step on host mesh using the compact 2N RK3 scheme. The boundaries are
+ * not updated after the final substep. A call to acHostMeshApplyPeriodicBounds is required if this
+ * is not desired. */
 AcResult acHostIntegrateStep(AcMesh mesh, const AcReal dt);
 
 /** */
