@@ -493,16 +493,6 @@ AcResult acGridDiskAccessLaunch(const AccessType type);
 AcResult acGridDiskAccessSync(void);
 
 /*
-AcResult acGridVolumeCopy(const VertexBufferHandle vtxbuf, const AccessType type);
-
-AcResult acGridAccessMeshOnDiskAsync(const VertexBufferHandle vtxbuf, const char* path,
-                                     const AccessType type);
-
-AcResult acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path,
-                                const AccessType type);
-                                */
-
-/*
  * =============================================================================
  * Task interface (part of the grid interface)
  * =============================================================================
