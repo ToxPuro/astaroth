@@ -61,7 +61,7 @@
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
     Device device;
-    AcMesh submesh;
+    AcMesh submesh; // Submesh in host memory. Used as scratch space.
     uint3_64 decomposition;
     bool initialized;
     int3 nn;
@@ -265,6 +265,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
+    acGridDiskAccessSync(); // Note: syncs all streams
 
 #if AC_VERBOSE
     printf("Distributing mesh...\n");
@@ -343,6 +344,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
+    acGridDiskAccessSync(); // Note: syncs all streams
 
     acDeviceStoreMesh(grid.device, stream, &grid.submesh);
     acGridSynchronizeStream(stream);
@@ -1018,8 +1020,8 @@ acGridStoreStencils(const Stream stream,
     return (AcResult)retval;
 }
 
-AcResult
-acGridVolumeCopy(const VertexBufferHandle vtxbuf, const AccessType type)
+static AcResult
+volume_copy_to_from_host(const VertexBufferHandle vtxbuf, const AccessType type)
 {
     ERRCHK(grid.initialized);
 
@@ -1041,6 +1043,7 @@ acGridVolumeCopy(const VertexBufferHandle vtxbuf, const AccessType type)
 
         // ---------------------------------------
         // Buffer through CPU
+        cudaSetDevice(device->id);
         const size_t count = acVertexBufferCompdomainSizeBytes(info);
         cudaMemcpy(grid.submesh.vertex_buffer[vtxbuf], out, count, cudaMemcpyDeviceToHost);
         // ----------------------------------------
@@ -1057,6 +1060,7 @@ acGridVolumeCopy(const VertexBufferHandle vtxbuf, const AccessType type)
 
         // ---------------------------------------
         // Buffer through CPU
+        cudaSetDevice(device->id);
         const size_t count = acVertexBufferCompdomainSizeBytes(info);
         cudaMemcpy(in, grid.submesh.vertex_buffer[vtxbuf], count, cudaMemcpyHostToDevice);
         // ----------------------------------------
@@ -1068,12 +1072,12 @@ acGridVolumeCopy(const VertexBufferHandle vtxbuf, const AccessType type)
         acGridPeriodicBoundconds(STREAM_DEFAULT);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
     }
+    acGridSynchronizeStream(STREAM_ALL); // Possibly unnecessary
     return AC_SUCCESS;
 }
 
-AcResult
-acGridAccessMeshOnDiskAsync(const VertexBufferHandle vtxbuf, const char* path,
-                            const AccessType type)
+static AcResult
+access_vtxbuf_on_disk(const VertexBufferHandle vtxbuf, const char* path, const AccessType type)
 {
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
@@ -1165,7 +1169,7 @@ acGridDiskAccessSync(void)
 
     if (access_type == ACCESS_READ)
         for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
-            acGridVolumeCopy((VertexBufferHandle)i, ACCESS_READ);
+            volume_copy_to_from_host((VertexBufferHandle)i, ACCESS_READ);
 
     acGridSynchronizeStream(STREAM_ALL);
     access_type = ACCESS_WRITE;
@@ -1179,7 +1183,7 @@ write_async(void)
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char file[4096] = "";
         sprintf(file, "field-%lu.out", i); // Note: could use vtxbuf_names[i]
-        acGridAccessMeshOnDiskAsync((VertexBufferHandle)i, file, ACCESS_WRITE);
+        access_vtxbuf_on_disk((VertexBufferHandle)i, file, ACCESS_WRITE);
     }
 }
 
@@ -1189,7 +1193,7 @@ read_async(void)
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char file[4096] = "";
         sprintf(file, "field-%lu.out", i); // Note: could use vtxbuf_names[i]
-        acGridAccessMeshOnDiskAsync((VertexBufferHandle)i, file, ACCESS_READ);
+        access_vtxbuf_on_disk((VertexBufferHandle)i, file, ACCESS_READ);
     }
 }
 
@@ -1207,7 +1211,7 @@ acGridDiskAccessLaunch(const AccessType type)
 
     if (type == ACCESS_WRITE) {
         for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
-            acGridVolumeCopy((VertexBufferHandle)i, ACCESS_WRITE);
+            volume_copy_to_from_host((VertexBufferHandle)i, ACCESS_WRITE);
 
         future = std::async(std::launch::async, write_async);
     }
@@ -1225,6 +1229,7 @@ AcResult
 acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* path,
                                   const AccessType type)
 {
+    acGridDiskAccessSync();
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
@@ -1322,7 +1327,8 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
 
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
                            out_volume);
-        // NOTE! Need to also apply the boundconds
+        // Apply boundconds and sync
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
     }
     return AC_SUCCESS;
