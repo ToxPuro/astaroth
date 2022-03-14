@@ -110,6 +110,7 @@ main(int argc, char** argv)
     }
     //// Scramble buffers
     acGridIntegrate(STREAM_DEFAULT, dt);
+    acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)0, "test.out", ACCESS_WRITE);
     acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)0, "test.out", ACCESS_READ);
     //// Read
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
