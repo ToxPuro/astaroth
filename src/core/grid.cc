@@ -1229,12 +1229,12 @@ AcResult
 acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* path,
                                   const AccessType type)
 {
-    acGridDiskAccessSync();
+
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
 
-    acGridSynchronizeStream(STREAM_ALL); // Possibly unnecessary
+    acGridDiskAccessSync();
 
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
