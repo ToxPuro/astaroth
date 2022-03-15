@@ -1201,6 +1201,13 @@ AcResult
 acGridDiskAccessLaunch(const AccessType type)
 {
     ERRCHK_ALWAYS(grid.initialized);
+    ERROR("\n------------------------\n"
+          "acGridDiskAccessLaunch does not work concurrently with acGridIntegrate due to an\n"
+          "unknown issue (invalid CUDA context, double free, or invalid memory access). Suspect\n"
+          "some complex interaction with the underlying MPI library and the asynchronous task\n"
+          "system. `acGridAccessMeshOnDiskSynchronous` has been tested to work on multiple\n"
+          "processes. It is recommended to use that instead in production."
+          "\n------------------------\n");
 
     acGridDiskAccessSync();
     ERRCHK_ALWAYS(!future.valid());
