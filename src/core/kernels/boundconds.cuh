@@ -221,14 +221,18 @@ kernel_prescribed_derivative_boundconds(const int3 region_id, const int3 normal,
     int3 ghost  = boundary;
 
     AcReal d;
+    AcReal direction;
     if (normal.x != 0) {
         d = DCONST(AC_dsx);
+        direction = normal.x;
     }
     else if (normal.y != 0) {
         d = DCONST(AC_dsy);
+        direction = normal.y;
     }
     else if (normal.z != 0) {
         d = DCONST(AC_dsz);
+        direction = normal.z;
     }
 
     for (size_t i = 0; i < NGHOST; i++) {
@@ -239,6 +243,10 @@ kernel_prescribed_derivative_boundconds(const int3 region_id, const int3 normal,
         int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
 
         AcReal distance = AcReal(2 * (i + 1)) * d;
+        // Otherwise resulting derivatives are of different sign and opposite edges.
+        if (direction < 0.0) {
+            distance = -distance;
+        }
 
         vtxbuf[ghost_idx] = vtxbuf[domain_idx] + distance * DCONST(der_val_param);
     }
