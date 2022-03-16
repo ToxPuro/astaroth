@@ -115,6 +115,7 @@ if (BUILD_SAMPLES)
   add_subdirectory(samples/benchmark-device)
   add_subdirectory(samples/mpi-io)
   add_subdirectory(samples/mpi-io-multithreaded)
+  add_subdirectory(samples/pc-varfile-import)
 
   if (BUILD_MHD_SAMPLES)
     # add_subdirectory(samples/standalone)
