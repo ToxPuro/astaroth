@@ -1,5 +1,4 @@
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -34,17 +33,24 @@ typedef struct {
 } Dim;
 
 void
-dimPrint(const char* id, const Dim dim)
+printDim(const char* id, const Dim dim)
 {
     printf("%s: (%lu, %lu, %lu)\n", id, dim.x, dim.y, dim.z);
 }
 
 typedef struct {
-    Dim nn;
     Dim mm;
-    size_t pad;
     real* data;
 } Block;
+
+void
+printNelems(const real* data, const Dim mm, const Dim offset, const size_t nelems)
+{
+    ERRCHK(offset.x + nelems < mm.x);
+    for (size_t i = 0; i < nelems; ++i) {
+        printf("%g, ", data[i + offset.x + offset.y * mm.x + offset.z * mm.x * mm.y]);
+    }
+}
 
 bool
 is_valid(const real* data, const size_t n, const real expected_range)
@@ -58,21 +64,10 @@ is_valid(const real* data, const size_t n, const real expected_range)
 }
 
 void
-printNelems(const real* data, const Dim mm, const Dim offset, const size_t nelems)
-{
-    ERRCHK(offset.x + nelems < mm.x);
-    for (size_t i = 0; i < nelems; ++i) {
-        printf("%g, ", data[i + offset.x + offset.y * mm.x + offset.z * mm.x * mm.y]);
-    }
-}
-
-void
-blockPrint(const char* id, const Block block)
+printBlock(const char* id, const Block block)
 {
     printf("Block `%s`\n", id);
-    dimPrint("\tnn", block.nn);
-    dimPrint("\tmm", block.mm);
-    printf("\tpad: %lu\n", block.pad);
+    printDim("\tmm", block.mm);
     printf("\tdata: %p\n", block.data);
 
     const size_t nelems = 5;
@@ -96,18 +91,10 @@ blockPrint(const char* id, const Block block)
 }
 
 Block
-blockCreate(const Dim nn, const size_t pad)
+blockCreate(const Dim mm)
 {
-    const Dim mm = (Dim){
-        nn.x + 2 * pad,
-        nn.y + 2 * pad,
-        nn.z + 2 * pad,
-    };
-
     Block block = {
-        .nn   = nn,
         .mm   = mm,
-        .pad  = pad,
         .data = NULL,
     };
     block.data = malloc(sizeof(block.data[0]) * mm.x * mm.y * mm.z);
@@ -119,22 +106,48 @@ blockCreate(const Dim nn, const size_t pad)
 void
 blockDestroy(Block* block)
 {
-    block->mm = block->nn = (Dim){0, 0, 0};
+    block->mm = (Dim){0, 0, 0};
     free(block->data);
     block->data = NULL;
 }
 
-Block
-blockCreateFromFile(const char* path, const Dim offset, const Dim nn, const size_t pad,
-                    const Dim nn_sub)
+/*
+static bool
+dim_less_than(const Dim a, const Dim b)
 {
-    const Dim mm = (Dim){nn.x + 2 * pad, nn.y + 2 * pad, nn.z + 2 * pad};
+    return (a.x < b.x) && (a.y < b.y) && (a.z < b.z);
+}
 
-    Block block      = blockCreate(nn_sub, pad);
-    const Dim mm_sub = block.mm;
+static Dim
+dim_add(const Dim a, const Dim b)
+{
+    return (Dim){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+static Dim
+dim_sub(const Dim a, const Dim b)
+{
+    return (Dim){a.x - b.x, a.y - b.y, a.z - b.z};
+}
+*/
+
+Block
+blockCreateFromFile(const char* path, const Dim mm, const Dim offset, const Dim mm_sub)
+{
+    ERRCHK(mm_sub.x + offset.x <= mm.x);
+    ERRCHK(mm_sub.y + offset.y <= mm.y);
+    ERRCHK(mm_sub.z + offset.z <= mm.z);
+
+    Block block = blockCreate(mm_sub);
 
     FILE* fp = fopen(path, "r");
     ERRCHK(fp);
+
+    const Dim pitch = (Dim){
+        mm.x - mm_sub.x,
+        mm.y - mm_sub.y,
+        mm.z - mm_sub.z,
+    };
 
     const size_t base_offset = offset.x + offset.y * mm.x + offset.z * mm.x * mm.y;
     fseek(fp, base_offset, SEEK_SET);
@@ -144,55 +157,183 @@ blockCreateFromFile(const char* path, const Dim offset, const Dim nn, const size
             const int res    = fread(&block.data[idx], sizeof(block.data[0]), mm_sub.x, fp);
             ERRCHK((size_t)res == mm_sub.x);
 
-            ERRCHK(fseek(fp, sizeof(block.data[0]) * mm.x, SEEK_CUR) == 0);
+            ERRCHK(fseek(fp, sizeof(block.data[0]) * pitch.x, SEEK_CUR) == 0);
         }
-        ERRCHK(fseek(fp, sizeof(block.data[0]) * mm.x * mm.y, SEEK_CUR) == 0);
+        ERRCHK(fseek(fp, sizeof(block.data[0]) * pitch.x * pitch.y, SEEK_CUR) == 0);
     }
 
     fclose(fp);
-
     return block;
+}
+
+void
+checkBlockContents(const char* path, const Block block)
+{
+    FILE* fp = fopen(path, "r");
+    ERRCHK(fp);
+
+    const size_t mm = block.mm.x * block.mm.y * block.mm.z;
+
+    for (size_t i = 0; i < mm; ++i) {
+        double val;
+        fread(&val, sizeof(val), 1, fp);
+        printf("%lu: Val %g, other %g\n", i, val, block.data[i]);
+        if (val != block.data[i]) {
+            for (size_t j = 0; i + j < mm; ++j)
+                if (val == block.data[i + j])
+                    printf("Found val %g at block index %lu\n", val, i + j);
+        }
+        ERRCHK(val == block.data[i]);
+    }
+
+    fclose(fp);
+}
+
+size_t
+getIdx(const Dim spatial, const Block block)
+{
+    return spatial.x + spatial.y * block.mm.x + spatial.z * block.mm.x * block.mm.z;
+}
+
+void
+interpolate(const Block in, const Dim halo_size, Block* out)
+{
+    const Dim start = halo_size;
+    const Dim end   = (Dim){
+        out->mm.x - halo_size.x,
+        out->mm.y - halo_size.y,
+        out->mm.z - halo_size.z,
+    };
+
+    const double mx_scale = (double)in.mm.x / out->mm.x;
+    const double my_scale = (double)in.mm.y / out->mm.y;
+    const double mz_scale = (double)in.mm.z / out->mm.z;
+
+    for (size_t k0 = start.z; k0 < end.z; ++k0) {
+        for (size_t j0 = start.y; j0 < end.y; ++j0) {
+            for (size_t i0 = start.x; i0 < end.x; ++i0) {
+
+                const double i = i0 + 0.5;
+                const double j = j0 + 0.5;
+                const double k = k0 + 0.5;
+
+                const double xd = (i * mx_scale - floor(i * mx_scale)) /
+                                  (ceil(i * mx_scale) - floor(i * mx_scale));
+                const double yd = (j * my_scale - floor(j * my_scale)) /
+                                  (ceil(j * my_scale) - floor(j * my_scale));
+                const double zd = (k * mz_scale - floor(k * mz_scale)) /
+                                  (ceil(k * mz_scale) - floor(k * mz_scale));
+
+                const Dim c000 = (Dim){
+                    (size_t)floor(i * mx_scale),
+                    (size_t)floor(j * my_scale),
+                    (size_t)floor(k * mz_scale),
+                };
+
+                const Dim c001 = (Dim){
+                    (size_t)floor(i * mx_scale),
+                    (size_t)floor(j * my_scale),
+                    (size_t)ceil(k * mz_scale),
+                };
+
+                const Dim c010 = (Dim){
+                    (size_t)floor(i * mx_scale),
+                    (size_t)ceil(j * my_scale),
+                    (size_t)floor(k * mz_scale),
+                };
+
+                const Dim c011 = (Dim){
+                    (size_t)floor(i * mx_scale),
+                    (size_t)ceil(j * my_scale),
+                    (size_t)ceil(k * mz_scale),
+                };
+
+                const Dim c100 = (Dim){
+                    (size_t)ceil(i * mx_scale),
+                    (size_t)floor(j * my_scale),
+                    (size_t)floor(k * mz_scale),
+                };
+                const Dim c101 = (Dim){
+                    (size_t)ceil(i * mx_scale),
+                    (size_t)floor(j * my_scale),
+                    (size_t)ceil(k * mz_scale),
+                };
+
+                const Dim c110 = (Dim){
+                    (size_t)ceil(i * mx_scale),
+                    (size_t)ceil(j * my_scale),
+                    (size_t)floor(k * mz_scale),
+                };
+
+                const Dim c111 = (Dim){
+                    (size_t)ceil(i * mx_scale),
+                    (size_t)ceil(j * my_scale),
+                    (size_t)ceil(k * mz_scale),
+                };
+
+                const double c00 = in.data[getIdx(c000, in)] * (1.0 - xd) +
+                                   in.data[getIdx(c100, in)] * xd;
+                const double c01 = in.data[getIdx(c001, in)] * (1.0 - xd) +
+                                   in.data[getIdx(c101, in)] * xd;
+                const double c10 = in.data[getIdx(c010, in)] * (1.0 - xd) +
+                                   in.data[getIdx(c110, in)] * xd;
+                const double c11 = in.data[getIdx(c011, in)] * (1.0 - xd) +
+                                   in.data[getIdx(c111, in)] * xd;
+
+                const double c0 = c00 * (1.0 - yd) + c10 * yd;
+                const double c1 = c01 * (1.0 - yd) + c11 * yd;
+
+                const double c = c0 * (1.0 - zd) + c1 * zd;
+
+                /*
+                printDim("c000", c000);
+                printDim("c001", c001);
+                printDim("c010", c010);
+                printDim("c011", c011);
+                printDim("c100", c100);
+                printDim("c101", c101);
+                printDim("c110", c110);
+                printDim("c111", c111);
+
+                printf("Neighbors:\n");
+                const Dim dims[] = {c000, c001, c010, c011, c100, c101, c110, c111};
+                for (size_t w = 0; w < sizeof(dims) / sizeof(dims[0]); ++w)
+                    printf("%lu: %g\n", w, in.data[getIdx(dims[w], in)]);
+                printf("Interpolated value %g\n", c);
+                // getchar();
+                */
+                const size_t out_idx = i0 + j0 * out->mm.x + k0 * out->mm.x * out->mm.y;
+                out->data[out_idx]   = c;
+            }
+        }
+    }
 }
 
 int
 main(int argc, char* argv[])
 {
-    if (argc != 6) {
-        fprintf(stderr, "Usage: ./pc-varfile-import <varfile> <nx> <ny> <nz> <bound>\n");
+    if (argc != 5) {
+        fprintf(stderr, "Usage: ./pc-varfile-import <varfile> <mx> <my> <mz>\n");
         return EXIT_FAILURE;
     }
 
-    const char* path = argv[1];
-    const Dim nn     = (Dim){atol(argv[2]), atol(argv[3]), atol(argv[4])};
-    const size_t pad = atol(argv[5]);
+    const char* path       = argv[1];
+    const Dim mm           = (Dim){atol(argv[2]), atol(argv[3]), atol(argv[4])};
+    const size_t halo_size = 3;
 
     printf("Path: %s\n", path);
-    dimPrint("Dims", nn);
 
-    const Dim nn_sub = (Dim){nn.x / 4, nn.y / 4, nn.z / 4};
-    Block block      = blockCreateFromFile(path, (Dim){0, 0, 0}, nn, pad, nn_sub);
-    blockPrint("test", block);
+    const Dim mm_sub = mm;
+    Block block      = blockCreateFromFile(path, mm, (Dim){0, 0, 0}, mm_sub);
+    // checkBlockContents(path, block);
+    Block block_out = blockCreate(
+        (Dim){256 + 2 * halo_size, 256 + 2 * halo_size, 256 + 2 * halo_size});
+    interpolate(block, (Dim){halo_size, halo_size, halo_size}, &block_out);
+    printBlock("in", block);
+    printBlock("out", block_out);
+
     blockDestroy(&block);
-    /*
-    FILE* fp = fopen(path, "r");
-    ERRCHK(fp);
-
-    while (true) {
-        double val;
-        const int res = fread(&val, sizeof(val), 1, fp);
-        if (res != 1) {
-            if (feof(fp))
-                break;
-            else
-                ERROR("Read error");
-        }
-        else {
-            // printf("%lg\n", val);
-        }
-    }
-
-    fclose(fp);
-    */
+    blockDestroy(&block_out);
 
     return EXIT_SUCCESS;
 }
