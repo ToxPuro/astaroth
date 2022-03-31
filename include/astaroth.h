@@ -492,6 +492,12 @@ AcResult acGridDiskAccessLaunch(const AccessType type);
 
 AcResult acGridDiskAccessSync(void);
 
+// Bugged
+// AcResult acGridLoadFieldFromFile(const char* path, const VertexBufferHandle field);
+
+// Bugged
+// AcResult acGridStoreFieldToFile(const char* path, const VertexBufferHandle field);
+
 /*
  * =============================================================================
  * Task interface (part of the grid interface)
