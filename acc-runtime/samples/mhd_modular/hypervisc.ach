@@ -1,0 +1,95 @@
+
+// DSL code for Pencil Code style hyperviscosity
+
+// Note: in PC hyperviscosity routine they do string over the typical boundary
+// limit to avoid communication. 
+
+//der_2nd
+Stencil derx_2nd {
+    [0][0][-1] = -AC_inv_dsx*0.5,
+    [0][0][1]  =  AC_inv_dsx*0.5
+}
+
+//der_2nd
+Stencil dery_2nd {
+    [0][-1][0] = -AC_inv_dsy*0.5,
+    [0][1][0]  =  AC_inv_dsy*0.5
+}
+
+//der_2nd
+Stencil derz_2nd {
+    [-1][0][0] = -AC_inv_dsz*0.5,
+    [1][0][0]  =  AC_inv_dsz*0.5
+}
+
+ 
+Stencil derxx_2nd {
+    [0][0][-1] = AC_inv_dsx * AC_inv_dsx * 1,
+    [0][0][0]  = AC_inv_dsx * AC_inv_dsx * 2,
+    [0][0][1]  = AC_inv_dsx * AC_inv_dsx * 1
+}
+
+Stencil deryy_2nd {
+    [0][-1][0] = AC_inv_dsy * AC_inv_dsy * 1,
+    [0][0][0]  = AC_inv_dsy * AC_inv_dsy * 2,
+    [0][1][0]  = AC_inv_dsy * AC_inv_dsy * 1
+}
+
+Stencil derzz_2nd {
+    [-1][0][0] = AC_inv_dsz * AC_inv_dsz * 1,
+    [0][0][0]  = AC_inv_dsz * AC_inv_dsz * 2,
+    [1][0][0]  = AC_inv_dsz * AC_inv_dsz * 1
+}
+
+
+Stencil derxy_2nd {
+    [0][-1][-1] =  AC_inv_dsx * AC_inv_dsy * 0.25,
+    [0][1][1]   =  AC_inv_dsx * AC_inv_dsy * 0.25,
+    [0][-1][1]  = -AC_inv_dsx * AC_inv_dsy * 0.25,
+    [0][1][-1]  = -AC_inv_dsx * AC_inv_dsy * 0.25
+}
+
+Stencil derxz_2nd {
+    [-1][0][-1] =  AC_inv_dsx * AC_inv_dsz * 0.25,
+    [1][0][1]   =  AC_inv_dsx * AC_inv_dsz * 0.25,
+    [-1][0][1]  = -AC_inv_dsx * AC_inv_dsz * 0.25,
+    [1][0][-1]  = -AC_inv_dsx * AC_inv_dsz * 0.25
+}
+
+Stencil deryz_2nd {
+    [-1][-1][0] =  AC_inv_dsy * AC_inv_dsz * 0.25,
+    [1][1][0]   =  AC_inv_dsy * AC_inv_dsz * 0.25,
+    [-1][1][0]  = -AC_inv_dsy * AC_inv_dsz * 0.25,
+    [1][-1][0]  = -AC_inv_dsy * AC_inv_dsz * 0.25
+}
+
+laplace_2nd(s) {
+    return derxx_2nd(s) + deryy_2nd(s) + derzz_2nd(s)
+}
+
+//del2v_2nd
+veclaplace_2nd(v) {
+    return real3(laplace_2nd(v.x), laplace_2nd(v.y), laplace_2nd(v.z))
+}
+
+//grad_2nd
+gradient_2nd(s) {
+    return real3(derx_2nd(s), dery_2nd(s), derz_2nd(s))
+}
+
+
+//graddivu_2nd
+gradient_of_divergence_2nd(v) {
+    return real3(
+        derxx_2nd(v.x) + derxy_2nd(v.y) + derxz_2nd(v.z),
+        derxy_2nd(v.x) + deryy_2nd(v.y) + deryz_2nd(v.z),
+        derxz_2nd(v.x) + deryz_2nd(v.y) + derzz_2nd(v.z)
+    )
+}
+
+
+//div_2nd
+divergence_2nd(v) {
+    return derx_2nd(v.x) + dery_2nd(v.y) + derz_2nd(v.z)
+}
+

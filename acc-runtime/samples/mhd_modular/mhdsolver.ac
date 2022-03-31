@@ -18,6 +18,7 @@ hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1)
 hostdefine LSHOCK (0)
+hostdefine LHYPERVISC (1)
 hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // TODO: make an actual config parameter
 hostdefine R_PI (AC_REAL_PI)
 
@@ -182,6 +183,12 @@ real AC_current_time
 #if LSHOCK
 
 #include "smooth_kernel.ach" 
+
+#endif 
+
+#if LHYPERVISC
+
+#include "hypervisc.ach"
 
 #endif 
 
@@ -384,6 +391,7 @@ Stencil der6z_upwd {
     [2][0][0]  =  AC_inv_dsz * DER6UPWD_2,
     [3][0][0]  =  AC_inv_dsz * DER6UPWD_3
 }
+
 
 //// This is now donw with a stencil. See smooth_kernel.ach 
 ////smooth_kernel(field)
