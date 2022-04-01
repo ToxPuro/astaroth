@@ -149,7 +149,7 @@ Stencil der2y4z_2nd {
 }
 
 // 2nd order 6th degree cross derivatives
-Stencil deri2x2y2z_2nd {
+Stencil der2x2y2z_2nd {
     [-1][-1][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz *  1., 
     [-1][-1][ 0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * -2., 
     [-1][-1][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz *  1., 
@@ -203,14 +203,30 @@ gradient_2nd(s) {
     return real3(derx_2nd(s), dery_2nd(s), derz_2nd(s))
 }
 
+// \nabla^4 ( \nabla(\nabla \cdot u) )
+gradient_of_divergence6_2nd(v) {
+    dux =   der6x_2nd(v.x)     + 2.0*der4x2y_2nd(v.x)   + 2.0*der4x2z_2nd(v.x)
+          + der2x4y_2nd(v.x)   + 2.0*der2x2y2z_2nd(v.x) +     der2x4z_2nd(v.x)
+          + der5x1y_2nd(v.y)   + 2.0*der3x3y_2nd(v.y)   + 2.0*der3x1y2z_2nd(v.y)
+          + der1x5y_2nd(v.y)   + 2.0*der1x3y2z_2nd(v.y) +     der1x1y4z_2nd(v.y)
+          + der5x1z_2nd(v.z)   + 2.0*der3x2y1z_2nd(v.z) + 2.0*der3x3z_2nd(v.z)
+          + der1x4y1z_2nd(v.z) + 2.0*der1x2y3z_2nd(v.z) +     der1x5z_2nd(v.y)
 
-//graddivu_2nd
-gradient_of_divergence_2nd(v) {
-    return real3(
-        derxx_2nd(v.x) + derxy_2nd(v.y) + derxz_2nd(v.z),
-        derxy_2nd(v.x) + deryy_2nd(v.y) + deryz_2nd(v.z),
-        derxz_2nd(v.x) + deryz_2nd(v.y) + derzz_2nd(v.z)
-    )
+    duy =   der5x1y_2nd(v.x)   + 2.0*der3x3y_2nd(v.x)   + 2.0*der3x1y2z_2nd(v.x)
+          + der1x5y_2nd(v.x)   + 2.0*der1x3y2z_2nd(v.x) +     der1x1y4z_2nd(v.x)
+          + der4x2y_2nd(v.y)   + 2.0*der2x4y_2nd(v.y)   + 2.0*der2x2y2z_2nd(v.y)
+          + der6y_2nd(v.y)     + 2.0*der4y2z_2nd(v.y)   +     der2y4z_2nd(v.y)
+          + der4x1y1z_2nd(v.z) + 2.0*der2x3y1z_2nd(v.z) + 2.0*der2x1y3z_2nd(v.z)
+          + der5y1z_2nd(v.z)   + 2.0*der3y3z_2nd(v.z)   +     der1y5z_2nd(v.z)
+ 
+    duz =   der5x1z_2nd(v.x)   + 2.0*der3x2y1z_2nd(v.x) + 2.0*der3x3z_2nd(v.x)
+          + der1x4y1z_2nd(v.x) + 2.0*der1x2y3z_2nd(v.x) +     der1x5z_2nd(v.x)
+          + der4x1y1z_2nd(v.y) + 2.0*der2x3y1z_2nd(v.y) + 2.0*der2x1y3z_2nd(v.y)
+          + der5y1z_2nd(v.y)   + 2.0*der3y3z_2nd(v.y)   +     der1y5z_2nd(v.y)
+          + der4x2z_2nd(v.z)   + 2.0*der2x2y2z_2nd(v.z) + 2.0*der2x4z_2nd(v.z)
+          + der4y2z_2nd(v.z)   + 2.0*der2y4z_2nd(v.z)   +     der6z_2nd((v.z)
+
+    return real3(dux, duy, duz)
 }
 
 
