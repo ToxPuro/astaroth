@@ -54,7 +54,7 @@ In the base directory, run
 |--------|-------------|---------|
 | CMAKE_BUILD_TYPE | Selects the build type. Possible values: Debug, Release, RelWithDebInfo, MinSizeRel. See (CMake documentation)[https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html] for more details. | Release |
 | CUDA_ARCHITECTURES | Selects CUDA architecture support. Multiple architectures delimited by `;`. See (CMake documentation)[https://cmake.org/cmake/help/latest/prop_tgt/CUDA_ARCHITECTURES.html] for more details. | "60;70" |
-| DOUBLE_PRECISION | Generates double precision code. | OFF |
+| DOUBLE_PRECISION | Generates double precision code. | ON |
 | BUILD_SAMPLES | Builds projects in samples subdirectory. | ON |
 | MPI_ENABLED | Enables acGrid functions for carrying out computations with MPI. | OFF |
 | USE_CUDA_AWARE_MPI | Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory | ON |
