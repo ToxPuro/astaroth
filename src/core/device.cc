@@ -90,6 +90,7 @@ acDevicePrintInfo(const Device device)
 #if !AC_USE_HIP
     printf("    Stream priorities supported: %d\n", props.streamPrioritiesSupported);
 #endif
+    printf("    AcReal precision: %lu bits\n", 8 * sizeof(AcReal));
     printf("--------------------------------------------------\n");
 
     return AC_SUCCESS;
