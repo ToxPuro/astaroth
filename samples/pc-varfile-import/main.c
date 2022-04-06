@@ -20,6 +20,11 @@ main(void)
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
+/*
+cmake -DMPI_ENABLED=ON .. && make -j && $SRUNMPI4 ./pc-varfile-import\
+--input=../mesh-scaler/build --volume=256,256,256
+*/
+
 int
 main(int argc, char* argv[])
 {
@@ -29,16 +34,16 @@ main(int argc, char* argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
     char input[4096] = "";
-    size_t mx        = 0;
-    size_t my        = 0;
-    size_t mz        = 0;
+    size_t nx        = 0;
+    size_t ny        = 0;
+    size_t nz        = 0;
 
     for (int i = 0; i < argc; ++i) {
         sscanf(argv[i], "--input=%4095s", input);
-        sscanf(argv[i], "--volume=%lu,%lu,%lu", &mx, &my, &mz);
+        sscanf(argv[i], "--volume=%lu,%lu,%lu", &nx, &ny, &nz);
     }
     printf("Input: %s\n", input);
-    printf("Volume: (%lu, %lu, %lu)\n", mx, my, mz);
+    printf("Volume: (%lu, %lu, %lu)\n", nx, ny, nz);
 
     ERRCHK(mx > 0);
     ERRCHK(my > 0);
@@ -47,9 +52,9 @@ main(int argc, char* argv[])
 
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    info.int_params[AC_nx] = mx - 2 * STENCIL_ORDER;
-    info.int_params[AC_ny] = my - 2 * STENCIL_ORDER;
-    info.int_params[AC_nz] = mz - 2 * STENCIL_ORDER;
+    info.int_params[AC_nx] = nx;
+    info.int_params[AC_ny] = ny;
+    info.int_params[AC_nz] = nz;
     acHostUpdateBuiltinParams(&info);
 
     // Init

@@ -21,7 +21,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # For IDE highlighting (clangd)
+set(CMAKE_EXPORT_COMPILE_COMMANDS OFF) # For IDE highlighting (clangd)
 
 ## Build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -30,7 +30,7 @@ endif()
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
 ## Options
-option(DOUBLE_PRECISION   "Generates double precision code."                    OFF)
+option(DOUBLE_PRECISION   "Generates double precision code."                    ON)
 option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            ON)
 option(BUILD_MHD_SAMPLES  "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
 option(MPI_ENABLED        "Enables additional functions for MPI communciation." OFF)
