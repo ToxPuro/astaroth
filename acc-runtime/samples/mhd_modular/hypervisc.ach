@@ -1,6 +1,21 @@
 
 // DSL code for Pencil Code style hyperviscosity
 
+stencil derx_2nd {
+    [0][0][-1] = AC_inv_dsx * -0.5,
+    [0][0][ 1] = AC_inv_dsx * -0.5
+}
+
+stencil dery_2nd {
+    [0][-1][0] = AC_inv_dsy * -0.5,
+    [0][ 1][0] = AC_inv_dsy * -0.5
+}
+
+stencil derz_2nd {
+    [-1][0][0] = AC_inv_dsz * -0.5,
+    [ 1][0][0] = AC_inv_dsz * -0.5
+}
+
 // 2nd order 6th degree derivatives
 Stencil der6x_2nd {
     [0][0][-3] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * 1. ,
@@ -55,40 +70,130 @@ Stencil der2x4y_2nd {
 
 // 2nd order 6th degree cross derivatives
 Stencil der4x2y_2nd {
-    [0][-1][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  1., 
-    [0][-1][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * -4., 
-    [0][-1][ 0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  6., 
-    [0][-1][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * -4., 
-    [0][-1][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  1., 
-    [0][ 0][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * -2., 
-    [0][ 0][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  8.,
-    [0][ 0][ 0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *-12., 
-    [0][ 0][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  8.,
-    [0][ 0][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * -2., 
-    [0][ 1][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  1.,  
-    [0][ 1][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * -4., 
-    [0][ 1][ 0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  6.,  
-    [0][ 1][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * -4., 
-    [0][ 1][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  1.  
+    [0][-1][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  1.0, 
+    [0][-1][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * -4.0, 
+    [0][-1][ 0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  6.0, 
+    [0][-1][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * -4.0, 
+    [0][-1][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  1.0, 
+    [0][ 0][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * -2.0, 
+    [0][ 0][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  8.0,
+    [0][ 0][ 0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *-12.0, 
+    [0][ 0][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  8.0,
+    [0][ 0][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * -2.0, 
+    [0][ 1][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  1.0,  
+    [0][ 1][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * -4.0, 
+    [0][ 1][ 0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  6.0,  
+    [0][ 1][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * -4.0, 
+    [0][ 1][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy *  1.0  
 }
 
+Stencil der5x1y_2nd(v.y) {
+    [0][-1][-3]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy *  0.25, 
+    [0][-1][-2]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * -1.0 ,
+    [0][-1][-1]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy *  1.75,    
+    [0][-1][ 1]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * -1.75, 
+    [0][-1][ 2]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy *  1.0 , 
+    [0][-1][ 3]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy *  0.25, 
+    [0][ 1][-3]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy *  0.25,  
+    [0][ 1][-2]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy *  1.0 , 
+    [0][ 1][-1]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * -1.75, 
+    [0][ 1][ 1]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy *  1.75, 
+    [0][ 1][ 2]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * -1.0 ,
+    [0][ 1][ 3]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy *  0.25 
+}                
+                 
+Stencil der1x5y_2nd(v.y) {
+    [0][-3][-1]  = AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  0.25, 
+    [0][-2][-1]  = AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * -1.0 ,
+    [0][-1][-1]  = AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  1.75,    
+    [0][ 1][-1]  = AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * -1.75, 
+    [0][ 2][-1]  = AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  1.0 , 
+    [0][ 3][-1]  = AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  0.25, 
+    [0][-3][ 1]  = AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  0.25,  
+    [0][-2][ 1]  = AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  1.0 , 
+    [0][-1][ 1]  = AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * -1.75, 
+    [0][ 1][ 1]  = AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  1.75, 
+    [0][ 2][ 1]  = AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * -1.0 ,
+    [0][ 3][ 1]  = AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  0.25 
+}                
+                 
+Stencil der5x1z_2nd(v.y) {
+    [-1][0][-3]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz *  0.25, 
+    [-1][0][-2]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * -1.0 ,
+    [-1][0][-1]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz *  1.75,    
+    [-1][0][ 1]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * -1.75, 
+    [-1][0][ 2]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz *  1.0 , 
+    [-1][0][ 3]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz *  0.25, 
+    [ 1][0][-3]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz *  0.25,  
+    [ 1][0][-2]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz *  1.0 , 
+    [ 1][0][-1]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * -1.75, 
+    [ 1][0][ 1]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz *  1.75, 
+    [ 1][0][ 2]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * -1.0 ,
+    [ 1][0][ 3]  = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz *  0.25 
+}                
+                 
+Stencil der1x5z_2nd(v.y) {
+    [-3][0][-1]  = AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.25, 
+    [-2][0][-1]  = AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -1.0 ,
+    [-1][0][-1]  = AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  1.75,    
+    [ 1][0][-1]  = AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -1.75, 
+    [ 2][0][-1]  = AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  1.0 , 
+    [ 3][0][-1]  = AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.25, 
+    [-3][0][ 1]  = AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.25,  
+    [-2][0][ 1]  = AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  1.0 , 
+    [-1][0][ 1]  = AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -1.75, 
+    [ 1][0][ 1]  = AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  1.75, 
+    [ 2][0][ 1]  = AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -1.0 ,
+    [ 3][0][ 1]  = AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.25 
+}                
+                 
+Stencil der5y1z_2nd(v.y) {
+    [-1][-3][0]  = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz *  0.25, 
+    [-1][-2][0]  = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * -1.0 ,
+    [-1][-1][0]  = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz *  1.75,    
+    [-1][ 1][0]  = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * -1.75, 
+    [-1][ 2][0]  = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz *  1.0 , 
+    [-1][ 3][0]  = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz *  0.25, 
+    [ 1][-3][0]  = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz *  0.25,  
+    [ 1][-2][0]  = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz *  1.0 , 
+    [ 1][-1][0]  = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * -1.75, 
+    [ 1][ 1][0]  = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz *  1.75, 
+    [ 1][ 2][0]  = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * -1.0 ,
+    [ 1][ 3][0]  = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz *  0.25 
+}                
+                 
+Stencil der1y5z_2nd(v.y) {
+    [-3][-1][0] = AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.25, 
+    [-2][-1][0] = AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -1.0 ,
+    [-1][-1][0] = AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  1.75,    
+    [ 1][-1][0] = AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -1.75, 
+    [ 2][-1][0] = AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  1.0 , 
+    [ 3][-1][0] = AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.25, 
+    [-3][ 1][0] = AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.25,  
+    [-2][ 1][0] = AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  1.0 , 
+    [-1][ 1][0] = AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -1.75, 
+    [ 1][ 1][0] = AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  1.75, 
+    [ 2][ 1][0] = AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -1.0 ,
+    [ 3][ 1][0] = AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.25 
+}                
+                 
 // 2nd order 6th degree cross derivatives
 Stencil der4x2z_2nd {
-    [-1][0][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  1., 
-    [-1][0][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * -4., 
-    [-1][0][ 0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  6., 
-    [-1][0][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * -4., 
-    [-1][0][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  1., 
-    [ 0][0][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * -2., 
-    [ 0][0][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  8.,
-    [ 0][0][ 0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *-12., 
-    [ 0][0][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  8.,
-    [ 0][0][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * -2., 
-    [ 1][0][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  1.,  
-    [ 1][0][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * -4., 
-    [ 1][0][ 0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  6.,  
-    [ 1][0][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * -4., 
-    [ 1][0][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  1.  
+    [-1][0][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  1.0, 
+    [-1][0][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * -4.0, 
+    [-1][0][ 0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  6.0, 
+    [-1][0][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * -4.0, 
+    [-1][0][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  1.0, 
+    [ 0][0][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * -2.0, 
+    [ 0][0][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  8.0,
+    [ 0][0][ 0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *-12.0, 
+    [ 0][0][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  8.0,
+    [ 0][0][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * -2.0, 
+    [ 1][0][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  1.0,  
+    [ 1][0][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * -4.0, 
+    [ 1][0][ 0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  6.0,  
+    [ 1][0][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * -4.0, 
+    [ 1][0][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz *  1.0  
 }
 
 // 2nd order 6th degree cross derivatives
@@ -148,6 +253,63 @@ Stencil der2y4z_2nd {
     [ 2][ 1][0] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  1.  
 }
 
+Stencil der3x3y_2nd {
+    [0][-2][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  0.25, 
+    [0][-2][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * -0.5, 
+    [0][-2][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  0.5, 
+    [0][-2][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * -0.25, 
+    [0][-1][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * -0.5, 
+    [0][-1][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  1.0, 
+    [0][-1][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * -1.0, 
+    [0][-1][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  0.5, 
+    [0][ 1][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  0.5,  
+    [0][ 1][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * -1.0, 
+    [0][ 1][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  1.0, 
+    [0][ 1][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * -0.5, 
+    [0][ 2][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * -0.25,   
+    [0][ 2][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  0.5, 
+    [0][ 2][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * -0.5, 
+    [0][ 2][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsy *  0.25
+}
+
+Stencil der3x3z_2nd {
+    [-2][0][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.25, 
+    [-2][0][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -0.5, 
+    [-2][0][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.5, 
+    [-2][0][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -0.25, 
+    [-1][0][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -0.5, 
+    [-1][0][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  1.0, 
+    [-1][0][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -1.0, 
+    [-1][0][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.5, 
+    [ 1][0][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.5,  
+    [ 1][0][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -1.0, 
+    [ 1][0][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  1.0, 
+    [ 1][0][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -0.5, 
+    [ 2][0][-2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -0.25,   
+    [ 2][0][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.5, 
+    [ 2][0][ 1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -0.5, 
+    [ 2][0][ 2] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsx * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.25
+}
+
+Stencil der3y3z_2nd {
+    [-2][-2][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.25, 
+    [-2][-1][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -0.5, 
+    [-2][ 1][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.5, 
+    [-2][ 2][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -0.25, 
+    [-1][-2][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -0.5, 
+    [-1][-1][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  1.0, 
+    [-1][ 1][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -1.0, 
+    [-1][ 2][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.5, 
+    [ 1][-2][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.5,  
+    [ 1][-1][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -1.0, 
+    [ 1][ 1][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  1.0, 
+    [ 1][ 2][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -0.5, 
+    [ 2][-2][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -0.25,   
+    [ 2][-1][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.5, 
+    [ 2][ 1][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz * -0.5, 
+    [ 2][ 2][0] = AC_inv_dsy * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz * AC_inv_dsz *  0.25
+}
+
 // 2nd order 6th degree cross derivatives
 Stencil der2x2y2z_2nd {
     [-1][-1][-1] = AC_inv_dsx * AC_inv_dsx * AC_inv_dsy * AC_inv_dsy * AC_inv_dsz * AC_inv_dsz *  1., 
@@ -196,7 +358,7 @@ veclaplace6_2nd(v) {
 //grad_2nd
 gradient_2nd(s) {
     return real3(derx_2nd(s), dery_2nd(s), derz_2nd(s))
-} //STENSILS derx_2nd, dery_2nd, derz_2nd MISSING
+} 
 
 // \nabla^4 ( \nabla(\nabla \cdot u) )
 gradient_of_divergence6_2nd(v) {
@@ -222,18 +384,17 @@ gradient_of_divergence6_2nd(v) {
           + der4y2z_2nd(v.z)   + 2.0*der2y4z_2nd(v.z)   +     der6z_2nd((v.z)
 
     return real3(dux, duy, duz)
-} //STENCILS der5x1y_2nd(v.y)   der3x3y_2nd(v.y)   der3x1y2z_2nd(v.y)
-  //MISSING  der1x5y_2nd(v.y)   der1x3y2z_2nd(v.y) der1x1y4z_2nd(v.y)
-  //MISSING  der5x1z_2nd(v.z)   der3x2y1z_2nd(v.z) der3x3z_2nd(v.z)
-  //MISSING  der1x4y1z_2nd(v.z) der1x2y3z_2nd(v.z) der1x5z_2nd(v.y)
+} //STENCILS der3x1y2z_2nd(v.y)
+  //MISSING  der1x3y2z_2nd(v.y) der1x1y4z_2nd(v.y)
+  //MISSING  der3x2y1z_2nd(v.z) 
+  //MISSING  der1x4y1z_2nd(v.z) der1x2y3z_2nd(v.z) 
   //MISSING  der4x1y1z_2nd(v.z) der2x3y1z_2nd(v.z) der2x1y3z_2nd(v.z)
-  //MISSING  der5y1z_2nd(v.z)   der3y3z_2nd(v.z)   der1y5z_2nd(v.z)
 
 
 //div_2nd
 divergence_2nd(v) {
     return derx_2nd(v.x) + dery_2nd(v.y) + derz_2nd(v.z)
-} //STENSILS derx_2nd, dery_2nd, derz_2nd MISSING
+} 
 
 //Stress_tensor for hyperviscosity 
 stress_tensor3(v) {
