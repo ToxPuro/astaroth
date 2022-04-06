@@ -235,3 +235,27 @@ divergence_2nd(v) {
     return derx_2nd(v.x) + dery_2nd(v.y) + derz_2nd(v.z)
 }
 
+//Stress_tensor for hyperviscosity 
+stress_tensor3(v) {
+    Matrix S
+
+    S.data[0][0] = (5.0 / 6.0) * der5x_2nd(v.x) - (1.0 / 6.0) * (der4x1y_2nd(v.y) + der4x1z_2nd(v.z))
+    S.data[0][1] = (1.0 / 2.0) * (der5x_2nd(v.y)  + der4x1y_2nd(v.x) - (1.0 / 3.0) * (der5x_2nd(v.x) + der4x1y_2nd(v.y) + der4x1z_2nd(v.z))) 
+    S.data[0][2] = (1.0 / 2.0) * (der5x_2nd(v.z)  + der4x1z_2nd(v.x) - (1.0 / 3.0) * (der5x_2nd(v.x) + der4x1y_2nd(v.y) + der4x1z_2nd(v.z)))
+
+    S.data[1][0] = (1.0 / 2.0) * (der5y_2nd(v.x)  + der1x4y_2nd(v.y) - (1.0 / 3.0) * (der1x4y_2nd(v.x) + der5y_2nd(v.y) + der4y1z_2nd(v.z))) 
+    S.data[1][1] = (5.0 / 6.0) * der5y_2nd(v.y) - (1.0 / 6.0) * (der4y1x_2nd(v.x) + der4y1z_2nd(v.z))
+    S.data[1][2] = (1.0 / 2.0) * (der5y_2nd(v.z)  + der4y1z_2nd(v.y) - (1.0 / 3.0) * (der1x4y_2nd(v.x) + der5y_2nd(v.y) + der4y1z_2nd(v.z)))
+
+    S.data[2][0] = (1.0 / 2.0) * (der5z_2nd(v.x)  + der1x4z_2nd(v.z) - (1.0 / 3.0) * (der1x4z_2nd(v.x) + der1y4z_2nd(v.y) + der5z_2nd(v.z)))
+    S.data[2][1] = (1.0 / 2.0) * (der5z_2nd(v.y)  + der1y4z_2nd(v.z) - (1.0 / 3.0) * (der1x4z_2nd(v.x) + der1y4z_2nd(v.y) + der5z_2nd(v.z)))
+    S.data[2][2] = (5.0 / 6.0) * der5z_2nd(v.z) - (1.0 / 6.0) * (der4z1x_2nd(v.x) + der4z1y_2nd(v.y))
+
+    return S
+}
+
+gradient_2nd(s) {
+    return real3(derx_2nd(s), dery_2nd(s), derz_2nd(s))
+}
+
+
