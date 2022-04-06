@@ -187,21 +187,16 @@ laplace6_2nd(s) {
            + 3.0*(der4x2z_2nd(s) + der2x4z_2nd(s))
            + 3.0*(der4y2z_2nd(s) + der2y4z_2nd(s))
            + 4.0 * der2x2y2z_2nd(s)
-}
+} //STENCILS: ALL OK
 
 veclaplace6_2nd(v) {
     return real3(laplace6_2nd(v.x), laplace6_2nd(v.y), laplace6_2nd(v.z))
 }
 
-
-// <- \nabla^6 \mathbf{u} 
-
-
-
 //grad_2nd
 gradient_2nd(s) {
     return real3(derx_2nd(s), dery_2nd(s), derz_2nd(s))
-}
+} //STENSILS derx_2nd, dery_2nd, derz_2nd MISSING
 
 // \nabla^4 ( \nabla(\nabla \cdot u) )
 gradient_of_divergence6_2nd(v) {
@@ -227,13 +222,18 @@ gradient_of_divergence6_2nd(v) {
           + der4y2z_2nd(v.z)   + 2.0*der2y4z_2nd(v.z)   +     der6z_2nd((v.z)
 
     return real3(dux, duy, duz)
-}
+} //STENCILS der5x1y_2nd(v.y)   der3x3y_2nd(v.y)   der3x1y2z_2nd(v.y)
+  //MISSING  der1x5y_2nd(v.y)   der1x3y2z_2nd(v.y) der1x1y4z_2nd(v.y)
+  //MISSING  der5x1z_2nd(v.z)   der3x2y1z_2nd(v.z) der3x3z_2nd(v.z)
+  //MISSING  der1x4y1z_2nd(v.z) der1x2y3z_2nd(v.z) der1x5z_2nd(v.y)
+  //MISSING  der4x1y1z_2nd(v.z) der2x3y1z_2nd(v.z) der2x1y3z_2nd(v.z)
+  //MISSING  der5y1z_2nd(v.z)   der3y3z_2nd(v.z)   der1y5z_2nd(v.z)
 
 
 //div_2nd
 divergence_2nd(v) {
     return derx_2nd(v.x) + dery_2nd(v.y) + derz_2nd(v.z)
-}
+} //STENSILS derx_2nd, dery_2nd, derz_2nd MISSING
 
 //Stress_tensor for hyperviscosity 
 stress_tensor3(v) {
@@ -244,18 +244,16 @@ stress_tensor3(v) {
     S.data[0][2] = (1.0 / 2.0) * (der5x_2nd(v.z)  + der4x1z_2nd(v.x) - (1.0 / 3.0) * (der5x_2nd(v.x) + der4x1y_2nd(v.y) + der4x1z_2nd(v.z)))
 
     S.data[1][0] = (1.0 / 2.0) * (der5y_2nd(v.x)  + der1x4y_2nd(v.y) - (1.0 / 3.0) * (der1x4y_2nd(v.x) + der5y_2nd(v.y) + der4y1z_2nd(v.z))) 
-    S.data[1][1] = (5.0 / 6.0) * der5y_2nd(v.y) - (1.0 / 6.0) * (der4y1x_2nd(v.x) + der4y1z_2nd(v.z))
+    S.data[1][1] = (5.0 / 6.0) * der5y_2nd(v.y) - (1.0 / 6.0) * (der1x4y_2nd(v.x) + der4y1z_2nd(v.z))
     S.data[1][2] = (1.0 / 2.0) * (der5y_2nd(v.z)  + der4y1z_2nd(v.y) - (1.0 / 3.0) * (der1x4y_2nd(v.x) + der5y_2nd(v.y) + der4y1z_2nd(v.z)))
 
     S.data[2][0] = (1.0 / 2.0) * (der5z_2nd(v.x)  + der1x4z_2nd(v.z) - (1.0 / 3.0) * (der1x4z_2nd(v.x) + der1y4z_2nd(v.y) + der5z_2nd(v.z)))
     S.data[2][1] = (1.0 / 2.0) * (der5z_2nd(v.y)  + der1y4z_2nd(v.z) - (1.0 / 3.0) * (der1x4z_2nd(v.x) + der1y4z_2nd(v.y) + der5z_2nd(v.z)))
-    S.data[2][2] = (5.0 / 6.0) * der5z_2nd(v.z) - (1.0 / 6.0) * (der4z1x_2nd(v.x) + der4z1y_2nd(v.y))
+    S.data[2][2] = (5.0 / 6.0) * der5z_2nd(v.z) - (1.0 / 6.0) * (der1x4z_2nd(v.x) + der1y4z_2nd(v.y))
 
     return S
-}
-
-gradient_2nd(s) {
-    return real3(derx_2nd(s), dery_2nd(s), derz_2nd(s))
-}
-
+} //STENSILS
+  //MISSING  der5x_2nd der4x1y_2nd der4x1z_2nd
+  //MISSING  der5y_2nd der1x4y_2nd der4y1z_2nd 
+  //MISSING  der5z_2nd der1x4z_2nd der1y4z_2nd
 
