@@ -394,6 +394,25 @@ AcResult acLoadWithOffset(const AcMesh host_mesh, const int3 src, const int num_
 /** */
 int acGetNumDevicesPerNode(void);
 
+/** Returns the number of fields (vertexbuffer handles). */
+size_t acGetNumFields(void);
+
+/** Gets the field handle corresponding to a null-terminated `str` and stores the result in
+ * `handle`.
+ *
+ * Returns AC_SUCCESS on success.
+ * Returns AC_FAILURE if the field was not found and sets `handle` to SIZE_MAX.
+ *
+ * Example usage:
+ * ```C
+ * size_t handle;
+ * AcResult res = acGetFieldHandle("VTXBUF_LNRHO", &handle);
+ * if (res != AC_SUCCESS)
+ *  fprintf(stderr, "Handle not found\n");
+ * ```
+ *  */
+AcResult acGetFieldHandle(const char* field, size_t* handle);
+
 /** */
 Node acGetNode(void);
 
@@ -982,9 +1001,7 @@ acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out
 }
 
 /** */
-template <size_t num_fields>
-AcTaskDefinition
-acHaloExchange(Field (&fields)[num_fields])
+template <size_t num_fields> AcTaskDefinition acHaloExchange(Field (&fields)[num_fields])
 {
     return acHaloExchange(fields, num_fields);
 }

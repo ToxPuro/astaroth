@@ -8,9 +8,20 @@
 
 #define NSAMPLES (100)
 
+#define ERRCHK_AC(x) ERRCHK_ALWAYS((x) == AC_SUCCESS);
+
 int
 main(int argc, char** argv)
 {
+    printf("Num fields %lu\n", acGetNumFields());
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        size_t field;
+        ERRCHK_AC(acGetFieldHandle(field_names[i], &field));
+        printf("Searching field %s. Got %lu (%s)\n", field_names[i], field, field_names[field]);
+    }
+    size_t field;
+    ERRCHK_ALWAYS(acGetFieldHandle("nonexistent", &field) == AC_FAILURE);
+
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
