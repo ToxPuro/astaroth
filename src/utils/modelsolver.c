@@ -32,7 +32,7 @@
 #include "errchk.h"
 #include "memory.h" // acHostMeshCreate, acHostMeshDestroy, acHostMeshApplyPeriodicBounds
 
-#if AC_INTEGRATION_ENABLED
+#ifdef AC_INTEGRATION_ENABLED
 /*
 // Standalone flags (currently defined in the DSL)
 #define LDENSITY (1)

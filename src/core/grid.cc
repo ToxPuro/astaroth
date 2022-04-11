@@ -177,11 +177,18 @@ acGridInit(const AcMeshInfo info)
         all_fields[i] = (Field)i;
     }
 
-    AcTaskDefinition default_ops[] = {acHaloExchange(all_fields),
-                                      acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
-                                                          all_fields),
+    AcTaskDefinition default_ops[] =
+    { acHaloExchange(all_fields),
+      acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
 #ifdef AC_INTEGRATION_ENABLED
-                                      acCompute(KERNEL_solve, all_fields)
+#ifdef AC_SINGLEPASS_INTEGRATION
+      acCompute(KERNEL_singlepass_solve, all_fields)
+#else
+      WARNING("Two-pass approach not rigorously tested with the task system. Please confirm that "
+              "buffers are swapped properly and results are correct.");
+    acCompute(KERNEL_twopass_solve_intermediate, all_fields),
+        acCompute(KERNEL_twopass_solve_final, all_fields)
+#endif
 #endif // AC_INTEGRATION_ENABLED
     };
 
@@ -321,9 +328,9 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                                 j + tgt_pid3d.y * nn.y, //
-                                                                 k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh.info);
+                                                              j + tgt_pid3d.y * nn.y, //
+                                                              k + tgt_pid3d.z * nn.z, //
+                                                              host_mesh.info);
 
                         // Send
                         MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
@@ -410,9 +417,9 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                                 j + tgt_pid3d.y * nn.y, //
-                                                                 k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh->info);
+                                                              j + tgt_pid3d.y * nn.y, //
+                                                              k + tgt_pid3d.z * nn.z, //
+                                                              host_mesh->info);
 
                         // Recv
                         MPI_Status status;

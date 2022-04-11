@@ -576,12 +576,22 @@ AcResult
 acDeviceIntegrateSubstep(const Device device, const Stream stream, const int step_number,
                          const int3 start, const int3 end, const AcReal dt)
 {
-#if AC_INTEGRATION_ENABLED
+#ifdef AC_INTEGRATION_ENABLED
     cudaSetDevice(device->id);
 
     acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
     acDeviceLoadIntUniform(device, stream, AC_step_number, step_number);
-    return acLaunchKernel(solve, device->streams[stream], start, end, device->vba);
+#ifdef AC_SINGLEPASS_INTEGRATION
+    return acLaunchKernel(singlepass_solve, device->streams[stream], start, end, device->vba);
+#else
+    const AcResult res = acLaunchKernel(twopass_solve_intermediate, device->streams[stream], start,
+                                        end, device->vba);
+    if (res != AC_SUCCESS)
+        return res;
+
+    acDeviceSwapBuffers(device);
+    return acLaunchKernel(twopass_solve_final, device->streams[stream], start, end, device->vba);
+#endif
 #else
     (void)device;      // Unused
     (void)stream;      // Unused

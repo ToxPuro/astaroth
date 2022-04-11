@@ -69,7 +69,7 @@ acKernelFlush(AcReal* arr, const size_t n)
 AcResult
 acKernel(const KernelParameters params, VertexBufferArray vba)
 {
-#if AC_INTEGRATION_ENABLED
+#ifdef AC_INTEGRATION_ENABLED
     // TODO: Why is AC_step_number loaded here??
     acLoadIntUniform(params.stream, AC_step_number, params.step_number);
     acLaunchKernel(params.kernel, params.stream, params.start, params.end, vba);

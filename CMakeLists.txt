@@ -21,7 +21,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_EXPORT_COMPILE_COMMANDS OFF) # For IDE highlighting (clangd)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # For IDE highlighting (clangd)
 
 ## Build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -38,6 +38,7 @@ option(USE_CUDA_AWARE_MPI "Uses GPUDirect RDMA for direct GPU-GPU communication 
 option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
 option(VERBOSE            "Enables various status and warning messages"         OFF)
 option(BUILD_UTILS        "Builds the utility library"                          ON)
+option(SINGLEPASS_INTEGRATION "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" OFF)
 
 ## CUDA/HIP
 if (USE_HIP)
@@ -90,6 +91,9 @@ if (USE_CUDA_AWARE_MPI)
 endif()
 if (MULTIGPU_ENABLED)
   add_definitions(-DAC_MULTIGPU_ENABLED=1)
+endif()
+if (SINGLEPASS_INTEGRATION)
+    add_definitions(-DAC_SINGLEPASS_INTEGRATION)
 endif()
 
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")

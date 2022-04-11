@@ -1025,7 +1025,7 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
                                num_parameters);
 }
 
-#if AC_INTEGRATION_ENABLED
+#ifdef AC_INTEGRATION_ENABLED
 /** */
 template <size_t num_fields>
 AcTaskDefinition
