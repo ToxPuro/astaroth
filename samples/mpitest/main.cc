@@ -67,6 +67,9 @@ main(void)
         acHostMeshRandomize(&model);
     }
 
+    // Dryrun
+    acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+
     // Integration
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);

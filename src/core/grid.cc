@@ -177,17 +177,15 @@ acGridInit(const AcMeshInfo info)
         all_fields[i] = (Field)i;
     }
 
-    AcTaskDefinition default_ops[] =
-    { acHaloExchange(all_fields),
-      acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
+    AcTaskDefinition default_ops[] = {acHaloExchange(all_fields),
+                                      acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
+                                                          all_fields),
 #ifdef AC_INTEGRATION_ENABLED
 #ifdef AC_SINGLEPASS_INTEGRATION
-      acCompute(KERNEL_singlepass_solve, all_fields)
+                                      acCompute(KERNEL_singlepass_solve, all_fields)
 #else
-      WARNING("Two-pass approach not rigorously tested with the task system. Please confirm that "
-              "buffers are swapped properly and results are correct.");
-    acCompute(KERNEL_twopass_solve_intermediate, all_fields),
-        acCompute(KERNEL_twopass_solve_final, all_fields)
+                                      acCompute(KERNEL_twopass_solve_intermediate, all_fields),
+                                      acCompute(KERNEL_twopass_solve_final, all_fields)
 #endif
 #endif // AC_INTEGRATION_ENABLED
     };
