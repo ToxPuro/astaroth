@@ -105,6 +105,33 @@ static std::vector<TBConfig> tbconfigs;
 static TBConfig getOptimalTBConfig(const Kernel kernel, const int3 dims,
                                    VertexBufferArray vba);
 
+VertexBufferArray acVBACreate(const size_t count)
+{
+  VertexBufferArray vba;
+
+    const size_t bytes = sizeof(vba.in[0][0]) * count;
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.in[i], bytes));
+        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
+
+        // Set vba.in data to all-nan and vba.out to 0
+        acKernelFlush(vba.in[i], count);
+        ERRCHK_CUDA_ALWAYS(cudaMemset((void*)vba.out[i], 0, bytes));
+    }
+
+    return vba;
+}
+
+void acVBADestroy(VertexBufferArray* vba)
+{
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        cudaFree(vba->in[i]);
+        cudaFree(vba->out[i]);
+        vba->in[i] = NULL;
+        vba->out[i] = NULL;
+    }
+}
+
 AcResult
 acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
                const int3 end, VertexBufferArray vba)
@@ -249,6 +276,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   printf("Autotuning kernel %p, block (%d, %d, %d)... ", kernel, dims.x, dims.y,
          dims.z);
   fflush(stdout);
+
   TBConfig c = {
       .kernel = kernel,
       .dims   = dims,

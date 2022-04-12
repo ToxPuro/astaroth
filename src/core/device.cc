@@ -239,16 +239,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Memory
     // VBA in/out
-    const size_t vba_size       = acVertexBufferSize(device_config);
-    const size_t vba_size_bytes = acVertexBufferSizeBytes(device_config);
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.in[i], vba_size_bytes));
-        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.out[i], vba_size_bytes));
-
-        // Set vba.in data to all-nan and vba.out to 0
-        acKernelFlush(device->vba.in[i], vba_size);
-        ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.out[i], 0, vba_size_bytes));
-    }
+    device->vba = acVBACreate(acVertexBufferSize(device_config));
     /*
     // VBA Profiles
     const size_t profile_size_bytes = sizeof(AcReal) * max(device_config.int_params[AC_mx],
@@ -292,10 +283,7 @@ acDeviceDestroy(Device device)
     acDeviceSynchronizeStream(device, STREAM_ALL);
 
     // Memory
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        cudaFree(device->vba.in[i]);
-        cudaFree(device->vba.out[i]);
-    }
+    acVBADestroy(&device->vba);
     /*
     for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
         cudaFree(device->vba.profiles[i]);

@@ -51,6 +51,10 @@ extern "C" {
 
 #include "user_declarations.h"
 
+VertexBufferArray acVBACreate(const size_t count);
+
+void acVBADestroy(VertexBufferArray* vba);
+
 AcResult acLaunchKernel(Kernel func, const cudaStream_t stream,
                         const int3 start, const int3 end,
                         VertexBufferArray vba);
