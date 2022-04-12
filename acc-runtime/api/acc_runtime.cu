@@ -27,6 +27,7 @@
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 #endif
 
+/*
 // Device info (TODO GENERIC)
 // Use the maximum available reg count per thread
 #define REGISTERS_PER_THREAD (255)
@@ -37,6 +38,7 @@
 #else
 #define MAX_THREADS_PER_BLOCK (MAX_REGISTERS_PER_BLOCK / REGISTERS_PER_THREAD)
 #endif
+*/
 
 __device__ __constant__ AcMeshInfo d_mesh_info;
 
@@ -294,23 +296,30 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   float best_time     = INFINITY;
   const int num_iters = 2;
 
-  // TODO idea #1:
-  // Choose tpb.x s.t. it is at most 'dims.x' rounded upward to the nearest
-  // multiple of the warp size
-  // xmax = min(MAX_THREADS_PER_BLOCK, (1 + floor((dims.x-1)/ warp_size))
+  // Get device hardware information
+  cudaDeviceProp props;
+  cudaGetDeviceProperties(&props, 0);
+  const int warp_size = props.warpSize;
+  const int max_threads_per_block = props.maxThreadsPerBlock;
 
-  // TODO idea #2:
-  // Break if x*y*z > round_up_to_multiple_of_warp_size(dim.x * dim.y * dim.z)
+  for (int z = 1; z <= max_threads_per_block; ++z) {
+    for (int y = 1; y <= max_threads_per_block; ++y) {
+      for (int x = 1; x <= max_threads_per_block; ++x) {
 
-  for (int z = 1; z <= MAX_THREADS_PER_BLOCK; ++z) {
-    for (int y = 1; y <= MAX_THREADS_PER_BLOCK; ++y) {
-      for (int x = 1; x <= MAX_THREADS_PER_BLOCK; ++x) {
-
-        if (x * y * z > MAX_THREADS_PER_BLOCK)
+        if (x * y * z > max_threads_per_block)
           break;
 
-        if (x * y * z * REGISTERS_PER_THREAD > MAX_REGISTERS_PER_BLOCK)
-          break;
+        // if (x * y * z * max_regs_per_thread > max_regs_per_block)
+        //  break;
+
+        if ((x * y * z) % warp_size)
+          continue;
+
+        //if (max_regs_per_block / (x * y * z) < min_regs_per_thread)
+        //  continue;
+
+        //if (x < y || x < z)
+        //  continue;
 
         const dim3 tpb(x, y, z);
         const dim3 bpg((unsigned int)ceil(dims.x / double(tpb.x)), //
