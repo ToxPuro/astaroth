@@ -857,6 +857,18 @@ Kernel twopass_solve_intermediate() {
         write(BFIELDZ, bfield.z)
     }
     #endif
+
+    // %JP: TODO NOTE IMPORTANT (MV please check)
+    // LSHOCK not yet adapted to two-pass integration.
+    // Unclear how should be written to memory to ensure proper swapping!
+    // 1) In the single-pass approach need to write the shock field to `out`
+    // because buffers are swapped afterwards
+    // 2) In the two-pass approach this may not be necessary: if the shock
+    // field is in `in` buffer and we swap twice, the correct shock values are
+    // still in the `in` buffer
+    //
+    // Is this correct?
+    //
 }
 
 Kernel twopass_solve_final() {
