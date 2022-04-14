@@ -62,7 +62,7 @@ main(int argc, char* argv[])
 
     // Read
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        char file[4096] = "";
+        char file[2 * 4096] = "";
         sprintf(file, "%s/%s.out", input, vtxbuf_names[i]);
         printf("Reading `%s`\n", file);
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_READ);
