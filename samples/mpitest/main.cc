@@ -29,6 +29,7 @@
 #include <vector>
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
+#define NUM_INTEGRATION_STEPS (100)
 
 int
 main(void)
@@ -44,6 +45,7 @@ main(void)
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    acSetMeshDims(32, 32, 32, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {
@@ -67,13 +69,24 @@ main(void)
         acHostMeshRandomize(&model);
     }
 
+    // Dryrun
+    acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+
     // Integration
     acGridLoadMesh(STREAM_DEFAULT, model);
-    acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+
+    // Device integrate
+    for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
+        acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (pid == 0) {
-        acHostIntegrateStep(model, FLT_EPSILON);
+
+        // Host integrate
+        for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
+            acHostIntegrateStep(model, FLT_EPSILON);
+
         acHostMeshApplyPeriodicBounds(&model);
         const AcResult res = acVerifyMesh("Integration", model, candidate);
         ERRCHK_ALWAYS(res == AC_SUCCESS);
