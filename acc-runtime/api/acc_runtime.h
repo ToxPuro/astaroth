@@ -51,6 +51,8 @@ extern "C" {
 
 #include "user_declarations.h"
 
+AcResult acKernelFlush(AcReal* arr, const size_t n);
+
 VertexBufferArray acVBACreate(const size_t count);
 
 void acVBADestroy(VertexBufferArray* vba);

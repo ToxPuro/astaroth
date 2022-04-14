@@ -107,6 +107,24 @@ static std::vector<TBConfig> tbconfigs;
 static TBConfig getOptimalTBConfig(const Kernel kernel, const int3 dims,
                                    VertexBufferArray vba);
 
+static __global__ void
+flush_kernel(AcReal* arr, const size_t n)
+{
+  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < n)
+    arr[idx] = (AcReal)NAN;
+}
+
+AcResult
+acKernelFlush(AcReal* arr, const size_t n)
+{
+  const size_t tpb = 256;
+  const size_t bpg = (size_t)(ceil((double)n / tpb));
+  flush_kernel<<<bpg, tpb>>>(arr, n);
+  ERRCHK_CUDA_KERNEL_ALWAYS();
+  return AC_SUCCESS;
+}
+
 VertexBufferArray
 acVBACreate(const size_t count)
 {
