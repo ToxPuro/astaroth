@@ -53,7 +53,7 @@ symboltable_lookup(const char* identifier)
     return NULL;
 
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (strcmp(identifier, symbol_table[i].identifier) == 0)
+    if (!strcmp(identifier, symbol_table[i].identifier))
       return &symbol_table[i];
 
   return NULL;
@@ -630,7 +630,7 @@ generate(const ASTNode* root, FILE* stream)
                         "stencil_binary_ops[NUM_STENCILS] = {");
     for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
       const Symbol symbol = symbol_table[i];
-      if (symbol.type == NODE_STENCIL_ID) {
+      if (symbol.type & NODE_STENCIL_ID) {
         fprintf(stencilgen, "\"%s\",",
                 strlen(symbol.tqualifier) ? symbol.tqualifier : "sum");
       }
