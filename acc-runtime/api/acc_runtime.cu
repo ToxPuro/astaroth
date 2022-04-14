@@ -107,31 +107,33 @@ static std::vector<TBConfig> tbconfigs;
 static TBConfig getOptimalTBConfig(const Kernel kernel, const int3 dims,
                                    VertexBufferArray vba);
 
-VertexBufferArray acVBACreate(const size_t count)
+VertexBufferArray
+acVBACreate(const size_t count)
 {
   VertexBufferArray vba;
 
-    const size_t bytes = sizeof(vba.in[0][0]) * count;
-    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.in[i], bytes));
-        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
+  const size_t bytes = sizeof(vba.in[0][0]) * count;
+  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.in[i], bytes));
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
 
-        // Set vba.in data to all-nan and vba.out to 0
-        acKernelFlush(vba.in[i], count);
-        ERRCHK_CUDA_ALWAYS(cudaMemset((void*)vba.out[i], 0, bytes));
-    }
+    // Set vba.in data to all-nan and vba.out to 0
+    acKernelFlush(vba.in[i], count);
+    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)vba.out[i], 0, bytes));
+  }
 
-    return vba;
+  return vba;
 }
 
-void acVBADestroy(VertexBufferArray* vba)
+void
+acVBADestroy(VertexBufferArray* vba)
 {
-    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        cudaFree(vba->in[i]);
-        cudaFree(vba->out[i]);
-        vba->in[i] = NULL;
-        vba->out[i] = NULL;
-    }
+  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+    cudaFree(vba->in[i]);
+    cudaFree(vba->out[i]);
+    vba->in[i]  = NULL;
+    vba->out[i] = NULL;
+  }
 }
 
 AcResult
@@ -299,7 +301,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   // Get device hardware information
   cudaDeviceProp props;
   cudaGetDeviceProperties(&props, 0);
-  const int warp_size = props.warpSize;
+  const int warp_size             = props.warpSize;
   const int max_threads_per_block = props.maxThreadsPerBlock;
 
   for (int z = 1; z <= max_threads_per_block; ++z) {
@@ -315,11 +317,11 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         if ((x * y * z) % warp_size)
           continue;
 
-        //if (max_regs_per_block / (x * y * z) < min_regs_per_thread)
-        //  continue;
+        // if (max_regs_per_block / (x * y * z) < min_regs_per_thread)
+        //   continue;
 
-        //if (x < y || x < z)
-        //  continue;
+        // if (x < y || x < z)
+        //   continue;
 
         const dim3 tpb(x, y, z);
         const dim3 bpg((unsigned int)ceil(dims.x / double(tpb.x)), //
