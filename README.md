@@ -65,7 +65,7 @@ In the base directory, run
 | BUILD_UTILS | "Builds the utility library. | ON |
 | BUILD_ACC_RUNTIME_LIBRARY | "Builds the standalone acc runtime library" | OFF |
 | USE_HIP | "Use HIP as the underlying GPGPU library instead of CUDA" | OFF |
-| SINGLEPASS_INTEGRATION| "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" | OFF |
+| SINGLEPASS_INTEGRATION| "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" | ON |
 
 
 ## Standalone Module
