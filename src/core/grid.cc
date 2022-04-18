@@ -745,8 +745,12 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                         auto dept_task = graph->all_tasks[j];
                         // Task A depends on task B if the output region of A overlaps with the
                         // input region of B.
-                        if (dept_task->active &&
-                            preq_task->output_region.overlaps(&(dept_task->input_region))) {
+                        if (dept_task->active
+                           && (
+                                preq_task->output_region.overlaps(&(dept_task->input_region))
+                             || preq_task->output_region.overlaps(&(dept_task->output_region))
+                             )
+                            ) {
                             // iteration offset of 0 -> dependency in the same iteration
                             // iteration offset of 1 -> dependency from preq_task in iteration k to
                             // dept_task in iteration k+1
