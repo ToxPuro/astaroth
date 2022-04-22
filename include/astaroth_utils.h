@@ -45,6 +45,9 @@ typedef struct {
 AcResult acLoadConfig(const char* config_path, AcMeshInfo* config);
 
 /** */
+AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* config);
+
+/** */
 AcResult acHostVertexBufferSet(const VertexBufferHandle handle, const AcReal value, AcMesh* mesh);
 
 /** */
@@ -56,7 +59,9 @@ AcResult acHostMeshApplyPeriodicBounds(AcMesh* mesh);
 /** */
 AcResult acHostMeshClear(AcMesh* mesh);
 
-/** */
+/** Applies a full integration step on host mesh using the compact 2N RK3 scheme. The boundaries are
+ * not updated after the final substep. A call to acHostMeshApplyPeriodicBounds is required if this
+ * is not desired. */
 AcResult acHostIntegrateStep(AcMesh mesh, const AcReal dt);
 
 /** */

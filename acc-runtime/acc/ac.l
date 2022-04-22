@@ -13,12 +13,17 @@ L [a-zA-Z_]
 %%
 
 "int"                   { return INT; } /* Type specifiers */
+"uint"                  { return UINT; }
+"int3"                  { return INT3; }
 "real"                  { return REAL; }
+"real3"                 { return REAL3; }
 "Matrix"                { return MATRIX; }
 "Field"                 { return FIELD; }
 "Stencil"               { return STENCIL; }
 
 "Kernel"                { return KERNEL; } /* Type qualifiers */
+"Sum"                   { return SUM; }
+"Max"                   { return MAX; }
 
 "if"        { return IF; } /* Keywords */
 "else if"   { return ELIF; }
@@ -34,12 +39,12 @@ L [a-zA-Z_]
 
 {L}({L}|{D})*             { return IDENTIFIER; }   /* Literals */
 \"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */
-[+-/*|&!%]?=              { return ASSIGNOP; }     /* Assignment */
-[/*-+<>%]                 { return BINARY_OP; }    /* Operators */
-(&&)|(\|\|)|(<<)          { return BINARY_OP; }    /* Operators */
-(==)                      { return BINARY_OP; }    /* Operators */
-"++"|"--"                 { return INPLACE_OP; }
-[-+*/:;=\[\]{}(),\.<>|&]  { return yytext[0]; }    /* Characters */
+[+-/*|&%^]?=              { return ASSIGNOP; }     /* Assignment */
+(<<=)|(>>=)               { return ASSIGNOP; }     /* Assignment */
+[/*-+<>|&%^]              { return BINARY_OP; }    /* Operators */
+(&&)|(\|\|)|(<<)|(>>)     { return BINARY_OP; }    /* Operators */
+(==)|(>=)|(<=)|(!=)       { return BINARY_OP; }    /* Operators */
+[-+*/:;=\[\]{}(),\.<>|&!] { return yytext[0]; }    /* Characters */
 {D}+[.]{D}*               { return REALNUMBER; }
 {D}+[.]?{D}*(e[-]?{D}+)   { return REALNUMBER; }
 {D}+[.]?{D}*(e[-]?{D}+)?[d]  { return DOUBLENUMBER; } /* Numbers */

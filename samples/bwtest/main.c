@@ -69,7 +69,7 @@ allocDevicePinned(const size_t bytes)
 
     unsigned int flag = 1;
     CUresult retval   = cuPointerSetAttribute(&flag, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS,
-                                            (CUdeviceptr)arr);
+                                              (CUdeviceptr)arr);
 
     errchk(retval == CUDA_SUCCESS);
     return arr;

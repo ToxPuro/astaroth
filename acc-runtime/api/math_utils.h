@@ -36,6 +36,7 @@
 #define sin(x) sinf(x)
 #define cos(x) cosf(x)
 #define sqrt(x) sqrtf(x)
+#define fabs(x) fabsf(x)
 #endif
 
 #if defined(__CUDACC__) || defined(__HIPCC__)
@@ -82,14 +83,28 @@ typedef struct uint3_64 {
 } uint3_64;
 
 template <class T>
-static inline const T
+static HOST_DEVICE_INLINE constexpr const T
+val(const T& a)
+{
+  return a;
+}
+
+template <class T>
+static HOST_DEVICE_INLINE constexpr const T
+sum(const T& a, const T& b)
+{
+  return a + b;
+}
+
+template <class T>
+static HOST_DEVICE_INLINE constexpr const T
 max(const T& a, const T& b)
 {
   return a > b ? a : b;
 }
 
 template <class T>
-static inline const T
+static HOST_DEVICE_INLINE constexpr const T
 min(const T& a, const T& b)
 {
   return a < b ? a : b;
@@ -105,13 +120,6 @@ static inline const int3
 min(const int3& a, const int3& b)
 {
   return (int3){min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)};
-}
-
-template <class T>
-static inline const T
-sum(const T& a, const T& b)
-{
-  return a + b;
 }
 
 template <class T>

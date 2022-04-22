@@ -650,8 +650,8 @@ void
 HaloExchangeTask::receiveDevice()
 {
     auto msg = recv_buffers.get_fresh_buffer();
-    MPI_Irecv(msg->data, msg->length, AC_MPI_TYPE, counterpart_rank, recv_tag + HALO_TAG_OFFSET,
-              MPI_COMM_WORLD, &msg->request);
+    MPI_Irecv(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
+              recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
 }
 
 void
@@ -659,8 +659,8 @@ HaloExchangeTask::sendDevice()
 {
     auto msg = send_buffers.get_current_buffer();
     sync();
-    MPI_Isend(msg->data, msg->length, AC_MPI_TYPE, counterpart_rank, send_tag + HALO_TAG_OFFSET,
-              MPI_COMM_WORLD, &msg->request);
+    MPI_Isend(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
+              send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
 }
 
 void
@@ -676,7 +676,7 @@ void
 HaloExchangeTask::receiveHost()
 {
     auto msg = recv_buffers.get_fresh_buffer();
-    MPI_Irecv(msg->data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
+    MPI_Irecv(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
               recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
     msg->pinned = true;
 }
@@ -687,7 +687,7 @@ HaloExchangeTask::sendHost()
     auto msg = send_buffers.get_current_buffer();
     msg->pin(device, stream);
     sync();
-    MPI_Isend(msg->data_pinned, msg->length, AC_MPI_TYPE, counterpart_rank,
+    MPI_Isend(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
               send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
 }
 void
@@ -942,6 +942,7 @@ SpecialMHDBoundaryConditionTask::populate_boundary_region()
     // TODO: could assign a separate stream to each launch of symmetric boundconds
     //       currently they are on a single stream
     switch (boundcond) {
+#if LENTROPY
     case SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE: {
         acKernelEntropyConstantTemperatureBoundconds(stream, output_region.id, boundary_normal,
                                                      boundary_dims, vba);
@@ -968,6 +969,7 @@ SpecialMHDBoundaryConditionTask::populate_boundary_region()
                                                                       input_parameters[1]);
         break;
     }
+#endif
 
     default:
         ERROR("SpecialMHDBoundaryCondition not implemented yet.");

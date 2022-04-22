@@ -96,6 +96,7 @@ typedef enum {AC_XY, AC_XZ, AC_YZ, AC_FRONT, AC_BACK, NUM_PLATE_BUFFERS} PlateTy
 
 #define AC_FOR_INIT_TYPES(FUNC)                                                                    \
     FUNC(INIT_TYPE_RANDOM)                                                                         \
+    FUNC(INIT_TYPE_AA_RANDOM)                                                                      \
     FUNC(INIT_TYPE_XWAVE)                                                                          \
     FUNC(INIT_TYPE_GAUSSIAN_RADIAL_EXPL)                                                           \
     FUNC(INIT_TYPE_ABC_FLOW)                                                                       \
@@ -408,6 +409,25 @@ AcResult acLoadWithOffset(const AcMesh host_mesh, const int3 src, const int num_
 
 int acGetNumDevicesPerNode(void);
 
+/** Returns the number of fields (vertexbuffer handles). */
+size_t acGetNumFields(void);
+
+/** Gets the field handle corresponding to a null-terminated `str` and stores the result in
+ * `handle`.
+ *
+ * Returns AC_SUCCESS on success.
+ * Returns AC_FAILURE if the field was not found and sets `handle` to SIZE_MAX.
+ *
+ * Example usage:
+ * ```C
+ * size_t handle;
+ * AcResult res = acGetFieldHandle("VTXBUF_LNRHO", &handle);
+ * if (res != AC_SUCCESS)
+ *  fprintf(stderr, "Handle not found\n");
+ * ```
+ *  */
+AcResult acGetFieldHandle(const char* field, size_t* handle);
+
 /** */
 Node acGetNode(void);
 
@@ -448,6 +468,12 @@ AcResult acGridLoadVectorUniform(const Stream stream, const AcReal3Param param,
                                  const AcReal3 value);
 
 /** */
+AcResult acGridLoadIntUniform(const Stream stream, const AcIntParam param, const int value);
+
+/** */
+AcResult acGridLoadInt3Uniform(const Stream stream, const AcInt3Param param, const int3 value);
+
+/** */
 AcResult acGridLoadMesh(const Stream stream, const AcMesh host_mesh);
 
 /** */
@@ -455,6 +481,8 @@ AcResult acGridStoreMesh(const Stream stream, AcMesh* host_mesh);
 
 /** */
 AcResult acGridIntegrate(const Stream stream, const AcReal dt);
+
+AcResult acGridSwapBuffers(void);
 
 /** */
 /*   MV: Commented out for a while, but save for the future when standalone_MPI
@@ -491,8 +519,18 @@ typedef enum {
     ACCESS_WRITE,
 } AccessType;
 
-AcResult acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path,
-                                const AccessType type);
+AcResult acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* path,
+                                           const AccessType type);
+
+AcResult acGridDiskAccessLaunch(const AccessType type);
+
+AcResult acGridDiskAccessSync(void);
+
+// Bugged
+// AcResult acGridLoadFieldFromFile(const char* path, const VertexBufferHandle field);
+
+// Bugged
+// AcResult acGridStoreFieldToFile(const char* path, const VertexBufferHandle field);
 
 /*
  * =============================================================================
@@ -813,6 +851,22 @@ AcResult acDeviceLoadInt3Uniform(const Device device, const Stream stream, const
                                  const int3 value);
 
 /** */
+AcResult acDeviceStoreScalarUniform(const Device device, const Stream stream,
+                                    const AcRealParam param, AcReal* value);
+
+/** */
+AcResult acDeviceStoreVectorUniform(const Device device, const Stream stream,
+                                    const AcReal3Param param, AcReal3* value);
+
+/** */
+AcResult acDeviceStoreIntUniform(const Device device, const Stream stream, const AcIntParam param,
+                                 int* value);
+
+/** */
+AcResult acDeviceStoreInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
+                                  int3* value);
+
+/** */
 /*
 AcResult acDeviceLoadScalarArray(const Device device, const Stream stream,
                                  const ScalarArrayHandle handle, const size_t start,
@@ -1011,7 +1065,7 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
                                num_parameters);
 }
 
-#if AC_INTEGRATION_ENABLED
+#ifdef AC_INTEGRATION_ENABLED
 /** */
 template <size_t num_fields>
 AcTaskDefinition

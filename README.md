@@ -1,6 +1,6 @@
 # Astaroth - A Scalable Multi-GPU Library for Stencil Computations {#mainpage}
 
-[API specification](doc/Astaroth_API_specification_and_user_manual/API_specification_and_user_manual.md) | [Astaroth DSL](https://bitbucket.org/jpekkila/astaroth/src/2021-07-astaroth-3.0-dev/acc-runtime/README.md) | [Contributing](CONTRIBUTING.md) | [Licence](LICENCE.md) | [Repository](https://bitbucket.org/jpekkila/astaroth) | [Issue Tracker](https://bitbucket.org/jpekkila/astaroth/issues?status=new&status=open) | [Wiki](https://bitbucket.org/jpekkila/astaroth/wiki/Home)
+[API specification](doc/Astaroth_API_specification_and_user_manual/API_specification_and_user_manual.md)| [Astaroth DSL](acc-runtime/README.md) | [Contributing](CONTRIBUTING.md) | [Licence](LICENCE.md) | [Repository](https://bitbucket.org/jpekkila/astaroth) | [Issue Tracker](https://bitbucket.org/jpekkila/astaroth/issues?status=new&status=open) | [Wiki](https://bitbucket.org/jpekkila/astaroth/wiki/Home)
 
 Astaroth is a multi-GPU library designed for high-order stencil computations with a special focus on the requirements of multiphysics applications on modern HPC systems. It provides a multi-GPU and single-GPU APIs, a domain-specific language for expressing stencil codes in a high-level syntax, and an optimizing compiler that translates DSL sources into CUDA/HIP subroutines that exhibit near handtuned performance.
 
@@ -12,10 +12,16 @@ see [Contributing](CONTRIBUTING.md).
 ## System Requirements
 * An NVIDIA GPU with support for compute capability 3.0 or higher (Kepler architecture or newer)
 
+Or
+
+* an AMD GPU that has HIP support
+
 ## Dependencies
 Relative recent versions of
 
-`gcc cmake cuda flex bison`.
+`gcc cmake flex bison`
+
+and either `nvcc` (NVIDIA) or `hipcc` (AMD). The library is built for NVIDIA by default, but AMD support can be enabled by passing `-DUSE_HIP=ON` to CMake.
 
 ## Building
 
@@ -48,17 +54,18 @@ In the base directory, run
 |--------|-------------|---------|
 | CMAKE_BUILD_TYPE | Selects the build type. Possible values: Debug, Release, RelWithDebInfo, MinSizeRel. See (CMake documentation)[https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html] for more details. | Release |
 | CUDA_ARCHITECTURES | Selects CUDA architecture support. Multiple architectures delimited by `;`. See (CMake documentation)[https://cmake.org/cmake/help/latest/prop_tgt/CUDA_ARCHITECTURES.html] for more details. | "60;70" |
-| DOUBLE_PRECISION | Generates double precision code. | OFF |
+| DOUBLE_PRECISION | Generates double precision code. | ON |
 | BUILD_SAMPLES | Builds projects in samples subdirectory. | ON |
 | MPI_ENABLED | Enables acGrid functions for carrying out computations with MPI. | OFF |
 | USE_CUDA_AWARE_MPI | Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory | ON |
 | MULTIGPU_ENABLED | Enables Astaroth to use multiple GPUs on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only. | ON |
-| DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `acc/mhd_solver` |
+| DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `acc-runtime/samples/mhd_modular` |
 | PROGRAM_MODULE_DIR | Can be used to declare additional host-side program modules (also known as Thrones) | empty |
 | VERBOSE | Enables various non-critical warning and status messages. | OFF |
-| BUILD_UTILS | "Builds the utility library. Depends on `DSL_MODULE_DIR=acc/mhd_solver`". | ON |
+| BUILD_UTILS | "Builds the utility library. | ON |
 | BUILD_ACC_RUNTIME_LIBRARY | "Builds the standalone acc runtime library" | OFF |
 | USE_HIP | "Use HIP as the underlying GPGPU library instead of CUDA" | OFF |
+| SINGLEPASS_INTEGRATION| "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" | ON |
 
 
 ## Standalone Module
@@ -80,7 +87,8 @@ See `analysis/python/` directory of existing data visualization and analysis scr
 
 * `astaroth/include/astaroth.h`: Astaroth main header. Contains the interface for accessing single- and multi-GPU layers.
 * `astaroth/include/astaroth_utils.h`: Utility library header. Provides functions for performing common tasks on host, such as allocating and verifying meshes.
-* `<build directory>/astaroth.f90`: Fortran interface to Astaroth. Generated when building the library.
+* `acc-runtime/api/acc_runtime.h`: Low-level single-GPU library for running kernels generated from user-defined DSL files.
+* ~~`<build directory>/astaroth.f90`: Fortran interface to Astaroth. Generated when building the library.~~ (not available at the moment)
 
 ## FAQ
 

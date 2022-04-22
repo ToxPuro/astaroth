@@ -7,7 +7,7 @@ real AC_gamma, AC_nu, AC_zeta, AC_eta
 real AC_lnrho0, AC_mu0, AC_lnT0
 */
 // Note: not used by mhdsolver.ac at the moment (src/utils/modelsolver.c does)
-hostdefine AC_INTEGRATION_ENABLED (1) // Enables acIntegrate() and other non-generic library functions
+hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
@@ -15,11 +15,11 @@ hostdefine LENTROPY (1)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
 hostdefine LUPWD (0)
-hostdefine LSINK (0) 
-hostdefine LBFIELD (0) 
-hostdefine LSHOCK (0) 
-hostdefine AC_THERMAL_CONDUCTIVITY ((Scalar)(0.001)) // TODO: make an actual config parameter
-hostdefine R_PI ((Scalar)M_PI)
+hostdefine LSINK (0)
+hostdefine LBFIELD (0)
+hostdefine LSHOCK (0)
+hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // TODO: make an actual config parameter
+hostdefine R_PI (AC_REAL_PI)
 
 //Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ,VTXBUF_ENTROPY
 Field VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO, VTXBUF_ENTROPY, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
@@ -138,6 +138,7 @@ real AC_unit_mass
 real AC_sq2GM_star
 real AC_cs2
 //
+real AC_current_time
 
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
 #define AA Field3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
@@ -379,8 +380,7 @@ heat_conduction() {
     second_term = AC_gamma * inv_AC_cp * gradient(VTXBUF_ENTROPY) + (AC_gamma - 1.) * gradient(VTXBUF_LNRHO)
     third_term = AC_gamma * (inv_AC_cp * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO)) + grad_ln_chi
 
-    // TODO IMPORTANT what is 0.001 here?
-    chi = (0.001 / (exp(value(VTXBUF_LNRHO))) * AC_cp)
+    chi = AC_THERMAL_CONDUCTIVITY / (exp(value(VTXBUF_LNRHO)) * AC_cp)
 
     return AC_cp * chi * (first_term + dot(second_term, third_term))
 }
@@ -446,6 +446,7 @@ Kernel solve() {
     write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
 }
 
+/*
 rk3_intermediate(w, roc) {
     real alpha = 0., -5./9., -153. / 128.
 
@@ -493,3 +494,4 @@ Kernel alt_solve_final() {
     write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY)))
     write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ)))
 }
+*/

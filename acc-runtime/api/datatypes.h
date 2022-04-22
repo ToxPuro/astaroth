@@ -35,8 +35,9 @@ typedef cuDoubleComplex acComplex;
 #define acComplex(x, y) make_cuDoubleComplex(x, y)
 #define AC_REAL_MAX (DBL_MAX)
 #define AC_REAL_MIN (DBL_MIN)
+#define AcReal3(x, y, z) make_double3(x, y, z)
 #define AC_REAL_EPSILON (DBL_EPSILON)
-#define AC_MPI_TYPE (MPI_DOUBLE)
+#define AC_REAL_MPI_TYPE (MPI_DOUBLE)
 #else
 typedef float AcReal;
 typedef float3 AcReal3;
@@ -44,10 +45,11 @@ typedef cuFloatComplex acComplex;
 #define acComplex(x, y) make_cuFloatComplex(x, y)
 #define AC_REAL_MAX (FLT_MAX)
 #define AC_REAL_MIN (FLT_MIN)
+#define AcReal3(x, y, z) make_float3(x, y, z)
 #define AC_REAL_EPSILON (FLT_EPSILON)
-#define AC_MPI_TYPE (MPI_FLOAT)
+#define AC_REAL_MPI_TYPE (MPI_FLOAT)
 #endif
 
-#define REAL_PI ((AcReal)M_PI)
+#define AC_REAL_PI ((AcReal)M_PI)
 
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;

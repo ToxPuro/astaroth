@@ -21,6 +21,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # For IDE highlighting (clangd)
 
 ## Build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -39,6 +40,7 @@ option(VERBOSE            "Enables various status and warning messages"         
 option(BUILD_UTILS        "Builds the utility library"                              ON)
 option(BUILD_SHARED       "Creates shared library"                                  OFF)
 option(PACKED_DATA_TRANSFERS    "Enables kernel for packed data transfers"          OFF)
+option(SINGLEPASS_INTEGRATION "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" ON)
 
 ## CUDA/HIP
 if (USE_HIP)
@@ -63,7 +65,7 @@ else ()
     # Not supported with older CUDA
     # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --Werror all-warnings")
     if (NOT DOUBLE_PRECISION)
-      set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas=-Werror,--warn-on-double-precision-use")
+      set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas=--warn-on-double-precision-use") # -Werror,
     endif()
 
     # Set device code architecture
@@ -92,6 +94,9 @@ endif()
 if (MULTIGPU_ENABLED)
   add_definitions(-DAC_MULTIGPU_ENABLED=1)
 endif()
+if (SINGLEPASS_INTEGRATION)
+    add_definitions(-DAC_SINGLEPASS_INTEGRATION)
+endif()
 
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 
@@ -115,11 +120,14 @@ if (BUILD_SAMPLES)
   #add_subdirectory(samples/benchmark)
   add_subdirectory(samples/benchmark-device)
   add_subdirectory(samples/mpi-io)
+  add_subdirectory(samples/mpi-io-multithreaded)
+  add_subdirectory(samples/pc-varfile-import)
 
   if (BUILD_MHD_SAMPLES)
     # add_subdirectory(samples/standalone)
     add_subdirectory(samples/standalone_mpi)
     add_subdirectory(samples/mpitest)
+    add_subdirectory(samples/stencil-loader)
   endif()
 
   # add_subdirectory(samples/standalone)

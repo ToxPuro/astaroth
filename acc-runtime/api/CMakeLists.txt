@@ -15,7 +15,7 @@ if (DEFINED DSL_MODULE)
 endif ()
 
 if (NOT DEFINED DSL_MODULE_DIR)
-    set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/samples/mhd) # Default
+    set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/samples/mhd_modular) # Default
 else()
     get_filename_component(resolved_module_dir "${DSL_MODULE_DIR}" REALPATH
                            BASE_DIR ${CMAKE_BINARY_DIR})
@@ -23,13 +23,14 @@ else()
 endif()
 
 ## Generate acc-runtime-headers
-set(DSL_SOURCES "${DSL_MODULE_DIR}/*.ac")
+# set(DSL_SOURCES "${DSL_MODULE_DIR}/*.ac")
+set(DSL_SOURCES "${DSL_MODULE_DIR}/*")
 set(DSL_HEADERS "user_kernels.h"
                 "user_defines.h"
                 "user_declarations.h")
 add_custom_command (
     COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
-    COMMAND ${PROJECT_BINARY_DIR}/acc/acc ${DSL_SOURCES}
+    COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac"
     DEPENDS ${DSL_SOURCES} acc
     OUTPUT ${DSL_HEADERS}
 )

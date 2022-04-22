@@ -61,7 +61,7 @@
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
     Device device;
-    AcMesh submesh;
+    AcMesh submesh; // Submesh in host memory. Used as scratch space.
     uint3_64 decomposition;
     bool initialized;
     int3 nn;
@@ -126,10 +126,10 @@ acGridInit(const AcMeshInfo info)
     ERRCHK_ALWAYS(info.int_params[AC_ny] % decomp.y == 0);
     ERRCHK_ALWAYS(info.int_params[AC_nz] % decomp.z == 0);
 
-    // Check that mixed precision is correctly configured, AcRealPacked == AC_MPI_TYPE
+    // Check that mixed precision is correctly configured, AcRealPacked == AC_REAL_MPI_TYPE
     // CAN BE REMOVED IF MIXED PRECISION IS SUPPORTED AS A PREPROCESSOR FLAG
     int mpi_type_size;
-    MPI_Type_size(AC_MPI_TYPE, &mpi_type_size);
+    MPI_Type_size(AC_REAL_MPI_TYPE, &mpi_type_size);
     ERRCHK_ALWAYS(sizeof(AcRealPacked) == mpi_type_size);
 
     const int submesh_nx                       = info.int_params[AC_nx] / decomp.x;
@@ -181,7 +181,12 @@ acGridInit(const AcMeshInfo info)
                                       acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
                                                           all_fields),
 #ifdef AC_INTEGRATION_ENABLED
-                                      acCompute(KERNEL_solve, all_fields)
+#ifdef AC_SINGLEPASS_INTEGRATION
+                                      acCompute(KERNEL_singlepass_solve, all_fields)
+#else
+                                      acCompute(KERNEL_twopass_solve_intermediate, all_fields),
+                                      acCompute(KERNEL_twopass_solve_final, all_fields)
+#endif
 #endif // AC_INTEGRATION_ENABLED
     };
 
@@ -216,10 +221,9 @@ acGridLoadScalarUniform(const Stream stream, const AcRealParam param, const AcRe
 
     const int root_proc = 0;
     AcReal buffer       = value;
-    MPI_Bcast(&buffer, 1, AC_MPI_TYPE, root_proc, MPI_COMM_WORLD);
+    MPI_Bcast(&buffer, 1, AC_REAL_MPI_TYPE, root_proc, MPI_COMM_WORLD);
 
-    acDeviceLoadScalarUniform(grid.device, stream, param, buffer);
-    return AC_SUCCESS;
+    return acDeviceLoadScalarUniform(grid.device, stream, param, buffer);
 }
 
 AcResult
@@ -230,18 +234,43 @@ acGridLoadVectorUniform(const Stream stream, const AcReal3Param param, const AcR
 
     const int root_proc = 0;
     AcReal3 buffer      = value;
-    MPI_Bcast(&buffer, 3, AC_MPI_TYPE, root_proc, MPI_COMM_WORLD);
+    MPI_Bcast(&buffer, 3, AC_REAL_MPI_TYPE, root_proc, MPI_COMM_WORLD);
 
-    acDeviceLoadVectorUniform(grid.device, stream, param, buffer);
-    return AC_SUCCESS;
+    return acDeviceLoadVectorUniform(grid.device, stream, param, buffer);
 }
 
-// TODO: do with packed data
+AcResult
+acGridLoadIntUniform(const Stream stream, const AcIntParam param, const int value)
+{
+    ERRCHK(grid.initialized);
+    acGridSynchronizeStream(stream);
+
+    const int root_proc = 0;
+    int buffer          = value;
+    MPI_Bcast(&buffer, 1, MPI_INT, root_proc, MPI_COMM_WORLD);
+
+    return acDeviceLoadIntUniform(grid.device, stream, param, buffer);
+}
+
+AcResult
+acGridLoadInt3Uniform(const Stream stream, const AcInt3Param param, const int3 value)
+{
+    ERRCHK(grid.initialized);
+    acGridSynchronizeStream(stream);
+
+    const int root_proc = 0;
+    int3 buffer         = value;
+    MPI_Bcast(&buffer, 3, MPI_INT, root_proc, MPI_COMM_WORLD);
+
+    return acDeviceLoadInt3Uniform(grid.device, stream, param, buffer);
+}
+
 AcResult
 acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
+    acGridDiskAccessSync(); // Note: syncs all streams
 
 #if AC_VERBOSE
     printf("Distributing mesh...\n");
@@ -290,8 +319,8 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     const int dst_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
                     // Recv
                     MPI_Status status;
-                    MPI_Recv(&grid.submesh.vertex_buffer[vtxbuf][dst_idx], count, AC_MPI_TYPE, 0, 0,
-                             MPI_COMM_WORLD, &status);
+                    MPI_Recv(&grid.submesh.vertex_buffer[vtxbuf][dst_idx], count, AC_REAL_MPI_TYPE,
+                             0, 0, MPI_COMM_WORLD, &status);
                 }
                 else {
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
@@ -302,7 +331,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                                                               host_mesh.info);
 
                         // Send
-                        MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_MPI_TYPE,
+                        MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
                                  tgt_pid, 0, MPI_COMM_WORLD);
                     }
                 }
@@ -320,6 +349,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
+    acGridDiskAccessSync(); // Note: syncs all streams
 
     acDeviceStoreMesh(grid.device, stream, &grid.submesh);
     acGridSynchronizeStream(stream);
@@ -378,8 +408,8 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                 if (pid != 0) {
                     // Send
                     const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
-                    MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_MPI_TYPE, 0, 0,
-                             MPI_COMM_WORLD);
+                    MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
+                             0, 0, MPI_COMM_WORLD);
                 }
                 else {
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
@@ -391,8 +421,8 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 
                         // Recv
                         MPI_Status status;
-                        MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx], count, AC_MPI_TYPE,
-                                 tgt_pid, 0, MPI_COMM_WORLD, &status);
+                        MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx], count,
+                                 AC_REAL_MPI_TYPE, tgt_pid, 0, MPI_COMM_WORLD, &status);
                     }
                 }
             }
@@ -715,8 +745,12 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                         auto dept_task = graph->all_tasks[j];
                         // Task A depends on task B if the output region of A overlaps with the
                         // input region of B.
-                        if (dept_task->active &&
-                            preq_task->output_region.overlaps(&(dept_task->input_region))) {
+                        if (dept_task->active
+                           && (
+                                preq_task->output_region.overlaps(&(dept_task->input_region))
+                             || preq_task->output_region.overlaps(&(dept_task->output_region))
+                             )
+                            ) {
                             // iteration offset of 0 -> dependency in the same iteration
                             // iteration offset of 1 -> dependency from preq_task in iteration k to
                             // dept_task in iteration k+1
@@ -866,7 +900,7 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     AcReal mpi_res;
-    MPI_Reduce(&local_result, &mpi_res, 1, AC_MPI_TYPE, op, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&local_result, &mpi_res, 1, AC_REAL_MPI_TYPE, op, 0, MPI_COMM_WORLD);
 
     if (rank == 0) {
         if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS) {
@@ -934,6 +968,13 @@ acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3 start, c
     return acDeviceLaunchKernel(grid.device, stream, kernel, start, end);
 }
 
+AcResult
+acGridSwapBuffers(void)
+{
+    ERRCHK(grid.initialized);
+    return acDeviceSwapBuffers(grid.device);
+}
+
 /** */
 AcResult
 acGridLoadStencil(const Stream stream, const Stencil stencil,
@@ -988,14 +1029,228 @@ acGridStoreStencils(const Stream stream,
     return (AcResult)retval;
 }
 
-AcResult
-acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const AccessType type)
+static AcResult
+volume_copy_to_from_host(const VertexBufferHandle vtxbuf, const AccessType type)
 {
+    ERRCHK(grid.initialized);
+
+    acGridSynchronizeStream(STREAM_ALL); // Possibly unnecessary
+
+    const Device device   = grid.device;
+    const AcMeshInfo info = device->local_config;
+
+    if (type == ACCESS_WRITE) {
+        const AcReal* in      = device->vba.in[vtxbuf];
+        const int3 in_offset  = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
+        const int3 in_volume  = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+        AcReal* out           = device->vba.out[vtxbuf];
+        const int3 out_offset = (int3){0, 0, 0};
+        const int3 out_volume = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+        acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
+                           out_volume);
+        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+
+        // ---------------------------------------
+        // Buffer through CPU
+        cudaSetDevice(device->id);
+        const size_t count = acVertexBufferCompdomainSizeBytes(info);
+        cudaMemcpy(grid.submesh.vertex_buffer[vtxbuf], out, count, cudaMemcpyDeviceToHost);
+        // ----------------------------------------
+    }
+
+    if (type == ACCESS_READ) {
+        AcReal* in           = device->vba.out[vtxbuf];
+        const int3 in_offset = (int3){0, 0, 0};
+        const int3 in_volume = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+
+        AcReal* out           = device->vba.in[vtxbuf];
+        const int3 out_offset = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
+        const int3 out_volume = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+
+        // ---------------------------------------
+        // Buffer through CPU
+        cudaSetDevice(device->id);
+        const size_t count = acVertexBufferCompdomainSizeBytes(info);
+        cudaMemcpy(in, grid.submesh.vertex_buffer[vtxbuf], count, cudaMemcpyHostToDevice);
+        // ----------------------------------------
+
+        acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
+                           out_volume);
+
+        // Apply boundconds and sync
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+    }
+    acGridSynchronizeStream(STREAM_ALL); // Possibly unnecessary
+    return AC_SUCCESS;
+}
+
+static AcResult
+access_vtxbuf_on_disk(const VertexBufferHandle vtxbuf, const char* path, const AccessType type)
+{
+    const Device device   = grid.device;
+    const AcMeshInfo info = device->local_config;
+    const int3 nn         = info.int3_params[AC_global_grid_n];
+    const int3 nn_sub     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+    const int3 offset     = info.int3_params[AC_multigpu_offset]; // Without halo
+
+    MPI_Datatype subarray;
+    const int arr_nn[]     = {nn.z, nn.y, nn.x};
+    const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
+    const int arr_offset[] = {offset.z, offset.y, offset.x};
+    MPI_Type_create_subarray(3, arr_nn, arr_nn_sub, arr_offset, MPI_ORDER_C, AC_REAL_MPI_TYPE,
+                             &subarray);
+    MPI_Type_commit(&subarray);
+
+    MPI_File file;
+
+    int flags = 0;
+    if (type == ACCESS_READ)
+        flags = MPI_MODE_RDONLY;
+    else
+        flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
+
+    ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &file) == MPI_SUCCESS);
+
+    ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native", MPI_INFO_NULL) ==
+                  MPI_SUCCESS);
+
+    MPI_Status status;
+
+    // ---------------------------------------
+    // Buffer through CPU
+    AcReal* arr = grid.submesh.vertex_buffer[vtxbuf];
+    // ----------------------------------------
+
+    const size_t nelems = nn_sub.x * nn_sub.y * nn_sub.z;
+    if (type == ACCESS_READ) {
+        ERRCHK_ALWAYS(MPI_File_read_all(file, arr, nelems, AC_REAL_MPI_TYPE, &status) ==
+                      MPI_SUCCESS);
+    }
+    else {
+        ERRCHK_ALWAYS(MPI_File_write_all(file, arr, nelems, AC_REAL_MPI_TYPE, &status) ==
+                      MPI_SUCCESS);
+    }
+
+    ERRCHK_ALWAYS(MPI_File_close(&file) == MPI_SUCCESS);
+
+    MPI_Type_free(&subarray);
+    return AC_SUCCESS;
+}
+
+/*
+
+    write:
+        sync transfer to host
+        async write to disk
+    read:
+        async read from disk
+        sync transfer to device
+
+    sync:
+        complete write or read locally  (future.get() and status complete)
+        complete write or read globally (MPI_Barrier)
+
+    static:
+        future
+        status
+
+    static std::future<void> future;
+    static AccessType access_type;
+    static bool complete = true;
+*/
+
+#include <chrono>
+#include <future>
+
+static std::future<void> future;
+static AccessType access_type = ACCESS_WRITE;
+static bool complete          = true;
+
+AcResult
+acGridDiskAccessSync(void)
+{
+    ERRCHK(grid.initialized);
+
+    // Sync and mark as completed
+    if (future.valid())
+        future.get();
+
+    if (access_type == ACCESS_READ)
+        for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+            volume_copy_to_from_host((VertexBufferHandle)i, ACCESS_READ);
+
+    acGridSynchronizeStream(STREAM_ALL);
+    access_type = ACCESS_WRITE;
+    complete    = true;
+    return AC_SUCCESS;
+}
+
+static void
+write_async(void)
+{
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        char file[4096] = "";
+        sprintf(file, "field-%lu.out", i); // Note: could use vtxbuf_names[i]
+        access_vtxbuf_on_disk((VertexBufferHandle)i, file, ACCESS_WRITE);
+    }
+}
+
+static void
+read_async(void)
+{
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        char file[4096] = "";
+        sprintf(file, "field-%lu.out", i); // Note: could use vtxbuf_names[i]
+        access_vtxbuf_on_disk((VertexBufferHandle)i, file, ACCESS_READ);
+    }
+}
+
+AcResult
+acGridDiskAccessLaunch(const AccessType type)
+{
+    ERRCHK_ALWAYS(grid.initialized);
+    ERROR("\n------------------------\n"
+          "acGridDiskAccessLaunch does not work concurrently with acGridIntegrate due to an\n"
+          "unknown issue (invalid CUDA context, double free, or invalid memory access). Suspect\n"
+          "some complex interaction with the underlying MPI library and the asynchronous task\n"
+          "system. `acGridAccessMeshOnDiskSynchronous` has been tested to work on multiple\n"
+          "processes. It is recommended to use that instead in production."
+          "\n------------------------\n");
+
+    acGridDiskAccessSync();
+    ERRCHK_ALWAYS(!future.valid());
+
+    ERRCHK_ALWAYS(complete);
+    complete    = false;
+    access_type = type;
+
+    if (type == ACCESS_WRITE) {
+        for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+            volume_copy_to_from_host((VertexBufferHandle)i, ACCESS_WRITE);
+
+        future = std::async(std::launch::async, write_async);
+    }
+    else if (type == ACCESS_READ) {
+        future = std::async(std::launch::async, read_async);
+    }
+    else {
+        ERROR("Unknown access type in acGridDiskAccessLaunch");
+        return AC_FAILURE;
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* path,
+                                  const AccessType type)
+{
+
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
 
-    acGridSynchronizeStream(STREAM_ALL); // Possibly unnecessary
+    acGridDiskAccessSync();
 
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
@@ -1027,7 +1282,7 @@ acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const 
     const int arr_nn[]     = {nn.z, nn.y, nn.x};
     const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
     const int arr_offset[] = {offset.z, offset.y, offset.x};
-    MPI_Type_create_subarray(3, arr_nn, arr_nn_sub, arr_offset, MPI_ORDER_C, AC_MPI_TYPE,
+    MPI_Type_create_subarray(3, arr_nn, arr_nn_sub, arr_offset, MPI_ORDER_C, AC_REAL_MPI_TYPE,
                              &subarray);
     MPI_Type_commit(&subarray);
 
@@ -1041,7 +1296,7 @@ acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const 
 
     ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &file) == MPI_SUCCESS);
 
-    ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_MPI_TYPE, subarray, "native", MPI_INFO_NULL) ==
+    ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native", MPI_INFO_NULL) ==
                   MPI_SUCCESS);
 
     MPI_Status status;
@@ -1057,10 +1312,12 @@ acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const 
 
     const size_t nelems = nn_sub.x * nn_sub.y * nn_sub.z;
     if (type == ACCESS_READ) {
-        ERRCHK_ALWAYS(MPI_File_read_all(file, arr, nelems, AC_MPI_TYPE, &status) == MPI_SUCCESS);
+        ERRCHK_ALWAYS(MPI_File_read_all(file, arr, nelems, AC_REAL_MPI_TYPE, &status) ==
+                      MPI_SUCCESS);
     }
     else {
-        ERRCHK_ALWAYS(MPI_File_write_all(file, arr, nelems, AC_MPI_TYPE, &status) == MPI_SUCCESS);
+        ERRCHK_ALWAYS(MPI_File_write_all(file, arr, nelems, AC_REAL_MPI_TYPE, &status) ==
+                      MPI_SUCCESS);
     }
 
     ERRCHK_ALWAYS(MPI_File_close(&file) == MPI_SUCCESS);
@@ -1080,17 +1337,144 @@ acGridAccessMeshOnDisk(const VertexBufferHandle vtxbuf, const char* path, const 
         // ---------------------------------------
         // Buffer through CPU
         const size_t count = acVertexBufferCompdomainSizeBytes(info);
-        cudaMemcpy(in, grid.submesh.vertex_buffer[vtxbuf], count, cudaMemcpyHostToDevice);
-        // ----------------------------------------
+        cudaMemcpy(in, arr, count, cudaMemcpyHostToDevice);
+        //  ----------------------------------------
 #endif
 
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
                            out_volume);
-        // NOTE! Need to also apply the boundconds
+        // Apply boundconds and sync
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
     }
     return AC_SUCCESS;
 }
+/*
+AcResult
+acGridLoadFieldFromFile(const char* path, const VertexBufferHandle vtxbuf)
+{
+    ERRCHK(grid.initialized);
+
+    acGridDiskAccessSync();
+
+    const Device device   = grid.device;
+    const AcMeshInfo info = device->local_config;
+    const int3 global_nn  = info.int3_params[AC_global_grid_n];
+    const int3 global_mm  = (int3){
+        2 * STENCIL_ORDER + global_nn.x,
+        2 * STENCIL_ORDER + global_nn.y,
+        2 * STENCIL_ORDER + global_nn.z,
+    };
+    const int3 local_nn         = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+    const int3 global_nn_offset = info.int3_params[AC_multigpu_offset];
+
+    MPI_Datatype subarray;
+    const int mm[]     = {global_mm.x, global_mm.y, global_mm.z};
+    const int nn_sub[] = {local_nn.x, local_nn.y, local_nn.z};
+    const int offset[] = {
+        STENCIL_ORDER + global_nn_offset.x,
+        STENCIL_ORDER + global_nn_offset.y,
+        STENCIL_ORDER + global_nn_offset.z,
+    };
+    MPI_Type_create_subarray(3, mm, nn_sub, offset, MPI_ORDER_C, AC_REAL_MPI_TYPE, &subarray);
+    MPI_Type_commit(&subarray);
+
+    MPI_File file;
+    const int flags = MPI_MODE_RDONLY;
+    ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &file) == MPI_SUCCESS);
+    ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native", MPI_INFO_NULL) ==
+                  MPI_SUCCESS);
+
+    MPI_Status status;
+
+    AcReal* arr        = grid.submesh.vertex_buffer[vtxbuf];
+    const size_t count = nn_sub[0] * nn_sub[1] * nn_sub[2];
+    ERRCHK_ALWAYS(MPI_File_read_all(file, arr, count, AC_REAL_MPI_TYPE, &status) == MPI_SUCCESS);
+    ERRCHK_ALWAYS(MPI_File_close(&file) == MPI_SUCCESS);
+
+    MPI_Type_free(&subarray);
+
+    AcReal* in         = device->vba.out[vtxbuf]; // Note swapped order (vba.out)
+    const size_t bytes = sizeof(in[0]) * count;
+    cudaMemcpy(in, arr, bytes, cudaMemcpyHostToDevice);
+
+    const int3 in_offset = (int3){0, 0, 0};
+    const int3 in_volume = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+
+    AcReal* out           = device->vba.in[vtxbuf]; // Note swapped order (vba.in)
+    const int3 out_offset = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
+    const int3 out_volume = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+    acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
+                       out_volume);
+
+    // Update halos
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acGridStoreFieldToFile(const char* path, const VertexBufferHandle vtxbuf)
+{
+    ERRCHK(grid.initialized);
+
+    const Device device   = grid.device;
+    const AcMeshInfo info = device->local_config;
+
+    AcReal* in           = device->vba.in[vtxbuf];
+    const int3 in_offset = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
+    const int3 in_volume = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+
+    AcReal* out           = device->vba.out[vtxbuf];
+    const int3 out_offset = (int3){0, 0, 0};
+    const int3 out_volume = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+
+    acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
+                       out_volume);
+
+    AcReal* arr        = grid.submesh.vertex_buffer[vtxbuf];
+    const size_t bytes = sizeof(in[0]) * out_volume.x * out_volume.y * out_volume.z;
+    cudaMemcpy(in, arr, bytes, cudaMemcpyHostToDevice);
+
+    acGridDiskAccessSync();
+
+    const int3 global_nn = info.int3_params[AC_global_grid_n];
+    const int3 global_mm = (int3){
+        2 * STENCIL_ORDER + global_nn.x,
+        2 * STENCIL_ORDER + global_nn.y,
+        2 * STENCIL_ORDER + global_nn.z,
+    };
+    const int3 local_nn         = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+    const int3 global_nn_offset = info.int3_params[AC_multigpu_offset];
+
+    MPI_Datatype subarray;
+    const int mm[]     = {global_mm.x, global_mm.y, global_mm.z};
+    const int nn_sub[] = {local_nn.x, local_nn.y, local_nn.z};
+    const int offset[] = {
+        STENCIL_ORDER + global_nn_offset.x,
+        STENCIL_ORDER + global_nn_offset.y,
+        STENCIL_ORDER + global_nn_offset.z,
+    };
+    MPI_Type_create_subarray(3, mm, nn_sub, offset, MPI_ORDER_C, AC_REAL_MPI_TYPE, &subarray);
+    MPI_Type_commit(&subarray);
+
+    MPI_File file;
+    const int flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
+    ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &file) == MPI_SUCCESS);
+    ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native", MPI_INFO_NULL) ==
+                  MPI_SUCCESS);
+
+    MPI_Status status;
+
+    const size_t count = nn_sub[0] * nn_sub[1] * nn_sub[2];
+    ERRCHK_ALWAYS(MPI_File_write_all(file, arr, count, AC_REAL_MPI_TYPE, &status) == MPI_SUCCESS);
+    ERRCHK_ALWAYS(MPI_File_close(&file) == MPI_SUCCESS);
+
+    MPI_Type_free(&subarray);
+    return AC_SUCCESS;
+}
+*/
 
 /*   MV: Commented out for a while, but save for the future when standalone_MPI
          works with periodic boundary conditions.

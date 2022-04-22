@@ -18,7 +18,7 @@ As ACC is in active development, compiler bugs and cryptic error messages are
 expected. In case of issues, please check the following files in
 `acc-runtime/api` in the build directory.
 
-1. `user_kernels.ac.preprocessed`. The DSL file after preprocessing.
+1. `user_kernels.ac.pp_stage*`. The DSL file after a specific preprocessing stage.
 1. `user_defines.h`. The project-wide defines generated with the DSL.
 1. `user_declarations.h`. Forward declarations of user kernels.
 1. `user_kernels.h`. The generated CUDA kernels.
@@ -132,14 +132,14 @@ Kernel func3() {
 }
 ```
 
-> Note: Function parameters are **passed by constant reference**
+> Note: Function parameters are **passed by constant reference**. Therefore input parameters **cannot be modified** and one may need to allocate temporary storage for intermediate values when performing more complex calculations.
 
 > Note: Overloading is not allowed, all function identifiers must be unique
 
 Stencils
 ```
 // Format
-Stencil <identifier> {
+<Optional reduction operation> Stencil <identifier> {
     [z][y][x] = coefficient,
     ...
 }
@@ -151,14 +151,31 @@ Stencil example {
     [0][0][0] = b
     [0][0][1] = c,
 }
-// is calculated equivalently to
+
+// Which is equivalent to
+Sum Stencil example {
+    ...
+}
+
+// and is calculated equivalently to
 example(field) {
     return  a * field[IDX(vertexIdx.x - 1, vertexIdx.y, vertexIdx.z)] +
             b * field[IDX(vertexIdx.x,     vertexIdx.y, vertexIdx.z)] +
             c * field[IDX(vertexIdx.x + 1, vertexIdx.y, vertexIdx.z)]
 }
 
+By default, the binary operation for reducing `Stencil` elements is `Sum` (as above). Currently supported operations are `Sum` and `Max`. See the up-to-date list of the supported operations in `acc-runtime/acc/ac.y` rule `type_qualifier`.
+
 // Real-world example
+Max Stencil largest_neighbor {
+    [1][0][0]  = 1,
+    [-1][0][0] = 1,
+    [0][1][0]  = 1,
+    [0][-1][0] = 1,
+    [0][0][1]  = 1,
+    [0][0][-1] = 1,
+}
+
 Stencil derx {
     [0][0][-3] = -DER1_3,
     [0][0][-2] = -DER1_2,
@@ -196,13 +213,46 @@ dim3 threadIdx       // Current thread index within a thread block (see CUDA doc
 dim3 blockIdx        // Current thread block index (see CUDA docs)
 dim3 vertexIdx       // The current vertex index within a single device
 dim3 globalVertexIdx // The current vertex index across multiple devices
+dim3 globalGridN     // The total size of the computational domain (incl. all subdomains of all processes)
 
 // Functions
-write(Field, real) // Writes a real value to the output field at 'vertexIdx'
+void write(Field, real)  // Writes a real value to the output field at 'vertexIdx'
+void print("int: %d", 0) // Printing. Uses the same syntax as printf() in C
+real dot(real3, real3)   // Dot product
+real3 cross(real3 a, real3 b) // Right-hand-side cross product a x b
+size_t len(arr) // Returns the length of an array `arr`
+
+// Trigonometric functions
+exp
+sin
+cos
+sqrt
+fabs
 
 // Advanced functions (should avoid, dangerous)
 real previous(Field) // Returns the value in the output buffer. Read after write() results in undefined behaviour.
+
+// Constants
+real AC_REAL_PI // Value of pi using the same precision as `real`
 ```
+
+> See astaroth/acc-runtime/acc/codegen.c, function `symboltable_reset` for an up-to-date list of all built-in symbols.
+
+# Advanced
+
+The input and output arrays can also be accessed without declaring a `Stencil` as follows.
+
+```
+Field field0
+
+Kernel kernel() {
+  // The example showcases two ways of accessing a field element without the Stencil structure
+  a = FIELD_IN[field0][IDX(vertexIdx)] // Note that IDX() here accepts the 3D spatial index
+  b = FIELD_OUT[field0][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] // And also individual index components
+}
+```
+
+> Note: Accessing field elements using `FIELD_IN` and `FIELD_OUT` does not cache the reads and is significantly less efficient than using a `Stencil`.
 
 # Interaction with the Astaroth Core and Utils libraries
 
@@ -215,6 +265,6 @@ See also the functions `acDeviceLoadStencil`, `acDeviceStoreStencil`, `acGridLoa
 
 ## Additional physics-specific API functions
 
-To enable additional API functions in the Astaroth Core library for integration (`acIntegrate` function family) and MHD-specific tasks (automated testing, MHD samples), one must set `hostdefine AC_INTEGRATION_ENABLED (1)` in the DSL file.
+To enable additional API functions in the Astaroth Core library for integration (`acIntegrate` function family) and MHD-specific tasks (automated testing, MHD samples), one must set `hostdefine AC_INTEGRATION_ENABLED (1)` in the DSL file. Note that if used in the DSL code, the hostdefine must not define anything that is not visible at compile-time. For example, `hostdefine R_PI (M_PI)`, where `M_PI` is defined is some host header, `M_PI` will not be visible in the DSL code and will result in a compilation error. Additionally, code such as `#if M_PI` will be always false in the DSL source if `M_PI` is not visible in the DSL file.
 
 > Note: The extended API depends on several hardcoded fields and device constants. It is not recommended to enable it unless you work on the MHD sample case (`acc-runtime/samples/mhd`) or its derivatives.

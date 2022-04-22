@@ -32,7 +32,7 @@
 #include "errchk.h"
 #include "memory.h" // acHostMeshCreate, acHostMeshDestroy, acHostMeshApplyPeriodicBounds
 
-#if AC_INTEGRATION_ENABLED
+#ifdef AC_INTEGRATION_ENABLED
 /*
 // Standalone flags (currently defined in the DSL)
 #define LDENSITY (1)
@@ -668,7 +668,11 @@ static inline Vector
 momentum(const VectorData uu, const ScalarData lnrho
 #if LENTROPY
          ,
-         const ScalarData ss, const VectorData aa
+         const ScalarData ss
+#endif
+#if LMAGNETIC
+         ,
+         const VectorData aa
 #endif
 )
 {
@@ -678,15 +682,18 @@ momentum(const VectorData uu, const ScalarData lnrho
     const Scalar cs2       = cs2_sound *
                        exp(getReal(AC_gamma) * value(ss) / getReal(AC_cp) +
                            (getReal(AC_gamma) - 1) * (value(lnrho) - getReal(AC_lnrho0)));
+#if LMAGNETIC
     const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
     const Vector B       = curl(aa);
     const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
-
+#endif
     const Vector mom = -mul(gradients(uu), vecvalue(uu)) -
                        cs2 * (((Scalar)(1.) / getReal(AC_cp)) * gradient(ss) +
                               gradient(lnrho)) +
+#if LMAGNETIC
                        inv_rho * cross(j, B) +
+#endif
                        getReal(AC_nu) *
                            (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
                             (Scalar)(2.) * mul(S, gradient(lnrho))) +
@@ -696,8 +703,16 @@ momentum(const VectorData uu, const ScalarData lnrho
     // !!!!!!!!!!!!!!!!%JP: NOTE TODO IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!
     // NOT CHECKED FOR CORRECTNESS: USE AT YOUR OWN RISK
     const Matrix S = stress_tensor(uu);
-
+#if LMAGNETIC
+    const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
+                     (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
+    const Vector B       = curl(aa);
+    const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
+#endif
     const Vector mom = -mul(gradients(uu), vecvalue(uu)) - getReal(AC_cs2) * gradient(lnrho) +
+#if LMAGNETIC
+                       inv_rho * cross(j, B) +
+#endif
                        getReal(AC_nu) *
                            (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
                             (Scalar)(2.) * mul(S, gradient(lnrho))) +
@@ -749,17 +764,25 @@ heat_conduction(const ScalarData ss, const ScalarData lnrho)
     const Vector third_term = getReal(AC_gamma) * (inv_cp * gradient(ss) + gradient(lnrho)) +
                               grad_ln_chi;
 
-    const Scalar chi = AC_THERMAL_CONDUCTIVITY / (exp(value(lnrho)) * getReal(AC_cp));
+    const Scalar chi = (AcReal)(AC_THERMAL_CONDUCTIVITY) / (exp(value(lnrho)) * getReal(AC_cp));
     return getReal(AC_cp) * chi * (first_term + dot(second_term, third_term));
 }
 
 static inline Scalar
+#if LMAGNETIC
 entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho, const VectorData aa)
+#else
+entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho)
+#endif
 {
     const Matrix S      = stress_tensor(uu);
     const Scalar inv_pT = (Scalar)(1.) / (exp(value(lnrho)) * exp(lnT(ss, lnrho)));
-    const Vector j      = ((Scalar)(1.) / getReal(AC_mu0)) *
+#if LMAGNETIC
+    const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
+#else
+    const Vector j             = (Vector){0.0, 0.0, 0.0};
+#endif
     const Scalar RHS = H_CONST - C_CONST + getReal(AC_eta) * getReal(AC_mu0) * dot(j, j) +
                        (Scalar)(2.) * exp(value(lnrho)) * getReal(AC_nu) * contract(S) +
                        getReal(AC_zeta) * exp(value(lnrho)) * divergence(uu) * divergence(uu);
@@ -905,14 +928,26 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
     rate_of_change[VTXBUF_AZ] = aa_res[2];
 #endif
 #if LENTROPY
-    const ScalarData ss            = read_scal_data(i, j, k, in.vertex_buffer, VTXBUF_ENTROPY);
-    const Vector uu_res            = momentum(uu, lnrho, ss, aa);
-    rate_of_change[VTXBUF_UUX]     = uu_res[0];
-    rate_of_change[VTXBUF_UUY]     = uu_res[1];
-    rate_of_change[VTXBUF_UUZ]     = uu_res[2];
+    const ScalarData ss = read_scal_data(i, j, k, in.vertex_buffer, VTXBUF_ENTROPY);
+#if LMAGNETIC
+    const Vector uu_res = momentum(uu, lnrho, ss, aa);
+#else
+    const Vector uu_res            = momentum(uu, lnrho, ss);
+#endif
+    rate_of_change[VTXBUF_UUX] = uu_res[0];
+    rate_of_change[VTXBUF_UUY] = uu_res[1];
+    rate_of_change[VTXBUF_UUZ] = uu_res[2];
+#if LMAGNETIC
     rate_of_change[VTXBUF_ENTROPY] = entropy(ss, uu, lnrho, aa);
 #else
-    const Vector uu_res        = momentum(uu, lnrho);
+    rate_of_change[VTXBUF_ENTROPY] = entropy(ss, uu, lnrho);
+#endif
+#else
+#if LMAGNETIC
+    const Vector uu_res        = momentum(uu, lnrho, aa);
+#else
+    const Vector uu_res = momentum(uu, lnrho);
+#endif
     rate_of_change[VTXBUF_UUX] = uu_res[0];
     rate_of_change[VTXBUF_UUY] = uu_res[1];
     rate_of_change[VTXBUF_UUZ] = uu_res[2];
@@ -929,6 +964,15 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
                                          rate_of_change[w] * dt;
         }
     }
+
+    if (step_number == 2) {
+#if LBFIELD
+        const Vector bfield              = curl(aa);
+        out->vertex_buffer[BFIELDX][idx] = bfield[0];
+        out->vertex_buffer[BFIELDY][idx] = bfield[1];
+        out->vertex_buffer[BFIELDZ][idx] = bfield[2];
+#endif
+    }
 }
 
 static void
@@ -944,14 +988,19 @@ solve_beta_step(const AcMesh in, const int step_number, const Scalar dt, const i
         out->vertex_buffer[w][idx] += beta[step_number] * in.vertex_buffer[w][idx];
 
     (void)dt; // Suppress unused variable warning if forcing not used
-#if LFORCING
     if (step_number == 2) {
+#if LFORCING
         Vector force = forcing((int3){i, j, k}, dt);
         out->vertex_buffer[VTXBUF_UUX][idx] += force[0];
         out->vertex_buffer[VTXBUF_UUY][idx] += force[1];
         out->vertex_buffer[VTXBUF_UUZ][idx] += force[2];
-    }
 #endif
+#if LBFIELD
+        out->vertex_buffer[BFIELDX][idx] = in.vertex_buffer[BFIELDX][idx];
+        out->vertex_buffer[BFIELDY][idx] = in.vertex_buffer[BFIELDY][idx];
+        out->vertex_buffer[BFIELDZ][idx] = in.vertex_buffer[BFIELDZ][idx];
+#endif
+    }
 }
 
 // Checks whether the parameters passed in an AcMeshInfo are valid

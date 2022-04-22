@@ -17,6 +17,9 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "astaroth.h"
+#include <string.h> // strcmp
+
+#include "math_utils.h"
 #include "../../acc-runtime/api/math_utils.h"
 
 static const int max_num_nodes   = 1;
@@ -187,6 +190,26 @@ acGetNumDevicesPerNode(void)
     int num_devices;
     ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&num_devices));
     return num_devices;
+}
+
+size_t
+acGetNumFields(void)
+{
+    return NUM_VTXBUF_HANDLES;
+}
+
+AcResult
+acGetFieldHandle(const char* field, size_t* handle)
+{
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        if (!strcmp(field, field_names[i])) {
+            *handle = i;
+            return AC_SUCCESS;
+        }
+    }
+
+    *handle = SIZE_MAX;
+    return AC_FAILURE;
 }
 
 Node
