@@ -22,4 +22,4 @@ makefile~
 *~
 
 build/
-tests/
+build*/

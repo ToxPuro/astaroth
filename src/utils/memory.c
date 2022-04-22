@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2019, Johannes Pekkilae, Miikka Vaeisalae.
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -16,66 +16,30 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "memory.h"
+#include "astaroth_utils.h"
 
-#include <math.h>
-#include <string.h>
-
-#include "src/core/errchk.h"
+#include "errchk.h"
 
 AcResult
-acMeshCreate(const AcMeshInfo info, AcMesh* mesh)
-{
-    mesh->info = info;
-
-    const size_t bytes = acVertexBufferSizeBytes(mesh->info);
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        mesh->vertex_buffer[w] = malloc(bytes);
-        ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
-    }
-
-    return AC_SUCCESS;
-}
-
-AcResult
-acMeshDestroy(AcMesh* mesh)
-{
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
-        free(mesh->vertex_buffer[w]);
-
-    return AC_SUCCESS;
-}
-
-AcResult
-acMeshSet(const AcReal value, AcMesh* mesh)
+acHostVertexBufferSet(const VertexBufferHandle handle, const AcReal value, AcMesh* mesh)
 {
     const int n = acVertexBufferSize(mesh->info);
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
-        for (int i = 0; i < n; ++i)
-            mesh->vertex_buffer[w][i] = value;
+    for (int i = 0; i < n; ++i)
+        mesh->vertex_buffer[handle][i] = value;
 
     return AC_SUCCESS;
 }
-
-static AcReal
-randf(void)
-{
-    return (AcReal)rand() / (AcReal)RAND_MAX;
-}
-
 AcResult
-acMeshRandomize(AcMesh* mesh)
+acHostMeshSet(const AcReal value, AcMesh* mesh)
 {
-    const int n = acVertexBufferSize(mesh->info);
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
-        for (int i = 0; i < n; ++i)
-            mesh->vertex_buffer[w][i] = randf();
+        acHostVertexBufferSet(w, value, mesh);
 
     return AC_SUCCESS;
 }
 
 AcResult
-acMeshApplyPeriodicBounds(AcMesh* mesh)
+acHostMeshApplyPeriodicBounds(AcMesh* mesh)
 {
     const AcMeshInfo info = mesh->info;
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
@@ -96,6 +60,7 @@ acMeshApplyPeriodicBounds(AcMesh* mesh)
         const int ny_max = info.int_params[AC_ny_max];
         const int nz_max = info.int_params[AC_nz_max];
 
+        // #pragma omp parallel for
         for (int k_dst = start.z; k_dst < end.z; ++k_dst) {
             for (int j_dst = start.y; j_dst < end.y; ++j_dst) {
                 for (int i_dst = start.x; i_dst < end.x; ++i_dst) {
@@ -140,7 +105,7 @@ acMeshApplyPeriodicBounds(AcMesh* mesh)
 }
 
 AcResult
-acMeshClear(AcMesh* mesh)
+acHostMeshClear(AcMesh* mesh)
 {
-    return acMeshSet(0, mesh);
+    return acHostMeshSet(0, mesh);
 }

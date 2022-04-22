@@ -1,118 +1,152 @@
-###################################
-##  CMakeLists.txt for Astaroth  ##
-###################################
-#
-#   Usage: mkdir build && cd build && cmake <options> .. && make
-#
-#   If you want to see the exact flags used during compilation, compile with
-#   "make VERBOSE=1"
-#
-#   Print all options: cmake -LAH ..
-#
-
 ## CMake settings
-cmake_minimum_required (VERSION 3.5.1) # Need >= 3.8 for first-class CUDA support
-find_program(CMAKE_C_COMPILER NAMES $ENV{CC} gcc PATHS ENV PATH NO_DEFAULT_PATH)
-find_program(CMAKE_CXX_COMPILER NAMES $ENV{CXX} g++ PATHS ENV PATH NO_DEFAULT_PATH)
+# V3.9 required for first-class CUDA support
+# V3.17 required for the FindCUDAToolkit package
+# V3.18 required for CMAKE_CUDA_ARCHITECTURES
+cmake_minimum_required(VERSION 3.19)
+
+if (USE_HIP)
+    find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
+    set(CMAKE_C_COMPILER ${CMAKE_HIP_COMPILER})
+    set(CMAKE_CXX_COMPILER ${CMAKE_HIP_COMPILER})
+endif()
 
 ## Project settings
 project(astaroth C CXX)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-## Options
-option(BUILD_DEBUG              "Builds the program with extensive error checking"          OFF)
-option(BUILD_STANDALONE         "Builds the standalone Astaroth"                            ON)
-option(BUILD_UTILS              "Builds the utility library"                                ON)
-option(BUILD_RT_VISUALIZATION   "Builds the module for real-time visualization using SDL2"  OFF)
-option(BUILD_C_API_TEST         "Builds a C program to test whether the API is conformant"  OFF)
-option(BUILD_MPI_TEST           "Builds a C program to test whether MPI works"              OFF)
-option(BUILD_SHARED             "Creates shared library"                                    OFF)
-option(DOUBLE_PRECISION         "Generates double precision code"                           OFF)
-option(MULTIGPU_ENABLED         "If enabled, uses all the available GPUs"                   ON)
-option(VERBOSE_PRINTING         "If enabled, prints configuration"                          ON)
-option(AUTO_OPTIMIZATION        "If enabled, auto-optimization is run"                      ON)
-option(PACKED_DATA_TRANSFERS    "Enables kernel for packed data transfers"                  OFF)
-option(MPI_ENABLED              "Enables additional functions for MPI communciation"        OFF)
+## Project-wide compilation flags
+# -Werror TODO readd
+set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
-## Compile the Astaroth Code Compiler
-add_subdirectory(acc)
-
-# NOTE: Manually defined DSL_MODULE_DIR must be set relative to the project root, not the actual
-# build directory!
-# NO! ../acc/mhd_solver
-# YES! acc/mhd_solver
-set(DSL_MODULE $ENV{DSL_MODULE})
-if (DEFINED DSL_MODULE)
-    set(DSL_MODULE_DIR ${CMAKE_SOURCE_DIR}/acc/${DSL_MODULE})
-else ()
-#if (NOT DEFINED DSL_MODULE_DIR)
-    set(DSL_MODULE_DIR ${CMAKE_SOURCE_DIR}/acc/mhd_solver)
-endif ()
-
-get_filename_component(DSL_MODULE_DIR ${DSL_MODULE_DIR} REALPATH)
-message(STATUS "DSL module dir: ${DSL_MODULE_DIR}")
-set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
-                "acc/src/*"
-                "${PROJECT_BINARY_DIR}/acc")
-set(DSL_HEADERS "${PROJECT_BINARY_DIR}/user_kernels.h"
-                "${PROJECT_BINARY_DIR}/user_defines.h")
-add_custom_command (
-    COMMENT "Building ACC objects ${DSL_MODULE_DIR}"
-    COMMAND ${CMAKE_SOURCE_DIR}/scripts/compile_acc_module.sh ${DSL_MODULE_DIR}
-    DEPENDS ${DSL_SOURCES}
-    OUTPUT ${DSL_HEADERS}
-)
-add_custom_target(dsl_headers ALL DEPENDS ${DSL_HEADERS})
-add_dependencies(dsl_headers acc)
-
-## Build types
-# Available types (case-sensitive):
-# RELEASE         (best performance)
-# DEBUG           (w/ debug information, non-concurrent kernels)
-if (BUILD_DEBUG)
-    set(CMAKE_BUILD_TYPE DEBUG)
-else ()
-    set(CMAKE_BUILD_TYPE RELEASE)
+## Build type
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release") # Default
 endif()
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
-if (BUILD_RT_VISUALIZATION)
-## SDL2
-execute_process (
-    COMMAND ./setup_dependencies.sh
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/3rdparty
-)
-add_subdirectory(3rdparty/SDL2)
-endif ()
+## Options
+option(DOUBLE_PRECISION   "Generates double precision code."                        OFF)
+option(BUILD_SAMPLES      "Builds projects in samples subdirectory."                ON)
+option(BUILD_MHD_SAMPLES  "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
+option(MPI_ENABLED        "Enables additional functions for MPI communciation."     OFF)
+option(USE_CUDA_AWARE_MPI "Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory" ON)
+option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
+option(VERBOSE            "Enables various status and warning messages"             OFF)
+option(BUILD_UTILS        "Builds the utility library"                              ON)
+option(BUILD_SHARED       "Creates shared library"                                  OFF)
+option(PACKED_DATA_TRANSFERS    "Enables kernel for packed data transfers"          OFF)
 
-## Defines
+## CUDA/HIP
+if (USE_HIP)
+    add_definitions(-DAC_USE_HIP=1)
+
+    set(GPU_TARGETS "gfx908" CACHE STRING "GPU target")
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm) # Default path
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0) # Triton
+
+    find_package(hip)
+else ()
+    enable_language(CUDA)
+
+    # Commented out CUDA host compiler flags: seem to be ignored anyways
+    #string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
+    #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -forward-unknown-to-host-compiler -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow --compiler-options=${CUDA_COMMON_FLAGS}")
+
+    # To inspect ptx, run
+    # nvcc -c ../src/core/kernels/kernels.cu -I acc-runtime/api/ -I ../include/ -I ../acc-runtime/api/ -ptx -Xptxas=-Werror,--warn-on-double-precision-use
+    # Additional compilation info: --resource-usage
+
+    # Not supported with older CUDA
+    # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --Werror all-warnings")
+    if (NOT DOUBLE_PRECISION)
+      set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas=-Werror,--warn-on-double-precision-use")
+    endif()
+
+    # Set device code architecture
+    if (NOT CUDA_ARCHITECTURES)
+        set(CMAKE_CUDA_ARCHITECTURES 60 70) # Default
+    else ()
+        set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
+    endif()
+endif()
+
+## Global flags
 if (DOUBLE_PRECISION)
     add_definitions(-DAC_DOUBLE_PRECISION=1)
-else ()
-    add_definitions(-DAC_DOUBLE_PRECISION=0)
 endif ()
+if (VERBOSE)
+    add_definitions(-DAC_VERBOSE=1)
+endif ()
+if (MPI_ENABLED)
+    find_package(MPI REQUIRED COMPONENTS C)
+    include_directories(${MPI_C_INCLUDE_DIRS})
+    add_definitions(-DAC_MPI_ENABLED=1)
+endif ()
+if (USE_CUDA_AWARE_MPI)
+    add_definitions(-DUSE_CUDA_AWARE_MPI=1)
+endif()
+if (MULTIGPU_ENABLED)
+  add_definitions(-DAC_MULTIGPU_ENABLED=1)
+endif()
 
-## Include directories
-include_directories(.)
-include_directories(include)
-include_directories(${CMAKE_BINARY_DIR})
+add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
+
+## Includes
+include_directories(include)                                   # Library headers
+include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # CUDA headers
 
 ## Subdirectories
-add_subdirectory(src/core) # The core library
-
-if (BUILD_STANDALONE)
-    add_subdirectory(src/standalone)
-endif ()
-
-if (BUILD_C_API_TEST)
-    add_subdirectory(src/ctest)
-endif ()
-
-if (BUILD_MPI_TEST)
-    add_subdirectory(src/mpitest)
-endif ()
+add_subdirectory(acc-runtime)
+add_subdirectory(src/core/kernels)
+add_subdirectory(src/core)
 
 if (BUILD_UTILS)
     add_subdirectory(src/utils)
-endif ()
+endif()
+
+if (BUILD_SAMPLES)
+  add_subdirectory(samples/blur)
+  add_subdirectory(samples/ctest)
+  add_subdirectory(samples/cpptest)
+  #add_subdirectory(samples/benchmark)
+  add_subdirectory(samples/benchmark-device)
+  add_subdirectory(samples/mpi-io)
+
+  if (BUILD_MHD_SAMPLES)
+    # add_subdirectory(samples/standalone)
+    add_subdirectory(samples/standalone_mpi)
+    add_subdirectory(samples/mpitest)
+  endif()
+
+  # add_subdirectory(samples/standalone)
+  #add_subdirectory(samples/standalone_mpi)
+  #add_subdirectory(samples/ctest)
+  #add_subdirectory(samples/cpptest)
+  #add_subdirectory(samples/mpitest)
+  #add_subdirectory(samples/taskgraph_example)
+  #add_subdirectory(samples/taskgraph_print)
+  #add_subdirectory(samples/taskgraph_trace)
+  #add_subdirectory(samples/taskgraph_test)
+  #add_subdirectory(samples/mpi_fullgriderror_test)
+  #add_subdirectory(samples/benchmark)
+  #add_subdirectory(samples/benchmark-device)
+  #add_subdirectory(samples/boundcond_test)
+
+  #add_subdirectory(samples/mpi-io)
+  #add_subdirectory(samples/genbenchmarkscripts)
+  #add_subdirectory(samples/mpi_reduce_bench)
+  #add_subdirectory(samples/fortrantest)
+
+  #if (MPI_ENABLED)
+  #  add_subdirectory(samples/bwtest)
+  #endif()
+endif()
+
+# Additional program modules
+if (PROGRAM_MODULE_DIR)
+    add_subdirectory(${PROGRAM_MODULE_DIR})
+endif()

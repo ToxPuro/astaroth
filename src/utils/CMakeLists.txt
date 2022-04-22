@@ -1,11 +1,10 @@
-## C++ standard
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
+## Astaroth Utils
+if (BUILD_SHARED)
+  add_library(astaroth_utils SHARED config_loader.c memory.c verification.c modelsolver.c modelreduce.c)
+else()
+  add_library(astaroth_utils STATIC config_loader.c memory.c verification.c modelsolver.c modelreduce.c)
+endif()
 
-## Compilation flags
-add_compile_options(-Wall -Wextra -Werror -Wdouble-promotion -Wfloat-conversion -Wshadow)
+target_link_libraries(astaroth_utils astaroth_core)
 
-## Compile
-add_library(astaroth_utils STATIC config_loader.c memory.c verification.c)
-target_link_libraries(astaroth_utils PRIVATE astaroth_core m)
-target_compile_definitions(astaroth_utils PUBLIC -DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
+target_compile_options(astaroth_utils PRIVATE "-mavx")

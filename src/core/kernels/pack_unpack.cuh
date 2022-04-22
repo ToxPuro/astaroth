@@ -1,5 +1,14 @@
 //  packs/unpacks buffer for inner/outer yz halos from/into global memory
+#include "math_utils.h"
+/*
+#define DEVICE_VTXBUF_IDX(i, j, k) ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mxy))
 
+static __device__ __forceinline__ int 
+IDX(const int3 idx)        
+{
+    return DEVICE_VTXBUF_IDX(idx.x, idx.y, idx.z); 
+}             
+*/
 template <int direction>  static __global__ void packUnpackPlate(AcReal* __restrict__ buffer, VertexBufferArray vba, int3 start, int3 end)
 {
     const int y_block_size = end.x-start.x,               // end is exclusive!

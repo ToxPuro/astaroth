@@ -1,51 +1,23 @@
-########################################
-##  CMakeLists.txt for Astaroth Core  ##
-########################################
+## Astaroth Core
+if (BUILD_SHARED)
+  add_library(astaroth_core SHARED device.cc grid.cc task.cc node.cc astaroth.cc astaroth_fortran.cc debug.cc)
+else()
+  add_library(astaroth_core STATIC device.cc grid.cc task.cc node.cc astaroth.cc astaroth_fortran.cc debug.cc)
+endif()
 
-## Find packages
-find_package(CUDA REQUIRED)
-# find_package(OpenMP REQUIRED)
+if (USE_HIP)
+    find_package(hip)
+    target_link_libraries(astaroth_core kernels hip::host)
+else()
+    find_package(CUDAToolkit)
+    target_link_libraries(astaroth_core kernels CUDA::cudart CUDA::cuda_driver)
+endif()
 
-## Architecture and optimization flags
-set(CUDA_ARCH_FLAGS -gencode arch=compute_37,code=sm_37
-                    -gencode arch=compute_50,code=sm_50
-                    -gencode arch=compute_60,code=sm_60
-                    -gencode arch=compute_61,code=sm_61
-                    -gencode arch=compute_70,code=sm_70
-                    -lineinfo
-                    -ftz=true # Flush denormalized floats to zero
-                    -std=c++11
-                    )# --compiler-options ${OpenMP_CXX_FLAGS})
-                    #--maxrregcount=255
-                    # -Xptxas -dlcm=ca opt-in to cache all global loads to L1/texture cache
-                    # =cg to opt out
-
-set(CUDA_WARNING_FLAGS --compiler-options -Wall,-Wextra,-Werror,-Wdouble-promotion,-Wfloat-conversion) # -Wshadow
-#set(CUDA_WARNING_FLAGS --compiler-options -Wall,-Wextra,-Wdouble-promotion,-Wfloat-conversion) # -Wshadow
-
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${CUDA_ARCH_FLAGS} ${CUDA_WARNING_FLAGS})
-set(CUDA_NVCC_FLAGS_RELEASE)
-set(CUDA_NVCC_FLAGS_DEBUG --device-debug --generate-line-info --ptxas-options=-v)
-
-if (MPI_ENABLED)
-    find_package(MPI REQUIRED)
-
-    add_definitions(-DAC_MPI_ENABLED=1)
-    cuda_include_directories(${MPI_C_INCLUDE_PATH})
-
-    add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf") # Hack, cmake doesnt propagate properly from utils. Probably because utils is compiled after core
-endif ()
-
-if (VERBOSE_PRINTING)
-    add_definitions(-DVERBOSE_PRINTING=1)
+## Definitions
+if (MULTIGPU_ENABLED)
+    add_definitions(-DAC_MULTIGPU_ENABLED=1)
 else ()
-    add_definitions(-DVERBOSE_PRINTING=0)
-endif ()
-
-if (AUTO_OPTIMIZATION)
-    add_definitions(-DAUTO_OPTIMIZATION=1)
-else ()
-    add_definitions(-DAUTO_OPTIMIZATION=0)
+    add_definitions(-DAC_MULTIGPU_ENABLED=0)
 endif ()
 
 if (PACKED_DATA_TRANSFERS)
@@ -54,22 +26,9 @@ else ()
     add_definitions(-DPACKED_DATA_TRANSFERS=0)
 endif ()
 
-## Create and link the library
-if (BUILD_SHARED)
-    cuda_add_library(astaroth_core SHARED astaroth.cu device.cu node.cu)
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON) # fpic for shared libraries
-else ()
-    cuda_add_library(astaroth_core STATIC astaroth.cu device.cu node.cu)
-endif ()
-target_include_directories(astaroth_core PRIVATE .)
-target_link_libraries(astaroth_core m)
-add_dependencies(astaroth_core dsl_headers)
-
-## Definitions
-if (MULTIGPU_ENABLED)
-    add_definitions(-DAC_MULTIGPU_ENABLED=1)
-endif ()
-
+## Options
 if (MPI_ENABLED)
-    target_link_libraries(astaroth_core ${MPI_C_LIBRARIES} astaroth_utils)
-endif ()
+    target_link_libraries(astaroth_core MPI::MPI_C)
+endif()
+
+
