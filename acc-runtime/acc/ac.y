@@ -102,6 +102,29 @@ process_hostdefines(const char* file_in, const char* file_out)
   fclose(out);
 }
 
+void
+format_source(const char* file_in, const char* file_out)
+{
+   FILE* in = fopen(file_in, "r");
+  assert(in);
+
+  FILE* out = fopen(file_out, "w");
+  assert(out);
+
+  while (!feof(in)) {
+    const char c = fgetc(in);
+    if (c == EOF)
+      break;
+
+    fprintf(out, "%c", c);
+    if (c == ';')
+      fprintf(out, "\n");
+  }
+
+  fclose(in);
+  fclose(out);
+}
+
 int
 main(int argc, char** argv)
 {
@@ -158,12 +181,16 @@ main(int argc, char** argv)
             return EXIT_FAILURE;
 
         // generate(root, stdout);
-        FILE* fp = fopen("user_kernels.h", "w");
+        FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
         generate(root, fp);
         fclose(fp);
 
         fclose(yyin);
+
+        // Stage 4: Format
+        format_source("user_kernels.h.raw", "user_kernels.h");
+
         return EXIT_SUCCESS;
     } else {
         puts("Usage: ./acc [source file]");
@@ -490,8 +517,6 @@ function_definition: declaration function_body {
                             assert(compound_statement);
 
                             astnode_set_prefix("{\n"
-                                "#define previous(field) (vba.out[field][idx])\n"
-                                "#define write(field, value) {vba.out[field][idx] = value;}\n"
                                 "    const int3 vertexIdx = (int3){\n"
                                 "        threadIdx.x + blockIdx.x * blockDim.x + start.x,\n"
                                 "        threadIdx.y + blockIdx.y * blockDim.y + start.y,\n"
@@ -506,6 +531,8 @@ function_definition: declaration function_body {
                                 "    const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];"
                                 "    (void)globalGridN; // Silence unused warning\n"
                                 "    const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);\n"
+                                "    const auto previous=[&](const Field field) { return vba.out[field][idx]; };"
+                                "    const auto write=[&](const Field field, const AcReal value) { vba.out[field][idx] = value; };"
                                 "    #define FIELD_IN  (vba.in)\n"
                                 "    #define FIELD_OUT (vba.out)\n"
                                 "\n"
