@@ -18,7 +18,13 @@ As ACC is in active development, compiler bugs and cryptic error messages are
 expected. In case of issues, please check the following files in
 `acc-runtime/api` in the build directory.
 
+Intermediate files:
+
 1. `user_kernels.ac.pp_stage*`. The DSL file after a specific preprocessing stage.
+1. `user_kernels.h.raw`. The raw generated CUDA kernels without formatting applied.
+
+Final files:
+
 1. `user_defines.h`. The project-wide defines generated with the DSL.
 1. `user_declarations.h`. Forward declarations of user kernels.
 1. `user_kernels.h`. The generated CUDA kernels.
