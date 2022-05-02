@@ -22,6 +22,9 @@ pipelines:
         script: # Modify the commands below to build your repository.
           - export DEBIAN_FRONTEND=noninteractive
           - ln -fs /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
+          - apt-key del 7fa2af80 # https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
+          - wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb
+          - dpkg -i cuda-keyring_1.0-1_all.deb
           - apt-get update
           - apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
           - wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
