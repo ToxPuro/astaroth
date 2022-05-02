@@ -3,7 +3,7 @@
 # Only use spaces to indent your .yml configuration.
 # -----
 # You can specify a custom docker image from Docker Hub as your build environment.
-image: nvidia/cuda:11.0-devel-ubuntu20.04
+image: nvidia/cuda:11.6.0-devel-ubuntu20.04
 
 # JP notes:
 # 1) We need a sufficiently recent GPU to run the code (needs to support CUDA 10 + NVIDIA drivers 418)
@@ -22,8 +22,6 @@ pipelines:
         script: # Modify the commands below to build your repository.
           - export DEBIAN_FRONTEND=noninteractive
           - ln -fs /usr/share/zoneinfo/Europe/Helsinki /etc/localtime
-          - curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | \ # https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
-          - apt-key add - # https://nvidia.github.io/nvidia-docker/
           - apt-get update
           - apt-get install -y apt-transport-https ca-certificates gnupg software-properties-common wget
           - wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
