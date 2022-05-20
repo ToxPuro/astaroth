@@ -95,6 +95,7 @@ main(void)
 
     // Scalar reductions
     acGridLoadMesh(STREAM_DEFAULT, model);
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
 
     if (pid == 0) {
         printf("---Test: Scalar reductions---\n");
