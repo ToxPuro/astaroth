@@ -631,6 +631,7 @@ generate(const ASTNode* root, FILE* stream)
   fprintf(stencilgen,
           "#include <stdio.h>\n"
           "#include <stdlib.h>\n"
+          "#include <string.h>\n"
           "#define STENCIL_ORDER (%lu)\n"
           "#define STENCIL_DEPTH (%lu)\n"
           "#define STENCIL_HEIGHT (%lu)\n"
