@@ -40,7 +40,7 @@ IDX(const int3 idx)
 
 #include "acc_runtime.h"
 
-static bool stencils_accessed[NUM_FIELDS][NUM_STENCILS] = {{0}};
+static int stencils_accessed[NUM_FIELDS][NUM_STENCILS] = {{0}};
 static AcMeshInfo d_mesh_info;
 #include "build/api/user_kernels.h"
 
@@ -79,7 +79,8 @@ main(void)
           "static int stencils_accessed[NUM_KERNELS][NUM_FIELDS][NUM_STENCILS] "
           "= {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
-    memset(stencils_accessed, 0, sizeof(bool) * NUM_FIELDS * NUM_STENCILS);
+    memset(stencils_accessed, 0,
+           sizeof(stencils_accessed[0][0]) * NUM_FIELDS * NUM_STENCILS);
     VertexBufferArray vba = vbaCreate(1);
     kernel_lookup[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
     vbaDestroy(&vba);
