@@ -741,6 +741,21 @@ const char* stencilgen_main =
   fclose(stencilgen);
 
   // Compile
+  FILE* tmp = fopen("stencil_accesses.h", "r");
+  if (!tmp) {
+    tmp = fopen("stencil_accesses.h", "w+");
+    assert(tmp);
+    fprintf(tmp,
+            "static int "
+            "stencils_accessed[NUM_KERNELS][NUM_FIELDS][NUM_STENCILS] = {");
+    for (size_t i = 0; i < num_kernels; ++i)
+      for (size_t j = 0; j < num_fields; ++j)
+        for (size_t k = 0; k < num_stencils; ++k)
+          fprintf(tmp, "[%lu][%lu][%lu] = 1,", i, j, k);
+    fprintf(tmp, "};");
+  }
+  fclose(tmp);
+
   const int retval = system("gcc -std=c11 -Wall -Wextra -Wdouble-promotion "
                             "-Wfloat-conversion -Wshadow " STENCILGEN_SRC " "
                             "-o " STENCILGEN_EXEC);
