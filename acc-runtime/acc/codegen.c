@@ -25,6 +25,9 @@
 #include "ast.h"
 #include "tab.h"
 
+#define STENCILGEN_SRC "stencilgen.c"
+#define STENCILGEN_EXEC "stencilgen.out"
+
 static const size_t stencil_order  = 6;
 static const size_t stencil_depth  = stencil_order + 1;
 static const size_t stencil_width  = stencil_order + 1;
@@ -350,9 +353,10 @@ gen_dconsts(const ASTNode* root, FILE* stream)
     */
 }
 
+static int curr_kernel = 0;
+
 static void
-gen_kernels(const ASTNode* node, const char* sdefinitions,
-            const char* dfunctions, const char* sfunctions)
+gen_kernels(const ASTNode* node, const char* dfunctions, const char* sfunctions)
 {
   assert(node);
 
@@ -367,7 +371,26 @@ gen_kernels(const ASTNode* node, const char* sdefinitions,
     ASTNode* compound_statement = node->rhs->rhs;
 
     strcat(prefix, compound_statement->prefix);
+
+    // Generate stencil FMADs
+    char cmdoptions[4096] = "\0";
+    sprintf(cmdoptions, "./" STENCILGEN_EXEC " -kernel %d", curr_kernel);
+    ++curr_kernel; // HACK TODO better
+    FILE* proc = popen(cmdoptions, "r");
+    assert(proc);
+
+    char* sdefinitions = malloc(1024 * 1024);
+    assert(sdefinitions);
+    sdefinitions[0] = '\0';
+    char buf[4096]  = {0};
+    while (fgets(buf, sizeof(buf), proc))
+      strcat(sdefinitions, buf);
+
+    pclose(proc);
+
     strcat(prefix, sdefinitions);
+    free(sdefinitions);
+
     strcat(prefix, sfunctions);
     strcat(prefix, dfunctions);
 
@@ -376,10 +399,10 @@ gen_kernels(const ASTNode* node, const char* sdefinitions,
   }
 
   if (node->lhs)
-    gen_kernels(node->lhs, sdefinitions, dfunctions, sfunctions);
+    gen_kernels(node->lhs, dfunctions, sfunctions);
 
   if (node->rhs)
-    gen_kernels(node->rhs, sdefinitions, dfunctions, sfunctions);
+    gen_kernels(node->rhs, dfunctions, sfunctions);
 }
 
 // Generate User Defines
@@ -582,24 +605,27 @@ generate(const ASTNode* root, FILE* stream)
     if (symbol_table[i].type & NODE_FIELD_ID)
       ++num_fields;
 
-      // Device constants
-      // gen_dconsts(root, stream);
+  size_t num_kernels = 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_KFUNCTION_ID)
+      ++num_kernels;
 
-      // Stencils
-      /*
-      // Defined now in user_defines.h
-      fprintf(stream, "typedef enum{");
-      for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-        if (symbol_table[i].type & NODE_STENCIL_ID)
-          fprintf(stream, "stencil_%s,", symbol_table[i].identifier);
-      fprintf(stream, "} Stencil;");
-      */
-      // fprintf(stream, "NUM_STENCILS} Stencil;"); // defined now in
-      // user_defines.h
+  // Device constants
+  // gen_dconsts(root, stream);
 
-      // Stencil generator
-#define STENCILGEN_SRC "stencilgen.c"
-#define STENCILGEN_EXEC "stencilgen.out"
+  // Stencils
+  /*
+  // Defined now in user_defines.h
+  fprintf(stream, "typedef enum{");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_STENCIL_ID)
+      fprintf(stream, "stencil_%s,", symbol_table[i].identifier);
+  fprintf(stream, "} Stencil;");
+  */
+  // fprintf(stream, "NUM_STENCILS} Stencil;"); // defined now in
+  // user_defines.h
+
+  // Stencil generator
   FILE* stencilgen = fopen(STENCILGEN_SRC, "w");
   assert(stencilgen);
   fprintf(stencilgen,
@@ -610,9 +636,11 @@ generate(const ASTNode* root, FILE* stream)
           "#define STENCIL_HEIGHT (%lu)\n"
           "#define STENCIL_WIDTH (%lu)\n"
           "#define NUM_STENCILS (%lu)\n"
-          "#define NUM_FIELDS (%lu)\n",
+          "#define NUM_FIELDS (%lu)\n"
+          "#define NUM_KERNELS (%lu)\n"
+          "#include \"stencil_accesses.h\"\n",
           stencil_order, stencil_depth, stencil_height, stencil_width,
-          num_stencils, num_fields);
+          num_stencils, num_fields, num_kernels);
 
   // Stencil ops
   symboltable_reset();
@@ -651,8 +679,7 @@ generate(const ASTNode* root, FILE* stream)
   // clang-format off
 const char* stencilgen_main =
 "int main(int argc, char** argv) {\n"
-"(void)argv;/*Unused*/"
-"if(argc>1){" // Generate stencil definitions
+"if(argc == 2 && !strcmp(argv[1], \"-definitions\")){" // Generate stencil definitions
   "printf(\"static __device__ /*const*/ AcReal /*__restrict__*/ stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={\");"
   "for(int stencil=0;stencil<NUM_STENCILS;++stencil){"
     "printf(\"{\");"
@@ -670,7 +697,8 @@ const char* stencilgen_main =
     "printf(\"},\");"
   "}"
   "printf(\"};\\n\");"
-"} else {" // Generate stencil reductions
+"} else if (argc == 3) {" // Generate stencil reductions
+  "const int curr_kernel = atoi(argv[2]);"
   "int stencil_initialized[NUM_FIELDS][NUM_STENCILS]={0};"
   "for(int field=0;field<NUM_FIELDS;++field){"
     "printf(\"{const AcReal* __restrict__ in=vba.in[%d];\",field);"
@@ -678,6 +706,8 @@ const char* stencilgen_main =
       "for(int height=0;height<STENCIL_HEIGHT;++height){"
         "for(int width=0;width<STENCIL_WIDTH;++width){"
           "for(int stencil=0;stencil<NUM_STENCILS;++stencil){"
+            "if (!stencils_accessed[curr_kernel][field][stencil])"
+              "continue;"
             "if(stencils[stencil][depth][height][width]){"
               "if (!stencil_initialized[field][stencil]) {"
                 "printf(\"processed_stencils[%d][%d]=%s(stencils[%d][%d][%d][%d]*in[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d),vertexIdx.z+(%d))]);\","
@@ -694,6 +724,9 @@ const char* stencilgen_main =
     "}"
   "printf(\"}\\n\");"
 "}"
+"}else {"
+"fprintf(stderr, \"Fatal error: invalid arguments passed to stencilgen.c\\n\");"
+"return EXIT_FAILURE;"
 "}"
 "return EXIT_SUCCESS;}";
   // clang-format on
@@ -711,7 +744,7 @@ const char* stencilgen_main =
   }
 
   // Generate stencil definitions
-  FILE* proc = popen("./" STENCILGEN_EXEC " -stencils", "r");
+  FILE* proc = popen("./" STENCILGEN_EXEC " -definitions", "r");
   assert(proc);
 
   char buf[4096] = {0};
@@ -720,6 +753,7 @@ const char* stencilgen_main =
 
   pclose(proc);
 
+  /*
   // Generate stencil FMADs
   proc = popen("./" STENCILGEN_EXEC, "r");
   assert(proc);
@@ -729,6 +763,7 @@ const char* stencilgen_main =
     strcat(sdefinitions, buf);
 
   pclose(proc);
+  */
 
   // Device functions
   symboltable_reset();
@@ -760,7 +795,7 @@ const char* stencilgen_main =
 
   // Kernels
   symboltable_reset();
-  gen_kernels(root, sdefinitions, dfunctions, sfunctions);
+  gen_kernels(root, dfunctions, sfunctions);
   fclose(dfunc_fp); // Frees dfunctions also
 
   symboltable_reset();

@@ -2,8 +2,8 @@
 #include <cuda_runtime_api.h>
 #include <string.h>
 
-#define __device__
-#define __global__
+//#define __device__
+//#define __global__
 
 #define threadIdx ((int3){0, 0, 0})
 #define blockIdx ((int3){0, 0, 0})
@@ -11,6 +11,7 @@
 #define make_int3(x, y, z) ((int3){x, y, z})
 #define Field3(x, y, z) make_int3((x), (y), (z))
 #define make_float3(x, y, z) ((float3){x, y, z})
+#define make_double3(x, y, z) ((double3){x, y, z})
 
 // Just nasty: Must evaluate all code branches given arbitrary input
 // if we want automated stencil generation to work in every case
@@ -71,7 +72,7 @@ vbaDestroy(VertexBufferArray* vba)
 int
 main(void)
 {
-  FILE* fp = fopen("stencil_accesses.h", "w");
+  FILE* fp = fopen("stencil_accesses.h", "w+");
   assert(fp);
 
   fprintf(fp,
