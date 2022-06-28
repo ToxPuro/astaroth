@@ -16,7 +16,8 @@ endif()
 set(DSL_SOURCES "${DSL_MODULE_DIR}/*")
 set(DSL_HEADERS "user_kernels.h"
                 "user_defines.h"
-                "user_declarations.h")
+                "user_declarations.h"
+                "stencil_accesses.h")
 add_custom_command (
     COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
     COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac"

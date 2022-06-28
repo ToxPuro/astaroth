@@ -42,7 +42,7 @@ IDX(const int3 idx)
 
 static int stencils_accessed[NUM_FIELDS][NUM_STENCILS] = {{0}};
 static AcMeshInfo d_mesh_info;
-#include "build/api/user_kernels.h"
+#include "user_kernels.h"
 
 VertexBufferArray
 vbaCreate(const size_t count)
@@ -70,9 +70,14 @@ vbaDestroy(VertexBufferArray* vba)
 }
 
 int
-main(void)
+main(int argc, char* argv[])
 {
-  FILE* fp = fopen("stencil_accesses.h", "w+");
+  if (argc != 2) {
+    fprintf(stderr, "Usage: ./main <output_file>\n");
+    return EXIT_FAILURE;
+  }
+  const char* output = argv[1];
+  FILE* fp           = fopen(output, "w+");
   assert(fp);
 
   fprintf(fp,
@@ -93,4 +98,5 @@ main(void)
   fprintf(fp, "};");
 
   fclose(fp);
+  return EXIT_SUCCESS;
 }
