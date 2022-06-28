@@ -1,8 +1,9 @@
 #!/bin/bash
+# Run as `. ./build.sh` to run in the current environment
 mkdir build
 cd build
 rm api/user_kernels.h
-/m/home/home6/61/pekkilj1/unix/repositories/cmake/build/bin/cmake ../../
+cmake ../../
 echo "static int stencils_accessed[NUM_KERNELS][NUM_FIELDS][NUM_STENCILS] = {{{0}}};" > api/stencil_accesses.h
 make -j
 #sed -i 's/(processed_stencils\[(field)\]\[stencil_\([a-z_0-9]*\)\])/(stencils_accessed\[(field)\]\[stencil_\1\] = true\)/g' api/user_kernels.h
