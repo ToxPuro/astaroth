@@ -13,4 +13,6 @@ sed -i 's/#define \([a-z_0-9]*\)(field) (processed_stencils\[(field)\]\[stencil_
 cd ..
 
 gcc -Wfatal-errors  main.cpp -I build/api -I ../api -lm && ./a.out
+mkdir -p ../../build/acc-runtime/api
 cp stencil_accesses.h ../../build/acc-runtime/api
+cd ../../build
