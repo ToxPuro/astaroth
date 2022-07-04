@@ -39,6 +39,10 @@
 #define MAX_THREADS_PER_BLOCK (MAX_REGISTERS_PER_BLOCK / REGISTERS_PER_THREAD)
 #endif
 */
+#define USE_SMEM (0) // Remember to modify USE_SMEM also in stencilgen.cc
+#if USE_SMEM
+static const size_t pad = 0;
+#endif
 
 __device__ __constant__ AcMeshInfo d_mesh_info;
 
@@ -164,7 +168,12 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
   const dim3 bpg((unsigned int)ceil(n.x / double(tpb.x)), //
                  (unsigned int)ceil(n.y / double(tpb.y)), //
                  (unsigned int)ceil(n.z / double(tpb.z)));
+#if USE_SMEM
+  const size_t smem = (tpb.x + STENCIL_WIDTH - 1 + pad) *
+                      (tpb.y + STENCIL_HEIGHT - 1) * sizeof(AcReal);
+#else
   const size_t smem = 0;
+#endif
 
   kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
   ERRCHK_CUDA_KERNEL();
@@ -340,11 +349,19 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 
         // if (x < y || x < z)
         //   continue;
+        if (best_time < 100)
+          break;
 
         const dim3 tpb(x, y, z);
         const dim3 bpg((unsigned int)ceil(dims.x / double(tpb.x)), //
                        (unsigned int)ceil(dims.y / double(tpb.y)), //
                        (unsigned int)ceil(dims.z / double(tpb.z)));
+#if USE_SMEM
+        const size_t smem = (tpb.x + STENCIL_WIDTH - 1 + pad) *
+                            (tpb.y + STENCIL_HEIGHT - 1) * sizeof(AcReal);
+#else
+        const size_t smem = 0;
+#endif
 
         cudaEvent_t tstart, tstop;
         cudaEventCreate(&tstart);
@@ -353,7 +370,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
         for (int i = 0; i < num_iters; ++i)
-          kernel<<<bpg, tpb>>>(start, end, vba);
+          kernel<<<bpg, tpb, smem>>>(start, end, vba);
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
 
