@@ -175,6 +175,7 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
   const size_t smem = 0;
 #endif
 
+  // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
   kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
   ERRCHK_CUDA_KERNEL();
 
