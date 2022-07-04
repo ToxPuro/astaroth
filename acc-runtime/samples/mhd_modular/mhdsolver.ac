@@ -189,6 +189,7 @@ Stencil value {
     [0][0][0] = 1
 }
 
+/*
 // A hax to access close by stencil values
 Stencil value_xm3 {
     [0][0][-3] = 1
@@ -246,6 +247,7 @@ Stencil value_zp2 {
 Stencil value_zp3 {
     [3][0][0] = 1
 }
+*/
 
 //MV: Based on the standard rules of multiplications, why -AC_inv_dsx etc could
 //MV: not be outside of the stencil operation? 
