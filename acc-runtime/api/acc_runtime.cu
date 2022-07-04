@@ -349,8 +349,6 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 
         // if (x < y || x < z)
         //   continue;
-        if (best_time < 100)
-          break;
 
         const dim3 tpb(x, y, z);
         const dim3 bpg((unsigned int)ceil(dims.x / double(tpb.x)), //
