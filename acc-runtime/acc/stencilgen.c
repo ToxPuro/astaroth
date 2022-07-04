@@ -38,7 +38,7 @@ main(int argc, char** argv)
   }
   else if (argc == 3) { // Generate stencil reductions
     const int curr_kernel      = atoi(argv[2]);
-    
+
     int field_used[NUM_FIELDS] = {0};
     for (size_t field = 0; field < NUM_FIELDS; ++field)
       for (size_t stencil = 0; stencil < NUM_STENCILS; ++stencil)
@@ -48,7 +48,7 @@ main(int argc, char** argv)
     for (int field = 0; field < NUM_FIELDS; ++field) {
       if (!field_used[field])
         continue;
-      printf("{const AcReal* __restrict__ in=vba.in[%d];", field);
+      
       #if USE_SMEM
       printf("extern __shared__ AcReal smem[];");
       printf("const int pad = 0;");
@@ -88,6 +88,38 @@ main(int argc, char** argv)
         }
       }
       #else
+      /*
+      for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+        for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+          for (int width = 0; width < STENCIL_WIDTH; ++width) {
+            //printf("{const AcReal tmp = in[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), vertexIdx.z+(%d))];", -STENCIL_ORDER / 2 + width, -STENCIL_ORDER / 2 + height, -STENCIL_ORDER / 2 + depth);
+            for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+              if (!stencils_accessed[curr_kernel][field][stencil])
+                continue;
+              if (stencils[stencil][depth][height][width]) {
+                if (!stencil_initialized[field][stencil]) {
+                  printf("processed_stencils[%d][%d]=%s(stencils[%d][%d][%d][%d]*in[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), vertexIdx.z+(%d))]);",
+                         field, stencil, stencil_unary_ops[stencil], stencil,
+                         depth, height, width, -STENCIL_ORDER / 2 + width,
+                         -STENCIL_ORDER / 2 + height,
+                         -STENCIL_ORDER / 2 + depth);
+                  stencil_initialized[field][stencil] = 1;
+                }
+                else {
+                  printf("processed_stencils[%d][%d]=%s(processed_stencils[%d][%d],%s(stencils[%d][%d][%d][%d]*in[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d),vertexIdx.z+(%d))]));",
+                         field, stencil, stencil_binary_ops[stencil], field,
+                         stencil, stencil_unary_ops[stencil], stencil, depth,
+                         height, width, -STENCIL_ORDER / 2 + width,
+                         -STENCIL_ORDER / 2 + height,
+                         -STENCIL_ORDER / 2 + depth);
+                }
+              }
+            }
+            //printf("};");
+          }
+        }
+      }*/
+      printf("{const AcReal* __restrict__ in=vba.in[%d];", field);
       for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
         for (int height = 0; height < STENCIL_HEIGHT; ++height) {
           for (int width = 0; width < STENCIL_WIDTH; ++width) {
@@ -116,8 +148,68 @@ main(int argc, char** argv)
           }
         }
       }
-      #endif
       printf("}");
+     /*
+      for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+      for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+        for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+          for (int width = 0; width < STENCIL_WIDTH; ++width) {
+              if (!stencils_accessed[curr_kernel][field][stencil])
+                continue;
+              if (stencils[stencil][depth][height][width]) {
+                if (!stencil_initialized[field][stencil]) {
+                  printf("processed_stencils[%d][%d]=stencils[%d][%d][%d][%d]*vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), vertexIdx.z+(%d))]",
+                         field, stencil, stencil,
+                         depth, height, width, field, -STENCIL_ORDER / 2 + width,
+                         -STENCIL_ORDER / 2 + height,
+                         -STENCIL_ORDER / 2 + depth);
+                  stencil_initialized[field][stencil] = 1;
+                }
+                else {
+                  printf("+stencils[%d][%d][%d][%d]*vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d),vertexIdx.z+(%d))]",
+                         stencil, depth,
+                         height, width, field, -STENCIL_ORDER / 2 + width,
+                         -STENCIL_ORDER / 2 + height,
+                         -STENCIL_ORDER / 2 + depth);
+                }
+              }
+            }
+          }
+        }
+        printf(";");
+      }
+      */
+     /*
+     printf("auto idxfn = [](const int i, const int j, const int k) { return i + j * (64 + STENCIL_WIDTH-1) + k * (64 + STENCIL_WIDTH-1) * (64 + STENCIL_HEIGHT-1); };");
+      for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+        for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+          for (int width = 0; width < STENCIL_WIDTH; ++width) {
+            for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+              if (!stencils_accessed[curr_kernel][field][stencil])
+                continue;
+              if (stencils[stencil][depth][height][width]) {
+                if (!stencil_initialized[field][stencil]) {
+                  printf("processed_stencils[%d][%d]=%s(stencils[%d][%d][%d][%d]*in[idxfn(vertexIdx.x+(%d),vertexIdx.y+(%d), vertexIdx.z+(%d))]);",
+                         field, stencil, stencil_unary_ops[stencil], stencil,
+                         depth, height, width, -STENCIL_ORDER / 2 + width,
+                         -STENCIL_ORDER / 2 + height,
+                         -STENCIL_ORDER / 2 + depth);
+                  stencil_initialized[field][stencil] = 1;
+                }
+                else {
+                  printf("processed_stencils[%d][%d]=%s(processed_stencils[%d][%d],%s(stencils[%d][%d][%d][%d]*in[idxfn(vertexIdx.x+(%d),vertexIdx.y+(%d),vertexIdx.z+(%d))]));",
+                         field, stencil, stencil_binary_ops[stencil], field,
+                         stencil, stencil_unary_ops[stencil], stencil, depth,
+                         height, width, -STENCIL_ORDER / 2 + width,
+                         -STENCIL_ORDER / 2 + height,
+                         -STENCIL_ORDER / 2 + depth);
+                }
+              }
+            }
+          }
+        }
+      }*/
+      #endif
     }
   }
   else {
