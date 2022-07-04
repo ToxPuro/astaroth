@@ -25,7 +25,8 @@
 #include "ast.h"
 #include "tab.h"
 
-#define STENCILGEN_SRC "stencilgen.c"
+#define STENCILGEN_HEADER "stencilgen.h"
+#define STENCILGEN_SRC ACC_DIR "/stencilgen.c"
 #define STENCILGEN_EXEC "stencilgen.out"
 
 static const size_t stencil_order  = 6;
@@ -626,12 +627,9 @@ generate(const ASTNode* root, FILE* stream)
   // user_defines.h
 
   // Stencil generator
-  FILE* stencilgen = fopen(STENCILGEN_SRC, "w");
+  FILE* stencilgen = fopen(STENCILGEN_HEADER, "w");
   assert(stencilgen);
   fprintf(stencilgen,
-          "#include <stdio.h>\n"
-          "#include <stdlib.h>\n"
-          "#include <string.h>\n"
           "#define STENCIL_ORDER (%lu)\n"
           "#define STENCIL_DEPTH (%lu)\n"
           "#define STENCIL_HEIGHT (%lu)\n"
@@ -677,67 +675,6 @@ generate(const ASTNode* root, FILE* stream)
                NODE_HOSTDEFINE,
            stencilgen);
   fprintf(stencilgen, "};");
-  // clang-format off
-const char* stencilgen_main =
-"int main(int argc, char** argv) {\n"
-"if(argc == 2 && !strcmp(argv[1], \"-definitions\")){" // Generate stencil definitions
-  "printf(\"static __device__ /*const*/ AcReal /*__restrict__*/ stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={\");"
-  "for(int stencil=0;stencil<NUM_STENCILS;++stencil){"
-    "printf(\"{\");"
-    "for(int depth=0;depth<STENCIL_DEPTH;++depth){"
-      "printf(\"{\");"
-      "for(int height=0;height<STENCIL_HEIGHT;++height){"
-        "printf(\"{\");"
-        "for(int width=0;width<STENCIL_WIDTH;++width){"
-          "printf(\"%s,\",stencils[stencil][depth][height][width]?stencils[stencil][depth][height][width]:\"0\");"
-        "}"
-        "printf(\"},\");"
-      "}"
-      "printf(\"},\");"
-    "}"
-    "printf(\"},\");"
-  "}"
-  "printf(\"};\\n\");"
-"} else if (argc == 3) {" // Generate stencil reductions
-  "const int curr_kernel = atoi(argv[2]);"
-  "int field_used[NUM_FIELDS] = {0};"
-  "for(size_t field=0;field<NUM_FIELDS;++field)"
-    "for(size_t stencil=0;stencil<NUM_STENCILS;++stencil)"
-      "field_used[field] |= stencils_accessed[curr_kernel][field][stencil];"
-  "int stencil_initialized[NUM_FIELDS][NUM_STENCILS]={0};"
-  "for(int field=0;field<NUM_FIELDS;++field){"
-    "if (!field_used[field])"
-      "continue;"
-    "printf(\"{const AcReal* __restrict__ in=vba.in[%d];\",field);"
-    "for(int depth=0;depth<STENCIL_DEPTH;++depth){"
-      "for(int height=0;height<STENCIL_HEIGHT;++height){"
-        "for(int width=0;width<STENCIL_WIDTH;++width){"
-          "for(int stencil=0;stencil<NUM_STENCILS;++stencil){"
-            "if (!stencils_accessed[curr_kernel][field][stencil])"
-              "continue;"
-            "if(stencils[stencil][depth][height][width]){"
-              "if (!stencil_initialized[field][stencil]) {"
-                "printf(\"processed_stencils[%d][%d]=%s(stencils[%d][%d][%d][%d]*in[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d),vertexIdx.z+(%d))]);\","
-                         "field,stencil,stencil_unary_ops[stencil],stencil,depth,height,width,-STENCIL_ORDER/2+width,-STENCIL_ORDER/2+height,-STENCIL_ORDER/2+depth);"
-                "stencil_initialized[field][stencil] = 1;"
-              "} else {"
-                "printf(\"processed_stencils[%d][%d]=%s(processed_stencils[%d][%d],%s(stencils[%d][%d][%d][%d]*in[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d),vertexIdx.z+(%d))]));\","
-                         "field,stencil,stencil_binary_ops[stencil],field,stencil,stencil_unary_ops[stencil], stencil,depth,height,width,-STENCIL_ORDER/2+width,-STENCIL_ORDER/2+height,-STENCIL_ORDER/2+depth);"
-              "}"
-            "}"
-          "}"
-        "}"
-      "}"
-    "}"
-  "printf(\"}\\n\");"
-"}"
-"}else {"
-"fprintf(stderr, \"Fatal error: invalid arguments passed to stencilgen.c\\n\");"
-"return EXIT_FAILURE;"
-"}"
-"return EXIT_SUCCESS;}";
-  // clang-format on
-  fprintf(stencilgen, "%s", stencilgen_main);
   fclose(stencilgen);
 
   // Compile
@@ -757,7 +694,8 @@ const char* stencilgen_main =
   fclose(tmp);
 
   const int retval = system("gcc -std=c11 -Wall -Wextra -Wdouble-promotion "
-                            "-Wfloat-conversion -Wshadow " STENCILGEN_SRC " "
+                            "-Wfloat-conversion -Wshadow -I. " STENCILGEN_SRC
+                            " "
                             "-o " STENCILGEN_EXEC);
   if (retval == -1) {
     fprintf(stderr,
@@ -804,7 +742,7 @@ const char* stencilgen_main =
     if (symbol_table[i].type & NODE_STENCIL_ID) {
       const char* id = symbol_table[i].identifier;
       sprintf(buf,
-              "#define %s(field) (processed_stencils[(field)][stencil_%s])\n",
+              "\n#define %s(field) (processed_stencils[(field)][stencil_%s])\n",
               id, id);
       /*
       sprintf(buf,
