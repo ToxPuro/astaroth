@@ -540,9 +540,6 @@ function_definition: declaration function_body {
                                 "        return;"
                                 "\n"
                                 "    AcReal processed_stencils[NUM_FIELDS][NUM_STENCILS];\n"
-				"for (int i = 0; i < NUM_FIELDS; ++i)\n" // Comment these lines to leave uninitialized
-				"for (int j = 0; j < NUM_STENCILS; ++j)\n"
-				"processed_stencils[i][j] = NAN;"
                                 , compound_statement);
                                         astnode_set_postfix(
                                 "\n#undef previous\n"

@@ -380,7 +380,7 @@ gen_kernels(const ASTNode* node, const char* dfunctions, const char* sfunctions)
     FILE* proc = popen(cmdoptions, "r");
     assert(proc);
 
-    char* sdefinitions = malloc(1024 * 1024);
+    char* sdefinitions = malloc(10 * 1024 * 1024);
     assert(sdefinitions);
     sdefinitions[0] = '\0';
     char buf[4096]  = {0};
@@ -431,12 +431,13 @@ gen_user_defines(const ASTNode* root, const char* out)
     if (symbol_table[i].type & NODE_STENCIL_ID)
       fprintf(fp, "stencil_%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_STENCILS} Stencil;");
+
   /*
-  size_t num_stencils = 0;
+  fprintf(fp, "static const char* stencil_names[] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_STENCIL_ID)
-      ++num_stencils;
-  fprintf(fp, "#define NUM_STENCILS (%lu)\n", num_stencils);
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
   */
 
   // Enums
@@ -445,6 +446,13 @@ gen_user_defines(const ASTNode* root, const char* out)
     if (symbol_table[i].type & NODE_FIELD_ID)
       fprintf(fp, "%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_FIELDS} Field;");
+
+  // Kernels
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_KFUNCTION_ID)
+      fprintf(fp, "KERNEL_%s,", symbol_table[i].identifier);
+  fprintf(fp, "NUM_KERNELS} AcKernel;");
 
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
   // START---------------------------
@@ -563,11 +571,14 @@ gen_user_kernels(const ASTNode* root, const char* out)
   // Astaroth 2.0 backwards compatibility START
   // This is not really needed any more, the kernel function pointer is now
   // exposed in the API, so one could use that directly instead of handles.
+  /*
+  // Moved to user_defines.h
   fprintf(fp, "typedef enum {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_KFUNCTION_ID)
       fprintf(fp, "KERNEL_%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_KERNELS} AcKernel;");
+  */
 
   fprintf(fp, "static const Kernel kernel_lookup[] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -629,6 +640,8 @@ generate(const ASTNode* root, FILE* stream)
   // Stencil generator
   FILE* stencilgen = fopen(STENCILGEN_HEADER, "w");
   assert(stencilgen);
+  fprintf(stencilgen, "#include \"stencil_accesses.h\"\n");
+  /*
   fprintf(stencilgen,
           "#define STENCIL_ORDER (%lu)\n"
           "#define STENCIL_DEPTH (%lu)\n"
@@ -640,6 +653,7 @@ generate(const ASTNode* root, FILE* stream)
           "#include \"stencil_accesses.h\"\n",
           stencil_order, stencil_depth, stencil_height, stencil_width,
           num_stencils, num_fields, num_kernels);
+          */
 
   // Stencil ops
   symboltable_reset();
@@ -693,14 +707,15 @@ generate(const ASTNode* root, FILE* stream)
   }
   fclose(tmp);
 
-  const int retval = system("gcc -std=c11 -Wall -Wextra -Wdouble-promotion "
-                            "-Wfloat-conversion -Wshadow -I. " STENCILGEN_SRC
-                            " "
-                            "-o " STENCILGEN_EXEC);
+  const int retval = system(
+      "gcc -std=c11 -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
+      "-Wfloat-conversion -Wshadow -I. " STENCILGEN_SRC " "
+      "-o " STENCILGEN_EXEC);
   if (retval == -1) {
     fprintf(stderr,
             "Catastrophic error: could not compile the stencil generator.\n");
     assert(retval != -1);
+    exit(EXIT_FAILURE);
   }
 
   // Generate stencil definitions
@@ -744,6 +759,7 @@ generate(const ASTNode* root, FILE* stream)
       sprintf(buf,
               "\n#define %s(field) (processed_stencils[(field)][stencil_%s])\n",
               id, id);
+
       /*
       sprintf(buf,
               "auto %s = [processed_stencils](Field field) { return "
