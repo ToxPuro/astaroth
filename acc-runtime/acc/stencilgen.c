@@ -42,6 +42,34 @@ main(int argc, char** argv)
   else if (argc == 3) { // Generate stencil reductions
     const int curr_kernel      = atoi(argv[2]);
 
+    // clang-format on
+    printf("    AcReal processed_stencils[NUM_FIELDS][NUM_STENCILS];\n"
+           "    const int3 vertexIdx = (int3){\n"
+           "        threadIdx.x + blockIdx.x * blockDim.x + start.x,\n"
+           "        threadIdx.y + blockIdx.y * blockDim.y + start.y,\n"
+           "        threadIdx.z + blockIdx.z * blockDim.z + start.z,\n"
+           "    };\n"
+           "    const int3 globalVertexIdx = (int3){\n"
+           "        d_multigpu_offset.x + vertexIdx.x,\n"
+           "        d_multigpu_offset.y + vertexIdx.y,\n"
+           "        d_multigpu_offset.z + vertexIdx.z,\n"
+           "    };\n"
+           "    (void)globalVertexIdx; // Silence unused warning\n"
+           "    const int3 globalGridN = "
+           "d_mesh_info.int3_params[AC_global_grid_n];"
+           "    (void)globalGridN; // Silence unused warning\n"
+           "    const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);\n"
+           "    const auto previous=[&](const Field field) { return "
+           "vba.out[field][idx]; };"
+           "    const auto write=[&](const Field field, const AcReal value) { "
+           "vba.out[field][idx] = value; };"
+           "\n"
+           "    if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || "
+           "vertexIdx.z >= end.z)\n"
+           "        return;"
+           "\n");
+    // clang-format off
+
     int field_used[NUM_FIELDS] = {0};
     for (size_t field = 0; field < NUM_FIELDS; ++field)
       for (size_t stencil = 0; stencil < NUM_STENCILS; ++stencil)

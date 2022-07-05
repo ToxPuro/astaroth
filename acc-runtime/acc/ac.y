@@ -516,35 +516,8 @@ function_definition: declaration function_body {
                             ASTNode* compound_statement = $$->rhs->rhs;
                             assert(compound_statement);
 
-                            astnode_set_prefix("{\n"
-                                "    const int3 vertexIdx = (int3){\n"
-                                "        threadIdx.x + blockIdx.x * blockDim.x + start.x,\n"
-                                "        threadIdx.y + blockIdx.y * blockDim.y + start.y,\n"
-                                "        threadIdx.z + blockIdx.z * blockDim.z + start.z,\n"
-                                "    };\n"
-                                "    const int3 globalVertexIdx = (int3){\n"
-                                "        d_multigpu_offset.x + vertexIdx.x,\n"
-                                "        d_multigpu_offset.y + vertexIdx.y,\n"
-                                "        d_multigpu_offset.z + vertexIdx.z,\n"
-                                "    };\n"
-                                "    (void)globalVertexIdx; // Silence unused warning\n"
-                                "    const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];"
-                                "    (void)globalGridN; // Silence unused warning\n"
-                                "    const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);\n"
-                                "    const auto previous=[&](const Field field) { return vba.out[field][idx]; };"
-                                "    const auto write=[&](const Field field, const AcReal value) { vba.out[field][idx] = value; };"
-                                "    #define FIELD_IN  (vba.in)\n"
-                                "    #define FIELD_OUT (vba.out)\n"
-                                "\n"
-                                "    if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z)\n"
-                                "        return;"
-                                "\n"
-                                "    AcReal processed_stencils[NUM_FIELDS][NUM_STENCILS];\n"
-                                , compound_statement);
-                                        astnode_set_postfix(
-                                "\n#undef previous\n"
-                                "#undef write\n"
-                                "}", compound_statement);
+                            astnode_set_prefix("{", compound_statement);
+                            astnode_set_postfix("}", compound_statement);
                         } else {
                             astnode_set_infix("=[&]", $$);
                             astnode_set_postfix(";", $$);
