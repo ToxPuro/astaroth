@@ -665,7 +665,7 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   fclose(stencilgen);
 
   // Compile
-  if (gen_mem_accesses) {
+  if (gen_mem_accesses || !OPTIMIZE_MEM_ACCESSES) {
     FILE* tmp = fopen("stencil_accesses.h", "w+");
     assert(tmp);
     fprintf(tmp,
@@ -679,6 +679,7 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 
     fclose(tmp);
   }
+  /*
   else {
     FILE* tmp = fopen("stencil_accesses.h", "r");
     if (!tmp) {
@@ -695,6 +696,7 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
     }
     fclose(tmp);
   }
+  */
 
   const int retval = system(
       "gcc -std=c11 -Wfatal-errors -Wall -Wextra -Wdouble-promotion "

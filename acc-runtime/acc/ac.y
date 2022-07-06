@@ -196,8 +196,10 @@ main(int argc, char** argv)
         const char* stage3 = "user_kernels.ac.pp_stage3";
         const char* dir = dirname(argv[1]); // WARNING: dirname has side effects!
 
-        //code_generation_pass(stage0, stage1, stage2, stage3, dir, true); // Uncomment to enable stencil mem access checking
-        //generate_mem_accesses(); // Uncomment to enable stencil mem access checking
+        if (OPTIMIZE_MEM_ACCESSES) {
+          code_generation_pass(stage0, stage1, stage2, stage3, dir, true); // Uncomment to enable stencil mem access checking
+          generate_mem_accesses(); // Uncomment to enable stencil mem access checking
+        }
         code_generation_pass(stage0, stage1, stage2, stage3, dir, false);
         
 
