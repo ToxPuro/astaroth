@@ -63,6 +63,7 @@ gen_kernel_prefix(void)
 void
 gen_stencil_accesses(void)
 {
+  gen_kernel_prefix();
   for (size_t i = 0; i < NUM_STENCILS; ++i)
     printf("const auto %s=[&](const auto field)"
            "{stencils_accessed[field][stencil_%s]=1;return AcReal(1.0);};",

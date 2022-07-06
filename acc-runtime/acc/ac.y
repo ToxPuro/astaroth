@@ -125,25 +125,8 @@ format_source(const char* file_in, const char* file_out)
   fclose(out);
 }
 
-int
-main(int argc, char** argv)
+int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* dir, const bool gen_mem_accesses)
 {
-    atexit(&cleanup);
-
-    if (argc > 2) {
-      fprintf(stderr, "Error multiple .ac files passed to acc, can only process one at a time. Ensure that DSL_MODULE_DIR contains only one .ac file.\n");
-      return EXIT_FAILURE;
-    }
-
-    if (argc == 2) {
-
-        char stage0[strlen(argv[1])];
-        strcpy(stage0, argv[1]);
-        const char* stage1 = "user_kernels.ac.pp_stage1";
-        const char* stage2 = "user_kernels.ac.pp_stage2";
-        const char* stage3 = "user_kernels.ac.pp_stage3";
-        const char* dir = dirname(argv[1]); // WARNING: dirname has side effects!
-
         // Stage 1: Preprocess includes
         {
           FILE* out = fopen(stage1, "w");
@@ -183,13 +166,40 @@ main(int argc, char** argv)
         // generate(root, stdout);
         FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
-        generate(root, fp);
+        generate(root, fp, gen_mem_accesses);
         fclose(fp);
 
         fclose(yyin);
 
         // Stage 4: Format
         format_source("user_kernels.h.raw", "user_kernels.h");
+
+        return EXIT_SUCCESS;
+}
+
+int
+main(int argc, char** argv)
+{
+    atexit(&cleanup);
+
+    if (argc > 2) {
+      fprintf(stderr, "Error multiple .ac files passed to acc, can only process one at a time. Ensure that DSL_MODULE_DIR contains only one .ac file.\n");
+      return EXIT_FAILURE;
+    }
+
+    if (argc == 2) {
+
+        char stage0[strlen(argv[1])];
+        strcpy(stage0, argv[1]);
+        const char* stage1 = "user_kernels.ac.pp_stage1";
+        const char* stage2 = "user_kernels.ac.pp_stage2";
+        const char* stage3 = "user_kernels.ac.pp_stage3";
+        const char* dir = dirname(argv[1]); // WARNING: dirname has side effects!
+
+        //code_generation_pass(stage0, stage1, stage2, stage3, dir, true); // Uncomment to enable stencil mem access checking
+        //generate_mem_accesses(); // Uncomment to enable stencil mem access checking
+        code_generation_pass(stage0, stage1, stage2, stage3, dir, false);
+        
 
         return EXIT_SUCCESS;
     } else {

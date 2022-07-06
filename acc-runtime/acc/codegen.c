@@ -28,6 +28,9 @@
 #define STENCILGEN_HEADER "stencilgen.h"
 #define STENCILGEN_SRC ACC_DIR "/stencilgen.c"
 #define STENCILGEN_EXEC "stencilgen.out"
+#define STENCILACC_SRC ACC_DIR "/stencil_accesses.cpp"
+#define STENCILACC_EXEC "stencil_accesses.out"
+#define ACC_RUNTIME_API_DIR ACC_DIR "/../api"
 
 static const size_t stencil_order  = 6; // TODO read this from user_defines.h
 static const size_t stencil_depth  = stencil_order + 1;
@@ -357,7 +360,8 @@ gen_dconsts(const ASTNode* root, FILE* stream)
 static int curr_kernel = 0;
 
 static void
-gen_kernels(const ASTNode* node, const char* dfunctions)
+gen_kernels(const ASTNode* node, const char* dfunctions,
+            const bool gen_mem_accesses)
 {
   assert(node);
 
@@ -366,6 +370,7 @@ gen_kernels(const ASTNode* node, const char* dfunctions)
     const size_t len = 64 * 1024 * 1024;
     char* prefix     = malloc(len);
     assert(prefix);
+    prefix[0] = '\0';
 
     assert(node->rhs);
     assert(node->rhs->rhs);
@@ -375,8 +380,13 @@ gen_kernels(const ASTNode* node, const char* dfunctions)
 
     // Generate stencil FMADs
     char cmdoptions[4096] = "\0";
-    sprintf(cmdoptions, "./" STENCILGEN_EXEC " -kernel %d", curr_kernel);
-    ++curr_kernel; // HACK TODO better
+    if (gen_mem_accesses) {
+      sprintf(cmdoptions, "./" STENCILGEN_EXEC " -mem-accesses");
+    }
+    else {
+      sprintf(cmdoptions, "./" STENCILGEN_EXEC " -kernel %d", curr_kernel);
+      ++curr_kernel; // HACK TODO better
+    }
     FILE* proc = popen(cmdoptions, "r");
     assert(proc);
 
@@ -399,10 +409,10 @@ gen_kernels(const ASTNode* node, const char* dfunctions)
   }
 
   if (node->lhs)
-    gen_kernels(node->lhs, dfunctions);
+    gen_kernels(node->lhs, dfunctions, gen_mem_accesses);
 
   if (node->rhs)
-    gen_kernels(node->rhs, dfunctions);
+    gen_kernels(node->rhs, dfunctions, gen_mem_accesses);
 }
 
 // Generate User Defines
@@ -555,7 +565,7 @@ gen_user_kernels(const ASTNode* root, const char* out)
   FILE* fp = fopen(out, "w");
   assert(fp);
 
-  fprintf(fp, "#pragma once\n");
+  // fprintf(fp, "#pragma once\n");
 
   // Kernels
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -581,7 +591,7 @@ gen_user_kernels(const ASTNode* root, const char* out)
 }
 
 void
-generate(const ASTNode* root, FILE* stream)
+generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 {
   assert(root);
 
@@ -592,7 +602,7 @@ generate(const ASTNode* root, FILE* stream)
   traverse(root, 0, NULL);
   // print_symbol_table();
 
-  // Generate kernels.cu
+  // Generate user_kernels.h
   fprintf(stream, "#pragma once\n");
 
   size_t num_stencils = 0;
@@ -656,9 +666,8 @@ generate(const ASTNode* root, FILE* stream)
   fclose(stencilgen);
 
   // Compile
-  FILE* tmp = fopen("stencil_accesses.h", "r");
-  if (!tmp) {
-    tmp = fopen("stencil_accesses.h", "w+");
+  if (gen_mem_accesses) {
+    FILE* tmp = fopen("stencil_accesses.h", "w+");
     assert(tmp);
     fprintf(tmp,
             "static int "
@@ -668,8 +677,25 @@ generate(const ASTNode* root, FILE* stream)
         for (size_t k = 0; k < num_stencils; ++k)
           fprintf(tmp, "[%lu][%lu][%lu] = 1,", i, j, k);
     fprintf(tmp, "};");
+
+    fclose(tmp);
   }
-  fclose(tmp);
+  else {
+    FILE* tmp = fopen("stencil_accesses.h", "r");
+    if (!tmp) {
+      tmp = fopen("stencil_accesses.h", "w+");
+      assert(tmp);
+      fprintf(tmp,
+              "static int "
+              "stencils_accessed[NUM_KERNELS][NUM_FIELDS][NUM_STENCILS] = {");
+      for (size_t i = 0; i < num_kernels; ++i)
+        for (size_t j = 0; j < num_fields; ++j)
+          for (size_t k = 0; k < num_stencils; ++k)
+            fprintf(tmp, "[%lu][%lu][%lu] = 1,", i, j, k);
+      fprintf(tmp, "};");
+    }
+    fclose(tmp);
+  }
 
   const int retval = system(
       "gcc -std=c11 -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
@@ -705,7 +731,7 @@ generate(const ASTNode* root, FILE* stream)
 
   // Kernels
   symboltable_reset();
-  gen_kernels(root, dfunctions);
+  gen_kernels(root, dfunctions, gen_mem_accesses);
   fclose(dfunc_fp); // Frees dfunctions also
 
   symboltable_reset();
@@ -715,4 +741,26 @@ generate(const ASTNode* root, FILE* stream)
            stream);
 
   // print_symbol_table();
+}
+
+void
+generate_mem_accesses(void)
+{
+  // Generate memory accesses to a header
+  const int retval = system(
+      "gcc -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
+      "-Wfloat-conversion -Wshadow -I. "
+      "-I " ACC_RUNTIME_API_DIR " " STENCILACC_SRC " -lm "
+      "-o " STENCILACC_EXEC);
+  if (retval == -1) {
+    fprintf(stderr, "Catastrophic error: could not compile the stencil access "
+                    "generator.\n");
+    assert(retval != -1);
+    exit(EXIT_FAILURE);
+  }
+
+  // Generate stencil accesses
+  FILE* proc = popen("./" STENCILACC_EXEC " stencil_accesses.h", "r");
+  assert(proc);
+  pclose(proc);
 }
