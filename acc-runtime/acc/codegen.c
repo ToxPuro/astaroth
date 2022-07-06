@@ -29,7 +29,7 @@
 #define STENCILGEN_SRC ACC_DIR "/stencilgen.c"
 #define STENCILGEN_EXEC "stencilgen.out"
 
-static const size_t stencil_order  = 6;
+static const size_t stencil_order  = 6; // TODO read this from user_defines.h
 static const size_t stencil_depth  = stencil_order + 1;
 static const size_t stencil_width  = stencil_order + 1;
 static const size_t stencil_height = stencil_order + 1;
@@ -357,7 +357,7 @@ gen_dconsts(const ASTNode* root, FILE* stream)
 static int curr_kernel = 0;
 
 static void
-gen_kernels(const ASTNode* node, const char* dfunctions, const char* sfunctions)
+gen_kernels(const ASTNode* node, const char* dfunctions)
 {
   assert(node);
 
@@ -392,7 +392,6 @@ gen_kernels(const ASTNode* node, const char* dfunctions, const char* sfunctions)
     strcat(prefix, sdefinitions);
     free(sdefinitions);
 
-    strcat(prefix, sfunctions);
     strcat(prefix, dfunctions);
 
     astnode_set_prefix(prefix, compound_statement);
@@ -400,10 +399,10 @@ gen_kernels(const ASTNode* node, const char* dfunctions, const char* sfunctions)
   }
 
   if (node->lhs)
-    gen_kernels(node->lhs, dfunctions, sfunctions);
+    gen_kernels(node->lhs, dfunctions);
 
   if (node->rhs)
-    gen_kernels(node->rhs, dfunctions, sfunctions);
+    gen_kernels(node->rhs, dfunctions);
 }
 
 // Generate User Defines
@@ -432,13 +431,11 @@ gen_user_defines(const ASTNode* root, const char* out)
       fprintf(fp, "stencil_%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_STENCILS} Stencil;");
 
-  /*
   fprintf(fp, "static const char* stencil_names[] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_STENCIL_ID)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
-  */
 
   // Enums
   fprintf(fp, "typedef enum {");
@@ -751,6 +748,7 @@ generate(const ASTNode* root, FILE* stream)
            dfunc_fp);
   fflush(dfunc_fp);
 
+#if 0
   // Stencil functions
   char sfunctions[1024 * 1024] = {0};
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -768,10 +766,11 @@ generate(const ASTNode* root, FILE* stream)
               */
       strcat(sfunctions, buf);
     }
+#endif
 
   // Kernels
   symboltable_reset();
-  gen_kernels(root, dfunctions, sfunctions);
+  gen_kernels(root, dfunctions);
   fclose(dfunc_fp); // Frees dfunctions also
 
   symboltable_reset();

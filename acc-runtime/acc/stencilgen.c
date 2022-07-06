@@ -42,8 +42,7 @@ main(int argc, char** argv)
   else if (argc == 3) { // Generate stencil reductions
     const int curr_kernel      = atoi(argv[2]);
 
-    // clang-format on
-    printf("    AcReal processed_stencils[NUM_FIELDS][NUM_STENCILS];\n"
+    printf("AcReal processed_stencils[NUM_FIELDS][NUM_STENCILS];\n"
            "    const int3 vertexIdx = (int3){\n"
            "        threadIdx.x + blockIdx.x * blockDim.x + start.x,\n"
            "        threadIdx.y + blockIdx.y * blockDim.y + start.y,\n"
@@ -68,7 +67,6 @@ main(int argc, char** argv)
            "vertexIdx.z >= end.z)\n"
            "        return;"
            "\n");
-    // clang-format off
 
     int field_used[NUM_FIELDS] = {0};
     for (size_t field = 0; field < NUM_FIELDS; ++field)
@@ -185,10 +183,10 @@ main(int argc, char** argv)
       */
      // Alt, seems to be slightly faster
      // Findings: nvcc does some very nice reordering, does not seem to be much room for ILP improvements
-      for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
       for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
         for (int height = 0; height < STENCIL_HEIGHT; ++height) {
           for (int width = 0; width < STENCIL_WIDTH; ++width) {
+            for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
             
             
               if (!stencils_accessed[curr_kernel][field][stencil]) {
@@ -202,6 +200,7 @@ main(int argc, char** argv)
                          depth, height, width, field, -STENCIL_ORDER / 2 + width,
                          -STENCIL_ORDER / 2 + height,
                          -STENCIL_ORDER / 2 + depth);
+
                   stencil_initialized[field][stencil] = 1;
                 }
                 else {
@@ -217,6 +216,84 @@ main(int argc, char** argv)
           }
         }
       }
+      /*
+      // Alt, seems to be slightly faster, modified for multiple elems
+     // Findings: nvcc does some very nice reordering, does not seem to be much room for ILP improvements
+      for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+        for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+          for (int width = 0; width < STENCIL_WIDTH; ++width) {
+            for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+            
+            
+              if (!stencils_accessed[curr_kernel][field][stencil]) {
+                printf("processed_stencils[%d][%d][%d] = (AcReal)NAN;", field, stencil, elem);
+                continue;
+              }
+              if (stencils[stencil][depth][height][width]) {
+                if (!stencil_initialized[field][stencil]) {
+                  printf("processed_stencils[%d][%d][%d]=%s(stencils[%d][%d][%d][%d]*vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), vertexIdx.z+(%d))]);",
+                         field, stencil, elem, stencil_unary_ops[stencil], stencil,
+                         depth, height, width, field, -STENCIL_ORDER / 2 + width,
+                         -STENCIL_ORDER / 2 + height,
+                         -STENCIL_ORDER / 2 + depth);
+                  stencil_initialized[field][stencil] = 1;
+                }
+                else {
+                  printf("processed_stencils[%d][%d][%d]=%s(processed_stencils[%d][%d][%d],%s(stencils[%d][%d][%d][%d]*vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d),vertexIdx.z+(%d))]));",
+                         field, stencil, elem, stencil_binary_ops[stencil], field,
+                         stencil, elem, stencil_unary_ops[stencil], stencil, depth,
+                         height, width, field, -STENCIL_ORDER / 2 + width,
+                         -STENCIL_ORDER / 2 + height,
+                         -STENCIL_ORDER / 2 + depth);
+                }
+              }
+            }
+          }
+        }
+      }
+      */
+     /*
+      // Multiple elems per thread
+      for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+        for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+          for (int width = 0; width < STENCIL_WIDTH; ++width) {
+
+            printf("{");
+            int elem_accessed = 0;
+            for (int stencil = 0; stencil < NUM_STENCILS; ++stencil)
+              elem_accessed |= stencils_accessed[curr_kernel][field][stencil] && stencils[stencil][depth][height][width];
+            if (elem_accessed)
+              printf("const auto tmp = vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), vertexIdx.z+(%d))];", field, -STENCIL_ORDER / 2 + width,
+                         -STENCIL_ORDER / 2 + height,
+                         -STENCIL_ORDER / 2 + depth);
+
+            for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+            
+              if (!stencils_accessed[curr_kernel][field][stencil]) {
+                printf("processed_stencils[%d][%d][%d] = (AcReal)NAN;", field, stencil, elem);
+                continue;
+              }
+              if (stencils[stencil][depth][height][width]) {
+                
+                if (!stencil_initialized[field][stencil]) {
+                  printf("processed_stencils[%d][%d][%d]=%s(stencils[%d][%d][%d][%d]*tmp);",
+                         field, stencil, elem, stencil_unary_ops[stencil], stencil,
+                         depth, height, width);
+                  stencil_initialized[field][stencil] = 1;
+                }
+                else {
+                  printf("processed_stencils[%d][%d][%d]=%s(processed_stencils[%d][%d][%d],%s(stencils[%d][%d][%d][%d]*tmp));",
+                         field, stencil, elem, stencil_binary_ops[stencil], field,
+                         stencil, elem, stencil_unary_ops[stencil], stencil, depth,
+                         height, width);
+                }
+              }
+            }
+            printf("}");
+          }
+        }
+      }
+      */
      /*
       // Prefetching to local memory for better ILP using vectorized loads (1D)
       // Works but is slow, likely caused by excessive integer arithmetic to compute indices
@@ -411,6 +488,8 @@ main(int argc, char** argv)
       }*/
       #endif
     }
+    for (size_t i = 0; i < NUM_STENCILS; ++i)
+      printf("\n#define %s(field) (processed_stencils[field][stencil_%s])\n", stencil_names[i], stencil_names[i]);
   }
   else {
     fprintf(stderr, "Fatal error: invalid arguments passed to stencilgen.c");
