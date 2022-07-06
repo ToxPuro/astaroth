@@ -568,15 +568,6 @@ gen_user_kernels(const ASTNode* root, const char* out)
   // Astaroth 2.0 backwards compatibility START
   // This is not really needed any more, the kernel function pointer is now
   // exposed in the API, so one could use that directly instead of handles.
-  /*
-  // Moved to user_defines.h
-  fprintf(fp, "typedef enum {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_KFUNCTION_ID)
-      fprintf(fp, "KERNEL_%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_KERNELS} AcKernel;");
-  */
-
   fprintf(fp, "static const Kernel kernel_lookup[] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_KFUNCTION_ID)
@@ -623,34 +614,10 @@ generate(const ASTNode* root, FILE* stream)
   // gen_dconsts(root, stream);
 
   // Stencils
-  /*
-  // Defined now in user_defines.h
-  fprintf(stream, "typedef enum{");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_STENCIL_ID)
-      fprintf(stream, "stencil_%s,", symbol_table[i].identifier);
-  fprintf(stream, "} Stencil;");
-  */
-  // fprintf(stream, "NUM_STENCILS} Stencil;"); // defined now in
-  // user_defines.h
 
   // Stencil generator
   FILE* stencilgen = fopen(STENCILGEN_HEADER, "w");
   assert(stencilgen);
-  // fprintf(stencilgen, "#include \"stencil_accesses.h\"\n");
-  /*
-  fprintf(stencilgen,
-          "#define STENCIL_ORDER (%lu)\n"
-          "#define STENCIL_DEPTH (%lu)\n"
-          "#define STENCIL_HEIGHT (%lu)\n"
-          "#define STENCIL_WIDTH (%lu)\n"
-          "#define NUM_STENCILS (%lu)\n"
-          "#define NUM_FIELDS (%lu)\n"
-          "#define NUM_KERNELS (%lu)\n"
-          "#include \"stencil_accesses.h\"\n",
-          stencil_order, stencil_depth, stencil_height, stencil_width,
-          num_stencils, num_fields, num_kernels);
-          */
 
   // Stencil ops
   symboltable_reset();
@@ -725,18 +692,6 @@ generate(const ASTNode* root, FILE* stream)
 
   pclose(proc);
 
-  /*
-  // Generate stencil FMADs
-  proc = popen("./" STENCILGEN_EXEC, "r");
-  assert(proc);
-
-  char sdefinitions[1 * 1024 * 1024] = {0};
-  while (fgets(buf, sizeof(buf), proc))
-    strcat(sdefinitions, buf);
-
-  pclose(proc);
-  */
-
   // Device functions
   symboltable_reset();
   char* dfunctions;
@@ -747,26 +702,6 @@ generate(const ASTNode* root, FILE* stream)
                NODE_HOSTDEFINE,
            dfunc_fp);
   fflush(dfunc_fp);
-
-#if 0
-  // Stencil functions
-  char sfunctions[1024 * 1024] = {0};
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_STENCIL_ID) {
-      const char* id = symbol_table[i].identifier;
-      sprintf(buf,
-              "\n#define %s(field) (processed_stencils[(field)][stencil_%s])\n",
-              id, id);
-
-      /*
-      sprintf(buf,
-              "auto %s = [processed_stencils](Field field) { return "
-              "processed_stencils[field][stencil_%s]; };",
-              id, id);
-              */
-      strcat(sfunctions, buf);
-    }
-#endif
 
   // Kernels
   symboltable_reset();
