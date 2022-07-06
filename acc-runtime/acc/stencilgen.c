@@ -49,7 +49,7 @@ gen_kernel_prefix(void)
          "};");
   printf("const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];");
   printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
-  printf("const auto previous=[&](const Field field)"
+  printf("const auto previous __attribute__((unused)) =[&](const Field field)"
          "{ return vba.out[field][idx]; };");
   printf("const auto write=[&](const Field field, const AcReal value)"
          "{ vba.out[field][idx] = value; };");
@@ -120,7 +120,7 @@ gen_kernel_body(const int curr_kernel)
     }
   }
   for (size_t i = 0; i < NUM_STENCILS; ++i)
-    printf("const auto %s=[&](const auto field)"
+    printf("const auto %s __attribute__((unused)) =[&](const auto field)"
            "{return processed_stencils[field][stencil_%s];};",
            stencil_names[i], stencil_names[i]);
 }
