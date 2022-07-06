@@ -21,7 +21,7 @@ set(DSL_HEADERS "user_kernels.h"
 add_custom_command (
     COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
     COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac"
-    DEPENDS ${DSL_SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/../acc/stencilgen.c acc
+    DEPENDS ${DSL_SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/../acc/stencilgen.c ${CMAKE_CURRENT_SOURCE_DIR}/../acc/stencil_accesses.cpp acc
     OUTPUT ${DSL_HEADERS}
 )
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
