@@ -32,11 +32,6 @@
 #define STENCILACC_EXEC "stencil_accesses.out"
 #define ACC_RUNTIME_API_DIR ACC_DIR "/../api"
 
-static const size_t stencil_order  = 6; // TODO read this from user_defines.h
-static const size_t stencil_depth  = stencil_order + 1;
-static const size_t stencil_width  = stencil_order + 1;
-static const size_t stencil_height = stencil_order + 1;
-
 // Symbols
 #define MAX_ID_LEN (256)
 typedef struct {
@@ -423,10 +418,6 @@ gen_user_defines(const ASTNode* root, const char* out)
   assert(fp);
 
   fprintf(fp, "#pragma once\n");
-  fprintf(fp, "#define STENCIL_ORDER (%lu)\n", stencil_order);
-  fprintf(fp, "#define STENCIL_DEPTH (%lu)\n", stencil_depth);
-  fprintf(fp, "#define STENCIL_HEIGHT (%lu)\n", stencil_height);
-  fprintf(fp, "#define STENCIL_WIDTH (%lu)\n", stencil_width);
 
   symboltable_reset();
   traverse(root, NODE_DCONST | NODE_FIELD | NODE_FUNCTION | NODE_STENCIL, fp);
@@ -550,6 +541,14 @@ gen_user_defines(const ASTNode* root, const char* out)
               symbol_table[i].identifier);
     }
   }
+
+  // Stencil order
+  fprintf(fp, "#ifndef STENCIL_ORDER\n");
+  fprintf(fp, "#define STENCIL_ORDER (6)\n");
+  fprintf(fp, "#endif\n");
+  fprintf(fp, "#define STENCIL_DEPTH (STENCIL_ORDER+1)\n");
+  fprintf(fp, "#define STENCIL_HEIGHT (STENCIL_ORDER+1)\n");
+  fprintf(fp, "#define STENCIL_WIDTH (STENCIL_ORDER+1)\n");
 
   fclose(fp);
 
