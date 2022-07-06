@@ -441,12 +441,6 @@ gen_user_defines(const ASTNode* root, const char* out)
       fprintf(fp, "stencil_%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_STENCILS} Stencil;");
 
-  fprintf(fp, "static const char* stencil_names[] = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_STENCIL_ID)
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
-
   // Enums
   fprintf(fp, "typedef enum {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -492,6 +486,12 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "NUM_REAL3_PARAMS} AcReal3Param;");
 
   // Enum strings (convenience)
+  fprintf(fp, "static const char* stencil_names[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_STENCIL_ID)
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+
   fprintf(fp, "static const char* field_names[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_FIELD_ID)

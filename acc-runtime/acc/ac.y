@@ -529,7 +529,7 @@ function_definition: declaration function_body {
                             astnode_set_prefix("{", compound_statement);
                             astnode_set_postfix("}", compound_statement);
                         } else {
-                            astnode_set_infix("=[&]", $$);
+                            astnode_set_infix(" __attribute__((unused)) =[&]", $$);
                             astnode_set_postfix(";", $$);
                             $$->type |= NODE_DFUNCTION;
                             //set_identifier_type(NODE_DFUNCTION_ID, fn_identifier);
