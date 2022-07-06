@@ -2,7 +2,9 @@
 #include <cuda_runtime_api.h>
 #include <string.h>
 
+#undef __device__
 #define __device__
+#undef __global__
 #define __global__
 
 #define threadIdx ((int3){0, 0, 0})
@@ -21,18 +23,23 @@
 constexpr int
 IDX(const int i)
 {
+  (void)i; // Unused
   return 0;
 }
 
 int
 IDX(const int i, const int j, const int k)
 {
+  (void)i; // Unused
+  (void)j; // Unused
+  (void)k; // Unused
   return 0;
 }
 
 int
 IDX(const int3 idx)
 {
+  (void)idx; // Unused
   return 0;
 }
 
