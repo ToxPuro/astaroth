@@ -84,6 +84,7 @@ gen_kernel_body(const int curr_kernel)
           for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
 
             // Skip if the stencil is not used
+            // Increases the compilation time notably
             if (!stencils_accessed[curr_kernel][field][stencil]) {
               // printf("processed_stencils[%d][%d] = (AcReal)NAN;", field,
               // stencil);
@@ -118,68 +119,10 @@ gen_kernel_body(const int curr_kernel)
       }
     }
   }
-  /*
-  for (size_t i = 0; i < NUM_STENCILS; ++i)
-    printf("\n#define %s(field) (processed_stencils[field][stencil_%s])\n",
-           stencil_names[i], stencil_names[i]);
-           */
   for (size_t i = 0; i < NUM_STENCILS; ++i)
     printf("const auto %s=[&](const auto field)"
            "{return processed_stencils[field][stencil_%s];};",
            stencil_names[i], stencil_names[i]);
-
-  /*
-  int field_used[NUM_FIELDS] = {0};
-  for (size_t field = 0; field < NUM_FIELDS; ++field)
-    for (size_t stencil = 0; stencil < NUM_STENCILS; ++stencil)
-      field_used[field] |= stencils_accessed[curr_kernel][field][stencil];
-
-  int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
-  for (int field = 0; field < NUM_FIELDS; ++field) {
-    if (!field_used[field])
-      continue;
-
-    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-        for (int width = 0; width < STENCIL_WIDTH; ++width) {
-          for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-
-            if (!stencils_accessed[curr_kernel][field][stencil]) {
-              printf("processed_stencils[%d][%d] = (AcReal)NAN;", field,
-                     stencil);
-              continue;
-            }
-            if (stencils[stencil][depth][height][width]) {
-              if (!stencil_initialized[field][stencil]) {
-                printf("processed_stencils[%d][%d]=%s(stencils[%d][%d][%d][%d]*"
-                       "vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-                       "vertexIdx.z+(%d))]);",
-                       field, stencil, stencil_unary_ops[stencil], stencil,
-                       depth, height, width, field, -STENCIL_ORDER / 2 + width,
-                       -STENCIL_ORDER / 2 + height, -STENCIL_ORDER / 2 + depth);
-
-                stencil_initialized[field][stencil] = 1;
-              }
-              else {
-                printf(
-                    "processed_stencils[%d][%d]=%s(processed_stencils[%d][%d],%"
-                    "s(stencils[%d][%d][%d][%d]*vba.in[%d][IDX(vertexIdx.x+(%d)"
-                    ",vertexIdx.y+(%d),vertexIdx.z+(%d))]));",
-                    field, stencil, stencil_binary_ops[stencil], field, stencil,
-                    stencil_unary_ops[stencil], stencil, depth, height, width,
-                    field, -STENCIL_ORDER / 2 + width,
-                    -STENCIL_ORDER / 2 + height, -STENCIL_ORDER / 2 + depth);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  for (size_t i = 0; i < NUM_STENCILS; ++i)
-    printf("\n#define %s(field) (processed_stencils[field][stencil_%s])\n",
-           stencil_names[i], stencil_names[i]);
-           */
 }
 
 int
