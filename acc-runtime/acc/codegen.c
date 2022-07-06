@@ -637,7 +637,7 @@ generate(const ASTNode* root, FILE* stream)
   // Stencil generator
   FILE* stencilgen = fopen(STENCILGEN_HEADER, "w");
   assert(stencilgen);
-  fprintf(stencilgen, "#include \"stencil_accesses.h\"\n");
+  // fprintf(stencilgen, "#include \"stencil_accesses.h\"\n");
   /*
   fprintf(stencilgen,
           "#define STENCIL_ORDER (%lu)\n"
