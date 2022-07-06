@@ -274,3 +274,9 @@ See also the functions `acDeviceLoadStencil`, `acDeviceStoreStencil`, `acGridLoa
 To enable additional API functions in the Astaroth Core library for integration (`acIntegrate` function family) and MHD-specific tasks (automated testing, MHD samples), one must set `hostdefine AC_INTEGRATION_ENABLED (1)` in the DSL file. Note that if used in the DSL code, the hostdefine must not define anything that is not visible at compile-time. For example, `hostdefine R_PI (M_PI)`, where `M_PI` is defined is some host header, `M_PI` will not be visible in the DSL code and will result in a compilation error. Additionally, code such as `#if M_PI` will be always false in the DSL source if `M_PI` is not visible in the DSL file.
 
 > Note: The extended API depends on several hardcoded fields and device constants. It is not recommended to enable it unless you work on the MHD sample case (`acc-runtime/samples/mhd`) or its derivatives.
+
+## Stencil order
+
+The stencil order can be set by the user by `hostdefine STENCIL_ORDER (x)`, where `x` is the total number of cells on both sides of the center point per axis. For example, a simple von Neumann stencil is of order 2.
+
+> Note: The size of the halo surrounding the computational domain depends on `STENCIL_ORDER`.
