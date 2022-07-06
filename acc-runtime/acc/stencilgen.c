@@ -84,12 +84,8 @@ gen_kernel_body(const int curr_kernel)
           for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
 
             // Skip if the stencil is not used
-            // Increases the compilation time notably
-            if (!stencils_accessed[curr_kernel][field][stencil]) {
-              // printf("processed_stencils[%d][%d] = (AcReal)NAN;", field,
-              // stencil);
+            if (!stencils_accessed[curr_kernel][field][stencil])
               continue;
-            }
 
             if (stencils[stencil][depth][height][width]) {
               printf("processed_stencils[%d][%d] = ", field, stencil);
