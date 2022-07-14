@@ -38,6 +38,12 @@ In the base directory, run
 
 > **Note:** CMake will inform you if there are missing dependencies.
 
+## Simple example template
+
+If you need a functioning and documented example of how to run Astaroth in standalone more out of the box,
+
+[please see this shock turbulence run example](config/samples/shockturb/README.md) in the directory `config/samples/shockturb/`. 
+
 ## Running on clusters (Slurm)
 
 1. Load the modules required for building: `module load gcc/8.3.0 cuda/10.1.168 cmake openmpi/4.0.3-cuda`
