@@ -46,7 +46,12 @@ if (USE_HIP)
 
     set(GPU_TARGETS "gfx908" CACHE STRING "GPU target")
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm) # Default path
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0) # Triton
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/hip /opt/rocm-5.0.0) # Triton
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/llvm/bin)
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer)
+
+	include_directories(/opt/rocm-5.0.0/roctracer/include)
+	link_directories(/opt/rocm-5.0.0/roctracer/lib)
 
     find_package(hip)
 else ()
