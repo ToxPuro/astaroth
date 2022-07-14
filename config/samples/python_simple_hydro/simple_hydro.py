@@ -22,6 +22,10 @@ class py_real3(ctypes.Structure):
                 ("z", ctypes.c_double)
                ] 
 
+class py_vertex_buffer(ctypes.Structure):
+    _fields_ = [(,)
+               ]
+
 '''
 AcMeshInfo mesh_info
 typedef struct {
@@ -32,29 +36,60 @@ typedef struct {
 } AcMeshInfo;
 '''
 class py_AcMeshInfo(ctypes.Structure):
-    _fields_ = [("int_params",  NUM_INT_PARAMS   * ctypes.c_int)
-                ("int_params",  NUM_INT3_PARAMS  * int3)
-                ("real_params", NUM_REAL_PARAMS  * ctypes.c_double)
-                ("rea3_params", NUM_REAL3_PARAMS * real3)
+    _fields_ = [("int_params",  NUM_INT_PARAMS   * ctypes.c_int),
+                ("int_params",  NUM_INT3_PARAMS  * py_int3),
+                ("real_params", NUM_REAL_PARAMS  * ctypes.c_double),
+                ("rea3_params", NUM_REAL3_PARAMS * py_real3)
+               ]
+'''
+typedef struct {
+    AcReal* vertex_buffer[NUM_VTXBUF_HANDLES];
+    AcMeshInfo info;
+} AcMesh;
+'''
+class py_AcMesh(ctypes.Structure):
+    _fields_ = [("vertex_buffer", NUM_VTXBUF_HANDLES * py_vertex_buffer),
+                ("info", py_AcMeshInfo)
                ]
 
-mesh_info = load_config(config_path)
+mesh_info = py_load_config(config_path)
+
+mesh      = py_acmesh_create(mesh_info)
+
+mesh      = py_initialize_mesh("random_fields", mesh)
+
+t_step = 0.0 
+device_number = 0
+
+device = py_acDeviceCreate(device_number, mesh_info)
+py_acDevicePrintInfo(device)
+mesh = py_acDeviceLoadMesh(device, mesh)
+
+#
+# ...
+#
+
+py_acDeviceDestroy(device)
 
 ###########################################################
 # Adapt what is down from this into Pythonic owrkable form.
-# #!! is a mark of adaptable code. 
+# #$$ is a mark of code initial pythonic draft. 
+# #!! is a mark of code to be adapted. 
 ###########################################################
 
-#!! AcMeshInfo mesh_info;
-#!! load_config(config_path, &mesh_info);
-#!! 
-#!! AcMesh* mesh = acmesh_create(mesh_info);
-#!! acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, mesh);
-#!! 
-#!! AcReal t_step        = 0.0;
-#!! 
-#!! acInit(mesh_info);
-#!! acLoad(*mesh);
+#$$ AcMeshInfo mesh_info;
+#$$ load_config(config_path, &mesh_info);
+#$$ 
+#$$ AcMesh* mesh = acmesh_create(mesh_info);
+#$$ acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, mesh);
+#$$ 
+#$$ AcReal t_step        = 0.0;
+#!!
+#!! Device device;
+#!! acDeviceCreate(0, mesh_info, &device);
+#!! acDevicePrintInfo(device);
+#!! printf("Loading mesh to GPU.\n");
+#!! acDeviceLoadMesh(device, STREAM_DEFAULT, *mesh);
 #!! 
 #!!     printf("Mesh loaded to GPU(s).\n");
 #!! 
