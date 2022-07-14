@@ -27,6 +27,12 @@
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 #endif
 
+#define USE_SMEM (0)
+#if USE_SMEM
+static const size_t veclen  = 2;
+static const size_t buffers = NUM_FIELDS;
+#endif
+
 /*
 // Device info (TODO GENERIC)
 // Use the maximum available reg count per thread
@@ -165,7 +171,13 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
                  (unsigned int)ceil(n.y / double(tpb.y)), //
                  (unsigned int)ceil(n.z / double(tpb.z)));
 
+#if USE_SMEM
+  const size_t smem = buffers * (tpb.x + STENCIL_ORDER) *
+                      (tpb.y + STENCIL_ORDER) * (tpb.z + STENCIL_ORDER) *
+                      sizeof(AcReal);
+#else
   const size_t smem = 0;
+#endif
 
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
   kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
@@ -301,14 +313,13 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
          dims.z);
   fflush(stdout);
 
-  // cudaDeviceProp prop;
-  // cudaGetDeviceProperties(&prop, 0);
-  // size_t size = min(int(prop.l2CacheSize * 0.75),
-  //                   prop.persistingL2CacheMaxSize);
-  // cudaDeviceSetLimit(cudaLimitPersistingL2CacheSize,
-  //                    size); // set-aside 3/4 of L2 cache for persisting
-  //                    accesses
-  //                              or the max allowed
+#if 0
+  cudaDeviceProp prop;
+  cudaGetDeviceProperties(&prop, 0);
+  size_t size = min(int(prop.l2CacheSize * 0.75), prop.persistingL2CacheMaxSize);
+  cudaDeviceSetLimit(cudaLimitPersistingL2CacheSize, size);
+  // set-aside 3/4 of L2 cache for persisting accesses or the max allowed
+#endif
 
   TBConfig c = {
       .kernel = kernel,
@@ -343,9 +354,6 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         // if (x * y * z * max_regs_per_thread > max_regs_per_block)
         //  break;
 
-        if ((x * y * z) % warp_size)
-          continue;
-
         // if (max_regs_per_block / (x * y * z) < min_regs_per_thread)
         //   continue;
 
@@ -356,7 +364,30 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         const dim3 bpg((unsigned int)ceil(dims.x / double(tpb.x)), //
                        (unsigned int)ceil(dims.y / double(tpb.y)), //
                        (unsigned int)ceil(dims.z / double(tpb.z)));
+#if USE_SMEM
+        const size_t smem = buffers * (tpb.x + STENCIL_ORDER) *
+                            (tpb.y + STENCIL_ORDER) * (tpb.z + STENCIL_ORDER) *
+                            sizeof(AcReal);
+        const size_t max_smem = 128 * 1024;
+        if (smem > max_smem)
+          continue;
+
+        const size_t window = tpb.x + STENCIL_ORDER;
+        // Vectorization criterion
+        if (window % veclen) // Window not divisible into vectorized blocks
+          continue;
+
+        if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
+          continue;
+
+          //  Padding criterion
+          //  TODO (cannot be checked here)
+#else
+        if ((x * y * z) % warp_size)
+          continue;
+
         const size_t smem = 0;
+#endif
 
         // printf("%d, %d, %d: %lu\n", tpb.x, tpb.y, tpb.z, smem);
 
@@ -398,6 +429,10 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   printf("The best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x, best_tpb.y,
          best_tpb.z, (double)best_time / num_iters);
 
+  if (c.tpb.x * c.tpb.y * c.tpb.z <= 0) {
+    fprintf(stderr,
+            "Fatal error: failed to find valid thread block dimensions.\n");
+  }
   ERRCHK_ALWAYS(c.tpb.x * c.tpb.y * c.tpb.z > 0);
   return c;
 }
