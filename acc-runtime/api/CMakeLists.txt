@@ -12,20 +12,24 @@ else()
 endif()
 
 ## Generate acc-runtime-headers
-# set(DSL_SOURCES "${DSL_MODULE_DIR}/*.ac")
-set(DSL_SOURCES "${DSL_MODULE_DIR}/*")
+set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
+                "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
+                "${PROJECT_SOURCE_DIR}/acc/stencil_accesses.cpp")
 set(DSL_HEADERS "user_kernels.h"
                 "user_defines.h"
                 "user_declarations.h"
-                "stencil_accesses.h")
+                "stencil_accesses.h"
+                "stencilgen.h")
 add_custom_command (
     COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
     COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac"
-    DEPENDS ${DSL_SOURCES} ${CMAKE_CURRENT_SOURCE_DIR}/../acc/stencilgen.c ${CMAKE_CURRENT_SOURCE_DIR}/../acc/stencil_accesses.cpp acc
+    DEPENDS ${DSL_SOURCES} acc
     OUTPUT ${DSL_HEADERS}
 )
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
 target_include_directories(acc-runtime-headers INTERFACE . ${CMAKE_CURRENT_BINARY_DIR})
+
+message("project source dir ${PROJECT_SOURCE_DIR}")
 
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)

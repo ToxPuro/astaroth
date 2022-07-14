@@ -175,9 +175,9 @@ cross_derivative(const Scalar* pencil_a, const Scalar* pencil_b, const Scalar in
     const Scalar coefficients[] = {0, (Scalar)(1.0 / 4.0)};
 #elif STENCIL_ORDER == 4
     const Scalar coefficients[] = {
+        (Scalar)0.,
         0,
-        (Scalar)(1.0 / 32.0),
-        (Scalar)(1.0 / 64.0),
+        0,
     }; // TODO correct coefficients, these are just placeholders
 #elif STENCIL_ORDER == 6
     const Scalar fac            = ((Scalar)(1. / 720.));
