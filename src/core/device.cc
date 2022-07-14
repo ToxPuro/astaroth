@@ -208,6 +208,11 @@ acDeviceSynchronizeStream(const Device device, const Stream stream)
 AcResult
 acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_handle)
 {
+    // Check
+    int count;
+    cudaGetDeviceCount(&count);
+    ERRCHK_ALWAYS(id < count);
+
     cudaSetDevice(id);
     // cudaDeviceReset(); // Would be good for safety, but messes stuff up if we want to emulate
     // multiple devices with a single GPU

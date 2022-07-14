@@ -25,6 +25,8 @@
 int
 main(void)
 {
+    ERRCHK_ALWAYS(acCheckDeviceAvailability() == AC_SUCCESS);
+
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
