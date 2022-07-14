@@ -20,3 +20,4 @@ gcc -Wfatal-errors ${ACC_RUNTIME_DIR}/stencil-access-generator/main.cpp -I tmpbu
 mkdir -p acc-runtime/api
 mv stencil_accesses.h acc-runtime/api
 cmake $@
+make -j
