@@ -6,6 +6,8 @@
 #define __device__
 #undef __global__
 #define __global__
+#undef __launch_bounds__
+#define __launch_bounds__(x, y)
 
 #define threadIdx ((int3){0, 0, 0})
 #define blockIdx ((int3){0, 0, 0})
