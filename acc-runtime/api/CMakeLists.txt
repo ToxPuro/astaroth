@@ -30,7 +30,7 @@ add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
 target_include_directories(acc-runtime-headers INTERFACE . ${CMAKE_CURRENT_BINARY_DIR})
 
 if (USE_HIP)
-    target_link_libraries(acc-runtime-headers PUBLIC roctracer64)
+    target_link_libraries(acc-runtime-headers INTERFACE roctracer64)
 endif()
 
 message("project source dir ${PROJECT_SOURCE_DIR}")

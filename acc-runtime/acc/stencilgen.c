@@ -236,7 +236,7 @@ gen_kernel_body(const int curr_kernel)
 
             if (stencils[stencil][depth][height][width]) {
               if (!stencil_initialized[field][stencil]) {
-                printf("auto register f%d_s%d = ", field, stencil);
+                printf("auto f%d_s%d = ", field, stencil);
                 printf("%s(stencils[%d][%d][%d][%d]*"
                        "vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                        "vertexIdx.z+(%d))]);",
@@ -285,7 +285,7 @@ gen_kernel_body(const int curr_kernel)
   gen_kernel_prefix();
 
   for (int field = 0; field < NUM_FIELDS; ++field)
-    printf("const auto __restrict__ in%d = vba.in[%d];", field, field);
+    printf("const AcReal* __restrict__ in%d = vba.in[%d];", field, field);
 
   // Prefetch stencil elements to local memory
   int cell_initialized[NUM_FIELDS][STENCIL_DEPTH][STENCIL_HEIGHT]
@@ -360,7 +360,7 @@ gen_kernel_body(const int curr_kernel)
 
             if (stencils[stencil][depth][height][width]) {
               if (!stencil_initialized[field][stencil]) {
-                printf("auto register f%d_s%d = ", field, stencil);
+                printf("auto f%d_s%d = ", field, stencil);
                 printf("%s(s%d_%d_%d_%d*"
                        "f%d_%d_%d_%d);",
                        stencil_unary_ops[stencil], stencil, depth, height,
@@ -417,7 +417,7 @@ gen_kernel_body(const int curr_kernel)
 
             if (stencils[stencil][depth][height][width]) {
               if (!stencil_initialized[field][stencil]) {
-                printf("auto register f%d_s%d = ", field, stencil);
+                printf("auto f%d_s%d = ", field, stencil);
                 printf("%s((%s)*"
                        "vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                        "vertexIdx.z+(%d))]);",
@@ -511,7 +511,7 @@ gen_kernel_body(const int curr_kernel)
 
             if (stencils[stencil][depth][height][width]) {
               if (!stencil_initialized[field][stencil]) {
-                printf("auto register f%d_s%d = ", field, stencil);
+                printf("auto f%d_s%d = ", field, stencil);
                 printf("%s(stencils[%d][%d][%d][%d]*",
                        stencil_unary_ops[stencil], stencil, depth, height,
                        width);
@@ -620,7 +620,7 @@ gen_kernel_body(const int curr_kernel)
 
             if (stencils[stencil][depth][height][width]) {
               if (!stencil_initialized[field][stencil]) {
-                printf("auto register f%d_s%d = ", field, stencil);
+                printf("auto f%d_s%d = ", field, stencil);
                 printf("%s(stencils[%d][%d][%d][%d]*",
                        stencil_unary_ops[stencil], stencil, depth, height,
                        width);
@@ -741,7 +741,7 @@ gen_kernel_body(const int curr_kernel)
 
             if (stencils[stencil][depth][height][width]) {
               if (!stencil_initialized[field][stencil]) {
-                printf("auto register f%d_s%d = ", field, stencil);
+                printf("auto f%d_s%d = ", field, stencil);
                 printf("%s(stencils[%d][%d][%d][%d]*",
                        stencil_unary_ops[stencil], stencil, depth, height,
                        width);
