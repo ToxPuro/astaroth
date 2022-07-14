@@ -52,15 +52,29 @@ class py_AcMesh(ctypes.Structure):
                 ("info", py_AcMeshInfo)
                ]
 
-mesh_info = py_load_config(config_path)
+def py_load_config(config_path):
+    ...
+    return mesh_info
 
-mesh      = py_acmesh_create(mesh_info)
+def py_acmesh_create(mesh_info):
+    ...
+    return mesh
 
-mesh      = py_initialize_mesh("random_fields", mesh)
+def  py_initialize_mesh("random_fields", mesh):
+    ...
+    return mesh
 
-device = py_acDeviceCreate(device_number, mesh_info)
-py_acDevicePrintInfo(device)
-mesh = py_acDeviceLoadMesh(device, mesh)
+def py_acDeviceCreate(device_number, mesh_info):
+    ...
+    return device
 
-py_acDeviceDestroy(device)
+def py_acDevicePrintInfo(device)
+    ...
+
+def  py_acDeviceLoadMesh(device, mesh):
+    ...
+    return mesh
+
+def py_acDeviceDestroy(device):
+    ...
 
