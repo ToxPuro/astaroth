@@ -38,6 +38,12 @@ In the base directory, run
 
 > **Note:** CMake will inform you if there are missing dependencies.
 
+## Simple example template
+
+If you need a functioning and documented example of how to run Astaroth in standalone more out of the box,
+
+[please see this shock turbulence run example](config/samples/shockturb/README.md) in the directory `config/samples/shockturb/`. 
+
 ## Running on clusters (Slurm)
 
 1. Load the modules required for building: `module load gcc/8.3.0 cuda/10.1.168 cmake openmpi/4.0.3-cuda`
@@ -66,6 +72,7 @@ In the base directory, run
 | BUILD_ACC_RUNTIME_LIBRARY | "Builds the standalone acc runtime library" | OFF |
 | USE_HIP | "Use HIP as the underlying GPGPU library instead of CUDA" | OFF |
 | SINGLEPASS_INTEGRATION| "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" | ON |
+| OPTIMIZE_MEM_ACCESSES | "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time" | OFF)
 
 
 ## Standalone Module
