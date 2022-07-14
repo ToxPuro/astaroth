@@ -64,3 +64,6 @@
 #define cudaStreamQuery hipStreamQuery
 #define cudaErrorNotReady hipErrorNotReady
 #define cudaDeviceGetStreamPriorityRange hipDeviceGetStreamPriorityRange
+
+#define cudaProfilerStart roctracer_start
+#define cudaProfilerStop roctracer_stop

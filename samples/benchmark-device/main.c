@@ -13,6 +13,8 @@
 int
 main(int argc, char** argv)
 {
+    cudaProfilerStop();
+
     printf("Num fields %lu\n", acGetNumFields());
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         size_t field;
@@ -167,6 +169,11 @@ main(int argc, char** argv)
     acDeviceSynchronizeStream(device, STREAM_DEFAULT);
     const double ms_elapsed = timer_diff_nsec(t) / 1e6;
     printf("Average integration time: %.4g ms\n", ms_elapsed / NSAMPLES);
+
+    // Profile
+    cudaProfilerStart();
+    acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, n_min, n_max, dt);
+    cudaProfilerStop();
 
     // Destroy
     acDeviceDestroy(device);

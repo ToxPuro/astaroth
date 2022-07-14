@@ -22,8 +22,10 @@
 #if AC_USE_HIP
 #include "hip.h"
 #include <hip/hip_runtime_api.h>
+#include <roctracer_ext.h> // Profiling
 #else
 #include <cuda_runtime_api.h> // cudaStream_t
+#include <cuda_profiler_api.h> // Profiling
 #endif
 
 #include "datatypes.h"
