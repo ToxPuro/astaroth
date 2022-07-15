@@ -2,22 +2,92 @@ import ctypes
 import pathlib
 import astaroth as ap
 
+#MV: This could actully be using a Pandas dataframe for clarity! 
+def print_diagnostics(diag_data, mode):
+    if mode == "init":
+        '''
+        diag_file = fopen("timeseries.ts", "a");
+        
+        // Generate the title row.
+        if (start_step == 0) {
+            fprintf(diag_file, "step  t_step  dt  uu_total_min  uu_total_rms  uu_total_max  ");
+            for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+                fprintf(diag_file, "%s_min  %s_rms  %s_max  ", vtxbuf_names[i], vtxbuf_names[i],
+                        vtxbuf_names[i]);
+            }
+        }
+        fprintf(diag_file, "\n");
+        
+        write_mesh_info(&mesh_info);
+        
+        printf("Mesh info written to file.\n");
+        '''
+    elif mode == "append":
+        ...
 
-mesh_info = ap.py_load_config(config_path)
+# Should all of this be converted into Python. Now dependent on the separate
+# config_loader.cc file?
+mesh_info = ap.py_load_config(config_path) 
 
+# We also might want to make a Pythonic version of these. Both depend on
+# subroutines in host_memory.cc and are wokring on a host level. 
 mesh      = ap.py_acmesh_create(mesh_info)
-
 mesh      = ap.py_initialize_mesh("random_fields", mesh)
 
 t_step = 0.0 
 device_number = 0
 
+# These are API functions that should be interfaced as they intereacti with GPU
 device    = ap.py_acDeviceCreate(device_number, mesh_info)
 ap.py_acDevicePrintInfo(device)
-mesh      = ap.py_acDeviceLoadMesh(device, mesh)
+ap.py_acDeviceLoadMesh(device, mesh)
+
+
+found_nan = False
+found_stop = False
+
+# Print outputs to be done with Python
+# Note py_print_diagnostics() will invoke diagnostic CUDA function calls
+py_print_diagnostics(diag_data, 'init')
+py_write_mesh_info(mesh_info)
+
+#Invoke boundary condiotions like acKernelSymmetricBoundconds()
+ap.py_acDeviceBoundaryCondition('periodic')
+ap.py_acDeviceLoadMesh(device, mesh)
+if t_step == 0.0:
+    # Do IO on python side
+    py_save_mesh(mesh, 0, t_step);
 
 #
-# ...
+# ... Initializing constant values etc. (max_time ... ) ...
+#
+
+computational_loop = True
+while computational_loop:
+
+    #  
+    # ... Calculate the timestep ...
+    #
+    
+    #
+    # ... Calculate and output diagnostics ...
+    #
+
+    ap.py_acDeviceBoundaryCondition('periodic')
+
+    ap.py_acDeviceIntegrateSubstep(device, STREAM_DEFAULT, isubstep, start, end, dt)
+    ap.py_acDeviceSwapBuffers(device)
+
+    t_step += dt
+    if t_step >= max_time:
+        computational_loop = False
+
+    #
+    # ... Other conditions to end the simulations ...
+    #
+
+#
+# ... Output the end state ...
 #
 
 py_acDeviceDestroy(device)
@@ -35,44 +105,44 @@ py_acDeviceDestroy(device)
 #$$ acmesh_init_to(INIT_TYPE_GAUSSIAN_RADIAL_EXPL, mesh);
 #$$ 
 #$$ AcReal t_step        = 0.0;
-#!!
-#!! Device device;
-#!! acDeviceCreate(0, mesh_info, &device);
-#!! acDevicePrintInfo(device);
-#!! printf("Loading mesh to GPU.\n");
-#!! acDeviceLoadMesh(device, STREAM_DEFAULT, *mesh);
-#!! 
-#!!     printf("Mesh loaded to GPU(s).\n");
-#!! 
-#!!     FILE* diag_file;
-#!!     int found_nan = 0, found_stop = 0; // Nan or inf finder to give an error signal
-#!!     diag_file = fopen("timeseries.ts", "a");
-#!! 
-#!!     // Generate the title row.
-#!!     if (start_step == 0) {
-#!!         fprintf(diag_file, "step  t_step  dt  uu_total_min  uu_total_rms  uu_total_max  ");
-#!!         for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-#!!             fprintf(diag_file, "%s_min  %s_rms  %s_max  ", vtxbuf_names[i], vtxbuf_names[i],
-#!!                     vtxbuf_names[i]);
-#!!         }
-#!!     }
-#!!     fprintf(diag_file, "\n");
-#!! 
-#!!     write_mesh_info(&mesh_info);
-#!! 
-#!!     printf("Mesh info written to file.\n");
-#!! 
-#!!     if (start_step == 0) {
-#!!         print_diagnostics(0, AcReal(.0), t_step, diag_file, -1.0, -1.0, &found_nan);
-#!!     }
-#!! 
-#!!     // acBoundcondStep();
-#!!     acBoundcondStepGBC(mesh_info);
-#!!     acStore(mesh);
-#!!     if (start_step == 0) {
-#!!         save_mesh(*mesh, 0, t_step);
-#!!     }
-#!! 
+#$$ 
+#$$ Device device;
+#$$ acDeviceCreate(0, mesh_info, &device);
+#$$ acDevicePrintInfo(device);
+#$$ printf("Loading mesh to GPU.\n");
+#$$ acDeviceLoadMesh(device, STREAM_DEFAULT, *mesh);
+#$$ 
+#$$     printf("Mesh loaded to GPU(s).\n");
+#$$ 
+#$$     FILE* diag_file;
+#$$     int found_nan = 0, found_stop = 0; // Nan or inf finder to give an error signal
+#$$     diag_file = fopen("timeseries.ts", "a");
+#$$ 
+#$$     // Generate the title row.
+#$$     if (start_step == 0) {
+#$$         fprintf(diag_file, "step  t_step  dt  uu_total_min  uu_total_rms  uu_total_max  ");
+#$$         for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+#$$             fprintf(diag_file, "%s_min  %s_rms  %s_max  ", vtxbuf_names[i], vtxbuf_names[i],
+#$$                     vtxbuf_names[i]);
+#$$         }
+#$$     }
+#$$     fprintf(diag_file, "\n");
+#$$ 
+#$$     write_mesh_info(&mesh_info);
+#$$ 
+#$$     printf("Mesh info written to file.\n");
+#$$ 
+#$$     if (start_step == 0) {
+#$$         print_diagnostics(0, AcReal(.0), t_step, diag_file, -1.0, -1.0, &found_nan);
+#$$     }
+#$$ 
+#$$     // acBoundcondStep();
+#$$     acBoundcondStepGBC(mesh_info);
+#$$     acStore(mesh);
+#$$     if (start_step == 0) {
+#$$         save_mesh(*mesh, 0, t_step);
+#$$     }
+#$$ 
 #!!     const int max_steps      = mesh_info.int_params[AC_max_steps];
 #!!     const int save_steps     = mesh_info.int_params[AC_save_steps];
 #!!     const int bin_save_steps = mesh_info.int_params[AC_bin_steps];
