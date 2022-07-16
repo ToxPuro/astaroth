@@ -402,6 +402,12 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
 
+        float milliseconds = 0;
+        cudaEventElapsedTime(&milliseconds, tstart, tstop);
+
+        cudaEventDestroy(tstart);
+        cudaEventDestroy(tstop);
+
         // Discard failed runs (attempt to clear the error to cudaSuccess)
         if (cudaGetLastError() != cudaSuccess) {
           // Exit in case of unrecoverable error that needs a device reset
@@ -409,9 +415,6 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
           ERRCHK_CUDA_ALWAYS(cudaGetLastError());
           continue;
         }
-
-        float milliseconds = 0;
-        cudaEventElapsedTime(&milliseconds, tstart, tstop);
 
         if (milliseconds < best_time) {
           best_time = milliseconds;
