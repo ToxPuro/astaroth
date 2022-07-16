@@ -148,7 +148,8 @@ void
 gen_stencil_accesses(void)
 {
   gen_kernel_prefix_with_boundcheck();
-  printf("AcReal __restrict__ processed_stencils[NUM_FIELDS][NUM_STENCILS];");
+  printf(
+      "AcReal /*__restrict__*/ processed_stencils[NUM_FIELDS][NUM_STENCILS];");
 
   for (size_t i = 0; i < NUM_STENCILS; ++i)
     printf("const auto %s=[&](const auto field)"
@@ -162,7 +163,8 @@ void
 gen_kernel_body(const int curr_kernel)
 {
   gen_kernel_prefix_with_boundcheck();
-  printf("AcReal __restrict__ processed_stencils[NUM_FIELDS][NUM_STENCILS];");
+  printf(
+      "AcReal /*__restrict__*/ processed_stencils[NUM_FIELDS][NUM_STENCILS];");
 
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
   for (int field = 0; field < NUM_FIELDS; ++field) {
@@ -215,7 +217,8 @@ void
 gen_kernel_body(const int curr_kernel)
 {
   gen_kernel_prefix_with_boundcheck();
-  printf("AcReal __restrict__ processed_stencils[NUM_FIELDS][NUM_STENCILS];");
+  printf(
+      "AcReal /*__restrict__*/ processed_stencils[NUM_FIELDS][NUM_STENCILS];");
 
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
   for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
