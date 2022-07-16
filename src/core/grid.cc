@@ -326,9 +326,9 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                              j + tgt_pid3d.y * nn.y, //
-                                                              k + tgt_pid3d.z * nn.z, //
-                                                              host_mesh.info);
+                                                                 j + tgt_pid3d.y * nn.y, //
+                                                                 k + tgt_pid3d.z * nn.z, //
+                                                                 host_mesh.info);
 
                         // Send
                         MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
@@ -415,9 +415,9 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                              j + tgt_pid3d.y * nn.y, //
-                                                              k + tgt_pid3d.z * nn.z, //
-                                                              host_mesh->info);
+                                                                 j + tgt_pid3d.y * nn.y, //
+                                                                 k + tgt_pid3d.z * nn.z, //
+                                                                 host_mesh->info);
 
                         // Recv
                         MPI_Status status;
@@ -695,14 +695,23 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     graph->all_tasks.shrink_to_fit();
 
     // In order to reduce redundant dependencies, we keep track of which tasks are connected
-    size_t n_tasks               = graph->all_tasks.size();
-    size_t adjacancy_matrix_size = n_tasks * n_tasks;
-    bool adjacent[adjacancy_matrix_size]{};
+    const size_t n_tasks               = graph->all_tasks.size();
+    const size_t adjacancy_matrix_size = n_tasks * n_tasks;
+    bool adjacent[adjacancy_matrix_size];
+    memset(adjacent, 0, adjacancy_matrix_size * sizeof(adjacent[0]));
+    for (size_t i = 0; i < adjacancy_matrix_size; ++i) { // Belt & suspenders safety
+        ERRCHK_ALWAYS(adjacent[i] == false);
+    }
 
     //...and check if there is already a forward path that connects two tasks
     auto forward_search = [&adjacent, &op_indices, n_tasks,
                            n_ops](size_t preq, size_t dept, size_t preq_op, size_t path_len) {
-        bool visited[n_tasks]{};
+        bool visited[n_tasks];
+        memset(visited, 0, n_tasks * sizeof(visited[0]));
+        for (size_t i = 0; i < n_tasks; ++i) { // Belt & suspenders safety
+            ERRCHK_ALWAYS(visited[i] == false);
+        }
+
         size_t start_op = (preq_op + 1) % n_ops;
 
         struct walk_node {
@@ -745,12 +754,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                         auto dept_task = graph->all_tasks[j];
                         // Task A depends on task B if the output region of A overlaps with the
                         // input region of B.
-                        if (dept_task->active
-                           && (
-                                preq_task->output_region.overlaps(&(dept_task->input_region))
-                             || preq_task->output_region.overlaps(&(dept_task->output_region))
-                             )
-                            ) {
+                        if (dept_task->active &&
+                            (preq_task->output_region.overlaps(&(dept_task->input_region)) ||
+                             preq_task->output_region.overlaps(&(dept_task->output_region)))) {
                             // iteration offset of 0 -> dependency in the same iteration
                             // iteration offset of 1 -> dependency from preq_task in iteration k to
                             // dept_task in iteration k+1
