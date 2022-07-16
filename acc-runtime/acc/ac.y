@@ -529,7 +529,12 @@ function_definition: declaration function_body {
                             assert(compound_statement);
 
                             astnode_set_prefix("{", compound_statement);
-                            astnode_set_postfix("}", compound_statement);
+                            astnode_set_postfix(
+                              //"\n#pragma unroll\n"
+                              //"for (int field = 0; field < NUM_FIELDS; ++field)"
+                              //"if (!isnan(out_buffer[field]))"
+                              //"vba.out[field][idx] = out_buffer[field];"
+                              "}", compound_statement);
                         } else {
                             astnode_set_infix(" __attribute__((unused)) =[&]", $$);
                             astnode_set_postfix(";", $$);

@@ -88,11 +88,10 @@ gen_kernel_prefix(void)
   printf("const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];");
   printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
 
-  printf("const auto write=[&](const Field field, const AcReal value)"
-         "{ vba.out[field][idx] = value; };");
   printf("(void)globalVertexIdx;"); // Silence unused warning
   printf("(void)globalGridN;");     // Silence unused warning
 
+  // Read vba.out
 #if 0
   // Original (compute when needed)
   // SINGLEPASS_INTEGRATION=ON, 4.97 ms (full step, 128^3)
@@ -114,6 +113,26 @@ gen_kernel_prefix(void)
   printf("default: return (AcReal)NAN;"
          "}");
   printf("};");
+#endif
+
+// Write vba.out
+#if 1
+  // Original
+  printf("const auto write=[&](const Field field, const AcReal value)"
+         "{ vba.out[field][idx] = value; };");
+#else
+  // Buffered, no effect on performance
+  // !Remember to emit write insructions in ac.y if this is enabled!
+  printf("AcReal out_buffer[NUM_FIELDS];");
+  for (int field = 0; field < NUM_FIELDS; ++field)
+    printf("out_buffer[%d] = (AcReal)NAN;", field);
+
+  printf("const auto write=[&](const Field field, const AcReal value)"
+         "{ out_buffer[field] = value; };");
+/*
+for (int field = 0; field < NUM_FIELDS; ++field)
+printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
+*/
 #endif
 }
 
