@@ -1,3 +1,5 @@
-add_executable(bwtest main.c)
+add_executable(bwtest main.cu)
+set_source_files_properties(main.cu PROPERTIES LANGUAGE CXX)
+
 target_link_libraries(bwtest acc-runtime-headers)
 target_compile_options(bwtest PRIVATE -O3)
