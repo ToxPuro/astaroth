@@ -36,6 +36,7 @@
 #define cudaDeviceSynchronize hipDeviceSynchronize
 #define cudaEvent_t hipEvent_t
 #define cudaEventCreate hipEventCreate
+#define cudaEventDestroy hipEventDestroy
 #define cudaEventRecord hipEventRecord
 #define cudaEventSynchronize hipEventSynchronize
 #define cudaEventElapsedTime hipEventElapsedTime
