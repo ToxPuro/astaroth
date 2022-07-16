@@ -17,7 +17,7 @@
 #define USE_SMEM (1)
 #if USE_SMEM
 static const size_t veclen  = 2;
-static const size_t buffers = NUM_FIELDS;
+static const size_t buffers = 2;
 #endif
 static const char* veclen = "2";
 */
@@ -87,13 +87,40 @@ gen_kernel_prefix(void)
          "};");
   printf("const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];");
   printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
-  printf("const auto previous __attribute__((unused)) =[&](const Field field)"
-         "{ return vba.out[field][idx]; };");
+
   printf("const auto write=[&](const Field field, const AcReal value)"
          "{ vba.out[field][idx] = value; };");
   printf("(void)globalVertexIdx;"); // Silence unused warning
   printf("(void)globalGridN;");     // Silence unused warning
 
+#if 0
+  // Original (compute when needed)
+  // SINGLEPASS_INTEGRATION=ON, 4.97 ms (full step, 128^3)
+  // SINGLEPASS_INTEGRATION=OFF, 6.09 ms (full step, 128^3)
+  printf("const auto previous __attribute__((unused)) =[&](const Field field)"
+         "{ return vba.out[field][idx]; };");
+#else
+  // Prefetch output fields
+  // SINGLEPASS_INTEGRATION=ON, 4.18 ms (full step, 128^3)
+  // SINGLEPASS_INTEGRATION=OFF, 4.77 ms (full step, 128^3)
+  for (int field = 0; field < NUM_FIELDS; ++field)
+    printf("const auto f%d_prev = vba.out[%d][idx];", field, field);
+
+  printf("const auto previous __attribute__((unused)) = [&](const Field field)"
+         "{ switch (field) {");
+  for (int field = 0; field < NUM_FIELDS; ++field)
+    printf("case %d: { return f%d_prev; }", field, field);
+
+  printf("default: return (AcReal)NAN;"
+         "}");
+  printf("};");
+#endif
+}
+
+void
+gen_kernel_prefix_with_boundcheck(void)
+{
+  gen_kernel_prefix();
   printf("if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || "
          "vertexIdx.z >= end.z) { return; }");
 }
@@ -101,7 +128,7 @@ gen_kernel_prefix(void)
 void
 gen_stencil_accesses(void)
 {
-  gen_kernel_prefix();
+  gen_kernel_prefix_with_boundcheck();
   printf("AcReal __restrict__ processed_stencils[NUM_FIELDS][NUM_STENCILS];");
 
   for (size_t i = 0; i < NUM_STENCILS; ++i)
@@ -115,7 +142,7 @@ gen_stencil_accesses(void)
 void
 gen_kernel_body(const int curr_kernel)
 {
-  gen_kernel_prefix();
+  gen_kernel_prefix_with_boundcheck();
   printf("AcReal __restrict__ processed_stencils[NUM_FIELDS][NUM_STENCILS];");
 
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
@@ -168,7 +195,7 @@ gen_kernel_body(const int curr_kernel)
 void
 gen_kernel_body(const int curr_kernel)
 {
-  gen_kernel_prefix();
+  gen_kernel_prefix_with_boundcheck();
   printf("AcReal __restrict__ processed_stencils[NUM_FIELDS][NUM_STENCILS];");
 
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
@@ -221,7 +248,7 @@ gen_kernel_body(const int curr_kernel)
 void
 gen_kernel_body(const int curr_kernel)
 {
-  gen_kernel_prefix();
+  gen_kernel_prefix_with_boundcheck();
 
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
   for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
@@ -282,7 +309,7 @@ gen_kernel_body(const int curr_kernel)
 void
 gen_kernel_body(const int curr_kernel)
 {
-  gen_kernel_prefix();
+  gen_kernel_prefix_with_boundcheck();
 
   for (int field = 0; field < NUM_FIELDS; ++field)
     printf("const AcReal* __restrict__ in%d = vba.in[%d];", field, field);
@@ -402,7 +429,7 @@ gen_kernel_body(const int curr_kernel)
 void
 gen_kernel_body(const int curr_kernel)
 {
-  gen_kernel_prefix();
+  gen_kernel_prefix_with_boundcheck();
 
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
   for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
@@ -465,7 +492,7 @@ gen_kernel_body(const int curr_kernel)
 void
 gen_kernel_body(const int curr_kernel)
 {
-  gen_kernel_prefix();
+  gen_kernel_prefix(); // Note no bounds check
   printf("extern __shared__ AcReal smem[];");
   printf("const int sx = blockDim.x + STENCIL_WIDTH - 1;");
   printf("const int sy = blockDim.y + STENCIL_HEIGHT - 1;");
