@@ -3,9 +3,9 @@
 
 #include "acc_runtime.h" // For CUDA/HIP support
 
-//#if AC_USE_HIP
+#if AC_USE_HIP
 #include <hip/hip_runtime.h> // Needed in files that include kernels
-//#endif
+#endif
 
 typedef struct {
     size_t count;
