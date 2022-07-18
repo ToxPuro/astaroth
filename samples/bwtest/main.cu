@@ -1,3 +1,5 @@
+#include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -17,6 +19,7 @@ acArrayCreate(const size_t count)
 {
     Array a;
 
+    a.count            = count;
     const size_t bytes = count * sizeof(a.data[0]);
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&a.data, bytes));
 
@@ -31,19 +34,54 @@ acArrayDestroy(Array* a)
     a->count = 0;
 }
 
+void
+acArraySet(const uint8_t value, Array* a)
+{
+    cudaMemset(a->data, value, a->count * sizeof(a->data[0]));
+}
+
+__global__ void
+array_set_to_tid(Array out)
+{
+    const size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+    if (tid < out.count)
+        out.data[tid] = tid;
+}
+
+__global__ void
+array_set(const AcReal value, Array out)
+{
+    const size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+    if (tid < out.count)
+        out.data[tid] = value;
+}
+
 __global__ void
 kernel(const Array in, Array out)
 {
-    const size_t tid = threadIdx.x + threadIdx.y + blockDim.x +
-                       threadIdx.z * blockDim.x * blockDim.y;
+    const size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
     if (tid < in.count)
-        out.data[tid] = in.data[tid];
+        out.data[tid] = 2.0 * in.data[tid];
 }
 
 void
-validate(void)
+validate(const Array darr, const AcReal mult)
 {
-    fprintf(stderr, "TODO\n");
+    const size_t bytes = darr.count * sizeof(darr.data[0]);
+    AcReal* data       = (AcReal*)malloc(bytes);
+    assert(data);
+
+    ERRCHK_CUDA_ALWAYS(cudaMemcpy(data, darr.data, bytes, cudaMemcpyDeviceToHost));
+
+    for (size_t i = 0; i < darr.count; ++i) {
+        const AcReal expected = mult * i;
+        if (data[i] != expected) {
+            fprintf(stderr, "Validation failed at %lu: expected %g, got %g\n", i, expected,
+                    data[i]);
+            exit(EXIT_FAILURE);
+        }
+    }
+    free(data);
 }
 
 void
@@ -52,8 +90,10 @@ benchmark(const size_t count)
     Array a = acArrayCreate(count);
     Array b = acArrayCreate(count);
 
-    const size_t tpb = 256;
-    const size_t bpg = (int)ceil(1.0 * count / tpb);
+    const size_t tpb = 512;
+    const size_t bpg = (size_t)ceil(1.0 * count / tpb);
+    assert(a.count == count);
+    assert(b.count == count);
 
     // Warmup
     for (size_t i = 0; i < 10; ++i)
@@ -76,6 +116,12 @@ benchmark(const size_t count)
     cudaEventElapsedTime(&milliseconds, tstart, tstop);
     cudaEventDestroy(tstart);
     cudaEventDestroy(tstop);
+
+    // Validate
+    array_set_to_tid<<<bpg, tpb>>>(a);
+    array_set<<<bpg, tpb>>>((AcReal)0.0, b);
+    kernel<<<bpg, tpb>>>(a, b);
+    validate(b, 2.0);
 
     const size_t bytes   = 2 * count * sizeof(a.data[0]);
     const double seconds = (double)milliseconds / 1e3;
@@ -163,9 +209,12 @@ main(void)
     const size_t mm     = nn + 2 * halo;
     const size_t fields = 8;
     const size_t count  = fields * (pow(mm, 3) + 2 * pow(nn, 3));
+#elif 0
+    const size_t count = 10;
 #endif
 
-    for (size_t i = 0; i < 10; ++i)
+    const size_t num_iters = 10;
+    for (size_t i = 0; i < num_iters; ++i)
         benchmark(count);
 
     return EXIT_SUCCESS;
