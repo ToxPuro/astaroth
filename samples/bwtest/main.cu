@@ -36,7 +36,7 @@ kernel(const Array in, Array out)
 {
     const size_t tid = threadIdx.x + threadIdx.y + blockDim.x +
                        threadIdx.z * blockDim.x * blockDim.y;
-    if (tid < in.count - 1)
+    if (tid < in.count)
         out.data[tid] = in.data[tid];
 }
 
