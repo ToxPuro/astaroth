@@ -61,7 +61,30 @@ kernel(const Array in, Array out)
 {
     const size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
     if (tid < in.count)
-        out.data[tid] = 2.0 * in.data[tid];
+        out.data[tid] += 2.0 * in.data[tid];
+}
+
+static constexpr __device__ double2
+operator*(const double& a, const double2& b)
+{
+    return (double2){a * b.x, a * b.y};
+}
+
+static constexpr __device__ double2
+operator+(const double2& a, const double2& b)
+{
+    return (double2){a.x + b.x, a.y + b.y};
+}
+
+__global__ void
+kernel_vectorized(const Array in, Array out)
+{
+    const size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (2 * tid < in.count)
+        reinterpret_cast<double2*>(
+            &out.data[2 * tid])[0] = reinterpret_cast<double2*>(&out.data[2 * tid])[0] +
+                                     2.0 * reinterpret_cast<double2*>(&in.data[2 * tid])[0];
 }
 
 void
@@ -123,7 +146,7 @@ benchmark(const size_t count)
     kernel<<<bpg, tpb>>>(a, b);
     validate(b, 2.0);
 
-    const size_t bytes   = 2 * count * sizeof(a.data[0]);
+    const size_t bytes   = 3 * count * sizeof(a.data[0]);
     const double seconds = (double)milliseconds / 1e3;
     printf("Bandwidth: %g GiB/s\n", bytes / seconds / pow(1024, 3));
     printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
@@ -201,7 +224,7 @@ main(void)
 {
     printDeviceInfo(0);
 
-#if 1
+#if 0
     const size_t count = 4 * pow(1024, 3) / sizeof(AcReal);
 #elif 0
     const size_t halo   = 3;
@@ -209,6 +232,10 @@ main(void)
     const size_t mm     = nn + 2 * halo;
     const size_t fields = 8;
     const size_t count  = fields * (pow(mm, 3) + 2 * pow(nn, 3));
+#elif 1
+    const size_t nn     = 128;
+    const size_t fields = 8;
+    const size_t count  = fields * pow(nn, 3); // Approx what we do (lower bound)
 #elif 0
     const size_t count = 10;
 #endif
