@@ -11,6 +11,7 @@
 #define ORIGINAL_WITH_ILP (1)
 #define EXPL_REG_VARS (2)
 #define FULLY_EXPL_REG_VARS (3)
+
 #define EXPL_REG_VARS_AND_CT_CONST_STENCILS (4)
 #define SMEM_AND_VECTORIZED_LOADS (5)
 /*
@@ -39,6 +40,7 @@ static const size_t buffers = NUM_FIELDS;
 #endif
 static const char* veclen = "2";
 */
+#define FULLY_EXPL_REG_VARS_AND_PINGPONG_REGISTERS (8)
 
 #define IMPLEMENTATION (3)
 #if IMPLEMENTATION >= 5 && IMPLEMENTATION <= 7
@@ -823,6 +825,177 @@ gen_kernel_body(const int curr_kernel)
 
   printf("if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || "
          "vertexIdx.z >= end.z) { return; }");
+
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    printf("const auto %s __attribute__((unused)) = [&](const auto field){",
+           stencil_names[stencil]);
+    printf("switch (field) {");
+    for (int field = 0; field < NUM_FIELDS; ++field) {
+      if (stencil_initialized[field][stencil])
+        printf("case %d: return f%d_s%d;", field, field, stencil);
+    }
+    printf("default: return (AcReal)NAN;");
+    printf("}");
+    printf("};");
+  }
+}
+#elif IMPLEMENTATION == FULLY_EXPL_REG_VARS_AND_PINGPONG_REGISTERS
+void
+gen_kernel_body(const int curr_kernel)
+{
+  gen_kernel_prefix_with_boundcheck();
+
+  for (int field = 0; field < NUM_FIELDS; ++field)
+    printf("const AcReal* __restrict__ in%d = vba.in[%d];", field, field);
+
+  // Prefetch stencil coefficients to local memory
+  int coeff_initialized[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]
+                       [STENCIL_WIDTH] = {0};
+  for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+    for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+      for (int width = 0; width < STENCIL_WIDTH; ++width) {
+        for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+
+          int stencil_accessed = 0;
+          for (int field = 0; field < NUM_FIELDS; ++field)
+            stencil_accessed |= stencils_accessed[curr_kernel][field][stencil];
+          if (!stencil_accessed)
+            continue;
+
+          if (stencils[stencil][depth][height][width] &&
+              !coeff_initialized[stencil][depth][height][width]) {
+            printf("const auto s%d_%d_%d_%d = ", //
+                   stencil, depth, height, width);
+
+            // CT const
+            // printf("%s;", stencils[stencil][depth][height][width]);
+            printf("stencils[%d][%d][%d][%d];", stencil, depth, height, width);
+
+            coeff_initialized[stencil][depth][height][width] = 1;
+          }
+        }
+      }
+    }
+  }
+
+  const int prefetch_size = 2;
+  // Prefetch stencil elements to local memory
+  int cell_initialized[NUM_FIELDS][STENCIL_DEPTH][STENCIL_HEIGHT]
+                      [STENCIL_WIDTH] = {0};
+  for (int field = 0; field < prefetch_size; ++field) {
+    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+        for (int width = 0; width < STENCIL_WIDTH; ++width) {
+          for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+
+            // Skip if the stencil is not used
+            if (!stencils_accessed[curr_kernel][field][stencil])
+              continue;
+
+            if (stencils[stencil][depth][height][width] &&
+                !cell_initialized[field][depth][height][width]) {
+              printf("const auto f%d_%d_%d_%d = ", //
+                     field, depth, height, width);
+              printf("in%d[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                     "vertexIdx.z+(%d))];",
+                     field, -STENCIL_ORDER / 2 + width,
+                     -STENCIL_ORDER / 2 + height, -STENCIL_ORDER / 2 + depth);
+
+              cell_initialized[field][depth][height][width] = 1;
+            }
+          }
+        }
+      }
+    }
+  }
+  int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
+  for (int field = prefetch_size; field < NUM_FIELDS; ++field) {
+    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+        for (int width = 0; width < STENCIL_WIDTH; ++width) {
+          for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+
+            // Skip if the stencil is not used
+            if (stencils_accessed[curr_kernel][field][stencil]) {
+              if (stencils[stencil][depth][height][width] &&
+                  !cell_initialized[field][depth][height][width]) {
+                printf("const auto f%d_%d_%d_%d = ", //
+                       field, depth, height, width);
+                printf("in%d[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                       "vertexIdx.z+(%d))];",
+                       field, -STENCIL_ORDER / 2 + width,
+                       -STENCIL_ORDER / 2 + height, -STENCIL_ORDER / 2 + depth);
+
+                cell_initialized[field][depth][height][width] = 1;
+              }
+            }
+
+            if (stencils_accessed[curr_kernel][field - prefetch_size]
+                                 [stencil]) {
+              if (stencils[stencil][depth][height][width]) {
+                if (!stencil_initialized[field - prefetch_size][stencil]) {
+                  printf("auto f%d_s%d = ", field - prefetch_size, stencil);
+                  printf("%s(s%d_%d_%d_%d*"
+                         "f%d_%d_%d_%d);",
+                         stencil_unary_ops[stencil], stencil, depth, height,
+                         width, field - prefetch_size, depth, height, width);
+
+                  stencil_initialized[field - prefetch_size][stencil] = 1;
+                }
+                else {
+                  printf("f%d_s%d = ", field - prefetch_size, stencil);
+                  printf( //
+                      "%s(f%d_s%d,%s(s%d_%d_%d_%d*"
+                      "f%d_%d_%d_%d));",
+                      stencil_binary_ops[stencil], field - prefetch_size,
+                      stencil, stencil_unary_ops[stencil], stencil, depth,
+                      height, width, field - prefetch_size, depth, height,
+                      width);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+    for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+      for (int width = 0; width < STENCIL_WIDTH; ++width) {
+        for (int field = NUM_FIELDS - prefetch_size; field < NUM_FIELDS;
+             ++field) {
+          for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+
+            // Skip if the stencil is not used
+            if (!stencils_accessed[curr_kernel][field][stencil])
+              continue;
+
+            if (stencils[stencil][depth][height][width]) {
+              if (!stencil_initialized[field][stencil]) {
+                printf("auto f%d_s%d = ", field, stencil);
+                printf("%s(s%d_%d_%d_%d*"
+                       "f%d_%d_%d_%d);",
+                       stencil_unary_ops[stencil], stencil, depth, height,
+                       width, field, depth, height, width);
+
+                stencil_initialized[field][stencil] = 1;
+              }
+              else {
+                printf("f%d_s%d = ", field, stencil);
+                printf( //
+                    "%s(f%d_s%d,%s(s%d_%d_%d_%d*"
+                    "f%d_%d_%d_%d));",
+                    stencil_binary_ops[stencil], field, stencil,
+                    stencil_unary_ops[stencil], stencil, depth, height, width,
+                    field, depth, height, width);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     printf("const auto %s __attribute__((unused)) = [&](const auto field){",
