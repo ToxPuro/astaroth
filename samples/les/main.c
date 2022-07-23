@@ -51,13 +51,21 @@ main(void)
     acVerifyMesh("Load/Store", mesh, candidate);
     acHostMeshDestroy(&candidate);
 
-    // Compute
+    // Warmup
     const int3 start = (int3){STENCIL_ORDER, STENCIL_ORDER, STENCIL_ORDER};
     const int3 end   = (int3){STENCIL_ORDER + nn, STENCIL_ORDER + nn, STENCIL_ORDER + nn};
     for (size_t i = 0; i < NUM_KERNELS; ++i) {
         printf("Launching kernel %s (%p)...\n", kernel_names[i], kernels[i]);
         acDeviceLaunchKernel(device, STREAM_DEFAULT, kernels[i], start, end);
     }
+
+    // Compute
+    cudaProfilerStart();
+    for (size_t i = 0; i < NUM_KERNELS; ++i) {
+        printf("Launching kernel %s (%p)...\n", kernel_names[i], kernels[i]);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, kernels[i], start, end);
+    }
+    cudaProfilerStop();
     acDeviceSwapBuffers(device);
 
     printf("Done.\nVTXBUF ranges after one integration step:\n");
