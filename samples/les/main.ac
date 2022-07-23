@@ -1,0 +1,8 @@
+Field SGS
+
+#include "stencil.h"
+
+
+Kernel test() {
+   write(SGS, sum(SGS) / pow(2*STENCIL_ORDER + 1, 3))
+}

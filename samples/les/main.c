@@ -1,0 +1,75 @@
+/*
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+
+    This file is part of Astaroth.
+
+    Astaroth is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Astaroth is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "astaroth.h"
+#include "astaroth_utils.h"
+
+int
+main(void)
+{
+    ERRCHK_ALWAYS(acCheckDeviceAvailability() == AC_SUCCESS);
+
+    AcMeshInfo info;
+    const int nn = 64;
+    acSetMeshDims(nn, nn, nn, &info);
+    acPrintMeshInfo(info);
+
+    // Alloc
+    AcMesh mesh;
+    acHostMeshCreate(info, &mesh);
+    acHostMeshRandomize(&mesh);
+    acHostMeshApplyPeriodicBounds(&mesh);
+
+    // Init device
+    Device device;
+    acDeviceCreate(0, info, &device);
+    acDevicePrintInfo(device);
+    acDeviceLoadMesh(device, STREAM_DEFAULT, mesh);
+
+    // Verify that the mesh was loaded and stored correctly
+    AcMesh candidate;
+    acHostMeshCreate(info, &candidate);
+    acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
+    acVerifyMesh("Load/Store", mesh, candidate);
+    acHostMeshDestroy(&candidate);
+
+    // Compute
+    const int3 start = (int3){STENCIL_ORDER, STENCIL_ORDER, STENCIL_ORDER};
+    const int3 end   = (int3){STENCIL_ORDER + nn, STENCIL_ORDER + nn, STENCIL_ORDER + nn};
+    for (size_t i = 0; i < NUM_KERNELS; ++i) {
+        printf("Launching kernel %s (%p)...\n", kernel_names[i], kernels[i]);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, kernels[i], start, end);
+    }
+    acDeviceSwapBuffers(device);
+
+    printf("Done.\nVTXBUF ranges after one integration step:\n");
+    for (size_t i = 0; i < NUM_FIELDS; ++i) {
+        AcReal min, max;
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MIN, i, &min);
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MAX, i, &max);
+        printf("\t%-15s... [%.3g, %.3g]\n", field_names[i], min, max);
+    }
+
+    acHostMeshDestroy(&mesh);
+    acDeviceDestroy(device);
+
+    return EXIT_SUCCESS;
+}
