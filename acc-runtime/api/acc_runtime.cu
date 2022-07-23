@@ -33,6 +33,8 @@ static const size_t veclen  = 2;
 static const size_t buffers = NUM_FIELDS;
 #endif
 
+#define USE_COMPRESSIBLE_MEMORY (0)
+
 /*
 // Device info (TODO GENERIC)
 // Use the maximum available reg count per thread
@@ -156,15 +158,100 @@ acKernelFlush(AcReal* arr, const size_t n)
   return AC_SUCCESS;
 }
 
+#if USE_COMPRESSIBLE_MEMORY
+#include <cuda.h>
+
+#define ERRCHK_CU_ALWAYS(x) ERRCHK_ALWAYS((x) == CUDA_SUCCESS)
+
+static cudaError_t
+mallocCompressible(void** addr, const size_t requested_bytes)
+{
+  CUdevice device;
+  ERRCHK_ALWAYS(cuCtxGetDevice(&device) == CUDA_SUCCESS);
+
+  CUmemAllocationProp prop;
+  memset(&prop, 0, sizeof(CUmemAllocationProp));
+  prop.type                       = CU_MEM_ALLOCATION_TYPE_PINNED;
+  prop.location.type              = CU_MEM_LOCATION_TYPE_DEVICE;
+  prop.location.id                = device;
+  prop.allocFlags.compressionType = CU_MEM_ALLOCATION_COMP_GENERIC;
+
+  size_t granularity;
+  ERRCHK_CU_ALWAYS(cuMemGetAllocationGranularity(
+      &granularity, &prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
+
+  // Pad to align
+  const size_t bytes = ((requested_bytes - 1) / granularity + 1) * granularity;
+
+  CUdeviceptr dptr;
+  ERRCHK_ALWAYS(cuMemAddressReserve(&dptr, bytes, 0, 0, 0) == CUDA_SUCCESS);
+
+  CUmemGenericAllocationHandle handle;
+  ERRCHK_ALWAYS(cuMemCreate(&handle, bytes, &prop, 0) == CUDA_SUCCESS)
+
+  // Check if cuMemCreate was able to allocate compressible memory.
+  CUmemAllocationProp alloc_prop;
+  memset(&alloc_prop, 0, sizeof(CUmemAllocationProp));
+  cuMemGetAllocationPropertiesFromHandle(&alloc_prop, handle);
+  ERRCHK_ALWAYS(alloc_prop.allocFlags.compressionType ==
+                CU_MEM_ALLOCATION_COMP_GENERIC);
+
+  ERRCHK_ALWAYS(cuMemMap(dptr, bytes, 0, handle, 0) == CUDA_SUCCESS);
+  ERRCHK_ALWAYS(cuMemRelease(handle) == CUDA_SUCCESS);
+
+  CUmemAccessDesc accessDescriptor;
+  accessDescriptor.location.id   = prop.location.id;
+  accessDescriptor.location.type = prop.location.type;
+  accessDescriptor.flags         = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+
+  ERRCHK_ALWAYS(cuMemSetAccess(dptr, bytes, &accessDescriptor, 1) ==
+                CUDA_SUCCESS);
+
+  *addr = (void*)dptr;
+  return cudaSuccess;
+}
+
+static void
+freeCompressible(void* ptr, const size_t requested_bytes)
+{
+  CUdevice device;
+  ERRCHK_ALWAYS(cuCtxGetDevice(&device) == CUDA_SUCCESS);
+
+  CUmemAllocationProp prop;
+  memset(&prop, 0, sizeof(CUmemAllocationProp));
+  prop.type                       = CU_MEM_ALLOCATION_TYPE_PINNED;
+  prop.location.type              = CU_MEM_LOCATION_TYPE_DEVICE;
+  prop.location.id                = device;
+  prop.allocFlags.compressionType = CU_MEM_ALLOCATION_COMP_GENERIC;
+
+  size_t granularity = 0;
+  ERRCHK_ALWAYS(cuMemGetAllocationGranularity(
+                    &granularity, &prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM) ==
+                CUDA_SUCCESS);
+  const size_t bytes = ((requested_bytes - 1) / granularity + 1) * granularity;
+
+  ERRCHK_ALWAYS(ptr);
+  ERRCHK_ALWAYS(cuMemUnmap((CUdeviceptr)ptr, bytes) == CUDA_SUCCESS);
+  ERRCHK_ALWAYS(cuMemAddressFree((CUdeviceptr)ptr, bytes) == CUDA_SUCCESS);
+}
+#endif
+
 VertexBufferArray
 acVBACreate(const size_t count)
 {
   VertexBufferArray vba;
 
   const size_t bytes = sizeof(vba.in[0][0]) * count;
+  vba.bytes          = bytes;
+
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+#if USE_COMPRESSIBLE_MEMORY
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&vba.in[i], bytes));
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&vba.out[i], bytes));
+#else
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.in[i], bytes));
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
+#endif
 
     // Set vba.in data to all-nan and vba.out to 0
     acKernelFlush(vba.in[i], count);
@@ -178,11 +265,17 @@ void
 acVBADestroy(VertexBufferArray* vba)
 {
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+#if USE_COMPRESSIBLE_MEMORY
+    freeCompressible(vba->in[i], vba->bytes);
+    freeCompressible(vba->out[i], vba->bytes);
+#else
     cudaFree(vba->in[i]);
     cudaFree(vba->out[i]);
+#endif
     vba->in[i]  = NULL;
     vba->out[i] = NULL;
   }
+  vba->bytes = 0;
 }
 
 AcResult
