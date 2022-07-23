@@ -81,12 +81,37 @@ IDX(const int i)
   return i;
 }
 
+#if 1
 __device__ __forceinline__ int
 IDX(const int i, const int j, const int k)
 {
   return DEVICE_VTXBUF_IDX(i, j, k);
 }
+#else
+constexpr __device__ int
+IDX(const uint i, const uint j, const uint k)
+{
+  /*
+  const int precision   = 32; // Bits
+  const int dimensions  = 3;
+  const int bits = ceil(precision / dimensions);
+  */
+  const int dimensions = 3;
+  const int bits       = 11;
 
+  uint idx = 0;
+#pragma unroll
+  for (uint bit = 0; bit < bits; ++bit) {
+    const uint mask = 0b1 << bit;
+    idx |= ((i & mask) << 0) << (dimensions - 1) * bit;
+    idx |= ((j & mask) << 1) << (dimensions - 1) * bit;
+    idx |= ((k & mask) << 2) << (dimensions - 1) * bit;
+  }
+  return idx;
+}
+#endif
+
+// Only used in reductions
 __device__ __forceinline__ int
 IDX(const int3 idx)
 {
