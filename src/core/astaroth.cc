@@ -36,6 +36,7 @@ acInit(const AcMeshInfo mesh_info)
 AcResult
 acQuit(void)
 {
+    ERRCHK_ALWAYS(num_nodes);
     num_nodes = 0;
     return acNodeDestroy(nodes[0]);
 }
@@ -54,54 +55,63 @@ acCheckDeviceAvailability(void)
 AcResult
 acSynchronize(void)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeSynchronizeStream(nodes[0], STREAM_ALL);
 }
 
 AcResult
 acSynchronizeStream(const Stream stream)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeSynchronizeStream(nodes[0], stream);
 }
 
 AcResult
 acLoadDeviceConstant(const AcRealParam param, const AcReal value)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeLoadConstant(nodes[0], STREAM_DEFAULT, param, value);
 }
 
 AcResult
 acLoad(const AcMesh host_mesh)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeLoadMesh(nodes[0], STREAM_DEFAULT, host_mesh);
 }
 
 AcResult
 acSetVertexBuffer(const VertexBufferHandle handle, const AcReal value)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeSetVertexBuffer(nodes[0], STREAM_DEFAULT, handle, value);
 }
 
 AcResult
 acStore(AcMesh* host_mesh)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeStoreMesh(nodes[0], STREAM_DEFAULT, host_mesh);
 }
 
 AcResult
 acIntegrate(const AcReal dt)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeIntegrate(nodes[0], dt);
 }
 
 AcResult
 acIntegrateGBC(const AcMeshInfo config, const AcReal dt)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeIntegrateGBC(nodes[0], config, dt);
 }
 
 AcResult
 acIntegrateStep(const int isubstep, const AcReal dt)
 {
+    ERRCHK_ALWAYS(num_nodes);
     DeviceConfiguration config;
     acNodeQueryDeviceConfiguration(nodes[0], &config);
 
@@ -113,24 +123,29 @@ acIntegrateStep(const int isubstep, const AcReal dt)
 AcResult
 acIntegrateStepWithOffset(const int isubstep, const AcReal dt, const int3 start, const int3 end)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeIntegrateSubstep(nodes[0], STREAM_DEFAULT, isubstep, start, end, dt);
 }
 
 AcResult
 acBoundcondStep(void)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodePeriodicBoundconds(nodes[0], STREAM_DEFAULT);
 }
 
 AcResult
 acBoundcondStepGBC(const AcMeshInfo config)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeGeneralBoundconds(nodes[0], STREAM_DEFAULT, config);
 }
 
 AcReal
 acReduceScal(const ReductionType rtype, const VertexBufferHandle vtxbuf_handle)
 {
+    ERRCHK_ALWAYS(num_nodes);
+
     AcReal result;
     acNodeReduceScal(nodes[0], STREAM_DEFAULT, rtype, vtxbuf_handle, &result);
     return result;
@@ -140,6 +155,8 @@ AcReal
 acReduceVec(const ReductionType rtype, const VertexBufferHandle a, const VertexBufferHandle b,
             const VertexBufferHandle c)
 {
+    ERRCHK_ALWAYS(num_nodes);
+
     AcReal result;
     acNodeReduceVec(nodes[0], STREAM_DEFAULT, rtype, a, b, c, &result);
     return result;
@@ -149,6 +166,8 @@ AcReal
 acReduceVecScal(const ReductionType rtype, const VertexBufferHandle a, const VertexBufferHandle b,
                 const VertexBufferHandle c, const VertexBufferHandle d)
 {
+    ERRCHK_ALWAYS(num_nodes);
+
     AcReal result;
     acNodeReduceVecScal(nodes[0], STREAM_DEFAULT, rtype, a, b, c, d, &result);
     return result;
@@ -157,18 +176,21 @@ acReduceVecScal(const ReductionType rtype, const VertexBufferHandle a, const Ver
 AcResult
 acStoreWithOffset(const int3 dst, const size_t num_vertices, AcMesh* host_mesh)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeStoreMeshWithOffset(nodes[0], STREAM_DEFAULT, dst, dst, num_vertices, host_mesh);
 }
 
 AcResult
 acLoadWithOffset(const AcMesh host_mesh, const int3 src, const int num_vertices)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeLoadMeshWithOffset(nodes[0], STREAM_DEFAULT, host_mesh, src, src, num_vertices);
 }
 
 AcResult
 acSynchronizeMesh(void)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeSynchronizeMesh(nodes[0], STREAM_DEFAULT);
 }
 
