@@ -326,9 +326,9 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                                 j + tgt_pid3d.y * nn.y, //
-                                                                 k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh.info);
+                                                              j + tgt_pid3d.y * nn.y, //
+                                                              k + tgt_pid3d.z * nn.z, //
+                                                              host_mesh.info);
 
                         // Send
                         MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
@@ -415,9 +415,9 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                                 j + tgt_pid3d.y * nn.y, //
-                                                                 k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh->info);
+                                                              j + tgt_pid3d.y * nn.y, //
+                                                              k + tgt_pid3d.z * nn.z, //
+                                                              host_mesh->info);
 
                         // Recv
                         MPI_Status status;
@@ -621,7 +621,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         switch (op.task_type) {
 
         case TASKTYPE_COMPUTE: {
-            // Kernel kernel = kernel_lookup[(int)op.kernel];
+            // Kernel kernel = kernels[(int)op.kernel];
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
                 auto task = std::make_shared<ComputeTask>(op, i, tag, nn, device, swap_offset);
                 graph->all_tasks.push_back(task);

@@ -58,8 +58,28 @@ static const char* veclen   = "2";
 #endif
 
 void
+raise_error(const char* str)
+{
+  // Make sure the error does not go unnoticed
+  //
+  // It is not clear how the CMake building process
+  // could be stopped if a part of code generation
+  // fails but an infinite loop is an easy and
+  // effective way to inform the user something went wrong
+  while (1)
+    fprintf(stderr, "FATAL ERROR: %s\n", str);
+  exit(EXIT_FAILURE);
+}
+
+void
 gen_stencil_definitions(void)
 {
+  if (!NUM_FIELDS)
+    raise_error("Must declare at least one Field in the DSL code!");
+
+  if (!NUM_STENCILS)
+    raise_error("Must declare at least one Stencil in the DSL code!");
+
   printf(
       "static __device__ /*const*/ AcReal /*__restrict__*/ "
       "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={");
