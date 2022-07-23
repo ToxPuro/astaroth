@@ -110,6 +110,7 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cos");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "sqrt"); // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "fabs"); // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "pow");  // TODO RECHECK
 
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "AC_REAL_PI");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_FIELDS");
