@@ -42,7 +42,7 @@ static const char* veclen = "2";
 */
 #define FULLY_EXPL_REG_VARS_AND_PINGPONG_REGISTERS (8)
 
-#define IMPLEMENTATION (4)
+#define IMPLEMENTATION (3)
 #if IMPLEMENTATION >= 5 && IMPLEMENTATION <= 7
 static const char* realtype = "double";
 static const char* veclen   = "2";
