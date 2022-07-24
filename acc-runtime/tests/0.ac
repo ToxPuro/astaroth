@@ -5,6 +5,10 @@
 /*
     Block comment test
 */
+Field a
+Stencil b {
+	[0][0][0] = 1
+}
 
 Kernel kernel() {
   dt = 1.

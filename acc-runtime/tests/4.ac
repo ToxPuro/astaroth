@@ -1,6 +1,8 @@
 // Stencils, arrays, and defines
 
 //INV_DS  = 1. / 0.04908738521
+Field ff 
+Stencil stencil {[0][0][0]=0}
 
 #define DER1_3 (INV_DS * 1.0 / 60.0)
 #define DER1_2 (INV_DS * -3.0 / 20.0)
