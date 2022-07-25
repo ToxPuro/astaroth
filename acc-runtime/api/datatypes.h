@@ -30,6 +30,7 @@
 
 #if AC_DOUBLE_PRECISION
 typedef double AcReal;
+typedef double2 AcReal2;
 typedef double3 AcReal3;
 typedef cuDoubleComplex acComplex;
 #define acComplex(x, y) make_cuDoubleComplex(x, y)
@@ -38,6 +39,7 @@ typedef cuDoubleComplex acComplex;
 #define AC_REAL_MPI_TYPE (MPI_DOUBLE)
 #else
 typedef float AcReal;
+typedef float2 AcReal2;
 typedef float3 AcReal3;
 typedef cuFloatComplex acComplex;
 #define acComplex(x, y) make_cuFloatComplex(x, y)
