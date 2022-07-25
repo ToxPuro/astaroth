@@ -25,6 +25,7 @@
 int
 main(void)
 {
+
     ERRCHK_ALWAYS(acCheckDeviceAvailability() == AC_SUCCESS);
 
     AcMeshInfo info;
@@ -51,6 +52,14 @@ main(void)
     acVerifyMesh("Load/Store", mesh, candidate);
     acHostMeshDestroy(&candidate);
 
+    printf("VTXBUF ranges before integration:\n");
+    for (size_t i = 0; i < NUM_FIELDS; ++i) {
+        AcReal min, max;
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MIN, i, &min);
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MAX, i, &max);
+        printf("\t%-15s... [%.3g, %.3g]\n", field_names[i], min, max);
+    }
+
     // Warmup
     const int3 start = (int3){STENCIL_ORDER, STENCIL_ORDER, STENCIL_ORDER};
     const int3 end   = (int3){STENCIL_ORDER + nn, STENCIL_ORDER + nn, STENCIL_ORDER + nn};
@@ -68,7 +77,7 @@ main(void)
     cudaProfilerStop();
     acDeviceSwapBuffers(device);
 
-    printf("Done.\nVTXBUF ranges after one integration step:\n");
+    printf("Done.\nVTXBUF ranges after integration:\n");
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
         AcReal min, max;
         acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MIN, i, &min);
