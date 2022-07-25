@@ -55,11 +55,13 @@ exp(const acComplex& val)
 
 #if defined(__CUDACC__)
 // These are already overloaded in the HIP API
+/*
 static HOST_DEVICE_INLINE acComplex
 operator*(const AcReal& a, const acComplex& b)
 {
   return (acComplex){a * b.x, a * b.y};
 }
+*/
 
 static HOST_DEVICE_INLINE acComplex
 operator*(const acComplex& b, const AcReal& a)
@@ -210,6 +212,13 @@ static HOST_DEVICE_INLINE AcReal3
 operator+(const AcReal3& a, const AcReal3& b)
 {
   return (AcReal3){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+template <class T>
+static HOST_DEVICE_INLINE constexpr const T
+operator*(const AcReal& a, const T& b)
+{
+  return (T){a * b.x, a * b.y};
 }
 
 template <class T>
