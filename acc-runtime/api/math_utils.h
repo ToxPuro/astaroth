@@ -212,6 +212,13 @@ operator+(const AcReal3& a, const AcReal3& b)
   return (AcReal3){a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
+template <class T>
+static HOST_DEVICE_INLINE constexpr const T
+operator+(const T& a, const T& b)
+{
+  return (T){a.x + b.x, a.y + b.y};
+}
+
 static HOST_DEVICE_INLINE void
 operator-=(AcReal3& lhs, const AcReal3& rhs)
 {
