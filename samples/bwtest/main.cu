@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "acc_runtime.h" // For CUDA/HIP support
+#include "math_utils.h"
 
 #if AC_USE_HIP
 #include <hip/hip_runtime.h> // Needed in files that include kernels
@@ -64,13 +65,13 @@ kernel(const Array in, Array out)
         out.data[tid] += 2.0 * in.data[tid];
 }
 
+/*
 static constexpr __device__ double2
 operator*(const double& a, const double2& b)
 {
     return (double2){a * b.x, a * b.y};
 }
 
-/*
 static constexpr __device__ double2
 operator+(const double2& a, const double2& b)
 {
