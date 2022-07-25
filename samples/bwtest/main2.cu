@@ -10,8 +10,8 @@
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 #endif
 
-#define HALO (256)
-#define MAX_SMEM (96 * 1024)
+#define HALO (128)
+#define MAX_SMEM (192 * 1024)
 #define USE_SMEM (0)
 
 typedef struct {
@@ -307,14 +307,14 @@ main(void)
     const size_t fields = 8;
     const size_t count  = fields * (pow(mm, 3) + 2 * pow(nn, 3));
 #elif 1
-    const size_t nn     = pow(128, 3);
+    const size_t nn     = 128;
     const size_t fields = 1;
     const size_t count  = fields * pow(nn, 3); // Approx what we do (lower bound)
 #elif 0
     const size_t count = 10;
 #endif
 
-    const size_t num_iters = 1;
+    const size_t num_iters = 5;
     for (size_t i = 0; i < num_iters; ++i)
         benchmark(count);
 
