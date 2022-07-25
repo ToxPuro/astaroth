@@ -61,13 +61,13 @@ operator*(const AcReal& a, const acComplex& b)
 {
   return (acComplex){a * b.x, a * b.y};
 }
-*/
 
 static HOST_DEVICE_INLINE acComplex
 operator*(const acComplex& b, const AcReal& a)
 {
   return (acComplex){a * b.x, a * b.y};
 }
+*/
 
 static HOST_DEVICE_INLINE acComplex
 operator*(const acComplex& a, const acComplex& b)
