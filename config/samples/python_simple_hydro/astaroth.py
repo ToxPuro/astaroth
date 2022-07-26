@@ -64,19 +64,6 @@ def py_initialize_mesh("random_fields", mesh):
     ...
     return mesh
 
-def py_acDeviceCreate(device_number, mesh_info):
-    ...
-    return device
-
-def py_acDevicePrintInfo(device)
-    ...
-
-def  py_acDeviceLoadMesh(device, mesh):
-    ...
-    return mesh
-
-def py_acDeviceDestroy(device):
-    ...
 
 '''
 =============================================================================
