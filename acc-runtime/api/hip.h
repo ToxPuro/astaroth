@@ -36,6 +36,7 @@
 #define cudaDeviceSynchronize hipDeviceSynchronize
 #define cudaEvent_t hipEvent_t
 #define cudaEventCreate hipEventCreate
+#define cudaEventDestroy hipEventDestroy
 #define cudaEventRecord hipEventRecord
 #define cudaEventSynchronize hipEventSynchronize
 #define cudaEventElapsedTime hipEventElapsedTime
@@ -64,3 +65,6 @@
 #define cudaStreamQuery hipStreamQuery
 #define cudaErrorNotReady hipErrorNotReady
 #define cudaDeviceGetStreamPriorityRange hipDeviceGetStreamPriorityRange
+
+#define cudaProfilerStart roctracer_start
+#define cudaProfilerStop roctracer_stop

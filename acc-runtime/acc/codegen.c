@@ -110,6 +110,7 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cos");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "sqrt"); // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "fabs"); // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "pow");  // TODO RECHECK
 
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "AC_REAL_PI");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_FIELDS");
@@ -489,6 +490,12 @@ gen_user_defines(const ASTNode* root, const char* out)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
 
+  fprintf(fp, "static const char* kernel_names[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_KFUNCTION_ID)
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+
   fprintf(fp,
           "static const char* intparam_names[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -577,7 +584,7 @@ gen_user_kernels(const ASTNode* root, const char* out)
   // Astaroth 2.0 backwards compatibility START
   // This is not really needed any more, the kernel function pointer is now
   // exposed in the API, so one could use that directly instead of handles.
-  fprintf(fp, "static const Kernel kernel_lookup[] = {");
+  fprintf(fp, "static const Kernel kernels[] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_KFUNCTION_ID)
       fprintf(fp, "%s,", symbol_table[i].identifier); // Host layer handle
@@ -703,8 +710,9 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
       "-Wfloat-conversion -Wshadow -I. " STENCILGEN_SRC " "
       "-o " STENCILGEN_EXEC);
   if (retval == -1) {
-    fprintf(stderr,
-            "Catastrophic error: could not compile the stencil generator.\n");
+    while (1)
+      fprintf(stderr,
+              "Catastrophic error: could not compile the stencil generator.\n");
     assert(retval != -1);
     exit(EXIT_FAILURE);
   }

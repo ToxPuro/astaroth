@@ -27,6 +27,14 @@
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 #endif
 
+#define USE_SMEM (0)
+#if USE_SMEM
+static const size_t veclen  = 2;
+static const size_t buffers = NUM_FIELDS;
+#endif
+
+#define USE_COMPRESSIBLE_MEMORY (0)
+
 /*
 // Device info (TODO GENERIC)
 // Use the maximum available reg count per thread
@@ -75,12 +83,37 @@ IDX(const int i)
   return i;
 }
 
+#if 1
 __device__ __forceinline__ int
 IDX(const int i, const int j, const int k)
 {
   return DEVICE_VTXBUF_IDX(i, j, k);
 }
+#else
+constexpr __device__ int
+IDX(const uint i, const uint j, const uint k)
+{
+  /*
+  const int precision   = 32; // Bits
+  const int dimensions  = 3;
+  const int bits = ceil(precision / dimensions);
+  */
+  const int dimensions = 3;
+  const int bits       = 11;
 
+  uint idx = 0;
+#pragma unroll
+  for (uint bit = 0; bit < bits; ++bit) {
+    const uint mask = 0b1 << bit;
+    idx |= ((i & mask) << 0) << (dimensions - 1) * bit;
+    idx |= ((j & mask) << 1) << (dimensions - 1) * bit;
+    idx |= ((k & mask) << 2) << (dimensions - 1) * bit;
+  }
+  return idx;
+}
+#endif
+
+// Only used in reductions
 __device__ __forceinline__ int
 IDX(const int3 idx)
 {
@@ -125,15 +158,100 @@ acKernelFlush(AcReal* arr, const size_t n)
   return AC_SUCCESS;
 }
 
+#if USE_COMPRESSIBLE_MEMORY
+#include <cuda.h>
+
+#define ERRCHK_CU_ALWAYS(x) ERRCHK_ALWAYS((x) == CUDA_SUCCESS)
+
+static cudaError_t
+mallocCompressible(void** addr, const size_t requested_bytes)
+{
+  CUdevice device;
+  ERRCHK_ALWAYS(cuCtxGetDevice(&device) == CUDA_SUCCESS);
+
+  CUmemAllocationProp prop;
+  memset(&prop, 0, sizeof(CUmemAllocationProp));
+  prop.type                       = CU_MEM_ALLOCATION_TYPE_PINNED;
+  prop.location.type              = CU_MEM_LOCATION_TYPE_DEVICE;
+  prop.location.id                = device;
+  prop.allocFlags.compressionType = CU_MEM_ALLOCATION_COMP_GENERIC;
+
+  size_t granularity;
+  ERRCHK_CU_ALWAYS(cuMemGetAllocationGranularity(
+      &granularity, &prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
+
+  // Pad to align
+  const size_t bytes = ((requested_bytes - 1) / granularity + 1) * granularity;
+
+  CUdeviceptr dptr;
+  ERRCHK_ALWAYS(cuMemAddressReserve(&dptr, bytes, 0, 0, 0) == CUDA_SUCCESS);
+
+  CUmemGenericAllocationHandle handle;
+  ERRCHK_ALWAYS(cuMemCreate(&handle, bytes, &prop, 0) == CUDA_SUCCESS)
+
+  // Check if cuMemCreate was able to allocate compressible memory.
+  CUmemAllocationProp alloc_prop;
+  memset(&alloc_prop, 0, sizeof(CUmemAllocationProp));
+  cuMemGetAllocationPropertiesFromHandle(&alloc_prop, handle);
+  ERRCHK_ALWAYS(alloc_prop.allocFlags.compressionType ==
+                CU_MEM_ALLOCATION_COMP_GENERIC);
+
+  ERRCHK_ALWAYS(cuMemMap(dptr, bytes, 0, handle, 0) == CUDA_SUCCESS);
+  ERRCHK_ALWAYS(cuMemRelease(handle) == CUDA_SUCCESS);
+
+  CUmemAccessDesc accessDescriptor;
+  accessDescriptor.location.id   = prop.location.id;
+  accessDescriptor.location.type = prop.location.type;
+  accessDescriptor.flags         = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+
+  ERRCHK_ALWAYS(cuMemSetAccess(dptr, bytes, &accessDescriptor, 1) ==
+                CUDA_SUCCESS);
+
+  *addr = (void*)dptr;
+  return cudaSuccess;
+}
+
+static void
+freeCompressible(void* ptr, const size_t requested_bytes)
+{
+  CUdevice device;
+  ERRCHK_ALWAYS(cuCtxGetDevice(&device) == CUDA_SUCCESS);
+
+  CUmemAllocationProp prop;
+  memset(&prop, 0, sizeof(CUmemAllocationProp));
+  prop.type                       = CU_MEM_ALLOCATION_TYPE_PINNED;
+  prop.location.type              = CU_MEM_LOCATION_TYPE_DEVICE;
+  prop.location.id                = device;
+  prop.allocFlags.compressionType = CU_MEM_ALLOCATION_COMP_GENERIC;
+
+  size_t granularity = 0;
+  ERRCHK_ALWAYS(cuMemGetAllocationGranularity(
+                    &granularity, &prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM) ==
+                CUDA_SUCCESS);
+  const size_t bytes = ((requested_bytes - 1) / granularity + 1) * granularity;
+
+  ERRCHK_ALWAYS(ptr);
+  ERRCHK_ALWAYS(cuMemUnmap((CUdeviceptr)ptr, bytes) == CUDA_SUCCESS);
+  ERRCHK_ALWAYS(cuMemAddressFree((CUdeviceptr)ptr, bytes) == CUDA_SUCCESS);
+}
+#endif
+
 VertexBufferArray
 acVBACreate(const size_t count)
 {
   VertexBufferArray vba;
 
   const size_t bytes = sizeof(vba.in[0][0]) * count;
+  vba.bytes          = bytes;
+
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+#if USE_COMPRESSIBLE_MEMORY
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&vba.in[i], bytes));
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&vba.out[i], bytes));
+#else
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.in[i], bytes));
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
+#endif
 
     // Set vba.in data to all-nan and vba.out to 0
     acKernelFlush(vba.in[i], count);
@@ -147,11 +265,17 @@ void
 acVBADestroy(VertexBufferArray* vba)
 {
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+#if USE_COMPRESSIBLE_MEMORY
+    freeCompressible(vba->in[i], vba->bytes);
+    freeCompressible(vba->out[i], vba->bytes);
+#else
     cudaFree(vba->in[i]);
     cudaFree(vba->out[i]);
+#endif
     vba->in[i]  = NULL;
     vba->out[i] = NULL;
   }
+  vba->bytes = 0;
 }
 
 AcResult
@@ -165,7 +289,13 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
                  (unsigned int)ceil(n.y / double(tpb.y)), //
                  (unsigned int)ceil(n.z / double(tpb.z)));
 
+#if USE_SMEM
+  const size_t smem = buffers * (tpb.x + STENCIL_ORDER) *
+                      (tpb.y + STENCIL_ORDER) * (tpb.z + STENCIL_ORDER) *
+                      sizeof(AcReal);
+#else
   const size_t smem = 0;
+#endif
 
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
   kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
@@ -301,14 +431,13 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
          dims.z);
   fflush(stdout);
 
-  // cudaDeviceProp prop;
-  // cudaGetDeviceProperties(&prop, 0);
-  // size_t size = min(int(prop.l2CacheSize * 0.75),
-  //                   prop.persistingL2CacheMaxSize);
-  // cudaDeviceSetLimit(cudaLimitPersistingL2CacheSize,
-  //                    size); // set-aside 3/4 of L2 cache for persisting
-  //                    accesses
-  //                              or the max allowed
+#if 0
+  cudaDeviceProp prop;
+  cudaGetDeviceProperties(&prop, 0);
+  size_t size = min(int(prop.l2CacheSize * 0.75), prop.persistingL2CacheMaxSize);
+  cudaDeviceSetLimit(cudaLimitPersistingL2CacheSize, size);
+  // set-aside 3/4 of L2 cache for persisting accesses or the max allowed
+#endif
 
   TBConfig c = {
       .kernel = kernel,
@@ -343,9 +472,6 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         // if (x * y * z * max_regs_per_thread > max_regs_per_block)
         //  break;
 
-        if ((x * y * z) % warp_size)
-          continue;
-
         // if (max_regs_per_block / (x * y * z) < min_regs_per_thread)
         //   continue;
 
@@ -356,7 +482,30 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         const dim3 bpg((unsigned int)ceil(dims.x / double(tpb.x)), //
                        (unsigned int)ceil(dims.y / double(tpb.y)), //
                        (unsigned int)ceil(dims.z / double(tpb.z)));
+#if USE_SMEM
+        const size_t smem = buffers * (tpb.x + STENCIL_ORDER) *
+                            (tpb.y + STENCIL_ORDER) * (tpb.z + STENCIL_ORDER) *
+                            sizeof(AcReal);
+        const size_t max_smem = 128 * 1024;
+        if (smem > max_smem)
+          continue;
+
+        const size_t window = tpb.x + STENCIL_ORDER;
+        // Vectorization criterion
+        if (window % veclen) // Window not divisible into vectorized blocks
+          continue;
+
+        if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
+          continue;
+
+          //  Padding criterion
+          //  TODO (cannot be checked here)
+#else
+        if ((x * y * z) % warp_size)
+          continue;
+
         const size_t smem = 0;
+#endif
 
         // printf("%d, %d, %d: %lu\n", tpb.x, tpb.y, tpb.z, smem);
 
@@ -371,6 +520,12 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
 
+        float milliseconds = 0;
+        cudaEventElapsedTime(&milliseconds, tstart, tstop);
+
+        cudaEventDestroy(tstart);
+        cudaEventDestroy(tstop);
+
         // Discard failed runs (attempt to clear the error to cudaSuccess)
         if (cudaGetLastError() != cudaSuccess) {
           // Exit in case of unrecoverable error that needs a device reset
@@ -378,9 +533,6 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
           ERRCHK_CUDA_ALWAYS(cudaGetLastError());
           continue;
         }
-
-        float milliseconds = 0;
-        cudaEventElapsedTime(&milliseconds, tstart, tstop);
 
         if (milliseconds < best_time) {
           best_time = milliseconds;
@@ -398,6 +550,10 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   printf("The best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x, best_tpb.y,
          best_tpb.z, (double)best_time / num_iters);
 
+  if (c.tpb.x * c.tpb.y * c.tpb.z <= 0) {
+    fprintf(stderr,
+            "Fatal error: failed to find valid thread block dimensions.\n");
+  }
   ERRCHK_ALWAYS(c.tpb.x * c.tpb.y * c.tpb.z > 0);
   return c;
 }

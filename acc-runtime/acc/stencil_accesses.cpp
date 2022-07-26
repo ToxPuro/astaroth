@@ -6,6 +6,8 @@
 #define __device__
 #undef __global__
 #define __global__
+#undef __launch_bounds__
+#define __launch_bounds__(x, y)
 
 #define threadIdx ((int3){0, 0, 0})
 #define blockIdx ((int3){0, 0, 0})
@@ -94,7 +96,7 @@ main(int argc, char* argv[])
     memset(stencils_accessed, 0,
            sizeof(stencils_accessed[0][0]) * NUM_FIELDS * NUM_STENCILS);
     VertexBufferArray vba = vbaCreate(1);
-    kernel_lookup[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
+    kernels[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
     vbaDestroy(&vba);
 
     for (size_t j = 0; j < NUM_FIELDS; ++j)

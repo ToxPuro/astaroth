@@ -172,7 +172,7 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t 
     case RegionFamily::Exchange_input: {
         position = (int3){id.x == 1 ? nn.x : NGHOST, id.y == 1 ? nn.y : NGHOST,
                           id.z == 1 ? nn.z : NGHOST};
-        dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
+        dims     = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
                       id.z == 0 ? nn.z : NGHOST};
         break;
     }
@@ -417,7 +417,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
 
     // compute_func = compute_func_;
 
-    params = KernelParameters{kernel_lookup[(int)op.kernel], stream, 0, output_region.position,
+    params = KernelParameters{kernels[(int)op.kernel], stream, 0, output_region.position,
                               output_region.position + output_region.dims};
     name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";

@@ -22,8 +22,10 @@
 #if AC_USE_HIP
 #include "hip.h"
 #include <hip/hip_runtime_api.h>
+#include <roctracer_ext.h> // Profiling
 #else
-#include <cuda_runtime_api.h> // cudaStream_t
+#include <cuda_profiler_api.h> // Profiling
+#include <cuda_runtime_api.h>  // cudaStream_t
 #endif
 
 #include "datatypes.h"
@@ -41,6 +43,7 @@ typedef struct {
 typedef struct {
   AcReal* in[NUM_FIELDS];
   AcReal* out[NUM_FIELDS];
+  size_t bytes;
 } VertexBufferArray;
 
 typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);

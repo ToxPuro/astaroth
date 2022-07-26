@@ -20,8 +20,6 @@
 
 #include "acc_runtime.cu"
 
-static_assert(NUM_VTXBUF_HANDLES > 0, "ERROR: At least one uniform ScalarField must be declared.");
-
 static __global__ void
 dummy_kernel(void)
 {

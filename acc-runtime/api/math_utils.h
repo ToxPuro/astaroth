@@ -55,6 +55,7 @@ exp(const acComplex& val)
 
 #if defined(__CUDACC__)
 // These are already overloaded in the HIP API
+/*
 static HOST_DEVICE_INLINE acComplex
 operator*(const AcReal& a, const acComplex& b)
 {
@@ -66,6 +67,7 @@ operator*(const acComplex& b, const AcReal& a)
 {
   return (acComplex){a * b.x, a * b.y};
 }
+*/
 
 static HOST_DEVICE_INLINE acComplex
 operator*(const acComplex& a, const acComplex& b)
@@ -148,10 +150,13 @@ is_power_of_two(const unsigned val)
   return val && !(val & (val - 1));
 }
 
+/*
+ * INT3
+ */
 static HOST_DEVICE_INLINE int3
-operator-(const int3& a)
+operator+(const int3& a, const int3& b)
 {
-  return (int3){-a.x, -a.y, -a.z};
+  return (int3){a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
 static HOST_DEVICE_INLINE int3
@@ -161,9 +166,9 @@ operator-(const int3& a, const int3& b)
 }
 
 static HOST_DEVICE_INLINE int3
-operator+(const int3& a, const int3& b)
+operator-(const int3& a)
 {
-  return (int3){a.x + b.x, a.y + b.y, a.z + b.z};
+  return (int3){-a.x, -a.y, -a.z};
 }
 
 static HOST_DEVICE_INLINE int3
@@ -184,20 +189,131 @@ operator==(const int3& a, const int3& b)
   return a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
-// uint3_64 arithmetic
-
-static inline uint3_64
+/*
+ * UINT3_64
+ */
+static HOST_DEVICE_INLINE uint3_64
 operator+(const uint3_64& a, const uint3_64& b)
 {
   return (uint3_64){a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
-// AcReal arithmetic
-
-static HOST_DEVICE_INLINE AcReal3
-operator-(const AcReal3& a)
+static HOST_DEVICE_INLINE uint3_64
+operator-(const uint3_64& a, const uint3_64& b)
 {
-  return (AcReal3){-a.x, -a.y, -a.z};
+  return (uint3_64){a.x - b.x, a.y - b.y, a.z - b.z};
+}
+
+static HOST_DEVICE_INLINE uint3_64
+operator*(const uint3_64& a, const uint3_64& b)
+{
+  return (uint3_64){a.x * b.x, a.y * b.y, a.z * b.z};
+}
+
+static HOST_DEVICE_INLINE uint3_64
+operator*(const int& a, const uint3_64& b)
+{
+  return (uint3_64){a * b.x, a * b.y, a * b.z};
+}
+
+static HOST_DEVICE_INLINE bool
+operator==(const uint3_64& a, const uint3_64& b)
+{
+  return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
+/*
+ * AcReal
+ */
+static HOST_DEVICE_INLINE bool
+is_valid(const AcReal& a)
+{
+  return !isnan(a) && !isinf(a);
+}
+
+/*
+ * AcReal2
+ */
+#if defined(__CUDACC__)
+static HOST_DEVICE_INLINE AcReal2
+operator+(const AcReal2& a, const AcReal2& b)
+{
+  return (AcReal2){a.x + b.x, a.y + b.y};
+}
+
+static HOST_DEVICE_INLINE void
+operator+=(AcReal2& lhs, const AcReal2& rhs)
+{
+  lhs.x += rhs.x;
+  lhs.y += rhs.y;
+}
+
+static HOST_DEVICE_INLINE AcReal2
+operator-(const AcReal2& a, const AcReal2& b)
+{
+  return (AcReal2){a.x - b.x, a.y - b.y};
+}
+
+static HOST_DEVICE_INLINE AcReal2
+operator-(const AcReal2& a)
+{
+  return (AcReal2){-a.x, -a.y};
+}
+
+static HOST_DEVICE_INLINE void
+operator-=(AcReal2& lhs, const AcReal2& rhs)
+{
+  lhs.x -= rhs.x;
+  lhs.y -= rhs.y;
+}
+
+static HOST_DEVICE_INLINE AcReal2
+operator*(const AcReal& a, const AcReal2& b)
+{
+  return (AcReal2){a * b.x, a * b.y};
+}
+
+static HOST_DEVICE_INLINE AcReal2
+operator*(const AcReal2& b, const AcReal& a)
+{
+  return (AcReal2){a * b.x, a * b.y};
+}
+
+static HOST_DEVICE_INLINE AcReal2
+operator/(const AcReal2& a, const AcReal& b)
+{
+  return (AcReal2){a.x / b, a.y / b};
+}
+
+#endif
+
+static HOST_DEVICE_INLINE AcReal
+dot(const AcReal2& a, const AcReal2& b)
+{
+  return a.x * b.x + a.y * b.y;
+}
+
+static HOST_DEVICE_INLINE bool
+is_valid(const AcReal2& a)
+{
+  return is_valid(a.x) && is_valid(a.y);
+}
+
+/*
+ * AcReal3
+ */
+static HOST_DEVICE_INLINE AcReal3
+operator+(const AcReal3& a, const AcReal3& b)
+{
+  return (AcReal3){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+static HOST_DEVICE_INLINE void
+operator+=(AcReal3& lhs, const AcReal3& rhs)
+{
+  lhs.x += rhs.x;
+  lhs.y += rhs.y;
+  lhs.z += rhs.z;
 }
 
 static HOST_DEVICE_INLINE AcReal3
@@ -207,9 +323,9 @@ operator-(const AcReal3& a, const AcReal3& b)
 }
 
 static HOST_DEVICE_INLINE AcReal3
-operator+(const AcReal3& a, const AcReal3& b)
+operator-(const AcReal3& a)
 {
-  return (AcReal3){a.x + b.x, a.y + b.y, a.z + b.z};
+  return (AcReal3){-a.x, -a.y, -a.z};
 }
 
 static HOST_DEVICE_INLINE void
@@ -218,14 +334,6 @@ operator-=(AcReal3& lhs, const AcReal3& rhs)
   lhs.x -= rhs.x;
   lhs.y -= rhs.y;
   lhs.z -= rhs.z;
-}
-
-static HOST_DEVICE_INLINE void
-operator+=(AcReal3& lhs, const AcReal3& rhs)
-{
-  lhs.x += rhs.x;
-  lhs.y += rhs.y;
-  lhs.z += rhs.z;
 }
 
 static HOST_DEVICE_INLINE AcReal3
@@ -265,17 +373,14 @@ cross(const AcReal3& a, const AcReal3& b)
 }
 
 static HOST_DEVICE_INLINE bool
-is_valid(const AcReal& a)
-{
-  return !isnan(a) && !isinf(a);
-}
-
-static HOST_DEVICE_INLINE bool
 is_valid(const AcReal3& a)
 {
   return is_valid(a.x) && is_valid(a.y) && is_valid(a.z);
 }
 
+/*
+ * AcMatrix
+ */
 typedef struct AcMatrix {
   AcReal data[3][3] = {{0}};
 

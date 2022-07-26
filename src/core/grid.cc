@@ -621,7 +621,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         switch (op.task_type) {
 
         case TASKTYPE_COMPUTE: {
-            // Kernel kernel = kernel_lookup[(int)op.kernel];
+            // Kernel kernel = kernels[(int)op.kernel];
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
                 auto task = std::make_shared<ComputeTask>(op, i, tag, nn, device, swap_offset);
                 graph->all_tasks.push_back(task);
@@ -695,14 +695,23 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     graph->all_tasks.shrink_to_fit();
 
     // In order to reduce redundant dependencies, we keep track of which tasks are connected
-    size_t n_tasks               = graph->all_tasks.size();
-    size_t adjacancy_matrix_size = n_tasks * n_tasks;
-    bool adjacent[adjacancy_matrix_size]{};
+    const size_t n_tasks               = graph->all_tasks.size();
+    const size_t adjacancy_matrix_size = n_tasks * n_tasks;
+    bool adjacent[adjacancy_matrix_size];
+    memset(adjacent, 0, adjacancy_matrix_size * sizeof(adjacent[0]));
+    for (size_t i = 0; i < adjacancy_matrix_size; ++i) { // Belt & suspenders safety
+        ERRCHK_ALWAYS(adjacent[i] == false);
+    }
 
     //...and check if there is already a forward path that connects two tasks
     auto forward_search = [&adjacent, &op_indices, n_tasks,
                            n_ops](size_t preq, size_t dept, size_t preq_op, size_t path_len) {
-        bool visited[n_tasks]{};
+        bool visited[n_tasks];
+        memset(visited, 0, n_tasks * sizeof(visited[0]));
+        for (size_t i = 0; i < n_tasks; ++i) { // Belt & suspenders safety
+            ERRCHK_ALWAYS(visited[i] == false);
+        }
+
         size_t start_op = (preq_op + 1) % n_ops;
 
         struct walk_node {
@@ -745,12 +754,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                         auto dept_task = graph->all_tasks[j];
                         // Task A depends on task B if the output region of A overlaps with the
                         // input region of B.
-                        if (dept_task->active
-                           && (
-                                preq_task->output_region.overlaps(&(dept_task->input_region))
-                             || preq_task->output_region.overlaps(&(dept_task->output_region))
-                             )
-                            ) {
+                        if (dept_task->active &&
+                            (preq_task->output_region.overlaps(&(dept_task->input_region)) ||
+                             preq_task->output_region.overlaps(&(dept_task->output_region)))) {
                             // iteration offset of 0 -> dependency in the same iteration
                             // iteration offset of 1 -> dependency from preq_task in iteration k to
                             // dept_task in iteration k+1
