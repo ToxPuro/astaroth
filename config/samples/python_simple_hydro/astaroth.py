@@ -2,8 +2,8 @@
 import ctypes
 import pathlib
 
-libname = pathlib.Path().absolute() / "libastaroth.so"
-c_lib = ctypes.CDLL(libname)
+libname = pathlib.Path().absolute() / "acc-runtime/api/libacc-runtime.a"
+libacc  = ctypes.CDLL(libname)
 
 #MV: In Python interace we cannot use any preprocessor macro stuff. Therefore
 #MV: NUM_INT_PARAMS etc. need to be set manually for now.

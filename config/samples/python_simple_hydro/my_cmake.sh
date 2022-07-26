@@ -15,6 +15,7 @@ git rev-parse HEAD > COMMIT_CODE.log
 
 case $HOSTNAME in 
   ( gp8.tiara.sinica.edu.tw | gp9.tiara.sinica.edu.tw | gp10.tiara.sinica.edu.tw | gp11.tiara.sinica.edu.tw ) 
+     cmake -DDOUBLE_PRECISION=ON -DMPI_ENABLED=OFF -DUSE_CUDA_AWARE_MPI=OFF -DBUILD_SAMPLES=OFF -DMULTIGPU_ENABLED=OFF -DBUILD_ACC_RUNTIME_LIBRARY=ON -DDSL_MODULE_DIR=../../../acc-runtime/samples/mhd_modular/ -DCMAKE_CXX_COMPILER=/software/opt/gcc/8.3.0/bin/gcc -DCMAKE_C_COMPILER=/software/opt/gcc/8.3.0/bin/gcc ../../.. 
      ;;
   (*) 
      cmake -DDOUBLE_PRECISION=ON -DMPI_ENABLED=OFF -DUSE_CUDA_AWARE_MPI=OFF -DBUILD_SAMPLES=OFF -DMULTIGPU_ENABLED=OFF -DBUILD_ACC_RUNTIME_LIBRARY=ON  ../../..
