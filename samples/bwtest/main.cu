@@ -71,9 +71,9 @@ kernel_vectorized(const Array in, Array out)
     const size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
     if (2 * tid < in.count)
-        reinterpret_cast<double2*>(
-            &out.data[2 * tid])[0] = reinterpret_cast<double2*>(&out.data[2 * tid])[0] +
-                                     2.0 * reinterpret_cast<double2*>(&in.data[2 * tid])[0];
+        reinterpret_cast<AcReal2*>(
+            &out.data[2 * tid])[0] = reinterpret_cast<AcReal2*>(&out.data[2 * tid])[0] +
+                                     2.0 * reinterpret_cast<AcReal2*>(&in.data[2 * tid])[0];
 }
 
 void
