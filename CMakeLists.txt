@@ -45,13 +45,21 @@ if (USE_HIP)
     add_definitions(-DAC_USE_HIP=1)
 
     set(GPU_TARGETS "gfx908" CACHE STRING "GPU target")
+
+    # Workarounds until we have first-class support for hip/rocm in CMake
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm) # Default path
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/hip /opt/rocm-5.0.0) # Triton
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm/llvm/bin)
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer)
 
+    ## Triton
 	include_directories(/opt/rocm-5.0.0/roctracer/include)
 	link_directories(/opt/rocm-5.0.0/roctracer/lib)
+
+    ## LUMI
+    include_directories(/appl/lumi/SW/LUMI-21.12/common/EB/rocm/4.5.2/include/roctracer)
+    link_directories(/appl/lumi/SW/LUMI-21.12/common/EB/rocm/4.5.2/lib)
+
 
     find_package(hip)
 else ()
