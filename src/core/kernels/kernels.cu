@@ -30,7 +30,7 @@ dummy_kernel(void)
     // Commented out until issues on lumi sorted
     // acComplex a = exp(acComplex(1, 1) * AcReal(1));
     AcReal3 a = (AcReal)2.0 * (AcReal3){1, 2, 3};
-    a* a;
+    (void)a;
 }
 
 AcResult
