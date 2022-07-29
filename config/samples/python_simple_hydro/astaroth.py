@@ -2,7 +2,7 @@
 import ctypes
 import pathlib
 
-libname = pathlib.Path().absolute() / "acc-runtime/api/libacc-runtime.a"
+libname = pathlib.Path().absolute() / "acc-runtime/api/libacc-runtime-shared.so"
 libacc  = ctypes.CDLL(libname)
 
 #MV: In Python interace we cannot use any preprocessor macro stuff. Therefore
