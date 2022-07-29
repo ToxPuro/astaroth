@@ -5,23 +5,42 @@ import pathlib
 libname = pathlib.Path().absolute() / "acc-runtime/api/libacc-runtime-shared.so"
 libacc  = ctypes.CDLL(libname)
 
+'''
+//src/core/kernels/kernels.h
+struct device_s {
+    int id;
+    AcMeshInfo local_config;
+
+    // Concurrency
+    cudaStream_t streams[NUM_STREAMS];
+
+    // Memory
+    VertexBufferArray vba;
+    AcReal* reduce_scratchpad;
+    AcReal* reduce_result;
+};
+
+//include/astaroth.h
+typedef struct device_s* Device;
+'''
+
 #MV: In Python interace we cannot use any preprocessor macro stuff. Therefore
 #MV: NUM_INT_PARAMS etc. need to be set manually for now.
 
 #MV: Note mandatory double precision.
 
-###class py_int3(ctypes.Structure):
-###    _fields_ = [("x", ctypes.c_int),
-###                ("y", ctypes.c_int),
-###                ("z", ctypes.c_int)
-###               ]
-###
-###class py_real3(ctypes.Structure):
-###    _fields_ = [("x", ctypes.c_double),
-###                ("y", ctypes.c_double),
-###                ("z", ctypes.c_double)
-###               ]
-###
+class py_int3(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_int),
+                ("y", ctypes.c_int),
+                ("z", ctypes.c_int)
+               ]
+
+class py_real3(ctypes.Structure):
+    _fields_ = [("x", ctypes.c_double),
+                ("y", ctypes.c_double),
+                ("z", ctypes.c_double)
+               ]
+
 ###class py_vertex_buffer(ctypes.Structure):
 ###    _fields_ = [(,)
 ###               ]
@@ -35,12 +54,12 @@ typedef struct {
   AcReal3 real3_params[NUM_REAL3_PARAMS];
 } AcMeshInfo;
 '''
-###class py_AcMeshInfo(ctypes.Structure):
-###    _fields_ = [("int_params",  NUM_INT_PARAMS   * ctypes.c_int),
-###                ("int_params",  NUM_INT3_PARAMS  * py_int3),
-###                ("real_params", NUM_REAL_PARAMS  * ctypes.c_double),
-###                ("rea3_params", NUM_REAL3_PARAMS * py_real3)
-###               ]
+class py_AcMeshInfo(ctypes.Structure):
+    _fields_ = [("int_params",  NUM_INT_PARAMS   * ctypes.c_int),
+                ("int3_params",  NUM_INT3_PARAMS  * py_int3),
+                ("real_params", NUM_REAL_PARAMS  * ctypes.c_double),
+                ("rea3_params", NUM_REAL3_PARAMS * py_real3)
+               ]
 '''
 typedef struct {
     AcReal* vertex_buffer[NUM_VTXBUF_HANDLES];
@@ -65,6 +84,7 @@ typedef struct {
 ###    return mesh
 
 
+
 '''
 =============================================================================
 Device interface
@@ -76,11 +96,14 @@ def py_acDeviceCreate(id, device_config, device):
     #const int id
     #const AcMeshInfo device_config
     #Device* device
+    libacc.acDeviceCreate(id, device_config, device)
+    py_AcResult = 1
     return py_AcResult
 
 def py_acDeviceDestroy(device):
     #interface variables
     #Device device
+    py_AcResult = 1
     return py_AcResult
 
 ####def py_acDevicePrintInfo(device):
