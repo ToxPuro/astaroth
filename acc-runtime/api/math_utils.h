@@ -47,8 +47,29 @@
 #define HOST_DEVICE_INLINE inline
 #endif // __CUDACC__
 
-static HOST_DEVICE_INLINE acComplex
-exp(const acComplex& val)
+// Disabled for now, issues on lumi (exp, cos, sin ambiguous)
+#define ENABLE_COMPLEX_DATATYPE (0)
+#if ENABLE_COMPLEX_DATATYPE
+static __device__ AcReal
+cos(const AcReal& val)
+{
+  return cos(val);
+}
+
+static __device__ AcReal
+sin(const AcReal& val)
+{
+  return sin(val);
+}
+
+static __device__ AcReal
+exp(const AcReal& val)
+{
+  return exp(val);
+}
+
+static __device__ inline acComplex
+expc(const acComplex& val)
 {
   return acComplex(exp(val.x) * cos(val.y), exp(val.x) * sin(val.y));
 }
@@ -75,6 +96,7 @@ operator*(const acComplex& a, const acComplex& b)
   return (acComplex){a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x};
 }
 #endif
+#endif // ENABLE_COMPLEX_DATATYPE
 
 typedef struct uint3_64 {
   uint64_t x, y, z;
