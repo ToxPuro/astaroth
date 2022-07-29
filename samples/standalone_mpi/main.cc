@@ -149,6 +149,47 @@ save_mesh(const AcMesh& save_mesh, const int step, const AcReal t_step)
     }
 }
 
+// This funtion writes a run state into a set of C binaries
+// WITH MPI_IO
+static inline void
+save_mesh_mpi(int pid, const int step, const AcReal t_step)
+{
+    // TODO: Separate header file which lists time for the corresponding
+    //       stepnumber and any other relevant data. 
+    char cstep[11];
+    char header_filename[80] = "\0";
+    sprintf(cstep, "%d", step);
+
+    if (pid == 0) {
+        strcat(header_filename, "header_");
+        strcat(header_filename, cstep);
+        strcat(header_filename, ".csv");
+
+        printf("Savefile %s \n", header_filename);
+
+	// TODO: Write the header info like t_step here. Make it into an
+	// appendaple csv table which will be easy to be read into a Pandas
+	// dataframe. 
+    }
+
+
+    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        const char* buffername = vtxbuf_names[w];
+        char bin_filename[80] = "\0";
+
+
+        strcat(bin_filename, buffername);
+        strcat(bin_filename, "_");
+        strcat(bin_filename, cstep);
+        strcat(bin_filename, ".field");
+
+        printf("Savefile %s \n", bin_filename);
+
+        // Grid data
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, bin_filename, ACCESS_WRITE);
+    }
+}
+
 // This funtion reads a run state from a set of C binaries.
 static inline void
 read_mesh(AcMesh& read_mesh, const int step, AcReal* t_step)
@@ -484,9 +525,7 @@ main(int argc, char** argv)
         }
 
         acHostMeshApplyPeriodicBounds(&mesh);
-        if (start_step == 0) {
-            save_mesh(mesh, 0, t_step);
-        }
+        save_mesh_mpi(0, t_step);
     }
     ////////////////////////////////// PROC 0 BLOCK END ////////////////////////////////////////////
 
@@ -684,8 +723,7 @@ main(int argc, char** argv)
             acGridPeriodicBoundconds(STREAM_DEFAULT);
             acGridStoreMesh(STREAM_DEFAULT, &mesh);
 
-            if (pid == 0)
-                save_mesh(mesh, i, t_step);
+            save_mesh_mpi(i, t_step);
 
             bin_crit_t += bin_save_t;
         }
@@ -725,14 +763,7 @@ main(int argc, char** argv)
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &mesh);
 
-    if (pid == 0)
-        save_mesh(mesh, istep, t_step);
-
-        //////Save the final snapshot
-        ////acSynchronize();
-        ////acStore(mesh);
-
-        ////save_mesh(*mesh, , t_step);
+    save_mesh_mpi(istep, t_step);
 
 #if LSHOCK
     acGridDestroyTaskGraph(hc_graph);
