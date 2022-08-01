@@ -72,7 +72,7 @@ write_info(const AcMeshInfo* config)
 
     infotxt = fopen("purge.sh", "w");
     fprintf(infotxt, "#!/bin/bash\n");
-    fprintf(infotxt, "rm *.list *.mesh *.ts purge.sh\n");
+    fprintf(infotxt, "rm *.list *.mesh *.csv *.list *.ts purge.sh\n");
     fclose(infotxt);
 
     infotxt = fopen("mesh_info.list", "w");
@@ -152,24 +152,28 @@ save_mesh(const AcMesh& save_mesh, const int step, const AcReal t_step)
 // This funtion writes a run state into a set of C binaries
 // WITH MPI_IO
 static inline void
-save_mesh_mpi(int pid, const int step, const AcReal t_step)
+save_mesh_mpi(const int pid, const int step, const AcReal t_step)
 {
     // TODO: Separate header file which lists time for the corresponding
     //       stepnumber and any other relevant data. 
     char cstep[11];
-    char header_filename[80] = "\0";
+    //char header_filename[80] = "\0";
     sprintf(cstep, "%d", step);
 
     if (pid == 0) {
-        strcat(header_filename, "header_");
-        strcat(header_filename, cstep);
-        strcat(header_filename, ".csv");
+        FILE* header_file = fopen("snapshots_info.csv", "a");
 
-        printf("Savefile %s \n", header_filename);
+        //Header only at the step zero
+        if (step == 0) {
+            fprintf(header_file, "step_number, t_step \n");
+        }
+        fprintf(header_file, "%i, %e \n", step, t_step);
 
 	// TODO: Write the header info like t_step here. Make it into an
 	// appendaple csv table which will be easy to be read into a Pandas
-	// dataframe. 
+	// dataframe.
+         
+        fclose(header_file);
     }
 
 
@@ -183,10 +187,10 @@ save_mesh_mpi(int pid, const int step, const AcReal t_step)
         strcat(bin_filename, cstep);
         strcat(bin_filename, ".field");
 
-        printf("Savefile %s \n", bin_filename);
-
         // Grid data
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, bin_filename, ACCESS_WRITE);
+        
+        printf("Savefile %s \n", bin_filename);
     }
 }
 
@@ -525,9 +529,10 @@ main(int argc, char** argv)
         }
 
         acHostMeshApplyPeriodicBounds(&mesh);
-        save_mesh_mpi(0, t_step);
+    
     }
     ////////////////////////////////// PROC 0 BLOCK END ////////////////////////////////////////////
+
 
     // Init GPU
     acGridInit(info);
@@ -567,6 +572,7 @@ main(int argc, char** argv)
     //                                acCompute(KERNEL_shock_3_smooth, shock_field),
     //                                acCompute(KERNEL_solve, all_fields)};
 
+
     // Causes communication related error
     AcTaskDefinition shock_ops[] =
         {acHaloExchange(all_fields),
@@ -580,7 +586,7 @@ main(int argc, char** argv)
          acCompute(KERNEL_shock_3_smooth, shock_field),
          acHaloExchange(shock_field),
          acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
-         acCompute(KERNEL_solve, all_fields)};
+         acCompute(KERNEL_singlepass_solve, all_fields)};
 
     // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
     //                                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
@@ -624,6 +630,9 @@ main(int argc, char** argv)
     });
     */
 #endif
+
+    // Save zero state 
+    if (start_step <= 0) save_mesh_mpi(pid, 0, 0.0);
 
     /* Step the simulation */
     AcReal accreted_mass = 0.0;
@@ -723,7 +732,7 @@ main(int argc, char** argv)
             acGridPeriodicBoundconds(STREAM_DEFAULT);
             acGridStoreMesh(STREAM_DEFAULT, &mesh);
 
-            save_mesh_mpi(i, t_step);
+            save_mesh_mpi(pid, i, t_step);
 
             bin_crit_t += bin_save_t;
         }
@@ -763,7 +772,7 @@ main(int argc, char** argv)
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &mesh);
 
-    save_mesh_mpi(istep, t_step);
+    save_mesh_mpi(pid, istep, t_step);
 
 #if LSHOCK
     acGridDestroyTaskGraph(hc_graph);
