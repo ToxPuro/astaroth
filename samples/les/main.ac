@@ -1,6 +1,6 @@
 Field SGS
 
-#include "stencil.h"
+#include "stencil.ach"
 
 
 Kernel test() {

@@ -1,4 +1,4 @@
-#define STENCIL_ORDER (2)
+hostdefine STENCIL_ORDER (4)
 Stencil sum {
 [-2][-2][-2] = 1,
 [-1][-2][-2] = 1,
