@@ -109,3 +109,51 @@ acHostMeshClear(AcMesh* mesh)
 {
     return acHostMeshSet(0, mesh);
 }
+
+AcResult
+acHostMeshWriteToFile(const AcMesh mesh, const char* path)
+{
+    for (size_t i = 0; i < NUM_FIELDS; ++i) {
+        const size_t len = 4096;
+        char buf[len];
+        const int retval = snprintf(buf, len, "%s-%s", field_names[i], path);
+        ERRCHK_ALWAYS(retval >= 0);
+        ERRCHK_ALWAYS((size_t)retval <= len);
+
+        FILE* fp = fopen(buf, "w");
+        ERRCHK_ALWAYS(fp);
+
+        const size_t bytes = sizeof(mesh.vertex_buffer[i][0]);
+        const size_t count = acVertexBufferSize(mesh.info);
+        const size_t res   = fwrite(mesh.vertex_buffer[i], bytes, count, fp);
+        ERRCHK_ALWAYS(res == count);
+
+        fclose(fp);
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acHostMeshReadFromFile(const char* path, AcMesh* mesh)
+{
+    for (size_t i = 0; i < NUM_FIELDS; ++i) {
+
+        const size_t len = 4096;
+
+        char buf[len];
+        const int retval = snprintf(buf, len, "%s-%s", field_names[i], path);
+        ERRCHK_ALWAYS(retval >= 0);
+        ERRCHK_ALWAYS((size_t)retval <= len);
+
+        FILE* fp = fopen(buf, "r");
+        ERRCHK_ALWAYS(fp);
+
+        const size_t bytes = sizeof(mesh->vertex_buffer[i][0]);
+        const size_t count = acVertexBufferSize(mesh->info);
+        const size_t res   = fread(mesh->vertex_buffer[i], bytes, count, fp);
+        ERRCHK_ALWAYS(res == count);
+
+        fclose(fp);
+    }
+    return AC_SUCCESS;
+}

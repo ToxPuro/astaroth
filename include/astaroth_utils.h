@@ -86,6 +86,10 @@ AcResult acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMes
 
 AcResult acMeshDiffWrite(const char* path, const AcMesh model, const AcMesh candidate);
 
+AcResult acHostMeshWriteToFile(const AcMesh mesh, const char* path);
+
+AcResult acHostMeshReadFromFile(const char* path, AcMesh* mesh);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
