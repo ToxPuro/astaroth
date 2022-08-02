@@ -50,6 +50,11 @@ main(void)
     acHostMeshCreate(info, &candidate);
     acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
     acVerifyMesh("Load/Store", mesh, candidate);
+
+    // Verify that reading and writing to file works correctly
+    acHostMeshWriteToFile(candidate, "data.out");
+    acHostMeshReadFromFile("data.out", &candidate);
+    acVerifyMesh("Read/Write", mesh, candidate);
     acHostMeshDestroy(&candidate);
 
     printf("VTXBUF ranges before integration:\n");
@@ -76,6 +81,14 @@ main(void)
     }
     cudaProfilerStop();
     acDeviceSwapBuffers(device);
+
+    /*
+    // Produce Python slices
+    FILE* proc = popen("../samples/les/analysis.py data-format.csv SGS-data.out",
+                       "r");
+    ERRCHK_ALWAYS(proc);
+    pclose(proc);
+    */
 
     printf("Done.\nVTXBUF ranges after integration:\n");
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
