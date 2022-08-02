@@ -20,6 +20,8 @@
 
 #include "errchk.h"
 
+static const char dataformat_path[] = "data-format.csv";
+
 AcResult
 acHostVertexBufferSet(const VertexBufferHandle handle, const AcReal value, AcMesh* mesh)
 {
@@ -111,9 +113,9 @@ acHostMeshClear(AcMesh* mesh)
 }
 
 AcResult
-acHostMeshWriteToFile(const AcMesh mesh, const char* path)
+acHostMeshWriteToFile(const AcMesh mesh, const size_t id)
 {
-    FILE* header = fopen("data-format.csv", "w");
+    FILE* header = fopen(dataformat_path, "w");
     ERRCHK_ALWAYS(header);
     fprintf(header, "use_double, mx, my, mz\n");
     fprintf(header, "%d, %d, %d, %d\n", sizeof(AcReal) == 8, mesh.info.int_params[AC_mx],
@@ -123,7 +125,7 @@ acHostMeshWriteToFile(const AcMesh mesh, const char* path)
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
         const size_t len = 4096;
         char buf[len];
-        const int retval = snprintf(buf, len, "%s-%s", field_names[i], path);
+        const int retval = snprintf(buf, len, "%s-%lu.dat", field_names[i], id);
         ERRCHK_ALWAYS(retval >= 0);
         ERRCHK_ALWAYS((size_t)retval <= len);
 
@@ -141,13 +143,13 @@ acHostMeshWriteToFile(const AcMesh mesh, const char* path)
 }
 
 AcResult
-acHostMeshReadFromFile(const char* path, AcMesh* mesh)
+acHostMeshReadFromFile(const size_t id, AcMesh* mesh)
 {
     const size_t len = 4096;
     char buf[len];
     int use_double, mx, my, mz;
 
-    FILE* header = fopen("data-format.csv", "r");
+    FILE* header = fopen(dataformat_path, "r");
     ERRCHK_ALWAYS(header);
     fgets(buf, len, header);
     fscanf(header, "%d, %d, %d, %d\n", &use_double, &mx, &my, &mz);
@@ -160,7 +162,7 @@ acHostMeshReadFromFile(const char* path, AcMesh* mesh)
 
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
 
-        const int retval = snprintf(buf, len, "%s-%s", field_names[i], path);
+        const int retval = snprintf(buf, len, "%s-%lu.dat", field_names[i], id);
         ERRCHK_ALWAYS(retval >= 0);
         ERRCHK_ALWAYS((size_t)retval <= len);
 
