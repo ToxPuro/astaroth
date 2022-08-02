@@ -113,6 +113,13 @@ acHostMeshClear(AcMesh* mesh)
 AcResult
 acHostMeshWriteToFile(const AcMesh mesh, const char* path)
 {
+    FILE* header = fopen("data-format.csv", "w");
+    ERRCHK_ALWAYS(header);
+    fprintf(header, "use_double, mx, my, mz\n");
+    fprintf(header, "%d, %d, %d, %d\n", sizeof(AcReal) == 8, mesh.info.int_params[AC_mx],
+            mesh.info.int_params[AC_my], mesh.info.int_params[AC_mz]);
+    fclose(header);
+
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
         const size_t len = 4096;
         char buf[len];
@@ -136,11 +143,23 @@ acHostMeshWriteToFile(const AcMesh mesh, const char* path)
 AcResult
 acHostMeshReadFromFile(const char* path, AcMesh* mesh)
 {
+    const size_t len = 4096;
+    char buf[len];
+    int use_double, mx, my, mz;
+
+    FILE* header = fopen("data-format.csv", "r");
+    ERRCHK_ALWAYS(header);
+    fgets(buf, len, header);
+    fscanf(header, "%d, %d, %d, %d\n", &use_double, &mx, &my, &mz);
+    fclose(header);
+
+    ERRCHK_ALWAYS(use_double == (sizeof(AcReal) == 8));
+    ERRCHK_ALWAYS(mx == mesh->info.int_params[AC_mx]);
+    ERRCHK_ALWAYS(my == mesh->info.int_params[AC_my]);
+    ERRCHK_ALWAYS(mz == mesh->info.int_params[AC_mz]);
+
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
 
-        const size_t len = 4096;
-
-        char buf[len];
         const int retval = snprintf(buf, len, "%s-%s", field_names[i], path);
         ERRCHK_ALWAYS(retval >= 0);
         ERRCHK_ALWAYS((size_t)retval <= len);
