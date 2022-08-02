@@ -189,8 +189,10 @@ save_mesh_mpi(const int pid, const int step, const AcReal t_step)
 
         // Grid data
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, bin_filename, ACCESS_WRITE);
-        
+       
         printf("Savefile %s \n", bin_filename);
+
+        acGridDiskAccessSync();
     }
 }
 
