@@ -152,7 +152,7 @@ save_mesh(const AcMesh& save_mesh, const int step, const AcReal t_step)
 // This funtion writes a run state into a set of C binaries
 // WITH MPI_IO
 static inline void
-save_mesh_mpi(const int pid, const int step, const AcReal t_step)
+save_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_step)
 {
     // TODO: Separate header file which lists time for the corresponding
     //       stepnumber and any other relevant data. 
@@ -165,13 +165,16 @@ save_mesh_mpi(const int pid, const int step, const AcReal t_step)
 
         //Header only at the step zero
         if (step == 0) {
-            fprintf(header_file, "step_number, t_step \n");
+            fprintf(header_file, "use_double, mx, my, mz, step_number, t_step \n");
         }
-        fprintf(header_file, "%i, %e \n", step, t_step);
 
-	// TODO: Write the header info like t_step here. Make it into an
-	// appendaple csv table which will be easy to be read into a Pandas
-	// dataframe.
+        fprintf(header_file, "%d, %d, %d, %d, %d, %.17e \n", sizeof(AcReal) == 8,
+                mesh.info.int_params[AC_mx], mesh.info.int_params[AC_my], 
+                mesh.info.int_params[AC_mz], step, t_step);
+
+	    // Writes the header info. Make it into an
+	    // appendaple csv table which will be easy to be read into a Pandas
+	    // dataframe.
          
         fclose(header_file);
     }
@@ -634,7 +637,7 @@ main(int argc, char** argv)
 #endif
 
     // Save zero state 
-    if (start_step <= 0) save_mesh_mpi(pid, 0, 0.0);
+    if (start_step <= 0) save_mesh_mpi(mesh, pid, 0, 0.0);
 
     /* Step the simulation */
     AcReal accreted_mass = 0.0;
@@ -734,7 +737,7 @@ main(int argc, char** argv)
             acGridPeriodicBoundconds(STREAM_DEFAULT);
             acGridStoreMesh(STREAM_DEFAULT, &mesh);
 
-            save_mesh_mpi(pid, i, t_step);
+            save_mesh_mpi(mesh, pid, i, t_step);
 
             bin_crit_t += bin_save_t;
         }
@@ -774,7 +777,7 @@ main(int argc, char** argv)
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &mesh);
 
-    save_mesh_mpi(pid, istep, t_step);
+    save_mesh_mpi(mesh, pid, istep, t_step);
 
 #if LSHOCK
     acGridDestroyTaskGraph(hc_graph);
