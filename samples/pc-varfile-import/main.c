@@ -45,10 +45,9 @@ main(int argc, char* argv[])
     printf("Input: %s\n", input);
     printf("Volume: (%lu, %lu, %lu)\n", nx, ny, nz);
 
-    ERRCHK(mx > 0);
-    ERRCHK(my > 0);
-    ERRCHK(mz > 0);
-    ERRCHK(num_fields == NUM_VTXBUF_HANDLES);
+    ERRCHK(nx > 0);
+    ERRCHK(ny > 0);
+    ERRCHK(nz > 0);
 
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);

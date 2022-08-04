@@ -22,11 +22,33 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 
+void
+save_slice(const Device device, const AcMeshInfo info, const size_t id)
+{
+    AcMesh mesh;
+    acHostMeshCreate(info, &mesh);
+    acDeviceStoreMesh(device, STREAM_DEFAULT, &mesh);
+
+    acHostMeshWriteToFile(mesh, id);
+    acHostMeshDestroy(&mesh);
+
+    for (size_t i = 0; i < NUM_FIELDS; ++i) {
+        const size_t len = 4096;
+        char buf[len];
+        snprintf(buf, len, "../samples/les/analysis.py data-format.csv %s-%lu.dat", field_names[i],
+                 id);
+
+        FILE* proc = popen(buf, "r");
+        ERRCHK_ALWAYS(proc);
+        fclose(proc);
+    }
+}
+
 int
 main(void)
 {
-
     ERRCHK_ALWAYS(acCheckDeviceAvailability() == AC_SUCCESS);
+    ERRCHK_ALWAYS(STENCIL_ORDER == 4);
 
     AcMeshInfo info;
     const int nn = 64;
@@ -50,6 +72,11 @@ main(void)
     acHostMeshCreate(info, &candidate);
     acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
     acVerifyMesh("Load/Store", mesh, candidate);
+
+    // Verify that reading and writing to file works correctly
+    acHostMeshWriteToFile(candidate, 0);
+    acHostMeshReadFromFile(0, &candidate);
+    acVerifyMesh("Read/Write", mesh, candidate);
     acHostMeshDestroy(&candidate);
 
     printf("VTXBUF ranges before integration:\n");
@@ -61,8 +88,8 @@ main(void)
     }
 
     // Warmup
-    const int3 start = (int3){STENCIL_ORDER, STENCIL_ORDER, STENCIL_ORDER};
-    const int3 end   = (int3){STENCIL_ORDER + nn, STENCIL_ORDER + nn, STENCIL_ORDER + nn};
+    const int3 start = (int3){STENCIL_ORDER / 2, STENCIL_ORDER / 2, STENCIL_ORDER / 2};
+    const int3 end = (int3){STENCIL_ORDER / 2 + nn, STENCIL_ORDER / 2 + nn, STENCIL_ORDER / 2 + nn};
     for (size_t i = 0; i < NUM_KERNELS; ++i) {
         printf("Launching kernel %s (%p)...\n", kernel_names[i], kernels[i]);
         acDeviceLaunchKernel(device, STREAM_DEFAULT, kernels[i], start, end);
@@ -76,6 +103,22 @@ main(void)
     }
     cudaProfilerStop();
     acDeviceSwapBuffers(device);
+
+    // Write slices out
+    acDeviceLoadMesh(device, STREAM_DEFAULT, mesh);
+    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, start, end);
+    save_slice(device, info, 0);
+    for (size_t step = 1; step < 10; ++step) {
+        for (size_t i = 0; i < NUM_KERNELS; ++i) {
+            printf("Launching kernel %s (%p)...\n", kernel_names[i], kernels[i]);
+            acDeviceLaunchKernel(device, STREAM_DEFAULT, kernels[i], start, end);
+        }
+        acDeviceSwapBuffers(device);
+        acDevicePeriodicBoundconds(device, STREAM_DEFAULT, start, end);
+
+        // Write to disk
+        save_slice(device, info, step);
+    }
 
     printf("Done.\nVTXBUF ranges after integration:\n");
     for (size_t i = 0; i < NUM_FIELDS; ++i) {

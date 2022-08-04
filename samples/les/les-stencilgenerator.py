@@ -3,7 +3,7 @@
 
 halo = 2
 
-print(f'#define STENCIL_ORDER ({halo})')
+print(f'hostdefine STENCIL_ORDER ({2 * halo})')
 
 print('Stencil sum {')
 
