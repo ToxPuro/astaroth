@@ -90,10 +90,11 @@ main(int argc, char** argv)
     acHostMeshRandomize(&candidate);
     acGridLoadMesh(STREAM_DEFAULT, candidate);
     // acGridStoreFieldToFile("field-tmp.out", 0);
-    acGridAccessMeshOnDiskSynchronous(0, "field-tmp.out",
-                                      ACCESS_WRITE); // Hacky, indirectly scramble vba.out to catch
-                                                     // false positives if the MPI calls fail
-                                                     // completely.
+    for (size_t i = 0; i < NUM_FIELDS; ++i)
+        acGridAccessMeshOnDiskSynchronous(i, "field-tmp.out",
+                                          ACCESS_WRITE); // Hacky, indirectly scramble vba.out to
+                                                         // catch false positives if the MPI calls
+                                                         // fail completely.
 
     // Read
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
