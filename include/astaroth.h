@@ -313,6 +313,14 @@ acQueryVtxbufs(void)
         printf("%s (%d)\n", vtxbuf_names[i], i);
 }
 
+/** Prints a list of kernels */
+static inline void
+acQueryKernels(void)
+{
+    for (int i = 0; i < NUM_KERNELS; ++i)
+        printf("%s (%d)\n", kernel_names[i], i);
+}
+
 /*
  * =============================================================================
  * Legacy interface

@@ -119,6 +119,7 @@ include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # CUDA headers
 add_subdirectory(acc-runtime)
 add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
+add_subdirectory(samples/ac-interpreter)
 
 if (BUILD_UTILS)
     add_subdirectory(src/utils)
