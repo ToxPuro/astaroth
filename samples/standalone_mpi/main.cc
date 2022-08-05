@@ -154,12 +154,12 @@ save_mesh(const AcMesh& save_mesh, const int step, const AcReal t_step)
 static inline void
 save_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_step)
 {
-    // TODO: Separate header file which lists time for the corresponding
-    //       stepnumber and any other relevant data. 
     char cstep[11];
     //char header_filename[80] = "\0";
     sprintf(cstep, "%d", step);
 
+    // Saves a csv file which contains relevant information about the binary
+    // snapshot files at the timestep. 
     if (pid == 0) {
         FILE* header_file = fopen("snapshots_info.csv", "a");
 
@@ -198,6 +198,44 @@ save_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_s
         acGridDiskAccessSync();
     }
 }
+
+// This funtion reads a run state into a set of C binaries
+// WITH MPI_IO
+static inline void
+read_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_step)
+{
+    char cstep[11];
+    sprintf(cstep, "%d", step);
+
+    // Saves a csv file which contains relevant information about the binary
+    // snapshot files at the timestep. 
+    FILE* header_file = fopen("snapshots_info.csv", "r");
+
+    //TODO: Loop through the header file to find the step number of snapshots
+    //TODO: to be read. And read the relevat other info.
+     
+    fclose(header_file);
+
+
+    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        const char* buffername = vtxbuf_names[w];
+        char bin_filename[80] = "\0";
+
+
+        strcat(bin_filename, buffername);
+        strcat(bin_filename, "_");
+        strcat(bin_filename, cstep);
+        strcat(bin_filename, ".field");
+
+        // Grid data
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, bin_filename, ACCESS_READ);
+       
+        printf("Read file %s \n", bin_filename);
+
+        acGridDiskAccessSync();
+    }
+}
+
 
 // This funtion reads a run state from a set of C binaries.
 static inline void
