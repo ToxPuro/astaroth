@@ -819,6 +819,7 @@ rk3_intermediate(w, roc) {
 
     // return alpha[AC_step_number] * w + roc * AC_dt
 
+    // TODO NOTE abysmal performance on AMD, needs a workaround like in rk3() 
     if AC_step_number > 0 {
         return alpha[AC_step_number] * w + roc * AC_dt
     } else {

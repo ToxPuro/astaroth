@@ -1284,6 +1284,27 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
         // ----------------------------------------
     }
 
+#ifndef NDEBUG
+    if (type == ACCESS_READ) {
+        const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
+        FILE* fp                   = fopen(path, "r");
+        ERRCHK_ALWAYS(fp);
+        fseek(fp, 0L, SEEK_END);
+        const size_t measured_size = ftell(fp);
+        fclose(fp);
+        if (expected_size != measured_size) {
+            fprintf(stderr,
+                    "Expected size did not match measured size (%lu vs %lu), factor of %g "
+                    "difference\n",
+                    expected_size, measured_size, (double)expected_size / measured_size);
+            fprintf(stderr, "Note that old data files must be removed when switching to a smaller "
+                            "mesh size, otherwise the file on disk will be too large (the above "
+                            "factor < 1)\n");
+            ERRCHK_ALWAYS(expected_size == measured_size);
+        }
+    }
+#endif // NDEBUG
+
     MPI_Datatype subarray;
     const int arr_nn[]     = {nn.z, nn.y, nn.x};
     const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
@@ -1329,6 +1350,27 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
     ERRCHK_ALWAYS(MPI_File_close(&file) == MPI_SUCCESS);
 
     MPI_Type_free(&subarray);
+
+#ifndef NDEBUG
+    if (type == ACCESS_WRITE) {
+        const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
+        FILE* fp                   = fopen(path, "r");
+        ERRCHK_ALWAYS(fp);
+        fseek(fp, 0L, SEEK_END);
+        const size_t measured_size = ftell(fp);
+        fclose(fp);
+        if (expected_size != measured_size) {
+            fprintf(stderr,
+                    "Expected size did not match measured size (%lu vs %lu), factor of %g "
+                    "difference\n",
+                    expected_size, measured_size, (double)expected_size / measured_size);
+            fprintf(stderr, "Note that old data files must be removed when switching to a smaller "
+                            "mesh size, otherwise the file on disk will be too large (the above "
+                            "factor < 1)\n");
+            ERRCHK_ALWAYS(expected_size == measured_size);
+        }
+    }
+#endif // NDEBUG
 
     if (type == ACCESS_READ) {
         AcReal* in           = device->vba.out[vtxbuf];
