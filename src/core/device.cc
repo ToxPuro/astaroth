@@ -276,6 +276,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 #endif
     *device_handle = device;
 
+    acDeviceSynchronizeStream(device, STREAM_ALL);
     return AC_SUCCESS;
 }
 

@@ -85,11 +85,17 @@ acGridRandomize(void)
 {
     ERRCHK(grid.initialized);
 
+    const Stream stream = STREAM_DEFAULT;
+
     AcMesh host;
     acHostMeshCreate(grid.submesh.info, &host);
     acHostMeshRandomize(&host);
-    acDeviceLoadMesh(grid.device, STREAM_DEFAULT, host);
+    acDeviceLoadMesh(grid.device, stream, host);
+    acDeviceSynchronizeStream(grid.device, stream);
     acHostMeshDestroy(&host);
+
+    acGridPeriodicBoundconds(stream);
+    acGridSynchronizeStream(stream);
 
     return AC_SUCCESS;
 }
@@ -326,9 +332,9 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                              j + tgt_pid3d.y * nn.y, //
-                                                              k + tgt_pid3d.z * nn.z, //
-                                                              host_mesh.info);
+                                                                 j + tgt_pid3d.y * nn.y, //
+                                                                 k + tgt_pid3d.z * nn.z, //
+                                                                 host_mesh.info);
 
                         // Send
                         MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
@@ -415,9 +421,9 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                              j + tgt_pid3d.y * nn.y, //
-                                                              k + tgt_pid3d.z * nn.z, //
-                                                              host_mesh->info);
+                                                                 j + tgt_pid3d.y * nn.y, //
+                                                                 k + tgt_pid3d.z * nn.z, //
+                                                                 host_mesh->info);
 
                         // Recv
                         MPI_Status status;
@@ -1011,6 +1017,7 @@ acGridLoadStencils(const Stream stream,
     ERRCHK(grid.initialized);
     ERRCHK((int)AC_SUCCESS == 0);
     ERRCHK((int)AC_FAILURE == 1);
+    acGridSynchronizeStream(stream);
 
     int retval = 0;
     for (size_t i = 0; i < NUM_STENCILS; ++i)
@@ -1027,6 +1034,7 @@ acGridStoreStencils(const Stream stream,
     ERRCHK(grid.initialized);
     ERRCHK((int)AC_SUCCESS == 0);
     ERRCHK((int)AC_FAILURE == 1);
+    acGridSynchronizeStream(stream);
 
     int retval = 0;
     for (size_t i = 0; i < NUM_STENCILS; ++i)
@@ -1216,13 +1224,13 @@ AcResult
 acGridDiskAccessLaunch(const AccessType type)
 {
     ERRCHK_ALWAYS(grid.initialized);
-    ERROR("\n------------------------\n"
-          "acGridDiskAccessLaunch does not work concurrently with acGridIntegrate due to an\n"
-          "unknown issue (invalid CUDA context, double free, or invalid memory access). Suspect\n"
-          "some complex interaction with the underlying MPI library and the asynchronous task\n"
-          "system. `acGridAccessMeshOnDiskSynchronous` has been tested to work on multiple\n"
-          "processes. It is recommended to use that instead in production."
-          "\n------------------------\n");
+    WARNING("\n------------------------\n"
+            "acGridDiskAccessLaunch does not work concurrently with acGridIntegrate due to an\n"
+            "unknown issue (invalid CUDA context, double free, or invalid memory access). Suspect\n"
+            "some complex interaction with the underlying MPI library and the asynchronous task\n"
+            "system. `acGridAccessMeshOnDiskSynchronous` has been tested to work on multiple\n"
+            "processes. It is recommended to use that instead in production."
+            "\n------------------------\n");
 
     acGridDiskAccessSync();
     ERRCHK_ALWAYS(!future.valid());
@@ -1255,8 +1263,8 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
-
-    acGridDiskAccessSync();
+    acGridSynchronizeStream(STREAM_ALL);
+    // acGridDiskAccessSync();
 
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
@@ -1391,14 +1399,14 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
 
         // DEBUG hotfix START
         // TODO better solution (need to recheck all acDevice functions)
-        cudaDeviceSynchronize();
+        // cudaDeviceSynchronize();
         // DEBUG hotfix END
 
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
                            out_volume);
         // Apply boundconds and sync
         acGridPeriodicBoundconds(STREAM_DEFAULT);
-        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+        // acDeviceSynchronizeStream(device, STREAM_ALL);
     }
     return AC_SUCCESS;
 }
