@@ -32,6 +32,7 @@
 AcResult
 acDevicePrintInfo(const Device device)
 {
+    cudaSetDevice(device->id);
     const int device_id = device->id;
 
     cudaDeviceProp props;
@@ -411,7 +412,7 @@ AcResult
 acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBufferHandle handle,
                         const AcReal value)
 {
-    acDeviceSynchronizeStream(device, stream);
+    cudaSetDevice(device->id);
 
     const size_t count = acVertexBufferSize(device->local_config);
     AcReal* data       = (AcReal*)calloc(count, sizeof(AcReal));
@@ -426,6 +427,7 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
     ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.out[handle], data, sizeof(data[0]) * count,
                                        cudaMemcpyHostToDevice, device->streams[stream]));
 
+    acDeviceSynchronizeStream(device, stream); // Need to synchronize before free
     free(data);
     return AC_SUCCESS;
 }
