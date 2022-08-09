@@ -154,6 +154,8 @@ save_mesh(const AcMesh& save_mesh, const int step, const AcReal t_step)
 static inline void
 save_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_step)
 {
+    printf("Saving snapshot at step %i \n", step);
+
     char cstep[11];
     //char header_filename[80] = "\0";
     sprintf(cstep, "%d", step);
