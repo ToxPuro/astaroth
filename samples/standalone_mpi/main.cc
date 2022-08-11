@@ -215,7 +215,16 @@ read_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_s
 
     //TODO: Loop through the header file to find the step number of snapshots
     //TODO: to be read. And read the relevat other info.
-     
+
+    //Simple cvs file reader. 
+    char csv_line[256];
+    while (fgets( csv_line, sizeof(csv_line), header_file ) != NULL ) {
+        int column_index = 0;
+        for (char* csv_loc = strtok( line, ","); csv_loc != NULL; csv_loc = strtok(NULL, ",")) {
+            element[column_index++] = atof(token);
+        }
+    }
+
     fclose(header_file);
 
 
