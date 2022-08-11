@@ -1,14 +1,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "astaroth.h"
-
-static const char* cmds[] = {
-    "init",
-    "exit",
-    "run",
-};
+#include "astaroth_utils.h"
 
 /*
     cmdline interface:
@@ -36,15 +32,15 @@ cmdInit(const size_t nx, const size_t ny, const size_t nz, //
 }
 
 AcResult
-cmdLoadRandom(const Device device, const AcMesh host_mesh)
+cmdLoadRandom(const Device device, AcMesh host_mesh)
 {
     acHostMeshRandomize(&host_mesh);
-    acHostMeshApplyPeriodicBounds(host_mesh);
+    acHostMeshApplyPeriodicBounds(&host_mesh);
     return acDeviceLoadMesh(device, STREAM_DEFAULT, host_mesh);
 }
 
 AcResult
-cmdWriteToFile(const Device device, const AcMesh host_mesh, const AcMeshInfo info, const size_t id)
+cmdWriteToFile(const Device device, AcMesh host_mesh, const size_t id)
 {
     acDeviceStoreMesh(device, STREAM_DEFAULT, &host_mesh);
     acHostMeshWriteToFile(host_mesh, id);
@@ -53,7 +49,7 @@ cmdWriteToFile(const Device device, const AcMesh host_mesh, const AcMeshInfo inf
 }
 
 AcResult
-cmdReadFromFile(const Device device, const AcMesh host_mesh, const AcMeshInfo info, const size_t id)
+cmdReadFromFile(const Device device, AcMesh host_mesh, const size_t id)
 {
     acHostMeshReadFromFile(id, &host_mesh);
     acDeviceLoadMesh(device, STREAM_DEFAULT, host_mesh);
@@ -156,7 +152,7 @@ cmdQuit(AcMesh* host_mesh, Device* device)
 }
 
 int
-main(int argc, char* argv[])
+main(void)
 {
     AcMeshInfo info;
     AcMesh host_mesh;
@@ -186,11 +182,11 @@ main(int argc, char* argv[])
         }
         else if (!strcmp(line, "read")) {
             size_t input = 0;
-            retval       = cmdReadFromFile(device, host_mesh, info, input);
+            retval       = cmdReadFromFile(device, host_mesh, input);
         }
         else if (!strcmp(line, "write")) {
             size_t input = 0;
-            retval       = cmdWriteToFile(device, host_mesh, info, input);
+            retval       = cmdWriteToFile(device, host_mesh, input);
         }
         else if (!strcmp(line, "reduce")) {
 
