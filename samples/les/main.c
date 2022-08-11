@@ -21,6 +21,7 @@
 
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "user_defines.h"
 
 void
 save_slice(const Device device, const AcMeshInfo info, const size_t id)
@@ -32,6 +33,8 @@ save_slice(const Device device, const AcMeshInfo info, const size_t id)
     acHostMeshWriteToFile(mesh, id);
     acHostMeshDestroy(&mesh);
 
+#define WRITE_FILES_WITH_PYTHON (0)
+#if WRITE_FILES_WITH_PYTHON
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
         const size_t len = 4096;
         char buf[len];
@@ -42,13 +45,13 @@ save_slice(const Device device, const AcMeshInfo info, const size_t id)
         ERRCHK_ALWAYS(proc);
         fclose(proc);
     }
+#endif
 }
 
 int
 main(void)
 {
     ERRCHK_ALWAYS(acCheckDeviceAvailability() == AC_SUCCESS);
-    ERRCHK_ALWAYS(STENCIL_ORDER == 4);
 
     AcMeshInfo info;
     const int nn = 64;
@@ -95,7 +98,7 @@ main(void)
         acDeviceLaunchKernel(device, STREAM_DEFAULT, kernels[i], start, end);
     }
 
-    // Compute
+    // Benchmark
     cudaProfilerStart();
     for (size_t i = 0; i < NUM_KERNELS; ++i) {
         printf("Launching kernel %s (%p)...\n", kernel_names[i], kernels[i]);
@@ -109,15 +112,46 @@ main(void)
     acDevicePeriodicBoundconds(device, STREAM_DEFAULT, start, end);
     save_slice(device, info, 0);
     for (size_t step = 1; step < 10; ++step) {
+        /*
         for (size_t i = 0; i < NUM_KERNELS; ++i) {
             printf("Launching kernel %s (%p)...\n", kernel_names[i], kernels[i]);
             acDeviceLaunchKernel(device, STREAM_DEFAULT, kernels[i], start, end);
+            acDeviceSwapBuffers(device);
+            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, start, end);
         }
-        acDeviceSwapBuffers(device);
-        acDevicePeriodicBoundconds(device, STREAM_DEFAULT, start, end);
+        */
+        for (size_t substep = 0; substep < 3; ++substep) {
+            acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, 1e-3);
+            acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, substep);
+
+            acDeviceLaunchKernel(device, STREAM_DEFAULT, compute_stress_tensor_tau, start, end);
+            acDeviceSwapBuffer(device, T00);
+            acDeviceSwapBuffer(device, T01);
+            acDeviceSwapBuffer(device, T02);
+            acDeviceSwapBuffer(device, T11);
+            acDeviceSwapBuffer(device, T12);
+            acDeviceSwapBuffer(device, T22);
+            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, start, end);
+            // Note: the above boundcond step does all fields instead of just the stress tensor
+            acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, start, end);
+            acDeviceSwapBuffer(device, UUX);
+            acDeviceSwapBuffer(device, UUY);
+            acDeviceSwapBuffer(device, UUZ);
+            acDeviceSwapBuffer(device, RHO);
+            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, start, end);
+        }
 
         // Write to disk
+        acDeviceSynchronizeStream(device, STREAM_ALL);
         save_slice(device, info, step);
+
+        printf("Step %lu\n", step);
+        for (size_t i = 0; i < NUM_FIELDS; ++i) {
+            AcReal min, max;
+            acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MIN, i, &min);
+            acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MAX, i, &max);
+            printf("\t%-15s... [%.3g, %.3g]\n", field_names[i], min, max);
+        }
     }
 
     printf("Done.\nVTXBUF ranges after integration:\n");

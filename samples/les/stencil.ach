@@ -29,7 +29,7 @@ Stencil value {
     [0][0][0] = 1
 }
 
-Stencil derx {
+Stencil ddx {
     [0][0][-3] = -AC_inv_dsx * DER1_3,
     [0][0][-2] = -AC_inv_dsx * DER1_2,
     [0][0][-1] = -AC_inv_dsx * DER1_1,
@@ -38,7 +38,7 @@ Stencil derx {
     [0][0][3]  = AC_inv_dsx * DER1_3
 }
 
-Stencil dery {
+Stencil ddy {
     [0][-3][0] = -AC_inv_dsy * DER1_3,
     [0][-2][0] = -AC_inv_dsy * DER1_2,
     [0][-1][0] = -AC_inv_dsy * DER1_1,
@@ -47,7 +47,7 @@ Stencil dery {
     [0][3][0]  = AC_inv_dsy * DER1_3
 }
 
-Stencil derz {
+Stencil ddz {
     [-3][0][0] = -AC_inv_dsz * DER1_3,
     [-2][0][0] = -AC_inv_dsz * DER1_2,
     [-1][0][0] = -AC_inv_dsz * DER1_1,
@@ -56,7 +56,7 @@ Stencil derz {
     [3][0][0]  = AC_inv_dsz * DER1_3
 }
 
-Stencil derxx {
+Stencil ddxx {
     [0][0][-3] = AC_inv_dsx * AC_inv_dsx * DER2_3,
     [0][0][-2] = AC_inv_dsx * AC_inv_dsx * DER2_2,
     [0][0][-1] = AC_inv_dsx * AC_inv_dsx * DER2_1,
@@ -66,7 +66,7 @@ Stencil derxx {
     [0][0][3]  = AC_inv_dsx * AC_inv_dsx * DER2_3
 }
 
-Stencil deryy {
+Stencil ddyy {
     [0][-3][0] = AC_inv_dsy * AC_inv_dsy * DER2_3,
     [0][-2][0] = AC_inv_dsy * AC_inv_dsy * DER2_2,
     [0][-1][0] = AC_inv_dsy * AC_inv_dsy * DER2_1,
@@ -76,7 +76,7 @@ Stencil deryy {
     [0][3][0]  = AC_inv_dsy * AC_inv_dsy * DER2_3
 }
 
-Stencil derzz {
+Stencil ddzz {
     [-3][0][0] = AC_inv_dsz * AC_inv_dsz * DER2_3,
     [-2][0][0] = AC_inv_dsz * AC_inv_dsz * DER2_2,
     [-1][0][0] = AC_inv_dsz * AC_inv_dsz * DER2_1,
@@ -86,7 +86,7 @@ Stencil derzz {
     [3][0][0]  = AC_inv_dsz * AC_inv_dsz * DER2_3
 }
 
-Stencil derxy {
+Stencil ddxy {
     [0][-3][-3] = AC_inv_dsx * AC_inv_dsy * DERX_3,
     [0][-2][-2] = AC_inv_dsx * AC_inv_dsy * DERX_2,
     [0][-1][-1] = AC_inv_dsx * AC_inv_dsy * DERX_1,
@@ -102,7 +102,7 @@ Stencil derxy {
     [0][3][-3] = -AC_inv_dsx * AC_inv_dsy * DERX_3
 }
 
-Stencil derxz {
+Stencil ddxz {
     [-3][0][-3] = AC_inv_dsx * AC_inv_dsz * DERX_3,
     [-2][0][-2] = AC_inv_dsx * AC_inv_dsz * DERX_2,
     [-1][0][-1] = AC_inv_dsx * AC_inv_dsz * DERX_1,
@@ -118,7 +118,7 @@ Stencil derxz {
     [3][0][-3] = -AC_inv_dsx * AC_inv_dsz * DERX_3
 }
 
-Stencil deryz {
+Stencil ddyz {
     [-3][-3][0] = AC_inv_dsy * AC_inv_dsz * DERX_3,
     [-2][-2][0] = AC_inv_dsy * AC_inv_dsz * DERX_2,
     [-1][-1][0] = AC_inv_dsy * AC_inv_dsz * DERX_1,
@@ -143,7 +143,7 @@ vecvalue_abs(v) {
 }
 
 gradient(s) {
-    return real3(derx(s), dery(s), derz(s))
+    return real3(ddx(s), ddy(s), ddz(s))
 }
 
 gradients(v) {
@@ -151,15 +151,15 @@ gradients(v) {
 }
 
 divergence(v) {
-    return derx(v.x) + dery(v.y) + derz(v.z)
+    return ddx(v.x) + ddy(v.y) + ddz(v.z)
 }
 
 curl(v) {
-    return real3(dery(v.z) - derz(v.y), derz(v.x) - derx(v.z), derx(v.y) - dery(v.x))
+    return real3(ddy(v.z) - ddz(v.y), ddz(v.x) - ddx(v.z), ddx(v.y) - ddy(v.x))
 }
 
 laplace(s) {
-    return derxx(s) + deryy(s) + derzz(s)
+    return ddxx(s) + ddyy(s) + ddzz(s)
 }
 
 veclaplace(v) {
@@ -168,9 +168,9 @@ veclaplace(v) {
 
 gradient_of_divergence(v) {
     return real3(
-        derxx(v.x) + derxy(v.y) + derxz(v.z),
-        derxy(v.x) + deryy(v.y) + deryz(v.z),
-        derxz(v.x) + deryz(v.y) + derzz(v.z)
+        ddxx(v.x) + ddxy(v.y) + ddxz(v.z),
+        ddxy(v.x) + ddyy(v.y) + ddyz(v.z),
+        ddxz(v.x) + ddyz(v.y) + ddzz(v.z)
     )
 }
 
