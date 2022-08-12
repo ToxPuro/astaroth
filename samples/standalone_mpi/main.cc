@@ -204,10 +204,13 @@ save_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_s
 // This funtion reads a run state into a set of C binaries
 // WITH MPI_IO
 static inline void
-read_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_step)
+read_mesh_mpi(AcMesh& mesh, const int pid, const int step, AcReal* t_step)
 {
+    printf("Reading snapshot at step %i \n", step);
     char cstep[11];
     sprintf(cstep, "%d", step);
+
+    AcReal element[8];
 
     // Saves a csv file which contains relevant information about the binary
     // snapshot files at the timestep. 
@@ -220,9 +223,12 @@ read_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_s
     char csv_line[256];
     while (fgets( csv_line, sizeof(csv_line), header_file ) != NULL ) {
         int column_index = 0;
-        for (char* csv_loc = strtok( line, ","); csv_loc != NULL; csv_loc = strtok(NULL, ",")) {
-            element[column_index++] = atof(token);
+        for (char* csv_loc = strtok( csv_line, ","); csv_loc != NULL; csv_loc = strtok(NULL, ",")) {
+            printf("%s, ", csv_loc);
+            element[column_index++] = atof(csv_loc);
+            printf("FFF %f, ", element[column_index]);
         }
+        printf("\n");
     }
 
     fclose(header_file);
@@ -549,9 +555,9 @@ main(int argc, char** argv)
 #endif
         // Read old binary if we want to continue from an existing snapshot
         // WARNING: Explicit specification of step needed!
-        if (start_step > 0) {
-            read_mesh(mesh, start_step, &t_step);
-        }
+        //if (start_step > 0) {
+        //    read_mesh(mesh, start_step, &t_step);
+        //}
 
         // Generate the title row.
         if (start_step == 0) {
@@ -587,6 +593,9 @@ main(int argc, char** argv)
     }
     ////////////////////////////////// PROC 0 BLOCK END ////////////////////////////////////////////
 
+    if (start_step > 0) {
+        read_mesh_mpi(mesh, pid, start_step, &t_step);
+    }
 
     // Init GPU
     acGridInit(info);
