@@ -7,10 +7,10 @@ Field T00, T01, T02, T11, T12, T22 // Note: the stress tensor is symmetric
 
 #define UU Field3(UUX, UUY, UUZ)
 
-#define TEMPERATURE_T (298) // 25 deg C
+#define TEMPERATURE_T (288) // 15 deg C
 #define UNIVERSAL_GAS_CONSTANT_R (8.31446261815324)
-#define DYNAMIC_VISCOSITY_MU (0.89e-3) // mPA*s, Water at 25 deg C
-#define SMAGORINSKY_COEFFICIENT_C (1)
+#define DYNAMIC_VISCOSITY_MU (1.81e-5) // PA*s, Air at 15 deg C
+#define SMAGORINSKY_COEFFICIENT_C (0)
 #define CHARACTERISTIC_SCALE (DSX)
 
 kinematic_viscosity()
@@ -91,14 +91,17 @@ construct_stress_term()
 
 momentum()
 {
+   //cs2 = 1.0
+   //cp_sound = 1.0
+
    // TODO figure out
    // Note: grad_p and visc_term cause the simulation to explode
-
    u_dot_grad_u = gradients(UU) * vecvalue(UU)
-   grad_p = real3(0,0,0) // pressure(gradient(RHO)) // TODO DEBUG
-   pressure_term = (1.0 / value(RHO)) * grad_p
-   visc_term = real3(0,0,0) //kinematic_viscosity() * veclaplace(UU)// TODO DEBUG
+   //pressure_term = (1.0 / value(RHO)) * pressure(gradient(RHO))
+   pressure_term = real3(0, 0, 0) // TODO proper see PC
+   visc_term = kinematic_viscosity() * veclaplace(UU)
    stress_term = construct_stress_term()
+
    return - u_dot_grad_u - pressure_term + visc_term - stress_term
 }
 
@@ -112,8 +115,9 @@ divergence_multivariate(scal, vec)
 
 continuity()
 {
-   return - divergence_multivariate(RHO, UU)
+   //return - divergence_multivariate(RHO, UU)
    //return -dot(vecvalue(UU), gradient(RHO)) - divergence(UU)
+   return - dot(vecvalue(UU), gradient(RHO))
 }
 
 Kernel singlepass_solve()

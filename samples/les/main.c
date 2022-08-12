@@ -82,14 +82,6 @@ main(void)
     acVerifyMesh("Read/Write", mesh, candidate);
     acHostMeshDestroy(&candidate);
 
-    printf("VTXBUF ranges before integration:\n");
-    for (size_t i = 0; i < NUM_FIELDS; ++i) {
-        AcReal min, max;
-        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MIN, i, &min);
-        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MAX, i, &max);
-        printf("\t%-15s... [%.3g, %.3g]\n", field_names[i], min, max);
-    }
-
     // Warmup
     const int3 start = (int3){STENCIL_ORDER / 2, STENCIL_ORDER / 2, STENCIL_ORDER / 2};
     const int3 end = (int3){STENCIL_ORDER / 2 + nn, STENCIL_ORDER / 2 + nn, STENCIL_ORDER / 2 + nn};
@@ -107,10 +99,21 @@ main(void)
     cudaProfilerStop();
     acDeviceSwapBuffers(device);
 
-    // Write slices out
+    // Simulate
+    acHostVertexBufferSet(RHO, 1, &mesh);
+    acHostMeshApplyPeriodicBounds(&mesh);
     acDeviceLoadMesh(device, STREAM_DEFAULT, mesh);
     acDevicePeriodicBoundconds(device, STREAM_DEFAULT, start, end);
     save_slice(device, info, 0);
+
+    printf("VTXBUF ranges before integration:\n");
+    for (size_t i = 0; i < NUM_FIELDS; ++i) {
+        AcReal min, max;
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MIN, i, &min);
+        acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MAX, i, &max);
+        printf("\t%-15s... [%.3g, %.3g]\n", field_names[i], min, max);
+    }
+
     for (size_t step = 1; step < 10; ++step) {
         /*
         for (size_t i = 0; i < NUM_KERNELS; ++i) {
