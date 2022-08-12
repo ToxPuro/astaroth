@@ -206,51 +206,68 @@ save_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_s
 static inline void
 read_mesh_mpi(AcMesh& mesh, const int pid, const int step, AcReal* t_step)
 {
+    int stepnumber;
+    AcReal time_at_step;
+    double time;
+
     printf("Reading snapshot at step %i \n", step);
-    char cstep[11];
-    sprintf(cstep, "%d", step);
 
-    AcReal element[8];
+    if (pid == 0) {
 
-    // Saves a csv file which contains relevant information about the binary
-    // snapshot files at the timestep. 
-    FILE* header_file = fopen("snapshots_info.csv", "r");
+        char cstep[11];
+        sprintf(cstep, "%d", step);
 
-    //TODO: Loop through the header file to find the step number of snapshots
-    //TODO: to be read. And read the relevat other info.
+        AcReal element[8];
 
-    //Simple cvs file reader. 
-    char csv_line[256];
-    while (fgets( csv_line, sizeof(csv_line), header_file ) != NULL ) {
-        int column_index = 0;
-        for (char* csv_loc = strtok( csv_line, ","); csv_loc != NULL; csv_loc = strtok(NULL, ",")) {
-            printf("%s, ", csv_loc);
-            element[column_index++] = atof(csv_loc);
-            printf("FFF %f, ", element[column_index]);
+        // Saves a csv file which contains relevant information about the binary
+        // snapshot files at the timestep. 
+        FILE* header_file = fopen("snapshots_info.csv", "r");
+
+        //TODO: Loop through the header file to find the step number of snapshots
+        //TODO: to be read. And read the relevat other info.
+
+        //Simple cvs file reader. 
+        char csv_line[256];
+        while (fgets( csv_line, sizeof(csv_line), header_file ) != NULL ) {
+            int column_index = 0;
+            for (char* csv_loc = strtok( csv_line, ","); csv_loc != NULL; csv_loc = strtok(NULL, ",")) {
+                printf("%s, ", csv_loc);
+                element[column_index++] = atof(csv_loc);
+            }
+            printf("\n");
+            stepnumber = int(element[4]);
+            time_at_step = element[5];
+            //printf("stepnumber %i at time_at_step %e \n", stepnumber, time_at_step);
+
+            if ( stepnumber == step) {
+                time = double(time_at_step);
+            } 
         }
-        printf("\n");
+
+        fclose(header_file);
     }
 
-    fclose(header_file);
+    MPI_Bcast(&time, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    *t_step = time; 
+
+    //////for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+    //////    const char* buffername = vtxbuf_names[w];
+    //////    char bin_filename[80] = "\0";
 
 
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        const char* buffername = vtxbuf_names[w];
-        char bin_filename[80] = "\0";
+    //////    strcat(bin_filename, buffername);
+    //////    strcat(bin_filename, "_");
+    //////    strcat(bin_filename, cstep);
+    //////    strcat(bin_filename, ".field");
 
+    //////    // Grid data
+    //////    acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, bin_filename, ACCESS_READ);
+    //////   
+    //////    printf("Read file %s \n", bin_filename);
 
-        strcat(bin_filename, buffername);
-        strcat(bin_filename, "_");
-        strcat(bin_filename, cstep);
-        strcat(bin_filename, ".field");
-
-        // Grid data
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, bin_filename, ACCESS_READ);
-       
-        printf("Read file %s \n", bin_filename);
-
-        acGridDiskAccessSync();
-    }
+    //////    acGridDiskAccessSync();
+    //////}
 }
 
 
@@ -593,9 +610,6 @@ main(int argc, char** argv)
     }
     ////////////////////////////////// PROC 0 BLOCK END ////////////////////////////////////////////
 
-    if (start_step > 0) {
-        read_mesh_mpi(mesh, pid, start_step, &t_step);
-    }
 
     // Init GPU
     acGridInit(info);
@@ -603,6 +617,10 @@ main(int argc, char** argv)
 
     /* initialize random seed: */
     srand(312256655);
+
+    if (start_step > 0) {
+        read_mesh_mpi(mesh, pid, start_step, &t_step);
+    }
 
 #if LSHOCK
     // From taskgraph example
