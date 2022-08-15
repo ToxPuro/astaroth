@@ -1,7 +1,7 @@
 #include "stencil.ach"
 
 Field UUX, UUY, UUZ
-Field RHO
+Field LNRHO
 
 Field T00, T01, T02, T11, T12, T22 // Note: the stress tensor is symmetric
 
@@ -10,14 +10,23 @@ Field T00, T01, T02, T11, T12, T22 // Note: the stress tensor is symmetric
 #define TEMPERATURE_T (288) // 15 deg C
 #define UNIVERSAL_GAS_CONSTANT_R (8.31446261815324)
 #define DYNAMIC_VISCOSITY_MU (1.81e-5) // PA*s, Air at 15 deg C
-#define SMAGORINSKY_COEFFICIENT_C (0)
+#define SMAGORINSKY_COEFFICIENT_C (1)
 #define CHARACTERISTIC_SCALE (DSX)
+#define CS0 (1.0)
+#define RHO0 (1.0)
+#define CP (1.0)
+#define CV (1.0)
+#define GAMMA (CP/CV)
+#define ZETA (1e-2)
+#define NU_VISC (5e-3)
+
 
 kinematic_viscosity()
 {
-   return DYNAMIC_VISCOSITY_MU / value(RHO)
+   return DYNAMIC_VISCOSITY_MU / exp(value(LNRHO))
 }
 
+/*
 temperature()
 {
    return TEMPERATURE_T
@@ -27,6 +36,7 @@ pressure(rho)
 {
    return rho * UNIVERSAL_GAS_CONSTANT_R * temperature()
 }
+*/
 
 // TODO check that calculated correctly for LES
 stress_tensor(v)
@@ -91,6 +101,7 @@ construct_stress_term()
 
 momentum()
 {
+   /*
    //cs2 = 1.0
    //cp_sound = 1.0
 
@@ -103,6 +114,14 @@ momentum()
    stress_term = construct_stress_term()
 
    return - u_dot_grad_u - pressure_term + visc_term - stress_term
+   */
+  S = stress_tensor(UU)
+  cs2 = CS0 * CS0
+
+  return - gradients(UU) * vecvalue(UU)
+         - cs2 * gradient(LNRHO)
+         + NU_VISC * (veclaplace(UU) + (1. / 3.) * gradient_of_divergence(UU) + 2 * S * gradient(LNRHO))
+         + ZETA * gradient_of_divergence(UU)
 }
 
 divergence_multivariate(scal, vec)
@@ -116,8 +135,8 @@ divergence_multivariate(scal, vec)
 continuity()
 {
    //return - divergence_multivariate(RHO, UU)
-   //return -dot(vecvalue(UU), gradient(RHO)) - divergence(UU)
-   return - dot(vecvalue(UU), gradient(RHO))
+   return -dot(vecvalue(UU), gradient(LNRHO)) - divergence(UU)
+   //return - dot(vecvalue(UU), gradient(RHO))
 }
 
 Kernel singlepass_solve()
@@ -127,5 +146,5 @@ Kernel singlepass_solve()
    write(UUY, rk3(previous(UUY), value(UUY), mom.y))
    write(UUZ, rk3(previous(UUZ), value(UUZ), mom.z))
 
-   write(RHO, rk3(previous(RHO), value(RHO), continuity()))
+   write(LNRHO, rk3(previous(LNRHO), value(LNRHO), continuity()))
 }
