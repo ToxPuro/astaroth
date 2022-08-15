@@ -211,11 +211,11 @@ read_mesh_mpi(AcMesh& mesh, const int pid, const int step, AcReal* t_step)
     double time;
 
     printf("Reading snapshot at step %i \n", step);
+    char cstep[11];
+    sprintf(cstep, "%d", step);
 
     if (pid == 0) {
 
-        char cstep[11];
-        sprintf(cstep, "%d", step);
 
         AcReal element[8];
 
@@ -251,23 +251,23 @@ read_mesh_mpi(AcMesh& mesh, const int pid, const int step, AcReal* t_step)
 
     *t_step = time; 
 
-    //////for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-    //////    const char* buffername = vtxbuf_names[w];
-    //////    char bin_filename[80] = "\0";
+    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        const char* buffername = vtxbuf_names[w];
+        char bin_filename[80] = "\0";
 
 
-    //////    strcat(bin_filename, buffername);
-    //////    strcat(bin_filename, "_");
-    //////    strcat(bin_filename, cstep);
-    //////    strcat(bin_filename, ".field");
+        strcat(bin_filename, buffername);
+        strcat(bin_filename, "_");
+        strcat(bin_filename, cstep);
+        strcat(bin_filename, ".field");
 
-    //////    // Grid data
-    //////    acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, bin_filename, ACCESS_READ);
-    //////   
-    //////    printf("Read file %s \n", bin_filename);
+        // Grid data
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, bin_filename, ACCESS_READ);
+       
+        printf("Read file %s \n", bin_filename);
 
-    //////    acGridDiskAccessSync();
-    //////}
+        acGridDiskAccessSync();
+    }
 }
 
 
