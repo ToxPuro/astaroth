@@ -23,9 +23,14 @@
 #include "astaroth_utils.h"
 #include "user_defines.h"
 
+static AcMesh tmp_mesh;
+
 void
-save_slice(const Device device, const AcMeshInfo info, const size_t id)
+save_slice(const Device device, const size_t id)
 {
+    acDeviceStoreMesh(device, STREAM_DEFAULT, &tmp_mesh);
+    acHostMeshWriteToFile(tmp_mesh, id);
+    /*
     AcMesh mesh;
     acHostMeshCreate(info, &mesh);
     acDeviceStoreMesh(device, STREAM_DEFAULT, &mesh);
@@ -33,6 +38,7 @@ save_slice(const Device device, const AcMeshInfo info, const size_t id)
 
     acHostMeshWriteToFile(mesh, id);
     acHostMeshDestroy(&mesh);
+    */
 
 #define WRITE_FILES_WITH_PYTHON (0)
 #if WRITE_FILES_WITH_PYTHON
@@ -66,6 +72,7 @@ main(void)
     const int3 n1 = acConstructInt3Param(AC_nx_max, AC_ny_max, AC_nz_max, info);
     const int3 m0 = (int3){0, 0, 0};
     const int3 m1 = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+    acHostMeshCreate(info, &tmp_mesh);
 
     // Alloc
     AcMesh mesh;
@@ -140,8 +147,8 @@ main(void)
         printf("\t%-15s... [%.3g, %.3g]\n", field_names[i], min, max);
     }
 
-    save_slice(device, info, 0);
-    for (size_t step = 1; step < 500; ++step) {
+    save_slice(device, 0);
+    for (size_t step = 1; step < 2500; ++step) {
         /*
         for (size_t i = 0; i < NUM_KERNELS; ++i) {
             printf("Launching kernel %s (%p)...\n", kernel_names[i], kernels[i]);
@@ -172,19 +179,44 @@ main(void)
              acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m0, m1);
          }
          */
+
+#if 1 // WORKS
+        acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, 1e-2);
         for (int substep = 0; substep < 3; ++substep) {
-            acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, 1e-2);
             acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, substep);
 
             acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, n0, n1);
             acDeviceSwapBuffers(device);
             acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m0, m1);
         }
+#endif
+#if 0 // with stress tensor
+        acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, 1e-2);
+        for (int substep = 0; substep < 3; ++substep) {
+            acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, substep);
+
+            acDeviceLaunchKernel(device, STREAM_DEFAULT, compute_stress_tensor_tau, n0, n1);
+            acDeviceSwapBuffer(device, T00);
+            acDeviceSwapBuffer(device, T01);
+            acDeviceSwapBuffer(device, T02);
+            acDeviceSwapBuffer(device, T11);
+            acDeviceSwapBuffer(device, T12);
+            acDeviceSwapBuffer(device, T22);
+            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m0, m1);
+
+            acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, n0, n1);
+            acDeviceSwapBuffer(device, UUX);
+            acDeviceSwapBuffer(device, UUY);
+            acDeviceSwapBuffer(device, UUZ);
+            acDeviceSwapBuffer(device, LNRHO);
+            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m0, m1);
+        }
+#endif
 
         // Write to disk
-        if (step % 10 == 0) {
+        if (step % 25 == 0) {
             acDeviceSynchronizeStream(device, STREAM_ALL);
-            save_slice(device, info, step);
+            save_slice(device, step);
         }
 
         printf("Step %lu\n", step);
@@ -206,6 +238,7 @@ main(void)
 
     acHostMeshDestroy(&candidate);
     acHostMeshDestroy(&mesh);
+    acHostMeshDestroy(&tmp_mesh);
     acDeviceDestroy(device);
 
     return EXIT_SUCCESS;
