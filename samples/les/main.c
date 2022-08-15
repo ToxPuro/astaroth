@@ -69,6 +69,8 @@ main(void)
     acDeviceCreate(0, info, &device);
     acDevicePrintInfo(device);
     acDeviceLoadMesh(device, STREAM_DEFAULT, mesh);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, 1e-3);
+    acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, 2);
 
     // Verify that the mesh was loaded and stored correctly
     AcMesh candidate;
