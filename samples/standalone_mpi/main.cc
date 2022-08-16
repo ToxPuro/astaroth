@@ -204,7 +204,7 @@ save_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_s
 // This funtion reads a run state into a set of C binaries
 // WITH MPI_IO
 static inline void
-read_mesh_mpi(AcMesh& mesh, const int pid, const int step, AcReal* t_step)
+read_mesh_mpi(const int pid, const int step, AcReal* t_step)
 {
     int stepnumber;
     AcReal time_at_step;
@@ -618,9 +618,6 @@ main(int argc, char** argv)
     /* initialize random seed: */
     srand(312256655);
 
-    if (start_step > 0) {
-        read_mesh_mpi(mesh, pid, start_step, &t_step);
-    }
 
 #if LSHOCK
     // From taskgraph example
@@ -711,6 +708,11 @@ main(int argc, char** argv)
     });
     */
 #endif
+
+    if (start_step > 0) {
+        read_mesh_mpi(pid, start_step, &t_step);
+        bin_crit_t = bin_crit_t + t_step; 
+    }
 
     // Save zero state 
     if (start_step <= 0) save_mesh_mpi(mesh, pid, 0, 0.0);
