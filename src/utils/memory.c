@@ -125,7 +125,7 @@ acHostMeshWriteToFile(const AcMesh mesh, const size_t id)
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
         const size_t len = 4096;
         char buf[len];
-        const int retval = snprintf(buf, len, "%s-%lu.dat", field_names[i], id);
+        const int retval = snprintf(buf, len, "%s-%.5lu.dat", field_names[i], id);
         ERRCHK_ALWAYS(retval >= 0);
         ERRCHK_ALWAYS((size_t)retval <= len);
 
@@ -162,7 +162,7 @@ acHostMeshReadFromFile(const size_t id, AcMesh* mesh)
 
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
 
-        const int retval = snprintf(buf, len, "%s-%lu.dat", field_names[i], id);
+        const int retval = snprintf(buf, len, "%s-%.5lu.dat", field_names[i], id);
         ERRCHK_ALWAYS(retval >= 0);
         ERRCHK_ALWAYS((size_t)retval <= len);
 
