@@ -127,6 +127,11 @@ main(void)
     }
     cudaProfilerStop();
 
+    acHostMeshRandomize(&mesh);
+    acHostVertexBufferSet(LNRHO, 1, &mesh);
+    acDeviceLoadMesh(device, STREAM_DEFAULT, mesh);
+    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m0, m1);
+
     /*
     // acHostVertexBufferSet(LNRHO, 1, &mesh);
     acHostMeshApplyPeriodicBounds(&mesh);
@@ -180,7 +185,7 @@ main(void)
          }
          */
 
-#if 1 // WORKS
+#if 0 // WORKS
         acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, 1e-2);
         for (int substep = 0; substep < 3; ++substep) {
             acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, substep);
@@ -190,7 +195,7 @@ main(void)
             acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m0, m1);
         }
 #endif
-#if 0 // with stress tensor
+#if 1 // with stress tensor
         acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, 1e-2);
         for (int substep = 0; substep < 3; ++substep) {
             acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, substep);
@@ -225,6 +230,10 @@ main(void)
             acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MIN, i, &min);
             acDeviceReduceScal(device, STREAM_DEFAULT, RTYPE_MAX, i, &max);
             printf("\t%-15s... [%.3g, %.3g]\n", field_names[i], min, max);
+            if (isnan(min) || isnan(max)) {
+                exit(EXIT_FAILURE);
+                return EXIT_FAILURE;
+            }
         }
     }
 
