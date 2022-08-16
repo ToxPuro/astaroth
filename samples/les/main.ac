@@ -7,38 +7,28 @@ Field T00, T01, T02, T11, T12, T22 // Note: the stress tensor is symmetric
 
 #define UU Field3(UUX, UUY, UUZ)
 
+/*
 #define TEMPERATURE_T (288) // 15 deg C
 #define UNIVERSAL_GAS_CONSTANT_R (8.31446261815324)
 #define DYNAMIC_VISCOSITY_MU (1.81e-5) // PA*s, Air at 15 deg C
-#define SMAGORINSKY_COEFFICIENT_C (1)
+#define SMAGORINSKY_COEFFICIENT_C (0.16)
 #define CHARACTERISTIC_SCALE (DSX)
 #define CS0 (1.0)
 #define RHO0 (1.0)
 #define CP (1.0)
-#define CV (1.0)
+#define CV (2.0)
 #define GAMMA (CP/CV)
 #define ZETA (1e-2)
 #define NU_VISC (5e-3)
-
-
-kinematic_viscosity()
-{
-   return DYNAMIC_VISCOSITY_MU / exp(value(LNRHO))
-}
-
-/*
-temperature()
-{
-   return TEMPERATURE_T
-}
-
-pressure(rho)
-{
-   return rho * UNIVERSAL_GAS_CONSTANT_R * temperature()
-}
 */
+#define TEMPERATURE_T (288) // 15 deg C
+#define DYNAMIC_VISCOSITY_MU (5e-3) // PA*s, Air at 15 deg C
+#define SMAGORINSKY_COEFFICIENT_C (0.16)
+#define CHARACTERISTIC_SCALE (DSX)
+#define CP (1.0)
+#define CV (2.0)
+#define GAMMA (CP/CV)
 
-// TODO check that calculated correctly for LES
 stress_tensor(v)
 {
     Matrix S
@@ -58,7 +48,6 @@ stress_tensor(v)
     return S
 }
 
-// TODO check that calculated correctly (the result is a scalar instead of a tensor)
 galilean_invariant_estimation(mat)
 {
    prod = dot(mat.row(0), mat.row(0)) +
@@ -90,6 +79,21 @@ Kernel compute_stress_tensor_tau()
    write(T22, stress.data[2][2])
 }
 
+pressure(rho)
+{
+   return rho * (GAMMA - 1.0) * CV * TEMPERATURE_T
+}
+
+continuity()
+{
+   return - dot(vecvalue(UU), gradient(LNRHO))
+}
+
+kinematic_viscosity()
+{
+   return DYNAMIC_VISCOSITY_MU / value(LNRHO)
+}
+
 construct_stress_term()
 {
    x = ddx(T00) + ddy(T01) + ddz(T02)
@@ -101,42 +105,10 @@ construct_stress_term()
 
 momentum()
 {
-   /*
-   //cs2 = 1.0
-   //cp_sound = 1.0
-
-   // TODO figure out
-   // Note: grad_p and visc_term cause the simulation to explode
-   u_dot_grad_u = gradients(UU) * vecvalue(UU)
-   //pressure_term = (1.0 / value(RHO)) * pressure(gradient(RHO))
-   pressure_term = real3(0, 0, 0) // TODO proper see PC
-   visc_term = kinematic_viscosity() * veclaplace(UU)
-   stress_term = construct_stress_term()
-
-   return - u_dot_grad_u - pressure_term + visc_term - stress_term
-   */
-  S = stress_tensor(UU)
-  cs2 = CS0 * CS0
-
-  return - gradients(UU) * vecvalue(UU)
-         - cs2 * gradient(LNRHO)
-         + NU_VISC * (veclaplace(UU) + (1. / 3.) * gradient_of_divergence(UU) + 2 * S * gradient(LNRHO))
-         + ZETA * gradient_of_divergence(UU)
-}
-
-divergence_multivariate(scal, vec)
-{
-   x = scal * ddx(vec.x) + vec.x * ddx(scal)
-   y = scal * ddx(vec.y) + vec.y * ddy(scal)
-   z = scal * ddx(vec.z) + vec.z * ddz(scal)
-   return x + y + z
-}
-
-continuity()
-{
-   //return - divergence_multivariate(RHO, UU)
-   return -dot(vecvalue(UU), gradient(LNRHO)) - divergence(UU)
-   //return - dot(vecvalue(UU), gradient(RHO))
+   return - gradients(UU) * vecvalue(UU)
+          - (1.0 / value(LNRHO)) * pressure(gradient(LNRHO))
+          + kinematic_viscosity() * veclaplace(UU)
+          - construct_stress_term()
 }
 
 Kernel singlepass_solve()
