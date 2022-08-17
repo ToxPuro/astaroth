@@ -68,6 +68,16 @@ def read_bin(fname, fdir, fnum, minfo, numtype=np.longdouble, getfilename=True):
         array = np.fromfile(filename_alt, dtype=my_dtype)
 
         timestamp = 666.0
+        snapshots_df = pd.read_csv(fdir+'snapshots_info.csv')
+        print(snapshots_df)
+        fnum = int(fnum)
+        print(fnum)
+        print(snapshots_df.columns.tolist())
+        print(snapshots_df[' step_number'])
+        row = snapshots_df.loc[snapshots_df[' step_number'] == fnum]
+        print(row)
+        timestamp = np.float32(row[' t_step '])[0]
+        print(timestamp)
 
         array = np.reshape(array, (minfo.contents['AC_mx']-6, 
                                    minfo.contents['AC_my']-6, 
@@ -276,6 +286,7 @@ class Mesh:
         self.framenum = fnum.zfill(10)
 
         self.minfo = MeshInfo(fdir)
+
 
         if only_info == False:
             self.lnrho, self.timestamp, self.ok = read_bin('VTXBUF_LNRHO', fdir, fnum, self.minfo, getfilename=pdiag)
