@@ -1399,7 +1399,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
 
         // DEBUG hotfix START
         // TODO better solution (need to recheck all acDevice functions)
-        // cudaDeviceSynchronize();
+        cudaDeviceSynchronize();
         // DEBUG hotfix END
 
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
