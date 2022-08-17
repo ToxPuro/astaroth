@@ -72,7 +72,7 @@ write_info(const AcMeshInfo* config)
 
     infotxt = fopen("purge.sh", "w");
     fprintf(infotxt, "#!/bin/bash\n");
-    fprintf(infotxt, "rm *.list *.mesh *.csv *.list *.ts purge.sh\n");
+    fprintf(infotxt, "rm *.list *.mesh *.csv *.field *.ts purge.sh\n");
     fclose(infotxt);
 
     infotxt = fopen("mesh_info.list", "w");
