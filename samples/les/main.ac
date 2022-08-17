@@ -94,6 +94,7 @@ kinematic_viscosity()
    return DYNAMIC_VISCOSITY_MU / value(LNRHO)
 }
 
+// Rename: Tensor divergence
 construct_stress_term()
 {
    x = ddx(T00) + ddy(T01) + ddz(T02)
