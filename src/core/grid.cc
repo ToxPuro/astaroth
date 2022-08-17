@@ -1317,6 +1317,10 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
     const int arr_nn[]     = {nn.z, nn.y, nn.x};
     const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
     const int arr_offset[] = {offset.z, offset.y, offset.x};
+
+    //printf(" nn.z     %3i, nn.y     %3i, nn.x     %3i, \n nn_sub.z %3i, nn_sub.y %3i, nn_sub.x %3i, \n offset.z %3i, offset.y %3i, offset.x %3i  \n", 
+    //        nn.z, nn.y, nn.x, nn_sub.z, nn_sub.y, nn_sub.x, offset.z, offset.y, offset.x); 
+
     MPI_Type_create_subarray(3, arr_nn, arr_nn_sub, arr_offset, MPI_ORDER_C, AC_REAL_MPI_TYPE,
                              &subarray);
     MPI_Type_commit(&subarray);
