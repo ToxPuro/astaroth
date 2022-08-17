@@ -463,3 +463,11 @@ operator*(const AcReal v, const AcMatrix& m)
 
   return out;
 }
+
+static HOST_DEVICE AcMatrix
+operator-(const AcMatrix& A, const AcMatrix& B)
+{
+  return AcMatrix(A.row(0) - B.row(0), //
+                  A.row(1) - B.row(1), //
+                  A.row(2) - B.row(2));
+}

@@ -1403,7 +1403,8 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
 
         // DEBUG hotfix START
         // TODO better solution (need to recheck all acDevice functions)
-        // cudaDeviceSynchronize();
+        cudaDeviceSynchronize();             // This sync *is* needed
+        acGridSynchronizeStream(STREAM_ALL); // This sync may not be needed
         // DEBUG hotfix END
 
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
@@ -1411,6 +1412,10 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
         // Apply boundconds and sync
         acGridPeriodicBoundconds(STREAM_DEFAULT);
         // acDeviceSynchronizeStream(device, STREAM_ALL);
+
+        // DEBUG hotfix START
+        acGridSynchronizeStream(STREAM_ALL); // This sync may not be needed
+        // DEBUG hotfix END
     }
     return AC_SUCCESS;
 }
