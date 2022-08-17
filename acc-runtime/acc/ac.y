@@ -43,7 +43,10 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
 
   printf("Building AC object %s\n", file);
   FILE* in = fopen(file, "r");
-  assert(in);
+  if (!in) {
+    fprintf(stderr, "FATAL ERROR: could not open include file '%s'\n", file);
+    assert(in);
+  }
 
   const size_t  len = 4096;
   char buf[len];
