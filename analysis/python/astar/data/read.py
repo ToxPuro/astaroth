@@ -43,9 +43,12 @@ def set_dtype(endian, AcRealSize, print_type = True):
 
 def read_bin(fname, fdir, fnum, minfo, numtype=np.longdouble, getfilename=True):
     '''Read in a floating point array'''
-    filename = fdir + fname + '_' + fnum + '.mesh'
+    filename     = fdir + fname + '_' + fnum + '.mesh'
+    filename_alt = fdir + fname + '_' + fnum + '.field'
     datas = np.DataSource()
-    read_ok = datas.exists(filename)
+    read_ok     = datas.exists(filename)
+    read_ok_alt = datas.exists(filename_alt)
+
 
     my_dtype = set_dtype(minfo.contents['endian'], minfo.contents['AcRealSize'], print_type=getfilename)
 
@@ -59,6 +62,27 @@ def read_bin(fname, fdir, fnum, minfo, numtype=np.longdouble, getfilename=True):
         array = np.reshape(array[1:], (minfo.contents['AC_mx'], 
                                        minfo.contents['AC_my'], 
                                        minfo.contents['AC_mz']), order='F')
+    elif read_ok_alt:
+        if getfilename:
+            print(filename)
+        array = np.fromfile(filename_alt, dtype=my_dtype)
+
+        timestamp = 666.0
+        snapshots_df = pd.read_csv(fdir+'snapshots_info.csv')
+        #print(snapshots_df)
+        fnum = int(fnum)
+        #print(fnum)
+        #print(snapshots_df.columns.tolist())
+        #print(snapshots_df[' step_number'])
+        row = snapshots_df.loc[snapshots_df[' step_number'] == fnum]
+        #print(row)
+        timestamp = np.float32(row[' t_step '])[0]
+        #print(timestamp)
+
+        array = np.reshape(array, (minfo.contents['AC_mx']-6, 
+                                   minfo.contents['AC_my']-6, 
+                                   minfo.contents['AC_mz']-6), order='F')
+        read_ok = 1
     else:
         array = None
         timestamp = None
@@ -106,6 +130,7 @@ def parse_directory(meshdir):
     dirlist = [k for k in dirlist if 'LNRHO' in k]
     for i, item in enumerate(dirlist):
         tmp = item.strip('.mesh')
+        tmp = item.strip('.field')
         tmp = tmp.strip('VTXBUF_LNRHO')
         dirlist[i] = int(tmp)
     dirlist.sort()
@@ -261,6 +286,7 @@ class Mesh:
         self.framenum = fnum.zfill(10)
 
         self.minfo = MeshInfo(fdir)
+
 
         if only_info == False:
             self.lnrho, self.timestamp, self.ok = read_bin('VTXBUF_LNRHO', fdir, fnum, self.minfo, getfilename=pdiag)

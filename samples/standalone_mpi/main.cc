@@ -72,7 +72,7 @@ write_info(const AcMeshInfo* config)
 
     infotxt = fopen("purge.sh", "w");
     fprintf(infotxt, "#!/bin/bash\n");
-    fprintf(infotxt, "rm *.list *.mesh *.ts purge.sh\n");
+    fprintf(infotxt, "rm *.list *.mesh *.csv *.field *.ts purge.sh\n");
     fclose(infotxt);
 
     infotxt = fopen("mesh_info.list", "w");
@@ -148,6 +148,128 @@ save_mesh(const AcMesh& save_mesh, const int step, const AcReal t_step)
         fclose(save_ptr);
     }
 }
+
+// This funtion writes a run state into a set of C binaries
+// WITH MPI_IO
+static inline void
+save_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_step)
+{
+    printf("Saving snapshot at step %i \n", step);
+
+    char cstep[11];
+    //char header_filename[80] = "\0";
+    sprintf(cstep, "%d", step);
+
+    // Saves a csv file which contains relevant information about the binary
+    // snapshot files at the timestep. 
+    if (pid == 0) {
+        FILE* header_file = fopen("snapshots_info.csv", "a");
+
+        //Header only at the step zero
+        if (step == 0) {
+            fprintf(header_file, "use_double, mx, my, mz, step_number, t_step \n");
+        }
+
+        fprintf(header_file, "%d, %d, %d, %d, %d, %.17e \n", sizeof(AcReal) == 8,
+                mesh.info.int_params[AC_mx], mesh.info.int_params[AC_my], 
+                mesh.info.int_params[AC_mz], step, t_step);
+
+	    // Writes the header info. Make it into an
+	    // appendaple csv table which will be easy to be read into a Pandas
+	    // dataframe.
+         
+        fclose(header_file);
+    }
+
+
+    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        const char* buffername = vtxbuf_names[w];
+        char bin_filename[80] = "\0";
+
+
+        strcat(bin_filename, buffername);
+        strcat(bin_filename, "_");
+        strcat(bin_filename, cstep);
+        strcat(bin_filename, ".field");
+
+        // Grid data
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, bin_filename, ACCESS_WRITE);
+       
+        printf("Savefile %s \n", bin_filename);
+
+        acGridDiskAccessSync();
+    }
+}
+
+// This funtion reads a run state into a set of C binaries
+// WITH MPI_IO
+static inline void
+read_mesh_mpi(const int pid, const int step, AcReal* t_step)
+{
+    int stepnumber;
+    AcReal time_at_step;
+    double time;
+
+    printf("Reading snapshot at step %i \n", step);
+    char cstep[11];
+    sprintf(cstep, "%d", step);
+
+    if (pid == 0) {
+
+
+        AcReal element[8];
+
+        // Saves a csv file which contains relevant information about the binary
+        // snapshot files at the timestep. 
+        FILE* header_file = fopen("snapshots_info.csv", "r");
+
+        //TODO: Loop through the header file to find the step number of snapshots
+        //TODO: to be read. And read the relevat other info.
+
+        //Simple cvs file reader. 
+        char csv_line[256];
+        while (fgets( csv_line, sizeof(csv_line), header_file ) != NULL ) {
+            int column_index = 0;
+            for (char* csv_loc = strtok( csv_line, ","); csv_loc != NULL; csv_loc = strtok(NULL, ",")) {
+                printf("%s, ", csv_loc);
+                element[column_index++] = atof(csv_loc);
+            }
+            printf("\n");
+            stepnumber = int(element[4]);
+            time_at_step = element[5];
+            //printf("stepnumber %i at time_at_step %e \n", stepnumber, time_at_step);
+
+            if ( stepnumber == step) {
+                time = double(time_at_step);
+            } 
+        }
+
+        fclose(header_file);
+    }
+
+    MPI_Bcast(&time, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    *t_step = time; 
+
+    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        const char* buffername = vtxbuf_names[w];
+        char bin_filename[80] = "\0";
+
+
+        strcat(bin_filename, buffername);
+        strcat(bin_filename, "_");
+        strcat(bin_filename, cstep);
+        strcat(bin_filename, ".field");
+
+        // Grid data
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, bin_filename, ACCESS_READ);
+       
+        printf("Read file %s \n", bin_filename);
+
+        acGridDiskAccessSync();
+    }
+}
+
 
 // This funtion reads a run state from a set of C binaries.
 static inline void
@@ -450,9 +572,9 @@ main(int argc, char** argv)
 #endif
         // Read old binary if we want to continue from an existing snapshot
         // WARNING: Explicit specification of step needed!
-        if (start_step > 0) {
-            read_mesh(mesh, start_step, &t_step);
-        }
+        //if (start_step > 0) {
+        //    read_mesh(mesh, start_step, &t_step);
+        //}
 
         // Generate the title row.
         if (start_step == 0) {
@@ -484,11 +606,10 @@ main(int argc, char** argv)
         }
 
         acHostMeshApplyPeriodicBounds(&mesh);
-        if (start_step == 0) {
-            save_mesh(mesh, 0, t_step);
-        }
+    
     }
     ////////////////////////////////// PROC 0 BLOCK END ////////////////////////////////////////////
+
 
     // Init GPU
     acGridInit(info);
@@ -496,6 +617,7 @@ main(int argc, char** argv)
 
     /* initialize random seed: */
     srand(312256655);
+
 
 #if LSHOCK
     // From taskgraph example
@@ -528,6 +650,7 @@ main(int argc, char** argv)
     //                                acCompute(KERNEL_shock_3_smooth, shock_field),
     //                                acCompute(KERNEL_solve, all_fields)};
 
+
     // Causes communication related error
     AcTaskDefinition shock_ops[] =
         {acHaloExchange(all_fields),
@@ -541,7 +664,7 @@ main(int argc, char** argv)
          acCompute(KERNEL_shock_3_smooth, shock_field),
          acHaloExchange(shock_field),
          acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
-         acCompute(KERNEL_solve, all_fields)};
+         acCompute(KERNEL_singlepass_solve, all_fields)};
 
     // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
     //                                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
@@ -585,6 +708,14 @@ main(int argc, char** argv)
     });
     */
 #endif
+
+    if (start_step > 0) {
+        read_mesh_mpi(pid, start_step, &t_step);
+        bin_crit_t = bin_crit_t + t_step; 
+    }
+
+    // Save zero state 
+    if (start_step <= 0) save_mesh_mpi(mesh, pid, 0, 0.0);
 
     /* Step the simulation */
     AcReal accreted_mass = 0.0;
@@ -684,8 +815,7 @@ main(int argc, char** argv)
             acGridPeriodicBoundconds(STREAM_DEFAULT);
             acGridStoreMesh(STREAM_DEFAULT, &mesh);
 
-            if (pid == 0)
-                save_mesh(mesh, i, t_step);
+            save_mesh_mpi(mesh, pid, i, t_step);
 
             bin_crit_t += bin_save_t;
         }
@@ -725,14 +855,7 @@ main(int argc, char** argv)
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &mesh);
 
-    if (pid == 0)
-        save_mesh(mesh, istep, t_step);
-
-        //////Save the final snapshot
-        ////acSynchronize();
-        ////acStore(mesh);
-
-        ////save_mesh(*mesh, , t_step);
+    save_mesh_mpi(mesh, pid, istep, t_step);
 
 #if LSHOCK
     acGridDestroyTaskGraph(hc_graph);
