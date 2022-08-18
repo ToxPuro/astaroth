@@ -63,14 +63,14 @@ vertex shaders operate in graphics shading languages.
 
 # Syntax
 
-Comments and preprocessor directives
+#### Comments and preprocessor directives
 ```
 // This is a comment
 #define    ZERO (0)   // Visible only in device code
 hostdefine ONE  (1) // Visible in both device and host code
 ```
 
-Variables
+#### Variables
 ```
 real var    // Explicit type declaration
 real dconst // The type of device constants must be explicitly specified
@@ -86,26 +86,26 @@ var6 = "Hello"
 
 > Note: Shadowing is not allowed, all identifiers within a scope must be unique
 
-Arrays
+#### Arrays
 ```
 int arr0 = 1, 2, 3 // The type of arrays must be explicitly specified
 real arr1 = 1.0, 2.0, 3.0
 len(arr1) // Length of an array
 ```
 
-Casting
+#### Casting
 ```
 var7 = real(1)        // Cast
 vec0 = real3(1, 2, 3) // Cast
 ```
 
-Printing
+#### Printing
 ```
 // print is the same as `printf` in the C programming language
 print("Hello from thread (%d, %d, %d)\n", vertexIdx.x, vertexIdx.y, vertexIdx.z)
 ```
 
-Looping
+#### Looping
 ```
 int arr = 1, 2, 3
 for var in arr {
@@ -122,7 +122,7 @@ for i in 0:10 { // Note: 10 is exclusive
 }
 ```
 
-Functions
+#### Functions
 ```
 func(param) {
     print("%s", param)
@@ -142,7 +142,7 @@ Kernel func3() {
 
 > Note: Overloading is not allowed, all function identifiers must be unique
 
-Stencils
+#### Stencils
 ```
 // Format
 <Optional reduction operation> Stencil <identifier> {
@@ -212,7 +212,19 @@ gradient(field) {
 > Note: To reduce redundant communication or to enable larger stencils, the stencil order can be changed by modifying `static const size_t stencil_order = ...` in `acc-runtime/acc/codegen.c`. Modifying the stencil order with the DSL is currently not supported.
 
 
-Built-in variables and functions
+#### Fields
+
+A `Field` is a scalar array that can be used in conjuction with `Stencil` operations. For convenience, a vector field can be constructed from three scalar fields by declaring them a `Field3` structure.
+```
+Field ux, uy, uz // Three scalar fields `ux`, `uy`, and `uz`
+#define uu Field3(ux, uy, uz) // A vector field `uu` consisting of components `ux`, `uy`, and `uz`
+
+Kernel kernel() {
+    write(ux, derx(ux)) // Writes the x derivative of the field `ux` to the output buffer
+}
+```
+
+#### Built-in variables and functions
 ```
 // Variables
 dim3 threadIdx       // Current thread index within a thread block (see CUDA docs)
