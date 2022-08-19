@@ -427,7 +427,15 @@ acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
 static TBConfig
 autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 {
-  printf("Autotuning kernel %p, block (%d, %d, %d)... ", kernel, dims.x, dims.y,
+  size_t id = (size_t)-1;
+  for (size_t i = 0; i < NUM_KERNELS; ++i) {
+    if (kernels[i] == kernel) {
+      id = i;
+      break;
+    }
+  }
+  ERRCHK_ALWAYS(id < NUM_KERNELS);
+  printf("Autotuning kernel '%s' (%p), block (%d, %d, %d)... ", kernel_names[id], kernel, dims.x, dims.y,
          dims.z);
   fflush(stdout);
 
