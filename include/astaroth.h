@@ -192,7 +192,7 @@ acVertexBufferCompdomainSizeBytes(const AcMeshInfo info)
     return sizeof(AcReal) * acVertexBufferCompdomainSize(info);
 }
 
-static int3
+static inline int3
 acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
                      const AcMeshInfo info)
 {
@@ -200,6 +200,39 @@ acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
         info.int_params[a],
         info.int_params[b],
         info.int_params[c],
+    };
+}
+
+typedef struct {
+    int3 n0, n1;
+    int3 m0, m1;
+} AcMeshDims;
+
+static inline AcMeshDims
+acGetMeshDims(const AcMeshInfo info)
+{
+    const int3 n0 = (int3){
+        info.int_params[AC_nx_min],
+        info.int_params[AC_ny_min],
+        info.int_params[AC_nz_min],
+    };
+    const int3 n1 = (int3){
+        info.int_params[AC_nx_max],
+        info.int_params[AC_ny_max],
+        info.int_params[AC_nz_max],
+    };
+    const int3 m0 = (int3){0, 0, 0};
+    const int3 m1 = (int3){
+        info.int_params[AC_mx],
+        info.int_params[AC_my],
+        info.int_params[AC_mz],
+    };
+
+    return (AcMeshDims){
+        .n0 = n0,
+        .n1 = n1,
+        .m0 = m0,
+        .m1 = m1,
     };
 }
 
