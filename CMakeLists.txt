@@ -115,6 +115,11 @@ add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 include_directories(include)                                   # Library headers
 include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # CUDA headers
 
+# Additional program modules
+if (PROGRAM_MODULE_DIR)
+    add_subdirectory(${PROGRAM_MODULE_DIR})
+endif()
+
 ## Subdirectories
 add_subdirectory(acc-runtime)
 add_subdirectory(src/core/kernels)
@@ -165,9 +170,4 @@ if (BUILD_SAMPLES)
   #if (MPI_ENABLED)
   #  add_subdirectory(samples/bwtest)
   #endif()
-endif()
-
-# Additional program modules
-if (PROGRAM_MODULE_DIR)
-    add_subdirectory(${PROGRAM_MODULE_DIR})
 endif()
