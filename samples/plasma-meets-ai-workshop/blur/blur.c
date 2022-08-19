@@ -22,12 +22,14 @@ main(void)
     AcMesh mesh;
     acHostMeshCreate(info, &mesh);
     acHostMeshRandomize(&mesh);
-    acHostMeshSet(1, &mesh);
     acDeviceLoadMesh(device, STREAM_DEFAULT, mesh);
     acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
 
+    // Write the initial snapshot to a file
+    acHostMeshWriteToFile(mesh, 0);
+
     // Compute
-    // acDeviceLaunchKernel(device, STREAM_DEFAULT, ..., dims.n0, dims.n1);
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, blur, dims.n0, dims.n1);
     acDeviceSwapBuffers(device);
     acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
     acDeviceSynchronizeStream(device, STREAM_DEFAULT);
@@ -35,6 +37,20 @@ main(void)
     // Store to host memory and write to a file
     acDeviceStoreMesh(device, STREAM_DEFAULT, &mesh);
     acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+    acHostMeshWriteToFile(mesh, 1);
+
+    for (size_t i = 2; i < 20; ++i) {
+        // Compute
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, blur, dims.n0, dims.n1);
+        acDeviceSwapBuffers(device);
+        acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+
+        // Store to host memory and write to a file
+        acDeviceStoreMesh(device, STREAM_DEFAULT, &mesh);
+        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+        acHostMeshWriteToFile(mesh, i);
+    }
 
     // Deallocate memory on the GPU
     acDeviceDestroy(device);
