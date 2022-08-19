@@ -12,6 +12,7 @@
 
 > (Optional) Visualize the output with `../samples/plasma-meets-ai-workshop/animate-snapshots.py <list of .dat files, f.ex. *.dat or UUX*.dat>`. Requires `python`, `python-numpy`, and `python-matplotlib`.
 
+> (Optional) Check `samples/plasma-meets-ai-workshop/getting-started-with-astaroth.md` for more information on getting Astaroth up and running.
 
 ## Exercise 1: Blur Filter
 

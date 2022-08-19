@@ -12,6 +12,8 @@
     > `cd astaroth`
 
     > `mkdir build && cd build`
+
+    > (Optional) Remove `CMakeCache.txt`  and do `make clean` in the build directory if there are issues and you have built Astaroth before. Previous runs may have set some cached CMake options that interfere with compiling the default samples.
      
     > `cmake .. && make -j`
 
@@ -34,7 +36,7 @@
 
     > Ensure the dependencies `flex bison cmake cuda` are installed.
 
-    > Clean the build directory completely (incl. `CMakeCache.txt`) and try again.
+    > Clean the build directory completely (incl. `CMakeCache.txt` and do `make clean`) and try again.
 
 * CMake available on the system is too old
 
