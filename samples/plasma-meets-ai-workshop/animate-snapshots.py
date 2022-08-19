@@ -25,8 +25,6 @@ for file in sys.argv[1:]:
     data = np.reshape(data, (mx, my, mz), order = 'F')
 
     slices.append(data[:, :, int(mz/2)])
-    #slices.append(data[int(mx/2), :, :])
-    #slices.append(data[int(mz/2), :, :])
 
 min = np.min(slices[0])
 max = np.max(slices[0])
@@ -34,7 +32,7 @@ max = np.max(slices[0])
 fig, ax = plt.subplots()
 ims = []
 for slice in slices:
-    im = ax.imshow(slice, animated=True, vmin = min, vmax = max)
+    im = ax.imshow(slice, animated=True, cmap='plasma', vmin = min, vmax = max)
     ims.append([im])
 
 ani = animation.ArtistAnimation(fig, ims, interval=100, blit=True)

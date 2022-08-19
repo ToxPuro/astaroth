@@ -22,8 +22,8 @@ main(void)
     AcMesh mesh;
     acHostMeshCreate(info, &mesh);
     acHostMeshRandomize(&mesh);
-    acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, 2);
-    acDeviceLaunchKernel(device, STREAM_DEFAULT, hydro, dims.n0, dims.n1);
+    // acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, 2);
+    // acDeviceLaunchKernel(device, STREAM_DEFAULT, hydro, dims.n0, dims.n1);
     acDeviceLoadMesh(device, STREAM_DEFAULT, mesh);
     acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
 
