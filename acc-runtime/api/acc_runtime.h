@@ -30,7 +30,6 @@
 #include "errchk.h"
 
 #include "user_defines.h"
-#include "../../include/user_params.h"
 
 typedef struct {
   int int_params[NUM_INT_PARAMS];
