@@ -28,10 +28,20 @@ main(void)
     // Write the initial snapshot to a file
     acHostMeshWriteToFile(mesh, 0);
 
-    for (size_t i = 1; i < 20; ++i) {
+    // Compute
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, blur, dims.n0, dims.n1);
+    acDeviceSwapBuffers(device);
+    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+
+    // Store to host memory and write to a file
+    acDeviceStoreMesh(device, STREAM_DEFAULT, &mesh);
+    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+    acHostMeshWriteToFile(mesh, 1);
+
+    for (size_t i = 2; i < 20; ++i) {
         // Compute
-        // EXERCISE: call the DSL `blur` kernel with `acDeviceLaunchKernel`
-        // acDeviceLaunchKernel(device, STREAM_DEFAULT, ..., dims.n0, dims.n1);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, blur, dims.n0, dims.n1);
         acDeviceSwapBuffers(device);
         acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
