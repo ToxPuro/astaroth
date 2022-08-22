@@ -27,7 +27,11 @@ stress_tensor(v) {
 }
 
 continuity() {
-   return -dot(vecvalue(UU), gradient(LNRHO)) - divergence(UU)
+
+    // EXERCISE:
+    // compute and return `- uu dot grad lnrho - nabla dot uu`
+    // see `stencil.ach` for the avalable Stencil functions and operators
+    return 1.0
 }
 
 momentum() {

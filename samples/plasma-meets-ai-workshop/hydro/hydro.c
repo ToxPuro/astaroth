@@ -32,12 +32,15 @@ main(void)
     acHostMeshWriteToFile(mesh, 0);
 
     for (size_t i = 1; i < 2000; ++i) {
+        // EXERCISE: Load some real value (1e-3 is god) to the device constant handle `AC_dt`
+        // acDeviceLoadScalarUniform(device, STREAM_DEFAULT, <device constant handle>, 1e-3);
         for (size_t substep = 0; substep < 3; ++substep) {
-            acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, 1e-3);
-            acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, substep);
+            // EXERCISE: Load an int corresponding to the RK3 substep to `AC_step_number`
+            // acDeviceLoadIntUniform(device, STREAM_DEFAULT, <device constant handle>, substep);
 
             // Compute
-            acDeviceLaunchKernel(device, STREAM_DEFAULT, hydro, dims.n0, dims.n1);
+            // EXERCISE: Launch kernel `hydro`
+            // acDeviceLaunchKernel(device, STREAM_DEFAULT, <kernel name>, dims.n0, dims.n1);
             acDeviceSwapBuffers(device);
             acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
         }
