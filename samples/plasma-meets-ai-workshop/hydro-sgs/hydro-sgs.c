@@ -44,6 +44,7 @@ main(void)
             acDeviceSwapBuffer(device, T11);
             acDeviceSwapBuffer(device, T12);
             acDeviceSwapBuffer(device, T22);
+            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
 
             // Compute
             acDeviceLaunchKernel(device, STREAM_DEFAULT, hydro_sgs, dims.n0, dims.n1);
