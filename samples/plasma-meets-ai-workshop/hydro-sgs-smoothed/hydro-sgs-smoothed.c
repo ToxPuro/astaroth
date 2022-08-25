@@ -32,16 +32,26 @@ main(void)
     acHostMeshWriteToFile(mesh, 0);
 
     for (size_t i = 1; i < 2000; ++i) {
-        for (size_t substep = 0; substep < 3; ++substep) {
-            acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, 1e-3);
-            acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, substep);
+        // Update timestep
+        acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, 1e-3);
 
-            // Smooth velocity
-            acDeviceLaunchKernel(device, STREAM_DEFAULT, smooth, dims.n0, dims.n1);
-            acDeviceSwapBuffer(device, UUX);
-            acDeviceSwapBuffer(device, UUY);
-            acDeviceSwapBuffer(device, UUZ);
-            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+        // Apply forcing
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, forcing, dims.n0, dims.n1);
+        acDeviceSwapBuffer(device, UUX);
+        acDeviceSwapBuffer(device, UUY);
+        acDeviceSwapBuffer(device, UUZ);
+        acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+
+        // Smooth velocity
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, smooth, dims.n0, dims.n1);
+        acDeviceSwapBuffer(device, UUX);
+        acDeviceSwapBuffer(device, UUY);
+        acDeviceSwapBuffer(device, UUZ);
+        acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+
+        for (size_t substep = 0; substep < 3; ++substep) {
+
+            acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, substep);
 
             // Compute SGS stresses
             acDeviceLaunchKernel(device, STREAM_DEFAULT, compute_sgs_stress, dims.n0, dims.n1);
