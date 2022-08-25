@@ -31,6 +31,13 @@ main(void)
     acHostMeshApplyPeriodicBounds(&mesh);
     acHostMeshWriteToFile(mesh, 0);
 
+    // Scale velocity to [-1, 1]
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, scale_velocity, dims.n0, dims.n1);
+    acDeviceSwapBuffer(device, UUX);
+    acDeviceSwapBuffer(device, UUY);
+    acDeviceSwapBuffer(device, UUZ);
+    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+
     for (size_t i = 1; i < 2000; ++i) {
         // Update timestep
         acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, 1e-3);

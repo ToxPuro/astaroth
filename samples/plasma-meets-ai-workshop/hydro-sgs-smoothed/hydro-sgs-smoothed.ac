@@ -47,19 +47,31 @@ Stencil filter {
 }
 
 
+Kernel scale_velocity() {
+   write(UUX, 2.0 * value(UUX) - 1.0)
+   write(UUY, 2.0 * value(UUY) - 1.0)
+   write(UUZ, 2.0 * value(UUZ) - 1.0)
+}
+
 
 Kernel forcing() {
    
-   sx = DSX * (globalVertexIdx.x - AC_mx/2)
-   sy = DSY * (globalVertexIdx.y - AC_my/2)
-   dist = sqrt(sx * sx + sy * sy) + 1e-10
-   dir = real3(sy / dist, -sx / dist, 0)
+   sx = (2.0 * vertexIdx.x / AC_mx) - 1.0 // [-1, 1]
+   sy = (2.0 * vertexIdx.y / AC_my) - 1.0 // [-1, 1]
 
-   v = 1e-1 * dist * dist * dir
+   dist = sqrt(sx * sx + sy * sy)
 
-   write(UUX, value(UUX) + v.x * AC_dt)
-   write(UUY, value(UUY) + v.y * AC_dt)
-   write(UUZ, value(UUZ) + v.z * AC_dt)
+   force = real3(0, 0, 0)
+
+   if (dist > 0.4 && dist < 0.6) {
+      dir = (1/dist) * real3(sy, -sx, 0) // Normalized
+      scale = 1.0
+      force = scale * dir
+   }
+
+   write(UUX, value(UUX) + force.x * AC_dt)
+   write(UUY, value(UUY) + force.y * AC_dt)
+   write(UUZ, value(UUZ) + force.z * AC_dt)
 }
 
 Kernel smooth() {
