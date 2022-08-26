@@ -12,7 +12,7 @@ Field T00, T01, T02, T11, T12, T22 // Note: the stress tensor is symmetric
 
 #define SMAGORINSKY_COEFFICIENT_C (1.16)
 #define CHARACTERISTIC_SCALE (DSX)
-
+/*
 #define SMOOTH_FACTOR (1. / 27.)
 Stencil filter {
    [-1][-1][-1] =  SMOOTH_FACTOR,
@@ -45,6 +45,8 @@ Stencil filter {
    [1][1][0] =  SMOOTH_FACTOR,
    [1][1][1] =  SMOOTH_FACTOR
 }
+*/
+#include "filter.ach"
 
 
 Kernel scale_velocity() {
