@@ -309,13 +309,16 @@ acLoadStencil(const Stencil stencil, const cudaStream_t stream,
               const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
 {
   ERRCHK_ALWAYS(stencil < NUM_STENCILS);
-
+  /*
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
   const cudaError_t retval = cudaMemcpyToSymbolAsync(
       stencils, data, bytes, stencil * bytes, cudaMemcpyHostToDevice, stream);
 
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+  */
+  WARNING("acLoadStencil not functional");
+  return AC_FAILURE;
 };
 
 AcResult
@@ -324,12 +327,17 @@ acStoreStencil(const Stencil stencil, const cudaStream_t stream,
 {
   ERRCHK_ALWAYS(stencil < NUM_STENCILS);
 
+  /*
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
   const cudaError_t retval = cudaMemcpyFromSymbolAsync(
       data, stencils, bytes, stencil * bytes, cudaMemcpyDeviceToHost, stream);
 
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+  */
+
+  WARNING("acLoadStencil not functional");
+  return AC_FAILURE;
 };
 
 #define GEN_LOAD_UNIFORM(LABEL_UPPER, LABEL_LOWER)                             \

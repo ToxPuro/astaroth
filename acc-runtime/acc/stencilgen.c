@@ -79,6 +79,7 @@ gen_stencil_definitions(void)
   if (!NUM_STENCILS)
     raise_error("Must declare at least one Stencil in the DSL code!");
 
+#if 0
   printf(
       "static __device__ /*const*/ AcReal /*__restrict__*/ "
       "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={");
@@ -100,6 +101,7 @@ gen_stencil_definitions(void)
     printf("},");
   }
   printf("};");
+#endif
 }
 
 void
@@ -416,8 +418,9 @@ gen_kernel_body(const int curr_kernel)
                    stencil, depth, height, width);
 
             // CT const
-            // printf("%s;", stencils[stencil][depth][height][width]);
-            printf("stencils[%d][%d][%d][%d];", stencil, depth, height, width);
+            printf("%s;", stencils[stencil][depth][height][width]);
+            // printf("stencils[%d][%d][%d][%d];", stencil, depth, height,
+            // width);
 
             coeff_initialized[stencil][depth][height][width] = 1;
           }
