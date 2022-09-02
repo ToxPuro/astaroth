@@ -10,7 +10,11 @@
 #endif
 
 #define HALO (440)
+#if AC_USE_HIP
 #define MAX_SMEM (192 * 1024)
+#else
+#define MAX_SMEM (16 * 1024)
+#endif
 #define USE_SMEM (0)
 
 typedef struct {
@@ -258,7 +262,7 @@ autotune(const Array a, const Array b)
          .smem = 0,
     };
 #if USE_SMEM
-    c.smem = (best_tpb + 2 * HALO) * sizeof(AcReal);
+    c.smem = (c.tpb + 2 * HALO) * sizeof(AcReal);
 #endif
 
     cudaDeviceProp props;
@@ -327,7 +331,10 @@ autotune(const Array a, const Array b)
     }
     printf("KernelConfig {.tpb = %lu, .bpg = %lu, .smem = %lu}\n", c.tpb, c.bpg, c.smem);
 
-    assert(c.smem <= MAX_SMEM);
+    if (c.smem > MAX_SMEM) {
+        fprintf(stderr, "Attempted to use too much shared memory (%lu > %lu)\n", c.smem, MAX_SMEM);
+        exit(EXIT_FAILURE);
+    }
     return c;
 }
 
