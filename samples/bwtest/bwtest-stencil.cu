@@ -237,27 +237,104 @@ validate(const Array darr, const AcReal mult)
     free(data);
 }
 
-void
-benchmark(const size_t count)
-{
-    Array a = acArrayCreate(count);
-    Array b = acArrayCreate(count);
+typedef struct {
+    size_t tpb;
+    size_t bpg;
+    size_t smem;
+} KernelConfig;
 
-    const size_t tpb = 512;
-    const size_t bpg = (size_t)ceil(1.0 * count / tpb);
+/** Returns the optimal threadblock dimensions for a given problem size */
+static KernelConfig
+autotune(const Array a, const Array b)
+{
+    cudaEvent_t tstart, tstop;
+    const size_t count     = a.count;
+    const size_t num_iters = 3;
+
+    float best_time = INFINITY;
+    KernelConfig c  = {
+         .tpb  = 256,
+         .bpg  = (size_t)ceil(1.0 * count / 256),
+         .smem = 0,
+    };
 #if USE_SMEM
-    const size_t smem = (tpb + 2 * HALO) * sizeof(AcReal);
-#else
-    const size_t smem   = 0;
+    c.smem = (best_tpb + 2 * HALO) * sizeof(AcReal);
 #endif
-    assert(a.count == count);
-    assert(b.count == count);
-    assert(smem <= MAX_SMEM);
+
+    cudaDeviceProp props;
+    cudaGetDeviceProperties(&props, 0);
+    const int warp_size             = props.warpSize;
+    const int max_threads_per_block = props.maxThreadsPerBlock;
 
     // Warmup
+    cudaEventCreate(&tstart);
+    cudaEventCreate(&tstop);
+    cudaEventRecord(tstart); // Timing start
     for (size_t i = 0; i < 10; ++i)
-        kernel<<<bpg, tpb, smem>>>(a, b);
+        kernel<<<c.bpg, c.tpb, c.smem>>>(a, b);
+    cudaEventRecord(tstop); // Timing stop
+    cudaEventSynchronize(tstop);
+    cudaEventDestroy(tstart);
+    cudaEventDestroy(tstop);
     cudaDeviceSynchronize();
+
+    // Tune
+    for (size_t tpb = 1; tpb <= max_threads_per_block; ++tpb) {
+        if (tpb > max_threads_per_block)
+            break;
+
+        const size_t bpg = (size_t)ceil(1.0 * count / tpb);
+#if USE_SMEM
+        const size_t smem = (tpb + 2 * HALO) * sizeof(AcReal);
+#else
+        if ((tpb % warp_size))
+            continue;
+        const size_t smem = 0;
+#endif
+
+        cudaEventCreate(&tstart);
+        cudaEventCreate(&tstop);
+
+        cudaDeviceSynchronize();
+        cudaEventRecord(tstart); // Timing start
+        for (int i = 0; i < num_iters; ++i)
+            kernel<<<bpg, tpb, smem>>>(a, b);
+        cudaEventRecord(tstop); // Timing stop
+        cudaEventSynchronize(tstop);
+
+        float milliseconds = 0;
+        cudaEventElapsedTime(&milliseconds, tstart, tstop);
+
+        cudaEventDestroy(tstart);
+        cudaEventDestroy(tstop);
+
+        // Discard failed runs (attempt to clear the error to cudaSuccess)
+        if (cudaGetLastError() != cudaSuccess) {
+            // Exit in case of unrecoverable error that needs a device reset
+            if (cudaGetLastError() != cudaSuccess) {
+                fprintf(stderr, "Unrecoverable CUDA error\n");
+                exit(EXIT_FAILURE);
+            }
+            continue;
+        }
+
+        // printf("KernelConfig {.tpb = %lu, .bpg = %lu, .smem = %lu}\n", tpb, bpg, smem);
+        // printf("\tTime elapsed: %g ms\n", (double)milliseconds);
+        if (milliseconds < best_time) {
+            best_time = milliseconds;
+            c         = (KernelConfig){.tpb = tpb, .bpg = bpg, .smem = smem};
+        }
+    }
+    printf("KernelConfig {.tpb = %lu, .bpg = %lu, .smem = %lu}\n", c.tpb, c.bpg, c.smem);
+
+    assert(c.smem <= MAX_SMEM);
+    return c;
+}
+
+void
+benchmark(const Array a, const Array b, const KernelConfig c)
+{
+    const size_t count = a.count;
 
     // Benchmark
     cudaEvent_t tstart, tstop;
@@ -265,7 +342,7 @@ benchmark(const size_t count)
     cudaEventCreate(&tstop);
 
     cudaEventRecord(tstart); // Timing start
-    kernel<<<bpg, tpb, smem>>>(a, b);
+    kernel<<<c.bpg, c.tpb, c.smem>>>(a, b);
     cudaEventRecord(tstop); // Timing stop
     cudaEventSynchronize(tstop);
 
@@ -277,9 +354,9 @@ benchmark(const size_t count)
     cudaEventDestroy(tstop);
 
     // Validate
-    acArraySetToTID<<<bpg, tpb>>>(a);
-    acArraySet<<<bpg, tpb>>>((AcReal)0.0, b);
-    kernel<<<bpg, tpb, smem>>>(a, b);
+    acArraySetToTID<<<c.bpg, c.tpb>>>(a);
+    acArraySet<<<c.bpg, c.tpb>>>((AcReal)0.0, b);
+    kernel<<<c.bpg, c.tpb, c.smem>>>(a, b);
     validate(b, 2.0);
 
     const size_t bytes   = (count + 2 * (count - 2 * HALO)) * sizeof(a.data[0]);
@@ -287,9 +364,6 @@ benchmark(const size_t count)
     printf("Bandwidth: %g GiB/s\n", bytes / seconds / pow(1024, 3));
     printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
     printf("\tTime elapsed: %g ms\n", milliseconds);
-
-    acArrayDestroy(&a);
-    acArrayDestroy(&b);
 }
 
 int
@@ -313,9 +387,17 @@ main(void)
     const size_t count = 10;
 #endif
 
+    Array a = acArrayCreate(count);
+    Array b = acArrayCreate(count);
+    assert(a.count == count);
+    assert(b.count == count);
+    const KernelConfig c = autotune(a, b);
+
     const size_t num_iters = 5;
     for (size_t i = 0; i < num_iters; ++i)
-        benchmark(count);
+        benchmark(a, b, c);
 
+    acArrayDestroy(&a);
+    acArrayDestroy(&b);
     return EXIT_SUCCESS;
 }
