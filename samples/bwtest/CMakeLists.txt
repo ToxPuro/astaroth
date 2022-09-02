@@ -1,8 +1,8 @@
-add_executable(bwtest main.cu)
-add_executable(bwtest-stencil main2.cu)
+add_executable(bwtest bwtest.cu)
+add_executable(bwtest-stencil bwtest-stencil.cu)
 
 if (USE_HIP)
-set_source_files_properties(main.cu main2.cu PROPERTIES LANGUAGE CXX)
+set_source_files_properties(bwtest.cu bwtest-stencil.cu PROPERTIES LANGUAGE CXX)
 endif()
 
 target_link_libraries(bwtest acc-runtime-headers)

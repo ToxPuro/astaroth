@@ -9,7 +9,7 @@
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 #endif
 
-#define HALO (512)
+#define HALO (440)
 #define MAX_SMEM (192 * 1024)
 #define USE_SMEM (0)
 
