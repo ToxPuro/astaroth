@@ -157,7 +157,7 @@ static inline uint64_t
 mod(const int a, const int b)
 {
   const int r = a % b;
-  return r < 0 ? r + b : r;
+  return r < 0 ? as_size_t(r + b) : as_size_t(r);
 }
 
 static inline AcReal
@@ -235,7 +235,7 @@ operator*(const uint3_64& a, const uint3_64& b)
 static HOST_DEVICE_INLINE uint3_64
 operator*(const int& a, const uint3_64& b)
 {
-  return (uint3_64){a * b.x, a * b.y, a * b.z};
+  return (uint3_64){as_size_t(a) * b.x, as_size_t(a) * b.y, as_size_t(a) * b.z};
 }
 
 static HOST_DEVICE_INLINE bool

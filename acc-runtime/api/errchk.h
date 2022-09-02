@@ -154,3 +154,10 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
     cuda_assert((params), __FILE__, __LINE__, false);                          \
   }
 //#endif // __CUDA_RUNTIME_API_H__
+
+static inline size_t
+as_size_t(const int i)
+{
+  ERRCHK_ALWAYS(i >= 0);
+  return (size_t)i;
+}
