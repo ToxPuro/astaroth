@@ -9,7 +9,7 @@
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 #endif
 
-#define HALO (128)
+#define HALO (512)
 #define MAX_SMEM (192 * 1024)
 #define USE_SMEM (0)
 
@@ -306,8 +306,8 @@ main(void)
     const size_t fields = 8;
     const size_t count  = fields * (pow(mm, 3) + 2 * pow(nn, 3));
 #elif 1
-    const size_t nn     = 128;
-    const size_t fields = 1;
+    const size_t nn     = 64;
+    const size_t fields = 8;
     const size_t count  = fields * pow(nn, 3); // Approx what we do (lower bound)
 #elif 0
     const size_t count = 10;
