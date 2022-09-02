@@ -139,7 +139,7 @@ benchmark(const size_t count)
     const double seconds = (double)milliseconds / 1e3;
     printf("Bandwidth: %g GiB/s\n", bytes / seconds / pow(1024, 3));
     printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
-    printf("\tTime elapsed: %g ms\n", milliseconds);
+    printf("\tTime elapsed: %g ms\n", (double)milliseconds);
 
     acArrayDestroy(&a);
     acArrayDestroy(&b);
@@ -224,7 +224,7 @@ main(void)
 #elif 1
     const size_t nn     = 128;
     const size_t fields = 8;
-    const size_t count  = fields * pow(nn, 3); // Approx what we do (lower bound)
+    const size_t count  = fields * (size_t)pow(nn, 3); // Approx what we do (lower bound)
 #elif 0
     const size_t count = 10;
 #endif

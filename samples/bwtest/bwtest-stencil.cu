@@ -149,9 +149,9 @@ kernel(const Array in, Array out)
 __global__ void
 kernel(const Array in, const Array out)
 {
-    const int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
 
-    if (tid >= HALO && tid < in.count - HALO) {
+    if (tid >= HALO && tid < (int)in.count - HALO) {
         AcReal tmp = 0;
 
 #pragma unroll
@@ -229,7 +229,7 @@ validate(const Array darr, const AcReal mult)
 
     ERRCHK_CUDA_ALWAYS(cudaMemcpy(data, darr.data, bytes, cudaMemcpyDeviceToHost));
 
-    for (int i = HALO; i < darr.count - HALO; ++i) {
+    for (int i = HALO; i < (int)darr.count - HALO; ++i) {
         AcReal expected = 0;
         for (int j = -HALO; j <= HALO; ++j)
             expected += mult * (i + j);
@@ -267,8 +267,8 @@ autotune(const Array a, const Array b)
 
     cudaDeviceProp props;
     cudaGetDeviceProperties(&props, 0);
-    const int warp_size             = props.warpSize;
-    const int max_threads_per_block = props.maxThreadsPerBlock;
+    const size_t warp_size             = (size_t)props.warpSize;
+    const size_t max_threads_per_block = (size_t)props.maxThreadsPerBlock;
 
     // Warmup
     cudaEventCreate(&tstart);
@@ -301,7 +301,7 @@ autotune(const Array a, const Array b)
 
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
-        for (int i = 0; i < num_iters; ++i)
+        for (size_t i = 0; i < num_iters; ++i)
             kernel<<<bpg, tpb, smem>>>(a, b);
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
@@ -332,7 +332,7 @@ autotune(const Array a, const Array b)
     printf("KernelConfig {.tpb = %lu, .bpg = %lu, .smem = %lu}\n", c.tpb, c.bpg, c.smem);
 
     if (c.smem > MAX_SMEM) {
-        fprintf(stderr, "Attempted to use too much shared memory (%lu > %lu)\n", c.smem, MAX_SMEM);
+        fprintf(stderr, "Attempted to use too much shared memory (%lu > %d)\n", c.smem, MAX_SMEM);
         exit(EXIT_FAILURE);
     }
     return c;
@@ -370,7 +370,7 @@ benchmark(const Array a, const Array b, const KernelConfig c)
     const double seconds = (double)milliseconds / 1e3;
     printf("Bandwidth: %g GiB/s\n", bytes / seconds / pow(1024, 3));
     printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
-    printf("\tTime elapsed: %g ms\n", milliseconds);
+    printf("\tTime elapsed: %g ms\n", (double)milliseconds);
 }
 
 int
@@ -389,7 +389,7 @@ main(void)
 #elif 1
     const size_t nn     = 64;
     const size_t fields = 8;
-    const size_t count  = fields * pow(nn, 3); // Approx what we do (lower bound)
+    const size_t count  = fields * (size_t)pow(nn, 3); // Approx what we do (lower bound)
 #elif 0
     const size_t count = 10;
 #endif
