@@ -171,7 +171,8 @@ extern "C" {
 static inline size_t
 acVertexBufferSize(const AcMeshInfo info)
 {
-    return info.int_params[AC_mx] * info.int_params[AC_my] * info.int_params[AC_mz];
+    return as_size_t(info.int_params[AC_mx]) * as_size_t(info.int_params[AC_my]) *
+           as_size_t(info.int_params[AC_mz]);
 }
 
 static inline size_t
@@ -183,7 +184,8 @@ acVertexBufferSizeBytes(const AcMeshInfo info)
 static inline size_t
 acVertexBufferCompdomainSize(const AcMeshInfo info)
 {
-    return info.int_params[AC_nx] * info.int_params[AC_ny] * info.int_params[AC_nz];
+    return as_size_t(info.int_params[AC_nx]) * as_size_t(info.int_params[AC_ny]) *
+           as_size_t(info.int_params[AC_nz]);
 }
 
 static inline size_t
@@ -239,9 +241,9 @@ acGetMeshDims(const AcMeshInfo info)
 static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    return i +                          //
-           j * info.int_params[AC_mx] + //
-           k * info.int_params[AC_mx] * info.int_params[AC_my];
+    return as_size_t(i +                          //
+                     j * info.int_params[AC_mx] + //
+                     k * info.int_params[AC_mx] * info.int_params[AC_my]);
 }
 
 static inline int3
@@ -1042,7 +1044,9 @@ acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out
 }
 
 /** */
-template <size_t num_fields> AcTaskDefinition acHaloExchange(Field (&fields)[num_fields])
+template <size_t num_fields>
+AcTaskDefinition
+acHaloExchange(Field (&fields)[num_fields])
 {
     return acHaloExchange(fields, num_fields);
 }
