@@ -63,7 +63,9 @@ main(int argc, char* argv[])
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char file[2 * 4096] = "";
         sprintf(file, "%s/%s.out", input, vtxbuf_names[i]);
-        printf("Reading `%s`\n", file);
+        if (!pid)
+            printf("Reading `%s`\n", file);
+
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_READ);
         // acGridLoadFieldFromFile(file, (VertexBufferHandle)i);
 
@@ -71,14 +73,16 @@ main(int argc, char* argv[])
         acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)i, &max);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)i, &min);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)i, &sum);
-        printf("max %g, min %g, sum %g\n", (double)max, (double)min, (double)sum);
+        if (!pid)
+            printf("max %g, min %g, sum %g\n", (double)max, (double)min, (double)sum);
     }
 
     // Quit
     acGridQuit();
     MPI_Finalize();
 
-    printf("OK!\n");
+    if (!pid)
+        printf("OK!\n");
 
     return EXIT_SUCCESS;
 }
