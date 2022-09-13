@@ -1,3 +1,44 @@
+// clang-format off
+/**
+  Code generator for unrolling and reordering memory accesses
+
+  Key structures:
+    
+      stencils
+
+      int stencils_accessed[kernel][field][stencil]: Set if `stencil` accessed for `field` in `kernel`
+      char* stencils[stencil][depth][height][width]: contains the expression to compute the stencil coefficient
+
+      char* stencil_unary_ops[stencil]: contains the function name of the unary operation used to process `stencil`
+      char* stencil_binary_ops[stencil]: contains the function name of the binary operation used to process `stencil`
+
+      A stencil is defined (formally) as
+
+        f: R -> R       | Map operator
+        g: R^{|s|} -> R | Reduce operator
+        p: stencil points
+        w: stencil element weights (coefficients)
+
+        f(p_i) = ...
+        s_i = w_i f(p_i)
+        g(s) = ...
+
+        For example for an ordinary stencil
+        f(p_i) = p_i
+        g(s) = sum_{i=1}^{|s|} s_i = sum s_i
+
+      Alternatively by recursion
+        G(p_0) = w_i f(p_0)
+        G(p_i) = g(w_i f(p_i), G(p_{i-1}))
+
+      Could also simplify notation by incorporating w into f
+
+      CS view:
+        res = f(p[0])
+        for i in 1,len(p):
+          res = g(f(p[i]), res)
+*/
+// clang-format on
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
