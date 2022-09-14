@@ -459,7 +459,6 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   // Get device hardware information
   cudaDeviceProp props;
   cudaGetDeviceProperties(&props, 0);
-  const int warp_size             = props.warpSize;
   const int max_threads_per_block = props.maxThreadsPerBlock;
 
   for (int z = 1; z <= max_threads_per_block; ++z) {
@@ -484,24 +483,47 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                        (unsigned int)ceil(dims.z / double(tpb.z)));
         const size_t smem = get_smem(tpb.x, tpb.y, tpb.z, STENCIL_ORDER,
                                      sizeof(AcReal));
-#if USE_SMEM
+
         const size_t max_smem = 128 * 1024;
         if (smem > max_smem)
           continue;
 
+        if ((x * y * z) % props.warpSize)
+          continue;
+
+#if VECTORIZED_LOADS
         const size_t window = tpb.x + STENCIL_ORDER;
+
         // Vectorization criterion
         if (window % veclen) // Window not divisible into vectorized blocks
           continue;
 
         if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
           continue;
+#endif
+#if 0 // Disabled for now (waiting for cleanup)
+#if USE_SMEM
+        const size_t max_smem = 128 * 1024;
+        if (smem > max_smem)
+          continue;
+
+#if VECTORIZED_LOADS
+        const size_t window = tpb.x + STENCIL_ORDER;
+
+        // Vectorization criterion
+        if (window % veclen) // Window not divisible into vectorized blocks
+          continue;
+
+        if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
+          continue;
+#endif
 
           //  Padding criterion
           //  TODO (cannot be checked here)
 #else
         if ((x * y * z) % warp_size)
           continue;
+#endif
 #endif
 
         // printf("%d, %d, %d: %lu\n", tpb.x, tpb.y, tpb.z, smem);

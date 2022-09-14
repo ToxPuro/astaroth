@@ -1163,6 +1163,66 @@ gen_kernel_body(const int curr_kernel)
     printf("};");
   }
 }
+#elif IMPLEMENTATION == SMEM_HIGH_OCCUPANCY
+void
+gen_kernel_body(const int curr_kernel)
+{
+  gen_kernel_prefix_with_boundcheck();
+
+  int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
+  for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+    for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+      for (int width = 0; width < STENCIL_WIDTH; ++width) {
+        for (int field = 0; field < NUM_FIELDS; ++field) {
+          for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+
+            // Skip if the stencil is not used
+            if (!stencils_accessed[curr_kernel][field][stencil])
+              continue;
+
+            if (stencils[stencil][depth][height][width]) {
+              if (!stencil_initialized[field][stencil]) {
+                printf("auto f%d_s%d = ", field, stencil);
+                printf("%s(stencils[%d][%d][%d][%d]*"
+                       "vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                       "vertexIdx.z+(%d))]);",
+                       stencil_unary_ops[stencil], stencil, depth, height,
+                       width, field, -STENCIL_ORDER / 2 + width,
+                       -STENCIL_ORDER / 2 + height, -STENCIL_ORDER / 2 + depth);
+
+                stencil_initialized[field][stencil] = 1;
+              }
+              else {
+                printf("f%d_s%d = ", field, stencil);
+                printf( //
+                    "%s(f%d_s%d,%s(stencils[%d][%d][%d][%d]*"
+                    "vba.in[%d][IDX(vertexIdx.x+(%d)"
+                    ",vertexIdx.y+(%d),vertexIdx.z+(%d))]));",
+                    stencil_binary_ops[stencil], field, stencil,
+                    stencil_unary_ops[stencil], stencil, depth, height, width,
+                    field, -STENCIL_ORDER / 2 + width,
+                    -STENCIL_ORDER / 2 + height, -STENCIL_ORDER / 2 + depth);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    printf("const auto %s __attribute__((unused)) = [&](const auto field){",
+           stencil_names[stencil]);
+    printf("switch (field) {");
+    for (int field = 0; field < NUM_FIELDS; ++field) {
+      if (stencil_initialized[field][stencil])
+        printf("case %d: return f%d_s%d;", field, field, stencil);
+    }
+    printf("default: return (AcReal)NAN;");
+    printf("}");
+    printf("};");
+  }
+}
 #endif
 
 int
