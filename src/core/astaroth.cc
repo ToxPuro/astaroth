@@ -27,10 +27,10 @@ static Node nodes[max_num_nodes] = {0};
 static int num_nodes             = 0;
 
 AcResult
-acInit(const AcMeshInfo mesh_info)
+acInit(const AcMeshInfo mesh_info, int rank)
 {
     num_nodes = 1;
-    return acNodeCreate(0, mesh_info, &nodes[0]);
+    return acNodeCreate(0, mesh_info, &nodes[0], rank);
 }
 
 AcResult

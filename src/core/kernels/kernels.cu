@@ -64,3 +64,22 @@ acKernel(const KernelParameters params, VertexBufferArray vba)
     return AC_FAILURE;
 #endif
 }
+
+void
+acUnpackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, PlateType plate)
+{
+    const dim3 tpb(256, 1, 1);
+    const dim3 bpg((uint)ceil((block_size * NUM_VTXBUF_HANDLES) / (float)tpb.x), 1, 1);
+
+    packUnpackPlate<AC_H2D><<<bpg, tpb, 0, device->streams[stream]>>>(device->plate_buffers[plate], device->vba, start, end);
+}
+
+void
+acPackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, PlateType plate)
+{                               
+    const dim3 tpb(256, 1, 1);
+    const dim3 bpg((uint)ceil((block_size * NUM_VTXBUF_HANDLES) / (float)tpb.x), 1, 1);
+
+    packUnpackPlate<AC_D2H><<<bpg, tpb, 0, device->streams[stream]>>>(device->plate_buffers[plate], device->vba, start, end);
+}
+

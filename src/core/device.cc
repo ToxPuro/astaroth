@@ -18,6 +18,7 @@
 */
 
 #include "astaroth.h"
+#include "../../acc-runtime/api/math_utils.h"
 #include "kernels/kernels.h"
 
 #define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
@@ -208,6 +209,7 @@ acDeviceSynchronizeStream(const Device device, const Stream stream)
 AcResult
 acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_handle)
 {
+#define NUM_SCALARRAYS (0)
     cudaSetDevice(id);
     // cudaDeviceReset(); // Would be good for safety, but messes stuff up if we want to emulate
     // multiple devices with a single GPU
@@ -241,16 +243,14 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     // VBA in/out
     device->vba = acVBACreate(acVertexBufferSize(device_config));
     // VBA Profiles
-    /*
     const size_t profile_size_bytes = sizeof(AcReal) * max(device_config.int_params[AC_mx],
                                                            max(device_config.int_params[AC_my],
                                                                device_config.int_params[AC_mz]));
     
-    for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
-        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.profiles[i], profile_size_bytes));
-        ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.profiles[i], 0, profile_size_bytes));
+    for (int i = 0; i < NUM_SCALARRAYS; ++i) {
+        //ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.profiles[i], profile_size_bytes));
+        //ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.profiles[i], 0, profile_size_bytes));
     }
-    */
 
     // Reductions
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->reduce_scratchpad,
@@ -296,11 +296,9 @@ acDeviceDestroy(Device device)
 
     // Memory
     acVBADestroy(&device->vba);
-    /*
-    for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
-        cudaFree(device->vba.profiles[i]);
+    for (int i = 0; i < NUM_SCALARRAYS; ++i) {
+        //cudaFree(device->vba.profiles[i]);
     }
-    */
     
 #if PACKED_DATA_TRANSFERS
 // Free data required for packed tranfers here (cudaFree)
@@ -344,25 +342,25 @@ acDeviceSwapBuffers(const Device device)
 
     return (AcResult)retval;
 }
-/*
+#if LFORCING
 AcResult
 acDeviceLoadScalarArray(const Device device, const Stream stream, const ScalarArrayHandle handle,
                         const size_t start, const AcReal* data, const size_t num)
 {
     cudaSetDevice(device->id);
 
-    if (handle >= NUM_SCALARARRAY_HANDLES || !NUM_SCALARARRAY_HANDLES)
+    if (handle >= NUM_SCALARRAYS || !NUM_SCALARRAYS)
         return AC_FAILURE;
 
     ERRCHK((int)(start + num) <= max(device->local_config.int_params[AC_mx],
                                      max(device->local_config.int_params[AC_my],
                                          device->local_config.int_params[AC_mz])));
-    ERRCHK_ALWAYS(handle < NUM_SCALARARRAY_HANDLES);
+    ERRCHK_ALWAYS(handle < NUM_SCALARRAYS);
     ERRCHK_CUDA(cudaMemcpyAsync(&device->vba.profiles[handle][start], data, sizeof(data[0]) * num,
                                 cudaMemcpyHostToDevice, device->streams[stream]));
     return AC_SUCCESS;
 }
-*/
+#endif
 AcResult
 acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream, const AcMesh host_mesh,
                                    const VertexBufferHandle vtxbuf_handle, const int3 src,
@@ -739,12 +737,9 @@ printf("cDeviceLoadYZBuffer:buffer= %p \n", buffer);
         cudaMemcpyAsync(device->plate_buffers[plate], buffer, bufsiz,
                         cudaMemcpyHostToDevice, device->streams[stream])
     );
-//  unpacking in global memory; done by GPU kernel "unpackOyzPlates".
+//  unpacking in global memory; done by GPU kernel "packUnpackPlate".
+    acUnpackPlate(device, start, end, block_size, stream, plate);
 
-    const dim3 tpb(256, 1, 1);
-    const dim3 bpg((uint)ceil((block_size * NUM_VTXBUF_HANDLES) / (float)tpb.x), 1, 1);
-
-    packUnpackPlate<AC_H2D><<<bpg, tpb, 0, device->streams[stream]>>>(device->plate_buffers[plate], device->vba, start, end);
     return AC_SUCCESS;
 }
 
@@ -761,17 +756,15 @@ printf("acDeviceLoadYZBuffer:bufsiz,block_size= %u %u\n",bufsiz,block_size);
 printf("cDeviceLoadYZBuffer:device->yz_plate_buffer= %p \n", device->yz_plate_buffer);
 printf("cDeviceLoadYZBuffer:buffer= %p \n", buffer);
 */
-//  packing from global memory; done by GPU kernel "packYZPlates".
-
-    const dim3 tpb(256, 1, 1);
-    const dim3 bpg((uint)ceil((block_size * NUM_VTXBUF_HANDLES) / (float)tpb.x), 1, 1);
 
     cudaSetDevice(device->id);
 
-    packUnpackPlate<AC_D2H><<<bpg, tpb, 0, device->streams[stream]>>>(device->plate_buffers[plate], device->vba, start, end);
+//  packing from global memory; done by GPU kernel "packUnpackPlate".
+    acPackPlate(device, start, end, block_size, stream, plate);
     ERRCHK_CUDA(cudaMemcpyAsync(buffer,device->plate_buffers[plate], bufsiz,
                                 cudaMemcpyDeviceToHost, device->streams[stream])
     );
+
     return AC_SUCCESS;
 }
 

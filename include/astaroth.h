@@ -18,7 +18,8 @@
 */
 #pragma once
 
-#include "/users/mreinhar/git/pencil-code/src/astaroth/submodule/acc-runtime/api/acc_runtime.h"
+#include "../acc-runtime/api/acc_runtime.h"
+//#include "acc_runtime.h"
 #define NGHOST (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
 
 typedef struct {
@@ -310,8 +311,8 @@ acQueryReal3params(void)
 static inline void
 acQueryScalarrays(void)
 {
-    for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i)
-        printf("%s (%d)\n", scalarray_names[i], i);
+    for (int i = 0; i < NUM_REAL_ARRS_1D; ++i)
+        printf("%s (%d)\n", realarr1D_names[i], i);
 }
 */
 
@@ -330,7 +331,7 @@ acQueryVtxbufs(void)
  */
 /** Allocates all memory and initializes the devices visible to the caller. Should be
  * called before any other function in this interface. */
-AcResult acInit(const AcMeshInfo mesh_info);
+AcResult acInit(const AcMeshInfo mesh_info,int rank);
 
 /** Frees all GPU allocations and resets all devices in the node. Should be
  * called at exit. */
@@ -674,7 +675,7 @@ acNodeCreate(0, info, &node);
 acNodeDestroy(node);
 @endcode
  */
-AcResult acNodeCreate(const int id, const AcMeshInfo node_config, Node* node);
+AcResult acNodeCreate(const int id, const AcMeshInfo node_config, Node* node, int rank);
 
 /**
 Resets all devices on the current node.
