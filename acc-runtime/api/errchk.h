@@ -155,11 +155,7 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
   }
 //#endif // __CUDA_RUNTIME_API_H__
 
-#if defined(__CUDACC__) || defined(__HIPCC__)
-static __host__ __device__ inline size_t
-#else
 static inline size_t
-#endif
 as_size_t(const int i)
 {
   ERRCHK_ALWAYS(i >= 0);

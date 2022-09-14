@@ -232,7 +232,7 @@ operator*(const uint3_64& a, const uint3_64& b)
   return (uint3_64){a.x * b.x, a.y * b.y, a.z * b.z};
 }
 
-static HOST_DEVICE_INLINE uint3_64
+static inline uint3_64
 operator*(const int& a, const uint3_64& b)
 {
   return (uint3_64){as_size_t(a) * b.x, as_size_t(a) * b.y, as_size_t(a) * b.z};
