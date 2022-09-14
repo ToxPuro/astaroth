@@ -48,54 +48,7 @@
 #include "stencil_accesses.h"
 #include "stencilgen.h"
 
-#define ORIGINAL (0)
-#define ORIGINAL_WITH_ILP (1)
-#define EXPL_REG_VARS (2)
-#define FULLY_EXPL_REG_VARS (3)
-#define EXPL_REG_VARS_AND_CT_CONST_STENCILS (4)
-#define FULLY_EXPL_REG_VARS_AND_PINGPONG_REGISTERS (5)
-#define SMEM_AND_VECTORIZED_LOADS (6)
-/*
-#define USE_SMEM (1)
-#if USE_SMEM
-static const size_t veclen  = 2;
-static const size_t buffers = 2;
-#endif
-static const char* veclen = "2";
-*/
-#define SMEM_AND_VECTORIZED_LOADS_PINGPONG (7)
-/*
-#define USE_SMEM (1)
-#if USE_SMEM
-static const size_t veclen  = 2;
-static const size_t buffers = 2;
-#endif
-static const char* veclen = "2";
-*/
-#define SMEM_AND_VECTORIZED_LOADS_FULL (8)
-/*
-#define USE_SMEM (1)
-#if USE_SMEM
-static const size_t veclen  = 2;
-static const size_t buffers = NUM_FIELDS;
-#endif
-static const char* veclen = "2";
-*/
-#define SMEM_AND_VECTORIZED_LOADS_FULL_ASYNC (9)
-/*
-#define USE_SMEM (1)
-#if USE_SMEM
-static const size_t veclen  = 2;
-static const size_t buffers = NUM_FIELDS;
-#endif
-static const char* veclen = "2";
-*/
-
-#define IMPLEMENTATION (3)
-#if IMPLEMENTATION >= 6 && IMPLEMENTATION <= 9
-static const char* realtype = "double";
-static const char* veclen   = "2";
-#endif
+#include "implementation.h"
 
 void
 raise_error(const char* str)
@@ -598,7 +551,7 @@ gen_kernel_body(const int curr_kernel)
          "threadIdx.y * blockDim.x + "
          "threadIdx.z * blockDim.x * blockDim.y;");
 
-  printf("const int veclen = %s;", veclen);
+  printf("const int veclen = %s;", veclen_str);
   printf("const int bx = sx / veclen;"); // Vectorized block dimensions
   printf("const int by = sy;");
   printf("const int bz = sz;");
@@ -613,9 +566,9 @@ gen_kernel_body(const int curr_kernel)
     printf("const int k = curr / (bx * by);");
     printf("reinterpret_cast<%s%s*>("
            "&smem[j * sx + k * sx * sy])[i] = ",
-           realtype, veclen);
+           realtype, veclen_str);
     // clang-format off
-    printf("reinterpret_cast<%s%s*>(&vba.in[%d][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen, field);
+    printf("reinterpret_cast<%s%s*>(&vba.in[%d][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen_str, field);
     // clang-format on
     printf("}");
     printf("__syncthreads();");
@@ -695,7 +648,7 @@ gen_kernel_body(const int curr_kernel)
          "threadIdx.y * blockDim.x + "
          "threadIdx.z * blockDim.x * blockDim.y;");
 
-  printf("const int veclen = %s;", veclen);
+  printf("const int veclen = %s;", veclen_str);
   printf("const int bx = sx / veclen;"); // Vectorized block dimensions
   printf("const int by = sy;");
   printf("const int bz = sz;");
@@ -708,9 +661,9 @@ gen_kernel_body(const int curr_kernel)
   printf("const int j = (curr %% (bx * by)) / bx;");
   printf("const int k = curr / (bx * by);");
   printf("reinterpret_cast<%s%s*>(&smem[j * sx + k * sx * sy])[i] = ", realtype,
-         veclen);
+         veclen_str);
   // clang-format off
-  printf("reinterpret_cast<%s%s*>(&vba.in[%d][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen, 0);
+  printf("reinterpret_cast<%s%s*>(&vba.in[%d][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen_str, 0);
   // clang-format on
   printf("}");
 
@@ -723,9 +676,9 @@ gen_kernel_body(const int curr_kernel)
     printf("const int k = curr / (bx * by);");
     printf("reinterpret_cast<%s%s*>("
            "&smem[j * sx + k * sx * sy + %d * sx * sy * sz])[i] = ",
-           realtype, veclen, (field + 1) % 2);
+           realtype, veclen_str, (field + 1) % 2);
     // clang-format off
-    printf("reinterpret_cast<%s%s*>(&vba.in[%d][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen, field+1);
+    printf("reinterpret_cast<%s%s*>(&vba.in[%d][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen_str, field+1);
     // clang-format on
     printf("}");
 
@@ -805,7 +758,7 @@ gen_kernel_body(const int curr_kernel)
          "threadIdx.y * blockDim.x + "
          "threadIdx.z * blockDim.x * blockDim.y;");
 
-  printf("const int veclen = %s;", veclen);
+  printf("const int veclen = %s;", veclen_str);
   printf("const int bx = sx / veclen;"); // Vectorized block dimensions
   printf("const int by = sy;");
   printf("const int bz = sz;");
@@ -822,9 +775,9 @@ gen_kernel_body(const int curr_kernel)
   for (int field = 0; field < NUM_FIELDS; ++field) {
     printf("reinterpret_cast<%s%s*>("
            "&smem[j * sx + k * sx * sy + %d * sx * sy * sz])[i] = ",
-           realtype, veclen, field);
+           realtype, veclen_str, field);
     // clang-format off
-    printf("reinterpret_cast<%s%s*>(&vba.in[%d][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen, field);
+    printf("reinterpret_cast<%s%s*>(&vba.in[%d][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen_str, field);
     // clang-format on
   }
   printf("}");
@@ -841,9 +794,9 @@ gen_kernel_body(const int curr_kernel)
   printf("const int w = curr / (bx * by * bz);");
   printf("reinterpret_cast<%s%s*>("
          "&smem[j * sx + k * sx * sy + w * sx * sy * sz])[i] = ",
-         realtype, veclen);
+         realtype, veclen_str);
   // clang-format off
-    printf("reinterpret_cast<%s%s*>(&vba.in[w][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen);
+    printf("reinterpret_cast<%s%s*>(&vba.in[w][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen_str);
   // clang-format on
   printf("}");
   printf("__syncthreads();");
@@ -1098,7 +1051,7 @@ gen_kernel_body(const int curr_kernel)
          "threadIdx.y * blockDim.x + "
          "threadIdx.z * blockDim.x * blockDim.y;");
 
-  printf("const int veclen = %s;", veclen);
+  printf("const int veclen = %s;", veclen_str);
   printf("const int bx = sx / veclen;"); // Vectorized block dimensions
   printf("const int by = sy;");
   printf("const int bz = sz;");
@@ -1114,16 +1067,16 @@ gen_kernel_body(const int curr_kernel)
     printf("const int j = (curr %% (bx * by)) / bx;");
     printf("const int k = curr / (bx * by);");
 
-    printf("{const %s%s* smem_ptr = ", realtype, veclen);
+    printf("{const %s%s* smem_ptr = ", realtype, veclen_str);
     printf("&reinterpret_cast<%s%s*>("
            "&smem[j * sx + k * sx * sy + %d * sx * sy * sz])[i];",
-           realtype, veclen, field);
-    printf("const %s%s* in_ptr = ", realtype, veclen);
+           realtype, veclen_str, field);
+    printf("const %s%s* in_ptr = ", realtype, veclen_str);
     // clang-format off
-    printf("&reinterpret_cast<%s%s*>(&vba.in[%d][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen, field);
+    printf("&reinterpret_cast<%s%s*>(&vba.in[%d][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen_str, field);
     // clang-format on
     printf("__pipeline_memcpy_async(smem_ptr, in_ptr, sizeof(%s%s));", realtype,
-           veclen);
+           veclen_str);
     printf("}");
     printf("}");
     printf("__pipeline_commit();");
@@ -1142,9 +1095,9 @@ gen_kernel_body(const int curr_kernel)
   printf("const int w = curr / (bx * by * bz);");
   printf("reinterpret_cast<%s%s*>("
          "&smem[j * sx + k * sx * sy + w * sx * sy * sz])[i] = ",
-         realtype, veclen);
+         realtype, veclen_str);
   // clang-format off
-    printf("reinterpret_cast<%s%s*>(&vba.in[w][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen);
+    printf("reinterpret_cast<%s%s*>(&vba.in[w][IDX(baseIdx.x, baseIdx.y + j, baseIdx.z + k)])[i];", realtype, veclen_str);
   // clang-format on
   printf("}");
   printf("__syncthreads();");

@@ -14,7 +14,8 @@ endif()
 ## Generate acc-runtime-headers
 set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
                 "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
-                "${PROJECT_SOURCE_DIR}/acc/stencil_accesses.cpp")
+                "${PROJECT_SOURCE_DIR}/acc/stencil_accesses.cpp"
+                "${PROJECT_SOURCE_DIR}/acc/implementation.h")
 set(DSL_HEADERS "user_kernels.h"
                 "user_defines.h"
                 "user_declarations.h"
@@ -27,7 +28,7 @@ add_custom_command (
     OUTPUT ${DSL_HEADERS}
 )
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
-target_include_directories(acc-runtime-headers INTERFACE . ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(acc-runtime-headers INTERFACE . .. ${CMAKE_CURRENT_BINARY_DIR})
 
 if (USE_HIP)
     target_link_libraries(acc-runtime-headers INTERFACE roctracer64)

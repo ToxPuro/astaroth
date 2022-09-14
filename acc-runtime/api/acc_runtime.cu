@@ -27,11 +27,7 @@
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 #endif
 
-#define USE_SMEM (0)
-#if USE_SMEM
-static const size_t veclen  = 2;
-static const size_t buffers = NUM_FIELDS;
-#endif
+#include "acc/implementation.h"
 
 #define USE_COMPRESSIBLE_MEMORY (0)
 
@@ -289,13 +285,8 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
                  (unsigned int)ceil(n.y / double(tpb.y)), //
                  (unsigned int)ceil(n.z / double(tpb.z)));
 
-#if USE_SMEM
-  const size_t smem = buffers * (tpb.x + STENCIL_ORDER) *
-                      (tpb.y + STENCIL_ORDER) * (tpb.z + STENCIL_ORDER) *
-                      sizeof(AcReal);
-#else
-  const size_t smem = 0;
-#endif
+  const size_t smem = get_smem(tpb.x, tpb.y, tpb.z, STENCIL_ORDER,
+                               sizeof(AcReal));
 
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
   kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
@@ -435,8 +426,9 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
     }
   }
   ERRCHK_ALWAYS(id < NUM_KERNELS);
-  printf("Autotuning kernel '%s' (%p), block (%d, %d, %d)... ", kernel_names[id], kernel, dims.x, dims.y,
-         dims.z);
+  printf("Implementation (%d)\n", IMPLEMENTATION);
+  printf("Autotuning kernel '%s' (%p), block (%d, %d, %d)... ",
+         kernel_names[id], kernel, dims.x, dims.y, dims.z);
   fflush(stdout);
 
 #if 0
@@ -490,10 +482,9 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         const dim3 bpg((unsigned int)ceil(dims.x / double(tpb.x)), //
                        (unsigned int)ceil(dims.y / double(tpb.y)), //
                        (unsigned int)ceil(dims.z / double(tpb.z)));
+        const size_t smem = get_smem(tpb.x, tpb.y, tpb.z, STENCIL_ORDER,
+                                     sizeof(AcReal));
 #if USE_SMEM
-        const size_t smem = buffers * (tpb.x + STENCIL_ORDER) *
-                            (tpb.y + STENCIL_ORDER) * (tpb.z + STENCIL_ORDER) *
-                            sizeof(AcReal);
         const size_t max_smem = 128 * 1024;
         if (smem > max_smem)
           continue;
@@ -511,8 +502,6 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 #else
         if ((x * y * z) % warp_size)
           continue;
-
-        const size_t smem = 0;
 #endif
 
         // printf("%d, %d, %d: %lu\n", tpb.x, tpb.y, tpb.z, smem);
