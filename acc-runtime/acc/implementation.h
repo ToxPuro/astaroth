@@ -13,7 +13,7 @@
 #define SMEM_AND_VECTORIZED_LOADS_FULL_ASYNC (9)
 #define SMEM_HIGH_OCCUPANCY (10)
 
-#define IMPLEMENTATION (10)
+#define IMPLEMENTATION (3)
 
 #if IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS ||                             \
     IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS_FULL ||                        \
@@ -45,12 +45,9 @@ size_t
 get_smem(const size_t x, const size_t y, const size_t z,
          const size_t stencil_order, const size_t bytes_per_elem)
 {
-  (void)x;              // Unused
-  (void)y;              // Unused
-  (void)z;              // Unused
-  (void)stencil_order;  // Unused
-  (void)bytes_per_elem; // Unused
-  return 0;
+  (void)y; // Unused
+  (void)z; // Unused
+  return bytes_per_elem * (x + stencil_order);
 }
 #else
 size_t
