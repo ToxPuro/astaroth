@@ -20,7 +20,8 @@ set(DSL_HEADERS "user_kernels.h"
                 "user_defines.h"
                 "user_declarations.h"
                 "stencil_accesses.h"
-                "stencilgen.h")
+                "stencilgen.h"
+                "${PROJECT_SOURCE_DIR}/acc/implementation.h")
 add_custom_command (
     COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
     COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac"
