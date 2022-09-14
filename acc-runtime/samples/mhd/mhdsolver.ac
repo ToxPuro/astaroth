@@ -8,12 +8,14 @@ real AC_lnrho0, AC_mu0, AC_lnT0
 */
 // Note: not used by mhdsolver.ac at the moment (src/utils/modelsolver.c does)
 hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
+/*
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
 hostdefine LENTROPY (1)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
+*/
 hostdefine LUPWD (0)
 hostdefine LSINK (0)
 hostdefine LBFIELD (0)
@@ -80,6 +82,8 @@ real AC_cdtv
 real AC_cdts
 real AC_nu
 real AC_cs
+real AC_cs20
+real AC_lnTT0
 real AC_eta
 real AC_mu0
 real AC_cp
@@ -90,6 +94,7 @@ real AC_lnrho0
 real AC_zeta
 real AC_trans
 real AC_nu_shock
+int AC_lpressuregradient_gas
 
 //  Parameters for generic boundary conditions, this is a dummy variable for testing, please use different ones for each field
 real AC_boundary_derivative
@@ -430,6 +435,7 @@ rk3(s0, s1, roc) {
     return s1 + beta[AC_step_number + 1] * ((alpha[AC_step_number] / beta[AC_step_number]) * (s1 - s0) + roc * AC_dt)
 }
 
+/*
 Kernel solve() {
     write(VTXBUF_LNRHO, rk3(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity()))
     write(VTXBUF_ENTROPY, rk3(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
@@ -445,8 +451,8 @@ Kernel solve() {
     write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
     write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
 }
+*/
 
-/*
 rk3_intermediate(w, roc) {
     real alpha = 0., -5./9., -153. / 128.
 
@@ -465,7 +471,7 @@ rk3_final(f, w) {
     return f + beta[AC_step_number] * w
 }
 
-Kernel alt_solve_intermediate() {
+Kernel twopass_solve_intermediate() {
     write(VTXBUF_LNRHO, rk3_intermediate(previous(VTXBUF_LNRHO), continuity()))
     write(VTXBUF_ENTROPY, rk3_intermediate(previous(VTXBUF_ENTROPY), entropy()))
 
@@ -481,10 +487,9 @@ Kernel alt_solve_intermediate() {
     write(VTXBUF_AZ, rk3_intermediate(previous(VTXBUF_AZ), ind.z))
 }
 
-Kernel alt_solve_final() {
+Kernel twopass_solve_final() {
     write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO)))
     write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY)))
-
 
     write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX)))
     write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY)))
@@ -494,4 +499,3 @@ Kernel alt_solve_final() {
     write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY)))
     write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ)))
 }
-*/
