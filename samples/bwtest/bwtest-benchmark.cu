@@ -16,8 +16,11 @@
 #define NUM_STENCILS (10)
 #define NUM_POINTS_PER_STENCIL (55)
 #define WORKING_SET_SIZE (NUM_FIELDS * NUM_STENCILS * NUM_POINTS_PER_STENCIL)
-#define HALO ((WORKING_SET_SIZE - 1) / 2)
+//#define HALO ((WORKING_SET_SIZE - 1) / 2)
 //#define HALO (8)
+#define HALO ((size_t)0)
+
+static const char* benchmark_dir = "bwtest-benchmark.csv";
 
 typedef struct {
     size_t count;
@@ -90,7 +93,7 @@ kernel(const Array in, Array out)
     if (HALO <= tid && tid < in.count - HALO) {
         double tmp = 0.0;
 
-#pragma unroll
+        //#pragma unroll
         for (int i = -HALO; i <= HALO; ++i)
             tmp += in.data[tid + i];
 
@@ -269,6 +272,11 @@ benchmark(const KernelConfig c)
     printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
     printf("\tTime elapsed: %g ms\n", (double)milliseconds);
 
+    FILE* fp = fopen(benchmark_dir, "a");
+    ERRCHK_ALWAYS(fp);
+    fprintf(fp, "%lu, %g\n", HALO, (double)milliseconds);
+    fclose(fp);
+
     // Free
     arrayDestroy(&a);
     arrayDestroy(&b);
@@ -328,7 +336,7 @@ main(void)
 {
     printDeviceInfo(0);
 
-    const size_t count = NUM_FIELDS * (size_t)pow(64, 3);
+    const size_t count = NUM_FIELDS * (size_t)pow(32, 3);
     KernelConfig c     = autotune(count);
     verify(c);
     benchmark(c);
