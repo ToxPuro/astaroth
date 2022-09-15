@@ -1164,6 +1164,7 @@ gen_kernel_body(const int curr_kernel)
   }
 }
 #elif IMPLEMENTATION == SMEM_HIGH_OCCUPANCY
+// Doesn't work (illegal memory access), long compile times
 void
 gen_kernel_body(const int curr_kernel)
 {
@@ -1347,6 +1348,60 @@ gen_kernel_body(const int curr_kernel)
     printf("};");
   }
   */
+}
+#elif IMPLEMENTATION == SMEM_HIGH_OCCUPANCY_CT_CONST_TB
+void
+gen_kernel_body(const int curr_kernel)
+{
+  gen_kernel_prefix();
+
+  const size_t rx = ((STENCIL_WIDTH - 1) / 2);
+  const size_t ry = ((STENCIL_HEIGHT - 1) / 2);
+  const size_t rz = ((STENCIL_DEPTH - 1) / 2);
+  const size_t mx = nx + 2 * rx;
+  const size_t my = ny + 2 * ry;
+  const size_t mz = nz + 2 * rz;
+
+  printf("extern __shared__ AcReal smem[];");
+
+  printf("const int3 baseIdx = (int3){"
+         "blockIdx.x * %lu + start.x - (STENCIL_WIDTH-1)/2,"
+         "blockIdx.y * %lu + start.y - (STENCIL_HEIGHT-1)/2,"
+         "blockIdx.z * %lu + start.z - (STENCIL_DEPTH-1)/2};",
+         nx, ny, nz);
+  printf("const int m0 = IDX(baseIdx);");
+  printf("const int s0 = threadIdx.x + "
+         "threadIdx.y * %lu + "
+         "threadIdx.z * %lu;",
+         nx, nx * ny);
+
+  for (int field = 0; field < NUM_FIELDS; ++field) {
+    for (int k = 0; k < mz; ++k) {
+      for (int j = 0; j < my; ++j) {
+        printf("{");
+        printf("const int base = IDX(baseIdx.x, baseIdx.y + %d, baseIdx.z + "
+               "%d);",
+               j, k);
+        printf("if (s0 < %lu) smem[s0] = vba.in[%d][base];", mx, field);
+        printf("}");
+        printf("__syncthreads();");
+      }
+    }
+  }
+
+  bool stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    printf("const auto %s __attribute__((unused)) = [&](const auto field){",
+           stencil_names[stencil]);
+    printf("switch (field) {");
+    for (int field = 0; field < NUM_FIELDS; ++field) {
+      if (stencil_initialized[field][stencil])
+        printf("case %d: return f%d_s%d;", field, field, stencil);
+    }
+    printf("default: return (AcReal)NAN;");
+    printf("}");
+    printf("};");
+  }
 }
 #endif
 

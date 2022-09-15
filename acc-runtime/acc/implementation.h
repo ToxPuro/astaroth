@@ -1,4 +1,5 @@
 #pragma once
+#include <stdbool.h>
 #include <stdlib.h>
 
 #define ORIGINAL (0)
@@ -12,6 +13,7 @@
 #define SMEM_AND_VECTORIZED_LOADS_FULL (8)
 #define SMEM_AND_VECTORIZED_LOADS_FULL_ASYNC (9)
 #define SMEM_HIGH_OCCUPANCY (10)
+#define SMEM_HIGH_OCCUPANCY_CT_CONST_TB (11)
 
 #define IMPLEMENTATION (3)
 
@@ -40,6 +42,12 @@ get_smem(const size_t x, const size_t y, const size_t z,
   return buffers * (x + stencil_order) * (y + stencil_order) *
          (z + stencil_order) * bytes_per_elem;
 }
+
+bool
+is_valid_configuration(const size_t x, const size_t y, const size_t z)
+{
+  return true;
+}
 #elif IMPLEMENTATION == SMEM_HIGH_OCCUPANCY
 size_t
 get_smem(const size_t x, const size_t y, const size_t z,
@@ -48,6 +56,34 @@ get_smem(const size_t x, const size_t y, const size_t z,
   (void)y; // Unused
   (void)z; // Unused
   return bytes_per_elem * (x + stencil_order);
+}
+
+bool
+is_valid_configuration(const size_t x, const size_t y, const size_t z)
+{
+  (void)x; // Unused
+  (void)y; // Unused
+  (void)z; // Unused
+  return true;
+}
+#elif IMPLEMENTATION == SMEM_HIGH_OCCUPANCY_CT_CONST_TB
+const size_t nx = 4;
+const size_t ny = 4;
+const size_t nz = 4;
+
+size_t
+get_smem(const size_t x, const size_t y, const size_t z,
+         const size_t stencil_order, const size_t bytes_per_elem)
+{
+  (void)y; // Unused
+  (void)z; // Unused
+  return bytes_per_elem * (x + stencil_order);
+}
+
+bool
+is_valid_configuration(const size_t x, const size_t y, const size_t z)
+{
+  return (x == nx) && (y == ny) && (z == nz);
 }
 #else
 size_t
@@ -60,5 +96,11 @@ get_smem(const size_t x, const size_t y, const size_t z,
   (void)stencil_order;  // Unused
   (void)bytes_per_elem; // Unused
   return 0;
+}
+
+bool
+is_valid_configuration(const size_t x, const size_t y, const size_t z)
+{
+  return true;
 }
 #endif

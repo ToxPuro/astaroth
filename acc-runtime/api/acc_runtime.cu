@@ -491,6 +491,9 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         if ((x * y * z) % props.warpSize)
           continue;
 
+        if (!is_valid_configuration(tpb.x, tpb.y, tpb.z))
+          continue;
+
 #if VECTORIZED_LOADS
         const size_t window = tpb.x + STENCIL_ORDER;
 
@@ -568,6 +571,12 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 
   printf("The best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x, best_tpb.y,
          best_tpb.z, (double)best_time / num_iters);
+
+  FILE* fp = fopen("autotune-result.out", "w+");
+  ERRCHK_ALWAYS(fp);
+  fprintf(fp, "%d, (%d, %d, %d), (%d, %d, %d), %g", IMPLEMENTATION, nx, ny, nz,
+          best_tpb.x, best_tpb.y, best_tpb.z, (double)best_time / num_iters);
+  fclose(fp);
 
   if (c.tpb.x * c.tpb.y * c.tpb.z <= 0) {
     fprintf(stderr,
