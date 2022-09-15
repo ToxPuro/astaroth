@@ -14,14 +14,12 @@ endif()
 ## Generate acc-runtime-headers
 set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
                 "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
-                "${PROJECT_SOURCE_DIR}/acc/stencil_accesses.cpp"
-                "${PROJECT_SOURCE_DIR}/acc/implementation.h")
+                "${PROJECT_SOURCE_DIR}/acc/stencil_accesses.cpp")
 set(DSL_HEADERS "user_kernels.h"
                 "user_defines.h"
                 "user_declarations.h"
                 "stencil_accesses.h"
-                "stencilgen.h"
-                "${PROJECT_SOURCE_DIR}/acc/implementation.h")
+                "stencilgen.h")
 add_custom_command (
     COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
     COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac"
