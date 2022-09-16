@@ -141,7 +141,7 @@ if (BUILD_SAMPLES)
     add_subdirectory(samples/mpi-io)
     add_subdirectory(samples/mpi-io-multithreaded)
     add_subdirectory(samples/pc-varfile-import)
-    #add_subdirectory(samples/bwtest)
+    add_subdirectory(samples/bwtest)
 
     if (BUILD_MHD_SAMPLES)
         # add_subdirectory(samples/standalone)
