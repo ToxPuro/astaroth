@@ -574,9 +574,14 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 
   FILE* fp = fopen("autotune-result.out", "a");
   ERRCHK_ALWAYS(fp);
+#if IMPLEMENTATION == SMEM_HIGH_OCCUPANCY_CT_CONST_TB
   fprintf(fp, "%d, (%d, %d, %d), (%d, %d, %d), %g\n", IMPLEMENTATION, nx, ny,
           nz, best_tpb.x, best_tpb.y, best_tpb.z,
           (double)best_time / num_iters);
+#else
+  fprintf(fp, "%d, (%d, %d, %d), %g\n", IMPLEMENTATION, best_tpb.x, best_tpb.y,
+          best_tpb.z, (double)best_time / num_iters);
+#endif
   fclose(fp);
 
   if (c.tpb.x * c.tpb.y * c.tpb.z <= 0) {
