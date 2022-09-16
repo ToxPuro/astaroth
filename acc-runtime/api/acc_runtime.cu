@@ -572,10 +572,11 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   printf("The best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x, best_tpb.y,
          best_tpb.z, (double)best_time / num_iters);
 
-  FILE* fp = fopen("autotune-result.out", "w+");
+  FILE* fp = fopen("autotune-result.out", "a");
   ERRCHK_ALWAYS(fp);
-  fprintf(fp, "%d, (%d, %d, %d), (%d, %d, %d), %g", IMPLEMENTATION, nx, ny, nz,
-          best_tpb.x, best_tpb.y, best_tpb.z, (double)best_time / num_iters);
+  fprintf(fp, "%d, (%d, %d, %d), (%d, %d, %d), %g\n", IMPLEMENTATION, nx, ny,
+          nz, best_tpb.x, best_tpb.y, best_tpb.z,
+          (double)best_time / num_iters);
   fclose(fp);
 
   if (c.tpb.x * c.tpb.y * c.tpb.z <= 0) {
