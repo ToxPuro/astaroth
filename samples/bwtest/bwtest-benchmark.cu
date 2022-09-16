@@ -12,14 +12,6 @@
 
 #include "errchk.h"
 
-#define NUM_FIELDS (8)
-#define NUM_STENCILS (10)
-#define NUM_POINTS_PER_STENCIL (55)
-#define WORKING_SET_SIZE (NUM_FIELDS * NUM_STENCILS * NUM_POINTS_PER_STENCIL)
-//#define HALO ((WORKING_SET_SIZE - 1) / 2)
-//#define HALO (8)
-#define HALO ((int)4096)
-
 static const char* benchmark_dir = "bwtest-benchmark.csv";
 
 typedef struct {
@@ -87,14 +79,14 @@ arrayRandomize(Array* a)
 }
 
 __global__ void
-kernel(const Array in, Array out)
+kernel(const int halo, const Array in, Array out)
 {
-    const size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
-    if (HALO <= tid && tid < in.count - HALO) {
+    const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
+
+    if (halo <= tid && tid < (int)in.count - halo) {
         double tmp = 0.0;
 
-#pragma unroll
-        for (int i = -HALO; i <= HALO; ++i)
+        for (int i = -halo; i <= halo; ++i)
             tmp += in.data[tid + i];
 
         out.data[tid] = tmp;
@@ -102,14 +94,14 @@ kernel(const Array in, Array out)
 }
 
 void
-model_kernel(const Array in, Array out)
+model_kernel(const int halo, const Array in, Array out)
 {
-    for (size_t tid = 0; tid < in.count; ++tid) {
-        if (HALO <= tid && tid < in.count - HALO) {
+    for (int tid = 0; tid < (int)in.count; ++tid) {
+        if (halo <= tid && tid < (int)in.count - halo) {
             double tmp = 0.0;
 
 #pragma unroll
-            for (int i = -HALO; i <= HALO; ++i)
+            for (int i = -halo; i <= halo; ++i)
                 tmp += in.data[tid + i];
 
             out.data[tid] = tmp;
@@ -119,13 +111,14 @@ model_kernel(const Array in, Array out)
 
 typedef struct {
     size_t count;
+    int halo;
     size_t tpb;
     size_t bpg;
 } KernelConfig;
 
 /** Returns the optimal threadblock dimensions for a given problem size */
 static KernelConfig
-autotune(const size_t count)
+autotune(const size_t count, const int halo)
 {
     Array a = arrayCreate(count, true);
     Array b = arrayCreate(count, true);
@@ -141,7 +134,7 @@ autotune(const size_t count)
     cudaEventCreate(&tstop);
     cudaEventRecord(tstart); // Timing start
     for (size_t i = 0; i < 1; ++i)
-        kernel<<<1, 1>>>(a, b);
+        kernel<<<1, 1>>>(halo, a, b);
     cudaEventRecord(tstop); // Timing stop
     cudaEventSynchronize(tstop);
     cudaEventDestroy(tstart);
@@ -149,7 +142,7 @@ autotune(const size_t count)
     cudaDeviceSynchronize();
 
     // Tune
-    KernelConfig c  = {.count = count, .tpb = 0, .bpg = 0};
+    KernelConfig c  = {.count = count, .halo = halo, .tpb = 0, .bpg = 0};
     float best_time = INFINITY;
     for (size_t tpb = 1; tpb <= max_threads_per_block; ++tpb) {
         if (tpb > max_threads_per_block)
@@ -165,8 +158,8 @@ autotune(const size_t count)
 
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
-        for (int i = 0; i < 5; ++i)
-            kernel<<<bpg, tpb>>>(a, b);
+        for (int i = 0; i < 3; ++i)
+            kernel<<<bpg, tpb>>>(halo, a, b);
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
 
@@ -194,7 +187,7 @@ autotune(const size_t count)
             c.bpg     = bpg;
         }
     }
-    printf("KernelConfig {.count = %lu, .tpb = %lu, .bpg = %lu}\n", c.count, c.tpb, c.bpg);
+    printf("KernelConfig {.count = %lu, .halo = %d, .tpb = %lu, .bpg = %lu}\n", c.count, c.halo, c.tpb, c.bpg);
 
     arrayDestroy(&a);
     arrayDestroy(&b);
@@ -215,17 +208,17 @@ verify(const KernelConfig c)
     Array b     = arrayCreate(count, true);
 
     arrayRandomize(&ahost);
-    model_kernel(ahost, bhost);
+    model_kernel(c.halo, ahost, bhost);
 
     const size_t bytes = count * sizeof(ahost.data[0]);
     cudaMemcpy(a.data, ahost.data, bytes, cudaMemcpyHostToDevice);
-    kernel<<<bpg, tpb>>>(a, b);
+    kernel<<<bpg, tpb>>>(c.halo, a, b);
     cudaMemcpy(ahost.data, b.data, bytes, cudaMemcpyDeviceToHost);
 
     const double* candidate = ahost.data;
     const double* model     = bhost.data;
 
-    for (size_t i = HALO; i < ahost.count - HALO; ++i) {
+    for (size_t i = c.halo; i < ahost.count - c.halo; ++i) {
         if (model[i] != candidate[i]) {
             fprintf(stderr, "Failure at %lu: %g (host) and %g (device)\n", i, model[i],
                     candidate[i]);
@@ -243,7 +236,7 @@ verify(const KernelConfig c)
 static void
 benchmark(const KernelConfig c)
 {
-    const size_t num_iters = 10;
+    const size_t num_iters = 5;
 
     // Allocate
     Array a = arrayCreate(c.count, true);
@@ -256,7 +249,7 @@ benchmark(const KernelConfig c)
 
     cudaEventRecord(tstart); // Timing start
     for (size_t i = 0; i < num_iters; ++i)
-        kernel<<<c.bpg, c.tpb>>>(a, b);
+        kernel<<<c.bpg, c.tpb>>>(c.halo, a, b);
     cudaEventRecord(tstop); // Timing stop
     cudaEventSynchronize(tstop);
     ERRCHK_CUDA_KERNEL_ALWAYS();
@@ -266,15 +259,16 @@ benchmark(const KernelConfig c)
     cudaEventDestroy(tstart);
     cudaEventDestroy(tstop);
 
-    const size_t bytes   = num_iters * sizeof(a.data[0]) * (a.count + b.count - 2 * HALO);
+    const size_t bytes   = num_iters * sizeof(a.data[0]) * (a.count + b.count - 2 * c.halo);
     const double seconds = (double)milliseconds / 1e3;
-    printf("Effective bandwidth: %g GiB/s\n", bytes / seconds / pow(1024, 3));
+    const double bandwidth = bytes / seconds;
+    printf("Effective bandwidth: %g GiB/s\n", bandwidth / pow(1024, 3));
     printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
     printf("\tTime elapsed: %g ms\n", (double)milliseconds);
 
     FILE* fp = fopen(benchmark_dir, "a");
     ERRCHK_ALWAYS(fp);
-    fprintf(fp, "%d, %g\n", HALO, (double)milliseconds);
+    fprintf(fp, "%lu,%lu,%g,%g\n", c.count * sizeof(double), (2*c.halo+1)*sizeof(double), (double)milliseconds, bandwidth);
     fclose(fp);
 
     // Free
@@ -332,12 +326,25 @@ printDeviceInfo(const int device_id)
 }
 
 int
-main(void)
+main(int argc, char* argv[])
 {
+    if (argc != 3) {
+        fprintf(stderr, "Usage: ./bwtest-benchmark <problem size> <working set size>\n");
+        return EXIT_FAILURE;
+    }
+    const size_t problem_size = (size_t)atol(argv[1]);
+    const size_t working_set_size = (size_t)atol(argv[2]);
+    const int halo = ((working_set_size/sizeof(double))-1)/2;
+    const size_t count = problem_size / sizeof(double);
+
+    if (working_set_size > problem_size) {
+        fprintf(stderr, "Invalid working set size: %lu > %lu\n", working_set_size, problem_size);
+        return EXIT_FAILURE;
+    }
+    
     printDeviceInfo(0);
 
-    const size_t count = NUM_FIELDS * (size_t)pow(32, 3);
-    KernelConfig c     = autotune(count);
+    KernelConfig c     = autotune(count, halo);
     verify(c);
     benchmark(c);
     return EXIT_SUCCESS;
