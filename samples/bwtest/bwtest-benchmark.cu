@@ -18,7 +18,7 @@
 #define WORKING_SET_SIZE (NUM_FIELDS * NUM_STENCILS * NUM_POINTS_PER_STENCIL)
 //#define HALO ((WORKING_SET_SIZE - 1) / 2)
 //#define HALO (8)
-#define HALO ((size_t)0)
+#define HALO ((int)4096)
 
 static const char* benchmark_dir = "bwtest-benchmark.csv";
 
@@ -93,7 +93,7 @@ kernel(const Array in, Array out)
     if (HALO <= tid && tid < in.count - HALO) {
         double tmp = 0.0;
 
-        //#pragma unroll
+#pragma unroll
         for (int i = -HALO; i <= HALO; ++i)
             tmp += in.data[tid + i];
 
@@ -274,7 +274,7 @@ benchmark(const KernelConfig c)
 
     FILE* fp = fopen(benchmark_dir, "a");
     ERRCHK_ALWAYS(fp);
-    fprintf(fp, "%lu, %g\n", HALO, (double)milliseconds);
+    fprintf(fp, "%d, %g\n", HALO, (double)milliseconds);
     fclose(fp);
 
     // Free
