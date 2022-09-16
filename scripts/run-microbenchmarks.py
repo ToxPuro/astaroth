@@ -1,14 +1,25 @@
 #!/bin/python3
 import os
 
+import socket
+hostname = socket.gethostname()
 
-build_dir='/m/home/home6/61/pekkilj1/unix/repositories/astaroth/build'
-cmake='/m/home/home6/61/pekkilj1/unix/repositories/cmake/build/bin/cmake'
+if "mahti" in hostname or "puhti" in hostname:
+    build_dir='/users/pekkila/astaroth/build'
+    cmake='/users/pekkila/cmake/build/bin/cmake'
+elif "triton" in hostname:
+    build_dir='/m/home/home6/61/pekkilj1/unix/repositories/astaroth/build'
+    cmake='/m/home/home6/61/pekkilj1/unix/repositories/cmake/build/bin/cmake'
+else:
+    print("Could not recognize the system")
+    exit(-1)
 
 cwd = os.getcwd()
 if cwd != build_dir:
     print(f"Invalid dir {cwd}. Should be {build_dir}")
     exit(-1)
+
+exit(1)
 
 os.system("rm bwtest-benchmark.csv")
 
