@@ -7,7 +7,13 @@ hostname = socket.gethostname()
 if "mahti" in hostname or "puhti" in hostname:
     build_dir='/users/pekkila/astaroth/build'
     cmake='/users/pekkila/cmake/build/bin/cmake'
-    srun='srun --account=project_2000403 --gres=gpu:1 -t 00:14:59 -p gputest --ntasks-per-socket=1 -n 1 -N 1'
+    if "mahti" in hostname:
+        srun='srun --account=project_2000403 --gres=gpu:a100:1 -t 00:14:59 -p gputest -n 1 -N 1'
+    elif "puhti" in hostname:
+        srun='srun --account=project_2000403 --gres=gpu:v100:1 -t 00:14:59 -p gputest -n 1 -N 1'
+    else:
+        print("Unknown hostname when setting srun")
+        exit(-1)
 elif "triton" in hostname:
     build_dir='/m/home/home6/61/pekkilj1/unix/repositories/astaroth/build'
     cmake='/m/home/home6/61/pekkilj1/unix/repositories/cmake/build/bin/cmake'
