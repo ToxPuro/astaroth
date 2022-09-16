@@ -1,15 +1,16 @@
 #!/bin/python3
 import os
 
+# Set cmake, build dir, and srun based on the system
 import socket
 hostname = socket.gethostname()
-
 if "mahti" in hostname or "puhti" in hostname:
     build_dir='/users/pekkila/astaroth/build'
-    cmake='/users/pekkila/cmake/build/bin/cmake'
     if "mahti" in hostname:
+        cmake='/users/pekkila/CMake/build/bin/cmake'
         srun='srun --account=project_2000403 --gres=gpu:a100:1 -t 00:14:59 -p gputest -n 1 -N 1'
     elif "puhti" in hostname:
+        cmake='/users/pekkila/cmake/build/bin/cmake'
         srun='srun --account=project_2000403 --gres=gpu:v100:1 -t 00:14:59 -p gputest -n 1 -N 1'
     else:
         print("Unknown hostname when setting srun")
@@ -22,6 +23,7 @@ else:
     print("Could not recognize the system")
     exit(-1)
 
+# Check whether we're in the correct directory
 cwd = os.getcwd()
 if cwd != build_dir:
     print(f"Invalid dir {cwd}. Should be {build_dir}")
