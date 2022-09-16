@@ -7,9 +7,11 @@ hostname = socket.gethostname()
 if "mahti" in hostname or "puhti" in hostname:
     build_dir='/users/pekkila/astaroth/build'
     cmake='/users/pekkila/cmake/build/bin/cmake'
+    srun='srun --account=project_2000403 --gres=gpu:1 -t 00:14:59 -p gputest --ntasks-per-socket=1 -n 1 -N 1'
 elif "triton" in hostname:
     build_dir='/m/home/home6/61/pekkilj1/unix/repositories/astaroth/build'
     cmake='/m/home/home6/61/pekkilj1/unix/repositories/cmake/build/bin/cmake'
+    srun=''
 else:
     print("Could not recognize the system")
     exit(-1)
@@ -31,7 +33,7 @@ working_set_size = 8
 # Variable problem size
 os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
 while problem_size <= max_problem_size:
-    os.system(f'./bwtest-benchmark {problem_size} {working_set_size}')
+    os.system(f'{srun} ./bwtest-benchmark {problem_size} {working_set_size}')
     problem_size *= 2
 os.system('mv bwtest-benchmark.csv problem-size.csv')
 
@@ -39,7 +41,7 @@ os.system('mv bwtest-benchmark.csv problem-size.csv')
 problem_size = 256 * 1024**2       # 256 MiB
 os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
 while working_set_size <= max_working_set_size:
-    os.system(f'./bwtest-benchmark {problem_size} {working_set_size}')
+    os.system(f'{srun} ./bwtest-benchmark {problem_size} {working_set_size}')
     working_set_size *= 2
 os.system('mv bwtest-benchmark.csv working-set-size.csv')
 
