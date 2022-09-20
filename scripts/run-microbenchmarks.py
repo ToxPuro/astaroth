@@ -4,7 +4,7 @@ import os
 # Set cmake, build dir, and srun based on the system
 import socket
 hostname = socket.gethostname()
-if "mahti" in hostname or "puhti" in hostname:
+if "mahti" in hostname or "puhti" in hostname or "uan" in hostname:
     build_dir='/users/pekkila/astaroth/build'
     if "mahti" in hostname:
         cmake='/users/pekkila/CMake/build/bin/cmake'
@@ -12,6 +12,10 @@ if "mahti" in hostname or "puhti" in hostname:
     elif "puhti" in hostname:
         cmake='/users/pekkila/cmake/build/bin/cmake'
         srun='srun --account=project_2000403 --gres=gpu:v100:1 -t 00:14:59 -p gputest -n 1 -N 1'
+    elif "uan" in hostname:
+        build_dir='/pfs/lustrep1/users/pekkila/astaroth/build'
+        cmake='cmake'
+        srun='srun --account=project_462000120 --gres=gpu:1 -t 00:05:00 -p pilot -n 1 -N 1'
     else:
         print("Unknown hostname when setting srun")
         exit(-1)
