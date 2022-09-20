@@ -8,14 +8,14 @@ if "mahti" in hostname or "puhti" in hostname or "uan" in hostname:
     build_dir='/users/pekkila/astaroth/build'
     if "mahti" in hostname:
         cmake='/users/pekkila/CMake/build/bin/cmake'
-        srun='srun --account=project_2000403 --gres=gpu:a100:1 -t 00:14:59 -p gputest -n 1 -N 1'
+        srun='srun --account=project_2000403 --gres=gpu:a100:1 -t 00:14:59 -p gputest -n 1 -N 1 --pty'
     elif "puhti" in hostname:
         cmake='/users/pekkila/cmake/build/bin/cmake'
-        srun='srun --account=project_2000403 --gres=gpu:v100:1 -t 00:14:59 -p gputest -n 1 -N 1'
+        srun='srun --account=project_2000403 --gres=gpu:v100:1 -t 00:14:59 -p gputest -n 1 -N 1 --pty'
     elif "uan" in hostname:
         build_dir='/pfs/lustrep1/users/pekkila/astaroth/build'
         cmake='cmake'
-        srun='srun --account=project_462000120 --gres=gpu:1 -t 00:05:00 -p pilot -n 1 -N 1'
+        srun='srun --account=project_462000120 --gres=gpu:1 -t 00:05:00 -p pilot -n 1 -N 1 --pty'
     else:
         print("Unknown hostname when setting srun")
         exit(-1)
@@ -39,21 +39,49 @@ os.system(f'{cmake} .. && make -j')
 max_problem_size = 1 * 1024**3    # 1 GiB
 max_working_set_size = 8200 #512 * 1024 # 512 KiB
 
-problem_size = 8
-working_set_size = 8
 
 # Variable problem size
-os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
+cmd = ""
+problem_size     = 8 # Bytes
+working_set_size = 8 # Bytes
 while problem_size <= max_problem_size:
-    os.system(f'{srun} ./bwtest-benchmark {problem_size} {working_set_size}')
+    cmd += f'./bwtest-benchmark {problem_size} {working_set_size} ; '
     problem_size *= 2
+
+os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
+os.system(f'{srun} /bin/bash -c \"{cmd}\"')
+os.system('mv bwtest-benchmark.csv problem-size.csv')
+
+# Variable working set size
+cmd = ""
+problem_size = 256 * 1024**2 # Bytes, 256 MiB
+working_set_size = 8         # Bytes
+while working_set_size <= max_working_set_size:
+    cmd += f'./bwtest-benchmark {problem_size} {working_set_size} ; '
+    working_set_size *= 2
+
+os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
+os.system(f'{srun} --pty /bin/bash -c \"{cmd}\"')
+os.system('mv bwtest-benchmark.csv working-set-size.csv')
+
+
+'''
+# Variable problem size
+os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
+cmd = ""
+while problem_size <= max_problem_size:
+    cmd += f'./bwtest-benchmark {problem_size} {working_set_size} ; '
+    problem_size *= 2
+print(f"{srun} --pty /bin/bash -c \"{cmd}\"")
 os.system('mv bwtest-benchmark.csv problem-size.csv')
 
 # Variable working set size
 problem_size = 256 * 1024**2       # 256 MiB
 os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
+cmd = ""
 while working_set_size <= max_working_set_size:
-    os.system(f'{srun} ./bwtest-benchmark {problem_size} {working_set_size}')
+    cmd += f'./bwtest-benchmark {problem_size} {working_set_size} ; '
     working_set_size *= 2
+print(f"{srun} --pty /bin/bash -c \"{cmd}\"")
 os.system('mv bwtest-benchmark.csv working-set-size.csv')
-
+'''
