@@ -1,5 +1,9 @@
 #include <assert.h>
+#if AC_USE_HIP
+#include <hip/hip_runtime.h> // Needed in files that include kernels
+#else
 #include <cuda_runtime_api.h>
+#endif
 #include <string.h>
 
 #undef __device__
