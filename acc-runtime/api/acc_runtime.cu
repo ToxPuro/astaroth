@@ -463,7 +463,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 
   for (int z = 1; z <= max_threads_per_block; ++z) {
     for (int y = 1; y <= max_threads_per_block; ++y) {
-      for (int x = 1; x <= max_threads_per_block; ++x) {
+      for (int x = max(y, z); x <= max_threads_per_block; ++x) {
 
         if (x * y * z > max_threads_per_block)
           break;
@@ -561,8 +561,8 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
           best_tpb  = tpb;
         }
 
-        // printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
-        //       tpb.x, tpb.y, tpb.z, (double)best_time / num_iters);
+        printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
+               tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
         fflush(stdout);
       }
     }
