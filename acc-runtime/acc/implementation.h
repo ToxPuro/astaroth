@@ -27,8 +27,9 @@ const char* realtype   = "double";
 const char* veclen_str = "2";
 const size_t veclen    = 2;
 
-#if IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS ||                             \
-    IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS_PINGPONG
+#if IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS
+const size_t buffers = 1;
+#elif MPLEMENTATION == SMEM_AND_VECTORIZED_LOADS_PINGPONG
 const size_t buffers = 2;
 #elif IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS_FULL ||                      \
     IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS_FULL_ASYNC
@@ -46,7 +47,10 @@ get_smem(const size_t x, const size_t y, const size_t z,
 bool
 is_valid_configuration(const size_t x, const size_t y, const size_t z)
 {
-  return true;
+  if (STENCIL_ORDER != 4)
+    return false;
+  else
+    return true;
 }
 #elif IMPLEMENTATION == SMEM_HIGH_OCCUPANCY
 size_t
