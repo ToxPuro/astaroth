@@ -22,7 +22,7 @@
     IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS_FULL_ASYNC ||                  \
     IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS_PINGPONG
 
-#define USE_VECTORIZED_LOADS (1)
+#define VECTORIZED_LOADS (1)
 const char* realtype   = "double";
 const char* veclen_str = "2";
 const size_t veclen    = 2;

@@ -460,6 +460,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   cudaDeviceProp props;
   cudaGetDeviceProperties(&props, 0);
   const int max_threads_per_block = props.maxThreadsPerBlock;
+  const size_t max_smem           = props.sharedMemPerBlock;
 
   for (int z = 1; z <= max_threads_per_block; ++z) {
     for (int y = 1; y <= max_threads_per_block; ++y) {
@@ -484,7 +485,6 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         const size_t smem = get_smem(tpb.x, tpb.y, tpb.z, STENCIL_ORDER,
                                      sizeof(AcReal));
 
-        const size_t max_smem = 128 * 1024;
         if (smem > max_smem)
           continue;
 
