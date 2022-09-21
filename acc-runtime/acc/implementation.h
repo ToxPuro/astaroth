@@ -67,9 +67,9 @@ is_valid_configuration(const size_t x, const size_t y, const size_t z)
   return true;
 }
 #elif IMPLEMENTATION == SMEM_HIGH_OCCUPANCY_CT_CONST_TB
-const size_t nx = 4;
-const size_t ny = 4;
-const size_t nz = 4;
+const size_t nx = 32;
+const size_t ny = 2;
+const size_t nz = 2;
 
 size_t
 get_smem(const size_t x, const size_t y, const size_t z,
