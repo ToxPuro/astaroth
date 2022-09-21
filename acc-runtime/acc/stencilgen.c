@@ -1349,6 +1349,102 @@ gen_kernel_body(const int curr_kernel)
   }
   */
 }
+#elif IMPLEMENTATION == 1000000 // SMEM_HIGH_OCCUPANCY_CT_CONST_TB
+void
+gen_kernel_body(const int curr_kernel)
+{
+  gen_kernel_prefix();
+
+  const size_t rx = ((STENCIL_WIDTH - 1) / 2);
+  const size_t ry = ((STENCIL_HEIGHT - 1) / 2);
+  const size_t rz = ((STENCIL_DEPTH - 1) / 2);
+  const size_t mx = nx + 2 * rx;
+  const size_t my = ny + 2 * ry;
+  const size_t mz = nz + 2 * rz;
+
+  printf("extern __shared__ AcReal smem[];");
+
+  printf("const int3 baseIdx = (int3){"
+         "blockIdx.x * %lu + start.x - (STENCIL_WIDTH-1)/2,"
+         "blockIdx.y * %lu + start.y - (STENCIL_HEIGHT-1)/2,"
+         "blockIdx.z * %lu + start.z - (STENCIL_DEPTH-1)/2};",
+         nx, ny, nz);
+  printf("const int m0 = IDX(baseIdx);");
+  printf("const int s0 = threadIdx.x + "
+         "threadIdx.y * %lu + "
+         "threadIdx.z * %lu;",
+         nx, nx * ny);
+
+  for (int field = 0; field < NUM_FIELDS; ++field)
+    for (int stencil = 0; stencil < NUM_STENCILS; ++stencil)
+      if (stencils_accessed[curr_kernel][field][stencil])
+        printf("AcReal f%d_s%d;", field, stencil);
+
+  bool stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
+  for (int field = 0; field < NUM_FIELDS; ++field) {
+    for (int k = 0; k < mz; ++k) {
+      for (int j = 0; j < my; ++j) {
+        printf("if (s0 < %lu) smem[s0] = "
+               "vba.in[%d][IDX(baseIdx.x, baseIdx.y + %d, baseIdx.z + %d)];",
+               mx, field, j, k);
+        printf("__syncthreads();");
+        for (int i = 0; i < mx; ++i) {
+          for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+            for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+              for (int width = 0; width < STENCIL_WIDTH; ++width) {
+                fprintf(stderr, "%d, %d, %d, %d, %d, %d\n", width, height,
+                        depth, i, j, k);
+                printf("if (((%d + threadIdx.x) == %d) && "
+                       "((%d + threadIdx.y) == %d) && "
+                       "((%d + threadIdx.z) == %d)) { ",
+                       width, i, height, j, depth, k);
+
+                for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+                  if (stencils_accessed[curr_kernel][field][stencil]) {
+                    if (stencils[stencil][depth][height][width]) {
+                      if (!stencil_initialized[field][stencil]) {
+                        printf("f%d_s%d = ", field, stencil);
+                        printf("%s(stencils[%d][%d][%d][%d]*"
+                               "smem[%d]);",
+                               stencil_unary_ops[stencil], stencil, depth,
+                               height, width, i);
+
+                        stencil_initialized[field][stencil] = 1;
+                      }
+                      else {
+                        printf("f%d_s%d = ", field, stencil);
+                        printf( //
+                            "%s(f%d_s%d,%s(stencils[%d][%d][%d][%d]*"
+                            "smem[%d]));",
+                            stencil_binary_ops[stencil], field, stencil,
+                            stencil_unary_ops[stencil], stencil, depth, height,
+                            width, i);
+                      }
+                    }
+                  }
+                }
+                printf("}");
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    printf("const auto %s __attribute__((unused)) = [&](const auto field){",
+           stencil_names[stencil]);
+    printf("switch (field) {");
+    for (int field = 0; field < NUM_FIELDS; ++field) {
+      if (stencil_initialized[field][stencil])
+        printf("case %d: return f%d_s%d;", field, field, stencil);
+    }
+    printf("default: return (AcReal)NAN;");
+    printf("}");
+    printf("};");
+  }
+}
 #elif IMPLEMENTATION == SMEM_HIGH_OCCUPANCY_CT_CONST_TB
 void
 gen_kernel_body(const int curr_kernel)
@@ -1375,21 +1471,202 @@ gen_kernel_body(const int curr_kernel)
          "threadIdx.z * %lu;",
          nx, nx * ny);
 
+  for (int field = 0; field < NUM_FIELDS; ++field)
+    for (int stencil = 0; stencil < NUM_STENCILS; ++stencil)
+      if (stencils_accessed[curr_kernel][field][stencil])
+        printf("AcReal f%d_s%d = NAN;", field, stencil);
+
+  bool stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
   for (int field = 0; field < NUM_FIELDS; ++field) {
-    for (int k = 0; k < mz; ++k) {
-      for (int j = 0; j < my; ++j) {
-        printf("{");
-        printf("const int base = IDX(baseIdx.x, baseIdx.y + %d, baseIdx.z + "
-               "%d);",
-               j, k);
-        printf("if (s0 < %lu) smem[s0] = vba.in[%d][base];", mx, field);
-        printf("}");
+    for (int k = 0; k < (int)mz; ++k) {
+      for (int j = 0; j < (int)my; ++j) {
         printf("__syncthreads();");
+        printf("if (s0 < %lu) smem[s0] = "
+               "vba.in[%d][IDX(baseIdx.x, baseIdx.y + %d, baseIdx.z + %d)];",
+               mx, field, j, k);
+        printf("__syncthreads();");
+
+        for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+          printf("if (threadIdx.z + %d == %d) {", depth, k);
+          for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+            printf("if (threadIdx.y + %d == %d) {", height, j);
+            for (int width = 0; width < STENCIL_WIDTH; ++width) {
+              for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+                if (!stencils_accessed[curr_kernel][field][stencil])
+                  continue;
+                if (!stencils[stencil][depth][height][width])
+                  continue;
+
+                printf("if (!f%d_s%d)", field, stencil);
+                printf("f%d_s%d = ", field, stencil);
+                printf("%s(stencils[%d][%d][%d][%d]*"
+                       "smem[threadIdx.x + %d]);",
+                       stencil_unary_ops[stencil], stencil, depth, height,
+                       width, width);
+                printf("else ");
+                printf("f%d_s%d = ", field, stencil);
+                printf("%s(f%d_s%d,%s(stencils[%d][%d][%d][%d]*"
+                       "smem[threadIdx.x + %d]));",
+                       stencil_binary_ops[stencil], field, stencil,
+                       stencil_unary_ops[stencil], stencil, depth, height,
+                       width, width);
+              }
+            }
+            printf("}");
+          }
+          printf("}");
+        }
+
+        /*
+        printf("for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {");
+        printf("for (int height = 0; height < STENCIL_HEIGHT; ++height) {");
+        printf("for (int width = 0; width < STENCIL_WIDTH; ++width) {");
+        for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+          if (stencils_accessed[curr_kernel][field][stencil]) {
+
+          }
+        }
+        printf("}");
+        printf("}");
+        printf("}");
+        printf("}");
+        */
+
+        /*
+        // No memory faults but takes very long to compile and possibly
+        incorrect printf("for (int depth = 0; depth < STENCIL_DEPTH; ++depth)
+        {");
+
+        printf("const auto bz = threadIdx.z + depth;");
+        printf("if (bz == %d) {", k);
+        printf("for (int height = 0; height < STENCIL_HEIGHT; ++height) {");
+
+        printf("const auto by = threadIdx.y + height;");
+        printf("if (by == %d) {", j);
+
+        printf("for (int width = 0; width < STENCIL_WIDTH; ++width) {");
+        for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+          if (stencils_accessed[curr_kernel][field][stencil]) {
+            printf("if (!f%d_s%d)", field, stencil);
+            printf("f%d_s%d = ", field, stencil);
+            printf("%s(stencils[%d][depth][height][width]*"
+                   "smem[threadIdx.x + width]);",
+                   stencil_unary_ops[stencil], stencil);
+            printf("else ");
+            printf("f%d_s%d = ", field, stencil);
+            printf("%s(f%d_s%d,%s(stencils[%d][depth][height][width]*"
+                   "smem[threadIdx.x + width]));",
+                   stencil_binary_ops[stencil], field, stencil,
+                   stencil_unary_ops[stencil], stencil);
+          }
+        }
+        printf("}");
+        printf("}");
+        printf("}");
+        printf("}");
+        printf("}");
+        */
+        /*
+        for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+
+          printf("const auto bz = threadIdx.z + depth;");
+          printf("if (bz == %d) {", k);
+          for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+
+            printf("const auto by = threadIdx.y + height;");
+            printf("if (by == %d) {", j);
+
+            for (int width = 0; width < STENCIL_WIDTH; ++width) {
+              for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+                if (stencils_accessed[curr_kernel][field][stencil]) {
+                  printf("if (!f%d_s%d)", field, stencil);
+                  printf("f%d_s%d = ", field, stencil);
+                  printf("%s(stencils[%d][%d][%d][%d]*"
+                         "smem[threadIdx.x + %d]);",
+                         stencil_unary_ops[stencil], stencil, depth, height,
+                         width, width);
+                  printf("else ");
+                  printf("f%d_s%d = ", field, stencil);
+                  printf("%s(f%d_s%d,%s(stencils[%d][%d][%d][%d]*"
+                         "smem[threadIdx.x + %d]));",
+                         stencil_binary_ops[stencil], field, stencil,
+                         stencil_unary_ops[stencil], stencil, depth, height,
+                         width, width);
+                }
+              }
+            }
+
+            printf("}");
+          }
+          printf("}");
+        }
+        */
+
+        /*
+        for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+          for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+            printf("const auto by = threadIdx.y + height;");
+            printf("const auto bz = threadIdx.z + depth;");
+
+            printf("if (by == %d && bz == %d) {", j, k);
+
+            for (int width = 0; width < STENCIL_WIDTH; ++width) {
+              printf("const auto bx = threadIdx.x + width;");
+
+              for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+                // Processing [field][stencil]
+                // bx = threadIdx.x + width
+                // by = threadIdx.y + height
+                // bz = threadIdx.z + depth
+                // bx < mx, then can access smem[bx]
+                // by == j
+                // bz == k
+
+                // 0 + threadIdx.x + width
+                // j + threadIdx.y + height
+                // in = smem[threadIdx.x + width]
+                // coeff = stencils[stencil][depth][my - (threadIdx.y +
+                // height)][width] mask =
+              }
+            } //
+            printf("}");
+          }
+        }
+        */
+        /*
+        for (int i = 0; i < mx; ++i) {
+          // Map i,j,k to stencil space
+          printf("{");
+          printf("const int sx = %d - threadIdx.x;", i);
+          printf("const int sy = %d - threadIdx.y;", j);
+          printf("const int sz = %d - threadIdx.z;", k);
+          printf("if (sx >= 0 && sy >= 0 && sz >= 0)");
+          printf("if (sx < STENCIL_WIDTH)");
+          printf("if (sy < STENCIL_HEIGHT)");
+          printf("if (sz < STENCIL_DEPTH)");
+          for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+            if (stencils_accessed[curr_kernel][field][stencil]) {
+              printf("if (!f%d_s%d)", field, stencil);
+              printf("f%d_s%d = ", field, stencil);
+              printf("%s(stencils[%d][sz][sy][sx]*"
+                     "smem[%d]);",
+                     stencil_unary_ops[stencil], stencil, i);
+              printf("else ");
+              printf("f%d_s%d = ", field, stencil);
+              printf( //
+                  "%s(f%d_s%d,%s(stencils[%d][sz][sy][sx]*"
+                  "smem[%d]));",
+                  stencil_binary_ops[stencil], field, stencil,
+                  stencil_unary_ops[stencil], stencil, i);
+            }
+          }
+          printf("}");
+        }
+        */
       }
     }
   }
 
-  bool stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     printf("const auto %s __attribute__((unused)) = [&](const auto field){",
            stencil_names[stencil]);
