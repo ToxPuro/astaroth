@@ -14,8 +14,12 @@
 #define SMEM_AND_VECTORIZED_LOADS_FULL_ASYNC (9)
 #define SMEM_HIGH_OCCUPANCY (10)
 #define SMEM_HIGH_OCCUPANCY_CT_CONST_TB (11)
+#define SMEM_GENERIC_BLOCKED (12)
+#define SMEM_GENERIC_BLOCKED_1D (13)
+#define NUM_IMPLEMENTATIONS (14) // Note last implementation define
 
 #define IMPLEMENTATION (3)
+#define MAX_THREADS_PER_BLOCK (192)
 
 #if IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS ||                             \
     IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS_FULL ||                        \
@@ -24,12 +28,12 @@
 
 #define VECTORIZED_LOADS (1)
 const char* realtype   = "double";
-const char* veclen_str = "2";
-const size_t veclen    = 2;
+const char* veclen_str = "4";
+const size_t veclen    = 4;
 
 #if IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS
 const size_t buffers = 1;
-#elif MPLEMENTATION == SMEM_AND_VECTORIZED_LOADS_PINGPONG
+#elif IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS_PINGPONG
 const size_t buffers = 2;
 #elif IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS_FULL ||                      \
     IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS_FULL_ASYNC
@@ -47,10 +51,14 @@ get_smem(const size_t x, const size_t y, const size_t z,
 bool
 is_valid_configuration(const size_t x, const size_t y, const size_t z)
 {
-  if (STENCIL_ORDER != 4)
+  // TODO recheck if needed
+  if (veclen != 1 && STENCIL_ORDER != 4)
     return false;
-  else
-    return true;
+
+  if (x * y * z > MAX_THREADS_PER_BLOCK)
+    return false;
+
+  return true;
 }
 #elif IMPLEMENTATION == SMEM_HIGH_OCCUPANCY
 size_t
@@ -65,9 +73,9 @@ get_smem(const size_t x, const size_t y, const size_t z,
 bool
 is_valid_configuration(const size_t x, const size_t y, const size_t z)
 {
-  (void)x; // Unused
-  (void)y; // Unused
-  (void)z; // Unused
+  if (x * y * z > MAX_THREADS_PER_BLOCK)
+    return false;
+
   return true;
 }
 #elif IMPLEMENTATION == SMEM_HIGH_OCCUPANCY_CT_CONST_TB
@@ -87,7 +95,55 @@ get_smem(const size_t x, const size_t y, const size_t z,
 bool
 is_valid_configuration(const size_t x, const size_t y, const size_t z)
 {
+  if (x * y * z > MAX_THREADS_PER_BLOCK)
+    return false;
+
   return (x == nx) && (y == ny) && (z == nz);
+}
+#elif IMPLEMENTATION == SMEM_GENERIC_BLOCKED
+#define VECTORIZED_LOADS (1)
+const char* realtype   = "double";
+const char* veclen_str = "2";
+const size_t veclen    = 2;
+const size_t buffers   = 1;
+
+size_t
+get_smem(const size_t x, const size_t y, const size_t z,
+         const size_t stencil_order, const size_t bytes_per_elem)
+{
+  return buffers * (x + stencil_order) * (y + stencil_order) * bytes_per_elem;
+  // return (x + stencil_order) * bytes_per_elem;
+}
+
+bool
+is_valid_configuration(const size_t x, const size_t y, const size_t z)
+{
+  if (x * y * z > MAX_THREADS_PER_BLOCK)
+    return false;
+
+  return z == 1;
+}
+#elif IMPLEMENTATION == SMEM_GENERIC_BLOCKED_1D
+#define VECTORIZED_LOADS (1)
+const char* realtype   = "double";
+const char* veclen_str = "2";
+const size_t veclen    = 2;
+const size_t buffers   = 1;
+
+size_t
+get_smem(const size_t x, const size_t y, const size_t z,
+         const size_t stencil_order, const size_t bytes_per_elem)
+{
+  return buffers * (x + stencil_order) * bytes_per_elem;
+}
+
+bool
+is_valid_configuration(const size_t x, const size_t y, const size_t z)
+{
+  if (x * y * z > MAX_THREADS_PER_BLOCK)
+    return false;
+
+  return (y == 1) && (z == 1);
 }
 #else
 size_t
@@ -105,6 +161,9 @@ get_smem(const size_t x, const size_t y, const size_t z,
 bool
 is_valid_configuration(const size_t x, const size_t y, const size_t z)
 {
+  if (x * y * z > MAX_THREADS_PER_BLOCK)
+    return false;
+
   return true;
 }
 #endif
