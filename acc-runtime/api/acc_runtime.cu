@@ -501,8 +501,12 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         if (window % veclen) // Window not divisible into vectorized blocks
           continue;
 
-        if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
+        if (dims.x % tpb.x)
           continue;
+
+          // May be too strict
+          // if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
+          //   continue;
 #endif
 #if 0 // Disabled for now (waiting for cleanup)
 #if USE_SMEM
