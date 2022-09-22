@@ -215,8 +215,13 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     ERRCHK_ALWAYS(id < count);
 
     cudaSetDevice(id);
-    // cudaDeviceReset(); // Would be good for safety, but messes stuff up if we want to emulate
-    // multiple devices with a single GPU
+// cudaDeviceReset(); // Would be good for safety, but messes stuff up if we want to emulate
+// multiple devices with a single GPU
+#if AC_DOUBLE_PRECISION
+    cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
+#endif
+    // cudaDeviceSetCacheConfig(cudaFuncCachePreferShared);
+    // cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
     // Create Device
     struct device_s* device = (struct device_s*)malloc(sizeof(*device));
