@@ -357,8 +357,14 @@ gen_kernel_body(const int curr_kernel)
 {
   gen_kernel_prefix_with_boundcheck();
 
-  for (int field = 0; field < NUM_FIELDS; ++field)
-    printf("const AcReal* __restrict__ in%d = vba.in[%d];", field, field);
+  for (int field = 0; field < NUM_FIELDS; ++field) {
+    for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+      if (stencils_accessed[curr_kernel][field][stencil]) {
+        printf("const AcReal* __restrict__ in%d = vba.in[%d];", field, field);
+        break;
+      }
+    }
+  }
 
   // Prefetch stencil elements to local memory
   int cell_initialized[NUM_FIELDS][STENCIL_DEPTH][STENCIL_HEIGHT]
@@ -867,8 +873,14 @@ gen_kernel_body(const int curr_kernel)
 {
   gen_kernel_prefix_with_boundcheck();
 
-  for (int field = 0; field < NUM_FIELDS; ++field)
-    printf("const AcReal* __restrict__ in%d = vba.in[%d];", field, field);
+  for (int field = 0; field < NUM_FIELDS; ++field) {
+    for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+      if (stencils_accessed[curr_kernel][field][stencil]) {
+        printf("const AcReal* __restrict__ in%d = vba.in[%d];", field, field);
+        break;
+      }
+    }
+  }
 
   // Prefetch stencil coefficients to local memory
   int coeff_initialized[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]
