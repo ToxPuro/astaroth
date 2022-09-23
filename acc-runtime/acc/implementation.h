@@ -19,7 +19,8 @@
 #define NUM_IMPLEMENTATIONS (14) // Note last implementation define
 
 #define IMPLEMENTATION (3)
-#define MAX_THREADS_PER_BLOCK (192)
+#define MAX_THREADS_PER_BLOCK (192) // If 0, disables __launch_bounds__
+//#define MAX_THREADS_PER_BLOCK (0)
 
 #if IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS ||                             \
     IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS_FULL ||                        \
@@ -55,7 +56,7 @@ is_valid_configuration(const size_t x, const size_t y, const size_t z)
   if (veclen != 1 && STENCIL_ORDER != 4)
     return false;
 
-  if (x * y * z > MAX_THREADS_PER_BLOCK)
+  if (MAX_THREADS_PER_BLOCK && x * y * z > MAX_THREADS_PER_BLOCK)
     return false;
 
   return true;
@@ -73,7 +74,7 @@ get_smem(const size_t x, const size_t y, const size_t z,
 bool
 is_valid_configuration(const size_t x, const size_t y, const size_t z)
 {
-  if (x * y * z > MAX_THREADS_PER_BLOCK)
+  if (MAX_THREADS_PER_BLOCK && x * y * z > MAX_THREADS_PER_BLOCK)
     return false;
 
   return true;
@@ -95,7 +96,7 @@ get_smem(const size_t x, const size_t y, const size_t z,
 bool
 is_valid_configuration(const size_t x, const size_t y, const size_t z)
 {
-  if (x * y * z > MAX_THREADS_PER_BLOCK)
+  if (MAX_THREADS_PER_BLOCK && x * y * z > MAX_THREADS_PER_BLOCK)
     return false;
 
   return (x == nx) && (y == ny) && (z == nz);
@@ -118,7 +119,7 @@ get_smem(const size_t x, const size_t y, const size_t z,
 bool
 is_valid_configuration(const size_t x, const size_t y, const size_t z)
 {
-  if (x * y * z > MAX_THREADS_PER_BLOCK)
+  if (MAX_THREADS_PER_BLOCK && x * y * z > MAX_THREADS_PER_BLOCK)
     return false;
 
   return z == 1;
@@ -140,7 +141,7 @@ get_smem(const size_t x, const size_t y, const size_t z,
 bool
 is_valid_configuration(const size_t x, const size_t y, const size_t z)
 {
-  if (x * y * z > MAX_THREADS_PER_BLOCK)
+  if (MAX_THREADS_PER_BLOCK && x * y * z > MAX_THREADS_PER_BLOCK)
     return false;
 
   return (y == 1) && (z == 1);
@@ -161,7 +162,7 @@ get_smem(const size_t x, const size_t y, const size_t z,
 bool
 is_valid_configuration(const size_t x, const size_t y, const size_t z)
 {
-  if (x * y * z > MAX_THREADS_PER_BLOCK)
+  if (MAX_THREADS_PER_BLOCK && x * y * z > MAX_THREADS_PER_BLOCK)
     return false;
 
   return true;
