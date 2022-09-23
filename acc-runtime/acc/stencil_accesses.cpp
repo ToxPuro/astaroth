@@ -6,6 +6,8 @@
 #endif
 #include <string.h>
 
+#include "errchk.h"
+
 #undef __device__
 #define __device__
 #undef __global__
@@ -20,6 +22,8 @@
 #define Field3(x, y, z) make_int3((x), (y), (z))
 #define make_float3(x, y, z) ((float3){x, y, z})
 #define make_double3(x, y, z) ((double3){x, y, z})
+#define print printf
+#define len(arr) sizeof(arr) / sizeof(arr[0])
 
 // Just nasty: Must evaluate all code branches given arbitrary input
 // if we want automated stencil generation to work in every case
