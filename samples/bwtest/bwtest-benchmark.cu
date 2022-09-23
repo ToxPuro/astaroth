@@ -10,7 +10,11 @@
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 #endif
 
+#define USE_SMEM (0)
+
 #include "errchk.h"
+
+#define MAX_THREADS_PER_BLOCK (0)
 
 static const char* benchmark_dir = "bwtest-benchmark.csv";
 
@@ -78,8 +82,49 @@ arrayRandomize(Array* a)
     }
 }
 
+#if USE_SMEM
+static size_t
+get_smem(const int tpb, const int halo)
+{
+    return (tpb + 2 * halo) * sizeof(double);
+}
+
 __global__ void
-kernel(const int halo, const Array in, Array out)
+#if MAX_THREADS_PER_BLOCK
+__launch_bounds__(MAX_THREADS_PER_BLOCK)
+#endif
+    kernel(const int halo, const Array in, Array out)
+{
+    extern __shared__ double smem[];
+
+    const int base_idx = blockIdx.x * blockDim.x;
+    for (int sid = threadIdx.x; sid < blockDim.x + 2 * halo; sid += blockDim.x)
+        if (sid + base_idx < in.count)
+            smem[sid] = in.data[sid + base_idx];
+    __syncthreads();
+
+    const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x) + halo;
+    if (tid >= in.count - halo)
+        return;
+
+    double tmp = 0.0;
+    for (int i = 0; i < 2 * halo + 1; ++i)
+        tmp += smem[threadIdx.x + i];
+
+    out.data[tid] = tmp;
+}
+#else
+static size_t
+get_smem(const int tpb, const int halo)
+{
+    return 0;
+}
+
+__global__ void
+#if MAX_THREADS_PER_BLOCK
+__launch_bounds__(MAX_THREADS_PER_BLOCK)
+#endif
+    kernel(const int halo, const Array in, Array out)
 {
     const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
 
@@ -92,6 +137,7 @@ kernel(const int halo, const Array in, Array out)
         out.data[tid] = tmp;
     }
 }
+#endif
 
 void
 model_kernel(const int halo, const Array in, Array out)
@@ -114,6 +160,7 @@ typedef struct {
     int halo;
     size_t tpb;
     size_t bpg;
+    size_t smem;
 } KernelConfig;
 
 /** Returns the optimal threadblock dimensions for a given problem size */
@@ -126,7 +173,11 @@ autotune(const size_t count, const int halo)
     cudaDeviceProp props;
     cudaGetDeviceProperties(&props, 0);
     const size_t warp_size             = (size_t)props.warpSize;
-    const size_t max_threads_per_block = (size_t)props.maxThreadsPerBlock;
+    const size_t max_smem              = (size_t)props.sharedMemPerBlock;
+    const size_t max_threads_per_block = MAX_THREADS_PER_BLOCK
+                                             ? (size_t)min(props.maxThreadsPerBlock,
+                                                           MAX_THREADS_PER_BLOCK)
+                                             : (size_t)props.maxThreadsPerBlock;
 
     // Warmup
     cudaEvent_t tstart, tstop;
@@ -134,7 +185,7 @@ autotune(const size_t count, const int halo)
     cudaEventCreate(&tstop);
     cudaEventRecord(tstart); // Timing start
     for (size_t i = 0; i < 1; ++i)
-        kernel<<<1, 1>>>(halo, a, b);
+        kernel<<<1, 1, max_smem>>>(halo, a, b);
     cudaEventRecord(tstop); // Timing stop
     cudaEventSynchronize(tstop);
     cudaEventDestroy(tstart);
@@ -142,16 +193,25 @@ autotune(const size_t count, const int halo)
     cudaDeviceSynchronize();
 
     // Tune
-    KernelConfig c  = {.count = count, .halo = halo, .tpb = 0, .bpg = 0};
+    KernelConfig c  = {.count = count, .halo = halo, .tpb = 0, .bpg = 0, .smem = 0};
     float best_time = INFINITY;
     for (size_t tpb = 1; tpb <= max_threads_per_block; ++tpb) {
+
         if (tpb > max_threads_per_block)
             break;
 
-        const size_t bpg = (size_t)ceil(1. * count / tpb);
-
         if (tpb % warp_size)
             continue;
+
+        const size_t bpg  = (size_t)ceil(1. * count / tpb);
+        const size_t smem = get_smem(tpb, halo);
+
+        if (smem > max_smem)
+            continue;
+
+        printf("Current KernelConfig {.count = %lu, .halo = %d, .tpb = %lu, .bpg = %lu, .smem = "
+               "%lu}\n",
+               c.count, c.halo, tpb, bpg, smem);
 
         cudaEventCreate(&tstart);
         cudaEventCreate(&tstop);
@@ -159,7 +219,7 @@ autotune(const size_t count, const int halo)
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
         for (int i = 0; i < 3; ++i)
-            kernel<<<bpg, tpb>>>(halo, a, b);
+            kernel<<<bpg, tpb, smem>>>(halo, a, b);
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
 
@@ -169,6 +229,7 @@ autotune(const size_t count, const int halo)
         cudaEventDestroy(tstart);
         cudaEventDestroy(tstop);
 
+        ERRCHK_CUDA_KERNEL_ALWAYS();
         // Discard failed runs (attempt to clear the error to cudaSuccess)
         if (cudaGetLastError() != cudaSuccess) {
             // Exit in case of unrecoverable error that needs a device reset
@@ -185,12 +246,18 @@ autotune(const size_t count, const int halo)
             best_time = milliseconds;
             c.tpb     = tpb;
             c.bpg     = bpg;
+            c.smem    = smem;
         }
     }
-    printf("KernelConfig {.count = %lu, .halo = %d, .tpb = %lu, .bpg = %lu}\n", c.count, c.halo, c.tpb, c.bpg);
+    printf("KernelConfig {.count = %lu, .halo = %d, .tpb = %lu, .bpg = %lu, .smem = %lu}\n",
+           c.count, c.halo, c.tpb, c.bpg, c.smem);
 
     arrayDestroy(&a);
     arrayDestroy(&b);
+
+#if USE_SMEM
+    ERRCHK_ALWAYS(c.smem);
+#endif
 
     return c;
 }
@@ -201,6 +268,8 @@ verify(const KernelConfig c)
     const size_t count = c.count;
     const size_t tpb   = c.tpb;
     const size_t bpg   = c.bpg;
+    const size_t smem  = c.smem;
+    const int halo     = c.halo;
 
     Array ahost = arrayCreate(count, false);
     Array bhost = arrayCreate(count, false);
@@ -208,17 +277,17 @@ verify(const KernelConfig c)
     Array b     = arrayCreate(count, true);
 
     arrayRandomize(&ahost);
-    model_kernel(c.halo, ahost, bhost);
+    model_kernel(halo, ahost, bhost);
 
     const size_t bytes = count * sizeof(ahost.data[0]);
     cudaMemcpy(a.data, ahost.data, bytes, cudaMemcpyHostToDevice);
-    kernel<<<bpg, tpb>>>(c.halo, a, b);
+    kernel<<<bpg, tpb, smem>>>(halo, a, b);
     cudaMemcpy(ahost.data, b.data, bytes, cudaMemcpyDeviceToHost);
 
     const double* candidate = ahost.data;
     const double* model     = bhost.data;
 
-    for (size_t i = c.halo; i < ahost.count - c.halo; ++i) {
+    for (size_t i = halo; i < ahost.count - halo; ++i) {
         if (model[i] != candidate[i]) {
             fprintf(stderr, "Failure at %lu: %g (host) and %g (device)\n", i, model[i],
                     candidate[i]);
@@ -249,7 +318,7 @@ benchmark(const KernelConfig c)
 
     cudaEventRecord(tstart); // Timing start
     for (size_t i = 0; i < num_iters; ++i)
-        kernel<<<c.bpg, c.tpb>>>(c.halo, a, b);
+        kernel<<<c.bpg, c.tpb, c.smem>>>(c.halo, a, b);
     cudaEventRecord(tstop); // Timing stop
     cudaEventSynchronize(tstop);
     ERRCHK_CUDA_KERNEL_ALWAYS();
@@ -259,8 +328,8 @@ benchmark(const KernelConfig c)
     cudaEventDestroy(tstart);
     cudaEventDestroy(tstop);
 
-    const size_t bytes   = num_iters * sizeof(a.data[0]) * (a.count + b.count - 2 * c.halo);
-    const double seconds = (double)milliseconds / 1e3;
+    const size_t bytes     = num_iters * sizeof(a.data[0]) * (a.count + b.count - 2 * c.halo);
+    const double seconds   = (double)milliseconds / 1e3;
     const double bandwidth = bytes / seconds;
     printf("Effective bandwidth: %g GiB/s\n", bandwidth / pow(1024, 3));
     printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
@@ -268,7 +337,8 @@ benchmark(const KernelConfig c)
 
     FILE* fp = fopen(benchmark_dir, "a");
     ERRCHK_ALWAYS(fp);
-    fprintf(fp, "%lu,%lu,%g,%g\n", c.count * sizeof(double), (2*c.halo+1)*sizeof(double), (double)milliseconds, bandwidth);
+    fprintf(fp, "%lu,%lu,%g,%g\n", c.count * sizeof(double), (2 * c.halo + 1) * sizeof(double),
+            (double)milliseconds, bandwidth);
     fclose(fp);
 
     // Free
@@ -320,6 +390,7 @@ printDeviceInfo(const int device_id)
     printf("    Global L1 cache supported: %d\n", props.globalL1CacheSupported);
 #endif
     printf("    L2 size: %d KiB\n", props.l2CacheSize / (1024));
+    printf("    Shared memory per block: %lu\n", props.sharedMemPerBlock);
     printf("  Other\n");
     printf("    Warp size: %d\n", props.warpSize);
     printf("--------------------------------------------------\n");
@@ -332,19 +403,19 @@ main(int argc, char* argv[])
         fprintf(stderr, "Usage: ./bwtest-benchmark <problem size> <working set size>\n");
         return EXIT_FAILURE;
     }
-    const size_t problem_size = (size_t)atol(argv[1]);
+    const size_t problem_size     = (size_t)atol(argv[1]);
     const size_t working_set_size = (size_t)atol(argv[2]);
-    const int halo = ((working_set_size/sizeof(double))-1)/2;
-    const size_t count = problem_size / sizeof(double);
+    const int halo                = ((working_set_size / sizeof(double)) - 1) / 2;
+    const size_t count            = problem_size / sizeof(double);
 
     if (working_set_size > problem_size) {
         fprintf(stderr, "Invalid working set size: %lu > %lu\n", working_set_size, problem_size);
         return EXIT_FAILURE;
     }
-    
+
     printDeviceInfo(0);
 
-    KernelConfig c     = autotune(count, halo);
+    KernelConfig c = autotune(count, halo);
     verify(c);
     benchmark(c);
     return EXIT_SUCCESS;
