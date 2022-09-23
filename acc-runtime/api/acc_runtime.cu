@@ -426,9 +426,9 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
     }
   }
   ERRCHK_ALWAYS(id < NUM_KERNELS);
-  printf("Implementation (%d)\n", IMPLEMENTATION);
-  printf("Autotuning kernel '%s' (%p), block (%d, %d, %d)... ",
-         kernel_names[id], kernel, dims.x, dims.y, dims.z);
+  printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
+         "(%d):\n",
+         kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
   fflush(stdout);
 
 #if 0
@@ -565,15 +565,15 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
           best_tpb  = tpb;
         }
 
-        printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
-               tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
-        fflush(stdout);
+        // printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
+        // tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
+        // fflush(stdout);
       }
     }
   }
   c.tpb = best_tpb;
 
-  printf("The best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x, best_tpb.y,
+  printf("\tThe best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x, best_tpb.y,
          best_tpb.z, (double)best_time / num_iters);
 
   FILE* fp = fopen("autotune-result.out", "a");
