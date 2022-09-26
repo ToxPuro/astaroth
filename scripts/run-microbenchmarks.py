@@ -63,25 +63,3 @@ while working_set_size <= max_working_set_size:
 os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
 os.system(f'{srun} /bin/bash -c \"{cmd}\"')
 os.system('mv bwtest-benchmark.csv working-set-size.csv')
-
-
-'''
-# Variable problem size
-os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
-cmd = ""
-while problem_size <= max_problem_size:
-    cmd += f'./bwtest-benchmark {problem_size} {working_set_size} ; '
-    problem_size *= 2
-print(f"{srun} --pty /bin/bash -c \"{cmd}\"")
-os.system('mv bwtest-benchmark.csv problem-size.csv')
-
-# Variable working set size
-problem_size = 256 * 1024**2       # 256 MiB
-os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
-cmd = ""
-while working_set_size <= max_working_set_size:
-    cmd += f'./bwtest-benchmark {problem_size} {working_set_size} ; '
-    working_set_size *= 2
-print(f"{srun} --pty /bin/bash -c \"{cmd}\"")
-os.system('mv bwtest-benchmark.csv working-set-size.csv')
-'''
