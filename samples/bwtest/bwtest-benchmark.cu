@@ -22,8 +22,8 @@
 
 #include "errchk.h"
 
-#define USE_SMEM (1)
-#define MAX_THREADS_PER_BLOCK (0)
+// #define USE_SMEM (0) // Set with cmake
+// #define MAX_THREADS_PER_BLOCK (0) // Set with cmake
 
 static const char* benchmark_dir = "bwtest-benchmark.csv";
 
@@ -423,6 +423,8 @@ main(int argc, char* argv[])
     }
 
     printDeviceInfo(0);
+    printf("USE_SMEM=%d\n", USE_SMEM);
+    printf("MAX_THREADS_PER_BLOCK=%d\n", MAX_THREADS_PER_BLOCK);
 
     KernelConfig c = autotune(count, halo);
     verify(c);
