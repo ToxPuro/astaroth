@@ -22,6 +22,7 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
+#include "timer_hires.h"
 
 #if !AC_MPI_ENABLED
 int
@@ -78,6 +79,8 @@ main(int argc, char** argv)
     }
 
     // Write
+    Timer t;
+    timer_reset(&t);
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char file[4096] = "";
         sprintf(file, "field-%lu.out", i);
@@ -85,6 +88,8 @@ main(int argc, char** argv)
         // acGridStoreFieldToFile(file, (VertexBufferHandle)i);
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_WRITE);
     }
+    if (!pid)
+        timer_diff_print(t);
 
     // Scramble
     acHostMeshRandomize(&candidate);
@@ -97,12 +102,15 @@ main(int argc, char** argv)
                                                          // fail completely.
 
     // Read
+    timer_reset(&t);
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char file[4096] = "";
         sprintf(file, "field-%lu.out", i);
         // acGridLoadFieldFromFile(file, (VertexBufferHandle)i);
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_READ);
     }
+    if (!pid)
+        timer_diff_print(t);
 
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
