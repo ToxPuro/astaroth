@@ -19,7 +19,7 @@ if "mahti" in hostname or "puhti" in hostname or "uan" in hostname:
     else:
         print("Unknown hostname when setting srun")
         exit(-1)
-elif "triton" in hostname:
+elif "triton" in hostname or "cs-009" in hostname:
     build_dir='/m/home/home6/61/pekkilj1/unix/repositories/astaroth/build'
     cmake='/m/home/home6/61/pekkilj1/unix/repositories/cmake/build/bin/cmake'
     srun=''
@@ -61,7 +61,7 @@ while working_set_size <= max_working_set_size:
     working_set_size *= 2
 
 os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
-os.system(f'{srun} --pty /bin/bash -c \"{cmd}\"')
+os.system(f'{srun} /bin/bash -c \"{cmd}\"')
 os.system('mv bwtest-benchmark.csv working-set-size.csv')
 
 
