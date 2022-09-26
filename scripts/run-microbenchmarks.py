@@ -33,33 +33,50 @@ if cwd != build_dir:
     print(f"Invalid dir {cwd}. Should be {build_dir}")
     exit(-1)
 
-# Build
-os.system(f'{cmake} .. && make -j')
-
-max_problem_size = 1 * 1024**3    # 1 GiB
-max_working_set_size = 8200 #512 * 1024 # 512 KiB
-
-
 # Variable problem size
-cmd = ""
-problem_size     = 8 # Bytes
-working_set_size = 8 # Bytes
-while problem_size <= max_problem_size:
-    cmd += f'./bwtest-benchmark {problem_size} {working_set_size} ; '
-    problem_size *= 2
+def benchmark_problem_size(out_file='problem-size'):
+    cmd = ""
+    problem_size     = 8 # Bytes
+    working_set_size = 8 # Bytes
+    max_problem_size = 1 * 1024**3    # 1 GiB
+    while problem_size <= max_problem_size:
+        cmd += f'./bwtest-benchmark {problem_size} {working_set_size} ; '
+        problem_size *= 2
 
-os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
-os.system(f'{srun} /bin/bash -c \"{cmd}\"')
-os.system('mv bwtest-benchmark.csv problem-size.csv')
+    os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
+    os.system(f'{srun} /bin/bash -c \"{cmd}\"')
+    os.system(f'mv bwtest-benchmark.csv {out_file}.csv')
 
 # Variable working set size
-cmd = ""
-problem_size = 256 * 1024**2 # Bytes, 256 MiB
-working_set_size = 8         # Bytes
-while working_set_size <= max_working_set_size:
-    cmd += f'./bwtest-benchmark {problem_size} {working_set_size} ; '
-    working_set_size *= 2
+def benchmark_working_set_size(out_file='working-set-size'):
+    cmd = ""
+    problem_size = 256 * 1024**2 # Bytes, 256 MiB
+    working_set_size = 8         # Bytes
+    max_working_set_size = 8200  # r = 512, (512 * 2 + 1) * 8 bytes = 8200 bytes
+    while working_set_size <= max_working_set_size:
+        cmd += f'./bwtest-benchmark {problem_size} {working_set_size} ; '
+        working_set_size *= 2
 
-os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
-os.system(f'{srun} /bin/bash -c \"{cmd}\"')
-os.system('mv bwtest-benchmark.csv working-set-size.csv')
+    os.system('echo "problemsize,workingsetsize,milliseconds,bandwidth" > bwtest-benchmark.csv')
+    os.system(f'{srun} /bin/bash -c \"{cmd}\"')
+    os.system(f'mv bwtest-benchmark.csv {out_file}.csv')
+
+# Build
+def build(use_smem=0, max_threads_per_block=0):
+    os.system(f'{cmake} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={max_threads_per_block} .. && make -j')
+
+build(use_smem=0, max_threads_per_block=0)
+benchmark_problem_size('problem-size')
+benchmark_working_set_size('working-set-size')
+
+build(use_smem=0, max_threads_per_block=192)
+benchmark_problem_size('problem-size-launch-bounds')
+benchmark_working_set_size('working-set-size-launch-bounds')
+
+build(use_smem=1, max_threads_per_block=0)
+benchmark_problem_size('problem-size-smem')
+benchmark_working_set_size('working-set-size-smem')
+
+build(use_smem=1, max_threads_per_block=192)
+benchmark_problem_size('problem-size-smem-launch-bounds')
+benchmark_working_set_size('working-set-size-smem-launch-bounds')
