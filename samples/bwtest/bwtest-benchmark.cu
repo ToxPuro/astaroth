@@ -1,5 +1,15 @@
 /**
     Microbenchmark the GPU caches in 1D stencil computations and generate a plottable .csv output
+
+    Examples:
+        # Usage
+        ./bwtest-benchmark <problem size in bytes> <working set size in bytes>
+
+        # 256 MiB problem size and working set of size 8 (one double), i.e. halo r=0
+        ./bwtest-benchmark 268435456 8
+
+        # 3-point von Neumann stencil
+        ./bwtest-benchmark 268435456 24
 */
 #include <cstdlib>
 #include <stdio.h>
@@ -10,10 +20,9 @@
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 #endif
 
-#define USE_SMEM (0)
-
 #include "errchk.h"
 
+#define USE_SMEM (1)
 #define MAX_THREADS_PER_BLOCK (0)
 
 static const char* benchmark_dir = "bwtest-benchmark.csv";
