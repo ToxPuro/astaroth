@@ -113,14 +113,14 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
     __syncthreads();
 
     const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x) + halo;
-    if (tid >= in.count - halo)
-        return;
+    if (tid < in.count - halo) {
 
-    double tmp = 0.0;
-    for (int i = 0; i < 2 * halo + 1; ++i)
-        tmp += smem[threadIdx.x + i];
+        double tmp = 0.0;
+        for (int i = 0; i < 2 * halo + 1; ++i)
+            tmp += smem[threadIdx.x + i];
 
-    out.data[tid] = tmp;
+        out.data[tid] = tmp;
+    }
 }
 #else
 static size_t
