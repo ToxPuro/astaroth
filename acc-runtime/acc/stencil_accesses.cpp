@@ -1,6 +1,8 @@
 #include <assert.h>
-#if AC_USE_HIP
-#include <hip/hip_runtime.h> // Needed in files that include kernels
+#if AC_USE_HIP || __HIP_PLATFORM_HCC__ // Hack to ensure hip is used even if
+                                       // USE_HIP is not propagated properly
+                                       // TODO figure out better way
+#include <hip/hip_runtime.h>           // Needed in files that include kernels
 #else
 #include <cuda_runtime_api.h>
 #endif
