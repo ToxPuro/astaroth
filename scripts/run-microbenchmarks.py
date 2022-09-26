@@ -33,7 +33,7 @@ if cwd != build_dir:
     print(f"Invalid dir {cwd}. Should be {build_dir}")
     exit(-1)
 
-# Build and remove previous results
+# Build
 os.system(f'{cmake} .. && make -j')
 
 max_problem_size = 1 * 1024**3    # 1 GiB
