@@ -709,7 +709,7 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 
   const int retval = system(
       "gcc -std=c11 -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
-      "-Wfloat-conversion -Wshadow -I. " STENCILGEN_SRC " "
+      "-Wfloat-conversion -Wshadow -I. " STENCILGEN_SRC " -lm "
       "-o " STENCILGEN_EXEC);
   if (retval == -1) {
     while (1)
