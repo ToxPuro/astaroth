@@ -129,6 +129,7 @@ typedef struct {
   Kernel kernel;
   int3 dims;
   dim3 tpb;
+  dim3 bpg;
 } TBConfig;
 
 static std::vector<TBConfig> tbconfigs;
@@ -280,10 +281,9 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
 {
   const int3 n = end - start;
 
-  const dim3 tpb = getOptimalTBConfig(kernel, n, vba).tpb;
-  const dim3 bpg((unsigned int)ceil(n.x / double(tpb.x)), //
-                 (unsigned int)ceil(n.y / double(tpb.y)), //
-                 (unsigned int)ceil(n.z / double(tpb.z)));
+  const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
+  const dim3 tpb        = tbconf.tpb;
+  const dim3 bpg        = tbconf.bpg;
 
   const size_t smem = get_smem(tpb.x, tpb.y, tpb.z, STENCIL_ORDER,
                                sizeof(AcReal));
@@ -415,6 +415,19 @@ acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
   GEN_STORE_UNIFORM(INT3, int3);
 }
 
+template <class T>
+static Volume
+to_volume(const T a)
+{
+  return (Volume){as_size_t(a.x), as_size_t(a.y), as_size_t(a.z)};
+}
+
+static dim3
+to_dim3(const Volume v)
+{
+  return dim3(v.x, v.y, v.z);
+}
+
 static TBConfig
 autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 {
@@ -443,6 +456,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
       .kernel = kernel,
       .dims   = dims,
       .tpb    = (dim3){0, 0, 0},
+      .bpg    = (dim3){0, 0, 0},
   };
 
   const int3 start = (int3){
@@ -453,6 +467,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   const int3 end = start + dims;
 
   dim3 best_tpb(0, 0, 0);
+  dim3 best_bpg(0, 0, 0);
   float best_time     = INFINITY;
   const int num_iters = 2;
 
@@ -479,9 +494,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         //   continue;
 
         const dim3 tpb(x, y, z);
-        const dim3 bpg((unsigned int)ceil(dims.x / double(tpb.x)), //
-                       (unsigned int)ceil(dims.y / double(tpb.y)), //
-                       (unsigned int)ceil(dims.z / double(tpb.z)));
+        const dim3 bpg    = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
         const size_t smem = get_smem(tpb.x, tpb.y, tpb.z, STENCIL_ORDER,
                                      sizeof(AcReal));
 
@@ -563,6 +576,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         if (milliseconds < best_time) {
           best_time = milliseconds;
           best_tpb  = tpb;
+          best_bpg  = bpg;
         }
 
         // printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
@@ -572,6 +586,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
     }
   }
   c.tpb = best_tpb;
+  c.bpg = best_bpg;
 
   printf("\tThe best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x, best_tpb.y,
          best_tpb.z, (double)best_time / num_iters);

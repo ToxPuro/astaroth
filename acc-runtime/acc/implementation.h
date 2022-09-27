@@ -16,7 +16,8 @@
 #define SMEM_HIGH_OCCUPANCY_CT_CONST_TB (11)
 #define SMEM_GENERIC_BLOCKED (12)
 #define SMEM_GENERIC_BLOCKED_1D (13)
-#define NUM_IMPLEMENTATIONS (14) // Note last implementation define
+#define FULLY_EXPL_REG_VARS_AND_WARP_SHUFFLE (14)
+#define NUM_IMPLEMENTATIONS (15) // Note last implementation define
 
 #define IMPLEMENTATION (3)
 #define MAX_THREADS_PER_BLOCK (192) // If 0, disables __launch_bounds__
@@ -167,4 +168,32 @@ is_valid_configuration(const size_t x, const size_t y, const size_t z)
 
   return true;
 }
+
+typedef struct {
+  size_t x, y, z;
+} Volume;
+#include "math.h"
+
+#if IMPLEMENTATION == FULLY_EXPL_REG_VARS_AND_WARP_SHUFFLE
+Volume
+get_bpg(const Volume dims, const Volume tpb)
+{
+  return (Volume){
+      (size_t)ceil(1. * dims.x / tpb.x),
+      (size_t)ceil(1. * dims.y / tpb.y),
+      (size_t)ceil(1. * dims.z / tpb.z),
+  };
+}
+#else
+Volume
+get_bpg(const Volume dims, const Volume tpb)
+{
+  return (Volume){
+      (size_t)ceil(1. * dims.x / tpb.x),
+      (size_t)ceil(1. * dims.y / tpb.y),
+      (size_t)ceil(1. * dims.z / tpb.z),
+  };
+}
+#endif
+
 #endif
