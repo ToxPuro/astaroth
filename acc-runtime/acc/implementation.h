@@ -2,6 +2,11 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+typedef struct {
+  size_t x, y, z;
+} Volume;
+#include "math.h"
+
 #define ORIGINAL (0)
 #define ORIGINAL_WITH_ILP (1)
 #define EXPL_REG_VARS (2)
@@ -16,8 +21,9 @@
 #define SMEM_HIGH_OCCUPANCY_CT_CONST_TB (11)
 #define SMEM_GENERIC_BLOCKED (12)
 #define SMEM_GENERIC_BLOCKED_1D (13)
-#define FULLY_EXPL_REG_VARS_AND_WARP_SHUFFLE (14)
-#define NUM_IMPLEMENTATIONS (15) // Note last implementation define
+#define FULLY_EXPL_REG_VARS_AND_HALO_THREADS (14)
+#define FULLY_EXPL_REG_VARS_AND_HALO_THREADS_1D_SHUFFLE (15)
+#define NUM_IMPLEMENTATIONS (16) // Note last implementation define
 
 #define IMPLEMENTATION (3)
 #define MAX_THREADS_PER_BLOCK (192) // If 0, disables __launch_bounds__
@@ -160,6 +166,69 @@ get_smem(const size_t x, const size_t y, const size_t z,
   return 0;
 }
 
+#if IMPLEMENTATION == FULLY_EXPL_REG_VARS_AND_HALO_THREADS
+bool
+is_valid_configuration(const size_t x, const size_t y, const size_t z)
+{
+  if (MAX_THREADS_PER_BLOCK && x * y * z > MAX_THREADS_PER_BLOCK)
+    return false;
+
+  if (x < STENCIL_WIDTH)
+    return false;
+  if (y < STENCIL_HEIGHT)
+    return false;
+  if (z < STENCIL_DEPTH)
+    return false;
+
+  return true;
+}
+
+Volume
+get_bpg(const Volume dims, const Volume tpb)
+{
+  const size_t rx = (STENCIL_WIDTH - 1) / 2;
+  const size_t ry = (STENCIL_HEIGHT - 1) / 2;
+  const size_t rz = (STENCIL_DEPTH - 1) / 2;
+  const size_t tx = tpb.x - 2 * rx;
+  const size_t ty = tpb.y - 2 * ry;
+  const size_t tz = tpb.z - 2 * rz;
+  return (Volume){
+      (size_t)ceil(1. * dims.x / tx),
+      (size_t)ceil(1. * dims.y / ty),
+      (size_t)ceil(1. * dims.z / tz),
+  };
+}
+#elif IMPLEMENTATION == FULLY_EXPL_REG_VARS_AND_HALO_THREADS_1D_SHUFFLE
+bool
+is_valid_configuration(const size_t x, const size_t y, const size_t z)
+{
+  if (MAX_THREADS_PER_BLOCK && x * y * z > MAX_THREADS_PER_BLOCK)
+    return false;
+
+  /*
+  cudaDeviceProp props;
+  cudaGetDeviceProperties(&props, 0);
+  if (x != props.warpSize)
+    return false;
+    */
+  if (x != 32)
+    return false;
+
+  return true;
+}
+
+Volume
+get_bpg(const Volume dims, const Volume tpb)
+{
+  const size_t rx = (STENCIL_WIDTH - 1) / 2;
+  const size_t tx = tpb.x - 2 * rx;
+  return (Volume){
+      (size_t)ceil(1. * dims.x / tx),
+      (size_t)ceil(1. * dims.y / tpb.y),
+      (size_t)ceil(1. * dims.z / tpb.z),
+  };
+}
+#else
 bool
 is_valid_configuration(const size_t x, const size_t y, const size_t z)
 {
@@ -169,22 +238,6 @@ is_valid_configuration(const size_t x, const size_t y, const size_t z)
   return true;
 }
 
-typedef struct {
-  size_t x, y, z;
-} Volume;
-#include "math.h"
-
-#if IMPLEMENTATION == FULLY_EXPL_REG_VARS_AND_WARP_SHUFFLE
-Volume
-get_bpg(const Volume dims, const Volume tpb)
-{
-  return (Volume){
-      (size_t)ceil(1. * dims.x / tpb.x),
-      (size_t)ceil(1. * dims.y / tpb.y),
-      (size_t)ceil(1. * dims.z / tpb.z),
-  };
-}
-#else
 Volume
 get_bpg(const Volume dims, const Volume tpb)
 {
@@ -195,5 +248,4 @@ get_bpg(const Volume dims, const Volume tpb)
   };
 }
 #endif
-
 #endif
