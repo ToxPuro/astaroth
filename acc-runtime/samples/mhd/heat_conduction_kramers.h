@@ -1,4 +1,10 @@
 heat_conduction_kramers() {
+      hcond0_kramers = 0.
+      lnTT0 = 0.
+      AC_nkramers = 0.
+      AC_cv = 0.
+      temperature = 0.
+      
       cv1 = 1./AC_cv
       rho1 = exp(-value(VTXBUF_LNRHO))
       lnTT = lnTT0+cv1*value(VTXBUF_ENTROPY)+(AC_gamma-1)*(value(VTXBUF_LNRHO)-AC_lnrho0)
