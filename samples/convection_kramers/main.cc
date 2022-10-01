@@ -717,18 +717,19 @@ main(void)
         all_fields[i] = (VertexBufferHandle)i;
     }
 
-    /*
     // Draft of pilot boundconds
     AcTaskGraph* pilot_bcs = acGridBuildTaskGraph(
     acHaloExchange(all_fields), // Implicit periodic for all? (todo recheck)
     acBoundaryCondition(BOUNDARY_Z_TOP, SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION, (VertexBuffer[]){VTXBUF_ENTROPY}),
     acBoundaryCondition(BOUNDARY_Z_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, (VertexBuffer[]){VTXBUF_ENTROPY}),
     acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_A2, (VertexBuffer[]){VTXBUF_LNRHO})
-    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, (VertexBuffer[]){VTBUF_UUX, VTXBUF_UUY})
-    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, (VertexBuffer[]){VTBUF_UUZ})
-    acBoundaryCondition(BOUNDARY_???, BOUNDCOND_???, (VertexBuffer[]){VTBUF_AX, VTXBUF_AY, VTXBUF_AZ})
+    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, (VertexBuffer[]){VTXBUF_UUX, VTXBUF_UUY})
+    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, (VertexBuffer[]){VTXBUF_UUZ})
+    acBoundaryCondition(BOUNDARY_Z_TOP, BOUNDCOND_SYMMETRIC, (VertexBuffer[]){VTXBUF_AX,VTXBUF_AY})
+    acBoundaryCondition(BOUNDARY_Z_BOT, BOUNDCOND_ANTISYMMETRIC, (VertexBuffer[]){VTXBUF_AX,VTXBUF_AY})
+    acBoundaryCondition(BOUNDARY_Z_TOP, BOUNDCOND_ANTISYMMETRIC, (VertexBuffer[]){VTXBUF_AZ})
+    acBoundaryCondition(BOUNDARY_Z_BOT, BOUNDCOND_SYMMETRIC, (VertexBuffer[]){VTXBUF_AZ})
     );
-    */
 
     // Symmetric bc
     AcTaskGraph* symmetric_bc_graph = acGridBuildTaskGraph(
