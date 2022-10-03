@@ -71,7 +71,8 @@ else ()
     #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -forward-unknown-to-host-compiler -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow --compiler-options=${CUDA_COMMON_FLAGS}")
 
     # To inspect ptx, run
-    # nvcc -c ../src/core/kernels/kernels.cu -I acc-runtime/api/ -I ../include/ -I ../acc-runtime/api/ -ptx -Xptxas=-Werror,--warn-on-double-precision-use
+    # cmake .. && make -j && nvcc -DAC_DOUBLE_PRECISION=1 --generate-code=arch=compute_60,code=[compute_60,sm_60] -c ../src/core/kernels/kernels.cu -I acc-runtime/api/ -I ../include/ -I ../acc-runtime/api/ -I ../acc-runtime -ptx -Xptxas=-Werror,--warn-on-double-precision-use
+    # less kernels.ptx
     # Additional compilation info: --resource-usage
 
     # Not supported with older CUDA
@@ -79,10 +80,12 @@ else ()
     if (NOT DOUBLE_PRECISION)
       set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas=--warn-on-double-precision-use") # -Werror,
     endif()
+    #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas -dlcm=ca") # Cache global loads in L1
+    #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xptxas -dlcm=cg") # Cache global loads in L2 (default on >= NVIDIA Fermi)
 
     # Set device code architecture
     if (NOT CUDA_ARCHITECTURES)
-        set(CMAKE_CUDA_ARCHITECTURES 60 70) # Default
+        set(CMAKE_CUDA_ARCHITECTURES 61 70 80) # Default
     else ()
         set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
     endif()
