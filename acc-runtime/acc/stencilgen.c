@@ -357,15 +357,6 @@ gen_kernel_body(const int curr_kernel)
 {
   gen_kernel_prefix_with_boundcheck();
 
-  for (int field = 0; field < NUM_FIELDS; ++field) {
-    for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-      if (stencils_accessed[curr_kernel][field][stencil]) {
-        printf("const AcReal* __restrict__ in%d = vba.in[%d];", field, field);
-        break;
-      }
-    }
-  }
-
   // Prefetch stencil elements to local memory
   int cell_initialized[NUM_FIELDS][STENCIL_DEPTH][STENCIL_HEIGHT]
                       [STENCIL_WIDTH] = {0};
@@ -383,8 +374,8 @@ gen_kernel_body(const int curr_kernel)
                 !cell_initialized[field][depth][height][width]) {
               printf("const auto f%d_%d_%d_%d = ", //
                      field, depth, height, width);
-              printf("in%d[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-                     "vertexIdx.z+(%d))];",
+              printf("__ldg(&vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                     "vertexIdx.z+(%d))]);",
                      field, -STENCIL_ORDER / 2 + width,
                      -STENCIL_ORDER / 2 + height, -STENCIL_ORDER / 2 + depth);
 
@@ -864,6 +855,61 @@ gen_kernel_body(const int curr_kernel)
     }
     printf("default: return (AcReal)NAN;");
     printf("}");
+    printf("};");
+  }
+}
+#elif IMPLEMENTATION ==                                                        \
+    SMEM_AND_VECTORIZED_LOADS_AND_PINGPONG_AND_ONDEMAND_STENCIL_COMPUTATION
+// Does not actually use smem, just a quick test on what happens if we
+// compute the stencil on-demand
+
+void
+gen_kernel_body(const int curr_kernel)
+{
+  gen_kernel_prefix_with_boundcheck();
+
+  int stencil_initialized[NUM_STENCILS] = {0};
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    printf("const auto %s __attribute__((unused)) = [&](const auto field){",
+           stencil_names[stencil]);
+    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+        for (int width = 0; width < STENCIL_WIDTH; ++width) {
+          if (stencils[stencil][depth][height][width]) {
+            if (!stencil_initialized[stencil]) {
+              printf("auto tmp = ");
+              printf("stencils[%d][%d][%d][%d] * ", //
+                     stencil, depth, height, width);
+              printf("%s(", stencil_unary_ops[stencil]);
+              printf("__ldg(&");
+              printf("vba.in[field][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                     "vertexIdx.z+(%d))]",
+                     -STENCIL_ORDER / 2 + width, -STENCIL_ORDER / 2 + height,
+                     -STENCIL_ORDER / 2 + depth);
+              printf(")");
+              printf(");");
+              stencil_initialized[stencil] = 1;
+            }
+            else {
+              printf("tmp =");
+              printf("%s(tmp, ", stencil_binary_ops[stencil]);
+              printf("stencils[%d][%d][%d][%d] * ", //
+                     stencil, depth, height, width);
+              printf("%s(", stencil_unary_ops[stencil]);
+              printf("__ldg(&");
+              printf("vba.in[field][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                     "vertexIdx.z+(%d))]",
+                     -STENCIL_ORDER / 2 + width, -STENCIL_ORDER / 2 + height,
+                     -STENCIL_ORDER / 2 + depth);
+              printf(")");
+              printf(")");
+              printf(");");
+            }
+          }
+        }
+      }
+    }
+    printf("return tmp;");
     printf("};");
   }
 }
