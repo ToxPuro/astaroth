@@ -10,6 +10,27 @@
 
         # 3-point von Neumann stencil
         ./bwtest-benchmark 268435456 24
+
+        # Profiling
+        cmake -DUSE_HIP=ON .. &&\
+        make -j &&\
+        rocprof --trace-start off -i ~/rocprof-input-metrics.txt ./bwtest-benchmark 268435456 256
+
+cat ~/rocprof-input-metrics.txt
+```
+# Perf counters group 1
+pmc : Wavefronts VALUInsts SALUInsts SFetchInsts
+# Perf counters group 2
+pmc : TCC_HIT[0], TCC_MISS[0], TCC_HIT_sum, TCC_MISS_sum
+# Perf counters group 3
+pmc: L2CacheHit MemUnitBusy LDSBankConflict
+
+# Filter by dispatches range, GPU index and kernel names
+# supported range formats: "3:9", "3:", "3"
+#range: 0 : 16
+gpu: 0 1 2 3
+#kernel: singlepass_solve
+```
 */
 #include <cstdlib>
 #include <stdio.h>
@@ -18,6 +39,10 @@
 #if AC_USE_HIP
 #include "hip.h"
 #include <hip/hip_runtime.h> // Needed in files that include kernels
+#include <roctracer_ext.h>   // Profiling
+#else
+#include <cuda_profiler_api.h> // Profiling
+#include <cuda_runtime_api.h>  // cudaStream_t
 #endif
 
 #include "errchk.h"
@@ -126,6 +151,8 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
 static size_t
 get_smem(const int tpb, const int halo)
 {
+    (void)tpb;  // Unused
+    (void)halo; // Unused
     return 0;
 }
 
@@ -249,8 +276,8 @@ autotune(const size_t count, const int halo)
             continue;
         }
 
-        // printf("KernelConfig {.tpb = %lu, .bpg = %lu}\n", tpb, bpg);
-        // printf("\tTime elapsed: %g ms\n", (double)milliseconds);
+        printf("KernelConfig {.tpb = %lu, .bpg = %lu}\n", tpb, bpg);
+        printf("\tTime elapsed: %g ms\n", (double)milliseconds);
         if (milliseconds < best_time) {
             best_time = milliseconds;
             c.tpb     = tpb;
@@ -408,6 +435,7 @@ printDeviceInfo(const int device_id)
 int
 main(int argc, char* argv[])
 {
+    cudaProfilerStop();
     if (argc != 3) {
         fprintf(stderr, "Usage: ./bwtest-benchmark <problem size> <working set size>\n");
         return EXIT_FAILURE;
@@ -428,6 +456,8 @@ main(int argc, char* argv[])
 
     KernelConfig c = autotune(count, halo);
     verify(c);
+    cudaProfilerStart();
     benchmark(c);
+    cudaProfilerStop();
     return EXIT_SUCCESS;
 }
