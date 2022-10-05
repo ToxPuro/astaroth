@@ -154,13 +154,13 @@ gridIdx3d(const GridDims grid, const int idx)
                   idx / (grid.m.x * grid.m.y)};
 }
 
-static inline void
+__attribute__((unused)) static inline void
 printInt3(const int3 vec)
 {
     printf("(%d, %d, %d)", vec.x, vec.y, vec.z);
 }
 
-static inline void
+__attribute__((unused)) static inline void
 print(const AcMeshInfo config)
 {
     for (int i = 0; i < NUM_INT_PARAMS; ++i)

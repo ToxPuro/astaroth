@@ -642,7 +642,7 @@ continuity(const VectorData uu, const ScalarData lnrho)
            - divergence(uu);
 }
 
-static inline Scalar
+__attribute__((unused)) static inline Scalar
 length(const Vector vec)
 {
     return sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
@@ -654,7 +654,7 @@ reciprocal_len(const Vector vec)
     return (Scalar)(1.0) / sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
 }
 
-static inline Vector
+__attribute__((unused)) static inline Vector
 normalized(const Vector vec)
 {
     const Scalar inv_len = reciprocal_len(vec);
@@ -807,13 +807,13 @@ entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho)
     */
 }
 
-static inline bool
+__attribute__((unused)) static inline bool
 is_valid(const Scalar a)
 {
     return !isnan(a) && !isinf(a);
 }
 
-static inline bool
+__attribute__((unused)) static inline bool
 is_valid_vec(const Vector a)
 {
     return is_valid(a[0]) && is_valid(a[1]) && is_valid(a[2]);
