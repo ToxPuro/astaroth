@@ -273,21 +273,20 @@ compute_stencil_ops(const int curr_kernel)
             if (stencils[stencil][depth][height][width]) {
               if (!stencil_initialized[field][stencil]) {
                 printf("auto f%d_s%d = ", field, stencil);
-                printf("%s(s%d_%d_%d_%d*"
-                       "f%d_%d_%d_%d);",
-                       stencil_unary_ops[stencil], stencil, depth, height,
-                       width, field, depth, height, width);
+                printf("s%d_%d_%d_%d * %s(f%d_%d_%d_%d);", //
+                       stencil, depth, height, width,
+                       stencil_unary_ops[stencil], field, depth, height, width);
 
                 stencil_initialized[field][stencil] = 1;
               }
               else {
                 printf("f%d_s%d = ", field, stencil);
-                printf( //
-                    "%s(f%d_s%d,%s(s%d_%d_%d_%d*"
-                    "f%d_%d_%d_%d));",
-                    stencil_binary_ops[stencil], field, stencil,
-                    stencil_unary_ops[stencil], stencil, depth, height, width,
-                    field, depth, height, width);
+                printf("%s(f%d_s%d,"
+                       "s%d_%d_%d_%d * %s(f%d_%d_%d_%d)"
+                       ");",
+                       stencil_binary_ops[stencil], field, stencil, //
+                       stencil, depth, height, width,               //
+                       stencil_unary_ops[stencil], field, depth, height, width);
               }
             }
           }
@@ -331,9 +330,10 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     prefetch_stencil_coeffs(curr_kernel, false); // todo fix unary/binary ops
-    prefetch_stencil_elements(curr_kernel);
 
+    prefetch_stencil_elements(curr_kernel);
     compute_stencil_ops(curr_kernel);
+
     gen_stencil_functions(curr_kernel);
     return;
   }
@@ -410,25 +410,24 @@ gen_kernel_body(const int curr_kernel)
               if (stencils[stencil][depth][height][width]) {
                 if (!stencil_initialized[field][stencil]) {
                   printf("auto f%d_s%d = ", field, stencil);
-                  printf("%s(s%d_%d_%d_%d*", stencil_unary_ops[stencil],
-                         stencil, depth, height, width);
-                  printf("smem[(threadIdx.x + %d) + "
+                  printf("s%d_%d_%d_%d * ", stencil, depth, height, width);
+                  printf("%s(smem[(threadIdx.x + %d) + "
                          "(threadIdx.y + %d) * sx + "
                          "(threadIdx.z) * sx * sy]);",
-                         width, height);
+                         stencil_unary_ops[stencil], width, height);
 
                   stencil_initialized[field][stencil] = 1;
                 }
                 else {
                   printf("f%d_s%d = ", field, stencil);
-                  printf("%s(f%d_s%d,%s(s%d_%d_%d_%d*",
-                         stencil_binary_ops[stencil], field, stencil,
-                         stencil_unary_ops[stencil], stencil, depth, height,
-                         width);
-                  printf("smem[(threadIdx.x + %d) + "
+                  printf("%s(f%d_s%d, ", stencil_binary_ops[stencil], field,
+                         stencil);
+                  printf("s%d_%d_%d_%d * ", stencil, depth, height, width);
+                  printf("%s(smem[(threadIdx.x + %d) + "
                          "(threadIdx.y + %d) * sx + "
-                         "(threadIdx.z) * sx * sy]));",
-                         width, height);
+                         "(threadIdx.z) * sx * sy])",
+                         stencil_unary_ops[stencil], width, height);
+                  printf(");");
                 }
               }
             }
