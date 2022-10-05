@@ -70,10 +70,10 @@ endif()
 
 ## Terrible hack, copied also in acc/CMakeLists and codegen.c when building stencilgen (look for gcc build call)
 if(NOT DEFINED IMPLEMENTATION)
-    set(IMPLEMENTATION 3)
+	set(IMPLEMENTATION 3) # Should be the same as in acc/CMakeLists.txt 
 endif()
 if (NOT DEFINED MAX_THREADS_PER_BLOCK)
-    set(MAX_THREADS_PER_BLOCK 0)
+	set(MAX_THREADS_PER_BLOCK 192) # Should be the same as in acc/CMakeLists.txt
 endif()
 
 ## Options

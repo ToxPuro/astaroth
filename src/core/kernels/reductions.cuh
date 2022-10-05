@@ -164,14 +164,14 @@ kernel_reduce(AcReal* scratchpad, const int num_elems)
         smem[threadIdx.x] = scratchpad[idx];
     }
     else {
-        smem[threadIdx.x] = NAN;
+        smem[threadIdx.x] = AcReal(NAN);
     }
     __syncthreads();
 
     int offset = blockDim.x / 2;
     assert(offset % 2 == 0);
     while (offset > 0) {
-        if (threadIdx.x < offset) {
+        if ((int)threadIdx.x < offset) {
             smem[threadIdx.x] = reduce(smem[threadIdx.x], smem[threadIdx.x + offset]);
         }
         offset /= 2;

@@ -352,7 +352,7 @@ AcResult
 acLoadReal3Uniform(const cudaStream_t stream, const AcReal3Param param,
                    const AcReal3 value)
 {
-  if (isnan(value.x) | isnan(value.y) | isnan(value.z)) {
+  if (isnan(value.x) || isnan(value.y) || isnan(value.z)) {
     fprintf(stderr,
             "WARNING: Passed an invalid value (%g, %g, %g) to device constant "
             "%s. Skipping.\n",

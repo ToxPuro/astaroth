@@ -512,7 +512,9 @@ kernel_entropy_prescribed_heat_flux_boundconds(const int3 region_id, const int3 
 
     int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
 
+#if (L_HEAT_CONDUCTION_CHICONST) || (L_HEAT_CONDUCTION_KRAMERS)
     AcReal rho_boundary = exp(vba.in[VTXBUF_LNRHO][boundary_idx]);
+#endif
 
     AcReal cp = DCONST(AC_cp_sound);
     AcReal cv = DCONST(AC_cv_sound);
@@ -632,7 +634,9 @@ kernel_entropy_prescribed_normal_and_turbulent_heat_flux_boundconds(
                         gamma_m1 * DCONST(AC_cp_sound);
 
     AcReal rho_boundary = exp(vba.in[VTXBUF_LNRHO][boundary_idx]);
+#if (L_HEAT_CONDUCTION_CHICONST) || (L_HEAT_CONDUCTION_KRAMERS)
     AcReal cv           = DCONST(AC_cv_sound);
+#endif
 
 #if (L_HEAT_CONDUCTION_CHICONST)
     // TODO: use chi in the calculation

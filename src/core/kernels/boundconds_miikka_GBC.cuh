@@ -1,5 +1,16 @@
 #pragma once
 
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// WARNING: Compiler warnings disabled with the following pragma
+// Why: This file generates a lot of warning noise which could
+//      make it harder to see more important warnings
+//
+// Uncomment to re-enable
+#pragma GCC system_header
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 static __global__ void
 kernel_symmetric_boundconds(const int3 start, const int3 end, AcReal* vtxbuf, const int3 bindex,
                             const int sign)
