@@ -711,8 +711,8 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   // Terrible hack to pass IMPLEMENTATION and MAX_THREADS_PER_BLOCK, copied also in acc/CMakeLists and codegen.c when building stencilgen (look for gcc build call)
   const int retval = system(
       "gcc -std=c11 -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
-      "-DIMPLEMENTATION=-1"
-      "-DMAX_THREADS_PER_BLOCK=-1"
+      "-DIMPLEMENTATION=0 "
+      "-DMAX_THREADS_PER_BLOCK=0 "
       "-Wfloat-conversion -Wshadow -I. " STENCILGEN_SRC " -lm "
       "-o " STENCILGEN_EXEC);
   // clang-format on
