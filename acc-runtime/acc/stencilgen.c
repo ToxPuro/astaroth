@@ -236,8 +236,9 @@ gen_kernel_body(const int curr_kernel)
             printf("const auto s%d_%d_%d_%d = ", //
                    stencil, depth, height, width);
 
-            // CT const
+            // Compile-time constant weights
             // printf("%s;", stencils[stencil][depth][height][width]);
+            // Device-constant weights
             printf("stencils[%d][%d][%d][%d];", stencil, depth, height, width);
 
             coeff_initialized[stencil][depth][height][width] = 1;
