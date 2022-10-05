@@ -29,3 +29,18 @@ if (OPTIMIZE_MEM_ACCESSES)
 else()
     target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=0)
 endif()
+
+## Terrible hack, copied also in acc/CMakeLists and codegen.c when building stencilgen (look for gcc build call)
+if(NOT DEFINED IMPLEMENTATION)
+    set(IMPLEMENTATION 3)
+endif()
+if (NOT DEFINED MAX_THREADS_PER_BLOCK)
+    set(MAX_THREADS_PER_BLOCK 192)
+endif()
+
+## Options
+# cmake -DIMPLEMENTATION=<1-NUM_IMPLEMENTATIONS> .. to switch implementation
+target_compile_options(acc PUBLIC -DIMPLEMENTATION=${IMPLEMENTATION})
+# cmake -DMAX_THREADS_PER_BLOCK=192 .. to set launch bounds in bwtest-benchmark
+target_compile_options(acc PUBLIC -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
+# -Xptxas -dlcm=ca

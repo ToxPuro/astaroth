@@ -67,3 +67,18 @@ if (BUILD_ACC_RUNTIME_LIBRARY)
     target_link_libraries(acc-runtime-shared acc-runtime-headers)
     target_compile_features(acc-runtime-shared PRIVATE cxx_std_17)
 endif()
+
+## Terrible hack, copied also in acc/CMakeLists and codegen.c when building stencilgen (look for gcc build call)
+if(NOT DEFINED IMPLEMENTATION)
+    set(IMPLEMENTATION 3)
+endif()
+if (NOT DEFINED MAX_THREADS_PER_BLOCK)
+    set(MAX_THREADS_PER_BLOCK 0)
+endif()
+
+## Options
+# cmake -DIMPLEMENTATION=<1-NUM_IMPLEMENTATIONS> .. to switch implementation
+target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})
+# cmake -DMAX_THREADS_PER_BLOCK=192 .. to set launch bounds in bwtest-benchmark
+target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
+# -Xptxas -dlcm=ca
