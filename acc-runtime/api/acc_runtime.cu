@@ -140,7 +140,7 @@ static TBConfig getOptimalTBConfig(const Kernel kernel, const int3 dims,
 static __global__ void
 flush_kernel(AcReal* arr, const size_t n)
 {
-  const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < n)
     arr[idx] = (AcReal)NAN;
 }
