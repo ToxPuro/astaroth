@@ -27,9 +27,61 @@
 #include <hip/hip_runtime.h> // Needed in files that include kernels
 #endif
 
+#define USE_COMPRESSIBLE_MEMORY (0)
+
 #include "acc/implementation.h"
 
-#define USE_COMPRESSIBLE_MEMORY (0)
+typedef struct {
+  size_t x, y, z;
+} Volume;
+
+template <class T>
+static Volume
+to_volume(const T a)
+{
+  return (Volume){as_size_t(a.x), as_size_t(a.y), as_size_t(a.z)};
+}
+
+static dim3
+to_dim3(const Volume v)
+{
+  return dim3(v.x, v.y, v.z);
+}
+
+#if IMPLEMENTATION == IMPLICIT_CACHING
+Volume
+get_bpg(const Volume dims, const Volume tpb)
+{
+  return (Volume){
+      (size_t)ceil(1. * dims.x / tpb.x),
+      (size_t)ceil(1. * dims.y / tpb.y),
+      (size_t)ceil(1. * dims.z / tpb.z),
+  };
+}
+#endif
+
+#if IMPLEMENTATION == IMPLICIT_CACHING
+bool
+is_valid_configuration(const Volume tpb)
+{
+  if (MAX_THREADS_PER_BLOCK && tpb.x * tpb.y * tpb.z > MAX_THREADS_PER_BLOCK)
+    return false;
+
+  return true;
+}
+#endif
+
+#if IMPLEMENTATION == IMPLICIT_CACHING
+size_t
+get_smem(const Volume tpb, const size_t stencil_order,
+         const size_t bytes_per_elem)
+{
+  (void)tpb;            // Unused
+  (void)stencil_order;  // Unused
+  (void)bytes_per_elem; // Unused
+  return 0;
+}
+#endif
 
 /*
 // Device info (TODO GENERIC)
@@ -285,8 +337,7 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
   const dim3 tpb        = tbconf.tpb;
   const dim3 bpg        = tbconf.bpg;
 
-  const size_t smem = get_smem(tpb.x, tpb.y, tpb.z, STENCIL_ORDER,
-                               sizeof(AcReal));
+  const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
 
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
   kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
@@ -415,19 +466,6 @@ acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
   GEN_STORE_UNIFORM(INT3, int3);
 }
 
-template <class T>
-static Volume
-to_volume(const T a)
-{
-  return (Volume){as_size_t(a.x), as_size_t(a.y), as_size_t(a.z)};
-}
-
-static dim3
-to_dim3(const Volume v)
-{
-  return dim3(v.x, v.y, v.z);
-}
-
 static TBConfig
 autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 {
@@ -495,7 +533,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 
         const dim3 tpb(x, y, z);
         const dim3 bpg    = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
-        const size_t smem = get_smem(tpb.x, tpb.y, tpb.z, STENCIL_ORDER,
+        const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER,
                                      sizeof(AcReal));
 
         if (smem > max_smem)
@@ -504,7 +542,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         if ((x * y * z) % props.warpSize)
           continue;
 
-        if (!is_valid_configuration(tpb.x, tpb.y, tpb.z))
+        if (!is_valid_configuration(to_volume(tpb)))
           continue;
 
 #if VECTORIZED_LOADS
