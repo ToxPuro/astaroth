@@ -436,21 +436,20 @@ gen_kernel_body(const int curr_kernel)
     gen_kernel_prefix();
     gen_return_if_oob();
 
-    prefetch_stencil_coeffs(curr_kernel, false); // todo fix unary/binary ops
-
+    prefetch_stencil_coeffs(curr_kernel, false);
     prefetch_stencil_elements(curr_kernel);
     compute_stencil_ops(curr_kernel);
-
     gen_stencil_functions(curr_kernel);
+
     return;
   }
   case EXPLICIT_CACHING: {
     gen_kernel_prefix(); // Note no bounds check
+
     prefetch_stencil_coeffs(curr_kernel, false);
-
     prefetch_stencil_elems_to_smem_and_compute_stencil_ops(curr_kernel);
-
     gen_stencil_functions(curr_kernel);
+
     gen_return_if_oob();
     return;
   }
