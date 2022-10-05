@@ -39,6 +39,7 @@
           res = g(f(p[i]), res)
 */
 // clang-format on
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -160,10 +161,9 @@ printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
 #endif
 }
 
-void
-gen_kernel_prefix_with_boundcheck(void)
+static void
+gen_return_if_oob(void)
 {
-  gen_kernel_prefix();
   printf("if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || "
          "vertexIdx.z >= end.z) { return; }");
 }
@@ -171,7 +171,8 @@ gen_kernel_prefix_with_boundcheck(void)
 void
 gen_stencil_accesses(void)
 {
-  gen_kernel_prefix_with_boundcheck();
+  gen_kernel_prefix();
+  gen_return_if_oob();
   printf(
       "AcReal /*__restrict__*/ processed_stencils[NUM_FIELDS][NUM_STENCILS];");
 
@@ -181,12 +182,49 @@ gen_stencil_accesses(void)
            stencil_names[i], stencil_names[i]);
 }
 
-void
-gen_kernel_body(const int curr_kernel)
+/** ct_const_weights: Compile-time constant weights
+  If ct_const_weights = false, the stencil coeffs are fetched from constant
+  memory at runtime
+*/
+static void
+prefetch_stencil_coeffs(const int curr_kernel, const bool ct_const_weights)
 {
-#if IMPLEMENTATION == IMPLICIT_CACHING
-  gen_kernel_prefix_with_boundcheck();
+  // Prefetch stencil coefficients to local memory
+  int coeff_initialized[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]
+                       [STENCIL_WIDTH] = {0};
+  for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+    for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+      for (int width = 0; width < STENCIL_WIDTH; ++width) {
+        for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
 
+          int stencil_accessed = 0;
+          for (int field = 0; field < NUM_FIELDS; ++field)
+            stencil_accessed |= stencils_accessed[curr_kernel][field][stencil];
+          if (!stencil_accessed)
+            continue;
+
+          if (stencils[stencil][depth][height][width] &&
+              !coeff_initialized[stencil][depth][height][width]) {
+            printf("const auto s%d_%d_%d_%d = ", //
+                   stencil, depth, height, width);
+
+            if (ct_const_weights)
+              printf("%s;", stencils[stencil][depth][height][width]);
+            else
+              printf("stencils[%d][%d][%d][%d];", stencil, depth, height,
+                     width);
+
+            coeff_initialized[stencil][depth][height][width] = 1;
+          }
+        }
+      }
+    }
+  }
+}
+
+static void
+prefetch_stencil_elements(const int curr_kernel)
+{
   // Prefetch stencil elements to local memory
   int cell_initialized[NUM_FIELDS][STENCIL_DEPTH][STENCIL_HEIGHT]
                       [STENCIL_WIDTH] = {0};
@@ -216,38 +254,11 @@ gen_kernel_body(const int curr_kernel)
       }
     }
   }
+}
 
-  // Prefetch stencil coefficients to local memory
-  int coeff_initialized[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]
-                       [STENCIL_WIDTH] = {0};
-  for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-    for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-      for (int width = 0; width < STENCIL_WIDTH; ++width) {
-        for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-
-          int stencil_accessed = 0;
-          for (int field = 0; field < NUM_FIELDS; ++field)
-            stencil_accessed |= stencils_accessed[curr_kernel][field][stencil];
-          if (!stencil_accessed)
-            continue;
-
-          if (stencils[stencil][depth][height][width] &&
-              !coeff_initialized[stencil][depth][height][width]) {
-            printf("const auto s%d_%d_%d_%d = ", //
-                   stencil, depth, height, width);
-
-            // Compile-time constant weights
-            // printf("%s;", stencils[stencil][depth][height][width]);
-            // Device-constant weights
-            printf("stencils[%d][%d][%d][%d];", stencil, depth, height, width);
-
-            coeff_initialized[stencil][depth][height][width] = 1;
-          }
-        }
-      }
-    }
-  }
-
+static void
+compute_stencil_ops(const int curr_kernel)
+{
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
   for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
     for (int height = 0; height < STENCIL_HEIGHT; ++height) {
@@ -285,22 +296,154 @@ gen_kernel_body(const int curr_kernel)
     }
   }
 
+  for (int field = 0; field < NUM_FIELDS; ++field)
+    for (int stencil = 0; stencil < NUM_STENCILS; ++stencil)
+      if (stencil_initialized[field][stencil] !=
+          stencils_accessed[curr_kernel][field][stencil])
+        raise_error("stencil_initialized != stencil_accessed, this affects "
+                    "gen_stencil_functions (stencil_accessed should be "
+                    "replaced with stencil_initialized)");
+}
+
+static void
+gen_stencil_functions(const int curr_kernel)
+{
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     printf("const auto %s __attribute__((unused)) = [&](const auto field){",
            stencil_names[stencil]);
     printf("switch (field) {");
     for (int field = 0; field < NUM_FIELDS; ++field) {
-      if (stencil_initialized[field][stencil])
+      if (stencils_accessed[curr_kernel][field][stencil])
         printf("case %d: return f%d_s%d;", field, field, stencil);
     }
     printf("default: return (AcReal)NAN;");
     printf("}");
     printf("};");
   }
-#else
-  fprintf(stderr, "Fatal error: invalid IMPLEMENTATION passed to stencilgen.c");
-  return EXIT_FAILURE;
-#endif
+}
+
+void
+gen_kernel_body(const int curr_kernel)
+{
+  switch (IMPLEMENTATION) {
+  case IMPLICIT_CACHING: {
+    gen_kernel_prefix();
+    gen_return_if_oob();
+
+    prefetch_stencil_coeffs(curr_kernel, false); // todo fix unary/binary ops
+    prefetch_stencil_elements(curr_kernel);
+
+    compute_stencil_ops(curr_kernel);
+    gen_stencil_functions(curr_kernel);
+    return;
+  }
+  case EXPLICIT_CACHING: {
+    gen_kernel_prefix(); // Note no bounds check
+    prefetch_stencil_coeffs(curr_kernel, false);
+
+    printf("extern __shared__ AcReal smem[];");
+    printf("const int sx = blockDim.x + STENCIL_WIDTH - 1;");
+    printf("const int sy = blockDim.y + STENCIL_HEIGHT - 1;");
+    printf("const int sid = threadIdx.x + "
+           "threadIdx.y * blockDim.x;");
+
+    printf("const int3 baseIdx = (int3){"
+           "blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
+           "blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
+           "threadIdx.z + blockIdx.z * blockDim.z + start.z - "
+           "(STENCIL_DEPTH-1)/2};");
+
+    int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
+    for (int field = 0; field < NUM_FIELDS; ++field) {
+      for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+        // Fetch from smem
+        printf("if (%d > 0 && threadIdx.z < blockDim.z - 1) {", depth);
+        printf("for (int curr = sid; curr < sx * sy;"
+               "curr += blockDim.x * blockDim.y) {");
+        printf("const int i = curr %% sx;");
+        printf("const int j = curr / sx;");
+        printf("smem[i + j * sx + (threadIdx.z) * sx * sy] = ");
+        printf("smem[i + j * sx + (threadIdx.z+1) * sx * sy];");
+        printf("}");
+        printf("}");
+        printf("__syncthreads();");
+
+        // Fetch from gmem
+        printf("if (threadIdx.z == blockDim.z - 1) {");
+        printf("for (int curr = sid; curr < sx * sy;"
+               "curr += blockDim.x * blockDim.y) {");
+        printf("const int i = curr %% sx;");
+        printf("const int j = curr / sx;");
+        printf("smem[i + j * sx + threadIdx.z * sx * sy] = ");
+        printf("vba.in[%d]"
+               "[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + (%d))];",
+               field, depth);
+        printf("}");
+        printf("}");
+        printf("__syncthreads();");
+
+        /*
+        // Working basic
+        printf("for (int curr = sid; curr < sx * sy;"
+               "curr += blockDim.x * blockDim.y) {");
+        printf("const int i = curr %% sx;");
+        printf("const int j = curr / sx;");
+        printf("smem[i + j * sx + threadIdx.z * sx * sy] = ");
+        printf("vba.in[%d]"
+               "[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + (%d))];",
+               field, depth);
+        printf("}");
+        printf("__syncthreads();");
+        */
+        for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+          for (int width = 0; width < STENCIL_WIDTH; ++width) {
+            for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+
+              // Skip if the stencil is not used
+              if (!stencils_accessed[curr_kernel][field][stencil])
+                continue;
+
+              if (stencils[stencil][depth][height][width]) {
+                if (!stencil_initialized[field][stencil]) {
+                  printf("auto f%d_s%d = ", field, stencil);
+                  printf("%s(s%d_%d_%d_%d*", stencil_unary_ops[stencil],
+                         stencil, depth, height, width);
+                  printf("smem[(threadIdx.x + %d) + "
+                         "(threadIdx.y + %d) * sx + "
+                         "(threadIdx.z) * sx * sy]);",
+                         width, height);
+
+                  stencil_initialized[field][stencil] = 1;
+                }
+                else {
+                  printf("f%d_s%d = ", field, stencil);
+                  printf("%s(f%d_s%d,%s(s%d_%d_%d_%d*",
+                         stencil_binary_ops[stencil], field, stencil,
+                         stencil_unary_ops[stencil], stencil, depth, height,
+                         width);
+                  printf("smem[(threadIdx.x + %d) + "
+                         "(threadIdx.y + %d) * sx + "
+                         "(threadIdx.z) * sx * sy]));",
+                         width, height);
+                }
+              }
+            }
+          }
+        }
+        printf("__syncthreads();");
+      }
+    }
+
+    gen_stencil_functions(curr_kernel);
+    gen_return_if_oob();
+    return;
+  }
+  default: {
+    fprintf(stderr,
+            "Fatal error: invalid IMPLEMENTATION passed to stencilgen.c");
+    return;
+  }
+  }
 }
 
 int
