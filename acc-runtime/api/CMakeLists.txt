@@ -28,6 +28,8 @@ add_custom_command (
 )
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
 target_include_directories(acc-runtime-headers INTERFACE . .. ${CMAKE_CURRENT_BINARY_DIR})
+target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})
+target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
 
 if (USE_HIP)
     target_link_libraries(acc-runtime-headers INTERFACE roctracer64)
@@ -67,18 +69,3 @@ if (BUILD_ACC_RUNTIME_LIBRARY)
     target_link_libraries(acc-runtime-shared acc-runtime-headers)
     target_compile_features(acc-runtime-shared PRIVATE cxx_std_17)
 endif()
-
-## Terrible hack, copied also in acc/CMakeLists and codegen.c when building stencilgen (look for gcc build call)
-if(NOT DEFINED IMPLEMENTATION)
-	set(IMPLEMENTATION 3) # Should be the same as in acc/CMakeLists.txt 
-endif()
-if (NOT DEFINED MAX_THREADS_PER_BLOCK)
-	set(MAX_THREADS_PER_BLOCK 192) # Should be the same as in acc/CMakeLists.txt
-endif()
-
-## Options
-# cmake -DIMPLEMENTATION=<1-NUM_IMPLEMENTATIONS> .. to switch implementation
-target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})
-# cmake -DMAX_THREADS_PER_BLOCK=192 .. to set launch bounds in bwtest-benchmark
-target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
-# -Xptxas -dlcm=ca
