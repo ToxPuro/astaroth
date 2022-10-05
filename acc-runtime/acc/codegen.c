@@ -707,30 +707,18 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   }
   */
 
-  // clang-format off
-  // Terrible hack to pass IMPLEMENTATION and MAX_THREADS_PER_BLOCK, copied also in acc/CMakeLists and codegen.c when building stencilgen (look for gcc build call)
-//  char compile_definitions[4096];
-//  snprintf(compile_definitions, 4096, "-DIMPLEMENTATION=%d -DMAX_THREADS_PER_BLOCK=%d ")
-
-	char build_cmd[4096];
+  char build_cmd[4096];
   snprintf(build_cmd, 4096,
-      "gcc -std=c11 -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
-      "-DIMPLEMENTATION=%d "
-      "-DMAX_THREADS_PER_BLOCK=%d "
-      "-Wfloat-conversion -Wshadow -I. %s -lm "
-      "-o %s", IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC, STENCILGEN_EXEC);
+           "gcc -std=c11 -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
+           "-DIMPLEMENTATION=%d "
+           "-DMAX_THREADS_PER_BLOCK=%d "
+           "-Wfloat-conversion -Wshadow -I. %s -lm "
+           "-o %s",
+           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,
+           STENCILGEN_EXEC);
 
-	const int retval = system(build_cmd);
+  const int retval = system(build_cmd);
 
-	/*
-  const int retval = system(
-      "gcc -std=c11 -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
-      "-DIMPLEMENTATION=%d"
-      "-DMAX_THREADS_PER_BLOCK=%d "
-      "-Wfloat-conversion -Wshadow -I. " STENCILGEN_SRC " -lm "
-      "-o " STENCILGEN_EXEC);
-  */
-  // clang-format on
   if (retval == -1) {
     while (1)
       fprintf(stderr,
