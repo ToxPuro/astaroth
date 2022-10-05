@@ -48,40 +48,55 @@ to_dim3(const Volume v)
   return dim3(v.x, v.y, v.z);
 }
 
-#if IMPLEMENTATION == IMPLICIT_CACHING
 Volume
 get_bpg(const Volume dims, const Volume tpb)
 {
+#if (IMPLEMENTATION == IMPLICIT_CACHING)
   return (Volume){
       (size_t)ceil(1. * dims.x / tpb.x),
       (size_t)ceil(1. * dims.y / tpb.y),
       (size_t)ceil(1. * dims.z / tpb.z),
   };
-}
+#else
+  (void)tpb;  // Unused
+  (void)dims; // Unused
+  ERROR("Invalid IMPLEMENTATION in get_bpg");
+  return (Volume){0, 0, 0};
 #endif
+}
 
-#if IMPLEMENTATION == IMPLICIT_CACHING
 bool
 is_valid_configuration(const Volume tpb)
 {
+#if (IMPLEMENTATION == IMPLICIT_CACHING)
   if (MAX_THREADS_PER_BLOCK && tpb.x * tpb.y * tpb.z > MAX_THREADS_PER_BLOCK)
     return false;
 
   return true;
-}
+#else
+  (void)tpb; // Unused
+  ERROR("Invalid IMPLEMENTATION in is_valid_configuration");
+  return false;
 #endif
+}
 
-#if IMPLEMENTATION == IMPLICIT_CACHING
 size_t
 get_smem(const Volume tpb, const size_t stencil_order,
          const size_t bytes_per_elem)
 {
+#if (IMPLEMENTATION == IMPLICIT_CACHING)
   (void)tpb;            // Unused
   (void)stencil_order;  // Unused
   (void)bytes_per_elem; // Unused
   return 0;
-}
+#else
+  (void)tpb;            // Unused
+  (void)stencil_order;  // Unused
+  (void)bytes_per_elem; // Unused
+  ERROR("Invalid IMPLEMENTATION in get_smem");
+  return (size_t)-1;
 #endif
+}
 
 /*
 // Device info (TODO GENERIC)
@@ -147,7 +162,7 @@ IDX(const uint i, const uint j, const uint k)
   const int bits = ceil(precision / dimensions);
   */
   const int dimensions = 3;
-  const int bits       = 11;
+  const int bits = 11;
 
   uint idx = 0;
 #pragma unroll
