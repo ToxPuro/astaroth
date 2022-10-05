@@ -374,6 +374,8 @@ gen_kernel_body(const int curr_kernel)
                "curr += blockDim.x * blockDim.y) {");
         printf("const int i = curr %% sx;");
         printf("const int j = curr / sx;");
+        printf("if (baseIdx.z + (%d) >= end.z + (STENCIL_DEPTH-1)/2){ break; }",
+               depth);
         printf("smem[i + j * sx + threadIdx.z * sx * sy] = ");
         printf("vba.in[%d]"
                "[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + (%d))];",
