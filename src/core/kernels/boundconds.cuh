@@ -1,5 +1,8 @@
 #pragma once
 
+// TODO remove clang-format on/off
+// clang-format off
+
 extern "C" {
 /**************************
  *                        *
@@ -714,3 +717,5 @@ acKernelPrescribedDerivativeBoundconds(const cudaStream_t stream, const int3 reg
 
 #endif // AC_INTEGRATION_ENABLED
 } // extern "C"
+
+// clang-format on
