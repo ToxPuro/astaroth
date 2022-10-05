@@ -29,8 +29,8 @@ typedef struct {
 
 // NOTE: need to do a clean build when switching to/from smem (suspected
 // cmake dependency issue)
-#define IMPLEMENTATION (3)
-#define MAX_THREADS_PER_BLOCK (192) // If 0, disables __launch_bounds__
+//#define IMPLEMENTATION (3)
+//#define MAX_THREADS_PER_BLOCK (256) // If 0, disables __launch_bounds__
 //#define MAX_THREADS_PER_BLOCK (0)
 
 #if IMPLEMENTATION == SMEM_AND_VECTORIZED_LOADS ||                             \
@@ -132,6 +132,15 @@ is_valid_configuration(const size_t x, const size_t y, const size_t z)
 
   return true;
 }
+Volume
+get_bpg(const Volume dims, const Volume tpb)
+{
+  return (Volume){
+      (size_t)ceil(1. * dims.x / tpb.x),
+      (size_t)ceil(1. * dims.y / tpb.y),
+      (size_t)ceil(1. * dims.z / tpb.z),
+  };
+}
 #elif IMPLEMENTATION == SMEM_HIGH_OCCUPANCY_CT_CONST_TB
 const size_t nx = 32;
 const size_t ny = 2;
@@ -177,6 +186,15 @@ is_valid_configuration(const size_t x, const size_t y, const size_t z)
 
   return z == 1;
 }
+Volume
+get_bpg(const Volume dims, const Volume tpb)
+{
+  return (Volume){
+      (size_t)ceil(1. * dims.x / tpb.x),
+      (size_t)ceil(1. * dims.y / tpb.y),
+      (size_t)ceil(1. * dims.z / tpb.z),
+  };
+}
 #elif IMPLEMENTATION == SMEM_GENERIC_BLOCKED_1D
 #define VECTORIZED_LOADS (1)
 const char* realtype   = "double";
@@ -198,6 +216,16 @@ is_valid_configuration(const size_t x, const size_t y, const size_t z)
     return false;
 
   return (y == 1) && (z == 1);
+}
+
+Volume
+get_bpg(const Volume dims, const Volume tpb)
+{
+  return (Volume){
+      (size_t)ceil(1. * dims.x / tpb.x),
+      (size_t)ceil(1. * dims.y / tpb.y),
+      (size_t)ceil(1. * dims.z / tpb.z),
+  };
 }
 #else
 size_t
