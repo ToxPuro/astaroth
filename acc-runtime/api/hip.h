@@ -70,7 +70,9 @@
 #define cudaProfilerStop roctracer_stop
 
 #define cudaDeviceSetSharedMemConfig hipDeviceSetSharedMemConfig
+#define cudaFuncSetSharedMemConfig hipFuncSetSharedMemConfig
 #define cudaSharedMemBankSizeEightByte hipSharedMemBankSizeEightByte
+#define cudaSharedMemBankSizeFourByte hipSharedMemBankSizeFourByte
 #define cudaDeviceSetCacheConfig hipDeviceSetCacheConfig
 #define cudaFuncCachePreferShared hipFuncCachePreferShared
 #define cudaFuncCachePreferL1 hipFuncCachePreferL1
