@@ -132,7 +132,7 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
     extern __shared__ double smem[];
 
     const int base_idx = blockIdx.x * blockDim.x;
-    for (int sid = threadIdx.x; sid < blockDim.x + 2 * halo; sid += blockDim.x)
+    for (int sid = threadIdx.x; sid < (int)(blockDim.x + 2 * halo); sid += blockDim.x)
         if (sid + base_idx < in.count)
             smem[sid] = in.data[sid + base_idx];
     __syncthreads();
@@ -246,7 +246,7 @@ autotune(const size_t count, const int halo)
             continue;
 
         printf("Current KernelConfig {.count = %lu, .halo = %d, .tpb = %lu, .bpg = %lu, .smem = "
-               "%lu}\n",
+               "%lu}",
                c.count, c.halo, tpb, bpg, smem);
 
         cudaEventCreate(&tstart);
@@ -266,7 +266,7 @@ autotune(const size_t count, const int halo)
         cudaEventDestroy(tstop);
 
         ERRCHK_CUDA_KERNEL_ALWAYS();
-        // Discard failed runs (attempt to clear the error to cudaSuccess)
+        //  Discard failed runs (attempt to clear the error to cudaSuccess)
         if (cudaGetLastError() != cudaSuccess) {
             // Exit in case of unrecoverable error that needs a device reset
             if (cudaGetLastError() != cudaSuccess) {
@@ -276,8 +276,8 @@ autotune(const size_t count, const int halo)
             continue;
         }
 
-        printf("KernelConfig {.tpb = %lu, .bpg = %lu}\n", tpb, bpg);
-        printf("\tTime elapsed: %g ms\n", (double)milliseconds);
+        // printf("KernelConfig {.tpb = %lu, .bpg = %lu}\n", tpb, bpg);
+        printf(", Time elapsed: %g ms\n", (double)milliseconds);
         if (milliseconds < best_time) {
             best_time = milliseconds;
             c.tpb     = tpb;
@@ -453,6 +453,9 @@ main(int argc, char* argv[])
     printDeviceInfo(0);
     printf("USE_SMEM=%d\n", USE_SMEM);
     printf("MAX_THREADS_PER_BLOCK=%d\n", MAX_THREADS_PER_BLOCK);
+
+    // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte);
+    // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
 
     KernelConfig c = autotune(count, halo);
     verify(c);
