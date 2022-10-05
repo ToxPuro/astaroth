@@ -73,6 +73,7 @@ is_valid_configuration(const Volume tpb)
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: // Fallthrough
   case EXPLICIT_CACHING: {
+    (void)tpb; // Unused
     return true;
   }
   default: {
