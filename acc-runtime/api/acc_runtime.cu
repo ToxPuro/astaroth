@@ -51,51 +51,54 @@ to_dim3(const Volume v)
 Volume
 get_bpg(const Volume dims, const Volume tpb)
 {
-#if (IMPLEMENTATION == IMPLICIT_CACHING)
-  return (Volume){
-      (size_t)ceil(1. * dims.x / tpb.x),
-      (size_t)ceil(1. * dims.y / tpb.y),
-      (size_t)ceil(1. * dims.z / tpb.z),
-  };
-#else
-  (void)tpb;  // Unused
-  (void)dims; // Unused
-  ERROR("Invalid IMPLEMENTATION in get_bpg");
-  return (Volume){0, 0, 0};
-#endif
+  switch (IMPLEMENTATION) {
+  case IMPLICIT_CACHING: // Fallthrough
+  case EXPLICIT_CACHING: {
+    return (Volume){
+        (size_t)ceil(1. * dims.x / tpb.x),
+        (size_t)ceil(1. * dims.y / tpb.y),
+        (size_t)ceil(1. * dims.z / tpb.z),
+    };
+  }
+  default: {
+    ERROR("Invalid IMPLEMENTATION in get_bpg");
+    return (Volume){0, 0, 0};
+  }
+  }
 }
 
 bool
 is_valid_configuration(const Volume tpb)
 {
-#if (IMPLEMENTATION == IMPLICIT_CACHING)
-  if (MAX_THREADS_PER_BLOCK && tpb.x * tpb.y * tpb.z > MAX_THREADS_PER_BLOCK)
+  switch (IMPLEMENTATION) {
+  case IMPLICIT_CACHING: // Fallthrough
+  case EXPLICIT_CACHING: {
+    return true;
+  }
+  default: {
+    ERROR("Invalid IMPLEMENTATION in is_valid_configuration");
     return false;
-
-  return true;
-#else
-  (void)tpb; // Unused
-  ERROR("Invalid IMPLEMENTATION in is_valid_configuration");
-  return false;
-#endif
+  }
+  }
 }
 
 size_t
 get_smem(const Volume tpb, const size_t stencil_order,
          const size_t bytes_per_elem)
 {
-#if (IMPLEMENTATION == IMPLICIT_CACHING)
-  (void)tpb;            // Unused
-  (void)stencil_order;  // Unused
-  (void)bytes_per_elem; // Unused
-  return 0;
-#else
-  (void)tpb;            // Unused
-  (void)stencil_order;  // Unused
-  (void)bytes_per_elem; // Unused
-  ERROR("Invalid IMPLEMENTATION in get_smem");
-  return (size_t)-1;
-#endif
+  switch (IMPLEMENTATION) {
+  case IMPLICIT_CACHING: {
+    return 0;
+  }
+  case EXPLICIT_CACHING: {
+    return (tpb.x + stencil_order) * (tpb.y + stencil_order) * tpb.z *
+           bytes_per_elem;
+  }
+  default: {
+    ERROR("Invalid IMPLEMENTATION in get_smem");
+    return (size_t)-1;
+  }
+  }
 }
 
 /*
@@ -162,7 +165,7 @@ IDX(const uint i, const uint j, const uint k)
   const int bits = ceil(precision / dimensions);
   */
   const int dimensions = 3;
-  const int bits = 11;
+  const int bits       = 11;
 
   uint idx = 0;
 #pragma unroll
@@ -527,7 +530,10 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   // Get device hardware information
   cudaDeviceProp props;
   cudaGetDeviceProperties(&props, 0);
-  const int max_threads_per_block = props.maxThreadsPerBlock;
+  const int max_threads_per_block = MAX_THREADS_PER_BLOCK
+                                        ? min(props.maxThreadsPerBlock,
+                                              MAX_THREADS_PER_BLOCK)
+                                        : props.maxThreadsPerBlock;
   const size_t max_smem           = props.sharedMemPerBlock;
 
   for (int z = 1; z <= max_threads_per_block; ++z) {
@@ -632,9 +638,9 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
           best_bpg  = bpg;
         }
 
-        // printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
-        // tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
-        // fflush(stdout);
+        printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
+               tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
+        fflush(stdout);
       }
     }
   }
