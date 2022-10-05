@@ -39,12 +39,14 @@
 #define fabs(x) fabsf(x)
 #endif
 
+#define UNUSED __attribute__((unused))
+
 #if defined(__CUDACC__) || defined(__HIPCC__)
-#define HOST_DEVICE __host__ __device__
-#define HOST_DEVICE_INLINE __host__ __device__ __forceinline__
+#define HOST_DEVICE __host__ __device__ UNUSED
+#define HOST_DEVICE_INLINE __host__ __device__ __forceinline__ UNUSED
 #else
-#define HOST_DEVICE
-#define HOST_DEVICE_INLINE inline
+#define HOST_DEVICE UNUSED
+#define HOST_DEVICE_INLINE inline UNUSED
 #endif // __CUDACC__
 
 // Disabled for now, issues on lumi (exp, cos, sin ambiguous)
