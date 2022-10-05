@@ -374,6 +374,10 @@ gen_kernel_body(const int curr_kernel)
                "curr += blockDim.x * blockDim.y) {");
         printf("const int i = curr %% sx;");
         printf("const int j = curr / sx;");
+        printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ break; }",
+               depth);
+        printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){ break; }",
+               depth);
         printf("if (baseIdx.z + (%d) >= end.z + (STENCIL_DEPTH-1)/2){ break; }",
                depth);
         printf("smem[i + j * sx + threadIdx.z * sx * sy] = ");
