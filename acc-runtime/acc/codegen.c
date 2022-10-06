@@ -767,7 +767,11 @@ generate_mem_accesses(void)
 {
   // Generate memory accesses to a header
   printf("Compiling %s...\n", STENCILACC_SRC);
+#if AC_USE_HIP
   printf("--- USE_HIP: `%d`\n", AC_USE_HIP);
+#else
+  printf("--- USE_HIP not defined\n");
+#endif
   printf("--- ACC_RUNTIME_API_DIR: `%s`\n", ACC_RUNTIME_API_DIR);
   printf("--- GPU_API_INCLUDES: `%s`\n", GPU_API_INCLUDES);
   const int retval = system("gcc -Wshadow -I. "

@@ -28,6 +28,8 @@ list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer)
 list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer/include)
 string(REPLACE ";" " -I " GPU_API_INCLUDES "${CMAKE_PREFIX_PATH}")
 add_compile_definitions(GPU_API_INCLUDES="${GPU_API_INCLUDES}")
+else()
+add_compile_definitions(GPU_API_INCLUDES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
 endif()
 
 ## Subdirectories
