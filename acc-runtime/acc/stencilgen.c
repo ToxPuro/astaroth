@@ -144,13 +144,43 @@ gen_return_if_oob(void)
          "vertexIdx.z >= end.z) { return; }");
 }
 
+static void
+prefetch_output_elements_and_gen_prev_function(void)
+{
+  // Read vba.out
+#if 0
+  // Original (compute when needed)
+  // SINGLEPASS_INTEGRATION=ON, 4.97 ms (full step, 128^3)
+  // SINGLEPASS_INTEGRATION=OFF, 6.09 ms (full step, 128^3)
+  printf("const auto previous __attribute__((unused)) =[&](const Field field)"
+         "{ return vba.out[field][idx]; };");
+#else
+  // Prefetch output fields
+  // SINGLEPASS_INTEGRATION=ON, 4.18 ms (full step, 128^3)
+  // SINGLEPASS_INTEGRATION=OFF, 4.77 ms (full step, 128^3)
+  for (int field = 0; field < NUM_FIELDS; ++field)
+    printf("const auto f%d_prev = vba.out[%d][idx];", field, field);
+
+  printf("const auto previous __attribute__((unused)) = [&](const Field field)"
+         "{ switch (field) {");
+  for (int field = 0; field < NUM_FIELDS; ++field)
+    printf("case %d: { return f%d_prev; }", field, field);
+
+  printf("default: return (AcReal)NAN;"
+         "}");
+  printf("};");
+#endif
+}
+
 void
 gen_stencil_accesses(void)
 {
   gen_kernel_prefix();
   gen_return_if_oob();
-  printf(
-      "AcReal /*__restrict__*/ processed_stencils[NUM_FIELDS][NUM_STENCILS];");
+  prefetch_output_elements_and_gen_prev_function();
+
+  printf("AcReal /*__restrict__*/ "
+         "processed_stencils[NUM_FIELDS][NUM_STENCILS];");
 
   for (size_t i = 0; i < NUM_STENCILS; ++i)
     printf("const auto %s=[&](const auto field)"
@@ -230,34 +260,6 @@ prefetch_stencil_elements(const int curr_kernel)
       }
     }
   }
-}
-
-static void
-prefetch_output_elements_and_gen_prev_function(void)
-{
-  // Read vba.out
-#if 0
-  // Original (compute when needed)
-  // SINGLEPASS_INTEGRATION=ON, 4.97 ms (full step, 128^3)
-  // SINGLEPASS_INTEGRATION=OFF, 6.09 ms (full step, 128^3)
-  printf("const auto previous __attribute__((unused)) =[&](const Field field)"
-         "{ return vba.out[field][idx]; };");
-#else
-  // Prefetch output fields
-  // SINGLEPASS_INTEGRATION=ON, 4.18 ms (full step, 128^3)
-  // SINGLEPASS_INTEGRATION=OFF, 4.77 ms (full step, 128^3)
-  for (int field = 0; field < NUM_FIELDS; ++field)
-    printf("const auto f%d_prev = vba.out[%d][idx];", field, field);
-
-  printf("const auto previous __attribute__((unused)) = [&](const Field field)"
-         "{ switch (field) {");
-  for (int field = 0; field < NUM_FIELDS; ++field)
-    printf("case %d: { return f%d_prev; }", field, field);
-
-  printf("default: return (AcReal)NAN;"
-         "}");
-  printf("};");
-#endif
 }
 
 static void
