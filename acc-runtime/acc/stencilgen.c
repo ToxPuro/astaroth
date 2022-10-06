@@ -443,8 +443,9 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     prefetch_output_elements_and_gen_prev_function();
-    prefetch_stencil_coeffs(curr_kernel, false);
     prefetch_stencil_elements(curr_kernel);
+    prefetch_stencil_coeffs(curr_kernel, false);
+
     compute_stencil_ops(curr_kernel);
     gen_stencil_functions(curr_kernel);
 
