@@ -14,12 +14,16 @@ if "mahti" in hostname or "puhti" in hostname or "uan" in hostname:
         srun='srun --account=project_2000403 --gres=gpu:v100:1 -t 00:14:59 -p gputest -n 1 -N 1 --pty'
     elif "uan" in hostname:
         build_dir='/pfs/lustrep1/users/pekkila/astaroth/build'
-        cmake='cmake'
+        cmake='cmake -DUSE_HIP=ON'
         srun='srun --account=project_462000120 --gres=gpu:1 -t 00:05:00 -p pilot -n 1 -N 1 --pty'
     else:
         print("Unknown hostname when setting srun")
         exit(-1)
-elif "triton" in hostname or "cs-009" in hostname:
+elif "triton" in hostname:
+    build_dir='/home/pekkilj1/astaroth/build'
+    cmake='/home/pekkilj1/cmake/build/bin/cmake -DUSE_HIP=ON'
+    srun=''
+elif "cs-009" in hostname:
     build_dir='/m/home/home6/61/pekkilj1/unix/repositories/astaroth/build'
     cmake='/m/home/home6/61/pekkilj1/unix/repositories/cmake/build/bin/cmake'
     srun=''
