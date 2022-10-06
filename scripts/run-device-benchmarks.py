@@ -38,7 +38,7 @@ if cwd != build_dir:
     exit(-1)
 
 # Variable problem size
-def benchmark_implementation(implementation=1, out_file='implementation'):
+def benchmark_implementation(implementation=1):
 
     nn = 256
     max_threads_per_block = 1024
@@ -46,22 +46,22 @@ def benchmark_implementation(implementation=1, out_file='implementation'):
 
     cmd = ""
     while tpb <= max_threads_per_block:
-        cmd += f'{cmake} -DIMPLEMENTATION={implementation} -DMAX_THREADS_PER_BLOCK={tpb} .. &&'
-        cmd += 'make -j &&'
-        cmd += f'./benchmark-device {nn} {nn} {nn} ;'
+        #cmd += f'{cmake} -DIMPLEMENTATION={implementation} -DMAX_THREADS_PER_BLOCK={tpb} .. &&'
+        #cmd += 'make -j &&'
+        #cmd += f'./benchmark-device {nn} {nn} {nn} ;'
+        os.system(f'{cmake} -DIMPLEMENTATION={implementation} -DMAX_THREADS_PER_BLOCK={tpb} .. && make -j && {srun} /bin/bash -c \"{cmd}\"')
         if (tpb == 0):
             tpb = 32
         else:
             tpb *= 2
 
-    os.system('echo "implementation,maxthreadsperblock,milliseconds" > device-benchmark.csv')
-    os.system(f'{srun} /bin/bash -c \"{cmd}\"')
-    os.system(f'mv device-benchmark.csv {out_file}.csv')
-
 def benchmark_implementations(out_file='implementation'):
     max_implementations = 2
+
+    os.system('echo "implementation,maxthreadsperblock,milliseconds" > device-benchmark.csv')
     for i in range(1, max_implementations+1):
-        benchmark_implementation(i, f'implementation-{i}')
+        benchmark_implementation(i)
+    os.system(f'mv device-benchmark.csv {out_file}.csv')
 
 #benchmark_implementation(1, "implementation-1")
 #benchmark_implementation(2, "implementation-2")
