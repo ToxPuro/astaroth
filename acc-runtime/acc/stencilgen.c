@@ -406,7 +406,8 @@ prefetch_stencil_elems_to_smem_and_compute_stencil_ops(const int curr_kernel)
             if (stencils[stencil][depth][height][width]) {
               if (!stencil_initialized[field][stencil]) {
                 printf("auto f%d_s%d = ", field, stencil);
-                printf("s%d_%d_%d_%d * ", stencil, depth, height, width);
+                printf("s[%d][%d][%d][%d] * ", stencil, depth, height, width);
+                // printf("s%d_%d_%d_%d * ", stencil, depth, height, width);
                 printf("%s(smem[(threadIdx.x + %d) + "
                        "(threadIdx.y + %d) * sx + "
                        "(threadIdx.z) * sx * sy]);",
@@ -418,7 +419,8 @@ prefetch_stencil_elems_to_smem_and_compute_stencil_ops(const int curr_kernel)
                 printf("f%d_s%d = ", field, stencil);
                 printf("%s(f%d_s%d, ", stencil_binary_ops[stencil], field,
                        stencil);
-                printf("s%d_%d_%d_%d * ", stencil, depth, height, width);
+                printf("s[%d][%d][%d][%d] * ", stencil, depth, height, width);
+                // printf("s%d_%d_%d_%d * ", stencil, depth, height, width);
                 printf("%s(smem[(threadIdx.x + %d) + "
                        "(threadIdx.y + %d) * sx + "
                        "(threadIdx.z) * sx * sy])",
@@ -441,22 +443,80 @@ gen_kernel_body(const int curr_kernel)
   case IMPLICIT_CACHING: {
     gen_kernel_prefix();
     gen_return_if_oob();
+    prefetch_output_elements_and_gen_prev_function();
+
+    int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
+    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+        for (int width = 0; width < STENCIL_WIDTH; ++width) {
+          for (int field = 0; field < NUM_FIELDS; ++field) {
+            for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+
+              // Skip if the stencil is not used
+              if (!stencils_accessed[curr_kernel][field][stencil])
+                continue;
+
+              if (stencils[stencil][depth][height][width]) {
+                if (!stencil_initialized[field][stencil]) {
+                  printf("auto f%d_s%d = ", field, stencil);
+                  printf("stencils[%d][%d][%d][%d] *", //
+                         stencil, depth, height, width);
+                  printf("%s(", stencil_unary_ops[stencil]);
+                  printf("__ldg(&vba.in[%d]"
+                         "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                         "vertexIdx.z+(%d))])",
+                         field, -STENCIL_ORDER / 2 + width,
+                         -STENCIL_ORDER / 2 + height,
+                         -STENCIL_ORDER / 2 + depth);
+                  printf(");");
+
+                  stencil_initialized[field][stencil] = 1;
+                }
+                else {
+                  printf("f%d_s%d = ", field, stencil);
+                  printf("%s(f%d_s%d, ", stencil_binary_ops[stencil], field,
+                         stencil);
+                  printf("stencils[%d][%d][%d][%d] *", //
+                         stencil, depth, height, width);
+                  printf("%s(", stencil_unary_ops[stencil]);
+                  printf("__ldg(&vba.in[%d]"
+                         "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                         "vertexIdx.z+(%d))])",
+                         field, -STENCIL_ORDER / 2 + width,
+                         -STENCIL_ORDER / 2 + height,
+                         -STENCIL_ORDER / 2 + depth);
+                  printf(")");
+                  printf(");");
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    gen_stencil_functions(curr_kernel);
+    /*
+    gen_kernel_prefix();
+    gen_return_if_oob();
 
     prefetch_output_elements_and_gen_prev_function();
-    prefetch_stencil_coeffs(curr_kernel, false);
     prefetch_stencil_elements(curr_kernel);
+    prefetch_stencil_coeffs(curr_kernel, false);
+
     compute_stencil_ops(curr_kernel);
     gen_stencil_functions(curr_kernel);
+    */
 
     return;
   }
   case EXPLICIT_CACHING: {
     gen_kernel_prefix(); // Note no bounds check
 
-    prefetch_stencil_coeffs(curr_kernel, false);
+    // prefetch_stencil_coeffs(curr_kernel, false);
     prefetch_stencil_elems_to_smem_and_compute_stencil_ops(curr_kernel);
-    gen_stencil_functions(curr_kernel);
 
+    gen_stencil_functions(curr_kernel);
     gen_return_if_oob();
     prefetch_output_elements_and_gen_prev_function();
     return;
