@@ -72,12 +72,12 @@ bool
 is_valid_configuration(const Volume dims, const Volume tpb)
 {
   switch (IMPLEMENTATION) {
-  case IMPLICIT_CACHING: // Fallthrough
-  case EXPLICIT_CACHING: {
+  case IMPLICIT_CACHING: {
     (void)tpb;  // Unused
     (void)dims; // Unused
     return true;
   }
+  case EXPLICIT_CACHING: // Fallthrough
   case EXPLICIT_CACHING_3D_BLOCKING: {
     // For some reason does not work without this
     return !(dims.x % tpb.x) && !(dims.y % tpb.y) && !(dims.z % tpb.z);
