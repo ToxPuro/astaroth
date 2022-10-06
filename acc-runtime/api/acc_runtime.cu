@@ -53,7 +53,8 @@ get_bpg(const Volume dims, const Volume tpb)
 {
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: // Fallthrough
-  case EXPLICIT_CACHING: {
+  case EXPLICIT_CACHING: // Fallthrough
+  case EXPLICIT_CACHING_3D_BLOCKING: {
     return (Volume){
         (size_t)ceil(1. * dims.x / tpb.x),
         (size_t)ceil(1. * dims.y / tpb.y),
@@ -68,13 +69,18 @@ get_bpg(const Volume dims, const Volume tpb)
 }
 
 bool
-is_valid_configuration(const Volume tpb)
+is_valid_configuration(const Volume dims, const Volume tpb)
 {
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: // Fallthrough
   case EXPLICIT_CACHING: {
-    (void)tpb; // Unused
+    (void)tpb;  // Unused
+    (void)dims; // Unused
     return true;
+  }
+  case EXPLICIT_CACHING_3D_BLOCKING: {
+    // For some reason does not work without this
+    return !(dims.x % tpb.x) && !(dims.y % tpb.y) && !(dims.z % tpb.z);
   }
   default: {
     ERROR("Invalid IMPLEMENTATION in is_valid_configuration");
@@ -94,6 +100,10 @@ get_smem(const Volume tpb, const size_t stencil_order,
   case EXPLICIT_CACHING: {
     return (tpb.x + stencil_order) * (tpb.y + stencil_order) * tpb.z *
            bytes_per_elem;
+  }
+  case EXPLICIT_CACHING_3D_BLOCKING: {
+    return (tpb.x + stencil_order) * (tpb.y + stencil_order) *
+           (tpb.z + stencil_order) * bytes_per_elem;
   }
   default: {
     ERROR("Invalid IMPLEMENTATION in get_smem");
@@ -562,7 +572,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         if ((x * y * z) % props.warpSize)
           continue;
 
-        if (!is_valid_configuration(to_volume(tpb)))
+        if (!is_valid_configuration(to_volume(dims), to_volume(tpb)))
           continue;
 
 #if VECTORIZED_LOADS

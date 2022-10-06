@@ -432,7 +432,7 @@ prefetch_stencil_elems_to_smem_and_compute_stencil_ops(const int curr_kernel)
 
 /** Supports 3D smem blocking (see `rolling_cache` switch) */
 static void
-prefetch_stencil_elems_to_smem_and_compute_stencil_ops(const int curr_kernel)
+prefetch_stencil_elems_to_smem_3d_and_compute_stencil_ops(const int curr_kernel)
 {
   printf("extern __shared__ AcReal smem[];");
   printf("const int sx = blockDim.x + STENCIL_WIDTH - 1;");
@@ -453,8 +453,8 @@ prefetch_stencil_elems_to_smem_and_compute_stencil_ops(const int curr_kernel)
 
     printf("for (int curr = sid; curr < sx * sy * sz; curr += tpb) {");
     printf("const int i = curr %% sx;");
-    printf("const int j = (curr %% (bx * by)) / bx;");
-    printf("const int k = curr / (bx * by);");
+    printf("const int j = (curr %% (sx * sy)) / sx;");
+    printf("const int k = curr / (sx * sy);");
     printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ break; }");
     printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){ break; }");
     printf("if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2){ break; }");
@@ -464,7 +464,7 @@ prefetch_stencil_elems_to_smem_and_compute_stencil_ops(const int curr_kernel)
     printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)]");
     printf(");");
     printf("}");
-    printf("__syncthreads()");
+    printf("__syncthreads();");
 
     for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
       for (int height = 0; height < STENCIL_HEIGHT; ++height) {
@@ -482,7 +482,7 @@ prefetch_stencil_elems_to_smem_and_compute_stencil_ops(const int curr_kernel)
                        width);
                 printf("%s(smem[(threadIdx.x + %d) + "
                        "(threadIdx.y + %d) * sx + "
-                       "((threadIdx.z+%d)%%blockDim.z) * sx * sy]);",
+                       "(threadIdx.z + %d) * sx * sy]);",
                        stencil_unary_ops[stencil], width, height, depth);
 
                 stencil_initialized[field][stencil] = 1;
@@ -495,7 +495,7 @@ prefetch_stencil_elems_to_smem_and_compute_stencil_ops(const int curr_kernel)
                        width);
                 printf("%s(smem[(threadIdx.x + %d) + "
                        "(threadIdx.y + %d) * sx + "
-                       "((threadIdx.z+%d)%%blockDim.z) * sx * sy])",
+                       "(threadIdx.z + %d) * sx * sy])",
                        stencil_unary_ops[stencil], width, height, depth);
                 printf(");");
               }
@@ -503,8 +503,8 @@ prefetch_stencil_elems_to_smem_and_compute_stencil_ops(const int curr_kernel)
           }
         }
       }
-      printf("__syncthreads();");
     }
+    printf("__syncthreads();");
   }
 }
 
@@ -585,8 +585,17 @@ gen_kernel_body(const int curr_kernel)
   case EXPLICIT_CACHING: {
     gen_kernel_prefix(); // Note no bounds check
 
-    // prefetch_stencil_coeffs(curr_kernel, false);
     prefetch_stencil_elems_to_smem_and_compute_stencil_ops(curr_kernel);
+    gen_return_if_oob();
+
+    gen_stencil_functions(curr_kernel);
+    prefetch_output_elements_and_gen_prev_function();
+    return;
+  }
+  case EXPLICIT_CACHING_3D_BLOCKING: {
+    gen_kernel_prefix(); // Note no bounds check
+
+    prefetch_stencil_elems_to_smem_3d_and_compute_stencil_ops(curr_kernel);
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
