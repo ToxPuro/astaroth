@@ -250,7 +250,7 @@ operator==(const uint3_64& a, const uint3_64& b)
  * AcReal
  */
 static HOST_DEVICE_INLINE bool
-is_valid(const AcReal& a)
+is_valid(const AcReal a)
 {
   return !isnan(a) && !isinf(a);
 }

@@ -1,4 +1,5 @@
 #include <assert.h>
+/*
 #if AC_USE_HIP || __HIP_PLATFORM_HCC__ // Hack to ensure hip is used even if
                                        // USE_HIP is not propagated properly
                                        // TODO figure out better way
@@ -6,6 +7,7 @@
 #else
 #include <cuda_runtime_api.h>
 #endif
+*/
 #include <string.h>
 
 #include "errchk.h"

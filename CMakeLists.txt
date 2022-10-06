@@ -50,8 +50,10 @@ if (USE_HIP)
     # Workarounds until we have first-class support for hip/rocm in CMake
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm) # Default path
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/hip /opt/rocm-5.0.0) # Triton
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/hip/include /opt/rocm-5.0.0) # Triton
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm/llvm/bin)
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer)
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer/include)
 
     ## Triton
 	include_directories(/opt/rocm-5.0.0/roctracer/include)

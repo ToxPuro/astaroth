@@ -42,6 +42,7 @@ if (BUILD_ACC_RUNTIME_LIBRARY)
     if (USE_HIP)
         add_definitions(-DAC_USE_HIP=1)
         list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0)
+        list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/hip/include /opt/rocm-5.0.0)
 
         enable_language(CXX)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")

@@ -766,9 +766,19 @@ void
 generate_mem_accesses(void)
 {
   // Generate memory accesses to a header
+  printf("Compiling %s...\n", STENCILACC_SRC);
+  printf("--- USE_HIP: `%d`\n", AC_USE_HIP);
+  printf("--- ACC_RUNTIME_API_DIR: `%s`\n", ACC_RUNTIME_API_DIR);
+  printf("--- GPU_API_INCLUDES: `%s`\n", GPU_API_INCLUDES);
   const int retval = system("gcc -Wshadow -I. "
-                            "-I " ACC_RUNTIME_API_DIR " " STENCILACC_SRC " -lm "
+#if AC_USE_HIP
+                            "-DAC_USE_HIP=1 "
+#endif
+                            "-I " GPU_API_INCLUDES " "    //
+                            "-I " ACC_RUNTIME_API_DIR " " //
+                            STENCILACC_SRC " -lm "
                             "-o " STENCILACC_EXEC);
+  printf("%s compilation done\n", STENCILACC_SRC);
   if (retval == -1) {
     fprintf(stderr, "Catastrophic error: could not compile the stencil access "
                     "generator.\n");
