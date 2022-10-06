@@ -40,7 +40,7 @@ if cwd != build_dir:
 # Variable problem size
 def benchmark_implementation(implementation=1, out_file='implementation'):
 
-    nn = 128
+    nn = 256
     max_threads_per_block = 1024
     tpb = 0
 
@@ -65,7 +65,7 @@ def benchmark_implementations(out_file='implementation'):
 
 #benchmark_implementation(1, "implementation-1")
 #benchmark_implementation(2, "implementation-2")
-#benchmark_implementations()
+benchmark_implementations()
 
 # Profile
 def profile(implementation=1, max_threads_per_block=0, nn=128):
@@ -112,5 +112,5 @@ def profile(implementation=1, max_threads_per_block=0, nn=128):
     os.system(f'{srun} /bin/bash -c \"{cmd}\"')
     os.system(f'mv metrics.csv metrics-{implementation}-{max_threads_per_block}.csv')
 
-profile(implementation=1, max_threads_per_block=512, nn=256)
-profile(implementation=2, max_threads_per_block=512, nn=256)
+#profile(implementation=1, max_threads_per_block=512, nn=256)
+#profile(implementation=2, max_threads_per_block=512, nn=256)
