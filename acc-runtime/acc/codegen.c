@@ -766,9 +766,12 @@ void
 generate_mem_accesses(void)
 {
   // Generate memory accesses to a header
-  const int retval = system("gcc -Wshadow -I. "
-                            "-I " ACC_RUNTIME_API_DIR " " STENCILACC_SRC " -lm "
-                            "-o " STENCILACC_EXEC);
+  const int retval = system(
+      "gcc -Wfatal-errors -Wall -Wextra -Wdouble-promotion " //
+      "-Wfloat-conversion -Wshadow "                         //
+      " -I. -I " ACC_RUNTIME_API_DIR " "                     //
+      STENCILACC_SRC " -lm "                                 //
+      "-o " STENCILACC_EXEC);
   if (retval == -1) {
     fprintf(stderr, "Catastrophic error: could not compile the stencil access "
                     "generator.\n");
