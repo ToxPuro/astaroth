@@ -81,6 +81,8 @@ main(int argc, char** argv)
     // const bool alt_integration = false; // Uncomment to test one- and two-pass integration
 
     // DRYRUN START
+    // Optimize for the more expensive substep (second and third)
+    acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, n_min, n_max, dt);
     for (int i = 0; i < 3; ++i) {
         acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, n_min, n_max, dt);
         acDeviceSwapBuffers(device);
@@ -159,16 +161,21 @@ main(int argc, char** argv)
     // Benchmark
     Timer t;
     timer_reset(&t);
+#pragma unroll
     for (int i = 0; i < NSAMPLES; ++i) {
-        for (int step = 0; step < 3; ++step) {
-            acDeviceIntegrateSubstep(device, STREAM_DEFAULT, step, n_min, n_max, dt);
-            acDeviceSwapBuffers(device);
-            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-        }
+        acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, n_min, n_max, dt);
     }
     acDeviceSynchronizeStream(device, STREAM_DEFAULT);
-    const double ms_elapsed = timer_diff_nsec(t) / 1e6;
-    printf("Average integration time: %.4g ms\n", ms_elapsed / NSAMPLES);
+    const double ms_elapsed   = timer_diff_nsec(t) / 1e6;
+    const double milliseconds = ms_elapsed / NSAMPLES;
+    printf("Average integration time: %.4g ms\n", milliseconds);
+
+    // Write to file
+    static const char* benchmark_dir = "device-benchmark.csv";
+    FILE* fp                         = fopen(benchmark_dir, "a");
+    ERRCHK_ALWAYS(fp);
+    fprintf(fp, "%d,%d,%g\n", IMPLEMENTATION, MAX_THREADS_PER_BLOCK, milliseconds);
+    fclose(fp);
 
     // Profile
     cudaProfilerStart();
