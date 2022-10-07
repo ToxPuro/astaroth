@@ -8,14 +8,14 @@ if "mahti" in hostname or "puhti" in hostname or "uan" in hostname:
     build_dir='/users/pekkila/astaroth/build'
     if "mahti" in hostname:
         cmake='/users/pekkila/CMake/build/bin/cmake'
-        srun='srun --account=project_2000403 --gres=gpu:a100:1 -t 00:14:59 -p gputest -n 1 -N 1 --pty'
+        srun='srun --account=project_2000403 --gres=gpu:a100:1 -t 00:14:59 -p gputest -n 1 -N 1'
     elif "puhti" in hostname:
         cmake='/users/pekkila/cmake/build/bin/cmake'
-        srun='srun --account=project_2000403 --gres=gpu:v100:1 -t 00:14:59 -p gputest -n 1 -N 1 --pty'
+        srun='srun --account=project_2000403 --gres=gpu:v100:1 -t 00:14:59 -p gputest -n 1 -N 1'
     elif "uan" in hostname:
         build_dir='/pfs/lustrep1/users/pekkila/astaroth/build'
         cmake='cmake -DUSE_HIP=ON'
-        srun='srun --account=project_462000120 --gres=gpu:1 -t 00:05:00 -p pilot -n 1 -N 1 --pty'
+        srun='srun --account=project_462000120 --gres=gpu:1 -t 00:14:59 -p pilot -n 1 -N 1'
     else:
         print("Unknown hostname when setting srun")
         exit(-1)
@@ -40,16 +40,17 @@ if cwd != build_dir:
 # Variable problem size
 def benchmark_implementation(implementation=1):
 
-    nn = 256
+    nn = 64
     max_threads_per_block = 1024
     tpb = 0
 
-    cmd = ""
+#    cmd = ""
     while tpb <= max_threads_per_block:
         #cmd += f'{cmake} -DIMPLEMENTATION={implementation} -DMAX_THREADS_PER_BLOCK={tpb} .. &&'
         #cmd += 'make -j &&'
         #cmd += f'./benchmark-device {nn} {nn} {nn} ;'
-        os.system(f'{cmake} -DIMPLEMENTATION={implementation} -DMAX_THREADS_PER_BLOCK={tpb} .. && make -j && {srun} /bin/bash -c \"{cmd}\"')
+        os.system(f'{cmake} -DIMPLEMENTATION={implementation} -DMAX_THREADS_PER_BLOCK={tpb} .. && make -j')
+        os.system(f'{srun} ./benchmark-device {nn} {nn} {nn}')
         if (tpb == 0):
             tpb = 32
         else:
