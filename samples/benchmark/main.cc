@@ -189,6 +189,7 @@ main(int argc, char** argv)
     }*/
 
     // Percentiles
+    const AcReal dt             = (AcReal)FLT_EPSILON;
     const size_t num_iters      = 100;
     const double nth_percentile = 0.90;
     std::vector<double> results; // ms
@@ -196,12 +197,10 @@ main(int argc, char** argv)
 
     // Warmup
     for (size_t i = 0; i < num_iters / 10; ++i)
-        acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+        acGridIntegrate(STREAM_DEFAULT, dt);
 
     // Benchmark
     Timer t;
-    const AcReal dt = FLT_EPSILON;
-
     for (size_t i = 0; i < num_iters; ++i) {
         acGridSynchronizeStream(STREAM_ALL);
         timer_reset(&t);
@@ -218,7 +217,7 @@ main(int argc, char** argv)
         fprintf(stdout,
                 "Integration step time %g ms (%gth "
                 "percentile)--------------------------------------\n",
-                results[nth_percentile * num_iters], 100 * nth_percentile);
+                results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
 
         char path[4096] = "";
         sprintf(path, "%s_%d.csv", test == TEST_STRONG_SCALING ? "strong" : "weak", nprocs);
@@ -227,8 +226,8 @@ main(int argc, char** argv)
         ERRCHK_ALWAYS(fp);
         // Format
         // nprocs, min, 50th perc, 90th perc, max
-        fprintf(fp, "%d, %g, %g, %g, %g\n", nprocs, results[0], results[0.5 * num_iters],
-                results[nth_percentile * num_iters], results[num_iters - 1]);
+        fprintf(fp, "%d, %g, %g, %g, %g\n", nprocs, results[0], results[(size_t)(0.5 * num_iters)],
+                results[(size_t)(nth_percentile * num_iters)], results[num_iters - 1]);
         fclose(fp);
     }
 
