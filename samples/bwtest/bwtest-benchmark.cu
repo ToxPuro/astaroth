@@ -180,9 +180,8 @@ model_kernel(const int halo, const Array in, Array out)
 {
     for (int tid = 0; tid < (int)in.count; ++tid) {
         if (halo <= tid && tid < (int)in.count - halo) {
-            double tmp = 0.0;
 
-#pragma unroll
+            double tmp = 0.0;
             for (int i = -halo; i <= halo; ++i)
                 tmp += in.data[tid + i];
 
