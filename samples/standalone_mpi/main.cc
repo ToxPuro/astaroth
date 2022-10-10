@@ -481,16 +481,16 @@ calc_timestep(const AcMeshInfo info)
     MPI_Bcast(&shock_max, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
 #endif
 
-    const long double cdt  = info.real_params[AC_cdt];
-    const long double cdtv = info.real_params[AC_cdtv];
-    // const long double cdts     = info.real_params[AC_cdts];
-    const long double cs2_sound = info.real_params[AC_cs2_sound];
-    const long double nu_visc   = info.real_params[AC_nu_visc];
-    const long double eta       = info.real_params[AC_eta];
-    const long double chi       = 0; // info.real_params[AC_chi]; // TODO not calculated
-    const long double gamma     = info.real_params[AC_gamma];
-    const long double dsmin     = info.real_params[AC_dsmin];
-    const long double nu_shock  = info.real_params[AC_nu_shock];
+    const long double cdt  = (long double)info.real_params[AC_cdt];
+    const long double cdtv = (long double)info.real_params[AC_cdtv];
+    // const long double cdts     = (long double)info.real_params[AC_cdts];
+    const long double cs2_sound = (long double)info.real_params[AC_cs2_sound];
+    const long double nu_visc   = (long double)info.real_params[AC_nu_visc];
+    const long double eta       = (long double)info.real_params[AC_eta];
+    const long double chi       = 0; // (long double)info.real_params[AC_chi]; // TODO not calculated
+    const long double gamma     = (long double)info.real_params[AC_gamma];
+    const long double dsmin     = (long double)info.real_params[AC_dsmin];
+    const long double nu_shock  = (long double)info.real_params[AC_nu_shock];
 
     // Old ones from legacy Astaroth
     // const long double uu_dt   = cdt * (dsmin / (uumax + cs_sound));
@@ -498,9 +498,9 @@ calc_timestep(const AcMeshInfo info)
 
     // New, closer to the actual Courant timestep
     // See Pencil Code user manual p. 38 (timestep section)
-    const long double uu_dt   = cdt * dsmin / (fabsl(uumax) + sqrtl(cs2_sound + vAmax * vAmax));
+    const long double uu_dt   = cdt * dsmin / (fabsl((long double)uumax) + sqrtl(cs2_sound + (long double)vAmax * (long double)vAmax));
     const long double visc_dt = cdtv * dsmin * dsmin /
-                                (max(max(nu_visc, eta), gamma * chi) + nu_shock * shock_max);
+                                (max(max(nu_visc, eta), gamma * chi) + nu_shock * (long double)shock_max);
 
     const long double dt = min(uu_dt, visc_dt);
     ERRCHK_ALWAYS(is_valid((AcReal)dt));
