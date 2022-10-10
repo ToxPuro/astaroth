@@ -94,6 +94,7 @@ main(int argc, char** argv)
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
     TestType test = TEST_STRONG_SCALING;
+    bool verify   = false;
 
     int opt;
     while ((opt = getopt(argc, argv, "t:")) != -1) {
@@ -104,6 +105,9 @@ main(int argc, char** argv)
             }
             else if (std::string("weak").find(optarg) == 0) {
                 test = TEST_WEAK_SCALING;
+            }
+            else if (std::string("verify").find(optarg) == 0) {
+                verify = true;
             }
             else {
                 fprintf(stderr, "Could not parse option -t <type>. <type> should be \"strong\" or "
@@ -145,58 +149,70 @@ main(int argc, char** argv)
         fprintf(stdout, "Running strong scaling benchmarks.\n");
     }
 
-    /*
-    AcMesh model, candidate;
-    if (pid == 0) {
-        acHostMeshCreate(info, &model);
-        acHostMeshCreate(info, &candidate);
-        acHostMeshRandomize(&model);
-        acHostMeshRandomize(&candidate);
-    }*/
-
-    // GPU alloc & compute
+    // Device init
     acGridInit(info);
     acGridRandomize();
 
-    /*
-    AcMesh model;
-    acHostMeshCreate(info, &model);
-    acHostMeshRandomize(&model);
-    acGridLoadMesh(STREAM_DEFAULT, model);
-    */
+    // Constant timestep
+    const AcReal dt = (AcReal)FLT_EPSILON;
 
-    /*
-    acGridLoadMesh(STREAM_DEFAULT, model);
+    // Dryrun
+    acGridIntegrate(STREAM_DEFAULT, dt);
 
-    acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
-
-    acGridStoreMesh(STREAM_DEFAULT, &candidate);
-
-    // Verify
-    if (pid == 0) {
-        acHostIntegrateStep(model, FLT_EPSILON);
-        acHostMeshApplyPeriodicBounds(&model);
-
-        AcResult retval = acVerifyMesh(model, candidate);
-        acHostMeshDestroy(&model);
-        acHostMeshDestroy(&candidate);
-
-        if (retval != AC_SUCCESS) {
-            fprintf(stderr, "Failures found, benchmark invalid. Skipping\n");
-            return EXIT_FAILURE;
+    if (verify) {
+        // Host init
+        AcMesh model, candidate;
+        if (!pid) {
+            acHostMeshCreate(info, &model);
+            acHostMeshCreate(info, &candidate);
+            acHostMeshRandomize(&model);
+            acHostMeshRandomize(&candidate);
         }
-    }*/
+        acGridLoadMesh(STREAM_DEFAULT, model);
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+
+        // Verification run
+        const size_t nsteps = 10;
+        for (size_t i = 0; i < nsteps; ++i) {
+            acGridIntegrate(STREAM_DEFAULT, dt);
+
+            if (!pid) {
+                printf("Host integration step %lu\n", i);
+                fflush(stdout);
+
+                acHostIntegrateStep(model, dt);
+            }
+        }
+        acHostMeshApplyPeriodicBounds(&model);
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+        acGridStoreMesh(STREAM_DEFAULT, &candidate);
+        acGridSynchronizeStream(STREAM_ALL);
+
+        // Verify
+        if (!pid) {
+            printf("Verifying...\n");
+            fflush(stdout);
+
+            AcResult retval = acVerifyMesh("Integration", model, candidate);
+            acHostMeshDestroy(&model);
+            acHostMeshDestroy(&candidate);
+
+            if (retval != AC_SUCCESS) {
+                fprintf(stderr, "Failures found, benchmark invalid. Skipping\n");
+                return EXIT_FAILURE;
+            }
+            printf("Verification done - everything OK\n");
+        }
+    }
 
     // Percentiles
-    const AcReal dt             = (AcReal)FLT_EPSILON;
     const size_t num_iters      = 100;
     const double nth_percentile = 0.90;
     std::vector<double> results; // ms
     results.reserve(num_iters);
 
     // Warmup
-    for (size_t i = 0; i < num_iters / 10; ++i)
+    for (size_t i = 0; i < 5; ++i)
         acGridIntegrate(STREAM_DEFAULT, dt);
 
     // Benchmark
