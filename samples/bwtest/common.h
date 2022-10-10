@@ -49,7 +49,7 @@ randd(void)
     return (double)rand() / RAND_MAX;
 }
 
-static void
+static inline void
 arrayRandomize(Array* a)
 {
     if (!a->on_device) {
