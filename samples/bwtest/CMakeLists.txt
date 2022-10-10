@@ -9,9 +9,9 @@ endif()
 
 target_link_libraries(bwtest acc-runtime-headers)
 target_link_libraries(bwtest-stencil acc-runtime-headers)
-target_link_libraries(bwtest-benchmark acc-runtime-headers)
-#target_link_libraries(bwtest-io acc-runtime-headers)
 
+target_include_directories(bwtest-benchmark PRIVATE ${CMAKE_SOURCE_DIR}/acc-runtime/api)
+target_include_directories(bwtest-io PRIVATE ${CMAKE_SOURCE_DIR}/acc-runtime/api)
 
 if(NOT DEFINED USE_SMEM)
     set(USE_SMEM 0)
