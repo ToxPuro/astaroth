@@ -106,6 +106,12 @@ main(int argc, char** argv)
         acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
         */
     }
+    // TODO START
+    // create acDeviceReset or something like that
+    // to flush the buffers to non-nan values (otherwise two-pass fails here)
+    acDeviceLoadMesh(device, STREAM_DEFAULT, model);
+    acDeviceSwapBuffers(device);
+    // TODO END
     acDeviceLoadMesh(device, STREAM_DEFAULT, model);
     acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
     ///////////////////////////// DRYRUN END
