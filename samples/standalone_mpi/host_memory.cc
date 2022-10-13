@@ -747,6 +747,7 @@ acmesh_init_to(const InitType& init_type, AcMesh* mesh)
 
         break;
     }
+#if LMAGNETIC
     case INIT_TYPE_AA_RANDOM: {
         acHostMeshClear(mesh);
         const AcReal range = AcReal(1e-10);
@@ -757,6 +758,7 @@ acmesh_init_to(const InitType& init_type, AcMesh* mesh)
         }
         break;
     }
+#endif
     case INIT_TYPE_KICKBALL:
         acHostMeshClear(mesh);
         acHostVertexBufferSet(VTXBUF_LNRHO, mesh->info.real_params[AC_ampl_lnrho], mesh);
