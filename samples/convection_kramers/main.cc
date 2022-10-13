@@ -719,7 +719,11 @@ main(void)
 
     // Draft of pilot boundconds
     AcTaskGraph* pilot_bcs = acGridBuildTaskGraph(
-    acHaloExchange(all_fields), // Implicit periodic for all? (todo recheck)
+    acHaloExchange(all_fields),
+    
+    acBoundaryCondition(BOUNDARY_X, BOUNDCOND_PERIODIC, all_fields)
+    acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_PERIODIC, all_fields)
+
     acBoundaryCondition(BOUNDARY_Z_TOP, SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION, (VertexBuffer[]){VTXBUF_ENTROPY}),
     acBoundaryCondition(BOUNDARY_Z_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, (VertexBuffer[]){VTXBUF_ENTROPY}),
     acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_A2, (VertexBuffer[]){VTXBUF_LNRHO})
