@@ -87,7 +87,7 @@ else ()
 
     # Set device code architecture
     if (NOT CUDA_ARCHITECTURES)
-        set(CMAKE_CUDA_ARCHITECTURES 61 70 80) # Default
+        set(CMAKE_CUDA_ARCHITECTURES 60 61 70 80) # Default
     else ()
         set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
     endif()
