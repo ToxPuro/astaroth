@@ -657,8 +657,8 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
           best_tpb  = tpb;
         }
 
-        printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
-               tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
+        //printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
+        //       tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
         fflush(stdout);
       }
     }
