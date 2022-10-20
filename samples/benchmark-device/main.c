@@ -88,23 +88,6 @@ main(int argc, char** argv)
         acDeviceSwapBuffers(device);
         acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
 
-        /*
-        // Uncomment to test one- and two-pass integration
-        const int3 start = n_min;
-        const int3 end   = n_max;
-        acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
-        acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, i);
-
-        acDeviceLaunchKernel(device, STREAM_DEFAULT, solve, start, end);
-        acDeviceSwapBuffers(device);
-        acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-
-        acDeviceLaunchKernel(device, STREAM_DEFAULT, alt_solve_intermediate, start, end);
-        acDeviceSwapBuffers(device);
-        acDeviceLaunchKernel(device, STREAM_DEFAULT, alt_solve_final, start, end);
-        acDeviceSwapBuffers(device);
-        acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-        */
     }
     // TODO START
     // create acDeviceReset or something like that
@@ -119,30 +102,9 @@ main(int argc, char** argv)
     const size_t nsteps = 1;
     for (size_t j = 0; j < nsteps; ++j) {
         for (int i = 0; i < 3; ++i) {
-
             acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, n_min, n_max, dt);
             acDeviceSwapBuffers(device);
             acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-            /*
-            // Uncomment to test one- and two-pass integration
-            const int3 start = n_min;
-            const int3 end   = n_max;
-            acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
-            acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, i);
-
-            if (alt_integration) {
-                acDeviceLaunchKernel(device, STREAM_DEFAULT, alt_solve_intermediate, start, end);
-                acDeviceSwapBuffers(device);
-                acDeviceLaunchKernel(device, STREAM_DEFAULT, alt_solve_final, start, end);
-                acDeviceSwapBuffers(device);
-                acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-            }
-            else {
-                acDeviceLaunchKernel(device, STREAM_DEFAULT, solve, start, end);
-                acDeviceSwapBuffers(device);
-                acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-            }
-            */
         }
     }
     acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
