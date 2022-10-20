@@ -346,7 +346,7 @@ AcResult
 acNodePrintInfo(const Node node)
 {
     (void)node;
-    WARNING("Not implemented");
+    WARNING("acNodePrintInfo not implemented");
     return AC_FAILURE;
 }
 
