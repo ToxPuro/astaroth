@@ -94,7 +94,7 @@ process_hostdefines(const char* file_in, const char* file_out)
       while (strlen(line) > 0 && line[0] != ' ') // Until whitespace
         ++line;
 
-        fprintf(out, "#define%s", line);
+      fprintf(out, "#define%s", line);
     }
   }
 
