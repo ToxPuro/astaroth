@@ -141,9 +141,10 @@ main(int argc, char** argv)
     const char* benchmark_dir = "device-benchmark.csv";
     FILE* fp                  = fopen(benchmark_dir, "a");
     ERRCHK_ALWAYS(fp);
-    // 'implementation, maxthreadsperblock, milliseconds, nx, ny, nz'
-    fprintf(fp, "%d,%d,%g,%d,%d,%d\n", IMPLEMENTATION, MAX_THREADS_PER_BLOCK, milliseconds,
-            info.int_params[AC_nx], info.int_params[AC_ny], info.int_params[AC_nz]);
+    // 'implementation, maxthreadsperblock, milliseconds, nx, ny, nz, devices'
+    const int num_devices = 1;
+    fprintf(fp, "%d,%d,%g,%d,%d,%d,%d\n", IMPLEMENTATION, MAX_THREADS_PER_BLOCK, milliseconds,
+            info.int_params[AC_nx], info.int_params[AC_ny], info.int_params[AC_nz], num_devices);
     fclose(fp);
 
     // Profile
