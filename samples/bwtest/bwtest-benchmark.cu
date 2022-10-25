@@ -50,8 +50,6 @@ gpu: 0 1 2 3
 // #define USE_SMEM (0) // Set with cmake
 // #define MAX_THREADS_PER_BLOCK (0) // Set with cmake
 
-static const char* benchmark_dir = "bwtest-benchmark.csv";
-
 typedef struct {
     size_t count;
     double* data;
@@ -371,9 +369,17 @@ benchmark(const KernelConfig c)
     printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
     printf("\tTime elapsed: %g ms\n", (double)milliseconds);
 
+    // CSV output dir
+    const size_t buflen = 4096;
+    char benchmark_dir[buflen] = {0};
+    snprintf(benchmark_dir, buflen, "microbenchmark.csv");
+
+    // File
     FILE* fp = fopen(benchmark_dir, "a");
     ERRCHK_ALWAYS(fp);
-    fprintf(fp, "%lu,%lu,%g,%g\n", c.count * sizeof(double), (2 * c.halo + 1) * sizeof(double),
+    // format
+    // use_smem, max threads per block, problem size, working set size, time elapsed, effective bandwidth
+    fprintf(fp, "%d,%d,%lu,%lu,%g,%g\n", USE_SMEM, MAX_THREADS_PER_BLOCK, c.count * sizeof(double), (2 * c.halo + 1) * sizeof(double),
             (double)milliseconds, bandwidth);
     fclose(fp);
 
