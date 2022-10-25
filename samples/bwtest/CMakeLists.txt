@@ -14,10 +14,13 @@ target_link_libraries(bwtest-benchmark acc-runtime-headers) # temporarily for ro
 target_include_directories(bwtest-benchmark PRIVATE ${CMAKE_SOURCE_DIR}/acc-runtime/api)
 target_include_directories(bwtest-io PRIVATE ${CMAKE_SOURCE_DIR}/acc-runtime/api)
 
-if(NOT DEFINED USE_SMEM)
+if(USE_SMEM)
+    set(USE_SMEM 1)
+else()
     set(USE_SMEM 0)
 endif()
-if (NOT DEFINED MAX_THREADS_PER_BLOCK)
+
+if(NOT DEFINED MAX_THREADS_PER_BLOCK)
     set(MAX_THREADS_PER_BLOCK 0)
 endif()
 
