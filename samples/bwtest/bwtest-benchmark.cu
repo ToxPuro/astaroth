@@ -32,7 +32,6 @@ gpu: 0 1 2 3
 #kernel: singlepass_solve
 ```
 */
-#include <cstdlib>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -45,74 +44,10 @@ gpu: 0 1 2 3
 #include <cuda_runtime_api.h>  // cudaStream_t
 #endif
 
-#include "errchk.h"
+#include "common.h"
 
 // #define USE_SMEM (0) // Set with cmake
 // #define MAX_THREADS_PER_BLOCK (0) // Set with cmake
-
-typedef struct {
-    size_t count;
-    double* data;
-    bool on_device;
-} Array;
-
-static Array
-arrayCreate(const size_t count, const bool on_device)
-{
-    Array a = (Array){
-        .count     = count,
-        .data      = NULL,
-        .on_device = on_device,
-    };
-
-    const size_t bytes = count * sizeof(a.data[0]);
-    if (on_device) {
-        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&a.data, bytes));
-    }
-    else {
-        a.data = (double*)malloc(bytes);
-        ERRCHK_ALWAYS(a.data);
-    }
-
-    return a;
-}
-
-static void
-arrayDestroy(Array* a)
-{
-    if (a->on_device)
-        cudaFree(a->data);
-    else
-        free(a->data);
-    a->data  = NULL;
-    a->count = 0;
-}
-
-/**
-    Simple rng for doubles in range [0...1].
-    Not suitable for generating full-precision f64 randoms.
-*/
-static double
-randd(void)
-{
-    return (double)rand() / RAND_MAX;
-}
-
-static void
-arrayRandomize(Array* a)
-{
-    if (!a->on_device) {
-        for (size_t i = 0; i < a->count; ++i)
-            a->data[i] = randd();
-    }
-    else {
-        Array b = arrayCreate(a->count, false);
-        arrayRandomize(&b);
-        const size_t bytes = a->count * sizeof(b.data[0]);
-        cudaMemcpy(a->data, b.data, bytes, cudaMemcpyHostToDevice);
-        arrayDestroy(&b);
-    }
-}
 
 #if USE_SMEM
 static size_t
@@ -178,9 +113,8 @@ model_kernel(const int halo, const Array in, Array out)
 {
     for (int tid = 0; tid < (int)in.count; ++tid) {
         if (halo <= tid && tid < (int)in.count - halo) {
-            double tmp = 0.0;
 
-#pragma unroll
+            double tmp = 0.0;
             for (int i = -halo; i <= halo; ++i)
                 tmp += in.data[tid + i];
 
@@ -370,7 +304,7 @@ benchmark(const KernelConfig c)
     printf("\tTime elapsed: %g ms\n", (double)milliseconds);
 
     // CSV output dir
-    const size_t buflen = 4096;
+    const size_t buflen        = 4096;
     char benchmark_dir[buflen] = {0};
     snprintf(benchmark_dir, buflen, "microbenchmark.csv");
 
@@ -378,9 +312,9 @@ benchmark(const KernelConfig c)
     FILE* fp = fopen(benchmark_dir, "a");
     ERRCHK_ALWAYS(fp);
     // format
-    // use_smem, max threads per block, problem size, working set size, time elapsed, effective bandwidth
-    fprintf(fp, "%d,%d,%lu,%lu,%g,%g\n", USE_SMEM, MAX_THREADS_PER_BLOCK, c.count * sizeof(double), (2 * c.halo + 1) * sizeof(double),
-            (double)milliseconds, bandwidth);
+    // 'usesmem, maxthreadsperblock, problemsize, workingsetsize, milliseconds, effectivebandwidth'
+    fprintf(fp, "%d,%d,%lu,%lu,%g,%g\n", USE_SMEM, MAX_THREADS_PER_BLOCK, c.count * sizeof(double),
+            (2 * c.halo + 1) * sizeof(double), (double)milliseconds, bandwidth);
     fclose(fp);
 
     // Free
@@ -443,13 +377,18 @@ main(int argc, char* argv[])
 {
     cudaProfilerStop();
     if (argc != 3) {
-        fprintf(stderr, "Usage: ./bwtest-benchmark <problem size> <working set size>\n");
+        fprintf(stderr, "Usage: ./benchmark <problem size> <working set size>\n");
+        fprintf(stderr, "       ./benchmark 0 0 # To use the defaults\n");
         return EXIT_FAILURE;
     }
-    const size_t problem_size     = (size_t)atol(argv[1]);
-    const size_t working_set_size = (size_t)atol(argv[2]);
+    const size_t arg0 = (size_t)atol(argv[1]);
+    const size_t arg1 = (size_t)atol(argv[2]);
+
+    const size_t problem_size     = arg0 ? arg0 : 268435456; // 256 MiB default
+    const size_t working_set_size = arg1 ? arg1 : 8;         // 8 byte default (r=0)
     const int halo                = ((working_set_size / sizeof(double)) - 1) / 2;
     const size_t count            = problem_size / sizeof(double);
+    ERRCHK(working_set_size <= problem_size);
 
     if (working_set_size > problem_size) {
         fprintf(stderr, "Invalid working set size: %lu > %lu\n", working_set_size, problem_size);

@@ -53,7 +53,8 @@ get_bpg(const Volume dims, const Volume tpb)
 {
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: // Fallthrough
-  case EXPLICIT_CACHING: {
+  case EXPLICIT_CACHING: // Fallthrough
+  case EXPLICIT_CACHING_3D_BLOCKING: {
     return (Volume){
         (size_t)ceil(1. * dims.x / tpb.x),
         (size_t)ceil(1. * dims.y / tpb.y),
@@ -68,13 +69,29 @@ get_bpg(const Volume dims, const Volume tpb)
 }
 
 bool
-is_valid_configuration(const Volume tpb)
+is_valid_configuration(const Volume dims, const Volume tpb)
 {
+  cudaDeviceProp props;
+  cudaGetDeviceProperties(&props, 0);
+  const size_t warp_size = props.warpSize;
+  const size_t xmax      = (size_t)(warp_size * ceil(1. * dims.x / warp_size));
+  const size_t ymax      = (size_t)(warp_size * ceil(1. * dims.y / warp_size));
+  const size_t zmax      = (size_t)(warp_size * ceil(1. * dims.z / warp_size));
+  const bool too_large   = (tpb.x > xmax) || (tpb.y > ymax) || (tpb.z > zmax);
+
   switch (IMPLEMENTATION) {
-  case IMPLICIT_CACHING: // Fallthrough
-  case EXPLICIT_CACHING: {
-    (void)tpb; // Unused
+  case IMPLICIT_CACHING: {
+
+    if (too_large)
+      return false;
+
     return true;
+  }
+  case EXPLICIT_CACHING: // Fallthrough
+  case EXPLICIT_CACHING_3D_BLOCKING: {
+
+    // For some reason does not work without this
+    return !(dims.x % tpb.x) && !(dims.y % tpb.y) && !(dims.z % tpb.z);
   }
   default: {
     ERROR("Invalid IMPLEMENTATION in is_valid_configuration");
@@ -94,6 +111,10 @@ get_smem(const Volume tpb, const size_t stencil_order,
   case EXPLICIT_CACHING: {
     return (tpb.x + stencil_order) * (tpb.y + stencil_order) * tpb.z *
            bytes_per_elem;
+  }
+  case EXPLICIT_CACHING_3D_BLOCKING: {
+    return (tpb.x + stencil_order) * (tpb.y + stencil_order) *
+           (tpb.z + stencil_order) * bytes_per_elem;
   }
   default: {
     ERROR("Invalid IMPLEMENTATION in get_smem");
@@ -562,7 +583,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         if ((x * y * z) % props.warpSize)
           continue;
 
-        if (!is_valid_configuration(to_volume(tpb)))
+        if (!is_valid_configuration(to_volume(dims), to_volume(tpb)))
           continue;
 
 #if VECTORIZED_LOADS
@@ -636,8 +657,8 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
           best_tpb  = tpb;
         }
 
-        printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
-               tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
+        //printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
+        //       tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
         fflush(stdout);
       }
     }

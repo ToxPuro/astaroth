@@ -23,7 +23,7 @@
 void
 load_stencil_from_config(const AcMeshInfo info)
 {
-    AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH] = {0};
+    AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH] = {{{{0}}}};
 
     // Fill stencils with garbage to ensure the coefficients calculated in the next step are correct
     acGridLoadStencils(STREAM_DEFAULT, stencils);

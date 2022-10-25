@@ -94,6 +94,7 @@ main(int argc, char** argv)
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
     TestType test = TEST_STRONG_SCALING;
+    bool verify   = false;
 
     int opt;
     while ((opt = getopt(argc, argv, "t:")) != -1) {
@@ -104,6 +105,9 @@ main(int argc, char** argv)
             }
             else if (std::string("weak").find(optarg) == 0) {
                 test = TEST_WEAK_SCALING;
+            }
+            else if (std::string("verify").find(optarg) == 0) {
+                verify = true;
             }
             else {
                 fprintf(stderr, "Could not parse option -t <type>. <type> should be \"strong\" or "
@@ -145,48 +149,61 @@ main(int argc, char** argv)
         fprintf(stdout, "Running strong scaling benchmarks.\n");
     }
 
-    /*
-    AcMesh model, candidate;
-    if (pid == 0) {
-        acHostMeshCreate(info, &model);
-        acHostMeshCreate(info, &candidate);
-        acHostMeshRandomize(&model);
-        acHostMeshRandomize(&candidate);
-    }*/
-
-    // GPU alloc & compute
+    // Device init
     acGridInit(info);
     acGridRandomize();
 
-    /*
-    AcMesh model;
-    acHostMeshCreate(info, &model);
-    acHostMeshRandomize(&model);
-    acGridLoadMesh(STREAM_DEFAULT, model);
-    */
+    // Constant timestep
+    const AcReal dt = (AcReal)FLT_EPSILON;
 
-    /*
-    acGridLoadMesh(STREAM_DEFAULT, model);
+    // Dryrun
+    acGridIntegrate(STREAM_DEFAULT, dt);
 
-    acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
-
-    acGridStoreMesh(STREAM_DEFAULT, &candidate);
-
-    // Verify
-    if (pid == 0) {
-        acHostIntegrateStep(model, FLT_EPSILON);
-        acHostMeshApplyPeriodicBounds(&model);
-
-        AcResult retval = acVerifyMesh(model, candidate);
-        acHostMeshDestroy(&model);
-        acHostMeshDestroy(&candidate);
-
-        if (retval != AC_SUCCESS) {
-            fprintf(stderr, "Failures found, benchmark invalid. Skipping\n");
-            return EXIT_FAILURE;
+    if (verify) {
+        // Host init
+        AcMesh model, candidate;
+        if (!pid) {
+            acHostMeshCreate(info, &model);
+            acHostMeshCreate(info, &candidate);
+            acHostMeshRandomize(&model);
+            acHostMeshRandomize(&candidate);
         }
-    }*/
+        acGridLoadMesh(STREAM_DEFAULT, model);
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+
+        // Verification run
+        const size_t nsteps = 10;
+        for (size_t i = 0; i < nsteps; ++i) {
+            acGridIntegrate(STREAM_DEFAULT, dt);
+
+            if (!pid) {
+                printf("Host integration step %lu\n", i);
+                fflush(stdout);
+
+                acHostIntegrateStep(model, dt);
+            }
+        }
+        acHostMeshApplyPeriodicBounds(&model);
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+        acGridStoreMesh(STREAM_DEFAULT, &candidate);
+        acGridSynchronizeStream(STREAM_ALL);
+
+        // Verify
+        if (!pid) {
+            printf("Verifying...\n");
+            fflush(stdout);
+
+            AcResult retval = acVerifyMesh("Integration", model, candidate);
+            acHostMeshDestroy(&model);
+            acHostMeshDestroy(&candidate);
+
+            if (retval != AC_SUCCESS) {
+                fprintf(stderr, "Failures found, benchmark invalid. Skipping\n");
+                return EXIT_FAILURE;
+            }
+            printf("Verification done - everything OK\n");
+        }
+    }
 
     // Percentiles
     const size_t num_iters      = 100;
@@ -195,13 +212,11 @@ main(int argc, char** argv)
     results.reserve(num_iters);
 
     // Warmup
-    for (size_t i = 0; i < num_iters / 10; ++i)
-        acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+    for (size_t i = 0; i < 5; ++i)
+        acGridIntegrate(STREAM_DEFAULT, dt);
 
     // Benchmark
     Timer t;
-    const AcReal dt = FLT_EPSILON;
-
     for (size_t i = 0; i < num_iters; ++i) {
         acGridSynchronizeStream(STREAM_ALL);
         timer_reset(&t);
@@ -218,7 +233,7 @@ main(int argc, char** argv)
         fprintf(stdout,
                 "Integration step time %g ms (%gth "
                 "percentile)--------------------------------------\n",
-                results[nth_percentile * num_iters], 100 * nth_percentile);
+                results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
 
         char path[4096] = "";
         sprintf(path, "%s_%d.csv", test == TEST_STRONG_SCALING ? "strong" : "weak", nprocs);
@@ -227,8 +242,8 @@ main(int argc, char** argv)
         ERRCHK_ALWAYS(fp);
         // Format
         // nprocs, min, 50th perc, 90th perc, max
-        fprintf(fp, "%d, %g, %g, %g, %g\n", nprocs, results[0], results[0.5 * num_iters],
-                results[nth_percentile * num_iters], results[num_iters - 1]);
+        fprintf(fp, "%d, %g, %g, %g, %g\n", nprocs, results[0], results[(size_t)(0.5 * num_iters)],
+                results[(size_t)(nth_percentile * num_iters)], results[num_iters - 1]);
         fclose(fp);
     }
 

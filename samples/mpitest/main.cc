@@ -70,14 +70,15 @@ main(void)
     }
 
     // Dryrun
-    acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+    const AcReal dt = (AcReal)FLT_EPSILON;
+    acGridIntegrate(STREAM_DEFAULT, dt);
 
     // Integration
     acGridLoadMesh(STREAM_DEFAULT, model);
 
     // Device integrate
     for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
-        acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+        acGridIntegrate(STREAM_DEFAULT, dt);
 
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
@@ -85,7 +86,7 @@ main(void)
 
         // Host integrate
         for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
-            acHostIntegrateStep(model, FLT_EPSILON);
+            acHostIntegrateStep(model, dt);
 
         acHostMeshApplyPeriodicBounds(&model);
         const AcResult res = acVerifyMesh("Integration", model, candidate);

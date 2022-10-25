@@ -83,7 +83,7 @@ cmdReduce(const Device device, const char* str)
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
         AcReal res;
         acDeviceReduceScal(device, STREAM_DEFAULT, type, i, &res);
-        printf("\t%-15s... [%.3g]\n", field_names[i], res);
+        printf("\t%-15s... [%.3g]\n", field_names[i], (double)res);
     }
     return AC_SUCCESS;
 }

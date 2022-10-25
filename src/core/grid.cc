@@ -1313,13 +1313,41 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
     }
 #endif // NDEBUG
 
+#if BUFFER_DISK_WRITE_THROUGH_CPU
+    // ---------------------------------------
+    // Buffer through CPU
+    AcReal* arr = grid.submesh.vertex_buffer[vtxbuf];
+    // ----------------------------------------
+#else
+    AcReal* arr         = device->vba.out[vtxbuf];
+#endif
+
+#if USE_DISTRIBUTED_IO
+    const size_t nelems = nn_sub.x * nn_sub.y * nn_sub.z;
+
+    char outfile[4096] = "";
+    snprintf(outfile, 4096, "segment-%d_%d_%d-%s", offset.x, offset.y, offset.z, path);
+    FILE* fp;
+    if (type == ACCESS_READ)
+        fp = fopen(outfile, "r");
+    else
+        fp = fopen(outfile, "w");
+    ERRCHK_ALWAYS(fp);
+
+    if (type == ACCESS_READ)
+        fread(arr, sizeof(AcReal), nelems, fp);
+    else
+        fwrite(arr, sizeof(AcReal), nelems, fp);
+    fclose(fp);
+#else // Collective IO
     MPI_Datatype subarray;
     const int arr_nn[]     = {nn.z, nn.y, nn.x};
     const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
     const int arr_offset[] = {offset.z, offset.y, offset.x};
 
-    //printf(" nn.z     %3i, nn.y     %3i, nn.x     %3i, \n nn_sub.z %3i, nn_sub.y %3i, nn_sub.x %3i, \n offset.z %3i, offset.y %3i, offset.x %3i  \n", 
-    //        nn.z, nn.y, nn.x, nn_sub.z, nn_sub.y, nn_sub.x, offset.z, offset.y, offset.x); 
+    // printf(" nn.z     %3i, nn.y     %3i, nn.x     %3i, \n nn_sub.z %3i, nn_sub.y %3i, nn_sub.x
+    // %3i, \n offset.z %3i, offset.y %3i, offset.x %3i  \n",
+    //         nn.z, nn.y, nn.x, nn_sub.z, nn_sub.y, nn_sub.x, offset.z, offset.y, offset.x);
 
     MPI_Type_create_subarray(3, arr_nn, arr_nn_sub, arr_offset, MPI_ORDER_C, AC_REAL_MPI_TYPE,
                              &subarray);
@@ -1340,15 +1368,6 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
 
     MPI_Status status;
 
-#if BUFFER_DISK_WRITE_THROUGH_CPU
-    // ---------------------------------------
-    // Buffer through CPU
-    AcReal* arr = grid.submesh.vertex_buffer[vtxbuf];
-    // ----------------------------------------
-#else
-    AcReal* arr = device->vba.out[vtxbuf];
-#endif
-
     const size_t nelems = nn_sub.x * nn_sub.y * nn_sub.z;
     if (type == ACCESS_READ) {
         ERRCHK_ALWAYS(MPI_File_read_all(file, arr, nelems, AC_REAL_MPI_TYPE, &status) ==
@@ -1362,6 +1381,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
     ERRCHK_ALWAYS(MPI_File_close(&file) == MPI_SUCCESS);
 
     MPI_Type_free(&subarray);
+#endif
 
 #ifndef NDEBUG
     if (type == ACCESS_WRITE) {

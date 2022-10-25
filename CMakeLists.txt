@@ -39,6 +39,7 @@ option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer
 option(VERBOSE            "Enables various status and warning messages"         OFF)
 option(BUILD_UTILS        "Builds the utility library"                          ON)
 option(SINGLEPASS_INTEGRATION "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" ON)
+option(USE_DISTRIBUTED_IO "Use distributed IO (one file per process) instead of collective" OFF)
 
 ## CUDA/HIP
 if (USE_HIP)
@@ -87,7 +88,7 @@ else ()
 
     # Set device code architecture
     if (NOT CUDA_ARCHITECTURES)
-        set(CMAKE_CUDA_ARCHITECTURES 61 70 80) # Default
+        set(CMAKE_CUDA_ARCHITECTURES 60 61 70 80) # Default
     else ()
         set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
     endif()
@@ -113,6 +114,9 @@ if (MULTIGPU_ENABLED)
 endif()
 if (SINGLEPASS_INTEGRATION)
     add_definitions(-DAC_SINGLEPASS_INTEGRATION)
+endif()
+if (USE_DISTRIBUTED_IO)
+    add_definitions(-DUSE_DISTRIBUTED_IO=1)
 endif()
 
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
@@ -142,8 +146,9 @@ if (BUILD_SAMPLES)
     add_subdirectory(samples/blur)
     add_subdirectory(samples/ctest)
     add_subdirectory(samples/cpptest)
-    #add_subdirectory(samples/benchmark)
+    add_subdirectory(samples/benchmark)
     add_subdirectory(samples/benchmark-device)
+    add_subdirectory(samples/benchmark-node)
     add_subdirectory(samples/mpi-io)
     add_subdirectory(samples/mpi-io-multithreaded)
     add_subdirectory(samples/pc-varfile-import)
