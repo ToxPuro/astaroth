@@ -6,13 +6,15 @@ import socket
 import math
 import sys
 
-dryrun=True
-build_benchmarks=False
-run_benchmarks=False
+dryrun=False
+
+build_benchmarks=True
+run_benchmarks=True
 
 class System:
 
-    def __init__(self, account, partition, ngpus_per_node, modules, use_hip, gres='', additional_commands=''):
+    def __init__(self, id, account, partition, ngpus_per_node, modules, use_hip, gres='', additional_commands=''):
+        self.id = id
         self.account = account
         self.partition = partition
         self.ngpus_per_node = ngpus_per_node
@@ -65,17 +67,17 @@ class System:
             os.system('make -j')
 
 
-mahti = System(account='project_2000403', partition='gpumedium', ngpus_per_node=4, gres='gpu:a100',
+mahti = System(id='a100', account='project_2000403', partition='gpumedium', ngpus_per_node=4, gres='gpu:a100',
                modules='module load gcc/9.4.0 openmpi/4.1.2-cuda cuda cmake', use_hip=False)
-puhti = System(account='project_2000403', partition='gpu', ngpus_per_node=4,
+puhti = System(id='v100', account='project_2000403', partition='gpu', ngpus_per_node=4,
                gres='gpu:v100', modules='module load gcc cuda openmpi cmake', use_hip=False,
                additional_commands='''
 export UCX_RNDV_THRESH=16384
 export UCX_RNDV_SCHEME=get_zcopy
 export UCX_MAX_RNDV_RAILS=1''')
-triton = System(account='', partition='gpu-amd', ngpus_per_node=1, gres='',
+triton = System(id='mi100', account='', partition='gpu-amd', ngpus_per_node=1, gres='',
                 modules='module load gcc bison flex cmake openmpi', use_hip=True)
-lumi = System(account='project_462000120', partition='pilot', ngpus_per_node=8, gres='gpu', modules='''
+lumi = System(id='mi250x', account='project_462000120', partition='pilot', ngpus_per_node=8, gres='gpu', modules='''
         module load CrayEnv
         module load PrgEnv-cray
         module load craype-accel-amd-gfx90a
@@ -210,7 +212,7 @@ def genbenchmarks(system, fs):
             if build_benchmarks:
                 use_smem = implementation == 2 # tmp hack, note depends on implementation enum
                 build_flags = f'-DUSE_HIP={system.use_hip} -DMPI_ENABLED=ON -DIMPLEMENTATION={implementation} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_SMEM={use_smem}'
-                system.build(build_flags, cmakelistdir)
+                system.build(build_flags, fs.cmakelistdir)
 
             # Run
             if run_benchmarks:
@@ -220,6 +222,7 @@ def genbenchmarks(system, fs):
                 else:
                     os.system(f'sbatch {fs.script_dir}/microbenchmark.sh')
 
+                '''
                 # Run device benchmarks
                 if dryrun:
                     print(f'sbatch {fs.script_dir}/device-benchmark.sh')
@@ -233,28 +236,62 @@ def genbenchmarks(system, fs):
                     os.system(f'sbatch {fs.script_dir}/node-benchmark-2.sh')
 
                 # Run scaling benchmarks
+                # TODO
+                '''
         
             if tpb == 0:
                 tpb = 32
             else:
                 tpb *= 2
 
-def postprocess(fs):
+# pip3 install --user pandas numpy
+import pandas as pd
+def postprocess(system, fs):
     os.chdir(fs.base_dir)
 
     with open(f'microbenchmark.csv', 'w') as f:
         with redirect_stdout(f):
-            print('usesmem, maxthreadsperblock, problemsize, workingsetsize, milliseconds, effectivebandwidth')
+            print('usesmem,maxthreadsperblock,problemsize,workingsetsize,milliseconds,bandwidth')
     os.system(f'cat {fs.build_dir}/*/microbenchmark.csv >> microbenchmark.csv')
+
+    df = pd.read_csv('microbenchmark.csv', comment='#')
+    df = df.loc[(df['usesmem'] == 0) & (df['maxthreadsperblock'] == 0) & (df['workingsetsize'] == 8)]
+    df = df.drop_duplicates(subset=['problemsize'])
+    df.to_csv(f'bandwidth-{system.id}.csv', index=False)
+
+    df = pd.read_csv('microbenchmark.csv', comment='#')
+    df = df.loc[(df['usesmem'] == 1) & (df['maxthreadsperblock'] == 0) & (df['workingsetsize'] == 8)]
+    df = df.drop_duplicates(subset=['problemsize'])
+    df.to_csv(f'bandwidth-smem-{system.id}.csv', index=False)
+
+    df = pd.read_csv('microbenchmark.csv', comment='#')
+    df = df.loc[(df['usesmem'] == 0) & (df['maxthreadsperblock'] == 0) & (df['problemsize'] == 268435456)]
+    df = df.drop_duplicates(subset=['workingsetsize'])
+    df.to_csv(f'workingset-{system.id}.csv', index=False)
+
+    df = pd.read_csv('microbenchmark.csv', comment='#')
+    df = df.loc[(df['usesmem'] == 1) & (df['maxthreadsperblock'] == 0) & (df['problemsize'] == 268435456)]
+    df = df.drop_duplicates(subset=['workingsetsize'])
+    df.to_csv(f'workingset-smem-{system.id}.csv', index=False)
 
     with open(f'device-benchmark.csv', 'w') as f:
         with redirect_stdout(f):
-            print('implementation, maxthreadsperblock, milliseconds, nx, ny, nz, devices')
+            print('implementation,maxthreadsperblock,milliseconds,nx,ny,nz,devices')
     os.system(f'cat {fs.build_dir}/*/device-benchmark.csv >> device-benchmark.csv')
+
+    df = pd.read_csv('device-benchmark.csv', comment='#')
+    df = df.loc[(df['implementation'] == 1)]
+    #df = df.drop_duplicates(subset=['workingsetsize'])
+    df.to_csv(f'implicit-{system.id}.csv', index=False)
+
+    df = pd.read_csv('device-benchmark.csv', comment='#')
+    df = df.loc[(df['implementation'] == 2)]
+    #df = df.drop_duplicates(subset=['workingsetsize'])
+    df.to_csv(f'explicit-{system.id}.csv', index=False)
 
     with open(f'node-benchmark.csv', 'w') as f:
         with redirect_stdout(f):
-            print('implementation, maxthreadsperblock, milliseconds, nx, ny, nz, devices')
+            print('implementation,maxthreadsperblock,milliseconds,nx,ny,nz,devices')
     os.system(f'cat {fs.build_dir}/*/node-benchmark.csv >> node-benchmark.csv')
 
 # Generate the filestructure
@@ -263,8 +300,11 @@ if len(sys.argv) > 1:
 else:
     fs = FileStructure()
 
+# Select system
+system = puhti
+
 # Generate and run the benchmarks
-genbenchmarks(puhti, fs)
+#genbenchmarks(system, fs)
 
 # Postprocess
-postprocess(fs)
+postprocess(system, fs)
