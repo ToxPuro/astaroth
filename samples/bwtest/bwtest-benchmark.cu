@@ -305,7 +305,7 @@ benchmark(const KernelConfig c)
 
     // File
     const char* benchmark_dir = "microbenchmark.csv";
-    FILE* fp                         = fopen(benchmark_dir, "a");
+    FILE* fp                  = fopen(benchmark_dir, "a");
     ERRCHK_ALWAYS(fp);
     ERRCHK_ALWAYS(fp);
     // format
