@@ -303,13 +303,10 @@ benchmark(const KernelConfig c)
     printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
     printf("\tTime elapsed: %g ms\n", (double)milliseconds);
 
-    // CSV output dir
-    const size_t buflen        = 4096;
-    char benchmark_dir[buflen] = {0};
-    snprintf(benchmark_dir, buflen, "microbenchmark.csv");
-
     // File
-    FILE* fp = fopen(benchmark_dir, "a");
+    const char* benchmark_dir = "microbenchmark.csv";
+    FILE* fp                         = fopen(benchmark_dir, "a");
+    ERRCHK_ALWAYS(fp);
     ERRCHK_ALWAYS(fp);
     // format
     // 'usesmem, maxthreadsperblock, problemsize, workingsetsize, milliseconds, effectivebandwidth'
