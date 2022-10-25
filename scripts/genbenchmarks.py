@@ -6,14 +6,12 @@ import socket
 import math
 import sys
 
-dryrun=False
+dryrun=True
 
-build_benchmarks=True
-run_benchmarks=True
 
 class System:
 
-    def __init__(self, id, account, partition, ngpus_per_node, modules, use_hip, gres='', additional_commands=''):
+    def __init__(self, id, account, partition, ngpus_per_node, modules, use_hip, gres='', additional_commands='', optimal_implementation=1, optimal_tpb=0):
         self.id = id
         self.account = account
         self.partition = partition
@@ -22,6 +20,13 @@ class System:
         self.use_hip = use_hip
         self.gres = gres
         self.additional_commands = additional_commands
+        self.optimal_implementation = optimal_implementation
+        self.optimal_tpb = optimal_tpb
+
+    def load_modules(self):
+        # Load modules
+        os.system(f'module purge')
+        os.system(self.modules)
         
     def print_sbatch_header(self, ntasks, ngpus=-1):
         if ngpus < 0:
@@ -54,17 +59,13 @@ class System:
         print(f'module purge')
         print(self.modules)
 
-    def build(self, build_flags, cmakelistdir):
-        # Load modules
+    def build(self, build_flags, cmakelistdir, do_compile):
         if dryrun:
-            print(f'module purge')
-            print(self.modules)
             print(f'cmake {build_flags} {cmakelistdir}')
         else:
-            os.system(f'module purge')
-            os.system(self.modules)
             os.system(f'cmake {build_flags} {cmakelistdir}')
-            os.system('make -j')
+            if do_compile:
+                os.system('make -j')
 
 
 mahti = System(id='a100', account='project_2000403', partition='gpumedium', ngpus_per_node=4, gres='gpu:a100',
@@ -118,12 +119,35 @@ class FileStructure:
         os.chdir(initial_dir)
 
 
-def genbenchmarks(system, fs):
+def genbuilds(fs, do_compile=True):
+    # Create build dirs
+    num_implementations = 2
+    max_threads_per_block = 1024
+    for implementation in range(1, num_implementations+1):
+        tpb = 0
+        while tpb <= max_threads_per_block:
 
-    # Create batch scripts
-    os.chdir(fs.script_dir)
+            os.chdir(fs.build_dir)
+            dir = f'implementation{implementation}_maxthreadsperblock{tpb}'
+            os.system(f'mkdir -p {dir}')
+            os.chdir(dir)
 
-    # Microbenchmarks
+            # Build
+            use_distributed = (implementation == 2) # tmp hack
+            use_smem = (implementation == 2) # tmp hack, note depends on implementation enum
+            build_flags = f'-DUSE_HIP={system.use_hip} -DMPI_ENABLED=ON -DIMPLEMENTATION={implementation} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_SMEM={use_smem}'
+            system.build(build_flags, fs.cmakelistdir, do_compile)
+
+        
+            if tpb == 0:
+                tpb = 32
+            else:
+                tpb *= 2
+
+    # TODO create collective IO vs distributed build
+
+# Microbenchmarks
+def gen_microbenchmarks(system, fs):
     with open('microbenchmark.sh', 'w') as f:
         with redirect_stdout(f):
             # Create the batch script
@@ -145,15 +169,36 @@ def genbenchmarks(system, fs):
                 print(f'srun ./bwtest-benchmark {problem_size} {working_set_size}')
                 working_set_size *= 2
 
-    # Device benchmarks
-    nn = 64
-    nx = ny = nz = nn
+def run_microbenchmarks(fs):
+    # Implicit
+    os.chdir(f'{fs.build_dir}/implementation1_maxthreadsperblock0')
+    os.system(f'sbatch {fs.script_dir}/microbenchmark.sh')
+
+    # Explicit
+    os.chdir(f'{fs.build_dir}/implementation2_maxthreadsperblock0')
+    if dryrun:
+        print(f'sbatch {fs.script_dir}/microbenchmark.sh')
+    else:
+        os.system(f'sbatch {fs.script_dir}/microbenchmark.sh')
+
+# Device benchmarks
+def gen_devicebenchmarks(system, fs, nx, ny, nz):
     with open('device-benchmark.sh', 'w') as f:
         with redirect_stdout(f):
             system.print_sbatch_header(1)
             print(f'srun ./benchmark-device {nx} {ny} {nz}')
 
-    # Intra-node benchmarks
+def run_devicebenchmarks(fs):
+    dirs = os.listdir(fs.build_dir)
+    for dir in dirs:
+        os.chdir(f'{fs.build_dir}/{dir}')
+        if dryrun:
+            print(f'sbatch {fs.script_dir}/device-benchmark.sh')
+        else:
+            os.system(f'sbatch {fs.script_dir}/device-benchmark.sh')
+
+# Intra-node benchmarks
+def gen_nodebenchmarks(system, fs, nx, ny, nz):
     devices = 1
     while devices <= system.ngpus_per_node:
         with open(f'node-benchmark-{devices}.sh', 'w') as f:
@@ -162,8 +207,33 @@ def genbenchmarks(system, fs):
                 print(f'srun ./benchmark-node {nx} {ny} {nz}')
         devices *= 2
 
-    # Strong scaling
-    max_devices = 4096
+def run_nodebenchmarks(fs):
+    dirs = os.listdir(fs.build_dir)
+    for dir in dirs:
+        os.chdir(f'{fs.build_dir}/{dir}')
+        if dryrun:
+            print(f'sbatch {fs.script_dir}/node-benchmark-2.sh')
+        else:
+            os.system(f'sbatch {fs.script_dir}/node-device-benchmark-2.sh')
+    '''
+    # Does not make sense to run scaling tests if the optimal
+    # single-GPU params are not known
+    # We do multi-GPU single-node benchark only for the full MI250X die perf
+    build_dirs = os.listdir(fs.build_dir)
+    scripts = os.listdir(fs.script_dir)
+
+    for dir in build_dirs:
+        os.chdir(f'{fs.build_dir}/{dir}')
+        for script in scripts:
+            if 'node-benchmark' in script:
+                if dryrun:
+                    print(f'sbatch {fs.script_dir}/{script}')
+                else:
+                    os.system(f'sbatch {fs.script_dir}/{script}')
+    '''
+
+# Strong scaling
+def gen_strongscalingbenchmarks(system, fs, nx, ny, nz, max_devices):
     devices = 1
     while devices <= max_devices:
         with open(f'strong-scaling-benchmark-{devices}.sh', 'w') as f:
@@ -172,6 +242,19 @@ def genbenchmarks(system, fs):
                 print(f'srun ./benchmark {nx} {ny} {nz}')
         devices *= 2
 
+def run_strongscalingbenchmarks(system, fs):
+    os.chdir(f'{fs.build_dir}/implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}')
+
+    scripts = filter(lambda x: 'strong-scaling-benchmark' in x, os.listdir(fs.script_dir))
+    for script in scripts:
+        if dryrun:
+            print(f'sbatch {fs.script_dir}/{script}')
+        else:
+            os.system(f'sbatch {fs.script_dir}/{script}')
+
+
+# Weak scaling
+def gen_weakscalingbenchmarks(system, fs, nx, ny, nz, max_devices):
     # Weak scaling
     devices = 1
     while devices <= max_devices:
@@ -187,7 +270,18 @@ def genbenchmarks(system, fs):
         else:
             nx *= 2
 
-    # IO benchmarks
+def run_weakscalingbenchmarks(system, fs):
+    os.chdir(f'{fs.build_dir}/implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}')
+
+    scripts = filter(lambda x: 'weak-scaling-benchmark' in x, os.listdir(fs.script_dir))
+    for script in scripts:
+        if dryrun:
+            print(f'sbatch {fs.script_dir}/{script}')
+        else:
+            os.system(f'sbatch {fs.script_dir}/{script}')
+
+# IO benchmarks
+def gen_iobenchmarks(system, fs, nx, ny, nz, max_devices):
     devices = 1
     while devices <= max_devices:
         with open(f'io-scaling-benchmark-{devices}.sh', 'w') as f:
@@ -196,6 +290,51 @@ def genbenchmarks(system, fs):
                 print(f'srun ./mpi-io {nx} {ny} {nz}')
         devices *= 2
 
+def run_ioscalingbenchmarks(system, fs):
+    scripts = filter(lambda x: 'io-scaling-benchmark' in x, os.listdir(fs.script_dir))
+
+    # Collective
+    os.chdir(f'{fs.build_dir}/todocreatecollectiveordistrbuild{system.optimal_tpb}')
+    for script in scripts:
+        if dryrun:
+            print(f'sbatch {fs.script_dir}/{script}')
+        else:
+            os.system(f'sbatch {fs.script_dir}/{script}')
+
+    # Distributed
+    os.chdir(f'{fs.build_dir}/todocreatethisdir{system.optimal_tpb}')
+    for script in scripts:
+        if dryrun:
+            print(f'sbatch {fs.script_dir}/{script}')
+        else:
+            os.system(f'sbatch {fs.script_dir}/{script}')
+
+def run_benchmarks(fs):
+    #run_microbenchmarks(fs)
+    run_devicebenchmarks(fs)
+    run_nodebenchmarks(fs)
+    run_strongscalingbenchmarks(system, fs)
+    run_weakscalingbenchmarks(system, fs)
+    #run_ioscalingbenchmarks(system, fs)
+
+def genbenchmarks(system, fs):
+
+    # Create batch scripts
+    os.chdir(fs.script_dir)
+    gen_microbenchmarks(system, fs)
+
+    nn = 64
+    nx = ny = nz = nn
+    gen_devicebenchmarks(system, fs, nx, ny, nz)
+    gen_nodebenchmarks(system, fs, nx, ny, nz)
+
+    max_devices = 4096
+    gen_strongscalingbenchmarks(system, fs, nx, ny, nz, max_devices)
+    gen_weakscalingbenchmarks(system, fs, nx, ny, nz, max_devices)
+    gen_iobenchmarks(system, fs, nx, ny, nz, max_devices)
+    genbuilds(fs, do_compile=False)
+    
+    '''
     # Create build dirs
     num_implementations = 2
     max_threads_per_block = 1024
@@ -222,7 +361,7 @@ def genbenchmarks(system, fs):
                 else:
                     os.system(f'sbatch {fs.script_dir}/microbenchmark.sh')
 
-                '''
+                
                 # Run device benchmarks
                 if dryrun:
                     print(f'sbatch {fs.script_dir}/device-benchmark.sh')
@@ -237,12 +376,13 @@ def genbenchmarks(system, fs):
 
                 # Run scaling benchmarks
                 # TODO
-                '''
+                
         
             if tpb == 0:
                 tpb = 32
             else:
                 tpb *= 2
+                '''
 
 # pip3 install --user pandas numpy
 import pandas as pd
@@ -302,9 +442,11 @@ else:
 
 # Select system
 system = puhti
+system.load_modules()
 
 # Generate and run the benchmarks
-#genbenchmarks(system, fs)
+genbenchmarks(system, fs)
+run_benchmarks(fs)
 
 # Postprocess
-postprocess(system, fs)
+#postprocess(system, fs)
