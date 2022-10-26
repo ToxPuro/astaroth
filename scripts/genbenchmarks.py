@@ -71,7 +71,7 @@ class System:
 
 mahti = System(id='a100', account='project_2000403', partition='gpusmall', ngpus_per_node=4, gres='gpu:a100',
                modules='module load gcc/9.4.0 openmpi/4.1.2-cuda cuda cmake', use_hip=False)
-puhti = System(id='v100', account='project_2000403', partition='gputest', ngpus_per_node=4,
+puhti = System(id='v100', account='project_2000403', partition='gpu', ngpus_per_node=4,
                gres='gpu:v100', modules='module load gcc cuda openmpi cmake', use_hip=False,
                additional_commands='''
 export UCX_RNDV_THRESH=16384
@@ -323,7 +323,7 @@ def run_benchmarks(fs, run_benchmarks):
         run_strongscalingbenchmarks(system, fs)
     if 'weakscalingbenchmarks' in run_benchmarks or 'all' in run_benchmarks:
         run_weakscalingbenchmarks(system, fs)
-    if 'ioscalinbenchmarks' in run_benchmarks or 'all' in run_benchmarks:
+    if 'ioscalingbenchmarks' in run_benchmarks or 'all' in run_benchmarks:
         run_ioscalingbenchmarks(system, fs)
 
 def genbenchmarks(system, fs, do_compile):
@@ -419,27 +419,40 @@ def postprocess(system, fs):
             print('devices,millisecondsmin,milliseconds50thpercentile,milliseconds90thpercentile,millisecondsmax,usedistributedcommunication,nx,ny,nz,dostrongscaling')
     os.system(f'cat {fs.build_dir}/*/scaling-benchmark.csv >> scaling-benchmark.csv')
 
-    nx = ny = nz = 256
+    nx = ny = nz = 64
     df = pd.read_csv('scaling-benchmark.csv', comment='#')
     df = df.loc[(df['nx'] == nx) & (df['ny'] == ny) & (df['nz'] == nz)]
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
     df.to_csv(f'scaling-strong-{system.id}.csv', index=False)
 
-    '''
-    nx = ny = nz = 256
+    nx = ny = nz = 64
+    nn = nx * ny * nz
     df = pd.read_csv('scaling-benchmark.csv', comment='#')
-    df = df.loc[(df['nx'] == nx) & (df['ny'] == ny) & (df['nz'] == nz)]
+    df = df.loc[(df['nx'] * df['ny'] * df['nz']) / df['devices'] == nn]
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
-    df.to_csv(f'scaling-strong-{system.id}.csv', index=False)
-    '''
+    df.to_csv(f'scaling-weak-{system.id}.csv', index=False)
 
     # IO scaling
     with open(f'scaling-io-benchmark.csv', 'w') as f:
         with redirect_stdout(f):
             print(f'devices,writemilliseconds,writebandwidth,readmilliseconds,readbandwidth,usedistributedio,nx,ny,nz')
     os.system(f'cat {fs.build_dir}/*/scaling-io-benchmark.csv >> scaling-io-benchmark.csv')
+
+    # Collective
+    df = pd.read_csv('scaling-io-benchmark.csv', comment='#')
+    df = df.loc[(df['usedistributedio'] == 0)]
+    df = df.sort_values(by=['devices'])
+    df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
+    df.to_csv(f'scaling-io-collective-{system.id}.csv', index=False)
+
+    # Distributed
+    df = pd.read_csv('scaling-io-benchmark.csv', comment='#')
+    df = df.loc[(df['usedistributedio'] == 1)]
+    df = df.sort_values(by=['devices'])
+    df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
+    df.to_csv(f'scaling-io-distributed-{system.id}.csv', index=False)
 
 # Select system
 hostname = socket.gethostname()
