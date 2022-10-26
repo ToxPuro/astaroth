@@ -223,7 +223,7 @@ main(int argc, char** argv)
         acGridSynchronizeStream(STREAM_ALL);
         acGridIntegrate(STREAM_DEFAULT, dt);
         acGridSynchronizeStream(STREAM_ALL);
-        results.push_back(timer_diff_nsec(t) / 1e6);
+        results.push_back(timer_diff_nsec(t) / 1e6); // ms
         acGridSynchronizeStream(STREAM_ALL);
     }
 
@@ -235,15 +235,29 @@ main(int argc, char** argv)
                 "percentile)--------------------------------------\n",
                 results[(size_t)(nth_percentile * num_iters)], 100 * nth_percentile);
 
-        char path[4096] = "";
-        sprintf(path, "%s_%d.csv", test == TEST_STRONG_SCALING ? "strong" : "weak", nprocs);
+        // char path[4096] = "";
+        // sprintf(path, "%s_%d.csv", test == TEST_STRONG_SCALING ? "strong" : "weak", nprocs);
+        const char path[] = "scaling-benchmark.csv";
 
         FILE* fp = fopen(path, "a");
         ERRCHK_ALWAYS(fp);
         // Format
         // nprocs, min, 50th perc, 90th perc, max
-        fprintf(fp, "%d, %g, %g, %g, %g\n", nprocs, results[0], results[(size_t)(0.5 * num_iters)],
-                results[(size_t)(nth_percentile * num_iters)], results[num_iters - 1]);
+        // Format
+        // devices,millisecondsmin,milliseconds50thpercentile,milliseconds90thpercentile,millisecondsmax,usedistributedcommunication,nx,ny,nz,dostrongscaling
+        // devices, minmilliseconds, 50th perc (ms), 90th perc (ms), max (ms)
+        #if USE_DISTRIBUTED_IO
+            const bool use_distributed_io = true;
+        #else
+            const bool use_distributed_io = false;
+        #endif
+        fprintf(fp, "%d,%g,%g,%g,%g,%d,%d,%d,%d,%d\n", nprocs, results[0],
+                results[(size_t)(0.5 * num_iters)], results[(size_t)(nth_percentile * num_iters)],
+                results[num_iters - 1], use_distributed_io, info.int_params[AC_nx],
+                info.int_params[AC_ny], info.int_params[AC_nz], test == TEST_STRONG_SCALING);
+        // fprintf(fp, "%d, %g, %g, %g, %g\n", nprocs, results[0],
+        //         results[(size_t)(0.5 * num_iters)],
+        //         results[(size_t)(nth_percentile * num_iters)], results[num_iters - 1]);
         fclose(fp);
     }
 
