@@ -88,8 +88,15 @@ main(int argc, char** argv)
         // acGridStoreFieldToFile(file, (VertexBufferHandle)i);
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_WRITE);
     }
-    if (!pid)
+    double read_milliseconds = 0;
+    double write_bandwidth   = 0; // bytes per second
+    if (!pid) {
+        read_milliseconds = (double)timer_diff_nsec(t) / 1e6;
+        const double seconds           = (double)timer_diff_nsec(t) / 1e9;
+        const size_t bytes = NUM_VTXBUF_HANDLES * acVertexBufferCompdomainSizeBytes(info);
+        write_bandwidth    = bytes / seconds;
         timer_diff_print(t);
+    }
 
     // Scramble
     acHostMeshRandomize(&candidate);
@@ -109,8 +116,15 @@ main(int argc, char** argv)
         // acGridLoadFieldFromFile(file, (VertexBufferHandle)i);
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_READ);
     }
-    if (!pid)
+    double write_milliseconds = 0;
+    double read_bandwidth     = 0; // bytes per second
+    if (!pid) {
+        write_milliseconds = (double)timer_diff_nsec(t) / 1e6;
+        const double seconds            = (double)timer_diff_nsec(t) / 1e9;
+        const size_t bytes = NUM_VTXBUF_HANDLES * acVertexBufferCompdomainSizeBytes(info);
+        read_bandwidth     = bytes / seconds;
         timer_diff_print(t);
+    }
 
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
@@ -118,6 +132,24 @@ main(int argc, char** argv)
     if (!pid) {
         const AcResult res = acVerifyMesh("MPI-IO disk read/write", model, candidate);
         ERRCHK_ALWAYS(res == AC_SUCCESS);
+    }
+
+    // Write out
+    // Format:
+    // devices,writemilliseconds,writebandwidth,readmilliseconds,readbandwidth,usedistributedio,nx,ny,nz
+    if (!pid) {
+        FILE* fp = fopen("scaling-io-benchmark.csv", "a");
+        ERRCHK_ALWAYS(fp);
+
+#if USE_DISTRIBUTED_IO
+        const bool use_distributed_io = true;
+#else
+        const bool use_distributed_io = false;
+#endif
+        fprintf(fp, "%d,%g,%g,%g,%g,%d,%d,%d,%d\n", nprocs, write_milliseconds, write_bandwidth,
+                read_milliseconds, read_bandwidth, use_distributed_io, info.int_params[AC_nx],
+                info.int_params[AC_ny], info.int_params[AC_nz]);
+        fclose(fp);
     }
 
     acGridQuit();
