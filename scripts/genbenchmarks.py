@@ -6,7 +6,7 @@ import socket
 import math
 import sys
 
-dryrun=True
+dryrun=False
 
 
 class System:
@@ -70,7 +70,7 @@ class System:
 
 mahti = System(id='a100', account='project_2000403', partition='gpumedium', ngpus_per_node=4, gres='gpu:a100',
                modules='module load gcc/9.4.0 openmpi/4.1.2-cuda cuda cmake', use_hip=False)
-puhti = System(id='v100', account='project_2000403', partition='gpu', ngpus_per_node=4,
+puhti = System(id='v100', account='project_2000403', partition='gputest', ngpus_per_node=4,
                gres='gpu:v100', modules='module load gcc cuda openmpi cmake', use_hip=False,
                additional_commands='''
 export UCX_RNDV_THRESH=16384
@@ -133,7 +133,6 @@ def genbuilds(fs, do_compile=True):
             os.chdir(dir)
 
             # Build
-            use_distributed = (implementation == 2) # tmp hack
             use_smem = (implementation == 2) # tmp hack, note depends on implementation enum
             build_flags = f'-DUSE_HIP={system.use_hip} -DMPI_ENABLED=ON -DIMPLEMENTATION={implementation} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_SMEM={use_smem}'
             system.build(build_flags, fs.cmakelistdir, do_compile)
@@ -144,7 +143,22 @@ def genbuilds(fs, do_compile=True):
             else:
                 tpb *= 2
 
-    # TODO create collective IO vs distributed build
+    # Create collective and distributed IO builds
+    distributed=False
+    os.chdir(fs.build_dir)
+    dir = f'implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}_distributed{distributed}'
+    os.system(f'mkdir -p {dir}')
+    os.chdir(dir)
+    build_flags = f'-DUSE_DISTRIBUTED_IO={distributed} -DUSE_HIP={system.use_hip} -DMPI_ENABLED=ON -DIMPLEMENTATION={system.optimal_implementation} -DMAX_THREADS_PER_BLOCK={system.optimal_tpb} -DUSE_SMEM={use_smem}'
+    system.build(build_flags, fs.cmakelistdir, do_compile)
+
+    distributed=True
+    os.chdir(fs.build_dir)
+    dir = f'implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}_distributed{distributed}'
+    os.system(f'mkdir -p {dir}')
+    os.chdir(dir)
+    build_flags = f'-DUSE_DISTRIBUTED_IO={distributed} -DUSE_HIP={system.use_hip} -DMPI_ENABLED=ON -DIMPLEMENTATION={system.optimal_implementation} -DMAX_THREADS_PER_BLOCK={system.optimal_tpb} -DUSE_SMEM={use_smem}'
+    system.build(build_flags, fs.cmakelistdir, do_compile)
 
 # Microbenchmarks
 def gen_microbenchmarks(system, fs):
@@ -214,7 +228,7 @@ def run_nodebenchmarks(fs):
         if dryrun:
             print(f'sbatch {fs.script_dir}/node-benchmark-2.sh')
         else:
-            os.system(f'sbatch {fs.script_dir}/node-device-benchmark-2.sh')
+            os.system(f'sbatch {fs.script_dir}/node-benchmark-2.sh')
     '''
     # Does not make sense to run scaling tests if the optimal
     # single-GPU params are not known
@@ -311,8 +325,8 @@ def run_ioscalingbenchmarks(system, fs):
 
 def run_benchmarks(fs):
     #run_microbenchmarks(fs)
-    run_devicebenchmarks(fs)
-    run_nodebenchmarks(fs)
+    #run_devicebenchmarks(fs)
+    #run_nodebenchmarks(fs)
     run_strongscalingbenchmarks(system, fs)
     run_weakscalingbenchmarks(system, fs)
     #run_ioscalingbenchmarks(system, fs)
@@ -397,23 +411,28 @@ def postprocess(system, fs):
     df = pd.read_csv('microbenchmark.csv', comment='#')
     df = df.loc[(df['usesmem'] == 0) & (df['maxthreadsperblock'] == 0) & (df['workingsetsize'] == 8)]
     df = df.drop_duplicates(subset=['problemsize'])
+    df = df.sort_values(by=['problemsize'])
     df.to_csv(f'bandwidth-{system.id}.csv', index=False)
 
     df = pd.read_csv('microbenchmark.csv', comment='#')
     df = df.loc[(df['usesmem'] == 1) & (df['maxthreadsperblock'] == 0) & (df['workingsetsize'] == 8)]
     df = df.drop_duplicates(subset=['problemsize'])
+    df = df.sort_values(by=['problemsize'])
     df.to_csv(f'bandwidth-smem-{system.id}.csv', index=False)
 
     df = pd.read_csv('microbenchmark.csv', comment='#')
     df = df.loc[(df['usesmem'] == 0) & (df['maxthreadsperblock'] == 0) & (df['problemsize'] == 268435456)]
     df = df.drop_duplicates(subset=['workingsetsize'])
+    df = df.sort_values(by=['workingsetsize'])
     df.to_csv(f'workingset-{system.id}.csv', index=False)
 
     df = pd.read_csv('microbenchmark.csv', comment='#')
     df = df.loc[(df['usesmem'] == 1) & (df['maxthreadsperblock'] == 0) & (df['problemsize'] == 268435456)]
     df = df.drop_duplicates(subset=['workingsetsize'])
+    df = df.sort_values(by=['workingsetsize'])
     df.to_csv(f'workingset-smem-{system.id}.csv', index=False)
 
+    # Device
     with open(f'device-benchmark.csv', 'w') as f:
         with redirect_stdout(f):
             print('implementation,maxthreadsperblock,milliseconds,nx,ny,nz,devices')
@@ -421,18 +440,56 @@ def postprocess(system, fs):
 
     df = pd.read_csv('device-benchmark.csv', comment='#')
     df = df.loc[(df['implementation'] == 1)]
+    df = df.sort_values(by=['maxthreadsperblock'])
     #df = df.drop_duplicates(subset=['workingsetsize'])
     df.to_csv(f'implicit-{system.id}.csv', index=False)
 
     df = pd.read_csv('device-benchmark.csv', comment='#')
     df = df.loc[(df['implementation'] == 2)]
+    df = df.sort_values(by=['maxthreadsperblock'])
     #df = df.drop_duplicates(subset=['workingsetsize'])
     df.to_csv(f'explicit-{system.id}.csv', index=False)
 
+    # Node
     with open(f'node-benchmark.csv', 'w') as f:
         with redirect_stdout(f):
             print('implementation,maxthreadsperblock,milliseconds,nx,ny,nz,devices')
     os.system(f'cat {fs.build_dir}/*/node-benchmark.csv >> node-benchmark.csv')
+
+    df = pd.read_csv('node-benchmark.csv', comment='#')
+    df = df.loc[(df['implementation'] == 1)]
+    df = df.sort_values(by=['maxthreadsperblock'])
+    #df = df.drop_duplicates(subset=['workingsetsize'])
+    df.to_csv(f'node-implicit-{system.id}.csv', index=False)
+
+    df = pd.read_csv('node-benchmark.csv', comment='#')
+    df = df.loc[(df['implementation'] == 2)]
+    df = df.sort_values(by=['maxthreadsperblock'])
+    #df = df.drop_duplicates(subset=['workingsetsize'])
+    df.to_csv(f'node-explicit-{system.id}.csv', index=False)
+
+    # Scaling
+    with open(f'scaling-benchmark.csv', 'w') as f:
+        with redirect_stdout(f):
+            print('devices,millisecondsmin,milliseconds50thpercentile,milliseconds90thpercentile,millisecondsmax,usedistributedcommunication,nx,ny,nz,dostrongscaling')
+    os.system(f'cat {fs.build_dir}/*/scaling-benchmark.csv >> scaling-benchmark.csv')
+
+    nx = ny = nz = 256
+    df = pd.read_csv('scaling-benchmark.csv', comment='#')
+    df = df.loc[(df['nx'] == nx) & (df['ny'] == ny) & (df['nz'] == nz)]
+    df = df.sort_values(by=['devices'])
+    df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
+    df.to_csv(f'scaling-strong-{system.id}.csv', index=False)
+
+    '''
+    nx = ny = nz = 256
+    df = pd.read_csv('scaling-benchmark.csv', comment='#')
+    df = df.loc[(df['nx'] == nx) & (df['ny'] == ny) & (df['nz'] == nz)]
+    df = df.sort_values(by=['devices'])
+    df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
+    df.to_csv(f'scaling-strong-{system.id}.csv', index=False)
+    '''
+
 
 # Generate the filestructure
 if len(sys.argv) > 1:
