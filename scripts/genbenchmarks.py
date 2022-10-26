@@ -5,8 +5,9 @@ import os
 import socket
 import math
 import sys
+import argparse
 
-dryrun=False
+_dryrun=False
 
 
 class System:
@@ -60,15 +61,15 @@ class System:
         print(self.modules)
 
     def build(self, build_flags, cmakelistdir, do_compile):
-        if dryrun:
+        if _dryrun:
             print(f'cmake {build_flags} {cmakelistdir}')
         else:
-            os.system(f'cmake {build_flags} {cmakelistdir}')
             if do_compile:
+                os.system(f'cmake {build_flags} {cmakelistdir}')
                 os.system('make -j')
 
 
-mahti = System(id='a100', account='project_2000403', partition='gpumedium', ngpus_per_node=4, gres='gpu:a100',
+mahti = System(id='a100', account='project_2000403', partition='gpusmall', ngpus_per_node=4, gres='gpu:a100',
                modules='module load gcc/9.4.0 openmpi/4.1.2-cuda cuda cmake', use_hip=False)
 puhti = System(id='v100', account='project_2000403', partition='gputest', ngpus_per_node=4,
                gres='gpu:v100', modules='module load gcc cuda openmpi cmake', use_hip=False,
@@ -119,7 +120,7 @@ class FileStructure:
         os.chdir(initial_dir)
 
 
-def genbuilds(fs, do_compile=True):
+def genbuilds(fs, do_compile):
     # Create build dirs
     num_implementations = 2
     max_threads_per_block = 1024
@@ -186,14 +187,14 @@ def gen_microbenchmarks(system, fs):
 def run_microbenchmarks(fs):
     # Implicit
     os.chdir(f'{fs.build_dir}/implementation1_maxthreadsperblock0')
-    if dryrun:
+    if _dryrun:
         print(f'sbatch {fs.script_dir}/microbenchmark.sh')
     else:
         os.system(f'sbatch {fs.script_dir}/microbenchmark.sh')
 
     # Explicit
     os.chdir(f'{fs.build_dir}/implementation2_maxthreadsperblock0')
-    if dryrun:
+    if _dryrun:
         print(f'sbatch {fs.script_dir}/microbenchmark.sh')
     else:
         os.system(f'sbatch {fs.script_dir}/microbenchmark.sh')
@@ -209,7 +210,7 @@ def run_devicebenchmarks(fs):
     dirs = os.listdir(fs.build_dir)
     for dir in dirs:
         os.chdir(f'{fs.build_dir}/{dir}')
-        if dryrun:
+        if _dryrun:
             print(f'sbatch {fs.script_dir}/device-benchmark.sh')
         else:
             os.system(f'sbatch {fs.script_dir}/device-benchmark.sh')
@@ -228,26 +229,10 @@ def run_nodebenchmarks(fs):
     dirs = os.listdir(fs.build_dir)
     for dir in dirs:
         os.chdir(f'{fs.build_dir}/{dir}')
-        if dryrun:
+        if _dryrun:
             print(f'sbatch {fs.script_dir}/node-benchmark-2.sh')
         else:
             os.system(f'sbatch {fs.script_dir}/node-benchmark-2.sh')
-    '''
-    # Does not make sense to run scaling tests if the optimal
-    # single-GPU params are not known
-    # We do multi-GPU single-node benchark only for the full MI250X die perf
-    build_dirs = os.listdir(fs.build_dir)
-    scripts = os.listdir(fs.script_dir)
-
-    for dir in build_dirs:
-        os.chdir(f'{fs.build_dir}/{dir}')
-        for script in scripts:
-            if 'node-benchmark' in script:
-                if dryrun:
-                    print(f'sbatch {fs.script_dir}/{script}')
-                else:
-                    os.system(f'sbatch {fs.script_dir}/{script}')
-    '''
 
 # Strong scaling
 def gen_strongscalingbenchmarks(system, fs, nx, ny, nz, max_devices):
@@ -264,7 +249,7 @@ def run_strongscalingbenchmarks(system, fs):
 
     scripts = filter(lambda x: 'strong-scaling-benchmark' in x, os.listdir(fs.script_dir))
     for script in scripts:
-        if dryrun:
+        if _dryrun:
             print(f'sbatch {fs.script_dir}/{script}')
         else:
             os.system(f'sbatch {fs.script_dir}/{script}')
@@ -292,7 +277,7 @@ def run_weakscalingbenchmarks(system, fs):
 
     scripts = filter(lambda x: 'weak-scaling-benchmark' in x, os.listdir(fs.script_dir))
     for script in scripts:
-        if dryrun:
+        if _dryrun:
             print(f'sbatch {fs.script_dir}/{script}')
         else:
             os.system(f'sbatch {fs.script_dir}/{script}')
@@ -313,7 +298,7 @@ def run_ioscalingbenchmarks(system, fs):
     # Collective
     os.chdir(f'{fs.build_dir}/implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}_distributedFalse')
     for script in scripts:
-        if dryrun:
+        if _dryrun:
             print(f'sbatch {fs.script_dir}/{script}')
         else:
             os.system(f'sbatch {fs.script_dir}/{script}')
@@ -321,20 +306,27 @@ def run_ioscalingbenchmarks(system, fs):
     # Distributed
     os.chdir(f'{fs.build_dir}/implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}_distributedTrue')
     for script in scripts:
-        if dryrun:
+        if _dryrun:
             print(f'sbatch {fs.script_dir}/{script}')
         else:
             os.system(f'sbatch {fs.script_dir}/{script}')
 
-def run_benchmarks(fs):
-    run_microbenchmarks(fs)
-    run_devicebenchmarks(fs)
-    run_nodebenchmarks(fs)
-    run_strongscalingbenchmarks(system, fs)
-    run_weakscalingbenchmarks(system, fs)
-    run_ioscalingbenchmarks(system, fs)
+def run_benchmarks(fs, run_benchmarks):
 
-def genbenchmarks(system, fs):
+    if 'microbenchmarks' in run_benchmarks or 'all' in run_benchmarks:
+        run_microbenchmarks(fs)
+    if 'devicebenchmarks' in run_benchmarks or 'all' in run_benchmarks:
+        run_devicebenchmarks(fs)
+    if 'nodebenchmarks' in run_benchmarks or 'all' in run_benchmarks:
+        run_nodebenchmarks(fs)
+    if 'strongscalingbenchmarks' in run_benchmarks or 'all' in run_benchmarks:
+        run_strongscalingbenchmarks(system, fs)
+    if 'weakscalingbenchmarks' in run_benchmarks or 'all' in run_benchmarks:
+        run_weakscalingbenchmarks(system, fs)
+    if 'ioscalinbenchmarks' in run_benchmarks or 'all' in run_benchmarks:
+        run_ioscalingbenchmarks(system, fs)
+
+def genbenchmarks(system, fs, do_compile):
 
     # Create batch scripts
     os.chdir(fs.script_dir)
@@ -349,7 +341,7 @@ def genbenchmarks(system, fs):
     gen_strongscalingbenchmarks(system, fs, nx, ny, nz, max_devices)
     gen_weakscalingbenchmarks(system, fs, nx, ny, nz, max_devices)
     gen_iobenchmarks(system, fs, nx, ny, nz, max_devices)
-    genbuilds(fs)
+    genbuilds(fs, do_compile)
 
 # pip3 install --user pandas numpy
 import pandas as pd
@@ -449,13 +441,6 @@ def postprocess(system, fs):
             print(f'devices,writemilliseconds,writebandwidth,readmilliseconds,readbandwidth,usedistributedio,nx,ny,nz')
     os.system(f'cat {fs.build_dir}/*/scaling-io-benchmark.csv >> scaling-io-benchmark.csv')
 
-
-# Generate the filestructure
-if len(sys.argv) > 1:
-    fs = FileStructure(sys.argv[1])
-else:
-    fs = FileStructure()
-
 # Select system
 hostname = socket.gethostname()
 if 'mahti' in hostname:
@@ -471,9 +456,37 @@ else:
     exit(-1)
 system.load_modules()
 
-# Generate and run the benchmarks
-genbenchmarks(system, fs)
-run_benchmarks(fs)
+# Parse args
+parser = argparse.ArgumentParser(description='A tool for generating benchmarks')
+
+parser.add_argument('--build', action='store_true', help='Build benchmark directories')
+parser.add_argument('--cmakelistdir', default='.', type=str, help='Directory containing the project CMakeLists.txt')
+parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without compiling or running. Prints commands to stdout.')
+parser.add_argument('--partition', type=str, help='Set the partition that should be used for computations')
+parser.add_argument('--postprocess', action='store_true', help='Postprocess the benchmark outputs')
+parser.add_argument('--run', type=str, nargs='*', help='[microbenchmarks devicebenchmarks nodebenchmarks strongscalingbenchmark weakscalingbenchmark iobenchmark all]')
+
+args = parser.parse_args()
+
+# Toggle dryrun
+_dryrun = args.dryrun
+
+# Create the file structure
+fs = FileStructure(args.cmakelistdir)
+
+# Set system partition
+if args.partition:
+    system.partition = args.partition
+
+# Compile
+if args.run:
+    args.build = True
+genbenchmarks(system, fs, args.build)
+
+# Run
+if args.run:
+    run_benchmarks(fs, args.run)
 
 # Postprocess
-#postprocess(system, fs)
+if args.postprocess:
+    postprocess(system, fs)
