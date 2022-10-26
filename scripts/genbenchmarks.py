@@ -350,56 +350,6 @@ def genbenchmarks(system, fs):
     gen_weakscalingbenchmarks(system, fs, nx, ny, nz, max_devices)
     gen_iobenchmarks(system, fs, nx, ny, nz, max_devices)
     genbuilds(fs)
-    
-    '''
-    # Create build dirs
-    num_implementations = 2
-    max_threads_per_block = 1024
-    for implementation in range(1, num_implementations+1):
-        tpb = 0
-        while tpb <= max_threads_per_block:
-
-            os.chdir(fs.build_dir)
-            dir = f'implementation{implementation}_maxthreadsperblock{tpb}'
-            os.system(f'mkdir -p {dir}')
-            os.chdir(dir)
-
-            # Build
-            if build_benchmarks:
-                use_smem = implementation == 2 # tmp hack, note depends on implementation enum
-                build_flags = f'-DUSE_HIP={system.use_hip} -DMPI_ENABLED=ON -DIMPLEMENTATION={implementation} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_SMEM={use_smem}'
-                system.build(build_flags, fs.cmakelistdir)
-
-            # Run
-            if run_benchmarks:
-                # Run microbenchmarks
-                if dryrun:
-                    print(f'sbatch {fs.script_dir}/microbenchmark.sh')
-                else:
-                    os.system(f'sbatch {fs.script_dir}/microbenchmark.sh')
-
-                
-                # Run device benchmarks
-                if dryrun:
-                    print(f'sbatch {fs.script_dir}/device-benchmark.sh')
-                else:
-                    os.system(f'sbatch {fs.script_dir}/device-benchmark.sh')
-
-                # Run node benchmarks
-                if dryrun:
-                    print(f'sbatch {fs.script_dir}/node-benchmark-2.sh')
-                else:
-                    os.system(f'sbatch {fs.script_dir}/node-benchmark-2.sh')
-
-                # Run scaling benchmarks
-                # TODO
-                
-        
-            if tpb == 0:
-                tpb = 32
-            else:
-                tpb *= 2
-                '''
 
 # pip3 install --user pandas numpy
 import pandas as pd
