@@ -61,10 +61,11 @@ class System:
         print(self.modules)
 
     def build(self, build_flags, cmakelistdir, do_compile):
-        if _dryrun:
-            print(f'cmake {build_flags} {cmakelistdir}')
-        else:
-            if do_compile:
+        if do_compile:
+            if _dryrun:
+                print(f'cmake {build_flags} {cmakelistdir}')
+                print('make -j')
+            else:
                 os.system(f'cmake {build_flags} {cmakelistdir}')
                 os.system('make -j')
 
