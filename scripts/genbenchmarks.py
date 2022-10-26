@@ -186,7 +186,10 @@ def gen_microbenchmarks(system, fs):
 def run_microbenchmarks(fs):
     # Implicit
     os.chdir(f'{fs.build_dir}/implementation1_maxthreadsperblock0')
-    os.system(f'sbatch {fs.script_dir}/microbenchmark.sh')
+    if dryrun:
+        print(f'sbatch {fs.script_dir}/microbenchmark.sh')
+    else:
+        os.system(f'sbatch {fs.script_dir}/microbenchmark.sh')
 
     # Explicit
     os.chdir(f'{fs.build_dir}/implementation2_maxthreadsperblock0')
@@ -308,7 +311,7 @@ def run_ioscalingbenchmarks(system, fs):
     scripts = filter(lambda x: 'io-scaling-benchmark' in x, os.listdir(fs.script_dir))
 
     # Collective
-    os.chdir(f'{fs.build_dir}/todocreatecollectiveordistrbuild{system.optimal_tpb}')
+    os.chdir(f'{fs.build_dir}/implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}_distributedFalse')
     for script in scripts:
         if dryrun:
             print(f'sbatch {fs.script_dir}/{script}')
@@ -316,7 +319,7 @@ def run_ioscalingbenchmarks(system, fs):
             os.system(f'sbatch {fs.script_dir}/{script}')
 
     # Distributed
-    os.chdir(f'{fs.build_dir}/todocreatethisdir{system.optimal_tpb}')
+    os.chdir(f'{fs.build_dir}/implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}_distributedTrue')
     for script in scripts:
         if dryrun:
             print(f'sbatch {fs.script_dir}/{script}')
@@ -324,12 +327,12 @@ def run_ioscalingbenchmarks(system, fs):
             os.system(f'sbatch {fs.script_dir}/{script}')
 
 def run_benchmarks(fs):
-    #run_microbenchmarks(fs)
-    #run_devicebenchmarks(fs)
-    #run_nodebenchmarks(fs)
+    run_microbenchmarks(fs)
+    run_devicebenchmarks(fs)
+    run_nodebenchmarks(fs)
     run_strongscalingbenchmarks(system, fs)
     run_weakscalingbenchmarks(system, fs)
-    #run_ioscalingbenchmarks(system, fs)
+    run_ioscalingbenchmarks(system, fs)
 
 def genbenchmarks(system, fs):
 
@@ -346,7 +349,7 @@ def genbenchmarks(system, fs):
     gen_strongscalingbenchmarks(system, fs, nx, ny, nz, max_devices)
     gen_weakscalingbenchmarks(system, fs, nx, ny, nz, max_devices)
     gen_iobenchmarks(system, fs, nx, ny, nz, max_devices)
-    genbuilds(fs, do_compile=False)
+    genbuilds(fs)
     
     '''
     # Create build dirs
@@ -490,6 +493,12 @@ def postprocess(system, fs):
     df.to_csv(f'scaling-strong-{system.id}.csv', index=False)
     '''
 
+    # IO scaling
+    with open(f'scaling-io-benchmark.csv', 'w') as f:
+        with redirect_stdout(f):
+            print(f'devices,writemilliseconds,writebandwidth,readmilliseconds,readbandwidth,usedistributedio,nx,ny,nz')
+    os.system(f'cat {fs.build_dir}/*/scaling-io-benchmark.csv >> scaling-io-benchmark.csv')
+
 
 # Generate the filestructure
 if len(sys.argv) > 1:
@@ -498,7 +507,18 @@ else:
     fs = FileStructure()
 
 # Select system
-system = puhti
+hostname = socket.gethostname()
+if 'mahti' in hostname:
+    system = mahti
+elif 'puhti' in hostname:
+    system = puhti
+elif 'uan' in hostname:
+    system = lumi
+elif 'triton' in hostname:
+    system = triton
+else:
+    print(f'Unknown system {hostname}')
+    exit(-1)
 system.load_modules()
 
 # Generate and run the benchmarks
