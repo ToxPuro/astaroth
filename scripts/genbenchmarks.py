@@ -97,28 +97,35 @@ class FileStructure:
 
         # Record the CMakeLists.txt dir
         os.chdir(cmakelistdir)
+        print(f'cd {os.getcwd()}')
         if not os.path.isfile('CMakeLists.txt'):
             print(f'Could not find CMakeLists.txt in {os.getcwd()}. Please run the script in the dir containing the project CMakeLists.txt or give the directory as a parameter.')
             exit(-1)
 
         self.cmakelistdir = os.getcwd()
         os.chdir(initial_dir)
+        print(f'cd {os.getcwd()}')
 
         # Create a new dir for the benchmark data
         os.system(f'mkdir -p benchmark-data')
         os.chdir('benchmark-data')
+        print(f'cd {os.getcwd()}')
         self.base_dir = os.getcwd()
 
         os.system(f'mkdir -p builds')
         os.chdir('builds')
+        print(f'cd {os.getcwd()}')
         self.build_dir = os.getcwd()
 
         os.chdir(self.base_dir)
+        print(f'cd {os.getcwd()}')
         os.system(f'mkdir -p scripts')
         os.chdir('scripts')
+        print(f'cd {os.getcwd()}')
         self.script_dir = os.getcwd()
 
         os.chdir(initial_dir)
+        print(f'cd {os.getcwd()}')
 
 
 def genbuilds(fs, do_compile):
@@ -130,9 +137,11 @@ def genbuilds(fs, do_compile):
         while tpb <= max_threads_per_block:
 
             os.chdir(fs.build_dir)
+            print(f'cd {os.getcwd()}')
             dir = f'implementation{implementation}_maxthreadsperblock{tpb}'
             os.system(f'mkdir -p {dir}')
             os.chdir(dir)
+            print(f'cd {os.getcwd()}')
 
             # Build
             use_smem = (implementation == 2) # tmp hack, note depends on implementation enum
@@ -148,17 +157,21 @@ def genbuilds(fs, do_compile):
     # Create collective and distributed IO builds
     distributed=False
     os.chdir(fs.build_dir)
+    print(f'cd {os.getcwd()}')
     dir = f'implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}_distributed{distributed}'
     os.system(f'mkdir -p {dir}')
     os.chdir(dir)
+    print(f'cd {os.getcwd()}')
     build_flags = f'-DUSE_DISTRIBUTED_IO={distributed} -DUSE_HIP={system.use_hip} -DMPI_ENABLED=ON -DIMPLEMENTATION={system.optimal_implementation} -DMAX_THREADS_PER_BLOCK={system.optimal_tpb} -DUSE_SMEM={use_smem}'
     system.build(build_flags, fs.cmakelistdir, do_compile)
 
     distributed=True
     os.chdir(fs.build_dir)
+    print(f'cd {os.getcwd()}')
     dir = f'implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}_distributed{distributed}'
     os.system(f'mkdir -p {dir}')
     os.chdir(dir)
+    print(f'cd {os.getcwd()}')
     build_flags = f'-DUSE_DISTRIBUTED_IO={distributed} -DUSE_HIP={system.use_hip} -DMPI_ENABLED=ON -DIMPLEMENTATION={system.optimal_implementation} -DMAX_THREADS_PER_BLOCK={system.optimal_tpb} -DUSE_SMEM={use_smem}'
     system.build(build_flags, fs.cmakelistdir, do_compile)
 
@@ -188,6 +201,7 @@ def gen_microbenchmarks(system, fs):
 def run_microbenchmarks(fs):
     # Implicit
     os.chdir(f'{fs.build_dir}/implementation1_maxthreadsperblock0')
+    print(f'cd {os.getcwd()}')
     if _dryrun:
         print(f'sbatch {fs.script_dir}/microbenchmark.sh')
     else:
@@ -195,6 +209,7 @@ def run_microbenchmarks(fs):
 
     # Explicit
     os.chdir(f'{fs.build_dir}/implementation2_maxthreadsperblock0')
+    print(f'cd {os.getcwd()}')
     if _dryrun:
         print(f'sbatch {fs.script_dir}/microbenchmark.sh')
     else:
@@ -211,6 +226,8 @@ def run_devicebenchmarks(fs):
     dirs = os.listdir(fs.build_dir)
     for dir in dirs:
         os.chdir(f'{fs.build_dir}/{dir}')
+        print(f'cd {os.getcwd()}')
+
         if _dryrun:
             print(f'sbatch {fs.script_dir}/device-benchmark.sh')
         else:
@@ -230,6 +247,8 @@ def run_nodebenchmarks(fs):
     dirs = os.listdir(fs.build_dir)
     for dir in dirs:
         os.chdir(f'{fs.build_dir}/{dir}')
+        print(f'cd {os.getcwd()}')
+
         if _dryrun:
             print(f'sbatch {fs.script_dir}/node-benchmark-2.sh')
         else:
@@ -247,6 +266,7 @@ def gen_strongscalingbenchmarks(system, fs, nx, ny, nz, max_devices):
 
 def run_strongscalingbenchmarks(system, fs):
     os.chdir(f'{fs.build_dir}/implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}')
+    print(f'cd {os.getcwd()}')
 
     scripts = filter(lambda x: 'strong-scaling-benchmark' in x, os.listdir(fs.script_dir)) # Note filter iterator: exhausted after one pass
     for script in scripts:
@@ -275,6 +295,7 @@ def gen_weakscalingbenchmarks(system, fs, nx, ny, nz, max_devices):
 
 def run_weakscalingbenchmarks(system, fs):
     os.chdir(f'{fs.build_dir}/implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}')
+    print(f'cd {os.getcwd()}')
 
     scripts = filter(lambda x: 'weak-scaling-benchmark' in x, os.listdir(fs.script_dir)) # Note filter iterator: exhausted after one pass
     for script in scripts:
