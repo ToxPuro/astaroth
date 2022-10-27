@@ -248,7 +248,7 @@ def gen_strongscalingbenchmarks(system, fs, nx, ny, nz, max_devices):
 def run_strongscalingbenchmarks(system, fs):
     os.chdir(f'{fs.build_dir}/implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}')
 
-    scripts = filter(lambda x: 'strong-scaling-benchmark' in x, os.listdir(fs.script_dir))
+    scripts = filter(lambda x: 'strong-scaling-benchmark' in x, os.listdir(fs.script_dir)) # Note filter iterator: exhausted after one pass
     for script in scripts:
         if _dryrun:
             print(f'sbatch {fs.script_dir}/{script}')
@@ -276,7 +276,7 @@ def gen_weakscalingbenchmarks(system, fs, nx, ny, nz, max_devices):
 def run_weakscalingbenchmarks(system, fs):
     os.chdir(f'{fs.build_dir}/implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}')
 
-    scripts = filter(lambda x: 'weak-scaling-benchmark' in x, os.listdir(fs.script_dir))
+    scripts = filter(lambda x: 'weak-scaling-benchmark' in x, os.listdir(fs.script_dir)) # Note filter iterator: exhausted after one pass
     for script in scripts:
         if _dryrun:
             print(f'sbatch {fs.script_dir}/{script}')
@@ -295,9 +295,11 @@ def gen_iobenchmarks(system, fs, nx, ny, nz, max_devices):
 
 def run_ioscalingbenchmarks(system, fs):
     scripts = filter(lambda x: 'io-scaling-benchmark' in x, os.listdir(fs.script_dir))
+    scripts = list(scripts) # Convert from iterator to list to enable multiple passes over the data
 
     # Collective
     os.chdir(f'{fs.build_dir}/implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}_distributedFalse')
+    print(f'cd {os.getcwd()}')
     for script in scripts:
         if _dryrun:
             print(f'sbatch {fs.script_dir}/{script}')
@@ -306,6 +308,7 @@ def run_ioscalingbenchmarks(system, fs):
 
     # Distributed
     os.chdir(f'{fs.build_dir}/implementation{system.optimal_implementation}_maxthreadsperblock{system.optimal_tpb}_distributedTrue')
+    print(f'cd {os.getcwd()}')
     for script in scripts:
         if _dryrun:
             print(f'sbatch {fs.script_dir}/{script}')
@@ -331,6 +334,7 @@ def genbenchmarks(system, fs, do_compile):
 
     # Create batch scripts
     os.chdir(fs.script_dir)
+    print(f'cd {os.getcwd()}')
     gen_microbenchmarks(system, fs)
 
     nn = 64
@@ -348,6 +352,7 @@ def genbenchmarks(system, fs, do_compile):
 import pandas as pd
 def postprocess(system, fs):
     os.chdir(fs.base_dir)
+    print(f'cd {os.getcwd()}')
 
     with open(f'microbenchmark.csv', 'w') as f:
         with redirect_stdout(f):
@@ -478,7 +483,7 @@ parser.add_argument('--cmakelistdir', default='.', type=str, help='Directory con
 parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without compiling or running. Prints commands to stdout.')
 parser.add_argument('--partition', type=str, help='Set the partition that should be used for computations')
 parser.add_argument('--postprocess', action='store_true', help='Postprocess the benchmark outputs')
-parser.add_argument('--run', type=str, nargs='*', help='[microbenchmarks devicebenchmarks nodebenchmarks strongscalingbenchmark weakscalingbenchmark iobenchmark all]')
+parser.add_argument('--run', type=str, nargs='*', help='[microbenchmarks devicebenchmarks nodebenchmarks strongscalingbenchmarks weakscalingbenchmarks ioscalingbenchmarks all]')
 
 args = parser.parse_args()
 
