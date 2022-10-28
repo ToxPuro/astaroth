@@ -740,7 +740,6 @@ main(void)
     test_cases.push_back(
         SimpleTestCase{"AntiSymmetric boundconds", antisymmetric_bc_graph, antimirror});
 
-    //This test case does not hold anymore, we need to use the normal to figure out d
     // Prescribed derivative bc
     AcRealParam bc_param[1] = {AC_boundary_derivative};
 
