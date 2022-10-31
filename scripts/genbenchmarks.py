@@ -1,4 +1,5 @@
-#!/bin/python3
+#!/usr/bin/env python3
+# module load python-data # to load the dependencies
 from contextlib import redirect_stdout
 from contextlib import contextmanager
 import os
@@ -351,19 +352,16 @@ def run_benchmarks(fs, run_benchmarks):
     if 'ioscalingbenchmarks' in run_benchmarks or 'all' in run_benchmarks:
         run_ioscalingbenchmarks(system, fs)
 
-def genbenchmarks(system, fs, do_compile):
+def genbenchmarks(system, fs, do_compile, nx, ny, nz, max_devices):
 
     # Create batch scripts
     os.chdir(fs.script_dir)
     print(f'cd {os.getcwd()}')
     gen_microbenchmarks(system, fs)
 
-    nn = 64
-    nx = ny = nz = nn
     gen_devicebenchmarks(system, fs, nx, ny, nz)
     gen_nodebenchmarks(system, fs, nx, ny, nz)
 
-    max_devices = 4096
     gen_strongscalingbenchmarks(system, fs, nx, ny, nz, max_devices)
     gen_weakscalingbenchmarks(system, fs, nx, ny, nz, max_devices)
     gen_iobenchmarks(system, fs, nx, ny, nz, max_devices)
@@ -371,7 +369,7 @@ def genbenchmarks(system, fs, do_compile):
 
 # pip3 install --user pandas numpy
 import pandas as pd
-def postprocess(system, fs):
+def postprocess(system, fs, nx, ny, nz):
     os.chdir(fs.base_dir)
     print(f'cd {os.getcwd()}')
 
@@ -446,14 +444,12 @@ def postprocess(system, fs):
             print('devices,millisecondsmin,milliseconds50thpercentile,milliseconds90thpercentile,millisecondsmax,usedistributedcommunication,nx,ny,nz,dostrongscaling')
     os.system(f'cat {fs.build_dir}/*/scaling-benchmark.csv >> scaling-benchmark.csv')
 
-    nx = ny = nz = 64
     df = pd.read_csv('scaling-benchmark.csv', comment='#')
     df = df.loc[(df['nx'] == nx) & (df['ny'] == ny) & (df['nz'] == nz)]
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
     df.to_csv(f'scaling-strong-{system.id}.csv', index=False)
 
-    nx = ny = nz = 64
     nn = nx * ny * nz
     df = pd.read_csv('scaling-benchmark.csv', comment='#')
     df = df.loc[(df['nx'] * df['ny'] * df['nz']) / df['devices'] == nn]
@@ -504,7 +500,13 @@ parser.add_argument('--cmakelistdir', default='.', type=str, help='Directory con
 parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without compiling or running. Prints commands to stdout.')
 parser.add_argument('--partition', type=str, help='Set the partition that should be used for computations')
 parser.add_argument('--postprocess', action='store_true', help='Postprocess the benchmark outputs')
-parser.add_argument('--run', type=str, nargs='*', help='[microbenchmarks devicebenchmarks nodebenchmarks strongscalingbenchmarks weakscalingbenchmarks ioscalingbenchmarks all]')
+parser.add_argument('--run', type=str, nargs='+', help='[microbenchmarks devicebenchmarks nodebenchmarks strongscalingbenchmarks weakscalingbenchmarks ioscalingbenchmarks all]')
+#parser.add_argument('--dims', type=int, nargs=3, help='The dimensions of the computational domain')
+#parser.add_argument('--max-devices', type=int, default=4096, help='The maximum number of devices used in the benchmarks')
+# TODO: make nn and max_devices an input parameter
+# see --run nargs='+' possibly
+nx = ny = nz = 64
+max_devices = 4
 
 args = parser.parse_args()
 
@@ -521,7 +523,7 @@ if args.partition:
 # Compile
 if args.run:
     args.build = True
-genbenchmarks(system, fs, args.build)
+genbenchmarks(system, fs, args.build, nx, ny, nz, max_devices)
 
 # Run
 if args.run:
@@ -529,4 +531,4 @@ if args.run:
 
 # Postprocess
 if args.postprocess:
-    postprocess(system, fs)
+    postprocess(system, fs, nx, ny, nz)
