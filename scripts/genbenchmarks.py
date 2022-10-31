@@ -71,25 +71,6 @@ class System:
                 os.system('make -j')
 
 
-mahti = System(id='a100', account='project_2000403', partition='gpusmall', ngpus_per_node=4, gres='gpu:a100',
-               modules='module load gcc/9.4.0 openmpi/4.1.2-cuda cuda cmake', use_hip=False, optimal_implementation='1', optimal_tpb='0')
-puhti = System(id='v100', account='project_2000403', partition='gpu', ngpus_per_node=4,
-               gres='gpu:v100', modules='module load gcc cuda openmpi cmake', use_hip=False,
-               additional_commands='''
-export UCX_RNDV_THRESH=16384
-export UCX_RNDV_SCHEME=get_zcopy
-export UCX_MAX_RNDV_RAILS=1''', optimal_implementation='1', optimal_tpb='0')
-triton = System(id='mi100', account='', partition='gpu-amd', ngpus_per_node=1, gres='',
-                modules='module load gcc bison flex cmake openmpi', use_hip=True, optimal_implementation='1', optimal_tpb='512')
-lumi = System(id='mi250x', account='project_462000120', partition='pilot', ngpus_per_node=8, gres='gpu', modules='''
-        module load CrayEnv
-        module load PrgEnv-cray
-        module load craype-accel-amd-gfx90a
-        module load rocm
-        module load buildtools
-        module load cray-python
-        ''', use_hip=True, optimal_implementation='1', optimal_tpb='512')
-
 class FileStructure:
 
     def __init__(self, cmakelistdir='.'):
@@ -476,6 +457,26 @@ def postprocess(system, fs, nx, ny, nz):
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
     df.to_csv(f'scaling-io-distributed-{system.id}.csv', index=False)
+
+# Systems
+mahti = System(id='a100', account='project_2000403', partition='gpusmall', ngpus_per_node=4, gres='gpu:a100',
+               modules='module load gcc/9.4.0 openmpi/4.1.2-cuda cuda cmake', use_hip=False, optimal_implementation='1', optimal_tpb='0')
+puhti = System(id='v100', account='project_2000403', partition='gpu', ngpus_per_node=4,
+               gres='gpu:v100', modules='module load gcc cuda openmpi cmake', use_hip=False,
+               additional_commands='''
+export UCX_RNDV_THRESH=16384
+export UCX_RNDV_SCHEME=get_zcopy
+export UCX_MAX_RNDV_RAILS=1''', optimal_implementation='1', optimal_tpb='0')
+triton = System(id='mi100', account='', partition='gpu-amd', ngpus_per_node=1, gres='',
+                modules='module load gcc bison flex cmake openmpi', use_hip=True, optimal_implementation='1', optimal_tpb='512')
+lumi = System(id='mi250x', account='project_462000120', partition='pilot', ngpus_per_node=8, gres='gpu', modules='''
+        module load CrayEnv
+        module load PrgEnv-cray
+        module load craype-accel-amd-gfx90a
+        module load rocm
+        module load buildtools
+        module load cray-python
+        ''', use_hip=True, optimal_implementation='1', optimal_tpb='512')
 
 # Select system
 hostname = socket.gethostname()
