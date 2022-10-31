@@ -498,6 +498,7 @@ parser = argparse.ArgumentParser(description='A tool for generating benchmarks')
 parser.add_argument('--build', action='store_true', help='Build benchmark directories')
 parser.add_argument('--cmakelistdir', default='.', type=str, help='Directory containing the project CMakeLists.txt')
 parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without compiling or running. Prints commands to stdout.')
+parser.add_argument('--account', type=str, help='Set the account to be used in the runs')
 parser.add_argument('--partition', type=str, help='Set the partition that should be used for computations')
 parser.add_argument('--postprocess', action='store_true', help='Postprocess the benchmark outputs')
 parser.add_argument('--run', type=str, nargs='+', help='[microbenchmarks devicebenchmarks nodebenchmarks strongscalingbenchmarks weakscalingbenchmarks ioscalingbenchmarks all]')
@@ -506,7 +507,7 @@ parser.add_argument('--run', type=str, nargs='+', help='[microbenchmarks deviceb
 # TODO: make nn and max_devices an input parameter
 # see --run nargs='+' possibly
 nx = ny = nz = 64
-max_devices = 4
+max_devices = 4096
 
 args = parser.parse_args()
 
@@ -515,6 +516,10 @@ _dryrun = args.dryrun
 
 # Create the file structure
 fs = FileStructure(args.cmakelistdir)
+
+# Set system account
+if args.account:
+    system.account = args.account
 
 # Set system partition
 if args.partition:
