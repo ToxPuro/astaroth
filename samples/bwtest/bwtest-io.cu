@@ -1,11 +1,111 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "common.h"
 
+#include "timer_hires.h" // From acc-runtime/api
+
+#if !AC_MPI_ENABLED
 int
 main(void)
 {
-    printf("Hello!\n");
+    printf("The library was built without MPI support, cannot run mpitest. Rebuild Astaroth with "
+           "cmake -DMPI_ENABLED=ON .. to enable.\n");
+    return EXIT_FAILURE;
+}
+#else
+#include <assert.h>
+
+#include <mpi.h>
+
+typedef enum { IDLE, BUSY } State;
+
+static State state = IDLE;
+
+int
+main(int argc, char* argv[])
+{
+    if (argc != 3) {
+        fprintf(stderr, "Usage: ./benchmark-io <compute bytes> <communication bytes>\n");
+        fprintf(stderr, "       ./benchmark 0 0 # To use the defaults\n");
+        return EXIT_FAILURE;
+    }
+    const size_t arg0 = (size_t)atol(argv[1]);
+    const size_t arg1 = (size_t)atol(argv[2]);
+
+    const size_t compute_size = arg0 ? arg0 : 0;         // 0 MiB default
+    const size_t comm_size    = arg1 ? arg1 : 268435456; // 256 MiB default
+
+    MPI_Init(NULL, NULL);
+
+    // MPI info
+    int pid, nprocs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    printf("Hello from proc %d of %d\n", pid, nprocs);
+
+    // Allocate
+    uint8_t* data = (uint8_t*)malloc(comm_size);
+    for (size_t i = 0; i < comm_size; ++i)
+        data[i] = (uint8_t)rand();
+    assert(data);
+
+    // Synchronous IO
+    printf("Synchronous IO\n");
+    MPI_File file;
+    int retval;
+    const size_t buflen = 4096;
+    char path[buflen];
+    snprintf(path, buflen, "proc%d.out");
+    int mode = MPI_MODE_CREATE // Create if not already exists
+               | MPI_MODE_WRONLY;
+
+    retval = MPI_File_open(MPI_COMM_WORLD, path, mode, MPI_INFO_NULL, &file);
+    assert(retval == MPI_SUCCESS);
+
+    Timer t;
+    timer_reset(&t);
+    MPI_Status status;
+    retval = MPI_File_write(file, data, comm_size, MPI_UINT8_T, &status);
+    assert(retval == MPI_SUCCESS);
+    timer_diff_print(t);
+
+    retval = MPI_File_close(&file);
+    assert(retval == MPI_SUCCESS);
+
+    // Asynchronous IO
+    printf("Asynchronous IO\n");
+    retval = MPI_File_open(MPI_COMM_WORLD, path, mode, MPI_INFO_NULL, &file);
+    assert(retval == MPI_SUCCESS);
+
+    timer_reset(&t);
+    MPI_Request req;
+    retval = MPI_File_iwrite(file, data, comm_size, MPI_UINT8_T, &req);
+    assert(retval == MPI_SUCCESS);
+    printf("Returned from MPI_File_iwrite\n");
+    timer_diff_print(t);
+
+    int complete;
+    retval = MPI_Request_get_status(req, &complete, &status);
+    assert(retval == MPI_SUCCESS);
+    while (!complete) {
+        timer_diff_print(t);
+        printf("Not yet complete...\n");
+        retval = MPI_Request_get_status(req, &complete, &status);
+        assert(retval == MPI_SUCCESS);
+    }
+    timer_diff_print(t);
+    printf("Complete\n");
+    retval = MPI_Wait(&req, &status);
+    assert(retval == MPI_SUCCESS);
+    timer_diff_print(t);
+    printf("Wait complete\n");
+
+    retval = MPI_File_close(&file);
+    assert(retval == MPI_SUCCESS);
+
+    MPI_Finalize();
     return EXIT_SUCCESS;
 }
+#endif

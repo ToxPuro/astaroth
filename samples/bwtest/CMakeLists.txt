@@ -9,6 +9,9 @@ endif()
 
 target_link_libraries(bwtest acc-runtime-headers)
 target_link_libraries(bwtest-stencil acc-runtime-headers)
+if (MPI_ENABLED)
+    target_link_libraries(bwtest-io MPI::MPI_C)
+endif()
 
 target_link_libraries(bwtest-benchmark acc-runtime-headers) # temporarily for rocprof
 target_include_directories(bwtest-benchmark PRIVATE ${CMAKE_SOURCE_DIR}/acc-runtime/api)
