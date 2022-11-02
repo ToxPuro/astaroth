@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h> // usleep
 
 #include "common.h"
 
@@ -15,6 +16,9 @@ main(void)
     return EXIT_FAILURE;
 }
 #else
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <assert.h>
 
 #include <mpi.h>
@@ -57,7 +61,8 @@ main(int argc, char* argv[])
     int retval;
     const size_t buflen = 4096;
     char path[buflen];
-    snprintf(path, buflen, "proc%d.out");
+    snprintf(path, buflen, "proc%d.out", pid);
+    printf("Writing out to %s\n", path);
     int mode = MPI_MODE_CREATE // Create if not already exists
                | MPI_MODE_WRONLY;
 
@@ -90,17 +95,20 @@ main(int argc, char* argv[])
     retval = MPI_Request_get_status(req, &complete, &status);
     assert(retval == MPI_SUCCESS);
     while (!complete) {
+        printf("Process %d not yet complete...\n", pid);
         timer_diff_print(t);
-        printf("Not yet complete...\n");
+        fflush(stdout);
+        usleep(25 * 1e3);
+
         retval = MPI_Request_get_status(req, &complete, &status);
         assert(retval == MPI_SUCCESS);
     }
+    printf("Process %d complete\n", pid);
     timer_diff_print(t);
-    printf("Complete\n");
     retval = MPI_Wait(&req, &status);
     assert(retval == MPI_SUCCESS);
-    timer_diff_print(t);
     printf("Wait complete\n");
+    timer_diff_print(t);
 
     retval = MPI_File_close(&file);
     assert(retval == MPI_SUCCESS);
