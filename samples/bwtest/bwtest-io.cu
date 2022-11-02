@@ -3,6 +3,10 @@
 #include <stdlib.h>
 #include <unistd.h> // usleep
 
+#include <thread>
+
+#include <omp.h>
+
 #include "common.h"
 
 #include "timer_hires.h" // From acc-runtime/api
@@ -54,6 +58,15 @@ main(int argc, char* argv[])
     for (size_t i = 0; i < comm_size; ++i)
         data[i] = (uint8_t)rand();
     assert(data);
+
+    /*
+    const auto fn = [](const int i){ usleep(2 * 1e6); printf("tid %d\n", i); };
+    std::thread t1(fn, 0);
+    printf("This happens async\n");
+    t1.join();
+    MPI_Finalize();
+    return EXIT_SUCCESS;
+    */
 
     // Synchronous IO
     printf("Synchronous IO\n");
@@ -108,6 +121,43 @@ main(int argc, char* argv[])
     retval = MPI_Wait(&req, &status);
     assert(retval == MPI_SUCCESS);
     printf("Wait complete\n");
+    timer_diff_print(t);
+
+    retval = MPI_File_close(&file);
+    assert(retval == MPI_SUCCESS);
+
+// Does not always (ever?) allocate two threads in this case
+#pragma omp parallel num_threads(2)
+    {
+        const int tid = omp_get_thread_num();
+        printf("Hello from proc %d, tid %d\n", pid, 1 * tid);
+    }
+
+    // Synchronous IO with C++ threads
+    printf("Synchronous IO with C++ threads\n");
+    retval = MPI_File_open(MPI_COMM_WORLD, path, mode, MPI_INFO_NULL, &file);
+    assert(retval == MPI_SUCCESS);
+
+    const auto write = [](const MPI_File file, const uint8_t* data, const size_t bytes) {
+        MPI_Status status;
+        const int retval = MPI_File_write(file, data, bytes, MPI_UINT8_T, &status);
+        assert(retval == MPI_SUCCESS);
+    };
+
+    timer_reset(&t);
+    std::thread write_thread(write, file, data, comm_size);
+    printf("C++ thread started\n");
+    timer_diff_print(t);
+
+    for (int i = 0; i < 10; ++i) {
+        printf("Doing something else in the meanwhile\n");
+        timer_diff_print(t);
+        fflush(stdout);
+        usleep(25 * 1e3);
+    }
+
+    write_thread.join();
+    printf("C++ thread joined\n");
     timer_diff_print(t);
 
     retval = MPI_File_close(&file);
