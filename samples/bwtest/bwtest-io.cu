@@ -79,7 +79,7 @@ main(int argc, char* argv[])
     int mode = MPI_MODE_CREATE // Create if not already exists
                | MPI_MODE_WRONLY;
 
-    retval = MPI_File_open(MPI_COMM_WORLD, path, mode, MPI_INFO_NULL, &file);
+    retval = MPI_File_open(MPI_COMM_SELF, path, mode, MPI_INFO_NULL, &file);
     assert(retval == MPI_SUCCESS);
 
     Timer t;
@@ -94,7 +94,7 @@ main(int argc, char* argv[])
 
     // Asynchronous IO
     printf("Asynchronous IO\n");
-    retval = MPI_File_open(MPI_COMM_WORLD, path, mode, MPI_INFO_NULL, &file);
+    retval = MPI_File_open(MPI_COMM_SELF, path, mode, MPI_INFO_NULL, &file);
     assert(retval == MPI_SUCCESS);
 
     timer_reset(&t);
@@ -135,7 +135,7 @@ main(int argc, char* argv[])
 
     // Synchronous IO with C++ threads
     printf("Synchronous IO with C++ threads\n");
-    retval = MPI_File_open(MPI_COMM_WORLD, path, mode, MPI_INFO_NULL, &file);
+    retval = MPI_File_open(MPI_COMM_SELF, path, mode, MPI_INFO_NULL, &file);
     assert(retval == MPI_SUCCESS);
 
     const auto write = [](const MPI_File file, const uint8_t* data, const size_t bytes) {
