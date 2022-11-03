@@ -718,21 +718,29 @@ main(void)
     }
 
     // Draft of pilot boundconds
-    AcTaskGraph* pilot_bcs = acGridBuildTaskGraph(
-    acHaloExchange(all_fields),
-    
-    acBoundaryCondition(BOUNDARY_X, BOUNDCOND_PERIODIC, all_fields)
-    acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_PERIODIC, all_fields)
+    Field lnrho[]{VTXBUF_LNRHO};
+    Field uux_uuy[]{VTXBUF_UUX, VTXBUF_UUY};
+    Field uuz[]{VTXBUF_UUZ};
+    Field ax_ay[]{VTXBUF_AX,VTXBUF_AY};
+    Field az[]{VTXBUF_AZ};
 
-    acBoundaryCondition(BOUNDARY_Z_TOP, SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION, (VertexBuffer[]){VTXBUF_ENTROPY}),
-    acBoundaryCondition(BOUNDARY_Z_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, (VertexBuffer[]){VTXBUF_ENTROPY}),
-    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_A2, (VertexBuffer[]){VTXBUF_LNRHO})
-    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, (VertexBuffer[]){VTXBUF_UUX, VTXBUF_UUY})
-    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, (VertexBuffer[]){VTXBUF_UUZ})
-    acBoundaryCondition(BOUNDARY_Z_TOP, BOUNDCOND_SYMMETRIC, (VertexBuffer[]){VTXBUF_AX,VTXBUF_AY})
-    acBoundaryCondition(BOUNDARY_Z_BOT, BOUNDCOND_ANTISYMMETRIC, (VertexBuffer[]){VTXBUF_AX,VTXBUF_AY})
-    acBoundaryCondition(BOUNDARY_Z_TOP, BOUNDCOND_ANTISYMMETRIC, (VertexBuffer[]){VTXBUF_AZ})
-    acBoundaryCondition(BOUNDARY_Z_BOT, BOUNDCOND_SYMMETRIC, (VertexBuffer[]){VTXBUF_AZ})
+    AcTaskGraph* pilot_bcs = acGridBuildTaskGraph(
+	{
+	    acHaloExchange(all_fields),
+
+	    acBoundaryCondition(BOUNDARY_X, BOUNDCOND_PERIODIC, all_fields),
+	    acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_PERIODIC, all_fields),
+
+	    acSpecialMHDBoundaryCondition(BOUNDARY_Z_TOP, SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION),
+	    acSpecialMHDBoundaryCondition(BOUNDARY_Z_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX),
+	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_A2, lnrho),
+	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, uux_uuy),
+	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, uuz),
+	    acBoundaryCondition(BOUNDARY_Z_TOP, BOUNDCOND_SYMMETRIC, ax_ay),
+	    acBoundaryCondition(BOUNDARY_Z_BOT, BOUNDCOND_ANTISYMMETRIC, ax_ay),
+	    acBoundaryCondition(BOUNDARY_Z_TOP, BOUNDCOND_ANTISYMMETRIC, az),
+	    acBoundaryCondition(BOUNDARY_Z_BOT, BOUNDCOND_SYMMETRIC, az)
+	  }
     );
 
     // Symmetric bc
