@@ -46,6 +46,10 @@ nz = args.dims[2]
 min_devices = args.num_devices[0]
 max_devices = args.num_devices[1]
 
+# Print some information before starting
+print(args.run_dirs)
+print(args.run_scripts)
+
 def syscall(cmd):
     if (args.dryrun):
         print(cmd)
