@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import sys
 import argparse
 import socket
 import math
@@ -10,25 +11,33 @@ parser = argparse.ArgumentParser(description='A tool for generating benchmarks',
 epilog='''EXAMPLES:
     # Generate run scripts and build directories
     genbenchmarks.py --task-type preprocess --implementations explicit implicit --io-implementations collective --dryrun
-    genbenchmarks.py --task-type preprocess build --implementations explicit implicit --io-implementations collective
-    genbenchmarks.py --task-type run --dryrun --run-dirs benchmark-data/builds/* --run-scripts benchmark-data/scripts/* # Confirm everything is correct
+    genbenchmarks.py --task-type build --build-dirs benchmark-data/builds/* # Optional. When the task type is 'run', --run-dirs are also built
+    genbenchmarks.py --task-type run --run-dirs benchmark-data/builds/* --run-scripts benchmark-data/scripts/* --dryrun # Confirm everything is correct
     genbenchmarks.py --task-type run --run-dirs benchmark-data/builds/* --run-scripts benchmark-data/scripts/* # Do the actual run without --dryrun''',
     formatter_class=argparse.RawDescriptionHelpFormatter)
-parser.add_argument('--task-type', type=str, nargs='+', choices=['preprocess', 'build', 'run', 'postprocess'], help='The type of the task performed with this script', required=True)
-## Build arguments
+
+## General arguments
+parser.add_argument('--task-type', type=str, nargs='+', choices=['preprocess', 'build', 'run', 'postprocess', 'clean'], help='The type of the task performed with this script', required=True)
+parser.add_argument('--dims', type=int, default=[64, 64, 64], nargs=3, help='The dimensions of the computational domain')
+parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without compiling or running. Prints os commands to stdout.')
+## Preprocess arguments
 parser.add_argument('--implementations', type=str, nargs='+', choices=['implicit', 'explicit'], default=['implicit', 'explicit'], help='The list of implementations used in testing')
 parser.add_argument('--io-implementations', type=str, nargs='+', choices=['collective', 'distributed'], default=['collective', 'distributed'], help='The list of IO implementations used in testing')
 parser.add_argument('--launch-bounds-range', type=int, nargs=2, default=[0, 1024], help='The range for the maximum number of threads per block applied to launch bounds in testing (inclusive)')
 parser.add_argument('--cmakelistdir', type=str, default='.', help='Directory containing the project CMakeLists.txt')
 parser.add_argument('--use-hip', action='store_true', help='Compile with HIP support')
-## Run arguments
 parser.add_argument('--account', type=str, help='The account used in tests')
 parser.add_argument('--partition', type=str, help='The partition used for running the tests')
-parser.add_argument('--run-scripts', type=str, nargs='+', help='A list of job scripts to run the tests')
-parser.add_argument('--dims', type=int, default=[64, 64, 64], nargs=3, help='The dimensions of the computational domain')
-parser.add_argument('--run-dirs', type=str, nargs='+', help='A list of directories to run the tests in')
-parser.add_argument('--num-devices', type=int, nargs=2, default=[1, 4096], help='The range for the number of devices used in testing (inclusive)')
-parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without compiling or running. Prints os commands to stdout.')
+parser.add_argument('--num-devices', type=int, nargs=2, default=[1, 4096], help='The range for the number of devices generated for run scripts (inclusive)')
+## Build arguments
+parser.add_argument('--build-dirs', type=str, nargs='+', required='build' in sys.argv, help='A list of directories to build')
+## Run arguments
+parser.add_argument('--run-scripts', type=str, nargs='+', required='run' in sys.argv, help='A list of job scripts to run the tests')
+parser.add_argument('--run-dirs', type=str, nargs='+', required='run' in sys.argv, help='A list of directories to run the tests in')
+## Clean arguments
+parser.add_argument('--clean-dirs', type=str, nargs='+', required='clean' in sys.argv, help='A list of directories to clean')
+
+## Parse
 args = parser.parse_args()
 
 benchmark_dir = 'benchmark-data'
@@ -52,10 +61,6 @@ nz = args.dims[2]
 # Set device counts
 min_devices = args.num_devices[0]
 max_devices = args.num_devices[1]
-
-# Print some information before starting
-print(args.run_dirs)
-print(args.run_scripts)
 
 def syscall(cmd):
     if (args.dryrun):
@@ -224,24 +229,11 @@ def gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices):
                 print(f'srun ./mpi-io {nx} {ny} {nz}')
         devices *= 2
 
-# Generate run scripts
+# Preprocess (create build directories and run scripts)
 if 'preprocess' in args.task_type:
-    syscall(f'mkdir -p {scripts_dir}')
 
-    if not args.dryrun:
-        gen_microbenchmarks(system)
-
-        gen_devicebenchmarks(system, nx, ny, nz)
-        gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices)
-
-        gen_strongscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
-        gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
-        gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices)
-
-# Build and run
-if 'preprocess' in args.task_type or 'build' in args.task_type or 'run' in args.task_type:
+    # Builds
     syscall(f'mkdir -p {builds_dir}')
-    
     for implementation in args.implementations:
         for io_implementation in args.io_implementations:
             tpb = args.launch_bounds_range[0]
@@ -254,23 +246,44 @@ if 'preprocess' in args.task_type or 'build' in args.task_type or 'run' in args.
                 build_dir = f'{builds_dir}/implementation{impl_id}_maxthreadsperblock{tpb}_distributed{distributed}'
                 syscall(f'mkdir -p {build_dir}')
 
-                # Build
-                if 'build' in args.task_type or 'run' in args.task_type:
-                    flags = f'''-DMPI_ENABLED=ON -DSINGLEPASS_INTEGRATION=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DUSE_DISTRIBUTED_IO={distributed}'''
-                    syscall(f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}')
-                    syscall(f'make --directory={build_dir} -j')
-
-                # Run
-                if 'run' in args.task_type:
-                    if args.run_dirs and build_dir in args.run_dirs:
-                        for script in args.run_scripts:
-                            syscall(f'sbatch --chdir="{build_dir}" {script}')
+                # Generate Makefile
+                flags = f'''-DMPI_ENABLED=ON -DSINGLEPASS_INTEGRATION=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DUSE_DISTRIBUTED_IO={distributed}'''
+                syscall(f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}')
 
                 tpb = 1 if tpb == 0 else 2*tpb
 
-def postprocess(system, nx, ny, nz):
-    import pandas as pd
+    # Scripts
+    syscall(f'mkdir -p {scripts_dir}')
+    if not args.dryrun:
+        gen_microbenchmarks(system)
+
+        gen_devicebenchmarks(system, nx, ny, nz)
+        gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices)
+
+        gen_strongscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices)
+
+    # Outputs
     syscall(f'mkdir -p {output_dir}')
+
+# Build
+if 'build' in args.task_type:
+    if args.build_dirs:
+        for build_dir in args.build_dirs:
+            syscall(f'make --directory={build_dir} -j')
+
+# Run
+if 'run' in args.task_type:
+    for run_dir in args.run_dirs:
+        syscall(f'make --directory={run_dir} -j')
+        for script in args.run_scripts:
+            syscall(f'sbatch --chdir="{run_dir}" {script}')
+
+
+# Postprocess
+if 'postprocess' in args.task_type:
+    import pandas as pd
 
     with open(f'{output_dir}/microbenchmark.csv', 'w') as f:
         with redirect_stdout(f):
@@ -375,8 +388,7 @@ def postprocess(system, nx, ny, nz):
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
     df.to_csv(f'{output_dir}/scaling-io-distributed-{system.id}.csv', index=False)
-
-# Postprocess
-if 'postprocess' in args.task_type:
-    postprocess(system, nx, ny, nz)
     
+if 'clean' in args.task_type:
+    for dir in args.clean_dirs:
+        syscall(f'rm {dir}/*.csv')
