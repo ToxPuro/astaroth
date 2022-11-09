@@ -3,7 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "acc_runtime.h" // For CUDA/HIP support
+//#include "acc_runtime.h" // For CUDA/HIP support
+#include "errchk.h"
+#include "datatypes.h"
 
 #if AC_USE_HIP
 #include <hip/hip_runtime.h> // Needed in files that include kernels

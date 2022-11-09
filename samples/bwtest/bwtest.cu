@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "acc_runtime.h" // For CUDA/HIP support
+//#include "acc_runtime.h" // For CUDA/HIP support
+#include "errchk.h"
 #include "math_utils.h"
 
 #if AC_USE_HIP
