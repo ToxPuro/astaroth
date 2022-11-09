@@ -6,7 +6,14 @@ import math
 from contextlib import redirect_stdout
 
 # Parse arguments
-parser = argparse.ArgumentParser(description='A tool for generating benchmarks')
+parser = argparse.ArgumentParser(description='A tool for generating benchmarks',
+epilog='''EXAMPLES:
+    # Generate run scripts and build directories
+    genbenchmarks.py --task-type preprocess --implementations explicit implicit --io-implementations collective --dryrun
+    genbenchmarks.py --task-type preprocess build --implementations explicit implicit --io-implementations collective
+    genbenchmarks.py --task-type run --dryrun --run-dirs benchmark-data/builds/* --run-scripts benchmark-data/scripts/* # Confirm everything is correct
+    genbenchmarks.py --task-type run --run-dirs benchmark-data/builds/* --run-scripts benchmark-data/scripts/* # Do the actual run without --dryrun''',
+    formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument('--task-type', type=str, nargs='+', choices=['preprocess', 'build', 'run', 'postprocess'], help='The type of the task performed with this script', required=True)
 ## Build arguments
 parser.add_argument('--implementations', type=str, nargs='+', choices=['implicit', 'explicit'], default=['implicit', 'explicit'], help='The list of implementations used in testing')
@@ -221,14 +228,15 @@ def gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices):
 if 'preprocess' in args.task_type:
     syscall(f'mkdir -p {scripts_dir}')
 
-    gen_microbenchmarks(system)
+    if not args.dryrun:
+        gen_microbenchmarks(system)
 
-    gen_devicebenchmarks(system, nx, ny, nz)
-    gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_devicebenchmarks(system, nx, ny, nz)
+        gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices)
 
-    gen_strongscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
-    gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
-    gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_strongscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices)
 
 # Build and run
 if 'preprocess' in args.task_type or 'build' in args.task_type or 'run' in args.task_type:
@@ -260,8 +268,8 @@ if 'preprocess' in args.task_type or 'build' in args.task_type or 'run' in args.
 
                 tpb = 1 if tpb == 0 else 2*tpb
 
-import pandas as pd
 def postprocess(system, nx, ny, nz):
+    import pandas as pd
     syscall(f'mkdir -p {output_dir}')
 
     with open(f'{output_dir}/microbenchmark.csv', 'w') as f:
