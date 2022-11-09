@@ -13,7 +13,15 @@ epilog='''EXAMPLES:
     genbenchmarks.py --task-type preprocess --implementations explicit implicit --io-implementations collective --dryrun
     genbenchmarks.py --task-type build --build-dirs benchmark-data/builds/* # Optional. When the task type is 'run', --run-dirs are also built
     genbenchmarks.py --task-type run --run-dirs benchmark-data/builds/* --run-scripts benchmark-data/scripts/* --dryrun # Confirm everything is correct
-    genbenchmarks.py --task-type run --run-dirs benchmark-data/builds/* --run-scripts benchmark-data/scripts/* # Do the actual run without --dryrun''',
+    genbenchmarks.py --task-type run --run-dirs benchmark-data/builds/* --run-scripts benchmark-data/scripts/* # Do the actual run without --dryrun
+    
+See Unix globbing for passing files/directories to the script more easily.
+    For example:
+        ??.sh matches two characters
+        *.sh matches any number of characters
+        [1-8] matches a character in range 1-8
+        {1..16} expands to 1,2,3,...,16
+    ''',
     formatter_class=argparse.RawDescriptionHelpFormatter)
 
 ## General arguments
