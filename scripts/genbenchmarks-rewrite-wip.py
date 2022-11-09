@@ -4,7 +4,16 @@ import sys
 import argparse
 import socket
 import math
+import time
+import subprocess
 from contextlib import redirect_stdout
+
+###
+# Single node io scaling benchmarks
+# scripts/genbenchmarks-rewrite-wip.py --task-type preprocess --partition gputest --max-threads-per-block-range 0 0 --implementations implicit
+# scripts/genbenchmarks-rewrite-wip.py --task-type run --run-scripts benchmark-data/scripts/io-scaling-benchmark-[1-8].sh --run-dirs benchmark-data/builds/* --max-jobs-per-queue 2
+# scripts/genbenchmarks-rewrite-wip.py --task-type postprocess
+###
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='A tool for generating benchmarks',
@@ -31,7 +40,7 @@ parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without c
 ## Preprocess arguments
 parser.add_argument('--implementations', type=str, nargs='+', choices=['implicit', 'explicit'], default=['implicit', 'explicit'], help='The list of implementations used in testing')
 parser.add_argument('--io-implementations', type=str, nargs='+', choices=['collective', 'distributed'], default=['collective', 'distributed'], help='The list of IO implementations used in testing')
-parser.add_argument('--launch-bounds-range', type=int, nargs=2, default=[0, 1024], help='The range for the maximum number of threads per block applied to launch bounds in testing (inclusive)')
+parser.add_argument('--max-threads-per-block-range', type=int, nargs=2, default=[0, 1024], help='The range for the maximum number of threads per block applied to launch bounds in testing (inclusive)')
 parser.add_argument('--cmakelistdir', type=str, default='.', help='Directory containing the project CMakeLists.txt')
 parser.add_argument('--use-hip', action='store_true', help='Compile with HIP support')
 parser.add_argument('--account', type=str, help='The account used in tests')
@@ -42,6 +51,7 @@ parser.add_argument('--build-dirs', type=str, nargs='+', required='build' in sys
 ## Run arguments
 parser.add_argument('--run-scripts', type=str, nargs='+', required='run' in sys.argv, help='A list of job scripts to run the tests')
 parser.add_argument('--run-dirs', type=str, nargs='+', required='run' in sys.argv, help='A list of directories to run the tests in')
+parser.add_argument('--max-jobs-per-queue', type=int, help='Limit the number of batch jobs submitted to the queue at a time')
 ## Clean arguments
 parser.add_argument('--clean-dirs', type=str, nargs='+', required='clean' in sys.argv, help='A list of directories to clean')
 
@@ -52,23 +62,6 @@ benchmark_dir = 'benchmark-data'
 scripts_dir    = f'{benchmark_dir}/scripts'
 builds_dir     = f'{benchmark_dir}/builds'
 output_dir     = f'{benchmark_dir}/output'
-
-# Set system account
-if args.account:
-    system.account = args.account
-
-# Set system partition
-if args.partition:
-    system.partition = args.partition
-
-# Set problem size
-nx = args.dims[0]
-ny = args.dims[1]
-nz = args.dims[2]
-
-# Set device counts
-min_devices = args.num_devices[0]
-max_devices = args.num_devices[1]
 
 def syscall(cmd):
     if (args.dryrun):
@@ -160,6 +153,23 @@ else:
     exit(-1)
 system.load_modules()
 
+# Set system account
+if args.account:
+    system.account = args.account
+
+# Set system partition
+if args.partition:
+    system.partition = args.partition
+
+# Set problem size
+nx = args.dims[0]
+ny = args.dims[1]
+nz = args.dims[2]
+
+# Set device counts
+min_devices = args.num_devices[0]
+max_devices = args.num_devices[1]
+
 # Microbenchmarks
 def gen_microbenchmarks(system):
     with open(f'{scripts_dir}/microbenchmark.sh', 'w') as f:
@@ -244,8 +254,8 @@ if 'preprocess' in args.task_type:
     syscall(f'mkdir -p {builds_dir}')
     for implementation in args.implementations:
         for io_implementation in args.io_implementations:
-            tpb = args.launch_bounds_range[0]
-            while tpb <= args.launch_bounds_range[1]:
+            tpb = args.max_threads_per_block_range[0]
+            while tpb <= args.max_threads_per_block_range[1]:
 
                 impl_id     = 1 if implementation == 'implicit' else 2
                 use_smem    = implementation == 'explicit'
@@ -286,6 +296,15 @@ if 'run' in args.task_type:
     for run_dir in args.run_dirs:
         syscall(f'make --directory={run_dir} -j')
         for script in args.run_scripts:
+            if args.max_jobs_per_queue:
+                njobs = int(subprocess.check_output('squeue --me | wc -l', shell=True)) - 1
+                while njobs >= args.max_jobs_per_queue :
+                    print('Waiting for jobs to finish...')
+                    os.system('squeue --me')
+                    time.sleep(2)
+                    njobs = int(subprocess.check_output('squeue --me | wc -l', shell=True)) - 1
+
+
             syscall(f'sbatch --chdir="{run_dir}" {script}')
 
 
