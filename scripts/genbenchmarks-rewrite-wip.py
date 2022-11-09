@@ -13,6 +13,12 @@ from contextlib import redirect_stdout
 # scripts/genbenchmarks-rewrite-wip.py --task-type preprocess --partition gputest --max-threads-per-block-range 0 0 --implementations implicit
 # scripts/genbenchmarks-rewrite-wip.py --task-type run --run-scripts benchmark-data/scripts/io-scaling-benchmark-[1-8].sh --run-dirs benchmark-data/builds/* --max-jobs-per-queue 2
 # scripts/genbenchmarks-rewrite-wip.py --task-type postprocess
+#
+#
+# 32 devices
+# scripts/genbenchmarks-rewrite-wip.py --task-type preprocess --max-threads-per-block-range 0 0 --implementations implicit
+# scripts/genbenchmarks-rewrite-wip.py --task-type run --run-scripts benchmark-data/scripts/io-scaling-benchmark-{1..32}.sh --run-dirs benchmark-data/builds/*
+# 
 ###
 
 # Parse arguments
