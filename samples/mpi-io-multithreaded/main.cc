@@ -50,7 +50,6 @@ timer_print(const char* str, const Timer t)
 int
 main(int argc, char** argv)
 {
-    /*
     int thread_support_level;
     MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &thread_support_level);
     if (thread_support_level < MPI_THREAD_MULTIPLE) {
@@ -58,8 +57,7 @@ main(int argc, char** argv)
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    */
-   MPI_Init(NULL, NULL);
+   //MPI_Init(NULL, NULL);
 
     int pid, nprocs;
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
@@ -155,7 +153,8 @@ main(int argc, char** argv)
     // Test asynchronous read/write
     //// Write
     timer_reset(&t);
-    timer_print("Timer reset", t);
+    if (!pid)
+        timer_print("Timer reset", t);
     acGridDiskAccessLaunch(ACCESS_WRITE);
     if (!pid)
         timer_print("Disk access launched", t);

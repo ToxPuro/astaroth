@@ -1318,6 +1318,7 @@ acGridDiskAccessLaunch(const AccessType type)
             int mode           = MPI_MODE_CREATE | MPI_MODE_WRONLY;
             char outfile[4096] = "";
             snprintf(outfile, 4096, "segment-%d_%d_%d-%s", offset.x, offset.y, offset.z, path);
+            fprintf(stderr, "Writing %s\n", outfile);
             int retval = MPI_File_open(MPI_COMM_SELF, outfile, mode, MPI_INFO_NULL, &file);
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
@@ -1346,10 +1347,11 @@ acGridDiskAccessLaunch(const AccessType type)
             MPI_Type_commit(&subarray);
 
             MPI_File file;
+            fprintf(stderr, "Writing %s\n", path);
 
             int flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
             ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &file) ==
-                          MPI_SUCCESS);
+                          MPI_SUCCESS); // ISSUE TODO: fails with multiple threads 
 
             ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native",
                                             MPI_INFO_NULL) == MPI_SUCCESS);
@@ -1411,6 +1413,9 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
     }
 
 #ifndef NDEBUG
+    #if USE_DISTRIBUTED_IO
+    WARNING("NDEBUG defined, the debug check for reading assumes wrong file type if using distributed, expect an error.");
+    #endif
     if (type == ACCESS_READ) {
         const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
         FILE* fp                   = fopen(path, "r");
@@ -1445,6 +1450,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
 
     char outfile[4096] = "";
     snprintf(outfile, 4096, "segment-%d_%d_%d-%s", offset.x, offset.y, offset.z, path);
+    fprintf(stderr, "Reading %s\n", outfile);
     FILE* fp;
     if (type == ACCESS_READ)
         fp = fopen(outfile, "r");
