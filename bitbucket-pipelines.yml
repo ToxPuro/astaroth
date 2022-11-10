@@ -38,5 +38,8 @@ pipelines:
           - cmake -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=OFF -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=OFF .. # Single precision
           - make -j
           - rm -rf *
-          - cmake -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Double precision
+          - cmake -DCMAKE_BUILD_TYPE=Release -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Double precision
+          - make -j
+          - rm -rf *
+          - cmake -DCMAKE_BUILD_TYPE=Debug -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Debug
           - make -j

@@ -121,6 +121,13 @@ acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBound
     task_def.num_parameters = num_parameters;
     return task_def;
 }
+
+AcTaskDefinition
+acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond)
+{
+    return acSpecialMHDBoundaryCondition(boundary, bound_cond, nullptr, 0);
+}
+
 #endif
 
 Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields)

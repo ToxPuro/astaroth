@@ -1072,15 +1072,11 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
 
 #ifdef AC_INTEGRATION_ENABLED
 /** */
-template <size_t num_fields>
 AcTaskDefinition
-acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond)
-{
-    return acSpecialMHDBoundaryCondition(boundary, bound_cond, nullptr, 0);
-}
+acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond);
 
 /** */
-template <size_t num_fields, size_t num_parameters>
+template <size_t num_parameters>
 AcTaskDefinition
 acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond,
                               AcRealParam (&parameters)[num_parameters])
