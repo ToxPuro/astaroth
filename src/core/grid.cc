@@ -1256,6 +1256,8 @@ acGridDiskAccessLaunch(const AccessType type)
     return AC_SUCCESS;
 }*/
 
+#define USE_CPP_THREADS (1)
+#if USE_CPP_THREADS
 #include <thread>
 #include <vector>
 
@@ -1306,7 +1308,8 @@ acGridDiskAccessLaunch(const AccessType type)
         const size_t bytes = acVertexBufferCompdomainSizeBytes(info);
         cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
 
-        const auto write_async = [](const int device_id, const int i, const AcMeshInfo info, const AcReal* host_buffer) {
+        const auto write_async = [](const int device_id, const int i, const AcMeshInfo info,
+                                    const AcReal* host_buffer) {
             cudaSetDevice(device_id);
 
             char path[4096] = "";
@@ -1351,7 +1354,7 @@ acGridDiskAccessLaunch(const AccessType type)
 
             int flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
             ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &file) ==
-                          MPI_SUCCESS); // ISSUE TODO: fails with multiple threads 
+                          MPI_SUCCESS); // ISSUE TODO: fails with multiple threads
 
             ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native",
                                             MPI_INFO_NULL) == MPI_SUCCESS);
@@ -1374,6 +1377,139 @@ acGridDiskAccessLaunch(const AccessType type)
 
     return AC_SUCCESS;
 }
+#else
+
+static MPI_File files[NUM_VTXBUF_HANDLES];
+static MPI_Request reqs[NUM_VTXBUF_HANDLES];
+static bool req_running[NUM_VTXBUF_HANDLES];
+
+AcResult
+acGridDiskAccessSync(void)
+{
+    ERRCHK(grid.initialized);
+
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        if (req_running[i]) {
+            MPI_Wait(&reqs[i], MPI_STATUS_IGNORE);
+            const int retval = MPI_File_close(&files[i]);
+            ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+            req_running[i] = false;
+        }
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    return AC_SUCCESS;
+}
+
+AcResult
+acGridDiskAccessLaunch(const AccessType type)
+{
+    ERRCHK(grid.initialized);
+    ERRCHK_ALWAYS(type == ACCESS_WRITE);
+
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+
+        ERRCHK_ALWAYS(!reqs[i]);
+
+        const Device device = grid.device;
+        cudaSetDevice(device->id);
+        cudaDeviceSynchronize();
+
+        const AcMeshInfo info = device->local_config;
+        AcReal* host_buffer   = grid.submesh.vertex_buffer[i];
+
+        const AcReal* in      = device->vba.in[i];
+        const int3 in_offset  = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
+        const int3 in_volume  = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+        AcReal* out           = device->vba.out[i];
+        const int3 out_offset = (int3){0, 0, 0};
+        const int3 out_volume = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+        acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
+                           out_volume);
+        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+
+        const size_t bytes = acVertexBufferCompdomainSizeBytes(info);
+        cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
+
+        char path[4096] = "";
+        sprintf(path, "%s.out", vtxbuf_names[i]);
+
+        const int3 offset  = info.int3_params[AC_multigpu_offset]; // Without halo
+#if USE_DISTRIBUTED_IO
+        int mode           = MPI_MODE_CREATE | MPI_MODE_WRONLY;
+        char outfile[4096] = "";
+        snprintf(outfile, 4096, "segment-%d_%d_%d-%s", offset.x, offset.y, offset.z, path);
+        fprintf(stderr, "Writing %s\n", outfile);
+
+        int retval = MPI_File_open(MPI_COMM_SELF, outfile, mode, MPI_INFO_NULL, &files[i]);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        const size_t count = acVertexBufferCompdomainSize(info);
+        retval = MPI_File_iwrite(files[i], host_buffer, count, AC_REAL_MPI_TYPE, &reqs[i]);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        req_running[i] = true;
+#else
+        MPI_Datatype subarray;
+        const int3 nn          = info.int3_params[AC_global_grid_n];
+        const int3 nn_sub      = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+        const int arr_nn[]     = {nn.z, nn.y, nn.x};
+        const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
+        const int arr_offset[] = {offset.z, offset.y, offset.x};
+
+        MPI_Type_create_subarray(3, arr_nn, arr_nn_sub, arr_offset, MPI_ORDER_C, AC_REAL_MPI_TYPE,
+                                 &subarray);
+        MPI_Type_commit(&subarray);
+
+        fprintf(stderr, "Writing %s\n", path);
+
+        int flags  = MPI_MODE_CREATE | MPI_MODE_WRONLY;
+        int retval = MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &files[i]);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        retval = MPI_File_set_view(files[i], 0, AC_REAL_MPI_TYPE, subarray, "native",
+                                   MPI_INFO_NULL);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        const size_t nelems = nn_sub.x * nn_sub.y * nn_sub.z;
+#if 0 // Does not work
+        retval = MPI_File_iwrite_all(files[i], host_buffer, nelems, AC_REAL_MPI_TYPE, &reqs[i]);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+        MPI_Type_free(&subarray);
+        req_running[i] = true;
+#elif 0 // Does not work either, even though otherwise identical to the blocking version below (except iwrite + wait)
+        ERRCHK_ALWAYS(&files[i]);
+        ERRCHK_ALWAYS(&reqs[i]);
+        ERRCHK_ALWAYS(host_buffer);
+        ERRCHK_ALWAYS(subarray);
+        retval = MPI_File_iwrite_all(files[i], host_buffer, nelems, AC_REAL_MPI_TYPE, &reqs[i]);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        retval = MPI_Wait(&reqs[i], MPI_STATUS_IGNORE);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        retval = MPI_File_close(&files[i]);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        MPI_Type_free(&subarray);
+        req_running[i] = false;
+#else // Blocking, this works
+        WARNING("Called collective non-blocking MPI_File_write_all, but currently blocks\n");
+        MPI_Status status;
+        retval = MPI_File_write_all(files[i], host_buffer, nelems, AC_REAL_MPI_TYPE, &status);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        retval = MPI_File_close(&files[i]);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        MPI_Type_free(&subarray);
+        req_running[i] = false;
+#endif
+#endif
+    }
+
+    return AC_SUCCESS;
+}
+#endif
 
 AcResult
 acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* path,
@@ -1413,9 +1549,10 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
     }
 
 #ifndef NDEBUG
-    #if USE_DISTRIBUTED_IO
-    WARNING("NDEBUG defined, the debug check for reading assumes wrong file type if using distributed, expect an error.");
-    #endif
+#if USE_DISTRIBUTED_IO
+    WARNING("NDEBUG defined, the debug check for reading assumes wrong file type if using "
+            "distributed, expect an error.");
+#endif
     if (type == ACCESS_READ) {
         const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
         FILE* fp                   = fopen(path, "r");
@@ -1465,7 +1602,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
     fclose(fp);
 #else // Collective IO
     MPI_Datatype subarray;
-    const int arr_nn[] = {nn.z, nn.y, nn.x};
+    const int arr_nn[]     = {nn.z, nn.y, nn.x};
     const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
     const int arr_offset[] = {offset.z, offset.y, offset.x};
 

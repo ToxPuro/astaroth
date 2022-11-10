@@ -57,7 +57,7 @@ main(int argc, char** argv)
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-   //MPI_Init(NULL, NULL);
+    // MPI_Init(NULL, NULL);
 
     int pid, nprocs;
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
@@ -103,11 +103,11 @@ main(int argc, char** argv)
 
     // Warmup
     acGridIntegrate(STREAM_DEFAULT, dt);
-    acGridLoadMesh(STREAM_DEFAULT, model); // Workaround to avoid cluttering the buffers with autotuning
+    acGridLoadMesh(STREAM_DEFAULT,
+                   model); // Workaround to avoid cluttering the buffers with autotuning
     acGridSwapBuffers();
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
-
 
     acGridIntegrate(STREAM_DEFAULT, dt);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
@@ -122,7 +122,7 @@ main(int argc, char** argv)
     // Declare timer
     Timer t;
 
-    #if 0
+#if 0
     // Test synchronous read/write
     //// Write
     timer_reset(&t);
@@ -148,7 +148,7 @@ main(int argc, char** argv)
         const AcResult res = acVerifyMesh("Synchronous read/write", model, candidate);
         WARNCHK_ALWAYS(res == AC_SUCCESS);
     }
-    #endif
+#endif
 
     // Test asynchronous read/write
     //// Write
@@ -170,8 +170,8 @@ main(int argc, char** argv)
         timer_print("Disk access synced", t);
 
     //// Read
-    //acGridDiskAccessLaunch(ACCESS_READ);
-    //acGridDiskAccessSync();
+    // acGridDiskAccessLaunch(ACCESS_READ);
+    // acGridDiskAccessSync();
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char buf[4096] = "";
         sprintf(buf, "%s.out", vtxbuf_names[i]);
