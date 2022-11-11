@@ -1317,6 +1317,21 @@ acGridDiskAccessLaunch(const AccessType type)
 
             const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
 #if USE_DISTRIBUTED_IO
+            #define USE_POSIX_IO (0)
+
+            #if USE_POSIX_IO
+                char outfile[4096] = "";
+                snprintf(outfile, 4096, "segment-%d_%d_%d-%s", offset.x, offset.y, offset.z, path);
+
+                FILE* fp = fopen(outfile, "w");
+                ERRCHK_ALWAYS(fp);
+
+                const size_t count = acVertexBufferCompdomainSize(info);
+                const size_t count_written = fwrite(host_buffer, sizeof(AcReal), count, fp);
+                ERRCHK_ALWAYS(count_written == count);
+
+                fclose(fp);
+            #else // Use MPI IO
             MPI_File file;
             int mode           = MPI_MODE_CREATE | MPI_MODE_WRONLY;
             char outfile[4096] = "";
@@ -1332,6 +1347,7 @@ acGridDiskAccessLaunch(const AccessType type)
 
             retval = MPI_File_close(&file);
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+            #endif
 #else
             MPI_Datatype subarray;
             const int3 nn          = info.int3_params[AC_global_grid_n];

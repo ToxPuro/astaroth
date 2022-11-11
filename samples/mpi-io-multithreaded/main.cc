@@ -50,6 +50,19 @@ timer_print(const char* str, const Timer t)
 int
 main(int argc, char** argv)
 {
+    //////////////// FUNNELED
+    /*
+    int thread_support_level;
+    MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &thread_support_level);
+    if (thread_support_level < MPI_THREAD_FUNNELED) {
+        fprintf(stderr, "MPI_THREAD_FUNNELED not supported by the MPI implementation\n");
+        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+        return EXIT_FAILURE;
+    }
+    */
+    ////////////////////
+
+    //////////////////// MULTIPLE
     int thread_support_level;
     MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &thread_support_level);
     if (thread_support_level < MPI_THREAD_MULTIPLE) {
@@ -57,6 +70,7 @@ main(int argc, char** argv)
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         return EXIT_FAILURE;
     }
+    ////////////////////
     // MPI_Init(NULL, NULL);
 
     int pid, nprocs;
