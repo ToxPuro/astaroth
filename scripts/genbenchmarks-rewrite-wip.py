@@ -286,9 +286,10 @@ if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
 
                 # Generate Makefile
                 flags = f'''-DMPI_ENABLED=ON -DSINGLEPASS_INTEGRATION=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
-                syscall(f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}')
+                syscall_async(f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}')
 
-                tpb = 32 if tpb == 0 else 2*tpb    
+                tpb = 32 if tpb == 0 else 2*tpb
+    syscalls_wait()    
 
 # Generate scripts
 if 'preprocess' in args.task_type or 'genscripts' in args.task_type:
@@ -308,12 +309,17 @@ if 'preprocess' in args.task_type or 'genscripts' in args.task_type:
 if 'build' in args.task_type:
     if args.build_dirs:
         for build_dir in args.build_dirs:
-            syscall(f'make --directory={build_dir} -j')
+            syscall_async(f'make --directory={build_dir} -j')
+        syscalls_wait()
 
 # Run
 if 'run' in args.task_type:
+    # Make
     for run_dir in args.run_dirs:
-        syscall(f'make --directory={run_dir} -j')
+        syscall_async(f'make --directory={run_dir} -j')
+    syscalls_wait()
+    # Run
+    for run_dir in args.run_dirs:
         for script in args.run_scripts:
             if args.max_jobs_per_queue:
                 njobs = int(subprocess.check_output('squeue --me | wc -l', shell=True)) - 1
