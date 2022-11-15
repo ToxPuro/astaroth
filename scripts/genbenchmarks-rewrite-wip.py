@@ -40,7 +40,7 @@ See Unix globbing for passing files/directories to the script more easily.
     formatter_class=argparse.RawDescriptionHelpFormatter)
 
 ## General arguments
-parser.add_argument('--task-type', type=str, nargs='+', choices=['preprocess', 'build', 'run', 'postprocess', 'clean'], help='The type of the task performed with this script', required=True)
+parser.add_argument('--task-type', type=str, nargs='+', choices=['genmakefiles', 'genscripts', 'preprocess', 'build', 'run', 'postprocess', 'clean'], help='The type of the task performed with this script', required=True)
 parser.add_argument('--dims', type=int, default=[64, 64, 64], nargs=3, help='The dimensions of the computational domain')
 parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without compiling or running. Prints os commands to stdout.')
 ## Preprocess arguments
@@ -253,9 +253,8 @@ def gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices):
                 print(f'srun ./mpi-io {nx} {ny} {nz}')
         devices *= 2
 
-# Preprocess (create build directories and run scripts)
-if 'preprocess' in args.task_type:
-
+# Generate makefiles
+if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
     # Builds
     syscall(f'mkdir -p {builds_dir}')
     for implementation in args.implementations:
@@ -274,8 +273,10 @@ if 'preprocess' in args.task_type:
                 flags = f'''-DMPI_ENABLED=ON -DSINGLEPASS_INTEGRATION=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
                 syscall(f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}')
 
-                tpb = 1 if tpb == 0 else 2*tpb
+                tpb = 32 if tpb == 0 else 2*tpb    
 
+# Generate scripts
+if 'preprocess' in args.task_type or 'genscripts' in args.task_type:
     # Scripts
     syscall(f'mkdir -p {scripts_dir}')
     if not args.dryrun:
@@ -287,9 +288,6 @@ if 'preprocess' in args.task_type:
         gen_strongscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
         gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
         gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices)
-
-    # Outputs
-    syscall(f'mkdir -p {output_dir}')
 
 # Build
 if 'build' in args.task_type:
@@ -317,6 +315,9 @@ if 'run' in args.task_type:
 # Postprocess
 if 'postprocess' in args.task_type:
     import pandas as pd
+
+    # Outputs
+    syscall(f'mkdir -p {output_dir}')
 
     with open(f'{output_dir}/microbenchmark.csv', 'w') as f:
         with redirect_stdout(f):
