@@ -75,6 +75,21 @@ def syscall(cmd):
     else:
         os.system(cmd)
 
+import subprocess
+import shlex
+processes = []
+def syscall_async(cmd):
+    if (args.dryrun):
+        print(cmd)
+    else:
+        global processes
+        processes.append(subprocess.Popen(shlex.split(cmd)))
+
+def syscalls_wait():
+    global processes
+    while processes:
+        processes.pop(0).wait()
+
 # System
 class System:
     
