@@ -10,14 +10,14 @@ from contextlib import redirect_stdout
 
 ###
 # Single node io scaling benchmarks
-# scripts/genbenchmarks-rewrite-wip.py --task-type preprocess --partition gputest --max-threads-per-block-range 0 0 --implementations implicit
-# scripts/genbenchmarks-rewrite-wip.py --task-type run --run-scripts benchmark-data/scripts/io-scaling-benchmark-[1-8].sh --run-dirs benchmark-data/builds/* --max-jobs-per-queue 2
-# scripts/genbenchmarks-rewrite-wip.py --task-type postprocess
+# scripts/genbenchmarks.py --task-type preprocess --partition gputest --max-threads-per-block-range 0 0 --implementations implicit
+# scripts/genbenchmarks.py --task-type run --run-scripts benchmark-data/scripts/io-scaling-benchmark-[1-8].sh --run-dirs benchmark-data/builds/* --max-jobs-per-queue 2
+# scripts/genbenchmarks.py --task-type postprocess
 #
 #
 # 32 devices
-# scripts/genbenchmarks-rewrite-wip.py --task-type preprocess --max-threads-per-block-range 0 0 --implementations implicit
-# scripts/genbenchmarks-rewrite-wip.py --task-type run --run-scripts benchmark-data/scripts/io-scaling-benchmark-{1..32}.sh --run-dirs benchmark-data/builds/*
+# scripts/genbenchmarks.py --task-type preprocess --max-threads-per-block-range 0 0 --implementations implicit
+# scripts/genbenchmarks.py --task-type run --run-scripts benchmark-data/scripts/io-scaling-benchmark-{1..32}.sh --run-dirs benchmark-data/builds/*
 # 
 ###
 
@@ -26,6 +26,7 @@ parser = argparse.ArgumentParser(description='A tool for generating benchmarks',
 epilog='''EXAMPLES:
     # Generate run scripts and build directories
     genbenchmarks.py --task-type preprocess --implementations explicit implicit --io-implementations collective --dryrun
+    genbenchmarks.py --task-type genscripts --partition eap # Update partition in all scripts
     genbenchmarks.py --task-type build --build-dirs benchmark-data/builds/* # Optional. When the task type is 'run', --run-dirs are also built
     genbenchmarks.py --task-type run --run-dirs benchmark-data/builds/* --run-scripts benchmark-data/scripts/* --dryrun # Confirm everything is correct
     genbenchmarks.py --task-type run --run-dirs benchmark-data/builds/* --run-scripts benchmark-data/scripts/* # Do the actual run without --dryrun
