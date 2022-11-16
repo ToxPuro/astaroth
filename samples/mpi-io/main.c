@@ -88,10 +88,10 @@ main(int argc, char** argv)
         // acGridStoreFieldToFile(file, (VertexBufferHandle)i);
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_WRITE);
     }
-    double read_milliseconds = 0;
+    double write_milliseconds = 0;
     double write_bandwidth   = 0; // bytes per second
     if (!pid) {
-        read_milliseconds = (double)timer_diff_nsec(t) / 1e6;
+        write_milliseconds = (double)timer_diff_nsec(t) / 1e6;
         const double seconds           = (double)timer_diff_nsec(t) / 1e9;
         const size_t bytes = NUM_VTXBUF_HANDLES * acVertexBufferCompdomainSizeBytes(info);
         write_bandwidth    = bytes / seconds;
@@ -116,10 +116,10 @@ main(int argc, char** argv)
         // acGridLoadFieldFromFile(file, (VertexBufferHandle)i);
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_READ);
     }
-    double write_milliseconds = 0;
+    double read_milliseconds = 0;
     double read_bandwidth     = 0; // bytes per second
     if (!pid) {
-        write_milliseconds = (double)timer_diff_nsec(t) / 1e6;
+        read_milliseconds = (double)timer_diff_nsec(t) / 1e6;
         const double seconds            = (double)timer_diff_nsec(t) / 1e9;
         const size_t bytes = NUM_VTXBUF_HANDLES * acVertexBufferCompdomainSizeBytes(info);
         read_bandwidth     = bytes / seconds;
