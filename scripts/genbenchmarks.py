@@ -42,7 +42,7 @@ See Unix globbing for passing files/directories to the script more easily.
 
 ## General arguments
 parser.add_argument('--task-type', type=str, nargs='+', choices=['genmakefiles', 'genscripts', 'preprocess', 'build', 'run', 'postprocess', 'clean'], help='The type of the task performed with this script', required=True)
-parser.add_argument('--dims', type=int, default=[64, 64, 64], nargs=3, help='The dimensions of the computational domain')
+parser.add_argument('--dims', type=int, default=[256, 256, 256], nargs=3, help='The dimensions of the computational domain')
 parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without compiling or running. Prints os commands to stdout.')
 ## Preprocess arguments
 parser.add_argument('--implementations', type=str, nargs='+', choices=['implicit', 'explicit'], default=['implicit', 'explicit'], help='The list of implementations used in testing')
@@ -252,12 +252,20 @@ def gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices):
                 system.print_sbatch_header(devices)
                 print(f'srun ./benchmark {nx} {ny} {nz}')
         devices *= 2
+        if nx < ny:
+            nx *= 2
+        elif ny < nz:
+            ny *= 2
+        else:
+            nz *= 2
+        '''
         if nz < ny:
             nz *= 2
         elif ny < nx:
             ny *= 2
         else:
             nx *= 2
+        '''
 
 # IO benchmarks
 def gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices):
