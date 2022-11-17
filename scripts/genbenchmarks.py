@@ -295,7 +295,14 @@ if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
 
                 # Generate Makefile
                 flags = f'''-DOPTIMIZE_MEM_ACCESSES=ON -DMPI_ENABLED=ON -DSINGLEPASS_INTEGRATION=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
-                syscall_async(f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}')
+                
+                cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
+                syscall_async(cmd)
+
+                build_info = f'{build_dir}/build-info-{system.id}.txt'
+                syscall(f'date > {build_info}')
+                syscall(f'echo {cmd} >> {build_info}')
+                syscall(f'git -C {args.cmakelistdir} rev-parse HEAD >> {build_info}')
 
                 tpb = 32 if tpb == 0 else 2*tpb
     syscalls_wait()    
@@ -340,6 +347,12 @@ if 'run' in args.task_type:
 
 
             syscall(f'sbatch --chdir="{run_dir}" {script}')
+
+            run_info = f'{output_dir}/' + f'run-info-{run_dir}_{script}-{system.id}.txt'.replace('/', '_')
+            syscall(f'date > {run_info}')
+            syscall(f'module list 2>> {run_info}')
+            syscall(f'cat {run_dir}/build-info-{system.id}.txt >> {run_info}')
+            syscall(f'cat {script} >> {run_info}')
 
 
 # Postprocess
