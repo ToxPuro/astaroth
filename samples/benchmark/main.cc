@@ -28,6 +28,9 @@
 #include <string>
 #include <unistd.h> // getopt
 
+
+static const bool verify   = false;
+
 #if AC_MPI_ENABLED
 
 #include <mpi.h>
@@ -94,7 +97,6 @@ main(int argc, char** argv)
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
     TestType test = TEST_STRONG_SCALING;
-    bool verify   = false;
 
     int opt;
     while ((opt = getopt(argc, argv, "t:")) != -1) {
@@ -106,9 +108,9 @@ main(int argc, char** argv)
             else if (std::string("weak").find(optarg) == 0) {
                 test = TEST_WEAK_SCALING;
             }
-            else if (std::string("verify").find(optarg) == 0) {
-                verify = true;
-            }
+            //else if (std::string("verify").find(optarg) == 0) {
+            //    verify = true;
+            //}
             else {
                 fprintf(stderr, "Could not parse option -t <type>. <type> should be \"strong\" or "
                                 "\"weak\"\n");

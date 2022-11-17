@@ -10,6 +10,8 @@
 
 #define ERRCHK_AC(x) ERRCHK_ALWAYS((x) == AC_SUCCESS);
 
+static const bool verify = false;
+
 int
 main(int argc, char** argv)
 {
@@ -101,15 +103,17 @@ main(int argc, char** argv)
             acNodePeriodicBoundconds(node, STREAM_DEFAULT);
         }
     }
-    acNodeStoreMesh(node, STREAM_DEFAULT, &candidate);
+    if (verify) {
+        acNodeStoreMesh(node, STREAM_DEFAULT, &candidate);
 
-    for (size_t j = 0; j < nsteps; ++j) {
-        acHostIntegrateStep(model, dt);
-        acHostMeshApplyPeriodicBounds(&model);
+        for (size_t j = 0; j < nsteps; ++j) {
+            acHostIntegrateStep(model, dt);
+            acHostMeshApplyPeriodicBounds(&model);
+        }
+
+        acNodeSynchronizeStream(node, STREAM_DEFAULT);
+        acVerifyMesh("Integration", model, candidate);
     }
-
-    acNodeSynchronizeStream(node, STREAM_DEFAULT);
-    acVerifyMesh("Integration", model, candidate);
 
     // Warmup
     for (int j = 0; j < NSAMPLES / 10; ++j) {
