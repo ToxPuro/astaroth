@@ -294,7 +294,7 @@ if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
                 syscall(f'mkdir -p {build_dir}')
 
                 # Generate Makefile
-                flags = f'''-DMPI_ENABLED=ON -DSINGLEPASS_INTEGRATION=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
+                flags = f'''-DOPTIMIZE_MEM_ACCESSES=ON -DMPI_ENABLED=ON -DSINGLEPASS_INTEGRATION=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
                 syscall_async(f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}')
 
                 tpb = 32 if tpb == 0 else 2*tpb
