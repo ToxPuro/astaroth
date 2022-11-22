@@ -37,6 +37,9 @@ See Unix globbing for passing files/directories to the script more easily.
         *.sh matches any number of characters
         [1-8] matches a character in range 1-8
         {1..16} expands to 1,2,3,...,16
+        ?([0-9]) matches zero or one number
+        [0-9]?([0-9]) matches one number and an optional second number
+        ?[0-9] matches one character and one number
     ''',
     formatter_class=argparse.RawDescriptionHelpFormatter)
 
