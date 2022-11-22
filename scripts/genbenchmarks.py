@@ -52,7 +52,7 @@ parser.add_argument('--cmakelistdir', type=str, default='.', help='Directory con
 parser.add_argument('--use-hip', action='store_true', help='Compile with HIP support')
 parser.add_argument('--account', type=str, help='The account used in tests')
 parser.add_argument('--partition', type=str, help='The partition used for running the tests')
-parser.add_argument('--num-devices', type=int, nargs=2, default=[1, 4096], help='The range for the number of devices generated for run scripts (inclusive)')
+parser.add_argument('--num-devices', type=int, nargs=2, default=[1, 8192], help='The range for the number of devices generated for run scripts (inclusive)')
 ## Build arguments
 parser.add_argument('--build-dirs', type=str, nargs='+', required='build' in sys.argv, help='A list of directories to build')
 ## Run arguments
