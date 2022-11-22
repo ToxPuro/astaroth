@@ -362,110 +362,137 @@ if 'postprocess' in args.task_type:
     # Outputs
     syscall(f'mkdir -p {output_dir}')
 
-    with open(f'{output_dir}/microbenchmark.csv', 'w') as f:
+    # Microbenchmarks
+    outfile = f'{output_dir}/microbenchmark-{system.id}.csv'
+    with open(outfile, 'w') as f:
         with redirect_stdout(f):
             print('usesmem,maxthreadsperblock,problemsize,workingsetsize,milliseconds,bandwidth')
-    syscall(f'cat {builds_dir}/*/microbenchmark.csv >> {output_dir}/microbenchmark.csv')
+    syscall(f'cat {builds_dir}/*/microbenchmark.csv >> {outfile}')
 
-    df = pd.read_csv(f'{output_dir}/microbenchmark.csv', comment='#')
+    df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usesmem'] == 0) & (df['maxthreadsperblock'] == 0) & (df['workingsetsize'] == 8)]
     df = df.drop_duplicates(subset=['problemsize'])
     df = df.sort_values(by=['problemsize'])
     df.to_csv(f'{output_dir}/bandwidth-{system.id}.csv', index=False)
 
-    df = pd.read_csv(f'{output_dir}/microbenchmark.csv', comment='#')
+    df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usesmem'] == 1) & (df['maxthreadsperblock'] == 0) & (df['workingsetsize'] == 8)]
     df = df.drop_duplicates(subset=['problemsize'])
     df = df.sort_values(by=['problemsize'])
     df.to_csv(f'{output_dir}/bandwidth-smem-{system.id}.csv', index=False)
 
-    df = pd.read_csv(f'{output_dir}/microbenchmark.csv', comment='#')
+    df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usesmem'] == 0) & (df['maxthreadsperblock'] == 0) & (df['problemsize'] == 268435456)]
     df = df.drop_duplicates(subset=['workingsetsize'])
     df = df.sort_values(by=['workingsetsize'])
     df.to_csv(f'{output_dir}/workingset-{system.id}.csv', index=False)
 
-    df = pd.read_csv(f'{output_dir}/microbenchmark.csv', comment='#')
+    df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usesmem'] == 1) & (df['maxthreadsperblock'] == 0) & (df['problemsize'] == 268435456)]
     df = df.drop_duplicates(subset=['workingsetsize'])
     df = df.sort_values(by=['workingsetsize'])
     df.to_csv(f'{output_dir}/workingset-smem-{system.id}.csv', index=False)
 
     # Device
-    with open(f'{output_dir}/device-benchmark.csv', 'w') as f:
+    outfile = f'{output_dir}/device-benchmark-{system.id}.csv'
+    with open(outfile, 'w') as f:
         with redirect_stdout(f):
             print('implementation,maxthreadsperblock,milliseconds,nx,ny,nz,devices')
-    syscall(f'cat {builds_dir}/*/device-benchmark.csv >> {output_dir}/device-benchmark.csv')
+    syscall(f'cat {builds_dir}/*/device-benchmark.csv >> {outfile}')
 
-    df = pd.read_csv(f'{output_dir}/device-benchmark.csv', comment='#')
+    df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['implementation'] == 1)]
     df = df.sort_values(by=['maxthreadsperblock'])
     #df = df.drop_duplicates(subset=['workingsetsize'])
     df.to_csv(f'{output_dir}/implicit-{system.id}.csv', index=False)
 
-    df = pd.read_csv(f'{output_dir}/device-benchmark.csv', comment='#')
+    df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['implementation'] == 2)]
     df = df.sort_values(by=['maxthreadsperblock'])
     #df = df.drop_duplicates(subset=['workingsetsize'])
     df.to_csv(f'{output_dir}/explicit-{system.id}.csv', index=False)
 
     # Node
-    with open(f'{output_dir}/node-benchmark.csv', 'w') as f:
+    outfile = f'{output_dir}/node-benchmark-{system.id}.csv'
+    with open(outfile, 'w') as f:
         with redirect_stdout(f):
             print('implementation,maxthreadsperblock,milliseconds,nx,ny,nz,devices')
-    syscall(f'cat {builds_dir}/*/node-benchmark.csv >> {output_dir}/node-benchmark.csv')
+    syscall(f'cat {builds_dir}/*/node-benchmark.csv >> {outfile}')
 
-    df = pd.read_csv(f'{output_dir}/node-benchmark.csv', comment='#')
+    df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['implementation'] == 1)]
     df = df.sort_values(by=['maxthreadsperblock'])
     #df = df.drop_duplicates(subset=['workingsetsize'])
     df.to_csv(f'{output_dir}/node-implicit-{system.id}.csv', index=False)
 
-    df = pd.read_csv(f'{output_dir}/node-benchmark.csv', comment='#')
+    df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['implementation'] == 2)]
     df = df.sort_values(by=['maxthreadsperblock'])
     #df = df.drop_duplicates(subset=['workingsetsize'])
     df.to_csv(f'{output_dir}/node-explicit-{system.id}.csv', index=False)
 
+    '''
+    # Find the best tpb
+    best_tpb = -1
+    best_ms = float('inf')
+    for tpb in df['maxthreadsperblock'].drop_duplicates():
+        ms = df.loc[(df['maxthreadsperblock'] == tpb) & (df['devices'] == 1)].sort_values(by=['devices'])['milliseconds'].iloc[0]
+        if ms < best_ms:
+            best_ms = ms
+            best_tpb = tpb
+    '''
+    
+    # Implicit full card
+    df = pd.read_csv(outfile, comment='#')
+    df = df.loc[(df['devices'] == 2) & (df['implementation'] == 1)].sort_values(by=['maxthreadsperblock'])
+    df.to_csv(f'{output_dir}/node-2-implicit-{system.id}.csv', index=False)
+
+    # Explicit full card
+    df = pd.read_csv(outfile, comment='#')
+    df = df.loc[(df['devices'] == 2) & (df['implementation'] == 2)].sort_values(by=['maxthreadsperblock'])
+    df.to_csv(f'{output_dir}/node-2-explicit-{system.id}.csv', index=False)
+
     # Scaling
-    with open(f'{output_dir}/scaling-benchmark.csv', 'w') as f:
+    outfile = f'{output_dir}/scaling-benchmark-{system.id}.csv'
+    with open(outfile, 'w') as f:
         with redirect_stdout(f):
             print('devices,millisecondsmin,milliseconds50thpercentile,milliseconds90thpercentile,millisecondsmax,usedistributedcommunication,nx,ny,nz,dostrongscaling')
-    syscall(f'cat {builds_dir}/*/scaling-benchmark.csv >> {output_dir}/scaling-benchmark.csv')
+    syscall(f'cat {builds_dir}/*/scaling-benchmark.csv >> {outfile}')
 
-    df = pd.read_csv(f'{output_dir}/scaling-benchmark.csv', comment='#')
+    df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['nx'] == nx) & (df['ny'] == ny) & (df['nz'] == nz)]
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
     df.to_csv(f'{output_dir}/scaling-strong-{system.id}.csv', index=False)
 
     nn = nx * ny * nz
-    df = pd.read_csv(f'{output_dir}/scaling-benchmark.csv', comment='#')
+    df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['nx'] * df['ny'] * df['nz']) / df['devices'] == nn]
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
     df.to_csv(f'{output_dir}/scaling-weak-{system.id}.csv', index=False)
 
     # IO scaling
-    with open(f'{output_dir}/scaling-io-benchmark.csv', 'w') as f:
+    outfile = f'{output_dir}/scaling-io-benchmark-{system.id}.csv'
+    with open(outfile, 'w') as f:
         with redirect_stdout(f):
             print(f'devices,writemilliseconds,writebandwidth,readmilliseconds,readbandwidth,usedistributedio,nx,ny,nz')
-    syscall(f'cat {builds_dir}/*/scaling-io-benchmark.csv >> {output_dir}/scaling-io-benchmark.csv')
+    syscall(f'cat {builds_dir}/*/scaling-io-benchmark.csv >> {outfile}')
 
     # Collective
-    df = pd.read_csv(f'{output_dir}/scaling-io-benchmark.csv', comment='#')
+    df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usedistributedio'] == 0)]
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
     df.to_csv(f'{output_dir}/scaling-io-collective-{system.id}.csv', index=False)
 
     # Distributed
-    df = pd.read_csv(f'{output_dir}/scaling-io-benchmark.csv', comment='#')
+    df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usedistributedio'] == 1)]
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
     df.to_csv(f'{output_dir}/scaling-io-distributed-{system.id}.csv', index=False)
-    
+
 if 'clean' in args.task_type:
     for dir in args.clean_dirs:
         syscall(f'rm {dir}/*.csv')
