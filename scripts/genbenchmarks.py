@@ -25,9 +25,9 @@ from contextlib import redirect_stdout
 parser = argparse.ArgumentParser(description='A tool for generating benchmarks',
 epilog='''EXAMPLES:
     # Generate run scripts and build directories
-    genbenchmarks.py --task-type preprocess --implementations explicit implicit --io-implementations collective --dryrun
-    genbenchmarks.py --task-type genscripts --partition eap # Update partition in all scripts
-    genbenchmarks.py --task-type build --build-dirs benchmark-data/builds/* # Optional. When the task type is 'run', --run-dirs are also built
+    genbenchmarks.py --task-type preprocess # Generate makefiles and benchmark scripts
+    genbenchmarks.py --task-type genscripts --partition eap # Update partition in all benchmark scripts
+    genbenchmarks.py --task-type build --build-dirs benchmark-data/builds/* # Build benchmark directories (required to run)
     genbenchmarks.py --task-type run --run-dirs benchmark-data/builds/* --run-scripts benchmark-data/scripts/* --dryrun # Confirm everything is correct
     genbenchmarks.py --task-type run --run-dirs benchmark-data/builds/* --run-scripts benchmark-data/scripts/* # Do the actual run without --dryrun
     
@@ -337,11 +337,6 @@ if 'build' in args.task_type:
 
 # Run
 if 'run' in args.task_type:
-    # Make
-    for run_dir in args.run_dirs:
-        syscall_async(f'make --directory={run_dir} -j')
-    syscalls_wait()
-    # Run
     for run_dir in args.run_dirs:
         for script in args.run_scripts:
             if args.max_jobs_per_queue:
