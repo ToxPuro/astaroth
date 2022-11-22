@@ -321,6 +321,13 @@ if 'preprocess' in args.task_type or 'genscripts' in args.task_type:
         gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
         gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices)
 
+    # Outputs
+    syscall(f'mkdir -p {output_dir}') # temporarily here
+
+# Outputs
+#if 'preprocess' in args.task_type:
+#    syscall(f'mkdir -p {output_dir}')
+
 # Build
 if 'build' in args.task_type:
     if args.build_dirs:
