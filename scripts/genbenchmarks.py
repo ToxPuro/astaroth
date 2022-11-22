@@ -146,6 +146,9 @@ mahti = System(id='a100', account='project_2000403', partition='gpusmall', ngpus
 puhti = System(id='v100', account='project_2000403', partition='gpu', ngpus_per_node=4,
                gres='gpu:v100', modules='module load gcc cuda openmpi cmake', use_hip=False,
                additional_commands='''
+#SBATCH --mem=0
+#SBATCH --exclusive
+#SBATCH --cpus-per-task=10
 export UCX_RNDV_THRESH=16384
 export UCX_RNDV_SCHEME=get_zcopy
 export UCX_MAX_RNDV_RAILS=1''', optimal_implementation='1', optimal_tpb='0')
