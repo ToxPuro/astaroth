@@ -128,8 +128,16 @@ main(int argc, char** argv)
     Timer t;
     timer_reset(&t);
 #pragma unroll
-    for (int i = 0; i < NSAMPLES; ++i) {
-        acNodeIntegrateSubstep(node, STREAM_DEFAULT, 2, n_min, n_max, dt);
+    for (int j = 0; j < NSAMPLES; ++j) {
+        // Single substep
+        // acNodeIntegrateSubstep(node, STREAM_DEFAULT, 2, n_min, n_max, dt);
+
+        // Full integration step
+        for (int i = 0; i < 3; ++i) {
+            acNodeIntegrateSubstep(node, STREAM_DEFAULT, i, n_min, n_max, dt);
+            acNodeSwapBuffers(node);
+            acNodePeriodicBoundconds(node, STREAM_DEFAULT);
+        }
     }
     acNodeSynchronizeStream(node, STREAM_DEFAULT);
     const double ms_elapsed   = timer_diff_nsec(t) / 1e6;

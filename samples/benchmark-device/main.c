@@ -134,8 +134,16 @@ main(int argc, char** argv)
     Timer t;
     timer_reset(&t);
 #pragma unroll
-    for (int i = 0; i < NSAMPLES; ++i) {
+    for (int j = 0; j < NSAMPLES; ++j) {
+        // Substep
         acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, n_min, n_max, dt);
+
+        // Full integration step
+        //for (int i = 0; i < 3; ++i) {
+        //    acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, n_min, n_max, dt);
+        //    acDeviceSwapBuffers(device);
+        //    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
+        //}
     }
     acDeviceSynchronizeStream(device, STREAM_DEFAULT);
     const double ms_elapsed   = timer_diff_nsec(t) / 1e6;
