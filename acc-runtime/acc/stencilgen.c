@@ -248,11 +248,13 @@ prefetch_stencil_elements(const int curr_kernel)
                 !cell_initialized[field][depth][height][width]) {
               printf("const auto f%d_%d_%d_%d = ", //
                      field, depth, height, width);
-              printf("__ldg(&vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-                     "vertexIdx.z+(%d))]);",
+              //printf("__ldg(&");
+              printf("vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                     "vertexIdx.z+(%d))]",
                      field, -STENCIL_ORDER / 2 + width,
                      -STENCIL_ORDER / 2 + height, -STENCIL_ORDER / 2 + depth);
-
+              //printf(")");
+              printf(";");
               cell_initialized[field][depth][height][width] = 1;
             }
           }
@@ -459,10 +461,11 @@ prefetch_stencil_elems_to_smem_3d_and_compute_stencil_ops(const int curr_kernel)
     printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){ break; }");
     printf("if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2){ break; }");
     printf("smem[i + j * sx + k * sx * sy] = ");
-    printf("__ldg(&");
+    //printf("__ldg(&");
     printf("vba.in[%d]", field);
     printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)]");
-    printf(");");
+    //printf(")");
+    printf(";");
     printf("}");
     printf("__syncthreads();");
 
@@ -534,13 +537,15 @@ gen_kernel_body(const int curr_kernel)
                   printf("stencils[%d][%d][%d][%d] *", //
                          stencil, depth, height, width);
                   printf("%s(", stencil_unary_ops[stencil]);
-                  printf("__ldg(&vba.in[%d]"
+                  //printf("__ldg(&");
+                  printf("vba.in[%d]"
                          "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                          "vertexIdx.z+(%d))])",
                          field, -STENCIL_ORDER / 2 + width,
                          -STENCIL_ORDER / 2 + height,
                          -STENCIL_ORDER / 2 + depth);
-                  printf(");");
+                  //printf(")");
+                  printf(";");
 
                   stencil_initialized[field][stencil] = 1;
                 }
@@ -551,13 +556,14 @@ gen_kernel_body(const int curr_kernel)
                   printf("stencils[%d][%d][%d][%d] *", //
                          stencil, depth, height, width);
                   printf("%s(", stencil_unary_ops[stencil]);
-                  printf("__ldg(&vba.in[%d]"
+                  //printf("__ldg(&");
+                  printf("vba.in[%d]"
                          "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                          "vertexIdx.z+(%d))])",
                          field, -STENCIL_ORDER / 2 + width,
                          -STENCIL_ORDER / 2 + height,
                          -STENCIL_ORDER / 2 + depth);
-                  printf(")");
+                  //printf(")");
                   printf(");");
                 }
               }
