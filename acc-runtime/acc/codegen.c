@@ -774,14 +774,16 @@ generate_mem_accesses(void)
 #endif
   printf("--- ACC_RUNTIME_API_DIR: `%s`\n", ACC_RUNTIME_API_DIR);
   printf("--- GPU_API_INCLUDES: `%s`\n", GPU_API_INCLUDES);
-  const int retval = system("gcc -Wshadow -I. "
+  const char* cmd = "gcc -Wshadow -I. "
 #if AC_USE_HIP
-                            "-DAC_USE_HIP=1 "
+                    "-DAC_USE_HIP=1 "
 #endif
-                            "-I " GPU_API_INCLUDES " "    //
-                            "-I " ACC_RUNTIME_API_DIR " " //
-                            STENCILACC_SRC " -lm "
-                            "-o " STENCILACC_EXEC);
+                    "-I " GPU_API_INCLUDES " "    //
+                    "-I " ACC_RUNTIME_API_DIR " " //
+      STENCILACC_SRC " -lm "
+                    "-o " STENCILACC_EXEC;
+  printf("Compile command: %s\n", cmd);
+  const int retval = system(cmd);
   printf("%s compilation done\n", STENCILACC_SRC);
   if (retval == -1) {
     fprintf(stderr, "Catastrophic error: could not compile the stencil access "
