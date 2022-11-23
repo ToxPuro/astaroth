@@ -264,14 +264,6 @@ def gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices):
             ny *= 2
         else:
             nz *= 2
-        '''
-        if nz < ny:
-            nz *= 2
-        elif ny < nx:
-            ny *= 2
-        else:
-            nx *= 2
-        '''
 
 # IO benchmarks
 def gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices):
