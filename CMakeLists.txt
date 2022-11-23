@@ -55,6 +55,8 @@ if (USE_HIP)
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm/llvm/bin)
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer)
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer/include)
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip/include)
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/roctracer/include)
 
     ## Triton
 	include_directories(/opt/rocm-5.0.0/roctracer/include)
