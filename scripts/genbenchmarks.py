@@ -257,6 +257,13 @@ def gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices):
             with redirect_stdout(f):
                 system.print_sbatch_header(devices)
                 print(f'srun ./benchmark {nx} {ny} {nz}')
+
+        if devices <= system.ngpus_per_node:
+            with open(f'{scripts_dir}/node-weak-scaling-benchmark-{devices}.sh', 'w') as f:
+                with redirect_stdout(f):
+                    system.print_sbatch_header(1, devices)
+                    print(f'srun ./benchmark-node {nx} {ny} {nz}')
+
         devices *= 2
         if nx < ny:
             nx *= 2
