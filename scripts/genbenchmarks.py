@@ -378,25 +378,25 @@ if 'postprocess' in args.task_type:
 
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usesmem'] == 0) & (df['maxthreadsperblock'] == 0) & (df['workingsetsize'] == 8)]
-    df = df.drop_duplicates(subset=['problemsize'])
+    df = df.drop_duplicates(subset=['problemsize'], keep='last')
     df = df.sort_values(by=['problemsize'])
     df.to_csv(f'{output_dir}/bandwidth-{system.id}.csv', index=False)
 
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usesmem'] == 1) & (df['maxthreadsperblock'] == 0) & (df['workingsetsize'] == 8)]
-    df = df.drop_duplicates(subset=['problemsize'])
+    df = df.drop_duplicates(subset=['problemsize'], keep='last')
     df = df.sort_values(by=['problemsize'])
     df.to_csv(f'{output_dir}/bandwidth-smem-{system.id}.csv', index=False)
 
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usesmem'] == 0) & (df['maxthreadsperblock'] == 0) & (df['problemsize'] == 268435456)]
-    df = df.drop_duplicates(subset=['workingsetsize'])
+    df = df.drop_duplicates(subset=['workingsetsize'], keep='last')
     df = df.sort_values(by=['workingsetsize'])
     df.to_csv(f'{output_dir}/workingset-{system.id}.csv', index=False)
 
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usesmem'] == 1) & (df['maxthreadsperblock'] == 0) & (df['problemsize'] == 268435456)]
-    df = df.drop_duplicates(subset=['workingsetsize'])
+    df = df.drop_duplicates(subset=['workingsetsize'], keep='last')
     df = df.sort_values(by=['workingsetsize'])
     df.to_csv(f'{output_dir}/workingset-smem-{system.id}.csv', index=False)
 
@@ -408,15 +408,15 @@ if 'postprocess' in args.task_type:
     syscall(f'cat {builds_dir}/*/device-benchmark.csv >> {outfile}')
 
     df = pd.read_csv(outfile, comment='#')
-    df = df.loc[(df['implementation'] == 1)]
+    df = df.loc[(df['implementation'] == 1) & (df['nx'] == 256) & (df['ny'] == 256) & (df['nz'] == 256)]
     df = df.sort_values(by=['maxthreadsperblock'])
-    #df = df.drop_duplicates(subset=['workingsetsize'])
+    df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
     df.to_csv(f'{output_dir}/implicit-{system.id}.csv', index=False)
 
     df = pd.read_csv(outfile, comment='#')
-    df = df.loc[(df['implementation'] == 2)]
+    df = df.loc[(df['implementation'] == 2) & (df['nx'] == 256) & (df['ny'] == 256) & (df['nz'] == 256)]
     df = df.sort_values(by=['maxthreadsperblock'])
-    #df = df.drop_duplicates(subset=['workingsetsize'])
+    df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
     df.to_csv(f'{output_dir}/explicit-{system.id}.csv', index=False)
 
     # Node
@@ -429,13 +429,13 @@ if 'postprocess' in args.task_type:
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['implementation'] == 1)]
     df = df.sort_values(by=['maxthreadsperblock'])
-    #df = df.drop_duplicates(subset=['workingsetsize'])
+    df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
     df.to_csv(f'{output_dir}/node-implicit-{system.id}.csv', index=False)
 
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['implementation'] == 2)]
     df = df.sort_values(by=['maxthreadsperblock'])
-    #df = df.drop_duplicates(subset=['workingsetsize'])
+    df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
     df.to_csv(f'{output_dir}/node-explicit-{system.id}.csv', index=False)
 
     '''
@@ -451,12 +451,14 @@ if 'postprocess' in args.task_type:
     
     # Implicit full card
     df = pd.read_csv(outfile, comment='#')
-    df = df.loc[(df['devices'] == 2) & (df['implementation'] == 1)].sort_values(by=['maxthreadsperblock'])
+    df = df.loc[(df['devices'] == 2) & (df['implementation'] == 1) & (df['nx'] == 256) & (df['ny'] == 256) & (df['nz'] == 256)].sort_values(by=['maxthreadsperblock'])
+    df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
     df.to_csv(f'{output_dir}/node-2-implicit-{system.id}.csv', index=False)
 
     # Explicit full card
     df = pd.read_csv(outfile, comment='#')
-    df = df.loc[(df['devices'] == 2) & (df['implementation'] == 2)].sort_values(by=['maxthreadsperblock'])
+    df = df.loc[(df['devices'] == 2) & (df['implementation'] == 2) & (df['nx'] == 256) & (df['ny'] == 256) & (df['nz'] == 256)].sort_values(by=['maxthreadsperblock'])
+    df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
     df.to_csv(f'{output_dir}/node-2-explicit-{system.id}.csv', index=False)
 
     # Scaling
@@ -469,14 +471,14 @@ if 'postprocess' in args.task_type:
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['nx'] == nx) & (df['ny'] == ny) & (df['nz'] == nz)]
     df = df.sort_values(by=['devices'])
-    df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
+    df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'], keep='last')
     df.to_csv(f'{output_dir}/scaling-strong-{system.id}.csv', index=False)
 
     nn = nx * ny * nz
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['nx'] * df['ny'] * df['nz']) / df['devices'] == nn]
     df = df.sort_values(by=['devices'])
-    df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
+    df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'], keep='last')
     df.to_csv(f'{output_dir}/scaling-weak-{system.id}.csv', index=False)
 
     # IO scaling
@@ -490,14 +492,14 @@ if 'postprocess' in args.task_type:
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usedistributedio'] == 0)]
     df = df.sort_values(by=['devices'])
-    df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
+    df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'], keep='last')
     df.to_csv(f'{output_dir}/scaling-io-collective-{system.id}.csv', index=False)
 
     # Distributed
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usedistributedio'] == 1)]
     df = df.sort_values(by=['devices'])
-    df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'])
+    df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'], keep='last')
     df.to_csv(f'{output_dir}/scaling-io-distributed-{system.id}.csv', index=False)
 
 if 'clean' in args.task_type:
