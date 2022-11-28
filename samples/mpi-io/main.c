@@ -172,8 +172,8 @@ main(int argc, char** argv)
     if (!pid) {
         printf("Removing fields\n");
         //sprintf(cmd, "rm %s/*.mesh", job_dir);
-        //sprintf(cmd, "rm -r %s", job_dir);
-        //system(cmd);
+        sprintf(cmd, "rm -r %s", job_dir);
+        system(cmd);
         printf("Done.\n");
     }
 
