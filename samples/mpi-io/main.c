@@ -67,21 +67,22 @@ main(int argc, char** argv)
     char job_dir[4096];
     snprintf(job_dir, 4096, "mpi-io-tmpdir-%d", job_id);
 
-    // Alloc
-    AcMesh model, candidate;
-    acHostMeshCreate(info, &model);
-    acHostMeshCreate(info, &candidate);
 
-    // Init
-    acHostMeshRandomize(&model);
-    acHostMeshRandomize(&candidate);
-    acHostMeshApplyPeriodicBounds(&model);
-
+    // Init device
     acGridInit(info);
-    acGridLoadMesh(STREAM_DEFAULT, model);
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
 
+    AcMesh model, candidate;
     if (verify) {
+        // Alloc host
+        acHostMeshCreate(info, &model);
+        acHostMeshCreate(info, &candidate);
+        acHostMeshRandomize(&model);
+        acHostMeshRandomize(&candidate);
+        acHostMeshApplyPeriodicBounds(&model);
+
+        acGridLoadMesh(STREAM_DEFAULT, model);
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+
         acGridStoreMesh(STREAM_DEFAULT, &candidate);
         if (!pid) {
             const AcResult res = acVerifyMesh("CPU-GPU Load/store", model, candidate);
@@ -173,6 +174,12 @@ main(int argc, char** argv)
     }
 
     acGridQuit();
+
+    if (verify) {
+        // Deallocate
+        acHostMeshDestroy(&model);
+        acHostMeshDestroy(&candidate);
+    }
 
     // Remove old files
     if (!pid) {
