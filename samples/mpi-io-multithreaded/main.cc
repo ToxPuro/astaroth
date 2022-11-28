@@ -189,7 +189,7 @@ main(int argc, char** argv)
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         char buf[4096] = "";
         sprintf(buf, "%s.out", vtxbuf_names[i]);
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, buf, ACCESS_READ);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, ".", buf, ACCESS_READ);
     }
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);

@@ -66,7 +66,7 @@ main(int argc, char* argv[])
         if (!pid)
             printf("Reading `%s`\n", file);
 
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_READ);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, ".", file, ACCESS_READ);
         // acGridLoadFieldFromFile(file, (VertexBufferHandle)i);
 
         AcReal max, min, sum;

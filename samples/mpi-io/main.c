@@ -36,6 +36,8 @@ main(void)
 
 #include <mpi.h>
 
+static const bool verify = false;
+
 int
 main(int argc, char** argv)
 {
@@ -44,11 +46,13 @@ main(int argc, char** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
+    int job_id = 0;
+
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     // Set mesh dimensions
-    if (argc != 4) {
-        fprintf(stderr, "Usage: ./mpi-io <nx> <ny> <nz>\n");
+    if (argc < 4 || argc > 5) {
+        fprintf(stderr, "Usage: ./mpi-io <nx> <ny> <nz> <(Optional) unique job id for output files>\n");
         return EXIT_FAILURE;
     }
     else {
@@ -56,7 +60,12 @@ main(int argc, char** argv)
         info.int_params[AC_ny] = atoi(argv[2]);
         info.int_params[AC_nz] = atoi(argv[3]);
         acHostUpdateBuiltinParams(&info);
+
+        if (argc == 5)
+            job_id = atoi(argv[4]);
     }
+    char job_dir[4096];
+    snprintf(job_dir, 4096, "mpi-io-tmpdir-%d", job_id);
 
     // Alloc
     AcMesh model, candidate;
@@ -78,15 +87,20 @@ main(int argc, char** argv)
         ERRCHK_ALWAYS(res == AC_SUCCESS);
     }
 
+    // Make tmpdir for output
+    char cmd[4096];
+    snprintf(cmd, 4096, "mkdir -p %s", job_dir);
+    system(cmd);
+
     // Write
     Timer t;
     timer_reset(&t);
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        char file[4096] = "";
-        sprintf(file, "field-%lu.out", i);
-        printf("Storing %s\n", file);
-        // acGridStoreFieldToFile(file, (VertexBufferHandle)i);
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_WRITE);
+        char label[4096] = "";
+        sprintf(label, "field-%lu", i);
+        // printf("Storing %s/%s\n", job_dir, label);
+        // acGridStoreFieldToFile(label, (VertexBufferHandle)i);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, job_dir, label, ACCESS_WRITE);
     }
     double write_milliseconds = 0;
     double write_bandwidth    = 0; // bytes per second
@@ -103,7 +117,7 @@ main(int argc, char** argv)
     acGridLoadMesh(STREAM_DEFAULT, candidate);
     // acGridStoreFieldToFile("field-tmp.out", 0);
     for (size_t i = 0; i < NUM_FIELDS; ++i)
-        acGridAccessMeshOnDiskSynchronous(i, "field-tmp.out",
+        acGridAccessMeshOnDiskSynchronous(i, job_dir, "field-tmp",
                                           ACCESS_WRITE); // Hacky, indirectly scramble vba.out to
                                                          // catch false positives if the MPI calls
                                                          // fail completely.
@@ -111,10 +125,10 @@ main(int argc, char** argv)
     // Read
     timer_reset(&t);
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        char file[4096] = "";
-        sprintf(file, "field-%lu.out", i);
-        // acGridLoadFieldFromFile(file, (VertexBufferHandle)i);
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_READ);
+        char label[4096] = "";
+        sprintf(label, "field-%lu", i);
+        // acGridLoadFieldFromFile(label, (VertexBufferHandle)i);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, job_dir, label, ACCESS_READ);
     }
     double read_milliseconds = 0;
     double read_bandwidth    = 0; // bytes per second
@@ -157,8 +171,9 @@ main(int argc, char** argv)
     // Remove old files
     if (!pid) {
         printf("Removing fields\n");
-        system("rm field*.out");
-        system("rm segment*.out");
+        //sprintf(cmd, "rm %s/*.mesh", job_dir);
+        //sprintf(cmd, "rm -r %s", job_dir);
+        //system(cmd);
         printf("Done.\n");
     }
 

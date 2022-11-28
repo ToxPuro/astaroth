@@ -193,7 +193,7 @@ save_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_s
         strcat(bin_filename, ".field");
 
         // Grid data
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, bin_filename, ACCESS_WRITE);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, ".", bin_filename, ACCESS_WRITE);
        
         printf("Savefile %s \n", bin_filename);
 
@@ -262,7 +262,7 @@ read_mesh_mpi(const int pid, const int step, AcReal* t_step)
         strcat(bin_filename, ".field");
 
         // Grid data
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, bin_filename, ACCESS_READ);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, ".", bin_filename, ACCESS_READ);
        
         printf("Read file %s \n", bin_filename);
 
