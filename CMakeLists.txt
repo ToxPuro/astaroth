@@ -122,6 +122,7 @@ if (USE_DISTRIBUTED_IO)
 endif()
 
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
+add_definitions(-DAC_CONVECTION_CONFIG="${CMAKE_SOURCE_DIR}/config/convection_kramers.conf")
 
 ## Includes
 include_directories(include)                                   # Library headers
@@ -155,6 +156,7 @@ if (BUILD_SAMPLES)
     add_subdirectory(samples/mpi-io-multithreaded)
     add_subdirectory(samples/pc-varfile-import)
     add_subdirectory(samples/bwtest)
+    add_subdirectory(samples/convection_kramers)
 
     if (BUILD_MHD_SAMPLES)
         # add_subdirectory(samples/standalone)
