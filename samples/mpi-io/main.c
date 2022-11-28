@@ -89,12 +89,12 @@ main(int argc, char** argv)
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_WRITE);
     }
     double write_milliseconds = 0;
-    double write_bandwidth   = 0; // bytes per second
+    double write_bandwidth    = 0; // bytes per second
     if (!pid) {
-        write_milliseconds = (double)timer_diff_nsec(t) / 1e6;
-        const double seconds           = (double)timer_diff_nsec(t) / 1e9;
-        const size_t bytes = NUM_VTXBUF_HANDLES * acVertexBufferCompdomainSizeBytes(info);
-        write_bandwidth    = bytes / seconds;
+        write_milliseconds   = (double)timer_diff_nsec(t) / 1e6;
+        const double seconds = (double)timer_diff_nsec(t) / 1e9;
+        const size_t bytes   = NUM_VTXBUF_HANDLES * acVertexBufferCompdomainSizeBytes(info);
+        write_bandwidth      = bytes / seconds;
         timer_diff_print(t);
     }
 
@@ -117,12 +117,12 @@ main(int argc, char** argv)
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_READ);
     }
     double read_milliseconds = 0;
-    double read_bandwidth     = 0; // bytes per second
+    double read_bandwidth    = 0; // bytes per second
     if (!pid) {
-        read_milliseconds = (double)timer_diff_nsec(t) / 1e6;
-        const double seconds            = (double)timer_diff_nsec(t) / 1e9;
-        const size_t bytes = NUM_VTXBUF_HANDLES * acVertexBufferCompdomainSizeBytes(info);
-        read_bandwidth     = bytes / seconds;
+        read_milliseconds    = (double)timer_diff_nsec(t) / 1e6;
+        const double seconds = (double)timer_diff_nsec(t) / 1e9;
+        const size_t bytes   = NUM_VTXBUF_HANDLES * acVertexBufferCompdomainSizeBytes(info);
+        read_bandwidth       = bytes / seconds;
         timer_diff_print(t);
     }
 
@@ -153,6 +153,14 @@ main(int argc, char** argv)
     }
 
     acGridQuit();
+
+    // Remove old files
+    if (!pid) {
+        printf("Removing fields\n");
+        system("rm field*.out");
+        system("rm segment*.out");
+        printf("Done.\n");
+    }
 
     MPI_Finalize();
     return EXIT_SUCCESS;
