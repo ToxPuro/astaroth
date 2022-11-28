@@ -547,8 +547,9 @@ typedef enum {
     ACCESS_WRITE,
 } AccessType;
 
-AcResult acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* path,
-                                           const AccessType type);
+AcResult
+acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* dir, const char* label,
+                                  const AccessType type);
 
 AcResult acGridDiskAccessLaunch(const AccessType type);
 

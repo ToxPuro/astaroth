@@ -1528,10 +1528,9 @@ acGridDiskAccessLaunch(const AccessType type)
 #endif
 
 AcResult
-acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* path,
+acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* dir, const char* label,
                                   const AccessType type)
 {
-
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
@@ -1543,6 +1542,15 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
     const int3 nn         = info.int3_params[AC_global_grid_n];
     const int3 nn_sub     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const int3 offset     = info.int3_params[AC_multigpu_offset]; // Without halo
+
+    const size_t buflen = 4096;
+    char filepath[buflen];
+    #if USE_DISTRIBUTED_IO
+        snprintf(filepath, buflen, "%s/%s-segment-%d-%d-%d.mesh", dir, label, offset.x, offset.y, offset.z);
+    #else
+        snprintf(filepath, buflen, "%s/%s.mesh", dir, label);
+    #endif
+    fprintf(stderr, "%s %s\n", type == ACCESS_WRITE ? "Writing" : "Reading", filepath);
 
     if (type == ACCESS_WRITE) {
         const AcReal* in      = device->vba.in[vtxbuf];
@@ -1565,13 +1573,9 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
     }
 
 #ifndef NDEBUG
-#if USE_DISTRIBUTED_IO
-    WARNING("NDEBUG defined, the debug check for reading assumes wrong file type if using "
-            "distributed, expect an error.");
-#endif
     if (type == ACCESS_READ) {
         const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
-        FILE* fp                   = fopen(path, "r");
+        FILE* fp                   = fopen(filepath, "r");
         ERRCHK_ALWAYS(fp);
         fseek(fp, 0L, SEEK_END);
         const size_t measured_size = ftell(fp);
@@ -1601,14 +1605,11 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
 #if USE_DISTRIBUTED_IO
     const size_t nelems = nn_sub.x * nn_sub.y * nn_sub.z;
 
-    char outfile[4096] = "";
-    snprintf(outfile, 4096, "segment-%d_%d_%d-%s", offset.x, offset.y, offset.z, path);
-    fprintf(stderr, "Reading %s\n", outfile);
     FILE* fp;
     if (type == ACCESS_READ)
-        fp = fopen(outfile, "r");
+        fp = fopen(filepath, "r");
     else
-        fp = fopen(outfile, "w");
+        fp = fopen(filepath, "w");
     ERRCHK_ALWAYS(fp);
 
     if (type == ACCESS_READ)
@@ -1638,7 +1639,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
     else
         flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
 
-    ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &file) == MPI_SUCCESS);
+    ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, filepath, flags, MPI_INFO_NULL, &file) == MPI_SUCCESS);
 
     ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native", MPI_INFO_NULL) ==
                   MPI_SUCCESS);
@@ -1663,7 +1664,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* p
 #ifndef NDEBUG
     if (type == ACCESS_WRITE) {
         const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
-        FILE* fp                   = fopen(path, "r");
+        FILE* fp                   = fopen(filepath, "r");
         ERRCHK_ALWAYS(fp);
         fseek(fp, 0L, SEEK_END);
         const size_t measured_size = ftell(fp);
