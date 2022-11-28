@@ -80,11 +80,13 @@ main(int argc, char** argv)
     acGridInit(info);
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
-    acGridStoreMesh(STREAM_DEFAULT, &candidate);
 
-    if (!pid) {
-        const AcResult res = acVerifyMesh("CPU-GPU Load/store", model, candidate);
-        ERRCHK_ALWAYS(res == AC_SUCCESS);
+    if (verify) {
+        acGridStoreMesh(STREAM_DEFAULT, &candidate);
+        if (!pid) {
+            const AcResult res = acVerifyMesh("CPU-GPU Load/store", model, candidate);
+            ERRCHK_ALWAYS(res == AC_SUCCESS);
+        }
     }
 
     // Make tmpdir for output
@@ -112,15 +114,17 @@ main(int argc, char** argv)
         timer_diff_print(t);
     }
 
-    // Scramble
-    acHostMeshRandomize(&candidate);
-    acGridLoadMesh(STREAM_DEFAULT, candidate);
-    // acGridStoreFieldToFile("field-tmp.out", 0);
-    for (size_t i = 0; i < NUM_FIELDS; ++i)
-        acGridAccessMeshOnDiskSynchronous(i, job_dir, "field-tmp",
-                                          ACCESS_WRITE); // Hacky, indirectly scramble vba.out to
-                                                         // catch false positives if the MPI calls
-                                                         // fail completely.
+    if (verify) {
+        // Scramble
+        acHostMeshRandomize(&candidate);
+        acGridLoadMesh(STREAM_DEFAULT, candidate);
+        // acGridStoreFieldToFile("field-tmp.out", 0);
+        for (size_t i = 0; i < NUM_FIELDS; ++i)
+            acGridAccessMeshOnDiskSynchronous(i, job_dir, "field-tmp",
+                                            ACCESS_WRITE); // Hacky, indirectly scramble vba.out to
+                                                            // catch false positives if the MPI calls
+                                                            // fail completely.
+    }
 
     // Read
     timer_reset(&t);
@@ -140,12 +144,14 @@ main(int argc, char** argv)
         timer_diff_print(t);
     }
 
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
-    acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    if (verify) {
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+        acGridStoreMesh(STREAM_DEFAULT, &candidate);
 
-    if (!pid) {
-        const AcResult res = acVerifyMesh("MPI-IO disk read/write", model, candidate);
-        ERRCHK_ALWAYS(res == AC_SUCCESS);
+        if (!pid) {
+            const AcResult res = acVerifyMesh("MPI-IO disk read/write", model, candidate);
+            ERRCHK_ALWAYS(res == AC_SUCCESS);
+        }
     }
 
     // Write out
