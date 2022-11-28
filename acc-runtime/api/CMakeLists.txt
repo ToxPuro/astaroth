@@ -62,7 +62,7 @@ if (BUILD_ACC_RUNTIME_LIBRARY)
 
     include_directories(${PROJECT_BINARY_DIR})
 
-    add_library(acc-runtime STATIC acc_runtime.cu)
+    add_library(acc-runtime SHARED acc_runtime.cu)
     target_link_libraries(acc-runtime acc-runtime-headers)
     target_compile_features(acc-runtime PRIVATE cxx_std_17)
 
