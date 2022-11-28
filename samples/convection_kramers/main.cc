@@ -29,7 +29,7 @@ main(void)
 #define debug_bc_errors 1
 #define debug_bc_values 0
 
-typedef AcReal (*boundcond_kernel_func)(AcReal boundary_val, AcReal domain_val, size_t r,
+typedef AcReal (*boundcond_kernel_func)(int3 normal, AcReal boundary_val, AcReal domain_val, size_t r,
                                         AcMeshInfo info);
 
 struct CellError {
@@ -136,7 +136,7 @@ test_simple_bc(AcMesh mesh, int3 direction, int3 dims, int3 domain_start, int3 g
                     size_t r = std::abs(ghost.x - dom.x) + std::abs(ghost.y - dom.y) +
                                std::abs(ghost.z - dom.z);
 
-                    AcReal expected_val = kernel_func(field[idx_bound], field[idx_dom], r / 2,
+                    AcReal expected_val = kernel_func(direction, field[idx_bound], field[idx_dom], r / 2,
                                                       info);
                     if ((expected_val < field[idx_ghost] - epsilon) ||
                         (expected_val > field[idx_ghost] + epsilon)) {
@@ -689,7 +689,7 @@ main(void)
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
     AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    acLoadConfig(AC_CONVECTION_CONFIG, &info);
 
     // Astaroth setup
     AcMesh mesh;
@@ -701,6 +701,7 @@ main(void)
     // Specific setup for one of the tests
     constexpr AcReal prescribed_val          = 6.0;
     info.real_params[AC_boundary_derivative] = prescribed_val;
+    AcRealParam bc_param[1] = {AC_boundary_derivative};
 
     acGridInit(info);
 
@@ -732,7 +733,9 @@ main(void)
 	    acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_PERIODIC, all_fields),
 
 	    acSpecialMHDBoundaryCondition(BOUNDARY_Z_TOP, SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION),
-	    acSpecialMHDBoundaryCondition(BOUNDARY_Z_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX),
+        //Heat flux requires input param to not crash. Added bc_param just to see will it run
+        //Should change it to the physically correct input param
+	    acSpecialMHDBoundaryCondition(BOUNDARY_Z_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, bc_param),
 	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_A2, lnrho),
 	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, uux_uuy),
 	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, uuz),
@@ -750,7 +753,7 @@ main(void)
          acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, all_fields),
          acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, all_fields)});
 
-    auto mirror = [](AcReal, AcReal domain_val, size_t, AcMeshInfo) { return domain_val; };
+    auto mirror = [](int3, AcReal, AcReal domain_val, size_t, AcMeshInfo) { return domain_val; };
 
     test_cases.push_back(SimpleTestCase{"Symmetric boundconds", symmetric_bc_graph, mirror});
 
@@ -761,13 +764,16 @@ main(void)
          acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_ANTISYMMETRIC, all_fields),
          acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, all_fields)});
 
-    auto antimirror = [](AcReal, AcReal domain_val, size_t, AcMeshInfo) { return -domain_val; };
+    auto antimirror = [] (int3, AcReal, AcReal domain_val, size_t, AcMeshInfo) { return -domain_val; };
 
     test_cases.push_back(
         SimpleTestCase{"AntiSymmetric boundconds", antisymmetric_bc_graph, antimirror});
 
+    //Pilot bounconds doesn't have test_func yet. Added antimirror to get it to run
+    test_cases.push_back(
+        SimpleTestCase{"Pilot boundconds", pilot_bcs, antimirror}
+    );
     // Prescribed derivative bc
-    AcRealParam bc_param[1] = {AC_boundary_derivative};
 
     AcTaskGraph* prescribed_der_bc_graph = acGridBuildTaskGraph(
         {acHaloExchange(all_fields),
@@ -777,8 +783,15 @@ main(void)
 
     // Assumption: AC_dsx = AC_dsy = AC_dsz
 
-    auto der_bc_func = [](AcReal, AcReal domain_val, size_t r, AcMeshInfo inf) {
-        AcReal d        = inf.real_params[AC_dsx];
+    auto der_bc_func = [](int3 normal, AcReal, AcReal domain_val, size_t r, AcMeshInfo inf) {
+        AcReal d;
+        if (normal.x != 0){
+            d        = inf.real_params[AC_dsx]*normal.x;
+        } else if (normal.y != 0){
+            d        = inf.real_params[AC_dsy]*normal.y;
+        } else if (normal.z != 0){
+            d        = inf.real_params[AC_dsz]*normal.z;
+        }
         AcReal der_val  = inf.real_params[AC_boundary_derivative];
         AcReal distance = AcReal(2 * r) * d;
         return domain_val + distance * der_val;
@@ -794,7 +807,7 @@ main(void)
          acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_A2, all_fields, bc_param),
          acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_A2, all_fields, bc_param)});
 
-    auto a2_func = [](AcReal boundary_val, AcReal domain_val, size_t, AcMeshInfo) {
+    auto a2_func = [](int3, AcReal boundary_val, AcReal domain_val, size_t, AcMeshInfo) {
         return 2 * boundary_val - domain_val;
     };
 
