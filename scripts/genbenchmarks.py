@@ -284,7 +284,7 @@ def gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices):
         with open(f'{scripts_dir}/io-scaling-benchmark-{devices}.sh', 'w') as f:
             with redirect_stdout(f):
                 system.print_sbatch_header(devices)
-                print(f'srun ./mpi-io {nx} {ny} {nz}')
+                print(f'srun ./mpi-io {nx} {ny} {nz} ${{SLURM_JOBID}}')
         devices *= 2
 
 # Generate makefiles
@@ -493,7 +493,7 @@ if 'postprocess' in args.task_type:
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'], keep='last')
     # Hack start (replace intra-node results with P2P instead of MPI)
     df2 = pd.read_csv(f'{output_dir}/node-scaling-weak-{system.id}.csv', comment='#')
-    df['milliseconds90thpercentile'].iloc[0:len(df2.milliseconds.values)] = df2.milliseconds.values
+    df['milliseconds90thpercentile'].iloc[0:len(df2.milliseconds.values)-1] = df2.milliseconds.values[:-1]
     # Hack end
     df.to_csv(f'{output_dir}/scaling-weak-{system.id}.csv', index=False)
 
