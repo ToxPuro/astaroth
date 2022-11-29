@@ -20,6 +20,8 @@ hostdefine LBFIELD (1)
 hostdefine LSHOCK (0)
 hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // TODO: make an actual config parameter
 hostdefine R_PI (AC_REAL_PI)
+hostdefine LTASKGRAPH (1)
+hostdefine LKRAMERS (1)
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 

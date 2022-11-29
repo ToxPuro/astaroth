@@ -538,8 +538,8 @@ main(int argc, char** argv)
         }
     }
     else {
-        acLoadConfig(AC_DEFAULT_CONFIG, &info);
-        load_config(AC_DEFAULT_CONFIG, &info);
+        acLoadConfig(AC_CONVECTION_CONFIG, &info);
+        load_config(AC_CONVECTION_CONFIG, &info);
         acHostUpdateBuiltinParams(&info);
     }
 
@@ -673,7 +673,6 @@ main(int argc, char** argv)
     //                                acCompute(KERNEL_solve, all_fields)};
 
     AcTaskGraph* hc_graph = acGridBuildTaskGraph(shock_ops);
-
     acGridSynchronizeStream(STREAM_ALL);
 
     // Build a task graph consisting of:
@@ -707,6 +706,70 @@ main(int argc, char** argv)
         acCompute(KERNEL_solve, all_fields)
     });
     */
+#endif
+#if LKRAMERS
+
+    VertexBufferHandle all_fields[NUM_VTXBUF_HANDLES];
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
+        all_fields[i] = (VertexBufferHandle)i;
+    }
+
+    Field lnrho[]{VTXBUF_LNRHO};
+    Field uux_uuy[]{VTXBUF_UUX, VTXBUF_UUY};
+    Field uuz[]{VTXBUF_UUZ};
+    Field ax_ay[]{VTXBUF_AX,VTXBUF_AY};
+    Field az[]{VTXBUF_AZ};
+
+    constexpr AcReal prescribed_val          = 6.0;
+    info.real_params[AC_boundary_derivative] = prescribed_val;
+    AcRealParam bc_param[1] = {AC_boundary_derivative};
+
+    AcTaskDefinition pilot_bcs[] =
+	{
+	    acHaloExchange(all_fields),
+
+	    acBoundaryCondition(BOUNDARY_X, BOUNDCOND_PERIODIC, all_fields),
+	    acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_PERIODIC, all_fields),
+
+	    acSpecialMHDBoundaryCondition(BOUNDARY_Z_TOP, SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION),
+        //Heat flux requires input param to not crash. Added bc_param just to see will it run
+        //Should change it to the physically correct input param
+	    acSpecialMHDBoundaryCondition(BOUNDARY_Z_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, bc_param),
+	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_A2, lnrho),
+	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, uux_uuy),
+	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, uuz),
+	    acBoundaryCondition(BOUNDARY_Z_TOP, BOUNDCOND_SYMMETRIC, ax_ay),
+	    acBoundaryCondition(BOUNDARY_Z_BOT, BOUNDCOND_ANTISYMMETRIC, ax_ay),
+	    acBoundaryCondition(BOUNDARY_Z_TOP, BOUNDCOND_ANTISYMMETRIC, az),
+	    acBoundaryCondition(BOUNDARY_Z_BOT, BOUNDCOND_SYMMETRIC, az)
+	  };
+    // VertexBufferHandle shock_field[] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+    //                                   VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,
+    //                                   BFIELDX, BFIELDY, BFIELDZ};
+
+    // BASIC AcTaskDefinition ALTERNATIVES:
+
+    // This works OK
+    // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
+    //                                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
+    //                                all_fields), acCompute(KERNEL_solve, all_fields)};
+
+    // This causes the chess board error
+    // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
+    //                                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
+    //                                all_fields), acCompute(KERNEL_shock_1_divu, shock_field),
+    //                                acCompute(KERNEL_shock_2_max, shock_field),
+    //                                acCompute(KERNEL_shock_3_smooth, shock_field),
+    //                                acCompute(KERNEL_solve, all_fields)};
+
+    // AcTaskDefinition shock_ops[] = {acHaloExchange(all_fields),
+    //                                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
+    //                                all_fields), acCompute(KERNEL_shock_1_divu, shock_field),
+    //                                acCompute(KERNEL_shock_2_max, shock_field),
+    //                                acCompute(KERNEL_solve, all_fields)};
+
+    AcTaskGraph* hc_graph = acGridBuildTaskGraph(pilot_bcs);
+    acGridSynchronizeStream(STREAM_ALL);
 #endif
 
     if (start_step > 0) {
@@ -762,7 +825,7 @@ main(int argc, char** argv)
         // MV TODO: See if there are other features from the normal standalone which I would like to
         // include.
 
-#if LSHOCK
+#if LSHOCK || LKRAMERS
         // Set the time delta
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, dt);
         acGridSynchronizeStream(STREAM_DEFAULT);
@@ -857,7 +920,7 @@ main(int argc, char** argv)
 
     save_mesh_mpi(mesh, pid, istep, t_step);
 
-#if LSHOCK
+#if LSHOCK || LKRAMERS
     acGridDestroyTaskGraph(hc_graph);
 #endif
     acGridQuit();

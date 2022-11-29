@@ -18,6 +18,7 @@ hostdefine LUPWD (0)
 hostdefine LSINK (0)
 hostdefine LBFIELD (0)
 hostdefine LSHOCK (0)
+hostdefine LKRAMERS (1)
 hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // TODO: make an actual config parameter
 hostdefine R_PI (AC_REAL_PI)
 
