@@ -708,7 +708,7 @@ main(int argc, char** argv)
     */
 #endif
 #if LKRAMERS
-
+    printf("LKRAMERS");
     VertexBufferHandle all_fields[NUM_VTXBUF_HANDLES];
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
         all_fields[i] = (VertexBufferHandle)i;
