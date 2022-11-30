@@ -54,7 +54,7 @@ main(void)
     AcTaskGraph* hc_graph = acGridBuildTaskGraph(
         {acHaloExchange(all_fields),
          acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
-         acCompute(KERNEL_solve, all_fields)});
+         acCompute(KERNEL_singlepass_solve, all_fields)});
 
     // We can build multiple TaskGraphs, the MPI requests will not collide
     // because MPI tag space has been partitioned into ranges that each HaloExchange step uses.

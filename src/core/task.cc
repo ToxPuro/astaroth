@@ -946,6 +946,9 @@ SpecialMHDBoundaryConditionTask::SpecialMHDBoundaryConditionTask(
 void
 SpecialMHDBoundaryConditionTask::populate_boundary_region()
 {
+    //if(isnan(vba.in[VTXBUF_LNRHO][0])){
+    //    printf("FOUND SOMETHING\n");
+    //}
     // TODO: could assign a separate stream to each launch of symmetric boundconds
     //       currently they are on a single stream
     switch (boundcond) {
@@ -955,6 +958,7 @@ SpecialMHDBoundaryConditionTask::populate_boundary_region()
                                                      boundary_dims, vba);
         break;
     }
+
     case SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION: {
         acKernelEntropyBlackbodyRadiationKramerConductivityBoundconds(stream, output_region.id,
                                                                       boundary_normal,

@@ -103,7 +103,6 @@ kernel_filter_vec(const AcReal* __restrict__ src0, const AcReal* __restrict__ sr
     const int3 src_idx = (int3){start.x + threadIdx.x + blockIdx.x * blockDim.x,
                                 start.y + threadIdx.y + blockIdx.y * blockDim.y,
                                 start.z + threadIdx.z + blockIdx.z * blockDim.z};
-
     const int nx = end.x - start.x;
     const int ny = end.y - start.y;
     const int nz = end.z - start.z;
@@ -259,6 +258,10 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
                   const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
                   const AcReal* vtxbuf2, AcReal* scratchpad, AcReal* reduce_result)
 {
+    if (vtxbuf0 == NULL) {
+        printf("NULL VTXBUF0\n\n\n");
+    }
+    // printf("%i\n", vtxbuf0[0]);
     const unsigned nx        = end.x - start.x;
     const unsigned ny        = end.y - start.y;
     const unsigned nz        = end.z - start.z;

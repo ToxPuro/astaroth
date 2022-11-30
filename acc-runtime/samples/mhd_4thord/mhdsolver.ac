@@ -13,7 +13,7 @@ hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
 hostdefine LENTROPY (1)
-hostdefine LKRAMERS (1)
+hostdefine LKRAMERS (0)
 hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // TODO: make an actual config parameter
 hostdefine R_PI (AC_REAL_PI)
 

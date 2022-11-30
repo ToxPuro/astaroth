@@ -145,7 +145,7 @@ class System:
         print(self.modules)
 
 mahti = System(id='a100', account='project_2000403', partition='gpusmall', ngpus_per_node=4, gres='gpu:a100',
-               modules='module load gcc/9.4.0 openmpi/4.1.2-cuda cuda cmake', use_hip=False, optimal_implementation='1', optimal_tpb='0')
+               modules='module load gcc/9.4.0 openmpi/4.1.2-cuda cuda cmake', use_hip=False, optimal_implementation=1, optimal_tpb=0)
 puhti = System(id='v100', account='project_2000403', partition='gpu', ngpus_per_node=4,
                gres='gpu:v100', modules='module load gcc cuda openmpi cmake', use_hip=False,
                additional_commands='''
@@ -154,9 +154,9 @@ puhti = System(id='v100', account='project_2000403', partition='gpu', ngpus_per_
 #SBATCH --cpus-per-task=10
 export UCX_RNDV_THRESH=16384
 export UCX_RNDV_SCHEME=get_zcopy
-export UCX_MAX_RNDV_RAILS=1''', optimal_implementation='1', optimal_tpb='0')
+export UCX_MAX_RNDV_RAILS=1''', optimal_implementation=1, optimal_tpb=0)
 triton = System(id='mi100', account='', partition='gpu-amd', ngpus_per_node=1, gres='',
-                modules='module load gcc bison flex cmake openmpi', use_hip=True, optimal_implementation='1', optimal_tpb='512')
+                modules='module load gcc bison flex cmake openmpi', use_hip=True, optimal_implementation=1, optimal_tpb=512)
 lumi = System(id='mi250x', account='project_462000120', partition='pilot', ngpus_per_node=8, gres='gpu', modules='''
         module load CrayEnv
         module load PrgEnv-cray
@@ -164,7 +164,7 @@ lumi = System(id='mi250x', account='project_462000120', partition='pilot', ngpus
         module load rocm
         module load buildtools
         module load cray-python
-        ''', use_hip=True, optimal_implementation='1', optimal_tpb='512')
+        ''', use_hip=True, optimal_implementation=1, optimal_tpb=512)
 
 # Select system
 hostname = socket.gethostname()
@@ -252,6 +252,9 @@ def gen_strongscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices):
 def gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices):
     # Weak scaling
     devices = min_devices
+    initial_nx = nx
+    initial_ny = ny
+    initial_nz = nz
     while devices <= max_devices:
         with open(f'{scripts_dir}/weak-scaling-benchmark-{devices}.sh', 'w') as f:
             with redirect_stdout(f):
@@ -259,10 +262,12 @@ def gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices):
                 print(f'srun ./benchmark {nx} {ny} {nz}')
 
         if devices <= system.ngpus_per_node:
-            with open(f'{scripts_dir}/node-weak-scaling-benchmark-{devices}.sh', 'w') as f:
+            with open(f'{scripts_dir}/node-scaling-weak-benchmark-{devices}.sh', 'w') as f:
                 with redirect_stdout(f):
                     system.print_sbatch_header(1, devices)
-                    print(f'srun ./benchmark-node {nx} {ny} {nz}')
+                    # Note: 1D decomposition here
+                    nz_1d = int(initial_nz * (nx * ny * nz) / (initial_nx * initial_ny * initial_nz))
+                    print(f'srun ./benchmark-node {initial_nx} {initial_ny} {nz_1d}')
 
         devices *= 2
         if nx < ny:
@@ -461,6 +466,13 @@ if 'postprocess' in args.task_type:
     df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
     df.to_csv(f'{output_dir}/node-2-explicit-{system.id}.csv', index=False)
 
+    # Node scaling
+    df = pd.read_csv(outfile, comment='#')
+    df = df.loc[(df['implementation']==system.optimal_implementation) & (df['maxthreadsperblock']==system.optimal_tpb)].sort_values(by=['devices'])
+    df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
+    df = df[df['nx']*df['ny']*df['nz'] == df['devices']*256*256*256]
+    df.to_csv(f'{output_dir}/node-scaling-weak-{system.id}.csv', index=False)
+
     # Scaling
     outfile = f'{output_dir}/scaling-benchmark-{system.id}.csv'
     with open(outfile, 'w') as f:
@@ -474,11 +486,15 @@ if 'postprocess' in args.task_type:
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'], keep='last')
     df.to_csv(f'{output_dir}/scaling-strong-{system.id}.csv', index=False)
 
-    nn = nx * ny * nz
+    nn = 256*256*256 # nx * ny * nz
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['nx'] * df['ny'] * df['nz']) / df['devices'] == nn]
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'], keep='last')
+    # Hack start (replace intra-node results with P2P instead of MPI)
+    df2 = pd.read_csv(f'{output_dir}/node-scaling-weak-{system.id}.csv', comment='#')
+    df['milliseconds90thpercentile'].iloc[0:len(df2.milliseconds.values)] = df2.milliseconds.values
+    # Hack end
     df.to_csv(f'{output_dir}/scaling-weak-{system.id}.csv', index=False)
 
     # IO scaling

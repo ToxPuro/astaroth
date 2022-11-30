@@ -330,7 +330,7 @@ print_diagnostics_host(const AcMesh mesh, const int step, const AcReal dt, const
     buf_max = acHostReduceVec(mesh, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
     buf_min = acHostReduceVec(mesh, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
     buf_rms = acHostReduceVec(mesh, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
-
+    printf("RMS!!: buf_rms %.3e\n", double(buf_rms));
     // MV: The ordering in the earlier version was wrong in terms of variable
     // MV: name and its diagnostics.
     printf("Step %d, t_step %.3e, dt %e s\n", step, double(t_step), double(dt));
@@ -384,7 +384,7 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
 
     AcReal buf_rms, buf_max, buf_min;
     const int max_name_width = 16;
-
+    printf("%.3e\n", double(buf_rms));
     // Calculate rms, min and max from the velocity vector field
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_max);
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_min);
@@ -420,6 +420,10 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
 
     // Calculate rms, min and max from the variables as scalars
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        //printf("RMS: %.3e\n", double(buf_rms));
+        //printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
+        //       double(buf_min), double(buf_rms), double(buf_max));
+
         acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VertexBufferHandle(i), &buf_max);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, VertexBufferHandle(i), &buf_min);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_RMS, VertexBufferHandle(i), &buf_rms);
@@ -480,7 +484,6 @@ calc_timestep(const AcMeshInfo info)
     // MPI_Bcast to share vAmax with all ranks
     MPI_Bcast(&shock_max, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
 #endif
-
     const long double cdt  = (long double)info.real_params[AC_cdt];
     const long double cdtv = (long double)info.real_params[AC_cdtv];
     // const long double cdts     = (long double)info.real_params[AC_cdts];
@@ -708,17 +711,17 @@ main(int argc, char** argv)
     */
 #endif
 #if LKRAMERS
-
+    printf("LKRAMERS\n");
     VertexBufferHandle all_fields[NUM_VTXBUF_HANDLES];
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
         all_fields[i] = (VertexBufferHandle)i;
     }
 
-    Field lnrho[]{VTXBUF_LNRHO};
-    Field uux_uuy[]{VTXBUF_UUX, VTXBUF_UUY};
-    Field uuz[]{VTXBUF_UUZ};
-    Field ax_ay[]{VTXBUF_AX,VTXBUF_AY};
-    Field az[]{VTXBUF_AZ};
+    VertexBufferHandle lnrho[]{VTXBUF_LNRHO};
+    VertexBufferHandle uux_uuy[]{VTXBUF_UUX, VTXBUF_UUY};
+    VertexBufferHandle uuz[]{VTXBUF_UUZ};
+    VertexBufferHandle ax_ay[]{VTXBUF_AX,VTXBUF_AY};
+    VertexBufferHandle az[]{VTXBUF_AZ};
 
     constexpr AcReal prescribed_val          = 6.0;
     info.real_params[AC_boundary_derivative] = prescribed_val;
@@ -727,21 +730,23 @@ main(int argc, char** argv)
     AcTaskDefinition pilot_bcs[] =
 	{
 	    acHaloExchange(all_fields),
-
+        //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
 	    acBoundaryCondition(BOUNDARY_X, BOUNDCOND_PERIODIC, all_fields),
 	    acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_PERIODIC, all_fields),
-
+        
 	    acSpecialMHDBoundaryCondition(BOUNDARY_Z_TOP, SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION),
         //Heat flux requires input param to not crash. Added bc_param just to see will it run
         //Should change it to the physically correct input param
-	    acSpecialMHDBoundaryCondition(BOUNDARY_Z_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, bc_param),
+	    //acSpecialMHDBoundaryCondition(BOUNDARY_Z_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, bc_param),
 	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_A2, lnrho),
 	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, uux_uuy),
 	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, uuz),
 	    acBoundaryCondition(BOUNDARY_Z_TOP, BOUNDCOND_SYMMETRIC, ax_ay),
 	    acBoundaryCondition(BOUNDARY_Z_BOT, BOUNDCOND_ANTISYMMETRIC, ax_ay),
 	    acBoundaryCondition(BOUNDARY_Z_TOP, BOUNDCOND_ANTISYMMETRIC, az),
-	    acBoundaryCondition(BOUNDARY_Z_BOT, BOUNDCOND_SYMMETRIC, az)
+	    acBoundaryCondition(BOUNDARY_Z_BOT, BOUNDCOND_SYMMETRIC, az),
+        acCompute(KERNEL_singlepass_solve, all_fields)
+
 	  };
     // VertexBufferHandle shock_field[] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
     //                                   VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ,

@@ -15,6 +15,7 @@ static __global__ void
 kernel_symmetric_boundconds(const int3 region_id, const int3 normal, const int3 dims,
                             AcReal* vtxbuf)
 {
+    
     const int3 vertexIdx = (int3){
         threadIdx.x + blockIdx.x * blockDim.x,
         threadIdx.y + blockIdx.y * blockDim.y,
@@ -362,7 +363,6 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
                                                                   const int3 dims,
                                                                   VertexBufferArray vba)
 {
-
     const int3 vertexIdx = (int3){
         threadIdx.x + blockIdx.x * blockDim.x,
         threadIdx.y + blockIdx.y * blockDim.y,
@@ -388,7 +388,14 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
 
     int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
-
+    //printf("boundary_idx: %i\n", boundary_idx);
+    if(isnan(vba.in[VTXBUF_LNRHO][boundary_idx])){
+        printf("RHO is nan\n");
+    }
+    else{
+        int VAR = 2;
+        //printf("RHO is not nan: %.3e\n",double(vba.in[VTXBUF_LNRHO][boundary_idx]) );
+    }
     AcReal rho_boundary = exp(vba.in[VTXBUF_LNRHO][boundary_idx]);
 
     AcReal gamma_m1 = DCONST(AC_gamma) - AcReal(1.0);
@@ -432,6 +439,19 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
                                  pow(rho_boundary, AcReal(2.0) * DCONST(AC_n_kramers)) +
                              gamma_m1 * der_lnrho_boundary;
 
+//    if(isnan(der_ss_boundary)){
+//        printf("der_ss_boundary is nan\n");
+//    }
+//
+//    if(isnan(T_boundary)){
+//        printf("T_boundary is nan\n");
+//    }
+//
+//    if(isnan(rho_boundary)){
+//        printf("rho_boundary is nan\n");
+//    } 
+
+
     AcReal d;
     if (normal.x != 0) {
         d = DCONST(AC_dsx);
@@ -452,9 +472,21 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
 
         int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
         int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        if(isnan(vba.in[VTXBUF_ENTROPY][domain_idx])){
+            printf("ENTROPY is nan\n \n");
+        }
+        else{
+            int VAR = 2;
+            printf("ENTROPY is not nan: %.3e\n \n",double(vba.in[VTXBUF_ENTROPY][domain_idx]) );
+        }
+
+
+
 
         AcReal distance = AcReal(2 * (i + 1)) * d;
 
+
+        //printf("%i\n", vba.in[VTXBUF_ENTROPY][domain_idx] -distance * der_ss_boundary);
         vba.in[VTXBUF_ENTROPY][ghost_idx] = vba.in[VTXBUF_ENTROPY][domain_idx] -
                                             distance * der_ss_boundary;
     }
