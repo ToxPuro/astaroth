@@ -507,6 +507,7 @@ if 'postprocess' in args.task_type:
     # Collective
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usedistributedio'] == 0)]
+    df = df.loc[(df['nx'] == nx) & (df['ny'] == ny) & (df['nz'] == nx)].sort_values(by=['devices'])
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'], keep='last')
     df.to_csv(f'{output_dir}/scaling-io-collective-{system.id}.csv', index=False)
@@ -514,6 +515,7 @@ if 'postprocess' in args.task_type:
     # Distributed
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usedistributedio'] == 1)]
+    df = df.loc[(df['nx'] == nx) & (df['ny'] == ny) & (df['nz'] == nx)].sort_values(by=['devices'])
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'], keep='last')
     df.to_csv(f'{output_dir}/scaling-io-distributed-{system.id}.csv', index=False)
