@@ -304,7 +304,7 @@ if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
                 syscall(f'mkdir -p {build_dir}')
 
                 # Generate Makefile
-                flags = f'''-DOPTIMIZE_MEM_ACCESSES=ON -DMPI_ENABLED=ON -DSINGLEPASS_INTEGRATION=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
+                flags = f'''-DOPTIMIZE_MEM_ACCESSES=OFF -DMPI_ENABLED=ON -DSINGLEPASS_INTEGRATION=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
                 
                 cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
                 syscall_async(cmd)
