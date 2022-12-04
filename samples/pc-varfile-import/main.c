@@ -33,49 +33,34 @@ main(int argc, char* argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
-    char input[4096] = "";
-    size_t nx        = 0;
-    size_t ny        = 0;
-    size_t nz        = 0;
+    // Modify these based on the varfile format
+    const char* file = "/scratch/project_462000077/mkorpi/forced/mahti_4096/data/allprocs/var.dat";
+    const Field fields[] = {
+        VTXBUF_AX,      VTXBUF_AY,  VTXBUF_AZ,  VTXBUF_LNRHO,
+        VTXBUF_ENTROPY, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
 
-    for (int i = 0; i < argc; ++i) {
-        sscanf(argv[i], "--input=%4095s", input);
-        sscanf(argv[i], "--volume=%lu,%lu,%lu", &nx, &ny, &nz);
-    }
-    printf("Input: %s\n", input);
-    printf("Volume: (%lu, %lu, %lu)\n", nx, ny, nz);
-
-    ERRCHK(nx > 0);
-    ERRCHK(ny > 0);
-    ERRCHK(nz > 0);
+    };
+    const size_t num_fields = ARRAY_SIZE(fields);
+    const int3 nn = (int3){4096, 4096, 4096};
+    const int3 rr = (int3){3, 3, 3};
 
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    info.int_params[AC_nx] = nx;
-    info.int_params[AC_ny] = ny;
-    info.int_params[AC_nz] = nz;
+    info.int_params[AC_nx] = nn.x;
+    info.int_params[AC_ny] = nn.y;
+    info.int_params[AC_nz] = nn.z;
     acHostUpdateBuiltinParams(&info);
 
     // Init
     acGridInit(info);
 
-    // Read
-    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        char file[2 * 4096] = "";
-        sprintf(file, "%s/%s.out", input, vtxbuf_names[i]);
-        if (!pid)
-            printf("Reading `%s`\n", file);
+    acGridReadVarfileToMesh(file, fields, num_fields, nn, rr);
 
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, ".", file, ACCESS_READ);
-        // acGridLoadFieldFromFile(file, (VertexBufferHandle)i);
-
-        AcReal max, min, sum;
-        acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)i, &max);
-        acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)i, &min);
-        acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)i, &sum);
-        if (!pid)
-            printf("max %g, min %g, sum %g\n", (double)max, (double)min, (double)sum);
-    }
+    const int job_id = 12345;
+    char job_dir[4096];
+    snprintf(job_dir, 4096, "output-%d", job_id);
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, job_dir, vtxbuf_names[i], ACCESS_WRITE);
 
     // Quit
     acGridQuit();
