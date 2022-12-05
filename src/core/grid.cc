@@ -1767,7 +1767,7 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
 
         // Load from file to host memory
         AcReal* host_buffer       = grid.submesh.vertex_buffer[field];
-        const size_t displacement = i * field_offset;
+        const size_t displacement = i * field_offset * sizeof(AcReal); // Bytes
 
         retval = MPI_File_set_view(fp, displacement, AC_REAL_MPI_TYPE, subdomain, "native",
                                    MPI_INFO_NULL);
