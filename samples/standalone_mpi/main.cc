@@ -615,6 +615,33 @@ main(int argc, char** argv)
     acGridInit(info);
     acGridLoadMesh(STREAM_DEFAULT, mesh);
 
+    /*
+    // Scale the fields
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    AcReal max, min, sum;
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)i, &max);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)i, &min);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)i, &sum);
+        if (!pid)
+                printf("max %g, min %g, sum %g\n", (double)max, (double)min, (double)sum);
+    }
+
+    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, (AcReal)2.0);
+    AcMeshDims dims = acGetMeshDims(info);
+    acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
+    acGridSwapBuffers();
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)i, &max);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)i, &min);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)i, &sum);
+        if (!pid)
+                printf("max %g, min %g, sum %g\n", (double)max, (double)min, (double)sum);
+    }
+    */
+
     /* initialize random seed: */
     srand(312256655);
 
