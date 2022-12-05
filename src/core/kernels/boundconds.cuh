@@ -312,14 +312,7 @@ kernel_entropy_const_temperature_boundconds(const int3 region_id, const int3 nor
 
     AcReal lnrho_diff   = vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0);
     AcReal gas_constant = DCONST(AC_cp_sound) - DCONST(AC_cv_sound);
-
-    // Same as lnT(), except we are reading the values from the boundary
-    AcReal lnT_boundary = DCONST(AC_lnT0) +
-                          DCONST(AC_gamma) * vba.in[VTXBUF_ENTROPY][boundary_idx] /
-                              DCONST(AC_cp_sound) +
-                          (DCONST(AC_gamma) - AcReal(1.)) * lnrho_diff;
-
-    AcReal tmp = AcReal(2.0) * DCONST(AC_cv_sound) * (lnT_boundary - DCONST(AC_lnT0));
+    AcReal tmp = AcReal(2.0) * DCONST(AC_cv_sound) * log((double) DCONST(AC_cs2bound)/DCONST(AC_cs20));
 
     vba.in[VTXBUF_ENTROPY][boundary_idx] = AcReal(0.5) * tmp - gas_constant * lnrho_diff;
 
@@ -334,10 +327,10 @@ kernel_entropy_const_temperature_boundconds(const int3 region_id, const int3 nor
         int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
         int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
 
-        vba.in[VTXBUF_ENTROPY][ghost_idx] = -vba.in[VTXBUF_ENTROPY][domain_idx] + tmp -
-                                            gas_constant * (vba.in[VTXBUF_LNRHO][domain_idx] +
-                                                            vba.in[VTXBUF_LNRHO][ghost_idx] -
-                                                            2 * DCONST(AC_lnrho0));
+        vba.in[VTXBUF_ENTROPY][ghost_idx] = -vba.in[VTXBUF_ENTROPY][domain_idx] + tmp 
+                                            -gas_constant * (  vba.in[VTXBUF_LNRHO][domain_idx]
+                                                             + vba.in[VTXBUF_LNRHO][ghost_idx]
+                                                             - 2 * DCONST(AC_lnrho0));
     }
 }
 
