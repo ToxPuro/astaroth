@@ -1393,6 +1393,95 @@ acGridDiskAccessLaunch(const AccessType type)
 
     return AC_SUCCESS;
 }
+
+AcResult
+acGridWriteSliceToDisk(void)
+{
+    ERRCHK(grid.initialized);
+    ERRCHK_ALWAYS(!running);
+    running = true;
+
+    for (int field = 0; field < NUM_FIELDS; ++field) {
+
+        const Device device   = grid.device;
+        const AcMeshInfo info = device->local_config;
+
+        acDeviceSynchronizeStream(device, STREAM_ALL);
+
+        int retval;
+        const int3 slice_volume = (int3){
+            info.int_params[AC_nx],
+            info.int_params[AC_ny],
+            1,
+        };
+
+        const int3 slice_offset = (int3){
+            0,
+            0,
+            (info.int_params[AC_nz_max] - info.int_params[AC_nz_min]) / 2,
+        };
+
+        const AcReal* in     = device->vba.in[field];
+        const int3 in_offset = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info) +
+                               slice_offset;
+        const int3 in_volume = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+
+        AcReal* out           = device->vba.out[field];
+        const int3 out_offset = (int3){0, 0, 0};
+        const int3 out_volume = slice_volume;
+
+        acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
+                           out_volume);
+        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+
+        AcReal* host_buffer = grid.submesh.vertex_buffer[field];
+        const size_t count  = slice_volume.x * slice_volume.y * slice_volume.z;
+        const size_t bytes  = sizeof(host_buffer[0]) * count;
+        cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
+
+        // Write to file
+        const int3 nn = (int3){
+            info.int3_params[AC_global_grid_n].x,
+            info.int3_params[AC_global_grid_n].y,
+            1,
+        };
+        const int3 nn_sub   = out_volume;
+
+        const int nn_[]     = {nn.z, nn.y, nn.x};
+        const int nn_sub_[] = {nn_sub.z, nn_sub.y, nn_sub.x};
+        const int offset_[] = {
+            0,
+            info.int3_params[AC_multigpu_offset].y,
+            info.int3_params[AC_multigpu_offset].x,
+        };
+        MPI_Datatype subdomain;
+        MPI_Type_create_subarray(3, nn_, nn_sub_, offset_, MPI_ORDER_C, AC_REAL_MPI_TYPE,
+                                 &subdomain);
+        MPI_Type_commit(&subdomain);
+
+        char file[4096];
+        sprintf(file, "%s.slice", vtxbuf_names[field]);
+        printf("Writing %s\n", file);
+
+        MPI_File fp;
+        retval = MPI_File_open(MPI_COMM_WORLD, file, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        retval = MPI_File_set_view(fp, 0, AC_REAL_MPI_TYPE, subdomain, "native", MPI_INFO_NULL);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        MPI_Status status;
+        retval = MPI_File_write_all(fp, host_buffer, count, AC_REAL_MPI_TYPE, &status);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        retval = MPI_File_close(&fp);
+        ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        MPI_Type_free(&subdomain);
+    }
+
+    return AC_SUCCESS;
+}
 #else
 
 static MPI_File files[NUM_VTXBUF_HANDLES];
@@ -1779,13 +1868,13 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
         // Load from host memory to device memory
-        AcReal* in = device->vba.out[field];
-        const int3 in_offset     = (int3){0, 0, 0};
-        const int3 in_volume     = subdomain_nn;
+        AcReal* in           = device->vba.out[field];
+        const int3 in_offset = (int3){0, 0, 0};
+        const int3 in_volume = subdomain_nn;
 
-        AcReal* out = device->vba.in[field];
-        const int3 out_offset       = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
-        const int3 out_volume       = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+        AcReal* out           = device->vba.in[field];
+        const int3 out_offset = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
+        const int3 out_volume = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
 
         const size_t bytes = acVertexBufferCompdomainSizeBytes(info);
         cudaMemcpy(in, host_buffer, bytes, cudaMemcpyHostToDevice);

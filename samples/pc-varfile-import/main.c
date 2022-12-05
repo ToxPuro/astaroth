@@ -45,6 +45,7 @@ main(int argc, char* argv[])
     //const int3 nn = (int3){64, 64, 8};
     const int3 rr = (int3){3, 3, 3};
 
+    
     /*
     // Debug start
     const int3 mm = (int3){nn.x + 2*rr.x, nn.y + 2*rr.y, nn.z + 2*rr.z};
@@ -91,6 +92,8 @@ main(int argc, char* argv[])
                (double)(buf_rms), (double)(buf_max));
     }
 
+    /*
+    // Write snapshots
     // Create a tmpdir for output
     const int job_id = 12345;
     char job_dir[4096];
@@ -103,6 +106,10 @@ main(int argc, char* argv[])
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, job_dir, vtxbuf_names[i],
                                           ACCESS_WRITE);
+    */
+
+    // Write slices
+    acGridWriteSliceToDisk();
 
     // Quit
     acGridQuit();
