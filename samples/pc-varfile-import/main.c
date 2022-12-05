@@ -35,11 +35,15 @@ main(int argc, char* argv[])
 
     // Modify these based on the varfile format
     const char* file = "/scratch/project_462000077/mkorpi/forced/mahti_4096/data/allprocs/var.dat";
+    const Field fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ};
+    /*
     const Field fields[] = {
-        VTXBUF_AX,      VTXBUF_AY,  VTXBUF_AZ,  VTXBUF_LNRHO,
-        VTXBUF_ENTROPY, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+        vel, density, magnetic field
+        //VTXBUF_AX,      VTXBUF_AY,  VTXBUF_AZ,  VTXBUF_LNRHO,
+        //VTXBUF_ENTROPY, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
 
     };
+    */
     const size_t num_fields = ARRAY_SIZE(fields);
     const int3 nn = (int3){4096, 4096, 4096};
     const int3 rr = (int3){3, 3, 3};
@@ -55,10 +59,26 @@ main(int argc, char* argv[])
     acGridInit(info);
 
     acGridReadVarfileToMesh(file, fields, num_fields, nn, rr);
+    
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        AcReal buf_max, buf_min, buf_rms;
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, i, &buf_max);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, i, &buf_min);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_RMS, i, &buf_rms);
 
+        printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", 8, vtxbuf_names[i],
+               (double)(buf_min), (double)(buf_rms), (double)(buf_max));
+    }
+
+    // Create a tmpdir for output
     const int job_id = 12345;
     char job_dir[4096];
     snprintf(job_dir, 4096, "output-%d", job_id);
+    
+    char cmd[4096];
+    snprintf(cmd, 4096, "mkdir -p %s", job_dir);
+    system(cmd);
+    
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
         acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, job_dir, vtxbuf_names[i], ACCESS_WRITE);
 
