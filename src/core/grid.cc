@@ -1746,12 +1746,12 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
 
     // Load the fields to host memory
     MPI_Datatype subdomain;
-    const int domain_mm_[]        = {mm.x, mm.y, mm.z};
-    const int subdomain_nn_[]     = {subdomain_nn.x, subdomain_nn.y, subdomain_nn.z};
+    const int domain_mm_[]        = {mm.z, mm.y, mm.x};
+    const int subdomain_nn_[]     = {subdomain_nn.z, subdomain_nn.y, subdomain_nn.x};
     const int subdomain_offset_[] = {
-        rr.x + subdomain_offset.x,
-        rr.y + subdomain_offset.y,
         rr.z + subdomain_offset.z,
+        rr.y + subdomain_offset.y,
+        rr.x + subdomain_offset.x,
     }; // Offset the ghost zone
 
     MPI_Type_create_subarray(3, domain_mm_, subdomain_nn_, subdomain_offset_, MPI_ORDER_C,
@@ -1763,8 +1763,10 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
     ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
     for (size_t i = 0; i < num_fields; ++i) {
+        const Field field = fields[i];
+
         // Load from file to host memory
-        AcReal* host_buffer       = grid.submesh.vertex_buffer[i];
+        AcReal* host_buffer       = grid.submesh.vertex_buffer[field];
         const size_t displacement = i * field_offset;
 
         retval = MPI_File_set_view(fp, displacement, AC_REAL_MPI_TYPE, subdomain, "native",
@@ -1777,17 +1779,17 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
         // Load from host memory to device memory
-        AcReal* in = device->vba.out[i];
+        AcReal* in = device->vba.out[field];
         const int3 in_offset     = (int3){0, 0, 0};
         const int3 in_volume     = subdomain_nn;
 
-        AcReal* out = device->vba.in[i];
+        AcReal* out = device->vba.in[field];
         const int3 out_offset       = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
         const int3 out_volume       = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
 
         const size_t bytes = acVertexBufferCompdomainSizeBytes(info);
         cudaMemcpy(in, host_buffer, bytes, cudaMemcpyHostToDevice);
-        retval = acDeviceVolumeCopy(device, i, in, in_offset, in_volume, out, out_offset,
+        retval = acDeviceVolumeCopy(device, field, in, in_offset, in_volume, out, out_offset,
                                     out_volume);
         ERRCHK_ALWAYS(retval == AC_SUCCESS);
     }
@@ -1817,12 +1819,12 @@ acGridLoadFieldFromFile(const char* path, const VertexBufferHandle vtxbuf)
     const int3 global_nn_offset = info.int3_params[AC_multigpu_offset];
 
     MPI_Datatype subarray;
-    const int mm[]     = {global_mm.x, global_mm.y, global_mm.z};
-    const int nn_sub[] = {local_nn.x, local_nn.y, local_nn.z};
+    const int mm[]     = {global_mm.z, global_mm.y, global_mm.x};
+    const int nn_sub[] = {local_nn.z, local_nn.y, local_nn.x};
     const int offset[] = {
-        STENCIL_ORDER + global_nn_offset.x,
-        STENCIL_ORDER + global_nn_offset.y,
         STENCIL_ORDER + global_nn_offset.z,
+        STENCIL_ORDER + global_nn_offset.y,
+        STENCIL_ORDER + global_nn_offset.x,
     };
     MPI_Type_create_subarray(3, mm, nn_sub, offset, MPI_ORDER_C, AC_REAL_MPI_TYPE, &subarray);
     MPI_Type_commit(&subarray);
@@ -1897,12 +1899,12 @@ acGridStoreFieldToFile(const char* path, const VertexBufferHandle vtxbuf)
     const int3 global_nn_offset = info.int3_params[AC_multigpu_offset];
 
     MPI_Datatype subarray;
-    const int mm[]     = {global_mm.x, global_mm.y, global_mm.z};
-    const int nn_sub[] = {local_nn.x, local_nn.y, local_nn.z};
+    const int mm[]     = {global_mm.z, global_mm.y, global_mm.x};
+    const int nn_sub[] = {local_nn.z, local_nn.y, local_nn.x};
     const int offset[] = {
-        STENCIL_ORDER + global_nn_offset.x,
-        STENCIL_ORDER + global_nn_offset.y,
         STENCIL_ORDER + global_nn_offset.z,
+        STENCIL_ORDER + global_nn_offset.y,
+        STENCIL_ORDER + global_nn_offset.x,
     };
     MPI_Type_create_subarray(3, mm, nn_sub, offset, MPI_ORDER_C, AC_REAL_MPI_TYPE, &subarray);
     MPI_Type_commit(&subarray);
