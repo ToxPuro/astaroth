@@ -1395,7 +1395,7 @@ acGridDiskAccessLaunch(const AccessType type)
 }
 
 AcResult
-acGridWriteSliceToDisk(void)
+acGridWriteSlicesToDisk(const char* dir, const char* label)
 {
     ERRCHK(grid.initialized);
     ERRCHK_ALWAYS(!running);
@@ -1460,7 +1460,7 @@ acGridWriteSliceToDisk(void)
         MPI_Type_commit(&subdomain);
 
         char file[4096];
-        sprintf(file, "%s.slice", vtxbuf_names[field]);
+        sprintf(file, "%s/%s-%s.slice", dir, vtxbuf_names[field], label);
         printf("Writing %s\n", file);
 
         MPI_File fp;
@@ -1824,7 +1824,7 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
         nn.y + 2 * rr.y,
         nn.z + 2 * rr.z,
     };
-    const size_t field_offset = mm.x * mm.y * mm.z;
+    const size_t field_offset = (size_t)mm.x * (size_t)mm.y * (size_t)mm.z;
 
     // Set the helper variables
     const Device device         = grid.device;
@@ -1866,6 +1866,17 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
         const size_t count = acVertexBufferCompdomainSize(info);
         retval             = MPI_File_read_all(fp, host_buffer, count, AC_REAL_MPI_TYPE, &status);
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+        /*
+        for (size_t kk = 0; kk < subdomain_nn.z; ++kk) {
+            for (size_t jj = 0; jj < subdomain_nn.y; ++jj) {
+                for (size_t ii = 0; ii < subdomain_nn.x; ++ii) {
+                    const size_t idx = ii + jj * subdomain_nn.x + kk * subdomain_nn.x * subdomain_nn.y; 
+                    host_buffer[idx] = (ii+subdomain_offset.x) + (jj+subdomain_offset.y);
+                }
+            }
+        }
+        */
 
         // Load from host memory to device memory
         AcReal* in           = device->vba.out[field];
