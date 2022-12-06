@@ -553,7 +553,13 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
 AcResult acGridDiskAccessLaunch(const AccessType type);
 
+AcResult acGridWriteSliceToDisk(void);
+
 AcResult acGridDiskAccessSync(void);
+
+AcResult
+acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num_fields,
+                        const int3 nn, const int3 rr);
 
 // Bugged
 // AcResult acGridLoadFieldFromFile(const char* path, const VertexBufferHandle field);

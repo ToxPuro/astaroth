@@ -232,7 +232,7 @@ def gen_devicebenchmarks(system, nx, ny, nz):
 def gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices):
     devices = min_devices
     while devices <= min(system.ngpus_per_node, max_devices):
-        with open(f'{scripts_dir}/node-benchmark-{devices}.sh', 'w') as f:
+        with open(f'{scripts_dir}/node-scaling-strong-benchmark-{devices}.sh', 'w') as f:
             with redirect_stdout(f):
                 system.print_sbatch_header(1, devices)
                 print(f'srun ./benchmark-node {nx} {ny} {nz}')
@@ -304,7 +304,7 @@ if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
                 syscall(f'mkdir -p {build_dir}')
 
                 # Generate Makefile
-                flags = f'''-DOPTIMIZE_MEM_ACCESSES=ON -DMPI_ENABLED=ON -DSINGLEPASS_INTEGRATION=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
+                flags = f'''-DOPTIMIZE_MEM_ACCESSES=OFF -DMPI_ENABLED=ON -DSINGLEPASS_INTEGRATION=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
                 
                 cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
                 syscall_async(cmd)
@@ -431,6 +431,7 @@ if 'postprocess' in args.task_type:
             print('implementation,maxthreadsperblock,milliseconds,nx,ny,nz,devices')
     syscall(f'cat {builds_dir}/*/node-benchmark.csv >> {outfile}')
 
+    '''
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['implementation'] == 1)]
     df = df.sort_values(by=['maxthreadsperblock'])
@@ -442,6 +443,7 @@ if 'postprocess' in args.task_type:
     df = df.sort_values(by=['maxthreadsperblock'])
     df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
     df.to_csv(f'{output_dir}/node-explicit-{system.id}.csv', index=False)
+    '''
 
     '''
     # Find the best tpb
@@ -454,6 +456,7 @@ if 'postprocess' in args.task_type:
             best_tpb = tpb
     '''
     
+    '''
     # Implicit full card
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['devices'] == 2) & (df['implementation'] == 1) & (df['nx'] == 256) & (df['ny'] == 256) & (df['nz'] == 256)].sort_values(by=['maxthreadsperblock'])
@@ -465,8 +468,16 @@ if 'postprocess' in args.task_type:
     df = df.loc[(df['devices'] == 2) & (df['implementation'] == 2) & (df['nx'] == 256) & (df['ny'] == 256) & (df['nz'] == 256)].sort_values(by=['maxthreadsperblock'])
     df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
     df.to_csv(f'{output_dir}/node-2-explicit-{system.id}.csv', index=False)
+    '''
 
-    # Node scaling
+    # Node scaling strong
+    df = pd.read_csv(outfile, comment='#')
+    df = df.loc[(df['implementation']==system.optimal_implementation) & (df['maxthreadsperblock']==system.optimal_tpb)].sort_values(by=['devices'])
+    df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
+    df = df.loc[(df['nx'] == 256) & (df['ny'] == 256) & (df['nz'] == 256)]
+    df.to_csv(f'{output_dir}/node-scaling-strong-{system.id}.csv', index=False)
+
+    # Node scaling weak
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['implementation']==system.optimal_implementation) & (df['maxthreadsperblock']==system.optimal_tpb)].sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
@@ -507,6 +518,7 @@ if 'postprocess' in args.task_type:
     # Collective
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usedistributedio'] == 0)]
+    df = df.loc[(df['nx'] == nx) & (df['ny'] == ny) & (df['nz'] == nx)].sort_values(by=['devices'])
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'], keep='last')
     df.to_csv(f'{output_dir}/scaling-io-collective-{system.id}.csv', index=False)
@@ -514,6 +526,7 @@ if 'postprocess' in args.task_type:
     # Distributed
     df = pd.read_csv(outfile, comment='#')
     df = df.loc[(df['usedistributedio'] == 1)]
+    df = df.loc[(df['nx'] == nx) & (df['ny'] == ny) & (df['nz'] == nx)].sort_values(by=['devices'])
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'], keep='last')
     df.to_csv(f'{output_dir}/scaling-io-distributed-{system.id}.csv', index=False)
