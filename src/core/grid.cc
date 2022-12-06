@@ -1395,7 +1395,7 @@ acGridDiskAccessLaunch(const AccessType type)
 }
 
 AcResult
-acGridWriteSlicesToDisk(const char* dir, const char* label)
+acGridWriteSlicesToDisk(const char* dir, const int label)
 {
     ERRCHK(grid.initialized);
     ERRCHK_ALWAYS(!running);
@@ -1460,7 +1460,7 @@ acGridWriteSlicesToDisk(const char* dir, const char* label)
         MPI_Type_commit(&subdomain);
 
         char file[4096];
-        sprintf(file, "%s/%s-%s.slice", dir, vtxbuf_names[field], label);
+        sprintf(file, "%s/%s-%012d.slice", dir, vtxbuf_names[field], label);
         printf("Writing %s\n", file);
 
         MPI_File fp;

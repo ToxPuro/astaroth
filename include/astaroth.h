@@ -553,7 +553,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle field, const char* di
 
 AcResult acGridDiskAccessLaunch(const AccessType type);
 
-AcResult acGridWriteSlicesToDisk(const char* dir, const char* label);
+AcResult acGridWriteSlicesToDisk(const char* dir, const int label);
 
 AcResult acGridDiskAccessSync(void);
 
