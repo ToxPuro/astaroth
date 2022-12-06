@@ -614,6 +614,17 @@ main(int argc, char** argv)
     // Init GPU
     acGridInit(info);
     acGridLoadMesh(STREAM_DEFAULT, mesh);
+    
+    // %JP start
+    // Read PC varfile to Astaroth
+    const char* file = "/scratch/project_462000077/mkorpi/forced/mahti_4096/data/allprocs/var.dat";
+    const Field fields[]    = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO,
+                            VTXBUF_AX,  VTXBUF_AY,  VTXBUF_AZ};
+    const size_t num_fields = ARRAY_SIZE(fields);
+    const int3 nn = (int3){4096, 4096, 4096};
+    const int3 rr = (int3){3, 3, 3};
+    acGridReadVarfileToMesh(file, fields, num_fields, nn, rr);
+    // %JP end
 
     // JP NOTE: need to perform a dryrun (all kernels) if switching
     // to two-pass integration, otherwise the output buffers
@@ -848,25 +859,24 @@ main(int argc, char** argv)
 
             save_mesh_mpi(mesh, pid, i, t_step);
 
+            // %JP start
+            // Create a tmpdir for output
+            const int job_id = 12345;
+            char job_dir[4096];
+            snprintf(job_dir, 4096, "output-%d", job_id);
+
+            char cmd[4096];
+            snprintf(cmd, 4096, "mkdir -p %s", job_dir);
+            system(cmd);
+
+            // Write slices
+            acGridDiskAccessSync();
+            acGridWriteSlicesToDisk(job_dir, i);
+            // %JP end
+
             bin_crit_t += bin_save_t;
         }
 
-        /*
-        // %JP start
-        // Create a tmpdir for output
-        const int job_id = 12345;
-        char job_dir[4096];
-        snprintf(job_dir, 4096, "output-%d", job_id);
-
-        char cmd[4096];
-        snprintf(cmd, 4096, "mkdir -p %s", job_dir);
-        system(cmd);
-
-        // Write slices
-        acGridDiskAccessSync();
-        acGridWriteSlicesToDisk(job_dir, i);
-        // %JP end
-        */
 
         istep = i;
 
