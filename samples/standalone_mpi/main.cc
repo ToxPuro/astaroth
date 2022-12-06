@@ -615,6 +615,10 @@ main(int argc, char** argv)
     acGridInit(info);
     acGridLoadMesh(STREAM_DEFAULT, mesh);
 
+    // JP NOTE: need to perform a dryrun (all kernels) if switching
+    // to two-pass integration, otherwise the output buffers
+    // may be invalid due to automated performance tuning
+
     /*
     // Scale the fields
     acGridPeriodicBoundconds(STREAM_DEFAULT);
@@ -846,6 +850,23 @@ main(int argc, char** argv)
 
             bin_crit_t += bin_save_t;
         }
+
+        /*
+        // %JP start
+        // Create a tmpdir for output
+        const int job_id = 12345;
+        char job_dir[4096];
+        snprintf(job_dir, 4096, "output-%d", job_id);
+
+        char cmd[4096];
+        snprintf(cmd, 4096, "mkdir -p %s", job_dir);
+        system(cmd);
+
+        // Write slices
+        acGridDiskAccessSync();
+        acGridWriteSlicesToDisk(job_dir, i);
+        // %JP end
+        */
 
         istep = i;
 

@@ -28,7 +28,7 @@ cmake -DMPI_ENABLED=ON .. && make -j && $SRUNMPI4 ./pc-varfile-import\
 // #include <math.h>
 
 static void
-merge_slices(const char* job_dir, const char* label, const size_t nx, const size_t ny,
+merge_slices(const char* job_dir, const int label, const size_t nx, const size_t ny,
              const Field fields[], const size_t num_fields)
 {
     const size_t count = nx * ny;
@@ -43,7 +43,7 @@ merge_slices(const char* job_dir, const char* label, const size_t nx, const size
         const Field field = fields[i];
 
         char infile[4096] = {0};
-        sprintf(infile, "%s/%s-%s.slice", job_dir, vtxbuf_names[field], label);
+        sprintf(infile, "%s/%s-%012d.slice", job_dir, vtxbuf_names[field], label);
         FILE* in = fopen(infile, "r");
         ERRCHK_ALWAYS(in);
 
@@ -164,10 +164,10 @@ main(int argc, char* argv[])
                                           ACCESS_WRITE);
 
     // Write slices
-    acGridWriteSlicesToDisk(job_dir, "0");
+    acGridWriteSlicesToDisk(job_dir, 0);
 
     // Merge slices
-    merge_slices(job_dir, "0", info.int_params[AC_nx], info.int_params[AC_ny], fields, num_fields);
+    merge_slices(job_dir, 0, info.int_params[AC_nx], info.int_params[AC_ny], fields, num_fields);
 
     // Quit
     acGridQuit();
