@@ -558,6 +558,27 @@ calc_timestep(const AcMeshInfo info)
     return AcReal(dt);
 }
 
+void dryrun(const AcMeshInfo info)
+{
+    // Scale the fields
+    AcReal max, min, sum;
+    acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)0, &max);
+    acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)0, &min);
+    acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)0, &sum);
+
+    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, (AcReal)2.0);
+    AcMeshDims dims = acGetMeshDims(info);
+    acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
+    acGridSwapBuffers();
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+
+    acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)0, &max);
+    acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)0, &min);
+    acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)0, &sum);
+    const AcReal dt = calc_timestep(info);
+    acGridIntegrate(STREAM_DEFAULT, dt);
+}
+
 int
 main(int argc, char** argv)
 {
@@ -666,6 +687,8 @@ main(int argc, char** argv)
     acGridInit(info);
     // acGridLoadMesh(STREAM_DEFAULT, mesh); // %JP: Disabled, large grids will not fit into host memory
     
+    dryrun(info);
+
     // %JP start
     // Read PC varfile to Astaroth
     const char* file = "/scratch/project_462000077/mkorpi/forced/mahti_4096/data/allprocs/var.dat";
