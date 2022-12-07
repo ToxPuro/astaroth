@@ -41,10 +41,14 @@ def set_dtype(endian, AcRealSize, print_type = True):
     my_dtype = np.dtype(type_instruction)
     return my_dtype
 
-def read_bin(fname, fdir, fnum, minfo, numtype=np.longdouble, getfilename=True):
+def read_bin(fname, fdir, fnum, minfo, numtype=np.longdouble, getfilename=True, slices=False):
     '''Read in a floating point array'''
-    filename     = fdir + fname + '_' + fnum + '.mesh'
-    filename_alt = fdir + fname + '_' + fnum + '.field'
+    if slices:
+        filename     = fdir + fname + '_' + fnum + '.slice_ghost'
+        filename_alt = fdir + fname + '_' + fnum + '.slice'
+    else:
+        filename     = fdir + fname + '_' + fnum + '.mesh'
+        filename_alt = fdir + fname + '_' + fnum + '.field'
     datas = np.DataSource()
     read_ok     = datas.exists(filename)
     read_ok_alt = datas.exists(filename_alt)
@@ -59,30 +63,42 @@ def read_bin(fname, fdir, fnum, minfo, numtype=np.longdouble, getfilename=True):
 
         timestamp = array[0]
 
-        array = np.reshape(array[1:], (minfo.contents['AC_mx'], 
-                                       minfo.contents['AC_my'], 
-                                       minfo.contents['AC_mz']), order='F')
+        if slices:
+            array = np.reshape(array[1:], (minfo.contents['AC_mx'], 
+                                           minfo.contents['AC_my']), order='F')
+        else:
+            array = np.reshape(array[1:], (minfo.contents['AC_mx'], 
+                                           minfo.contents['AC_my'], 
+                                           minfo.contents['AC_mz']), order='F')
     elif read_ok_alt:
         if getfilename:
             print(filename)
         array = np.fromfile(filename_alt, dtype=my_dtype)
 
-        timestamp = 666.0
-        snapshots_df = pd.read_csv(fdir+'snapshots_info.csv')
-        #print(snapshots_df)
-        fnum = int(fnum)
-        #print(fnum)
-        #print(snapshots_df.columns.tolist())
-        #print(snapshots_df[' step_number'])
-        row = snapshots_df.loc[snapshots_df[' step_number'] == fnum]
-        #print(row)
-        timestamp = np.float32(row[' t_step '])[0]
-        #print(timestamp)
+        if slices:
+            timestamp = 666.0 #How does time information is saved for slices ? 
+        else:        
+            timestamp = 666.0
+            snapshots_df = pd.read_csv(fdir+'snapshots_info.csv')
+            #print(snapshots_df)
+            fnum = int(fnum)
+            #print(fnum)
+            #print(snapshots_df.columns.tolist())
+            #print(snapshots_df[' step_number'])
+            row = snapshots_df.loc[snapshots_df[' step_number'] == fnum]
+            #print(row)
+            timestamp = np.float32(row[' t_step '])[0]
+            #print(timestamp)
 
-        array = np.reshape(array, (minfo.contents['AC_mx']-6, 
-                                   minfo.contents['AC_my']-6, 
-                                   minfo.contents['AC_mz']-6), order='F')
-        read_ok = 1
+        if slices:
+            array = np.reshape(array, (minfo.contents['AC_mx']-6, 
+                                       minfo.contents['AC_my']-6), order='F')
+            read_ok = 1
+        else:
+            array = np.reshape(array, (minfo.contents['AC_mx']-6, 
+                                       minfo.contents['AC_my']-6, 
+                                       minfo.contents['AC_mz']-6), order='F')
+            read_ok = 1
     else:
         array = None
         timestamp = None
@@ -281,7 +297,7 @@ class MeshInfo():
 class Mesh:
     '''Class tha contains all 3d mesh data'''
 
-    def __init__(self, fnum, fdir="", only_info = False, pdiag = True):
+    def __init__(self, fnum, fdir="", only_info = False, pdiag = True, slices=False):
         fnum = str(fnum)
         self.framenum = fnum.zfill(10)
 
@@ -289,30 +305,30 @@ class Mesh:
 
 
         if only_info == False:
-            self.lnrho, self.timestamp, self.ok = read_bin('VTXBUF_LNRHO', fdir, fnum, self.minfo, getfilename=pdiag)
+            self.lnrho, self.timestamp, self.ok = read_bin('VTXBUF_LNRHO', fdir, fnum, self.minfo, getfilename=pdiag, slices=False)
         else:
             self.ok = False
 
         if self.ok:
 
-            self.ss, timestamp, ok = read_bin('VTXBUF_ENTROPY', fdir, fnum, self.minfo, getfilename=pdiag)
+            self.ss, timestamp, ok = read_bin('VTXBUF_ENTROPY', fdir, fnum, self.minfo, getfilename=pdiag, slices=False)
 
-            self.shock, timestamp, ok = read_bin('VTXBUF_SHOCK', fdir, fnum, self.minfo, getfilename=pdiag)
+            self.shock, timestamp, ok = read_bin('VTXBUF_SHOCK', fdir, fnum, self.minfo, getfilename=pdiag, slices=False)
 
-            self.accretion, timestamp, ok = read_bin('VTXBUF_ACCRETION', fdir, fnum, self.minfo, getfilename=pdiag)
+            self.accretion, timestamp, ok = read_bin('VTXBUF_ACCRETION', fdir, fnum, self.minfo, getfilename=pdiag, slices=False)
  
             #TODO Generalize is a dict. Do not hardcode!  
-            uux, timestamp, ok = read_bin('VTXBUF_UUX', fdir, fnum, self.minfo, getfilename=pdiag)
-            uuy, timestamp, ok = read_bin('VTXBUF_UUY', fdir, fnum, self.minfo, getfilename=pdiag) 
-            uuz, timestamp, ok = read_bin('VTXBUF_UUZ', fdir, fnum, self.minfo, getfilename=pdiag)
+            uux, timestamp, ok = read_bin('VTXBUF_UUX', fdir, fnum, self.minfo, getfilename=pdiag, slices=False)
+            uuy, timestamp, ok = read_bin('VTXBUF_UUY', fdir, fnum, self.minfo, getfilename=pdiag, slices=False) 
+            uuz, timestamp, ok = read_bin('VTXBUF_UUZ', fdir, fnum, self.minfo, getfilename=pdiag, slices=False)
             self.uu = (uux, uuy, uuz)
             uux = []
             uuy = [] 
             uuz = []
  
-            aax, timestamp, ok = read_bin('VTXBUF_AX', fdir, fnum, self.minfo, getfilename=pdiag)
-            aay, timestamp, ok = read_bin('VTXBUF_AY', fdir, fnum, self.minfo, getfilename=pdiag) 
-            aaz, timestamp, ok = read_bin('VTXBUF_AZ', fdir, fnum, self.minfo, getfilename=pdiag)
+            aax, timestamp, ok = read_bin('VTXBUF_AX', fdir, fnum, self.minfo, getfilename=pdiag, slices=False)
+            aay, timestamp, ok = read_bin('VTXBUF_AY', fdir, fnum, self.minfo, getfilename=pdiag, slices=False) 
+            aaz, timestamp, ok = read_bin('VTXBUF_AZ', fdir, fnum, self.minfo, getfilename=pdiag, slices=False)
             self.aa = (aax, aay, aaz)
             aax = []
             aay = [] 
