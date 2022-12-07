@@ -152,7 +152,7 @@ save_mesh(const AcMesh& save_mesh, const int step, const AcReal t_step)
 // This funtion writes a run state into a set of C binaries
 // WITH MPI_IO
 static inline void
-save_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_step)
+save_mesh_mpi_sync(const AcMeshInfo info, const int pid, const int step, const AcReal t_step)
 {
     printf("Saving snapshot at step %i \n", step);
 
@@ -171,8 +171,8 @@ save_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_s
         }
 
         fprintf(header_file, "%d, %d, %d, %d, %d, %.17e \n", sizeof(AcReal) == 8,
-                mesh.info.int_params[AC_mx], mesh.info.int_params[AC_my], 
-                mesh.info.int_params[AC_mz], step, t_step);
+                info.int_params[AC_mx], info.int_params[AC_my], 
+                info.int_params[AC_mz], step, t_step);
 
 	    // Writes the header info. Make it into an
 	    // appendaple csv table which will be easy to be read into a Pandas
@@ -198,6 +198,55 @@ save_mesh_mpi(const AcMesh mesh, const int pid, const int step, const AcReal t_s
         printf("Savefile %s \n", bin_filename);
 
         acGridDiskAccessSync();
+    }
+}
+
+static inline void
+save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, const int step, const AcReal t_step)
+{
+    printf("Saving snapshot at step %i \n", step);
+
+    char cstep[11];
+    //char header_filename[80] = "\0";
+    sprintf(cstep, "%d", step);
+
+    // Saves a csv file which contains relevant information about the binary
+    // snapshot files at the timestep. 
+    if (pid == 0) {
+        FILE* header_file = fopen("snapshots_info.csv", "a");
+
+        //Header only at the step zero
+        if (step == 0) {
+            fprintf(header_file, "use_double, mx, my, mz, step_number, t_step \n");
+        }
+
+        fprintf(header_file, "%d, %d, %d, %d, %d, %.17e \n", sizeof(AcReal) == 8,
+                info.int_params[AC_mx], info.int_params[AC_my], 
+                info.int_params[AC_mz], step, t_step);
+
+	    // Writes the header info. Make it into an
+	    // appendaple csv table which will be easy to be read into a Pandas
+	    // dataframe.
+         
+        fclose(header_file);
+    }
+
+
+    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        const char* buffername = vtxbuf_names[w];
+        char bin_filename[80] = "\0";
+
+
+        strcat(bin_filename, buffername);
+        strcat(bin_filename, "_");
+        strcat(bin_filename, cstep);
+        strcat(bin_filename, ".field");
+
+        // Grid data
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, job_dir, bin_filename, ACCESS_WRITE);
+        // %JP TODO write async
+       
+        printf("Savefile %s \n", bin_filename);
     }
 }
 
@@ -462,6 +511,8 @@ calc_timestep(const AcMeshInfo info)
     // acGridReduceVecScal(), but for the sake of coherence, with less risk of
     // interfering things elsewhere, I have deiced to try out this approach
     // first, as it is not too complicated anyway.
+    //
+    // %JP: uumax, vAmax, seems to be OK now with the following bcasts
 
     // MPI_Bcast to share uumax with all ranks
     MPI_Bcast(&uumax, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
@@ -561,11 +612,11 @@ main(int argc, char** argv)
     int istep      = 0;
     int found_stop = 0;
 
-    AcMesh mesh;
+    // AcMesh mesh; // %JP: Disabled, large grids will not fit into host memory
     ///////////////////////////////// PROC 0 BLOCK START ///////////////////////////////////////////
     if (pid == 0) {
-        acHostMeshCreate(info, &mesh);
-        acmesh_init_to((InitType)init_type, &mesh);
+        //acHostMeshCreate(info, &mesh); // %JP: Disabled, large grids will not fit into host memory
+        //acmesh_init_to((InitType)init_type, &mesh); // %JP: Disabled, large grids will not fit into host memory
 
 #if LSINK
         acVertexBufferSet(VTXBUF_ACCRETION, 0.0, &mesh);
@@ -601,11 +652,11 @@ main(int argc, char** argv)
             print_diagnostics_host(mesh, 0, AcReal(.0), t_step, diag_file,
                                    info.real_params[AC_M_sink_init], 0.0);
 #else
-            print_diagnostics_host(mesh, 0, AcReal(.0), t_step, diag_file, -1.0, -1.0);
+            // print_diagnostics_host(mesh, 0, AcReal(.0), t_step, diag_file, -1.0, -1.0); // %JP: Disabled, large grids will not fit into host memory
 #endif
         }
 
-        acHostMeshApplyPeriodicBounds(&mesh);
+        //acHostMeshApplyPeriodicBounds(&mesh); // %JP: Disabled, large grids will not fit into host memory
     
     }
     ////////////////////////////////// PROC 0 BLOCK END ////////////////////////////////////////////
@@ -613,20 +664,22 @@ main(int argc, char** argv)
 
     // Init GPU
     acGridInit(info);
-    acGridLoadMesh(STREAM_DEFAULT, mesh);
+    // acGridLoadMesh(STREAM_DEFAULT, mesh); // %JP: Disabled, large grids will not fit into host memory
     
     // %JP start
     // Read PC varfile to Astaroth
     const char* file = "/scratch/project_462000077/mkorpi/forced/mahti_4096/data/allprocs/var.dat";
+    const int3 nn = (int3){4096, 4096, 4096};
+    //const char* file = "test.dat";
+    //const int3 nn = (int3){64, 64, 64};
     const Field fields[]    = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO,
                             VTXBUF_AX,  VTXBUF_AY,  VTXBUF_AZ};
     const size_t num_fields = ARRAY_SIZE(fields);
-    const int3 nn = (int3){4096, 4096, 4096};
     const int3 rr = (int3){3, 3, 3};
     acGridReadVarfileToMesh(file, fields, num_fields, nn, rr);
     // %JP end
 
-    // JP NOTE: need to perform a dryrun (all kernels) if switching
+    // %JP NOTE: need to perform a dryrun (all kernels) if switching
     // to two-pass integration, otherwise the output buffers
     // may be invalid due to automated performance tuning
 
@@ -757,7 +810,7 @@ main(int argc, char** argv)
     }
 
     // Save zero state 
-    if (start_step <= 0) save_mesh_mpi(mesh, pid, 0, 0.0);
+    if (start_step <= 0) save_mesh_mpi_sync(info, pid, 0, 0.0); // // %JP: mesh not available, changed the first param from AcMesh to AcMeshInfo
 
     /* Step the simulation */
     AcReal accreted_mass = 0.0;
@@ -855,15 +908,16 @@ main(int argc, char** argv)
                 acStore(mesh);
             */
             acGridPeriodicBoundconds(STREAM_DEFAULT);
-            acGridStoreMesh(STREAM_DEFAULT, &mesh);
-
-            save_mesh_mpi(mesh, pid, i, t_step);
+            //acGridStoreMesh(STREAM_DEFAULT, &mesh);
 
             // %JP start
+            //acGridDiskAccessSync();
+            //save_mesh_mpi_async(info, pid, i, t_step); // Snapshots should be written out only rarely, disabled for now
+
             // Create a tmpdir for output
             const int job_id = 12345;
             char job_dir[4096];
-            snprintf(job_dir, 4096, "output-%d", job_id);
+            snprintf(job_dir, 4096, "output-slices-%d", job_id);
 
             char cmd[4096];
             snprintf(cmd, 4096, "mkdir -p %s", job_dir);
@@ -871,10 +925,26 @@ main(int argc, char** argv)
 
             // Write slices
             acGridDiskAccessSync();
-            acGridWriteSlicesToDisk(job_dir, i);
+            acGridWriteSlicesToDisk(job_dir, i); // %JP: TODO make async
             // %JP end
 
             bin_crit_t += bin_save_t;
+        }
+
+        const int snapshot_save_interval = 100; // %JP: TODO make a config param
+        if (!(i % snapshot_save_interval)) {
+            // Create a tmpdir for output
+            const int job_id = 12345;
+            char job_dir[4096];
+            snprintf(job_dir, 4096, "output-snapshots-%d", job_id);
+
+            char cmd[4096];
+            snprintf(cmd, 4096, "mkdir -p %s", job_dir);
+            system(cmd);
+
+            // Write snapshots
+            acGridDiskAccessSync();
+            save_mesh_mpi_async(info, job_dir, pid, i, t_step);
         }
 
 
@@ -911,16 +981,16 @@ main(int argc, char** argv)
     }
     // Save data after the loop ends
     acGridPeriodicBoundconds(STREAM_DEFAULT);
-    acGridStoreMesh(STREAM_DEFAULT, &mesh);
+    //acGridStoreMesh(STREAM_DEFAULT, &mesh); // %JP: Disabled, large grids will not fit into host memory
 
-    save_mesh_mpi(mesh, pid, istep, t_step);
+    save_mesh_mpi_sync(info, pid, istep, t_step);
 
 #if LSHOCK
     acGridDestroyTaskGraph(hc_graph);
 #endif
     acGridQuit();
-    if (pid == 0)
-        acHostMeshDestroy(&mesh);
+    //if (pid == 0)
+    //    acHostMeshDestroy(&mesh); // %JP: Disabled, large grids will not fit into host memory
     fclose(diag_file);
 
     MPI_Finalize();
