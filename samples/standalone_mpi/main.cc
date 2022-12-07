@@ -694,7 +694,6 @@ main(int argc, char** argv)
     FILE* diag_file         = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
 
-    const int init_type = info.int_params[AC_init_type];
 
     int found_nan  = 0; // Nan or inf finder to give an error signal
     int istep      = 0;
@@ -756,6 +755,7 @@ main(int argc, char** argv)
 
     /*
     // Debug start
+    const int init_type = info.int_params[AC_init_type];
     AcMesh mesh;
     if (!pid) {
         acHostMeshCreate(info, &mesh);
