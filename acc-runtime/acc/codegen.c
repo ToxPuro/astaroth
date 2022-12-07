@@ -774,6 +774,15 @@ generate_mem_accesses(void)
 #endif
   printf("--- ACC_RUNTIME_API_DIR: `%s`\n", ACC_RUNTIME_API_DIR);
   printf("--- GPU_API_INCLUDES: `%s`\n", GPU_API_INCLUDES);
+
+  char cmd[4096];
+  sprintf(cmd, "gcc -Wshadow -I. ");
+  strcat(cmd, "-I " ACC_RUNTIME_API_DIR " ");
+  if (strlen(GPU_API_INCLUDES) > 0)
+    strcat(cmd, "-I " GPU_API_INCLUDES " ");
+  strcat(cmd, STENCILACC_SRC " -lm -o " STENCILACC_EXEC " ");
+
+  /*
   const char* cmd = "gcc -Wshadow -I. "
 #if AC_USE_HIP
                     "-DAC_USE_HIP=1 "
@@ -782,6 +791,7 @@ generate_mem_accesses(void)
                     "-I " ACC_RUNTIME_API_DIR " " //
       STENCILACC_SRC " -lm "
                     "-o " STENCILACC_EXEC;
+  */
   printf("Compile command: %s\n", cmd);
   const int retval = system(cmd);
   printf("%s compilation done\n", STENCILACC_SRC);
