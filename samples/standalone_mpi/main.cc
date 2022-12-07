@@ -700,6 +700,13 @@ main(int argc, char** argv)
     const size_t num_fields = ARRAY_SIZE(fields);
     const int3 rr = (int3){3, 3, 3};
     acGridReadVarfileToMesh(file, fields, num_fields, nn, rr);
+
+    // Scale the magnetic field
+    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, (AcReal)1e12);
+    AcMeshDims dims = acGetMeshDims(info);
+    acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
+    acGridSwapBuffers();
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
     // %JP end
 
     // %JP NOTE: need to perform a dryrun (all kernels) if switching
