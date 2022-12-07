@@ -561,6 +561,16 @@ AcResult
 acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num_fields,
                         const int3 nn, const int3 rr);
 
+/* Quick hack for the hero run, will be removed in future builds */
+AcResult
+acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, const char* dir,
+                                  const char* label, const AccessType type);
+
+/* Quick hack for the hero run, will be removed in future builds */
+AcResult
+acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, const char* dir,
+                                  const char* label, const AccessType type);
+
 // Bugged
 // AcResult acGridLoadFieldFromFile(const char* path, const VertexBufferHandle field);
 

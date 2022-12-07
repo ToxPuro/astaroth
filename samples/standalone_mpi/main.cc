@@ -592,7 +592,7 @@ void dryrun(const AcMeshInfo info)
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.m0, dims.m1);
-    acGridSwapBuffers();q
+    acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 }
 
