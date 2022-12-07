@@ -949,8 +949,13 @@ Kernel twopass_solve_final() {
 // Scale all fields by a scaling factor
 real AC_scaling_factor
 Kernel scale() {
-
     write(VTXBUF_AX, AC_scaling_factor * value(VTXBUF_AX))
     write(VTXBUF_AY, AC_scaling_factor * value(VTXBUF_AY))
     write(VTXBUF_AZ, AC_scaling_factor * value(VTXBUF_AZ))
+}
+
+Kernel reset() {
+    for field in 0:NUM_FIELDS {
+        write(Field(field), 0.0)
+    }
 }
