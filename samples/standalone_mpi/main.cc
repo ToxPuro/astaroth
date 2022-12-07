@@ -35,6 +35,14 @@
 
 #include "math_utils.h"
 
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
+
+// IO configuration
+static const Field io_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ};
+static const size_t num_io_fields = ARRAY_SIZE(io_fields);
+static const char* snapshot_dir = "output-snapshots";
+static const char* slice_dir = "output-slices";
+
 #define fprintf(...)                                                                               \
     {                                                                                              \
         int tmppid;                                                                                \
@@ -53,7 +61,6 @@
         }                                                                                          \
     }
 
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
 // MV: I commented this out because now can be defined in DSL
 //// #define LSINK (0)
@@ -193,7 +200,7 @@ save_mesh_mpi_sync(const AcMeshInfo info, const int pid, const int step, const A
         strcat(bin_filename, ".field");
 
         // Grid data
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, ".", bin_filename, ACCESS_WRITE);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, snapshot_dir, bin_filename, ACCESS_WRITE);
        
         printf("Savefile %s \n", bin_filename);
 
@@ -311,7 +318,7 @@ read_mesh_mpi(const int pid, const int step, AcReal* t_step)
         strcat(bin_filename, ".field");
 
         // Grid data
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, ".", bin_filename, ACCESS_READ);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, snapshot_dir, bin_filename, ACCESS_READ);
        
         printf("Read file %s \n", bin_filename);
 
@@ -577,6 +584,63 @@ void dryrun(const AcMeshInfo info)
     acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)0, &sum);
     const AcReal dt = calc_timestep(info);
     acGridIntegrate(STREAM_DEFAULT, dt);
+    acGridLaunchKernel(STREAM_DEFAULT, reset, dims.m0, dims.m1);
+    
+    // Reset the fields
+    acGridLaunchKernel(STREAM_DEFAULT, reset, dims.m0, dims.m1);
+    acGridSwapBuffers();
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+
+    acGridLaunchKernel(STREAM_DEFAULT, reset, dims.m0, dims.m1);
+    acGridSwapBuffers();q
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+}
+
+static void read_varfile_to_mesh_and_setup(const AcMeshInfo info)
+{
+    // Read PC varfile to Astaroth
+    const char* file = "/scratch/project_462000077/mkorpi/forced/mahti_4096/data/allprocs/var.dat";
+    const int3 nn = (int3){4096, 4096, 4096};
+    //const char* file = "test.dat";
+    //const int3 nn = (int3){64, 64, 64};
+    const int3 rr = (int3){3, 3, 3};
+    acGridReadVarfileToMesh(file, io_fields, num_io_fields, nn, rr);
+
+    // Scale the magnetic field
+    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, (AcReal)1e12);
+    AcMeshDims dims = acGetMeshDims(info);
+    acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
+    acGridSwapBuffers();
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+}
+
+static void read_distributed_to_mesh_and_setup(void)
+{
+    for (size_t i = 0; i < num_io_fields; ++i){
+        const Field field = io_fields[i];
+        acGridAccessMeshOnDiskSynchronousDistributed(field, snapshot_dir, vtxbuf_names[field], ACCESS_READ);
+    }
+    acGridPeriodicBoundconds(STREAM_DEFAULT);    
+}
+
+static void read_collective_to_mesh_and_setup(void)
+{
+    for (size_t i = 0; i < num_io_fields; ++i){
+        const Field field = io_fields[i];
+        acGridAccessMeshOnDiskSynchronousCollective(field, snapshot_dir, vtxbuf_names[field], ACCESS_READ);
+    }
+    acGridPeriodicBoundconds(STREAM_DEFAULT);    
+}
+
+static void create_output_directories(void)
+{
+    char cmd[4096];
+
+    snprintf(cmd, 4096, "mkdir -p %s", snapshot_dir);
+    system(cmd);
+
+    snprintf(cmd, 4096, "mkdir -p %s", slice_dir);
+    system(cmd);
 }
 
 int
@@ -586,6 +650,9 @@ main(int argc, char** argv)
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+
+    // Ensure all directories exist
+    create_output_directories();
 
     /////////// Simple example START
     (void)argc; // Unused
@@ -685,29 +752,30 @@ main(int argc, char** argv)
 
     // Init GPU
     acGridInit(info);
-    // acGridLoadMesh(STREAM_DEFAULT, mesh); // %JP: Disabled, large grids will not fit into host memory
-    
     dryrun(info);
 
-    // %JP start
-    // Read PC varfile to Astaroth
-    const char* file = "/scratch/project_462000077/mkorpi/forced/mahti_4096/data/allprocs/var.dat";
-    const int3 nn = (int3){4096, 4096, 4096};
-    //const char* file = "test.dat";
-    //const int3 nn = (int3){64, 64, 64};
-    const Field fields[]    = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO,
-                            VTXBUF_AX,  VTXBUF_AY,  VTXBUF_AZ};
-    const size_t num_fields = ARRAY_SIZE(fields);
-    const int3 rr = (int3){3, 3, 3};
-    acGridReadVarfileToMesh(file, fields, num_fields, nn, rr);
+    /*
+    // Debug start
+    AcMesh mesh;
+    if (!pid) {
+        acHostMeshCreate(info, &mesh);
+        acmesh_init_to((InitType)init_type, &mesh);
+    }
+    acGridLoadMesh(STREAM_DEFAULT, mesh);
 
-    // Scale the magnetic field
-    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, (AcReal)1e12);
-    AcMeshDims dims = acGetMeshDims(info);
-    acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
-    acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
-    // %JP end
+    for (size_t i = 0; i < num_io_fields; ++i) {
+        const Field field = io_fields[i];
+        acGridAccessMeshOnDiskSynchronousCollective(field, snapshot_dir, vtxbuf_names[field], ACCESS_WRITE);
+    }
+    return EXIT_SUCCESS;
+    // Debug end
+    */
+
+    // Load input data
+    //read_varfile_to_mesh_and_setup(info);
+    //read_distributed_to_mesh_and_setup();
+    read_collective_to_mesh_and_setup();
 
     // %JP NOTE: need to perform a dryrun (all kernels) if switching
     // to two-pass integration, otherwise the output buffers
@@ -945,17 +1013,18 @@ main(int argc, char** argv)
             //save_mesh_mpi_async(info, pid, i, t_step); // Snapshots should be written out only rarely, disabled for now
 
             // Create a tmpdir for output
-            const int job_id = 12345;
-            char job_dir[4096];
-            snprintf(job_dir, 4096, "output-slices-%d", job_id);
+            //const int job_id = 12345;
+            //char job_dir[4096];
+            //snprintf(job_dir, 4096, "%s-%d", job_id);
+
 
             char cmd[4096];
-            snprintf(cmd, 4096, "mkdir -p %s", job_dir);
+            snprintf(cmd, 4096, "mkdir -p %s", slice_dir);
             system(cmd);
 
             // Write slices
             acGridDiskAccessSync();
-            acGridWriteSlicesToDisk(job_dir, i); // %JP: TODO make async
+            acGridWriteSlicesToDisk(slice_dir, i); // %JP: TODO make async
             // %JP end
 
             bin_crit_t += bin_save_t;
@@ -964,17 +1033,17 @@ main(int argc, char** argv)
         const int snapshot_save_interval = 100; // %JP: TODO make a config param
         if (!(i % snapshot_save_interval)) {
             // Create a tmpdir for output
-            const int job_id = 12345;
-            char job_dir[4096];
-            snprintf(job_dir, 4096, "output-snapshots-%d", job_id);
+            //const int job_id = 12345;
+            //char job_dir[4096];
+            //snprintf(job_dir, 4096, "output-snapshots-%d", job_id);
 
             char cmd[4096];
-            snprintf(cmd, 4096, "mkdir -p %s", job_dir);
+            snprintf(cmd, 4096, "mkdir -p %s", snapshot_dir);
             system(cmd);
 
             // Write snapshots
             acGridDiskAccessSync();
-            save_mesh_mpi_async(info, job_dir, pid, i, t_step);
+            save_mesh_mpi_async(info, snapshot_dir, pid, i, t_step);
         }
 
 
