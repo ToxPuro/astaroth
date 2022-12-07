@@ -8,11 +8,11 @@
 
 module purge
 
-        module load CrayEnv
-        module load PrgEnv-cray
-        module load craype-accel-amd-gfx90a
-        module load rocm
-        module load buildtools
-        module load cray-python
+module load CrayEnv
+module load PrgEnv-cray
+module load craype-accel-amd-gfx90a
+module load rocm
+module load buildtools
+module load cray-python
 
 srun ./ac_run_mpi --config /users/pekkila/astaroth/config/astaroth-hero-run.conf
