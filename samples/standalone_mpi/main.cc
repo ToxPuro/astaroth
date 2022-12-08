@@ -624,10 +624,11 @@ void dryrun(void)
     printf("E proc %d\n", pid);
 }
 
-static void read_varfile_to_mesh_and_setup(void)
+static void read_varfile_to_mesh_and_setup(const AcMeshInfo info)
 {
     // Read PC varfile to Astaroth
     const char* file = "/flash/project_462000120/striped_dir/var.dat";
+    //const char* file = "/scratch/project_462000077/mkorpi/forced/mahti_4096/data/allprocs/var.dat";
     const int3 nn = (int3){4096, 4096, 4096};
     //const char* file = "test.dat";
     //const int3 nn = (int3){64, 64, 64};
@@ -635,7 +636,7 @@ static void read_varfile_to_mesh_and_setup(void)
     acGridReadVarfileToMesh(file, io_fields, num_io_fields, nn, rr);
 
     // Scale the magnetic field
-    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, (AcReal)1e12);
+    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info.int_params[AC_scaling_factor]);
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
     acGridSwapBuffers();
@@ -824,7 +825,7 @@ main(int argc, char** argv)
     // Load input data (comment/uncomment here to switch)
     fprintf(stderr, "Starting varfile reading\n");
     fflush(stderr);
-    read_varfile_to_mesh_and_setup();
+    read_varfile_to_mesh_and_setup(info);
     fprintf(stderr, "Varfile setup done\n");
     fflush(stderr);
     //read_file_to_mesh_and_setup();
