@@ -1500,8 +1500,8 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 #endif
         };
 
-        //write_async(info, host_buffer);
-        threads.push_back(std::move(std::thread(write_async, info, host_buffer)));
+        write_async(info, host_buffer);
+        //threads.push_back(std::move(std::thread(write_async, info, host_buffer)));
     }
 
     return AC_SUCCESS;
@@ -1594,8 +1594,8 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
         MPI_Type_free(&subdomain);
         };
 
-        //write_async(host_buffer, count, info, out_volume);
-        threads.push_back(std::move(std::thread(write_async, host_buffer, count, info, out_volume)));
+        write_async(host_buffer, count, info, out_volume);
+        //threads.push_back(std::move(std::thread(write_async, host_buffer, count, info, out_volume)));
     }
 
     // Todo 
@@ -2162,6 +2162,10 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
     return AC_SUCCESS;
 }
 
+AcMeshInfo acGridGetLocalMeshInfo(void)
+{
+    return grid.device->local_config;
+}
 
 AcResult
 acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num_fields,

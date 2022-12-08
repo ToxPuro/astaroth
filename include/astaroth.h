@@ -238,6 +238,8 @@ acGetMeshDims(const AcMeshInfo info)
     };
 }
 
+AcMeshInfo acGridGetLocalMeshInfo(void);
+
 static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
