@@ -1395,7 +1395,120 @@ acGridDiskAccessLaunch(const AccessType type)
 }
 
 AcResult
-acGridWriteSlicesToDisk(const char* dir, const int label)
+acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
+{
+    ERRCHK(grid.initialized);
+    ERRCHK_ALWAYS(!running)
+    running = true;
+
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+
+        const Device device = grid.device;
+        acDeviceSynchronizeStream(device, STREAM_ALL);
+        const AcMeshInfo info = device->local_config;
+        // const int3 nn         = info.int3_params[AC_global_grid_n];
+        // const int3 nn_sub     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+        // const int3 offset     = info.int3_params[AC_multigpu_offset]; // Without halo
+        AcReal* host_buffer = grid.submesh.vertex_buffer[i];
+
+        const AcReal* in      = device->vba.in[i];
+        const int3 in_offset  = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
+        const int3 in_volume  = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+        AcReal* out           = device->vba.out[i];
+        const int3 out_offset = (int3){0, 0, 0};
+        const int3 out_volume = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+        acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
+                           out_volume);
+        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+
+        const size_t bytes = acVertexBufferCompdomainSizeBytes(info);
+        cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
+
+        char filepath[4096];
+        #if USE_DISTRIBUTED_IO
+        const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
+        sprintf(filepath, "%s/%s-segment-%d-%d-%d-%s.mesh", dir, vtxbuf_names[i], offset.x, offset.y,
+                offset.z, label);
+        #else
+            sprintf(filepath, "%s/%s-%s.mesh", dir, vtxbuf_names[i], label);
+        #endif
+
+        const auto write_async = [filepath](const AcMeshInfo info, const AcReal* host_buffer) {
+
+#if USE_DISTRIBUTED_IO
+#define USE_POSIX_IO (0)
+#if USE_POSIX_IO
+            FILE* fp = fopen(outfile, "w");
+            ERRCHK_ALWAYS(fp);
+
+            const size_t count         = acVertexBufferCompdomainSize(info);
+            const size_t count_written = fwrite(host_buffer, sizeof(AcReal), count, fp);
+            ERRCHK_ALWAYS(count_written == count);
+
+            fclose(fp);
+#else // Use MPI IO
+            MPI_File file;
+            int mode           = MPI_MODE_CREATE | MPI_MODE_WRONLY;
+            fprintf(stderr, "Writing %s\n", filepath);
+            int retval = MPI_File_open(MPI_COMM_SELF, filepath, mode, MPI_INFO_NULL, &file);
+            ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+            MPI_Status status;
+            const size_t count = acVertexBufferCompdomainSize(info);
+            retval = MPI_File_write(file, host_buffer, count, AC_REAL_MPI_TYPE, &status);
+            ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+            retval = MPI_File_close(&file);
+            ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+#endif
+#else
+            MPI_Datatype subarray;
+            const int3 nn          = info.int3_params[AC_global_grid_n];
+            const int3 nn_sub      = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+            const int arr_nn[]     = {nn.z, nn.y, nn.x};
+            const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
+            const int arr_offset[] = {offset.z, offset.y, offset.x};
+
+            // printf(" nn.z     %3i, nn.y     %3i, nn.x     %3i, \n nn_sub.z %3i, nn_sub.y %3i,
+            // nn_sub.x %3i, \n offset.z %3i, offset.y %3i, offset.x %3i  \n",
+            //         nn.z, nn.y, nn.x, nn_sub.z, nn_sub.y, nn_sub.x, offset.z, offset.y,
+            //         offset.x);
+
+            MPI_Type_create_subarray(3, arr_nn, arr_nn_sub, arr_offset, MPI_ORDER_C,
+                                     AC_REAL_MPI_TYPE, &subarray);
+            MPI_Type_commit(&subarray);
+
+            MPI_File file;
+            fprintf(stderr, "Writing %s\n", filepath);
+
+            int flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
+            ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, filepath, flags, MPI_INFO_NULL, &file) ==
+                          MPI_SUCCESS); // ISSUE TODO: fails with multiple threads
+
+            ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native",
+                                            MPI_INFO_NULL) == MPI_SUCCESS);
+
+            MPI_Status status;
+
+            const size_t nelems = nn_sub.x * nn_sub.y * nn_sub.z;
+            ERRCHK_ALWAYS(MPI_File_write_all(file, host_buffer, nelems, AC_REAL_MPI_TYPE,
+                                             &status) == MPI_SUCCESS);
+
+            ERRCHK_ALWAYS(MPI_File_close(&file) == MPI_SUCCESS);
+
+            MPI_Type_free(&subarray);
+#endif
+        };
+
+        //write_async(info, host_buffer);
+        threads.push_back(std::move(std::thread(write_async, info, host_buffer)));
+    }
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 {
     ERRCHK(grid.initialized);
     ERRCHK_ALWAYS(!running);
@@ -1408,7 +1521,6 @@ acGridWriteSlicesToDisk(const char* dir, const int label)
 
         acDeviceSynchronizeStream(device, STREAM_ALL);
 
-        int retval;
         const int3 slice_volume = (int3){
             info.int_params[AC_nx],
             info.int_params[AC_ny],
@@ -1439,6 +1551,10 @@ acGridWriteSlicesToDisk(const char* dir, const int label)
         const size_t bytes  = sizeof(host_buffer[0]) * count;
         cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
 
+        char filepath[4096];
+        sprintf(filepath, "%s/%s-%s.slice", dir, vtxbuf_names[field], label);
+
+        const auto write_async = [filepath](const AcReal* host_buffer, const size_t count, const AcMeshInfo info, const int3 out_volume) {
         // Write to file
         const int3 nn = (int3){
             info.int3_params[AC_global_grid_n].x,
@@ -1459,12 +1575,10 @@ acGridWriteSlicesToDisk(const char* dir, const int label)
                                  &subdomain);
         MPI_Type_commit(&subdomain);
 
-        char file[4096];
-        sprintf(file, "%s/%s-%012d.slice", dir, vtxbuf_names[field], label);
-        printf("Writing %s\n", file);
+        printf("Writing %s\n", filepath);
 
         MPI_File fp;
-        retval = MPI_File_open(MPI_COMM_WORLD, file, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
+        int retval = MPI_File_open(MPI_COMM_WORLD, filepath, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
         retval = MPI_File_set_view(fp, 0, AC_REAL_MPI_TYPE, subdomain, "native", MPI_INFO_NULL);
@@ -1478,8 +1592,13 @@ acGridWriteSlicesToDisk(const char* dir, const int label)
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
         MPI_Type_free(&subdomain);
+        };
+
+        //write_async(host_buffer, count, info, out_volume);
+        threads.push_back(std::move(std::thread(write_async, host_buffer, count, info, out_volume)));
     }
 
+    // Todo 
     return AC_SUCCESS;
 }
 #else

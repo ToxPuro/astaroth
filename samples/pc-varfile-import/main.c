@@ -164,7 +164,8 @@ main(int argc, char* argv[])
                                           ACCESS_WRITE);
 
     // Write slices
-    acGridWriteSlicesToDisk(job_dir, 0);
+    acGridWriteSlicesToDiskLaunch(job_dir, "0");
+    acGridDiskAccessSync();
 
     // Merge slices
     merge_slices(job_dir, 0, info.int_params[AC_nx], info.int_params[AC_ny], fields, num_fields);
