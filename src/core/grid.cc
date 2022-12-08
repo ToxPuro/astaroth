@@ -2243,7 +2243,8 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
 
         MPI_Status status;
         const size_t count = acVertexBufferCompdomainSize(info);
-        retval             = MPI_File_read_all(fp, host_buffer, count, AC_REAL_MPI_TYPE, &status);
+        //retval             = MPI_File_read_all(fp, host_buffer, count, AC_REAL_MPI_TYPE, &status);
+        retval             = MPI_File_read(fp, host_buffer, count, AC_REAL_MPI_TYPE, &status); //workaround
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
         /*
