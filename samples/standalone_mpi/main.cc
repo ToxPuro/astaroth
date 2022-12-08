@@ -576,17 +576,26 @@ calc_timestep(const AcMeshInfo info)
 
 void dryrun(void)
 {
+    int pid;
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+
     // Scale the fields
     AcReal max, min, sum;
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)0, &max);
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)0, &min);
     acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)0, &sum);
 
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("A proc %d\n", pid);
+
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, (AcReal)2.0);
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("B proc %d\n", pid);
 
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)0, &max);
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)0, &min);
@@ -596,20 +605,29 @@ void dryrun(void)
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
 
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("C proc %d\n", pid);
+
     // Reset the fields
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("D proc %d\n", pid);
+
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("E proc %d\n", pid);
 }
 
 static void read_varfile_to_mesh_and_setup(void)
 {
     // Read PC varfile to Astaroth
-    const char* file = "/scratch/project_462000077/mkorpi/forced/mahti_4096/data/allprocs/var.dat";
+    const char* file = "/flash/project_462000120/striped_dir/var.dat";
     const int3 nn = (int3){4096, 4096, 4096};
     //const char* file = "test.dat";
     //const int3 nn = (int3){64, 64, 64};
@@ -804,11 +822,17 @@ main(int argc, char** argv)
     #endif
 
     // Load input data (comment/uncomment here to switch)
-    //read_varfile_to_mesh_and_setup(info);
+    fprintf(stderr, "Starting varfile reading\n");
+    fflush(stderr);
+    read_varfile_to_mesh_and_setup();
+    fprintf(stderr, "Varfile setup done\n");
+    fflush(stderr);
     //read_file_to_mesh_and_setup();
     //read_distributed_to_mesh_and_setup();
     //read_collective_to_mesh_and_setup();
 
+    /*
+    // NOTE HERE
     // Randomize
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
@@ -825,6 +849,7 @@ main(int argc, char** argv)
                     printf("max %g, min %g, sum %g\n", (double)max, (double)min, (double)sum);
         }
     }
+    */
 
     // %JP NOTE: need to perform a dryrun (all kernels) if switching
     // to two-pass integration, otherwise the output buffers
