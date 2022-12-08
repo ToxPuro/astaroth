@@ -574,7 +574,7 @@ calc_timestep(const AcMeshInfo info)
     return AcReal(dt);
 }
 
-void dryrun(const AcMeshInfo info)
+void dryrun(void)
 {
     // Scale the fields
     AcReal max, min, sum;
@@ -583,7 +583,7 @@ void dryrun(const AcMeshInfo info)
     acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)0, &sum);
 
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, (AcReal)2.0);
-    AcMeshDims dims = acGetMeshDims(info);
+    AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
@@ -591,21 +591,22 @@ void dryrun(const AcMeshInfo info)
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)0, &max);
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)0, &min);
     acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)0, &sum);
-    const AcReal dt = calc_timestep(info);
+    const AcReal dt = 0.0;
     acGridIntegrate(STREAM_DEFAULT, dt);
-    acGridLaunchKernel(STREAM_DEFAULT, reset, dims.m0, dims.m1);
-    
+    acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
+    acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+
     // Reset the fields
-    acGridLaunchKernel(STREAM_DEFAULT, reset, dims.m0, dims.m1);
+    acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 
-    acGridLaunchKernel(STREAM_DEFAULT, reset, dims.m0, dims.m1);
+    acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 }
 
-static void read_varfile_to_mesh_and_setup(const AcMeshInfo info)
+static void read_varfile_to_mesh_and_setup(void)
 {
     // Read PC varfile to Astaroth
     const char* file = "/scratch/project_462000077/mkorpi/forced/mahti_4096/data/allprocs/var.dat";
@@ -617,7 +618,7 @@ static void read_varfile_to_mesh_and_setup(const AcMeshInfo info)
 
     // Scale the magnetic field
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, (AcReal)1e12);
-    AcMeshDims dims = acGetMeshDims(info);
+    AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
@@ -780,7 +781,8 @@ main(int argc, char** argv)
 
     // Init GPU
     acGridInit(info);
-    dryrun(info);
+    dryrun();
+    //return EXIT_SUCCESS;
 
     #if GEN_TEST_FILE
     // Debug start
@@ -802,10 +804,27 @@ main(int argc, char** argv)
     #endif
 
     // Load input data (comment/uncomment here to switch)
-    read_varfile_to_mesh_and_setup(info);
+    //read_varfile_to_mesh_and_setup(info);
     //read_file_to_mesh_and_setup();
     //read_distributed_to_mesh_and_setup();
     //read_collective_to_mesh_and_setup();
+
+    // Randomize
+    AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+    acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+    acGridSwapBuffers();
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+
+    {
+        AcReal max, min, sum;
+        for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+            acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)i, &max);
+            acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)i, &min);
+            acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)i, &sum);
+            if (!pid)
+                    printf("max %g, min %g, sum %g\n", (double)max, (double)min, (double)sum);
+        }
+    }
 
     // %JP NOTE: need to perform a dryrun (all kernels) if switching
     // to two-pass integration, otherwise the output buffers
@@ -824,7 +843,7 @@ main(int argc, char** argv)
     }
 
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, (AcReal)2.0);
-    AcMeshDims dims = acGetMeshDims(info);
+    AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
