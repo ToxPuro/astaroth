@@ -636,7 +636,7 @@ static void read_varfile_to_mesh_and_setup(const AcMeshInfo info)
     acGridReadVarfileToMesh(file, io_fields, num_io_fields, nn, rr);
 
     // Scale the magnetic field
-    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info.int_params[AC_scaling_factor]);
+    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info.real_params[AC_scaling_factor]);
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
     acGridSwapBuffers();
