@@ -1500,8 +1500,8 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 #endif
         };
 
-        write_async(info, host_buffer);
-        //threads.push_back(std::move(std::thread(write_async, info, host_buffer)));
+        //write_async(info, host_buffer);
+        threads.push_back(std::move(std::thread(write_async, info, host_buffer)));
     }
 
     return AC_SUCCESS;
@@ -1552,7 +1552,13 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
         cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
 
         char filepath[4096];
+        #if USE_DISTRIBUTED_IO
+        const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
+        sprintf(filepath, "%s/%s-segment-%d-%d-%d-%s.slice", dir, vtxbuf_names[field], offset.x, offset.y,
+                offset.z, label);
+        #else
         sprintf(filepath, "%s/%s-%s.slice", dir, vtxbuf_names[field], label);
+        #endif
 
         const auto write_async = [filepath](const AcReal* host_buffer, const size_t count, const AcMeshInfo info, const int3 out_volume) {
         // Write to file
@@ -1570,6 +1576,21 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
             info.int3_params[AC_multigpu_offset].y,
             info.int3_params[AC_multigpu_offset].x,
         };
+
+        #if USE_DISTRIBUTED_IO
+            MPI_File file;
+            int mode           = MPI_MODE_CREATE | MPI_MODE_WRONLY;
+            fprintf(stderr, "Writing %s\n", filepath);
+            int retval = MPI_File_open(MPI_COMM_SELF, filepath, mode, MPI_INFO_NULL, &file);
+            ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+            MPI_Status status;
+            retval = MPI_File_write(file, host_buffer, count, AC_REAL_MPI_TYPE, &status);
+            ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+            retval = MPI_File_close(&file);
+            ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+        #else
         MPI_Datatype subdomain;
         MPI_Type_create_subarray(3, nn_, nn_sub_, offset_, MPI_ORDER_C, AC_REAL_MPI_TYPE,
                                  &subdomain);
@@ -1592,10 +1613,11 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
         MPI_Type_free(&subdomain);
+        #endif
         };
 
-        write_async(host_buffer, count, info, out_volume);
-        //threads.push_back(std::move(std::thread(write_async, host_buffer, count, info, out_volume)));
+        //write_async(host_buffer, count, info, out_volume);
+        threads.push_back(std::move(std::thread(write_async, host_buffer, count, info, out_volume)));
     }
 
     // Todo 
