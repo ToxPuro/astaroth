@@ -962,8 +962,8 @@ Kernel reset() {
 
 Kernel randomize() {
     for field in 0:NUM_FIELDS {
-        unsigned long i = globalVertexIdx.x + globalVertexIdx.y * globalGridN.x + globalVertexIdx.z * globalGridN.x * globalGridN.y + field * globalGridN.x * globalGridN.y * globalGridN.z
+        uint64_t i = globalVertexIdx.x + globalVertexIdx.y * globalGridN.x + globalVertexIdx.z * globalGridN.x * globalGridN.y + field * globalGridN.x * globalGridN.y * globalGridN.z
         mm = globalGridN.x * globalGridN.y * globalGridN.z
-        write(Field(field), 1e-5 * ((21335266 + i * 123456981723)%mm) / mm)
+        write(Field(field), 1e-5 * ((21335266 + i * 123456981723 + 123*i*i + i*i*i)%mm) / mm)
     }
 }
