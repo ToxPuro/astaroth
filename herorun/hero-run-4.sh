@@ -5,6 +5,8 @@
 #SBATCH --ntasks=4
 #SBATCH --nodes=1
 #SBATCH --time=00:14:59
+#SBATCH --exclusive
+#SBATCH --reservation=team-korpi-lagg
 
 module purge
 
@@ -15,4 +17,4 @@ module load rocm
 module load buildtools
 module load cray-python
         
-srun ./ac_run_mpi --config /users/pekkila/astaroth/config/astaroth-hero-run.conf 
+srun ./ac_run_mpi --config /users/pekkila/astaroth/config/samples/subsonic_forced_nonhelical_turbulence/astaroth-small.conf
