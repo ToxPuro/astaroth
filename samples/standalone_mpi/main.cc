@@ -802,8 +802,8 @@ main(int argc, char** argv)
     #endif
 
     // Load input data (comment/uncomment here to switch)
-    //read_varfile_to_mesh_and_setup(info);
-    read_file_to_mesh_and_setup();
+    read_varfile_to_mesh_and_setup(info);
+    //read_file_to_mesh_and_setup();
     //read_distributed_to_mesh_and_setup();
     //read_collective_to_mesh_and_setup();
 
