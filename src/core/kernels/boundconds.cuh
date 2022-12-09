@@ -281,7 +281,7 @@ acKernelPrescribedDerivativeBoundconds(const cudaStream_t stream, const int3 reg
 #if LENTROPY
 static __global__ void
 kernel_entropy_const_temperature_boundconds(const int3 region_id, const int3 normal,
-                                            const int3 dims, VertexBufferArray vba)
+                                            const int3 dims, VertexBufferArray vba, AcReal cs2bound)
 {
 
     const int3 vertexIdx = (int3){
@@ -312,7 +312,7 @@ kernel_entropy_const_temperature_boundconds(const int3 region_id, const int3 nor
 
     AcReal lnrho_diff   = vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0);
     AcReal gas_constant = DCONST(AC_cp_sound) - DCONST(AC_cv_sound);
-    AcReal tmp = AcReal(2.0) * DCONST(AC_cv_sound) * log((double) DCONST(AC_cs2bound)/DCONST(AC_cs20));
+    AcReal tmp = AcReal(2.0) * DCONST(AC_cv_sound) * log((double) cs2bound/DCONST(AC_cs20));
 
     vba.in[VTXBUF_ENTROPY][boundary_idx] = AcReal(0.5) * tmp - gas_constant * lnrho_diff;
 
@@ -337,7 +337,7 @@ kernel_entropy_const_temperature_boundconds(const int3 region_id, const int3 nor
 AcResult
 acKernelEntropyConstantTemperatureBoundconds(const cudaStream_t stream, const int3 region_id,
                                              const int3 normal, const int3 dims,
-                                             VertexBufferArray vba)
+                                             VertexBufferArray vba, AcReal csbound)
 {
 
     const dim3 tpb(8, 8, 8);
@@ -346,7 +346,7 @@ acKernelEntropyConstantTemperatureBoundconds(const cudaStream_t stream, const in
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
     kernel_entropy_const_temperature_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims,
-                                                                         vba);
+                                                                         vba, csbound);
     return AC_SUCCESS;
 }
 
