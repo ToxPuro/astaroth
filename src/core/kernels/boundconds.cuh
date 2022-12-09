@@ -337,7 +337,7 @@ kernel_entropy_const_temperature_boundconds(const int3 region_id, const int3 nor
 AcResult
 acKernelEntropyConstantTemperatureBoundconds(const cudaStream_t stream, const int3 region_id,
                                              const int3 normal, const int3 dims,
-                                             VertexBufferArray vba, AcReal csbound)
+                                             VertexBufferArray vba, AcReal cs2bound)
 {
 
     const dim3 tpb(8, 8, 8);
@@ -346,7 +346,7 @@ acKernelEntropyConstantTemperatureBoundconds(const cudaStream_t stream, const in
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
     kernel_entropy_const_temperature_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims,
-                                                                         vba, csbound);
+                                                                         vba, cs2bound);
     return AC_SUCCESS;
 }
 
