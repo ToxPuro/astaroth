@@ -11,7 +11,7 @@ hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
-hostdefine LENTROPY (0)
+hostdefine LENTROPY (1)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
 hostdefine LUPWD (1)
@@ -48,9 +48,9 @@ int AC_start_step
 
 real AC_dsx, AC_dsy, AC_dsz // WARNING UNUSED! NEED TO BE COMPILE-TIME CONSTANTS
 
-#define DSX (0.00153398)
-#define DSY (0.00153398)
-#define DSZ (0.00153398)
+#define DSX (0.04908738521)
+#define DSY (0.04908738521)
+#define DSZ (0.04908738521)
 #define AC_inv_dsx (1. / DSX)
 #define AC_inv_dsy (1. / DSY)
 #define AC_inv_dsz (1. / DSZ)
@@ -946,6 +946,8 @@ Kernel twopass_solve_final() {
     #endif
 }
 
+/*
+// TODO BUGGED
 // Scale all fields by a scaling factor
 real AC_scaling_factor
 Kernel scale() {
@@ -954,12 +956,14 @@ Kernel scale() {
     write(VTXBUF_AZ, AC_scaling_factor * value(VTXBUF_AZ))
 }
 
+// TODO RECHECK, POSSIBLY BUGGED
 Kernel reset() {
     for field in 0:NUM_FIELDS {
         write(Field(field), 0.0)
     }
 }
 
+// TODO BUGGED
 Kernel randomize() {
     for field in 0:NUM_FIELDS {
         uint64_t i = globalVertexIdx.x + globalVertexIdx.y * globalGridN.x + globalVertexIdx.z * globalGridN.x * globalGridN.y + field * globalGridN.x * globalGridN.y * globalGridN.z
@@ -967,3 +971,4 @@ Kernel randomize() {
         write(Field(field), 1e-5 * ((75 * (i<<4) + (i>>3) + 74)%mm) / mm)
     }
 }
+*/
