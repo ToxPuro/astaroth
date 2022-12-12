@@ -946,7 +946,6 @@ Kernel twopass_solve_final() {
     #endif
 }
 
-/*
 // TODO BUGGED
 // Scale all fields by a scaling factor
 real AC_scaling_factor
@@ -971,4 +970,3 @@ Kernel randomize() {
         write(Field(field), 1e-5 * ((75 * (i<<4) + (i>>3) + 74)%mm) / mm)
     }
 }
-*/
