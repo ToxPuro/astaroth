@@ -736,6 +736,7 @@ main(void)
         //Heat flux requires input param to not crash. Added bc_param just to see will it run
         //Should change it to the physically correct input param
 	    acSpecialMHDBoundaryCondition(BOUNDARY_Z_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, AC_Fbot),
+        //acBoundaryCondition(BOUNDARY_Z_TOP, BOUNDCOND_PRESCRIBED_DERIVATIVE, ss, AC_sder_top),
 	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_A2, lnrho),
 	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, uux_uuy),
 	    acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, uuz),
