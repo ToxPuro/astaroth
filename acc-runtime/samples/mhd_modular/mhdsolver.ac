@@ -946,27 +946,30 @@ Kernel twopass_solve_final() {
     #endif
 }
 
-// TODO BUGGED
 // Scale all fields by a scaling factor
+// TODO ensure AC_scaling_factor is set!
 real AC_scaling_factor
 Kernel scale() {
+    for field in 0:NUM_FIELDS {
+        write(Field(field), value(field))
+    }
+
     write(VTXBUF_AX, AC_scaling_factor * value(VTXBUF_AX))
     write(VTXBUF_AY, AC_scaling_factor * value(VTXBUF_AY))
     write(VTXBUF_AZ, AC_scaling_factor * value(VTXBUF_AZ))
 }
 
-// TODO RECHECK, POSSIBLY BUGGED
 Kernel reset() {
     for field in 0:NUM_FIELDS {
         write(Field(field), 0.0)
     }
 }
 
-// TODO BUGGED
 Kernel randomize() {
     for field in 0:NUM_FIELDS {
         i = uint64_t(globalVertexIdx.x) + globalVertexIdx.y * globalGridN.x + globalVertexIdx.z * globalGridN.x * globalGridN.y + field * globalGridN.x * globalGridN.y * globalGridN.z
-        mm = globalGridN.x * globalGridN.y * globalGridN.z
-        write(Field(field), 1e-5 * ((75 * (i<<4) + (i>>3) + 74)%mm) / mm)
+        //mm = globalGridN.x * globalGridN.y * globalGridN.z
+        //write(Field(field), 1e-5 * ((75 * i + 74)%mm) / mm)
+        write(Field(field), 1e-5 * ((75 * i + 74 + 3257*i*i + 6067*i*i*i + 7919*i*i*i*i)%999331) / 999331)
     }
 }
