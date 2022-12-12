@@ -1424,16 +1424,16 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
         const size_t bytes = acVertexBufferCompdomainSizeBytes(info);
         cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
 
+        const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
         char filepath[4096];
         #if USE_DISTRIBUTED_IO
-        const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
         sprintf(filepath, "%s/%s-segment-%d-%d-%d-%s.mesh", dir, vtxbuf_names[i], offset.x, offset.y,
                 offset.z, label);
         #else
             sprintf(filepath, "%s/%s-%s.mesh", dir, vtxbuf_names[i], label);
         #endif
 
-        const auto write_async = [filepath](const AcMeshInfo info, const AcReal* host_buffer) {
+        const auto write_async = [filepath, offset](const AcMeshInfo info, const AcReal* host_buffer) {
 
 #if USE_DISTRIBUTED_IO
 #define USE_POSIX_IO (0)
