@@ -36,6 +36,7 @@
 #include "host_memory.h"
 
 #include "math_utils.h"
+#include "timer_hires.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
@@ -627,19 +628,23 @@ void dryrun(void)
 static void read_varfile_to_mesh_and_setup(const AcMeshInfo info)
 {
     // Read PC varfile to Astaroth
-    const char* file = "/flash/project_462000120/striped_dir/var.dat";
+    const char* file = "/scratch/project_2002894/warneche/pencil-code/joern/forced/SS_dynamo/512x512x512_Pm04_trans/allprocs/var.dat";
+    const int3 nn = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+    //const char* file = "/flash/project_462000120/striped_dir/var.dat";
     //const char* file = "/scratch/project_462000077/mkorpi/forced/mahti_4096/data/allprocs/var.dat";
-    const int3 nn = (int3){4096, 4096, 4096};
+    //const int3 nn = (int3){4096, 4096, 4096};
     //const char* file = "test.dat";
     //const int3 nn = (int3){64, 64, 64};
     const int3 rr = (int3){3, 3, 3};
     acGridReadVarfileToMesh(file, io_fields, num_io_fields, nn, rr);
 
+    /*
     // Scale the magnetic field
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info.real_params[AC_scaling_factor]);
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
     acGridSwapBuffers();
+    */
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 }
 
@@ -823,11 +828,15 @@ main(int argc, char** argv)
     #endif
 
     // Load input data (comment/uncomment here to switch)
+    // TODO timer
+    Timer t;
+    timer_reset(&t);
     fprintf(stderr, "Starting varfile reading\n");
     fflush(stderr);
     read_varfile_to_mesh_and_setup(info);
     fprintf(stderr, "Varfile setup done\n");
     fflush(stderr);
+    timer_diff_print(t);
     //read_file_to_mesh_and_setup();
     //read_distributed_to_mesh_and_setup();
     //read_collective_to_mesh_and_setup();
@@ -839,7 +848,7 @@ main(int argc, char** argv)
     acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
-
+    */
     {
         AcReal max, min, sum;
         for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
@@ -850,7 +859,6 @@ main(int argc, char** argv)
                     printf("max %g, min %g, sum %g\n", (double)max, (double)min, (double)sum);
         }
     }
-    */
 
     // %JP NOTE: need to perform a dryrun (all kernels) if switching
     // to two-pass integration, otherwise the output buffers
@@ -1073,6 +1081,11 @@ main(int argc, char** argv)
             snprintf(cmd, 4096, "mkdir -p %s", slice_dir);
             system(cmd);
 
+            //AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+            //acGridLaunchKernel(STREAM_DEFAULT, set_to_proc_id, dims.n0, dims.n1);
+            //acGridSwapBuffers();
+            //acGridSynchronizeStream(STREAM_DEFAULT);
+
             // Write slices
             char label[4096];
             sprintf(label, "%012d", i);
@@ -1150,6 +1163,9 @@ main(int argc, char** argv)
     //acGridStoreMesh(STREAM_DEFAULT, &mesh); // %JP: Disabled, large grids will not fit into host memory
 
     save_mesh_mpi_sync(info, pid, istep, t_step);
+
+    acGridDiskAccessSync();
+    acGridSynchronizeStream(STREAM_ALL);
 
 #if LSHOCK
     acGridDestroyTaskGraph(hc_graph);
