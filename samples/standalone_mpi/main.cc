@@ -825,7 +825,7 @@ main(int argc, char** argv)
     int opt{};
     while ((opt = getopt_long(argc, argv, "c:kpdmh", long_options, nullptr)) != -1) {
         switch (opt) {
-	    using enum InitialMeshProcedure;
+	    //using enum InitialMeshProcedure;
 	    case 'h':
 		print_usage("ac_run_mpi");
 		return EXIT_SUCCESS;
@@ -833,17 +833,18 @@ main(int argc, char** argv)
 		config_path = optarg;
                 break;
 	    case 'k':
-                initial_mesh_procedure = Kernel;
+                //initial_mesh_procedure = Kernel;
+                initial_mesh_procedure = InitialMeshProcedure::Kernel;
 		break;
 	    case 'p':
-                initial_mesh_procedure = LoadPC_Varfile;;
+                initial_mesh_procedure = InitialMeshProcedure::LoadPC_Varfile;
                 initial_mesh_procedure_param = optarg;
 		break;
 	    case 'd':
-                initial_mesh_procedure = LoadDistributedSnapshot;;
+                initial_mesh_procedure = InitialMeshProcedure::LoadDistributedSnapshot;
 		break;
 	    case 'm':
-                initial_mesh_procedure = LoadMonolithicSnapshot;;
+                initial_mesh_procedure = InitialMeshProcedure::LoadMonolithicSnapshot;
 		break;
 	    default:
 		print_usage("ac_run_mpi");
@@ -961,8 +962,8 @@ main(int argc, char** argv)
     // Load input data
     log_from_root_proc(pid, "Setting up initial mesh\n");
     switch (initial_mesh_procedure){
-        using enum InitialMeshProcedure;
-	    case Kernel:
+        //using enum InitialMeshProcedure;
+	    case InitialMeshProcedure::Kernel:
 	    {
 		// Randomize
 		log_from_root_proc(pid, "Randomizing mesh\n");
@@ -986,7 +987,7 @@ main(int argc, char** argv)
 	        }
 		break;
 	    }
-	    case LoadPC_Varfile:
+	    case InitialMeshProcedure::LoadPC_Varfile:
 	    {
 		log_from_root_proc(pid, "Reading Pencil Code var file %s\n", initial_mesh_procedure_param);
 		if (initial_mesh_procedure_param == nullptr){
@@ -997,14 +998,14 @@ main(int argc, char** argv)
 		log_from_root_proc(pid, "Done reading Pencil Code var file\n");
 		break;
 	    }
-	    case LoadDistributedSnapshot:
+	    case InitialMeshProcedure::LoadDistributedSnapshot:
 	    {
 		log_from_root_proc(pid, "Reading distributed snapshot\n");
                 read_distributed_to_mesh_and_setup();
 		log_from_root_proc(pid, "Done reading distributed snapshot\n");
 		break;
             }
-	    case LoadMonolithicSnapshot:
+	    case InitialMeshProcedure::LoadMonolithicSnapshot:
 	    {
 		log_from_root_proc(pid, "Reading monolithic snapshot\n");
     		read_collective_to_mesh_and_setup();
