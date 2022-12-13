@@ -381,7 +381,7 @@ entropy() {
                        2. * exp(value(VTXBUF_LNRHO)) * AC_nu_visc * contract(S) +
                        AC_zeta * exp(value(VTXBUF_LNRHO)) * divergence(UU) * divergence(UU)
 
-    return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
+    return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction_kramers()
 }
 
 rk3(s0, s1, roc) {
