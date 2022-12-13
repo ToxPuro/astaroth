@@ -13,7 +13,7 @@ hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
 hostdefine LENTROPY (0)
 hostdefine LTEMPERATURE (0)
-hostdefine LFORCING (1)
+hostdefine LFORCING (0)
 hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1)
@@ -972,4 +972,13 @@ Kernel randomize() {
         //write(Field(field), 1e-5 * ((75 * i + 74)%mm) / mm)
         write(Field(field), 1e-5 * ((75 * i + 74 + 3257*i*i + 6067*i*i*i + 7919*i*i*i*i)%999331) / 999331)
     }
+}
+
+Kernel set_to_proc_id() {
+    for field in 0:NUM_FIELDS {
+        write(Field(field), 0.0)
+    }
+    write(Field(VTXBUF_UUX), globalVertexIdx.x)
+    write(Field(VTXBUF_UUY), globalVertexIdx.y)
+    write(Field(VTXBUF_UUZ), globalVertexIdx.z)
 }
