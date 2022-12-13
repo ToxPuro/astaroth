@@ -797,9 +797,10 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 }
 
 AcResult
-acGridDestroyTaskGraph(AcTaskGraph* graph)
+acGridDestroyTaskGraph(AcTaskGraph *graph)
 {
     graph->all_tasks.clear();
+    graph->comp_tasks.clear();
     graph->halo_tasks.clear();
     delete graph;
     return AC_SUCCESS;
