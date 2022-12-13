@@ -13,7 +13,7 @@ hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
 hostdefine LENTROPY (0)
 hostdefine LTEMPERATURE (0)
-hostdefine LFORCING (0)
+hostdefine LFORCING (1)
 hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1)
@@ -48,9 +48,9 @@ int AC_start_step
 
 real AC_dsx, AC_dsy, AC_dsz // WARNING UNUSED! NEED TO BE COMPILE-TIME CONSTANTS
 
-#define DSX (0.00153398)
-#define DSY (0.00153398)
-#define DSZ (0.00153398)
+#define DSX (0.04908738521)
+#define DSY (0.04908738521)
+#define DSZ (0.04908738521)
 #define AC_inv_dsx (1. / DSX)
 #define AC_inv_dsy (1. / DSY)
 #define AC_inv_dsz (1. / DSZ)
@@ -928,8 +928,8 @@ Kernel twopass_solve_final() {
     }
     #endif
     write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX)) + forcing_step.x)
-    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY)) + forcing_step.x)
-    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ)) + forcing_step.x)
+    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY)) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ)) + forcing_step.z)
 
     #if LMAGNETIC
     write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX)))
@@ -947,8 +947,13 @@ Kernel twopass_solve_final() {
 }
 
 // Scale all fields by a scaling factor
+// TODO ensure AC_scaling_factor is set!
 real AC_scaling_factor
 Kernel scale() {
+    for field in 0:NUM_FIELDS {
+        write(Field(field), value(field))
+    }
+
     write(VTXBUF_AX, AC_scaling_factor * value(VTXBUF_AX))
     write(VTXBUF_AY, AC_scaling_factor * value(VTXBUF_AY))
     write(VTXBUF_AZ, AC_scaling_factor * value(VTXBUF_AZ))
@@ -962,8 +967,9 @@ Kernel reset() {
 
 Kernel randomize() {
     for field in 0:NUM_FIELDS {
-        uint64_t i = globalVertexIdx.x + globalVertexIdx.y * globalGridN.x + globalVertexIdx.z * globalGridN.x * globalGridN.y + field * globalGridN.x * globalGridN.y * globalGridN.z
-        mm = globalGridN.x * globalGridN.y * globalGridN.z
-        write(Field(field), 1e-5 * ((75 * (i<<4) + (i>>3) + 74)%mm) / mm)
+        i = uint64_t(globalVertexIdx.x) + globalVertexIdx.y * globalGridN.x + globalVertexIdx.z * globalGridN.x * globalGridN.y + field * globalGridN.x * globalGridN.y * globalGridN.z
+        //mm = globalGridN.x * globalGridN.y * globalGridN.z
+        //write(Field(field), 1e-5 * ((75 * i + 74)%mm) / mm)
+        write(Field(field), 1e-5 * ((75 * i + 74 + 3257*i*i + 6067*i*i*i + 7919*i*i*i*i)%999331) / 999331)
     }
 }
