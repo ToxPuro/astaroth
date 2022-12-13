@@ -789,7 +789,7 @@ enum class InitialMeshProcedure { Kernel, LoadPC_Varfile, LoadDistributedSnapsho
 int
 main(int argc, char** argv)
 {
-    // Multi-threaded
+    // Use multi-threaded MPI
     int thread_support_level;
     MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &thread_support_level);
     if (thread_support_level < MPI_THREAD_MULTIPLE) {
@@ -797,9 +797,6 @@ main(int argc, char** argv)
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    // Single-threaded
-    //MPI_Init(NULL, NULL);
-    
     
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -825,7 +822,6 @@ main(int argc, char** argv)
     int opt{};
     while ((opt = getopt_long(argc, argv, "c:kpdmh", long_options, nullptr)) != -1) {
         switch (opt) {
-	    //using enum InitialMeshProcedure;
 	    case 'h':
 		print_usage("ac_run_mpi");
 		return EXIT_SUCCESS;
@@ -833,7 +829,6 @@ main(int argc, char** argv)
 		config_path = optarg;
                 break;
 	    case 'k':
-                //initial_mesh_procedure = Kernel;
                 initial_mesh_procedure = InitialMeshProcedure::Kernel;
 		break;
 	    case 'p':
@@ -864,7 +859,11 @@ main(int argc, char** argv)
     create_output_directories();
 
     // Set random seed for reproducibility
-    srand(321654987);
+    // SMELL: this was set twice, once here and once further down
+    // I've commented out the first call to srand, since it would be overridden by the second value
+    // TODO: figure out if this is here for a reason, and why was it different?
+    //srand(321654987);
+    srand(312256655);
 
 
     const int start_step     = info.int_params[AC_start_step];
@@ -912,11 +911,11 @@ main(int argc, char** argv)
                 fprintf(diag_file, "%s_min  %s_rms  %s_max  ", vtxbuf_names[i], vtxbuf_names[i],
                         vtxbuf_names[i]);
             }
+#if LSINK
+            fprintf(diag_file, "sink_mass  accreted_mass  ");
+#endif
         }
 
-#if LSINK
-        fprintf(diag_file, "sink_mass  accreted_mass  ");
-#endif
         fprintf(diag_file, "\n");
 
         write_info(&info);
@@ -936,33 +935,13 @@ main(int argc, char** argv)
     ////////////////////////////////// PROC 0 BLOCK END ////////////////////////////////////////////
 
 
-    // Init GPU
+    // Initialize Astaroth
     acGridInit(info);
     dryrun();
-
-    #if GEN_TEST_FILE
-    // Debug start
-    const int init_type = info.int_params[AC_init_type];
-    AcMesh mesh;
-    if (pid == 0) {
-        acHostMeshCreate(info, &mesh);
-        acmesh_init_to((InitType)init_type, &mesh);
-    }
-    acGridLoadMesh(STREAM_DEFAULT, mesh);
-
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
-    for (size_t i = 0; i < num_io_fields; ++i) {
-        const Field field = io_fields[i];
-        acGridAccessMeshOnDiskSynchronous(field, snapshot_dir, vtxbuf_names[field], ACCESS_WRITE);
-    }
-    return EXIT_SUCCESS;
-    // Debug end
-    #endif
 
     // Load input data
     log_from_root_proc(pid, "Setting up initial mesh\n");
     switch (initial_mesh_procedure){
-        //using enum InitialMeshProcedure;
 	    case InitialMeshProcedure::Kernel:
 	    {
 		// Randomize
@@ -1024,14 +1003,14 @@ main(int argc, char** argv)
 
     log_from_root_proc(pid, "Initial mesh setup is done\n");
 
-    /* initialize random seed: */
-    srand(312256655);
 
 
     log_from_root_proc(pid, "Defining simulation\n");
 
     //default simulation is the AcGridIntegrate task graph (MHD)
     AcTaskGraph *simulation_graph = acGridGetDefaultTaskGraph();
+    AcTaskGraph *custom_simulation_graph = nullptr;
+
 #if LSHOCK
     VertexBufferHandle all_fields[] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
                                        VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ, // VTXBUF_ENTROPY,
@@ -1054,8 +1033,10 @@ main(int argc, char** argv)
          acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
          acCompute(KERNEL_singlepass_solve, all_fields)};
 
-    simulation_graph = acGridBuildTaskGraph(shock_ops);
+    custom_simulation_graph = acGridBuildTaskGraph(shock_ops);
+    simulation_graph = custom_simulation_graph;
 
+    //TODO: Why is this here?
     acGridSynchronizeStream(STREAM_ALL);
 #endif
 
@@ -1263,7 +1244,9 @@ main(int argc, char** argv)
 
     save_mesh_mpi_sync(info, pid, istep, t_step);
 
-    acGridDestroyTaskGraph(simulation_graph);
+    if (custom_simulation_graph != nullptr){
+        acGridDestroyTaskGraph(custom_simulation_graph);
+    }
     acGridQuit();
 
     //if (pid == 0)
@@ -1275,8 +1258,8 @@ main(int argc, char** argv)
 }
 
 #else
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 
 int
 main(void)

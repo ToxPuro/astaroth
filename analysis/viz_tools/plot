@@ -1,0 +1,6 @@
+#!/bin/bash
+script_dir=$(realpath $(dirname "${BASH_SOURCE[0]}"))
+venv=/scratch/project_462000120/olappi/python_data_analysis_env
+
+source $venv/bin/activate
+$script_dir/plot $@

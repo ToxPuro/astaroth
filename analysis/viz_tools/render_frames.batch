@@ -1,0 +1,55 @@
+#!/bin/bash
+#SBATCH --job-name=allas_auto_upload
+#SBATCH --account=project_462000120
+#SBATCH --partition=small
+#SBATCH --time=00:06:00
+#SBATCH --ntasks=1
+
+src=$1
+dst=$2
+sim_job_id=$3
+period=$4
+countdown=$5
+
+if [[ ! -e "$src" ]] ;then
+    printf "Bad argument src:\"$src\" "
+    exit 1
+fi
+
+if [[ $# -lt 4 ]]; then
+    #Default 5 minutes
+    period=300
+fi
+
+if [[ $# -lt 5 ]]; then
+    countdown=1
+fi
+
+simulation_running=0
+if [[ -n "$sim_job_id" ]]; then
+    if ! sacct -j $sim_job_id -o "State" --noheader | grep RUNNING &> /dev/null; then
+	#No longer running, start countdown at 1
+        simulation_running=0
+    else
+	simulation_running=1
+    fi
+else 
+    countdown=0   
+fi
+
+mkdir -p $dst
+
+printf "$SLURM_JOBID $(date) : render start\n" >> render.log
+
+#find $src -type f  
+srun ./render_frames.sh $src $dst
+
+printf "$SLURM_JOBID $(date) : render end: $?\n" >> render.log
+
+if [[ $countdown -gt 0 ]] || [[ $simulation_running -eq 1 ]];then
+    if [[ $simulation_running -eq 0 ]]; then
+        countdown=$(( countdown - 1 ))
+    fi
+    printf "$SLURM_JOBID $(date) : submitting next render job to be run in $period seconds\n" >> render.log
+    sbatch --begin=now+$period render_frames.batch $src $dst $sim_job_id $period $countdown
+fi
