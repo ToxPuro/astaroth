@@ -16,7 +16,7 @@ heat_conduction_kramers() {
       diffusion = Krho1*(del2lnTT)+g2
 
 // Cooling in a surface layer; step profile
-      prof = step(z,AC_step_pos,AC_step_width)
+      prof = step((globalVertexIdx.z - AC_nz_min) * AC_dsz + AC_zorig,AC_step_pos,AC_step_width)
       return diffusion - AC_cool*prof*(AC_gamma*(AC_cp_sound-AC_cv_sound)*exp(lnTT)/AC_cs2cool-1.)
 }
 step(x,x0,width){   //AcReal x, AcReal x0, AcReal width){
