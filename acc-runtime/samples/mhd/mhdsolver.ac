@@ -329,6 +329,8 @@ contract(mat) {
            dot(mat.row(2), mat.row(2))
 }
 
+#include "heat_conduction_kramers.h"
+
 continuity() {
     return -dot(vecvalue(UU), gradient(VTXBUF_LNRHO)) - divergence(UU)
 }
