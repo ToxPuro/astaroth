@@ -1,4 +1,0 @@
-[ ] CHECK if $(realpath $(dirname "${BASH_SOURCE[0]}")) works in an sbatch script
-[ ] COMBINE the two scripts into one
-[ ] Break problem into subparts (e.g. by fields or procs)
-[ ] Use srun to parallelize
