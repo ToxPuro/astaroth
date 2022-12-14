@@ -1175,10 +1175,10 @@ access_vtxbuf_on_disk(const VertexBufferHandle vtxbuf, const char* path, const A
     static bool complete = true;
 */
 
+/*
 #include <chrono>
 #include <future>
 
-/*
 static std::future<void> future;
 static AccessType access_type = ACCESS_WRITE;
 static bool complete          = true;
@@ -1452,7 +1452,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 #else // Use MPI IO
             MPI_File file;
             int mode = MPI_MODE_CREATE | MPI_MODE_WRONLY;
-            fprintf(stderr, "Writing %s\n", filepath);
+            //fprintf(stderr, "Writing %s\n", filepath);
             int retval = MPI_File_open(MPI_COMM_SELF, filepath, mode, MPI_INFO_NULL, &file);
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
@@ -1482,7 +1482,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
             MPI_Type_commit(&subarray);
 
             MPI_File file;
-            fprintf(stderr, "Writing %s\n", filepath);
+            //fprintf(stderr, "Writing %s\n", filepath);
 
             int flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
             ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, filepath, flags, MPI_INFO_NULL, &file) ==
@@ -1570,8 +1570,8 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
         int pid;
         MPI_Comm_rank(MPI_COMM_WORLD, &pid);
-        if (color != MPI_UNDEFINED)
-            fprintf(stderr, "Writing field %d, proc %d, to %s\n", field, pid, filepath);
+        //if (color != MPI_UNDEFINED)
+        //    fprintf(stderr, "Writing field %d, proc %d, to %s\n", field, pid, filepath);
         
         acGridSynchronizeStream(STREAM_ALL);
         const auto write_async = [filepath, global_nn, global_pos_min, slice_volume, color](const AcReal* host_buffer, const size_t count, const int device_id) {
@@ -1583,7 +1583,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
             if (color != MPI_UNDEFINED) {
             MPI_File file;
             int mode = MPI_MODE_CREATE | MPI_MODE_WRONLY;
-            fprintf(stderr, "Writing %s\n", filepath);
+            //fprintf(stderr, "Writing %s\n", filepath);
             int retval = MPI_File_open(MPI_COMM_SELF, filepath, mode, MPI_INFO_NULL, &file);
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
@@ -1615,7 +1615,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
                                         &subdomain);
                 MPI_Type_commit(&subdomain);
 
-                printf("Writing %s\n", filepath);
+                //printf("Writing %s\n", filepath);
 
                 MPI_File fp;
                 int retval = MPI_File_open(slice_communicator, filepath, MPI_MODE_CREATE | MPI_MODE_WRONLY,
@@ -1641,7 +1641,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
         };
 
         write_async(host_buffer, count, device->id); // Synchronous, non-threaded
-        //threads.push_back(std::move(std::thread(write_async, host_buffer, count))); // Async, threaded
+        // threads.push_back(std::move(std::thread(write_async, host_buffer, count, device->id))); // Async, threaded
     }
     return AC_SUCCESS;
 }
