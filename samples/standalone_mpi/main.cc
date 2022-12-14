@@ -740,12 +740,14 @@ static void read_collective_to_mesh_and_setup(void)
 
 static void create_output_directories(void)
 {
-    char cmd[4096];
+    // Improvement suggestion: use create_directory() from <filesystem> (C++17) or mkdir() from <sys/stat.h> (POSIX)
+    const size_t cmdlen = 4096;
+    char cmd[cmdlen];
 
-    snprintf(cmd, 4096, "mkdir -p %s", snapshot_dir);
+    snprintf(cmd, cmdlen, "mkdir -p %s", snapshot_dir);
     system(cmd);
 
-    snprintf(cmd, 4096, "mkdir -p %s", slice_dir);
+    snprintf(cmd, cmdlen, "mkdir -p %s", slice_dir);
     system(cmd);
 }
 void
@@ -854,6 +856,12 @@ main(int argc, char** argv)
     acLoadConfig(config_path, &info);
     load_config(config_path, &info);
     acHostUpdateBuiltinParams(&info);
+
+    // Print the config used
+    if (pid == 0) {
+        acPrintMeshInfo(info);
+        fflush(stdout);
+    }
 
     // Ensure all directories exist
     create_output_directories();
@@ -1150,14 +1158,6 @@ main(int argc, char** argv)
             */
                         
             acGridPeriodicBoundconds(STREAM_DEFAULT);
-	    //SMELL: calling system is a prime way to get bugs, it's also very inefficient
-	    //use create_directory() from <filesystem> (C++17) or mkdir() from <sys/stat.h> (POSIX)
-	    //Would also move this out from the loop
-
-	    // Create dir for slices
-            char cmd[4096];
-            snprintf(cmd, 4096, "mkdir -p %s", slice_dir);
-            system(cmd);
 
             // Write slices
             char label[4096];
@@ -1193,12 +1193,6 @@ main(int argc, char** argv)
             */
             //acGridPeriodicBoundconds(STREAM_DEFAULT);
             //acGridStoreMesh(STREAM_DEFAULT, &mesh);
-
-	    //SMELL: same as for slices
-            // Create dir for snapshots
-	    char cmd[4096];
-            snprintf(cmd, 4096, "mkdir -p %s", snapshot_dir);
-            system(cmd);
 
             // Write snapshots
 	    log_from_root_proc(pid, "Writing snapshots to %s, timestep = %d\n", snapshot_dir, i);
