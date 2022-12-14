@@ -4,6 +4,19 @@
 # V3.18 required for CMAKE_CUDA_ARCHITECTURES
 cmake_minimum_required(VERSION 3.18)
 
+## Options
+option(DOUBLE_PRECISION   "Generates double precision code."                    ON)
+option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            ON)
+option(BUILD_MHD_SAMPLES  "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
+option(MPI_ENABLED        "Enables additional functions for MPI communciation." ON)
+option(USE_CUDA_AWARE_MPI "Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory" ON)
+option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
+option(VERBOSE            "Enables various status and warning messages"         OFF)
+option(BUILD_UTILS        "Builds the utility library"                          ON)
+option(SINGLEPASS_INTEGRATION "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" OFF)
+option(USE_DISTRIBUTED_IO "Use distributed IO (one file per process) instead of collective" OFF)
+option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" ON)
+
 if (USE_HIP)
     find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
     set(CMAKE_C_COMPILER ${CMAKE_HIP_COMPILER})
@@ -29,17 +42,6 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
-## Options
-option(DOUBLE_PRECISION   "Generates double precision code."                    ON)
-option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            ON)
-option(BUILD_MHD_SAMPLES  "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
-option(MPI_ENABLED        "Enables additional functions for MPI communciation." ON)
-option(USE_CUDA_AWARE_MPI "Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory" ON)
-option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
-option(VERBOSE            "Enables various status and warning messages"         OFF)
-option(BUILD_UTILS        "Builds the utility library"                          ON)
-option(SINGLEPASS_INTEGRATION "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" OFF)
-option(USE_DISTRIBUTED_IO "Use distributed IO (one file per process) instead of collective" OFF)
 
 ## CUDA/HIP
 if (USE_HIP)
