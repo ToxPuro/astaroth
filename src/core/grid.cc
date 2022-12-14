@@ -1563,7 +1563,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
         char filepath[4096];
 #if USE_DISTRIBUTED_IO
-        sprintf(filepath, "%s/%s-segment-%d-%d-%d-%s.slice", dir, vtxbuf_names[field], global_pos_min.x, global_pos_min.z, global_z, label);
+        sprintf(filepath, "%s/%s-segment-%d-%d-%d-%s.slice", dir, vtxbuf_names[field], global_pos_min.x, global_pos_min.y, global_z, label);
 #else
         sprintf(filepath, "%s/%s-%s.slice", dir, vtxbuf_names[field], label);
 #endif
@@ -1580,6 +1580,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
             // Write to file
 
 #if USE_DISTRIBUTED_IO
+            if (color != MPI_UNDEFINED) {
             MPI_File file;
             int mode = MPI_MODE_CREATE | MPI_MODE_WRONLY;
             fprintf(stderr, "Writing %s\n", filepath);
@@ -1592,6 +1593,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
             retval = MPI_File_close(&file);
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+            }
 #else
             // Possible MPI bug: need to cudaSetDevice or otherwise invalid context
             // But also causes a deadlock for some reason
