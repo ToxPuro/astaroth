@@ -1121,7 +1121,9 @@ main(int argc, char** argv)
 
         // Execute the active task graph for 3 iterations
 	// if simulation_graph = acGridGetDefaultTaskGraph(), then this is equivalent to acGridIntegrate(STREAM_DEFAULT, dt)
+        //log_from_root_proc(pid, "acGridExecuteTaskGraph step %d started\n", i);
         acGridExecuteTaskGraph(simulation_graph, 3);
+        log_from_root_proc(pid, "acGridExecuteTaskGraph step %d complete\n", i);
         
         t_step += dt;
 
@@ -1161,8 +1163,10 @@ main(int argc, char** argv)
             char label[4096];
             sprintf(label, "%012d", i);
 
-	    log_from_root_proc(pid, "Writing slices to %s, timestep = %d\n", slice_dir, i);
+        log_from_root_proc(pid, "Syncing slice disk access\n");
             acGridDiskAccessSync();
+        log_from_root_proc(pid, "Slice disk access synced\n");
+	    log_from_root_proc(pid, "Writing slices to %s, timestep = %d\n", slice_dir, i);
             acGridWriteSlicesToDiskLaunch(slice_dir, label);
 	    log_from_root_proc(pid, "Done writing slices\n");
 
