@@ -859,6 +859,26 @@ main(int argc, char** argv)
 
     // Print the config used
     if (pid == 0) {
+        FILE* fp = fopen("run_config.txt", "w");
+        ERRCHK_ALWAYS(fp);
+
+        for (int i = 0; i < NUM_INT_PARAMS; ++i)
+            fprintf(fp, "[%s]: %d\n", intparam_names[i], info.int_params[i]);
+        for (int i = 0; i < NUM_INT3_PARAMS; ++i)
+            fprintf(fp, "[%s]: (%d, %d, %d)\n", int3param_names[i], info.int3_params[i].x,
+               info.int3_params[i].y, info.int3_params[i].z);
+        for (int i = 0; i < NUM_REAL_PARAMS; ++i)
+            fprintf(fp, "[%s]: %g\n", realparam_names[i], (double)(info.real_params[i]));
+        for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
+            fprintf(fp, "[%s]: (%g, %g, %g)\n", real3param_names[i], (double)(info.real3_params[i].x),
+               (double)(info.real3_params[i].y), (double)(info.real3_params[i].z));
+
+        fclose(fp);
+
+        ERRCHK_ALWAYS(info.real_params[AC_dsx] == DSX);
+        ERRCHK_ALWAYS(info.real_params[AC_dsy] == DSY);
+        ERRCHK_ALWAYS(info.real_params[AC_dsz] == DSZ);
+
         acPrintMeshInfo(info);
         fflush(stdout);
     }
