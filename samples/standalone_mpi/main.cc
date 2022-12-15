@@ -922,13 +922,6 @@ main(int argc, char** argv)
     // Set random seed for reproducibility
     //srand(321654987);
     srand(312256655);
-
-#if LSINK
-    if (pid == 0) {
-	//TODO: can this be set lower down? or is this needed by dryrun?
-        acVertexBufferSet(VTXBUF_ACCRETION, 0.0, &mesh);
-    }
-#endif
     // END SMELL
 
     ////////////////////////////////////////
@@ -1085,6 +1078,11 @@ main(int argc, char** argv)
 #if LSINK
     sink_mass     = info.real_params[AC_M_sink_init];
     accreted_mass = 0.0;
+    //TODO: I think this is supposed to set device vertex buffer VTXBUF_ACCRETION to 0 before the simulation starts
+    //TODO: figure out how to do that in_device_memory
+    if (pid == 0) {
+        acVertexBufferSet(VTXBUF_ACCRETION, 0.0, &mesh);
+    }
 #endif
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1154,8 +1152,7 @@ main(int argc, char** argv)
 
     //This loop has a legacy off-by-one error, if max_steps = 1, we will run 0 steps
     //if max_steps is 100, we will run 99 steps
-    int i = start_step + 1;
-    for (; i < max_steps; ++i) {
+    for (int i = start_step + 1; i < max_steps; ++i) {
 
         debug_from_root_proc(pid, "Calculating time step (i=%d)\n", i);
         const AcReal dt = calc_timestep(info);
@@ -1172,6 +1169,8 @@ main(int argc, char** argv)
 
         // JP: !!! WARNING !!! acVertexBufferSet operates in host memory. The mesh is
         // never loaded to device memory. Is this intended?
+	//TODO: figure out what this is supposed to do
+	//TODO: make this work correctly with device buffers
         if (pid == 0){
             acVertexBufferSet(VTXBUF_ACCRETION, 0.0, mesh);
         }
@@ -1203,7 +1202,16 @@ main(int argc, char** argv)
         // Execute the active task graph for 3 iterations
 	// in the case that simulation_graph = acGridGetDefaultTaskGraph(), then this is equivalent to acGridIntegrate(STREAM_DEFAULT, dt)
         acGridExecuteTaskGraph(simulation_graph, 3);
-        log_from_root_proc(pid, "acGridExecuteTaskGraph step %d complete\n", i);
+        bool log_every_simulation_step = false;
+#if AC_VERBOSE
+	log_every_simulation_step = true;
+#endif
+	if ( i < save_steps || log_every_simulation_step ) {
+            log_from_root_proc(pid, "acGridExecuteTaskGraph step %d complete\n", i);
+	} else if (i == save_steps && !log_every_simulation_step) {
+            log_from_root_proc(pid, "acGridExecuteTaskGraph step %d complete\n", i);
+            log_from_root_proc(pid, "VERBOSE is off, not logging acGridExecuteTaskGraph completion for step > %d\n", save_steps);
+	}
         
         t_step += dt;
 
@@ -1284,10 +1292,7 @@ main(int argc, char** argv)
             bin_crit_t += bin_save_t;
         }
 
-        // Ensures that are known beyond rank 0.
-	// TODO: why only found_nan? why not max_time?
-        MPI_Bcast(&found_nan, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
+    
         if (access("STOP", F_OK) != -1) {
             found_stop = 1;
         }
@@ -1296,38 +1301,73 @@ main(int argc, char** argv)
         }
 
         // End loop if max time reached.
+	int max_time_reached = 0;
         if (max_time > AcReal(0.0)) {
             if (t_step >= max_time) {
-		printf("Time limit reached! at t = %e \n", double(t_step));
-                break;
+                max_time_reached = 1;
             }
         }
 
-        // End loop if nan is found
-        if (found_nan > 0) {
-	    // Only proc 0 will write
-            printf("Found nan at t = %e \n", double(t_step));
-            break;
-        }
+	/////////////////////////////////////////////////
+	//                                             //
+	// Check all end conditions and broadcast them //
+	//                                             //
+	/////////////////////////////////////////////////
+	int end_conditions_encoded = (found_nan << 2) + (max_time_reached << 1) + found_stop;
+	int max_end_conditions_encoded = 0;
 
-        if (found_stop == 1) {
-            printf("Found STOP file at t = %e \n", double(t_step));
-            break;
-        }
+	// Only one collective needed, add conditions to end_conditions_encoded if more signals need to be communicated
+	MPI_Allreduce(&end_conditions_encoded, &max_end_conditions_encoded, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+
+	found_nan        = max_end_conditions_encoded >> 2 & 1;
+	max_time_reached = max_end_conditions_encoded >> 1 & 1;
+	found_stop       = max_end_conditions_encoded & 1;
+
+        if (max_end_conditions_encoded != 0 || i == max_steps - 1){
+            log_from_root_proc(pid, "Simulation end condition encountered\n");
+	    if (found_nan == 1) {
+                log_from_root_proc(pid, "Found nan at i = %d, t = %e \n", i, double(t_step));
+            }
+            if (max_time_reached == 1) {
+                log_from_root_proc(pid, "Time limit reached at i = %d, t = %e \n", i, double(t_step));
+            }
+            if (found_stop == 1) {
+                log_from_root_proc(pid, "Found STOP file at i = %d, t = %e \n", i, double(t_step));
+            }
+	    if (i == max_steps - 1){
+                log_from_root_proc(pid, "Max steps reached, i = %d, t= %e \n", i, double(t_step));
+	    }
+
+	    //TODO: don't save data if save_steps has already done it
+            // Save data after the loop ends
+	    if (i % bin_steps != 0) {
+                acGridPeriodicBoundconds(STREAM_DEFAULT);
+                log_from_root_proc(pid, "Writing final snapshots to %s, timestep = %d\n", snapshot_dir, i);
+                save_mesh_mpi_sync(info, pid, i, t_step);
+                log_from_root_proc(pid, "Done writing snapshots\n");
+	    } else {
+                log_from_root_proc(pid, "Snapshots for timestep %d have already been written\n");
+	    }
+ 	    break;          
+	}
     }
 
-    // Save data after the loop ends
-    // TODO: do this inside the loop, before the break? then we don't need i as a loop-external variable
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
-    save_mesh_mpi_sync(info, pid, std::min(max_steps -1, i), t_step);
-
-    // Clean up allocated resources
+    //////////////////////////////////
+    // Simulation over, exit cleanly//
+    // Deallocate resources and log //
+    //////////////////////////////////
     if (custom_simulation_graph != nullptr){
+        log_from_root_proc(pid, "Destroying custom task graph\n");
         acGridDestroyTaskGraph(custom_simulation_graph);
     }
+    log_from_root_proc(pid, "Calling acGridQuit\n");
     acGridQuit();
     fclose(diag_file);
+    log_from_root_proc(pid, "Simulation complete\n");
+    log_from_root_proc(pid, "Calling MPI_Finalize\n");
     MPI_Finalize();
+    //Won't work because printf define uses MPI...
+    //log_from_root_proc(pid, "Simulation complete\n");
 
     //TODO: might want to change this to EXIT_FAILURE if found_nan
     return EXIT_SUCCESS;

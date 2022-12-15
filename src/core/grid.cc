@@ -1338,7 +1338,9 @@ acGridDiskAccessLaunch(const AccessType type)
             int mode           = MPI_MODE_CREATE | MPI_MODE_WRONLY;
             char outfile[4096] = "";
             snprintf(outfile, 4096, "segment-%d_%d_%d-%s", offset.x, offset.y, offset.z, path);
+#if AC_VERBOSE
             fprintf(stderr, "Writing %s\n", outfile);
+#endif
             int retval = MPI_File_open(MPI_COMM_SELF, outfile, mode, MPI_INFO_NULL, &file);
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
@@ -1368,7 +1370,10 @@ acGridDiskAccessLaunch(const AccessType type)
             MPI_Type_commit(&subarray);
 
             MPI_File file;
+
+#if AC_VERBOSE
             fprintf(stderr, "Writing %s\n", path);
+#endif
 
             int flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
             ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &file) ==
@@ -1845,7 +1850,10 @@ acGridDiskAccessLaunch(const AccessType type)
         int mode           = MPI_MODE_CREATE | MPI_MODE_WRONLY;
         char outfile[4096] = "";
         snprintf(outfile, 4096, "segment-%d_%d_%d-%s", offset.x, offset.y, offset.z, path);
+
+#if AC_VERBOSE
         fprintf(stderr, "Writing %s\n", outfile);
+#endif
 
         int retval = MPI_File_open(MPI_COMM_SELF, outfile, mode, MPI_INFO_NULL, &files[i]);
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
@@ -1867,7 +1875,9 @@ acGridDiskAccessLaunch(const AccessType type)
                                  &subarray);
         MPI_Type_commit(&subarray);
 
+#if AC_VERBOSE
         fprintf(stderr, "Writing %s\n", path);
+#endif
 
         int flags  = MPI_MODE_CREATE | MPI_MODE_WRONLY;
         int retval = MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &files[i]);
@@ -1943,7 +1953,10 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 #else
     snprintf(filepath, buflen, "%s/%s.mesh", dir, label);
 #endif
+
+#if AC_VERBOSE
     fprintf(stderr, "%s %s\n", type == ACCESS_WRITE ? "Writing" : "Reading", filepath);
+#endif
 
     if (type == ACCESS_WRITE) {
         const AcReal* in      = device->vba.in[vtxbuf];
@@ -2132,7 +2145,9 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
     char filepath[buflen];
     snprintf(filepath, buflen, "%s/%s-segment-%d-%d-%d.mesh", dir, label, offset.x, offset.y,
              offset.z);
+#if AC_VERBOSE
     fprintf(stderr, "%s %s\n", type == ACCESS_WRITE ? "Writing" : "Reading", filepath);
+#endif
 
     if (type == ACCESS_WRITE) {
         const AcReal* in      = device->vba.in[vtxbuf];
@@ -2233,7 +2248,9 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
     const size_t buflen = 4096;
     char filepath[buflen];
     snprintf(filepath, buflen, "%s/%s.mesh", dir, label);
+#if AC_VERBOSE
     fprintf(stderr, "%s %s\n", type == ACCESS_WRITE ? "Writing" : "Reading", filepath);
+#endif
 
     if (type == ACCESS_WRITE) {
         const AcReal* in      = device->vba.in[vtxbuf];
