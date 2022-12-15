@@ -203,7 +203,7 @@ gen_simulation_sbatch(){
 module purge
 
 module load CrayEnv
-module load PrGEnv-cray
+module load PrgEnv-cray
 module load craype-accel-amd-gfx90a
 module load rocm
 module load buildtools

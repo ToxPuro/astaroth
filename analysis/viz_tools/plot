@@ -2,6 +2,8 @@
 script_dir=$(realpath $(dirname "${BASH_SOURCE[0]}"))
 venv=/scratch/project_462000120/olappi/python_data_analysis_env
 
+#TODO: LUMI-specific, please remove and make more resilient
+
 source $venv/bin/activate
 OPTS="$@"
 printf "$SLURM_JOBID $(date) : Calling plot.py $OPTS\n" >> render.log

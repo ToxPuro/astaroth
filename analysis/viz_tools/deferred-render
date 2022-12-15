@@ -71,8 +71,6 @@ if [[ -z "$output_dir" ]] ;then
     exit 1
 fi
 
-#TODO: LUMI-specific, please remove and make more resilient
-module load cray-python
 
 sim_job_id=$(sbatch --parsable $sbatch_file)
 printf "Submitted simulation batch job $sim_job_id\n"
