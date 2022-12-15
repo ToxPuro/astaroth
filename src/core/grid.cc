@@ -1563,9 +1563,14 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
         char filepath[4096];
 #if USE_DISTRIBUTED_IO
-        sprintf(filepath, "%s/%s-segment-%d-%d-%d-%s.slice", dir, vtxbuf_names[field], global_pos_min.x, global_pos_min.y, global_z, label);
+        sprintf(filepath, "%s/%s-segment-at_%d_%d_%d-dims_%d_%d-%s.slice", dir, vtxbuf_names[field],
+			global_pos_min.x, global_pos_min.y, global_z,
+			local_nn.x, local_nn.y,
+			label);
 #else
-        sprintf(filepath, "%s/%s-%s.slice", dir, vtxbuf_names[field], label);
+        sprintf(filepath, "%s/%s-dims_%d_%d-%s.slice", dir, vtxbuf_names[field],
+                        global_nn.x, global_nn.y,
+			label);
 #endif
 
         int pid;
