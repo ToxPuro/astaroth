@@ -910,13 +910,13 @@ main(int argc, char** argv)
 
         fclose(fp);
 
-        ERRCHK_ALWAYS(info.real_params[AC_dsx] == DSX);
-        ERRCHK_ALWAYS(info.real_params[AC_dsy] == DSY);
-        ERRCHK_ALWAYS(info.real_params[AC_dsz] == DSZ);
         acPrintMeshInfo(info);
         fflush(stdout);
 	*/
     }
+    ERRCHK_ALWAYS(info.real_params[AC_dsx] == DSX);
+    ERRCHK_ALWAYS(info.real_params[AC_dsy] == DSY);
+    ERRCHK_ALWAYS(info.real_params[AC_dsz] == DSZ);
 
     // Ensure all directories exist
     create_output_directories();
