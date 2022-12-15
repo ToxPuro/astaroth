@@ -782,7 +782,10 @@ print_usage(const char * name) {
 		   " --config <config_path>\n"
 		   "\tread config file from directory at config_path, the default config path is: %s\n"
                    "\n"
-		   "Mutually exclusive initial mesh load procedures:\n"
+		   "Mutually exclusive initial mesh load procedures\n"
+		   "------------------------------------------------"
+            	   "\n"
+		   "  the default is --init-kernel\n"
             	   "\n"
 		   " -k\n"
 		   " --init-kernel\n"
@@ -841,7 +844,8 @@ main(int argc, char** argv)
 
 
     const char *config_path = AC_DEFAULT_CONFIG;
-    InitialMeshProcedure initial_mesh_procedure;
+    //Default mesh procedure is kernel randomize
+    InitialMeshProcedure initial_mesh_procedure = InitialMeshProcedure::Kernel;
     const char *initial_mesh_procedure_param = nullptr;
 
     int opt{};

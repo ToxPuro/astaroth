@@ -220,8 +220,10 @@ fi
 $launcher simulation.sbatch
 
 echo "to follow the simulation, you can try the following once it has started:"
-echo "  tail -F slurm-*.out"
+echo "  tail -F slurm-simulation*.out"
 echo ""
+echo "to follow all your current SLURM jobs:"
+echo "  watch \"squeue --me\""
 EOF
 
     chmod +x $output_dir/submit.sh
@@ -259,6 +261,7 @@ gen_simulation_sbatch(){
 #SBATCH --ntasks=$num_procs
 #SBATCH --nodes=$num_nodes
 #SBATCH --time=$timelimit
+#SBATCH --output=slurm-simulation-%j.out
 
 module purge
 
