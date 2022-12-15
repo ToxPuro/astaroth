@@ -14,7 +14,7 @@ option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer
 option(VERBOSE            "Enables various status and warning messages"         OFF)
 option(BUILD_UTILS        "Builds the utility library"                          ON)
 option(SINGLEPASS_INTEGRATION "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" OFF)
-option(USE_DISTRIBUTED_IO "Use distributed IO (one file per process) instead of collective" OFF)
+option(USE_DISTRIBUTED_IO "Use distributed IO (one file per process) instead of collective" ON)
 option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" ON)
 
 if (USE_HIP)
