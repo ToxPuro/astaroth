@@ -22,3 +22,7 @@
 
 # Usage
 
+
+# Helper scripts
+
+* You can use `pilot/plot-distributed.py` and `pilot/plot-collective.py` snippets to quickly visualize slices. There are some more advanced visualization scripts in `astaroth/analysis`.
