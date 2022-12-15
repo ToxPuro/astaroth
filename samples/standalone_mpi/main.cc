@@ -25,6 +25,8 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 
+#include "timer_hires.h"
+
 #include <mpi.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -765,11 +767,21 @@ static void create_output_directories(void)
     const size_t cmdlen = 4096;
     char cmd[cmdlen];
 
+    const int stripe_count = 48;
+    
     snprintf(cmd, cmdlen, "mkdir -p %s", snapshot_dir);
     system(cmd);
 
+    // Note: striping here potentially bad practice (uncomment to enable)
+    //snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_dir);
+    //system(cmd);
+
     snprintf(cmd, cmdlen, "mkdir -p %s", slice_dir);
     system(cmd);
+
+    // Note: striping here potentially bad practice (uncomment to enable)
+    //snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_dir);
+    //system(cmd);
 }
 void
 print_usage(const char * name) {
@@ -1115,6 +1127,7 @@ main(int argc, char** argv)
 	acGridDiskAccessSync();
 	log_from_root_proc(pid, "Writing slices to %s, timestep = %d\n", slice_dir, start_step);
 	//TODO: create new slice_dir for this frame and write to it
+    //acGridWriteSlicesToDiskCollectiveSynchronous(slice_dir, label);
 	acGridWriteSlicesToDiskLaunch(slice_dir, label);
 	log_from_root_proc(pid, "Done writing slices\n");
     } else {
@@ -1229,6 +1242,12 @@ main(int argc, char** argv)
             log_from_root_proc(pid, "Slice disk access synced\n");
 	    //TODO: create new slice_dir for this frame and write to it
             log_from_root_proc(pid, "Writing slices to %s, timestep = %d\n", slice_dir, i);
+            /*
+            Timer t;
+            timer_reset(&t);
+            acGridWriteSlicesToDiskCollectiveSynchronous(slice_dir, label);
+            log_from_root_proc(pid, "Collective sync slices elapsed %g ms\n", timer_diff_nsec(t)/1e6);
+            */
             acGridWriteSlicesToDiskLaunch(slice_dir, label);
 	    log_from_root_proc(pid, "Done writing slices\n");
 
