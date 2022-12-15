@@ -621,6 +621,14 @@ calc_timestep(const AcMeshInfo info)
     // first, as it is not too complicated anyway.
     //
     // %JP: uumax, vAmax, seems to be OK now with the following bcasts
+    //
+    // OL: it would not be too difficult to make acGridReduceVecScal broadcast the value
+    // Two changes in distributedScalarReduction are needed:
+    //  1. change MPI_Reduce -> MPI_Allreduce 
+    //  2. remove the if (rank == 0) checks for the final RMS reduction
+    //
+    // This should also perform better because we will save the Bcast here
+    // Right now we're doing two collective operations where one would suffice
 
     // MPI_Bcast to share uumax with all ranks
     MPI_Bcast(&uumax, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
@@ -771,29 +779,74 @@ read_collective_to_mesh_and_setup(void)
 }
 
 static void
-create_output_directories(void)
+create_directory(const char *dirname)
 {
+    constexpr size_t cmdlen = 4096;
+    static char cmd[cmdlen];
+
     // Improvement suggestion: use create_directory() from <filesystem> (C++17) or mkdir() from
     // <sys/stat.h> (POSIX)
-    const size_t cmdlen = 4096;
-    char cmd[cmdlen];
-
-    const int stripe_count = 48;
-
-    snprintf(cmd, cmdlen, "mkdir -p %s", snapshot_dir);
+    snprintf(cmd, cmdlen, "mkdir -p %s", dirname);
     system(cmd);
+}
 
-    // Note: striping here potentially bad practice (uncomment to enable)
+static void
+create_output_directories(void)
+{
+    create_directory(snapshot_dir);
+    create_directory(slice_dir);
+
+    // JP: Note: striping here potentially bad practice (uncomment to enable)
+    // OL: Agree, there is no guarantee that the environment uses a lustre filesystem (perhaps as an option though?)
+    //const int stripe_count = 48;
     // snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_dir);
     // system(cmd);
-
-    snprintf(cmd, cmdlen, "mkdir -p %s", slice_dir);
-    system(cmd);
-
     // Note: striping here potentially bad practice (uncomment to enable)
     // snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_dir);
     // system(cmd);
 }
+
+static void
+write_slices(int pid, int i)
+{
+    
+    char slice_frame_dir[4096];
+    sprintf(slice_frame_dir, "%s/step_%012d", slice_dir, i);
+
+    log_from_root_proc(pid, "Creating directory %s\n",slice_frame_dir);
+    //The root proc creates the frame dir and then we sync
+    if (pid == 0){
+        create_directory(slice_frame_dir);
+    }
+
+    log_from_root_proc(pid, "Syncing slice disk access\n");
+    acGridDiskAccessSync();
+
+
+
+    log_from_root_proc(pid, "Writing slices to %s, timestep = %d\n", slice_dir, i);
+    /*
+    Timer t;
+    timer_reset(&t);
+    acGridWriteSlicesToDiskCollectiveSynchronous(slice_dir, label);
+    log_from_root_proc(pid, "Collective sync slices elapsed %g ms\n",
+    timer_diff_nsec(t)/1e6);
+    */
+
+    //This label is redundant now that the step number is in the dirname
+    char label[80];
+    sprintf(label, "step_%012d", i);
+
+    acGridWriteSlicesToDiskLaunch(slice_frame_dir, label);
+    log_from_root_proc(pid, "Done writing slices\n");
+
+    // This was here to debug an issue that somehow resolved itself... can't recall what the
+    // issue was anymore Anyway, in some cases debug_from_root_proc(pid, "Calling post-slice
+    // barrier\n"); MPI_Barrier(MPI_COMM_WORLD); debug_from_root_proc(pid, "Passed
+    // post-slice barrier\n");
+
+}
+
 void
 print_usage(const char* name)
 {
@@ -919,15 +972,18 @@ main(int argc, char** argv)
     if (pid == 0) {
         // Write purge.sh and meshinfo.list
         write_info(&info);
+
+        // Ensure output-slices and output-snapshots exist
+        create_output_directories();
+
         // Print config to stdout
         acPrintMeshInfo(info);
+
     }
     ERRCHK_ALWAYS(info.real_params[AC_dsx] == DSX);
     ERRCHK_ALWAYS(info.real_params[AC_dsy] == DSY);
     ERRCHK_ALWAYS(info.real_params[AC_dsz] == DSZ);
 
-    // Ensure all directories exist
-    create_output_directories();
 
     // SMELL: this was set twice, once here and once further down
     // I've commented out the first call to srand, since it would be overridden by the second value
@@ -1120,33 +1176,22 @@ main(int argc, char** argv)
 
     if (start_step == 0) {
         // TODO: calculate time step before entering loop, recalculate at end
+        log_from_root_proc(pid, "Writing initial statistics\n");
         if (pid == 0) {
-            log_from_root_proc(pid, "Writing out initial state to timeseries.ts\n");
             print_diagnostics_header(diag_file);
         }
-
-        // TODO: put this and the slice writing thing into a function, to make them the same
-
         print_diagnostics(start_step, 0, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
 
-        char label[4096];
-        sprintf(label, "step_%012d", 0);
-        log_from_root_proc(pid, "Syncing slice disk access\n");
-        acGridDiskAccessSync();
-        log_from_root_proc(pid, "Writing slices to %s, timestep = %d\n", slice_dir, start_step);
-        // TODO: create new slice_dir for this frame and write to it
-        // acGridWriteSlicesToDiskCollectiveSynchronous(slice_dir, label);
-        acGridWriteSlicesToDiskLaunch(slice_dir, label);
-        log_from_root_proc(pid, "Done writing slices\n");
-    }
-    else {
+	write_slices(pid, start_step);
+
+    } else if (pid == 0){
         // add newline to old diag_file from previous run
-        if (pid == 0) {
-            fprintf(diag_file, "\n");
-        }
+        fprintf(diag_file, "\n");
     }
 
     // Save zero state
+    // OL: why is this (start_step <= 0)?
+    // (start_step == 0) could be merged with the above if
     if (start_step <= 0) {
         log_from_root_proc(pid, "Writing out initial state to a mesh file\n");
         log_from_root_proc(pid, "Calling save_mesh_mpi_sync\n");
@@ -1236,13 +1281,7 @@ main(int argc, char** argv)
 
         /* Save the simulation state and print diagnostics */
         if ((i % save_steps) == 0) {
-
-            /*
-                print_diagnostics() writes out both std.out printout from the
-                results and saves the diagnostics into a table for ascii file
-                timeseries.ts.
-            */
-
+            // Write statistics of the fields to stdout and to timeseries.ts
             print_diagnostics(i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
             /*
                 We would also might want an XY-average calculating funtion,
@@ -1250,35 +1289,9 @@ main(int argc, char** argv)
                 simulations. (TODO)
             */
 
+	    //Write slices to files for analysis
             acGridPeriodicBoundconds(STREAM_DEFAULT);
-
-            //////////////////
-            // Write slices //
-            //////////////////
-
-            char label[4096];
-
-            sprintf(label, "step_%012d", i);
-
-            log_from_root_proc(pid, "Syncing slice disk access\n");
-            acGridDiskAccessSync();
-            log_from_root_proc(pid, "Slice disk access synced\n");
-            // TODO: create new slice_dir for this frame and write to it
-            log_from_root_proc(pid, "Writing slices to %s, timestep = %d\n", slice_dir, i);
-            /*
-            Timer t;
-            timer_reset(&t);
-            acGridWriteSlicesToDiskCollectiveSynchronous(slice_dir, label);
-            log_from_root_proc(pid, "Collective sync slices elapsed %g ms\n",
-            timer_diff_nsec(t)/1e6);
-            */
-            acGridWriteSlicesToDiskLaunch(slice_dir, label);
-            log_from_root_proc(pid, "Done writing slices\n");
-
-            // This was here to debug an issue that somehow resolved itself... can't recall what the
-            // issue was anymore Anyway, in some cases debug_from_root_proc(pid, "Calling post-slice
-            // barrier\n"); MPI_Barrier(MPI_COMM_WORLD); debug_from_root_proc(pid, "Passed
-            // post-slice barrier\n");
+            write_slices(pid, i);
         }
 
         /* Save the simulation state and print diagnostics */
