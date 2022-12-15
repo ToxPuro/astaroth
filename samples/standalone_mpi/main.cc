@@ -27,13 +27,13 @@
 
 #include "timer_hires.h"
 
+#include <getopt.h>
 #include <mpi.h>
 #include <unistd.h>
-#include <getopt.h>
 
+#include <cstdarg>
 #include <cstring>
 #include <ctime>
-#include <cstdarg>
 
 #include "config_loader.h"
 #include "errchk.h"
@@ -45,10 +45,11 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
 // IO configuration
-static const Field io_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ};
+static const Field io_fields[]    = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO,
+                                     VTXBUF_AX,  VTXBUF_AY,  VTXBUF_AZ};
 static const size_t num_io_fields = ARRAY_SIZE(io_fields);
-static const char* snapshot_dir = "output-snapshots";
-static const char* slice_dir = "output-slices";
+static const char* snapshot_dir   = "output-snapshots";
+static const char* slice_dir      = "output-slices";
 
 #define fprintf(...)                                                                               \
     {                                                                                              \
@@ -68,48 +69,52 @@ static const char* slice_dir = "output-slices";
         }                                                                                          \
     }
 
-//TODO: currently, printf & fprintf has been replaced everywhere with one that only prints from MPI rank 0
-//This is suboptimal, because now we cannot use printf to print from another rank
-//We should rename this rank 0 printf something else, like root_thread::printf
-//This is clearer in intent, and allows us to actually use printf elsewhere as well
+// TODO: currently, printf & fprintf has been replaced everywhere with one that only prints from MPI
+// rank 0 This is suboptimal, because now we cannot use printf to print from another rank We should
+// rename this rank 0 printf something else, like root_thread::printf This is clearer in intent, and
+// allows us to actually use printf elsewhere as well
 
 void
-debug_from_root_proc(int pid, const char *msg, ...){
+debug_from_root_proc(int pid, const char* msg, ...)
+{
 #ifndef NDEBUG
-    if (pid == 0){
-	std::time_t now = std::time(nullptr);
-	char *timestamp = std::ctime(&now);
-	size_t stamp_len = strlen(timestamp);
-	//Remove trailing newline
-	timestamp[stamp_len - 1] = '\0';
-	//We know the exact length of the timestamp (26 chars), so we could force this function to take chars with a 26 prefix blank buffer
-	fprintf(stderr, "%s : ", timestamp);
+    if (pid == 0) {
+        std::time_t now  = std::time(nullptr);
+        char* timestamp  = std::ctime(&now);
+        size_t stamp_len = strlen(timestamp);
+        // Remove trailing newline
+        timestamp[stamp_len - 1] = '\0';
+        // We know the exact length of the timestamp (26 chars), so we could force this function to
+        // take chars with a 26 prefix blank buffer
+        fprintf(stderr, "%s : ", timestamp);
 
-	va_list args;
-	va_start(args, msg);
+        va_list args;
+        va_start(args, msg);
         vfprintf(stderr, msg, args);
         fflush(stderr);
-	va_end(args);
+        va_end(args);
     }
 #endif
 }
 
 void
-log_from_root_proc(int pid, const char *msg, ...){
-    if (pid == 0){
-	std::time_t now = std::time(nullptr);
-	char *timestamp = std::ctime(&now);
-	size_t stamp_len = strlen(timestamp);
-	//Remove trailing newline
-	timestamp[stamp_len - 1] = '\0';
-	//We know the exact length of the timestamp (26 chars), so we could force this function to take chars with a 26 prefix blank buffer
-	fprintf(stderr, "%s : ", timestamp);
+log_from_root_proc(int pid, const char* msg, ...)
+{
+    if (pid == 0) {
+        std::time_t now  = std::time(nullptr);
+        char* timestamp  = std::ctime(&now);
+        size_t stamp_len = strlen(timestamp);
+        // Remove trailing newline
+        timestamp[stamp_len - 1] = '\0';
+        // We know the exact length of the timestamp (26 chars), so we could force this function to
+        // take chars with a 26 prefix blank buffer
+        fprintf(stderr, "%s : ", timestamp);
 
-	va_list args;
-	va_start(args, msg);
+        va_list args;
+        va_start(args, msg);
         vfprintf(stderr, msg, args);
         fflush(stderr);
-	va_end(args);
+        va_end(args);
     }
 }
 
@@ -124,9 +129,6 @@ log_from_root_proc(const char *msg, ...){
     va_end(args);
 }
 */
-
-
-
 
 // MV: I commented this out because now can be defined in DSL
 //// #define LSINK (0)
@@ -233,44 +235,43 @@ save_mesh_mpi_sync(const AcMeshInfo info, const int pid, const int step, const A
     printf("Saving snapshot at step %i \n", step);
 
     char cstep[11];
-    //char header_filename[80] = "\0";
+    // char header_filename[80] = "\0";
     sprintf(cstep, "%d", step);
 
     // Saves a csv file which contains relevant information about the binary
-    // snapshot files at the timestep. 
+    // snapshot files at the timestep.
     if (pid == 0) {
         FILE* header_file = fopen("snapshots_info.csv", "a");
 
-        //Header only at the step zero
+        // Header only at the step zero
         if (step == 0) {
             fprintf(header_file, "use_double, mx, my, mz, step_number, t_step \n");
         }
 
         fprintf(header_file, "%d, %d, %d, %d, %d, %.17e \n", sizeof(AcReal) == 8,
-                info.int_params[AC_mx], info.int_params[AC_my], 
-                info.int_params[AC_mz], step, t_step);
+                info.int_params[AC_mx], info.int_params[AC_my], info.int_params[AC_mz], step,
+                t_step);
 
-	    // Writes the header info. Make it into an
-	    // appendaple csv table which will be easy to be read into a Pandas
-	    // dataframe.
-         
+        // Writes the header info. Make it into an
+        // appendaple csv table which will be easy to be read into a Pandas
+        // dataframe.
+
         fclose(header_file);
     }
 
-
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         const char* buffername = vtxbuf_names[w];
-        char bin_filename[80] = "\0";
-
+        char bin_filename[80]  = "\0";
 
         strcat(bin_filename, buffername);
         strcat(bin_filename, "_");
         strcat(bin_filename, cstep);
-        //strcat(bin_filename, ".field");
+        // strcat(bin_filename, ".field");
 
         // Grid data
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, snapshot_dir, bin_filename, ACCESS_WRITE);
-       
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, snapshot_dir, bin_filename,
+                                          ACCESS_WRITE);
+
         printf("Savefile %s \n", bin_filename);
 
         acGridDiskAccessSync();
@@ -278,30 +279,31 @@ save_mesh_mpi_sync(const AcMeshInfo info, const int pid, const int step, const A
 }
 
 static inline void
-save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, const int step, const AcReal t_step)
+save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, const int step,
+                    const AcReal t_step)
 {
     const int num_snapshots = 2;
-    const int modstep = (step/info.int_params[AC_bin_steps]) % num_snapshots;
+    const int modstep       = (step / info.int_params[AC_bin_steps]) % num_snapshots;
     printf("Saving snapshot at step %i (%d of %d)\n", step, modstep, num_snapshots);
 
     // Saves a csv file which contains relevant information about the binary
-    // snapshot files at the timestep. 
+    // snapshot files at the timestep.
     if (pid == 0) {
         FILE* header_file = fopen("snapshots_info.csv", "a");
 
-        //Header only at the step zero
+        // Header only at the step zero
         if (step == 0) {
             fprintf(header_file, "use_double, mx, my, mz, step_number, modstep, t_step \n");
         }
 
         fprintf(header_file, "%d, %d, %d, %d, %d, %d, %.17e \n", sizeof(AcReal) == 8,
-                info.int_params[AC_mx], info.int_params[AC_my], 
-                info.int_params[AC_mz], step, modstep, t_step);
+                info.int_params[AC_mx], info.int_params[AC_my], info.int_params[AC_mz], step,
+                modstep, t_step);
 
-	    // Writes the header info. Make it into an
-	    // appendaple csv table which will be easy to be read into a Pandas
-	    // dataframe.
-         
+        // Writes the header info. Make it into an
+        // appendaple csv table which will be easy to be read into a Pandas
+        // dataframe.
+
         fclose(header_file);
     }
 
@@ -322,11 +324,10 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
         //strcat(bin_filename, ".field");
 
         // Grid data
-        //acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, job_dir, bin_filename, ACCESS_WRITE);
-        acGridDiskAccessSync();
-        acGridWriteMeshToDiskLaunch(job_dir, step);
+        //acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, job_dir, bin_filename,
+    ACCESS_WRITE); acGridDiskAccessSync(); acGridWriteMeshToDiskLaunch(job_dir, step);
         // %JP TODO write async
-       
+
         printf("Savefile %s \n", bin_filename);
     }*/
 }
@@ -346,32 +347,32 @@ read_mesh_mpi(const int pid, const int step, AcReal* t_step)
 
     if (pid == 0) {
 
-
         AcReal element[8];
 
         // Saves a csv file which contains relevant information about the binary
-        // snapshot files at the timestep. 
+        // snapshot files at the timestep.
         FILE* header_file = fopen("snapshots_info.csv", "r");
 
-        //TODO: Loop through the header file to find the step number of snapshots
-        //TODO: to be read. And read the relevat other info.
+        // TODO: Loop through the header file to find the step number of snapshots
+        // TODO: to be read. And read the relevat other info.
 
-        //Simple cvs file reader. 
+        // Simple cvs file reader.
         char csv_line[256];
-        while (fgets( csv_line, sizeof(csv_line), header_file ) != NULL ) {
+        while (fgets(csv_line, sizeof(csv_line), header_file) != NULL) {
             int column_index = 0;
-            for (char* csv_loc = strtok( csv_line, ","); csv_loc != NULL; csv_loc = strtok(NULL, ",")) {
+            for (char* csv_loc = strtok(csv_line, ","); csv_loc != NULL;
+                 csv_loc       = strtok(NULL, ",")) {
                 printf("%s, ", csv_loc);
                 element[column_index++] = atof(csv_loc);
             }
             printf("\n");
-            stepnumber = int(element[4]);
+            stepnumber   = int(element[4]);
             time_at_step = element[5];
-            //printf("stepnumber %i at time_at_step %e \n", stepnumber, time_at_step);
+            // printf("stepnumber %i at time_at_step %e \n", stepnumber, time_at_step);
 
-            if ( stepnumber == step) {
+            if (stepnumber == step) {
                 time = double(time_at_step);
-            } 
+            }
         }
 
         fclose(header_file);
@@ -379,27 +380,26 @@ read_mesh_mpi(const int pid, const int step, AcReal* t_step)
 
     MPI_Bcast(&time, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    *t_step = time; 
+    *t_step = time;
 
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         const char* buffername = vtxbuf_names[w];
-        char bin_filename[80] = "\0";
-
+        char bin_filename[80]  = "\0";
 
         strcat(bin_filename, buffername);
         strcat(bin_filename, "_");
         strcat(bin_filename, cstep);
-        //strcat(bin_filename, ".field");
+        // strcat(bin_filename, ".field");
 
         // Grid data
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, snapshot_dir, bin_filename, ACCESS_READ);
-       
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, snapshot_dir, bin_filename,
+                                          ACCESS_READ);
+
         printf("Read file %s \n", bin_filename);
 
         acGridDiskAccessSync();
     }
 }
-
 
 // This funtion reads a run state from a set of C binaries.
 static inline void
@@ -445,7 +445,7 @@ read_mesh(AcMesh& read_mesh, const int step, AcReal* t_step)
 }
 
 static inline void
-print_diagnostics_header(FILE *diag_file)
+print_diagnostics_header(FILE* diag_file)
 {
     // Generate the file header
     fprintf(diag_file, "step  t_step  dt  uu_total_min  uu_total_rms  uu_total_max  ");
@@ -462,8 +462,6 @@ print_diagnostics_header(FILE *diag_file)
 #endif
     fprintf(diag_file, "\n");
 }
-
-
 
 // This function prints out the diagnostic values to std.out and also saves and
 // appends an ascii file to contain all the result.
@@ -648,10 +646,10 @@ calc_timestep(const AcMeshInfo info)
     const long double cs2_sound = (long double)info.real_params[AC_cs2_sound];
     const long double nu_visc   = (long double)info.real_params[AC_nu_visc];
     const long double eta       = (long double)info.real_params[AC_eta];
-    const long double chi       = 0; // (long double)info.real_params[AC_chi]; // TODO not calculated
-    const long double gamma     = (long double)info.real_params[AC_gamma];
-    const long double dsmin     = (long double)info.real_params[AC_dsmin];
-    const long double nu_shock  = (long double)info.real_params[AC_nu_shock];
+    const long double chi      = 0; // (long double)info.real_params[AC_chi]; // TODO not calculated
+    const long double gamma    = (long double)info.real_params[AC_gamma];
+    const long double dsmin    = (long double)info.real_params[AC_dsmin];
+    const long double nu_shock = (long double)info.real_params[AC_nu_shock];
 
     // Old ones from legacy Astaroth
     // const long double uu_dt   = cdt * (dsmin / (uumax + cs_sound));
@@ -659,16 +657,20 @@ calc_timestep(const AcMeshInfo info)
 
     // New, closer to the actual Courant timestep
     // See Pencil Code user manual p. 38 (timestep section)
-    const long double uu_dt   = cdt * dsmin / (fabsl((long double)uumax) + sqrtl(cs2_sound + (long double)vAmax * (long double)vAmax));
+    const long double uu_dt = cdt * dsmin /
+                              (fabsl((long double)uumax) +
+                               sqrtl(cs2_sound + (long double)vAmax * (long double)vAmax));
     const long double visc_dt = cdtv * dsmin * dsmin /
-                                (max(max(nu_visc, eta), gamma * chi) + nu_shock * (long double)shock_max);
+                                (max(max(nu_visc, eta), gamma * chi) +
+                                 nu_shock * (long double)shock_max);
 
     const long double dt = min(uu_dt, visc_dt);
     ERRCHK_ALWAYS(is_valid((AcReal)dt));
     return AcReal(dt);
 }
 
-void dryrun(void)
+void
+dryrun(void)
 {
     int pid;
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
@@ -713,7 +715,8 @@ void dryrun(void)
     MPI_Barrier(MPI_COMM_WORLD);
 }
 
-static void read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char *file_path)
+static void
+read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
 {
     // Read PC varfile to Astaroth
 
@@ -734,95 +737,108 @@ static void read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char *fi
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 }
 
-static void read_file_to_mesh_and_setup(void) {
+static void
+read_file_to_mesh_and_setup(void)
+{
 
-    for (size_t i = 0; i < num_io_fields; ++i){
+    for (size_t i = 0; i < num_io_fields; ++i) {
         const Field field = io_fields[i];
         acGridAccessMeshOnDiskSynchronous(field, snapshot_dir, vtxbuf_names[field], ACCESS_READ);
     }
-    acGridPeriodicBoundconds(STREAM_DEFAULT); 
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
 }
 
-static void read_distributed_to_mesh_and_setup(void)
+static void
+read_distributed_to_mesh_and_setup(void)
 {
-    for (size_t i = 0; i < num_io_fields; ++i){
+    for (size_t i = 0; i < num_io_fields; ++i) {
         const Field field = io_fields[i];
-        acGridAccessMeshOnDiskSynchronousDistributed(field, snapshot_dir, vtxbuf_names[field], ACCESS_READ);
+        acGridAccessMeshOnDiskSynchronousDistributed(field, snapshot_dir, vtxbuf_names[field],
+                                                     ACCESS_READ);
     }
-    acGridPeriodicBoundconds(STREAM_DEFAULT);    
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
 }
 
-static void read_collective_to_mesh_and_setup(void)
+static void
+read_collective_to_mesh_and_setup(void)
 {
-    for (size_t i = 0; i < num_io_fields; ++i){
+    for (size_t i = 0; i < num_io_fields; ++i) {
         const Field field = io_fields[i];
-        acGridAccessMeshOnDiskSynchronousCollective(field, snapshot_dir, vtxbuf_names[field], ACCESS_READ);
+        acGridAccessMeshOnDiskSynchronousCollective(field, snapshot_dir, vtxbuf_names[field],
+                                                    ACCESS_READ);
     }
-    acGridPeriodicBoundconds(STREAM_DEFAULT);    
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
 }
 
-static void create_output_directories(void)
+static void
+create_output_directories(void)
 {
-    // Improvement suggestion: use create_directory() from <filesystem> (C++17) or mkdir() from <sys/stat.h> (POSIX)
+    // Improvement suggestion: use create_directory() from <filesystem> (C++17) or mkdir() from
+    // <sys/stat.h> (POSIX)
     const size_t cmdlen = 4096;
     char cmd[cmdlen];
 
     const int stripe_count = 48;
-    
+
     snprintf(cmd, cmdlen, "mkdir -p %s", snapshot_dir);
     system(cmd);
 
     // Note: striping here potentially bad practice (uncomment to enable)
-    //snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_dir);
-    //system(cmd);
+    // snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_dir);
+    // system(cmd);
 
     snprintf(cmd, cmdlen, "mkdir -p %s", slice_dir);
     system(cmd);
 
     // Note: striping here potentially bad practice (uncomment to enable)
-    //snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_dir);
-    //system(cmd);
+    // snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_dir);
+    // system(cmd);
 }
 void
-print_usage(const char * name) {
-            printf("Usage: ./%s "
-		   "[--config <config_path>] "
-		   "[ --run-init-kernel | --from-pc-varfile | --from-distributed-snapshot | --from-monolithic-snapshot ]"
-		   "\n"
-                   "\n"
-		   " -c <config_path>\n"
-		   " --config <config_path>\n"
-		   "\tread config file from directory at config_path, the default config path is: %s\n"
-                   "\n"
-		   "Mutually exclusive initial mesh load procedures\n"
-		   "------------------------------------------------"
-            	   "\n"
-		   "  the default is --init-kernel\n"
-            	   "\n"
-		   " -k\n"
-		   " --init-kernel\n"
-		   "\tRun a kernel to initialize the mesh\n"
-		   "\tThe kernel is currently hardcoded\n"
-                   "\n"
-		   " -p\n"
-		   " --from-pc-varfile\n"
-		   "\tLoad the mesh from a pc varfile\n"
-		   "\tThe path to this file is currently hardcoded\n"
-                   "\n"
-		   " -d\n --from-distributed-snapshot\n"
-		   "\tLoad the mesh from a distributed snapshot (one file per process)\n"
-		   "\tThe path to the snapshot is currently hardcoded\n"
-                   "\n"
-		   " -m\n"
-		   " --from-monolithic-snapshot\n"
-		   "\tLoad the mesh from a monolithic snapshot (one single file)\n"
-		   "\tThe path to the snapshot is currently hardcoded\n",
-		   name,
-		   AC_DEFAULT_CONFIG
-		   );
+print_usage(const char* name)
+{
+    printf("Usage: ./%s "
+           "[--config <config_path>] "
+           "[ --run-init-kernel | --from-pc-varfile | --from-distributed-snapshot | "
+           "--from-monolithic-snapshot ]"
+           "\n"
+           "\n"
+           " -c <config_path>\n"
+           " --config <config_path>\n"
+           "\tread config file from directory at config_path, the default config path is: %s\n"
+           "\n"
+           "Mutually exclusive initial mesh load procedures\n"
+           "------------------------------------------------"
+           "\n"
+           "  the default is --init-kernel\n"
+           "\n"
+           " -k\n"
+           " --init-kernel\n"
+           "\tRun a kernel to initialize the mesh\n"
+           "\tThe kernel is currently hardcoded\n"
+           "\n"
+           " -p\n"
+           " --from-pc-varfile\n"
+           "\tLoad the mesh from a pc varfile\n"
+           "\tThe path to this file is currently hardcoded\n"
+           "\n"
+           " -d\n --from-distributed-snapshot\n"
+           "\tLoad the mesh from a distributed snapshot (one file per process)\n"
+           "\tThe path to the snapshot is currently hardcoded\n"
+           "\n"
+           " -m\n"
+           " --from-monolithic-snapshot\n"
+           "\tLoad the mesh from a monolithic snapshot (one single file)\n"
+           "\tThe path to the snapshot is currently hardcoded\n",
+           name, AC_DEFAULT_CONFIG);
 }
 
-enum class InitialMeshProcedure { Kernel, LoadPC_Varfile, LoadDistributedSnapshot, LoadMonolithicSnapshot };
+enum class InitialMeshProcedure {
+    Kernel,
+    LoadPC_Varfile,
+    LoadDistributedSnapshot,
+    LoadMonolithicSnapshot
+};
 
 int
 main(int argc, char** argv)
@@ -835,7 +851,7 @@ main(int argc, char** argv)
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    
+
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
@@ -844,54 +860,53 @@ main(int argc, char** argv)
     // Read command line arguments //
     /////////////////////////////////
 
-    //The input mesh files are hardcoded at the moment, but they could easily be passed by parameter
-    //Just change no_argument below to required_argument or optional_argument
-    //and copy the value of optarg to a filename variable in the switch
+    // The input mesh files are hardcoded at the moment, but they could easily be passed by
+    // parameter Just change no_argument below to required_argument or optional_argument and copy
+    // the value of optarg to a filename variable in the switch
     static struct option long_options[] = {{"config", required_argument, 0, 'c'},
-					   {"run-init-kernel", no_argument, 0, 'k'},
-					   {"from-pc-varfile", required_argument, 0, 'p'},
-					   {"from-distributed-snapshot", no_argument, 0, 'd'},
-					   {"from-monolithic-snapshot", no_argument, 0, 'm'},
-	    				   {"help", no_argument, 0, 'h'}};
+                                           {"run-init-kernel", no_argument, 0, 'k'},
+                                           {"from-pc-varfile", required_argument, 0, 'p'},
+                                           {"from-distributed-snapshot", no_argument, 0, 'd'},
+                                           {"from-monolithic-snapshot", no_argument, 0, 'm'},
+                                           {"help", no_argument, 0, 'h'}};
 
-
-    const char *config_path = AC_DEFAULT_CONFIG;
-    //Default mesh procedure is kernel randomize
+    const char* config_path = AC_DEFAULT_CONFIG;
+    // Default mesh procedure is kernel randomize
     InitialMeshProcedure initial_mesh_procedure = InitialMeshProcedure::Kernel;
-    const char *initial_mesh_procedure_param = nullptr;
+    const char* initial_mesh_procedure_param    = nullptr;
 
     int opt{};
     while ((opt = getopt_long(argc, argv, "c:kpdmh", long_options, nullptr)) != -1) {
         switch (opt) {
-	    case 'h':
-		print_usage("ac_run_mpi");
-		return EXIT_SUCCESS;
-	    case 'c':
-		config_path = optarg;
-                break;
-	    case 'k':
-                initial_mesh_procedure = InitialMeshProcedure::Kernel;
-		break;
-	    case 'p':
-                initial_mesh_procedure = InitialMeshProcedure::LoadPC_Varfile;
-                initial_mesh_procedure_param = optarg;
-		break;
-	    case 'd':
-                initial_mesh_procedure = InitialMeshProcedure::LoadDistributedSnapshot;
-		break;
-	    case 'm':
-                initial_mesh_procedure = InitialMeshProcedure::LoadMonolithicSnapshot;
-		break;
-	    default:
-		print_usage("ac_run_mpi");
-		return EXIT_FAILURE;
-	}
+        case 'h':
+            print_usage("ac_run_mpi");
+            return EXIT_SUCCESS;
+        case 'c':
+            config_path = optarg;
+            break;
+        case 'k':
+            initial_mesh_procedure = InitialMeshProcedure::Kernel;
+            break;
+        case 'p':
+            initial_mesh_procedure       = InitialMeshProcedure::LoadPC_Varfile;
+            initial_mesh_procedure_param = optarg;
+            break;
+        case 'd':
+            initial_mesh_procedure = InitialMeshProcedure::LoadDistributedSnapshot;
+            break;
+        case 'm':
+            initial_mesh_procedure = InitialMeshProcedure::LoadMonolithicSnapshot;
+            break;
+        default:
+            print_usage("ac_run_mpi");
+            return EXIT_FAILURE;
+        }
     }
 
     //////////////////////
     // Load config file //
     //////////////////////
-    
+
     AcMeshInfo info;
     acLoadConfig(config_path, &info);
     load_config(config_path, &info);
@@ -900,11 +915,11 @@ main(int argc, char** argv)
     ////////////////////////////////
     // Write the config to a file //
     ////////////////////////////////
-    
+
     if (pid == 0) {
-	    // Write purge.sh and meshinfo.list
-	    write_info(&info);
-	    // Print config to stdout
+        // Write purge.sh and meshinfo.list
+        write_info(&info);
+        // Print config to stdout
         acPrintMeshInfo(info);
     }
     ERRCHK_ALWAYS(info.real_params[AC_dsx] == DSX);
@@ -918,9 +933,9 @@ main(int argc, char** argv)
     // I've commented out the first call to srand, since it would be overridden by the second value
     // TODO: figure out if this is here for a reason, and why was it different?
     // and should this be moved lower
-    
+
     // Set random seed for reproducibility
-    //srand(321654987);
+    // srand(321654987);
     srand(312256655);
     // END SMELL
 
@@ -934,7 +949,7 @@ main(int argc, char** argv)
     // Test kernels: scale, solve, reset, randomize. //
     // then reset                                    //
     ///////////////////////////////////////////////////
-    
+
     dryrun();
 
     // Load input data
@@ -942,81 +957,76 @@ main(int argc, char** argv)
     /////////////////////////////////////////////
     // Mesh initialization from file or kernel //
     /////////////////////////////////////////////
-    
-    log_from_root_proc(pid, "Initializing mesh\n");
-    switch (initial_mesh_procedure){
-	    case InitialMeshProcedure::Kernel:
-	    {
-		// Randomize
-		log_from_root_proc(pid, "Scrambling mesh with some (low-quality) pseudo-random data\n");
-		AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-		acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
-		acGridSwapBuffers();
-		log_from_root_proc(pid, "Communicating halos\n");
-		acGridPeriodicBoundconds(STREAM_DEFAULT);
 
-	        {
-		    // Should some labels be printed here?
-		    AcReal max, min, sum;
-		    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-		        acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)i, &max);
-		        acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)i, &min);
-		        acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)i, &sum);
-		        if (pid == 0) {
-			    printf("max %g, min %g, sum %g\n", (double)max, (double)min, (double)sum);
-			}
-		    }
-	        }
-		break;
-	    }
-	    case InitialMeshProcedure::LoadPC_Varfile:
-	    {
-		log_from_root_proc(pid, "Reading mesh state from Pencil Code var file %s\n", initial_mesh_procedure_param);
-		if (initial_mesh_procedure_param == nullptr){
-		    log_from_root_proc(pid, "Error: no file path given");
-		    return EXIT_FAILURE;
-		}
-    		read_varfile_to_mesh_and_setup(info, initial_mesh_procedure_param);
-		log_from_root_proc(pid, "Done reading Pencil Code var file\n");
-		break;
-	    }
-	    case InitialMeshProcedure::LoadDistributedSnapshot:
-	    {
-		log_from_root_proc(pid, "Reading mesh state from distributed snapshot\n");
-                read_distributed_to_mesh_and_setup();
-		log_from_root_proc(pid, "Done reading distributed snapshot\n");
-		break;
+    log_from_root_proc(pid, "Initializing mesh\n");
+    switch (initial_mesh_procedure) {
+    case InitialMeshProcedure::Kernel: {
+        // Randomize
+        log_from_root_proc(pid, "Scrambling mesh with some (low-quality) pseudo-random data\n");
+        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+        acGridSwapBuffers();
+        log_from_root_proc(pid, "Communicating halos\n");
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+
+        {
+            // Should some labels be printed here?
+            AcReal max, min, sum;
+            for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+                acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)i, &max);
+                acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)i, &min);
+                acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)i, &sum);
+                if (pid == 0) {
+                    printf("max %g, min %g, sum %g\n", (double)max, (double)min, (double)sum);
+                }
             }
-	    case InitialMeshProcedure::LoadMonolithicSnapshot:
-	    {
-		log_from_root_proc(pid, "Reading mesh state monolithic snapshot\n");
-    		read_collective_to_mesh_and_setup();
-		log_from_root_proc(pid, "Done reading monolithic snapshot\n");
-		break;
-	    }
-	    /*case LoadMeshFile:
-	    {
-		log_from_root_proc(pid, "Reading mesh file\n");
-    		read_file_to_mesh_and_setup();
-		log_from_root_proc(pid, "Done reading mesh file\n");
-		break;
-            }
-	    */
+        }
+        break;
+    }
+    case InitialMeshProcedure::LoadPC_Varfile: {
+        log_from_root_proc(pid, "Reading mesh state from Pencil Code var file %s\n",
+                           initial_mesh_procedure_param);
+        if (initial_mesh_procedure_param == nullptr) {
+            log_from_root_proc(pid, "Error: no file path given");
+            return EXIT_FAILURE;
+        }
+        read_varfile_to_mesh_and_setup(info, initial_mesh_procedure_param);
+        log_from_root_proc(pid, "Done reading Pencil Code var file\n");
+        break;
+    }
+    case InitialMeshProcedure::LoadDistributedSnapshot: {
+        log_from_root_proc(pid, "Reading mesh state from distributed snapshot\n");
+        read_distributed_to_mesh_and_setup();
+        log_from_root_proc(pid, "Done reading distributed snapshot\n");
+        break;
+    }
+    case InitialMeshProcedure::LoadMonolithicSnapshot: {
+        log_from_root_proc(pid, "Reading mesh state monolithic snapshot\n");
+        read_collective_to_mesh_and_setup();
+        log_from_root_proc(pid, "Done reading monolithic snapshot\n");
+        break;
+    }
+        /*case LoadMeshFile:
+        {
+            log_from_root_proc(pid, "Reading mesh file\n");
+            read_file_to_mesh_and_setup();
+            log_from_root_proc(pid, "Done reading mesh file\n");
+            break;
+        }
+        */
     }
 
     log_from_root_proc(pid, "Initial mesh setup is done\n");
 
-
-
     ////////////////////////////////////////////////////
     // Building the task graph (or using the default) //
     ////////////////////////////////////////////////////
-    
+
     log_from_root_proc(pid, "Defining simulation\n");
 
-    //default simulation is the AcGridIntegrate task graph (MHD)
-    AcTaskGraph *simulation_graph = acGridGetDefaultTaskGraph();
-    AcTaskGraph *custom_simulation_graph = nullptr;
+    // default simulation is the AcGridIntegrate task graph (MHD)
+    AcTaskGraph* simulation_graph        = acGridGetDefaultTaskGraph();
+    AcTaskGraph* custom_simulation_graph = nullptr;
 
 #if LSHOCK
 
@@ -1044,10 +1054,10 @@ main(int argc, char** argv)
          acCompute(KERNEL_singlepass_solve, all_fields)};
 
     custom_simulation_graph = acGridBuildTaskGraph(shock_ops);
-    simulation_graph = custom_simulation_graph;
+    simulation_graph        = custom_simulation_graph;
 
-    //TODO: Why is this here?
-    //acGridSynchronizeStream(STREAM_ALL);
+    // TODO: Why is this here?
+    // acGridSynchronizeStream(STREAM_ALL);
 #endif
 
     ///////////////////////////////////////////////
@@ -1059,10 +1069,10 @@ main(int argc, char** argv)
     int found_nan  = 0; // Nan or inf finder to give an error signal
     int found_stop = 0;
 
-    const int start_step    = info.int_params[AC_start_step];
-    const int max_steps     = info.int_params[AC_max_steps];
-    const int save_steps    = info.int_params[AC_save_steps];
-    const int bin_steps     = info.int_params[AC_bin_steps];
+    const int start_step = info.int_params[AC_start_step];
+    const int max_steps  = info.int_params[AC_max_steps];
+    const int save_steps = info.int_params[AC_save_steps];
+    const int bin_steps  = info.int_params[AC_bin_steps];
 
     const AcReal max_time   = info.real_params[AC_max_time];
     const AcReal bin_save_t = info.real_params[AC_bin_save_t];
@@ -1074,12 +1084,13 @@ main(int argc, char** argv)
     AcReal sink_mass     = -1.0;
     AcReal accreted_mass = -1.0;
     // TODO: hide these in some structure
-    
+
 #if LSINK
     sink_mass     = info.real_params[AC_M_sink_init];
     accreted_mass = 0.0;
-    //TODO: I think this is supposed to set device vertex buffer VTXBUF_ACCRETION to 0 before the simulation starts
-    //TODO: figure out how to do that in_device_memory
+    // TODO: I think this is supposed to set device vertex buffer VTXBUF_ACCRETION to 0 before the
+    // simulation starts
+    // TODO: figure out how to do that in_device_memory
     if (pid == 0) {
         acVertexBufferSet(VTXBUF_ACCRETION, 0.0, &mesh);
     }
@@ -1088,15 +1099,15 @@ main(int argc, char** argv)
     ////////////////////////////////////////////////////////////////////////////
     // Initialize mesh again ? Old initialization code, probably incompatible //
     ////////////////////////////////////////////////////////////////////////////
-    
+
     /*
     if (start_step > 0) {
-	//TODO: this part is untested, and may clash with the new initial_mesh_procedure
-	//Maybe it can be moved to one of the options
+        //TODO: this part is untested, and may clash with the new initial_mesh_procedure
+        //Maybe it can be moved to one of the options
         log_from_root_proc(pid, "Calling read_mesh_mpi\n");
         read_mesh_mpi(pid, start_step, &t_step);
         log_from_root_proc(pid, "Returned from read_mesh_mpi\n");
-        bin_crit_t = bin_crit_t + t_step; 
+        bin_crit_t = bin_crit_t + t_step;
     }
     */
 
@@ -1104,54 +1115,54 @@ main(int argc, char** argv)
     // Open output files and write the initial state to them //
     ///////////////////////////////////////////////////////////
 
-    FILE* diag_file         = fopen("timeseries.ts", "a");
+    FILE* diag_file = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
 
     if (start_step == 0) {
-            //TODO: calculate time step before entering loop, recalculate at end
+        // TODO: calculate time step before entering loop, recalculate at end
         if (pid == 0) {
             log_from_root_proc(pid, "Writing out initial state to timeseries.ts\n");
-	    print_diagnostics_header(diag_file);
-	}
+            print_diagnostics_header(diag_file);
+        }
 
-	//TODO: put this and the slice writing thing into a function, to make them the same
-	
+        // TODO: put this and the slice writing thing into a function, to make them the same
+
         print_diagnostics(start_step, 0, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
-
 
         char label[4096];
         sprintf(label, "step_%012d", 0);
         log_from_root_proc(pid, "Syncing slice disk access\n");
-	acGridDiskAccessSync();
-	log_from_root_proc(pid, "Writing slices to %s, timestep = %d\n", slice_dir, start_step);
-	//TODO: create new slice_dir for this frame and write to it
-    //acGridWriteSlicesToDiskCollectiveSynchronous(slice_dir, label);
-	acGridWriteSlicesToDiskLaunch(slice_dir, label);
-	log_from_root_proc(pid, "Done writing slices\n");
-    } else {
-	// add newline to old diag_file from previous run
+        acGridDiskAccessSync();
+        log_from_root_proc(pid, "Writing slices to %s, timestep = %d\n", slice_dir, start_step);
+        // TODO: create new slice_dir for this frame and write to it
+        // acGridWriteSlicesToDiskCollectiveSynchronous(slice_dir, label);
+        acGridWriteSlicesToDiskLaunch(slice_dir, label);
+        log_from_root_proc(pid, "Done writing slices\n");
+    }
+    else {
+        // add newline to old diag_file from previous run
         if (pid == 0) {
-	    fprintf(diag_file, "\n");
+            fprintf(diag_file, "\n");
         }
     }
 
-    // Save zero state 
+    // Save zero state
     if (start_step <= 0) {
         log_from_root_proc(pid, "Writing out initial state to a mesh file\n");
         log_from_root_proc(pid, "Calling save_mesh_mpi_sync\n");
-	save_mesh_mpi_sync(info, pid, 0, 0.0); // // %JP: mesh not available, changed the first param from AcMesh to AcMeshInfo
+        save_mesh_mpi_sync(info, pid, 0, 0.0); // // %JP: mesh not available, changed the first
+                                               // param from AcMesh to AcMeshInfo
         log_from_root_proc(pid, "Returned from save_mesh_mpi_sync\n");
     }
-
 
     //////////////////////////
     // Main simulation loop //
     //////////////////////////
-    
+
     log_from_root_proc(pid, "Starting simulation\n");
 
-    //This loop has a legacy off-by-one error, if max_steps = 1, we will run 0 steps
-    //if max_steps is 100, we will run 99 steps
+    // This loop has a legacy off-by-one error, if max_steps = 1, we will run 0 steps
+    // if max_steps is 100, we will run 99 steps
     for (int i = start_step + 1; i < max_steps; ++i) {
 
         debug_from_root_proc(pid, "Calculating time step (i=%d)\n", i);
@@ -1169,9 +1180,9 @@ main(int argc, char** argv)
 
         // JP: !!! WARNING !!! acVertexBufferSet operates in host memory. The mesh is
         // never loaded to device memory. Is this intended?
-	//TODO: figure out what this is supposed to do
-	//TODO: make this work correctly with device buffers
-        if (pid == 0){
+        // TODO: figure out what this is supposed to do
+        // TODO: make this work correctly with device buffers
+        if (pid == 0) {
             acVertexBufferSet(VTXBUF_ACCRETION, 0.0, mesh);
         }
 
@@ -1185,7 +1196,7 @@ main(int argc, char** argv)
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_switch_accretion, on_off_switch);
 #else
         accreted_mass = -1.0;
-        sink_mass = -1.0;
+        sink_mass     = -1.0;
 #endif
 
 #if LFORCING
@@ -1200,24 +1211,29 @@ main(int argc, char** argv)
         acGridSynchronizeStream(STREAM_DEFAULT);
 
         // Execute the active task graph for 3 iterations
-	// in the case that simulation_graph = acGridGetDefaultTaskGraph(), then this is equivalent to acGridIntegrate(STREAM_DEFAULT, dt)
+        // in the case that simulation_graph = acGridGetDefaultTaskGraph(), then this is equivalent
+        // to acGridIntegrate(STREAM_DEFAULT, dt)
         acGridExecuteTaskGraph(simulation_graph, 3);
         bool log_every_simulation_step = false;
 #if AC_VERBOSE
-	log_every_simulation_step = true;
+        log_every_simulation_step = true;
 #endif
-	if ( i < save_steps || log_every_simulation_step ) {
+        if (i < save_steps || log_every_simulation_step) {
             log_from_root_proc(pid, "acGridExecuteTaskGraph step %d complete\n", i);
-	} else if (i == save_steps && !log_every_simulation_step) {
+        }
+        else if (i == save_steps && !log_every_simulation_step) {
             log_from_root_proc(pid, "acGridExecuteTaskGraph step %d complete\n", i);
-            log_from_root_proc(pid, "VERBOSE is off, not logging acGridExecuteTaskGraph completion for step > %d\n", save_steps);
-	}
-        
+            log_from_root_proc(pid,
+                               "VERBOSE is off, not logging acGridExecuteTaskGraph completion for "
+                               "step > %d\n",
+                               save_steps);
+        }
+
         t_step += dt;
 
-	//TODO: debug everything in the if below and the exits at the end
-	//some process will exit after writing slices with USE_DISTRIBUTED_IO=ON
-	
+        // TODO: debug everything in the if below and the exits at the end
+        // some process will exit after writing slices with USE_DISTRIBUTED_IO=ON
+
         /* Save the simulation state and print diagnostics */
         if ((i % save_steps) == 0) {
 
@@ -1227,20 +1243,19 @@ main(int argc, char** argv)
                 timeseries.ts.
             */
 
-	    
             print_diagnostics(i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
             /*
                 We would also might want an XY-average calculating funtion,
                 which can be very useful when observing behaviour of turbulent
                 simulations. (TODO)
             */
-                        
+
             acGridPeriodicBoundconds(STREAM_DEFAULT);
 
             //////////////////
-	    // Write slices //
+            // Write slices //
             //////////////////
-	    
+
             char label[4096];
 
             sprintf(label, "step_%012d", i);
@@ -1248,25 +1263,23 @@ main(int argc, char** argv)
             log_from_root_proc(pid, "Syncing slice disk access\n");
             acGridDiskAccessSync();
             log_from_root_proc(pid, "Slice disk access synced\n");
-	    //TODO: create new slice_dir for this frame and write to it
+            // TODO: create new slice_dir for this frame and write to it
             log_from_root_proc(pid, "Writing slices to %s, timestep = %d\n", slice_dir, i);
             /*
             Timer t;
             timer_reset(&t);
             acGridWriteSlicesToDiskCollectiveSynchronous(slice_dir, label);
-            log_from_root_proc(pid, "Collective sync slices elapsed %g ms\n", timer_diff_nsec(t)/1e6);
+            log_from_root_proc(pid, "Collective sync slices elapsed %g ms\n",
+            timer_diff_nsec(t)/1e6);
             */
             acGridWriteSlicesToDiskLaunch(slice_dir, label);
-	    log_from_root_proc(pid, "Done writing slices\n");
+            log_from_root_proc(pid, "Done writing slices\n");
 
-	    //This was here to debug an issue that somehow resolved itself... can't recall what the issue was anymore
-	    //Anyway, in some cases
-	    //debug_from_root_proc(pid, "Calling post-slice barrier\n");
-	    //MPI_Barrier(MPI_COMM_WORLD);
-	    //debug_from_root_proc(pid, "Passed post-slice barrier\n");
+            // This was here to debug an issue that somehow resolved itself... can't recall what the
+            // issue was anymore Anyway, in some cases debug_from_root_proc(pid, "Calling post-slice
+            // barrier\n"); MPI_Barrier(MPI_COMM_WORLD); debug_from_root_proc(pid, "Passed
+            // post-slice barrier\n");
         }
-
-
 
         /* Save the simulation state and print diagnostics */
         if ((i % bin_steps) == 0 || t_step >= bin_crit_t) {
@@ -1284,15 +1297,14 @@ main(int argc, char** argv)
             */
 
             // Write snapshots
-	    log_from_root_proc(pid, "Writing snapshots to %s, timestep = %d\n", snapshot_dir, i);
+            log_from_root_proc(pid, "Writing snapshots to %s, timestep = %d\n", snapshot_dir, i);
             acGridDiskAccessSync();
             save_mesh_mpi_async(info, snapshot_dir, pid, i, t_step);
-	    log_from_root_proc(pid, "Done writing snapshots\n");
+            log_from_root_proc(pid, "Done writing snapshots\n");
 
             bin_crit_t += bin_save_t;
         }
 
-    
         if (access("STOP", F_OK) != -1) {
             found_stop = 1;
         }
@@ -1301,62 +1313,67 @@ main(int argc, char** argv)
         }
 
         // End loop if max time reached.
-	int max_time_reached = 0;
+        int max_time_reached = 0;
         if (max_time > AcReal(0.0)) {
             if (t_step >= max_time) {
                 max_time_reached = 1;
             }
         }
 
-	/////////////////////////////////////////////////
-	//                                             //
-	// Check all end conditions and broadcast them //
-	//                                             //
-	/////////////////////////////////////////////////
-	int end_conditions_encoded = (found_nan << 2) + (max_time_reached << 1) + found_stop;
-	int max_end_conditions_encoded = 0;
+        /////////////////////////////////////////////////
+        //                                             //
+        // Check all end conditions and broadcast them //
+        //                                             //
+        /////////////////////////////////////////////////
+        int end_conditions_encoded     = (found_nan << 2) + (max_time_reached << 1) + found_stop;
+        int max_end_conditions_encoded = 0;
 
-	// Only one collective needed, add conditions to end_conditions_encoded if more signals need to be communicated
-	MPI_Allreduce(&end_conditions_encoded, &max_end_conditions_encoded, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+        // Only one collective needed, add conditions to end_conditions_encoded if more signals need
+        // to be communicated
+        MPI_Allreduce(&end_conditions_encoded, &max_end_conditions_encoded, 1, MPI_INT, MPI_MAX,
+                      MPI_COMM_WORLD);
 
-	found_nan        = max_end_conditions_encoded >> 2 & 1;
-	max_time_reached = max_end_conditions_encoded >> 1 & 1;
-	found_stop       = max_end_conditions_encoded & 1;
+        found_nan        = max_end_conditions_encoded >> 2 & 1;
+        max_time_reached = max_end_conditions_encoded >> 1 & 1;
+        found_stop       = max_end_conditions_encoded & 1;
 
-        if (max_end_conditions_encoded != 0 || i == max_steps - 1){
+        if (max_end_conditions_encoded != 0 || i == max_steps - 1) {
             log_from_root_proc(pid, "Simulation end condition encountered\n");
-	    if (found_nan == 1) {
+            if (found_nan == 1) {
                 log_from_root_proc(pid, "Found nan at i = %d, t = %e \n", i, double(t_step));
             }
             if (max_time_reached == 1) {
-                log_from_root_proc(pid, "Time limit reached at i = %d, t = %e \n", i, double(t_step));
+                log_from_root_proc(pid, "Time limit reached at i = %d, t = %e \n", i,
+                                   double(t_step));
             }
             if (found_stop == 1) {
                 log_from_root_proc(pid, "Found STOP file at i = %d, t = %e \n", i, double(t_step));
             }
-	    if (i == max_steps - 1){
+            if (i == max_steps - 1) {
                 log_from_root_proc(pid, "Max steps reached, i = %d, t= %e \n", i, double(t_step));
-	    }
+            }
 
-	    //TODO: don't save data if save_steps has already done it
-            // Save data after the loop ends
-	    if (i % bin_steps != 0) {
+            // TODO: don't save data if save_steps has already done it
+            //  Save data after the loop ends
+            if (i % bin_steps != 0) {
                 acGridPeriodicBoundconds(STREAM_DEFAULT);
-                log_from_root_proc(pid, "Writing final snapshots to %s, timestep = %d\n", snapshot_dir, i);
+                log_from_root_proc(pid, "Writing final snapshots to %s, timestep = %d\n",
+                                   snapshot_dir, i);
                 save_mesh_mpi_sync(info, pid, i, t_step);
                 log_from_root_proc(pid, "Done writing snapshots\n");
-	    } else {
+            }
+            else {
                 log_from_root_proc(pid, "Snapshots for timestep %d have already been written\n");
-	    }
- 	    break;          
-	}
+            }
+            break;
+        }
     }
 
     //////////////////////////////////
     // Simulation over, exit cleanly//
     // Deallocate resources and log //
     //////////////////////////////////
-    if (custom_simulation_graph != nullptr){
+    if (custom_simulation_graph != nullptr) {
         log_from_root_proc(pid, "Destroying custom task graph\n");
         acGridDestroyTaskGraph(custom_simulation_graph);
     }
@@ -1366,10 +1383,10 @@ main(int argc, char** argv)
     log_from_root_proc(pid, "Simulation complete\n");
     log_from_root_proc(pid, "Calling MPI_Finalize\n");
     MPI_Finalize();
-    //Won't work because printf define uses MPI...
-    //log_from_root_proc(pid, "Simulation complete\n");
+    // Won't work because printf define uses MPI...
+    // log_from_root_proc(pid, "Simulation complete\n");
 
-    //TODO: might want to change this to EXIT_FAILURE if found_nan
+    // TODO: might want to change this to EXIT_FAILURE if found_nan
     return EXIT_SUCCESS;
 }
 
