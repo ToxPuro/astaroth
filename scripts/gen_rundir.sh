@@ -1,11 +1,45 @@
 #!/bin/bash
 
 print_usage(){
-    echo "$0  --output <output_dir>"
-    echo "    --dims <x,y,z>"
-    echo "    --config <reference conf file> --ac_run_mpi <path to ac_run_mpi binary> --varfile <PC var file path>"
-    echo "    --render=<off | deferred >"
-    echo "    --timelimit <SLURM time limit> --num-procs <num procs>"
+    echo "$0 [OPTIONS] [AC_config_param=foo ...]"
+    echo ""
+    echo "Options"
+    echo "======="
+    echo "    --output <name of produced rundir>"
+    echo ""
+    echo "Astaroth configuration"
+    echo "----------------------"
+    echo " --ac_run_mpi <filepath>"
+    echo "   path to ac_run_mpi binary that will be called in the SLURM batch script"
+    echo ""
+    echo " --config <filepath>"
+    echo "   path to astartoh conf that will be copied to the rundir"
+    echo ""
+    echo "   Using config overrides, you can change values from the reference astaroth.conf file, e.g.:"
+    echo "     gen_rundir --ac_run_mpi=/path/to/ac_run_mpi --config=/path/to/astaroth.conf AC_eta=5e-3 AC_nu_visc=2.5e-5"
+    echo ""
+    echo " --varfile <filepath>"
+    echo "   path to varfile to use as initial mesh for run"
+    echo ""
+    #echo " --kernel <name>"
+    echo " --dims <x,y,z>"
+    echo "   override dims in configuration file, and calculate dsx, dsy, dsz."
+    echo "   DEACTIVATED BECAUSE DSX, DSY, DSZ must be set in the source code"
+    echo ""
+    echo "Launcher configuration"
+    echo "----------------------"
+    echo " --render [rendering option]"
+    echo ""
+    echo "  Rendering options are:"
+    echo "  --render off"
+    echo "    don't render, just call sbatch"
+    echo "  --render deferred"
+    echo "    render slices once, after simulation has run"
+    echo ""
+    echo "SLURM configuration"
+    echo "----------------------"
+    echo "    --timelimit <SLURM time limit>"
+    echo "    --num-procs <num procs>"
     echo "    --account <SLURM account> --partition <SLURM partition>"
     echo "    [AC_foo=X AC_bar=Y AC_bax=123]"
 }
@@ -35,11 +69,12 @@ if [[ -n "$AC_VARFILE" ]]; then
     varfile="$AC_VARFILE"
 fi
 
-OPTS=`getopt -o c:o:d:a:r:t:n:v:A:p:h -l config:,output:,dims:,ac_run_mpi:,render:,timelimit:,num-procs:,varfile:,account:,partition:,help -n "$0"  -- "$@"`
+OPTS=`getopt -o c:o:d:a:r:t:n:v:A:p:kh -l config:,output:,dims:,ac_run_mpi:,render:,timelimit:,num-procs:,varfile:,account:,partition:,kernel,help -n "$0"  -- "$@"`
 if [ $? != 0 ] ; then echo "Failed to parse args" >&2 ; exit 1 ; fi
 
 eval set -- "$OPTS"
 
+init_mesh=kernel
 while true;do
 case "$1" in
 -h|--help)
@@ -79,7 +114,13 @@ case "$1" in
 	;;
 -v|--varfile)
         shift
+	init_mesh=varfile
 	varfile=$1
+	;;
+-k|--kernel)
+	shift
+	init_mesh=kernel
+	#kernel=$1
 	;;
 -A|--account)
         shift
@@ -173,13 +214,19 @@ esac
 #!/bin/bash
 rundir=\$(dirname "\${BASH_SOURCE[0]}")
 if [[ "\$(realpath \$rundir)" != "\$(realpath \$PWD)" ]]; then
-    echo "Please change dir to the directory first"
+    echo "Error: please call ./submit.sh from the rundir, not from elsewhere"
+    exit 1
 fi
 $launcher simulation.sbatch
+
+echo "to follow the simulation, you can try the following once it has started:"
+echo "  tail -F slurm-*.out"
+echo ""
 EOF
 
     chmod +x $output_dir/submit.sh
 }
+
 
 gen_simulation_sbatch(){
     num_gpus=$num_procs
@@ -190,7 +237,20 @@ gen_simulation_sbatch(){
     #Hardcoded for now, but these could be queried from SLURM
     gpus_per_node=8
     num_nodes=$((x=num_procs+gpus_per_node-1, x/gpus_per_node))
+ 
+
+    ac_run_mpi_args=""
+    case "$init_mesh" in
+    varfile)
+      ac_run_mpi_args="--from-pc-varfile $(realpath $varfile)"
+      ;;
+    kernel)
+      ac_run_mpi_args="--kernel"
+      ;;
+    esac
     
+    ac_run_mpi_realpath=$(realpath $ac_run_mpi_binary)
+
     cat > $output_dir/simulation.sbatch << EOF | grep -v '^[[:blank:]]*$'
 #!/bin/bash
 #SBATCH --account=$account
@@ -209,7 +269,17 @@ module load rocm
 module load buildtools
 module load cray-python
 
-srun $(realpath $ac_run_mpi_binary) --config astaroth.conf --from-pc-varfile $(realpath $varfile)
+if [[ ! -f astaroth.conf ]]; then
+    echo "astaroth.conf does not exist or is not a regular file"
+    exit 1
+fi
+
+if [[ ! -x "$ac_run_mpi_realpath" ]]; then
+    echo "$ac_run_mpi_realpath does not exist or is not executable"
+    exit 1
+fi
+
+srun $ac_run_mpi_realpath --config astaroth.conf $ac_run_mpi_args
 EOF
 }
 
@@ -238,20 +308,54 @@ fi
 
 mkdir -p $output_dir
 
+#Show the user what they are generating
 grid_size=$((AC_nx * AC_ny * AC_nz))
 work_per_proc=$((grid_size / num_procs))
 echo "Generating rundir at $output_dir"
-echo "Generating sbatch script with $num_procs procs and a grid of $AC_nx,$AC_ny,$AC_nz"
-echo "Local grid per GPU has $work_per_proc cells"
+echo ""
+echo "Run dimensions"
+echo "--------------"
+echo "     num procs: $num_procs"
+echo " grid dims are: $AC_nx,$AC_ny,$AC_nz"
+echo "    local grid: $work_per_proc cells"
+echo ""
+echo "Astaroth configuration"
+echo "----------------------"
+echo " ac_run_mpi is:"
+echo "  $(realpath $ac_run_mpi_binary)"
+echo " mesh will be initialized from a $init_mesh: "
+case "$init_mesh" in
+kernel)
+    #TODO: this is hardcoded here and in the source code, change when that changes
+    echo "  randomize"
+    ;;
+varfile)
+    echo "  $(realpath $varfile)"
+    ;;
+esac
+echo " config file will be copied from:"
+echo "  $config"
+echo " config overrides are:"
+for key in "${!params[@]}"; do
+    echo "$key = ${params[$key]}"
+done
+echo ""
+echo "SLURM params"
+echo "------------"
+echo "  partition: $partition"
+echo "    account: $account"
+echo "  num procs: $num_procs"
+echo " time limit: $timelimit"
+echo ""
+echo " slice rendering is $render"
 
+echo ""
+echo ""
 
-echo "Generating submit.sh"
 gen_submit_sh
-echo "Generating simulation.sbatch"
 gen_simulation_sbatch
-echo "Generating astaroth.conf"
 gen_astaroth_conf
 
-echo "Done generation, to run the simulation, do:"
-echo "  cd $output_dir"
-echo "  ./submit.sh"
+echo "Finished generating, to run the simulation, do:"
+echo "  cd $output_dir && ./submit.sh"
+echo ""
