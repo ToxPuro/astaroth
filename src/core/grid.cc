@@ -1464,7 +1464,9 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
             retval = MPI_File_close(&file);
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 #endif
+#undef USE_POSIX_IO
 #else
+            ERROR("Collective mesh writing not working with async IO");
             MPI_Datatype subarray;
             const int3 nn          = info.int3_params[AC_global_grid_n];
             const int3 nn_sub      = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
@@ -1503,8 +1505,8 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 #endif
         };
 
-        write_async(info, host_buffer); // Synchronous, non-threaded
-        // threads.push_back(std::move(std::thread(write_async, info, host_buffer))); // Async, threaded
+        //write_async(info, host_buffer); // Synchronous, non-threaded
+        threads.push_back(std::move(std::thread(write_async, info, host_buffer))); // Async, threaded
     }
 
     return AC_SUCCESS;
@@ -1585,6 +1587,18 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
             // Write to file
 
 #if USE_DISTRIBUTED_IO
+#define USE_POSIX_IO (0)
+#if USE_POSIX_IO
+            if (color != MPI_UNDEFINED) {
+            FILE* fp = fopen(filepath, "w");
+            ERRCHK_ALWAYS(fp);
+
+            const size_t count_written = fwrite(host_buffer, sizeof(AcReal), count, fp);
+            ERRCHK_ALWAYS(count_written == count);
+
+            fclose(fp);
+            }
+#else // Use MPI IO
             if (color != MPI_UNDEFINED) {
             MPI_File file;
             int mode = MPI_MODE_CREATE | MPI_MODE_WRONLY;
@@ -1599,7 +1613,10 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
             retval = MPI_File_close(&file);
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
             }
+#endif
+#undef USE_POSIX_IO
 #else
+            ERROR("Collective slice writing not working with async IO");
             // Possible MPI bug: need to cudaSetDevice or otherwise invalid context
             // But also causes a deadlock for some reason
             MPI_Comm slice_communicator;
@@ -1643,6 +1660,123 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
                 MPI_Comm_free(&slice_communicator);
             }
 #endif
+        };
+
+        //write_async(host_buffer, count, device->id); // Synchronous, non-threaded
+        threads.push_back(std::move(std::thread(write_async, host_buffer, count, device->id))); // Async, threaded
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
+{
+    ERRCHK(grid.initialized);
+    ERRCHK_ALWAYS(!running);
+    running = true;
+
+    const Device device       = grid.device;
+    const AcMeshInfo info     = device->local_config;
+    const int3 local_nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+    const int3 global_nn      = info.int3_params[AC_global_grid_n];
+    const int3 global_offset  = info.int3_params[AC_multigpu_offset];
+    const int3 global_pos_min = global_offset;
+    const int3 global_pos_max = global_pos_min + local_nn;
+
+
+    const int global_z = global_nn.z / 2;
+    const int local_z  = global_z - global_pos_min.z;
+    const int color = local_z >= 0 && local_z < local_nn.z ? 0 : MPI_UNDEFINED;
+
+    for (int field = 0; field < NUM_FIELDS; ++field) {
+
+        acDeviceSynchronizeStream(device, STREAM_ALL);
+
+        const int3 slice_volume = (int3){
+            info.int_params[AC_nx],
+            info.int_params[AC_ny],
+            1,
+        };
+        const int3 slice_offset = (int3){0, 0, local_z};
+
+        const AcReal* in     = device->vba.in[field];
+        const int3 in_offset = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info) +
+                               slice_offset;
+        const int3 in_volume = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+
+        AcReal* out           = device->vba.out[field];
+        const int3 out_offset = (int3){0, 0, 0};
+        const int3 out_volume = slice_volume;
+
+        if (color != MPI_UNDEFINED)
+            acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
+                           out_volume);
+        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+
+        AcReal* host_buffer = grid.submesh.vertex_buffer[field];
+        const size_t count  = slice_volume.x * slice_volume.y * slice_volume.z;
+        const size_t bytes  = sizeof(host_buffer[0]) * count;
+        if (color != MPI_UNDEFINED)
+            cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
+
+        char filepath[4096];
+        sprintf(filepath, "%s/%s-dims_%d_%d-%s.slice", dir, vtxbuf_names[field],
+                        global_nn.x, global_nn.y,
+			label);
+
+        int pid;
+        MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+        //if (color != MPI_UNDEFINED)
+        //    fprintf(stderr, "Writing field %d, proc %d, to %s\n", field, pid, filepath);
+        
+        acGridSynchronizeStream(STREAM_ALL);
+        const auto write_async = [filepath, global_nn, global_pos_min, slice_volume, color](const AcReal* host_buffer, const size_t count, const int device_id) {
+
+            cudaSetDevice(device_id);
+            // Write to file
+
+            // Possible MPI bug: need to cudaSetDevice or otherwise invalid context
+            // But also causes a deadlock for some reason
+            MPI_Comm slice_communicator;
+            MPI_Comm_split(MPI_COMM_WORLD, color, 0, &slice_communicator);
+            if (color != MPI_UNDEFINED) {
+                const int3 nn     = (int3){global_nn.x, global_nn.y, 1};
+                const int3 nn_sub = slice_volume;
+
+                const int nn_[]     = {nn.z, nn.y, nn.x};
+                const int nn_sub_[] = {nn_sub.z, nn_sub.y, nn_sub.x};
+                const int offset_[] = {
+                    0,
+                    global_pos_min.y,
+                    global_pos_min.x,
+                };
+                MPI_Datatype subdomain;
+                MPI_Type_create_subarray(3, nn_, nn_sub_, offset_, MPI_ORDER_C, AC_REAL_MPI_TYPE,
+                                        &subdomain);
+                MPI_Type_commit(&subdomain);
+
+                //printf("Writing %s\n", filepath);
+
+                MPI_File fp;
+                int retval = MPI_File_open(slice_communicator, filepath, MPI_MODE_CREATE | MPI_MODE_WRONLY,
+                                        MPI_INFO_NULL, &fp);
+                ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+                retval = MPI_File_set_view(fp, 0, AC_REAL_MPI_TYPE, subdomain, "native", MPI_INFO_NULL);
+                ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+                MPI_Status status;
+                retval = MPI_File_write_all(fp, host_buffer, count, AC_REAL_MPI_TYPE, &status);
+                ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+                retval = MPI_File_close(&fp);
+                ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+
+                MPI_Type_free(&subdomain);
+
+
+                MPI_Comm_free(&slice_communicator);
+            }
         };
 
         write_async(host_buffer, count, device->id); // Synchronous, non-threaded
