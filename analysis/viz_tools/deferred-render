@@ -53,7 +53,7 @@ done
 
 sbatch_file=$1
 
-if [[ ${#dims[@]} -ne 2 ]]; then
+if [[ -n "$dims" ]] && [[ ${#dims[@]} -ne 2 ]]; then
     printf "Error: please give dims as two values separated by a comma, e.g. --dims=128,256\n"
     print_usage
     exit 1
@@ -71,9 +71,19 @@ if [[ -z "$output_dir" ]] ;then
     exit 1
 fi
 
-sim_job_id=$(sbatch --parsable $sbatch_file)
-printf "Submitted batch job $sim_job_id\n"
+#TODO: LUMI-specific, please remove and make more resilient
+module load cray-python
 
-printf "Submitting secondary recurring batch job to do on-the-fly rendering\n"
+sim_job_id=$(sbatch --parsable $sbatch_file)
+printf "Submitted simulation batch job $sim_job_id\n"
+
 script_dir=$(realpath $(dirname "${BASH_SOURCE[0]}"))
-sbatch --begin=now+$delay ${script_dir}/render_frames_on_the_fly.batch --input $input_dir --output $output_dir --dims ${dims[0]},${dims[1]} --sim-job $sim_job_id --dims ${dims[0]},${dims[1]} --delay $delay
+if [[ -z "$dims" ]]; then
+    echo "Rendering script will decode slice dimensions from filenames"
+    dims_arg=""
+else
+    dims_arg="--dims ${dims[0]},${dims[1]}"
+    echo "Rendering script will use dimensions ${dims[0]} ${dims[1]} as backup if it can't decode slice dims from filename."
+fi
+render_job_id=$(sbatch --parsable --begin=now+$delay ${script_dir}/render_frames_deferred.batch --input $input_dir --output $output_dir $dims_arg --sim-job $sim_job_id --delay $delay )
+printf "Submitted secondary recurring batch job to do deferred rendering $render_job_id\n"

@@ -145,5 +145,5 @@ fi
 #Resubmit if simulation is still running or if the resubmit arg was given
 if [[ $simulation_running -eq 1 ]] || [[ $resubmit -eq 1 ]];then
     printf "$SLURM_JOBID $(date) : submitting next render job after a delay of $delay seconds\n" >> render.log
-    sbatch --begin=now+$delay render_frames.batch --input $input_dir --output $output_dir --sim-job $sim_job_id --dims ${dims[0]},${dims[1]} --delay $delay $resubmit_arg
+    sbatch --begin=now+$delay $batchfile_dir/render_frames_on_the_fly.batch --input $input_dir --output $output_dir --sim-job $sim_job_id --dims ${dims[0]},${dims[1]} --delay $delay $resubmit_arg
 i
