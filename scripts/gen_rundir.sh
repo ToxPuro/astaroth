@@ -5,7 +5,10 @@ print_usage(){
     echo ""
     echo "Options"
     echo "======="
-    echo "    --output <name of produced rundir>"
+    echo " --output <name of produced rundir>"
+    echo ""
+    echo " --stripe <num_stripes>"
+    echo "   stripe the rundir with num_stripes stripes"
     echo ""
     echo "Astaroth configuration"
     echo "----------------------"
@@ -69,7 +72,7 @@ if [[ -n "$AC_VARFILE" ]]; then
     varfile="$AC_VARFILE"
 fi
 
-OPTS=`getopt -o c:o:d:a:r:t:n:v:A:p:kh -l config:,output:,dims:,ac_run_mpi:,render:,timelimit:,num-procs:,varfile:,account:,partition:,kernel,help -n "$0"  -- "$@"`
+OPTS=`getopt -o c:o:d:a:r:t:n:v:A:p:s:kh -l config:,output:,dims:,ac_run_mpi:,render:,timelimit:,num-procs:,varfile:,account:,partition:,stripe:,kernel,help -n "$0"  -- "$@"`
 if [ $? != 0 ] ; then echo "Failed to parse args" >&2 ; exit 1 ; fi
 
 eval set -- "$OPTS"
@@ -83,12 +86,16 @@ case "$1" in
         ;;
 -c|--config)
 	shift
-	config=$1
+	config="$1"
 	;;
 -o|--output)
         shift
-        output_dir=$1
+        output_dir="$1"
         ;;
+-s|--stripe)
+	shift
+	stripes="$1"
+	;;
 -d|--dims)
         shift
 	OLDIFS=$IFS
@@ -98,15 +105,15 @@ case "$1" in
         ;;
 -a|--ac_run_mpi)
 	shift
-	ac_run_mpi_binary=$1
+	ac_run_mpi_binary="$1"
 	;;
 -r|--render)
 	shift
-	render=$1
+	render="$1"
 	;;
 -t|--timelimit)
         shift
-	timelimit=$1
+	timelimit="$1"
 	;;
 -n|--num-procs)
 	shift
@@ -115,7 +122,7 @@ case "$1" in
 -v|--varfile)
         shift
 	init_mesh=varfile
-	varfile=$1
+	varfile="$1"
 	;;
 -k|--kernel)
 	shift
@@ -124,11 +131,11 @@ case "$1" in
 	;;
 -A|--account)
         shift
-	account=$1
+	account="$1"
 	;;
 -p|--partition)
 	shift
-	partition=$1
+	partition="$1"
 	;;
 --)
         shift
@@ -210,7 +217,7 @@ off)
     exit 1
     ;;
 esac
-    cat > $output_dir/submit.sh << EOF | grep -v '^[[:blank:]]*$'
+    cat > "$output_dir/submit.sh" << EOF | grep -v '^[[:blank:]]*$'
 #!/bin/bash
 rundir=\$(dirname "\${BASH_SOURCE[0]}")
 if [[ "\$(realpath \$rundir)" != "\$(realpath \$PWD)" ]]; then
@@ -226,7 +233,7 @@ echo "to follow all your current SLURM jobs:"
 echo "  watch \"squeue --me\""
 EOF
 
-    chmod +x $output_dir/submit.sh
+    chmod +x "$output_dir/submit.sh"
 }
 
 
@@ -240,8 +247,8 @@ gen_simulation_sbatch(){
     gpus_per_node=8
     num_nodes=$((x=num_procs+gpus_per_node-1, x/gpus_per_node))
  
-
     ac_run_mpi_args=""
+
     case "$init_mesh" in
     varfile)
       ac_run_mpi_args="--from-pc-varfile $(realpath $varfile)"
@@ -294,22 +301,22 @@ cat << EOF
         done )
     {print}
 EOF
-    )" $config > $output_dir/astaroth.conf
+    )" $config > "$output_dir/astaroth.conf"
 }
 
-if [[ -e $output_dir ]]; then
+if [[ -e "$output_dir" ]]; then
     suffix=1
-    stem=$output_dir
+    stem="$output_dir"
     while true; do
-        output_dir=$stem.$suffix
-        if [ ! -e $output_dir ]; then
+        output_dir="$stem.$suffix"
+        if [ ! -e "$output_dir" ]; then
 	    break
 	fi
 	suffix=$((suffix+1))
     done
 fi
 
-mkdir -p $output_dir
+mkdir -p "$output_dir"
 
 #Show the user what they are generating
 grid_size=$((AC_nx * AC_ny * AC_nz))
@@ -353,12 +360,23 @@ echo ""
 echo " slice rendering is $render"
 
 echo ""
-echo ""
 
 gen_submit_sh
 gen_simulation_sbatch
 gen_astaroth_conf
 
+if [[ -n "$stripes" ]]; then
+    if type lfs; then 
+        echo "Striping rundir into $stripes stripes"
+        lfs setstripe --stripe-count $stripes "$output_dir"
+    else
+	echo "Can't find lfs, not striping"
+    fi
+else
+    echo "Not striping rundir"
+fi
+
+echo ""
 echo "Finished generating, to run the simulation, do:"
 echo "  cd $output_dir && ./submit.sh"
 echo ""
