@@ -558,6 +558,10 @@ AcResult acGridDiskAccessLaunch(const AccessType type);
 /* Asynchronous. Need to call acGridDiskAccessSync afterwards */
 AcResult acGridWriteSlicesToDiskLaunch(const char* dir, const char* label);
 
+/* Synchronous */
+AcResult
+acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label);
+
 /* Asynchronous. Need to call acGridDiskAccessSync afterwards */
 AcResult acGridWriteMeshToDiskLaunch(const char* dir, const char* label);
 
