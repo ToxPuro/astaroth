@@ -287,11 +287,16 @@ static inline void
 save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, const int step,
                     const AcReal t_step)
 {
+    log_from_root_proc(pid, "Sync mesh disk access\n");
     acGridDiskAccessSync(); // NOTE: important sync
+    acGridPeriodicBoundconds(STREAM_DEFAULT); // Debug, may be unneeded
+    acGridSynchronizeStream(STREAM_DEFAULT); // Debug, may be unneeded
+    MPI_Barrier(MPI_COMM_WORLD); // Debug may be unneeded
+    log_from_root_proc(pid, "Mesh disk access synced\n");
     
     const int num_snapshots = 2;
     const int modstep       = (step / info.int_params[AC_bin_steps]) % num_snapshots;
-    printf("Saving snapshot at step %i (%d of %d)\n", step, modstep, num_snapshots);
+    log_from_root_proc(pid, "Saving snapshot at step %i (%d of %d)\n", step, modstep, num_snapshots);
 
     // Saves a csv file which contains relevant information about the binary
     // snapshot files at the timestep.
@@ -313,11 +318,14 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
 
         fclose(header_file);
     }
+    MPI_Barrier(MPI_COMM_WORLD); // Ensure header closes before initializing the next write
 
     char cstep[1024];
     sprintf(cstep, "%d", modstep);
     acGridWriteMeshToDiskLaunch(job_dir, cstep);
-    printf("Write mesh to disk launch %s, %s \n", job_dir, cstep);
+    
+    
+    //printf("Write mesh to disk launch %s, %s \n", job_dir, cstep);
     /*
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         const char* buffername = vtxbuf_names[w];
@@ -741,7 +749,9 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
     const int3 nn = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const int3 rr = (int3){3, 3, 3};
 
-    log_from_root_proc(0, "nn = (%d, %d, %d)\n", nn.x, nn.y, nn.z);
+    int pid;
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    log_from_root_proc(pid, "Reading varfile nn = (%d, %d, %d)\n", nn.x, nn.y, nn.z);
 
     acGridReadVarfileToMesh(file_path, io_fields, num_io_fields, nn, rr);
 
@@ -771,6 +781,13 @@ read_file_to_mesh_and_setup(int* step, AcReal* t_step)
     if (*step < 0) {
         FILE* fp = fopen("latest_snapshot.info", "r");
         if (fp) {
+            fseek(fp, 0L, SEEK_END);
+            const size_t bytes = ftell(fp);
+            if (bytes == 0) {
+                ERROR("latest_snapshot.info was empty or invalid. Must have at least one valid snapshot available, start from step 0 to generate");
+            }
+            rewind(fp);
+
             // Note: quick hack, hardcoded + bad practice
             int use_double, mx, my, mz;
             fscanf(fp, "%d, %d, %d, %d, %d, %d, %lg", &use_double, &mx, &my, &mz, step, &modstep, t_step);
@@ -787,14 +804,16 @@ read_file_to_mesh_and_setup(int* step, AcReal* t_step)
     char modstep_str[buflen];
     sprintf(modstep_str, "%d", modstep);
 
-    //for (size_t i = 0; i < num_io_fields; ++i) 
-    //    acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
-    for (size_t i = 0; i < NUM_FIELDS; ++i)
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, snapshot_dir, modstep_str, ACCESS_READ);
+    for (size_t i = 0; i < num_io_fields; ++i) 
+        acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
+    
+    //for (size_t i = 0; i < NUM_FIELDS; ++i)
+    //    acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, snapshot_dir, modstep_str, ACCESS_READ);
 
-    acGridDiskAccessSync();
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
-    acGridSynchronizeStream(STREAM_DEFAULT);
+    // Not needed for synchronous reading
+    //acGridDiskAccessSync();
+    //acGridPeriodicBoundconds(STREAM_DEFAULT);
+    //acGridSynchronizeStream(STREAM_DEFAULT);
 }
 
 /*
@@ -851,8 +870,11 @@ create_output_directories(void)
 static void
 write_slices(int pid, int i)
 {
+    log_from_root_proc(pid, "Syncing slice disk access\n");
+    acGridDiskAccessSync();
+    log_from_root_proc(pid, "Slice disk access synced\n");
     
-    char slice_frame_dir[4096];
+    char slice_frame_dir[2048];
     sprintf(slice_frame_dir, "%s/step_%012d", slice_dir, i);
 
     log_from_root_proc(pid, "Creating directory %s\n",slice_frame_dir);
@@ -860,11 +882,7 @@ write_slices(int pid, int i)
     if (pid == 0){
         create_directory(slice_frame_dir);
     }
-
-    log_from_root_proc(pid, "Syncing slice disk access\n");
-    acGridDiskAccessSync();
-
-
+    MPI_Barrier(MPI_COMM_WORLD); // Ensure directory is created for all procs
 
     log_from_root_proc(pid, "Writing slices to %s, timestep = %d\n", slice_dir, i);
     /*
@@ -876,11 +894,12 @@ write_slices(int pid, int i)
     */
 
     //This label is redundant now that the step number is in the dirname
+    // JP: still useful for debugging and analysis if working in a flattened dir structure
     char label[80];
     sprintf(label, "step_%012d", i);
 
     acGridWriteSlicesToDiskLaunch(slice_frame_dir, label);
-    log_from_root_proc(pid, "Done writing slices\n");
+    log_from_root_proc(pid, "Slice writing launched\n");
 
     // This was here to debug an issue that somehow resolved itself... can't recall what the
     // issue was anymore Anyway, in some cases debug_from_root_proc(pid, "Calling post-slice
@@ -1025,8 +1044,8 @@ main(int argc, char** argv)
 
         // Print config to stdout
         acPrintMeshInfo(info);
-
     }
+    MPI_Barrier(MPI_COMM_WORLD); // Ensure output directories are created before continuing
     ERRCHK_ALWAYS(info.real_params[AC_dsx] == DSX);
     ERRCHK_ALWAYS(info.real_params[AC_dsy] == DSY);
     ERRCHK_ALWAYS(info.real_params[AC_dsz] == DSZ);
@@ -1153,7 +1172,7 @@ main(int argc, char** argv)
             break;
     }
     default:
-        fprintf(stderr, "Invalid initial_mesh_procedure %d passed to ac_run_mpi\n", initial_mesh_procedure);
+        fprintf(stderr, "Invalid initial_mesh_procedure %d passed to ac_run_mpi\n", (int)initial_mesh_procedure);
         ERROR("Invalid initial_mesh_procedure");
     }
 
@@ -1233,6 +1252,7 @@ main(int argc, char** argv)
         if (pid == 0) {
             print_diagnostics_header(diag_file);
         }
+        MPI_Barrier(MPI_COMM_WORLD); // Ensure diagnostics header has been written out before continuing
         print_diagnostics(start_step, 0, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
 
 	    write_slices(pid, start_step);
