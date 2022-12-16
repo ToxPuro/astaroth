@@ -1395,7 +1395,7 @@ main(int argc, char** argv)
             // Write snapshots
             log_from_root_proc(pid, "Writing snapshots to %s, timestep = %d\n", snapshot_dir, i);
             save_mesh_mpi_async(info, snapshot_dir, pid, i, t_step);
-            log_from_root_proc(pid, "Done writing snapshots\n");
+            log_from_root_proc(pid, "save_mesh_mpi_async launched\n");
 
             bin_crit_t += bin_save_t;
         }
@@ -1448,6 +1448,8 @@ main(int argc, char** argv)
                 log_from_root_proc(pid, "Max steps reached, i = %d, t= %e \n", i, double(t_step));
             }
 
+            /*
+            // JP: Commented out, will mess up slice buffering if not divisible by bin_steps
             // TODO: don't save data if save_steps has already done it
             //  Save data after the loop ends
             if (i % bin_steps != 0) {
@@ -1460,7 +1462,7 @@ main(int argc, char** argv)
             }
             else {
                 log_from_root_proc(pid, "Snapshots for timestep %d have already been written\n");
-            }
+            }*/
             break;
         }
     }
