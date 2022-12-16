@@ -339,6 +339,7 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     }*/
 }
 
+/*
 // This funtion reads a run state into a set of C binaries
 // WITH MPI_IO
 static inline void
@@ -450,6 +451,7 @@ read_mesh(AcMesh& read_mesh, const int step, AcReal* t_step)
         fclose(read_ptr);
     }
 }
+*/
 
 static inline void
 print_diagnostics_header(FILE* diag_file)
