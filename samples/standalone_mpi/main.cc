@@ -1388,6 +1388,9 @@ main(int argc, char** argv)
         }
     }
 
+    // Sync all pending disk accesses before exiting
+    acGridDiskAccessSync();
+
     //////////////////////////////////
     // Simulation over, exit cleanly//
     // Deallocate resources and log //
