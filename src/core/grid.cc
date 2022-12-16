@@ -2143,8 +2143,8 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
 
     const size_t buflen = 4096;
     char filepath[buflen];
-    snprintf(filepath, buflen, "%s/%s-segment-%d-%d-%d.mesh", dir, label, offset.x, offset.y,
-             offset.z);
+    sprintf(filepath, "%s/%s-segment-%d-%d-%d-%s.mesh", dir, vtxbuf_names[vtxbuf], offset.x,
+            offset.y, offset.z, label);
 #if AC_VERBOSE
     fprintf(stderr, "%s %s\n", type == ACCESS_WRITE ? "Writing" : "Reading", filepath);
 #endif
@@ -2247,7 +2247,7 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
 
     const size_t buflen = 4096;
     char filepath[buflen];
-    snprintf(filepath, buflen, "%s/%s.mesh", dir, label);
+    sprintf(filepath, "%s/%s-%s.mesh", dir, vtxbuf_names[vtxbuf], label);
 #if AC_VERBOSE
     fprintf(stderr, "%s %s\n", type == ACCESS_WRITE ? "Writing" : "Reading", filepath);
 #endif
