@@ -291,7 +291,6 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     
     const int num_snapshots = 2;
     const int modstep       = (step / info.int_params[AC_bin_steps]) % num_snapshots;
-    const int prevstep = ((step-1) / info.int_params[AC_bin_steps]) % num_snapshots;
     printf("Saving snapshot at step %i (%d of %d)\n", step, modstep, num_snapshots);
 
     // Saves a csv file which contains relevant information about the binary
@@ -754,17 +753,50 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 }
 
+/* Set step = -1 to load from the latest snapshot. step = 0 to start a new run. */
 static void
-read_file_to_mesh_and_setup(void)
+read_file_to_mesh_and_setup(int* step, AcReal* t_step)
 {
-
-    for (size_t i = 0; i < num_io_fields; ++i) {
-        const Field field = io_fields[i];
-        acGridAccessMeshOnDiskSynchronous(field, snapshot_dir, vtxbuf_names[field], ACCESS_READ);
+    if (*step > 0) {
+        ERROR("step in read_file_to_mesh (config start_step) was > 0, do not know what to do with it. Cannot restart from an arbitrary snapshot. Restart from the latest valid snapshot by setting `start_step = -1`");
     }
+
+    // Quick hack, TODO better
+    system("tail -n2 snapshots_info.csv | head -n1 > latest_snapshot.info");
+
+    // Read the previous valid step from snapshots_info.csv
+    int modstep = 0;
+
+    if (*step < 0) {
+        FILE* fp = fopen("latest_snapshot.info", "r");
+        if (fp) {
+            // Note: quick hack, hardcoded + bad practice
+            int use_double, mx, my, mz;
+            fscanf(fp, "%d, %d, %d, %d, %d, %d, %lg", &use_double, &mx, &my, &mz, step, &modstep, t_step);
+            fclose(fp);
+        } else {
+            ERROR("Tried to load from the latest snapshot but snapshots_info.csv is malformatted or non-existing");
+        }
+    }
+    ERRCHK_ALWAYS(modstep >= 0);
+    ERRCHK_ALWAYS(*step >= 0);
+    ERRCHK_ALWAYS(is_valid(*t_step));
+
+    const size_t buflen = 128;
+    char modstep_str[buflen];
+    sprintf(modstep_str, "%d", modstep);
+
+    //for (size_t i = 0; i < num_io_fields; ++i) 
+    //    acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
+    for (size_t i = 0; i < NUM_FIELDS; ++i)
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, snapshot_dir, modstep_str, ACCESS_READ);
+
+    acGridDiskAccessSync();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridSynchronizeStream(STREAM_DEFAULT);
 }
 
+/*
 static void
 read_distributed_to_mesh_and_setup(void)
 {
@@ -785,7 +817,7 @@ read_collective_to_mesh_and_setup(void)
                                                     ACCESS_READ);
     }
     acGridPeriodicBoundconds(STREAM_DEFAULT);
-}
+}*/
 
 static void
 create_directory(const char *dirname)
@@ -899,7 +931,8 @@ enum class InitialMeshProcedure {
     Kernel,
     LoadPC_Varfile,
     LoadDistributedSnapshot,
-    LoadMonolithicSnapshot
+    LoadMonolithicSnapshot,
+    LoadSnapshot,
 };
 
 int
@@ -930,6 +963,7 @@ main(int argc, char** argv)
                                            {"from-pc-varfile", required_argument, 0, 'p'},
                                            {"from-distributed-snapshot", no_argument, 0, 'd'},
                                            {"from-monolithic-snapshot", no_argument, 0, 'm'},
+                                           {"from-snapshot", no_argument, 0, 's'},
                                            {"help", no_argument, 0, 'h'}};
 
     const char* config_path = AC_DEFAULT_CONFIG;
@@ -958,6 +992,9 @@ main(int argc, char** argv)
             break;
         case 'm':
             initial_mesh_procedure = InitialMeshProcedure::LoadMonolithicSnapshot;
+            break;
+        case 's':
+            initial_mesh_procedure = InitialMeshProcedure::LoadSnapshot;
             break;
         default:
             print_usage("ac_run_mpi");
@@ -993,6 +1030,41 @@ main(int argc, char** argv)
     ERRCHK_ALWAYS(info.real_params[AC_dsy] == DSY);
     ERRCHK_ALWAYS(info.real_params[AC_dsz] == DSZ);
 
+    ///////////////////////////////////////////////
+    // Define variables for main simulation loop //
+    ///////////////////////////////////////////////
+
+    // Run-control variables
+    // --------------------
+    int found_nan  = 0; // Nan or inf finder to give an error signal
+    int found_stop = 0;
+
+    int start_step = info.int_params[AC_start_step];
+    const int max_steps  = info.int_params[AC_max_steps];
+    const int save_steps = info.int_params[AC_save_steps];
+    const int bin_steps  = info.int_params[AC_bin_steps];
+
+    const AcReal max_time   = info.real_params[AC_max_time];
+    const AcReal bin_save_t = info.real_params[AC_bin_save_t];
+    AcReal bin_crit_t       = bin_save_t;
+    AcReal t_step           = 0.0;
+
+    // Additional physics variables
+    // ----------------------------
+    AcReal sink_mass     = -1.0;
+    AcReal accreted_mass = -1.0;
+    // TODO: hide these in some structure
+
+#if LSINK
+    sink_mass     = info.real_params[AC_M_sink_init];
+    accreted_mass = 0.0;
+    // TODO: I think this is supposed to set device vertex buffer VTXBUF_ACCRETION to 0 before the
+    // simulation starts
+    // TODO: figure out how to do that in_device_memory
+    if (pid == 0) {
+        acVertexBufferSet(VTXBUF_ACCRETION, 0.0, &mesh);
+    }
+#endif
 
     // SMELL: this was set twice, once here and once further down
     // I've commented out the first call to srand, since it would be overridden by the second value
@@ -1059,6 +1131,7 @@ main(int argc, char** argv)
         log_from_root_proc(pid, "Done reading Pencil Code var file\n");
         break;
     }
+    /*
     case InitialMeshProcedure::LoadDistributedSnapshot: {
         log_from_root_proc(pid, "Reading mesh state from distributed snapshot\n");
         read_distributed_to_mesh_and_setup();
@@ -1071,14 +1144,16 @@ main(int argc, char** argv)
         log_from_root_proc(pid, "Done reading monolithic snapshot\n");
         break;
     }
-        /*case LoadMeshFile:
-        {
+    */
+    case InitialMeshProcedure::LoadSnapshot: {
             log_from_root_proc(pid, "Reading mesh file\n");
-            read_file_to_mesh_and_setup();
+            read_file_to_mesh_and_setup(&start_step, &t_step);
             log_from_root_proc(pid, "Done reading mesh file\n");
             break;
-        }
-        */
+    }
+    default:
+        fprintf(stderr, "Invalid initial_mesh_procedure %d passed to ac_run_mpi\n", initial_mesh_procedure);
+        ERROR("Invalid initial_mesh_procedure");
     }
 
     log_from_root_proc(pid, "Initial mesh setup is done\n");
@@ -1125,41 +1200,6 @@ main(int argc, char** argv)
     // acGridSynchronizeStream(STREAM_ALL);
 #endif
 
-    ///////////////////////////////////////////////
-    // Define variables for main simulation loop //
-    ///////////////////////////////////////////////
-
-    // Run-control variables
-    // --------------------
-    int found_nan  = 0; // Nan or inf finder to give an error signal
-    int found_stop = 0;
-
-    const int start_step = info.int_params[AC_start_step];
-    const int max_steps  = info.int_params[AC_max_steps];
-    const int save_steps = info.int_params[AC_save_steps];
-    const int bin_steps  = info.int_params[AC_bin_steps];
-
-    const AcReal max_time   = info.real_params[AC_max_time];
-    const AcReal bin_save_t = info.real_params[AC_bin_save_t];
-    AcReal bin_crit_t       = bin_save_t;
-    AcReal t_step           = 0.0;
-
-    // Additional physics variables
-    // ----------------------------
-    AcReal sink_mass     = -1.0;
-    AcReal accreted_mass = -1.0;
-    // TODO: hide these in some structure
-
-#if LSINK
-    sink_mass     = info.real_params[AC_M_sink_init];
-    accreted_mass = 0.0;
-    // TODO: I think this is supposed to set device vertex buffer VTXBUF_ACCRETION to 0 before the
-    // simulation starts
-    // TODO: figure out how to do that in_device_memory
-    if (pid == 0) {
-        acVertexBufferSet(VTXBUF_ACCRETION, 0.0, &mesh);
-    }
-#endif
 
     ////////////////////////////////////////////////////////////////////////////
     // Initialize mesh again ? Old initialization code, probably incompatible //
@@ -1175,6 +1215,9 @@ main(int argc, char** argv)
         bin_crit_t = bin_crit_t + t_step;
     }
     */
+    if (start_step > 0) {
+        bin_crit_t = bin_crit_t + t_step;
+    }
 
     ///////////////////////////////////////////////////////////
     // Open output files and write the initial state to them //
@@ -1191,15 +1234,22 @@ main(int argc, char** argv)
         }
         print_diagnostics(start_step, 0, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
 
-	write_slices(pid, start_step);
+	    write_slices(pid, start_step);
+
+        log_from_root_proc(pid, "Writing out initial state to a mesh file\n");
+        log_from_root_proc(pid, "Calling save_mesh_mpi_async\n");
+        save_mesh_mpi_async(info, snapshot_dir, pid, 0, 0.0);
+        log_from_root_proc(pid, "Returned from save_mesh_mpi_async\n");
 
     } else if (pid == 0){
         // add newline to old diag_file from previous run
         fprintf(diag_file, "\n");
     }
 
+    /*
     // Save zero state
     // OL: why is this (start_step <= 0)?
+    // JP: Copied above and uncommented this
     // (start_step == 0) could be merged with the above if
     if (start_step <= 0) {
         log_from_root_proc(pid, "Writing out initial state to a mesh file\n");
@@ -1207,6 +1257,7 @@ main(int argc, char** argv)
         save_mesh_mpi_async(info, snapshot_dir, pid, 0, 0.0);
         log_from_root_proc(pid, "Returned from save_mesh_mpi_async\n");
     }
+    */
 
     //////////////////////////
     // Main simulation loop //
