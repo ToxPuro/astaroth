@@ -227,6 +227,7 @@ save_mesh(const AcMesh& save_mesh, const int step, const AcReal t_step)
 }
 */
 
+/*
 // This funtion writes a run state into a set of C binaries
 // WITH MPI_IO
 static inline void
@@ -277,13 +278,20 @@ save_mesh_mpi_sync(const AcMeshInfo info, const int pid, const int step, const A
         acGridDiskAccessSync();
     }
 }
+*/
 
+
+/* Calls acGridDiskAccessSync before acGridWriteMeshToDiskLaunch, but need to call
+acGridDiskAccessSync after the final step or before any other IO operation. */
 static inline void
 save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, const int step,
                     const AcReal t_step)
 {
+    acGridDiskAccessSync(); // NOTE: important sync
+    
     const int num_snapshots = 2;
     const int modstep       = (step / info.int_params[AC_bin_steps]) % num_snapshots;
+    const int prevstep = ((step-1) / info.int_params[AC_bin_steps]) % num_snapshots;
     printf("Saving snapshot at step %i (%d of %d)\n", step, modstep, num_snapshots);
 
     // Saves a csv file which contains relevant information about the binary
@@ -309,7 +317,6 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
 
     char cstep[1024];
     sprintf(cstep, "%d", modstep);
-    acGridDiskAccessSync();
     acGridWriteMeshToDiskLaunch(job_dir, cstep);
     printf("Write mesh to disk launch %s, %s \n", job_dir, cstep);
     /*
@@ -1194,10 +1201,9 @@ main(int argc, char** argv)
     // (start_step == 0) could be merged with the above if
     if (start_step <= 0) {
         log_from_root_proc(pid, "Writing out initial state to a mesh file\n");
-        log_from_root_proc(pid, "Calling save_mesh_mpi_sync\n");
-        save_mesh_mpi_sync(info, pid, 0, 0.0); // // %JP: mesh not available, changed the first
-                                               // param from AcMesh to AcMeshInfo
-        log_from_root_proc(pid, "Returned from save_mesh_mpi_sync\n");
+        log_from_root_proc(pid, "Calling save_mesh_mpi_async\n");
+        save_mesh_mpi_async(info, snapshot_dir, pid, 0, 0.0);
+        log_from_root_proc(pid, "Returned from save_mesh_mpi_async\n");
     }
 
     //////////////////////////
@@ -1311,7 +1317,6 @@ main(int argc, char** argv)
 
             // Write snapshots
             log_from_root_proc(pid, "Writing snapshots to %s, timestep = %d\n", snapshot_dir, i);
-            acGridDiskAccessSync();
             save_mesh_mpi_async(info, snapshot_dir, pid, i, t_step);
             log_from_root_proc(pid, "Done writing snapshots\n");
 
@@ -1370,9 +1375,10 @@ main(int argc, char** argv)
             //  Save data after the loop ends
             if (i % bin_steps != 0) {
                 acGridPeriodicBoundconds(STREAM_DEFAULT);
+                acGridSynchronizeStream(STREAM_DEFAULT);
                 log_from_root_proc(pid, "Writing final snapshots to %s, timestep = %d\n",
                                    snapshot_dir, i);
-                save_mesh_mpi_sync(info, pid, i, t_step);
+                save_mesh_mpi_async(info, snapshot_dir, pid, i, t_step);
                 log_from_root_proc(pid, "Done writing snapshots\n");
             }
             else {

@@ -1948,10 +1948,10 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     const size_t buflen = 4096;
     char filepath[buflen];
 #if USE_DISTRIBUTED_IO
-    snprintf(filepath, buflen, "%s/%s-segment-%d-%d-%d.mesh", dir, label, offset.x, offset.y,
-             offset.z);
+        sprintf(filepath, "%s/%s-segment-%d-%d-%d-%s.mesh", dir, vtxbuf_names[vtxbuf], offset.x,
+                offset.y, offset.z, label);
 #else
-    snprintf(filepath, buflen, "%s/%s.mesh", dir, label);
+        sprintf(filepath, "%s/%s-%s.mesh", dir, vtxbuf_names[vtxbuf], label);
 #endif
 
 #if AC_VERBOSE
