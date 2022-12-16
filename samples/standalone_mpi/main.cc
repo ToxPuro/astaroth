@@ -471,6 +471,7 @@ print_diagnostics_header(FILE* diag_file)
     fprintf(diag_file, "\n");
 }
 
+/*
 // This function prints out the diagnostic values to std.out and also saves and
 // appends an ascii file to contain all the result.
 // JP: MUST BE CALLED FROM PROC 0. Must be rewritten for multiple processes (this implementation
@@ -530,6 +531,7 @@ print_diagnostics_host(const AcMesh mesh, const int step, const AcReal dt, const
 
     fprintf(diag_file, "\n");
 }
+*/
 
 // This function prints out the diagnostic values to std.out and also saves and
 // appends an ascii file to contain all the result.
