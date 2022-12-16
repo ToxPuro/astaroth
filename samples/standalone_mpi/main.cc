@@ -652,6 +652,7 @@ calc_timestep(const AcMeshInfo info)
     MPI_Bcast(&uumax, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
 
 #if LBFIELD
+    // NOTE: bfield is 0 during the first step
     acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
                         &vAmax);
 
@@ -761,7 +762,9 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
     acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
     acGridSwapBuffers();
 
+    acGridSynchronizeStream(STREAM_ALL);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridSynchronizeStream(STREAM_ALL);
 }
 
 /* Set step = -1 to load from the latest snapshot. step = 0 to start a new run. */
