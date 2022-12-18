@@ -1279,6 +1279,7 @@ acGridDiskAccessSync(void)
     return AC_SUCCESS;
 }
 
+/*
 AcResult
 acGridDiskAccessLaunch(const AccessType type)
 {
@@ -1319,7 +1320,7 @@ acGridDiskAccessLaunch(const AccessType type)
 
             const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
 #if USE_DISTRIBUTED_IO
-#define USE_POSIX_IO (0)
+#define USE_POSIX_IO (1)
 
 #if USE_POSIX_IO
             char outfile[4096] = "";
@@ -1352,6 +1353,7 @@ acGridDiskAccessLaunch(const AccessType type)
             retval = MPI_File_close(&file);
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 #endif
+#undef USE_POSIX_IO
 #else
             MPI_Datatype subarray;
             const int3 nn          = info.int3_params[AC_global_grid_n];
@@ -1400,6 +1402,7 @@ acGridDiskAccessLaunch(const AccessType type)
 
     return AC_SUCCESS;
 }
+*/
 
 AcResult
 acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
@@ -1444,9 +1447,9 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
                                                     const AcReal* host_buffer) {
 
 #if USE_DISTRIBUTED_IO
-#define USE_POSIX_IO (0)
+#define USE_POSIX_IO (1)
 #if USE_POSIX_IO
-            FILE* fp = fopen(outfile, "w");
+            FILE* fp = fopen(filepath, "w");
             ERRCHK_ALWAYS(fp);
 
             const size_t count         = acVertexBufferCompdomainSize(info);
@@ -1592,7 +1595,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
             // Write to file
 
 #if USE_DISTRIBUTED_IO
-#define USE_POSIX_IO (0)
+#define USE_POSIX_IO (1)
 #if USE_POSIX_IO
             if (color != MPI_UNDEFINED) {
             FILE* fp = fopen(filepath, "w");

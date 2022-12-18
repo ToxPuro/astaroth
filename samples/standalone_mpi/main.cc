@@ -754,13 +754,16 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
     log_from_root_proc(pid, "Reading varfile nn = (%d, %d, %d)\n", nn.x, nn.y, nn.z);
 
+    acGridSynchronizeStream(STREAM_ALL);
     acGridReadVarfileToMesh(file_path, io_fields, num_io_fields, nn, rr);
 
+    /*
     // Scale the magnetic field
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info.real_params[AC_scaling_factor]);
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
     acGridSwapBuffers();
+    */
 
     acGridSynchronizeStream(STREAM_ALL);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
@@ -961,6 +964,7 @@ enum class InitialMeshProcedure {
 int
 main(int argc, char** argv)
 {
+    /*
     // Use multi-threaded MPI
     int thread_support_level;
     MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &thread_support_level);
@@ -969,6 +973,8 @@ main(int argc, char** argv)
         MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         return EXIT_FAILURE;
     }
+    */
+    MPI_Init(NULL, NULL);
 
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
