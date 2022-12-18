@@ -20,8 +20,28 @@
 * Distributed mesh writing and collective slice writing?
 > Replace `acGridWriteSlicesToDiskLaunch` calls in `standalone_mpi/main.cc` with `acGridWriteSlicesToDiskCollectiveSynchronous`.
 
-# Usage
+# Manual workflow without scripts (see `scripts/gen_rundir.sh` for automating parts of this)
 
+Variables:
+    * `CONFIG` - path to a `.config` file, for example `config/samples/subsonic_forced_nonhelical_turbulence/astaroth.conf`.
+    * `ASTAROTH` - path to astaroth directory
+
+1) Modify `CONFIG`
+
+2) Modify `acc-runtime/samples/mhd_modular/mhdsolver.ac` s.t. dsx are equivalent with those defined in `CONFIG`
+
+3) Build `cd astaroth && mkdir build && cd build && cmake ..`
+
+4) Create a run directory (preferably in scratch or flash): `cd $SCRATCH && mkdir some-run-name-here && cd some-run-name-here`
+
+5) Copy the necessary files. For example the 4k run `cp $ASTAROTH/build/ac_run_mpi .` (executable), `cp $ASTAROTH/config/samples/subsonic_forced_nonhelical_turbulence/astaroth.conf .` (config file), and `cp $ASTAROTH/pilot/pilot-4096.sh` (batch script).
+
+6) Modify the three files as needed. Ensure that the batch script has correct time allocation, number of devices (f.ex. 4096 case: 8 devices per nodes, one task per device, ntasks/ndevices_per_node nodes, so `--gres=gpu:8`, `--ntasks=4096`, and `--nodes=512`), and that the config and varfile directories are correct.  For example:
+> To restart from varfile: `srun ./ac_run_mpi --config ./astaroth.conf --from-pc-varfile=/flash/project_462000120/striped_dir/var.dat` (IMPORTANT: must have `AC_start_step = 0` in `CONFIG`)
+> To restart from a snapshot: `srun ./ac_run_mpi --config ./astaroth.conf --from-snapshot` (IMPORTANT: must have `AC_start_step = -1` in `CONFIG`)
+> To start a randomized run: `srun ./ac_run_mpi --config ./astaroth.conf --run-init-kernel` (IMPORTANT: must have `AC_start_step = 0` in `CONFIG`)
+
+7) Queue the run, f.ex. `sbatch pilot-4096.sh`
 
 # Helper scripts
 
