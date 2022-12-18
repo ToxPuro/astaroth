@@ -30,7 +30,7 @@ Variables:
 
 2) Modify `acc-runtime/samples/mhd_modular/mhdsolver.ac` s.t. dsx are equivalent with those defined in `CONFIG`
 
-3) Build `cd astaroth && mkdir build && cd build && cmake ..`
+3) Build `cd astaroth && mkdir build && cd build && cmake .. && make -j`
 
 4) Create a run directory (preferably in scratch or flash): `cd $SCRATCH && mkdir some-run-name-here && cd some-run-name-here`
 
