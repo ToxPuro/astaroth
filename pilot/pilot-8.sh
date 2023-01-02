@@ -2,7 +2,7 @@
 #SBATCH --account=project_462000120
 #SBATCH --gres=gpu:8
 #SBATCH --partition=dev-g
-#SBATCH --ntasks=8
+#SBATCH --ntasks-per-node=8
 #SBATCH --nodes=1
 #SBATCH --time=00:10:00
 
