@@ -807,6 +807,10 @@ read_file_to_mesh_and_setup(int* step, AcReal* t_step)
     char modstep_str[buflen];
     sprintf(modstep_str, "%d", modstep);
 
+    int pid;
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    log_from_root_proc(pid, "Restarting from snapshot %d (step %d, tstep %g)\n", modstep, *step, (double)(*t_step));
+
     for (size_t i = 0; i < num_io_fields; ++i) 
         acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
     
