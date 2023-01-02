@@ -36,6 +36,7 @@
 
 #include "task.h"
 #include "astaroth.h"
+#include "astaroth_utils.h"
 
 #include <cassert>
 #include <memory>
@@ -572,13 +573,18 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
 // send_buffers(input_region.dims, vtxbuf_dependencies_->num_vars)
 {
     // Create stream for packing/unpacking
+    acVerboseLogFromRoot(rank, "Halo exchange task ctor: creating CUDA stream\n");
     {
         cudaSetDevice(device->id);
         int low_prio, high_prio;
         cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
+    acVerboseLogFromRoot(rank, "Halo exchange task ctor: done creating CUDA stream\n");
+
+    acVerboseLogFromRoot(rank, "Halo exchange task ctor: syncing VBA\n");
     syncVBA();
+    acVerboseLogFromRoot(rank, "Halo exchange task ctor: done syncing VBA\n");
 
     counterpart_rank = getPid(getPid3D(rank, decomp) + output_region.id, decomp);
     // MPI tags are namespaced to avoid collisions with other MPI tasks
@@ -588,7 +594,9 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     // Post receive immediately, this avoids unexpected messages
     active = ((MPI_INCL_CORNERS) || output_region.facet_class != 3) ? true : false;
     if (active) {
+	acVerboseLogFromRoot(rank, "Halo exchange task ctor: posting early receive\n");
         receive();
+	acVerboseLogFromRoot(rank, "Halo exchange task ctor: done posting early receive\n");
     }
     name = "Halo exchange " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) +
            "," + std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) +
@@ -656,9 +664,19 @@ HaloExchangeTask::wait_send()
 void
 HaloExchangeTask::receiveDevice()
 {
+    // TODO: change these to debug log statements at high verbosity (there will be very many of these outputs)
+    if (rank == 0){
+        //fprintf(stderr, "receiveDevice, getting buffer\n");
+    }
     auto msg = recv_buffers.get_fresh_buffer();
+    if (rank == 0){
+        //fprintf(stderr, "calling MPI_Irecv\n");
+    }
     MPI_Irecv(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
               recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
+    if (rank == 0){
+        //fprintf(stderr, "Returned from MPI_Irecv\n");
+    }
 }
 
 void
@@ -682,9 +700,19 @@ HaloExchangeTask::exchangeDevice()
 void
 HaloExchangeTask::receiveHost()
 {
+    // TODO: change these to debug log statements at high verbosity (there will be very many of these outputs)
+    if (rank == 0){
+        //fprintf("receiveHost, getting buffer\n");
+    }
     auto msg = recv_buffers.get_fresh_buffer();
+    if (rank == 0){
+        //fprintf("Called MPI_Irecv\n");
+    }
     MPI_Irecv(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
               recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
+    if (rank == 0){
+        //fprintf("Returned from MPI_Irecv\n");
+    }
     msg->pinned = true;
 }
 
@@ -709,10 +737,23 @@ HaloExchangeTask::exchangeHost()
 void
 HaloExchangeTask::receive()
 {
+    // TODO: change these fprintfs to debug log statements at high verbosity (there will be very many of these outputs)
 #if USE_CUDA_AWARE_MPI
+    if (rank == 0){
+        //fprintf(stderr, "receiveDevice()\n");
+    }
     receiveDevice();
+    if (rank == 0){
+        //fprintf(stderr, "returned from receiveDevice()\n");
+    }
 #else
+    if (rank == 0){
+        //fprintf(stderr, "receiveHost()\n");
+    }
     receiveHost();
+    if (rank == 0){
+        //fprintf(stderr, "returned from receiveHost()\n");
+    }
 #endif
 }
 
