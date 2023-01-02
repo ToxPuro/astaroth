@@ -17,4 +17,5 @@ module load cray-python
 
 export MPICH_GPU_SUPPORT_ENABLED=1
 
-srun ./ac_run_mpi --config ./astaroth.conf --from-pc-varfile=/flash/project_462000120/striped_dir/var.dat
+srun ./ac_run_mpi --config ./astaroth.conf --from-pc-varfile=/flash/project_462000120/pilot_experiments/data/var.4096.dat # From varfile
+# srun ./ac_run_mpi --config ./astaroth.conf --from-snapshot # From snapshot

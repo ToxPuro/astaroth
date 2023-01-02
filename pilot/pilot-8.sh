@@ -17,4 +17,5 @@ module load cray-python
 
 export MPICH_GPU_SUPPORT_ENABLED=1
 
-srun ./ac_run_mpi --config ./astaroth.conf --from-pc-varfile=/scratch/project_462000120/jpekkila/mahti-512-varfile/var.dat
+srun ./ac_run_mpi --config ./astaroth.conf --from-pc-varfile=/scratch/project_462000120/jpekkila/mahti-512-varfile/var.dat # From varfile
+# srun ./ac_run_mpi --config ./astaroth.conf --from-snapshot # From snapshot
