@@ -160,6 +160,10 @@ I have issues with MPI
 
 > If your MPI has been setup incorrectly or does not support CUDA-aware communication, you can try building Astaroth without RDMA support with `cmake -DUSE_CUDA_AWARE_MPI=OFF ..`. Note that without CUDA-aware support, communication is routed through CPU memory which gives notably worse performance than communicating directly between GPUs.
 
+I have issues with IBM Power PCs
+
+> This may be due to `utils` library requiring vectorization. You can try replacing `-mavx` with `-maltivec` or `-mcpu=native` in `src/utils/CMakeLists.txt`. Otherwise, the `core` library does not use vectorization, so using Astaroth without the `utils` component should be possible.
+
 How do I contribute?
 
 > See [Contributing](CONTRIBUTING.md).
