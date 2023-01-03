@@ -91,9 +91,15 @@ AcResult acHostMeshWriteToFile(const AcMesh mesh, const size_t id);
 AcResult acHostMeshReadFromFile(const size_t id, AcMesh* mesh);
 
 //Logging utils
-void acLogFromRoot(const int pid, const char* msg, ...);
-void acVerboseLogFromRoot(const int pid, const char* msg, ...);
-void acDebugFromRoot(const int pid, const char* msg, ...);
+
+/* Log a message with a timestamp from the root proc (if pid == 0) */
+void acLogFromRootProc(const int pid, const char* msg, ...);
+
+/* Log a message with a timestamp from the root proc (if pid == 0) if the build flag VERBOSE is on */
+void acVerboseLogFromRootProc(const int pid, const char* msg, ...);
+
+/* Log a message with a timestamp from the root proc (if pid == 0) in a debug build */
+void acDebugFromRootProc(const int pid, const char* msg, ...);
 
 #ifdef __cplusplus
 } // extern "C"

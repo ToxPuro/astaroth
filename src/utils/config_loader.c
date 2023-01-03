@@ -68,7 +68,7 @@ parse_intparam(const size_t idx, const char* value)
         if ((bctype = find_str(value, bctype_names, NUM_BCTYPES)) >= 0)
             return bctype;
         else {
-            fprintf(stderr, "Error: Invalid BC type: %s, do not know what to do with it.\n", value);
+            fprintf(stderr, "ERROR PARSING CONFIG: Invalid BC type: %s, do not know what to do with it.\n", value);
             fprintf(stdout, "Valid BC types:\n");
             acQueryBCtypes();
             ERROR("Invalid boundary condition type found in config");
@@ -81,7 +81,7 @@ parse_intparam(const size_t idx, const char* value)
             return initcondtype;
         else {
             fprintf(stderr,
-                    "Error: Invalid initial condition type: %s, do not know what to do with it.\n",
+                    "ERROR PARSING CONFIG: Invalid initial condition type: %s, do not know what to do with it.\n",
                     value);
             fprintf(stdout, "Valid initial condition types:\n");
             acQueryInitcondtypes();
@@ -113,10 +113,17 @@ parse_config(const char* path, AcMeshInfo* config)
             continue;
 
         int idx = -1;
-        if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0)
+        if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0){
             config->int_params[idx] = parse_intparam(idx, value);
-        else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAMS)) >= 0)
-            config->real_params[idx] = (AcReal)(atof(value));
+	} else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAMS)) >= 0){
+	    AcReal real_val = atof(value);
+	    if (isnan(real_val)){
+                fprintf(stderr, "ERROR PARSING CONFIG: parameter \"%s\" value \"%s\" parsed as NAN\n",
+		keyword, value);
+	    }
+	    //OL: should we fail here? Could be dangerous to continue
+            config->real_params[idx] = real_val;
+	}
     }
 
     fclose(fp);

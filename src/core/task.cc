@@ -573,18 +573,18 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
 // send_buffers(input_region.dims, vtxbuf_dependencies_->num_vars)
 {
     // Create stream for packing/unpacking
-    acVerboseLogFromRoot(rank, "Halo exchange task ctor: creating CUDA stream\n");
+    acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
     {
         cudaSetDevice(device->id);
         int low_prio, high_prio;
         cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
-    acVerboseLogFromRoot(rank, "Halo exchange task ctor: done creating CUDA stream\n");
+    acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done creating CUDA stream\n");
 
-    acVerboseLogFromRoot(rank, "Halo exchange task ctor: syncing VBA\n");
+    acVerboseLogFromRootProc(rank, "Halo exchange task ctor: syncing VBA\n");
     syncVBA();
-    acVerboseLogFromRoot(rank, "Halo exchange task ctor: done syncing VBA\n");
+    acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done syncing VBA\n");
 
     counterpart_rank = getPid(getPid3D(rank, decomp) + output_region.id, decomp);
     // MPI tags are namespaced to avoid collisions with other MPI tasks
@@ -594,9 +594,9 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     // Post receive immediately, this avoids unexpected messages
     active = ((MPI_INCL_CORNERS) || output_region.facet_class != 3) ? true : false;
     if (active) {
-	acVerboseLogFromRoot(rank, "Halo exchange task ctor: posting early receive\n");
+	acVerboseLogFromRootProc(rank, "Halo exchange task ctor: posting early receive\n");
         receive();
-	acVerboseLogFromRoot(rank, "Halo exchange task ctor: done posting early receive\n");
+	acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done posting early receive\n");
     }
     name = "Halo exchange " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) +
            "," + std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) +

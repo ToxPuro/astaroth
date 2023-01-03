@@ -5,7 +5,7 @@
 
 //Logging utils
 void
-acLogFromRoot(const int pid, const char* msg, ...)
+acLogFromRootProc(const int pid, const char* msg, ...)
 {
     if (pid == 0) {
         time_t now  = time(NULL);
@@ -26,7 +26,7 @@ acLogFromRoot(const int pid, const char* msg, ...)
 }
 
 void
-acVerboseLogFromRoot(const int pid, const char* msg, ...)
+acVerboseLogFromRootProc(const int pid, const char* msg, ...)
 {
 #if AC_VERBOSE
     if (pid == 0) {
@@ -48,7 +48,7 @@ acVerboseLogFromRoot(const int pid, const char* msg, ...)
 #endif
 }
 
-void acDebugFromRoot(const int pid, const char* msg, ...)
+void acDebugFromRootProc(const int pid, const char* msg, ...)
 {
 #ifndef NDEBUG
     if (pid == 0) {
