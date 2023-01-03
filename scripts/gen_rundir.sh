@@ -48,17 +48,18 @@ print_usage(){
 }
 
 script_dir=$(realpath $(dirname "${BASH_SOURCE[0]}"))
-render_companion_batch=$(realpath ${script_dir}/../analysis/viz_tools/deferred-render)
+#WIP
+#render_companion_batch=$(realpath ${script_dir}/../analysis/viz_tools/on-the-fly-render)
 
 config=$(realpath ${script_dir}/../config/astaroth.conf)
 output_dir=astaroth_rundir
 dims=""
 ac_run_mpi_binary=$(realpath ${script_dir}/../build/ac_run_mpi)
-render=off
+render=deferred
 timelimit=00:15:00
 num_procs=8
 account=project_462000120
-partition=pilot
+partition=small-g
 
 if [[ -n "$AC_CONFIG" ]]; then
     config="$AC_CONFIG"
@@ -207,10 +208,11 @@ fi
 gen_submit_sh(){
 case "$render" in
 deferred)
-    launcher="$(realpath $render_companion_batch)"
+    slice_renderer=$(realpath ${script_dir}/../analysis/viz_tools/render_slices)
+    launcher="sbatch --parsable"
     ;;
 off)
-    launcher=sbatch
+    launcher="sbatch --parsable"
     ;; 
 *)
     echo "ERROR: can't recognize render argument \"$render\". Options are \"off\" and \"deferred\""
@@ -224,13 +226,22 @@ if [[ "\$(realpath \$rundir)" != "\$(realpath \$PWD)" ]]; then
     echo "Error: please call ./submit.sh from the rundir, not from elsewhere"
     exit 1
 fi
-$launcher simulation.sbatch
+SLURM_SIM_JOB=\$($launcher simulation.sbatch)
+if [[ \$? -eq 0 ]]; then
+    echo "Launched simulation in slurm job \$SLURM_SIM_JOB"
+$(if [[ "$render" == "deferred" ]];then
+    echo "    echo \"Queueing postprocessing to start after simulation\""
+    echo "    sbatch --dependency=afterok:\$SLURM_SIM_JOB postprocess.sbatch"
+fi)
 
-echo "to follow the simulation, you can try the following once it has started:"
-echo "  tail -F slurm-simulation*.out"
-echo ""
-echo "to follow all your current SLURM jobs:"
-echo "  watch \"squeue --me\""
+    echo "to follow the simulation, you can try the following once it has started:"
+    echo "  tail -F slurm-simulation*.out"
+    echo ""
+    echo "to follow all your current SLURM jobs:"
+    echo "  watch \"squeue --me\" "
+else
+    echo "\$SLURM_SIM_JOB"
+fi
 EOF
 
     chmod +x "$output_dir/submit.sh"
@@ -290,6 +301,23 @@ if [[ ! -x "$ac_run_mpi_realpath" ]]; then
 fi
 
 srun $ac_run_mpi_realpath --config astaroth.conf $ac_run_mpi_args
+EOF
+}
+
+gen_postprocess_sbatch(){
+    cat > $output_dir/postprocess.sbatch << EOF | grep -v '^[[:blank:]]*$'
+#!/bin/bash
+#SBATCH --account=$account
+#SBATCH --partition=small
+#SBATCH --ntasks=1
+#SBATCH --time=00:15:00
+#SBATCH --output=slurm-postprocess-%j.out
+
+if [[ ! -d output-slices ]]; then
+    echo "Expected data in output-slices, but output-slices is not a directory"
+    exit 1
+fi
+srun $slice_renderer --input output-slices/*/*
 EOF
 }
 
@@ -363,6 +391,11 @@ echo ""
 
 gen_submit_sh
 gen_simulation_sbatch
+case "$render" in
+deferred)
+    gen_postprocess_sbatch
+    ;;
+esac
 gen_astaroth_conf
 
 if [[ -n "$stripes" ]]; then
