@@ -228,10 +228,11 @@ if [[ "\$(realpath \$rundir)" != "\$(realpath \$PWD)" ]]; then
 fi
 SLURM_SIM_JOB=\$($launcher simulation.sbatch)
 if [[ \$? -eq 0 ]]; then
-    echo "Launched simulation in slurm job \$SLURM_SIM_JOB"
+    echo "Submitted simulation slurm job \$SLURM_SIM_JOB"
 $(if [[ "$render" == "deferred" ]];then
     echo "    echo \"Queueing postprocessing to start after simulation\""
-    echo "    sbatch --dependency=afterok:\$SLURM_SIM_JOB postprocess.sbatch"
+    echo "    SLURM_POSTPROCESS_JOB=\$(sbatch --dependency=afterany:\$SLURM_SIM_JOB postprocess.sbatch)"
+    echo "    echo \"Submitted postprocessing slurm job \$SLURM_POSTPROCESS_JOB\""
 fi)
 
     echo "to follow the simulation, you can try the following once it has started:"
