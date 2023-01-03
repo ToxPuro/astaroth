@@ -41,9 +41,11 @@ Field VTXBUF_SHOCK
 
 // Additional params needed by standalone & standalone_mpi
 // Int params
-int AC_max_steps
 int AC_save_steps
 int AC_bin_steps
+int AC_slice_steps
+int AC_max_steps
+
 int AC_start_step
 
 real AC_dsx, AC_dsy, AC_dsz // WARNING UNUSED! NEED TO BE COMPILE-TIME CONSTANTS

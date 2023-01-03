@@ -35,6 +35,8 @@
 #include <cstring>
 #include <ctime>
 
+#include <map>
+
 #include "config_loader.h"
 #include "errchk.h"
 #include "host_forcing.h"
@@ -223,8 +225,9 @@ save_mesh_mpi_sync(const AcMeshInfo info, const int pid, const int step, const A
 acGridDiskAccessSync after the final step or before any other IO operation. */
 static inline void
 save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, const int step,
-                    const AcReal t_step)
+                    const AcReal simulation_time)
 {
+    acLogFromRootProc(pid, "Call to save_mesh_mpi_async\n");
     acLogFromRootProc(pid, "Sync mesh disk access\n");
     acGridDiskAccessSync(); // NOTE: important sync
     acGridPeriodicBoundconds(STREAM_DEFAULT); // Debug, may be unneeded
@@ -234,7 +237,7 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     
     const int num_snapshots = 2;
     const int modstep       = (step / info.int_params[AC_bin_steps]) % num_snapshots;
-    acLogFromRootProc(pid, "Saving snapshot at step %i (%d of %d)\n", step, modstep, num_snapshots);
+    acLogFromRootProc(pid, "Saving snapshot to %s, timestep %i (slot %d of %d)\n", job_dir, step, modstep, num_snapshots);
 
     // Saves a csv file which contains relevant information about the binary
     // snapshot files at the timestep.
@@ -248,7 +251,7 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
 
         fprintf(header_file, "%d, %d, %d, %d, %d, %d, %.17e \n", sizeof(AcReal) == 8,
                 info.int_params[AC_mx], info.int_params[AC_my], info.int_params[AC_mz], step,
-                modstep, t_step);
+                modstep, simulation_time);
 
         // Writes the header info. Make it into an
         // appendaple csv table which will be easy to be read into a Pandas
@@ -261,7 +264,7 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     char cstep[1024];
     sprintf(cstep, "%d", modstep);
     acGridWriteMeshToDiskLaunch(job_dir, cstep);
-    
+    acLogFromRootProc(pid, "Launched asynchronous snapshot write operation\n");
     
     //printf("Write mesh to disk launch %s, %s \n", job_dir, cstep);
     /*
@@ -288,7 +291,7 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
 // This funtion reads a run state into a set of C binaries
 // WITH MPI_IO
 static inline void
-read_mesh_mpi(const int pid, const int step, AcReal* t_step)
+read_mesh_mpi(const int pid, const int step, AcReal* simulation_time)
 {
     int stepnumber;
     AcReal time_at_step;
@@ -333,7 +336,7 @@ read_mesh_mpi(const int pid, const int step, AcReal* t_step)
 
     MPI_Bcast(&time, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    *t_step = time;
+    *simulation_time = time;
 
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         const char* buffername = vtxbuf_names[w];
@@ -356,7 +359,7 @@ read_mesh_mpi(const int pid, const int step, AcReal* t_step)
 
 // This funtion reads a run state from a set of C binaries.
 static inline void
-read_mesh(AcMesh& read_mesh, const int step, AcReal* t_step)
+read_mesh(AcMesh& read_mesh, const int step, AcReal* simulation_time)
 {
     FILE* read_ptr;
 
@@ -382,7 +385,7 @@ read_mesh(AcMesh& read_mesh, const int step, AcReal* t_step)
 
         // Start file with time stamp
         size_t result;
-        result = fread(t_step, sizeof(AcReal), 1, read_ptr);
+		result = fread(simulation_time, sizeof(AcReal), 1, read_ptr);
         // Read grid data
         AcReal read_buf;
         for (size_t i = 0; i < n; ++i) {
@@ -483,7 +486,7 @@ print_diagnostics_host(const AcMesh mesh, const int step, const AcReal dt, const
 // appends an ascii file to contain all the result.
 // JP: EXECUTES ON MULTIPLE GPUS, MUST BE CALLED FROM ALL PROCS
 static inline void
-print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* diag_file,
+print_diagnostics(const int step, const AcReal dt, const AcReal simulation_time, FILE* diag_file,
                   const AcReal sink_mass, const AcReal accreted_mass, int* found_nan)
 {
 
@@ -496,10 +499,10 @@ print_diagnostics(const int step, const AcReal dt, const AcReal t_step, FILE* di
     acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_rms);
 
     // MV: The ordering in the earlier version was wrong in terms of variable
-    printf("Step %d, t_step %.3e, dt %e s\n", step, double(t_step), double(dt));
+    printf("Step %d, t_step %.3e, dt %e s\n", step, double(simulation_time), double(dt));
     printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "uu total", double(buf_min),
            double(buf_rms), double(buf_max));
-    fprintf(diag_file, "%d %e %e %e %e %e ", step, double(t_step), double(dt), double(buf_min),
+    fprintf(diag_file, "%d %e %e %e %e %e ", step, double(simulation_time), double(dt), double(buf_min),
             double(buf_rms), double(buf_max));
 
 #if LBFIELD
@@ -707,7 +710,7 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
 
 /* Set step = -1 to load from the latest snapshot. step = 0 to start a new run. */
 static void
-read_file_to_mesh_and_setup(int* step, AcReal* t_step)
+read_file_to_mesh_and_setup(int* step, AcReal* simulation_time)
 {
     if (*step > 0) {
         ERROR("step in read_file_to_mesh (config start_step) was > 0, do not know what to do with it. Cannot restart from an arbitrary snapshot. Restart from the latest valid snapshot by setting `start_step = -1`");
@@ -731,7 +734,7 @@ read_file_to_mesh_and_setup(int* step, AcReal* t_step)
 
             // Note: quick hack, hardcoded + bad practice
             int use_double, mx, my, mz;
-            fscanf(fp, "%d, %d, %d, %d, %d, %d, %lg", &use_double, &mx, &my, &mz, step, &modstep, t_step);
+            fscanf(fp, "%d, %d, %d, %d, %d, %d, %lg", &use_double, &mx, &my, &mz, step, &modstep, simulation_time);
             fclose(fp);
         } else {
             ERROR("Tried to load from the latest snapshot but snapshots_info.csv is malformatted or non-existing");
@@ -739,7 +742,7 @@ read_file_to_mesh_and_setup(int* step, AcReal* t_step)
     }
     ERRCHK_ALWAYS(modstep >= 0);
     ERRCHK_ALWAYS(*step >= 0);
-    ERRCHK_ALWAYS(is_valid(*t_step));
+    ERRCHK_ALWAYS(is_valid(*simulation_time));
 
     const size_t buflen = 128;
     char modstep_str[buflen];
@@ -747,7 +750,7 @@ read_file_to_mesh_and_setup(int* step, AcReal* t_step)
 
     int pid;
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
-    acLogFromRootProc(pid, "Restarting from snapshot %d (step %d, tstep %g)\n", modstep, *step, (double)(*t_step));
+    acLogFromRootProc(pid, "Restarting from snapshot %d (step %d, tstep %g)\n", modstep, *step, (double)(*simulation_time));
 
     for (size_t i = 0; i < num_io_fields; ++i) 
         acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
@@ -805,8 +808,6 @@ create_output_directories(void)
     // JP: Note: striping here potentially bad practice (uncomment to enable)
     // OL: Agree, there is no guarantee that the environment uses a lustre filesystem (perhaps as an option though?)
     //const int stripe_count = 48;
-    // snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_dir);
-    // system(cmd);
     // Note: striping here potentially bad practice (uncomment to enable)
     // snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_dir);
     // system(cmd);
@@ -892,12 +893,53 @@ print_usage(const char* name)
            name, AC_DEFAULT_CONFIG);
 }
 
+//Helper structs
 enum class InitialMeshProcedure {
     Kernel,
     LoadPC_Varfile,
     LoadDistributedSnapshot,
     LoadMonolithicSnapshot,
     LoadSnapshot,
+};
+
+enum class SimulationAction {
+    PrintDiagnostics,
+    WriteSnapshot,
+    WriteSlices,
+    EndSimulation,
+};
+
+//Structure for keeping track of any generic condition
+struct TimedTrigger {
+    int    step_period;
+    AcReal time_period;
+    AcReal time_threshold;
+
+    TimedTrigger()
+    : step_period(0), time_period(0), time_threshold(0)
+    {}
+
+
+    TimedTrigger(int s, AcReal p)
+    : step_period(s), time_period(p), time_threshold(p)
+    {}
+
+
+    TimedTrigger(int s, AcReal p, AcReal threshold_offset)
+    : step_period(s), time_period(p), time_threshold(p + threshold_offset)
+    {}
+
+    bool
+    check(int time_step, AcReal time)
+    {
+	if ((time_period > 0 && time >= time_threshold) ||
+	   (step_period > 0 && time_step % step_period == 0)){
+	    time_threshold += time_period;
+	    return true;
+	}
+	
+        return false;
+    }
 };
 
 int
@@ -989,9 +1031,14 @@ main(int argc, char** argv)
     // but we could check if they are before attempting to set the extra params
     // perhaps set_extra_config_params could become
     //  -> acHostUpdateAstrophysicsBuiltinParams
+    acLogFromRootProc(pid, "Loading config file %s\n", config_path);
     acLoadConfig(config_path, &info);
     set_extra_config_params(&info);
+    acLogFromRootProc(pid, "Done loading config file\n");
+    //TODO: to reduce verbosity, only print uninitialized value warnings for rank == 0
+    //if (pid == 0){
     //acCheckConfig(&info);
+    //}
 
     ////////////////////////////////
     // Write the config to a file //
@@ -999,12 +1046,15 @@ main(int argc, char** argv)
 
     if (pid == 0) {
         // Write purge.sh and meshinfo.list
+	acLogFromRootProc(pid, "Creating purge.sh and meshinfo.list\n");
         write_info(&info);
 
         // Ensure output-slices and output-snapshots exist
+	acLogFromRootProc(pid, "Creating output-slices and output-snapshots\n");
         create_output_directories();
 
         // Print config to stdout
+	acLogFromRootProc(pid, "Printing mesh info to stdout\n");
         acPrintMeshInfo(info);
     }
     MPI_Barrier(MPI_COMM_WORLD); // Ensure output directories are created before continuing
@@ -1018,18 +1068,16 @@ main(int argc, char** argv)
 
     // Run-control variables
     // --------------------
+    // TODO: put these in some vector or bitmap
     int found_nan  = 0; // Nan or inf finder to give an error signal
     int found_stop = 0;
+    int found_reload = 0;
+    int max_time_reached = 0;
+    bool log_progress = 1;
 
-    int start_step = info.int_params[AC_start_step];
-    const int max_steps  = info.int_params[AC_max_steps];
-    const int save_steps = info.int_params[AC_save_steps];
-    const int bin_steps  = info.int_params[AC_bin_steps];
 
-    const AcReal max_time   = info.real_params[AC_max_time];
-    const AcReal bin_save_t = info.real_params[AC_bin_save_t];
-    AcReal bin_crit_t       = bin_save_t;
-    AcReal t_step           = 0.0;
+    AcReal simulation_time = 0.0;
+    int    start_step      = info.int_params[AC_start_step];
 
     // Additional physics variables
     // ----------------------------
@@ -1062,14 +1110,18 @@ main(int argc, char** argv)
     // Initialize internal Astaroth state //
     ////////////////////////////////////////
 
+    acLogFromRootProc(pid, "Initializing Astaroth (acGridInit)\n");
     acGridInit(info);
+    acLogFromRootProc(pid, "Done initializing Astaroth (acGridInit)\n");
 
     ///////////////////////////////////////////////////
     // Test kernels: scale, solve, reset, randomize. //
     // then reset                                    //
     ///////////////////////////////////////////////////
 
+    acLogFromRootProc(pid, "Dryrun\n");
     dryrun();
+    acLogFromRootProc(pid, "Returned from dryrun\n");
 
     // Load input data
 
@@ -1129,7 +1181,7 @@ main(int argc, char** argv)
     */
     case InitialMeshProcedure::LoadSnapshot: {
             acLogFromRootProc(pid, "Reading mesh file\n");
-            read_file_to_mesh_and_setup(&start_step, &t_step);
+            read_file_to_mesh_and_setup(&start_step, &simulation_time);
             acLogFromRootProc(pid, "Done reading mesh file\n");
             break;
     }
@@ -1160,7 +1212,8 @@ main(int argc, char** argv)
 
     VertexBufferHandle shock_field[] = {VTXBUF_SHOCK};
 
-    // MV(?): Causes communication related error (unclear comment)
+    // MV(?): Causes communication related error
+    // OL: ^ what does this mean?
     AcTaskDefinition shock_ops[] =
         {acHaloExchange(all_fields),
          acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
@@ -1182,25 +1235,6 @@ main(int argc, char** argv)
     // acGridSynchronizeStream(STREAM_ALL);
 #endif
 
-
-    ////////////////////////////////////////////////////////////////////////////
-    // Initialize mesh again ? Old initialization code, probably incompatible //
-    ////////////////////////////////////////////////////////////////////////////
-
-    /*
-    if (start_step > 0) {
-        //TODO: this part is untested, and may clash with the new initial_mesh_procedure
-        //Maybe it can be moved to one of the options
-        acLogFromRootProc(pid, "Calling read_mesh_mpi\n");
-        read_mesh_mpi(pid, start_step, &t_step);
-        acLogFromRootProc(pid, "Returned from read_mesh_mpi\n");
-        bin_crit_t = bin_crit_t + t_step;
-    }
-    */
-    if (start_step > 0) {
-        bin_crit_t = bin_crit_t + t_step;
-    }
-
     ///////////////////////////////////////////////////////////
     // Open output files and write the initial state to them //
     ///////////////////////////////////////////////////////////
@@ -1215,47 +1249,60 @@ main(int argc, char** argv)
             print_diagnostics_header(diag_file);
         }
         MPI_Barrier(MPI_COMM_WORLD); // Ensure diagnostics header has been written out before continuing
-        print_diagnostics(start_step, 0, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
+        print_diagnostics(start_step, 0, simulation_time, diag_file, sink_mass, accreted_mass, &found_nan);
 
 	    write_slices(pid, start_step);
 
         acLogFromRootProc(pid, "Writing out initial state to a mesh file\n");
-        acLogFromRootProc(pid, "Calling save_mesh_mpi_async\n");
         save_mesh_mpi_async(info, snapshot_dir, pid, 0, 0.0);
-        acLogFromRootProc(pid, "Returned from save_mesh_mpi_async\n");
 
     } else if (pid == 0){
         // add newline to old diag_file from previous run
         fprintf(diag_file, "\n");
     }
 
-    /*
-    // Save zero state
-    // OL: why is this (start_step <= 0)?
-    // JP: Copied above and uncommented this
-    // (start_step == 0) could be merged with the above if
-    if (start_step <= 0) {
-        acLogFromRootProc(pid, "Writing out initial state to a mesh file\n");
-        acLogFromRootProc(pid, "Calling save_mesh_mpi_async\n");
-        save_mesh_mpi_async(info, snapshot_dir, pid, 0, 0.0);
-        acLogFromRootProc(pid, "Returned from save_mesh_mpi_async\n");
-    }
-    */
 
-    //////////////////////////
-    // Main simulation loop //
-    //////////////////////////
+    ////////////////////////////////////
+    // Define timed simulation events //
+    ////////////////////////////////////
+    
+    // Values set here define when certain timed simulation actions should happen
+    // Either periodic ones (write snapshot) or single actions (end simulation)
+
+    // Both a period in discrete time steps and a period in simulation time can be used
+    // It is enough to satisfy one of these conditions.
+    // A value of zero means that the trigger is inactive.
+
+    std::map<SimulationAction, TimedTrigger> timed_triggers;
+
+    //Print diagnostics
+    timed_triggers[SimulationAction::PrintDiagnostics]
+	    = TimedTrigger(info.int_params[AC_save_steps], 0, 0);
+
+    //Write snapshots
+    timed_triggers[SimulationAction::WriteSnapshot]
+	    = TimedTrigger(info.int_params[AC_bin_steps], info.real_params[AC_bin_save_t], simulation_time);
+
+    //Write slices
+    timed_triggers[SimulationAction::WriteSlices]
+	    = TimedTrigger(info.int_params[AC_slice_steps], 0, 0);
+
+    //Stop simulation after max time
+    timed_triggers[SimulationAction::EndSimulation]
+	    = TimedTrigger(info.int_params[AC_max_steps], info.real_params[AC_max_time], 0);
+
+    ///////////////////////////////////////////////////////////////
+    //                     Main simulation loop                  //
+    ///////////////////////////////////////////////////////////////
 
     acLogFromRootProc(pid, "Starting simulation\n");
 
-    // This loop has a legacy off-by-one error, if max_steps = 1, we will run 0 steps
-    // if max_steps is 100, we will run 99 steps
-    for (int i = start_step + 1; i < max_steps; ++i) {
+    for (int i = start_step + 1; ; ++i) {
 
         acDebugFromRootProc(pid, "Calculating time step (i=%d)\n", i);
         const AcReal dt = calc_timestep(info);
         acDebugFromRootProc(pid, "Done calculating time step (i=%d)\n", i);
-        acGridLoadScalarUniform(STREAM_DEFAULT, AC_current_time, t_step);
+        acGridLoadScalarUniform(STREAM_DEFAULT, AC_current_time, simulation_time);
 
 #if LSINK
         AcReal sum_mass;
@@ -1281,9 +1328,6 @@ main(int argc, char** argv)
             on_off_switch = 1;
         }
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_switch_accretion, on_off_switch);
-#else
-        accreted_mass = -1.0;
-        sink_mass     = -1.0;
 #endif
 
 #if LFORCING
@@ -1301,78 +1345,56 @@ main(int argc, char** argv)
         // in the case that simulation_graph = acGridGetDefaultTaskGraph(), then this is equivalent
         // to acGridIntegrate(STREAM_DEFAULT, dt)
         acGridExecuteTaskGraph(simulation_graph, 3);
-        bool log_every_simulation_step = false;
-#if AC_VERBOSE
-        log_every_simulation_step = true;
-#endif
-        if (i < save_steps || log_every_simulation_step) {
-            acLogFromRootProc(pid, "acGridExecuteTaskGraph step %d complete\n", i);
+	simulation_time += dt;
+
+	if (log_progress){
+            acLogFromRootProc(pid, "Simulation step %d complete\n", i);
         }
-        else if (i == save_steps && !log_every_simulation_step) {
-            acLogFromRootProc(pid, "acGridExecuteTaskGraph step %d complete\n", i);
-            acLogFromRootProc(pid,
-                               "VERBOSE is off, not logging acGridExecuteTaskGraph completion for "
+	for (auto &[action, trigger] : timed_triggers){
+            if (trigger.check(i, simulation_time)){
+
+#if !(AC_VERBOSE)
+		if (log_progress){
+		    log_progress = false;
+    		    acLogFromRootProc(pid,
+                               "VERBOSE is off, not logging simulation step completion for "
                                "step > %d\n",
-                               save_steps);
-        }
+                               i);
+                }
+#endif
 
-        t_step += dt;
-
-        // TODO: debug everything in the if below and the exits at the end
-        // some process will exit after writing slices with USE_DISTRIBUTED_IO=ON
-
-        /* Save the simulation state and print diagnostics */
-        if ((i % save_steps) == 0) {
-            // Write statistics of the fields to stdout and to timeseries.ts
-            print_diagnostics(i, dt, t_step, diag_file, sink_mass, accreted_mass, &found_nan);
-            /*
-                We would also might want an XY-average calculating funtion,
-                which can be very useful when observing behaviour of turbulent
-                simulations. (TODO)
-            */
-
-	    //Write slices to files for analysis
-            acGridPeriodicBoundconds(STREAM_DEFAULT);
-            write_slices(pid, i);
-        }
-
-        /* Save the simulation state and print diagnostics */
-        if ((i % bin_steps) == 0 || t_step >= bin_crit_t) {
-            /*
-                This loop saves the data into simple C binaries which can be
-                used for analysing the data snapshots closely.
-
-                The updated mesh will be located on the GPU. Also all calls
-                to the astaroth interface (functions beginning with ac*) are
-                assumed to be asynchronous, so the meshes must be also synchronized
-                before transferring the data to the CPU. Like so:
-
-                acBoundcondStep();
-                acStore(mesh);
-            */
-
-            // Write snapshots
-            acLogFromRootProc(pid, "Writing snapshots to %s, timestep = %d\n", snapshot_dir, i);
-            save_mesh_mpi_async(info, snapshot_dir, pid, i, t_step);
-            acLogFromRootProc(pid, "save_mesh_mpi_async launched\n");
-
-            bin_crit_t += bin_save_t;
-        }
-
-        if (access("STOP", F_OK) != -1) {
-            found_stop = 1;
-        }
-        else {
-            found_stop = 0;
-        }
-
-        // End loop if max time reached.
-        int max_time_reached = 0;
-        if (max_time > AcReal(0.0)) {
-            if (t_step >= max_time) {
-                max_time_reached = 1;
+                switch (action){
+		    case SimulationAction::PrintDiagnostics:
+		    {
+            		print_diagnostics(i, dt, simulation_time, diag_file, sink_mass, accreted_mass, &found_nan);
+			/*
+                        MV: We would also might want an XY-average calculating funtion,
+			    which can be very useful when observing behaviour of turbulent
+			    simulations. (TODO)
+		        */
+		    break;
+		    }
+		    case SimulationAction::WriteSnapshot:
+                        save_mesh_mpi_async(info, snapshot_dir, pid, i, simulation_time);
+		    break;
+		    case SimulationAction::WriteSlices:
+		    {
+            		acGridPeriodicBoundconds(STREAM_DEFAULT);
+		        write_slices(pid, i);
+		    break;
+		    }
+		    case SimulationAction::EndSimulation:
+		    {
+                        max_time_reached = 1;
+	            break;
+		    }
+		}
             }
-        }
+	}
+
+	
+        found_stop = access("STOP", F_OK) != -1 ? 1 : 0;
+        //found_reload = access("RELOAD", F_OK) != -1 ? 1 : 0;
 
         /////////////////////////////////////////////////
         //                                             //
@@ -1391,20 +1413,23 @@ main(int argc, char** argv)
         max_time_reached = max_end_conditions_encoded >> 1 & 1;
         found_stop       = max_end_conditions_encoded & 1;
 
-        if (max_end_conditions_encoded != 0 || i == max_steps - 1) {
+        if (max_end_conditions_encoded != 0) {
             acLogFromRootProc(pid, "Simulation end condition encountered\n");
             if (found_nan == 1) {
-                acLogFromRootProc(pid, "Found nan at i = %d, t = %e \n", i, double(t_step));
+                acLogFromRootProc(pid, "Found nan at i = %d, t = %e \n", i, double(simulation_time));
             }
             if (max_time_reached == 1) {
-                acLogFromRootProc(pid, "Time limit reached at i = %d, t = %e \n", i,
-                                   double(t_step));
+		if (i == timed_triggers[SimulationAction::EndSimulation].step_period){
+                    acLogFromRootProc(pid, "Max time steps reached at i = %d, t = %e \n", i,
+                                      double(simulation_time));
+		}
+		if (simulation_time >= timed_triggers[SimulationAction::EndSimulation].time_period){
+                    acLogFromRootProc(pid, "Time limit reached at i = %d, t = %e \n", i,
+                                      double(simulation_time));
+		}
             }
             if (found_stop == 1) {
-                acLogFromRootProc(pid, "Found STOP file at i = %d, t = %e \n", i, double(t_step));
-            }
-            if (i == max_steps - 1) {
-                acLogFromRootProc(pid, "Max steps reached, i = %d, t= %e \n", i, double(t_step));
+                acLogFromRootProc(pid, "Found STOP file at i = %d, t = %e \n", i, double(simulation_time));
             }
 
             /*
@@ -1416,7 +1441,7 @@ main(int argc, char** argv)
                 acGridSynchronizeStream(STREAM_DEFAULT);
                 acLogFromRootProc(pid, "Writing final snapshots to %s, timestep = %d\n",
                                    snapshot_dir, i);
-                save_mesh_mpi_async(info, snapshot_dir, pid, i, t_step);
+                save_mesh_mpi_async(info, snapshot_dir, pid, i, simulation_time);
                 acLogFromRootProc(pid, "Done writing snapshots\n");
             }
             else {
