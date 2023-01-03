@@ -311,7 +311,7 @@ gen_postprocess_sbatch(){
 #SBATCH --account=$account
 #SBATCH --partition=small
 #SBATCH --ntasks=1
-#SBATCH --time=00:15:00
+#SBATCH --time=01:00:00
 #SBATCH --output=slurm-postprocess-%j.out
 
 if [[ ! -d output-slices ]]; then
