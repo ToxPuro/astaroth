@@ -234,14 +234,18 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     acDevicePrintInfo(device);
     printf("Trying to run a dummy kernel. If this fails, make sure that your\n"
            "device supports the GPU architecture you are compiling for.\n");
-#endif
 
     // Check that the code was compiled for the proper GPU architecture
+
     printf("Running a test kernel... ");
     fflush(stdout);
+#endif
+
     acKernelDummy();
+#if AC_VERBOSE
     printf("\x1B[32m%s\x1B[0m\n", "OK!");
     fflush(stdout);
+#endif
 
     // Concurrency
     for (int i = 0; i < NUM_STREAMS; ++i) {

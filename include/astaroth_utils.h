@@ -90,6 +90,11 @@ AcResult acHostMeshWriteToFile(const AcMesh mesh, const size_t id);
 
 AcResult acHostMeshReadFromFile(const size_t id, AcMesh* mesh);
 
+//Logging utils
+void acLogFromRoot(const int pid, const char* msg, ...);
+void acVerboseLogFromRoot(const int pid, const char* msg, ...);
+void acDebugFromRoot(const int pid, const char* msg, ...);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

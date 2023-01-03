@@ -45,6 +45,7 @@
  */
 
 #include "astaroth.h"
+#include "astaroth_utils.h"
 #include "task.h"
 
 #include <algorithm>
@@ -120,6 +121,8 @@ acGridInit(const AcMeshInfo info)
     const int3 pid3d        = getPid3D(pid, decomp);
 
     MPI_Barrier(MPI_COMM_WORLD);
+
+#if AC_VERBOSE
     printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, pid, nprocs, pid3d.x,
            pid3d.y, pid3d.z);
     printf("Decomposition: %lu, %lu, %lu\n", decomp.x, decomp.y, decomp.z);
@@ -127,6 +130,7 @@ acGridInit(const AcMeshInfo info)
            info.int_params[AC_nz]);
     fflush(stdout);
     MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
     ERRCHK_ALWAYS(info.int_params[AC_nx] % decomp.x == 0);
     ERRCHK_ALWAYS(info.int_params[AC_ny] % decomp.y == 0);
@@ -157,12 +161,16 @@ acGridInit(const AcMeshInfo info)
     int devices_per_node = -1;
     cudaGetDeviceCount(&devices_per_node);
 
+    acLogFromRoot(pid, "AcGridInit: Allocating GPU mesh and streams\n");
     Device device;
     acDeviceCreate(pid % devices_per_node, submesh_info, &device);
+    acLogFromRoot(pid, "AcGridInit: Done allocating GPU mesh and streams\n");
 
     // CPU alloc
+    acLogFromRoot(pid, "AcGridInit: Allocating CPU mesh\n");
     AcMesh submesh;
     acHostMeshCreate(submesh_info, &submesh);
+    acLogFromRoot(pid, "AcGridInit: Done allocating CPU mesh\n");
 
     // Setup the global grid structure
     grid.device        = device;
@@ -183,6 +191,7 @@ acGridInit(const AcMeshInfo info)
         all_fields[i] = (Field)i;
     }
 
+    acLogFromRoot(pid, "AcGridInit: Creating default task graph\n");
     AcTaskDefinition default_ops[] = {acHaloExchange(all_fields),
                                       acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
                                                           all_fields),
@@ -198,8 +207,11 @@ acGridInit(const AcMeshInfo info)
 
     grid.initialized   = true;
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
+    acLogFromRoot(pid, "AcGridInit: Done creating default task graph\n");
 
+    acVerboseLogFromRoot(pid, "AcGridInit: Synchronizing streams\n");
     acGridSynchronizeStream(STREAM_ALL);
+    acVerboseLogFromRoot(pid, "AcGridInit: Done synchronizing streams\n");
     return AC_SUCCESS;
 }
 
@@ -559,9 +571,15 @@ AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 {
     // ERRCHK(grid.initialized);
+
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
     check_ops(ops, n_ops);
+    acVerboseLogFromRoot(rank, "acGridBuildTaskGraph: Allocating task graph\n");
 
     AcTaskGraph* graph = new AcTaskGraph();
+
     graph->halo_tasks.reserve(n_ops * Region::n_halo_regions);
     graph->all_tasks.reserve(n_ops * max(Region::n_halo_regions, Region::n_comp_regions));
 
@@ -569,8 +587,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     std::vector<size_t> op_indices;
     op_indices.reserve(n_ops);
 
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     int3 nn         = grid.nn;
     uint3_64 decomp = grid.decomposition;
@@ -620,18 +636,24 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     // this array of bools keep track of that state
     std::array<bool, NUM_VTXBUF_HANDLES> swap_offset{};
 
+
+    acVerboseLogFromRoot(rank, "acGridBuildTaskGraph: Creating tasks: %lu ops\n", n_ops);
+
     for (size_t i = 0; i < n_ops; i++) {
+        acVerboseLogFromRoot(rank, "acGridBuildTaskGraph: Creating tasks for op %lu\n", i);
         auto op = ops[i];
         op_indices.push_back(graph->all_tasks.size());
 
         switch (op.task_type) {
 
         case TASKTYPE_COMPUTE: {
+            acVerboseLogFromRoot(rank, "Creating compute tasks\n");
             // Kernel kernel = kernels[(int)op.kernel];
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
                 auto task = std::make_shared<ComputeTask>(op, i, tag, nn, device, swap_offset);
                 graph->all_tasks.push_back(task);
             }
+            acVerboseLogFromRoot(rank, "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
                 swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
             }
@@ -639,6 +661,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         }
 
         case TASKTYPE_HALOEXCHANGE: {
+            acVerboseLogFromRoot(rank, "Creating halo exchange tasks\n");
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (!region_at_boundary(tag, BOUNDARY_XYZ)) {
@@ -648,22 +671,28 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                     graph->all_tasks.push_back(task);
                 }
             }
+            acVerboseLogFromRoot(rank, "Halo exchange tasks created\n");
             grid.mpi_tag_space_count++;
             break;
         }
 
         case TASKTYPE_BOUNDCOND: {
+            acVerboseLogFromRoot(rank, "Creating Boundcond tasks\n");
             AcBoundcond bc = op.bound_cond;
             int tag0       = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (region_at_boundary(tag, op.boundary)) {
                     if (bc == BOUNDCOND_PERIODIC) {
+                        acVerboseLogFromRoot(rank, "Creating periodic bc task with tag%d\n", tag);
                         auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, nn, decomp,
                                                                        device, swap_offset);
+                        acVerboseLogFromRoot(rank, "Done creating periodic bc task with tag%d\n", tag);
+
                         graph->halo_tasks.push_back(task);
                         graph->all_tasks.push_back(task);
                     }
                     else {
+                        acVerboseLogFromRoot(rank, "Creating generic bc with tag%d\n", tag);
                         auto task = std::make_shared<BoundaryConditionTask>(op,
                                                                             boundary_normal(tag), i,
                                                                             tag, nn, device,
@@ -672,13 +701,14 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                     }
                 }
             }
+            acVerboseLogFromRoot(rank, "Boundcond tasks created\n");
             grid.mpi_tag_space_count++;
             break;
         }
 
         case TASKTYPE_SPECIAL_MHD_BOUNDCOND: {
 #ifdef AC_INTEGRATION_ENABLED
-            for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
+               for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (region_at_boundary(tag, op.boundary)) {
                     auto task = std::make_shared<SpecialMHDBoundaryConditionTask>(op,
                                                                                   boundary_normal(
@@ -694,6 +724,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         }
         }
     }
+    acVerboseLogFromRoot(rank, "acGridBuildTaskGraph: Done creating tasks\n");
+
     op_indices.push_back(graph->all_tasks.size());
     graph->vtxbuf_swaps = swap_offset;
 
@@ -701,6 +733,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     graph->all_tasks.shrink_to_fit();
 
     // In order to reduce redundant dependencies, we keep track of which tasks are connected
+    acVerboseLogFromRoot(rank, "acGridBuildTaskGraph: Calculating dependencies\n");
+
     const size_t n_tasks               = graph->all_tasks.size();
     const size_t adjacancy_matrix_size = n_tasks * n_tasks;
     bool adjacent[adjacancy_matrix_size];
@@ -776,6 +810,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             }
         }
     }
+    acVerboseLogFromRoot(rank, "acGridBuildTaskGraph: Done calculating dependencies\n");
 
     // Finally sort according to a priority. Larger volumes first and comm before comp
     auto sort_lambda = [](std::shared_ptr<Task> t1, std::shared_ptr<Task> t2) {
@@ -790,9 +825,11 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         return vol1 > vol2 ||
                (vol1 == vol2 && ((!comp1 && comp2) || dim1.x < dim2.x || dim1.z > dim2.z));
     };
+    acVerboseLogFromRoot(rank, "acGridBuildTaskGraph: Sorting tasks by priority\n");
 
     std::sort(graph->halo_tasks.begin(), graph->halo_tasks.end(), sort_lambda);
     std::sort(graph->all_tasks.begin(), graph->all_tasks.end(), sort_lambda);
+    acVerboseLogFromRoot(rank, "acGridBuildTaskGraph: Done sorting tasks by priority\n");
     return graph;
 }
 

@@ -213,7 +213,6 @@ update_config(AcMeshInfo* config)
 int
 load_config(const char* config_path, AcMeshInfo* config)
 {
-    int retval = 0;
     ERRCHK(config_path);
 
     // memset reads the second parameter as a byte even though it says int in
@@ -225,12 +224,19 @@ load_config(const char* config_path, AcMeshInfo* config)
 
     // sizeof(config) must be a multiple of 4 bytes for this to work
     ERRCHK(sizeof(*config) % sizeof(uint32_t) == 0);
+
+    // Check for uninitialized config values
+    bool uninitialized_config_val = false;
     for (size_t i = 0; i < sizeof(*config) / sizeof(uint32_t); ++i) {
-        if (((uint32_t*)config)[i] == (uint32_t)0xFFFFFFFF) {
-            WARNING("Some config values may be uninitialized. "
-                    "See that all are defined in astaroth.conf\n");
-            retval = -1;
-        }
+	uninitialized_config_val |= ((uint32_t*)config)[i] == (uint32_t)0xFFFFFFFF;
     }
-    return retval;
+
+#if AC_VERBOSE
+    if (uninitialized_config_val){
+	fprintf(stderr, "Some config values may be uninitialized. "
+                        "See that all are defined in astaroth.conf\n");
+    }
+#endif
+
+    return uninitialized_config_val ? -1 : 0;
 }
