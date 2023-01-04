@@ -71,7 +71,8 @@ typedef int Stream;
     FUNC(RTYPE_ALFVEN_MAX)                                                                         \
     FUNC(RTYPE_ALFVEN_MIN)                                                                         \
     FUNC(RTYPE_ALFVEN_RMS)                                                                         \
-    FUNC(RTYPE_SUM)
+    FUNC(RTYPE_SUM)                                                                                \
+    FUNC(RTYPE_ISNAN)
 
 #define AC_FOR_BCTYPES(FUNC)                                                                       \
     FUNC(BOUNDCOND_PERIODIC)                                                                       \

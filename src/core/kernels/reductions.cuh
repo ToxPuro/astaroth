@@ -42,6 +42,9 @@ dmin(const AcReal& a, const AcReal& b) { return a < b ? a : b; }
 static __device__ inline AcReal
 dsum(const AcReal& a, const AcReal& b) { return a + b; }
 
+static __device__ inline AcReal
+disnan(const AcReal& a, const AcReal& b) { return isnan(a) ? a : b; }
+
 /* Function used to determine the values used during reduction */
 static __device__ inline AcReal
 dvalue(const AcReal& a) { return AcReal(a); }
@@ -244,6 +247,10 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const i
         kernel_filter<dvalue><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf, start, end, scratchpad);
         kernel_reduce<dsum><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
         kernel_reduce_block<dsum><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
+    } else if (rtype == RTYPE_ISNAN) {
+        kernel_filter<dvalue><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf, start, end, scratchpad);
+        kernel_reduce<disnan><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
+        kernel_reduce_block<disnan><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
     } else {
         ERROR("Unrecognized rtype");
     }
