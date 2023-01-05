@@ -4,10 +4,11 @@
 #include <time.h>
 
 //Logging utils
+
 void
-acLogFromRootProc(const int pid, const char* msg, ...)
+acVA_LogFromRootProc(const int pid, const char* msg, va_list args)
 {
-    if (pid == 0) {
+     if (pid == 0) {
         time_t now  = time(NULL);
         char* timestamp  = ctime(&now);
         size_t stamp_len = strlen(timestamp);
@@ -16,58 +17,51 @@ acLogFromRootProc(const int pid, const char* msg, ...)
         // We know the exact length of the timestamp (26 chars), so we could force this function to
         // take chars with a 26 prefix blank buffer
         fprintf(stderr, "%s : ", timestamp);
-
-        va_list args;
-        va_start(args, msg);
         vfprintf(stderr, msg, args);
         fflush(stderr);
-        va_end(args);
     }
+}
+
+void
+acLogFromRootProc(const int pid, const char* msg, ...)
+{
+    va_list args;
+    va_start(args, msg);
+    acVA_LogFromRootProc(pid, msg, args);
+    va_end(args);
+}
+
+void
+acVA_VerboseLogFromRootProc(const int pid, const char* msg, va_list args)
+{
+#if AC_VERBOSE
+    acVA_LogFromRootProc(pid, msg, args);
+#endif
 }
 
 void
 acVerboseLogFromRootProc(const int pid, const char* msg, ...)
 {
-#if AC_VERBOSE
-    if (pid == 0) {
-        time_t now  = time(NULL);
-        char* timestamp  = ctime(&now);
-        size_t stamp_len = strlen(timestamp);
-        // Remove trailing newline
-        timestamp[stamp_len - 1] = '\0';
-        // We know the exact length of the timestamp (26 chars), so we could force this function to
-        // take chars with a 26 prefix blank buffer
-        fprintf(stderr, "%s : ", timestamp);
+    va_list args;
+    va_start(args, msg);
+    acVA_VerboseLogFromRootProc(pid, msg, args);
+    va_end(args);
+}
 
-        va_list args;
-        va_start(args, msg);
-        vfprintf(stderr, msg, args);
-        fflush(stderr);
-        va_end(args);
-    }
+
+void
+acVA_DebugFromRootProc(const int pid, const char* msg, va_list args)
+{
+#ifndef NDEBUG
+    acVA_LogFromRootProc(pid, msg, args);
 #endif
 }
 
 void acDebugFromRootProc(const int pid, const char* msg, ...)
 {
-#ifndef NDEBUG
-    if (pid == 0) {
-        time_t now  = time(NULL);
-        char* timestamp  = ctime(&now);
-        size_t stamp_len = strlen(timestamp);
-        // Remove trailing newline
-        timestamp[stamp_len - 1] = '\0';
-        // We know the exact length of the timestamp (26 chars), so we could force this function to
-        // take chars with a 26 prefix blank buffer
-        fprintf(stderr, "%s : ", timestamp);
-
-        va_list args;
-        va_start(args, msg);
-        vfprintf(stderr, msg, args);
-        fflush(stderr);
-        va_end(args);
-    }
-#endif
-
+    va_list args;
+    va_start(args, msg);
+    acVA_DebugFromRootProc(pid, msg, args);
+    va_end(args);
 }
 
