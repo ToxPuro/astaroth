@@ -41,41 +41,6 @@ acAbort(void)
         MPI_Abort(MPI_COMM_WORLD, 0);
 }
 
-#include "timer_hires.h"
-// #include <stdarg.h>
-
-static Timer timer;
-
-static void
-timer_event_launch(void)
-{
-    int pid;
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
-
-    acGridSynchronizeStream(STREAM_ALL);
-    if (pid == 0) {
-        timer_reset(&timer);
-    }
-}
-
-static void
-timer_event_stop(const char* format, ...)
-{
-    int pid;
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
-
-    acGridSynchronizeStream(STREAM_ALL);
-    if (pid == 0) {
-        va_list args;
-        va_start(args, format);
-        vprintf(format, args);
-        va_end(args);
-
-        timer_diff_print(timer);
-        fflush(stdout);
-    }
-}
-
 int
 main(void)
 {
@@ -198,33 +163,6 @@ main(void)
             }
         }
     }
-
-    // Perform simple benchmarks
-    timer_event_launch();
-    acGridLoadMesh(STREAM_DEFAULT, model);
-    timer_event_stop("acGridLoadMesh: ");
-
-    timer_event_launch();
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
-    timer_event_stop("acGridPeriodicBoundconds: ");
-
-    timer_event_launch();
-    acGridStoreMesh(STREAM_DEFAULT, &candidate);
-    timer_event_stop("acGridStoreMesh: ");
-
-    timer_event_launch();
-    acGridIntegrate(STREAM_DEFAULT, dt);
-    timer_event_stop("acGridIntegrate: ");
-
-    timer_event_launch();
-    AcReal candval;
-    acGridReduceScal(STREAM_DEFAULT, (ReductionType)0, (Field)0, &candval);
-    timer_event_stop("acGridReduceScal");
-
-    ERRCHK_ALWAYS(NUM_FIELDS >= 3);
-    timer_event_launch();
-    acGridReduceVec(STREAM_DEFAULT, (ReductionType)0, (Field)0, (Field)1, (Field)2, &candval);
-    timer_event_stop("acGridReduceVec");
 
     if (pid == 0) {
         acHostMeshDestroy(&model);
