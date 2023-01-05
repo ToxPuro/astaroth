@@ -1097,15 +1097,17 @@ main(int argc, char** argv)
     }
 #endif
 
-    // SMELL: this was set twice, once here and once further down
+    // POTENTIAL ISSUE: this was set twice, once here and once further down
     // I've commented out the first call to srand, since it would be overridden by the second value
     // TODO: figure out if this is here for a reason, and why was it different?
     // and should this be moved lower
+    // JP: srand and rand used carelessly throughout the program, should be cleaned up
+    // and rechecked to avoid issues with reproducibility
 
     // Set random seed for reproducibility
     // srand(321654987);
     srand(312256655);
-    // END SMELL
+    // POTENTIAL ISSUE END
 
     ////////////////////////////////////////
     // Initialize internal Astaroth state //
