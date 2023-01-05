@@ -227,7 +227,7 @@ static inline void
 save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, const int step,
                     const AcReal simulation_time)
 {
-    debug_log_simulation_event(pid, "save_mesh_mpi_async: Syncing mesh disk access\n");
+    debug_log_from_root_proc_with_sim_progress(pid, "save_mesh_mpi_async: Syncing mesh disk access\n");
     acGridDiskAccessSync();                   // NOTE: important sync
     acGridPeriodicBoundconds(STREAM_DEFAULT); // Debug, may be unneeded
     acGridSynchronizeStream(STREAM_DEFAULT);  // Debug, may be unneeded
@@ -235,7 +235,7 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     
     const int num_snapshots = 2;
     const int modstep       = (step / info.int_params[AC_bin_steps]) % num_snapshots;
-    log_simulation_event(pid, "save_mesh_mpi_async: Writing snapshot to %s, timestep %d (slot %d of %d)\n", job_dir, step, modstep, num_snapshots);
+    log_from_root_proc_with_sim_progress(pid, "save_mesh_mpi_async: Writing snapshot to %s, timestep %d (slot %d of %d)\n", job_dir, step, modstep, num_snapshots);
 
     // Saves a csv file which contains relevant information about the binary
     // snapshot files at the timestep.
@@ -262,7 +262,7 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     char cstep[1024];
     sprintf(cstep, "%d", modstep);
     acGridWriteMeshToDiskLaunch(job_dir, cstep);
-    log_simulation_event(pid, "save_mesh_mpi_async: Non-blocking snapshot write operation started, returning\n");
+    log_from_root_proc_with_sim_progress(pid, "save_mesh_mpi_async: Non-blocking snapshot write operation started, returning\n");
     
     //printf("Write mesh to disk launch %s, %s \n", job_dir, cstep);
     /*
@@ -823,21 +823,21 @@ create_output_directories(void)
 static void
 write_slices(int pid, int i)
 {
-    debug_log_simulation_event(pid, "write_slices: Syncing slice disk access\n");
+    debug_log_from_root_proc_with_sim_progress(pid, "write_slices: Syncing slice disk access\n");
     acGridDiskAccessSync();
-    debug_log_simulation_event(pid, "write_slices: Slice disk access synced\n");
+    debug_log_from_root_proc_with_sim_progress(pid, "write_slices: Slice disk access synced\n");
     
     char slice_frame_dir[2048];
     sprintf(slice_frame_dir, "%s/step_%012d", slice_dir, i);
 
-    log_simulation_event(pid, "write_slices: Creating directory %s\n",slice_frame_dir);
+    log_from_root_proc_with_sim_progress(pid, "write_slices: Creating directory %s\n",slice_frame_dir);
     //The root proc creates the frame dir and then we sync
     if (pid == 0){
         create_directory(slice_frame_dir);
     }
     MPI_Barrier(MPI_COMM_WORLD); // Ensure directory is created for all procs
 
-    log_simulation_event(pid, "write_slices: Writing slices to %s, timestep = %d\n", slice_dir, i);
+    log_from_root_proc_with_sim_progress(pid, "write_slices: Writing slices to %s, timestep = %d\n", slice_dir, i);
     /*
     Timer t;
     timer_reset(&t);
@@ -852,7 +852,7 @@ write_slices(int pid, int i)
     sprintf(label, "step_%012d", i);
 
     acGridWriteSlicesToDiskLaunch(slice_frame_dir, label);
-    log_simulation_event(pid, "write_slices: Non-blocking slice write operation started, returning\n");
+    log_from_root_proc_with_sim_progress(pid, "write_slices: Non-blocking slice write operation started, returning\n");
 }
 
 void
@@ -914,11 +914,11 @@ enum class PeriodicAction {
 //Enums for events 
 enum class SimulationEvent {
     NanDetected         = 0x001,
-    StopFileModified    = 0x002,
+    StopSignal          = 0x002,
     TimeLimitReached    = 0x004,
-    ReloadFileModified  = 0x008,
+    ConfigReloadSignal  = 0x008,
     
-    EndCondition        = NanDetected | StopFileModified | TimeLimitReached
+    EndCondition        = NanDetected | StopSignal | TimeLimitReached
 };
 
 void
@@ -1005,6 +1005,9 @@ main(int argc, char** argv)
     //////////////////////
 
     AcMeshInfo info;
+    acLogFromRootProc(pid, "Loading config file %s\n", config_path);
+    acLoadConfig(config_path, &info);
+
     // OL: We are calling both acLoadConfig AND set_extra_config_params (defined in config_loader.c)
     // even though acLoadConfig calls acHostUpdateBuiltinParams
     // set_extra_config_params will set some extra config parameters, namely:
@@ -1019,16 +1022,15 @@ main(int argc, char** argv)
     //  - AC_G_const
     //  - AC_sq2GM_star
     //  ^ these depend on config vals that may not be present
-    //  but we could check if they are before attempting to set the extra params
+    //  but we could check if they are defined before attempting to set the extra params
     //  perhaps set_extra_config_params could become
     //   -> acHostUpdateAstrophysicsBuiltinParams
-    acLogFromRootProc(pid, "Loading config file %s\n", config_path);
-    acLoadConfig(config_path, &info);
     set_extra_config_params(&info);
     acLogFromRootProc(pid, "Done loading config file\n");
     // TODO: to reduce verbosity, only print uninitialized value warnings for rank == 0
+    // we could e.g. define a function acCheckConfig and call it:
     // if (pid == 0){
-    // acCheckConfig(&info);
+    //     acCheckConfig(&info);
     // }
 
     ////////////////////////////////
@@ -1217,8 +1219,6 @@ main(int argc, char** argv)
     custom_simulation_graph = acGridBuildTaskGraph(shock_ops);
     simulation_graph        = custom_simulation_graph;
 
-    // TODO: Why is this here?
-    // acGridSynchronizeStream(STREAM_ALL);
 #endif
 
     ///////////////////////////////////////////////////////////
@@ -1250,9 +1250,9 @@ main(int argc, char** argv)
         fprintf(diag_file, "\n");
     }
 
-    ////////////////////////////////////
-    // Define timed simulation events //
-    ////////////////////////////////////
+    /////////////////////////////
+    // Define periodic actions //
+    /////////////////////////////
 
     // Values set here define when certain timed simulation actions should happen
     // Either periodic ones (write snapshot) or single actions (end simulation)
@@ -1279,6 +1279,21 @@ main(int argc, char** argv)
     periodic_actions[PeriodicAction::EndSimulation]
 	    = SimulationPeriod(info.int_params[AC_max_steps], info.real_params[AC_max_time], 0);
 
+    //////////////////////////////
+    // Define user signal files //
+    //////////////////////////////
+
+    // Astaroth will trigger an event when a file is touched (when the modification time is updated)
+    // Map filenames to events here
+
+    std::map<SimulationEvent, UserSignalFile> signal_files;
+
+    // STOP 
+    signal_files[SimulationEvent::StopSignal] = UserSignalFile("STOP");
+
+    // RELOAD config
+    signal_files[SimulationEvent::ConfigReloadSignal] = UserSignalFile("RELOAD");
+
     ///////////////////////////////////////////////////////////////
     //                     Main simulation loop                  //
     ///////////////////////////////////////////////////////////////
@@ -1298,11 +1313,11 @@ main(int argc, char** argv)
 	/////////////////////////////////////////////////////////////////////
 
 	// Generic parameters
-	debug_log_simulation_event(pid, "Calculating time delta\n");
+	debug_log_from_root_proc_with_sim_progress(pid, "Calculating time delta\n");
         const AcReal dt = calc_timestep(info);
-        debug_log_simulation_event(pid, "Done calculating time delta, dt = %e\n", dt);
+        debug_log_from_root_proc_with_sim_progress(pid, "Done calculating time delta, dt = %e\n", dt);
 
-	// Case-specific parameter
+	// Case-specific parameters
 #if LSINK
         AcReal sum_mass;
         acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, VTXBUF_ACCRETION, &sum_mass);
@@ -1363,7 +1378,7 @@ main(int argc, char** argv)
         set_simulation_timestamp(i, simulation_time);
 
 	if (log_progress){
-            log_simulation_event(pid, "Simulation step complete\n");
+            log_from_root_proc_with_sim_progress(pid, "Simulation step complete\n");
         }
  
 	/////////////////////////////////////////////////////////////////////
@@ -1378,7 +1393,7 @@ main(int argc, char** argv)
 		//End progress logging (which step you are at) after first period.
 		if (log_progress){
 		    log_progress = false;
-		    log_simulation_event(pid,
+		    log_from_root_proc_with_sim_progress(pid,
                                "VERBOSE is off, not logging simulation step completion for "
                                "step > %d\n",
                                i);
@@ -1389,7 +1404,7 @@ main(int argc, char** argv)
 		    case PeriodicAction::PrintDiagnostics:
 		    {
 			//Print diagnostics and set found_nan
-			log_simulation_event(pid, "Periodic action: diagnostics\n");
+			log_from_root_proc_with_sim_progress(pid, "Periodic action: diagnostics\n");
             		print_diagnostics(i, dt, simulation_time, diag_file, sink_mass, accreted_mass, &found_nan);
 			if (found_nan){
 			    set_event(&events, SimulationEvent::NanDetected);
@@ -1403,13 +1418,13 @@ main(int argc, char** argv)
 		    }
 		    case PeriodicAction::WriteSnapshot:
 		    {
-			log_simulation_event(pid, "Periodic action: writing full mesh snapshot\n");
+			log_from_root_proc_with_sim_progress(pid, "Periodic action: writing full mesh snapshot\n");
                         save_mesh_mpi_async(info, snapshot_dir, pid, i, simulation_time);
 		        break;
 		    }
 		    case PeriodicAction::WriteSlices:
 		    {
-			log_simulation_event(pid, "Periodic action: writing mesh slices\n");
+			log_from_root_proc_with_sim_progress(pid, "Periodic action: writing mesh slices\n");
             		acGridPeriodicBoundconds(STREAM_DEFAULT);
 		        write_slices(pid, i);
 		        break;
@@ -1429,10 +1444,11 @@ main(int argc, char** argv)
 	//                                                                 //
 	/////////////////////////////////////////////////////////////////////
 
-	// Check files
-	if (pid == 0){
-	    if (access("STOP", F_OK) == 0){
-                set_event(&events, SimulationEvent::StopFileModified);
+	// Check signal files
+	for (auto &[signal,file] : signal_files){
+	    if (pid == 0 && file.check()){
+		log_from_root_proc_with_sim_progress(pid, "Detected file modified: %s\n", file.file_path.c_str());
+                set_event(&events, signal);
 	    }
 	}
 
@@ -1456,31 +1472,31 @@ main(int argc, char** argv)
                 switch(static_cast<SimulationEvent>(e)){
                     case SimulationEvent::NanDetected:
 		    {
-		        log_simulation_event(pid, "FOUND NAN -> exiting\n");
+		        log_from_root_proc_with_sim_progress(pid, "FOUND NAN -> exiting\n");
                         break;
 		    }
-		    case SimulationEvent::StopFileModified:
+		    case SimulationEvent::StopSignal:
 		    {
-                        log_simulation_event(pid, "Found STOP file -> exiting\n");
+                        log_from_root_proc_with_sim_progress(pid, "Got STOP signal -> exiting\n");
 			break;
 		    }
 		    case SimulationEvent::TimeLimitReached:
 		    {
 		        int max_step = periodic_actions[PeriodicAction::EndSimulation].step_period;
 			if (i == max_step){
-			    log_simulation_event(pid, "Max time steps reached (%d == %d) -> exiting\n",
+			    log_from_root_proc_with_sim_progress(pid, "Max time steps reached (%d == %d) -> exiting\n",
 					      i, max_step);
 			}
 		        AcReal max_time = periodic_actions[PeriodicAction::EndSimulation].time_period;
 			if (max_time > 0 && simulation_time >= max_time){
-			    log_simulation_event(pid, "Time limit reached (%e >= %e ) -> exiting\n",
+			    log_from_root_proc_with_sim_progress(pid, "Time limit reached (%e >= %e ) -> exiting\n",
 					      simulation_time, max_time);
 			}
 		        break;
 		    }
-		    case SimulationEvent::ReloadFileModified:
+		    case SimulationEvent::ConfigReloadSignal:
 		    {
-			log_simulation_event(pid, "Found RELOAD file -> Nothing will happen yet\n");
+			log_from_root_proc_with_sim_progress(pid, "Got RELOAD signal -> Not implemented\n");
                         break;
 		    }
 		    default:
@@ -1497,16 +1513,16 @@ main(int argc, char** argv)
             if (i % bin_steps != 0) {
                 acGridPeriodicBoundconds(STREAM_DEFAULT);
                 acGridSynchronizeStream(STREAM_DEFAULT);
-                log_simulation_event(pid, "Writing final snapshots to %s, timestep = %d\n",
+                log_from_root_proc_with_sim_progress(pid, "Writing final snapshots to %s, timestep = %d\n",
                                    snapshot_dir, i);
                 save_mesh_mpi_async(info, snapshot_dir, pid, i, simulation_time);
-                log_simulation_event(pid, "Done writing snapshots\n");
+                log_from_root_proc_with_sim_progress(pid, "Done writing snapshots\n");
             }
             else {
-                log_simulation_event(pid, "Snapshots for timestep %d have already been written\n");
+                log_from_root_proc_with_sim_progress(pid, "Snapshots for timestep %d have already been written\n");
             }*/
 
-            log_simulation_event(pid, "Exiting simulation loop\n");
+            log_from_root_proc_with_sim_progress(pid, "Exiting simulation loop\n");
             break;
 	}
 	events = 0;
@@ -1526,11 +1542,9 @@ main(int argc, char** argv)
     acLogFromRootProc(pid, "Calling acGridQuit\n");
     acGridQuit();
     fclose(diag_file);
-    acLogFromRootProc(pid, "Simulation complete\n");
     acLogFromRootProc(pid, "Calling MPI_Finalize\n");
     MPI_Finalize();
-    // Won't work because printf define uses MPI...
-    // acLogFromRootProc(pid, "Simulation complete\n");
+    acLogFromRootProc(pid, "Simulation complete, goodbye!\n");
 
     // TODO: might want to change this to EXIT_FAILURE if found_nan
     return EXIT_SUCCESS;

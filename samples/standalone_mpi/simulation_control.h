@@ -39,21 +39,27 @@ struct SimulationPeriod {
     }
 };
 
-std::string to_timestamp(time_t t) {
-  char timestamp[80];
-  strftime(timestamp, 80, "%Y-%m-%d-%I:%M:%S", localtime(&t));
-  return std::string(timestamp);
-}
+
+//std::string to_timestamp(time_t t) {
+//  char timestamp[80];
+//  strftime(timestamp, 80, "%Y-%m-%d-%I:%M:%S", localtime(&t));
+//  return std::string(timestamp);
+//}
 
 // Structure for keeping track of a file used by the user to signal things
 struct UserSignalFile {
   std::string file_path;
-  time_t last_mod_time;
+  time_t mod_time;
+
+  UserSignalFile()
+   : file_path{""}, mod_time{0}
+  {}
+
 
   UserSignalFile(std::string filename)
-      : file_path(filename), last_mod_time{stat_file_mod_time()} {};
+      : file_path(filename), mod_time{stat_file_mod_time()} {};
 
-  bool file_exists() { return access(file_path.c_str(), F_OK) ? true : false; }
+  bool file_exists() { return access(file_path.c_str(), F_OK) == 0; }
 
   time_t stat_file_mod_time() {
     struct stat s;
@@ -64,25 +70,10 @@ struct UserSignalFile {
   }
 
   bool check() {
-    printf("Checking for file %s\n", file_path.c_str());
-
-    time_t mod_time = stat_file_mod_time();
-    bool file_exists = mod_time != 0;
-
-    printf("File exists = %d\n", file_exists);
-
-    printf("Last modtime: %s\n"
-           "This modtime: %s\n",
-           to_timestamp(last_mod_time).c_str(), to_timestamp(mod_time).c_str());
-
-    if (mod_time > last_mod_time) {
-      printf("File modified!\n");
-      last_mod_time = mod_time;
-      return true;
-    }
-
-    printf("File not modified!\n");
-    return false;
+    time_t statted_mod_time = stat_file_mod_time();
+    time_t prev_mod_time    = mod_time;
+    mod_time                = std::max(statted_mod_time, prev_mod_time);
+    return statted_mod_time > prev_mod_time;
   };
 };
 
@@ -101,7 +92,7 @@ set_simulation_timestamp(int step, AcReal time)
 }
 
 void
-log_simulation_event(int pid, std::string msg, ...)
+log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
 {
     if (pid == 0){
       strncpy(sim_log_msg+sim_tstamp_len, msg.c_str(), sim_log_msg_len - sim_tstamp_len);
@@ -113,7 +104,7 @@ log_simulation_event(int pid, std::string msg, ...)
 }
 
 void
-debug_log_simulation_event(int pid, std::string msg, ...)
+debug_log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
 {
 #ifndef NDEBUG
    if (pid == 0){
