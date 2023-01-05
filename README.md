@@ -23,6 +23,12 @@ Relative recent versions of
 
 and either `nvcc` (NVIDIA) or `hipcc` (AMD). The library is built for NVIDIA by default, but AMD support can be enabled by passing `-DUSE_HIP=ON` to CMake.
 
+## Choosing a branch
+
+`master` is a tested, stable branch. We recommend to use this branch in production
+
+`develop` is the main development branch.
+
 ## Building
 
 In the base directory, run
