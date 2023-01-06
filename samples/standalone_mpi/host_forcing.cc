@@ -37,6 +37,10 @@ AcReal
 get_random_number_01()
 {
     // TODO: Implement better randon number generator http://www.cplusplus.com/reference/random/
+    // OL: the standard library has the mersenne twister (std::mt19937): 
+    //    https://en.cppreference.com/w/cpp/header/random/mersenne_twister_engine
+    // OL: A high performance generator family is PCG: https://www.pcg-random.org/
+    // OL: and please use std::uniform_real_distribution instead of this
     return AcReal(rand()) / AcReal(RAND_MAX);
 }
 

@@ -63,19 +63,8 @@ static const char* slice_dir      = "output-slices";
         }                                                                                          \
     }
 
-#define printf(...)                                                                                \
-    {                                                                                              \
-        int tmppid;                                                                                \
-        MPI_Comm_rank(MPI_COMM_WORLD, &tmppid);                                                    \
-        if (!tmppid) {                                                                             \
-            printf(__VA_ARGS__);                                                                   \
-        }                                                                                          \
-    }
-
-// TODO: currently, printf & fprintf has been replaced everywhere with one that only prints from MPI
-// rank 0 This is suboptimal, because now we cannot use printf to print from another rank We should
-// rename this rank 0 printf something else, like root_thread::printf This is clearer in intent, and
-// allows us to actually use printf elsewhere as well
+// TODO: currently, fprintf has been replaced by this macro
+// This is a little ugly, and could be fixed with a nicer solution
 
 // Write all setting info into a separate ascii file. This is done to guarantee
 // that we have the data specifi information in the thing, even though in
@@ -484,7 +473,7 @@ print_diagnostics_host(const AcMesh mesh, const int step, const AcReal dt, const
 // appends an ascii file to contain all the result.
 // JP: EXECUTES ON MULTIPLE GPUS, MUST BE CALLED FROM ALL PROCS
 static inline void
-print_diagnostics(const int step, const AcReal dt, const AcReal simulation_time, FILE* diag_file,
+print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal simulation_time, FILE* diag_file,
                   const AcReal sink_mass, const AcReal accreted_mass, int* found_nan)
 {
 
@@ -496,9 +485,8 @@ print_diagnostics(const int step, const AcReal dt, const AcReal simulation_time,
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_min);
     acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_rms);
 
-    // MV: The ordering in the earlier version was wrong in terms of variable
-    printf("Step %d, t_step %.3e, dt %e s\n", step, double(simulation_time), double(dt));
-    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "uu total", double(buf_min),
+    acLogFromRootProc(pid, "Step %d, t_step %.3e, dt %e s\n", step, double(simulation_time), double(dt));
+    acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "uu total", double(buf_min),
            double(buf_rms), double(buf_max));
     fprintf(diag_file, "%d %e %e %e %e %e ", step, double(simulation_time), double(dt),
             double(buf_min), double(buf_rms), double(buf_max));
@@ -508,7 +496,7 @@ print_diagnostics(const int step, const AcReal dt, const AcReal simulation_time,
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MIN, BFIELDX, BFIELDY, BFIELDZ, &buf_min);
     acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, BFIELDX, BFIELDY, BFIELDZ, &buf_rms);
 
-    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
+    acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
            double(buf_rms), double(buf_max));
     fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
 
@@ -519,7 +507,7 @@ print_diagnostics(const int step, const AcReal dt, const AcReal simulation_time,
     acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
                         &buf_rms);
 
-    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
+    acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
            double(buf_rms), double(buf_max));
     fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
 #endif
@@ -530,7 +518,7 @@ print_diagnostics(const int step, const AcReal dt, const AcReal simulation_time,
         acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, VertexBufferHandle(i), &buf_min);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_RMS, VertexBufferHandle(i), &buf_rms);
 
-        printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
+        acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
                double(buf_min), double(buf_rms), double(buf_max));
         fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
 
@@ -546,8 +534,8 @@ print_diagnostics(const int step, const AcReal dt, const AcReal simulation_time,
     fprintf(diag_file, "\n");
 
 #if LSINK
-    printf("sink mass is: %.15e \n", double(sink_mass));
-    printf("accreted mass is: %.15e \n", double(accreted_mass));
+    acLogFromRootProc(pid, "sink mass is: %.15e \n", double(sink_mass));
+    acLogFromRootProc(pid, "accreted mass is: %.15e \n", double(accreted_mass));
 #endif
 
     fflush(diag_file);
@@ -918,7 +906,8 @@ enum class SimulationEvent {
     TimeLimitReached    = 0x004,
     ConfigReloadSignal  = 0x008,
     
-    EndCondition        = NanDetected | StopSignal | TimeLimitReached
+    EndCondition        = NanDetected | StopSignal | TimeLimitReached,
+    ErrorState          = NanDetected
 };
 
 void
@@ -973,7 +962,9 @@ main(int argc, char** argv)
     while ((opt = getopt_long(argc, argv, "c:kpdmh", long_options, nullptr)) != -1) {
         switch (opt) {
         case 'h':
-            print_usage("ac_run_mpi");
+	    if (pid == 0){
+                print_usage("ac_run_mpi");
+	    }
             return EXIT_SUCCESS;
         case 'c':
             config_path = optarg;
@@ -1134,9 +1125,7 @@ main(int argc, char** argv)
                 acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)i, &max);
                 acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)i, &min);
                 acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)i, &sum);
-                if (pid == 0) {
-                    printf("max %g, min %g, sum %g\n", (double)max, (double)min, (double)sum);
-                }
+                acLogFromRootProc(pid, "max %g, min %g, sum %g\n", (double)max, (double)min, (double)sum);
             }
         }
         break;
@@ -1236,7 +1225,7 @@ main(int argc, char** argv)
         }
         MPI_Barrier(
             MPI_COMM_WORLD); // Ensure diagnostics header has been written out before continuing
-        print_diagnostics(start_step, 0, simulation_time, diag_file, sink_mass, accreted_mass,
+        print_diagnostics(pid, start_step, 0, simulation_time, diag_file, sink_mass, accreted_mass,
                           &found_nan);
 
         acLogFromRootProc(pid, "Initial state: writing mesh slices\n");
@@ -1405,7 +1394,7 @@ main(int argc, char** argv)
 		    {
 			//Print diagnostics and set found_nan
 			log_from_root_proc_with_sim_progress(pid, "Periodic action: diagnostics\n");
-            		print_diagnostics(i, dt, simulation_time, diag_file, sink_mass, accreted_mass, &found_nan);
+            		print_diagnostics(pid, i, dt, simulation_time, diag_file, sink_mass, accreted_mass, &found_nan);
 			if (found_nan){
 			    set_event(&events, SimulationEvent::NanDetected);
 			}
@@ -1505,6 +1494,13 @@ main(int argc, char** argv)
 	    }
 	}
 
+
+	/////////////////////////////////////////////////////////////////////
+	//                                                                 //
+        // 8. End simulation if an end condition has been reached          //
+	//                                                                 //
+	/////////////////////////////////////////////////////////////////////
+
         if (check_event(events, SimulationEvent::EndCondition)){
 	    /*
             // JP: Commented out, will mess up slice buffering if not divisible by bin_steps
@@ -1539,14 +1535,18 @@ main(int argc, char** argv)
         acLogFromRootProc(pid, "Destroying custom task graph\n");
         acGridDestroyTaskGraph(custom_simulation_graph);
     }
+
     acLogFromRootProc(pid, "Calling acGridQuit\n");
     acGridQuit();
     fclose(diag_file);
     acLogFromRootProc(pid, "Calling MPI_Finalize\n");
     MPI_Finalize();
-    acLogFromRootProc(pid, "Simulation complete, goodbye!\n");
 
-    // TODO: might want to change this to EXIT_FAILURE if found_nan
+    if (check_event(events, SimulationEvent::ErrorState)){
+        acLogFromRootProc(pid, "Simulation ended due to an error, goodbye :(\n");
+        return EXIT_FAILURE;
+    } 
+    acLogFromRootProc(pid, "Simulation complete, goodbye!\n");
     return EXIT_SUCCESS;
 }
 
