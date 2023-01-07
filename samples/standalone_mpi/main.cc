@@ -389,22 +389,24 @@ read_mesh(AcMesh& read_mesh, const int step, AcReal* simulation_time)
 */
 
 static inline void
-print_diagnostics_header(FILE* diag_file)
+print_diagnostics_header_from_root_proc(int pid, FILE* diag_file)
 {
-    // Generate the file header
-    fprintf(diag_file, "step  t_step  dt  uu_total_min  uu_total_rms  uu_total_max  ");
+    // Generate the file header (from root)
+    if (pid == 0){
+        fprintf(diag_file, "step  t_step  dt  uu_total_min  uu_total_rms  uu_total_max  ");
 #if LBFIELD
-    fprintf(diag_file, "bb_total_min  bb_total_rms  bb_total_max  ");
-    fprintf(diag_file, "vA_total_min  vA_total_rms  vA_total_max  ");
+        fprintf(diag_file, "bb_total_min  bb_total_rms  bb_total_max  ");
+        fprintf(diag_file, "vA_total_min  vA_total_rms  vA_total_max  ");
 #endif
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        fprintf(diag_file, "%s_min  %s_rms  %s_max  ", vtxbuf_names[i], vtxbuf_names[i],
-                vtxbuf_names[i]);
-    }
+        for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+            fprintf(diag_file, "%s_min  %s_rms  %s_max  ", vtxbuf_names[i], vtxbuf_names[i],
+                    vtxbuf_names[i]);
+        }
 #if LSINK
-    fprintf(diag_file, "sink_mass  accreted_mass  ");
+        fprintf(diag_file, "sink_mass  accreted_mass  ");
 #endif
-    fprintf(diag_file, "\n");
+        fprintf(diag_file, "\n");
+    }
 }
 
 /*
@@ -488,8 +490,10 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
     acLogFromRootProc(pid, "Step %d, t_step %.3e, dt %e s\n", step, double(simulation_time), double(dt));
     acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "uu total", double(buf_min),
            double(buf_rms), double(buf_max));
-    fprintf(diag_file, "%d %e %e %e %e %e ", step, double(simulation_time), double(dt),
-            double(buf_min), double(buf_rms), double(buf_max));
+    if (pid == 0){
+        fprintf(diag_file, "%d %e %e %e %e %e ", step, double(simulation_time), double(dt),
+                double(buf_min), double(buf_rms), double(buf_max));
+    }
 
 #if LBFIELD
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MAX, BFIELDX, BFIELDY, BFIELDZ, &buf_max);
@@ -498,7 +502,9 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
 
     acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
            double(buf_rms), double(buf_max));
-    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+    if (pid == 0){
+        fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+    }
 
     acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
                         &buf_max);
@@ -509,7 +515,9 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
 
     acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
            double(buf_rms), double(buf_max));
-    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+    if (pid == 0){
+        fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+    }
 #endif
 
     // Calculate rms, min and max from the variables as scalars
@@ -520,7 +528,9 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
 
         acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
                double(buf_min), double(buf_rms), double(buf_max));
-        fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+        if (pid == 0){
+            fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+	}
 
         if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
             *found_nan = 1;
@@ -528,10 +538,14 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
     }
 
     if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
-        fprintf(diag_file, "%e %e ", double(sink_mass), double(accreted_mass));
+        if (pid == 0){
+            fprintf(diag_file, "%e %e ", double(sink_mass), double(accreted_mass));
+	}
     }
 
-    fprintf(diag_file, "\n");
+    if (pid == 0){
+        fprintf(diag_file, "\n");
+    }
 
 #if LSINK
     acLogFromRootProc(pid, "sink mass is: %.15e \n", double(sink_mass));
@@ -1052,8 +1066,6 @@ main(int argc, char** argv)
 
     // Run-control variables
     // --------------------
-    // TODO: remove found_nan, use block-local variables instead
-    int found_nan  = 0; // Nan or inf finder to give an error signal
     bool log_progress = 1;
 
     AcReal simulation_time = 0.0;
@@ -1070,24 +1082,18 @@ main(int argc, char** argv)
     accreted_mass = 0.0;
     // TODO: I think this is supposed to set device vertex buffer VTXBUF_ACCRETION to 0 before the
     // simulation starts
-    // TODO: figure out how to do that in_device_memory
     if (pid == 0) {
         acVertexBufferSet(VTXBUF_ACCRETION, 0.0, &mesh);
     }
 #endif
 
-    // SMELL: this was set twice, once here and once further down
-    // I've commented out the first call to srand, since it would be overridden by the second value
-    // TODO: figure out if this is here for a reason, and why was it different?
-    // and should this be moved lower
-
-    // Set random seed for reproducibility
-    // srand(321654987);
+    // Set random seed for reproducibility (TODO: stop using rand())
     srand(312256655);
-    // END SMELL
 
     ////////////////////////////////////////
     // Initialize internal Astaroth state //
+    //  allocate mesh                     //
+    //  load config to GPU                //
     ////////////////////////////////////////
 
     acLogFromRootProc(pid, "Initializing Astaroth (acGridInit)\n");
@@ -1167,7 +1173,7 @@ main(int argc, char** argv)
         ERROR("Invalid initial_mesh_procedure");
     }
 
-    acLogFromRootProc(pid, "Initial mesh setup is done\n");
+    acLogFromRootProc(pid, "Mesh initialization done\n");
 
     ////////////////////////////////////////////////////
     // Building the task graph (or using the default) //
@@ -1210,34 +1216,32 @@ main(int argc, char** argv)
 
 #endif
 
-    ///////////////////////////////////////////////////////////
-    // Open output files and write the initial state to them //
-    ///////////////////////////////////////////////////////////
 
-    FILE* diag_file = fopen("timeseries.ts", "a");
-    ERRCHK_ALWAYS(diag_file);
+    ////////////////////////////////////////////////////////
+    // Simulation loop setup: defining events and actions //
+    ////////////////////////////////////////////////////////
 
-    if (start_step == 0) {
-        // TODO: calculate time step before entering loop, recalculate at end
-        acLogFromRootProc(pid, "Initial state: diagnostics\n");
-        if (pid == 0) {
-            print_diagnostics_header(diag_file);
-        }
-        MPI_Barrier(
-            MPI_COMM_WORLD); // Ensure diagnostics header has been written out before continuing
-        print_diagnostics(pid, start_step, 0, simulation_time, diag_file, sink_mass, accreted_mass,
-                          &found_nan);
+    // Simulation events will be collected in the bits of this variable
+    // 16 bits, so there's room for sixteen different events.
+    // Upgrade to a larger int if you need more events.
+    uint16_t events = 0;
 
-        acLogFromRootProc(pid, "Initial state: writing mesh slices\n");
-	write_slices(pid, start_step);
+    //////////////////////////////
+    // Define user signal files //
+    //////////////////////////////
 
-        acLogFromRootProc(pid, "Initial state: writing full mesh snapshot\n");
-        save_mesh_mpi_async(info, snapshot_dir, pid, 0, 0.0);
-    }
-    else if (pid == 0) {
-        // add newline to old diag_file from previous run
-        fprintf(diag_file, "\n");
-    }
+    // Astaroth will trigger an event when a file is touched (when the modification time is updated)
+    // Map filenames to events here
+
+    std::map<SimulationEvent, UserSignalFile> signal_files;
+
+    // STOP
+    signal_files[SimulationEvent::StopSignal] = UserSignalFile("STOP");
+
+    // RELOAD config
+    signal_files[SimulationEvent::ConfigReloadSignal] = UserSignalFile("RELOAD");
+
+
 
     /////////////////////////////
     // Define periodic actions //
@@ -1268,20 +1272,39 @@ main(int argc, char** argv)
     periodic_actions[PeriodicAction::EndSimulation]
 	    = SimulationPeriod(info.int_params[AC_max_steps], info.real_params[AC_max_time], 0);
 
-    //////////////////////////////
-    // Define user signal files //
-    //////////////////////////////
 
-    // Astaroth will trigger an event when a file is touched (when the modification time is updated)
-    // Map filenames to events here
 
-    std::map<SimulationEvent, UserSignalFile> signal_files;
+    /////////////////////////////////////////////////////////////
+    // Set up certain periodic actions and run them for i == 0 //
+    /////////////////////////////////////////////////////////////
 
-    // STOP 
-    signal_files[SimulationEvent::StopSignal] = UserSignalFile("STOP");
+    FILE* diag_file = fopen("timeseries.ts", "a");
+    ERRCHK_ALWAYS(diag_file);
+    //TODO: should probably always check for NaN's, not just at start_step = 0
+    if (start_step == 0) {
+        // TODO: calculate time step before entering loop, recalculate at end
+        acLogFromRootProc(pid, "Initial state: diagnostics\n");
+        print_diagnostics_header_from_root_proc(pid, diag_file);
+	int found_nan = 0;
+        print_diagnostics(pid, start_step, 0, simulation_time, diag_file, sink_mass, accreted_mass,
+                          &found_nan);
 
-    // RELOAD config
-    signal_files[SimulationEvent::ConfigReloadSignal] = UserSignalFile("RELOAD");
+        acLogFromRootProc(pid, "Initial state: writing mesh slices\n");
+	write_slices(pid, start_step);
+
+        acLogFromRootProc(pid, "Initial state: writing full mesh snapshot\n");
+        save_mesh_mpi_async(info, snapshot_dir, pid, 0, 0.0);
+
+	if (found_nan != 0){
+	    acLogFromRootProc(pid, "Found NaN in initial state -> exiting\n");
+	    set_event(&events, SimulationEvent::NanDetected);
+	}
+    }
+    else if (pid == 0) {
+        // add newline to old diag_file from previous run
+	// TODO: figure out why we're doing this? do we want a clear indication in the file that a new run was started?
+        fprintf(diag_file, "\n");
+    }
 
     ///////////////////////////////////////////////////////////////
     //                     Main simulation loop                  //
@@ -1289,9 +1312,6 @@ main(int argc, char** argv)
 
     acLogFromRootProc(pid, "Starting simulation\n");
     set_simulation_timestamp(start_step, simulation_time);
-
-    // Simulation events will be collected in the bits of this variable
-    uint16_t events = 0;
 
     for (int i = start_step + 1;; ++i) {
 
@@ -1392,8 +1412,9 @@ main(int argc, char** argv)
                 switch (action){
 		    case PeriodicAction::PrintDiagnostics:
 		    {
-			//Print diagnostics and set found_nan
+			//Print diagnostics and search for nans
 			log_from_root_proc_with_sim_progress(pid, "Periodic action: diagnostics\n");
+			int found_nan = 0;
             		print_diagnostics(pid, i, dt, simulation_time, diag_file, sink_mass, accreted_mass, &found_nan);
 			if (found_nan){
 			    set_event(&events, SimulationEvent::NanDetected);

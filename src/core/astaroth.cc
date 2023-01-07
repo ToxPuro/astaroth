@@ -297,6 +297,7 @@ acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 static AcReal
 randf(void)
 {
+    // TODO: rand() considered harmful, replace
     return (AcReal)rand() / (AcReal)RAND_MAX;
 }
 
@@ -304,9 +305,11 @@ AcResult
 acHostMeshRandomize(AcMesh* mesh)
 {
     const int n = acVertexBufferSize(mesh->info);
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
-        for (int i = 0; i < n; ++i)
+    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w){
+        for (int i = 0; i < n; ++i){
             mesh->vertex_buffer[w][i] = randf();
+	}
+    }
 
     return AC_SUCCESS;
 }
