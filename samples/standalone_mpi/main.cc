@@ -1,4 +1,5 @@
 /*
+
     Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
@@ -36,6 +37,8 @@
 #include <ctime>
 
 #include <map>
+#include <vector>
+#include <set>
 
 #include "config_loader.h"
 #include "errchk.h"
@@ -1506,11 +1509,134 @@ main(int argc, char** argv)
 		    }
 		    case SimulationEvent::ConfigReloadSignal:
 		    {
-			log_from_root_proc_with_sim_progress(pid, "Got RELOAD signal -> Not implemented\n");
-                        break;
+			log_from_root_proc_with_sim_progress(pid, "Got RELOAD signal -> reloading config file\n");
+
+			AcMeshInfo new_info;
+			log_from_root_proc_with_sim_progress(pid, "Synchronizing procs\n");
+			MPI_Barrier(MPI_COMM_WORLD);
+			log_from_root_proc_with_sim_progress(pid, "Reloading config file\n");
+                        acLoadConfig(config_path, &new_info);
+			set_extra_config_params(&new_info);
+
+
+			//TODO: refactor this big mess of runtime checks into a function that returns a bool
+			//Check differences to current config
+			std::vector<const char *> nan_params;
+			bool configs_differ = false;
+
+			//TODO: define run constants, these cannot be changed in a reload
+			bool changed_run_constants = false;
+
+			std::set<size_t> int_run_constants;
+			int_run_constants.insert(AC_nx);
+			int_run_constants.insert(AC_ny);
+			int_run_constants.insert(AC_nz);
+
+			int_run_constants.insert(AC_dsx);
+			int_run_constants.insert(AC_dsy);
+			int_run_constants.insert(AC_dsz);
+
+			int_run_constants.insert(AC_start_step);
+			int_run_constants.insert(AC_init_type);
+
+			for (size_t int_param = 0; int_param < NUM_INT_PARAMS; int_param++){
+			    int old_value = info.int_params[int_param];
+			    int new_value = new_info.int_params[int_param];
+			    if (old_value != new_value){
+				configs_differ = true;
+			        const char *param_name = intparam_names[int_param];
+				acLogFromRootProc(pid, "about to update %s from %d to %d\n",
+					        param_name, old_value, new_value);
+				if (int_run_constants.count(int_param) != 0){
+				    acLogFromRootProc(pid, "ERROR: Can't update %s during a run\n", param_name);
+                                    changed_run_constants = true;
+				}
+			    }
+			}
+			for (size_t int3_param = 0; int3_param < NUM_INT3_PARAMS; int3_param++){
+			    int3 old_value = info.int3_params[int3_param];
+			    int3 new_value = new_info.int3_params[int3_param];
+			    if (old_value != new_value){
+				configs_differ = true;
+			        const char *param_name = int3param_names[int3_param];
+				acLogFromRootProc(pid, "about to update %s: from (%d, %d, %d) to (%d, %d, %d)\n",
+					       	param_name, 
+					       	old_value.x, old_value.y, old_value.z, 
+						new_value.x, new_value.y, new_value.z);
+			    }
+
+			}
+			for (size_t real_param = 0; real_param < NUM_REAL_PARAMS; real_param++){
+			    AcReal old_value = info.real_params[real_param];
+			    AcReal new_value = new_info.real_params[real_param];
+			    if (old_value != new_value && !(isnan(old_value) && isnan(new_value))){
+				configs_differ = true;
+			        const char *param_name = realparam_names[real_param];
+				acLogFromRootProc(pid, "about to update %s from %e to %e\n",
+					        param_name, old_value, new_value);
+				if (isnan(new_value)){
+				    acLogFromRootProc(pid, "WARNING: updated value of %s parsed as NAN. Check the config file!\n", param_name);
+				    nan_params.push_back(param_name);
+				}
+			    }
+			}
+			for (size_t real3_param = 0; real3_param < NUM_REAL3_PARAMS; real3_param++){
+			    AcReal3 old_value = info.real3_params[real3_param];
+			    AcReal3 new_value = new_info.real3_params[real3_param];
+			    if ((old_value.x != new_value.x && !(isnan(old_value.x) && isnan(new_value.x))) ||
+			        (old_value.y != new_value.y && !(isnan(old_value.y) && isnan(new_value.y))) ||
+			        (old_value.z != new_value.z && !(isnan(old_value.z) && isnan(new_value.z)))){
+				configs_differ = true;
+			        const char *param_name = real3param_names[real3_param];
+				acLogFromRootProc(pid, "about to update %s: from (%d, %d, %d) to (%d, %d, %d)\n",
+					       	param_name, 
+					       	old_value.x, old_value.y, old_value.z, 
+						new_value.x, new_value.y, new_value.z);
+				if (isnan(new_value.x) || isnan(new_value.y) || isnan(new_value.z)){
+				    acLogFromRootProc(pid, "WARNING: updated value of %s parsed as NAN. Check the config file!\n", param_name);
+				    nan_params.push_back(param_name);
+				}
+
+			    }
+
+			}
+
+			if (!nan_params.empty()){
+			    log_from_root_proc_with_sim_progress(pid, "ERROR reloading config file: NaN's in updated values -> not reloading config.\n");
+			    log_from_root_proc_with_sim_progress(pid, "The following parameters were parsed as NaN:\n");
+			    for (auto param_name : nan_params){
+			        acLogFromRootProc(pid, "  %s\n", param_name);
+			    }
+			    log_from_root_proc_with_sim_progress(pid, "Please edit the config file and try again. Aborting config reload.\n");
+			    break;
+			}
+
+			if (changed_run_constants){
+			    log_from_root_proc_with_sim_progress(pid, "Tried to change run constant -> not reloading config.\n");
+			    log_from_root_proc_with_sim_progress(pid, "Please edit the config file and try again. Aborting config reload.\n");
+			    break;
+			}
+
+			// No NaN's
+			if (!configs_differ){
+			    log_from_root_proc_with_sim_progress(pid, "No changes found in new config file -> doing nothing\n");
+			}
+
+			//No NaN's. there are changes
+			
+			//Decompose the config
+    						
+			log_from_root_proc_with_sim_progress(pid, "Reloading config\n");
+			AcMeshInfo submesh_info = acGridDecomposeMeshInfo(new_info);
+			acDeviceLoadMeshInfo(acGridGetDevice(), submesh_info);
+			MPI_Barrier(MPI_COMM_WORLD);
+			log_from_root_proc_with_sim_progress(pid, "Done reloading config\n");
+			break;
 		    }
 		    default:
-		    break;
+		    {
+		        break;
+		    }
 		}
 	    }
 	}

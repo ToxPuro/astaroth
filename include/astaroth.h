@@ -239,6 +239,8 @@ acGetMeshDims(const AcMeshInfo info)
     };
 }
 
+AcMeshInfo acGridDecomposeMeshInfo(const AcMeshInfo global_config);
+
 AcMeshInfo acGridGetLocalMeshInfo(void);
 
 static inline size_t
@@ -484,6 +486,9 @@ AcResult acGridInit(const AcMeshInfo info);
 Resets all devices on the current grid.
  */
 AcResult acGridQuit(void);
+
+/** Get the local device */
+Device acGridGetDevice(void);
 
 /** Randomizes the local mesh */
 AcResult acGridRandomize(void);

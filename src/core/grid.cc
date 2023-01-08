@@ -101,6 +101,46 @@ acGridRandomize(void)
     return AC_SUCCESS;
 }
 
+Device
+acGridGetDevice()
+{
+    return grid.device;
+}
+
+AcMeshInfo
+acGridDecomposeMeshInfo(const AcMeshInfo global_config)
+{
+    AcMeshInfo submesh_config = global_config;
+
+    int nprocs, pid;
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+
+    const uint3_64 decomp     = decompose(nprocs);
+    const int3 pid3d          = getPid3D(pid, decomp);
+
+    ERRCHK_ALWAYS(submesh_config.int_params[AC_nx] % decomp.x == 0);
+    ERRCHK_ALWAYS(submesh_config.int_params[AC_ny] % decomp.y == 0);
+    ERRCHK_ALWAYS(submesh_config.int_params[AC_nz] % decomp.z == 0);
+
+    const int submesh_nx = submesh_config.int_params[AC_nx] / decomp.x;
+    const int submesh_ny = submesh_config.int_params[AC_ny] / decomp.y;
+    const int submesh_nz = submesh_config.int_params[AC_nz] / decomp.z;
+
+    submesh_config.int_params[AC_nx]             = submesh_nx;
+    submesh_config.int_params[AC_ny]             = submesh_ny;
+    submesh_config.int_params[AC_nz]             = submesh_nz;
+    submesh_config.int3_params[AC_global_grid_n] = (int3){
+        global_config.int_params[AC_nx],
+        global_config.int_params[AC_ny],
+        global_config.int_params[AC_nz]
+    };
+    submesh_config.int3_params[AC_multigpu_offset] = pid3d *
+                                                   (int3){submesh_nx, submesh_ny, submesh_nz};
+    acHostUpdateBuiltinParams(&submesh_config);
+    return submesh_config;
+}
+
 AcResult
 acGridInit(const AcMeshInfo info)
 {
@@ -116,7 +156,6 @@ acGridInit(const AcMeshInfo info)
     MPI_Get_processor_name(processor_name, &name_len);
 
     // Decompose
-    AcMeshInfo submesh_info = info;
     const uint3_64 decomp   = decompose(nprocs);
     const int3 pid3d        = getPid3D(pid, decomp);
 
@@ -132,30 +171,14 @@ acGridInit(const AcMeshInfo info)
     MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-    ERRCHK_ALWAYS(info.int_params[AC_nx] % decomp.x == 0);
-    ERRCHK_ALWAYS(info.int_params[AC_ny] % decomp.y == 0);
-    ERRCHK_ALWAYS(info.int_params[AC_nz] % decomp.z == 0);
-
     // Check that mixed precision is correctly configured, AcRealPacked == AC_REAL_MPI_TYPE
     // CAN BE REMOVED IF MIXED PRECISION IS SUPPORTED AS A PREPROCESSOR FLAG
     int mpi_type_size;
     MPI_Type_size(AC_REAL_MPI_TYPE, &mpi_type_size);
     ERRCHK_ALWAYS(sizeof(AcRealPacked) == mpi_type_size);
 
-    const int submesh_nx                       = info.int_params[AC_nx] / decomp.x;
-    const int submesh_ny                       = info.int_params[AC_ny] / decomp.y;
-    const int submesh_nz                       = info.int_params[AC_nz] / decomp.z;
-    submesh_info.int_params[AC_nx]             = submesh_nx;
-    submesh_info.int_params[AC_ny]             = submesh_ny;
-    submesh_info.int_params[AC_nz]             = submesh_nz;
-    submesh_info.int3_params[AC_global_grid_n] = (int3){
-        info.int_params[AC_nx],
-        info.int_params[AC_ny],
-        info.int_params[AC_nz],
-    };
-    submesh_info.int3_params[AC_multigpu_offset] = pid3d *
-                                                   (int3){submesh_nx, submesh_ny, submesh_nz};
-    acHostUpdateBuiltinParams(&submesh_info);
+    // Decompose config (divide dimensions by decomposition)
+    AcMeshInfo submesh_info = acGridDecomposeMeshInfo(info);
 
     // GPU alloc
     int devices_per_node = -1;
