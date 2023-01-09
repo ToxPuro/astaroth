@@ -24,6 +24,7 @@
 #if AC_MPI_ENABLED
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "stencil_loader.h"
 
 #include "timer_hires.h"
 
@@ -1116,6 +1117,12 @@ main(int argc, char** argv)
     acLogFromRootProc(pid, "Initializing Astaroth (acGridInit)\n");
     acGridInit(info);
     acLogFromRootProc(pid, "Done initializing Astaroth (acGridInit)\n");
+
+    // Compute stencil coefficients from `info` and load to device
+    // TODO: enable and test
+    // acLogFromRootProc(pid, "Loading stencils (load_stencil_from_config)\n");
+    // load_stencil_from_config(info);
+    // acLogFromRootProc(pid, "Stencils loaded (load_stencil_from_config)\n");
 
     ///////////////////////////////////////////////////
     // Test kernels: scale, solve, reset, randomize. //
