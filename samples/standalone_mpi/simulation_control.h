@@ -10,28 +10,54 @@
 
 //Structure for keeping track of any generic condition
 struct SimulationPeriod {
+
+    static constexpr AcIntParam  NoStepParam =static_cast<AcIntParam>(-1);
+    static constexpr AcRealParam NoTimeParam =static_cast<AcRealParam>(-1);
+
+    AcIntParam  step_period_param = NoStepParam;
+    AcRealParam time_period_param = NoTimeParam;
+
     int    step_period;
     AcReal time_period;
-    AcReal time_threshold;
+
+    AcReal current_time_period_start;
 
     SimulationPeriod()
-    : step_period(0), time_period(0), time_threshold(0)
+    : step_period(0), time_period(0), current_time_period_start(0)
     {}
 
-
-    SimulationPeriod(int s, AcReal p)
-    : step_period(s), time_period(p), time_threshold(p)
+    // Generic version
+    SimulationPeriod(int s, AcReal p, AcReal time_offset = 0.0)
+    : step_period(s), time_period(p), current_time_period_start(time_offset)
     {}
 
-    SimulationPeriod(int s, AcReal p, AcReal threshold_offset)
-    : step_period(s), time_period(p), time_threshold(p + threshold_offset)
-    {}
+    // Parametrized version
+    SimulationPeriod(AcMeshInfo config, AcIntParam step_p, AcRealParam time_p, AcReal time_offset = 0.0)
+    : step_period_param{step_p}, time_period_param{time_p}, step_period{0}, time_period{0.0}, current_time_period_start{time_offset}
+    {
+        update(config);
+    }
+
+    void
+    update(AcMeshInfo config)
+    {
+        size_t step_period_param_idx = static_cast<size_t>(step_period_param);
+        if (step_period_param_idx < NUM_INT_PARAMS){
+            step_period = config.int_params[step_period_param_idx];
+        }
+
+        size_t time_period_param_idx = static_cast<size_t>(time_period_param);
+        if (time_period_param_idx < NUM_REAL_PARAMS){
+            time_period = config.real_params[time_period_param_idx];
+        }
+    }
+
     bool
     check(int time_step, AcReal time)
     {
-       if ((time_period > 0 && time >= time_threshold) ||
+       if ((time_period > 0 && time >= current_time_period_start + time_period) ||
           (step_period > 0 && time_step % step_period == 0)){
-           time_threshold += time_period;
+           current_time_period_start += time_period;
            return true;
        }
 

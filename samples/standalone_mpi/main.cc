@@ -1261,19 +1261,20 @@ main(int argc, char** argv)
 
     //Print diagnostics
     periodic_actions[PeriodicAction::PrintDiagnostics]
-	    = SimulationPeriod(info.int_params[AC_save_steps], 0, 0);
+	    = SimulationPeriod(info, AC_save_steps, SimulationPeriod::NoTimeParam);
 
     //Write snapshots
+    AcReal snapshot_time_offset = simulation_time;
     periodic_actions[PeriodicAction::WriteSnapshot]
-	    = SimulationPeriod(info.int_params[AC_bin_steps], info.real_params[AC_bin_save_t], simulation_time);
+	    = SimulationPeriod(info, AC_bin_steps, AC_bin_save_t, snapshot_time_offset);
 
     //Write slices
     periodic_actions[PeriodicAction::WriteSlices]
-	    = SimulationPeriod(info.int_params[AC_slice_steps], 0, 0);
+	    = SimulationPeriod(info, AC_slice_steps, SimulationPeriod::NoTimeParam);
 
     //Stop simulation after max time
     periodic_actions[PeriodicAction::EndSimulation]
-	    = SimulationPeriod(info.int_params[AC_max_steps], info.real_params[AC_max_time], 0);
+	    = SimulationPeriod(info, AC_max_steps, AC_max_time);
 
 
 
@@ -1617,18 +1618,24 @@ main(int argc, char** argv)
 			    break;
 			}
 
-			// No NaN's
 			if (!configs_differ){
 			    log_from_root_proc_with_sim_progress(pid, "No changes found in new config file -> doing nothing\n");
+			    break;
 			}
 
-			//No NaN's. there are changes
+			//No NaN's, we did not change run constants, and we have some changes
 			
-			//Decompose the config
-    						
 			log_from_root_proc_with_sim_progress(pid, "Reloading config\n");
+
+			//Update periodic actions with new params
+			for (auto &[_, action] : periodic_actions){
+			    action.update(new_info);
+			}
+
+			//Decompose the config
 			AcMeshInfo submesh_info = acGridDecomposeMeshInfo(new_info);
 			acDeviceLoadMeshInfo(acGridGetDevice(), submesh_info);
+			info = new_info;
 			MPI_Barrier(MPI_COMM_WORLD);
 			log_from_root_proc_with_sim_progress(pid, "Done reloading config\n");
 			break;
