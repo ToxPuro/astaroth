@@ -25,6 +25,7 @@
 #if AC_MPI_ENABLED
 #include "astaroth.h"
 #include "astaroth_utils.h"
+#include "stencil_loader.h"
 
 #include "timer_hires.h"
 
@@ -1091,6 +1092,9 @@ main(int argc, char** argv)
 #endif
 
     // Set random seed for reproducibility (TODO: stop using rand())
+    // JP: srand and rand used carelessly throughout the program, should be cleaned up
+    // and rechecked to avoid issues with reproducibility
+    // OL: we should move to <random> and std::mt19937 
     srand(312256655);
 
     ////////////////////////////////////////
@@ -1101,6 +1105,12 @@ main(int argc, char** argv)
 
     acLogFromRootProc(pid, "Initializing Astaroth (acGridInit)\n");
     acGridInit(info);
+
+    // Compute stencil coefficients from `info` and load to device
+    // TODO: enable and test
+    // acLogFromRootProc(pid, "Loading stencils (load_stencil_from_config)\n");
+    // load_stencil_from_config(info);
+    // acLogFromRootProc(pid, "Stencils loaded (load_stencil_from_config)\n");
 
     ///////////////////////////////////////////////////
     // Test kernels: scale, solve, reset, randomize. //

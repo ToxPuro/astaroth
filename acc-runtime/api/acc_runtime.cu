@@ -517,10 +517,10 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
     }
   }
   ERRCHK_ALWAYS(id < NUM_KERNELS);
-  printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
-         "(%d):\n",
-         kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
-  fflush(stdout);
+  //printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
+  //       "(%d):\n",
+  //       kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
+  //fflush(stdout);
 
 #if 0
   cudaDeviceProp prop;
@@ -659,14 +659,14 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 
         //printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
         //       tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
-        fflush(stdout);
+        //fflush(stdout);
       }
     }
   }
   c.tpb = best_tpb;
 
-  printf("\tThe best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x, best_tpb.y,
-         best_tpb.z, (double)best_time / num_iters);
+  //printf("\tThe best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x, best_tpb.y,
+  //       best_tpb.z, (double)best_time / num_iters);
 
   FILE* fp = fopen("autotune-result.out", "a");
   ERRCHK_ALWAYS(fp);
