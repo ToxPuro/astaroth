@@ -86,6 +86,8 @@ decompose(const uint64_t target)
 
 #include "timer_hires.h"
 
+#include <stdarg.h>
+
 static Timer timer;
 
 static void
