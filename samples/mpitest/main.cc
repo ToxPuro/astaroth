@@ -31,9 +31,22 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 #define NUM_INTEGRATION_STEPS (100)
 
+static bool finalized = false;
+
+#include <stdlib.h>
+void
+acAbort(void)
+{
+    if (!finalized)
+        MPI_Abort(MPI_COMM_WORLD, 0);
+}
+
 int
 main(void)
 {
+    atexit(acAbort);
+    int retval = 0;
+
     MPI_Init(NULL, NULL);
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
@@ -65,7 +78,10 @@ main(void)
     if (pid == 0) {
         acHostMeshApplyPeriodicBounds(&model);
         const AcResult res = acVerifyMesh("Boundconds", model, candidate);
-        ERRCHK_ALWAYS(res == AC_SUCCESS);
+        if (res != AC_SUCCESS) {
+            retval = res;
+            WARNCHK_ALWAYS(retval);
+        }
         acHostMeshRandomize(&model);
     }
 
@@ -90,7 +106,10 @@ main(void)
 
         acHostMeshApplyPeriodicBounds(&model);
         const AcResult res = acVerifyMesh("Integration", model, candidate);
-        ERRCHK_ALWAYS(res == AC_SUCCESS);
+        if (res != AC_SUCCESS) {
+            retval = res;
+            WARNCHK_ALWAYS(retval);
+        }
         acHostMeshRandomize(&model);
     }
 
@@ -112,7 +131,11 @@ main(void)
             Error error             = acGetError(modelval, candval);
             error.maximum_magnitude = acHostReduceScal(model, RTYPE_MAX, v0);
             error.minimum_magnitude = acHostReduceScal(model, RTYPE_MIN, v0);
-            ERRCHK_ALWAYS(acEvalError(rtype_names[i], error));
+
+            if (!acEvalError(rtype_names[i], error)) {
+                retval = AC_FAILURE;
+                WARNCHK_ALWAYS(retval);
+            }
         }
     }
 
@@ -133,7 +156,11 @@ main(void)
             Error error             = acGetError(modelval, candval);
             error.maximum_magnitude = acHostReduceVec(model, RTYPE_MAX, v0, v1, v2);
             error.minimum_magnitude = acHostReduceVec(model, RTYPE_MIN, v0, v1, v1);
-            ERRCHK_ALWAYS(acEvalError(rtype_names[i], error));
+
+            if (!acEvalError(rtype_names[i], error)) {
+                retval = AC_FAILURE;
+                WARNCHK_ALWAYS(retval);
+            }
         }
     }
 
@@ -144,6 +171,13 @@ main(void)
 
     acGridQuit();
     MPI_Finalize();
+    fflush(stdout);
+    finalized = true;
+
+    if (pid == 0)
+        fprintf(stderr, "MPITEST complete: %s\n",
+                retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
+
     return EXIT_SUCCESS;
 }
 
