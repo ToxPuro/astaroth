@@ -130,6 +130,16 @@ format_source(const char* file_in, const char* file_out)
 
 int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* dir, const bool gen_mem_accesses)
 {
+        // Stage 0: Clear all generated files to ensure acc failure can be detected later
+        {
+          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h"};
+          for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
+            FILE* fp = fopen(files[i], "w");
+            assert(fp);
+            fclose(fp);
+          }
+        }
+
         // Stage 1: Preprocess includes
         {
           FILE* out = fopen(stage1, "w");
