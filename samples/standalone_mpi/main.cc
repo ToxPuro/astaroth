@@ -1104,13 +1104,9 @@ main(int argc, char** argv)
     acGridInit(info);
 
     // Compute stencil coefficients from `info` and load to device
-    // TODO: enable and test
-    // acLogFromRootProc(pid, "Loading stencils (load_stencil_from_config)\n");
-    // load_stencil_from_config(info);
-    // acLogFromRootProc(pid, "Stencils loaded (load_stencil_from_config)\n");
-    ERRCHK_ALWAYS(info.real_params[AC_dsx] == DSX); // TODO need to be removed when stencils are loaded from config
-    ERRCHK_ALWAYS(info.real_params[AC_dsy] == DSY); // TODO need to be removed when stencils are loaded from config
-    ERRCHK_ALWAYS(info.real_params[AC_dsz] == DSZ); // TODO need to be removed when stencils are loaded from config
+    acLogFromRootProc(pid, "Loading stencils (load_stencil_from_config)\n");
+    load_stencil_from_config(info);
+    acLogFromRootProc(pid, "Stencils loaded (load_stencil_from_config)\n");
 
     ///////////////////////////////////////////////////
     // Test kernels: scale, solve, reset, randomize. //
