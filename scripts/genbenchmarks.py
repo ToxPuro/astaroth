@@ -97,7 +97,7 @@ def syscalls_wait():
 # System
 class System:
     
-    def __init__(self, id, account, partition, ngpus_per_node, modules, use_hip, gres='', additional_commands='', optimal_implementation=1, optimal_tpb=0):
+    def __init__(self, id, account, partition, ngpus_per_node, modules, use_hip, gres='', additional_commands='', optimal_implementation=1, optimal_tpb=0, srun_params=''):
         self.id = id
         self.account = account
         self.partition = partition
@@ -108,6 +108,7 @@ class System:
         self.additional_commands = additional_commands
         self.optimal_implementation = optimal_implementation
         self.optimal_tpb = optimal_tpb
+        self.srun_params = srun_params
 
     def load_modules(self):
         syscall(f'module purge')
@@ -120,6 +121,7 @@ class System:
         time = '00:14:59'
 
         gpualloc_per_node = min(ngpus, self.ngpus_per_node)
+        ntasks_per_node = min(ntasks, self.ngpus_per_node)
         nodes = int(math.ceil(ngpus / self.ngpus_per_node))
         if nodes > 1 and ntasks != ngpus:
             print(f'ERROR: Insufficient ntasks ({ntasks}). Asked for {ngpus} devices but there are only {self.ngpus_per_node} devices per node.')
@@ -129,10 +131,12 @@ class System:
         if self.account:
             print(f'#SBATCH --account={self.account}')
         if self.gres:
-            print(f'#SBATCH --gres={self.gres}:{gpualloc_per_node}')
+            print(f'#SBATCH --gres={self.gres}')
         print(f'#SBATCH --partition={self.partition}')
-        print(f'#SBATCH --ntasks={ntasks}')
+        #print(f'#SBATCH --ntasks={ntasks}')
         print(f'#SBATCH --nodes={nodes}')
+        print(f'#SBATCH --ntasks-per-node={ntasks_per_node}')
+        print(f'#SBATCH --gpus-per-node={gpualloc_per_node}')
         print(f'#SBATCH --time={time}')
         #print('#SBATCH --accel-bind=g') # bind tasks to closest GPU
         #print('#SBATCH --hint=memory_bound') # one core per socket
@@ -157,17 +161,16 @@ export UCX_RNDV_SCHEME=get_zcopy
 export UCX_MAX_RNDV_RAILS=1''', optimal_implementation=1, optimal_tpb=0)
 triton = System(id='mi100', account='', partition='gpu-amd', ngpus_per_node=1, gres='',
                 modules='module load gcc bison flex cmake openmpi', use_hip=True, optimal_implementation=1, optimal_tpb=512)
-lumi = System(id='mi250x', account='project_462000120', partition='pilot', ngpus_per_node=8, gres='gpu', additional_commands='''
-
-#SBATCH --exclusive
-#SBATCH --reservation=team-korpi-lagg
-''', modules='''
+lumi = System(id='mi250x', account='project_462000120', partition='pilot', ngpus_per_node=8, gres='', additional_commands='''
+''', srun_params='--cpu-bind=map_cpu:48,56,16,24,1,8,32,40', modules='''
         module load CrayEnv
         module load PrgEnv-cray
         module load craype-accel-amd-gfx90a
         module load rocm
         module load buildtools
         module load cray-python
+        export MPICH_GPU_SUPPORT_ENABLED=1
+        export FI_CXI_DEFAULT_CQ_SIZE=300000
         ''', use_hip=True, optimal_implementation=1, optimal_tpb=512)
 
 # Select system
@@ -214,7 +217,7 @@ def gen_microbenchmarks(system):
             working_set_size = 8 # Bytes
             max_problem_size = 1 * 1024**3    # 1 GiB
             while problem_size <= max_problem_size:
-                print(f'srun ./bwtest-benchmark {problem_size} {working_set_size}')
+                print(f'srun {system.srun_params} ./bwtest-benchmark {problem_size} {working_set_size}')
                 problem_size *= 2
 
             # Working set
@@ -222,7 +225,7 @@ def gen_microbenchmarks(system):
             working_set_size = 8         # Bytes
             max_working_set_size = 8200  # r = 512, (512 * 2 + 1) * 8 bytes = 8200 bytes
             while working_set_size <= max_working_set_size:
-                print(f'srun ./bwtest-benchmark {problem_size} {working_set_size}')
+                print(f'srun {system.srun_params} ./bwtest-benchmark {problem_size} {working_set_size}')
                 working_set_size *= 2
 
 # Device benchmarks
@@ -230,7 +233,7 @@ def gen_devicebenchmarks(system, nx, ny, nz):
     with open(f'{scripts_dir}/device-benchmark.sh', 'w') as f:
         with redirect_stdout(f):
             system.print_sbatch_header(1)
-            print(f'srun ./benchmark-device {nx} {ny} {nz}')
+            print(f'srun {system.srun_params} ./benchmark-device {nx} {ny} {nz}')
 
 # Intra-node benchmarks
 def gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices):
@@ -239,7 +242,7 @@ def gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices):
         with open(f'{scripts_dir}/node-scaling-strong-benchmark-{devices}.sh', 'w') as f:
             with redirect_stdout(f):
                 system.print_sbatch_header(1, devices)
-                print(f'srun ./benchmark-node {nx} {ny} {nz}')
+                print(f'srun {system.srun_params} ./benchmark-node {nx} {ny} {nz}')
         devices *= 2
 
 # Strong scaling
@@ -249,7 +252,7 @@ def gen_strongscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices):
         with open(f'{scripts_dir}/strong-scaling-benchmark-{devices}.sh', 'w') as f:
             with redirect_stdout(f):
                 system.print_sbatch_header(devices)
-                print(f'srun ./benchmark {nx} {ny} {nz}')
+                print(f'srun {system.srun_params} ./benchmark {nx} {ny} {nz}')
         devices *= 2
 
 # Weak scaling
@@ -263,7 +266,7 @@ def gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices):
         with open(f'{scripts_dir}/weak-scaling-benchmark-{devices}.sh', 'w') as f:
             with redirect_stdout(f):
                 system.print_sbatch_header(devices)
-                print(f'srun ./benchmark {nx} {ny} {nz}')
+                print(f'srun {system.srun_params} ./benchmark {nx} {ny} {nz}')
 
         if devices <= system.ngpus_per_node:
             with open(f'{scripts_dir}/node-scaling-weak-benchmark-{devices}.sh', 'w') as f:
@@ -271,7 +274,7 @@ def gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices):
                     system.print_sbatch_header(1, devices)
                     # Note: 1D decomposition here
                     nz_1d = int(initial_nz * (nx * ny * nz) / (initial_nx * initial_ny * initial_nz))
-                    print(f'srun ./benchmark-node {initial_nx} {initial_ny} {nz_1d}')
+                    print(f'srun {system.srun_params} ./benchmark-node {initial_nx} {initial_ny} {nz_1d}')
 
         devices *= 2
         if nx < ny:
@@ -288,7 +291,7 @@ def gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices):
         with open(f'{scripts_dir}/io-scaling-benchmark-{devices}.sh', 'w') as f:
             with redirect_stdout(f):
                 system.print_sbatch_header(devices)
-                print(f'srun ./mpi-io {nx} {ny} {nz} ${{SLURM_JOBID}}')
+                print(f'srun {system.srun_params} ./mpi-io {nx} {ny} {nz} ${{SLURM_JOBID}}')
         devices *= 2
 
 # Generate makefiles
