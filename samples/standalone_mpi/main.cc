@@ -1060,9 +1060,6 @@ main(int argc, char** argv)
         acPrintMeshInfo(info);
     }
     MPI_Barrier(MPI_COMM_WORLD); // Ensure output directories are created before continuing
-    ERRCHK_ALWAYS(info.real_params[AC_dsx] == DSX);
-    ERRCHK_ALWAYS(info.real_params[AC_dsy] == DSY);
-    ERRCHK_ALWAYS(info.real_params[AC_dsz] == DSZ);
 
     ///////////////////////////////////////////////
     // Define variables for main simulation loop //
@@ -1111,6 +1108,9 @@ main(int argc, char** argv)
     // acLogFromRootProc(pid, "Loading stencils (load_stencil_from_config)\n");
     // load_stencil_from_config(info);
     // acLogFromRootProc(pid, "Stencils loaded (load_stencil_from_config)\n");
+    ERRCHK_ALWAYS(info.real_params[AC_dsx] == DSX); // TODO need to be removed when stencils are loaded from config
+    ERRCHK_ALWAYS(info.real_params[AC_dsy] == DSY); // TODO need to be removed when stencils are loaded from config
+    ERRCHK_ALWAYS(info.real_params[AC_dsz] == DSZ); // TODO need to be removed when stencils are loaded from config
 
     ///////////////////////////////////////////////////
     // Test kernels: scale, solve, reset, randomize. //
