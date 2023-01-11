@@ -47,6 +47,7 @@
 #include "host_memory.h"
 #include "math_utils.h"
 
+#include "simulation_taskgraphs.h"
 #include "simulation_control.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
@@ -1188,43 +1189,13 @@ main(int argc, char** argv)
     // Building the task graph (or using the default) //
     ////////////////////////////////////////////////////
 
-    acLogFromRootProc(pid, "Defining simulation\n");
-
-    // default simulation is the AcGridIntegrate task graph (MHD)
-    AcTaskGraph* simulation_graph        = acGridGetDefaultTaskGraph();
-    AcTaskGraph* custom_simulation_graph = nullptr;
-
+    acLogFromRootProc(pid, "Setting simulation program\n");
+    Simulation sim = Simulation::Default;
 #if LSHOCK
-
-    // Shock case task graph
-    //----------------------
-    VertexBufferHandle all_fields[] = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
-                                       VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ, // VTXBUF_ENTROPY,
-                                       VTXBUF_SHOCK, BFIELDX,    BFIELDY,    BFIELDZ};
-
-    VertexBufferHandle shock_field[] = {VTXBUF_SHOCK};
-
-    // MV(?): Causes communication related error
-    // OL^ what does this mean?
-    AcTaskDefinition shock_ops[] =
-        {acHaloExchange(all_fields),
-         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
-         acCompute(KERNEL_shock_1_divu, shock_field),
-         acHaloExchange(shock_field),
-         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
-         acCompute(KERNEL_shock_2_max, shock_field),
-         acHaloExchange(shock_field),
-         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
-         acCompute(KERNEL_shock_3_smooth, shock_field),
-         acHaloExchange(shock_field),
-         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
-         acCompute(KERNEL_singlepass_solve, all_fields)};
-
-    custom_simulation_graph = acGridBuildTaskGraph(shock_ops);
-    simulation_graph        = custom_simulation_graph;
-
+    sim = Simulation::Shock_Singlepass_Solve
 #endif
-
+    log_simulation_choice(pid, sim);
+    AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);
 
     ////////////////////////////////////////////////////////
     // Simulation loop setup: defining events and actions //
@@ -1691,10 +1662,7 @@ main(int argc, char** argv)
     // Simulation over, exit cleanly//
     // Deallocate resources and log //
     //////////////////////////////////
-    if (custom_simulation_graph != nullptr) {
-        acLogFromRootProc(pid, "Destroying custom task graph\n");
-        acGridDestroyTaskGraph(custom_simulation_graph);
-    }
+    free_simulation_graphs(pid);
 
     acLogFromRootProc(pid, "Calling acGridQuit\n");
     acGridQuit();
