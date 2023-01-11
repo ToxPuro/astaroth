@@ -190,8 +190,8 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
         acDeviceLoadVectorUniform(device, STREAM_DEFAULT, (AcReal3Param)i,
                                   device_config.real3_params[i]);
 
-    //OL: added this assignment to make sure that whenever we load a new config,
-    //it's updated on both the host Device structure, and the GPU
+    // OL: added this assignment to make sure that whenever we load a new config,
+    // it's updated on both the host Device structure, and the GPU
     device->local_config = device_config;
     return AC_SUCCESS;
 }
@@ -671,10 +671,10 @@ acDeviceReduceScal(const Device device, const Stream stream, const ReductionType
 
     const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
     const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
+    const size_t scratchpad_size = acVertexBufferCompdomainSize(device->local_config);
 
-    *result = acKernelReduceScal(device->streams[stream], rtype, start, end,
-                                 device->vba.in[vtxbuf_handle], device->reduce_scratchpad,
-                                 device->reduce_result);
+    *result = acKernelReduceScal(device->streams[stream], rtype, device->vba.in[vtxbuf_handle],
+                                 start, end, device->reduce_scratchpad, scratchpad_size);
     return AC_SUCCESS;
 }
 

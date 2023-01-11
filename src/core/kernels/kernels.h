@@ -141,9 +141,9 @@ AcResult acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked
                                    VertexBufferHandle vtxbufs[], size_t num_vtxbufs);
 
 /** */
-AcReal acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,
-                          const int3 end, const AcReal* vtxbuf, AcReal* scratchpad,
-                          AcReal* reduce_result);
+AcReal acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype,
+                          const AcReal* vtxbuf, const int3 start, const int3 end,
+                          AcReal* scratchpad, const size_t scratchpad_size);
 
 /** */
 AcReal acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const int3 start,
