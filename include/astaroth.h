@@ -66,13 +66,13 @@ typedef int Stream;
 #define AC_FOR_RTYPES(FUNC)                                                                        \
     FUNC(RTYPE_MAX)                                                                                \
     FUNC(RTYPE_MIN)                                                                                \
+    FUNC(RTYPE_SUM)                                                                                \
     FUNC(RTYPE_RMS)                                                                                \
     FUNC(RTYPE_RMS_EXP)                                                                            \
+    FUNC(RTYPE_ISNAN)                                                                              \
     FUNC(RTYPE_ALFVEN_MAX)                                                                         \
     FUNC(RTYPE_ALFVEN_MIN)                                                                         \
-    FUNC(RTYPE_ALFVEN_RMS)                                                                         \
-    FUNC(RTYPE_SUM)                                                                                \
-    FUNC(RTYPE_ISNAN)
+    FUNC(RTYPE_ALFVEN_RMS)
 
 #define AC_FOR_BCTYPES(FUNC)                                                                       \
     FUNC(BOUNDCOND_PERIODIC)                                                                       \
@@ -555,9 +555,8 @@ typedef enum {
     ACCESS_WRITE,
 } AccessType;
 
-AcResult
-acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle field, const char* dir, const char* label,
-                                  const AccessType type);
+AcResult acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle field, const char* dir,
+                                           const char* label, const AccessType type);
 
 AcResult acGridDiskAccessLaunch(const AccessType type);
 
@@ -565,27 +564,25 @@ AcResult acGridDiskAccessLaunch(const AccessType type);
 AcResult acGridWriteSlicesToDiskLaunch(const char* dir, const char* label);
 
 /* Synchronous */
-AcResult
-acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label);
+AcResult acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label);
 
 /* Asynchronous. Need to call acGridDiskAccessSync afterwards */
 AcResult acGridWriteMeshToDiskLaunch(const char* dir, const char* label);
 
 AcResult acGridDiskAccessSync(void);
 
-AcResult
-acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num_fields,
-                        const int3 nn, const int3 rr);
+AcResult acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num_fields,
+                                 const int3 nn, const int3 rr);
 
 /* Quick hack for the hero run, will be removed in future builds */
-AcResult
-acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, const char* dir,
-                                  const char* label, const AccessType type);
+AcResult acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf,
+                                                      const char* dir, const char* label,
+                                                      const AccessType type);
 
 /* Quick hack for the hero run, will be removed in future builds */
-AcResult
-acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, const char* dir,
-                                  const char* label, const AccessType type);
+AcResult acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf,
+                                                     const char* dir, const char* label,
+                                                     const AccessType type);
 
 // Bugged
 // AcResult acGridLoadFieldFromFile(const char* path, const VertexBufferHandle field);
@@ -1105,8 +1102,8 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
 
 #ifdef AC_INTEGRATION_ENABLED
 /** */
-AcTaskDefinition
-acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond);
+AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary,
+                                               const AcSpecialMHDBoundcond bound_cond);
 
 /** */
 template <size_t num_parameters>
