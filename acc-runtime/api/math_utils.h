@@ -213,6 +213,18 @@ operator==(const int3& a, const int3& b)
   return a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
+static HOST_DEVICE_INLINE bool
+operator>=(const int3& a, const int3& b)
+{
+  return a.x >= b.x && a.y >= b.y && a.z >= b.z;
+}
+
+static HOST_DEVICE_INLINE bool
+operator<=(const int3& a, const int3& b)
+{
+  return a.x <= b.x && a.y <= b.y && a.z <= b.z;
+}
+
 /*
  * UINT3_64
  */
@@ -244,6 +256,26 @@ static HOST_DEVICE_INLINE bool
 operator==(const uint3_64& a, const uint3_64& b)
 {
   return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
+/*
+ * Volume
+ */
+typedef struct {
+  size_t x, y, z;
+} Volume;
+
+template <class T>
+static Volume
+to_volume(const T a)
+{
+  return (Volume){as_size_t(a.x), as_size_t(a.y), as_size_t(a.z)};
+}
+
+static dim3
+to_dim3(const Volume v)
+{
+  return dim3(v.x, v.y, v.z);
 }
 
 /*

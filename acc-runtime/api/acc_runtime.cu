@@ -31,23 +31,6 @@
 
 #include "acc/implementation.h"
 
-typedef struct {
-  size_t x, y, z;
-} Volume;
-
-template <class T>
-static Volume
-to_volume(const T a)
-{
-  return (Volume){as_size_t(a.x), as_size_t(a.y), as_size_t(a.z)};
-}
-
-static dim3
-to_dim3(const Volume v)
-{
-  return dim3(v.x, v.y, v.z);
-}
-
 Volume
 get_bpg(const Volume dims, const Volume tpb)
 {
