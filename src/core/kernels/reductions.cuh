@@ -26,7 +26,19 @@ typedef AcReal (*ReduceFn)(const AcReal&, const AcReal&);
 static __device__ inline AcReal
 map_value(const AcReal& a)
 {
-    return AcReal(a);
+    return a;
+}
+
+static __device__ inline AcReal
+map_square(const AcReal& a)
+{
+    return a * a;
+}
+
+static __device__ inline AcReal
+map_exp_square(const AcReal& a)
+{
+    return exp(a) * exp(a);
 }
 
 // Reduce functions
@@ -40,6 +52,12 @@ static __device__ inline AcReal
 reduce_min(const AcReal& a, const AcReal& b)
 {
     return a < b ? a : b;
+}
+
+static __device__ inline AcReal
+reduce_sum(const AcReal& a, const AcReal& b)
+{
+    return a + b;
 }
 
 /** Map data from a 3D array into a 1D array */
@@ -63,9 +81,9 @@ map(const AcReal* in, const int3 start, const int3 end, AcReal* out)
     const size_t out_idx = tid.x + tid.y * blockDim.x + tid.z * blockDim.x * blockDim.y;
 
     if (out_of_bounds)
-      out[out_idx] = AC_REAL_INVALID_VALUE;
+        out[out_idx] = AC_REAL_INVALID_VALUE;
     else
-      out[out_idx] = map_fn(in[in_idx]);
+        out[out_idx] = map_fn(in[in_idx]);
 }
 
 template <ReduceFn reduce_fn>
@@ -88,9 +106,9 @@ reduce(AcReal* arr, const size_t count)
             const AcReal a = smem[threadIdx.x];
             const AcReal b = smem[threadIdx.x + offset];
             if (b != AC_REAL_INVALID_VALUE)
-              smem[threadIdx.x] = reduce_fn(a, b);
+                smem[threadIdx.x] = reduce_fn(a, b);
             else
-              smem[threadIdx.x] = a;
+                smem[threadIdx.x] = a;
         }
 
         offset /= 2;
@@ -143,14 +161,21 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
     // Map
-    // map<map_fn><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, scratchpad);
     switch (rtype) {
     case RTYPE_MAX: /* Fallthrough */
-    case RTYPE_MIN:
+    case RTYPE_MIN: /* Fallthrough */
+    case RTYPE_SUM:
         map<map_value><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, scratchpad);
         break;
+    case RTYPE_RMS:
+        map<map_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, scratchpad);
+        break;
+    case RTYPE_RMS_EXP:
+        map<map_exp_square>
+            <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, scratchpad);
+        break;
     default:
-        WARNING("Invalid reduction type in acKernelReduceScal");
+        ERROR("Invalid reduction type in acKernelReduceScal");
         return AC_FAILURE;
     };
 
@@ -160,7 +185,6 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
         const size_t tpb  = 128;
         const size_t bpg  = as_size_t(ceil(double(count) / tpb));
         const size_t smem = tpb * sizeof(scratchpad[0]);
-        // reduce<reduce_fn><<<bpg, tpb, smem, stream>>>(scratchpad, count);
         switch (rtype) {
         case RTYPE_MAX:
             reduce<reduce_max><<<bpg, tpb, smem, stream>>>(scratchpad, count);
@@ -168,8 +192,13 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
         case RTYPE_MIN:
             reduce<reduce_min><<<bpg, tpb, smem, stream>>>(scratchpad, count);
             break;
+        case RTYPE_SUM: /* Fallthrough */
+        case RTYPE_RMS: /* Fallthrough */
+        case RTYPE_RMS_EXP:
+            reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(scratchpad, count);
+            break;
         default:
-            WARNING("Invalid reduction type in acKernelReduceScal");
+            ERROR("Invalid reduction type in acKernelReduceScal");
             return AC_FAILURE;
         };
 
