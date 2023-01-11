@@ -60,6 +60,7 @@ reduce_sum(const AcReal& a, const AcReal& b)
     return a + b;
 }
 
+
 /** Map data from a 3D array into a 1D array */
 template <MapFn map_fn>
 __global__ void
@@ -130,25 +131,6 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
     // race conditions
     cudaDeviceSynchronize();
 
-    /*
-    // Determine the map and reduction type
-    MapFn map_fn       = map_value;
-    ReduceFn reduce_fn = reduce_max;
-    switch (rtype) {
-    case RTYPE_MAX:
-        map_fn    = map_value;
-        reduce_fn = reduce_max;
-        break;
-    case RTYPE_MIN:
-        map_fn    = map_value;
-        reduce_fn = reduce_min;
-        break;
-    default:
-        WARNING("Invalid reduction type in acKernelReduceScal");
-        return AC_FAILURE;
-    };
-    */
-
     // Set thread block dimensions
     const int3 dims  = end - start;
     const Volume tpb = (Volume){32, 32, 1};
@@ -185,6 +167,7 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
         const size_t tpb  = 128;
         const size_t bpg  = as_size_t(ceil(double(count) / tpb));
         const size_t smem = tpb * sizeof(scratchpad[0]);
+        
         switch (rtype) {
         case RTYPE_MAX:
             reduce<reduce_max><<<bpg, tpb, smem, stream>>>(scratchpad, count);
