@@ -113,7 +113,6 @@ main(void)
 
         srand(123567);
         acHostMeshRandomize(&model);
-        acHostMeshSet((AcReal)1.0, &model);
         acHostMeshApplyPeriodicBounds(&model);
     }
 
