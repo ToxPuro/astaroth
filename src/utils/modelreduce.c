@@ -240,6 +240,7 @@ acHostReduceVecScal(const AcMesh mesh, const ReductionType rtype, const VertexBu
         solve_mean     = true;
         break;
     default:
+        fprintf(stderr, "rtype %s %d\n", rtype_names[rtype], rtype);
         ERROR("Unrecognized RTYPE");
     }
 
@@ -248,7 +249,7 @@ acHostReduceVecScal(const AcMesh mesh, const ReductionType rtype, const VertexBu
                                               mesh.info.int_params[AC_nz_min], mesh.info);
 
     AcReal res;
-    if (rtype == RTYPE_MAX || rtype == RTYPE_MIN)
+    if (rtype == RTYPE_MAX || rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MAX || rtype == RTYPE_ALFVEN_MIN)
         res = reduce_initial(mesh.vertex_buffer[a][initial_idx], mesh.vertex_buffer[b][initial_idx],
                              mesh.vertex_buffer[c][initial_idx],
                              mesh.vertex_buffer[d][initial_idx]);
