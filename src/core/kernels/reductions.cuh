@@ -20,6 +20,8 @@
 
 // Function pointer definitions
 typedef AcReal (*MapFn)(const AcReal&);
+typedef AcReal (*MapVecFn)(const AcReal&, const AcReal&, const AcReal&);
+typedef AcReal (*MapVecScalFn)(const AcReal&, const AcReal&, const AcReal&, const AcReal&);
 typedef AcReal (*ReduceFn)(const AcReal&, const AcReal&);
 
 // Map functions
@@ -39,6 +41,36 @@ static __device__ inline AcReal
 map_exp_square(const AcReal& a)
 {
     return exp(a) * exp(a);
+}
+
+static __device__ inline AcReal
+map_length_vec(const AcReal& a, const AcReal& b, const AcReal& c)
+{
+    return sqrt(a * a + b * b + c * c);
+}
+
+static __device__ inline AcReal
+map_square_vec(const AcReal& a, const AcReal& b, const AcReal& c)
+{
+    return map_square(a) + map_square(b) + map_square(c);
+}
+
+static __device__ inline AcReal
+map_exp_square_vec(const AcReal& a, const AcReal& b, const AcReal& c)
+{
+    return map_exp_square(a) + map_exp_square(b) + map_exp_square(c);
+}
+
+static __device__ inline AcReal
+map_length_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d)
+{
+    return sqrt(a * a + b * b + c * c) / sqrt(exp(d));
+}
+
+static __device__ inline AcReal
+map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d)
+{
+    return (map_square(a) + map_square(b) + map_square(c)) / (exp(d));
 }
 
 // Reduce functions
@@ -84,6 +116,58 @@ map(const AcReal* in, const int3 start, const int3 end, AcReal* out)
         out[out_idx] = AC_REAL_INVALID_VALUE;
     else
         out[out_idx] = map_fn(in[in_idx]);
+}
+
+template <MapVecFn map_fn>
+__global__ void
+map_vec(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int3 start, const int3 end,
+        AcReal* out)
+{
+    assert((start >= (int3){0, 0, 0}));
+    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+
+    const int3 tid = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    const int3 in_idx3d      = start + tid;
+    const bool out_of_bounds = in_idx3d.x >= end.x || in_idx3d.y >= end.y || in_idx3d.z >= end.z;
+
+    const size_t in_idx  = IDX(in_idx3d);
+    const size_t out_idx = tid.x + tid.y * blockDim.x + tid.z * blockDim.x * blockDim.y;
+
+    if (out_of_bounds)
+        out[out_idx] = AC_REAL_INVALID_VALUE;
+    else
+        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx]);
+}
+
+template <MapVecScalFn map_fn>
+__global__ void
+map_vec_scal(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcReal* in3,
+             const int3 start, const int3 end, AcReal* out)
+{
+    assert((start >= (int3){0, 0, 0}));
+    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+
+    const int3 tid = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    const int3 in_idx3d      = start + tid;
+    const bool out_of_bounds = in_idx3d.x >= end.x || in_idx3d.y >= end.y || in_idx3d.z >= end.z;
+
+    const size_t in_idx  = IDX(in_idx3d);
+    const size_t out_idx = tid.x + tid.y * blockDim.x + tid.z * blockDim.x * blockDim.y;
+
+    if (out_of_bounds)
+        out[out_idx] = AC_REAL_INVALID_VALUE;
+    else
+        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx], in3[in_idx]);
 }
 
 template <ReduceFn reduce_fn>
@@ -220,7 +304,89 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
                   const AcReal* vtxbuf2, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
                   const size_t scratchpad_size)
 {
-    return 0;
+    // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
+    // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
+    // could be done in parallel, but allowing that also exposes the users to potential bugs with
+    // race conditions
+    cudaDeviceSynchronize();
+
+    ERRCHK_ALWAYS(NUM_REDUCE_SCRATCHPADS >= 2);
+    AcReal* in  = scratchpads[0];
+    AcReal* out = scratchpads[1];
+
+    // Set thread block dimensions
+    const int3 dims  = end - start;
+    const Volume tpb = (Volume){32, 32, 1};
+    const Volume bpg = (Volume){
+        as_size_t(int(ceil(double(dims.x) / tpb.x))),
+        as_size_t(int(ceil(double(dims.y) / tpb.y))),
+        as_size_t(int(ceil(double(dims.z) / tpb.z))),
+    };
+    const size_t initial_count = tpb.x * bpg.x * tpb.y * bpg.y * tpb.z * bpg.z;
+    ERRCHK_ALWAYS(initial_count <= scratchpad_size);
+
+    // Map
+    switch (rtype) {
+    case RTYPE_MAX: /* Fallthrough */
+    case RTYPE_MIN: /* Fallthrough */
+    case RTYPE_SUM:
+        map_vec<map_length_vec>
+            <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, out);
+        break;
+    case RTYPE_RMS:
+        map_vec<map_square_vec>
+            <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, out);
+        break;
+    case RTYPE_RMS_EXP:
+        map_vec<map_exp_square_vec>
+            <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, out);
+        break;
+    default:
+        ERROR("Invalid reduction type in acKernelReduceScal");
+        return AC_FAILURE;
+    };
+    swap_ptrs(&in, &out);
+
+    // Reduce
+    size_t count = initial_count;
+    do {
+        const size_t tpb  = 128;
+        const size_t bpg  = as_size_t(ceil(double(count) / tpb));
+        const size_t smem = tpb * sizeof(in[0]);
+
+        switch (rtype) {
+        case RTYPE_MAX:
+            reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        case RTYPE_MIN:
+            reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        case RTYPE_SUM: /* Fallthrough */
+        case RTYPE_RMS: /* Fallthrough */
+        case RTYPE_RMS_EXP:
+            reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        default:
+            ERROR("Invalid reduction type in acKernelReduceScal");
+            return AC_FAILURE;
+        };
+        ERRCHK_CUDA_KERNEL();
+        swap_ptrs(&in, &out);
+
+        count = bpg;
+    } while (count > 1);
+
+    // Copy the result back to host
+    AcReal result;
+    cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
+    cudaStreamSynchronize(stream);
+
+    // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
+    // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
+    // could be done in parallel, but allowing that also exposes the users to potential bugs with
+    // race conditions
+    cudaDeviceSynchronize();
+    return result;
 }
 
 AcReal
@@ -229,5 +395,81 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
                       const AcReal* vtxbuf2, const AcReal* vtxbuf3,
                       AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS], const size_t scratchpad_size)
 {
-    return 0;
+    // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
+    // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
+    // could be done in parallel, but allowing that also exposes the users to potential bugs with
+    // race conditions
+    cudaDeviceSynchronize();
+
+    ERRCHK_ALWAYS(NUM_REDUCE_SCRATCHPADS >= 2);
+    AcReal* in  = scratchpads[0];
+    AcReal* out = scratchpads[1];
+
+    // Set thread block dimensions
+    const int3 dims  = end - start;
+    const Volume tpb = (Volume){32, 32, 1};
+    const Volume bpg = (Volume){
+        as_size_t(int(ceil(double(dims.x) / tpb.x))),
+        as_size_t(int(ceil(double(dims.y) / tpb.y))),
+        as_size_t(int(ceil(double(dims.z) / tpb.z))),
+    };
+    const size_t initial_count = tpb.x * bpg.x * tpb.y * bpg.y * tpb.z * bpg.z;
+    ERRCHK_ALWAYS(initial_count <= scratchpad_size);
+
+    // Map
+    switch (rtype) {
+    case RTYPE_ALFVEN_MAX: /* Fallthrough */
+    case RTYPE_ALFVEN_MIN:
+        map_vec_scal<map_length_alf><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2,
+                                                                       vtxbuf3, start, end, out);
+        break;
+    case RTYPE_ALFVEN_RMS:
+        map_vec_scal<map_square_alf><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2,
+                                                                       vtxbuf3, start, end, out);
+        break;
+    default:
+        fprintf(stderr, "Rtype %s (%d)\n", rtype_names[rtype], rtype);
+        ERROR("Invalid reduction type in acKernelReduceVecScal");
+        return AC_FAILURE;
+    };
+    swap_ptrs(&in, &out);
+
+    // Reduce
+    size_t count = initial_count;
+    do {
+        const size_t tpb  = 128;
+        const size_t bpg  = as_size_t(ceil(double(count) / tpb));
+        const size_t smem = tpb * sizeof(in[0]);
+
+        switch (rtype) {
+        case RTYPE_ALFVEN_MAX:
+            reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        case RTYPE_ALFVEN_MIN:
+            reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        case RTYPE_ALFVEN_RMS:
+            reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        default:
+            ERROR("Invalid reduction type in acKernelReduceScal");
+            return AC_FAILURE;
+        };
+        ERRCHK_CUDA_KERNEL();
+        swap_ptrs(&in, &out);
+
+        count = bpg;
+    } while (count > 1);
+
+    // Copy the result back to host
+    AcReal result;
+    cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
+    cudaStreamSynchronize(stream);
+
+    // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
+    // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
+    // could be done in parallel, but allowing that also exposes the users to potential bugs with
+    // race conditions
+    cudaDeviceSynchronize();
+    return result;
 }
