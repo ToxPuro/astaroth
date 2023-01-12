@@ -141,6 +141,12 @@ AcResult acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked
                                    VertexBufferHandle vtxbufs[], size_t num_vtxbufs);
 
 /** */
+size_t acKernelReduceGetMinimumScratchpadSize(const int3 max_dims);
+
+/** */
+size_t acKernelReduceGetMinimumScratchpadSizeBytes(const int3 max_dims);
+
+/** */
 AcReal acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype,
                           const AcReal* vtxbuf, const int3 start, const int3 end,
                           AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],

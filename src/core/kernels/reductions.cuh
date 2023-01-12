@@ -211,6 +211,32 @@ swap_ptrs(AcReal** a, AcReal** b)
     *b          = tmp;
 }
 
+static Volume get_map_tpb(void){
+    return (Volume){32,32,1};
+}
+
+static Volume get_map_bpg(const int3 dims, const Volume tpb)
+{
+    return(Volume){
+        as_size_t(int(ceil(double(dims.x) / tpb.x))),
+        as_size_t(int(ceil(double(dims.y) / tpb.y))),
+        as_size_t(int(ceil(double(dims.z) / tpb.z))),
+    };
+}
+
+size_t acKernelReduceGetMinimumScratchpadSize(const int3 max_dims)
+{
+    const Volume tpb = get_map_tpb();
+    const Volume bpg = get_map_bpg(max_dims, tpb);
+    const size_t count = tpb.x * bpg.x * tpb.y * bpg.y * tpb.z * bpg.z;
+    return count;
+}
+
+size_t acKernelReduceGetMinimumScratchpadSizeBytes(const int3 max_dims)
+{
+    return sizeof(AcReal) * acKernelReduceGetMinimumScratchpadSize(max_dims);
+}
+
 AcReal
 acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const AcReal* vtxbuf,
                    const int3 start, const int3 end, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
@@ -228,12 +254,8 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
 
     // Set thread block dimensions
     const int3 dims  = end - start;
-    const Volume tpb = (Volume){32, 32, 1};
-    const Volume bpg = (Volume){
-        as_size_t(int(ceil(double(dims.x) / tpb.x))),
-        as_size_t(int(ceil(double(dims.y) / tpb.y))),
-        as_size_t(int(ceil(double(dims.z) / tpb.z))),
-    };
+    const Volume tpb = get_map_tpb();
+    const Volume bpg = get_map_bpg(dims, tpb);
     const size_t initial_count = tpb.x * bpg.x * tpb.y * bpg.y * tpb.z * bpg.z;
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
