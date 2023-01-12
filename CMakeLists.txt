@@ -162,6 +162,7 @@ if (BUILD_SAMPLES)
         # add_subdirectory(samples/standalone)
         add_subdirectory(samples/standalone_mpi)
         add_subdirectory(samples/mpitest)
+        add_subdirectory(samples/devicetest)
         add_subdirectory(samples/stencil-loader)
     endif()
 
