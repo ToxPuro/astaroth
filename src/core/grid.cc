@@ -973,17 +973,15 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     AcReal mpi_res;
-    MPI_Reduce(&local_result, &mpi_res, 1, AC_REAL_MPI_TYPE, op, 0, MPI_COMM_WORLD);
+    MPI_Allreduce(&local_result, &mpi_res, 1, AC_REAL_MPI_TYPE, op, MPI_COMM_WORLD);
 
-    if (rank == 0) {
-        if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS) {
-            const AcReal inv_n = AcReal(1.) /
-                                 (grid.nn.x * grid.decomposition.x * grid.nn.y *
-                                  grid.decomposition.y * grid.nn.z * grid.decomposition.z);
-            mpi_res = sqrt(inv_n * mpi_res);
-        }
-        *result = mpi_res;
+    if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS) {
+        const AcReal inv_n = AcReal(1.) /
+                                (grid.nn.x * grid.decomposition.x * grid.nn.y *
+                                grid.decomposition.y * grid.nn.z * grid.decomposition.z);
+        mpi_res = sqrt(inv_n * mpi_res);
     }
+    *result = mpi_res;
     return AC_SUCCESS;
 }
 
