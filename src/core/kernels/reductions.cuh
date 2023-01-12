@@ -60,7 +60,6 @@ reduce_sum(const AcReal& a, const AcReal& b)
     return a + b;
 }
 
-
 /** Map data from a 3D array into a 1D array */
 template <MapFn map_fn>
 __global__ void
@@ -89,13 +88,13 @@ map(const AcReal* in, const int3 start, const int3 end, AcReal* out)
 
 template <ReduceFn reduce_fn>
 __global__ void
-reduce(AcReal* arr, const size_t count)
+reduce(const AcReal* in, const size_t count, AcReal* out)
 {
     const int curr = threadIdx.x + blockIdx.x * blockDim.x;
 
     extern __shared__ AcReal smem[];
     if (curr < count)
-        smem[threadIdx.x] = arr[curr];
+        smem[threadIdx.x] = in[curr];
     else
         smem[threadIdx.x] = AC_REAL_INVALID_VALUE;
 
@@ -117,12 +116,20 @@ reduce(AcReal* arr, const size_t count)
     }
 
     if (!threadIdx.x)
-        arr[blockIdx.x] = smem[threadIdx.x];
+        out[blockIdx.x] = smem[threadIdx.x];
+}
+
+static void
+swap_ptrs(AcReal** a, AcReal** b)
+{
+    AcReal* tmp = *a;
+    *a          = *b;
+    *b          = tmp;
 }
 
 AcReal
 acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const AcReal* vtxbuf,
-                   const int3 start, const int3 end, AcReal* scratchpad,
+                   const int3 start, const int3 end, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
                    const size_t scratchpad_size)
 {
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
@@ -130,6 +137,10 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
     // could be done in parallel, but allowing that also exposes the users to potential bugs with
     // race conditions
     cudaDeviceSynchronize();
+
+    ERRCHK_ALWAYS(NUM_REDUCE_SCRATCHPADS >= 2);
+    AcReal* in  = scratchpads[0];
+    AcReal* out = scratchpads[1];
 
     // Set thread block dimensions
     const int3 dims  = end - start;
@@ -147,52 +158,52 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
     case RTYPE_MAX: /* Fallthrough */
     case RTYPE_MIN: /* Fallthrough */
     case RTYPE_SUM:
-        map<map_value><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, scratchpad);
+        map<map_value><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
         break;
     case RTYPE_RMS:
-        map<map_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, scratchpad);
+        map<map_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
         break;
     case RTYPE_RMS_EXP:
-        map<map_exp_square>
-            <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, scratchpad);
+        map<map_exp_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
         break;
     default:
         ERROR("Invalid reduction type in acKernelReduceScal");
         return AC_FAILURE;
     };
+    swap_ptrs(&in, &out);
 
     // Reduce
     size_t count = initial_count;
     do {
         const size_t tpb  = 128;
         const size_t bpg  = as_size_t(ceil(double(count) / tpb));
-        const size_t smem = tpb * sizeof(scratchpad[0]);
-        
+        const size_t smem = tpb * sizeof(in[0]);
+
         switch (rtype) {
         case RTYPE_MAX:
-            reduce<reduce_max><<<bpg, tpb, smem, stream>>>(scratchpad, count);
+            reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
         case RTYPE_MIN:
-            reduce<reduce_min><<<bpg, tpb, smem, stream>>>(scratchpad, count);
+            reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
         case RTYPE_SUM: /* Fallthrough */
         case RTYPE_RMS: /* Fallthrough */
         case RTYPE_RMS_EXP:
-            reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(scratchpad, count);
+            reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
         default:
             ERROR("Invalid reduction type in acKernelReduceScal");
             return AC_FAILURE;
         };
-
         ERRCHK_CUDA_KERNEL();
+        swap_ptrs(&in, &out);
 
         count = bpg;
     } while (count > 1);
 
     // Copy the result back to host
     AcReal result;
-    cudaMemcpyAsync(&result, scratchpad, sizeof(scratchpad[0]), cudaMemcpyDeviceToHost, stream);
+    cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
     cudaStreamSynchronize(stream);
 
     // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
@@ -206,7 +217,8 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
 AcReal
 acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const int3 start,
                   const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
-                  const AcReal* vtxbuf2, AcReal* scratchpad, AcReal* reduce_result)
+                  const AcReal* vtxbuf2, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
+                  const size_t scratchpad_size)
 {
     return 0;
 }
@@ -214,8 +226,8 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
 AcReal
 acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,
                       const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
-                      const AcReal* vtxbuf2, const AcReal* vtxbuf3, AcReal* scratchpad,
-                      AcReal* reduce_result)
+                      const AcReal* vtxbuf2, const AcReal* vtxbuf3,
+                      AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS], const size_t scratchpad_size)
 {
     return 0;
 }

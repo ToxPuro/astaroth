@@ -33,6 +33,8 @@
 
 #include "user_defines.h"
 
+#define NUM_REDUCE_SCRATCHPADS (2)
+
 typedef struct {
   int int_params[NUM_INT_PARAMS];
   int3 int3_params[NUM_INT3_PARAMS];

@@ -35,8 +35,8 @@ struct device_s {
 
     // Memory
     VertexBufferArray vba;
-    AcReal* reduce_scratchpad;
-    AcReal* reduce_result;
+    AcReal* reduce_scratchpads[NUM_REDUCE_SCRATCHPADS];
+    size_t scratchpad_size;
 };
 
 typedef AcReal AcRealPacked;
@@ -143,18 +143,21 @@ AcResult acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked
 /** */
 AcReal acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype,
                           const AcReal* vtxbuf, const int3 start, const int3 end,
-                          AcReal* scratchpad, const size_t scratchpad_size);
+                          AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
+                          const size_t scratchpad_size);
 
 /** */
 AcReal acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const int3 start,
                          const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
-                         const AcReal* vtxbuf2, AcReal* scratchpad, AcReal* reduce_result);
+                         const AcReal* vtxbuf2, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
+                         const size_t scratchpad_size);
 
 /** */
 AcReal acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,
                              const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
-                             const AcReal* vtxbuf2, const AcReal* vtxbuf3, AcReal* scratchpad,
-                             AcReal* reduce_result);
+                             const AcReal* vtxbuf2, const AcReal* vtxbuf3,
+                             AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
+                             const size_t scratchpad_size);
 
 /** */
 AcResult acKernelVolumeCopy(const cudaStream_t stream,                                    //

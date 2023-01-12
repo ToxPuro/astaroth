@@ -270,14 +270,13 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     */
 
     // Reductions
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->reduce_scratchpad,
-                                  acVertexBufferCompdomainSizeBytes(device_config)));
-
-    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->reduce_scratchpad, 0,
-                                  acVertexBufferCompdomainSizeBytes(device_config)));
-
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->reduce_result, sizeof(AcReal)));
-    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->reduce_result, 0, sizeof(AcReal)));
+    const size_t scratchpad_size       = acVertexBufferCompdomainSize(device_config);
+    const size_t scratchpad_size_bytes = acVertexBufferCompdomainSizeBytes(device_config);
+    for (size_t i = 0; i < NUM_REDUCE_SCRATCHPADS; ++i) {
+        ERRCHK_CUDA_ALWAYS(
+            cudaMalloc((void**)&device->reduce_scratchpads[i], scratchpad_size_bytes));
+    }
+    device->scratchpad_size = scratchpad_size;
 
     // Device constants
     // acDeviceLoadDefaultUniforms(device); // TODO recheck
@@ -309,8 +308,8 @@ acDeviceDestroy(Device device)
     }
     */
 
-    cudaFree(device->reduce_scratchpad);
-    cudaFree(device->reduce_result);
+    for (size_t i = 0; i < NUM_REDUCE_SCRATCHPADS; ++i)
+        cudaFree(device->reduce_scratchpads[i]);
 
     // Concurrency
     for (int i = 0; i < NUM_STREAMS; ++i) {
@@ -671,10 +670,9 @@ acDeviceReduceScal(const Device device, const Stream stream, const ReductionType
 
     const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
     const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
-    const size_t scratchpad_size = acVertexBufferCompdomainSize(device->local_config);
 
     *result = acKernelReduceScal(device->streams[stream], rtype, device->vba.in[vtxbuf_handle],
-                                 start, end, device->reduce_scratchpad, scratchpad_size);
+                                 start, end, device->reduce_scratchpads, device->scratchpad_size);
     return AC_SUCCESS;
 }
 
@@ -690,7 +688,7 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
 
     *result = acKernelReduceVec(device->streams[stream], rtype, start, end, device->vba.in[vtxbuf0],
                                 device->vba.in[vtxbuf1], device->vba.in[vtxbuf2],
-                                device->reduce_scratchpad, device->reduce_result);
+                                device->reduce_scratchpads, device->scratchpad_size);
     return AC_SUCCESS;
 }
 
@@ -708,7 +706,7 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
     *result = acKernelReduceVecScal(device->streams[stream], rtype, start, end,
                                     device->vba.in[vtxbuf0], device->vba.in[vtxbuf1],
                                     device->vba.in[vtxbuf2], device->vba.in[vtxbuf3],
-                                    device->reduce_scratchpad, device->reduce_result);
+                                    device->reduce_scratchpads, device->scratchpad_size);
     return AC_SUCCESS;
 }
 
