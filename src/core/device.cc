@@ -663,8 +663,8 @@ constructInt3Param(const Device device, const AcIntParam a, const AcIntParam b, 
 }
 
 AcResult
-acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
-                   const VertexBufferHandle vtxbuf_handle, AcReal* result)
+acDeviceReduceScalNotAveraged(const Device device, const Stream stream, const ReductionType rtype,
+                              const VertexBufferHandle vtxbuf_handle, AcReal* result)
 {
     cudaSetDevice(device->id);
 
@@ -677,9 +677,31 @@ acDeviceReduceScal(const Device device, const Stream stream, const ReductionType
 }
 
 AcResult
-acDeviceReduceVec(const Device device, const Stream stream, const ReductionType rtype,
-                  const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                  const VertexBufferHandle vtxbuf2, AcReal* result)
+acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
+                   const VertexBufferHandle vtxbuf_handle, AcReal* result)
+{
+    acDeviceReduceScalNotAveraged(device, stream, rtype, vtxbuf_handle, result);
+
+    switch (rtype) {
+    case RTYPE_RMS:     /* Fallthrough */
+    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_ALFVEN_RMS: {
+        const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
+        const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
+        *result            = sqrt(inv_n * *result);
+        break;
+    }
+    default: /* Do nothing */
+        break;
+    };
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceReduceVecNotAveraged(const Device device, const Stream stream, const ReductionType rtype,
+                             const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                             const VertexBufferHandle vtxbuf2, AcReal* result)
 {
     cudaSetDevice(device->id);
 
@@ -693,10 +715,33 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
 }
 
 AcResult
-acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionType rtype,
-                      const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                      const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
-                      AcReal* result)
+acDeviceReduceVec(const Device device, const Stream stream, const ReductionType rtype,
+                  const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                  const VertexBufferHandle vtxbuf2, AcReal* result)
+{
+    acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, result);
+
+    switch (rtype) {
+    case RTYPE_RMS:     /* Fallthrough */
+    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_ALFVEN_RMS: {
+        const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
+        const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
+        *result            = sqrt(inv_n * *result);
+        break;
+    }
+    default: /* Do nothing */
+        break;
+    };
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceReduceVecScalNotAveraged(const Device device, const Stream stream,
+                                 const ReductionType rtype, const VertexBufferHandle vtxbuf0,
+                                 const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
+                                 const VertexBufferHandle vtxbuf3, AcReal* result)
 {
     cudaSetDevice(device->id);
 
@@ -707,6 +752,31 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
                                     device->vba.in[vtxbuf0], device->vba.in[vtxbuf1],
                                     device->vba.in[vtxbuf2], device->vba.in[vtxbuf3],
                                     device->reduce_scratchpads, device->scratchpad_size);
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionType rtype,
+                      const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                      const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
+                      AcReal* result)
+{
+    acDeviceReduceVecScalNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
+                                     result);
+
+    switch (rtype) {
+    case RTYPE_RMS:     /* Fallthrough */
+    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_ALFVEN_RMS: {
+        const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
+        const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
+        *result            = sqrt(inv_n * *result);
+        break;
+    }
+    default: /* Do nothing */
+        break;
+    };
+
     return AC_SUCCESS;
 }
 

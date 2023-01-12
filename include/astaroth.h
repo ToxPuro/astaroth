@@ -1005,12 +1005,29 @@ AcResult acDeviceGeneralBoundconds(const Device device, const Stream stream, con
                                    const int3 end, const AcMeshInfo config, const int3 bindex);
 
 /** */
+AcResult acDeviceReduceScalNotAveraged(const Device device, const Stream stream, const ReductionType rtype,
+                            const VertexBufferHandle vtxbuf_handle, AcReal* result);
+
+/** */
 AcResult acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
                             const VertexBufferHandle vtxbuf_handle, AcReal* result);
+
+/** */
+AcResult acDeviceReduceVecNotAveraged(const Device device, const Stream stream_type, const ReductionType rtype,
+                           const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                           const VertexBufferHandle vtxbuf2, AcReal* result);
+
 /** */
 AcResult acDeviceReduceVec(const Device device, const Stream stream_type, const ReductionType rtype,
                            const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                            const VertexBufferHandle vtxbuf2, AcReal* result);
+
+/** */
+AcResult acDeviceReduceVecScalNotAveraged(const Device device, const Stream stream_type,
+                               const ReductionType rtype, const VertexBufferHandle vtxbuf0,
+                               const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
+                               const VertexBufferHandle vtxbuf3, AcReal* result);
+
 /** */
 AcResult acDeviceReduceVecScal(const Device device, const Stream stream_type,
                                const ReductionType rtype, const VertexBufferHandle vtxbuf0,

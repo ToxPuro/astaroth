@@ -996,7 +996,7 @@ acGridReduceScal(const Stream stream, const ReductionType rtype,
     acGridSynchronizeStream(STREAM_ALL);
 
     AcReal local_result;
-    acDeviceReduceScal(device, stream, rtype, vtxbuf_handle, &local_result);
+    acDeviceReduceScalNotAveraged(device, stream, rtype, vtxbuf_handle, &local_result);
 
     return distributedScalarReduction(local_result, rtype, result);
 }
@@ -1010,7 +1010,7 @@ acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBuff
     acGridSynchronizeStream(STREAM_ALL);
 
     AcReal local_result;
-    acDeviceReduceVec(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, &local_result);
+    acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, &local_result);
 
     return distributedScalarReduction(local_result, rtype, result);
 }
@@ -1026,7 +1026,7 @@ acGridReduceVecScal(const Stream stream, const ReductionType rtype,
     acGridSynchronizeStream(STREAM_ALL);
 
     AcReal local_result;
-    acDeviceReduceVecScal(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, &local_result);
+    acDeviceReduceVecScalNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, &local_result);
 
     return distributedScalarReduction(local_result, rtype, result);
 }
