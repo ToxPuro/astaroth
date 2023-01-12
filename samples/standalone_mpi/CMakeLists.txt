@@ -4,6 +4,7 @@ ac_run_mpi
 	host_memory.cc
 	host_forcing.cc
 	config_loader.cc
+	simulation_rng.cc
 )
 
 target_include_directories(

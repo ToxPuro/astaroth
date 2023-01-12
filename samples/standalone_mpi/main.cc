@@ -49,6 +49,7 @@
 
 #include "simulation_taskgraphs.h"
 #include "simulation_control.h"
+#include "simulation_rng.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
@@ -1043,9 +1044,9 @@ main(int argc, char** argv)
     //     acCheckConfig(&info);
     // }
 
-    ////////////////////////////////
-    // Write the config to a file //
-    ////////////////////////////////
+    //////////////////////////////
+    // Output run configuration //
+    //////////////////////////////
 
     if (pid == 0) {
         // Write purge.sh and meshinfo.list
@@ -1059,6 +1060,34 @@ main(int argc, char** argv)
         // Print config to stdout
 	acLogFromRootProc(pid, "Printing config to stdout\n");
         acPrintMeshInfo(info);
+
+	acLogFromRootProc(pid, "Logging build configuration\n");
+	const char * is_on = "ON";
+	const char * is_off = "OFF";
+
+	const char * forcing_flag =
+#if LFORCING
+	is_on;
+#else
+	is_off;
+#endif
+        const char * sink_flag =
+#if LSINK
+	is_on;
+#else
+	is_off;
+#endif
+        const char * shock_flag =
+#if LSHOCK
+	is_on;
+#else
+	is_off;
+#endif
+
+	acLogFromRootProc(pid, "Forcing is: %s\n", forcing_flag);
+	acLogFromRootProc(pid, "Sink is: %s\n", sink_flag);
+	acLogFromRootProc(pid, "Shock is: %s\n", shock_flag);
+
     }
     MPI_Barrier(MPI_COMM_WORLD); // Ensure output directories are created before continuing
 
@@ -1089,11 +1118,8 @@ main(int argc, char** argv)
     }
 #endif
 
-    // Set random seed for reproducibility (TODO: stop using rand())
-    // JP: srand and rand used carelessly throughout the program, should be cleaned up
-    // and rechecked to avoid issues with reproducibility
-    // OL: we should move to <random> and std::mt19937 
-    srand(312256655);
+    // Set random seed for reproducibility
+    seed_rng(312256655);
 
     ////////////////////////////////////////
     // Initialize internal Astaroth state //
