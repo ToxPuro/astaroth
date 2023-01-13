@@ -189,10 +189,16 @@ reduce(const AcReal* in, const size_t count, AcReal* out)
         if (threadIdx.x < offset) {
             const AcReal a = smem[threadIdx.x];
             const AcReal b = smem[threadIdx.x + offset];
-            if (b != AC_REAL_INVALID_VALUE)
+
+            // If the mesh dimensions are not divisible by mapping tbdims, and mapping tb dims are
+            // not divisible by reduction tb dims, then it is possible for `a` to be invalid but `b` to
+            // be valid
+            if (a != AC_REAL_INVALID_VALUE && b != AC_REAL_INVALID_VALUE)
                 smem[threadIdx.x] = reduce_fn(a, b);
-            else
+            else if (a != AC_REAL_INVALID_VALUE)
                 smem[threadIdx.x] = a;
+            else
+                smem[threadIdx.x] = b;
         }
 
         offset /= 2;
@@ -211,28 +217,33 @@ swap_ptrs(AcReal** a, AcReal** b)
     *b          = tmp;
 }
 
-static Volume get_map_tpb(void){
-    return (Volume){32,32,1};
+static Volume
+get_map_tpb(void)
+{
+    return (Volume){32, 32, 1};
 }
 
-static Volume get_map_bpg(const int3 dims, const Volume tpb)
+static Volume
+get_map_bpg(const int3 dims, const Volume tpb)
 {
-    return(Volume){
+    return (Volume){
         as_size_t(int(ceil(double(dims.x) / tpb.x))),
         as_size_t(int(ceil(double(dims.y) / tpb.y))),
         as_size_t(int(ceil(double(dims.z) / tpb.z))),
     };
 }
 
-size_t acKernelReduceGetMinimumScratchpadSize(const int3 max_dims)
+size_t
+acKernelReduceGetMinimumScratchpadSize(const int3 max_dims)
 {
-    const Volume tpb = get_map_tpb();
-    const Volume bpg = get_map_bpg(max_dims, tpb);
+    const Volume tpb   = get_map_tpb();
+    const Volume bpg   = get_map_bpg(max_dims, tpb);
     const size_t count = tpb.x * bpg.x * tpb.y * bpg.y * tpb.z * bpg.z;
     return count;
 }
 
-size_t acKernelReduceGetMinimumScratchpadSizeBytes(const int3 max_dims)
+size_t
+acKernelReduceGetMinimumScratchpadSizeBytes(const int3 max_dims)
 {
     return sizeof(AcReal) * acKernelReduceGetMinimumScratchpadSize(max_dims);
 }
@@ -253,9 +264,9 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
     AcReal* out = scratchpads[1];
 
     // Set thread block dimensions
-    const int3 dims  = end - start;
-    const Volume tpb = get_map_tpb();
-    const Volume bpg = get_map_bpg(dims, tpb);
+    const int3 dims            = end - start;
+    const Volume tpb           = get_map_tpb();
+    const Volume bpg           = get_map_bpg(dims, tpb);
     const size_t initial_count = tpb.x * bpg.x * tpb.y * bpg.y * tpb.z * bpg.z;
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
@@ -442,12 +453,14 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
     switch (rtype) {
     case RTYPE_ALFVEN_MAX: /* Fallthrough */
     case RTYPE_ALFVEN_MIN:
-        map_vec_scal<map_length_alf><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2,
-                                                                       vtxbuf3, start, end, out);
+        map_vec_scal<map_length_alf><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
+                                                                                vtxbuf2, vtxbuf3,
+                                                                                start, end, out);
         break;
     case RTYPE_ALFVEN_RMS:
-        map_vec_scal<map_square_alf><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2,
-                                                                       vtxbuf3, start, end, out);
+        map_vec_scal<map_square_alf><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
+                                                                                vtxbuf2, vtxbuf3,
+                                                                                start, end, out);
         break;
     default:
         fprintf(stderr, "Rtype %s (%d)\n", rtype_names[rtype], rtype);
