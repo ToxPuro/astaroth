@@ -603,6 +603,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
     AcTaskGraph* graph = new AcTaskGraph();
 
+    graph->periodic_boundaries = BOUNDARY_NONE;
+
     graph->halo_tasks.reserve(n_ops * Region::n_halo_regions);
     graph->all_tasks.reserve(n_ops * max(Region::n_halo_regions, Region::n_comp_regions));
 
@@ -616,16 +618,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     int3 pid3d      = getPid3D(rank, grid.decomposition);
     Device device   = grid.device;
 
-    auto region_at_boundary = [&decomp, &pid3d](int tag, AcBoundary boundary) -> bool {
-        int3 neighbor = pid3d + Region::tag_to_id(tag);
-
-        return (((boundary & BOUNDARY_X_BOT) != 0) && neighbor.x == -1) ||
-               (((boundary & BOUNDARY_X_TOP) != 0) && neighbor.x == (int)decomp.x) ||
-               (((boundary & BOUNDARY_Y_BOT) != 0) && neighbor.y == -1) ||
-               (((boundary & BOUNDARY_Y_TOP) != 0) && neighbor.y == (int)decomp.y) ||
-               (((boundary & BOUNDARY_Z_BOT) != 0) && neighbor.z == -1) ||
-               (((boundary & BOUNDARY_Z_TOP) != 0) && neighbor.z == (int)decomp.z);
-    };
     auto boundary_normal = [&decomp, &pid3d](int tag) -> int3 {
         int3 neighbor = pid3d + Region::tag_to_id(tag);
         if (neighbor.z == -1) {
@@ -667,6 +659,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         auto op = ops[i];
         op_indices.push_back(graph->all_tasks.size());
 
+	if (op.task_type == TASKTYPE_BOUNDCOND && op.bound_cond == BOUNDCOND_PERIODIC){
+            graph->periodic_boundaries = (AcBoundary)(graph->periodic_boundaries | op.boundary);
+	}
         switch (op.task_type) {
 
         case TASKTYPE_COMPUTE: {
@@ -687,7 +682,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             acVerboseLogFromRootProc(rank, "Creating halo exchange tasks\n");
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
-                if (!region_at_boundary(tag, BOUNDARY_XYZ)) {
+                if (!Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ)) {
                     auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, nn, decomp,
                                                                    device, swap_offset);
                     graph->halo_tasks.push_back(task);
@@ -704,7 +699,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             AcBoundcond bc = op.bound_cond;
             int tag0       = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
-                if (region_at_boundary(tag, op.boundary)) {
+                if (Region::is_on_boundary(decomp, rank, tag, op.boundary)) {
                     if (bc == BOUNDCOND_PERIODIC) {
                         acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n", tag);
                         auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, nn, decomp,
@@ -732,7 +727,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         case TASKTYPE_SPECIAL_MHD_BOUNDCOND: {
 #ifdef AC_INTEGRATION_ENABLED
                for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
-                if (region_at_boundary(tag, op.boundary)) {
+                if (Region::is_on_boundary(decomp, rank, tag, op.boundary)) {
                     auto task = std::make_shared<SpecialMHDBoundaryConditionTask>(op,
                                                                                   boundary_normal(
                                                                                       tag),
@@ -2517,6 +2512,25 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
 
     return AC_SUCCESS;
 }
+
+bool
+acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph *graph)
+{
+    return (graph->periodic_boundaries & BOUNDARY_X) != 0;
+}
+
+bool
+acGridTaskGraphHasPeriodicBoundcondsY(AcTaskGraph *graph)
+{
+    return (graph->periodic_boundaries & BOUNDARY_Y) != 0;
+}
+
+bool
+acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph *graph)
+{
+    return (graph->periodic_boundaries & BOUNDARY_Z) != 0;
+}
+
 /*
 AcResult
 acGridLoadFieldFromFile(const char* path, const VertexBufferHandle vtxbuf)
