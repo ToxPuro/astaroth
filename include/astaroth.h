@@ -606,6 +606,7 @@ typedef enum AcTaskType {
 } AcTaskType;
 
 typedef enum AcBoundary {
+    BOUNDARY_NONE  = 0,
     BOUNDARY_X_TOP = 0x01,
     BOUNDARY_X_BOT = 0x02,
     BOUNDARY_X     = BOUNDARY_X_TOP | BOUNDARY_X_BOT,
@@ -675,6 +676,15 @@ AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary,
 
 /** */
 AcTaskGraph* acGridGetDefaultTaskGraph();
+
+/** */
+bool acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph *graph);
+
+/** */
+bool acGridTaskGraphHasPeriodicBoundcondsY(AcTaskGraph *graph);
+
+/** */
+bool acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph *graph);
 
 /** */
 AcTaskGraph* acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops);
