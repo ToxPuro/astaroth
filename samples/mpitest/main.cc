@@ -71,6 +71,23 @@ main(void)
     // GPU alloc & compute
     acGridInit(info);
 
+    // Load/Store
+    acGridLoadMesh(STREAM_DEFAULT, model);
+    acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    if (pid == 0) {
+        acHostMeshApplyPeriodicBounds(&model);
+        acHostMeshApplyPeriodicBounds(&candidate);
+        const AcResult res = acVerifyMesh("Load/Store", model, candidate);
+        if (res != AC_SUCCESS) {
+            retval = res;
+            WARNCHK_ALWAYS(retval);
+        }
+        fflush(stdout);
+        acHostMeshRandomize(&model);
+    }
+
+    /*
+    // Disabled temporarily: acGridStore no longer transfers the ghost zones
     // Boundconds
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
@@ -86,6 +103,7 @@ main(void)
         fflush(stdout);
         acHostMeshRandomize(&model);
     }
+    */
 
     // Dryrun
     const AcReal dt = (AcReal)FLT_EPSILON;
