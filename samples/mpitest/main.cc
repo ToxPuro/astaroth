@@ -77,11 +77,13 @@ main(void)
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (pid == 0) {
         acHostMeshApplyPeriodicBounds(&model);
+        acHostMeshApplyPeriodicBounds(&candidate);
         const AcResult res = acVerifyMesh("Boundconds", model, candidate);
         if (res != AC_SUCCESS) {
             retval = res;
             WARNCHK_ALWAYS(retval);
         }
+        fflush(stdout);
         acHostMeshRandomize(&model);
     }
 
@@ -105,11 +107,13 @@ main(void)
             acHostIntegrateStep(model, dt);
 
         acHostMeshApplyPeriodicBounds(&model);
+        acHostMeshApplyPeriodicBounds(&candidate);
         const AcResult res = acVerifyMesh("Integration", model, candidate);
         if (res != AC_SUCCESS) {
             retval = res;
             WARNCHK_ALWAYS(retval);
         }
+        fflush(stdout);
 
         srand(123567);
         acHostMeshRandomize(&model);
