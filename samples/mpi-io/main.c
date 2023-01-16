@@ -52,7 +52,8 @@ main(int argc, char** argv)
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     // Set mesh dimensions
     if (argc < 4 || argc > 5) {
-        fprintf(stderr, "Usage: ./mpi-io <nx> <ny> <nz> <(Optional) unique job id for output files>\n");
+        fprintf(stderr,
+                "Usage: ./mpi-io <nx> <ny> <nz> <(Optional) unique job id for output files>\n");
         return EXIT_FAILURE;
     }
     else {
@@ -66,7 +67,6 @@ main(int argc, char** argv)
     }
     char job_dir[4096];
     snprintf(job_dir, 4096, "mpi-io-tmpdir-%d", job_id);
-
 
     // Init device
     acGridInit(info);
@@ -122,9 +122,9 @@ main(int argc, char** argv)
         // acGridStoreFieldToFile("field-tmp.out", 0);
         for (size_t i = 0; i < NUM_FIELDS; ++i)
             acGridAccessMeshOnDiskSynchronous(i, job_dir, "field-tmp",
-                                            ACCESS_WRITE); // Hacky, indirectly scramble vba.out to
-                                                            // catch false positives if the MPI calls
-                                                            // fail completely.
+                                              ACCESS_WRITE); // Hacky, indirectly scramble vba.out
+                                                             // to catch false positives if the MPI
+                                                             // calls fail completely.
     }
 
     // Read
@@ -184,7 +184,7 @@ main(int argc, char** argv)
     // Remove old files
     if (!pid) {
         printf("Removing fields\n");
-        //sprintf(cmd, "rm %s/*.mesh", job_dir);
+        // sprintf(cmd, "rm %s/*.mesh", job_dir);
         sprintf(cmd, "rm -r %s", job_dir);
         system(cmd);
         printf("Done.\n");

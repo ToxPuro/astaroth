@@ -3,13 +3,13 @@
 #include <string.h>
 #include <time.h>
 
-//Logging utils
+// Logging utils
 
 void
 acVA_LogFromRootProc(const int pid, const char* msg, va_list args)
 {
-     if (pid == 0) {
-        time_t now  = time(NULL);
+    if (pid == 0) {
+        time_t now       = time(NULL);
         char* timestamp  = ctime(&now);
         size_t stamp_len = strlen(timestamp);
         // Remove trailing newline
@@ -48,7 +48,6 @@ acVerboseLogFromRootProc(const int pid, const char* msg, ...)
     va_end(args);
 }
 
-
 void
 acVA_DebugFromRootProc(const int pid, const char* msg, va_list args)
 {
@@ -57,11 +56,11 @@ acVA_DebugFromRootProc(const int pid, const char* msg, va_list args)
 #endif
 }
 
-void acDebugFromRootProc(const int pid, const char* msg, ...)
+void
+acDebugFromRootProc(const int pid, const char* msg, ...)
 {
     va_list args;
     va_start(args, msg);
     acVA_DebugFromRootProc(pid, msg, args);
     va_end(args);
 }
-

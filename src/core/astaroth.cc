@@ -305,10 +305,10 @@ AcResult
 acHostMeshRandomize(AcMesh* mesh)
 {
     const int n = acVertexBufferSize(mesh->info);
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w){
-        for (int i = 0; i < n; ++i){
+    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        for (int i = 0; i < n; ++i) {
             mesh->vertex_buffer[w][i] = randf();
-	}
+        }
     }
 
     return AC_SUCCESS;

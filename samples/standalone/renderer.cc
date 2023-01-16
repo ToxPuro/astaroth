@@ -127,8 +127,8 @@ renderer_init(const int& mx, const int& my)
                                                      window_bpp, SDL_PIXELFORMAT_RGBA8888);
 
     camera.pos   = (float2){.5f * tiles_per_row * datasurface_width - .5f * datasurface_width,
-                          -.5f * (num_tiles / tiles_per_row) * datasurface_height +
-                              .5f * datasurface_height};
+                            -.5f * (num_tiles / tiles_per_row) * datasurface_height +
+                                .5f * datasurface_height};
     camera.scale = min(window_width / float(datasurface_width * tiles_per_row),
                        window_height / float(datasurface_height * (num_tiles / tiles_per_row)));
 
@@ -186,7 +186,7 @@ draw_vertex_buffer(const AcMesh& mesh, const VertexBufferHandle& vertex_buffer, 
     const float2 wsize = (float2){float(window_width), float(window_height)};
     const vec4 rectf   = project_ortho(pos, bbox, wsize);
     SDL_Rect rect      = (SDL_Rect){int(rectf.x - rectf.w), int(wsize.y - rectf.y - rectf.h),
-                               int(ceil(2.f * rectf.w)), int(ceil(2.f * rectf.h))};
+                                    int(ceil(2.f * rectf.w)), int(ceil(2.f * rectf.h))};
 
     SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, surfaces[vertex_buffer]);
     SDL_RenderCopy(renderer, tex, NULL, &rect);
@@ -251,7 +251,7 @@ draw_vertex_buffer_vec(const AcMesh& mesh, const VertexBufferHandle& vertex_buff
     const float2 wsize = (float2){float(window_width), float(window_height)};
     const vec4 rectf   = project_ortho(pos, bbox, wsize);
     SDL_Rect rect      = (SDL_Rect){int(rectf.x - rectf.w), int(wsize.y - rectf.y - rectf.h),
-                               int(ceil(2.f * rectf.w)), int(ceil(2.f * rectf.h))};
+                                    int(ceil(2.f * rectf.w)), int(ceil(2.f * rectf.h))};
 
     SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, surfaces[vertex_buffer_a]);
     SDL_RenderCopy(renderer, tex, NULL, &rect);

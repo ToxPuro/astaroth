@@ -180,7 +180,7 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t 
     case RegionFamily::Exchange_input: {
         position = (int3){id.x == 1 ? nn.x : NGHOST, id.y == 1 ? nn.y : NGHOST,
                           id.z == 1 ? nn.z : NGHOST};
-        dims     = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
+        dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
                       id.z == 0 ? nn.z : NGHOST};
         break;
     }
@@ -261,30 +261,25 @@ Region::boundary(uint3_64 decomp, int pid, int tag)
     return boundary(decomp, pid3d, id);
 }
 
-
 AcBoundary
 Region::boundary(uint3_64 decomp, int3 pid3d, int3 id)
 {
     int3 neighbor = pid3d + id;
-    return (AcBoundary)(
-	     (neighbor.x == -1            ? BOUNDARY_X_BOT : 0 ) |
-             (neighbor.x == (int)decomp.x ? BOUNDARY_X_TOP : 0 ) |
-             (neighbor.y == -1            ? BOUNDARY_Y_TOP : 0 ) |
-             (neighbor.y == (int)decomp.y ? BOUNDARY_Y_TOP : 0 ) |
-             (neighbor.z == -1            ? BOUNDARY_Z_TOP : 0 ) |
-             (neighbor.z == (int)decomp.z ? BOUNDARY_Z_TOP : 0 )
-	   );
+    return (AcBoundary)((neighbor.x == -1 ? BOUNDARY_X_BOT : 0) |
+                        (neighbor.x == (int)decomp.x ? BOUNDARY_X_TOP : 0) |
+                        (neighbor.y == -1 ? BOUNDARY_Y_TOP : 0) |
+                        (neighbor.y == (int)decomp.y ? BOUNDARY_Y_TOP : 0) |
+                        (neighbor.z == -1 ? BOUNDARY_Z_TOP : 0) |
+                        (neighbor.z == (int)decomp.z ? BOUNDARY_Z_TOP : 0));
 }
-
 
 bool
 Region::is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary)
 {
-    int3 pid3d = getPid3D(pid, decomp);
+    int3 pid3d     = getPid3D(pid, decomp);
     int3 region_id = tag_to_id(tag);
     return is_on_boundary(decomp, pid3d, region_id, boundary);
 }
-
 
 bool
 Region::is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary)
@@ -293,12 +288,12 @@ Region::is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary
     return b & boundary ? true : false;
 }
 
-
 /* Task interface */
 Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefinition op,
            Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : device(device_), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
-      order(order_), active(true), boundary(BOUNDARY_NONE), input_region(input_region_), output_region(output_region_),
+      order(order_), active(true), boundary(BOUNDARY_NONE), input_region(input_region_),
+      output_region(output_region_),
       input_parameters(op.parameters, op.parameters + op.num_parameters)
 {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -650,9 +645,9 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     // Post receive immediately, this avoids unexpected messages
     active = ((MPI_INCL_CORNERS) || output_region.facet_class != 3) ? true : false;
     if (active) {
-	acVerboseLogFromRootProc(rank, "Halo exchange task ctor: posting early receive\n");
+        acVerboseLogFromRootProc(rank, "Halo exchange task ctor: posting early receive\n");
         receive();
-	acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done posting early receive\n");
+        acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done posting early receive\n");
     }
     name = "Halo exchange " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) +
            "," + std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) +
@@ -720,18 +715,19 @@ HaloExchangeTask::wait_send()
 void
 HaloExchangeTask::receiveDevice()
 {
-    // TODO: change these to debug log statements at high verbosity (there will be very many of these outputs)
-    if (rank == 0){
-        //fprintf(stderr, "receiveDevice, getting buffer\n");
+    // TODO: change these to debug log statements at high verbosity (there will be very many of
+    // these outputs)
+    if (rank == 0) {
+        // fprintf(stderr, "receiveDevice, getting buffer\n");
     }
     auto msg = recv_buffers.get_fresh_buffer();
-    if (rank == 0){
-        //fprintf(stderr, "calling MPI_Irecv\n");
+    if (rank == 0) {
+        // fprintf(stderr, "calling MPI_Irecv\n");
     }
     MPI_Irecv(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
               recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
-    if (rank == 0){
-        //fprintf(stderr, "Returned from MPI_Irecv\n");
+    if (rank == 0) {
+        // fprintf(stderr, "Returned from MPI_Irecv\n");
     }
 }
 
@@ -756,18 +752,19 @@ HaloExchangeTask::exchangeDevice()
 void
 HaloExchangeTask::receiveHost()
 {
-    // TODO: change these to debug log statements at high verbosity (there will be very many of these outputs)
-    if (rank == 0){
-        //fprintf("receiveHost, getting buffer\n");
+    // TODO: change these to debug log statements at high verbosity (there will be very many of
+    // these outputs)
+    if (rank == 0) {
+        // fprintf("receiveHost, getting buffer\n");
     }
     auto msg = recv_buffers.get_fresh_buffer();
-    if (rank == 0){
-        //fprintf("Called MPI_Irecv\n");
+    if (rank == 0) {
+        // fprintf("Called MPI_Irecv\n");
     }
     MPI_Irecv(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
               recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
-    if (rank == 0){
-        //fprintf("Returned from MPI_Irecv\n");
+    if (rank == 0) {
+        // fprintf("Returned from MPI_Irecv\n");
     }
     msg->pinned = true;
 }
@@ -793,22 +790,23 @@ HaloExchangeTask::exchangeHost()
 void
 HaloExchangeTask::receive()
 {
-    // TODO: change these fprintfs to debug log statements at high verbosity (there will be very many of these outputs)
+    // TODO: change these fprintfs to debug log statements at high verbosity (there will be very
+    // many of these outputs)
 #if USE_CUDA_AWARE_MPI
-    if (rank == 0){
-        //fprintf(stderr, "receiveDevice()\n");
+    if (rank == 0) {
+        // fprintf(stderr, "receiveDevice()\n");
     }
     receiveDevice();
-    if (rank == 0){
-        //fprintf(stderr, "returned from receiveDevice()\n");
+    if (rank == 0) {
+        // fprintf(stderr, "returned from receiveDevice()\n");
     }
 #else
-    if (rank == 0){
-        //fprintf(stderr, "receiveHost()\n");
+    if (rank == 0) {
+        // fprintf(stderr, "receiveHost()\n");
     }
     receiveHost();
-    if (rank == 0){
-        //fprintf(stderr, "returned from receiveHost()\n");
+    if (rank == 0) {
+        // fprintf(stderr, "returned from receiveHost()\n");
     }
 #endif
 }
@@ -1113,28 +1111,21 @@ SpecialMHDBoundaryConditionTask::advance(const TraceFile* trace_file)
 }
 #endif // AC_INTEGRATION_ENABLED
 
-
 AcBoundary
 boundary_from_normal(int3 normal)
 {
-    return (AcBoundary)(
-	     (normal.x == -1 ? BOUNDARY_X_BOT : 0 ) |
-             (normal.x ==  1 ? BOUNDARY_X_TOP : 0 ) |
-             (normal.y == -1 ? BOUNDARY_Y_BOT : 0 ) |
-             (normal.y ==  1 ? BOUNDARY_Y_TOP : 0 ) |
-             (normal.z == -1 ? BOUNDARY_Z_BOT : 0 ) |
-             (normal.z ==  1 ? BOUNDARY_Z_TOP : 0 )
-	   );
+    return (
+        AcBoundary)((normal.x == -1 ? BOUNDARY_X_BOT : 0) | (normal.x == 1 ? BOUNDARY_X_TOP : 0) |
+                    (normal.y == -1 ? BOUNDARY_Y_BOT : 0) | (normal.y == 1 ? BOUNDARY_Y_TOP : 0) |
+                    (normal.z == -1 ? BOUNDARY_Z_BOT : 0) | (normal.z == 1 ? BOUNDARY_Z_TOP : 0));
 }
 
 int3
 normal_from_boundary(AcBoundary boundary)
 {
-    return int3{
-	((BOUNDARY_X_TOP & boundary) != 0) - ((BOUNDARY_X_BOT & boundary) != 0),
-	((BOUNDARY_Y_TOP & boundary) != 0) - ((BOUNDARY_Y_BOT & boundary) != 0),
-	((BOUNDARY_Z_TOP & boundary) != 0) - ((BOUNDARY_Z_BOT & boundary) != 0)
-    };
+    return int3{((BOUNDARY_X_TOP & boundary) != 0) - ((BOUNDARY_X_BOT & boundary) != 0),
+                ((BOUNDARY_Y_TOP & boundary) != 0) - ((BOUNDARY_Y_BOT & boundary) != 0),
+                ((BOUNDARY_Z_TOP & boundary) != 0) - ((BOUNDARY_Z_BOT & boundary) != 0)};
 }
 
 #endif // AC_MPI_ENABLED
