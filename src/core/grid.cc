@@ -157,6 +157,25 @@ acGridInit(const AcMeshInfo info)
     const uint3_64 decomp = decompose(nprocs);
     const int3 pid3d      = getPid3D(pid, decomp);
 
+    // Check that the decomposition is valid
+    const int3 nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+    const bool nx_valid = nn.x % decomp.x == 0;
+    const bool ny_valid = nn.y % decomp.y == 0;
+    const bool nz_valid = nn.z % decomp.z == 0;
+    if (!nx_valid || !ny_valid || !nz_valid) {
+        WARNING("Mesh dimensions must be divisible by the decomposition\n");
+        fprintf(stderr, "Decomposition: (%d, %d, %d)\n", decomp.x, decomp.y, decomp.z);
+        fprintf(stderr, "Mesh dimensions: (%d, %d, %d)\n", nn.x, nn.y, nn.z);
+        fprintf(stderr, "Divisible: (%d, %d, %d)\n", nx_valid, ny_valid, nz_valid);
+    }
+    if (nn.x < STENCIL_WIDTH)
+        fprintf(stderr, "nn.x %d too small, must be >= %d (stencil width)\n", nn.x, STENCIL_WIDTH);
+    if (nn.y < STENCIL_HEIGHT)
+        fprintf(stderr, "nn.y %d too small, must be >= %d (stencil height)\n", nn.y,
+                STENCIL_HEIGHT);
+    if (nn.z < STENCIL_DEPTH)
+        fprintf(stderr, "nn.z %d too small, must be >= %d (stencil depth)\n", nn.z, STENCIL_DEPTH);
+
     MPI_Barrier(MPI_COMM_WORLD);
 
 #if AC_VERBOSE
@@ -309,7 +328,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
-    fprintf(stderr, "send start\n");
+
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
 
@@ -365,7 +384,6 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
         }
     }
     MPI_Waitall(NUM_VTXBUF_HANDLES, recv_reqs, MPI_STATUSES_IGNORE);
-fprintf(stderr, "send complete\n");
     /*
         Strategy:
             1) Select a subarray from the input mesh
@@ -462,7 +480,6 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
     MPI_Type_free(&output_subarray);
     */
 
-    fprintf(stderr, "recv start\n");
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
 
@@ -512,13 +529,12 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                                                          tgt_pid3d.y * distributed_nn.y, //
                                                          tgt_pid3d.z * distributed_nn.z, //
                                                          host_mesh->info);
-                MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][idx], 1, monolithic_subarray, tgt, vtxbuf,
-                         MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][idx], 1, monolithic_subarray, tgt,
+                         vtxbuf, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             }
         }
     }
     MPI_Waitall(NUM_VTXBUF_HANDLES, send_reqs, MPI_STATUSES_IGNORE);
-    fprintf(stderr, "recv complete\n");
     /*
         Strategy:
             1) Select a subarray from the input mesh
