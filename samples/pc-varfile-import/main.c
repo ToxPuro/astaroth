@@ -65,13 +65,13 @@ main(int argc, char* argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
     // Modify these based on the varfile format
-    //const char* file = "test.dat";
+    // const char* file = "test.dat";
     const char* file = "/scratch/project_462000077/mkorpi/forced/mahti_4096/data/allprocs/var.dat";
     const Field fields[]    = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO,
                                VTXBUF_AX,  VTXBUF_AY,  VTXBUF_AZ};
     const size_t num_fields = ARRAY_SIZE(fields);
-    const int3 nn = (int3){4096, 4096, 4096};
-    //const int3 nn = (int3){2048, 2048, 8};
+    const int3 nn           = (int3){4096, 4096, 4096};
+    // const int3 nn = (int3){2048, 2048, 8};
     const int3 rr = (int3){3, 3, 3};
 
     /*

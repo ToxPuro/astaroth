@@ -678,13 +678,13 @@ AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary,
 AcTaskGraph* acGridGetDefaultTaskGraph();
 
 /** */
-bool acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph *graph);
+bool acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph* graph);
 
 /** */
-bool acGridTaskGraphHasPeriodicBoundcondsY(AcTaskGraph *graph);
+bool acGridTaskGraphHasPeriodicBoundcondsY(AcTaskGraph* graph);
 
 /** */
-bool acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph *graph);
+bool acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph* graph);
 
 /** */
 AcTaskGraph* acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops);

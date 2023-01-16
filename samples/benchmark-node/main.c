@@ -14,19 +14,22 @@ static const bool verify = false;
 
 // TODO use common sort with benchmark, benchmark-device, benchmark-node, mpi-io
 void
-validate(const size_t count, const double* arr) {
+validate(const size_t count, const double* arr)
+{
     for (size_t i = 1; i < count; ++i)
-        ERRCHK_ALWAYS(arr[i] >= arr[i-1]);
+        ERRCHK_ALWAYS(arr[i] >= arr[i - 1]);
 }
 
 // TODO use common sort with benchmark, benchmark-device, benchmark-node, mpi-io
-void sort(const size_t count, double* arr) {
+void
+sort(const size_t count, double* arr)
+{
     for (size_t j = 0; j < count; ++j) {
-        for (size_t i = j+1; i < count; ++i) {
+        for (size_t i = j + 1; i < count; ++i) {
             if (arr[i] < arr[j]) {
                 const double tmp = arr[j];
-                arr[j] = arr[i];
-                arr[i] = tmp;
+                arr[j]           = arr[i];
+                arr[i]           = tmp;
             }
         }
     }
@@ -103,7 +106,6 @@ main(int argc, char** argv)
         acNodeIntegrateSubstep(node, STREAM_DEFAULT, i, n_min, n_max, dt);
         acNodeSwapBuffers(node);
         acNodePeriodicBoundconds(node, STREAM_DEFAULT);
-
     }
     // TODO START
     // create acNodeReset or something like that
@@ -146,7 +148,7 @@ main(int argc, char** argv)
 
     // Benchmark
     Timer t;
-    //timer_reset(&t);
+    // timer_reset(&t);
     double results[NSAMPLES] = {0};
 #pragma unroll
     for (int j = 0; j < NSAMPLES; ++j) {
@@ -164,22 +166,24 @@ main(int argc, char** argv)
         acNodeSynchronizeStream(node, STREAM_ALL);
         results[j] = timer_diff_nsec(t) / 1e6;
     }
-    //acNodeSynchronizeStream(node, STREAM_DEFAULT);
-    //const double ms_elapsed   = timer_diff_nsec(t) / 1e6;
-    //const double milliseconds = ms_elapsed / NSAMPLES;
-    //printf("Average integration time: %.4g ms\n", milliseconds);
+    // acNodeSynchronizeStream(node, STREAM_DEFAULT);
+    // const double ms_elapsed   = timer_diff_nsec(t) / 1e6;
+    // const double milliseconds = ms_elapsed / NSAMPLES;
+    // printf("Average integration time: %.4g ms\n", milliseconds);
 
     sort(NSAMPLES, results);
     validate(NSAMPLES, results);
-    const double min = results[0];
-    const double median = NSAMPLES % 2 ? results[NSAMPLES/2] : 0.5 * (results[NSAMPLES/2 - 1] + results[NSAMPLES/2]);
+    const double min            = results[0];
+    const double median         = NSAMPLES % 2 ? results[NSAMPLES / 2]
+                                               : 0.5 * (results[NSAMPLES / 2 - 1] + results[NSAMPLES / 2]);
     const double percentile90th = results[(size_t)ceil(0.9 * NSAMPLES)];
-    const double max = results[NSAMPLES-1];
-    
+    const double max            = results[NSAMPLES - 1];
+
     printf("Integration times:\n");
     printf("\tmin: %g\n", min);
     printf("\tmedian: %g\n", median);
-    printf("\t90th percentile: %g\n", percentile90th); // Conservative, takes the first precentile >= 90%
+    printf("\t90th percentile: %g\n",
+           percentile90th); // Conservative, takes the first precentile >= 90%
     printf("\tmax: %g\n", max);
 
     // Write to file

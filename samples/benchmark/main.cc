@@ -28,8 +28,7 @@
 #include <string>
 #include <unistd.h> // getopt
 
-
-static const bool verify   = false;
+static const bool verify = false;
 
 #if AC_MPI_ENABLED
 
@@ -144,9 +143,9 @@ main(int argc, char** argv)
             else if (std::string("weak").find(optarg) == 0) {
                 test = TEST_WEAK_SCALING;
             }
-            //else if (std::string("verify").find(optarg) == 0) {
-            //    verify = true;
-            //}
+            // else if (std::string("verify").find(optarg) == 0) {
+            //     verify = true;
+            // }
             else {
                 fprintf(stderr, "Could not parse option -t <type>. <type> should be \"strong\" or "
                                 "\"weak\"\n");
@@ -279,16 +278,16 @@ main(int argc, char** argv)
 
         FILE* fp = fopen(path, "a");
         ERRCHK_ALWAYS(fp);
-        // Format
-        // nprocs, min, 50th perc, 90th perc, max
-        // Format
-        // devices,millisecondsmin,milliseconds50thpercentile,milliseconds90thpercentile,millisecondsmax,usedistributedcommunication,nx,ny,nz,dostrongscaling
-        // devices, minmilliseconds, 50th perc (ms), 90th perc (ms), max (ms)
-        #if USE_DISTRIBUTED_IO
-            const bool use_distributed_io = true;
-        #else
-            const bool use_distributed_io = false;
-        #endif
+// Format
+// nprocs, min, 50th perc, 90th perc, max
+// Format
+// devices,millisecondsmin,milliseconds50thpercentile,milliseconds90thpercentile,millisecondsmax,usedistributedcommunication,nx,ny,nz,dostrongscaling
+// devices, minmilliseconds, 50th perc (ms), 90th perc (ms), max (ms)
+#if USE_DISTRIBUTED_IO
+        const bool use_distributed_io = true;
+#else
+        const bool use_distributed_io = false;
+#endif
         fprintf(fp, "%d,%g,%g,%g,%g,%d,%d,%d,%d,%d\n", nprocs, results[0],
                 results[(size_t)(0.5 * num_iters)], results[(size_t)(nth_percentile * num_iters)],
                 results[num_iters - 1], use_distributed_io, info.int_params[AC_nx],

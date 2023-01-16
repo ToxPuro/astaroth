@@ -47,7 +47,7 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         const int3 start = (int3){0, 0, 0};
         const int3 end   = (int3){info.int_params[AC_mx], info.int_params[AC_my],
-                                info.int_params[AC_mz]};
+                                  info.int_params[AC_mz]};
 
         const int nx = info.int_params[AC_nx];
         const int ny = info.int_params[AC_ny];

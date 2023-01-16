@@ -145,8 +145,8 @@ inflow_vedge(AcMesh* mesh)
                 // Variarion to density
                 // AcReal rho = exp(mesh->vertex_buffer[VTXBUF_LNRHO][idx]);
                 // NO GAUSSIAN//rho = rho*exp(-(zz/gaussr)*(zz/gaussr));
-                // mesh->vertex_buffer[VTXBUF_LNRHO][idx] = log(rho + (range*rho) * (random_uniform_real_01() -
-                // AcReal(-0.5)));
+                // mesh->vertex_buffer[VTXBUF_LNRHO][idx] = log(rho + (range*rho) *
+                // (random_uniform_real_01() - AcReal(-0.5)));
             }
         }
     }
@@ -717,9 +717,9 @@ gaussian_radial_explosion(AcMesh* mesh)
 void
 acmesh_init_to(const InitType& init_type, AcMesh* mesh)
 {
-    //OL: !!!! The RNG was being seeded multiple times. Why?
-    //Please seed the RNG exactly once in main, unless you have a very good reason to do otherwise
-    //srand(123456789);
+    // OL: !!!! The RNG was being seeded multiple times. Why?
+    // Please seed the RNG exactly once in main, unless you have a very good reason to do otherwise
+    // srand(123456789);
 
     const int n = acVertexBufferSize(mesh->info);
 
