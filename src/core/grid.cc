@@ -116,8 +116,8 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
 
-    const uint3_64 decomp     = decompose(nprocs);
-    const int3 pid3d          = getPid3D(pid, decomp);
+    const uint3_64 decomp = decompose(nprocs);
+    const int3 pid3d      = getPid3D(pid, decomp);
 
     ERRCHK_ALWAYS(submesh_config.int_params[AC_nx] % decomp.x == 0);
     ERRCHK_ALWAYS(submesh_config.int_params[AC_ny] % decomp.y == 0);
@@ -127,16 +127,14 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     const int submesh_ny = submesh_config.int_params[AC_ny] / decomp.y;
     const int submesh_nz = submesh_config.int_params[AC_nz] / decomp.z;
 
-    submesh_config.int_params[AC_nx]             = submesh_nx;
-    submesh_config.int_params[AC_ny]             = submesh_ny;
-    submesh_config.int_params[AC_nz]             = submesh_nz;
-    submesh_config.int3_params[AC_global_grid_n] = (int3){
-        global_config.int_params[AC_nx],
-        global_config.int_params[AC_ny],
-        global_config.int_params[AC_nz]
-    };
+    submesh_config.int_params[AC_nx]               = submesh_nx;
+    submesh_config.int_params[AC_ny]               = submesh_ny;
+    submesh_config.int_params[AC_nz]               = submesh_nz;
+    submesh_config.int3_params[AC_global_grid_n]   = (int3){global_config.int_params[AC_nx],
+                                                            global_config.int_params[AC_ny],
+                                                            global_config.int_params[AC_nz]};
     submesh_config.int3_params[AC_multigpu_offset] = pid3d *
-                                                   (int3){submesh_nx, submesh_ny, submesh_nz};
+                                                     (int3){submesh_nx, submesh_ny, submesh_nz};
     acHostUpdateBuiltinParams(&submesh_config);
     return submesh_config;
 }
@@ -156,8 +154,8 @@ acGridInit(const AcMeshInfo info)
     MPI_Get_processor_name(processor_name, &name_len);
 
     // Decompose
-    const uint3_64 decomp   = decompose(nprocs);
-    const int3 pid3d        = getPid3D(pid, decomp);
+    const uint3_64 decomp = decompose(nprocs);
+    const int3 pid3d      = getPid3D(pid, decomp);
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -612,7 +610,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     std::vector<size_t> op_indices;
     op_indices.reserve(n_ops);
 
-
     int3 nn         = grid.nn;
     uint3_64 decomp = grid.decomposition;
     int3 pid3d      = getPid3D(rank, grid.decomposition);
@@ -651,7 +648,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     // this array of bools keep track of that state
     std::array<bool, NUM_VTXBUF_HANDLES> swap_offset{};
 
-
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks: %lu ops\n", n_ops);
 
     for (size_t i = 0; i < n_ops; i++) {
@@ -659,9 +655,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         auto op = ops[i];
         op_indices.push_back(graph->all_tasks.size());
 
-	if (op.task_type == TASKTYPE_BOUNDCOND && op.bound_cond == BOUNDCOND_PERIODIC){
+        if (op.task_type == TASKTYPE_BOUNDCOND && op.bound_cond == BOUNDCOND_PERIODIC) {
             graph->periodic_boundaries = (AcBoundary)(graph->periodic_boundaries | op.boundary);
-	}
+        }
         switch (op.task_type) {
 
         case TASKTYPE_COMPUTE: {
@@ -701,10 +697,13 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (Region::is_on_boundary(decomp, rank, tag, op.boundary)) {
                     if (bc == BOUNDCOND_PERIODIC) {
-                        acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n", tag);
+                        acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
+                                                 tag);
                         auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, nn, decomp,
                                                                        device, swap_offset);
-                        acVerboseLogFromRootProc(rank, "Done creating periodic bc task with tag%d\n", tag);
+                        acVerboseLogFromRootProc(rank,
+                                                 "Done creating periodic bc task with tag%d\n",
+                                                 tag);
 
                         graph->halo_tasks.push_back(task);
                         graph->all_tasks.push_back(task);
@@ -726,7 +725,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
         case TASKTYPE_SPECIAL_MHD_BOUNDCOND: {
 #ifdef AC_INTEGRATION_ENABLED
-               for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
+            for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (Region::is_on_boundary(decomp, rank, tag, op.boundary)) {
                     auto task = std::make_shared<SpecialMHDBoundaryConditionTask>(op,
                                                                                   boundary_normal(
@@ -852,7 +851,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 }
 
 AcResult
-acGridDestroyTaskGraph(AcTaskGraph *graph)
+acGridDestroyTaskGraph(AcTaskGraph* graph)
 {
     graph->all_tasks.clear();
     graph->comp_tasks.clear();
@@ -1512,7 +1511,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 #else // Use MPI IO
             MPI_File file;
             int mode = MPI_MODE_CREATE | MPI_MODE_WRONLY;
-            //fprintf(stderr, "Writing %s\n", filepath);
+            // fprintf(stderr, "Writing %s\n", filepath);
             int retval = MPI_File_open(MPI_COMM_SELF, filepath, mode, MPI_INFO_NULL, &file);
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
@@ -1544,7 +1543,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
             MPI_Type_commit(&subarray);
 
             MPI_File file;
-            //fprintf(stderr, "Writing %s\n", filepath);
+            // fprintf(stderr, "Writing %s\n", filepath);
 
             int flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
             ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, filepath, flags, MPI_INFO_NULL, &file) ==
@@ -1565,8 +1564,9 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 #endif
         };
 
-        //write_async(info, host_buffer); // Synchronous, non-threaded
-        threads.push_back(std::move(std::thread(write_async, info, host_buffer))); // Async, threaded
+        // write_async(info, host_buffer); // Synchronous, non-threaded
+        threads.push_back(
+            std::move(std::thread(write_async, info, host_buffer))); // Async, threaded
     }
 
     return AC_SUCCESS;
@@ -1587,10 +1587,9 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
     const int3 global_pos_min = global_offset;
     const int3 global_pos_max = global_pos_min + local_nn;
 
-
     const int global_z = global_nn.z / 2;
     const int local_z  = global_z - global_pos_min.z;
-    const int color = local_z >= 0 && local_z < local_nn.z ? 0 : MPI_UNDEFINED;
+    const int color    = local_z >= 0 && local_z < local_nn.z ? 0 : MPI_UNDEFINED;
 
     for (int field = 0; field < NUM_FIELDS; ++field) {
 
@@ -1614,7 +1613,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
         if (color != MPI_UNDEFINED)
             acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
-                           out_volume);
+                               out_volume);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
 
         AcReal* host_buffer = grid.submesh.vertex_buffer[field];
@@ -1626,23 +1625,21 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
         char filepath[4096];
 #if USE_DISTRIBUTED_IO
         sprintf(filepath, "%s/%s-segment-at_%d_%d_%d-dims_%d_%d-%s.slice", dir, vtxbuf_names[field],
-			global_pos_min.x, global_pos_min.y, global_z,
-			local_nn.x, local_nn.y,
-			label);
+                global_pos_min.x, global_pos_min.y, global_z, local_nn.x, local_nn.y, label);
 #else
-        sprintf(filepath, "%s/%s-dims_%d_%d-%s.slice", dir, vtxbuf_names[field],
-                        global_nn.x, global_nn.y,
-			label);
+        sprintf(filepath, "%s/%s-dims_%d_%d-%s.slice", dir, vtxbuf_names[field], global_nn.x,
+                global_nn.y, label);
 #endif
 
         int pid;
         MPI_Comm_rank(MPI_COMM_WORLD, &pid);
-        //if (color != MPI_UNDEFINED)
-        //    fprintf(stderr, "Writing field %d, proc %d, to %s\n", field, pid, filepath);
-        
-        acGridSynchronizeStream(STREAM_ALL);
-        const auto write_async = [filepath, global_nn, global_pos_min, slice_volume, color](const AcReal* host_buffer, const size_t count, const int device_id) {
+        // if (color != MPI_UNDEFINED)
+        //     fprintf(stderr, "Writing field %d, proc %d, to %s\n", field, pid, filepath);
 
+        acGridSynchronizeStream(STREAM_ALL);
+        const auto write_async = [filepath, global_nn, global_pos_min, slice_volume,
+                                  color](const AcReal* host_buffer, const size_t count,
+                                         const int device_id) {
             cudaSetDevice(device_id);
             // Write to file
 
@@ -1650,28 +1647,28 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 #define USE_POSIX_IO (0)
 #if USE_POSIX_IO
             if (color != MPI_UNDEFINED) {
-            FILE* fp = fopen(filepath, "w");
-            ERRCHK_ALWAYS(fp);
+                FILE* fp = fopen(filepath, "w");
+                ERRCHK_ALWAYS(fp);
 
-            const size_t count_written = fwrite(host_buffer, sizeof(AcReal), count, fp);
-            ERRCHK_ALWAYS(count_written == count);
+                const size_t count_written = fwrite(host_buffer, sizeof(AcReal), count, fp);
+                ERRCHK_ALWAYS(count_written == count);
 
-            fclose(fp);
+                fclose(fp);
             }
 #else // Use MPI IO
             if (color != MPI_UNDEFINED) {
-            MPI_File file;
-            int mode = MPI_MODE_CREATE | MPI_MODE_WRONLY;
-            //fprintf(stderr, "Writing %s\n", filepath);
-            int retval = MPI_File_open(MPI_COMM_SELF, filepath, mode, MPI_INFO_NULL, &file);
-            ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+                MPI_File file;
+                int mode = MPI_MODE_CREATE | MPI_MODE_WRONLY;
+                // fprintf(stderr, "Writing %s\n", filepath);
+                int retval = MPI_File_open(MPI_COMM_SELF, filepath, mode, MPI_INFO_NULL, &file);
+                ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
-            MPI_Status status;
-            retval = MPI_File_write(file, host_buffer, count, AC_REAL_MPI_TYPE, &status);
-            ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+                MPI_Status status;
+                retval = MPI_File_write(file, host_buffer, count, AC_REAL_MPI_TYPE, &status);
+                ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
-            retval = MPI_File_close(&file);
-            ERRCHK_ALWAYS(retval == MPI_SUCCESS);
+                retval = MPI_File_close(&file);
+                ERRCHK_ALWAYS(retval == MPI_SUCCESS);
             }
 #endif
 #undef USE_POSIX_IO
@@ -1694,17 +1691,18 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
                 };
                 MPI_Datatype subdomain;
                 MPI_Type_create_subarray(3, nn_, nn_sub_, offset_, MPI_ORDER_C, AC_REAL_MPI_TYPE,
-                                        &subdomain);
+                                         &subdomain);
                 MPI_Type_commit(&subdomain);
 
-                //printf("Writing %s\n", filepath);
+                // printf("Writing %s\n", filepath);
 
                 MPI_File fp;
-                int retval = MPI_File_open(slice_communicator, filepath, MPI_MODE_CREATE | MPI_MODE_WRONLY,
-                                        MPI_INFO_NULL, &fp);
+                int retval = MPI_File_open(slice_communicator, filepath,
+                                           MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
                 ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
-                retval = MPI_File_set_view(fp, 0, AC_REAL_MPI_TYPE, subdomain, "native", MPI_INFO_NULL);
+                retval = MPI_File_set_view(fp, 0, AC_REAL_MPI_TYPE, subdomain, "native",
+                                           MPI_INFO_NULL);
                 ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
                 MPI_Status status;
@@ -1716,14 +1714,14 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
                 MPI_Type_free(&subdomain);
 
-
                 MPI_Comm_free(&slice_communicator);
             }
 #endif
         };
 
-        //write_async(host_buffer, count, device->id); // Synchronous, non-threaded
-        threads.push_back(std::move(std::thread(write_async, host_buffer, count, device->id))); // Async, threaded
+        // write_async(host_buffer, count, device->id); // Synchronous, non-threaded
+        threads.push_back(
+            std::move(std::thread(write_async, host_buffer, count, device->id))); // Async, threaded
     }
     return AC_SUCCESS;
 }
@@ -1743,10 +1741,9 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
     const int3 global_pos_min = global_offset;
     const int3 global_pos_max = global_pos_min + local_nn;
 
-
     const int global_z = global_nn.z / 2;
     const int local_z  = global_z - global_pos_min.z;
-    const int color = local_z >= 0 && local_z < local_nn.z ? 0 : MPI_UNDEFINED;
+    const int color    = local_z >= 0 && local_z < local_nn.z ? 0 : MPI_UNDEFINED;
 
     for (int field = 0; field < NUM_FIELDS; ++field) {
 
@@ -1770,7 +1767,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
 
         if (color != MPI_UNDEFINED)
             acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
-                           out_volume);
+                               out_volume);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
 
         AcReal* host_buffer = grid.submesh.vertex_buffer[field];
@@ -1780,18 +1777,18 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
             cudaMemcpy(host_buffer, out, bytes, cudaMemcpyDeviceToHost);
 
         char filepath[4096];
-        sprintf(filepath, "%s/%s-dims_%d_%d-%s.slice", dir, vtxbuf_names[field],
-                        global_nn.x, global_nn.y,
-			label);
+        sprintf(filepath, "%s/%s-dims_%d_%d-%s.slice", dir, vtxbuf_names[field], global_nn.x,
+                global_nn.y, label);
 
         int pid;
         MPI_Comm_rank(MPI_COMM_WORLD, &pid);
-        //if (color != MPI_UNDEFINED)
-        //    fprintf(stderr, "Writing field %d, proc %d, to %s\n", field, pid, filepath);
-        
-        acGridSynchronizeStream(STREAM_ALL);
-        const auto write_async = [filepath, global_nn, global_pos_min, slice_volume, color](const AcReal* host_buffer, const size_t count, const int device_id) {
+        // if (color != MPI_UNDEFINED)
+        //     fprintf(stderr, "Writing field %d, proc %d, to %s\n", field, pid, filepath);
 
+        acGridSynchronizeStream(STREAM_ALL);
+        const auto write_async = [filepath, global_nn, global_pos_min, slice_volume,
+                                  color](const AcReal* host_buffer, const size_t count,
+                                         const int device_id) {
             cudaSetDevice(device_id);
             // Write to file
 
@@ -1812,17 +1809,18 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
                 };
                 MPI_Datatype subdomain;
                 MPI_Type_create_subarray(3, nn_, nn_sub_, offset_, MPI_ORDER_C, AC_REAL_MPI_TYPE,
-                                        &subdomain);
+                                         &subdomain);
                 MPI_Type_commit(&subdomain);
 
-                //printf("Writing %s\n", filepath);
+                // printf("Writing %s\n", filepath);
 
                 MPI_File fp;
-                int retval = MPI_File_open(slice_communicator, filepath, MPI_MODE_CREATE | MPI_MODE_WRONLY,
-                                        MPI_INFO_NULL, &fp);
+                int retval = MPI_File_open(slice_communicator, filepath,
+                                           MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fp);
                 ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
-                retval = MPI_File_set_view(fp, 0, AC_REAL_MPI_TYPE, subdomain, "native", MPI_INFO_NULL);
+                retval = MPI_File_set_view(fp, 0, AC_REAL_MPI_TYPE, subdomain, "native",
+                                           MPI_INFO_NULL);
                 ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
                 MPI_Status status;
@@ -1834,13 +1832,13 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
 
                 MPI_Type_free(&subdomain);
 
-
                 MPI_Comm_free(&slice_communicator);
             }
         };
 
         write_async(host_buffer, count, device->id); // Synchronous, non-threaded
-        // threads.push_back(std::move(std::thread(write_async, host_buffer, count, device->id))); // Async, threaded
+        // threads.push_back(std::move(std::thread(write_async, host_buffer, count, device->id)));
+        // // Async, threaded
     }
     return AC_SUCCESS;
 }
@@ -2003,10 +2001,10 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     const size_t buflen = 4096;
     char filepath[buflen];
 #if USE_DISTRIBUTED_IO
-        sprintf(filepath, "%s/%s-segment-%d-%d-%d-%s.mesh", dir, vtxbuf_names[vtxbuf], offset.x,
-                offset.y, offset.z, label);
+    sprintf(filepath, "%s/%s-segment-%d-%d-%d-%s.mesh", dir, vtxbuf_names[vtxbuf], offset.x,
+            offset.y, offset.z, label);
 #else
-        sprintf(filepath, "%s/%s-%s.mesh", dir, vtxbuf_names[vtxbuf], label);
+    sprintf(filepath, "%s/%s-%s.mesh", dir, vtxbuf_names[vtxbuf], label);
 #endif
 
 #if AC_VERBOSE
@@ -2514,19 +2512,19 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
 }
 
 bool
-acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph *graph)
+acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph* graph)
 {
     return (graph->periodic_boundaries & BOUNDARY_X) != 0;
 }
 
 bool
-acGridTaskGraphHasPeriodicBoundcondsY(AcTaskGraph *graph)
+acGridTaskGraphHasPeriodicBoundcondsY(AcTaskGraph* graph)
 {
     return (graph->periodic_boundaries & BOUNDARY_Y) != 0;
 }
 
 bool
-acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph *graph)
+acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph* graph)
 {
     return (graph->periodic_boundaries & BOUNDARY_Z) != 0;
 }
