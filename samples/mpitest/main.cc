@@ -58,7 +58,17 @@ main(void)
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    acSetMeshDims(32, 32, 32, &info);
+
+    const int max_devices = 2 * 4 * 4;
+    if (nprocs > max_devices) {
+        fprintf(stderr,
+                "Cannot run autotest, nprocs (%d) > max_devices (%d). Please modify "
+                "mpitest/main.cc to use a larger mesh.\n",
+                nprocs, max_devices);
+        MPI_Abort(MPI_COMM_WORLD, -1);
+        return EXIT_FAILURE;
+    }
+    acSetMeshDims(2 * 9, 4 * 11, 4 * 7, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {
