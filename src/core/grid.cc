@@ -915,9 +915,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         auto op = ops[i];
         op_indices.push_back(graph->all_tasks.size());
 
-	if (op.task_type == TASKTYPE_BOUNDCOND && op.bound_cond == BOUNDCOND_PERIODIC){
+        if (op.task_type == TASKTYPE_BOUNDCOND && op.bound_cond == BOUNDCOND_PERIODIC) {
             graph->periodic_boundaries = (AcBoundary)(graph->periodic_boundaries | op.boundary);
-	}
+        }
         switch (op.task_type) {
 
         case TASKTYPE_COMPUTE: {
@@ -985,7 +985,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
         case TASKTYPE_SPECIAL_MHD_BOUNDCOND: {
 #ifdef AC_INTEGRATION_ENABLED
-               for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
+            for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (Region::is_on_boundary(decomp, rank, tag, op.boundary)) {
                     auto task = std::make_shared<SpecialMHDBoundaryConditionTask>(op,
                                                                                   boundary_normal(
@@ -2770,19 +2770,19 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
 }
 
 bool
-acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph *graph)
+acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph* graph)
 {
     return (graph->periodic_boundaries & BOUNDARY_X) != 0;
 }
 
 bool
-acGridTaskGraphHasPeriodicBoundcondsY(AcTaskGraph *graph)
+acGridTaskGraphHasPeriodicBoundcondsY(AcTaskGraph* graph)
 {
     return (graph->periodic_boundaries & BOUNDARY_Y) != 0;
 }
 
 bool
-acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph *graph)
+acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph* graph)
 {
     return (graph->periodic_boundaries & BOUNDARY_Z) != 0;
 }
