@@ -125,8 +125,10 @@ ac_MPI_Init_thread(int thread_level)
 void
 ac_MPI_Finalize()
 {
-    MPI_Comm_free(&astaroth_comm);
-    astaroth_comm = MPI_COMM_NULL;
+    if (astaroth_comm != MPI_COMM_WORLD){
+        MPI_Comm_free(&astaroth_comm);
+        astaroth_comm = MPI_COMM_NULL;
+    }
     MPI_Finalize();
 }
 
