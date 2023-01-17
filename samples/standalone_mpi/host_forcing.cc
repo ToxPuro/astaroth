@@ -27,8 +27,8 @@
 #include "host_forcing.h"
 #include "simulation_rng.h"
 
-#include "errchk.h"
 #include "astaroth_utils.h"
+#include "errchk.h"
 
 // #include "math_utils.h"
 #include <cmath>
@@ -86,45 +86,45 @@ helical_forcing_k_generator(const AcReal kmax, const AcReal kmin)
     using k_force_params = std::pair<AcReal, AcReal>;
     static std::map<k_force_params, std::vector<AcReal3>> k_force_populations = {};
 
-    k_force_params k_params{kmin,kmax};
+    k_force_params k_params{kmin, kmax};
 
-    //If population has not been generated, generate it
-    if (k_force_populations.count(k_params) == 0){
-	auto &pop = k_force_populations[k_params];
-	
-	AcReal min_squared  = kmin*kmin;
-	AcReal max_squared  = kmax*kmax;
+    // If population has not been generated, generate it
+    if (k_force_populations.count(k_params) == 0) {
+        auto& pop = k_force_populations[k_params];
 
-	// Take the ceil of min and floor of max to get the extreme integer values still within the range
+        AcReal min_squared = kmin * kmin;
+        AcReal max_squared = kmax * kmax;
+
+        // Take the ceil of min and floor of max to get the extreme integer values still within the
+        // range
         int min_int = static_cast<int>(std::ceil(kmin));
         int max_int = static_cast<int>(std::floor(kmax));
 
-	int min_squared_int = min_int * min_int;
-	int max_squared_int = max_int * max_int;
+        int min_squared_int = min_int * min_int;
+        int max_squared_int = max_int * max_int;
 
-    	for (int x = -max_int; x < max_int; x++){
-	    for (int y = -max_int; y < max_int; y++){
-	        for (int z = -max_int; z < max_int; z++){
-		    int dist_squared = x*x + y*y + z*z;
-		    // Might be redundant, but for sanity's sake, check if the integer distance is equal
-		    // to the square maximal integer
-		    if ( (min_squared <= dist_squared || min_squared_int == dist_squared) &&
-			 (max_squared >= dist_squared || max_squared_int == dist_squared)){
-		        pop.push_back(AcReal3{x,y,z});
-		    }
-		}
-	    }
-	}
-
+        for (int x = -max_int; x < max_int; x++) {
+            for (int y = -max_int; y < max_int; y++) {
+                for (int z = -max_int; z < max_int; z++) {
+                    int dist_squared = x * x + y * y + z * z;
+                    // Might be redundant, but for sanity's sake, check if the integer distance is
+                    // equal to the square maximal integer
+                    if ((min_squared <= dist_squared || min_squared_int == dist_squared) &&
+                        (max_squared >= dist_squared || max_squared_int == dist_squared)) {
+                        pop.push_back(AcReal3{x, y, z});
+                    }
+                }
+            }
+        }
     }
-    
+
     // Select the population of k-forces based on the parameters
-    const auto &pop = k_force_populations[k_params];
+    const auto& pop = k_force_populations[k_params];
     std::uniform_int_distribution<uint32_t> k_distribution(0, pop.size() - 1);
 
     // Sample population
     size_t idx = k_distribution(get_rng());
-    AcReal3 k = pop[idx];
+    AcReal3 k  = pop[idx];
     return k;
 }
 
@@ -174,7 +174,7 @@ helical_forcing_special_vector(AcReal3* ff_hel_re, AcReal3* ff_hel_im, const AcR
 
     AcReal denominator = std::sqrt(AcReal(1.0) + relhel * relhel) * kabs *
                          std::sqrt(kabs * kabs -
-                                  (kdote.x * kdote.x + kdote.y * kdote.y + kdote.z * kdote.z));
+                                   (kdote.x * kdote.x + kdote.y * kdote.y + kdote.z * kdote.z));
 
     // MV: I suspect there is a typo in the Pencil Code manual!
     //*ff_hel_re = (AcReal3){-relhel*kabs*k_cross_e.x/denominator,

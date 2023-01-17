@@ -97,10 +97,10 @@ struct Region {
     Region(RegionFamily family_, int3 id_, int3 nn, Field fields_[], size_t num_fields);
     Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_);
 
-    Region     translate(int3 translation);
-    bool       overlaps(const Region* other);
+    Region translate(int3 translation);
+    bool overlaps(const Region* other);
     AcBoundary boundary(uint3_64 decomp, int pid);
-    bool       is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary);
+    bool is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary);
 };
 
 /**
@@ -138,7 +138,7 @@ typedef class Task {
     bool active;
     std::string name;
     AcTaskType task_type;
-    AcBoundary boundary; //non-zero if a boundary condition task, indicating which boundary
+    AcBoundary boundary; // non-zero if a boundary condition task, indicating which boundary
 
     Region input_region;
     Region output_region;

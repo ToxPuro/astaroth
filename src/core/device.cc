@@ -190,8 +190,8 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
         acDeviceLoadVectorUniform(device, STREAM_DEFAULT, (AcReal3Param)i,
                                   device_config.real3_params[i]);
 
-    //OL: added this assignment to make sure that whenever we load a new config,
-    //it's updated on both the host Device structure, and the GPU
+    // OL: added this assignment to make sure that whenever we load a new config,
+    // it's updated on both the host Device structure, and the GPU
     device->local_config = device_config;
     return AC_SUCCESS;
 }

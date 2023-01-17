@@ -29,8 +29,8 @@
 extern "C" {
 #endif
 
-#include <stdbool.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
 typedef struct {
     AcReal model;
@@ -91,13 +91,14 @@ AcResult acHostMeshWriteToFile(const AcMesh mesh, const size_t id);
 
 AcResult acHostMeshReadFromFile(const size_t id, AcMesh* mesh);
 
-//Logging utils
+// Logging utils
 
 /* Log a message with a timestamp from the root proc (if pid == 0) */
 void acLogFromRootProc(const int pid, const char* msg, ...);
 void acVA_LogFromRootProc(const int pid, const char* msg, va_list args);
 
-/* Log a message with a timestamp from the root proc (if pid == 0) if the build flag VERBOSE is on */
+/* Log a message with a timestamp from the root proc (if pid == 0) if the build flag VERBOSE is on
+ */
 void acVerboseLogFromRootProc(const int pid, const char* msg, ...);
 void acVA_VerboseLogFromRootProc(const int pid, const char* msg, va_list args);
 

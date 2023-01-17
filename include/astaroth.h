@@ -19,6 +19,11 @@
 #pragma once
 
 #include "acc_runtime.h"
+
+#if AC_MPI_ENABLED
+#include <mpi.h>
+#endif
+
 #define NGHOST (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
 
 typedef struct {
@@ -470,6 +475,42 @@ Node acGetNode(void);
  * =============================================================================
  */
 #if AC_MPI_ENABLED
+
+/**
+Calls MPI_Init and creates a separate communicator for Astaroth procs with MPI_Comm_split, color =
+666 Any program running in the same MPI process space must also call MPI_Comm_split with some color
+!= 666. OTHERWISE this call will hang.
+
+Returns AC_SUCCESS on successfullly initializing MPI and creating a communicator.
+
+Returns AC_FAILURE otherwise.
+ */
+AcResult ac_MPI_Init();
+
+/**
+Calls MPI_Init_thread with the provided thread_level and creates a separate communicator for
+Astaroth procs with MPI_Comm_split, color = 666 Any program running in the same MPI process space
+must also call MPI_Comm_split with some color != 666. OTHERWISE this call will hang.
+
+Returns AC_SUCCESS on successfullly initializing MPI with the requested thread level and creating a
+communicator.
+
+Returns AC_FAILURE otherwise.
+ */
+AcResult ac_MPI_Init_thread(int thread_level);
+
+/**
+Destroys the communicator and calls MPI_Finalize
+*/
+void ac_MPI_Finalize();
+
+/**
+Returns the MPI communicator used by all Astaroth processes.
+
+If MPI was initialized with MPI_Init* instead of ac_MPI_Init, this will return MPI_COMM_WORLD
+ */
+MPI_Comm acGridMPIComm();
+
 /**
 Initializes all available devices.
 
@@ -555,9 +596,8 @@ typedef enum {
     ACCESS_WRITE,
 } AccessType;
 
-AcResult
-acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle field, const char* dir, const char* label,
-                                  const AccessType type);
+AcResult acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle field, const char* dir,
+                                           const char* label, const AccessType type);
 
 AcResult acGridDiskAccessLaunch(const AccessType type);
 
@@ -565,27 +605,25 @@ AcResult acGridDiskAccessLaunch(const AccessType type);
 AcResult acGridWriteSlicesToDiskLaunch(const char* dir, const char* label);
 
 /* Synchronous */
-AcResult
-acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label);
+AcResult acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label);
 
 /* Asynchronous. Need to call acGridDiskAccessSync afterwards */
 AcResult acGridWriteMeshToDiskLaunch(const char* dir, const char* label);
 
 AcResult acGridDiskAccessSync(void);
 
-AcResult
-acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num_fields,
-                        const int3 nn, const int3 rr);
+AcResult acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num_fields,
+                                 const int3 nn, const int3 rr);
 
 /* Quick hack for the hero run, will be removed in future builds */
-AcResult
-acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, const char* dir,
-                                  const char* label, const AccessType type);
+AcResult acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf,
+                                                      const char* dir, const char* label,
+                                                      const AccessType type);
 
 /* Quick hack for the hero run, will be removed in future builds */
-AcResult
-acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, const char* dir,
-                                  const char* label, const AccessType type);
+AcResult acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf,
+                                                     const char* dir, const char* label,
+                                                     const AccessType type);
 
 // Bugged
 // AcResult acGridLoadFieldFromFile(const char* path, const VertexBufferHandle field);
@@ -680,13 +718,13 @@ AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary,
 AcTaskGraph* acGridGetDefaultTaskGraph();
 
 /** */
-bool acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph *graph);
+bool acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph* graph);
 
 /** */
-bool acGridTaskGraphHasPeriodicBoundcondsY(AcTaskGraph *graph);
+bool acGridTaskGraphHasPeriodicBoundcondsY(AcTaskGraph* graph);
 
 /** */
-bool acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph *graph);
+bool acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph* graph);
 
 /** */
 AcTaskGraph* acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops);
@@ -1087,9 +1125,7 @@ acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out
 }
 
 /** */
-template <size_t num_fields>
-AcTaskDefinition
-acHaloExchange(Field (&fields)[num_fields])
+template <size_t num_fields> AcTaskDefinition acHaloExchange(Field (&fields)[num_fields])
 {
     return acHaloExchange(fields, num_fields);
 }
@@ -1115,8 +1151,8 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
 
 #ifdef AC_INTEGRATION_ENABLED
 /** */
-AcTaskDefinition
-acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond);
+AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary,
+                                               const AcSpecialMHDBoundcond bound_cond);
 
 /** */
 template <size_t num_parameters>

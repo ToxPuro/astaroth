@@ -38,8 +38,8 @@
 #include <ctime>
 
 #include <map>
-#include <vector>
 #include <set>
+#include <vector>
 
 #include "config_loader.h"
 #include "errchk.h"
@@ -47,15 +47,15 @@
 #include "host_memory.h"
 #include "math_utils.h"
 
-#include "simulation_taskgraphs.h"
 #include "simulation_control.h"
 #include "simulation_rng.h"
+#include "simulation_taskgraphs.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
 // IO configuration
 static const Field io_fields[]    = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO,
-                                     VTXBUF_AX,  VTXBUF_AY,  VTXBUF_AZ};
+                                  VTXBUF_AX,  VTXBUF_AY,  VTXBUF_AZ};
 static const size_t num_io_fields = ARRAY_SIZE(io_fields);
 static const char* snapshot_dir   = "output-snapshots";
 static const char* slice_dir      = "output-slices";
@@ -63,7 +63,7 @@ static const char* slice_dir      = "output-slices";
 #define fprintf(...)                                                                               \
     {                                                                                              \
         int tmppid;                                                                                \
-        MPI_Comm_rank(MPI_COMM_WORLD, &tmppid);                                                    \
+        MPI_Comm_rank(acGridMPIComm(), &tmppid);                                                   \
         if (!tmppid) {                                                                             \
             fprintf(__VA_ARGS__);                                                                  \
         }                                                                                          \
@@ -222,15 +222,19 @@ static inline void
 save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, const int step,
                     const AcReal simulation_time)
 {
-    debug_log_from_root_proc_with_sim_progress(pid, "save_mesh_mpi_async: Syncing mesh disk access\n");
+    debug_log_from_root_proc_with_sim_progress(pid,
+                                               "save_mesh_mpi_async: Syncing mesh disk access\n");
     acGridDiskAccessSync();                   // NOTE: important sync
     acGridPeriodicBoundconds(STREAM_DEFAULT); // Debug, may be unneeded
     acGridSynchronizeStream(STREAM_DEFAULT);  // Debug, may be unneeded
-    MPI_Barrier(MPI_COMM_WORLD);              // Debug may be unneeded
-    
+    MPI_Barrier(acGridMPIComm());             // Debug may be unneeded
+
     const int num_snapshots = 2;
     const int modstep       = (step / info.int_params[AC_bin_steps]) % num_snapshots;
-    log_from_root_proc_with_sim_progress(pid, "save_mesh_mpi_async: Writing snapshot to %s, timestep %d (slot %d of %d)\n", job_dir, step, modstep, num_snapshots);
+    log_from_root_proc_with_sim_progress(pid,
+                                         "save_mesh_mpi_async: Writing snapshot to %s, timestep %d "
+                                         "(slot %d of %d)\n",
+                                         job_dir, step, modstep, num_snapshots);
 
     // Saves a csv file which contains relevant information about the binary
     // snapshot files at the timestep.
@@ -252,14 +256,15 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
 
         fclose(header_file);
     }
-    MPI_Barrier(MPI_COMM_WORLD); // Ensure header closes before initializing the next write
+    MPI_Barrier(acGridMPIComm()); // Ensure header closes before initializing the next write
 
     char cstep[1024];
     sprintf(cstep, "%d", modstep);
     acGridWriteMeshToDiskLaunch(job_dir, cstep);
-    log_from_root_proc_with_sim_progress(pid, "save_mesh_mpi_async: Non-blocking snapshot write operation started, returning\n");
-    
-    //printf("Write mesh to disk launch %s, %s \n", job_dir, cstep);
+    log_from_root_proc_with_sim_progress(pid, "save_mesh_mpi_async: Non-blocking snapshot write "
+                                              "operation started, returning\n");
+
+    // printf("Write mesh to disk launch %s, %s \n", job_dir, cstep);
     /*
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         const char* buffername = vtxbuf_names[w];
@@ -327,7 +332,7 @@ read_mesh_mpi(const int pid, const int step, AcReal* simulation_time)
         fclose(header_file);
     }
 
-    MPI_Bcast(&time, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&time, 1, MPI_DOUBLE, 0, acGridMPIComm());
 
     *simulation_time = time;
 
@@ -398,7 +403,7 @@ static inline void
 print_diagnostics_header_from_root_proc(int pid, FILE* diag_file)
 {
     // Generate the file header (from root)
-    if (pid == 0){
+    if (pid == 0) {
         fprintf(diag_file, "step  t_step  dt  uu_total_min  uu_total_rms  uu_total_max  ");
 #if LBFIELD
         fprintf(diag_file, "bb_total_min  bb_total_rms  bb_total_max  ");
@@ -481,8 +486,9 @@ print_diagnostics_host(const AcMesh mesh, const int step, const AcReal dt, const
 // appends an ascii file to contain all the result.
 // JP: EXECUTES ON MULTIPLE GPUS, MUST BE CALLED FROM ALL PROCS
 static inline void
-print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal simulation_time, FILE* diag_file,
-                  const AcReal sink_mass, const AcReal accreted_mass, int* found_nan)
+print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal simulation_time,
+                  FILE* diag_file, const AcReal sink_mass, const AcReal accreted_mass,
+                  int* found_nan)
 {
 
     AcReal buf_rms, buf_max, buf_min;
@@ -493,10 +499,11 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_min);
     acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, &buf_rms);
 
-    acLogFromRootProc(pid, "Step %d, t_step %.3e, dt %e s\n", step, double(simulation_time), double(dt));
-    acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "uu total", double(buf_min),
-           double(buf_rms), double(buf_max));
-    if (pid == 0){
+    acLogFromRootProc(pid, "Step %d, t_step %.3e, dt %e s\n", step, double(simulation_time),
+                      double(dt));
+    acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "uu total",
+                      double(buf_min), double(buf_rms), double(buf_max));
+    if (pid == 0) {
         fprintf(diag_file, "%d %e %e %e %e %e ", step, double(simulation_time), double(dt),
                 double(buf_min), double(buf_rms), double(buf_max));
     }
@@ -506,9 +513,9 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
     acGridReduceVec(STREAM_DEFAULT, RTYPE_MIN, BFIELDX, BFIELDY, BFIELDZ, &buf_min);
     acGridReduceVec(STREAM_DEFAULT, RTYPE_RMS, BFIELDX, BFIELDY, BFIELDZ, &buf_rms);
 
-    acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
-           double(buf_rms), double(buf_max));
-    if (pid == 0){
+    acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total",
+                      double(buf_min), double(buf_rms), double(buf_max));
+    if (pid == 0) {
         fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
     }
 
@@ -519,9 +526,9 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
     acGridReduceVecScal(STREAM_DEFAULT, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO,
                         &buf_rms);
 
-    acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
-           double(buf_rms), double(buf_max));
-    if (pid == 0){
+    acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total",
+                      double(buf_min), double(buf_rms), double(buf_max));
+    if (pid == 0) {
         fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
     }
 #endif
@@ -532,11 +539,11 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
         acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, VertexBufferHandle(i), &buf_min);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_RMS, VertexBufferHandle(i), &buf_rms);
 
-        acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
-               double(buf_min), double(buf_rms), double(buf_max));
-        if (pid == 0){
+        acLogFromRootProc(pid, "  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width,
+                          vtxbuf_names[i], double(buf_min), double(buf_rms), double(buf_max));
+        if (pid == 0) {
             fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
-	}
+        }
 
         if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
             *found_nan = 1;
@@ -544,12 +551,12 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
     }
 
     if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
-        if (pid == 0){
+        if (pid == 0) {
             fprintf(diag_file, "%e %e ", double(sink_mass), double(accreted_mass));
-	}
+        }
     }
 
-    if (pid == 0){
+    if (pid == 0) {
         fprintf(diag_file, "\n");
     }
 
@@ -596,7 +603,7 @@ calc_timestep(const AcMeshInfo info)
     // Right now we're doing two collective operations where one would suffice
 
     // MPI_Bcast to share uumax with all ranks
-    MPI_Bcast(&uumax, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&uumax, 1, AC_REAL_MPI_TYPE, 0, acGridMPIComm());
 
 #if LBFIELD
     // NOTE: bfield is 0 during the first step
@@ -604,14 +611,14 @@ calc_timestep(const AcMeshInfo info)
                         &vAmax);
 
     // MPI_Bcast to share vAmax with all ranks
-    MPI_Bcast(&vAmax, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&vAmax, 1, AC_REAL_MPI_TYPE, 0, acGridMPIComm());
 #endif
 
 #if LSHOCK
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_SHOCK, &shock_max);
 
     // MPI_Bcast to share vAmax with all ranks
-    MPI_Bcast(&shock_max, 1, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&shock_max, 1, AC_REAL_MPI_TYPE, 0, acGridMPIComm());
 #endif
 
     const long double cdt  = (long double)info.real_params[AC_cdt];
@@ -647,7 +654,7 @@ void
 dryrun(void)
 {
     int pid;
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_rank(acGridMPIComm(), &pid);
 
     // Scale the fields
     AcReal max, min, sum;
@@ -655,7 +662,7 @@ dryrun(void)
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)0, &min);
     acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)0, &sum);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(acGridMPIComm());
 
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, (AcReal)2.0);
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
@@ -663,7 +670,7 @@ dryrun(void)
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(acGridMPIComm());
 
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)0, &max);
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)0, &min);
@@ -673,20 +680,20 @@ dryrun(void)
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(acGridMPIComm());
 
     // Reset the fields
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(acGridMPIComm());
 
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(acGridMPIComm());
 }
 
 static void
@@ -698,7 +705,7 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
     const int3 rr = (int3){3, 3, 3};
 
     int pid;
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_rank(acGridMPIComm(), &pid);
     acLogFromRootProc(pid, "Reading varfile nn = (%d, %d, %d)\n", nn.x, nn.y, nn.z);
 
     acGridReadVarfileToMesh(file_path, io_fields, num_io_fields, nn, rr);
@@ -761,7 +768,7 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time)
     sprintf(modstep_str, "%d", modstep);
 
     int pid;
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_rank(acGridMPIComm(), &pid);
     acLogFromRootProc(pid, "Restarting from snapshot %d (step %d, tstep %g)\n", modstep, *step,
                       (double)(*simulation_time));
 
@@ -834,18 +841,20 @@ write_slices(int pid, int i)
     debug_log_from_root_proc_with_sim_progress(pid, "write_slices: Syncing slice disk access\n");
     acGridDiskAccessSync();
     debug_log_from_root_proc_with_sim_progress(pid, "write_slices: Slice disk access synced\n");
-    
+
     char slice_frame_dir[2048];
     sprintf(slice_frame_dir, "%s/step_%012d", slice_dir, i);
 
-    log_from_root_proc_with_sim_progress(pid, "write_slices: Creating directory %s\n",slice_frame_dir);
-    //The root proc creates the frame dir and then we sync
-    if (pid == 0){
+    log_from_root_proc_with_sim_progress(pid, "write_slices: Creating directory %s\n",
+                                         slice_frame_dir);
+    // The root proc creates the frame dir and then we sync
+    if (pid == 0) {
         create_directory(slice_frame_dir);
     }
-    MPI_Barrier(MPI_COMM_WORLD); // Ensure directory is created for all procs
+    MPI_Barrier(acGridMPIComm()); // Ensure directory is created for all procs
 
-    log_from_root_proc_with_sim_progress(pid, "write_slices: Writing slices to %s, timestep = %d\n", slice_dir, i);
+    log_from_root_proc_with_sim_progress(pid, "write_slices: Writing slices to %s, timestep = %d\n",
+                                         slice_dir, i);
     /*
     Timer t;
     timer_reset(&t);
@@ -860,7 +869,8 @@ write_slices(int pid, int i)
     sprintf(label, "step_%012d", i);
 
     acGridWriteSlicesToDiskLaunch(slice_frame_dir, label);
-    log_from_root_proc_with_sim_progress(pid, "write_slices: Non-blocking slice write operation started, returning\n");
+    log_from_root_proc_with_sim_progress(pid, "write_slices: Non-blocking slice write operation "
+                                              "started, returning\n");
 }
 
 void
@@ -902,7 +912,7 @@ print_usage(const char* name)
            name, AC_DEFAULT_CONFIG);
 }
 
-//Enums for mesh initialization
+// Enums for mesh initialization
 enum class InitialMeshProcedure {
     Kernel,
     LoadPC_Varfile,
@@ -911,7 +921,7 @@ enum class InitialMeshProcedure {
     LoadSnapshot,
 };
 
-//Enums for actions taken in the simulation loop
+// Enums for actions taken in the simulation loop
 enum class PeriodicAction {
     PrintDiagnostics,
     WriteSnapshot,
@@ -919,19 +929,19 @@ enum class PeriodicAction {
     EndSimulation,
 };
 
-//Enums for events 
+// Enums for events
 enum class SimulationEvent {
-    NanDetected         = 0x001,
-    StopSignal          = 0x002,
-    TimeLimitReached    = 0x004,
-    ConfigReloadSignal  = 0x008,
-    
-    EndCondition        = NanDetected | StopSignal | TimeLimitReached,
-    ErrorState          = NanDetected
+    NanDetected        = 0x001,
+    StopSignal         = 0x002,
+    TimeLimitReached   = 0x004,
+    ConfigReloadSignal = 0x008,
+
+    EndCondition = NanDetected | StopSignal | TimeLimitReached,
+    ErrorState   = NanDetected
 };
 
 void
-set_event(uint16_t *events, SimulationEvent mask)
+set_event(uint16_t* events, SimulationEvent mask)
 {
     *events |= (uint16_t)mask;
 }
@@ -946,17 +956,14 @@ int
 main(int argc, char** argv)
 {
     // Use multi-threaded MPI
-    int thread_support_level;
-    MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &thread_support_level);
-    if (thread_support_level < MPI_THREAD_MULTIPLE) {
-        fprintf(stderr, "MPI_THREAD_MULTIPLE not supported by the MPI implementation\n");
-        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+    if (ac_MPI_Init_thread(MPI_THREAD_MULTIPLE) != AC_SUCCESS) {
+        MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
 
     int nprocs, pid;
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_size(acGridMPIComm(), &nprocs);
+    MPI_Comm_rank(acGridMPIComm(), &pid);
 
     /////////////////////////////////
     // Read command line arguments //
@@ -982,9 +989,9 @@ main(int argc, char** argv)
     while ((opt = getopt_long(argc, argv, "c:kpdmh", long_options, nullptr)) != -1) {
         switch (opt) {
         case 'h':
-	    if (pid == 0){
+            if (pid == 0) {
                 print_usage("ac_run_mpi");
-	    }
+            }
             return EXIT_SUCCESS;
         case 'c':
             config_path = optarg;
@@ -1054,42 +1061,41 @@ main(int argc, char** argv)
         write_info(&info);
 
         // Ensure output-slices and output-snapshots exist
-	acLogFromRootProc(pid, "Creating directories output-slices and output-snapshots\n");
+        acLogFromRootProc(pid, "Creating directories output-slices and output-snapshots\n");
         create_output_directories();
 
         // Print config to stdout
-	acLogFromRootProc(pid, "Printing config to stdout\n");
+        acLogFromRootProc(pid, "Printing config to stdout\n");
         acPrintMeshInfo(info);
 
-	acLogFromRootProc(pid, "Logging build configuration\n");
-	const char * is_on = "ON";
-	const char * is_off = "OFF";
+        acLogFromRootProc(pid, "Logging build configuration\n");
+        const char* is_on  = "ON";
+        const char* is_off = "OFF";
 
-	const char * forcing_flag =
+        const char* forcing_flag =
 #if LFORCING
-	is_on;
+            is_on;
 #else
-	is_off;
+            is_off;
 #endif
-        const char * sink_flag =
+        const char* sink_flag =
 #if LSINK
-	is_on;
+            is_on;
 #else
-	is_off;
+            is_off;
 #endif
-        const char * shock_flag =
+        const char* shock_flag =
 #if LSHOCK
-	is_on;
+            is_on;
 #else
-	is_off;
+            is_off;
 #endif
 
-	acLogFromRootProc(pid, "Forcing is: %s\n", forcing_flag);
-	acLogFromRootProc(pid, "Sink is: %s\n", sink_flag);
-	acLogFromRootProc(pid, "Shock is: %s\n", shock_flag);
-
+        acLogFromRootProc(pid, "Forcing is: %s\n", forcing_flag);
+        acLogFromRootProc(pid, "Sink is: %s\n", sink_flag);
+        acLogFromRootProc(pid, "Shock is: %s\n", shock_flag);
     }
-    MPI_Barrier(MPI_COMM_WORLD); // Ensure output directories are created before continuing
+    // MPI_Barrier(acGridMPIComm()); // Ensure output directories are created before continuing
 
     ///////////////////////////////////////////////
     // Define variables for main simulation loop //
@@ -1167,7 +1173,8 @@ main(int argc, char** argv)
                 acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)i, &max);
                 acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)i, &min);
                 acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)i, &sum);
-                acLogFromRootProc(pid, "max %g, min %g, sum %g\n", (double)max, (double)min, (double)sum);
+                acLogFromRootProc(pid, "max %g, min %g, sum %g\n", (double)max, (double)min,
+                                  (double)sum);
             }
         }
         break;
@@ -1220,7 +1227,7 @@ main(int argc, char** argv)
 #if LSHOCK
     sim = Simulation::Shock_Singlepass_Solve
 #endif
-    log_simulation_choice(pid, sim);
+        log_simulation_choice(pid, sim);
     AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);
 
     ////////////////////////////////////////////////////////
@@ -1247,8 +1254,6 @@ main(int argc, char** argv)
     // RELOAD config
     signal_files[SimulationEvent::ConfigReloadSignal] = UserSignalFile("RELOAD");
 
-
-
     /////////////////////////////
     // Define periodic actions //
     /////////////////////////////
@@ -1262,24 +1267,24 @@ main(int argc, char** argv)
 
     std::map<PeriodicAction, SimulationPeriod> periodic_actions;
 
-    //Print diagnostics
-    periodic_actions[PeriodicAction::PrintDiagnostics]
-	    = SimulationPeriod(info, AC_save_steps, SimulationPeriod::NoTimeParam);
+    // Print diagnostics
+    periodic_actions
+        [PeriodicAction::PrintDiagnostics] = SimulationPeriod(info, AC_save_steps,
+                                                              SimulationPeriod::NoTimeParam);
 
-    //Write snapshots
-    AcReal snapshot_time_offset = simulation_time;
-    periodic_actions[PeriodicAction::WriteSnapshot]
-	    = SimulationPeriod(info, AC_bin_steps, AC_bin_save_t, snapshot_time_offset);
+    // Write snapshots
+    AcReal snapshot_time_offset                     = simulation_time;
+    periodic_actions[PeriodicAction::WriteSnapshot] = SimulationPeriod(info, AC_bin_steps,
+                                                                       AC_bin_save_t,
+                                                                       snapshot_time_offset);
 
-    //Write slices
-    periodic_actions[PeriodicAction::WriteSlices]
-	    = SimulationPeriod(info, AC_slice_steps, SimulationPeriod::NoTimeParam);
+    // Write slices
+    periodic_actions[PeriodicAction::WriteSlices] = SimulationPeriod(info, AC_slice_steps,
+                                                                     SimulationPeriod::NoTimeParam);
 
-    //Stop simulation after max time
-    periodic_actions[PeriodicAction::EndSimulation]
-	    = SimulationPeriod(info, AC_max_steps, AC_max_time);
-
-
+    // Stop simulation after max time
+    periodic_actions[PeriodicAction::EndSimulation] = SimulationPeriod(info, AC_max_steps,
+                                                                       AC_max_time);
 
     /////////////////////////////////////////////////////////////
     // Set up certain periodic actions and run them for i == 0 //
@@ -1287,29 +1292,30 @@ main(int argc, char** argv)
 
     FILE* diag_file = fopen("timeseries.ts", "a");
     ERRCHK_ALWAYS(diag_file);
-    //TODO: should probably always check for NaN's, not just at start_step = 0
+    // TODO: should probably always check for NaN's, not just at start_step = 0
     if (start_step == 0) {
         // TODO: calculate time step before entering loop, recalculate at end
         acLogFromRootProc(pid, "Initial state: diagnostics\n");
         print_diagnostics_header_from_root_proc(pid, diag_file);
-	int found_nan = 0;
+        int found_nan = 0;
         print_diagnostics(pid, start_step, 0, simulation_time, diag_file, sink_mass, accreted_mass,
                           &found_nan);
 
         acLogFromRootProc(pid, "Initial state: writing mesh slices\n");
-	write_slices(pid, start_step);
+        write_slices(pid, start_step);
 
         acLogFromRootProc(pid, "Initial state: writing full mesh snapshot\n");
         save_mesh_mpi_async(info, snapshot_dir, pid, 0, 0.0);
 
-	if (found_nan != 0){
-	    acLogFromRootProc(pid, "Found NaN in initial state -> exiting\n");
-	    set_event(&events, SimulationEvent::NanDetected);
-	}
+        if (found_nan != 0) {
+            acLogFromRootProc(pid, "Found NaN in initial state -> exiting\n");
+            set_event(&events, SimulationEvent::NanDetected);
+        }
     }
     else if (pid == 0) {
         // add newline to old diag_file from previous run
-	// TODO: figure out why we're doing this? do we want a clear indication in the file that a new run was started?
+        // TODO: figure out why we're doing this? do we want a clear indication in the file that a
+        // new run was started?
         fprintf(diag_file, "\n");
     }
 
@@ -1322,18 +1328,19 @@ main(int argc, char** argv)
 
     for (int i = start_step + 1;; ++i) {
 
-	/////////////////////////////////////////////////////////////////////
-	//                                                                 //
-	// 1. Update simulation parameters on host                         //
-	//                                                                 //
-	/////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////
+        //                                                                 //
+        // 1. Update simulation parameters on host                         //
+        //                                                                 //
+        /////////////////////////////////////////////////////////////////////
 
-	// Generic parameters
-	debug_log_from_root_proc_with_sim_progress(pid, "Calculating time delta\n");
+        // Generic parameters
+        debug_log_from_root_proc_with_sim_progress(pid, "Calculating time delta\n");
         const AcReal dt = calc_timestep(info);
-        debug_log_from_root_proc_with_sim_progress(pid, "Done calculating time delta, dt = %e\n", dt);
+        debug_log_from_root_proc_with_sim_progress(pid, "Done calculating time delta, dt = %e\n",
+                                                   dt);
 
-	// Case-specific parameters
+        // Case-specific parameters
 #if LSINK
         AcReal sum_mass;
         acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, VTXBUF_ACCRETION, &sum_mass);
@@ -1348,28 +1355,29 @@ main(int argc, char** argv)
             acVertexBufferSet(VTXBUF_ACCRETION, 0.0, mesh);
         }
 
-	int switch_accretion = (i < 1) ? 0 : 1;
+        int switch_accretion = (i < 1) ? 0 : 1;
 #endif
 #if LFORCING
         const ForcingParams forcing_params = generateForcingParams(info);
 #endif
 
-	/////////////////////////////////////////////////////////////////////
-	//                                                                 //
-	// 2. Distribute updated state to all processes and load it to GPU //
-	//                                                                 //
-	/////////////////////////////////////////////////////////////////////
-	
-	// TODO, PERFORMANCE: lots of collective calls here.
-	// I'm sure a lot of these could be calculated locally in each proc.
-	// And for the values that do need to be distributed, they could be distributed in fewer calls
-	
-	// Generic parameters
+        /////////////////////////////////////////////////////////////////////
+        //                                                                 //
+        // 2. Distribute updated state to all processes and load it to GPU //
+        //                                                                 //
+        /////////////////////////////////////////////////////////////////////
+
+        // TODO, PERFORMANCE: lots of collective calls here.
+        // I'm sure a lot of these could be calculated locally in each proc.
+        // And for the values that do need to be distributed, they could be distributed in fewer
+        // calls
+
+        // Generic parameters
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_current_time, simulation_time);
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, dt);
         acGridSynchronizeStream(STREAM_DEFAULT);
- 
-	// Case-specific parameters
+
+        // Case-specific parameters
 #if LSINK
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_M_sink, sink_mass);
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_switch_accretion, switch_accretion);
@@ -1378,307 +1386,321 @@ main(int argc, char** argv)
         loadForcingParamsToGrid(forcing_params);
 #endif
 
- 
-	/////////////////////////////////////////////////////////////////////
-	//                                                                 //
-	// 3. Run simulation step on GPU                                   //
-	//                                                                 //
-	/////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////
+        //                                                                 //
+        // 3. Run simulation step on GPU                                   //
+        //                                                                 //
+        /////////////////////////////////////////////////////////////////////
 
-
-	// Execute the active task graph for 3 iterations
+        // Execute the active task graph for 3 iterations
         // in the case that simulation_graph = acGridGetDefaultTaskGraph(), then this is equivalent
         // to acGridIntegrate(STREAM_DEFAULT, dt)
         acGridExecuteTaskGraph(simulation_graph, 3);
-	simulation_time += dt;
+        simulation_time += dt;
         set_simulation_timestamp(i, simulation_time);
 
-	if (log_progress){
+        if (log_progress) {
             log_from_root_proc_with_sim_progress(pid, "Simulation step complete\n");
         }
- 
-	/////////////////////////////////////////////////////////////////////
-	//                                                                 //
-	// 4. Run periodic actions (can generate events)                   //
-	//                                                                 //
-	/////////////////////////////////////////////////////////////////////
 
-	for (auto &[action, period] : periodic_actions){
-            if (period.check(i, simulation_time)){
+        /////////////////////////////////////////////////////////////////////
+        //                                                                 //
+        // 4. Run periodic actions (can generate events)                   //
+        //                                                                 //
+        /////////////////////////////////////////////////////////////////////
+
+        for (auto& [action, period] : periodic_actions) {
+            if (period.check(i, simulation_time)) {
 #if !(AC_VERBOSE)
-		//End progress logging (which step you are at) after first period.
-		if (log_progress){
-		    log_progress = false;
-		    log_from_root_proc_with_sim_progress(pid,
-                               "VERBOSE is off, not logging simulation step completion for "
-                               "step > %d\n",
-                               i);
+                // End progress logging (which step you are at) after first period.
+                if (log_progress) {
+                    log_progress = false;
+                    log_from_root_proc_with_sim_progress(pid,
+                                                         "VERBOSE is off, not logging simulation "
+                                                         "step completion for "
+                                                         "step > %d\n",
+                                                         i);
                 }
 #endif
 
-                switch (action){
-		    case PeriodicAction::PrintDiagnostics:
-		    {
-			//Print diagnostics and search for nans
-			log_from_root_proc_with_sim_progress(pid, "Periodic action: diagnostics\n");
-			int found_nan = 0;
-            		print_diagnostics(pid, i, dt, simulation_time, diag_file, sink_mass, accreted_mass, &found_nan);
-			if (found_nan){
-			    set_event(&events, SimulationEvent::NanDetected);
-			}
-			/*
-                        MV: We would also might want an XY-average calculating funtion,
-			    which can be very useful when observing behaviour of turbulent
-			    simulations. (TODO)
-		        */
-		        break;
-		    }
-		    case PeriodicAction::WriteSnapshot:
-		    {
-			log_from_root_proc_with_sim_progress(pid, "Periodic action: writing full mesh snapshot\n");
-                        save_mesh_mpi_async(info, snapshot_dir, pid, i, simulation_time);
-		        break;
-		    }
-		    case PeriodicAction::WriteSlices:
-		    {
-			log_from_root_proc_with_sim_progress(pid, "Periodic action: writing mesh slices\n");
-            		acGridPeriodicBoundconds(STREAM_DEFAULT);
-		        write_slices(pid, i);
-		        break;
-		    }
-		    case PeriodicAction::EndSimulation:
-		    {
-			set_event(&events, SimulationEvent::TimeLimitReached);
-	                break;
-		    }
-		}
+                switch (action) {
+                case PeriodicAction::PrintDiagnostics: {
+                    // Print diagnostics and search for nans
+                    log_from_root_proc_with_sim_progress(pid, "Periodic action: diagnostics\n");
+                    int found_nan = 0;
+                    print_diagnostics(pid, i, dt, simulation_time, diag_file, sink_mass,
+                                      accreted_mass, &found_nan);
+                    if (found_nan) {
+                        set_event(&events, SimulationEvent::NanDetected);
+                    }
+                    /*
+                    MV: We would also might want an XY-average calculating funtion,
+                        which can be very useful when observing behaviour of turbulent
+                        simulations. (TODO)
+                    */
+                    break;
+                }
+                case PeriodicAction::WriteSnapshot: {
+                    log_from_root_proc_with_sim_progress(pid, "Periodic action: writing full mesh "
+                                                              "snapshot\n");
+                    save_mesh_mpi_async(info, snapshot_dir, pid, i, simulation_time);
+                    break;
+                }
+                case PeriodicAction::WriteSlices: {
+                    log_from_root_proc_with_sim_progress(pid,
+                                                         "Periodic action: writing mesh slices\n");
+                    acGridPeriodicBoundconds(STREAM_DEFAULT);
+                    write_slices(pid, i);
+                    break;
+                }
+                case PeriodicAction::EndSimulation: {
+                    set_event(&events, SimulationEvent::TimeLimitReached);
+                    break;
+                }
+                }
             }
-	}
- 
-	/////////////////////////////////////////////////////////////////////
-	//                                                                 //
-	// 5. Check input events from user                                 //
-	//                                                                 //
-	/////////////////////////////////////////////////////////////////////
+        }
 
-	// Check signal files
-	for (auto &[signal,file] : signal_files){
-	    if (pid == 0 && file.check()){
-		log_from_root_proc_with_sim_progress(pid, "Detected file modified: %s\n", file.file_path.c_str());
+        /////////////////////////////////////////////////////////////////////
+        //                                                                 //
+        // 5. Check input events from user                                 //
+        //                                                                 //
+        /////////////////////////////////////////////////////////////////////
+
+        // Check signal files
+        for (auto& [signal, file] : signal_files) {
+            if (pid == 0 && file.check()) {
+                log_from_root_proc_with_sim_progress(pid, "Detected file modified: %s\n",
+                                                     file.file_path.c_str());
                 set_event(&events, signal);
-	    }
-	}
+            }
+        }
 
-	/////////////////////////////////////////////////////////////////////
-	//                                                                 //
+        /////////////////////////////////////////////////////////////////////
+        //                                                                 //
         // 6. Agree on events across processes                             //
-	//                                                                 //
-	/////////////////////////////////////////////////////////////////////
+        //                                                                 //
+        /////////////////////////////////////////////////////////////////////
 
-        MPI_Allreduce(MPI_IN_PLACE, &events, sizeof(uint16_t), MPI_BYTE, MPI_BOR,
-                      MPI_COMM_WORLD);
+        MPI_Allreduce(MPI_IN_PLACE, &events, sizeof(uint16_t), MPI_BYTE, MPI_BOR, acGridMPIComm());
 
-	/////////////////////////////////////////////////////////////////////
-	//                                                                 //
+        /////////////////////////////////////////////////////////////////////
+        //                                                                 //
         // 7. Run event-triggered actions                                  //
-	//                                                                 //
-	/////////////////////////////////////////////////////////////////////
+        //                                                                 //
+        /////////////////////////////////////////////////////////////////////
 
-	for (uint16_t e = 1; e != 0; e <<= 1){
-	    if (check_event(events, static_cast<SimulationEvent>(e))){
-                switch(static_cast<SimulationEvent>(e)){
-                    case SimulationEvent::NanDetected:
-		    {
-		        log_from_root_proc_with_sim_progress(pid, "FOUND NAN -> exiting\n");
+        for (uint16_t e = 1; e != 0; e <<= 1) {
+            if (check_event(events, static_cast<SimulationEvent>(e))) {
+                switch (static_cast<SimulationEvent>(e)) {
+                case SimulationEvent::NanDetected: {
+                    log_from_root_proc_with_sim_progress(pid, "FOUND NAN -> exiting\n");
+                    break;
+                }
+                case SimulationEvent::StopSignal: {
+                    log_from_root_proc_with_sim_progress(pid, "Got STOP signal -> exiting\n");
+                    break;
+                }
+                case SimulationEvent::TimeLimitReached: {
+                    int max_step = periodic_actions[PeriodicAction::EndSimulation].step_period;
+                    if (i == max_step) {
+                        log_from_root_proc_with_sim_progress(pid,
+                                                             "Max time steps reached (%d == %d) -> "
+                                                             "exiting\n",
+                                                             i, max_step);
+                    }
+                    AcReal max_time = periodic_actions[PeriodicAction::EndSimulation].time_period;
+                    if (max_time > 0 && simulation_time >= max_time) {
+                        log_from_root_proc_with_sim_progress(pid,
+                                                             "Time limit reached (%e >= %e ) -> "
+                                                             "exiting\n",
+                                                             simulation_time, max_time);
+                    }
+                    break;
+                }
+                case SimulationEvent::ConfigReloadSignal: {
+                    log_from_root_proc_with_sim_progress(pid, "Got RELOAD signal -> reloading "
+                                                              "config file\n");
+
+                    AcMeshInfo new_info;
+                    log_from_root_proc_with_sim_progress(pid, "Synchronizing procs\n");
+                    MPI_Barrier(acGridMPIComm());
+                    log_from_root_proc_with_sim_progress(pid, "Reloading config file\n");
+                    acLoadConfig(config_path, &new_info);
+                    set_extra_config_params(&new_info);
+
+                    // TODO: refactor this big mess of runtime checks into a function that returns a
+                    // bool Check differences to current config
+                    std::vector<const char*> nan_params;
+                    bool configs_differ = false;
+
+                    // TODO: define run constants, these cannot be changed in a reload
+                    bool changed_run_constants = false;
+
+                    std::set<size_t> int_run_constants;
+                    int_run_constants.insert(AC_nx);
+                    int_run_constants.insert(AC_ny);
+                    int_run_constants.insert(AC_nz);
+
+                    int_run_constants.insert(AC_dsx);
+                    int_run_constants.insert(AC_dsy);
+                    int_run_constants.insert(AC_dsz);
+
+                    int_run_constants.insert(AC_start_step);
+                    int_run_constants.insert(AC_init_type);
+
+                    for (size_t int_param = 0; int_param < NUM_INT_PARAMS; int_param++) {
+                        int old_value = info.int_params[int_param];
+                        int new_value = new_info.int_params[int_param];
+                        if (old_value != new_value) {
+                            configs_differ         = true;
+                            const char* param_name = intparam_names[int_param];
+                            acLogFromRootProc(pid, "about to update %s from %d to %d\n", param_name,
+                                              old_value, new_value);
+                            if (int_run_constants.count(int_param) != 0) {
+                                acLogFromRootProc(pid, "ERROR: Can't update %s during a run\n",
+                                                  param_name);
+                                changed_run_constants = true;
+                            }
+                        }
+                    }
+                    for (size_t int3_param = 0; int3_param < NUM_INT3_PARAMS; int3_param++) {
+                        int3 old_value = info.int3_params[int3_param];
+                        int3 new_value = new_info.int3_params[int3_param];
+                        if (old_value != new_value) {
+                            configs_differ         = true;
+                            const char* param_name = int3param_names[int3_param];
+                            acLogFromRootProc(pid,
+                                              "about to update %s: from (%d, %d, %d) to (%d, %d, "
+                                              "%d)\n",
+                                              param_name, old_value.x, old_value.y, old_value.z,
+                                              new_value.x, new_value.y, new_value.z);
+                        }
+                    }
+                    for (size_t real_param = 0; real_param < NUM_REAL_PARAMS; real_param++) {
+                        AcReal old_value = info.real_params[real_param];
+                        AcReal new_value = new_info.real_params[real_param];
+                        if (old_value != new_value && !(isnan(old_value) && isnan(new_value))) {
+                            configs_differ         = true;
+                            const char* param_name = realparam_names[real_param];
+                            acLogFromRootProc(pid, "about to update %s from %e to %e\n", param_name,
+                                              old_value, new_value);
+                            if (isnan(new_value)) {
+                                acLogFromRootProc(pid,
+                                                  "WARNING: updated value of %s parsed as NAN. "
+                                                  "Check the config file!\n",
+                                                  param_name);
+                                nan_params.push_back(param_name);
+                            }
+                        }
+                    }
+                    for (size_t real3_param = 0; real3_param < NUM_REAL3_PARAMS; real3_param++) {
+                        AcReal3 old_value = info.real3_params[real3_param];
+                        AcReal3 new_value = new_info.real3_params[real3_param];
+                        if ((old_value.x != new_value.x &&
+                             !(isnan(old_value.x) && isnan(new_value.x))) ||
+                            (old_value.y != new_value.y &&
+                             !(isnan(old_value.y) && isnan(new_value.y))) ||
+                            (old_value.z != new_value.z &&
+                             !(isnan(old_value.z) && isnan(new_value.z)))) {
+                            configs_differ         = true;
+                            const char* param_name = real3param_names[real3_param];
+                            acLogFromRootProc(pid,
+                                              "about to update %s: from (%d, %d, %d) to (%d, %d, "
+                                              "%d)\n",
+                                              param_name, old_value.x, old_value.y, old_value.z,
+                                              new_value.x, new_value.y, new_value.z);
+                            if (isnan(new_value.x) || isnan(new_value.y) || isnan(new_value.z)) {
+                                acLogFromRootProc(pid,
+                                                  "WARNING: updated value of %s parsed as NAN. "
+                                                  "Check the config file!\n",
+                                                  param_name);
+                                nan_params.push_back(param_name);
+                            }
+                        }
+                    }
+
+                    if (!nan_params.empty()) {
+                        log_from_root_proc_with_sim_progress(pid, "ERROR reloading config file: "
+                                                                  "NaN's in updated values -> not "
+                                                                  "reloading config.\n");
+                        log_from_root_proc_with_sim_progress(pid, "The following parameters were "
+                                                                  "parsed as NaN:\n");
+                        for (auto param_name : nan_params) {
+                            acLogFromRootProc(pid, "  %s\n", param_name);
+                        }
+                        log_from_root_proc_with_sim_progress(pid,
+                                                             "Please edit the config file and try "
+                                                             "again. Aborting config reload.\n");
                         break;
-		    }
-		    case SimulationEvent::StopSignal:
-		    {
-                        log_from_root_proc_with_sim_progress(pid, "Got STOP signal -> exiting\n");
-			break;
-		    }
-		    case SimulationEvent::TimeLimitReached:
-		    {
-		        int max_step = periodic_actions[PeriodicAction::EndSimulation].step_period;
-			if (i == max_step){
-			    log_from_root_proc_with_sim_progress(pid, "Max time steps reached (%d == %d) -> exiting\n",
-					      i, max_step);
-			}
-		        AcReal max_time = periodic_actions[PeriodicAction::EndSimulation].time_period;
-			if (max_time > 0 && simulation_time >= max_time){
-			    log_from_root_proc_with_sim_progress(pid, "Time limit reached (%e >= %e ) -> exiting\n",
-					      simulation_time, max_time);
-			}
-		        break;
-		    }
-		    case SimulationEvent::ConfigReloadSignal:
-		    {
-			log_from_root_proc_with_sim_progress(pid, "Got RELOAD signal -> reloading config file\n");
+                    }
 
-			AcMeshInfo new_info;
-			log_from_root_proc_with_sim_progress(pid, "Synchronizing procs\n");
-			MPI_Barrier(MPI_COMM_WORLD);
-			log_from_root_proc_with_sim_progress(pid, "Reloading config file\n");
-                        acLoadConfig(config_path, &new_info);
-			set_extra_config_params(&new_info);
+                    if (changed_run_constants) {
+                        log_from_root_proc_with_sim_progress(pid, "Tried to change run constant -> "
+                                                                  "not reloading config.\n");
+                        log_from_root_proc_with_sim_progress(pid,
+                                                             "Please edit the config file and try "
+                                                             "again. Aborting config reload.\n");
+                        break;
+                    }
 
+                    if (!configs_differ) {
+                        log_from_root_proc_with_sim_progress(pid, "No changes found in new config "
+                                                                  "file -> doing nothing\n");
+                        break;
+                    }
 
-			//TODO: refactor this big mess of runtime checks into a function that returns a bool
-			//Check differences to current config
-			std::vector<const char *> nan_params;
-			bool configs_differ = false;
+                    // No NaN's, we did not change run constants, and we have some changes
 
-			//TODO: define run constants, these cannot be changed in a reload
-			bool changed_run_constants = false;
+                    log_from_root_proc_with_sim_progress(pid, "Reloading config\n");
 
-			std::set<size_t> int_run_constants;
-			int_run_constants.insert(AC_nx);
-			int_run_constants.insert(AC_ny);
-			int_run_constants.insert(AC_nz);
+                    // Update periodic actions with new params
+                    for (auto& [_, action] : periodic_actions) {
+                        action.update(new_info);
+                    }
 
-			int_run_constants.insert(AC_dsx);
-			int_run_constants.insert(AC_dsy);
-			int_run_constants.insert(AC_dsz);
+                    // Decompose the config
+                    AcMeshInfo submesh_info = acGridDecomposeMeshInfo(new_info);
+                    acDeviceLoadMeshInfo(acGridGetDevice(), submesh_info);
+                    info = new_info;
+                    MPI_Barrier(acGridMPIComm());
+                    log_from_root_proc_with_sim_progress(pid, "Done reloading config\n");
+                    break;
+                }
+                default: {
+                    break;
+                }
+                }
+            }
+        }
 
-			int_run_constants.insert(AC_start_step);
-			int_run_constants.insert(AC_init_type);
-
-			for (size_t int_param = 0; int_param < NUM_INT_PARAMS; int_param++){
-			    int old_value = info.int_params[int_param];
-			    int new_value = new_info.int_params[int_param];
-			    if (old_value != new_value){
-				configs_differ = true;
-			        const char *param_name = intparam_names[int_param];
-				acLogFromRootProc(pid, "about to update %s from %d to %d\n",
-					        param_name, old_value, new_value);
-				if (int_run_constants.count(int_param) != 0){
-				    acLogFromRootProc(pid, "ERROR: Can't update %s during a run\n", param_name);
-                                    changed_run_constants = true;
-				}
-			    }
-			}
-			for (size_t int3_param = 0; int3_param < NUM_INT3_PARAMS; int3_param++){
-			    int3 old_value = info.int3_params[int3_param];
-			    int3 new_value = new_info.int3_params[int3_param];
-			    if (old_value != new_value){
-				configs_differ = true;
-			        const char *param_name = int3param_names[int3_param];
-				acLogFromRootProc(pid, "about to update %s: from (%d, %d, %d) to (%d, %d, %d)\n",
-					       	param_name, 
-					       	old_value.x, old_value.y, old_value.z, 
-						new_value.x, new_value.y, new_value.z);
-			    }
-
-			}
-			for (size_t real_param = 0; real_param < NUM_REAL_PARAMS; real_param++){
-			    AcReal old_value = info.real_params[real_param];
-			    AcReal new_value = new_info.real_params[real_param];
-			    if (old_value != new_value && !(isnan(old_value) && isnan(new_value))){
-				configs_differ = true;
-			        const char *param_name = realparam_names[real_param];
-				acLogFromRootProc(pid, "about to update %s from %e to %e\n",
-					        param_name, old_value, new_value);
-				if (isnan(new_value)){
-				    acLogFromRootProc(pid, "WARNING: updated value of %s parsed as NAN. Check the config file!\n", param_name);
-				    nan_params.push_back(param_name);
-				}
-			    }
-			}
-			for (size_t real3_param = 0; real3_param < NUM_REAL3_PARAMS; real3_param++){
-			    AcReal3 old_value = info.real3_params[real3_param];
-			    AcReal3 new_value = new_info.real3_params[real3_param];
-			    if ((old_value.x != new_value.x && !(isnan(old_value.x) && isnan(new_value.x))) ||
-			        (old_value.y != new_value.y && !(isnan(old_value.y) && isnan(new_value.y))) ||
-			        (old_value.z != new_value.z && !(isnan(old_value.z) && isnan(new_value.z)))){
-				configs_differ = true;
-			        const char *param_name = real3param_names[real3_param];
-				acLogFromRootProc(pid, "about to update %s: from (%d, %d, %d) to (%d, %d, %d)\n",
-					       	param_name, 
-					       	old_value.x, old_value.y, old_value.z, 
-						new_value.x, new_value.y, new_value.z);
-				if (isnan(new_value.x) || isnan(new_value.y) || isnan(new_value.z)){
-				    acLogFromRootProc(pid, "WARNING: updated value of %s parsed as NAN. Check the config file!\n", param_name);
-				    nan_params.push_back(param_name);
-				}
-
-			    }
-
-			}
-
-			if (!nan_params.empty()){
-			    log_from_root_proc_with_sim_progress(pid, "ERROR reloading config file: NaN's in updated values -> not reloading config.\n");
-			    log_from_root_proc_with_sim_progress(pid, "The following parameters were parsed as NaN:\n");
-			    for (auto param_name : nan_params){
-			        acLogFromRootProc(pid, "  %s\n", param_name);
-			    }
-			    log_from_root_proc_with_sim_progress(pid, "Please edit the config file and try again. Aborting config reload.\n");
-			    break;
-			}
-
-			if (changed_run_constants){
-			    log_from_root_proc_with_sim_progress(pid, "Tried to change run constant -> not reloading config.\n");
-			    log_from_root_proc_with_sim_progress(pid, "Please edit the config file and try again. Aborting config reload.\n");
-			    break;
-			}
-
-			if (!configs_differ){
-			    log_from_root_proc_with_sim_progress(pid, "No changes found in new config file -> doing nothing\n");
-			    break;
-			}
-
-			//No NaN's, we did not change run constants, and we have some changes
-			
-			log_from_root_proc_with_sim_progress(pid, "Reloading config\n");
-
-			//Update periodic actions with new params
-			for (auto &[_, action] : periodic_actions){
-			    action.update(new_info);
-			}
-
-			//Decompose the config
-			AcMeshInfo submesh_info = acGridDecomposeMeshInfo(new_info);
-			acDeviceLoadMeshInfo(acGridGetDevice(), submesh_info);
-			info = new_info;
-			MPI_Barrier(MPI_COMM_WORLD);
-			log_from_root_proc_with_sim_progress(pid, "Done reloading config\n");
-			break;
-		    }
-		    default:
-		    {
-		        break;
-		    }
-		}
-	    }
-	}
-
-
-	/////////////////////////////////////////////////////////////////////
-	//                                                                 //
+        /////////////////////////////////////////////////////////////////////
+        //                                                                 //
         // 8. End simulation if an end condition has been reached          //
-	//                                                                 //
-	/////////////////////////////////////////////////////////////////////
+        //                                                                 //
+        /////////////////////////////////////////////////////////////////////
 
-        if (check_event(events, SimulationEvent::EndCondition)){
-	    /*
+        if (check_event(events, SimulationEvent::EndCondition)) {
+            /*
             // JP: Commented out, will mess up slice buffering if not divisible by bin_steps
             // TODO: don't save data if save_steps has already done it
             //  Save data after the loop ends
             if (i % bin_steps != 0) {
                 acGridPeriodicBoundconds(STREAM_DEFAULT);
                 acGridSynchronizeStream(STREAM_DEFAULT);
-                log_from_root_proc_with_sim_progress(pid, "Writing final snapshots to %s, timestep = %d\n",
-                                   snapshot_dir, i);
-                save_mesh_mpi_async(info, snapshot_dir, pid, i, simulation_time);
-                log_from_root_proc_with_sim_progress(pid, "Done writing snapshots\n");
+                log_from_root_proc_with_sim_progress(pid, "Writing final snapshots to %s, timestep =
+            %d\n", snapshot_dir, i); save_mesh_mpi_async(info, snapshot_dir, pid, i,
+            simulation_time); log_from_root_proc_with_sim_progress(pid, "Done writing snapshots\n");
             }
             else {
-                log_from_root_proc_with_sim_progress(pid, "Snapshots for timestep %d have already been written\n");
+                log_from_root_proc_with_sim_progress(pid, "Snapshots for timestep %d have already
+            been written\n");
             }*/
 
             log_from_root_proc_with_sim_progress(pid, "Exiting simulation loop\n");
             break;
-	}
-	events = 0;
+        }
+        events = 0;
     }
 
     // Sync all pending disk accesses before exiting
@@ -1694,12 +1716,12 @@ main(int argc, char** argv)
     acGridQuit();
     fclose(diag_file);
     acLogFromRootProc(pid, "Calling MPI_Finalize\n");
-    MPI_Finalize();
+    ac_MPI_Finalize();
 
-    if (check_event(events, SimulationEvent::ErrorState)){
+    if (check_event(events, SimulationEvent::ErrorState)) {
         acLogFromRootProc(pid, "Simulation ended due to an error, goodbye :(\n");
         return EXIT_FAILURE;
-    } 
+    }
     acLogFromRootProc(pid, "Simulation complete, goodbye!\n");
     return EXIT_SUCCESS;
 }
