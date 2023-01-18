@@ -69,7 +69,7 @@ main(void)
         return EXIT_FAILURE;
     }
     acSetMeshDims(2 * 9, 4 * 11, 4 * 7, &info);
-    //acSetMeshDims(32, 32, 32, &info);
+    // acSetMeshDims(32, 32, 32, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {
@@ -97,16 +97,13 @@ main(void)
         acHostMeshRandomize(&model);
     }
 
-    /*
-    // Disabled temporarily: acGridStore no longer transfers the ghost zones
     // Boundconds
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (pid == 0) {
         acHostMeshApplyPeriodicBounds(&model);
-        acHostMeshApplyPeriodicBounds(&candidate);
-        const AcResult res = acVerifyMesh("Boundconds", model, candidate);
+        const AcResult res = acVerifyMesh("Periodic boundconds", model, candidate);
         if (res != AC_SUCCESS) {
             retval = res;
             WARNCHK_ALWAYS(retval);
@@ -114,7 +111,6 @@ main(void)
         fflush(stdout);
         acHostMeshRandomize(&model);
     }
-    */
 
     // Dryrun
     const AcReal dt = (AcReal)FLT_EPSILON;
