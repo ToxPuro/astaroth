@@ -402,7 +402,7 @@ acGridLoadInt3Uniform(const Stream stream, const AcInt3Param param, const int3 v
 }
 
 AcResult
-acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
+acGridLoadMeshWorking(const Stream stream, const AcMesh host_mesh)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
@@ -722,6 +722,68 @@ get_subarray(const int pid, //
     */
 }
 
+// With ghost zone
+AcResult
+acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
+{
+    ERRCHK(grid.initialized);
+    acGridSynchronizeStream(stream);
+
+    int pid, nprocs;
+    MPI_Comm_rank(acGridMPIComm(), &pid);
+    MPI_Comm_size(acGridMPIComm(), &nprocs);
+
+    // Datatype:
+    // 1) All processes: Local subarray (sending)
+    //  1.1) function that takes the pid and outputs the local subarray
+    // 2) Root process:  Global array (receiving)
+    // 3) Root process:  Local subarrays for all procs (same as used for sending)
+
+    // Receive the local subarray
+    MPI_Request recv_reqs[NUM_VTXBUF_HANDLES];
+    for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
+        int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
+        int distributed_mm[3], distributed_nn[3], distributed_offset[3];
+        get_subarray(pid, monolithic_mm, monolithic_nn, monolithic_offset, //
+                     distributed_mm, distributed_nn, distributed_offset);
+
+        MPI_Datatype distributed_subarray;
+        MPI_Type_create_subarray(3, distributed_mm, distributed_nn, distributed_offset, MPI_ORDER_C,
+                                 AC_REAL_MPI_TYPE, &distributed_subarray);
+        MPI_Type_commit(&distributed_subarray);
+
+        MPI_Irecv(grid.submesh.vertex_buffer[vtxbuf], 1, distributed_subarray, 0, vtxbuf,
+                  acGridMPIComm(), &recv_reqs[vtxbuf]);
+
+        MPI_Type_free(&distributed_subarray);
+    }
+
+    if (pid == 0) {
+        for (int tgt = 0; tgt < nprocs; ++tgt) {
+            for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
+                int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
+                int distributed_mm[3], distributed_nn[3], distributed_offset[3];
+                get_subarray(tgt, monolithic_mm, monolithic_nn, monolithic_offset, //
+                             distributed_mm, distributed_nn, distributed_offset);
+
+                MPI_Datatype monolithic_subarray;
+                MPI_Type_create_subarray(3, monolithic_mm, monolithic_nn, monolithic_offset,
+                                         MPI_ORDER_C, AC_REAL_MPI_TYPE, &monolithic_subarray);
+                MPI_Type_commit(&monolithic_subarray);
+
+                MPI_Send(host_mesh.vertex_buffer[vtxbuf], 1, monolithic_subarray, tgt, vtxbuf,
+                         acGridMPIComm());
+
+                MPI_Type_free(&monolithic_subarray);
+            }
+        }
+    }
+    MPI_Waitall(NUM_VTXBUF_HANDLES, recv_reqs, MPI_STATUSES_IGNORE);
+
+    return acDeviceLoadMesh(grid.device, stream, grid.submesh);
+}
+
+// Working with ghost zone
 AcResult
 acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
 {
