@@ -134,7 +134,7 @@ acHostReduceScal(const AcMesh mesh, const ReductionType rtype, const VertexBuffe
             }
         }
     }
-
+    // fprintf(stderr, "%s host result %g\n", rtype_names[rtype], res);
     if (solve_mean) {
         const AcReal inv_n = (AcReal)1.0 / mesh.info.int_params[AC_nxyz];
         return sqrt(inv_n * res);
