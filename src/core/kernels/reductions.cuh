@@ -106,15 +106,14 @@ map(const AcReal* in, const int3 start, const int3 end, AcReal* out)
         threadIdx.z + blockIdx.z * blockDim.z,
     };
 
-    const int3 in_idx3d      = start + tid;
-    const bool out_of_bounds = in_idx3d.x >= end.x || in_idx3d.y >= end.y || in_idx3d.z >= end.z;
+    const int3 in_idx3d = start + tid;
+    const size_t in_idx = IDX(in_idx3d);
 
-    const size_t in_idx  = IDX(in_idx3d);
-    const size_t out_idx = tid.x + tid.y * blockDim.x + tid.z * blockDim.x * blockDim.y;
+    const int3 dims      = end - start;
+    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
 
-    if (out_of_bounds)
-        out[out_idx] = AC_REAL_INVALID_VALUE;
-    else
+    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
+    if (within_bounds)
         out[out_idx] = map_fn(in[in_idx]);
 }
 
@@ -132,15 +131,14 @@ map_vec(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int3 star
         threadIdx.z + blockIdx.z * blockDim.z,
     };
 
-    const int3 in_idx3d      = start + tid;
-    const bool out_of_bounds = in_idx3d.x >= end.x || in_idx3d.y >= end.y || in_idx3d.z >= end.z;
+    const int3 in_idx3d = start + tid;
+    const size_t in_idx = IDX(in_idx3d);
 
-    const size_t in_idx  = IDX(in_idx3d);
-    const size_t out_idx = tid.x + tid.y * blockDim.x + tid.z * blockDim.x * blockDim.y;
+    const int3 dims      = end - start;
+    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
 
-    if (out_of_bounds)
-        out[out_idx] = AC_REAL_INVALID_VALUE;
-    else
+    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
+    if (within_bounds)
         out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx]);
 }
 
@@ -158,15 +156,14 @@ map_vec_scal(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcRe
         threadIdx.z + blockIdx.z * blockDim.z,
     };
 
-    const int3 in_idx3d      = start + tid;
-    const bool out_of_bounds = in_idx3d.x >= end.x || in_idx3d.y >= end.y || in_idx3d.z >= end.z;
+    const int3 in_idx3d = start + tid;
+    const size_t in_idx = IDX(in_idx3d);
 
-    const size_t in_idx  = IDX(in_idx3d);
-    const size_t out_idx = tid.x + tid.y * blockDim.x + tid.z * blockDim.x * blockDim.y;
+    const int3 dims      = end - start;
+    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
 
-    if (out_of_bounds)
-        out[out_idx] = AC_REAL_INVALID_VALUE;
-    else
+    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
+    if (within_bounds)
         out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx], in3[in_idx]);
 }
 
@@ -191,8 +188,8 @@ reduce(const AcReal* in, const size_t count, AcReal* out)
             const AcReal b = smem[threadIdx.x + offset];
 
             // If the mesh dimensions are not divisible by mapping tbdims, and mapping tb dims are
-            // not divisible by reduction tb dims, then it is possible for `a` to be invalid but `b` to
-            // be valid
+            // not divisible by reduction tb dims, then it is possible for `a` to be invalid but `b`
+            // to be valid
             if (a != AC_REAL_INVALID_VALUE && b != AC_REAL_INVALID_VALUE)
                 smem[threadIdx.x] = reduce_fn(a, b);
             else if (a != AC_REAL_INVALID_VALUE)
@@ -220,7 +217,7 @@ swap_ptrs(AcReal** a, AcReal** b)
 static Volume
 get_map_tpb(void)
 {
-    return (Volume){32, 32, 1};
+    return (Volume){32, 4, 1};
 }
 
 static Volume
@@ -265,9 +262,10 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
 
     // Set thread block dimensions
     const int3 dims            = end - start;
+    const size_t initial_count = dims.x * dims.y * dims.z;
     const Volume tpb           = get_map_tpb();
     const Volume bpg           = get_map_bpg(dims, tpb);
-    const size_t initial_count = tpb.x * bpg.x * tpb.y * bpg.y * tpb.z * bpg.z;
+
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
     // Map
@@ -328,6 +326,7 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
     // could be done in parallel, but allowing that also exposes the users to potential bugs with
     // race conditions
     cudaDeviceSynchronize();
+    // fprintf(stderr, "%s device result %g\n", rtype_names[rtype], result);
     return result;
 }
 
@@ -348,14 +347,11 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
     AcReal* out = scratchpads[1];
 
     // Set thread block dimensions
-    const int3 dims  = end - start;
-    const Volume tpb = (Volume){32, 32, 1};
-    const Volume bpg = (Volume){
-        as_size_t(int(ceil(double(dims.x) / tpb.x))),
-        as_size_t(int(ceil(double(dims.y) / tpb.y))),
-        as_size_t(int(ceil(double(dims.z) / tpb.z))),
-    };
-    const size_t initial_count = tpb.x * bpg.x * tpb.y * bpg.y * tpb.z * bpg.z;
+    const int3 dims            = end - start;
+    const size_t initial_count = dims.x * dims.y * dims.z;
+    const Volume tpb           = get_map_tpb();
+    const Volume bpg           = get_map_bpg(dims, tpb);
+
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
     // Map
@@ -439,14 +435,11 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
     AcReal* out = scratchpads[1];
 
     // Set thread block dimensions
-    const int3 dims  = end - start;
-    const Volume tpb = (Volume){32, 32, 1};
-    const Volume bpg = (Volume){
-        as_size_t(int(ceil(double(dims.x) / tpb.x))),
-        as_size_t(int(ceil(double(dims.y) / tpb.y))),
-        as_size_t(int(ceil(double(dims.z) / tpb.z))),
-    };
-    const size_t initial_count = tpb.x * bpg.x * tpb.y * bpg.y * tpb.z * bpg.z;
+    const int3 dims            = end - start;
+    const size_t initial_count = dims.x * dims.y * dims.z;
+    const Volume tpb           = get_map_tpb();
+    const Volume bpg           = get_map_bpg(dims, tpb);
+
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
     // Map
