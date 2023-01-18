@@ -605,7 +605,7 @@ calc_timestep(const AcMeshInfo info)
     // MPI_Bcast to share uumax with all ranks
     MPI_Bcast(&uumax, 1, AC_REAL_MPI_TYPE, 0,
               acGridMPIComm()); // JP note: should no longer be needed, distributedScalarReduction
-                               // now does MPI_Allreduce which includes the broadcast
+                                // now does MPI_Allreduce which includes the broadcast
 
 #if LBFIELD
     // NOTE: bfield is 0 during the first step
@@ -615,7 +615,7 @@ calc_timestep(const AcMeshInfo info)
     // MPI_Bcast to share vAmax with all ranks
     MPI_Bcast(&vAmax, 1, AC_REAL_MPI_TYPE, 0,
               acGridMPIComm()); // JP note: should no longer be needed, distributedScalarReduction
-                               // now does MPI_Allreduce which includes the broadcast
+                                // now does MPI_Allreduce which includes the broadcast
 #endif
 
 #if LSHOCK
@@ -624,7 +624,7 @@ calc_timestep(const AcMeshInfo info)
     // MPI_Bcast to share vAmax with all ranks
     MPI_Bcast(&shock_max, 1, AC_REAL_MPI_TYPE, 0,
               acGridMPIComm()); // JP note: should no longer be needed, distributedScalarReduction
-                               // now does MPI_Allreduce which includes the broadcast
+                                // now does MPI_Allreduce which includes the broadcast
 #endif
 
     const long double cdt  = (long double)info.real_params[AC_cdt];
