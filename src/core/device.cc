@@ -270,7 +270,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     */
 
     // Reductions
-    const int3 max_dims = acConstructInt3Param(AC_mx, AC_my, AC_mz, device_config);
+    const int3 max_dims                = acConstructInt3Param(AC_mx, AC_my, AC_mz, device_config);
     const size_t scratchpad_size       = acKernelReduceGetMinimumScratchpadSize(max_dims);
     const size_t scratchpad_size_bytes = acKernelReduceGetMinimumScratchpadSizeBytes(max_dims);
     for (size_t i = 0; i < NUM_REDUCE_SCRATCHPADS; ++i) {

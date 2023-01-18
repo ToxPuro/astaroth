@@ -173,7 +173,7 @@ main(void)
     fflush(stdout);
 
     // Alfven reductions
-    if (pid == 0) 
+    if (pid == 0)
         printf("---Test: Alfven reductions---\n");
 
     const ReductionType alf_reductions[] = {RTYPE_ALFVEN_MAX, RTYPE_ALFVEN_MIN, RTYPE_ALFVEN_RMS};
