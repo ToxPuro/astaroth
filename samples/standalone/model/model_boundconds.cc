@@ -35,7 +35,7 @@ boundconds(const AcMeshInfo& mesh_info, ModelMesh* mesh)
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         const int3 start = (int3){0, 0, 0};
         const int3 end   = (int3){mesh_info.int_params[AC_mx], mesh_info.int_params[AC_my],
-                                mesh_info.int_params[AC_mz]};
+                                  mesh_info.int_params[AC_mz]};
 
         const int nx = mesh_info.int_params[AC_nx];
         const int ny = mesh_info.int_params[AC_ny];

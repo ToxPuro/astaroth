@@ -125,7 +125,7 @@ ac_MPI_Init_thread(int thread_level)
 void
 ac_MPI_Finalize()
 {
-    if (astaroth_comm != MPI_COMM_WORLD){
+    if (astaroth_comm != MPI_COMM_WORLD) {
         MPI_Comm_free(&astaroth_comm);
         astaroth_comm = MPI_COMM_NULL;
     }
@@ -197,8 +197,8 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     submesh_config.int_params[AC_ny]               = submesh_ny;
     submesh_config.int_params[AC_nz]               = submesh_nz;
     submesh_config.int3_params[AC_global_grid_n]   = (int3){global_config.int_params[AC_nx],
-                                                          global_config.int_params[AC_ny],
-                                                          global_config.int_params[AC_nz]};
+                                                            global_config.int_params[AC_ny],
+                                                            global_config.int_params[AC_nz]};
     submesh_config.int3_params[AC_multigpu_offset] = pid3d *
                                                      (int3){submesh_nx, submesh_ny, submesh_nz};
     acHostUpdateBuiltinParams(&submesh_config);
@@ -431,9 +431,9 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                              j + tgt_pid3d.y * nn.y, //
-                                                              k + tgt_pid3d.z * nn.z, //
-                                                              host_mesh.info);
+                                                                 j + tgt_pid3d.y * nn.y, //
+                                                                 k + tgt_pid3d.z * nn.z, //
+                                                                 host_mesh.info);
 
                         // Send
                         MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
@@ -520,9 +520,9 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                              j + tgt_pid3d.y * nn.y, //
-                                                              k + tgt_pid3d.z * nn.z, //
-                                                              host_mesh->info);
+                                                                 j + tgt_pid3d.y * nn.y, //
+                                                                 k + tgt_pid3d.z * nn.z, //
+                                                                 host_mesh->info);
 
                         // Recv
                         MPI_Status status;

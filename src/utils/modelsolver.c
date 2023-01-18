@@ -915,14 +915,14 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
 
     const ScalarData lnrho = read_scal_data(i, j, k, in.vertex_buffer, VTXBUF_LNRHO);
     const VectorData uu    = read_vec_data(i, j, k, in.vertex_buffer,
-                                        (int3){VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ});
+                                           (int3){VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ});
 
     Scalar rate_of_change[NUM_VTXBUF_HANDLES] = {0};
     rate_of_change[VTXBUF_LNRHO]              = continuity(uu, lnrho);
 
 #if LMAGNETIC
     const VectorData aa       = read_vec_data(i, j, k, in.vertex_buffer,
-                                        (int3){VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ});
+                                              (int3){VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ});
     const Vector aa_res       = induction(uu, aa);
     rate_of_change[VTXBUF_AX] = aa_res[0];
     rate_of_change[VTXBUF_AY] = aa_res[1];

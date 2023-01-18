@@ -782,9 +782,9 @@ generate_mem_accesses(void)
   strcat(cmd, "-I " ACC_RUNTIME_API_DIR " ");
   if (strlen(GPU_API_INCLUDES) > 0)
     strcat(cmd, "-I " GPU_API_INCLUDES " ");
-  #if AC_USE_HIP
+#if AC_USE_HIP
   strcat(cmd, "-DAC_USE_HIP=1 ");
-  #endif
+#endif
   strcat(cmd, STENCILACC_SRC " -lm -o " STENCILACC_EXEC " ");
 
   /*

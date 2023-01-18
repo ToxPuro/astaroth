@@ -186,7 +186,7 @@ typedef class ComputeTask : public Task {
   public:
     ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
-    ComputeTask(const ComputeTask& other) = delete;
+    ComputeTask(const ComputeTask& other)            = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
     void advance(const TraceFile* trace_file);
@@ -238,7 +238,7 @@ typedef class HaloExchangeTask : public Task {
                      uint3_64 decomp, Device device_,
                      std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     ~HaloExchangeTask();
-    HaloExchangeTask(const HaloExchangeTask& other) = delete;
+    HaloExchangeTask(const HaloExchangeTask& other)            = delete;
     HaloExchangeTask& operator=(const HaloExchangeTask& other) = delete;
 
     void sync();

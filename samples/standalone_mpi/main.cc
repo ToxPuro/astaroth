@@ -55,7 +55,7 @@
 
 // IO configuration
 static const Field io_fields[]    = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO,
-                                  VTXBUF_AX,  VTXBUF_AY,  VTXBUF_AZ};
+                                     VTXBUF_AX,  VTXBUF_AY,  VTXBUF_AZ};
 static const size_t num_io_fields = ARRAY_SIZE(io_fields);
 static const char* snapshot_dir   = "output-snapshots";
 static const char* slice_dir      = "output-slices";
