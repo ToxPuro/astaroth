@@ -286,7 +286,7 @@ acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
     mesh->info = info;
 
     const size_t n_cells = acVertexBufferSize(mesh->info);
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         mesh->vertex_buffer[w] = (AcReal*)calloc(n_cells, sizeof(AcReal));
         ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
     }
@@ -304,9 +304,9 @@ randf(void)
 AcResult
 acHostMeshRandomize(AcMesh* mesh)
 {
-    const int n = acVertexBufferSize(mesh->info);
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        for (int i = 0; i < n; ++i) {
+    const size_t n = acVertexBufferSize(mesh->info);
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        for (size_t i = 0; i < n; ++i) {
             mesh->vertex_buffer[w][i] = randf();
         }
     }
@@ -317,7 +317,7 @@ acHostMeshRandomize(AcMesh* mesh)
 AcResult
 acHostMeshDestroy(AcMesh* mesh)
 {
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w)
         free(mesh->vertex_buffer[w]);
 
     return AC_SUCCESS;
