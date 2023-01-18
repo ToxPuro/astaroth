@@ -493,8 +493,287 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
     return acDeviceLoadMesh(grid.device, stream, grid.submesh);
 }
 
+/*
+// has some illegal memory access issue (create_subarray overwrites block value and loop fails)
 AcResult
 acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
+{
+    ERRCHK(grid.initialized);
+
+    const Device device   = grid.device;
+    const AcMeshInfo info = device->local_config;
+
+    acGridSynchronizeStream(stream);
+    acDeviceStoreMesh(device, stream, &grid.submesh);
+    acDeviceSynchronizeStream(device, stream);
+
+    int pid, nprocs;
+    MPI_Comm_rank(acGridMPIComm(), &pid);
+    MPI_Comm_size(acGridMPIComm(), &nprocs);
+
+    const int3 pid3d   = getPid3D(pid, grid.decomposition);
+    const uint3_64 min = (uint3_64){0, 0, 0};
+    const uint3_64 max = morton3D(nprocs - 1); // inclusive
+
+    const int3 rr = (int3){
+        (STENCIL_WIDTH - 1) / 2,
+        (STENCIL_HEIGHT - 1) / 2,
+        (STENCIL_DEPTH - 1) / 2,
+    };
+    const int3 monolithic_mm  = info.int3_params[AC_global_grid_n] + 2 * rr;
+    const int3 distributed_mm = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+
+    for (int block = 0; block < nprocs; ++block) {
+        ERRCHK_ALWAYS(block < nprocs);
+        int3 distributed_nn     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+        int3 distributed_offset = rr;
+        ERRCHK_ALWAYS(block < nprocs);
+        if (pid3d.x == min.x) {
+            distributed_nn.x += rr.x;
+            distributed_offset.x = 0;
+        }
+        if (pid3d.x == max.x) {
+            distributed_nn.x += rr.x;
+        }
+        if (pid3d.y == min.y) {
+            distributed_nn.y += rr.y;
+            distributed_offset.y = 0;
+        }
+        if (pid3d.y == max.y) {
+            distributed_nn.y += rr.y;
+        }
+        if (pid3d.z == min.z) {
+            distributed_nn.z += rr.z;
+            distributed_offset.z = 0;
+        }
+        if (pid3d.z == max.z) {
+            distributed_nn.z += rr.z;
+        }
+        // fprintf(stderr, "proc %d, pid %d %d %d, box size %d %d %d\n", pid, pid3d.x, pid3d.y,
+        // pid3d.z,
+        //         distributed_nn.x, distributed_nn.y, distributed_nn.z);
+        ERRCHK_ALWAYS(block < nprocs);
+        MPI_Datatype monolithic_subarray;
+        const int monolithic_mm_arr[]     = {monolithic_mm.z, monolithic_mm.y, monolithic_mm.x};
+        const int monolithic_nn_arr[]     = {distributed_nn.z, distributed_nn.y, distributed_nn.x};
+        const int monolithic_offset_arr[] = {distributed_offset.z, distributed_offset.y,
+                                             distributed_offset.x};
+        ERRCHK_ALWAYS(block < nprocs);
+        MPI_Type_create_subarray(3, monolithic_mm_arr, monolithic_nn_arr, monolithic_offset_arr,
+                                 MPI_ORDER_C, AC_REAL_MPI_TYPE, &monolithic_subarray);
+        ERRCHK_ALWAYS(block < nprocs);
+        MPI_Type_commit(&monolithic_subarray);
+        ERRCHK_ALWAYS(block < nprocs);
+
+        // const int3 distributed_mm     = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+        // const int3 distributed_nn     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+        // const int3 distributed_offset = rr;
+        ERRCHK_ALWAYS(block < nprocs);
+        MPI_Datatype distributed_subarray;
+        const int distributed_mm_arr[]     = {distributed_mm.z, distributed_mm.y, distributed_mm.x};
+        const int distributed_nn_arr[]     = {distributed_nn.z, distributed_nn.y, distributed_nn.x};
+        const int distributed_offset_arr[] = {distributed_offset.z, distributed_offset.y,
+                                             distributed_offset.x};
+        MPI_Type_create_subarray(3, distributed_mm_arr, distributed_nn_arr, distributed_offset_arr,
+                                 MPI_ORDER_C, AC_REAL_MPI_TYPE, &distributed_subarray);
+        MPI_Type_commit(&distributed_subarray);
+
+        ERRCHK_ALWAYS(block < nprocs);
+        MPI_Request send_reqs[NUM_VTXBUF_HANDLES];
+        for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
+            ERRCHK_ALWAYS(block < nprocs);
+            // send to 0
+            if (pid == block)
+                MPI_Isend(grid.submesh.vertex_buffer[vtxbuf], 1, distributed_subarray, 0, vtxbuf,
+                          acGridMPIComm(), &send_reqs[vtxbuf]);
+            ERRCHK_ALWAYS(block < nprocs);
+            if (pid == 0) {
+                // recv from block
+                ERRCHK_ALWAYS(block < nprocs);
+                const int3 block_pid3d = getPid3D(block, grid.decomposition);
+                const int3 nn          = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+                const size_t idx       = acVertexBufferIdx(block_pid3d.x * nn.x, //
+                                                           block_pid3d.y * nn.y, //
+                                                           block_pid3d.z * nn.z, //
+                                                           host_mesh->info);
+                MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][idx], 1, monolithic_subarray, block,
+                         vtxbuf, acGridMPIComm(), MPI_STATUS_IGNORE);
+            }
+        }
+        if (pid == block)
+            MPI_Waitall(NUM_VTXBUF_HANDLES, send_reqs, MPI_STATUSES_IGNORE);
+        // Free
+        MPI_Type_free(&monolithic_subarray);
+        MPI_Type_free(&distributed_subarray);
+        // TODO
+        // for each block
+        //      declare the mapping
+        //      all send
+        //      if pid == 0
+        //          recv
+        //
+        // could possibly do with scatter/gather but not that important and
+        // diminishing returns/no-point finetuning because this is just a
+        // simple debug function anyways.
+        // More important to focus on getting science/meaningful work done!
+    }
+}
+*/
+
+static void
+to_mpi_array_order_c(const int3 v, int arr[3])
+{
+    arr[0] = v.z;
+    arr[1] = v.y;
+    arr[2] = v.x;
+}
+
+static void
+print_mpi_array(const char* str, const int arr[3])
+{
+    printf("%s: (%d, %d, %d)\n", str, arr[2], arr[1], arr[0]);
+}
+
+// TODO NOTE BUG
+// does not work on 1,2 gpus but does on 4-16
+// why?
+static void
+get_subarray(const int pid, //
+             int monolithic_mm_arr[3], int monolithic_nn_arr[3],
+             int monolithic_offset_arr[3], //
+             int distributed_mm_arr[3], int distributed_nn_arr[3], int distributed_offset_arr[3])
+{
+    int nprocs;
+    MPI_Comm_size(acGridMPIComm(), &nprocs);
+
+    const Device device   = grid.device;
+    const AcMeshInfo info = device->local_config;
+
+    const int3 pid3d = getPid3D(pid, grid.decomposition);
+    const int3 rr    = (int3){
+        (STENCIL_WIDTH - 1) / 2,
+        (STENCIL_HEIGHT - 1) / 2,
+        (STENCIL_DEPTH - 1) / 2,
+    };
+
+    const int3 min = (int3){0, 0, 0};
+    const int3 max = getPid3D(nprocs - 1, grid.decomposition); // inclusive
+
+    const int3 base_distributed_nn = acConstructInt3Param(AC_nx, AC_ny, AC_nz,
+                                                          device->local_config);
+    int3 distributed_nn     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, device->local_config);
+    int3 distributed_offset = rr;
+
+    if (pid3d.x == min.x) {
+        distributed_offset.x -= rr.x;
+        distributed_nn.x += rr.x;
+    }
+    if (pid3d.x == max.x) {
+        distributed_nn.x += rr.x;
+    }
+    if (pid3d.y == min.y) {
+        distributed_offset.y -= rr.y;
+        distributed_nn.y += rr.y;
+    }
+    if (pid3d.y == max.y) {
+        distributed_nn.y += rr.y;
+    }
+    if (pid3d.z == min.z) {
+        distributed_offset.z -= rr.z;
+        distributed_nn.z += rr.z;
+    }
+    if (pid3d.z == max.z) {
+        distributed_nn.z += rr.z;
+    }
+
+    // Monolithic
+    to_mpi_array_order_c(info.int3_params[AC_global_grid_n] + 2 * rr, monolithic_mm_arr);
+    to_mpi_array_order_c(distributed_nn, monolithic_nn_arr);
+    to_mpi_array_order_c(pid3d * base_distributed_nn + distributed_offset, monolithic_offset_arr);
+
+    // Distributed
+    to_mpi_array_order_c(acConstructInt3Param(AC_mx, AC_my, AC_mz, info), distributed_mm_arr);
+    to_mpi_array_order_c(distributed_nn, distributed_nn_arr);
+    to_mpi_array_order_c(distributed_offset, distributed_offset_arr);
+
+    /*
+    printf("------\n");
+    printf("pid %d\n", pid);
+    print_mpi_array("monol mm", monolithic_mm_arr);
+    print_mpi_array("monol nn", monolithic_nn_arr);
+    print_mpi_array("monol os", monolithic_offset_arr);
+
+    print_mpi_array("distr mm", distributed_mm_arr);
+    print_mpi_array("distr nn", distributed_nn_arr);
+    print_mpi_array("distr os", distributed_offset_arr);
+    printf("------\n");
+    */
+}
+
+AcResult
+acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
+{
+    ERRCHK(grid.initialized);
+    acGridSynchronizeStream(stream);
+    acDeviceStoreMesh(grid.device, stream, &grid.submesh);
+    acDeviceSynchronizeStream(grid.device, stream);
+
+    int pid, nprocs;
+    MPI_Comm_rank(acGridMPIComm(), &pid);
+    MPI_Comm_size(acGridMPIComm(), &nprocs);
+
+    // Datatype:
+    // 1) All processes: Local subarray (sending)
+    //  1.1) function that takes the pid and outputs the local subarray
+    // 2) Root process:  Global array (receiving)
+    // 3) Root process:  Local subarrays for all procs (same as used for sending)
+
+    // Send the local subarray
+    MPI_Request send_reqs[NUM_VTXBUF_HANDLES];
+    for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
+        int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
+        int distributed_mm[3], distributed_nn[3], distributed_offset[3];
+        get_subarray(pid, monolithic_mm, monolithic_nn, monolithic_offset, //
+                     distributed_mm, distributed_nn, distributed_offset);
+
+        MPI_Datatype distributed_subarray;
+        MPI_Type_create_subarray(3, distributed_mm, distributed_nn, distributed_offset, MPI_ORDER_C,
+                                 AC_REAL_MPI_TYPE, &distributed_subarray);
+        MPI_Type_commit(&distributed_subarray);
+
+        MPI_Isend(grid.submesh.vertex_buffer[vtxbuf], 1, distributed_subarray, 0, vtxbuf,
+                  acGridMPIComm(), &send_reqs[vtxbuf]);
+
+        MPI_Type_free(&distributed_subarray);
+    }
+
+    if (pid == 0) {
+        for (int src = 0; src < nprocs; ++src) {
+            for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
+                int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
+                int distributed_mm[3], distributed_nn[3], distributed_offset[3];
+                get_subarray(src, monolithic_mm, monolithic_nn, monolithic_offset, //
+                             distributed_mm, distributed_nn, distributed_offset);
+
+                MPI_Datatype monolithic_subarray;
+                MPI_Type_create_subarray(3, monolithic_mm, monolithic_nn, monolithic_offset,
+                                         MPI_ORDER_C, AC_REAL_MPI_TYPE, &monolithic_subarray);
+                MPI_Type_commit(&monolithic_subarray);
+
+                MPI_Recv(host_mesh->vertex_buffer[vtxbuf], 1, monolithic_subarray, src, vtxbuf,
+                         acGridMPIComm(), MPI_STATUS_IGNORE);
+
+                MPI_Type_free(&monolithic_subarray);
+            }
+        }
+    }
+    MPI_Waitall(NUM_VTXBUF_HANDLES, send_reqs, MPI_STATUSES_IGNORE);
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acGridStoreMeshWorking(const Stream stream, AcMesh* host_mesh)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
