@@ -65,10 +65,10 @@ struct SimulationPeriod {
 };
 
 // std::string to_timestamp(time_t t) {
-//   char timestamp[80];
-//   strftime(timestamp, 80, "%Y-%m-%d-%I:%M:%S", localtime(&t));
-//   return std::string(timestamp);
-// }
+//  char timestamp[80];
+//  strftime(timestamp, 80, "%Y-%m-%d-%I:%M:%S", localtime(&t));
+//  return std::string(timestamp);
+//}
 
 // Structure for keeping track of a file used by the user to signal things
 struct UserSignalFile {

@@ -19,6 +19,11 @@
 #pragma once
 
 #include "acc_runtime.h"
+
+#if AC_MPI_ENABLED
+#include <mpi.h>
+#endif
+
 #define NGHOST (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
 
 typedef struct {
@@ -471,6 +476,42 @@ Node acGetNode(void);
  * =============================================================================
  */
 #if AC_MPI_ENABLED
+
+/**
+Calls MPI_Init and creates a separate communicator for Astaroth procs with MPI_Comm_split, color =
+666 Any program running in the same MPI process space must also call MPI_Comm_split with some color
+!= 666. OTHERWISE this call will hang.
+
+Returns AC_SUCCESS on successfullly initializing MPI and creating a communicator.
+
+Returns AC_FAILURE otherwise.
+ */
+AcResult ac_MPI_Init();
+
+/**
+Calls MPI_Init_thread with the provided thread_level and creates a separate communicator for
+Astaroth procs with MPI_Comm_split, color = 666 Any program running in the same MPI process space
+must also call MPI_Comm_split with some color != 666. OTHERWISE this call will hang.
+
+Returns AC_SUCCESS on successfullly initializing MPI with the requested thread level and creating a
+communicator.
+
+Returns AC_FAILURE otherwise.
+ */
+AcResult ac_MPI_Init_thread(int thread_level);
+
+/**
+Destroys the communicator and calls MPI_Finalize
+*/
+void ac_MPI_Finalize();
+
+/**
+Returns the MPI communicator used by all Astaroth processes.
+
+If MPI was initialized with MPI_Init* instead of ac_MPI_Init, this will return MPI_COMM_WORLD
+ */
+MPI_Comm acGridMPIComm();
+
 /**
 Initializes all available devices.
 

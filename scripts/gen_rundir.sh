@@ -162,7 +162,7 @@ done
 IFS=$OLDIFS
 
 if [[ ! -f "$config" ]]; then
-    echo "ERROR: astaroth config \"$config\" is not a file"
+    echo "ERROR: astaroth config \"$config\" is not a regular file"
     exit 1
 fi
 
@@ -172,7 +172,7 @@ if [[ ! -x "$ac_run_mpi_binary" ]]; then
 fi
 
 if [[ ! -f "$varfile" ]]; then
-    echo "ERROR: varfile \"$varfile\" is not an executable"
+    echo "ERROR: varfile \"$varfile\" is not a regular file"
     exit 1
 fi
 
@@ -231,10 +231,11 @@ if [[ \$? -eq 0 ]]; then
     echo "Submitted simulation slurm job \$SLURM_SIM_JOB"
 $(if [[ "$render" == "deferred" ]];then
     echo "    echo \"Queueing postprocessing to start after simulation\""
-    echo "    SLURM_POSTPROCESS_JOB=\$(sbatch --dependency=afterany:\$SLURM_SIM_JOB postprocess.sbatch)"
+    echo "    SLURM_POSTPROCESS_JOB=\$(sbatch --parsable --dependency=afterany:\$SLURM_SIM_JOB postprocess.sbatch)"
     echo "    echo \"Submitted postprocessing slurm job \$SLURM_POSTPROCESS_JOB\""
 fi)
 
+    echo ""
     echo "to follow the simulation, you can try the following once it has started:"
     echo "  tail -F slurm-simulation*.out"
     echo ""
@@ -284,12 +285,16 @@ gen_simulation_sbatch(){
 
 module purge
 
+#TODO: these are LUMI-specific modules
 module load CrayEnv
 module load PrgEnv-cray
 module load craype-accel-amd-gfx90a
 module load rocm
 module load buildtools
 module load cray-python
+
+#Also LUMI-specific
+export MPICH_GPU_SUPPORT_ENABLED=1
 
 if [[ ! -f astaroth.conf ]]; then
     echo "astaroth.conf does not exist or is not a regular file"

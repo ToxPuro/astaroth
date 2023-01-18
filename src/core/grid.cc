@@ -72,12 +72,78 @@ typedef struct Grid {
 
 static Grid grid = {};
 
+static constexpr int astaroth_comm_split_key = 666;
+
+// In case some old programs still  use MPI_Init or MPI_Init_thread, we don't want to break them
+static MPI_Comm astaroth_comm = MPI_COMM_WORLD;
+
+AcResult
+ac_MPI_Init()
+{
+    if (MPI_Init(NULL, NULL)) {
+        return AC_FAILURE;
+    }
+
+    // Get rank for new communicator
+    int rank = -1;
+    if (MPI_Comm_rank(MPI_COMM_WORLD, &rank) != MPI_SUCCESS) {
+        return AC_FAILURE;
+    }
+
+    // Split MPI_COMM_WORLD
+    if (MPI_Comm_split(MPI_COMM_WORLD, astaroth_comm_split_key, rank, &astaroth_comm) !=
+        MPI_SUCCESS) {
+        return AC_FAILURE;
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+ac_MPI_Init_thread(int thread_level)
+{
+    int thread_support_level = -1;
+    int result               = MPI_Init_thread(NULL, NULL, thread_level, &thread_support_level);
+    if (thread_support_level < thread_level || result != MPI_SUCCESS) {
+        fprintf(stderr, "Thread level %d not supported by the MPI implementation\n", thread_level);
+        return AC_FAILURE;
+    }
+
+    // Get rank for new communicator
+    int rank = -1;
+    if (MPI_Comm_rank(MPI_COMM_WORLD, &rank) != MPI_SUCCESS) {
+        return AC_FAILURE;
+    }
+
+    // Split MPI_COMM_WORLD
+    if (MPI_Comm_split(MPI_COMM_WORLD, astaroth_comm_split_key, rank, &astaroth_comm) !=
+        MPI_SUCCESS) {
+        return AC_FAILURE;
+    }
+    return AC_SUCCESS;
+}
+
+void
+ac_MPI_Finalize()
+{
+    if (astaroth_comm != MPI_COMM_WORLD) {
+        MPI_Comm_free(&astaroth_comm);
+        astaroth_comm = MPI_COMM_NULL;
+    }
+    MPI_Finalize();
+}
+
+MPI_Comm
+acGridMPIComm()
+{
+    return astaroth_comm;
+}
+
 AcResult
 acGridSynchronizeStream(const Stream stream)
 {
     ERRCHK(grid.initialized);
     acDeviceSynchronizeStream(grid.device, stream);
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(astaroth_comm);
     return AC_SUCCESS;
 }
 
@@ -113,8 +179,8 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     AcMeshInfo submesh_config = global_config;
 
     int nprocs, pid;
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_size(astaroth_comm, &nprocs);
+    MPI_Comm_rank(astaroth_comm, &pid);
 
     const uint3_64 decomp = decompose(nprocs);
     const int3 pid3d      = getPid3D(pid, decomp);
@@ -146,8 +212,8 @@ acGridInit(const AcMeshInfo info)
 
     // Check that MPI is initialized
     int nprocs, pid;
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_size(astaroth_comm, &nprocs);
+    MPI_Comm_rank(astaroth_comm, &pid);
 
     char processor_name[MPI_MAX_PROCESSOR_NAME];
     int name_len;
@@ -157,6 +223,7 @@ acGridInit(const AcMeshInfo info)
     const uint3_64 decomp = decompose(nprocs);
     const int3 pid3d      = getPid3D(pid, decomp);
 
+<<<<<<< HEAD
     // Check that the decomposition is valid
     const int3 nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const bool nx_valid = nn.x % decomp.x == 0;
@@ -177,6 +244,9 @@ acGridInit(const AcMeshInfo info)
         fprintf(stderr, "nn.z %d too small, must be >= %d (stencil depth)\n", nn.z, STENCIL_DEPTH);
 
     MPI_Barrier(MPI_COMM_WORLD);
+=======
+    MPI_Barrier(astaroth_comm);
+>>>>>>> develop
 
 #if AC_VERBOSE
     printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, pid, nprocs, pid3d.x,
@@ -185,7 +255,7 @@ acGridInit(const AcMeshInfo info)
     printf("Mesh size: %d, %d, %d\n", info.int_params[AC_nx], info.int_params[AC_ny],
            info.int_params[AC_nz]);
     fflush(stdout);
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(astaroth_comm);
 #endif
 
     // Check that mixed precision is correctly configured, AcRealPacked == AC_REAL_MPI_TYPE
@@ -279,7 +349,7 @@ acGridLoadScalarUniform(const Stream stream, const AcRealParam param, const AcRe
 
     const int root_proc = 0;
     AcReal buffer       = value;
-    MPI_Bcast(&buffer, 1, AC_REAL_MPI_TYPE, root_proc, MPI_COMM_WORLD);
+    MPI_Bcast(&buffer, 1, AC_REAL_MPI_TYPE, root_proc, astaroth_comm);
 
     return acDeviceLoadScalarUniform(grid.device, stream, param, buffer);
 }
@@ -292,7 +362,7 @@ acGridLoadVectorUniform(const Stream stream, const AcReal3Param param, const AcR
 
     const int root_proc = 0;
     AcReal3 buffer      = value;
-    MPI_Bcast(&buffer, 3, AC_REAL_MPI_TYPE, root_proc, MPI_COMM_WORLD);
+    MPI_Bcast(&buffer, 3, AC_REAL_MPI_TYPE, root_proc, astaroth_comm);
 
     return acDeviceLoadVectorUniform(grid.device, stream, param, buffer);
 }
@@ -305,7 +375,7 @@ acGridLoadIntUniform(const Stream stream, const AcIntParam param, const int valu
 
     const int root_proc = 0;
     int buffer          = value;
-    MPI_Bcast(&buffer, 1, MPI_INT, root_proc, MPI_COMM_WORLD);
+    MPI_Bcast(&buffer, 1, MPI_INT, root_proc, astaroth_comm);
 
     return acDeviceLoadIntUniform(grid.device, stream, param, buffer);
 }
@@ -318,7 +388,7 @@ acGridLoadInt3Uniform(const Stream stream, const AcInt3Param param, const int3 v
 
     const int root_proc = 0;
     int3 buffer         = value;
-    MPI_Bcast(&buffer, 3, MPI_INT, root_proc, MPI_COMM_WORLD);
+    MPI_Bcast(&buffer, 3, MPI_INT, root_proc, astaroth_comm);
 
     return acDeviceLoadInt3Uniform(grid.device, stream, param, buffer);
 }
@@ -592,8 +662,8 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
 #endif
 
     int pid, nprocs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(astaroth_comm, &pid);
+    MPI_Comm_size(astaroth_comm, &nprocs);
 
     ERRCHK_ALWAYS(&grid.submesh);
 
@@ -634,7 +704,7 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
                     // Recv
                     MPI_Status status;
                     MPI_Recv(&grid.submesh.vertex_buffer[vtxbuf][dst_idx], count, AC_REAL_MPI_TYPE,
-                             0, 0, MPI_COMM_WORLD, &status);
+                             0, 0, astaroth_comm, &status);
                 }
                 else {
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
@@ -646,7 +716,7 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
 
                         // Send
                         MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
-                                 tgt_pid, 0, MPI_COMM_WORLD);
+                                 tgt_pid, 0, astaroth_comm);
                     }
                 }
             }
@@ -674,8 +744,8 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
 #endif
 
     int pid, nprocs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(astaroth_comm, &pid);
+    MPI_Comm_size(astaroth_comm, &nprocs);
 
     if (pid == 0)
         ERRCHK_ALWAYS(host_mesh);
@@ -719,7 +789,17 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
                 const int i     = 0;
                 const int count = mm.x;
 
+<<<<<<< HEAD
                 if (pid == 0) {
+=======
+                if (pid != 0) {
+                    // Send
+                    const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
+                    MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
+                             0, 0, astaroth_comm);
+                }
+                else {
+>>>>>>> develop
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
@@ -730,7 +810,7 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
                         // Recv
                         MPI_Status status;
                         MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][dst_idx], count,
-                                 AC_REAL_MPI_TYPE, tgt_pid, 0, MPI_COMM_WORLD, &status);
+                                 AC_REAL_MPI_TYPE, tgt_pid, 0, astaroth_comm, &status);
                     }
                 }
                 else {
@@ -870,7 +950,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     // ERRCHK(grid.initialized);
 
     int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_rank(astaroth_comm, &rank);
 
     check_ops(ops, n_ops);
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Allocating task graph\n");
@@ -1240,10 +1320,14 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     }
 
     int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_rank(astaroth_comm, &rank);
 
     AcReal mpi_res;
+<<<<<<< HEAD
     MPI_Allreduce(&local_result, &mpi_res, 1, AC_REAL_MPI_TYPE, op, MPI_COMM_WORLD);
+=======
+    MPI_Reduce(&local_result, &mpi_res, 1, AC_REAL_MPI_TYPE, op, 0, astaroth_comm);
+>>>>>>> develop
 
     if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS) {
         const AcReal inv_n = AcReal(1.) / (grid.nn.x * grid.decomposition.x * grid.nn.y *
@@ -1453,7 +1537,7 @@ access_vtxbuf_on_disk(const VertexBufferHandle vtxbuf, const char* path, const A
     else
         flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
 
-    ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &file) == MPI_SUCCESS);
+    ERRCHK_ALWAYS(MPI_File_open(astaroth_comm, path, flags, MPI_INFO_NULL, &file) == MPI_SUCCESS);
 
     ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native", MPI_INFO_NULL) ==
                   MPI_SUCCESS);
@@ -1704,7 +1788,7 @@ acGridDiskAccessLaunch(const AccessType type)
 #endif
 
             int flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
-            ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &file) ==
+            ERRCHK_ALWAYS(MPI_File_open(astaroth_comm, path, flags, MPI_INFO_NULL, &file) ==
                           MPI_SUCCESS); // ISSUE TODO: fails with multiple threads
 
             ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native",
@@ -1820,7 +1904,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
             // fprintf(stderr, "Writing %s\n", filepath);
 
             int flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
-            ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, filepath, flags, MPI_INFO_NULL, &file) ==
+            ERRCHK_ALWAYS(MPI_File_open(astaroth_comm, filepath, flags, MPI_INFO_NULL, &file) ==
                           MPI_SUCCESS); // ISSUE TODO: fails with multiple threads
 
             ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native",
@@ -1906,7 +1990,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 #endif
 
         int pid;
-        MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+        MPI_Comm_rank(astaroth_comm, &pid);
         // if (color != MPI_UNDEFINED)
         //     fprintf(stderr, "Writing field %d, proc %d, to %s\n", field, pid, filepath);
 
@@ -1951,7 +2035,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
             // Possible MPI bug: need to cudaSetDevice or otherwise invalid context
             // But also causes a deadlock for some reason
             MPI_Comm slice_communicator;
-            MPI_Comm_split(MPI_COMM_WORLD, color, 0, &slice_communicator);
+            MPI_Comm_split(astaroth_comm, color, 0, &slice_communicator);
             if (color != MPI_UNDEFINED) {
                 const int3 nn     = (int3){global_nn.x, global_nn.y, 1};
                 const int3 nn_sub = slice_volume;
@@ -2055,7 +2139,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
                 global_nn.y, label);
 
         int pid;
-        MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+        MPI_Comm_rank(astaroth_comm, &pid);
         // if (color != MPI_UNDEFINED)
         //     fprintf(stderr, "Writing field %d, proc %d, to %s\n", field, pid, filepath);
 
@@ -2069,7 +2153,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
             // Possible MPI bug: need to cudaSetDevice or otherwise invalid context
             // But also causes a deadlock for some reason
             MPI_Comm slice_communicator;
-            MPI_Comm_split(MPI_COMM_WORLD, color, 0, &slice_communicator);
+            MPI_Comm_split(astaroth_comm, color, 0, &slice_communicator);
             if (color != MPI_UNDEFINED) {
                 const int3 nn     = (int3){global_nn.x, global_nn.y, 1};
                 const int3 nn_sub = slice_volume;
@@ -2135,7 +2219,7 @@ acGridDiskAccessSync(void)
             req_running[i] = false;
         }
     }
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(astaroth_comm);
     return AC_SUCCESS;
 }
 
@@ -2207,7 +2291,7 @@ acGridDiskAccessLaunch(const AccessType type)
 #endif
 
         int flags  = MPI_MODE_CREATE | MPI_MODE_WRONLY;
-        int retval = MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &files[i]);
+        int retval = MPI_File_open(astaroth_comm, path, flags, MPI_INFO_NULL, &files[i]);
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
         retval = MPI_File_set_view(files[i], 0, AC_REAL_MPI_TYPE, subarray, "native",
@@ -2372,7 +2456,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     else
         flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
 
-    ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, filepath, flags, MPI_INFO_NULL, &file) ==
+    ERRCHK_ALWAYS(MPI_File_open(astaroth_comm, filepath, flags, MPI_INFO_NULL, &file) ==
                   MPI_SUCCESS);
 
     ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native", MPI_INFO_NULL) ==
@@ -2629,7 +2713,7 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
     else
         flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
 
-    ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, filepath, flags, MPI_INFO_NULL, &file) ==
+    ERRCHK_ALWAYS(MPI_File_open(astaroth_comm, filepath, flags, MPI_INFO_NULL, &file) ==
                   MPI_SUCCESS);
 
     ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native", MPI_INFO_NULL) ==
@@ -2731,7 +2815,7 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
     MPI_Type_commit(&subdomain);
 
     MPI_File fp;
-    retval = MPI_File_open(MPI_COMM_WORLD, file, MPI_MODE_RDONLY, MPI_INFO_NULL, &fp);
+    retval = MPI_File_open(astaroth_comm, file, MPI_MODE_RDONLY, MPI_INFO_NULL, &fp);
     ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
     for (size_t i = 0; i < num_fields; ++i) {
@@ -2835,7 +2919,7 @@ acGridLoadFieldFromFile(const char* path, const VertexBufferHandle vtxbuf)
 
     MPI_File file;
     const int flags = MPI_MODE_RDONLY;
-    ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &file) == MPI_SUCCESS);
+    ERRCHK_ALWAYS(MPI_File_open(astaroth_comm, path, flags, MPI_INFO_NULL, &file) == MPI_SUCCESS);
     ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native", MPI_INFO_NULL) ==
                   MPI_SUCCESS);
 
@@ -2915,7 +2999,7 @@ acGridStoreFieldToFile(const char* path, const VertexBufferHandle vtxbuf)
 
     MPI_File file;
     const int flags = MPI_MODE_CREATE | MPI_MODE_WRONLY;
-    ERRCHK_ALWAYS(MPI_File_open(MPI_COMM_WORLD, path, flags, MPI_INFO_NULL, &file) == MPI_SUCCESS);
+    ERRCHK_ALWAYS(MPI_File_open(astaroth_comm, path, flags, MPI_INFO_NULL, &file) == MPI_SUCCESS);
     ERRCHK_ALWAYS(MPI_File_set_view(file, 0, AC_REAL_MPI_TYPE, subarray, "native", MPI_INFO_NULL) ==
                   MPI_SUCCESS);
 
@@ -2938,8 +3022,8 @@ acGridGeneralBoundconds(const Device device, const Stream stream)
     // Non-periodic Boundary conditions
     // Check the position in MPI frame
     int nprocs, pid;
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_size(astaroth_comm, &nprocs);
+    MPI_Comm_rank(astaroth_comm, &pid);
     const uint3_64 decomposition = decompose(nprocs);
     const int3 pid3d             = getPid3D(pid, decomposition);
 
@@ -3074,7 +3158,7 @@ acGridIntegrateNonperiodic(const Stream stream, const AcReal dt)
 #endif
 
 #if MPI_COMM_ENABLED
-        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Barrier(astaroth_comm);
 
 #if MPI_GPUDIRECT_DISABLED
 #if MPI_INCL_CORNERS

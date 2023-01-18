@@ -63,7 +63,7 @@ static const char* slice_dir      = "output-slices";
 #define fprintf(...)                                                                               \
     {                                                                                              \
         int tmppid;                                                                                \
-        MPI_Comm_rank(MPI_COMM_WORLD, &tmppid);                                                    \
+        MPI_Comm_rank(acGridMPIComm(), &tmppid);                                                   \
         if (!tmppid) {                                                                             \
             fprintf(__VA_ARGS__);                                                                  \
         }                                                                                          \
@@ -227,7 +227,11 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     acGridDiskAccessSync();                   // NOTE: important sync
     acGridPeriodicBoundconds(STREAM_DEFAULT); // Debug, may be unneeded
     acGridSynchronizeStream(STREAM_DEFAULT);  // Debug, may be unneeded
+<<<<<<< HEAD
     MPI_Barrier(MPI_COMM_WORLD);              // Debug may be unneeded
+=======
+    MPI_Barrier(acGridMPIComm());             // Debug may be unneeded
+>>>>>>> develop
 
     const int num_snapshots = 2;
     const int modstep       = (step / info.int_params[AC_bin_steps]) % num_snapshots;
@@ -256,7 +260,7 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
 
         fclose(header_file);
     }
-    MPI_Barrier(MPI_COMM_WORLD); // Ensure header closes before initializing the next write
+    MPI_Barrier(acGridMPIComm()); // Ensure header closes before initializing the next write
 
     char cstep[1024];
     sprintf(cstep, "%d", modstep);
@@ -332,7 +336,7 @@ read_mesh_mpi(const int pid, const int step, AcReal* simulation_time)
         fclose(header_file);
     }
 
-    MPI_Bcast(&time, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&time, 1, MPI_DOUBLE, 0, acGridMPIComm());
 
     *simulation_time = time;
 
@@ -603,9 +607,13 @@ calc_timestep(const AcMeshInfo info)
     // Right now we're doing two collective operations where one would suffice
 
     // MPI_Bcast to share uumax with all ranks
+<<<<<<< HEAD
     MPI_Bcast(&uumax, 1, AC_REAL_MPI_TYPE, 0,
               MPI_COMM_WORLD); // JP note: should no longer be needed, distributedScalarReduction
                                // now does MPI_Allreduce which includes the broadcast
+=======
+    MPI_Bcast(&uumax, 1, AC_REAL_MPI_TYPE, 0, acGridMPIComm());
+>>>>>>> develop
 
 #if LBFIELD
     // NOTE: bfield is 0 during the first step
@@ -613,18 +621,26 @@ calc_timestep(const AcMeshInfo info)
                         &vAmax);
 
     // MPI_Bcast to share vAmax with all ranks
+<<<<<<< HEAD
     MPI_Bcast(&vAmax, 1, AC_REAL_MPI_TYPE, 0,
               MPI_COMM_WORLD); // JP note: should no longer be needed, distributedScalarReduction
                                // now does MPI_Allreduce which includes the broadcast
+=======
+    MPI_Bcast(&vAmax, 1, AC_REAL_MPI_TYPE, 0, acGridMPIComm());
+>>>>>>> develop
 #endif
 
 #if LSHOCK
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_SHOCK, &shock_max);
 
     // MPI_Bcast to share vAmax with all ranks
+<<<<<<< HEAD
     MPI_Bcast(&shock_max, 1, AC_REAL_MPI_TYPE, 0,
               MPI_COMM_WORLD); // JP note: should no longer be needed, distributedScalarReduction
                                // now does MPI_Allreduce which includes the broadcast
+=======
+    MPI_Bcast(&shock_max, 1, AC_REAL_MPI_TYPE, 0, acGridMPIComm());
+>>>>>>> develop
 #endif
 
     const long double cdt  = (long double)info.real_params[AC_cdt];
@@ -660,7 +676,7 @@ void
 dryrun(void)
 {
     int pid;
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_rank(acGridMPIComm(), &pid);
 
     // Scale the fields
     AcReal max, min, sum;
@@ -668,7 +684,7 @@ dryrun(void)
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)0, &min);
     acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, (VertexBufferHandle)0, &sum);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(acGridMPIComm());
 
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, (AcReal)2.0);
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
@@ -676,7 +692,7 @@ dryrun(void)
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(acGridMPIComm());
 
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, (VertexBufferHandle)0, &max);
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MIN, (VertexBufferHandle)0, &min);
@@ -686,20 +702,20 @@ dryrun(void)
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(acGridMPIComm());
 
     // Reset the fields
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(acGridMPIComm());
 
     acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0, dims.n1);
     acGridSwapBuffers();
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(acGridMPIComm());
 }
 
 static void
@@ -711,7 +727,7 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
     const int3 rr = (int3){3, 3, 3};
 
     int pid;
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_rank(acGridMPIComm(), &pid);
     acLogFromRootProc(pid, "Reading varfile nn = (%d, %d, %d)\n", nn.x, nn.y, nn.z);
 
     acGridReadVarfileToMesh(file_path, io_fields, num_io_fields, nn, rr);
@@ -774,7 +790,7 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time)
     sprintf(modstep_str, "%d", modstep);
 
     int pid;
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_rank(acGridMPIComm(), &pid);
     acLogFromRootProc(pid, "Restarting from snapshot %d (step %d, tstep %g)\n", modstep, *step,
                       (double)(*simulation_time));
 
@@ -857,7 +873,7 @@ write_slices(int pid, int i)
     if (pid == 0) {
         create_directory(slice_frame_dir);
     }
-    MPI_Barrier(MPI_COMM_WORLD); // Ensure directory is created for all procs
+    MPI_Barrier(acGridMPIComm()); // Ensure directory is created for all procs
 
     log_from_root_proc_with_sim_progress(pid, "write_slices: Writing slices to %s, timestep = %d\n",
                                          slice_dir, i);
@@ -962,17 +978,14 @@ int
 main(int argc, char** argv)
 {
     // Use multi-threaded MPI
-    int thread_support_level;
-    MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &thread_support_level);
-    if (thread_support_level < MPI_THREAD_MULTIPLE) {
-        fprintf(stderr, "MPI_THREAD_MULTIPLE not supported by the MPI implementation\n");
-        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+    if (ac_MPI_Init_thread(MPI_THREAD_MULTIPLE) != AC_SUCCESS) {
+        MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
 
     int nprocs, pid;
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_size(acGridMPIComm(), &nprocs);
+    MPI_Comm_rank(acGridMPIComm(), &pid);
 
     /////////////////////////////////
     // Read command line arguments //
@@ -1104,7 +1117,7 @@ main(int argc, char** argv)
         acLogFromRootProc(pid, "Sink is: %s\n", sink_flag);
         acLogFromRootProc(pid, "Shock is: %s\n", shock_flag);
     }
-    MPI_Barrier(MPI_COMM_WORLD); // Ensure output directories are created before continuing
+    // MPI_Barrier(acGridMPIComm()); // Ensure output directories are created before continuing
 
     ///////////////////////////////////////////////
     // Define variables for main simulation loop //
@@ -1491,7 +1504,11 @@ main(int argc, char** argv)
         //                                                                 //
         /////////////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD
         MPI_Allreduce(MPI_IN_PLACE, &events, sizeof(uint16_t), MPI_BYTE, MPI_BOR, MPI_COMM_WORLD);
+=======
+        MPI_Allreduce(MPI_IN_PLACE, &events, sizeof(uint16_t), MPI_BYTE, MPI_BOR, acGridMPIComm());
+>>>>>>> develop
 
         /////////////////////////////////////////////////////////////////////
         //                                                                 //
@@ -1533,7 +1550,11 @@ main(int argc, char** argv)
 
                     AcMeshInfo new_info;
                     log_from_root_proc_with_sim_progress(pid, "Synchronizing procs\n");
+<<<<<<< HEAD
                     MPI_Barrier(MPI_COMM_WORLD);
+=======
+                    MPI_Barrier(acGridMPIComm());
+>>>>>>> develop
                     log_from_root_proc_with_sim_progress(pid, "Reloading config file\n");
                     acLoadConfig(config_path, &new_info);
                     set_extra_config_params(&new_info);
@@ -1672,7 +1693,11 @@ main(int argc, char** argv)
                     AcMeshInfo submesh_info = acGridDecomposeMeshInfo(new_info);
                     acDeviceLoadMeshInfo(acGridGetDevice(), submesh_info);
                     info = new_info;
+<<<<<<< HEAD
                     MPI_Barrier(MPI_COMM_WORLD);
+=======
+                    MPI_Barrier(acGridMPIComm());
+>>>>>>> develop
                     log_from_root_proc_with_sim_progress(pid, "Done reloading config\n");
                     break;
                 }
@@ -1725,7 +1750,7 @@ main(int argc, char** argv)
     acGridQuit();
     fclose(diag_file);
     acLogFromRootProc(pid, "Calling MPI_Finalize\n");
-    MPI_Finalize();
+    ac_MPI_Finalize();
 
     if (check_event(events, SimulationEvent::ErrorState)) {
         acLogFromRootProc(pid, "Simulation ended due to an error, goodbye :(\n");
