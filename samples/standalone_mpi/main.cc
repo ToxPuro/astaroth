@@ -227,11 +227,7 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     acGridDiskAccessSync();                   // NOTE: important sync
     acGridPeriodicBoundconds(STREAM_DEFAULT); // Debug, may be unneeded
     acGridSynchronizeStream(STREAM_DEFAULT);  // Debug, may be unneeded
-<<<<<<< HEAD
-    MPI_Barrier(MPI_COMM_WORLD);              // Debug may be unneeded
-=======
     MPI_Barrier(acGridMPIComm());             // Debug may be unneeded
->>>>>>> develop
 
     const int num_snapshots = 2;
     const int modstep       = (step / info.int_params[AC_bin_steps]) % num_snapshots;
@@ -607,13 +603,9 @@ calc_timestep(const AcMeshInfo info)
     // Right now we're doing two collective operations where one would suffice
 
     // MPI_Bcast to share uumax with all ranks
-<<<<<<< HEAD
     MPI_Bcast(&uumax, 1, AC_REAL_MPI_TYPE, 0,
-              MPI_COMM_WORLD); // JP note: should no longer be needed, distributedScalarReduction
+              acGridMPIComm()); // JP note: should no longer be needed, distributedScalarReduction
                                // now does MPI_Allreduce which includes the broadcast
-=======
-    MPI_Bcast(&uumax, 1, AC_REAL_MPI_TYPE, 0, acGridMPIComm());
->>>>>>> develop
 
 #if LBFIELD
     // NOTE: bfield is 0 during the first step
@@ -621,26 +613,18 @@ calc_timestep(const AcMeshInfo info)
                         &vAmax);
 
     // MPI_Bcast to share vAmax with all ranks
-<<<<<<< HEAD
     MPI_Bcast(&vAmax, 1, AC_REAL_MPI_TYPE, 0,
-              MPI_COMM_WORLD); // JP note: should no longer be needed, distributedScalarReduction
+              acGridMPIComm()); // JP note: should no longer be needed, distributedScalarReduction
                                // now does MPI_Allreduce which includes the broadcast
-=======
-    MPI_Bcast(&vAmax, 1, AC_REAL_MPI_TYPE, 0, acGridMPIComm());
->>>>>>> develop
 #endif
 
 #if LSHOCK
     acGridReduceScal(STREAM_DEFAULT, RTYPE_MAX, VTXBUF_SHOCK, &shock_max);
 
     // MPI_Bcast to share vAmax with all ranks
-<<<<<<< HEAD
     MPI_Bcast(&shock_max, 1, AC_REAL_MPI_TYPE, 0,
-              MPI_COMM_WORLD); // JP note: should no longer be needed, distributedScalarReduction
+              acGridMPIComm()); // JP note: should no longer be needed, distributedScalarReduction
                                // now does MPI_Allreduce which includes the broadcast
-=======
-    MPI_Bcast(&shock_max, 1, AC_REAL_MPI_TYPE, 0, acGridMPIComm());
->>>>>>> develop
 #endif
 
     const long double cdt  = (long double)info.real_params[AC_cdt];
@@ -1504,11 +1488,7 @@ main(int argc, char** argv)
         //                                                                 //
         /////////////////////////////////////////////////////////////////////
 
-<<<<<<< HEAD
-        MPI_Allreduce(MPI_IN_PLACE, &events, sizeof(uint16_t), MPI_BYTE, MPI_BOR, MPI_COMM_WORLD);
-=======
         MPI_Allreduce(MPI_IN_PLACE, &events, sizeof(uint16_t), MPI_BYTE, MPI_BOR, acGridMPIComm());
->>>>>>> develop
 
         /////////////////////////////////////////////////////////////////////
         //                                                                 //
@@ -1550,11 +1530,7 @@ main(int argc, char** argv)
 
                     AcMeshInfo new_info;
                     log_from_root_proc_with_sim_progress(pid, "Synchronizing procs\n");
-<<<<<<< HEAD
-                    MPI_Barrier(MPI_COMM_WORLD);
-=======
                     MPI_Barrier(acGridMPIComm());
->>>>>>> develop
                     log_from_root_proc_with_sim_progress(pid, "Reloading config file\n");
                     acLoadConfig(config_path, &new_info);
                     set_extra_config_params(&new_info);
@@ -1693,11 +1669,7 @@ main(int argc, char** argv)
                     AcMeshInfo submesh_info = acGridDecomposeMeshInfo(new_info);
                     acDeviceLoadMeshInfo(acGridGetDevice(), submesh_info);
                     info = new_info;
-<<<<<<< HEAD
-                    MPI_Barrier(MPI_COMM_WORLD);
-=======
                     MPI_Barrier(acGridMPIComm());
->>>>>>> develop
                     log_from_root_proc_with_sim_progress(pid, "Done reloading config\n");
                     break;
                 }

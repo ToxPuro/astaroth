@@ -725,11 +725,7 @@ HaloExchangeTask::receiveDevice()
         // fprintf(stderr, "calling MPI_Irecv\n");
     }
     MPI_Irecv(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-<<<<<<< HEAD
-              recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
-=======
               recv_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
->>>>>>> develop
     if (rank == 0) {
         // fprintf(stderr, "Returned from MPI_Irecv\n");
     }
@@ -766,11 +762,7 @@ HaloExchangeTask::receiveHost()
         // fprintf("Called MPI_Irecv\n");
     }
     MPI_Irecv(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-<<<<<<< HEAD
-              recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
-=======
               recv_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
->>>>>>> develop
     if (rank == 0) {
         // fprintf("Returned from MPI_Irecv\n");
     }

@@ -223,7 +223,6 @@ acGridInit(const AcMeshInfo info)
     const uint3_64 decomp = decompose(nprocs);
     const int3 pid3d      = getPid3D(pid, decomp);
 
-<<<<<<< HEAD
     // Check that the decomposition is valid
     const int3 nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const bool nx_valid = nn.x % decomp.x == 0;
@@ -243,10 +242,7 @@ acGridInit(const AcMeshInfo info)
     if (nn.z < STENCIL_DEPTH)
         fprintf(stderr, "nn.z %d too small, must be >= %d (stencil depth)\n", nn.z, STENCIL_DEPTH);
 
-    MPI_Barrier(MPI_COMM_WORLD);
-=======
     MPI_Barrier(astaroth_comm);
->>>>>>> develop
 
 #if AC_VERBOSE
     printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, pid, nprocs, pid3d.x,
@@ -789,17 +785,7 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
                 const int i     = 0;
                 const int count = mm.x;
 
-<<<<<<< HEAD
                 if (pid == 0) {
-=======
-                if (pid != 0) {
-                    // Send
-                    const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
-                    MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
-                             0, 0, astaroth_comm);
-                }
-                else {
->>>>>>> develop
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
@@ -817,12 +803,12 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
                     // Send
                     const int src_idx = acVertexBufferIdx(i, j, k, grid.submesh.info);
                     MPI_Send(&grid.submesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
-                             0, 0, MPI_COMM_WORLD);
+                             0, 0, astaroth_comm);
                 }
             }
         }
     }
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(astaroth_comm);
 
     return AC_SUCCESS;
 }
@@ -1323,11 +1309,7 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     MPI_Comm_rank(astaroth_comm, &rank);
 
     AcReal mpi_res;
-<<<<<<< HEAD
-    MPI_Allreduce(&local_result, &mpi_res, 1, AC_REAL_MPI_TYPE, op, MPI_COMM_WORLD);
-=======
-    MPI_Reduce(&local_result, &mpi_res, 1, AC_REAL_MPI_TYPE, op, 0, astaroth_comm);
->>>>>>> develop
+    MPI_Allreduce(&local_result, &mpi_res, 1, AC_REAL_MPI_TYPE, op, astaroth_comm);
 
     if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS) {
         const AcReal inv_n = AcReal(1.) / (grid.nn.x * grid.decomposition.x * grid.nn.y *
