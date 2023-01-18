@@ -219,6 +219,18 @@ acGridInit(const AcMeshInfo info)
     int name_len;
     MPI_Get_processor_name(processor_name, &name_len);
 
+    // Check that device allocation is valid
+    int device_count = -1;
+    cudaGetDeviceCount(&device_count);
+    if (device_count > nprocs) {
+        fprintf(stderr,
+                "Invalid device-task allocation: Must allocate one MPI task per GPU but got %d "
+                "devices per node and only %d task(s).",
+                device_count, nprocs);
+        ERRCHK_ALWAYS(device_count <= nprocs);
+    }
+    MPI_Barrier(acGridMPIComm());
+
     // Decompose
     const uint3_64 decomp = decompose(nprocs);
     const int3 pid3d      = getPid3D(pid, decomp);
