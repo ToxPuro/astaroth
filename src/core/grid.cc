@@ -430,13 +430,13 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
     MPI_Type_commit(&distributed_subarray);
 
     int nprocs, pid;
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_size(acGridMPIComm(), &nprocs);
+    MPI_Comm_rank(acGridMPIComm(), &pid);
 
     MPI_Request recv_reqs[NUM_VTXBUF_HANDLES];
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         MPI_Irecv(grid.submesh.vertex_buffer[vtxbuf], 1, distributed_subarray, 0, vtxbuf,
-                  MPI_COMM_WORLD, &recv_reqs[vtxbuf]);
+                  acGridMPIComm(), &recv_reqs[vtxbuf]);
         if (pid == 0) {
             for (int tgt = 0; tgt < nprocs; ++tgt) {
                 const int3 tgt_pid3d = getPid3D(tgt, grid.decomposition);
@@ -445,7 +445,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
                                                          tgt_pid3d.z * distributed_nn.z, //
                                                          host_mesh.info);
                 MPI_Send(&host_mesh.vertex_buffer[vtxbuf][idx], 1, monolithic_subarray, tgt, vtxbuf,
-                         MPI_COMM_WORLD);
+                         acGridMPIComm());
             }
         }
     }
@@ -466,10 +466,10 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         const AcReal* src = host_mesh.vertex_buffer[vtxbuf];
         AcReal* dst       = grid.submesh.vertex_buffer[vtxbuf];
-        //MPI_Scatter(src, 1, input_subarray, dst, 1, output_subarray, 0, MPI_COMM_WORLD);
+        //MPI_Scatter(src, 1, input_subarray, dst, 1, output_subarray, 0, acGridMPIComm());
 
         int nprocs;
-        MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+        MPI_Comm_size(acGridMPIComm(), &nprocs);
         const uint3_64 p = morton3D(nprocs - 1) + (uint3_64){1, 1, 1};
         int counts[nprocs];
         int displacements[nprocs];
@@ -482,9 +482,9 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
         }
 
         //MPI_Scatterv(src, counts, displacements, input_subarray, dst, 1, output_subarray, 0,
-        //             MPI_COMM_WORLD);
+        //             acGridMPIComm());
         MPI_Scatterv(src, counts, displacements, input_subarray_resized, dst, output_nn.z *
-    output_nn.y * output_nn.x, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
+    output_nn.y * output_nn.x, AC_REAL_MPI_TYPE, 0, acGridMPIComm());
 
     }*/
 
@@ -538,8 +538,8 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         const AcReal* src = grid.submesh.vertex_buffer[vtxbuf];
         AcReal* dst       = host_mesh->vertex_buffer[vtxbuf];
-        MPI_Gather(src, 1, output_subarray, dst, 1, input_subarray, 0, MPI_COMM_WORLD);
-        // MPI_Scatter(src, 1, input_subarray, dst, 1, output_subarray, 0, MPI_COMM_WORLD);
+        MPI_Gather(src, 1, output_subarray, dst, 1, input_subarray, 0, acGridMPIComm());
+        // MPI_Scatter(src, 1, input_subarray, dst, 1, output_subarray, 0, acGridMPIComm());
     }
 
     MPI_Type_free(&input_subarray);
@@ -581,13 +581,13 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
     MPI_Type_commit(&distributed_subarray);
 
     int nprocs, pid;
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_size(acGridMPIComm(), &nprocs);
+    MPI_Comm_rank(acGridMPIComm(), &pid);
 
     MPI_Request send_reqs[NUM_VTXBUF_HANDLES];
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         MPI_Isend(grid.submesh.vertex_buffer[vtxbuf], 1, distributed_subarray, 0, vtxbuf,
-                  MPI_COMM_WORLD, &send_reqs[vtxbuf]);
+                  acGridMPIComm(), &send_reqs[vtxbuf]);
         if (pid == 0) {
             for (int tgt = 0; tgt < nprocs; ++tgt) {
                 const int3 tgt_pid3d = getPid3D(tgt, grid.decomposition);
@@ -596,7 +596,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
                                                          tgt_pid3d.z * distributed_nn.z, //
                                                          host_mesh->info);
                 MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][idx], 1, monolithic_subarray, tgt,
-                         vtxbuf, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                         vtxbuf, acGridMPIComm(), MPI_STATUS_IGNORE);
             }
         }
     }
@@ -617,10 +617,10 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         const AcReal* src = host_mesh.vertex_buffer[vtxbuf];
         AcReal* dst       = grid.submesh.vertex_buffer[vtxbuf];
-        //MPI_Scatter(src, 1, input_subarray, dst, 1, output_subarray, 0, MPI_COMM_WORLD);
+        //MPI_Scatter(src, 1, input_subarray, dst, 1, output_subarray, 0, acGridMPIComm());
 
         int nprocs;
-        MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+        MPI_Comm_size(acGridMPIComm(), &nprocs);
         const uint3_64 p = morton3D(nprocs - 1) + (uint3_64){1, 1, 1};
         int counts[nprocs];
         int displacements[nprocs];
@@ -633,9 +633,9 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
         }
 
         //MPI_Scatterv(src, counts, displacements, input_subarray, dst, 1, output_subarray, 0,
-        //             MPI_COMM_WORLD);
+        //             acGridMPIComm());
         MPI_Scatterv(src, counts, displacements, input_subarray_resized, dst, output_nn.z *
-    output_nn.y * output_nn.x, AC_REAL_MPI_TYPE, 0, MPI_COMM_WORLD);
+    output_nn.y * output_nn.x, AC_REAL_MPI_TYPE, 0, acGridMPIComm());
 
     }*/
 
