@@ -212,19 +212,19 @@ static TBConfig getOptimalTBConfig(const Kernel kernel, const int3 dims,
                                    VertexBufferArray vba);
 
 static __global__ void
-flush_kernel(AcReal* arr, const size_t n)
+flush_kernel(AcReal* arr, const size_t n, const AcReal value)
 {
   const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < n)
-    arr[idx] = (AcReal)NAN;
+    arr[idx] = value;
 }
 
 AcResult
-acKernelFlush(AcReal* arr, const size_t n)
+acKernelFlush(AcReal* arr, const size_t n, const AcReal value)
 {
   const size_t tpb = 256;
   const size_t bpg = (size_t)(ceil((double)n / tpb));
-  flush_kernel<<<bpg, tpb>>>(arr, n);
+  flush_kernel<<<bpg, tpb>>>(arr, n, value);
   ERRCHK_CUDA_KERNEL_ALWAYS();
   return AC_SUCCESS;
 }
@@ -325,8 +325,8 @@ acVBACreate(const size_t count)
 #endif
 
     // Set vba.in data to all-nan and vba.out to 0
-    acKernelFlush(vba.in[i], count);
-    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)vba.out[i], 0, bytes));
+    acKernelFlush(vba.in[i], count, (AcReal)NAN);
+    acKernelFlush(vba.out[i], count, (AcReal)0.0);
   }
 
   return vba;
@@ -500,10 +500,10 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
     }
   }
   ERRCHK_ALWAYS(id < NUM_KERNELS);
-  //printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
-  //       "(%d):\n",
-  //       kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
-  //fflush(stdout);
+  // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
+  //        "(%d):\n",
+  //        kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
+  // fflush(stdout);
 
 #if 0
   cudaDeviceProp prop;
@@ -640,16 +640,17 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
           best_tpb  = tpb;
         }
 
-        //printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
-        //       tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
-        //fflush(stdout);
+        // printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
+        //        tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
+        // fflush(stdout);
       }
     }
   }
   c.tpb = best_tpb;
 
-  //printf("\tThe best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x, best_tpb.y,
-  //       best_tpb.z, (double)best_time / num_iters);
+  // printf("\tThe best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x,
+  // best_tpb.y,
+  //        best_tpb.z, (double)best_time / num_iters);
 
   FILE* fp = fopen("autotune-result.out", "a");
   ERRCHK_ALWAYS(fp);
