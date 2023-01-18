@@ -780,6 +780,11 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
     }
     MPI_Waitall(NUM_VTXBUF_HANDLES, recv_reqs, MPI_STATUSES_IGNORE);
 
+    // TODO: Should apply halo exchange here without touching the ghost zones, how?
+    // Currently the users need to update halos after each load, which is error-prone
+    // acDeviceLoadMesh(grid.device, stream, grid.submesh);
+    // return acGridPeriodicBoundconds(STREAM_DEFAULT);
+
     return acDeviceLoadMesh(grid.device, stream, grid.submesh);
 }
 
