@@ -124,7 +124,7 @@ first_derivative(const Scalar* pencil, const Scalar inv_ds)
 #define MID (STENCIL_ORDER / 2)
     Scalar res = 0;
 
-    //#pragma unroll
+    // #pragma unroll
     for (int i = 1; i <= MID; ++i)
         res += coefficients[i] * (pencil[MID + i] - pencil[MID - i]);
 
@@ -159,7 +159,7 @@ second_derivative(const Scalar* pencil, const Scalar inv_ds)
 #define MID (STENCIL_ORDER / 2)
     Scalar res = coefficients[0] * pencil[MID];
 
-    //#pragma unroll
+    // #pragma unroll
     for (int i = 1; i <= MID; ++i)
         res += coefficients[i] * (pencil[MID + i] + pencil[MID - i]);
 
@@ -201,7 +201,7 @@ cross_derivative(const Scalar* pencil_a, const Scalar* pencil_b, const Scalar in
 #define MID (STENCIL_ORDER / 2)
     Scalar res = (Scalar)(0.);
 
-    //#pragma unroll
+    // #pragma unroll
     for (int i = 1; i <= MID; ++i) {
         res += coefficients[i] *
                (pencil_a[MID + i] + pencil_a[MID - i] - pencil_b[MID + i] - pencil_b[MID - i]);
@@ -213,7 +213,7 @@ static inline Scalar
 derx(const int i, const int j, const int k, const Scalar* arr)
 {
     Scalar pencil[STENCIL_ORDER + 1];
-    //#pragma unroll
+    // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
@@ -224,7 +224,7 @@ static inline Scalar
 derxx(const int i, const int j, const int k, const Scalar* arr)
 {
     Scalar pencil[STENCIL_ORDER + 1];
-    //#pragma unroll
+    // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
@@ -235,13 +235,13 @@ static inline Scalar
 derxy(const int i, const int j, const int k, const Scalar* arr)
 {
     Scalar pencil_a[STENCIL_ORDER + 1];
-    //#pragma unroll
+    // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil_a[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, //
                                    j + offset - STENCIL_ORDER / 2, k)];
 
     Scalar pencil_b[STENCIL_ORDER + 1];
-    //#pragma unroll
+    // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil_b[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, //
                                    j + STENCIL_ORDER / 2 - offset, k)];
@@ -254,13 +254,13 @@ static inline Scalar
 derxz(const int i, const int j, const int k, const Scalar* arr)
 {
     Scalar pencil_a[STENCIL_ORDER + 1];
-    //#pragma unroll
+    // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil_a[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j,
                                    k + offset - STENCIL_ORDER / 2)];
 
     Scalar pencil_b[STENCIL_ORDER + 1];
-    //#pragma unroll
+    // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil_b[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j,
                                    k + STENCIL_ORDER / 2 - offset)];
@@ -273,7 +273,7 @@ static inline Scalar
 dery(const int i, const int j, const int k, const Scalar* arr)
 {
     Scalar pencil[STENCIL_ORDER + 1];
-    //#pragma unroll
+    // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
@@ -284,7 +284,7 @@ static inline Scalar
 deryy(const int i, const int j, const int k, const Scalar* arr)
 {
     Scalar pencil[STENCIL_ORDER + 1];
-    //#pragma unroll
+    // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
@@ -295,13 +295,13 @@ static inline Scalar
 deryz(const int i, const int j, const int k, const Scalar* arr)
 {
     Scalar pencil_a[STENCIL_ORDER + 1];
-    //#pragma unroll
+    // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil_a[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2,
                                    k + offset - STENCIL_ORDER / 2)];
 
     Scalar pencil_b[STENCIL_ORDER + 1];
-    //#pragma unroll
+    // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil_b[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2,
                                    k + STENCIL_ORDER / 2 - offset)];
@@ -314,7 +314,7 @@ static inline Scalar
 derz(const int i, const int j, const int k, const Scalar* arr)
 {
     Scalar pencil[STENCIL_ORDER + 1];
-    //#pragma unroll
+    // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
@@ -325,7 +325,7 @@ static inline Scalar
 derzz(const int i, const int j, const int k, const Scalar* arr)
 {
     Scalar pencil[STENCIL_ORDER + 1];
-    //#pragma unroll
+    // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
         pencil[offset] = arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
@@ -607,7 +607,7 @@ contract(const Matrix mat)
 {
     Scalar res = 0;
 
-    //#pragma unroll
+    // #pragma unroll
     for (int i = 0; i < 3; ++i)
         res += dot(mat.row[i], mat.row[i]);
 
@@ -676,12 +676,17 @@ momentum(const VectorData uu, const ScalarData lnrho
 #endif
 )
 {
-#if LENTROPY
     const Matrix S         = stress_tensor(uu);
     const Scalar cs2_sound = getReal(AC_cs_sound) * getReal(AC_cs_sound);
-    const Scalar cs2       = cs2_sound *
+#if LENTROPY
+    const Scalar cs2 = cs2_sound *
                        exp(getReal(AC_gamma) * value(ss) / getReal(AC_cp_sound) +
                            (getReal(AC_gamma) - 1) * (value(lnrho) - getReal(AC_lnrho0)));
+#else
+    const Scalar cs2 = cs2_sound;
+#endif
+
+#if LENTROPY
 #if LMAGNETIC
     const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
@@ -702,14 +707,13 @@ momentum(const VectorData uu, const ScalarData lnrho
 #else
     // !!!!!!!!!!!!!!!!%JP: NOTE TODO IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!
     // NOT CHECKED FOR CORRECTNESS: USE AT YOUR OWN RISK
-    const Matrix S = stress_tensor(uu);
 #if LMAGNETIC
     const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
     const Vector B       = curl(aa);
     const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
 #endif
-    const Vector mom = -mul(gradients(uu), vecvalue(uu)) - getReal(AC_cs2_sound) * gradient(lnrho) +
+    const Vector mom     = -mul(gradients(uu), vecvalue(uu)) - cs2 * gradient(lnrho) +
 #if LMAGNETIC
                        inv_rho * cross(j, B) +
 #endif
