@@ -920,7 +920,7 @@ print_usage(const char* name)
 
 // Enums for mesh initialization
 enum class InitialMeshProcedure {
-    Kernel,
+    InitKernel,
     LoadPC_Varfile,
     LoadDistributedSnapshot,
     LoadMonolithicSnapshot,
@@ -988,7 +988,7 @@ main(int argc, char** argv)
 
     const char* config_path = AC_DEFAULT_CONFIG;
     // Default mesh procedure is kernel randomize
-    InitialMeshProcedure initial_mesh_procedure = InitialMeshProcedure::Kernel;
+    InitialMeshProcedure initial_mesh_procedure = InitialMeshProcedure::InitKernel;
     const char* initial_mesh_procedure_param    = nullptr;
 
     int opt{};
@@ -1003,7 +1003,7 @@ main(int argc, char** argv)
             config_path = optarg;
             break;
         case 'k':
-            initial_mesh_procedure = InitialMeshProcedure::Kernel;
+            initial_mesh_procedure = InitialMeshProcedure::InitKernel;
             break;
         case 'p':
             initial_mesh_procedure       = InitialMeshProcedure::LoadPC_Varfile;
@@ -1163,7 +1163,7 @@ main(int argc, char** argv)
 
     acLogFromRootProc(pid, "Initializing mesh\n");
     switch (initial_mesh_procedure) {
-    case InitialMeshProcedure::Kernel: {
+    case InitialMeshProcedure::InitKernel: {
         // Randomize
         acLogFromRootProc(pid, "Scrambling mesh with some (low-quality) pseudo-random data\n");
         AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
