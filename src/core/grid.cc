@@ -646,9 +646,6 @@ print_mpi_array(const char* str, const int arr[3])
     printf("%s: (%d, %d, %d)\n", str, arr[2], arr[1], arr[0]);
 }
 
-// TODO NOTE BUG
-// does not work on 1,2 gpus but does on 4-16
-// why?
 static void
 get_subarray(const int pid, //
              int monolithic_mm_arr[3], int monolithic_nn_arr[3],
