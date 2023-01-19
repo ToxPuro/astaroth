@@ -17,6 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
+#include <assert.h>
 
 // Function pointer definitions
 typedef AcReal (*MapFn)(const AcReal&);
