@@ -596,7 +596,7 @@ forcing()
     xx = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
                (globalVertexIdx.y - AC_ny_min) * AC_dsy,
                (globalVertexIdx.z - AC_nz_min) * AC_dsz)
-    cs  = sqrt(AC_cs2_sound)
+    cs  = AC_cs_sound
 
     // Placeholders until determined properly
     k_force   = real3(AC_k_forcex,   AC_k_forcey,   AC_k_forcez  )

@@ -875,7 +875,7 @@ forcing(int3 globalVertexIdx, Scalar dt)
         (globalVertexIdx.y - getInt(AC_ny_min)) * getReal(AC_dsy),
         (globalVertexIdx.z - getInt(AC_nz_min)) * getReal(AC_dsz),
     }; // sink (current index)
-    const Scalar cs2 = getReal(AC_cs2_sound);
+    const Scalar cs2 = (getReal(AC_cs_sound) * getReal(AC_cs_sound));
     const Scalar cs  = sqrt(cs2);
 
     // Placeholders until determined properly

@@ -395,7 +395,7 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
     AcReal cv1      = DCONST(AC_gamma) / DCONST(AC_cp_sound);
 
     // cs20*exp(gamma_m1*(f(l1,:,:,ilnrho)-lnrho0)+cv1*f(l1,:,:,iss))/(gamma_m1*cp)
-    AcReal T_boundary = DCONST(AC_cs2_sound) *
+    AcReal T_boundary = (DCONST(AC_cs_sound) * DCONST(AC_cs_sound)) *
                         exp(gamma_m1 * (vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0)) +
                             cv1 * vba.in[VTXBUF_ENTROPY][boundary_idx]) /
                         gamma_m1 * DCONST(AC_cp_sound);
@@ -523,7 +523,7 @@ kernel_entropy_prescribed_heat_flux_boundconds(const int3 region_id, const int3 
     AcReal cv1      = DCONST(AC_gamma) / cp;
 
     // cs20*exp(gamma_m1*(f(l1,:,:,ilnrho)-lnrho0)+cv1*f(l1,:,:,iss))
-    AcReal cs2_boundary = DCONST(AC_cs2_sound) *
+    AcReal cs2_boundary = (DCONST(AC_cs_sound) * DCONST(AC_cs_sound)) *
                           exp(gamma_m1 * (vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0)) +
                               cv1 * vba.in[VTXBUF_ENTROPY][boundary_idx]);
 
@@ -628,7 +628,7 @@ kernel_entropy_prescribed_normal_and_turbulent_heat_flux_boundconds(
     AcReal cv1      = DCONST(AC_gamma) / DCONST(AC_cp_sound);
 
     // cs20*exp(gamma_m1*(f(l1,:,:,ilnrho)-lnrho0)+cv1*f(l1,:,:,iss))/(gamma_m1*cp)
-    AcReal T_boundary = DCONST(AC_cs2_sound) *
+    AcReal T_boundary = (DCONST(AC_cs_sound) * DCONST(AC_cs_sound)) *
                         exp(gamma_m1 * (vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0)) +
                             cv1 * vba.in[VTXBUF_ENTROPY][boundary_idx]) /
                         gamma_m1 * DCONST(AC_cp_sound);

@@ -630,9 +630,10 @@ calc_timestep(const AcMeshInfo info)
     const long double cdt  = (long double)info.real_params[AC_cdt];
     const long double cdtv = (long double)info.real_params[AC_cdtv];
     // const long double cdts     = (long double)info.real_params[AC_cdts];
-    const long double cs2_sound = (long double)info.real_params[AC_cs2_sound];
-    const long double nu_visc   = (long double)info.real_params[AC_nu_visc];
-    const long double eta       = (long double)info.real_params[AC_eta];
+    const long double cs2_sound = (long double)info.real_params[AC_cs_sound] *
+                                  (long double)info.real_params[AC_cs_sound];
+    const long double nu_visc  = (long double)info.real_params[AC_nu_visc];
+    const long double eta      = (long double)info.real_params[AC_eta];
     const long double chi      = 0; // (long double)info.real_params[AC_chi]; // TODO not calculated
     const long double gamma    = (long double)info.real_params[AC_gamma];
     const long double dsmin    = (long double)info.real_params[AC_dsmin];

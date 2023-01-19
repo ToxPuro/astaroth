@@ -173,7 +173,8 @@ simple_uniform_core(AcMesh* mesh)
 
     const double G_const     = (double)mesh->info.real_params[AC_G_const];
     const double M_sink_init = (double)mesh->info.real_params[AC_M_sink_init];
-    const double cs2_sound   = (double)mesh->info.real_params[AC_cs2_sound];
+    const double cs2_sound   = (double)mesh->info.real_params[AC_cs_sound] *
+                             (double)mesh->info.real_params[AC_cs_sound];
 
     const double RR_inner_bound = (double)mesh->info.real_params[AC_soft] / 2.0;
     const double core_coeff     = (exp(ampl_lnrho) * cs2_sound) / (double(4.0) * M_PI * G_const);
