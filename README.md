@@ -127,7 +127,8 @@ SRUN16="srun --account=$PROJECT --gres=gpu:8 -t 00:05:00 -p $PARTITION -n 16 -N 
 | BUILD_ACC_RUNTIME_LIBRARY | "Builds the standalone acc runtime library" | OFF |
 | USE_HIP | "Use HIP as the underlying GPGPU library instead of CUDA" | OFF |
 | SINGLEPASS_INTEGRATION| "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" | ON |
-| OPTIMIZE_MEM_ACCESSES | "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time" | OFF)
+| OPTIMIZE_MEM_ACCESSES | "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time" | OFF |
+| BUILD_SHARED_LIBS | "Builds Astaroth as a collection of shared libraries instead of statically built modules" | OFF |
 
 
 ## Standalone Module
