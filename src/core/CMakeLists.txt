@@ -1,5 +1,5 @@
 ## Astaroth Core
-add_library(astaroth_core STATIC device.cc grid.cc task.cc node.cc astaroth.cc astaroth_fortran.cc debug.cc)
+add_library(astaroth_core device.cc grid.cc task.cc node.cc astaroth.cc astaroth_fortran.cc debug.cc)
 
 if (USE_HIP)
     find_package(hip)
