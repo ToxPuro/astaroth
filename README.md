@@ -65,28 +65,28 @@ If you need a functioning and documented example of how to run Astaroth in stand
 Getting the modules and slurm commands right can be tricky because they vary system by system. See a list of systems and commands that have been tested to work below.
 
 ```
-# CSC Puhti (2022-10-19)
+# CSC Puhti (2023-01-24)
 module load gcc cuda openmpi cmake
 
 Currently Loaded Modules:
   1) csc-tools (S)   2) StdEnv   3) gcc/11.3.0   4) intel-oneapi-mkl/2022.1.0   5) cuda/11.7.0   6) openmpi/4.1.4   7) cmake/3.23.1
 
-srun --account=$PROJECT --gres=gpu:v100:4 --mem=24000 -t 00:14:59 -p gputest --ntasks-per-socket=2 -n 8 -N 2
+srun --account=$PROJECT --gpus-per-node=4 --mem=24000 -t 00:14:59 -p gputest --ntasks-per-socket=2 --ntasks-per-node=4 -N 2
 ```
 
 ```
-# CSC Mahti (2022-10-19)
+# CSC Mahti (2023-01-24)
 module load gcc/9.4.0 openmpi/4.1.2-cuda cuda cmake
 
 Currently Loaded Modules:
   1) csc-tools (S)   3) gcc/9.4.0             5) openmpi/4.1.2-cuda   7) cmake/3.21.4
   2) StdEnv          4) openblas/0.3.18-omp   6) cuda/11.5.0
 
-srun --account=$PROJECT --gres=gpu:a100:4 --mem=24000 -t 00:14:59 -p gpumedium -n 8 -N 2
+srun --account=$PROJECT --gpus-per-node=4 --mem=24000 -t 00:14:59 -p gpumedium --ntasks-per-node=4 -N 2
 ```
 
 ```
-# CSC Lumi (2022-10-19)
+# CSC Lumi (2023-01-24)
 # NOTE! System is still being installed, modules and settings highly likely to change.
 module purge
 module load CrayEnv
@@ -104,8 +104,20 @@ Currently Loaded Modules:
   5) craype-network-ofi                        11) cray-mpich/8.1.18          17) cray-python/3.9.12.1
   6) xpmem/2.4.4-2.3_9.1__gff0e1d9.shasta      12) cray-libsci/22.08.1.1
 
-SRUN8="srun --account=$PROJECT --gres=gpu:8 -t 00:05:00 -p $PARTITION -n 8 -N 1"
-SRUN16="srun --account=$PROJECT --gres=gpu:8 -t 00:05:00 -p $PARTITION -n 16 -N 2"
+SRUNMPI8="srun --account=$PROJECT -t 00:05:00 -p dev-g --gpus-per-node=8 --ntasks-per-node=8 --nodes=1"
+SRUNMPI16="srun --account=$PROJECT -t 00:05:00 -p dev-g --gpus-per-node=8 --ntasks-per-node=8 --nodes=2"
+```
+
+```
+# Aalto Triton (2023-01-24)
+git clone git@bitbucket.org:jpekkila/astaroth.git
+cd astaroth && checkout develop             # Needed for up-to-date AMD support
+mkdir build && cd build                     # Create a build directory
+
+module load gcc bison flex cmake openmpi
+srun -p gpu-amd -t 00:05:00 --pty /bin/bash # Currently need to build on the gpu-amd partition, otherwise hipcc is not available
+cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Triton if BUILD_SHARED_LIBS=OFF due linker failure
+./devicetest                                # Check that everything works
 ```
 
 
