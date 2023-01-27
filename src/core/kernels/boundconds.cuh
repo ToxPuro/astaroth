@@ -593,7 +593,7 @@ kernel_entropy_prescribed_heat_flux_boundconds(const int3 region_id, const int3 
 
         AcReal distance = AcReal(2 * (i + 1)) * d;
 
-        AcReal rho_diff = vba.in[VTXBUF_LNRHO][ghost_idx] - vba.in[VTXBUF_LNRHO][domain_idx];
+        AcReal rho_diff = vba.in[VTXBUF_LNRHO][domain_idx] - vba.in[VTXBUF_LNRHO][ghost_idx];
         vba.in[VTXBUF_ENTROPY][ghost_idx] = vba.in[VTXBUF_ENTROPY][domain_idx] +
                                             cp * (cp - cv) * (rho_diff + distance * tmp);
     }
