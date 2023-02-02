@@ -15,6 +15,7 @@ parser.add_argument('--conserve-memory', type=str, default='off', choices=['on',
 parser.add_argument('--termcolor', type=str, default='on', choices=['on', 'off'], help='Use ANSI color codes for clearer terminal output')
 parser.add_argument('--dtype', type=str, default='double', help='The datatype of a single data element (default: double). Accepted values: numpy dtypes')
 parser.add_argument('--dpi', type=int, default=150, help='Set DPI of the output images')
+parser.add_argument('--vrange', type=float, nargs=2, required=False, help='Manually set the value range of the plots as --value-range {min} {max}')
 args = parser.parse_args()
 
 #Term colors
@@ -91,18 +92,27 @@ if args.render_vectors == "on":
 
 conserve_memory = True
 
-#Find the minimum and maximum values fields, to define a constant range for the slices
-for step, fields in steps.items():
-    for field, field_data in fields.items():
-        for column in field_data["columns"].values():
-            for segment in column.values():
-                file_path    = segment["file_path"]
-                segment_dims = segment["dims"]
-                segment["frame"] = np.fromfile(file_path, args.dtype).reshape((segment_dims[1], segment_dims[0]))
-                field_headers[field]["vmin"] = min(np.min(segment["frame"]), field_headers[field]["vmin"])
-                field_headers[field]["vmax"] = max(np.max(segment["frame"]), field_headers[field]["vmax"])
-                if conserve_memory:
-                    del segment["frame"]
+if args.vrange:
+    vmin = args.vrange[0]
+    vmax = args.vrange[1]
+    print(f"Setting value range of plots to [{vmin},{vmax}]") 
+    for field in field_headers:
+        field_headers[field]["vmin"] = vmin
+        field_headers[field]["vmax"] = vmax
+else:
+    print("Determining the value range of each field by taking the minimum and maximum across all slices per field.")
+    #Find the minimum and maximum values fields, to define a constant range for the slices
+    for step, fields in steps.items():
+        for field, field_data in fields.items():
+            for column in field_data["columns"].values():
+                for segment in column.values():
+                    file_path    = segment["file_path"]
+                    segment_dims = segment["dims"]
+                    segment["frame"] = np.fromfile(file_path, args.dtype).reshape((segment_dims[1], segment_dims[0]))
+                    field_headers[field]["vmin"] = min(np.min(segment["frame"]), field_headers[field]["vmin"])
+                    field_headers[field]["vmax"] = max(np.max(segment["frame"]), field_headers[field]["vmax"])
+                    if conserve_memory:
+                        del segment["frame"]
 
 
 #Create output directory
@@ -168,10 +178,20 @@ for vector_field, components in vector_fields.items():
 
         #All three components have now deposited their slice data
         vector_slice = np.sqrt(vector_slice)
-        #Use an upper and lower bound for the L2 norm vmin and vmax
+
+        l2_norm_header={}
+        if args.vrange:
+            #If the user supplied a vrange, use that
+            l2_norm_header["vmin"] = args.vrange[0]
+            l2_norm_header["vmax"] = args.vrange[1]
+        else:
+            #Use an upper and lower bound for the L2 norm vmin and vmax
+            l2_norm_header["vmin"] = 0
+            l2_norm_header["vmax"] = math.sqrt(vmax_l2_norm)
+            #TODO: Calculate exact vmax
+
         field_name = vector_field + "_L2-norm"
-        field_headers[field_name] = {"vmin": 0,"vmax":math.sqrt(vmax_l2_norm)}
-        #TODO: Calculate exact vmax
+        field_headers[field_name] = l2_norm_header
 
         render_slice(vector_slice, field_name, step, z)
         del vector_slice
