@@ -192,6 +192,7 @@ gen_stencil_accesses(void)
   If ct_const_weights = false, the stencil coeffs are fetched from constant
   memory at runtime
 */
+/*
 static void
 prefetch_stencil_coeffs(const int curr_kernel, const bool ct_const_weights)
 {
@@ -315,6 +316,7 @@ compute_stencil_ops(const int curr_kernel)
                     "gen_stencil_functions (stencil_accessed should be "
                     "replaced with stencil_initialized)");
 }
+*/
 
 static void
 gen_stencil_functions(const int curr_kernel)
