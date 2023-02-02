@@ -602,7 +602,8 @@ stress_tensor(const VectorData vec)
     return S;
 }
 
-static inline Scalar
+/** Currently used only if LENTROPY (1) */
+static inline __attribute__((unused)) Scalar
 contract(const Matrix mat)
 {
     Scalar res = 0;
@@ -745,6 +746,7 @@ induction(const VectorData uu, const VectorData aa)
     return ind;
 }
 
+#if LENTROPY
 static inline Scalar
 lnT(const ScalarData ss, const ScalarData lnrho)
 {
@@ -786,7 +788,7 @@ entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho)
     const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
 #else
-    const Vector j             = (Vector){0.0, 0.0, 0.0};
+    const Vector j                 = (Vector){0.0, 0.0, 0.0};
 #endif
     const Scalar RHS = H_CONST - C_CONST + getReal(AC_eta) * getReal(AC_mu0) * dot(j, j) +
                        (Scalar)(2.) * exp(value(lnrho)) * getReal(AC_nu_visc) * contract(S) +
@@ -810,6 +812,7 @@ entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho)
             + heat_conduction(ss, lnrho);
     */
 }
+#endif
 
 __attribute__((unused)) static inline bool
 is_valid(const Scalar a)
