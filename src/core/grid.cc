@@ -639,7 +639,7 @@ to_mpi_array_order_c(const int3 v, int arr[3])
     arr[2] = v.x;
 }
 
-static void
+static inline void
 print_mpi_array(const char* str, const int arr[3])
 {
     printf("%s: (%d, %d, %d)\n", str, arr[2], arr[1], arr[0]);
