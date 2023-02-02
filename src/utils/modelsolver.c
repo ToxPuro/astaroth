@@ -18,11 +18,15 @@
 */
 
 /**
- * @file
- * \brief Brief info.
+ * DO NOT MODIFY
  *
- * Detailed info.
+ * THIS FILE IS FROZEN (2023-02-02)
  *
+ * ARCHIVED FOR REPRODUCING TESTS
+ * How to use: modify CMakeLists.txt to compile modelsolver.c instead of modelsolver.cc and enable
+ * target_compile_options(modelsolver PRIVATR "-mavx")
+ *
+ * DO NOT MODIFY
  */
 #include "astaroth_utils.h"
 
