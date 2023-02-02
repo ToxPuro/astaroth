@@ -155,9 +155,12 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
   }
 // #endif // __CUDA_RUNTIME_API_H__
 
+template <typename T>
 static inline size_t
-as_size_t(const int i)
+as_size_t(const T i)
 {
   ERRCHK_ALWAYS(i >= 0);
-  return (size_t)i;
+  ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(SIZE_MAX));
+  return static_cast<size_t>(i);
 }
