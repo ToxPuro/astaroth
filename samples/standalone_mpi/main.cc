@@ -243,12 +243,13 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
 
         // Header only at the step zero
         if (step == 0) {
-            fprintf(header_file, "use_double, mx, my, mz, step_number, modstep, t_step \n");
+            fprintf(header_file,
+                    "use_double, mx, my, mz, step_number, modstep, t_step, t_step (exact)\n");
         }
 
-        fprintf(header_file, "%d, %d, %d, %d, %d, %d, %.17e \n", sizeof(AcReal) == 8,
+        fprintf(header_file, "%d, %d, %d, %d, %d, %d, %g, %la\n", sizeof(AcReal) == 8,
                 info.int_params[AC_mx], info.int_params[AC_my], info.int_params[AC_mz], step,
-                modstep, simulation_time);
+                modstep, simulation_time, simulation_time);
 
         // Writes the header info. Make it into an
         // appendaple csv table which will be easy to be read into a Pandas
@@ -756,8 +757,9 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time)
 
             // Note: quick hack, hardcoded + bad practice
             int use_double, mx, my, mz;
-            fscanf(fp, "%d, %d, %d, %d, %d, %d, %lg", &use_double, &mx, &my, &mz, step, &modstep,
-                   simulation_time);
+            float approx_time;
+            fscanf(fp, "%d, %d, %d, %d, %d, %d, %g, %la", &use_double, &mx, &my, &mz, step,
+                   &modstep, &approx_time, simulation_time);
             fclose(fp);
         }
         else {
