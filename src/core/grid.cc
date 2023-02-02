@@ -639,11 +639,13 @@ to_mpi_array_order_c(const int3 v, int arr[3])
     arr[2] = v.x;
 }
 
-static inline void
+/*
+static void
 print_mpi_array(const char* str, const int arr[3])
 {
     printf("%s: (%d, %d, %d)\n", str, arr[2], arr[1], arr[0]);
 }
+*/
 
 static void
 get_subarray(const int pid, //
@@ -1792,6 +1794,7 @@ acGridStoreStencils(const Stream stream,
     return (AcResult)retval;
 }
 
+/*
 static AcResult
 volume_copy_to_from_host(const VertexBufferHandle vtxbuf, const AccessType type)
 {
@@ -1900,6 +1903,7 @@ access_vtxbuf_on_disk(const VertexBufferHandle vtxbuf, const char* path, const A
     MPI_Type_free(&subarray);
     return AC_SUCCESS;
 }
+*/
 
 /*
 
@@ -2192,6 +2196,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
                                                     const AcReal* host_buffer) {
 
 #if USE_DISTRIBUTED_IO
+            (void)offset; // Unused
 #define USE_POSIX_IO (0)
 #if USE_POSIX_IO
             FILE* fp = fopen(outfile, "w");
@@ -2279,7 +2284,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
     const int3 global_nn      = info.int3_params[AC_global_grid_n];
     const int3 global_offset  = info.int3_params[AC_multigpu_offset];
     const int3 global_pos_min = global_offset;
-    const int3 global_pos_max = global_pos_min + local_nn;
+    // const int3 global_pos_max = global_pos_min + local_nn;
 
     const int global_z = global_nn.z / 2;
     const int local_z  = global_z - global_pos_min.z;
@@ -2338,6 +2343,9 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
             // Write to file
 
 #if USE_DISTRIBUTED_IO
+            (void)global_nn;      // Unused
+            (void)global_pos_min; // Unused
+            (void)slice_volume;   // Unused
 #define USE_POSIX_IO (0)
 #if USE_POSIX_IO
             if (color != MPI_UNDEFINED) {
@@ -2433,7 +2441,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
     const int3 global_nn      = info.int3_params[AC_global_grid_n];
     const int3 global_offset  = info.int3_params[AC_multigpu_offset];
     const int3 global_pos_min = global_offset;
-    const int3 global_pos_max = global_pos_min + local_nn;
+    // const int3 global_pos_max = global_pos_min + local_nn;
 
     const int global_z = global_nn.z / 2;
     const int local_z  = global_z - global_pos_min.z;
@@ -2688,9 +2696,9 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
-    const int3 nn         = info.int3_params[AC_global_grid_n];
-    const int3 nn_sub     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
-    const int3 offset     = info.int3_params[AC_multigpu_offset]; // Without halo
+    // const int3 nn         = info.int3_params[AC_global_grid_n];
+    const int3 nn_sub = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+    const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
 
     const size_t buflen = 4096;
     char filepath[buflen];
@@ -2884,9 +2892,9 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
 
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
-    const int3 nn         = info.int3_params[AC_global_grid_n];
-    const int3 nn_sub     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
-    const int3 offset     = info.int3_params[AC_multigpu_offset]; // Without halo
+    // const int3 nn         = info.int3_params[AC_global_grid_n];
+    const int3 nn_sub = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+    const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
 
     const size_t buflen = 4096;
     char filepath[buflen];
