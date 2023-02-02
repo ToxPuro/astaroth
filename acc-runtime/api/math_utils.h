@@ -278,7 +278,7 @@ to_volume(const T a)
   return (Volume){as_size_t(a.x), as_size_t(a.y), as_size_t(a.z)};
 }
 
-static dim3
+static inline dim3
 to_dim3(const Volume v)
 {
   return dim3(v.x, v.y, v.z);
