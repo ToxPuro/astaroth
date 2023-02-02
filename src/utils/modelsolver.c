@@ -46,6 +46,7 @@
 #define R_PI ((Scalar)M_PI)
 */
 
+/*
 typedef AcReal Scalar;
 // typedef AcReal3 Vector;
 // typedef AcMatrix Matrix;
@@ -61,6 +62,9 @@ typedef float Vector __attribute__((vector_size(4 * sizeof(float))));
 #define cos cosf
 #define sin sinf
 #endif
+*/
+typedef double Scalar;
+typedef Scalar Vector __attribute__((vector_size(4 * sizeof(Scalar))));
 
 typedef struct {
     Vector row[3];
