@@ -27,22 +27,19 @@ main(void)
 
 #include <mpi.h>
 
-typedef enum { IDLE, BUSY } State;
-
-static State state = IDLE;
-
 int
 main(int argc, char* argv[])
 {
     if (argc != 3) {
-        fprintf(stderr, "Usage: ./benchmark-io <compute bytes> <communication bytes>\n");
+        fprintf(stderr, "Usage: ./benchmark-io <compute time in ms (integer)> <communication bytes "
+                        "(integer)>\n");
         fprintf(stderr, "       ./benchmark 0 0 # To use the defaults\n");
         return EXIT_FAILURE;
     }
     const size_t arg0 = (size_t)atol(argv[1]);
     const size_t arg1 = (size_t)atol(argv[2]);
 
-    const size_t compute_size = arg0 ? arg0 : 0;         // 0 MiB default
+    const size_t compute_time = arg0 ? arg0 : 25;        // 25 ms by default
     const size_t comm_size    = arg1 ? arg1 : 268435456; // 256 MiB default
 
     MPI_Init(NULL, NULL);
@@ -111,7 +108,7 @@ main(int argc, char* argv[])
         printf("Process %d not yet complete...\n", pid);
         timer_diff_print(t);
         fflush(stdout);
-        usleep((unsigned int)(25.0 * 1e3));
+        usleep(compute_time * 1000);
 
         retval = MPI_Request_get_status(req, &complete, &status);
         assert(retval == MPI_SUCCESS);
@@ -153,7 +150,7 @@ main(int argc, char* argv[])
         printf("Doing something else in the meanwhile\n");
         timer_diff_print(t);
         fflush(stdout);
-        usleep((unsigned int)(25.0 * 1e3));
+        usleep(compute_time * 1000);
     }
 
     write_thread.join();
