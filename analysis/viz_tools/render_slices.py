@@ -15,7 +15,7 @@ parser.add_argument('--conserve-memory', type=str, default='off', choices=['on',
 parser.add_argument('--termcolor', type=str, default='on', choices=['on', 'off'], help='Use ANSI color codes for clearer terminal output')
 parser.add_argument('--dtype', type=str, default='double', help='The datatype of a single data element (default: double). Accepted values: numpy dtypes')
 parser.add_argument('--dpi', type=int, default=150, help='Set DPI of the output images')
-parser.add_argument('--vrange', type=float, nargs=2, required=False, help='Manually set the value range of the plots as --value-range {min} {max}')
+parser.add_argument('--vrange', type=float, nargs=2, required=False, help='Manually set the value range of the plots as --vrange {min} {max}')
 args = parser.parse_args()
 
 #Term colors
