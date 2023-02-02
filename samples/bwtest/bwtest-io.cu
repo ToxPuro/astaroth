@@ -111,7 +111,7 @@ main(int argc, char* argv[])
         printf("Process %d not yet complete...\n", pid);
         timer_diff_print(t);
         fflush(stdout);
-        usleep(25 * 1e3);
+        usleep((unsigned int)(25.0 * 1e3));
 
         retval = MPI_Request_get_status(req, &complete, &status);
         assert(retval == MPI_SUCCESS);
@@ -153,7 +153,7 @@ main(int argc, char* argv[])
         printf("Doing something else in the meanwhile\n");
         timer_diff_print(t);
         fflush(stdout);
-        usleep(25 * 1e3);
+        usleep((unsigned int)(25.0 * 1e3));
     }
 
     write_thread.join();
