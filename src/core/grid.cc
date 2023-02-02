@@ -233,7 +233,6 @@ acGridInit(const AcMeshInfo info)
 
     // Decompose
     const uint3_64 decomp = decompose(nprocs);
-    const int3 pid3d      = getPid3D(pid, decomp);
 
     // Check that the decomposition is valid
     const int3 nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
