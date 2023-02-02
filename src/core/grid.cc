@@ -2146,7 +2146,7 @@ acGridDiskAccessLaunch(const AccessType type)
 #endif
         };
 
-        threads.push_back(std::move(std::thread(write_async, device->id, i, info, host_buffer)));
+        threads.push_back(std::thread(write_async, device->id, i, info, host_buffer));
         // write_async();
     }
 
@@ -2264,8 +2264,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
         };
 
         // write_async(info, host_buffer); // Synchronous, non-threaded
-        threads.push_back(
-            std::move(std::thread(write_async, info, host_buffer))); // Async, threaded
+        threads.push_back(std::thread(write_async, info, host_buffer)); // Async, threaded
     }
 
     return AC_SUCCESS;
@@ -2423,7 +2422,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
         // write_async(host_buffer, count, device->id); // Synchronous, non-threaded
         threads.push_back(
-            std::move(std::thread(write_async, host_buffer, count, device->id))); // Async, threaded
+            std::thread(write_async, host_buffer, count, device->id)); // Async, threaded
     }
     return AC_SUCCESS;
 }
