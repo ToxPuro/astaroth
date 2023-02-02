@@ -57,7 +57,7 @@ merge_slices(const char* job_dir, const int label, const size_t nx, const size_t
 }
 
 int
-main(int argc, char* argv[])
+main(void)
 {
     MPI_Init(NULL, NULL);
     int pid, nprocs;
