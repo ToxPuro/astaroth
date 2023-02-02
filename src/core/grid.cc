@@ -242,7 +242,7 @@ acGridInit(const AcMeshInfo info)
     const bool nz_valid = nn.z % decomp.z == 0;
     if (!nx_valid || !ny_valid || !nz_valid) {
         WARNING("Mesh dimensions must be divisible by the decomposition\n");
-        fprintf(stderr, "Decomposition: (%d, %d, %d)\n", decomp.x, decomp.y, decomp.z);
+        fprintf(stderr, "Decomposition: (%lu, %lu, %lu)\n", decomp.x, decomp.y, decomp.z);
         fprintf(stderr, "Mesh dimensions: (%d, %d, %d)\n", nn.x, nn.y, nn.z);
         fprintf(stderr, "Divisible: (%d, %d, %d)\n", nx_valid, ny_valid, nz_valid);
     }
