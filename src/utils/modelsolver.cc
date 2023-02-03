@@ -113,7 +113,7 @@ getInt(const AcIntParam param)
 static inline Scalar
 getReal(const AcRealParam param)
 {
-    return mesh_info->real_params[param];
+    return (Scalar)mesh_info->real_params[param];
 }
 
 static inline int
@@ -251,7 +251,7 @@ derx(const int i, const int j, const int k, const AcReal* arr)
     Scalar pencil[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
+        pencil[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
     return first_derivative(pencil, ((Scalar)1. / getReal(AC_dsx)));
 }
@@ -262,7 +262,7 @@ derxx(const int i, const int j, const int k, const AcReal* arr)
     Scalar pencil[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
+        pencil[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
     return second_derivative(pencil, ((Scalar)1. / getReal(AC_dsx)));
 }
@@ -273,14 +273,14 @@ derxy(const int i, const int j, const int k, const AcReal* arr)
     Scalar pencil_a[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil_a[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, //
-                                   j + offset - STENCIL_ORDER / 2, k)];
+        pencil_a[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, //
+                                           j + offset - STENCIL_ORDER / 2, k)];
 
     Scalar pencil_b[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil_b[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, //
-                                   j + STENCIL_ORDER / 2 - offset, k)];
+        pencil_b[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, //
+                                           j + STENCIL_ORDER / 2 - offset, k)];
 
     return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_dsx)),
                             ((Scalar)1. / getReal(AC_dsy)));
@@ -292,14 +292,14 @@ derxz(const int i, const int j, const int k, const AcReal* arr)
     Scalar pencil_a[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil_a[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j,
-                                   k + offset - STENCIL_ORDER / 2)];
+        pencil_a[offset] = (Scalar)
+            arr[IDX(i + offset - STENCIL_ORDER / 2, j, k + offset - STENCIL_ORDER / 2)];
 
     Scalar pencil_b[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil_b[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j,
-                                   k + STENCIL_ORDER / 2 - offset)];
+        pencil_b[offset] = (Scalar)
+            arr[IDX(i + offset - STENCIL_ORDER / 2, j, k + STENCIL_ORDER / 2 - offset)];
 
     return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_dsx)),
                             ((Scalar)1. / getReal(AC_dsz)));
@@ -311,7 +311,7 @@ dery(const int i, const int j, const int k, const AcReal* arr)
     Scalar pencil[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
+        pencil[offset] = (Scalar)arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
     return first_derivative(pencil, ((Scalar)1. / getReal(AC_dsy)));
 }
@@ -322,7 +322,7 @@ deryy(const int i, const int j, const int k, const AcReal* arr)
     Scalar pencil[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
+        pencil[offset] = (Scalar)arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
     return second_derivative(pencil, ((Scalar)1. / getReal(AC_dsy)));
 }
@@ -333,14 +333,14 @@ deryz(const int i, const int j, const int k, const AcReal* arr)
     Scalar pencil_a[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil_a[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2,
-                                   k + offset - STENCIL_ORDER / 2)];
+        pencil_a[offset] = (Scalar)
+            arr[IDX(i, j + offset - STENCIL_ORDER / 2, k + offset - STENCIL_ORDER / 2)];
 
     Scalar pencil_b[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil_b[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2,
-                                   k + STENCIL_ORDER / 2 - offset)];
+        pencil_b[offset] = (Scalar)
+            arr[IDX(i, j + offset - STENCIL_ORDER / 2, k + STENCIL_ORDER / 2 - offset)];
 
     return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_dsy)),
                             ((Scalar)1. / getReal(AC_dsz)));
@@ -352,7 +352,7 @@ derz(const int i, const int j, const int k, const AcReal* arr)
     Scalar pencil[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil[offset] = arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
+        pencil[offset] = (Scalar)arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
     return first_derivative(pencil, ((Scalar)1. / getReal(AC_dsz)));
 }
@@ -363,7 +363,7 @@ derzz(const int i, const int j, const int k, const AcReal* arr)
     Scalar pencil[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil[offset] = arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
+        pencil[offset] = (Scalar)arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
     return second_derivative(pencil, ((Scalar)1. / getReal(AC_dsz)));
 }
@@ -375,10 +375,10 @@ der6x_upwd(const int i, const int j, const int k, const AcReal* arr)
     Scalar inv_ds = ((Scalar)1. / getReal(AC_dsx));
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
-           (-(Scalar)(20.0) * arr[IDX(i, j, k)] +
-            (Scalar)(15.0) * (arr[IDX(i + 1, j, k)] + arr[IDX(i - 1, j, k)]) -
-            (Scalar)(6.0) * (arr[IDX(i + 2, j, k)] + arr[IDX(i - 2, j, k)]) +
-            arr[IDX(i + 3, j, k)] + arr[IDX(i - 3, j, k)]);
+           (-(Scalar)(20.0) * (Scalar)arr[IDX(i, j, k)] +
+            (Scalar)(15.0) * ((Scalar)arr[IDX(i + 1, j, k)] + (Scalar)arr[IDX(i - 1, j, k)]) -
+            (Scalar)(6.0) * ((Scalar)arr[IDX(i + 2, j, k)] + (Scalar)arr[IDX(i - 2, j, k)]) +
+            (Scalar)arr[IDX(i + 3, j, k)] + (Scalar)arr[IDX(i - 3, j, k)]);
 }
 
 static inline Scalar
@@ -387,10 +387,10 @@ der6y_upwd(const int i, const int j, const int k, const AcReal* arr)
     Scalar inv_ds = ((Scalar)1. / getReal(AC_dsy));
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
-           (-(Scalar)(20.0) * arr[IDX(i, j, k)] +
-            (Scalar)(15.0) * (arr[IDX(i, j + 1, k)] + arr[IDX(i, j - 1, k)]) -
-            (Scalar)(6.0) * (arr[IDX(i, j + 2, k)] + arr[IDX(i, j - 2, k)]) +
-            arr[IDX(i, j + 3, k)] + arr[IDX(i, j - 3, k)]);
+           (-(Scalar)(20.0) * (Scalar)arr[IDX(i, j, k)] +
+            (Scalar)(15.0) * ((Scalar)arr[IDX(i, j + 1, k)] + (Scalar)arr[IDX(i, j - 1, k)]) -
+            (Scalar)(6.0) * ((Scalar)arr[IDX(i, j + 2, k)] + (Scalar)arr[IDX(i, j - 2, k)]) +
+            (Scalar)arr[IDX(i, j + 3, k)] + (Scalar)arr[IDX(i, j - 3, k)]);
 }
 
 static inline Scalar
@@ -399,17 +399,17 @@ der6z_upwd(const int i, const int j, const int k, const AcReal* arr)
     Scalar inv_ds = ((Scalar)1. / getReal(AC_dsz));
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
-           (-(Scalar)(20.0) * arr[IDX(i, j, k)] +
-            (Scalar)(15.0) * (arr[IDX(i, j, k + 1)] + arr[IDX(i, j, k - 1)]) -
-            (Scalar)(6.0) * (arr[IDX(i, j, k + 2)] + arr[IDX(i, j, k - 2)]) +
-            arr[IDX(i, j, k + 3)] + arr[IDX(i, j, k - 3)]);
+           (-(Scalar)(20.0) * (Scalar)arr[IDX(i, j, k)] +
+            (Scalar)(15.0) * ((Scalar)arr[IDX(i, j, k + 1)] + (Scalar)arr[IDX(i, j, k - 1)]) -
+            (Scalar)(6.0) * ((Scalar)arr[IDX(i, j, k + 2)] + (Scalar)arr[IDX(i, j, k - 2)]) +
+            (Scalar)arr[IDX(i, j, k + 3)] + (Scalar)arr[IDX(i, j, k - 3)]);
 }
 #endif
 
 static inline Scalar
 compute_value(const int i, const int j, const int k, const AcReal* arr)
 {
-    return arr[IDX(i, j, k)];
+    return (Scalar)arr[IDX(i, j, k)];
 }
 
 static inline Vector
@@ -951,7 +951,7 @@ forcing(int3 globalVertexIdx, Scalar dt)
 #endif
 
 static void
-solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i, const int j,
+solve_alpha_step(AcMesh in, const int step_number, const AcReal dt, const int i, const int j,
                  const int k, AcMesh* out)
 {
     const int idx = acVertexBufferIdx(i, j, k, in.info);
@@ -1001,11 +1001,11 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
     const Scalar alpha[] = {(Scalar)(.0), (Scalar)(-5. / 9.), (Scalar)(-153. / 128.)};
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         if (step_number == 0) {
-            out->vertex_buffer[w][idx] = rate_of_change[w] * dt;
+            out->vertex_buffer[w][idx] = rate_of_change[w] * (Scalar)dt;
         }
         else {
-            out->vertex_buffer[w][idx] = alpha[step_number] * out->vertex_buffer[w][idx] +
-                                         rate_of_change[w] * dt;
+            out->vertex_buffer[w][idx] = alpha[step_number] * (Scalar)out->vertex_buffer[w][idx] +
+                                         rate_of_change[w] * (Scalar)dt;
         }
     }
 
@@ -1020,7 +1020,7 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
 }
 
 static void
-solve_beta_step(const AcMesh in, const int step_number, const Scalar dt, const int i, const int j,
+solve_beta_step(const AcMesh in, const int step_number, const AcReal dt, const int i, const int j,
                 const int k, AcMesh* out)
 {
     const int idx = acVertexBufferIdx(i, j, k, in.info);
@@ -1029,12 +1029,12 @@ solve_beta_step(const AcMesh in, const int step_number, const Scalar dt, const i
     const Scalar beta[] = {(Scalar)(1. / 3.), (Scalar)(15. / 16.), (Scalar)(8. / 15.)};
 
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
-        out->vertex_buffer[w][idx] += beta[step_number] * in.vertex_buffer[w][idx];
+        out->vertex_buffer[w][idx] += beta[step_number] * (Scalar)in.vertex_buffer[w][idx];
 
     (void)dt; // Suppress unused variable warning if forcing not used
     if (step_number == 2) {
 #if LFORCING
-        Vector force = forcing((int3){i, j, k}, dt);
+        Vector force = forcing((int3){i, j, k}, (Scalar)dt);
         out->vertex_buffer[VTXBUF_UUX][idx] += force.x;
         out->vertex_buffer[VTXBUF_UUY][idx] += force.y;
         out->vertex_buffer[VTXBUF_UUZ][idx] += force.z;
@@ -1078,9 +1078,9 @@ checkConfiguration(const AcMeshInfo info)
     }
 #endif
 
-    ERRCHK_ALWAYS(is_valid((Scalar)1. / info.real_params[AC_dsx]));
-    ERRCHK_ALWAYS(is_valid((Scalar)1. / info.real_params[AC_dsy]));
-    ERRCHK_ALWAYS(is_valid((Scalar)1. / info.real_params[AC_dsz]));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info.real_params[AC_dsx]));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info.real_params[AC_dsy]));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info.real_params[AC_dsz]));
     // ERRCHK_ALWAYS(is_valid(info.real_params[AC_cs2_sound]));
 }
 
