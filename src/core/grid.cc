@@ -256,6 +256,7 @@ acGridInit(const AcMeshInfo info)
     MPI_Barrier(astaroth_comm);
 
 #if AC_VERBOSE
+    const int3 pid3d = getPid3D(pid, decomp);
     printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, pid, nprocs, pid3d.x,
            pid3d.y, pid3d.z);
     printf("Decomposition: %lu, %lu, %lu\n", decomp.x, decomp.y, decomp.z);
