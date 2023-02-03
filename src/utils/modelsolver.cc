@@ -498,11 +498,11 @@ vecvalue(const VectorData data)
 static inline Matrix
 gradients(const VectorData data)
 {
-    return (Matrix){
-        .row[0] = gradient(data.xdata),
-        .row[1] = gradient(data.ydata),
-        .row[2] = gradient(data.zdata),
-    };
+    Matrix mat;
+    mat.row[0] = gradient(data.xdata);
+    mat.row[1] = gradient(data.ydata);
+    mat.row[2] = gradient(data.zdata);
+    return mat;
 }
 
 /*
