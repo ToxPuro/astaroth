@@ -2735,6 +2735,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
 #ifndef NDEBUG
     if (type == ACCESS_READ) {
+        const int3 nn              = info.int3_params[AC_global_grid_n];
         const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
         FILE* fp                   = fopen(filepath, "r");
         ERRCHK_ALWAYS(fp);
@@ -2825,6 +2826,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
 #ifndef NDEBUG
     if (type == ACCESS_WRITE) {
+        const int3 nn              = info.int3_params[AC_global_grid_n];
         const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
         FILE* fp                   = fopen(filepath, "r");
         ERRCHK_ALWAYS(fp);
