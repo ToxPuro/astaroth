@@ -78,6 +78,8 @@ typedef struct {
 #define cos cosl
 #define sin sinl
 
+#define SCALAR_PI (M_PIl) // Long double variant
+
 static Vector
 operator-(const Vector& a)
 {
@@ -881,9 +883,9 @@ Vector
 helical_forcing(Scalar magnitude, Vector k_force, Vector xx, Vector ff_re, Vector ff_im, Scalar phi)
 {
     (void)magnitude; // WARNING: unused
-    xx.x = xx.x * ((Scalar)2.0 * R_PI / (getReal(AC_dsx) * getInt(AC_nx)));
-    xx.y = xx.y * ((Scalar)2.0 * R_PI / (getReal(AC_dsy) * getInt(AC_ny)));
-    xx.z = xx.z * ((Scalar)2.0 * R_PI / (getReal(AC_dsz) * getInt(AC_nz)));
+    xx.x = xx.x * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsx) * getInt(AC_nx)));
+    xx.y = xx.y * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsy) * getInt(AC_ny)));
+    xx.z = xx.z * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsz) * getInt(AC_nz)));
 
     Scalar cos_phi     = cos(phi);
     Scalar sin_phi     = sin(phi);
