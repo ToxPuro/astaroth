@@ -149,9 +149,9 @@ first_derivative(const Scalar* pencil, const Scalar inv_ds)
 #elif STENCIL_ORDER == 6
     const Scalar coefficients[] = {
         0,
-        (Scalar)(3.0 / 4.0),
-        (Scalar)(-3.0 / 20.0),
-        (Scalar)(1.0 / 60.0),
+        (Scalar)3.0 / (Scalar)4.0,
+        (Scalar)-3.0 / (Scalar)20.0,
+        (Scalar)1.0 / (Scalar)60.0,
     };
 #elif STENCIL_ORDER == 8
     const Scalar coefficients[] = {
@@ -164,6 +164,7 @@ first_derivative(const Scalar* pencil, const Scalar inv_ds)
 
     // #pragma unroll
     for (int i = 1; i <= MID; ++i)
+        // for (int i = MID; i >= 1; --i)
         res += coefficients[i] * (pencil[MID + i] - pencil[MID - i]);
 
     return res * inv_ds;
@@ -182,10 +183,10 @@ second_derivative(const Scalar* pencil, const Scalar inv_ds)
     };
 #elif STENCIL_ORDER == 6
     const Scalar coefficients[] = {
-        (Scalar)(-49.0 / 18.0),
-        (Scalar)(3.0 / 2.0),
-        (Scalar)(-3.0 / 20.0),
-        (Scalar)(1.0 / 90.0),
+        (Scalar)-49.0 / (Scalar)18.0,
+        (Scalar)3.0 / (Scalar)2.0,
+        (Scalar)-3.0 / (Scalar)20.0,
+        (Scalar)1.0 / (Scalar)90.0,
     };
 #elif STENCIL_ORDER == 8
     const Scalar coefficients[] = {
@@ -199,6 +200,7 @@ second_derivative(const Scalar* pencil, const Scalar inv_ds)
 
     // #pragma unroll
     for (int i = 1; i <= MID; ++i)
+        // for (int i = MID; i >= 1; --i)
         res += coefficients[i] * (pencil[MID + i] + pencil[MID - i]);
 
     return res * inv_ds * inv_ds;
@@ -218,7 +220,7 @@ cross_derivative(const Scalar* pencil_a, const Scalar* pencil_b, const Scalar in
         0,
     }; // TODO correct coefficients, these are just placeholders
 #elif STENCIL_ORDER == 6
-    const Scalar fac            = ((Scalar)(1. / 720.));
+    const Scalar fac            = (Scalar)1. / (Scalar)720.;
     const Scalar coefficients[] = {
         0 * fac,
         (Scalar)(270.0) * fac,
@@ -241,6 +243,7 @@ cross_derivative(const Scalar* pencil_a, const Scalar* pencil_b, const Scalar in
 
     // #pragma unroll
     for (int i = 1; i <= MID; ++i) {
+        // for (int i = MID; i >= 1; --i) {
         res += coefficients[i] *
                (pencil_a[MID + i] + pencil_a[MID - i] - pencil_b[MID + i] - pencil_b[MID - i]);
     }
