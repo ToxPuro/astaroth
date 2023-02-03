@@ -26,6 +26,7 @@
  */
 #pragma once
 #include <stdbool.h>
+#include <stdint.h> // SIZE_MAX
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
