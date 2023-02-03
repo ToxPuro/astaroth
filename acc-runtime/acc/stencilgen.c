@@ -530,59 +530,72 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
     prefetch_output_elements_and_gen_prev_function();
 
+    // Sort by taxicab distance
+    const int rx = (STENCIL_WIDTH - 1) / 2;
+    const int ry = (STENCIL_HEIGHT - 1) / 2;
+    const int rz = (STENCIL_DEPTH - 1) / 2;
+
     int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
-    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
-        for (int width = 0; width < STENCIL_WIDTH; ++width) {
-          for (int field = 0; field < NUM_FIELDS; ++field) {
-            for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    for (int rr = rx + ry + rz; rr >= 0; --rr) {
+      for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+        for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+          for (int width = 0; width < STENCIL_WIDTH; ++width) {
 
-              // Skip if the stencil is not used
-              if (!stencils_accessed[curr_kernel][field][stencil])
-                continue;
+            const int distance = abs(width - rx) + abs(height - ry) +
+                                 abs(depth - rz);
+            if (distance != rr)
+              continue;
 
-              if (stencils[stencil][depth][height][width]) {
-                if (!stencil_initialized[field][stencil]) {
-                  printf("auto f%d_s%d = ", field, stencil);
-                  printf("stencils[%d][%d][%d][%d] *", //
-                         stencil, depth, height, width);
-                  printf("%s(", stencil_unary_ops[stencil]);
-#if !AC_USE_HIP
-                  printf("__ldg(&");
-#endif
-                  printf("vba.in[%d]"
-                         "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-                         "vertexIdx.z+(%d))])",
-                         field, -STENCIL_ORDER / 2 + width,
-                         -STENCIL_ORDER / 2 + height,
-                         -STENCIL_ORDER / 2 + depth);
-#if !AC_USE_HIP
-                  printf(")");
-#endif
-                  printf(";");
+            for (int field = 0; field < NUM_FIELDS; ++field) {
+              for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
 
-                  stencil_initialized[field][stencil] = 1;
-                }
-                else {
-                  printf("f%d_s%d = ", field, stencil);
-                  printf("%s(f%d_s%d, ", stencil_binary_ops[stencil], field,
-                         stencil);
-                  printf("stencils[%d][%d][%d][%d] *", //
-                         stencil, depth, height, width);
-                  printf("%s(", stencil_unary_ops[stencil]);
+                // Skip if the stencil is not used
+                if (!stencils_accessed[curr_kernel][field][stencil])
+                  continue;
+
+                if (stencils[stencil][depth][height][width]) {
+                  if (!stencil_initialized[field][stencil]) {
+                    printf("auto f%d_s%d = ", field, stencil);
+                    printf("stencils[%d][%d][%d][%d] *", //
+                           stencil, depth, height, width);
+                    printf("%s(", stencil_unary_ops[stencil]);
 #if !AC_USE_HIP
-                  printf("__ldg(&");
+                    printf("__ldg(&");
 #endif
-                  printf("vba.in[%d]"
-                         "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-                         "vertexIdx.z+(%d))])",
-                         field, -STENCIL_ORDER / 2 + width,
-                         -STENCIL_ORDER / 2 + height,
-                         -STENCIL_ORDER / 2 + depth);
+                    printf("vba.in[%d]"
+                           "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                           "vertexIdx.z+(%d))])",
+                           field, -STENCIL_ORDER / 2 + width,
+                           -STENCIL_ORDER / 2 + height,
+                           -STENCIL_ORDER / 2 + depth);
 #if !AC_USE_HIP
-                  printf(")");
+                    printf(")");
 #endif
-                  printf(");");
+                    printf(";");
+
+                    stencil_initialized[field][stencil] = 1;
+                  }
+                  else {
+                    printf("f%d_s%d = ", field, stencil);
+                    printf("%s(f%d_s%d, ", stencil_binary_ops[stencil], field,
+                           stencil);
+                    printf("stencils[%d][%d][%d][%d] *", //
+                           stencil, depth, height, width);
+                    printf("%s(", stencil_unary_ops[stencil]);
+#if !AC_USE_HIP
+                    printf("__ldg(&");
+#endif
+                    printf("vba.in[%d]"
+                           "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                           "vertexIdx.z+(%d))])",
+                           field, -STENCIL_ORDER / 2 + width,
+                           -STENCIL_ORDER / 2 + height,
+                           -STENCIL_ORDER / 2 + depth);
+#if !AC_USE_HIP
+                    printf(")");
+#endif
+                    printf(");");
+                  }
                 }
               }
             }
