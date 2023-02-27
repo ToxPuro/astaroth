@@ -1338,7 +1338,7 @@ main(int argc, char** argv)
 
         log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new forcing parameters\n");
         auto forcing_params = generateForcingParams(info);
-        printForcingParams(forcing_params);
+        //printForcingParams(forcing_params);
         loadForcingParamsToGrid(forcing_params);
 #endif
 
@@ -1396,7 +1396,7 @@ main(int argc, char** argv)
         	case PeriodicAction::GenerateForcing: {
                     log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new forcing parameters\n");
 		    auto forcing_params = generateForcingParams(info);
-		    printForcingParams(forcing_params);
+		    //printForcingParams(forcing_params);
         	    loadForcingParamsToGrid(forcing_params);
                     break;
                 }
