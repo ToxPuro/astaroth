@@ -47,6 +47,8 @@ print_usage(){
     echo "    [AC_foo=X AC_bar=Y AC_bax=123]"
 }
 
+script_args="$*"
+
 script_dir=$(realpath $(dirname "${BASH_SOURCE[0]}"))
 #WIP
 #render_companion_batch=$(realpath ${script_dir}/../analysis/viz_tools/on-the-fly-render)
@@ -171,7 +173,7 @@ if [[ ! -x "$ac_run_mpi_binary" ]]; then
     exit 1
 fi
 
-if [[ ! -f "$varfile" ]]; then
+if [[ "$init_mesh" == "varfile" ]] && [[ ! -f "$varfile" ]]; then
     echo "ERROR: varfile \"$varfile\" is not a regular file"
     exit 1
 fi
@@ -204,6 +206,33 @@ fi
 #AC_dsz=$(bc -l <<< "6.2831853070 / $AC_nz")
 
 #TODO: options for collective and distributed
+
+
+gen_archive_sh(){
+    cat > "$output_dir/archive.sh" << EOF 
+#!/bin/bash
+rundir=\$(dirname "\${BASH_SOURCE[0]}")
+if [[ "\$(realpath \$rundir)" != "\$(realpath \$PWD)" ]]; then
+    echo "Error: please call ./archive.sh from the rundir, not from elsewhere"
+    exit 1
+fi
+
+suffix=1
+stem="run"
+while true; do
+    archive_name="\$stem.\$suffix.tar"
+    if [ ! -e "\$archive_name" ]; then
+	break
+    fi
+    suffix=\$((suffix+1))
+done
+
+echo "Archiving the rundir to \$archive_name"
+tar -cvf \$archive_name .
+
+EOF
+    chmod +x "$output_dir/archive.sh"
+}
 
 gen_submit_sh(){
 case "$render" in
@@ -267,7 +296,7 @@ gen_simulation_sbatch(){
       ac_run_mpi_args="--from-pc-varfile $(realpath $varfile)"
       ;;
     kernel)
-      ac_run_mpi_args="--kernel"
+      ac_run_mpi_args="--run-init-kernel"
       ;;
     esac
     
@@ -396,6 +425,7 @@ echo " slice rendering is $render"
 echo ""
 
 gen_submit_sh
+gen_archive_sh
 gen_simulation_sbatch
 case "$render" in
 deferred)
@@ -403,6 +433,8 @@ deferred)
     ;;
 esac
 gen_astaroth_conf
+echo ""
+echo "$script_args" > "$output_dir/.original_gen_rundir_args"
 
 if [[ -n "$stripes" ]]; then
     if type lfs; then 

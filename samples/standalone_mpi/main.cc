@@ -897,10 +897,10 @@ print_usage(const char* name)
            "Mutually exclusive initial mesh load procedures\n"
            "------------------------------------------------"
            "\n"
-           "  the default is --init-kernel\n"
+           "  the default is --run-init-kernel\n"
            "\n"
            " -k\n"
-           " --init-kernel\n"
+           " --run-init-kernel\n"
            "\tRun a kernel to initialize the mesh\n"
            "\tThe kernel is currently hardcoded\n"
            "\n"
@@ -935,6 +935,7 @@ enum class PeriodicAction {
     WriteSnapshot,
     WriteSlices,
     EndSimulation,
+    GenerateForcing,
 };
 
 // Enums for events
@@ -1273,26 +1274,39 @@ main(int argc, char** argv)
     // It is enough to satisfy one of these conditions.
     // A value of zero means that the trigger is inactive.
 
-    std::map<PeriodicAction, SimulationPeriod> periodic_actions;
+
+    // These run before the simulation step
+    std::map<PeriodicAction, SimulationPeriod> pre_step_actions;
+    // Generate forcing
+#if LFORCING
+    pre_step_actions[PeriodicAction::GenerateForcing] = SimulationPeriod(info, AC_forcing_period_steps,
+		    								AC_forcing_period_t);
+#endif
+
+
+    // These run after the simulation step
+    std::map<PeriodicAction, SimulationPeriod> post_step_actions;
 
     // Print diagnostics
-    periodic_actions
+    post_step_actions
         [PeriodicAction::PrintDiagnostics] = SimulationPeriod(info, AC_save_steps,
                                                               SimulationPeriod::NoTimeParam);
 
     // Write snapshots
     AcReal snapshot_time_offset                     = simulation_time;
-    periodic_actions[PeriodicAction::WriteSnapshot] = SimulationPeriod(info, AC_bin_steps,
+    post_step_actions[PeriodicAction::WriteSnapshot] = SimulationPeriod(info, AC_bin_steps,
                                                                        AC_bin_save_t,
                                                                        snapshot_time_offset);
 
     // Write slices
-    periodic_actions[PeriodicAction::WriteSlices] = SimulationPeriod(info, AC_slice_steps,
+    post_step_actions[PeriodicAction::WriteSlices] = SimulationPeriod(info, AC_slice_steps,
                                                                      SimulationPeriod::NoTimeParam);
 
     // Stop simulation after max time
-    periodic_actions[PeriodicAction::EndSimulation] = SimulationPeriod(info, AC_max_steps,
+    post_step_actions[PeriodicAction::EndSimulation] = SimulationPeriod(info, AC_max_steps,
                                                                        AC_max_time);
+
+
 
     /////////////////////////////////////////////////////////////
     // Set up certain periodic actions and run them for i == 0 //
@@ -1319,6 +1333,15 @@ main(int argc, char** argv)
             acLogFromRootProc(pid, "Found NaN in initial state -> exiting\n");
             set_event(&events, SimulationEvent::NanDetected);
         }
+
+#if LFORCING
+
+        log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new forcing parameters\n");
+        auto forcing_params = generateForcingParams(info);
+        printForcingParams(forcing_params);
+        loadForcingParamsToGrid(forcing_params);
+#endif
+
     }
     else if (pid == 0) {
         // add newline to old diag_file from previous run
@@ -1365,9 +1388,26 @@ main(int argc, char** argv)
 
         int switch_accretion = (i < 1) ? 0 : 1;
 #endif
+
+        for (auto& [action, period] : pre_step_actions) {
+            if (i-1 != 0 && period.check(i-1, simulation_time)) {
+                switch (action) {
 #if LFORCING
-        const ForcingParams forcing_params = generateForcingParams(info);
+        	case PeriodicAction::GenerateForcing: {
+                    log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new forcing parameters\n");
+		    auto forcing_params = generateForcingParams(info);
+		    printForcingParams(forcing_params);
+        	    loadForcingParamsToGrid(forcing_params);
+                    break;
+                }
 #endif
+		default:
+                    log_from_root_proc_with_sim_progress(pid, "Unsupported periodic action pre sim step: %lu\n",(size_t)action);
+		    break;
+                }
+            }
+        }
+
 
         /////////////////////////////////////////////////////////////////////
         //                                                                 //
@@ -1383,16 +1423,13 @@ main(int argc, char** argv)
         // Generic parameters
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_current_time, simulation_time);
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, dt);
-        acGridSynchronizeStream(STREAM_DEFAULT);
 
         // Case-specific parameters
 #if LSINK
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_M_sink, sink_mass);
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_switch_accretion, switch_accretion);
 #endif
-#if LFORCING
-        loadForcingParamsToGrid(forcing_params);
-#endif
+        acGridSynchronizeStream(STREAM_DEFAULT);
 
         /////////////////////////////////////////////////////////////////////
         //                                                                 //
@@ -1417,7 +1454,7 @@ main(int argc, char** argv)
         //                                                                 //
         /////////////////////////////////////////////////////////////////////
 
-        for (auto& [action, period] : periodic_actions) {
+        for (auto& [action, period] : post_step_actions) {
             if (period.check(i, simulation_time)) {
 #if !(AC_VERBOSE)
                 // End progress logging (which step you are at) after first period.
@@ -1465,6 +1502,9 @@ main(int argc, char** argv)
                     set_event(&events, SimulationEvent::TimeLimitReached);
                     break;
                 }
+		default:
+                    log_from_root_proc_with_sim_progress(pid, "Unsupported periodic action post sim step: %lu\n",(size_t)action);
+		    break;
                 }
             }
         }
@@ -1510,14 +1550,14 @@ main(int argc, char** argv)
                     break;
                 }
                 case SimulationEvent::TimeLimitReached: {
-                    int max_step = periodic_actions[PeriodicAction::EndSimulation].step_period;
+                    int max_step = post_step_actions[PeriodicAction::EndSimulation].step_period;
                     if (i == max_step) {
                         log_from_root_proc_with_sim_progress(pid,
                                                              "Max time steps reached (%d == %d) -> "
                                                              "exiting\n",
                                                              i, max_step);
                     }
-                    AcReal max_time = periodic_actions[PeriodicAction::EndSimulation].time_period;
+                    AcReal max_time = post_step_actions[PeriodicAction::EndSimulation].time_period;
                     if (max_time > 0 && simulation_time >= max_time) {
                         log_from_root_proc_with_sim_progress(pid,
                                                              "Time limit reached (%e >= %e ) -> "
@@ -1663,7 +1703,10 @@ main(int argc, char** argv)
                     log_from_root_proc_with_sim_progress(pid, "Reloading config\n");
 
                     // Update periodic actions with new params
-                    for (auto& [_, action] : periodic_actions) {
+                    for (auto& [_, action] : pre_step_actions) {
+                        action.update(new_info);
+                    }
+                    for (auto& [_, action] : post_step_actions) {
                         action.update(new_info);
                     }
 
