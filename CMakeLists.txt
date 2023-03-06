@@ -69,6 +69,9 @@ if (USE_HIP)
     include_directories(/appl/lumi/SW/LUMI-21.12/common/EB/rocm/4.5.2/include/roctracer)
     link_directories(/appl/lumi/SW/LUMI-21.12/common/EB/rocm/4.5.2/lib)
 
+    include_directories(/opt/rocm/roctracer/include)
+    link_directories(/opt/rocm/roctracer/lib)
+
 
     find_package(hip)
 else ()
