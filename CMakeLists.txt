@@ -51,27 +51,13 @@ if (USE_HIP)
     set(GPU_TARGETS "gfx908" CACHE STRING "GPU target")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --offload-arch=gfx908 --offload-arch=gfx90a")
 
-    # Workarounds until we have first-class support for hip/rocm in CMake
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm) # Default path
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/hip /opt/rocm-5.0.0) # Triton
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/hip/include /opt/rocm-5.0.0) # Triton
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/llvm/bin)
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer)
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer/include)
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip/include)
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/roctracer/include)
+    # Rocm
+    #include_directories(/opt/rocm/include)
+    #link_directories(/opt/rocm/lib)
 
-    ## Triton
-	include_directories(/opt/rocm-5.0.0/roctracer/include)
-	link_directories(/opt/rocm-5.0.0/roctracer/lib)
-
-    ## LUMI
-    include_directories(/appl/lumi/SW/LUMI-21.12/common/EB/rocm/4.5.2/include/roctracer)
-    link_directories(/appl/lumi/SW/LUMI-21.12/common/EB/rocm/4.5.2/lib)
-
+    # Roctracer
     include_directories(/opt/rocm/roctracer/include)
     link_directories(/opt/rocm/roctracer/lib)
-
 
     find_package(hip)
 else ()
