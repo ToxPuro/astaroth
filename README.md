@@ -65,13 +65,13 @@ If you need a functioning and documented example of how to run Astaroth in stand
 Getting the modules and slurm commands right can be tricky because they vary system by system. See a list of systems and commands that have been tested to work below.
 
 ```
-# CSC Puhti (2023-01-24)
+# CSC Puhti (2023-02-28)
 module load gcc cuda openmpi cmake
 
 Currently Loaded Modules:
   1) csc-tools (S)   2) StdEnv   3) gcc/11.3.0   4) intel-oneapi-mkl/2022.1.0   5) cuda/11.7.0   6) openmpi/4.1.4   7) cmake/3.23.1
 
-srun --account=$PROJECT --gpus-per-node=4 --mem=24000 -t 00:14:59 -p gputest --ntasks-per-socket=2 --ntasks-per-node=4 -N 2
+srun --account=$PROJECT --gres=gpu:v100:4 --mem=24000 -t 00:14:59 -p gputest --ntasks-per-socket=2 --ntasks-per-node=4 -N 2
 ```
 
 ```
