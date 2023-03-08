@@ -26,6 +26,7 @@
  */
 #include "host_forcing.h"
 #include "simulation_rng.h"
+#include "simulation_control.h"
 
 #include "astaroth_utils.h"
 #include "errchk.h"
@@ -103,9 +104,9 @@ helical_forcing_k_generator(const AcReal kmax, const AcReal kmin)
         int min_squared_int = min_int * min_int;
         int max_squared_int = max_int * max_int;
 
-        for (int x = -max_int; x < max_int; x++) {
-            for (int y = -max_int; y < max_int; y++) {
-                for (int z = -max_int; z < max_int; z++) {
+        for (int x = -max_int; x <= max_int; x++) {
+            for (int y = -max_int; y <= max_int; y++) {
+                for (int z = -max_int; z <= max_int; z++) {
                     int dist_squared = x * x + y * y + z * z;
                     // Might be redundant, but for sanity's sake, check if the integer distance is
                     // equal to the square maximal integer
@@ -125,6 +126,7 @@ helical_forcing_k_generator(const AcReal kmax, const AcReal kmin)
     // Sample population
     size_t idx = k_distribution(get_rng());
     AcReal3 k  = pop[idx];
+    log_from_root_proc_with_sim_progress("{\"k\":{%lf,%lf,%lf}}\n", k.x, k.y, k.z);
     return k;
 }
 
