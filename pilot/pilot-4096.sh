@@ -8,10 +8,7 @@
 #SBATCH --time=00:59:00
 
 module purge
-
-module load CrayEnv
-module load PrgEnv-cray
-module load craype-accel-amd-gfx90a
+module load LUMI/22.08  partition/G
 module load rocm
 module load buildtools
 module load cray-python
@@ -19,6 +16,7 @@ module load cray-python
 export MPICH_GPU_SUPPORT_ENABLED=1
 export FI_CXI_DEFAULT_CQ_SIZE=300000
 
+# srun --cpu-bind=map_cpu:48,56,16,24,1,8,32,40 ./ac_run_mpi --config ./astaroth.conf --run-init-kernel
 srun --cpu-bind=map_cpu:48,56,16,24,1,8,32,40 ./ac_run_mpi --config ./astaroth.conf --from-pc-varfile=/flash/project_462000120/pilot_experiments/data/var.4096.dat # From varfile
 # srun --cpu-bind=map_cpu:48,56,16,24,1,8,32,40 ./ac_run_mpi --config ./astaroth.conf --from-snapshot # From snapshot
 # srun --cpu-bind=map_cpu:48,56,16,24,1,8,32,40 ./mpitest 64 64 64 # Autotest
