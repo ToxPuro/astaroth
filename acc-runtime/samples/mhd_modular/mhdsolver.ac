@@ -982,6 +982,6 @@ Kernel randomize() {
         i = uint64_t(globalVertexIdx.x) + globalVertexIdx.y * globalGridN.x + globalVertexIdx.z * globalGridN.x * globalGridN.y + field * globalGridN.x * globalGridN.y * globalGridN.z
         //mm = globalGridN.x * globalGridN.y * globalGridN.z
         //write(Field(field), 1e-5 * ((75 * i + 74)%mm) / mm)
-        write(Field(field), 1e-5 * ((75 * i + 74 + 3257*i*i + 6067*i*i*i + 7919*i*i*i*i)%999331) / 999331)
+        write(Field(field), 1e-5 * ((75 * i + 74 + 3257*i*i + 6067*i*i*i + 7919*i*i*i*i)%999331) / 999331 - 0.5)
     }
 }
