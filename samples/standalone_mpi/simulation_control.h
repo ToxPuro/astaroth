@@ -6,7 +6,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <string>
+// #include <string>
+#include <string.h>
 
 #include "astaroth_utils.h"
 
@@ -126,7 +127,6 @@ log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
     }
 }
 
-
 static void
 log_from_root_proc_with_sim_progress(std::string msg, ...)
 {
@@ -140,8 +140,6 @@ log_from_root_proc_with_sim_progress(std::string msg, ...)
         va_end(args);
     }
 }
-
-
 
 static void
 debug_log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
