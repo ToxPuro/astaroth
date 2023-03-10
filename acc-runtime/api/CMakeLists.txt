@@ -33,6 +33,7 @@ target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${M
 
 if (USE_HIP)
     target_link_libraries(acc-runtime-headers INTERFACE roctracer64)
+    target_link_libraries(acc-runtime-headers INTERFACE hiprand)
 endif()
 
 message("project source dir ${PROJECT_SOURCE_DIR}")

@@ -15,6 +15,12 @@ if (USE_HIP)
     # Roctracer
     include_directories(/opt/rocm/roctracer/include)
     link_directories(/opt/rocm/roctracer/lib)
+
+    # Rocrand
+    include_directories(/opt/rocm/hiprand/include)
+    include_directories(/opt/rocm/rocrand/include)
+    link_directories(/opt/rocm/hiprand/lib)
+    link_directories(/opt/rocm/rocrand/lib)
 endif()
 
 ## Project settings

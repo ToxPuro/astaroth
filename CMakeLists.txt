@@ -59,6 +59,12 @@ if (USE_HIP)
     include_directories(/opt/rocm/roctracer/include)
     link_directories(/opt/rocm/roctracer/lib)
 
+    # Rocrand
+    include_directories(/opt/rocm/hiprand/include)
+    include_directories(/opt/rocm/rocrand/include)
+    link_directories(/opt/rocm/hiprand/lib)
+    link_directories(/opt/rocm/rocrand/lib)
+
     find_package(hip)
 else ()
     enable_language(CUDA)
