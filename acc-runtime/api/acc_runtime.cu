@@ -198,6 +198,8 @@ IDX(const int3 idx)
 // the compiler to always pass arrays to functions as references before
 // re-enabling)
 
+#include "random.cuh"
+
 #include "user_kernels.h"
 
 typedef struct {
