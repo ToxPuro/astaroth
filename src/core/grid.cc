@@ -323,6 +323,16 @@ acGridInit(const AcMeshInfo info)
 #endif // AC_INTEGRATION_ENABLED
     };
 
+    // Random number generator
+    // const auto rr            = (int3){STENCIL_WIDTH, STENCIL_HEIGHT, STENCIL_DEPTH};
+    // const auto local_m       = acConstructInt3Param(AC_mx, AC_my, AC_mz, submesh_info);
+    // const auto global_m      = submesh_info.int3_params[AC_global_grid_n] + 2 * rr;
+    // const auto global_offset = submesh_info.int3_params[AC_multigpu_offset];
+    // acRandInit(1234UL, to_volume(local_m), to_volume(global_m), to_volume(global_offset));
+    const Volume local_m = to_volume(acConstructInt3Param(AC_mx, AC_my, AC_mz, submesh_info));
+    const size_t count   = local_m.x * local_m.y * local_m.z;
+    acRandInitAlt(1234UL, count, pid);
+
     grid.initialized   = true;
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
     acLogFromRootProc(pid, "acGridInit: Done creating default task graph\n");
@@ -338,6 +348,9 @@ acGridQuit(void)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(STREAM_ALL);
+
+    // Random number generator
+    acRandQuit();
 
     grid.default_tasks = nullptr;
 
