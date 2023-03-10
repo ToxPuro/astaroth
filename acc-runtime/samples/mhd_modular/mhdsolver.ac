@@ -977,11 +977,49 @@ Kernel reset() {
     }
 }
 
+/*
+xorshift(state) {
+    x = 1 + uint64_t(state)
+    x ^= x << 12
+    x ^= x >> 25
+    x ^= x << 27
+    return x * 0x2545F4914F6CDD1D
+}
+
 Kernel randomize() {
+    // N.B. scale: result in [-AC_rng_scale, AC_rng_scale] range
+    AC_rng_scale = 1e-5
+
     for field in 0:NUM_FIELDS {
-        i = uint64_t(globalVertexIdx.x) + globalVertexIdx.y * globalGridN.x + globalVertexIdx.z * globalGridN.x * globalGridN.y + field * globalGridN.x * globalGridN.y * globalGridN.z
-        //mm = globalGridN.x * globalGridN.y * globalGridN.z
-        //write(Field(field), 1e-5 * ((75 * i + 74)%mm) / mm)
-        write(Field(field), 1e-5 * ((75 * i + 74 + 3257*i*i + 6067*i*i*i + 7919*i*i*i*i)%999331) / 999331 - 0.5)
+        i = uint64_t(globalVertexIdx.x) + uint64_t(globalVertexIdx.y) * uint64_t(globalGridN.x) + uint64_t(globalVertexIdx.z) * uint64_t(globalGridN.x) * uint64_t(globalGridN.y) + uint64_t(field) * uint64_t(globalGridN.x) * uint64_t(globalGridN.y) * uint64_t(globalGridN.z)
+        //i += i*i + i*i*i + i*i*i*i + i*i*i*i*i // Add some non-linearity
+        
+        // Generate some entropy
+        for step in 0:10 {
+            i = xorshift(i)
+        }
+        for step in 0:(i % 40) {
+            i = xorshift(i)
+        }
+
+        // Simple linear congruential RNG
+        //write(Field(field), 2.0 * ((75 * i + 74 + 3257*i*i + 6067*i*i*i + 7919*i*i*i*i)%999331) / 999331 - 1.0)
+        
+        // xorshift*
+        //seed = uint64_t(globalGridN.x) * uint64_t(globalGridN.y) * uint64_t(globalGridN.z) * uint64_t(NUM_FIELDS)
+        r = 2.0 * xorshift(i) / UINT64_MAX - 1.0
+        write(Field(field), AC_rng_scale * r)
+    }
+}
+*/
+
+Kernel randomize() {
+    
+    // N.B. scale: result in (-AC_rng_scale, AC_rng_scale] range
+    AC_rng_scale = 1e-5
+
+    for field in 0:NUM_FIELDS {
+        r = 2.0 * rand_uniform() - 1.0
+        write(Field(field), AC_rng_scale * r)
     }
 }
