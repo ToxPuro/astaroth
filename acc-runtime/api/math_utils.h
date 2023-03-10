@@ -267,10 +267,6 @@ operator==(const uint3_64& a, const uint3_64& b)
 /*
  * Volume
  */
-typedef struct {
-  size_t x, y, z;
-} Volume;
-
 template <class T>
 static Volume
 to_volume(const T a)
