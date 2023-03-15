@@ -53,12 +53,9 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
-// IO configuration
-static const Field io_fields[]    = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO,
-                                     VTXBUF_AX,  VTXBUF_AY,  VTXBUF_AZ};
-static const size_t num_io_fields = ARRAY_SIZE(io_fields);
-static const char* snapshot_dir   = "output-snapshots";
-static const char* slice_dir      = "output-slices";
+// IO directories
+static const char* snapshot_dir = "output-snapshots";
+static const char* slice_dir    = "output-slices";
 
 #define fprintf(...)                                                                               \
     {                                                                                              \
@@ -715,6 +712,23 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
     MPI_Comm_rank(acGridMPIComm(), &pid);
     acLogFromRootProc(pid, "Reading varfile nn = (%d, %d, %d)\n", nn.x, nn.y, nn.z);
 
+    // IO configuration
+    const Field io_fields[] =
+    { VTXBUF_UUX,
+      VTXBUF_UUY,
+      VTXBUF_UUZ,
+      VTXBUF_LNRHO,
+#if LMAGNETIC
+      VTXBUF_AX,
+      VTXBUF_AY,
+      VTXBUF_AZ,
+#endif
+    };
+    const size_t num_io_fields = ARRAY_SIZE(io_fields);
+#if !LMAGNETIC
+    WARNING("LMAGNETIC was not set, magnetic field is not read read_varfile_to_mesh_and_setup");
+#endif
+
     acGridReadVarfileToMesh(file_path, io_fields, num_io_fields, nn, rr);
 
     // Scale the magnetic field
@@ -779,6 +793,24 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time)
     MPI_Comm_rank(acGridMPIComm(), &pid);
     acLogFromRootProc(pid, "Restarting from snapshot %d (step %d, tstep %g)\n", modstep, *step,
                       (double)(*simulation_time));
+
+    const Field io_fields[] =
+    { VTXBUF_UUX,
+      VTXBUF_UUY,
+      VTXBUF_UUZ,
+      VTXBUF_LNRHO,
+#if LMAGNETIC
+      VTXBUF_AX,
+      VTXBUF_AY,
+      VTXBUF_AZ,
+#endif
+    };
+    const size_t num_io_fields = ARRAY_SIZE(io_fields);
+#if !LMAGNETIC
+    WARNING("NOTE: LMAGNETIC was not set, magnetic field is not read in "
+            "read_file_to_mesh_and_setup. TODO improve: read the fields stored in the snapshot "
+            "from a file instead of hardcoding it like this.");
+#endif
 
     for (size_t i = 0; i < num_io_fields; ++i)
         acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);

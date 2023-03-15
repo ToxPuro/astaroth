@@ -16,7 +16,7 @@ hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (1)
 hostdefine LUPWD (1)
 hostdefine LSINK (0)
-hostdefine LBFIELD (1)
+hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
 hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // TODO: make an actual config parameter
 hostdefine R_PI (AC_REAL_PI)
@@ -966,9 +966,15 @@ Kernel scale() {
         write(Field(field), value(field))
     }
 
+#if LMAGNETIC
     write(VTXBUF_AX, AC_scaling_factor * value(VTXBUF_AX))
     write(VTXBUF_AY, AC_scaling_factor * value(VTXBUF_AY))
     write(VTXBUF_AZ, AC_scaling_factor * value(VTXBUF_AZ))
+#else
+    if vertexIdx.x == AC_mx/2 && vertexIdx.y == AC_my/2 && vertexIdx.z == AC_mz/2 {
+        print("WARNING: scale kernel called but LMAGNETIC was not enabled. Scale will have no effect.")
+    }
+#endif
 }
 
 Kernel reset() {
