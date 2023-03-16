@@ -518,6 +518,10 @@ gradient6_upwd(s) {
     return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
 }
 
+gradients_upwd(v) {
+    return Matrix(gradient6_upwd(v.x), gradient6_upwd(v.y), gradient6_upwd(v.z))
+}
+
 gradients(v) {
     return Matrix(gradient(v.x), gradient(v.y), gradient(v.z))
 }
@@ -652,6 +656,9 @@ momentum() {
 #endif
 
     mom = - gradients(UU) * vecvalue(UU)
+#if LUPWD
+          + gradients_upwd(UU) * vecvalue_abs(UU)
+#endif
 #if LENTROPY 
           - cs2 * ((1. / AC_cp_sound) * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO))
 #else
