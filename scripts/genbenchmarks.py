@@ -49,7 +49,7 @@ parser.add_argument('--dims', type=int, default=[256, 256, 256], nargs=3, help='
 parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without compiling or running. Prints os commands to stdout.')
 ## Preprocess arguments
 parser.add_argument('--implementations', type=str, nargs='+', choices=['implicit', 'explicit'], default=['implicit', 'explicit'], help='The list of implementations used in testing')
-parser.add_argument('--io-implementations', type=str, nargs='+', choices=['collective', 'distributed'], default=['collective', 'distributed'], help='The list of IO implementations used in testing')
+parser.add_argument('--io-implementations', type=str, nargs='+', choices=['collective', 'distributed'], default=['distributed'], help='The list of IO implementations used in testing')
 parser.add_argument('--max-threads-per-block-range', type=int, nargs=2, default=[0, 1024], help='The range for the maximum number of threads per block applied to launch bounds in testing (inclusive)')
 parser.add_argument('--cmakelistdir', type=str, default='.', help='Directory containing the project CMakeLists.txt')
 parser.add_argument('--use-hip', action='store_true', help='Compile with HIP support')
@@ -145,8 +145,8 @@ class System:
         print(self.additional_commands)
     
         # Load modules
-        print(f'module purge')
-        print(self.modules)
+        #print(f'module purge')
+        #print(self.modules)
 
 mahti = System(id='a100', account='project_2000403', partition='gpusmall', ngpus_per_node=4, gres='gpu:a100',
                modules='module load gcc/9.4.0 openmpi/4.1.2-cuda cuda cmake', use_hip=False, optimal_implementation=1, optimal_tpb=0)
@@ -161,12 +161,10 @@ export UCX_RNDV_SCHEME=get_zcopy
 export UCX_MAX_RNDV_RAILS=1''', optimal_implementation=1, optimal_tpb=0)
 triton = System(id='mi100', account='', partition='gpu-amd', ngpus_per_node=1, gres='',
                 modules='module load gcc bison flex cmake openmpi', use_hip=True, optimal_implementation=1, optimal_tpb=512)
-lumi = System(id='mi250x', account='project_462000120', partition='pilot', ngpus_per_node=8, gres='', additional_commands='''
+lumi = System(id='mi250x', account='project_462000120', partition='dev-g', ngpus_per_node=8, gres='', additional_commands='''
 ''', srun_params='--cpu-bind=map_cpu:48,56,16,24,1,8,32,40', modules='''
-        module load CrayEnv
-        module load PrgEnv-cray
-        module load craype-accel-amd-gfx90a
-        module load rocm
+        module load LUMI/22.08  partition/G
+        module load rocm 
         module load buildtools
         module load cray-python
         export MPICH_GPU_SUPPORT_ENABLED=1
@@ -510,8 +508,8 @@ if 'postprocess' in args.task_type:
     df = df.sort_values(by=['devices'])
     df = df.drop_duplicates(subset=['devices', 'nx', 'ny', 'nz'], keep='last')
     # Hack start (replace intra-node results with P2P instead of MPI)
-    df2 = pd.read_csv(f'{output_dir}/node-scaling-weak-{system.id}.csv', comment='#')
-    df['milliseconds90thpercentile'].iloc[0:len(df2.milliseconds.values)-1] = df2.milliseconds.values[:-1]
+    #df2 = pd.read_csv(f'{output_dir}/node-scaling-weak-{system.id}.csv', comment='#')
+    #df['milliseconds90thpercentile'].iloc[0:len(df2.milliseconds.values)-1] = df2.milliseconds.values[:-1]
     # Hack end
     df.to_csv(f'{output_dir}/scaling-weak-{system.id}.csv', index=False)
 
