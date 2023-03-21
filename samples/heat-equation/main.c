@@ -4,9 +4,9 @@
 #include "astaroth.h"
 #include "timer_hires.h"
 
-static const size_t nx = 128;
-static const size_t ny = 128;
-static const size_t nz = 128;
+static const size_t nx = 256;
+static const size_t ny = nx;
+static const size_t nz = nx;
 
 int
 main(void)
@@ -31,6 +31,7 @@ main(void)
     acRandInitAlt(1234UL, count, pid);
     acDeviceLaunchKernel(device, STREAM_DEFAULT, init, dims.n0, dims.n1);
     acDeviceLaunchKernel(device, STREAM_DEFAULT, solve, dims.n0, dims.n1);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, dt, 1e-3);
 
     acDeviceSynchronizeStream(device, STREAM_ALL);
     Timer t;
