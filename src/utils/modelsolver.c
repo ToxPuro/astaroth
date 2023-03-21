@@ -1057,6 +1057,11 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
 {
     mesh_info = &(mesh.info);
 
+#if LUPWD
+    WARNING("LUPWD incorrectly calculated in this version of modelsolver.c. Fixed in the latest "
+            "version of modelsolver.cc.");
+#endif
+
     // Setup built-in parameters
     // mesh_info->real_params[AC_inv_dsx] = (Scalar)(1.0) / mesh_info->real_params[AC_dsx];
     // mesh_info->real_params[AC_inv_dsy] = (Scalar)(1.0) / mesh_info->real_params[AC_dsy];
