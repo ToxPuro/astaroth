@@ -1,5 +1,5 @@
 ## Astaroth Utils
-add_library(modelsolver modelsolver.cc) # Change to modelsolver.c and enable -mavx below to use the pure-C model solution used since at least the Vaisala 2021 paper
+add_library(modelsolver modelsolver.cc) # Change to modelsolver-legacy-do-not-modify.c and enable -mavx below to use the pure-C model solution used since at least the Vaisala 2021 paper
 target_link_libraries(modelsolver astaroth_core)
 #target_compile_options(modelsolver PRIVATE "-mavx")
 
