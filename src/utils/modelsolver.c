@@ -463,16 +463,6 @@ vecvalue(const VectorData data)
     return (Vector){value(data.xdata), value(data.ydata), value(data.zdata)};
 }
 
-static inline Vector
-vecvalue_abs(const VectorData data)
-{
-    return (Vector){
-        fabs(value(data.xdata)),
-        fabs(value(data.ydata)),
-        fabs(value(data.zdata)),
-    };
-}
-
 static inline Matrix
 gradients(const VectorData data)
 {
@@ -644,26 +634,6 @@ upwd_der6(const VectorData uu, const ScalarData lnrho)
     Scalar uuz = fabs(vecvalue(uu)[2]);
     return uux * lnrho.upwind[0] + uuy * lnrho.upwind[1] + uuz * lnrho.upwind[2];
 }
-
-Vector
-gradient_upwd(const ScalarData scal)
-{
-    return (Vector){
-        scal.upwind[0],
-        scal.upwind[1],
-        scal.upwind[2],
-    };
-}
-
-Matrix
-gradients_upwd(const VectorData vec)
-{
-    return (Matrix){
-        .row[0] = gradient_upwd(vec.xdata),
-        .row[1] = gradient_upwd(vec.ydata),
-        .row[2] = gradient_upwd(vec.zdata),
-    };
-}
 #endif
 
 static inline Scalar
@@ -672,7 +642,7 @@ continuity(const VectorData uu, const ScalarData lnrho)
     return -dot(vecvalue(uu), gradient(lnrho))
 #if LUPWD
            // This is a corrective hyperdiffusion term for upwinding.
-           + dot(vecvalue_abs(uu), gradient_upwd(lnrho))
+           + upwd_der6(uu, lnrho)
 #endif
            - divergence(uu);
 }
@@ -749,9 +719,6 @@ momentum(const VectorData uu, const ScalarData lnrho
     const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
 #endif
     const Vector mom     = -mul(gradients(uu), vecvalue(uu)) - cs2 * gradient(lnrho)
-#if LUPWD
-                       + mul(gradients_upwd(uu), vecvalue_abs(uu))
-#endif
 #if LMAGNETIC
                        + inv_rho * cross(j, B)
 #endif
