@@ -367,6 +367,27 @@ acQueryKernels(void)
         printf("%s (%d)\n", kernel_names[i], i);
 }
 
+static inline void
+acPrintIntParam(const AcIntParam a, const AcMeshInfo info)
+{
+    printf("%s: %d\n", intparam_names[a], info.int_params[a]);
+}
+
+static inline void
+acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c, const AcMeshInfo info)
+{
+    acPrintIntParam(a, info);
+    acPrintIntParam(b, info);
+    acPrintIntParam(c, info);
+}
+
+static inline void
+acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info)
+{
+    const int3 vec = info.int3_params[a];
+    printf("{%s: (%d, %d, %d)}\n", int3param_names[a], vec.x, vec.y, vec.z);
+}
+
 /*
  * =============================================================================
  * Legacy interface
