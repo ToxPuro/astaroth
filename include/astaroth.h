@@ -1125,6 +1125,10 @@ AcResult acHostMeshRandomize(AcMesh* mesh);
 /** Destroys a mesh stored in host memory */
 AcResult acHostMeshDestroy(AcMesh* mesh);
 
+/** Sets the dimensions of the computational domain to (nx, ny, nz) and recalculates the built-in
+ * parameters derived from them (mx, my, mz, nx_min, and others) */
+AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

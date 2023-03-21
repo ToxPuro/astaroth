@@ -281,6 +281,15 @@ acHostUpdateBuiltinParams(AcMeshInfo* config)
 }
 
 AcResult
+acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info)
+{
+    info->int_params[AC_nx] = nx;
+    info->int_params[AC_ny] = ny;
+    info->int_params[AC_nz] = nz;
+    return acHostUpdateBuiltinParams(info);
+}
+
+AcResult
 acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 {
     mesh->info = info;

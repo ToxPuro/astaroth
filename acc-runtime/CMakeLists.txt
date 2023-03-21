@@ -43,9 +43,9 @@ add_compile_options(-DIMPLEMENTATION=${IMPLEMENTATION})
 add_compile_options(-DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
 if (USE_HIP)
 add_compile_options(-DAC_USE_HIP=1)
-add_compile_definitions(GPU_API_INCLUDES=" -I /opt/rocm/include -I /opt/rocm/roctracer/include ")
+add_compile_definitions(GPU_API_INCLUDES="/opt/rocm/include -I /opt/rocm/roctracer/include ")
 else()
-add_compile_definitions(GPU_API_INCLUDES=" -I ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
+add_compile_definitions(GPU_API_INCLUDES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
 endif()
 
 ## Subdirectories

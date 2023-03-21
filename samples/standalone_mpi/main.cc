@@ -53,12 +53,9 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
-// IO configuration
-static const Field io_fields[]    = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO,
-                                     VTXBUF_AX,  VTXBUF_AY,  VTXBUF_AZ};
-static const size_t num_io_fields = ARRAY_SIZE(io_fields);
-static const char* snapshot_dir   = "output-snapshots";
-static const char* slice_dir      = "output-slices";
+// IO directories
+static const char* snapshot_dir = "output-snapshots";
+static const char* slice_dir    = "output-slices";
 
 #define fprintf(...)                                                                               \
     {                                                                                              \
@@ -715,6 +712,23 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
     MPI_Comm_rank(acGridMPIComm(), &pid);
     acLogFromRootProc(pid, "Reading varfile nn = (%d, %d, %d)\n", nn.x, nn.y, nn.z);
 
+    // IO configuration
+    const Field io_fields[] =
+    { VTXBUF_UUX,
+      VTXBUF_UUY,
+      VTXBUF_UUZ,
+      VTXBUF_LNRHO,
+#if LMAGNETIC
+      VTXBUF_AX,
+      VTXBUF_AY,
+      VTXBUF_AZ,
+#endif
+    };
+    const size_t num_io_fields = ARRAY_SIZE(io_fields);
+#if !LMAGNETIC
+    WARNING("LMAGNETIC was not set, magnetic field is not read read_varfile_to_mesh_and_setup");
+#endif
+
     acGridReadVarfileToMesh(file_path, io_fields, num_io_fields, nn, rr);
 
     // Scale the magnetic field
@@ -779,6 +793,24 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time)
     MPI_Comm_rank(acGridMPIComm(), &pid);
     acLogFromRootProc(pid, "Restarting from snapshot %d (step %d, tstep %g)\n", modstep, *step,
                       (double)(*simulation_time));
+
+    const Field io_fields[] =
+    { VTXBUF_UUX,
+      VTXBUF_UUY,
+      VTXBUF_UUZ,
+      VTXBUF_LNRHO,
+#if LMAGNETIC
+      VTXBUF_AX,
+      VTXBUF_AY,
+      VTXBUF_AZ,
+#endif
+    };
+    const size_t num_io_fields = ARRAY_SIZE(io_fields);
+#if !LMAGNETIC
+    WARNING("NOTE: LMAGNETIC was not set, magnetic field is not read in "
+            "read_file_to_mesh_and_setup. TODO improve: read the fields stored in the snapshot "
+            "from a file instead of hardcoding it like this.");
+#endif
 
     for (size_t i = 0; i < num_io_fields; ++i)
         acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
@@ -1274,15 +1306,14 @@ main(int argc, char** argv)
     // It is enough to satisfy one of these conditions.
     // A value of zero means that the trigger is inactive.
 
-
     // These run before the simulation step
     std::map<PeriodicAction, SimulationPeriod> pre_step_actions;
     // Generate forcing
 #if LFORCING
-    pre_step_actions[PeriodicAction::GenerateForcing] = SimulationPeriod(info, AC_forcing_period_steps,
-		    								AC_forcing_period_t);
+    pre_step_actions[PeriodicAction::GenerateForcing] = SimulationPeriod(info,
+                                                                         AC_forcing_period_steps,
+                                                                         AC_forcing_period_t);
 #endif
-
 
     // These run after the simulation step
     std::map<PeriodicAction, SimulationPeriod> post_step_actions;
@@ -1293,20 +1324,19 @@ main(int argc, char** argv)
                                                               SimulationPeriod::NoTimeParam);
 
     // Write snapshots
-    AcReal snapshot_time_offset                     = simulation_time;
+    AcReal snapshot_time_offset                      = simulation_time;
     post_step_actions[PeriodicAction::WriteSnapshot] = SimulationPeriod(info, AC_bin_steps,
-                                                                       AC_bin_save_t,
-                                                                       snapshot_time_offset);
+                                                                        AC_bin_save_t,
+                                                                        snapshot_time_offset);
 
     // Write slices
-    post_step_actions[PeriodicAction::WriteSlices] = SimulationPeriod(info, AC_slice_steps,
-                                                                     SimulationPeriod::NoTimeParam);
+    post_step_actions
+        [PeriodicAction::WriteSlices] = SimulationPeriod(info, AC_slice_steps,
+                                                         SimulationPeriod::NoTimeParam);
 
     // Stop simulation after max time
     post_step_actions[PeriodicAction::EndSimulation] = SimulationPeriod(info, AC_max_steps,
-                                                                       AC_max_time);
-
-
+                                                                        AC_max_time);
 
     /////////////////////////////////////////////////////////////
     // Set up certain periodic actions and run them for i == 0 //
@@ -1336,12 +1366,12 @@ main(int argc, char** argv)
 
 #if LFORCING
 
-        log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new forcing parameters\n");
+        log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new forcing "
+                                                  "parameters\n");
         auto forcing_params = generateForcingParams(info);
-        //printForcingParams(forcing_params);
+        // printForcingParams(forcing_params);
         loadForcingParamsToGrid(forcing_params);
 #endif
-
     }
     else if (pid == 0) {
         // add newline to old diag_file from previous run
@@ -1390,24 +1420,27 @@ main(int argc, char** argv)
 #endif
 
         for (auto& [action, period] : pre_step_actions) {
-            if (i-1 != 0 && period.check(i-1, simulation_time)) {
+            if (i - 1 != 0 && period.check(i - 1, simulation_time)) {
                 switch (action) {
 #if LFORCING
-        	case PeriodicAction::GenerateForcing: {
-                    log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new forcing parameters\n");
-		    auto forcing_params = generateForcingParams(info);
-		    //printForcingParams(forcing_params);
-        	    loadForcingParamsToGrid(forcing_params);
+                case PeriodicAction::GenerateForcing: {
+                    log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new "
+                                                              "forcing parameters\n");
+                    auto forcing_params = generateForcingParams(info);
+                    // printForcingParams(forcing_params);
+                    loadForcingParamsToGrid(forcing_params);
                     break;
                 }
 #endif
-		default:
-                    log_from_root_proc_with_sim_progress(pid, "Unsupported periodic action pre sim step: %lu\n",(size_t)action);
-		    break;
+                default:
+                    log_from_root_proc_with_sim_progress(pid,
+                                                         "Unsupported periodic action pre sim "
+                                                         "step: %lu\n",
+                                                         (size_t)action);
+                    break;
                 }
             }
         }
-
 
         /////////////////////////////////////////////////////////////////////
         //                                                                 //
@@ -1502,9 +1535,12 @@ main(int argc, char** argv)
                     set_event(&events, SimulationEvent::TimeLimitReached);
                     break;
                 }
-		default:
-                    log_from_root_proc_with_sim_progress(pid, "Unsupported periodic action post sim step: %lu\n",(size_t)action);
-		    break;
+                default:
+                    log_from_root_proc_with_sim_progress(pid,
+                                                         "Unsupported periodic action post sim "
+                                                         "step: %lu\n",
+                                                         (size_t)action);
+                    break;
                 }
             }
         }

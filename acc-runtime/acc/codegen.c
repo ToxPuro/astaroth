@@ -784,7 +784,7 @@ generate_mem_accesses(void)
   sprintf(cmd, "gcc -Wshadow -I. ");
   strcat(cmd, "-I " ACC_RUNTIME_API_DIR " ");
   if (strlen(GPU_API_INCLUDES) > 0)
-    strcat(cmd, " " GPU_API_INCLUDES " ");
+    strcat(cmd, " -I " GPU_API_INCLUDES " ");
 #if AC_USE_HIP
   strcat(cmd, "-DAC_USE_HIP=1 ");
 #endif
