@@ -500,6 +500,16 @@ vecvalue(const VectorData data)
     return (Vector){value(data.xdata), value(data.ydata), value(data.zdata)};
 }
 
+static inline Vector
+vecvalue_abs(const VectorData data)
+{
+    return (Vector){
+        fabs(value(data.xdata)),
+        fabs(value(data.ydata)),
+        fabs(value(data.zdata)),
+    };
+}
+
 static inline Matrix
 gradients(const VectorData data)
 {
@@ -663,13 +673,24 @@ contract(const Matrix mat)
  */
 
 #if LUPWD
-Scalar
-upwd_der6(const VectorData uu, const ScalarData lnrho)
+Vector
+gradient_upwd(const ScalarData scal)
 {
-    Scalar uux = fabs(vecvalue(uu).x);
-    Scalar uuy = fabs(vecvalue(uu).y);
-    Scalar uuz = fabs(vecvalue(uu).z);
-    return uux * lnrho.upwind.x + uuy * lnrho.upwind.y + uuz * lnrho.upwind.z;
+    return (Vector){
+        scal.upwind.x,
+        scal.upwind.y,
+        scal.upwind.z,
+    };
+}
+
+Matrix
+gradients_upwd(const VectorData vec)
+{
+    Matrix mat;
+    mat.row[0] = gradient_upwd(vec.xdata);
+    mat.row[1] = gradient_upwd(vec.ydata);
+    mat.row[2] = gradient_upwd(vec.zdata);
+    return mat;
 }
 #endif
 
@@ -679,7 +700,7 @@ continuity(const VectorData uu, const ScalarData lnrho)
     return -dot(vecvalue(uu), gradient(lnrho))
 #if LUPWD
            // This is a corrective hyperdiffusion term for upwinding.
-           + upwd_der6(uu, lnrho)
+           + dot(vecvalue_abs(uu), gradient_upwd(lnrho))
 #endif
            - divergence(uu);
 }
@@ -736,14 +757,19 @@ momentum(const VectorData uu, const ScalarData lnrho
     const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
 #endif
     const Vector mom = -mul(gradients(uu), vecvalue(uu)) -
-                       cs2 * (((Scalar)(1.) / getReal(AC_cp_sound)) * gradient(ss) +
-                              gradient(lnrho)) +
-#if LMAGNETIC
-                       inv_rho * cross(j, B) +
+                       cs2 *
+                           (((Scalar)(1.) / getReal(AC_cp_sound)) * gradient(ss) + gradient(lnrho))
+#if LUPWD
+                       // Note: dangerous implementation, upwd calculation duplicated (w/ and w/o
+                       // entropy). Need to modify both if one is modified
+                       + mul(gradients_upwd(uu), vecvalue_abs(uu))
 #endif
-                       getReal(AC_nu_visc) *
-                           (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
-                            (Scalar)(2.) * mul(S, gradient(lnrho))) +
+#if LMAGNETIC
+                       + inv_rho * cross(j, B)
+#endif
+                       + getReal(AC_nu_visc) *
+                             (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
+                              (Scalar)(2.) * mul(S, gradient(lnrho))) +
                        getReal(AC_zeta) * gradient_of_divergence(uu);
     return mom;
 #else
@@ -755,13 +781,19 @@ momentum(const VectorData uu, const ScalarData lnrho
     const Vector B       = curl(aa);
     const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
 #endif
-    const Vector mom     = -mul(gradients(uu), vecvalue(uu)) - cs2 * gradient(lnrho) +
-#if LMAGNETIC
-                       inv_rho * cross(j, B) +
+    const Vector mom     = -mul(gradients(uu), vecvalue(uu)) -
+                       cs2 * gradient(lnrho)
+#if LUPWD
+                       // Note: dangerous implementation, upwd calculation duplicated (w/ and w/o
+                       // entropy). Need to modify both if one is modified
+                       + mul(gradients_upwd(uu), vecvalue_abs(uu))
 #endif
-                       getReal(AC_nu_visc) *
-                           (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
-                            (Scalar)(2.) * mul(S, gradient(lnrho))) +
+#if LMAGNETIC
+                       + inv_rho * cross(j, B)
+#endif
+                       + getReal(AC_nu_visc) *
+                             (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
+                              (Scalar)(2.) * mul(S, gradient(lnrho))) +
                        getReal(AC_zeta) * gradient_of_divergence(uu);
     return mom;
 #endif
