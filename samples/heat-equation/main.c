@@ -22,9 +22,14 @@ main(void)
     acDeviceLoadScalarUniform(device, STREAM_DEFAULT, dz, 2 * AC_REAL_PI / nz);
 
     AcMeshDims dims = acGetMeshDims(info);
+    acPrintIntParams(AC_mx, AC_my, AC_mz, info);
+    acPrintIntParams(AC_nx, AC_ny, AC_nz, info);
 
     // Init & dryrun
-    acDeviceLaunchKernel(device, STREAM_DEFAULT, init, dims.m0, dims.m1);
+    const size_t pid   = 0;
+    const size_t count = acVertexBufferSize(info);
+    acRandInitAlt(1234UL, count, pid);
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, init, dims.n0, dims.n1);
     acDeviceLaunchKernel(device, STREAM_DEFAULT, solve, dims.n0, dims.n1);
 
     acDeviceSynchronizeStream(device, STREAM_ALL);
@@ -32,8 +37,11 @@ main(void)
     timer_reset(&t);
     acDeviceLaunchKernel(device, STREAM_DEFAULT, solve, dims.n0, dims.n1);
     acDeviceSynchronizeStream(device, STREAM_ALL);
+    const double elems_per_second = (nx * ny * nz) / (1e-9 * timer_diff_nsec(t));
     timer_diff_print(t);
+    printf("%g M elements per second\n", elems_per_second / 1e6);
 
+    acRandQuit();
     acDeviceDestroy(device);
 
     return EXIT_SUCCESS;
