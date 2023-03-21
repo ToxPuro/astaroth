@@ -174,12 +174,3 @@ acLoadConfig(const char* config_path, AcMeshInfo* config)
 
     return uninitialized_config_val ? AC_FAILURE : AC_SUCCESS;
 }
-
-AcResult
-acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* config)
-{
-    config->int_params[AC_nx] = nx;
-    config->int_params[AC_ny] = ny;
-    config->int_params[AC_nz] = nz;
-    return acHostUpdateBuiltinParams(config);
-}
