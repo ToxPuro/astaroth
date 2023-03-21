@@ -718,13 +718,13 @@ momentum(const VectorData uu, const ScalarData lnrho
     const Vector B       = curl(aa);
     const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
 #endif
-    const Vector mom     = -mul(gradients(uu), vecvalue(uu)) - cs2 * gradient(lnrho) +
+    const Vector mom     = -mul(gradients(uu), vecvalue(uu)) - cs2 * gradient(lnrho)
 #if LMAGNETIC
-                       inv_rho * cross(j, B) +
+                       + inv_rho * cross(j, B)
 #endif
-                       getReal(AC_nu_visc) *
-                           (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
-                            (Scalar)(2.) * mul(S, gradient(lnrho))) +
+                       + getReal(AC_nu_visc) *
+                             (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
+                              (Scalar)(2.) * mul(S, gradient(lnrho))) +
                        getReal(AC_zeta) * gradient_of_divergence(uu);
     return mom;
 #endif
