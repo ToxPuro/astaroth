@@ -51,6 +51,9 @@ if (USE_HIP)
     set(GPU_TARGETS "gfx908" CACHE STRING "GPU target")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --offload-arch=gfx908 --offload-arch=gfx90a")
 
+    # Workaround for finding HIP on Triton
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)
+
     # Rocm
     #include_directories(/opt/rocm/include)
     #link_directories(/opt/rocm/lib)
