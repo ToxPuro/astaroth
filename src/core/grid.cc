@@ -59,6 +59,9 @@
 #include "math_utils.h"
 #include "timer_hires.h"
 
+#define PERFSTUBS_USE_TIMER
+#include "perfstubs_api/timer.h"
+
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
     Device device;
@@ -2040,6 +2043,8 @@ acGridDiskAccessSync(void)
         if (thread.joinable())
             thread.join();
 
+    threads.clear();
+
     acGridSynchronizeStream(STREAM_ALL);
     running = false;
     return AC_SUCCESS;
@@ -2078,6 +2083,10 @@ acGridDiskAccessLaunch(const AccessType type)
 
         const auto write_async = [](const int device_id, const int i, const AcMeshInfo info,
                                     const AcReal* host_buffer) {
+#if USE_PERFSTUBS
+	    PERFSTUBS_REGISTER_THREAD();
+            PERFSTUBS_TIMER_START(_write_timer, "acGridDiskAccessLaunch::write_async");
+#endif
             cudaSetDevice(device_id);
 
             char path[4096] = "";
@@ -2158,6 +2167,9 @@ acGridDiskAccessLaunch(const AccessType type)
 
             MPI_Type_free(&subarray);
 #endif
+#if USE_PERFSTUBS
+            PERFSTUBS_TIMER_STOP(_write_timer);
+#endif
         };
 
         threads.push_back(std::thread(write_async, device->id, i, info, host_buffer));
@@ -2208,6 +2220,12 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 
         const auto write_async = [filepath, offset](const AcMeshInfo info,
                                                     const AcReal* host_buffer) {
+
+#if USE_PERFSTUBS
+	    PERFSTUBS_REGISTER_THREAD();
+            PERFSTUBS_TIMER_START(_write_timer, "acGridWriteMeshToDiskLaunch::write_async");
+#endif
+
 
 #if USE_DISTRIBUTED_IO
             (void)offset; // Unused
@@ -2274,6 +2292,9 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
             ERRCHK_ALWAYS(MPI_File_close(&file) == MPI_SUCCESS);
 
             MPI_Type_free(&subarray);
+#endif
+#if USE_PERFSTUBS
+            PERFSTUBS_TIMER_STOP(_write_timer);
 #endif
         };
 
@@ -2352,6 +2373,11 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
         const auto write_async = [filepath, global_nn, global_pos_min, slice_volume,
                                   color](const AcReal* host_buffer, const size_t count,
                                          const int device_id) {
+#if USE_PERFSTUBS
+	    PERFSTUBS_REGISTER_THREAD();
+            PERFSTUBS_TIMER_START(_write_timer, "acGridWriteMeshToDiskLaunch::write_async");
+#endif
+
             cudaSetDevice(device_id);
             // Write to file
 
@@ -2432,6 +2458,10 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
                 MPI_Comm_free(&slice_communicator);
             }
 #endif
+	    
+#if USE_PERFSTUBS
+            PERFSTUBS_TIMER_STOP(_write_timer);
+#endif
         };
 
         // write_async(host_buffer, count, device->id); // Synchronous, non-threaded
@@ -2501,7 +2531,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
         //     fprintf(stderr, "Writing field %d, proc %d, to %s\n", field, pid, filepath);
 
         acGridSynchronizeStream(STREAM_ALL);
-        const auto write_async = [filepath, global_nn, global_pos_min, slice_volume,
+        const auto write_sync = [filepath, global_nn, global_pos_min, slice_volume,
                                   color](const AcReal* host_buffer, const size_t count,
                                          const int device_id) {
             cudaSetDevice(device_id);
@@ -2551,8 +2581,8 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
             }
         };
 
-        write_async(host_buffer, count, device->id); // Synchronous, non-threaded
-        // threads.push_back(std::move(std::thread(write_async, host_buffer, count, device->id)));
+        write_sync(host_buffer, count, device->id); // Synchronous, non-threaded
+        // threads.push_back(std::move(std::thread(write_sync, host_buffer, count, device->id)));
         // // Async, threaded
     }
     return AC_SUCCESS;

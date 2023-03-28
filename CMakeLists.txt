@@ -18,11 +18,16 @@ option(USE_DISTRIBUTED_IO "Use distributed IO (one file per process) instead of 
 option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" ON)
 option(BUILD_SHARED_LIBS "Build Astaroth as a collection of shared libraries instead of statically built modules" OFF)
 
+option(USE_PERFSTUBS "Build with perfstubs" OFF)
+option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
+
 if (USE_HIP)
     find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
     set(CMAKE_C_COMPILER ${CMAKE_HIP_COMPILER})
     set(CMAKE_CXX_COMPILER ${CMAKE_HIP_COMPILER})
 endif()
+
+
 
 ## Project settings
 project(astaroth C CXX)
@@ -97,6 +102,8 @@ else ()
     endif()
 endif()
 
+include(FetchContent)
+
 ## Global flags
 if (DOUBLE_PRECISION)
     add_definitions(-DAC_DOUBLE_PRECISION=1)
@@ -120,6 +127,10 @@ if (SINGLEPASS_INTEGRATION)
 endif()
 if (USE_DISTRIBUTED_IO)
     add_definitions(-DUSE_DISTRIBUTED_IO=1)
+endif()
+if (USE_PERFSTUBS)
+    add_definitions(-DUSE_PERFSTUBS=1)
+    include(${PROJECT_SOURCE_DIR}/cmake/configure_perfstubs.cmake)
 endif()
 
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")

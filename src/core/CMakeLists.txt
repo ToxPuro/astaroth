@@ -9,6 +9,12 @@ else()
     target_link_libraries(astaroth_core kernels CUDA::cudart CUDA::cuda_driver)
 endif()
 
+if (USE_PERFSTUBS)
+    find_package(Threads)
+    # Would like to define scope here, but the other target_link_libraries are plain...
+    target_link_libraries(astaroth_core perfstubs Threads::Threads)
+endif()
+
 ## Options
 if (MPI_ENABLED)
     target_link_libraries(astaroth_core MPI::MPI_C)
