@@ -59,8 +59,10 @@
 #include "math_utils.h"
 #include "timer_hires.h"
 
+#ifdef USE_PERFSTUBS
 #define PERFSTUBS_USE_TIMER
 #include "perfstubs_api/timer.h"
+#endif
 
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
