@@ -285,6 +285,22 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     return AC_SUCCESS;
 }
 
+AcResult acDeviceGetVBApointers(Device device, AcReal *vbapointer[2]) {
+#if USE_COMPRESSIBLE_MEMORY
+    printf("Compressible memory - vbapointers useless for offloading!\n");
+    return AC_FAILURE;
+#else
+    #if AC_ADJACENT_VERTEX_BUFFERS
+        vbapointer[0]=device->vba.in[0];
+        vbapointer[1]=device->vba.out[0];
+        return AC_SUCCESS;
+    #else
+        printf("Vertex buffers not adjacent - vbapointers useless for offloading!\n");
+        return AC_FAILURE;
+    #endif
+#endif
+}
+
 AcResult
 acDeviceDestroy(Device device)
 {
@@ -724,12 +740,11 @@ acDeviceLoadPlateBuffer(const Device device, int3 start, int3 end, const Stream 
     const int size_x=end.x-start.x, size_y=end.y-start.y, size_z=end.z-start.z;
     const int block_size = size_x*size_y*size_z;
     const int bufsiz = block_size*NUM_VTXBUF_HANDLES*sizeof(AcReal);
-
 /*
-printf("acDeviceLoadYZBuffer:start,end= %d %d %d %d %d %d \n", start.x, start.y, start.z, end.x, end.y, end.z);
-printf("acDeviceLoadYZBuffer:bufsiz,block_size= %u %u\n",bufsiz,block_size);
-printf("cDeviceLoadYZBuffer:device->yz_plate_buffer= %p \n", device->yz_plate_buffer);
-printf("cDeviceLoadYZBuffer:buffer= %p \n", buffer);
+printf("acDeviceLoadPlateBuffer:start,end= %d %d %d %d %d %d \n", start.x, start.y, start.z, end.x, end.y, end.z);
+printf("acDeviceLoadPlateBuffer:bufsiz,block_size= %u %u\n",bufsiz,block_size);
+printf("acDeviceLoadPlateBuffer:device->plate_buffer= %p \n", device->plate_buffers[plate]);
+printf("acDeviceLoadPlateBuffer:buffer= %p \n", buffer);
 */
     cudaSetDevice(device->id);
 
@@ -749,14 +764,12 @@ acDeviceStorePlateBuffer(const Device device, int3 start, int3 end, const Stream
     const int size_x=end.x-start.x, size_y=end.y-start.y, size_z=end.z-start.z;
     const int block_size = size_x*size_y*size_z;
     const int bufsiz = block_size*NUM_VTXBUF_HANDLES*sizeof(AcReal);
-
 /*
 printf("acDeviceStorePlateBuffer:start,end,type= %d %d %d %d %d %d %d\n", start.x, start.y, start.z, end.x, end.y, end.z, plate);
-printf("acDeviceLoadYZBuffer:bufsiz,block_size= %u %u\n",bufsiz,block_size);
-printf("cDeviceLoadYZBuffer:device->yz_plate_buffer= %p \n", device->yz_plate_buffer);
-printf("cDeviceLoadYZBuffer:buffer= %p \n", buffer);
+printf("acDeviceStorePlateBuffer:bufsiz,block_size= %u %u\n",bufsiz,block_size);
+printf("acDeviceStorePlateBuffer:device->plate_buffer= %p \n", device->plate_buffers[plate]);
+printf("acDeviceStorePlateBuffer:buffer= %p \n", buffer);
 */
-
     cudaSetDevice(device->id);
 
 //  packing from global memory; done by GPU kernel "packUnpackPlate".

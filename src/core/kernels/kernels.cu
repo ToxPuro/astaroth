@@ -64,7 +64,7 @@ acKernel(const KernelParameters params, VertexBufferArray vba)
     return AC_FAILURE;
 #endif
 }
-
+#if PACKED_DATA_TRANSFERS
 void
 acUnpackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, PlateType plate)
 {
@@ -82,4 +82,5 @@ acPackPlate(const Device device, int3 start, int3 end, int block_size, const Str
 
     packUnpackPlate<AC_D2H><<<bpg, tpb, 0, device->streams[stream]>>>(device->plate_buffers[plate], device->vba, start, end);
 }
+#endif
 

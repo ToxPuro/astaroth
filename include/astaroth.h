@@ -809,6 +809,9 @@ AcResult acNodeStoreIXYPlate(const Node node, const Stream stream, const int3 st
 AcResult acNodeLoadPlateXcomp(const Node node, const Stream stream, const int3 start, const int3 end, 
                               AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate);
 
+/** */
+AcResult acNodeGetVBApointers(Node* node_handle, AcReal *vbapointer[2]);
+
 /*
  * =============================================================================
  * Device interface
@@ -1003,6 +1006,8 @@ AcResult acDeviceStoreIXYPlate(const Device device, int3 start, int3 end, int sr
                                AcMesh *host_mesh);
 
 /** */
+AcResult acDeviceGetVBApointers(Device device, AcReal *vbapointer[2]);
+
 /*
  * =============================================================================
  * Helper functions

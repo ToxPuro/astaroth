@@ -208,14 +208,16 @@ createGridDims(const AcMeshInfo config)
 }
 
 AcResult
-acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
+acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle, int rank)
 {
     struct node_s* node = (struct node_s*)malloc(sizeof(node_s));  //sizeof(*node)
     node->id            = id;
     node->config        = node_config;
 
     // Get node->num_devices
-    ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&node->num_devices));
+    int count;
+    ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&count));
+    node->num_devices=count;
     if (node->num_devices < 1) {
         ERROR("No CUDA devices found!");
         return AC_FAILURE;
@@ -262,16 +264,24 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
     printf("SubgridDims n "); printInt3(node->subgrid.n); printf("\n");
 #endif
 
+#if AC_MULTIGPU_ENABLED != 1
+    int i = rank%count;
+printf("Device no= %d \n",i);
+    int ind=0; {
+#else
     // Initialize the devices
     // #pragma omp parallel for
-    for (int i = 0; i < node->num_devices; ++i) {
+    for (int i = 0; i < node->num_devices; ++i){
+        int ind=i;
+#endif
         const int3 multinode_offset                    = (int3){0, 0, 0}; // Placeholder
         const int3 multigpu_offset                     = (int3){0, 0, i * node->subgrid.n.z};
         subgrid_config.int3_params[AC_global_grid_n]   = node->grid.n;
         subgrid_config.int3_params[AC_multigpu_offset] = multinode_offset + multigpu_offset;
 
-        acDeviceCreate(i, subgrid_config, &node->devices[i]);
+        acDeviceCreate(i, subgrid_config, &node->devices[ind]);
     }
+//printf("VBA %p \n",node->devices[i]->vba.in[0]);
 
     /*
     // Enable peer access
@@ -302,6 +312,14 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
     acNodeSynchronizeStream(node, STREAM_ALL);
 
     *node_handle = node;
+    return AC_SUCCESS;
+}
+
+AcResult acNodeGetVBApointers(Node* node_handle, AcReal *vbapointer[2]) {
+    struct node_s* node=*node_handle;
+
+    acDeviceGetVBApointers(node->devices[0], vbapointer);
+//printf("Node. vbapointer= %p %p \n", vbapointer[0],vbapointer[1]);
     return AC_SUCCESS;
 }
 

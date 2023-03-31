@@ -65,3 +65,9 @@ if (BUILD_ACC_RUNTIME_LIBRARY)
 
     target_compile_features(acc-runtime PRIVATE cxx_std_17)
 endif()
+
+if (ADJACENT_VERTEX_BUFFERS)
+    add_definitions(-DAC_ADJACENT_VERTEX_BUFFERS=1)
+else ()
+    add_definitions(-DAC_ADJACENT_VERTEX_BUFFERS=0)
+endif ()

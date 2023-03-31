@@ -131,15 +131,34 @@ acVBACreate(const size_t count)
   VertexBufferArray vba;
 
   const size_t bytes = sizeof(vba.in[0][0]) * count;
+
+//#define ADJACENT_VERTEX_BUFFERS 1
+#if AC_ADJACENT_VERTEX_BUFFERS
+  const size_t allbytes = bytes*NUM_VTXBUF_HANDLES;
+  AcReal *allbuf_in, *allbuf_out;
+
+  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&allbuf_in, allbytes));
+  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&allbuf_out, allbytes));
+  acKernelFlush(allbuf_in, count*NUM_VTXBUF_HANDLES);
+  ERRCHK_CUDA_ALWAYS(cudaMemset((void*)allbuf_out, 0, allbytes));
+
+  vba.in[0]=allbuf_in; vba.out[0]=allbuf_out;
+  for (size_t i = 1; i < NUM_VTXBUF_HANDLES; ++i) {
+    vba.in [i]=vba.in [i-1]+count;
+    vba.out[i]=vba.out[i-1]+count;
+printf("vbas[i]= %p \n",vba.in[i],vba.out[i]);
+  }
+#else
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.in[i], bytes));
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
+printf("i,vbas[i]= %d %p %p\n",i,vba.in[i],vba.out[i]);
 
     // Set vba.in data to all-nan and vba.out to 0
     acKernelFlush(vba.in[i], count);
     ERRCHK_CUDA_ALWAYS(cudaMemset((void*)vba.out[i], 0, bytes));
   }
-
+#endif
   return vba;
 }
 
@@ -161,11 +180,13 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
   const int3 n = end - start;
 
   const dim3 tpb = getOptimalTBConfig(kernel, n, vba).tpb;
+  ERRCHK(tpb.x*tpb.y*tpb.z<=1024);
   const dim3 bpg((unsigned int)ceil(n.x / double(tpb.x)), //
                  (unsigned int)ceil(n.y / double(tpb.y)), //
                  (unsigned int)ceil(n.z / double(tpb.z)));
   const size_t smem = 0;
-
+//printf("before launch tpb,bpg=%d %d %d %d %d %d \n",tpb.x,tpb.y,tpb.z,bpg.x,bpg.y,bpg.z);
+//printf("before launch start,end=%d %d %d %d %d %d \n",start.x,start.y,start.z,end.x,end.y,end.z);
   kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
   ERRCHK_CUDA_KERNEL();
 
@@ -298,6 +319,12 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   printf("Autotuning kernel %p, block (%d, %d, %d)... ", kernel, dims.x, dims.y,
          dims.z);
   fflush(stdout);
+// suppress autotuning for the moment; blocksize seems to be limited to 256
+  return (TBConfig){
+    .kernel = kernel,
+    .dims = dims,
+    .tpb = (dim3){64,2,2}
+  };
 
   TBConfig c = {
       .kernel = kernel,
