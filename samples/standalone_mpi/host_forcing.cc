@@ -126,7 +126,7 @@ helical_forcing_k_generator(const AcReal kmax, const AcReal kmin)
     // Sample population
     size_t idx = k_distribution(get_rng());
     AcReal3 k  = pop[idx];
-    log_from_root_proc_with_sim_progress("{\"k\":{%lf,%lf,%lf}}\n", k.x, k.y, k.z);
+    //log_from_root_proc_with_sim_progress("{\"k\":[%lf,%lf,%lf]}\n", k.x, k.y, k.z);
     return k;
 }
 
