@@ -51,6 +51,11 @@
 #include "simulation_rng.h"
 #include "simulation_taskgraphs.h"
 
+#if AC_SOMA_INTEGRATION
+#include <soma/Client.hpp>
+#include <conduit/conduit.hpp>
+#endif
+
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
 // IO directories
@@ -968,6 +973,7 @@ enum class PeriodicAction {
     WriteSlices,
     EndSimulation,
     GenerateForcing,
+    PublishToSOMA,
 };
 
 // Enums for events
@@ -1106,7 +1112,7 @@ main(int argc, char** argv)
         create_output_directories();
 
         // Print config to stdout
-        acLogFromRootProc(pid, "Printing config to stdout\n");
+        acLogFromRootProc(pid, "Printi    post_step_actions[PeriodicAction::ng config to stdout\n");
         acPrintMeshInfo(info);
 
         acLogFromRootProc(pid, "Logging build configuration\n");
@@ -1295,6 +1301,15 @@ main(int argc, char** argv)
     // RELOAD config
     signal_files[SimulationEvent::ConfigReloadSignal] = UserSignalFile("RELOAD");
 
+#if AC_SOMA_INTEGRATION
+    /////////////////////////////
+    // Set up SOMA integration //
+    /////////////////////////////
+    
+    soma::CollectorHandle soma_channel;
+    //TODO: discover soma collector
+#endif
+
     /////////////////////////////
     // Define periodic actions //
     /////////////////////////////
@@ -1337,6 +1352,10 @@ main(int argc, char** argv)
     // Stop simulation after max time
     post_step_actions[PeriodicAction::EndSimulation] = SimulationPeriod(info, AC_max_steps,
                                                                         AC_max_time);
+
+#if AC_SOMA_INTEGRATION
+    post_step_actions[PeriodicAction::PublishToSOMA] = SimulationPeriod(20, 0);
+#endif
 
     /////////////////////////////////////////////////////////////
     // Set up certain periodic actions and run them for i == 0 //
@@ -1531,6 +1550,19 @@ main(int argc, char** argv)
                     write_slices(pid, i);
                     break;
                 }
+#if AC_SOMA_INTEGRATION
+		case PeriodicAction::PublishToSOMA: {
+                    log_from_root_proc_with_sim_progress(pid,
+                                                         "Periodic action: publishing data to SOMA\n");
+		    //Just some dummy data for now
+		    //TODO: write diagnostics
+		    conduit::Node data;
+		    node["pid"] = pid;
+		    node["dt"] = dt;
+		    soma_channel.soma_publish(node);
+		    break;
+		}
+#endif
                 case PeriodicAction::EndSimulation: {
                     set_event(&events, SimulationEvent::TimeLimitReached);
                     break;

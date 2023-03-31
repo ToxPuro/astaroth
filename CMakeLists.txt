@@ -18,8 +18,11 @@ option(USE_DISTRIBUTED_IO "Use distributed IO (one file per process) instead of 
 option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" ON)
 option(BUILD_SHARED_LIBS "Build Astaroth as a collection of shared libraries instead of statically built modules" OFF)
 
+
 option(USE_PERFSTUBS "Build with perfstubs" OFF)
 option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
+
+option(AC_RUN_MPI_SOMA_INTEGRATION "Build ac_run_mpi with support for SOMA integration" OFF)
 
 if (USE_HIP)
     find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
@@ -131,6 +134,10 @@ endif()
 if (USE_PERFSTUBS)
     add_definitions(-DUSE_PERFSTUBS=1)
     include(${PROJECT_SOURCE_DIR}/cmake/configure_perfstubs.cmake)
+endif()
+
+if (WITH_SOMA_INTEGRATION)
+
 endif()
 
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
