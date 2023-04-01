@@ -54,6 +54,7 @@
 #if AC_SOMA_INTEGRATION
 #include <soma/Client.hpp>
 #include <conduit/conduit.hpp>
+#include "simulation_soma_integration.h"
 #endif
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
@@ -1307,6 +1308,7 @@ main(int argc, char** argv)
     /////////////////////////////
     
     soma::CollectorHandle soma_channel;
+    soma_channel = discover_soma_collector();
     //TODO: discover soma collector
 #endif
 

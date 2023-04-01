@@ -1,3 +1,5 @@
+#ifndef SIMULATION_TASKGRAPHS_H
+#define SIMULATION_TASKGRAPHS_H
 #include <astaroth.h>
 
 // TODO: allow selecting single our doublepass here?

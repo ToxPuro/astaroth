@@ -1,3 +1,5 @@
+#ifndef SIMULATION_CONTROL_H
+#define SIMULATION_CONTROL_H
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
@@ -157,3 +159,4 @@ debug_log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
     (void)msg;
 #endif
 }
+#endif
