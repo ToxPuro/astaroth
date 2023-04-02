@@ -1,5 +1,3 @@
-#ifndef SIMULATION_TASKGRAPHS_H
-#define SIMULATION_TASKGRAPHS_H
 #include <astaroth.h>
 
 // TODO: allow selecting single our doublepass here?
@@ -29,9 +27,9 @@ AcTaskGraph*
 get_simulation_graph(int pid, Simulation sim)
 {
 
-    auto make_graph = [pid](Simulation sim) -> AcTaskGraph* {
+    auto make_graph = [pid](Simulation s) -> AcTaskGraph* {
         acLogFromRootProc(pid, "Creating task graph for simulation\n");
-        switch (sim) {
+        switch (s) {
         case Simulation::Shock_Singlepass_Solve: {
 #if LSHOCK
             // This still has to be behind a preprocessor feature, because e.g., VTXBUF_SHOCK is not

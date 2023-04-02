@@ -51,7 +51,7 @@
 #include "simulation_rng.h"
 #include "simulation_taskgraphs.h"
 
-#if AC_SOMA_INTEGRATION
+#ifdef AC_SOMA_INTEGRATION
 #include <soma/Client.hpp>
 #include <conduit/conduit.hpp>
 #include "simulation_soma_integration.h"
@@ -1003,6 +1003,7 @@ check_event(uint16_t events, SimulationEvent mask)
 int
 main(int argc, char** argv)
 {
+
     // Use multi-threaded MPI
     if (ac_MPI_Init_thread(MPI_THREAD_MULTIPLE) != AC_SUCCESS) {
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
@@ -1302,14 +1303,18 @@ main(int argc, char** argv)
     // RELOAD config
     signal_files[SimulationEvent::ConfigReloadSignal] = UserSignalFile("RELOAD");
 
-#if AC_SOMA_INTEGRATION
+#ifdef AC_SOMA_INTEGRATION
     /////////////////////////////
     // Set up SOMA integration //
     /////////////////////////////
     
+    acLogFromRootProc(pid, "Discovering SOMA collectors\n");
+
     soma::CollectorHandle soma_channel;
-    soma_channel = discover_soma_collector();
-    //TODO: discover soma collector
+    log_soma_config(pid);
+    soma_channel = discover_soma_collector("ofi+verbs", pid);
+#else
+    acLogFromRootProc(pid, "SOMA integration is OFF\n");
 #endif
 
     /////////////////////////////
@@ -1355,7 +1360,7 @@ main(int argc, char** argv)
     post_step_actions[PeriodicAction::EndSimulation] = SimulationPeriod(info, AC_max_steps,
                                                                         AC_max_time);
 
-#if AC_SOMA_INTEGRATION
+#ifdef AC_SOMA_INTEGRATION
     post_step_actions[PeriodicAction::PublishToSOMA] = SimulationPeriod(20, 0);
 #endif
 
@@ -1552,16 +1557,16 @@ main(int argc, char** argv)
                     write_slices(pid, i);
                     break;
                 }
-#if AC_SOMA_INTEGRATION
+#ifdef AC_SOMA_INTEGRATION
 		case PeriodicAction::PublishToSOMA: {
                     log_from_root_proc_with_sim_progress(pid,
                                                          "Periodic action: publishing data to SOMA\n");
 		    //Just some dummy data for now
 		    //TODO: write diagnostics
-		    conduit::Node data;
-		    node["pid"] = pid;
-		    node["dt"] = dt;
-		    soma_channel.soma_publish(node);
+		    conduit::Node appl_data_node;
+		    appl_data_node["pid"] = pid;
+		    appl_data_node["dt"] = dt;
+		    soma_channel.soma_publish(appl_data_node);
 		    break;
 		}
 #endif
