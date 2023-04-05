@@ -20,6 +20,10 @@
 
 #include "kernels/kernels.h"
 
+//#include <thrust/execution_policy.h>
+//#include <thrust/device_ptr.h>
+//#include <thrust/extrema.h>
+
 #define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
     AcResult acDevice_##ID(const Device device, const Stream stream, const int3 start,             \
                            const int3 end)                                                         \
@@ -787,6 +791,33 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
     return AC_SUCCESS;
 }
 
+/*
+AcMeshCell
+acDeviceMinElement(const Device device, const Stream stream, const Field field)
+{
+  auto sync_exec_policy = thrust::cuda::par.on(device->streams[stream]);
+ 
+  size_t field_length = acVertexBufferSize(device->local_config);
+  thrust::device_ptr<AcReal> buffer_start = thrust::device_pointer_cast(device->vba.in[(size_t)field]);
+  thrust::device_ptr<AcReal> buffer_end = thrust::device_pointer_cast(device->vba.in[(size_t)field]+field_length);
+
+  //thrust::device_ptr<AcReal> min_elem = thrust::min_element(sync_exec_policy, buffer_start, buffer_end);
+  thrust::device_ptr<AcReal> min_elem = thrust::min_element(buffer_start, buffer_end);
+  int idx = min_elem - buffer_start;
+
+  size_t mx = device->local_config.int_params[AC_mx];
+  size_t mxy = device->local_config.int_params[AC_mxy];
+  int3 location{idx%mx, (idx%mxy)/mx, idx/mxy};
+
+  //Still have to fetch the value
+  //AcMeshCell result{location, *min_elem};
+  AcMeshCell result{location, 0};
+
+  return result;
+}
+*/
+
+/*
 AcMeshCell
 acDeviceMinElement(const Device device, const Stream stream, const Field field)
 {
@@ -838,6 +869,7 @@ acDeviceMaxElement(const Device device, const Stream stream, const Field field)
 
   return result;
 }
+*/
 
 AcResult
 acDeviceVolumeCopy(const Device device, const Stream stream,                     //
