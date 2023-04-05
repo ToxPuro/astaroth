@@ -1561,11 +1561,9 @@ main(int argc, char** argv)
 		case PeriodicAction::PublishToSOMA: {
                     log_from_root_proc_with_sim_progress(pid,
                                                          "Periodic action: publishing data to SOMA\n");
-		    //Just some dummy data for now
-		    //TODO: write diagnostics
-		    conduit::Node appl_data_node;
-		    appl_data_node["pid"] = pid;
-		    appl_data_node["dt"] = dt;
+		    conduit::Node appl_data_node = query_local_diagnostics(pid, i, simulation_time);
+		    //appl_data_node["pid"] = pid;
+		    //appl_data_node["dt"] = dt;
 		    soma_channel.soma_publish(appl_data_node);
 		    break;
 		}

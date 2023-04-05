@@ -255,6 +255,9 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
         cudaStreamCreateWithPriority(&device->streams[i], cudaStreamNonBlocking, i);
     }
 
+    // cuBLAS
+    cublasCreate(&device->cublas_handle);
+
     // Memory
     // VBA in/out
     device->vba = acVBACreate(acVertexBufferSize(device_config));
@@ -316,6 +319,9 @@ acDeviceDestroy(Device device)
     for (int i = 0; i < NUM_STREAMS; ++i) {
         cudaStreamDestroy(device->streams[i]);
     }
+
+    // cuBLAS
+    cublasDestroy(device->cublas_handle);
 
     // Destroy Device
     free(device);
@@ -781,6 +787,58 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
     return AC_SUCCESS;
 }
 
+AcMeshCell
+acDeviceMinElement(const Device device, const Stream stream, const Field field)
+{
+  //auto sync_exec_policy = thrust::cuda::par.on(device->streams[stream]);
+ 
+  size_t field_length = acVertexBufferSize(device->local_config);
+  AcReal *buffer = device->vba.in[field];
+  
+  // Boilerplate cuBLAS
+
+  int idx = 0;
+  cublasIdamin(device->cublas_handle, field_length, buffer, 1, &idx);
+
+  //cuBLAS uses Fortran 1-based indexes
+  idx--;
+
+  size_t mx = device->local_config.int_params[AC_mx];
+  size_t mxy = device->local_config.int_params[AC_mxy];
+  int3 location{idx%mx, (idx%mxy)/mx, idx/mxy};
+
+  //Since this is a terrible interface, we still have to fetch the value based on the index
+  AcMeshCell result{location,0};
+  cudaMemcpy(&result.value, &buffer[idx], sizeof(AcReal), cudaMemcpyDeviceToHost);
+
+  return result;
+}
+
+AcMeshCell
+acDeviceMaxElement(const Device device, const Stream stream, const Field field)
+{
+  size_t field_length = acVertexBufferSize(device->local_config);
+  AcReal *buffer = device->vba.in[field];
+  
+  // Boilerplate cuBLAS
+
+  int idx = 0;
+  cublasIdamax(device->cublas_handle, field_length, buffer, 1, &idx);
+
+  //cuBLAS uses Fortran 1-based indexes
+  idx--;
+
+  size_t mx = device->local_config.int_params[AC_mx];
+  size_t mxy = device->local_config.int_params[AC_mxy];
+  int3 location{idx%mx, (idx%mxy)/mx, idx/mxy};
+
+  //Since this is a terrible interface, we still have to fetch the value based on the index
+  AcMeshCell result{location,0};
+  cudaMemcpy(&result.value, &buffer[idx], sizeof(AcReal), cudaMemcpyDeviceToHost);
+
+  return result;
+}
+
 AcResult
 acDeviceVolumeCopy(const Device device, const Stream stream,                     //
                    const AcReal* in, const int3 in_offset, const int3 in_volume, //
@@ -790,3 +848,4 @@ acDeviceVolumeCopy(const Device device, const Stream stream,                    
     return acKernelVolumeCopy(device->streams[stream], in, in_offset, in_volume, out, out_offset,
                               out_volume);
 }
+

@@ -3,10 +3,11 @@ add_library(astaroth_core device.cc grid.cc task.cc node.cc astaroth.cc astaroth
 
 if (USE_HIP)
     find_package(hip)
-    target_link_libraries(astaroth_core kernels hip::host)
+    find_package(rocblas)
+    target_link_libraries(astaroth_core kernels hip::host roc::rocblas)
 else()
     find_package(CUDAToolkit)
-    target_link_libraries(astaroth_core kernels CUDA::cudart CUDA::cuda_driver)
+    target_link_libraries(astaroth_core kernels CUDA::cudart CUDA::cuda_driver CUDA::cublas)
 endif()
 
 if (USE_PERFSTUBS)

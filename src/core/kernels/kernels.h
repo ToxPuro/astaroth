@@ -19,6 +19,8 @@
 #pragma once
 #include "astaroth.h"
 
+#include <cublas_v2.h>
+
 #if AC_MPI_ENABLED
 #include <mpi.h>
 #include <stdbool.h>
@@ -32,6 +34,9 @@ struct device_s {
 
     // Concurrency
     cudaStream_t streams[NUM_STREAMS];
+
+    // cuBLAS handle
+    cublasHandle_t cublas_handle;
 
     // Memory
     VertexBufferArray vba;

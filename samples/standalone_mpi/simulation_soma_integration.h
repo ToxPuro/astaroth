@@ -2,6 +2,7 @@
 #define SIMULATION_SOMA_INTEGRATION_H
 
 #include <soma/Client.hpp>
+#include <conduit/conduit.hpp>
 #include <string>
 #include <map>
 
@@ -26,7 +27,9 @@ void print_soma_addressbook(const soma_addressbook &lookup);
 void log_soma_config(const soma_addressbook &lookup, int pid);
 void log_soma_config(int pid);
 
-soma::CollectorHandle
-discover_soma_collector(const std::string &protocol, int pid);
+soma::CollectorHandle discover_soma_collector(const std::string &protocol, int pid);
+
+// Data publishing
+conduit::Node query_local_diagnostics(const int pid, const int timestep, const AcReal simulation_time);
 
 #endif

@@ -10,6 +10,9 @@
 #define OJL_FILE_IMPLEMENTATION
 #include "ojl_file.hpp"
 
+#define FMT_HEADER_ONLY
+#include "fmt/format.h"
+
 std::vector<soma_address>
 parse_address_file(std::string fpath)
 {
@@ -194,3 +197,50 @@ discover_soma_collector(const std::string &protocol,
     return client.makeCollectorHandle(address, provider_id,
 		    	              soma::UUID::from_string(collector.c_str()));
 }
+
+
+// Data collection
+conduit::Node
+query_local_diagnostics(const int pid, const int timestep, const AcReal simulation_time)
+{
+    conduit::Node msg;
+    msg["pid"]               = pid;
+    msg["timestep"]          = timestep;
+    msg["simulation_time"]   = simulation_time;
+    msg["local_mass"] = 0;
+
+    //Local min reductions
+    for (size_t i = 0; i < NUM_FIELDS;i++){
+	std::string field_name = field_names[i];
+	std::string val_key = fmt::format("{}/min/value", field_name);
+	std::string loc_key = fmt::format("{}/min/location", field_name);
+
+	//device: grid.device
+	//stream: STREAM_DEFAULT (or another stream)
+	//rtype: MIN
+	//vtxbuf_handle: (the id?)
+	//local_result: a float
+	Device device = acGridGetDevice();
+	AcMeshCell res = acDeviceMinElement(device, STREAM_DEFAULT, Field(i));
+
+	std::array<size_t,3> loc{0,0,0};
+
+	msg[val_key] = res.value;
+	msg[loc_key].set((int *)&res.location, 3);
+	
+	res = acDeviceMaxElement(device, STREAM_DEFAULT, Field(i));
+        val_key = fmt::format("{}/max/value", field_name);
+	loc_key = fmt::format("{}/max/location", field_name);
+
+	msg[val_key] = res.value;
+	msg[loc_key].set((int *)&res.location, 3);
+
+        val_key = fmt::format("{}/nan/value", field_name);
+        loc_key = fmt::format("{}/nan/location", field_name);
+	msg[val_key] = false;
+	msg[loc_key].set(loc.data(), 3);
+    }
+    return msg;
+}
+
+

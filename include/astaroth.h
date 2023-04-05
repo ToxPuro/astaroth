@@ -31,6 +31,11 @@ typedef struct {
     AcMeshInfo info;
 } AcMesh;
 
+typedef struct {
+    int3   location;
+    AcReal value;
+} AcMeshCell;
+
 #define STREAM_0 (0)
 #define STREAM_1 (1)
 #define STREAM_2 (2)
@@ -1109,6 +1114,13 @@ AcResult acDeviceReduceVecScal(const Device device, const Stream stream_type,
                                const ReductionType rtype, const VertexBufferHandle vtxbuf0,
                                const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
                                const VertexBufferHandle vtxbuf3, AcReal* result);
+
+/** */
+AcMeshCell acDeviceMinElement(const Device device, const Stream stream, const Field field);
+
+/** */
+AcMeshCell acDeviceMaxElement(const Device device, const Stream stream, const Field field);
+
 /** */
 AcResult acDeviceRunMPITest(void);
 
