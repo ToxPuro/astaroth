@@ -215,15 +215,8 @@ query_local_diagnostics(const int pid, const int timestep, const AcReal simulati
 	std::string val_key = fmt::format("{}/min/value", field_name);
 	std::string loc_key = fmt::format("{}/min/location", field_name);
 
-	//device: grid.device
-	//stream: STREAM_DEFAULT (or another stream)
-	//rtype: MIN
-	//vtxbuf_handle: (the id?)
-	//local_result: a float
-	Device device = acGridGetDevice();
+	Device device  = acGridGetDevice();
 	AcMeshCell res = acDeviceMinElement(device, STREAM_DEFAULT, Field(i));
-
-	std::array<size_t,3> loc{0,0,0};
 
 	msg[val_key] = res.value;
 	msg[loc_key].set((int *)&res.location, 3);
@@ -235,10 +228,11 @@ query_local_diagnostics(const int pid, const int timestep, const AcReal simulati
 	msg[val_key] = res.value;
 	msg[loc_key].set((int *)&res.location, 3);
 
+	AcMeshBooleanSearchResult nan_res = acDeviceFirstNANElement(device, STREAM_DEFAULT, Field(i));
         val_key = fmt::format("{}/nan/value", field_name);
         loc_key = fmt::format("{}/nan/location", field_name);
-	msg[val_key] = false;
-	msg[loc_key].set(loc.data(), 3);
+	msg[val_key] = nan_res.value;
+	msg[loc_key].set((int *)&nan_res.location, 3);
     }
     return msg;
 }

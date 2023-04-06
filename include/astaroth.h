@@ -36,6 +36,11 @@ typedef struct {
     AcReal value;
 } AcMeshCell;
 
+typedef struct {
+    int3 location;
+    bool value;
+} AcMeshBooleanSearchResult;
+
 #define STREAM_0 (0)
 #define STREAM_1 (1)
 #define STREAM_2 (2)
@@ -1120,6 +1125,9 @@ AcMeshCell acDeviceMinElement(const Device device, const Stream stream, const Fi
 
 /** */
 AcMeshCell acDeviceMaxElement(const Device device, const Stream stream, const Field field);
+
+/** */
+AcMeshBooleanSearchResult acDeviceFirstNANElement(const Device device, const Stream stream, const Field field);
 
 /** */
 AcResult acDeviceRunMPITest(void);
