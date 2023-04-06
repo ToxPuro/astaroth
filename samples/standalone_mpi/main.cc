@@ -1361,7 +1361,7 @@ main(int argc, char** argv)
                                                                         AC_max_time);
 
 #ifdef AC_SOMA_INTEGRATION
-    post_step_actions[PeriodicAction::PublishToSOMA] = SimulationPeriod(20, 0);
+    post_step_actions[PeriodicAction::PublishToSOMA] = SimulationPeriod(5, 0);
 #endif
 
     /////////////////////////////////////////////////////////////
@@ -1561,9 +1561,7 @@ main(int argc, char** argv)
 		case PeriodicAction::PublishToSOMA: {
                     log_from_root_proc_with_sim_progress(pid,
                                                          "Periodic action: publishing data to SOMA\n");
-		    conduit::Node appl_data_node = query_local_diagnostics(pid, i, simulation_time);
-		    //appl_data_node["pid"] = pid;
-		    //appl_data_node["dt"] = dt;
+		    conduit::Node appl_data_node = query_local_diagnostics(pid, info, i, simulation_time);
 		    soma_channel.soma_publish(appl_data_node);
 		    break;
 		}

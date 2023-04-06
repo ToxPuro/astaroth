@@ -82,6 +82,7 @@ typedef int Stream;
     FUNC(RTYPE_MAX)                                                                                \
     FUNC(RTYPE_MIN)                                                                                \
     FUNC(RTYPE_SUM)                                                                                \
+    FUNC(RTYPE_EXP_SUM)                                                                                \
     FUNC(RTYPE_RMS)                                                                                \
     FUNC(RTYPE_RMS_EXP)                                                                            \
     FUNC(RTYPE_ALFVEN_MAX)                                                                         \

@@ -201,13 +201,21 @@ discover_soma_collector(const std::string &protocol,
 
 // Data collection
 conduit::Node
-query_local_diagnostics(const int pid, const int timestep, const AcReal simulation_time)
+query_local_diagnostics(const int pid, const AcMeshInfo info, const int timestep, const AcReal simulation_time)
 {
     conduit::Node msg;
     msg["pid"]               = pid;
     msg["timestep"]          = timestep;
     msg["simulation_time"]   = simulation_time;
-    msg["local_mass"] = 0;
+
+    Device device  = acGridGetDevice();
+
+    //Synchronous call
+    AcReal local_mass = 0;
+    acDeviceReduceScalNotAveraged(device, STREAM_DEFAULT, RTYPE_EXP_SUM, Field(VTXBUF_LNRHO), &local_mass);
+
+    AcReal dU = info.real_params[AC_dsx]*info.real_params[AC_dsy]*info.real_params[AC_dsz];
+    msg["local_mass"] = local_mass*dU;
 
     //Local min reductions
     for (size_t i = 0; i < NUM_FIELDS;i++){
@@ -215,7 +223,6 @@ query_local_diagnostics(const int pid, const int timestep, const AcReal simulati
 	std::string val_key = fmt::format("{}/min/value", field_name);
 	std::string loc_key = fmt::format("{}/min/location", field_name);
 
-	Device device  = acGridGetDevice();
 	AcMeshCell res = acDeviceMinElement(device, STREAM_DEFAULT, Field(i));
 
 	msg[val_key] = res.value;

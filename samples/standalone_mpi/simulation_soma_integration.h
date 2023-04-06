@@ -30,6 +30,6 @@ void log_soma_config(int pid);
 soma::CollectorHandle discover_soma_collector(const std::string &protocol, int pid);
 
 // Data publishing
-conduit::Node query_local_diagnostics(const int pid, const int timestep, const AcReal simulation_time);
+conduit::Node query_local_diagnostics(const int pid, const AcMeshInfo info, const int timestep, const AcReal simulation_time);
 
 #endif

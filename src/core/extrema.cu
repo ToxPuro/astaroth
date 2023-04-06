@@ -37,7 +37,6 @@ acDeviceMaxElement(const Device device, const Stream stream, const Field field)
  
   size_t field_length = acVertexBufferSize(device->local_config);
   thrust::device_ptr<AcReal> buffer_start = thrust::device_pointer_cast(device->vba.in[(size_t)field]);
-  printf("Field length: %lu\n", field_length);
   thrust::device_ptr<AcReal> buffer_end = thrust::device_pointer_cast(device->vba.in[(size_t)field]+field_length);
 
   thrust::device_ptr<AcReal> max_elem = thrust::max_element(sync_exec_policy, buffer_start, buffer_end);

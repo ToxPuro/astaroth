@@ -20,10 +20,6 @@
 
 #include "kernels/kernels.h"
 
-//#include <thrust/execution_policy.h>
-//#include <thrust/device_ptr.h>
-//#include <thrust/extrema.h>
-
 #define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
     AcResult acDevice_##ID(const Device device, const Stream stream, const int3 start,             \
                            const int3 end)                                                         \

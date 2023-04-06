@@ -1672,8 +1672,8 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN) {
         op = MPI_MIN;
     }
-    else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM ||
-             rtype == RTYPE_ALFVEN_RMS) {
+    else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM || 
+             rtype == RTYPE_EXP_SUM || rtype == RTYPE_ALFVEN_RMS) {
         op = MPI_SUM;
     }
     else {

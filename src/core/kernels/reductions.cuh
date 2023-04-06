@@ -39,6 +39,12 @@ map_square(const AcReal& a)
 }
 
 static __device__ inline AcReal
+map_exp(const AcReal& a)
+{
+    return exp(a);
+}
+
+static __device__ inline AcReal
 map_exp_square(const AcReal& a)
 {
     return exp(a) * exp(a);
@@ -48,6 +54,13 @@ static __device__ inline AcReal
 map_length_vec(const AcReal& a, const AcReal& b, const AcReal& c)
 {
     return sqrt(a * a + b * b + c * c);
+}
+
+static __device__ inline AcReal
+map_exp_length_vec(const AcReal& a, const AcReal& b, const AcReal& c)
+{
+    // TODO: not sure that this makes sense
+    return exp(sqrt(a * a + b * b + c * c));
 }
 
 static __device__ inline AcReal
@@ -278,6 +291,9 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
         case RTYPE_SUM:
             map<map_value><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
             break;
+	case RTYPE_EXP_SUM:
+            map<map_exp><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
+            break;
         case RTYPE_RMS:
             map<map_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
             break;
@@ -306,6 +322,7 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
             reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
         case RTYPE_SUM: /* Fallthrough */
+        case RTYPE_EXP_SUM: /* Fallthrough */
         case RTYPE_RMS: /* Fallthrough */
         case RTYPE_RMS_EXP:
             reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(in, count, out);
@@ -367,6 +384,11 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
                                                                                vtxbuf2, start, end,
                                                                                out);
             break;
+        case RTYPE_EXP_SUM:
+            map_vec<map_exp_length_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
+                                                                               vtxbuf2, start, end,
+                                                                               out);
+            break;
         case RTYPE_RMS:
             map_vec<map_square_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
                                                                                vtxbuf2, start, end,
@@ -399,6 +421,7 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
             reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
         case RTYPE_SUM: /* Fallthrough */
+        case RTYPE_EXP_SUM: /* Fallthrough */
         case RTYPE_RMS: /* Fallthrough */
         case RTYPE_RMS_EXP:
             reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(in, count, out);
