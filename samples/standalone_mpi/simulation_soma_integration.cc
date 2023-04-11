@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "astaroth.h"
+#include "astaroth_utils.h"
 #include "simulation_soma_integration.h"
 
 #include <thallium.hpp>
@@ -184,16 +185,25 @@ discover_soma_collector(const std::string &protocol,
 
     // Sync with SOMA server
     MPI_Barrier(MPI_COMM_WORLD);
+    acLogFromRootProc(pid, "Parsing SOMA address files\n");
     soma_addressbook lookup = discover_soma_addressbook();
+    acLogFromRootProc(pid, "Done parsing SOMA address files\n");
+    acLogFromRootProc(pid, "Getting server index\n");
     size_t server_idx       = get_soma_collector_idx(pid);
-    std::string address = lookup.addresses[server_idx].address;
+    acLogFromRootProc(pid, "Server index is: %lu\n", server_idx);
+    std::string address     = lookup.addresses[server_idx].address;
     std::string collector   = lookup.collectors[server_idx];
+    acLogFromRootProc(pid, "Address is: %s\n", address.c_str());
+    acLogFromRootProc(pid, "Collector ID is: %s\n", collector.c_str());
 
     //Assume provider id is 0, since file does not specify it
     size_t provider_id = 0;
 
+    acLogFromRootProc(pid, "Creating thallium engine\n");
     thallium::engine engine(protocol, THALLIUM_CLIENT_MODE);
+    acLogFromRootProc(pid, "Creating soma client\n");
     soma::Client client(engine);
+    acLogFromRootProc(pid, "Creating collector handle\n");
     return client.makeCollectorHandle(address, provider_id,
 		    	              soma::UUID::from_string(collector.c_str()));
 }

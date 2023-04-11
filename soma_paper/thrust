@@ -1,0 +1,17 @@
+rocthrust on LUMI
+
+module load spack/22.08-2
+module load rocthrust
+
+
+Conduit
+module load blt
+
+Astaroth
+Conduit_DIR=... soma_DIR=...
+
+soma installs the cmake config in share/cmake.
+Conduit installs the cmake config in lib/cmake.
+
+Are both standard? I usually see lib/cmake
+

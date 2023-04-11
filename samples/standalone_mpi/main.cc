@@ -1308,11 +1308,14 @@ main(int argc, char** argv)
     // Set up SOMA integration //
     /////////////////////////////
     
-    acLogFromRootProc(pid, "Discovering SOMA collectors\n");
+    acLogFromRootProc(pid, "\nDiscovering SOMA collectors\n");
 
     soma::CollectorHandle soma_channel;
     log_soma_config(pid);
-    soma_channel = discover_soma_collector("ofi+verbs", pid);
+    //soma_channel = discover_soma_collector("ofi+verbs", pid);
+    soma_channel = discover_soma_collector("ofi+cxi", pid);
+    //soma_channel = discover_soma_collector("na+sm", pid);
+    acLogFromRootProc(pid, "SOMA discovery DONE\n");
 #else
     acLogFromRootProc(pid, "SOMA integration is OFF\n");
 #endif
@@ -1562,6 +1565,7 @@ main(int argc, char** argv)
                     log_from_root_proc_with_sim_progress(pid,
                                                          "Periodic action: publishing data to SOMA\n");
 		    conduit::Node appl_data_node = query_local_diagnostics(pid, info, i, simulation_time);
+		    //log_from_root_proc_with_sim_progress("SOMA data:\n%s\n\n", appl_data_node.to_json().c_str());
 		    soma_channel.soma_publish(appl_data_node);
 		    break;
 		}
@@ -1837,6 +1841,10 @@ main(int argc, char** argv)
     acLogFromRootProc(pid, "Calling acGridQuit\n");
     acGridQuit();
     fclose(diag_file);
+
+#if AC_SOMA_INTEGRATION
+    soma_channel.soma_write("soma.out", nullptr);
+#endif
     acLogFromRootProc(pid, "Calling MPI_Finalize\n");
     ac_MPI_Finalize();
 

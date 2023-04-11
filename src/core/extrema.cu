@@ -10,7 +10,11 @@
 AcMeshCell
 acDeviceMinElement(const Device device, const Stream stream, const Field field)
 {
+#if USE_HIP
   auto sync_exec_policy = thrust::cuda::par.on(device->streams[stream]);
+#else
+  auto sync_exec_policy = thrust::device;
+#endif
  
   size_t field_length = acVertexBufferSize(device->local_config);
   thrust::device_ptr<AcReal> buffer_start = thrust::device_pointer_cast(device->vba.in[(size_t)field]);
@@ -33,8 +37,12 @@ acDeviceMinElement(const Device device, const Stream stream, const Field field)
 AcMeshCell
 acDeviceMaxElement(const Device device, const Stream stream, const Field field)
 {
+#if USE_HIP
   auto sync_exec_policy = thrust::cuda::par.on(device->streams[stream]);
- 
+#else
+  auto sync_exec_policy = thrust::device;
+#endif
+
   size_t field_length = acVertexBufferSize(device->local_config);
   thrust::device_ptr<AcReal> buffer_start = thrust::device_pointer_cast(device->vba.in[(size_t)field]);
   thrust::device_ptr<AcReal> buffer_end = thrust::device_pointer_cast(device->vba.in[(size_t)field]+field_length);
@@ -64,7 +72,11 @@ struct dev_is_a_nan
 AcMeshBooleanSearchResult
 acDeviceFirstNANElement(const Device device, const Stream stream, const Field field)
 {
+#if USE_HIP
   auto sync_exec_policy = thrust::cuda::par.on(device->streams[stream]);
+#else
+  auto sync_exec_policy = thrust::device;
+#endif
  
   size_t field_length = acVertexBufferSize(device->local_config);
   thrust::device_ptr<AcReal> buffer_start = thrust::device_pointer_cast(device->vba.in[(size_t)field]);

@@ -1,0 +1,744 @@
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.120.108.0/22
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 127.0.0.1/32
+    domain: lo
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: ::1/128
+    domain: lo
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.120.108.0/22
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 127.0.0.1/32
+    domain: lo
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: ::1/128
+    domain: lo
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.120.108.0/22
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 127.0.0.1/32
+    domain: lo
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: ::1/128
+    domain: lo
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.120.108.0/22
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 127.0.0.1/32
+    domain: lo
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: ::1/128
+    domain: lo
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.253.0.0/16
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 10.120.108.0/22
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: fe80::/64
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: 127.0.0.1/32
+    domain: lo
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: tcp;ofi_rxm
+    fabric: ::1/128
+    domain: lo
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXM
+provider: udp;ofi_rxd
+    fabric: 10.253.0.0/16
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXD
+provider: udp;ofi_rxd
+    fabric: 10.253.0.0/16
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXD
+provider: udp;ofi_rxd
+    fabric: 10.253.0.0/16
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXD
+provider: udp;ofi_rxd
+    fabric: 10.253.0.0/16
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXD
+provider: udp;ofi_rxd
+    fabric: fe80::/64
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXD
+provider: udp;ofi_rxd
+    fabric: fe80::/64
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXD
+provider: udp;ofi_rxd
+    fabric: fe80::/64
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXD
+provider: udp;ofi_rxd
+    fabric: fe80::/64
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXD
+provider: udp;ofi_rxd
+    fabric: 10.120.108.0/22
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXD
+provider: udp;ofi_rxd
+    fabric: fe80::/64
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXD
+provider: udp;ofi_rxd
+    fabric: 127.0.0.1/32
+    domain: lo
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXD
+provider: udp;ofi_rxd
+    fabric: ::1/128
+    domain: lo
+    version: 115.20
+    type: FI_EP_RDM
+    protocol: FI_PROTO_RXD
+provider: udp
+    fabric: 10.253.0.0/16
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_DGRAM
+    protocol: FI_PROTO_UDP
+provider: udp
+    fabric: 10.253.0.0/16
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_DGRAM
+    protocol: FI_PROTO_UDP
+provider: udp
+    fabric: 10.253.0.0/16
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_DGRAM
+    protocol: FI_PROTO_UDP
+provider: udp
+    fabric: 10.253.0.0/16
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_DGRAM
+    protocol: FI_PROTO_UDP
+provider: udp
+    fabric: fe80::/64
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_DGRAM
+    protocol: FI_PROTO_UDP
+provider: udp
+    fabric: fe80::/64
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_DGRAM
+    protocol: FI_PROTO_UDP
+provider: udp
+    fabric: fe80::/64
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_DGRAM
+    protocol: FI_PROTO_UDP
+provider: udp
+    fabric: fe80::/64
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_DGRAM
+    protocol: FI_PROTO_UDP
+provider: udp
+    fabric: 10.120.108.0/22
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_DGRAM
+    protocol: FI_PROTO_UDP
+provider: udp
+    fabric: fe80::/64
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_DGRAM
+    protocol: FI_PROTO_UDP
+provider: udp
+    fabric: 127.0.0.1/32
+    domain: lo
+    version: 115.20
+    type: FI_EP_DGRAM
+    protocol: FI_PROTO_UDP
+provider: udp
+    fabric: ::1/128
+    domain: lo
+    version: 115.20
+    type: FI_EP_DGRAM
+    protocol: FI_PROTO_UDP
+provider: tcp
+    fabric: 10.253.0.0/16
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: 10.253.0.0/16
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: 10.253.0.0/16
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: 10.253.0.0/16
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: fe80::/64
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: fe80::/64
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: fe80::/64
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: fe80::/64
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: 10.120.108.0/22
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: fe80::/64
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: 127.0.0.1/32
+    domain: lo
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: ::1/128
+    domain: lo
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: 10.253.0.0/16
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: 10.253.0.0/16
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: 10.253.0.0/16
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: 10.253.0.0/16
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: fe80::/64
+    domain: hsn0
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: fe80::/64
+    domain: hsn1
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: fe80::/64
+    domain: hsn2
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: fe80::/64
+    domain: hsn3
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: 10.120.108.0/22
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: fe80::/64
+    domain: nmn0
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: 127.0.0.1/32
+    domain: lo
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: tcp
+    fabric: ::1/128
+    domain: lo
+    version: 115.20
+    type: FI_EP_MSG
+    protocol: FI_PROTO_SOCK_TCP
+provider: cxi
+    fabric: cxi
+    domain: cxi0
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI
+provider: cxi
+    fabric: cxi
+    domain: cxi0
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI
+provider: cxi
+    fabric: cxi
+    domain: cxi0
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI_COMPAT
+provider: cxi
+    fabric: cxi
+    domain: cxi0
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI_COMPAT
+provider: cxi
+    fabric: cxi
+    domain: cxi1
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI
+provider: cxi
+    fabric: cxi
+    domain: cxi1
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI
+provider: cxi
+    fabric: cxi
+    domain: cxi1
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI_COMPAT
+provider: cxi
+    fabric: cxi
+    domain: cxi1
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI_COMPAT
+provider: cxi
+    fabric: cxi
+    domain: cxi2
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI
+provider: cxi
+    fabric: cxi
+    domain: cxi2
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI
+provider: cxi
+    fabric: cxi
+    domain: cxi2
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI_COMPAT
+provider: cxi
+    fabric: cxi
+    domain: cxi2
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI_COMPAT
+provider: cxi
+    fabric: cxi
+    domain: cxi3
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI
+provider: cxi
+    fabric: cxi
+    domain: cxi3
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI
+provider: cxi
+    fabric: cxi
+    domain: cxi3
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI_COMPAT
+provider: cxi
+    fabric: cxi
+    domain: cxi3
+    version: 0.0
+    type: FI_EP_RDM
+    protocol: FI_PROTO_CXI_COMPAT

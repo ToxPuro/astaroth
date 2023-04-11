@@ -20,7 +20,7 @@
 #include <libgen.h>
 
 // C++ filesystem API
-#include <filesystem>
+//#include <filesystem>
 
 // For a string interface
 #include <string>
@@ -78,10 +78,12 @@ file_handle::open(const std::string &filename, const std::string &mode)
 	m_filename = filename;
 
 	// TODO!!!: should only be done when writing to a file
+	/*
 	std::filesystem::path p = std::filesystem::u8path(m_filename);
         if (p.has_parent_path()){
 	    std::filesystem::create_directories(p.parent_path());
 	}
+	*/
 
 	m_fileptr = unique_file_ptr(fopen(m_filename.c_str(), mode.c_str()));
 	if (!m_fileptr) {
