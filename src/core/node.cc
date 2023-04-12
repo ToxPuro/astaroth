@@ -1052,7 +1052,7 @@ acNodeReduceVec(const Node node, const Stream stream, const ReductionType rtype,
     return AC_SUCCESS;
 }
 
-#if PACKED_DATA_TRANSFERS 
+#if PACKED_DATA_TRANSFERS
 AcResult
 acNodeLoadPlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate)
 {

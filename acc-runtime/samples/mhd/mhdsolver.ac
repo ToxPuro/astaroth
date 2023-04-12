@@ -100,14 +100,15 @@ real AC_lnrho0
 real AC_zeta
 real AC_trans
 real AC_nu_shock
+real AC_nkramers
 int AC_lpressuregradient_gas
+real AC_hcond0_kramers
 
 //  Parameters for generic boundary conditions, this is a dummy variable for testing, please use different ones for each field
 real AC_boundary_derivative
 
 //  Parameters only used in boundary conditions at the moment
 //  If you feel they should be elsewhere, please move them
-real AC_hcond0_kramers
 real AC_n_kramers
 real AC_sigma_SBt
 real AC_chi
@@ -396,6 +397,22 @@ heat_conduction() {
     return AC_cp * chi * (first_term + dot(second_term, third_term))
 }
 
+/*heat_conduction_kramers() {
+
+      cv1 = 1.0/AC_cv
+      rho1 = exp(-value(VTXBUF_LNRHO))    // v
+      lnTT = AC_lnTT0+cv1*value(VTXBUF_ENTROPY)+(AC_gamma-1.0)*(value(VTXBUF_LNRHO)-AC_lnrho0)  // v
+      glnrho = gradient(VTXBUF_LNRHO)     // v
+
+      glnTT  = cv1*gradient(VTXBUF_ENTROPY) + (AC_gamma-1.0)*glnrho   //  v
+      del2lnTT = cv1*laplace(VTXBUF_ENTROPY) + (AC_gamma-1.0)*laplace(VTXBUF_LNRHO)  // v
+
+      Krho1 = AC_hcond0_kramers * pow(rho1,(2.0*AC_nkramers+1.0)) * pow(exp(lnTT),(6.5*AC_nkramers))   // = K/rho   v
+
+      g2=dot(-2.0*AC_nkramers*glnrho+(6.5*AC_nkramers+1.)*glnTT,glnTT)   // v
+      return Krho1*(del2lnTT+g2)    // v
+}*/
+
 entropy() {
     S = stress_tensor(UU)
     inv_pT = 1. / (exp(value(VTXBUF_LNRHO)) * exp(lnT()))
@@ -410,7 +427,6 @@ entropy() {
     //return heat_conduction()   // nt=2 -> Inf
     //return inv_pT * RHS   // nt=2 -> Inf
     //return RHS   // nt=2 -> Inf
-    //return 0.*RHS   //  nt=2 -> Inf
 }
 
 hostdefine RK_ORDER (3)
