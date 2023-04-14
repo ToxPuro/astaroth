@@ -7,6 +7,8 @@ print_usage(){
     echo "======="
     echo " --output <name of produced rundir>"
     echo ""
+    echo " --output-format [benchmark|params]"
+    echo ""
     echo " --stripe <num_stripes>"
     echo "   stripe the rundir with num_stripes stripes"
     echo ""
@@ -38,6 +40,14 @@ print_usage(){
     echo "    don't render, just call sbatch"
     echo "  --render deferred"
     echo "    render slices once, after simulation has run"
+    echo ""
+    echo "Profiling configuration"
+    echo "-----------------------"
+    echo ""
+    #echo " --tau_exec"
+    echo " --apex_exec"
+    echo " --soma-companion <soma binary>"
+    echo " --soma-protocol  <soma protocol>"
     echo ""
     echo "SLURM configuration"
     echo "----------------------"
@@ -81,13 +91,17 @@ output_dir=astaroth_rundir
 dims=""
 ac_run_mpi_binary=$(realpath ${script_dir}/../build/ac_run_mpi)
 render=deferred
-timelimit=00:15:00
+timelimit=01:00:00
 num_procs=8
 account=""
 partition=small-g
 render_partition=small
 gpu_type=""
 gpus_per_node=""
+
+init_mesh=kernel
+output_format=""
+soma_protocol="na+sm://"
 
 if [[ -n "$AC_CONFIG" ]]; then
     config="$AC_CONFIG"
@@ -109,12 +123,12 @@ if [[ -n "$AC_SLURM_ACCOUNT" ]]; then
     account="$AC_SLURM_ACCOUNT"
 fi
 
-OPTS=`getopt -o c:o:d:a:r:t:n:v:A:p:s:g:kh -l config:,output:,dims:,ac_run_mpi:,render:,timelimit:,num-procs:,varfile:,account:,partition:,preset:,simulation-sbatch-prologue:gpu-type:,stripe:,kernel,help -n "$0"  -- "$@"`
+OPTS=`getopt -o c:o:d:a:r:t:n:v:A:p:s:g:kh -l config:,output-format:,output:,dims:,ac_run_mpi:,render:,timelimit:,num-procs:,varfile:,account:,partition:,preset:,simulation-sbatch-prologue:,gpu-type:,stripe:,kernel,apex-exec,tau-exec,soma-companion:,soma-protocol:,help -n "$0"  -- "$@"`
 if [ $? != 0 ] ; then echo "Failed to parse args" >&2 ; exit 1 ; fi
 
 eval set -- "$OPTS"
 
-init_mesh=kernel
+
 while true;do
 case "$1" in
 -h|--help)
@@ -129,6 +143,10 @@ case "$1" in
         shift
         output_dir="$1"
         ;;
+--output-format)
+	shift
+	output_format="$1"
+	;;
 -s|--stripe)
 	shift
 	stripes="$1"
@@ -197,6 +215,17 @@ case "$1" in
 	    ls ${config_dir}/slurm_presets
 	    exit 1
 	fi
+	;;
+--apex-exec)
+	apex_exec="ON"
+	;;
+--soma-protocol)
+	shift
+	soma_protocol="$1"
+	;;
+--soma-companion)
+	shift
+	soma="$1"
 	;;
 --)
         shift
@@ -413,13 +442,58 @@ gen_simulation_sbatch(){
         gpu_type="${gpu_type}:"
     fi
 
+
+    if [[ -n "$apex_exec" ]];then
+    	#exec_prologue="PATH=\$PATH:/users/kehuck1/install/apex_lumi/bin"
+        exec_prologue="PATH=\$PATH:/users/kehuck1/install/apex_lumi_hip/bin"
+        exec_wrapper="apex_exec --apex:mpi --apex:pthread --apex:hip --apex:csv --apex:tasktree"
+    fi
+    exec_line="srun ${exec_wrapper} \$ac_run_mpi --config astaroth.conf $ac_run_mpi_args"
+
+    extra_tasks=0
+    if [[ -n "$soma" ]]; then
+    	extra_tasks=1
+	soma_realpath=$(realpath $soma)
+	read -r -d '' exec_prologue << EOF
+${exec_prologue}
+export SOMA_SERVER_ADDR_FILE=server.add
+export SOMA_NODE_ADDR_FILE=node.add
+export SOMA_NUM_SERVER_INSTANCES=1
+export SOMA_NUM_SERVERS_PER_INSTANCE=\$SLURM_NNODES
+export SOMA_SERVER_INSTANCE_ID=0
+
+SERVERS_PER_NODE=1
+CLIENTS_PER_NODE=\$(( SLURM_NTASKS_PER_NODE - 1 ))
+EOF
+
+	exec_line="srun ./soma-astaroth.sh \$SERVERS_PER_NODE \$CLIENTS_PER_NODE"
+	cat > $output_dir/soma-astaroth.sh << EOF
+#!/bin/bash
+SERVERS_PER_NODE=\$1
+CLIENTS_PER_NODE=\$2
+
+PROCS_PER_NODE=\$(( SERVERS_PER_NODE + CLIENTS_PER_NODE ))
+
+if [[ \$(( SLURM_PROCID % PROCS_PER_NODE )) -ge CLIENTS_PER_NODE ]]; then
+    echo "Launching proc \$SLURM_PROCID, a server"
+    ${soma_realpath} -a ${soma_protocol}
+    echo "Server \$SLURM_PROCID exited"
+else
+    echo "Launching proc \$SLURM_PROCID, a client"
+    $ac_run_mpi_realpath --config astaroth.conf $ac_run_mpi_args
+    echo "Client \$SLURM_PROCID exited"
+fi
+EOF
+        chmod +x $output_dir/soma-astaroth.sh
+    fi
+
     cat > $output_dir/simulation.sbatch << EOF | grep -v '^[[:blank:]]*$'
 #!/bin/bash
 #SBATCH --account=$account
 #SBATCH --partition=$partition
 #SBATCH --gres=gpu:${gpu_type}${num_gpus}
 #SBATCH --nodes=$num_nodes
-#SBATCH --ntasks-per-node=${gpus_per_node}
+#SBATCH --ntasks-per-node=$(( gpus_per_node + extra_tasks))
 #SBATCH --time=$timelimit
 #SBATCH --output=slurm-simulation-%j.out
 
@@ -430,12 +504,16 @@ if [[ ! -f astaroth.conf ]]; then
     exit 1
 fi
 
-if [[ ! -x "$ac_run_mpi_realpath" ]]; then
-    echo "$ac_run_mpi_realpath does not exist or is not executable"
+ac_run_mpi="$ac_run_mpi_realpath"
+
+if [[ ! -x "\$ac_run_mpi" ]]; then
+    echo "\$ac_run_mpi does not exist or is not executable"
     exit 1
 fi
 
-srun $ac_run_mpi_realpath --config astaroth.conf $ac_run_mpi_args
+${exec_prologue}
+
+${exec_line}
 EOF
 }
 
@@ -466,6 +544,19 @@ cat << EOF
 EOF
     )" $config > "$output_dir/astaroth.conf"
 }
+
+if [[ -n "$output_format" ]]; then
+    if [[ "$output_format" = "benchmark" ]]; then
+    	echo "Overriding output with output format, output name"
+    	output_dir="macro_benchmark_${num_procs}"
+    fi
+    if [[ "$output_format" = "params" ]]; then
+	output_dir="astaroth_experiment"
+        for key in "${!params[@]}"; do
+	    output_dir="${output_dir}_${key}=${params[$key]}"
+	done
+    fi
+fi
 
 if [[ -e "$output_dir" ]]; then
     suffix=1

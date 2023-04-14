@@ -51,10 +51,15 @@
 #include "simulation_rng.h"
 #include "simulation_taskgraphs.h"
 
-#ifdef AC_SOMA_INTEGRATION
+#if AC_SOMA_INTEGRATION
 #include <soma/Client.hpp>
 #include <conduit/conduit.hpp>
 #include "simulation_soma_integration.h"
+#endif
+
+#if USE_PERFSTUBS
+#define PERFSTUBS_USE_TIMERS
+#include "perfstubs_api/timer.h"
 #endif
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
@@ -1010,6 +1015,10 @@ main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
+#if USE_PERFSTUBS
+    PERFSTUBS_INITIALIZE();
+#endif
+
     int nprocs, pid;
     MPI_Comm_size(acGridMPIComm(), &nprocs);
     MPI_Comm_rank(acGridMPIComm(), &pid);
@@ -1303,18 +1312,16 @@ main(int argc, char** argv)
     // RELOAD config
     signal_files[SimulationEvent::ConfigReloadSignal] = UserSignalFile("RELOAD");
 
-#ifdef AC_SOMA_INTEGRATION
+#if AC_SOMA_INTEGRATION
     /////////////////////////////
     // Set up SOMA integration //
     /////////////////////////////
     
-    acLogFromRootProc(pid, "\nDiscovering SOMA collectors\n");
+    acLogFromRootProc(pid, "Discovering SOMA collectors\n");
 
     soma::CollectorHandle soma_channel;
     log_soma_config(pid);
-    //soma_channel = discover_soma_collector("ofi+verbs", pid);
-    soma_channel = discover_soma_collector("ofi+cxi", pid);
-    //soma_channel = discover_soma_collector("na+sm", pid);
+    soma_channel = discover_soma_collector(pid);
     acLogFromRootProc(pid, "SOMA discovery DONE\n");
 #else
     acLogFromRootProc(pid, "SOMA integration is OFF\n");
@@ -1363,7 +1370,7 @@ main(int argc, char** argv)
     post_step_actions[PeriodicAction::EndSimulation] = SimulationPeriod(info, AC_max_steps,
                                                                         AC_max_time);
 
-#ifdef AC_SOMA_INTEGRATION
+#if AC_SOMA_INTEGRATION
     post_step_actions[PeriodicAction::PublishToSOMA] = SimulationPeriod(5, 0);
 #endif
 
@@ -1424,6 +1431,9 @@ main(int argc, char** argv)
         //                                                                 //
         /////////////////////////////////////////////////////////////////////
 
+#if USE_PERFSTUBS
+	PERFSTUBS_TIMER_START(pre_update_timer, "pre-update");
+#endif
         // Generic parameters
         debug_log_from_root_proc_with_sim_progress(pid, "Calculating time delta\n");
         const AcReal dt = calc_timestep(info);
@@ -1502,7 +1512,15 @@ main(int argc, char** argv)
         // Execute the active task graph for 3 iterations
         // in the case that simulation_graph = acGridGetDefaultTaskGraph(), then this is equivalent
         // to acGridIntegrate(STREAM_DEFAULT, dt)
+#if USE_PERFSTUBS
+	PERFSTUBS_TIMER_STOP(pre_update_timer);
+	PERFSTUBS_TIMER_START(simulation_step_timer, "simulation");
+#endif
         acGridExecuteTaskGraph(simulation_graph, 3);
+#if USE_PERFSTUBS
+	PERFSTUBS_TIMER_STOP(simulation_step_timer);
+	PERFSTUBS_TIMER_START(post_update_timer, "post-update");
+#endif
         simulation_time += dt;
         set_simulation_timestamp(i, simulation_time);
 
@@ -1560,7 +1578,7 @@ main(int argc, char** argv)
                     write_slices(pid, i);
                     break;
                 }
-#ifdef AC_SOMA_INTEGRATION
+#if AC_SOMA_INTEGRATION
 		case PeriodicAction::PublishToSOMA: {
                     log_from_root_proc_with_sim_progress(pid,
                                                          "Periodic action: publishing data to SOMA\n");
@@ -1800,6 +1818,10 @@ main(int argc, char** argv)
             }
         }
 
+
+#if USE_PERFSTUBS
+	PERFSTUBS_TIMER_STOP(post_update_timer);
+#endif
         /////////////////////////////////////////////////////////////////////
         //                                                                 //
         // 8. End simulation if an end condition has been reached          //
@@ -1842,10 +1864,23 @@ main(int argc, char** argv)
     acGridQuit();
     fclose(diag_file);
 
+    bool complete = false;
 #if AC_SOMA_INTEGRATION
-    soma_channel.soma_write("soma.out", nullptr);
+    soma_channel.soma_write("soma.out", &complete);
 #endif
+#if USE_PERFSTUBS
+    PERFSTUBS_DUMP_DATA();
+    PERFSTUBS_FINALIZE();
+#endif
+
     acLogFromRootProc(pid, "Calling MPI_Finalize\n");
+    
+#if AC_SOMA_INTEGRATION
+
+    //ac_MPI_Abort();
+    //Calling abort because SOMA does not have a finalize in its API
+    MPI_Abort(MPI_COMM_WORLD,0);
+#endif
     ac_MPI_Finalize();
 
     if (check_event(events, SimulationEvent::ErrorState)) {

@@ -1,5 +1,6 @@
 add_executable(ac_run_mpi)
 if(AC_RUN_MPI_SOMA_INTEGRATION)
+    message("Building ac_run_mpi with SOMA integration")
     #set(MPI_CXX_SKIP_MPICXX ON)
     #set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -DOMPI_SKIP_MPICXX")
     find_package(MPI REQUIRED COMPONENTS C CXX)

@@ -2,7 +2,9 @@
 script_dir=$(realpath $(dirname "${BASH_SOURCE[0]}"))
 
 #TODO: LUMI-specific, please remove and make more resilient
-venv=/scratch/project_462000120/olappi/python_data_analysis_env
-
+venv=python_data_analysis_env
+python3 -m venv $venv
 source $venv/bin/activate
+pip3 install -r ${script_dir}/requirements.txt
+
 $script_dir/render_slices.py $@

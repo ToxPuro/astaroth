@@ -67,6 +67,16 @@ parse_collector_file(std::string fpath)
     return collectors;
 }
 
+std::string
+parse_protocol(const std::string &address)
+{
+    size_t protocol_end = address.find("://", 0);
+    if (protocol_end == std::string::npos){
+	return "";
+    }
+    return address.substr(0, protocol_end+3);
+}
+
 soma_addressbook
 discover_soma_addressbook()
 {
@@ -117,6 +127,7 @@ comm_size(const MPI_Comm &c)
 size_t
 get_soma_collector_idx(int pid)
 {
+    size_t num_clients = comm_size(acGridMPIComm());
     size_t num_servers = comm_size(MPI_COMM_WORLD) - comm_size(acGridMPIComm());
 
     int num_servers_per_instance;
@@ -139,7 +150,9 @@ get_soma_collector_idx(int pid)
     }
     assert(num_servers == 0 || num_servers >= (server_instance_id+1)*num_servers_per_instance);
     assert(num_servers == 0 || num_servers >= num_servers_per_instance);
-    return server_instance_id*num_servers_per_instance + pid % num_servers_per_instance;
+
+    size_t num_clients_per_server_instance = num_clients / num_servers_per_instance;
+    return server_instance_id*num_servers_per_instance + pid / num_clients_per_server_instance;
 }
 
 void
@@ -179,8 +192,7 @@ log_soma_config(int pid)
 
 
 soma::CollectorHandle
-discover_soma_collector(const std::string &protocol,
-			const int pid)
+discover_soma_collector(			const int pid)
 {
 
     // Sync with SOMA server
@@ -194,12 +206,15 @@ discover_soma_collector(const std::string &protocol,
     std::string address     = lookup.addresses[server_idx].address;
     std::string collector   = lookup.collectors[server_idx];
     acLogFromRootProc(pid, "Address is: %s\n", address.c_str());
+
+    std::string protocol = parse_protocol(address);
     acLogFromRootProc(pid, "Collector ID is: %s\n", collector.c_str());
 
     //Assume provider id is 0, since file does not specify it
     size_t provider_id = 0;
 
-    acLogFromRootProc(pid, "Creating thallium engine\n");
+    std::string server_addr_fpath = std::getenv("SOMA_SERVER_ADDR_FILE");
+    acLogFromRootProc(pid, "Creating thallium engine for protocol %s\n", protocol.c_str());
     thallium::engine engine(protocol, THALLIUM_CLIENT_MODE);
     acLogFromRootProc(pid, "Creating soma client\n");
     soma::Client client(engine);
