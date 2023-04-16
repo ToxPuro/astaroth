@@ -487,13 +487,18 @@ EOF
         chmod +x $output_dir/soma-astaroth.sh
     fi
 
+    if [[ $num_procs -lt $gpus_per_node ]]; then
+    	tasks_per_node=$num_procs
+    else
+    	tasks_per_node=$gpus_per_node
+    fi
     cat > $output_dir/simulation.sbatch << EOF | grep -v '^[[:blank:]]*$'
 #!/bin/bash
 #SBATCH --account=$account
 #SBATCH --partition=$partition
 #SBATCH --gres=gpu:${gpu_type}${num_gpus}
 #SBATCH --nodes=$num_nodes
-#SBATCH --ntasks-per-node=$(( gpus_per_node + extra_tasks))
+#SBATCH --ntasks-per-node=$(( tasks_per_node + extra_tasks))
 #SBATCH --time=$timelimit
 #SBATCH --output=slurm-simulation-%j.out
 
