@@ -744,7 +744,7 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
 
 /* Set step = -1 to load from the latest snapshot. step = 0 to start a new run. */
 static void
-read_file_to_mesh_and_setup(int* step, AcReal* simulation_time)
+read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo info)
 {
     if (*step > 0) {
         ERROR("step in read_file_to_mesh (config start_step) was > 0, do not know what to do with "
@@ -823,6 +823,18 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time)
     // acGridDiskAccessSync();
     // acGridPeriodicBoundconds(STREAM_DEFAULT);
     // acGridSynchronizeStream(STREAM_DEFAULT);
+
+#if LMAGNETIC
+    // Scale the magnetic field
+    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info.real_params[AC_scaling_factor]);
+    AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+    acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
+    acGridSwapBuffers();
+
+    acGridSynchronizeStream(STREAM_ALL);
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridSynchronizeStream(STREAM_ALL);
+#endif
 }
 
 /*
@@ -1247,7 +1259,7 @@ main(int argc, char** argv)
     */
     case InitialMeshProcedure::LoadSnapshot: {
         acLogFromRootProc(pid, "Reading mesh file\n");
-        read_file_to_mesh_and_setup(&start_step, &simulation_time);
+        read_file_to_mesh_and_setup(&start_step, &simulation_time, info);
         acLogFromRootProc(pid, "Done reading mesh file\n");
         break;
     }
