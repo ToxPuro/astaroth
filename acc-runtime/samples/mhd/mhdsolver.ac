@@ -1,11 +1,7 @@
 int AC_step_number
 real AC_dt
+real AC_cs2
 
-/*
-real AC_cs, AC_cp
-real AC_gamma, AC_nu, AC_zeta, AC_eta
-real AC_lnrho0, AC_mu0, AC_lnT0
-*/
 // Note: not used by mhdsolver.ac at the moment (src/utils/modelsolver.c does)
 hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
 /*
@@ -87,7 +83,6 @@ real AC_cdt
 real AC_cdtv
 real AC_cdts
 real AC_nu
-real AC_cs
 real AC_cs20
 real AC_lnTT0
 real AC_eta
@@ -95,7 +90,6 @@ real AC_mu0
 real AC_cp
 real AC_gamma
 real AC_cv
-real AC_lnT0
 real AC_lnrho0
 real AC_zeta
 real AC_trans
@@ -148,7 +142,6 @@ real AC_G_const
 real AC_GM_star
 real AC_unit_mass
 real AC_sq2GM_star
-real AC_cs2
 //
 real AC_current_time
 
@@ -351,10 +344,10 @@ continuity() {
 
 momentum() {
     S = stress_tensor(UU)
-    cs2_sound = AC_cs * AC_cs
-    cs2 = cs2_sound * exp(AC_gamma * value(VTXBUF_ENTROPY) / AC_cp + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0))
-    //cs2 = cs2_sound * (AC_gamma * value(VTXBUF_ENTROPY) / AC_cp + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0))   //v
-    //cs2 = cs2_sound * exp(AC_gamma                         / AC_cp + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0))   //v
+    cs2_sound = AC_cs20
+    cs2 = cs2_sound * exp(AC_gamma * value(VTXBUF_ENTROPY) / AC_cp + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0))    // check
+    //cs2 = cs2_sound * (AC_gamma * value(VTXBUF_ENTROPY) / AC_cp + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0))     //v
+    //cs2 = cs2_sound * exp(AC_gamma                         / AC_cp + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0))  //v
     //cs2 = cs2_sound * exp(           value(VTXBUF_ENTROPY) / AC_cp + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0))  //v
 
 if (cs2_sound > 1 || cs2_sound<0) {print("ERROR cs2\n")}
@@ -379,7 +372,7 @@ if (AC_gamma * value(VTXBUF_ENTROPY) / AC_cp + (AC_gamma - 1.) * (value(VTXBUF_L
 }
 
 lnT() {
-    return AC_lnT0
+    return AC_lnTT0
          + AC_gamma * value(VTXBUF_ENTROPY) / AC_cp
          + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0)
 }
@@ -395,6 +388,18 @@ heat_conduction() {
     chi = AC_THERMAL_CONDUCTIVITY / (exp(value(VTXBUF_LNRHO)) * AC_cp)
 
     return AC_cp * chi * (first_term + dot(second_term, third_term))
+}
+
+heat_conduction_const_chi() {
+
+    // lnTT=lnTT0+cv1*ss+gamma_m1*(lnrho-lnrho0)
+
+    inv_AC_cv = 1. / AC_cv
+    grad_lnrho = gradient(VTXBUF_LNRHO)
+    grad_lnT = (AC_gamma-1) * grad_lnrho            + inv_AC_cv * gradient(VTXBUF_ENTROPY)
+    del2_lnT = (AC_gamma-1) * laplace(VTXBUF_LNRHO) + inv_AC_cv * laplace(VTXBUF_ENTROPY)
+
+    return AC_cp * AC_chi * ( dot(grad_lnrho+grad_lnT,grad_lnT) + del2_lnT )
 }
 
 /*heat_conduction_kramers() {
@@ -421,7 +426,7 @@ entropy() {
                        2. * exp(value(VTXBUF_LNRHO)) * AC_nu * contract(S) +
                        AC_zeta * exp(value(VTXBUF_LNRHO)) * divergence(UU) * divergence(UU)
 
-    return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
+    return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction_const_chi()
     //return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) // nt=2 -> Inf
     //return inv_pT * RHS + heat_conduction()    // nt=2 -> Inf
     //return heat_conduction()   // nt=2 -> Inf

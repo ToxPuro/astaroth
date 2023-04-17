@@ -744,7 +744,7 @@ induction(const VectorData uu, const VectorData aa)
 static inline Scalar
 lnT(const ScalarData ss, const ScalarData lnrho)
 {
-    const Scalar lnT = getReal(AC_lnT0) + getReal(AC_gamma) * value(ss) / getReal(AC_cp) +
+    const Scalar lnT = getReal(AC_lnTT0) + getReal(AC_gamma) * value(ss) / getReal(AC_cp) +
                        (getReal(AC_gamma) - (Scalar)(1.)) * (value(lnrho) - getReal(AC_lnrho0));
     return lnT;
 }
