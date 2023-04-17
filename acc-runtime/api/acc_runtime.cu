@@ -143,10 +143,11 @@ acVBACreate(const size_t count)
   ERRCHK_CUDA_ALWAYS(cudaMemset((void*)allbuf_out, 0, allbytes));
 
   vba.in[0]=allbuf_in; vba.out[0]=allbuf_out;
+printf("i,vbas[0]= 0 %p \n",vba.in[0],vba.out[0]);
   for (size_t i = 1; i < NUM_VTXBUF_HANDLES; ++i) {
     vba.in [i]=vba.in [i-1]+count;
     vba.out[i]=vba.out[i-1]+count;
-printf("vbas[i]= %p \n",vba.in[i],vba.out[i]);
+printf("i,vbas[i]= %d %p \n",i,vba.in[i],vba.out[i]);
   }
 #else
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
