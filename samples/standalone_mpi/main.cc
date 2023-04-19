@@ -1227,6 +1227,8 @@ main(int argc, char** argv)
         }
         break;
     }
+    //MV TODO: Add other initialization configurations! These are suitable only
+    //MV TODO: for you who work with the forcing runs. 
     case InitialMeshProcedure::LoadPC_Varfile: {
         acLogFromRootProc(pid, "Reading mesh state from Pencil Code var file %s\n",
                           initial_mesh_procedure_param);
@@ -1273,9 +1275,9 @@ main(int argc, char** argv)
     acLogFromRootProc(pid, "Setting simulation program\n");
     Simulation sim = Simulation::Default;
 #if LSHOCK
-    sim = Simulation::Shock_Singlepass_Solve
-#endif
-        log_simulation_choice(pid, sim);
+    sim = Simulation::Shock_Singlepass_Solve;
+#endif 
+    log_simulation_choice(pid, sim);
     AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);
 
     ////////////////////////////////////////////////////////
