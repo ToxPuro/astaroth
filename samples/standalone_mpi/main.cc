@@ -1386,6 +1386,8 @@ main(int argc, char** argv)
         // add newline to old diag_file from previous run
         // TODO: figure out why we're doing this? do we want a clear indication in the file that a
         // new run was started?
+        // MV: Yes this was a a non-intrusive way of making it possible to
+        // MV: locate where new run stars. If I remember right. 
         fprintf(diag_file, "\n");
     }
 
@@ -1416,14 +1418,6 @@ main(int argc, char** argv)
         acGridReduceScal(STREAM_DEFAULT, RTYPE_SUM, VTXBUF_ACCRETION, &sum_mass);
         accreted_mass = accreted_mass + sum_mass;
         sink_mass     = info.real_params[AC_M_sink_init] + accreted_mass;
-
-        // JP: !!! WARNING !!! acVertexBufferSet operates in host memory. The mesh is
-        // never loaded to device memory. Is this intended?
-        // TODO: figure out what this is supposed to do
-        // TODO: set GPU buffers?
-        if (pid == 0) {
-            acVertexBufferSet(VTXBUF_ACCRETION, 0.0, mesh);
-        }
 
         int switch_accretion = (i < 1) ? 0 : 1;
 #endif
