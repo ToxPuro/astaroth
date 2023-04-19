@@ -1170,11 +1170,6 @@ main(int argc, char** argv)
 #if LSINK
     sink_mass     = info.real_params[AC_M_sink_init];
     accreted_mass = 0.0;
-    // TODO: I think this is supposed to set device vertex buffer VTXBUF_ACCRETION to 0 before the
-    // simulation starts
-    if (pid == 0) {
-        acVertexBufferSet(VTXBUF_ACCRETION, 0.0, &mesh);
-    }
 #endif
 
     // Set random seed for reproducibility
