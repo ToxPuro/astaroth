@@ -6,8 +6,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <string>
 #include <string.h>
+#include <string>
 
 #include "astaroth_utils.h"
 
@@ -130,8 +130,10 @@ log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
 static void
 log_from_root_proc_with_sim_progress(std::string msg, ...)
 {
-    int pid;
+    int pid = 0;
+#if AC_MPI_ENABLED
     MPI_Comm_rank(acGridMPIComm(), &pid);
+#endif
     if (pid == 0) {
         strncpy(sim_log_msg + sim_tstamp_len, msg.c_str(), sim_log_msg_len - sim_tstamp_len);
         va_list args;
