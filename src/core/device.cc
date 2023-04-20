@@ -79,6 +79,7 @@ acDevicePrintInfo(const Device device)
     printf("    Global L1 cache supported: %d\n", props.globalL1CacheSupported);
 #endif
     printf("    L2 size: %d KiB\n", props.l2CacheSize / (1024));
+    printf("    Max registers per block: %d\n", props.regsPerBlock);
     // MV: props.totalConstMem and props.sharedMemPerBlock cause assembler error
     // MV: while compiling in TIARA gp cluster. Therefore commeted out.
     //!!    printf("    Total const mem: %ld KiB\n", props.totalConstMem / (1024));
@@ -592,6 +593,19 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
 #ifdef AC_SINGLEPASS_INTEGRATION
     return acLaunchKernel(singlepass_solve, device->streams[stream], start, end, device->vba);
 #else
+    // Two-pass integration with acDeviceIntegrateSubstep works currently
+    // only when integrating the whole subdomain
+    // Consider the case:
+    // 1) A half of the domain has been updated after the initial call, and the result of step s+1
+    // resides in the output buffer.
+    //
+    // 2) Integration is called again, this time the intermediate w values are incorrectly used for
+    // calculating the stencil operations, or, if the buffers have been swapped again, then values
+    // from both steps s+0 and s+1 are used to compute the stencils, which is incorrect
+    AcMeshDims dims = acGetMeshDims(device->local_config);
+    ERRCHK_ALWAYS(start == dims.n0);
+    ERRCHK_ALWAYS(end == dims.n1);
+
     const AcResult res = acLaunchKernel(twopass_solve_intermediate, device->streams[stream], start,
                                         end, device->vba);
     if (res != AC_SUCCESS)
