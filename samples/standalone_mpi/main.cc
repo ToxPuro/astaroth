@@ -1051,6 +1051,8 @@ main(int argc, char** argv)
             break;
         case 'k':
             initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+            //Use alternative kernel
+            initial_mesh_procedure = InitialMeshProcedure::InitHaatouken;
             break;
         case 'p':
             initial_mesh_procedure       = InitialMeshProcedure::LoadPC_Varfile;
@@ -1065,6 +1067,9 @@ main(int argc, char** argv)
         case 's':
             initial_mesh_procedure = InitialMeshProcedure::LoadSnapshot;
             break;
+        case '':
+            initial_mesh_procedure = InitialMeshProcedure::LoadSnapshot;
+            break
         default:
             print_usage("ac_run_mpi");
             return EXIT_FAILURE;
@@ -1213,6 +1218,7 @@ main(int argc, char** argv)
         acGridSwapBuffers();
         acLogFromRootProc(pid, "Communicating halos\n");
         acGridPeriodicBoundconds(STREAM_DEFAULT);
+        //MV: What if the boundary conditions are not periodic? 
 
         {
             // Should some labels be printed here?
@@ -1228,7 +1234,25 @@ main(int argc, char** argv)
         break;
     }
     //MV TODO: Add other initialization configurations! These are suitable only
-    //MV TODO: for you who work with the forcing runs. 
+    //MV TODO: for you who work with the forcing runs. \
+    //MV Example case: InitHaatouken 
+    case InitialMeshProcedure::InitHaatouken: {
+        // add a push in terms of a velocity
+        // field into the code creating a cone-like shock. Essentially
+        // "punching the air" to create a kinetic explosion.
+        acLogFromRootProc(pid, "HAATOUKEN!\n");
+        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        // Randomize the other vertex buffers for variesty's sake. 
+        acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+        acGridSwapBuffers();
+        // Ad haatouken! 
+        acGridLaunchKernel(STREAM_DEFAULT, haatouken, dims.n0, dims.n1);
+        acGridSwapBuffers();
+        acLogFromRootProc(pid, "Communicating halos\n");
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+        //MV: What if the boundary conditions are not periodic?
+        break;
+    }
     case InitialMeshProcedure::LoadPC_Varfile: {
         acLogFromRootProc(pid, "Reading mesh state from Pencil Code var file %s\n",
                           initial_mesh_procedure_param);

@@ -132,12 +132,15 @@ real AC_chi_t_prof1
 //  Initial condition params
 real AC_ampl_lnrho
 real AC_ampl_uu
+real AC_init_ampl_uu
 real AC_angl_uu
 real AC_lnrho_edge
 real AC_lnrho_out
 real AC_ampl_aa
 real AC_init_k_wave
 real AC_init_sigma_hel
+real AC_init_shell_radius
+real AC_init_shell_width
 //  Forcing parameters. User configured.
 real AC_forcing_magnitude
 real AC_relhel
@@ -578,6 +581,22 @@ contract(mat) {
     return dot(mat.row(0), mat.row(0)) +
            dot(mat.row(1), mat.row(1)) +
            dot(mat.row(2), mat.row(2))
+}
+
+length(v1,v2) {
+    return sqrt( dot(v1-v2,v1-v2) )
+}
+
+grid_position() {
+    return real3((globalVertexIdx.x - AC_nx_min) * AC_dsx, 
+                 (globalVertexIdx.y - AC_ny_min) * AC_dsy, 
+                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
+}
+
+grid_centre() {
+    return real3(((AC_nx-1) * AC_dsx)/2.0, 
+                 ((AC_ny-1) * AC_dsy)/2.0, 
+                 ((AC_nz-1) * AC_dsz)/2.0)
 }
 
 
@@ -1035,4 +1054,45 @@ Kernel randomize() {
         r = 2.0 * rand_uniform() - 1.0
         write(Field(field), AC_rng_scale * r)
     }
+}
+
+Kernel haatouken() {
+    // Parameters
+    // Shock punch the air in front of you.
+    // AC_init_ampl_uu
+    // AC_init_shell_radius
+    // AC_init_shell_width
+
+    uu = vecvalue(UU)
+
+    xx = grid_position()
+
+    centre = grid_centre()
+
+    rr = lenght(xx,centre)
+
+    xx = xx - centre
+
+    theta = atan2(xx.z, xx.x)
+    phi   = atan2(xx.z, xx.x)
+
+    if rr > 2.0*DSX { 
+        uu_radial = AC_init_ampl_uu * 
+                    exp(-pow((rr - AC_init_shell_radius), 2.0) / (2.0 * pow(AC_init_shell_width, 2.0))) *
+                    exp(-pow((theta - R_PI / 2.0), 2.0) / (2.0 * pow(R_PI / 4.0, 2.0))) *
+                    exp(-pow((phi - R_PI / 2.0), 2.0) / (2.0 * pow(R_PI / 4.0, 2.0)))
+    } else {
+        // To avoid discontinuity at the centre
+        uu_radial = 0.0 
+    }
+
+    uu.x = uu.x + uu_radial * sin(theta) * cos(phi)
+    uu.y = uu.y + uu_radial * sin(theta) * sin(phi)
+    uu.z = uu.z + uu_radial * cos(theta) 
+
+    write(VTXBUF_UUX, uu.x)
+    write(VTXBUF_UUY, uu.y)
+    write(VTXBUF_UUZ, uu.z)
+
+
 }
