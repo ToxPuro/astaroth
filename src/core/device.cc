@@ -603,8 +603,14 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
     // calculating the stencil operations, or, if the buffers have been swapped again, then values
     // from both steps s+0 and s+1 are used to compute the stencils, which is incorrect
     AcMeshDims dims = acGetMeshDims(device->local_config);
-    ERRCHK_ALWAYS(start == dims.n0);
-    ERRCHK_ALWAYS(end == dims.n1);
+    // ERRCHK_ALWAYS(start == dims.n0); // Overload not working for some reason on some compilers
+    // ERRCHK_ALWAYS(end == dims.n1); // TODO fix someday
+    ERRCHK_ALWAYS(start.x == dims.n0.x); // tmp workaround
+    ERRCHK_ALWAYS(start.y == dims.n0.y);
+    ERRCHK_ALWAYS(start.z == dims.n0.z);
+    ERRCHK_ALWAYS(end.x == dims.n1.x);
+    ERRCHK_ALWAYS(end.y == dims.n1.y);
+    ERRCHK_ALWAYS(end.z == dims.n1.z);
 
     const AcResult res = acLaunchKernel(twopass_solve_intermediate, device->streams[stream], start,
                                         end, device->vba);
