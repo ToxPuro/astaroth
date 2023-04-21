@@ -1069,22 +1069,21 @@ Kernel haatouken() {
 
     centre = grid_centre()
 
-    rr = lenght(xx,centre)
+    rr = length(xx,centre)
 
     xx = xx - centre
 
-    theta = atan2(xx.z, xx.x)
-    phi   = atan2(xx.z, xx.x)
+    theta = real(atan2(xx.z, xx.x))
+    phi   = real(atan2(xx.z, xx.x))
+
+    uu_radial = 0.0
 
     if rr > 2.0*DSX { 
         uu_radial = AC_init_ampl_uu * 
                     exp(-pow((rr - AC_init_shell_radius), 2.0) / (2.0 * pow(AC_init_shell_width, 2.0))) *
                     exp(-pow((theta - R_PI / 2.0), 2.0) / (2.0 * pow(R_PI / 4.0, 2.0))) *
                     exp(-pow((phi - R_PI / 2.0), 2.0) / (2.0 * pow(R_PI / 4.0, 2.0)))
-    } else {
-        // To avoid discontinuity at the centre
-        uu_radial = 0.0 
-    }
+    } 
 
     uu.x = uu.x + uu_radial * sin(theta) * cos(phi)
     uu.y = uu.y + uu_radial * sin(theta) * sin(phi)

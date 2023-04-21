@@ -971,6 +971,7 @@ enum class InitialMeshProcedure {
     LoadDistributedSnapshot,
     LoadMonolithicSnapshot,
     LoadSnapshot,
+    InitHaatouken,
 };
 
 // Enums for actions taken in the simulation loop
@@ -1067,9 +1068,6 @@ main(int argc, char** argv)
         case 's':
             initial_mesh_procedure = InitialMeshProcedure::LoadSnapshot;
             break;
-        case '':
-            initial_mesh_procedure = InitialMeshProcedure::LoadSnapshot;
-            break
         default:
             print_usage("ac_run_mpi");
             return EXIT_FAILURE;
