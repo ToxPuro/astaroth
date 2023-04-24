@@ -43,6 +43,7 @@ steps = {}
 field_headers = {}
 for file_path in args.input:
     filename = pathlib.PurePath(file_path).name
+    print(filename)
     m = segmented_filename_regex.match(filename)
     if m:
         field = m.group(1)
@@ -108,7 +109,8 @@ else:
                 for segment in column.values():
                     file_path    = segment["file_path"]
                     segment_dims = segment["dims"]
-                    segment["frame"] = np.fromfile(file_path, args.dtype).reshape((segment_dims[1], segment_dims[0]))
+                    segment["frame"] = np.fromfile(str(file_path), args.dtype).reshape((segment_dims[1], segment_dims[0]))
+                    #segment["frame"] = np.fromfile(file_path, args.dtype).reshape((segment_dims[1], segment_dims[0]))
                     field_headers[field]["vmin"] = min(np.min(segment["frame"]), field_headers[field]["vmin"])
                     field_headers[field]["vmax"] = max(np.max(segment["frame"]), field_headers[field]["vmax"])
                     if conserve_memory:
@@ -131,7 +133,8 @@ def combine_slice(slice_data):
         for y, segment in column.items():
             file_path = segment["file_path"]
             if conserve_memory:
-                segment["frame"] = np.fromfile(file_path, args.dtype).reshape((segment["dims"][1], segment["dims"][0]))
+                segment["frame"] = np.fromfile(str(file_path), args.dtype).reshape((segment["dims"][1], segment["dims"][0]))
+                #segment["frame"] = np.fromfile(file_path, args.dtype).reshape((segment["dims"][1], segment["dims"][0]))
             slice_col = np.vstack((slice_col, segment["frame"])) if slice_col is not None else segment["frame"]
             del segment["frame"]
         full_slice = np.hstack((full_slice, slice_col)) if full_slice is not None else slice_col
