@@ -17,7 +17,7 @@ hostdefine LFORCING (0)
 hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
-hostdefine LSHOCK (1)
+hostdefine LSHOCK (0)
 hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // TODO: make an actual config parameter
 hostdefine R_PI (AC_REAL_PI)
 
@@ -594,9 +594,9 @@ grid_position() {
 }
 
 grid_centre() {
-    return real3(((AC_nx-1) * AC_dsx)/2.0, 
-                 ((AC_ny-1) * AC_dsy)/2.0, 
-                 ((AC_nz-1) * AC_dsz)/2.0)
+    return real3(((globalGridN.x-1) * AC_dsx)/2.0, 
+                 ((globalGridN.y-1) * AC_dsy)/2.0, 
+                 ((globalGridN.z-1) * AC_dsz)/2.0)
 }
 
 
@@ -1069,24 +1069,34 @@ Kernel haatouken() {
 
     centre = grid_centre()
 
-    rr = length(xx,centre)
+    xx.x = xx.x - centre.x
+    xx.y = xx.y - centre.y
+    xx.z = xx.z - centre.z
 
-    xx = xx - centre
+    rr = sqrt(xx.x*xx.x +  xx.y*xx.y + xx.z*xx.z)
 
     theta = real(atan2(xx.z, xx.x))
-    phi   = real(atan2(xx.z, xx.x))
+    phi   = real(atan2(xx.y, xx.x))
 
     uu_radial = 0.0
 
-    if rr > 2.0*DSX { 
-        uu_radial = AC_init_ampl_uu * 
-                    exp(-pow((rr - AC_init_shell_radius), 2.0) / (2.0 * pow(AC_init_shell_width, 2.0))) *
-                    exp(-pow((theta - R_PI / 2.0), 2.0) / (2.0 * pow(R_PI / 4.0, 2.0))) *
-                    exp(-pow((phi - R_PI / 2.0), 2.0) / (2.0 * pow(R_PI / 4.0, 2.0)))
+    /////if rr > 2.0*DSX { 
+    /////    uu_radial = AC_init_ampl_uu * 
+    /////                exp(-pow((rr - AC_init_shell_radius), 2.0) / (2.0 * pow(AC_init_shell_width, 2.0))) *
+    /////                exp(-pow((theta - R_PI / 2.0), 2.0) / (2.0 * pow(R_PI / 4.0, 2.0))) *
+    /////                exp(-pow((phi - R_PI / 2.0), 2.0) / (2.0 * pow(R_PI / 4.0, 2.0)))
+    /////} 
+
+    if (rr > 0.8 && rr < 1.2) {
+        if (phi < R_PI/8.0 && phi > -R_PI/8.0) {
+            if (theta < R_PI/8 && theta > -R_PI/8) {
+                uu_radial = AC_init_ampl_uu 
+            }
+        }
     } 
 
-    uu.x = uu.x + uu_radial * sin(theta) * cos(phi)
-    uu.y = uu.y + uu_radial * sin(theta) * sin(phi)
+    uu.x = uu.x + uu_radial * cos(theta) * cos(phi)
+    uu.y = uu.y + uu_radial * cos(theta) * sin(phi)
     uu.z = uu.z + uu_radial * cos(theta) 
 
     write(VTXBUF_UUX, uu.x)
