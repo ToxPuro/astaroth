@@ -1080,20 +1080,20 @@ Kernel haatouken() {
 
     uu_radial = 0.0
 
-    /////if rr > 2.0*DSX { 
-    /////    uu_radial = AC_init_ampl_uu * 
-    /////                exp(-pow((rr - AC_init_shell_radius), 2.0) / (2.0 * pow(AC_init_shell_width, 2.0))) *
-    /////                exp(-pow((theta - R_PI / 2.0), 2.0) / (2.0 * pow(R_PI / 4.0, 2.0))) *
-    /////                exp(-pow((phi - R_PI / 2.0), 2.0) / (2.0 * pow(R_PI / 4.0, 2.0)))
-    /////} 
-
-    if (rr > 0.8 && rr < 1.2) {
-        if (phi < R_PI/8.0 && phi > -R_PI/8.0) {
-            if (theta < R_PI/8 && theta > -R_PI/8) {
-                uu_radial = AC_init_ampl_uu 
-            }
-        }
+    if rr > 2.0*DSX { 
+        uu_radial = AC_init_ampl_uu * 
+                    exp(-pow((rr - AC_init_shell_radius), 2.0) / (2.0 * pow(AC_init_shell_width, 2.0))) *
+                    exp(-pow(theta , 2.0) / (2.0 * pow(R_PI / 8.0, 2.0))) *
+                    exp(-pow(phi, 2.0) / (2.0 * pow(R_PI / 8.0, 2.0)))
     } 
+
+    //if (rr > 0.8 && rr < 1.2) {
+    //    if (phi < R_PI/8.0 && phi > -R_PI/8.0) {
+    //        if (theta < R_PI/8 && theta > -R_PI/8) {
+    //            uu_radial = AC_init_ampl_uu 
+    //        }
+    //    }
+    //} 
 
     uu.x = uu.x + uu_radial * cos(theta) * cos(phi)
     uu.y = uu.y + uu_radial * cos(theta) * sin(phi)
