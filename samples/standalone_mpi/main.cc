@@ -1242,7 +1242,7 @@ main(int argc, char** argv)
         AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
         // Randomize the other vertex buffers for variesty's sake. 
         acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
-        acGridSwapBuffers();
+        //acGridSwapBuffers();
         // Ad haatouken! 
         acGridLaunchKernel(STREAM_DEFAULT, haatouken, dims.n0, dims.n1);
         acGridSwapBuffers();
