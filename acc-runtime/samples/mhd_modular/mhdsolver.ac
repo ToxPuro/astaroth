@@ -49,6 +49,7 @@ real AC_bin_save_t
 
 // slices output period
 int AC_slice_steps
+real AC_slice_save_t
 
 // max simulation time
 int AC_max_steps

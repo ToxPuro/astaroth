@@ -1361,9 +1361,10 @@ main(int argc, char** argv)
                                                                         snapshot_time_offset);
 
     // Write slices
+    AcReal slice_time_offset                      = simulation_time;
     post_step_actions
         [PeriodicAction::WriteSlices] = SimulationPeriod(info, AC_slice_steps,
-                                                         SimulationPeriod::NoTimeParam);
+                                                         AC_slice_save_t, slice_time_offset);
 
     // Stop simulation after max time
     post_step_actions[PeriodicAction::EndSimulation] = SimulationPeriod(info, AC_max_steps,
