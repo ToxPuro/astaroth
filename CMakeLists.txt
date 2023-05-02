@@ -6,6 +6,7 @@ cmake_minimum_required(VERSION 3.18)
 
 ## Options
 option(DOUBLE_PRECISION   "Generates double precision code."                    ON)
+option(BUILD_STANDALONE   "Build the standalone_mpi executable to run standard simulation." ON)
 option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            ON)
 option(BUILD_MHD_SAMPLES  "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
 option(MPI_ENABLED        "Enables additional functions for MPI communciation." ON)
@@ -156,6 +157,12 @@ if (BUILD_UTILS)
     add_subdirectory(src/utils)
 endif()
 
+## Have this as a separate option when no other "samples" aree needed.
+## Useful e.g. when compilation time is long e.g. with shock viscosity. 
+if (BUILD_STANDALONE)
+    add_subdirectory(samples/standalone_mpi)
+endif()
+
 if (BUILD_SAMPLES)
     add_subdirectory(samples/blur)
     add_subdirectory(samples/ctest)
@@ -170,7 +177,7 @@ if (BUILD_SAMPLES)
 
     if (BUILD_MHD_SAMPLES)
         # add_subdirectory(samples/standalone)
-        add_subdirectory(samples/standalone_mpi)
+        # add_subdirectory(samples/standalone_mpi)
         add_subdirectory(samples/mpitest)
         add_subdirectory(samples/devicetest)
         add_subdirectory(samples/stencil-loader)
