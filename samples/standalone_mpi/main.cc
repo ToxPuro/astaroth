@@ -1295,9 +1295,10 @@ main(int argc, char** argv)
     ////////////////////////////////////////////////////
 
     acLogFromRootProc(pid, "Setting simulation program\n");
-    Simulation sim = Simulation::Default;
 #if LSHOCK
-    sim = Simulation::Shock_Singlepass_Solve;
+    Simulation sim = Simulation::Shock_Singlepass_Solve;
+#elif
+    Simulation sim = Simulation::Default;
 #endif 
     log_simulation_choice(pid, sim);
     AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);

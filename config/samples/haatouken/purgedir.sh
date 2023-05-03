@@ -13,9 +13,7 @@
  rm -rf mesh_info.list
  rm -rf output-slices
  rm -rf output-snapshots
- rm -rf purgedir.sh
  rm -rf purge.sh
- rm -rf README.md
  rm -rf samples
  rm -rf snapshots_info.csv
  rm -rf src
