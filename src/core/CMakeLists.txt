@@ -7,12 +7,20 @@ add_library(astaroth_core
 if (USE_HIP)
     find_package(hip)
     find_package(rocthrust)
+
+    #link_directories($ENV{MPICH_DIR}/../../../gtl/lib)
+
+    #link_directories($ENV{MPICH_DIR}/../../../gtl/lib)
+    #libmpi_gtl_hsa.so.0 => /opt/cray/pe/lib64/libmpi_gtl_hsa.so.0
+    #target_link_directories(astaroth_core PUBLIC /opt/cray/pe/mpich/8.1.23/gtl/lib)
+    target_link_directories(astaroth_core PUBLIC /opt/cray/pe/lib64)
     target_link_libraries(astaroth_core
 	    PUBLIC
 	    kernels
 	    hip::host
 	    roc::rocthrust
 	    roc::rocprim_hip
+	    mpi_gtl_hsa
 	    )
     message("AMD GPU targets: ${AMDGPU_TARGETS}\n")
     foreach(amdgpu_target ${AMDGPU_TARGETS})
