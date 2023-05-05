@@ -98,6 +98,17 @@ load_stencil_from_config(const AcMeshInfo info)
             } 
         }
     }
+
+    AcReal weights[] = {1.0, 9.0, 45.0, 70.0, 45.0, 9.0, 1.0};
+    AcReal smooth_norm = 5832000.0; // Based on separate calculation: sum of all weights
+    for (size_t i = 0; i < STENCIL_ORDER + 1; ++i) {
+        for (size_t j = 0; j < STENCIL_ORDER + 1; ++j) {
+            for (size_t k = 0; k < STENCIL_ORDER + 1; ++k) {
+                stencils[stencil_smooth_kernel][k][j][i] = (weights[k]*weights[j]*weights[i])/smooth_norm;
+            } 
+        }
+    }
+
 #endif
 
 
