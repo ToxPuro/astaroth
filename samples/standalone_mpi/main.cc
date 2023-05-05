@@ -948,6 +948,10 @@ print_usage(const char* name)
            "\tRun a kernel to initialize the mesh\n"
            "\tThe kernel is currently hardcoded\n"
            "\n"
+           " -i <initcond name>\n"
+           " --run-this-init-kernel <initcond name>\n"
+           "\tRun a selected initial condition kernel to initialize the mesh.\n"
+           "\n"
            " -p\n"
            " --from-pc-varfile\n"
            "\tLoad the mesh from a pc varfile\n"
@@ -1028,6 +1032,7 @@ main(int argc, char** argv)
     // the value of optarg to a filename variable in the switch
     static struct option long_options[] = {{"config", required_argument, 0, 'c'},
                                            {"run-init-kernel", no_argument, 0, 'k'},
+                                           {"run-this-init-kernel", required_argument, 0, 'i'},
                                            {"from-pc-varfile", required_argument, 0, 'p'},
                                            {"from-distributed-snapshot", no_argument, 0, 'd'},
                                            {"from-monolithic-snapshot", no_argument, 0, 'm'},
@@ -1035,12 +1040,13 @@ main(int argc, char** argv)
                                            {"help", no_argument, 0, 'h'}};
 
     const char* config_path = AC_DEFAULT_CONFIG;
+    const char* initcond_name = "InitKernel";
     // Default mesh procedure is kernel randomize
     InitialMeshProcedure initial_mesh_procedure = InitialMeshProcedure::InitKernel;
     const char* initial_mesh_procedure_param    = nullptr;
 
     int opt{};
-    while ((opt = getopt_long(argc, argv, "c:kpdmh", long_options, nullptr)) != -1) {
+    while ((opt = getopt_long(argc, argv, "c:ki:pdmh", long_options, nullptr)) != -1) {
         switch (opt) {
         case 'h':
             if (pid == 0) {
@@ -1052,8 +1058,15 @@ main(int argc, char** argv)
             break;
         case 'k':
             initial_mesh_procedure = InitialMeshProcedure::InitKernel;
-            //Use alternative kernel
-            initial_mesh_procedure = InitialMeshProcedure::InitHaatouken;
+            break;
+        case 'i':
+            initcond_name = optarg;
+            if (strcmp(initcond_name, "Haatouken") == 0) {
+                acLogFromRootProc(pid, "Recognized Haatouken\n");            
+                initial_mesh_procedure = InitialMeshProcedure::InitHaatouken;
+            } else { 
+                initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+            }
             break;
         case 'p':
             initial_mesh_procedure       = InitialMeshProcedure::LoadPC_Varfile;
