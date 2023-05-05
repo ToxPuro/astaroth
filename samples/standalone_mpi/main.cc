@@ -1296,8 +1296,7 @@ main(int argc, char** argv)
 
     acLogFromRootProc(pid, "Setting simulation program\n");
 #if LSHOCK
-    //Simulation sim = Simulation::Shock_Singlepass_Solve;
-    Simulation sim = Simulation::Default;
+    Simulation sim = Simulation::Shock_Singlepass_Solve;
 #elif
     Simulation sim = Simulation::Default;
 #endif 
@@ -1448,23 +1447,24 @@ main(int argc, char** argv)
 #endif
 #if LSHOCK
         // Attempt of shock viscosity outside of the taskgraph. 
-        log_from_root_proc_with_sim_progress(pid, "Calculating shock viscosity\n");
-        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-        acGridLaunchKernel(STREAM_DEFAULT, shock_1_divu, dims.n0, dims.n1);
-        acGridSwapBuffers();
-        acGridSynchronizeStream(STREAM_ALL);
-        acGridPeriodicBoundconds(STREAM_DEFAULT);
-        acGridSynchronizeStream(STREAM_ALL);
-        acGridLaunchKernel(STREAM_DEFAULT, shock_2_max,  dims.n0, dims.n1);
-        acGridSwapBuffers();
-        acGridSynchronizeStream(STREAM_ALL);
-        acGridPeriodicBoundconds(STREAM_DEFAULT);
-        acGridSynchronizeStream(STREAM_ALL);
-        acGridLaunchKernel(STREAM_DEFAULT, shock_3_smooth, dims.n0, dims.n1);
-        acGridSwapBuffers();
-        acGridSynchronizeStream(STREAM_ALL);
-        acGridPeriodicBoundconds(STREAM_DEFAULT);
-        acGridSynchronizeStream(STREAM_ALL);
+        // Commented out. Done with TaskGraph
+        ////log_from_root_proc_with_sim_progress(pid, "Calculating shock viscosity\n");
+        ////AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        ////acGridLaunchKernel(STREAM_DEFAULT, shock_1_divu, dims.n0, dims.n1);
+        ////acGridSwapBuffers();
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridPeriodicBoundconds(STREAM_DEFAULT);
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridLaunchKernel(STREAM_DEFAULT, shock_2_max,  dims.n0, dims.n1);
+        ////acGridSwapBuffers();
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridPeriodicBoundconds(STREAM_DEFAULT);
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridLaunchKernel(STREAM_DEFAULT, shock_3_smooth, dims.n0, dims.n1);
+        ////acGridSwapBuffers();
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridPeriodicBoundconds(STREAM_DEFAULT);
+        ////acGridSynchronizeStream(STREAM_ALL);
 #endif 
 
         for (auto& [action, period] : pre_step_actions) {
