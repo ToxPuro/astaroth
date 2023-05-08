@@ -1,10 +1,10 @@
-Created by *Miikka Väisälä*, at 2021/10
+Created by *Miikka Väisälä*, at 2023/5
 
 # Purpose of this simulation setup 
 
 This simulation was made to test that mpi, shock viscosity and task scheduling
-system work together with periodic boundary conditions. The simulation runs
-forced isothermal MHD turbulence in conditions where shocks are produced. 
+system work together with periodic boundary conditions. Here we start as a
+shocked initial injection of kinetic energy in inversely conical direction. 
 
 # What is a successful test
 
@@ -49,7 +49,6 @@ On TIARA currently working on
  1) cuda/11.3      2) gcc/9.1.0      3) mpich/3.3      4) cmake/3.22.1
 
 OpenMPI/4.0.4 causes stability issues. 
-
 
 It the case you get strange MPI errors, it might be that your particular system
 has not been configured for GPUDirect RDMA. To run Astaroth without GPUDirect
