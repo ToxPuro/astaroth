@@ -567,12 +567,6 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
     fflush(stdout);
 }
 
-/*
-    MV NOTE: At the moment I have no clear idea how to calculate magnetic
-    diagnostic variables from grid. Vector potential measures have a limited
-    value. TODO: Smart way to get brms, bmin and bmax.
-*/
-
 #include "math_utils.h"
 AcReal
 calc_timestep(const AcMeshInfo info)
@@ -1062,7 +1056,7 @@ main(int argc, char** argv)
         case 'i':
             initcond_name = optarg;
             if (strcmp(initcond_name, "Haatouken") == 0) {
-                acLogFromRootProc(pid, "Recognized Haatouken\n");            
+                acLogFromRootProc(pid, "Recognized Haatouken\n");    // This here just for the sake of diagnosis.         
                 initial_mesh_procedure = InitialMeshProcedure::InitHaatouken;
             } else { 
                 initial_mesh_procedure = InitialMeshProcedure::InitKernel;
@@ -1244,18 +1238,16 @@ main(int argc, char** argv)
         }
         break;
     }
-    //MV TODO: Add other initialization configurations! These are suitable only
-    //MV TODO: for you who work with the forcing runs. \
-    //MV Example case: InitHaatouken 
+    // Creeates a kinetic kick as a system initial condition. Creatd as a demo
+    // case for invoking an alternative initial conditions via a DSL kernel.  
     case InitialMeshProcedure::InitHaatouken: {
         // add a push in terms of a velocity
         // field into the code creating a cone-like shock. Essentially
         // "punching the air" to create a kinetic explosion.
         acLogFromRootProc(pid, "HAATOUKEN!\n");
         AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-        // Randomize the other vertex buffers for variesty's sake. 
+        // Randomize the other vertex buffers for variety's sake. 
         acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
-        //acGridSwapBuffers();
         // Ad haatouken! 
         acGridLaunchKernel(STREAM_DEFAULT, haatouken, dims.n0, dims.n1);
         acGridSwapBuffers();
