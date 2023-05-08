@@ -1302,7 +1302,7 @@ main(int argc, char** argv)
     acLogFromRootProc(pid, "Setting simulation program\n");
 #if LSHOCK
     Simulation sim = Simulation::Shock_Singlepass_Solve;
-#elif
+#else
     Simulation sim = Simulation::Default;
 #endif 
     log_simulation_choice(pid, sim);
