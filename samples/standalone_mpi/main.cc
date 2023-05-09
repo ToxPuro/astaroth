@@ -943,7 +943,7 @@ print_usage(const char* name)
            "\tThe kernel is currently hardcoded\n"
            "\n"
            " -i <initcond name>\n"
-           " --run-this-init-kernel <initcond name>\n"
+           " --init-condition <initcond name>\n"
            "\tRun a selected initial condition kernel to initialize the mesh.\n"
            "\n"
            " -p\n"
