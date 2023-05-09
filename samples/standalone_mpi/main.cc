@@ -1026,7 +1026,7 @@ main(int argc, char** argv)
     // the value of optarg to a filename variable in the switch
     static struct option long_options[] = {{"config", required_argument, 0, 'c'},
                                            {"run-init-kernel", no_argument, 0, 'k'},
-                                           {"run-this-init-kernel", required_argument, 0, 'i'},
+                                           {"init-condition", required_argument, 0, 'i'},
                                            {"from-pc-varfile", required_argument, 0, 'p'},
                                            {"from-distributed-snapshot", no_argument, 0, 'd'},
                                            {"from-monolithic-snapshot", no_argument, 0, 'm'},
@@ -1034,7 +1034,6 @@ main(int argc, char** argv)
                                            {"help", no_argument, 0, 'h'}};
 
     const char* config_path = AC_DEFAULT_CONFIG;
-    const char* initcond_name = "InitKernel";
     // Default mesh procedure is kernel randomize
     InitialMeshProcedure initial_mesh_procedure = InitialMeshProcedure::InitKernel;
     const char* initial_mesh_procedure_param    = nullptr;
@@ -1054,12 +1053,11 @@ main(int argc, char** argv)
             initial_mesh_procedure = InitialMeshProcedure::InitKernel;
             break;
         case 'i':
-            initcond_name = optarg;
-            if (strcmp(initcond_name, "Haatouken") == 0) {
-                acLogFromRootProc(pid, "Recognized Haatouken\n");    // This here just for the sake of diagnosis.         
+            if (strcmp(optarg, "Haatouken") == 0) {
+                acLogFromRootProc(pid, "Initial condition: Haatouken\n");    // This here just for the sake of diagnosis.         
                 initial_mesh_procedure = InitialMeshProcedure::InitHaatouken;
             } else { 
-                initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+                exit(1);
             }
             break;
         case 'p':
@@ -1300,10 +1298,9 @@ main(int argc, char** argv)
     ////////////////////////////////////////////////////
 
     acLogFromRootProc(pid, "Setting simulation program\n");
-#if LSHOCK
-    Simulation sim = Simulation::Shock_Singlepass_Solve;
-#else
     Simulation sim = Simulation::Default;
+#if LSHOCK
+    sim = Simulation::Shock_Singlepass_Solve;
 #endif 
     log_simulation_choice(pid, sim);
     AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);

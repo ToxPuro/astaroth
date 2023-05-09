@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#mpirun -np 4 ./ac_run_mpi --config astaroth.conf --run-this-init-kernel Haatouken
+#mpirun -np 4 ./ac_run_mpi --config astaroth.conf --init-condition Haatouken
 
-( mpirun -np 4 ./ac_run_mpi --config astaroth.conf --run-this-init-kernel Haatouken >& output.log & )
+( mpirun -np 4 ./ac_run_mpi --config astaroth.conf --init-condition Haatouken >& output.log & )
 
