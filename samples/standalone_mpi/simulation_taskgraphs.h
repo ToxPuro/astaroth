@@ -57,6 +57,44 @@ get_simulation_graph(int pid, Simulation sim)
             return acGridBuildTaskGraph(shock_ops);
 #endif
         }
+        case Simulation::Hydro_Heatduct_Solve: {
+            // This is an exmaple of having multiple types of boundary conditions
+            VertexBufferHandle all_fields[] = {VTXBUF_LNRHO, VTXBUF_UUX,
+                                               VTXBUF_UUY, VTXBUF_UUZ, 
+                                               VTXBUF_ENTROPY};
+            VertexBufferHandle lnrho_field[]   = {VTXBUF_LNRHO};
+            VertexBufferHandle uux_field[]     = {VTXBUF_UUX};
+            VertexBufferHandle uuy_field[]     = {VTXBUF_UUY};
+            VertexBufferHandle uuz_field[]     = {VTXBUF_UUZ};
+            VertexBufferHandle entropy_field[] = {ENTROPY};
+
+            AcTaskDefinition heatduct_ops[] =
+                {acHaloExchange(all_fields),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC,   lnrho_fields), 
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC,   lnrho_fields),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC,   lnrho_fields),
+
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, entropy_fields),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, entropy_fields),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, entropy_fields),
+
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_ANTISYMMETRIC, uux_fields),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC,     uuy_fields),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC,     uuz_fields),
+
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC,  uux_fields),
+                 acBoundaryCondition(BOUNDARY_YBOT, BOUNDCOND_INFLOW,  uuy_fields),
+                 acBoundaryCondition(BOUNDARY_YTOP, BOUNDCOND_OUTFLOW, uuy_fields),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC,  uuz_fields),
+
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC,     uux_fields),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC,     uuy_fields),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, uuz_fields),
+
+                 acCompute(KERNEL_twopass_solve_intermediate, all_fields),
+                 acCompute(KERNEL_twopass_solve_final,        all_fields)
+                 };
+        }
         default:
             acLogFromRootProc(pid, "ERROR: no custom task graph exists for selected simulation. "
                                    "This is probably a fatal error.\n");

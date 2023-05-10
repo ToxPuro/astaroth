@@ -2,13 +2,13 @@ Created by *Miikka Väisälä*, at 2023/5
 
 # Purpose of this simulation setup 
 
-This simulation was made to test that mpi, shock viscosity and task scheduling
-system work together with periodic boundary conditions. Here we start as a
-shocked initial injection of kinetic energy in inversely conical direction. 
+Purpose if this simualtion sample was to play with more complicate multiple
+boundary conditions, with essentially heated fluid flow entering the system from
+one end into another. 
 
 # What is a successful test
 
-A succesful test is that `standalone_mpi` runs properly on multiple GPUs
+OLD A succesful test is that `standalone_mpi` runs properly on multiple GPUs
 without the system crashing due to unnatural resons, and results looks sensible
 without numerical garbage. **Please note that this is not a physics test, but a
 test to see that the code is working as expected.**
@@ -23,14 +23,14 @@ configuration will have different LSWITCHES.
 ```
 LDENSITY (1)
 LHYDRO (1)
-LMAGNETIC (1)
-LENTROPY (0)
+LMAGNETIC (0)
+LENTROPY (1)
 LTEMPERATURE (0)
 LFORCING (0)
 LUPWD (1)
 LSINK (0)
-LBFIELD (1)
-LSHOCK (1)
+LBFIELD (0)
+LSHOCK (0)
 ```
 
 # Setting up and compiling.
