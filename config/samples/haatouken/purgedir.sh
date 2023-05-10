@@ -18,3 +18,5 @@
  rm -rf snapshots_info.csv
  rm -rf src
  rm -rf timeseries.ts
+ rm -rf output.log
+ rm -rf STOP
