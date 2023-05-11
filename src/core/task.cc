@@ -964,6 +964,13 @@ BoundaryConditionTask::populate_boundary_region()
                                       vba.in[variable]);
             break;
         }
+#if LENTROPY
+        case BOUNDCOND_CONST_TEMP: {
+            acKernelEntropyConstantTemperatureBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+ 964                                                     vba.in[variable])
+            break;
+        }
+#endif
         default:
             ERROR("BoundaryCondition not implemented yet.");
         }

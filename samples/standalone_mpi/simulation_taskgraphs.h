@@ -57,6 +57,7 @@ get_simulation_graph(int pid, Simulation sim)
             return acGridBuildTaskGraph(shock_ops);
 #endif
         }
+#if LENTROPY
         case Simulation::Hydro_Heatduct_Solve: {
             // This is an exmaple of having multiple types of boundary conditions
             VertexBufferHandle all_fields[] = {VTXBUF_LNRHO, VTXBUF_UUX,
@@ -82,16 +83,17 @@ get_simulation_graph(int pid, Simulation sim)
                  acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC,     uuxy_fields),
                  acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, uuz_field),
 
-                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_INFLOW,       uuy_field),     #DEFINE
-                 acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_OUTFLOW,      uuy_field),     #DEFINE 
+                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_INFLOW,       uuy_field), 
+                 acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_OUTFLOW,      uuy_field), 
                  acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_CONST,        lnrho_field),   #DEFINE
                  acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,           lnrho_field),
-                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_CONST_TEMP_R, entropy_field), #DEFINE
+                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_CONST_TEMP,   entropy_field),
                  acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,           entropy_field),
 
                  acCompute(KERNEL_twopass_solve_intermediate, all_fields),
                  acCompute(KERNEL_twopass_solve_final,        all_fields)
                 };
+#endif
         }
         default:
             acLogFromRootProc(pid, "ERROR: no custom task graph exists for selected simulation. "
