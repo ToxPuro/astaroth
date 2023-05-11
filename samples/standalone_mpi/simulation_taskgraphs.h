@@ -63,37 +63,35 @@ get_simulation_graph(int pid, Simulation sim)
                                                VTXBUF_UUY, VTXBUF_UUZ, 
                                                VTXBUF_ENTROPY};
             VertexBufferHandle lnrho_field[]   = {VTXBUF_LNRHO};
+            VertexBufferHandle entropy_field[] = {VTXBUF_ENTROPY};
+            VertexBufferHandle scalar_fields[] = {VTXBUF_LNRHO, VTXBUF_ENTROPY};
             VertexBufferHandle uux_field[]     = {VTXBUF_UUX};
             VertexBufferHandle uuy_field[]     = {VTXBUF_UUY};
             VertexBufferHandle uuz_field[]     = {VTXBUF_UUZ};
-            VertexBufferHandle entropy_field[] = {ENTROPY};
+            VertexBufferHandle uuxy_fields[]   = {VTXBUF_UUX, VTXBUF_UUY};
+            VertexBufferHandle uuxz_fields[]   = {VTXBUF_UUX, VTXBUF_UUZ};
+            VertexBufferHandle uuyz_fields[]   = {VTXBUF_UUY, VTXBUF_UUZ};
 
             AcTaskDefinition heatduct_ops[] =
                 {acHaloExchange(all_fields),
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC,   lnrho_fields), 
-                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC,   lnrho_fields),
-                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC,   lnrho_fields),
+                 acBoundaryCondition(BOUNDARY_XZ, BOUNDCOND_SYMMETRIC, scalar_fields), 
 
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, entropy_fields),
-                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, entropy_fields),
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, entropy_fields),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_ANTISYMMETRIC, uux_field),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC,     uuyz_fields),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC,     uuxz_fields),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC,     uuxy_fields),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, uuz_field),
 
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_ANTISYMMETRIC, uux_fields),
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC,     uuy_fields),
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC,     uuz_fields),
-
-                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC,  uux_fields),
-                 acBoundaryCondition(BOUNDARY_YBOT, BOUNDCOND_INFLOW,  uuy_fields),
-                 acBoundaryCondition(BOUNDARY_YTOP, BOUNDCOND_OUTFLOW, uuy_fields),
-                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC,  uuz_fields),
-
-                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC,     uux_fields),
-                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC,     uuy_fields),
-                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, uuz_fields),
+                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_INFLOW,       uuy_field),     #DEFINE
+                 acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_OUTFLOW,      uuy_field),     #DEFINE 
+                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_CONST,        lnrho_field),   #DEFINE
+                 acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,           lnrho_field),
+                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_CONST_TEMP_R, entropy_field), #DEFINE
+                 acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,           entropy_field),
 
                  acCompute(KERNEL_twopass_solve_intermediate, all_fields),
                  acCompute(KERNEL_twopass_solve_final,        all_fields)
-                 };
+                };
         }
         default:
             acLogFromRootProc(pid, "ERROR: no custom task graph exists for selected simulation. "

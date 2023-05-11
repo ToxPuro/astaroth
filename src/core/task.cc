@@ -953,6 +953,17 @@ BoundaryConditionTask::populate_boundary_region()
                                                    input_parameters[0]);
             break;
         }
+        case BOUNDCOND_OUTFLOW: {
+            acKernelOutflowBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+                                      vba.in[variable]);
+            break;
+        }
+
+        case BOUNDCOND_INFLOW: {
+            acKernelInflowBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+                                      vba.in[variable]);
+            break;
+        }
         default:
             ERROR("BoundaryCondition not implemented yet.");
         }
