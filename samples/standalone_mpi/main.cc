@@ -567,12 +567,6 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
     fflush(stdout);
 }
 
-/*
-    MV NOTE: At the moment I have no clear idea how to calculate magnetic
-    diagnostic variables from grid. Vector potential measures have a limited
-    value. TODO: Smart way to get brms, bmin and bmax.
-*/
-
 #include "math_utils.h"
 AcReal
 calc_timestep(const AcMeshInfo info)
@@ -948,6 +942,10 @@ print_usage(const char* name)
            "\tRun a kernel to initialize the mesh\n"
            "\tThe kernel is currently hardcoded\n"
            "\n"
+           " -i <initcond name>\n"
+           " --init-condition <initcond name>\n"
+           "\tRun a selected initial condition kernel to initialize the mesh.\n"
+           "\n"
            " -p\n"
            " --from-pc-varfile\n"
            "\tLoad the mesh from a pc varfile\n"
@@ -971,6 +969,7 @@ enum class InitialMeshProcedure {
     LoadDistributedSnapshot,
     LoadMonolithicSnapshot,
     LoadSnapshot,
+    InitHaatouken,
 };
 
 // Enums for actions taken in the simulation loop
@@ -1027,6 +1026,7 @@ main(int argc, char** argv)
     // the value of optarg to a filename variable in the switch
     static struct option long_options[] = {{"config", required_argument, 0, 'c'},
                                            {"run-init-kernel", no_argument, 0, 'k'},
+                                           {"init-condition", required_argument, 0, 'i'},
                                            {"from-pc-varfile", required_argument, 0, 'p'},
                                            {"from-distributed-snapshot", no_argument, 0, 'd'},
                                            {"from-monolithic-snapshot", no_argument, 0, 'm'},
@@ -1039,7 +1039,7 @@ main(int argc, char** argv)
     const char* initial_mesh_procedure_param    = nullptr;
 
     int opt{};
-    while ((opt = getopt_long(argc, argv, "c:kpdmh", long_options, nullptr)) != -1) {
+    while ((opt = getopt_long(argc, argv, "c:ki:pdmh", long_options, nullptr)) != -1) {
         switch (opt) {
         case 'h':
             if (pid == 0) {
@@ -1051,6 +1051,14 @@ main(int argc, char** argv)
             break;
         case 'k':
             initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+            break;
+        case 'i':
+            if (strcmp(optarg, "Haatouken") == 0) {
+                acLogFromRootProc(pid, "Initial condition: Haatouken\n");    // This here just for the sake of diagnosis.         
+                initial_mesh_procedure = InitialMeshProcedure::InitHaatouken;
+            } else { 
+                exit(1);
+            }
             break;
         case 'p':
             initial_mesh_procedure       = InitialMeshProcedure::LoadPC_Varfile;
@@ -1213,6 +1221,7 @@ main(int argc, char** argv)
         acGridSwapBuffers();
         acLogFromRootProc(pid, "Communicating halos\n");
         acGridPeriodicBoundconds(STREAM_DEFAULT);
+        //MV: What if the boundary conditions are not periodic? 
 
         {
             // Should some labels be printed here?
@@ -1227,8 +1236,24 @@ main(int argc, char** argv)
         }
         break;
     }
-    //MV TODO: Add other initialization configurations! These are suitable only
-    //MV TODO: for you who work with the forcing runs. 
+    // Creeates a kinetic kick as a system initial condition. Creatd as a demo
+    // case for invoking an alternative initial conditions via a DSL kernel.  
+    case InitialMeshProcedure::InitHaatouken: {
+        // add a push in terms of a velocity
+        // field into the code creating a cone-like shock. Essentially
+        // "punching the air" to create a kinetic explosion.
+        acLogFromRootProc(pid, "HAATOUKEN!\n");
+        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        // Randomize the other vertex buffers for variety's sake. 
+        acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+        // Ad haatouken! 
+        acGridLaunchKernel(STREAM_DEFAULT, haatouken, dims.n0, dims.n1);
+        acGridSwapBuffers();
+        acLogFromRootProc(pid, "Communicating halos\n");
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+        //MV: What if the boundary conditions are not periodic?
+        break;
+    }
     case InitialMeshProcedure::LoadPC_Varfile: {
         acLogFromRootProc(pid, "Reading mesh state from Pencil Code var file %s\n",
                           initial_mesh_procedure_param);
@@ -1339,9 +1364,10 @@ main(int argc, char** argv)
                                                                         snapshot_time_offset);
 
     // Write slices
+    AcReal slice_time_offset                      = simulation_time;
     post_step_actions
         [PeriodicAction::WriteSlices] = SimulationPeriod(info, AC_slice_steps,
-                                                         SimulationPeriod::NoTimeParam);
+                                                         AC_slice_save_t, slice_time_offset);
 
     // Stop simulation after max time
     post_step_actions[PeriodicAction::EndSimulation] = SimulationPeriod(info, AC_max_steps,
@@ -1421,6 +1447,27 @@ main(int argc, char** argv)
 
         int switch_accretion = (i < 1) ? 0 : 1;
 #endif
+#if LSHOCK
+        // Attempt of shock viscosity outside of the taskgraph. 
+        // Commented out. Done with TaskGraph
+        ////log_from_root_proc_with_sim_progress(pid, "Calculating shock viscosity\n");
+        ////AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        ////acGridLaunchKernel(STREAM_DEFAULT, shock_1_divu, dims.n0, dims.n1);
+        ////acGridSwapBuffers();
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridPeriodicBoundconds(STREAM_DEFAULT);
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridLaunchKernel(STREAM_DEFAULT, shock_2_max,  dims.n0, dims.n1);
+        ////acGridSwapBuffers();
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridPeriodicBoundconds(STREAM_DEFAULT);
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridLaunchKernel(STREAM_DEFAULT, shock_3_smooth, dims.n0, dims.n1);
+        ////acGridSwapBuffers();
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridPeriodicBoundconds(STREAM_DEFAULT);
+        ////acGridSynchronizeStream(STREAM_ALL);
+#endif 
 
         for (auto& [action, period] : pre_step_actions) {
             if (i - 1 != 0 && period.check(i - 1, simulation_time)) {
