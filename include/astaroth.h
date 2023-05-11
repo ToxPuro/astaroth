@@ -88,7 +88,6 @@ typedef int Stream;
     FUNC(BOUNDCOND_INFLOW)                                                                         \
     FUNC(BOUNDCOND_OUTFLOW)                                                                        \
     FUNC(BOUNDCOND_CONST)                                                                          \
-    FUNC(BOUNDCOND_CONST_TEMP)                                                                     \
     FUNC(BOUNDCOND_PRESCRIBED_DERIVATIVE)
 
 

@@ -186,6 +186,58 @@ acKernelA2Boundconds(const cudaStream_t stream, const int3 region_id, const int3
     return AC_SUCCESS;
 }
 
+static __global__ void
+kernel_const_boundconds(const int3 region_id, const int3 normal, const int3 dims,
+                        AcReal* vtxbuf, AcRealParam const_value)
+{
+    const int3 vertexIdx = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    if (vertexIdx.x >= dims.x || vertexIdx.y >= dims.y || vertexIdx.z >= dims.z) {
+        return;
+    }
+
+    const int3 start = (int3){(region_id.x == 1 ? NGHOST + DCONST(AC_nx)
+                                                : region_id.x == -1 ? 0 : NGHOST),
+                              (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
+                                                : region_id.y == -1 ? 0 : NGHOST),
+                              (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
+                                                : region_id.z == -1 ? 0 : NGHOST)};
+
+    const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
+                                             : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
+                               normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
+                                             : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+                               normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
+                                             : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+
+    int3 ghost  = boundary;
+
+    for (size_t i = 0; i < NGHOST; i++) {
+        ghost  = ghost + normal;
+
+        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+
+        vtxbuf[ghost_idx] = const_value;
+    }
+}
+
+AcResult
+acKernelConstBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                        const int3 dims, AcReal* vtxbuf, AcRealParam const_value)
+{
+    const dim3 tpb(8, 8, 8);
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
+
+    kernel_const_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf, const_value);
+    return AC_SUCCESS;
+}
+
 #ifdef AC_INTEGRATION_ENABLED
 
 // Constant derivative at boundary

@@ -946,6 +946,11 @@ BoundaryConditionTask::populate_boundary_region()
                                  vba.in[variable]);
             break;
         }
+        case BOUNDCOND_CONST: {
+            acKernelConstBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+                                     vba.in[variable], AcRealParam const_value)
+            break;
+        }
         case BOUNDCOND_PRESCRIBED_DERIVATIVE: {
             assert(input_parameters.size() == 1);
             acKernelPrescribedDerivativeBoundconds(stream, output_region.id, boundary_normal,
@@ -964,13 +969,6 @@ BoundaryConditionTask::populate_boundary_region()
                                       vba.in[variable]);
             break;
         }
-#if LENTROPY
-        case BOUNDCOND_CONST_TEMP: {
-            acKernelEntropyConstantTemperatureBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
- 964                                                     vba.in[variable])
-            break;
-        }
-#endif
         default:
             ERROR("BoundaryCondition not implemented yet.");
         }
