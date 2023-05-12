@@ -947,8 +947,9 @@ BoundaryConditionTask::populate_boundary_region()
             break;
         }
         case BOUNDCOND_CONST: {
+            assert(input_parameters.size() == 1);
             acKernelConstBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                                     vba.in[variable], AcRealParam const_value)
+                                     vba.in[variable], input_parameters[0]);
             break;
         }
         case BOUNDCOND_PRESCRIBED_DERIVATIVE: {

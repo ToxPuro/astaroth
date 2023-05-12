@@ -1,7 +1,7 @@
 #include <astaroth.h>
 
 // TODO: allow selecting single our doublepass here?
-enum class Simulation { Solve, Shock_Singlepass_Solve, Default = Solve };
+enum class Simulation { Solve, Shock_Singlepass_Solve, Hydro_Heatduct_Solve, Default = Solve };
 
 void
 log_simulation_choice(int pid, Simulation sim)
@@ -12,6 +12,9 @@ log_simulation_choice(int pid, Simulation sim)
         sim_label = "Solve";
         break;
     case Simulation::Shock_Singlepass_Solve:
+        sim_label = "Shock with singlepass solve";
+        break;
+    case Simulation::Hydro_Heatduct_Solve:
         sim_label = "Shock with singlepass solve";
         break;
     default:
@@ -73,6 +76,8 @@ get_simulation_graph(int pid, Simulation sim)
             VertexBufferHandle uuxz_fields[]   = {VTXBUF_UUX, VTXBUF_UUZ};
             VertexBufferHandle uuyz_fields[]   = {VTXBUF_UUY, VTXBUF_UUZ};
 
+            AcRealParam const_lnrho_bound[1] = {AC_lnrho0};
+
             AcTaskDefinition heatduct_ops[] =
                 {acHaloExchange(all_fields),
                  acBoundaryCondition(BOUNDARY_XZ, BOUNDCOND_SYMMETRIC, scalar_fields), 
@@ -85,7 +90,7 @@ get_simulation_graph(int pid, Simulation sim)
 
                  acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_INFLOW,       uuy_field), 
                  acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_OUTFLOW,      uuy_field), 
-                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_CONST,        lnrho_field, 0.0),  
+                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_CONST,        lnrho_field, const_lnrho_bound),  
                  acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,           lnrho_field),
                  acSpecialMHDBoundaryCondition(BOUNDARY_Y_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE),
                  acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,           entropy_field),

@@ -1301,7 +1301,10 @@ main(int argc, char** argv)
     Simulation sim = Simulation::Default;
 #if LSHOCK
     sim = Simulation::Shock_Singlepass_Solve;
-#endif 
+#endif
+    // TODO Add conditional 
+    sim = Simulation::Hydro_Heatduct_Solve;
+
     log_simulation_choice(pid, sim);
     AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);
 

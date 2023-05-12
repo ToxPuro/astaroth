@@ -72,9 +72,19 @@ AcResult acKernelA2Boundconds(const cudaStream_t stream, const int3 region_id, c
                               const int3 dims, AcReal* vtxbuf);
 
 /** */
+AcResult acKernelConstBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                                 const int3 dims, AcReal* vtxbuf, AcRealParam const_value);
+
+/** */
 AcResult acKernelPrescribedDerivativeBoundconds(const cudaStream_t stream, const int3 region_id,
                                                 const int3 normal, const int3 dims, AcReal* vtxbuf,
                                                 AcRealParam der_val_param);
+/** */
+AcResult acKernelOutflowBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                                   const int3 dims, AcReal* vtxbuf);
+/** */
+AcResult acKernelInflowBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                                  const int3 dims, AcReal* vtxbuf);
 
 // Entropy boundconds
 
