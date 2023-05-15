@@ -124,6 +124,7 @@ real AC_boundary_derivative
 //  Parameters only used in boundary conditions at the moment
 //  If you feel they should be elsewhere, please move them
 real AC_hcond0_kramers
+real AC_hflux
 real AC_n_kramers
 real AC_sigma_SBt
 real AC_chi
@@ -992,7 +993,7 @@ Kernel haatouken() {
 
     uu_radial = 0.0
 
-    if rr > 2.0*DSX { 
+    if rr > 2.0*AC_dsx { 
         uu_radial = AC_init_ampl_uu * 
                     exp(-pow((rr - AC_init_shell_radius), 2.0) / (2.0 * pow(AC_init_shell_width, 2.0))) *
                     exp(-pow(theta , 2.0) / (2.0 * pow(R_PI / 8.0, 2.0))) *

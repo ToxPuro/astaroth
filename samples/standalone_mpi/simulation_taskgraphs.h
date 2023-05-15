@@ -77,6 +77,7 @@ get_simulation_graph(int pid, Simulation sim)
             VertexBufferHandle uuyz_fields[]   = {VTXBUF_UUY, VTXBUF_UUZ};
 
             AcRealParam const_lnrho_bound[1] = {AC_lnrho0};
+            AcRealParam const_heat_flux[1] = {AC_hflux};
 
             AcTaskDefinition heatduct_ops[] =
                 {acHaloExchange(all_fields),
@@ -92,7 +93,7 @@ get_simulation_graph(int pid, Simulation sim)
                  acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_OUTFLOW,      uuy_field), 
                  acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_CONST,        lnrho_field, const_lnrho_bound),  
                  acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,           lnrho_field),
-                 acSpecialMHDBoundaryCondition(BOUNDARY_Y_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE),
+                 acSpecialMHDBoundaryCondition(BOUNDARY_Y_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, const_heat_flux),
                  acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,           entropy_field),
 
                  acCompute(KERNEL_twopass_solve_intermediate, all_fields),
