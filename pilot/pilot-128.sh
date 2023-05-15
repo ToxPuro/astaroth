@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --account=project_462000190
 #SBATCH --partition=dev-g
-#SBATCH --nodes=1
+#SBATCH --nodes=16
 #SBATCH --ntasks-per-node=8
 #SBATCH --gpus-per-node=8
 #SBATCH --exclusive
