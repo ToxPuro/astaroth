@@ -541,9 +541,19 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                                         : props.maxThreadsPerBlock;
   const size_t max_smem           = props.sharedMemPerBlock;
 
+  // Old heuristic
+  // for (int z = 1; z <= max_threads_per_block; ++z) {
+  //   for (int y = 1; y <= max_threads_per_block; ++y) {
+  //     for (int x = max(y, z); x <= max_threads_per_block; ++x) {
+
+  // New: require that tpb.x is a multiple of the minimum transaction or L2
+  // cache line size
   for (int z = 1; z <= max_threads_per_block; ++z) {
     for (int y = 1; y <= max_threads_per_block; ++y) {
-      for (int x = max(y, z); x <= max_threads_per_block; ++x) {
+      // 64 bytes on NVIDIA but the minimum L1 cache transaction is 32
+      const int minimum_transaction_size_in_elems = 32 / sizeof(AcReal);
+      for (int x = minimum_transaction_size_in_elems;
+           x <= max_threads_per_block; x += minimum_transaction_size_in_elems) {
 
         if (x * y * z > max_threads_per_block)
           break;
