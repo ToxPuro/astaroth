@@ -972,6 +972,13 @@ enum class InitialMeshProcedure {
     InitHaatouken,
 };
 
+// Enums for taskgraph choise 
+enum class PhysicsConfiguration {
+    Default,
+    ShockSinglepass,
+    HydroHeatduct,
+};
+
 // Enums for actions taken in the simulation loop
 enum class PeriodicAction {
     PrintDiagnostics,
@@ -1036,6 +1043,7 @@ main(int argc, char** argv)
     const char* config_path = AC_DEFAULT_CONFIG;
     // Default mesh procedure is kernel randomize
     InitialMeshProcedure initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+    PhysicsConfiguration simulation_physics = PhysicsConfiguration::Default;
     const char* initial_mesh_procedure_param    = nullptr;
 
     int opt{};
@@ -1056,6 +1064,11 @@ main(int argc, char** argv)
             if (strcmp(optarg, "Haatouken") == 0) {
                 acLogFromRootProc(pid, "Initial condition: Haatouken\n");    // This here just for the sake of diagnosis.         
                 initial_mesh_procedure = InitialMeshProcedure::InitHaatouken;
+                simulation_physics ==  PhysicsConfiguration::ShockSinglepass;
+            } else if (strcmp(optarg, "HeatDuct") == 0) {
+                acLogFromRootProc(pid, "Initial condition: Heatduct\n");    // This here just for the sake of diagnosis.         
+                initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+                simulation_physics == PhysicsConfiguration::HydroHeatduct;
             } else { 
                 exit(1);
             }
@@ -1299,11 +1312,14 @@ main(int argc, char** argv)
 
     acLogFromRootProc(pid, "Setting simulation program\n");
     Simulation sim = Simulation::Default;
+
+    if (simulation_physics ==  PhysicsConfiguration::ShockSinglepass) {
 #if LSHOCK
-    sim = Simulation::Shock_Singlepass_Solve;
+        sim = Simulation::Shock_Singlepass_Solve;
 #endif
-    // TODO Add conditional 
-    sim = Simulation::Hydro_Heatduct_Solve;
+    } else if (simulation_physics == PhysicsConfiguration::HydroHeatduct) {
+        sim = Simulation::Hydro_Heatduct_Solve;
+    }
 
     log_simulation_choice(pid, sim);
     AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);
