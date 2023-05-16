@@ -1064,11 +1064,12 @@ main(int argc, char** argv)
             if (strcmp(optarg, "Haatouken") == 0) {
                 acLogFromRootProc(pid, "Initial condition: Haatouken\n");    // This here just for the sake of diagnosis.         
                 initial_mesh_procedure = InitialMeshProcedure::InitHaatouken;
-                simulation_physics ==  PhysicsConfiguration::ShockSinglepass;
+                simulation_physics =  PhysicsConfiguration::ShockSinglepass;
             } else if (strcmp(optarg, "HeatDuct") == 0) {
                 acLogFromRootProc(pid, "Initial condition: Heatduct\n");    // This here just for the sake of diagnosis.         
                 initial_mesh_procedure = InitialMeshProcedure::InitKernel;
-                simulation_physics == PhysicsConfiguration::HydroHeatduct;
+                simulation_physics = PhysicsConfiguration::HydroHeatduct;
+                acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
             } else { 
                 exit(1);
             }
@@ -1313,13 +1314,31 @@ main(int argc, char** argv)
     acLogFromRootProc(pid, "Setting simulation program\n");
     Simulation sim = Simulation::Default;
 
-    if (simulation_physics ==  PhysicsConfiguration::ShockSinglepass) {
+    acLogFromRootProc(pid, "simulation_physics = %i \n", simulation_physics);
+
+    switch (simulation_physics) {
+    case PhysicsConfiguration::ShockSinglepass: {
 #if LSHOCK
         sim = Simulation::Shock_Singlepass_Solve;
+        acLogFromRootProc(pid, "PhysicsConfiguration ShockSinglepass !\n");
 #endif
-    } else if (simulation_physics == PhysicsConfiguration::HydroHeatduct) {
+        break;
+    } 
+    case PhysicsConfiguration::HydroHeatduct: {
         sim = Simulation::Hydro_Heatduct_Solve;
+        acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
+        break;
     }
+    }
+
+    acLogFromRootProc(pid, "sim = %i \n", sim);
+    acLogFromRootProc(pid, "Simulation::Default = %i\n",                Simulation::Default);
+    acLogFromRootProc(pid, "Simulation::Shock_Singlepass_Solve = %i\n", Simulation::Shock_Singlepass_Solve);
+    acLogFromRootProc(pid, "Simulation::Hydro_Heatduct_Solve = %i\n",   Simulation::Hydro_Heatduct_Solve);
+    acLogFromRootProc(pid, "PhysicsConfiguration::Default = %i\n",         PhysicsConfiguration::Default);
+    acLogFromRootProc(pid, "PhysicsConfiguration::ShockSinglepass = %i\n", PhysicsConfiguration::ShockSinglepass);
+    acLogFromRootProc(pid, "PhysicsConfiguration::HydroHeatduct = %i\n",   PhysicsConfiguration::HydroHeatduct);
+
 
     log_simulation_choice(pid, sim);
     AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);

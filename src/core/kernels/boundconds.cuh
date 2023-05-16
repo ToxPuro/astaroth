@@ -781,6 +781,9 @@ kernel_entropy_prescribed_heat_flux_boundconds(const int3 region_id, const int3 
         AcReal rho_diff = vba.in[VTXBUF_LNRHO][ghost_idx] - vba.in[VTXBUF_LNRHO][domain_idx];
         vba.in[VTXBUF_ENTROPY][ghost_idx] = vba.in[VTXBUF_ENTROPY][domain_idx] +
                                             cp * (cp - cv) * (rho_diff + distance * tmp);
+
+
+        //printf("ENTROPY BOUDNARY %e", vba.in[VTXBUF_ENTROPY][ghost_idx]);
     }
 }
 
@@ -794,7 +797,8 @@ acKernelEntropyPrescribedHeatFluxBoundconds(const cudaStream_t stream, const int
     const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
-
+ 
+    //printf("ENTROPY BOUDNARY asdasasdas");
     kernel_entropy_prescribed_heat_flux_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims,
                                                                             vba, F_param);
     return AC_SUCCESS;

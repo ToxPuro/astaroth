@@ -15,7 +15,7 @@ log_simulation_choice(int pid, Simulation sim)
         sim_label = "Shock with singlepass solve";
         break;
     case Simulation::Hydro_Heatduct_Solve:
-        sim_label = "Shock with singlepass solve";
+        sim_label = "Heat duct with doublepass solve";
         break;
     default:
         sim_label = "WARNING: No label exists for simulation";
@@ -60,8 +60,8 @@ get_simulation_graph(int pid, Simulation sim)
             return acGridBuildTaskGraph(shock_ops);
 #endif
         }
-#if LENTROPY
         case Simulation::Hydro_Heatduct_Solve: {
+#if LENTROPY
             // This is an exmaple of having multiple types of boundary conditions
             VertexBufferHandle all_fields[] = {VTXBUF_LNRHO, VTXBUF_UUX,
                                                VTXBUF_UUY, VTXBUF_UUZ, 
@@ -99,6 +99,8 @@ get_simulation_graph(int pid, Simulation sim)
                  acCompute(KERNEL_twopass_solve_intermediate, all_fields),
                  acCompute(KERNEL_twopass_solve_final,        all_fields)
                 };
+            acLogFromRootProc(pid, "Creating heat duct task graph\n");
+            return acGridBuildTaskGraph(heatduct_ops);
 #endif
         }
         default:

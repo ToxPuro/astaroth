@@ -927,6 +927,7 @@ BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_
 void
 BoundaryConditionTask::populate_boundary_region()
 {
+    //printf("RUNNING BoundaryConditionTask \n");
     // TODO: could assign a separate stream to each launch
     //       currently they are on a single stream
     for (auto variable : output_region.fields) {
@@ -1058,6 +1059,8 @@ SpecialMHDBoundaryConditionTask::SpecialMHDBoundaryConditionTask(
 void
 SpecialMHDBoundaryConditionTask::populate_boundary_region()
 {
+    //printf("RUNNING SpecialMHDBoundaryConditionTask \n");
+
     // TODO: could assign a separate stream to each launch of symmetric boundconds
     //       currently they are on a single stream
     switch (boundcond) {
@@ -1074,6 +1077,7 @@ SpecialMHDBoundaryConditionTask::populate_boundary_region()
         break;
     }
     case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX: {
+        //printf("RUNNING SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX \n");
         assert(input_parameters.size() == 1);
         acKernelEntropyPrescribedHeatFluxBoundconds(stream, output_region.id, boundary_normal,
                                                     boundary_dims, vba, input_parameters[0]);
