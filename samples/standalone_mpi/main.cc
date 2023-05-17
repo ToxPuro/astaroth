@@ -809,14 +809,14 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo
     for (size_t i = 0; i < num_io_fields; ++i)
         acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
 
-    // for (size_t i = 0; i < NUM_FIELDS; ++i)
-    //     acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, snapshot_dir, modstep_str,
-    //     ACCESS_READ);
+        // for (size_t i = 0; i < NUM_FIELDS; ++i)
+        //     acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, snapshot_dir, modstep_str,
+        //     ACCESS_READ);
 
-    // Not needed for synchronous reading
-    // acGridDiskAccessSync();
-    // acGridPeriodicBoundconds(STREAM_DEFAULT);
-    // acGridSynchronizeStream(STREAM_DEFAULT);
+        // Not needed for synchronous reading
+        // acGridDiskAccessSync();
+        // acGridPeriodicBoundconds(STREAM_DEFAULT);
+        // acGridSynchronizeStream(STREAM_DEFAULT);
 
 #if LMAGNETIC
     // Scale the magnetic field
@@ -1054,9 +1054,11 @@ main(int argc, char** argv)
             break;
         case 'i':
             if (strcmp(optarg, "Haatouken") == 0) {
-                acLogFromRootProc(pid, "Initial condition: Haatouken\n");    // This here just for the sake of diagnosis.         
+                acLogFromRootProc(pid, "Initial condition: Haatouken\n"); // This here just for the
+                                                                          // sake of diagnosis.
                 initial_mesh_procedure = InitialMeshProcedure::InitHaatouken;
-            } else { 
+            }
+            else {
                 exit(1);
             }
             break;
@@ -1221,7 +1223,7 @@ main(int argc, char** argv)
         acGridSwapBuffers();
         acLogFromRootProc(pid, "Communicating halos\n");
         acGridPeriodicBoundconds(STREAM_DEFAULT);
-        //MV: What if the boundary conditions are not periodic? 
+        // MV: What if the boundary conditions are not periodic?
 
         {
             // Should some labels be printed here?
@@ -1237,21 +1239,21 @@ main(int argc, char** argv)
         break;
     }
     // Creeates a kinetic kick as a system initial condition. Creatd as a demo
-    // case for invoking an alternative initial conditions via a DSL kernel.  
+    // case for invoking an alternative initial conditions via a DSL kernel.
     case InitialMeshProcedure::InitHaatouken: {
         // add a push in terms of a velocity
         // field into the code creating a cone-like shock. Essentially
         // "punching the air" to create a kinetic explosion.
         acLogFromRootProc(pid, "HAATOUKEN!\n");
         AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-        // Randomize the other vertex buffers for variety's sake. 
+        // Randomize the other vertex buffers for variety's sake.
         acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
-        // Ad haatouken! 
+        // Ad haatouken!
         acGridLaunchKernel(STREAM_DEFAULT, haatouken, dims.n0, dims.n1);
         acGridSwapBuffers();
         acLogFromRootProc(pid, "Communicating halos\n");
         acGridPeriodicBoundconds(STREAM_DEFAULT);
-        //MV: What if the boundary conditions are not periodic?
+        // MV: What if the boundary conditions are not periodic?
         break;
     }
     case InitialMeshProcedure::LoadPC_Varfile: {
@@ -1301,7 +1303,7 @@ main(int argc, char** argv)
     Simulation sim = Simulation::Default;
 #if LSHOCK
     sim = Simulation::Shock_Singlepass_Solve;
-#endif 
+#endif
     log_simulation_choice(pid, sim);
     AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);
 
@@ -1364,10 +1366,10 @@ main(int argc, char** argv)
                                                                         snapshot_time_offset);
 
     // Write slices
-    AcReal slice_time_offset                      = simulation_time;
-    post_step_actions
-        [PeriodicAction::WriteSlices] = SimulationPeriod(info, AC_slice_steps,
-                                                         AC_slice_save_t, slice_time_offset);
+    AcReal slice_time_offset                       = simulation_time;
+    post_step_actions[PeriodicAction::WriteSlices] = SimulationPeriod(info, AC_slice_steps,
+                                                                      AC_slice_save_t,
+                                                                      slice_time_offset);
 
     // Stop simulation after max time
     post_step_actions[PeriodicAction::EndSimulation] = SimulationPeriod(info, AC_max_steps,
@@ -1413,7 +1415,7 @@ main(int argc, char** argv)
         // TODO: figure out why we're doing this? do we want a clear indication in the file that a
         // new run was started?
         // MV: Yes this was a a non-intrusive way of making it possible to
-        // MV: locate where new run stars. If I remember right. 
+        // MV: locate where new run stars. If I remember right.
         fprintf(diag_file, "\n");
     }
 
@@ -1448,7 +1450,7 @@ main(int argc, char** argv)
         int switch_accretion = (i < 1) ? 0 : 1;
 #endif
 #if LSHOCK
-        // Attempt of shock viscosity outside of the taskgraph. 
+        // Attempt of shock viscosity outside of the taskgraph.
         // Commented out. Done with TaskGraph
         ////log_from_root_proc_with_sim_progress(pid, "Calculating shock viscosity\n");
         ////AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
@@ -1467,7 +1469,7 @@ main(int argc, char** argv)
         ////acGridSynchronizeStream(STREAM_ALL);
         ////acGridPeriodicBoundconds(STREAM_DEFAULT);
         ////acGridSynchronizeStream(STREAM_ALL);
-#endif 
+#endif
 
         for (auto& [action, period] : pre_step_actions) {
             if (i - 1 != 0 && period.check(i - 1, simulation_time)) {
