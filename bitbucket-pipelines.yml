@@ -13,7 +13,7 @@ image: nvidia/cuda:11.6.0-devel-ubuntu20.04
 # ===> Which might not even work since I don't know what kind of hardware we're running on (lspci was not available)
 
 options:
-  max-time: 5 # Max time allowed for building (minutes) 
+  max-time: 10 # Max time allowed for building (minutes) 
 pipelines:
   # default: # Default is run at every push but we have only 500 build minutes / month so that probably wouldn't work out
   custom: # Manual/scheduled building only
@@ -38,8 +38,8 @@ pipelines:
           - cmake -DUSE_HIP=OFF -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=OFF -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=OFF .. # Single precision
           - make -j
           - rm -rf *
-          - cmake -DUSE_HIP=OFF -DCMAKE_BUILD_TYPE=Release -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Double precision
+          - cmake -DUSE_HIP=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Double precision
           - make -j
           - rm -rf *
-          - cmake -DUSE_HIP=OFF -DCMAKE_BUILD_TYPE=Debug -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Debug
+          - cmake -DUSE_HIP=OFF -DCMAKE_BUILD_TYPE=Debug -DBUILD_ACC_RUNTIME_LIBRARY=ON -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Debug
           - make -j
