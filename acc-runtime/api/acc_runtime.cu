@@ -35,9 +35,10 @@ Volume
 get_bpg(const Volume dims, const Volume tpb)
 {
   switch (IMPLEMENTATION) {
-  case IMPLICIT_CACHING: // Fallthrough
-  case EXPLICIT_CACHING: // Fallthrough
-  case EXPLICIT_CACHING_3D_BLOCKING: {
+  case IMPLICIT_CACHING:             // Fallthrough
+  case EXPLICIT_CACHING:             // Fallthrough
+  case EXPLICIT_CACHING_3D_BLOCKING: // Fallthrough
+  case EXPLICIT_CACHING_4D_BLOCKING: {
     return (Volume){
         (size_t)ceil(1. * dims.x / tpb.x),
         (size_t)ceil(1. * dims.y / tpb.y),
@@ -70,6 +71,9 @@ is_valid_configuration(const Volume dims, const Volume tpb)
 
     return true;
   }
+  case EXPLICIT_CACHING_4D_BLOCKING: // Fallthrough
+    if (tpb.z > 1)
+      return false;
   case EXPLICIT_CACHING: // Fallthrough
   case EXPLICIT_CACHING_3D_BLOCKING: {
 
@@ -98,6 +102,10 @@ get_smem(const Volume tpb, const size_t stencil_order,
   case EXPLICIT_CACHING_3D_BLOCKING: {
     return (tpb.x + stencil_order) * (tpb.y + stencil_order) *
            (tpb.z + stencil_order) * bytes_per_elem;
+  }
+  case EXPLICIT_CACHING_4D_BLOCKING: {
+    return (tpb.x + stencil_order) * (tpb.y + stencil_order) * tpb.z *
+           (NUM_FIELDS)*bytes_per_elem;
   }
   default: {
     ERROR("Invalid IMPLEMENTATION in get_smem");
