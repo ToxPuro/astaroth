@@ -751,7 +751,7 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo
     MPI_Comm_rank(acGridMPIComm(), &pid);
     if (pid == 0)
         system("tail -n2 snapshots_info.csv | head -n1 > latest_snapshot.info && sync");
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Barrier(acGridMPIComm());
 
     // Read the previous valid step from snapshots_info.csv
     int modstep = 0;
