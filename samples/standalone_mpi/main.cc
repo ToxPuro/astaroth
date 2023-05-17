@@ -747,7 +747,11 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo
     }
 
     // Quick hack, TODO better
-    system("tail -n2 snapshots_info.csv | head -n1 > latest_snapshot.info");
+    int pid;
+    MPI_Comm_rank(acGridMPIComm(), &pid);
+    if (pid == 0)
+        system("tail -n2 snapshots_info.csv | head -n1 > latest_snapshot.info && sync");
+    MPI_Barrier(MPI_COMM_WORLD);
 
     // Read the previous valid step from snapshots_info.csv
     int modstep = 0;
@@ -783,8 +787,6 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo
     char modstep_str[buflen];
     sprintf(modstep_str, "%d", modstep);
 
-    int pid;
-    MPI_Comm_rank(acGridMPIComm(), &pid);
     acLogFromRootProc(pid, "Restarting from snapshot %d (step %d, tstep %g)\n", modstep, *step,
                       (double)(*simulation_time));
 
