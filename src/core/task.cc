@@ -267,9 +267,9 @@ Region::boundary(uint3_64 decomp, int3 pid3d, int3 id)
     int3 neighbor = pid3d + id;
     return (AcBoundary)((neighbor.x == -1 ? BOUNDARY_X_BOT : 0) |
                         (neighbor.x == (int)decomp.x ? BOUNDARY_X_TOP : 0) |
-                        (neighbor.y == -1 ? BOUNDARY_Y_TOP : 0) |
+                        (neighbor.y == -1 ? BOUNDARY_Y_BOT : 0) |
                         (neighbor.y == (int)decomp.y ? BOUNDARY_Y_TOP : 0) |
-                        (neighbor.z == -1 ? BOUNDARY_Z_TOP : 0) |
+                        (neighbor.z == -1 ? BOUNDARY_Z_BOT : 0) |
                         (neighbor.z == (int)decomp.z ? BOUNDARY_Z_TOP : 0));
 }
 
