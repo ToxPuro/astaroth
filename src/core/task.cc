@@ -921,13 +921,13 @@ BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_
            std::to_string(output_region.id.x) + "," + std::to_string(output_region.id.y) + "," +
            std::to_string(output_region.id.z) + ")" + ".(" + std::to_string(boundary_normal.x) +
            "," + std::to_string(boundary_normal.y) + "," + std::to_string(boundary_normal.z) + ")";
+    boundary = op.boundary;
     task_type = TASKTYPE_BOUNDCOND;
 }
 
 void
 BoundaryConditionTask::populate_boundary_region()
 {
-    //printf("RUNNING BoundaryConditionTask \n");
     // TODO: could assign a separate stream to each launch
     //       currently they are on a single stream
     for (auto variable : output_region.fields) {
@@ -1059,7 +1059,6 @@ SpecialMHDBoundaryConditionTask::SpecialMHDBoundaryConditionTask(
 void
 SpecialMHDBoundaryConditionTask::populate_boundary_region()
 {
-    //printf("RUNNING SpecialMHDBoundaryConditionTask \n");
 
     // TODO: could assign a separate stream to each launch of symmetric boundconds
     //       currently they are on a single stream

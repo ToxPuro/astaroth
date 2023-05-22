@@ -1,5 +1,7 @@
 #include <astaroth.h>
 
+#include <astaroth_debug.h>
+
 // TODO: allow selecting single our doublepass here?
 enum class Simulation { Solve, Shock_Singlepass_Solve, Hydro_Heatduct_Solve, Default = Solve };
 
@@ -21,7 +23,7 @@ log_simulation_choice(int pid, Simulation sim)
         sim_label = "WARNING: No label exists for simulation";
         break;
     }
-    acLogFromRootProc(pid, "Simulation program: %s", sim_label);
+    acLogFromRootProc(pid, "Simulation program: %s \n", sim_label);
 }
 
 static std::map<Simulation, AcTaskGraph*> task_graphs;
@@ -93,14 +95,19 @@ get_simulation_graph(int pid, Simulation sim)
                  acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_OUTFLOW,      uuy_field), 
                  acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_CONST,        lnrho_field, const_lnrho_bound),  
                  acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,           lnrho_field),
-                 acSpecialMHDBoundaryCondition(BOUNDARY_Y_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, const_heat_flux),
+                 acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,           lnrho_field),
                  acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,           entropy_field),
+
+                 acSpecialMHDBoundaryCondition(BOUNDARY_Y_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, const_heat_flux),
+                 //acSpecialMHDBoundaryCondition(BOUNDARY_Y, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, const_heat_flux), //This one works but the above not
 
                  acCompute(KERNEL_twopass_solve_intermediate, all_fields),
                  acCompute(KERNEL_twopass_solve_final,        all_fields)
                 };
             acLogFromRootProc(pid, "Creating heat duct task graph\n");
-            return acGridBuildTaskGraph(heatduct_ops);
+            AcTaskGraph* my_taskgraph = acGridBuildTaskGraph(heatduct_ops);
+            acGraphPrintDependencies(my_taskgraph);
+            return my_taskgraph;
 #endif
         }
         default:

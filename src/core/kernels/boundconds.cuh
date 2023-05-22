@@ -783,7 +783,6 @@ kernel_entropy_prescribed_heat_flux_boundconds(const int3 region_id, const int3 
                                             cp * (cp - cv) * (rho_diff + distance * tmp);
 
 
-        //printf("ENTROPY BOUDNARY %e", vba.in[VTXBUF_ENTROPY][ghost_idx]);
     }
 }
 

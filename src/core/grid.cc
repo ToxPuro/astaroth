@@ -1443,6 +1443,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         case TASKTYPE_SPECIAL_MHD_BOUNDCOND: {
 #ifdef AC_INTEGRATION_ENABLED
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
+                acVerboseLogFromRootProc(rank, "tag %d, decomp %i %i %i, rank %i, op.boundary  %i \n ", tag, decomp.x, decomp.y, decomp.z, rank, op.boundary);
+                acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Region::is_on_boundary(decomp, rank, tag, op.boundary) = %i \n", Region::is_on_boundary(decomp, rank, tag, op.boundary));
                 if (Region::is_on_boundary(decomp, rank, tag, op.boundary)) {
                     auto task = std::make_shared<SpecialMHDBoundaryConditionTask>(op,
                                                                                   boundary_normal(
@@ -1451,6 +1453,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                                                                                   device,
                                                                                   swap_offset);
                     graph->all_tasks.push_back(task);
+                    //printf("acGridBuildTaskGraph: Created SpecialMHDBoundaryConditionTask type task\n");
                 }
             }
 #endif
