@@ -3,14 +3,16 @@ Created by *Miikka Väisälä*, at 2023/5
 # Purpose of this simulation setup 
 
 Purpose if this simualtion sample was to play with more complicate multiple
-boundary conditions, with essentially heated fluid flow entering the system from
-one end into another. 
+boundary conditions. Heat flux enters from the bottom boundary on y direction
+of the system and matter can exit from the other end. 
 
 # What is a successful test
 
-OLD A succesful test is that `standalone_mpi` runs properly on multiple GPUs
-without the system crashing due to unnatural resons, and results looks sensible
-without numerical garbage. **Please note that this is not a physics test, but a
+This is a boundary condition example. By default setting the simulation crashed
+when run for longer. However, it serves as an example of how to set up boure
+complicated boundary conditions via customizable taskgraph.  
+
+**Please note that this is not a physics test, but a
 test to see that the code is working as expected.**
 
 # Required LSWITCHES 
@@ -33,14 +35,21 @@ LBFIELD (0)
 LSHOCK (0)
 ```
 
+# TaskGraph
+
+This run uses the TaskGraph `Hydro_Heatduct_Solve` as listed in
+`samples/standalone_mpi/simulation_taskgraphs.h`. At the moment of writing this
+documentation, if you want to set up your own special boundary condition, make
+a TaskGraph and call it following the examples int he code. 
+
 # Setting up and compiling.
 
-Run `./my_cmake.sh`
+Run `./my_cmake.sh` or customize it to your system specific. 
 
 # Running the simulation. 
 
-Run e.g. `mpirun -n 4 ./ac_run_mpi -c astaroth.conf` or however you particular
-system runs MPI. 
+Run e.g. `mpirun -n 4 ./ac_run_mpi --config astaroth.conf --init-condition HeatDuct` 
+or however you particular system runs MPI. 
 
 # Troubleshooting
 

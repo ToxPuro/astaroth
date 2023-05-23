@@ -93,12 +93,9 @@ get_simulation_graph(int pid, Simulation sim)
 
                  acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_INFLOW,    uuy_field), 
                  acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_OUTFLOW,   uuy_field), 
-                 //acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_CONST,   lnrho_field, const_lnrho_bound),  
-                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_A2,        lnrho_field, const_lnrho_bound),  
-                 acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,        lnrho_field),
-                 acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,        entropy_field),
+                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_A2,        lnrho_field),  
+                 acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,        scalar_fields),
 
-                 //acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_A2,           entropy_field),
                  acSpecialMHDBoundaryCondition(BOUNDARY_Y_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, const_heat_flux),
 
                  acCompute(KERNEL_twopass_solve_intermediate, all_fields),
