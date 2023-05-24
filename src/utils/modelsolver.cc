@@ -46,6 +46,7 @@
 #define R_PI ((Scalar)M_PI)
 */
 
+/*
 typedef AcReal Scalar;
 // typedef AcReal3 Vector;
 // typedef AcMatrix Matrix;
@@ -61,10 +62,47 @@ typedef float Vector __attribute__((vector_size(4 * sizeof(float))));
 #define cos cosf
 #define sin sinf
 #endif
+*/
+typedef long double Scalar;
+typedef struct {
+    Scalar x, y, z;
+} Vector;
 
 typedef struct {
     Vector row[3];
 } Matrix;
+
+#define fabs fabsl
+#define exp expl
+#define sqrt sqrtl
+#define cos cosl
+#define sin sinl
+
+#define SCALAR_PI (M_PIl) // Long double variant
+
+static Vector
+operator-(const Vector& a)
+{
+    return (Vector){-a.x, -a.y, -a.z};
+}
+
+static Vector
+operator+(const Vector& a, const Vector& b)
+{
+    return (Vector){a.x + b.x, a.y + b.y, a.z + b.z};
+}
+
+static Vector
+operator-(const Vector& a, const Vector& b)
+{
+    return (Vector){a.x - b.x, a.y - b.y, a.z - b.z};
+}
+
+static Vector
+operator*(const Scalar& a, const Vector& b)
+{
+    return (Vector){a * b.x, a * b.y, a * b.z};
+}
 
 static AcMeshInfo* mesh_info = NULL;
 
@@ -77,7 +115,7 @@ getInt(const AcIntParam param)
 static inline Scalar
 getReal(const AcRealParam param)
 {
-    return mesh_info->real_params[param];
+    return (Scalar)mesh_info->real_params[param];
 }
 
 static inline int
@@ -111,9 +149,9 @@ first_derivative(const Scalar* pencil, const Scalar inv_ds)
 #elif STENCIL_ORDER == 6
     const Scalar coefficients[] = {
         0,
-        (Scalar)(3.0 / 4.0),
-        (Scalar)(-3.0 / 20.0),
-        (Scalar)(1.0 / 60.0),
+        (Scalar)3.0 / (Scalar)4.0,
+        (Scalar)-3.0 / (Scalar)20.0,
+        (Scalar)1.0 / (Scalar)60.0,
     };
 #elif STENCIL_ORDER == 8
     const Scalar coefficients[] = {
@@ -126,6 +164,7 @@ first_derivative(const Scalar* pencil, const Scalar inv_ds)
 
     // #pragma unroll
     for (int i = 1; i <= MID; ++i)
+        // for (int i = MID; i >= 1; --i)
         res += coefficients[i] * (pencil[MID + i] - pencil[MID - i]);
 
     return res * inv_ds;
@@ -144,10 +183,10 @@ second_derivative(const Scalar* pencil, const Scalar inv_ds)
     };
 #elif STENCIL_ORDER == 6
     const Scalar coefficients[] = {
-        (Scalar)(-49.0 / 18.0),
-        (Scalar)(3.0 / 2.0),
-        (Scalar)(-3.0 / 20.0),
-        (Scalar)(1.0 / 90.0),
+        (Scalar)-49.0 / (Scalar)18.0,
+        (Scalar)3.0 / (Scalar)2.0,
+        (Scalar)-3.0 / (Scalar)20.0,
+        (Scalar)1.0 / (Scalar)90.0,
     };
 #elif STENCIL_ORDER == 8
     const Scalar coefficients[] = {
@@ -161,6 +200,7 @@ second_derivative(const Scalar* pencil, const Scalar inv_ds)
 
     // #pragma unroll
     for (int i = 1; i <= MID; ++i)
+        // for (int i = MID; i >= 1; --i)
         res += coefficients[i] * (pencil[MID + i] + pencil[MID - i]);
 
     return res * inv_ds * inv_ds;
@@ -180,7 +220,7 @@ cross_derivative(const Scalar* pencil_a, const Scalar* pencil_b, const Scalar in
         0,
     }; // TODO correct coefficients, these are just placeholders
 #elif STENCIL_ORDER == 6
-    const Scalar fac            = ((Scalar)(1. / 720.));
+    const Scalar fac            = (Scalar)1. / (Scalar)720.;
     const Scalar coefficients[] = {
         0 * fac,
         (Scalar)(270.0) * fac,
@@ -203,6 +243,7 @@ cross_derivative(const Scalar* pencil_a, const Scalar* pencil_b, const Scalar in
 
     // #pragma unroll
     for (int i = 1; i <= MID; ++i) {
+        // for (int i = MID; i >= 1; --i) {
         res += coefficients[i] *
                (pencil_a[MID + i] + pencil_a[MID - i] - pencil_b[MID + i] - pencil_b[MID - i]);
     }
@@ -210,200 +251,200 @@ cross_derivative(const Scalar* pencil_a, const Scalar* pencil_b, const Scalar in
 }
 
 static inline Scalar
-derx(const int i, const int j, const int k, const Scalar* arr)
+derx(const int i, const int j, const int k, const AcReal* arr)
 {
     Scalar pencil[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
+        pencil[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
-    return first_derivative(pencil, ((AcReal)1. / getReal(AC_dsx)));
+    return first_derivative(pencil, ((Scalar)1. / getReal(AC_dsx)));
 }
 
 static inline Scalar
-derxx(const int i, const int j, const int k, const Scalar* arr)
+derxx(const int i, const int j, const int k, const AcReal* arr)
 {
     Scalar pencil[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
+        pencil[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, j, k)];
 
-    return second_derivative(pencil, ((AcReal)1. / getReal(AC_dsx)));
+    return second_derivative(pencil, ((Scalar)1. / getReal(AC_dsx)));
 }
 
 static inline Scalar
-derxy(const int i, const int j, const int k, const Scalar* arr)
+derxy(const int i, const int j, const int k, const AcReal* arr)
 {
     Scalar pencil_a[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil_a[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, //
-                                   j + offset - STENCIL_ORDER / 2, k)];
+        pencil_a[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, //
+                                           j + offset - STENCIL_ORDER / 2, k)];
 
     Scalar pencil_b[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil_b[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, //
-                                   j + STENCIL_ORDER / 2 - offset, k)];
+        pencil_b[offset] = (Scalar)arr[IDX(i + offset - STENCIL_ORDER / 2, //
+                                           j + STENCIL_ORDER / 2 - offset, k)];
 
-    return cross_derivative(pencil_a, pencil_b, ((AcReal)1. / getReal(AC_dsx)),
-                            ((AcReal)1. / getReal(AC_dsy)));
+    return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_dsx)),
+                            ((Scalar)1. / getReal(AC_dsy)));
 }
 
 static inline Scalar
-derxz(const int i, const int j, const int k, const Scalar* arr)
+derxz(const int i, const int j, const int k, const AcReal* arr)
 {
     Scalar pencil_a[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil_a[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j,
-                                   k + offset - STENCIL_ORDER / 2)];
+        pencil_a[offset] = (Scalar)
+            arr[IDX(i + offset - STENCIL_ORDER / 2, j, k + offset - STENCIL_ORDER / 2)];
 
     Scalar pencil_b[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil_b[offset] = arr[IDX(i + offset - STENCIL_ORDER / 2, j,
-                                   k + STENCIL_ORDER / 2 - offset)];
+        pencil_b[offset] = (Scalar)
+            arr[IDX(i + offset - STENCIL_ORDER / 2, j, k + STENCIL_ORDER / 2 - offset)];
 
-    return cross_derivative(pencil_a, pencil_b, ((AcReal)1. / getReal(AC_dsx)),
-                            ((AcReal)1. / getReal(AC_dsz)));
+    return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_dsx)),
+                            ((Scalar)1. / getReal(AC_dsz)));
 }
 
 static inline Scalar
-dery(const int i, const int j, const int k, const Scalar* arr)
+dery(const int i, const int j, const int k, const AcReal* arr)
 {
     Scalar pencil[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
+        pencil[offset] = (Scalar)arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
-    return first_derivative(pencil, ((AcReal)1. / getReal(AC_dsy)));
+    return first_derivative(pencil, ((Scalar)1. / getReal(AC_dsy)));
 }
 
 static inline Scalar
-deryy(const int i, const int j, const int k, const Scalar* arr)
+deryy(const int i, const int j, const int k, const AcReal* arr)
 {
     Scalar pencil[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
+        pencil[offset] = (Scalar)arr[IDX(i, j + offset - STENCIL_ORDER / 2, k)];
 
-    return second_derivative(pencil, ((AcReal)1. / getReal(AC_dsy)));
+    return second_derivative(pencil, ((Scalar)1. / getReal(AC_dsy)));
 }
 
 static inline Scalar
-deryz(const int i, const int j, const int k, const Scalar* arr)
+deryz(const int i, const int j, const int k, const AcReal* arr)
 {
     Scalar pencil_a[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil_a[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2,
-                                   k + offset - STENCIL_ORDER / 2)];
+        pencil_a[offset] = (Scalar)
+            arr[IDX(i, j + offset - STENCIL_ORDER / 2, k + offset - STENCIL_ORDER / 2)];
 
     Scalar pencil_b[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil_b[offset] = arr[IDX(i, j + offset - STENCIL_ORDER / 2,
-                                   k + STENCIL_ORDER / 2 - offset)];
+        pencil_b[offset] = (Scalar)
+            arr[IDX(i, j + offset - STENCIL_ORDER / 2, k + STENCIL_ORDER / 2 - offset)];
 
-    return cross_derivative(pencil_a, pencil_b, ((AcReal)1. / getReal(AC_dsy)),
-                            ((AcReal)1. / getReal(AC_dsz)));
+    return cross_derivative(pencil_a, pencil_b, ((Scalar)1. / getReal(AC_dsy)),
+                            ((Scalar)1. / getReal(AC_dsz)));
 }
 
 static inline Scalar
-derz(const int i, const int j, const int k, const Scalar* arr)
+derz(const int i, const int j, const int k, const AcReal* arr)
 {
     Scalar pencil[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil[offset] = arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
+        pencil[offset] = (Scalar)arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
-    return first_derivative(pencil, ((AcReal)1. / getReal(AC_dsz)));
+    return first_derivative(pencil, ((Scalar)1. / getReal(AC_dsz)));
 }
 
 static inline Scalar
-derzz(const int i, const int j, const int k, const Scalar* arr)
+derzz(const int i, const int j, const int k, const AcReal* arr)
 {
     Scalar pencil[STENCIL_ORDER + 1];
     // #pragma unroll
     for (int offset = 0; offset < STENCIL_ORDER + 1; ++offset)
-        pencil[offset] = arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
+        pencil[offset] = (Scalar)arr[IDX(i, j, k + offset - STENCIL_ORDER / 2)];
 
-    return second_derivative(pencil, ((AcReal)1. / getReal(AC_dsz)));
+    return second_derivative(pencil, ((Scalar)1. / getReal(AC_dsz)));
 }
 
 #if LUPWD
 static inline Scalar
-der6x_upwd(const int i, const int j, const int k, const Scalar* arr)
+der6x_upwd(const int i, const int j, const int k, const AcReal* arr)
 {
-    Scalar inv_ds = ((AcReal)1. / getReal(AC_dsx));
+    Scalar inv_ds = ((Scalar)1. / getReal(AC_dsx));
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
-           (-(Scalar)(20.0) * arr[IDX(i, j, k)] +
-            (Scalar)(15.0) * (arr[IDX(i + 1, j, k)] + arr[IDX(i - 1, j, k)]) -
-            (Scalar)(6.0) * (arr[IDX(i + 2, j, k)] + arr[IDX(i - 2, j, k)]) +
-            arr[IDX(i + 3, j, k)] + arr[IDX(i - 3, j, k)]);
+           (-(Scalar)(20.0) * (Scalar)arr[IDX(i, j, k)] +
+            (Scalar)(15.0) * ((Scalar)arr[IDX(i + 1, j, k)] + (Scalar)arr[IDX(i - 1, j, k)]) -
+            (Scalar)(6.0) * ((Scalar)arr[IDX(i + 2, j, k)] + (Scalar)arr[IDX(i - 2, j, k)]) +
+            (Scalar)arr[IDX(i + 3, j, k)] + (Scalar)arr[IDX(i - 3, j, k)]);
 }
 
 static inline Scalar
-der6y_upwd(const int i, const int j, const int k, const Scalar* arr)
+der6y_upwd(const int i, const int j, const int k, const AcReal* arr)
 {
-    Scalar inv_ds = ((AcReal)1. / getReal(AC_dsy));
+    Scalar inv_ds = ((Scalar)1. / getReal(AC_dsy));
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
-           (-(Scalar)(20.0) * arr[IDX(i, j, k)] +
-            (Scalar)(15.0) * (arr[IDX(i, j + 1, k)] + arr[IDX(i, j - 1, k)]) -
-            (Scalar)(6.0) * (arr[IDX(i, j + 2, k)] + arr[IDX(i, j - 2, k)]) +
-            arr[IDX(i, j + 3, k)] + arr[IDX(i, j - 3, k)]);
+           (-(Scalar)(20.0) * (Scalar)arr[IDX(i, j, k)] +
+            (Scalar)(15.0) * ((Scalar)arr[IDX(i, j + 1, k)] + (Scalar)arr[IDX(i, j - 1, k)]) -
+            (Scalar)(6.0) * ((Scalar)arr[IDX(i, j + 2, k)] + (Scalar)arr[IDX(i, j - 2, k)]) +
+            (Scalar)arr[IDX(i, j + 3, k)] + (Scalar)arr[IDX(i, j - 3, k)]);
 }
 
 static inline Scalar
-der6z_upwd(const int i, const int j, const int k, const Scalar* arr)
+der6z_upwd(const int i, const int j, const int k, const AcReal* arr)
 {
-    Scalar inv_ds = ((AcReal)1. / getReal(AC_dsz));
+    Scalar inv_ds = ((Scalar)1. / getReal(AC_dsz));
 
     return (Scalar)(1.0 / 60.0) * inv_ds *
-           (-(Scalar)(20.0) * arr[IDX(i, j, k)] +
-            (Scalar)(15.0) * (arr[IDX(i, j, k + 1)] + arr[IDX(i, j, k - 1)]) -
-            (Scalar)(6.0) * (arr[IDX(i, j, k + 2)] + arr[IDX(i, j, k - 2)]) +
-            arr[IDX(i, j, k + 3)] + arr[IDX(i, j, k - 3)]);
+           (-(Scalar)(20.0) * (Scalar)arr[IDX(i, j, k)] +
+            (Scalar)(15.0) * ((Scalar)arr[IDX(i, j, k + 1)] + (Scalar)arr[IDX(i, j, k - 1)]) -
+            (Scalar)(6.0) * ((Scalar)arr[IDX(i, j, k + 2)] + (Scalar)arr[IDX(i, j, k - 2)]) +
+            (Scalar)arr[IDX(i, j, k + 3)] + (Scalar)arr[IDX(i, j, k - 3)]);
 }
 #endif
 
 static inline Scalar
-compute_value(const int i, const int j, const int k, const Scalar* arr)
+compute_value(const int i, const int j, const int k, const AcReal* arr)
 {
-    return arr[IDX(i, j, k)];
+    return (Scalar)arr[IDX(i, j, k)];
 }
 
 static inline Vector
-compute_gradient(const int i, const int j, const int k, const Scalar* arr)
+compute_gradient(const int i, const int j, const int k, const AcReal* arr)
 {
     return (Vector){derx(i, j, k, arr), dery(i, j, k, arr), derz(i, j, k, arr)};
 }
 
 #if LUPWD
 static inline Vector
-compute_upwind(const int i, const int j, const int k, const Scalar* arr)
+compute_upwind(const int i, const int j, const int k, const AcReal* arr)
 {
     return (Vector){der6x_upwd(i, j, k, arr), der6y_upwd(i, j, k, arr), der6z_upwd(i, j, k, arr)};
 }
 #endif
 
 static inline Matrix
-compute_hessian(const int i, const int j, const int k, const Scalar* arr)
+compute_hessian(const int i, const int j, const int k, const AcReal* arr)
 {
     Matrix hessian;
 
     hessian.row[0] = (Vector){derxx(i, j, k, arr), derxy(i, j, k, arr), derxz(i, j, k, arr)};
-    hessian.row[1] = (Vector){hessian.row[0][1], deryy(i, j, k, arr), deryz(i, j, k, arr)};
-    hessian.row[2] = (Vector){hessian.row[0][2], hessian.row[1][2], derzz(i, j, k, arr)};
+    hessian.row[1] = (Vector){hessian.row[0].y, deryy(i, j, k, arr), deryz(i, j, k, arr)};
+    hessian.row[2] = (Vector){hessian.row[0].z, hessian.row[1].z, derzz(i, j, k, arr)};
 
     return hessian;
 }
 
 static inline ScalarData
-read_scal_data(const int i, const int j, const int k, Scalar* buf[NUM_VTXBUF_HANDLES],
+read_scal_data(const int i, const int j, const int k, AcReal* buf[NUM_VTXBUF_HANDLES],
                const int handle)
 {
     ScalarData data;
@@ -423,7 +464,7 @@ read_scal_data(const int i, const int j, const int k, Scalar* buf[NUM_VTXBUF_HAN
 }
 
 static inline VectorData
-read_vec_data(const int i, const int j, const int k, Scalar* buf[NUM_VTXBUF_HANDLES],
+read_vec_data(const int i, const int j, const int k, AcReal* buf[NUM_VTXBUF_HANDLES],
               const int3 handle)
 {
     VectorData data;
@@ -459,14 +500,24 @@ vecvalue(const VectorData data)
     return (Vector){value(data.xdata), value(data.ydata), value(data.zdata)};
 }
 
+static inline Vector
+vecvalue_abs(const VectorData data)
+{
+    return (Vector){
+        fabs(value(data.xdata)),
+        fabs(value(data.ydata)),
+        fabs(value(data.zdata)),
+    };
+}
+
 static inline Matrix
 gradients(const VectorData data)
 {
-    return (Matrix){
-        .row[0] = gradient(data.xdata),
-        .row[1] = gradient(data.ydata),
-        .row[2] = gradient(data.zdata),
-    };
+    Matrix mat;
+    mat.row[0] = gradient(data.xdata);
+    mat.row[1] = gradient(data.ydata);
+    mat.row[2] = gradient(data.zdata);
+    return mat;
 }
 
 /*
@@ -478,31 +529,31 @@ gradients(const VectorData data)
 static inline Vector
 operator-(const Vector a, const Vector b)
 {
-    return (Vector){a[0] - b[0], a[1] - b[1], a[2] - b[2]};
+    return (Vector){a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
 static inline Vector
 operator+(const Vector a, const Vector b)
 {
-    return (Vector){a[0] + b[0], a[1] + b[1], a[2] + b[2]};
+    return (Vector){a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
 static inline Vector
 operator-(const Vector a)
 {
-    return (Vector){-a[0], -a[1], -a[2]};
+    return (Vector){-a.x, -a.y, -a.z};
 }
 
 static inline Vector operator*(const Scalar a, const Vector b)
 {
-    return (Vector){a * b[0], a * b[1], a * b[2]};
+    return (Vector){a * b.x, a * b.y, a * b.z};
 }
 */
 
 static inline Scalar
 dot(const Vector a, const Vector b)
 {
-    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
 static inline Vector
@@ -516,9 +567,9 @@ cross(const Vector a, const Vector b)
 {
     Vector c;
 
-    c[0] = a[1] * b[2] - a[2] * b[1];
-    c[1] = a[2] * b[0] - a[0] * b[2];
-    c[2] = a[0] * b[1] - a[1] * b[0];
+    c.x = a.y * b.z - a.z * b.y;
+    c.y = a.z * b.x - a.x * b.z;
+    c.z = a.x * b.y - a.y * b.x;
 
     return c;
 }
@@ -532,7 +583,7 @@ is_valid(const Scalar a)
 static inline bool
 is_valid(const Vector a)
 {
-    return is_valid(a[0]) && is_valid(a[1]) && is_valid(a[2]);
+    return is_valid(a.x) && is_valid(a.y) && is_valid(a.z);
 }
 */
 /*
@@ -543,13 +594,13 @@ is_valid(const Vector a)
 static inline Scalar
 laplace(const ScalarData data)
 {
-    return hessian(data).row[0][0] + hessian(data).row[1][1] + hessian(data).row[2][2];
+    return hessian(data).row[0].x + hessian(data).row[1].y + hessian(data).row[2].z;
 }
 
 static inline Scalar
 divergence(const VectorData vec)
 {
-    return gradient(vec.xdata)[0] + gradient(vec.ydata)[1] + gradient(vec.zdata)[2];
+    return gradient(vec.xdata).x + gradient(vec.ydata).y + gradient(vec.zdata).z;
 }
 
 static inline Vector
@@ -561,18 +612,18 @@ laplace_vec(const VectorData vec)
 static inline Vector
 curl(const VectorData vec)
 {
-    return (Vector){gradient(vec.zdata)[1] - gradient(vec.ydata)[2],
-                    gradient(vec.xdata)[2] - gradient(vec.zdata)[0],
-                    gradient(vec.ydata)[0] - gradient(vec.xdata)[1]};
+    return (Vector){gradient(vec.zdata).y - gradient(vec.ydata).z,
+                    gradient(vec.xdata).z - gradient(vec.zdata).x,
+                    gradient(vec.ydata).x - gradient(vec.xdata).y};
 }
 
 static inline Vector
 gradient_of_divergence(const VectorData vec)
 {
     return (Vector){
-        hessian(vec.xdata).row[0][0] + hessian(vec.ydata).row[0][1] + hessian(vec.zdata).row[0][2],
-        hessian(vec.xdata).row[1][0] + hessian(vec.ydata).row[1][1] + hessian(vec.zdata).row[1][2],
-        hessian(vec.xdata).row[2][0] + hessian(vec.ydata).row[2][1] + hessian(vec.zdata).row[2][2],
+        hessian(vec.xdata).row[0].x + hessian(vec.ydata).row[0].y + hessian(vec.zdata).row[0].z,
+        hessian(vec.xdata).row[1].x + hessian(vec.ydata).row[1].y + hessian(vec.zdata).row[1].z,
+        hessian(vec.xdata).row[2].x + hessian(vec.ydata).row[2].y + hessian(vec.zdata).row[2].z,
     };
 }
 
@@ -582,27 +633,28 @@ stress_tensor(const VectorData vec)
 {
     Matrix S;
 
-    S.row[0][0] = (Scalar)(2. / 3.) * gradient(vec.xdata)[0] -
-                  (Scalar)(1. / 3.) * (gradient(vec.ydata)[1] + gradient(vec.zdata)[2]);
-    S.row[0][1] = (Scalar)(1. / 2.) * (gradient(vec.xdata)[1] + gradient(vec.ydata)[0]);
-    S.row[0][2] = (Scalar)(1. / 2.) * (gradient(vec.xdata)[2] + gradient(vec.zdata)[0]);
+    S.row[0].x = (Scalar)(2. / 3.) * gradient(vec.xdata).x -
+                 (Scalar)(1. / 3.) * (gradient(vec.ydata).y + gradient(vec.zdata).z);
+    S.row[0].y = (Scalar)(1. / 2.) * (gradient(vec.xdata).y + gradient(vec.ydata).x);
+    S.row[0].z = (Scalar)(1. / 2.) * (gradient(vec.xdata).z + gradient(vec.zdata).x);
 
-    S.row[1][1] = (Scalar)(2. / 3.) * gradient(vec.ydata)[1] -
-                  (Scalar)(1. / 3.) * (gradient(vec.xdata)[0] + gradient(vec.zdata)[2]);
+    S.row[1].y = (Scalar)(2. / 3.) * gradient(vec.ydata).y -
+                 (Scalar)(1. / 3.) * (gradient(vec.xdata).x + gradient(vec.zdata).z);
 
-    S.row[1][2] = (Scalar)(1. / 2.) * (gradient(vec.ydata)[2] + gradient(vec.zdata)[1]);
+    S.row[1].z = (Scalar)(1. / 2.) * (gradient(vec.ydata).z + gradient(vec.zdata).y);
 
-    S.row[2][2] = (Scalar)(2. / 3.) * gradient(vec.zdata)[2] -
-                  (Scalar)(1. / 3.) * (gradient(vec.xdata)[0] + gradient(vec.ydata)[1]);
+    S.row[2].z = (Scalar)(2. / 3.) * gradient(vec.zdata).z -
+                 (Scalar)(1. / 3.) * (gradient(vec.xdata).x + gradient(vec.ydata).y);
 
-    S.row[1][0] = S.row[0][1];
-    S.row[2][0] = S.row[0][2];
-    S.row[2][1] = S.row[1][2];
+    S.row[1].x = S.row[0].y;
+    S.row[2].x = S.row[0].z;
+    S.row[2].y = S.row[1].z;
 
     return S;
 }
 
-static inline Scalar
+/** Currently used only if LENTROPY (1) */
+static inline __attribute__((unused)) Scalar
 contract(const Matrix mat)
 {
     Scalar res = 0;
@@ -621,13 +673,24 @@ contract(const Matrix mat)
  */
 
 #if LUPWD
-Scalar
-upwd_der6(const VectorData uu, const ScalarData lnrho)
+Vector
+gradient_upwd(const ScalarData scal)
 {
-    Scalar uux = fabs(vecvalue(uu)[0]);
-    Scalar uuy = fabs(vecvalue(uu)[1]);
-    Scalar uuz = fabs(vecvalue(uu)[2]);
-    return uux * lnrho.upwind[0] + uuy * lnrho.upwind[1] + uuz * lnrho.upwind[2];
+    return (Vector){
+        scal.upwind.x,
+        scal.upwind.y,
+        scal.upwind.z,
+    };
+}
+
+Matrix
+gradients_upwd(const VectorData vec)
+{
+    Matrix mat;
+    mat.row[0] = gradient_upwd(vec.xdata);
+    mat.row[1] = gradient_upwd(vec.ydata);
+    mat.row[2] = gradient_upwd(vec.zdata);
+    return mat;
 }
 #endif
 
@@ -637,7 +700,7 @@ continuity(const VectorData uu, const ScalarData lnrho)
     return -dot(vecvalue(uu), gradient(lnrho))
 #if LUPWD
            // This is a corrective hyperdiffusion term for upwinding.
-           + upwd_der6(uu, lnrho)
+           + dot(vecvalue_abs(uu), gradient_upwd(lnrho))
 #endif
            - divergence(uu);
 }
@@ -645,20 +708,20 @@ continuity(const VectorData uu, const ScalarData lnrho)
 __attribute__((unused)) static inline Scalar
 length(const Vector vec)
 {
-    return sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+    return sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
 }
 
 static inline Scalar
 reciprocal_len(const Vector vec)
 {
-    return (Scalar)(1.0) / sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+    return (Scalar)(1.0) / sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
 }
 
 __attribute__((unused)) static inline Vector
 normalized(const Vector vec)
 {
     const Scalar inv_len = reciprocal_len(vec);
-    return inv_len * vec;
+    return (Vector){inv_len * vec.x, inv_len * vec.y, inv_len * vec.z};
 }
 
 #define H_CONST ((Scalar)(0.0))
@@ -694,14 +757,19 @@ momentum(const VectorData uu, const ScalarData lnrho
     const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
 #endif
     const Vector mom = -mul(gradients(uu), vecvalue(uu)) -
-                       cs2 * (((Scalar)(1.) / getReal(AC_cp_sound)) * gradient(ss) +
-                              gradient(lnrho)) +
-#if LMAGNETIC
-                       inv_rho * cross(j, B) +
+                       cs2 *
+                           (((Scalar)(1.) / getReal(AC_cp_sound)) * gradient(ss) + gradient(lnrho))
+#if LUPWD
+                       // Note: dangerous implementation, upwd calculation duplicated (w/ and w/o
+                       // entropy). Need to modify both if one is modified
+                       + mul(gradients_upwd(uu), vecvalue_abs(uu))
 #endif
-                       getReal(AC_nu_visc) *
-                           (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
-                            (Scalar)(2.) * mul(S, gradient(lnrho))) +
+#if LMAGNETIC
+                       + inv_rho * cross(j, B)
+#endif
+                       + getReal(AC_nu_visc) *
+                             (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
+                              (Scalar)(2.) * mul(S, gradient(lnrho))) +
                        getReal(AC_zeta) * gradient_of_divergence(uu);
     return mom;
 #else
@@ -713,13 +781,19 @@ momentum(const VectorData uu, const ScalarData lnrho
     const Vector B       = curl(aa);
     const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
 #endif
-    const Vector mom     = -mul(gradients(uu), vecvalue(uu)) - cs2 * gradient(lnrho) +
-#if LMAGNETIC
-                       inv_rho * cross(j, B) +
+    const Vector mom     = -mul(gradients(uu), vecvalue(uu)) -
+                       cs2 * gradient(lnrho)
+#if LUPWD
+                       // Note: dangerous implementation, upwd calculation duplicated (w/ and w/o
+                       // entropy). Need to modify both if one is modified
+                       + mul(gradients_upwd(uu), vecvalue_abs(uu))
 #endif
-                       getReal(AC_nu_visc) *
-                           (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
-                            (Scalar)(2.) * mul(S, gradient(lnrho))) +
+#if LMAGNETIC
+                       + inv_rho * cross(j, B)
+#endif
+                       + getReal(AC_nu_visc) *
+                             (laplace_vec(uu) + (Scalar)(1. / 3.) * gradient_of_divergence(uu) +
+                              (Scalar)(2.) * mul(S, gradient(lnrho))) +
                        getReal(AC_zeta) * gradient_of_divergence(uu);
     return mom;
 #endif
@@ -745,6 +819,7 @@ induction(const VectorData uu, const VectorData aa)
     return ind;
 }
 
+#if LENTROPY
 static inline Scalar
 lnT(const ScalarData ss, const ScalarData lnrho)
 {
@@ -768,7 +843,9 @@ heat_conduction(const ScalarData ss, const ScalarData lnrho)
     const Vector third_term = getReal(AC_gamma) * (inv_cp_sound * gradient(ss) + gradient(lnrho)) +
                               grad_ln_chi;
 
-    const Scalar chi = (AcReal)(AC_THERMAL_CONDUCTIVITY) /
+    //const Scalar chi = (Scalar)(AC_THERMAL_CONDUCTIVITY) /
+    //                   (exp(value(lnrho)) * getReal(AC_cp_sound));
+    const Scalar chi = getReal(AC_K_heatcond) /
                        (exp(value(lnrho)) * getReal(AC_cp_sound));
     return getReal(AC_cp_sound) * chi * (first_term + dot(second_term, third_term));
 }
@@ -786,7 +863,7 @@ entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho)
     const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
 #else
-    const Vector j             = (Vector){0.0, 0.0, 0.0};
+    const Vector j                 = (Vector){0.0, 0.0, 0.0};
 #endif
     const Scalar RHS = H_CONST - C_CONST + getReal(AC_eta) * getReal(AC_mu0) * dot(j, j) +
                        (Scalar)(2.) * exp(value(lnrho)) * getReal(AC_nu_visc) * contract(S) +
@@ -810,6 +887,7 @@ entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho)
             + heat_conduction(ss, lnrho);
     */
 }
+#endif
 
 __attribute__((unused)) static inline bool
 is_valid(const Scalar a)
@@ -820,7 +898,7 @@ is_valid(const Scalar a)
 __attribute__((unused)) static inline bool
 is_valid_vec(const Vector a)
 {
-    return is_valid(a[0]) && is_valid(a[1]) && is_valid(a[2]);
+    return is_valid(a.x) && is_valid(a.y) && is_valid(a.z);
 }
 
 #if LFORCING
@@ -842,9 +920,9 @@ Vector
 helical_forcing(Scalar magnitude, Vector k_force, Vector xx, Vector ff_re, Vector ff_im, Scalar phi)
 {
     (void)magnitude; // WARNING: unused
-    xx[0] = xx[0] * ((Scalar)2.0 * R_PI / (getReal(AC_dsx) * getInt(AC_nx)));
-    xx[1] = xx[1] * ((Scalar)2.0 * R_PI / (getReal(AC_dsy) * getInt(AC_ny)));
-    xx[2] = xx[2] * ((Scalar)2.0 * R_PI / (getReal(AC_dsz) * getInt(AC_nz)));
+    xx.x = xx.x * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsx) * getInt(AC_nx)));
+    xx.y = xx.y * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsy) * getInt(AC_ny)));
+    xx.z = xx.z * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsz) * getInt(AC_nz)));
 
     Scalar cos_phi     = cos(phi);
     Scalar sin_phi     = sin(phi);
@@ -856,9 +934,9 @@ helical_forcing(Scalar magnitude, Vector k_force, Vector xx, Vector ff_re, Vecto
     Scalar real_comp_phase = cos_k_dot_x * cos_phi - sin_k_dot_x * sin_phi;
     Scalar imag_comp_phase = cos_k_dot_x * sin_phi + sin_k_dot_x * cos_phi;
 
-    Vector force = (Vector){ff_re[0] * real_comp_phase - ff_im[0] * imag_comp_phase,
-                            ff_re[1] * real_comp_phase - ff_im[1] * imag_comp_phase,
-                            ff_re[2] * real_comp_phase - ff_im[2] * imag_comp_phase};
+    Vector force = (Vector){ff_re.x * real_comp_phase - ff_im.x * imag_comp_phase,
+                            ff_re.y * real_comp_phase - ff_im.y * imag_comp_phase,
+                            ff_re.z * real_comp_phase - ff_im.z * imag_comp_phase};
 
     return force;
 }
@@ -875,7 +953,7 @@ forcing(int3 globalVertexIdx, Scalar dt)
         (globalVertexIdx.y - getInt(AC_ny_min)) * getReal(AC_dsy),
         (globalVertexIdx.z - getInt(AC_nz_min)) * getReal(AC_dsz),
     }; // sink (current index)
-    const Scalar cs2 = (getReal(AC_cs_sound) * getReal(AC_cs_sound));
+    const Scalar cs2 = getReal(AC_cs2_sound);
     const Scalar cs  = sqrt(cs2);
 
     // Placeholders until determined properly
@@ -898,9 +976,9 @@ forcing(int3 globalVertexIdx, Scalar dt)
     // Scaling N = magnitude*cs*sqrt(k*cs/dt)  * dt
     const Scalar NN = cs * sqrt(getReal(AC_kaver) * cs);
     // MV: Like in the Pencil Code. I don't understandf the logic here.
-    force[0] = sqrt(dt) * NN * force[0];
-    force[1] = sqrt(dt) * NN * force[1];
-    force[2] = sqrt(dt) * NN * force[2];
+    force.x = sqrt(dt) * NN * force.x;
+    force.y = sqrt(dt) * NN * force.y;
+    force.z = sqrt(dt) * NN * force.z;
 
     if (is_valid_vec(force)) {
         return force;
@@ -912,7 +990,7 @@ forcing(int3 globalVertexIdx, Scalar dt)
 #endif
 
 static void
-solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i, const int j,
+solve_alpha_step(AcMesh in, const int step_number, const AcReal dt, const int i, const int j,
                  const int k, AcMesh* out)
 {
     const int idx = acVertexBufferIdx(i, j, k, in.info);
@@ -928,9 +1006,9 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
     const VectorData aa       = read_vec_data(i, j, k, in.vertex_buffer,
                                               (int3){VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ});
     const Vector aa_res       = induction(uu, aa);
-    rate_of_change[VTXBUF_AX] = aa_res[0];
-    rate_of_change[VTXBUF_AY] = aa_res[1];
-    rate_of_change[VTXBUF_AZ] = aa_res[2];
+    rate_of_change[VTXBUF_AX] = aa_res.x;
+    rate_of_change[VTXBUF_AY] = aa_res.y;
+    rate_of_change[VTXBUF_AZ] = aa_res.z;
 #endif
 #if LENTROPY
     const ScalarData ss = read_scal_data(i, j, k, in.vertex_buffer, VTXBUF_ENTROPY);
@@ -939,9 +1017,9 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
 #else
     const Vector uu_res            = momentum(uu, lnrho, ss);
 #endif
-    rate_of_change[VTXBUF_UUX] = uu_res[0];
-    rate_of_change[VTXBUF_UUY] = uu_res[1];
-    rate_of_change[VTXBUF_UUZ] = uu_res[2];
+    rate_of_change[VTXBUF_UUX] = uu_res.x;
+    rate_of_change[VTXBUF_UUY] = uu_res.y;
+    rate_of_change[VTXBUF_UUZ] = uu_res.z;
 #if LMAGNETIC
     rate_of_change[VTXBUF_ENTROPY] = entropy(ss, uu, lnrho, aa);
 #else
@@ -953,35 +1031,35 @@ solve_alpha_step(AcMesh in, const int step_number, const Scalar dt, const int i,
 #else
     const Vector uu_res = momentum(uu, lnrho);
 #endif
-    rate_of_change[VTXBUF_UUX] = uu_res[0];
-    rate_of_change[VTXBUF_UUY] = uu_res[1];
-    rate_of_change[VTXBUF_UUZ] = uu_res[2];
+    rate_of_change[VTXBUF_UUX] = uu_res.x;
+    rate_of_change[VTXBUF_UUY] = uu_res.y;
+    rate_of_change[VTXBUF_UUZ] = uu_res.z;
 #endif
 
     // Williamson (1980) NOTE: older version of astaroth used inhomogenous
     const Scalar alpha[] = {(Scalar)(.0), (Scalar)(-5. / 9.), (Scalar)(-153. / 128.)};
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         if (step_number == 0) {
-            out->vertex_buffer[w][idx] = rate_of_change[w] * dt;
+            out->vertex_buffer[w][idx] = rate_of_change[w] * (Scalar)dt;
         }
         else {
-            out->vertex_buffer[w][idx] = alpha[step_number] * out->vertex_buffer[w][idx] +
-                                         rate_of_change[w] * dt;
+            out->vertex_buffer[w][idx] = alpha[step_number] * (Scalar)out->vertex_buffer[w][idx] +
+                                         rate_of_change[w] * (Scalar)dt;
         }
     }
 
     if (step_number == 2) {
 #if LBFIELD
         const Vector bfield              = curl(aa);
-        out->vertex_buffer[BFIELDX][idx] = bfield[0];
-        out->vertex_buffer[BFIELDY][idx] = bfield[1];
-        out->vertex_buffer[BFIELDZ][idx] = bfield[2];
+        out->vertex_buffer[BFIELDX][idx] = bfield.x;
+        out->vertex_buffer[BFIELDY][idx] = bfield.y;
+        out->vertex_buffer[BFIELDZ][idx] = bfield.z;
 #endif
     }
 }
 
 static void
-solve_beta_step(const AcMesh in, const int step_number, const Scalar dt, const int i, const int j,
+solve_beta_step(const AcMesh in, const int step_number, const AcReal dt, const int i, const int j,
                 const int k, AcMesh* out)
 {
     const int idx = acVertexBufferIdx(i, j, k, in.info);
@@ -990,15 +1068,15 @@ solve_beta_step(const AcMesh in, const int step_number, const Scalar dt, const i
     const Scalar beta[] = {(Scalar)(1. / 3.), (Scalar)(15. / 16.), (Scalar)(8. / 15.)};
 
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
-        out->vertex_buffer[w][idx] += beta[step_number] * in.vertex_buffer[w][idx];
+        out->vertex_buffer[w][idx] += beta[step_number] * (Scalar)in.vertex_buffer[w][idx];
 
     (void)dt; // Suppress unused variable warning if forcing not used
     if (step_number == 2) {
 #if LFORCING
-        Vector force = forcing((int3){i, j, k}, dt);
-        out->vertex_buffer[VTXBUF_UUX][idx] += force[0];
-        out->vertex_buffer[VTXBUF_UUY][idx] += force[1];
-        out->vertex_buffer[VTXBUF_UUZ][idx] += force[2];
+        Vector force = forcing((int3){i, j, k}, (Scalar)dt);
+        out->vertex_buffer[VTXBUF_UUX][idx] += force.x;
+        out->vertex_buffer[VTXBUF_UUY][idx] += force.y;
+        out->vertex_buffer[VTXBUF_UUZ][idx] += force.z;
 #endif
 #if LBFIELD
         out->vertex_buffer[BFIELDX][idx] = in.vertex_buffer[BFIELDX][idx];
@@ -1039,9 +1117,9 @@ checkConfiguration(const AcMeshInfo info)
     }
 #endif
 
-    ERRCHK_ALWAYS(is_valid((AcReal)1. / info.real_params[AC_dsx]));
-    ERRCHK_ALWAYS(is_valid((AcReal)1. / info.real_params[AC_dsy]));
-    ERRCHK_ALWAYS(is_valid((AcReal)1. / info.real_params[AC_dsz]));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info.real_params[AC_dsx]));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info.real_params[AC_dsy]));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info.real_params[AC_dsz]));
     // ERRCHK_ALWAYS(is_valid(info.real_params[AC_cs2_sound]));
 }
 
@@ -1051,9 +1129,9 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
     mesh_info = &(mesh.info);
 
     // Setup built-in parameters
-    // mesh_info->real_params[AC_inv_dsx] = (AcReal)(1.0) / mesh_info->real_params[AC_dsx];
-    // mesh_info->real_params[AC_inv_dsy] = (AcReal)(1.0) / mesh_info->real_params[AC_dsy];
-    // mesh_info->real_params[AC_inv_dsz] = (AcReal)(1.0) / mesh_info->real_params[AC_dsz];
+    // mesh_info->real_params[AC_inv_dsx] = (Scalar)(1.0) / mesh_info->real_params[AC_dsx];
+    // mesh_info->real_params[AC_inv_dsy] = (Scalar)(1.0) / mesh_info->real_params[AC_dsy];
+    // mesh_info->real_params[AC_inv_dsz] = (Scalar)(1.0) / mesh_info->real_params[AC_dsz];
     // mesh_info->real_params[AC_cs2_sound] = mesh_info->real_params[AC_cs_sound] *
     //                                       mesh_info->real_params[AC_cs_sound];
     checkConfiguration(*mesh_info);

@@ -53,12 +53,9 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
-// IO configuration
-static const Field io_fields[]    = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO,
-                                     VTXBUF_AX,  VTXBUF_AY,  VTXBUF_AZ};
-static const size_t num_io_fields = ARRAY_SIZE(io_fields);
-static const char* snapshot_dir   = "output-snapshots";
-static const char* slice_dir      = "output-slices";
+// IO directories
+static const char* snapshot_dir = "output-snapshots";
+static const char* slice_dir    = "output-slices";
 
 #define fprintf(...)                                                                               \
     {                                                                                              \
@@ -243,12 +240,13 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
 
         // Header only at the step zero
         if (step == 0) {
-            fprintf(header_file, "use_double, mx, my, mz, step_number, modstep, t_step \n");
+            fprintf(header_file,
+                    "use_double, mx, my, mz, step_number, modstep, t_step, t_step (exact)\n");
         }
 
-        fprintf(header_file, "%d, %d, %d, %d, %d, %d, %.17e \n", sizeof(AcReal) == 8,
+        fprintf(header_file, "%d, %d, %d, %d, %d, %d, %g, %la\n", sizeof(AcReal) == 8,
                 info.int_params[AC_mx], info.int_params[AC_my], info.int_params[AC_mz], step,
-                modstep, simulation_time);
+                modstep, simulation_time, simulation_time);
 
         // Writes the header info. Make it into an
         // appendaple csv table which will be easy to be read into a Pandas
@@ -569,12 +567,6 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
     fflush(stdout);
 }
 
-/*
-    MV NOTE: At the moment I have no clear idea how to calculate magnetic
-    diagnostic variables from grid. Vector potential measures have a limited
-    value. TODO: Smart way to get brms, bmin and bmax.
-*/
-
 #include "math_utils.h"
 AcReal
 calc_timestep(const AcMeshInfo info)
@@ -715,6 +707,23 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
     MPI_Comm_rank(acGridMPIComm(), &pid);
     acLogFromRootProc(pid, "Reading varfile nn = (%d, %d, %d)\n", nn.x, nn.y, nn.z);
 
+    // IO configuration
+    const Field io_fields[] =
+    { VTXBUF_UUX,
+      VTXBUF_UUY,
+      VTXBUF_UUZ,
+      VTXBUF_LNRHO,
+#if LMAGNETIC
+      VTXBUF_AX,
+      VTXBUF_AY,
+      VTXBUF_AZ,
+#endif
+    };
+    const size_t num_io_fields = ARRAY_SIZE(io_fields);
+#if !LMAGNETIC
+    WARNING("LMAGNETIC was not set, magnetic field is not read read_varfile_to_mesh_and_setup");
+#endif
+
     acGridReadVarfileToMesh(file_path, io_fields, num_io_fields, nn, rr);
 
     // Scale the magnetic field
@@ -730,7 +739,7 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
 
 /* Set step = -1 to load from the latest snapshot. step = 0 to start a new run. */
 static void
-read_file_to_mesh_and_setup(int* step, AcReal* simulation_time)
+read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo info)
 {
     if (*step > 0) {
         ERROR("step in read_file_to_mesh (config start_step) was > 0, do not know what to do with "
@@ -739,7 +748,11 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time)
     }
 
     // Quick hack, TODO better
-    system("tail -n2 snapshots_info.csv | head -n1 > latest_snapshot.info");
+    int pid;
+    MPI_Comm_rank(acGridMPIComm(), &pid);
+    if (pid == 0)
+        system("tail -n2 snapshots_info.csv | head -n1 > latest_snapshot.info && sync");
+    MPI_Barrier(acGridMPIComm());
 
     // Read the previous valid step from snapshots_info.csv
     int modstep = 0;
@@ -757,8 +770,9 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time)
 
             // Note: quick hack, hardcoded + bad practice
             int use_double, mx, my, mz;
-            fscanf(fp, "%d, %d, %d, %d, %d, %d, %lg", &use_double, &mx, &my, &mz, step, &modstep,
-                   simulation_time);
+            float approx_time;
+            fscanf(fp, "%d, %d, %d, %d, %d, %d, %g, %la", &use_double, &mx, &my, &mz, step,
+                   &modstep, &approx_time, simulation_time);
             fclose(fp);
         }
         else {
@@ -774,22 +788,50 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time)
     char modstep_str[buflen];
     sprintf(modstep_str, "%d", modstep);
 
-    int pid;
-    MPI_Comm_rank(acGridMPIComm(), &pid);
     acLogFromRootProc(pid, "Restarting from snapshot %d (step %d, tstep %g)\n", modstep, *step,
                       (double)(*simulation_time));
+
+    const Field io_fields[] =
+    { VTXBUF_UUX,
+      VTXBUF_UUY,
+      VTXBUF_UUZ,
+      VTXBUF_LNRHO,
+#if LMAGNETIC
+      VTXBUF_AX,
+      VTXBUF_AY,
+      VTXBUF_AZ,
+#endif
+    };
+    const size_t num_io_fields = ARRAY_SIZE(io_fields);
+#if !LMAGNETIC
+    WARNING("NOTE: LMAGNETIC was not set, magnetic field is not read in "
+            "read_file_to_mesh_and_setup. TODO improve: read the fields stored in the snapshot "
+            "from a file instead of hardcoding it like this.");
+#endif
 
     for (size_t i = 0; i < num_io_fields; ++i)
         acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
 
-    // for (size_t i = 0; i < NUM_FIELDS; ++i)
-    //     acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, snapshot_dir, modstep_str,
-    //     ACCESS_READ);
+        // for (size_t i = 0; i < NUM_FIELDS; ++i)
+        //     acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, snapshot_dir, modstep_str,
+        //     ACCESS_READ);
 
-    // Not needed for synchronous reading
-    // acGridDiskAccessSync();
-    // acGridPeriodicBoundconds(STREAM_DEFAULT);
-    // acGridSynchronizeStream(STREAM_DEFAULT);
+        // Not needed for synchronous reading
+        // acGridDiskAccessSync();
+        // acGridPeriodicBoundconds(STREAM_DEFAULT);
+        // acGridSynchronizeStream(STREAM_DEFAULT);
+
+#if LMAGNETIC
+    // Scale the magnetic field
+    acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info.real_params[AC_scaling_factor]);
+    AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+    acGridLaunchKernel(STREAM_DEFAULT, scale, dims.n0, dims.n1);
+    acGridSwapBuffers();
+
+    acGridSynchronizeStream(STREAM_ALL);
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridSynchronizeStream(STREAM_ALL);
+#endif
 }
 
 /*
@@ -896,12 +938,16 @@ print_usage(const char* name)
            "Mutually exclusive initial mesh load procedures\n"
            "------------------------------------------------"
            "\n"
-           "  the default is --init-kernel\n"
+           "  the default is --run-init-kernel\n"
            "\n"
            " -k\n"
-           " --init-kernel\n"
+           " --run-init-kernel\n"
            "\tRun a kernel to initialize the mesh\n"
            "\tThe kernel is currently hardcoded\n"
+           "\n"
+           " -i <initcond name>\n"
+           " --init-condition <initcond name>\n"
+           "\tRun a selected initial condition kernel to initialize the mesh.\n"
            "\n"
            " -p\n"
            " --from-pc-varfile\n"
@@ -926,6 +972,14 @@ enum class InitialMeshProcedure {
     LoadDistributedSnapshot,
     LoadMonolithicSnapshot,
     LoadSnapshot,
+    InitHaatouken,
+};
+
+// Enums for taskgraph choise 
+enum class PhysicsConfiguration {
+    Default,
+    ShockSinglepass,
+    HydroHeatduct,
 };
 
 // Enums for actions taken in the simulation loop
@@ -934,6 +988,7 @@ enum class PeriodicAction {
     WriteSnapshot,
     WriteSlices,
     EndSimulation,
+    GenerateForcing,
 };
 
 // Enums for events
@@ -981,6 +1036,7 @@ main(int argc, char** argv)
     // the value of optarg to a filename variable in the switch
     static struct option long_options[] = {{"config", required_argument, 0, 'c'},
                                            {"run-init-kernel", no_argument, 0, 'k'},
+                                           {"init-condition", required_argument, 0, 'i'},
                                            {"from-pc-varfile", required_argument, 0, 'p'},
                                            {"from-distributed-snapshot", no_argument, 0, 'd'},
                                            {"from-monolithic-snapshot", no_argument, 0, 'm'},
@@ -990,10 +1046,11 @@ main(int argc, char** argv)
     const char* config_path = AC_DEFAULT_CONFIG;
     // Default mesh procedure is kernel randomize
     InitialMeshProcedure initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+    PhysicsConfiguration simulation_physics = PhysicsConfiguration::Default;
     const char* initial_mesh_procedure_param    = nullptr;
 
     int opt{};
-    while ((opt = getopt_long(argc, argv, "c:kpdmh", long_options, nullptr)) != -1) {
+    while ((opt = getopt_long(argc, argv, "c:ki:pdmh", long_options, nullptr)) != -1) {
         switch (opt) {
         case 'h':
             if (pid == 0) {
@@ -1005,6 +1062,21 @@ main(int argc, char** argv)
             break;
         case 'k':
             initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+            break;
+        case 'i':
+            if (strcmp(optarg, "Haatouken") == 0) {
+                acLogFromRootProc(pid, "Initial condition: Haatouken\n"); // This here just for the
+                                                                          // sake of diagnosis.
+                initial_mesh_procedure = InitialMeshProcedure::InitHaatouken;
+                simulation_physics =  PhysicsConfiguration::ShockSinglepass;
+            } else if (strcmp(optarg, "HeatDuct") == 0) {
+                acLogFromRootProc(pid, "Initial condition: Heatduct\n");    // This here just for the sake of diagnosis.         
+                initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+                simulation_physics = PhysicsConfiguration::HydroHeatduct;
+                acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
+            } else { 
+                exit(1);
+            }
             break;
         case 'p':
             initial_mesh_procedure       = InitialMeshProcedure::LoadPC_Varfile;
@@ -1124,11 +1196,6 @@ main(int argc, char** argv)
 #if LSINK
     sink_mass     = info.real_params[AC_M_sink_init];
     accreted_mass = 0.0;
-    // TODO: I think this is supposed to set device vertex buffer VTXBUF_ACCRETION to 0 before the
-    // simulation starts
-    if (pid == 0) {
-        acVertexBufferSet(VTXBUF_ACCRETION, 0.0, &mesh);
-    }
 #endif
 
     // Set random seed for reproducibility
@@ -1172,6 +1239,7 @@ main(int argc, char** argv)
         acGridSwapBuffers();
         acLogFromRootProc(pid, "Communicating halos\n");
         acGridPeriodicBoundconds(STREAM_DEFAULT);
+        // MV: What if the boundary conditions are not periodic?
 
         {
             // Should some labels be printed here?
@@ -1184,6 +1252,24 @@ main(int argc, char** argv)
                                   (double)sum);
             }
         }
+        break;
+    }
+    // Creeates a kinetic kick as a system initial condition. Creatd as a demo
+    // case for invoking an alternative initial conditions via a DSL kernel.
+    case InitialMeshProcedure::InitHaatouken: {
+        // add a push in terms of a velocity
+        // field into the code creating a cone-like shock. Essentially
+        // "punching the air" to create a kinetic explosion.
+        acLogFromRootProc(pid, "HAATOUKEN!\n");
+        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        // Randomize the other vertex buffers for variety's sake.
+        acGridLaunchKernel(STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+        // Ad haatouken!
+        acGridLaunchKernel(STREAM_DEFAULT, haatouken, dims.n0, dims.n1);
+        acGridSwapBuffers();
+        acLogFromRootProc(pid, "Communicating halos\n");
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+        // MV: What if the boundary conditions are not periodic?
         break;
     }
     case InitialMeshProcedure::LoadPC_Varfile: {
@@ -1213,7 +1299,7 @@ main(int argc, char** argv)
     */
     case InitialMeshProcedure::LoadSnapshot: {
         acLogFromRootProc(pid, "Reading mesh file\n");
-        read_file_to_mesh_and_setup(&start_step, &simulation_time);
+        read_file_to_mesh_and_setup(&start_step, &simulation_time, info);
         acLogFromRootProc(pid, "Done reading mesh file\n");
         break;
     }
@@ -1231,10 +1317,34 @@ main(int argc, char** argv)
 
     acLogFromRootProc(pid, "Setting simulation program\n");
     Simulation sim = Simulation::Default;
+
+    acLogFromRootProc(pid, "simulation_physics = %i \n", simulation_physics);
+
+    switch (simulation_physics) {
+    case PhysicsConfiguration::ShockSinglepass: {
 #if LSHOCK
-    sim = Simulation::Shock_Singlepass_Solve
+        sim = Simulation::Shock_Singlepass_Solve;
+        acLogFromRootProc(pid, "PhysicsConfiguration ShockSinglepass !\n");
 #endif
-        log_simulation_choice(pid, sim);
+        break;
+    } 
+    case PhysicsConfiguration::HydroHeatduct: {
+        sim = Simulation::Hydro_Heatduct_Solve;
+        acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
+        break;
+    }
+    }
+
+    acLogFromRootProc(pid, "sim = %i \n", sim);
+    acLogFromRootProc(pid, "Simulation::Default = %i\n",                Simulation::Default);
+    acLogFromRootProc(pid, "Simulation::Shock_Singlepass_Solve = %i\n", Simulation::Shock_Singlepass_Solve);
+    acLogFromRootProc(pid, "Simulation::Hydro_Heatduct_Solve = %i\n",   Simulation::Hydro_Heatduct_Solve);
+    acLogFromRootProc(pid, "PhysicsConfiguration::Default = %i\n",         PhysicsConfiguration::Default);
+    acLogFromRootProc(pid, "PhysicsConfiguration::ShockSinglepass = %i\n", PhysicsConfiguration::ShockSinglepass);
+    acLogFromRootProc(pid, "PhysicsConfiguration::HydroHeatduct = %i\n",   PhysicsConfiguration::HydroHeatduct);
+
+
+    log_simulation_choice(pid, sim);
     AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);
 
     ////////////////////////////////////////////////////////
@@ -1272,26 +1382,38 @@ main(int argc, char** argv)
     // It is enough to satisfy one of these conditions.
     // A value of zero means that the trigger is inactive.
 
-    std::map<PeriodicAction, SimulationPeriod> periodic_actions;
+    // These run before the simulation step
+    std::map<PeriodicAction, SimulationPeriod> pre_step_actions;
+    // Generate forcing
+#if LFORCING
+    pre_step_actions[PeriodicAction::GenerateForcing] = SimulationPeriod(info,
+                                                                         AC_forcing_period_steps,
+                                                                         AC_forcing_period_t);
+#endif
+
+    // These run after the simulation step
+    std::map<PeriodicAction, SimulationPeriod> post_step_actions;
 
     // Print diagnostics
-    periodic_actions
+    post_step_actions
         [PeriodicAction::PrintDiagnostics] = SimulationPeriod(info, AC_save_steps,
                                                               SimulationPeriod::NoTimeParam);
 
     // Write snapshots
-    AcReal snapshot_time_offset                     = simulation_time;
-    periodic_actions[PeriodicAction::WriteSnapshot] = SimulationPeriod(info, AC_bin_steps,
-                                                                       AC_bin_save_t,
-                                                                       snapshot_time_offset);
+    AcReal snapshot_time_offset                      = simulation_time;
+    post_step_actions[PeriodicAction::WriteSnapshot] = SimulationPeriod(info, AC_bin_steps,
+                                                                        AC_bin_save_t,
+                                                                        snapshot_time_offset);
 
     // Write slices
-    periodic_actions[PeriodicAction::WriteSlices] = SimulationPeriod(info, AC_slice_steps,
-                                                                     SimulationPeriod::NoTimeParam);
+    AcReal slice_time_offset                       = simulation_time;
+    post_step_actions[PeriodicAction::WriteSlices] = SimulationPeriod(info, AC_slice_steps,
+                                                                      AC_slice_save_t,
+                                                                      slice_time_offset);
 
     // Stop simulation after max time
-    periodic_actions[PeriodicAction::EndSimulation] = SimulationPeriod(info, AC_max_steps,
-                                                                       AC_max_time);
+    post_step_actions[PeriodicAction::EndSimulation] = SimulationPeriod(info, AC_max_steps,
+                                                                        AC_max_time);
 
     /////////////////////////////////////////////////////////////
     // Set up certain periodic actions and run them for i == 0 //
@@ -1318,11 +1440,22 @@ main(int argc, char** argv)
             acLogFromRootProc(pid, "Found NaN in initial state -> exiting\n");
             set_event(&events, SimulationEvent::NanDetected);
         }
+
+#if LFORCING
+
+        log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new forcing "
+                                                  "parameters\n");
+        auto forcing_params = generateForcingParams(info);
+        // printForcingParams(forcing_params);
+        loadForcingParamsToGrid(forcing_params);
+#endif
     }
     else if (pid == 0) {
         // add newline to old diag_file from previous run
         // TODO: figure out why we're doing this? do we want a clear indication in the file that a
         // new run was started?
+        // MV: Yes this was a a non-intrusive way of making it possible to
+        // MV: locate where new run stars. If I remember right.
         fprintf(diag_file, "\n");
     }
 
@@ -1354,19 +1487,52 @@ main(int argc, char** argv)
         accreted_mass = accreted_mass + sum_mass;
         sink_mass     = info.real_params[AC_M_sink_init] + accreted_mass;
 
-        // JP: !!! WARNING !!! acVertexBufferSet operates in host memory. The mesh is
-        // never loaded to device memory. Is this intended?
-        // TODO: figure out what this is supposed to do
-        // TODO: set GPU buffers?
-        if (pid == 0) {
-            acVertexBufferSet(VTXBUF_ACCRETION, 0.0, mesh);
-        }
-
         int switch_accretion = (i < 1) ? 0 : 1;
 #endif
-#if LFORCING
-        const ForcingParams forcing_params = generateForcingParams(info);
+#if LSHOCK
+        // Attempt of shock viscosity outside of the taskgraph.
+        // Commented out. Done with TaskGraph
+        ////log_from_root_proc_with_sim_progress(pid, "Calculating shock viscosity\n");
+        ////AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        ////acGridLaunchKernel(STREAM_DEFAULT, shock_1_divu, dims.n0, dims.n1);
+        ////acGridSwapBuffers();
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridPeriodicBoundconds(STREAM_DEFAULT);
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridLaunchKernel(STREAM_DEFAULT, shock_2_max,  dims.n0, dims.n1);
+        ////acGridSwapBuffers();
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridPeriodicBoundconds(STREAM_DEFAULT);
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridLaunchKernel(STREAM_DEFAULT, shock_3_smooth, dims.n0, dims.n1);
+        ////acGridSwapBuffers();
+        ////acGridSynchronizeStream(STREAM_ALL);
+        ////acGridPeriodicBoundconds(STREAM_DEFAULT);
+        ////acGridSynchronizeStream(STREAM_ALL);
 #endif
+
+        for (auto& [action, period] : pre_step_actions) {
+            if (i - 1 != 0 && period.check(i - 1, simulation_time)) {
+                switch (action) {
+#if LFORCING
+                case PeriodicAction::GenerateForcing: {
+                    log_from_root_proc_with_sim_progress(pid, "Periodic action: Generating new "
+                                                              "forcing parameters\n");
+                    auto forcing_params = generateForcingParams(info);
+                    // printForcingParams(forcing_params);
+                    loadForcingParamsToGrid(forcing_params);
+                    break;
+                }
+#endif
+                default:
+                    log_from_root_proc_with_sim_progress(pid,
+                                                         "Unsupported periodic action pre sim "
+                                                         "step: %lu\n",
+                                                         (size_t)action);
+                    break;
+                }
+            }
+        }
 
         /////////////////////////////////////////////////////////////////////
         //                                                                 //
@@ -1382,16 +1548,13 @@ main(int argc, char** argv)
         // Generic parameters
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_current_time, simulation_time);
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, dt);
-        acGridSynchronizeStream(STREAM_DEFAULT);
 
         // Case-specific parameters
 #if LSINK
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_M_sink, sink_mass);
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_switch_accretion, switch_accretion);
 #endif
-#if LFORCING
-        loadForcingParamsToGrid(forcing_params);
-#endif
+        acGridSynchronizeStream(STREAM_DEFAULT);
 
         /////////////////////////////////////////////////////////////////////
         //                                                                 //
@@ -1416,7 +1579,7 @@ main(int argc, char** argv)
         //                                                                 //
         /////////////////////////////////////////////////////////////////////
 
-        for (auto& [action, period] : periodic_actions) {
+        for (auto& [action, period] : post_step_actions) {
             if (period.check(i, simulation_time)) {
 #if !(AC_VERBOSE)
                 // End progress logging (which step you are at) after first period.
@@ -1464,6 +1627,12 @@ main(int argc, char** argv)
                     set_event(&events, SimulationEvent::TimeLimitReached);
                     break;
                 }
+                default:
+                    log_from_root_proc_with_sim_progress(pid,
+                                                         "Unsupported periodic action post sim "
+                                                         "step: %lu\n",
+                                                         (size_t)action);
+                    break;
                 }
             }
         }
@@ -1509,14 +1678,14 @@ main(int argc, char** argv)
                     break;
                 }
                 case SimulationEvent::TimeLimitReached: {
-                    int max_step = periodic_actions[PeriodicAction::EndSimulation].step_period;
+                    int max_step = post_step_actions[PeriodicAction::EndSimulation].step_period;
                     if (i == max_step) {
                         log_from_root_proc_with_sim_progress(pid,
                                                              "Max time steps reached (%d == %d) -> "
                                                              "exiting\n",
                                                              i, max_step);
                     }
-                    AcReal max_time = periodic_actions[PeriodicAction::EndSimulation].time_period;
+                    AcReal max_time = post_step_actions[PeriodicAction::EndSimulation].time_period;
                     if (max_time > 0 && simulation_time >= max_time) {
                         log_from_root_proc_with_sim_progress(pid,
                                                              "Time limit reached (%e >= %e ) -> "
@@ -1662,7 +1831,10 @@ main(int argc, char** argv)
                     log_from_root_proc_with_sim_progress(pid, "Reloading config\n");
 
                     // Update periodic actions with new params
-                    for (auto& [_, action] : periodic_actions) {
+                    for (auto& [_, action] : pre_step_actions) {
+                        action.update(new_info);
+                    }
+                    for (auto& [_, action] : post_step_actions) {
                         action.update(new_info);
                     }
 

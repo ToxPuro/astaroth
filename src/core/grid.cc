@@ -59,6 +59,11 @@
 #include "math_utils.h"
 #include "timer_hires.h"
 
+#ifdef USE_PERFSTUBS
+#define PERFSTUBS_USE_TIMER
+#include "perfstubs_api/timer.h"
+#endif
+
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
     Device device;
@@ -233,7 +238,6 @@ acGridInit(const AcMeshInfo info)
 
     // Decompose
     const uint3_64 decomp = decompose(nprocs);
-    const int3 pid3d      = getPid3D(pid, decomp);
 
     // Check that the decomposition is valid
     const int3 nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
@@ -242,7 +246,7 @@ acGridInit(const AcMeshInfo info)
     const bool nz_valid = nn.z % decomp.z == 0;
     if (!nx_valid || !ny_valid || !nz_valid) {
         WARNING("Mesh dimensions must be divisible by the decomposition\n");
-        fprintf(stderr, "Decomposition: (%d, %d, %d)\n", decomp.x, decomp.y, decomp.z);
+        fprintf(stderr, "Decomposition: (%lu, %lu, %lu)\n", decomp.x, decomp.y, decomp.z);
         fprintf(stderr, "Mesh dimensions: (%d, %d, %d)\n", nn.x, nn.y, nn.z);
         fprintf(stderr, "Divisible: (%d, %d, %d)\n", nx_valid, ny_valid, nz_valid);
     }
@@ -257,6 +261,7 @@ acGridInit(const AcMeshInfo info)
     MPI_Barrier(astaroth_comm);
 
 #if AC_VERBOSE
+    const int3 pid3d = getPid3D(pid, decomp);
     printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, pid, nprocs, pid3d.x,
            pid3d.y, pid3d.z);
     printf("Decomposition: %lu, %lu, %lu\n", decomp.x, decomp.y, decomp.z);
@@ -323,6 +328,16 @@ acGridInit(const AcMeshInfo info)
 #endif // AC_INTEGRATION_ENABLED
     };
 
+    // Random number generator
+    // const auto rr            = (int3){STENCIL_WIDTH, STENCIL_HEIGHT, STENCIL_DEPTH};
+    // const auto local_m       = acConstructInt3Param(AC_mx, AC_my, AC_mz, submesh_info);
+    // const auto global_m      = submesh_info.int3_params[AC_global_grid_n] + 2 * rr;
+    // const auto global_offset = submesh_info.int3_params[AC_multigpu_offset];
+    // acRandInit(1234UL, to_volume(local_m), to_volume(global_m), to_volume(global_offset));
+    const Volume local_m = to_volume(acConstructInt3Param(AC_mx, AC_my, AC_mz, submesh_info));
+    const size_t count   = local_m.x * local_m.y * local_m.z;
+    acRandInitAlt(1234UL, count, pid);
+
     grid.initialized   = true;
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
     acLogFromRootProc(pid, "acGridInit: Done creating default task graph\n");
@@ -338,6 +353,9 @@ acGridQuit(void)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(STREAM_ALL);
+
+    // Random number generator
+    acRandQuit();
 
     grid.default_tasks = nullptr;
 
@@ -640,11 +658,13 @@ to_mpi_array_order_c(const int3 v, int arr[3])
     arr[2] = v.x;
 }
 
+/*
 static void
 print_mpi_array(const char* str, const int arr[3])
 {
     printf("%s: (%d, %d, %d)\n", str, arr[2], arr[1], arr[0]);
 }
+*/
 
 static void
 get_subarray(const int pid, //
@@ -1423,6 +1443,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         case TASKTYPE_SPECIAL_MHD_BOUNDCOND: {
 #ifdef AC_INTEGRATION_ENABLED
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
+                acVerboseLogFromRootProc(rank, "tag %d, decomp %i %i %i, rank %i, op.boundary  %i \n ", tag, decomp.x, decomp.y, decomp.z, rank, op.boundary);
+                acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Region::is_on_boundary(decomp, rank, tag, op.boundary) = %i \n", Region::is_on_boundary(decomp, rank, tag, op.boundary));
                 if (Region::is_on_boundary(decomp, rank, tag, op.boundary)) {
                     auto task = std::make_shared<SpecialMHDBoundaryConditionTask>(op,
                                                                                   boundary_normal(
@@ -1431,6 +1453,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                                                                                   device,
                                                                                   swap_offset);
                     graph->all_tasks.push_back(task);
+                    //printf("acGridBuildTaskGraph: Created SpecialMHDBoundaryConditionTask type task\n");
                 }
             }
 #endif
@@ -1793,6 +1816,7 @@ acGridStoreStencils(const Stream stream,
     return (AcResult)retval;
 }
 
+/*
 static AcResult
 volume_copy_to_from_host(const VertexBufferHandle vtxbuf, const AccessType type)
 {
@@ -1901,6 +1925,7 @@ access_vtxbuf_on_disk(const VertexBufferHandle vtxbuf, const char* path, const A
     MPI_Type_free(&subarray);
     return AC_SUCCESS;
 }
+*/
 
 /*
 
@@ -2023,6 +2048,8 @@ acGridDiskAccessSync(void)
         if (thread.joinable())
             thread.join();
 
+    threads.clear();
+
     acGridSynchronizeStream(STREAM_ALL);
     running = false;
     return AC_SUCCESS;
@@ -2061,6 +2088,10 @@ acGridDiskAccessLaunch(const AccessType type)
 
         const auto write_async = [](const int device_id, const int i, const AcMeshInfo info,
                                     const AcReal* host_buffer) {
+#if USE_PERFSTUBS
+	    PERFSTUBS_REGISTER_THREAD();
+            PERFSTUBS_TIMER_START(_write_timer, "acGridDiskAccessLaunch::write_async");
+#endif
             cudaSetDevice(device_id);
 
             char path[4096] = "";
@@ -2141,9 +2172,12 @@ acGridDiskAccessLaunch(const AccessType type)
 
             MPI_Type_free(&subarray);
 #endif
+#if USE_PERFSTUBS
+            PERFSTUBS_TIMER_STOP(_write_timer);
+#endif
         };
 
-        threads.push_back(std::move(std::thread(write_async, device->id, i, info, host_buffer)));
+        threads.push_back(std::thread(write_async, device->id, i, info, host_buffer));
         // write_async();
     }
 
@@ -2192,7 +2226,14 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
         const auto write_async = [filepath, offset](const AcMeshInfo info,
                                                     const AcReal* host_buffer) {
 
+#if USE_PERFSTUBS
+	    PERFSTUBS_REGISTER_THREAD();
+            PERFSTUBS_TIMER_START(_write_timer, "acGridWriteMeshToDiskLaunch::write_async");
+#endif
+
+
 #if USE_DISTRIBUTED_IO
+            (void)offset; // Unused
 #define USE_POSIX_IO (0)
 #if USE_POSIX_IO
             FILE* fp = fopen(outfile, "w");
@@ -2257,11 +2298,13 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 
             MPI_Type_free(&subarray);
 #endif
+#if USE_PERFSTUBS
+            PERFSTUBS_TIMER_STOP(_write_timer);
+#endif
         };
 
         // write_async(info, host_buffer); // Synchronous, non-threaded
-        threads.push_back(
-            std::move(std::thread(write_async, info, host_buffer))); // Async, threaded
+        threads.push_back(std::thread(write_async, info, host_buffer)); // Async, threaded
     }
 
     return AC_SUCCESS;
@@ -2280,7 +2323,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
     const int3 global_nn      = info.int3_params[AC_global_grid_n];
     const int3 global_offset  = info.int3_params[AC_multigpu_offset];
     const int3 global_pos_min = global_offset;
-    const int3 global_pos_max = global_pos_min + local_nn;
+    // const int3 global_pos_max = global_pos_min + local_nn;
 
     const int global_z = global_nn.z / 2;
     const int local_z  = global_z - global_pos_min.z;
@@ -2335,10 +2378,18 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
         const auto write_async = [filepath, global_nn, global_pos_min, slice_volume,
                                   color](const AcReal* host_buffer, const size_t count,
                                          const int device_id) {
+#if USE_PERFSTUBS
+	    PERFSTUBS_REGISTER_THREAD();
+            PERFSTUBS_TIMER_START(_write_timer, "acGridWriteMeshToDiskLaunch::write_async");
+#endif
+
             cudaSetDevice(device_id);
             // Write to file
 
 #if USE_DISTRIBUTED_IO
+            (void)global_nn;      // Unused
+            (void)global_pos_min; // Unused
+            (void)slice_volume;   // Unused
 #define USE_POSIX_IO (0)
 #if USE_POSIX_IO
             if (color != MPI_UNDEFINED) {
@@ -2412,11 +2463,15 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
                 MPI_Comm_free(&slice_communicator);
             }
 #endif
+	    
+#if USE_PERFSTUBS
+            PERFSTUBS_TIMER_STOP(_write_timer);
+#endif
         };
 
         // write_async(host_buffer, count, device->id); // Synchronous, non-threaded
         threads.push_back(
-            std::move(std::thread(write_async, host_buffer, count, device->id))); // Async, threaded
+            std::thread(write_async, host_buffer, count, device->id)); // Async, threaded
     }
     return AC_SUCCESS;
 }
@@ -2434,7 +2489,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
     const int3 global_nn      = info.int3_params[AC_global_grid_n];
     const int3 global_offset  = info.int3_params[AC_multigpu_offset];
     const int3 global_pos_min = global_offset;
-    const int3 global_pos_max = global_pos_min + local_nn;
+    // const int3 global_pos_max = global_pos_min + local_nn;
 
     const int global_z = global_nn.z / 2;
     const int local_z  = global_z - global_pos_min.z;
@@ -2481,7 +2536,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
         //     fprintf(stderr, "Writing field %d, proc %d, to %s\n", field, pid, filepath);
 
         acGridSynchronizeStream(STREAM_ALL);
-        const auto write_async = [filepath, global_nn, global_pos_min, slice_volume,
+        const auto write_sync = [filepath, global_nn, global_pos_min, slice_volume,
                                   color](const AcReal* host_buffer, const size_t count,
                                          const int device_id) {
             cudaSetDevice(device_id);
@@ -2531,8 +2586,8 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
             }
         };
 
-        write_async(host_buffer, count, device->id); // Synchronous, non-threaded
-        // threads.push_back(std::move(std::thread(write_async, host_buffer, count, device->id)));
+        write_sync(host_buffer, count, device->id); // Synchronous, non-threaded
+        // threads.push_back(std::move(std::thread(write_sync, host_buffer, count, device->id)));
         // // Async, threaded
     }
     return AC_SUCCESS;
@@ -2689,9 +2744,9 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
-    const int3 nn         = info.int3_params[AC_global_grid_n];
-    const int3 nn_sub     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
-    const int3 offset     = info.int3_params[AC_multigpu_offset]; // Without halo
+    // const int3 nn         = info.int3_params[AC_global_grid_n];
+    const int3 nn_sub = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+    const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
 
     const size_t buflen = 4096;
     char filepath[buflen];
@@ -2728,6 +2783,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
 #ifndef NDEBUG
     if (type == ACCESS_READ) {
+        const int3 nn              = info.int3_params[AC_global_grid_n];
         const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
         FILE* fp                   = fopen(filepath, "r");
         ERRCHK_ALWAYS(fp);
@@ -2818,6 +2874,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
 #ifndef NDEBUG
     if (type == ACCESS_WRITE) {
+        const int3 nn              = info.int3_params[AC_global_grid_n];
         const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
         FILE* fp                   = fopen(filepath, "r");
         ERRCHK_ALWAYS(fp);
@@ -2885,9 +2942,9 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
 
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
-    const int3 nn         = info.int3_params[AC_global_grid_n];
-    const int3 nn_sub     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
-    const int3 offset     = info.int3_params[AC_multigpu_offset]; // Without halo
+    // const int3 nn         = info.int3_params[AC_global_grid_n];
+    const int3 nn_sub = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+    const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
 
     const size_t buflen = 4096;
     char filepath[buflen];

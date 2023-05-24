@@ -53,6 +53,8 @@ typedef struct {
     AcReal kaver;
 } ForcingParams;
 
+void printForcingParams(const ForcingParams& forcing_params);
+
 void loadForcingParamsToGrid(const ForcingParams& forcing_params);
 
 void loadForcingParamsToHost(const ForcingParams& forcing_params, AcMesh* mesh);

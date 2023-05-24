@@ -6,6 +6,7 @@ cmake_minimum_required(VERSION 3.18)
 
 ## Options
 option(DOUBLE_PRECISION   "Generates double precision code."                    ON)
+option(BUILD_STANDALONE   "Build the standalone_mpi executable to run standard simulation." ON)
 option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            ON)
 option(BUILD_MHD_SAMPLES  "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
 option(MPI_ENABLED        "Enables additional functions for MPI communciation." ON)
@@ -18,11 +19,16 @@ option(USE_DISTRIBUTED_IO "Use distributed IO (one file per process) instead of 
 option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" ON)
 option(BUILD_SHARED_LIBS "Build Astaroth as a collection of shared libraries instead of statically built modules" OFF)
 
+option(USE_PERFSTUBS "Build with perfstubs" OFF)
+option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
+
 if (USE_HIP)
     find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
     set(CMAKE_C_COMPILER ${CMAKE_HIP_COMPILER})
     set(CMAKE_CXX_COMPILER ${CMAKE_HIP_COMPILER})
 endif()
+
+
 
 ## Project settings
 project(astaroth C CXX)
@@ -51,24 +57,22 @@ if (USE_HIP)
     set(GPU_TARGETS "gfx908" CACHE STRING "GPU target")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --offload-arch=gfx908 --offload-arch=gfx90a")
 
-    # Workarounds until we have first-class support for hip/rocm in CMake
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm) # Default path
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/hip /opt/rocm-5.0.0) # Triton
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/hip/include /opt/rocm-5.0.0) # Triton
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/llvm/bin)
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer)
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer/include)
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip/include)
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/roctracer/include)
+    # Workaround for finding HIP on Triton
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)
 
-    ## Triton
-	include_directories(/opt/rocm-5.0.0/roctracer/include)
-	link_directories(/opt/rocm-5.0.0/roctracer/lib)
+    # Rocm
+    #include_directories(/opt/rocm/include)
+    #link_directories(/opt/rocm/lib)
 
-    ## LUMI
-    include_directories(/appl/lumi/SW/LUMI-21.12/common/EB/rocm/4.5.2/include/roctracer)
-    link_directories(/appl/lumi/SW/LUMI-21.12/common/EB/rocm/4.5.2/lib)
+    # Roctracer
+    include_directories(/opt/rocm/roctracer/include)
+    link_directories(/opt/rocm/roctracer/lib)
 
+    # Rocrand
+    include_directories(/opt/rocm/hiprand/include)
+    include_directories(/opt/rocm/rocrand/include)
+    link_directories(/opt/rocm/hiprand/lib)
+    link_directories(/opt/rocm/rocrand/lib)
 
     find_package(hip)
 else ()
@@ -99,6 +103,8 @@ else ()
     endif()
 endif()
 
+include(FetchContent)
+
 ## Global flags
 if (DOUBLE_PRECISION)
     add_definitions(-DAC_DOUBLE_PRECISION=1)
@@ -122,6 +128,10 @@ if (SINGLEPASS_INTEGRATION)
 endif()
 if (USE_DISTRIBUTED_IO)
     add_definitions(-DUSE_DISTRIBUTED_IO=1)
+endif()
+if (USE_PERFSTUBS)
+    add_definitions(-DUSE_PERFSTUBS=1)
+    include(${PROJECT_SOURCE_DIR}/cmake/configure_perfstubs.cmake)
 endif()
 
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
@@ -147,6 +157,12 @@ if (BUILD_UTILS)
     add_subdirectory(src/utils)
 endif()
 
+## Have this as a separate option when no other "samples" aree needed.
+## Useful e.g. when compilation time is long e.g. with shock viscosity. 
+if (BUILD_STANDALONE)
+    add_subdirectory(samples/standalone_mpi)
+endif()
+
 if (BUILD_SAMPLES)
     add_subdirectory(samples/blur)
     add_subdirectory(samples/ctest)
@@ -161,7 +177,7 @@ if (BUILD_SAMPLES)
 
     if (BUILD_MHD_SAMPLES)
         # add_subdirectory(samples/standalone)
-        add_subdirectory(samples/standalone_mpi)
+        # add_subdirectory(samples/standalone_mpi)
         add_subdirectory(samples/mpitest)
         add_subdirectory(samples/devicetest)
         add_subdirectory(samples/stencil-loader)

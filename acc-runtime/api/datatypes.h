@@ -53,3 +53,7 @@ typedef cuFloatComplex acComplex;
 #define AC_REAL_PI ((AcReal)M_PI)
 
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
+
+typedef struct {
+  size_t x, y, z;
+} Volume;

@@ -36,6 +36,10 @@ acVA_VerboseLogFromRootProc(const int pid, const char* msg, va_list args)
 {
 #if AC_VERBOSE
     acVA_LogFromRootProc(pid, msg, args);
+#else
+    (void)pid;  // Unused
+    (void)msg;  // Unused
+    (void)args; // Unused
 #endif
 }
 
@@ -53,6 +57,10 @@ acVA_DebugFromRootProc(const int pid, const char* msg, va_list args)
 {
 #ifndef NDEBUG
     acVA_LogFromRootProc(pid, msg, args);
+#else
+    (void)pid;  // Unused
+    (void)msg;  // Unused
+    (void)args; // Unused
 #endif
 }
 

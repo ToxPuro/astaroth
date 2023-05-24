@@ -85,7 +85,11 @@ typedef int Stream;
     FUNC(BOUNDCOND_SYMMETRIC)                                                                      \
     FUNC(BOUNDCOND_ANTISYMMETRIC)                                                                  \
     FUNC(BOUNDCOND_A2)                                                                             \
+    FUNC(BOUNDCOND_INFLOW)                                                                         \
+    FUNC(BOUNDCOND_OUTFLOW)                                                                        \
+    FUNC(BOUNDCOND_CONST)                                                                          \
     FUNC(BOUNDCOND_PRESCRIBED_DERIVATIVE)
+
 
 #ifdef AC_INTEGRATION_ENABLED
 
@@ -365,6 +369,27 @@ acQueryKernels(void)
 {
     for (int i = 0; i < NUM_KERNELS; ++i)
         printf("%s (%d)\n", kernel_names[i], i);
+}
+
+static inline void
+acPrintIntParam(const AcIntParam a, const AcMeshInfo info)
+{
+    printf("%s: %d\n", intparam_names[a], info.int_params[a]);
+}
+
+static inline void
+acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c, const AcMeshInfo info)
+{
+    acPrintIntParam(a, info);
+    acPrintIntParam(b, info);
+    acPrintIntParam(c, info);
+}
+
+static inline void
+acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info)
+{
+    const int3 vec = info.int3_params[a];
+    printf("{%s: (%d, %d, %d)}\n", int3param_names[a], vec.x, vec.y, vec.z);
 }
 
 /*
@@ -1124,6 +1149,10 @@ AcResult acHostMeshRandomize(AcMesh* mesh);
 
 /** Destroys a mesh stored in host memory */
 AcResult acHostMeshDestroy(AcMesh* mesh);
+
+/** Sets the dimensions of the computational domain to (nx, ny, nz) and recalculates the built-in
+ * parameters derived from them (mx, my, mz, nx_min, and others) */
+AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
 
 #ifdef __cplusplus
 } // extern "C"

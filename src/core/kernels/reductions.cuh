@@ -172,7 +172,8 @@ template <ReduceFn reduce_fn>
 __global__ void
 reduce(const AcReal* in, const size_t count, AcReal* out)
 {
-    const int curr = threadIdx.x + blockIdx.x * blockDim.x;
+    // Note: possible integer overflow when GPU memory becomes large enough
+    const size_t curr = threadIdx.x + blockIdx.x * blockDim.x;
 
     extern __shared__ AcReal smem[];
     if (curr < count)
@@ -182,7 +183,7 @@ reduce(const AcReal* in, const size_t count, AcReal* out)
 
     __syncthreads();
 
-    int offset = blockDim.x / 2;
+    size_t offset = blockDim.x / 2;
     while (offset > 0) {
         if (threadIdx.x < offset) {
             const AcReal a = smem[threadIdx.x];
@@ -261,32 +262,34 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
     AcReal* in  = scratchpads[0];
     AcReal* out = scratchpads[1];
 
-    // Set thread block dimensions
+    // Compute block dimensions
     const int3 dims            = end - start;
     const size_t initial_count = dims.x * dims.y * dims.z;
-    const Volume tpb           = get_map_tpb();
-    const Volume bpg           = get_map_bpg(dims, tpb);
-
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
     // Map
-    switch (rtype) {
-    case RTYPE_MAX: /* Fallthrough */
-    case RTYPE_MIN: /* Fallthrough */
-    case RTYPE_SUM:
-        map<map_value><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
-        break;
-    case RTYPE_RMS:
-        map<map_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
-        break;
-    case RTYPE_RMS_EXP:
-        map<map_exp_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
-        break;
-    default:
-        ERROR("Invalid reduction type in acKernelReduceScal");
-        return AC_FAILURE;
-    };
-    swap_ptrs(&in, &out);
+    {
+        const Volume tpb = get_map_tpb();
+        const Volume bpg = get_map_bpg(dims, tpb);
+
+        switch (rtype) {
+        case RTYPE_MAX: /* Fallthrough */
+        case RTYPE_MIN: /* Fallthrough */
+        case RTYPE_SUM:
+            map<map_value><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
+            break;
+        case RTYPE_RMS:
+            map<map_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
+            break;
+        case RTYPE_RMS_EXP:
+            map<map_exp_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
+            break;
+        default:
+            ERROR("Invalid reduction type in acKernelReduceScal");
+            return AC_FAILURE;
+        };
+        swap_ptrs(&in, &out);
+    }
 
     // Reduce
     size_t count = initial_count;
@@ -350,32 +353,36 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
     // Set thread block dimensions
     const int3 dims            = end - start;
     const size_t initial_count = dims.x * dims.y * dims.z;
-    const Volume tpb           = get_map_tpb();
-    const Volume bpg           = get_map_bpg(dims, tpb);
-
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
     // Map
-    switch (rtype) {
-    case RTYPE_MAX: /* Fallthrough */
-    case RTYPE_MIN: /* Fallthrough */
-    case RTYPE_SUM:
-        map_vec<map_length_vec>
-            <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, out);
-        break;
-    case RTYPE_RMS:
-        map_vec<map_square_vec>
-            <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, out);
-        break;
-    case RTYPE_RMS_EXP:
-        map_vec<map_exp_square_vec>
-            <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, out);
-        break;
-    default:
-        ERROR("Invalid reduction type in acKernelReduceScal");
-        return AC_FAILURE;
-    };
-    swap_ptrs(&in, &out);
+    {
+        const Volume tpb = get_map_tpb();
+        const Volume bpg = get_map_bpg(dims, tpb);
+        switch (rtype) {
+        case RTYPE_MAX: /* Fallthrough */
+        case RTYPE_MIN: /* Fallthrough */
+        case RTYPE_SUM:
+            map_vec<map_length_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
+                                                                               vtxbuf2, start, end,
+                                                                               out);
+            break;
+        case RTYPE_RMS:
+            map_vec<map_square_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
+                                                                               vtxbuf2, start, end,
+                                                                               out);
+            break;
+        case RTYPE_RMS_EXP:
+            map_vec<map_exp_square_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
+                                                                                   vtxbuf2, start,
+                                                                                   end, out);
+            break;
+        default:
+            ERROR("Invalid reduction type in acKernelReduceScal");
+            return AC_FAILURE;
+        };
+        swap_ptrs(&in, &out);
+    }
 
     // Reduce
     size_t count = initial_count;
@@ -438,30 +445,31 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
     // Set thread block dimensions
     const int3 dims            = end - start;
     const size_t initial_count = dims.x * dims.y * dims.z;
-    const Volume tpb           = get_map_tpb();
-    const Volume bpg           = get_map_bpg(dims, tpb);
-
     ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
     // Map
-    switch (rtype) {
-    case RTYPE_ALFVEN_MAX: /* Fallthrough */
-    case RTYPE_ALFVEN_MIN:
-        map_vec_scal<map_length_alf><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
-                                                                                vtxbuf2, vtxbuf3,
-                                                                                start, end, out);
-        break;
-    case RTYPE_ALFVEN_RMS:
-        map_vec_scal<map_square_alf><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
-                                                                                vtxbuf2, vtxbuf3,
-                                                                                start, end, out);
-        break;
-    default:
-        fprintf(stderr, "Rtype %s (%d)\n", rtype_names[rtype], rtype);
-        ERROR("Invalid reduction type in acKernelReduceVecScal");
-        return AC_FAILURE;
-    };
-    swap_ptrs(&in, &out);
+    {
+        const Volume tpb = get_map_tpb();
+        const Volume bpg = get_map_bpg(dims, tpb);
+        switch (rtype) {
+        case RTYPE_ALFVEN_MAX: /* Fallthrough */
+        case RTYPE_ALFVEN_MIN:
+            map_vec_scal<map_length_alf>
+                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
+                                                            start, end, out);
+            break;
+        case RTYPE_ALFVEN_RMS:
+            map_vec_scal<map_square_alf>
+                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
+                                                            start, end, out);
+            break;
+        default:
+            fprintf(stderr, "Rtype %s (%d)\n", rtype_names[rtype], rtype);
+            ERROR("Invalid reduction type in acKernelReduceVecScal");
+            return AC_FAILURE;
+        };
+        swap_ptrs(&in, &out);
+    }
 
     // Reduce
     size_t count = initial_count;

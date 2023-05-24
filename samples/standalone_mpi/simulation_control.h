@@ -6,7 +6,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <string.h>
 #include <string>
+
+#include "astaroth_utils.h"
 
 // Structure for keeping track of any generic condition
 struct SimulationPeriod {
@@ -104,7 +107,7 @@ constexpr size_t sim_log_msg_len         = 512;
 static size_t sim_tstamp_len             = 0;
 static char sim_log_msg[sim_log_msg_len] = "";
 
-void
+static void
 set_simulation_timestamp(int step, AcReal time)
 {
     // TODO: only set step and time, and lazily create the log stamp whenever it's needed
@@ -112,7 +115,7 @@ set_simulation_timestamp(int step, AcReal time)
     sim_tstamp_len = strlen(sim_log_msg);
 }
 
-void
+static void
 log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
 {
     if (pid == 0) {
@@ -124,7 +127,23 @@ log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
     }
 }
 
-void
+static void
+log_from_root_proc_with_sim_progress(std::string msg, ...)
+{
+    int pid = 0;
+#if AC_MPI_ENABLED
+    MPI_Comm_rank(acGridMPIComm(), &pid);
+#endif
+    if (pid == 0) {
+        strncpy(sim_log_msg + sim_tstamp_len, msg.c_str(), sim_log_msg_len - sim_tstamp_len);
+        va_list args;
+        va_start(args, msg);
+        acVA_LogFromRootProc(pid, sim_log_msg, args);
+        va_end(args);
+    }
+}
+
+static void
 debug_log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
 {
 #ifndef NDEBUG
