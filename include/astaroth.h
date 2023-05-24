@@ -85,7 +85,11 @@ typedef int Stream;
     FUNC(BOUNDCOND_SYMMETRIC)                                                                      \
     FUNC(BOUNDCOND_ANTISYMMETRIC)                                                                  \
     FUNC(BOUNDCOND_A2)                                                                             \
+    FUNC(BOUNDCOND_INFLOW)                                                                         \
+    FUNC(BOUNDCOND_OUTFLOW)                                                                        \
+    FUNC(BOUNDCOND_CONST)                                                                          \
     FUNC(BOUNDCOND_PRESCRIBED_DERIVATIVE)
+
 
 #ifdef AC_INTEGRATION_ENABLED
 

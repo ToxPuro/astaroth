@@ -843,7 +843,9 @@ heat_conduction(const ScalarData ss, const ScalarData lnrho)
     const Vector third_term = getReal(AC_gamma) * (inv_cp_sound * gradient(ss) + gradient(lnrho)) +
                               grad_ln_chi;
 
-    const Scalar chi = (Scalar)(AC_THERMAL_CONDUCTIVITY) /
+    //const Scalar chi = (Scalar)(AC_THERMAL_CONDUCTIVITY) /
+    //                   (exp(value(lnrho)) * getReal(AC_cp_sound));
+    const Scalar chi = getReal(AC_K_heatcond) /
                        (exp(value(lnrho)) * getReal(AC_cp_sound));
     return getReal(AC_cp_sound) * chi * (first_term + dot(second_term, third_term));
 }
