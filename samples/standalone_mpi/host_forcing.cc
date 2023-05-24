@@ -25,8 +25,8 @@
  *
  */
 #include "host_forcing.h"
-#include "simulation_rng.h"
 #include "simulation_control.h"
+#include "simulation_rng.h"
 
 #include "astaroth_utils.h"
 #include "errchk.h"
@@ -126,7 +126,7 @@ helical_forcing_k_generator(const AcReal kmax, const AcReal kmin)
     // Sample population
     size_t idx = k_distribution(get_rng());
     AcReal3 k  = pop[idx];
-    //log_from_root_proc_with_sim_progress("{\"k\":[%lf,%lf,%lf]}\n", k.x, k.y, k.z);
+    // log_from_root_proc_with_sim_progress("{\"k\":[%lf,%lf,%lf]}\n", k.x, k.y, k.z);
     return k;
 }
 
@@ -241,34 +241,24 @@ DEPRECATED_acForcingVec(const AcReal forcing_magnitude, const AcReal3 k_force,
 void
 printForcingParams(const ForcingParams& forcing_params)
 {
-    printf(
-	"Forcing parameters:\n"
-	" magnitude: %lf\n"
-	" phase: %lf\n"
-	" k force: %lf\n"
-	"          %lf\n"
-	"          %lf\n"
-	" ff hel real: %lf\n"
-	"            : %lf\n"
-	"            : %lf\n"
-	" ff hel imag: %lf\n"
-	"            : %lf\n"
-	"            : %lf\n"
-	" k aver: %lf\n"
-	"\n",
-	forcing_params.magnitude,
-	forcing_params.phase,
-	forcing_params.k_force.x,
-	forcing_params.k_force.y,
-	forcing_params.k_force.z,
-	forcing_params.ff_hel_re.x,
-	forcing_params.ff_hel_re.y,
-	forcing_params.ff_hel_re.z,
-	forcing_params.ff_hel_im.x,
-	forcing_params.ff_hel_im.y,
-	forcing_params.ff_hel_im.z,
-	forcing_params.kaver
-	);
+    printf("Forcing parameters:\n"
+           " magnitude: %lf\n"
+           " phase: %lf\n"
+           " k force: %lf\n"
+           "          %lf\n"
+           "          %lf\n"
+           " ff hel real: %lf\n"
+           "            : %lf\n"
+           "            : %lf\n"
+           " ff hel imag: %lf\n"
+           "            : %lf\n"
+           "            : %lf\n"
+           " k aver: %lf\n"
+           "\n",
+           forcing_params.magnitude, forcing_params.phase, forcing_params.k_force.x,
+           forcing_params.k_force.y, forcing_params.k_force.z, forcing_params.ff_hel_re.x,
+           forcing_params.ff_hel_re.y, forcing_params.ff_hel_re.z, forcing_params.ff_hel_im.x,
+           forcing_params.ff_hel_im.y, forcing_params.ff_hel_im.z, forcing_params.kaver);
 }
 
 void

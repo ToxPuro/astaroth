@@ -65,9 +65,8 @@ get_simulation_graph(int pid, Simulation sim)
         case Simulation::Hydro_Heatduct_Solve: {
 #if LENTROPY
             // This is an exmaple of having multiple types of boundary conditions
-            VertexBufferHandle all_fields[] = {VTXBUF_LNRHO, VTXBUF_UUX,
-                                               VTXBUF_UUY, VTXBUF_UUZ, 
-                                               VTXBUF_ENTROPY};
+            VertexBufferHandle all_fields[]    = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+                                                  VTXBUF_ENTROPY};
             VertexBufferHandle lnrho_field[]   = {VTXBUF_LNRHO};
             VertexBufferHandle entropy_field[] = {VTXBUF_ENTROPY};
             VertexBufferHandle scalar_fields[] = {VTXBUF_LNRHO, VTXBUF_ENTROPY};
@@ -79,28 +78,29 @@ get_simulation_graph(int pid, Simulation sim)
             VertexBufferHandle uuyz_fields[]   = {VTXBUF_UUY, VTXBUF_UUZ};
 
             AcRealParam const_lnrho_bound[1] = {AC_lnrho0};
-            AcRealParam const_heat_flux[1] = {AC_hflux};
+            AcRealParam const_heat_flux[1]   = {AC_hflux};
 
             AcTaskDefinition heatduct_ops[] =
                 {acHaloExchange(all_fields),
-                 acBoundaryCondition(BOUNDARY_XZ, BOUNDCOND_SYMMETRIC, scalar_fields), 
+                 acBoundaryCondition(BOUNDARY_XZ, BOUNDCOND_SYMMETRIC, scalar_fields),
 
                  acBoundaryCondition(BOUNDARY_X, BOUNDCOND_ANTISYMMETRIC, uux_field),
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC,     uuyz_fields),
-                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC,     uuxz_fields),
-                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC,     uuxy_fields),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, uuyz_fields),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, uuxz_fields),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, uuxy_fields),
                  acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, uuz_field),
 
-                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_INFLOW,    uuy_field), 
-                 acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_OUTFLOW,   uuy_field), 
-                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_A2,        lnrho_field),  
-                 acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2,        scalar_fields),
+                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_INFLOW, uuy_field),
+                 acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_OUTFLOW, uuy_field),
+                 acBoundaryCondition(BOUNDARY_Y_BOT, BOUNDCOND_A2, lnrho_field),
+                 acBoundaryCondition(BOUNDARY_Y_TOP, BOUNDCOND_A2, scalar_fields),
 
-                 acSpecialMHDBoundaryCondition(BOUNDARY_Y_BOT, SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX, const_heat_flux),
+                 acSpecialMHDBoundaryCondition(BOUNDARY_Y_BOT,
+                                               SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX,
+                                               const_heat_flux),
 
                  acCompute(KERNEL_twopass_solve_intermediate, all_fields),
-                 acCompute(KERNEL_twopass_solve_final,        all_fields)
-                };
+                 acCompute(KERNEL_twopass_solve_final, all_fields)};
             acLogFromRootProc(pid, "Creating heat duct task graph\n");
             AcTaskGraph* my_taskgraph = acGridBuildTaskGraph(heatduct_ops);
             acGraphPrintDependencies(my_taskgraph);
