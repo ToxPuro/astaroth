@@ -121,6 +121,12 @@ gen_kernel_prefix(void)
   // Original
   printf("const auto write=[&](const Field field, const AcReal value)"
          "{ vba.out[field][idx] = value; };");
+
+  //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
+  //  in practice (no effect on the first pass, a slight slowdown in the second
+  //  pass 4.6 ms vs 4.3 ms)
+  // printf("const auto write=[&](const Field field, const AcReal value)"
+  //  "{ __builtin_nontemporal_store(value, &vba.out[field][idx]); };");
 #else
   // Buffered, no effect on performance
   // !Remember to emit write insructions in ac.y if this is enabled!
