@@ -13,7 +13,8 @@ hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
 hostdefine LENTROPY (1)
-hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // TODO: make an actual config parameter
+//hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be.
+real AC_K_heatcond
 hostdefine R_PI (AC_REAL_PI)
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
