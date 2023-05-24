@@ -921,7 +921,7 @@ BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_
            std::to_string(output_region.id.x) + "," + std::to_string(output_region.id.y) + "," +
            std::to_string(output_region.id.z) + ")" + ".(" + std::to_string(boundary_normal.x) +
            "," + std::to_string(boundary_normal.y) + "," + std::to_string(boundary_normal.z) + ")";
-    boundary = op.boundary;
+    boundary  = op.boundary;
     task_type = TASKTYPE_BOUNDCOND;
 }
 
@@ -950,7 +950,7 @@ BoundaryConditionTask::populate_boundary_region()
         case BOUNDCOND_CONST: {
             assert(input_parameters.size() == 1);
             acKernelConstBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                                     vba.in[variable], input_parameters[0]);
+                                    vba.in[variable], input_parameters[0]);
             break;
         }
         case BOUNDCOND_PRESCRIBED_DERIVATIVE: {
@@ -968,7 +968,7 @@ BoundaryConditionTask::populate_boundary_region()
 
         case BOUNDCOND_INFLOW: {
             acKernelInflowBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
-                                      vba.in[variable]);
+                                     vba.in[variable]);
             break;
         }
         default:
@@ -1076,7 +1076,7 @@ SpecialMHDBoundaryConditionTask::populate_boundary_region()
         break;
     }
     case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX: {
-        //printf("RUNNING SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX \n");
+        // printf("RUNNING SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX \n");
         assert(input_parameters.size() == 1);
         acKernelEntropyPrescribedHeatFluxBoundconds(stream, output_region.id, boundary_normal,
                                                     boundary_dims, vba, input_parameters[0]);

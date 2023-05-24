@@ -1443,8 +1443,13 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         case TASKTYPE_SPECIAL_MHD_BOUNDCOND: {
 #ifdef AC_INTEGRATION_ENABLED
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
-                acVerboseLogFromRootProc(rank, "tag %d, decomp %i %i %i, rank %i, op.boundary  %i \n ", tag, decomp.x, decomp.y, decomp.z, rank, op.boundary);
-                acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Region::is_on_boundary(decomp, rank, tag, op.boundary) = %i \n", Region::is_on_boundary(decomp, rank, tag, op.boundary));
+                acVerboseLogFromRootProc(rank,
+                                         "tag %d, decomp %i %i %i, rank %i, op.boundary  %i \n ",
+                                         tag, decomp.x, decomp.y, decomp.z, rank, op.boundary);
+                acVerboseLogFromRootProc(rank,
+                                         "acGridBuildTaskGraph: Region::is_on_boundary(decomp, "
+                                         "rank, tag, op.boundary) = %i \n",
+                                         Region::is_on_boundary(decomp, rank, tag, op.boundary));
                 if (Region::is_on_boundary(decomp, rank, tag, op.boundary)) {
                     auto task = std::make_shared<SpecialMHDBoundaryConditionTask>(op,
                                                                                   boundary_normal(
@@ -1453,7 +1458,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                                                                                   device,
                                                                                   swap_offset);
                     graph->all_tasks.push_back(task);
-                    //printf("acGridBuildTaskGraph: Created SpecialMHDBoundaryConditionTask type task\n");
+                    // printf("acGridBuildTaskGraph: Created SpecialMHDBoundaryConditionTask type
+                    // task\n");
                 }
             }
 #endif
@@ -2089,7 +2095,7 @@ acGridDiskAccessLaunch(const AccessType type)
         const auto write_async = [](const int device_id, const int i, const AcMeshInfo info,
                                     const AcReal* host_buffer) {
 #if USE_PERFSTUBS
-	    PERFSTUBS_REGISTER_THREAD();
+            PERFSTUBS_REGISTER_THREAD();
             PERFSTUBS_TIMER_START(_write_timer, "acGridDiskAccessLaunch::write_async");
 #endif
             cudaSetDevice(device_id);
@@ -2227,10 +2233,9 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
                                                     const AcReal* host_buffer) {
 
 #if USE_PERFSTUBS
-	    PERFSTUBS_REGISTER_THREAD();
+            PERFSTUBS_REGISTER_THREAD();
             PERFSTUBS_TIMER_START(_write_timer, "acGridWriteMeshToDiskLaunch::write_async");
 #endif
-
 
 #if USE_DISTRIBUTED_IO
             (void)offset; // Unused
@@ -2379,7 +2384,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
                                   color](const AcReal* host_buffer, const size_t count,
                                          const int device_id) {
 #if USE_PERFSTUBS
-	    PERFSTUBS_REGISTER_THREAD();
+            PERFSTUBS_REGISTER_THREAD();
             PERFSTUBS_TIMER_START(_write_timer, "acGridWriteMeshToDiskLaunch::write_async");
 #endif
 
@@ -2463,7 +2468,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
                 MPI_Comm_free(&slice_communicator);
             }
 #endif
-	    
+
 #if USE_PERFSTUBS
             PERFSTUBS_TIMER_STOP(_write_timer);
 #endif
@@ -2537,8 +2542,8 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
 
         acGridSynchronizeStream(STREAM_ALL);
         const auto write_sync = [filepath, global_nn, global_pos_min, slice_volume,
-                                  color](const AcReal* host_buffer, const size_t count,
-                                         const int device_id) {
+                                 color](const AcReal* host_buffer, const size_t count,
+                                        const int device_id) {
             cudaSetDevice(device_id);
             // Write to file
 

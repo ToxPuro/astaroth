@@ -9,7 +9,7 @@
 static void
 writeTaskKey(FILE* fp, const Task* task)
 {
-    AcBoundary task_boundary = task -> boundary;
+    AcBoundary task_boundary = task->boundary;
     fprintf(fp, "{");
     fprintf(fp, "\"order\":%d,", task->order);
     fprintf(fp, "\"tag\":%d,", task->output_region.tag);
@@ -21,29 +21,40 @@ writeTaskKey(FILE* fp, const Task* task)
     case TASKTYPE_HALOEXCHANGE:
         fprintf(fp, "\"HALOEXCHANGE\"");
         break;
-    case TASKTYPE_BOUNDCOND:
-        {fprintf(fp, "\"BOUNDCOND %i %i %i %i %i %i %i %i %i %i\" ", task_boundary, BOUNDARY_X, BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT, BOUNDARY_Z, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT);
-        if (task_boundary == BOUNDARY_X) fprintf(fp, "\"BOUNDCOND X\"");
-        if (task_boundary == BOUNDARY_X_TOP) fprintf(fp, "\"BOUNDCOND X_TOP\"");
-        if (task_boundary == BOUNDARY_X_BOT) fprintf(fp, "\"BOUNDCOND X_BOT\"");
-        if (task_boundary == BOUNDARY_Y) fprintf(fp, "\"BOUNDCOND Y\"");
-        if (task_boundary == BOUNDARY_Y_TOP) fprintf(fp, "\"BOUNDCOND Y_TOP\"");
-        if (task_boundary == BOUNDARY_Y_BOT) fprintf(fp, "\"BOUNDCOND Y_BOT\"");
-        if (task_boundary == BOUNDARY_Z) fprintf(fp, "\"BOUNDCOND Z\"");
-        if (task_boundary == BOUNDARY_Z_TOP) fprintf(fp, "\"BOUNDCOND Z_TOP\"");
-        if (task_boundary == BOUNDARY_Z_BOT) fprintf(fp, "\"BOUNDCOND Z_BOT\"");
+    case TASKTYPE_BOUNDCOND: {
+        fprintf(fp, "\"BOUNDCOND %i %i %i %i %i %i %i %i %i %i\" ", task_boundary, BOUNDARY_X,
+                BOUNDARY_X_TOP, BOUNDARY_X_BOT, BOUNDARY_Y, BOUNDARY_Y_TOP, BOUNDARY_Y_BOT,
+                BOUNDARY_Z, BOUNDARY_Z_TOP, BOUNDARY_Z_BOT);
+        if (task_boundary == BOUNDARY_X)
+            fprintf(fp, "\"BOUNDCOND X\"");
+        if (task_boundary == BOUNDARY_X_TOP)
+            fprintf(fp, "\"BOUNDCOND X_TOP\"");
+        if (task_boundary == BOUNDARY_X_BOT)
+            fprintf(fp, "\"BOUNDCOND X_BOT\"");
+        if (task_boundary == BOUNDARY_Y)
+            fprintf(fp, "\"BOUNDCOND Y\"");
+        if (task_boundary == BOUNDARY_Y_TOP)
+            fprintf(fp, "\"BOUNDCOND Y_TOP\"");
+        if (task_boundary == BOUNDARY_Y_BOT)
+            fprintf(fp, "\"BOUNDCOND Y_BOT\"");
+        if (task_boundary == BOUNDARY_Z)
+            fprintf(fp, "\"BOUNDCOND Z\"");
+        if (task_boundary == BOUNDARY_Z_TOP)
+            fprintf(fp, "\"BOUNDCOND Z_TOP\"");
+        if (task_boundary == BOUNDARY_Z_BOT)
+            fprintf(fp, "\"BOUNDCOND Z_BOT\"");
         break;
-        }
-    case TASKTYPE_SPECIAL_MHD_BOUNDCOND:
-        {fprintf(fp, "\"SPECIAL_MHD_BOUNDCOND\"");
-        if(task_boundary == BOUNDARY_Y_BOT)
-        fprintf(fp, "\" Y_BOT\"");
-        if(task_boundary == BOUNDARY_X)
-        fprintf(fp, "\" X\"");
-        if(task_boundary == BOUNDARY_Z)
-        fprintf(fp, "\" Z\"");
+    }
+    case TASKTYPE_SPECIAL_MHD_BOUNDCOND: {
+        fprintf(fp, "\"SPECIAL_MHD_BOUNDCOND\"");
+        if (task_boundary == BOUNDARY_Y_BOT)
+            fprintf(fp, "\" Y_BOT\"");
+        if (task_boundary == BOUNDARY_X)
+            fprintf(fp, "\" X\"");
+        if (task_boundary == BOUNDARY_Z)
+            fprintf(fp, "\" Z\"");
         break;
-        }
+    }
     default:
         fprintf(fp, "\"UNKNOWN\"");
         break;

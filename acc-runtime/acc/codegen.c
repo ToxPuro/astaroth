@@ -110,15 +110,15 @@ symboltable_reset(void)
 
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "rand_uniform");
 
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "exp");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "sin");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cos");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "sqrt"); // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "fabs"); // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "pow");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "log");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "abs");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "atan2");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "exp");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "sin");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cos");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "sqrt");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "fabs");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "pow");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "log");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "abs");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "atan2"); // TODO RECHECK
 
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "AC_REAL_PI");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_FIELDS");
