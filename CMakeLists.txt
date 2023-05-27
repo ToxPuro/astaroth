@@ -58,6 +58,10 @@ if (USE_HIP)
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip/include)
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm/roctracer/include)
 
+    # Roctracer
+    include_directories(/opt/rocm/roctracer/include)
+    link_directories(/opt/rocm/roctracer/lib)
+
     ## Triton
 	include_directories(/opt/rocm-5.0.0/roctracer/include)
 	link_directories(/opt/rocm-5.0.0/roctracer/lib)
