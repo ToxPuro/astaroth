@@ -161,11 +161,15 @@ export UCX_RNDV_SCHEME=get_zcopy
 export UCX_MAX_RNDV_RAILS=1''', optimal_implementation=1, optimal_tpb=0)
 triton = System(id='mi100', account='', partition='gpu-amd', ngpus_per_node=1, gres='',
                 modules='module load gcc bison flex cmake openmpi', use_hip=True, optimal_implementation=1, optimal_tpb=512)
-lumi = System(id='mi250x', account='project_462000120', partition='dev-g', ngpus_per_node=8, gres='', additional_commands='''
-''', srun_params='--cpu-bind=map_cpu:48,56,16,24,1,8,32,40', modules='''
-        module load LUMI/22.08  partition/G
-        module load rocm 
-        module load buildtools
+lumi = System(id='mi250x', account='project_462000190', partition='small-g', ngpus_per_node=8, gres='', additional_commands='''
+''',
+#srun_params='--cpu-bind=map_cpu:48,56,16,24,1,8,32,40',
+srun_params='', # CPU binding disabled temporarily (the binding above needs a full node)
+modules='''
+        module purge
+        module load CrayEnv
+        module load PrgEnv-cray
+        module load rocm
         module load cray-python
         export MPICH_GPU_SUPPORT_ENABLED=1
         export FI_CXI_DEFAULT_CQ_SIZE=300000
@@ -383,7 +387,7 @@ if 'postprocess' in args.task_type:
     outfile = f'{output_dir}/microbenchmark-{system.id}.csv'
     with open(outfile, 'w') as f:
         with redirect_stdout(f):
-            print('usesmem,maxthreadsperblock,problemsize,workingsetsize,milliseconds,bandwidth')
+            print('usesmem,maxthreadsperblock,problemsize,workingsetsize,milliseconds,bandwidth,tpb')
     syscall(f'cat {builds_dir}/*/microbenchmark.csv >> {outfile}')
 
     df = pd.read_csv(outfile, comment='#')
@@ -409,6 +413,32 @@ if 'postprocess' in args.task_type:
     df = df.drop_duplicates(subset=['workingsetsize'], keep='last')
     df = df.sort_values(by=['workingsetsize'])
     df.to_csv(f'{output_dir}/workingset-smem-{system.id}.csv', index=False)
+
+    df = pd.read_csv(outfile, comment='#')
+    df = df.loc[(df['usesmem'] == 0) & (df['problemsize'] == 268435456)]
+    df = df.sort_values(by=['milliseconds'])
+    df = df.drop_duplicates(subset=['workingsetsize'], keep='first')
+    df = df.sort_values(by=['workingsetsize'])
+    df = df[['workingsetsize', 'tpb']]
+    df.to_csv(f'{output_dir}/microbenchmark-optimal-tpb-{system.id}.csv', index=False)
+
+    df = pd.read_csv(outfile, comment='#')
+    df = df.loc[(df['usesmem'] == 1) & (df['maxthreadsperblock'] == 0) & (df['problemsize'] == 268435456)]
+    df = df.sort_values(by=['milliseconds'])
+    df = df.drop_duplicates(subset=['workingsetsize'], keep='first')
+    df = df.sort_values(by=['workingsetsize'])
+    df = df[['workingsetsize', 'tpb']]
+    df.to_csv(f'{output_dir}/microbenchmark-optimal-tpb-smem-{system.id}.csv', index=False)
+
+    # df = pd.read_csv('input/microbenchmark-mi250x.csv')
+    # df = df.loc[(df['usesmem'] == 1) & (df['maxthreadsperblock'] == 512) & (df['problemsize'] == 268435456)].sort_values(by=['milliseconds']).drop_duplicates(subset=['workingsetsize'], keep='first').sort_values(by=['workingsetsize'])
+
+    # Microbenchmark autotune
+    outfile = f'{output_dir}/microbenchmark-autotune-{system.id}.csv'
+    with open(outfile, 'w') as f:
+        with redirect_stdout(f):
+            print('usesmem,maxthreadsperblock,problemsize,workingsetsize,milliseconds,tpb,bpg,smem')
+    syscall(f'cat {builds_dir}/*/microbenchmark-autotune.csv >> {outfile}')
 
     # Device
     outfile = f'{output_dir}/device-benchmark-{system.id}.csv'

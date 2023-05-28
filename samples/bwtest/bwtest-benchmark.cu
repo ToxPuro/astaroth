@@ -51,34 +51,33 @@ gpu: 0 1 2 3
 
 #if USE_SMEM
 static size_t
-get_smem(const int tpb, const int halo)
+get_smem(const int tpb, const int radius)
 {
-    return (tpb + 2 * halo) * sizeof(double);
+    return (tpb + 2 * radius) * sizeof(double);
 }
 
 __global__ void
 #if MAX_THREADS_PER_BLOCK
 __launch_bounds__(MAX_THREADS_PER_BLOCK)
 #endif
-    kernel(const int halo, const Array in, Array out)
+    kernel(const size_t domain_length, const int radius, const size_t pad, const Array in,
+           Array out)
 {
     extern __shared__ double smem[];
 
-    const int base_idx = blockIdx.x * blockDim.x;
-    for (int sid = threadIdx.x; sid < (int)(blockDim.x + 2 * halo); sid += blockDim.x)
+    const int base_idx = blockIdx.x * blockDim.x + pad - radius;
+    for (int sid = threadIdx.x; sid < (int)(blockDim.x + 2 * radius); sid += blockDim.x)
         if (sid + base_idx < in.count)
             smem[sid] = in.data[sid + base_idx];
     __syncthreads();
 
-    const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x) + halo;
-    if (tid < in.count - halo) {
+    double tmp = 0.0;
+    for (int i = 0; i < 2 * radius + 1; ++i)
+        tmp += smem[threadIdx.x + i];
 
-        double tmp = 0.0;
-        for (int i = 0; i < 2 * halo + 1; ++i)
-            tmp += smem[threadIdx.x + i];
-
-        out.data[tid] = tmp;
-    }
+    const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
+    if (tid < domain_length)
+        out.data[tid + pad] = tmp;
 }
 #else
 static size_t
@@ -93,39 +92,37 @@ __global__ void
 #if MAX_THREADS_PER_BLOCK
 __launch_bounds__(MAX_THREADS_PER_BLOCK)
 #endif
-    kernel(const int halo, const Array in, Array out)
+    kernel(const size_t domain_length, const int radius, const size_t pad, const Array in,
+           Array out)
 {
     const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
+    if (tid < domain_length) {
 
-    if (halo <= tid && tid < (int)in.count - halo) {
         double tmp = 0.0;
-
-        for (int i = -halo; i <= halo; ++i)
-            tmp += in.data[tid + i];
-
-        out.data[tid] = tmp;
+        for (int i = -radius; i <= radius; ++i)
+            tmp += in.data[tid + pad + i];
+        out.data[tid + pad] = tmp;
     }
 }
 #endif
 
 void
-model_kernel(const int halo, const Array in, Array out)
+model_kernel(const size_t domain_length, const int radius, const size_t pad, const Array in,
+             Array out)
 {
-    for (int tid = 0; tid < (int)in.count; ++tid) {
-        if (halo <= tid && tid < (int)in.count - halo) {
-
-            double tmp = 0.0;
-            for (int i = -halo; i <= halo; ++i)
-                tmp += in.data[tid + i];
-
-            out.data[tid] = tmp;
-        }
+    for (int tid = 0; tid < domain_length; ++tid) {
+        double tmp = 0.0;
+        for (int i = -radius; i <= radius; ++i)
+            tmp += in.data[tid + pad + i];
+        out.data[tid + pad] = tmp;
     }
 }
 
 typedef struct {
-    size_t count;
-    int halo;
+    size_t array_length;
+    size_t domain_length;
+    int radius;
+    size_t pad;
     size_t tpb;
     size_t bpg;
     size_t smem;
@@ -133,10 +130,16 @@ typedef struct {
 
 /** Returns the optimal threadblock dimensions for a given problem size */
 static KernelConfig
-autotune(const size_t count, const int halo)
+autotune(const size_t array_length, const size_t domain_length, const int radius, const size_t pad)
 {
-    Array a = arrayCreate(count, true);
-    Array b = arrayCreate(count, true);
+    // File
+    const char* benchmark_dir = "microbenchmark-autotune.csv";
+    FILE* fp                  = fopen(benchmark_dir, "a");
+    ERRCHK_ALWAYS(fp);
+
+    // Arrays
+    Array a = arrayCreate(array_length, true);
+    Array b = arrayCreate(array_length, true);
 
     cudaDeviceProp props;
     cudaGetDeviceProperties(&props, 0);
@@ -153,7 +156,7 @@ autotune(const size_t count, const int halo)
     cudaEventCreate(&tstop);
     cudaEventRecord(tstart); // Timing start
     for (size_t i = 0; i < 1; ++i)
-        kernel<<<1, 1, max_smem>>>(halo, a, b);
+        kernel<<<1, 1, max_smem>>>(domain_length, radius, pad, a, b);
     cudaEventRecord(tstop); // Timing stop
     cudaEventSynchronize(tstop);
     cudaEventDestroy(tstart);
@@ -161,7 +164,15 @@ autotune(const size_t count, const int halo)
     cudaDeviceSynchronize();
 
     // Tune
-    KernelConfig c  = {.count = count, .halo = halo, .tpb = 0, .bpg = 0, .smem = 0};
+    KernelConfig c = {
+        .array_length  = array_length,
+        .domain_length = domain_length,
+        .radius        = radius,
+        .pad           = pad,
+        .tpb           = 0,
+        .bpg           = 0,
+        .smem          = 0,
+    };
     float best_time = INFINITY;
     for (size_t tpb = 1; tpb <= max_threads_per_block; ++tpb) {
 
@@ -171,23 +182,24 @@ autotune(const size_t count, const int halo)
         if (tpb % warp_size)
             continue;
 
-        const size_t bpg  = (size_t)ceil(1. * count / tpb);
-        const size_t smem = get_smem(tpb, halo);
+        const size_t bpg  = (size_t)ceil(1. * c.domain_length / tpb);
+        const size_t smem = get_smem(tpb, c.radius);
 
         if (smem > max_smem)
             continue;
 
-        printf("Current KernelConfig {.count = %lu, .halo = %d, .tpb = %lu, .bpg = %lu, .smem = "
-               "%lu}",
-               c.count, c.halo, tpb, bpg, smem);
+        printf("Current KernelConfig {.array_length = %zu, .domain_length = %zu, .radius = %d, "
+               ".pad = %zu, .tpb = %zu, .bpg = %zu, .smem = "
+               "%zu}\n",
+               c.array_length, c.domain_length, c.radius, c.pad, tpb, bpg, smem);
 
         cudaEventCreate(&tstart);
         cudaEventCreate(&tstop);
 
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
-        for (int i = 0; i < 3; ++i)
-            kernel<<<bpg, tpb, smem>>>(halo, a, b);
+        for (int i = 0; i < 5; ++i)
+            kernel<<<bpg, tpb, smem>>>(domain_length, radius, pad, a, b);
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
 
@@ -208,17 +220,25 @@ autotune(const size_t count, const int halo)
             continue;
         }
 
-        // printf("KernelConfig {.tpb = %lu, .bpg = %lu}\n", tpb, bpg);
-        printf(", Time elapsed: %g ms\n", (double)milliseconds);
+        printf("\tTime elapsed: %g ms\n", (double)milliseconds);
         if (milliseconds < best_time) {
             best_time = milliseconds;
             c.tpb     = tpb;
             c.bpg     = bpg;
             c.smem    = smem;
         }
+
+        // format
+        // 'usesmem, maxthreadsperblock, problemsize, workingsetsize, milliseconds,
+        // tpb, bpg, smem'
+        fprintf(fp, "%d,%d,%lu,%lu,%g,%zu,%zu,%zu\n", USE_SMEM, MAX_THREADS_PER_BLOCK,
+                c.domain_length * sizeof(double), (2 * c.radius + 1) * sizeof(double),
+                (double)milliseconds, c.tpb, c.bpg, c.smem);
     }
-    printf("KernelConfig {.count = %lu, .halo = %d, .tpb = %lu, .bpg = %lu, .smem = %lu}\n",
-           c.count, c.halo, c.tpb, c.bpg, c.smem);
+    printf("KernelConfig {.array_length = %zu, .domain_length = %zu, .radius = %d, "
+           ".pad = %zu, .tpb = %zu, .bpg = %zu, .smem = "
+           "%zu}\n",
+           c.array_length, c.domain_length, c.radius, c.pad, c.tpb, c.bpg, c.smem);
 
     arrayDestroy(&a);
     arrayDestroy(&b);
@@ -226,39 +246,44 @@ autotune(const size_t count, const int halo)
 #if USE_SMEM
     ERRCHK_ALWAYS(c.smem);
 #endif
+    ERRCHK_ALWAYS(c.tpb > 0);
+    ERRCHK_ALWAYS(c.bpg > 0);
 
+    fclose(fp);
+    fflush(stdout);
     return c;
 }
 
 void
 verify(const KernelConfig c)
 {
-    const size_t count = c.count;
-    const size_t tpb   = c.tpb;
-    const size_t bpg   = c.bpg;
-    const size_t smem  = c.smem;
-    const int halo     = c.halo;
-
-    Array ahost = arrayCreate(count, false);
-    Array bhost = arrayCreate(count, false);
-    Array a     = arrayCreate(count, true);
-    Array b     = arrayCreate(count, true);
+    Array ahost = arrayCreate(c.array_length, false);
+    Array bhost = arrayCreate(c.array_length, false);
+    Array a     = arrayCreate(c.array_length, true);
+    Array b     = arrayCreate(c.array_length, true);
 
     arrayRandomize(&ahost);
-    model_kernel(halo, ahost, bhost);
+    model_kernel(c.domain_length, c.radius, c.pad, ahost, bhost);
 
-    const size_t bytes = count * sizeof(ahost.data[0]);
+    const size_t bytes = c.array_length * sizeof(ahost.data[0]);
     cudaMemcpy(a.data, ahost.data, bytes, cudaMemcpyHostToDevice);
-    kernel<<<bpg, tpb, smem>>>(halo, a, b);
+    kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.radius, c.pad, a, b);
     cudaMemcpy(ahost.data, b.data, bytes, cudaMemcpyDeviceToHost);
 
     const double* candidate = ahost.data;
     const double* model     = bhost.data;
 
-    for (size_t i = halo; i < ahost.count - halo; ++i) {
+    size_t failure_count       = 0;
+    const size_t failure_limit = 100;
+    for (size_t i = c.pad; i < c.pad + c.domain_length; ++i) {
         if (model[i] != candidate[i]) {
             fprintf(stderr, "Failure at %lu: %g (host) and %g (device)\n", i, model[i],
                     candidate[i]);
+            ++failure_count;
+        }
+        if (failure_count > failure_limit) {
+            fprintf(stderr, "Failure limit reached, exiting...\n");
+            break;
         }
     }
 
@@ -267,7 +292,7 @@ verify(const KernelConfig c)
     arrayDestroy(&ahost);
     arrayDestroy(&bhost);
 
-    printf("Results verified\n");
+    printf("Results verified: %s\n", failure_count ? "Failures found" : "OK!");
 }
 
 static void
@@ -276,8 +301,8 @@ benchmark(const KernelConfig c)
     const size_t num_iters = 5;
 
     // Allocate
-    Array a = arrayCreate(c.count, true);
-    Array b = arrayCreate(c.count, true);
+    Array a = arrayCreate(c.array_length, true);
+    Array b = arrayCreate(c.array_length, true);
 
     // Benchmark
     cudaEvent_t tstart, tstop;
@@ -286,7 +311,7 @@ benchmark(const KernelConfig c)
 
     cudaEventRecord(tstart); // Timing start
     for (size_t i = 0; i < num_iters; ++i)
-        kernel<<<c.bpg, c.tpb, c.smem>>>(c.halo, a, b);
+        kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.radius, c.pad, a, b);
     cudaEventRecord(tstop); // Timing stop
     cudaEventSynchronize(tstop);
     ERRCHK_CUDA_KERNEL_ALWAYS();
@@ -296,7 +321,7 @@ benchmark(const KernelConfig c)
     cudaEventDestroy(tstart);
     cudaEventDestroy(tstop);
 
-    const size_t bytes     = num_iters * sizeof(a.data[0]) * (a.count + b.count - 2 * c.halo);
+    const size_t bytes     = num_iters * sizeof(a.data[0]) * (2 * c.domain_length + 2 * c.radius);
     const double seconds   = (double)milliseconds / 1e3;
     const double bandwidth = bytes / seconds;
     printf("Effective bandwidth: %g GiB/s\n", bandwidth / pow(1024, 3));
@@ -307,16 +332,19 @@ benchmark(const KernelConfig c)
     const char* benchmark_dir = "microbenchmark.csv";
     FILE* fp                  = fopen(benchmark_dir, "a");
     ERRCHK_ALWAYS(fp);
-    ERRCHK_ALWAYS(fp);
+
     // format
-    // 'usesmem, maxthreadsperblock, problemsize, workingsetsize, milliseconds, effectivebandwidth'
-    fprintf(fp, "%d,%d,%lu,%lu,%g,%g\n", USE_SMEM, MAX_THREADS_PER_BLOCK, c.count * sizeof(double),
-            (2 * c.halo + 1) * sizeof(double), (double)milliseconds, bandwidth);
+    // 'usesmem, maxthreadsperblock, problemsize, workingsetsize, milliseconds, effectivebandwidth,
+    // tpb'
+    fprintf(fp, "%d,%d,%lu,%lu,%g,%g,%zu\n", USE_SMEM, MAX_THREADS_PER_BLOCK,
+            c.domain_length * sizeof(double), (2 * c.radius + 1) * sizeof(double),
+            (double)milliseconds, bandwidth, c.tpb);
     fclose(fp);
 
     // Free
     arrayDestroy(&a);
     arrayDestroy(&b);
+    fflush(stdout);
 }
 
 void
@@ -369,9 +397,31 @@ printDeviceInfo(const int device_id)
     printf("--------------------------------------------------\n");
 }
 
+// Used for aligning the array to 256 bytes
+// Returns the padding size in elements
+static size_t
+get_pad(const size_t r)
+{
+    size_t pad = r;
+    while (pad * sizeof(double) % 256) {
+        ++pad;
+        ERRCHK_ALWAYS(pad <= 10000);
+    }
+
+    return pad;
+}
+
 int
 main(int argc, char* argv[])
 {
+    /*
+    TODO: add padding: go through the whole thing carefully!
+
+    we have
+        max_count = the array size incl. padding
+        count = size of the computational domain
+        pad = size of the padding in the beginning (incl. halo)
+    */
     cudaProfilerStop();
     if (argc != 3) {
         fprintf(stderr, "Usage: ./benchmark <problem size> <working set size>\n");
@@ -381,11 +431,17 @@ main(int argc, char* argv[])
     const size_t arg0 = (size_t)atol(argv[1]);
     const size_t arg1 = (size_t)atol(argv[2]);
 
-    const size_t problem_size     = arg0 ? arg0 : 268435456; // 256 MiB default
-    const size_t working_set_size = arg1 ? arg1 : 8;         // 8 byte default (r=0)
-    const int halo                = ((working_set_size / sizeof(double)) - 1) / 2;
-    const size_t count            = problem_size / sizeof(double);
-    ERRCHK(working_set_size <= problem_size);
+    // Input values
+    const size_t problem_size     = arg0 ? arg0 : 268435456; // 256 MiB default, bytes
+    const size_t working_set_size = arg1 ? arg1 : 8;         // 8 byte default (r=0), bytes
+
+    // Derived values
+    const int radius           = ((working_set_size / sizeof(double)) - 1) / 2;
+    const size_t pad           = get_pad(radius);
+    const size_t domain_length = problem_size / sizeof(double);
+    const size_t array_length  = pad + domain_length + radius;
+    ERRCHK((2 * radius + 1) * sizeof(double) == working_set_size);
+    ERRCHK(domain_length * sizeof(double) == problem_size);
 
     if (working_set_size > problem_size) {
         fprintf(stderr, "Invalid working set size: %lu > %lu\n", working_set_size, problem_size);
@@ -399,7 +455,7 @@ main(int argc, char* argv[])
     // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte);
     // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
 
-    KernelConfig c = autotune(count, halo);
+    KernelConfig c = autotune(array_length, domain_length, radius, pad);
     verify(c);
     cudaProfilerStart();
     benchmark(c);
