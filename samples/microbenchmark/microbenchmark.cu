@@ -314,72 +314,10 @@ verify(const KernelConfig c)
     printf("Results verified: %s\n", failure_count ? "Failures found" : "OK!");
 }
 
-/*
-// Old
-static void
-benchmark(const KernelConfig c)
-{
-    // TODO output all
-    const size_t num_iters = 100;
-
-    // Allocate
-    Array a = arrayCreate(c.array_length, true);
-    Array b = arrayCreate(c.array_length, true);
-
-    // Randomize
-    arrayRandomize(&a);
-    arrayRandomize(&b);
-
-    // Benchmark
-    cudaEvent_t tstart, tstop;
-    cudaEventCreate(&tstart);
-    cudaEventCreate(&tstop);
-
-    cudaDeviceSynchronize();
-    cudaEventRecord(tstart); // Timing start
-    for (size_t i = 0; i < num_iters; ++i)
-        kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.pad, c.radius, c.stride, a, b);
-    cudaEventRecord(tstop); // Timing stop
-    cudaEventSynchronize(tstop);
-    ERRCHK_CUDA_KERNEL_ALWAYS();
-
-    float milliseconds = 0;
-    cudaEventElapsedTime(&milliseconds, tstart, tstop);
-    cudaEventDestroy(tstart);
-    cudaEventDestroy(tstop);
-
-    const size_t bytes = num_iters * sizeof(a.data[0]) *
-                         (2 * c.domain_length + 2 * c.radius / c.stride);
-    const double seconds   = (double)milliseconds / 1e3;
-    const double bandwidth = bytes / seconds;
-    printf("Effective bandwidth: %g GiB/s\n", bandwidth / pow(1024, 3));
-    printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
-    printf("\tTime elapsed: %g ms\n", (double)milliseconds);
-
-    // File
-    const char* benchmark_dir = "microbenchmark.csv";
-    FILE* fp                  = fopen(benchmark_dir, "a");
-    ERRCHK_ALWAYS(fp);
-
-    // format
-    // 'usesmem, maxthreadsperblock, problemsize, workingsetsize, stride, milliseconds,
-    // effectivebandwidth, tpb'
-    fprintf(fp, "%d,%d,%zu,%zu,%d,%g,%g,%zu\n", USE_SMEM, MAX_THREADS_PER_BLOCK,
-            c.domain_length * sizeof(double), (2 * c.radius / c.stride + 1) * sizeof(double),
-            c.stride, (double)milliseconds, bandwidth, c.tpb);
-    fclose(fp);
-
-    // Free
-    arrayDestroy(&a);
-    arrayDestroy(&b);
-    fflush(stdout);
-}*/
-
 static void
 benchmark(const KernelConfig c, const size_t jobid, const size_t seed)
 {
-    // TODO output all
-    const size_t num_iters = 100;
+    const size_t num_iters = 1000;
 
     // Allocate
     Array a = arrayCreate(c.array_length, true);
@@ -463,10 +401,8 @@ printDeviceInfo(const int device_id)
     printf("  Compute\n");
     printf("    Clock rate (GHz): %g\n", props.clockRate / 1e6); // KHz -> GHz
     printf("    Stream processors: %d\n", props.multiProcessorCount);
-    printf(
-        "    Compute mode: %d\n",
-        (int)props
-            .computeMode); // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html#group__CUDART__TYPES_1g7eb25f5413a962faad0956d92bae10d0
+    // https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__TYPES.html#group__CUDART__TYPES_1g7eb25f5413a962faad0956d92bae10d0
+    printf("    Compute mode: %d\n", (int)props.computeMode);
     // Memory
     printf("  Global memory\n");
     printf("    Memory Clock Rate (MHz): %d\n", props.memoryClockRate / (1000));
