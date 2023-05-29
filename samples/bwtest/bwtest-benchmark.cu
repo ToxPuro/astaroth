@@ -1,4 +1,6 @@
 /**
+    Note: deprecated. Up-to-date microbenchmarks in samples/microbenchmark.
+
     Microbenchmark the GPU caches in 1D stencil computations and generate a plottable .csv output
 
     Examples:
@@ -196,9 +198,10 @@ autotune(const size_t array_length, const size_t domain_length, const int radius
         cudaEventCreate(&tstart);
         cudaEventCreate(&tstop);
 
+        kernel<<<bpg, tpb, smem>>>(domain_length, radius, pad, a, b);
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
-        for (int i = 0; i < 5; ++i)
+        for (int i = 0; i < 10; ++i)
             kernel<<<bpg, tpb, smem>>>(domain_length, radius, pad, a, b);
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
@@ -298,7 +301,7 @@ verify(const KernelConfig c)
 static void
 benchmark(const KernelConfig c)
 {
-    const size_t num_iters = 5;
+    const size_t num_iters = 100;
 
     // Allocate
     Array a = arrayCreate(c.array_length, true);
