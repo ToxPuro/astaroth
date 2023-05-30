@@ -145,7 +145,7 @@ main(int argc, char** argv)
     }
 
     // Warmup
-    for (int j = 0; j < NSAMPLES / 10; ++j) {
+    for (int j = 0; j < 10; ++j) {
         for (int step = 0; step < 3; ++step) {
             acDeviceIntegrateSubstep(device, STREAM_DEFAULT, step, n_min, n_max, dt);
             acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
