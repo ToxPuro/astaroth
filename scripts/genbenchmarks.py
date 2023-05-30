@@ -236,9 +236,10 @@ def gen_microbenchmarks(system):
 
             # Stride
             problem_size     = 256 * 1024**2 # Bytes, 256 MiB
-            working_set_size = 24         # Bytes (24 = von neumann stencil)
+            #working_set_size = 24         # Bytes (24 = von neumann stencil)
+            working_set_size = 440 # 55-point stencil in 1D = radius 22 => 55*8 = 440
             stride           = 1
-            max_stride       = 4192 
+            max_stride       = 4192
             while stride <= max_stride:
                 print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID')
                 stride *= 2
@@ -346,7 +347,7 @@ if 'preprocess' in args.task_type or 'genscripts' in args.task_type:
     if not args.dryrun:
         gen_microbenchmarks(system)
 
-        # gen_devicebenchmarks(system, nx, ny, nz)
+        gen_devicebenchmarks(system, nx, ny, nz)
         # gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices)
 
         # gen_strongscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
@@ -396,13 +397,17 @@ if 'postprocess' in args.task_type:
     syscall(f'mkdir -p {output_dir}')
 
     # Microbenchmarks
+    print('Postprocessing microbenchmarks')
     files = glob.glob(f'{builds_dir}/*/microbenchmark-*.csv')
     df = pd.concat(map(pd.read_csv, files))
+    df['device'] = f'{system.id}'
     df.to_csv(f'{output_dir}/microbenchmark-{system.id}.csv', index=False)
 
     # Device benchmarks
+    print('Postprocessing device benchmarks')
     files = glob.glob(f'{builds_dir}/*/device-benchmark-*.csv')
     df = pd.concat(map(pd.read_csv, files))
+    df['device'] = f'{system.id}'
     df.to_csv(f'{output_dir}/device-benchmark-{system.id}.csv', index=False)
 
 if 0:
