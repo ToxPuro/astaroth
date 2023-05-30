@@ -1,6 +1,7 @@
 Field temperature
-real dt
 
+/*
+real dt
 real dx, dy, dz
 
 Stencil value {
@@ -40,9 +41,33 @@ Stencil ddz2 {
 heat_equation(t) {
     return (1. / (dx * dx)) * ddx2(t) + (1. / (dy * dy)) * ddy2(t) + (1. / (dz * dz)) * ddz2(t)
 }
+*/
+
+// Load coeffs at runtime
+Stencil heat {
+    [0][0][0]  = 1,
+    [0][0][-3] = 1,
+    [0][0][-2] = 1,
+    [0][0][-1] = 1,
+    [0][0][1]  = 1,
+    [0][0][2]  = 1,
+    [0][0][3]  = 1,
+    [0][-3][0] = 1,
+    [0][-2][0] = 1,
+    [0][-1][0] = 1,
+    [0][1][0]  = 1,
+    [0][2][0]  = 1,
+    [0][3][0]  = 1,
+    [0][0][-3] = 1,
+    [0][0][-2] = 1,
+    [0][0][-1] = 1,
+    [0][0][1]  = 1,
+    [0][0][2]  = 1,
+    [0][0][3]  = 1
+}
 
 Kernel solve() {
-    write(temperature, value(temperature) + heat_equation(temperature) * dt)
+    write(temperature, heat(temperature))
 }
 
 Kernel init() {

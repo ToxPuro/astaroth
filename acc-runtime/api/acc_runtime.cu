@@ -634,6 +634,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         cudaEventCreate(&tstart);
         cudaEventCreate(&tstop);
 
+        kernel<<<bpg, tpb, smem>>>(start, end, vba); // Dryrun
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
         for (int i = 0; i < num_iters; ++i)
