@@ -159,7 +159,7 @@ autotune(const size_t array_length, const size_t domain_length, const size_t pad
 
     cudaDeviceProp props;
     cudaGetDeviceProperties(&props, 0);
-    const size_t warp_size             = (size_t)props.warpSize;
+    // const size_t warp_size             = (size_t)props.warpSize;
     const size_t max_smem              = (size_t)props.sharedMemPerBlock;
     const size_t max_threads_per_block = MAX_THREADS_PER_BLOCK
                                              ? (size_t)min(props.maxThreadsPerBlock,
@@ -317,7 +317,7 @@ verify(const KernelConfig c)
 static void
 benchmark(const KernelConfig c, const size_t jobid, const size_t seed)
 {
-    const size_t num_iters = 1000;
+    const size_t num_iters = 10;
 
     // Allocate
     Array a = arrayCreate(c.array_length, true);
