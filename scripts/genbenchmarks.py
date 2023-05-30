@@ -131,12 +131,13 @@ class System:
         if self.account:
             print(f'#SBATCH --account={self.account}')
         if self.gres:
-            print(f'#SBATCH --gres={self.gres}')
+            print(f'#SBATCH --gres={self.gres}:{gpualloc_per_node}')
+        else:
+            print(f'#SBATCH --gpus-per-node={gpualloc_per_node}')
         print(f'#SBATCH --partition={self.partition}')
         #print(f'#SBATCH --ntasks={ntasks}')
         print(f'#SBATCH --nodes={nodes}')
         print(f'#SBATCH --ntasks-per-node={ntasks_per_node}')
-        print(f'#SBATCH --gpus-per-node={gpualloc_per_node}')
         print(f'#SBATCH --time={time}')
         #print('#SBATCH --accel-bind=g') # bind tasks to closest GPU
         #print('#SBATCH --hint=memory_bound') # one core per socket
