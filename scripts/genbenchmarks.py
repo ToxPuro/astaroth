@@ -400,6 +400,11 @@ if 'postprocess' in args.task_type:
     df = pd.concat(map(pd.read_csv, files))
     df.to_csv(f'{output_dir}/microbenchmark-{system.id}.csv', index=False)
 
+    # Device benchmarks
+    files = glob.glob(f'{builds_dir}/*/device-benchmark-*.csv')
+    df = pd.concat(map(pd.read_csv, files))
+    df.to_csv(f'{output_dir}/device-benchmark-{system.id}.csv', index=False)
+
 if 0:
     # Postprocess
     if 'postprocess' in args.task_type:
