@@ -164,7 +164,6 @@ if (BUILD_STANDALONE)
 endif()
 
 if (BUILD_SAMPLES)
-    add_subdirectory(samples/blur)
     add_subdirectory(samples/ctest)
     add_subdirectory(samples/cpptest)
     add_subdirectory(samples/benchmark)
