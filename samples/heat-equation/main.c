@@ -66,7 +66,7 @@ main(int argc, char* argv[])
     // Init & dryrun
     const size_t pid   = 0;
     const size_t count = acVertexBufferSize(info);
-    acRandInitAlt(1234UL, count, pid);
+    acRandInitAlt(seed, count, pid);
     acDeviceLaunchKernel(device, STREAM_DEFAULT, init, dims.n0, dims.n1);
     acDeviceLaunchKernel(device, STREAM_DEFAULT, solve, dims.n0, dims.n1);
     // acDeviceLoadScalarUniform(device, STREAM_DEFAULT, dt, 1e-3);
