@@ -45,3 +45,4 @@ pipelines:
           - make -j
           - rm -rf *
           - cmake -DMPI_ENABLED=ON -DBUILD_STANDALONE=OFF -DBUILD_MHD_SAMPLES=OFF -DPROGRAM_MODULE_DIR=../samples/blur -DDSL_MODULE_DIR=../acc-runtime/samples/blur .. # Non-MHD sample
+          - make -j
