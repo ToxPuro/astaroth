@@ -1,6 +1,5 @@
 ## Options
 option(BUILD_ACC_RUNTIME_LIBRARY "Builds the standalone acc runtime library" OFF)
-option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" ON)
 
 ## DSL module dir
 if (NOT DEFINED DSL_MODULE_DIR)

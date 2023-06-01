@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.19)
 
 ## Project options
-option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" ON)
+option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
 if (USE_HIP)
     find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
     set(CMAKE_C_COMPILER ${CMAKE_HIP_COMPILER})
