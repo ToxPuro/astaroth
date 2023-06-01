@@ -15,7 +15,7 @@ main(void)
            "cmake -DMPI_ENABLED=ON .. to enable.\n");
     return EXIT_FAILURE;
 }
-#elif !AC_INTEGRATION_ENABLED
+#elif !defined(AC_INTEGRATION_ENABLED)
 int
 main(void)
 {
