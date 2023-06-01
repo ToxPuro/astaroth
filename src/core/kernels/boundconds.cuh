@@ -239,7 +239,6 @@ acKernelConstBoundconds(const cudaStream_t stream, const int3 region_id, const i
 }
 
 #ifdef AC_INTEGRATION_ENABLED
-
 // Constant derivative at boundary
 // Sets the normal derivative at the boundary to a value
 
@@ -322,6 +321,7 @@ acKernelPrescribedDerivativeBoundconds(const cudaStream_t stream, const int3 reg
                                                                      vtxbuf, der_val_param);
     return AC_SUCCESS;
 }
+#endif
 
 /*************************
  *                       *
@@ -481,6 +481,7 @@ acKernelInflowBoundconds(const cudaStream_t stream, const int3 region_id, const 
     return AC_SUCCESS;
 }
 
+#ifdef AC_INTEGRATION_ENABLED
 /************************
  *                      *
  *  Entropy boundconds  *
