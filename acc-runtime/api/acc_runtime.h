@@ -59,6 +59,8 @@ extern "C" {
 
 AcResult acKernelFlush(AcReal* arr, const size_t n);
 
+AcResult acVBAReset(VertexBufferArray* vba);
+
 VertexBufferArray acVBACreate(const size_t count);
 
 void acVBADestroy(VertexBufferArray* vba);

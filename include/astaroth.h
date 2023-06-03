@@ -90,7 +90,6 @@ typedef int Stream;
     FUNC(BOUNDCOND_CONST)                                                                          \
     FUNC(BOUNDCOND_PRESCRIBED_DERIVATIVE)
 
-
 #ifdef AC_INTEGRATION_ENABLED
 
 #define AC_FOR_SPECIAL_MHD_BCTYPES(FUNC)                                                           \
@@ -941,6 +940,9 @@ AcResult acDeviceCreate(const int id, const AcMeshInfo device_config, Device* de
 
 /** */
 AcResult acDeviceDestroy(Device device);
+
+/** Resets the mesh to default values defined in acc_runtime.cu:acVBAReset */
+AcResult acDeviceResetMesh(const Device device, const Stream stream);
 
 /** */
 AcResult acDevicePrintInfo(const Device device);
