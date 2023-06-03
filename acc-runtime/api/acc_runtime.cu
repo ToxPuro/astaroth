@@ -31,6 +31,14 @@
 
 #include "acc/implementation.h"
 
+static dim3 last_tpb = (dim3){0, 0, 0};
+
+Volume
+acKernelLaunchGetLastTPB(void)
+{
+  return to_volume(last_tpb);
+}
+
 Volume
 get_bpg(const Volume dims, const Volume tpb)
 {
@@ -386,6 +394,7 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
   kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
   ERRCHK_CUDA_KERNEL();
 
+  last_tpb = tpb; // Note: a bit hacky way to get the tpb
   return AC_SUCCESS;
 }
 

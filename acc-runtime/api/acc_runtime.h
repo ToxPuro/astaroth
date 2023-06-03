@@ -103,6 +103,9 @@ AcResult acStoreIntUniform(const cudaStream_t stream, const AcIntParam param,
 AcResult acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
                             int3* value);
 
+// Diagnostics
+Volume acKernelLaunchGetLastTPB(void);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
