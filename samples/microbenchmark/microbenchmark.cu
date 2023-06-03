@@ -313,10 +313,8 @@ verify(const KernelConfig c)
 }
 
 static void
-benchmark(const KernelConfig c, const size_t jobid, const size_t seed)
+benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const size_t num_samples)
 {
-    const size_t num_iters = 10;
-
     // Allocate
     Array a = arrayCreate(c.array_length, true);
     Array b = arrayCreate(c.array_length, true);
@@ -344,7 +342,7 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed)
     cudaEventCreate(&tstart);
     cudaEventCreate(&tstop);
 
-    for (size_t i = 0; i < num_iters; ++i) {
+    for (size_t i = 0; i < num_samples; ++i) {
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
         kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.pad, c.radius, c.stride, a, b);
@@ -360,7 +358,7 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed)
         const double seconds = (double)milliseconds / 1e3;
         const double bandwidth = bytes / seconds;
 
-        if (i == num_iters - 1) {
+        if (i == num_samples - 1) {
             printf("Effective bandwidth: %g GiB/s\n", bandwidth / pow(1024, 3));
             printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
             printf("\tTime elapsed: %g ms\n", (double)milliseconds);
@@ -456,6 +454,7 @@ main(int argc, char* argv[])
     const size_t working_set_size = (argc > 2) ? (size_t)atol(argv[2]) : 8;
     const int stride              = (argc > 3) ? (size_t)atol(argv[3]) : 1;
     const size_t jobid            = (argc > 4) ? (size_t)atol(argv[4]) : 0;
+    const size_t num_samples      = (argc > 5) ? (size_t)atol(argv[5]) : 100;
 
     // Derived values
     const int radius           = (((working_set_size / sizeof(double)) - 1) / 2) * stride;
@@ -466,11 +465,13 @@ main(int argc, char* argv[])
     ERRCHK((2 * radius / stride + 1) * sizeof(double) == working_set_size);
     ERRCHK(domain_length * sizeof(double) == problem_size);
 
-    printf("pad: %zu\n", pad);
-    printf("radius: %d\n", radius);
-    printf("stride: %d\n", stride);
-    printf("jobid: %zu\n", jobid);
-    printf("seed: %zu\n", seed);
+    printf("Input parameters:\n");
+    printf("\tpad: %zu\n", pad);
+    printf("\tradius: %d\n", radius);
+    printf("\tstride: %d\n", stride);
+    printf("\tjobid: %zu\n", jobid);
+    printf("\tnum_samples: %zu\n", num_samples);
+    printf("\tseed: %zu\n", seed);
 
     if (working_set_size > problem_size) {
         fprintf(stderr, "Invalid working set size: %lu > %lu\n", working_set_size, problem_size);
@@ -491,7 +492,7 @@ main(int argc, char* argv[])
     KernelConfig c = autotune(array_length, domain_length, pad, radius, stride);
     verify(c);
     cudaProfilerStart();
-    benchmark(c, jobid, seed);
+    benchmark(c, jobid, seed, num_samples);
     cudaProfilerStop();
     return EXIT_SUCCESS;
 }

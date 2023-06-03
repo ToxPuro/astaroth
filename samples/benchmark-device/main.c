@@ -11,13 +11,13 @@ main(int argc, char** argv)
 {
     cudaProfilerStop();
 
-    fprintf(stderr, "Usage: ./benchmark-device <nx> <ny> <nz> <jobid> <verify> <num_samples>\n");
+    fprintf(stderr, "Usage: ./benchmark-device <nx> <ny> <nz> <jobid> <num_samples> <verify>\n");
     const size_t nx          = (argc > 1) ? (size_t)atol(argv[1]) : 256;
     const size_t ny          = (argc > 2) ? (size_t)atol(argv[2]) : 256;
     const size_t nz          = (argc > 3) ? (size_t)atol(argv[3]) : 256;
     const size_t jobid       = (argc > 4) ? (size_t)atol(argv[4]) : 0;
-    const size_t verify      = (argc > 5) ? (size_t)atol(argv[5]) : 0;
-    const size_t num_samples = (argc > 6) ? (size_t)atol(argv[6]) : 100;
+    const size_t num_samples = (argc > 5) ? (size_t)atol(argv[5]) : 100;
+    const size_t verify      = (argc > 6) ? (size_t)atol(argv[6]) : 0;
     const size_t seed        = 12345 + time(NULL) + jobid * time(NULL);
 
     printf("Input parameters:\n");
@@ -25,8 +25,8 @@ main(int argc, char** argv)
     printf("\tny: %zu\n", ny);
     printf("\tnz: %zu\n", nz);
     printf("\tjobid: %zu\n", jobid);
-    printf("\tverify: %zu\n", verify);
     printf("\tnum_samples: %zu\n", num_samples);
+    printf("\tverify: %zu\n", verify);
     printf("\tseed: %zu\n", seed);
 
     printf("IMPLEMENTATION=%d\n", IMPLEMENTATION);

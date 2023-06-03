@@ -57,12 +57,14 @@ parser.add_argument('--use-hip', action='store_true', help='Compile with HIP sup
 parser.add_argument('--account', type=str, help='The account used in tests')
 parser.add_argument('--partition', type=str, help='The partition used for running the tests')
 parser.add_argument('--num-devices', type=int, nargs=2, default=[1, 8192], help='The range for the number of devices generated for run scripts (inclusive)')
+parser.add_argument('--num-samples', type=int, default=100, help='The number of benchmark samples taken per program invocation')
 ## Build arguments
 parser.add_argument('--build-dirs', type=str, nargs='+', required='build' in sys.argv, help='A list of directories to build')
 ## Run arguments
 parser.add_argument('--run-scripts', type=str, nargs='+', required='run' in sys.argv, help='A list of job scripts to run the tests')
 parser.add_argument('--run-dirs', type=str, nargs='+', required='run' in sys.argv, help='A list of directories to run the tests in')
 parser.add_argument('--max-jobs-per-queue', type=int, help='Limit the number of batch jobs submitted to the queue at a time')
+parser.add_argument('--verify', type=int, default=0, help='Verify the results of benchmarks where it is not done by default (benchmark-device, ...)')
 ## Clean arguments
 parser.add_argument('--clean-dirs', type=str, nargs='+', required='clean' in sys.argv, help='A list of directories to clean')
 
@@ -222,7 +224,7 @@ def gen_microbenchmarks(system):
             stride = 1
             max_problem_size = 1 * 1024**3    # 1 GiB
             while problem_size <= max_problem_size:
-                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID')
+                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples}')
                 problem_size *= 2
 
             # Working set
@@ -231,7 +233,7 @@ def gen_microbenchmarks(system):
             stride = 1
             max_working_set_size = 8200  # r = 512, (512 * 2 + 1) * 8 bytes = 8200 bytes
             while working_set_size <= max_working_set_size:
-                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID')
+                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples}')
                 working_set_size *= 2
 
             # Stride
@@ -241,7 +243,7 @@ def gen_microbenchmarks(system):
             stride           = 1
             max_stride       = 4192
             while stride <= max_stride:
-                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID')
+                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples}')
                 stride *= 2
 
 # Device benchmarks
@@ -249,7 +251,7 @@ def gen_devicebenchmarks(system, nx, ny, nz):
     with open(f'{scripts_dir}/device-benchmark.sh', 'w') as f:
         with redirect_stdout(f):
             system.print_sbatch_header(1)
-            print(f'srun {system.srun_params} ./benchmark-device {nx} {ny} {nz}')
+            print(f'srun {system.srun_params} ./benchmark-device {nx} {ny} {nz} $SLURM_JOB_ID {args.num_samples} {args.verify}')
 
 # Intra-node benchmarks
 def gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices):
