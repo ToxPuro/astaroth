@@ -1,6 +1,4 @@
 /**
-    Note: deprecated. Up-to-date microbenchmarks in samples/microbenchmark.
-
     Microbenchmark the GPU caches in 1D stencil computations and generate a plottable .csv output
 
     Examples:
@@ -335,8 +333,8 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed)
     ERRCHK_ALWAYS(fp);
 
     // File format
-    fprintf(fp, "usesmem,maxthreadsperblock,problemsize,workingsetsize,stride,milliseconds,"
-                "effectivebandwidth,tpb,jobid,seed\n");
+    fprintf(fp, "caching,maxthreadsperblock,problemsize,workingsetsize,stride,milliseconds,"
+                "effectivebandwidth,tpb,jobid,seed,iteration\n");
 
     // Dryrun
     kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.pad, c.radius, c.stride, a, b);
@@ -369,9 +367,10 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed)
         }
 
         // Write to file
-        fprintf(fp, "%d,%d,%zu,%zu,%d,%g,%g,%zu,%zu,%zu\n", USE_SMEM, MAX_THREADS_PER_BLOCK,
+        fprintf(fp, "%s,%d,%zu,%zu,%d,%g,%g,%zu,%zu,%zu,%zu\n",
+                USE_SMEM ? "\"explicit\"" : "\"implicit\"", MAX_THREADS_PER_BLOCK,
                 c.domain_length * sizeof(double), (2 * c.radius / c.stride + 1) * sizeof(double),
-                c.stride, (double)milliseconds, bandwidth, c.tpb, jobid, seed);
+                c.stride, (double)milliseconds, bandwidth, c.tpb, jobid, seed, i);
     }
     cudaEventDestroy(tstart);
     cudaEventDestroy(tstop);
@@ -450,22 +449,13 @@ main(int argc, char* argv[])
 {
 
     cudaProfilerStop();
-    if (argc != 5) {
-        fprintf(stderr, "Usage: ./benchmark <problem size> <working set size> <stride> <jobid>\n");
-        fprintf(stderr, "       ./benchmark 0 0 0 0 # To use the defaults\n");
-        return EXIT_FAILURE;
-    }
 
-    const size_t arg1 = (size_t)atol(argv[1]);
-    const size_t arg2 = (size_t)atol(argv[2]);
-    const size_t arg3 = (size_t)atol(argv[3]);
-    const size_t arg4 = (size_t)atol(argv[4]);
-
-    // Input values
-    const size_t problem_size     = arg1 ? arg1 : 268435456; // 256 MiB default, bytes
-    const size_t working_set_size = arg2 ? arg2 : 8;         // 8 byte default (r=0), bytes
-    const int stride              = arg3 ? arg3 : 1;         // Interval between stencil points
-    const size_t jobid            = arg4 ? arg4 : 0;
+    // Input parameters
+    fprintf(stderr, "Usage: ./benchmark <problem size> <working set size> <stride> <jobid>\n");
+    const size_t problem_size     = (argc > 1) ? (size_t)atol(argv[1]) : 268435456;
+    const size_t working_set_size = (argc > 2) ? (size_t)atol(argv[2]) : 8;
+    const int stride              = (argc > 3) ? (size_t)atol(argv[3]) : 1;
+    const size_t jobid            = (argc > 4) ? (size_t)atol(argv[4]) : 0;
 
     // Derived values
     const int radius           = (((working_set_size / sizeof(double)) - 1) / 2) * stride;
