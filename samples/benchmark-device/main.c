@@ -31,6 +31,7 @@ main(int argc, char** argv)
 
     printf("IMPLEMENTATION=%d\n", IMPLEMENTATION);
     printf("MAX_THREADS_PER_BLOCK=%d\n", MAX_THREADS_PER_BLOCK);
+    fflush(stdout);
 
     // Mesh configuration
     AcMeshInfo info;

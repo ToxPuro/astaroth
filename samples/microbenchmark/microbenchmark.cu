@@ -472,6 +472,7 @@ main(int argc, char* argv[])
     printf("\tjobid: %zu\n", jobid);
     printf("\tnum_samples: %zu\n", num_samples);
     printf("\tseed: %zu\n", seed);
+    fflush(stdout);
 
     if (working_set_size > problem_size) {
         fprintf(stderr, "Invalid working set size: %lu > %lu\n", working_set_size, problem_size);
