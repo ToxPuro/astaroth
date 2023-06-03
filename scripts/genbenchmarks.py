@@ -407,10 +407,10 @@ if 'postprocess' in args.task_type:
 
     # Device benchmarks
     print('Postprocessing device benchmarks')
-    files = glob.glob(f'{builds_dir}/*/device-benchmark-*.csv')
+    files = glob.glob(f'{builds_dir}/*/benchmark-device-*.csv')
     df = pd.concat(map(pd.read_csv, files))
     df['device'] = f'{system.id}'
-    df.to_csv(f'{output_dir}/device-benchmark-{system.id}.csv', index=False)
+    df.to_csv(f'{output_dir}/benchmark-device-{system.id}.csv', index=False)
 
 if 0:
     # Postprocess
