@@ -810,3 +810,11 @@ acDeviceVolumeCopy(const Device device, const Stream stream,                    
     return acKernelVolumeCopy(device->streams[stream], in, in_offset, in_volume, out, out_offset,
                               out_volume);
 }
+
+AcResult
+acDeviceResetMesh(const Device device, const Stream stream)
+{
+    cudaSetDevice(device->id);
+    acDeviceSynchronizeStream(device, stream);
+    return acVBAReset(&device->vba);
+}
