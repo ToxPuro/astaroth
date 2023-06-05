@@ -6,7 +6,7 @@
 
 #include "timer_hires.h"
 
-#if AC_INTEGRATION_ENABLED
+#ifdef AC_INTEGRATION_ENABLED
 int
 main(int argc, char** argv)
 {
