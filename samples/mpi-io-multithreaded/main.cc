@@ -32,8 +32,17 @@
 int
 main(void)
 {
-    printf("The library was built without MPI support, cannot run mpitest. Rebuild Astaroth with "
+    printf("The library was built without MPI support, cannot run. Rebuild Astaroth with "
            "cmake -DMPI_ENABLED=ON .. to enable.\n");
+    return EXIT_FAILURE;
+}
+#elif !defined(AC_INTEGRATION_ENABLED)
+int
+main(void)
+{
+    printf("The library was built without AC_INTEGRATION_ENABLED, cannot run. Rebuild "
+           "Astaroth with a DSL source with ´hostdefine AC_INTEGRATION_ENABLED´ and ensure the "
+           "missing fields ('VTXBUF_UUX', etc) are defined.\n");
     return EXIT_FAILURE;
 }
 #else

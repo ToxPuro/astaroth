@@ -1,6 +1,28 @@
 ## CMake settings
 cmake_minimum_required(VERSION 3.19)
 
+## Project options
+option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
+if (USE_HIP)
+    find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
+    set(CMAKE_C_COMPILER ${CMAKE_HIP_COMPILER})
+    set(CMAKE_CXX_COMPILER ${CMAKE_HIP_COMPILER})
+
+    # Rocm
+    #include_directories(/opt/rocm/include)
+    #link_directories(/opt/rocm/lib)
+    
+    # Roctracer
+    include_directories(/opt/rocm/roctracer/include)
+    link_directories(/opt/rocm/roctracer/lib)
+
+    # Rocrand
+    include_directories(/opt/rocm/hiprand/include)
+    include_directories(/opt/rocm/rocrand/include)
+    link_directories(/opt/rocm/hiprand/lib)
+    link_directories(/opt/rocm/rocrand/lib)
+endif()
+
 ## Project settings
 project(acc-runtime)
 
@@ -21,16 +43,7 @@ add_compile_options(-DIMPLEMENTATION=${IMPLEMENTATION})
 add_compile_options(-DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
 if (USE_HIP)
 add_compile_options(-DAC_USE_HIP=1)
-# Includes for building stencil_accesses.cpp
-list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0)
-list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/hip/include /opt/rocm-5.0.0)
-list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer)
-list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/roctracer/include)
-list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip/include)
-list(APPEND CMAKE_PREFIX_PATH /opt/rocm/roctracer/include)
-
-string(REPLACE ";" " -I " GPU_API_INCLUDES "${CMAKE_PREFIX_PATH}")
-add_compile_definitions(GPU_API_INCLUDES="${GPU_API_INCLUDES}")
+add_compile_definitions(GPU_API_INCLUDES="/opt/rocm/include -I /opt/rocm/roctracer/include ")
 else()
 add_compile_definitions(GPU_API_INCLUDES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
 endif()

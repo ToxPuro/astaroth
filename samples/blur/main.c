@@ -6,15 +6,16 @@
 
 #include "timer_hires.h"
 
-#if !BLUR_KERNEL_AVAILABLE
-int
-main(void)
-{
-    fprintf(stderr, "blur_kernel() was not available. Must build with `cmake "
-                    "-DDSL_MODULE_DIR=<path/to/blur.ac> -DBUILD_MHD_SAMPLES=OFF ..\n");
-    return EXIT_FAILURE;
-}
-#else
+/**
+    Building:
+        cmake -DPROGRAM_MODULE_DIR=<path/to/this/file> -DDSL_MODULE_DIR=<path/to/blur.ac>
+   -DBUILD_MHD_SAMPLES=OFF -DBUILD_STANDALONE=OFF ..
+
+   F.ex.
+   cmake -DBUILD_STANDALONE=OFF -DBUILD_MHD_SAMPLES=OFF -DPROGRAM_MODULE_DIR=../samples/blur
+   -DDSL_MODULE_DIR=../acc-runtime/samples/blur ..
+*/
+
 #define NSAMPLES (100)
 
 int
@@ -54,6 +55,7 @@ main(int argc, char** argv)
                                info.int_params[AC_nz_max]};
     const int3 start  = nn_min;
     const int3 end    = nn_max;
+
     acDeviceLaunchKernel(device, STREAM_DEFAULT, blur_kernel, start, end);
     acDeviceSwapBuffers(device);
 
@@ -90,4 +92,3 @@ main(int argc, char** argv)
 
     return EXIT_SUCCESS;
 }
-#endif

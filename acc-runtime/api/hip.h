@@ -78,3 +78,10 @@
 #define cudaDeviceSetCacheConfig hipDeviceSetCacheConfig
 #define cudaFuncCachePreferShared hipFuncCachePreferShared
 #define cudaFuncCachePreferL1 hipFuncCachePreferL1
+
+#define curandStateXORWOW_t hiprandStateXORWOW_t
+#define curandStateMRG32k3a_t hiprandStateMRG32k3a_t
+#define curandState hiprandState
+#define curand_init hiprand_init
+#define curand_uniform hiprand_uniform
+#define curand_uniform_double hiprand_uniform_double

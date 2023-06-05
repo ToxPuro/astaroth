@@ -31,30 +31,22 @@
 
 #include "acc/implementation.h"
 
-typedef struct {
-  size_t x, y, z;
-} Volume;
+static dim3 last_tpb = (dim3){0, 0, 0};
 
-template <class T>
-static Volume
-to_volume(const T a)
+Volume
+acKernelLaunchGetLastTPB(void)
 {
-  return (Volume){as_size_t(a.x), as_size_t(a.y), as_size_t(a.z)};
-}
-
-static dim3
-to_dim3(const Volume v)
-{
-  return dim3(v.x, v.y, v.z);
+  return to_volume(last_tpb);
 }
 
 Volume
 get_bpg(const Volume dims, const Volume tpb)
 {
   switch (IMPLEMENTATION) {
-  case IMPLICIT_CACHING: // Fallthrough
-  case EXPLICIT_CACHING: // Fallthrough
-  case EXPLICIT_CACHING_3D_BLOCKING: {
+  case IMPLICIT_CACHING:             // Fallthrough
+  case EXPLICIT_CACHING:             // Fallthrough
+  case EXPLICIT_CACHING_3D_BLOCKING: // Fallthrough
+  case EXPLICIT_CACHING_4D_BLOCKING: {
     return (Volume){
         (size_t)ceil(1. * dims.x / tpb.x),
         (size_t)ceil(1. * dims.y / tpb.y),
@@ -87,6 +79,9 @@ is_valid_configuration(const Volume dims, const Volume tpb)
 
     return true;
   }
+  case EXPLICIT_CACHING_4D_BLOCKING: // Fallthrough
+    if (tpb.z > 1)
+      return false;
   case EXPLICIT_CACHING: // Fallthrough
   case EXPLICIT_CACHING_3D_BLOCKING: {
 
@@ -115,6 +110,10 @@ get_smem(const Volume tpb, const size_t stencil_order,
   case EXPLICIT_CACHING_3D_BLOCKING: {
     return (tpb.x + stencil_order) * (tpb.y + stencil_order) *
            (tpb.z + stencil_order) * bytes_per_elem;
+  }
+  case EXPLICIT_CACHING_4D_BLOCKING: {
+    return (tpb.x + stencil_order) * (tpb.y + stencil_order) * tpb.z *
+           (NUM_FIELDS)*bytes_per_elem;
   }
   default: {
     ERROR("Invalid IMPLEMENTATION in get_smem");
@@ -215,6 +214,8 @@ IDX(const int3 idx)
 // the compiler to always pass arrays to functions as references before
 // re-enabling)
 
+#include "random.cuh"
+
 #include "user_kernels.h"
 
 typedef struct {
@@ -229,19 +230,19 @@ static TBConfig getOptimalTBConfig(const Kernel kernel, const int3 dims,
                                    VertexBufferArray vba);
 
 static __global__ void
-flush_kernel(AcReal* arr, const size_t n)
+flush_kernel(AcReal* arr, const size_t n, const AcReal value)
 {
   const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < n)
-    arr[idx] = (AcReal)NAN;
+    arr[idx] = value;
 }
 
 AcResult
-acKernelFlush(AcReal* arr, const size_t n)
+acKernelFlush(AcReal* arr, const size_t n, const AcReal value)
 {
   const size_t tpb = 256;
   const size_t bpg = (size_t)(ceil((double)n / tpb));
-  flush_kernel<<<bpg, tpb>>>(arr, n);
+  flush_kernel<<<bpg, tpb>>>(arr, n, value);
   ERRCHK_CUDA_KERNEL_ALWAYS();
   return AC_SUCCESS;
 }
@@ -324,6 +325,19 @@ freeCompressible(void* ptr, const size_t requested_bytes)
 }
 #endif
 
+AcResult
+acVBAReset(VertexBufferArray* vba)
+{
+  const size_t count = vba->bytes / sizeof(vba->in[0][0]);
+
+  // Set vba.in data to all-nan and vba.out to 0
+  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+    acKernelFlush(vba->in[i], count, (AcReal)NAN);
+    acKernelFlush(vba->out[i], count, (AcReal)0.0);
+  }
+  return AC_SUCCESS;
+}
+
 VertexBufferArray
 acVBACreate(const size_t count)
 {
@@ -340,11 +354,8 @@ acVBACreate(const size_t count)
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.in[i], bytes));
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
 #endif
-
-    // Set vba.in data to all-nan and vba.out to 0
-    acKernelFlush(vba.in[i], count);
-    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)vba.out[i], 0, bytes));
   }
+  acVBAReset(&vba);
 
   return vba;
 }
@@ -383,6 +394,7 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
   kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
   ERRCHK_CUDA_KERNEL();
 
+  last_tpb = tpb; // Note: a bit hacky way to get the tpb
   return AC_SUCCESS;
 }
 
@@ -517,10 +529,10 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
     }
   }
   ERRCHK_ALWAYS(id < NUM_KERNELS);
-  //printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
-  //       "(%d):\n",
-  //       kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
-  //fflush(stdout);
+  // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
+  //        "(%d):\n",
+  //        kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
+  // fflush(stdout);
 
 #if 0
   cudaDeviceProp prop;
@@ -556,9 +568,19 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                                         : props.maxThreadsPerBlock;
   const size_t max_smem           = props.sharedMemPerBlock;
 
+  // Old heuristic
+  // for (int z = 1; z <= max_threads_per_block; ++z) {
+  //   for (int y = 1; y <= max_threads_per_block; ++y) {
+  //     for (int x = max(y, z); x <= max_threads_per_block; ++x) {
+
+  // New: require that tpb.x is a multiple of the minimum transaction or L2
+  // cache line size
   for (int z = 1; z <= max_threads_per_block; ++z) {
     for (int y = 1; y <= max_threads_per_block; ++y) {
-      for (int x = max(y, z); x <= max_threads_per_block; ++x) {
+      // 64 bytes on NVIDIA but the minimum L1 cache transaction is 32
+      const int minimum_transaction_size_in_elems = 32 / sizeof(AcReal);
+      for (int x = minimum_transaction_size_in_elems;
+           x <= max_threads_per_block; x += minimum_transaction_size_in_elems) {
 
         if (x * y * z > max_threads_per_block)
           break;
@@ -631,6 +653,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         cudaEventCreate(&tstart);
         cudaEventCreate(&tstop);
 
+        kernel<<<bpg, tpb, smem>>>(start, end, vba); // Dryrun
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
         for (int i = 0; i < num_iters; ++i)
@@ -657,26 +680,28 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
           best_tpb  = tpb;
         }
 
-        //printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
-        //       tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
-        //fflush(stdout);
+        // printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
+        //        tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
+        // fflush(stdout);
       }
     }
   }
   c.tpb = best_tpb;
 
-  //printf("\tThe best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x, best_tpb.y,
-  //       best_tpb.z, (double)best_time / num_iters);
+  // printf("\tThe best tpb: (%d, %d, %d), time %f ms\n", best_tpb.x,
+  // best_tpb.y,
+  //        best_tpb.z, (double)best_time / num_iters);
 
-  FILE* fp = fopen("autotune-result.out", "a");
+  FILE* fp = fopen("autotune.csv", "a");
   ERRCHK_ALWAYS(fp);
 #if IMPLEMENTATION == SMEM_HIGH_OCCUPANCY_CT_CONST_TB
   fprintf(fp, "%d, (%d, %d, %d), (%d, %d, %d), %g\n", IMPLEMENTATION, nx, ny,
           nz, best_tpb.x, best_tpb.y, best_tpb.z,
           (double)best_time / num_iters);
 #else
-  fprintf(fp, "%d, (%d, %d, %d), %g\n", IMPLEMENTATION, best_tpb.x, best_tpb.y,
-          best_tpb.z, (double)best_time / num_iters);
+  fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %g\n", IMPLEMENTATION, dims.x,
+          dims.y, dims.z, best_tpb.x, best_tpb.y, best_tpb.z,
+          (double)best_time / num_iters);
 #endif
   fclose(fp);
 

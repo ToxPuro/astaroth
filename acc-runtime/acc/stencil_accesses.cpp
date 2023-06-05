@@ -28,6 +28,9 @@
 #define make_double3(x, y, z) ((double3){x, y, z})
 #define print printf
 #define len(arr) sizeof(arr) / sizeof(arr[0])
+#define rand_uniform() (0.5065983774206012) // Chosen by a fair dice roll.
+// Guaranteed to be random.
+// ref. xkcd :)
 
 // Just nasty: Must evaluate all code branches given arbitrary input
 // if we want automated stencil generation to work in every case

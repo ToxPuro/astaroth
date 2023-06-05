@@ -1,6 +1,5 @@
 ## Options
 option(BUILD_ACC_RUNTIME_LIBRARY "Builds the standalone acc runtime library" OFF)
-option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
 
 ## DSL module dir
 if (NOT DEFINED DSL_MODULE_DIR)
@@ -33,6 +32,7 @@ target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${M
 
 if (USE_HIP)
     target_link_libraries(acc-runtime-headers INTERFACE roctracer64)
+    target_link_libraries(acc-runtime-headers INTERFACE hiprand)
 endif()
 
 message("project source dir ${PROJECT_SOURCE_DIR}")
@@ -41,8 +41,6 @@ message("project source dir ${PROJECT_SOURCE_DIR}")
 if (BUILD_ACC_RUNTIME_LIBRARY)
     if (USE_HIP)
         add_definitions(-DAC_USE_HIP=1)
-        list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0)
-        list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.0.0/hip/include /opt/rocm-5.0.0)
 
         enable_language(CXX)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")

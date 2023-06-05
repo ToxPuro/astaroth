@@ -25,8 +25,8 @@ static const char dataformat_path[] = "data-format.csv";
 AcResult
 acHostVertexBufferSet(const VertexBufferHandle handle, const AcReal value, AcMesh* mesh)
 {
-    const int n = acVertexBufferSize(mesh->info);
-    for (int i = 0; i < n; ++i)
+    const size_t n = acVertexBufferSize(mesh->info);
+    for (size_t i = 0; i < n; ++i)
         mesh->vertex_buffer[handle][i] = value;
 
     return AC_SUCCESS;
@@ -34,7 +34,7 @@ acHostVertexBufferSet(const VertexBufferHandle handle, const AcReal value, AcMes
 AcResult
 acHostMeshSet(const AcReal value, AcMesh* mesh)
 {
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w)
         acHostVertexBufferSet(w, value, mesh);
 
     return AC_SUCCESS;
@@ -47,7 +47,7 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         const int3 start = (int3){0, 0, 0};
         const int3 end   = (int3){info.int_params[AC_mx], info.int_params[AC_my],
-                                info.int_params[AC_mz]};
+                                  info.int_params[AC_mz]};
 
         const int nx = info.int_params[AC_nx];
         const int ny = info.int_params[AC_ny];

@@ -794,9 +794,9 @@ forcing(int3 globalVertexIdx, ModelScalar dt)
                                                     get(AC_nz) * get(AC_dsz)}; // source (origin)
     (void)a;                                                                   // WARNING: not used
     ModelVector xx        = (ModelVector){(globalVertexIdx.x - get(AC_nx_min)) * get(AC_dsx),
-                                   (globalVertexIdx.y - get(AC_ny_min)) * get(AC_dsy),
-                                   (globalVertexIdx.z - get(AC_nz_min)) *
-                                       get(AC_dsz)}; // sink (current index)
+                                          (globalVertexIdx.y - get(AC_ny_min)) * get(AC_dsy),
+                                          (globalVertexIdx.z - get(AC_nz_min)) *
+                                              get(AC_dsz)}; // sink (current index)
     const ModelScalar cs2 = get(AC_cs2_sound);
     const ModelScalar cs  = sqrtl(cs2);
 

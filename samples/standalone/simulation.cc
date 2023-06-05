@@ -474,12 +474,12 @@ run_simulation(const char* config_path)
 #if LSHOCK
     const int3 start  = (int3){NGHOST, NGHOST, NGHOST};
     const int3 end    = (int3){mesh_info.int_params[AC_mx] - NGHOST,
-                            mesh_info.int_params[AC_my] - NGHOST,
-                            mesh_info.int_params[AC_mz] - NGHOST};
+                               mesh_info.int_params[AC_my] - NGHOST,
+                               mesh_info.int_params[AC_mz] - NGHOST};
     const int3 bindex = (int3){0, 0, 0}; // DUMMY
     const int3 b1     = (int3){0, 0, 0};
     const int3 b2     = (int3){mesh_info.int_params[AC_mx], mesh_info.int_params[AC_mx],
-                           mesh_info.int_params[AC_mx]};
+                               mesh_info.int_params[AC_mx]};
 
     acDeviceGeneralBoundconds(device, STREAM_DEFAULT, b1, b2, mesh_info, bindex);
     acDeviceStoreMesh(device, STREAM_DEFAULT, mesh);

@@ -85,8 +85,13 @@ struct Region {
     static constexpr int max_comp_tag   = 27;
     static constexpr int n_comp_regions = max_comp_tag - min_comp_tag + 1;
 
-    static int id_to_tag(int3 id_);
-    static int3 tag_to_id(int tag_);
+    static int id_to_tag(int3 id);
+    static int3 tag_to_id(int tag);
+
+    static AcBoundary boundary(uint3_64 decomp, int pid, int tag);
+    static AcBoundary boundary(uint3_64 decomp, int3 pid3d, int3 id);
+    static bool is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary);
+    static bool is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary);
 
     Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields);
     Region(RegionFamily family_, int3 id_, int3 nn, Field fields_[], size_t num_fields);
@@ -94,6 +99,8 @@ struct Region {
 
     Region translate(int3 translation);
     bool overlaps(const Region* other);
+    AcBoundary boundary(uint3_64 decomp, int pid);
+    bool is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary);
 };
 
 /**
@@ -131,6 +138,7 @@ typedef class Task {
     bool active;
     std::string name;
     AcTaskType task_type;
+    AcBoundary boundary; // non-zero if a boundary condition task, indicating which boundary
 
     Region input_region;
     Region output_region;
@@ -145,6 +153,7 @@ typedef class Task {
   public:
     Task(int order_, Region input_region_, Region output_region, AcTaskDefinition op,
          Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    virtual ~Task(){};
 
     virtual bool test()                               = 0;
     virtual void advance(const TraceFile* trace_file) = 0;
@@ -177,7 +186,7 @@ typedef class ComputeTask : public Task {
   public:
     ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
-    ComputeTask(const ComputeTask& other) = delete;
+    ComputeTask(const ComputeTask& other)            = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();
     void advance(const TraceFile* trace_file);
@@ -229,7 +238,7 @@ typedef class HaloExchangeTask : public Task {
                      uint3_64 decomp, Device device_,
                      std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     ~HaloExchangeTask();
-    HaloExchangeTask(const HaloExchangeTask& other) = delete;
+    HaloExchangeTask(const HaloExchangeTask& other)            = delete;
     HaloExchangeTask& operator=(const HaloExchangeTask& other) = delete;
 
     void sync();
@@ -315,5 +324,10 @@ struct AcTaskGraph {
     std::vector<std::shared_ptr<ComputeTask>> comp_tasks;
     std::vector<std::shared_ptr<HaloExchangeTask>> halo_tasks;
 
+    AcBoundary periodic_boundaries;
+
     TraceFile trace_file;
 };
+
+AcBoundary boundary_from_normal(int3 normal);
+int3 normal_from_boundary(AcBoundary boundary);

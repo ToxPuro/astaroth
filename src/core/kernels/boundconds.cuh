@@ -186,8 +186,59 @@ acKernelA2Boundconds(const cudaStream_t stream, const int3 region_id, const int3
     return AC_SUCCESS;
 }
 
-#ifdef AC_INTEGRATION_ENABLED
+static __global__ void
+kernel_const_boundconds(const int3 region_id, const int3 normal, const int3 dims,
+                        AcReal* vtxbuf, AcRealParam const_value)
+{
+    const int3 vertexIdx = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
 
+    if (vertexIdx.x >= dims.x || vertexIdx.y >= dims.y || vertexIdx.z >= dims.z) {
+        return;
+    }
+
+    const int3 start = (int3){(region_id.x == 1 ? NGHOST + DCONST(AC_nx)
+                                                : region_id.x == -1 ? 0 : NGHOST),
+                              (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
+                                                : region_id.y == -1 ? 0 : NGHOST),
+                              (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
+                                                : region_id.z == -1 ? 0 : NGHOST)};
+
+    const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
+                                             : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
+                               normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
+                                             : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+                               normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
+                                             : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+
+    int3 ghost  = boundary;
+
+    for (size_t i = 0; i < NGHOST; i++) {
+        ghost  = ghost + normal;
+
+        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+
+        vtxbuf[ghost_idx] = const_value;
+    }
+}
+
+AcResult
+acKernelConstBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                        const int3 dims, AcReal* vtxbuf, AcRealParam const_value)
+{
+    const dim3 tpb(8, 8, 8);
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
+
+    kernel_const_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf, const_value);
+    return AC_SUCCESS;
+}
+
+#ifdef AC_INTEGRATION_ENABLED
 // Constant derivative at boundary
 // Sets the normal derivative at the boundary to a value
 
@@ -270,7 +321,167 @@ acKernelPrescribedDerivativeBoundconds(const cudaStream_t stream, const int3 reg
                                                                      vtxbuf, der_val_param);
     return AC_SUCCESS;
 }
+#endif
 
+/*************************
+ *                       *
+ *  Velocity boundconds  *
+ *                       *
+ *************************/
+
+static __global__ void
+kernel_outflow_boundconds(const int3 region_id, const int3 normal, const int3 dims,
+                            AcReal* vtxbuf)
+{
+    const int3 vertexIdx = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    if (vertexIdx.x >= dims.x || vertexIdx.y >= dims.y || vertexIdx.z >= dims.z) {
+        return;
+    }
+
+    const int3 start = (int3){(region_id.x == 1 ? NGHOST + DCONST(AC_nx)
+                                                : region_id.x == -1 ? 0 : NGHOST),
+                              (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
+                                                : region_id.y == -1 ? 0 : NGHOST),
+                              (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
+                                                : region_id.z == -1 ? 0 : NGHOST)};
+
+    const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
+                                             : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
+                               normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
+                                             : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+                               normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
+                                             : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+
+    int3 domain = boundary;
+    int3 ghost  = boundary;
+    int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
+    AcReal uudir, sign;
+    if (normal.x != 0) {
+        uudir = vtxbuf[boundary_idx]*normal.x;
+    }
+    else if (normal.y != 0) {
+        uudir = vtxbuf[boundary_idx]*normal.y;
+    }
+    else if (normal.z != 0) {
+        uudir = vtxbuf[boundary_idx]*normal.z;
+    }
+
+    if (uudir >= 0.0) {
+        sign = 1.0;
+    } 
+    else if (uudir < 0.0) {
+        sign = -1.0;
+    }
+ 
+
+    for (size_t i = 0; i < NGHOST; i++) {
+        domain = domain - normal;
+        ghost  = ghost + normal;
+
+        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        
+
+        vtxbuf[ghost_idx] = sign*vtxbuf[domain_idx];
+    }
+}
+
+AcResult
+acKernelOutflowBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                          const int3 dims, AcReal* vtxbuf)
+{
+
+    const dim3 tpb(8, 8, 8);
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
+
+    kernel_outflow_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
+    return AC_SUCCESS;
+}
+
+static __global__ void
+kernel_inflow_boundconds(const int3 region_id, const int3 normal, const int3 dims,
+                            AcReal* vtxbuf)
+{
+    const int3 vertexIdx = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    if (vertexIdx.x >= dims.x || vertexIdx.y >= dims.y || vertexIdx.z >= dims.z) {
+        return;
+    }
+
+    const int3 start = (int3){(region_id.x == 1 ? NGHOST + DCONST(AC_nx)
+                                                : region_id.x == -1 ? 0 : NGHOST),
+                              (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
+                                                : region_id.y == -1 ? 0 : NGHOST),
+                              (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
+                                                : region_id.z == -1 ? 0 : NGHOST)};
+
+    const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
+                                             : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
+                               normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
+                                             : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+                               normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
+                                             : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+
+    int3 domain = boundary;
+    int3 ghost  = boundary;
+    int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
+    AcReal uudir, sign;
+    if (normal.x != 0) {
+        uudir = vtxbuf[boundary_idx]*normal.x;
+    }
+    else if (normal.y != 0) {
+        uudir = vtxbuf[boundary_idx]*normal.y;
+    }
+    else if (normal.z != 0) {
+        uudir = vtxbuf[boundary_idx]*normal.z;
+    }
+
+    if (uudir >= 0.0) {
+        sign = -1.0;
+    } 
+    else if (uudir < 0.0) {
+        sign = 1.0;
+    }    
+ 
+
+    for (size_t i = 0; i < NGHOST; i++) {
+        domain = domain - normal;
+        ghost  = ghost + normal;
+
+        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+         
+
+        vtxbuf[ghost_idx] = sign*vtxbuf[domain_idx];
+    }
+}
+
+AcResult
+acKernelInflowBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                          const int3 dims, AcReal* vtxbuf)
+{
+ 
+    const dim3 tpb(8, 8, 8);
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
+
+    kernel_outflow_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
+    return AC_SUCCESS;
+}
+
+#ifdef AC_INTEGRATION_ENABLED
 /************************
  *                      *
  *  Entropy boundconds  *
@@ -571,6 +782,8 @@ kernel_entropy_prescribed_heat_flux_boundconds(const int3 region_id, const int3 
         AcReal rho_diff = vba.in[VTXBUF_LNRHO][ghost_idx] - vba.in[VTXBUF_LNRHO][domain_idx];
         vba.in[VTXBUF_ENTROPY][ghost_idx] = vba.in[VTXBUF_ENTROPY][domain_idx] +
                                             cp * (cp - cv) * (rho_diff + distance * tmp);
+
+
     }
 }
 
@@ -584,7 +797,8 @@ acKernelEntropyPrescribedHeatFluxBoundconds(const cudaStream_t stream, const int
     const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
-
+ 
+    //printf("ENTROPY BOUDNARY asdasasdas");
     kernel_entropy_prescribed_heat_flux_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims,
                                                                             vba, F_param);
     return AC_SUCCESS;

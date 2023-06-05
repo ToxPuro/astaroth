@@ -19,6 +19,11 @@
 #pragma once
 
 #include "acc_runtime.h"
+
+#if AC_MPI_ENABLED
+#include <mpi.h>
+#endif
+
 #define NGHOST (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
 
 typedef struct {
@@ -66,18 +71,23 @@ typedef int Stream;
 #define AC_FOR_RTYPES(FUNC)                                                                        \
     FUNC(RTYPE_MAX)                                                                                \
     FUNC(RTYPE_MIN)                                                                                \
+    FUNC(RTYPE_SUM)                                                                                \
     FUNC(RTYPE_RMS)                                                                                \
     FUNC(RTYPE_RMS_EXP)                                                                            \
     FUNC(RTYPE_ALFVEN_MAX)                                                                         \
     FUNC(RTYPE_ALFVEN_MIN)                                                                         \
-    FUNC(RTYPE_ALFVEN_RMS)                                                                         \
-    FUNC(RTYPE_SUM)
+    FUNC(RTYPE_ALFVEN_RMS)
+
+#define RTYPE_ISNAN (RTYPE_SUM)
 
 #define AC_FOR_BCTYPES(FUNC)                                                                       \
     FUNC(BOUNDCOND_PERIODIC)                                                                       \
     FUNC(BOUNDCOND_SYMMETRIC)                                                                      \
     FUNC(BOUNDCOND_ANTISYMMETRIC)                                                                  \
     FUNC(BOUNDCOND_A2)                                                                             \
+    FUNC(BOUNDCOND_INFLOW)                                                                         \
+    FUNC(BOUNDCOND_OUTFLOW)                                                                        \
+    FUNC(BOUNDCOND_CONST)                                                                          \
     FUNC(BOUNDCOND_PRESCRIBED_DERIVATIVE)
 
 #ifdef AC_INTEGRATION_ENABLED
@@ -238,12 +248,16 @@ acGetMeshDims(const AcMeshInfo info)
     };
 }
 
+AcMeshInfo acGridDecomposeMeshInfo(const AcMeshInfo global_config);
+
+AcMeshInfo acGridGetLocalMeshInfo(void);
+
 static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
-    return as_size_t(i +                          //
-                     j * info.int_params[AC_mx] + //
-                     k * info.int_params[AC_mx] * info.int_params[AC_my]);
+    return as_size_t(i) +                          //
+           as_size_t(j) * info.int_params[AC_mx] + //
+           as_size_t(k) * info.int_params[AC_mx] * info.int_params[AC_my];
 }
 
 static inline int3
@@ -356,6 +370,27 @@ acQueryKernels(void)
         printf("%s (%d)\n", kernel_names[i], i);
 }
 
+static inline void
+acPrintIntParam(const AcIntParam a, const AcMeshInfo info)
+{
+    printf("%s: %d\n", intparam_names[a], info.int_params[a]);
+}
+
+static inline void
+acPrintIntParams(const AcIntParam a, const AcIntParam b, const AcIntParam c, const AcMeshInfo info)
+{
+    acPrintIntParam(a, info);
+    acPrintIntParam(b, info);
+    acPrintIntParam(c, info);
+}
+
+static inline void
+acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info)
+{
+    const int3 vec = info.int3_params[a];
+    printf("{%s: (%d, %d, %d)}\n", int3param_names[a], vec.x, vec.y, vec.z);
+}
+
 /*
  * =============================================================================
  * Legacy interface
@@ -465,6 +500,42 @@ Node acGetNode(void);
  * =============================================================================
  */
 #if AC_MPI_ENABLED
+
+/**
+Calls MPI_Init and creates a separate communicator for Astaroth procs with MPI_Comm_split, color =
+666 Any program running in the same MPI process space must also call MPI_Comm_split with some color
+!= 666. OTHERWISE this call will hang.
+
+Returns AC_SUCCESS on successfullly initializing MPI and creating a communicator.
+
+Returns AC_FAILURE otherwise.
+ */
+AcResult ac_MPI_Init();
+
+/**
+Calls MPI_Init_thread with the provided thread_level and creates a separate communicator for
+Astaroth procs with MPI_Comm_split, color = 666 Any program running in the same MPI process space
+must also call MPI_Comm_split with some color != 666. OTHERWISE this call will hang.
+
+Returns AC_SUCCESS on successfullly initializing MPI with the requested thread level and creating a
+communicator.
+
+Returns AC_FAILURE otherwise.
+ */
+AcResult ac_MPI_Init_thread(int thread_level);
+
+/**
+Destroys the communicator and calls MPI_Finalize
+*/
+void ac_MPI_Finalize();
+
+/**
+Returns the MPI communicator used by all Astaroth processes.
+
+If MPI was initialized with MPI_Init* instead of ac_MPI_Init, this will return MPI_COMM_WORLD
+ */
+MPI_Comm acGridMPIComm();
+
 /**
 Initializes all available devices.
 
@@ -481,6 +552,9 @@ AcResult acGridInit(const AcMeshInfo info);
 Resets all devices on the current grid.
  */
 AcResult acGridQuit(void);
+
+/** Get the local device */
+Device acGridGetDevice(void);
 
 /** Randomizes the local mesh */
 AcResult acGridRandomize(void);
@@ -547,19 +621,34 @@ typedef enum {
     ACCESS_WRITE,
 } AccessType;
 
-AcResult
-acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle field, const char* dir, const char* label,
-                                  const AccessType type);
+AcResult acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle field, const char* dir,
+                                           const char* label, const AccessType type);
 
 AcResult acGridDiskAccessLaunch(const AccessType type);
 
-AcResult acGridWriteSlicesToDisk(const char* dir, const int label);
+/* Asynchronous. Need to call acGridDiskAccessSync afterwards */
+AcResult acGridWriteSlicesToDiskLaunch(const char* dir, const char* label);
+
+/* Synchronous */
+AcResult acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label);
+
+/* Asynchronous. Need to call acGridDiskAccessSync afterwards */
+AcResult acGridWriteMeshToDiskLaunch(const char* dir, const char* label);
 
 AcResult acGridDiskAccessSync(void);
 
-AcResult
-acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num_fields,
-                        const int3 nn, const int3 rr);
+AcResult acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num_fields,
+                                 const int3 nn, const int3 rr);
+
+/* Quick hack for the hero run, will be removed in future builds */
+AcResult acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf,
+                                                      const char* dir, const char* label,
+                                                      const AccessType type);
+
+/* Quick hack for the hero run, will be removed in future builds */
+AcResult acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf,
+                                                     const char* dir, const char* label,
+                                                     const AccessType type);
 
 // Bugged
 // AcResult acGridLoadFieldFromFile(const char* path, const VertexBufferHandle field);
@@ -582,6 +671,7 @@ typedef enum AcTaskType {
 } AcTaskType;
 
 typedef enum AcBoundary {
+    BOUNDARY_NONE  = 0,
     BOUNDARY_X_TOP = 0x01,
     BOUNDARY_X_BOT = 0x02,
     BOUNDARY_X     = BOUNDARY_X_TOP | BOUNDARY_X_BOT,
@@ -651,6 +741,15 @@ AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary,
 
 /** */
 AcTaskGraph* acGridGetDefaultTaskGraph();
+
+/** */
+bool acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph* graph);
+
+/** */
+bool acGridTaskGraphHasPeriodicBoundcondsY(AcTaskGraph* graph);
+
+/** */
+bool acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph* graph);
 
 /** */
 AcTaskGraph* acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops);
@@ -842,6 +941,9 @@ AcResult acDeviceCreate(const int id, const AcMeshInfo device_config, Device* de
 /** */
 AcResult acDeviceDestroy(Device device);
 
+/** Resets the mesh to default values defined in acc_runtime.cu:acVBAReset */
+AcResult acDeviceResetMesh(const Device device, const Stream stream);
+
 /** */
 AcResult acDevicePrintInfo(const Device device);
 
@@ -981,12 +1083,33 @@ AcResult acDeviceGeneralBoundconds(const Device device, const Stream stream, con
                                    const int3 end, const AcMeshInfo config, const int3 bindex);
 
 /** */
+AcResult acDeviceReduceScalNotAveraged(const Device device, const Stream stream,
+                                       const ReductionType rtype,
+                                       const VertexBufferHandle vtxbuf_handle, AcReal* result);
+
+/** */
 AcResult acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
                             const VertexBufferHandle vtxbuf_handle, AcReal* result);
+
+/** */
+AcResult acDeviceReduceVecNotAveraged(const Device device, const Stream stream_type,
+                                      const ReductionType rtype, const VertexBufferHandle vtxbuf0,
+                                      const VertexBufferHandle vtxbuf1,
+                                      const VertexBufferHandle vtxbuf2, AcReal* result);
+
 /** */
 AcResult acDeviceReduceVec(const Device device, const Stream stream_type, const ReductionType rtype,
                            const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                            const VertexBufferHandle vtxbuf2, AcReal* result);
+
+/** */
+AcResult acDeviceReduceVecScalNotAveraged(const Device device, const Stream stream_type,
+                                          const ReductionType rtype,
+                                          const VertexBufferHandle vtxbuf0,
+                                          const VertexBufferHandle vtxbuf1,
+                                          const VertexBufferHandle vtxbuf2,
+                                          const VertexBufferHandle vtxbuf3, AcReal* result);
+
 /** */
 AcResult acDeviceReduceVecScal(const Device device, const Stream stream_type,
                                const ReductionType rtype, const VertexBufferHandle vtxbuf0,
@@ -1028,6 +1151,10 @@ AcResult acHostMeshRandomize(AcMesh* mesh);
 
 /** Destroys a mesh stored in host memory */
 AcResult acHostMeshDestroy(AcMesh* mesh);
+
+/** Sets the dimensions of the computational domain to (nx, ny, nz) and recalculates the built-in
+ * parameters derived from them (mx, my, mz, nx_min, and others) */
+AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
 
 #ifdef __cplusplus
 } // extern "C"
@@ -1079,8 +1206,8 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
 
 #ifdef AC_INTEGRATION_ENABLED
 /** */
-AcTaskDefinition
-acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond);
+AcTaskDefinition acSpecialMHDBoundaryCondition(const AcBoundary boundary,
+                                               const AcSpecialMHDBoundcond bound_cond);
 
 /** */
 template <size_t num_parameters>

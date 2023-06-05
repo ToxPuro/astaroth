@@ -17,346 +17,496 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-
-/*
-Reduction steps:
- 1 of 3: Compute the initial value (a, a*a or exp(a)*exp(a)) and put the result in scratchpad
- 2 of 3: Compute most of the reductions into a single block of data
- 3 of 3: After all results have been stored into the final block, reduce the data in the final block
-*/
+#include <assert.h>
 
 // Function pointer definitions
-typedef AcReal (*FilterFunc)(const AcReal&);
-typedef AcReal (*FilterFuncVec)(const AcReal&, const AcReal&, const AcReal&);
-typedef AcReal (*FilterFuncVecScal)(const AcReal&, const AcReal&, const AcReal&, const AcReal&);
-typedef AcReal (*ReduceFunc)(const AcReal&, const AcReal&);
+typedef AcReal (*MapFn)(const AcReal&);
+typedef AcReal (*MapVecFn)(const AcReal&, const AcReal&, const AcReal&);
+typedef AcReal (*MapVecScalFn)(const AcReal&, const AcReal&, const AcReal&, const AcReal&);
+typedef AcReal (*ReduceFn)(const AcReal&, const AcReal&);
 
-// clang-format off
-/* Comparison funcs */
+// Map functions
 static __device__ inline AcReal
-dmax(const AcReal& a, const AcReal& b) { return a > b ? a : b; }
-
-static __device__ inline AcReal
-dmin(const AcReal& a, const AcReal& b) { return a < b ? a : b; }
-
-static __device__ inline AcReal
-dsum(const AcReal& a, const AcReal& b) { return a + b; }
-
-/* Function used to determine the values used during reduction */
-static __device__ inline AcReal
-dvalue(const AcReal& a) { return AcReal(a); }
-
-static __device__ inline AcReal
-dsquared(const AcReal& a) { return (AcReal)(a*a); }
-
-static __device__ inline AcReal
-dexp_squared(const AcReal& a) { return exp(a)*exp(a); }
-
-static __device__ inline AcReal
-dlength_vec(const AcReal& a, const AcReal& b, const AcReal& c) { return sqrt(a*a + b*b + c*c); }
-
-static __device__ inline AcReal
-dsquared_vec(const AcReal& a, const AcReal& b, const AcReal& c) { return dsquared(a) + dsquared(b) + dsquared(c); }
-
-static __device__ inline AcReal
-dexp_squared_vec(const AcReal& a, const AcReal& b, const AcReal& c) { return dexp_squared(a) + dexp_squared(b) + dexp_squared(c); }
-
-static __device__ inline AcReal
-dlength_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d) { return sqrt(a*a + b*b + c*c)/sqrt(exp(d)); }
-
-static __device__ inline AcReal
-dsquared_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d) { return (dsquared(a) + dsquared(b) + dsquared(c))/(exp(d)); }
-
-// clang-format on
-
-#include <assert.h>
-template <FilterFunc filter>
-static __global__ void
-kernel_filter(const AcReal* __restrict__ src, const int3 start, const int3 end, AcReal* dst)
+map_value(const AcReal& a)
 {
-    const int3 src_idx = (int3){start.x + threadIdx.x + blockIdx.x * blockDim.x,
-                                start.y + threadIdx.y + blockIdx.y * blockDim.y,
-                                start.z + threadIdx.z + blockIdx.z * blockDim.z};
-
-    const int nx = end.x - start.x;
-    const int ny = end.y - start.y;
-    const int nz = end.z - start.z;
-    (void)nz; // Suppressed unused variable warning when not compiling with debug flags
-
-    const int3 dst_idx = (int3){threadIdx.x + blockIdx.x * blockDim.x,
-                                threadIdx.y + blockIdx.y * blockDim.y,
-                                threadIdx.z + blockIdx.z * blockDim.z};
-
-    assert(src_idx.x < DCONST(AC_nx_max) && src_idx.y < DCONST(AC_ny_max) &&
-           src_idx.z < DCONST(AC_nz_max));
-    assert(dst_idx.x < nx && dst_idx.y < ny && dst_idx.z < nz);
-    assert(dst_idx.x + dst_idx.y * nx + dst_idx.z * nx * ny < nx * ny * nz);
-
-    dst[dst_idx.x + dst_idx.y * nx + dst_idx.z * nx * ny] = filter(src[IDX(src_idx)]);
+    return a;
 }
 
-template <FilterFuncVec filter>
-static __global__ void
-kernel_filter_vec(const AcReal* __restrict__ src0, const AcReal* __restrict__ src1,
-                  const AcReal* __restrict__ src2, const int3 start, const int3 end, AcReal* dst)
+static __device__ inline AcReal
+map_square(const AcReal& a)
 {
-    const int3 src_idx = (int3){start.x + threadIdx.x + blockIdx.x * blockDim.x,
-                                start.y + threadIdx.y + blockIdx.y * blockDim.y,
-                                start.z + threadIdx.z + blockIdx.z * blockDim.z};
-
-    const int nx = end.x - start.x;
-    const int ny = end.y - start.y;
-    const int nz = end.z - start.z;
-    (void)nz; // Suppressed unused variable warning when not compiling with debug flags
-
-    const int3 dst_idx = (int3){threadIdx.x + blockIdx.x * blockDim.x,
-                                threadIdx.y + blockIdx.y * blockDim.y,
-                                threadIdx.z + blockIdx.z * blockDim.z};
-
-    assert(src_idx.x < DCONST(AC_nx_max) && src_idx.y < DCONST(AC_ny_max) &&
-           src_idx.z < DCONST(AC_nz_max));
-    assert(dst_idx.x < nx && dst_idx.y < ny && dst_idx.z < nz);
-    assert(dst_idx.x + dst_idx.y * nx + dst_idx.z * nx * ny < nx * ny * nz);
-
-    dst[dst_idx.x + dst_idx.y * nx + dst_idx.z * nx * ny] = filter(src0[IDX(src_idx)],
-                                                                   src1[IDX(src_idx)],
-                                                                   src2[IDX(src_idx)]);
+    return a * a;
 }
 
-template <FilterFuncVecScal filter>
-static __global__ void
-kernel_filter_vec_scal(const AcReal* __restrict__ src0, const AcReal* __restrict__ src1,
-                       const AcReal* __restrict__ src2, const AcReal* __restrict__ src3,
-                       const int3 start, const int3 end, AcReal* dst)
+static __device__ inline AcReal
+map_exp_square(const AcReal& a)
 {
-    const int3 src_idx = (int3){start.x + threadIdx.x + blockIdx.x * blockDim.x,
-                                start.y + threadIdx.y + blockIdx.y * blockDim.y,
-                                start.z + threadIdx.z + blockIdx.z * blockDim.z};
-
-    const int nx = end.x - start.x;
-    const int ny = end.y - start.y;
-    const int nz = end.z - start.z;
-    (void)nz; // Suppressed unused variable warning when not compiling with debug flags
-
-    const int3 dst_idx = (int3){threadIdx.x + blockIdx.x * blockDim.x,
-                                threadIdx.y + blockIdx.y * blockDim.y,
-                                threadIdx.z + blockIdx.z * blockDim.z};
-
-    assert(src_idx.x < DCONST(AC_nx_max) && src_idx.y < DCONST(AC_ny_max) &&
-           src_idx.z < DCONST(AC_nz_max));
-    assert(dst_idx.x < nx && dst_idx.y < ny && dst_idx.z < nz);
-    assert(dst_idx.x + dst_idx.y * nx + dst_idx.z * nx * ny < nx * ny * nz);
-
-    dst[dst_idx.x + dst_idx.y * nx + dst_idx.z * nx * ny] = filter(src0[IDX(src_idx)],
-                                                                   src1[IDX(src_idx)],
-                                                                   src2[IDX(src_idx)],
-                                                                   src3[IDX(src_idx)]);
+    return exp(a) * exp(a);
 }
 
-template <ReduceFunc reduce>
-static __global__ void
-kernel_reduce(AcReal* scratchpad, const int num_elems)
+static __device__ inline AcReal
+map_length_vec(const AcReal& a, const AcReal& b, const AcReal& c)
 {
-    const int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    return sqrt(a * a + b * b + c * c);
+}
+
+static __device__ inline AcReal
+map_square_vec(const AcReal& a, const AcReal& b, const AcReal& c)
+{
+    return map_square(a) + map_square(b) + map_square(c);
+}
+
+static __device__ inline AcReal
+map_exp_square_vec(const AcReal& a, const AcReal& b, const AcReal& c)
+{
+    return map_exp_square(a) + map_exp_square(b) + map_exp_square(c);
+}
+
+static __device__ inline AcReal
+map_length_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d)
+{
+    return sqrt(a * a + b * b + c * c) / sqrt(exp(d));
+}
+
+static __device__ inline AcReal
+map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& d)
+{
+    return (map_square(a) + map_square(b) + map_square(c)) / (exp(d));
+}
+
+// Reduce functions
+static __device__ inline AcReal
+reduce_max(const AcReal& a, const AcReal& b)
+{
+    return a > b ? a : b;
+}
+
+static __device__ inline AcReal
+reduce_min(const AcReal& a, const AcReal& b)
+{
+    return a < b ? a : b;
+}
+
+static __device__ inline AcReal
+reduce_sum(const AcReal& a, const AcReal& b)
+{
+    return a + b;
+}
+
+/** Map data from a 3D array into a 1D array */
+template <MapFn map_fn>
+__global__ void
+map(const AcReal* in, const int3 start, const int3 end, AcReal* out)
+{
+    assert((start >= (int3){0, 0, 0}));
+    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+
+    const int3 tid = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    const int3 in_idx3d = start + tid;
+    const size_t in_idx = IDX(in_idx3d);
+
+    const int3 dims      = end - start;
+    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
+
+    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
+    if (within_bounds)
+        out[out_idx] = map_fn(in[in_idx]);
+}
+
+template <MapVecFn map_fn>
+__global__ void
+map_vec(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int3 start, const int3 end,
+        AcReal* out)
+{
+    assert((start >= (int3){0, 0, 0}));
+    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+
+    const int3 tid = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    const int3 in_idx3d = start + tid;
+    const size_t in_idx = IDX(in_idx3d);
+
+    const int3 dims      = end - start;
+    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
+
+    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
+    if (within_bounds)
+        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx]);
+}
+
+template <MapVecScalFn map_fn>
+__global__ void
+map_vec_scal(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcReal* in3,
+             const int3 start, const int3 end, AcReal* out)
+{
+    assert((start >= (int3){0, 0, 0}));
+    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+
+    const int3 tid = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    const int3 in_idx3d = start + tid;
+    const size_t in_idx = IDX(in_idx3d);
+
+    const int3 dims      = end - start;
+    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
+
+    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
+    if (within_bounds)
+        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx], in3[in_idx]);
+}
+
+template <ReduceFn reduce_fn>
+__global__ void
+reduce(const AcReal* in, const size_t count, AcReal* out)
+{
+    // Note: possible integer overflow when GPU memory becomes large enough
+    const size_t curr = threadIdx.x + blockIdx.x * blockDim.x;
 
     extern __shared__ AcReal smem[];
-    if (idx < num_elems) {
-        smem[threadIdx.x] = scratchpad[idx];
-    }
-    else {
-        smem[threadIdx.x] = AcReal(NAN);
-    }
+    if (curr < count)
+        smem[threadIdx.x] = in[curr];
+    else
+        smem[threadIdx.x] = AC_REAL_INVALID_VALUE;
+
     __syncthreads();
 
-    int offset = blockDim.x / 2;
-    assert(offset % 2 == 0);
+    size_t offset = blockDim.x / 2;
     while (offset > 0) {
-        if ((int)threadIdx.x < offset) {
-            smem[threadIdx.x] = reduce(smem[threadIdx.x], smem[threadIdx.x + offset]);
+        if (threadIdx.x < offset) {
+            const AcReal a = smem[threadIdx.x];
+            const AcReal b = smem[threadIdx.x + offset];
+
+            // If the mesh dimensions are not divisible by mapping tbdims, and mapping tb dims are
+            // not divisible by reduction tb dims, then it is possible for `a` to be invalid but `b`
+            // to be valid
+            if (a != AC_REAL_INVALID_VALUE && b != AC_REAL_INVALID_VALUE)
+                smem[threadIdx.x] = reduce_fn(a, b);
+            else if (a != AC_REAL_INVALID_VALUE)
+                smem[threadIdx.x] = a;
+            else
+                smem[threadIdx.x] = b;
         }
+
         offset /= 2;
         __syncthreads();
     }
 
-    if (threadIdx.x == 0) {
-        scratchpad[idx] = smem[threadIdx.x];
-    }
+    if (!threadIdx.x)
+        out[blockIdx.x] = smem[threadIdx.x];
 }
 
-template <ReduceFunc reduce>
-static __global__ void
-kernel_reduce_block(const AcReal* __restrict__ scratchpad, const int num_blocks,
-                    const int block_size, AcReal* result)
+static void
+swap_ptrs(AcReal** a, AcReal** b)
 {
-    const int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    if (idx != 0) {
-        return;
-    }
+    AcReal* tmp = *a;
+    *a          = *b;
+    *b          = tmp;
+}
 
-    AcReal res = scratchpad[0];
-    for (int i = 1; i < num_blocks; ++i) {
-        res = reduce(res, scratchpad[i * block_size]);
-    }
-    *result = res;
+static Volume
+get_map_tpb(void)
+{
+    return (Volume){32, 4, 1};
+}
+
+static Volume
+get_map_bpg(const int3 dims, const Volume tpb)
+{
+    return (Volume){
+        as_size_t(int(ceil(double(dims.x) / tpb.x))),
+        as_size_t(int(ceil(double(dims.y) / tpb.y))),
+        as_size_t(int(ceil(double(dims.z) / tpb.z))),
+    };
+}
+
+size_t
+acKernelReduceGetMinimumScratchpadSize(const int3 max_dims)
+{
+    const Volume tpb   = get_map_tpb();
+    const Volume bpg   = get_map_bpg(max_dims, tpb);
+    const size_t count = tpb.x * bpg.x * tpb.y * bpg.y * tpb.z * bpg.z;
+    return count;
+}
+
+size_t
+acKernelReduceGetMinimumScratchpadSizeBytes(const int3 max_dims)
+{
+    return sizeof(AcReal) * acKernelReduceGetMinimumScratchpadSize(max_dims);
 }
 
 AcReal
-acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,
-                   const int3 end, const AcReal* vtxbuf, AcReal* scratchpad, AcReal* reduce_result)
+acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const AcReal* vtxbuf,
+                   const int3 start, const int3 end, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
+                   const size_t scratchpad_size)
 {
-    const unsigned nx        = end.x - start.x;
-    const unsigned ny        = end.y - start.y;
-    const unsigned nz        = end.z - start.z;
-    const unsigned num_elems = nx * ny * nz;
+    // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
+    // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
+    // could be done in parallel, but allowing that also exposes the users to potential bugs with
+    // race conditions
+    cudaDeviceSynchronize();
 
-    const dim3 tpb_filter(32, 4, 1);
-    const dim3 bpg_filter((unsigned int)ceil(nx / double(tpb_filter.x)),
-                          (unsigned int)ceil(ny / double(tpb_filter.y)),
-                          (unsigned int)ceil(nz / double(tpb_filter.z)));
+    ERRCHK_ALWAYS(NUM_REDUCE_SCRATCHPADS >= 2);
+    AcReal* in  = scratchpads[0];
+    AcReal* out = scratchpads[1];
 
-    const int tpb_reduce = 128;
-    const int bpg_reduce = num_elems / tpb_reduce;
+    // Compute block dimensions
+    const int3 dims            = end - start;
+    const size_t initial_count = dims.x * dims.y * dims.z;
+    ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
-    ERRCHK(nx >= tpb_filter.x);
-    ERRCHK(ny >= tpb_filter.y);
-    ERRCHK(nz >= tpb_filter.z);
-    ERRCHK(tpb_reduce <= num_elems);
-    ERRCHK(nx * ny * nz % 2 == 0);
+    // Map
+    {
+        const Volume tpb = get_map_tpb();
+        const Volume bpg = get_map_bpg(dims, tpb);
 
-    // clang-format off
-    if (rtype == RTYPE_MAX) {
-        kernel_filter<dvalue><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf, start, end, scratchpad);
-        kernel_reduce<dmax><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
-        kernel_reduce_block<dmax><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
-    } else if (rtype == RTYPE_MIN) {
-        kernel_filter<dvalue><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf, start, end, scratchpad);
-        kernel_reduce<dmin><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
-        kernel_reduce_block<dmin><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
-    } else if (rtype == RTYPE_RMS) {
-        kernel_filter<dsquared><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf, start, end, scratchpad);
-        kernel_reduce<dsum><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
-        kernel_reduce_block<dsum><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
-    } else if (rtype == RTYPE_RMS_EXP) {
-        kernel_filter<dexp_squared><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf, start, end, scratchpad);
-        kernel_reduce<dsum><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
-        kernel_reduce_block<dsum><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
-    } else if (rtype == RTYPE_SUM) {
-        kernel_filter<dvalue><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf, start, end, scratchpad);
-        kernel_reduce<dsum><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
-        kernel_reduce_block<dsum><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
-    } else {
-        ERROR("Unrecognized rtype");
+        switch (rtype) {
+        case RTYPE_MAX: /* Fallthrough */
+        case RTYPE_MIN: /* Fallthrough */
+        case RTYPE_SUM:
+            map<map_value><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
+            break;
+        case RTYPE_RMS:
+            map<map_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
+            break;
+        case RTYPE_RMS_EXP:
+            map<map_exp_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
+            break;
+        default:
+            ERROR("Invalid reduction type in acKernelReduceScal");
+            return AC_FAILURE;
+        };
+        swap_ptrs(&in, &out);
     }
-    // clang-format on
-    cudaStreamSynchronize(stream);
+
+    // Reduce
+    size_t count = initial_count;
+    do {
+        const size_t tpb  = 128;
+        const size_t bpg  = as_size_t(ceil(double(count) / tpb));
+        const size_t smem = tpb * sizeof(in[0]);
+
+        switch (rtype) {
+        case RTYPE_MAX:
+            reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        case RTYPE_MIN:
+            reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        case RTYPE_SUM: /* Fallthrough */
+        case RTYPE_RMS: /* Fallthrough */
+        case RTYPE_RMS_EXP:
+            reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        default:
+            ERROR("Invalid reduction type in acKernelReduceScal");
+            return AC_FAILURE;
+        };
+        ERRCHK_CUDA_KERNEL();
+        swap_ptrs(&in, &out);
+
+        count = bpg;
+    } while (count > 1);
+
+    // Copy the result back to host
     AcReal result;
-    cudaMemcpy(&result, reduce_result, sizeof(AcReal), cudaMemcpyDeviceToHost);
+    cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
+    cudaStreamSynchronize(stream);
+
+    // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
+    // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
+    // could be done in parallel, but allowing that also exposes the users to potential bugs with
+    // race conditions
+    cudaDeviceSynchronize();
+    // fprintf(stderr, "%s device result %g\n", rtype_names[rtype], result);
     return result;
 }
 
 AcReal
 acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const int3 start,
                   const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
-                  const AcReal* vtxbuf2, AcReal* scratchpad, AcReal* reduce_result)
+                  const AcReal* vtxbuf2, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
+                  const size_t scratchpad_size)
 {
-    const unsigned nx        = end.x - start.x;
-    const unsigned ny        = end.y - start.y;
-    const unsigned nz        = end.z - start.z;
-    const unsigned num_elems = nx * ny * nz;
+    // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
+    // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
+    // could be done in parallel, but allowing that also exposes the users to potential bugs with
+    // race conditions
+    cudaDeviceSynchronize();
 
-    const dim3 tpb_filter(32, 4, 1);
-    const dim3 bpg_filter((unsigned int)ceil(nx / double(tpb_filter.x)),
-                          (unsigned int)ceil(ny / double(tpb_filter.y)),
-                          (unsigned int)ceil(nz / double(tpb_filter.z)));
+    ERRCHK_ALWAYS(NUM_REDUCE_SCRATCHPADS >= 2);
+    AcReal* in  = scratchpads[0];
+    AcReal* out = scratchpads[1];
 
-    const int tpb_reduce = 128;
-    const int bpg_reduce = num_elems / tpb_reduce;
+    // Set thread block dimensions
+    const int3 dims            = end - start;
+    const size_t initial_count = dims.x * dims.y * dims.z;
+    ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
-    ERRCHK(nx >= tpb_filter.x);
-    ERRCHK(ny >= tpb_filter.y);
-    ERRCHK(nz >= tpb_filter.z);
-    ERRCHK(tpb_reduce <= num_elems);
-    ERRCHK(nx * ny * nz % 2 == 0);
-
-    // clang-format off
-    if (rtype == RTYPE_MAX) {
-        kernel_filter_vec<dlength_vec><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, scratchpad);
-        kernel_reduce<dmax><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
-        kernel_reduce_block<dmax><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
-    } else if (rtype == RTYPE_MIN) {
-        kernel_filter_vec<dlength_vec><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, scratchpad);
-        kernel_reduce<dmin><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
-        kernel_reduce_block<dmin><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
-    } else if (rtype == RTYPE_RMS) {
-        kernel_filter_vec<dsquared_vec><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, scratchpad);
-        kernel_reduce<dsum><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
-        kernel_reduce_block<dsum><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
-    } else if (rtype == RTYPE_RMS_EXP) {
-        kernel_filter_vec<dexp_squared_vec><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, scratchpad);
-        kernel_reduce<dsum><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
-        kernel_reduce_block<dsum><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
-    } else if (rtype == RTYPE_SUM) {
-        kernel_filter_vec<dlength_vec><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, scratchpad);
-        kernel_reduce<dsum><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
-        kernel_reduce_block<dsum><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
-    } else {
-        ERROR("Unrecognized rtype");
+    // Map
+    {
+        const Volume tpb = get_map_tpb();
+        const Volume bpg = get_map_bpg(dims, tpb);
+        switch (rtype) {
+        case RTYPE_MAX: /* Fallthrough */
+        case RTYPE_MIN: /* Fallthrough */
+        case RTYPE_SUM:
+            map_vec<map_length_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
+                                                                               vtxbuf2, start, end,
+                                                                               out);
+            break;
+        case RTYPE_RMS:
+            map_vec<map_square_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
+                                                                               vtxbuf2, start, end,
+                                                                               out);
+            break;
+        case RTYPE_RMS_EXP:
+            map_vec<map_exp_square_vec><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1,
+                                                                                   vtxbuf2, start,
+                                                                                   end, out);
+            break;
+        default:
+            ERROR("Invalid reduction type in acKernelReduceScal");
+            return AC_FAILURE;
+        };
+        swap_ptrs(&in, &out);
     }
-    // clang-format on
 
-    cudaStreamSynchronize(stream);
+    // Reduce
+    size_t count = initial_count;
+    do {
+        const size_t tpb  = 128;
+        const size_t bpg  = as_size_t(ceil(double(count) / tpb));
+        const size_t smem = tpb * sizeof(in[0]);
+
+        switch (rtype) {
+        case RTYPE_MAX:
+            reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        case RTYPE_MIN:
+            reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        case RTYPE_SUM: /* Fallthrough */
+        case RTYPE_RMS: /* Fallthrough */
+        case RTYPE_RMS_EXP:
+            reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        default:
+            ERROR("Invalid reduction type in acKernelReduceScal");
+            return AC_FAILURE;
+        };
+        ERRCHK_CUDA_KERNEL();
+        swap_ptrs(&in, &out);
+
+        count = bpg;
+    } while (count > 1);
+
+    // Copy the result back to host
     AcReal result;
-    cudaMemcpy(&result, reduce_result, sizeof(AcReal), cudaMemcpyDeviceToHost);
+    cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
+    cudaStreamSynchronize(stream);
+
+    // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
+    // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
+    // could be done in parallel, but allowing that also exposes the users to potential bugs with
+    // race conditions
+    cudaDeviceSynchronize();
     return result;
 }
 
 AcReal
 acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,
                       const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
-                      const AcReal* vtxbuf2, const AcReal* vtxbuf3, AcReal* scratchpad,
-                      AcReal* reduce_result)
+                      const AcReal* vtxbuf2, const AcReal* vtxbuf3,
+                      AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS], const size_t scratchpad_size)
 {
-    const unsigned nx        = end.x - start.x;
-    const unsigned ny        = end.y - start.y;
-    const unsigned nz        = end.z - start.z;
-    const unsigned num_elems = nx * ny * nz;
+    // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
+    // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
+    // could be done in parallel, but allowing that also exposes the users to potential bugs with
+    // race conditions
+    cudaDeviceSynchronize();
 
-    const dim3 tpb_filter(32, 4, 1);
-    const dim3 bpg_filter((unsigned int)ceil(nx / double(tpb_filter.x)),
-                          (unsigned int)ceil(ny / double(tpb_filter.y)),
-                          (unsigned int)ceil(nz / double(tpb_filter.z)));
+    ERRCHK_ALWAYS(NUM_REDUCE_SCRATCHPADS >= 2);
+    AcReal* in  = scratchpads[0];
+    AcReal* out = scratchpads[1];
 
-    const int tpb_reduce = 128;
-    const int bpg_reduce = num_elems / tpb_reduce;
+    // Set thread block dimensions
+    const int3 dims            = end - start;
+    const size_t initial_count = dims.x * dims.y * dims.z;
+    ERRCHK_ALWAYS(initial_count <= scratchpad_size);
 
-    ERRCHK(nx >= tpb_filter.x);
-    ERRCHK(ny >= tpb_filter.y);
-    ERRCHK(nz >= tpb_filter.z);
-    ERRCHK(tpb_reduce <= num_elems);
-    ERRCHK(nx * ny * nz % 2 == 0);
-
-    // NOTE: currently this has been made to only calculate afven speeds from the diagnostics.
-
-    // clang-format off
-    if (rtype == RTYPE_ALFVEN_MAX) {
-        kernel_filter_vec_scal<dlength_alf><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, start, end, scratchpad);
-        kernel_reduce<dmax><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
-        kernel_reduce_block<dmax><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
-    } else if (rtype == RTYPE_ALFVEN_MIN) {
-        kernel_filter_vec_scal<dlength_alf><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, start, end, scratchpad);
-        kernel_reduce<dmin><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
-        kernel_reduce_block<dmin><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
-    } else if (rtype == RTYPE_ALFVEN_RMS) {
-        kernel_filter_vec_scal<dsquared_alf><<<bpg_filter, tpb_filter, 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, start, end, scratchpad);
-        kernel_reduce<dsum><<<bpg_reduce, tpb_reduce, sizeof(AcReal) * tpb_reduce, stream>>>(scratchpad, num_elems);
-        kernel_reduce_block<dsum><<<1, 1, 0, stream>>>(scratchpad, bpg_reduce, tpb_reduce, reduce_result);
-    } else {
-        ERROR("Unrecognized rtype");
+    // Map
+    {
+        const Volume tpb = get_map_tpb();
+        const Volume bpg = get_map_bpg(dims, tpb);
+        switch (rtype) {
+        case RTYPE_ALFVEN_MAX: /* Fallthrough */
+        case RTYPE_ALFVEN_MIN:
+            map_vec_scal<map_length_alf>
+                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
+                                                            start, end, out);
+            break;
+        case RTYPE_ALFVEN_RMS:
+            map_vec_scal<map_square_alf>
+                <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
+                                                            start, end, out);
+            break;
+        default:
+            fprintf(stderr, "Rtype %s (%d)\n", rtype_names[rtype], rtype);
+            ERROR("Invalid reduction type in acKernelReduceVecScal");
+            return AC_FAILURE;
+        };
+        swap_ptrs(&in, &out);
     }
-    // clang-format on
 
-    cudaStreamSynchronize(stream);
+    // Reduce
+    size_t count = initial_count;
+    do {
+        const size_t tpb  = 128;
+        const size_t bpg  = as_size_t(ceil(double(count) / tpb));
+        const size_t smem = tpb * sizeof(in[0]);
+
+        switch (rtype) {
+        case RTYPE_ALFVEN_MAX:
+            reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        case RTYPE_ALFVEN_MIN:
+            reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        case RTYPE_ALFVEN_RMS:
+            reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(in, count, out);
+            break;
+        default:
+            ERROR("Invalid reduction type in acKernelReduceScal");
+            return AC_FAILURE;
+        };
+        ERRCHK_CUDA_KERNEL();
+        swap_ptrs(&in, &out);
+
+        count = bpg;
+    } while (count > 1);
+
+    // Copy the result back to host
     AcReal result;
-    cudaMemcpy(&result, reduce_result, sizeof(AcReal), cudaMemcpyDeviceToHost);
+    cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
+    cudaStreamSynchronize(stream);
+
+    // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
+    // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
+    // could be done in parallel, but allowing that also exposes the users to potential bugs with
+    // race conditions
+    cudaDeviceSynchronize();
     return result;
 }

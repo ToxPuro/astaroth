@@ -25,10 +25,7 @@
 #pragma once
 #include "astaroth.h"
 
-/** Loads data from the config file */
-int load_config(const char* config_path, AcMeshInfo* config);
-
 /** Recalculates the portion of int parameters which get their values from nx,
  * ny and nz. Must be called after modifying the config struct or otherwise
  * contents of the struct will be incorrect */
-void update_config(AcMeshInfo* config);
+void set_extra_config_params(AcMeshInfo* config);

@@ -10,8 +10,19 @@
 int
 main(void)
 {
-    printf("The library was built without MPI support, cannot run mpitest. Rebuild Astaroth with "
+    printf("The library was built without MPI support, cannot run pc-varfile-import. Rebuild "
+           "Astaroth with "
            "cmake -DMPI_ENABLED=ON .. to enable.\n");
+    return EXIT_FAILURE;
+}
+#elif !defined(AC_INTEGRATION_ENABLED)
+int
+main(void)
+{
+    printf("The library was built without AC_INTEGRATION_ENABLED, cannot run pc-varfile. Rebuild "
+           "Astaroth with "
+           "a DSL source with ´hostdefine AC_INTEGRATION_ENABLED´ and ensure the missing fields "
+           "('VTXBUF_UUX', etc) are defined.\n");
     return EXIT_FAILURE;
 }
 #else
@@ -57,7 +68,7 @@ merge_slices(const char* job_dir, const int label, const size_t nx, const size_t
 }
 
 int
-main(int argc, char* argv[])
+main(void)
 {
     MPI_Init(NULL, NULL);
     int pid, nprocs;
@@ -65,13 +76,25 @@ main(int argc, char* argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
     // Modify these based on the varfile format
-    //const char* file = "test.dat";
+    // const char* file = "test.dat";
     const char* file = "/scratch/project_462000077/mkorpi/forced/mahti_4096/data/allprocs/var.dat";
-    const Field fields[]    = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO,
-                               VTXBUF_AX,  VTXBUF_AY,  VTXBUF_AZ};
+    const Field fields[] =
+    { VTXBUF_UUX,
+      VTXBUF_UUY,
+      VTXBUF_UUZ,
+      VTXBUF_LNRHO,
+#if LMAGNETIC
+      VTXBUF_AX,
+      VTXBUF_AY,
+      VTXBUF_AZ,
+#endif
+    };
+#if !LMAGNETIC
+    WARNING("LMAGNETIC was not set, magnetic field is not read in pc-varfile-import");
+#endif
     const size_t num_fields = ARRAY_SIZE(fields);
-    const int3 nn = (int3){4096, 4096, 4096};
-    //const int3 nn = (int3){2048, 2048, 8};
+    const int3 nn           = (int3){4096, 4096, 4096};
+    // const int3 nn = (int3){2048, 2048, 8};
     const int3 rr = (int3){3, 3, 3};
 
     /*
@@ -164,7 +187,8 @@ main(int argc, char* argv[])
                                           ACCESS_WRITE);
 
     // Write slices
-    acGridWriteSlicesToDisk(job_dir, 0);
+    acGridWriteSlicesToDiskLaunch(job_dir, "0");
+    acGridDiskAccessSync();
 
     // Merge slices
     merge_slices(job_dir, 0, info.int_params[AC_nx], info.int_params[AC_ny], fields, num_fields);

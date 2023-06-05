@@ -4,3 +4,7 @@
 # Except:
 !.gitignore
 !setup_dependencies.sh
+!perfstubs
+!perfstubs/
+!perfstubs/*
+!perfstubs/**

@@ -21,17 +21,20 @@
 
 #if AC_USE_HIP
 #include "hip.h"
-#include <hip/hip_runtime_api.h>
-#include <roctracer_ext.h> // Profiling
+
+#include <hip/hip_runtime_api.h> // Streams
+#include <roctracer_ext.h>       // Profiling
 #else
 #include <cuda_profiler_api.h> // Profiling
-#include <cuda_runtime_api.h>  // cudaStream_t
+#include <cuda_runtime_api.h>  // Streams
 #endif
 
 #include "datatypes.h"
 #include "errchk.h"
 
 #include "user_defines.h"
+
+#define NUM_REDUCE_SCRATCHPADS (2)
 
 typedef struct {
   int int_params[NUM_INT_PARAMS];
@@ -56,9 +59,19 @@ extern "C" {
 
 AcResult acKernelFlush(AcReal* arr, const size_t n);
 
+AcResult acVBAReset(VertexBufferArray* vba);
+
 VertexBufferArray acVBACreate(const size_t count);
 
 void acVBADestroy(VertexBufferArray* vba);
+
+AcResult acRandInit(const uint64_t seed, const Volume m_local,
+                    const Volume m_global, const Volume global_offset);
+
+AcResult acRandInitAlt(const uint64_t seed, const size_t count,
+                       const size_t rank);
+
+void acRandQuit(void);
 
 AcResult acLaunchKernel(Kernel func, const cudaStream_t stream,
                         const int3 start, const int3 end,
@@ -89,6 +102,9 @@ AcResult acStoreIntUniform(const cudaStream_t stream, const AcIntParam param,
                            int* value);
 AcResult acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
                             int3* value);
+
+// Diagnostics
+Volume acKernelLaunchGetLastTPB(void);
 
 #ifdef __cplusplus
 } // extern "C"
