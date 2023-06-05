@@ -6,6 +6,7 @@
 
 #include "timer_hires.h"
 
+#if AC_INTEGRATION_ENABLED
 int
 main(int argc, char** argv)
 {
@@ -163,3 +164,11 @@ main(int argc, char** argv)
 
     return EXIT_SUCCESS;
 }
+#else
+int
+main(void)
+{
+    fprintf(stderr, "AC_INTEGRATION was not enabled, cannot run benchmark-device\n");
+    return EXIT_FAILURE;
+}
+#endif
