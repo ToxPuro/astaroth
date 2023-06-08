@@ -167,7 +167,7 @@ as_size_t(const T i)
   return static_cast<size_t>(i);
 }
 #else
-static inline int
+static inline size_t
 as_size_t(const int i)
 {
   ERRCHK_ALWAYS(i >= 0);
