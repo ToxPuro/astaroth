@@ -565,11 +565,28 @@ acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kern
 }
 
 AcResult
+acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start, const int3 end)
+{
+    cudaSetDevice(device->id);
+    return acBenchmarkKernel(kernel, start, end, device->vba);
+}
+
+AcResult
 acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
                     const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
 {
     cudaSetDevice(device->id);
     return acLoadStencil(stencil, device->streams[stream], data);
+}
+
+AcResult
+acDeviceLoadStencils(const Device device, const Stream stream,
+                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    int retval = 0;
+    for (size_t i = 0; i < NUM_STENCILS; ++i)
+        retval |= acDeviceLoadStencil(device, stream, (Stencil)i, data[i]);
+    return (AcResult)retval;
 }
 
 /** */

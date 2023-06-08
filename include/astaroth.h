@@ -1123,8 +1123,17 @@ AcResult acDeviceLaunchKernel(const Device device, const Stream stream, const Ke
                               const int3 start, const int3 end);
 
 /** */
+AcResult acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start,
+                                 const int3 end);
+
+/** */
 AcResult acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
                              const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+
+/** */
+AcResult
+acDeviceLoadStencils(const Device device, const Stream stream,
+                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
 
 /** */
 AcResult acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,
