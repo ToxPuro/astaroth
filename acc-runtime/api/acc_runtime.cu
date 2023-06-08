@@ -399,6 +399,57 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
 }
 
 AcResult
+acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
+                  VertexBufferArray vba)
+{
+  const int3 n = end - start;
+
+  const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
+  const dim3 tpb        = tbconf.tpb;
+  const int3 dims       = tbconf.dims;
+  const dim3 bpg        = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
+  const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
+
+  // Timer create
+  cudaEvent_t tstart, tstop;
+  cudaEventCreate(&tstart);
+  cudaEventCreate(&tstop);
+
+  // Warmup
+  cudaEventRecord(tstart);
+  kernel<<<bpg, tpb, smem>>>(start, end, vba);
+  cudaEventRecord(tstop);
+  cudaEventSynchronize(tstop);
+  ERRCHK_CUDA_KERNEL();
+  cudaDeviceSynchronize();
+
+  // Benchmark
+  cudaEventRecord(tstart); // Timing start
+  kernel<<<bpg, tpb, smem>>>(start, end, vba);
+  cudaEventRecord(tstop); // Timing stop
+  cudaEventSynchronize(tstop);
+  float milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, tstart, tstop);
+
+  size_t kernel_id = NUM_KERNELS;
+  for (size_t i = 0; i < NUM_KERNELS; ++i) {
+    if (kernels[i] == kernel) {
+      kernel_id = i;
+    }
+  }
+  ERRCHK_ALWAYS(kernel_id < NUM_KERNELS);
+  printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel_id],
+         milliseconds);
+
+  // Timer destroy
+  cudaEventDestroy(tstart);
+  cudaEventDestroy(tstop);
+
+  last_tpb = tpb; // Note: a bit hacky way to get the tpb
+  return AC_SUCCESS;
+}
+
+AcResult
 acLoadStencil(const Stencil stencil, const cudaStream_t stream,
               const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
 {

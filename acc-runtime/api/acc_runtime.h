@@ -77,6 +77,9 @@ AcResult acLaunchKernel(Kernel func, const cudaStream_t stream,
                         const int3 start, const int3 end,
                         VertexBufferArray vba);
 
+AcResult acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
+                           VertexBufferArray vba);
+
 AcResult
 acLoadStencil(const Stencil stencil, const cudaStream_t stream,
               const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
