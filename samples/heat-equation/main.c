@@ -7,6 +7,67 @@
 
 #include "timer_hires.h"
 
+// Simulation parameters
+static const AcReal DT = (AcReal)FLT_EPSILON;
+
+static void
+acHostSolveHeat(AcMesh mesh)
+{
+    AcMesh out;
+    acHostMeshCreate(mesh.info, &out);
+
+    const AcMeshDims domain = acGetMeshDims(mesh.info); // Is initialized to zero with calloc
+    const size_t field      = 0;
+
+    // Stencil loop
+    for (size_t k = as_size_t(domain.n0.z); k < as_size_t(domain.n1.z); ++k) {
+        for (size_t j = as_size_t(domain.n0.y); j < as_size_t(domain.n1.y); ++j) {
+            for (size_t i = as_size_t(domain.n0.x); i < as_size_t(domain.n1.x); ++i) {
+                const size_t idx = acVertexBufferIdx(i, j, k, mesh.info);
+
+                const AcReal dsx      = 2 * AC_REAL_PI / domain.nn.x;
+                const AcReal dsy      = 2 * AC_REAL_PI / domain.nn.y;
+                const AcReal dsz      = 2 * AC_REAL_PI / domain.nn.z;
+                const AcReal coeffs[] = {
+                    1 / 90., -3 / 20., 3 / 2., -49 / 18., 3 / 2., -3 / 20., 1 / 90.,
+                };
+
+                const int radius = ((sizeof(coeffs) / sizeof(coeffs[0])) - 1) / 2;
+
+                long double tmp = mesh.vertex_buffer[field][idx];
+                if (domain.nn.x > 1) {
+                    for (int r = -radius; r <= radius; ++r)
+                        tmp += DT * (1 / (dsx * dsx)) * coeffs[radius + r] *
+                               mesh.vertex_buffer[field][acVertexBufferIdx(i + r, j, k, mesh.info)];
+                }
+                if (domain.nn.y > 1) {
+                    for (int r = -radius; r <= radius; ++r)
+                        tmp += DT * (1 / (dsy * dsy)) * coeffs[radius + r] *
+                               mesh.vertex_buffer[field][acVertexBufferIdx(i, j + r, k, mesh.info)];
+                }
+                if (domain.nn.z > 1) {
+                    for (int r = -radius; r <= radius; ++r)
+                        tmp += DT * (1 / (dsz * dsz)) * coeffs[radius + r] *
+                               mesh.vertex_buffer[field][acVertexBufferIdx(i, j, k + r, mesh.info)];
+                }
+                out.vertex_buffer[field][idx] = tmp;
+            }
+        }
+    }
+
+    // Copy results to the initial buffer
+    for (size_t k = 0; k < as_size_t(domain.m1.z); ++k) {
+        for (size_t j = 0; j < as_size_t(domain.m1.y); ++j) {
+            for (size_t i = 0; i < as_size_t(domain.m1.x); ++i) {
+                const size_t idx               = acVertexBufferIdx(i, j, k, mesh.info);
+                mesh.vertex_buffer[field][idx] = out.vertex_buffer[field][idx];
+            }
+        }
+    }
+
+    acHostMeshDestroy(&out);
+}
+
 int
 main(int argc, char** argv)
 {
@@ -46,9 +107,6 @@ main(int argc, char** argv)
     // Mesh dimensions
     const AcMeshDims dims = acGetMeshDims(info);
 
-    // Simulation parameters
-    const AcReal dt = (AcReal)FLT_EPSILON;
-
     // Host memory
     AcMesh model, candidate;
     acHostMeshCreate(info, &model);
@@ -64,6 +122,35 @@ main(int argc, char** argv)
     const size_t count = acVertexBufferSize(info);
     acRandInitAlt(seed, count, pid);
     srand(seed);
+
+    // Benchmark configuration
+    ERRCHK_ALWAYS(STENCIL_DEPTH == STENCIL_HEIGHT && STENCIL_HEIGHT == STENCIL_WIDTH);
+    AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH] = {{{{0}}}};
+    const size_t mid = (STENCIL_WIDTH - 1) / 2;
+    for (size_t i = 0; i < STENCIL_WIDTH; ++i) {
+        const AcReal dsx      = 2 * AC_REAL_PI / nx;
+        const AcReal dsy      = 2 * AC_REAL_PI / ny;
+        const AcReal dsz      = 2 * AC_REAL_PI / nz;
+        const AcReal coeffs[] = {
+            1 / 90., -3 / 20., 3 / 2., -49 / 18., 3 / 2., -3 / 20., 1 / 90.,
+        };
+
+        // 1D
+        stencils[stencil_heat1d][mid][mid][i] += (1.0 / dsx) * (1.0 / dsx) * coeffs[i] * DT;
+
+        // 2D
+        stencils[stencil_heat2d][mid][mid][i] += (1.0 / dsx) * (1.0 / dsx) * coeffs[i] * DT;
+        stencils[stencil_heat2d][mid][i][mid] += (1.0 / dsy) * (1.0 / dsy) * coeffs[i] * DT;
+
+        // 3D
+        stencils[stencil_heat3d][mid][mid][i] += (1.0 / dsx) * (1.0 / dsx) * coeffs[i] * DT;
+        stencils[stencil_heat3d][mid][i][mid] += (1.0 / dsy) * (1.0 / dsy) * coeffs[i] * DT;
+        stencils[stencil_heat3d][i][mid][mid] += (1.0 / dsz) * (1.0 / dsz) * coeffs[i] * DT;
+    }
+    stencils[stencil_heat1d][mid][mid][mid] += (AcReal)1.0;
+    stencils[stencil_heat2d][mid][mid][mid] += (AcReal)1.0;
+    stencils[stencil_heat3d][mid][mid][mid] += (AcReal)1.0;
+    acDeviceLoadStencils(device, STREAM_DEFAULT, stencils);
 
     // Verify
     if (verify) {
@@ -96,20 +183,19 @@ main(int argc, char** argv)
         acHostMeshApplyConstantBounds((AcReal)0.0, &model);
         acDeviceLoadMesh(device, STREAM_DEFAULT, model);
 
-        // TODO verification
-        // const size_t num_verification_steps = 5;
-        // for (size_t j = 0; j < num_verification_steps; ++j) {
-        //     for (int i = 0; i < 3; ++i) {
-        //         acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, dims.n0, dims.n1, dt);
-        //         acDeviceSwapBuffers(device);
-        //         acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
-        //     }
-        //     acHostIntegrateStep(model, dt);
-        //     acHostMeshApplyPeriodicBounds(&model);
-        // }
-        // acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
-        // acDeviceSynchronizeStream(device, STREAM_DEFAULT);
-        // acVerifyMesh("Kernel", model, candidate);
+        const size_t num_verification_steps = 1;
+        for (size_t j = 0; j < num_verification_steps; ++j) {
+
+            acDeviceFlushOutputBuffers(device);
+            acDeviceLaunchKernel(device, STREAM_DEFAULT, solve3d, dims.n0, dims.n1);
+            acDeviceSwapBuffers(device);
+
+            acHostSolveHeat(model);
+        }
+        acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
+        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+        acVerifyMesh("Kernel", model, candidate);
+        exit(0);
     }
 
     // File
@@ -125,33 +211,6 @@ main(int argc, char** argv)
             "jobid,seed,"
             "iteration\n");
 
-    // Benchmark configuration
-    ERRCHK_ALWAYS(STENCIL_DEPTH == STENCIL_HEIGHT && STENCIL_HEIGHT == STENCIL_WIDTH);
-    AcReal stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH] = {{{{0}}}};
-    const size_t mid = (STENCIL_WIDTH - 1) / 2;
-    for (size_t i = 0; i < STENCIL_WIDTH; ++i) {
-        const AcReal dsx      = 2 * AC_REAL_PI / nx;
-        const AcReal dsy      = 2 * AC_REAL_PI / ny;
-        const AcReal dsz      = 2 * AC_REAL_PI / nz;
-        const AcReal coeffs[] = {1 / 90., -3 / 20., 3 / 2., -49 / 18., 3 / 2., -3 / 20., 1 / 90.};
-
-        // 1D
-        stencils[stencil_heat1d][mid][mid][i] += (1.0 / dsx) * (1.0 / dsx) * coeffs[i] * dt;
-
-        // 2D
-        stencils[stencil_heat2d][mid][mid][i] += (1.0 / dsx) * (1.0 / dsx) * coeffs[i] * dt;
-        stencils[stencil_heat2d][mid][i][mid] += (1.0 / dsy) * (1.0 / dsy) * coeffs[i] * dt;
-
-        // 3D
-        stencils[stencil_heat3d][mid][mid][i] += (1.0 / dsx) * (1.0 / dsx) * coeffs[i] * dt;
-        stencils[stencil_heat3d][mid][i][mid] += (1.0 / dsy) * (1.0 / dsy) * coeffs[i] * dt;
-        stencils[stencil_heat3d][i][mid][mid] += (1.0 / dsz) * (1.0 / dsz) * coeffs[i] * dt;
-    }
-    stencils[stencil_heat1d][mid][mid][mid] += (AcReal)1.0;
-    stencils[stencil_heat2d][mid][mid][mid] += (AcReal)1.0;
-    stencils[stencil_heat3d][mid][mid][mid] += (AcReal)1.0;
-    acDeviceLoadStencils(device, STREAM_DEFAULT, stencils);
-
     // Benchmark
     Timer t;
     for (size_t kernel = 0; kernel < NUM_KERNELS; ++kernel) {
@@ -166,7 +225,7 @@ main(int argc, char** argv)
             // Benchmark
             timer_reset(&t);
             acDeviceLaunchKernel(device, STREAM_DEFAULT, kernels[kernel], dims.n0, dims.n1);
-            // acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, dims.n0, dims.n1, dt);
+            // acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, dims.n0, dims.n1, DT);
             acDeviceSynchronizeStream(device, STREAM_ALL);
             const double milliseconds = timer_diff_nsec(t) / 1e6;
 
