@@ -267,6 +267,18 @@ acGetKernelId(const Kernel kernel)
     return (size_t)-1;
 }
 
+static inline size_t
+acGetKernelIdByName(const char* name)
+{
+    for (size_t id = 0; id < NUM_KERNELS; ++id) {
+        if (!strcmp(kernel_names[id], name))
+            return id;
+    }
+    fprintf(stderr, "acGetKernelIdByName failed: did not find kernel %s from the list of kernels\n",
+            name);
+    return (size_t)-1;
+}
+
 AcMeshInfo acGridDecomposeMeshInfo(const AcMeshInfo global_config);
 
 AcMeshInfo acGridGetLocalMeshInfo(void);
