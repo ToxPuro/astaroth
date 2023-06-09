@@ -57,7 +57,7 @@ extern "C" {
 
 #include "user_declarations.h"
 
-AcResult acKernelFlush(AcReal* arr, const size_t n);
+AcResult acKernelFlush(AcReal* arr, const size_t n, const AcReal value);
 
 AcResult acVBAReset(VertexBufferArray* vba);
 
