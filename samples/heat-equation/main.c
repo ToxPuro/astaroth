@@ -56,9 +56,9 @@ acHostSolveHeat(AcMesh mesh)
     }
 
     // Copy results to the initial buffer
-    for (size_t k = 0; k < as_size_t(domain.m1.z); ++k) {
-        for (size_t j = 0; j < as_size_t(domain.m1.y); ++j) {
-            for (size_t i = 0; i < as_size_t(domain.m1.x); ++i) {
+    for (size_t k = as_size_t(domain.n0.z); k < as_size_t(domain.n1.z); ++k) {
+        for (size_t j = as_size_t(domain.n0.y); j < as_size_t(domain.n1.y); ++j) {
+            for (size_t i = as_size_t(domain.n0.x); i < as_size_t(domain.n1.x); ++i) {
                 const size_t idx               = acVertexBufferIdx(i, j, k, mesh.info);
                 mesh.vertex_buffer[field][idx] = out.vertex_buffer[field][idx];
             }
@@ -82,20 +82,29 @@ main(int argc, char** argv)
     const size_t verify      = (argc > 6) ? (size_t)atol(argv[6]) : 0;
     const size_t radius      = STENCIL_ORDER / 2;
     const size_t seed        = 12345 + time(NULL) + jobid * time(NULL);
+    const Kernel kernel      = (nz > 1) ? solve3d : (ny > 1) ? solve2d : solve1d;
+    const size_t kernel_id   = acGetKernelId(kernel);
+    const char* kernel_name  = kernel_names[kernel_id];
 
+    // Input parameters
     printf("Input parameters:\n");
     printf("\tnx: %zu\n", nx);
     printf("\tny: %zu\n", ny);
     printf("\tnz: %zu\n", nz);
-    printf("\tradius: %zu\n", radius);
     printf("\tjobid: %zu\n", jobid);
     printf("\tnum_samples: %zu\n", num_samples);
     printf("\tverify: %zu\n", verify);
-    printf("\tseed: %zu\n", seed);
 
     printf("IMPLEMENTATION=%d\n", IMPLEMENTATION);
     printf("MAX_THREADS_PER_BLOCK=%d\n", MAX_THREADS_PER_BLOCK);
     printf("STENCIL_ORDER=%d\n", STENCIL_ORDER);
+
+    // Derived parameters
+    printf("Derived parameters:\n");
+    printf("\tseed: %zu\n", seed);
+    printf("\tradius: %zu\n", radius);
+    printf("\tkernel: %s (kernels[%zu]: %p)\n", kernel_name, kernel_id, kernel);
+
     fflush(stdout);
 
     // Mesh configuration
@@ -183,11 +192,11 @@ main(int argc, char** argv)
         acHostMeshApplyConstantBounds((AcReal)0.0, &model);
         acDeviceLoadMesh(device, STREAM_DEFAULT, model);
 
-        const size_t num_verification_steps = 1;
+        const size_t num_verification_steps = 2;
         for (size_t j = 0; j < num_verification_steps; ++j) {
 
-            acDeviceFlushOutputBuffers(device);
-            acDeviceLaunchKernel(device, STREAM_DEFAULT, solve3d, dims.n0, dims.n1);
+            acDeviceFlushOutputBuffers(device, STREAM_DEFAULT);
+            acDeviceLaunchKernel(device, STREAM_DEFAULT, kernel, dims.n0, dims.n1);
             acDeviceSwapBuffers(device);
 
             acHostSolveHeat(model);
@@ -213,41 +222,37 @@ main(int argc, char** argv)
 
     // Benchmark
     Timer t;
-    for (size_t kernel = 0; kernel < NUM_KERNELS; ++kernel) {
-        for (size_t j = 0; j < num_samples; ++j) {
-            // Dryrun and randomize
-            acDeviceLaunchKernel(device, STREAM_DEFAULT, kernels[kernel], dims.n0, dims.n1);
-            acDeviceResetMesh(device, STREAM_DEFAULT);
-            acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
-            acDeviceSwapBuffers(device);
-            acDeviceSynchronizeStream(device, STREAM_ALL);
+    for (size_t j = 0; j < num_samples; ++j) {
+        // Dryrun and randomize
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, kernel, dims.n0, dims.n1);
+        acDeviceResetMesh(device, STREAM_DEFAULT);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+        acDeviceSwapBuffers(device);
+        acDeviceSynchronizeStream(device, STREAM_ALL);
 
-            // Benchmark
-            timer_reset(&t);
-            acDeviceLaunchKernel(device, STREAM_DEFAULT, kernels[kernel], dims.n0, dims.n1);
-            // acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, dims.n0, dims.n1, DT);
-            acDeviceSynchronizeStream(device, STREAM_ALL);
-            const double milliseconds = timer_diff_nsec(t) / 1e6;
+        // Benchmark
+        timer_reset(&t);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, kernel, dims.n0, dims.n1);
+        acDeviceSynchronizeStream(device, STREAM_ALL);
+        const double milliseconds = timer_diff_nsec(t) / 1e6;
 
-            acDeviceBenchmarkKernel(device, kernels[kernel], dims.n0, dims.n1);
+        acDeviceBenchmarkKernel(device, kernel, dims.n0, dims.n1);
 
-            const Volume tpb = acKernelLaunchGetLastTPB();
-            fprintf(fp, "%s,%d,%d,%zu,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu\n",
-                    kernel_names[kernel], IMPLEMENTATION, MAX_THREADS_PER_BLOCK, nx, ny, nz, radius,
-                    milliseconds, tpb.x, tpb.y, tpb.z, jobid, seed, j);
+        const Volume tpb = acKernelLaunchGetLastTPB();
+        fprintf(fp, "%s,%d,%d,%zu,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu\n", kernel_name,
+                IMPLEMENTATION, MAX_THREADS_PER_BLOCK, nx, ny, nz, radius, milliseconds, tpb.x,
+                tpb.y, tpb.z, jobid, seed, j);
 
-            if (j == num_samples - 1) {
-                fprintf(stdout, "kernel,implementation,maxthreadsperblock,nx,ny,nz,radius,"
-                                "milliseconds,tpbx,tpby,"
-                                "tpbz,jobid,seed,"
-                                "iteration\n");
-                fprintf(stdout, "%s,%d,%d,%zu,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu\n",
-                        kernel_names[kernel], IMPLEMENTATION, MAX_THREADS_PER_BLOCK, nx, ny, nz,
-                        radius, milliseconds, tpb.x, tpb.y, tpb.z, jobid, seed, j);
-                printf("Milliseconds per kernel '%s' launch: %g\n", kernel_names[kernel],
-                       milliseconds);
-                printf("Optimal tpb: (%zu, %zu, %zu)\n", tpb.x, tpb.y, tpb.z);
-            }
+        if (j == num_samples - 1) {
+            fprintf(stdout, "kernel,implementation,maxthreadsperblock,nx,ny,nz,radius,"
+                            "milliseconds,tpbx,tpby,"
+                            "tpbz,jobid,seed,"
+                            "iteration\n");
+            fprintf(stdout, "%s,%d,%d,%zu,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu\n", kernel_name,
+                    IMPLEMENTATION, MAX_THREADS_PER_BLOCK, nx, ny, nz, radius, milliseconds, tpb.x,
+                    tpb.y, tpb.z, jobid, seed, j);
+            printf("Milliseconds per kernel '%s' launch: %g\n", kernel_name, milliseconds);
+            printf("Optimal tpb: (%zu, %zu, %zu)\n", tpb.x, tpb.y, tpb.z);
         }
     }
 
