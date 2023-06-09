@@ -447,6 +447,19 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
 }
 
 AcResult
+acDeviceFlushOutputBuffers(const Device device)
+{
+    cudaSetDevice(device->id);
+    const size_t count = acVertexBufferSize(device->local_config);
+
+    int retval = 0;
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+        retval |= acKernelFlush(device->vba.out[i], count, (AcReal)0.0);
+
+    return (AcResult)retval;
+}
+
+AcResult
 acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
                                     const VertexBufferHandle vtxbuf_handle, const int3 src,
                                     const int3 dst, const int num_vertices, AcMesh* host_mesh)

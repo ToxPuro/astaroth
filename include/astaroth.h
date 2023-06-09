@@ -218,6 +218,7 @@ acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
 typedef struct {
     int3 n0, n1;
     int3 m0, m1;
+    int3 nn;
 } AcMeshDims;
 
 static inline AcMeshDims
@@ -239,12 +240,18 @@ acGetMeshDims(const AcMeshInfo info)
         info.int_params[AC_my],
         info.int_params[AC_mz],
     };
+    const int3 nn = (int3){
+        info.int_params[AC_nx],
+        info.int_params[AC_ny],
+        info.int_params[AC_nz],
+    };
 
     return (AcMeshDims){
         .n0 = n0,
         .n1 = n1,
         .m0 = m0,
         .m1 = m1,
+        .nn = nn,
     };
 }
 
@@ -1025,6 +1032,9 @@ AcResult acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh
 /** */
 AcResult acDeviceSetVertexBuffer(const Device device, const Stream stream,
                                  const VertexBufferHandle handle, const AcReal value);
+
+/** */
+AcResult acDeviceFlushOutputBuffers(const Device device);
 
 /** */
 AcResult acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
