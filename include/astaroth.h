@@ -255,6 +255,18 @@ acGetMeshDims(const AcMeshInfo info)
     };
 }
 
+static inline size_t
+acGetKernelId(const Kernel kernel)
+{
+    for (size_t id = 0; id < NUM_KERNELS; ++id) {
+        if (kernel == kernels[id])
+            return id;
+    }
+    fprintf(stderr, "acGetKernelId failed: did not find kernel %p from the list of kernels\n",
+            kernel);
+    return (size_t)-1;
+}
+
 AcMeshInfo acGridDecomposeMeshInfo(const AcMeshInfo global_config);
 
 AcMeshInfo acGridGetLocalMeshInfo(void);
@@ -1034,7 +1046,7 @@ AcResult acDeviceSetVertexBuffer(const Device device, const Stream stream,
                                  const VertexBufferHandle handle, const AcReal value);
 
 /** */
-AcResult acDeviceFlushOutputBuffers(const Device device);
+AcResult acDeviceFlushOutputBuffers(const Device device, const Stream stream);
 
 /** */
 AcResult acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
