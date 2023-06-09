@@ -57,9 +57,10 @@ extern "C" {
 
 #include "user_declarations.h"
 
-AcResult acKernelFlush(AcReal* arr, const size_t n, const AcReal value);
+AcResult acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
+                       const AcReal value);
 
-AcResult acVBAReset(VertexBufferArray* vba);
+AcResult acVBAReset(const cudaStream_t stream, VertexBufferArray* vba);
 
 VertexBufferArray acVBACreate(const size_t count);
 

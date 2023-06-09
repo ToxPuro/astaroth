@@ -447,14 +447,14 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
 }
 
 AcResult
-acDeviceFlushOutputBuffers(const Device device)
+acDeviceFlushOutputBuffers(const Device device, const Stream stream)
 {
     cudaSetDevice(device->id);
     const size_t count = acVertexBufferSize(device->local_config);
 
     int retval = 0;
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
-        retval |= acKernelFlush(device->vba.out[i], count, (AcReal)0.0);
+        retval |= acKernelFlush(device->streams[stream], device->vba.out[i], count, (AcReal)0.0);
 
     return (AcResult)retval;
 }
@@ -846,5 +846,5 @@ acDeviceResetMesh(const Device device, const Stream stream)
 {
     cudaSetDevice(device->id);
     acDeviceSynchronizeStream(device, stream);
-    return acVBAReset(&device->vba);
+    return acVBAReset(device->streams[stream], &device->vba);
 }

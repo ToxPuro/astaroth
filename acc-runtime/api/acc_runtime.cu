@@ -238,11 +238,12 @@ flush_kernel(AcReal* arr, const size_t n, const AcReal value)
 }
 
 AcResult
-acKernelFlush(AcReal* arr, const size_t n, const AcReal value)
+acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
+              const AcReal value)
 {
   const size_t tpb = 256;
   const size_t bpg = (size_t)(ceil((double)n / tpb));
-  flush_kernel<<<bpg, tpb>>>(arr, n, value);
+  flush_kernel<<<bpg, tpb, 0, stream>>>(arr, n, value);
   ERRCHK_CUDA_KERNEL_ALWAYS();
   return AC_SUCCESS;
 }
@@ -326,14 +327,14 @@ freeCompressible(void* ptr, const size_t requested_bytes)
 #endif
 
 AcResult
-acVBAReset(VertexBufferArray* vba)
+acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
   const size_t count = vba->bytes / sizeof(vba->in[0][0]);
 
   // Set vba.in data to all-nan and vba.out to 0
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    acKernelFlush(vba->in[i], count, (AcReal)NAN);
-    acKernelFlush(vba->out[i], count, (AcReal)0.0);
+    acKernelFlush(stream, vba->in[i], count, (AcReal)NAN);
+    acKernelFlush(stream, vba->out[i], count, (AcReal)0.0);
   }
   return AC_SUCCESS;
 }
@@ -355,8 +356,9 @@ acVBACreate(const size_t count)
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
 #endif
   }
-  acVBAReset(&vba);
 
+  acVBAReset(0, &vba);
+  cudaDeviceSynchronize();
   return vba;
 }
 
