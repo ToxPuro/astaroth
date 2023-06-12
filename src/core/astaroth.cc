@@ -331,3 +331,31 @@ acHostMeshDestroy(AcMesh* mesh)
 
     return AC_SUCCESS;
 }
+
+/**
+    Astaroth helper functions
+*/
+
+size_t
+acGetKernelId(const Kernel kernel)
+{
+    for (size_t id = 0; id < NUM_KERNELS; ++id) {
+        if (kernel == kernels[id])
+            return id;
+    }
+    fprintf(stderr, "acGetKernelId failed: did not find kernel %p from the list of kernels\n",
+            kernel);
+    return (size_t)-1;
+}
+
+size_t
+acGetKernelIdByName(const char* name)
+{
+    for (size_t id = 0; id < NUM_KERNELS; ++id) {
+        if (!strcmp(kernel_names[id], name))
+            return id;
+    }
+    fprintf(stderr, "acGetKernelIdByName failed: did not find kernel %s from the list of kernels\n",
+            name);
+    return (size_t)-1;
+}
