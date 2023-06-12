@@ -246,7 +246,30 @@ def gen_microbenchmarks(system):
                 print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples}')
                 stride *= 2
 
-# Device benchmarks
+# Linear stencil benchmarks
+def gen_convolutionbenchmarks(system):
+    with open(f'{scripts_dir}/heat-equation-benchmark.sh', 'w') as f:
+        with redirect_stdout(f):
+
+            # Create the batch script
+            ## Header
+            system.print_sbatch_header(ntasks=1)
+
+            ## Script body
+            problem_size = 256**3
+            for radius in range(0, 5):
+                # 1D
+                nn = (problem_size, 1, 1)
+                print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius}')
+
+                nn = (int(problem_size**(1/2)), int(problem_size**(1/2)), 1)
+                print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius}')
+
+                nn = (int(problem_size**(1/3)), int(problem_size**(1/3)), int(problem_size**(1/3)))
+                print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius}')
+
+
+# Device benchmarks (nonlinear stencils)
 def gen_devicebenchmarks(system, nx, ny, nz):
     with open(f'{scripts_dir}/device-benchmark.sh', 'w') as f:
         with redirect_stdout(f):
@@ -347,11 +370,12 @@ if 'preprocess' in args.task_type or 'genscripts' in args.task_type:
     # Scripts
     syscall(f'mkdir -p {scripts_dir}')
     if not args.dryrun:
+
         gen_microbenchmarks(system)
-
+        gen_convolutionbenchmarks(system)
         gen_devicebenchmarks(system, nx, ny, nz)
-        # gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices)
 
+        # gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices)
         # gen_strongscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
         # gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
         # gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices)
