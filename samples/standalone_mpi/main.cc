@@ -448,7 +448,8 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
 
 /* Set step = -1 to load from the latest snapshot. step = 0 to start a new run. */
 static void
-read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo info)
+read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time,
+                            const AcMeshInfo info)
 {
     if (*step > 0) {
         ERROR("step in read_file_to_mesh (config start_step) was > 0, do not know what to do with "
@@ -459,8 +460,13 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo
     // Quick hack, TODO better
     int pid;
     MPI_Comm_rank(acGridMPIComm(), &pid);
-    if (pid == 0)
-        system("tail -n2 snapshots_info.csv | head -n1 > latest_snapshot.info && sync");
+    if (pid == 0) {
+        const size_t buflen = 4096;
+        char cmd[buflen];
+        snprintf(cmd, buflen,
+                 "tail -n2 %s/snapshots_info.csv | head -n1 > latest_snapshot.info && sync", dir);
+        system(cmd);
+    }
     MPI_Barrier(acGridMPIComm());
 
     // Read the previous valid step from snapshots_info.csv
@@ -493,12 +499,15 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo
     ERRCHK_ALWAYS(*step >= 0);
     ERRCHK_ALWAYS(is_valid(*simulation_time));
 
-    const size_t buflen = 128;
+    const size_t buflen = 4096;
     char modstep_str[buflen];
-    sprintf(modstep_str, "%d", modstep);
+    snprintf(modstep_str, buflen, "%d", modstep);
 
-    acLogFromRootProc(pid, "Restarting from snapshot %d (step %d, tstep %g)\n", modstep, *step,
-                      (double)(*simulation_time));
+    char snapshot_dir[buflen];
+    snprintf(snapshot_dir, buflen, "%s/%s", dir, snapshot_output_dir);
+
+    acLogFromRootProc(pid, "Restarting from snapshot %d (step %d, tstep %g) in %s\n", modstep,
+                      *step, (double)(*simulation_time), snapshot_dir);
 
     const Field io_fields[] =
     { VTXBUF_UUX,
@@ -519,17 +528,7 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo
 #endif
 
     for (size_t i = 0; i < num_io_fields; ++i)
-        acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_output_dir, modstep_str,
-                                          ACCESS_READ);
-
-        // for (size_t i = 0; i < NUM_FIELDS; ++i)
-        //     acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, snapshot_output_dir,
-        //     modstep_str, ACCESS_READ);
-
-        // Not needed for synchronous reading
-        // acGridDiskAccessSync();
-        // acGridPeriodicBoundconds(STREAM_DEFAULT);
-        // acGridSynchronizeStream(STREAM_DEFAULT);
+        acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
 
 #if LMAGNETIC
     // Scale the magnetic field
@@ -638,7 +637,7 @@ print_usage(const char* name)
     printf("Usage: ./%s "
            "[--config <config_path>] "
            "[ --run-init-kernel | --from-pc-varfile | --from-distributed-snapshot | "
-           "--from-monolithic-snapshot ]"
+           "--from-monolithic-snapshot | --from-snapshot]"
            "\n"
            "\n"
            " -c <config_path>\n"
@@ -662,16 +661,17 @@ print_usage(const char* name)
            " -p\n"
            " --from-pc-varfile\n"
            "\tLoad the mesh from a pc varfile\n"
-           "\tThe path to this file is currently hardcoded\n"
            "\n"
-           " -d\n --from-distributed-snapshot\n"
-           "\tLoad the mesh from a distributed snapshot (one file per process)\n"
-           "\tThe path to the snapshot is currently hardcoded\n"
-           "\n"
-           " -m\n"
-           " --from-monolithic-snapshot\n"
-           "\tLoad the mesh from a monolithic snapshot (one single file)\n"
-           "\tThe path to the snapshot is currently hardcoded\n",
+           //    " -d\n --from-distributed-snapshot\n"
+           //    "\tLoad the mesh from a distributed snapshot (one file per process)\n"
+           //    "\tThe path to the snapshot is currently hardcoded\n"
+           //    "\n"
+           //    " -m\n"
+           //    " --from-monolithic-snapshot\n"
+           //    "\tLoad the mesh from a monolithic snapshot (one single file)\n"
+           //    "\tThe path to the snapshot is currently hardcoded\n"
+           " --from-snapshot\n"
+           "\tLoad the mesh from a monolithic snapshot (one single file)\n",
            name, AC_DEFAULT_CONFIG);
 }
 
@@ -750,7 +750,7 @@ main(int argc, char** argv)
                                            {"from-pc-varfile", required_argument, 0, 'p'},
                                            {"from-distributed-snapshot", no_argument, 0, 'd'},
                                            {"from-monolithic-snapshot", no_argument, 0, 'm'},
-                                           {"from-snapshot", no_argument, 0, 's'},
+                                           {"from-snapshot", required_argument, 0, 's'},
                                            {"help", no_argument, 0, 'h'}};
 
     const char* config_path = AC_DEFAULT_CONFIG;
@@ -802,7 +802,8 @@ main(int argc, char** argv)
             initial_mesh_procedure = InitialMeshProcedure::LoadMonolithicSnapshot;
             break;
         case 's':
-            initial_mesh_procedure = InitialMeshProcedure::LoadSnapshot;
+            initial_mesh_procedure       = InitialMeshProcedure::LoadSnapshot;
+            initial_mesh_procedure_param = optarg;
             break;
         default:
             print_usage("ac_run_mpi");
@@ -1012,7 +1013,8 @@ main(int argc, char** argv)
     */
     case InitialMeshProcedure::LoadSnapshot: {
         acLogFromRootProc(pid, "Reading mesh file\n");
-        read_file_to_mesh_and_setup(&start_step, &simulation_time, info);
+        read_file_to_mesh_and_setup(initial_mesh_procedure_param, &start_step, &simulation_time,
+                                    info);
         acLogFromRootProc(pid, "Done reading mesh file\n");
         break;
     }
