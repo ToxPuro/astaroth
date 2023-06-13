@@ -54,8 +54,8 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
 // IO directories
-static const char* snapshot_dir = "output-snapshots";
-static const char* slice_dir    = "output-slices";
+static const char* snapshot_output_dir = "output-snapshots";
+static const char* slice_output_dir    = "output-slices";
 
 #define fprintf(...)                                                                               \
     {                                                                                              \
@@ -519,11 +519,12 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo
 #endif
 
     for (size_t i = 0; i < num_io_fields; ++i)
-        acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
+        acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_output_dir, modstep_str,
+                                          ACCESS_READ);
 
         // for (size_t i = 0; i < NUM_FIELDS; ++i)
-        //     acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, snapshot_dir, modstep_str,
-        //     ACCESS_READ);
+        //     acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, snapshot_output_dir,
+        //     modstep_str, ACCESS_READ);
 
         // Not needed for synchronous reading
         // acGridDiskAccessSync();
@@ -549,8 +550,8 @@ read_distributed_to_mesh_and_setup(void)
 {
     for (size_t i = 0; i < num_io_fields; ++i) {
         const Field field = io_fields[i];
-        acGridAccessMeshOnDiskSynchronousDistributed(field, snapshot_dir, vtxbuf_names[field],
-                                                     ACCESS_READ);
+        acGridAccessMeshOnDiskSynchronousDistributed(field, snapshot_output_dir,
+vtxbuf_names[field], ACCESS_READ);
     }
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 }
@@ -560,7 +561,7 @@ read_collective_to_mesh_and_setup(void)
 {
     for (size_t i = 0; i < num_io_fields; ++i) {
         const Field field = io_fields[i];
-        acGridAccessMeshOnDiskSynchronousCollective(field, snapshot_dir, vtxbuf_names[field],
+        acGridAccessMeshOnDiskSynchronousCollective(field, snapshot_output_dir, vtxbuf_names[field],
                                                     ACCESS_READ);
     }
     acGridPeriodicBoundconds(STREAM_DEFAULT);
@@ -581,15 +582,15 @@ create_directory(const char* dirname)
 static void
 create_output_directories(void)
 {
-    create_directory(snapshot_dir);
-    create_directory(slice_dir);
+    create_directory(snapshot_output_dir);
+    create_directory(slice_output_dir);
 
     // JP: Note: striping here potentially bad practice (uncomment to enable)
     // OL: Agree, there is no guarantee that the environment uses a lustre filesystem (perhaps as an
     // option though?)
     // const int stripe_count = 48;
     // Note: striping here potentially bad practice (uncomment to enable)
-    // snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_dir);
+    // snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_output_dir);
     // system(cmd);
 }
 
@@ -601,7 +602,7 @@ write_slices(int pid, int i)
     debug_log_from_root_proc_with_sim_progress(pid, "write_slices: Slice disk access synced\n");
 
     char slice_frame_dir[2048];
-    sprintf(slice_frame_dir, "%s/step_%012d", slice_dir, i);
+    sprintf(slice_frame_dir, "%s/step_%012d", slice_output_dir, i);
 
     log_from_root_proc_with_sim_progress(pid, "write_slices: Creating directory %s\n",
                                          slice_frame_dir);
@@ -612,11 +613,11 @@ write_slices(int pid, int i)
     MPI_Barrier(acGridMPIComm()); // Ensure directory is created for all procs
 
     log_from_root_proc_with_sim_progress(pid, "write_slices: Writing slices to %s, timestep = %d\n",
-                                         slice_dir, i);
+                                         slice_output_dir, i);
     /*
     Timer t;
     timer_reset(&t);
-    acGridWriteSlicesToDiskCollectiveSynchronous(slice_dir, label);
+    acGridWriteSlicesToDiskCollectiveSynchronous(slice_output_dir, label);
     acLogFromRootProc(pid, "Collective sync slices elapsed %g ms\n",
     timer_diff_nsec(t)/1e6);
     */
@@ -1149,7 +1150,7 @@ main(int argc, char** argv)
         write_slices(pid, start_step);
 
         acLogFromRootProc(pid, "Initial state: writing full mesh snapshot\n");
-        save_mesh_mpi_async(info, snapshot_dir, pid, 0, 0.0);
+        save_mesh_mpi_async(info, snapshot_output_dir, pid, 0, 0.0);
 
         if (found_nan != 0) {
             acLogFromRootProc(pid, "Found NaN in initial state -> exiting\n");
@@ -1328,7 +1329,7 @@ main(int argc, char** argv)
                 case PeriodicAction::WriteSnapshot: {
                     log_from_root_proc_with_sim_progress(pid, "Periodic action: writing full mesh "
                                                               "snapshot\n");
-                    save_mesh_mpi_async(info, snapshot_dir, pid, i, simulation_time);
+                    save_mesh_mpi_async(info, snapshot_output_dir, pid, i, simulation_time);
                     break;
                 }
                 case PeriodicAction::WriteSlices: {
@@ -1583,7 +1584,7 @@ main(int argc, char** argv)
                 acGridPeriodicBoundconds(STREAM_DEFAULT);
                 acGridSynchronizeStream(STREAM_DEFAULT);
                 log_from_root_proc_with_sim_progress(pid, "Writing final snapshots to %s, timestep =
-            %d\n", snapshot_dir, i); save_mesh_mpi_async(info, snapshot_dir, pid, i,
+            %d\n", snapshot_output_dir, i); save_mesh_mpi_async(info, snapshot_output_dir, pid, i,
             simulation_time); log_from_root_proc_with_sim_progress(pid, "Done writing snapshots\n");
             }
             else {
