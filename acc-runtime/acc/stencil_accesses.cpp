@@ -18,6 +18,10 @@
 #define __global__
 #undef __launch_bounds__
 #define __launch_bounds__(x, y)
+#undef __syncthreads
+#define __syncthreads()
+#undef __shared__
+#define __shared__
 
 #define threadIdx ((int3){0, 0, 0})
 #define blockIdx ((int3){0, 0, 0})
@@ -63,6 +67,9 @@ IDX(const int3 idx)
 #include "math_utils.h"
 
 #include "acc_runtime.h"
+
+AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
+                              // least the max smem size of the device
 
 static int stencils_accessed[NUM_FIELDS][NUM_STENCILS] = {{0}};
 static AcMeshInfo d_mesh_info;
