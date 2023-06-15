@@ -53,6 +53,13 @@ get_bpg(const Volume dims, const Volume tpb)
         (size_t)ceil(1. * dims.z / tpb.z),
     };
   }
+  case EXPLICIT_CACHING_FLEXIBLE_ELEMS_PER_THREAD: {
+    return (Volume){
+        (size_t)ceil(1. * dims.x / tpb.x),
+        (size_t)ceil(1. * dims.y / tpb.y),
+        (size_t)ceil(1. * dims.z / tpb.z / ACC_ELEMS_PER_THREAD),
+    };
+  }
   default: {
     ERROR("Invalid IMPLEMENTATION in get_bpg");
     return (Volume){0, 0, 0};
@@ -80,6 +87,7 @@ is_valid_configuration(const Volume dims, const Volume tpb)
     return true;
   }
   case EXPLICIT_CACHING_4D_BLOCKING: // Fallthrough
+  case EXPLICIT_CACHING_FLEXIBLE_ELEMS_PER_THREAD:
     if (tpb.z > 1)
       return false;
   case EXPLICIT_CACHING: // Fallthrough
@@ -114,6 +122,10 @@ get_smem(const Volume tpb, const size_t stencil_order,
   case EXPLICIT_CACHING_4D_BLOCKING: {
     return (tpb.x + stencil_order) * (tpb.y + stencil_order) * tpb.z *
            (NUM_FIELDS)*bytes_per_elem;
+  }
+  case EXPLICIT_CACHING_FLEXIBLE_ELEMS_PER_THREAD: {
+    return (tpb.x + stencil_order) * (tpb.y + stencil_order) * ACC_BLOCK_DEPTH *
+           ACC_NUM_PINGPONG_BUFFERS * bytes_per_elem;
   }
   default: {
     ERROR("Invalid IMPLEMENTATION in get_smem");
@@ -582,10 +594,12 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
     }
   }
   ERRCHK_ALWAYS(id < NUM_KERNELS);
-  // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
-  //        "(%d):\n",
-  //        kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
-  // fflush(stdout);
+#if AC_VERBOSE
+  printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
+         "(%d):\n",
+         kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
+  fflush(stdout);
+#endif
 
 #if 0
   cudaDeviceProp prop;
@@ -733,9 +747,12 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
           best_tpb  = tpb;
         }
 
-        // printf("Auto-optimizing... Current tpb: (%d, %d, %d), time %f ms\n",
-        //        tpb.x, tpb.y, tpb.z, (double)milliseconds / num_iters);
-        // fflush(stdout);
+#if AC_VERBOSE
+        printf("\tCurrent tpb: (%d, %d, %d), time %f ms (kernel %s)\n", tpb.x,
+               tpb.y, tpb.z, (double)milliseconds / num_iters,
+               kernel_names[id]);
+        fflush(stdout);
+#endif
       }
     }
   }

@@ -44,6 +44,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <assert.h> // TODO consider whether to keep this
+
 #include "user_defines.h"
 
 #include "stencil_accesses.h"
@@ -100,18 +102,18 @@ gen_stencil_definitions(void)
 void
 gen_kernel_prefix(void)
 {
-  printf("const int3 vertexIdx = (int3){"
+  printf("int3 vertexIdx = (int3){"
          "threadIdx.x + blockIdx.x * blockDim.x + start.x,"
          "threadIdx.y + blockIdx.y * blockDim.y + start.y,"
          "threadIdx.z + blockIdx.z * blockDim.z + start.z,"
          "};");
-  printf("const int3 globalVertexIdx = (int3){"
+  printf("int3 globalVertexIdx = (int3){"
          "d_multigpu_offset.x + vertexIdx.x,"
          "d_multigpu_offset.y + vertexIdx.y,"
          "d_multigpu_offset.z + vertexIdx.z,"
          "};");
   printf("const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];");
-  printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
+  printf("int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
 
   printf("(void)globalVertexIdx;"); // Silence unused warning
   printf("(void)globalGridN;");     // Silence unused warning
@@ -825,6 +827,211 @@ gen_kernel_body(const int curr_kernel)
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function();
+    return;
+  }
+  case EXPLICIT_CACHING_FLEXIBLE_ELEMS_PER_THREAD: {
+    gen_kernel_prefix(); // Note no bounds check
+
+    // Tuning parameters
+    // const size_t ept                  = 4; // elements per thread
+#define ept ACC_ELEMS_PER_THREAD
+    const size_t num_blocks_per_field = ACC_BLOCKS_PER_FIELD;
+
+    // Derived parameters
+    const size_t workingset_depth = ACC_WORKINGSET_DEPTH;
+    const size_t block_depth      = ACC_BLOCK_DEPTH;
+    assert(num_blocks_per_field * block_depth == workingset_depth);
+
+    const size_t num_pingpong_buffers = 2;
+    const size_t num_blocks           = NUM_FIELDS * num_blocks_per_field;
+    assert(num_blocks >= num_pingpong_buffers);
+
+    printf("extern __shared__ AcReal smem[];");
+    printf("const int sx = blockDim.x + STENCIL_WIDTH - 1;");
+    printf("const int sy = blockDim.y + STENCIL_HEIGHT - 1;");
+    printf("const int sz = %zu;", block_depth);
+    printf("const int sw = %zu;", num_pingpong_buffers);
+    printf("const int sid = threadIdx.x + "
+           "threadIdx.y * blockDim.x;");
+
+    printf("const auto sidx = [sx, sy, sz, sw]"
+           "(const int i, const int j, const int k, const int w)"
+           "{ return i + j * sx + k * sx * sy + w * sx * sy * sz; };");
+
+    printf("const int3 baseIdx = (int3){"
+           "start.x + blockIdx.x * blockDim.x - (STENCIL_WIDTH-1)/2,"
+           "start.y + blockIdx.y * blockDim.y - (STENCIL_HEIGHT-1)/2,"
+           "start.z + %zu * blockIdx.z * blockDim.z - (STENCIL_DEPTH-1)/2};",
+           ept);
+    printf("const int tpb = blockDim.x * blockDim.y * blockDim.z;");
+
+    int stencil_initialized[ept][NUM_FIELDS][NUM_STENCILS] = {0};
+    for (size_t block = 0; block < num_blocks; ++block) {
+
+      const size_t subblock_curr = block % num_blocks_per_field;
+      const size_t field_curr    = block / num_blocks_per_field;
+      const size_t w_curr        = block % 2;
+      const size_t b0            = subblock_curr * block_depth;
+      const size_t b1            = (subblock_curr + 1) * block_depth;
+
+      const size_t block_next    = block + 1;
+      const size_t subblock_next = block_next % num_blocks_per_field;
+      const size_t field_next    = block_next / num_blocks_per_field;
+      const size_t w_next        = block_next % 2;
+
+      // Fetch data from gmem to smem
+      if (block == 0) {
+        printf("for (int k = %zu; k < %zu; ++k) {", //
+               subblock_curr * block_depth, (subblock_curr + 1) * block_depth);
+        printf("for (int curr = sid; curr < sx * sy * sz; ++curr) {");
+        printf("const int i = curr %% sx;");
+        printf("const int j = (curr %% sy) / sx;");
+        printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2)"
+               "{ break; }");
+        printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2)"
+               "{ break; }");
+        printf("if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2)"
+               "{ break; }");
+        printf("smem[sidx(i, j, k, %zu)] = ", w_curr);
+        printf("vba.in[%zu]", field_curr);
+        printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)];");
+        printf("}");
+        printf("}");
+        printf("__syncthreads();");
+      }
+
+      printf("for (int k = %zu; k < %zu; ++k) {", //
+             subblock_next * block_depth, (subblock_next + 1) * block_depth);
+      printf("for (int curr = sid; curr < sx * sy * sz; ++curr) {");
+      printf("const int i = curr %% sx;");
+      printf("const int j = (curr %% sy) / sx;");
+      printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2)"
+             "{ break; }");
+      printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2)"
+             "{ break; }");
+      printf("if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2)"
+             "{ break; }");
+      printf("smem[sidx(i, j, k, %zu)] = ", w_next);
+      printf("vba.in[%zu]", field_next);
+      printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)];");
+      printf("}");
+      printf("}");
+
+      // Compute
+      for (size_t element = 0; element < ept; ++element) {
+        for (size_t depth = 0; depth < STENCIL_DEPTH; ++depth) {
+          for (size_t height = 0; height < STENCIL_HEIGHT; ++height) {
+            for (size_t width = 0; width < STENCIL_WIDTH; ++width) {
+              for (size_t stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+
+                // Skip if the stencil is not used
+                if (!stencils_accessed[curr_kernel][field_curr][stencil])
+                  continue;
+
+                // Skip if not within the subblock
+                if (depth + element < b0 || depth + element >= b1)
+                  continue;
+
+                // Skip if the stencil coefficient is zero
+                if (!stencils[stencil][depth][height][width])
+                  continue;
+
+                if (!stencil_initialized[element][field_curr][stencil]) {
+                  printf("auto e%zu_f%zu_s%zu = ", element, field_curr,
+                         stencil);
+
+                  printf("stencils[%zu][%zu][%zu][%zu] * ", //
+                         stencil, depth, height, width);
+                  printf("%s(", stencil_unary_ops[stencil]);
+                  // clang-format off
+                printf("smem[sidx(threadIdx.x + %zu, threadIdx.y + %zu, %zu, %zu)]",
+                       width, height, depth + element, w_curr);
+                  // clang-format on
+                  printf(");");
+                  stencil_initialized[element][field_curr][stencil] = 1;
+                }
+                else {
+                  printf("e%zu_f%zu_s%zu = ", element, field_curr, stencil);
+                  printf("%s(e%zu_f%zu_s%zu, ", stencil_binary_ops[stencil],
+                         element, field_curr, stencil);
+                  printf("stencils[%zu][%zu][%zu][%zu] * ", //
+                         stencil, depth, height, width);
+                  printf("%s(", stencil_unary_ops[stencil]);
+                  // clang-format off
+                printf("smem[sidx(threadIdx.x + %zu, threadIdx.y + %zu, %zu, %zu)]",
+                       width, height, depth + element, w_curr);
+                  // clang-format on
+                  printf(")");
+                  printf(");");
+                }
+              }
+            }
+          }
+        }
+      }
+      printf("__syncthreads();");
+    }
+
+    gen_return_if_oob();
+
+    printf("const auto get_elem = [&](const int elem, const int field, const "
+           "int stencil) { return (AcReal)0.0; };");
+
+    // printf("const auto get_elem = [&](const int elem, const int field, const
+    // "
+    //        "int stencil) {");
+    // printf("switch (elem) {"); // elem
+    // for (size_t elem = 0; elem < ept; ++elem) {
+    //   printf("case %zu: {", elem);
+
+    //   printf("switch (field) {"); // field
+    //   for (size_t field = 0; field < NUM_FIELDS; ++field) {
+    //     printf("case %zu: {", field);
+
+    //     printf("switch (stencil) {"); // stencil
+    //     for (size_t stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    //       printf("case %zu: {", stencil);
+    //       printf("return e%zu_f%zu_s%zu;", elem, field, stencil);
+    //       printf("}");
+    //     }
+    //     printf("default: return (AcReal)NAN;");
+    //     printf("}"); // stencil
+
+    //     printf("}");
+    //   }
+    //   printf("default: return (AcReal)NAN;");
+    //   printf("}"); // field
+
+    //   printf("}");
+    // }
+    // printf("default: return (AcReal)NAN;");
+    // printf("}"); // elem
+
+    // printf("};");
+
+    printf("for (int elem=0; elem < %zu; ++elem){", ept);
+    printf("vertexIdx = (int3){"
+           "threadIdx.x + blockIdx.x * blockDim.x + start.x,"
+           "threadIdx.y + blockIdx.y * blockDim.y + start.y,"
+           "threadIdx.z + blockIdx.z * blockDim.z + start.z + elem,"
+           "};");
+    printf("globalVertexIdx = (int3){"
+           "d_multigpu_offset.x + vertexIdx.x,"
+           "d_multigpu_offset.y + vertexIdx.y,"
+           "d_multigpu_offset.z + vertexIdx.z,"
+           "};");
+    printf("idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
+    for (size_t stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+      for (size_t field = 0; field < NUM_FIELDS; ++field) {
+        if (stencils_accessed[curr_kernel][field][stencil])
+          printf("const auto f%zu_s%zu = get_elem(elem, %zu, %zu);", field,
+                 stencil, field, stencil);
+      }
+    }
+
+    gen_stencil_functions(curr_kernel);
+    prefetch_output_elements_and_gen_prev_function();
+
     return;
   }
   default: {

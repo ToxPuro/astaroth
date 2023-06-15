@@ -34,7 +34,7 @@ include_directories(.)
 
 ## Compile options
 if (NOT DEFINED IMPLEMENTATION)
-    set(IMPLEMENTATION 1)
+    set(IMPLEMENTATION 2)
 endif()
 if (NOT DEFINED MAX_THREADS_PER_BLOCK)
     set(MAX_THREADS_PER_BLOCK 0)
