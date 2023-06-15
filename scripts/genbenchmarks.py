@@ -344,6 +344,7 @@ if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
             tpb = args.max_threads_per_block_range[0]
             while tpb <= args.max_threads_per_block_range[1]:
 
+                # Nonlinear stencil builds (default Astaroth)
                 impl_id     = 1 if implementation == 'implicit' else 2
                 use_smem    = implementation == 'explicit'
                 distributed = io_implementation == 'distributed'
@@ -353,6 +354,21 @@ if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
 
                 # Generate Makefile
                 flags = f'''-DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
+                
+                cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
+                syscall_async(cmd)
+
+                build_info = f'{build_dir}/build-info-{system.id}.txt'
+                syscall(f'date > {build_info}')
+                syscall(f'echo {cmd} >> {build_info}')
+                syscall(f'git -C {args.cmakelistdir} rev-parse HEAD >> {build_info}')
+
+                # Linear stencil computations (heat-equation sample)
+                build_dir = f'{builds_dir}/heat-equation-implementation{impl_id}_maxthreadsperblock{tpb}_distributed{distributed}'
+                syscall(f'mkdir -p {build_dir}')
+                # Generate Makefile
+                use_hip = 1 if system.use_hip else 0
+                flags = f'''-DBUILD_STANDALONE=OFF -DBUILD_MHD_SAMPLES=OFF -DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR={args.cmakelistdir}/samples/heat-equation/ -DPROGRAM_MODULE_DIR={args.cmakelistdir}/samples/heat-equation -DUSE_HIP={use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
                 
                 cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
                 syscall_async(cmd)
@@ -425,16 +441,26 @@ if 'postprocess' in args.task_type:
     # Microbenchmarks
     print('Postprocessing microbenchmarks')
     files = glob.glob(f'{builds_dir}/*/microbenchmark-*.csv')
-    df = pd.concat(map(pd.read_csv, files))
-    df['device'] = f'{system.id}'
-    df.to_csv(f'{output_dir}/microbenchmark-{system.id}.csv', index=False)
+    if files:
+        df = pd.concat(map(pd.read_csv, files))
+        df['device'] = f'{system.id}'
+        df.to_csv(f'{output_dir}/microbenchmark-{system.id}.csv', index=False)
+
+    # Linear stencil code benchmarks
+    print('Postprocessing linear stencil code benchmarks')
+    files = glob.glob(f'{builds_dir}/*/heat-equation-*.csv')
+    if files:
+        df = pd.concat(map(pd.read_csv, files))
+        df['device'] = f'{system.id}'
+        df.to_csv(f'{output_dir}/heat-equation-{system.id}.csv', index=False)
 
     # Device benchmarks
     print('Postprocessing device benchmarks')
     files = glob.glob(f'{builds_dir}/*/benchmark-device-*.csv')
-    df = pd.concat(map(pd.read_csv, files))
-    df['device'] = f'{system.id}'
-    df.to_csv(f'{output_dir}/benchmark-device-{system.id}.csv', index=False)
+    if files:
+        df = pd.concat(map(pd.read_csv, files))
+        df['device'] = f'{system.id}'
+        df.to_csv(f'{output_dir}/benchmark-device-{system.id}.csv', index=False)
 
 if 0:
     # Postprocess
