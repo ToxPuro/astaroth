@@ -842,7 +842,7 @@ gen_kernel_body(const int curr_kernel)
     const size_t block_depth      = ACC_BLOCK_DEPTH;
     assert(num_blocks_per_field * block_depth == workingset_depth);
 
-    const size_t num_pingpong_buffers = 2;
+    const size_t num_pingpong_buffers = ACC_NUM_PINGPONG_BUFFERS;
     const size_t num_blocks           = NUM_FIELDS * num_blocks_per_field;
     assert(num_blocks >= num_pingpong_buffers);
 

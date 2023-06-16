@@ -565,8 +565,8 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "#define STENCIL_HEIGHT (STENCIL_ORDER+1)\n");
   fprintf(fp, "#define STENCIL_WIDTH (STENCIL_ORDER+1)\n");
 
-  fprintf(fp, "#define ACC_ELEMS_PER_THREAD ((size_t)4)\n");
-  fprintf(fp, "#define ACC_BLOCKS_PER_FIELD ((size_t)2)\n");
+  fprintf(fp, "#define ACC_ELEMS_PER_THREAD ((size_t)1)\n");
+  fprintf(fp, "#define ACC_BLOCKS_PER_FIELD ((size_t)1)\n");
   fprintf(fp, "#define ACC_NUM_PINGPONG_BUFFERS ((size_t)2)\n");
 
   fprintf(fp, "#define ACC_WORKINGSET_DEPTH (ACC_ELEMS_PER_THREAD + "
