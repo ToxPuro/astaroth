@@ -108,8 +108,9 @@ get_smem(const Volume tpb, const size_t stencil_order,
            bytes_per_elem;
   }
   case EXPLICIT_CACHING_3D_BLOCKING: {
+    const size_t sw = 2; // pingpong buffers
     return (tpb.x + stencil_order) * (tpb.y + stencil_order) *
-           (tpb.z + stencil_order) * bytes_per_elem;
+           (tpb.z + stencil_order) * sw * bytes_per_elem;
   }
   case EXPLICIT_CACHING_4D_BLOCKING: {
     return (tpb.x + stencil_order) * (tpb.y + stencil_order) * tpb.z *
