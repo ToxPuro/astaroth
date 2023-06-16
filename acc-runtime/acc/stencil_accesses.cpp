@@ -64,6 +64,13 @@ IDX(const int3 idx)
   return 0;
 }
 
+int
+LOCAL_COMPDOMAIN_IDX(const int3 coord)
+{
+  (void)coord; // Unused
+  return 0;
+}
+
 #include "math_utils.h"
 
 #include "acc_runtime.h"

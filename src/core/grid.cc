@@ -334,8 +334,7 @@ acGridInit(const AcMeshInfo info)
     // const auto global_m      = submesh_info.int3_params[AC_global_grid_n] + 2 * rr;
     // const auto global_offset = submesh_info.int3_params[AC_multigpu_offset];
     // acRandInit(1234UL, to_volume(local_m), to_volume(global_m), to_volume(global_offset));
-    const Volume local_m = to_volume(acConstructInt3Param(AC_mx, AC_my, AC_mz, submesh_info));
-    const size_t count   = local_m.x * local_m.y * local_m.z;
+    const size_t count = acVertexBufferCompdomainSize(info);
     acRandInitAlt(1234UL, count, pid);
 
     grid.initialized   = true;

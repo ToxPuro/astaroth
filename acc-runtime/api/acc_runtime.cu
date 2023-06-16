@@ -164,6 +164,12 @@ DCONST(const AcReal3Param param)
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
   ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mxy))
 
+__device__ int
+LOCAL_COMPDOMAIN_IDX(const int3 coord)
+{
+  return (coord.x) + (coord.y) * DCONST(AC_nx) + (coord.z) * DCONST(AC_nxy);
+}
+
 __device__ constexpr int
 IDX(const int i)
 {
