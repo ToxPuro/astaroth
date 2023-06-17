@@ -1,4 +1,6 @@
-import .AstarothTools
+include("AstarothTools.jl")
+
+using .AstarothTools
 
 AstarothTools.ReadACData()
 
