@@ -25,6 +25,28 @@ function ReadACData()
     println("Reading snapshot data data...")
  
     # /tiara/ara/data/mvaisala/202304_haatouken/astaroth/config/samples/haatouken/output-snapshots/
+    dirpath = "/tiara/ara/data/mvaisala/202304_haatouken/astaroth/config/samples/haatouken/output-snapshots/"
+    directory = readdir(dirpath)
+
+    println(directory)
+    println(directory[1])
+
+    binfile = dirpath * directory[1]
+    println(binfile)
+    xdim = 128 
+    ydim = 128
+    zdim = 256
+    filesize = xdim*ydim*zdim
+    binary_data = Array{Float64}(undef, filesize, 1);
+    #binary_data = read(binfile, Float64)
+    read!(binfile, binary_data)
+
+    println(size(binary_data))
+    println(filesize)
+    #println(binary_data)
+    println(typeof(binary_data))
+    binary_data = reshape(binary_data, (xdim, ydim, zdim))
+    println(size(binary_data))
 
     return 0 
 end
