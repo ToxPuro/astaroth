@@ -28,6 +28,43 @@ function ReadACData()
     dirpath = "/tiara/ara/data/mvaisala/202304_haatouken/astaroth/config/samples/haatouken/output-snapshots/"
     directory = readdir(dirpath)
 
+    mesh_info = Dict("variable name" => "variable_value")
+
+    mesh_info_int  = Dict("variable name" => 1)
+    mesh_info_real = Dict("variable name" => 1.0)
+
+    open(dirpath*"../mesh_info.list") do fobj
+        for line in eachline(fobj)
+            #println(line)
+            line_content = split(line)
+            #println(line_content)
+            type = line_content[1]
+            varname = line_content[2]
+            varvalue = line_content[3]
+            println(type, " ", varname, " ", varvalue)
+            if type == "real"
+                println(parse(Float64, varvalue))
+                varnumber = parse(Float64, varvalue)
+                mesh_info_real[varname] = varnumber
+            elseif type == "int"
+                varnumber = parse(Int, varvalue)
+                mesh_info_int[varname] = varnumber
+            elseif type == "int3" #TODO FIGURE THIS OUT 
+                varnumber = parse(Float64, varvalue)
+                mesh_info_int[varname] = varnumber
+            elseif type == "size_t"
+                varnumber = parse(Float64, varvalue)
+                mesh_info_int[varname] = varnumber
+            else
+                mesh_info_str[varname] = varvalue
+            end
+        end
+    end
+
+    println(mesh_info)
+    println(mesh_info_int)
+    println(mesh_info_real)
+
     println(directory)
     println(directory[1])
 
