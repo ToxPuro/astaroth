@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(description='A tool for generating benchmarks')
 parser.add_argument('--dims', type=int, nargs=3, default=[4096, 4096, 1], help='Dimensions of the computational domain')
 parser.add_argument('--device', type=str, default='gpu', choices=['cpu', 'gpu'], help='The device used for the benchmarks')
 parser.add_argument('--radius', type=int, default=1, help='Sets the stencil radius')
-parser.add_argument('--dtype', default=np.float64, choices=[np.float32, np.float64], help='The precision used for the benchmarks')
+parser.add_argument('--dtype', default='fp64', choices=['fp32', 'fp64'], help='The precision used for the benchmarks')
 parser.add_argument('--library', required=True, choices=['pytorch', 'tensorflow', 'jax'], help='The underlying library used for benchmarking')
 parser.add_argument('--verify', default=True, help='Verify results with the model solution')
 
@@ -18,6 +18,11 @@ if jupyter:
     args = parser.parse_args(['--library', 'tensorflow'])
 else:
     args = parser.parse_args()
+
+if args.dtype in 'fp64':
+    args.dtype = np.float64
+else:
+    args.dtype = np.float32
 
 # %%
 # Model
