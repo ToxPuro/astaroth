@@ -865,6 +865,10 @@ gen_kernel_body(const int curr_kernel)
            ept);
     printf("const int tpb = blockDim.x * blockDim.y * blockDim.z;");
 
+    printf(
+        "AcReal "
+        "processed_stencils[ACC_ELEMS_PER_THREAD][NUM_FIELDS][NUM_STENCILS];");
+
     int stencil_initialized[ept][NUM_FIELDS][NUM_STENCILS] = {0};
     for (size_t block = 0; block < num_blocks; ++block) {
 
@@ -897,8 +901,8 @@ gen_kernel_body(const int curr_kernel)
         printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)];");
         printf("}");
         printf("}");
-        printf("__syncthreads();");
       }
+      printf("__syncthreads();");
 
       printf("for (int k = %zu; k < %zu; ++k) {", //
              subblock_next * block_depth, (subblock_next + 1) * block_depth);
@@ -937,8 +941,8 @@ gen_kernel_body(const int curr_kernel)
                   continue;
 
                 if (!stencil_initialized[element][field_curr][stencil]) {
-                  printf("auto e%zu_f%zu_s%zu = ", element, field_curr,
-                         stencil);
+                  printf("processed_stencils[%zu][%zu][%zu] = ", element,
+                         field_curr, stencil);
 
                   printf("stencils[%zu][%zu][%zu][%zu] * ", //
                          stencil, depth, height, width);
@@ -951,9 +955,11 @@ gen_kernel_body(const int curr_kernel)
                   stencil_initialized[element][field_curr][stencil] = 1;
                 }
                 else {
-                  printf("e%zu_f%zu_s%zu = ", element, field_curr, stencil);
-                  printf("%s(e%zu_f%zu_s%zu, ", stencil_binary_ops[stencil],
-                         element, field_curr, stencil);
+                  printf("processed_stencils[%zu][%zu][%zu] = ", element,
+                         field_curr, stencil);
+                  printf("%s(processed_stencils[%zu][%zu][%zu], ",
+                         stencil_binary_ops[stencil], element, field_curr,
+                         stencil);
                   printf("stencils[%zu][%zu][%zu][%zu] * ", //
                          stencil, depth, height, width);
                   printf("%s(", stencil_unary_ops[stencil]);
@@ -969,51 +975,15 @@ gen_kernel_body(const int curr_kernel)
           }
         }
       }
-      printf("__syncthreads();");
     }
 
-    gen_return_if_oob();
+    printf("for (int elem = 0; elem < ACC_ELEMS_PER_THREAD; ++elem){");
 
-    printf("const auto get_elem = [&](const int elem, const int field, const "
-           "int stencil) { return (AcReal)0.0; };");
-
-    // printf("const auto get_elem = [&](const int elem, const int field, const
-    // "
-    //        "int stencil) {");
-    // printf("switch (elem) {"); // elem
-    // for (size_t elem = 0; elem < ept; ++elem) {
-    //   printf("case %zu: {", elem);
-
-    //   printf("switch (field) {"); // field
-    //   for (size_t field = 0; field < NUM_FIELDS; ++field) {
-    //     printf("case %zu: {", field);
-
-    //     printf("switch (stencil) {"); // stencil
-    //     for (size_t stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-    //       printf("case %zu: {", stencil);
-    //       printf("return e%zu_f%zu_s%zu;", elem, field, stencil);
-    //       printf("}");
-    //     }
-    //     printf("default: return (AcReal)NAN;");
-    //     printf("}"); // stencil
-
-    //     printf("}");
-    //   }
-    //   printf("default: return (AcReal)NAN;");
-    //   printf("}"); // field
-
-    //   printf("}");
-    // }
-    // printf("default: return (AcReal)NAN;");
-    // printf("}"); // elem
-
-    // printf("};");
-
-    printf("for (int elem=0; elem < %zu; ++elem){", ept);
     printf("vertexIdx = (int3){"
            "threadIdx.x + blockIdx.x * blockDim.x + start.x,"
            "threadIdx.y + blockIdx.y * blockDim.y + start.y,"
-           "threadIdx.z + blockIdx.z * blockDim.z + start.z + elem,"
+           "threadIdx.z + ACC_ELEMS_PER_THREAD * blockIdx.z * blockDim.z + "
+           "start.z + elem,"
            "};");
     printf("globalVertexIdx = (int3){"
            "d_multigpu_offset.x + vertexIdx.x,"
@@ -1021,15 +991,23 @@ gen_kernel_body(const int curr_kernel)
            "d_multigpu_offset.z + vertexIdx.z,"
            "};");
     printf("idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
-    for (size_t stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-      for (size_t field = 0; field < NUM_FIELDS; ++field) {
+
+    gen_return_if_oob();
+
+    for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+      printf("const auto %s __attribute__((unused)) = [&](const auto field){",
+             stencil_names[stencil]);
+      printf("switch (field) {");
+      for (int field = 0; field < NUM_FIELDS; ++field) {
         if (stencils_accessed[curr_kernel][field][stencil])
-          printf("const auto f%zu_s%zu = get_elem(elem, %zu, %zu);", field,
-                 stencil, field, stencil);
+          printf("case %d: return processed_stencils[elem][%d][%d];", field,
+                 field, stencil);
       }
+      printf("default: return (AcReal)NAN;");
+      printf("}");
+      printf("};");
     }
 
-    gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function();
 
     return;
