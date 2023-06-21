@@ -178,7 +178,7 @@ if args.library in 'pytorch':
 
         def get_input(self):
             input, weights = get_input()
-            input = torch.tensor(input, dtype=self.dtype, device=self.device).unsqueeze(0).unsqueeze(0)
+            input = torch.tensor(input, dtype=self.dtype, device=self.device).unsqueeze(0).unsqueeze(0) #.to(memory_format=torch.channels_last)
             weights = torch.tensor(weights, dtype=self.dtype, device=self.device).unsqueeze(0).unsqueeze(0)
             return input, weights
 
