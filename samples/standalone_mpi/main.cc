@@ -140,7 +140,11 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
         modstep = (step / info.int_params[AC_bin_steps]) % num_snapshots;
     } else {
         // NOTE: assumes that AC_bin_save_t will not be changed during the simulation run. 
-        modstep = int(round(simulation_time/info.int_params[AC_bin_save_t]));
+        modstep = int(round(simulation_time/info.real_params[AC_bin_save_t]));
+        //log_from_root_proc_with_sim_progress(pid, 
+        //                                     "save_mesh_mpi_async: simulation_time = %e, AC_bin_save_t = %e \n", 
+        //                                     simulation_time, info.real_params[AC_bin_save_t]);
+
     }
     log_from_root_proc_with_sim_progress(pid,
                                          "save_mesh_mpi_async: Writing snapshot to %s, timestep %d "
