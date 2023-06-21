@@ -3,15 +3,20 @@
 import argparse
 import numpy as np
 import time
+import pandas as pd
 
 # %%
 parser = argparse.ArgumentParser(description='A tool for generating benchmarks')
-parser.add_argument('--dims', type=int, nargs=3, default=[4096, 4096, 1], help='Dimensions of the computational domain')
+parser.add_argument('--dims', type=int, nargs=3, default=[1024, 1024, 1], help='Dimensions of the computational domain')
 parser.add_argument('--device', type=str, default='gpu', choices=['cpu', 'gpu'], help='The device used for the benchmarks')
 parser.add_argument('--radius', type=int, default=1, help='Sets the stencil radius')
 parser.add_argument('--dtype', default='fp64', choices=['fp32', 'fp64'], help='The precision used for the benchmarks')
 parser.add_argument('--library', required=True, choices=['pytorch', 'tensorflow', 'jax'], help='The underlying library used for benchmarking')
 parser.add_argument('--verify', default=True, help='Verify results with the model solution')
+parser.add_argument('--jobid', type=int, default=0, help='Set the job id')
+#parser.add_argument('--seed', type=int, default=12345, help='Set seed for the random number generator')
+parser.add_argument('--salt', type=int, default=12345, help='Set salt for the random number generator')
+parser.add_argument('--nsamples', type=int, default=100, help='The number of samples to benchmark')
 
 jupyter=False
 if jupyter:
@@ -23,6 +28,9 @@ if args.dtype in 'fp64':
     args.dtype = np.float64
 else:
     args.dtype = np.float32
+
+# Global variables
+seed = int(args.salt + time.time() + args.jobid * time.time()) % (2**32-1)
 
 # %%
 # Model
@@ -39,7 +47,7 @@ def get_input():
     dx, dy, dz = box_size / np.array(args.dims)
     dt = 1e-3 * min(dx, min(dy, dz))
 
-    np.random.seed(12345)
+    np.random.seed(seed)
     r = args.radius
     l = 2*r + 1
     if r == 0:
@@ -115,6 +123,34 @@ class Debug:
         return str(self.__class__) + ": " + str(self.__dict__)
 
 # %%
+# Benchmark output
+class Output:
+    def __init__(self):
+        self.df = pd.DataFrame(columns=['kernel', 
+                                        'implementation', 
+                                        'maxthreadsperblock', 
+                                        'nx', 'ny', 'nz', 'radius', 
+                                        'milliseconds', 
+                                        'tpbx', 'tpby', 'tpbz', 
+                                        'jobid', 'seed', 'iteration'])        
+
+    def record(self, milliseconds, iteration):
+        row = {'kernel' : 'convolve', 
+                'implementation' : args.library,
+                'nx' : args.dims[0], 
+                'ny' : args.dims[1], 
+                'nz' : args.dims[2], 
+                'radius' : args.radius, 
+                'milliseconds' : milliseconds, 
+                'jobid' : args.jobid,
+                'seed' : seed,
+                'iteration' : iteration}
+        self.df.loc[len(self.df.index)] = row
+
+    def __del__(self):
+        self.df.to_csv(f'heat-equation-{args.jobid}-{seed}.csv', index=False)
+
+# %%
 # Libraries
 lib = None
 if args.library in 'pytorch':
@@ -161,9 +197,11 @@ if args.library in 'pytorch':
                 return torch.nn.functional.conv1d(input, weights)
 
 
-        def benchmark(self, niters):
+        def benchmark(self, num_samples):
+            output = Output()
+
             input, weights = self.get_input()
-            for i in range(niters):
+            for i in range(num_samples):
                 input = self.pad(input)
 
                 if self.device == 'cuda':
@@ -179,7 +217,30 @@ if args.library in 'pytorch':
                     milliseconds = start.elapsed_time(end)
                 else:
                     milliseconds = 1e3 * (time.time() - start)
-                if i == niters-1:
+
+                output.record(milliseconds, i)
+                if i == num_samples-1:
+                    print(f'{milliseconds} ms')
+
+        def benchmark_better(self, num_samples):
+            input, weights = self.get_input()
+            for i in range(num_samples):
+                input = self.pad(input)
+
+                if self.device == 'cuda':
+                    start = torch.cuda.Event(enable_timing=True)
+                    end = torch.cuda.Event(enable_timing=True)
+                    start.record()
+                else:
+                    start = time.time()
+                input = self.convolve(input, weights)
+                if self.device == 'cuda':
+                    end.record()
+                    torch.cuda.synchronize()
+                    milliseconds = start.elapsed_time(end)
+                else:
+                    milliseconds = 1e3 * (time.time() - start)
+                if i == num_samples-1:
                     print(f'{milliseconds} ms')
 
     lib = Pytorch(args.device, args.dtype)
@@ -189,6 +250,7 @@ elif args.library in 'tensorflow':
         def __init__(self, device, dtype):
             print(tf.sysconfig.get_build_info())
             devices = tf.config.list_physical_devices('GPU')
+            #tf.config.set_visible_devices(devices[0], 'GPU') # Limit to one GPU
             print(devices)
 
             if device in 'gpu':
@@ -218,15 +280,19 @@ elif args.library in 'tensorflow':
         def convolve(self, input, weights):
             return tf.nn.convolution(input, weights)
 
-        def benchmark(self, niters):
+        def benchmark(self, num_samples):
+            output = Output()
+
             input, weights = self.get_input()
-            for i in range(niters):
+            for i in range(num_samples):
                 input = self.pad(input)
 
                 start = time.time()
                 input = self.convolve(input, weights)
                 milliseconds = 1e3 * (time.time() - start)
-                if i == niters-1:
+
+                output.record(milliseconds, i)
+                if i == num_samples-1:
                     print(f'{milliseconds} ms')
 
     lib = Tensorflow(args.device, args.dtype)
@@ -257,15 +323,19 @@ elif args.library in 'jax':
         def convolve(self, input, weights):
             return jax.scipy.signal.convolve(input, weights, mode='valid', method='direct')
         
-        def benchmark(self, niters):
+        def benchmark(self, num_samples):
+            output = Output()
+
             input, weights = self.get_input()
-            for i in range(niters):
+            for i in range(num_samples):
                 input = self.pad(input)
 
                 start = time.time()
                 input = self.convolve(input, weights)
                 milliseconds = 1e3 * (time.time() - start)
-                if i == niters-1:
+
+                output.record(milliseconds, i)
+                if i == num_samples-1:
                     print(f'{milliseconds} ms')
 
     lib = Jax(args.device, args.dtype)
@@ -294,4 +364,4 @@ if args.verify:
 # %%
 # Benchmark
 print('Benchmarking')
-lib.benchmark(100)
+lib.benchmark(args.nsamples)
