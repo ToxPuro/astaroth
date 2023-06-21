@@ -12,7 +12,7 @@ parser.add_argument('--device', type=str, default='gpu', choices=['cpu', 'gpu'],
 parser.add_argument('--radius', type=int, default=1, help='Sets the stencil radius')
 parser.add_argument('--dtype', default='fp64', choices=['fp32', 'fp64'], help='The precision used for the benchmarks')
 parser.add_argument('--library', required=True, choices=['pytorch', 'tensorflow', 'jax'], help='The underlying library used for benchmarking')
-parser.add_argument('--verify', default=True, help='Verify results with the model solution')
+parser.add_argument('--verify', default=1, help='Verify results with the model solution')
 parser.add_argument('--jobid', type=int, default=0, help='Set the job id')
 #parser.add_argument('--seed', type=int, default=12345, help='Set seed for the random number generator')
 parser.add_argument('--salt', type=int, default=12345, help='Set salt for the random number generator')
