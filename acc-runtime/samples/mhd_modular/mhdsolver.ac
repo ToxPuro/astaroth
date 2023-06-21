@@ -51,6 +51,10 @@ real AC_bin_save_t
 int AC_slice_steps
 real AC_slice_save_t
 
+// maximun number of time snapshots during runtime 
+// Set AC_num_snapshots < 0 for unlimited snapshots
+int AC_num_snapshots
+
 // max simulation time
 int AC_max_steps
 real AC_max_time
