@@ -384,7 +384,7 @@ if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
                 syscall(f'mkdir -p {build_dir}')
 
                 # Generate Makefile
-                flags = f'''-DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
+                flags = f'''-DMPI_ENABLED=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
                 
                 cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
                 syscall_async(cmd)
@@ -422,10 +422,10 @@ if 'preprocess' in args.task_type or 'genscripts' in args.task_type:
         gen_convolutionbenchmarks(system)
         gen_devicebenchmarks(system, nx, ny, nz)
 
-        # gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices)
-        # gen_strongscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
-        # gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
-        # gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_strongscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices)
 
     # Outputs
     syscall(f'mkdir -p {output_dir}') # temporarily here
@@ -493,7 +493,7 @@ if 'postprocess' in args.task_type:
         df['device'] = f'{system.id}'
         df.to_csv(f'{output_dir}/benchmark-device-{system.id}.csv', index=False)
 
-if 0:
+if 1:
     # Postprocess
     if 'postprocess' in args.task_type:
         import pandas as pd
@@ -501,6 +501,8 @@ if 0:
         # Outputs
         syscall(f'mkdir -p {output_dir}')
 
+        # Deprecated
+        '''
         # Microbenchmarks
         outfile = f'{output_dir}/microbenchmark-{system.id}.csv'
         with open(outfile, 'w') as f:
@@ -576,6 +578,7 @@ if 0:
         df = df.sort_values(by=['maxthreadsperblock'])
         df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
         df.to_csv(f'{output_dir}/explicit-{system.id}.csv', index=False)
+        '''
 
         # Node
         outfile = f'{output_dir}/node-benchmark-{system.id}.csv'
