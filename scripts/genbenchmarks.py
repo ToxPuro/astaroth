@@ -169,15 +169,15 @@ lumi = System(id='mi250x', account='project_462000190', partition='small-g', ngp
 ''',
 #srun_params='--cpu-bind=map_cpu:48,56,16,24,1,8,32,40',
 srun_params='', # CPU binding disabled temporarily (the binding above needs a full node)
-modules='''
-        module purge
-        module load CrayEnv
-        module load PrgEnv-cray
-        module load rocm
-        module load cray-python
-        export MPICH_GPU_SUPPORT_ENABLED=1
-        export FI_CXI_DEFAULT_CQ_SIZE=300000
-        ''', use_hip=True, optimal_implementation=1, optimal_tpb=512)
+modules='''module purge
+module load CrayEnv
+module load PrgEnv-amd
+module load craype-accel-amd-gfx90a
+module load rocm
+module load cray-python
+
+export MPICH_GPU_SUPPORT_ENABLED=1
+export FI_CXI_DEFAULT_CQ_SIZE=300000''', use_hip=True, optimal_implementation=1, optimal_tpb=512)
 
 # Select system
 hostname = socket.gethostname()
