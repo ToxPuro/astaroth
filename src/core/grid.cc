@@ -2060,6 +2060,7 @@ acGridDiskAccessSync(void)
     return AC_SUCCESS;
 }
 
+/*
 AcResult
 acGridDiskAccessLaunch(const AccessType type)
 {
@@ -2188,6 +2189,7 @@ acGridDiskAccessLaunch(const AccessType type)
 
     return AC_SUCCESS;
 }
+*/
 
 AcResult
 acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
@@ -2265,7 +2267,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 #endif
 #undef USE_POSIX_IO
 #else
-            ERROR("Collective mesh writing not working with async IO");
+            WARNING("Collective mesh writing not working with async IO");
             MPI_Datatype subarray;
             const int3 nn          = info.int3_params[AC_global_grid_n];
             const int3 nn_sub      = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
@@ -2833,7 +2835,8 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     fclose(fp);
 #else // Collective IO
     MPI_Datatype subarray;
-    const int arr_nn[]     = {nn.z, nn.y, nn.x};
+    const int3 nn      = info.int3_params[AC_global_grid_n]; // TODO recheck whether this is correct
+    const int arr_nn[] = {nn.z, nn.y, nn.x};
     const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
     const int arr_offset[] = {offset.z, offset.y, offset.x};
 
