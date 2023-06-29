@@ -668,8 +668,8 @@ if 1:
         outfile = f'{output_dir}/scaling-io-benchmark-{system.id}.csv'
         with open(outfile, 'w') as f:
             with redirect_stdout(f):
-                print(f'devices,writemilliseconds,writebandwidth,readmilliseconds,readbandwidth,usedistributedio,nx,ny,nz')
-        syscall(f'cat {builds_dir}/*/scaling-io-benchmark.csv >> {outfile}')
+                print(f'pid,devices,writemilliseconds,writebandwidth,readmilliseconds,readbandwidth,usedistributedio,nx,ny,nz')
+        syscall(f'cat {builds_dir}/*/scaling-io-benchmark-*.csv >> {outfile}')
 
         # Collective
         df = pd.read_csv(outfile, comment='#')
