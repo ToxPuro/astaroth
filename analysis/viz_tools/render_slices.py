@@ -4,7 +4,6 @@ import math
 import pathlib
 import re
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 parser = argparse.ArgumentParser(description='A tool for rendering slices from binary files')
@@ -44,6 +43,7 @@ binary_dir = output_dir/'binary'
 output_dir.mkdir(parents=True, exist_ok=True)
 if args.write_png:
     render_dir.mkdir(parents=True, exist_ok=True)
+    import matplotlib.pyplot as plt
 if args.write_bin:
     binary_dir.mkdir(parents=True, exist_ok=True)
 
