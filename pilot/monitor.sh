@@ -7,7 +7,7 @@
 #SBATCH -n 8
 #SBATCH --exclusive
 #SBATCH --time=00:10:00
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=2 # Note 2 cores here. One core should be able to postprocess while another core does the simulation
 
 module purge
 module load gcc cuda openmpi/4.1.4-cuda cmake python-data
@@ -27,8 +27,10 @@ if [[ $SLURM_PROCID -eq 0 ]]; then
         if sacct -j $SLURM_JOB_ID.0 -o "State" --noheader | grep -e RUNNING -e PENDING &> /dev/null; then
             num_dirs=$(find output-slices/* -type d | wc -l)
             while [[ $num_dirs -gt 1 ]]; do
-                # Find the oldest directory
+                # Find the oldest directory by name
                 dir=$(find output-slices/* -type d -printf '%p\n' | sort | head -n 1)
+                # Alternative: by timestamp
+                # dir=$(find output-slices/* -type d -printf '%T@ %p\n' | sort -n | head -n 1 | cut -d ' ' -f 2)
                 $ASTAROTH/analysis/viz_tools/render_slices.py --input ${dir}/* --termcolor off --write-bin --no-write-png
                 rm -rf ${dir}
                 num_dirs=$(find output-slices/* -type d | wc -l)
