@@ -319,7 +319,7 @@ elif args.library in 'jax':
         def pad(self, input):
             return jax.numpy.pad(input, args.radius, mode='constant')
 
-        #@jit
+        #@jax.jit
         def convolve(self, input, weights):
             return jax.scipy.signal.convolve(input, weights, mode='valid', method='direct')
         
@@ -327,15 +327,16 @@ elif args.library in 'jax':
             output = Output()
 
             input, weights = self.get_input()
+            convolve_jit = jax.jit(self.convolve)
             for i in range(num_samples):
                 input = self.pad(input)
 
                 start = time.time()
-                input = self.convolve(input, weights)
+                input = convolve_jit(input, weights).block_until_ready()
                 milliseconds = 1e3 * (time.time() - start)
 
                 output.record(milliseconds, i)
-                if i == num_samples-1:
+                if i == num_samples-10:
                     print(f'{milliseconds} ms')
 
     lib = Jax(args.device, args.dtype)
@@ -350,7 +351,10 @@ if args.verify:
     input, weights = get_input()
     model = convolve(input, weights)
     input, weights = lib.get_input()
-    candidate = lib.convolve(lib.pad(input), weights).cpu().numpy().squeeze()
+    if args.library == 'jax':
+        candidate = lib.convolve(lib.pad(input), weights).squeeze()
+    else:
+        candidate = lib.convolve(lib.pad(input), weights).cpu().numpy().squeeze()
     epsilon = np.finfo(np.float64).eps if args.dtype == np.float64 else np.finfo(np.float32).eps
     epsilon *= 5
     correct = np.allclose(model, candidate, rtol=epsilon, atol=epsilon) 
