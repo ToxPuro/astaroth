@@ -277,7 +277,7 @@ def gen_convolutionbenchmarks(system):
             ## Header
             system.print_sbatch_header(ntasks=1)
 
-            libraries = ['pytorch', 'tensorflow']
+            libraries = ['pytorch', 'tensorflow', 'jax']
             import numpy as np
             ## Script body
             problem_size = 256**3
@@ -306,6 +306,24 @@ def gen_devicebenchmarks(system, nx, ny, nz):
         with redirect_stdout(f):
             system.print_sbatch_header(1)
             print(f'srun {system.srun_params} ./benchmark-device {nx} {ny} {nz} $SLURM_JOB_ID {args.num_samples} {args.verify}')
+
+    with open(f'{scripts_dir}/nonlinear-mhd-benchmark-python.sh', 'w') as f:
+        with redirect_stdout(f):
+            # Create the batch script
+            ## Header
+            system.print_sbatch_header(ntasks=1)
+
+            libraries = ['pytorch', 'tensorflow']
+            import numpy as np
+            ## Script body
+            problem_size = 128**3 # Need to drop the dim, 256**3 uses too much additional memory with Pytorch
+            for library in libraries:
+                print(f'module load {library}')
+                for radius in range(3, 3+1):
+                    # 3D
+                    nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
+                    assert(nn[0] * nn[1] * nn[2] == problem_size)
+                    print(f'{args.cmakelistdir}/samples/benchmark-device/mhd.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library}')
 
 # Intra-node benchmarks
 def gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices):
@@ -492,6 +510,14 @@ if 'postprocess' in args.task_type:
         df = pd.concat(map(pd.read_csv, files))
         df['device'] = f'{system.id}'
         df.to_csv(f'{output_dir}/benchmark-device-{system.id}.csv', index=False)
+
+    # Non-linear stencil code benchmarks
+    print('Postprocessing linear stencil code benchmarks')
+    files = glob.glob(f'{builds_dir}/*/nonlinear-mhd-*.csv')
+    if files:
+        df = pd.concat(map(pd.read_csv, files))
+        df['device'] = f'{system.id}'
+        df.to_csv(f'{output_dir}/nonlinear-mhd-{system.id}.csv', index=False)
 
 if 1:
     # Postprocess
