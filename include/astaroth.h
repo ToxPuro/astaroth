@@ -90,7 +90,6 @@ typedef int Stream;
     FUNC(BOUNDCOND_CONST)                                                                          \
     FUNC(BOUNDCOND_PRESCRIBED_DERIVATIVE)
 
-
 #ifdef AC_INTEGRATION_ENABLED
 
 #define AC_FOR_SPECIAL_MHD_BCTYPES(FUNC)                                                           \
@@ -219,6 +218,7 @@ acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
 typedef struct {
     int3 n0, n1;
     int3 m0, m1;
+    int3 nn;
 } AcMeshDims;
 
 static inline AcMeshDims
@@ -240,14 +240,24 @@ acGetMeshDims(const AcMeshInfo info)
         info.int_params[AC_my],
         info.int_params[AC_mz],
     };
+    const int3 nn = (int3){
+        info.int_params[AC_nx],
+        info.int_params[AC_ny],
+        info.int_params[AC_nz],
+    };
 
     return (AcMeshDims){
         .n0 = n0,
         .n1 = n1,
         .m0 = m0,
         .m1 = m1,
+        .nn = nn,
     };
 }
+
+size_t acGetKernelId(const Kernel kernel);
+
+size_t acGetKernelIdByName(const char* name);
 
 AcMeshInfo acGridDecomposeMeshInfo(const AcMeshInfo global_config);
 
@@ -942,6 +952,9 @@ AcResult acDeviceCreate(const int id, const AcMeshInfo device_config, Device* de
 /** */
 AcResult acDeviceDestroy(Device device);
 
+/** Resets the mesh to default values defined in acc_runtime.cu:acVBAReset */
+AcResult acDeviceResetMesh(const Device device, const Stream stream);
+
 /** */
 AcResult acDevicePrintInfo(const Device device);
 
@@ -1023,6 +1036,9 @@ AcResult acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh
 /** */
 AcResult acDeviceSetVertexBuffer(const Device device, const Stream stream,
                                  const VertexBufferHandle handle, const AcReal value);
+
+/** */
+AcResult acDeviceFlushOutputBuffers(const Device device, const Stream stream);
 
 /** */
 AcResult acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
@@ -1121,8 +1137,17 @@ AcResult acDeviceLaunchKernel(const Device device, const Stream stream, const Ke
                               const int3 start, const int3 end);
 
 /** */
+AcResult acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start,
+                                 const int3 end);
+
+/** */
 AcResult acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
                              const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+
+/** */
+AcResult
+acDeviceLoadStencils(const Device device, const Stream stream,
+                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
 
 /** */
 AcResult acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,

@@ -1,221 +1,176 @@
-#include <float.h> // FLT_EPSILON
+#include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "astaroth.h"
 #include "astaroth_utils.h"
 
 #include "timer_hires.h"
 
-#define NSAMPLES (100)
-
-#define ERRCHK_AC(x) ERRCHK_ALWAYS((x) == AC_SUCCESS);
-
-static const bool verify = false;
-
-// TODO use common sort with benchmark, benchmark-device, benchmark-node, mpi-io
-void
-validate(const size_t count, const double* arr)
-{
-    for (size_t i = 1; i < count; ++i)
-        ERRCHK_ALWAYS(arr[i] >= arr[i - 1]);
-}
-
-// TODO use common sort with benchmark, benchmark-device, benchmark-node, mpi-io
-void
-sort(const size_t count, double* arr)
-{
-    for (size_t j = 0; j < count; ++j) {
-        for (size_t i = j + 1; i < count; ++i) {
-            if (arr[i] < arr[j]) {
-                const double tmp = arr[j];
-                arr[j]           = arr[i];
-                arr[i]           = tmp;
-            }
-        }
-    }
-}
-
+#ifdef AC_INTEGRATION_ENABLED
 int
 main(int argc, char** argv)
 {
     cudaProfilerStop();
 
-    printf("Num fields %lu\n", acGetNumFields());
-    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        size_t field;
-        ERRCHK_AC(acGetFieldHandle(field_names[i], &field));
-        printf("Searching field %s. Got %lu (%s)\n", field_names[i], field, field_names[field]);
-    }
-    size_t field;
-    ERRCHK_ALWAYS(acGetFieldHandle("nonexistent", &field) == AC_FAILURE);
+    fprintf(stderr, "Usage: ./benchmark-device <nx> <ny> <nz> <jobid> <num_samples> <verify>\n");
+    const size_t nx          = (argc > 1) ? (size_t)atol(argv[1]) : 256;
+    const size_t ny          = (argc > 2) ? (size_t)atol(argv[2]) : 256;
+    const size_t nz          = (argc > 3) ? (size_t)atol(argv[3]) : 256;
+    const size_t jobid       = (argc > 4) ? (size_t)atol(argv[4]) : 0;
+    const size_t num_samples = (argc > 5) ? (size_t)atol(argv[5]) : 100;
+    const size_t verify      = (argc > 6) ? (size_t)atol(argv[6]) : 0;
+    const size_t seed        = 12345 + time(NULL) + jobid * time(NULL);
 
+    printf("Input parameters:\n");
+    printf("\tnx: %zu\n", nx);
+    printf("\tny: %zu\n", ny);
+    printf("\tnz: %zu\n", nz);
+    printf("\tjobid: %zu\n", jobid);
+    printf("\tnum_samples: %zu\n", num_samples);
+    printf("\tverify: %zu\n", verify);
+    printf("\tseed: %zu\n", seed);
+
+    printf("IMPLEMENTATION=%d\n", IMPLEMENTATION);
+    printf("MAX_THREADS_PER_BLOCK=%d\n", MAX_THREADS_PER_BLOCK);
+    fflush(stdout);
+
+    // Mesh configuration
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    acSetMeshDims(nx, ny, nz, &info);
+    acPrintMeshInfo(info);
 
-    // Set mesh dimensions
-    if (argc != 4) {
-        fprintf(stderr, "Usage: ./benchmark-device <nx> <ny> <nz>\n");
-        return EXIT_FAILURE;
-    }
-    else {
-        info.int_params[AC_nx] = atoi(argv[1]);
-        info.int_params[AC_ny] = atoi(argv[2]);
-        info.int_params[AC_nz] = atoi(argv[3]);
-        acHostUpdateBuiltinParams(&info);
-    }
+    // Mesh dimensions
+    const AcMeshDims dims = acGetMeshDims(info);
 
-    // Alloc
+    // Simulation parameters
+    const AcReal dt = (AcReal)FLT_EPSILON;
+
+    // Host memory
     AcMesh model, candidate;
     acHostMeshCreate(info, &model);
     acHostMeshCreate(info, &candidate);
 
-    // Init
-    acHostMeshRandomize(&model);
-    acHostMeshRandomize(&candidate);
-    acHostMeshApplyPeriodicBounds(&model);
-
-    // Verify that the mesh was loaded and stored correctly
+    // Device memory
     Device device;
     acDeviceCreate(0, info, &device);
     acDevicePrintInfo(device);
-    acDeviceLoadMesh(device, STREAM_DEFAULT, model);
-    acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
-    acVerifyMesh("Load/Store", model, candidate);
 
-    // Verify that boundconds work correctly
-    const int3 m_min = (int3){0, 0, 0};
-    const int3 m_max = (int3){
-        info.int_params[AC_mx],
-        info.int_params[AC_my],
-        info.int_params[AC_mz],
-    };
-    const int3 n_min = (int3){STENCIL_ORDER / 2, STENCIL_ORDER / 2, STENCIL_ORDER / 2};
-    const int3 n_max = (int3){
-        n_min.x + info.int_params[AC_nx],
-        n_min.y + info.int_params[AC_ny],
-        n_min.z + info.int_params[AC_nz],
-    };
-    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-    acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
-    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
-    acHostMeshApplyPeriodicBounds(&model);
-    acVerifyMesh("Boundconds", model, candidate);
+    // Random numbers
+    const size_t pid   = 0;
+    const size_t count = acVertexBufferCompdomainSize(info);
+    acRandInitAlt(seed, count, pid);
+    srand(seed);
 
-    // Verify that integration works correctly
-    const AcReal dt = (AcReal)FLT_EPSILON;
-    // const bool alt_integration = false; // Uncomment to test one- and two-pass integration
-
-    // DRYRUN START
-    // Optimize for the more expensive substep (second and third)
-    acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, n_min, n_max, dt);
-    for (int i = 0; i < 3; ++i) {
-        acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, n_min, n_max, dt);
-        acDeviceSwapBuffers(device);
-        acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-    }
-    // TODO START
-    // create acDeviceReset or something like that
-    // to flush the buffers to non-nan values (otherwise two-pass fails here)
-    acDeviceLoadMesh(device, STREAM_DEFAULT, model);
-    acDeviceSwapBuffers(device);
-    // TODO END
-    acDeviceLoadMesh(device, STREAM_DEFAULT, model);
-    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-    ///////////////////////////// DRYRUN END
-
-    const size_t nsteps = 1;
-    for (size_t j = 0; j < nsteps; ++j) {
-        for (int i = 0; i < 3; ++i) {
-            acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, n_min, n_max, dt);
-            acDeviceSwapBuffers(device);
-            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-        }
-    }
-
+    // Verify
     if (verify) {
-        acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
+        // Dryrun and autotune
+        for (int i = 0; i < 3; ++i)
+            acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, dims.n0, dims.n1, dt);
+        acDeviceResetMesh(device, STREAM_DEFAULT);
 
-        for (size_t j = 0; j < nsteps; ++j) {
+        // Verify: load/store
+        acHostMeshRandomize(&model);
+        acHostMeshRandomize(&candidate);
+        acDeviceLoadMesh(device, STREAM_DEFAULT, model);
+        acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
+        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+        acVerifyMesh("Load/Store", model, candidate);
+
+        // Verify: boundconds
+        acHostMeshRandomize(&model);
+        acHostMeshRandomize(&candidate);
+        acDeviceLoadMesh(device, STREAM_DEFAULT, model);
+        acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+        acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
+        acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+        acHostMeshApplyPeriodicBounds(&model);
+        acVerifyMesh("Boundconds", model, candidate);
+
+        // Verify: integration
+        acHostMeshRandomize(&model);
+        acHostMeshRandomize(&candidate);
+        acDeviceLoadMesh(device, STREAM_DEFAULT, model);
+        acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+
+        const size_t num_verification_steps = 5;
+        for (size_t j = 0; j < num_verification_steps; ++j) {
+            for (int i = 0; i < 3; ++i) {
+                acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, dims.n0, dims.n1, dt);
+                acDeviceSwapBuffers(device);
+                acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+            }
             acHostIntegrateStep(model, dt);
             acHostMeshApplyPeriodicBounds(&model);
         }
-
+        acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
         acDeviceSynchronizeStream(device, STREAM_DEFAULT);
         acVerifyMesh("Integration", model, candidate);
     }
 
-    // Warmup
-    for (int j = 0; j < 10; ++j) {
-        for (int step = 0; step < 3; ++step) {
-            acDeviceIntegrateSubstep(device, STREAM_DEFAULT, step, n_min, n_max, dt);
-            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-        }
-    }
-    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+    // File
+    const size_t buflen = 4096;
+    char benchmark_dir[buflen];
+    snprintf(benchmark_dir, buflen, "benchmark-device-%zu-%zu.csv", jobid, seed);
+    FILE* fp = fopen(benchmark_dir, "w");
+    ERRCHK_ALWAYS(fp);
+
+    // File format
+    fprintf(fp, "implementation,maxthreadsperblock,nx,ny,nz,milliseconds,tpbx,tpby,tpbz,jobid,seed,"
+                "iteration\n");
+
+    // Benchmark configuration
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
+    acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, 2);
 
     // Benchmark
     Timer t;
-    // timer_reset(&t);
-    double results[NSAMPLES] = {0};
-#pragma unroll
-    for (int j = 0; j < NSAMPLES; ++j) {
-        // Substep
+    for (size_t j = 0; j < num_samples; ++j) {
+        // Dryrun and randomize
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
+        acDeviceResetMesh(device, STREAM_DEFAULT);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+        acDeviceSwapBuffers(device);
         acDeviceSynchronizeStream(device, STREAM_ALL);
+
+        // Benchmark
         timer_reset(&t);
-        acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, n_min, n_max, dt);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
+        // acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, dims.n0, dims.n1, dt);
         acDeviceSynchronizeStream(device, STREAM_ALL);
-        results[j] = timer_diff_nsec(t) / 1e6;
+        const double milliseconds = timer_diff_nsec(t) / 1e6;
 
-        // Full integration step
-        // for (int i = 0; i < 3; ++i) {
-        //    acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, n_min, n_max, dt);
-        //    acDeviceSwapBuffers(device);
-        //    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, m_min, m_max);
-        //}
+        const Volume tpb = acKernelLaunchGetLastTPB();
+        fprintf(fp, "%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu\n", IMPLEMENTATION,
+                MAX_THREADS_PER_BLOCK, nx, ny, nz, milliseconds, tpb.x, tpb.y, tpb.z, jobid, seed,
+                j);
+
+        if (j == num_samples - 1) {
+            fprintf(stdout, "implementation,maxthreadsperblock,nx,ny,nz,milliseconds,tpbx,tpby,"
+                            "tpbz,jobid,seed,"
+                            "iteration\n");
+            fprintf(stdout, "%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu\n", IMPLEMENTATION,
+                    MAX_THREADS_PER_BLOCK, nx, ny, nz, milliseconds, tpb.x, tpb.y, tpb.z, jobid,
+                    seed, j);
+            printf("Milliseconds per kernel launch: %g\n", milliseconds);
+            printf("Optimal tpb: (%zu, %zu, %zu)\n", tpb.x, tpb.y, tpb.z);
+        }
     }
-    sort(NSAMPLES, results);
-    validate(NSAMPLES, results);
-    const double min            = results[0];
-    const double median         = NSAMPLES % 2 ? results[NSAMPLES / 2]
-                                               : 0.5 * (results[NSAMPLES / 2 - 1] + results[NSAMPLES / 2]);
-    const double percentile90th = results[(size_t)ceil(0.9 * NSAMPLES)];
-    const double max            = results[NSAMPLES - 1];
 
-    printf("Integration times:\n");
-    printf("\tmin: %g\n", min);
-    printf("\tmedian: %g\n", median);
-    printf("\t90th percentile: %g\n",
-           percentile90th); // Conservative, takes the first precentile >= 90%
-    printf("\tmax: %g\n", max);
-
-    // for (size_t i = 0; i < NSAMPLES; ++i)
-    //     printf("%g\n", results[i]);
-    // acDeviceSynchronizeStream(device, STREAM_DEFAULT);
-    // const double ms_elapsed   = timer_diff_nsec(t) / 1e6;
-    // const double milliseconds = ms_elapsed / NSAMPLES;
-    // printf("Average integration time: %.4g ms\n", milliseconds);
-
-    // Write to file
-    const char* benchmark_dir = "device-benchmark.csv";
-    FILE* fp                  = fopen(benchmark_dir, "a");
-    ERRCHK_ALWAYS(fp);
-    // 'implementation,
-    // maxthreadsperblock,millisecondsmin,millisecondsmedian,milliseconds90thpercentile,millisecondsmax,
-    // nx, ny, nz, devices'
-    const int num_devices = 1;
-    fprintf(fp, "%d,%d,%g,%d,%d,%d,%d\n", IMPLEMENTATION, MAX_THREADS_PER_BLOCK, percentile90th,
-            info.int_params[AC_nx], info.int_params[AC_ny], info.int_params[AC_nz], num_devices);
+    // Free
     fclose(fp);
-
-    // Profile
-    cudaProfilerStart();
-    acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, n_min, n_max, dt);
-    cudaProfilerStop();
-
-    // Destroy
     acDeviceDestroy(device);
     acHostMeshDestroy(&model);
     acHostMeshDestroy(&candidate);
 
     return EXIT_SUCCESS;
 }
+#else
+int
+main(void)
+{
+    fprintf(stderr, "AC_INTEGRATION was not enabled, cannot run benchmark-device\n");
+    return EXIT_FAILURE;
+}
+#endif

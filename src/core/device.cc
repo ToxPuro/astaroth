@@ -447,6 +447,19 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
 }
 
 AcResult
+acDeviceFlushOutputBuffers(const Device device, const Stream stream)
+{
+    cudaSetDevice(device->id);
+    const size_t count = acVertexBufferSize(device->local_config);
+
+    int retval = 0;
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+        retval |= acKernelFlush(device->streams[stream], device->vba.out[i], count, (AcReal)0.0);
+
+    return (AcResult)retval;
+}
+
+AcResult
 acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
                                     const VertexBufferHandle vtxbuf_handle, const int3 src,
                                     const int3 dst, const int num_vertices, AcMesh* host_mesh)
@@ -565,11 +578,28 @@ acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kern
 }
 
 AcResult
+acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start, const int3 end)
+{
+    cudaSetDevice(device->id);
+    return acBenchmarkKernel(kernel, start, end, device->vba);
+}
+
+AcResult
 acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
                     const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
 {
     cudaSetDevice(device->id);
     return acLoadStencil(stencil, device->streams[stream], data);
+}
+
+AcResult
+acDeviceLoadStencils(const Device device, const Stream stream,
+                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    int retval = 0;
+    for (size_t i = 0; i < NUM_STENCILS; ++i)
+        retval |= acDeviceLoadStencil(device, stream, (Stencil)i, data[i]);
+    return (AcResult)retval;
 }
 
 /** */
@@ -809,4 +839,12 @@ acDeviceVolumeCopy(const Device device, const Stream stream,                    
     cudaSetDevice(device->id);
     return acKernelVolumeCopy(device->streams[stream], in, in_offset, in_volume, out, out_offset,
                               out_volume);
+}
+
+AcResult
+acDeviceResetMesh(const Device device, const Stream stream)
+{
+    cudaSetDevice(device->id);
+    acDeviceSynchronizeStream(device, stream);
+    return acVBAReset(device->streams[stream], &device->vba);
 }

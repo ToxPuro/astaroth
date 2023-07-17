@@ -122,9 +122,6 @@ AcResult acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, 
 AcResult acKernelDummy(void);
 
 /** */
-AcResult acKernelFlush(AcReal* arr, const size_t n);
-
-/** */
 // AcResult acKernelAutoOptimizeIntegration(const int3 start, const int3 end,
 // VertexBufferArray vba);
 

@@ -26,7 +26,7 @@ AC_ny: 256
 AC_nz: 256
 Time elapsed: 0.834026 ms
 20116.7 M elements per second
-````
+```
 
 Pytorch (initial implementation with conv3d, no optimizations)
 ```

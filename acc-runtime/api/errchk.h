@@ -167,11 +167,35 @@ as_size_t(const T i)
   return static_cast<size_t>(i);
 }
 #else
-static inline int
-as_size_t(const int i)
+// TODO: cleanup and integrate with the errors above someday
+#define INDIRECT_ERROR(str, file, line)                                                                          \
+  {                                                                                                              \
+    time_t terr;                                                                                                 \
+    time(&terr);                                                                                                 \
+    fprintf(stderr, "\n\n\n\n┌──────────────────────── ERROR " \
+                    "───────────────────────────┐\n\n");                                                         \
+    fprintf(stderr, "%s", ctime(&terr));                                                                         \
+    fprintf(stderr, "Error in file %s line %d: %s\n", file, line, str);                                          \
+    fprintf(stderr, "\n└──────────────────────── ERROR "       \
+                    "───────────────────────────┘\n\n\n\n");                                                     \
+    fflush(stderr);                                                                                              \
+    exit(EXIT_FAILURE);                                                                                          \
+    abort();                                                                                                     \
+  }
+#define INDIRECT_ERRCHK_ALWAYS(retval, file, line)                             \
+  {                                                                            \
+    if (!(retval))                                                             \
+      INDIRECT_ERROR(#retval " was false", file, line);                        \
+  }
+
+static inline size_t
+AS_SIZE_T(const int i, const char* file, const int line)
 {
-  ERRCHK_ALWAYS(i >= 0);
-  ERRCHK_ALWAYS((long double)(i) < (long double)(SIZE_MAX));
+  INDIRECT_ERRCHK_ALWAYS(i >= 0, file, line);
+  INDIRECT_ERRCHK_ALWAYS((long double)(i) < (long double)(SIZE_MAX), file,
+                         line);
+
   return (size_t)(i);
 }
+#define as_size_t(i) AS_SIZE_T(i, __FILE__, __LINE__)
 #endif

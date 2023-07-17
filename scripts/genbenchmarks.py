@@ -57,12 +57,14 @@ parser.add_argument('--use-hip', action='store_true', help='Compile with HIP sup
 parser.add_argument('--account', type=str, help='The account used in tests')
 parser.add_argument('--partition', type=str, help='The partition used for running the tests')
 parser.add_argument('--num-devices', type=int, nargs=2, default=[1, 8192], help='The range for the number of devices generated for run scripts (inclusive)')
+parser.add_argument('--num-samples', type=int, default=100, help='The number of benchmark samples taken per program invocation')
 ## Build arguments
 parser.add_argument('--build-dirs', type=str, nargs='+', required='build' in sys.argv, help='A list of directories to build')
 ## Run arguments
 parser.add_argument('--run-scripts', type=str, nargs='+', required='run' in sys.argv, help='A list of job scripts to run the tests')
 parser.add_argument('--run-dirs', type=str, nargs='+', required='run' in sys.argv, help='A list of directories to run the tests in')
 parser.add_argument('--max-jobs-per-queue', type=int, help='Limit the number of batch jobs submitted to the queue at a time')
+parser.add_argument('--verify', type=int, default=0, help='Verify the results of benchmarks where it is not done by default (benchmark-device, ...)')
 ## Clean arguments
 parser.add_argument('--clean-dirs', type=str, nargs='+', required='clean' in sys.argv, help='A list of directories to clean')
 
@@ -167,15 +169,15 @@ lumi = System(id='mi250x', account='project_462000190', partition='small-g', ngp
 ''',
 #srun_params='--cpu-bind=map_cpu:48,56,16,24,1,8,32,40',
 srun_params='', # CPU binding disabled temporarily (the binding above needs a full node)
-modules='''
-        module purge
-        module load CrayEnv
-        module load PrgEnv-cray
-        module load rocm
-        module load cray-python
-        export MPICH_GPU_SUPPORT_ENABLED=1
-        export FI_CXI_DEFAULT_CQ_SIZE=300000
-        ''', use_hip=True, optimal_implementation=1, optimal_tpb=512)
+modules='''module purge
+module load CrayEnv
+module load PrgEnv-amd
+module load craype-accel-amd-gfx90a
+module load rocm
+module load cray-python
+
+export MPICH_GPU_SUPPORT_ENABLED=1
+export FI_CXI_DEFAULT_CQ_SIZE=300000''', use_hip=True, optimal_implementation=1, optimal_tpb=512)
 
 # Select system
 hostname = socket.gethostname()
@@ -222,7 +224,7 @@ def gen_microbenchmarks(system):
             stride = 1
             max_problem_size = 1 * 1024**3    # 1 GiB
             while problem_size <= max_problem_size:
-                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID')
+                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples}')
                 problem_size *= 2
 
             # Working set
@@ -231,7 +233,7 @@ def gen_microbenchmarks(system):
             stride = 1
             max_working_set_size = 8200  # r = 512, (512 * 2 + 1) * 8 bytes = 8200 bytes
             while working_set_size <= max_working_set_size:
-                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID')
+                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples}')
                 working_set_size *= 2
 
             # Stride
@@ -241,15 +243,87 @@ def gen_microbenchmarks(system):
             stride           = 1
             max_stride       = 4192
             while stride <= max_stride:
-                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID')
+                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples}')
                 stride *= 2
 
-# Device benchmarks
+# Linear stencil benchmarks
+def gen_convolutionbenchmarks(system):
+    with open(f'{scripts_dir}/heat-equation-benchmark.sh', 'w') as f:
+        with redirect_stdout(f):
+
+            # Create the batch script
+            ## Header
+            system.print_sbatch_header(ntasks=1)
+
+            ## Script body
+            problem_size = 256**3
+            for radius in range(0, 5):
+                # 1D
+                nn = (problem_size, 1, 1)
+                print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius}')
+
+                # 2D
+                nn = (int(problem_size**(1/2)), int(problem_size**(1/2)), 1)
+                print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius}')
+
+                # 3D
+                nn = (int(problem_size**(1/3)), int(problem_size**(1/3)), int(problem_size**(1/3)))
+                print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius}')
+
+    with open(f'{scripts_dir}/heat-equation-benchmark-python.sh', 'w') as f:
+        with redirect_stdout(f):
+
+            # Create the batch script
+            ## Header
+            system.print_sbatch_header(ntasks=1)
+
+            libraries = ['pytorch', 'tensorflow', 'jax']
+            import numpy as np
+            ## Script body
+            problem_size = 256**3
+            for library in libraries:
+                print(f'module load {library}')
+                for radius in range(0, 5):
+                    # 1D
+                    nn = (problem_size, 1, 1)
+                    assert(nn[0] * nn[1] * nn[2] == problem_size)
+                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library}')
+
+                    # 2D
+                    nn = (int(np.rint(problem_size**(1/2))), int(np.rint(problem_size**(1/2))), 1)
+                    assert(nn[0] * nn[1] * nn[2] == problem_size)
+                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library}')
+
+                    # 3D
+                    nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
+                    assert(nn[0] * nn[1] * nn[2] == problem_size)
+                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library}')
+
+
+# Device benchmarks (nonlinear stencils)
 def gen_devicebenchmarks(system, nx, ny, nz):
     with open(f'{scripts_dir}/device-benchmark.sh', 'w') as f:
         with redirect_stdout(f):
             system.print_sbatch_header(1)
-            print(f'srun {system.srun_params} ./benchmark-device {nx} {ny} {nz}')
+            print(f'srun {system.srun_params} ./benchmark-device {nx} {ny} {nz} $SLURM_JOB_ID {args.num_samples} {args.verify}')
+
+    with open(f'{scripts_dir}/nonlinear-mhd-benchmark-python.sh', 'w') as f:
+        with redirect_stdout(f):
+            # Create the batch script
+            ## Header
+            system.print_sbatch_header(ntasks=1)
+
+            libraries = ['pytorch', 'tensorflow']
+            import numpy as np
+            ## Script body
+            problem_size = 128**3 # Need to drop the dim, 256**3 uses too much additional memory with Pytorch
+            for library in libraries:
+                print(f'module load {library}')
+                for radius in range(3, 3+1):
+                    # 3D
+                    nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
+                    assert(nn[0] * nn[1] * nn[2] == problem_size)
+                    print(f'{args.cmakelistdir}/samples/benchmark-device/mhd.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library}')
 
 # Intra-node benchmarks
 def gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices):
@@ -319,6 +393,7 @@ if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
             tpb = args.max_threads_per_block_range[0]
             while tpb <= args.max_threads_per_block_range[1]:
 
+                # Nonlinear stencil builds (default Astaroth)
                 impl_id     = 1 if implementation == 'implicit' else 2
                 use_smem    = implementation == 'explicit'
                 distributed = io_implementation == 'distributed'
@@ -327,7 +402,22 @@ if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
                 syscall(f'mkdir -p {build_dir}')
 
                 # Generate Makefile
-                flags = f'''-DOPTIMIZE_MEM_ACCESSES=OFF -DMPI_ENABLED=ON -DSINGLEPASS_INTEGRATION=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
+                flags = f'''-DMPI_ENABLED=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
+                
+                cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
+                syscall_async(cmd)
+
+                build_info = f'{build_dir}/build-info-{system.id}.txt'
+                syscall(f'date > {build_info}')
+                syscall(f'echo {cmd} >> {build_info}')
+                syscall(f'git -C {args.cmakelistdir} rev-parse HEAD >> {build_info}')
+
+                # Linear stencil computations (heat-equation sample)
+                build_dir = f'{builds_dir}/heat-equation-implementation{impl_id}_maxthreadsperblock{tpb}_distributed{distributed}'
+                syscall(f'mkdir -p {build_dir}')
+                # Generate Makefile
+                use_hip = 1 if system.use_hip else 0
+                flags = f'''-DBUILD_STANDALONE=OFF -DBUILD_MHD_SAMPLES=OFF -DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR={args.cmakelistdir}/samples/heat-equation/ -DPROGRAM_MODULE_DIR={args.cmakelistdir}/samples/heat-equation -DUSE_HIP={use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
                 
                 cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
                 syscall_async(cmd)
@@ -345,14 +435,15 @@ if 'preprocess' in args.task_type or 'genscripts' in args.task_type:
     # Scripts
     syscall(f'mkdir -p {scripts_dir}')
     if not args.dryrun:
+
         gen_microbenchmarks(system)
-
+        gen_convolutionbenchmarks(system)
         gen_devicebenchmarks(system, nx, ny, nz)
-        # gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices)
 
-        # gen_strongscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
-        # gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
-        # gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_strongscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_weakscalingbenchmarks(system, nx, ny, nz, min_devices, max_devices)
+        gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices)
 
     # Outputs
     syscall(f'mkdir -p {output_dir}') # temporarily here
@@ -399,18 +490,36 @@ if 'postprocess' in args.task_type:
     # Microbenchmarks
     print('Postprocessing microbenchmarks')
     files = glob.glob(f'{builds_dir}/*/microbenchmark-*.csv')
-    df = pd.concat(map(pd.read_csv, files))
-    df['device'] = f'{system.id}'
-    df.to_csv(f'{output_dir}/microbenchmark-{system.id}.csv', index=False)
+    if files:
+        df = pd.concat(map(pd.read_csv, files))
+        df['device'] = f'{system.id}'
+        df.to_csv(f'{output_dir}/microbenchmark-{system.id}.csv', index=False)
+
+    # Linear stencil code benchmarks
+    print('Postprocessing linear stencil code benchmarks')
+    files = glob.glob(f'{builds_dir}/*/heat-equation-*.csv')
+    if files:
+        df = pd.concat(map(pd.read_csv, files))
+        df['device'] = f'{system.id}'
+        df.to_csv(f'{output_dir}/heat-equation-{system.id}.csv', index=False)
 
     # Device benchmarks
     print('Postprocessing device benchmarks')
-    files = glob.glob(f'{builds_dir}/*/device-benchmark-*.csv')
-    df = pd.concat(map(pd.read_csv, files))
-    df['device'] = f'{system.id}'
-    df.to_csv(f'{output_dir}/device-benchmark-{system.id}.csv', index=False)
+    files = glob.glob(f'{builds_dir}/*/benchmark-device-*.csv')
+    if files:
+        df = pd.concat(map(pd.read_csv, files))
+        df['device'] = f'{system.id}'
+        df.to_csv(f'{output_dir}/benchmark-device-{system.id}.csv', index=False)
 
-if 0:
+    # Non-linear stencil code benchmarks
+    print('Postprocessing linear stencil code benchmarks')
+    files = glob.glob(f'{builds_dir}/*/nonlinear-mhd-*.csv')
+    if files:
+        df = pd.concat(map(pd.read_csv, files))
+        df['device'] = f'{system.id}'
+        df.to_csv(f'{output_dir}/nonlinear-mhd-{system.id}.csv', index=False)
+
+if 1:
     # Postprocess
     if 'postprocess' in args.task_type:
         import pandas as pd
@@ -418,6 +527,8 @@ if 0:
         # Outputs
         syscall(f'mkdir -p {output_dir}')
 
+        # Deprecated
+        '''
         # Microbenchmarks
         outfile = f'{output_dir}/microbenchmark-{system.id}.csv'
         with open(outfile, 'w') as f:
@@ -493,6 +604,7 @@ if 0:
         df = df.sort_values(by=['maxthreadsperblock'])
         df = df.drop_duplicates(subset=['implementation','maxthreadsperblock','nx','ny','nz','devices'], keep='last')
         df.to_csv(f'{output_dir}/explicit-{system.id}.csv', index=False)
+        '''
 
         # Node
         outfile = f'{output_dir}/node-benchmark-{system.id}.csv'
@@ -582,8 +694,8 @@ if 0:
         outfile = f'{output_dir}/scaling-io-benchmark-{system.id}.csv'
         with open(outfile, 'w') as f:
             with redirect_stdout(f):
-                print(f'devices,writemilliseconds,writebandwidth,readmilliseconds,readbandwidth,usedistributedio,nx,ny,nz')
-        syscall(f'cat {builds_dir}/*/scaling-io-benchmark.csv >> {outfile}')
+                print(f'pid,devices,writemilliseconds,writebandwidth,readmilliseconds,readbandwidth,usedistributedio,nx,ny,nz')
+        syscall(f'cat {builds_dir}/*/scaling-io-benchmark-*.csv >> {outfile}')
 
         # Collective
         df = pd.read_csv(outfile, comment='#')

@@ -57,7 +57,10 @@ extern "C" {
 
 #include "user_declarations.h"
 
-AcResult acKernelFlush(AcReal* arr, const size_t n);
+AcResult acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
+                       const AcReal value);
+
+AcResult acVBAReset(const cudaStream_t stream, VertexBufferArray* vba);
 
 VertexBufferArray acVBACreate(const size_t count);
 
@@ -74,6 +77,9 @@ void acRandQuit(void);
 AcResult acLaunchKernel(Kernel func, const cudaStream_t stream,
                         const int3 start, const int3 end,
                         VertexBufferArray vba);
+
+AcResult acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
+                           VertexBufferArray vba);
 
 AcResult
 acLoadStencil(const Stencil stencil, const cudaStream_t stream,
@@ -100,6 +106,9 @@ AcResult acStoreIntUniform(const cudaStream_t stream, const AcIntParam param,
                            int* value);
 AcResult acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
                             int3* value);
+
+// Diagnostics
+Volume acKernelLaunchGetLastTPB(void);
 
 #ifdef __cplusplus
 } // extern "C"

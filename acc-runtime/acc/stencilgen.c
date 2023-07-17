@@ -113,6 +113,15 @@ gen_kernel_prefix(void)
   printf("const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];");
   printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
 
+  printf(
+      "const int3 localCompdomainVertexIdx = (int3){"
+      "threadIdx.x + blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
+      "threadIdx.y + blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
+      "threadIdx.z + blockIdx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2,"
+      "};");
+  printf("const int local_compdomain_idx = "
+         "LOCAL_COMPDOMAIN_IDX(localCompdomainVertexIdx);");
+
   printf("(void)globalVertexIdx;"); // Silence unused warning
   printf("(void)globalGridN;");     // Silence unused warning
 
