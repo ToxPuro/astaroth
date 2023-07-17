@@ -44,12 +44,15 @@ See Unix globbing for passing files/directories to the script more easily.
     ''',
     formatter_class=argparse.RawDescriptionHelpFormatter)
 
+implementation_names = ['implicit', 'explicit', 'explicit3d', 'explicit4d']
+implementations = dict((key, value+1) for value,key in enumerate(implementation_names))
+
 ## General arguments
 parser.add_argument('--task-type', type=str, nargs='+', choices=['genmakefiles', 'genscripts', 'preprocess', 'build', 'run', 'postprocess', 'clean'], help='The type of the task performed with this script', required=True)
 parser.add_argument('--dims', type=int, default=[256, 256, 256], nargs=3, help='The dimensions of the computational domain')
 parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without compiling or running. Prints os commands to stdout.')
 ## Preprocess arguments
-parser.add_argument('--implementations', type=str, nargs='+', choices=['implicit', 'explicit'], default=['implicit', 'explicit'], help='The list of implementations used in testing')
+parser.add_argument('--implementations', type=str, nargs='+', choices=implementation_names, default=implementation_names, help='The list of implementations used in testing')
 parser.add_argument('--io-implementations', type=str, nargs='+', choices=['collective', 'distributed'], default=['distributed'], help='The list of IO implementations used in testing')
 parser.add_argument('--max-threads-per-block-range', type=int, nargs=2, default=[0, 1024], help='The range for the maximum number of threads per block applied to launch bounds in testing (inclusive)')
 parser.add_argument('--cmakelistdir', type=str, default='.', help='Directory containing the project CMakeLists.txt')
@@ -394,7 +397,8 @@ if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
             while tpb <= args.max_threads_per_block_range[1]:
 
                 # Nonlinear stencil builds (default Astaroth)
-                impl_id     = 1 if implementation == 'implicit' else 2
+                #impl_id     = 1 if implementation == 'implicit' else 2
+                impl_id = implementations[implementation]
                 use_smem    = implementation == 'explicit'
                 distributed = io_implementation == 'distributed'
 
@@ -507,19 +511,25 @@ if 'postprocess' in args.task_type:
     print('Postprocessing device benchmarks')
     files = glob.glob(f'{builds_dir}/*/benchmark-device-*.csv')
     if files:
-        df = pd.concat(map(pd.read_csv, files))
-        df['device'] = f'{system.id}'
-        df.to_csv(f'{output_dir}/benchmark-device-{system.id}.csv', index=False)
+        try:
+            df = pd.concat(map(pd.read_csv, files))
+            df['device'] = f'{system.id}'
+            df.to_csv(f'{output_dir}/benchmark-device-{system.id}.csv', index=False)
+        except pd.errors.EmptyDataError:
+            for file in files:
+                df = pd.read_csv(file)
+                print(df)
+                print(f'Failed to read {file}. Empty columns detected')
 
     # Non-linear stencil code benchmarks
-    print('Postprocessing linear stencil code benchmarks')
+    print('Postprocessing nonlinear stencil code benchmarks')
     files = glob.glob(f'{builds_dir}/*/nonlinear-mhd-*.csv')
     if files:
         df = pd.concat(map(pd.read_csv, files))
         df['device'] = f'{system.id}'
         df.to_csv(f'{output_dir}/nonlinear-mhd-{system.id}.csv', index=False)
 
-if 1:
+if 0:
     # Postprocess
     if 'postprocess' in args.task_type:
         import pandas as pd
