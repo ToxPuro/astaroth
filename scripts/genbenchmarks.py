@@ -488,46 +488,30 @@ if 'run' in args.task_type:
 if 'postprocess' in args.task_type:
     import pandas as pd
 
+    def gen_output(inputs, output):
+        print(f'Postprocessing {inputs} -> {output}')
+        files = glob.glob(inputs)
+
+        # Check for invalid files
+        invalid_files = list(filter(lambda file: os.path.getsize(file) <= 0, files))
+        if len(invalid_files) > 0:
+            print(f'Warning: found {len(invalid_files)} invalid file(s): {invalid_files}')
+
+        # Generate the output csv from valid files
+        files = filter(lambda file: os.path.getsize(file) > 0, files)
+        if files:
+            df = pd.concat(map(pd.read_csv, files))
+            df['device'] = f'{system.id}'
+            df.to_csv(output, index=False)
+
     # Outputs
     syscall(f'mkdir -p {output_dir}')
 
     # Microbenchmarks
-    print('Postprocessing microbenchmarks')
-    files = glob.glob(f'{builds_dir}/*/microbenchmark-*.csv')
-    if files:
-        df = pd.concat(map(pd.read_csv, files))
-        df['device'] = f'{system.id}'
-        df.to_csv(f'{output_dir}/microbenchmark-{system.id}.csv', index=False)
-
-    # Linear stencil code benchmarks
-    print('Postprocessing linear stencil code benchmarks')
-    files = glob.glob(f'{builds_dir}/*/heat-equation-*.csv')
-    if files:
-        df = pd.concat(map(pd.read_csv, files))
-        df['device'] = f'{system.id}'
-        df.to_csv(f'{output_dir}/heat-equation-{system.id}.csv', index=False)
-
-    # Device benchmarks
-    print('Postprocessing device benchmarks')
-    files = glob.glob(f'{builds_dir}/*/benchmark-device-*.csv')
-    if files:
-        try:
-            df = pd.concat(map(pd.read_csv, files))
-            df['device'] = f'{system.id}'
-            df.to_csv(f'{output_dir}/benchmark-device-{system.id}.csv', index=False)
-        except pd.errors.EmptyDataError:
-            for file in files:
-                df = pd.read_csv(file)
-                print(df)
-                print(f'Failed to read {file}. Empty columns detected')
-
-    # Non-linear stencil code benchmarks
-    print('Postprocessing nonlinear stencil code benchmarks')
-    files = glob.glob(f'{builds_dir}/*/nonlinear-mhd-*.csv')
-    if files:
-        df = pd.concat(map(pd.read_csv, files))
-        df['device'] = f'{system.id}'
-        df.to_csv(f'{output_dir}/nonlinear-mhd-{system.id}.csv', index=False)
+    gen_output(f'{builds_dir}/*/microbenchmark-*.csv', f'{output_dir}/microbenchmark-{system.id}.csv')
+    gen_output(f'{builds_dir}/*/heat-equation-*.csv', f'{output_dir}/heat-equation-{system.id}.csv')
+    gen_output(f'{builds_dir}/*/benchmark-device-*.csv', f'{output_dir}/benchmark-device-{system.id}.csv')
+    gen_output(f'{builds_dir}/*/nonlinear-mhd-*.csv', f'{output_dir}/nonlinear-mhd-{system.id}.csv')
 
 if 0:
     # Postprocess
