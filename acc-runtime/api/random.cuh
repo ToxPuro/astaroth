@@ -173,7 +173,7 @@ acRandQuit(void)
 }
 
 #if AC_DOUBLE_PRECISION
-#define rand_uniform() curand_uniform_double(&states[idx])
+#define rand_uniform() curand_uniform_double(&states[local_compdomain_idx])
 #else
-#define rand_uniform() curand_uniform(&states[idx])
+#define rand_uniform() curand_uniform(&states[local_compdomain_idx])
 #endif

@@ -1,75 +1,199 @@
+hostdefine STENCIL_ORDER (8) // Define the max order used here
 Field temperature
 
-/*
-real dt
-real dx, dy, dz
-
-Stencil value {
-    [0][0][0] = 1.
-}
-
-Stencil ddx2 {
-    [0][0][-3] = 1/90.,
-    [0][0][-2] = -3/20.,
-    [0][0][-1] = 3/2.,
-    [0][0][0]  = -49/18.,
-    [0][0][1]  = 3/2.,
-    [0][0][2]  = -3/20.,
-    [0][0][3]  = 1/90.
-}
-
-Stencil ddy2 {
-    [0][-3][0] = 1/90.,
-    [0][-2][0] = -3/20.,
-    [0][-1][0] = 3/2.,
-    [0][0][0]  = -49/18.,
-    [0][1][0]  = 3/2.,
-    [0][2][0]  = -3/20.,
-    [0][3][0]  = 1/90.
-}
-
-Stencil ddz2 {
-    [-3][0][0] = 1/90.,
-    [-2][0][0] = -3/20.,
-    [-1][0][0] = 3/2.,
-    [0][0][0]  = -49/18.,
-    [1][0][0]  = 3/2.,
-    [2][0][0]  = -3/20.,
-    [3][0][0]  = 1/90.
-}
-
-heat_equation(t) {
-    return (1. / (dx * dx)) * ddx2(t) + (1. / (dy * dy)) * ddy2(t) + (1. / (dz * dz)) * ddz2(t)
-}
-*/
-
-// Load coeffs at runtime
-Stencil heat {
-    [0][0][0]  = 1,
-    [0][0][-3] = 1,
-    [0][0][-2] = 1,
-    [0][0][-1] = 1,
-    [0][0][1]  = 1,
-    [0][0][2]  = 1,
-    [0][0][3]  = 1,
-    [0][-3][0] = 1,
-    [0][-2][0] = 1,
-    [0][-1][0] = 1,
-    [0][1][0]  = 1,
-    [0][2][0]  = 1,
-    [0][3][0]  = 1,
-    [-3][0][0] = 1,
-    [-2][0][0] = 1,
-    [-1][0][0] = 1,
-    [1][0][0]  = 1,
-    [2][0][0]  = 1,
-    [3][0][0]  = 1
-}
-
-Kernel solve() {
-    write(temperature, heat(temperature))
-}
-
+// Initialization
 Kernel init() {
     write(temperature, 2.0 * rand_uniform() - 1.0)
 }
+
+Kernel randomize() {
+    
+    // N.B. scale: result in (-AC_rng_scale, AC_rng_scale] range
+    AC_rng_scale = 1e-5
+
+    for field in 0:NUM_FIELDS {
+        r = 2.0 * rand_uniform() - 1.0
+        write(Field(field), AC_rng_scale * r)
+    }
+}
+        
+Stencil heat1d_ord0 {
+	[0][0][0] = 1
+}
+Kernel solve1d_ord0() { write(temperature, heat1d_ord0(temperature)) }
+Stencil heat1d_ord2 {
+	[0][0][0] = 1
+	,[0][0][-1] = 1
+	,[0][0][1] = 1
+}
+Kernel solve1d_ord2() { write(temperature, heat1d_ord2(temperature)) }
+Stencil heat1d_ord4 {
+	[0][0][0] = 1
+	,[0][0][-2] = 1
+	,[0][0][-1] = 1
+	,[0][0][1] = 1
+	,[0][0][2] = 1
+}
+Kernel solve1d_ord4() { write(temperature, heat1d_ord4(temperature)) }
+Stencil heat1d_ord6 {
+	[0][0][0] = 1
+	,[0][0][-3] = 1
+	,[0][0][-2] = 1
+	,[0][0][-1] = 1
+	,[0][0][1] = 1
+	,[0][0][2] = 1
+	,[0][0][3] = 1
+}
+Kernel solve1d_ord6() { write(temperature, heat1d_ord6(temperature)) }
+Stencil heat1d_ord8 {
+	[0][0][0] = 1
+	,[0][0][-4] = 1
+	,[0][0][-3] = 1
+	,[0][0][-2] = 1
+	,[0][0][-1] = 1
+	,[0][0][1] = 1
+	,[0][0][2] = 1
+	,[0][0][3] = 1
+	,[0][0][4] = 1
+}
+Kernel solve1d_ord8() { write(temperature, heat1d_ord8(temperature)) }
+Stencil heat2d_ord0 {
+	[0][0][0] = 1
+}
+Kernel solve2d_ord0() { write(temperature, heat2d_ord0(temperature)) }
+Stencil heat2d_ord2 {
+	[0][0][0] = 1
+	,[0][0][-1] = 1
+	,[0][0][1] = 1
+	,[0][-1][0] = 1
+	,[0][1][0] = 1
+}
+Kernel solve2d_ord2() { write(temperature, heat2d_ord2(temperature)) }
+Stencil heat2d_ord4 {
+	[0][0][0] = 1
+	,[0][0][-2] = 1
+	,[0][0][-1] = 1
+	,[0][0][1] = 1
+	,[0][0][2] = 1
+	,[0][-2][0] = 1
+	,[0][-1][0] = 1
+	,[0][1][0] = 1
+	,[0][2][0] = 1
+}
+Kernel solve2d_ord4() { write(temperature, heat2d_ord4(temperature)) }
+Stencil heat2d_ord6 {
+	[0][0][0] = 1
+	,[0][0][-3] = 1
+	,[0][0][-2] = 1
+	,[0][0][-1] = 1
+	,[0][0][1] = 1
+	,[0][0][2] = 1
+	,[0][0][3] = 1
+	,[0][-3][0] = 1
+	,[0][-2][0] = 1
+	,[0][-1][0] = 1
+	,[0][1][0] = 1
+	,[0][2][0] = 1
+	,[0][3][0] = 1
+}
+Kernel solve2d_ord6() { write(temperature, heat2d_ord6(temperature)) }
+Stencil heat2d_ord8 {
+	[0][0][0] = 1
+	,[0][0][-4] = 1
+	,[0][0][-3] = 1
+	,[0][0][-2] = 1
+	,[0][0][-1] = 1
+	,[0][0][1] = 1
+	,[0][0][2] = 1
+	,[0][0][3] = 1
+	,[0][0][4] = 1
+	,[0][-4][0] = 1
+	,[0][-3][0] = 1
+	,[0][-2][0] = 1
+	,[0][-1][0] = 1
+	,[0][1][0] = 1
+	,[0][2][0] = 1
+	,[0][3][0] = 1
+	,[0][4][0] = 1
+}
+Kernel solve2d_ord8() { write(temperature, heat2d_ord8(temperature)) }
+Stencil heat3d_ord0 {
+	[0][0][0] = 1
+}
+Kernel solve3d_ord0() { write(temperature, heat3d_ord0(temperature)) }
+Stencil heat3d_ord2 {
+	[0][0][0] = 1
+	,[0][0][-1] = 1
+	,[0][0][1] = 1
+	,[0][-1][0] = 1
+	,[0][1][0] = 1
+	,[-1][0][0] = 1
+	,[1][0][0] = 1
+}
+Kernel solve3d_ord2() { write(temperature, heat3d_ord2(temperature)) }
+Stencil heat3d_ord4 {
+	[0][0][0] = 1
+	,[0][0][-2] = 1
+	,[0][0][-1] = 1
+	,[0][0][1] = 1
+	,[0][0][2] = 1
+	,[0][-2][0] = 1
+	,[0][-1][0] = 1
+	,[0][1][0] = 1
+	,[0][2][0] = 1
+	,[-2][0][0] = 1
+	,[-1][0][0] = 1
+	,[1][0][0] = 1
+	,[2][0][0] = 1
+}
+Kernel solve3d_ord4() { write(temperature, heat3d_ord4(temperature)) }
+Stencil heat3d_ord6 {
+	[0][0][0] = 1
+	,[0][0][-3] = 1
+	,[0][0][-2] = 1
+	,[0][0][-1] = 1
+	,[0][0][1] = 1
+	,[0][0][2] = 1
+	,[0][0][3] = 1
+	,[0][-3][0] = 1
+	,[0][-2][0] = 1
+	,[0][-1][0] = 1
+	,[0][1][0] = 1
+	,[0][2][0] = 1
+	,[0][3][0] = 1
+	,[-3][0][0] = 1
+	,[-2][0][0] = 1
+	,[-1][0][0] = 1
+	,[1][0][0] = 1
+	,[2][0][0] = 1
+	,[3][0][0] = 1
+}
+Kernel solve3d_ord6() { write(temperature, heat3d_ord6(temperature)) }
+Stencil heat3d_ord8 {
+	[0][0][0] = 1
+	,[0][0][-4] = 1
+	,[0][0][-3] = 1
+	,[0][0][-2] = 1
+	,[0][0][-1] = 1
+	,[0][0][1] = 1
+	,[0][0][2] = 1
+	,[0][0][3] = 1
+	,[0][0][4] = 1
+	,[0][-4][0] = 1
+	,[0][-3][0] = 1
+	,[0][-2][0] = 1
+	,[0][-1][0] = 1
+	,[0][1][0] = 1
+	,[0][2][0] = 1
+	,[0][3][0] = 1
+	,[0][4][0] = 1
+	,[-4][0][0] = 1
+	,[-3][0][0] = 1
+	,[-2][0][0] = 1
+	,[-1][0][0] = 1
+	,[1][0][0] = 1
+	,[2][0][0] = 1
+	,[3][0][0] = 1
+	,[4][0][0] = 1
+}
+Kernel solve3d_ord8() { write(temperature, heat3d_ord8(temperature)) }

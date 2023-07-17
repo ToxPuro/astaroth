@@ -54,8 +54,8 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
 // IO directories
-static const char* snapshot_dir = "output-snapshots";
-static const char* slice_dir    = "output-slices";
+static const char* snapshot_output_dir = "output-snapshots";
+static const char* slice_output_dir    = "output-slices";
 
 #define fprintf(...)                                                                               \
     {                                                                                              \
@@ -119,100 +119,6 @@ write_info(const AcMeshInfo* config)
     fclose(infotxt);
 }
 
-/*
-// This funtion writes a run state into a set of C binaries.
-static inline void
-save_mesh(const AcMesh& save_mesh, const int step, const AcReal t_step)
-{
-    FILE* save_ptr;
-
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        const size_t n = acVertexBufferSize(save_mesh.info);
-
-        const char* buffername = vtxbuf_names[w];
-        char cstep[11];
-        char bin_filename[80] = "\0";
-
-        // sprintf(bin_filename, "");
-
-        sprintf(cstep, "%d", step);
-
-        strcat(bin_filename, buffername);
-        strcat(bin_filename, "_");
-        strcat(bin_filename, cstep);
-        strcat(bin_filename, ".mesh");
-
-        printf("Savefile %s \n", bin_filename);
-
-        save_ptr = fopen(bin_filename, "wb");
-
-        // Start file with time stamp
-        AcReal write_long_buf = (AcReal)t_step;
-        fwrite(&write_long_buf, sizeof(AcReal), 1, save_ptr);
-        // Grid data
-        for (size_t i = 0; i < n; ++i) {
-            const AcReal point_val = save_mesh.vertex_buffer[VertexBufferHandle(w)][i];
-            AcReal write_long_buf2 = (AcReal)point_val;
-            fwrite(&write_long_buf2, sizeof(AcReal), 1, save_ptr);
-        }
-        fclose(save_ptr);
-    }
-}
-*/
-
-/*
-// This funtion writes a run state into a set of C binaries
-// WITH MPI_IO
-static inline void
-save_mesh_mpi_sync(const AcMeshInfo info, const int pid, const int step, const AcReal t_step)
-{
-    printf("Saving snapshot at step %i \n", step);
-
-    char cstep[11];
-    // char header_filename[80] = "\0";
-    sprintf(cstep, "%d", step);
-
-    // Saves a csv file which contains relevant information about the binary
-    // snapshot files at the timestep.
-    if (pid == 0) {
-        FILE* header_file = fopen("snapshots_info.csv", "a");
-
-        // Header only at the step zero
-        if (step == 0) {
-            fprintf(header_file, "use_double, mx, my, mz, step_number, t_step \n");
-        }
-
-        fprintf(header_file, "%d, %d, %d, %d, %d, %.17e \n", sizeof(AcReal) == 8,
-                info.int_params[AC_mx], info.int_params[AC_my], info.int_params[AC_mz], step,
-                t_step);
-
-        // Writes the header info. Make it into an
-        // appendaple csv table which will be easy to be read into a Pandas
-        // dataframe.
-
-        fclose(header_file);
-    }
-
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        const char* buffername = vtxbuf_names[w];
-        char bin_filename[80]  = "\0";
-
-        strcat(bin_filename, buffername);
-        strcat(bin_filename, "_");
-        strcat(bin_filename, cstep);
-        // strcat(bin_filename, ".field");
-
-        // Grid data
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, snapshot_dir, bin_filename,
-                                          ACCESS_WRITE);
-
-        printf("Savefile %s \n", bin_filename);
-
-        acGridDiskAccessSync();
-    }
-}
-*/
-
 /* Calls acGridDiskAccessSync before acGridWriteMeshToDiskLaunch, but need to call
 acGridDiskAccessSync after the final step or before any other IO operation. */
 static inline void
@@ -226,8 +132,20 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     acGridSynchronizeStream(STREAM_DEFAULT);  // Debug, may be unneeded
     MPI_Barrier(acGridMPIComm());             // Debug may be unneeded
 
-    const int num_snapshots = 2;
-    const int modstep       = (step / info.int_params[AC_bin_steps]) % num_snapshots;
+    // If num_snapshots > 0 use modstep calculation. 
+    // Else use numbering based on time interval.
+    const int num_snapshots = info.int_params[AC_num_snapshots];
+    int modstep;
+    if (num_snapshots > 0) {
+        modstep = (step / info.int_params[AC_bin_steps]) % num_snapshots;
+    } else {
+        // NOTE: assumes that AC_bin_save_t will not be changed during the simulation run. 
+        modstep = int(round(simulation_time/info.real_params[AC_bin_save_t]));
+        //log_from_root_proc_with_sim_progress(pid, 
+        //                                     "save_mesh_mpi_async: simulation_time = %e, AC_bin_save_t = %e \n", 
+        //                                     simulation_time, info.real_params[AC_bin_save_t]);
+
+    }
     log_from_root_proc_with_sim_progress(pid,
                                          "save_mesh_mpi_async: Writing snapshot to %s, timestep %d "
                                          "(slot %d of %d)\n",
@@ -261,141 +179,7 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     acGridWriteMeshToDiskLaunch(job_dir, cstep);
     log_from_root_proc_with_sim_progress(pid, "save_mesh_mpi_async: Non-blocking snapshot write "
                                               "operation started, returning\n");
-
-    // printf("Write mesh to disk launch %s, %s \n", job_dir, cstep);
-    /*
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        const char* buffername = vtxbuf_names[w];
-        char bin_filename[80] = "\0";
-
-
-        strcat(bin_filename, buffername);
-        strcat(bin_filename, "_");
-        strcat(bin_filename, cstep);
-        //strcat(bin_filename, ".field");
-
-        // Grid data
-        //acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, job_dir, bin_filename,
-    ACCESS_WRITE); acGridDiskAccessSync(); acGridWriteMeshToDiskLaunch(job_dir, step);
-        // %JP TODO write async
-
-        printf("Savefile %s \n", bin_filename);
-    }*/
 }
-
-/*
-// This funtion reads a run state into a set of C binaries
-// WITH MPI_IO
-static inline void
-read_mesh_mpi(const int pid, const int step, AcReal* simulation_time)
-{
-    int stepnumber;
-    AcReal time_at_step;
-    double time;
-
-    printf("Reading snapshot at step %i \n", step);
-    char cstep[11];
-    sprintf(cstep, "%d", step);
-
-    if (pid == 0) {
-
-        AcReal element[8];
-
-        // Saves a csv file which contains relevant information about the binary
-        // snapshot files at the timestep.
-        FILE* header_file = fopen("snapshots_info.csv", "r");
-
-        // TODO: Loop through the header file to find the step number of snapshots
-        // TODO: to be read. And read the relevat other info.
-
-        // Simple cvs file reader.
-        char csv_line[256];
-        while (fgets(csv_line, sizeof(csv_line), header_file) != NULL) {
-            int column_index = 0;
-            for (char* csv_loc = strtok(csv_line, ","); csv_loc != NULL;
-                 csv_loc       = strtok(NULL, ",")) {
-                printf("%s, ", csv_loc);
-                element[column_index++] = atof(csv_loc);
-            }
-            printf("\n");
-            stepnumber   = int(element[4]);
-            time_at_step = element[5];
-            // printf("stepnumber %i at time_at_step %e \n", stepnumber, time_at_step);
-
-            if (stepnumber == step) {
-                time = double(time_at_step);
-            }
-        }
-
-        fclose(header_file);
-    }
-
-    MPI_Bcast(&time, 1, MPI_DOUBLE, 0, acGridMPIComm());
-
-    *simulation_time = time;
-
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        const char* buffername = vtxbuf_names[w];
-        char bin_filename[80]  = "\0";
-
-        strcat(bin_filename, buffername);
-        strcat(bin_filename, "_");
-        strcat(bin_filename, cstep);
-        // strcat(bin_filename, ".field");
-
-        // Grid data
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)w, snapshot_dir, bin_filename,
-                                          ACCESS_READ);
-
-        printf("Read file %s \n", bin_filename);
-
-        acGridDiskAccessSync();
-    }
-}
-
-// This funtion reads a run state from a set of C binaries.
-static inline void
-read_mesh(AcMesh& read_mesh, const int step, AcReal* simulation_time)
-{
-    FILE* read_ptr;
-
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-        const size_t n = acVertexBufferSize(read_mesh.info);
-
-        const char* buffername = vtxbuf_names[w];
-        char cstep[11];
-        char bin_filename[80] = "\0";
-
-        // sprintf(bin_filename, "");
-
-        sprintf(cstep, "%d", step);
-
-        strcat(bin_filename, buffername);
-        strcat(bin_filename, "_");
-        strcat(bin_filename, cstep);
-        strcat(bin_filename, ".mesh");
-
-        printf("Reading savefile %s \n", bin_filename);
-
-        read_ptr = fopen(bin_filename, "rb");
-
-        // Start file with time stamp
-        size_t result;
-                result = fread(simulation_time, sizeof(AcReal), 1, read_ptr);
-        // Read grid data
-        AcReal read_buf;
-        for (size_t i = 0; i < n; ++i) {
-            result = fread(&read_buf, sizeof(AcReal), 1, read_ptr);
-            read_mesh.vertex_buffer[VertexBufferHandle(w)][i] = read_buf;
-            if (int(result) != 1) {
-                fprintf(stderr, "Reading error in %s, element %i\n", vtxbuf_names[w], int(i));
-                fprintf(stderr, "Result = %i,  \n", int(result));
-            }
-        }
-        fclose(read_ptr);
-    }
-}
-*/
 
 static inline void
 print_diagnostics_header_from_root_proc(int pid, FILE* diag_file)
@@ -417,68 +201,6 @@ print_diagnostics_header_from_root_proc(int pid, FILE* diag_file)
         fprintf(diag_file, "\n");
     }
 }
-
-/*
-// This function prints out the diagnostic values to std.out and also saves and
-// appends an ascii file to contain all the result.
-// JP: MUST BE CALLED FROM PROC 0. Must be rewritten for multiple processes (this implementation
-// has write race condition)
-static inline void
-print_diagnostics_host(const AcMesh mesh, const int step, const AcReal dt, const AcReal t_step,
-                       FILE* diag_file, const AcReal sink_mass, const AcReal accreted_mass)
-{
-
-    AcReal buf_rms, buf_max, buf_min;
-    const int max_name_width = 16;
-
-    // Calculate rms, min and max from the velocity vector field
-    buf_max = acHostReduceVec(mesh, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
-    buf_min = acHostReduceVec(mesh, RTYPE_MIN, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
-    buf_rms = acHostReduceVec(mesh, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ);
-
-    // MV: The ordering in the earlier version was wrong in terms of variable
-    // MV: name and its diagnostics.
-    printf("Step %d, t_step %.3e, dt %e s\n", step, double(t_step), double(dt));
-    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "uu total", double(buf_min),
-           double(buf_rms), double(buf_max));
-    fprintf(diag_file, "%d %e %e %e %e %e ", step, double(t_step), double(dt), double(buf_min),
-            double(buf_rms), double(buf_max));
-#if LBFIELD
-    buf_max = acHostReduceVec(mesh, RTYPE_MAX, BFIELDX, BFIELDY, BFIELDZ);
-    buf_min = acHostReduceVec(mesh, RTYPE_MIN, BFIELDX, BFIELDY, BFIELDZ);
-    buf_rms = acHostReduceVec(mesh, RTYPE_RMS, BFIELDX, BFIELDY, BFIELDZ);
-
-    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "bb total", double(buf_min),
-           double(buf_rms), double(buf_max));
-    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
-
-    buf_max = acHostReduceVecScal(mesh, RTYPE_ALFVEN_MAX, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO);
-    buf_min = acHostReduceVecScal(mesh, RTYPE_ALFVEN_MIN, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO);
-    buf_rms = acHostReduceVecScal(mesh, RTYPE_ALFVEN_RMS, BFIELDX, BFIELDY, BFIELDZ, VTXBUF_LNRHO);
-
-    printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, "vA total", double(buf_min),
-           double(buf_rms), double(buf_max));
-    fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
-#endif
-
-    // Calculate rms, min and max from the variables as scalars
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        buf_max = acHostReduceScal(mesh, RTYPE_MAX, VertexBufferHandle(i));
-        buf_min = acHostReduceScal(mesh, RTYPE_MIN, VertexBufferHandle(i));
-        buf_rms = acHostReduceScal(mesh, RTYPE_RMS, VertexBufferHandle(i));
-
-        printf("  %*s: min %.3e,\trms %.3e,\tmax %.3e\n", max_name_width, vtxbuf_names[i],
-               double(buf_min), double(buf_rms), double(buf_max));
-        fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
-    }
-
-    if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
-        fprintf(diag_file, "%e %e ", double(sink_mass), double(accreted_mass));
-    }
-
-    fprintf(diag_file, "\n");
-}
-*/
 
 // This function prints out the diagnostic values to std.out and also saves and
 // appends an ascii file to contain all the result.
@@ -738,7 +460,8 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
 
 /* Set step = -1 to load from the latest snapshot. step = 0 to start a new run. */
 static void
-read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo info)
+read_file_to_mesh_and_setup(const char* dir, int* step, AcReal* simulation_time,
+                            const AcMeshInfo info)
 {
     if (*step > 0) {
         ERROR("step in read_file_to_mesh (config start_step) was > 0, do not know what to do with "
@@ -749,8 +472,13 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo
     // Quick hack, TODO better
     int pid;
     MPI_Comm_rank(acGridMPIComm(), &pid);
-    if (pid == 0)
-        system("tail -n2 snapshots_info.csv | head -n1 > latest_snapshot.info && sync");
+    if (pid == 0) {
+        const size_t buflen = 4096;
+        char cmd[buflen];
+        snprintf(cmd, buflen,
+                 "tail -n2 %s/snapshots_info.csv | head -n1 > latest_snapshot.info && sync", dir);
+        system(cmd);
+    }
     MPI_Barrier(acGridMPIComm());
 
     // Read the previous valid step from snapshots_info.csv
@@ -783,12 +511,15 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo
     ERRCHK_ALWAYS(*step >= 0);
     ERRCHK_ALWAYS(is_valid(*simulation_time));
 
-    const size_t buflen = 128;
+    const size_t buflen = 4096;
     char modstep_str[buflen];
-    sprintf(modstep_str, "%d", modstep);
+    snprintf(modstep_str, buflen, "%d", modstep);
 
-    acLogFromRootProc(pid, "Restarting from snapshot %d (step %d, tstep %g)\n", modstep, *step,
-                      (double)(*simulation_time));
+    char snapshot_dir[buflen];
+    snprintf(snapshot_dir, buflen, "%s/%s", dir, snapshot_output_dir);
+
+    acLogFromRootProc(pid, "Restarting from snapshot %d (step %d, tstep %g) in %s\n", modstep,
+                      *step, (double)(*simulation_time), snapshot_dir);
 
     const Field io_fields[] =
     { VTXBUF_UUX,
@@ -811,15 +542,6 @@ read_file_to_mesh_and_setup(int* step, AcReal* simulation_time, const AcMeshInfo
     for (size_t i = 0; i < num_io_fields; ++i)
         acGridAccessMeshOnDiskSynchronous(io_fields[i], snapshot_dir, modstep_str, ACCESS_READ);
 
-        // for (size_t i = 0; i < NUM_FIELDS; ++i)
-        //     acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, snapshot_dir, modstep_str,
-        //     ACCESS_READ);
-
-        // Not needed for synchronous reading
-        // acGridDiskAccessSync();
-        // acGridPeriodicBoundconds(STREAM_DEFAULT);
-        // acGridSynchronizeStream(STREAM_DEFAULT);
-
 #if LMAGNETIC
     // Scale the magnetic field
     acGridLoadScalarUniform(STREAM_DEFAULT, AC_scaling_factor, info.real_params[AC_scaling_factor]);
@@ -839,8 +561,8 @@ read_distributed_to_mesh_and_setup(void)
 {
     for (size_t i = 0; i < num_io_fields; ++i) {
         const Field field = io_fields[i];
-        acGridAccessMeshOnDiskSynchronousDistributed(field, snapshot_dir, vtxbuf_names[field],
-                                                     ACCESS_READ);
+        acGridAccessMeshOnDiskSynchronousDistributed(field, snapshot_output_dir,
+vtxbuf_names[field], ACCESS_READ);
     }
     acGridPeriodicBoundconds(STREAM_DEFAULT);
 }
@@ -850,7 +572,7 @@ read_collective_to_mesh_and_setup(void)
 {
     for (size_t i = 0; i < num_io_fields; ++i) {
         const Field field = io_fields[i];
-        acGridAccessMeshOnDiskSynchronousCollective(field, snapshot_dir, vtxbuf_names[field],
+        acGridAccessMeshOnDiskSynchronousCollective(field, snapshot_output_dir, vtxbuf_names[field],
                                                     ACCESS_READ);
     }
     acGridPeriodicBoundconds(STREAM_DEFAULT);
@@ -871,15 +593,15 @@ create_directory(const char* dirname)
 static void
 create_output_directories(void)
 {
-    create_directory(snapshot_dir);
-    create_directory(slice_dir);
+    create_directory(snapshot_output_dir);
+    create_directory(slice_output_dir);
 
     // JP: Note: striping here potentially bad practice (uncomment to enable)
     // OL: Agree, there is no guarantee that the environment uses a lustre filesystem (perhaps as an
     // option though?)
     // const int stripe_count = 48;
     // Note: striping here potentially bad practice (uncomment to enable)
-    // snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_dir);
+    // snprintf(cmd, cmdlen, "lfs setstripe -c %d %s", stripe_count, snapshot_output_dir);
     // system(cmd);
 }
 
@@ -891,7 +613,7 @@ write_slices(int pid, int i)
     debug_log_from_root_proc_with_sim_progress(pid, "write_slices: Slice disk access synced\n");
 
     char slice_frame_dir[2048];
-    sprintf(slice_frame_dir, "%s/step_%012d", slice_dir, i);
+    sprintf(slice_frame_dir, "%s/step_%012d", slice_output_dir, i);
 
     log_from_root_proc_with_sim_progress(pid, "write_slices: Creating directory %s\n",
                                          slice_frame_dir);
@@ -902,11 +624,11 @@ write_slices(int pid, int i)
     MPI_Barrier(acGridMPIComm()); // Ensure directory is created for all procs
 
     log_from_root_proc_with_sim_progress(pid, "write_slices: Writing slices to %s, timestep = %d\n",
-                                         slice_dir, i);
+                                         slice_output_dir, i);
     /*
     Timer t;
     timer_reset(&t);
-    acGridWriteSlicesToDiskCollectiveSynchronous(slice_dir, label);
+    acGridWriteSlicesToDiskCollectiveSynchronous(slice_output_dir, label);
     acLogFromRootProc(pid, "Collective sync slices elapsed %g ms\n",
     timer_diff_nsec(t)/1e6);
     */
@@ -927,7 +649,7 @@ print_usage(const char* name)
     printf("Usage: ./%s "
            "[--config <config_path>] "
            "[ --run-init-kernel | --from-pc-varfile | --from-distributed-snapshot | "
-           "--from-monolithic-snapshot ]"
+           "--from-monolithic-snapshot | --from-snapshot]"
            "\n"
            "\n"
            " -c <config_path>\n"
@@ -951,16 +673,17 @@ print_usage(const char* name)
            " -p\n"
            " --from-pc-varfile\n"
            "\tLoad the mesh from a pc varfile\n"
-           "\tThe path to this file is currently hardcoded\n"
            "\n"
-           " -d\n --from-distributed-snapshot\n"
-           "\tLoad the mesh from a distributed snapshot (one file per process)\n"
-           "\tThe path to the snapshot is currently hardcoded\n"
-           "\n"
-           " -m\n"
-           " --from-monolithic-snapshot\n"
-           "\tLoad the mesh from a monolithic snapshot (one single file)\n"
-           "\tThe path to the snapshot is currently hardcoded\n",
+           //    " -d\n --from-distributed-snapshot\n"
+           //    "\tLoad the mesh from a distributed snapshot (one file per process)\n"
+           //    "\tThe path to the snapshot is currently hardcoded\n"
+           //    "\n"
+           //    " -m\n"
+           //    " --from-monolithic-snapshot\n"
+           //    "\tLoad the mesh from a monolithic snapshot (one single file)\n"
+           //    "\tThe path to the snapshot is currently hardcoded\n"
+           " --from-snapshot\n"
+           "\tLoad the mesh from a monolithic snapshot (one single file)\n",
            name, AC_DEFAULT_CONFIG);
 }
 
@@ -1039,7 +762,7 @@ main(int argc, char** argv)
                                            {"from-pc-varfile", required_argument, 0, 'p'},
                                            {"from-distributed-snapshot", no_argument, 0, 'd'},
                                            {"from-monolithic-snapshot", no_argument, 0, 'm'},
-                                           {"from-snapshot", no_argument, 0, 's'},
+                                           {"from-snapshot", required_argument, 0, 's'},
                                            {"help", no_argument, 0, 'h'}};
 
     const char* config_path = AC_DEFAULT_CONFIG;
@@ -1091,7 +814,8 @@ main(int argc, char** argv)
             initial_mesh_procedure = InitialMeshProcedure::LoadMonolithicSnapshot;
             break;
         case 's':
-            initial_mesh_procedure = InitialMeshProcedure::LoadSnapshot;
+            initial_mesh_procedure       = InitialMeshProcedure::LoadSnapshot;
+            initial_mesh_procedure_param = optarg;
             break;
         default:
             print_usage("ac_run_mpi");
@@ -1301,7 +1025,8 @@ main(int argc, char** argv)
     */
     case InitialMeshProcedure::LoadSnapshot: {
         acLogFromRootProc(pid, "Reading mesh file\n");
-        read_file_to_mesh_and_setup(&start_step, &simulation_time, info);
+        read_file_to_mesh_and_setup(initial_mesh_procedure_param, &start_step, &simulation_time,
+                                    info);
         acLogFromRootProc(pid, "Done reading mesh file\n");
         break;
     }
@@ -1439,7 +1164,7 @@ main(int argc, char** argv)
         write_slices(pid, start_step);
 
         acLogFromRootProc(pid, "Initial state: writing full mesh snapshot\n");
-        save_mesh_mpi_async(info, snapshot_dir, pid, 0, 0.0);
+        save_mesh_mpi_async(info, snapshot_output_dir, pid, 0, 0.0);
 
         if (found_nan != 0) {
             acLogFromRootProc(pid, "Found NaN in initial state -> exiting\n");
@@ -1618,7 +1343,7 @@ main(int argc, char** argv)
                 case PeriodicAction::WriteSnapshot: {
                     log_from_root_proc_with_sim_progress(pid, "Periodic action: writing full mesh "
                                                               "snapshot\n");
-                    save_mesh_mpi_async(info, snapshot_dir, pid, i, simulation_time);
+                    save_mesh_mpi_async(info, snapshot_output_dir, pid, i, simulation_time);
                     break;
                 }
                 case PeriodicAction::WriteSlices: {
@@ -1873,7 +1598,7 @@ main(int argc, char** argv)
                 acGridPeriodicBoundconds(STREAM_DEFAULT);
                 acGridSynchronizeStream(STREAM_DEFAULT);
                 log_from_root_proc_with_sim_progress(pid, "Writing final snapshots to %s, timestep =
-            %d\n", snapshot_dir, i); save_mesh_mpi_async(info, snapshot_dir, pid, i,
+            %d\n", snapshot_output_dir, i); save_mesh_mpi_async(info, snapshot_output_dir, pid, i,
             simulation_time); log_from_root_proc_with_sim_progress(pid, "Done writing snapshots\n");
             }
             else {

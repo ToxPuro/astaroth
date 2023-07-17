@@ -142,9 +142,10 @@ include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}) # CUDA headers
 
 # Additional program modules
 if (PROGRAM_MODULE_DIR)
-    get_filename_component(resolved_program_dir "${PROGRAM_MODULE_DIR}" REALPATH
-                           BASE_DIR ${CMAKE_BINARY_DIR})
+    get_filename_component(resolved_program_dir "${PROGRAM_MODULE_DIR}" ABSOLUTE
+                           BASE_DIR ${CMAKE_SOURCE_DIR})
     add_subdirectory(${resolved_program_dir})
+    message("Resolved program module dir: " ${resolved_program_dir})
 endif()
 
 ## Subdirectories

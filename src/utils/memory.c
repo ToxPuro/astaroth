@@ -107,6 +107,30 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
 }
 
 AcResult
+acHostMeshApplyConstantBounds(const AcReal value, AcMesh* mesh)
+{
+    const AcMeshInfo info = mesh->info;
+    const AcMeshDims dims = acGetMeshDims(info);
+
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        for (size_t k = 0; k < as_size_t(dims.m1.z); ++k) {
+            for (size_t j = 0; j < as_size_t(dims.m1.y); ++j) {
+                for (size_t i = 0; i < as_size_t(dims.m1.x); ++i) {
+                    if (k >= as_size_t(dims.n0.z) && k < as_size_t(dims.n1.z))
+                        if (j >= as_size_t(dims.n0.y) && j < as_size_t(dims.n1.y))
+                            if (i >= as_size_t(dims.n0.x) && i < as_size_t(dims.n1.x))
+                                continue;
+
+                    const size_t idx            = acVertexBufferIdx(i, j, k, info);
+                    mesh->vertex_buffer[w][idx] = value;
+                }
+            }
+        }
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
 acHostMeshClear(AcMesh* mesh)
 {
     return acHostMeshSet(0, mesh);

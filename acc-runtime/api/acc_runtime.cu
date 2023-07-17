@@ -164,6 +164,12 @@ DCONST(const AcReal3Param param)
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
   ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mxy))
 
+__device__ int
+LOCAL_COMPDOMAIN_IDX(const int3 coord)
+{
+  return (coord.x) + (coord.y) * DCONST(AC_nx) + (coord.z) * DCONST(AC_nxy);
+}
+
 __device__ constexpr int
 IDX(const int i)
 {
@@ -238,11 +244,12 @@ flush_kernel(AcReal* arr, const size_t n, const AcReal value)
 }
 
 AcResult
-acKernelFlush(AcReal* arr, const size_t n, const AcReal value)
+acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
+              const AcReal value)
 {
   const size_t tpb = 256;
   const size_t bpg = (size_t)(ceil((double)n / tpb));
-  flush_kernel<<<bpg, tpb>>>(arr, n, value);
+  flush_kernel<<<bpg, tpb, 0, stream>>>(arr, n, value);
   ERRCHK_CUDA_KERNEL_ALWAYS();
   return AC_SUCCESS;
 }
@@ -326,14 +333,14 @@ freeCompressible(void* ptr, const size_t requested_bytes)
 #endif
 
 AcResult
-acVBAReset(VertexBufferArray* vba)
+acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
   const size_t count = vba->bytes / sizeof(vba->in[0][0]);
 
   // Set vba.in data to all-nan and vba.out to 0
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    acKernelFlush(vba->in[i], count, (AcReal)NAN);
-    acKernelFlush(vba->out[i], count, (AcReal)0.0);
+    acKernelFlush(stream, vba->in[i], count, (AcReal)NAN);
+    acKernelFlush(stream, vba->out[i], count, (AcReal)0.0);
   }
   return AC_SUCCESS;
 }
@@ -355,8 +362,9 @@ acVBACreate(const size_t count)
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
 #endif
   }
-  acVBAReset(&vba);
 
+  acVBAReset(0, &vba);
+  cudaDeviceSynchronize();
   return vba;
 }
 
@@ -393,6 +401,57 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
   kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
   ERRCHK_CUDA_KERNEL();
+
+  last_tpb = tpb; // Note: a bit hacky way to get the tpb
+  return AC_SUCCESS;
+}
+
+AcResult
+acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
+                  VertexBufferArray vba)
+{
+  const int3 n = end - start;
+
+  const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
+  const dim3 tpb        = tbconf.tpb;
+  const int3 dims       = tbconf.dims;
+  const dim3 bpg        = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
+  const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
+
+  // Timer create
+  cudaEvent_t tstart, tstop;
+  cudaEventCreate(&tstart);
+  cudaEventCreate(&tstop);
+
+  // Warmup
+  cudaEventRecord(tstart);
+  kernel<<<bpg, tpb, smem>>>(start, end, vba);
+  cudaEventRecord(tstop);
+  cudaEventSynchronize(tstop);
+  ERRCHK_CUDA_KERNEL();
+  cudaDeviceSynchronize();
+
+  // Benchmark
+  cudaEventRecord(tstart); // Timing start
+  kernel<<<bpg, tpb, smem>>>(start, end, vba);
+  cudaEventRecord(tstop); // Timing stop
+  cudaEventSynchronize(tstop);
+  float milliseconds = 0;
+  cudaEventElapsedTime(&milliseconds, tstart, tstop);
+
+  size_t kernel_id = NUM_KERNELS;
+  for (size_t i = 0; i < NUM_KERNELS; ++i) {
+    if (kernels[i] == kernel) {
+      kernel_id = i;
+    }
+  }
+  ERRCHK_ALWAYS(kernel_id < NUM_KERNELS);
+  printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel_id],
+         milliseconds);
+
+  // Timer destroy
+  cudaEventDestroy(tstart);
+  cudaEventDestroy(tstop);
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
   return AC_SUCCESS;

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "astaroth.h"
 #include "astaroth_utils.h"
@@ -58,7 +59,7 @@ main(int argc, char** argv)
 
     // Random numbers
     const size_t pid   = 0;
-    const size_t count = acVertexBufferSize(info);
+    const size_t count = acVertexBufferCompdomainSize(info);
     acRandInitAlt(seed, count, pid);
     srand(seed);
 
@@ -130,6 +131,7 @@ main(int argc, char** argv)
         acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
         acDeviceResetMesh(device, STREAM_DEFAULT);
         acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+        acDeviceSwapBuffers(device);
         acDeviceSynchronizeStream(device, STREAM_ALL);
 
         // Benchmark
