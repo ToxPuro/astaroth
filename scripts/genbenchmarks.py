@@ -8,6 +8,7 @@ import math
 import time
 import subprocess
 from contextlib import redirect_stdout
+import numpy as np
 
 ###
 # Single node io scaling benchmarks
@@ -227,7 +228,7 @@ def gen_microbenchmarks(system):
             stride = 1
             max_problem_size = 1 * 1024**3    # 1 GiB
             while problem_size <= max_problem_size:
-                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples}')
+                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples} {args.verify} {np.random.randint(0, 65535)}')
                 problem_size *= 2
 
             # Working set
@@ -236,7 +237,7 @@ def gen_microbenchmarks(system):
             stride = 1
             max_working_set_size = 8200  # r = 512, (512 * 2 + 1) * 8 bytes = 8200 bytes
             while working_set_size <= max_working_set_size:
-                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples}')
+                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples} {args.verify} {np.random.randint(0, 65535)}')
                 working_set_size *= 2
 
             # Stride
@@ -246,7 +247,7 @@ def gen_microbenchmarks(system):
             stride           = 1
             max_stride       = 4192
             while stride <= max_stride:
-                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples}')
+                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples} {args.verify} {np.random.randint(0, 65535)}')
                 stride *= 2
 
 # Linear stencil benchmarks
@@ -263,15 +264,15 @@ def gen_convolutionbenchmarks(system):
             for radius in range(0, 5):
                 # 1D
                 nn = (problem_size, 1, 1)
-                print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius}')
+                print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
                 # 2D
                 nn = (int(problem_size**(1/2)), int(problem_size**(1/2)), 1)
-                print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius}')
+                print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
                 # 3D
                 nn = (int(problem_size**(1/3)), int(problem_size**(1/3)), int(problem_size**(1/3)))
-                print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius}')
+                print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
     with open(f'{scripts_dir}/heat-equation-benchmark-python.sh', 'w') as f:
         with redirect_stdout(f):
@@ -281,7 +282,6 @@ def gen_convolutionbenchmarks(system):
             system.print_sbatch_header(ntasks=1)
 
             libraries = ['pytorch', 'tensorflow', 'jax']
-            import numpy as np
             ## Script body
             problem_size = 256**3
             for library in libraries:
@@ -290,17 +290,17 @@ def gen_convolutionbenchmarks(system):
                     # 1D
                     nn = (problem_size, 1, 1)
                     assert(nn[0] * nn[1] * nn[2] == problem_size)
-                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library}')
+                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
                     # 2D
                     nn = (int(np.rint(problem_size**(1/2))), int(np.rint(problem_size**(1/2))), 1)
                     assert(nn[0] * nn[1] * nn[2] == problem_size)
-                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library}')
+                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
                     # 3D
                     nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
                     assert(nn[0] * nn[1] * nn[2] == problem_size)
-                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library}')
+                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
 
 # Device benchmarks (nonlinear stencils)
@@ -308,7 +308,7 @@ def gen_devicebenchmarks(system, nx, ny, nz):
     with open(f'{scripts_dir}/device-benchmark.sh', 'w') as f:
         with redirect_stdout(f):
             system.print_sbatch_header(1)
-            print(f'srun {system.srun_params} ./benchmark-device {nx} {ny} {nz} $SLURM_JOB_ID {args.num_samples} {args.verify}')
+            print(f'srun {system.srun_params} ./benchmark-device {nx} {ny} {nz} $SLURM_JOB_ID {args.num_samples} {args.verify} {np.random.randint(0, 65535)}')
 
     with open(f'{scripts_dir}/nonlinear-mhd-benchmark-python.sh', 'w') as f:
         with redirect_stdout(f):
@@ -317,7 +317,6 @@ def gen_devicebenchmarks(system, nx, ny, nz):
             system.print_sbatch_header(ntasks=1)
 
             libraries = ['pytorch', 'tensorflow']
-            import numpy as np
             ## Script body
             problem_size = 128**3 # Need to drop the dim, 256**3 uses too much additional memory with Pytorch
             for library in libraries:
@@ -326,7 +325,7 @@ def gen_devicebenchmarks(system, nx, ny, nz):
                     # 3D
                     nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
                     assert(nn[0] * nn[1] * nn[2] == problem_size)
-                    print(f'{args.cmakelistdir}/samples/benchmark-device/mhd.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library}')
+                    print(f'{args.cmakelistdir}/samples/benchmark-device/mhd.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
 # Intra-node benchmarks
 def gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices):
