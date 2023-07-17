@@ -466,6 +466,7 @@ main(int argc, char* argv[])
     ERRCHK(domain_length * sizeof(double) == problem_size);
 
     printf("Input parameters:\n");
+    printf("\tproblem_size: %zu\n", problem_size);
     printf("\tpad: %zu\n", pad);
     printf("\tradius: %d\n", radius);
     printf("\tstride: %d\n", stride);
@@ -478,6 +479,17 @@ main(int argc, char* argv[])
         fprintf(stderr, "Invalid working set size: %lu > %lu\n", working_set_size, problem_size);
         return EXIT_FAILURE;
     }
+
+    # if USE_SMEM
+    const size_t required_smem = get_smem(1, radius);
+    cudaDeviceProp props;
+    cudaGetDeviceProperties(&props, 0);
+    const size_t max_smem              = (size_t)props.sharedMemPerBlock;
+    if (required_smem > max_smem) {
+        fprintf(stderr, "Too large radius for a non-streaming shared memory implementation: %lu > %lu\n", required_smem, max_smem);
+        return EXIT_FAILURE;
+    }
+    #endif
 
     printDeviceInfo(0);
     printf("USE_SMEM=%d\n", USE_SMEM);
