@@ -7,6 +7,12 @@
 
 #include "timer_hires.h"
 
+#if AC_DOUBLE_PRECISION
+#define DOUBLE_PRECISION (1)
+#else
+#define DOUBLE_PRECISION (0)
+#endif
+
 #ifdef AC_INTEGRATION_ENABLED
 int
 main(int argc, char** argv)
@@ -34,6 +40,7 @@ main(int argc, char** argv)
 
     printf("IMPLEMENTATION=%d\n", IMPLEMENTATION);
     printf("MAX_THREADS_PER_BLOCK=%d\n", MAX_THREADS_PER_BLOCK);
+    printf("DOUBLE_PRECISION=%u\n", DOUBLE_PRECISION);
     fflush(stdout);
 
     // Mesh configuration
@@ -119,7 +126,7 @@ main(int argc, char** argv)
 
     // File format
     fprintf(fp, "implementation,maxthreadsperblock,nx,ny,nz,milliseconds,tpbx,tpby,tpbz,jobid,seed,"
-                "iteration\n");
+                "iteration,double_precision\n");
 
     // Benchmark configuration
     acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
@@ -143,17 +150,17 @@ main(int argc, char** argv)
         const double milliseconds = timer_diff_nsec(t) / 1e6;
 
         const Volume tpb = acKernelLaunchGetLastTPB();
-        fprintf(fp, "%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu\n", IMPLEMENTATION,
+        fprintf(fp, "%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu,%u\n", IMPLEMENTATION,
                 MAX_THREADS_PER_BLOCK, nx, ny, nz, milliseconds, tpb.x, tpb.y, tpb.z, jobid, seed,
-                j);
+                j, DOUBLE_PRECISION);
 
         if (j == num_samples - 1) {
             fprintf(stdout, "implementation,maxthreadsperblock,nx,ny,nz,milliseconds,tpbx,tpby,"
                             "tpbz,jobid,seed,"
-                            "iteration\n");
-            fprintf(stdout, "%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu\n", IMPLEMENTATION,
+                            "iteration,double_precision\n");
+            fprintf(stdout, "%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu,%u\n", IMPLEMENTATION,
                     MAX_THREADS_PER_BLOCK, nx, ny, nz, milliseconds, tpb.x, tpb.y, tpb.z, jobid,
-                    seed, j);
+                    seed, j, DOUBLE_PRECISION);
             printf("Milliseconds per kernel launch: %g\n", milliseconds);
             printf("Optimal tpb: (%zu, %zu, %zu)\n", tpb.x, tpb.y, tpb.z);
         }
