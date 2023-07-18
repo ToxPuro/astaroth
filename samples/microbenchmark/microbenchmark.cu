@@ -449,19 +449,20 @@ main(int argc, char* argv[])
     cudaProfilerStop();
 
     // Input parameters
-    fprintf(stderr, "Usage: ./benchmark <problem size> <working set size> <stride> <jobid>\n");
+    fprintf(stderr, "Usage: ./benchmark <problem size> <working set size> <stride> <jobid> <num_samples> <salt>\n");
     const size_t problem_size     = (argc > 1) ? (size_t)atol(argv[1]) : 268435456;
     const size_t working_set_size = (argc > 2) ? (size_t)atol(argv[2]) : 8;
     const int stride              = (argc > 3) ? (size_t)atol(argv[3]) : 1;
     const size_t jobid            = (argc > 4) ? (size_t)atol(argv[4]) : 0;
     const size_t num_samples      = (argc > 5) ? (size_t)atol(argv[5]) : 100;
+    const size_t salt             = (argc > 6) ? (size_t)atol(argv[6]) : 42;
 
     // Derived values
     const int radius           = (((working_set_size / sizeof(double)) - 1) / 2) * stride;
     const size_t pad           = get_pad(radius);
     const size_t domain_length = problem_size / sizeof(double);
     const size_t array_length  = pad + domain_length + radius;
-    const size_t seed          = 12345 + time(NULL) + jobid * time(NULL);
+    const size_t seed          = 12345 + salt + (1+problem_size+working_set_size+stride+jobid+num_samples) * time(NULL);
     ERRCHK((2 * radius / stride + 1) * sizeof(double) == working_set_size);
     ERRCHK(domain_length * sizeof(double) == problem_size);
 
