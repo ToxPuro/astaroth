@@ -60,6 +60,7 @@ print("sys.argv", sys.argv)
 meshdir = "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"
 meshdir = "/tiara/ara/data/mvaisala/202202_acc3test/astaroth/config/samples/shockturb/"
 meshdir = "/tiara/ara/data/mvaisala/202207_standalone_mpi_io/astaroth/config/samples/shockturb/"
+meshdir = "/media/mvaisala/Transcend/haatouken/output-snapshots/"
 
 #Example fixed scaling template
 if (meshdir == "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"):
@@ -324,11 +325,12 @@ if 'findnan' in sys.argv:
 
 
 if 'sl' in sys.argv:
-    mesh_file_numbers = ad.read.parse_directory(meshdir)
+    mesh_file_numbers, xsplit, ysplit, zsplit = ad.read.parse_directory(meshdir)
     print(mesh_file_numbers)
+    print(xsplit, ysplit, zsplit)
     maxfiles = np.amax(mesh_file_numbers)
     for i in mesh_file_numbers:
-        mesh = ad.read.Mesh(i, fdir=meshdir) 
+        mesh = ad.read.Mesh(i, fdir=meshdir, xsplit=xsplit, ysplit=ysplit, zsplit=zsplit) 
         print(" %i / %i" % (i, maxfiles))
         if mesh.ok:
             uu_tot = np.sqrt(mesh.uu[0]**2.0 + mesh.uu[1]**2.0 + mesh.uu[2]**2.0)
