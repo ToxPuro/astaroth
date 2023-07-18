@@ -491,10 +491,19 @@ if 'postprocess' in args.task_type:
         print(f'Postprocessing {inputs} -> {output}')
         files = glob.glob(inputs)
 
+        # Check if there are any files
+        if not files:
+            print('\n' + '-' * 80)
+            print(f'Warning: did not find files matching {inputs}. Skipping.')
+            print('-' * 80 + '\n')
+            return
+
         # Check for invalid files
         invalid_files = list(filter(lambda file: os.path.getsize(file) <= 0, files))
         if len(invalid_files) > 0:
-            print(f'Warning: found {len(invalid_files)} invalid file(s): {invalid_files}')
+            print('\n' + '-' * 80)
+            print(f'Warning: found {len(invalid_files)} invalid file(s) when processing {inputs}: {invalid_files}')
+            print('-' * 80 + '\n')
 
         # Generate the output csv from valid files
         files = filter(lambda file: os.path.getsize(file) > 0, files)
