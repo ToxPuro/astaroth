@@ -143,25 +143,26 @@ class Debug:
 # Benchmark output
 class Output:
     def __init__(self):
-        self.df = pd.DataFrame(columns=['kernel', 
-                                        'implementation', 
-                                        'maxthreadsperblock', 
-                                        'nx', 'ny', 'nz', 'radius', 
-                                        'milliseconds', 
-                                        'tpbx', 'tpby', 'tpbz', 
-                                        'jobid', 'seed', 'iteration'])        
+        self.df = pd.DataFrame(columns=['kernel',
+                                        'implementation',
+                                        'maxthreadsperblock',
+                                        'nx', 'ny', 'nz', 'radius',
+                                        'milliseconds',
+                                        'tpbx', 'tpby', 'tpbz',
+                                        'jobid', 'seed', 'iteration', 'double_precision'])
 
     def record(self, milliseconds, iteration):
-        row = {'kernel' : 'convolve', 
-                'implementation' : args.library,
-                'nx' : args.dims[0], 
-                'ny' : args.dims[1], 
-                'nz' : args.dims[2], 
-                'radius' : args.radius, 
-                'milliseconds' : milliseconds, 
-                'jobid' : args.jobid,
-                'seed' : seed,
-                'iteration' : iteration}
+        row = {'kernel': 'convolve',
+               'implementation': args.library,
+               'nx': args.dims[0],
+               'ny': args.dims[1],
+               'nz': args.dims[2],
+               'radius': args.radius,
+               'milliseconds': milliseconds,
+               'jobid': args.jobid,
+               'seed': seed,
+               'iteration': iteration,
+               'double_precision': int(args.dtype in 'fp64')}
         self.df.loc[len(self.df.index)] = row
 
     def __del__(self):
