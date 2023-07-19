@@ -162,7 +162,7 @@ class Output:
                'jobid': args.jobid,
                'seed': seed,
                'iteration': iteration,
-               'double_precision': int(args.dtype in 'fp64')}
+               'double_precision': int(args.dtype == np.float64)}
         self.df.loc[len(self.df.index)] = row
 
     def __del__(self):
