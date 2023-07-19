@@ -1,5 +1,5 @@
 '''
-    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2023, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -80,39 +80,53 @@ def read_bin(fname, fdir, fnum, xsplit, ysplit, zsplit, minfo, numtype=np.longdo
             array = np.reshape(array[1:], (minfo.contents['AC_mx'], 
                                            minfo.contents['AC_my'], 
                                            minfo.contents['AC_mz']), order='F')
+
     elif read_ok_alt:
+        array = np.zeros((minfo.contents['AC_nx'], minfo.contents['AC_ny'],
+                         minfo.contents['AC_nz']))
+        #Check the size of a file block
+        if len(xsplit) > 1:
+            xpoints = xsplit[1] - xsplit[0]
+        else:
+            xpoints = minfo.contents['AC_nx']
+        if len(ysplit) > 1:
+            ypoints = ysplit[1] - ysplit[0]
+        else:
+            ypoints = minfo.contents['AC_ny']
+        if len(zsplit) > 1:
+            zpoints = zsplit[1] - zsplit[0]
+        else:
+            zpoints = minfo.contents['AC_nz']
         for xind in xsplit:
             for yind in ysplit:
                 for zind in zsplit:
-                    filename_alt = fdir + fname + '-segment-' + str(xind) + '-' + str(yind) + '-' + str(zind) + '-' + fnum + '.mesh'
+                    print(fdir, fname, xind, yind, zind, fnum) 
+                    print(type(fdir), type(fname), type(xind), type(yind), type(zind), type(fnum)) 
+                    filename_alt = fdir + fname + '-segment-' + str(xind) + '-' + str(yind) + '-' + str(zind) + '-' + str(fnum) + '.mesh'
                     if getfilename:
+                        print("File reading loop")
                         print(filename_alt)
-                    array = np.fromfile(filename_alt, dtype=my_dtype)
-
-                    if slices:
-                        timestamp = 666.0 #How does time information is saved for slices ? 
-                    else:        
-                        timestamp = 666.0
-                        snapshots_df = pd.read_csv(fdir+'../snapshots_info.csv')
-                        #print(snapshots_df)
-                        fnum = int(fnum)
-                        #print(fnum)
-                        #print(snapshots_df.columns.tolist())
-                        #print(snapshots_df[' step_number'])
-                        row = snapshots_df.loc[snapshots_df[' step_number'] == fnum]
-                        #print(row)
-                        timestamp = np.float32(row[' t_step '])[0]
-                        #print(timestamp)
-
-                    if slices:
-                        array = np.reshape(array, (minfo.contents['AC_mx']-6, 
-                                                   minfo.contents['AC_my']-6), order='F')
-                        read_ok = 1
-                    else:
-                        array = np.reshape(array, (minfo.contents['AC_mx']-6, 
-                                                   minfo.contents['AC_my']-6, 
-                                                   minfo.contents['AC_mz']-6), order='F')
-                        read_ok = 1
+                        print(xpoints, ypoints, zpoints)
+                        print(xpoints*ypoints*zpoints)
+                    array_part = np.fromfile(filename_alt, dtype=my_dtype)
+                           
+                    timestamp = 666.0
+                    snapshots_df = pd.read_csv(fdir+'../snapshots_info.csv')
+                    print(snapshots_df)
+                    fnum = int(fnum)
+                    print(fnum)
+                    print(snapshots_df.columns.tolist())
+                    print(snapshots_df[' step_number'])
+                    print(snapshots_df[' modstep'])
+                    row = snapshots_df.loc[snapshots_df[' modstep'] == fnum]
+                    print(row)
+                    timestamp = np.float32(row[' t_step'])[0]
+                    print(timestamp)
+                        
+                    array_part = np.reshape(array_part, (xpoints, ypoints, zpoints), order='F')
+                    array[xind:(xind+xpoints), yind:(yind+ypoints), zind:(zind+zpoints)] = array_part
+                         
+                    read_ok = 1
     else:
         array = None
         timestamp = None
@@ -180,6 +194,9 @@ def parse_directory(meshdir):
     xsplit = [*set(xsplit)]
     ysplit = [*set(ysplit)]
     zsplit = [*set(zsplit)]
+    xsplit.sort() 
+    ysplit.sort() 
+    zsplit.sort() 
     print(xsplit)
     print(ysplit)
     print(zsplit)
