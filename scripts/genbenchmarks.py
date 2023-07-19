@@ -264,14 +264,17 @@ def gen_convolutionbenchmarks(system):
             for radius in range(0, 5):
                 # 1D
                 nn = (problem_size, 1, 1)
+                assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
                 # 2D
-                nn = (int(problem_size**(1/2)), int(problem_size**(1/2)), 1)
+                nn = (int(np.rint(problem_size**(1/2))), int(np.rint(problem_size**(1/2))), 1)
+                assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
                 # 3D
-                nn = (int(problem_size**(1/3)), int(problem_size**(1/3)), int(problem_size**(1/3)))
+                nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
+                assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
     with open(f'{scripts_dir}/heat-equation-benchmark-python.sh', 'w') as f:
@@ -290,17 +293,17 @@ def gen_convolutionbenchmarks(system):
                     # 1D
                     nn = (problem_size, 1, 1)
                     assert(nn[0] * nn[1] * nn[2] == problem_size)
-                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
+                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype fp32 --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
                     # 2D
                     nn = (int(np.rint(problem_size**(1/2))), int(np.rint(problem_size**(1/2))), 1)
                     assert(nn[0] * nn[1] * nn[2] == problem_size)
-                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
+                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype fp32 --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
                     # 3D
                     nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
                     assert(nn[0] * nn[1] * nn[2] == problem_size)
-                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
+                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype fp32 --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
 
 # Device benchmarks (nonlinear stencils)
@@ -325,7 +328,7 @@ def gen_devicebenchmarks(system, nx, ny, nz):
                     # 3D
                     nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
                     assert(nn[0] * nn[1] * nn[2] == problem_size)
-                    print(f'{args.cmakelistdir}/samples/benchmark-device/mhd.py --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
+                    print(f'{args.cmakelistdir}/samples/benchmark-device/mhd.py --dtype fp32 --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
 # Intra-node benchmarks
 def gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices):
@@ -392,45 +395,46 @@ if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
     syscall(f'mkdir -p {builds_dir}')
     for implementation in args.implementations:
         for io_implementation in args.io_implementations:
-            tpb = args.max_threads_per_block_range[0]
-            while tpb <= args.max_threads_per_block_range[1]:
+            for double_precision in [0, 1]:
+                tpb = args.max_threads_per_block_range[0]
+                while tpb <= args.max_threads_per_block_range[1]:
 
-                # Nonlinear stencil builds (default Astaroth)
-                #impl_id     = 1 if implementation == 'implicit' else 2
-                impl_id = implementations[implementation]
-                use_smem    = implementation == 'explicit'
-                distributed = io_implementation == 'distributed'
+                    # Nonlinear stencil builds (default Astaroth)
+                    #impl_id     = 1 if implementation == 'implicit' else 2
+                    impl_id = implementations[implementation]
+                    use_smem    = implementation == 'explicit'
+                    distributed = io_implementation == 'distributed'
 
-                build_dir = f'{builds_dir}/implementation{impl_id}_maxthreadsperblock{tpb}_distributed{distributed}'
-                syscall(f'mkdir -p {build_dir}')
+                    build_dir = f'{builds_dir}/implementation{impl_id}_maxthreadsperblock{tpb}_distributed{distributed}_doubleprecision{double_precision}'
+                    syscall(f'mkdir -p {build_dir}')
 
-                # Generate Makefile
-                flags = f'''-DMPI_ENABLED=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
-                
-                cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
-                syscall_async(cmd)
+                    # Generate Makefile
+                    flags = f'''-DMPI_ENABLED=ON -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed} -DDOUBLE_PRECISION={double_precision}'''
+                    
+                    cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
+                    syscall_async(cmd)
 
-                build_info = f'{build_dir}/build-info-{system.id}.txt'
-                syscall(f'date > {build_info}')
-                syscall(f'echo {cmd} >> {build_info}')
-                syscall(f'git -C {args.cmakelistdir} rev-parse HEAD >> {build_info}')
+                    build_info = f'{build_dir}/build-info-{system.id}.txt'
+                    syscall(f'date > {build_info}')
+                    syscall(f'echo {cmd} >> {build_info}')
+                    syscall(f'git -C {args.cmakelistdir} rev-parse HEAD >> {build_info}')
 
-                # Linear stencil computations (heat-equation sample)
-                build_dir = f'{builds_dir}/heat-equation-implementation{impl_id}_maxthreadsperblock{tpb}_distributed{distributed}'
-                syscall(f'mkdir -p {build_dir}')
-                # Generate Makefile
-                use_hip = 1 if system.use_hip else 0
-                flags = f'''-DBUILD_STANDALONE=OFF -DBUILD_MHD_SAMPLES=OFF -DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR={args.cmakelistdir}/samples/heat-equation/ -DPROGRAM_MODULE_DIR={args.cmakelistdir}/samples/heat-equation -DUSE_HIP={use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed}'''
-                
-                cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
-                syscall_async(cmd)
+                    # Linear stencil computations (heat-equation sample)
+                    build_dir = f'{builds_dir}/heat-equation-implementation{impl_id}_maxthreadsperblock{tpb}_distributed{distributed}_doubleprecision{double_precision}'
+                    syscall(f'mkdir -p {build_dir}')
+                    # Generate Makefile
+                    use_hip = 1 if system.use_hip else 0
+                    flags = f'''-DBUILD_STANDALONE=OFF -DBUILD_MHD_SAMPLES=OFF -DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR={args.cmakelistdir}/samples/heat-equation/ -DPROGRAM_MODULE_DIR={args.cmakelistdir}/samples/heat-equation -DUSE_HIP={use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed} -DDOUBLE_PRECISION={double_precision}'''
+                    
+                    cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
+                    syscall_async(cmd)
 
-                build_info = f'{build_dir}/build-info-{system.id}.txt'
-                syscall(f'date > {build_info}')
-                syscall(f'echo {cmd} >> {build_info}')
-                syscall(f'git -C {args.cmakelistdir} rev-parse HEAD >> {build_info}')
+                    build_info = f'{build_dir}/build-info-{system.id}.txt'
+                    syscall(f'date > {build_info}')
+                    syscall(f'echo {cmd} >> {build_info}')
+                    syscall(f'git -C {args.cmakelistdir} rev-parse HEAD >> {build_info}')
 
-                tpb = 32 if tpb == 0 else 2*tpb
+                    tpb = 32 if tpb == 0 else 2*tpb
     syscalls_wait()    
 
 # Generate scripts

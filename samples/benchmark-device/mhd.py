@@ -424,7 +424,7 @@ class Output:
                                         'nx', 'ny', 'nz', 'radius',
                                         'milliseconds',
                                         'tpbx', 'tpby', 'tpbz',
-                                        'jobid', 'seed', 'iteration'])
+                                        'jobid', 'seed', 'iteration', 'double_precision'])
 
     def record(self, milliseconds, iteration):
         row = {'kernel': 'convolve',
@@ -436,7 +436,8 @@ class Output:
                'milliseconds': milliseconds,
                'jobid': args.jobid,
                'seed': seed,
-               'iteration': iteration}
+               'iteration': iteration,
+               'double_precision': int(args.dtype in 'fp64')}
         self.df.loc[len(self.df.index)] = row
 
     def __del__(self):
@@ -460,12 +461,22 @@ if args.library in 'pytorch':
         def __init__(self, device, dtype):
             self.name = 'pytorch'
             self.device = 'cpu' if device in 'cpu' else 'cuda'
-            self.dtype = torch.double if dtype == np.float64 else torch.float
+            self.dtype = torch.float64 if dtype == np.float64 else torch.float32
+            torch.set_default_dtype(self.dtype)
+            #self.dtype = torch.double if dtype == np.float64 else torch.float
 
             print(f'Using {device} device')
 
             # Enable autotuning
             torch.backends.cudnn.benchmark = True
+            torch.backends.cudnn.benchmark_limit = 0 # Try every available algorithm
+
+            # Disable tensor cores
+            torch.backends.cuda.matmul.allow_tf32 = False
+            torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = False
+            torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False
+            torch.backends.cudnn.allow_tf32 = False
+            #torch.backends.cudnn.deterministic = True
 
             # Disable debugging APIs
             torch.autograd.set_detect_anomaly(False)
@@ -523,8 +534,10 @@ if args.library in 'pytorch':
             z = a[0] * b[1] - a[1] * b[0]
             return torch.stack([x, y, z])
 
-        @torch.compile
+        #@torch.compile(options={'max-autotune': True})
+        @torch.compile(mode='max-autotune', fullgraph=True)
         @torch.no_grad() # Note: not supported with jit
+        #@torch.jit.script
         def forward(self, input):
             # Inputs
             ## Hydro
@@ -1012,10 +1025,10 @@ if args.verify:
         for stencil in range(len(model[0])):
             if args.library in 'tensorflow':
                 correct = np.allclose(
-                    model[field, stencil], candidate[field, :, :, :, stencil])
+                    model[field, stencil], candidate[field, :, :, :, stencil], rtol=epsilon, atol=epsilon)
             elif args.library in 'pytorch':
                 correct = np.allclose(
-                    model[field, stencil], candidate[field, stencil, :, :, :])
+                    model[field, stencil], candidate[field, stencil, :, :, :], rtol=epsilon, atol=epsilon)
 
             if not correct:
                 print(f'Convolution f{field}_s{stencil} correct: {correct}')

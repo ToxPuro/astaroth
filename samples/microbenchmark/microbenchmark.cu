@@ -44,6 +44,12 @@ gpu: 0 1 2 3
 #include <cuda_runtime_api.h>  // cudaStream_t
 #endif
 
+#if AC_DOUBLE_PRECISION
+#define DOUBLE_PRECISION (1)
+#else
+#define DOUBLE_PRECISION (0)
+#endif
+
 #include "array.h"
 
 typedef struct {
@@ -332,7 +338,7 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
 
     // File format
     fprintf(fp, "caching,maxthreadsperblock,problemsize,workingsetsize,stride,milliseconds,"
-                "effectivebandwidth,tpb,jobid,seed,iteration\n");
+                "effectivebandwidth,tpb,jobid,seed,iteration,double_precision\n");
 
     // Dryrun
     kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.pad, c.radius, c.stride, a, b);
@@ -365,10 +371,10 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
         }
 
         // Write to file
-        fprintf(fp, "%s,%d,%zu,%zu,%d,%g,%g,%zu,%zu,%zu,%zu\n",
+        fprintf(fp, "%s,%d,%zu,%zu,%d,%g,%g,%zu,%zu,%zu,%zu,%u\n",
                 USE_SMEM ? "\"explicit\"" : "\"implicit\"", MAX_THREADS_PER_BLOCK,
                 c.domain_length * sizeof(double), (2 * c.radius / c.stride + 1) * sizeof(double),
-                c.stride, (double)milliseconds, bandwidth, c.tpb, jobid, seed, i);
+                c.stride, (double)milliseconds, bandwidth, c.tpb, jobid, seed, i, DOUBLE_PRECISION);
     }
     cudaEventDestroy(tstart);
     cudaEventDestroy(tstop);
@@ -495,6 +501,7 @@ main(int argc, char* argv[])
     printDeviceInfo(0);
     printf("USE_SMEM=%d\n", USE_SMEM);
     printf("MAX_THREADS_PER_BLOCK=%d\n", MAX_THREADS_PER_BLOCK);
+    printf("DOUBLE_PRECISION=%u\n", DOUBLE_PRECISION);
 
     // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte);
     // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
