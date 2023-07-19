@@ -264,14 +264,17 @@ def gen_convolutionbenchmarks(system):
             for radius in range(0, 5):
                 # 1D
                 nn = (problem_size, 1, 1)
+                assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
                 # 2D
-                nn = (int(problem_size**(1/2)), int(problem_size**(1/2)), 1)
+                nn = (int(np.rint(problem_size**(1/2))), int(np.rint(problem_size**(1/2))), 1)
+                assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
                 # 3D
-                nn = (int(problem_size**(1/3)), int(problem_size**(1/3)), int(problem_size**(1/3)))
+                nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
+                assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
     with open(f'{scripts_dir}/heat-equation-benchmark-python.sh', 'w') as f:
