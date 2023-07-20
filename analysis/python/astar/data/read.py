@@ -143,23 +143,23 @@ def read_meshtxt(fdir, fname, dbg_output):
     for line in filetext:
         line = line.split()
         if line[0] == 'int':
-            contents[line[1]] = np.int(line[2])
+            contents[line[1]] = int(line[2])
             if dbg_output:
                 print(line[1], contents[line[1]])
         elif line[0] == 'size_t':
-            contents[line[1]] = np.int(line[2])
+            contents[line[1]] = int(line[2])
             if dbg_output:
                 print(line[1], contents[line[1]])
         elif line[0] == 'int3':
-            contents[line[1]] = [np.int(line[2]), np.int(line[3]), np.int(line[4])]
+            contents[line[1]] = [int(line[2]), int(line[3]), int(line[4])]
             if dbg_output:
                 print(line[1], contents[line[1]])
         elif line[0] == 'real':
-            contents[line[1]] = np.float(line[2])
+            contents[line[1]] = float(line[2])
             if dbg_output:
                 print(line[1], contents[line[1]])
         elif line[0] == 'real3':
-            contents[line[1]] = [np.float(line[2]), np.float(line[3]), np.float(line[4])]
+            contents[line[1]] = [float(line[2]), float(line[3]), float(line[4])]
             if dbg_output:
                 print(line[1], contents[line[1]])
         else: 
