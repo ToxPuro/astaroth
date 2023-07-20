@@ -1,6 +1,6 @@
 /*
 
-    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2023, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -797,6 +797,13 @@ main(int argc, char** argv)
                                                                          // sake of diagnosis.
                 initial_mesh_procedure = InitialMeshProcedure::InitKernel;
                 simulation_physics     = PhysicsConfiguration::HydroHeatduct;
+                acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
+            }
+            else if (strcmp(optarg, "ShockTurb") == 0) {
+                acLogFromRootProc(pid, "Initial condition: ShockTurb\n"); // This here just for the
+                                                                          // sake of diagnosis.
+                initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+                simulation_physics     = PhysicsConfiguration::ShockSinglepass;
                 acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
             }
             else {
