@@ -166,7 +166,7 @@ class Output:
         self.df.loc[len(self.df.index)] = row
 
     def __del__(self):
-        self.df.to_csv(f'heat-equation-{args.jobid}-{seed}.csv', index=False)
+        self.df.to_csv(f'heat-equation-python-{args.jobid}-{seed}.csv', index=False)
 
 # %%
 # Libraries
@@ -215,7 +215,7 @@ if args.library in 'pytorch':
                 return torch.nn.functional.conv1d(input, weights)
 
 
-        def benchmark(self, num_samples):
+        def benchmark_old(self, num_samples):
             output = Output()
 
             input, weights = self.get_input()
@@ -240,7 +240,7 @@ if args.library in 'pytorch':
                 if i == num_samples-1:
                     print(f'{milliseconds} ms')
 
-        def benchmark_better(self, num_samples):
+        def benchmark_cuda(self, num_samples):
             input, weights = self.get_input()
             for i in range(num_samples):
                 input = self.pad(input)
@@ -259,6 +259,25 @@ if args.library in 'pytorch':
                 else:
                     milliseconds = 1e3 * (time.time() - start)
                 if i == num_samples-1:
+                    print(f'{milliseconds} ms')
+
+        def benchmark(self, num_samples):
+            output = Output()
+
+            input, weights = self.get_input()
+            input = self.pad(input)
+
+            timer = torch.utils.benchmark.Timer(
+                stmt='self.convolve(input, weights)',
+                setup='from __main__ import Pytorch',
+                globals={'input': input, 'weights': weights, 'self': self}
+            )
+
+            for i in range(num_samples):
+                measurement = timer.timeit(1)
+                milliseconds = 1e3 * measurement.raw_times[0]
+                output.record(milliseconds, i)
+                if i >= num_samples-10:
                     print(f'{milliseconds} ms')
 
     lib = Pytorch(args.device, args.dtype)
@@ -298,7 +317,7 @@ elif args.library in 'tensorflow':
         def convolve(self, input, weights):
             return tf.nn.convolution(input, weights)
 
-        def benchmark(self, num_samples):
+        def benchmark_old_and_incorrect_sync(self, num_samples):
             output = Output()
 
             input, weights = self.get_input()
@@ -312,6 +331,19 @@ elif args.library in 'tensorflow':
                 output.record(milliseconds, i)
                 if i == num_samples-1:
                     print(f'{milliseconds} ms')
+
+        def benchmark(self, num_samples):
+            benchmark_output = Output()
+            with tf.Graph().as_default() as graph:
+                # Setup input and weights
+                input, weights = self.get_input()
+                with tf.compat.v1.Session(graph=graph) as sess:
+                    benchmark = tf.test.Benchmark()
+                    for i in range(num_samples):
+                        measurement = benchmark.run_op_benchmark(
+                            sess, self.convolve(input, weights), min_iters=1)
+                        benchmark_output.record(
+                            1e3*measurement['wall_time'], i)
 
     lib = Tensorflow(args.device, args.dtype)
 elif args.library in 'jax':
