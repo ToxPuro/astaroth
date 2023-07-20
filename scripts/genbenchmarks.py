@@ -157,7 +157,7 @@ class System:
         #print(self.modules)
 
 mahti = System(id='a100', account='project_2000403', partition='gpusmall', ngpus_per_node=4, gres='gpu:a100',
-               modules='module load gcc/9.4.0 openmpi/4.1.2-cuda cuda cmake', use_hip=False, optimal_implementation=1, optimal_tpb=0)
+               modules='module load gcc/9.4.0 openmpi/4.1.2-cuda cuda cmake python-data', use_hip=False, optimal_implementation=1, optimal_tpb=0)
 puhti = System(id='v100', account='project_2000403', partition='gpu', ngpus_per_node=4,
                gres='gpu:v100', modules='module load gcc cuda openmpi cmake', use_hip=False,
                additional_commands='''
@@ -253,7 +253,12 @@ def gen_microbenchmarks(system):
 
 # Linear stencil benchmarks
 def gen_convolutionbenchmarks(system):
-    with open(f'{scripts_dir}/heat-equation-benchmark.sh', 'w') as f:
+    
+    ###
+    problem_size = 256**3 # Note here
+    ###
+
+    with open(f'{scripts_dir}/heat-equation-benchmark-astaroth.sh', 'w') as f:
         with redirect_stdout(f):
 
             # Create the batch script
@@ -261,7 +266,6 @@ def gen_convolutionbenchmarks(system):
             system.print_sbatch_header(ntasks=1)
 
             ## Script body
-            problem_size = 256**3
             for radius in range(0, 5):
                 # 1D
                 nn = (problem_size, 1, 1)
@@ -278,17 +282,16 @@ def gen_convolutionbenchmarks(system):
                 assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
-    with open(f'{scripts_dir}/heat-equation-benchmark-python.sh', 'w') as f:
-        with redirect_stdout(f):
+    libraries = ['pytorch', 'tensorflow', 'jax']
+    for library in libraries:
+        with open(f'{scripts_dir}/heat-equation-benchmark-python-{library}.sh', 'w') as f:
+            with redirect_stdout(f):
 
-            # Create the batch script
-            ## Header
-            system.print_sbatch_header(ntasks=1)
+                # Create the batch script
+                ## Header
+                system.print_sbatch_header(ntasks=1)
 
-            libraries = ['pytorch', 'tensorflow', 'jax']
-            ## Script body
-            problem_size = 256**3
-            for library in libraries:
+                ## Script body
                 print(f'module load {library}')
                 for radius in range(0, 5):
                     # 1D
@@ -309,26 +312,32 @@ def gen_convolutionbenchmarks(system):
 
 # Device benchmarks (nonlinear stencils)
 def gen_devicebenchmarks(system, nx, ny, nz):
-    with open(f'{scripts_dir}/device-benchmark.sh', 'w') as f:
+    with open(f'{scripts_dir}/benchmark-device-{nx}-{ny}-{nz}.sh', 'w') as f:
         with redirect_stdout(f):
             system.print_sbatch_header(1)
             print(f'srun {system.srun_params} ./benchmark-device {nx} {ny} {nz} $SLURM_JOB_ID {args.num_samples} {args.verify} {np.random.randint(0, 65535)}')
-
-    with open(f'{scripts_dir}/nonlinear-mhd-benchmark-python.sh', 'w') as f:
+    
+    # Quick hack (ML lib-Astaroth comparison)
+    problem_size = 128**3 # Need to drop the dim, 256**3 uses too much additional memory with Pytorch
+    nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
+    assert(nn[0] * nn[1] * nn[2] == problem_size)
+    with open(f'{scripts_dir}/nonlinear-mhd-benchmark-astaroth.sh', 'w') as f:
         with redirect_stdout(f):
-            # Create the batch script
-            ## Header
-            system.print_sbatch_header(ntasks=1)
+            system.print_sbatch_header(1)
+            print(f'srun {system.srun_params} ./benchmark-device {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {np.random.randint(0, 65535)}')
 
-            libraries = ['pytorch', 'tensorflow']
-            ## Script body
-            problem_size = 128**3 # Need to drop the dim, 256**3 uses too much additional memory with Pytorch
-            for library in libraries:
+    libraries = ['pytorch', 'tensorflow']
+    for library in libraries:
+        with open(f'{scripts_dir}/nonlinear-mhd-benchmark-python-{library}.sh', 'w') as f:
+            with redirect_stdout(f):
+                # Create the batch script
+                ## Header
+                system.print_sbatch_header(ntasks=1)
+
+                ## Script body
                 print(f'module load {library}')
                 for radius in range(3, 3+1):
                     # 3D
-                    nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
-                    assert(nn[0] * nn[1] * nn[2] == problem_size)
                     print(f'{args.cmakelistdir}/samples/benchmark-device/mhd.py --dtype fp32 --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
 # Intra-node benchmarks
