@@ -253,6 +253,11 @@ def gen_microbenchmarks(system):
 
 # Linear stencil benchmarks
 def gen_convolutionbenchmarks(system):
+    
+    ###
+    problem_size = 256**3 # Note here
+    ###
+
     with open(f'{scripts_dir}/heat-equation-benchmark.sh', 'w') as f:
         with redirect_stdout(f):
 
@@ -261,7 +266,6 @@ def gen_convolutionbenchmarks(system):
             system.print_sbatch_header(ntasks=1)
 
             ## Script body
-            problem_size = 256**3
             for radius in range(0, 5):
                 # 1D
                 nn = (problem_size, 1, 1)
@@ -278,17 +282,16 @@ def gen_convolutionbenchmarks(system):
                 assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
-    with open(f'{scripts_dir}/heat-equation-benchmark-python.sh', 'w') as f:
-        with redirect_stdout(f):
+    libraries = ['pytorch', 'tensorflow', 'jax']
+    for library in libraries:
+        with open(f'{scripts_dir}/heat-equation-benchmark-python-{library}.sh', 'w') as f:
+            with redirect_stdout(f):
 
-            # Create the batch script
-            ## Header
-            system.print_sbatch_header(ntasks=1)
+                # Create the batch script
+                ## Header
+                system.print_sbatch_header(ntasks=1)
 
-            libraries = ['pytorch', 'tensorflow', 'jax']
-            ## Script body
-            problem_size = 256**3
-            for library in libraries:
+                ## Script body
                 print(f'module load {library}')
                 for radius in range(0, 5):
                     # 1D
