@@ -441,7 +441,7 @@ class Output:
         self.df.loc[len(self.df.index)] = row
 
     def __del__(self):
-        self.df.to_csv(f'nonlinear-mhd-{args.jobid}-{seed}.csv', index=False)
+        self.df.to_csv(f'nonlinear-mhd-python-{args.jobid}-{seed}.csv', index=False)
 
 
 # %%

@@ -180,6 +180,7 @@ module load craype-accel-amd-gfx90a
 module load rocm
 module load cray-python
 
+module use /appl/local/csc/modulefiles/
 export MPICH_GPU_SUPPORT_ENABLED=1
 export FI_CXI_DEFAULT_CQ_SIZE=300000''', use_hip=True, optimal_implementation=1, optimal_tpb=512)
 
