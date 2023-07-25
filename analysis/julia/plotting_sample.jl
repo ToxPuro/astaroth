@@ -21,6 +21,9 @@ using .AstarothTools
 
 dirpath = "/tiara/ara/data/mvaisala/202304_haatouken/astaroth/config/samples/haatouken/output-snapshots/"
 
-AstarothTools.ReadACData(dirpath)
+step_numbers = AstarothTools.FetchStepNumbers(dirpath)
 
+for step in step_numbers
+    AstarothTools.ReadACData(dirpath, step)
+end 
 

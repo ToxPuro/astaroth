@@ -66,18 +66,10 @@ function ReadMeshInfo(info_path)
 
 end 
 
-function ReadFilePiece(my_dir, binfile, xdim_loc, ydim_loc, zdim_loc)
+function ReadFilePiece(binfile, xdim_loc, ydim_loc, zdim_loc)
     filesize = xdim_loc*ydim_loc*zdim_loc
     array_piece = Array{Float64}(undef, filesize, 1);
     read!(binfile, array_piece)
-
-    file_info = split(my_dir, ".")
-    file_info = split(file_info[1], "-")
-    ##println(file_info)
-    iix   = file_info[3]
-    iiy   = file_info[4]
-    iiz   = file_info[5]
-    nstep = file_info[6] 
 
     ##println(size(array_piece))
     ##println(filesize)
@@ -88,42 +80,30 @@ function ReadFilePiece(my_dir, binfile, xdim_loc, ydim_loc, zdim_loc)
     return array_piece
 end 
 
-function ReadACData(dirpath)
-    println("Reading snapshot data data...")
- 
+function RemoveRepetion(list_names, name_now)
+    repeat = false
+    for name in list_names
+        if name == name_now
+            repeat = true
+        end
+    end
+    if repeat == false 
+        push!(list_names, name_now)
+    end
+
+    return list_names
+end
+
+function ParseDataDirectory(arraydims, dirpath)
     directory = readdir(dirpath)
 
-    # Describe for of the the lists 
-    mesh_info_int  = Dict("variable name" => 1)
-    mesh_info_int3  = Dict("variable name" => (1,1,1))
-    mesh_info_real = Dict("variable name" => 1.0)
-
-    # Get info from mesh_info.list
-    ReadMeshInfo(dirpath*"../")
-
-    println(mesh_info_int)
-    println(mesh_info_int3)
-    println(mesh_info_real)
-
-    println(directory)
-
-    xdim = 256
-    ydim = 256
-    zdim = 256
-
-    arraydims = (xdim, ydim, zdim)
-
-    println(arraydims)
-    whole_array = zeros(arraydims)
-
-    xdim_loc = xdim 
-    ydim_loc = ydim
-    zdim_loc = zdim
+    xdim_loc = arraydims[1]
+    ydim_loc = arraydims[2]
+    zdim_loc = arraydims[3]
 
     step_numbers = String[]
     field_names  = String[]
 
-    #TODO: Parse directory properly 
     for my_dir in directory
         my_dir = split(my_dir, ".")
         my_dir = split(my_dir[1], "-")
@@ -138,46 +118,70 @@ function ReadACData(dirpath)
         if parse(Int, my_dir[5]) < zdim_loc && parse(Int, my_dir[5]) > 0 
             zdim_loc = parse(Int, my_dir[5])
         end
-        println(my_dir)
-        println(field_name, " ", step_number)
+        #println(my_dir)
+        #println(field_name, " ", step_number)
 
-        push!(step_numbers, step_number)
-        push!(field_names, field_name)
+        step_numbers = RemoveRepetion(step_numbers, step_number)
+        
+        field_names = RemoveRepetion(field_names, field_name)
 
     end
 
-    println( xdim_loc, " ", ydim_loc, " ", zdim_loc)
-    println(step_numbers)
-    println(field_names)
+    return xdim_loc, ydim_loc, zdim_loc, step_numbers, field_names
+end
 
-    #TODO: Remove repeating elements from step_numbers and field_names
+function FetchStepNumbers(dirpath)
+    mesh_info_int, mesh_info_int3, mesh_info_real = ReadMeshInfo(dirpath*"../")
 
-    #xdim_loc = 246 
-    #ydim_loc = 128
-    #zdim_loc = 128
+    arraydims = (mesh_info_int["AC_nx"], 
+                 mesh_info_int["AC_ny"], 
+                 mesh_info_int["AC_nz"])
 
-    xdims_list = 1:xdim_loc:xdim
-    ydims_list = 1:ydim_loc:ydim
-    zdims_list = 1:zdim_loc:zdim
+    xdim_loc, ydim_loc, zdim_loc, step_numbers, field_names = ParseDataDirectory(arraydims, dirpath)
+   
+    return step_numbers
+end
 
-    #TODO: This now goes throu every single file, which is wrong. We need to
-    #TODO: parse the directory better .
-    for my_dir in directory
+#TODO: Set varios data field into datatype elements and output the datatype
+#TODO: from the function
+function ReadACData(dirpath, step)
+    println("Reading snapshot data data...")
+ 
 
-        binfile = dirpath * my_dir
-        ###println(binfile)
+    # Get info from mesh_info.list
+    mesh_info_int, mesh_info_int3, mesh_info_real = ReadMeshInfo(dirpath*"../")
 
+    arraydims = (mesh_info_int["AC_nx"], 
+                 mesh_info_int["AC_ny"], 
+                 mesh_info_int["AC_nz"])
+
+    println(arraydims)
+    whole_array = zeros(arraydims)
+
+    xdim_loc, ydim_loc, zdim_loc, step_numbers, field_names = ParseDataDirectory(arraydims, dirpath)
+
+    xdims_list = 1:xdim_loc:arraydims[1]
+    ydims_list = 1:ydim_loc:arraydims[2]
+    zdims_list = 1:zdim_loc:arraydims[3]
+
+    step = string(step)
+
+    for field in field_names
         for ii in xdims_list
             for jj in ydims_list
                 for kk in zdims_list
-                    array_piece = ReadFilePiece(my_dir, binfile, xdim_loc, ydim_loc, zdim_loc)
+                    filename = field*"-segment-"*string(ii-1)*
+                               "-"*string(jj-1)*"-"*string(kk-1)*
+                               "-"*step*".mesh"
+                    binfile = dirpath*filename
+                    println(filename)
+                    array_piece = ReadFilePiece(binfile, xdim_loc, ydim_loc, zdim_loc)
                     whole_array[ii:(ii+xdim_loc-1), 
                                 jj:(jj+ydim_loc-1), 
                                 kk:(kk+zdim_loc-1)] = array_piece
                 end
             end
         end
-
     end 
 
     return 0 
