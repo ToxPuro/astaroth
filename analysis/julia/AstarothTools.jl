@@ -66,6 +66,28 @@ function ReadMeshInfo(info_path)
 
 end 
 
+function ReadFilePiece(my_dir, binfile, xdim_loc, ydim_loc, zdim_loc)
+    filesize = xdim_loc*ydim_loc*zdim_loc
+    array_piece = Array{Float64}(undef, filesize, 1);
+    read!(binfile, array_piece)
+
+    file_info = split(my_dir, ".")
+    file_info = split(file_info[1], "-")
+    println(file_info)
+    iix   = file_info[3]
+    iiy   = file_info[4]
+    iiz   = file_info[5]
+    nstep = file_info[6] 
+
+    println(size(array_piece))
+    println(filesize)
+    println(typeof(array_piece))
+    array_piece = reshape(array_piece, (xdim_loc, ydim_loc, zdim_loc))
+    println(size(array_piece))
+
+    return array_piece
+end 
+
 function ReadACData(dirpath)
     println("Reading snapshot data data...")
  
@@ -94,43 +116,26 @@ function ReadACData(dirpath)
     println(arraydims)
     whole_array = zeros(arraydims)
 
+    xdim_loc = 128 
+    ydim_loc = 128
+    zdim_loc = 256
+
+    xdims_list = 1:xdim_loc:xdim
+    ydims_list = 1:ydim_loc:ydim
+    zdims_list = 1:zdim_loc:zdim
+
     for my_dir in directory
 
         binfile = dirpath * my_dir
         println(binfile)
-        xdim_loc = 128 
-        ydim_loc = 128
-        zdim_loc = 256
-
-
-        xdims_list = 1:xdim_loc:xdim
-        ydims_list = 1:ydim_loc:ydim
-        zdims_list = 1:zdim_loc:zdim
 
         for ii in xdims_list
             for jj in ydims_list
                 for kk in zdims_list
-                    println(ii, " ", jj, " ", kk, " ")
-                    filesize = xdim_loc*ydim_loc*zdim_loc
-                    binary_data = Array{Float64}(undef, filesize, 1);
-                    read!(binfile, binary_data)
-
-                    file_info = split(my_dir, ".")
-                    file_info = split(file_info[1], "-")
-                    println(file_info)
-                    iix   = file_info[3]
-                    iiy   = file_info[4]
-                    iiz   = file_info[5]
-                    nstep = file_info[6] 
-
-                    println(size(binary_data))
-                    println(filesize)
-                    println(typeof(binary_data))
-                    binary_data = reshape(binary_data, (xdim_loc, ydim_loc, zdim_loc))
-                    println(size(binary_data))
+                    array_piece = ReadFilePiece(my_dir, binfile, xdim_loc, ydim_loc, zdim_loc)
                     whole_array[ii:(ii+xdim_loc-1), 
                                 jj:(jj+ydim_loc-1), 
-                                kk:(kk+zdim_loc-1)] = binary_data
+                                kk:(kk+zdim_loc-1)] = array_piece
                 end
             end
         end
