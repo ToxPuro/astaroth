@@ -86,24 +86,40 @@ function ReadACData()
         xdim_loc = 128 
         ydim_loc = 128
         zdim_loc = 256
-        filesize = xdim_loc*ydim_loc*zdim_loc
-        binary_data = Array{Float64}(undef, filesize, 1);
-        read!(binfile, binary_data)
 
-        file_info = split(my_dir, ".")
-        file_info = split(file_info[1], "-")
-        println(file_info)
-        iix   = file_info[3]
-        iiy   = file_info[4]
-        iiz   = file_info[5]
-        nstep = file_info[6] 
 
-        println(size(binary_data))
-        println(filesize)
-        println(typeof(binary_data))
-        binary_data = reshape(binary_data, (xdim_loc, ydim_loc, zdim_loc))
-        println(size(binary_data))
-        whole_array[1:128, 1:128, 1:256] = binary_data
+        xdims_list = 1:xdim_loc:xdim
+        ydims_list = 1:ydim_loc:ydim
+        zdims_list = 1:zdim_loc:zdim
+
+        for ii in xdims_list
+            for jj in ydims_list
+                for kk in zdims_list
+                    println(ii, " ", jj, " ", kk, " ")
+                    filesize = xdim_loc*ydim_loc*zdim_loc
+                    binary_data = Array{Float64}(undef, filesize, 1);
+                    read!(binfile, binary_data)
+
+                    file_info = split(my_dir, ".")
+                    file_info = split(file_info[1], "-")
+                    println(file_info)
+                    iix   = file_info[3]
+                    iiy   = file_info[4]
+                    iiz   = file_info[5]
+                    nstep = file_info[6] 
+
+                    println(size(binary_data))
+                    println(filesize)
+                    println(typeof(binary_data))
+                    binary_data = reshape(binary_data, (xdim_loc, ydim_loc, zdim_loc))
+                    println(size(binary_data))
+                    whole_array[ii:(ii+xdim_loc-1), 
+                                jj:(jj+ydim_loc-1), 
+                                kk:(kk+zdim_loc-1)] = binary_data
+                end
+            end
+        end
+
     end 
 
     return 0 
