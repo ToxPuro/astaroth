@@ -44,6 +44,12 @@ gpu: 0 1 2 3
 #include <cuda_runtime_api.h>  // cudaStream_t
 #endif
 
+#if AC_DOUBLE_PRECISION
+#define DOUBLE_PRECISION (1)
+#else
+#define DOUBLE_PRECISION (0)
+#endif
+
 #include "array.h"
 
 typedef struct {
@@ -332,7 +338,7 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
 
     // File format
     fprintf(fp, "caching,maxthreadsperblock,problemsize,workingsetsize,stride,milliseconds,"
-                "effectivebandwidth,tpb,jobid,seed,iteration\n");
+                "effectivebandwidth,tpb,jobid,seed,iteration,double_precision\n");
 
     // Dryrun
     kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.pad, c.radius, c.stride, a, b);
@@ -365,10 +371,10 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
         }
 
         // Write to file
-        fprintf(fp, "%s,%d,%zu,%zu,%d,%g,%g,%zu,%zu,%zu,%zu\n",
+        fprintf(fp, "%s,%d,%zu,%zu,%d,%g,%g,%zu,%zu,%zu,%zu,%u\n",
                 USE_SMEM ? "\"explicit\"" : "\"implicit\"", MAX_THREADS_PER_BLOCK,
                 c.domain_length * sizeof(double), (2 * c.radius / c.stride + 1) * sizeof(double),
-                c.stride, (double)milliseconds, bandwidth, c.tpb, jobid, seed, i);
+                c.stride, (double)milliseconds, bandwidth, c.tpb, jobid, seed, i, DOUBLE_PRECISION);
     }
     cudaEventDestroy(tstart);
     cudaEventDestroy(tstop);
@@ -449,23 +455,25 @@ main(int argc, char* argv[])
     cudaProfilerStop();
 
     // Input parameters
-    fprintf(stderr, "Usage: ./benchmark <problem size> <working set size> <stride> <jobid>\n");
+    fprintf(stderr, "Usage: ./benchmark <problem size> <working set size> <stride> <jobid> <num_samples> <salt>\n");
     const size_t problem_size     = (argc > 1) ? (size_t)atol(argv[1]) : 268435456;
     const size_t working_set_size = (argc > 2) ? (size_t)atol(argv[2]) : 8;
     const int stride              = (argc > 3) ? (size_t)atol(argv[3]) : 1;
     const size_t jobid            = (argc > 4) ? (size_t)atol(argv[4]) : 0;
     const size_t num_samples      = (argc > 5) ? (size_t)atol(argv[5]) : 100;
+    const size_t salt             = (argc > 6) ? (size_t)atol(argv[6]) : 42;
 
     // Derived values
     const int radius           = (((working_set_size / sizeof(double)) - 1) / 2) * stride;
     const size_t pad           = get_pad(radius);
     const size_t domain_length = problem_size / sizeof(double);
     const size_t array_length  = pad + domain_length + radius;
-    const size_t seed          = 12345 + time(NULL) + jobid * time(NULL);
+    const size_t seed          = 12345 + salt + (1+problem_size+working_set_size+stride+jobid+num_samples) * time(NULL);
     ERRCHK((2 * radius / stride + 1) * sizeof(double) == working_set_size);
     ERRCHK(domain_length * sizeof(double) == problem_size);
 
     printf("Input parameters:\n");
+    printf("\tproblem_size: %zu\n", problem_size);
     printf("\tpad: %zu\n", pad);
     printf("\tradius: %d\n", radius);
     printf("\tstride: %d\n", stride);
@@ -479,9 +487,21 @@ main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
+    # if USE_SMEM
+    const size_t required_smem = get_smem(1, radius);
+    cudaDeviceProp props;
+    cudaGetDeviceProperties(&props, 0);
+    const size_t max_smem              = (size_t)props.sharedMemPerBlock;
+    if (required_smem > max_smem) {
+        fprintf(stderr, "Too large radius for a non-streaming shared memory implementation: %lu > %lu\n", required_smem, max_smem);
+        return EXIT_FAILURE;
+    }
+    #endif
+
     printDeviceInfo(0);
     printf("USE_SMEM=%d\n", USE_SMEM);
     printf("MAX_THREADS_PER_BLOCK=%d\n", MAX_THREADS_PER_BLOCK);
+    printf("DOUBLE_PRECISION=%u\n", DOUBLE_PRECISION);
 
     // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte);
     // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);

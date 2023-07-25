@@ -1,6 +1,6 @@
 /*
 
-    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2023, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -132,8 +132,20 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     acGridSynchronizeStream(STREAM_DEFAULT);  // Debug, may be unneeded
     MPI_Barrier(acGridMPIComm());             // Debug may be unneeded
 
-    const int num_snapshots = 2;
-    const int modstep       = (step / info.int_params[AC_bin_steps]) % num_snapshots;
+    // If num_snapshots > 0 use modstep calculation. 
+    // Else use numbering based on time interval.
+    const int num_snapshots = info.int_params[AC_num_snapshots];
+    int modstep;
+    if (num_snapshots > 0) {
+        modstep = (step / info.int_params[AC_bin_steps]) % num_snapshots;
+    } else {
+        // NOTE: assumes that AC_bin_save_t will not be changed during the simulation run. 
+        modstep = int(round(simulation_time/info.real_params[AC_bin_save_t]));
+        //log_from_root_proc_with_sim_progress(pid, 
+        //                                     "save_mesh_mpi_async: simulation_time = %e, AC_bin_save_t = %e \n", 
+        //                                     simulation_time, info.real_params[AC_bin_save_t]);
+
+    }
     log_from_root_proc_with_sim_progress(pid,
                                          "save_mesh_mpi_async: Writing snapshot to %s, timestep %d "
                                          "(slot %d of %d)\n",
@@ -785,6 +797,13 @@ main(int argc, char** argv)
                                                                          // sake of diagnosis.
                 initial_mesh_procedure = InitialMeshProcedure::InitKernel;
                 simulation_physics     = PhysicsConfiguration::HydroHeatduct;
+                acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
+            }
+            else if (strcmp(optarg, "ShockTurb") == 0) {
+                acLogFromRootProc(pid, "Initial condition: ShockTurb\n"); // This here just for the
+                                                                          // sake of diagnosis.
+                initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+                simulation_physics     = PhysicsConfiguration::ShockSinglepass;
                 acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
             }
             else {

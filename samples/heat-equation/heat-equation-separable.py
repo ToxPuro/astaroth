@@ -1,21 +1,4 @@
 #!/usr/bin/env python3
-# Copyright (C) 2023, Johannes Pekkilä
-#
-# This file is part of Astaroth.
-#
-# Astaroth is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Astaroth is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
-
 # %%
 import argparse
 import numpy as np
@@ -37,7 +20,7 @@ parser.add_argument('--nsamples', type=int, default=100, help='The number of sam
 
 jupyter=False
 if jupyter:
-    args = parser.parse_args(['--library', 'tensorflow'])
+    args = parser.parse_args(['--library', 'pytorch', '--device', 'cpu', '--dims', '3', '3', '1'])
 else:
     args = parser.parse_args()
 
@@ -48,12 +31,6 @@ else:
 
 # Global variables
 seed = int(args.salt + time.time() + args.jobid * time.time()) % (2**32-1)
-
-# %%
-# Model
-import scipy
-def convolve(input, weights):
-    return scipy.ndimage.convolve(input, weights, mode='constant', output=args.dtype)
 
 # %%
 # Construct the input and weights
@@ -94,7 +71,7 @@ def get_input():
         ddz = np.zeros((l, l, l), dtype=args.dtype)
         ddz[:,r,r] = dt * (1/dz**2) * coeffs
 
-        weights = (kronecker + ddx + ddy + ddz)
+        weights = np.stack((kronecker, ddx, ddy, ddz))
         # print(kronecker)
         # print(ddx)
         # print(ddy)
@@ -113,7 +90,7 @@ def get_input():
         ddy = np.zeros((l, l), dtype=args.dtype)
         ddy[:,r] = dt * (1/dy**2) * coeffs
 
-        weights = (kronecker + ddx + ddy)
+        weights = np.stack((kronecker, ddx, ddy))
         # print(kronecker)
         # print(ddx)
         # print(ddy)
@@ -128,13 +105,22 @@ def get_input():
         ddx = np.zeros((l), dtype=args.dtype)
         ddx[:] = dt * (1/dx**2) * coeffs
 
-        weights = (kronecker + ddx)
+        weights = np.stack((kronecker, ddx))
         # print(kronecker)
         # print(ddx)
         # print(weights)
 
     return input, weights
 
+# %%
+# Model
+import scipy
+def convolve(input, weights):
+    weights = np.sum(weights, axis=0)
+    return scipy.ndimage.convolve(input, weights, mode='constant', output=args.dtype)
+
+# %%
+# Debug
 class Debug:
     def __str__(self):
         return str(self.__class__) + ": " + str(self.__dict__)
@@ -143,30 +129,29 @@ class Debug:
 # Benchmark output
 class Output:
     def __init__(self):
-        self.df = pd.DataFrame(columns=['kernel',
-                                        'implementation',
-                                        'maxthreadsperblock',
-                                        'nx', 'ny', 'nz', 'radius',
-                                        'milliseconds',
-                                        'tpbx', 'tpby', 'tpbz',
-                                        'jobid', 'seed', 'iteration', 'double_precision'])
+        self.df = pd.DataFrame(columns=['kernel', 
+                                        'implementation', 
+                                        'maxthreadsperblock', 
+                                        'nx', 'ny', 'nz', 'radius', 
+                                        'milliseconds', 
+                                        'tpbx', 'tpby', 'tpbz', 
+                                        'jobid', 'seed', 'iteration'])        
 
     def record(self, milliseconds, iteration):
-        row = {'kernel': 'convolve',
-               'implementation': args.library,
-               'nx': args.dims[0],
-               'ny': args.dims[1],
-               'nz': args.dims[2],
-               'radius': args.radius,
-               'milliseconds': milliseconds,
-               'jobid': args.jobid,
-               'seed': seed,
-               'iteration': iteration,
-               'double_precision': int(args.dtype == np.float64)}
+        row = {'kernel' : 'convolve', 
+                'implementation' : args.library,
+                'nx' : args.dims[0], 
+                'ny' : args.dims[1], 
+                'nz' : args.dims[2], 
+                'radius' : args.radius, 
+                'milliseconds' : milliseconds, 
+                'jobid' : args.jobid,
+                'seed' : seed,
+                'iteration' : iteration}
         self.df.loc[len(self.df.index)] = row
 
     def __del__(self):
-        self.df.to_csv(f'heat-equation-python-{args.jobid}-{seed}.csv', index=False)
+        self.df.to_csv(f'heat-equation-{args.jobid}-{seed}.csv', index=False)
 
 # %%
 # Libraries
@@ -197,15 +182,15 @@ if args.library in 'pytorch':
         def get_input(self):
             input, weights = get_input()
             input = torch.tensor(input, dtype=self.dtype, device=self.device).unsqueeze(0).unsqueeze(0) #.to(memory_format=torch.channels_last)
-            weights = torch.tensor(weights, dtype=self.dtype, device=self.device).unsqueeze(0).unsqueeze(0)
+            weights = torch.tensor(weights, dtype=self.dtype, device=self.device).unsqueeze(1)
             return input, weights
 
         def pad(self, input):
             ndims = len(input.shape) - 2
             return torch.nn.functional.pad(input, (args.radius,) * 2 * ndims, mode='constant')
         
-        @torch.compile
-        @torch.no_grad()
+        #@torch.compile
+        #@torch.no_grad()
         def convolve(self, input, weights):
             if (len(input.shape) == 5):
                 return torch.nn.functional.conv3d(input, weights)
@@ -214,70 +199,41 @@ if args.library in 'pytorch':
             else:
                 return torch.nn.functional.conv1d(input, weights)
 
+        #@torch.compile
+        #@torch.no_grad()
+        def activation(self, input):
+            channels = torch.chunk(input, input.shape[1], dim=1)
+            output = sum(channels) # Do nonlinearity here
+            return output
 
-        def benchmark_old(self, num_samples):
-            output = Output()
-
-            input, weights = self.get_input()
-            for i in range(num_samples):
-                input = self.pad(input)
-
-                if self.device == 'cuda':
-                    start = torch.cuda.Event(enable_timing=True)
-                    end = torch.cuda.Event(enable_timing=True)
-                    start.record()
-                else:
-                    start = time.time()
-                input = self.convolve(input, weights)
-                if self.device == 'cuda':
-                    end.record()
-                    torch.cuda.synchronize()
-                    milliseconds = start.elapsed_time(end)
-                else:
-                    milliseconds = 1e3 * (time.time() - start)
-
-                output.record(milliseconds, i)
-                if i == num_samples-1:
-                    print(f'{milliseconds} ms')
-
-        def benchmark_cuda(self, num_samples):
-            input, weights = self.get_input()
-            for i in range(num_samples):
-                input = self.pad(input)
-
-                if self.device == 'cuda':
-                    start = torch.cuda.Event(enable_timing=True)
-                    end = torch.cuda.Event(enable_timing=True)
-                    start.record()
-                else:
-                    start = time.time()
-                input = self.convolve(input, weights)
-                if self.device == 'cuda':
-                    end.record()
-                    torch.cuda.synchronize()
-                    milliseconds = start.elapsed_time(end)
-                else:
-                    milliseconds = 1e3 * (time.time() - start)
-                if i == num_samples-1:
-                    print(f'{milliseconds} ms')
+        @torch.compile
+        @torch.no_grad()
+        def forward_pass(self, input, weights):
+            return self.activation(self.convolve(input, weights))
 
         def benchmark(self, num_samples):
             output = Output()
 
             input, weights = self.get_input()
-            input = self.pad(input)
-
-            timer = torch.utils.benchmark.Timer(
-                stmt='self.convolve(input, weights)',
-                setup='from __main__ import Pytorch',
-                globals={'input': input, 'weights': weights, 'self': self}
-            )
-
             for i in range(num_samples):
-                measurement = timer.timeit(1)
-                milliseconds = 1e3 * measurement.raw_times[0]
+                input = self.pad(input)
+
+                if self.device == 'cuda':
+                    start = torch.cuda.Event(enable_timing=True)
+                    end = torch.cuda.Event(enable_timing=True)
+                    start.record()
+                else:
+                    start = time.time()
+                input = self.forward_pass(input, weights)
+                if self.device == 'cuda':
+                    end.record()
+                    torch.cuda.synchronize()
+                    milliseconds = start.elapsed_time(end)
+                else:
+                    milliseconds = 1e3 * (time.time() - start)
+
                 output.record(milliseconds, i)
-                if i >= num_samples-10:
+                if i == num_samples-1:
                     print(f'{milliseconds} ms')
 
     lib = Pytorch(args.device, args.dtype)
@@ -317,7 +273,7 @@ elif args.library in 'tensorflow':
         def convolve(self, input, weights):
             return tf.nn.convolution(input, weights)
 
-        def benchmark_old_and_incorrect_sync(self, num_samples):
+        def benchmark(self, num_samples):
             output = Output()
 
             input, weights = self.get_input()
@@ -331,19 +287,6 @@ elif args.library in 'tensorflow':
                 output.record(milliseconds, i)
                 if i == num_samples-1:
                     print(f'{milliseconds} ms')
-
-        def benchmark(self, num_samples):
-            benchmark_output = Output()
-            with tf.Graph().as_default() as graph:
-                # Setup input and weights
-                input, weights = self.get_input()
-                with tf.compat.v1.Session(graph=graph) as sess:
-                    benchmark = tf.test.Benchmark()
-                    for i in range(num_samples):
-                        measurement = benchmark.run_op_benchmark(
-                            sess, self.convolve(input, weights), min_iters=1)
-                        benchmark_output.record(
-                            1e3*measurement['wall_time'], i)
 
     lib = Tensorflow(args.device, args.dtype)
 elif args.library in 'jax':
@@ -369,7 +312,7 @@ elif args.library in 'jax':
         def pad(self, input):
             return jax.numpy.pad(input, args.radius, mode='constant')
 
-        #@jax.jit
+        #@jit
         def convolve(self, input, weights):
             return jax.scipy.signal.convolve(input, weights, mode='valid', method='direct')
         
@@ -377,16 +320,15 @@ elif args.library in 'jax':
             output = Output()
 
             input, weights = self.get_input()
-            convolve_jit = jax.jit(self.convolve)
             for i in range(num_samples):
                 input = self.pad(input)
 
                 start = time.time()
-                input = convolve_jit(input, weights).block_until_ready()
+                input = self.convolve(input, weights)
                 milliseconds = 1e3 * (time.time() - start)
 
                 output.record(milliseconds, i)
-                if i == num_samples-10:
+                if i == num_samples-1:
                     print(f'{milliseconds} ms')
 
     lib = Jax(args.device, args.dtype)
@@ -401,14 +343,13 @@ if args.verify:
     input, weights = get_input()
     model = convolve(input, weights)
     input, weights = lib.get_input()
-    if args.library == 'jax':
-        candidate = lib.convolve(lib.pad(input), weights).squeeze()
-    else:
-        candidate = lib.convolve(lib.pad(input), weights).cpu().numpy().squeeze()
+    candidate = lib.forward_pass(lib.pad(input), weights).cpu().numpy().squeeze()
     epsilon = np.finfo(np.float64).eps if args.dtype == np.float64 else np.finfo(np.float32).eps
     epsilon *= 5
     correct = np.allclose(model, candidate, rtol=epsilon, atol=epsilon) 
     print(f'Done. Results within rel/abs epsilon {epsilon}: {correct}')
+    #print(f'model: {model}')
+    #print(f'candidate: {candidate}')
     if not correct:
         diff = np.abs(model - candidate)
         print(f'Largest absolute error: {diff.max()}')

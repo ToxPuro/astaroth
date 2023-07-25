@@ -14,7 +14,7 @@ git rev-parse HEAD > COMMIT_CODE.log
 # the correct path to astaroth/CMakeLists.txt
 
 case $HOSTNAME in 
-  ( gp8.tiara.sinica.edu.tw | gp9.tiara.sinica.edu.tw | gp10.tiara.sinica.edu.tw | gp11.tiara.sinica.edu.tw | gp10 ) 
+  ( gp8.tiara.sinica.edu.tw | gp9.tiara.sinica.edu.tw | gp10.tiara.sinica.edu.tw | gp11.tiara.sinica.edu.tw | gp8 | gp9 | gp10 | gp11 ) 
      cmake -DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DBUILD_SAMPLES=OFF -DUSE_HIP=OFF -DMPI_ENABLED=ON -DUSE_CUDA_AWARE_MPI=OFF -DDSL_MODULE_DIR=../../../acc-runtime/samples/mhd_modular/ -DCMAKE_CXX_COMPILER=/software/opt/gcc/9.1.0/bin/gcc -DCMAKE_C_COMPILER=/software/opt/gcc/9.1.0/bin/gcc ../../.. 
      ;;
   (*) 

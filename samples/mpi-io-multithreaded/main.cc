@@ -178,7 +178,10 @@ main(int argc, char** argv)
     timer_reset(&t);
     if (!pid)
         timer_print("Timer reset", t);
-    acGridDiskAccessLaunch(ACCESS_WRITE);
+
+    const char* output_dir   = ".";
+    const char* output_label = "0";
+    acGridWriteMeshToDiskLaunch(output_dir, output_label);
     if (!pid)
         timer_print("Disk access launched", t);
 
@@ -195,11 +198,9 @@ main(int argc, char** argv)
     //// Read
     // acGridDiskAccessLaunch(ACCESS_READ);
     // acGridDiskAccessSync();
-    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        char buf[4096] = "";
-        sprintf(buf, "%s.out", vtxbuf_names[i]);
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, ".", buf, ACCESS_READ);
-    }
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+        acGridAccessMeshOnDiskSynchronous((Field)i, output_dir, output_label, ACCESS_READ);
+
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (!pid) {
