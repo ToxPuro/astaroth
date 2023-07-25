@@ -19,6 +19,8 @@ include("AstarothTools.jl")
 
 using .AstarothTools
 
-AstarothTools.ReadACData()
+dirpath = "/tiara/ara/data/mvaisala/202304_haatouken/astaroth/config/samples/haatouken/output-snapshots/"
+
+AstarothTools.ReadACData(dirpath)
 
 

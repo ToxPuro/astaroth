@@ -21,12 +21,8 @@
 module AstarothTools
 export ReadACData
 
-function ReadACData()
-    println("Reading snapshot data data...")
- 
-    # /tiara/ara/data/mvaisala/202304_haatouken/astaroth/config/samples/haatouken/output-snapshots/
-    dirpath = "/tiara/ara/data/mvaisala/202304_haatouken/astaroth/config/samples/haatouken/output-snapshots/"
-    directory = readdir(dirpath)
+function ReadMeshInfo(info_path)
+    # Get setup information from mesh_info.list file
 
     # Describe for of the the lists 
     mesh_info_int  = Dict("variable name" => 1)
@@ -34,7 +30,7 @@ function ReadACData()
     mesh_info_real = Dict("variable name" => 1.0)
 
     # Read lines in the file 
-    open(dirpath*"../mesh_info.list") do fobj
+    open(info_path*"mesh_info.list") do fobj
         for line in eachline(fobj)
             println(line)
             line_content = split(line)
@@ -50,7 +46,9 @@ function ReadACData()
                 varnumber = parse(Int, varvalue)
                 mesh_info_int[varname] = varnumber
             elseif type == "int3"
-                varnumber3 = (parse(Int, line_content[3]), parse(Int, line_content[4]), parse(Int, line_content[5]))
+                varnumber3 = (parse(Int, line_content[3]), 
+                              parse(Int, line_content[4]), 
+                              parse(Int, line_content[5]))
                 mesh_info_int3[varname] = varnumber3 
             elseif type == "size_t"
                 varnumber = parse(Float64, varvalue)
@@ -63,6 +61,23 @@ function ReadACData()
     delete!(mesh_info_int, "variable name")
     delete!(mesh_info_int3, "variable name")
     delete!(mesh_info_real, "variable name")
+
+    return mesh_info_int, mesh_info_int3, mesh_info_real
+
+end 
+
+function ReadACData(dirpath)
+    println("Reading snapshot data data...")
+ 
+    directory = readdir(dirpath)
+
+    # Describe for of the the lists 
+    mesh_info_int  = Dict("variable name" => 1)
+    mesh_info_int3  = Dict("variable name" => (1,1,1))
+    mesh_info_real = Dict("variable name" => 1.0)
+
+    # Get info from mesh_info.list
+    ReadMeshInfo(dirpath*"../")
 
     println(mesh_info_int)
     println(mesh_info_int3)
