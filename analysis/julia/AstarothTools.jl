@@ -32,7 +32,7 @@ function ReadMeshInfo(info_path)
     # Read lines in the file 
     open(info_path*"mesh_info.list") do fobj
         for line in eachline(fobj)
-            println(line)
+            ##println(line)
             line_content = split(line)
             #println(line_content)
             type = line_content[1]
@@ -73,17 +73,17 @@ function ReadFilePiece(my_dir, binfile, xdim_loc, ydim_loc, zdim_loc)
 
     file_info = split(my_dir, ".")
     file_info = split(file_info[1], "-")
-    println(file_info)
+    ##println(file_info)
     iix   = file_info[3]
     iiy   = file_info[4]
     iiz   = file_info[5]
     nstep = file_info[6] 
 
-    println(size(array_piece))
-    println(filesize)
-    println(typeof(array_piece))
+    ##println(size(array_piece))
+    ##println(filesize)
+    ##println(typeof(array_piece))
     array_piece = reshape(array_piece, (xdim_loc, ydim_loc, zdim_loc))
-    println(size(array_piece))
+    ##println(size(array_piece))
 
     return array_piece
 end 
@@ -116,18 +116,56 @@ function ReadACData(dirpath)
     println(arraydims)
     whole_array = zeros(arraydims)
 
-    xdim_loc = 128 
-    ydim_loc = 128
-    zdim_loc = 256
+    xdim_loc = xdim 
+    ydim_loc = ydim
+    zdim_loc = zdim
+
+    step_numbers = String[]
+    field_names  = String[]
+
+    #TODO: Parse directory properly 
+    for my_dir in directory
+        my_dir = split(my_dir, ".")
+        my_dir = split(my_dir[1], "-")
+        field_name = my_dir[1]
+        step_number = my_dir[6]
+        if parse(Int, my_dir[3]) < xdim_loc && parse(Int, my_dir[3]) > 0 
+            xdim_loc = parse(Int, my_dir[3])
+        end
+        if parse(Int, my_dir[4]) < ydim_loc && parse(Int, my_dir[4]) > 0 
+            ydim_loc = parse(Int, my_dir[4])
+        end
+        if parse(Int, my_dir[5]) < zdim_loc && parse(Int, my_dir[5]) > 0 
+            zdim_loc = parse(Int, my_dir[5])
+        end
+        println(my_dir)
+        println(field_name, " ", step_number)
+
+        push!(step_numbers, step_number)
+        push!(field_names, field_name)
+
+    end
+
+    println( xdim_loc, " ", ydim_loc, " ", zdim_loc)
+    println(step_numbers)
+    println(field_names)
+
+    #TODO: Remove repeating elements from step_numbers and field_names
+
+    #xdim_loc = 246 
+    #ydim_loc = 128
+    #zdim_loc = 128
 
     xdims_list = 1:xdim_loc:xdim
     ydims_list = 1:ydim_loc:ydim
     zdims_list = 1:zdim_loc:zdim
 
+    #TODO: This now goes throu every single file, which is wrong. We need to
+    #TODO: parse the directory better .
     for my_dir in directory
 
         binfile = dirpath * my_dir
-        println(binfile)
+        ###println(binfile)
 
         for ii in xdims_list
             for jj in ydims_list
