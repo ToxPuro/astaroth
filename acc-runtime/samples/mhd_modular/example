@@ -1,0 +1,11 @@
+subroutine example()
+  //Subroutine start here
+  ...
+  !$omp target
+  //This section will be offloaded
+  ...
+  !$omp end target
+  //Rest of subroutine
+  ...
+
+endsubroutine example

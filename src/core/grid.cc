@@ -315,15 +315,38 @@ acGridInit(const AcMeshInfo info)
     }
 
     acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
-    AcTaskDefinition default_ops[] = {acHaloExchange(all_fields),
+    AcTaskDefinition default_ops[] = {
+                                    acHaloExchange(all_fields),
                                       acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
                                                           all_fields),
 #ifdef AC_INTEGRATION_ENABLED
 #ifdef AC_SINGLEPASS_INTEGRATION
-                                      acCompute(KERNEL_singlepass_solve, all_fields)
+                                      acCompute(KERNEL_singlepass_solve_first, all_fields),
 #else
-                                      acCompute(KERNEL_twopass_solve_intermediate, all_fields),
-                                      acCompute(KERNEL_twopass_solve_final, all_fields)
+                                      acCompute(KERNEL_twopass_solve_intermediate_first, all_fields),
+                                      acCompute(KERNEL_twopass_solve_final_first, all_fields),
+#endif
+#endif // AC_INTEGRATION_ENABLED
+                                    acHaloExchange(all_fields),
+                                      acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
+                                                          all_fields),
+#ifdef AC_INTEGRATION_ENABLED
+#ifdef AC_SINGLEPASS_INTEGRATION
+                                      acCompute(KERNEL_singlepass_solve_second, all_fields),
+#else
+                                      acCompute(KERNEL_twopass_solve_intermediate_second, all_fields),
+                                      acCompute(KERNEL_twopass_solve_final_second, all_fields),
+#endif
+#endif // AC_INTEGRATION_ENABLED
+                                    acHaloExchange(all_fields),
+                                      acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
+                                                          all_fields),
+#ifdef AC_INTEGRATION_ENABLED
+#ifdef AC_SINGLEPASS_INTEGRATION
+                                      acCompute(KERNEL_singlepass_solve_final, all_fields),
+#else
+                                      acCompute(KERNEL_twopass_solve_intermediate_final, all_fields),
+                                      acCompute(KERNEL_twopass_solve_final_final, all_fields),
 #endif
 #endif // AC_INTEGRATION_ENABLED
     };
@@ -1632,7 +1655,9 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     ERRCHK(grid.initialized);
     acGridLoadScalarUniform(stream, AC_dt, dt);
     acDeviceSynchronizeStream(grid.device, stream);
-    return acGridExecuteTaskGraph(grid.default_tasks.get(), 3);
+    // return acGridExecuteTaskGraph(grid.default_tasks.get(), 3);
+    //New taskgraph has all three substeps in
+    return acGridExecuteTaskGraph(grid.default_tasks.get(),1);
 }
 #endif // AC_INTEGRATION_ENABLED
 

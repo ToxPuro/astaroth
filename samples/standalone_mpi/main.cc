@@ -1299,10 +1299,11 @@ main(int argc, char** argv)
         //                                                                 //
         /////////////////////////////////////////////////////////////////////
 
-        // Execute the active task graph for 3 iterations
+        // Execute the active task graph for 1 iteration!!
+        // New taskgraph has all substeps in a single taskgraph
         // in the case that simulation_graph = acGridGetDefaultTaskGraph(), then this is equivalent
         // to acGridIntegrate(STREAM_DEFAULT, dt)
-        acGridExecuteTaskGraph(simulation_graph, 3);
+        acGridExecuteTaskGraph(simulation_graph, 1);
         simulation_time += dt;
         set_simulation_timestamp(i, simulation_time);
 
