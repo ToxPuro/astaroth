@@ -463,6 +463,15 @@ acLoadStencil(const Stencil stencil, const cudaStream_t stream,
 {
   ERRCHK_ALWAYS(stencil < NUM_STENCILS);
 
+  // Note important cudaDeviceSynchronize below
+  //
+  // Constant memory allocated for stencils is shared among kernel
+  // invocations, therefore a race condition is possible when updating
+  // the coefficients. To avoid this, all kernels that can access
+  // the coefficients must be completed before starting async copy to
+  // constant memory
+  cudaDeviceSynchronize();
+
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
   const cudaError_t retval = cudaMemcpyToSymbolAsync(
@@ -477,6 +486,9 @@ acStoreStencil(const Stencil stencil, const cudaStream_t stream,
 {
   ERRCHK_ALWAYS(stencil < NUM_STENCILS);
 
+  // Ensure all acLoadUniform calls have completed before continuing
+  cudaDeviceSynchronize();
+
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
   const cudaError_t retval = cudaMemcpyFromSymbolAsync(
@@ -487,6 +499,7 @@ acStoreStencil(const Stencil stencil, const cudaStream_t stream,
 
 #define GEN_LOAD_UNIFORM(LABEL_UPPER, LABEL_LOWER)                             \
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
+  cudaDeviceSynchronize(); /* See note in acLoadStencil */                     \
                                                                                \
   const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
                         (size_t)&d_mesh_info;                                  \
@@ -541,6 +554,7 @@ acLoadInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
 
 #define GEN_STORE_UNIFORM(LABEL_UPPER, LABEL_LOWER)                            \
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
+  cudaDeviceSynchronize(); /* See notes in GEN_LOAD_UNIFORM */                 \
                                                                                \
   const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
                         (size_t)&d_mesh_info;                                  \
