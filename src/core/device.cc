@@ -621,7 +621,20 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
     acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
     acDeviceLoadIntUniform(device, stream, AC_step_number, step_number);
 #ifdef AC_SINGLEPASS_INTEGRATION
-    return acLaunchKernel(singlepass_solve, device->streams[stream], start, end, device->vba);
+    switch (step_number) {
+    case 0:
+        return acLaunchKernel(singlepass_solve_step0, device->streams[stream], start, end,
+                              device->vba);
+    case 1:
+        return acLaunchKernel(singlepass_solve_step1, device->streams[stream], start, end,
+                              device->vba);
+    case 2:
+        return acLaunchKernel(singlepass_solve_step2, device->streams[stream], start, end,
+                              device->vba);
+    default:
+        WARNING("Invalid step number passed in acIntegrateSubstep");
+        return AC_FAILURE;
+    }
 #else
     // Two-pass integration with acDeviceIntegrateSubstep works currently
     // only when integrating the whole subdomain
@@ -642,13 +655,44 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
     ERRCHK_ALWAYS(end.y == dims.n1.y);
     ERRCHK_ALWAYS(end.z == dims.n1.z);
 
-    const AcResult res = acLaunchKernel(twopass_solve_intermediate, device->streams[stream], start,
-                                        end, device->vba);
+    AcResult res;
+    switch (step_number) {
+    case 0:
+        res = acLaunchKernel(twopass_solve_intermediate_step0, device->streams[stream], start, end,
+                             device->vba);
+        break;
+    case 1:
+        res = acLaunchKernel(twopass_solve_intermediate_step1, device->streams[stream], start, end,
+                             device->vba);
+        break;
+    case 2:
+        res = acLaunchKernel(twopass_solve_intermediate_step2, device->streams[stream], start, end,
+                             device->vba);
+        break;
+    default:
+        WARNING("Invalid step number passed in acIntegrateSubstep");
+        return AC_FAILURE;
+    }
+
     if (res != AC_SUCCESS)
         return res;
 
     acDeviceSwapBuffers(device);
-    return acLaunchKernel(twopass_solve_final, device->streams[stream], start, end, device->vba);
+
+    switch (step_number) {
+    case 0:
+        return acLaunchKernel(twopass_solve_final_step0, device->streams[stream], start, end,
+                              device->vba);
+    case 1:
+        return acLaunchKernel(twopass_solve_final_step1, device->streams[stream], start, end,
+                              device->vba);
+    case 2:
+        return acLaunchKernel(twopass_solve_final_step2, device->streams[stream], start, end,
+                              device->vba);
+    default:
+        WARNING("Invalid step number passed in acIntegrateSubstep");
+        return AC_FAILURE;
+    }
 #endif
 #else
     (void)device;      // Unused
