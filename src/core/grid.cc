@@ -320,30 +320,30 @@ acGridInit(const AcMeshInfo info)
         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
 #ifdef AC_INTEGRATION_ENABLED
 #ifdef AC_SINGLEPASS_INTEGRATION
-        acCompute(KERNEL_singlepass_solve_first, all_fields),
+        acCompute(KERNEL_singlepass_solve_step0, all_fields),
 #else
-        acCompute(KERNEL_twopass_solve_intermediate_first, all_fields),
-        acCompute(KERNEL_twopass_solve_final_first, all_fields),
+        acCompute(KERNEL_twopass_solve_intermediate_step0, all_fields),
+        acCompute(KERNEL_twopass_solve_final_step0, all_fields),
 #endif
 #endif // AC_INTEGRATION_ENABLED
         acHaloExchange(all_fields),
         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
 #ifdef AC_INTEGRATION_ENABLED
 #ifdef AC_SINGLEPASS_INTEGRATION
-        acCompute(KERNEL_singlepass_solve_second, all_fields),
+        acCompute(KERNEL_singlepass_solve_step1, all_fields),
 #else
-        acCompute(KERNEL_twopass_solve_intermediate_second, all_fields),
-        acCompute(KERNEL_twopass_solve_final_second, all_fields),
+        acCompute(KERNEL_twopass_solve_intermediate_step1, all_fields),
+        acCompute(KERNEL_twopass_solve_final_step1, all_fields),
 #endif
 #endif // AC_INTEGRATION_ENABLED
         acHaloExchange(all_fields),
         acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
 #ifdef AC_INTEGRATION_ENABLED
 #ifdef AC_SINGLEPASS_INTEGRATION
-        acCompute(KERNEL_singlepass_solve_final, all_fields),
+        acCompute(KERNEL_singlepass_solve_step2, all_fields),
 #else
-        acCompute(KERNEL_twopass_solve_intermediate_final, all_fields),
-        acCompute(KERNEL_twopass_solve_final_final, all_fields),
+        acCompute(KERNEL_twopass_solve_intermediate_step2, all_fields),
+        acCompute(KERNEL_twopass_solve_final_step2, all_fields),
 #endif
 #endif // AC_INTEGRATION_ENABLED
     };

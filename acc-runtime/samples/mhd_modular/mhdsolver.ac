@@ -818,13 +818,13 @@ singlepass_solve_body(step_number) {
     write(VTXBUF_SHOCK, value(VTXBUF_SHOCK))
 #endif
 }
-Kernel singlepass_solve_first(){
+Kernel singlepass_solve_step0(){
    singlepass_solve_body(0)
 }
-Kernel singlepass_solve_second(){
+Kernel singlepass_solve_step1(){
    singlepass_solve_body(1)
 }
-Kernel singlepass_solve_final(){
+Kernel singlepass_solve_step2(){
    singlepass_solve_body(2)
 #if LBFIELD
     if AC_step_number == 2 {
@@ -1019,13 +1019,13 @@ twopass_solve_intermediate_body(step_number) {
 
 
 }
-Kernel twopass_solve_intermediate_first(){
+Kernel twopass_solve_intermediate_step0(){
     twopass_solve_intermediate_body(0)
 }
-Kernel twopass_solve_intermediate_second(){
+Kernel twopass_solve_intermediate_step1(){
     twopass_solve_intermediate_body(1)
 }
-Kernel twopass_solve_intermediate_final(){
+Kernel twopass_solve_intermediate_step2(){
     twopass_solve_intermediate_body(2)
     bfield = curl(AA) 
     write(BFIELDX, bfield.x)
@@ -1058,13 +1058,13 @@ twopass_solve_final_body(step_number) {
     #endif
 
 }
-Kernel twopass_solve_final_first() {
+Kernel twopass_solve_final_step0() {
     twopass_solve_final_body(0)
 }
-Kernel twopass_solve_final_second() {
+Kernel twopass_solve_final_step1() {
     twopass_solve_final_body(1)
 }
-Kernel twopass_solve_final_final() {
+Kernel twopass_solve_final_step2() {
     twopass_solve_final_body(2)
     #if LBFIELD
         write(BFIELDX, value(BFIELDX))
