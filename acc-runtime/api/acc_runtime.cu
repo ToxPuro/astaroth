@@ -458,7 +458,7 @@ acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
 }
 
 AcResult
-acLoadStencil(const Stencil stencil, const cudaStream_t stream,
+acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
               const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
 {
   ERRCHK_ALWAYS(stencil < NUM_STENCILS);
@@ -474,14 +474,14 @@ acLoadStencil(const Stencil stencil, const cudaStream_t stream,
 
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
-  const cudaError_t retval = cudaMemcpyToSymbolAsync(
-      stencils, data, bytes, stencil * bytes, cudaMemcpyHostToDevice, stream);
+  const cudaError_t retval = cudaMemcpyToSymbol(
+      stencils, data, bytes, stencil * bytes, cudaMemcpyHostToDevice);
 
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 };
 
 AcResult
-acStoreStencil(const Stencil stencil, const cudaStream_t stream,
+acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
                AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
 {
   ERRCHK_ALWAYS(stencil < NUM_STENCILS);
@@ -491,8 +491,8 @@ acStoreStencil(const Stencil stencil, const cudaStream_t stream,
 
   const size_t bytes = sizeof(data[0][0][0]) * STENCIL_DEPTH * STENCIL_HEIGHT *
                        STENCIL_WIDTH;
-  const cudaError_t retval = cudaMemcpyFromSymbolAsync(
-      data, stencils, bytes, stencil * bytes, cudaMemcpyDeviceToHost, stream);
+  const cudaError_t retval = cudaMemcpyFromSymbol(
+      data, stencils, bytes, stencil * bytes, cudaMemcpyDeviceToHost);
 
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 };
@@ -504,13 +504,12 @@ acStoreStencil(const Stencil stencil, const cudaStream_t stream,
   const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
                         (size_t)&d_mesh_info;                                  \
                                                                                \
-  const cudaError_t retval = cudaMemcpyToSymbolAsync(                          \
-      d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice,      \
-      stream);                                                                 \
+  const cudaError_t retval = cudaMemcpyToSymbol(                               \
+      d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);     \
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 
 AcResult
-acLoadRealUniform(const cudaStream_t stream, const AcRealParam param,
+acLoadRealUniform(const cudaStream_t /* stream */, const AcRealParam param,
                   const AcReal value)
 {
   if (isnan(value)) {
@@ -524,7 +523,7 @@ acLoadRealUniform(const cudaStream_t stream, const AcRealParam param,
 }
 
 AcResult
-acLoadReal3Uniform(const cudaStream_t stream, const AcReal3Param param,
+acLoadReal3Uniform(const cudaStream_t /* stream */, const AcReal3Param param,
                    const AcReal3 value)
 {
   if (isnan(value.x) || isnan(value.y) || isnan(value.z)) {
@@ -539,14 +538,14 @@ acLoadReal3Uniform(const cudaStream_t stream, const AcReal3Param param,
 }
 
 AcResult
-acLoadIntUniform(const cudaStream_t stream, const AcIntParam param,
+acLoadIntUniform(const cudaStream_t /* stream */, const AcIntParam param,
                  const int value)
 {
   GEN_LOAD_UNIFORM(INT, int);
 }
 
 AcResult
-acLoadInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
+acLoadInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
                   const int3 value)
 {
   GEN_LOAD_UNIFORM(INT3, int3);
@@ -559,33 +558,33 @@ acLoadInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
   const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
                         (size_t)&d_mesh_info;                                  \
                                                                                \
-  const cudaError_t retval = cudaMemcpyFromSymbolAsync(                        \
-      value, d_mesh_info, sizeof(*value), offset, cudaMemcpyDeviceToHost,      \
-      stream);                                                                 \
+  const cudaError_t retval = cudaMemcpyFromSymbol(                             \
+      value, d_mesh_info, sizeof(*value), offset, cudaMemcpyDeviceToHost);     \
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 
 AcResult
-acStoreRealUniform(const cudaStream_t stream, const AcRealParam param,
+acStoreRealUniform(const cudaStream_t /* stream */, const AcRealParam param,
                    AcReal* value)
 {
   GEN_STORE_UNIFORM(REAL, real);
 }
 
 AcResult
-acStoreReal3Uniform(const cudaStream_t stream, const AcReal3Param param,
+acStoreReal3Uniform(const cudaStream_t /* stream */, const AcReal3Param param,
                     AcReal3* value)
 {
   GEN_STORE_UNIFORM(REAL3, real3);
 }
 
 AcResult
-acStoreIntUniform(const cudaStream_t stream, const AcIntParam param, int* value)
+acStoreIntUniform(const cudaStream_t /* stream */, const AcIntParam param,
+                  int* value)
 {
   GEN_STORE_UNIFORM(INT, int);
 }
 
 AcResult
-acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
+acStoreInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
                    int3* value)
 {
   GEN_STORE_UNIFORM(INT3, int3);
