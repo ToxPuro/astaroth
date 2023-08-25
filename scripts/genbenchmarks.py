@@ -49,7 +49,7 @@ implementation_names = ['implicit', 'explicit', 'explicit3d', 'explicit4d']
 implementations = dict((key, value+1) for value,key in enumerate(implementation_names))
 
 ## General arguments
-parser.add_argument('--task-type', type=str, nargs='+', choices=['genmakefiles', 'genscripts', 'preprocess', 'build', 'run', 'postprocess', 'clean'], help='The type of the task performed with this script', required=True)
+parser.add_argument('--task-type', type=str, nargs='+', choices=['genmakefiles', 'genscripts', 'preprocess', 'build', 'run', 'postprocess', 'clean-results', 'clean-builds'], help='The type of the task performed with this script', required=True)
 parser.add_argument('--dims', type=int, default=[256, 256, 256], nargs=3, help='The dimensions of the computational domain')
 parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without compiling or running. Prints os commands to stdout.')
 ## Preprocess arguments
@@ -730,6 +730,23 @@ if 0:
         df.to_csv(f'{output_dir}/scaling-io-distributed-{system.id}.csv', index=False)
 
 
-if 'clean' in args.task_type:
-    for dir in args.clean_dirs:
-        syscall(f'rm {dir}/*.csv')
+if 'clean-results' in args.task_type:
+    print(f'Removing *.csv in {args.clean_dirs}')
+    answer = input('Continue? (y/n)')
+    if answer in 'y':
+        for dir in args.clean_dirs:
+            syscall(f'rm {dir}/*.csv')
+    else:
+        print('Cancelled')
+
+if 'clean-builds' in args.task_type:
+    exclude = ['*.csv', '*.txt', '*.out', '*.h', '*.c', '*.cc', '*.cu', '*.cuh', '*.json']
+    excludes = ' -o '.join([f'-name "{x}"' for x in exclude])
+
+    print(f'Cleaning and removing all files except {exclude} in {args.clean_dirs}')
+    answer = input('Continue? (y/n)')
+    if answer in 'y':
+        for dir in args.clean_dirs:
+            syscall(f'find {dir} -type f ! \( {excludes} \) -delete')
+    else:
+        print('Cancelled')
