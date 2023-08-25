@@ -49,7 +49,7 @@ Run `./my_cmake.sh` or customize it to your system specific.
 # Running the simulation. 
 
 Run e.g. `mpirun -n 4 ./ac_run_mpi --config astaroth.conf --init-condition HeatDuct` 
-or however you particular system runs MPI. 
+or however your particular system runs MPI. 
 
 # Troubleshooting
 
