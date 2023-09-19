@@ -41,6 +41,8 @@ message("project source dir ${PROJECT_SOURCE_DIR}")
 if (BUILD_ACC_RUNTIME_LIBRARY)
     if (USE_HIP)
         add_definitions(-DAC_USE_HIP=1)
+        list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)             # Default
+        list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3) # Lumi
 
         enable_language(CXX)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
