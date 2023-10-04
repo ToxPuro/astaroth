@@ -49,6 +49,8 @@
 #define cudaSetDevice hipSetDevice
 #define cudaMemcpy hipMemcpy
 #define cudaMemcpyAsync hipMemcpyAsync
+#define cudaMemcpyToSymbol hipMemcpyToSymbol
+#define cudaMemcpyFromSymbol hipMemcpyFromSymbol
 #define cudaMemcpyToSymbolAsync hipMemcpyToSymbolAsync
 #define cudaMemcpyFromSymbolAsync hipMemcpyFromSymbolAsync
 #define cudaMemcpyDefault hipMemcpyDefault

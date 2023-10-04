@@ -59,6 +59,13 @@ if (USE_HIP)
 
     # Workaround for finding HIP on Triton
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)
+    # Workaround for finding HIP on Lumi
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3)
+    # Workaround for finding roctracer on Frontier
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-default/roctracer /opt/rocm-default)
+    include_directories(/opt/rocm-default/roctracer/include)
+    link_directories(/opt/rocm-default/roctracer/lib)
+
 
     # Rocm
     #include_directories(/opt/rocm/include)
