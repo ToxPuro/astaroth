@@ -283,6 +283,13 @@ typedef class BoundaryConditionTask : public Task {
     bool test();
 } BoundaryConditionTask;
 
+typedef class SyncTask : public Task {
+  public:
+    SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    void advance(const TraceFile* trace_file);
+    bool test();
+} SyncTask;
+
 #ifdef AC_INTEGRATION_ENABLED
 // SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the MHD
 // implementation). They launch specially written CUDA kernels that implement the specific boundary

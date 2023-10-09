@@ -74,6 +74,13 @@ acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, 
     task_def.num_fields_out = num_fields_out;
     return task_def;
 }
+AcTaskDefinition
+acSync()
+{
+    AcTaskDefinition task_def{};
+    task_def.task_type      = TASKTYPE_SYNC;
+    return task_def;
+}
 
 AcTaskDefinition
 acHaloExchange(Field fields[], const size_t num_fields)
@@ -1007,6 +1014,39 @@ BoundaryConditionTask::advance(const TraceFile* trace_file)
     default:
         ERROR("BoundaryConditionTask in an invalid state.");
     }
+}
+SyncTask::SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+    : Task(order_,
+           Region({0,0,0},{2*NGHOST+nn.x,2*NGHOST+nn.y,2*NGHOST+nn.z}, 0, {}),
+           Region({0,0,0},{2*NGHOST+nn.x,2*NGHOST+nn.y,2*NGHOST+nn.z}, 0, {}),
+           op, device_, swap_offset_)
+{
+
+    //Synctask is on default stream
+    {
+        stream = STREAM_DEFAULT;
+    }
+    syncVBA();
+
+
+    name = "SyncTask" + std::to_string(order_);
+    task_type = TASKTYPE_SYNC;
+}
+
+bool
+SyncTask::test()
+{
+    //always ready
+    return true;
+}
+
+void
+SyncTask::advance(const TraceFile* trace_file)
+{
+    //no tracing for now
+
+    //Synchronize everything
+    acGridSynchronizeStream(STREAM_ALL);
 }
 
 #ifdef AC_INTEGRATION_ENABLED
