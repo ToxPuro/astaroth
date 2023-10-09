@@ -21,6 +21,7 @@ option(BUILD_SHARED_LIBS "Build Astaroth as a collection of shared libraries ins
 
 option(USE_PERFSTUBS "Build with perfstubs" OFF)
 option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
+option(DEBUG_SYNC "Whether to sync after all tasks in default ops" OFF)
 
 if (USE_HIP)
     find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
@@ -139,6 +140,9 @@ endif()
 if (USE_PERFSTUBS)
     add_definitions(-DUSE_PERFSTUBS=1)
     include(${PROJECT_SOURCE_DIR}/cmake/configure_perfstubs.cmake)
+endif()
+if (DEBUG_SYNC)
+    add_definitions(-DDEBUG_SYNC)
 endif()
 
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
