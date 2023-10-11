@@ -49,8 +49,8 @@ if (USE_HIP)
     add_definitions(-DAC_USE_HIP=1)
 
     set(GPU_TARGETS "gfx908" CACHE STRING "GPU target")
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm) # Default path
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0) # Triton
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3)
 
     find_package(hip)
 else ()
