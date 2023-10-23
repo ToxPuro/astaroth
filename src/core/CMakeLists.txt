@@ -1,10 +1,10 @@
 ## Astaroth Core
 
-set_source_files_properties(extrema.cu PROPERTIES LANGUAGE CXX)
-add_library(astaroth_core
-	device.cc grid.cc task.cc node.cc astaroth.cc astaroth_fortran.cc debug.cc extrema.cu
-)
 if (USE_HIP)
+    set_source_files_properties(extrema.cu PROPERTIES LANGUAGE CXX)
+    add_library(astaroth_core
+	device.cc grid.cc task.cc node.cc astaroth.cc astaroth_fortran.cc debug.cc extrema.cu
+    )
     find_package(hip)
     find_package(rocthrust)
 
@@ -30,12 +30,14 @@ if (USE_HIP)
     )
     endforeach()
 else()
+    add_library(astaroth_core
+	device.cc grid.cc task.cc node.cc astaroth.cc astaroth_fortran.cc debug.cc extrema.cu
+    )
     find_package(CUDAToolkit)
     find_package(Thrust REQUIRED CONFIG)
     thrust_create_target(Thrust)
     target_link_libraries(astaroth_core PUBLIC kernels CUDA::cudart CUDA::cuda_driver Thrust)
 endif()
-
 
 if (USE_PERFSTUBS)
     find_package(Threads)
