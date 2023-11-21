@@ -168,6 +168,92 @@ map_vec_scal(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcRe
         out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx], in3[in_idx]);
 }
 
+template <MapFn map_fn>
+__global__ void
+map_coord(const AcReal* in, const int3 start, const int3 end, const int coordinate_type, AcReal* out)
+{
+    assert((start >= (int3){0, 0, 0}));
+    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+
+    const int3 tid = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    //MV TODO: Figure out location
+    //MV TODO: Use a coordinate function to set location based values for calculation
+
+    //MV: in_idx3d actually sets the coordinate in the whole grid for each thread. 
+    //MV: can be utilized with the location funtion.
+    //MV: Or so I understand this. Otherwise does not make any sense.
+    const int3 in_idx3d = start + tid;     
+    const size_t in_idx = IDX(in_idx3d);
+
+    const int3 dims      = end - start;
+    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
+
+    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
+    if (within_bounds)
+        out[out_idx] = map_fn(in[in_idx]);
+}
+
+template <MapVecFn map_fn>
+__global__ void
+map_vec_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int3 start, const int3 end,
+              const int coordinate_type, AcReal* out)
+{
+    assert((start >= (int3){0, 0, 0}));
+    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+
+    const int3 tid = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    //MV TODO: Figure out location
+    //MV TODO: Use a coordinate function to set location based values for calculation
+
+    const int3 in_idx3d = start + tid;
+    const size_t in_idx = IDX(in_idx3d);
+
+    const int3 dims      = end - start;
+    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
+
+    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
+    if (within_bounds)
+        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx]);
+}
+
+template <MapVecScalFn map_fn>
+__global__ void
+map_vec_scal_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcReal* in3,
+                   const int3 start, const int3 end, const int coordinate_type, AcReal* out)
+{
+    assert((start >= (int3){0, 0, 0}));
+    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+
+    const int3 tid = (int3){
+        threadIdx.x + blockIdx.x * blockDim.x,
+        threadIdx.y + blockIdx.y * blockDim.y,
+        threadIdx.z + blockIdx.z * blockDim.z,
+    };
+
+    //MV TODO: Figure out location
+    //MV TODO: Use a coordinate function to set location based values for calculation
+
+    const int3 in_idx3d = start + tid;
+    const size_t in_idx = IDX(in_idx3d);
+
+    const int3 dims      = end - start;
+    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
+
+    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
+    if (within_bounds)
+        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx], in3[in_idx]);
+}
+
 template <ReduceFn reduce_fn>
 __global__ void
 reduce(const AcReal* in, const size_t count, AcReal* out)
@@ -272,6 +358,7 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
         const Volume tpb = get_map_tpb();
         const Volume bpg = get_map_bpg(dims, tpb);
 
+        //MV TODO: rtype swich could be used to choose a coordinate conscious reduction type???
         switch (rtype) {
         case RTYPE_MAX: /* Fallthrough */
         case RTYPE_MIN: /* Fallthrough */
