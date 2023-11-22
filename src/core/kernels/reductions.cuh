@@ -83,19 +83,37 @@ map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& 
 static __device__ AcReal3
 cartesian_grid_location(const int3 in_idx3d)
 {
-    AcReal3 coordinate;
-
-    coordinate.x = AcReal(in_idx3d.x)*DCONST(AC_dsx);
-    coordinate.y = AcReal(in_idx3d.y)*DCONST(AC_dsy);
-    coordinate.z = AcReal(in_idx3d.z)*DCONST(AC_dsz);
-
-    return coordinate;
+    return {AcReal(in_idx3d.x)*DCONST(AC_dsx),
+            AcReal(in_idx3d.y)*DCONST(AC_dsy),
+            AcReal(in_idx3d.z)*DCONST(AC_dsz)};
 }
+
+static __device__ AcReal
+distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1, 
+         const AcReal coord_x2, const AcReal coord_x2, const AcReal coord_x1)
+{
+    return sqrt((coord_x1-coord_x2)*(coord_x1-coord_x2)
+              + (coord_y1-coord_y2)*(coord_y1-coord_y2)
+              + (coord_z1-coord_z2)*(coord_z1-coord_z2));
+}
+
 
 static __device__ AcReal apply_coordinate_function(const AcReal3 coordinate, const int coordinate_function)
 {
+    AcReal loc_weight = 0.0;
 
     //TODO Calculate a coordinate function effect
+    switch (coordinate_function) {
+        case RADIAL_SUM:
+            const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
+                                           DCONST(AC_center_x), DCONST(AC_center_y), DCONST(AC_center_z))
+            //TODO: Better like this if like a window function?
+            if (radius <= DCONST(AC_sum_radius)) {
+                loc_weight = 1.0
+            }
+            ;
+            break;
+    };
 
     return loc_weight;
 }
