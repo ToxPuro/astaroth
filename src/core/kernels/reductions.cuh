@@ -24,6 +24,8 @@ typedef AcReal (*MapFn)(const AcReal&);
 typedef AcReal (*MapVecFn)(const AcReal&, const AcReal&, const AcReal&);
 typedef AcReal (*MapVecScalFn)(const AcReal&, const AcReal&, const AcReal&, const AcReal&);
 typedef AcReal (*ReduceFn)(const AcReal&, const AcReal&);
+typedef AcReal (*CoordFn)(const AcReal3&);
+typedef AcReal3 (*GridLocFn)(const int3&);
 
 // Map functions
 static __device__ inline AcReal
@@ -80,7 +82,7 @@ map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& 
 // coordinate (0.0, 0.0, 0.0) corresresponds to index (0, 0, 0)
 // with distance between grid points being AC_dsx, AC_dsy, AC_dsz
 // respectively. 
-static __device__ AcReal3
+static __device__ inline AcReal3
 cartesian_grid_location(const int3 in_idx3d)
 {
     return {AcReal(in_idx3d.x)*DCONST(AC_dsx),
@@ -88,7 +90,7 @@ cartesian_grid_location(const int3 in_idx3d)
             AcReal(in_idx3d.z)*DCONST(AC_dsz)};
 }
 
-static __device__ AcReal
+static __device__ inline AcReal
 distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1, 
          const AcReal coord_x2, const AcReal coord_x2, const AcReal coord_x1)
 {
@@ -98,22 +100,16 @@ distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1,
 }
 
 
-static __device__ AcReal apply_coordinate_function(const AcReal3 coordinate, const int coordinate_function)
+static __device__ inline AcReal 
+radial_window(const AcReal3 coordinate)
 {
     AcReal loc_weight = 0.0;
 
-    //TODO Calculate a coordinate function effect
-    switch (coordinate_function) {
-        case RADIAL_SUM:
-            const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
-                                           DCONST(AC_center_x), DCONST(AC_center_y), DCONST(AC_center_z))
-            //TODO: Better like this if like a window function?
-            if (radius <= DCONST(AC_sum_radius)) {
-                loc_weight = 1.0
-            }
-            ;
-            break;
-    };
+    const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
+                                   DCONST(AC_center_x), DCONST(AC_center_y), DCONST(AC_center_z))
+
+    //TODO: Better like this if like a window function?
+    if (radius <= DCONST(AC_window_radius)) loc_weight = 1.0;
 
     return loc_weight;
 }
@@ -212,9 +208,9 @@ map_vec_scal(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcRe
         out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx], in3[in_idx]);
 }
 
-template <MapFn map_fn>
+template <MapFn map_fn, GridLocFn grid_loc_fn, CoordFn coord_fn>
 __global__ void
-map_coord(const AcReal* in, const int3 start, const int3 end, const int coordinate_function, AcReal* out)
+map_coord(const AcReal* in, const int3 start, const int3 end, AcReal* out)
 {
     assert((start >= (int3){0, 0, 0}));
     assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
@@ -225,16 +221,15 @@ map_coord(const AcReal* in, const int3 start, const int3 end, const int coordina
         threadIdx.z + blockIdx.z * blockDim.z,
     };
 
-    //MV: in_idx3d actually sets the coordinate in the whole grid for each thread. 
-    //MV: can be utilized with the location funtion.
-    //MV: Or so I understand this. Otherwise does not make any sense.
     const int3 in_idx3d = start + tid;     
     const size_t in_idx = IDX(in_idx3d);
 
-    //MV TODO: Use a coordinate function to set location based values for calculation
-    // Get coordinate location based on the indices.
-    const AcReal3 coordinate = cartesian_grid_location(in_idx3d);
-    const AcReal loc_weight = apply_coordinate_function(coordinate, coordinate_function); 
+    // Get coordinate location based on the indices
+    // and apply a suitable weihting and window function
+    //const AcReal3 coordinate = cartesian_grid_location(in_idx3d);
+    //const AcReal loc_weight = apply_coordinate_function(coordinate, coordinate_function); 
+    const AcReal3 coordinate = grid_loc_fn(in_idx3d);
+    const AcReal  loc_weight = coord_fn(coordinate); 
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
@@ -244,10 +239,10 @@ map_coord(const AcReal* in, const int3 start, const int3 end, const int coordina
         out[out_idx] = map_fn(in[in_idx])*loc_weight;
 }
 
-template <MapVecFn map_fn>
+template <MapVecFn map_fn, GridLocFn grid_loc_fn, CoordFn coord_fn>
 __global__ void
 map_vec_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int3 start, const int3 end,
-              const int coordinate_function, AcReal* out)
+              AcReal* out)
 {
     assert((start >= (int3){0, 0, 0}));
     assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
@@ -261,10 +256,10 @@ map_vec_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int
     const int3 in_idx3d = start + tid;
     const size_t in_idx = IDX(in_idx3d);
 
-    //MV TODO: Use a coordinate function to set location based values for calculation
-    // Get coordinate location based on the indices.
-    const AcReal3 coordinate = cartesian_grid_location(in_idx3d); 
-    const AcReal loc_weight = apply_coordinate_function(coordinate, coordinate_function); 
+    // Get coordinate location based on the indices
+    // and apply a suitable weihting and window function
+    const AcReal3 coordinate = grid_loc_fn(in_idx3d);
+    const AcReal  loc_weight = coord_fn(coordinate); 
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
@@ -274,10 +269,10 @@ map_vec_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int
         out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx])*loc_weight;
 }
 
-template <MapVecScalFn map_fn>
+template <MapVecScalFn map_fn, GridLocFn grid_loc_fn, CoordFn coord_fn>
 __global__ void
 map_vec_scal_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcReal* in3,
-                   const int3 start, const int3 end, const int coordinate_function, AcReal* out)
+                   const int3 start, const int3 end, AcReal* out)
 {
     assert((start >= (int3){0, 0, 0}));
     assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
@@ -291,10 +286,10 @@ map_vec_scal_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, cons
     const int3 in_idx3d = start + tid;
     const size_t in_idx = IDX(in_idx3d);
 
-    //MV TODO: Use a coordinate function to set location based values for calculation
-    // Get coordinate location based on the indices.
-    const AcReal3 coordinate = cartesian_grid_location(in_idx3d); 
-    const AcReal loc_weight = apply_coordinate_function(coordinate, coordinate_function); 
+    // Get coordinate location based on the indices
+    // and apply a suitable weihting and window function
+    const AcReal3 coordinate = grid_loc_fn(in_idx3d);
+    const AcReal  loc_weight = coord_fn(coordinate); 
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
@@ -421,6 +416,11 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
         case RTYPE_RMS_EXP:
             map<map_exp_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
             break;
+        case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
+        case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
+        case RTYPE_RADIAL_WINDOW_SUM:
+            map_coord<map_value, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
+            break;
         default:
             ERROR("Invalid reduction type in acKernelReduceScal");
             return AC_FAILURE;
@@ -436,12 +436,15 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
         const size_t smem = tpb * sizeof(in[0]);
 
         switch (rtype) {
+        case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
         case RTYPE_MAX:
             reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
+        case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
         case RTYPE_MIN:
             reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
+        case RTYPE_RADIAL_WINDOW_SUM: /* Fallthrough */
         case RTYPE_SUM: /* Fallthrough */
         case RTYPE_RMS: /* Fallthrough */
         case RTYPE_RMS_EXP:
@@ -514,6 +517,10 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
                                                                                    vtxbuf2, start,
                                                                                    end, out);
             break;
+        case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
+        case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
+        case RTYPE_RADIAL_WINDOW_SUM:
+            map_vec_coord<map_value, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
         default:
             ERROR("Invalid reduction type in acKernelReduceScal");
             return AC_FAILURE;
@@ -529,12 +536,15 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
         const size_t smem = tpb * sizeof(in[0]);
 
         switch (rtype) {
+        case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
         case RTYPE_MAX:
             reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
+        case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
         case RTYPE_MIN:
             reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
+        case RTYPE_RADIAL_WINDOW_SUM: /* Fallthrough */
         case RTYPE_SUM: /* Fallthrough */
         case RTYPE_RMS: /* Fallthrough */
         case RTYPE_RMS_EXP:
@@ -600,6 +610,10 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
                 <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
                                                             start, end, out);
             break;
+        case RTYPE_ALFVEN_RADIAL_WINDOW_MAX: /* Fallthrough */
+        case RTYPE_ALFVEN_RADIAL_WINDOW_MIN: /* Fallthrough */
+        case RTYPE_ALFVEN_RADIAL_WINDOW_RMS:
+            map_vec_scal_coord<map_value, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
         default:
             fprintf(stderr, "Rtype %s (%d)\n", rtype_names[rtype], rtype);
             ERROR("Invalid reduction type in acKernelReduceVecScal");
@@ -616,12 +630,15 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
         const size_t smem = tpb * sizeof(in[0]);
 
         switch (rtype) {
+        case RTYPE_ALFVEN_RADIAL_WINDOW_MAX: /* Fallthrough */
         case RTYPE_ALFVEN_MAX:
             reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
+        case RTYPE_ALFVEN_RADIAL_WINDOW_MIN: /* Fallthrough */
         case RTYPE_ALFVEN_MIN:
             reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
+        case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
         case RTYPE_ALFVEN_RMS:
             reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
