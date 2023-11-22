@@ -74,6 +74,24 @@ map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& 
     return (map_square(a) + map_square(b) + map_square(c)) / (exp(d));
 }
 
+// Coordinate based functions
+
+// Here physical coordinate in the grid is calculating by assuming that
+// coordinate (0.0, 0.0, 0.0) corresresponds to index (0, 0, 0)
+// with distance between grid points being AC_dsx, AC_dsy, AC_dsz
+// respectively. 
+static __device__ AcReal3
+cartesian_grid_location(const in_idx3d)
+{
+    AcReal3 coordinate;
+
+    coordinate.x = AcReal(in_idx3d.x)*DCONST(AC_dsx);
+    coordinate.y = AcReal(in_idx3d.y)*DCONST(AC_dsy);
+    coordinate.z = AcReal(in_idx3d.z)*DCONST(AC_dsz);
+
+    return coordinate;
+}
+
 // Reduce functions
 static __device__ inline AcReal
 reduce_max(const AcReal& a, const AcReal& b)
@@ -181,14 +199,15 @@ map_coord(const AcReal* in, const int3 start, const int3 end, const int coordina
         threadIdx.z + blockIdx.z * blockDim.z,
     };
 
-    //MV TODO: Figure out location
-    //MV TODO: Use a coordinate function to set location based values for calculation
-
     //MV: in_idx3d actually sets the coordinate in the whole grid for each thread. 
     //MV: can be utilized with the location funtion.
     //MV: Or so I understand this. Otherwise does not make any sense.
     const int3 in_idx3d = start + tid;     
     const size_t in_idx = IDX(in_idx3d);
+
+    //MV TODO: Use a coordinate function to set location based values for calculation
+    // Get coordinate location based on the indices.
+    const AcReal3 coordinate = cartesian_grid_location(in_idx3d); 
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
@@ -212,11 +231,12 @@ map_vec_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int
         threadIdx.z + blockIdx.z * blockDim.z,
     };
 
-    //MV TODO: Figure out location
-    //MV TODO: Use a coordinate function to set location based values for calculation
-
     const int3 in_idx3d = start + tid;
     const size_t in_idx = IDX(in_idx3d);
+
+    //MV TODO: Use a coordinate function to set location based values for calculation
+    // Get coordinate location based on the indices.
+    const AcReal3 coordinate = cartesian_grid_location(in_idx3d); 
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
@@ -240,11 +260,12 @@ map_vec_scal_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, cons
         threadIdx.z + blockIdx.z * blockDim.z,
     };
 
-    //MV TODO: Figure out location
-    //MV TODO: Use a coordinate function to set location based values for calculation
-
     const int3 in_idx3d = start + tid;
     const size_t in_idx = IDX(in_idx3d);
+
+    //MV TODO: Use a coordinate function to set location based values for calculation
+    // Get coordinate location based on the indices.
+    const AcReal3 coordinate = cartesian_grid_location(in_idx3d); 
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
