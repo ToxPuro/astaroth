@@ -81,7 +81,7 @@ map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& 
 // with distance between grid points being AC_dsx, AC_dsy, AC_dsz
 // respectively. 
 static __device__ AcReal3
-cartesian_grid_location(const in_idx3d)
+cartesian_grid_location(const int3 in_idx3d)
 {
     AcReal3 coordinate;
 
@@ -90,6 +90,14 @@ cartesian_grid_location(const in_idx3d)
     coordinate.z = AcReal(in_idx3d.z)*DCONST(AC_dsz);
 
     return coordinate;
+}
+
+static __device__ AcReal apply_coordinate_function(const AcReal3 coordinate, const int coordinate_function)
+{
+
+    //TODO Calculate a coordinate function effect
+
+    return loc_weight;
 }
 
 // Reduce functions
@@ -188,7 +196,7 @@ map_vec_scal(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcRe
 
 template <MapFn map_fn>
 __global__ void
-map_coord(const AcReal* in, const int3 start, const int3 end, const int coordinate_type, AcReal* out)
+map_coord(const AcReal* in, const int3 start, const int3 end, const int coordinate_function, AcReal* out)
 {
     assert((start >= (int3){0, 0, 0}));
     assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
@@ -207,20 +215,21 @@ map_coord(const AcReal* in, const int3 start, const int3 end, const int coordina
 
     //MV TODO: Use a coordinate function to set location based values for calculation
     // Get coordinate location based on the indices.
-    const AcReal3 coordinate = cartesian_grid_location(in_idx3d); 
+    const AcReal3 coordinate = cartesian_grid_location(in_idx3d);
+    const AcReal loc_weight = apply_coordinate_function(coordinate, coordinate_function); 
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
 
     const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
     if (within_bounds)
-        out[out_idx] = map_fn(in[in_idx]);
+        out[out_idx] = map_fn(in[in_idx])*loc_weight;
 }
 
 template <MapVecFn map_fn>
 __global__ void
 map_vec_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int3 start, const int3 end,
-              const int coordinate_type, AcReal* out)
+              const int coordinate_function, AcReal* out)
 {
     assert((start >= (int3){0, 0, 0}));
     assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
@@ -237,19 +246,20 @@ map_vec_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int
     //MV TODO: Use a coordinate function to set location based values for calculation
     // Get coordinate location based on the indices.
     const AcReal3 coordinate = cartesian_grid_location(in_idx3d); 
+    const AcReal loc_weight = apply_coordinate_function(coordinate, coordinate_function); 
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
 
     const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
     if (within_bounds)
-        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx]);
+        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx])*loc_weight;
 }
 
 template <MapVecScalFn map_fn>
 __global__ void
 map_vec_scal_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcReal* in3,
-                   const int3 start, const int3 end, const int coordinate_type, AcReal* out)
+                   const int3 start, const int3 end, const int coordinate_function, AcReal* out)
 {
     assert((start >= (int3){0, 0, 0}));
     assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
@@ -266,13 +276,14 @@ map_vec_scal_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, cons
     //MV TODO: Use a coordinate function to set location based values for calculation
     // Get coordinate location based on the indices.
     const AcReal3 coordinate = cartesian_grid_location(in_idx3d); 
+    const AcReal loc_weight = apply_coordinate_function(coordinate, coordinate_function); 
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
 
     const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
     if (within_bounds)
-        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx], in3[in_idx]);
+        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx], in3[in_idx])*loc_weight;
 }
 
 template <ReduceFn reduce_fn>
