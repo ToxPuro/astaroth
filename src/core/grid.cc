@@ -1732,13 +1732,28 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     AcReal mpi_res;
     MPI_Allreduce(&local_result, &mpi_res, 1, AC_REAL_MPI_TYPE, op, astaroth_comm);
 
-    if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS || 
-        rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS ) {
-        // MV NOTE: RTYPE_ALFVEN_RADIAL_WINDOW_RMS cannot know the number of included grid points here. 
-        //          Use with caution! 
+    if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS) {
         const AcReal inv_n = AcReal(1.) / (grid.nn.x * grid.decomposition.x * grid.nn.y *
                                            grid.decomposition.y * grid.nn.z * grid.decomposition.z);
         mpi_res            = sqrt(inv_n * mpi_res);
+    }
+
+    if ( rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS ) {
+        // MV NOTE: This has to be calculated here separately, because does not
+        //          know what GPU is doing. 
+        const AcReal cell_volume   = device->local_config.real_params[AC_dsx] *
+                                     device->local_config.real_params[AC_dsy] *
+                                     device->local_config.real_params[AC_dsz];
+
+        const AcReal sphere_volume = (4.0/3.0) * M_PI *
+                                     device->local_config.real_params[AC_window_radius] * 
+                                     device->local_config.real_params[AC_window_radius] * 
+                                     device->local_config.real_params[AC_window_radius];  
+
+        //only include whole cells
+        const AcReal cell_number   = AcReal(int(sphere_volume/cell_volume));
+
+        mpi_res                    = sqrt(mpi_res / cell_number);
     }
     *result = mpi_res;
     return AC_SUCCESS;
