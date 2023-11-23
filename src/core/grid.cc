@@ -1707,14 +1707,19 @@ static AcResult
 distributedScalarReduction(const AcReal local_result, const ReductionType rtype, AcReal* result)
 {
     MPI_Op op;
-    if (rtype == RTYPE_MAX || rtype == RTYPE_ALFVEN_MAX) {
+    if (rtype == RTYPE_MAX || rtype == RTYPE_ALFVEN_MAX || 
+        rtype == RTYPE_ALFVEN_RADIAL_WINDOW_MAX || 
+        rtype == RTYPE_RADIAL_WINDOW_MAX ) {
         op = MPI_MAX;
     }
-    else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN) {
+    else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN || 
+             rtype == RTYPE_ALFVEN_RADIAL_WINDOW_MIN || 
+             rtype == RTYPE_RADIAL_WINDOW_MIN ) {
         op = MPI_MIN;
     }
     else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM ||
-             rtype == RTYPE_ALFVEN_RMS) {
+             rtype == RTYPE_ALFVEN_RMS || rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS || 
+             rtype == RTYPE_RADIAL_WINDOW_SUM ) {
         op = MPI_SUM;
     }
     else {
@@ -1727,7 +1732,10 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     AcReal mpi_res;
     MPI_Allreduce(&local_result, &mpi_res, 1, AC_REAL_MPI_TYPE, op, astaroth_comm);
 
-    if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS) {
+    if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_ALFVEN_RMS || 
+        rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS ) {
+        // MV NOTE: RTYPE_ALFVEN_RADIAL_WINDOW_RMS cannot know the number of included grid points here. 
+        //          Use with caution! 
         const AcReal inv_n = AcReal(1.) / (grid.nn.x * grid.decomposition.x * grid.nn.y *
                                            grid.decomposition.y * grid.nn.z * grid.decomposition.z);
         mpi_res            = sqrt(inv_n * mpi_res);
