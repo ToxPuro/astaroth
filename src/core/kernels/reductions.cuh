@@ -520,7 +520,8 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
         case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
         case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
         case RTYPE_RADIAL_WINDOW_SUM:
-            map_vec_coord<map_value, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
+            map_vec_coord<map_length_vec, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, out);
+            break;
         default:
             ERROR("Invalid reduction type in acKernelReduceScal");
             return AC_FAILURE;
@@ -612,8 +613,11 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
             break;
         case RTYPE_ALFVEN_RADIAL_WINDOW_MAX: /* Fallthrough */
         case RTYPE_ALFVEN_RADIAL_WINDOW_MIN: /* Fallthrough */
+            map_vec_scal_coord<map_length_alf, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, start, end, out);
+            break;
         case RTYPE_ALFVEN_RADIAL_WINDOW_RMS:
-            map_vec_scal_coord<map_value, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
+            map_vec_scal_coord<map_square_alf, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, start, end, out);
+            break;
         default:
             fprintf(stderr, "Rtype %s (%d)\n", rtype_names[rtype], rtype);
             ERROR("Invalid reduction type in acKernelReduceVecScal");
