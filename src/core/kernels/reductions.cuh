@@ -25,7 +25,7 @@ typedef AcReal (*MapVecFn)(const AcReal&, const AcReal&, const AcReal&);
 typedef AcReal (*MapVecScalFn)(const AcReal&, const AcReal&, const AcReal&, const AcReal&);
 typedef AcReal (*ReduceFn)(const AcReal&, const AcReal&);
 typedef AcReal (*CoordFn)(const AcReal3&);
-typedef AcReal3 (*GridLocFn)(const int3&);
+typedef AcReal (*GridLocFn)(AcReal&, AcReal&, AcReal&, const int3&);
 
 // Map functions
 static __device__ inline AcReal
@@ -82,17 +82,17 @@ map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& 
 // coordinate (0.0, 0.0, 0.0) corresresponds to index (0, 0, 0)
 // with distance between grid points being AC_dsx, AC_dsy, AC_dsz
 // respectively. 
-static __device__ inline AcReal3
-cartesian_grid_location(const int3 in_idx3d)
+static __device__ inline void
+cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3 in_idx3d)
 {
-    return {AcReal(in_idx3d.x)*DCONST(AC_dsx),
-            AcReal(in_idx3d.y)*DCONST(AC_dsy),
-            AcReal(in_idx3d.z)*DCONST(AC_dsz)};
+    *coord_x1 = AcReal(in_idx3d.x)*DCONST(AC_dsx);
+    *coord_y1 = AcReal(in_idx3d.y)*DCONST(AC_dsy);
+    *coord_z1 = AcReal(in_idx3d.z)*DCONST(AC_dsz);
 }
 
 static __device__ inline AcReal
 distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1, 
-         const AcReal coord_x2, const AcReal coord_x2, const AcReal coord_x1)
+         const AcReal coord_x2, const AcReal coord_y2, const AcReal coord_z2)
 {
     return sqrt((coord_x1-coord_x2)*(coord_x1-coord_x2)
               + (coord_y1-coord_y2)*(coord_y1-coord_y2)
@@ -106,7 +106,7 @@ radial_window(const AcReal3 coordinate)
     AcReal loc_weight = 0.0;
 
     const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
-                                   DCONST(AC_center_x), DCONST(AC_center_y), DCONST(AC_center_z))
+                                   DCONST(AC_center_x), DCONST(AC_center_y), DCONST(AC_center_z));
 
     //TODO: Better like this if like a window function?
     if (radius <= DCONST(AC_window_radius)) loc_weight = 1.0;
@@ -228,7 +228,8 @@ map_coord(const AcReal* in, const int3 start, const int3 end, AcReal* out)
     // and apply a suitable weihting and window function
     //const AcReal3 coordinate = cartesian_grid_location(in_idx3d);
     //const AcReal loc_weight = apply_coordinate_function(coordinate, coordinate_function); 
-    const AcReal3 coordinate = grid_loc_fn(in_idx3d);
+    AcReal3 coordinate;
+    grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, in_idx3d);
     const AcReal  loc_weight = coord_fn(coordinate); 
 
     const int3 dims      = end - start;
