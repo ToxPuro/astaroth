@@ -107,21 +107,24 @@ radial_window(const AcReal3& coordinate)
 
     const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
                                    DCONST(AC_center_x), DCONST(AC_center_y), 
-                                   DCONST(AC_center_z)); // radius ok
+                                   DCONST(AC_center_z)); 
 
+    if (radius <= DCONST(AC_window_radius)) loc_weight = 1.0;  
 
+    return loc_weight; 
+}
 
-    //TODO: Better like this if like a window function?
-    //if (radius <= 1.5) 
-    //if (radius <= DCONST(AC_window_radius)) printf(" coordinate.x = %f,
-    //coordinate.y     = %f,  coordinate.z = %f \n AC_center_x  = %f,
-    //AC_center_y      = %f, AC_center_z   = %f \n radius       = %f,
-    //AC_window_radius = %f \n", coordinate.x, coordinate.y, coordinate.z,
-    //DCONST(AC_center_x), DCONST(AC_center_y), DCONST(AC_center_z), radius,
-    //DCONST(AC_window_radius));
-    if (radius <= DCONST(AC_window_radius)) loc_weight = 1.0; // Condition ok 
+static __device__ inline AcReal 
+gaussian_window(const AcReal3& coordinate)
+{
+    const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
+                                   DCONST(AC_center_x), DCONST(AC_center_y), 
+                                   DCONST(AC_center_z)); 
+    const AcReal rscale = DCONST(AC_window_radius);
 
-    return loc_weight; // Output ok
+    //printf("radius %e, rscale %e, radius/rscale %e, exp((radius/rscale))^2 %e \n", 
+    //        radius, rscale, radius/rscale, exp(-(radius/rscale)*(radius/rscale)));
+    return  exp(-(radius/rscale)*(radius/rscale));
 }
 
 // Reduce functions
@@ -248,6 +251,8 @@ map_coord(const AcReal* in, const int3 start, const int3 end, AcReal* out)
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
 
+    //if (loc_weight < 1.0) printf("loc_weight = %f \n ", loc_weight);
+
     const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
     if (within_bounds)
         out[out_idx] = map_fn(in[in_idx])*loc_weight;
@@ -309,6 +314,7 @@ map_vec_scal_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, cons
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
+
 
     const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
     if (within_bounds)
@@ -419,7 +425,6 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
         const Volume tpb = get_map_tpb();
         const Volume bpg = get_map_bpg(dims, tpb);
 
-        //MV TODO: rtype swich could be used to choose a coordinate conscious reduction type???
         switch (rtype) {
         case RTYPE_MAX: /* Fallthrough */
         case RTYPE_MIN: /* Fallthrough */
@@ -436,6 +441,10 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
         case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
         case RTYPE_RADIAL_WINDOW_SUM:
             map_coord<map_value, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
+        case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
+        case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
+        case RTYPE_GAUSSIAN_WINDOW_SUM:
+            map_coord<map_value, cartesian_grid_location, gaussian_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
             break;
         default:
             ERROR("Invalid reduction type in acKernelReduceScal");
@@ -453,14 +462,17 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
 
         switch (rtype) {
         case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
+        case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
         case RTYPE_MAX:
             reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
         case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
+        case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
         case RTYPE_MIN:
             reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
         case RTYPE_RADIAL_WINDOW_SUM: /* Fallthrough */
+        case RTYPE_GAUSSIAN_WINDOW_SUM: /* Fallthrough */
         case RTYPE_SUM: /* Fallthrough */
         case RTYPE_RMS: /* Fallthrough */
         case RTYPE_RMS_EXP:
@@ -538,6 +550,11 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
         case RTYPE_RADIAL_WINDOW_SUM:
             map_vec_coord<map_length_vec, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, out);
             break;
+        case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
+        case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
+        case RTYPE_GAUSSIAN_WINDOW_SUM:
+            map_vec_coord<map_length_vec, cartesian_grid_location, gaussian_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, out);
+            break;
         default:
             ERROR("Invalid reduction type in acKernelReduceScal");
             return AC_FAILURE;
@@ -554,14 +571,17 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
 
         switch (rtype) {
         case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
+        case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
         case RTYPE_MAX:
             reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
         case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
+        case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
         case RTYPE_MIN:
             reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
         case RTYPE_RADIAL_WINDOW_SUM: /* Fallthrough */
+        case RTYPE_GAUSSIAN_WINDOW_SUM: /* Fallthrough */
         case RTYPE_SUM: /* Fallthrough */
         case RTYPE_RMS: /* Fallthrough */
         case RTYPE_RMS_EXP:

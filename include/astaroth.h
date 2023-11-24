@@ -82,7 +82,10 @@ typedef int Stream;
     FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_RMS)                                                           \
     FUNC(RTYPE_RADIAL_WINDOW_MAX)                                                                  \
     FUNC(RTYPE_RADIAL_WINDOW_MIN)                                                                  \
-    FUNC(RTYPE_RADIAL_WINDOW_SUM)
+    FUNC(RTYPE_RADIAL_WINDOW_SUM)                                                                  \
+    FUNC(RTYPE_GAUSSIAN_WINDOW_MAX)                                                                \
+    FUNC(RTYPE_GAUSSIAN_WINDOW_MIN)                                                                \
+    FUNC(RTYPE_GAUSSIAN_WINDOW_SUM)
 
 #define RTYPE_ISNAN (RTYPE_SUM)
 

@@ -1709,16 +1709,19 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     MPI_Op op;
     if (rtype == RTYPE_MAX || rtype == RTYPE_ALFVEN_MAX || 
         rtype == RTYPE_ALFVEN_RADIAL_WINDOW_MAX || 
+        rtype == RTYPE_GAUSSIAN_WINDOW_MAX || 
         rtype == RTYPE_RADIAL_WINDOW_MAX ) {
         op = MPI_MAX;
     }
     else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN || 
              rtype == RTYPE_ALFVEN_RADIAL_WINDOW_MIN || 
+             rtype == RTYPE_GAUSSIAN_WINDOW_MIN || 
              rtype == RTYPE_RADIAL_WINDOW_MIN ) {
         op = MPI_MIN;
     }
     else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM ||
              rtype == RTYPE_ALFVEN_RMS || rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS || 
+             rtype == RTYPE_GAUSSIAN_WINDOW_SUM || 
              rtype == RTYPE_RADIAL_WINDOW_SUM ) {
         op = MPI_SUM;
     }
