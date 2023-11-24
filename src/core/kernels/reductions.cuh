@@ -231,7 +231,6 @@ map_coord(const AcReal* in, const int3 start, const int3 end, AcReal* out)
     AcReal3 coordinate;
     grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, in_idx3d);
     const AcReal  loc_weight = coord_fn(coordinate); 
-    const AcReal  loc_weight = 1.0; 
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
