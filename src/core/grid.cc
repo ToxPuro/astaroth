@@ -1741,14 +1741,14 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     if ( rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS ) {
         // MV NOTE: This has to be calculated here separately, because does not
         //          know what GPU is doing. 
-        const AcReal cell_volume   = device->local_config.real_params[AC_dsx] *
-                                     device->local_config.real_params[AC_dsy] *
-                                     device->local_config.real_params[AC_dsz];
+        const AcReal cell_volume   = grid.device->local_config.real_params[AC_dsx] *
+                                     grid.device->local_config.real_params[AC_dsy] *
+                                     grid.device->local_config.real_params[AC_dsz];
 
         const AcReal sphere_volume = (4.0/3.0) * M_PI *
-                                     device->local_config.real_params[AC_window_radius] * 
-                                     device->local_config.real_params[AC_window_radius] * 
-                                     device->local_config.real_params[AC_window_radius];  
+                                     grid.device->local_config.real_params[AC_window_radius] * 
+                                     grid.device->local_config.real_params[AC_window_radius] * 
+                                     grid.device->local_config.real_params[AC_window_radius];  
 
         //only include whole cells
         const AcReal cell_number   = AcReal(int(sphere_volume/cell_volume));
