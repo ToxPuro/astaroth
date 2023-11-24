@@ -106,12 +106,22 @@ radial_window(const AcReal3& coordinate)
     AcReal loc_weight = 0.0;
 
     const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
-                                   DCONST(AC_center_x), DCONST(AC_center_y), DCONST(AC_center_z));
+                                   DCONST(AC_center_x), DCONST(AC_center_y), 
+                                   DCONST(AC_center_z)); // radius ok
+
+
 
     //TODO: Better like this if like a window function?
-    if (radius <= DCONST(AC_window_radius)) loc_weight = 1.0;
+    //if (radius <= 1.5) 
+    //if (radius <= DCONST(AC_window_radius)) printf(" coordinate.x = %f,
+    //coordinate.y     = %f,  coordinate.z = %f \n AC_center_x  = %f,
+    //AC_center_y      = %f, AC_center_z   = %f \n radius       = %f,
+    //AC_window_radius = %f \n", coordinate.x, coordinate.y, coordinate.z,
+    //DCONST(AC_center_x), DCONST(AC_center_y), DCONST(AC_center_z), radius,
+    //DCONST(AC_window_radius));
+    if (radius <= DCONST(AC_window_radius)) loc_weight = 1.0; // Condition ok 
 
-    return loc_weight;
+    return loc_weight; // Output ok
 }
 
 // Reduce functions

@@ -271,6 +271,20 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
         }
     }
 
+    // Calculate rms, min and max from the variables as scalars with windowing (TEST)
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_RADIAL_WINDOW_MAX, VertexBufferHandle(i), &buf_max);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_RADIAL_WINDOW_MIN, VertexBufferHandle(i), &buf_min);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_RADIAL_WINDOW_SUM, VertexBufferHandle(i), &buf_rms);
+
+        acLogFromRootProc(pid, "WINDOW  %*s: min %.3e,\tsum %.3e,\tmax %.3e\n", max_name_width,
+                          vtxbuf_names[i], double(buf_min), double(buf_rms), double(buf_max));
+
+        if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
+            *found_nan = 1;
+        }
+    }
+
     if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
         if (pid == 0) {
             fprintf(diag_file, "%e %e ", double(sink_mass), double(accreted_mass));
