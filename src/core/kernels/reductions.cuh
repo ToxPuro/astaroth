@@ -25,7 +25,7 @@ typedef AcReal (*MapVecFn)(const AcReal&, const AcReal&, const AcReal&);
 typedef AcReal (*MapVecScalFn)(const AcReal&, const AcReal&, const AcReal&, const AcReal&);
 typedef AcReal (*ReduceFn)(const AcReal&, const AcReal&);
 typedef AcReal (*CoordFn)(const AcReal3&);
-typedef void (*GridLocFn)(AcReal&, AcReal&, AcReal&, const int3&);
+typedef void (*GridLocFn)(AcReal*, AcReal*, AcReal*, const int3&);
 
 // Map functions
 static __device__ inline AcReal
@@ -83,7 +83,7 @@ map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& 
 // with distance between grid points being AC_dsx, AC_dsy, AC_dsz
 // respectively. 
 static __device__ inline void
-cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3 in_idx3d)
+cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3& in_idx3d)
 {
     *coord_x1 = AcReal(in_idx3d.x)*DCONST(AC_dsx);
     *coord_y1 = AcReal(in_idx3d.y)*DCONST(AC_dsy);
@@ -101,7 +101,7 @@ distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1,
 
 
 static __device__ inline AcReal 
-radial_window(const AcReal3 coordinate)
+radial_window(const AcReal3& coordinate)
 {
     AcReal loc_weight = 0.0;
 
@@ -230,6 +230,9 @@ map_coord(const AcReal* in, const int3 start, const int3 end, AcReal* out)
     //const AcReal loc_weight = apply_coordinate_function(coordinate, coordinate_function); 
     AcReal3 coordinate;
     grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, in_idx3d);
+    //coordinate.x = 1.0;
+    //coordinate.y = 1.0;
+    //coordinate.z = 1.0;
     const AcReal  loc_weight = coord_fn(coordinate); 
 
     const int3 dims      = end - start;
