@@ -85,9 +85,9 @@ map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& 
 static __device__ inline void
 cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3& in_idx3d)
 {
-    *coord_x1 = AcReal(in_idx3d.x)*DCONST(AC_dsx);
-    *coord_y1 = AcReal(in_idx3d.y)*DCONST(AC_dsy);
-    *coord_z1 = AcReal(in_idx3d.z)*DCONST(AC_dsz);
+    *coord_x1 = AcReal(in_idx3d.x - STENCIL_ORDER/2)*DCONST(AC_dsx);
+    *coord_y1 = AcReal(in_idx3d.y - STENCIL_ORDER/2)*DCONST(AC_dsy);
+    *coord_z1 = AcReal(in_idx3d.z - STENCIL_ORDER/2)*DCONST(AC_dsz);
 }
 
 static __device__ inline AcReal
