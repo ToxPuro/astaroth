@@ -196,6 +196,17 @@ print_diagnostics_header_from_root_proc(int pid, FILE* diag_file)
             fprintf(diag_file, "%s_min  %s_rms  %s_max  ", vtxbuf_names[i], vtxbuf_names[i],
                     vtxbuf_names[i]);
         }
+#if LSPECIAL_REDUCTIONS
+        for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+            fprintf(diag_file, "%s_min_wl  %s_rms_wl  %s_max_wl  ", vtxbuf_names[i], vtxbuf_names[i],
+                    vtxbuf_names[i]);
+        }
+        for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+            fprintf(diag_file, "%s_min_wg  %s_rms_wg  %s_max_wg  ", vtxbuf_names[i], vtxbuf_names[i],
+                    vtxbuf_names[i]);
+        }
+#endif
+
 #if LSINK
         fprintf(diag_file, "sink_mass  accreted_mass  ");
 #endif
@@ -271,6 +282,7 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
         }
     }
 
+#if LSPECIAL_REDUCTIONS
     // Calculate rms, min and max from the variables as scalars with windowing (TEST)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         acGridReduceScal(STREAM_DEFAULT, RTYPE_RADIAL_WINDOW_MAX, VertexBufferHandle(i), &buf_max);
@@ -279,6 +291,9 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
 
         acLogFromRootProc(pid, "WINDOW LINEAR %*s: min %.3e,\tsum %.3e,\tmax %.3e\n", max_name_width,
                           vtxbuf_names[i], double(buf_min), double(buf_rms), double(buf_max));
+        if (pid == 0) {
+            fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+        }
 
         if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
             *found_nan = 1;
@@ -293,11 +308,16 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
 
         acLogFromRootProc(pid, "WINDOW GAUSSIAN  %*s: min %.3e,\tsum %.3e,\tmax %.3e\n", max_name_width,
                           vtxbuf_names[i], double(buf_min), double(buf_rms), double(buf_max));
+        if (pid == 0) {
+            fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+        }
 
         if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
             *found_nan = 1;
         }
     }
+
+#endif 
 
     if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
         if (pid == 0) {
