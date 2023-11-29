@@ -283,6 +283,10 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
     }
 
 #if LSPECIAL_REDUCTIONS
+    // These reductions are for locations sensitive special windowed
+    // reductions, made for the purpose of making more localized reductions
+    // possible. As such, no concern for a default user. 
+
     // Calculate rms, min and max from the variables as scalars with windowing (TEST)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         acGridReduceScal(STREAM_DEFAULT, RTYPE_RADIAL_WINDOW_MAX, VertexBufferHandle(i), &buf_max);
