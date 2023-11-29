@@ -17,9 +17,11 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+import astar.data as ad
+import astar.visual as vis
 import numpy as np 
 import pylab as plt 
-import ma
+import pandas as pd
 
 # ---------------------------------------------------------------------------
 # This Python script does a number of check on the simulation data. 
@@ -32,5 +34,16 @@ import ma
 # This is a test which tests windowed and other special reduction by comparing
 # them to equivalent Python based reductions
 #
+
+meshdir = 'output-snapshots/'
+
+mesh_file_numbers, xsplit, ysplit, zsplit = ad.read.parse_directory(meshdir)
+print(mesh_file_numbers)
+print(xsplit, ysplit, zsplit)
+maxfiles = np.amax(mesh_file_numbers)
+for i in mesh_file_numbers:
+    mesh = ad.read.Mesh(i, fdir=meshdir, xsplit=xsplit, ysplit=ysplit, zsplit=zsplit) 
+
+
 
 
