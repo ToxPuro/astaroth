@@ -41,7 +41,7 @@ mesh_file_numbers, xsplit, ysplit, zsplit = ad.read.parse_directory(meshdir)
 print(mesh_file_numbers)
 print(xsplit, ysplit, zsplit)
 maxfiles = np.amax(mesh_file_numbers)
-for i in mesh_file_numbers:
+for i in mesh_file_numbers[:2]:
     mesh = ad.read.Mesh(i, fdir=meshdir, xsplit=xsplit, ysplit=ysplit, zsplit=zsplit)
     mesh.Bfield(trim=True)
 
@@ -94,4 +94,6 @@ for i in mesh_file_numbers:
     print("min_bb_x = %e, min_bb_y = %e, min_bb_z = %e" % (min_bb_x, min_bb_y, min_bb_z))
     print("rms_bb_x = %e, rms_bb_y = %e, rms_bb_z = %e" % (rms_bb_x, rms_bb_y, rms_bb_z))
 
+SimulationDiagnostics =  ad.read.TimeSeries(pandas=True)
 
+print(SimulationDiagnostics.ts_dataframe)
