@@ -37,11 +37,14 @@ import pandas as pd
 
 meshdir = 'output-snapshots/'
 
+df_ts_snapshots = pd.DataFrame()
+
 mesh_file_numbers, xsplit, ysplit, zsplit = ad.read.parse_directory(meshdir)
 print(mesh_file_numbers)
 print(xsplit, ysplit, zsplit)
 maxfiles = np.amax(mesh_file_numbers)
-for i in mesh_file_numbers[:2]:
+#for i in mesh_file_numbers[:10]:
+for i in mesh_file_numbers[:5]:
     mesh = ad.read.Mesh(i, fdir=meshdir, xsplit=xsplit, ysplit=ysplit, zsplit=zsplit)
     mesh.Bfield(trim=True)
 
@@ -94,6 +97,89 @@ for i in mesh_file_numbers[:2]:
     print("min_bb_x = %e, min_bb_y = %e, min_bb_z = %e" % (min_bb_x, min_bb_y, min_bb_z))
     print("rms_bb_x = %e, rms_bb_y = %e, rms_bb_z = %e" % (rms_bb_x, rms_bb_y, rms_bb_z))
 
+    rr_grid =  
+    #radius = distance(coordinate.x, coordinate.y,  coordinate.z,
+    #                  DCONST(AC_center_x), DCONST(AC_center_y),
+    #                  DCONST(AC_center_z));
+    rscale = mesh.minfo.contents('AC_window_radius')
+
+    window_radial(np.where(rr_grid <= rscale)) = 1.0
+
+    window_gaussian = exp(-(radius/rscale)**2.0)
+
+
+    max_uu_x_wg = 
+    max_uu_x_wl = 
+
+    column_names = ["time",
+                    "max_lnrho", "min_lnrho", "rms_lnrho", 
+                    "max_uu_x",  "max_uu_y",  "max_uu_z", 
+                    "min_uu_x",  "min_uu_y",  "min_uu_z", 
+                    "rms_uu_x",  "rms_uu_y",  "rms_uu_z", 
+                    "max_aa_x",  "max_aa_y",  "max_aa_z", 
+                    "min_aa_x",  "min_aa_y",  "min_aa_z", 
+                    "rms_aa_x",  "rms_aa_y",  "rms_aa_z", 
+                    "max_bb_x",  "max_bb_y",  "max_bb_z", 
+                    "min_bb_x",  "min_bb_y",  "min_bb_z", 
+                    "rms_bb_x",  "rms_bb_y",  "rms_bb_z"] 
+
+    values_line = [[mesh.timestamp,
+                    max_lnrho, min_lnrho, rms_lnrho,
+                    max_uu_x , max_uu_y,  max_uu_z, 
+                    min_uu_x,  min_uu_y,  min_uu_z, 
+                    rms_uu_x,  rms_uu_y,  rms_uu_z, 
+                    max_aa_x,  max_aa_y,  max_aa_z, 
+                    min_aa_x,  min_aa_y,  min_aa_z, 
+                    rms_aa_x,  rms_aa_y,  rms_aa_z, 
+                    max_bb_x,  max_bb_y,  max_bb_z, 
+                    min_bb_x,  min_bb_y,  min_bb_z, 
+                    rms_bb_x,  rms_bb_y,  rms_bb_z]] 
+
+    df_line = pd.DataFrame(values_line,  
+                           columns=column_names)
+
+    print(df_line)
+    df_ts_snapshots = pd.concat([df_ts_snapshots, df_line])
+
+
 SimulationDiagnostics =  ad.read.TimeSeries(pandas=True)
 
 print(SimulationDiagnostics.ts_dataframe)
+
+print(df_ts_snapshots)
+
+plt.figure()
+plt.plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_max'], '-')
+plt.plot(df_ts_snapshots['time'], df_ts_snapshots['max_uu_x'], 'o')
+
+plt.figure()
+plt.plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_min'], '-')  
+plt.plot(df_ts_snapshots['time'], df_ts_snapshots['min_uu_x'], 'o')
+
+plt.figure()
+plt.plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_rms'], '-')  
+plt.plot(df_ts_snapshots['time'], df_ts_snapshots['rms_uu_x'], 'o')
+
+plt.show()
+
+plt.figure()
+plt.plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_max_wg'], '-')
+plt.plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_max_wl'], '-')
+#plt.plot(df_ts_snapshots['time'], df_ts_snapshots['max_uu_x'], 'o')
+
+plt.figure()
+plt.plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_min_wg'], '-')  
+plt.plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_min_wl'], '-')  
+plt.plot(df_ts_snapshots['time'], df_ts_snapshots['min_uu_x'], 'o')
+
+plt.figure()
+#plt.plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_sum_wg'], '-')
+#plt.plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_sum_wl'], '-')
+plt.plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_rms_wg'], '-')
+plt.plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_rms_wl'], '-')
+#plt.plot(df_ts_snapshots['time'], df_ts_snapshots['max_uu_x'], 'o')
+
+plt.show()
+
+
+
