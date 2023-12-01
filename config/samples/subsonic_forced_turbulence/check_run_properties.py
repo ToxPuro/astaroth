@@ -44,6 +44,8 @@ print(mesh_file_numbers)
 print(xsplit, ysplit, zsplit)
 maxfiles = np.amax(mesh_file_numbers)
 #for i in mesh_file_numbers[:10]:
+
+get_window = True
 for i in mesh_file_numbers[:5]:
     mesh = ad.read.Mesh(i, fdir=meshdir, xsplit=xsplit, ysplit=ysplit, zsplit=zsplit)
     mesh.Bfield(trim=True)
@@ -97,19 +99,25 @@ for i in mesh_file_numbers[:5]:
     print("min_bb_x = %e, min_bb_y = %e, min_bb_z = %e" % (min_bb_x, min_bb_y, min_bb_z))
     print("rms_bb_x = %e, rms_bb_y = %e, rms_bb_z = %e" % (rms_bb_x, rms_bb_y, rms_bb_z))
 
-    rr_grid =  
-    #radius = distance(coordinate.x, coordinate.y,  coordinate.z,
-    #                  DCONST(AC_center_x), DCONST(AC_center_y),
-    #                  DCONST(AC_center_z));
-    rscale = mesh.minfo.contents('AC_window_radius')
+    if get_window:
+        xx = self.xx-mesh.minfo.contents('AC_center_x') + 3.0*mesh.minfo.contents('AC_dsx')
+        yy = self.yy-mesh.minfo.contents('AC_center_y') + 3.0*mesh.minfo.contents('AC_dsy')
+        zz = self.zz-mesh.minfo.contents('AC_center_z') + 3.0*mesh.minfo.contents('AC_dsz')
 
-    window_radial(np.where(rr_grid <= rscale)) = 1.0
+        xx_grid, yy_grid, zz_grid = np.meshgrid(xx, yy, zz)
+        rr_grid = np.sqrt(xx_grid**2.0 + yy_grid**2.0 + zz_grid**2.0)
 
-    window_gaussian = exp(-(radius/rscale)**2.0)
+        rscale = mesh.minfo.contents('AC_window_radius')
+       
+        window_radial = np.zeros_like(rr_grid)
+        window_radial[np.where(rr_grid <= rscale)] = 1.0
 
+        window_gaussian = exp(-(rr_grid/rscale)**2.0)
 
-    max_uu_x_wg = 
-    max_uu_x_wl = 
+        get_window = False
+
+    max_uu_x_wg = np.amax(mesh.uu[0]*window_radial) 
+    max_uu_x_wl = np.amax(mesh.uu[0]*window_gaussian) 
 
     column_names = ["time",
                     "max_lnrho", "min_lnrho", "rms_lnrho", 
@@ -121,7 +129,8 @@ for i in mesh_file_numbers[:5]:
                     "rms_aa_x",  "rms_aa_y",  "rms_aa_z", 
                     "max_bb_x",  "max_bb_y",  "max_bb_z", 
                     "min_bb_x",  "min_bb_y",  "min_bb_z", 
-                    "rms_bb_x",  "rms_bb_y",  "rms_bb_z"] 
+                    "rms_bb_x",  "rms_bb_y",  "rms_bb_z",
+                    "max_uu_x_wg", "max_uu_x_wl"] 
 
     values_line = [[mesh.timestamp,
                     max_lnrho, min_lnrho, rms_lnrho,
@@ -133,7 +142,8 @@ for i in mesh_file_numbers[:5]:
                     rms_aa_x,  rms_aa_y,  rms_aa_z, 
                     max_bb_x,  max_bb_y,  max_bb_z, 
                     min_bb_x,  min_bb_y,  min_bb_z, 
-                    rms_bb_x,  rms_bb_y,  rms_bb_z]] 
+                    rms_bb_x,  rms_bb_y,  rms_bb_z,
+                    max_uu_x_wg, max_uu_x_wl]] 
 
     df_line = pd.DataFrame(values_line,  
                            columns=column_names)
