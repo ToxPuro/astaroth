@@ -246,20 +246,20 @@ axs[1,2].plot(df_ts_snapshots['time'], df_ts_snapshots['min_uu_z_wl'], 'x', labe
 axs[1,2].legend()
 
 #TODO: Change rms to sum in QAstaroth outputs. It is a typo. 
-axs[2,0].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_rms_wg'], '-', label='VTXBUF_UUX_sum_wg')
-axs[2,0].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_rms_wl'], '--', label='VTXBUF_UUX_sum_wl')
+axs[2,0].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_sum_wg'], '-', label='VTXBUF_UUX_sum_wg')
+axs[2,0].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_sum_wl'], '--', label='VTXBUF_UUX_sum_wl')
 axs[2,0].plot(df_ts_snapshots['time'], df_ts_snapshots['sum_uu_x_wg'], 'o', label='sum_uu_x_wg')
 axs[2,0].plot(df_ts_snapshots['time'], df_ts_snapshots['sum_uu_x_wl'], 'x', label='sum_uu_x_wl')
 axs[2,0].legend()
 
-axs[2,1].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUY_rms_wg'], '-', label='VTXBUF_UUY_sum_wg')
-axs[2,1].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUY_rms_wl'], '--', label='VTXBUF_UUY_sum_wl')
+axs[2,1].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUY_sum_wg'], '-', label='VTXBUF_UUY_sum_wg')
+axs[2,1].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUY_sum_wl'], '--', label='VTXBUF_UUY_sum_wl')
 axs[2,1].plot(df_ts_snapshots['time'], df_ts_snapshots['sum_uu_y_wg'], 'o', label='sum_uu_y_wg')
 axs[2,1].plot(df_ts_snapshots['time'], df_ts_snapshots['sum_uu_y_wl'], 'x', label='sum_uu_y_wl')
 axs[2,1].legend()
 
-axs[2,2].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUZ_rms_wg'], '-', label='VTXBUF_UUZ_sum_wg')
-axs[2,2].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUZ_rms_wl'], '--', label='VTXBUF_UUZ_sum_wl')
+axs[2,2].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUZ_sum_wg'], '-', label='VTXBUF_UUZ_sum_wg')
+axs[2,2].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUZ_sum_wl'], '--', label='VTXBUF_UUZ_sum_wl')
 axs[2,2].plot(df_ts_snapshots['time'], df_ts_snapshots['sum_uu_z_wg'], 'o', label='sum_uu_z_wg')
 axs[2,2].plot(df_ts_snapshots['time'], df_ts_snapshots['sum_uu_z_wl'], 'x', label='sum_uu_z_wl')
 axs[2,2].legend()
