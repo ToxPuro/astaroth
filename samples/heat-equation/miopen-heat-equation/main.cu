@@ -7,8 +7,6 @@
 
 #include "hip.h"
 
-#define cudaMallocManaged hipMallocManaged
-
 #define cudnnHandle_t miopenHandle_t
 #define cudnnCreate miopenCreate
 #define cudnnDataType_t miopenDataType_t
@@ -79,7 +77,7 @@ main(void)
   cudnnSetTensor4dDescriptor(input_desc, dtype, fn, fc, fh, fw);
 
   float* input;
-  cudaMallocManaged((void**)&input, fn * fc * fh * fw * sizeof(input[0]));
+  cudaMalloc((void**)&input, fn * fc * fh * fw * sizeof(input[0]));
 
   // // Kernel
   const size_t gk = 1;
@@ -91,7 +89,7 @@ main(void)
   cudnnSetFilter4dDescriptor(filter_desc, dtype, gk, gc, gh, gw);
 
   float* filter;
-  cudaMallocManaged((void**)&filter, gk * gc * gh * gw * sizeof(filter[0]));
+  cudaMalloc((void**)&filter, gk * gc * gh * gw * sizeof(filter[0]));
 
   // Convolution
   const size_t pad_h = 1;
@@ -122,8 +120,8 @@ main(void)
   cudnnSetTensor4dDescriptor(output_desc, dtype, fn_out, fc_out, fh_out,
                              fw_out);
   float* output;
-  cudaMallocManaged((void**)&output,
-                    fn_out * fc_out * fh_out * fw_out * sizeof(output[0]));
+  cudaMalloc((void**)&output,
+             fn_out * fc_out * fh_out * fw_out * sizeof(output[0]));
 
   // Algorithm
   // const cudnnConvolutionFwdAlgo_t
@@ -144,7 +142,7 @@ main(void)
                                           &workspace_size);
 
   float* workspace;
-  cudaMallocManaged((void**)&workspace, workspace_size);
+  cudaMalloc((void**)&workspace, workspace_size);
 
   // // FindConvolution() is mandatory.
   // // Allocate workspace prior to running this API.
