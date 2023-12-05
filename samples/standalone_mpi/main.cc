@@ -198,11 +198,11 @@ print_diagnostics_header_from_root_proc(int pid, FILE* diag_file)
         }
 #if LSPECIAL_REDUCTIONS
         for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-            fprintf(diag_file, "%s_min_wl  %s_rms_wl  %s_max_wl  ", vtxbuf_names[i], vtxbuf_names[i],
+            fprintf(diag_file, "%s_min_wl  %s_sum_wl  %s_max_wl  ", vtxbuf_names[i], vtxbuf_names[i],
                     vtxbuf_names[i]);
         }
         for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-            fprintf(diag_file, "%s_min_wg  %s_rms_wg  %s_max_wg  ", vtxbuf_names[i], vtxbuf_names[i],
+            fprintf(diag_file, "%s_min_wg  %s_sum_wg  %s_max_wg  ", vtxbuf_names[i], vtxbuf_names[i],
                     vtxbuf_names[i]);
         }
 #endif

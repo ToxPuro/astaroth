@@ -110,6 +110,7 @@ radial_window(const AcReal3& coordinate)
                                    DCONST(AC_center_z)); 
 
     if (radius <= DCONST(AC_window_radius)) loc_weight = 1.0;  
+    //if (radius <= DCONST(AC_window_radius)) printf("Condition met radial_window \n");  OKOK
 
     return loc_weight; 
 }
@@ -121,6 +122,8 @@ gaussian_window(const AcReal3& coordinate)
                                    DCONST(AC_center_x), DCONST(AC_center_y), 
                                    DCONST(AC_center_z)); 
     const AcReal rscale = DCONST(AC_window_radius);
+
+    //if (radius <= DCONST(AC_window_radius)) printf("Condition met gaussian_window \n");  OKOK
 
     //printf("radius %e, rscale %e, radius/rscale %e, exp((radius/rscale))^2 %e \n", 
     //        radius, rscale, radius/rscale, exp(-(radius/rscale)*(radius/rscale)));
@@ -247,6 +250,7 @@ map_coord(const AcReal* in, const int3 start, const int3 end, AcReal* out)
     //coordinate.y = 1.0;
     //coordinate.z = 1.0;
     const AcReal  loc_weight = coord_fn(coordinate); 
+    #if (loc_weight > 0.8) printf("loc_weight %e in map_coord()\n", loc_weight); OUTPUT HERE SEEMS TO BE OK.
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
@@ -441,6 +445,7 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
         case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
         case RTYPE_RADIAL_WINDOW_SUM:
             map_coord<map_value, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
+            break;
         case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
         case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
         case RTYPE_GAUSSIAN_WINDOW_SUM:
