@@ -250,7 +250,7 @@ map_coord(const AcReal* in, const int3 start, const int3 end, AcReal* out)
     //coordinate.y = 1.0;
     //coordinate.z = 1.0;
     const AcReal  loc_weight = coord_fn(coordinate); 
-    #if (loc_weight > 0.8) printf("loc_weight %e in map_coord()\n", loc_weight); OUTPUT HERE SEEMS TO BE OK.
+    //if (loc_weight > 0.8) printf("loc_weight %e in map_coord()\n", loc_weight); OUTPUT HERE SEEMS TO BE OK.
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
