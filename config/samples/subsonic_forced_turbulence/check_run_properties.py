@@ -117,26 +117,26 @@ for i in mesh_file_numbers:
 
         get_window = False
 
-    max_uu_x_wg = np.amax(mesh.uu[0]*window_radial) 
-    max_uu_x_wl = np.amax(mesh.uu[0]*window_gaussian) 
-    min_uu_x_wg = np.amin(mesh.uu[0]*window_radial) 
-    min_uu_x_wl = np.amin(mesh.uu[0]*window_gaussian) 
-    sum_uu_x_wg =  np.sum(mesh.uu[0]*window_radial) 
-    sum_uu_x_wl =  np.sum(mesh.uu[0]*window_gaussian) 
+    max_uu_x_wg = np.amax(mesh.uu[0]*window_gaussian) 
+    min_uu_x_wg = np.amin(mesh.uu[0]*window_gaussian) 
+    sum_uu_x_wg =  np.sum(mesh.uu[0]*window_gaussian) 
+    max_uu_x_wl = np.amax(mesh.uu[0]*window_radial) 
+    min_uu_x_wl = np.amin(mesh.uu[0]*window_radial) 
+    sum_uu_x_wl =  np.sum(mesh.uu[0]*window_radial) 
 
-    max_uu_y_wg = np.amax(mesh.uu[1]*window_radial) 
-    max_uu_y_wl = np.amax(mesh.uu[1]*window_gaussian) 
-    min_uu_y_wg = np.amin(mesh.uu[1]*window_radial) 
-    min_uu_y_wl = np.amin(mesh.uu[1]*window_gaussian) 
-    sum_uu_y_wg =  np.sum(mesh.uu[1]*window_radial) 
-    sum_uu_y_wl =  np.sum(mesh.uu[1]*window_gaussian) 
+    max_uu_y_wg = np.amax(mesh.uu[1]*window_gaussian) 
+    min_uu_y_wg = np.amin(mesh.uu[1]*window_gaussian) 
+    sum_uu_y_wg =  np.sum(mesh.uu[1]*window_gaussian) 
+    max_uu_y_wl = np.amax(mesh.uu[1]*window_radial) 
+    min_uu_y_wl = np.amin(mesh.uu[1]*window_radial) 
+    sum_uu_y_wl =  np.sum(mesh.uu[1]*window_radial) 
 
-    max_uu_z_wg = np.amax(mesh.uu[2]*window_radial) 
-    max_uu_z_wl = np.amax(mesh.uu[2]*window_gaussian) 
-    min_uu_z_wg = np.amin(mesh.uu[2]*window_radial) 
-    min_uu_z_wl = np.amin(mesh.uu[2]*window_gaussian) 
-    sum_uu_z_wg =  np.sum(mesh.uu[2]*window_radial) 
-    sum_uu_z_wl =  np.sum(mesh.uu[2]*window_gaussian) 
+    max_uu_z_wg = np.amax(mesh.uu[2]*window_gaussian) 
+    min_uu_z_wg = np.amin(mesh.uu[2]*window_gaussian) 
+    sum_uu_z_wg =  np.sum(mesh.uu[2]*window_gaussian) 
+    max_uu_z_wl = np.amax(mesh.uu[2]*window_radial) 
+    min_uu_z_wl = np.amin(mesh.uu[2]*window_radial) 
+    sum_uu_z_wl =  np.sum(mesh.uu[2]*window_radial) 
 
     column_names = ["time",
                     "max_lnrho", "min_lnrho", "rms_lnrho", 
