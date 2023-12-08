@@ -48,6 +48,13 @@
 
 #include "timer_hires.h"
 
+void
+print_dims(const char* label, const size_t a, const size_t b, const size_t c,
+           const size_t d)
+{
+  printf("%s: %zu, %zu, %zu, %zu\n", label, a, b, c, d);
+}
+
 int
 main(void)
 {
@@ -75,9 +82,12 @@ main(void)
   cudnnCreateTensorDescriptor(&input_desc);
   // cudnnSetTensor4dDescriptor(input_desc, format, dtype, fn, fc, fh, fw);
   cudnnSetTensor4dDescriptor(input_desc, dtype, fn, fc, fh, fw);
+  print_dims("Input", fn, fc, fh, fw);
 
   float* input;
-  cudaMalloc((void**)&input, fn * fc * fh * fw * sizeof(input[0]));
+  const size_t input_count = fn * fc * fh * fw;
+  const size_t input_bytes = input_count * sizeof(input[0]);
+  cudaMalloc((void**)&input, input_bytes);
 
   // // Kernel
   const size_t gk = 1;
@@ -87,13 +97,16 @@ main(void)
   cudnnFilterDescriptor_t filter_desc;
   cudnnCreateFilterDescriptor(&filter_desc);
   cudnnSetFilter4dDescriptor(filter_desc, dtype, gk, gc, gh, gw);
+  print_dims("Kernel", gk, gc, gh, gw);
 
   float* filter;
-  cudaMalloc((void**)&filter, gk * gc * gh * gw * sizeof(filter[0]));
+  const size_t filter_count = gk * gc * gh * gw;
+  const size_t filter_bytes = filter_count * sizeof(filter[0]);
+  cudaMalloc((void**)&filter, filter_bytes);
 
   // Convolution
-  const size_t pad_h = 1;
-  const size_t pad_w = 1;
+  const size_t pad_h = (gh - 1) / 2;
+  const size_t pad_w = (gw - 1) / 2;
   const size_t str_h = 1;
   const size_t str_w = 1;
   const size_t dil_h = 1;
@@ -119,6 +132,8 @@ main(void)
   cudnnCreateTensorDescriptor(&output_desc);
   cudnnSetTensor4dDescriptor(output_desc, dtype, fn_out, fc_out, fh_out,
                              fw_out);
+  print_dims("Output", fn_out, fc_out, fh_out, fw_out);
+
   float* output;
   cudaMalloc((void**)&output,
              fn_out * fc_out * fh_out * fw_out * sizeof(output[0]));
@@ -194,6 +209,17 @@ main(void)
     break;
   }
 
+  // Host ----------------------------------------
+  float* host_input = (float*)malloc(input_bytes);
+  for (size_t i = 0; i < input_count; ++i)
+    host_input[i] = 1.0f;
+  cudaMemcpy(input, host_input, input_bytes, cudaMemcpyHostToDevice);
+
+  float* host_filter = (float*)malloc(filter_bytes);
+  for (size_t i = 0; i < filter_count; ++i)
+    host_filter[i] = 1;
+  cudaMemcpy(filter, host_filter, filter_bytes, cudaMemcpyHostToDevice);
+
   // Compute ---------------------------------------
   const float alpha = 1.0f;
   const float beta  = 0.0f;
@@ -204,27 +230,14 @@ main(void)
                             convolution_desc, algorithms[0].fwd_algo, &beta,
                             output_desc, output, workspace, workspace_size);
 
-  // cudnnConvolutionForward(nn, &alpha, input_desc, input, filter_desc, filter,
-  //                         convolution_desc, workspace, workspace_size, &beta,
-  //                         output_desc, output);
-
-  /*
-  miopenStatus_t
-  miopenConvolutionForward(
-      miopenHandle_t handle,
-      const void *alpha,
-      const miopenTensorDescriptor_t xDesc,
-      const void *x,
-      const miopenTensorDescriptor_t wDesc,
-      const void *w,
-      const miopenConvolutionDescriptor_t convDesc,
-      miopenConvFwdAlgorithm_t algo,
-      const void *beta,
-      const miopenTensorDescriptor_t yDesc,´`
-      void *y,
-      void *workSpace,
-      size_t workSpaceSize)
-  */
+  cudaMemcpy(host_input, output, input_bytes, cudaMemcpyDeviceToHost);
+  for (size_t j = (gh - 1) / 2; j < fh_out - (gh - 1) / 2; ++j) {
+    for (size_t i = (gw - 1) / 2; i < fw_out - (gw - 1) / 2; ++i) {
+      // printf("%g\n", host_input[i + j * fw_out]);
+      assert(host_input[i + j * fw_out] == gw * gh);
+    }
+  }
+  printf("Verified, OK!\n");
 
   // Benchmark
   Timer t;
