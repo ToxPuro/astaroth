@@ -99,12 +99,67 @@ for i in mesh_file_numbers:
     print("min_bb_x = %e, min_bb_y = %e, min_bb_z = %e" % (min_bb_x, min_bb_y, min_bb_z))
     print("rms_bb_x = %e, rms_bb_y = %e, rms_bb_z = %e" % (rms_bb_x, rms_bb_y, rms_bb_z))
 
+    #static __device__ inline void
+    #cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3& in_idx3d)
+    #{
+    #    *coord_x1 = AcReal(in_idx3d.x - STENCIL_ORDER/2)*DCONST(AC_dsx);
+    #    *coord_y1 = AcReal(in_idx3d.y - STENCIL_ORDER/2)*DCONST(AC_dsy);
+    #    *coord_z1 = AcReal(in_idx3d.z - STENCIL_ORDER/2)*DCONST(AC_dsz);
+    #}
+    #
+    #distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1,
+    #         const AcReal coord_x2, const AcReal coord_y2, const AcReal coord_z2)
+    #    sqrt((coord_x1-coord_x2)*(coord_x1-coord_x2)
+    #       + (coord_y1-coord_y2)*(coord_y1-coord_y2)
+    #       + (coord_z1-coord_z2)*(coord_z1-coord_z2));
+    #
+    #    const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
+    #                                   DCONST(AC_center_x), DCONST(AC_center_y),
+    #                                   DCONST(AC_center_z));
+    #
+    #    --------->
+    #
+    #    coordinate_x = AcReal(in_idx3d.x - STENCIL_ORDER/2)*DCONST(AC_dsx); 
+    #    coordinate_y = AcReal(in_idx3d.y - STENCIL_ORDER/2)*DCONST(AC_dsy);
+    #    coordinate_z = AcReal(in_idx3d.z - STENCIL_ORDER/2)*DCONST(AC_dsz);
+    #
+    #    radius = np.sqrt((coordinate_x-mesh.minfo.contents['AC_center_x'])**2.0
+    #                   + (coordinate_y-mesh.minfo.contents['AC_center_y'])**2.0
+    #                   + (coordinate_z-mesh.minfo.contents['AC_center_z'])**2.0);
+
     if get_window:
-        xx = mesh.xx[3:-3] - mesh.minfo.contents['AC_center_x'] + 3.0*mesh.minfo.contents['AC_dsx']
-        yy = mesh.yy[3:-3] - mesh.minfo.contents['AC_center_y'] + 3.0*mesh.minfo.contents['AC_dsy']
-        zz = mesh.zz[3:-3] - mesh.minfo.contents['AC_center_z'] + 3.0*mesh.minfo.contents['AC_dsz']
+        #Base on the test, this is correct!
+        xx = mesh.xx - mesh.minfo.contents['AC_center_x'] - 3.0*mesh.minfo.contents['AC_dsx'] 
+        yy = mesh.yy - mesh.minfo.contents['AC_center_y'] - 3.0*mesh.minfo.contents['AC_dsy'] 
+        zz = mesh.zz - mesh.minfo.contents['AC_center_z'] - 3.0*mesh.minfo.contents['AC_dsz']
+        xx = xx[3:-3] 
+        yy = yy[3:-3] 
+        zz = zz[3:-3] 
+
+        xx_alt = (np.arange(mesh.minfo.contents['AC_mx']) - 3)*mesh.minfo.contents['AC_dsx'] 
+        yy_alt = (np.arange(mesh.minfo.contents['AC_my']) - 3)*mesh.minfo.contents['AC_dsy'] 
+        zz_alt = (np.arange(mesh.minfo.contents['AC_mz']) - 3)*mesh.minfo.contents['AC_dsz']
+
+        xx_alt = xx_alt - mesh.minfo.contents['AC_center_x']
+        yy_alt = yy_alt - mesh.minfo.contents['AC_center_y']
+        zz_alt = zz_alt - mesh.minfo.contents['AC_center_z']
+
+        xcomp = mesh.xx - mesh.minfo.contents['AC_center_x'] - 3.0*mesh.minfo.contents['AC_dsx']
+
+        print("xx_alt") 
+        print(xx_alt) 
+        print("xx = xx[3:-3]")
+        print(xx)
+        print("mesh.xx - 3.0*mesh.minfo.contents['AC_dsx']")
+        print(xcomp)
+        #break
 
         xx_grid, yy_grid, zz_grid = np.meshgrid(xx, yy, zz)
+
+        xx_grid = xx_grid.astype(np.longdouble) 
+        yy_grid = yy_grid.astype(np.longdouble) 
+        zz_grid = zz_grid.astype(np.longdouble) 
+
         rr_grid = np.sqrt(xx_grid**2.0 + yy_grid**2.0 + zz_grid**2.0)
 
 
@@ -117,26 +172,26 @@ for i in mesh_file_numbers:
 
         get_window = False
 
-    max_uu_x_wg = np.amax(mesh.uu[0]*window_gaussian) 
-    min_uu_x_wg = np.amin(mesh.uu[0]*window_gaussian) 
-    sum_uu_x_wg =  np.sum(mesh.uu[0]*window_gaussian) 
-    max_uu_x_wl = np.amax(mesh.uu[0]*window_radial) 
-    min_uu_x_wl = np.amin(mesh.uu[0]*window_radial) 
-    sum_uu_x_wl =  np.sum(mesh.uu[0]*window_radial) 
+    max_uu_x_wg = np.amax(mesh.uu[0].astype(np.longdouble)*window_gaussian) 
+    min_uu_x_wg = np.amin(mesh.uu[0].astype(np.longdouble)*window_gaussian) 
+    sum_uu_x_wg =  np.sum(mesh.uu[0].astype(np.longdouble)*window_gaussian) 
+    max_uu_x_wl = np.amax(mesh.uu[0].astype(np.longdouble)*window_radial) 
+    min_uu_x_wl = np.amin(mesh.uu[0].astype(np.longdouble)*window_radial) 
+    sum_uu_x_wl =  np.sum(mesh.uu[0].astype(np.longdouble)*window_radial) 
 
-    max_uu_y_wg = np.amax(mesh.uu[1]*window_gaussian) 
-    min_uu_y_wg = np.amin(mesh.uu[1]*window_gaussian) 
-    sum_uu_y_wg =  np.sum(mesh.uu[1]*window_gaussian) 
-    max_uu_y_wl = np.amax(mesh.uu[1]*window_radial) 
-    min_uu_y_wl = np.amin(mesh.uu[1]*window_radial) 
-    sum_uu_y_wl =  np.sum(mesh.uu[1]*window_radial) 
+    max_uu_y_wg = np.amax(mesh.uu[1].astype(np.longdouble)*window_gaussian) 
+    min_uu_y_wg = np.amin(mesh.uu[1].astype(np.longdouble)*window_gaussian) 
+    sum_uu_y_wg =  np.sum(mesh.uu[1].astype(np.longdouble)*window_gaussian) 
+    max_uu_y_wl = np.amax(mesh.uu[1].astype(np.longdouble)*window_radial) 
+    min_uu_y_wl = np.amin(mesh.uu[1].astype(np.longdouble)*window_radial) 
+    sum_uu_y_wl =  np.sum(mesh.uu[1].astype(np.longdouble)*window_radial) 
 
-    max_uu_z_wg = np.amax(mesh.uu[2]*window_gaussian) 
-    min_uu_z_wg = np.amin(mesh.uu[2]*window_gaussian) 
-    sum_uu_z_wg =  np.sum(mesh.uu[2]*window_gaussian) 
-    max_uu_z_wl = np.amax(mesh.uu[2]*window_radial) 
-    min_uu_z_wl = np.amin(mesh.uu[2]*window_radial) 
-    sum_uu_z_wl =  np.sum(mesh.uu[2]*window_radial) 
+    max_uu_z_wg = np.amax(mesh.uu[2].astype(np.longdouble)*window_gaussian) 
+    min_uu_z_wg = np.amin(mesh.uu[2].astype(np.longdouble)*window_gaussian) 
+    sum_uu_z_wg =  np.sum(mesh.uu[2].astype(np.longdouble)*window_gaussian) 
+    max_uu_z_wl = np.amax(mesh.uu[2].astype(np.longdouble)*window_radial) 
+    min_uu_z_wl = np.amin(mesh.uu[2].astype(np.longdouble)*window_radial) 
+    sum_uu_z_wl =  np.sum(mesh.uu[2].astype(np.longdouble)*window_radial) 
 
     column_names = ["time",
                     "max_lnrho", "min_lnrho", "rms_lnrho", 
