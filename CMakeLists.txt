@@ -188,6 +188,7 @@ if (BUILD_SAMPLES)
     add_subdirectory(samples/pc-varfile-import)
     add_subdirectory(samples/bwtest)
     add_subdirectory(samples/microbenchmark)
+    add_subdirectory(samples/microbenchmark-nn)
 
     if (BUILD_MHD_SAMPLES)
         # add_subdirectory(samples/standalone)
