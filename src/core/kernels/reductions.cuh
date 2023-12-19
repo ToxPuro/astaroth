@@ -83,11 +83,11 @@ map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& 
 // with distance between grid points being AC_dsx, AC_dsy, AC_dsz
 // respectively. 
 static __device__ inline void
-cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3& in_idx3d)
+cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3& globalVertexIdx)
 {
-    *coord_x1 = AcReal(in_idx3d.x - STENCIL_ORDER/2)*DCONST(AC_dsx);
-    *coord_y1 = AcReal(in_idx3d.y - STENCIL_ORDER/2)*DCONST(AC_dsy);
-    *coord_z1 = AcReal(in_idx3d.z - STENCIL_ORDER/2)*DCONST(AC_dsz);
+    *coord_x1 = AcReal(globalVertexIdx.x - STENCIL_ORDER/2)*DCONST(AC_dsx);
+    *coord_y1 = AcReal(globalVertexIdx.y - STENCIL_ORDER/2)*DCONST(AC_dsy);
+    *coord_z1 = AcReal(globalVertexIdx.z - STENCIL_ORDER/2)*DCONST(AC_dsz);
 }
 
 static __device__ inline AcReal
@@ -231,6 +231,7 @@ map_coord(const AcReal* in, const int3 start, const int3 end, AcReal* out)
     assert((start >= (int3){0, 0, 0}));
     assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
 
+
     const int3 tid = (int3){
         threadIdx.x + blockIdx.x * blockDim.x,
         threadIdx.y + blockIdx.y * blockDim.y,
@@ -240,22 +241,22 @@ map_coord(const AcReal* in, const int3 start, const int3 end, AcReal* out)
     const int3 in_idx3d = start + tid;     
     const size_t in_idx = IDX(in_idx3d);
 
+    //Based on DSL boilerplate
+    const int3 vertexIdx = (int3) { threadIdx.x + blockIdx.x * blockDim.x + start.x, 
+                                    threadIdx.y + blockIdx.y * blockDim.y + start.y, 
+                                    threadIdx.z + blockIdx.z * blockDim.z + start.z, };
+    const int3 globalVertexIdx = (int3) { d_multigpu_offset.x + vertexIdx.x, 
+                                          d_multigpu_offset.y + vertexIdx.y, 
+                                          d_multigpu_offset.z + vertexIdx.z, };
+
     // Get coordinate location based on the indices
     // and apply a suitable weihting and window function
-    //const AcReal3 coordinate = cartesian_grid_location(in_idx3d);
-    //const AcReal loc_weight = apply_coordinate_function(coordinate, coordinate_function); 
     AcReal3 coordinate;
-    grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, in_idx3d);
-    //coordinate.x = 1.0;
-    //coordinate.y = 1.0;
-    //coordinate.z = 1.0;
+    grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, globalVertexIdx);
     const AcReal  loc_weight = coord_fn(coordinate); 
-    //if (loc_weight > 0.8) printf("loc_weight %e in map_coord()\n", loc_weight); OUTPUT HERE SEEMS TO BE OK.
 
     const int3 dims      = end - start;
     const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
-
-    //if (loc_weight < 1.0) printf("loc_weight = %f \n ", loc_weight);
 
     const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
     if (within_bounds)
@@ -279,10 +280,18 @@ map_vec_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int
     const int3 in_idx3d = start + tid;
     const size_t in_idx = IDX(in_idx3d);
 
+    //Based on DSL boilerplate
+    const int3 vertexIdx = (int3) { threadIdx.x + blockIdx.x * blockDim.x + start.x, 
+                                    threadIdx.y + blockIdx.y * blockDim.y + start.y, 
+                                    threadIdx.z + blockIdx.z * blockDim.z + start.z, };
+    const int3 globalVertexIdx = (int3) { d_multigpu_offset.x + vertexIdx.x, 
+                                          d_multigpu_offset.y + vertexIdx.y, 
+                                          d_multigpu_offset.z + vertexIdx.z, };
+
     // Get coordinate location based on the indices
     // and apply a suitable weihting and window function
     AcReal3 coordinate;
-    grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, in_idx3d);
+    grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, globalVertexIdx);
     const AcReal  loc_weight = coord_fn(coordinate); 
 
     const int3 dims      = end - start;
@@ -310,10 +319,18 @@ map_vec_scal_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, cons
     const int3 in_idx3d = start + tid;
     const size_t in_idx = IDX(in_idx3d);
 
+    //Based on DSL boilerplate
+    const int3 vertexIdx = (int3) { threadIdx.x + blockIdx.x * blockDim.x + start.x, 
+                                    threadIdx.y + blockIdx.y * blockDim.y + start.y, 
+                                    threadIdx.z + blockIdx.z * blockDim.z + start.z, };
+    const int3 globalVertexIdx = (int3) { d_multigpu_offset.x + vertexIdx.x, 
+                                          d_multigpu_offset.y + vertexIdx.y, 
+                                          d_multigpu_offset.z + vertexIdx.z, };
+
     // Get coordinate location based on the indices
     // and apply a suitable weihting and window function
     AcReal3 coordinate;
-    grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, in_idx3d);
+    grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, globalVertexIdx);
     const AcReal  loc_weight = coord_fn(coordinate); 
 
     const int3 dims      = end - start;
