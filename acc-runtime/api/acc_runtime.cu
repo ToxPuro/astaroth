@@ -46,7 +46,12 @@ get_bpg(const Volume dims, const Volume tpb)
   case IMPLICIT_CACHING:             // Fallthrough
   case EXPLICIT_CACHING:             // Fallthrough
   case EXPLICIT_CACHING_3D_BLOCKING: // Fallthrough
-  case EXPLICIT_CACHING_4D_BLOCKING: {
+  case EXPLICIT_CACHING_4D_BLOCKING: // Fallthrough
+  case EXPLICIT_PINGPONG_txw:        // Fallthrough
+  case EXPLICIT_PINGPONG_txy:        // Fallthrough
+  case EXPLICIT_PINGPONG_txyblocked: // Fallthrough
+  case EXPLICIT_PINGPONG_txyz:       // Fallthrough
+  case EXPLICIT_ROLLING_PINGPONG: {
     return (Volume){
         (size_t)ceil(1. * dims.x / tpb.x),
         (size_t)ceil(1. * dims.y / tpb.y),
@@ -88,6 +93,21 @@ is_valid_configuration(const Volume dims, const Volume tpb)
     // For some reason does not work without this
     return !(dims.x % tpb.x) && !(dims.y % tpb.y) && !(dims.z % tpb.z);
   }
+  case EXPLICIT_PINGPONG_txw: {
+    return (tpb.y == 1) && (tpb.z == 1);
+  }
+  case EXPLICIT_PINGPONG_txy: {
+    return (tpb.z == 1);
+  }
+  case EXPLICIT_PINGPONG_txyblocked: {
+    return (tpb.z == 1);
+  }
+  case EXPLICIT_PINGPONG_txyz: {
+    return true;
+  }
+  case EXPLICIT_ROLLING_PINGPONG: {
+    return true;
+  }
   default: {
     ERROR("Invalid IMPLEMENTATION in is_valid_configuration");
     return false;
@@ -114,6 +134,28 @@ get_smem(const Volume tpb, const size_t stencil_order,
   case EXPLICIT_CACHING_4D_BLOCKING: {
     return (tpb.x + stencil_order) * (tpb.y + stencil_order) * tpb.z *
            (NUM_FIELDS)*bytes_per_elem;
+  }
+  case EXPLICIT_PINGPONG_txw: {
+    return 2 * (tpb.x + stencil_order) * NUM_FIELDS * bytes_per_elem;
+  }
+  case EXPLICIT_PINGPONG_txy: {
+    return 2 * (tpb.x + stencil_order) * (tpb.y + stencil_order) *
+           bytes_per_elem;
+  }
+  case EXPLICIT_PINGPONG_txyblocked: {
+    const size_t block_size = 7;
+    return 2 * (tpb.x + stencil_order) * (tpb.y + stencil_order) * block_size *
+           bytes_per_elem;
+  }
+  case EXPLICIT_PINGPONG_txyz: {
+    return 2 * (tpb.x + stencil_order) * (tpb.y + stencil_order) *
+           (tpb.z + stencil_order) * bytes_per_elem;
+  }
+  case EXPLICIT_ROLLING_PINGPONG: {
+    // tpbxy slices with halos
+    // tpbz depth + 1 rolling cache slab
+    return (tpb.x + stencil_order) * (tpb.y + stencil_order) * (tpb.z + 1) *
+           bytes_per_elem;
   }
   default: {
     ERROR("Invalid IMPLEMENTATION in get_smem");
@@ -680,44 +722,46 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         if (!is_valid_configuration(to_volume(dims), to_volume(tpb)))
           continue;
 
-#if VECTORIZED_LOADS
-        const size_t window = tpb.x + STENCIL_ORDER;
+        // #if VECTORIZED_LOADS
+        //         const size_t window = tpb.x + STENCIL_ORDER;
 
-        // Vectorization criterion
-        if (window % veclen) // Window not divisible into vectorized blocks
-          continue;
+        //         // Vectorization criterion
+        //         if (window % veclen) // Window not divisible into vectorized
+        //         blocks
+        //           continue;
 
-        if (dims.x % tpb.x)
-          continue;
+        //         if (dims.x % tpb.x)
+        //           continue;
 
-          // May be too strict
-          // if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
-          //   continue;
-#endif
-#if 0 // Disabled for now (waiting for cleanup)
-#if USE_SMEM
-        const size_t max_smem = 128 * 1024;
-        if (smem > max_smem)
-          continue;
+        //           // May be too strict
+        //           // if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
+        //           //   continue;
+        // #endif
+        // #if 0 // Disabled for now (waiting for cleanup)
+        // #if USE_SMEM
+        //         const size_t max_smem = 128 * 1024;
+        //         if (smem > max_smem)
+        //           continue;
 
-#if VECTORIZED_LOADS
-        const size_t window = tpb.x + STENCIL_ORDER;
+        // #if VECTORIZED_LOADS
+        //         const size_t window = tpb.x + STENCIL_ORDER;
 
-        // Vectorization criterion
-        if (window % veclen) // Window not divisible into vectorized blocks
-          continue;
+        //         // Vectorization criterion
+        //         if (window % veclen) // Window not divisible into vectorized
+        //         blocks
+        //           continue;
 
-        if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
-          continue;
-#endif
+        //         if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
+        //           continue;
+        // #endif
 
-          //  Padding criterion
-          //  TODO (cannot be checked here)
-#else
-        if ((x * y * z) % warp_size)
-          continue;
-#endif
-#endif
+        //           //  Padding criterion
+        //           //  TODO (cannot be checked here)
+        // #else
+        //         if ((x * y * z) % warp_size)
+        //           continue;
+        // #endif
+        // #endif
 
         // printf("%d, %d, %d: %lu\n", tpb.x, tpb.y, tpb.z, smem);
 
