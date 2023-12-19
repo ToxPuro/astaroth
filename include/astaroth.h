@@ -678,7 +678,8 @@ typedef enum AcTaskType {
     TASKTYPE_COMPUTE,
     TASKTYPE_HALOEXCHANGE,
     TASKTYPE_BOUNDCOND,
-    TASKTYPE_SPECIAL_MHD_BOUNDCOND
+    TASKTYPE_SPECIAL_MHD_BOUNDCOND,
+    TASKTYPE_SYNC
 } AcTaskType;
 
 typedef enum AcBoundary {
@@ -737,6 +738,7 @@ AcTaskDefinition acBoundaryCondition(const AcBoundary boundary, const AcBoundcon
                                      Field fields[], const size_t num_fields,
                                      AcRealParam parameters[], const size_t num_parameters);
 
+AcTaskDefinition acSync();
 #ifdef AC_INTEGRATION_ENABLED
 /** SpecialMHDBoundaryConditions are tied to some specific DSL implementation (At the moment, the
    MHD implementation). They launch specially written CUDA kernels that implement the specific

@@ -45,7 +45,7 @@ See Unix globbing for passing files/directories to the script more easily.
     ''',
     formatter_class=argparse.RawDescriptionHelpFormatter)
 
-implementation_names = ['implicit', 'explicit', 'explicit3d', 'explicit4d']
+implementation_names = ['implicit', 'explicit', 'explicit3d', 'explicit4d', 'pingpongtxw', 'pingpongtxy', 'rollingpingpong']
 implementations = dict((key, value+1) for value,key in enumerate(implementation_names))
 
 ## General arguments
@@ -168,7 +168,7 @@ export UCX_RNDV_SCHEME=get_zcopy
 export UCX_MAX_RNDV_RAILS=1''', optimal_implementation=1, optimal_tpb=0)
 triton = System(id='mi100', account='', partition='gpu-amd', ngpus_per_node=1, gres='',
                 modules='module load gcc bison flex cmake openmpi', use_hip=True, optimal_implementation=1, optimal_tpb=512)
-lumi = System(id='mi250x', account='project_462000190', partition='small-g', ngpus_per_node=8, gres='', additional_commands='''
+lumi = System(id='mi250x', account='project_462000367', partition='small-g', ngpus_per_node=8, gres='', additional_commands='''
 ''',
 #srun_params='--cpu-bind=map_cpu:48,56,16,24,1,8,32,40',
 srun_params='', # CPU binding disabled temporarily (the binding above needs a full node)

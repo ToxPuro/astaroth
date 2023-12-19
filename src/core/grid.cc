@@ -315,7 +315,34 @@ acGridInit(const AcMeshInfo info)
     }
 
     acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
-    AcTaskDefinition default_ops[] = {acHaloExchange(all_fields),
+#ifdef DEBUG_SYNC
+    printf("USING DEBUG SYNC");
+    AcTaskDefinition default_ops[] = {
+                                      acSync(),
+                                      acSync(),
+                                      acHaloExchange(all_fields),
+                                      acSync(),
+                                      acSync(),
+                                      acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
+                                                          all_fields),
+#ifdef AC_INTEGRATION_ENABLED
+#ifdef AC_SINGLEPASS_INTEGRATION
+                                      acSync(),
+                                      acSync(),
+                                      acCompute(KERNEL_singlepass_solve, all_fields)
+#else
+                                      acSync(),
+                                      acSync(),
+                                      acCompute(KERNEL_twopass_solve_intermediate, all_fields),
+                                      acSync(),
+                                      acSync(),
+                                      acCompute(KERNEL_twopass_solve_final, all_fields)
+#endif
+#endif // AC_INTEGRATION_ENABLED
+    };
+#else
+    AcTaskDefinition default_ops[] = {
+                                      acHaloExchange(all_fields),
                                       acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
                                                           all_fields),
 #ifdef AC_INTEGRATION_ENABLED
@@ -327,6 +354,7 @@ acGridInit(const AcMeshInfo info)
 #endif
 #endif // AC_INTEGRATION_ENABLED
     };
+#endif DEBUG_SYNC
 
     // Random number generator
     // const auto rr            = (int3){STENCIL_WIDTH, STENCIL_HEIGHT, STENCIL_DEPTH};
@@ -1436,6 +1464,11 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             }
             acVerboseLogFromRootProc(rank, "Boundcond tasks created\n");
             grid.mpi_tag_space_count++;
+            break;
+        }
+        case TASKTYPE_SYNC: {
+            auto task = std::make_shared<SyncTask>(op, i,nn,device,swap_offset);
+            graph -> all_tasks.push_back(task);
             break;
         }
 
