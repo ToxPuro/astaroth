@@ -28,3 +28,6 @@ benchmark-data/
 
 # Clangd files
 .cache/
+
+# Other
+compile_commands.json
