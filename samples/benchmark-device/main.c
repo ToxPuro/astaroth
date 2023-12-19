@@ -19,7 +19,8 @@ main(int argc, char** argv)
 {
     cudaProfilerStop();
 
-    fprintf(stderr, "Usage: ./benchmark-device <nx> <ny> <nz> <jobid> <num_samples> <verify> <salt>\n");
+    fprintf(stderr,
+            "Usage: ./benchmark-device <nx> <ny> <nz> <jobid> <num_samples> <verify> <salt>\n");
     const size_t nx          = (argc > 1) ? (size_t)atol(argv[1]) : 256;
     const size_t ny          = (argc > 2) ? (size_t)atol(argv[2]) : 256;
     const size_t nz          = (argc > 3) ? (size_t)atol(argv[3]) : 256;
@@ -27,7 +28,8 @@ main(int argc, char** argv)
     const size_t num_samples = (argc > 5) ? (size_t)atol(argv[5]) : 100;
     const size_t verify      = (argc > 6) ? (size_t)atol(argv[6]) : 0;
     const size_t salt        = (argc > 7) ? (size_t)atol(argv[7]) : 42;
-    const size_t seed        = 12345 + salt + (1 + nx + ny + nz + jobid + num_samples + verify) * time(NULL);
+    const size_t seed        = 12345 + salt +
+                        (1 + nx + ny + nz + jobid + num_samples + verify) * time(NULL);
 
     printf("Input parameters:\n");
     printf("\tnx: %zu\n", nx);
@@ -165,6 +167,12 @@ main(int argc, char** argv)
             printf("Optimal tpb: (%zu, %zu, %zu)\n", tpb.x, tpb.y, tpb.z);
         }
     }
+
+    // Profile
+    cudaProfilerStart();
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
+    acDeviceSynchronizeStream(device, STREAM_ALL);
+    cudaProfilerStop();
 
     // Free
     fclose(fp);
