@@ -157,7 +157,9 @@ get_smem(const Volume tpb, const size_t stencil_order,
     // tpbxy slices with halos
     // tpbz depth + 1 rolling cache slab
     return EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE * (tpb.x + stencil_order) *
-           (tpb.y + stencil_order) * (tpb.z + 1) * bytes_per_elem;
+           (tpb.y + stencil_order) *
+           (tpb.z + EXPLICIT_ROLLING_PINGPONG_PREFETCH_BUFFERS) *
+           bytes_per_elem;
   }
   default: {
     ERROR("Invalid IMPLEMENTATION in get_smem");

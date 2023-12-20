@@ -1113,8 +1113,9 @@ static void
 prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
     const int curr_kernel)
 {
-  const int BLOCK_SIZE = EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE;
-  const int NUM_BLOCKS = (NUM_FIELDS + BLOCK_SIZE - 1) / BLOCK_SIZE;
+  const int NUM_PREFETCH_BUFFERS = EXPLICIT_ROLLING_PINGPONG_PREFETCH_BUFFERS;
+  const int BLOCK_SIZE           = EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE;
+  const int NUM_BLOCKS           = (NUM_FIELDS + BLOCK_SIZE - 1) / BLOCK_SIZE;
   if (BLOCK_SIZE * NUM_BLOCKS < NUM_FIELDS)
     raise_error(
         "Invalid NUM_BLOCKS computed in stencilgen.c (rolling pingpong)");
@@ -1124,7 +1125,7 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
   printf("extern __shared__ AcReal smem[];");
   printf("const int sx = blockDim.x + STENCIL_WIDTH - 1;");
   printf("const int sy = blockDim.y + STENCIL_HEIGHT - 1;");
-  printf("const int sz = blockDim.z + 1;");
+  printf("const int sz = blockDim.z + (%d);", NUM_PREFETCH_BUFFERS);
   // printf("const int sw = %d;", BLOCK_SIZE);
   printf("const int sid = threadIdx.x + "
          "threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y;");
@@ -1164,32 +1165,39 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
     }
 
     for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-      printf("__syncthreads();");
-      for (int block_offset = 0; block_offset < BLOCK_SIZE; ++block_offset) {
-        const int field = block_offset + block * BLOCK_SIZE;
-        if (field >= NUM_FIELDS)
-          break;
-        if (depth + 1 < STENCIL_DEPTH) {
-          // Load the rolling block
-          printf("for (int curr = sid; curr < sx * sy; curr += tpb) {");
-          printf("const int i = curr %% sx;");
-          printf("const int j = (curr %% (sx * sy)) / sx;");
-          printf("const int k = blockDim.z + %d;", depth);
-          printf(
-              "if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ continue; }");
-          printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){ "
-                 "continue; }");
-          printf(
-              "if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2){ continue; }");
-          printf(
-              "smem[i + j * sx + (k%%sz) * sx * sy + (%d) * sx * sy * sz] = ",
-              field % BLOCK_SIZE);
-          printf("__ldg(&");
-          printf("vba.in[%d]", field);
-          printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)]");
-          printf(")");
-          printf(";");
-          printf("}");
+      // if ((depth - 1) % NUM_PREFETCH_BUFFERS == 0)
+      //   printf("__syncthreads();");
+
+      if (depth % NUM_PREFETCH_BUFFERS == 0) {
+        printf("__syncthreads();");
+        for (int block_offset = 0; block_offset < BLOCK_SIZE; ++block_offset) {
+          const int field = block_offset + block * BLOCK_SIZE;
+          if (field >= NUM_FIELDS)
+            break;
+          for (int pbuf = 0; pbuf < NUM_PREFETCH_BUFFERS; ++pbuf) {
+            if (depth + 1 + pbuf >= STENCIL_DEPTH)
+              break;
+            // Load the rolling block
+            printf("for (int curr = sid; curr < sx * sy; curr += tpb) {");
+            printf("const int i = curr %% sx;");
+            printf("const int j = (curr %% (sx * sy)) / sx;");
+            printf("const int k = blockDim.z + %d;", depth + pbuf);
+            printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ "
+                   "continue; }");
+            printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){ "
+                   "continue; }");
+            printf("if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2){ "
+                   "continue; }");
+            printf(
+                "smem[i + j * sx + (k%%sz) * sx * sy + (%d) * sx * sy * sz] = ",
+                field % BLOCK_SIZE);
+            printf("__ldg(&");
+            printf("vba.in[%d]", field);
+            printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)]");
+            printf(")");
+            printf(";");
+            printf("}");
+          }
         }
       }
 
@@ -1239,6 +1247,8 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
           }
         }
       }
+      if (depth % NUM_PREFETCH_BUFFERS == 0)
+        printf("__syncthreads();");
     }
   }
 }
