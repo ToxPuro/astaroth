@@ -77,6 +77,13 @@ def get_input():
         coeffs = np.array([1/90, -3/20, 3/2, -49/18, 3/2, -3/20, 1/90])
     elif r == 4:
         coeffs = np.array([-1/560, 8/315, -1/5, 8/5, -205/72, 8/5, -1/5, 8/315, -1/560])
+    else:
+        # import findiff # Takes a long time
+        # coeffs = np.array(findiff.coefficients(deriv=2, acc=2*r, symbolic=True)[
+        #                   'center']['coefficients'], dtype=args.dtype)
+        #coeffs = np.random.random(l) # Note random coefficients
+        #coeffs = np.linspace(-1, 1, l) # Note bogus coefficients
+        coeffs = np.zeros(l)
 
     if nz > 1:
         input = 2 * np.random.random((nz, ny, nx)) - 1
