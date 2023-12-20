@@ -1150,9 +1150,9 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
       printf("const int i = curr %% sx;");
       printf("const int j = (curr %% (sx * sy)) / sx;");
       printf("const int k = curr / (sx * sy);");
-      printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ break; }");
-      printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){ break; }");
-      printf("if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2){ break; }");
+      printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ continue; }");
+      printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){ continue; }");
+      printf("if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2){ continue; }");
       printf("smem[i + j * sx + k * sx * sy + (%d) * sx * sy * sz] = ",
              field % BLOCK_SIZE);
       printf("__ldg(&");
@@ -1175,10 +1175,12 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
           printf("const int i = curr %% sx;");
           printf("const int j = (curr %% (sx * sy)) / sx;");
           printf("const int k = blockDim.z + %d;", depth);
-          printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ break; }");
           printf(
-              "if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){ break; }");
-          printf("if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2){ break; }");
+              "if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ continue; }");
+          printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){ "
+                 "continue; }");
+          printf(
+              "if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2){ continue; }");
           printf(
               "smem[i + j * sx + (k%%sz) * sx * sy + (%d) * sx * sy * sz] = ",
               field % BLOCK_SIZE);

@@ -91,6 +91,8 @@ is_valid_configuration(const Volume dims, const Volume tpb)
   case EXPLICIT_CACHING_3D_BLOCKING: {
 
     // For some reason does not work without this
+    // Probably because of break vs continue when fetching (some threads
+    // quit too early if the dims are not divisible)
     return !(dims.x % tpb.x) && !(dims.y % tpb.y) && !(dims.z % tpb.z);
   }
   case EXPLICIT_PINGPONG_txw: {
