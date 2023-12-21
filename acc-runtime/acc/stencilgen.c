@@ -1110,7 +1110,7 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_original
 
 /** Rolling ping-pong, optimized: multiple fields */
 static void
-prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_op_v2(
+prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v2(
     const int curr_kernel)
 {
   const int BLOCK_SIZE = EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE;
@@ -1139,147 +1139,59 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_op_v2(
 
   for (int block = 0; block < NUM_BLOCKS; ++block) {
     printf("__syncthreads();");
-    // for (int block_offset = 0; block_offset < BLOCK_SIZE; ++block_offset) {
-    //   const int field = block_offset + block * BLOCK_SIZE;
-    //   if (field >= NUM_FIELDS)
-    //     break;
+    for (int block_offset = 0; block_offset < BLOCK_SIZE; ++block_offset) {
+      const int field = block_offset + block * BLOCK_SIZE;
+      if (field >= NUM_FIELDS)
+        break;
 
-    // Load the main block
-    //   printf(
-    //       "for (int curr = sid; curr < sx * sy * blockDim.z; curr += tpb)
-    //       {");
-    //   printf("const int i = curr %% sx;");
-    //   printf("const int j = (curr %% (sx * sy)) / sx;");
-    //   printf("const int k = curr / (sx * sy);");
-    //   printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ continue;
-    //   }"); printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){
-    //   continue; }"); printf("if (baseIdx.z + k >= end.z +
-    //   (STENCIL_DEPTH-1)/2){ continue; }"); printf("smem[i + j * sx + k * sx
-    //   * sy + (%d) * sx * sy * sz] = ",
-    //          field % BLOCK_SIZE);
-    //   printf("__ldg(&");
-    //   printf("vba.in[%d]", field);
-    //   printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)]");
-    //   printf(")");
-    //   printf(";");
-    //   printf("}");
-    // }
+      // Load the main block
+      printf(
+          "for (int curr = sid; curr < sx * sy * blockDim.z; curr += tpb) {");
+      printf("const int i = curr %% sx;");
+      printf("const int j = (curr %% (sx * sy)) / sx;");
+      printf("const int k = curr / (sx * sy);");
+      printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ continue;}");
+      printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){continue; }");
+      printf("if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2){ continue; }");
+      printf("smem[i + j * sx + k * sx * sy + (%d) * sx * sy * sz] = ",
+             field % BLOCK_SIZE);
+      printf("__ldg(&");
+      printf("vba.in[%d]", field);
+      printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)]");
+      printf(")");
+      printf(";");
+      printf("}");
+    }
 
-    // Unrolled (note: need to do a minimum of STENCIL_WIDTH or _HEIGHT
-    // iterations to be sure all stencil points are covered with if the tbdim
-    // is 1
-    printf("{");
-    printf("const int k = threadIdx.z;");
-    printf("if (baseIdx.z + k < end.z + (STENCIL_DEPTH-1)/2){ ");
-    // printf("if (k < blockDim.z){ ");
-    for (int by = 0; by < 2; ++by) {
-      printf("{");
-      printf("const int j = threadIdx.y + (%d) * blockDim.y;", by);
-      printf("if (baseIdx.y + j < end.y + (STENCIL_HEIGHT-1)/2){ ");
-      printf("if (j < sy){ ");
-      for (int bx = 0; bx < 2; ++bx) {
-        printf("{");
-        printf("const int i = threadIdx.x + (%d) * blockDim.x;", bx);
-        printf("if (baseIdx.x + i < end.x + (STENCIL_WIDTH-1)/2){ ");
-        printf("if (i < sx){ ");
+    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+      printf("__syncthreads();");
 
-        for (int block_offset = 0; block_offset < BLOCK_SIZE; ++block_offset) {
-          const int field = block_offset + block * BLOCK_SIZE;
-          if (field >= NUM_FIELDS)
-            break;
-          printf("smem[i + j * sx + k * sx * sy + (%d) * sx * sy * sz] = ",
+      for (int block_offset = 0; block_offset < BLOCK_SIZE; ++block_offset) {
+        const int field = block_offset + block * BLOCK_SIZE;
+        if (field >= NUM_FIELDS)
+          break;
+        if (depth + 1 < STENCIL_DEPTH) {
+          // Load the rolling block
+          printf("for (int curr = sid; curr < sx * sy; curr += tpb) {");
+          printf("const int i = curr %% sx;");
+          printf("const int j = (curr %% (sx * sy)) / sx;");
+          printf("const int k = blockDim.z + %d;", depth);
+          printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ "
+                 "continue; }");
+          printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){ "
+                 "continue; }");
+          printf("if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2){ "
+                 "continue; }");
+          printf("smem[i + j * sx + (k%%sz) * sx * sy + "
+                 "(%d) * sx * sy * sz] =",
                  field % BLOCK_SIZE);
           printf("__ldg(&");
           printf("vba.in[%d]", field);
           printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)]");
           printf(")");
           printf(";");
-        }
-        printf("}");
-        printf("}");
-        printf("}");
-      }
-      printf("}");
-      printf("}");
-      printf("}");
-    }
-    // printf("}");
-    printf("}");
-    printf("}");
-
-    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
-      printf("__syncthreads();");
-
-      // for (int block_offset = 0; block_offset < BLOCK_SIZE; ++block_offset) {
-      //   const int field = block_offset + block * BLOCK_SIZE;
-      //   if (field >= NUM_FIELDS)
-      //     break;
-      //   if (depth + 1 < STENCIL_DEPTH) {
-      //     // Load the rolling block
-      //     printf("for (int curr = sid; curr < sx * sy; curr += tpb) {");
-      //     printf("const int i = curr %% sx;");
-      //     printf("const int j = (curr %% (sx * sy)) / sx;");
-      //     printf("const int k = blockDim.z + %d;", depth);
-      //     printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ "
-      //            "continue; }");
-      //     printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){ "
-      //            "continue; }");
-      //     printf("if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2){ "
-      //            "continue; }");
-      //     printf("smem[i + j * sx + (k%%sz) * sx * sy + "
-      //            "(%d) * sx * sy * sz] =",
-      //            field % BLOCK_SIZE);
-      //     printf("__ldg(&");
-      //     printf("vba.in[%d]", field);
-      //     printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)]");
-      //     printf(")");
-      //     printf(";");
-      //     printf("}");
-      //   }
-      // }
-
-      if (depth + 1 < STENCIL_DEPTH) {
-        printf("{");
-        printf("if (threadIdx.z == 0){ ");
-        printf("const int k = blockDim.z + %d;", depth);
-        printf("if (baseIdx.z + k < end.z + (STENCIL_DEPTH-1)/2){ ");
-        for (int by = 0; by < 2; ++by) {
-          printf("{");
-          printf("const int j = threadIdx.y + (%d) * blockDim.y;", by);
-          printf("if (baseIdx.y + j < end.y + (STENCIL_HEIGHT-1)/2){ ");
-          printf("if (j < sy){ ");
-          for (int bx = 0; bx < 2; ++bx) {
-            printf("{");
-            printf("const int i = threadIdx.x + (%d) * blockDim.x;", bx);
-            printf("if (baseIdx.x + i < end.x + (STENCIL_WIDTH-1)/2){ ");
-            printf("if (i < sx){ ");
-
-            for (int block_offset = 0; block_offset < BLOCK_SIZE;
-                 ++block_offset) {
-              const int field = block_offset + block * BLOCK_SIZE;
-              if (field >= NUM_FIELDS)
-                break;
-              // Load the rolling block
-              printf("smem[i + j * sx + (k%%sz) * sx * sy + "
-                     "(%d) * sx * sy * sz] =",
-                     field % BLOCK_SIZE);
-              printf("__ldg(&");
-              printf("vba.in[%d]", field);
-              printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)]");
-              printf(")");
-              printf(";");
-            }
-            printf("}");
-            printf("}");
-            printf("}");
-          }
-          printf("}");
-          printf("}");
           printf("}");
         }
-        printf("}");
-        printf("}");
-        printf("}");
       }
 
       for (int height = 0; height < STENCIL_HEIGHT; ++height) {
@@ -1582,6 +1494,8 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
 {
   const int BLOCK_SIZE = EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE;
   const int NUM_BLOCKS = (NUM_FIELDS + BLOCK_SIZE - 1) / BLOCK_SIZE;
+  printf("// BLOCK_SIZE = %d\n", BLOCK_SIZE);
+  printf("// NUM_BLOCKS = %d\n", NUM_BLOCKS);
   if (BLOCK_SIZE * NUM_BLOCKS < NUM_FIELDS)
     raise_error(
         "Invalid NUM_BLOCKS computed in stencilgen.c (rolling pingpong)");
@@ -1607,31 +1521,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
 
   for (int block = 0; block < NUM_BLOCKS; ++block) {
     printf("__syncthreads();");
-    // for (int block_offset = 0; block_offset < BLOCK_SIZE; ++block_offset) {
-    //   const int field = block_offset + block * BLOCK_SIZE;
-    //   if (field >= NUM_FIELDS)
-    //     break;
-
-    // Load the main block
-    //   printf(
-    //       "for (int curr = sid; curr < sx * sy * blockDim.z; curr += tpb)
-    //       {");
-    //   printf("const int i = curr %% sx;");
-    //   printf("const int j = (curr %% (sx * sy)) / sx;");
-    //   printf("const int k = curr / (sx * sy);");
-    //   printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ continue;
-    //   }"); printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){
-    //   continue; }"); printf("if (baseIdx.z + k >= end.z +
-    //   (STENCIL_DEPTH-1)/2){ continue; }"); printf("smem[i + j * sx + k * sx
-    //   * sy + (%d) * sx * sy * sz] = ",
-    //          field % BLOCK_SIZE);
-    //   printf("__ldg(&");
-    //   printf("vba.in[%d]", field);
-    //   printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)]");
-    //   printf(")");
-    //   printf(";");
-    //   printf("}");
-    // }
 
     // Unrolled (note: need to do a minimum of STENCIL_WIDTH or _HEIGHT
     // iterations to be sure all stencil points are covered with if the tbdim
@@ -1677,34 +1566,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
 
     for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
       printf("__syncthreads();");
-
-      // for (int block_offset = 0; block_offset < BLOCK_SIZE; ++block_offset) {
-      //   const int field = block_offset + block * BLOCK_SIZE;
-      //   if (field >= NUM_FIELDS)
-      //     break;
-      //   if (depth + 1 < STENCIL_DEPTH) {
-      //     // Load the rolling block
-      //     printf("for (int curr = sid; curr < sx * sy; curr += tpb) {");
-      //     printf("const int i = curr %% sx;");
-      //     printf("const int j = (curr %% (sx * sy)) / sx;");
-      //     printf("const int k = blockDim.z + %d;", depth);
-      //     printf("if (baseIdx.x + i >= end.x + (STENCIL_WIDTH-1)/2){ "
-      //            "continue; }");
-      //     printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){ "
-      //            "continue; }");
-      //     printf("if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2){ "
-      //            "continue; }");
-      //     printf("smem[i + j * sx + (k%%sz) * sx * sy + "
-      //            "(%d) * sx * sy * sz] =",
-      //            field % BLOCK_SIZE);
-      //     printf("__ldg(&");
-      //     printf("vba.in[%d]", field);
-      //     printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)]");
-      //     printf(")");
-      //     printf(";");
-      //     printf("}");
-      //   }
-      // }
 
       if (depth + 1 < STENCIL_DEPTH) {
         printf("{");
