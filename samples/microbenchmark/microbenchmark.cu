@@ -44,12 +44,6 @@ gpu: 0 1 2 3
 #include <cuda_runtime_api.h>  // cudaStream_t
 #endif
 
-#if AC_DOUBLE_PRECISION
-#define DOUBLE_PRECISION (1)
-#else
-#define DOUBLE_PRECISION (0)
-#endif
-
 #include "array.h"
 
 typedef struct {
@@ -77,7 +71,7 @@ print(const KernelConfig c)
 static size_t
 get_smem(const int tpb, const int radius)
 {
-    return (tpb + 2 * radius) * sizeof(double);
+    return (tpb + 2 * radius) * sizeof(real);
 }
 
 __global__ void
@@ -87,7 +81,7 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
     kernel(const size_t domain_length, const size_t pad, const int radius, const int stride,
            const Array in, Array out)
 {
-    extern __shared__ double smem[];
+    extern __shared__ real smem[];
 
     const int base_idx = blockIdx.x * blockDim.x + pad - radius;
     for (int sid = threadIdx.x; sid < (int)(blockDim.x + 2 * radius); sid += blockDim.x)
@@ -95,7 +89,7 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
             smem[sid] = in.data[sid + base_idx];
     __syncthreads();
 
-    double tmp = 0.0;
+    real tmp = 0.0;
     for (int i = -radius; i <= radius; i += stride)
         tmp += smem[threadIdx.x + i + radius];
 
@@ -123,7 +117,7 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
     const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
     if (tid < domain_length) {
 
-        double tmp = 0.0;
+        real tmp = 0.0;
         for (int i = -radius; i <= radius; i += stride)
             tmp += in.data[tid + pad + i];
         out.data[tid + pad] = tmp;
@@ -136,7 +130,7 @@ model_kernel(const size_t domain_length, const size_t pad, const int radius, con
              const Array in, Array out)
 {
     for (int tid = 0; tid < domain_length; ++tid) {
-        double tmp = 0.0;
+        real tmp = 0.0;
         for (int i = -radius; i <= radius; i += stride)
             tmp += in.data[tid + pad + i];
         out.data[tid + pad] = tmp;
@@ -195,7 +189,7 @@ autotune(const size_t array_length, const size_t domain_length, const size_t pad
     };
 
     // 64 bytes on NVIDIA but the minimum L1 cache transaction is 32
-    const int minimum_transaction_size_in_elems = 32 / sizeof(double);
+    const int minimum_transaction_size_in_elems = 32 / sizeof(real);
 
     float best_time = INFINITY;
     for (size_t tpb = minimum_transaction_size_in_elems; tpb <= max_threads_per_block;
@@ -253,8 +247,8 @@ autotune(const size_t array_length, const size_t domain_length, const size_t pad
         // 'usesmem, maxthreadsperblock, problemsize, workingsetsize, milliseconds,
         // tpb, bpg, smem'
         // fprintf(fp, "%d,%d,%lu,%lu,%g,%zu,%zu,%zu\n", USE_SMEM, MAX_THREADS_PER_BLOCK,
-        //         c.domain_length * sizeof(double), (2 * c.radius + 1) * sizeof(double),
-        //         (double)milliseconds, c.tpb, c.bpg, c.smem);
+        //         c.domain_length * sizeof(real), (2 * c.radius + 1) * sizeof(real),
+        //         (real)milliseconds, c.tpb, c.bpg, c.smem);
     }
     arrayDestroy(&a);
     arrayDestroy(&b);
@@ -293,8 +287,8 @@ verify(const KernelConfig c)
     kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.pad, c.radius, c.stride, a, b);
     cudaMemcpy(ahost.data, b.data, bytes, cudaMemcpyDeviceToHost);
 
-    const double* candidate = ahost.data;
-    const double* model     = bhost.data;
+    const real* candidate = ahost.data;
+    const real* model     = bhost.data;
 
     size_t failure_count       = 0;
     const size_t failure_limit = 100;
@@ -373,8 +367,9 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
         // Write to file
         fprintf(fp, "%s,%d,%zu,%zu,%d,%g,%g,%zu,%zu,%zu,%zu,%u\n",
                 USE_SMEM ? "\"explicit\"" : "\"implicit\"", MAX_THREADS_PER_BLOCK,
-                c.domain_length * sizeof(double), (2 * c.radius / c.stride + 1) * sizeof(double),
-                c.stride, (double)milliseconds, bandwidth, c.tpb, jobid, seed, i, DOUBLE_PRECISION);
+                c.domain_length * sizeof(a.data[0]),
+                (2 * c.radius / c.stride + 1) * sizeof(a.data[0]), c.stride, (double)milliseconds,
+                bandwidth, c.tpb, jobid, seed, i, DOUBLE_PRECISION);
     }
     cudaEventDestroy(tstart);
     cudaEventDestroy(tstop);
@@ -440,7 +435,7 @@ static size_t
 get_pad(const size_t radius)
 {
     size_t pad = radius;
-    while (pad * sizeof(double) % 256) {
+    while (pad * sizeof(real) % 256) {
         ++pad;
         ERRCHK_ALWAYS(pad <= 10000);
     }
@@ -455,7 +450,8 @@ main(int argc, char* argv[])
     cudaProfilerStop();
 
     // Input parameters
-    fprintf(stderr, "Usage: ./benchmark <problem size> <working set size> <stride> <jobid> <num_samples> <salt>\n");
+    fprintf(stderr, "Usage: ./benchmark <problem size> <working set size> <stride> <jobid> "
+                    "<num_samples> <salt>\n");
     const size_t problem_size     = (argc > 1) ? (size_t)atol(argv[1]) : 268435456;
     const size_t working_set_size = (argc > 2) ? (size_t)atol(argv[2]) : 8;
     const int stride              = (argc > 3) ? (size_t)atol(argv[3]) : 1;
@@ -464,13 +460,15 @@ main(int argc, char* argv[])
     const size_t salt             = (argc > 6) ? (size_t)atol(argv[6]) : 42;
 
     // Derived values
-    const int radius           = (((working_set_size / sizeof(double)) - 1) / 2) * stride;
+    const int radius           = (((working_set_size / sizeof(real)) - 1) / 2) * stride;
     const size_t pad           = get_pad(radius);
-    const size_t domain_length = problem_size / sizeof(double);
+    const size_t domain_length = problem_size / sizeof(real);
     const size_t array_length  = pad + domain_length + radius;
-    const size_t seed          = 12345 + salt + (1+problem_size+working_set_size+stride+jobid+num_samples) * time(NULL);
-    ERRCHK((2 * radius / stride + 1) * sizeof(double) == working_set_size);
-    ERRCHK(domain_length * sizeof(double) == problem_size);
+    const size_t seed          = 12345 + salt +
+                        (1 + problem_size + working_set_size + stride + jobid + num_samples) *
+                            time(NULL);
+    ERRCHK((2 * radius / stride + 1) * sizeof(real) == working_set_size);
+    ERRCHK(domain_length * sizeof(real) == problem_size);
 
     printf("Input parameters:\n");
     printf("\tproblem_size: %zu\n", problem_size);
@@ -487,16 +485,18 @@ main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    # if USE_SMEM
+#if USE_SMEM
     const size_t required_smem = get_smem(1, radius);
     cudaDeviceProp props;
     cudaGetDeviceProperties(&props, 0);
-    const size_t max_smem              = (size_t)props.sharedMemPerBlock;
+    const size_t max_smem = (size_t)props.sharedMemPerBlock;
     if (required_smem > max_smem) {
-        fprintf(stderr, "Too large radius for a non-streaming shared memory implementation: %lu > %lu\n", required_smem, max_smem);
+        fprintf(stderr,
+                "Too large radius for a non-streaming shared memory implementation: %lu > %lu\n",
+                required_smem, max_smem);
         return EXIT_FAILURE;
     }
-    #endif
+#endif
 
     printDeviceInfo(0);
     printf("USE_SMEM=%d\n", USE_SMEM);

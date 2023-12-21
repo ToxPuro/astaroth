@@ -9,6 +9,7 @@ option(DOUBLE_PRECISION   "Generates double precision code."                    
 option(BUILD_STANDALONE   "Build the standalone_mpi executable to run standard simulation." ON)
 option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            ON)
 option(BUILD_MHD_SAMPLES  "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." ON)
+option(BUILD_MLLIB_SAMPLES "Builds samples that use cuDNN or MIOpen" OFF)
 option(MPI_ENABLED        "Enables additional functions for MPI communciation." OFF)
 option(USE_CUDA_AWARE_MPI "Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory" ON)
 option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
@@ -188,6 +189,10 @@ if (BUILD_SAMPLES)
     add_subdirectory(samples/pc-varfile-import)
     add_subdirectory(samples/bwtest)
     add_subdirectory(samples/microbenchmark)
+
+    if (BUILD_MLLIB_SAMPLES)
+        add_subdirectory(samples/microbenchmark-nn)
+    endif ()
 
     if (BUILD_MHD_SAMPLES)
         # add_subdirectory(samples/standalone)
