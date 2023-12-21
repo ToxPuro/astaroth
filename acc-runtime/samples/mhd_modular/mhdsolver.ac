@@ -23,7 +23,7 @@ hostdefine R_PI (AC_REAL_PI)
 
 // Enables a set of special reductions. Currently for primarily for testing
 // purposes:  
-hostdefine LSPECIAL_REDUCTIONS (1)  
+hostdefine LSPECIAL_REDUCTIONS (0)  
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 
