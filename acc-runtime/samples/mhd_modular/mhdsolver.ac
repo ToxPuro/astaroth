@@ -14,9 +14,9 @@ hostdefine LMAGNETIC (1)
 hostdefine LENTROPY (1)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
-hostdefine LUPWD (0)
+hostdefine LUPWD (1)
 hostdefine LSINK (0)
-hostdefine LBFIELD (0 && LMAGNETIC) // bfield only relevant if magnetic is on
+hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
