@@ -1494,6 +1494,8 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
 {
   const int BLOCK_SIZE = EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE;
   const int NUM_BLOCKS = (NUM_FIELDS + BLOCK_SIZE - 1) / BLOCK_SIZE;
+  printf("// BLOCK_SIZE = %d\n", BLOCK_SIZE);
+  printf("// NUM_BLOCKS = %d\n", NUM_BLOCKS);
   if (BLOCK_SIZE * NUM_BLOCKS < NUM_FIELDS)
     raise_error(
         "Invalid NUM_BLOCKS computed in stencilgen.c (rolling pingpong)");

@@ -12,12 +12,7 @@
 #define EXPLICIT_PINGPONG_txy (6)
 #define EXPLICIT_ROLLING_PINGPONG (7)
 
-#if NUM_FIELDS <= 4
-#define EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE                                    \
-  (NUM_FIELDS) // Must be less than NUM_FIELDS
-#else
-#define EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE (4) // Must be less than NUM_FIELDS
-#endif
+#define EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE (1) // Must be less than NUM_FIELDS
 
 #define EXPLICIT_PINGPONG_txyblocked (8)
 #define EXPLICIT_PINGPONG_txyz (9)
