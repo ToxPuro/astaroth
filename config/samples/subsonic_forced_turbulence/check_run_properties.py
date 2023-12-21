@@ -99,34 +99,6 @@ for i in mesh_file_numbers:
     print("min_bb_x = %e, min_bb_y = %e, min_bb_z = %e" % (min_bb_x, min_bb_y, min_bb_z))
     print("rms_bb_x = %e, rms_bb_y = %e, rms_bb_z = %e" % (rms_bb_x, rms_bb_y, rms_bb_z))
 
-    #static __device__ inline void
-    #cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3& in_idx3d)
-    #{
-    #    *coord_x1 = AcReal(in_idx3d.x - STENCIL_ORDER/2)*DCONST(AC_dsx);
-    #    *coord_y1 = AcReal(in_idx3d.y - STENCIL_ORDER/2)*DCONST(AC_dsy);
-    #    *coord_z1 = AcReal(in_idx3d.z - STENCIL_ORDER/2)*DCONST(AC_dsz);
-    #}
-    #
-    #distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1,
-    #         const AcReal coord_x2, const AcReal coord_y2, const AcReal coord_z2)
-    #    sqrt((coord_x1-coord_x2)*(coord_x1-coord_x2)
-    #       + (coord_y1-coord_y2)*(coord_y1-coord_y2)
-    #       + (coord_z1-coord_z2)*(coord_z1-coord_z2));
-    #
-    #    const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
-    #                                   DCONST(AC_center_x), DCONST(AC_center_y),
-    #                                   DCONST(AC_center_z));
-    #
-    #    --------->
-    #
-    #    coordinate_x = AcReal(in_idx3d.x - STENCIL_ORDER/2)*DCONST(AC_dsx); 
-    #    coordinate_y = AcReal(in_idx3d.y - STENCIL_ORDER/2)*DCONST(AC_dsy);
-    #    coordinate_z = AcReal(in_idx3d.z - STENCIL_ORDER/2)*DCONST(AC_dsz);
-    #
-    #    radius = np.sqrt((coordinate_x-mesh.minfo.contents['AC_center_x'])**2.0
-    #                   + (coordinate_y-mesh.minfo.contents['AC_center_y'])**2.0
-    #                   + (coordinate_z-mesh.minfo.contents['AC_center_z'])**2.0);
-
     if get_window:
         #Base on the test, this is correct!
         xx = mesh.xx - mesh.minfo.contents['AC_center_x'] - 3.0*mesh.minfo.contents['AC_dsx'] 
@@ -300,7 +272,6 @@ axs[1,2].plot(df_ts_snapshots['time'], df_ts_snapshots['min_uu_z_wg'], 'o', labe
 axs[1,2].plot(df_ts_snapshots['time'], df_ts_snapshots['min_uu_z_wl'], 'x', label='min_uu_z_wl')
 axs[1,2].legend()
 
-#TODO: Change rms to sum in QAstaroth outputs. It is a typo. 
 axs[2,0].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_sum_wg'], '-', label='VTXBUF_UUX_sum_wg')
 axs[2,0].plot(SimulationDiagnostics.ts_dataframe['t_step'] , SimulationDiagnostics.ts_dataframe['VTXBUF_UUX_sum_wl'], '--', label='VTXBUF_UUX_sum_wl')
 axs[2,0].plot(df_ts_snapshots['time'], df_ts_snapshots['sum_uu_x_wg'], 'o', label='sum_uu_x_wg')
