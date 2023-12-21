@@ -62,6 +62,7 @@ parser.add_argument('--account', type=str, help='The account used in tests')
 parser.add_argument('--partition', type=str, help='The partition used for running the tests')
 parser.add_argument('--num-devices', type=int, nargs=2, default=[1, 8192], help='The range for the number of devices generated for run scripts (inclusive)')
 parser.add_argument('--num-samples', type=int, default=100, help='The number of benchmark samples taken per program invocation')
+parser.add_argument('--time-limit', type=str, default='00:14:59', help='The time limit for each individual batch job')
 ## Build arguments
 parser.add_argument('--build-dirs', type=str, nargs='+', required='build' in sys.argv, help='A list of directories to build')
 ## Run arguments
@@ -125,8 +126,6 @@ class System:
         if ngpus < 0:
             ngpus = ntasks
 
-        time = '00:14:59'
-
         gpualloc_per_node = min(ngpus, self.ngpus_per_node)
         ntasks_per_node = min(ntasks, self.ngpus_per_node)
         nodes = int(math.ceil(ngpus / self.ngpus_per_node))
@@ -145,7 +144,7 @@ class System:
         #print(f'#SBATCH --ntasks={ntasks}')
         print(f'#SBATCH --nodes={nodes}')
         print(f'#SBATCH --ntasks-per-node={ntasks_per_node}')
-        print(f'#SBATCH --time={time}')
+        print(f'#SBATCH --time={args.time_limit}')
         #print('#SBATCH --accel-bind=g') # bind tasks to closest GPU
         #print('#SBATCH --hint=memory_bound') # one core per socket
         #print(f'#SBATCH --ntasks-per-socket={min(ntasks, ngpus/self.nsockets)}')
@@ -284,30 +283,31 @@ def gen_convolutionbenchmarks(system):
 
     libraries = ['pytorch', 'tensorflow', 'jax']
     for library in libraries:
-        with open(f'{scripts_dir}/heat-equation-benchmark-python-{library}.sh', 'w') as f:
-            with redirect_stdout(f):
+        for precision in ['fp32', 'fp64']:
+            with open(f'{scripts_dir}/heat-equation-benchmark-python-{library}-{precision}.sh', 'w') as f:
+                with redirect_stdout(f):
 
-                # Create the batch script
-                ## Header
-                system.print_sbatch_header(ntasks=1)
+                    # Create the batch script
+                    ## Header
+                    system.print_sbatch_header(ntasks=1)
 
-                ## Script body
-                print(f'module load {library}')
-                for radius in range(0, 5):
-                    # 1D
-                    nn = (problem_size, 1, 1)
-                    assert(nn[0] * nn[1] * nn[2] == problem_size)
-                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype fp32 --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
+                    ## Script body
+                    print(f'module load {library}')
+                    for radius in range(0, 5):
+                        # 1D
+                        nn = (problem_size, 1, 1)
+                        assert(nn[0] * nn[1] * nn[2] == problem_size)
+                        print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
-                    # 2D
-                    nn = (int(np.rint(problem_size**(1/2))), int(np.rint(problem_size**(1/2))), 1)
-                    assert(nn[0] * nn[1] * nn[2] == problem_size)
-                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype fp32 --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
+                        # 2D
+                        nn = (int(np.rint(problem_size**(1/2))), int(np.rint(problem_size**(1/2))), 1)
+                        assert(nn[0] * nn[1] * nn[2] == problem_size)
+                        print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
-                    # 3D
-                    nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
-                    assert(nn[0] * nn[1] * nn[2] == problem_size)
-                    print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype fp32 --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
+                        # 3D
+                        nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
+                        assert(nn[0] * nn[1] * nn[2] == problem_size)
+                        print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
 
 # Device benchmarks (nonlinear stencils)
@@ -328,17 +328,18 @@ def gen_devicebenchmarks(system, nx, ny, nz):
 
     libraries = ['pytorch', 'tensorflow']
     for library in libraries:
-        with open(f'{scripts_dir}/nonlinear-mhd-benchmark-python-{library}.sh', 'w') as f:
-            with redirect_stdout(f):
-                # Create the batch script
-                ## Header
-                system.print_sbatch_header(ntasks=1)
+        for precision in ['fp32', 'fp64']:
+            with open(f'{scripts_dir}/nonlinear-mhd-benchmark-python-{library}-{precision}.sh', 'w') as f:
+                with redirect_stdout(f):
+                    # Create the batch script
+                    ## Header
+                    system.print_sbatch_header(ntasks=1)
 
-                ## Script body
-                print(f'module load {library}')
-                for radius in range(3, 3+1):
-                    # 3D
-                    print(f'{args.cmakelistdir}/samples/benchmark-device/mhd.py --dtype fp32 --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
+                    ## Script body
+                    print(f'module load {library}')
+                    for radius in range(3, 3+1):
+                        # 3D
+                        print(f'{args.cmakelistdir}/samples/benchmark-device/mhd.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
 # Intra-node benchmarks
 def gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices):
