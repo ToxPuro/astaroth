@@ -112,8 +112,7 @@ is_valid_configuration(const Volume dims, const Volume tpb)
     // return true;
 
     // Required only when unrolling smem loads
-    return (tpb.x > (STENCIL_WIDTH + 2 - 1) / 2) &&
-           (tpb.y > (STENCIL_HEIGHT + 2 - 1) / 2);
+    return (2 * tpb.x >= STENCIL_WIDTH) && (2 * tpb.y >= STENCIL_HEIGHT);
   }
   default: {
     ERROR("Invalid IMPLEMENTATION in is_valid_configuration");
