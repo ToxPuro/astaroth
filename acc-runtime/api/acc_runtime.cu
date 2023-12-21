@@ -108,7 +108,12 @@ is_valid_configuration(const Volume dims, const Volume tpb)
     return true;
   }
   case EXPLICIT_ROLLING_PINGPONG: {
-    return true;
+    // OK for every other rolling pingpong implementation
+    // return true;
+
+    // Required only when unrolling smem loads
+    return (tpb.x > (STENCIL_WIDTH + 2 - 1) / 2) &&
+           (tpb.y > (STENCIL_HEIGHT + 2 - 1) / 2);
   }
   default: {
     ERROR("Invalid IMPLEMENTATION in is_valid_configuration");
