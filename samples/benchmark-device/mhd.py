@@ -783,6 +783,8 @@ elif args.library in 'tensorflow':
 
         @tf.function(jit_compile=True)
         def forward(self, input):
+            input = tf.stop_gradient(input)
+            
             # Inputs
             ## Hydro
             uu = tf.gather(input, indices=[field_indices['ux'],
