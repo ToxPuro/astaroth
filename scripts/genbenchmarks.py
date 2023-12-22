@@ -50,7 +50,7 @@ implementations = dict((key, value+1) for value,key in enumerate(implementation_
 
 ## General arguments
 parser.add_argument('--task-type', type=str, nargs='+', choices=['genmakefiles', 'genscripts', 'preprocess', 'build', 'run', 'postprocess', 'clean-results', 'clean-builds'], help='The type of the task performed with this script', required=True)
-parser.add_argument('--dims', type=int, default=[256, 256, 256], nargs=3, help='The dimensions of the computational domain')
+parser.add_argument('--dims', type=int, default=[128, 128, 128], nargs=3, help='The dimensions of the computational domain')
 parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without compiling or running. Prints os commands to stdout.')
 ## Preprocess arguments
 parser.add_argument('--implementations', type=str, nargs='+', choices=implementation_names, default=implementation_names, help='The list of implementations used in testing')
@@ -254,7 +254,7 @@ def gen_microbenchmarks(system):
 def gen_convolutionbenchmarks(system):
     
     ###
-    problem_size = 256**3 # Note here
+    problem_size = 128**3 # Note here
     ###
 
     with open(f'{scripts_dir}/heat-equation-benchmark-astaroth.sh', 'w') as f:

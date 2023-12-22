@@ -191,6 +191,7 @@ if args.library in 'pytorch':
 
             # Enable autotuning
             torch.backends.cudnn.benchmark=True
+            torch.backends.cudnn.benchmark_limit = 0 # Try every available algorithm
 
             # Disable debugging APIs
             torch.autograd.set_detect_anomaly(False)
