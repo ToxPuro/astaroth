@@ -135,36 +135,32 @@ gaussian_window(const AcReal3& coordinate)
 static __device__ inline void
 cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3& globalVertexIdx)
 {
-    fprintf(stderr, "cartesian_grid_location() called but AC_INTEGRATION_ENABLED "
-                    "was false\n");
-    *coord_x1 = 0.0;
-    *coord_y1 = 0.0;
-    *coord_z1 = 0.0;
+    // Produce nan to halt the code
+    *coord_x1 = 0.0 / 0.0;
+    *coord_y1 = 0.0 / 0.0;
+    *coord_z1 = 0.0 / 0.0;
 }
 
 static __device__ inline AcReal
 distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1, 
          const AcReal coord_x2, const AcReal coord_y2, const AcReal coord_z2)
 {
-    fprintf(stderr, "distance() called but AC_INTEGRATION_ENABLED "
-                    "was false\n");
-    return 0.0;
+    // Produce nan to halt the code
+    return 0.0 / 0.0;
 }
 
 static __device__ inline AcReal 
 radial_window(const AcReal3& coordinate)
 {
-    fprintf(stderr, "radial_window() called but AC_INTEGRATION_ENABLED "
-                    "was false\n");
-    return 0.0; 
+    // Produce nan to halt the code
+    return 0.0 / 0.0; 
 }
 
 static __device__ inline AcReal 
 gaussian_window(const AcReal3& coordinate)
 {
-    fprintf(stderr, "gaussian_window() called but AC_INTEGRATION_ENABLED "
-                    "was false\n");
-    return  0.0;
+    // Produce nan to halt the code
+    return 0.0 / 0.0;
 }
 #endif
 
