@@ -81,7 +81,10 @@ map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& 
 // Here physical coordinate in the grid is calculating by assuming that
 // coordinate (0.0, 0.0, 0.0) corresresponds to index (0, 0, 0)
 // with distance between grid points being AC_dsx, AC_dsy, AC_dsz
-// respectively. 
+// respectively.
+//
+
+#ifdef AC_INTEGRATION_ENABLED
 static __device__ inline void
 cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3& globalVertexIdx)
 {
@@ -98,7 +101,6 @@ distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1,
               + (coord_y1-coord_y2)*(coord_y1-coord_y2)
               + (coord_z1-coord_z2)*(coord_z1-coord_z2));
 }
-
 
 static __device__ inline AcReal 
 radial_window(const AcReal3& coordinate)
@@ -129,6 +131,42 @@ gaussian_window(const AcReal3& coordinate)
     //        radius, rscale, radius/rscale, exp(-(radius/rscale)*(radius/rscale)));
     return  exp(-(radius/rscale)*(radius/rscale));
 }
+#else
+static __device__ inline void
+cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3& globalVertexIdx)
+{
+    fprintf(stderr, "cartesian_grid_location() called but AC_INTEGRATION_ENABLED "
+                    "was false\n");
+    *coord_x1 = 0.0;
+    *coord_y1 = 0.0;
+    *coord_z1 = 0.0;
+}
+
+static __device__ inline AcReal
+distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1, 
+         const AcReal coord_x2, const AcReal coord_y2, const AcReal coord_z2)
+{
+    fprintf(stderr, "distance() called but AC_INTEGRATION_ENABLED "
+                    "was false\n");
+    return 0.0;
+}
+
+static __device__ inline AcReal 
+radial_window(const AcReal3& coordinate)
+{
+    fprintf(stderr, "radial_window() called but AC_INTEGRATION_ENABLED "
+                    "was false\n");
+    return 0.0; 
+}
+
+static __device__ inline AcReal 
+gaussian_window(const AcReal3& coordinate)
+{
+    fprintf(stderr, "gaussian_window() called but AC_INTEGRATION_ENABLED "
+                    "was false\n");
+    return  0.0;
+}
+#endif
 
 // Reduce functions
 static __device__ inline AcReal
