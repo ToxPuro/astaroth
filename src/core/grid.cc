@@ -1741,6 +1741,7 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
         mpi_res            = sqrt(inv_n * mpi_res);
     }
 
+#ifdef AC_INTEGRATION_ENABLED
     if ( rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS ) {
         // MV NOTE: This has to be calculated here separately, because does not
         //          know what GPU is doing. 
@@ -1758,6 +1759,7 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
 
         mpi_res                    = sqrt(mpi_res / cell_number);
     }
+#endif
     *result = mpi_res;
     return AC_SUCCESS;
 }
