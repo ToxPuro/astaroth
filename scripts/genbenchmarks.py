@@ -45,7 +45,7 @@ See Unix globbing for passing files/directories to the script more easily.
     ''',
     formatter_class=argparse.RawDescriptionHelpFormatter)
 
-implementation_names = ['implicit', 'explicit', 'explicit3d', 'explicit4d', 'pingpongtxw', 'pingpongtxy', 'rollingpingpong']
+implementation_names = ['implicit', 'explicit'] #, 'explicit3d', 'explicit4d', 'pingpongtxw', 'pingpongtxy', 'explicit_old']
 implementations = dict((key, value+1) for value,key in enumerate(implementation_names))
 
 ## General arguments
@@ -63,6 +63,7 @@ parser.add_argument('--partition', type=str, help='The partition used for runnin
 parser.add_argument('--num-devices', type=int, nargs=2, default=[1, 8192], help='The range for the number of devices generated for run scripts (inclusive)')
 parser.add_argument('--num-samples', type=int, default=100, help='The number of benchmark samples taken per program invocation')
 parser.add_argument('--time-limit', type=str, default='00:14:59', help='The time limit for each individual batch job')
+parser.add_argument('--problem-size', type=int, default=128, help='The target problem size in MiB used in the tests. If the problem size is not divisible by the mesh dimensions, the closest power of two mesh dimensions are chosen.')
 ## Build arguments
 parser.add_argument('--build-dirs', type=str, nargs='+', required='build' in sys.argv, help='A list of directories to build')
 ## Run arguments
@@ -232,7 +233,7 @@ def gen_microbenchmarks(system):
                 problem_size *= 2
 
             # Working set
-            problem_size     = 256 * 1024**2 # Bytes, 256 MiB
+            problem_size     = 128 * 1024**2 # Bytes, 128 MiB
             working_set_size = 8         # Bytes
             stride = 1
             max_working_set_size = 8200  # r = 512, (512 * 2 + 1) * 8 bytes = 8200 bytes
@@ -241,7 +242,7 @@ def gen_microbenchmarks(system):
                 working_set_size *= 2
 
             # Stride
-            problem_size     = 256 * 1024**2 # Bytes, 256 MiB
+            problem_size     = 128 * 1024**2 # Bytes, 128 MiB
             #working_set_size = 24         # Bytes (24 = von neumann stencil)
             working_set_size = 440 # 55-point stencil in 1D = radius 22 => 55*8 = 440
             stride           = 1
@@ -253,9 +254,10 @@ def gen_microbenchmarks(system):
 # Linear stencil benchmarks
 def gen_convolutionbenchmarks(system):
     
-    ###
-    problem_size = 128**3 # Note here
-    ###
+    # Problem size
+    problem_size_1d = (4096**2, 1, 1) # 128 MiB working set
+    problem_size_2d = (4096, 4096, 1) # 128 MiB working set
+    problem_size_3d = (256, 256, 256) # 128 MiB working set
 
     with open(f'{scripts_dir}/heat-equation-benchmark-astaroth.sh', 'w') as f:
         with redirect_stdout(f):
@@ -267,18 +269,18 @@ def gen_convolutionbenchmarks(system):
             ## Script body
             for radius in range(0, 5):
                 # 1D
-                nn = (problem_size, 1, 1)
-                assert(nn[0] * nn[1] * nn[2] == problem_size)
+                nn = problem_size_1d #(problem_size, 1, 1)
+                #assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
                 # 2D
-                nn = (int(np.rint(problem_size**(1/2))), int(np.rint(problem_size**(1/2))), 1)
-                assert(nn[0] * nn[1] * nn[2] == problem_size)
+                nn = problem_size_2d #(int(np.rint(problem_size**(1/2))), int(np.rint(problem_size**(1/2))), 1)
+                #assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
                 # 3D
-                nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
-                assert(nn[0] * nn[1] * nn[2] == problem_size)
+                nn = problem_size_3d #(int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
+                #assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
     libraries = ['pytorch', 'tensorflow', 'jax']
@@ -295,18 +297,18 @@ def gen_convolutionbenchmarks(system):
                     print(f'module load {library}')
                     for radius in range(0, 5):
                         # 1D
-                        nn = (problem_size, 1, 1)
-                        assert(nn[0] * nn[1] * nn[2] == problem_size)
+                        nn = problem_size_1d #(problem_size, 1, 1)
+                        #assert(nn[0] * nn[1] * nn[2] == problem_size)
                         print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
                         # 2D
-                        nn = (int(np.rint(problem_size**(1/2))), int(np.rint(problem_size**(1/2))), 1)
-                        assert(nn[0] * nn[1] * nn[2] == problem_size)
+                        nn = problem_size_2d #(int(np.rint(problem_size**(1/2))), int(np.rint(problem_size**(1/2))), 1)
+                        #assert(nn[0] * nn[1] * nn[2] == problem_size)
                         print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
                         # 3D
-                        nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
-                        assert(nn[0] * nn[1] * nn[2] == problem_size)
+                        nn = problem_size_3d #(int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
+                        #assert(nn[0] * nn[1] * nn[2] == problem_size)
                         print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
 
@@ -318,7 +320,7 @@ def gen_devicebenchmarks(system, nx, ny, nz):
             print(f'srun {system.srun_params} ./benchmark-device {nx} {ny} {nz} $SLURM_JOB_ID {args.num_samples} {args.verify} {np.random.randint(0, 65535)}')
     
     # Quick hack (ML lib-Astaroth comparison)
-    problem_size = 128**3 # Need to drop the dim, 256**3 uses too much additional memory with Pytorch
+    problem_size = 128**3 # 128 MiB working set (8 fields). Need to drop the dim, 256**3 uses too much additional memory with Pytorch
     nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
     assert(nn[0] * nn[1] * nn[2] == problem_size)
     with open(f'{scripts_dir}/nonlinear-mhd-benchmark-astaroth.sh', 'w') as f:
