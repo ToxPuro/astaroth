@@ -51,7 +51,8 @@ void
 model_kernel(const size_t domain_length, const int radius, const int stride, const Array in,
              Array out)
 {
-    for (int i = 0; i < domain_length; ++i) {
+    ERRCHK_ALWAYS(domain_length < INT_MAX)
+    for (int i = 0; i < (int)domain_length; ++i) {
         real tmp = 0;
         for (int r = -radius; r <= radius; r += stride) {
             const size_t idx = i + r;
@@ -95,10 +96,10 @@ verify(const size_t domain_length, const size_t radius, const size_t stride)
     size_t failure_count       = 0;
     const size_t failure_limit = 100;
     for (size_t i = 0; i < domain_length; ++i) {
-        printf("%zu: %g and %g\n", i, model[i], candidate[i]);
+        // printf("%zu: %g and %g\n", i, model[i], candidate[i]);
         if (model[i] != candidate[i]) {
-            fprintf(stderr, "Failure at %lu: %g (host) and %g (device)\n", i, model[i],
-                    candidate[i]);
+            fprintf(stderr, "Failure at %lu: %g (host) and %g (device)\n", i, (double)model[i],
+                    (double)candidate[i]);
             ++failure_count;
         }
         if (failure_count > failure_limit) {
