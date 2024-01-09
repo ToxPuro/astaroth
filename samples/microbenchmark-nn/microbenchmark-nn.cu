@@ -74,7 +74,7 @@ verify(const size_t domain_length, const size_t radius, const size_t stride)
     arrayRandomize(&host_input);
     arrayRandomize(&host_output);
     for (size_t i = 0; i < domain_length; ++i)
-        host_input.data[i] = 1;
+        host_input.data[i] = (real)rand() / (real)RAND_MAX;
 
     // Model
     model_kernel(domain_length, radius, stride, host_input, host_output);
@@ -88,7 +88,7 @@ verify(const size_t domain_length, const size_t radius, const size_t stride)
     cudaMemcpy(input.data, host_input.data, host_input.bytes, cudaMemcpyHostToDevice);
     backendConvolutionFwd();
     cudaDeviceSynchronize();
-    cudaMemcpy(host_input.data, output.data, output.bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(host_input.data, output.data, output.bytes, cudaMemcpyDeviceToHost);
 
     const real* candidate = host_input.data;
     const real* model     = host_output.data;
@@ -121,12 +121,19 @@ benchmark(const size_t domain_length, const size_t radius, const size_t stride, 
           const size_t seed, const size_t num_samples)
 {
     // Allocate
-    Array a = arrayCreate(domain_length, true);
-    Array b = arrayCreate(domain_length, true);
+    backendInit(domain_length, radius, stride);
+    Array input  = backendGetInputTensor();
+    Array output = backendGetOutputTensor();
 
     // Randomize
-    arrayRandomize(&a);
-    arrayRandomize(&b);
+    arrayRandomize(&input);
+    arrayRandomize(&output);
+
+    // Dryrun
+    for (size_t i = 0; i < 10; ++i)
+        backendConvolutionFwd();
+    cudaDeviceSynchronize();
+    ERRCHK_CUDA_KERNEL_ALWAYS();
 
     // File
     const size_t buflen = 4096;
@@ -139,9 +146,6 @@ benchmark(const size_t domain_length, const size_t radius, const size_t stride, 
     fprintf(fp, "implementation,problemsize,workingsetsize,stride,milliseconds,"
                 "effectivebandwidth,jobid,seed,iteration,double_precision\n");
 
-    // Dryrun
-    // kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.pad, c.radius, c.stride, a, b);
-
     // Benchmark
     cudaEvent_t tstart, tstop;
     cudaEventCreate(&tstart);
@@ -150,7 +154,7 @@ benchmark(const size_t domain_length, const size_t radius, const size_t stride, 
     for (size_t i = 0; i < num_samples; ++i) {
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
-        // kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.pad, c.radius, c.stride, a, b);
+        backendConvolutionFwd();
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
         ERRCHK_CUDA_KERNEL_ALWAYS();
@@ -159,7 +163,7 @@ benchmark(const size_t domain_length, const size_t radius, const size_t stride, 
         cudaEventElapsedTime(&milliseconds, tstart, tstop);
 
         // Derived statistics
-        const size_t bytes     = sizeof(a.data[0]) * (2 * domain_length + 2 * radius / stride);
+        const size_t bytes     = sizeof(input.data[0]) * (2 * domain_length + 2 * radius / stride);
         const double seconds   = (double)milliseconds / 1e3;
         const double bandwidth = bytes / seconds;
 
@@ -171,16 +175,16 @@ benchmark(const size_t domain_length, const size_t radius, const size_t stride, 
 
         // Write to file
         fprintf(fp, "%s,%zu,%zu,%zu,%g,%g,%zu,%zu,%zu,%u\n", "cudnn-miopen",
-                domain_length * sizeof(a.data[0]), (2 * radius / stride + 1) * sizeof(a.data[0]),
-                stride, (double)milliseconds, bandwidth, jobid, seed, i, DOUBLE_PRECISION);
+                domain_length * sizeof(input.data[0]),
+                (2 * radius / stride + 1) * sizeof(input.data[0]), stride, (double)milliseconds,
+                bandwidth, jobid, seed, i, DOUBLE_PRECISION);
     }
     cudaEventDestroy(tstart);
     cudaEventDestroy(tstop);
 
     // Free
     fclose(fp);
-    arrayDestroy(&a);
-    arrayDestroy(&b);
+    backendQuit();
     fflush(stdout);
 }
 
@@ -241,7 +245,7 @@ main(int argc, char* argv[])
     fprintf(stderr, "Usage: ./benchmark-nn <problem size> <working set size> <stride> <jobid> "
                     "<num_samples> <salt>\n");
     const size_t problem_size     = (argc > 1) ? (size_t)atol(argv[1]) : 268435456;
-    const size_t working_set_size = (argc > 2) ? (size_t)atol(argv[2]) : 8;
+    const size_t working_set_size = (argc > 2) ? (size_t)atol(argv[2]) : 3 * sizeof(real);
     const int stride              = (argc > 3) ? (size_t)atol(argv[3]) : 1;
     const size_t jobid            = (argc > 4) ? (size_t)atol(argv[4]) : 0;
     const size_t num_samples      = (argc > 5) ? (size_t)atol(argv[5]) : 100;
@@ -286,7 +290,7 @@ main(int argc, char* argv[])
     // KernelConfig c = autotune(array_length, domain_length, pad, radius, stride);
     ERRCHK_ALWAYS(verify(domain_length, radius, stride));
     cudaProfilerStart();
-    // benchmark(c, jobid, seed, num_samples);
+    benchmark(domain_length, radius, stride, jobid, seed, num_samples);
     cudaProfilerStop();
     return EXIT_SUCCESS;
 }
