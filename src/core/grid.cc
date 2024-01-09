@@ -1707,14 +1707,22 @@ static AcResult
 distributedScalarReduction(const AcReal local_result, const ReductionType rtype, AcReal* result)
 {
     MPI_Op op;
-    if (rtype == RTYPE_MAX || rtype == RTYPE_ALFVEN_MAX) {
+    if (rtype == RTYPE_MAX || rtype == RTYPE_ALFVEN_MAX || 
+        rtype == RTYPE_ALFVEN_RADIAL_WINDOW_MAX || 
+        rtype == RTYPE_GAUSSIAN_WINDOW_MAX || 
+        rtype == RTYPE_RADIAL_WINDOW_MAX ) {
         op = MPI_MAX;
     }
-    else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN) {
+    else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN || 
+             rtype == RTYPE_ALFVEN_RADIAL_WINDOW_MIN || 
+             rtype == RTYPE_GAUSSIAN_WINDOW_MIN || 
+             rtype == RTYPE_RADIAL_WINDOW_MIN ) {
         op = MPI_MIN;
     }
     else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM ||
-             rtype == RTYPE_ALFVEN_RMS) {
+             rtype == RTYPE_ALFVEN_RMS || rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS || 
+             rtype == RTYPE_GAUSSIAN_WINDOW_SUM || 
+             rtype == RTYPE_RADIAL_WINDOW_SUM ) {
         op = MPI_SUM;
     }
     else {
@@ -1732,6 +1740,26 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
                                            grid.decomposition.y * grid.nn.z * grid.decomposition.z);
         mpi_res            = sqrt(inv_n * mpi_res);
     }
+
+#ifdef AC_INTEGRATION_ENABLED
+    if ( rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS ) {
+        // MV NOTE: This has to be calculated here separately, because does not
+        //          know what GPU is doing. 
+        const AcReal cell_volume   = grid.device->local_config.real_params[AC_dsx] *
+                                     grid.device->local_config.real_params[AC_dsy] *
+                                     grid.device->local_config.real_params[AC_dsz];
+
+        const AcReal sphere_volume = (4.0/3.0) * M_PI *
+                                     grid.device->local_config.real_params[AC_window_radius] * 
+                                     grid.device->local_config.real_params[AC_window_radius] * 
+                                     grid.device->local_config.real_params[AC_window_radius];  
+
+        //only include whole cells
+        const AcReal cell_number   = AcReal(int(sphere_volume/cell_volume));
+
+        mpi_res                    = sqrt(mpi_res / cell_number);
+    }
+#endif
     *result = mpi_res;
     return AC_SUCCESS;
 }

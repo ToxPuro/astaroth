@@ -736,6 +736,7 @@ acDeviceReduceScal(const Device device, const Stream stream, const ReductionType
     switch (rtype) {
     case RTYPE_RMS:     /* Fallthrough */
     case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
         const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
@@ -775,6 +776,7 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
     switch (rtype) {
     case RTYPE_RMS:     /* Fallthrough */
     case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
         const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
@@ -818,6 +820,7 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
     switch (rtype) {
     case RTYPE_RMS:     /* Fallthrough */
     case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
         const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
