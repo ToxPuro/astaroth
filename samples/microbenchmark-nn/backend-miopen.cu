@@ -41,6 +41,7 @@ backendGetOutputTensor(void)
 void
 backendInit(const size_t domain_length, const size_t radius, const size_t stride)
 {
+    ERRCHK_ALWAYS(sizeof(real) == sizeof(float)); // 2023-01-09 f64 not supported with MIOpen
     miopenCreate(&nn);
 
     // Input
