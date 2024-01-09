@@ -758,6 +758,10 @@ def parse_ts(fdir, fname, debug = False):
 class TimeSeries:
     '''Class for time series data'''
 
-    def __init__(self, fdir="", fname="timeseries.ts", debug = False):
+    def __init__(self, fdir="", fname="timeseries.ts", debug = False, pandas=False):
 
-        self.var = parse_ts(fdir, fname, debug = debug)
+        if pandas:
+            self.ts_dataframe = pd.read_csv(fdir+fname, delim_whitespace=True) 
+            self.var = None
+        else:
+            self.var = parse_ts(fdir, fname, debug = debug)
