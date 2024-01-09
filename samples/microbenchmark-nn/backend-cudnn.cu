@@ -60,6 +60,10 @@ backendGetOutputTensor(void)
 void
 backendInit(const size_t domain_length, const size_t radius, const size_t stride)
 {
+    // It seems that f64 is not supported with all algorithms
+    // and autotuning may not take this into account (f64 verification fails)
+    ERRCHK_ALWAYS(sizeof(real) == sizeof(float));
+
     // cuDNN
     cudnnCreate(&nn);
 
@@ -133,11 +137,11 @@ backendConvolutionFwd(void)
 {
     const real alpha = 1;
     const real beta  = 0;
-    cudnnConvolutionForward(nn, &alpha,                           //
-                            input_desc, input.data,               //
-                            filter_desc, filter.data,             //
-                            convolution_desc, algorithms[0].algo, //
-                            workspace.data, workspace.bytes,      //
+    cudnnConvolutionForward(nn, &alpha,                      //
+                            input_desc, input.data,          //
+                            filter_desc, filter.data,        //
+                            convolution_desc, algorithm,     //
+                            workspace.data, workspace.bytes, //
                             &beta, output_desc, output.data);
 }
 

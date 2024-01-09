@@ -23,6 +23,7 @@ static Array workspace;
 
 static const int required_algorithms = 1;
 static miopenConvAlgoPerf_t algorithms[required_algorithms];
+static miopenConvFwdAlgorithm_t algorithm;
 
 static auto convolution_type = miopenConvolution;
 
@@ -104,9 +105,10 @@ backendInit(const size_t domain_length, const size_t radius, const size_t stride
                                           required_algorithms, &returned_algorithms, algorithms,
                                           workspace.data, workspace.bytes, true);
     ERRCHK_ALWAYS(returned_algorithms == required_algorithms);
+    algorithm = algorithms[0].fwd_algo;
 
     printf("Convolution algorithm selected: ");
-    switch (algorithms[0].fwd_algo) {
+    switch (algorithm) {
     case 0:
         printf("miOpenConvolutionAlgoGEMM\n");
         break;
@@ -131,8 +133,8 @@ backendConvolutionFwd(void)
     const real alpha = 1;
     const real beta  = 0;
     miopenConvolutionForward(nn, &alpha, input_desc, input.data, filter_desc, filter.data,
-                             convolution_desc, algorithms[0].fwd_algo, &beta, output_desc,
-                             output.data, workspace.data, workspace.bytes);
+                             convolution_desc, algorithm, &beta, output_desc, output.data,
+                             workspace.data, workspace.bytes);
 }
 
 void
