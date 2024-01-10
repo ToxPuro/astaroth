@@ -575,7 +575,8 @@ if 'postprocess' in args.task_type:
     syscall(f'mkdir -p {output_dir}')
 
     # Microbenchmarks
-    gen_output(f'{builds_dir}/*/microbenchmark-*.csv', f'{output_dir}/microbenchmark-{system.id}.csv')
+    gen_output(f'{builds_dir}/*/microbenchmark-[!nn]*.csv', f'{output_dir}/microbenchmark-{system.id}.csv')
+    gen_output(f'{builds_dir}/*/microbenchmark-nn-*.csv', f'{output_dir}/microbenchmark-nn-{system.id}.csv')
     gen_output(f'{builds_dir}/*/heat-equation-*.csv', f'{output_dir}/heat-equation-{system.id}.csv')
     gen_output(f'{builds_dir}/*/benchmark-device-*.csv', f'{output_dir}/benchmark-device-{system.id}.csv')
     gen_output(f'{builds_dir}/*/nonlinear-mhd-*.csv', f'{output_dir}/nonlinear-mhd-{system.id}.csv')
