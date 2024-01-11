@@ -2,7 +2,7 @@
 
 #include <miopen/miopen.h>
 
-#if USE_DOUBLE
+#if DOUBLE_PRECISION // defined in array.h
 static const miopenDataType_t dtype = miopenDouble;
 #else
 static const miopenDataType_t dtype = miopenFloat;

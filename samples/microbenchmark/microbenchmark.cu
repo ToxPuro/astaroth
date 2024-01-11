@@ -2,19 +2,19 @@
     Microbenchmark the GPU caches in 1D stencil computations and generate a plottable .csv output
 
     Examples:
-        # Usage
-        ./bwtest-benchmark <problem size in bytes> <working set size in bytes>
+        # Usage (see the main invocation for an up-to-date list of input parameters)
+        ./microbenchmark <computational domain length in elements> <stencil radius in elements>
 
-        # 256 MiB problem size and working set of size 8 (one double), i.e. halo r=0
-        ./bwtest-benchmark 268435456 8
+        # Default problem size and radius
+        ./microbenchmark
 
-        # 3-point von Neumann stencil
-        ./bwtest-benchmark 268435456 24
+        # Bandwidth test with r=0 stencil
+        ./microbenchmark 33554432 0
 
         # Profiling
         cmake -DUSE_HIP=ON .. &&\
         make -j &&\
-        rocprof --trace-start off -i ~/rocprof-input-metrics.txt ./bwtest-benchmark 268435456 256
+        rocprof --trace-start off -i ~/rocprof-input-metrics.txt ./microbenchmark
 
 cat ~/rocprof-input-metrics.txt
 ```
@@ -32,6 +32,7 @@ gpu: 0 1 2 3
 #kernel: singlepass_solve
 ```
 */
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -74,12 +75,12 @@ get_smem(const int tpb, const int radius)
     return (tpb + 2 * radius) * sizeof(real);
 }
 
+template <int radius, int stride>
 __global__ void
 #if MAX_THREADS_PER_BLOCK
 __launch_bounds__(MAX_THREADS_PER_BLOCK)
 #endif
-    kernel(const size_t domain_length, const size_t pad, const int radius, const int stride,
-           const Array in, Array out)
+    kernel(const size_t domain_length, const size_t pad, const Array in, Array out)
 {
     extern __shared__ real smem[];
 
@@ -90,6 +91,7 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
     __syncthreads();
 
     real tmp = 0.0;
+#pragma unroll
     for (int i = -radius; i <= radius; i += stride)
         tmp += smem[threadIdx.x + i + radius];
 
@@ -107,17 +109,18 @@ get_smem(const size_t tpb, const int radius)
     return 0;
 }
 
+template <int radius, int stride>
 __global__ void
 #if MAX_THREADS_PER_BLOCK
 __launch_bounds__(MAX_THREADS_PER_BLOCK)
 #endif
-    kernel(const size_t domain_length, const size_t pad, const int radius, const int stride,
-           const Array in, Array out)
+    kernel(const size_t domain_length, const size_t pad, const Array in, Array out)
 {
     const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
     if (tid < domain_length) {
 
         real tmp = 0.0;
+#pragma unroll
         for (int i = -radius; i <= radius; i += stride)
             tmp += in.data[tid + pad + i];
         out.data[tid + pad] = tmp;
@@ -125,10 +128,52 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
 }
 #endif
 
+static void
+unrolled_kernel(const dim3 bpg, const dim3 tpb, const size_t smem, const size_t domain_length,
+                const size_t pad, const int radius, const int stride, const Array in, Array out)
+{
+    ERRCHK_ALWAYS(stride == 1);
+    switch (radius) {
+    case 0:
+        return kernel<0, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    case 1:
+        return kernel<1, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    case 2:
+        return kernel<2, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    case 4:
+        return kernel<4, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    case 8:
+        return kernel<8, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    case 16:
+        return kernel<16, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    case 32:
+        return kernel<32, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    case 64:
+        return kernel<64, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    case 128:
+        return kernel<128, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    case 256:
+        return kernel<256, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    case 512:
+        return kernel<512, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    case 1024:
+        return kernel<1024, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    case 2048:
+        return kernel<2048, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    case 4096:
+        return kernel<4096, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    default:
+        fprintf(stderr, "Invalid radius %d\n", radius);
+        fflush(stderr);
+        exit(EXIT_FAILURE);
+    }
+}
+
 void
 model_kernel(const size_t domain_length, const size_t pad, const int radius, const int stride,
              const Array in, Array out)
 {
+    ERRCHK_ALWAYS(domain_length < INT_MAX)
     for (int tid = 0; tid < domain_length; ++tid) {
         real tmp = 0.0;
         for (int i = -radius; i <= radius; i += stride)
@@ -169,7 +214,7 @@ autotune(const size_t array_length, const size_t domain_length, const size_t pad
     cudaEventCreate(&tstart);
     cudaEventCreate(&tstop);
     cudaEventRecord(tstart); // Timing start
-    kernel<<<1, 1, max_smem>>>(domain_length, pad, radius, stride, a, b);
+    unrolled_kernel(1, 1, max_smem, domain_length, pad, radius, stride, a, b);
     cudaEventRecord(tstop); // Timing stop
     cudaEventSynchronize(tstop);
     cudaEventDestroy(tstart);
@@ -210,11 +255,11 @@ autotune(const size_t array_length, const size_t domain_length, const size_t pad
         cudaEventCreate(&tstart);
         cudaEventCreate(&tstop);
 
-        kernel<<<bpg, tpb, smem>>>(domain_length, pad, radius, stride, a, b);
+        unrolled_kernel(bpg, tpb, smem, domain_length, pad, radius, stride, a, b);
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
         for (int i = 0; i < 3; ++i)
-            kernel<<<bpg, tpb, smem>>>(domain_length, pad, radius, stride, a, b);
+            unrolled_kernel(bpg, tpb, smem, domain_length, pad, radius, stride, a, b);
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
 
@@ -284,7 +329,7 @@ verify(const KernelConfig c)
     // Candidate
     const size_t bytes = c.array_length * sizeof(ahost.data[0]);
     cudaMemcpy(a.data, ahost.data, bytes, cudaMemcpyHostToDevice);
-    kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.pad, c.radius, c.stride, a, b);
+    unrolled_kernel(c.bpg, c.tpb, c.smem, c.domain_length, c.pad, c.radius, c.stride, a, b);
     cudaMemcpy(ahost.data, b.data, bytes, cudaMemcpyDeviceToHost);
 
     const real* candidate = ahost.data;
@@ -331,13 +376,14 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
     ERRCHK_ALWAYS(fp);
 
     // File format
-    fprintf(fp, "caching,maxthreadsperblock,problemsize,workingsetsize,stride,milliseconds,"
+    fprintf(fp, "implementation,maxthreadsperblock,domainlength,radius,stride,milliseconds,"
                 "effectivebandwidth,tpb,jobid,seed,iteration,double_precision\n");
 
     // Dryrun
-    kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.pad, c.radius, c.stride, a, b);
+    unrolled_kernel(c.bpg, c.tpb, c.smem, c.domain_length, c.pad, c.radius, c.stride, a, b);
 
     // Benchmark
+    cudaProfilerStart();
     cudaEvent_t tstart, tstop;
     cudaEventCreate(&tstart);
     cudaEventCreate(&tstop);
@@ -345,7 +391,7 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
     for (size_t i = 0; i < num_samples; ++i) {
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
-        kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.pad, c.radius, c.stride, a, b);
+        unrolled_kernel(c.bpg, c.tpb, c.smem, c.domain_length, c.pad, c.radius, c.stride, a, b);
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
         ERRCHK_CUDA_KERNEL_ALWAYS();
@@ -366,13 +412,13 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
 
         // Write to file
         fprintf(fp, "%s,%d,%zu,%zu,%d,%g,%g,%zu,%zu,%zu,%zu,%u\n",
-                USE_SMEM ? "\"explicit\"" : "\"implicit\"", MAX_THREADS_PER_BLOCK,
-                c.domain_length * sizeof(a.data[0]),
-                (2 * c.radius / c.stride + 1) * sizeof(a.data[0]), c.stride, (double)milliseconds,
-                bandwidth, c.tpb, jobid, seed, i, DOUBLE_PRECISION);
+                USE_SMEM ? "\"explicit\"" : "\"implicit\"", MAX_THREADS_PER_BLOCK, c.domain_length,
+                c.radius, c.stride, (double)milliseconds, bandwidth, c.tpb, jobid, seed, i,
+                DOUBLE_PRECISION);
     }
     cudaEventDestroy(tstart);
     cudaEventDestroy(tstop);
+    cudaProfilerStop();
 
     // Free
     fclose(fp);
@@ -450,42 +496,42 @@ main(int argc, char* argv[])
     cudaProfilerStop();
 
     // Input parameters
-    fprintf(stderr, "Usage: ./benchmark <problem size> <working set size> <stride> <jobid> "
+    fprintf(stderr, "Usage: ./benchmark <computational domain length> <radius> <stride> <jobid> "
                     "<num_samples> <salt>\n");
-    const size_t problem_size     = (argc > 1) ? (size_t)atol(argv[1]) : 268435456;
-    const size_t working_set_size = (argc > 2) ? (size_t)atol(argv[2]) : 3 * sizeof(real);
-    const int stride              = (argc > 3) ? (size_t)atol(argv[3]) : 1;
-    const size_t jobid            = (argc > 4) ? (size_t)atol(argv[4]) : 0;
-    const size_t num_samples      = (argc > 5) ? (size_t)atol(argv[5]) : 100;
-    const size_t salt             = (argc > 6) ? (size_t)atol(argv[6]) : 42;
+    const size_t domain_length = (argc > 1) ? (size_t)atol(argv[1])
+                                            : 128 * pow(1024, 2) / sizeof(real);
+    const size_t radius        = (argc > 2) ? (size_t)atol(argv[2]) : 1;
+    const int stride           = (argc > 3) ? (size_t)atol(argv[3]) : 1;
+    const size_t jobid         = (argc > 4) ? (size_t)atol(argv[4]) : 0;
+    const size_t num_samples   = (argc > 5) ? (size_t)atol(argv[5]) : 100;
+    const size_t salt          = (argc > 6) ? (size_t)atol(argv[6]) : 42;
 
     // Derived values
-    const int radius           = (((working_set_size / sizeof(real)) - 1) / 2) * stride;
-    const size_t pad           = get_pad(radius);
-    const size_t domain_length = problem_size / sizeof(real);
-    const size_t array_length  = pad + domain_length + radius;
-    const size_t seed          = 12345 + salt +
-                        (1 + problem_size + working_set_size + stride + jobid + num_samples) *
-                            time(NULL);
-    ERRCHK((2 * radius / stride + 1) * sizeof(real) == working_set_size);
-    ERRCHK(domain_length * sizeof(real) == problem_size);
+    ERRCHK_ALWAYS(stride == 1); // Not implemented yet
+    // const int radius           = (((working_set_size / sizeof(real)) - 1) / 2) * stride;
+    const size_t pad = get_pad(radius);
+    // const size_t domain_length = problem_size / sizeof(real);
+    const size_t array_length = pad + domain_length + radius;
+    const size_t seed         = 12345 + salt +
+                        (1 + domain_length + radius + stride + jobid + num_samples) * time(NULL);
 
     printf("Input parameters:\n");
-    printf("\tproblem_size: %zu\n", problem_size);
-    printf("\tpad: %zu\n", pad);
+    printf("\tdomain_length: %zu\n", domain_length);
     printf("\tradius: %d\n", radius);
+    printf("\tpad: %zu\n", pad);
     printf("\tstride: %d\n", stride);
     printf("\tjobid: %zu\n", jobid);
     printf("\tnum_samples: %zu\n", num_samples);
     printf("\tseed: %zu\n", seed);
     fflush(stdout);
 
-    if (working_set_size > problem_size) {
-        fprintf(stderr, "Invalid working set size: %lu > %lu\n", working_set_size, problem_size);
-        return EXIT_FAILURE;
-    }
+    // if (working_set_size > domain_length) {
+    //     fprintf(stderr, "Invalid working set size: %lu > %lu\n", working_set_size, problem_size);
+    //     return EXIT_FAILURE;
+    // }
 
 #if USE_SMEM
+    // cudaDeviceSetCacheConfig(cudaFuncCachePreferShared);
     const size_t required_smem = get_smem(1, radius);
     cudaDeviceProp props;
     cudaGetDeviceProperties(&props, 0);
@@ -512,8 +558,6 @@ main(int argc, char* argv[])
     // Benchmark pipeline
     KernelConfig c = autotune(array_length, domain_length, pad, radius, stride);
     verify(c);
-    cudaProfilerStart();
     benchmark(c, jobid, seed, num_samples);
-    cudaProfilerStop();
     return EXIT_SUCCESS;
 }
