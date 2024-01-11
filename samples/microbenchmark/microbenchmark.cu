@@ -158,10 +158,10 @@ unrolled_kernel(const dim3 bpg, const dim3 tpb, const size_t smem, const size_t 
         return kernel<512, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
     case 1024:
         return kernel<1024, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
-    case 2048:
-        return kernel<2048, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
-    case 4096:
-        return kernel<4096, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    // case 2048:
+    //     return kernel<2048, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
+    // case 4096:
+    //     return kernel<4096, 1><<<bpg, tpb, smem>>>(domain_length, pad, in, out);
     default:
         fprintf(stderr, "Invalid radius %d\n", radius);
         fflush(stderr);

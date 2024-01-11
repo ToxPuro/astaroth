@@ -244,7 +244,7 @@ def gen_microbenchmarks(system):
             domain_length = int(128 * 1024**2 / bytes_per_elem) # 128 MiB
             stride        = 1
             radius        = 1
-            max_radius    = 4096
+            max_radius    = 1024
             while radius <= max_radius:
                 print(f'srun {system.srun_params} ./microbenchmark {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
                 radius *= 2
@@ -277,7 +277,7 @@ def gen_microbenchmarks(system):
             domain_length = int(128 * 1024**2 / bytes_per_elem) # 128 MiB
             stride        = 1
             radius        = 1
-            max_radius    = 4096
+            max_radius    = 1024
             while radius <= max_radius:
                 print(f'srun {system.srun_params} ./microbenchmark-nn {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
                 radius *= 2
