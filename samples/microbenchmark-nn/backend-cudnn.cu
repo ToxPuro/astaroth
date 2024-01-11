@@ -2,7 +2,7 @@
 
 #include "array.h"
 
-#if USE_DOUBLE
+#if DOUBLE_PRECISION // defined in array.h
 static const cudnnDataType_t dtype = CUDNN_DATA_DOUBLE;
 #else
 static const cudnnDataType_t dtype = CUDNN_DATA_FLOAT;
