@@ -232,32 +232,31 @@ def gen_microbenchmarks(system):
 
 
             # Bandwidth
-            problem_size     = bytes_per_elem
-            working_set_size = bytes_per_elem
-            stride           = 1
-            max_problem_size = 1 * 1024**3    # 1 GiB
-            while problem_size <= max_problem_size:
-                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
-                problem_size *= 2
+            domain_length     = 1
+            radius            = 0
+            stride            = 1
+            max_domain_length = int(1 * 1024**3 / bytes_per_elem)    # 1 GiB
+            while domain_length <= max_domain_length:
+                print(f'srun {system.srun_params} ./microbenchmark {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
+                domain_length *= 2
 
             # Working set
-            problem_size         = 128 * 1024**2 # Bytes, 128 MiB
-            stride               = 1
-            radius               = 1
-            max_radius           = 512
+            domain_length = int(128 * 1024**2 / bytes_per_elem) # 128 MiB
+            stride        = 1
+            radius        = 1
+            max_radius    = 4096
             while radius <= max_radius:
-                working_set_size = (2*radius + 1)*bytes_per_elem
-                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
+                print(f'srun {system.srun_params} ./microbenchmark {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
                 radius *= 2
 
-            # Stride
-            problem_size     = 128 * 1024**2 # Bytes, 128 MiB
-            working_set_size = 55*bytes_per_elem # 55-point stencil in 1D
-            stride           = 1
-            max_stride       = 4192
-            while stride <= max_stride:
-                print(f'srun {system.srun_params} ./microbenchmark {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
-                stride *= 2
+            # # Stride
+            # domain_length     = 128 * 1024**2 # Bytes, 128 MiB
+            # radius = 55*bytes_per_elem # 55-point stencil in 1D
+            # stride           = 1
+            # max_stride       = 4192
+            # while stride <= max_stride:
+            #     print(f'srun {system.srun_params} ./microbenchmark {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
+            #     stride *= 2
 
     with open(f'{scripts_dir}/microbenchmark-nn-f{precision}.sh', 'w') as f:
         with redirect_stdout(f):
@@ -266,31 +265,30 @@ def gen_microbenchmarks(system):
 
 
             # Bandwidth
-            # problem_size     = bytes_per_elem
-            # working_set_size = bytes_per_elem
+            # domain_length     = bytes_per_elem
+            # radius = bytes_per_elem
             # stride           = 1
-            # max_problem_size = 1 * 1024**3    # 1 GiB
-            # while problem_size <= max_problem_size:
-            #     print(f'srun {system.srun_params} ./microbenchmark-nn {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
-            #     problem_size *= 2
+            # max_domain_length = 1 * 1024**3    # 1 GiB
+            # while domain_length <= max_domain_length:
+            #     print(f'srun {system.srun_params} ./microbenchmark-nn {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
+            #     domain_length *= 2
 
             # Working set
-            problem_size         = 128 * 1024**2 # Bytes, 128 MiB
-            stride               = 1
-            radius               = 1
-            max_radius           = 512
+            domain_length = int(128 * 1024**2 / bytes_per_elem) # 128 MiB
+            stride        = 1
+            radius        = 1
+            max_radius    = 4096
             while radius <= max_radius:
-                working_set_size = (2*radius + 1)*bytes_per_elem
-                print(f'srun {system.srun_params} ./microbenchmark-nn {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
+                print(f'srun {system.srun_params} ./microbenchmark-nn {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
                 radius *= 2
 
             # Stride
-            # problem_size     = 128 * 1024**2 # Bytes, 128 MiB
-            # working_set_size = 55*bytes_per_elem # 55-point stencil in 1D
+            # domain_length     = 128 * 1024**2 # Bytes, 128 MiB
+            # radius = 55*bytes_per_elem # 55-point stencil in 1D
             # stride           = 1
             # max_stride       = 4192
             # while stride <= max_stride:
-            #     print(f'srun {system.srun_params} ./microbenchmark-nn {problem_size} {working_set_size} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
+            #     print(f'srun {system.srun_params} ./microbenchmark-nn {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
             #     stride *= 2
 
 # Linear stencil benchmarks
