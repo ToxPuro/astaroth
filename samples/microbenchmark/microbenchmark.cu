@@ -47,6 +47,9 @@ gpu: 0 1 2 3
 
 #include "array.h"
 
+// AMD performance pitfall with templates. Gets around compute bound on NVIDIA
+#define USE_TEMPLATED_IMPLEMENTATION (0)
+
 typedef struct {
     size_t array_length;
     size_t domain_length;
@@ -67,6 +70,7 @@ print(const KernelConfig c)
            c.array_length, c.domain_length, c.pad, c.radius, c.stride, c.tpb, c.bpg, c.smem);
 }
 
+#if USE_TEMPLATED_IMPLEMENTATION
 #if USE_SMEM
 // With shared memory
 static size_t
@@ -168,6 +172,73 @@ unrolled_kernel(const dim3 bpg, const dim3 tpb, const size_t smem, const size_t 
         exit(EXIT_FAILURE);
     }
 }
+#else // NOT USE_TEMPLATED_IMPLEMENTATION
+#if USE_SMEM
+// With shared memory
+static size_t
+get_smem(const int tpb, const int radius)
+{
+    return (tpb + 2 * radius) * sizeof(real);
+}
+
+__global__ void
+#if MAX_THREADS_PER_BLOCK
+__launch_bounds__(MAX_THREADS_PER_BLOCK)
+#endif
+    kernel(const size_t domain_length, const size_t pad, const int radius, const int stride,
+           const Array in, Array out)
+{
+    extern __shared__ real smem[];
+
+    const int base_idx = blockIdx.x * blockDim.x + pad - radius;
+    for (int sid = threadIdx.x; sid < (int)(blockDim.x + 2 * radius); sid += blockDim.x)
+        if (sid + base_idx < in.length)
+            smem[sid] = in.data[sid + base_idx];
+    __syncthreads();
+
+    real tmp = 0.0;
+    for (int i = -radius; i <= radius; i += stride)
+        tmp += smem[threadIdx.x + i + radius];
+
+    const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
+    if (tid < domain_length)
+        out.data[tid + pad] = tmp;
+}
+#else
+// Without shared memory
+static size_t
+get_smem(const size_t tpb, const int radius)
+{
+    (void)tpb;    // Unused
+    (void)radius; // Unused
+    return 0;
+}
+
+__global__ void
+#if MAX_THREADS_PER_BLOCK
+__launch_bounds__(MAX_THREADS_PER_BLOCK)
+#endif
+    kernel(const size_t domain_length, const size_t pad, const int radius, const int stride,
+           const Array in, Array out)
+{
+    const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
+    if (tid < domain_length) {
+
+        real tmp = 0.0;
+        for (int i = -radius; i <= radius; i += stride)
+            tmp += in.data[tid + pad + i];
+        out.data[tid + pad] = tmp;
+    }
+}
+#endif
+static void
+unrolled_kernel(const dim3 bpg, const dim3 tpb, const size_t smem, const size_t domain_length,
+                const size_t pad, const int radius, const int stride, const Array in, Array out)
+{
+    ERRCHK_ALWAYS(stride == 1);
+    return kernel<<<bpg, tpb, smem>>>(domain_length, pad, radius, stride, in, out);
+}
+#endif
 
 void
 model_kernel(const size_t domain_length, const size_t pad, const int radius, const int stride,
