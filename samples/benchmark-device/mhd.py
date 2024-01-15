@@ -535,7 +535,7 @@ if args.library in 'pytorch':
             return torch.stack([x, y, z])
 
         #@torch.compile(options={'max-autotune': True})
-        @torch.compile(mode='max-autotune', fullgraph=True)
+        #@torch.compile(mode='max-autotune', fullgraph=True)
         @torch.no_grad() # Note: not supported with jit
         #@torch.jit.script
         def forward(self, input):
