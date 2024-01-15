@@ -161,7 +161,7 @@ class System:
 mahti = System(id='a100', account='project_2000403', partition='gpusmall', ngpus_per_node=4, gres='gpu:a100',
                modules='module load gcc/11.2.0 openmpi cuda cudnn cmake python-data', use_hip=False, optimal_implementation=1, optimal_tpb=0)
 puhti = System(id='v100', account='project_2000403', partition='gpu', ngpus_per_node=4,
-               gres='gpu:v100', modules='module load gcc/9.4.0 cudnn openmpi cmake', use_hip=False,
+               gres='gpu:v100', modules='module load gcc/9.4.0 cuda cudnn openmpi cmake', use_hip=False,
                additional_commands='''
 #SBATCH --mem=0
 #SBATCH --exclusive
@@ -221,43 +221,47 @@ max_devices = args.num_devices[1]
 # Microbenchmarks
 def gen_microbenchmarks(system):
     # Precision
-    precision = 32 # Bits
+    precisions = [32, 64] # Bits
+    for precision in precisions:
+        bytes_per_elem = int(precision/8) # Bytes
+        assert(bytes_per_elem*8 == precision)
+        with open(f'{scripts_dir}/microbenchmark-f{precision}.sh', 'w') as f:
+            with redirect_stdout(f):
+                # Create the batch script
+                system.print_sbatch_header(ntasks=1)
+
+
+                # Bandwidth
+                domain_length     = 1
+                radius            = 0
+                stride            = 1
+                max_domain_length = int(1 * 1024**3 / bytes_per_elem)    # 1 GiB
+                while domain_length <= max_domain_length:
+                    print(f'srun {system.srun_params} ./microbenchmark {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
+                    domain_length *= 2
+
+                # Working set
+                domain_length = int(128 * 1024**2 / bytes_per_elem) # 128 MiB
+                stride        = 1
+                radius        = 1
+                max_radius    = 1024
+                while radius <= max_radius:
+                    print(f'srun {system.srun_params} ./microbenchmark {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
+                    radius *= 2
+
+                # # Stride
+                # domain_length     = 128 * 1024**2 # Bytes, 128 MiB
+                # radius = 55*bytes_per_elem # 55-point stencil in 1D
+                # stride           = 1
+                # max_stride       = 4192
+                # while stride <= max_stride:
+                #     print(f'srun {system.srun_params} ./microbenchmark {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
+                #     stride *= 2
+
+    # TODO hack (defined multiple times, prone to breaking)
+    precision=32
     bytes_per_elem = int(precision/8) # Bytes
     assert(bytes_per_elem*8 == precision)
-
-    with open(f'{scripts_dir}/microbenchmark-f{precision}.sh', 'w') as f:
-        with redirect_stdout(f):
-            # Create the batch script
-            system.print_sbatch_header(ntasks=1)
-
-
-            # Bandwidth
-            domain_length     = 1
-            radius            = 0
-            stride            = 1
-            max_domain_length = int(1 * 1024**3 / bytes_per_elem)    # 1 GiB
-            while domain_length <= max_domain_length:
-                print(f'srun {system.srun_params} ./microbenchmark {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
-                domain_length *= 2
-
-            # Working set
-            domain_length = int(128 * 1024**2 / bytes_per_elem) # 128 MiB
-            stride        = 1
-            radius        = 1
-            max_radius    = 1024
-            while radius <= max_radius:
-                print(f'srun {system.srun_params} ./microbenchmark {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
-                radius *= 2
-
-            # # Stride
-            # domain_length     = 128 * 1024**2 # Bytes, 128 MiB
-            # radius = 55*bytes_per_elem # 55-point stencil in 1D
-            # stride           = 1
-            # max_stride       = 4192
-            # while stride <= max_stride:
-            #     print(f'srun {system.srun_params} ./microbenchmark {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
-            #     stride *= 2
-
     with open(f'{scripts_dir}/microbenchmark-nn-f{precision}.sh', 'w') as f:
         with redirect_stdout(f):
             # Create the batch script
