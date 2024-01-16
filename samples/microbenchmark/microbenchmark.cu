@@ -50,6 +50,12 @@ gpu: 0 1 2 3
 // AMD performance pitfall with templates. Gets around compute bound on NVIDIA
 #define USE_TEMPLATED_IMPLEMENTATION (0)
 
+#if USE_TEMPLATED_IMPLEMENTATION
+#define ELEMS_PER_THREAD (1)
+#else
+#define ELEMS_PER_THREAD (4) // TODO figure out a good number for both AMD and NVIDIA
+#endif
+
 typedef struct {
     size_t array_length;
     size_t domain_length;
@@ -173,12 +179,43 @@ unrolled_kernel(const dim3 bpg, const dim3 tpb, const size_t smem, const size_t 
     }
 }
 #else // NOT USE_TEMPLATED_IMPLEMENTATION
+// #if USE_SMEM
+// // With shared memory
+// static size_t
+// get_smem(const int tpb, const int radius)
+// {
+//     return (tpb + 2 * radius) * sizeof(real);
+// }
+
+// __global__ void
+// #if MAX_THREADS_PER_BLOCK
+// __launch_bounds__(MAX_THREADS_PER_BLOCK)
+// #endif
+//     kernel(const size_t domain_length, const size_t pad, const int radius, const int stride,
+//            const Array in, Array out)
+// {
+//     extern __shared__ real smem[];
+
+//     const int base_idx = blockIdx.x * blockDim.x + pad - radius;
+//     for (int sid = threadIdx.x; sid < (int)(blockDim.x + 2 * radius); sid += blockDim.x)
+//         if (sid + base_idx < in.length)
+//             smem[sid] = in.data[sid + base_idx];
+//     __syncthreads();
+
+//     real tmp = 0.0;
+//     for (int i = -radius; i <= radius; i += stride)
+//         tmp += smem[threadIdx.x + i + radius];
+
+//     const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
+//     if (tid < domain_length)
+//         out.data[tid + pad] = tmp;
+// }
 #if USE_SMEM
 // With shared memory
 static size_t
 get_smem(const int tpb, const int radius)
 {
-    return (tpb + 2 * radius) * sizeof(real);
+    return (tpb * ELEMS_PER_THREAD + 2 * radius) * sizeof(real);
 }
 
 __global__ void
@@ -190,19 +227,23 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
 {
     extern __shared__ real smem[];
 
-    const int base_idx = blockIdx.x * blockDim.x + pad - radius;
-    for (int sid = threadIdx.x; sid < (int)(blockDim.x + 2 * radius); sid += blockDim.x)
+    const int base_idx = blockIdx.x * blockDim.x * ELEMS_PER_THREAD + pad - radius;
+    for (int sid = threadIdx.x; sid < (int)(blockDim.x * ELEMS_PER_THREAD + 2 * radius);
+         sid += blockDim.x)
         if (sid + base_idx < in.length)
             smem[sid] = in.data[sid + base_idx];
     __syncthreads();
 
-    real tmp = 0.0;
-    for (int i = -radius; i <= radius; i += stride)
-        tmp += smem[threadIdx.x + i + radius];
-
-    const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
-    if (tid < domain_length)
-        out.data[tid + pad] = tmp;
+    real tmp[ELEMS_PER_THREAD] = {0};
+    for (int i = -radius; i <= radius; i += stride) {
+#pragma unroll
+        for (int block = 0; block < ELEMS_PER_THREAD; ++block)
+            tmp[block] += smem[radius + threadIdx.x + i + block * blockDim.x];
+    }
+    const int base_tid = (int)(threadIdx.x + blockIdx.x * blockDim.x * ELEMS_PER_THREAD);
+#pragma unroll
+    for (int block = 0; block < ELEMS_PER_THREAD; ++block)
+        out.data[pad + base_tid + block * blockDim.x] = tmp[block];
 }
 #else
 // Without shared memory
@@ -221,14 +262,25 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
     kernel(const size_t domain_length, const size_t pad, const int radius, const int stride,
            const Array in, Array out)
 {
-    const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
-    if (tid < domain_length) {
+    const int tid              = (int)(threadIdx.x + blockIdx.x * blockDim.x * ELEMS_PER_THREAD);
+    real tmp[ELEMS_PER_THREAD] = {0};
 
-        real tmp = 0.0;
-        for (int i = -radius; i <= radius; i += stride)
-            tmp += in.data[tid + pad + i];
-        out.data[tid + pad] = tmp;
+    for (int i = -radius; i <= radius; i += stride) {
+#pragma unroll
+        for (int block = 0; block < ELEMS_PER_THREAD; ++block)
+            tmp[block] += in.data[pad + tid + block * blockDim.x + i];
+        // tmp[0] += in.data[pad + tid + 0 * blockDim.x + i];
+        // tmp[1] += in.data[pad + tid + 1 * blockDim.x + i];
+        // tmp[2] += in.data[pad + tid + 2 * blockDim.x + i];
+        // tmp[3] += in.data[pad + tid + 3 * blockDim.x + i];
     }
+#pragma unroll
+    for (int block = 0; block < ELEMS_PER_THREAD; ++block)
+        out.data[pad + tid + block * blockDim.x] = tmp[block];
+    // out.data[pad + tid + 0 * blockDim.x] = tmp[0];
+    // out.data[pad + tid + 1 * blockDim.x] = tmp[1];
+    // out.data[pad + tid + 2 * blockDim.x] = tmp[2];
+    // out.data[pad + tid + 3 * blockDim.x] = tmp[3];
 }
 #endif
 static void
@@ -317,10 +369,14 @@ autotune(const size_t array_length, const size_t domain_length, const size_t pad
         // if (tpb % warp_size)
         //     continue;
 
-        const size_t bpg  = (size_t)ceil(1. * c.domain_length / tpb);
+        const size_t bpg  = (size_t)ceil(1. * c.domain_length / tpb / ELEMS_PER_THREAD);
         const size_t smem = get_smem(tpb, c.radius);
 
         if (smem > max_smem)
+            continue;
+
+        // Require that tbdims is divisible by domain length
+        if (bpg * tpb * ELEMS_PER_THREAD != c.domain_length)
             continue;
 
         cudaEventCreate(&tstart);
@@ -426,6 +482,10 @@ verify(const KernelConfig c)
     arrayDestroy(&bhost);
 
     printf("Results verified: %s\n", failure_count ? "Failures found" : "OK!");
+    if (failure_count > 0) {
+        fprintf(stderr, "Failures found. Exiting without benchmarking.\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
 static void
