@@ -124,7 +124,7 @@ class System:
     def load_modules(self):
         syscall(f'module purge')
         syscall(self.modules)
-        
+
     def print_sbatch_header(self, ntasks, ngpus=-1):
         if ngpus < 0:
             ngpus = ntasks
@@ -139,10 +139,11 @@ class System:
         print('#!/bin/bash')
         if self.account:
             print(f'#SBATCH --account={self.account}')
-        if self.gres:
-            print(f'#SBATCH --gres={self.gres}:{gpualloc_per_node}')
-        else:
-            print(f'#SBATCH --gpus-per-node={gpualloc_per_node}')
+        if self.gres is not None:
+            if self.gres:
+                print(f'#SBATCH --gres={self.gres}:{gpualloc_per_node}')
+            else:
+                print(f'#SBATCH --gpus-per-node={gpualloc_per_node}')
         print(f'#SBATCH --partition={self.partition}')
         #print(f'#SBATCH --ntasks={ntasks}')
         print(f'#SBATCH --nodes={nodes}')
@@ -153,7 +154,7 @@ class System:
         #print(f'#SBATCH --ntasks-per-socket={min(ntasks, ngpus/self.nsockets)}')
         #print('#SBATCH --cpu-bind=sockets')
         print(self.additional_commands)
-    
+
         # Load modules
         #print(f'module purge')
         #print(self.modules)
@@ -169,8 +170,13 @@ puhti = System(id='v100', account='project_2000403', partition='gpu', ngpus_per_
 export UCX_RNDV_THRESH=16384
 export UCX_RNDV_SCHEME=get_zcopy
 export UCX_MAX_RNDV_RAILS=1''', optimal_implementation=1, optimal_tpb=0)
-triton = System(id='mi100', account='', partition='gpu-amd', ngpus_per_node=1, gres='',
-                modules='module load gcc bison flex cmake openmpi', use_hip=True, optimal_implementation=1, optimal_tpb=512)
+triton = System(id='mi100', account='', partition='gpu-amd', ngpus_per_node=1, gres=None,
+                modules=
+'''
+module load flex gcc bison cmake openmpi #anaconda # anaconda seems to mess things up
+module load flex gcc bison # workaround for some esoteric ccv1 resolution issue
+module load git # The default version is something like 10 years old
+''', use_hip=True, optimal_implementation=1, optimal_tpb=512)
 lumi = System(id='mi250x', account='project_462000448', partition='small-g', ngpus_per_node=8, gres='', additional_commands='''
 ''',
 #srun_params='--cpu-bind=map_cpu:48,56,16,24,1,8,32,40',
