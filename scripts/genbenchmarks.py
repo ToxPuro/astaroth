@@ -124,7 +124,7 @@ class System:
     def load_modules(self):
         syscall(f'module purge')
         syscall(self.modules)
-        
+
     def print_sbatch_header(self, ntasks, ngpus=-1):
         if ngpus < 0:
             ngpus = ntasks
@@ -139,10 +139,11 @@ class System:
         print('#!/bin/bash')
         if self.account:
             print(f'#SBATCH --account={self.account}')
-        if self.gres:
-            print(f'#SBATCH --gres={self.gres}:{gpualloc_per_node}')
-        else:
-            print(f'#SBATCH --gpus-per-node={gpualloc_per_node}')
+        if self.gres is not None:
+            if self.gres:
+                print(f'#SBATCH --gres={self.gres}:{gpualloc_per_node}')
+            else:
+                print(f'#SBATCH --gpus-per-node={gpualloc_per_node}')
         print(f'#SBATCH --partition={self.partition}')
         #print(f'#SBATCH --ntasks={ntasks}')
         print(f'#SBATCH --nodes={nodes}')
@@ -153,7 +154,7 @@ class System:
         #print(f'#SBATCH --ntasks-per-socket={min(ntasks, ngpus/self.nsockets)}')
         #print('#SBATCH --cpu-bind=sockets')
         print(self.additional_commands)
-    
+
         # Load modules
         #print(f'module purge')
         #print(self.modules)
@@ -169,8 +170,13 @@ puhti = System(id='v100', account='project_2000403', partition='gpu', ngpus_per_
 export UCX_RNDV_THRESH=16384
 export UCX_RNDV_SCHEME=get_zcopy
 export UCX_MAX_RNDV_RAILS=1''', optimal_implementation=1, optimal_tpb=0)
-triton = System(id='mi100', account='', partition='gpu-amd', ngpus_per_node=1, gres='',
-                modules='module load gcc bison flex cmake openmpi', use_hip=True, optimal_implementation=1, optimal_tpb=512)
+triton = System(id='mi100', account='', partition='gpu-amd', ngpus_per_node=1, gres=None,
+                modules=
+'''
+module load flex gcc bison cmake openmpi #anaconda # anaconda seems to mess things up
+module load flex gcc bison # workaround for some esoteric ccv1 resolution issue
+module load git # The default version is something like 10 years old
+''', use_hip=True, optimal_implementation=1, optimal_tpb=512)
 lumi = System(id='mi250x', account='project_462000448', partition='small-g', ngpus_per_node=8, gres='', additional_commands='''
 ''',
 #srun_params='--cpu-bind=map_cpu:48,56,16,24,1,8,32,40',
@@ -221,27 +227,26 @@ max_devices = args.num_devices[1]
 # Microbenchmarks
 def gen_microbenchmarks(system):
     # Precision
-    precisions = [32, 64] # Bits
+    test_domain_length = int(128 * 1024**2 / 4) # 128 MiB with f32
+
+    precisions = [32, 64]
     for precision in precisions:
-        bytes_per_elem = int(precision/8) # Bytes
-        assert(bytes_per_elem*8 == precision)
         with open(f'{scripts_dir}/microbenchmark-f{precision}.sh', 'w') as f:
             with redirect_stdout(f):
                 # Create the batch script
                 system.print_sbatch_header(ntasks=1)
 
-
                 # Bandwidth
                 domain_length     = 1
                 radius            = 0
                 stride            = 1
-                max_domain_length = int(1 * 1024**3 / bytes_per_elem)    # 1 GiB
+                max_domain_length = 8*test_domain_length # 8 * 128 MiB = 1 GiB with f32
                 while domain_length <= max_domain_length:
                     print(f'srun {system.srun_params} ./microbenchmark {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
                     domain_length *= 2
 
                 # Working set
-                domain_length = int(128 * 1024**2 / bytes_per_elem) # 128 MiB
+                domain_length = test_domain_length
                 stride        = 1
                 radius        = 1
                 max_radius    = 1024
@@ -258,42 +263,39 @@ def gen_microbenchmarks(system):
                 #     print(f'srun {system.srun_params} ./microbenchmark {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
                 #     stride *= 2
 
-    # TODO hack (defined multiple times, prone to breaking)
-    precision=32
-    bytes_per_elem = int(precision/8) # Bytes
-    assert(bytes_per_elem*8 == precision)
-    with open(f'{scripts_dir}/microbenchmark-nn-f{precision}.sh', 'w') as f:
-        with redirect_stdout(f):
-            # Create the batch script
-            system.print_sbatch_header(ntasks=1)
+        if precision == 32:
+            with open(f'{scripts_dir}/microbenchmark-nn-f{precision}.sh', 'w') as f:
+                with redirect_stdout(f):
+                    # Create the batch script
+                    system.print_sbatch_header(ntasks=1)
 
 
-            # Bandwidth
-            # domain_length     = bytes_per_elem
-            # radius = bytes_per_elem
-            # stride           = 1
-            # max_domain_length = 1 * 1024**3    # 1 GiB
-            # while domain_length <= max_domain_length:
-            #     print(f'srun {system.srun_params} ./microbenchmark-nn {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
-            #     domain_length *= 2
+                    # Bandwidth
+                    # domain_length     = bytes_per_elem
+                    # radius = bytes_per_elem
+                    # stride           = 1
+                    # max_domain_length = 1 * 1024**3    # 1 GiB
+                    # while domain_length <= max_domain_length:
+                    #     print(f'srun {system.srun_params} ./microbenchmark-nn {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
+                    #     domain_length *= 2
 
-            # Working set
-            domain_length = int(128 * 1024**2 / bytes_per_elem) # 128 MiB
-            stride        = 1
-            radius        = 1
-            max_radius    = 1024
-            while radius <= max_radius:
-                print(f'srun {system.srun_params} ./microbenchmark-nn {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
-                radius *= 2
+                    # Working set
+                    domain_length = test_domain_length
+                    stride        = 1
+                    radius        = 1
+                    max_radius    = 1024
+                    while radius <= max_radius:
+                        print(f'srun {system.srun_params} ./microbenchmark-nn {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
+                        radius *= 2
 
-            # Stride
-            # domain_length     = 128 * 1024**2 # Bytes, 128 MiB
-            # radius = 55*bytes_per_elem # 55-point stencil in 1D
-            # stride           = 1
-            # max_stride       = 4192
-            # while stride <= max_stride:
-            #     print(f'srun {system.srun_params} ./microbenchmark-nn {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
-            #     stride *= 2
+                    # Stride
+                    # domain_length     = 128 * 1024**2 # Bytes, 128 MiB
+                    # radius = 55*bytes_per_elem # 55-point stencil in 1D
+                    # stride           = 1
+                    # max_stride       = 4192
+                    # while stride <= max_stride:
+                    #     print(f'srun {system.srun_params} ./microbenchmark-nn {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
+                    #     stride *= 2
 
 # Linear stencil benchmarks
 def gen_convolutionbenchmarks(system):
