@@ -191,6 +191,8 @@ if (BUILD_SAMPLES)
     add_subdirectory(samples/microbenchmark)
 
     if (BUILD_MLLIB_SAMPLES)
+	# Workaround for finding miopen on Triton
+	link_directories(/opt/rocm/miopen/lib/)
         add_subdirectory(samples/microbenchmark-nn)
     endif ()
 
