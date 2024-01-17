@@ -1,9 +1,5 @@
 add_executable(microbenchmark microbenchmark.cu)
 
-# OpenMP
-find_package(OpenMP)
-target_link_libraries(bwtest-io OpenMP::OpenMP_C)
-
 # Include directories
 target_include_directories(microbenchmark PRIVATE ${CMAKE_SOURCE_DIR}/acc-runtime/api)
 
