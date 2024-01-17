@@ -48,7 +48,8 @@ gpu: 0 1 2 3
 #include "array.h"
 
 // AMD performance pitfall with templates. Gets around compute bound on NVIDIA
-#define USE_TEMPLATED_IMPLEMENTATION (0)
+// Works properly on MI100 and Triton (HIP 5.0 and Clang 14.0)
+#define USE_TEMPLATED_IMPLEMENTATION (1)
 
 #if USE_TEMPLATED_IMPLEMENTATION
 #define ELEMS_PER_THREAD (1)
