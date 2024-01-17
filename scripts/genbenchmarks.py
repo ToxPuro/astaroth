@@ -162,7 +162,7 @@ class System:
 mahti = System(id='a100', account='project_2000403', partition='gpusmall', ngpus_per_node=4, gres='gpu:a100',
                modules='module load gcc/11.2.0 openmpi cuda cudnn cmake python-data', use_hip=False, optimal_implementation=1, optimal_tpb=0)
 puhti = System(id='v100', account='project_2000403', partition='gpu', ngpus_per_node=4,
-               gres='gpu:v100', modules='module load gcc/9.4.0 cuda cudnn openmpi cmake', use_hip=False,
+               gres='gpu:v100', modules='module load gcc/9.4.0 cuda cudnn/8.0.5.39-11.1 openmpi cmake', use_hip=False,
                additional_commands='''
 #SBATCH --mem=0
 #SBATCH --exclusive
