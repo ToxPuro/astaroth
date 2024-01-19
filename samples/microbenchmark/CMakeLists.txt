@@ -28,3 +28,9 @@ endif()
 target_compile_options(microbenchmark PRIVATE -DUSE_SMEM=${USE_SMEM})
 # cmake -DMAX_THREADS_PER_BLOCK=192 .. to set launch bounds in bwtest-benchmark
 target_compile_options(microbenchmark PRIVATE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
+
+if (NOT DEFINED MB_IMPLEMENTATION)
+    set(MB_IMPLEMENTATION 1)
+endif()
+target_compile_options(microbenchmark PRIVATE -DMB_IMPLEMENTATION=${MB_IMPLEMENTATION})
+

@@ -47,6 +47,8 @@ See Unix globbing for passing files/directories to the script more easily.
 
 implementation_names = ['implicit', 'explicit'] #, 'explicit3d', 'explicit4d', 'pingpongtxw', 'pingpongtxy', 'explicit_old']
 implementations = dict((key, value+1) for value,key in enumerate(implementation_names))
+mb_implementation_names = [1,2,3] #, 'explicit3d', 'explicit4d', 'pingpongtxw', 'pingpongtxy', 'explicit_old']
+mb_implementations = dict((key, value+1) for value,key in enumerate(implementation_names))
 
 ## General arguments
 parser.add_argument('--task-type', type=str, nargs='+', choices=['genmakefiles', 'genscripts', 'preprocess', 'build', 'run', 'postprocess', 'clean-results', 'clean-builds'], help='The type of the task performed with this script', required=True)
@@ -54,6 +56,7 @@ parser.add_argument('--dims', type=int, default=[128, 128, 128], nargs=3, help='
 parser.add_argument('--dryrun', action='store_true', help='Do a dryrun without compiling or running. Prints os commands to stdout.')
 ## Preprocess arguments
 parser.add_argument('--implementations', type=str, nargs='+', choices=implementation_names, default=implementation_names, help='The list of implementations used in testing')
+parser.add_argument('--mb-implementations', type=int, nargs='+', choices=mb_implementation_names, default=mb_implementation_names, help='The list of microbenchmark implementations used in testing')
 parser.add_argument('--io-implementations', type=str, nargs='+', choices=['collective', 'distributed'], default=['distributed'], help='The list of IO implementations used in testing')
 parser.add_argument('--max-threads-per-block-range', type=int, nargs=2, default=[0, 1024], help='The range for the maximum number of threads per block applied to launch bounds in testing (inclusive)')
 parser.add_argument('--cmakelistdir', type=str, default='.', help='Directory containing the project CMakeLists.txt')
@@ -452,48 +455,49 @@ def gen_iobenchmarks(system, nx, ny, nz, min_devices, max_devices):
 if 'preprocess' in args.task_type or 'genmakefiles' in args.task_type:
     # Builds
     syscall(f'mkdir -p {builds_dir}')
-    for implementation in args.implementations:
-        for io_implementation in args.io_implementations:
-            for double_precision in [0, 1]:
-                tpb = args.max_threads_per_block_range[0]
-                while tpb <= args.max_threads_per_block_range[1]:
+    for mbimplementation in args.mb_implementations:
+        for implementation in args.implementations:
+            for io_implementation in args.io_implementations:
+                for double_precision in [0, 1]:
+                    tpb = args.max_threads_per_block_range[0]
+                    while tpb <= args.max_threads_per_block_range[1]:
 
-                    # Nonlinear stencil builds (default Astaroth)
-                    #impl_id     = 1 if implementation == 'implicit' else 2
-                    impl_id = implementations[implementation]
-                    use_smem    = implementation == 'explicit'
-                    distributed = io_implementation == 'distributed'
+                        # Nonlinear stencil builds (default Astaroth)
+                        #impl_id     = 1 if implementation == 'implicit' else 2
+                        impl_id = implementations[implementation]
+                        use_smem    = implementation == 'explicit'
+                        distributed = io_implementation == 'distributed'
 
-                    build_dir = f'{builds_dir}/implementation{impl_id}_maxthreadsperblock{tpb}_distributed{distributed}_doubleprecision{double_precision}'
-                    syscall(f'mkdir -p {build_dir}')
+                        build_dir = f'{builds_dir}/implementation{impl_id}_maxthreadsperblock{tpb}_mbimplementation{mbimplementation}_distributed{distributed}_doubleprecision{double_precision}'
+                        syscall(f'mkdir -p {build_dir}')
 
-                    # Generate Makefile
-                    flags = f'''-DOPTIMIZE_MEM_ACCESSES={args.optimize_mem_accesses} -DMPI_ENABLED={args.mpi_enabled} -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed} -DDOUBLE_PRECISION={double_precision}'''
-                    
-                    cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
-                    syscall_async(cmd)
+                        # Generate Makefile
+                        flags = f'''-DMB_IMPLEMENTATION={mbimplementation} -DOPTIMIZE_MEM_ACCESSES={args.optimize_mem_accesses} -DMPI_ENABLED={args.mpi_enabled} -DUSE_HIP={system.use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed} -DDOUBLE_PRECISION={double_precision}'''
+                        
+                        cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
+                        syscall_async(cmd)
 
-                    build_info = f'{build_dir}/build-info-{system.id}.txt'
-                    syscall(f'date > {build_info}')
-                    syscall(f'echo {cmd} >> {build_info}')
-                    syscall(f'git -C {args.cmakelistdir} rev-parse HEAD >> {build_info}')
+                        build_info = f'{build_dir}/build-info-{system.id}.txt'
+                        syscall(f'date > {build_info}')
+                        syscall(f'echo {cmd} >> {build_info}')
+                        syscall(f'git -C {args.cmakelistdir} rev-parse HEAD >> {build_info}')
 
-                    # Linear stencil computations (heat-equation sample)
-                    build_dir = f'{builds_dir}/heat-equation-implementation{impl_id}_maxthreadsperblock{tpb}_distributed{distributed}_doubleprecision{double_precision}'
-                    syscall(f'mkdir -p {build_dir}')
-                    # Generate Makefile
-                    use_hip = 1 if system.use_hip else 0
-                    flags = f'''-DBUILD_STANDALONE=OFF -DBUILD_MHD_SAMPLES=OFF -DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR={args.cmakelistdir}/samples/heat-equation/ -DPROGRAM_MODULE_DIR={args.cmakelistdir}/samples/heat-equation -DUSE_HIP={use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed} -DDOUBLE_PRECISION={double_precision}'''
-                    
-                    cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
-                    syscall_async(cmd)
+                        # Linear stencil computations (heat-equation sample)
+                        build_dir = f'{builds_dir}/heat-equation-implementation{impl_id}_maxthreadsperblock{tpb}_distributed{distributed}_doubleprecision{double_precision}'
+                        syscall(f'mkdir -p {build_dir}')
+                        # Generate Makefile
+                        use_hip = 1 if system.use_hip else 0
+                        flags = f'''-DBUILD_STANDALONE=OFF -DBUILD_MHD_SAMPLES=OFF -DBUILD_SAMPLES=OFF -DDSL_MODULE_DIR={args.cmakelistdir}/samples/heat-equation/ -DPROGRAM_MODULE_DIR={args.cmakelistdir}/samples/heat-equation -DUSE_HIP={use_hip} -DIMPLEMENTATION={impl_id} -DUSE_SMEM={use_smem} -DMAX_THREADS_PER_BLOCK={tpb} -DUSE_DISTRIBUTED_IO={distributed} -DDOUBLE_PRECISION={double_precision}'''
+                        
+                        cmd = f'cmake {flags} -S {args.cmakelistdir} -B {build_dir}'
+                        syscall_async(cmd)
 
-                    build_info = f'{build_dir}/build-info-{system.id}.txt'
-                    syscall(f'date > {build_info}')
-                    syscall(f'echo {cmd} >> {build_info}')
-                    syscall(f'git -C {args.cmakelistdir} rev-parse HEAD >> {build_info}')
+                        build_info = f'{build_dir}/build-info-{system.id}.txt'
+                        syscall(f'date > {build_info}')
+                        syscall(f'echo {cmd} >> {build_info}')
+                        syscall(f'git -C {args.cmakelistdir} rev-parse HEAD >> {build_info}')
 
-                    tpb = 32 if tpb == 0 else 2*tpb
+                        tpb = 32 if tpb == 0 else 2*tpb
     syscalls_wait()    
 
 # Generate scripts
