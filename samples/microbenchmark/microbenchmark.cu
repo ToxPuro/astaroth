@@ -47,15 +47,26 @@ gpu: 0 1 2 3
 
 #include "array.h"
 
+// MB_IMPLEMENTATION
+//      1: 1 element per thread
+//      2: 4 elements per thread
+//      3: templated unrolling
+#if MB_IMPLEMENTATION == 1
+    #define USE_TEMPLATED_IMPLEMENTATION (0)
+    #define ELEMS_PER_THREAD (1)
+#elif MB_IMPLEMENTATION == 2
+    #define USE_TEMPLATED_IMPLEMENTATION (0)
+    #define ELEMS_PER_THREAD (4)
+#elif MB_IMPLEMENTATION == 3
+    #define USE_TEMPLATED_IMPLEMENTATION (1)
+    #define ELEMS_PER_THREAD (1)
+#else
+    invalid implementation
+#endif
+
 // AMD performance pitfall with templates. Gets around compute bound on NVIDIA
 // Works properly on MI100 and Triton (HIP 5.0 and Clang 14.0)
-#define USE_TEMPLATED_IMPLEMENTATION (1)
-
-#if USE_TEMPLATED_IMPLEMENTATION
-#define ELEMS_PER_THREAD (1)
-#else
-#define ELEMS_PER_THREAD (4) // TODO figure out a good number for both AMD and NVIDIA
-#endif
+// #define USE_TEMPLATED_IMPLEMENTATION (1)
 
 typedef struct {
     size_t array_length;
@@ -509,7 +520,7 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
 
     // File format
     fprintf(fp, "implementation,maxthreadsperblock,domainlength,radius,stride,milliseconds,"
-                "effectivebandwidth,tpb,jobid,seed,iteration,double_precision\n");
+                "effectivebandwidth,tpb,jobid,seed,iteration,double_precision,mbimplementation\n");
 
     // Dryrun
     unrolled_kernel(c.bpg, c.tpb, c.smem, c.domain_length, c.pad, c.radius, c.stride, a, b);
@@ -543,10 +554,10 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
         }
 
         // Write to file
-        fprintf(fp, "%s,%d,%zu,%zu,%d,%g,%g,%zu,%zu,%zu,%zu,%u\n",
+        fprintf(fp, "%s,%d,%zu,%zu,%d,%g,%g,%zu,%zu,%zu,%zu,%u,%u\n",
                 USE_SMEM ? "\"explicit\"" : "\"implicit\"", MAX_THREADS_PER_BLOCK, c.domain_length,
                 c.radius, c.stride, (double)milliseconds, bandwidth, c.tpb, jobid, seed, i,
-                DOUBLE_PRECISION);
+                DOUBLE_PRECISION,MB_IMPLEMENTATION);
     }
     cudaEventDestroy(tstart);
     cudaEventDestroy(tstop);
@@ -624,7 +635,6 @@ get_pad(const size_t radius)
 int
 main(int argc, char* argv[])
 {
-
     cudaProfilerStop();
 
     // Input parameters
@@ -680,6 +690,8 @@ main(int argc, char* argv[])
     printf("USE_SMEM=%d\n", USE_SMEM);
     printf("MAX_THREADS_PER_BLOCK=%d\n", MAX_THREADS_PER_BLOCK);
     printf("DOUBLE_PRECISION=%u\n", DOUBLE_PRECISION);
+    printf("MB_IMPLEMENTATION=%d\n", MB_IMPLEMENTATION);
+    printf("ELEMS_PER_THREAD=%d\n", ELEMS_PER_THREAD);
 
     // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte);
     // cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
