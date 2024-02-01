@@ -725,6 +725,7 @@ print_mpi_array(const char* str, const int arr[3])
 }
 */
 
+
 static void
 get_subarray(const int pid, //
              int monolithic_mm_arr[3], int monolithic_nn_arr[3],
@@ -785,17 +786,17 @@ get_subarray(const int pid, //
     to_mpi_array_order_c(distributed_offset, distributed_offset_arr);
 
     /*
-      printf("------\n");
-      printf("pid %d\n", pid);
-      print_mpi_array("monol mm", monolithic_mm_arr);
-      print_mpi_array("monol nn", monolithic_nn_arr);
-      print_mpi_array("monol os", monolithic_offset_arr);
+    printf("------\n");
+    printf("pid %d\n", pid);
+    print_mpi_array("monol mm", monolithic_mm_arr);
+    print_mpi_array("monol nn", monolithic_nn_arr);
+    print_mpi_array("monol os", monolithic_offset_arr);
 
-      print_mpi_array("distr mm", distributed_mm_arr);
-      print_mpi_array("distr nn", distributed_nn_arr);
-      print_mpi_array("distr os", distributed_offset_arr);
-      printf("------\n");
-      */
+    print_mpi_array("distr mm", distributed_mm_arr);
+    print_mpi_array("distr nn", distributed_nn_arr);
+    print_mpi_array("distr os", distributed_offset_arr);
+    printf("------\n");
+    */
 }
 
 // With ghost zone
