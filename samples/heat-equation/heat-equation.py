@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(description='A tool for generating benchmarks')
 parser.add_argument('--dims', type=int, nargs=3, default=[1024, 1024, 1], help='Dimensions of the computational domain')
 parser.add_argument('--device', type=str, default='gpu', choices=['cpu', 'gpu'], help='The device used for the benchmarks')
 parser.add_argument('--radius', type=int, default=1, help='Sets the stencil radius')
-parser.add_argument('--dtype', default='fp64', choices=['fp32', 'fp64'], help='The precision used for the benchmarks')
+parser.add_argument('--dtype', default='fp32', choices=['fp32', 'fp64'], help='The precision used for the benchmarks')
 parser.add_argument('--library', required=True, choices=['pytorch', 'tensorflow', 'jax'], help='The underlying library used for benchmarking')
 parser.add_argument('--verify', type=int, default=1, help='Verify results with the model solution')
 parser.add_argument('--jobid', type=int, default=0, help='Set the job id')
@@ -52,6 +52,7 @@ seed = int(args.salt + time.time() + args.jobid * time.time()) % (2**32-1)
 # %%
 # Model
 import scipy
+from scipy import ndimage
 def convolve(input, weights):
     return scipy.ndimage.convolve(input, weights, mode='constant', output=args.dtype)
 
