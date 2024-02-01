@@ -17,7 +17,6 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "astaroth.h"
-#include <mpi.h>
 #include "kernels/kernels.h"
 
 #define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \

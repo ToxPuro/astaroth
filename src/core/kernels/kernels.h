@@ -180,12 +180,6 @@ AcResult acKernelVolumeCopy(const cudaStream_t stream,                          
 // Astaroth 2.0 backwards compatibility.
 AcResult acKernel(const KernelParameters params, VertexBufferArray vba);
 
-/** */
-AcResult
-acKernelCombine(const cudaStream_t stream, const VertexBufferArray vba, const int3 vba_start,
-                 const int3 vba_end);
-__global__ void
-kernel_combine(const int3 vba_start, const int3 vba_end, const VertexBufferArray vba);
 
 AcResult
 acLaunchKernelDebug(Kernel kernel, const cudaStream_t stream, const int3 vba_start,
