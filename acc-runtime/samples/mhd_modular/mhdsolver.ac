@@ -11,14 +11,14 @@ hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
-hostdefine LENTROPY (0)
+hostdefine LENTROPY (1)
 hostdefine LTEMPERATURE (0)
-hostdefine LFORCING (1)
+hostdefine LFORCING (0)
 hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
-hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // TODO: make an actual config parameter
+//hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
@@ -49,6 +49,7 @@ real AC_bin_save_t
 
 // slices output period
 int AC_slice_steps
+real AC_slice_save_t
 
 // max simulation time
 int AC_max_steps
@@ -116,6 +117,7 @@ real AC_lnrho0
 real AC_zeta
 real AC_trans
 real AC_nu_shock
+real AC_K_heatcond
 
 //  Parameters for generic boundary conditions, this is a dummy variable for testing, please use different ones for each field
 real AC_boundary_derivative
@@ -123,6 +125,7 @@ real AC_boundary_derivative
 //  Parameters only used in boundary conditions at the moment
 //  If you feel they should be elsewhere, please move them
 real AC_hcond0_kramers
+real AC_hflux
 real AC_n_kramers
 real AC_sigma_SBt
 real AC_chi
@@ -132,12 +135,15 @@ real AC_chi_t_prof1
 //  Initial condition params
 real AC_ampl_lnrho
 real AC_ampl_uu
+real AC_init_ampl_uu
 real AC_angl_uu
 real AC_lnrho_edge
 real AC_lnrho_out
 real AC_ampl_aa
 real AC_init_k_wave
 real AC_init_sigma_hel
+real AC_init_shell_radius
+real AC_init_shell_width
 //  Forcing parameters. User configured.
 real AC_forcing_magnitude
 real AC_relhel
@@ -399,108 +405,6 @@ Stencil der6z_upwd {
     [3][0][0]  =  AC_inv_dsz * DER6UPWD_3
 }
 
-//// This is now donw with a stencil. See smooth_kernel.ach 
-////smooth_kernel(field)
-////{
-////    // From Pencil Code src/shock_highorder.f90
-////    // Gaussian weights
-////    real weights = 1.0, 9.0, 45.0, 70.0, 45.0, 9.0, 1.0
-////
-////    smooth_norm = 5832000.0 // Based on separate calculations
-////
-////    smoothed = 0.0
-////    for k in 0:len(weights) {
-////        for j in 0:len(weights) {
-////            for i in 0:len(weights) {
-////                iver = -3 + i
-////                jver = -3 + j
-////                kver = -3 + k
-////
-////                smooth_factor = (weights[i] * weights[j] * weights[k]) / smooth_norm
-////                smoothed = smoothed + smooth_factor * FIELD_IN[field][IDX(vertexIdx.x+iver, vertexIdx.y+jver, vertexIdx.z+kver)]
-////            }
-////        }
-////    }
-////    return smoothed
-////}
-
-#if LSHOCK
-
-////max5(field)
-////{
-////    maxval    = value(field)
-////
-////    //real maxvector = value_xm3(field), value_xm2(field), value_xm1(field), value_xp1(field), value_xp2(field), value_xp3(field), 
-////    //                 value_ym3(field), value_ym2(field), value_ym1(field), value_yp1(field), value_yp2(field), value_yp3(field),
-////    //                 value_zm3(field), value_zm2(field), value_zm1(field), value_zp1(field), value_zp2(field), value_zp3(field) 
-////
-////    //Maxvector with all fields!
-////
-////    //Using 55 point stencil to find the nearby max. having full square is
-////    //numerically too expensive! Or does not finish compilation.  
-////    //real maxvector = value_XM3_YM3_ZM3(field), value_XP3_YM3_ZM3(field), value_XC0_YC0_ZM3(field), value_XM3_YP3_ZM3(field), value_XP3_YP3_ZM3(field), value_XM2_YM2_ZM2(field), value_XP2_YM2_ZM2(field), 
-////    //                 value_XC0_YC0_ZM2(field), value_XM2_YP2_ZM2(field), value_XP2_YP2_ZM2(field), value_XM1_YM1_ZM1(field), value_XP1_YM1_ZM1(field), value_XC0_YC0_ZM1(field), value_XM1_YP1_ZM1(field), 
-////    //                 value_XP1_YP1_ZM1(field), value_XC0_YM3_ZC0(field), value_XC0_YM2_ZC0(field), value_XC0_YM1_ZC0(field), value_XM3_YC0_ZC0(field), value_XM2_YC0_ZC0(field), value_XM1_YC0_ZC0(field), 
-////    //                 value_XC0_YC0_ZC0(field), value_XP1_YC0_ZC0(field), value_XP2_YC0_ZC0(field), value_XP3_YC0_ZC0(field), value_XC0_YP1_ZC0(field), value_XC0_YP2_ZC0(field), value_XC0_YP3_ZC0(field), 
-////    //                 value_XM1_YM1_ZP1(field), value_XP1_YM1_ZP1(field), value_XC0_YC0_ZP1(field), value_XM1_YP1_ZP1(field), value_XP1_YP1_ZP1(field), value_XM2_YM2_ZP2(field), value_XP2_YM2_ZP2(field), 
-////    //                 value_XC0_YC0_ZP2(field), value_XM2_YP2_ZP2(field), value_XP2_YP2_ZP2(field), value_XM3_YM3_ZP3(field), value_XP3_YM3_ZP3(field), value_XC0_YC0_ZP3(field), value_XM3_YP3_ZP3(field), 
-////    //                 value_XP3_YP3_ZP3(field) 
-////    //Max radius style stencil   
-////    
-////    // Too big to compile               
-////    //real maxvector = value_XC0_YC0_ZM3(field), value_XM1_YM2_ZM2(field), value_XC0_YM2_ZM2(field), value_XP1_YM2_ZM2(field), 
-////    //                 value_XM2_YM1_ZM2(field), value_XM1_YM1_ZM2(field), value_XC0_YM1_ZM2(field), value_XP1_YM1_ZM2(field), 
-////    //                 value_XP2_YM1_ZM2(field), value_XM2_YC0_ZM2(field), value_XM1_YC0_ZM2(field), value_XC0_YC0_ZM2(field), 
-////    //                 value_XP1_YC0_ZM2(field), value_XP2_YC0_ZM2(field), value_XM2_YP1_ZM2(field), value_XM1_YP1_ZM2(field), 
-////    //                 value_XC0_YP1_ZM2(field), value_XP1_YP1_ZM2(field), value_XP2_YP1_ZM2(field), value_XM1_YP2_ZM2(field), 
-////    //                 value_XC0_YP2_ZM2(field), value_XP1_YP2_ZM2(field), value_XM2_YM2_ZM1(field), value_XM1_YM2_ZM1(field), 
-////    //                 value_XC0_YM2_ZM1(field), value_XP1_YM2_ZM1(field), value_XP2_YM2_ZM1(field), value_XM2_YM1_ZM1(field), 
-////    //                 value_XM1_YM1_ZM1(field), value_XC0_YM1_ZM1(field), value_XP1_YM1_ZM1(field), value_XP2_YM1_ZM1(field), 
-////    //                 value_XM2_YC0_ZM1(field), value_XM1_YC0_ZM1(field), value_XC0_YC0_ZM1(field), value_XP1_YC0_ZM1(field), 
-////    //                 value_XP2_YC0_ZM1(field), value_XM2_YP1_ZM1(field), value_XM1_YP1_ZM1(field), value_XC0_YP1_ZM1(field), 
-////    //                 value_XP1_YP1_ZM1(field), value_XP2_YP1_ZM1(field), value_XM2_YP2_ZM1(field), value_XM1_YP2_ZM1(field), 
-////    //                 value_XC0_YP2_ZM1(field), value_XP1_YP2_ZM1(field), value_XP2_YP2_ZM1(field), value_XC0_YM3_ZC0(field), 
-////    //                 value_XM2_YM2_ZC0(field), value_XM1_YM2_ZC0(field), value_XC0_YM2_ZC0(field), value_XP1_YM2_ZC0(field), 
-////    //                 value_XP2_YM2_ZC0(field), value_XM2_YM1_ZC0(field), value_XM1_YM1_ZC0(field), value_XC0_YM1_ZC0(field), 
-////    //                 value_XP1_YM1_ZC0(field), value_XP2_YM1_ZC0(field), value_XM3_YC0_ZC0(field), value_XM2_YC0_ZC0(field), 
-////    //                 value_XM1_YC0_ZC0(field), value_XC0_YC0_ZC0(field), value_XP1_YC0_ZC0(field), value_XP2_YC0_ZC0(field), 
-////    //                 value_XP3_YC0_ZC0(field), value_XM2_YP1_ZC0(field), value_XM1_YP1_ZC0(field), value_XC0_YP1_ZC0(field), 
-////    //                 value_XP1_YP1_ZC0(field), value_XP2_YP1_ZC0(field), value_XM2_YP2_ZC0(field), value_XM1_YP2_ZC0(field), 
-////    //                 value_XC0_YP2_ZC0(field), value_XP1_YP2_ZC0(field), value_XP2_YP2_ZC0(field), value_XC0_YP3_ZC0(field), 
-////    //                 value_XM2_YM2_ZP1(field), value_XM1_YM2_ZP1(field), value_XC0_YM2_ZP1(field), value_XP1_YM2_ZP1(field), 
-////    //                 value_XP2_YM2_ZP1(field), value_XM2_YM1_ZP1(field), value_XM1_YM1_ZP1(field), value_XC0_YM1_ZP1(field), 
-////    //                 value_XP1_YM1_ZP1(field), value_XP2_YM1_ZP1(field), value_XM2_YC0_ZP1(field), value_XM1_YC0_ZP1(field), 
-////    //                 value_XC0_YC0_ZP1(field), value_XP1_YC0_ZP1(field), value_XP2_YC0_ZP1(field), value_XM2_YP1_ZP1(field), 
-////    //                 value_XM1_YP1_ZP1(field), value_XC0_YP1_ZP1(field), value_XP1_YP1_ZP1(field), value_XP2_YP1_ZP1(field), 
-////    //                 value_XM2_YP2_ZP1(field), value_XM1_YP2_ZP1(field), value_XC0_YP2_ZP1(field), value_XP1_YP2_ZP1(field), 
-////    //                 value_XP2_YP2_ZP1(field), value_XM1_YM2_ZP2(field), value_XC0_YM2_ZP2(field), value_XP1_YM2_ZP2(field), 
-////    //                 value_XM2_YM1_ZP2(field), value_XM1_YM1_ZP2(field), value_XC0_YM1_ZP2(field), value_XP1_YM1_ZP2(field), 
-////    //                 value_XP2_YM1_ZP2(field), value_XM2_YC0_ZP2(field), value_XM1_YC0_ZP2(field), value_XC0_YC0_ZP2(field), 
-////    //                 value_XP1_YC0_ZP2(field), value_XP2_YC0_ZP2(field), value_XM2_YP1_ZP2(field), value_XM1_YP1_ZP2(field), 
-////    //                 value_XC0_YP1_ZP2(field), value_XP1_YP1_ZP2(field), value_XP2_YP1_ZP2(field), value_XM1_YP2_ZP2(field), 
-////    //                 value_XC0_YP2_ZP2(field), value_XP1_YP2_ZP2(field), value_XC0_YC0_ZP3(field) 
-////
-////    //for ind in 0:len(maxvector) {
-////    //    sample = maxvector[ind]
-////    //    if sample > maxval {
-////    //        maxval = sample
-////    //    }
-////    //}
-////
-////    for iz in -3:4 {
-////        for iy in -3:4 {
-////            for ix in -3:4 {
-////                sample = FIELD_IN[field][IDX(vertexIdx.x+ix, vertexIdx.y+iy, vertexIdx.z+iz)] // And also individual index components
-////                if sample > maxval {
-////                    maxval = sample
-////                }
-////            }
-////        }
-////    }
-////    return maxval
-////}
-
-#endif
 
 vecvalue(v) {
     return real3(value(v.x), value(v.y), value(v.z))
@@ -578,6 +482,22 @@ contract(mat) {
     return dot(mat.row(0), mat.row(0)) +
            dot(mat.row(1), mat.row(1)) +
            dot(mat.row(2), mat.row(2))
+}
+
+length(v1,v2) {
+    return sqrt( dot(v1-v2,v1-v2) )
+}
+
+grid_position() {
+    return real3((globalVertexIdx.x - AC_nx_min) * AC_dsx, 
+                 (globalVertexIdx.y - AC_ny_min) * AC_dsy, 
+                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
+}
+
+grid_centre() {
+    return real3(((globalGridN.x-1) * AC_dsx)/2.0, 
+                 ((globalGridN.y-1) * AC_dsy)/2.0, 
+                 ((globalGridN.z-1) * AC_dsz)/2.0)
 }
 
 
@@ -694,7 +614,8 @@ heat_conduction() {
     second_term = AC_gamma * inv_AC_cp_sound * gradient(VTXBUF_ENTROPY) + (AC_gamma - 1.) * gradient(VTXBUF_LNRHO)
     third_term = AC_gamma * (inv_AC_cp_sound * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO)) + grad_ln_chi
 
-    chi = AC_THERMAL_CONDUCTIVITY / (exp(value(VTXBUF_LNRHO)) * AC_cp_sound)
+    //chi = AC_THERMAL_CONDUCTIVITY / (exp(value(VTXBUF_LNRHO)) * AC_cp_sound)
+    chi = AC_K_heatcond / (exp(value(VTXBUF_LNRHO)) * AC_cp_sound)
 
     return AC_cp_sound * chi * (first_term + dot(second_term, third_term))
 }
@@ -743,11 +664,19 @@ max5_shock()
 
 Kernel shock_1_divu()
 {
+    for field in 0:NUM_FIELDS {
+        write(Field(field), value(field))
+    }
+
     write(VTXBUF_SHOCK, divu_shock())
 }
 
 Kernel shock_2_max()
 {
+    for field in 0:NUM_FIELDS {
+        write(Field(field), value(field))
+    }
+
     write(VTXBUF_SHOCK, max5_shock())
 }
 
@@ -758,6 +687,11 @@ Kernel shock_3_smooth()
 
     s_shock = smooth_kernel(VTXBUF_SHOCK)
     out_shock = cshock*dsmin*dsmin*s_shock //Add scaling constant cshock
+
+    for field in 0:NUM_FIELDS {
+        write(Field(field), value(field))
+    }
+
     write(VTXBUF_SHOCK, out_shock)
 }
 
@@ -1035,4 +969,54 @@ Kernel randomize() {
         r = 2.0 * rand_uniform() - 1.0
         write(Field(field), AC_rng_scale * r)
     }
+}
+
+Kernel haatouken() {
+    // Parameters
+    // Shock punch the air in front of you.
+    // AC_init_ampl_uu
+    // AC_init_shell_radius
+    // AC_init_shell_width
+
+    uu = vecvalue(UU)
+
+    xx = grid_position()
+
+    centre = grid_centre()
+
+    xx.x = xx.x - centre.x
+    xx.y = xx.y - centre.y
+    xx.z = xx.z - centre.z
+
+    rr = sqrt(xx.x*xx.x +  xx.y*xx.y + xx.z*xx.z)
+
+    theta = real(atan2(xx.z, xx.x))
+    phi   = real(atan2(xx.y, xx.x))
+
+    uu_radial = 0.0
+
+    if rr > 2.0*AC_dsx { 
+        uu_radial = AC_init_ampl_uu * 
+                    exp(-pow((rr - AC_init_shell_radius), 2.0) / (2.0 * pow(AC_init_shell_width, 2.0))) *
+                    exp(-pow(theta , 2.0) / (2.0 * pow(R_PI / 8.0, 2.0))) *
+                    exp(-pow(phi, 2.0) / (2.0 * pow(R_PI / 8.0, 2.0)))
+    } 
+
+    //if (rr > 0.8 && rr < 1.2) {
+    //    if (phi < R_PI/8.0 && phi > -R_PI/8.0) {
+    //        if (theta < R_PI/8 && theta > -R_PI/8) {
+    //            uu_radial = AC_init_ampl_uu 
+    //        }
+    //    }
+    //} 
+
+    uu.x = uu.x + uu_radial * cos(theta) * cos(phi)
+    uu.y = uu.y + uu_radial * cos(theta) * sin(phi)
+    uu.z = uu.z + uu_radial * cos(theta) 
+
+    write(VTXBUF_UUX, uu.x)
+    write(VTXBUF_UUY, uu.y)
+    write(VTXBUF_UUZ, uu.z)
+
+
 }
