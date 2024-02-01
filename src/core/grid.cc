@@ -2343,7 +2343,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 #endif
 #undef USE_POSIX_IO
 #else
-            WARNING("Collective mesh writing not working with async IO");
+            ERROR("Collective mesh writing not working with async IO");
             MPI_Datatype subarray;
             const int3 nn          = info.int3_params[AC_global_grid_n];
             const int3 nn_sub      = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
@@ -3255,6 +3255,7 @@ acGridGetLocalMeshInfo(void)
     return grid.device->local_config;
 }
 
+
 AcResult
 acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num_fields,
                         const int3 nn, const int3 rr)
@@ -3315,15 +3316,15 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
         /*
-            for (size_t kk = 0; kk < subdomain_nn.z; ++kk) {
-                for (size_t jj = 0; jj < subdomain_nn.y; ++jj) {
-                    for (size_t ii = 0; ii < subdomain_nn.x; ++ii) {
-                        const size_t idx = ii + jj * subdomain_nn.x + kk * subdomain_nn.x *
-            subdomain_nn.y; host_buffer[idx] = (ii+subdomain_offset.x) + (jj+subdomain_offset.y);
-                    }
+        for (size_t kk = 0; kk < subdomain_nn.z; ++kk) {
+            for (size_t jj = 0; jj < subdomain_nn.y; ++jj) {
+                for (size_t ii = 0; ii < subdomain_nn.x; ++ii) {
+                    const size_t idx = ii + jj * subdomain_nn.x + kk * subdomain_nn.x *
+        subdomain_nn.y; host_buffer[idx] = (ii+subdomain_offset.x) + (jj+subdomain_offset.y);
                 }
             }
-            */
+        }
+        */
 
         // Load from host memory to device memory
         AcReal* in           = device->vba.out[field];
@@ -3346,7 +3347,6 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
 
     return AC_SUCCESS;
 }
-
 bool
 acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph* graph)
 {
