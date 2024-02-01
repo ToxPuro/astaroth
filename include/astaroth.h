@@ -18,7 +18,7 @@
 */
 #pragma once
 
-#include "acc_runtime.h"
+#include "../acc-runtime/api/acc_runtime.h"
 
 #if AC_MPI_ENABLED
 #include <mpi.h>
@@ -76,16 +76,7 @@ typedef int Stream;
     FUNC(RTYPE_RMS_EXP)                                                                            \
     FUNC(RTYPE_ALFVEN_MAX)                                                                         \
     FUNC(RTYPE_ALFVEN_MIN)                                                                         \
-    FUNC(RTYPE_ALFVEN_RMS)                                                                         \
-    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_MAX)                                                           \
-    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_MIN)                                                           \
-    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_RMS)                                                           \
-    FUNC(RTYPE_RADIAL_WINDOW_MAX)                                                                  \
-    FUNC(RTYPE_RADIAL_WINDOW_MIN)                                                                  \
-    FUNC(RTYPE_RADIAL_WINDOW_SUM)                                                                  \
-    FUNC(RTYPE_GAUSSIAN_WINDOW_MAX)                                                                \
-    FUNC(RTYPE_GAUSSIAN_WINDOW_MIN)                                                                \
-    FUNC(RTYPE_GAUSSIAN_WINDOW_SUM)
+    FUNC(RTYPE_ALFVEN_RMS)
 
 #define RTYPE_ISNAN (RTYPE_SUM)
 
@@ -193,6 +184,15 @@ acVertexBufferSize(const AcMeshInfo info)
     return as_size_t(info.int_params[AC_mx]) * as_size_t(info.int_params[AC_my]) *
            as_size_t(info.int_params[AC_mz]);
 }
+static inline int3
+acVertexBufferDims(const AcMeshInfo info)
+{
+    return (int3){
+        (info.int_params[AC_mx]), 
+        (info.int_params[AC_my]), 
+        (info.int_params[AC_mz])
+    };
+}
 
 static inline size_t
 acVertexBufferSizeBytes(const AcMeshInfo info)
@@ -269,6 +269,8 @@ size_t acGetKernelId(const Kernel kernel);
 size_t acGetKernelIdByName(const char* name);
 
 AcMeshInfo acGridDecomposeMeshInfo(const AcMeshInfo global_config);
+
+VertexBufferArray acGridGetVBA(void);
 
 AcMeshInfo acGridGetLocalMeshInfo(void);
 
@@ -785,6 +787,14 @@ AcResult acGridExecuteTaskGraph(AcTaskGraph* graph, const size_t n_iterations);
 /** */
 AcResult acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3 start,
                             const int3 end);
+/** */
+AcResult
+acGridLaunchKernelDebug(const Stream stream, const Kernel kernel, const int3 start, const int3 end);
+
+/** */
+AcResult
+acDeviceLaunchKernelDebug(const Device device, const Stream stream, const Kernel kernel,
+                     const int3 start, const int3 end);
 
 /** */
 AcResult acGridLoadStencil(const Stream stream, const Stencil stencil,
@@ -1043,6 +1053,13 @@ AcResult acDeviceLoadVertexBuffer(const Device device, const Stream stream, cons
 
 /** */
 AcResult acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mesh);
+
+/** */
+AcResult acDeviceLoadProfile(const Device device, const Stream stream, const AcMeshInfo host_info,
+                                  const Profile profile);
+/** */
+AcResult acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info,
+                                  const AcArray array);
 
 /** */
 AcResult acDeviceSetVertexBuffer(const Device device, const Stream stream,

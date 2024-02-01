@@ -23,6 +23,9 @@ real AC_K_heatcond
 hostdefine R_PI (AC_REAL_PI)
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ,VTXBUF_ENTROPY
+PROFILE_X prof_x
+PROFILE_Y prof_y
+PROFILE_Z prof_z
 
 // Additional params needed by standalone & standalone_mpi
 // Int params

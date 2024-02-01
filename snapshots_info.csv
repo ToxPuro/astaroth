@@ -1,0 +1,28 @@
+use_double, mx, my, mz, step_number, modstep, t_step, t_step (exact)
+1, 38, 38, 38, 0, 0, 0, 0x0p+0
+1, 38, 38, 38, 50, 0, 0.245433, 0x1.f6a5715497bdap-3
+1, 38, 38, 38, 100, 0, 0.490865, 0x1.f6a5715497bd3p-2
+use_double, mx, my, mz, step_number, modstep, t_step, t_step (exact)
+1, 38, 38, 38, 0, 0, 0, 0x0p+0
+use_double, mx, my, mz, step_number, modstep, t_step, t_step (exact)
+1, 38, 38, 38, 0, 0, 0, 0x0p+0
+use_double, mx, my, mz, step_number, modstep, t_step, t_step (exact)
+1, 38, 38, 38, 0, 0, 0, 0x0p+0
+use_double, mx, my, mz, step_number, modstep, t_step, t_step (exact)
+1, 38, 38, 38, 0, 0, 0, 0x0p+0
+use_double, mx, my, mz, step_number, modstep, t_step, t_step (exact)
+1, 38, 38, 38, 0, 0, 0, 0x0p+0
+1, 38, 38, 38, 50, 0, 0.24543, 0x1.f6a40ebb796d5p-3
+1, 38, 38, 38, 100, 0, 0.490858, 0x1.f6a3982cd6063p-2
+use_double, mx, my, mz, step_number, modstep, t_step, t_step (exact)
+1, 38, 38, 38, 0, 0, 0, 0x0p+0
+1, 38, 38, 38, 50, 0, 0.24543, 0x1.f6a40ebb796d5p-3
+1, 38, 38, 38, 100, 0, 0.490858, 0x1.f6a3982cd6063p-2
+use_double, mx, my, mz, step_number, modstep, t_step, t_step (exact)
+0, 38, 38, 38, 0, 0, 0, 0x0p+0
+0, 38, 38, 38, 50, 0, 0.24543, 0x1.f6a416p-3
+0, 38, 38, 38, 100, 0, 0.490858, 0x1.f6a38cp-2
+use_double, mx, my, mz, step_number, modstep, t_step, t_step (exact)
+0, 38, 38, 38, 0, 0, 0, 0x0p+0
+0, 38, 38, 38, 50, 0, 0.24543, 0x1.f6a416p-3
+0, 38, 38, 38, 100, 0, 0.490858, 0x1.f6a38cp-2

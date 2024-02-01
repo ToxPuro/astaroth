@@ -426,6 +426,12 @@ Task::syncVBA()
             vba.out[i] = device->vba.out[i];
         }
     }
+    for(int i=0;i<NUM_WORK_BUFFERS; ++i) {
+        vba.w[i] = device->vba.w[i];
+    }
+    for(int i=0;i<NUM_PROFILES; ++i) {
+        vba.profiles[i] = device->vba.profiles[i];
+    }
 }
 
 void
@@ -622,8 +628,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
            Region(RegionFamily::Exchange_output, halo_region_tag, nn, op.fields_out,
                   op.num_fields_out),
            op, device_, swap_offset_),
-      recv_buffers(output_region.dims, NUM_VTXBUF_HANDLES),
-      send_buffers(input_region.dims, NUM_VTXBUF_HANDLES)
+      recv_buffers(output_region.dims, NUM_COMMUNICATED_FIELDS),
+      send_buffers(input_region.dims, NUM_COMMUNICATED_FIELDS)
 // Below are for partial halo exchanges.
 // TODO: enable partial halo exchanges when
 // vtxbuf_dependencies_->num_vars < NUM_VTXBUF_HANDLES (see performance first)

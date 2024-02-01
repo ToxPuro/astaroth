@@ -272,7 +272,7 @@ main(int argc, char** argv)
 
     // File
     char benchmark_dir[buflen];
-    snprintf(benchmark_dir, buflen, "heat-equation-astaroth-%zu-%zu.csv", jobid, seed);
+    snprintf(benchmark_dir, buflen, "heat-equation-%zu-%zu.csv", jobid, seed);
     FILE* fp = fopen(benchmark_dir, "w");
     ERRCHK_ALWAYS(fp);
 

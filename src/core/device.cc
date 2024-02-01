@@ -17,7 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "astaroth.h"
-
+#include <mpi.h>
 #include "kernels/kernels.h"
 
 #define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
@@ -258,7 +258,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Memory
     // VBA in/out
-    device->vba = acVBACreate(acVertexBufferSize(device_config));
+    device->vba = acVBACreate(device_config);
     /*
     // VBA Profiles
     const size_t profile_size_bytes = sizeof(AcReal) * max(device_config.int_params[AC_mx],
@@ -303,7 +303,7 @@ acDeviceDestroy(Device device)
     acDeviceSynchronizeStream(device, STREAM_ALL);
 
     // Memory
-    acVBADestroy(&device->vba);
+    acVBADestroy(&device->vba,device->local_config);
     /*
     for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
         cudaFree(device->vba.profiles[i]);
@@ -409,6 +409,56 @@ acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh 
     acDeviceLoadVertexBufferWithOffset(device, stream, host_mesh, vtxbuf_handle, src, dst,
                                        num_vertices);
 
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceLoadProfileWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
+                         const Profile profile, int src_idx, int dst_idx, size_t num_elems)
+{
+    if(host_info.profiles[profile] == nullptr)
+    {
+      printf("\n\nacDeviceLoadProfile: WARNING!!!\n the passed profile %s is null so it's state will be undefined\n\n",profile_names[profile]);
+      return AC_FAILURE;
+    }
+    cudaSetDevice(device->id);
+    const AcReal* src_ptr = &host_info.profiles[profile][src_idx];
+    AcReal* dst_ptr       = &device->vba.profiles[profile][dst_idx];
+    const size_t bytes    = num_elems* sizeof(src_ptr[0]);
+
+    ERRCHK_CUDA(                                                                                  //
+        cudaMemcpyAsync(dst_ptr, src_ptr, bytes, cudaMemcpyHostToDevice, device->streams[stream]) //
+    );
+
+    return AC_SUCCESS;
+}
+AcResult
+acDeviceLoadProfile(const Device device, const Stream stream, const AcMeshInfo host_info,
+                         const Profile profile)
+{
+    acDeviceLoadProfileWithOffset(device, stream, host_info, profile, 0, 0, device->local_config.int_params[profile_lengths[profile]]);
+    return AC_SUCCESS;
+}
+AcResult
+acDeviceLoadArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
+                         const AcArray array, int src_idx, int dst_idx, size_t num_elems)
+{
+    cudaSetDevice(device->id);
+    const AcReal* src_ptr = &host_info.arrays[array][src_idx];
+    AcReal* dst_ptr       = &device->vba.arrays[array][dst_idx];
+    const size_t bytes    = num_elems* sizeof(src_ptr[0]);
+
+    ERRCHK_CUDA(                                                                                  //
+        cudaMemcpyAsync(dst_ptr, src_ptr, bytes, cudaMemcpyHostToDevice, device->streams[stream]) //
+    );
+
+    return AC_SUCCESS;
+}
+AcResult
+acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info,
+                         const AcArray array)
+{
+    acDeviceLoadArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[ac_array_lengths[array]]);
     return AC_SUCCESS;
 }
 
@@ -576,6 +626,13 @@ acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kern
     cudaSetDevice(device->id);
     return acLaunchKernel(kernel, device->streams[stream], start, end, device->vba);
 }
+AcResult
+acDeviceLaunchKernelDebug(const Device device, const Stream stream, const Kernel kernel,
+                     const int3 start, const int3 end)
+{
+    cudaSetDevice(device->id);
+    return acLaunchKernelDebug(kernel, device->streams[stream], start, end, device->vba);
+}
 
 AcResult
 acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start, const int3 end)
@@ -736,7 +793,6 @@ acDeviceReduceScal(const Device device, const Stream stream, const ReductionType
     switch (rtype) {
     case RTYPE_RMS:     /* Fallthrough */
     case RTYPE_RMS_EXP: /* Fallthrough */
-    case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
         const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
@@ -776,7 +832,6 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
     switch (rtype) {
     case RTYPE_RMS:     /* Fallthrough */
     case RTYPE_RMS_EXP: /* Fallthrough */
-    case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
         const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
@@ -820,7 +875,6 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
     switch (rtype) {
     case RTYPE_RMS:     /* Fallthrough */
     case RTYPE_RMS_EXP: /* Fallthrough */
-    case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
         const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);

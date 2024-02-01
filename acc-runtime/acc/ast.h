@@ -49,6 +49,21 @@ typedef enum {
   NODE_MEMBER_ID      = (1 << 17),
   NODE_HOSTDEFINE     = (1 << 18),
   NODE_ASSIGNMENT     = (1 << 19),
+  NODE_PROFILE_X      = (1 << 20),
+  NODE_PROFILE_Y      = (1 << 21),
+  NODE_PROFILE_Z      = (1 << 22),
+  NODE_PROFILE        = NODE_PROFILE_X | NODE_PROFILE_Y | NODE_PROFILE_Z,
+  NODE_PROFILE_X_ID   = (1 << 23),
+  NODE_PROFILE_Y_ID   = (1 << 24),
+  NODE_PROFILE_Z_ID   = (1 << 25),
+  NODE_PROFILE_ID     = NODE_PROFILE_X_ID | NODE_PROFILE_Y_ID | NODE_PROFILE_Z_ID,
+  NODE_WORK_BUFFER    = (1 << 26),
+  NODE_WORK_BUFFER_ID = (1 << 27),
+  NODE_AUXILIARY_FIELD = (1 << 28),
+  NODE_AUXILIARY_FIELD_ID = (1 << 29),
+  NODE_ARRAY = (1 << 30),
+  NODE_ARRAY_ID = (1 << 31)
+
 } NodeType;
 
 typedef struct astnode_s {

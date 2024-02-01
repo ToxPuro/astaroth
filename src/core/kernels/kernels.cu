@@ -47,6 +47,7 @@ acKernelDummy(void)
 #include "packing.cuh"
 #include "reductions.cuh"
 #include "volume_copy.cuh"
+#include "combine.cuh"
 
 AcResult
 acKernel(const KernelParameters params, VertexBufferArray vba)
@@ -62,4 +63,20 @@ acKernel(const KernelParameters params, VertexBufferArray vba)
     ERROR("acKernel() called but AC_step_number not defined!");
     return AC_FAILURE;
 #endif
+}
+
+AcResult
+acLaunchKernelDebug(Kernel kernel, const cudaStream_t stream, const int3 vba_start,
+                 const int3 vba_end,VertexBufferArray vba)
+{
+    const dim3 tpb(8, 8, 8);
+    const int3 dims = {vba_end.x-vba_start.x,vba_end.y-vba_start.y,vba_end.z-vba_start.z};
+    const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
+                   (unsigned int)ceil(dims.y / (double)tpb.y),
+                   (unsigned int)ceil(dims.z / (double)tpb.z));
+
+    kernel<<<bpg, tpb, 0, stream>>>(vba_start, vba_end, vba);
+    ERRCHK_CUDA_KERNEL();
+
+    return AC_SUCCESS;
 }

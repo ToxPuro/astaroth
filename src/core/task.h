@@ -17,7 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-#include "astaroth.h"
+#include "../../include/astaroth.h"
 
 #include <memory>
 #include <mpi.h>
@@ -26,8 +26,8 @@
 
 #include "decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //AcRealPacked, VertexBufferArray
-#include "math_utils.h"      //max. Also included in decomposition.h
-#include "timer_hires.h"
+#include "../../acc-runtime/api/math_utils.h"      //max. Also included in decomposition.h
+#include "../../include/timer_hires.h"
 
 #define MPI_INCL_CORNERS (0) // Include the 3D corners of subdomains in halo
 

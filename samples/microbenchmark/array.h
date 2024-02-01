@@ -1,17 +1,9 @@
 #pragma once
 #include "errchk.h"
 
-#if AC_DOUBLE_PRECISION
-#define DOUBLE_PRECISION (1)
-typedef double real;
-#else
-#define DOUBLE_PRECISION (0)
-typedef float real;
-#endif
-
 typedef struct {
     size_t length;
-    real* data;
+    double* data;
     bool on_device;
 } Array;
 
@@ -29,7 +21,7 @@ arrayCreate(const size_t length, const bool on_device)
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&a.data, bytes));
     }
     else {
-        a.data = (real*)malloc(bytes);
+        a.data = (double*)malloc(bytes);
         ERRCHK_ALWAYS(a.data);
     }
 
@@ -48,13 +40,13 @@ arrayDestroy(Array* a)
 }
 
 /**
-    Simple rng for reals in range [0...1].
+    Simple rng for doubles in range [0...1].
     Not suitable for generating full-precision f64 randoms.
 */
-static real
+static double
 randd(void)
 {
-    return (real)rand() / RAND_MAX;
+    return (double)rand() / RAND_MAX;
 }
 
 static void

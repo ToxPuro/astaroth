@@ -26,6 +26,7 @@
 #include "tab.h"
 
 #define STENCILGEN_HEADER "stencilgen.h"
+#define PROFILE_HEADER "profilegen.h"
 #define STENCILGEN_SRC ACC_DIR "/stencilgen.c"
 #define STENCILGEN_EXEC "stencilgen.out"
 #define STENCILACC_SRC ACC_DIR "/stencil_accesses.cpp"
@@ -39,7 +40,8 @@ typedef struct {
   char tqualifier[MAX_ID_LEN];
   char tspecifier[MAX_ID_LEN];
   char identifier[MAX_ID_LEN];
-} Symbol;
+  char variable_length_param[MAX_ID_LEN];
+  } Symbol;
 
 #define SYMBOL_TABLE_SIZE (65536)
 static Symbol symbol_table[SYMBOL_TABLE_SIZE] = {};
@@ -47,6 +49,18 @@ static Symbol symbol_table[SYMBOL_TABLE_SIZE] = {};
 #define MAX_NESTS (32)
 static size_t num_symbols[MAX_NESTS] = {};
 static size_t current_nest           = 0;
+
+//profiles symbol table
+#define MAX_NUM_OF_PROFILES (256)
+char* profile_names[MAX_NUM_OF_PROFILES];
+int profile_read_set_sizes[MAX_NUM_OF_PROFILES];
+int* profile_read_set[MAX_NUM_OF_PROFILES];
+int num_of_profiles = 0;
+
+//arrays symbol table
+#define MAX_NUM_ARRAYS (256)
+char* array_lengths[MAX_NUM_ARRAYS];
+int num_of_arrays;
 
 static Symbol*
 symboltable_lookup(const char* identifier)
@@ -61,6 +75,27 @@ symboltable_lookup(const char* identifier)
   return NULL;
 }
 
+
+static void
+add_symbol_with_length(const NodeType type, const char* tqualifier, const char* tspecifier,
+           const char* id, const char* length)
+{
+  assert(num_symbols[current_nest] < SYMBOL_TABLE_SIZE);
+
+  symbol_table[num_symbols[current_nest]].type          = type;
+  symbol_table[num_symbols[current_nest]].tqualifier[0] = '\0';
+  symbol_table[num_symbols[current_nest]].tspecifier[0] = '\0';
+
+  if (tqualifier)
+    strcpy(symbol_table[num_symbols[current_nest]].tqualifier, tqualifier);
+  if (tspecifier)
+    strcpy(symbol_table[num_symbols[current_nest]].tspecifier, tspecifier);
+  if (length)
+    strcpy(symbol_table[num_symbols[current_nest]].variable_length_param, length);
+  strcpy(symbol_table[num_symbols[current_nest]].identifier, id);
+
+  ++num_symbols[current_nest];
+}
 static void
 add_symbol(const NodeType type, const char* tqualifier, const char* tspecifier,
            const char* id)
@@ -92,6 +127,7 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "threadIdx");       // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "blockIdx");        // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vertexIdx");       // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vba.in");       // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "globalVertexIdx"); // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "globalGridN");     // TODO REMOVE
 
@@ -100,6 +136,10 @@ symboltable_reset(void)
 
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "previous");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "isnan");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "read_w");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write_w");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "combine");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "Field3"); // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "dot");    // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cross");  // TODO RECHECK
@@ -116,12 +156,17 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "sqrt");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "fabs");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "pow");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "multm2_sym");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "diagonal");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "sum");   // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "log");   // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "abs");   // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "atan2"); // TODO RECHECK
 
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "AC_REAL_PI");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_FIELDS");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_VTXBUF_HANDLES");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_ALL_FIELDS");
 
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "FIELD_IN");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "FIELD_OUT");
@@ -150,6 +195,8 @@ symboltable_reset(void)
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_mxy");
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nxy");
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nxyz");
+
+  add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_domain_decomposition");
 
   add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_multigpu_offset");
   add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_global_grid_n");
@@ -229,6 +276,51 @@ get_node(const NodeType type, const ASTNode* node)
   else
     return NULL;
 }
+void combine(const ASTNode* node, char* res){
+  if(node->buffer)
+    strcat(res,node->buffer);
+  if(node->lhs)
+    combine(node->lhs, res);
+  if(node->rhs)
+    combine(node->rhs, res);
+}
+bool is_profile_read_root(const ASTNode* node){
+  ASTNode* lhs = node;
+  for(int i = 0; i<3; i++){
+    if(!lhs->lhs)
+      return false;
+    lhs = lhs->lhs;
+  }
+  if(lhs->buffer && node->infix && node->postfix && (strcmp(node->infix, "[") == 0) && (strcmp(node->postfix, "]") == 0))
+    for(int i=0;i<num_of_profiles;i++){
+      if((strcmp(lhs->buffer, profile_names[i]) == 0))
+        return true;
+    }
+  return false;
+}
+void add_profile(const char* profile_name){
+  profile_names[num_of_profiles] = strdup(profile_name);
+  profile_read_set_sizes[num_of_profiles] = 0;
+  profile_read_set[num_of_profiles] = (int*)malloc(MAX_NUM_OF_PROFILES * sizeof(int));
+  num_of_profiles++;
+}
+int get_profile_index(char* profile_name){
+  for(int i=0;i<num_of_profiles;i++){
+    if(strcmp(profile_name, profile_names[i]) == 0)
+      return i;
+  }
+  return -1;
+}
+int add_profile_read_index(int profile_index, int array_index){
+  for(int  i=0; i<profile_read_set_sizes[profile_index]; i++){
+    if(array_index == profile_read_set[profile_index][i]){
+      return i;
+    }
+  }
+  profile_read_set[profile_index][profile_read_set_sizes[profile_index]] = array_index;
+  profile_read_set_sizes[profile_index]++;
+  return profile_read_set_sizes[profile_index]-1;
+}
 
 static void
 traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
@@ -281,9 +373,9 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
         const ASTNode* tspec_node = get_node(NODE_TSPEC, decl);
         const ASTNode* tqual_node = get_node(NODE_TQUAL, decl);
 
-        if (tspec_node && tspec_node->lhs)
+        if (tspec_node && tspec_node->lhs){
           tspec = tspec_node->lhs->buffer;
-
+        }
         if (tqual_node && tqual_node->lhs)
           tqual = tqual_node->lhs->buffer;
       }
@@ -296,15 +388,36 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
         if (tqual)
           fprintf(stream, "%s ", tqual);
 
-        if (tspec)
+        if (tspec){
           fprintf(stream, "%s ", tspec);
+        }
         else if (!(node->type & NODE_KFUNCTION_ID) &&
                  !get_parent_node(NODE_STENCIL, node) &&
                  !(node->type & NODE_MEMBER_ID))
           fprintf(stream, "auto ");
       }
       if (!(node->type & NODE_MEMBER_ID))
-        add_symbol(node->type, tqual, tspec, node->buffer);
+        if (node->type & NODE_PROFILE_ID)
+        {
+          const ASTNode* nd = decl->rhs->lhs->rhs->lhs->lhs->lhs->lhs;
+          if(nd)
+          {
+            if(nd->lhs)
+            {
+              printf("no left child!\n");
+              exit(0);
+            }
+            if(nd->rhs)
+            {
+              printf("no right child\n");
+              exit(0);
+            }
+            add_symbol_with_length(node->type, tqual, tspec, node->buffer, nd->buffer);
+          }
+        }
+        else{
+          add_symbol(node->type, tqual, tspec, node->buffer);
+        }
     }
   }
 
@@ -343,7 +456,7 @@ void
 gen_dconsts(const ASTNode* root, FILE* stream)
 {
   symboltable_reset();
-  traverse(root, NODE_FUNCTION | NODE_FIELD | NODE_STENCIL | NODE_HOSTDEFINE,
+  traverse(root, NODE_FUNCTION | NODE_FIELD | NODE_STENCIL | NODE_HOSTDEFINE | NODE_PROFILE | NODE_WORK_BUFFER | NODE_AUXILIARY_FIELD | NODE_ARRAY,
            stream);
 
   /*
@@ -429,7 +542,7 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "#pragma once\n");
 
   symboltable_reset();
-  traverse(root, NODE_DCONST | NODE_FIELD | NODE_FUNCTION | NODE_STENCIL, fp);
+  traverse(root, NODE_DCONST | NODE_FIELD | NODE_FUNCTION | NODE_STENCIL | NODE_PROFILE | NODE_WORK_BUFFER | NODE_AUXILIARY_FIELD | NODE_ARRAY, fp);
 
   symboltable_reset();
   traverse(root, 0, NULL);
@@ -442,11 +555,77 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "NUM_STENCILS} Stencil;");
 
   // Enums
+  int num_of_fields=0;
   fprintf(fp, "typedef enum {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_FIELD_ID)
+    if (symbol_table[i].type & NODE_FIELD_ID){
       fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_FIELDS} Field;");
+      num_of_fields++;
+    }
+//Add Auxiliary fields into Fields after Full fields
+//Communicated Auxiliaries come first
+  int num_of_auxiliary_fields=0;
+  int num_of_communicated_auxiliary_fields = 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  {
+    if (symbol_table[i].type & NODE_AUXILIARY_FIELD_ID && (!strcmp(symbol_table[i].tspecifier, "communicated")))
+    {
+      printf("Auxilaries are in development\n");
+      exit(0);
+      fprintf(fp, "%s,", symbol_table[i].identifier);
+      num_of_communicated_auxiliary_fields++;
+      num_of_auxiliary_fields++;
+    }
+  }
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  {
+    if (symbol_table[i].type & NODE_AUXILIARY_FIELD_ID && (strcmp(symbol_table[i].tspecifier, "communicated")))
+    {
+      printf("Auxilaries are in development\n");
+      exit(0);
+      fprintf(fp, "%s,", symbol_table[i].identifier);
+      num_of_auxiliary_fields++;
+    }
+  }
+  fprintf(fp, "NUM_FIELDS=%d,", num_of_fields+num_of_auxiliary_fields);
+  fprintf(fp, "NUM_COMMUNICATED_FIELDS=%d,", num_of_fields+num_of_communicated_auxiliary_fields);
+  // fprintf(fp, "NUM_AUXILIARY_FIELDS=%d,", num_of_auxiliary_fields);
+  // fprintf(fp, "NUM_ALL_FIELDS=%d,", num_of_auxiliary_fields+num_of_fields);
+  fprintf(fp, "} Field;");
+
+
+  // Enums for profiles
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_PROFILE_ID)
+      fprintf(fp, "%s,", symbol_table[i].identifier);
+  fprintf(fp, "NUM_PROFILES} Profile;");
+
+  // Enums for work_buffers 
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_WORK_BUFFER_ID)
+    {
+      printf("Workbuffers are under development\n");
+      exit(0);
+      fprintf(fp, "%s,", symbol_table[i].identifier);
+    }
+  fprintf(fp, "NUM_WORK_BUFFERS} WorkBuffer;");
+
+
+  // Enums for arrays
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_ARRAY_ID)
+    {
+
+      printf("Arrays are under development\n");
+      exit(0);
+      fprintf(fp, "%s,", symbol_table[i].identifier);
+    }
+  fprintf(fp, "NUM_ARRAYS} AcArray;");
+
+
 
   // Kernels
   fprintf(fp, "typedef enum {");
@@ -497,6 +676,55 @@ gen_user_defines(const ASTNode* root, const char* out)
     if (symbol_table[i].type & NODE_FIELD_ID)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
+
+  fprintf(fp, "static const bool vtxbuf_is_auxiliary[] __attribute__((unused)) = {");
+  for(int i=0;i<num_of_fields;++i)
+    fprintf(fp, "%s,", "false");
+  for(int i=num_of_fields;i<num_of_fields+num_of_auxiliary_fields;++i)
+    fprintf(fp, "%s,", "true");
+  fprintf(fp, "};");
+
+  fprintf(fp, "static const char* profile_names[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_PROFILE_ID)
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+
+  fprintf(fp, "static const AcIntParam profile_lengths[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_PROFILE_ID)
+      fprintf(fp, "%s,", symbol_table[i].variable_length_param);
+  fprintf(fp, "};");
+
+  fprintf(fp, "static const char* work_buffer_names[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_WORK_BUFFER_ID)
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+
+  fprintf(fp, "static const char* ac_array_names[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_ARRAY_ID)
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+
+  fprintf(fp, "static const AcIntParam ac_array_lengths[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_of_arrays; ++i)
+    fprintf(fp, "%s,", array_lengths[i]);
+  fprintf(fp, "};");
+
+
+  fprintf(fp, "static const int profile_dims[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i){
+    if (symbol_table[i].type & NODE_PROFILE_X_ID)
+      fprintf(fp, "1,");
+    if (symbol_table[i].type & NODE_PROFILE_Y_ID)
+      fprintf(fp, "2,");
+    if (symbol_table[i].type & NODE_PROFILE_Z_ID)
+      fprintf(fp, "3,");
+  }
+  fprintf(fp, "};");
+
 
   fprintf(fp, "static const char* kernel_names[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -551,6 +779,10 @@ gen_user_defines(const ASTNode* root, const char* out)
   for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
     if (!(symbol_table[i].type & NODE_FUNCTION_ID) &&
         !(symbol_table[i].type & NODE_FIELD_ID) &&
+        !(symbol_table[i].type & NODE_PROFILE_ID) &&
+        !(symbol_table[i].type & NODE_WORK_BUFFER_ID) &&
+        !(symbol_table[i].type & NODE_AUXILIARY_FIELD_ID) &&
+        !(symbol_table[i].type & NODE_ARRAY_ID) && 
         !(symbol_table[i].type & NODE_STENCIL_ID)) {
       fprintf(fp, "// extern __device__ %s %s;\n", symbol_table[i].tspecifier,
               symbol_table[i].identifier);
@@ -603,10 +835,30 @@ gen_user_kernels(const ASTNode* root, const char* out)
 
   symboltable_reset();
 }
+void gen_profile_reads(ASTNode* node, const char* out){
 
+  if(is_profile_read_root(node)){
+    char* profile_name= node->lhs->lhs->lhs->buffer;
+    int profile_index = get_profile_index(profile_name);
+    char array_index_str[4096];
+    strcpy(array_index_str, "");
+    combine(node->rhs, array_index_str);
+    int array_index = atoi(array_index_str);
+    int num_profile_read = add_profile_read_index(profile_index, array_index);
+    char builder[4096];
+    sprintf(builder, "p_%d_%d", profile_index, num_profile_read);
+    node->buffer = strdup(builder);
+    node->postfix = node->infix = node->lhs=node->rhs = NULL;
+  }
+  if(node->lhs)
+    gen_profile_reads(node->lhs, out);
+  if(node->rhs)
+    gen_profile_reads(node->rhs, out);
+}
 void
 generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 {
+  num_of_profiles = 0;
   assert(root);
 
   gen_user_defines(root, "user_defines.h");
@@ -615,6 +867,7 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   // Fill the symbol table
   traverse(root, 0, NULL);
   // print_symbol_table();
+  num_of_profiles = 0;
 
   // Generate user_kernels.h
   fprintf(stream, "#pragma once\n");
@@ -633,6 +886,45 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_KFUNCTION_ID)
       ++num_kernels;
+
+
+  size_t num_profiles= 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_PROFILE_ID){
+      add_profile(symbol_table[i].identifier);
+      ++num_profiles;
+    }
+  gen_profile_reads(root, "profile_reads.h");
+
+  //generate profile_read_set_sizes and profile_read_set accessible to stencilgen.c
+  FILE* profile_file = fopen(PROFILE_HEADER, "w");
+  fprintf(profile_file,"int profile_read_set_sizes[%d] = {", num_of_profiles);
+  for(int profile=0;profile<num_of_profiles;profile++){
+    fprintf(profile_file,"%d",profile_read_set_sizes[profile]);
+    if(profile<num_of_profiles-1)
+      fprintf(profile_file,",");
+  }
+  fprintf(profile_file,"};\n");
+  fprintf(profile_file,"int profile_read_set[%d][%d] = {", num_of_profiles, MAX_NUM_OF_PROFILES);
+  for(int profile=0;profile<num_of_profiles;profile++){
+    fprintf(profile_file,"{");
+    for(int read=0;read<profile_read_set_sizes[profile];read++){
+      fprintf(profile_file,"%d",profile_read_set[profile][read]);
+      if(read < MAX_NUM_OF_PROFILES)
+        fprintf(profile_file,",");
+    }
+    for(int read=profile_read_set_sizes[profile];read<MAX_NUM_OF_PROFILES;read++){
+      fprintf(profile_file,"%d",0);
+      if(read < MAX_NUM_OF_PROFILES)
+        fprintf(profile_file,",");
+    }
+    fprintf(profile_file,"}");
+    if(profile<num_of_profiles-1)
+      fprintf(profile_file,",");
+    fprintf(profile_file,"\n");
+  }
+  fprintf(profile_file,"};\n");
+  fclose(profile_file);
 
   // Device constants
   // gen_dconsts(root, stream);
@@ -674,7 +966,7 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
                       "STENCIL_WIDTH] = {");
   traverse(root,
            NODE_STENCIL_ID | NODE_DCONST | NODE_FIELD | NODE_FUNCTION |
-               NODE_HOSTDEFINE,
+               NODE_HOSTDEFINE | NODE_PROFILE | NODE_WORK_BUFFER | NODE_AUXILIARY_FIELD | NODE_ARRAY,
            stencilgen);
   fprintf(stencilgen, "};");
   fclose(stencilgen);
@@ -750,7 +1042,7 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   FILE* dfunc_fp = open_memstream(&dfunctions, &sizeloc);
   traverse(root,
            NODE_DCONST | NODE_FIELD | NODE_STENCIL | NODE_KFUNCTION |
-               NODE_HOSTDEFINE,
+               NODE_HOSTDEFINE | NODE_PROFILE | NODE_WORK_BUFFER | NODE_AUXILIARY_FIELD | NODE_ARRAY,
            dfunc_fp);
   fflush(dfunc_fp);
 
@@ -762,7 +1054,7 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   symboltable_reset();
   traverse(root,
            NODE_DCONST | NODE_FIELD | NODE_STENCIL | NODE_DFUNCTION |
-               NODE_HOSTDEFINE,
+               NODE_HOSTDEFINE | NODE_PROFILE | NODE_WORK_BUFFER | NODE_AUXILIARY_FIELD | NODE_ARRAY,
            stream);
 
   // print_symbol_table();

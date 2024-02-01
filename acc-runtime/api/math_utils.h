@@ -32,11 +32,13 @@
 #include "datatypes.h"
 
 #if AC_DOUBLE_PRECISION != 1
+#ifndef __cplusplus
 #define exp(x) expf(x)
 #define sin(x) sinf(x)
 #define cos(x) cosf(x)
 #define sqrt(x) sqrtf(x)
 #define fabs(x) fabsf(x)
+#endif
 #endif
 
 #define UNUSED __attribute__((unused))
@@ -102,6 +104,12 @@ operator*(const acComplex& a, const acComplex& b)
 
 typedef struct uint3_64 {
   uint64_t x, y, z;
+  uint3_64(const int3& a):
+    x(static_cast<uint64_t>(a.x)), y(static_cast<uint64_t>(a.y)), z(static_cast<uint64_t>(a.z)) {}
+  uint3_64(const uint64_t _x, const uint64_t _y, const uint64_t _z):
+    x(_x), y(_y), z(_z) {}
+  uint3_64(): 
+    x(), y(), z() {}
   explicit inline constexpr operator int3() const
   {
     return (int3){(int)x, (int)y, (int)z};
@@ -201,6 +209,12 @@ operator*(const int3& a, const int3& b)
   return (int3){a.x * b.x, a.y * b.y, a.z * b.z};
 }
 
+static HOST_DEVICE_INLINE AcReal3
+operator*(const AcReal3& a, const AcReal3& b)
+{
+  return (AcReal3){a.x * b.x, a.y * b.y, a.z * b.z};
+}
+
 static HOST_DEVICE_INLINE int3
 operator*(const int& a, const int3& b)
 {
@@ -265,7 +279,7 @@ operator==(const uint3_64& a, const uint3_64& b)
 }
 
 /*
- * Volume
+ * lume
  */
 template <class T>
 static Volume
@@ -278,6 +292,37 @@ static inline dim3
 to_dim3(const Volume v)
 {
   return dim3(v.x, v.y, v.z);
+}
+template <class T>
+static int
+volume_size(const T a)
+{
+  return a.x*a.y*a.z; 
+}
+
+/*
+ * AcBool3
+ */
+typedef struct AcBool3 {
+    bool x;
+    bool y;
+    bool z;
+
+    HOST_DEVICE AcBool3(const bool _x, const bool _y, const bool _z)
+    
+    {
+        x = _x;
+        y = _y;
+        z = _z;
+    }
+} AcBool3;
+static HOST_DEVICE bool
+any(const AcBool3& a){
+    return a.x || a.y || a.z;
+}
+static HOST_DEVICE bool
+all(const AcBool3& a){
+    return a.x && a.y && a.z;
 }
 
 /*
@@ -324,6 +369,7 @@ operator-=(AcReal2& lhs, const AcReal2& rhs)
   lhs.x -= rhs.x;
   lhs.y -= rhs.y;
 }
+
 
 static HOST_DEVICE_INLINE AcReal2
 operator*(const AcReal& a, const AcReal2& b)
@@ -374,6 +420,27 @@ operator+=(AcReal3& lhs, const AcReal3& rhs)
   lhs.z += rhs.z;
 }
 
+static HOST_DEVICE_INLINE AcBool3 
+operator!=(const AcReal3& a, const AcReal b)
+{
+  return (AcBool3){
+      a.x != b,
+      a.y != b,
+      a.z != b
+  };
+}
+
+
+static HOST_DEVICE_INLINE AcBool3 
+operator==(const AcReal3& a, const AcReal b)
+{
+  return (AcBool3){
+      a.x == b,
+      a.y == b,
+      a.z == b
+  };
+}
+
 static HOST_DEVICE_INLINE AcReal3
 operator-(const AcReal3& a, const AcReal3& b)
 {
@@ -410,6 +477,11 @@ static HOST_DEVICE_INLINE AcReal3
 operator/(const AcReal3& a, const AcReal& b)
 {
   return (AcReal3){a.x / b, a.y / b, a.z / b};
+}
+static HOST_DEVICE_INLINE AcReal
+sum(const AcReal3& a)
+{
+    return a.x+a.y+a.z;
 }
 
 static HOST_DEVICE_INLINE AcReal
@@ -464,6 +536,10 @@ typedef struct AcMatrix {
   {
     return (AcReal3){data[row][0], data[row][1], data[row][2]};
   }
+  HOST_DEVICE AcReal3 col(const int col) const
+  {
+    return (AcReal3){data[0][col], data[1][col], data[2][col]};
+  }
 
   HOST_DEVICE AcReal3 operator*(const AcReal3& v) const
   {
@@ -507,3 +583,25 @@ operator-(const AcMatrix& A, const AcMatrix& B)
                   A.row(1) - B.row(1), //
                   A.row(2) - B.row(2));
 }
+static HOST_DEVICE_INLINE AcReal
+multm2_sym(const AcMatrix m)
+{
+//Squared sum of symmetric matix
+  AcReal res = m.data[0][0]*m.data[0][0];
+  for(int i=1;i<=2;i++){
+    res += m.data[i][i]*m.data[i][i];
+    for(int j=0;j<=i-1;j++){
+      res += 2*m.data[i][j]*m.data[i][j];
+    }
+  }
+  return res;
+}
+static HOST_DEVICE_INLINE AcReal3
+diagonal(const AcMatrix m)
+{
+  return (AcReal3){m.data[0][0], m.data[1][1], m.data[2][2]};
+}
+
+/*
+ * AcTensor
+ */

@@ -24,8 +24,6 @@ typedef AcReal (*MapFn)(const AcReal&);
 typedef AcReal (*MapVecFn)(const AcReal&, const AcReal&, const AcReal&);
 typedef AcReal (*MapVecScalFn)(const AcReal&, const AcReal&, const AcReal&, const AcReal&);
 typedef AcReal (*ReduceFn)(const AcReal&, const AcReal&);
-typedef AcReal (*CoordFn)(const AcReal3&);
-typedef void (*GridLocFn)(AcReal*, AcReal*, AcReal*, const int3&);
 
 // Map functions
 static __device__ inline AcReal
@@ -75,94 +73,6 @@ map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& 
 {
     return (map_square(a) + map_square(b) + map_square(c)) / (exp(d));
 }
-
-// Coordinate based functions
-
-// Here physical coordinate in the grid is calculating by assuming that
-// coordinate (0.0, 0.0, 0.0) corresresponds to index (0, 0, 0)
-// with distance between grid points being AC_dsx, AC_dsy, AC_dsz
-// respectively.
-//
-
-#ifdef AC_INTEGRATION_ENABLED
-static __device__ inline void
-cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3& globalVertexIdx)
-{
-    *coord_x1 = AcReal(globalVertexIdx.x - STENCIL_ORDER/2)*DCONST(AC_dsx);
-    *coord_y1 = AcReal(globalVertexIdx.y - STENCIL_ORDER/2)*DCONST(AC_dsy);
-    *coord_z1 = AcReal(globalVertexIdx.z - STENCIL_ORDER/2)*DCONST(AC_dsz);
-}
-
-static __device__ inline AcReal
-distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1, 
-         const AcReal coord_x2, const AcReal coord_y2, const AcReal coord_z2)
-{
-    return sqrt((coord_x1-coord_x2)*(coord_x1-coord_x2)
-              + (coord_y1-coord_y2)*(coord_y1-coord_y2)
-              + (coord_z1-coord_z2)*(coord_z1-coord_z2));
-}
-
-static __device__ inline AcReal 
-radial_window(const AcReal3& coordinate)
-{
-    AcReal loc_weight = 0.0;
-
-    const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
-                                   DCONST(AC_center_x), DCONST(AC_center_y), 
-                                   DCONST(AC_center_z)); 
-
-    if (radius <= DCONST(AC_window_radius)) loc_weight = 1.0;  
-    //if (radius <= DCONST(AC_window_radius)) printf("Condition met radial_window \n");  OKOK
-
-    return loc_weight; 
-}
-
-static __device__ inline AcReal 
-gaussian_window(const AcReal3& coordinate)
-{
-    const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
-                                   DCONST(AC_center_x), DCONST(AC_center_y), 
-                                   DCONST(AC_center_z)); 
-    const AcReal rscale = DCONST(AC_window_radius);
-
-    //if (radius <= DCONST(AC_window_radius)) printf("Condition met gaussian_window \n");  OKOK
-
-    //printf("radius %e, rscale %e, radius/rscale %e, exp((radius/rscale))^2 %e \n", 
-    //        radius, rscale, radius/rscale, exp(-(radius/rscale)*(radius/rscale)));
-    return  exp(-(radius/rscale)*(radius/rscale));
-}
-#else
-static __device__ inline void
-cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3& globalVertexIdx)
-{
-    // Produce nan to halt the code
-    *coord_x1 = 0.0 / 0.0;
-    *coord_y1 = 0.0 / 0.0;
-    *coord_z1 = 0.0 / 0.0;
-}
-
-static __device__ inline AcReal
-distance(const AcReal coord_x1, const AcReal coord_y1, const AcReal coord_z1, 
-         const AcReal coord_x2, const AcReal coord_y2, const AcReal coord_z2)
-{
-    // Produce nan to halt the code
-    return 0.0 / 0.0;
-}
-
-static __device__ inline AcReal 
-radial_window(const AcReal3& coordinate)
-{
-    // Produce nan to halt the code
-    return 0.0 / 0.0; 
-}
-
-static __device__ inline AcReal 
-gaussian_window(const AcReal3& coordinate)
-{
-    // Produce nan to halt the code
-    return 0.0 / 0.0;
-}
-#endif
 
 // Reduce functions
 static __device__ inline AcReal
@@ -256,124 +166,6 @@ map_vec_scal(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcRe
     const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
     if (within_bounds)
         out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx], in3[in_idx]);
-}
-
-template <MapFn map_fn, GridLocFn grid_loc_fn, CoordFn coord_fn>
-__global__ void
-map_coord(const AcReal* in, const int3 start, const int3 end, AcReal* out)
-{
-    assert((start >= (int3){0, 0, 0}));
-    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
-
-
-    const int3 tid = (int3){
-        threadIdx.x + blockIdx.x * blockDim.x,
-        threadIdx.y + blockIdx.y * blockDim.y,
-        threadIdx.z + blockIdx.z * blockDim.z,
-    };
-
-    const int3 in_idx3d = start + tid;     
-    const size_t in_idx = IDX(in_idx3d);
-
-    //Based on DSL boilerplate
-    const int3 vertexIdx = (int3) { threadIdx.x + blockIdx.x * blockDim.x + start.x, 
-                                    threadIdx.y + blockIdx.y * blockDim.y + start.y, 
-                                    threadIdx.z + blockIdx.z * blockDim.z + start.z, };
-    const int3 globalVertexIdx = (int3) { d_multigpu_offset.x + vertexIdx.x, 
-                                          d_multigpu_offset.y + vertexIdx.y, 
-                                          d_multigpu_offset.z + vertexIdx.z, };
-
-    // Get coordinate location based on the indices
-    // and apply a suitable weihting and window function
-    AcReal3 coordinate;
-    grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, globalVertexIdx);
-    const AcReal  loc_weight = coord_fn(coordinate); 
-
-    const int3 dims      = end - start;
-    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
-
-    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
-    if (within_bounds)
-        out[out_idx] = map_fn(in[in_idx])*loc_weight;
-}
-
-template <MapVecFn map_fn, GridLocFn grid_loc_fn, CoordFn coord_fn>
-__global__ void
-map_vec_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int3 start, const int3 end,
-              AcReal* out)
-{
-    assert((start >= (int3){0, 0, 0}));
-    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
-
-    const int3 tid = (int3){
-        threadIdx.x + blockIdx.x * blockDim.x,
-        threadIdx.y + blockIdx.y * blockDim.y,
-        threadIdx.z + blockIdx.z * blockDim.z,
-    };
-
-    const int3 in_idx3d = start + tid;
-    const size_t in_idx = IDX(in_idx3d);
-
-    //Based on DSL boilerplate
-    const int3 vertexIdx = (int3) { threadIdx.x + blockIdx.x * blockDim.x + start.x, 
-                                    threadIdx.y + blockIdx.y * blockDim.y + start.y, 
-                                    threadIdx.z + blockIdx.z * blockDim.z + start.z, };
-    const int3 globalVertexIdx = (int3) { d_multigpu_offset.x + vertexIdx.x, 
-                                          d_multigpu_offset.y + vertexIdx.y, 
-                                          d_multigpu_offset.z + vertexIdx.z, };
-
-    // Get coordinate location based on the indices
-    // and apply a suitable weihting and window function
-    AcReal3 coordinate;
-    grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, globalVertexIdx);
-    const AcReal  loc_weight = coord_fn(coordinate); 
-
-    const int3 dims      = end - start;
-    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
-
-    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
-    if (within_bounds)
-        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx])*loc_weight;
-}
-
-template <MapVecScalFn map_fn, GridLocFn grid_loc_fn, CoordFn coord_fn>
-__global__ void
-map_vec_scal_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcReal* in3,
-                   const int3 start, const int3 end, AcReal* out)
-{
-    assert((start >= (int3){0, 0, 0}));
-    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
-
-    const int3 tid = (int3){
-        threadIdx.x + blockIdx.x * blockDim.x,
-        threadIdx.y + blockIdx.y * blockDim.y,
-        threadIdx.z + blockIdx.z * blockDim.z,
-    };
-
-    const int3 in_idx3d = start + tid;
-    const size_t in_idx = IDX(in_idx3d);
-
-    //Based on DSL boilerplate
-    const int3 vertexIdx = (int3) { threadIdx.x + blockIdx.x * blockDim.x + start.x, 
-                                    threadIdx.y + blockIdx.y * blockDim.y + start.y, 
-                                    threadIdx.z + blockIdx.z * blockDim.z + start.z, };
-    const int3 globalVertexIdx = (int3) { d_multigpu_offset.x + vertexIdx.x, 
-                                          d_multigpu_offset.y + vertexIdx.y, 
-                                          d_multigpu_offset.z + vertexIdx.z, };
-
-    // Get coordinate location based on the indices
-    // and apply a suitable weihting and window function
-    AcReal3 coordinate;
-    grid_loc_fn(&coordinate.x, &coordinate.y, &coordinate.z, globalVertexIdx);
-    const AcReal  loc_weight = coord_fn(coordinate); 
-
-    const int3 dims      = end - start;
-    const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
-
-
-    const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y && in_idx3d.z < end.z;
-    if (within_bounds)
-        out[out_idx] = map_fn(in0[in_idx], in1[in_idx], in2[in_idx], in3[in_idx])*loc_weight;
 }
 
 template <ReduceFn reduce_fn>
@@ -492,16 +284,6 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
         case RTYPE_RMS_EXP:
             map<map_exp_square><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
             break;
-        case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
-        case RTYPE_RADIAL_WINDOW_SUM:
-            map_coord<map_value, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
-            break;
-        case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_SUM:
-            map_coord<map_value, cartesian_grid_location, gaussian_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf, start, end, out);
-            break;
         default:
             ERROR("Invalid reduction type in acKernelReduceScal");
             return AC_FAILURE;
@@ -517,18 +299,12 @@ acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const A
         const size_t smem = tpb * sizeof(in[0]);
 
         switch (rtype) {
-        case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
         case RTYPE_MAX:
             reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
-        case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
         case RTYPE_MIN:
             reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
-        case RTYPE_RADIAL_WINDOW_SUM: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_SUM: /* Fallthrough */
         case RTYPE_SUM: /* Fallthrough */
         case RTYPE_RMS: /* Fallthrough */
         case RTYPE_RMS_EXP:
@@ -601,16 +377,6 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
                                                                                    vtxbuf2, start,
                                                                                    end, out);
             break;
-        case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
-        case RTYPE_RADIAL_WINDOW_SUM:
-            map_vec_coord<map_length_vec, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, out);
-            break;
-        case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_SUM:
-            map_vec_coord<map_length_vec, cartesian_grid_location, gaussian_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, start, end, out);
-            break;
         default:
             ERROR("Invalid reduction type in acKernelReduceScal");
             return AC_FAILURE;
@@ -626,18 +392,12 @@ acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const in
         const size_t smem = tpb * sizeof(in[0]);
 
         switch (rtype) {
-        case RTYPE_RADIAL_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_MAX: /* Fallthrough */
         case RTYPE_MAX:
             reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
-        case RTYPE_RADIAL_WINDOW_MIN: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_MIN: /* Fallthrough */
         case RTYPE_MIN:
             reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
-        case RTYPE_RADIAL_WINDOW_SUM: /* Fallthrough */
-        case RTYPE_GAUSSIAN_WINDOW_SUM: /* Fallthrough */
         case RTYPE_SUM: /* Fallthrough */
         case RTYPE_RMS: /* Fallthrough */
         case RTYPE_RMS_EXP:
@@ -703,13 +463,6 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
                 <<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
                                                             start, end, out);
             break;
-        case RTYPE_ALFVEN_RADIAL_WINDOW_MAX: /* Fallthrough */
-        case RTYPE_ALFVEN_RADIAL_WINDOW_MIN: /* Fallthrough */
-            map_vec_scal_coord<map_length_alf, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, start, end, out);
-            break;
-        case RTYPE_ALFVEN_RADIAL_WINDOW_RMS:
-            map_vec_scal_coord<map_square_alf, cartesian_grid_location, radial_window><<<to_dim3(bpg), to_dim3(tpb), 0, stream>>>(vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3, start, end, out);
-            break;
         default:
             fprintf(stderr, "Rtype %s (%d)\n", rtype_names[rtype], rtype);
             ERROR("Invalid reduction type in acKernelReduceVecScal");
@@ -726,15 +479,12 @@ acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, cons
         const size_t smem = tpb * sizeof(in[0]);
 
         switch (rtype) {
-        case RTYPE_ALFVEN_RADIAL_WINDOW_MAX: /* Fallthrough */
         case RTYPE_ALFVEN_MAX:
             reduce<reduce_max><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
-        case RTYPE_ALFVEN_RADIAL_WINDOW_MIN: /* Fallthrough */
         case RTYPE_ALFVEN_MIN:
             reduce<reduce_min><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;
-        case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
         case RTYPE_ALFVEN_RMS:
             reduce<reduce_sum><<<bpg, tpb, smem, stream>>>(in, count, out);
             break;

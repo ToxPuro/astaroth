@@ -32,7 +32,7 @@
 #include "datatypes.h"
 #include "errchk.h"
 
-#include "user_defines.h"
+#include "../../build/acc-runtime/api/user_defines.h"
 
 #define NUM_REDUCE_SCRATCHPADS (2)
 
@@ -41,11 +41,16 @@ typedef struct {
   int3 int3_params[NUM_INT3_PARAMS];
   AcReal real_params[NUM_REAL_PARAMS];
   AcReal3 real3_params[NUM_REAL3_PARAMS];
+  AcReal* profiles[NUM_PROFILES];
+  AcReal* arrays[NUM_ARRAYS];
 } AcMeshInfo;
 
 typedef struct {
-  AcReal* in[NUM_FIELDS];
-  AcReal* out[NUM_FIELDS];
+  AcReal* in[NUM_VTXBUF_HANDLES];
+  AcReal* out[NUM_VTXBUF_HANDLES];
+  AcReal* profiles[NUM_PROFILES];
+  AcReal* w[NUM_WORK_BUFFERS];
+  AcReal* arrays[NUM_ARRAYS];
   size_t bytes;
 } VertexBufferArray;
 
@@ -55,16 +60,16 @@ typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 extern "C" {
 #endif
 
-#include "user_declarations.h"
+#include "../../build/acc-runtime/api/user_declarations.h"
 
 AcResult acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
                        const AcReal value);
 
 AcResult acVBAReset(const cudaStream_t stream, VertexBufferArray* vba);
 
-VertexBufferArray acVBACreate(const size_t count);
+VertexBufferArray acVBACreate(const AcMeshInfo config);
 
-void acVBADestroy(VertexBufferArray* vba);
+void acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config);
 
 AcResult acRandInit(const uint64_t seed, const Volume m_local,
                     const Volume m_global, const Volume global_offset);

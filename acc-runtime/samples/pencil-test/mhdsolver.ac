@@ -1,0 +1,1005 @@
+
+int AC_step_number
+real AC_dt
+
+/*
+real AC_cs_sound, AC_cp_sound
+real AC_gamma, AC_nu_visc, AC_zeta, AC_eta
+real AC_lnrho0, AC_mu0, AC_lnT0
+*/
+// Note: not used by mhdsolver.ac at the moment (src/utils/modelsolver.c does)
+hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
+hostdefine LDENSITY (0)
+hostdefine LHYDRO (0)
+hostdefine LMAGNETIC (0)
+hostdefine LENTROPY (0)
+hostdefine LTEMPERATURE (0)
+hostdefine LFORCING (0)
+hostdefine LUPWD (0)
+hostdefine LSINK (0)
+hostdefine LBFIELD (0 && LMAGNETIC) // bfield only relevant if magnetic is on
+hostdefine LSHOCK (0)
+//hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
+hostdefine R_PI (AC_REAL_PI)
+
+Field VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO, VTXBUF_ENTROPY
+
+
+//Profile_X AC_PROFILE_GRAVX_XPENCIL
+//Profile_Y AC_PROFILE_GRAVY_YPENCIL
+Profile_Z AC_PROFILE_GRAVZ_ZPENCIL, AC_PROFILE_Z
+Profile_Z AC_PROFILE_DLNHCOND_PROF, AC_PROFILE_HCOND_PROF
+
+
+
+
+
+
+// slices output period
+int AC_slice_steps
+real AC_slice_save_t
+int AC_save_steps
+real AC_slice_save_t
+
+// maximun number of time snapshots during runtime 
+// Set AC_num_snapshots < 0 for unlimited snapshots
+int AC_num_snapshots
+int AC_bin_steps
+real AC_bin_save_t
+
+// max simulation time
+int AC_max_steps
+real AC_max_time
+// Forcing parameter generation period (if forcing is on)
+int AC_forcing_period_steps
+real AC_forcing_period_t
+
+// Initial time step index, default should be 0
+int AC_start_step
+
+real AC_dsx, AC_dsy, AC_dsz // WARNING UNUSED! NEED TO BE COMPILE-TIME CONSTANTS
+
+hostdefine DSX (0.012271846303085129837744700715935558141395192)
+hostdefine DSY (0.012271846303085129837744700715935558141395192)
+hostdefine DSZ (0.012271846303085129837744700715935558141395192)
+#define AC_inv_dsx (1. / DSX)
+#define AC_inv_dsy (1. / DSY)
+#define AC_inv_dsz (1. / DSZ)
+//TP for pencil
+#define AC_inv_dsx_6 AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx
+#define AC_inv_dsy_6 AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy
+#define AC_inv_dsz_6 AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz
+
+#define AC_inv_dsx_5 AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx
+#define AC_inv_dsy_5 AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy
+#define AC_inv_dsz_5 AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz
+
+#define AC_inv_dsx_4 AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx
+#define AC_inv_dsy_4 AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy
+#define AC_inv_dsz_4 AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz
+
+#define AC_inv_dsx_2 AC_inv_dsx*AC_inv_dsx
+#define AC_inv_dsy_2 AC_inv_dsy*AC_inv_dsy
+#define AC_inv_dsz_2 AC_inv_dsz*AC_inv_dsz
+
+#define DER6_0 -20.0
+#define DER6_1 15.0
+#define DER6_2 -6.0
+#define DER6_3 1.0
+
+#define DER5_1 2.5
+#define DER5_2 2.0
+#define DER5_3 0.5
+
+#define DER4_0 (56.0/6.0)
+#define DER4_1 (-39.0/6.0)
+#define DER4_2 (12.0/6.0)
+#define DER4_3 (-1.0)
+
+#define DER4i2j_scaling_factor 1/(6.0*180.0)
+#define DER4i2j_first 56.0
+#define DER4i2j_second -39.0
+#define DER4i2j_third 12.0
+#define DER4i2j_fourth -1.0
+
+#define DER4i2j_0 -490.0
+#define DER4i2j_1 270.0
+#define DER4i2j_2 -27.0
+#define DER4i2j_3 2.0
+
+
+// Real params
+// Spacing
+real AC_dsmin
+// physical grid
+real AC_xlen
+real AC_ylen
+real AC_zlen
+real AC_xorig
+real AC_yorig
+real AC_zorig
+// Physical units
+real AC_unit_density
+real AC_unit_velocity
+real AC_unit_length
+real AC_unit_magnetic
+// properties of gravitating star
+real AC_star_pos_x
+real AC_star_pos_y
+real AC_star_pos_z
+real AC_M_star
+// properties of sink particle
+real AC_sink_pos_x
+real AC_sink_pos_y
+real AC_sink_pos_z
+real AC_M_sink
+real AC_nu
+real AC_M_sink_init
+real AC_M_sink_Msun
+real AC_soft
+real AC_accretion_range
+real AC_switch_accretion
+//  Run params
+real AC_cdt
+real AC_cdtv
+real AC_cdts
+real AC_nu_visc
+real AC_cs_sound
+real AC_eta
+real AC_mu0
+real AC_cp_sound
+real AC_gamma
+real AC_cv_sound
+real AC_cv1
+real AC_cs2cool
+real AC_lntt0
+real AC_gamma_m1
+real AC_gamma1
+real AC_cs20
+real AC_lnT0
+real AC_lnrho0
+real AC_zeta
+real AC_trans
+real AC_nu_shock
+real AC_K_heatcond
+
+//  Parameters for generic boundary conditions, this is a dummy variable for testing, please use different ones for each field
+real AC_boundary_derivative
+
+//  Parameters only used in boundary conditions at the moment
+//  If you feel they should be elsewhere, please move them
+real AC_hcond0_kramers
+real AC_hcond0
+real AC_hflux
+real AC_n_kramers
+real AC_sigma_SBt
+real AC_chi
+real AC_chi_t
+real AC_chi_t_prof1
+
+//  Initial condition params
+real AC_ampl_lnrho
+real AC_ampl_uu
+real AC_init_ampl_uu
+real AC_angl_uu
+real AC_lnrho_edge
+real AC_lnrho_out
+real AC_ampl_aa
+real AC_init_k_wave
+real AC_init_sigma_hel
+real AC_init_shell_radius
+real AC_init_shell_width
+//  Forcing parameters. User configured.
+real AC_forcing_magnitude
+real AC_relhel
+real AC_kmin
+real AC_kmax
+real AC_switch_forcing
+//  Forcing parameters. Set by the generator.
+real AC_forcing_phase
+real AC_k_forcex
+real AC_k_forcey
+real AC_k_forcez
+real AC_kaver
+real AC_ff_hel_rex
+real AC_ff_hel_rey
+real AC_ff_hel_rez
+real AC_ff_hel_imx
+real AC_ff_hel_imy
+real AC_ff_hel_imz
+//  Additional helper params  //  (deduced from other params do not set these directly!)
+real AC_G_const
+real AC_GM_star
+real AC_unit_mass
+real AC_sq2GM_star
+real AC_cs2_sound
+//
+real AC_current_time
+
+#define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
+#define F_UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
+#if LMAGNETIC
+#define AA Field3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
+#endif
+
+#define DER1_3 (1.0 / 60.)
+#define DER1_2 (-3. / 20.)
+#define DER1_1 (3. / 4.)
+#define DER1_0 (0)
+
+#define DER2_3 (1.0 / 90.)
+#define DER2_2 (-3. / 20.)
+#define DER2_1 (3. / 2.)
+#define DER2_0 (-49. / 18.)
+
+#define DERX_3 (2. / 720.)
+#define DERX_2 (-27. / 720.)
+#define DERX_1 (270. / 720.)
+#define DERX_0 (0)
+
+#define DER6UPWD_3 (  1. / 60.)  
+#define DER6UPWD_2 ( -6. / 60.)   
+#define DER6UPWD_1 ( 15. / 60.)     
+#define DER6UPWD_0 (-20. / 60.)  
+
+
+#if LSHOCK
+
+#include "smooth_kernel.ach" 
+
+#endif 
+
+Stencil value {
+    [0][0][0] = 1
+}
+
+/*
+// A hax to access close by stencil values
+Stencil value_xm3 {
+    [0][0][-3] = 1
+}
+Stencil value_xm2 {
+    [0][0][-2] = 1
+}
+Stencil value_xm1 {
+    [0][0][-1] = 1
+}
+Stencil value_xp1 {
+    [0][0][1] = 1
+}
+Stencil value_xp2 {
+    [0][0][2] = 1
+}
+Stencil value_xp3 {
+    [0][0][3] = 1
+}
+
+Stencil value_ym3 {
+    [0][-3][0] = 1
+}
+Stencil value_ym2 {
+    [0][-2][0] = 1
+}
+Stencil value_ym1 {
+    [0][-1][0] = 1
+}
+Stencil value_yp1 {
+    [0][1][0] = 1
+}
+Stencil value_yp2 {
+    [0][2][0] = 1
+}
+Stencil value_yp3 {
+    [0][3][0] = 1
+}
+
+Stencil value_zm3 {
+    [-3][0][0] = 1
+}
+Stencil value_zm2 {
+    [-2][0][0] = 1
+}
+Stencil value_zm1 {
+    [-1][0][0] = 1
+}
+Stencil value_zp1 {
+    [1][0][0] = 1
+}
+Stencil value_zp2 {
+    [2][0][0] = 1
+}
+Stencil value_zp3 {
+    [3][0][0] = 1
+}
+*/
+
+//MV: Based on the standard rules of multiplications, why -AC_inv_dsx etc could
+//MV: not be outside of the stencil operation? 
+
+//TP: for pencil
+//Corresponds to der5 in Pencil Code
+Stencil der5x {
+    [0][0][-3] = -AC_inv_dsx_5 * DER5_3,
+    [0][0][-2] = -AC_inv_dsx_5 * DER5_2,
+    [0][0][-1] = -AC_inv_dsx_5 * DER5_1,
+    [0][0][1]  = AC_inv_dsx_5 * DER5_1,
+    [0][0][2]  = AC_inv_dsx_5 * DER5_2,
+    [0][0][3]  = AC_inv_dsx_5 * DER5_3
+}
+Stencil der5y {
+    [0][-3][0] = -AC_inv_dsy_5 * DER5_3,
+    [0][-2][0] = -AC_inv_dsy_5 * DER5_2,
+    [0][-1][0] = -AC_inv_dsy_5 * DER5_1,
+    [0][1][0]  = AC_inv_dsy_5 * DER5_1,
+    [0][2][0]  = AC_inv_dsy_5 * DER5_2,
+    [0][3][0]  = AC_inv_dsy_5 * DER5_3
+}
+Stencil der5z {
+    [-3][0][0] = -AC_inv_dsz_5 * DER5_3,
+    [-2][0][0] = -AC_inv_dsz_5 * DER5_2,
+    [-1][0][0] = -AC_inv_dsz_5 * DER5_1,
+    [1][0][0]  = AC_inv_dsz_5 * DER5_1,
+    [2][0][0]  = AC_inv_dsz_5 * DER5_2,
+    [3][0][0]  = AC_inv_dsz_5 * DER5_3
+}
+//TP: corresponds to der4 in Pencil Code
+Stencil der4x {
+    [0][0][-3] = AC_inv_dsx_4 * DER4_3,
+    [0][0][-2] = AC_inv_dsx_4 * DER4_2,
+    [0][0][-1] = AC_inv_dsx_4 * DER4_1,
+    [0][0][0]  = AC_inv_dsx_4 * DER4_0,
+    [0][0][1]  = AC_inv_dsx_4 * DER4_1,
+    [0][0][2]  = AC_inv_dsx_4 * DER4_2,
+    [0][0][3]  = AC_inv_dsx_4 * DER4_3
+}
+Stencil der4y {
+    [0][-3][0] = AC_inv_dsy_4 * DER4_3,
+    [0][-2][0] = AC_inv_dsy_4 * DER4_2,
+    [0][-1][0] = AC_inv_dsy_4 * DER4_1,
+    [0][0][0]  = AC_inv_dsy_4 * DER4_0,
+    [0][1][0]  = AC_inv_dsy_4 * DER4_1,
+    [0][2][0]  = AC_inv_dsy_4 * DER4_2,
+    [0][3][0]  = AC_inv_dsy_4 * DER4_3
+}
+Stencil der4z {
+    [-3][0][0] = AC_inv_dsz_4 * DER4_3,
+    [-2][0][0] = AC_inv_dsz_4 * DER4_2,
+    [-1][0][0] = AC_inv_dsz_4 * DER4_1,
+    [0][0][0]  = AC_inv_dsz_4 * DER4_0,
+    [1][0][0]  = AC_inv_dsz_4 * DER4_1,
+    [2][0][0]  = AC_inv_dsz_4 * DER4_2,
+    [3][0][0]  = AC_inv_dsz_4 * DER4_3
+}
+//TP: corresponds to der6_main
+Stencil der6x {
+    [0][0][-3] = AC_inv_dsx_6 * DER6_3,
+    [0][0][-2] = AC_inv_dsx_6 * DER6_2,
+    [0][0][-1] = AC_inv_dsx_6 * DER6_1,
+    [0][0][0]  = AC_inv_dsx_6 * DER6_0,
+    [0][0][1]  = AC_inv_dsx_6 * DER6_1,
+    [0][0][2]  = AC_inv_dsx_6 * DER6_2,
+    [0][0][3]  = AC_inv_dsx_6 * DER6_3
+}
+Stencil der6y {
+    [0][-3][0] = AC_inv_dsy_6 * DER6_3,
+    [0][-2][0] = AC_inv_dsy_6 * DER6_2,
+    [0][-1][0] = AC_inv_dsy_6 * DER6_1,
+    [0][0][0]  = AC_inv_dsy_6 * DER6_0,
+    [0][1][0]  = AC_inv_dsy_6 * DER6_1,
+    [0][2][0]  = AC_inv_dsy_6 * DER6_2,
+    [0][3][0]  = AC_inv_dsy_6 * DER6_3
+}
+Stencil der6z {
+    [-3][0][0] = AC_inv_dsz_6 * DER6_3,
+    [-2][0][0] = AC_inv_dsz_6 * DER6_2,
+    [-1][0][0] = AC_inv_dsz_6 * DER6_1,
+    [0][0][0]  = AC_inv_dsz_6 * DER6_0,
+    [1][0][0]  = AC_inv_dsz_6 * DER6_1,
+    [2][0][0]  = AC_inv_dsz_6 * DER6_2,
+    [3][0][0]  = AC_inv_dsz_6 * DER6_3
+}
+//TP: corresponds to der4i2j
+//when i==1 and j==2
+/**
+Stencil der4x2y {
+    [0][-3][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+
+    [0][-3][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-3][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+
+    [0][-3][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-3][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+
+    [0][-3][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-3][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3
+}
+**/
+Stencil derx {
+    [0][0][-3] = -AC_inv_dsx * DER1_3,
+    [0][0][-2] = -AC_inv_dsx * DER1_2,
+    [0][0][-1] = -AC_inv_dsx * DER1_1,
+    [0][0][1]  = AC_inv_dsx * DER1_1,
+    [0][0][2]  = AC_inv_dsx * DER1_2,
+    [0][0][3]  = AC_inv_dsx * DER1_3
+}
+
+Stencil dery {
+    [0][-3][0] = -AC_inv_dsy * DER1_3,
+    [0][-2][0] = -AC_inv_dsy * DER1_2,
+    [0][-1][0] = -AC_inv_dsy * DER1_1,
+    [0][1][0]  = AC_inv_dsy * DER1_1,
+    [0][2][0]  = AC_inv_dsy * DER1_2,
+    [0][3][0]  = AC_inv_dsy * DER1_3
+}
+
+Stencil derz {
+    [-3][0][0] = -AC_inv_dsz * DER1_3,
+    [-2][0][0] = -AC_inv_dsz * DER1_2,
+    [-1][0][0] = -AC_inv_dsz * DER1_1,
+    [1][0][0]  = AC_inv_dsz * DER1_1,
+    [2][0][0]  = AC_inv_dsz * DER1_2,
+    [3][0][0]  = AC_inv_dsz * DER1_3
+}
+
+Stencil derxx {
+    [0][0][-3] = AC_inv_dsx * AC_inv_dsx * DER2_3,
+    [0][0][-2] = AC_inv_dsx * AC_inv_dsx * DER2_2,
+    [0][0][-1] = AC_inv_dsx * AC_inv_dsx * DER2_1,
+    [0][0][0]  = AC_inv_dsx * AC_inv_dsx * DER2_0,
+    [0][0][1]  = AC_inv_dsx * AC_inv_dsx * DER2_1,
+    [0][0][2]  = AC_inv_dsx * AC_inv_dsx * DER2_2,
+    [0][0][3]  = AC_inv_dsx * AC_inv_dsx * DER2_3
+}
+
+Stencil deryy {
+    [0][-3][0] = AC_inv_dsy * AC_inv_dsy * DER2_3,
+    [0][-2][0] = AC_inv_dsy * AC_inv_dsy * DER2_2,
+    [0][-1][0] = AC_inv_dsy * AC_inv_dsy * DER2_1,
+    [0][0][0]  = AC_inv_dsy * AC_inv_dsy * DER2_0,
+    [0][1][0]  = AC_inv_dsy * AC_inv_dsy * DER2_1,
+    [0][2][0]  = AC_inv_dsy * AC_inv_dsy * DER2_2,
+    [0][3][0]  = AC_inv_dsy * AC_inv_dsy * DER2_3
+}
+
+Stencil derzz {
+    [-3][0][0] = AC_inv_dsz * AC_inv_dsz * DER2_3,
+    [-2][0][0] = AC_inv_dsz * AC_inv_dsz * DER2_2,
+    [-1][0][0] = AC_inv_dsz * AC_inv_dsz * DER2_1,
+    [0][0][0]  = AC_inv_dsz * AC_inv_dsz * DER2_0,
+    [1][0][0]  = AC_inv_dsz * AC_inv_dsz * DER2_1,
+    [2][0][0]  = AC_inv_dsz * AC_inv_dsz * DER2_2,
+    [3][0][0]  = AC_inv_dsz * AC_inv_dsz * DER2_3
+}
+
+Stencil derxy {
+    [0][-3][-3] = AC_inv_dsx * AC_inv_dsy * DERX_3,
+    [0][-2][-2] = AC_inv_dsx * AC_inv_dsy * DERX_2,
+    [0][-1][-1] = AC_inv_dsx * AC_inv_dsy * DERX_1,
+    [0][0][0]  = AC_inv_dsx * AC_inv_dsy * DERX_0,
+    [0][1][1]  = AC_inv_dsx * AC_inv_dsy * DERX_1,
+    [0][2][2]  = AC_inv_dsx * AC_inv_dsy * DERX_2,
+    [0][3][3]  = AC_inv_dsx * AC_inv_dsy * DERX_3,
+    [0][-3][3] = -AC_inv_dsx * AC_inv_dsy * DERX_3,
+    [0][-2][2] = -AC_inv_dsx * AC_inv_dsy * DERX_2,
+    [0][-1][1] = -AC_inv_dsx * AC_inv_dsy * DERX_1,
+    [0][1][-1] = -AC_inv_dsx * AC_inv_dsy * DERX_1,
+    [0][2][-2] = -AC_inv_dsx * AC_inv_dsy * DERX_2,
+    [0][3][-3] = -AC_inv_dsx * AC_inv_dsy * DERX_3
+}
+
+Stencil derxz {
+    [-3][0][-3] = AC_inv_dsx * AC_inv_dsz * DERX_3,
+    [-2][0][-2] = AC_inv_dsx * AC_inv_dsz * DERX_2,
+    [-1][0][-1] = AC_inv_dsx * AC_inv_dsz * DERX_1,
+    [0][0][0]  = AC_inv_dsx * AC_inv_dsz * DERX_0,
+    [1][0][1]  = AC_inv_dsx * AC_inv_dsz * DERX_1,
+    [2][0][2]  = AC_inv_dsx * AC_inv_dsz * DERX_2,
+    [3][0][3]  = AC_inv_dsx * AC_inv_dsz * DERX_3,
+    [-3][0][3] = -AC_inv_dsx * AC_inv_dsz * DERX_3,
+    [-2][0][2] = -AC_inv_dsx * AC_inv_dsz * DERX_2,
+    [-1][0][1] = -AC_inv_dsx * AC_inv_dsz * DERX_1,
+    [1][0][-1] = -AC_inv_dsx * AC_inv_dsz * DERX_1,
+    [2][0][-2] = -AC_inv_dsx * AC_inv_dsz * DERX_2,
+    [3][0][-3] = -AC_inv_dsx * AC_inv_dsz * DERX_3
+}
+
+Stencil deryz {
+    [-3][-3][0] = AC_inv_dsy * AC_inv_dsz * DERX_3,
+    [-2][-2][0] = AC_inv_dsy * AC_inv_dsz * DERX_2,
+    [-1][-1][0] = AC_inv_dsy * AC_inv_dsz * DERX_1,
+    [0][0][0]  = AC_inv_dsy * AC_inv_dsz * DERX_0,
+    [1][1][0]  = AC_inv_dsy * AC_inv_dsz * DERX_1,
+    [2][2][0]  = AC_inv_dsy * AC_inv_dsz * DERX_2,
+    [3][3][0]  = AC_inv_dsy * AC_inv_dsz * DERX_3,
+    [-3][3][0] = -AC_inv_dsy * AC_inv_dsz * DERX_3,
+    [-2][2][0] = -AC_inv_dsy * AC_inv_dsz * DERX_2,
+    [-1][1][0] = -AC_inv_dsy * AC_inv_dsz * DERX_1,
+    [1][-1][0] = -AC_inv_dsy * AC_inv_dsz * DERX_1,
+    [2][-2][0] = -AC_inv_dsy * AC_inv_dsz * DERX_2,
+    [3][-3][0] = -AC_inv_dsy * AC_inv_dsz * DERX_3
+}
+
+Stencil der6x_upwd {
+    [0][0][-3] =  AC_inv_dsx * DER6UPWD_3,
+    [0][0][-2] =  AC_inv_dsx * DER6UPWD_2,
+    [0][0][-1] =  AC_inv_dsx * DER6UPWD_1,
+    [0][0][0]  =  AC_inv_dsx * DER6UPWD_0,
+    [0][0][1]  =  AC_inv_dsx * DER6UPWD_1,
+    [0][0][2]  =  AC_inv_dsx * DER6UPWD_2,
+    [0][0][3]  =  AC_inv_dsx * DER6UPWD_3
+}
+
+Stencil der6y_upwd {
+    [0][-3][0] =  AC_inv_dsy * DER6UPWD_3,
+    [0][-2][0] =  AC_inv_dsy * DER6UPWD_2,
+    [0][-1][0] =  AC_inv_dsy * DER6UPWD_1,
+    [0][0][0]  =  AC_inv_dsy * DER6UPWD_0,
+    [0][1][0]  =  AC_inv_dsy * DER6UPWD_1,
+    [0][2][0]  =  AC_inv_dsy * DER6UPWD_2,
+    [0][3][0]  =  AC_inv_dsy * DER6UPWD_3
+}
+
+Stencil der6z_upwd {
+    [-3][0][0] =  AC_inv_dsz * DER6UPWD_3,
+    [-2][0][0] =  AC_inv_dsz * DER6UPWD_2,
+    [-1][0][0] =  AC_inv_dsz * DER6UPWD_1,
+    [0][0][0]  =  AC_inv_dsz * DER6UPWD_0,
+    [1][0][0]  =  AC_inv_dsz * DER6UPWD_1,
+    [2][0][0]  =  AC_inv_dsz * DER6UPWD_2,
+    [3][0][0]  =  AC_inv_dsz * DER6UPWD_3
+}
+u_dot_grad_vec(m,v){
+  return real3(dot(v,m.row(0)),dot(v,m.col(1)),dot(v,m.col(2)))
+}
+divergence_from_matrix(m) {
+    return m.data[0][0] + m.data[1][1] + m.data[2][2]
+}
+
+curl_from_matrix(m) {
+  return real3(m.data[2][1]-m.data[1][2], m.data[0][2] - m.data[2][0], m.data[1][0] - m.data[0][1])
+}
+
+vecvalue(v) {
+    return real3(value(v.x), value(v.y), value(v.z))
+}
+vecvalue_abs(v) {
+    return real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
+}
+
+gradient(s) {
+    return real3(derx(s), dery(s), derz(s))
+}
+
+gradient6_upwd(s) {
+    return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
+}
+
+gradients_upwd(v) {
+    return Matrix(gradient6_upwd(v.x), gradient6_upwd(v.y), gradient6_upwd(v.z))
+}
+
+gradients(v) {
+    return Matrix(gradient(v.x), gradient(v.y), gradient(v.z))
+}
+gradients_from_index(k){
+  return Matrix(gradient(k),gradient(k+1),gradient(k+2))
+}
+
+divergence(v) {
+    return derx(v.x) + dery(v.y) + derz(v.z)
+}
+
+curl(v) {
+    return real3(dery(v.z) - derz(v.y), derz(v.x) - derx(v.z), derx(v.y) - dery(v.x))
+}
+
+del4(s) {
+  return der4x(s) + der4y(s) + der4z(s)
+}
+del6(s) {
+  return der6x(s) + der6y(s) + der6z(s)
+}
+del6_upwd(s) {
+  return der6x_upwd(s) + der6y_upwd(s) + der6z_upwd(s)
+}
+laplace(s) {
+    return derxx(s) + deryy(s) + derzz(s)
+}
+
+veclaplace(v) {
+    return real3(laplace(v.x), laplace(v.y), laplace(v.z))
+}
+
+#if LMAGNETIC
+induction() {
+    return cross(vecvalue(UU), curl(AA)) + AC_eta * veclaplace(AA)
+}
+#endif
+
+traceless_strain(uij,divu)
+{
+  Matrix sij
+  sij.data[0][0] = uij.data[0][0] - (1.0/3.0)*divu
+
+  sij.data[1][0] = (1.0 / 2.0) * (uij.data[1][0] + uij.data[0][1])
+  sij.data[0][1] = sij.data[1][0]
+  sij.data[2][0] = (1.0 / 2.0) * (uij.data[2][0] + uij.data[0][2])
+  sij.data[0][2] = sij.data[2][0]
+
+  sij.data[1][1] = uij.data[1][1] - (1.0/3.0)*divu
+  sij.data[2][1] = (1.0 / 2.0) * (uij.data[2][1]*uij.data[1][2])
+  sij.data[1][2] = sij.data[2][1] 
+ 
+  sij.data[2][2] = uij.data[2][2] - (1.0/3.0)*divu
+  return sij
+}
+
+
+stress_tensor(v) {
+
+    Matrix S
+
+    S.data[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))
+    S.data[0][1] = (1.0 / 2.0) * (dery(v.x) + derx(v.y))
+    S.data[0][2] = (1.0 / 2.0) * (derz(v.x) + derx(v.z))
+
+    S.data[1][0] = S.data[0][1]
+    S.data[1][1] = (2.0 / 3.0) * dery(v.y) - (1.0 / 3.0) * (derx(v.x) + derz(v.z))
+    S.data[1][2] = (1.0 / 2.0) * (derz(v.y) + dery(v.z))
+
+    S.data[2][0] = S.data[0][2]
+    S.data[2][1] = S.data[1][2]
+    S.data[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
+
+    return S
+}
+
+gradient_of_divergence(v) {
+    return real3(
+        derxx(v.x) + derxy(v.y) + derxz(v.z),
+        derxy(v.x) + deryy(v.y) + deryz(v.z),
+        derxz(v.x) + deryz(v.y) + derzz(v.z)
+    )
+}
+
+contract(mat) {
+    return dot(mat.row(0), mat.row(0)) +
+           dot(mat.row(1), mat.row(1)) +
+           dot(mat.row(2), mat.row(2))
+}
+
+length(v1,v2) {
+    return sqrt( dot(v1-v2,v1-v2) )
+}
+write_vector(f,v) {
+   write( Field(f.x), v.x) 
+   write( Field(f.y), v.y) 
+   write( Field(f.z), v.z) 
+}
+
+grid_position() {
+    return real3((globalVertexIdx.x - AC_nx_min) * AC_dsx, 
+                 (globalVertexIdx.y - AC_ny_min) * AC_dsy, 
+                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
+}
+
+grid_centre() {
+    return real3(((globalGridN.x-1) * AC_dsx)/2.0, 
+                 ((globalGridN.y-1) * AC_dsy)/2.0, 
+                 ((globalGridN.z-1) * AC_dsz)/2.0)
+}
+
+rk3(s0, s1, roc) {
+    /*
+    real alpha = 0., -5./9., -153. / 128.
+    real beta = 1. / 3., 15./ 16., 8. / 15.
+
+    // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below
+    if AC_step_number > 0 {
+        return s1 + beta[AC_step_number] * ((alpha[AC_step_number] / beta[AC_step_number - 1]) * (s1 - s0) + roc * AC_dt)
+    } else {
+        return s1 + beta[AC_step_number] * roc * AC_dt
+    }
+    */
+    // Workaround
+    real alpha = 0., -5./9., -153. / 128.
+    real beta  = 1., 1. / 3., 15./ 16., 8. / 15.
+
+    /*
+    // Commented out, BUG that NDEBUG is not enabled during code generation s.t. the following conditional
+    // is evaluated, this destroys the performance
+    #ifndef NDEBUG
+    if (AC_step_number >= len(alpha) || AC_step_number + 1 >= len(beta)) {
+        print("AC_step_number invalid: '%d'\n", AC_step_number)
+    }
+    #endif
+    */
+
+    return s1 + beta[AC_step_number + 1] * ((alpha[AC_step_number] / beta[AC_step_number]) * (s1 - s0) + roc * AC_dt)
+    /*
+    if AC_step_number == 0 {
+        return s1 + (1. / 3.) * roc * AC_dt
+    } else if AC_step_number == 1 {
+        return s1 + (15./16.) * (((-5./9.) / (1./3.)) * (s1 - s0) + roc * AC_dt)
+    } else {
+        return s1 + (8./15.) * (((-153./128.) / (15./16.)) * (s1 - s0) + roc * AC_dt)
+    }
+    */
+}
+
+
+rk3_intermediate(w, roc) {
+    real alpha = 0., -5./9., -153. / 128.
+    return alpha[AC_step_number] * w + roc * AC_dt
+
+    /*
+    #ifndef NDEBUG
+    if (AC_step_number >= len(alpha)) {
+        print("AC_step_number invalid: '%d'\n", AC_step_number)
+    }
+    #endif
+
+    // return alpha[AC_step_number] * w + roc * AC_dt
+
+    // TODO NOTE abysmal performance on AMD, needs a workaround like in rk3() 
+    if AC_step_number > 0 {
+        return alpha[AC_step_number] * w + roc * AC_dt
+    } else {
+        return roc * AC_dt
+    }
+    */
+}
+
+rk3_final(f, w) {
+    real beta = 1. / 3., 15./ 16., 8. / 15.
+
+    /*
+    #ifndef NDEBUG
+    if (AC_step_number >= len(beta)) {
+        print("AC_step_number invalid: '%d'\n", AC_step_number)
+    }
+    #endif
+    */
+
+    return f + beta[AC_step_number] * w
+}
+
+
+
+
+// Scale all fields by a scaling factor
+// TODO ensure AC_scaling_factor is set!
+real AC_scaling_factor
+Kernel scale() {
+    for field in 0:NUM_FIELDS {
+        write(Field(field), value(field))
+    }
+}
+
+Kernel reset() {
+    for field in 0:NUM_FIELDS {
+        write(Field(field), 0.0)
+    }
+}
+
+/*
+xorshift(state) {
+    x = 1 + uint64_t(state)
+    x ^= x << 12
+    x ^= x >> 25
+    x ^= x << 27
+    return x * 0x2545F4914F6CDD1D
+}
+
+Kernel randomize() {
+    // N.B. scale: result in [-AC_rng_scale, AC_rng_scale] range
+    AC_rng_scale = 1e-5
+
+    for field in 0:NUM_VTXBUF_HANDLES{
+        i = uint64_t(globalVertexIdx.x) + uint64_t(globalVertexIdx.y) * uint64_t(globalGridN.x) + uint64_t(globalVertexIdx.z) * uint64_t(globalGridN.x) * uint64_t(globalGridN.y) + uint64_t(field) * uint64_t(globalGridN.x) * uint64_t(globalGridN.y) * uint64_t(globalGridN.z)
+        //i += i*i + i*i*i + i*i*i*i + i*i*i*i*i // Add some non-linearity
+        
+        // Generate some entropy
+        for step in 0:10 {
+            i = xorshift(i)
+        }
+        for step in 0:(i % 40) {
+            i = xorshift(i)
+        }
+
+        // Simple linear congruential RNG
+        //write(Field(field), 2.0 * ((75 * i + 74 + 3257*i*i + 6067*i*i*i + 7919*i*i*i*i)%999331) / 999331 - 1.0)
+        
+        // xorshift*
+        //seed = uint64_t(globalGridN.x) * uint64_t(globalGridN.y) * uint64_t(globalGridN.z) * uint64_t(NUM_FIELDS)
+        r = 2.0 * xorshift(i) / UINT64_MAX - 1.0
+        write(Field(field), AC_rng_scale * r)
+    }
+}
+*/
+
+Kernel randomize() {
+    
+    // N.B. scale: result in (-AC_rng_scale, AC_rng_scale] range
+    AC_rng_scale = 1e-5
+
+    for field in 0:NUM_VTXBUF_HANDLES{
+        r = 2.0 * rand_uniform() - 1.0
+        write(Field(field), AC_rng_scale * r)
+    }
+}
+
+Kernel twopass_solve_intermediate(){}
+Kernel twopass_solve_final(){}
+Kernel haatouken(){}
+Kernel singlepass_solve(){}
+
+Kernel rhs(){
+real3 DF_UU
+DF_UU.x = 0.0
+DF_UU.y = 0.0
+DF_UU.z = 0.0
+DF_LNRHO = 0.0
+DF_SS = 0.0
+real3 P_fpres
+real3 P_fvisc
+real P_visc_heat
+real3 P_oo
+Matrix P_uij
+real3 P_uu
+Matrix P_sij
+real P_divu
+real3 P_ugu
+real3 P_del2u
+real3 P_graddivu
+real P_ss
+real3 P_gss
+real P_lntt
+real P_cs2
+real3 P_glntt
+real P_tt1
+real P_ugss
+real P_del2ss
+real P_cv
+real P_sij2
+real P_del2lntt
+real3 P_gg
+real P_rho1
+real3 P_glnrho
+real P_lnrho
+real P_uglnrho
+real P_del2lnrho
+real3 P_sglnrho
+real fac_39_41
+real fdiff_50
+real tmp_50
+real density_rhs
+real3 glnthcond
+real3 glhc
+real thdiff
+real g2
+real heat_58_59
+real prof
+real3 gg
+
+P_uu=vecvalue(F_UU)
+P_uij = gradients_from_index(F_UU.x)
+P_divu = divergence_from_matrix(P_uij)
+P_sij = traceless_strain(P_uij,P_divu)
+P_sij2 = multm2_sym(P_sij)
+P_oo = curl_from_matrix(P_uij)
+P_ugu = P_uij * P_uu
+
+P_lnrho=value(VTXBUF_LNRHO)
+P_rho1=exp(-value(VTXBUF_LNRHO))
+P_glnrho.x = derx(VTXBUF_LNRHO)
+P_glnrho.y = dery(VTXBUF_LNRHO)
+P_glnrho.z = derz(VTXBUF_LNRHO)
+P_uglnrho = dot(P_glnrho,P_uu)-del6_upwd(VTXBUF_LNRHO)
+P_del2lnrho = laplace(VTXBUF_LNRHO)
+
+P_cv=1/AC_cv1
+P_ss=value(VTXBUF_ENTROPY)
+P_gss.x = derx(VTXBUF_ENTROPY)
+P_gss.y = dery(VTXBUF_ENTROPY)
+P_gss.z = derz(VTXBUF_ENTROPY)
+P_del2ss = laplace(VTXBUF_ENTROPY)
+P_cs2=AC_cs20*exp(AC_cv1*P_ss+AC_gamma_m1*(P_lnrho-AC_lnrho0))
+P_lntt=AC_lntt0+AC_cv1*P_ss+AC_gamma_m1*(P_lnrho-AC_lnrho0)
+P_tt1=exp(-P_lntt)
+P_glntt=AC_gamma_m1*P_glnrho+AC_cv1*P_gss
+P_del2lntt=AC_gamma_m1*P_del2lnrho+AC_cv1*P_del2ss
+P_ugss = dot(P_gss,P_uu)-del6_upwd(VTXBUF_ENTROPY)
+
+P_fpres.x=-P_cs2*(P_glnrho.x + P_glntt.x)*AC_gamma1
+P_fpres.y=-P_cs2*(P_glnrho.y + P_glntt.y)*AC_gamma1
+P_fpres.z=-P_cs2*(P_glnrho.z + P_glntt.z)*AC_gamma1
+P_fvisc.x = 0.0
+P_fvisc.y = 0.0
+P_fvisc.z = 0.0
+P_visc_heat=0.0
+P_fvisc.x = P_fvisc.x + AC_nu*(P_del2u.x + 2.*P_sglnrho.x + 1./3.*P_graddivu.x)
+P_fvisc.y = P_fvisc.y + AC_nu*(P_del2u.y + 2.*P_sglnrho.y + 1./3.*P_graddivu.y)
+P_fvisc.z = P_fvisc.z + AC_nu*(P_del2u.z + 2.*P_sglnrho.z + 1./3.*P_graddivu.z)
+P_visc_heat=P_visc_heat+2*4.00000019e-03*P_sij2
+
+P_gg.z = AC_PROFILE_GRAVZ_ZPENCIL[0]
+
+
+DF_UU=DF_UU-P_ugu
+c2=2*0.100000001
+DF_UU.x=DF_UU.x+c2*P_uu.y
+DF_UU.y=DF_UU.y-c2*P_uu.x
+DF_UU = DF_UU + P_fvisc
+density_rhs= - P_divu
+density_rhs = density_rhs - P_uglnrho
+DF_LNRHO = DF_LNRHO + density_rhs
+DF_UU = DF_UU + P_fpres
+DF_SS = DF_SS - P_ugss
+DF_SS = DF_SS + P_tt1*P_visc_heat
+if(AC_hcond0!=0.) {
+hcond=AC_PROFILE_HCOND_PROF[-3]
+glhc.z=AC_PROFILE_DLNHCOND_PROF[-3]
+glhc.x=0.
+glhc.y=0.
+glnthcond = P_glntt + glhc
+g2=P_glntt.x*glnthcond.x
+g2=g2+P_glntt.y*glnthcond.y
+g2=g2+P_glntt.z*glnthcond.z
+thdiff = P_rho1*hcond * (P_del2lntt + g2)
+}
+if(AC_hcond0!=0.) {
+DF_SS = DF_SS + thdiff
+}
+ztop=-0.680000007+2.00000000
+prof = exp(-0.5*pow(((ztop-AC_PROFILE_Z[0])/0.200000003),2))
+DF_SS = DF_SS + P_tt1*P_rho1*(- 15.0000000*prof*(P_cs2-AC_cs2cool)/AC_cs2cool)
+DF_UU.z=DF_UU.z+P_gg.z
+rk3(previous(VTXBUF_UUX),value(VTXBUF_UUX),DF_UU.x)
+rk3(previous(VTXBUF_UUX),value(VTXBUF_UUY),DF_UU.y)
+rk3(previous(VTXBUF_UUZ),value(VTXBUF_UUZ),DF_UU.z)
+rk3(previous(VTXBUF_LNRHO),value(VTXBUF_LNRHO),DF_LNRHO)
+rk3(previous(VTXBUF_ENTROPY),value(VTXBUF_ENTROPY),DF_SS)
+}

@@ -227,7 +227,7 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP
-%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL
+%token COMMUNICATED INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL PROFILE_X PROFILE_Y PROFILE_Z AUXILIARY_FIELD WORK_BUFFER ARRAY
 %token KERNEL SUM MAX
 %token HOSTDEFINE
 
@@ -249,11 +249,35 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             ASTNode* declaration_list = declaration->rhs;
             assert(declaration_list);
 
-            const ASTNode* is_field = get_node_by_token(FIELD, $$->rhs);
-            if (is_field) {
+            if (get_node_by_token(FIELD, $$->rhs)) {
                 variable_definition->type |= NODE_FIELD;
                 set_identifier_type(NODE_FIELD_ID, declaration_list);
-            } else {
+            } 
+            else if(get_node_by_token(PROFILE_X, $$->rhs)) {
+                variable_definition->type |= NODE_PROFILE_X;
+                set_identifier_type(NODE_PROFILE_X_ID, declaration_list);
+            }
+            else if(get_node_by_token(PROFILE_Y, $$->rhs)) {
+                variable_definition->type |= NODE_PROFILE_Y;
+                set_identifier_type(NODE_PROFILE_Y_ID, declaration_list);
+            }
+            else if(get_node_by_token(PROFILE_Z, $$->rhs)) {
+                variable_definition->type |= NODE_PROFILE_Z;
+                set_identifier_type(NODE_PROFILE_Z_ID, declaration_list);
+            }
+            else if(get_node_by_token(AUXILIARY_FIELD, $$->rhs)) {
+                variable_definition->type |= NODE_AUXILIARY_FIELD;
+                set_identifier_type(NODE_AUXILIARY_FIELD_ID, declaration_list);
+            }
+            else if(get_node_by_token(WORK_BUFFER, $$->rhs)) {
+                variable_definition->type |= NODE_WORK_BUFFER;
+                set_identifier_type(NODE_WORK_BUFFER, declaration_list);
+            }
+            else if(get_node_by_token(ARRAY, $$->rhs)){
+                variable_definition->type |= NODE_ARRAY;
+                set_identifier_type(NODE_ARRAY_ID, declaration_list);
+            }
+            else {
                 variable_definition->type |= NODE_DCONST;
                 set_identifier_type(NODE_DCONST_ID, declaration_list);
             }
@@ -290,6 +314,7 @@ else: ELSE             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 while: WHILE           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 for: FOR               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 in: IN                 { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
+communicated: COMMUNICATED { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int: INT               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int3: INT3             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -297,6 +322,12 @@ real: REAL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 real3: REAL3           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal3", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcMatrix", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 field: FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+profile_x: PROFILE_X       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+profile_y: PROFILE_Y       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+profile_z: PROFILE_Z       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+auxiliary_field: AUXILIARY_FIELD  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+work_buffer: WORK_BUFFER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+array: ARRAY { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 stencil: STENCIL       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("", $$); /*astnode_set_buffer(yytext, $$);*/ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 return: RETURN         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$);};
 kernel: KERNEL         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n", $$); $$->token = 255 + yytoken; };
@@ -335,12 +366,19 @@ type_specifier: int     { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real3   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | matrix  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | field   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | profile_x { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | profile_y { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | profile_z { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | auxiliary_field { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | work_buffer { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | stencil { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | array { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               ;
 
 type_qualifier: kernel { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | sum    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | max    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | communicated { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               ;
 
 /*
