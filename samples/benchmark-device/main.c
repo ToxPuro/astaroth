@@ -7,27 +7,20 @@
 
 #include "timer_hires.h"
 
-#if AC_DOUBLE_PRECISION
-#define DOUBLE_PRECISION (1)
-#else
-#define DOUBLE_PRECISION (0)
-#endif
-
 #ifdef AC_INTEGRATION_ENABLED
 int
 main(int argc, char** argv)
 {
     cudaProfilerStop();
 
-    fprintf(stderr, "Usage: ./benchmark-device <nx> <ny> <nz> <jobid> <num_samples> <verify> <salt>\n");
+    fprintf(stderr, "Usage: ./benchmark-device <nx> <ny> <nz> <jobid> <num_samples> <verify>\n");
     const size_t nx          = (argc > 1) ? (size_t)atol(argv[1]) : 256;
     const size_t ny          = (argc > 2) ? (size_t)atol(argv[2]) : 256;
     const size_t nz          = (argc > 3) ? (size_t)atol(argv[3]) : 256;
     const size_t jobid       = (argc > 4) ? (size_t)atol(argv[4]) : 0;
     const size_t num_samples = (argc > 5) ? (size_t)atol(argv[5]) : 100;
     const size_t verify      = (argc > 6) ? (size_t)atol(argv[6]) : 0;
-    const size_t salt        = (argc > 7) ? (size_t)atol(argv[7]) : 42;
-    const size_t seed        = 12345 + salt + (1 + nx + ny + nz + jobid + num_samples + verify) * time(NULL);
+    const size_t seed        = 12345 + time(NULL) + jobid * time(NULL);
 
     printf("Input parameters:\n");
     printf("\tnx: %zu\n", nx);
@@ -40,7 +33,6 @@ main(int argc, char** argv)
 
     printf("IMPLEMENTATION=%d\n", IMPLEMENTATION);
     printf("MAX_THREADS_PER_BLOCK=%d\n", MAX_THREADS_PER_BLOCK);
-    printf("DOUBLE_PRECISION=%u\n", DOUBLE_PRECISION);
     fflush(stdout);
 
     // Mesh configuration
@@ -126,7 +118,7 @@ main(int argc, char** argv)
 
     // File format
     fprintf(fp, "implementation,maxthreadsperblock,nx,ny,nz,milliseconds,tpbx,tpby,tpbz,jobid,seed,"
-                "iteration,double_precision\n");
+                "iteration\n");
 
     // Benchmark configuration
     acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
@@ -150,17 +142,17 @@ main(int argc, char** argv)
         const double milliseconds = timer_diff_nsec(t) / 1e6;
 
         const Volume tpb = acKernelLaunchGetLastTPB();
-        fprintf(fp, "%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu,%u\n", IMPLEMENTATION,
+        fprintf(fp, "%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu\n", IMPLEMENTATION,
                 MAX_THREADS_PER_BLOCK, nx, ny, nz, milliseconds, tpb.x, tpb.y, tpb.z, jobid, seed,
-                j, DOUBLE_PRECISION);
+                j);
 
         if (j == num_samples - 1) {
             fprintf(stdout, "implementation,maxthreadsperblock,nx,ny,nz,milliseconds,tpbx,tpby,"
                             "tpbz,jobid,seed,"
-                            "iteration,double_precision\n");
-            fprintf(stdout, "%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu,%u\n", IMPLEMENTATION,
+                            "iteration\n");
+            fprintf(stdout, "%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu\n", IMPLEMENTATION,
                     MAX_THREADS_PER_BLOCK, nx, ny, nz, milliseconds, tpb.x, tpb.y, tpb.z, jobid,
-                    seed, j, DOUBLE_PRECISION);
+                    seed, j);
             printf("Milliseconds per kernel launch: %g\n", milliseconds);
             printf("Optimal tpb: (%zu, %zu, %zu)\n", tpb.x, tpb.y, tpb.z);
         }

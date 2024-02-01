@@ -1,6 +1,6 @@
 
 '''
-    Copyright (C) 2014-2023, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -86,8 +86,8 @@ def plot_3(mesh, input_grid, title = '', fname = 'default', bitmap=False,
     ax00.set_title('%s t = %.4e' % (title, mesh.timestamp) )    
     ax00.set_aspect('equal')
 
-    #if mesh.minfo.contents["AC_accretion_range"] > 0.0:
-    #    ax00.contour(yy, zz, np.sqrt((yy-yy.max()/2.0)**2.0 + (zz-zz.max()/2.0)**2.0), [mesh.minfo.contents["AC_accretion_range"]]) 
+    if mesh.minfo.contents["AC_accretion_range"] > 0.0:
+        ax00.contour(yy, zz, np.sqrt((yy-yy.max()/2.0)**2.0 + (zz-zz.max()/2.0)**2.0), [mesh.minfo.contents["AC_accretion_range"]]) 
     
     xx, zz = np.meshgrid(mesh_xx_tmp, mesh_zz_tmp, indexing='ij')
     if contourplot:
@@ -98,8 +98,8 @@ def plot_3(mesh, input_grid, title = '', fname = 'default', bitmap=False,
     ax10.set_ylabel('z')
     ax10.set_aspect('equal')
 
-    #if mesh.minfo.contents["AC_accretion_range"] > 0.0:
-    #    ax10.contour(xx, zz, np.sqrt((xx-xx.max()/2.0)**2.0 + (zz-zz.max()/2.0)**2.0), [mesh.minfo.contents["AC_accretion_range"]]) 
+    if mesh.minfo.contents["AC_accretion_range"] > 0.0:
+        ax10.contour(xx, zz, np.sqrt((xx-xx.max()/2.0)**2.0 + (zz-zz.max()/2.0)**2.0), [mesh.minfo.contents["AC_accretion_range"]]) 
     
     xx, yy = np.meshgrid(mesh_xx_tmp, mesh_yy_tmp, indexing='ij')
     if contourplot:
@@ -110,8 +110,8 @@ def plot_3(mesh, input_grid, title = '', fname = 'default', bitmap=False,
     ax11.set_ylabel('y')
     ax11.set_aspect('equal')
 
-    #if mesh.minfo.contents["AC_accretion_range"] > 0.0:
-    #    ax11.contour(xx, yy, np.sqrt((xx-xx.max()/2.0)**2.0 + (yy-yy.max()/2.0)**2.0), [mesh.minfo.contents["AC_accretion_range"]]) 
+    if mesh.minfo.contents["AC_accretion_range"] > 0.0:
+        ax11.contour(xx, yy, np.sqrt((xx-xx.max()/2.0)**2.0 + (yy-yy.max()/2.0)**2.0), [mesh.minfo.contents["AC_accretion_range"]]) 
 
     if bfieldlines:
         ax00.streamplot(mesh.yy, mesh.zz, np.mean(mesh.bb[1], axis=0), np.mean(mesh.bb[2], axis=0))

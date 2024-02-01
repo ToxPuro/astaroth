@@ -75,7 +75,7 @@ main(int argc, char** argv)
             job_id = atoi(argv[4]);
     }
     char job_dir[4096];
-    snprintf(job_dir, 4096, "mpi-io-tmpdir-%d-%d", job_id, pid);
+    snprintf(job_dir, 4096, "mpi-io-tmpdir-%d", job_id);
 
     // Init device
     acGridInit(info);
@@ -116,9 +116,7 @@ main(int argc, char** argv)
     }
     double write_milliseconds = 0;
     double write_bandwidth    = 0; // bytes per second
-
-    // if (!pid)
-    {
+    if (!pid) {
         write_milliseconds   = (double)timer_diff_nsec(t) / 1e6;
         const double seconds = (double)timer_diff_nsec(t) / 1e9;
         const size_t bytes   = NUM_VTXBUF_HANDLES * acVertexBufferCompdomainSizeBytes(info);
@@ -148,9 +146,7 @@ main(int argc, char** argv)
     }
     double read_milliseconds = 0;
     double read_bandwidth    = 0; // bytes per second
-
-    // if (!pid)
-    {
+    if (!pid) {
         read_milliseconds    = (double)timer_diff_nsec(t) / 1e6;
         const double seconds = (double)timer_diff_nsec(t) / 1e9;
         const size_t bytes   = NUM_VTXBUF_HANDLES * acVertexBufferCompdomainSizeBytes(info);
@@ -170,26 +166,21 @@ main(int argc, char** argv)
 
     // Write out
     // Format:
-    // proc,nprocs,writemilliseconds,writebandwidth,readmilliseconds,readbandwidth,usedistributedio,nx,ny,nz
-    // if (!pid) {
-
-    const size_t buflen = 4096;
-    char outfile[buflen];
-    snprintf(outfile, buflen, "scaling-io-benchmark-job%d-proc%d.csv", job_id, pid);
-
-    FILE* fp = fopen(outfile, "a");
-    ERRCHK_ALWAYS(fp);
+    // devices,writemilliseconds,writebandwidth,readmilliseconds,readbandwidth,usedistributedio,nx,ny,nz
+    if (!pid) {
+        FILE* fp = fopen("scaling-io-benchmark.csv", "a");
+        ERRCHK_ALWAYS(fp);
 
 #if USE_DISTRIBUTED_IO
-    const bool use_distributed_io = true;
+        const bool use_distributed_io = true;
 #else
-    const bool use_distributed_io = false;
+        const bool use_distributed_io = false;
 #endif
-    fprintf(fp, "%d,%d,%g,%g,%g,%g,%d,%d,%d,%d\n", pid, nprocs, write_milliseconds, write_bandwidth,
-            read_milliseconds, read_bandwidth, use_distributed_io, info.int_params[AC_nx],
-            info.int_params[AC_ny], info.int_params[AC_nz]);
-    fclose(fp);
-    // }
+        fprintf(fp, "%d,%g,%g,%g,%g,%d,%d,%d,%d\n", nprocs, write_milliseconds, write_bandwidth,
+                read_milliseconds, read_bandwidth, use_distributed_io, info.int_params[AC_nx],
+                info.int_params[AC_ny], info.int_params[AC_nz]);
+        fclose(fp);
+    }
 
     acGridQuit();
 
@@ -200,8 +191,7 @@ main(int argc, char** argv)
     }
 
     // Remove old files
-    // if (!pid)
-    {
+    if (!pid) {
         printf("Removing fields\n");
         // sprintf(cmd, "rm %s/*.mesh", job_dir);
         sprintf(cmd, "rm -r %s", job_dir);

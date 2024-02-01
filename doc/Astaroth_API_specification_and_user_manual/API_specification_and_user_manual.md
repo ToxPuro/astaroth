@@ -609,7 +609,6 @@ which use those uniforms.
 
 > **Note:** As of 2019-10-01, `VectorField`s cannot be declared as uniforms. Instead, one should declare each component as a `ScalarField` and use them to construct a `VectorField` during the stencil processing stage. For example, `in VectorField(A, B, C);`, where `A`, `B` and `C` are `uniform ScalarField`s.
 
-> **Pitfalls:** Ensure proper synchronization and ordering. For example, `acLoadIntUniform(stream0, symbol, 0); acLoadIntUniform(stream1, symbol, 1); kernel<<<..., stream0>>>()` results in a data race for `symbol` if it is accessed in `kernel` (its value can be either `0` or `1`).
 
 ## Standard Libraries
 

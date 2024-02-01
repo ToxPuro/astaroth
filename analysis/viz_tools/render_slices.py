@@ -4,19 +4,18 @@ import math
 import pathlib
 import re
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 parser = argparse.ArgumentParser(description='A tool for rendering slices from binary files')
 parser.add_argument('--input', type=pathlib.Path, nargs='+', required=True, help='List of slice binaries')
-parser.add_argument('--output', type=pathlib.Path, default='output-slices-postprocessed', help='Output dir to write the postprocessed slices to')
+parser.add_argument('--output', type=pathlib.Path, default='output-slices-rendered', help='Output dir to write rendered slices to')
 parser.add_argument('--render-vectors', type=str, default='on', choices=['on', 'off'], help='Deduce which fields are vectors from field names and combine vector components')
 parser.add_argument('--conserve-memory', type=str, default='off', choices=['on', 'off'], help='Conserve memory by reading files twice. Once two find vmin, vmax, and again when rendering.')
 parser.add_argument('--termcolor', type=str, default='on', choices=['on', 'off'], help='Use ANSI color codes for clearer terminal output')
 parser.add_argument('--dtype', type=str, default='double', help='The datatype of a single data element (default: double). Accepted values: numpy dtypes')
 parser.add_argument('--dpi', type=int, default=150, help='Set DPI of the output images')
 parser.add_argument('--vrange', type=float, nargs=2, required=False, help='Manually set the value range of the plots as --vrange {min} {max}')
-parser.add_argument('--write-png', action=argparse.BooleanOptionalAction, help='Write slices to png images')
-parser.add_argument('--write-bin', action=argparse.BooleanOptionalAction, help='Write slices to binary files')
 args = parser.parse_args()
 
 #Term colors
@@ -35,17 +34,7 @@ if args.termcolor == "on":
     CY="\033[96m"
     CLR="\033[00m"
 
-# Output directories
 output_dir = args.output
-render_dir = output_dir/'render'
-binary_dir = output_dir/'binary'
-
-output_dir.mkdir(parents=True, exist_ok=True)
-if args.write_png:
-    render_dir.mkdir(parents=True, exist_ok=True)
-    import matplotlib.pyplot as plt
-if args.write_bin:
-    binary_dir.mkdir(parents=True, exist_ok=True)
 
 segmented_filename_regex = re.compile(r'([^-]*)-segment-at_(\d+)_(\d+)_(\d+)-dims_(\d+)_(\d+)-step_(\d+).slice')
 
@@ -82,7 +71,7 @@ for file_path in args.input:
         steps[step][field]["columns"][pos[0]].setdefault(pos[1], {})
         steps[step][field]["columns"][pos[0]][pos[1]] = {"dims":dims, "file_path":file_path}
     else:
-        print(f"File {filename}, did not match filename regex, skipping it")
+        print(f"File {file}, did not match filename regex, skipping it")
 
 vector_fields = {}
 if args.render_vectors == "on":
@@ -127,6 +116,10 @@ else:
                     if conserve_memory:
                         del segment["frame"]
 
+
+#Create output directory
+output_dir.mkdir(parents=True, exist_ok=True)
+
 """
 combine_slice
 
@@ -163,16 +156,10 @@ def render_slice(full_slice, field_name, step, z):
     plt.xlabel('x')
     title_field_name = field_name.replace("_"," ").replace("VTXBUF","")
     plt.title(f'{title_field_name}, step = {int(step)}')
-    output_file = render_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
+    output_file = output_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.png'
     print(f"writing to {GR}{output_file}{CLR}")
     plt.savefig(output_file, dpi=args.dpi)
     plt.clf()
-
-def write_binary(full_slice, field_name, step, z):
-    output_file = binary_dir/f'{field_name}.{full_slice.shape[0]}x{full_slice.shape[1]}.z_{z}.step_{step}.slice'
-    print(f"Writing {MA}{field_name:>20}{CLR} slice at step {CY}{int(step):<8}{CLR} to binary {output_file}...", end="")
-    print(f"to {GR}{output_file}{CLR}")
-    full_slice.tofile(output_file)
 
 #Render the vector fields
 for vector_field, components in vector_fields.items():
@@ -184,15 +171,7 @@ for vector_field, components in vector_fields.items():
         for comp_field in components:
             slice_data = steps[step][comp_field]
             combine_slice(slice_data)
-
-            # Render slice
-            if args.write_png:
-                render_slice(**slice_data)
-
-            # Write binary
-            if args.write_bin:
-                write_binary(**slice_data)
-
+            render_slice(**slice_data)
             comp_squared = np.square(slice_data["full_slice"])
             #Delete scalar component, so that it doesn't get re-rendered
             del steps[step][comp_field]["full_slice"]
@@ -217,14 +196,7 @@ for vector_field, components in vector_fields.items():
         field_name = vector_field + "_L2-norm"
         field_headers[field_name] = l2_norm_header
 
-        # Render slice
-        if args.write_png:
-            render_slice(vector_slice, field_name, step, z)
-
-        # Write binary
-        #if args.write_bin:
-        #    write_binary(vector_slice, field_name, step, z)
-
+        render_slice(vector_slice, field_name, step, z)
         del vector_slice
            
 
@@ -232,13 +204,5 @@ for vector_field, components in vector_fields.items():
 for step, fields in steps.items():
     for field, slice_data in fields.items():
         combine_slice(slice_data)
-
-        # Render slice
-        if args.write_png:
-            render_slice(**slice_data)
-
-        # Write binary
-        if args.write_bin:
-            write_binary(**slice_data)
-
+        render_slice(**slice_data)
         del slice_data["full_slice"]

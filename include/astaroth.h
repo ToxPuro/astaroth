@@ -787,14 +787,7 @@ AcResult acGridExecuteTaskGraph(AcTaskGraph* graph, const size_t n_iterations);
 /** */
 AcResult acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3 start,
                             const int3 end);
-/** */
-AcResult
-acGridLaunchKernelDebug(const Stream stream, const Kernel kernel, const int3 start, const int3 end);
 
-/** */
-AcResult
-acDeviceLaunchKernelDebug(const Device device, const Stream stream, const Kernel kernel,
-                     const int3 start, const int3 end);
 
 /** */
 AcResult acGridLoadStencil(const Stream stream, const Stencil stencil,

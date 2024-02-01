@@ -39,8 +39,8 @@ Run `./my_cmake.sh`
 
 # Running the simulation. 
 
-Run e.g. `mpirun -np 4 ./ac_run_mpi --config astaroth.conf --init-condition Haatouken` 
-or however your particular system runs MPI. 
+Run e.g. `mpirun -n 4 ./ac_run_mpi -c astaroth.conf` or however you particular
+system runs MPI. 
 
 # Troubleshooting
 

@@ -7,12 +7,6 @@
 
 #include "timer_hires.h"
 
-#if AC_DOUBLE_PRECISION
-#define DOUBLE_PRECISION (1)
-#else
-#define DOUBLE_PRECISION (0)
-#endif
-
 // Simulation parameters
 static const AcReal DT = (AcReal)FLT_EPSILON;
 
@@ -153,7 +147,7 @@ main(int argc, char** argv)
     cudaProfilerStop();
 
     fprintf(stderr,
-            "Usage: ./heat-equation <nx> <ny> <nz> <jobid> <num_samples> <verify> <radius> <salt>\n");
+            "Usage: ./heat-equation <nx> <ny> <nz> <jobid> <num_samples> <verify> <radius>\n");
     const size_t nx          = (argc > 1) ? (size_t)atol(argv[1]) : 256;
     const size_t ny          = (argc > 2) ? (size_t)atol(argv[2]) : 256;
     const size_t nz          = (argc > 3) ? (size_t)atol(argv[3]) : 256;
@@ -161,8 +155,7 @@ main(int argc, char** argv)
     const size_t num_samples = (argc > 5) ? (size_t)atol(argv[5]) : 100;
     const size_t verify      = (argc > 6) ? (size_t)atol(argv[6]) : 0;
     const size_t radius      = (argc > 7) ? (size_t)atol(argv[7]) : STENCIL_ORDER / 2;
-    const size_t salt        = (argc > 8) ? (size_t)atol(argv[8]) : 42; 
-    const size_t seed        = 12345 + salt + (1 + nx + ny + nz + jobid + num_samples + verify + radius) * time(NULL);
+    const size_t seed        = 12345 + time(NULL) + jobid * time(NULL);
     // const Kernel kernel      = (nz > 1) ? solve3d : (ny > 1) ? solve2d : solve1d;
     // const size_t kernel_id   = acGetKernelId(kernel);
     // const char* kernel_name  = kernel_names[kernel_id];
@@ -186,7 +179,6 @@ main(int argc, char** argv)
     printf("IMPLEMENTATION=%d\n", IMPLEMENTATION);
     printf("MAX_THREADS_PER_BLOCK=%d\n", MAX_THREADS_PER_BLOCK);
     printf("STENCIL_ORDER=%d\n", STENCIL_ORDER);
-    printf("DOUBLE_PRECISION: %u\n", DOUBLE_PRECISION);
 
     // Derived parameters
     printf("Derived parameters:\n");
@@ -228,7 +220,6 @@ main(int argc, char** argv)
         // Dryrun and autotune
         // for (size_t i = 0; i < NUM_KERNELS; ++i)
         //    acDeviceLaunchKernel(device, STREAM_DEFAULT, kernels[i], dims.n0, dims.n1);
-        acDeviceFlushOutputBuffers(device, STREAM_DEFAULT);
         acDeviceLaunchKernel(device, STREAM_DEFAULT, kernel, dims.n0, dims.n1);
         acDeviceResetMesh(device, STREAM_DEFAULT);
 
@@ -280,7 +271,7 @@ main(int argc, char** argv)
     fprintf(fp,
             "kernel,implementation,maxthreadsperblock,nx,ny,nz,radius,milliseconds,tpbx,tpby,tpbz,"
             "jobid,seed,"
-            "iteration,double_precision\n");
+            "iteration\n");
 
     // Benchmark
     Timer t;
@@ -301,18 +292,18 @@ main(int argc, char** argv)
         acDeviceBenchmarkKernel(device, kernel, dims.n0, dims.n1);
 
         const Volume tpb = acKernelLaunchGetLastTPB();
-        fprintf(fp, "%s,%d,%d,%zu,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu,%u\n", kernel_name,
+        fprintf(fp, "%s,%d,%d,%zu,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu\n", kernel_name,
                 IMPLEMENTATION, MAX_THREADS_PER_BLOCK, nx, ny, nz, radius, milliseconds, tpb.x,
-                tpb.y, tpb.z, jobid, seed, j, DOUBLE_PRECISION);
+                tpb.y, tpb.z, jobid, seed, j);
 
         if (j == num_samples - 1) {
             fprintf(stdout, "kernel,implementation,maxthreadsperblock,nx,ny,nz,radius,"
                             "milliseconds,tpbx,tpby,"
                             "tpbz,jobid,seed,"
-                            "iteration,double_precision\n");
-            fprintf(stdout, "%s,%d,%d,%zu,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu,%u\n", kernel_name,
+                            "iteration\n");
+            fprintf(stdout, "%s,%d,%d,%zu,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu\n", kernel_name,
                     IMPLEMENTATION, MAX_THREADS_PER_BLOCK, nx, ny, nz, radius, milliseconds, tpb.x,
-                    tpb.y, tpb.z, jobid, seed, j, DOUBLE_PRECISION);
+                    tpb.y, tpb.z, jobid, seed, j);
             printf("Milliseconds per kernel '%s' launch: %g\n", kernel_name, milliseconds);
             printf("Optimal tpb: (%zu, %zu, %zu)\n", tpb.x, tpb.y, tpb.z);
         }
