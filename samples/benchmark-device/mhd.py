@@ -19,6 +19,7 @@
 # %%
 import itertools
 import scipy
+from scipy import ndimage
 import argparse
 import numpy as np
 import time
@@ -34,7 +35,7 @@ parser.add_argument('--device', type=str, default='gpu',
                     choices=['cpu', 'gpu'], help='The device used for the benchmarks')
 parser.add_argument('--radius', type=int, default=1,
                     help='Sets the stencil radius')
-parser.add_argument('--dtype', default='fp64',
+parser.add_argument('--dtype', default='fp32',
                     choices=['fp32', 'fp64'], help='The precision used for the benchmarks')
 parser.add_argument('--library', required=True, choices=[
                     'pytorch', 'tensorflow', 'jax'], help='The underlying library used for benchmarking')
