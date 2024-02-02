@@ -169,11 +169,12 @@ AcResult acKernelVolumeCopy(const cudaStream_t stream,                          
 // Astaroth 2.0 backwards compatibility.
 AcResult acKernel(const KernelParameters params, VertexBufferArray vba);
 
-void acUnpackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, PlateType plate);
-void acPackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, PlateType plate);
+void acUnpackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, int plate);
+void acPackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, int plate);
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
 template <int direction>  static __global__ void packUnpackPlate(AcReal* __restrict__ buffer, VertexBufferArray vba, int3 start, int3 end);
 

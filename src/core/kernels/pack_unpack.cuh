@@ -30,10 +30,10 @@ template <int direction>  static __global__ void packUnpackPlate(AcReal* __restr
     const int vba_idx = IDX(start+(int3){xIdx,yIdx,zIdx});
 
     if (direction==AC_D2H){
-      //vba.out[vba_handle][vba_idx] = (AcReal)(-vba_idx-1);
-      buffer[vertexIdx] = vba.out[vba_handle][vba_idx];     // requires that the loaded plate is already updated in vba.out
-      //buffer[vertexIdx] = vba.in[vba_handle][vba_idx];
-    }else if (direction==AC_H2D)
+      //vba.out[vba_handle][vba_idx] = (AcReal)(-vba_idx-1);  // filling the buffer with the index for debugging purposes
+      //buffer[vertexIdx] = vba.out[vba_handle][vba_idx];     // requires that the loaded plate is already updated in vba.out
+      buffer[vertexIdx] = vba.in[vba_handle][vba_idx];
+    } else if (direction==AC_H2D)
       vba.in[vba_handle][vba_idx] = buffer[vertexIdx];
 }
 __global__ void setPlate(VertexBufferArray vba, int3 start, int3 end)

@@ -66,7 +66,7 @@ acKernel(const KernelParameters params, VertexBufferArray vba)
 }
 #if PACKED_DATA_TRANSFERS
 void
-acUnpackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, PlateType plate)
+acUnpackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, int plate)
 {
     const dim3 tpb(256, 1, 1);
     const dim3 bpg((uint)ceil((block_size * NUM_VTXBUF_HANDLES) / (float)tpb.x), 1, 1);
@@ -75,7 +75,7 @@ acUnpackPlate(const Device device, int3 start, int3 end, int block_size, const S
 }
 
 void
-acPackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, PlateType plate)
+acPackPlate(const Device device, int3 start, int3 end, int block_size, const Stream stream, int plate)
 {                               
     const dim3 tpb(256, 1, 1);
     const dim3 bpg((uint)ceil((block_size * NUM_VTXBUF_HANDLES) / (float)tpb.x), 1, 1);

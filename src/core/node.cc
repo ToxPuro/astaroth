@@ -1054,7 +1054,7 @@ acNodeReduceVec(const Node node, const Stream stream, const ReductionType rtype,
 
 #if PACKED_DATA_TRANSFERS
 AcResult
-acNodeLoadPlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate)
+acNodeLoadPlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* plateBuffer, int plate)
 {
     int kmin, kmax, nzloc=node->subgrid.n.z, mzloc=node->subgrid.m.z;
     size_t start_idx;
@@ -1096,7 +1096,7 @@ acNodeLoadPlate(const Node node, const Stream stream, const int3 start, const in
 }
 
 AcResult
-acNodeLoadPlateXcomp(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate)
+acNodeLoadPlateXcomp(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* plateBuffer, int plate)
 {
     int kmin, kmax, nzloc=node->subgrid.n.z, mzloc=node->subgrid.m.z;
     size_t start_idx;
@@ -1135,12 +1135,8 @@ acNodeLoadPlateXcomp(const Node node, const Stream stream, const int3 start, con
 }
 
 AcResult
-acNodeStorePlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate)
+acNodeStorePlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* plateBuffer, int plate)
 {
-    if (plate==AC_XY) {
-      printf("acNodeStorePlate not valid for XY plates!");
-      return AC_FAILURE;
-    }
     int kmin, kmax, nzloc=node->subgrid.n.z;
     size_t start_idx;
 
@@ -1184,21 +1180,21 @@ acNodeStorePlate(const Node node, const Stream stream, const int3 start, const i
     return AC_SUCCESS;
 }
 AcResult
-acNodeStoreIXYPlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, PlateType plate)
+acNodeStoreIXYPlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, int plate)
 {
     size_t dev_offset=0;
-    if (plate==AC_FRONT) {
+    if (plate==AC_BOT) {
       acDeviceStoreIXYPlate(node->devices[0], start, end, dev_offset, stream, host_mesh);
       return AC_SUCCESS;
     }
-    else if (plate==AC_BACK) {
+    else if (plate==AC_TOP) {
       dev_offset = - node->subgrid.n.z*(node->num_devices-1)*host_mesh->info.int_params[AC_mxy];
 //printf("dev_offset= %d \n",dev_offset);
       acDeviceStoreIXYPlate(node->devices[node->num_devices-1], start, end, dev_offset, stream, host_mesh);
       return AC_SUCCESS;
     }
     else {
-      printf("acNodeStoreIXYPlate: Unknown plate type");
+      printf("acNodeStoreIXYPlate: Unknown plate type \n");
       return AC_FAILURE;
     }
 }

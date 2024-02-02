@@ -266,12 +266,15 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 #if PACKED_DATA_TRANSFERS
 // Buffer for packed transfer of halo plates.
     ERRCHK_CUDA_ALWAYS(
-        cudaMalloc((void**)&(device->plate_buffers[AC_XY]), device->local_config.int_params[AC_xy_plate_bufsize]*sizeof(AcReal)));
+        cudaMalloc((void**)&(device->plate_buffers[AC_XZ|AC_BOT]), device->local_config.int_params[AC_xz_plate_bufsize]*sizeof(AcReal)));
     ERRCHK_CUDA_ALWAYS(
-        cudaMalloc((void**)&(device->plate_buffers[AC_XZ]), device->local_config.int_params[AC_xz_plate_bufsize]*sizeof(AcReal)));
+        cudaMalloc((void**)&(device->plate_buffers[AC_YZ|AC_BOT]), device->local_config.int_params[AC_yz_plate_bufsize]*sizeof(AcReal)));
     ERRCHK_CUDA_ALWAYS(
-        cudaMalloc((void**)&(device->plate_buffers[AC_YZ]), device->local_config.int_params[AC_yz_plate_bufsize]*sizeof(AcReal)));
-//printf("pointers= %u %u %u \n", device->plate_buffers[AC_XY], device->plate_buffers[AC_XZ], device->plat
+        cudaMalloc((void**)&(device->plate_buffers[AC_XZ|AC_TOP]), device->local_config.int_params[AC_xz_plate_bufsize]*sizeof(AcReal)));
+    ERRCHK_CUDA_ALWAYS(
+        cudaMalloc((void**)&(device->plate_buffers[AC_YZ|AC_TOP]), device->local_config.int_params[AC_yz_plate_bufsize]*sizeof(AcReal)));
+//printf("device plate buffer pointers= %p %p %p %p \n", device->plate_buffers[AC_XZ|AC_BOT], device->plate_buffers[AC_YZ|AC_BOT], 
+//                                                       device->plate_buffers[AC_XZ|AC_TOP], device->plate_buffers[AC_YZ|AC_TOP]);
 #endif
     // Device constants
     // acDeviceLoadDefaultUniforms(device); // TODO recheck
@@ -735,7 +738,7 @@ acDeviceVolumeCopy(const Device device, const Stream stream,                    
 #if PACKED_DATA_TRANSFERS 
 // Functions for calling packed data transfers
 AcResult
-acDeviceLoadPlateBuffer(const Device device, int3 start, int3 end, const Stream stream, AcReal* buffer, PlateType plate)
+acDeviceLoadPlateBuffer(const Device device, int3 start, int3 end, const Stream stream, AcReal* buffer, int plate)
 {
     const int size_x=end.x-start.x, size_y=end.y-start.y, size_z=end.z-start.z;
     const int block_size = size_x*size_y*size_z;
@@ -743,9 +746,9 @@ acDeviceLoadPlateBuffer(const Device device, int3 start, int3 end, const Stream 
 /*
 printf("acDeviceLoadPlateBuffer:start,end= %d %d %d %d %d %d \n", start.x, start.y, start.z, end.x, end.y, end.z);
 printf("acDeviceLoadPlateBuffer:bufsiz,block_size= %u %u\n",bufsiz,block_size);
-printf("acDeviceLoadPlateBuffer:device->plate_buffer= %p \n", device->plate_buffers[plate]);
 printf("acDeviceLoadPlateBuffer:buffer= %p \n", buffer);
 */
+printf("acDeviceLoadPlateBuffer:plate, device->plate_buffer= %d %p\n", plate, device->plate_buffers[plate]);
     cudaSetDevice(device->id);
 
     ERRCHK_CUDA(
@@ -759,7 +762,7 @@ printf("acDeviceLoadPlateBuffer:buffer= %p \n", buffer);
 }
 
 AcResult
-acDeviceStorePlateBuffer(const Device device, int3 start, int3 end, const Stream stream, AcReal* buffer, PlateType plate)
+acDeviceStorePlateBuffer(const Device device, int3 start, int3 end, const Stream stream, AcReal* buffer, int plate)
 {
     const int size_x=end.x-start.x, size_y=end.y-start.y, size_z=end.z-start.z;
     const int block_size = size_x*size_y*size_z;
@@ -767,9 +770,9 @@ acDeviceStorePlateBuffer(const Device device, int3 start, int3 end, const Stream
 /*
 printf("acDeviceStorePlateBuffer:start,end,type= %d %d %d %d %d %d %d\n", start.x, start.y, start.z, end.x, end.y, end.z, plate);
 printf("acDeviceStorePlateBuffer:bufsiz,block_size= %u %u\n",bufsiz,block_size);
-printf("acDeviceStorePlateBuffer:device->plate_buffer= %p \n", device->plate_buffers[plate]);
 printf("acDeviceStorePlateBuffer:buffer= %p \n", buffer);
 */
+printf("acDeviceStorePlateBuffer:plate, device->plate_buffer= %d %p \n", plate, device->plate_buffers[plate]);
     cudaSetDevice(device->id);
 
 //  packing from global memory; done by GPU kernel "packUnpackPlate".
