@@ -66,7 +66,7 @@ typedef int Stream;
 
 // For plate buffers.
 enum {AC_H2D, AC_D2H};    // pack/unpack direction
-typedef enum {AC_XY, AC_XZ, AC_YZ, AC_FRONT, AC_BACK, NUM_PLATE_BUFFERS} PlateType;
+typedef enum {AC_XZ=0, AC_YZ=1, AC_BOT=0, AC_TOP=2, NUM_PLATE_BUFFERS=4} PlateType;
 
 #define AC_FOR_RTYPES(FUNC)                                                                        \
     FUNC(RTYPE_MAX)                                                                                \
@@ -798,16 +798,16 @@ AcResult acNodeReduceVecScal(const Node node, const Stream stream_type, const Re
                              AcReal* result);
 /** */
 AcResult acNodeLoadPlate(const Node node, const Stream stream, const int3 start, const int3 end, 
-                         AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate);
+                         AcMesh* host_mesh, AcReal* plateBuffer, int plate);
 /** */
 AcResult acNodeStorePlate(const Node node, const Stream stream, const int3 start, const int3 end,
-                          AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate);
+                          AcMesh* host_mesh, AcReal* plateBuffer, int plate);
 /** */
 AcResult acNodeStoreIXYPlate(const Node node, const Stream stream, const int3 start, const int3 end, 
-                             AcMesh* host_mesh, PlateType plate);
+                             AcMesh* host_mesh, int plate);
 /** */
 AcResult acNodeLoadPlateXcomp(const Node node, const Stream stream, const int3 start, const int3 end, 
-                              AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate);
+                              AcMesh* host_mesh, AcReal* plateBuffer, int plate);
 
 /** */
 AcResult acNodeGetVBApointers(Node* node_handle, AcReal *vbapointer[2]);
@@ -995,11 +995,11 @@ AcResult acDeviceVolumeCopy(const Device device, const Stream stream,
 
 /** */
 AcResult acDeviceLoadPlateBuffer(const Device device, int3 start, int3 end, const Stream stream,
-                                 AcReal* buffer, PlateType plate);
+                                 AcReal* buffer, int plate);
 
 /** */
 AcResult acDeviceStorePlateBuffer(const Device device, int3 start, int3 end, const Stream stream, 
-                                  AcReal* buffer, PlateType plate);
+                                  AcReal* buffer, int plate);
 
 /** */
 AcResult acDeviceStoreIXYPlate(const Device device, int3 start, int3 end, int src_offset, const Stream stream, 
