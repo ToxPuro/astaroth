@@ -182,7 +182,7 @@ lib = None
 if args.library in 'pytorch':
     import torch
     import torch.utils.benchmark
-    print(torch.__version__)
+    print(f'PyTorch version: {torch.__version__}')
     class Pytorch(Debug):
         def __init__(self, device, dtype):
             self.device = 'cpu' if device in 'cpu' else 'cuda'
@@ -213,7 +213,8 @@ if args.library in 'pytorch':
             ndims = len(input.shape) - 2
             return torch.nn.functional.pad(input, (args.radius,) * 2 * ndims, mode='constant')
         
-        @torch.compile
+        #@torch.compile
+        #@torch.jit.script
         @torch.no_grad()
         def convolve(self, input, weights):
             if (len(input.shape) == 5):
@@ -222,8 +223,7 @@ if args.library in 'pytorch':
                 return torch.nn.functional.conv2d(input, weights)
             else:
                 return torch.nn.functional.conv1d(input, weights)
-
-
+    
         def benchmark_old(self, num_samples):
             output = Output()
 
@@ -292,6 +292,7 @@ if args.library in 'pytorch':
     lib = Pytorch(args.device, args.dtype)
 elif args.library in 'tensorflow':
     import tensorflow as tf
+    print(f'TensorFlow version: {tf.__version__}')
     class Tensorflow(Debug):
         def __init__(self, device, dtype):
             print(tf.sysconfig.get_build_info())

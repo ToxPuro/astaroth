@@ -451,15 +451,16 @@ lib = None
 if args.library in 'pytorch':
     import torch
     import torch.utils.benchmark
-    print(torch.__version__)
+    print(f'Pytorch version: {torch.__version__}')
 
-    class Pytorch(Debug):
+    class Pytorch(torch.nn.Module):
         def get_weights(self, weights):
             weights = torch.tensor(
                 weights, dtype=self.dtype, device=self.device).unsqueeze(1)
             return weights
 
         def __init__(self, device, dtype):
+            super().__init__()
             self.name = 'pytorch'
             self.device = 'cpu' if device in 'cpu' else 'cuda'
             self.dtype = torch.float64 if dtype == np.float64 else torch.float32
@@ -473,10 +474,10 @@ if args.library in 'pytorch':
             torch.backends.cudnn.benchmark_limit = 0 # Try every available algorithm
 
             # Disable tensor cores
-            torch.backends.cuda.matmul.allow_tf32 = False
-            torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = False
-            torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False
-            torch.backends.cudnn.allow_tf32 = False
+            # torch.backends.cuda.matmul.allow_tf32 = False
+            # torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = False
+            # torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False
+            # torch.backends.cudnn.allow_tf32 = False
             #torch.backends.cudnn.deterministic = True
 
             # Disable debugging APIs
@@ -537,8 +538,7 @@ if args.library in 'pytorch':
 
         #@torch.compile(options={'max-autotune': True})
         #@torch.compile(mode='max-autotune', fullgraph=True)
-        @torch.no_grad() # Note: not supported with jit
-        #@torch.jit.script
+        @torch.no_grad()
         def forward(self, input):
             # Inputs
             ## Hydro
@@ -671,6 +671,8 @@ if args.library in 'pytorch':
 
             input = self.get_input()
             weights = self.get_weights(get_weights())
+            traced = torch.jit.trace(self, self.pad(input))
+            #traced = torch.compile(self)
             for i in range(num_samples):
                 input = self.pad(input)
 
@@ -680,7 +682,7 @@ if args.library in 'pytorch':
                     start.record()
                 else:
                     start = time.time()
-                input = self.forward(input, weights)
+                input = traced.forward(input)
                 if self.device == 'cuda':
                     end.record()
                     torch.cuda.synchronize()
@@ -696,13 +698,19 @@ if args.library in 'pytorch':
             output = Output()
 
             input = self.pad(self.get_input())
-            weights = self.get_weights(get_weights())
+            traced = torch.jit.trace(self, input)
+            #traced = torch.compile(self, mode='max-autotune', fullgraph=True)
+            #traced = torch.compile(self, mode='max-autotune')
 
             timer = torch.utils.benchmark.Timer(
-                stmt='self.forward(input)',
-                setup='from __main__ import Pytorch',
-                globals={'input': input, 'self': self}
-            )
+                    stmt='traced.forward(input)',
+                    globals={'input': input, 'traced': traced}
+                    )
+            #timer = torch.utils.benchmark.Timer(
+            #    stmt='self.forward(input)',
+            #    setup='from __main__ import Pytorch',
+            #    globals={'input': input, 'self': self}
+            #)
 
             for i in range(num_samples):
                 measurement = timer.timeit(1)
@@ -714,6 +722,7 @@ if args.library in 'pytorch':
     lib = Pytorch(args.device, args.dtype)
 elif args.library in 'tensorflow':
     import tensorflow as tf
+    print(f'TensorFlow version: {tf.__version__}')
 
     class Tensorflow(Debug):
 
