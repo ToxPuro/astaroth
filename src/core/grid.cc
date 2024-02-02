@@ -1825,14 +1825,14 @@ acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3 start, c
     return acDeviceLaunchKernel(grid.device, stream, kernel, start, end);
 }
 
-AcResult
-acGridLaunchKernelDebug(const Stream stream, const Kernel kernel, const int3 start, const int3 end)
-{
-    ERRCHK(grid.initialized);
+// AcResult
+// acGridLaunchKernelDebug(const Stream stream, const Kernel kernel, const int3 start, const int3 end)
+// {
+//     ERRCHK(grid.initialized);
 
-    acGridSynchronizeStream(stream);
-    return acDeviceLaunchKernelDebug(grid.device, stream, kernel, start, end);
-}
+//     acGridSynchronizeStream(stream);
+//     return acDeviceLaunchKernelDebug(grid.device, stream, kernel, start, end);
+// }
 
 AcResult
 acGridSwapBuffers(void)
