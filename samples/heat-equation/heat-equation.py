@@ -183,8 +183,9 @@ if args.library in 'pytorch':
     import torch
     import torch.utils.benchmark
     print(f'PyTorch version: {torch.__version__}')
-    class Pytorch(Debug):
+    class Pytorch(torch.nn.Module):
         def __init__(self, device, dtype):
+            super().__init__()
             self.device = 'cpu' if device in 'cpu' else 'cuda'
             self.dtype = torch.double if dtype == np.float64 else torch.float
 
@@ -202,6 +203,9 @@ if args.library in 'pytorch':
             # Print information
             print(f'cuDNN available: {torch.backends.cudnn.is_available()}')
             print(f'cuDNN version: {torch.backends.cudnn.version()}')
+            
+            input, weights = get_input()
+            self.weights = torch.tensor(weights, dtype=self.dtype, device=self.device).unsqueeze(0).unsqueeze(0)
 
         def get_input(self):
             input, weights = get_input()
@@ -216,13 +220,13 @@ if args.library in 'pytorch':
         #@torch.compile
         #@torch.jit.script
         @torch.no_grad()
-        def convolve(self, input, weights):
+        def forward(self, input):
             if (len(input.shape) == 5):
-                return torch.nn.functional.conv3d(input, weights)
+                return torch.nn.functional.conv3d(input, self.weights)
             elif (len(input.shape) == 4):
-                return torch.nn.functional.conv2d(input, weights)
+                return torch.nn.functional.conv2d(input, self.weights)
             else:
-                return torch.nn.functional.conv1d(input, weights)
+                return torch.nn.functional.conv1d(input, self.weights)
     
         def benchmark_old(self, num_samples):
             output = Output()
@@ -275,11 +279,12 @@ if args.library in 'pytorch':
 
             input, weights = self.get_input()
             input = self.pad(input)
+            traced = torch.jit.trace(self, input)
 
             timer = torch.utils.benchmark.Timer(
-                stmt='self.convolve(input, weights)',
+                stmt='traced.forward(input)',
                 setup='from __main__ import Pytorch',
-                globals={'input': input, 'weights': weights, 'self': self}
+                globals={'input': input, 'traced': traced}
             )
 
             for i in range(num_samples):
@@ -413,8 +418,10 @@ if args.verify:
     input, weights = lib.get_input()
     if args.library == 'jax':
         candidate = lib.convolve(lib.pad(input), weights).squeeze()
-    else:
+    elif args.library == 'tensorflow':
         candidate = lib.convolve(lib.pad(input), weights).cpu().numpy().squeeze()
+    else: # Pytorch
+        candidate = lib.forward(lib.pad(input)).cpu().numpy().squeeze()
     epsilon = np.finfo(np.float64).eps if args.dtype == np.float64 else np.finfo(np.float32).eps
     epsilon *= 5
     correct = np.allclose(model, candidate, rtol=epsilon, atol=epsilon) 
