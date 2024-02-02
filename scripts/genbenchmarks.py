@@ -314,18 +314,20 @@ def gen_convolutionbenchmarks(system):
             system.print_sbatch_header(ntasks=1)
 
             ## Script body
+            # 1D
             for radius in range(0, 5):
-                # 1D
                 nn = problem_size_1d #(problem_size, 1, 1)
                 #assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
-                # 2D
+            # 2D
+            for radius in range(0, 5):
                 nn = problem_size_2d #(int(np.rint(problem_size**(1/2))), int(np.rint(problem_size**(1/2))), 1)
                 #assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
 
-                # 3D
+            # 3D
+            for radius in range(0, 5):
                 nn = problem_size_3d #(int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
                 #assert(nn[0] * nn[1] * nn[2] == problem_size)
                 print(f'./heat-equation {nn[0]} {nn[1]} {nn[2]} $SLURM_JOB_ID {args.num_samples} {args.verify} {radius} {np.random.randint(0, 65535)}')
@@ -340,23 +342,36 @@ def gen_convolutionbenchmarks(system):
                     ## Header
                     system.print_sbatch_header(ntasks=1)
 
+                    wrapper = ''
+                    if system.id == 'mi100':
+                        print('''
+                        module load triton-dev/singularity singularity-pytorch-amd
+                        singularity_wrapper exec pip install pandas findiff tensorflow-rocm==2.8.0
+                        ''')
+                        wrapper = 'singularity_wrapper exec'
+                    else:
+                        print(f'module load {library}')
+                        wrapper = ''
+
+
                     ## Script body
-                    print(f'module load {library}')
+                    # 1D
                     for radius in range(0, 5):
-                        # 1D
                         nn = problem_size_1d #(problem_size, 1, 1)
                         #assert(nn[0] * nn[1] * nn[2] == problem_size)
-                        print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
+                        print(f'{wrapper} {args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
-                        # 2D
+                    # 2D
+                    for radius in range(0, 5):
                         nn = problem_size_2d #(int(np.rint(problem_size**(1/2))), int(np.rint(problem_size**(1/2))), 1)
                         #assert(nn[0] * nn[1] * nn[2] == problem_size)
-                        print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
+                        print(f'{wrapper} {args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
-                        # 3D
+                    # 3D
+                    for radius in range(0, 5):
                         nn = problem_size_3d #(int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
                         #assert(nn[0] * nn[1] * nn[2] == problem_size)
-                        print(f'{args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
+                        print(f'{wrapper} {args.cmakelistdir}/samples/heat-equation/heat-equation.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
 
 # Device benchmarks (nonlinear stencils)
@@ -366,10 +381,12 @@ def gen_devicebenchmarks(system, nx, ny, nz):
             system.print_sbatch_header(1)
             print(f'srun {system.srun_params} ./benchmark-device {nx} {ny} {nz} $SLURM_JOB_ID {args.num_samples} {args.verify} {np.random.randint(0, 65535)}')
     
+    nn = (128, 128, 128)
+    assert(8*8*nn[0]*nn[1]*nn[2] == 128 * 1024**2)
     # Quick hack (ML lib-Astaroth comparison)
-    problem_size = 128**3 # 128 MiB working set (8 fields). Need to drop the dim, 256**3 uses too much additional memory with Pytorch
-    nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
-    assert(nn[0] * nn[1] * nn[2] == problem_size)
+    # problem_size = 128**3 # 128 MiB working set (8 fields). Need to drop the dim, 256**3 uses too much additional memory with Pytorch
+    # nn = (int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))), int(np.rint(problem_size**(1/3))))
+    # assert(nn[0] * nn[1] * nn[2] == problem_size)
     with open(f'{scripts_dir}/nonlinear-mhd-benchmark-astaroth.sh', 'w') as f:
         with redirect_stdout(f):
             system.print_sbatch_header(1)
@@ -384,11 +401,21 @@ def gen_devicebenchmarks(system, nx, ny, nz):
                     ## Header
                     system.print_sbatch_header(ntasks=1)
 
+                    wrapper = ''
+                    if system.id == 'mi100':
+                        print('''
+                        module load triton-dev/singularity singularity-pytorch-amd
+                        singularity_wrapper exec pip install pandas findiff tensorflow-rocm==2.8.0
+                        ''')
+                        wrapper = 'singularity_wrapper exec'
+                    else:
+                        print(f'module load {library}')
+                        wrapper = ''
+
                     ## Script body
-                    print(f'module load {library}')
                     for radius in range(3, 3+1):
                         # 3D
-                        print(f'{args.cmakelistdir}/samples/benchmark-device/mhd.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
+                        print(f'{wrapper} {args.cmakelistdir}/samples/benchmark-device/mhd.py --dtype {precision} --dims {nn[0]} {nn[1]} {nn[2]} --jobid $SLURM_JOB_ID --nsamples {args.num_samples} --verify {args.verify} --radius {radius} --library {library} --salt {np.random.randint(0, 65535)}')
 
 # Intra-node benchmarks
 def gen_nodebenchmarks(system, nx, ny, nz, min_devices, max_devices):
