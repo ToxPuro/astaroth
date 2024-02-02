@@ -421,7 +421,9 @@ if args.verify:
     elif args.library == 'tensorflow':
         candidate = lib.convolve(lib.pad(input), weights).cpu().numpy().squeeze()
     else: # Pytorch
-        candidate = lib.forward(lib.pad(input)).cpu().numpy().squeeze()
+        input = lib.pad(input)
+        traced = torch.jit.trace(lib, input)
+        candidate = traced.forward(input).cpu().numpy().squeeze()
     epsilon = np.finfo(np.float64).eps if args.dtype == np.float64 else np.finfo(np.float32).eps
     epsilon *= 5
     correct = np.allclose(model, candidate, rtol=epsilon, atol=epsilon) 
