@@ -1018,7 +1018,12 @@ print(f'Using library {lib.name}')
 if args.verify:
     print('Verifying results...')
     model = forward(get_input())
-    candidate = lib.forward(lib.pad(lib.get_input())).cpu().numpy().squeeze()
+    if lib.name == 'pytorch':
+        input = lib.pad(lib.get_input())
+        traced = torch.jit.trace(lib, input)
+        candidate = traced.forward(input).cpu().numpy().squeeze()
+    else:
+        candidate = lib.forward(lib.pad(lib.get_input())).cpu().numpy().squeeze()
     epsilon = np.finfo(
         np.float64).eps if args.dtype == np.float64 else np.finfo(np.float32).eps
     epsilon *= 100
