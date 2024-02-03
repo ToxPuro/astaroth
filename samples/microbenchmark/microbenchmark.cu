@@ -527,8 +527,8 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
     unrolled_kernel(c.bpg, c.tpb, c.smem, c.domain_length, c.pad, c.radius, c.stride, a, b);
 
     // Benchmark
+    cudaProfilerStart();
     Timer t;
-    //cudaProfilerStart();
     //cudaEvent_t tstart, tstop;
     //cudaEventCreate(&tstart);
     //cudaEventCreate(&tstop);
@@ -549,7 +549,7 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
 
         // Derived statistics
         const size_t bytes   = sizeof(a.data[0]) * (2 * c.domain_length + 2 * c.radius / c.stride);
-        const long double seconds = (long double)milliseconds / 1e3;
+        const long double seconds = (long double)milliseconds / 1e3l;
         const long double bandwidth = bytes / seconds;
 
         if (i == num_samples - 1) {

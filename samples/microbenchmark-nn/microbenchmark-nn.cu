@@ -47,6 +47,7 @@ gpu: 0 1 2 3
 
 #include "array.h"
 #include "backend.h"
+#include "timer_hires.h"
 
 void
 model_kernel(const size_t domain_length, const int radius, const int stride, const Array in,
@@ -149,44 +150,50 @@ benchmark(const size_t domain_length, const size_t radius, const size_t stride, 
 
     // Benchmark
     cudaProfilerStart();
-    cudaEvent_t tstart, tstop;
-    cudaEventCreate(&tstart);
-    cudaEventCreate(&tstop);
+    Timer t;
+    //cudaEvent_t tstart, tstop;
+    //cudaEventCreate(&tstart);
+    //cudaEventCreate(&tstop);
 
     for (size_t i = 0; i < num_samples; ++i) {
         cudaDeviceSynchronize();
-        cudaEventRecord(tstart); // Timing start
+	timer_reset(&t);
+        //cudaEventRecord(tstart); // Timing start
         backendConvolutionFwd();
-        cudaEventRecord(tstop); // Timing stop
-        cudaEventSynchronize(tstop);
+        //cudaEventRecord(tstop); // Timing stop
+        //cudaEventSynchronize(tstop);
+	cudaDeviceSynchronize();
+	const long double milliseconds = timer_diff_nsec(t)/1e6l;
         ERRCHK_CUDA_KERNEL_ALWAYS();
 
-        float milliseconds = 0;
-        cudaEventElapsedTime(&milliseconds, tstart, tstop);
+        //float milliseconds = 0;
+        //cudaEventElapsedTime(&milliseconds, tstart, tstop);
 
         // Derived statistics
         const size_t bytes     = sizeof(input.data[0]) * (2 * domain_length + 2 * radius / stride);
-        const double seconds   = (double)milliseconds / 1e3;
-        const double bandwidth = bytes / seconds;
+        const long double seconds = (long double)milliseconds / 1e3l;
+        const long double bandwidth = bytes / seconds;
 
         if (i == num_samples - 1) {
-            printf("Effective bandwidth: %g GiB/s\n", bandwidth / pow(1024, 3));
-            printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
-            printf("\tTime elapsed: %g ms\n", (double)milliseconds);
-        }
+		printf("Effective bandwidth: %Lg GiB/s\n", bandwidth / pow(1024, 3));
+		printf("\tBytes transferred: %Lg GiB\n", (long double)bytes / pow(1024, 3));
+		//printf("\tTime elapsed: %Lg ms (CUDA)\n", (long double)milliseconds);
+		printf("\tTime elapsed: %Lg ms (POSIX)\n", milliseconds);
+	}
+		
 
         // Write to file
-        fprintf(fp, "%s,%d,%zu,%zu,%zu,%g,%g,%d,%zu,%zu,%zu,%u\n",
+        fprintf(fp, "%s,%d,%zu,%zu,%zu,%Lg,%Lg,%d,%zu,%zu,%zu,%u\n",
 #if AC_USE_HIP
                 "\"miopen\"",
 #else
                 "\"cudnn\"",
 #endif
-                -1, domain_length, radius, stride, (double)milliseconds, bandwidth, -1, jobid, seed,
+                -1, domain_length, radius, stride, milliseconds, bandwidth, -1, jobid, seed,
                 i, DOUBLE_PRECISION);
     }
-    cudaEventDestroy(tstart);
-    cudaEventDestroy(tstop);
+    //cudaEventDestroy(tstart);
+    //cudaEventDestroy(tstop);
     cudaProfilerStop();
 
     // Free
