@@ -46,6 +46,7 @@ gpu: 0 1 2 3
 #endif
 
 #include "array.h"
+#include "timer_hires.h"
 
 // MB_IMPLEMENTATION
 //      1: 1 element per thread
@@ -526,41 +527,46 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
     unrolled_kernel(c.bpg, c.tpb, c.smem, c.domain_length, c.pad, c.radius, c.stride, a, b);
 
     // Benchmark
-    cudaProfilerStart();
-    cudaEvent_t tstart, tstop;
-    cudaEventCreate(&tstart);
-    cudaEventCreate(&tstop);
+    Timer t;
+    //cudaProfilerStart();
+    //cudaEvent_t tstart, tstop;
+    //cudaEventCreate(&tstart);
+    //cudaEventCreate(&tstop);
 
     for (size_t i = 0; i < num_samples; ++i) {
         cudaDeviceSynchronize();
-        cudaEventRecord(tstart); // Timing start
+	timer_reset(&t);
+        //cudaEventRecord(tstart); // Timing start
         unrolled_kernel(c.bpg, c.tpb, c.smem, c.domain_length, c.pad, c.radius, c.stride, a, b);
-        cudaEventRecord(tstop); // Timing stop
-        cudaEventSynchronize(tstop);
+        //cudaEventRecord(tstop); // Timing stop
+        //cudaEventSynchronize(tstop);
+	cudaDeviceSynchronize();
+	const long double milliseconds = timer_diff_nsec(t)/1e6l;
         ERRCHK_CUDA_KERNEL_ALWAYS();
 
-        float milliseconds = 0;
-        cudaEventElapsedTime(&milliseconds, tstart, tstop);
+        //float milliseconds = 0;
+        //cudaEventElapsedTime(&milliseconds, tstart, tstop);
 
         // Derived statistics
         const size_t bytes   = sizeof(a.data[0]) * (2 * c.domain_length + 2 * c.radius / c.stride);
-        const double seconds = (double)milliseconds / 1e3;
-        const double bandwidth = bytes / seconds;
+        const long double seconds = (long double)milliseconds / 1e3;
+        const long double bandwidth = bytes / seconds;
 
         if (i == num_samples - 1) {
-            printf("Effective bandwidth: %g GiB/s\n", bandwidth / pow(1024, 3));
-            printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
-            printf("\tTime elapsed: %g ms\n", (double)milliseconds);
+            printf("Effective bandwidth: %Lg GiB/s\n", bandwidth / pow(1024, 3));
+            printf("\tBytes transferred: %Lg GiB\n", (long double)bytes / pow(1024, 3));
+            //printf("\tTime elapsed: %Lg ms (CUDA)\n", (long double)milliseconds);
+            printf("\tTime elapsed: %Lg ms (POSIX)\n", milliseconds);
         }
 
         // Write to file
-        fprintf(fp, "%s,%d,%zu,%zu,%d,%g,%g,%zu,%zu,%zu,%zu,%u,%u\n",
+        fprintf(fp, "%s,%d,%zu,%zu,%d,%Lg,%Lg,%zu,%zu,%zu,%zu,%u,%u\n",
                 USE_SMEM ? "\"explicit\"" : "\"implicit\"", MAX_THREADS_PER_BLOCK, c.domain_length,
-                c.radius, c.stride, (double)milliseconds, bandwidth, c.tpb, jobid, seed, i,
+                c.radius, c.stride, milliseconds, bandwidth, c.tpb, jobid, seed, i,
                 DOUBLE_PRECISION,MB_IMPLEMENTATION);
     }
-    cudaEventDestroy(tstart);
-    cudaEventDestroy(tstop);
+    //cudaEventDestroy(tstart);
+    //cudaEventDestroy(tstop);
     cudaProfilerStop();
 
     // Free
