@@ -25,9 +25,9 @@
  *
  */
 #pragma once
-#include <math.h>   // isnan, isinf
 #include <stdint.h> // uint64_t
 #include <stdlib.h> // rand
+#include <math.h>   // isnan, isinf
 
 #include "datatypes.h"
 
