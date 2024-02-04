@@ -18,6 +18,7 @@
 */
 #include "acc_runtime.h"
 
+#include <math.h> 
 #include <vector> // tbconfig
 
 #include "errchk.h"
@@ -317,8 +318,7 @@ acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
 static TBConfig
 autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 {
-  printf("Autotuning kernel %p, block (%d, %d, %d)... ", kernel, dims.x, dims.y,
-         dims.z);
+  printf("Autotuning kernel %p, block (%d, %d, %d)... ", kernel, dims.x, dims.y, dims.z);
   fflush(stdout);
 // suppress autotuning for the moment; blocksize seems to be limited to 256
   return (TBConfig){
