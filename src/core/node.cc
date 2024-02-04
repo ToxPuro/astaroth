@@ -210,6 +210,7 @@ createGridDims(const AcMeshInfo config)
 AcResult
 acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle, int rank)
 {
+    int count, i;
     struct node_s* node = (struct node_s*)malloc(sizeof(node_s));  //sizeof(*node)
     node->id            = id;
     node->config        = node_config;
