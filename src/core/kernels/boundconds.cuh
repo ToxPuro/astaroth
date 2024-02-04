@@ -244,7 +244,7 @@ kernel_prescribed_derivative_boundconds(const int3 region_id, const int3 normal,
 
         AcReal distance = AcReal(2 * (i + 1)) * d;
         // Otherwise resulting derivatives are of different sign and opposite edges.
-        if (direction < 0.0) {
+        if (direction < (AcReal)0.) {
             distance = -distance;
         }
 

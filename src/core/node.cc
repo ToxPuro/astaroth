@@ -216,7 +216,6 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle, int 
     node->config        = node_config;
 
     // Get node->num_devices
-    int count;
     ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&count));
     node->num_devices=count;
     if (node->num_devices < 1) {
@@ -266,7 +265,7 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle, int 
 #endif
 
 #if AC_MULTIGPU_ENABLED != 1
-    int i = rank%count;
+    i = rank%count;
 printf("Device no= %d \n",i);
     int ind=0; {
 #else
