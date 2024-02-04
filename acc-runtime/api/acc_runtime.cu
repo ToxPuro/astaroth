@@ -144,17 +144,17 @@ acVBACreate(const size_t count)
   ERRCHK_CUDA_ALWAYS(cudaMemset((void*)allbuf_out, 0, allbytes));
 
   vba.in[0]=allbuf_in; vba.out[0]=allbuf_out;
-printf("i,vbas[0]= 0 %p \n",vba.in[0],vba.out[0]);
+printf("i,vbas[0]= %p %p \n",vba.in[0],vba.out[0]);
   for (size_t i = 1; i < NUM_VTXBUF_HANDLES; ++i) {
     vba.in [i]=vba.in [i-1]+count;
     vba.out[i]=vba.out[i-1]+count;
-printf("i,vbas[i]= %d %p \n",i,vba.in[i],vba.out[i]);
+printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
   }
 #else
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.in[i], bytes));
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
-printf("i,vbas[i]= %d %p %p\n",i,vba.in[i],vba.out[i]);
+printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
 
     // Set vba.in data to all-nan and vba.out to 0
     acKernelFlush(vba.in[i], count);
@@ -252,7 +252,7 @@ AcResult
 acLoadReal3Uniform(const cudaStream_t stream, const AcReal3Param param,
                    const AcReal3 value)
 {
-  if (isnan(value.x) | isnan(value.y) | isnan(value.z)) {
+  if (isnan(value.x) || isnan(value.y) || isnan(value.z)) {
     fprintf(stderr,
             "WARNING: Passed an invalid value (%g, %g, %g) to device constant "
             "%s. Skipping.\n",
