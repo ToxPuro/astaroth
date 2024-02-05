@@ -17,7 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-#include "../../../include/astaroth.h"
+#include "astaroth.h"
 
 #if AC_MPI_ENABLED
 #include <mpi.h>

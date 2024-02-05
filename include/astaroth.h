@@ -18,7 +18,7 @@
 */
 #pragma once
 
-#include "../acc-runtime/api/acc_runtime.h"
+#include "acc_runtime.h"
 
 #if AC_MPI_ENABLED
 #include <mpi.h>

@@ -415,11 +415,7 @@ AcResult
 acDeviceLoadProfileWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
                          const Profile profile, int src_idx, int dst_idx, size_t num_elems)
 {
-    if(host_info.profiles[profile] == nullptr)
-    {
-      printf("\n\nacDeviceLoadProfile: WARNING!!!\n the passed profile %s is null so it's state will be undefined\n\n",profile_names[profile]);
-      return AC_FAILURE;
-    }
+    ERRCHK_ALWAYS(host_info.profiles[profile] == nullptr)
     cudaSetDevice(device->id);
     const AcReal* src_ptr = &host_info.profiles[profile][src_idx];
     AcReal* dst_ptr       = &device->vba.profiles[profile][dst_idx];

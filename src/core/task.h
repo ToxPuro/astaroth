@@ -26,8 +26,8 @@
 
 #include "decomposition.h"   //getPid and friends
 #include "kernels/kernels.h" //AcRealPacked, VertexBufferArray
-#include "../../acc-runtime/api/math_utils.h"      //max. Also included in decomposition.h
-#include "../../include/timer_hires.h"
+#include "math_utils.h"      //max. Also included in decomposition.h
+#include "timer_hires.h"
 
 #define MPI_INCL_CORNERS (0) // Include the 3D corners of subdomains in halo
 

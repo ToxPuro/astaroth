@@ -32,7 +32,7 @@
 #include "datatypes.h"
 #include "errchk.h"
 
-#include "../../build/acc-runtime/api/user_defines.h"
+#include "user_defines.h"
 
 #define NUM_REDUCE_SCRATCHPADS (2)
 

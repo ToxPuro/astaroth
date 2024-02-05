@@ -22,8 +22,8 @@
 
 #include <stdint.h> //uint64_t
 
-#include "../../acc-runtime/api/errchk.h"
-#include "../../acc-runtime/api/math_utils.h"
+#include "errchk.h"
+#include "math_utils.h"
 
 
 #define MPI_DECOMPOSITION_AXES (3)
