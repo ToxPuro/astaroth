@@ -386,7 +386,7 @@ acGridInit(const AcMeshInfo info)
     }
 
 
-#if AUTOTUNE // By default is ON
+#if AUTOTUNE_AT_INIT // By default is ON
     acLogFromRootProc(pid, "acGridInit: Autotuning\n");
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     for (int kernel = 0; kernel < NUM_KERNELS; kernel++) {
