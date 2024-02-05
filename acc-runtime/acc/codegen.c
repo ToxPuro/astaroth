@@ -51,11 +51,11 @@ static size_t num_symbols[MAX_NESTS] = {};
 static size_t current_nest           = 0;
 
 //profiles symbol table
-#define MAX_NUM_OF_PROFILES (256)
-char* profile_names[MAX_NUM_OF_PROFILES];
-int profile_read_set_sizes[MAX_NUM_OF_PROFILES];
-int* profile_read_set[MAX_NUM_OF_PROFILES];
-int num_of_profiles = 0;
+#define MAX_NUM_PROFILES (256)
+char* profile_names[MAX_NUM_PROFILES];
+int profile_read_set_sizes[MAX_NUM_PROFILES];
+int* profile_read_set[MAX_NUM_PROFILES];
+int num_profiles = 0;
 
 //arrays symbol table
 #define MAX_NUM_ARRAYS (256)
@@ -127,7 +127,6 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "threadIdx");       // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "blockIdx");        // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vertexIdx");       // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vba.in");       // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "globalVertexIdx"); // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "globalGridN");     // TODO REMOVE
 
@@ -137,9 +136,9 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "previous");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "isnan");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "read_w");
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write_w");
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "combine");
+  //In develop
+  //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "read_w");
+  //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write_w");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "Field3"); // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "dot");    // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cross");  // TODO RECHECK
@@ -292,20 +291,20 @@ bool is_profile_read_root(const ASTNode* node){
     lhs = lhs->lhs;
   }
   if(lhs->buffer && node->infix && node->postfix && (strcmp(node->infix, "[") == 0) && (strcmp(node->postfix, "]") == 0))
-    for(int i=0;i<num_of_profiles;i++){
+    for(int i=0;i<num_profiles;i++){
       if((strcmp(lhs->buffer, profile_names[i]) == 0))
         return true;
     }
   return false;
 }
 void add_profile(const char* profile_name){
-  profile_names[num_of_profiles] = strdup(profile_name);
-  profile_read_set_sizes[num_of_profiles] = 0;
-  profile_read_set[num_of_profiles] = (int*)malloc(MAX_NUM_OF_PROFILES * sizeof(int));
-  num_of_profiles++;
+  profile_names[num_profiles] = strdup(profile_name);
+  profile_read_set_sizes[num_profiles] = 0;
+  profile_read_set[num_profiles] = (int*)malloc(MAX_NUM_PROFILES * sizeof(int));
+  num_profiles++;
 }
 int get_profile_index(char* profile_name){
-  for(int i=0;i<num_of_profiles;i++){
+  for(int i=0;i<num_profiles;i++){
     if(strcmp(profile_name, profile_names[i]) == 0)
       return i;
   }
@@ -858,7 +857,7 @@ void gen_profile_reads(ASTNode* node, const char* out){
 void
 generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 {
-  num_of_profiles = 0;
+  num_profiles = 0;
   assert(root);
 
   gen_user_defines(root, "user_defines.h");
@@ -867,7 +866,7 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   // Fill the symbol table
   traverse(root, 0, NULL);
   // print_symbol_table();
-  num_of_profiles = 0;
+  num_profiles = 0;
 
   // Generate user_kernels.h
   fprintf(stream, "#pragma once\n");
@@ -888,38 +887,36 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
       ++num_kernels;
 
 
-  size_t num_profiles= 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_PROFILE_ID){
       add_profile(symbol_table[i].identifier);
-      ++num_profiles;
     }
   gen_profile_reads(root, "profile_reads.h");
 
   //generate profile_read_set_sizes and profile_read_set accessible to stencilgen.c
   FILE* profile_file = fopen(PROFILE_HEADER, "w");
-  fprintf(profile_file,"int profile_read_set_sizes[%d] = {", num_of_profiles);
-  for(int profile=0;profile<num_of_profiles;profile++){
+  fprintf(profile_file,"int profile_read_set_sizes[%d] = {", num_profiles);
+  for(int profile=0;profile<num_profiles;profile++){
     fprintf(profile_file,"%d",profile_read_set_sizes[profile]);
-    if(profile<num_of_profiles-1)
+    if(profile<num_profiles-1)
       fprintf(profile_file,",");
   }
   fprintf(profile_file,"};\n");
-  fprintf(profile_file,"int profile_read_set[%d][%d] = {", num_of_profiles, MAX_NUM_OF_PROFILES);
-  for(int profile=0;profile<num_of_profiles;profile++){
+  fprintf(profile_file,"int profile_read_set[%d][%d] = {", num_profiles, MAX_NUM_PROFILES);
+  for(int profile=0;profile<num_profiles;profile++){
     fprintf(profile_file,"{");
     for(int read=0;read<profile_read_set_sizes[profile];read++){
       fprintf(profile_file,"%d",profile_read_set[profile][read]);
-      if(read < MAX_NUM_OF_PROFILES)
+      if(read < MAX_NUM_PROFILES)
         fprintf(profile_file,",");
     }
-    for(int read=profile_read_set_sizes[profile];read<MAX_NUM_OF_PROFILES;read++){
+    for(int read=profile_read_set_sizes[profile];read<MAX_NUM_PROFILES;read++){
       fprintf(profile_file,"%d",0);
-      if(read < MAX_NUM_OF_PROFILES)
+      if(read < MAX_NUM_PROFILES)
         fprintf(profile_file,",");
     }
     fprintf(profile_file,"}");
-    if(profile<num_of_profiles-1)
+    if(profile<num_profiles-1)
       fprintf(profile_file,",");
     fprintf(profile_file,"\n");
   }

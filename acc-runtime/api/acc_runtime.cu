@@ -352,7 +352,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 }
 
 void
-GpuMalloc(void** dst, const int bytes)
+device_malloc(void** dst, const int bytes)
 {
  #if USE_COMPRESSIBLE_MEMORY 
     ERRCHK_CUDA_ALWAYS(mallocCompressible(dst, bytes));
@@ -376,32 +376,31 @@ acVBACreate(const AcMeshInfo config)
     //They need only a single copy so out can point to in
     if(vtxbuf_is_auxiliary[i])
     {
-      GpuMalloc((void**) &vba.in[i],bytes);
+      device_malloc((void**) &vba.in[i],bytes);
       vba.out[i] = vba.in[i];
     }else{
-      GpuMalloc((void**) &vba.in[i],bytes);
-      GpuMalloc((void**) &vba.out[i],bytes);
+      device_malloc((void**) &vba.in[i],bytes);
+      device_malloc((void**) &vba.out[i],bytes);
     }
   }
   //Allocate profiles
-  printf("NUM_OF_PROFILES=%d\n", NUM_PROFILES);
   for(size_t i= 0; i < NUM_PROFILES; i++){
     const size_t profile_bytes = sizeof(vba.in[0][0]) * config.int_params[profile_lengths[i]];
-    GpuMalloc((void**)&vba.profiles[i],profile_bytes);
+    device_malloc((void**)&vba.profiles[i],profile_bytes);
   }
   //Allocate workbuffers
   for (size_t i = 0; i < NUM_WORK_BUFFERS; ++i)
-    GpuMalloc((void**)&vba.w[i],bytes);
+    device_malloc((void**)&vba.w[i],bytes);
   //Allocate arrays
   for (size_t i = 0; i < NUM_ARRAYS; ++i)
-    GpuMalloc((void**)&vba.arrays[i],sizeof(vba.in[0][0])*config.int_params[ac_array_lengths[i]]);
+    device_malloc((void**)&vba.arrays[i],sizeof(vba.in[0][0])*config.int_params[ac_array_lengths[i]]);
   acVBAReset(0, &vba);
   cudaDeviceSynchronize();
   return vba;
 }
 
 void
-GpuFree(AcReal** dst, const int bytes)
+device_free(AcReal** dst, const int bytes)
 {
 #if USE_COMPRESSIBLE_MEMORY
   freeCompressible(*dst, bytes);
@@ -414,21 +413,21 @@ void
 acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 {
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    GpuFree(&(vba->in[i]), vba->bytes);
+    device_free(&(vba->in[i]), vba->bytes);
     if(vtxbuf_is_auxiliary[i])
       vba->out[i] = NULL;
     else
-      GpuFree(&(vba->out[i]), vba->bytes);
+      device_free(&(vba->out[i]), vba->bytes);
   }
   //Free workbuffers 
   for (size_t i = 0; i < NUM_WORK_BUFFERS; ++i) 
-    GpuFree(&(vba->w[i]), vba->bytes);
+    device_free(&(vba->w[i]), vba->bytes);
   //Free profiles
   for(size_t i=0;i<NUM_PROFILES; ++i)
-    GpuFree(&(vba->profiles[i]),max_dim_count);
+    device_free(&(vba->profiles[i]),max_dim_count);
   //Free arrays
   for(size_t i=0;i<NUM_ARRAYS; ++i)
-    GpuFree(&(vba->arrays[i]), config.int_params[ac_array_lengths[i]]);
+    device_free(&(vba->arrays[i]), config.int_params[ac_array_lengths[i]]);
   vba->bytes = 0;
 }
 
