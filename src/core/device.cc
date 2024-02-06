@@ -622,14 +622,6 @@ acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kern
     return acLaunchKernel(kernel, device->streams[stream], start, end, device->vba);
 }
 AcResult
-acDeviceLaunchKernelDebug(const Device device, const Stream stream, const Kernel kernel,
-                     const int3 start, const int3 end)
-{
-    cudaSetDevice(device->id);
-    return acLaunchKernelDebug(kernel, device->streams[stream], start, end, device->vba);
-}
-
-AcResult
 acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start, const int3 end)
 {
     cudaSetDevice(device->id);
