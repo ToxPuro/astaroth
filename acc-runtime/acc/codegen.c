@@ -94,7 +94,8 @@ add_symbol(const NodeType type, const char* tqualifier, const char* tspecifier,
   strcpy(symbol_table[num_symbols[current_nest]].identifier, id);
 
   ++num_symbols[current_nest];
-  return num_symbols[current_nest];
+  //return the index of the lastly added symbol
+  return num_symbols[current_nest]-1;
 }
 
 static void
@@ -674,7 +675,9 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "static const AcIntParam profile_lengths[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_PROFILE_ID)
+    {
       fprintf(fp, "%s,", symbol_var_length[i]);
+    }
   fprintf(fp, "};");
 
   fprintf(fp, "static const char* work_buffer_names[] __attribute__((unused)) = {");
@@ -1087,3 +1090,4 @@ generate_mem_accesses(void)
   assert(proc);
   pclose(proc);
 }
+
