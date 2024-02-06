@@ -60,7 +60,7 @@ typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 extern "C" {
 #endif
 
-#include "../../build/acc-runtime/api/user_declarations.h"
+#include "user_declarations.h"
 
 AcResult acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
                        const AcReal value);
