@@ -49,7 +49,6 @@ real AC_dsx, AC_dsy, AC_dsz // WARNING UNUSED! NEED TO BE COMPILE-TIME CONSTANTS
 #define AC_inv_dsx (1. / DSX)
 #define AC_inv_dsy (1. / DSY)
 #define AC_inv_dsz (1. / DSZ)
-
 // Real params
 real AC_max_time
 // Spacing
