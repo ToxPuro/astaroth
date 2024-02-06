@@ -40,12 +40,13 @@ typedef struct {
   char tqualifier[MAX_ID_LEN];
   char tspecifier[MAX_ID_LEN];
   char identifier[MAX_ID_LEN];
-  char variable_length_param[MAX_ID_LEN];
   } Symbol;
+
 
 #define SYMBOL_TABLE_SIZE (65536)
 static Symbol symbol_table[SYMBOL_TABLE_SIZE] = {};
 
+char* symbol_var_length[SYMBOL_TABLE_SIZE];
 #define MAX_NESTS (32)
 static size_t num_symbols[MAX_NESTS] = {};
 static size_t current_nest           = 0;
@@ -59,7 +60,6 @@ int num_profiles = 0;
 
 //arrays symbol table
 #define MAX_NUM_ARRAYS (256)
-char* array_lengths[MAX_NUM_ARRAYS];
 int num_of_arrays;
 
 static Symbol*
@@ -76,27 +76,7 @@ symboltable_lookup(const char* identifier)
 }
 
 
-static void
-add_symbol_with_length(const NodeType type, const char* tqualifier, const char* tspecifier,
-           const char* id, const char* length)
-{
-  assert(num_symbols[current_nest] < SYMBOL_TABLE_SIZE);
-
-  symbol_table[num_symbols[current_nest]].type          = type;
-  symbol_table[num_symbols[current_nest]].tqualifier[0] = '\0';
-  symbol_table[num_symbols[current_nest]].tspecifier[0] = '\0';
-
-  if (tqualifier)
-    strcpy(symbol_table[num_symbols[current_nest]].tqualifier, tqualifier);
-  if (tspecifier)
-    strcpy(symbol_table[num_symbols[current_nest]].tspecifier, tspecifier);
-  if (length)
-    strcpy(symbol_table[num_symbols[current_nest]].variable_length_param, length);
-  strcpy(symbol_table[num_symbols[current_nest]].identifier, id);
-
-  ++num_symbols[current_nest];
-}
-static void
+static int 
 add_symbol(const NodeType type, const char* tqualifier, const char* tspecifier,
            const char* id)
 {
@@ -114,6 +94,7 @@ add_symbol(const NodeType type, const char* tqualifier, const char* tspecifier,
   strcpy(symbol_table[num_symbols[current_nest]].identifier, id);
 
   ++num_symbols[current_nest];
+  return num_symbols[current_nest];
 }
 
 static void
@@ -396,7 +377,7 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
           fprintf(stream, "auto ");
       }
       if (!(node->type & NODE_MEMBER_ID))
-        if (node->type & NODE_PROFILE_ID)
+        if (node->type & NODE_PROFILE_ID | node->type & NODE_ARRAY_ID)
         {
           const ASTNode* nd = decl->rhs->lhs->rhs->lhs->lhs->lhs->lhs;
           if(nd)
@@ -411,7 +392,8 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
               printf("no right child\n");
               exit(0);
             }
-            add_symbol_with_length(node->type, tqual, tspec, node->buffer, nd->buffer);
+            const int symbol_index = add_symbol(node->type, tqual, tspec, node->buffer);
+            symbol_var_length[symbol_index] = nd->buffer;
           }
         }
         else{
@@ -692,7 +674,7 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "static const AcIntParam profile_lengths[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_PROFILE_ID)
-      fprintf(fp, "%s,", symbol_table[i].variable_length_param);
+      fprintf(fp, "%s,", symbol_var_length[i]);
   fprintf(fp, "};");
 
   fprintf(fp, "static const char* work_buffer_names[] __attribute__((unused)) = {");
@@ -708,10 +690,10 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "};");
 
   fprintf(fp, "static const AcIntParam ac_array_lengths[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_of_arrays; ++i)
-    fprintf(fp, "%s,", array_lengths[i]);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_ARRAY_ID)
+      fprintf(fp, "\"%s\",", symbol_var_length[i]);
   fprintf(fp, "};");
-
 
   fprintf(fp, "static const int profile_dims[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i){
