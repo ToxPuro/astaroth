@@ -364,7 +364,13 @@ device_malloc(void** dst, const int bytes)
 VertexBufferArray
 acVBACreate(const AcMeshInfo config)
 {
-  const int3 counts = acVertexBufferDims(config);
+  //can't use acVertexBufferDims because of linking issues
+  const int3 counts = (int3){
+        (config.int_params[AC_mx]),
+        (config.int_params[AC_my]),
+        (config.int_params[AC_mz])
+  };
+
 
   VertexBufferArray vba;
   size_t count = counts.x*counts.y*counts.z;
