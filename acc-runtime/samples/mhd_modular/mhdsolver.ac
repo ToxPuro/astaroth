@@ -178,12 +178,6 @@ real AC_sq2GM_star
 real AC_cs2_sound
 //
 real AC_current_time
-// For special reductions
-real AC_center_x
-real AC_center_y
-real AC_center_z
-real AC_sum_radius
-real AC_window_radius
 
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
 

@@ -178,6 +178,7 @@ symboltable_reset(void)
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nxyz");
 
   add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_domain_decomposition");
+  
 
   add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_multigpu_offset");
   add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_global_grid_n");
@@ -189,6 +190,13 @@ symboltable_reset(void)
   // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_inv_dsx");
   // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_inv_dsy");
   // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_inv_dsz");
+
+  //For special reductions
+  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_center_x");
+  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_center_y");
+  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_center_z");
+  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_sum_radius");
+  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_window_radius");
 
   // (BC types do not belong here, BCs not handled with the DSL)
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_bot_x");
