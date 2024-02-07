@@ -1,6 +1,6 @@
 /*
 
-    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2023, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -132,8 +132,21 @@ save_mesh_mpi_async(const AcMeshInfo info, const char* job_dir, const int pid, c
     acGridSynchronizeStream(STREAM_DEFAULT);  // Debug, may be unneeded
     MPI_Barrier(acGridMPIComm());             // Debug may be unneeded
 
-    const int num_snapshots = 2;
-    const int modstep       = (step / info.int_params[AC_bin_steps]) % num_snapshots;
+    // If num_snapshots > 0 use modstep calculation.
+    // Else use numbering based on time interval.
+    const int num_snapshots = info.int_params[AC_num_snapshots];
+    int modstep;
+    if (num_snapshots > 0) {
+        modstep = (step / info.int_params[AC_bin_steps]) % num_snapshots;
+    }
+    else {
+        // NOTE: assumes that AC_bin_save_t will not be changed during the simulation run.
+        modstep = int(round(simulation_time / info.real_params[AC_bin_save_t]));
+        // log_from_root_proc_with_sim_progress(pid,
+        //                                      "save_mesh_mpi_async: simulation_time = %e,
+        //                                      AC_bin_save_t = %e \n", simulation_time,
+        //                                      info.real_params[AC_bin_save_t]);
+    }
     log_from_root_proc_with_sim_progress(pid,
                                          "save_mesh_mpi_async: Writing snapshot to %s, timestep %d "
                                          "(slot %d of %d)\n",
@@ -183,6 +196,17 @@ print_diagnostics_header_from_root_proc(int pid, FILE* diag_file)
             fprintf(diag_file, "%s_min  %s_rms  %s_max  ", vtxbuf_names[i], vtxbuf_names[i],
                     vtxbuf_names[i]);
         }
+#if LSPECIAL_REDUCTIONS
+        for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+            fprintf(diag_file, "%s_min_wl  %s_sum_wl  %s_max_wl  ", vtxbuf_names[i], vtxbuf_names[i],
+                    vtxbuf_names[i]);
+        }
+        for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+            fprintf(diag_file, "%s_min_wg  %s_sum_wg  %s_max_wg  ", vtxbuf_names[i], vtxbuf_names[i],
+                    vtxbuf_names[i]);
+        }
+#endif
+
 #if LSINK
         fprintf(diag_file, "sink_mass  accreted_mass  ");
 #endif
@@ -257,6 +281,47 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
             *found_nan = 1;
         }
     }
+
+#if LSPECIAL_REDUCTIONS
+    // These reductions are for locations sensitive special windowed
+    // reductions, made for the purpose of making more localized reductions
+    // possible. As such, no concern for a default user. 
+
+    // Calculate rms, min and max from the variables as scalars with windowing (TEST)
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_RADIAL_WINDOW_MAX, VertexBufferHandle(i), &buf_max);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_RADIAL_WINDOW_MIN, VertexBufferHandle(i), &buf_min);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_RADIAL_WINDOW_SUM, VertexBufferHandle(i), &buf_rms);
+
+        acLogFromRootProc(pid, "WINDOW LINEAR %*s: min %.3e,\tsum %.3e,\tmax %.3e\n", max_name_width,
+                          vtxbuf_names[i], double(buf_min), double(buf_rms), double(buf_max));
+        if (pid == 0) {
+            fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+        }
+
+        if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
+            *found_nan = 1;
+        }
+    }
+
+    // Calculate rms, min and max from the variables as scalars with windowing (TEST)
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_GAUSSIAN_WINDOW_MAX, VertexBufferHandle(i), &buf_max);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_GAUSSIAN_WINDOW_MIN, VertexBufferHandle(i), &buf_min);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_GAUSSIAN_WINDOW_SUM, VertexBufferHandle(i), &buf_rms);
+
+        acLogFromRootProc(pid, "WINDOW GAUSSIAN  %*s: min %.3e,\tsum %.3e,\tmax %.3e\n", max_name_width,
+                          vtxbuf_names[i], double(buf_min), double(buf_rms), double(buf_max));
+        if (pid == 0) {
+            fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
+        }
+
+        if (isnan(buf_max) || isnan(buf_min) || isnan(buf_rms)) {
+            *found_nan = 1;
+        }
+    }
+
+#endif 
 
     if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
         if (pid == 0) {
@@ -785,6 +850,13 @@ main(int argc, char** argv)
                                                                          // sake of diagnosis.
                 initial_mesh_procedure = InitialMeshProcedure::InitKernel;
                 simulation_physics     = PhysicsConfiguration::HydroHeatduct;
+                acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
+            }
+            else if (strcmp(optarg, "ShockTurb") == 0) {
+                acLogFromRootProc(pid, "Initial condition: ShockTurb\n"); // This here just for the
+                                                                          // sake of diagnosis.
+                initial_mesh_procedure = InitialMeshProcedure::InitKernel;
+                simulation_physics     = PhysicsConfiguration::ShockSinglepass;
                 acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
             }
             else {

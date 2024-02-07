@@ -175,7 +175,9 @@ endif()
 add_subdirectory(acc-runtime)
 add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
-add_subdirectory(samples/ac-interpreter)
+if (NOT BUILD_SHARED_LIBS)	
+    add_subdirectory(samples/ac-interpreter)
+endif()
 
 if (BUILD_UTILS)
     add_subdirectory(src/utils)
@@ -198,6 +200,11 @@ if (BUILD_SAMPLES)
     add_subdirectory(samples/pc-varfile-import)
     add_subdirectory(samples/bwtest)
     add_subdirectory(samples/microbenchmark)
+
+
+    if (BUILD_MLLIB_SAMPLES)
+        add_subdirectory(samples/microbenchmark-nn)
+    endif ()
 
     if (BUILD_MHD_SAMPLES)
         # add_subdirectory(samples/standalone)

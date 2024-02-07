@@ -63,4 +63,3 @@ acKernel(const KernelParameters params, VertexBufferArray vba)
     return AC_FAILURE;
 #endif
 }
-

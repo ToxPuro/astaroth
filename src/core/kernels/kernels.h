@@ -180,8 +180,6 @@ AcResult acKernelVolumeCopy(const cudaStream_t stream,                          
 // Astaroth 2.0 backwards compatibility.
 AcResult acKernel(const KernelParameters params, VertexBufferArray vba);
 
-
-
 #ifdef __cplusplus
 } // extern "C"
 #endif
