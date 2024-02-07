@@ -33,7 +33,6 @@
 
 static dim3 last_tpb = (dim3){0, 0, 0};
 
-static size_t max_dim_count;
 Volume
 acKernelLaunchGetLastTPB(void)
 {
@@ -47,7 +46,12 @@ get_bpg(const Volume dims, const Volume tpb)
   case IMPLICIT_CACHING:             // Fallthrough
   case EXPLICIT_CACHING:             // Fallthrough
   case EXPLICIT_CACHING_3D_BLOCKING: // Fallthrough
-  case EXPLICIT_CACHING_4D_BLOCKING: {
+  case EXPLICIT_CACHING_4D_BLOCKING  // Fallthrough
+  case EXPLICIT_PINGPONG_txw:        // Fallthrough
+  case EXPLICIT_PINGPONG_txy:        // Fallthrough
+  case EXPLICIT_PINGPONG_txyblocked: // Fallthrough
+  case EXPLICIT_PINGPONG_txyz:       // Fallthrough
+  case EXPLICIT_ROLLING_PINGPONG: {
     return (Volume){
         (size_t)ceil(1. * dims.x / tpb.x),
         (size_t)ceil(1. * dims.y / tpb.y),
@@ -87,7 +91,29 @@ is_valid_configuration(const Volume dims, const Volume tpb)
   case EXPLICIT_CACHING_3D_BLOCKING: {
 
     // For some reason does not work without this
+    // Probably because of break vs continue when fetching (some threads
+    // quit too early if the dims are not divisible)
     return !(dims.x % tpb.x) && !(dims.y % tpb.y) && !(dims.z % tpb.z);
+  }
+  case EXPLICIT_PINGPONG_txw: {
+    return (tpb.y == 1) && (tpb.z == 1);
+  }
+  case EXPLICIT_PINGPONG_txy: {
+    return (tpb.z == 1);
+  }
+  case EXPLICIT_PINGPONG_txyblocked: {
+    return (tpb.z == 1);
+  }
+  case EXPLICIT_PINGPONG_txyz: {
+    return true;
+  }
+  case EXPLICIT_ROLLING_PINGPONG: {
+    // OK for every other rolling pingpong implementation
+    // return true;
+    // Required only when unrolling smem loads
+    // Ensures two unrolls is enough to fill the smem buffer
+    return (2 * tpb.x >= STENCIL_WIDTH - 1 + tpb.x) &&
+           (2 * tpb.y >= STENCIL_HEIGHT - 1 + tpb.y);
   }
   default: {
     ERROR("Invalid IMPLEMENTATION in is_valid_configuration");
@@ -115,6 +141,28 @@ get_smem(const Volume tpb, const size_t stencil_order,
   case EXPLICIT_CACHING_4D_BLOCKING: {
     return (tpb.x + stencil_order) * (tpb.y + stencil_order) * tpb.z *
            (NUM_FIELDS)*bytes_per_elem;
+  }
+  case EXPLICIT_PINGPONG_txw: {
+    return 2 * (tpb.x + stencil_order) * NUM_FIELDS * bytes_per_elem;
+  }
+  case EXPLICIT_PINGPONG_txy: {
+    return 2 * (tpb.x + stencil_order) * (tpb.y + stencil_order) *
+           bytes_per_elem;
+  }
+  case EXPLICIT_PINGPONG_txyblocked: {
+    const size_t block_size = 7;
+    return 2 * (tpb.x + stencil_order) * (tpb.y + stencil_order) * block_size *
+           bytes_per_elem;
+  }
+  case EXPLICIT_PINGPONG_txyz: {
+    return 2 * (tpb.x + stencil_order) * (tpb.y + stencil_order) *
+           (tpb.z + stencil_order) * bytes_per_elem;
+  }
+  case EXPLICIT_ROLLING_PINGPONG: {
+    // tpbxy slices with halos
+    // tpbz depth + 1 rolling cache slab
+    return EXPLICIT_ROLLING_PINGPONG_BLOCKSIZE * (tpb.x + stencil_order) *
+           (tpb.y + stencil_order) * (tpb.z + 1) * bytes_per_elem;
   }
   default: {
     ERROR("Invalid IMPLEMENTATION in get_smem");
@@ -687,13 +735,6 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
       STENCIL_ORDER / 2,
   };
   const int3 end = start + dims;
-  
-  int ac_mx;
-  int ac_my;
-  acStoreIntUniform(0,AC_mx,&ac_mx);
-  acStoreIntUniform(0,AC_my,&ac_my);
-  const int start_idx = start.x + ac_mx*start.y + ac_mx*ac_my*start.z;
-
 
   dim3 best_tpb(0, 0, 0);
   float best_time     = INFINITY;
@@ -750,14 +791,11 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 
 #if VECTORIZED_LOADS
         const size_t window = tpb.x + STENCIL_ORDER;
-
         // Vectorization criterion
         if (window % veclen) // Window not divisible into vectorized blocks
           continue;
-
         if (dims.x % tpb.x)
           continue;
-
           // May be too strict
           // if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
           //   continue;
@@ -767,18 +805,14 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         const size_t max_smem = 128 * 1024;
         if (smem > max_smem)
           continue;
-
 #if VECTORIZED_LOADS
         const size_t window = tpb.x + STENCIL_ORDER;
-
         // Vectorization criterion
         if (window % veclen) // Window not divisible into vectorized blocks
           continue;
-
         if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
           continue;
 #endif
-
           //  Padding criterion
           //  TODO (cannot be checked here)
 #else
@@ -786,7 +820,6 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
           continue;
 #endif
 #endif
-
         // printf("%d, %d, %d: %lu\n", tpb.x, tpb.y, tpb.z, smem);
 
         cudaEvent_t tstart, tstop;
