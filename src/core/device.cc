@@ -415,6 +415,7 @@ AcResult
 acDeviceLoadProfileWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
                          const Profile profile, int src_idx, int dst_idx, size_t num_elems)
 {
+    ERRCHK_ALWAYS(&device->vba.profiles[profile] != nullptr) //in case the user loaded a nullptr at acGridInit
     ERRCHK_ALWAYS(host_info.profiles[profile] != nullptr)
     cudaSetDevice(device->id);
     const AcReal* src_ptr = &host_info.profiles[profile][src_idx];

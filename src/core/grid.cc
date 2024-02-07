@@ -381,7 +381,12 @@ acGridInit(const AcMeshInfo info)
 
     for(int profile=0;profile<NUM_PROFILES;++profile)
     {
-      acDeviceLoadProfile(grid.device,STREAM_DEFAULT,submesh.info,static_cast<Profile>(profile));
+      //in case the user loaded a nullptr to the profile do not load it
+      if(submesh.info.profiles[profile] != nullptr){
+        acDeviceLoadProfile(grid.device,STREAM_DEFAULT,submesh.info,static_cast<Profile>(profile));
+      }else{
+        acLogFromRootProc(pid, "acGridInit: Warning!!!\tProfile %s will be null and not allocated since you loaded a nullptr to it\n", profile_names[profile]);
+      }
       acGridSynchronizeStream(STREAM_ALL);
     }
 

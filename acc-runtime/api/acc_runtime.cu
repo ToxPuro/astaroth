@@ -391,8 +391,14 @@ acVBACreate(const AcMeshInfo config)
   }
   //Allocate profiles
   for(size_t i= 0; i < NUM_PROFILES; i++){
-    const size_t profile_bytes = sizeof(vba.in[0][0]) * config.int_params[profile_lengths[i]];
-    device_malloc((void**)&vba.profiles[i],profile_bytes);
+    //if the user loads in a nullptr for the profile it won't be allocated and set to null (the user will be warned at acGridInit)
+    if(config.profiles[i] != nullptr)
+    {
+      const size_t profile_bytes = sizeof(vba.in[0][0]) * config.int_params[profile_lengths[i]];
+      device_malloc((void**)&vba.profiles[i],profile_bytes);
+    }else{
+      vba.profiles[i] = nullptr;
+    }
   }
   //Allocate workbuffers
   for (size_t i = 0; i < NUM_WORK_BUFFERS; ++i)
@@ -430,7 +436,10 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
     device_free(&(vba->w[i]), vba->bytes);
   //Free profiles
   for(size_t i=0;i<NUM_PROFILES; ++i)
-    device_free(&(vba->profiles[i]),max_dim_count);
+    //Nothing to free if nullptr, don't know if a nullptr would break compressed memory free so this is safest
+    if(config.profiles[profile] != nullptr){
+      device_free(&(vba->profiles[i]),config.int_params[profile_lengths[profile]]);
+    }
   //Free arrays
   for(size_t i=0;i<NUM_ARRAYS; ++i)
     device_free(&(vba->arrays[i]), config.int_params[ac_array_lengths[i]]);

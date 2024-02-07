@@ -744,9 +744,14 @@ gen_kernel_body(const int curr_kernel)
     //     if (height >= STENCIL_HEIGHT)
     //       continue;
 
+    //the easiest way to change how the stencil is iterated is this way.
+    //the uncommented code would correspond to iterating the stencils from outwards to inwards
+
     // int depth_order[STENCIL_DEPTH] = {0,6,1,5,2,4,3};
     // int height_order[STENCIL_HEIGHT] = {0,6,1,5,2,4,3};
     // int width_order[STENCIL_WIDTH] = {0,6,1,5,2,4,3};
+    
+    
     int depth_order[STENCIL_DEPTH] = {0,1,2,3,4,5,6};
     int height_order[STENCIL_DEPTH] = {0,1,2,3,4,5,6};
     int width_order[STENCIL_DEPTH] = {0,1,2,3,4,5,6};
