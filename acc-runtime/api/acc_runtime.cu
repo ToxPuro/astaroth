@@ -804,13 +804,13 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         //           // May be too strict
         //           // if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
         //           //   continue;
-
         // #endif
         // #if 0 // Disabled for now (waiting for cleanup)
         // #if USE_SMEM
         //         const size_t max_smem = 128 * 1024;
         //         if (smem > max_smem)
         //           continue;
+
         // #if VECTORIZED_LOADS
         //         const size_t window = tpb.x + STENCIL_ORDER;
 
@@ -818,10 +818,11 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         //         if (window % veclen) // Window not divisible into vectorized
         //         blocks
         //           continue;
+
         //         if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
         //           continue;
-
         // #endif
+
         //           //  Padding criterion
         //           //  TODO (cannot be checked here)
         // #else
