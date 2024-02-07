@@ -46,7 +46,7 @@ get_bpg(const Volume dims, const Volume tpb)
   case IMPLICIT_CACHING:             // Fallthrough
   case EXPLICIT_CACHING:             // Fallthrough
   case EXPLICIT_CACHING_3D_BLOCKING: // Fallthrough
-  case EXPLICIT_CACHING_4D_BLOCKING  // Fallthrough
+  case EXPLICIT_CACHING_4D_BLOCKING:  // Fallthrough
   case EXPLICIT_PINGPONG_txw:        // Fallthrough
   case EXPLICIT_PINGPONG_txy:        // Fallthrough
   case EXPLICIT_PINGPONG_txyblocked: // Fallthrough
@@ -110,6 +110,7 @@ is_valid_configuration(const Volume dims, const Volume tpb)
   case EXPLICIT_ROLLING_PINGPONG: {
     // OK for every other rolling pingpong implementation
     // return true;
+
     // Required only when unrolling smem loads
     // Ensures two unrolls is enough to fill the smem buffer
     return (2 * tpb.x >= STENCIL_WIDTH - 1 + tpb.x) &&
@@ -789,37 +790,40 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         if (!is_valid_configuration(to_volume(dims), to_volume(tpb)))
           continue;
 
-#if VECTORIZED_LOADS
-        const size_t window = tpb.x + STENCIL_ORDER;
-        // Vectorization criterion
-        if (window % veclen) // Window not divisible into vectorized blocks
-          continue;
-        if (dims.x % tpb.x)
-          continue;
-          // May be too strict
-          // if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
-          //   continue;
-#endif
-#if 0 // Disabled for now (waiting for cleanup)
-#if USE_SMEM
-        const size_t max_smem = 128 * 1024;
-        if (smem > max_smem)
-          continue;
-#if VECTORIZED_LOADS
-        const size_t window = tpb.x + STENCIL_ORDER;
-        // Vectorization criterion
-        if (window % veclen) // Window not divisible into vectorized blocks
-          continue;
-        if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
-          continue;
-#endif
-          //  Padding criterion
-          //  TODO (cannot be checked here)
-#else
-        if ((x * y * z) % warp_size)
-          continue;
-#endif
-#endif
+	// #if VECTORIZED_LOADS
+        //         const size_t window = tpb.x + STENCIL_ORDER;
+        //         // Vectorization criterion
+        //         if (window % veclen) // Window not divisible into vectorized
+        //         blocks
+        //           continue;
+        //         if (dims.x % tpb.x)
+        //           continue;
+        //           // May be too strict
+        //           // if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
+        //           //   continue;
+        // #endif
+        // #if 0 // Disabled for now (waiting for cleanup)
+        // #if USE_SMEM
+        //         const size_t max_smem = 128 * 1024;
+        //         if (smem > max_smem)
+        //           continue;
+        // #if VECTORIZED_LOADS
+        //         const size_t window = tpb.x + STENCIL_ORDER;
+        //         // Vectorization criterion
+        //         if (window % veclen) // Window not divisible into vectorized
+        //         blocks
+        //           continue;
+        //         if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
+        //           continue;
+        // #endif
+        //           //  Padding criterion
+        //           //  TODO (cannot be checked here)
+        // #else
+        //         if ((x * y * z) % warp_size)
+        //           continue;
+        // #endif
+        // #endif
+
         // printf("%d, %d, %d: %lu\n", tpb.x, tpb.y, tpb.z, smem);
 
         cudaEvent_t tstart, tstop;
