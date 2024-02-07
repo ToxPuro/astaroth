@@ -486,8 +486,8 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
   //Free profiles
   for(size_t i=0;i<NUM_PROFILES; ++i)
     //Nothing to free if nullptr, don't know if a nullptr would break compressed memory free so this is safest
-    if(config.profiles[profile] != nullptr){
-      device_free(&(vba->profiles[i]),config.int_params[profile_lengths[profile]]);
+    if(config.profiles[i] != nullptr){
+      device_free(&(vba->profiles[i]),config.int_params[profile_lengths[i]]);
     }
   //Free arrays
   for(size_t i=0;i<NUM_ARRAYS; ++i)
