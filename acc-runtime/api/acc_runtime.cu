@@ -46,7 +46,7 @@ get_bpg(const Volume dims, const Volume tpb)
   case IMPLICIT_CACHING:             // Fallthrough
   case EXPLICIT_CACHING:             // Fallthrough
   case EXPLICIT_CACHING_3D_BLOCKING: // Fallthrough
-  case EXPLICIT_CACHING_4D_BLOCKING:  // Fallthrough
+  case EXPLICIT_CACHING_4D_BLOCKING: // Fallthrough
   case EXPLICIT_PINGPONG_txw:        // Fallthrough
   case EXPLICIT_PINGPONG_txy:        // Fallthrough
   case EXPLICIT_PINGPONG_txyblocked: // Fallthrough
@@ -792,15 +792,19 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 
 	// #if VECTORIZED_LOADS
         //         const size_t window = tpb.x + STENCIL_ORDER;
+
         //         // Vectorization criterion
         //         if (window % veclen) // Window not divisible into vectorized
         //         blocks
         //           continue;
+
         //         if (dims.x % tpb.x)
         //           continue;
+
         //           // May be too strict
         //           // if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
         //           //   continue;
+
         // #endif
         // #if 0 // Disabled for now (waiting for cleanup)
         // #if USE_SMEM
@@ -809,12 +813,14 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         //           continue;
         // #if VECTORIZED_LOADS
         //         const size_t window = tpb.x + STENCIL_ORDER;
+
         //         // Vectorization criterion
         //         if (window % veclen) // Window not divisible into vectorized
         //         blocks
         //           continue;
         //         if (dims.x % tpb.x || dims.y % tpb.y || dims.z % tpb.z)
         //           continue;
+
         // #endif
         //           //  Padding criterion
         //           //  TODO (cannot be checked here)
