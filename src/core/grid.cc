@@ -697,12 +697,12 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     // In order to reduce redundant dependencies, we keep track of which tasks are connected
     size_t n_tasks               = graph->all_tasks.size();
     size_t adjacancy_matrix_size = n_tasks * n_tasks;
-    bool adjacent[adjacancy_matrix_size]{};
+    bool adjacent[adjacancy_matrix_size];
 
     //...and check if there is already a forward path that connects two tasks
     auto forward_search = [&adjacent, &op_indices, n_tasks,
                            n_ops](size_t preq, size_t dept, size_t preq_op, size_t path_len) {
-        bool visited[n_tasks]{};
+        bool visited[n_tasks];
         size_t start_op = (preq_op + 1) % n_ops;
 
         struct walk_node {

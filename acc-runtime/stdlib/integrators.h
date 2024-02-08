@@ -26,3 +26,20 @@ rk3(s0, s1, roc) {
     // Workaround
     return s1 + beta[AC_step_number + 1] * ((alpha[AC_step_number] / beta[AC_step_number]) * (s1 - s0) + roc * AC_dt)
 }
+rk3_intermediate(w, roc) {
+    real alpha = 0., -5./9., -153. / 128.
+
+    // return alpha[AC_step_number] * w + roc * AC_dt
+    // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below
+
+    if AC_step_number > 0 {
+        return alpha[AC_step_number] * w + roc * AC_dt
+    } else {
+        return roc * AC_dt
+    }
+}
+
+rk3_final(f, w) {
+    real beta = 1. / 3., 15./ 16., 8. / 15.
+    return f + beta[AC_step_number] * w
+}

@@ -1,11 +1,13 @@
-#include "grid.h"
+#include "../stdlib/grid.h"
 
+#define DER1_3 ( 1. / 60.)
 #define DER1_2 (-3. / 20.)
-#define DER1_1 ( 3. / 4.)
+#define DER1_1 ( 3. / 4. )
+#define DER1_0 (0)
 
 #define DER2_3 ( 1. / 90.)
 #define DER2_2 (-3. / 20.)
-#define DER2_1 ( 3. / 2.)
+#define DER2_1 ( 3. / 2. )
 #define DER2_0 (-49./ 18.)
 
 #define DERX_3 (  2. / 720.)

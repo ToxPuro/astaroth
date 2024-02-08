@@ -1,4 +1,13 @@
-real AC_dsx, AC_dsy, AC_dsz // WARNING UNUSED! NEED TO BE COMPILE-TIME CONSTANTS
+// physical grid
+real AC_xlen
+real AC_ylen
+real AC_zlen
+real AC_xorig
+real AC_yorig
+real AC_zorig
+
+real AC_dsx, AC_dsy, AC_dsz
+real AC_dsmin
 
 #define DSX (0.04908738521)
 #define DSY (0.04908738521)

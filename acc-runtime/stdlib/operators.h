@@ -1,4 +1,4 @@
-#include "derivs.h"
+#include "../stdlib/derivs.h"
 
 vecvalue(v) {
     return real3(value(v.x), value(v.y), value(v.z))
