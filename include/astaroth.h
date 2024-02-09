@@ -721,6 +721,13 @@ typedef enum AcBoundary {
 
 /** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
  * some operation.*/
+typedef struct TaskStepInfo {
+  const cudaStream_t stream;
+  const int step_number;
+} TaskStepInfo;
+
+typedef AcResult (*PrepareFn)(const TaskStepInfo);
+
 typedef struct AcTaskDefinition {
     AcTaskType task_type;
     union {
@@ -740,6 +747,7 @@ typedef struct AcTaskDefinition {
 
     AcRealParam* parameters;
     size_t num_parameters;
+    PrepareFn prepare_func;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
@@ -748,7 +756,7 @@ typedef struct AcTaskGraph AcTaskGraph;
 
 /** */
 AcTaskDefinition acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out);
+                           Field fields_out[], const size_t num_fields_out, const PrepareFn);
 
 /** */
 AcTaskDefinition acHaloExchange(Field fields[], const size_t num_fields);
@@ -1220,16 +1228,31 @@ template <size_t num_fields>
 AcTaskDefinition
 acCompute(AcKernel kernel, Field (&fields)[num_fields])
 {
-    return acCompute(kernel, fields, num_fields, fields, num_fields);
+    return acCompute(kernel, fields, num_fields, fields, num_fields, nullptr);
 }
+
+template <size_t num_fields>
+AcTaskDefinition
+acCompute(AcKernel kernel, Field (&fields)[num_fields], const PrepareFn prepare_func)
+{
+    return acCompute(kernel, fields, num_fields, fields, num_fields, prepare_func);
+}
+
+
 
 template <size_t num_fields_in, size_t num_fields_out>
 AcTaskDefinition
 acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out])
 {
-    return acCompute(kernel, fields_in, num_fields_in, fields_out, num_fields_out);
+    return acCompute(kernel, fields_in, num_fields_in, fields_out, num_fields_out, nullptr);
 }
 
+template <size_t num_fields_in, size_t num_fields_out>
+AcTaskDefinition
+acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out], const PrepareFn prepare_func)
+{
+    return acCompute(kernel, fields_in, num_fields_in, fields_out, num_fields_out, prepare_func);
+}
 /** */
 template <size_t num_fields>
 AcTaskDefinition

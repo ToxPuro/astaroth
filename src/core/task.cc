@@ -61,9 +61,14 @@ make_unique(Args&&... args)
 using std::make_unique;
 #endif
 
+AcResult
+load_step_number(const TaskStepInfo step_info)
+{
+    return acLoadIntUniform(step_info.stream, AC_step_number, step_info.step_number);
+}
 AcTaskDefinition
 acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out)
+          const size_t num_fields_out, const PrepareFn prepare_func)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
@@ -72,6 +77,12 @@ acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, 
     task_def.num_fields_in  = num_fields_in;
     task_def.fields_out     = fields_out;
     task_def.num_fields_out = num_fields_out;
+    if(!prepare_func)
+    {
+        task_def.prepare_func = load_step_number;
+    }else{
+        task_def.prepare_func = prepare_func;
+    }
     return task_def;
 }
 AcTaskDefinition
@@ -494,6 +505,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
     name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
+    prepare_compute = op.prepare_func;
 }
 
 void
@@ -501,7 +513,7 @@ ComputeTask::compute()
 {
     // IDEA: we could make loop_cntr.i point at params.step_number
     params.step_number = (int)(loop_cntr.i % 3);
-    acLoadIntUniform(params.stream, AC_step_number, params.step_number);
+    prepare_compute({params.stream, params.step_number});
     acKernel(params, vba);
 }
 
