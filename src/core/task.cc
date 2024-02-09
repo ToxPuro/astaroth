@@ -501,6 +501,7 @@ ComputeTask::compute()
 {
     // IDEA: we could make loop_cntr.i point at params.step_number
     params.step_number = (int)(loop_cntr.i % 3);
+    acLoadIntUniform(params.stream, AC_step_number, params.step_number);
     acKernel(params, vba);
 }
 
