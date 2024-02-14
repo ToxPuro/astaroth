@@ -161,7 +161,7 @@ gen_return_if_oob(void)
 }
 
 static void
-prefetch_output_elements_and_gen_prev_function(void)
+prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses)
 {
   // Read vba.out
 #if 0
@@ -191,12 +191,24 @@ prefetch_output_elements_and_gen_prev_function(void)
   for (int profile = 0; profile < NUM_PROFILES; ++profile){
     for(int read_index = 0; read_index < profile_read_set_sizes[profile]; ++read_index) 
     {
+      //TP: if we are generating mem accesses for some reason reading from vba does not work
+      //as a workaround simply set the values to zero
       if(profile_dims[profile] == 1) // X Profile
-        printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.x+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
+        if(gen_mem_accesses)
+          printf("const auto p_%d_%d= 0;", profile, read_index);
+        else
+          printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.x+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
       if(profile_dims[profile] == 2) // Y Profile
-        printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.y+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
+        if(gen_mem_accesses)
+          printf("const auto p_%d_%d= 0;", profile, read_index);
+        else
+          printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.y+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
+        // Z Profile
       if(profile_dims[profile] == 3) // Z Profile
-        printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.z+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
+        if(gen_mem_accesses)
+          printf("const auto p_%d_%d= 0;", profile, read_index);
+        else
+          printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.z+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
     }
   }
 #endif
@@ -207,7 +219,7 @@ gen_stencil_accesses(void)
 {
   gen_kernel_prefix();
   gen_return_if_oob();
-  prefetch_output_elements_and_gen_prev_function();
+  prefetch_output_elements_and_gen_prev_function(true);
 
   printf("AcReal /*__restrict__*/ "
          "processed_stencils[NUM_FIELDS][NUM_STENCILS];");
@@ -1649,7 +1661,7 @@ gen_kernel_body(const int curr_kernel)
   case IMPLICIT_CACHING: {
     gen_kernel_prefix();
     gen_return_if_oob();
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
 
     int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
 
@@ -1774,7 +1786,7 @@ gen_kernel_body(const int curr_kernel)
     gen_kernel_prefix();
     gen_return_if_oob();
 
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     prefetch_stencil_elements(curr_kernel);
     prefetch_stencil_coeffs(curr_kernel, false);
 
@@ -1791,7 +1803,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   case EXPLICIT_CACHING_3D_BLOCKING: {
@@ -1801,7 +1813,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   case EXPLICIT_CACHING_4D_BLOCKING: {
@@ -1811,7 +1823,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   case EXPLICIT_PINGPONG_txw: {
@@ -1822,7 +1834,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   case EXPLICIT_PINGPONG_txy: {
@@ -1833,7 +1845,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   case EXPLICIT_PINGPONG_txyblocked: {
@@ -1844,7 +1856,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   case EXPLICIT_ROLLING_PINGPONG: {
@@ -1855,7 +1867,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   default: {
