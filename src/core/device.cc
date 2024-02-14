@@ -437,11 +437,11 @@ acDeviceLoadProfile(const Device device, const Stream stream, const AcMeshInfo h
 }
 AcResult
 acDeviceLoadArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
-                         const AcArray array, int src_idx, int dst_idx, size_t num_elems)
+                         const AcRealArrayParam array, int src_idx, int dst_idx, size_t num_elems)
 {
     cudaSetDevice(device->id);
-    const AcReal* src_ptr = &host_info.arrays[array][src_idx];
-    AcReal* dst_ptr       = &device->vba.arrays[array][dst_idx];
+    const AcReal* src_ptr = &host_info.real_array_params[array][src_idx];
+    AcReal* dst_ptr       = &device->vba.real_arrays[array][dst_idx];
     const size_t bytes    = num_elems* sizeof(src_ptr[0]);
 
     ERRCHK_CUDA(                                                                                  //
@@ -452,9 +452,9 @@ acDeviceLoadArrayWithOffset(const Device device, const Stream stream, const AcMe
 }
 AcResult
 acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info,
-                         const AcArray array)
+                         const AcRealArrayParam array)
 {
-    acDeviceLoadArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[ac_array_lengths[array]]);
+    acDeviceLoadArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[real_array_lengths[array]]);
     return AC_SUCCESS;
 }
 

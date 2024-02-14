@@ -186,15 +186,17 @@ prefetch_output_elements_and_gen_prev_function(void)
          "}");
   printf("};");
 
+
+  //Note to Johannes, on HIP __ldg is no-op so we can safely use it both for CUDA and HIP
   for (int profile = 0; profile < NUM_PROFILES; ++profile){
     for(int read_index = 0; read_index < profile_read_set_sizes[profile]; ++read_index) 
     {
       if(profile_dims[profile] == 1) // X Profile
-        printf("const auto p_%d_%d= vba.profiles[%d][vertexIdx.x+(%d)];", profile, read_index, profile, profile_read_set[profile][read_index]);
+        printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.x+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
       if(profile_dims[profile] == 2) // Y Profile
-        printf("const auto p_%d_%d= vba.profiles[%d][vertexIdx.y+(%d)];", profile, read_index, profile, profile_read_set[profile][read_index]);
+        printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.y+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
       if(profile_dims[profile] == 3) // Z Profile
-        printf("const auto p_%d_%d= vba.profiles[%d][vertexIdx.z+(%d)];", profile, read_index, profile, profile_read_set[profile][read_index]);
+        printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.z+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
     }
   }
 #endif

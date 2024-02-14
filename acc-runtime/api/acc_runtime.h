@@ -41,8 +41,8 @@ typedef struct {
   int3 int3_params[NUM_INT3_PARAMS];
   AcReal real_params[NUM_REAL_PARAMS];
   AcReal3 real3_params[NUM_REAL3_PARAMS];
+  AcReal* real_array_params[NUM_REAL_ARRAYS];
   AcReal* profiles[NUM_PROFILES];
-  AcReal* arrays[NUM_ARRAYS];
 } AcMeshInfo;
 
 typedef struct {
@@ -50,7 +50,7 @@ typedef struct {
   AcReal* out[NUM_VTXBUF_HANDLES];
   AcReal* profiles[NUM_PROFILES];
   AcReal* w[NUM_WORK_BUFFERS];
-  AcReal* arrays[NUM_ARRAYS];
+  AcReal* real_arrays[NUM_REAL_ARRAYS];
   size_t bytes;
 } VertexBufferArray;
 

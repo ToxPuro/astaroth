@@ -221,6 +221,8 @@ real AC_GM_star
 real AC_unit_mass
 real AC_sq2GM_star
 real AC_cs2_sound
+Profile_z AC_test_profile[AC_nz]
+realArray AC_test_array[AC_slice_steps]
 //
 real AC_current_time
 
