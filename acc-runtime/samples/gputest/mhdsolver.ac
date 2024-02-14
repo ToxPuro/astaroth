@@ -607,6 +607,16 @@ curl_from_matrix(m) {
   return real3(m.data[2][1]-m.data[1][2], m.data[0][2] - m.data[2][0], m.data[1][0] - m.data[0][1])
 }
 
+multmm_sc_mn(a,b){
+    real res = 0.0
+    for row in 0:3{
+        for col in 0:3{
+            res = res + a.data[row][col]*b.data[row][col]
+        }
+    }
+    return res
+}
+
 vecprevious(v){
     return real3(previous(Field(v.x)),previous(Field(v.y)),previous(Field(v.z)))
 }
