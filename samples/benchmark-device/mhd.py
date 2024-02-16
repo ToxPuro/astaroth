@@ -644,7 +644,8 @@ if args.library in "pytorch":
 
         # @torch.compile(options={'max-autotune': True})
         # @torch.compile(mode='max-autotune', fullgraph=True)
-        @torch.no_grad()
+        # @torch.no_grad()
+        @torch.inference_mode
         def forward(self, input):
             # Inputs
             ## Hydro

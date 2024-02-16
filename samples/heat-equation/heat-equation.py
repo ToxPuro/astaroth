@@ -295,7 +295,8 @@ if args.library in "pytorch":
 
         # @torch.compile
         # @torch.jit.script
-        @torch.no_grad()
+        # @torch.no_grad()
+        @torch.inference_mode
         def forward(self, input):
             if len(input.shape) == 5:
                 return torch.nn.functional.conv3d(input, self.weights)
