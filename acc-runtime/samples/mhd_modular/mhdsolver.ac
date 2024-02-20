@@ -1038,9 +1038,6 @@ Kernel haatouken() {
 beltrami(ampl, ex, ey, ez, kx, ky, kz, phase) {
     // Based on Pencil Code beltrami_general() 
     // https://github.com/pencil-code/pencil-code/blob/43f0b658a905bbeb641daa0ccf88720a20f0c562/src/initcond.f90#L1818C16-L1818C32
-    ex = 0.0
-    ey = 0.0
-    ez = 1.0
 
     kxe_x = ky*ez - kz*ey
     kxe_y = kz*ex - kx*ez
@@ -1071,9 +1068,9 @@ Kernel beltrami_initcond() {
     write(VTXBUF_UUX, uu.x)
     write(VTXBUF_UUY, uu.y)
     write(VTXBUF_UUZ, uu.z)
-    write(VTXBUF_AAX, aa.x)
-    write(VTXBUF_AAY, aa.y)
-    write(VTXBUF_AAZ, aa.z)
+    write(VTXBUF_AX, aa.x)
+    write(VTXBUF_AY, aa.y)
+    write(VTXBUF_AZ, aa.z)
 }
 
 Kernel constant() {

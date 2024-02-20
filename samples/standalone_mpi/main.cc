@@ -1071,7 +1071,7 @@ main(int argc, char** argv)
         acLogFromRootProc(pid, "Boundara test \n");
         AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
         acGridLaunchKernel(STREAM_DEFAULT, constant, dims.n0, dims.n1);
-        acGridLaunchKernel(STREAM_DEFAULT, beltrami, dims.n0, dims.n1);
+        acGridLaunchKernel(STREAM_DEFAULT, beltrami_initcond, dims.n0, dims.n1);
         acGridSwapBuffers();
         acLogFromRootProc(pid, "Communicating halos\n");
         acGridPeriodicBoundconds(STREAM_DEFAULT);
