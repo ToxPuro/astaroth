@@ -3,7 +3,7 @@
 #include <astaroth_debug.h>
 
 // TODO: allow selecting single our doublepass here?
-enum class Simulation { Solve, Shock_Singlepass_Solve, Hydro_Heatduct_Solve, Default = Solve };
+enum class Simulation { Solve, Shock_Singlepass_Solve, Hydro_Heatduct_Solve, Bound_Test_Solve, Default = Solve };
 
 void
 log_simulation_choice(int pid, Simulation sim)
@@ -18,6 +18,9 @@ log_simulation_choice(int pid, Simulation sim)
         break;
     case Simulation::Hydro_Heatduct_Solve:
         sim_label = "Heat duct with doublepass solve";
+        break;
+    case Simulation::Bound_Test_Solve:
+        sim_label = "Boundary test with doublepass solve";
         break;
     default:
         sim_label = "WARNING: No label exists for simulation";
@@ -106,6 +109,31 @@ get_simulation_graph(int pid, Simulation sim)
             acGraphPrintDependencies(my_taskgraph);
             return my_taskgraph;
 #endif
+        }
+        case Simulation::Bound_Test_Solve: {
+            VertexBufferHandle all_fields[] =
+                {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+                 VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ, VTXBUF_ENTROPY,
+                 BFIELDX,    BFIELDY,    BFIELDZ};
+            VertexBufferHandle lnrho_field[]   = {VTXBUF_LNRHO};
+            VertexBufferHandle entropy_field[] = {VTXBUF_ENTROPY};
+            VertexBufferHandle uux_field[]     = {VTXBUF_UUX};
+            VertexBufferHandle uuy_field[]     = {VTXBUF_UUY};
+            VertexBufferHandle uuz_field[]     = {VTXBUF_UUZ};
+            VertexBufferHandle aax_field[]     = {VTXBUF_AX};
+            VertexBufferHandle aay_field[]     = {VTXBUF_AY};
+            VertexBufferHandle aaz_field[]     = {VTXBUF_AZ};
+
+            AcTaskDefinition boundtest_ops[] =
+                {acHaloExchange(all_fields),
+                 acBoundaryCondition(BOUNDARY_XZ, BOUNDCOND_PERIODIC, all_fields),
+
+                 acCompute(KERNEL_twopass_solve_intermediate, all_fields),
+                 acCompute(KERNEL_twopass_solve_final, all_fields)};
+            acLogFromRootProc(pid, "Creating Boundary test task graph\n");
+            AcTaskGraph* my_taskgraph = acGridBuildTaskGraph(boundtest_ops);
+            acGraphPrintDependencies(my_taskgraph);
+            return my_taskgraph;
         }
         default:
             acLogFromRootProc(pid, "ERROR: no custom task graph exists for selected simulation. "

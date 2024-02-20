@@ -1035,7 +1035,7 @@ Kernel haatouken() {
 
 }
 
-beltrami(ampl, kx, ky, kz, phase) {
+beltrami(ampl, ex, ey, ez, kx, ky, kz, phase) {
     // Based on Pencil Code beltrami_general() 
     // https://github.com/pencil-code/pencil-code/blob/43f0b658a905bbeb641daa0ccf88720a20f0c562/src/initcond.f90#L1818C16-L1818C32
     ex = 0.0
@@ -1050,23 +1050,23 @@ beltrami(ampl, kx, ky, kz, phase) {
     kxkxe_y = kz*kxe_x - kx*kxe_z
     kxkxe_z = kx*kxe_y - ky*kxe_x
 
-    k=sqrt(kx*kx+ky*ky+kz*kz)
+    kk=sqrt(kx*kx+ky*ky+kz*kz)
 
     xx = grid_position()
 
     cfunc = abs(ampl) * cos(kx*xx.x + ky*xx.y + kz*xx.z + phase)
     sfunc =     ampl  * sin(kx*xx.x + ky*xx.y + kz*xx.z + phase)
 
-    field.x = kxkxe_x*cfunc + k*kxe_x*sfunc
-    field.y = kxkxe_y*cfunc + k*kxe_y*sfunc
-    field.z = kxkxe_z*cfunc + k*kxe_z*sfunc
+    field = real3(kxkxe_x*cfunc + kk*kxe_x*sfunc,   
+                  kxkxe_y*cfunc + kk*kxe_y*sfunc,   
+                  kxkxe_z*cfunc + kk*kxe_z*sfunc)
 
     return field
 }
 
 Kernel beltrami_initcond() {
-    uu = beltrami(0.3, 3.0, 2.0, 3.0, 0.0)
-    aa = beltrami(0.3, 6.0, 4.0, 6.0, 0.0)
+    uu = beltrami(0.3, 0.0, 0.0, 1.0, 3.0, 2.0, 3.0, 0.0)
+    aa = beltrami(0.3, 0.0, 0.0, 1.0, 6.0, 4.0, 6.0, 0.0)
 
     write(VTXBUF_UUX, uu.x)
     write(VTXBUF_UUY, uu.y)
@@ -1074,4 +1074,13 @@ Kernel beltrami_initcond() {
     write(VTXBUF_AAX, aa.x)
     write(VTXBUF_AAY, aa.y)
     write(VTXBUF_AAZ, aa.z)
+}
+
+Kernel constant() {
+    
+    AC_value = 1.0
+
+    for field in 0:NUM_FIELDS {
+        write(Field(field), AC_value)
+    }
 }

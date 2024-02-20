@@ -748,6 +748,7 @@ enum class InitialMeshProcedure {
     LoadMonolithicSnapshot,
     LoadSnapshot,
     InitHaatouken,
+    InitBoundTest,
 };
 
 // Enums for taskgraph choise
@@ -755,6 +756,7 @@ enum class PhysicsConfiguration {
     Default,
     ShockSinglepass,
     HydroHeatduct,
+    BoundTest,
 };
 
 // Enums for actions taken in the simulation loop
@@ -857,6 +859,13 @@ main(int argc, char** argv)
                                                                           // sake of diagnosis.
                 initial_mesh_procedure = InitialMeshProcedure::InitKernel;
                 simulation_physics     = PhysicsConfiguration::ShockSinglepass;
+                acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
+            }
+            else if (strcmp(optarg, "BoundTest") == 0) {
+                acLogFromRootProc(pid, "Initial condition: BoundTest\n"); // This here just for the
+                                                                          // sake of diagnosis.
+                initial_mesh_procedure = InitialMeshProcedure::InitBoundTest;
+                simulation_physics     = PhysicsConfiguration::BoundTest;
                 acLogFromRootProc(pid, "GETOPT simulation_physics = %i \n", simulation_physics);
             }
             else {
@@ -1058,6 +1067,16 @@ main(int argc, char** argv)
         // MV: What if the boundary conditions are not periodic?
         break;
     }
+    case InitialMeshProcedure::InitBoundTest: {
+        acLogFromRootProc(pid, "Boundara test \n");
+        AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+        acGridLaunchKernel(STREAM_DEFAULT, constant, dims.n0, dims.n1);
+        acGridLaunchKernel(STREAM_DEFAULT, beltrami, dims.n0, dims.n1);
+        acGridSwapBuffers();
+        acLogFromRootProc(pid, "Communicating halos\n");
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+        break;
+    }
     case InitialMeshProcedure::LoadPC_Varfile: {
         acLogFromRootProc(pid, "Reading mesh state from Pencil Code var file %s\n",
                           initial_mesh_procedure_param);
@@ -1115,6 +1134,11 @@ main(int argc, char** argv)
 #endif
         break;
     }
+    case PhysicsConfiguration::BoundTest: {
+        sim = Simulation::Bound_Test_Solve;
+        acLogFromRootProc(pid, "PhysicsConfiguration BoundTest !\n");
+        break;
+    }
     case PhysicsConfiguration::HydroHeatduct: {
         sim = Simulation::Hydro_Heatduct_Solve;
         acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
@@ -1128,11 +1152,15 @@ main(int argc, char** argv)
                       Simulation::Shock_Singlepass_Solve);
     acLogFromRootProc(pid, "Simulation::Hydro_Heatduct_Solve = %i\n",
                       Simulation::Hydro_Heatduct_Solve);
+    acLogFromRootProc(pid, "Simulation::Bound_Test_Solve = %i\n",
+                      Simulation::Bound_Test_Solve);
     acLogFromRootProc(pid, "PhysicsConfiguration::Default = %i\n", PhysicsConfiguration::Default);
     acLogFromRootProc(pid, "PhysicsConfiguration::ShockSinglepass = %i\n",
                       PhysicsConfiguration::ShockSinglepass);
     acLogFromRootProc(pid, "PhysicsConfiguration::HydroHeatduct = %i\n",
                       PhysicsConfiguration::HydroHeatduct);
+    acLogFromRootProc(pid, "PhysicsConfiguration::BoundTest = %i\n",
+                      PhysicsConfiguration::BoundTest);
 
     log_simulation_choice(pid, sim);
     AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);
