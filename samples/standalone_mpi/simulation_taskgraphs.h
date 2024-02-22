@@ -144,15 +144,9 @@ get_simulation_graph(int pid, Simulation sim)
                  acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, uuy_field),
                  acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_OUTFLOW,   uuz_field),
 
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_OUTFLOW,   aax_field),
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, aay_field),
-                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, aaz_field),
-                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, aax_field),
-                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_OUTFLOW,   aay_field),
-                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, aaz_field),
-                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, aax_field),
-                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, aay_field),
-                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_OUTFLOW,   aaz_field),
+                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, aax_field),
+                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, aay_field),
+                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, aaz_field),
 
                  acCompute(KERNEL_twopass_solve_intermediate, all_fields),
                  acCompute(KERNEL_twopass_solve_final, all_fields)};

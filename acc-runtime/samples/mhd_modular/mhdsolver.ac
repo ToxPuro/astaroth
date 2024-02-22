@@ -1062,15 +1062,50 @@ beltrami(ampl, ex, ey, ez, kx, ky, kz, phase) {
 }
 
 Kernel beltrami_initcond() {
-    uu = beltrami(1e-5, 0.0, 0.0, 1.0, 3.0, 2.0, 3.0, 0.0)
+    //uu = beltrami(1e-5, 0.0, 0.0, 1.0, 3.0, 2.0, 3.0, 0.0)
     aa = beltrami(1e-5, 0.0, 0.0, 1.0, 6.0, 4.0, 6.0, 0.0)
+
+    //write(VTXBUF_UUX, uu.x)
+    //write(VTXBUF_UUY, uu.y)
+    //write(VTXBUF_UUZ, uu.z)
+    write(VTXBUF_AX, aa.x)
+    write(VTXBUF_AY, aa.y)
+    write(VTXBUF_AZ, aa.z)
+}
+
+radial_vector_field(ampl) {
+    // Based on Pencil Code beltrami_general() 
+    // https://github.com/pencil-code/pencil-code/blob/43f0b658a905bbeb641daa0ccf88720a20f0c562/src/initcond.f90#L1818C16-L1818C32
+
+    center = real(AC_nx-1)*AC_dsx / 2.0
+
+    xx = grid_position()
+
+    xx.x = xx.x - center
+    xx.y = xx.y - center
+    xx.z = xx.z - center
+
+    rr = sqrt(xx.x*xx.x + xx.y*xx.y + xx.z*xx.z)
+    rr_xy = sqrt(xx.x*xx.x + xx.y*xx.y)
+
+    cos_theta = xx.z/rr
+    cos_phi   = xx.x/rr_xy
+    sin_phi   = xx.y/rr_xy
+
+
+    field = real3(ampl * cos_theta * cos_phi,   
+                  ampl * cos_theta * sin_phi,   
+                  ampl * cos_theta )
+
+    return field
+}
+
+Kernel radial_vec_initcond() {
+    uu = radial_vector_field(-1e-5) 
 
     write(VTXBUF_UUX, uu.x)
     write(VTXBUF_UUY, uu.y)
     write(VTXBUF_UUZ, uu.z)
-    write(VTXBUF_AX, aa.x)
-    write(VTXBUF_AY, aa.y)
-    write(VTXBUF_AZ, aa.z)
 }
 
 Kernel constant() {
