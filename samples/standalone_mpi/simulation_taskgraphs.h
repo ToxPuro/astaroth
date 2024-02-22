@@ -115,18 +115,44 @@ get_simulation_graph(int pid, Simulation sim)
                 {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
                  VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ, VTXBUF_ENTROPY,
                  BFIELDX,    BFIELDY,    BFIELDZ};
-            //VertexBufferHandle lnrho_field[]   = {VTXBUF_LNRHO};
-            //VertexBufferHandle entropy_field[] = {VTXBUF_ENTROPY};
-            //VertexBufferHandle uux_field[]     = {VTXBUF_UUX};
-            //VertexBufferHandle uuy_field[]     = {VTXBUF_UUY};
-            //VertexBufferHandle uuz_field[]     = {VTXBUF_UUZ};
-            //VertexBufferHandle aax_field[]     = {VTXBUF_AX};
-            //VertexBufferHandle aay_field[]     = {VTXBUF_AY};
-            //VertexBufferHandle aaz_field[]     = {VTXBUF_AZ};
+            VertexBufferHandle scalar_fields[] = {VTXBUF_LNRHO, VTXBUF_ENTROPY};
+            VertexBufferHandle uux_field[]     = {VTXBUF_UUX};
+            VertexBufferHandle uuy_field[]     = {VTXBUF_UUY};
+            VertexBufferHandle uuz_field[]     = {VTXBUF_UUZ};
+            VertexBufferHandle aax_field[]     = {VTXBUF_AX};
+            VertexBufferHandle aay_field[]     = {VTXBUF_AY};
+            VertexBufferHandle aaz_field[]     = {VTXBUF_AZ};
 
             AcTaskDefinition boundtest_ops[] =
                 {acHaloExchange(all_fields),
-                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, all_fields),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_ANTISYMMETRIC, all_fields),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_A2, all_fields),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_OUTFLOW, all_fields),
+                 //acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_INFLOW, all_fields),
+                 
+                 acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, scalar_fields),
+
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_OUTFLOW,   uux_field),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, uuy_field),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, uuz_field),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, uux_field),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_OUTFLOW,   uuy_field),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, uuz_field),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, uux_field),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, uuy_field),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_OUTFLOW,   uuz_field),
+
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_OUTFLOW,   aax_field),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, aay_field),
+                 acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, aaz_field),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, aax_field),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_OUTFLOW,   aay_field),
+                 acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, aaz_field),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, aax_field),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, aay_field),
+                 acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_OUTFLOW,   aaz_field),
 
                  acCompute(KERNEL_twopass_solve_intermediate, all_fields),
                  acCompute(KERNEL_twopass_solve_final, all_fields)};

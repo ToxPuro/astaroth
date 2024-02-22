@@ -1062,8 +1062,8 @@ beltrami(ampl, ex, ey, ez, kx, ky, kz, phase) {
 }
 
 Kernel beltrami_initcond() {
-    uu = beltrami(0.3, 0.0, 0.0, 1.0, 3.0, 2.0, 3.0, 0.0)
-    aa = beltrami(0.3, 0.0, 0.0, 1.0, 6.0, 4.0, 6.0, 0.0)
+    uu = beltrami(1e-5, 0.0, 0.0, 1.0, 3.0, 2.0, 3.0, 0.0)
+    aa = beltrami(1e-5, 0.0, 0.0, 1.0, 6.0, 4.0, 6.0, 0.0)
 
     write(VTXBUF_UUX, uu.x)
     write(VTXBUF_UUY, uu.y)
