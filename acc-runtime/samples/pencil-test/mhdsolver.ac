@@ -1,77 +1,55 @@
+
 int AC_step_number
 real AC_dt
 
 /*
-real AC_cs, AC_cp
-real AC_gamma, AC_nu, AC_zeta, AC_eta
+real AC_cs_sound, AC_cp_sound
+real AC_gamma, AC_nu_visc, AC_zeta, AC_eta
 real AC_lnrho0, AC_mu0, AC_lnT0
 */
 // Note: not used by mhdsolver.ac at the moment (src/utils/modelsolver.c does)
 hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
-hostdefine LDENSITY (1)
-hostdefine LHYDRO (1)
-hostdefine LMAGNETIC (1)
-hostdefine LENTROPY (1)
+hostdefine LDENSITY (0)
+hostdefine LHYDRO (0)
+hostdefine LMAGNETIC (0)
+hostdefine LENTROPY (0)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
 hostdefine LUPWD (0)
 hostdefine LSINK (0)
-hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
+hostdefine LBFIELD (0 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
 
-// Enables a set of special reductions. Currently for primarily for testing
-// purposes:  
-hostdefine LSPECIAL_REDUCTIONS (0)  
+Field VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO, VTXBUF_ENTROPY
 
-Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 
-#if LMAGNETIC
-Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
-#endif
+//Profile_X AC_PROFILE_GRAVX_XPENCIL
+//Profile_Y AC_PROFILE_GRAVY_YPENCIL
+Profile_Z AC_PROFILE_GRAVZ_ZPENCIL, AC_PROFILE_Z
+Profile_Z AC_PROFILE_DLNHCOND_PROF, AC_PROFILE_HCOND_PROF
 
-#if LENTROPY 
-Field VTXBUF_ENTROPY
-#endif
 
-#if LMAGNETIC
-Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
-#endif
 
-#if LBFIELD
-Field BFIELDX, BFIELDY, BFIELDZ
-#endif
 
-#if LSHOCK 
-Field VTXBUF_SHOCK
-#endif
 
-#if LFORCING
-hostdefine NUM_SCALARRAYS 6
-#include pcstyleforcing.h
-#endif
-
-// Additional params needed by standalone & standalone_mpi
-// diagnostics period
-int AC_save_steps
-
-// snapshot period
-int AC_bin_steps
-real AC_bin_save_t
 
 // slices output period
 int AC_slice_steps
+real AC_slice_save_t
+int AC_save_steps
 real AC_slice_save_t
 
 // maximun number of time snapshots during runtime 
 // Set AC_num_snapshots < 0 for unlimited snapshots
 int AC_num_snapshots
+int AC_bin_steps
+real AC_bin_save_t
 
 // max simulation time
 int AC_max_steps
 real AC_max_time
-
 // Forcing parameter generation period (if forcing is on)
 int AC_forcing_period_steps
 real AC_forcing_period_t
@@ -87,6 +65,48 @@ hostdefine DSZ (0.012271846303085129837744700715935558141395192)
 #define AC_inv_dsx (1. / DSX)
 #define AC_inv_dsy (1. / DSY)
 #define AC_inv_dsz (1. / DSZ)
+//TP for pencil
+#define AC_inv_dsx_6 AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx
+#define AC_inv_dsy_6 AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy
+#define AC_inv_dsz_6 AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz
+
+#define AC_inv_dsx_5 AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx
+#define AC_inv_dsy_5 AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy
+#define AC_inv_dsz_5 AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz
+
+#define AC_inv_dsx_4 AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx
+#define AC_inv_dsy_4 AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy
+#define AC_inv_dsz_4 AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz
+
+#define AC_inv_dsx_2 AC_inv_dsx*AC_inv_dsx
+#define AC_inv_dsy_2 AC_inv_dsy*AC_inv_dsy
+#define AC_inv_dsz_2 AC_inv_dsz*AC_inv_dsz
+
+#define DER6_0 -20.0
+#define DER6_1 15.0
+#define DER6_2 -6.0
+#define DER6_3 1.0
+
+#define DER5_1 2.5
+#define DER5_2 2.0
+#define DER5_3 0.5
+
+#define DER4_0 (56.0/6.0)
+#define DER4_1 (-39.0/6.0)
+#define DER4_2 (12.0/6.0)
+#define DER4_3 (-1.0)
+
+#define DER4i2j_scaling_factor 1/(6.0*180.0)
+#define DER4i2j_first 56.0
+#define DER4i2j_second -39.0
+#define DER4i2j_third 12.0
+#define DER4i2j_fourth -1.0
+
+#define DER4i2j_0 -490.0
+#define DER4i2j_1 270.0
+#define DER4i2j_2 -27.0
+#define DER4i2j_3 2.0
+
 
 // Real params
 // Spacing
@@ -113,6 +133,7 @@ real AC_sink_pos_x
 real AC_sink_pos_y
 real AC_sink_pos_z
 real AC_M_sink
+real AC_nu
 real AC_M_sink_init
 real AC_M_sink_Msun
 real AC_soft
@@ -122,21 +143,24 @@ real AC_switch_accretion
 real AC_cdt
 real AC_cdtv
 real AC_cdts
-real AC_nu
-real AC_cs
+real AC_nu_visc
+real AC_cs_sound
 real AC_eta
 real AC_mu0
-real AC_cp
+real AC_cp_sound
 real AC_gamma
-real AC_cv
+real AC_cv_sound
+real AC_cv1
+real AC_cs2cool
+real AC_lntt0
+real AC_gamma_m1
+real AC_gamma1
+real AC_cs20
 real AC_lnT0
 real AC_lnrho0
 real AC_zeta
 real AC_trans
 real AC_nu_shock
-int AC_lpressuregradient_gas
-real AC_cs20
-real AC_lntt0
 real AC_K_heatcond
 
 //  Parameters for generic boundary conditions, this is a dummy variable for testing, please use different ones for each field
@@ -145,6 +169,7 @@ real AC_boundary_derivative
 //  Parameters only used in boundary conditions at the moment
 //  If you feel they should be elsewhere, please move them
 real AC_hcond0_kramers
+real AC_hcond0
 real AC_hflux
 real AC_n_kramers
 real AC_sigma_SBt
@@ -187,24 +212,22 @@ real AC_G_const
 real AC_GM_star
 real AC_unit_mass
 real AC_sq2GM_star
-real AC_cs2
+real AC_cs2_sound
 //
 real AC_current_time
-//realArray AC_test_array[AC_slice_steps]
-Profile_z AC_test_profile[AC_nz]
 
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
-
+#define F_UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
 #if LMAGNETIC
 #define AA Field3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
 #endif
 
-#define DER1_3 (1. / 60.)
+#define DER1_3 (1.0 / 60.)
 #define DER1_2 (-3. / 20.)
 #define DER1_1 (3. / 4.)
 #define DER1_0 (0)
 
-#define DER2_3 (1. / 90.)
+#define DER2_3 (1.0 / 90.)
 #define DER2_2 (-3. / 20.)
 #define DER2_1 (3. / 2.)
 #define DER2_0 (-49. / 18.)
@@ -218,6 +241,7 @@ Profile_z AC_test_profile[AC_nz]
 #define DER6UPWD_2 ( -6. / 60.)   
 #define DER6UPWD_1 ( 15. / 60.)     
 #define DER6UPWD_0 (-20. / 60.)  
+
 
 #if LSHOCK
 
@@ -292,6 +316,146 @@ Stencil value_zp3 {
 //MV: Based on the standard rules of multiplications, why -AC_inv_dsx etc could
 //MV: not be outside of the stencil operation? 
 
+//TP: for pencil
+//Corresponds to der5 in Pencil Code
+Stencil der5x {
+    [0][0][-3] = -AC_inv_dsx_5 * DER5_3,
+    [0][0][-2] = -AC_inv_dsx_5 * DER5_2,
+    [0][0][-1] = -AC_inv_dsx_5 * DER5_1,
+    [0][0][1]  = AC_inv_dsx_5 * DER5_1,
+    [0][0][2]  = AC_inv_dsx_5 * DER5_2,
+    [0][0][3]  = AC_inv_dsx_5 * DER5_3
+}
+Stencil der5y {
+    [0][-3][0] = -AC_inv_dsy_5 * DER5_3,
+    [0][-2][0] = -AC_inv_dsy_5 * DER5_2,
+    [0][-1][0] = -AC_inv_dsy_5 * DER5_1,
+    [0][1][0]  = AC_inv_dsy_5 * DER5_1,
+    [0][2][0]  = AC_inv_dsy_5 * DER5_2,
+    [0][3][0]  = AC_inv_dsy_5 * DER5_3
+}
+Stencil der5z {
+    [-3][0][0] = -AC_inv_dsz_5 * DER5_3,
+    [-2][0][0] = -AC_inv_dsz_5 * DER5_2,
+    [-1][0][0] = -AC_inv_dsz_5 * DER5_1,
+    [1][0][0]  = AC_inv_dsz_5 * DER5_1,
+    [2][0][0]  = AC_inv_dsz_5 * DER5_2,
+    [3][0][0]  = AC_inv_dsz_5 * DER5_3
+}
+//TP: corresponds to der4 in Pencil Code
+Stencil der4x {
+    [0][0][-3] = AC_inv_dsx_4 * DER4_3,
+    [0][0][-2] = AC_inv_dsx_4 * DER4_2,
+    [0][0][-1] = AC_inv_dsx_4 * DER4_1,
+    [0][0][0]  = AC_inv_dsx_4 * DER4_0,
+    [0][0][1]  = AC_inv_dsx_4 * DER4_1,
+    [0][0][2]  = AC_inv_dsx_4 * DER4_2,
+    [0][0][3]  = AC_inv_dsx_4 * DER4_3
+}
+Stencil der4y {
+    [0][-3][0] = AC_inv_dsy_4 * DER4_3,
+    [0][-2][0] = AC_inv_dsy_4 * DER4_2,
+    [0][-1][0] = AC_inv_dsy_4 * DER4_1,
+    [0][0][0]  = AC_inv_dsy_4 * DER4_0,
+    [0][1][0]  = AC_inv_dsy_4 * DER4_1,
+    [0][2][0]  = AC_inv_dsy_4 * DER4_2,
+    [0][3][0]  = AC_inv_dsy_4 * DER4_3
+}
+Stencil der4z {
+    [-3][0][0] = AC_inv_dsz_4 * DER4_3,
+    [-2][0][0] = AC_inv_dsz_4 * DER4_2,
+    [-1][0][0] = AC_inv_dsz_4 * DER4_1,
+    [0][0][0]  = AC_inv_dsz_4 * DER4_0,
+    [1][0][0]  = AC_inv_dsz_4 * DER4_1,
+    [2][0][0]  = AC_inv_dsz_4 * DER4_2,
+    [3][0][0]  = AC_inv_dsz_4 * DER4_3
+}
+//TP: corresponds to der6_main
+Stencil der6x {
+    [0][0][-3] = AC_inv_dsx_6 * DER6_3,
+    [0][0][-2] = AC_inv_dsx_6 * DER6_2,
+    [0][0][-1] = AC_inv_dsx_6 * DER6_1,
+    [0][0][0]  = AC_inv_dsx_6 * DER6_0,
+    [0][0][1]  = AC_inv_dsx_6 * DER6_1,
+    [0][0][2]  = AC_inv_dsx_6 * DER6_2,
+    [0][0][3]  = AC_inv_dsx_6 * DER6_3
+}
+Stencil der6y {
+    [0][-3][0] = AC_inv_dsy_6 * DER6_3,
+    [0][-2][0] = AC_inv_dsy_6 * DER6_2,
+    [0][-1][0] = AC_inv_dsy_6 * DER6_1,
+    [0][0][0]  = AC_inv_dsy_6 * DER6_0,
+    [0][1][0]  = AC_inv_dsy_6 * DER6_1,
+    [0][2][0]  = AC_inv_dsy_6 * DER6_2,
+    [0][3][0]  = AC_inv_dsy_6 * DER6_3
+}
+Stencil der6z {
+    [-3][0][0] = AC_inv_dsz_6 * DER6_3,
+    [-2][0][0] = AC_inv_dsz_6 * DER6_2,
+    [-1][0][0] = AC_inv_dsz_6 * DER6_1,
+    [0][0][0]  = AC_inv_dsz_6 * DER6_0,
+    [1][0][0]  = AC_inv_dsz_6 * DER6_1,
+    [2][0][0]  = AC_inv_dsz_6 * DER6_2,
+    [3][0][0]  = AC_inv_dsz_6 * DER6_3
+}
+//TP: corresponds to der4i2j
+//when i==1 and j==2
+/**
+Stencil der4x2y {
+    [0][-3][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][0] = DER4i2j_first * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+
+    [0][-3][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-3][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][-1] = DER4i2j_second * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+
+    [0][-3][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-3][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][-2] = DER4i2j_third * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+
+    [0][-3][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-3][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3,
+    [0][-2][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][-1][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][0][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_0,
+    [0][1][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_1,
+    [0][2][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_2,
+    [0][3][-3] = DER4i2j_fourth * AC_inv_dsx_4 * AC_inv_dsx_2 * DER4i2j_3
+}
+**/
 Stencil derx {
     [0][0][-3] = -AC_inv_dsx * DER1_3,
     [0][0][-2] = -AC_inv_dsx * DER1_2,
@@ -426,12 +590,20 @@ Stencil der6z_upwd {
     [2][0][0]  =  AC_inv_dsz * DER6UPWD_2,
     [3][0][0]  =  AC_inv_dsz * DER6UPWD_3
 }
+u_dot_grad_vec(m,v){
+  return real3(dot(v,m.row(0)),dot(v,m.col(1)),dot(v,m.col(2)))
+}
+divergence_from_matrix(m) {
+    return m.data[0][0] + m.data[1][1] + m.data[2][2]
+}
 
+curl_from_matrix(m) {
+  return real3(m.data[2][1]-m.data[1][2], m.data[0][2] - m.data[2][0], m.data[1][0] - m.data[0][1])
+}
 
 vecvalue(v) {
     return real3(value(v.x), value(v.y), value(v.z))
 }
-
 vecvalue_abs(v) {
     return real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
 }
@@ -451,6 +623,9 @@ gradients_upwd(v) {
 gradients(v) {
     return Matrix(gradient(v.x), gradient(v.y), gradient(v.z))
 }
+gradients_from_index(k){
+  return Matrix(gradient(k),gradient(k+1),gradient(k+2))
+}
 
 divergence(v) {
     return derx(v.x) + dery(v.y) + derz(v.z)
@@ -460,6 +635,15 @@ curl(v) {
     return real3(dery(v.z) - derz(v.y), derz(v.x) - derx(v.z), derx(v.y) - dery(v.x))
 }
 
+del4(s) {
+  return der4x(s) + der4y(s) + der4z(s)
+}
+del6(s) {
+  return der6x(s) + der6y(s) + der6z(s)
+}
+del6_upwd(s) {
+  return der6x_upwd(s) + der6y_upwd(s) + der6z_upwd(s)
+}
 laplace(s) {
     return derxx(s) + deryy(s) + derzz(s)
 }
@@ -474,7 +658,27 @@ induction() {
 }
 #endif
 
+traceless_strain(uij,divu)
+{
+  Matrix sij
+  sij.data[0][0] = uij.data[0][0] - (1.0/3.0)*divu
+
+  sij.data[1][0] = (1.0 / 2.0) * (uij.data[1][0] + uij.data[0][1])
+  sij.data[0][1] = sij.data[1][0]
+  sij.data[2][0] = (1.0 / 2.0) * (uij.data[2][0] + uij.data[0][2])
+  sij.data[0][2] = sij.data[2][0]
+
+  sij.data[1][1] = uij.data[1][1] - (1.0/3.0)*divu
+  sij.data[2][1] = (1.0 / 2.0) * (uij.data[2][1]*uij.data[1][2])
+  sij.data[1][2] = sij.data[2][1] 
+ 
+  sij.data[2][2] = uij.data[2][2] - (1.0/3.0)*divu
+  return sij
+}
+
+
 stress_tensor(v) {
+
     Matrix S
 
     S.data[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))
@@ -509,6 +713,11 @@ contract(mat) {
 length(v1,v2) {
     return sqrt( dot(v1-v2,v1-v2) )
 }
+write_vector(f,v) {
+   write( Field(f.x), v.x) 
+   write( Field(f.y), v.y) 
+   write( Field(f.z), v.z) 
+}
 
 grid_position() {
     return real3((globalVertexIdx.x - AC_nx_min) * AC_dsx, 
@@ -521,214 +730,6 @@ grid_centre() {
                  ((globalGridN.y-1) * AC_dsy)/2.0, 
                  ((globalGridN.z-1) * AC_dsz)/2.0)
 }
-
-
-#if LFORCING
-// The Pencil Code forcing_hel_noshear(), manual Eq. 222, inspired forcing function with adjustable
-// helicity
-helical_forcing(k_force, xx, ff_re, ff_im, phi)
-{
-    real3 yy
-    yy.x = xx.x * (2.0 * R_PI / (AC_dsx * globalGridN.x))
-    yy.y = xx.y * (2.0 * R_PI / (AC_dsy * globalGridN.x))
-    yy.z = xx.z * (2.0 * R_PI / (AC_dsz * globalGridN.x))
-
-    cos_phi     = cos(phi)
-    sin_phi     = sin(phi)
-    cos_k_dot_x = cos(dot(k_force, yy))
-    sin_k_dot_x = sin(dot(k_force, yy))
-    real_comp_phase = cos_k_dot_x * cos_phi - sin_k_dot_x * sin_phi
-    imag_comp_phase = cos_k_dot_x * sin_phi + sin_k_dot_x * cos_phi
-
-    force = real3(ff_re.x * real_comp_phase - ff_im.x * imag_comp_phase,
-                  ff_re.y * real_comp_phase - ff_im.y * imag_comp_phase,
-                  ff_re.z * real_comp_phase - ff_im.z * imag_comp_phase)
-
-    return force
-}
-
-forcing()
-{
-    xx = real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
-               (globalVertexIdx.y - AC_ny_min) * AC_dsy,
-               (globalVertexIdx.z - AC_nz_min) * AC_dsz)
-    cs  = sqrt(AC_cs2)
-
-    // Placeholders until determined properly
-    k_force   = real3(AC_k_forcex,   AC_k_forcey,   AC_k_forcez  )
-    ff_re     = real3(AC_ff_hel_rex, AC_ff_hel_rey, AC_ff_hel_rez)
-    ff_im     = real3(AC_ff_hel_imx, AC_ff_hel_imy, AC_ff_hel_imz)
-
-    // Determine that forcing funtion type at this point.
-    force = helical_forcing(k_force, xx, ff_re, ff_im, AC_forcing_phase)
-
-    // Scaling N = magnitude*cs*sqrt(k*cs/dt)  * dt
-    NN = cs * AC_forcing_magnitude * sqrt(AC_kaver * cs)
-    // sqrt(dt) because 1/sqrt(dt)*dt = sqrt(dt)
-    force.x = sqrt(AC_dt) * NN * force.x
-    force.y = sqrt(AC_dt) * NN * force.y
-    force.z = sqrt(AC_dt) * NN * force.z
-
-    return force
-}
-#endif // LFORCING
-
-
-continuity() {
-    return -dot(vecvalue(UU), gradient(VTXBUF_LNRHO)) - divergence(UU)
-#if LUPWD
-           + dot(vecvalue_abs(UU), gradient6_upwd(VTXBUF_LNRHO))
-#endif
-
-}
-
-momentum() {
-    S = stress_tensor(UU)
-    cs2 = AC_cs * AC_cs
-#if LENTROPY 
-    cs2 = cs2 * exp(AC_gamma * value(VTXBUF_ENTROPY) / AC_cp + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0))
-#else
-    cs2 = cs2
-#endif
-
-#if LMAGNETIC
-    j = (1. / AC_mu0) * (gradient_of_divergence(AA) - veclaplace(AA))
-    B = curl(AA)
-    inv_rho = 1. / exp(value(VTXBUF_LNRHO))
-#endif
-
-    mom = - gradients(UU) * vecvalue(UU)
-#if LUPWD
-          + gradients_upwd(UU) * vecvalue_abs(UU)
-#endif
-#if LENTROPY 
-          - cs2 * ((1. / AC_cp) * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO))
-#else
-          - cs2 * gradient(VTXBUF_LNRHO)
-#endif
-#if LMAGNETIC
-          + inv_rho * cross(j, B)
-#endif
-          + AC_nu * (veclaplace(UU) + (1. / 3.) * gradient_of_divergence(UU)
-                       + 2. * S * gradient(VTXBUF_LNRHO))
-          + AC_zeta * gradient_of_divergence(UU)
-#if LSHOCK
-          + AC_nu_shock * (value(VTXBUF_SHOCK) * (divergence(UU) * gradient(VTXBUF_LNRHO) +
-                                           gradient_of_divergence(UU)) +
-                           divergence(UU) * gradient(VTXBUF_SHOCK))
-#endif
-
-    return mom
-}
-
-#if LENTROPY 
-lnT() {
-    return AC_lnT0
-         + AC_gamma * value(VTXBUF_ENTROPY) / AC_cp
-         + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0)
-}
-
-heat_conduction() {
-    inv_AC_cp = 1. / AC_cp
-    grad_ln_chi = gradient(VTXBUF_LNRHO)
-
-    first_term = AC_gamma * inv_AC_cp * laplace(VTXBUF_ENTROPY) + (AC_gamma - 1.) * laplace(VTXBUF_LNRHO)
-    second_term = AC_gamma * inv_AC_cp * gradient(VTXBUF_ENTROPY) + (AC_gamma - 1.) * grad_ln_chi
-    third_term = AC_gamma * (inv_AC_cp * gradient(VTXBUF_ENTROPY) + grad_ln_chi) - grad_ln_chi
-
-    //chi = AC_THERMAL_CONDUCTIVITY / (exp(value(VTXBUF_LNRHO)) * AC_cp_sound)
-    chi = AC_K_heatcond / (exp(value(VTXBUF_LNRHO)) * AC_cp_sound)
-
-    return AC_cp * chi * (first_term + dot(second_term, third_term))
-}
-
-heat_conduction_const_chi() {
-    inv_AC_cv = 1. / AC_cv
-    grad_lnrho = gradient(VTXBUF_LNRHO)
-    grad_lnT = (AC_gamma-1) * grad_lnrho            + inv_AC_cv * gradient(VTXBUF_ENTROPY)
-    del2_lnT = (AC_gamma-1) * laplace(VTXBUF_LNRHO) + inv_AC_cv * laplace(VTXBUF_ENTROPY)
-    
-    return AC_cp * AC_chi * ( dot(grad_lnrho+grad_lnT,grad_lnT) + del2_lnT )
-}
-
-entropy() {
-    S = stress_tensor(UU)
-    inv_pT = 1. / (exp(value(VTXBUF_LNRHO)) * exp(lnT()))
-#if LMAGNETIC
-    j = (1. / AC_mu0) * (gradient_of_divergence(AA) - veclaplace(AA))
-#else
-    j = real3(0,0,0)
-#endif
-#if LSHOCK
-    entshock = AC_nu_shock * value(VTXBUF_SHOCK) * (divergence(UU) * divergence(UU))  
-#else
-    entshock = 0.0
-#endif
-    RHS = (0) - (0) + AC_eta * AC_mu0 * dot(j, j) +
-                       2. * exp(value(VTXBUF_LNRHO)) * AC_nu * contract(S) +
-                       entshock +
-                       AC_zeta * exp(value(VTXBUF_LNRHO)) * divergence(UU) * divergence(UU)
-
-    //return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
-    return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction_const_chi()
-}
-#endif
-
-#if LSHOCK
-// Get divergence of velocity for the first pass in shock viscosity.
-divu_shock()
-{
-    // Set discard the values which do not contain negative divergence.
-    divu = divergence(UU)
-    if divu < 0.0 {
-        return -divu
-    }
-    else {
-        return 0.0
-    }
-}
-
-// Calculate local maximum from divergences.
-max5_shock()
-{
-    return max5(VTXBUF_SHOCK)
-}
-
-Kernel shock_1_divu()
-{
-    for field in 0:NUM_FIELDS {
-        write(Field(field), value(field))
-    }
-
-    write(VTXBUF_SHOCK, divu_shock())
-}
-
-Kernel shock_2_max()
-{
-    for field in 0:NUM_FIELDS {
-        write(Field(field), value(field))
-    }
-
-    write(VTXBUF_SHOCK, max5_shock())
-}
-
-Kernel shock_3_smooth()
-{
-    dsmin = DSX //Here assuming that all spacing are equal
-    cshock = 1.0  
-
-    s_shock = smooth_kernel(VTXBUF_SHOCK)
-    out_shock = cshock*dsmin*dsmin*s_shock //Add scaling constant cshock
-
-    for field in 0:NUM_FIELDS {
-        write(Field(field), value(field))
-    }
-
-    write(VTXBUF_SHOCK, out_shock)
-}
-
-#endif
-
 
 rk3(s0, s1, roc) {
     /*
@@ -769,56 +770,6 @@ rk3(s0, s1, roc) {
 }
 
 
-Kernel singlepass_solve() {
-    write(VTXBUF_LNRHO, rk3(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity()))
-
-#if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
-#endif 
-
-    mom = momentum()
-
-#if LFORCING
-    //Add the forcing component to the velocity field at the last integration step.
-    //Important to init to zero here: ohterwise will produce numerical garbage! 
-    forcing_step = real3(0.0, 0.0, 0.0)
-    if AC_step_number == 2 {
-        if AC_current_time > AC_switch_forcing {
-            forcing_step = forcing()
-        }
-    }
-    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x) + forcing_step.x)
-    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y) + forcing_step.y)
-    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z) + forcing_step.z)
-#else 
-    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
-    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
-    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
-#endif
-
-#if LMAGNETIC
-    ind = induction()
-    write(VTXBUF_AX, rk3(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x))
-    write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
-    write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
-#endif
-
-#if LBFIELD
-    if AC_step_number == 2 {
-        bfield = curl(AA) 
-        write(BFIELDX, bfield.x)
-        write(BFIELDY, bfield.y)
-        write(BFIELDZ, bfield.z)
-    }
-#endif
-
-#if LSHOCK
-    // Required for buffers to match correctly. 
-    write(VTXBUF_SHOCK, value(VTXBUF_SHOCK))
-#endif
-
-}
-
 rk3_intermediate(w, roc) {
     real alpha = 0., -5./9., -153. / 128.
     return alpha[AC_step_number] * w + roc * AC_dt
@@ -856,80 +807,7 @@ rk3_final(f, w) {
 }
 
 
-Kernel twopass_solve_intermediate() {
-    write(VTXBUF_LNRHO, rk3_intermediate(previous(VTXBUF_LNRHO), continuity()))
 
-    #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3_intermediate(previous(VTXBUF_ENTROPY), entropy()))
-    #endif
-
-    mom = momentum()
-    write(VTXBUF_UUX, rk3_intermediate(previous(VTXBUF_UUX), mom.x))
-    write(VTXBUF_UUY, rk3_intermediate(previous(VTXBUF_UUY), mom.y))
-    write(VTXBUF_UUZ, rk3_intermediate(previous(VTXBUF_UUZ), mom.z))
-
-    #if LMAGNETIC
-    ind = induction()
-    write(VTXBUF_AX, rk3_intermediate(previous(VTXBUF_AX), ind.x))
-    write(VTXBUF_AY, rk3_intermediate(previous(VTXBUF_AY), ind.y))
-    write(VTXBUF_AZ, rk3_intermediate(previous(VTXBUF_AZ), ind.z))
-    #endif
-
-    #if LBFIELD
-    if AC_step_number == 2 {
-        bfield = curl(AA) 
-        write(BFIELDX, bfield.x)
-        write(BFIELDY, bfield.y)
-        write(BFIELDZ, bfield.z)
-    }
-    #endif
-
-    // %JP: TODO NOTE IMPORTANT (MV please check)
-    // LSHOCK not yet adapted to two-pass integration.
-    // Unclear how should be written to memory to ensure proper swapping!
-    // 1) In the single-pass approach need to write the shock field to `out`
-    // because buffers are swapped afterwards
-    // 2) In the two-pass approach this may not be necessary: if the shock
-    // field is in `in` buffer and we swap twice, the correct shock values are
-    // still in the `in` buffer
-    //
-    // Is this correct?
-    //
-}
-
-Kernel twopass_solve_final() {
-    write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO)))
-
-    #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY)))
-    #endif
-
-    forcing_step = real3(0.0, 0.0, 0.0)
-    #if LFORCING
-    if AC_step_number == 2 {
-        if AC_current_time > AC_switch_forcing {
-            forcing_step = forcing()
-        }
-    }
-    #endif
-    write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX)) + forcing_step.x)
-    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY)) + forcing_step.y)
-    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ)) + forcing_step.z)
-
-    #if LMAGNETIC
-    write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX)))
-    write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY)))
-    write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ)))
-    #endif
-
-    #if LBFIELD
-    if AC_step_number == 2 {
-        write(BFIELDX, value(BFIELDX))
-        write(BFIELDY, value(BFIELDY))
-        write(BFIELDZ, value(BFIELDZ))
-    }
-    #endif
-}
 
 // Scale all fields by a scaling factor
 // TODO ensure AC_scaling_factor is set!
@@ -938,16 +816,6 @@ Kernel scale() {
     for field in 0:NUM_FIELDS {
         write(Field(field), value(field))
     }
-
-#if LMAGNETIC
-    write(VTXBUF_AX, AC_scaling_factor * value(VTXBUF_AX))
-    write(VTXBUF_AY, AC_scaling_factor * value(VTXBUF_AY))
-    write(VTXBUF_AZ, AC_scaling_factor * value(VTXBUF_AZ))
-#else
-    if vertexIdx.x == AC_mx/2 && vertexIdx.y == AC_my/2 && vertexIdx.z == AC_mz/2 {
-        print("WARNING: scale kernel called but LMAGNETIC was not enabled. Scale will have no effect.")
-    }
-#endif
 }
 
 Kernel reset() {
@@ -969,7 +837,7 @@ Kernel randomize() {
     // N.B. scale: result in [-AC_rng_scale, AC_rng_scale] range
     AC_rng_scale = 1e-5
 
-    for field in 0:NUM_FIELDS {
+    for field in 0:NUM_VTXBUF_HANDLES{
         i = uint64_t(globalVertexIdx.x) + uint64_t(globalVertexIdx.y) * uint64_t(globalGridN.x) + uint64_t(globalVertexIdx.z) * uint64_t(globalGridN.x) * uint64_t(globalGridN.y) + uint64_t(field) * uint64_t(globalGridN.x) * uint64_t(globalGridN.y) * uint64_t(globalGridN.z)
         //i += i*i + i*i*i + i*i*i*i + i*i*i*i*i // Add some non-linearity
         
@@ -997,58 +865,141 @@ Kernel randomize() {
     // N.B. scale: result in (-AC_rng_scale, AC_rng_scale] range
     AC_rng_scale = 1e-5
 
-    for field in 0:NUM_FIELDS {
+    for field in 0:NUM_VTXBUF_HANDLES{
         r = 2.0 * rand_uniform() - 1.0
         write(Field(field), AC_rng_scale * r)
     }
 }
 
-Kernel haatouken() {
-    // Parameters
-    // Shock punch the air in front of you.
-    // AC_init_ampl_uu
-    // AC_init_shell_radius
-    // AC_init_shell_width
+Kernel twopass_solve_intermediate(){}
+Kernel twopass_solve_final(){}
+Kernel haatouken(){}
+Kernel singlepass_solve(){}
 
-    uu = vecvalue(UU)
+Kernel rhs(){
+real3 DF_UU
+DF_UU.x = 0.0
+DF_UU.y = 0.0
+DF_UU.z = 0.0
+DF_LNRHO = 0.0
+DF_SS = 0.0
+real3 P_fpres
+real3 P_fvisc
+real P_visc_heat
+real3 P_oo
+Matrix P_uij
+real3 P_uu
+Matrix P_sij
+real P_divu
+real3 P_ugu
+real3 P_del2u
+real3 P_graddivu
+real P_ss
+real3 P_gss
+real P_lntt
+real P_cs2
+real3 P_glntt
+real P_tt1
+real P_ugss
+real P_del2ss
+real P_cv
+real P_sij2
+real P_del2lntt
+real3 P_gg
+real P_rho1
+real3 P_glnrho
+real P_lnrho
+real P_uglnrho
+real P_del2lnrho
+real3 P_sglnrho
+real fac_39_41
+real fdiff_50
+real tmp_50
+real density_rhs
+real3 glnthcond
+real3 glhc
+real thdiff
+real g2
+real heat_58_59
+real prof
+real3 gg
 
-    xx = grid_position()
+P_uu=vecvalue(F_UU)
+P_uij = gradients_from_index(F_UU.x)
+P_divu = divergence_from_matrix(P_uij)
+P_sij = traceless_strain(P_uij,P_divu)
+P_sij2 = multm2_sym(P_sij)
+P_oo = curl_from_matrix(P_uij)
+P_ugu = P_uij * P_uu
 
-    centre = grid_centre()
+P_lnrho=value(VTXBUF_LNRHO)
+P_rho1=exp(-value(VTXBUF_LNRHO))
+P_glnrho.x = derx(VTXBUF_LNRHO)
+P_glnrho.y = dery(VTXBUF_LNRHO)
+P_glnrho.z = derz(VTXBUF_LNRHO)
+P_uglnrho = dot(P_glnrho,P_uu)-del6_upwd(VTXBUF_LNRHO)
+P_del2lnrho = laplace(VTXBUF_LNRHO)
 
-    xx.x = xx.x - centre.x
-    xx.y = xx.y - centre.y
-    xx.z = xx.z - centre.z
+P_cv=1/AC_cv1
+P_ss=value(VTXBUF_ENTROPY)
+P_gss.x = derx(VTXBUF_ENTROPY)
+P_gss.y = dery(VTXBUF_ENTROPY)
+P_gss.z = derz(VTXBUF_ENTROPY)
+P_del2ss = laplace(VTXBUF_ENTROPY)
+P_cs2=AC_cs20*exp(AC_cv1*P_ss+AC_gamma_m1*(P_lnrho-AC_lnrho0))
+P_lntt=AC_lntt0+AC_cv1*P_ss+AC_gamma_m1*(P_lnrho-AC_lnrho0)
+P_tt1=exp(-P_lntt)
+P_glntt=AC_gamma_m1*P_glnrho+AC_cv1*P_gss
+P_del2lntt=AC_gamma_m1*P_del2lnrho+AC_cv1*P_del2ss
+P_ugss = dot(P_gss,P_uu)-del6_upwd(VTXBUF_ENTROPY)
 
-    rr = sqrt(xx.x*xx.x +  xx.y*xx.y + xx.z*xx.z)
+P_fpres.x=-P_cs2*(P_glnrho.x + P_glntt.x)*AC_gamma1
+P_fpres.y=-P_cs2*(P_glnrho.y + P_glntt.y)*AC_gamma1
+P_fpres.z=-P_cs2*(P_glnrho.z + P_glntt.z)*AC_gamma1
+P_fvisc.x = 0.0
+P_fvisc.y = 0.0
+P_fvisc.z = 0.0
+P_visc_heat=0.0
+P_fvisc.x = P_fvisc.x + AC_nu*(P_del2u.x + 2.*P_sglnrho.x + 1./3.*P_graddivu.x)
+P_fvisc.y = P_fvisc.y + AC_nu*(P_del2u.y + 2.*P_sglnrho.y + 1./3.*P_graddivu.y)
+P_fvisc.z = P_fvisc.z + AC_nu*(P_del2u.z + 2.*P_sglnrho.z + 1./3.*P_graddivu.z)
+P_visc_heat=P_visc_heat+2*4.00000019e-03*P_sij2
 
-    theta = real(atan2(xx.z, xx.x))
-    phi   = real(atan2(xx.y, xx.x))
-
-    uu_radial = 0.0
-
-    if rr > 2.0*AC_dsx { 
-        uu_radial = AC_init_ampl_uu * 
-                    exp(-pow((rr - AC_init_shell_radius), 2.0) / (2.0 * pow(AC_init_shell_width, 2.0))) *
-                    exp(-pow(theta , 2.0) / (2.0 * pow(R_PI / 8.0, 2.0))) *
-                    exp(-pow(phi, 2.0) / (2.0 * pow(R_PI / 8.0, 2.0)))
-    } 
-
-    //if (rr > 0.8 && rr < 1.2) {
-    //    if (phi < R_PI/8.0 && phi > -R_PI/8.0) {
-    //        if (theta < R_PI/8 && theta > -R_PI/8) {
-    //            uu_radial = AC_init_ampl_uu 
-    //        }
-    //    }
-    //} 
-
-    uu.x = uu.x + uu_radial * cos(theta) * cos(phi)
-    uu.y = uu.y + uu_radial * cos(theta) * sin(phi)
-    uu.z = uu.z + uu_radial * cos(theta) 
-
-    write(VTXBUF_UUX, uu.x)
-    write(VTXBUF_UUY, uu.y)
-    write(VTXBUF_UUZ, uu.z)
+P_gg.z = AC_PROFILE_GRAVZ_ZPENCIL[0]
 
 
+DF_UU=DF_UU-P_ugu
+c2=2*0.100000001
+DF_UU.x=DF_UU.x+c2*P_uu.y
+DF_UU.y=DF_UU.y-c2*P_uu.x
+DF_UU = DF_UU + P_fvisc
+density_rhs= - P_divu
+density_rhs = density_rhs - P_uglnrho
+DF_LNRHO = DF_LNRHO + density_rhs
+DF_UU = DF_UU + P_fpres
+DF_SS = DF_SS - P_ugss
+DF_SS = DF_SS + P_tt1*P_visc_heat
+if(AC_hcond0!=0.) {
+hcond=AC_PROFILE_HCOND_PROF[-3]
+glhc.z=AC_PROFILE_DLNHCOND_PROF[-3]
+glhc.x=0.
+glhc.y=0.
+glnthcond = P_glntt + glhc
+g2=P_glntt.x*glnthcond.x
+g2=g2+P_glntt.y*glnthcond.y
+g2=g2+P_glntt.z*glnthcond.z
+thdiff = P_rho1*hcond * (P_del2lntt + g2)
+}
+if(AC_hcond0!=0.) {
+DF_SS = DF_SS + thdiff
+}
+ztop=-0.680000007+2.00000000
+prof = exp(-0.5*pow(((ztop-AC_PROFILE_Z[0])/0.200000003),2))
+DF_SS = DF_SS + P_tt1*P_rho1*(- 15.0000000*prof*(P_cs2-AC_cs2cool)/AC_cs2cool)
+DF_UU.z=DF_UU.z+P_gg.z
+rk3(previous(VTXBUF_UUX),value(VTXBUF_UUX),DF_UU.x)
+rk3(previous(VTXBUF_UUX),value(VTXBUF_UUY),DF_UU.y)
+rk3(previous(VTXBUF_UUZ),value(VTXBUF_UUZ),DF_UU.z)
+rk3(previous(VTXBUF_LNRHO),value(VTXBUF_LNRHO),DF_LNRHO)
+rk3(previous(VTXBUF_ENTROPY),value(VTXBUF_ENTROPY),DF_SS)
 }

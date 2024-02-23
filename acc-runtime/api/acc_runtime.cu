@@ -390,20 +390,42 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 
   // Set vba.in data to all-nan and vba.out to 0
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    acKernelFlush(stream, vba->in[i], count, (AcReal)NAN);
-    acKernelFlush(stream, vba->out[i], count, (AcReal)0.0);
+    if(vtxbuf_is_auxiliary[i])
+    {
+      acKernelFlush(stream, vba->in[i],count, (AcReal)0.0);
+    } else{
+      acKernelFlush(stream, vba->in[i],count, (AcReal)NAN);
+      acKernelFlush(stream, vba->out[i],count, (AcReal)0.0);
+    }
   }
   return AC_SUCCESS;
 }
 
-VertexBufferArray
-acVBACreate(const size_t count)
+void
+device_malloc(void** dst, const int bytes)
 {
+ #if USE_COMPRESSIBLE_MEMORY 
+    ERRCHK_CUDA_ALWAYS(mallocCompressible(dst, bytes));
+ #else
+    ERRCHK_CUDA_ALWAYS(cudaMalloc(dst, bytes));
+  #endif
+}
+
+VertexBufferArray
+acVBACreate(const AcMeshInfo config)
+{
+  //can't use acVertexBufferDims because of linking issues
+  const int3 counts = (int3){
+        (config.int_params[AC_mx]),
+        (config.int_params[AC_my]),
+        (config.int_params[AC_mz])
+  };
+
+
   VertexBufferArray vba;
-
+  size_t count = counts.x*counts.y*counts.z;
   const size_t bytes = sizeof(vba.in[0][0]) * count;
-<<<<<<< HEAD
-
+  vba.bytes          = bytes;
 //#define ADJACENT_VERTEX_BUFFERS 1
 #if AC_ADJACENT_VERTEX_BUFFERS
   const size_t allbytes = bytes*NUM_VTXBUF_HANDLES;
@@ -422,49 +444,72 @@ printf("i,vbas[0]= %p %p \n",vba.in[0],vba.out[0]);
 printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
   }
 #else
-=======
-  vba.bytes          = bytes;
-
->>>>>>> origin/master
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-#if USE_COMPRESSIBLE_MEMORY
-    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&vba.in[i], bytes));
-    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&vba.out[i], bytes));
-#else
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.in[i], bytes));
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
-<<<<<<< HEAD
-printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
-
-    // Set vba.in data to all-nan and vba.out to 0
-    acKernelFlush(vba.in[i], count);
-    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)vba.out[i], 0, bytes));
+    //Allocate auxilary fields
+    //They need only a single copy so out can point to in
+    if(vtxbuf_is_auxiliary[i])
+    {
+      device_malloc((void**) &vba.in[i],bytes);
+      vba.out[i] = vba.in[i];
+    }else{
+      device_malloc((void**) &vba.in[i],bytes);
+      device_malloc((void**) &vba.out[i],bytes);
+    }
   }
-#endif
-=======
-#endif
+  //Allocate profiles
+  for(size_t i= 0; i < NUM_PROFILES; i++){
+    //if the user loads in a nullptr for the profile it won't be allocated and set to null (the user will be warned at acGridInit)
+    if(config.profiles[i] != nullptr)
+    {
+      const size_t profile_bytes = sizeof(vba.in[0][0]) * config.int_params[profile_lengths[i]];
+      device_malloc((void**)&vba.profiles[i],profile_bytes);
+    }else{
+      vba.profiles[i] = nullptr;
+    }
   }
-
+  //Allocate workbuffers
+  for (size_t i = 0; i < NUM_WORK_BUFFERS; ++i)
+    device_malloc((void**)&vba.w[i],bytes);
+  //Allocate arrays
+  for (size_t i = 0; i < NUM_REAL_ARRAYS; ++i)
+    device_malloc((void**)&vba.real_arrays[i],sizeof(vba.in[0][0])*config.int_params[real_array_lengths[i]]);
   acVBAReset(0, &vba);
   cudaDeviceSynchronize();
->>>>>>> origin/master
   return vba;
 }
 
 void
-acVBADestroy(VertexBufferArray* vba)
+device_free(AcReal** dst, const int bytes)
+{
+#if USE_COMPRESSIBLE_MEMORY
+  freeCompressible(*dst, bytes);
+#else
+  cudaFree(*dst);
+#endif
+  *dst = NULL;
+}
+void
+acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 {
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-#if USE_COMPRESSIBLE_MEMORY
-    freeCompressible(vba->in[i], vba->bytes);
-    freeCompressible(vba->out[i], vba->bytes);
-#else
-    cudaFree(vba->in[i]);
-    cudaFree(vba->out[i]);
-#endif
-    vba->in[i]  = NULL;
-    vba->out[i] = NULL;
+    device_free(&(vba->in[i]), vba->bytes);
+    if(vtxbuf_is_auxiliary[i])
+      vba->out[i] = NULL;
+    else
+      device_free(&(vba->out[i]), vba->bytes);
   }
+  //Free workbuffers 
+  for (size_t i = 0; i < NUM_WORK_BUFFERS; ++i) 
+    device_free(&(vba->w[i]), vba->bytes);
+  //Free profiles
+  for(size_t i=0;i<NUM_PROFILES; ++i)
+    //Nothing to free if nullptr, don't know if a nullptr would break compressed memory free so this is safest
+    if(config.profiles[i] != nullptr){
+      device_free(&(vba->profiles[i]),config.int_params[profile_lengths[i]]);
+    }
+  //Free arrays
+  for(size_t i=0;i<NUM_REAL_ARRAYS; ++i)
+    device_free(&(vba->real_arrays[i]), config.int_params[real_array_lengths[i]]);
   vba->bytes = 0;
 }
 
@@ -474,16 +519,6 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
 {
   const int3 n = end - start;
 
-<<<<<<< HEAD
-  const dim3 tpb = getOptimalTBConfig(kernel, n, vba).tpb;
-  ERRCHK(tpb.x*tpb.y*tpb.z<=1024);
-  const dim3 bpg((unsigned int)ceil(n.x / double(tpb.x)), //
-                 (unsigned int)ceil(n.y / double(tpb.y)), //
-                 (unsigned int)ceil(n.z / double(tpb.z)));
-  const size_t smem = 0;
-//printf("before launch tpb,bpg=%d %d %d %d %d %d \n",tpb.x,tpb.y,tpb.z,bpg.x,bpg.y,bpg.z);
-//printf("before launch start,end=%d %d %d %d %d %d \n",start.x,start.y,start.z,end.x,end.y,end.z);
-=======
   const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
   const dim3 tpb        = tbconf.tpb;
   const int3 dims       = tbconf.dims;
@@ -492,7 +527,7 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
   const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
 
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
->>>>>>> origin/master
+
   kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
   ERRCHK_CUDA_KERNEL();
 
@@ -774,7 +809,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         if (!is_valid_configuration(to_volume(dims), to_volume(tpb)))
           continue;
 
-        // #if VECTORIZED_LOADS
+	// #if VECTORIZED_LOADS
         //         const size_t window = tpb.x + STENCIL_ORDER;
 
         //         // Vectorization criterion

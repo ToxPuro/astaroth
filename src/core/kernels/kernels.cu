@@ -53,8 +53,6 @@ AcResult
 acKernel(const KernelParameters params, VertexBufferArray vba)
 {
 #ifdef AC_INTEGRATION_ENABLED
-    // TODO: Why is AC_step_number loaded here??
-    acLoadIntUniform(params.stream, AC_step_number, params.step_number);
     acLaunchKernel(params.kernel, params.stream, params.start, params.end, vba);
     return AC_SUCCESS;
 #else

@@ -188,6 +188,7 @@ typedef class ComputeTask : public Task {
                 std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     ComputeTask(const ComputeTask& other)            = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
+    PrepareFn prepare_compute;
     void compute();
     void advance(const TraceFile* trace_file);
     bool test();

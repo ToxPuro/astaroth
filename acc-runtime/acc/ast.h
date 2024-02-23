@@ -41,14 +41,16 @@ typedef enum {
   NODE_TQUAL          = (1 << 9),
   NODE_STENCIL        = (1 << 10),
   NODE_STENCIL_ID     = (1 << 11),
-  NODE_FIELD          = (1 << 12),
-  NODE_FIELD_ID       = (1 << 13),
+  NODE_VARIABLE       = (1 << 12),
+  NODE_VARIABLE_ID    = (1 << 13),
   NODE_KFUNCTION_ID   = (1 << 14),
   NODE_DCONST         = (1 << 15),
   NODE_DCONST_ID      = (1 << 16),
   NODE_MEMBER_ID      = (1 << 17),
   NODE_HOSTDEFINE     = (1 << 18),
   NODE_ASSIGNMENT     = (1 << 19),
+  NODE_FIELD_ID       = (1 << 20),
+
 } NodeType;
 
 typedef struct astnode_s {

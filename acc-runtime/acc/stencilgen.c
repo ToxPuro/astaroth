@@ -48,6 +48,7 @@
 
 #include "stencil_accesses.h"
 #include "stencilgen.h"
+#include "profilegen.h"
 
 #include "implementation.h"
 
@@ -160,7 +161,7 @@ gen_return_if_oob(void)
 }
 
 static void
-prefetch_output_elements_and_gen_prev_function(void)
+prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses)
 {
   // Read vba.out
 #if 0
@@ -184,6 +185,32 @@ prefetch_output_elements_and_gen_prev_function(void)
   printf("default: return (AcReal)NAN;"
          "}");
   printf("};");
+
+
+  //Note to Johannes, on HIP __ldg is no-op so we can safely use it both for CUDA and HIP
+  for (int profile = 0; profile < NUM_PROFILES; ++profile){
+    for(int read_index = 0; read_index < profile_read_set_sizes[profile]; ++read_index) 
+    {
+      //TP: if we are generating mem accesses for some reason reading from vba does not work
+      //as a workaround simply set the values to zero
+      if(profile_dims[profile] == 1) // X Profile
+        if(gen_mem_accesses)
+          printf("const auto p_%d_%d= 0;", profile, read_index);
+        else
+          printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.x+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
+      if(profile_dims[profile] == 2) // Y Profile
+        if(gen_mem_accesses)
+          printf("const auto p_%d_%d= 0;", profile, read_index);
+        else
+          printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.y+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
+        // Z Profile
+      if(profile_dims[profile] == 3) // Z Profile
+        if(gen_mem_accesses)
+          printf("const auto p_%d_%d= 0;", profile, read_index);
+        else
+          printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.z+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
+    }
+  }
 #endif
 }
 
@@ -192,7 +219,7 @@ gen_stencil_accesses(void)
 {
   gen_kernel_prefix();
   gen_return_if_oob();
-  prefetch_output_elements_and_gen_prev_function();
+  prefetch_output_elements_and_gen_prev_function(true);
 
   printf("AcReal /*__restrict__*/ "
          "processed_stencils[NUM_FIELDS][NUM_STENCILS];");
@@ -637,7 +664,6 @@ prefetch_stencil_elems_to_smem_4d_and_compute_stencil_ops(const int curr_kernel)
     printf("__syncthreads();");
   }
 }
-
 /** Ping-pong 2D txw*/
 static void
 prefetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
@@ -648,16 +674,13 @@ prefetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
   printf("const int sw = NUM_FIELDS;");
   printf("const int sb = 2;");
   printf("const int sid = threadIdx.x;");
-
   printf(
       "const int3 baseIdx = (int3){"
       "blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
       "threadIdx.y + blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
       "threadIdx.z + blockIdx.z * blockDim.z + start.z - "
       "(STENCIL_DEPTH-1)/2};");
-
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
-
   printf("for (int curr=sid; curr < sx*sw; curr += blockDim.x) {");
   printf("const int i = curr %% sx;");
   printf("const int w = curr / sx;");
@@ -668,11 +691,9 @@ prefetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
          "[IDX(baseIdx.x + i, baseIdx.y + 0, baseIdx.z + 0)];");
   printf("}");
   printf("__syncthreads();");
-
   for (int fiber = 0; fiber < STENCIL_HEIGHT * STENCIL_DEPTH; ++fiber) {
     const int height = fiber % STENCIL_HEIGHT;
     const int depth  = fiber / STENCIL_HEIGHT;
-
     if (fiber < STENCIL_HEIGHT * STENCIL_DEPTH - 1) {
       // NOTE THIS IS WRONG, SHOULD USE next_height = (fiber+1) %... and
       // next_depth!
@@ -687,14 +708,12 @@ prefetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
              height, depth);
       printf("}");
     }
-
     for (int width = 0; width < STENCIL_WIDTH; ++width) {
       for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
         for (int field = 0; field < NUM_FIELDS; ++field) {
           // Skip if the stencil is not used
           if (!stencils_accessed[curr_kernel][field][stencil])
             continue;
-
           if (stencils[stencil][depth][height][width]) {
             if (!stencil_initialized[field][stencil]) {
               printf("auto f%d_s%d = ", field, stencil);
@@ -704,7 +723,6 @@ prefetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
                      "(%d) * sx + "
                      "(%d) * sx * sw]);",
                      stencil_unary_ops[stencil], width, field, fiber % 2);
-
               stencil_initialized[field][stencil] = 1;
             }
             else {
@@ -726,7 +744,6 @@ prefetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
     printf("__syncthreads();");
   }
 }
-
 /** Ping-pong 2D txy*/
 static void
 prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
@@ -737,15 +754,12 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
   printf("const int sy = blockDim.y + STENCIL_HEIGHT - 1;");
   printf("const int sb = 2;");
   printf("const int sid = threadIdx.x + threadIdx.y * blockDim.x;");
-
   printf("const int3 baseIdx = (int3){"
          "blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
          "blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
          "threadIdx.z + blockIdx.z * blockDim.z + start.z - "
          "(STENCIL_DEPTH-1)/2};");
-
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
-
   printf("for (int curr=sid; curr < sx*sy; curr += blockDim.x * blockDim.y) {");
   printf("const int i = curr %% sx;");
   printf("const int j = curr / sx;");
@@ -756,11 +770,9 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
          "[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + 0)];");
   printf("}");
   printf("__syncthreads();");
-
   for (int slab = 0; slab < STENCIL_DEPTH * NUM_FIELDS; ++slab) {
     const int depth = slab % STENCIL_DEPTH;
     const int field = slab / STENCIL_DEPTH;
-
     const int next_slab  = slab + 1;
     const int next_depth = next_slab % STENCIL_DEPTH;
     const int next_field = next_slab / STENCIL_DEPTH;
@@ -777,14 +789,12 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
              next_field, next_depth);
       printf("}");
     }
-
     for (int height = 0; height < STENCIL_HEIGHT; ++height) {
       for (int width = 0; width < STENCIL_WIDTH; ++width) {
         for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
           // Skip if the stencil is not used
           if (!stencils_accessed[curr_kernel][field][stencil])
             continue;
-
           if (stencils[stencil][depth][height][width]) {
             if (!stencil_initialized[field][stencil]) {
               printf("auto f%d_s%d = ", field, stencil);
@@ -794,7 +804,6 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
                      "(threadIdx.y + %d) * sx + "
                      "(%d) * sx * sy]);",
                      stencil_unary_ops[stencil], width, height, slab % 2);
-
               stencil_initialized[field][stencil] = 1;
             }
             else {
@@ -817,7 +826,6 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
       printf("__syncthreads();");
   }
 }
-
 // /** Ping-pong 2D txy blocked (TODO need to rewrite)*/
 // static void
 // prefetch_stencil_elems_to_smem_pingpong_txyblocked_and_compute_stencil_ops(
@@ -830,15 +838,12 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
 //   printf("const int sz = blockDim.y + STENCIL_HEIGHT - 1;");
 //   printf("const int sb = 2;");
 //   printf("const int sid = threadIdx.x + threadIdx.y * blockDim.x;");
-
 //   printf("const int3 baseIdx = (int3){"
 //          "blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
 //          "blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
 //          "threadIdx.z + blockIdx.z * blockDim.z + start.z - "
 //          "(STENCIL_DEPTH-1)/2};");
-
 //   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
-
 //   printf(
 //       "for (int curr=sid; curr < sx*sy*sz; curr += blockDim.x * blockDim.y)
 //       {");
@@ -853,11 +858,9 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
 //   printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)];");
 //   printf("}");
 //   printf("__syncthreads();");
-
 //   for (int block = 0; block < STENCIL_DEPTH / num_blocks; ++slab) {
 //     const int depth = slab % STENCIL_DEPTH;
 //     const int field = slab / STENCIL_DEPTH;
-
 //     const int next_slab  = slab + 1;
 //     const int next_depth = next_slab % STENCIL_DEPTH;
 //     const int next_field = next_slab / STENCIL_DEPTH;
@@ -874,14 +877,12 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
 //              next_field, next_depth);
 //       printf("}");
 //     }
-
 //     for (int height = 0; height < STENCIL_HEIGHT; ++height) {
 //       for (int width = 0; width < STENCIL_WIDTH; ++width) {
 //         for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
 //           // Skip if the stencil is not used
 //           if (!stencils_accessed[curr_kernel][field][stencil])
 //             continue;
-
 //           if (stencils[stencil][depth][height][width]) {
 //             if (!stencil_initialized[field][stencil]) {
 //               printf("auto f%d_s%d = ", field, stencil);
@@ -891,7 +892,6 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
 //                      "(threadIdx.y + %d) * sx + "
 //                      "(%d) * sx * sy]);",
 //                      stencil_unary_ops[stencil], width, height, slab % 2);
-
 //               stencil_initialized[field][stencil] = 1;
 //             }
 //             else {
@@ -914,7 +914,6 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
 //       printf("__syncthreads();");
 //   }
 // }
-
 // /** Ping-pong 3D txyz (TODO)*/
 // static void
 // prefetch_stencil_elems_to_smem_pingpong_txyz_and_compute_stencil_ops(
@@ -928,14 +927,11 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
 //   printf("const int sid = threadIdx.x + threadIdx.y * blockDim.x +
 //   threadIdx.z "
 //          "* blockDim.x * blockDim.y;");
-
 //   printf("const int3 baseIdx = (int3){"
 //          "blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
 //          "blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
 //          "blockIdx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2};");
-
 //   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
-
 //   printf("for (int curr=sid; curr < sx*sy*sz; curr += blockDim.x * blockDim.y
 //   "
 //          "* blockDim.z) {");
@@ -948,11 +944,9 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
 //          "[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + 0)];");
 //   printf("}");
 //   printf("__syncthreads();");
-
 //   for (int slab = 0; slab < STENCIL_DEPTH * NUM_FIELDS; ++slab) {
 //     const int depth = slab % STENCIL_DEPTH;
 //     const int field = slab / STENCIL_DEPTH;
-
 //     const int next_slab  = slab + 1;
 //     const int next_depth = next_slab % STENCIL_DEPTH;
 //     const int next_field = next_slab / STENCIL_DEPTH;
@@ -969,14 +963,12 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
 //              next_field, next_depth);
 //       printf("}");
 //     }
-
 //     for (int height = 0; height < STENCIL_HEIGHT; ++height) {
 //       for (int width = 0; width < STENCIL_WIDTH; ++width) {
 //         for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
 //           // Skip if the stencil is not used
 //           if (!stencils_accessed[curr_kernel][field][stencil])
 //             continue;
-
 //           if (stencils[stencil][depth][height][width]) {
 //             if (!stencil_initialized[field][stencil]) {
 //               printf("auto f%d_s%d = ", field, stencil);
@@ -986,7 +978,6 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
 //                      "(threadIdx.y + %d) * sx + "
 //                      "(%d) * sx * sy]);",
 //                      stencil_unary_ops[stencil], width, height, slab % 2);
-
 //               stencil_initialized[field][stencil] = 1;
 //             }
 //             else {
@@ -1009,7 +1000,6 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
 //       printf("__syncthreads();");
 //   }
 // }
-
 /** Rolling ping-pong, original, working */
 static void
 prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_original(
@@ -1021,18 +1011,14 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_original
   printf("const int sz = blockDim.z + 1;");
   printf("const int sid = threadIdx.x + "
          "threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y;");
-
   printf("const int3 baseIdx = (int3){"
          "blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
          "blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
          "blockIdx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2};");
   printf("const int tpb = blockDim.x * blockDim.y * blockDim.z;");
-
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
-
   for (int field = 0; field < NUM_FIELDS; ++field) {
     printf("__syncthreads();");
-
     // Load the main block
     printf("for (int curr = sid; curr < sx * sy * blockDim.z; curr += tpb) {");
     printf("const int i = curr %% sx;");
@@ -1048,7 +1034,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_original
     printf(")");
     printf(";");
     printf("}");
-
     for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
       printf("__syncthreads();");
       if (depth + 1 < STENCIL_DEPTH) {
@@ -1068,14 +1053,12 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_original
         printf(";");
         printf("}");
       }
-
       for (int height = 0; height < STENCIL_HEIGHT; ++height) {
         for (int width = 0; width < STENCIL_WIDTH; ++width) {
           for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
             // Skip if the stencil is not used
             if (!stencils_accessed[curr_kernel][field][stencil])
               continue;
-
             if (stencils[stencil][depth][height][width]) {
               if (!stencil_initialized[field][stencil]) {
                 printf("auto f%d_s%d = ", field, stencil);
@@ -1085,7 +1068,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_original
                        "(threadIdx.y + %d) * sx + "
                        "((threadIdx.z + %d)%%sz) * sx * sy]);",
                        stencil_unary_ops[stencil], width, height, depth);
-
                 stencil_initialized[field][stencil] = 1;
               }
               else {
@@ -1107,7 +1089,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_original
     }
   }
 }
-
 /** Rolling ping-pong, optimized: multiple fields */
 static void
 prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v2(
@@ -1128,22 +1109,18 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v2(
   // printf("const int sw = %d;", BLOCK_SIZE);
   printf("const int sid = threadIdx.x + "
          "threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y;");
-
   printf("const int3 baseIdx = (int3){"
          "blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
          "blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
          "blockIdx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2};");
   printf("const int tpb = blockDim.x * blockDim.y * blockDim.z;");
-
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
-
   for (int block = 0; block < NUM_BLOCKS; ++block) {
     printf("__syncthreads();");
     for (int block_offset = 0; block_offset < BLOCK_SIZE; ++block_offset) {
       const int field = block_offset + block * BLOCK_SIZE;
       if (field >= NUM_FIELDS)
         break;
-
       // Load the main block
       printf(
           "for (int curr = sid; curr < sx * sy * blockDim.z; curr += tpb) {");
@@ -1162,10 +1139,8 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v2(
       printf(";");
       printf("}");
     }
-
     for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
       printf("__syncthreads();");
-
       for (int block_offset = 0; block_offset < BLOCK_SIZE; ++block_offset) {
         const int field = block_offset + block * BLOCK_SIZE;
         if (field >= NUM_FIELDS)
@@ -1193,7 +1168,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v2(
           printf("}");
         }
       }
-
       for (int height = 0; height < STENCIL_HEIGHT; ++height) {
         for (int width = 0; width < STENCIL_WIDTH; ++width) {
           for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
@@ -1202,11 +1176,9 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v2(
               const int field = block_offset + block * BLOCK_SIZE;
               if (field >= NUM_FIELDS)
                 break;
-
               // Skip if the stencil is not used
               if (!stencils_accessed[curr_kernel][field][stencil])
                 continue;
-
               if (stencils[stencil][depth][height][width]) {
                 if (!stencil_initialized[field][stencil]) {
                   printf("auto f%d_s%d = ", field, stencil);
@@ -1218,7 +1190,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v2(
                          "(%d) * sx * sy * sz]);",
                          stencil_unary_ops[stencil], width, height, depth,
                          field % BLOCK_SIZE);
-
                   stencil_initialized[field][stencil] = 1;
                 }
                 else {
@@ -1243,7 +1214,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v2(
     }
   }
 }
-
 /** Rolling ping-pong, original, working, rolling base slab, test, remove,
  * WORKS
  */
@@ -1257,19 +1227,15 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v3(
   printf("const int sz = blockDim.z + 1;");
   printf("const int sid = threadIdx.x + "
          "threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y;");
-
   printf("const int3 baseIdx = (int3){"
          "blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
          "blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
          "blockIdx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2};");
   printf("const int tpb = blockDim.x * blockDim.y * blockDim.z;");
-
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
-
   printf("int curr_slab = 0;");
   for (int field = 0; field < NUM_FIELDS; ++field) {
     printf("__syncthreads();");
-
     // Load the main block
     printf("for (int curr = sid; curr < sx * sy * blockDim.z; curr += tpb) {");
     printf("const int i = curr %% sx;");
@@ -1285,7 +1251,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v3(
     printf(")");
     printf(";");
     printf("}");
-
     for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
       printf("__syncthreads();");
       if (depth + 1 < STENCIL_DEPTH) {
@@ -1305,14 +1270,12 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v3(
         printf(";");
         printf("}");
       }
-
       for (int height = 0; height < STENCIL_HEIGHT; ++height) {
         for (int width = 0; width < STENCIL_WIDTH; ++width) {
           for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
             // Skip if the stencil is not used
             if (!stencils_accessed[curr_kernel][field][stencil])
               continue;
-
             if (stencils[stencil][depth][height][width]) {
               if (!stencil_initialized[field][stencil]) {
                 printf("auto f%d_s%d = ", field, stencil);
@@ -1322,7 +1285,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v3(
                        "(threadIdx.y + %d) * sx + "
                        "((curr_slab+threadIdx.z)%%sz) * sx * sy]);",
                        stencil_unary_ops[stencil], width, height);
-
                 stencil_initialized[field][stencil] = 1;
               }
               else {
@@ -1345,7 +1307,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v3(
     }
   }
 }
-
 /** Rolling ping-pong, optimized: multiple fields, rolling base slab, basic
  * WORKING (only on V100 and MI250X likely due to warp lockstepping. Breaks
  on A100 likely because of the removal of lockstep) */
@@ -1368,15 +1329,12 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v4(
   // printf("const int sw = %d;", BLOCK_SIZE);
   printf("const int sid = threadIdx.x + "
          "threadIdx.y * blockDim.x + threadIdx.z * blockDim.x * blockDim.y;");
-
   printf("const int3 baseIdx = (int3){"
          "blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
          "blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
          "blockIdx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2};");
   printf("const int tpb = blockDim.x * blockDim.y * blockDim.z;");
-
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
-
   printf("int curr_slab = 0;");
   for (int block = 0; block < NUM_BLOCKS; ++block) {
     printf("__syncthreads();");
@@ -1384,7 +1342,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v4(
       const int field = block_offset + block * BLOCK_SIZE;
       if (field >= NUM_FIELDS)
         break;
-
       // Load the main block
       printf(
           "for (int curr = sid; curr < sx * sy * blockDim.z; curr += tpb) {");
@@ -1404,7 +1361,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v4(
       printf(";");
       printf("}");
     }
-
     for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
       printf("__syncthreads();");
       for (int block_offset = 0; block_offset < BLOCK_SIZE; ++block_offset) {
@@ -1433,7 +1389,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v4(
           printf("}");
         }
       }
-
       for (int height = 0; height < STENCIL_HEIGHT; ++height) {
         for (int width = 0; width < STENCIL_WIDTH; ++width) {
           for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
@@ -1442,11 +1397,9 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v4(
               const int field = block_offset + block * BLOCK_SIZE;
               if (field >= NUM_FIELDS)
                 break;
-
               // Skip if the stencil is not used
               if (!stencils_accessed[curr_kernel][field][stencil])
                 continue;
-
               if (stencils[stencil][depth][height][width]) {
                 if (!stencil_initialized[field][stencil]) {
                   printf("auto f%d_s%d = ", field, stencil);
@@ -1458,7 +1411,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v4(
                          "(%d) * sx * sy * sz]);",
                          stencil_unary_ops[stencil], width, height,
                          field % BLOCK_SIZE);
-
                   stencil_initialized[field][stencil] = 1;
                 }
                 else {
@@ -1484,7 +1436,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v4(
     }
   }
 }
-
 /** Rolling ping-pong, optimized: multiple fields, unrolled
 Note: requires sufficiently large tbdims s.t. can be unrolled with 2 by 2 blocks
 */
@@ -1510,18 +1461,14 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
   // printf("const int sid = threadIdx.x + "
   //        "threadIdx.y * blockDim.x + threadIdx.z * blockDim.x *
   //        blockDim.y;");
-
   printf("const int3 baseIdx = (int3){"
          "blockIdx.x * blockDim.x + start.x - (STENCIL_WIDTH-1)/2,"
          "blockIdx.y * blockDim.y + start.y - (STENCIL_HEIGHT-1)/2,"
          "blockIdx.z * blockDim.z + start.z - (STENCIL_DEPTH-1)/2};");
   // printf("const int tpb = blockDim.x * blockDim.y * blockDim.z;");
-
   int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
-
   for (int block = 0; block < NUM_BLOCKS; ++block) {
     printf("__syncthreads();");
-
     // Unrolled (note: need to do a minimum of STENCIL_WIDTH or _HEIGHT
     // iterations to be sure all stencil points are covered with if the tbdim
     // is 1
@@ -1539,7 +1486,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
         printf("const int i = threadIdx.x + (%d) * blockDim.x;", bx);
         printf("if (baseIdx.x + i < end.x + (STENCIL_WIDTH-1)/2){ ");
         printf("if (i < sx){ ");
-
         for (int block_offset = 0; block_offset < BLOCK_SIZE; ++block_offset) {
           const int field = block_offset + block * BLOCK_SIZE;
           if (field >= NUM_FIELDS)
@@ -1563,10 +1509,8 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
     // printf("}");
     printf("}");
     printf("}");
-
     for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
       printf("__syncthreads();");
-
       if (depth + 1 < STENCIL_DEPTH) {
         printf("{");
         printf("if (threadIdx.z == 0){ ");
@@ -1582,7 +1526,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
             printf("const int i = threadIdx.x + (%d) * blockDim.x;", bx);
             printf("if (baseIdx.x + i < end.x + (STENCIL_WIDTH-1)/2){ ");
             printf("if (i < sx){ ");
-
             for (int block_offset = 0; block_offset < BLOCK_SIZE;
                  ++block_offset) {
               const int field = block_offset + block * BLOCK_SIZE;
@@ -1610,7 +1553,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
         printf("}");
         printf("}");
       }
-
       for (int height = 0; height < STENCIL_HEIGHT; ++height) {
         for (int width = 0; width < STENCIL_WIDTH; ++width) {
           for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
@@ -1619,11 +1561,9 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
               const int field = block_offset + block * BLOCK_SIZE;
               if (field >= NUM_FIELDS)
                 break;
-
               // Skip if the stencil is not used
               if (!stencils_accessed[curr_kernel][field][stencil])
                 continue;
-
               if (stencils[stencil][depth][height][width]) {
                 if (!stencil_initialized[field][stencil]) {
                   printf("auto f%d_s%d = ", field, stencil);
@@ -1635,7 +1575,6 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
                          "(%d) * sx * sy * sz]);",
                          stencil_unary_ops[stencil], width, height, depth,
                          field % BLOCK_SIZE);
-
                   stencil_initialized[field][stencil] = 1;
                 }
                 else {
@@ -1660,6 +1599,7 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
     }
   }
 }
+
 
 #include <stdint.h>
 typedef struct {
@@ -1721,7 +1661,7 @@ gen_kernel_body(const int curr_kernel)
   case IMPLICIT_CACHING: {
     gen_kernel_prefix();
     gen_return_if_oob();
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
 
     int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
 
@@ -1846,7 +1786,7 @@ gen_kernel_body(const int curr_kernel)
     gen_kernel_prefix();
     gen_return_if_oob();
 
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     prefetch_stencil_elements(curr_kernel);
     prefetch_stencil_coeffs(curr_kernel, false);
 
@@ -1863,7 +1803,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   case EXPLICIT_CACHING_3D_BLOCKING: {
@@ -1873,7 +1813,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   case EXPLICIT_CACHING_4D_BLOCKING: {
@@ -1883,7 +1823,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   case EXPLICIT_PINGPONG_txw: {
@@ -1894,7 +1834,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   case EXPLICIT_PINGPONG_txy: {
@@ -1905,7 +1845,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   case EXPLICIT_PINGPONG_txyblocked: {
@@ -1916,7 +1856,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   case EXPLICIT_ROLLING_PINGPONG: {
@@ -1927,7 +1867,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function();
+    prefetch_output_elements_and_gen_prev_function(false);
     return;
   }
   default: {

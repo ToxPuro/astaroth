@@ -265,6 +265,10 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
                                                            max(device_config.int_params[AC_my],
                                                                device_config.int_params[AC_mz]));
     
+    for (int i = 0; i < NUM_SCALARRAYS; ++i) {
+        //ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.profiles[i], profile_size_bytes));
+        //ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.profiles[i], 0, profile_size_bytes));
+    }
 
     // Reductions
     const int3 max_dims                = acConstructInt3Param(AC_mx, AC_my, AC_mz, device_config);
@@ -330,6 +334,9 @@ acDeviceDestroy(Device device)
 
     // Memory
     acVBADestroy(&device->vba);
+    for (int i = 0; i < NUM_SCALARRAYS; ++i) {
+        //cudaFree(device->vba.profiles[i]);
+    }
     
 #if PACKED_DATA_TRANSFERS
 // Free data required for packed tranfers here (cudaFree)
@@ -373,6 +380,25 @@ acDeviceSwapBuffers(const Device device)
 
     return (AcResult)retval;
 }
+#if LFORCING
+AcResult
+acDeviceLoadScalarArray(const Device device, const Stream stream, const ScalarArrayHandle handle,
+                        const size_t start, const AcReal* data, const size_t num)
+{
+    cudaSetDevice(device->id);
+
+    if (handle >= NUM_SCALARRAYS || !NUM_SCALARRAYS)
+        return AC_FAILURE;
+
+    ERRCHK((int)(start + num) <= max(device->local_config.int_params[AC_mx],
+                                     max(device->local_config.int_params[AC_my],
+                                         device->local_config.int_params[AC_mz])));
+    ERRCHK_ALWAYS(handle < NUM_SCALARRAYS);
+    ERRCHK_CUDA(cudaMemcpyAsync(&device->vba.profiles[handle][start], data, sizeof(data[0]) * num,
+                                cudaMemcpyHostToDevice, device->streams[stream]));
+    return AC_SUCCESS;
+}
+#endif
 AcResult
 acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream, const AcMesh host_mesh,
                                    const VertexBufferHandle vtxbuf_handle, const int3 src,
@@ -850,7 +876,6 @@ acDeviceVolumeCopy(const Device device, const Stream stream,                    
                               out_volume);
 }
 
-<<<<<<< HEAD
 #if PACKED_DATA_TRANSFERS 
 // Functions for calling packed data transfers
 AcResult
@@ -924,7 +949,6 @@ acDeviceStoreIXYPlate(const Device device, int3 start, int3 end, int src_offset,
 }
 #endif
 
-=======
 AcResult
 acDeviceResetMesh(const Device device, const Stream stream)
 {
@@ -932,4 +956,3 @@ acDeviceResetMesh(const Device device, const Stream stream)
     acDeviceSynchronizeStream(device, stream);
     return acVBAReset(device->streams[stream], &device->vba);
 }
->>>>>>> origin/master

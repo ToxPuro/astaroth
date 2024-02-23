@@ -17,8 +17,15 @@ L [a-zA-Z_]
 "int3"                  { return INT3; }
 "real"                  { return REAL; }
 "real3"                 { return REAL3; }
+"realArray"             { return REAL_ARRAY; }
 "Matrix"                { return MATRIX; }
 "Field"                 { return FIELD; }
+"Profile_x"             { return PROFILE_X; }
+"Profile_y"             {return PROFILE_Y; }
+"Profile_z"             {return PROFILE_Z; }
+"AuxiliaryField"        {return AUXILIARY_FIELD; }
+"WorkBuffer"            {return WORK_BUFFER; }
+
 "Stencil"               { return STENCIL; }
 
 "Kernel"                { return KERNEL; } /* Type qualifiers */

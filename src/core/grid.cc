@@ -187,8 +187,12 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     MPI_Comm_size(astaroth_comm, &nprocs);
     MPI_Comm_rank(astaroth_comm, &pid);
 
+#ifdef USE_EXTERNAL_DECOMP
+    const uint3_64 decomp = static_cast<uint3_64>(global_config.int3_params[AC_domain_decomposition]);
+#else
     const uint3_64 decomp = decompose(nprocs);
-    const int3 pid3d      = getPid3D(pid, decomp);
+#endif
+    const int3 pid3d = getPid3D(pid, decomp);
 
     ERRCHK_ALWAYS(submesh_config.int_params[AC_nx] % decomp.x == 0);
     ERRCHK_ALWAYS(submesh_config.int_params[AC_ny] % decomp.y == 0);
@@ -202,8 +206,8 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     submesh_config.int_params[AC_ny]               = submesh_ny;
     submesh_config.int_params[AC_nz]               = submesh_nz;
     submesh_config.int3_params[AC_global_grid_n]   = (int3){global_config.int_params[AC_nx],
-                                                            global_config.int_params[AC_ny],
-                                                            global_config.int_params[AC_nz]};
+                                                          global_config.int_params[AC_ny],
+                                                          global_config.int_params[AC_nz]};
     submesh_config.int3_params[AC_multigpu_offset] = pid3d *
                                                      (int3){submesh_nx, submesh_ny, submesh_nz};
     acHostUpdateBuiltinParams(&submesh_config);
@@ -236,8 +240,12 @@ acGridInit(const AcMeshInfo info)
     }
     MPI_Barrier(acGridMPIComm());
 
-    // Decompose
-    const uint3_64 decomp = decompose(nprocs);
+// Decompose
+#if USE_EXTERNAL_DECOMP
+    const uint3_64 decomp = static_cast<uint3_64>(info.int3_params[AC_domain_decomposition]);
+#else
+    const uint3_64 decomp          = decompose(nprocs);
+#endif
 
     // Check that the decomposition is valid
     const int3 nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
@@ -317,8 +325,7 @@ acGridInit(const AcMeshInfo info)
     acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
 #ifdef DEBUG_SYNC
     printf("USING DEBUG SYNC");
-    AcTaskDefinition default_ops[] = {
-                                      acSync(),
+    AcTaskDefinition default_ops[] = {acSync(),
                                       acSync(),
                                       acHaloExchange(all_fields),
                                       acSync(),
@@ -341,8 +348,7 @@ acGridInit(const AcMeshInfo info)
 #endif // AC_INTEGRATION_ENABLED
     };
 #else
-    AcTaskDefinition default_ops[] = {
-                                      acHaloExchange(all_fields),
+    AcTaskDefinition default_ops[] = {acHaloExchange(all_fields),
                                       acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
                                                           all_fields),
 #ifdef AC_INTEGRATION_ENABLED
@@ -372,6 +378,37 @@ acGridInit(const AcMeshInfo info)
     acVerboseLogFromRootProc(pid, "acGridInit: Synchronizing streams\n");
     acGridSynchronizeStream(STREAM_ALL);
     acVerboseLogFromRootProc(pid, "acGridInit: Done synchronizing streams\n");
+
+    for(int profile=0;profile<NUM_PROFILES;++profile)
+    {
+      //in case the user loaded a nullptr to the profile do not load it
+      if(submesh.info.profiles[profile] != nullptr){
+        acDeviceLoadProfile(grid.device,STREAM_DEFAULT,submesh.info,static_cast<Profile>(profile));
+      }else{
+        acLogFromRootProc(pid, "acGridInit: Warning!!!\tProfile %s will be null and not allocated since you loaded a nullptr to it\n", profile_names[profile]);
+      }
+      acGridSynchronizeStream(STREAM_ALL);
+    }
+
+
+#if AUTOTUNE_AT_INIT // By default is ON
+    acLogFromRootProc(pid, "acGridInit: Autotuning\n");
+    AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+    for (int kernel = 0; kernel < NUM_KERNELS; kernel++) {
+        // dryrun for the most likely dimension of the whole computational subdomain
+        acGridLaunchKernel(STREAM_DEFAULT, kernels[kernel], dims.n0, dims.n1);
+    }
+
+    // dryrun a taskgraph with all compute kernels to autotune them
+    AcTaskDefinition my_ops[NUM_KERNELS + 2];
+    my_ops[0] = acHaloExchange(all_fields);
+    my_ops[1] = acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields);
+    for (int kernel = 0; kernel < NUM_KERNELS; kernel++)
+        my_ops[kernel + 2] = acCompute(static_cast<AcKernel>(kernel), all_fields);
+    auto all_compute_tasks = std::unique_ptr<AcTaskGraph>(acGridBuildTaskGraph(my_ops));
+    acGridExecuteTaskGraph(all_compute_tasks.get(), 1);
+    acLogFromRootProc(pid, "acGridInit: Done autotuning\n");
+#endif
     return AC_SUCCESS;
 }
 
@@ -445,6 +482,7 @@ acGridLoadInt3Uniform(const Stream stream, const AcInt3Param param, const int3 v
 
     return acDeviceLoadInt3Uniform(grid.device, stream, param, buffer);
 }
+
 
 AcResult
 acGridLoadMeshWorking(const Stream stream, const AcMesh host_mesh)
@@ -549,7 +587,6 @@ acGridLoadMeshWorking(const Stream stream, const AcMesh host_mesh)
     MPI_Type_free(&distributed_subarray);
     return acDeviceLoadMesh(grid.device, stream, grid.submesh);
 }
-
 /*
 // has some illegal memory access issue (create_subarray overwrites block value and loop fails)
 AcResult
@@ -692,6 +729,7 @@ print_mpi_array(const char* str, const int arr[3])
     printf("%s: (%d, %d, %d)\n", str, arr[2], arr[1], arr[0]);
 }
 */
+
 
 static void
 get_subarray(const int pid, //
@@ -895,6 +933,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
     return AC_SUCCESS;
 }
 
+
 AcResult
 acGridStoreMeshWorking(const Stream stream, AcMesh* host_mesh)
 {
@@ -1046,7 +1085,6 @@ acGridStoreMeshWorking(const Stream stream, AcMesh* host_mesh)
 
     return AC_SUCCESS;
 }
-
 AcResult
 acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
 {
@@ -1108,9 +1146,9 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                                 j + tgt_pid3d.y * nn.y, //
-                                                                 k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh.info);
+                                                              j + tgt_pid3d.y * nn.y, //
+                                                              k + tgt_pid3d.z * nn.z, //
+                                                              host_mesh.info);
 
                         // Send
                         MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
@@ -1191,9 +1229,9 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
                     for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                                 j + tgt_pid3d.y * nn.y, //
-                                                                 k + tgt_pid3d.z * nn.z, //
-                                                                 host_mesh->info);
+                                                              j + tgt_pid3d.y * nn.y, //
+                                                              k + tgt_pid3d.z * nn.z, //
+                                                              host_mesh->info);
 
                         // Recv
                         MPI_Status status;
@@ -1306,11 +1344,11 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
 
     // This warning is probably unnecessary
     /*
-    if (!found_compute) {
-        //msg += " - No compute kernel defined in task graph.\n";
-        //warning = true;
-    }
-    */
+      if (!found_compute) {
+          //msg += " - No compute kernel defined in task graph.\n";
+          //warning = true;
+      }
+      */
 
     if (found_halo_exchange && boundary_condition_before_halo_exchange) {
         msg += " - Boundary condition before halo exchange. Halo exchange must come first.\n";
@@ -1325,7 +1363,8 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
     }
 
     if (error) {
-        ERROR(("\nIncorrect task graph " + task_graph_repr + ":\n" + msg).c_str())
+        // ERROR(("\nIncorrect task graph " + task_graph_repr + ":\n" + msg).c_str())
+        WARNING(("\nIncorrect task graph " + task_graph_repr + ":\n" + msg).c_str())
     }
     if (warning) {
         WARNING(("\nUnusual task graph " + task_graph_repr + ":\n" + msg).c_str())
@@ -1467,8 +1506,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             break;
         }
         case TASKTYPE_SYNC: {
-            auto task = std::make_shared<SyncTask>(op, i,nn,device,swap_offset);
-            graph -> all_tasks.push_back(task);
+            auto task = std::make_shared<SyncTask>(op, i, nn, device, swap_offset);
+            graph->all_tasks.push_back(task);
             break;
         }
 
@@ -1814,7 +1853,6 @@ AcResult
 acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3 start, const int3 end)
 {
     ERRCHK(grid.initialized);
-
     acGridSynchronizeStream(stream);
     return acDeviceLaunchKernel(grid.device, stream, kernel, start, end);
 }
@@ -2654,8 +2692,9 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
         };
 
         write_sync(host_buffer, count, device->id); // Synchronous, non-threaded
-        // threads.push_back(std::move(std::thread(write_sync, host_buffer, count, device->id)));
-        // // Async, threaded
+                                                    // threads.push_back(std::move(std::thread(write_sync,
+                                                    // host_buffer, count, device->id)));
+                                                    // // Async, threaded
     }
     return AC_SUCCESS;
 }
@@ -2697,12 +2736,12 @@ acGridDiskAccessLaunch(const AccessType type)
         cudaDeviceSynchronize();
 
         const AcMeshInfo info = device->local_config;
-        AcReal* host_buffer   = grid.submesh.vertex_buffer[i];
+        AcReal* host_buffer = grid.submesh.vertex_buffer[i];
 
-        const AcReal* in      = device->vba.in[i];
-        const int3 in_offset  = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
-        const int3 in_volume  = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
-        AcReal* out           = device->vba.out[i];
+        const AcReal* in = device->vba.in[i];
+        const int3 in_offset = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
+        const int3 in_volume = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+        AcReal* out = device->vba.out[i];
         const int3 out_offset = (int3){0, 0, 0};
         const int3 out_volume = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
@@ -2715,9 +2754,9 @@ acGridDiskAccessLaunch(const AccessType type)
         char path[4096] = "";
         sprintf(path, "%s.out", vtxbuf_names[i]);
 
-        const int3 offset  = info.int3_params[AC_multigpu_offset]; // Without halo
+        const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
 #if USE_DISTRIBUTED_IO
-        int mode           = MPI_MODE_CREATE | MPI_MODE_WRONLY;
+        int mode = MPI_MODE_CREATE | MPI_MODE_WRONLY;
         char outfile[4096] = "";
         snprintf(outfile, 4096, "segment-%d_%d_%d-%s", offset.x, offset.y, offset.z, path);
 
@@ -2763,7 +2802,7 @@ acGridDiskAccessLaunch(const AccessType type)
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
         MPI_Type_free(&subarray);
         req_running[i] = true;
-#elif 0 // Does not work either, even though otherwise identical to the blocking version below
+#elif 0 // Does not work either, even though otherwise identical to the blocking version below \
         // (except iwrite + wait)
         ERRCHK_ALWAYS(&files[i]);
         ERRCHK_ALWAYS(&reqs[i]);
@@ -2896,7 +2935,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     fclose(fp);
 #else // Collective IO
     MPI_Datatype subarray;
-    const int3 nn      = info.int3_params[AC_global_grid_n]; // TODO recheck whether this is correct
+    const int3 nn = info.int3_params[AC_global_grid_n]; // TODO recheck whether this is correct
     const int arr_nn[] = {nn.z, nn.y, nn.x};
     const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
     const int arr_offset[] = {offset.z, offset.y, offset.x};
@@ -2993,7 +3032,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
         // DEBUG hotfix START
         acGridSynchronizeStream(STREAM_ALL); // This sync may not be needed
-        // DEBUG hotfix END
+                                             // DEBUG hotfix END
     }
     return AC_SUCCESS;
 }
@@ -3097,7 +3136,7 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
 
         // DEBUG hotfix START
         acGridSynchronizeStream(STREAM_ALL); // This sync may not be needed
-        // DEBUG hotfix END
+                                             // DEBUG hotfix END
     }
     return AC_SUCCESS;
 }
@@ -3228,7 +3267,7 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
 
         // DEBUG hotfix START
         acGridSynchronizeStream(STREAM_ALL); // This sync may not be needed
-        // DEBUG hotfix END
+                                             // DEBUG hotfix END
     }
     return AC_SUCCESS;
 }
@@ -3238,6 +3277,7 @@ acGridGetLocalMeshInfo(void)
 {
     return grid.device->local_config;
 }
+
 
 AcResult
 acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num_fields,
@@ -3330,7 +3370,6 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
 
     return AC_SUCCESS;
 }
-
 bool
 acGridTaskGraphHasPeriodicBoundcondsX(AcTaskGraph* graph)
 {
@@ -3349,6 +3388,11 @@ acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph* graph)
     return (graph->periodic_boundaries & BOUNDARY_Z) != 0;
 }
 
+VertexBufferArray
+acGridGetVBA(void)
+{
+    return grid.device->vba;
+}
 /*
 AcResult
 acGridLoadFieldFromFile(const char* path, const VertexBufferHandle vtxbuf)
