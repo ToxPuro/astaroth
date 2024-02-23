@@ -426,7 +426,6 @@ acVBACreate(const AcMeshInfo config)
   size_t count = counts.x*counts.y*counts.z;
   const size_t bytes = sizeof(vba.in[0][0]) * count;
   vba.bytes          = bytes;
-//#define ADJACENT_VERTEX_BUFFERS 1
 #if AC_ADJACENT_VERTEX_BUFFERS
   const size_t allbytes = bytes*NUM_VTXBUF_HANDLES;
   AcReal *allbuf_in, *allbuf_out;
@@ -456,6 +455,7 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
       device_malloc((void**) &vba.out[i],bytes);
     }
   }
+#endif
   //Allocate profiles
   for(size_t i= 0; i < NUM_PROFILES; i++){
     //if the user loads in a nullptr for the profile it won't be allocated and set to null (the user will be warned at acGridInit)

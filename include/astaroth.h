@@ -18,17 +18,12 @@
 */
 #pragma once
 
-<<<<<<< HEAD
-#include "../acc-runtime/api/acc_runtime.h"
-//#include "acc_runtime.h"
-=======
 #include "acc_runtime.h"
 
 #if AC_MPI_ENABLED
 #include <mpi.h>
 #endif
 
->>>>>>> origin/master
 #define NGHOST (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
 
 typedef struct {
@@ -439,7 +434,7 @@ acPrintInt3Param(const AcInt3Param a, const AcMeshInfo info)
  */
 /** Allocates all memory and initializes the devices visible to the caller. Should be
  * called before any other function in this interface. */
-AcResult acInit(const AcMeshInfo mesh_info,int rank);
+AcResult acInit(const AcMeshInfo mesh);
 
 /** Frees all GPU allocations and resets all devices in the node. Should be
  * called at exit. */
@@ -865,7 +860,7 @@ acNodeCreate(0, info, &node);
 acNodeDestroy(node);
 @endcode
  */
-AcResult acNodeCreate(const int id, const AcMeshInfo node_config, Node* node, int rank);
+AcResult acNodeCreate(const int id, const AcMeshInfo node_config, Node* node);
 
 /**
 Resets all devices on the current node.

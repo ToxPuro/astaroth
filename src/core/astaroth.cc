@@ -17,20 +17,20 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "astaroth.h"
+
 #include <string.h> // strcmp
 
 #include "math_utils.h"
-#include "../../acc-runtime/api/math_utils.h"
 
 static const int max_num_nodes   = 1;
 static Node nodes[max_num_nodes] = {0};
 static int num_nodes             = 0;
 
 AcResult
-acInit(const AcMeshInfo mesh_info, int rank)
+acInit(const AcMeshInfo mesh_info)
 {
     num_nodes = 1;
-    return acNodeCreate(0, mesh_info, &nodes[0], rank);
+    return acNodeCreate(0, mesh_info, &nodes[0]);
 }
 
 AcResult
@@ -40,13 +40,7 @@ acQuit(void)
     num_nodes = 0;
     return acNodeDestroy(nodes[0]);
 }
-#if PACKED_DATA_TRANSFERS 
-AcResult
-acLoadPlate(const int3& start, const int3& end, AcMesh* host_mesh, AcReal* plateBuffer, PlateType plate)
-{
-    return acNodeLoadPlate(nodes[0], STREAM_DEFAULT, start, end, host_mesh, plateBuffer, plate);
-}
-#endif 
+
 AcResult
 acCheckDeviceAvailability(void)
 {
@@ -78,13 +72,7 @@ acLoadDeviceConstant(const AcRealParam param, const AcReal value)
     ERRCHK_ALWAYS(num_nodes);
     return acNodeLoadConstant(nodes[0], STREAM_DEFAULT, param, value);
 }
-/*
-AcResult
-acLoadVectorConstant(const AcReal3Param param, const AcReal3 value)
-{   
-    return acNodeLoadVectorConstant(nodes[0], STREAM_DEFAULT, param, value);
-}       
-*/  
+
 AcResult
 acLoad(const AcMesh host_mesh)
 {

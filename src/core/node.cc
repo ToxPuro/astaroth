@@ -17,7 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/**
+/**f
  * @file
  * \brief Multi-GPU implementation.
  *
@@ -34,7 +34,7 @@
  Quick rundown:
          New struct: GridDims. There are two global variables, "grid" and "subgrid", which
          contain the extents of the whole simulation domain and the decomposed grids,
- respectively. To simplify things, we require that each GPU is assigned the same amount of
+ respectively. To simplify thing, we require that each GPU is assigned the same amount of
  work, therefore each GPU in the node is assigned and "subgrid.m" -sized block of data to
  work with.
 
@@ -123,9 +123,9 @@
                                  db  da
  *
  */
-#include <cstring>
 #include "astaroth.h"
-#include "../../acc-runtime/api/math_utils.h"
+
+#include "math_utils.h"
 
 static const int MAX_NUM_DEVICES = 32;
 
@@ -159,7 +159,6 @@ printInt3(const int3 vec)
 {
     printf("(%d, %d, %d)", vec.x, vec.y, vec.z);
 }
-*/
 
 __attribute__((unused)) static inline void
 print(const AcMeshInfo config)
@@ -207,16 +206,14 @@ createGridDims(const AcMeshInfo config)
 }
 
 AcResult
-acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle, int rank)
+acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
 {
-    int count, i;
-    struct node_s* node = (struct node_s*)malloc(sizeof(node_s));  //sizeof(*node)
+    struct node_s* node = (struct node_s*)malloc(sizeof(*node));
     node->id            = id;
     node->config        = node_config;
 
     // Get node->num_devices
-    ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&count));
-    node->num_devices=count;
+    ERRCHK_CUDA_ALWAYS(cudaGetDeviceCount(&node->num_devices));
     if (node->num_devices < 1) {
         ERROR("No CUDA devices found!");
         return AC_FAILURE;
@@ -228,8 +225,6 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle, int 
 #if AC_MULTIGPU_ENABLED != 1
     WARNING("MULTIGPU_ENABLED was false. Using only one device");
     node->num_devices = 1; // Use only one device if multi-GPU is not enabled
-#else
-    printf("Number of devices: %d\n",node->num_devices);
 #endif
     // Check that node->num_devices is divisible with AC_nz. This makes decomposing the
     // problem domain to multiple GPUs much easier since we do not have to worry
@@ -258,29 +253,25 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle, int 
     ERRCHK_ALWAYS(node->subgrid.n.z >= STENCIL_ORDER);
 
 #if AC_VERBOSE
+    // clang-format off
+    printf("GridDims m ");   printInt3(node->grid.m);    printf("\n");
     printf("GridDims n ");   printInt3(node->grid.n);    printf("\n");
-    printf("SubgridDims m "); printInt3(node->subgrid.m); printf("\n");
-    printf("SubgridDims n "); printInt3(node->subgrid.n); printf("\n");
+    printf("Subrid m "); printInt3(node->subgrid.m); printf("\n");
+    printf("Subrid n "); printInt3(node->subgrid.n); printf("\n");
+    // clang-format on
 #endif
 
-#if AC_MULTIGPU_ENABLED != 1
-    i = rank%count;
-printf("Device no= %d \n",i);
-    int ind=0; {
-#else
     // Initialize the devices
     // #pragma omp parallel for
-    for (int i = 0; i < node->num_devices; ++i){
-        int ind=i;
-#endif
+    for (int i = 0; i < node->num_devices; ++i) {
         const int3 multinode_offset                    = (int3){0, 0, 0}; // Placeholder
         const int3 multigpu_offset                     = (int3){0, 0, i * node->subgrid.n.z};
         subgrid_config.int3_params[AC_global_grid_n]   = node->grid.n;
         subgrid_config.int3_params[AC_multigpu_offset] = multinode_offset + multigpu_offset;
 
-        acDeviceCreate(i, subgrid_config, &node->devices[ind]);
+        acDeviceCreate(i, subgrid_config, &node->devices[i]);
+        acDevicePrintInfo(node->devices[i]);
     }
-//printf("VBA %p \n",node->devices[i]->vba.in[0]);
 
     /*
     // Enable peer access
@@ -291,8 +282,7 @@ printf("Device no= %d \n",i);
 
         int can_access_front, can_access_back;
         cudaDeviceCanAccessPeer(&can_access_front, i, front);
-        if (back != front) 
-          cudaDeviceCanAccessPeer(&can_access_back, i, back);
+        cudaDeviceCanAccessPeer(&can_access_back, i, back);
 #if AC_VERBOSE
         printf(
             "Trying to enable peer access from %d to %d (can access: %d) and %d (can access: %d)\n",
@@ -303,7 +293,7 @@ printf("Device no= %d \n",i);
         if (can_access_front) {
             WARNCHK_CUDA_ALWAYS(cudaDeviceEnablePeerAccess(front, 0));
         }
-        if (back != front && can_access_back) {
+        if (can_access_back) {
             WARNCHK_CUDA_ALWAYS(cudaDeviceEnablePeerAccess(back, 0));
         }
     }
@@ -311,14 +301,6 @@ printf("Device no= %d \n",i);
     acNodeSynchronizeStream(node, STREAM_ALL);
 
     *node_handle = node;
-    return AC_SUCCESS;
-}
-
-AcResult acNodeGetVBApointers(Node* node_handle, AcReal *vbapointer[2]) {
-    struct node_s* node=*node_handle;
-
-    acDeviceGetVBApointers(node->devices[0], vbapointer);
-//printf("Node. vbapointer= %p %p \n", vbapointer[0],vbapointer[1]);
     return AC_SUCCESS;
 }
 
@@ -334,9 +316,7 @@ acNodeDestroy(Node node)
 
         int can_access_front, can_access_back;
         cudaDeviceCanAccessPeer(&can_access_front, i, front);
-
-        if (back != front) 
-          cudaDeviceCanAccessPeer(&can_access_back, i, back);
+        cudaDeviceCanAccessPeer(&can_access_back, i, back);
 #if AC_VERBOSE
         printf("Trying to disable peer access from %d to %d (can access: %d) and %d (can access: "
                "%d)\n",
@@ -344,11 +324,10 @@ acNodeDestroy(Node node)
 #endif
 
         cudaSetDevice(i);
-
         if (can_access_front) {
             WARNCHK_CUDA_ALWAYS(cudaDeviceDisablePeerAccess(front));
         }
-        if (back != front && can_access_back) {
+        if (can_access_back) {
             WARNCHK_CUDA_ALWAYS(cudaDeviceDisablePeerAccess(back));
         }
     }
@@ -480,44 +459,6 @@ acNodeLoadConstant(const Node node, const Stream stream, const AcRealParam param
 }
 
 AcResult
-acNodeLoadVectorConstant(const Node node, const Stream stream, const AcReal3Param param,
-                         const AcReal3 value)
-{
-    acNodeSynchronizeStream(node, stream);
-    // #pragma omp parallel for
-    for (int i = 0; i < node->num_devices; ++i) {
-        acDeviceLoadVectorUniform(node->devices[i], stream, param, value);
-    }
-    return AC_SUCCESS;
-}
-/*
-AcResult
-acNodeLoadScalarArray(const Node node, const Stream stream, const ScalarArrayHandle handle,
-                      const AcReal* data, const int3 num)
-{
-    acNodeSynchronizeStream(node, stream);
-    // #pragma omp parallel for
-    int start = 0;
-
-    for (int i = 0; i < node->num_devices; ++i) {
-        if (num.x != 0)
-            acDeviceLoadScalarArray(node->devices[i], stream, handle, 0, data, num.x);
-        else if (num.y != 0)
-            acDeviceLoadScalarArray(node->devices[i], stream, handle, 0, data, num.y);
-        else if (num.z != 0) {
-            if (num.z == node->grid.m.z) {
-                acDeviceLoadScalarArray(node->devices[i], stream, handle, 0, data+start, node->subgrid.m.z);
-            }
-            else if (num.z == node->grid.n.z) {
-                acDeviceLoadScalarArray(node->devices[i], stream, handle, 0, data+start, node->subgrid.n.z);
-            }
-            start += node->subgrid.n.z;
-        }
-    }
-    return AC_SUCCESS;
-}
-*/
-AcResult
 acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream, const AcMesh host_mesh,
                                  const VertexBufferHandle vtxbuf_handle, const int3 src,
                                  const int3 dst, const int num_vertices)
@@ -536,9 +477,8 @@ acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream, const AcM
 
         const int3 da = max(s0, d0);
         const int3 db = min(s1, d1);
-        
-        //printf("LoadVertexBuffer: Device %d\n", i);
         /*
+        printf("Device %d\n", i);
         printf("\ts0: "); printInt3(s0); printf("\n");
         printf("\td0: "); printInt3(d0); printf("\n");
         printf("\tda: "); printInt3(da); printf("\n");
@@ -554,11 +494,10 @@ acNodeLoadVertexBufferWithOffset(const Node node, const Stream stream, const AcM
             const int3 da_local = (int3){da.x, da.y, da.z - i * node->grid.n.z / node->num_devices};
             // printf("\t\tcopy %d cells to local index ", copy_cells); printInt3(da_local);
             // printf("\n");
-//printf("da_global/local,copy_cells= %d %d %d %d %d %d %d\n", da.x, da.y, da.z, da_local.x, da_local.y, da_local.z, copy_cells);
             acDeviceLoadVertexBufferWithOffset(node->devices[i], stream, host_mesh, vtxbuf_handle,
                                                da_global, da_local, copy_cells);
         }
-        //printf("\n");
+        // printf("\n");
     }
     return AC_SUCCESS;
 }
@@ -636,7 +575,6 @@ acNodeStoreVertexBufferWithOffset(const Node node, const Stream stream,
         (void)dst;           // TODO fix
         const int3 s1 = gridIdx3d(node->grid, gridIdx(node->grid, s0) + num_vertices);
 
-        //printf("StoreVertexBuffer: Device %d\n", i);
         const int3 da = max(s0, d0);
         const int3 db = min(s1, d1);
         if (db.z >= da.z) {
@@ -703,7 +641,6 @@ acNodeIntegrateSubstep(const Node node, const Stream stream, const int isubstep,
         if (db.z >= da.z) {
             const int3 da_local = da - (int3){0, 0, i * node->subgrid.n.z};
             const int3 db_local = db - (int3){0, 0, i * node->subgrid.n.z};
-//printf("da/db_local= %d %d %d %d %d %d\n", da_local.x, da_local.y, da_local.z, db_local.x, db_local.y, db_local.z);
             acDeviceIntegrateSubstep(node->devices[i], stream, isubstep, da_local, db_local, dt);
         }
     }
@@ -1050,154 +987,6 @@ acNodeReduceVec(const Node node, const Stream stream, const ReductionType rtype,
     *result = simple_final_reduce_scal(node, rtype, results, node->num_devices);
     return AC_SUCCESS;
 }
-
-#if PACKED_DATA_TRANSFERS
-AcResult
-acNodeLoadPlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* plateBuffer, int plate)
-{
-    int kmin, kmax, nzloc=node->subgrid.n.z, mzloc=node->subgrid.m.z;
-    size_t start_idx;
-
-    int j,k,ind,iv,kminDev,kmaxDev;
-    int3 startDev,endDev;
-    void *src, *dest;
-
-    int xsiz=end.x-start.x;
-    kmin=start.z; kmax=min(end.z,mzloc); 
-    kminDev=kmin; kmaxDev=kmax;
-
-    for (int id = 0; id < node->num_devices; ++id) {
-
-	ind=0;
-	for (iv = 0; iv < NUM_VTXBUF_HANDLES; ++iv) {
-
-	    for (k=kmin; k<kmax; k++) {
-               for (j=start.y; j<end.y; j++) {
-
-                   start_idx = acVertexBufferIdx(start.x,j,k,host_mesh->info); // start index in host mesh
-                   dest=&plateBuffer[ind];
-                   src=&(host_mesh->vertex_buffer[iv][start_idx]);
-                   memcpy(dest,src,xsiz*sizeof(AcReal));
-                   ind+=xsiz;
-	       }
-            }
-	}
-//printf("kmin,kmax,kminDev,kmaxDev= %d %d %d %d \n", kmin,kmax,kminDev,kmaxDev);
-	startDev=(int3){start.x,start.y,kminDev}; endDev=(int3){end.x,end.y,kmaxDev};
-        acDeviceLoadPlateBuffer(node->devices[id], startDev, endDev, stream, plateBuffer, plate);
-
-        kmin=kmax-2*NGHOST; 
-        kmax=min(end.z,kmax+nzloc);
-        kminDev=0; kmaxDev=kmax-kmin;
-    }
-
-    return AC_SUCCESS;
-}
-
-AcResult
-acNodeLoadPlateXcomp(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* plateBuffer, int plate)
-{
-    int kmin, kmax, nzloc=node->subgrid.n.z, mzloc=node->subgrid.m.z;
-    size_t start_idx;
-
-    int k,ind,iv,kminDev,kmaxDev;
-    int3 startDev,endDev;
-    void *src, *dest;
-
-    int xsiz=end.x-start.x, ysiz=end.y-start.y, siz=xsiz*ysiz;
-    kmin=start.z; kmax=min(end.z,mzloc);
-    kminDev=kmin; kmaxDev=kmax;
-
-    for (int id = 0; id < node->num_devices; ++id) {
-
-        ind=0;
-        for (iv = 0; iv < NUM_VTXBUF_HANDLES; ++iv) {
-            for (k=kmin; k<kmax; k++) {
-
-                start_idx = acVertexBufferIdx(start.x,start.y,k,host_mesh->info);
-                dest=&plateBuffer[ind];
-                src=&(host_mesh->vertex_buffer[iv][start_idx]);
-                memcpy(dest,src,siz*sizeof(AcReal));
-                ind+=siz;
-            }
-        }
-        startDev=(int3){start.x,start.y,kminDev}; endDev=(int3){end.x,end.y,kmaxDev};
-//printf("id,kmin,kmax,kminDev,kmaxDev= %d %d %d %d %d \n", id,kmin,kmax,kminDev,kmaxDev);
-        acDeviceLoadPlateBuffer(node->devices[id], startDev, endDev, stream, plateBuffer, plate);
-
-        kmin=kmax-2*NGHOST;
-        kmax=min(end.z,kmax+nzloc);
-        kminDev=0; kmaxDev=kmax-kmin;
-    }
-
-    return AC_SUCCESS;
-}
-
-AcResult
-acNodeStorePlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, AcReal* plateBuffer, int plate)
-{
-    int kmin, kmax, nzloc=node->subgrid.n.z;
-    size_t start_idx;
-
-    int j,k,ind,iv,kminDev,kmaxDev;
-    int3 startDev,endDev;
-    void *src, *dest;
-
-    int xsiz=end.x-start.x;
-    kmin=start.z; kmax=min(end.z,nzloc+NGHOST);
-    kminDev=kmin; kmaxDev=kmax;
-//printf("plate= %d\n", plate);
-//printf("start/end= %d %d %d %d %d %d \n", start.x, end.x, start.y, end.y, start.z, end.z);
-
-    for (int id = 0; id < node->num_devices; ++id) {
-
-        startDev=(int3){start.x,start.y,kminDev}; endDev=(int3){end.x,end.y,kmaxDev};
-//printf("id,startDev/endDev= %d %d %d %d %d %d %d \n", id, startDev.x, endDev.x, startDev.y, endDev.y, startDev.z, endDev.z);
-        acDeviceStorePlateBuffer(node->devices[id], startDev, endDev, stream, plateBuffer, plate);
-
-        ind=0;
-//printf("id,kmin,kmax= %d %d %d\n",id,kmin,kmax);
-        for (iv = 0; iv < NUM_VTXBUF_HANDLES; ++iv) {
-            for (k=kmin; k<kmax; k++) {
-//if (iv==0) printf("i,j,k,start_idx= %d %d %d %d \n",start.x,start.y,k,acVertexBufferIdx(start.x,start.y,k,host_mesh->info));
-               for (j=start.y; j<end.y; j++) {
-                   start_idx = acVertexBufferIdx(start.x,j,k,host_mesh->info);
-//if (iv==0) printf("j,k,start_idx= %d %d %d %d \n",start.x,j,k,start_idx);
-
-                   src=&plateBuffer[ind];
-                   dest=&(host_mesh->vertex_buffer[iv][start_idx]);
-                   memcpy(dest,src,xsiz*sizeof(AcReal));
-                   ind+=xsiz;
-               }
-            }
-        }
-        kmin=kmax;
-        kmax=min(end.z,kmax+nzloc);
-        kminDev=NGHOST; kmaxDev=kminDev+kmax-kmin;
-    }
-
-    return AC_SUCCESS;
-}
-AcResult
-acNodeStoreIXYPlate(const Node node, const Stream stream, const int3 start, const int3 end, AcMesh* host_mesh, int plate)
-{
-    size_t dev_offset=0;
-    if (plate==AC_BOT) {
-      acDeviceStoreIXYPlate(node->devices[0], start, end, dev_offset, stream, host_mesh);
-      return AC_SUCCESS;
-    }
-    else if (plate==AC_TOP) {
-      dev_offset = - node->subgrid.n.z*(node->num_devices-1)*host_mesh->info.int_params[AC_mxy];
-//printf("dev_offset= %d \n",dev_offset);
-      acDeviceStoreIXYPlate(node->devices[node->num_devices-1], start, end, dev_offset, stream, host_mesh);
-      return AC_SUCCESS;
-    }
-    else {
-      printf("acNodeStoreIXYPlate: Unknown plate type \n");
-      return AC_FAILURE;
-    }
-}
-#endif
 
 AcResult
 acNodeReduceVecScal(const Node node, const Stream stream, const ReductionType rtype,

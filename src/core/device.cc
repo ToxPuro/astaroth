@@ -329,7 +329,7 @@ acDeviceDestroy(Device device)
     acDeviceSynchronizeStream(device, STREAM_ALL);
 
     // Memory
-    acVBADestroy(&device->vba);
+    acVBADestroy(&device->vba,device->local_config);
     
 #if PACKED_DATA_TRANSFERS
 // Free data required for packed tranfers here (cudaFree)
