@@ -11,7 +11,7 @@ hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
-hostdefine LENTROPY (1)
+hostdefine LENTROPY (0)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
 hostdefine LUPWD (1)
