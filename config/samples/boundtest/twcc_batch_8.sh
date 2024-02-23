@@ -18,5 +18,5 @@ module purge
 module load cmake/3.23.2 cuda/11.7 gcc9/9.3.1 mpich/4.1.2-mlnx5 
 
 #mpirun -n 32 ./ac_run_mpi -c astaroth.conf 
-srun ./ac_run_mpi --config astaroth.conf --init-condition BondiHoyle
+srun ./ac_run_mpi --config astaroth.conf --init-condition BoundTest
 
