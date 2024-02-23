@@ -71,12 +71,13 @@ main(void)
     }
 
     // Integration
+    const AcReal dt = (AcReal)FLT_EPSILON;
     acGridLoadMesh(STREAM_DEFAULT, model);
-    acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+    acGridIntegrate(STREAM_DEFAULT, dt);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (pid == 0) {
-        acHostIntegrateStep(model, FLT_EPSILON);
+        acHostIntegrateStep(model, dt);
         acHostMeshApplyPeriodicBounds(&model);
         const AcResult res = acVerifyMesh("Integration", model, candidate);
         ERRCHK_ALWAYS(res == AC_SUCCESS);

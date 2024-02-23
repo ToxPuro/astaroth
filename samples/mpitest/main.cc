@@ -31,13 +31,27 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 #define NUM_INTEGRATION_STEPS (100)
 
+static bool finalized = false;
+
+#include <stdlib.h>
+void
+acAbort(void)
+{
+    if (!finalized)
+        MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
+}
+
 int
 main(void)
 {
-    MPI_Init(NULL, NULL);
+    atexit(acAbort);
+    int retval = 0;
+
+    ac_MPI_Init();
+
     int nprocs, pid;
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+    MPI_Comm_size(acGridMPIComm(), &nprocs);
+    MPI_Comm_rank(acGridMPIComm(), &pid);
 
     // Set random seed for reproducibility
     srand(321654987);
@@ -45,7 +59,18 @@ main(void)
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    acSetMeshDims(32, 32, 32, &info);
+
+    const int max_devices = 2 * 2 * 4;
+    if (nprocs > max_devices) {
+        fprintf(stderr,
+                "Cannot run autotest, nprocs (%d) > max_devices (%d). Please modify "
+                "mpitest/main.cc to use a larger mesh.\n",
+                nprocs, max_devices);
+        MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
+        return EXIT_FAILURE;
+    }
+    acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
+    // acSetMeshDims(32, 32, 32, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {
@@ -58,82 +83,165 @@ main(void)
     // GPU alloc & compute
     acGridInit(info);
 
+    // Load/Store
+    acGridLoadMesh(STREAM_DEFAULT, model);
+    acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    if (pid == 0) {
+        const AcResult res = acVerifyMesh("Load/Store", model, candidate);
+        if (res != AC_SUCCESS) {
+            retval = res;
+            WARNCHK_ALWAYS(retval);
+        }
+    }
+    fflush(stdout);
+
     // Boundconds
+    if (pid == 0)
+        acHostMeshRandomize(&model);
+
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (pid == 0) {
         acHostMeshApplyPeriodicBounds(&model);
-        const AcResult res = acVerifyMesh("Boundconds", model, candidate);
-        ERRCHK_ALWAYS(res == AC_SUCCESS);
-        acHostMeshRandomize(&model);
+        const AcResult res = acVerifyMesh("Periodic boundconds", model, candidate);
+        if (res != AC_SUCCESS) {
+            retval = res;
+            WARNCHK_ALWAYS(retval);
+        }
     }
+    fflush(stdout);
 
     // Dryrun
-    acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+    const AcReal dt = (AcReal)FLT_EPSILON;
+    acGridIntegrate(STREAM_DEFAULT, dt);
 
     // Integration
+    if (pid == 0)
+        acHostMeshRandomize(&model);
+
     acGridLoadMesh(STREAM_DEFAULT, model);
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
 
     // Device integrate
     for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
-        acGridIntegrate(STREAM_DEFAULT, FLT_EPSILON);
+        acGridIntegrate(STREAM_DEFAULT, dt);
 
     acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (pid == 0) {
+        acHostMeshApplyPeriodicBounds(&model);
 
         // Host integrate
         for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
-            acHostIntegrateStep(model, FLT_EPSILON);
+            acHostIntegrateStep(model, dt);
 
         acHostMeshApplyPeriodicBounds(&model);
         const AcResult res = acVerifyMesh("Integration", model, candidate);
-        ERRCHK_ALWAYS(res == AC_SUCCESS);
-        acHostMeshRandomize(&model);
+        if (res != AC_SUCCESS) {
+            retval = res;
+            WARNCHK_ALWAYS(retval);
+        }
     }
+    fflush(stdout);
 
     // Scalar reductions
-    acGridLoadMesh(STREAM_DEFAULT, model);
-
     if (pid == 0) {
         printf("---Test: Scalar reductions---\n");
-        printf("Warning: testing only RTYPE_MAX and RTYPE_MIN\n");
-        fflush(stdout);
+        acHostMeshRandomize(&model);
+        acHostMeshApplyPeriodicBounds(&model);
     }
-    for (size_t i = 0; i < 2; ++i) { // NOTE: 2 instead of NUM_RTYPES
-        const VertexBufferHandle v0 = VTXBUF_UUX;
+    fflush(stdout);
+    acGridLoadMesh(STREAM_DEFAULT, model);
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+
+    const ReductionType scal_reductions[] = {RTYPE_MAX, RTYPE_MIN, RTYPE_SUM, RTYPE_RMS,
+                                             RTYPE_RMS_EXP};
+    for (size_t i = 0; i < ARRAY_SIZE(scal_reductions); ++i) { // NOTE: not using NUM_RTYPES here
+        const VertexBufferHandle v0 = (VertexBufferHandle)0;
+        const ReductionType rtype   = scal_reductions[i];
+
         AcReal candval;
-        acGridReduceScal(STREAM_DEFAULT, (ReductionType)i, v0, &candval);
+        acGridReduceScal(STREAM_DEFAULT, rtype, v0, &candval);
+
         if (pid == 0) {
-            const AcReal modelval   = acHostReduceScal(model, (ReductionType)i, v0);
+            const AcReal modelval = acHostReduceScal(model, rtype, v0);
+
             Error error             = acGetError(modelval, candval);
             error.maximum_magnitude = acHostReduceScal(model, RTYPE_MAX, v0);
             error.minimum_magnitude = acHostReduceScal(model, RTYPE_MIN, v0);
-            ERRCHK_ALWAYS(acEvalError(rtype_names[i], error));
+
+            if (!acEvalError(rtype_names[rtype], error)) {
+                fprintf(stderr, "Scalar %s: cand %g model %g\n", rtype_names[i], candval, modelval);
+                retval = AC_FAILURE;
+                WARNCHK_ALWAYS(retval);
+            }
         }
     }
+    fflush(stdout);
 
     // Vector reductions
     if (pid == 0) {
         printf("---Test: Vector reductions---\n");
-        printf("Warning: testing only RTYPE_MAX and RTYPE_MIN\n");
-        fflush(stdout);
     }
-    for (size_t i = 0; i < 2; ++i) { // NOTE: 2 instead of NUM_RTYPES
-        const VertexBufferHandle v0 = VTXBUF_UUX;
-        const VertexBufferHandle v1 = VTXBUF_UUY;
-        const VertexBufferHandle v2 = VTXBUF_UUZ;
+    fflush(stdout);
+
+    const ReductionType vec_reductions[] = {RTYPE_MAX, RTYPE_MIN, RTYPE_SUM, RTYPE_RMS,
+                                            RTYPE_RMS_EXP};
+    for (size_t i = 0; i < ARRAY_SIZE(vec_reductions); ++i) { // NOTE: 2 instead of NUM_RTYPES
+        const VertexBufferHandle v0 = (VertexBufferHandle)0;
+        const VertexBufferHandle v1 = (VertexBufferHandle)1;
+        const VertexBufferHandle v2 = (VertexBufferHandle)2;
         AcReal candval;
-        acGridReduceVec(STREAM_DEFAULT, (ReductionType)i, v0, v1, v2, &candval);
+
+        const ReductionType rtype = vec_reductions[i];
+        acGridReduceVec(STREAM_DEFAULT, rtype, v0, v1, v2, &candval);
         if (pid == 0) {
-            const AcReal modelval   = acHostReduceVec(model, (ReductionType)i, v0, v1, v2);
+            const AcReal modelval = acHostReduceVec(model, rtype, v0, v1, v2);
+
             Error error             = acGetError(modelval, candval);
             error.maximum_magnitude = acHostReduceVec(model, RTYPE_MAX, v0, v1, v2);
             error.minimum_magnitude = acHostReduceVec(model, RTYPE_MIN, v0, v1, v1);
-            ERRCHK_ALWAYS(acEvalError(rtype_names[i], error));
+
+            if (!acEvalError(rtype_names[rtype], error)) {
+                fprintf(stderr, "Vector %s: cand %g model %g\n", rtype_names[i], candval, modelval);
+                retval = AC_FAILURE;
+                WARNCHK_ALWAYS(retval);
+            }
         }
     }
+    fflush(stdout);
+
+    if (pid == 0) {
+        printf("---Test: Alfven reductions---\n");
+    }
+    fflush(stdout);
+
+    const ReductionType alf_reductions[] = {RTYPE_ALFVEN_MAX, RTYPE_ALFVEN_MIN, RTYPE_ALFVEN_RMS};
+    for (size_t i = 0; i < ARRAY_SIZE(alf_reductions); ++i) { // NOTE: 2 instead of NUM_RTYPES
+        const VertexBufferHandle v0 = (VertexBufferHandle)0;
+        const VertexBufferHandle v1 = (VertexBufferHandle)1;
+        const VertexBufferHandle v2 = (VertexBufferHandle)2;
+        const VertexBufferHandle v3 = (VertexBufferHandle)3;
+        AcReal candval;
+
+        const ReductionType rtype = alf_reductions[i];
+        acGridReduceVecScal(STREAM_DEFAULT, rtype, v0, v1, v2, v3, &candval);
+        if (pid == 0) {
+            const AcReal modelval = acHostReduceVecScal(model, rtype, v0, v1, v2, v3);
+
+            Error error             = acGetError(modelval, candval);
+            error.maximum_magnitude = acHostReduceVecScal(model, RTYPE_ALFVEN_MAX, v0, v1, v2, v3);
+            error.minimum_magnitude = acHostReduceVecScal(model, RTYPE_ALFVEN_MIN, v0, v1, v1, v3);
+
+            if (!acEvalError(rtype_names[rtype], error)) {
+                fprintf(stderr, "Alfven %s: cand %g model %g\n", rtype_names[i], candval, modelval);
+                retval = AC_FAILURE;
+                WARNCHK_ALWAYS(retval);
+            }
+        }
+    }
+    fflush(stdout);
 
     if (pid == 0) {
         acHostMeshDestroy(&model);
@@ -141,7 +249,14 @@ main(void)
     }
 
     acGridQuit();
-    MPI_Finalize();
+    ac_MPI_Finalize();
+    fflush(stdout);
+    finalized = true;
+
+    if (pid == 0)
+        fprintf(stderr, "MPITEST complete: %s\n",
+                retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
+
     return EXIT_SUCCESS;
 }
 

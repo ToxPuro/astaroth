@@ -20,11 +20,13 @@
 
 #include "errchk.h"
 
+static const char dataformat_path[] = "data-format.csv";
+
 AcResult
 acHostVertexBufferSet(const VertexBufferHandle handle, const AcReal value, AcMesh* mesh)
 {
-    const int n = acVertexBufferSize(mesh->info);
-    for (int i = 0; i < n; ++i)
+    const size_t n = acVertexBufferSize(mesh->info);
+    for (size_t i = 0; i < n; ++i)
         mesh->vertex_buffer[handle][i] = value;
 
     return AC_SUCCESS;
@@ -32,7 +34,7 @@ acHostVertexBufferSet(const VertexBufferHandle handle, const AcReal value, AcMes
 AcResult
 acHostMeshSet(const AcReal value, AcMesh* mesh)
 {
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w)
         acHostVertexBufferSet(w, value, mesh);
 
     return AC_SUCCESS;
@@ -45,7 +47,7 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         const int3 start = (int3){0, 0, 0};
         const int3 end   = (int3){info.int_params[AC_mx], info.int_params[AC_my],
-                                info.int_params[AC_mz]};
+                                  info.int_params[AC_mz]};
 
         const int nx = info.int_params[AC_nx];
         const int ny = info.int_params[AC_ny];
@@ -105,7 +107,98 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
 }
 
 AcResult
+acHostMeshApplyConstantBounds(const AcReal value, AcMesh* mesh)
+{
+    const AcMeshInfo info = mesh->info;
+    const AcMeshDims dims = acGetMeshDims(info);
+
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        for (size_t k = 0; k < as_size_t(dims.m1.z); ++k) {
+            for (size_t j = 0; j < as_size_t(dims.m1.y); ++j) {
+                for (size_t i = 0; i < as_size_t(dims.m1.x); ++i) {
+                    if (k >= as_size_t(dims.n0.z) && k < as_size_t(dims.n1.z))
+                        if (j >= as_size_t(dims.n0.y) && j < as_size_t(dims.n1.y))
+                            if (i >= as_size_t(dims.n0.x) && i < as_size_t(dims.n1.x))
+                                continue;
+
+                    const size_t idx            = acVertexBufferIdx(i, j, k, info);
+                    mesh->vertex_buffer[w][idx] = value;
+                }
+            }
+        }
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
 acHostMeshClear(AcMesh* mesh)
 {
     return acHostMeshSet(0, mesh);
+}
+
+AcResult
+acHostMeshWriteToFile(const AcMesh mesh, const size_t id)
+{
+    FILE* header = fopen(dataformat_path, "w");
+    ERRCHK_ALWAYS(header);
+    fprintf(header, "use_double, mx, my, mz\n");
+    fprintf(header, "%d, %d, %d, %d\n", sizeof(AcReal) == 8, mesh.info.int_params[AC_mx],
+            mesh.info.int_params[AC_my], mesh.info.int_params[AC_mz]);
+    fclose(header);
+
+    for (size_t i = 0; i < NUM_FIELDS; ++i) {
+        const size_t len = 4096;
+        char buf[len];
+        const int retval = snprintf(buf, len, "%s-%.5lu.dat", field_names[i], id);
+        ERRCHK_ALWAYS(retval >= 0);
+        ERRCHK_ALWAYS((size_t)retval <= len);
+
+        FILE* fp = fopen(buf, "w");
+        ERRCHK_ALWAYS(fp);
+
+        const size_t bytes = sizeof(mesh.vertex_buffer[i][0]);
+        const size_t count = acVertexBufferSize(mesh.info);
+        const size_t res   = fwrite(mesh.vertex_buffer[i], bytes, count, fp);
+        ERRCHK_ALWAYS(res == count);
+
+        fclose(fp);
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acHostMeshReadFromFile(const size_t id, AcMesh* mesh)
+{
+    const size_t len = 4096;
+    char buf[len];
+    int use_double, mx, my, mz;
+
+    FILE* header = fopen(dataformat_path, "r");
+    ERRCHK_ALWAYS(header);
+    fgets(buf, len, header);
+    fscanf(header, "%d, %d, %d, %d\n", &use_double, &mx, &my, &mz);
+    fclose(header);
+
+    ERRCHK_ALWAYS(use_double == (sizeof(AcReal) == 8));
+    ERRCHK_ALWAYS(mx == mesh->info.int_params[AC_mx]);
+    ERRCHK_ALWAYS(my == mesh->info.int_params[AC_my]);
+    ERRCHK_ALWAYS(mz == mesh->info.int_params[AC_mz]);
+
+    for (size_t i = 0; i < NUM_FIELDS; ++i) {
+
+        const int retval = snprintf(buf, len, "%s-%.5lu.dat", field_names[i], id);
+        ERRCHK_ALWAYS(retval >= 0);
+        ERRCHK_ALWAYS((size_t)retval <= len);
+
+        FILE* fp = fopen(buf, "r");
+        ERRCHK_ALWAYS(fp);
+
+        const size_t bytes = sizeof(mesh->vertex_buffer[i][0]);
+        const size_t count = acVertexBufferSize(mesh->info);
+        const size_t res   = fread(mesh->vertex_buffer[i], bytes, count, fp);
+        ERRCHK_ALWAYS(res == count);
+
+        fclose(fp);
+    }
+    return AC_SUCCESS;
 }

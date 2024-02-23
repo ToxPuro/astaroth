@@ -25,6 +25,8 @@
 int
 main(void)
 {
+    ERRCHK_ALWAYS(acCheckDeviceAvailability() == AC_SUCCESS);
+
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
@@ -45,7 +47,7 @@ main(void)
 
     // Attempt to integrate and check max and min
     printf("Integrating... ");
-    acIntegrate(FLT_EPSILON);
+    acIntegrate((AcReal)FLT_EPSILON);
 
     printf("Done.\nVTXBUF ranges after one integration step:\n");
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)

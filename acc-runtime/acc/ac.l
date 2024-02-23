@@ -43,12 +43,13 @@ L [a-zA-Z_]
 (<<=)|(>>=)               { return ASSIGNOP; }     /* Assignment */
 [/*-+<>|&%^]              { return BINARY_OP; }    /* Operators */
 (&&)|(\|\|)|(<<)|(>>)     { return BINARY_OP; }    /* Operators */
-(==)|(>=)|(<=)|(!=)       { return BINARY_OP; }    /* Operators */
+(==)|(>=)|(<=)|(!=)|(^=)  { return BINARY_OP; }    /* Operators */
 [-+*/:;=\[\]{}(),\.<>|&!] { return yytext[0]; }    /* Characters */
 {D}+[.]{D}*               { return REALNUMBER; }
 {D}+[.]?{D}*(e[-]?{D}+)   { return REALNUMBER; }
 {D}+[.]?{D}*(e[-]?{D}+)?[d]  { return DOUBLENUMBER; } /* Numbers */
-{D}+[.]?{D}*(e[-]?{D}+)?[f]?  { return NUMBER; } /* Numbers */
+{D}+[.]?{D}*(e[-]?{D}+)?[f]?  { return NUMBER; }      /* Numbers */
+0[xX][0-9a-fA-F]+[ulUL]*      { return NUMBER; }      /* Hex */
 
 
 

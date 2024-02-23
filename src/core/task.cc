@@ -36,6 +36,7 @@
 
 #include "task.h"
 #include "astaroth.h"
+#include "astaroth_utils.h"
 
 #include <cassert>
 #include <memory>
@@ -71,6 +72,13 @@ acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, 
     task_def.num_fields_in  = num_fields_in;
     task_def.fields_out     = fields_out;
     task_def.num_fields_out = num_fields_out;
+    return task_def;
+}
+AcTaskDefinition
+acSync()
+{
+    AcTaskDefinition task_def{};
+    task_def.task_type      = TASKTYPE_SYNC;
     return task_def;
 }
 
@@ -121,6 +129,13 @@ acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBound
     task_def.num_parameters = num_parameters;
     return task_def;
 }
+
+AcTaskDefinition
+acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond)
+{
+    return acSpecialMHDBoundaryCondition(boundary, bound_cond, nullptr, 0);
+}
+
 #endif
 
 Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields)
@@ -213,10 +228,25 @@ Region::overlaps(const Region* other)
            (other->position.z < this->position.z + this->dims.z);
 }
 
-int
-Region::id_to_tag(int3 _id)
+AcBoundary
+Region::boundary(uint3_64 decomp, int pid)
 {
-    return ((3 + _id.x) % 3) * 9 + ((3 + _id.y) % 3) * 3 + (3 + _id.z) % 3;
+    int3 pid3d = getPid3D(pid, decomp);
+    return boundary(decomp, pid3d, id);
+}
+
+bool
+Region::is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary)
+{
+    int3 pid3d = getPid3D(pid, decomp);
+    return is_on_boundary(decomp, pid3d, id, boundary);
+}
+
+// Static functions
+int
+Region::id_to_tag(int3 id)
+{
+    return ((3 + id.x) % 3) * 9 + ((3 + id.y) % 3) * 3 + (3 + id.z) % 3;
 }
 
 int3
@@ -230,14 +260,50 @@ Region::tag_to_id(int _tag)
     return _id;
 }
 
+AcBoundary
+Region::boundary(uint3_64 decomp, int pid, int tag)
+{
+    int3 pid3d = getPid3D(pid, decomp);
+    int3 id    = tag_to_id(tag);
+    return boundary(decomp, pid3d, id);
+}
+
+AcBoundary
+Region::boundary(uint3_64 decomp, int3 pid3d, int3 id)
+{
+    int3 neighbor = pid3d + id;
+    return (AcBoundary)((neighbor.x == -1 ? BOUNDARY_X_BOT : 0) |
+                        (neighbor.x == (int)decomp.x ? BOUNDARY_X_TOP : 0) |
+                        (neighbor.y == -1 ? BOUNDARY_Y_BOT : 0) |
+                        (neighbor.y == (int)decomp.y ? BOUNDARY_Y_TOP : 0) |
+                        (neighbor.z == -1 ? BOUNDARY_Z_BOT : 0) |
+                        (neighbor.z == (int)decomp.z ? BOUNDARY_Z_TOP : 0));
+}
+
+bool
+Region::is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary)
+{
+    int3 pid3d     = getPid3D(pid, decomp);
+    int3 region_id = tag_to_id(tag);
+    return is_on_boundary(decomp, pid3d, region_id, boundary);
+}
+
+bool
+Region::is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary)
+{
+    AcBoundary b = Region::boundary(decomp, pid3d, id);
+    return b & boundary ? true : false;
+}
+
 /* Task interface */
 Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefinition op,
            Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : device(device_), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
-      order(order_), active(true), input_region(input_region_), output_region(output_region_),
+      order(order_), active(true), boundary(BOUNDARY_NONE), input_region(input_region_),
+      output_region(output_region_),
       input_parameters(op.parameters, op.parameters + op.num_parameters)
 {
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_rank(acGridMPIComm(), &rank);
 }
 
 void
@@ -417,7 +483,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
 
     // compute_func = compute_func_;
 
-    params = KernelParameters{kernel_lookup[(int)op.kernel], stream, 0, output_region.position,
+    params = KernelParameters{kernels[(int)op.kernel], stream, 0, output_region.position,
                               output_region.position + output_region.dims};
     name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
@@ -565,13 +631,18 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
 // send_buffers(input_region.dims, vtxbuf_dependencies_->num_vars)
 {
     // Create stream for packing/unpacking
+    acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
     {
         cudaSetDevice(device->id);
         int low_prio, high_prio;
         cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
         cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
     }
+    acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done creating CUDA stream\n");
+
+    acVerboseLogFromRootProc(rank, "Halo exchange task ctor: syncing VBA\n");
     syncVBA();
+    acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done syncing VBA\n");
 
     counterpart_rank = getPid(getPid3D(rank, decomp) + output_region.id, decomp);
     // MPI tags are namespaced to avoid collisions with other MPI tasks
@@ -581,7 +652,9 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     // Post receive immediately, this avoids unexpected messages
     active = ((MPI_INCL_CORNERS) || output_region.facet_class != 3) ? true : false;
     if (active) {
+        acVerboseLogFromRootProc(rank, "Halo exchange task ctor: posting early receive\n");
         receive();
+        acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done posting early receive\n");
     }
     name = "Halo exchange " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) +
            "," + std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) +
@@ -649,9 +722,20 @@ HaloExchangeTask::wait_send()
 void
 HaloExchangeTask::receiveDevice()
 {
+    // TODO: change these to debug log statements at high verbosity (there will be very many of
+    // these outputs)
+    if (rank == 0) {
+        // fprintf(stderr, "receiveDevice, getting buffer\n");
+    }
     auto msg = recv_buffers.get_fresh_buffer();
+    if (rank == 0) {
+        // fprintf(stderr, "calling MPI_Irecv\n");
+    }
     MPI_Irecv(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
+              recv_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
+    if (rank == 0) {
+        // fprintf(stderr, "Returned from MPI_Irecv\n");
+    }
 }
 
 void
@@ -660,7 +744,7 @@ HaloExchangeTask::sendDevice()
     auto msg = send_buffers.get_current_buffer();
     sync();
     MPI_Isend(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
+              send_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
 }
 
 void
@@ -675,9 +759,20 @@ HaloExchangeTask::exchangeDevice()
 void
 HaloExchangeTask::receiveHost()
 {
+    // TODO: change these to debug log statements at high verbosity (there will be very many of
+    // these outputs)
+    if (rank == 0) {
+        // fprintf("receiveHost, getting buffer\n");
+    }
     auto msg = recv_buffers.get_fresh_buffer();
+    if (rank == 0) {
+        // fprintf("Called MPI_Irecv\n");
+    }
     MPI_Irecv(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              recv_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
+              recv_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
+    if (rank == 0) {
+        // fprintf("Returned from MPI_Irecv\n");
+    }
     msg->pinned = true;
 }
 
@@ -688,7 +783,7 @@ HaloExchangeTask::sendHost()
     msg->pin(device, stream);
     sync();
     MPI_Isend(msg->data_pinned, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              send_tag + HALO_TAG_OFFSET, MPI_COMM_WORLD, &msg->request);
+              send_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
 }
 void
 HaloExchangeTask::exchangeHost()
@@ -702,10 +797,24 @@ HaloExchangeTask::exchangeHost()
 void
 HaloExchangeTask::receive()
 {
+    // TODO: change these fprintfs to debug log statements at high verbosity (there will be very
+    // many of these outputs)
 #if USE_CUDA_AWARE_MPI
+    if (rank == 0) {
+        // fprintf(stderr, "receiveDevice()\n");
+    }
     receiveDevice();
+    if (rank == 0) {
+        // fprintf(stderr, "returned from receiveDevice()\n");
+    }
 #else
+    if (rank == 0) {
+        // fprintf(stderr, "receiveHost()\n");
+    }
     receiveHost();
+    if (rank == 0) {
+        // fprintf(stderr, "returned from receiveHost()\n");
+    }
 #endif
 }
 
@@ -819,6 +928,7 @@ BoundaryConditionTask::BoundaryConditionTask(AcTaskDefinition op, int3 boundary_
            std::to_string(output_region.id.x) + "," + std::to_string(output_region.id.y) + "," +
            std::to_string(output_region.id.z) + ")" + ".(" + std::to_string(boundary_normal.x) +
            "," + std::to_string(boundary_normal.y) + "," + std::to_string(boundary_normal.z) + ")";
+    boundary  = op.boundary;
     task_type = TASKTYPE_BOUNDCOND;
 }
 
@@ -844,11 +954,28 @@ BoundaryConditionTask::populate_boundary_region()
                                  vba.in[variable]);
             break;
         }
+        case BOUNDCOND_CONST: {
+            assert(input_parameters.size() == 1);
+            acKernelConstBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+                                    vba.in[variable], input_parameters[0]);
+            break;
+        }
         case BOUNDCOND_PRESCRIBED_DERIVATIVE: {
             assert(input_parameters.size() == 1);
             acKernelPrescribedDerivativeBoundconds(stream, output_region.id, boundary_normal,
                                                    boundary_dims, vba.in[variable],
                                                    input_parameters[0]);
+            break;
+        }
+        case BOUNDCOND_OUTFLOW: {
+            acKernelOutflowBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+                                      vba.in[variable]);
+            break;
+        }
+
+        case BOUNDCOND_INFLOW: {
+            acKernelInflowBoundconds(stream, output_region.id, boundary_normal, boundary_dims,
+                                     vba.in[variable]);
             break;
         }
         default:
@@ -887,6 +1014,39 @@ BoundaryConditionTask::advance(const TraceFile* trace_file)
     default:
         ERROR("BoundaryConditionTask in an invalid state.");
     }
+}
+SyncTask::SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+    : Task(order_,
+           Region({0,0,0},{2*NGHOST+nn.x,2*NGHOST+nn.y,2*NGHOST+nn.z}, 0, {}),
+           Region({0,0,0},{2*NGHOST+nn.x,2*NGHOST+nn.y,2*NGHOST+nn.z}, 0, {}),
+           op, device_, swap_offset_)
+{
+
+    //Synctask is on default stream
+    {
+        stream = STREAM_DEFAULT;
+    }
+    syncVBA();
+
+
+    name = "SyncTask" + std::to_string(order_);
+    task_type = TASKTYPE_SYNC;
+}
+
+bool
+SyncTask::test()
+{
+    //always ready
+    return true;
+}
+
+void
+SyncTask::advance(const TraceFile* trace_file)
+{
+    //no tracing for now
+
+    //Synchronize everything
+    acGridSynchronizeStream(STREAM_ALL);
 }
 
 #ifdef AC_INTEGRATION_ENABLED
@@ -939,6 +1099,7 @@ SpecialMHDBoundaryConditionTask::SpecialMHDBoundaryConditionTask(
 void
 SpecialMHDBoundaryConditionTask::populate_boundary_region()
 {
+
     // TODO: could assign a separate stream to each launch of symmetric boundconds
     //       currently they are on a single stream
     switch (boundcond) {
@@ -955,6 +1116,7 @@ SpecialMHDBoundaryConditionTask::populate_boundary_region()
         break;
     }
     case SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX: {
+        // printf("RUNNING SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX \n");
         assert(input_parameters.size() == 1);
         acKernelEntropyPrescribedHeatFluxBoundconds(stream, output_region.id, boundary_normal,
                                                     boundary_dims, vba, input_parameters[0]);
@@ -1008,4 +1170,22 @@ SpecialMHDBoundaryConditionTask::advance(const TraceFile* trace_file)
     }
 }
 #endif // AC_INTEGRATION_ENABLED
+
+AcBoundary
+boundary_from_normal(int3 normal)
+{
+    return (
+        AcBoundary)((normal.x == -1 ? BOUNDARY_X_BOT : 0) | (normal.x == 1 ? BOUNDARY_X_TOP : 0) |
+                    (normal.y == -1 ? BOUNDARY_Y_BOT : 0) | (normal.y == 1 ? BOUNDARY_Y_TOP : 0) |
+                    (normal.z == -1 ? BOUNDARY_Z_BOT : 0) | (normal.z == 1 ? BOUNDARY_Z_TOP : 0));
+}
+
+int3
+normal_from_boundary(AcBoundary boundary)
+{
+    return int3{((BOUNDARY_X_TOP & boundary) != 0) - ((BOUNDARY_X_BOT & boundary) != 0),
+                ((BOUNDARY_Y_TOP & boundary) != 0) - ((BOUNDARY_Y_BOT & boundary) != 0),
+                ((BOUNDARY_Z_TOP & boundary) != 0) - ((BOUNDARY_Z_BOT & boundary) != 0)};
+}
+
 #endif // AC_MPI_ENABLED

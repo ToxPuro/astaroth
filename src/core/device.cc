@@ -33,6 +33,7 @@
 AcResult
 acDevicePrintInfo(const Device device)
 {
+    cudaSetDevice(device->id);
     const int device_id = device->id;
 
     cudaDeviceProp props;
@@ -79,6 +80,7 @@ acDevicePrintInfo(const Device device)
     printf("    Global L1 cache supported: %d\n", props.globalL1CacheSupported);
 #endif
     printf("    L2 size: %d KiB\n", props.l2CacheSize / (1024));
+    printf("    Max registers per block: %d\n", props.regsPerBlock);
     // MV: props.totalConstMem and props.sharedMemPerBlock cause assembler error
     // MV: while compiling in TIARA gp cluster. Therefore commeted out.
     //!!    printf("    Total const mem: %ld KiB\n", props.totalConstMem / (1024));
@@ -190,6 +192,9 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
         acDeviceLoadVectorUniform(device, STREAM_DEFAULT, (AcReal3Param)i,
                                   device_config.real3_params[i]);
 
+    // OL: added this assignment to make sure that whenever we load a new config,
+    // it's updated on both the host Device structure, and the GPU
+    device->local_config = device_config;
     return AC_SUCCESS;
 }
 
@@ -209,10 +214,19 @@ acDeviceSynchronizeStream(const Device device, const Stream stream)
 AcResult
 acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_handle)
 {
-#define NUM_SCALARRAYS (0)
+    // Check
+    int count;
+    cudaGetDeviceCount(&count);
+    ERRCHK_ALWAYS(id < count);
+
     cudaSetDevice(id);
-    // cudaDeviceReset(); // Would be good for safety, but messes stuff up if we want to emulate
-    // multiple devices with a single GPU
+// cudaDeviceReset(); // Would be good for safety, but messes stuff up if we want to emulate
+// multiple devices with a single GPU
+#if AC_DOUBLE_PRECISION
+    cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
+#endif
+    // cudaDeviceSetCacheConfig(cudaFuncCachePreferShared);
+    // cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
 
     // Create Device
     struct device_s* device = (struct device_s*)malloc(sizeof(*device));
@@ -225,14 +239,18 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     acDevicePrintInfo(device);
     printf("Trying to run a dummy kernel. If this fails, make sure that your\n"
            "device supports the GPU architecture you are compiling for.\n");
-#endif
 
     // Check that the code was compiled for the proper GPU architecture
+
     printf("Running a test kernel... ");
     fflush(stdout);
+#endif
+
     acKernelDummy();
+#if AC_VERBOSE
     printf("\x1B[32m%s\x1B[0m\n", "OK!");
     fflush(stdout);
+#endif
 
     // Concurrency
     for (int i = 0; i < NUM_STREAMS; ++i) {
@@ -247,20 +265,16 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
                                                            max(device_config.int_params[AC_my],
                                                                device_config.int_params[AC_mz]));
     
-    for (int i = 0; i < NUM_SCALARRAYS; ++i) {
-        //ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.profiles[i], profile_size_bytes));
-        //ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.profiles[i], 0, profile_size_bytes));
-    }
 
     // Reductions
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->reduce_scratchpad,
-                           acVertexBufferCompdomainSizeBytes(device_config)));
-
-    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->reduce_scratchpad, 0,
-                                  acVertexBufferCompdomainSizeBytes(device_config)));
-
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->reduce_result, sizeof(AcReal)));
-    ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->reduce_result, 0, sizeof(AcReal)));
+    const int3 max_dims                = acConstructInt3Param(AC_mx, AC_my, AC_mz, device_config);
+    const size_t scratchpad_size       = acKernelReduceGetMinimumScratchpadSize(max_dims);
+    const size_t scratchpad_size_bytes = acKernelReduceGetMinimumScratchpadSizeBytes(max_dims);
+    for (size_t i = 0; i < NUM_REDUCE_SCRATCHPADS; ++i) {
+        ERRCHK_CUDA_ALWAYS(
+            cudaMalloc((void**)&device->reduce_scratchpads[i], scratchpad_size_bytes));
+    }
+    device->scratchpad_size = scratchpad_size;
 
 // Allocate any data buffer required for packed transfers here.
 #if PACKED_DATA_TRANSFERS
@@ -285,6 +299,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 #endif
     *device_handle = device;
 
+    acDeviceSynchronizeStream(device, STREAM_ALL);
     return AC_SUCCESS;
 }
 
@@ -315,9 +330,6 @@ acDeviceDestroy(Device device)
 
     // Memory
     acVBADestroy(&device->vba);
-    for (int i = 0; i < NUM_SCALARRAYS; ++i) {
-        //cudaFree(device->vba.profiles[i]);
-    }
     
 #if PACKED_DATA_TRANSFERS
 // Free data required for packed tranfers here (cudaFree)
@@ -325,8 +337,8 @@ acDeviceDestroy(Device device)
         cudaFree(device->plate_buffers[i]);
 #endif
 
-    cudaFree(device->reduce_scratchpad);
-    cudaFree(device->reduce_result);
+    for (size_t i = 0; i < NUM_REDUCE_SCRATCHPADS; ++i)
+        cudaFree(device->reduce_scratchpads[i]);
 
     // Concurrency
     for (int i = 0; i < NUM_STREAMS; ++i) {
@@ -361,25 +373,6 @@ acDeviceSwapBuffers(const Device device)
 
     return (AcResult)retval;
 }
-#if LFORCING
-AcResult
-acDeviceLoadScalarArray(const Device device, const Stream stream, const ScalarArrayHandle handle,
-                        const size_t start, const AcReal* data, const size_t num)
-{
-    cudaSetDevice(device->id);
-
-    if (handle >= NUM_SCALARRAYS || !NUM_SCALARRAYS)
-        return AC_FAILURE;
-
-    ERRCHK((int)(start + num) <= max(device->local_config.int_params[AC_mx],
-                                     max(device->local_config.int_params[AC_my],
-                                         device->local_config.int_params[AC_mz])));
-    ERRCHK_ALWAYS(handle < NUM_SCALARRAYS);
-    ERRCHK_CUDA(cudaMemcpyAsync(&device->vba.profiles[handle][start], data, sizeof(data[0]) * num,
-                                cudaMemcpyHostToDevice, device->streams[stream]));
-    return AC_SUCCESS;
-}
-#endif
 AcResult
 acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream, const AcMesh host_mesh,
                                    const VertexBufferHandle vtxbuf_handle, const int3 src,
@@ -439,7 +432,7 @@ AcResult
 acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBufferHandle handle,
                         const AcReal value)
 {
-    acDeviceSynchronizeStream(device, stream);
+    cudaSetDevice(device->id);
 
     const size_t count = acVertexBufferSize(device->local_config);
     AcReal* data       = (AcReal*)calloc(count, sizeof(AcReal));
@@ -454,8 +447,22 @@ acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBu
     ERRCHK_CUDA_ALWAYS(cudaMemcpyAsync(device->vba.out[handle], data, sizeof(data[0]) * count,
                                        cudaMemcpyHostToDevice, device->streams[stream]));
 
+    acDeviceSynchronizeStream(device, stream); // Need to synchronize before free
     free(data);
     return AC_SUCCESS;
+}
+
+AcResult
+acDeviceFlushOutputBuffers(const Device device, const Stream stream)
+{
+    cudaSetDevice(device->id);
+    const size_t count = acVertexBufferSize(device->local_config);
+
+    int retval = 0;
+    for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+        retval |= acKernelFlush(device->streams[stream], device->vba.out[i], count, (AcReal)0.0);
+
+    return (AcResult)retval;
 }
 
 AcResult
@@ -577,11 +584,28 @@ acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kern
 }
 
 AcResult
+acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start, const int3 end)
+{
+    cudaSetDevice(device->id);
+    return acBenchmarkKernel(kernel, start, end, device->vba);
+}
+
+AcResult
 acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
                     const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
 {
     cudaSetDevice(device->id);
     return acLoadStencil(stencil, device->streams[stream], data);
+}
+
+AcResult
+acDeviceLoadStencils(const Device device, const Stream stream,
+                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    int retval = 0;
+    for (size_t i = 0; i < NUM_STENCILS; ++i)
+        retval |= acDeviceLoadStencil(device, stream, (Stencil)i, data[i]);
+    return (AcResult)retval;
 }
 
 /** */
@@ -605,6 +629,25 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
 #ifdef AC_SINGLEPASS_INTEGRATION
     return acLaunchKernel(singlepass_solve, device->streams[stream], start, end, device->vba);
 #else
+    // Two-pass integration with acDeviceIntegrateSubstep works currently
+    // only when integrating the whole subdomain
+    // Consider the case:
+    // 1) A half of the domain has been updated after the initial call, and the result of step s+1
+    // resides in the output buffer.
+    //
+    // 2) Integration is called again, this time the intermediate w values are incorrectly used for
+    // calculating the stencil operations, or, if the buffers have been swapped again, then values
+    // from both steps s+0 and s+1 are used to compute the stencils, which is incorrect
+    AcMeshDims dims = acGetMeshDims(device->local_config);
+    // ERRCHK_ALWAYS(start == dims.n0); // Overload not working for some reason on some compilers
+    // ERRCHK_ALWAYS(end == dims.n1); // TODO fix someday
+    ERRCHK_ALWAYS(start.x == dims.n0.x); // tmp workaround
+    ERRCHK_ALWAYS(start.y == dims.n0.y);
+    ERRCHK_ALWAYS(start.z == dims.n0.z);
+    ERRCHK_ALWAYS(end.x == dims.n1.x);
+    ERRCHK_ALWAYS(end.y == dims.n1.y);
+    ERRCHK_ALWAYS(end.z == dims.n1.z);
+
     const AcResult res = acLaunchKernel(twopass_solve_intermediate, device->streams[stream], start,
                                         end, device->vba);
     if (res != AC_SUCCESS)
@@ -677,24 +720,46 @@ constructInt3Param(const Device device, const AcIntParam a, const AcIntParam b, 
 }
 
 AcResult
-acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
-                   const VertexBufferHandle vtxbuf_handle, AcReal* result)
+acDeviceReduceScalNotAveraged(const Device device, const Stream stream, const ReductionType rtype,
+                              const VertexBufferHandle vtxbuf_handle, AcReal* result)
 {
     cudaSetDevice(device->id);
 
     const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
     const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
 
-    *result = acKernelReduceScal(device->streams[stream], rtype, start, end,
-                                 device->vba.in[vtxbuf_handle], device->reduce_scratchpad,
-                                 device->reduce_result);
+    *result = acKernelReduceScal(device->streams[stream], rtype, device->vba.in[vtxbuf_handle],
+                                 start, end, device->reduce_scratchpads, device->scratchpad_size);
     return AC_SUCCESS;
 }
 
 AcResult
-acDeviceReduceVec(const Device device, const Stream stream, const ReductionType rtype,
-                  const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                  const VertexBufferHandle vtxbuf2, AcReal* result)
+acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
+                   const VertexBufferHandle vtxbuf_handle, AcReal* result)
+{
+    acDeviceReduceScalNotAveraged(device, stream, rtype, vtxbuf_handle, result);
+
+    switch (rtype) {
+    case RTYPE_RMS:     /* Fallthrough */
+    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
+    case RTYPE_ALFVEN_RMS: {
+        const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
+        const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
+        *result            = sqrt(inv_n * *result);
+        break;
+    }
+    default: /* Do nothing */
+        break;
+    };
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceReduceVecNotAveraged(const Device device, const Stream stream, const ReductionType rtype,
+                             const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                             const VertexBufferHandle vtxbuf2, AcReal* result)
 {
     cudaSetDevice(device->id);
 
@@ -703,15 +768,39 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
 
     *result = acKernelReduceVec(device->streams[stream], rtype, start, end, device->vba.in[vtxbuf0],
                                 device->vba.in[vtxbuf1], device->vba.in[vtxbuf2],
-                                device->reduce_scratchpad, device->reduce_result);
+                                device->reduce_scratchpads, device->scratchpad_size);
     return AC_SUCCESS;
 }
 
 AcResult
-acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionType rtype,
-                      const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
-                      const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
-                      AcReal* result)
+acDeviceReduceVec(const Device device, const Stream stream, const ReductionType rtype,
+                  const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                  const VertexBufferHandle vtxbuf2, AcReal* result)
+{
+    acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, result);
+
+    switch (rtype) {
+    case RTYPE_RMS:     /* Fallthrough */
+    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
+    case RTYPE_ALFVEN_RMS: {
+        const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
+        const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
+        *result            = sqrt(inv_n * *result);
+        break;
+    }
+    default: /* Do nothing */
+        break;
+    };
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceReduceVecScalNotAveraged(const Device device, const Stream stream,
+                                 const ReductionType rtype, const VertexBufferHandle vtxbuf0,
+                                 const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
+                                 const VertexBufferHandle vtxbuf3, AcReal* result)
 {
     cudaSetDevice(device->id);
 
@@ -721,7 +810,33 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
     *result = acKernelReduceVecScal(device->streams[stream], rtype, start, end,
                                     device->vba.in[vtxbuf0], device->vba.in[vtxbuf1],
                                     device->vba.in[vtxbuf2], device->vba.in[vtxbuf3],
-                                    device->reduce_scratchpad, device->reduce_result);
+                                    device->reduce_scratchpads, device->scratchpad_size);
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionType rtype,
+                      const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
+                      const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
+                      AcReal* result)
+{
+    acDeviceReduceVecScalNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
+                                     result);
+
+    switch (rtype) {
+    case RTYPE_RMS:     /* Fallthrough */
+    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
+    case RTYPE_ALFVEN_RMS: {
+        const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
+        const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
+        *result            = sqrt(inv_n * *result);
+        break;
+    }
+    default: /* Do nothing */
+        break;
+    };
+
     return AC_SUCCESS;
 }
 
@@ -735,6 +850,7 @@ acDeviceVolumeCopy(const Device device, const Stream stream,                    
                               out_volume);
 }
 
+<<<<<<< HEAD
 #if PACKED_DATA_TRANSFERS 
 // Functions for calling packed data transfers
 AcResult
@@ -808,3 +924,12 @@ acDeviceStoreIXYPlate(const Device device, int3 start, int3 end, int src_offset,
 }
 #endif
 
+=======
+AcResult
+acDeviceResetMesh(const Device device, const Stream stream)
+{
+    cudaSetDevice(device->id);
+    acDeviceSynchronizeStream(device, stream);
+    return acVBAReset(device->streams[stream], &device->vba);
+}
+>>>>>>> origin/master

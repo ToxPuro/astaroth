@@ -68,7 +68,9 @@ parse_intparam(const size_t idx, const char* value)
         if ((bctype = find_str(value, bctype_names, NUM_BCTYPES)) >= 0)
             return bctype;
         else {
-            fprintf(stderr, "Error: Invalid BC type: %s, do not know what to do with it.\n", value);
+            fprintf(stderr,
+                    "ERROR PARSING CONFIG: Invalid BC type: %s, do not know what to do with it.\n",
+                    value);
             fprintf(stdout, "Valid BC types:\n");
             acQueryBCtypes();
             ERROR("Invalid boundary condition type found in config");
@@ -81,7 +83,8 @@ parse_intparam(const size_t idx, const char* value)
             return initcondtype;
         else {
             fprintf(stderr,
-                    "Error: Invalid initial condition type: %s, do not know what to do with it.\n",
+                    "ERROR PARSING CONFIG: Invalid initial condition type: %s, do not know what to "
+                    "do with it.\n",
                     value);
             fprintf(stdout, "Valid initial condition types:\n");
             acQueryInitcondtypes();
@@ -113,10 +116,19 @@ parse_config(const char* path, AcMeshInfo* config)
             continue;
 
         int idx = -1;
-        if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0)
+        if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0) {
             config->int_params[idx] = parse_intparam(idx, value);
-        else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAMS)) >= 0)
-            config->real_params[idx] = (AcReal)(atof(value));
+        }
+        else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAMS)) >= 0) {
+            AcReal real_val = atof(value);
+            if (isnan(real_val)) {
+                fprintf(stderr,
+                        "ERROR PARSING CONFIG: parameter \"%s\" value \"%s\" parsed as NAN\n",
+                        keyword, value);
+            }
+            // OL: should we fail here? Could be dangerous to continue
+            config->real_params[idx] = real_val;
+        }
     }
 
     fclose(fp);
@@ -129,7 +141,6 @@ parse_config(const char* path, AcMeshInfo* config)
 AcResult
 acLoadConfig(const char* config_path, AcMeshInfo* config)
 {
-    int retval = AC_SUCCESS;
     ERRCHK_ALWAYS(config_path);
 
     // memset reads the second parameter as a byte even though it says int in
@@ -147,23 +158,19 @@ acLoadConfig(const char* config_path, AcMeshInfo* config)
 
     // sizeof(config) must be a multiple of 4 bytes for this to work
     ERRCHK_ALWAYS(sizeof(*config) % sizeof(uint32_t) == 0);
-    for (size_t i = 0; i < sizeof(*config) / sizeof(uint32_t); ++i) {
-        if (((uint32_t*)config)[i] == (uint32_t)0xFFFFFFFF) {
-#if AC_VERBOSE
-            fprintf(stderr, "Some config values may be uninitialized. "
-                            "See that all are defined in astaroth.conf\n");
-#endif
-            retval = AC_FAILURE;
-        }
-    }
-    return retval;
-}
 
-AcResult
-acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* config)
-{
-    config->int_params[AC_nx] = nx;
-    config->int_params[AC_ny] = ny;
-    config->int_params[AC_nz] = nz;
-    return acHostUpdateBuiltinParams(config);
+    // Check for uninitialized config values
+    bool uninitialized_config_val = false;
+    for (size_t i = 0; i < sizeof(*config) / sizeof(uint32_t); ++i) {
+        uninitialized_config_val |= ((uint32_t*)config)[i] == (uint32_t)0xFFFFFFFF;
+    }
+
+#if AC_VERBOSE
+    if (uninitialized_config_val) {
+        fprintf(stderr, "Some config values may be uninitialized. "
+                        "See that all are defined in astaroth.conf\n");
+    }
+#endif
+
+    return uninitialized_config_val ? AC_FAILURE : AC_SUCCESS;
 }

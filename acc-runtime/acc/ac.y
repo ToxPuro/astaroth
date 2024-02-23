@@ -43,7 +43,10 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
 
   printf("Building AC object %s\n", file);
   FILE* in = fopen(file, "r");
-  assert(in);
+  if (!in) {
+    fprintf(stderr, "FATAL ERROR: could not open include file '%s'\n", file);
+    assert(in);
+  }
 
   const size_t  len = 4096;
   char buf[len];
@@ -102,24 +105,40 @@ process_hostdefines(const char* file_in, const char* file_out)
   fclose(out);
 }
 
-int
-main(int argc, char** argv)
+void
+format_source(const char* file_in, const char* file_out)
 {
-    atexit(&cleanup);
+   FILE* in = fopen(file_in, "r");
+  assert(in);
 
-    if (argc > 2) {
-      fprintf(stderr, "Error multiple .ac files passed to acc, can only process one at a time. Ensure that DSL_MODULE_DIR contains only one .ac file.\n");
-      return EXIT_FAILURE;
-    }
+  FILE* out = fopen(file_out, "w");
+  assert(out);
 
-    if (argc == 2) {
+  while (!feof(in)) {
+    const char c = fgetc(in);
+    if (c == EOF)
+      break;
 
-        char stage0[strlen(argv[1])];
-        strcpy(stage0, argv[1]);
-        const char* stage1 = "user_kernels.ac.pp_stage1";
-        const char* stage2 = "user_kernels.ac.pp_stage2";
-        const char* stage3 = "user_kernels.ac.pp_stage3";
-        const char* dir = dirname(argv[1]); // WARNING: dirname has side effects!
+    fprintf(out, "%c", c);
+    if (c == ';')
+      fprintf(out, "\n");
+  }
+
+  fclose(in);
+  fclose(out);
+}
+
+int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* dir, const bool gen_mem_accesses)
+{
+        // Stage 0: Clear all generated files to ensure acc failure can be detected later
+        {
+          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h"};
+          for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
+            FILE* fp = fopen(files[i], "w");
+            assert(fp);
+            fclose(fp);
+          }
+        }
 
         // Stage 1: Preprocess includes
         {
@@ -158,12 +177,45 @@ main(int argc, char** argv)
             return EXIT_FAILURE;
 
         // generate(root, stdout);
-        FILE* fp = fopen("user_kernels.h", "w");
+        FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
-        generate(root, fp);
+        generate(root, fp, gen_mem_accesses);
         fclose(fp);
 
         fclose(yyin);
+
+        // Stage 4: Format
+        format_source("user_kernels.h.raw", "user_kernels.h");
+
+        return EXIT_SUCCESS;
+}
+
+int
+main(int argc, char** argv)
+{
+    atexit(&cleanup);
+
+    if (argc > 2) {
+      fprintf(stderr, "Error multiple .ac files passed to acc, can only process one at a time. Ensure that DSL_MODULE_DIR contains only one .ac file.\n");
+      return EXIT_FAILURE;
+    }
+
+    if (argc == 2) {
+
+        char stage0[strlen(argv[1])];
+        strcpy(stage0, argv[1]);
+        const char* stage1 = "user_kernels.ac.pp_stage1";
+        const char* stage2 = "user_kernels.ac.pp_stage2";
+        const char* stage3 = "user_kernels.ac.pp_stage3";
+        const char* dir = dirname(argv[1]); // WARNING: dirname has side effects!
+
+        if (OPTIMIZE_MEM_ACCESSES) {
+          code_generation_pass(stage0, stage1, stage2, stage3, dir, true); // Uncomment to enable stencil mem access checking
+          generate_mem_accesses(); // Uncomment to enable stencil mem access checking
+        }
+        code_generation_pass(stage0, stage1, stage2, stage3, dir, false);
+        
+
         return EXIT_SUCCESS;
     } else {
         puts("Usage: ./acc [source file]");
@@ -247,7 +299,7 @@ matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 field: FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 stencil: STENCIL       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("", $$); /*astnode_set_buffer(yytext, $$);*/ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 return: RETURN         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$);};
-kernel: KERNEL         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("__global__ void /*__launch_bounds__(MAX_THREADS_PER_BLOCK)*/", $$); $$->token = 255 + yytoken; };
+kernel: KERNEL         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n", $$); $$->token = 255 + yytoken; };
 sum: SUM               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("sum", $$); $$->token = 255 + yytoken; };
 max: MAX               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("max", $$); $$->token = 255 + yytoken; };
 hostdefine: HOSTDEFINE {
@@ -489,37 +541,15 @@ function_definition: declaration function_body {
                             ASTNode* compound_statement = $$->rhs->rhs;
                             assert(compound_statement);
 
-                            astnode_set_prefix("{\n"
-                                "#define previous(field) (vba.out[field][idx])\n"
-                                "#define write(field, value) {vba.out[field][idx] = value;}\n"
-                                "    const int3 vertexIdx = (int3){\n"
-                                "        threadIdx.x + blockIdx.x * blockDim.x + start.x,\n"
-                                "        threadIdx.y + blockIdx.y * blockDim.y + start.y,\n"
-                                "        threadIdx.z + blockIdx.z * blockDim.z + start.z,\n"
-                                "    };\n"
-                                "    const int3 globalVertexIdx = (int3){\n"
-                                "        d_multigpu_offset.x + vertexIdx.x,\n"
-                                "        d_multigpu_offset.y + vertexIdx.y,\n"
-                                "        d_multigpu_offset.z + vertexIdx.z,\n"
-                                "    };\n"
-                                "    (void)globalVertexIdx; // Silence unused warning\n"
-                                "    const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];"
-                                "    (void)globalGridN; // Silence unused warning\n"
-                                "    const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);\n"
-                                "    #define FIELD_IN  (vba.in)\n"
-                                "    #define FIELD_OUT (vba.out)\n"
-                                "\n"
-                                "    if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || vertexIdx.z >= end.z)\n"
-                                "        return;"
-                                "\n"
-                                "    AcReal processed_stencils[NUM_FIELDS][NUM_STENCILS] = {{0}};\n"
-                                , compound_statement);
-                                        astnode_set_postfix(
-                                "\n#undef previous\n"
-                                "#undef write\n"
-                                "}", compound_statement);
+                            astnode_set_prefix("{", compound_statement);
+                            astnode_set_postfix(
+                              //"\n#pragma unroll\n"
+                              //"for (int field = 0; field < NUM_FIELDS; ++field)"
+                              //"if (!isnan(out_buffer[field]))"
+                              //"vba.out[field][idx] = out_buffer[field];"
+                              "}", compound_statement);
                         } else {
-                            astnode_set_infix("=[&]", $$);
+                            astnode_set_infix(" __attribute__((unused)) =[&]", $$);
                             astnode_set_postfix(";", $$);
                             $$->type |= NODE_DFUNCTION;
                             //set_identifier_type(NODE_DFUNCTION_ID, fn_identifier);

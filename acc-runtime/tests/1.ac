@@ -1,5 +1,8 @@
 // Math
 
+Field ff
+Stencil stencil {[0][0][0]=0}
+
 Kernel kernel() {
   a
   b

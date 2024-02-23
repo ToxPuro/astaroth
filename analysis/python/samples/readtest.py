@@ -1,5 +1,5 @@
 '''
-    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2023, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -59,6 +59,8 @@ print("sys.argv", sys.argv)
 
 meshdir = "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"
 meshdir = "/tiara/ara/data/mvaisala/202202_acc3test/astaroth/config/samples/shockturb/"
+meshdir = "/tiara/ara/data/mvaisala/202207_standalone_mpi_io/astaroth/config/samples/shockturb/"
+meshdir = "/media/mvaisala/Transcend/haatouken/output-snapshots/"
 
 #Example fixed scaling template
 if (meshdir == "/tiara/ara/data/mvaisala/202107_mastertest/astaroth/build_mpi/"):
@@ -323,11 +325,12 @@ if 'findnan' in sys.argv:
 
 
 if 'sl' in sys.argv:
-    mesh_file_numbers = ad.read.parse_directory(meshdir)
+    mesh_file_numbers, xsplit, ysplit, zsplit = ad.read.parse_directory(meshdir)
     print(mesh_file_numbers)
+    print(xsplit, ysplit, zsplit)
     maxfiles = np.amax(mesh_file_numbers)
     for i in mesh_file_numbers:
-        mesh = ad.read.Mesh(i, fdir=meshdir) 
+        mesh = ad.read.Mesh(i, fdir=meshdir, xsplit=xsplit, ysplit=ysplit, zsplit=zsplit) 
         print(" %i / %i" % (i, maxfiles))
         if mesh.ok:
             uu_tot = np.sqrt(mesh.uu[0]**2.0 + mesh.uu[1]**2.0 + mesh.uu[2]**2.0)
@@ -384,34 +387,34 @@ if 'sl' in sys.argv:
             else:
                 if hasattr(mesh, 'lnrho'): 
                     if mesh.lnrho is not None: 
-                        vis.slices.plot_3(mesh, mesh.lnrho,         title = r'$\ln \rho$', bitmap = True, fname = 'lnrho')
-                        vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$\rho$', bitmap = True, fname = 'rho')
-                        vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$N_\mathrm{col}$', bitmap = True, fname = 'colden', slicetype = 'sum')
+                        vis.slices.plot_3(mesh, mesh.lnrho,         title = r'$\ln \rho$', bitmap = True, fname = 'lnrho', trimaxis=3)
+                        vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$\rho$', bitmap = True, fname = 'rho', trimaxis=3)
+                        vis.slices.plot_3(mesh, np.exp(mesh.lnrho), title = r'$N_\mathrm{col}$', bitmap = True, fname = 'colden', slicetype = 'sum', trimaxis=3)
                 if hasattr(mesh, 'shock'):
                     if mesh.shock is not None: 
-                        vis.slices.plot_3(mesh, mesh.shock,         title = r'$shock$', bitmap = True, fname = 'shock')
+                        vis.slices.plot_3(mesh, mesh.shock,         title = r'$shock$', bitmap = True, fname = 'shock', trimaxis=3)
                 if hasattr(mesh, 'ss'): 
                     if mesh.ss is not None: 
-                        vis.slices.plot_3(mesh, mesh.ss, title = r'$s$', bitmap = True, fname = 'ss')
+                        vis.slices.plot_3(mesh, mesh.ss, title = r'$s$', bitmap = True, fname = 'ss', trimaxis=3)
                 if hasattr(mesh, 'uu'): 
                     if mesh.uu[0] is not None: 
-                        vis.slices.plot_3(mesh, mesh.uu[0],         title = r'$u_x$', bitmap = True, fname = 'uux')#, velfieldlines=True)
-                        vis.slices.plot_3(mesh, mesh.uu[1],         title = r'$u_y$', bitmap = True, fname = 'uuy')
-                        vis.slices.plot_3(mesh, mesh.uu[2],         title = r'$u_z$', bitmap = True, fname = 'uuz')
-                        vis.slices.plot_3(mesh, uu_tot,             title = r'$|u|$', bitmap = True, fname = 'uutot')
+                        vis.slices.plot_3(mesh, mesh.uu[0],         title = r'$u_x$', bitmap = True, fname = 'uux', trimaxis=3)#, velfieldlines=True)
+                        vis.slices.plot_3(mesh, mesh.uu[1],         title = r'$u_y$', bitmap = True, fname = 'uuy', trimaxis=3)
+                        vis.slices.plot_3(mesh, mesh.uu[2],         title = r'$u_z$', bitmap = True, fname = 'uuz', trimaxis=3)
+                        vis.slices.plot_3(mesh, uu_tot,             title = r'$|u|$', bitmap = True, fname = 'uutot', trimaxis=3)
                 if hasattr(mesh, 'accretion'): 
                     if mesh.accretion is not None: 
-                        vis.slices.plot_3(mesh, mesh.accretion,     title = r'$Accretion$', bitmap = True, fname = 'accretion')
+                        vis.slices.plot_3(mesh, mesh.accretion,     title = r'$Accretion$', bitmap = True, fname = 'accretion', trimaxis=3)
                 if hasattr(mesh, 'aa'): 
                     if mesh.aa[0] is not None: 
-                        vis.slices.plot_3(mesh, aa_tot,             title = r'$\|A\|$', bitmap = True, fname = 'aatot')
-                        vis.slices.plot_3(mesh, mesh.aa[0],         title = r'$A_x$', bitmap = True, fname = 'aax')
-                        vis.slices.plot_3(mesh, mesh.aa[1],         title = r'$A_y$', bitmap = True, fname = 'aay')
-                        vis.slices.plot_3(mesh, mesh.aa[2],         title = r'$A_z$', bitmap = True, fname = 'aaz')
-                        vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot', trimaxis=3)#, trimghost=3)
-                        vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
-                        vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
-                        vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
+                        vis.slices.plot_3(mesh, aa_tot,             title = r'$\|A\|$', bitmap = True, fname = 'aatot', trimaxis=3)
+                        vis.slices.plot_3(mesh, mesh.aa[0],         title = r'$A_x$', bitmap = True, fname = 'aax', trimaxis=3)
+                        vis.slices.plot_3(mesh, mesh.aa[1],         title = r'$A_y$', bitmap = True, fname = 'aay', trimaxis=3)
+                        vis.slices.plot_3(mesh, mesh.aa[2],         title = r'$A_z$', bitmap = True, fname = 'aaz', trimaxis=3)
+                        #vis.slices.plot_3(mesh, bb_tot,             title = r'$\|B\|$', bitmap = True, fname = 'bbtot', trimaxis=3)#, trimghost=3)
+                        #vis.slices.plot_3(mesh, mesh.bb[0],         title = r'$B_x$', bitmap = True, fname = 'bbx', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
+                        #vis.slices.plot_3(mesh, mesh.bb[1],         title = r'$B_y$', bitmap = True, fname = 'bby', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
+                        #vis.slices.plot_3(mesh, mesh.bb[2],         title = r'$B_z$', bitmap = True, fname = 'bbz', trimaxis=3)#,     trimghost=3)#, bfieldlines=True)
                  
             if 'yt' in sys.argv:
                 mesh.yt_conversion()

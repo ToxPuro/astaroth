@@ -29,6 +29,7 @@
 extern "C" {
 #endif
 
+#include <stdarg.h>
 #include <stdbool.h>
 
 typedef struct {
@@ -45,9 +46,6 @@ typedef struct {
 AcResult acLoadConfig(const char* config_path, AcMeshInfo* config);
 
 /** */
-AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* config);
-
-/** */
 AcResult acHostVertexBufferSet(const VertexBufferHandle handle, const AcReal value, AcMesh* mesh);
 
 /** */
@@ -57,11 +55,14 @@ AcResult acHostMeshSet(const AcReal value, AcMesh* mesh);
 AcResult acHostMeshApplyPeriodicBounds(AcMesh* mesh);
 
 /** */
+AcResult acHostMeshApplyConstantBounds(const AcReal value, AcMesh* mesh);
+
+/** */
 AcResult acHostMeshClear(AcMesh* mesh);
 
 /** Applies a full integration step on host mesh using the compact 2N RK3 scheme. The boundaries are
  * not updated after the final substep. A call to acHostMeshApplyPeriodicBounds is required if this
- * is not desired. */
+ * is not desired. NOTE: applies boundary conditions on the mesh before the initial substep. */
 AcResult acHostIntegrateStep(AcMesh mesh, const AcReal dt);
 
 /** */
@@ -85,6 +86,25 @@ AcResult acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMes
                                const size_t z);
 
 AcResult acMeshDiffWrite(const char* path, const AcMesh model, const AcMesh candidate);
+
+AcResult acHostMeshWriteToFile(const AcMesh mesh, const size_t id);
+
+AcResult acHostMeshReadFromFile(const size_t id, AcMesh* mesh);
+
+// Logging utils
+
+/* Log a message with a timestamp from the root proc (if pid == 0) */
+void acLogFromRootProc(const int pid, const char* msg, ...);
+void acVA_LogFromRootProc(const int pid, const char* msg, va_list args);
+
+/* Log a message with a timestamp from the root proc (if pid == 0) if the build flag VERBOSE is on
+ */
+void acVerboseLogFromRootProc(const int pid, const char* msg, ...);
+void acVA_VerboseLogFromRootProc(const int pid, const char* msg, va_list args);
+
+/* Log a message with a timestamp from the root proc (if pid == 0) in a debug build */
+void acDebugFromRootProc(const int pid, const char* msg, ...);
+void acVA_DebugFromRootProc(const int pid, const char* msg, va_list arg);
 
 #ifdef __cplusplus
 } // extern "C"

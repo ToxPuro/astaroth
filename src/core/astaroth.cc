@@ -36,6 +36,7 @@ acInit(const AcMeshInfo mesh_info, int rank)
 AcResult
 acQuit(void)
 {
+    ERRCHK_ALWAYS(num_nodes);
     num_nodes = 0;
     return acNodeDestroy(nodes[0]);
 }
@@ -60,18 +61,21 @@ acCheckDeviceAvailability(void)
 AcResult
 acSynchronize(void)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeSynchronizeStream(nodes[0], STREAM_ALL);
 }
 
 AcResult
 acSynchronizeStream(const Stream stream)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeSynchronizeStream(nodes[0], stream);
 }
 
 AcResult
 acLoadDeviceConstant(const AcRealParam param, const AcReal value)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeLoadConstant(nodes[0], STREAM_DEFAULT, param, value);
 }
 /*
@@ -84,36 +88,42 @@ acLoadVectorConstant(const AcReal3Param param, const AcReal3 value)
 AcResult
 acLoad(const AcMesh host_mesh)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeLoadMesh(nodes[0], STREAM_DEFAULT, host_mesh);
 }
 
 AcResult
 acSetVertexBuffer(const VertexBufferHandle handle, const AcReal value)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeSetVertexBuffer(nodes[0], STREAM_DEFAULT, handle, value);
 }
 
 AcResult
 acStore(AcMesh* host_mesh)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeStoreMesh(nodes[0], STREAM_DEFAULT, host_mesh);
 }
 
 AcResult
 acIntegrate(const AcReal dt)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeIntegrate(nodes[0], dt);
 }
 
 AcResult
 acIntegrateGBC(const AcMeshInfo config, const AcReal dt)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeIntegrateGBC(nodes[0], config, dt);
 }
 
 AcResult
 acIntegrateStep(const int isubstep, const AcReal dt)
 {
+    ERRCHK_ALWAYS(num_nodes);
     DeviceConfiguration config;
     acNodeQueryDeviceConfiguration(nodes[0], &config);
 
@@ -125,24 +135,29 @@ acIntegrateStep(const int isubstep, const AcReal dt)
 AcResult
 acIntegrateStepWithOffset(const int isubstep, const AcReal dt, const int3 start, const int3 end)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeIntegrateSubstep(nodes[0], STREAM_DEFAULT, isubstep, start, end, dt);
 }
 
 AcResult
 acBoundcondStep(void)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodePeriodicBoundconds(nodes[0], STREAM_DEFAULT);
 }
 
 AcResult
 acBoundcondStepGBC(const AcMeshInfo config)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeGeneralBoundconds(nodes[0], STREAM_DEFAULT, config);
 }
 
 AcReal
 acReduceScal(const ReductionType rtype, const VertexBufferHandle vtxbuf_handle)
 {
+    ERRCHK_ALWAYS(num_nodes);
+
     AcReal result;
     acNodeReduceScal(nodes[0], STREAM_DEFAULT, rtype, vtxbuf_handle, &result);
     return result;
@@ -152,6 +167,8 @@ AcReal
 acReduceVec(const ReductionType rtype, const VertexBufferHandle a, const VertexBufferHandle b,
             const VertexBufferHandle c)
 {
+    ERRCHK_ALWAYS(num_nodes);
+
     AcReal result;
     acNodeReduceVec(nodes[0], STREAM_DEFAULT, rtype, a, b, c, &result);
     return result;
@@ -161,6 +178,8 @@ AcReal
 acReduceVecScal(const ReductionType rtype, const VertexBufferHandle a, const VertexBufferHandle b,
                 const VertexBufferHandle c, const VertexBufferHandle d)
 {
+    ERRCHK_ALWAYS(num_nodes);
+
     AcReal result;
     acNodeReduceVecScal(nodes[0], STREAM_DEFAULT, rtype, a, b, c, d, &result);
     return result;
@@ -169,18 +188,21 @@ acReduceVecScal(const ReductionType rtype, const VertexBufferHandle a, const Ver
 AcResult
 acStoreWithOffset(const int3 dst, const size_t num_vertices, AcMesh* host_mesh)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeStoreMeshWithOffset(nodes[0], STREAM_DEFAULT, dst, dst, num_vertices, host_mesh);
 }
 
 AcResult
 acLoadWithOffset(const AcMesh host_mesh, const int3 src, const int num_vertices)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeLoadMeshWithOffset(nodes[0], STREAM_DEFAULT, host_mesh, src, src, num_vertices);
 }
 
 AcResult
 acSynchronizeMesh(void)
 {
+    ERRCHK_ALWAYS(num_nodes);
     return acNodeSynchronizeMesh(nodes[0], STREAM_DEFAULT);
 }
 
@@ -271,12 +293,21 @@ acHostUpdateBuiltinParams(AcMeshInfo* config)
 }
 
 AcResult
+acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info)
+{
+    info->int_params[AC_nx] = nx;
+    info->int_params[AC_ny] = ny;
+    info->int_params[AC_nz] = nz;
+    return acHostUpdateBuiltinParams(info);
+}
+
+AcResult
 acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 {
     mesh->info = info;
 
     const size_t n_cells = acVertexBufferSize(mesh->info);
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         mesh->vertex_buffer[w] = (AcReal*)calloc(n_cells, sizeof(AcReal));
         ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
     }
@@ -287,16 +318,19 @@ acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 static AcReal
 randf(void)
 {
+    // TODO: rand() considered harmful, replace
     return (AcReal)rand() / (AcReal)RAND_MAX;
 }
 
 AcResult
 acHostMeshRandomize(AcMesh* mesh)
 {
-    const int n = acVertexBufferSize(mesh->info);
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
-        for (int i = 0; i < n; ++i)
+    const size_t n = acVertexBufferSize(mesh->info);
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        for (size_t i = 0; i < n; ++i) {
             mesh->vertex_buffer[w][i] = randf();
+        }
+    }
 
     return AC_SUCCESS;
 }
@@ -304,8 +338,36 @@ acHostMeshRandomize(AcMesh* mesh)
 AcResult
 acHostMeshDestroy(AcMesh* mesh)
 {
-    for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w)
         free(mesh->vertex_buffer[w]);
 
     return AC_SUCCESS;
+}
+
+/**
+    Astaroth helper functions
+*/
+
+size_t
+acGetKernelId(const Kernel kernel)
+{
+    for (size_t id = 0; id < NUM_KERNELS; ++id) {
+        if (kernel == kernels[id])
+            return id;
+    }
+    fprintf(stderr, "acGetKernelId failed: did not find kernel %p from the list of kernels\n",
+            kernel);
+    return (size_t)-1;
+}
+
+size_t
+acGetKernelIdByName(const char* name)
+{
+    for (size_t id = 0; id < NUM_KERNELS; ++id) {
+        if (!strcmp(kernel_names[id], name))
+            return id;
+    }
+    fprintf(stderr, "acGetKernelIdByName failed: did not find kernel %s from the list of kernels\n",
+            name);
+    return (size_t)-1;
 }

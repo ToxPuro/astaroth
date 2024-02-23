@@ -37,46 +37,48 @@
 #endif
 
 // Function pointer definitions
-typedef AcReal (*ReduceFunc)(const AcReal, const AcReal);
-typedef AcReal (*ReduceInitialScalFunc)(const AcReal);
-typedef AcReal (*ReduceInitialVecFunc)(const AcReal, const AcReal, const AcReal);
-typedef AcReal (*ReduceInitialVecScalFunc)(const AcReal, const AcReal, const AcReal, const AcReal);
+typedef long double (*ReduceFunc)(const long double, const long double);
+typedef long double (*ReduceInitialScalFunc)(const long double);
+typedef long double (*ReduceInitialVecFunc)(const long double, const long double,
+                                            const long double);
+typedef long double (*ReduceInitialVecScalFunc)(const long double, const long double,
+                                                const long double, const long double);
 
 // clang-format off
 /* Comparison funcs */
-static inline AcReal
-max(const AcReal a, const AcReal b) { return a > b ? a : b; }
+static inline long double
+max(const long double a, const long double b) { return a > b ? a : b; }
 
-static inline AcReal
-min(const AcReal a, const AcReal b) { return a < b ? a : b; }
+static inline long double
+min(const long double a, const long double b) { return a < b ? a : b; }
 
-static inline AcReal
-sum(const AcReal a, const AcReal b) { return a + b; }
+static inline long double
+sum(const long double a, const long double b) { return a + b; }
 
 /* Function used to determine the values used during reduction */
-static inline AcReal
-length_scal(const AcReal a) { return (AcReal)(a); }
+static inline long double
+length_scal(const long double a) { return (long double)(a); }
 
-static inline AcReal
-length_vec(const AcReal a, const AcReal b, const AcReal c) { return sqrt(a*a + b*b + c*c); }
+static inline long double
+length_vec(const long double a, const long double b, const long double c) { return sqrtl(a*a + b*b + c*c); }
 
-static inline AcReal
-squared_scal(const AcReal a) { return (AcReal)(a*a); }
+static inline long double
+squared_scal(const long double a) { return (long double)(a*a); }
 
-static inline AcReal
-squared_vec(const AcReal a, const AcReal b, const AcReal c) { return squared_scal(a) + squared_scal(b) + squared_scal(c); }
+static inline long double
+squared_vec(const long double a, const long double b, const long double c) { return squared_scal(a) + squared_scal(b) + squared_scal(c); }
 
-static inline AcReal
-exp_squared_scal(const AcReal a) { return exp(a)*exp(a); }
+static inline long double
+exp_squared_scal(const long double a) { return expl(a)*expl(a); }
 
-static inline AcReal
-exp_squared_vec(const AcReal a, const AcReal b, const AcReal c) { return exp_squared_scal(a) + exp_squared_scal(b) + exp_squared_scal(c); }
+static inline long double
+exp_squared_vec(const long double a, const long double b, const long double c) { return exp_squared_scal(a) + exp_squared_scal(b) + exp_squared_scal(c); }
 
-static inline AcReal
-length_alf(const AcReal a, const AcReal b, const AcReal c, const AcReal d) { return sqrt(a*a + b*b + c*c)/sqrt(exp(d)); }
+static inline long double
+length_alf(const long double a, const long double b, const long double c, const long double d) { return sqrtl(a*a + b*b + c*c)/sqrtl(expl(d)); }
 
-static inline AcReal
-squared_alf(const AcReal a, const AcReal b, const AcReal c, const AcReal d) { return (squared_scal(a) + squared_scal(b) + squared_scal(c))/(exp(d)); }
+static inline long double
+squared_alf(const long double a, const long double b, const long double c, const long double d) { return (squared_scal(a) + squared_scal(b) + squared_scal(c))/(expl(d)); }
 // clang-format on
 
 AcReal
@@ -118,9 +120,9 @@ acHostReduceScal(const AcMesh mesh, const ReductionType rtype, const VertexBuffe
                                               mesh.info.int_params[AC_ny_min],
                                               mesh.info.int_params[AC_nz_min], mesh.info);
 
-    AcReal res;
+    long double res;
     if (rtype == RTYPE_MAX || rtype == RTYPE_MIN)
-        res = reduce_initial(mesh.vertex_buffer[a][initial_idx]);
+        res = reduce_initial((long double)mesh.vertex_buffer[a][initial_idx]);
     else
         res = 0;
 
@@ -128,16 +130,17 @@ acHostReduceScal(const AcMesh mesh, const ReductionType rtype, const VertexBuffe
         for (int j = mesh.info.int_params[AC_ny_min]; j < mesh.info.int_params[AC_ny_max]; ++j) {
             for (int i = mesh.info.int_params[AC_nx_min]; i < mesh.info.int_params[AC_nx_max];
                  ++i) {
-                const int idx         = acVertexBufferIdx(i, j, k, mesh.info);
-                const AcReal curr_val = reduce_initial(mesh.vertex_buffer[a][idx]);
-                res                   = reduce(res, curr_val);
+                const int idx              = acVertexBufferIdx(i, j, k, mesh.info);
+                const long double curr_val = reduce_initial(
+                    (long double)mesh.vertex_buffer[a][idx]);
+                res = reduce(res, curr_val);
             }
         }
     }
-
+    // fprintf(stderr, "%s host result %g\n", rtype_names[rtype], res);
     if (solve_mean) {
-        const AcReal inv_n = (AcReal)1.0 / mesh.info.int_params[AC_nxyz];
-        return sqrt(inv_n * res);
+        const long double inv_n = 1.0l / mesh.info.int_params[AC_nxyz];
+        return sqrtl(inv_n * res);
     }
     else {
         return res;
@@ -185,10 +188,11 @@ acHostReduceVec(const AcMesh mesh, const ReductionType rtype, const VertexBuffer
                                               mesh.info.int_params[AC_ny_min],
                                               mesh.info.int_params[AC_nz_min], mesh.info);
 
-    AcReal res;
+    long double res;
     if (rtype == RTYPE_MAX || rtype == RTYPE_MIN)
-        res = reduce_initial(mesh.vertex_buffer[a][initial_idx], mesh.vertex_buffer[b][initial_idx],
-                             mesh.vertex_buffer[c][initial_idx]);
+        res = reduce_initial((long double)mesh.vertex_buffer[a][initial_idx],
+                             (long double)mesh.vertex_buffer[b][initial_idx],
+                             (long double)mesh.vertex_buffer[c][initial_idx]);
     else
         res = 0;
 
@@ -196,17 +200,18 @@ acHostReduceVec(const AcMesh mesh, const ReductionType rtype, const VertexBuffer
         for (int j = mesh.info.int_params[AC_ny_min]; j < mesh.info.int_params[AC_ny_max]; j++) {
             for (int i = mesh.info.int_params[AC_nx_min]; i < mesh.info.int_params[AC_nx_max];
                  i++) {
-                const int idx         = acVertexBufferIdx(i, j, k, mesh.info);
-                const AcReal curr_val = reduce_initial(mesh.vertex_buffer[a][idx],
-                                                       mesh.vertex_buffer[b][idx],
-                                                       mesh.vertex_buffer[c][idx]);
-                res                   = reduce(res, curr_val);
+                const int idx              = acVertexBufferIdx(i, j, k, mesh.info);
+                const long double curr_val = reduce_initial((long double)mesh.vertex_buffer[a][idx],
+                                                            (long double)mesh.vertex_buffer[b][idx],
+                                                            (long double)
+                                                                mesh.vertex_buffer[c][idx]);
+                res                        = reduce(res, curr_val);
             }
         }
     }
 
     if (solve_mean) {
-        const AcReal inv_n = (AcReal)1.0 / mesh.info.int_params[AC_nxyz];
+        const long double inv_n = (long double)1.0 / mesh.info.int_params[AC_nxyz];
         return sqrt(inv_n * res);
     }
     else {
@@ -240,6 +245,7 @@ acHostReduceVecScal(const AcMesh mesh, const ReductionType rtype, const VertexBu
         solve_mean     = true;
         break;
     default:
+        fprintf(stderr, "rtype %s %d\n", rtype_names[rtype], rtype);
         ERROR("Unrecognized RTYPE");
     }
 
@@ -247,11 +253,13 @@ acHostReduceVecScal(const AcMesh mesh, const ReductionType rtype, const VertexBu
                                               mesh.info.int_params[AC_ny_min],
                                               mesh.info.int_params[AC_nz_min], mesh.info);
 
-    AcReal res;
-    if (rtype == RTYPE_MAX || rtype == RTYPE_MIN)
-        res = reduce_initial(mesh.vertex_buffer[a][initial_idx], mesh.vertex_buffer[b][initial_idx],
-                             mesh.vertex_buffer[c][initial_idx],
-                             mesh.vertex_buffer[d][initial_idx]);
+    long double res;
+    if (rtype == RTYPE_MAX || rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MAX ||
+        rtype == RTYPE_ALFVEN_MIN)
+        res = reduce_initial((long double)mesh.vertex_buffer[a][initial_idx],
+                             (long double)mesh.vertex_buffer[b][initial_idx],
+                             (long double)mesh.vertex_buffer[c][initial_idx],
+                             (long double)mesh.vertex_buffer[d][initial_idx]);
     else
         res = 0;
 
@@ -259,19 +267,20 @@ acHostReduceVecScal(const AcMesh mesh, const ReductionType rtype, const VertexBu
         for (int j = mesh.info.int_params[AC_ny_min]; j < mesh.info.int_params[AC_ny_max]; j++) {
             for (int i = mesh.info.int_params[AC_nx_min]; i < mesh.info.int_params[AC_nx_max];
                  i++) {
-                const int idx         = acVertexBufferIdx(i, j, k, mesh.info);
-                const AcReal curr_val = reduce_initial(mesh.vertex_buffer[a][idx],
-                                                       mesh.vertex_buffer[b][idx],
-                                                       mesh.vertex_buffer[c][idx],
-                                                       mesh.vertex_buffer[d][idx]);
-                res                   = reduce(res, curr_val);
+                const int idx              = acVertexBufferIdx(i, j, k, mesh.info);
+                const long double curr_val = reduce_initial((long double)mesh.vertex_buffer[a][idx],
+                                                            (long double)mesh.vertex_buffer[b][idx],
+                                                            (long double)mesh.vertex_buffer[c][idx],
+                                                            (long double)
+                                                                mesh.vertex_buffer[d][idx]);
+                res                        = reduce(res, curr_val);
             }
         }
     }
 
     if (solve_mean) {
-        const AcReal inv_n = (AcReal)1.0 / mesh.info.int_params[AC_nxyz];
-        return sqrt(inv_n * res);
+        const long double inv_n = (long double)1.0 / mesh.info.int_params[AC_nxyz];
+        return sqrtl(inv_n * res);
     }
     else {
         return res;

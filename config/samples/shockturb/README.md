@@ -31,6 +31,7 @@ LUPWD (1)
 LSINK (0)
 LBFIELD (1)
 LSHOCK (1)
+```
 
 # Setting up and compiling.
 
@@ -38,10 +39,16 @@ Run `./my_cmake.sh`
 
 # Running the simulation. 
 
-Run e.g. `mpirun -n 4 ./ac_run_mpi -c astaroth.conf` or however you particular
-system runs MPI. 
+Run e.g. `mpirun -np 4 ./ac_run_mpi --config astaroth.conf --init-condition ShockTurb` 
+or however your particular system runs MPI. 
 
 # Troubleshooting
+
+On TIARA currently working on 
+
+ 1) cuda/11.3      2) gcc/9.1.0      3) mpich/3.3      4) cmake/3.22.1
+
+OpenMPI/4.0.4 causes stability issues. 
 
 It the case you get strange MPI errors, it might be that your particular system
 has not been configured for GPUDirect RDMA. To run Astaroth without GPUDirect

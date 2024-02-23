@@ -30,6 +30,7 @@
 
 #include "astaroth_utils.h"
 #include "errchk.h"
+#include "simulation_rng.h"
 
 #define AC_GEN_STR(X) #X
 const char* init_type_names[] = {AC_FOR_INIT_TYPES(AC_GEN_STR)};
@@ -38,12 +39,6 @@ const char* init_type_names[] = {AC_FOR_INIT_TYPES(AC_GEN_STR)};
 #define XORIG (AcReal(.5) * mesh->info.int_params[AC_nx] * mesh->info.real_params[AC_dsx])
 #define YORIG (AcReal(.5) * mesh->info.int_params[AC_ny] * mesh->info.real_params[AC_dsy])
 #define ZORIG (AcReal(.5) * mesh->info.int_params[AC_nz] * mesh->info.real_params[AC_dsz])
-
-static AcReal
-randr(void)
-{
-    return AcReal(rand()) / AcReal(RAND_MAX);
-}
 
 void
 lnrho_step(AcMesh* mesh)
@@ -150,8 +145,8 @@ inflow_vedge(AcMesh* mesh)
                 // Variarion to density
                 // AcReal rho = exp(mesh->vertex_buffer[VTXBUF_LNRHO][idx]);
                 // NO GAUSSIAN//rho = rho*exp(-(zz/gaussr)*(zz/gaussr));
-                // mesh->vertex_buffer[VTXBUF_LNRHO][idx] = log(rho + (range*rho) * (randr() -
-                // AcReal(-0.5)));
+                // mesh->vertex_buffer[VTXBUF_LNRHO][idx] = log(rho + (range*rho) *
+                // (random_uniform_real_01() - AcReal(-0.5)));
             }
         }
     }
@@ -722,7 +717,9 @@ gaussian_radial_explosion(AcMesh* mesh)
 void
 acmesh_init_to(const InitType& init_type, AcMesh* mesh)
 {
-    srand(123456789);
+    // OL: !!!! The RNG was being seeded multiple times. Why?
+    // Please seed the RNG exactly once in main, unless you have a very good reason to do otherwise
+    // srand(123456789);
 
     const int n = acVertexBufferSize(mesh->info);
 
@@ -743,20 +740,22 @@ acmesh_init_to(const InitType& init_type, AcMesh* mesh)
         const AcReal range = AcReal(1e-10);
         for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
             for (int i = 0; i < n; ++i)
-                mesh->vertex_buffer[w][i] = 2 * range * randr() - range;
+                mesh->vertex_buffer[w][i] = 2 * range * random_uniform_real_01() - range;
 
         break;
     }
+#if LMAGNETIC
     case INIT_TYPE_AA_RANDOM: {
         acHostMeshClear(mesh);
         const AcReal range = AcReal(1e-10);
         for (int i = 0; i < n; ++i) {
-            mesh->vertex_buffer[VTXBUF_AX][i] = 2 * range * randr() - range;
-            mesh->vertex_buffer[VTXBUF_AY][i] = 2 * range * randr() - range;
-            mesh->vertex_buffer[VTXBUF_AZ][i] = 2 * range * randr() - range;
+            mesh->vertex_buffer[VTXBUF_AX][i] = 2 * range * random_uniform_real_01() - range;
+            mesh->vertex_buffer[VTXBUF_AY][i] = 2 * range * random_uniform_real_01() - range;
+            mesh->vertex_buffer[VTXBUF_AZ][i] = 2 * range * random_uniform_real_01() - range;
         }
         break;
     }
+#endif
     case INIT_TYPE_KICKBALL:
         acHostMeshClear(mesh);
         acHostVertexBufferSet(VTXBUF_LNRHO, mesh->info.real_params[AC_ampl_lnrho], mesh);

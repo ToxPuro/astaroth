@@ -25,20 +25,16 @@
  *
  */
 #include "host_forcing.h"
+#include "simulation_control.h"
+#include "simulation_rng.h"
 
+#include "astaroth_utils.h"
 #include "errchk.h"
 
 // #include "math_utils.h"
 #include <cmath>
-using namespace std;
 
-// The is a wrapper for genering random numbers with a chosen system.
-AcReal
-get_random_number_01()
-{
-    // TODO: Implement better randon number generator http://www.cplusplus.com/reference/random/
-    return AcReal(rand()) / AcReal(RAND_MAX);
-}
+#include <map>
 
 static AcReal3
 cross(const AcReal3& a, const AcReal3& b)
@@ -64,9 +60,9 @@ vec_norm(const AcReal3& a)
     AcReal3 c;
     AcReal norm = dot(a, a);
 
-    c.x = a.x / sqrt(norm);
-    c.y = a.y / sqrt(norm);
-    c.z = a.z / sqrt(norm);
+    c.x = a.x / std::sqrt(norm);
+    c.y = a.y / std::sqrt(norm);
+    c.z = a.z / std::sqrt(norm);
 
     return c;
 }
@@ -87,32 +83,51 @@ vec_multi_scal(const AcReal scal, const AcReal3& a)
 AcReal3
 helical_forcing_k_generator(const AcReal kmax, const AcReal kmin)
 {
-    AcReal phi, theta, kk; // Spherical direction coordinates
-    AcReal3 k_force;       // forcing wave vector
 
-    AcReal delta_k = kmax - kmin;
+    using k_force_params = std::pair<AcReal, AcReal>;
+    static std::map<k_force_params, std::vector<AcReal3>> k_force_populations = {};
 
-    // Generate vector in spherical coordinates
-    phi   = AcReal(2.0) * AcReal(M_PI) * get_random_number_01();
-    theta = AcReal(M_PI) * get_random_number_01();
-    kk    = delta_k * get_random_number_01() + kmin;
+    k_force_params k_params{kmin, kmax};
 
-    // Cast into Cartesian form
-    k_force = (AcReal3){AcReal(kk * sin(theta) * cos(phi)), //
-                        AcReal(kk * sin(theta) * sin(phi)), //
-                        AcReal(kk * cos(theta))};
+    // If population has not been generated, generate it
+    if (k_force_populations.count(k_params) == 0) {
+        auto& pop = k_force_populations[k_params];
 
-    // printf("k_force.x %f, k_force.y %f, k_force.z %f \n", k_force.x, k_force.y, k_force.z);
+        AcReal min_squared = kmin * kmin;
+        AcReal max_squared = kmax * kmax;
 
-    // Round the numbers. In that way k(x/y/z) will get complete waves.
-    k_force.x = round(k_force.x);
-    k_force.y = round(k_force.y);
-    k_force.z = round(k_force.z);
+        // Take the ceil of min and floor of max to get the extreme integer values still within the
+        // range
+        int min_int = static_cast<int>(std::ceil(kmin));
+        int max_int = static_cast<int>(std::floor(kmax));
 
-    // printf("After rounding --> k_force.x %f, k_force.y %f, k_force.z %f \n", k_force.x,
-    // k_force.y, k_force.z);
+        int min_squared_int = min_int * min_int;
+        int max_squared_int = max_int * max_int;
 
-    return k_force;
+        for (int x = -max_int; x <= max_int; x++) {
+            for (int y = -max_int; y <= max_int; y++) {
+                for (int z = -max_int; z <= max_int; z++) {
+                    int dist_squared = x * x + y * y + z * z;
+                    // Might be redundant, but for sanity's sake, check if the integer distance is
+                    // equal to the square maximal integer
+                    if ((min_squared <= dist_squared || min_squared_int == dist_squared) &&
+                        (max_squared >= dist_squared || max_squared_int == dist_squared)) {
+                        pop.push_back(AcReal3{x, y, z});
+                    }
+                }
+            }
+        }
+    }
+
+    // Select the population of k-forces based on the parameters
+    const auto& pop = k_force_populations[k_params];
+    std::uniform_int_distribution<uint32_t> k_distribution(0, pop.size() - 1);
+
+    // Sample population
+    size_t idx = k_distribution(get_rng());
+    AcReal3 k  = pop[idx];
+    // log_from_root_proc_with_sim_progress("{\"k\":[%lf,%lf,%lf]}\n", k.x, k.y, k.z);
+    return k;
 }
 
 // Generate the unit perpendicular unit vector e required for helical forcing
@@ -125,7 +140,7 @@ helical_forcing_e_generator(AcReal3* e_force, const AcReal3 k_force)
     k_cross_e                 = vec_norm(k_cross_e);
     AcReal3 k_cross_k_cross_e = cross(k_force, k_cross_e);
     k_cross_k_cross_e         = vec_norm(k_cross_k_cross_e);
-    AcReal phi                = AcReal(2.0) * AcReal(M_PI) * get_random_number_01();
+    AcReal phi                = AcReal(2.0) * AcReal(M_PI) * random_uniform_real_01();
     AcReal3 ee_tmp1           = vec_multi_scal(cos(phi), k_cross_e);
     AcReal3 ee_tmp2           = vec_multi_scal(sin(phi), k_cross_k_cross_e);
 
@@ -157,11 +172,11 @@ helical_forcing_special_vector(AcReal3* ff_hel_re, AcReal3* ff_hel_im, const AcR
     k_cross_k_cross_e.z = k_force.x * k_cross_e.y - k_force.y * k_cross_e.x;
 
     // abs(k)
-    AcReal kabs = sqrt(k_force.x * k_force.x + k_force.y * k_force.y + k_force.z * k_force.z);
+    AcReal kabs = std::sqrt(k_force.x * k_force.x + k_force.y * k_force.y + k_force.z * k_force.z);
 
-    AcReal denominator = sqrt(AcReal(1.0) + relhel * relhel) * kabs *
-                         sqrt(kabs * kabs -
-                              (kdote.x * kdote.x + kdote.y * kdote.y + kdote.z * kdote.z));
+    AcReal denominator = std::sqrt(AcReal(1.0) + relhel * relhel) * kabs *
+                         std::sqrt(kabs * kabs -
+                                   (kdote.x * kdote.x + kdote.y * kdote.y + kdote.z * kdote.z));
 
     // MV: I suspect there is a typo in the Pencil Code manual!
     //*ff_hel_re = (AcReal3){-relhel*kabs*k_cross_e.x/denominator,
@@ -221,6 +236,29 @@ DEPRECATED_acForcingVec(const AcReal forcing_magnitude, const AcReal3 k_force,
     (void)kaver;
     ERROR("AC_MPI_ENABLED must be set to use DEPRECATED_acForcingVec");
 #endif // AC_MPI_ENABLED
+}
+
+void
+printForcingParams(const ForcingParams& forcing_params)
+{
+    printf("Forcing parameters:\n"
+           " magnitude: %lf\n"
+           " phase: %lf\n"
+           " k force: %lf\n"
+           "          %lf\n"
+           "          %lf\n"
+           " ff hel real: %lf\n"
+           "            : %lf\n"
+           "            : %lf\n"
+           " ff hel imag: %lf\n"
+           "            : %lf\n"
+           "            : %lf\n"
+           " k aver: %lf\n"
+           "\n",
+           forcing_params.magnitude, forcing_params.phase, forcing_params.k_force.x,
+           forcing_params.k_force.y, forcing_params.k_force.z, forcing_params.ff_hel_re.x,
+           forcing_params.ff_hel_re.y, forcing_params.ff_hel_re.z, forcing_params.ff_hel_im.x,
+           forcing_params.ff_hel_im.y, forcing_params.ff_hel_im.z, forcing_params.kaver);
 }
 
 void
@@ -293,7 +331,7 @@ generateForcingParams(const AcMeshInfo& mesh_info)
     params.k_force = helical_forcing_k_generator(kmax, kmin);
 
     // Randomize the phase
-    params.phase = AcReal(2.0) * AcReal(M_PI) * get_random_number_01();
+    params.phase = AcReal(2.0) * AcReal(M_PI) * random_uniform_real_01();
 
     // Generate e for k. Needed for the sake of isotrophy.
     AcReal3 e_force;

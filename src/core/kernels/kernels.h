@@ -35,9 +35,8 @@ struct device_s {
 
     // Memory
     VertexBufferArray vba;
-    AcReal* reduce_scratchpad;
-    AcReal* reduce_result;
-
+    AcReal* reduce_scratchpads[NUM_REDUCE_SCRATCHPADS];
+    size_t scratchpad_size;
 #if PACKED_DATA_TRANSFERS
     // Declare memory for buffers in device memory needed for packed data transfers.
     AcReal *plate_buffers[NUM_PLATE_BUFFERS];
@@ -77,9 +76,19 @@ AcResult acKernelA2Boundconds(const cudaStream_t stream, const int3 region_id, c
                               const int3 dims, AcReal* vtxbuf);
 
 /** */
+AcResult acKernelConstBoundconds(const cudaStream_t stream, const int3 region_id, const int3 normal,
+                                 const int3 dims, AcReal* vtxbuf, AcRealParam const_value);
+
+/** */
 AcResult acKernelPrescribedDerivativeBoundconds(const cudaStream_t stream, const int3 region_id,
                                                 const int3 normal, const int3 dims, AcReal* vtxbuf,
                                                 AcRealParam der_val_param);
+/** */
+AcResult acKernelOutflowBoundconds(const cudaStream_t stream, const int3 region_id,
+                                   const int3 normal, const int3 dims, AcReal* vtxbuf);
+/** */
+AcResult acKernelInflowBoundconds(const cudaStream_t stream, const int3 region_id,
+                                  const int3 normal, const int3 dims, AcReal* vtxbuf);
 
 // Entropy boundconds
 
@@ -117,9 +126,6 @@ AcResult acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, 
 AcResult acKernelDummy(void);
 
 /** */
-AcResult acKernelFlush(AcReal* arr, const size_t n);
-
-/** */
 // AcResult acKernelAutoOptimizeIntegration(const int3 start, const int3 end,
 // VertexBufferArray vba);
 
@@ -146,20 +152,29 @@ AcResult acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked
                                    VertexBufferHandle vtxbufs[], size_t num_vtxbufs);
 
 /** */
-AcReal acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,
-                          const int3 end, const AcReal* vtxbuf, AcReal* scratchpad,
-                          AcReal* reduce_result);
+size_t acKernelReduceGetMinimumScratchpadSize(const int3 max_dims);
+
+/** */
+size_t acKernelReduceGetMinimumScratchpadSizeBytes(const int3 max_dims);
+
+/** */
+AcReal acKernelReduceScal(const cudaStream_t stream, const ReductionType rtype,
+                          const AcReal* vtxbuf, const int3 start, const int3 end,
+                          AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
+                          const size_t scratchpad_size);
 
 /** */
 AcReal acKernelReduceVec(const cudaStream_t stream, const ReductionType rtype, const int3 start,
                          const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
-                         const AcReal* vtxbuf2, AcReal* scratchpad, AcReal* reduce_result);
+                         const AcReal* vtxbuf2, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
+                         const size_t scratchpad_size);
 
 /** */
 AcReal acKernelReduceVecScal(const cudaStream_t stream, const ReductionType rtype, const int3 start,
                              const int3 end, const AcReal* vtxbuf0, const AcReal* vtxbuf1,
-                             const AcReal* vtxbuf2, const AcReal* vtxbuf3, AcReal* scratchpad,
-                             AcReal* reduce_result);
+                             const AcReal* vtxbuf2, const AcReal* vtxbuf3,
+                             AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
+                             const size_t scratchpad_size);
 
 /** */
 AcResult acKernelVolumeCopy(const cudaStream_t stream,                                    //

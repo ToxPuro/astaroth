@@ -26,6 +26,7 @@
  */
 #pragma once
 #include <stdbool.h>
+#include <stdint.h> // SIZE_MAX
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -42,17 +43,20 @@
  * General error checking
  * =============================================================================
  */
+// clang-format off
 #define ERROR(str)                                                             \
   {                                                                            \
     time_t terr;                                                               \
     time(&terr);                                                               \
+    fprintf(stderr, "\n\n\n\n┌──────────────────────── ERROR ───────────────────────────┐\n\n"); \
     fprintf(stderr, "%s", ctime(&terr));                                       \
-    fprintf(stderr, "\tError in file %s line %d: %s\n", __FILE__, __LINE__,    \
-            str);                                                              \
+    fprintf(stderr, "Error in file %s line %d: %s\n", __FILE__, __LINE__, str); \
+    fprintf(stderr, "\n└──────────────────────── ERROR ───────────────────────────┘\n\n\n\n"); \
     fflush(stderr);                                                            \
     exit(EXIT_FAILURE);                                                        \
     abort();                                                                   \
   }
+// clang-format on
 
 #define WARNING(str)                                                           \
   {                                                                            \
@@ -91,7 +95,7 @@
  * CUDA-specific error checking
  * =============================================================================
  */
-//#if defined(__CUDA_RUNTIME_API_H__)
+// #if defined(__CUDA_RUNTIME_API_H__)
 static inline void
 cuda_assert(cudaError_t code, const char* file, int line, bool abort)
 {
@@ -150,4 +154,48 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
   {                                                                            \
     cuda_assert((params), __FILE__, __LINE__, false);                          \
   }
-//#endif // __CUDA_RUNTIME_API_H__
+// #endif // __CUDA_RUNTIME_API_H__
+
+#ifdef __cplusplus
+template <typename T>
+static inline size_t
+as_size_t(const T i)
+{
+  ERRCHK_ALWAYS(i >= 0);
+  ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(SIZE_MAX));
+  return static_cast<size_t>(i);
+}
+#else
+// TODO: cleanup and integrate with the errors above someday
+#define INDIRECT_ERROR(str, file, line)                                                                          \
+  {                                                                                                              \
+    time_t terr;                                                                                                 \
+    time(&terr);                                                                                                 \
+    fprintf(stderr, "\n\n\n\n┌──────────────────────── ERROR " \
+                    "───────────────────────────┐\n\n");                                                         \
+    fprintf(stderr, "%s", ctime(&terr));                                                                         \
+    fprintf(stderr, "Error in file %s line %d: %s\n", file, line, str);                                          \
+    fprintf(stderr, "\n└──────────────────────── ERROR "       \
+                    "───────────────────────────┘\n\n\n\n");                                                     \
+    fflush(stderr);                                                                                              \
+    exit(EXIT_FAILURE);                                                                                          \
+    abort();                                                                                                     \
+  }
+#define INDIRECT_ERRCHK_ALWAYS(retval, file, line)                             \
+  {                                                                            \
+    if (!(retval))                                                             \
+      INDIRECT_ERROR(#retval " was false", file, line);                        \
+  }
+
+static inline size_t
+AS_SIZE_T(const int i, const char* file, const int line)
+{
+  INDIRECT_ERRCHK_ALWAYS(i >= 0, file, line);
+  INDIRECT_ERRCHK_ALWAYS((long double)(i) < (long double)(SIZE_MAX), file,
+                         line);
+
+  return (size_t)(i);
+}
+#define as_size_t(i) AS_SIZE_T(i, __FILE__, __LINE__)
+#endif

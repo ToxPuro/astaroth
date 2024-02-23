@@ -21,5 +21,13 @@ scripts/py_visual_data~
 makefile~
 *~
 
+# Build directories
 build/
 build*/
+benchmark-data/
+
+# Clangd files
+.cache/
+
+# Other
+compile_commands.json

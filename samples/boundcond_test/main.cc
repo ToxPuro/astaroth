@@ -29,8 +29,8 @@ main(void)
 #define debug_bc_errors 1
 #define debug_bc_values 0
 
-typedef AcReal (*boundcond_kernel_func)(AcReal boundary_val, AcReal domain_val, size_t r,
-                                        AcMeshInfo info);
+typedef AcReal (*boundcond_kernel_func)(int3 normal, AcReal boundary_val, AcReal domain_val,
+                                        size_t r, AcMeshInfo info);
 
 struct CellError {
     Field field;
@@ -136,8 +136,8 @@ test_simple_bc(AcMesh mesh, int3 direction, int3 dims, int3 domain_start, int3 g
                     size_t r = std::abs(ghost.x - dom.x) + std::abs(ghost.y - dom.y) +
                                std::abs(ghost.z - dom.z);
 
-                    AcReal expected_val = kernel_func(field[idx_bound], field[idx_dom], r / 2,
-                                                      info);
+                    AcReal expected_val = kernel_func(direction, field[idx_bound], field[idx_dom],
+                                                      r / 2, info);
                     if ((expected_val < field[idx_ghost] - epsilon) ||
                         (expected_val > field[idx_ghost] + epsilon)) {
                         res.field_errors.back().errors++;
@@ -679,6 +679,104 @@ PrintTestResult(const TestResult& result)
     }
 }
 
+// Testing queries
+bool
+test_periodic_boundary_queries(int pid)
+{
+    bool ret_val = true;
+
+    VertexBufferHandle all_fields[NUM_VTXBUF_HANDLES];
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
+        all_fields[i] = (VertexBufferHandle)i;
+    }
+
+    AcTaskDefinition periodic_x  = acBoundaryCondition(BOUNDARY_X, BOUNDCOND_PERIODIC, all_fields);
+    AcTaskDefinition symmetric_x = acBoundaryCondition(BOUNDARY_X, BOUNDCOND_SYMMETRIC, all_fields);
+
+    AcTaskDefinition periodic_y  = acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_PERIODIC, all_fields);
+    AcTaskDefinition symmetric_y = acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, all_fields);
+
+    AcTaskDefinition periodic_z  = acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_PERIODIC, all_fields);
+    AcTaskDefinition symmetric_z = acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, all_fields);
+
+    AcTaskDefinition ops[] = {acHaloExchange(all_fields), symmetric_x, symmetric_y, symmetric_z};
+
+    if (pid == 0) {
+        printf("Testing periodic boundary condition queries (whether a taskgraph has periodic "
+               "boundconds or not)\n");
+    }
+
+    const char* per     = "periodic";
+    const char* not_per = "not periodic";
+    for (size_t x = 0; x < 2; x++) {
+        for (size_t y = 0; y < 2; y++) {
+            for (size_t z = 0; z < 2; z++) {
+                bool ok = true;
+
+                bool expect_periodic_x = (x != 0);
+                bool expect_periodic_y = (y != 0);
+                bool expect_periodic_z = (z != 0);
+
+                char label[4];
+                label[0] = expect_periodic_x ? 'X' : '_';
+                label[1] = expect_periodic_y ? 'Y' : '_';
+                label[2] = expect_periodic_z ? 'Z' : '_';
+                label[3] = '\0';
+
+                ops[1] = expect_periodic_x ? periodic_x : symmetric_x;
+                ops[2] = expect_periodic_y ? periodic_y : symmetric_y;
+                ops[3] = expect_periodic_z ? periodic_z : symmetric_z;
+
+                AcTaskGraph* g     = acGridBuildTaskGraph(ops);
+                bool is_periodic_x = acGridTaskGraphHasPeriodicBoundcondsX(g);
+                bool is_periodic_y = acGridTaskGraphHasPeriodicBoundcondsY(g);
+                bool is_periodic_z = acGridTaskGraphHasPeriodicBoundcondsZ(g);
+
+                if (expect_periodic_x != is_periodic_x) {
+                    ok                   = false;
+                    const char* expected = expect_periodic_x ? per : not_per;
+                    const char* got      = is_periodic_x ? per : not_per;
+                    if (pid == 0) {
+                        printf(" %s Boundary condition X is %s, but "
+                               "acGridTaskGraphHasPeriodicBoundcondsX says it's %s%s\n",
+                               RED, expected, got, RESET);
+                    }
+                }
+
+                if (expect_periodic_y != is_periodic_y) {
+                    ok                   = false;
+                    const char* expected = expect_periodic_y ? per : not_per;
+                    const char* got      = is_periodic_y ? per : not_per;
+                    if (pid == 0) {
+                        printf(" %s Boundary condition Y is %s, but "
+                               "acGridTaskGraphHasPeriodicBoundcondsY says it's %s%s\n",
+                               RED, expected, got, RESET);
+                    }
+                }
+
+                if (expect_periodic_z != is_periodic_z) {
+                    ok                   = false;
+                    const char* expected = expect_periodic_z ? per : not_per;
+                    const char* got      = is_periodic_z ? per : not_per;
+                    if (pid == 0) {
+                        printf(" %s Boundary condition Z is %s, but "
+                               "acGridTaskGraphHasPeriodicBoundcondsZ says it's %s%s\n",
+                               RED, expected, got, RESET);
+                    }
+                }
+
+                if (pid == 0) {
+                    printf("Querying periodic boundconds ");
+                    colored_feedback(label, ok);
+                }
+                ret_val = ret_val && ok;
+                acGridDestroyTaskGraph(g);
+            }
+        }
+    }
+    return ret_val;
+}
+
 int
 main(void)
 {
@@ -699,14 +797,20 @@ main(void)
     }
 
     // Specific setup for one of the tests
-    constexpr AcReal prescribed_val          = 6.0;
+    constexpr AcReal prescribed_val          = 3.0;
     info.real_params[AC_boundary_derivative] = prescribed_val;
 
     acGridInit(info);
 
+    acLogFromRootProc(pid, "Calling acGridLoadMesh\n");
     acGridLoadMesh(STREAM_DEFAULT, mesh);
-    acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, FLT_EPSILON);
+    acLogFromRootProc(pid, "Returned from acGridLoadMesh\n");
+
+    acLogFromRootProc(pid, "Loading AC_dt to all devices\n");
+    acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, (AcReal)FLT_EPSILON);
     acGridSynchronizeStream(STREAM_DEFAULT);
+
+    acLogFromRootProc(pid, "Synched\n");
     // End setup
 
     // Preparing tests
@@ -717,6 +821,11 @@ main(void)
         all_fields[i] = (VertexBufferHandle)i;
     }
 
+    // Test if the periodic boundarycond check works
+    // bool periodic_queries = test_periodic_boundary_queries(pid);
+    test_periodic_boundary_queries(pid);
+
+    fflush(stdout);
     // Symmetric bc
     AcTaskGraph* symmetric_bc_graph = acGridBuildTaskGraph(
         {acHaloExchange(all_fields),
@@ -724,7 +833,7 @@ main(void)
          acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_SYMMETRIC, all_fields),
          acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_SYMMETRIC, all_fields)});
 
-    auto mirror = [](AcReal, AcReal domain_val, size_t, AcMeshInfo) { return domain_val; };
+    auto mirror = [](int3, AcReal, AcReal domain_val, size_t, AcMeshInfo) { return domain_val; };
 
     test_cases.push_back(SimpleTestCase{"Symmetric boundconds", symmetric_bc_graph, mirror});
 
@@ -735,10 +844,25 @@ main(void)
          acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_ANTISYMMETRIC, all_fields),
          acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_ANTISYMMETRIC, all_fields)});
 
-    auto antimirror = [](AcReal, AcReal domain_val, size_t, AcMeshInfo) { return -domain_val; };
+    auto antimirror = [](int3, AcReal, AcReal domain_val, size_t, AcMeshInfo) {
+        return -domain_val;
+    };
 
     test_cases.push_back(
         SimpleTestCase{"AntiSymmetric boundconds", antisymmetric_bc_graph, antimirror});
+
+    //"A2"
+    AcTaskGraph* relative_antisymmetry_bc_graph = acGridBuildTaskGraph(
+        {acHaloExchange(all_fields), acBoundaryCondition(BOUNDARY_X, BOUNDCOND_A2, all_fields),
+         acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_A2, all_fields),
+         acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_A2, all_fields)});
+
+    auto a2_func = [](int3, AcReal boundary_val, AcReal domain_val, size_t, AcMeshInfo) {
+        return 2 * boundary_val - domain_val;
+    };
+
+    test_cases.push_back(SimpleTestCase{"Relative antisymmetry boundconds",
+                                        relative_antisymmetry_bc_graph, a2_func});
 
     // Prescribed derivative bc
     AcRealParam bc_param[1] = {AC_boundary_derivative};
@@ -751,8 +875,17 @@ main(void)
 
     // Assumption: AC_dsx = AC_dsy = AC_dsz
 
-    auto der_bc_func = [](AcReal, AcReal domain_val, size_t r, AcMeshInfo inf) {
-        AcReal d        = inf.real_params[AC_dsx];
+    auto der_bc_func = [](int3 normal, AcReal, AcReal domain_val, size_t r, AcMeshInfo inf) {
+        AcReal d = 0.0;
+        if (normal.x != 0) {
+            d = inf.real_params[AC_dsx] * normal.x;
+        }
+        else if (normal.y != 0) {
+            d = inf.real_params[AC_dsy] * normal.y;
+        }
+        else if (normal.z != 0) {
+            d = inf.real_params[AC_dsz] * normal.z;
+        }
         AcReal der_val  = inf.real_params[AC_boundary_derivative];
         AcReal distance = AcReal(2 * r) * d;
         return domain_val + distance * der_val;
@@ -761,24 +894,13 @@ main(void)
     test_cases.push_back(
         SimpleTestCase{"Prescribed derivative boundconds", prescribed_der_bc_graph, der_bc_func});
 
-    //"A2"
-    AcTaskGraph* relative_antisymmetry_bc_graph = acGridBuildTaskGraph(
-        {acHaloExchange(all_fields),
-         acBoundaryCondition(BOUNDARY_X, BOUNDCOND_A2, all_fields, bc_param),
-         acBoundaryCondition(BOUNDARY_Y, BOUNDCOND_A2, all_fields, bc_param),
-         acBoundaryCondition(BOUNDARY_Z, BOUNDCOND_A2, all_fields, bc_param)});
-
-    auto a2_func = [](AcReal boundary_val, AcReal domain_val, size_t, AcMeshInfo) {
-        return 2 * boundary_val - domain_val;
-    };
-
-    test_cases.push_back(SimpleTestCase{"Relative antisymmetry boundconds",
-                                        relative_antisymmetry_bc_graph, a2_func});
-
     // Running the simple tests
     std::vector<TestResult> test_results;
     for (const auto& test : test_cases) {
+        acLogFromRootProc(pid, "Running test %s\n", test.name.c_str());
         test_results.push_back(RunSimpleTest(test, info));
+        acLogFromRootProc(pid, "Cleaning up test %s\n", test.name.c_str());
+        acGridDestroyTaskGraph(test.task_graph);
     }
 
     /********************************************************************
@@ -807,10 +929,7 @@ main(void)
     }
     */
 
-    // Cleanup and test output
-    for (const auto& test : test_cases) {
-        acGridDestroyTaskGraph(test.task_graph);
-    }
+    acLogFromRootProc(pid, "Results\n");
     if (pid == 0) {
         for (const auto& result : test_results) {
             PrintTestResult(result);

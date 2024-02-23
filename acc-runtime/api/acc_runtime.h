@@ -21,15 +21,20 @@
 
 #if AC_USE_HIP
 #include "hip.h"
-#include <hip/hip_runtime_api.h>
+
+#include <hip/hip_runtime_api.h> // Streams
+#include <roctracer_ext.h>       // Profiling
 #else
-#include <cuda_runtime_api.h> // cudaStream_t
+#include <cuda_profiler_api.h> // Profiling
+#include <cuda_runtime_api.h>  // Streams
 #endif
 
 #include "datatypes.h"
 #include "errchk.h"
 
 #include "user_defines.h"
+
+#define NUM_REDUCE_SCRATCHPADS (2)
 
 typedef struct {
   int int_params[NUM_INT_PARAMS];
@@ -41,6 +46,7 @@ typedef struct {
 typedef struct {
   AcReal* in[NUM_FIELDS];
   AcReal* out[NUM_FIELDS];
+  size_t bytes;
 } VertexBufferArray;
 
 typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
@@ -51,41 +57,74 @@ extern "C" {
 
 #include "user_declarations.h"
 
-AcResult acKernelFlush(AcReal* arr, const size_t n);
+AcResult acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
+                       const AcReal value);
+
+AcResult acVBAReset(const cudaStream_t stream, VertexBufferArray* vba);
 
 VertexBufferArray acVBACreate(const size_t count);
 
 void acVBADestroy(VertexBufferArray* vba);
 
+AcResult acRandInit(const uint64_t seed, const Volume m_local,
+                    const Volume m_global, const Volume global_offset);
+
+AcResult acRandInitAlt(const uint64_t seed, const size_t count,
+                       const size_t rank);
+
+void acRandQuit(void);
+
 AcResult acLaunchKernel(Kernel func, const cudaStream_t stream,
                         const int3 start, const int3 end,
                         VertexBufferArray vba);
 
+AcResult acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
+                           VertexBufferArray vba);
+
+/** NOTE: stream unused. acUniform functions are completely synchronous. */
 AcResult
 acLoadStencil(const Stencil stencil, const cudaStream_t stream,
               const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
 
+/** NOTE: stream unused. acUniform functions are completely synchronous. */
 AcResult
 acStoreStencil(const Stencil stencil, const cudaStream_t stream,
                AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
 
+/** NOTE: stream unused. acUniform functions are completely synchronous. */
 AcResult acLoadRealUniform(const cudaStream_t stream, const AcRealParam param,
                            const AcReal value);
+
+/** NOTE: stream unused. acUniform functions are completely synchronous. */
 AcResult acLoadReal3Uniform(const cudaStream_t stream, const AcReal3Param param,
                             const AcReal3 value);
+
+/** NOTE: stream unused. acUniform functions are completely synchronous. */
 AcResult acLoadIntUniform(const cudaStream_t stream, const AcIntParam param,
                           const int value);
+
+/** NOTE: stream unused. acUniform functions are completely synchronous. */
 AcResult acLoadInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
                            const int3 value);
 
+/** NOTE: stream unused. acUniform functions are completely synchronous. */
 AcResult acStoreRealUniform(const cudaStream_t stream, const AcRealParam param,
                             AcReal* value);
+
+/** NOTE: stream unused. acUniform functions are completely synchronous. */
 AcResult acStoreReal3Uniform(const cudaStream_t stream,
                              const AcReal3Param param, AcReal3* value);
+
+/** NOTE: stream unused. acUniform functions are completely synchronous. */
 AcResult acStoreIntUniform(const cudaStream_t stream, const AcIntParam param,
                            int* value);
+
+/** NOTE: stream unused. acUniform functions are completely synchronous. */
 AcResult acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
                             int3* value);
+
+// Diagnostics
+Volume acKernelLaunchGetLastTPB(void);
 
 #ifdef __cplusplus
 } // extern "C"

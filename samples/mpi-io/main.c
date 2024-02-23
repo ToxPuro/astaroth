@@ -22,18 +22,30 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
+#include "timer_hires.h"
 
 #if !AC_MPI_ENABLED
 int
 main(void)
 {
-    printf("The library was built without MPI support, cannot run mpitest. Rebuild Astaroth with "
+    printf("The library was built without MPI support, cannot run. Rebuild Astaroth with "
            "cmake -DMPI_ENABLED=ON .. to enable.\n");
+    return EXIT_FAILURE;
+}
+#elif !defined(AC_INTEGRATION_ENABLED)
+int
+main(void)
+{
+    printf("The library was built without AC_INTEGRATION_ENABLED, cannot run. Rebuild "
+           "Astaroth with a DSL source with ´hostdefine AC_INTEGRATION_ENABLED´ and ensure the "
+           "missing fields ('VTXBUF_UUX', etc) are defined.\n");
     return EXIT_FAILURE;
 }
 #else
 
 #include <mpi.h>
+
+static const bool verify = false;
 
 int
 main(int argc, char** argv)
@@ -43,11 +55,14 @@ main(int argc, char** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
+    int job_id = 0;
+
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
     // Set mesh dimensions
-    if (argc != 4) {
-        fprintf(stderr, "Usage: ./mpi-io <nx> <ny> <nz>\n");
+    if (argc < 4 || argc > 5) {
+        fprintf(stderr,
+                "Usage: ./mpi-io <nx> <ny> <nz> <(Optional) unique job id for output files>\n");
         return EXIT_FAILURE;
     }
     else {
@@ -55,63 +70,144 @@ main(int argc, char** argv)
         info.int_params[AC_ny] = atoi(argv[2]);
         info.int_params[AC_nz] = atoi(argv[3]);
         acHostUpdateBuiltinParams(&info);
+
+        if (argc == 5)
+            job_id = atoi(argv[4]);
     }
+    char job_dir[4096];
+    snprintf(job_dir, 4096, "mpi-io-tmpdir-%d-%d", job_id, pid);
 
-    // Alloc
-    AcMesh model, candidate;
-    acHostMeshCreate(info, &model);
-    acHostMeshCreate(info, &candidate);
-
-    // Init
-    acHostMeshRandomize(&model);
-    acHostMeshRandomize(&candidate);
-    acHostMeshApplyPeriodicBounds(&model);
-
+    // Init device
     acGridInit(info);
-    acGridLoadMesh(STREAM_DEFAULT, model);
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
-    acGridStoreMesh(STREAM_DEFAULT, &candidate);
 
-    if (!pid) {
-        const AcResult res = acVerifyMesh("CPU-GPU Load/store", model, candidate);
-        ERRCHK_ALWAYS(res == AC_SUCCESS);
+    AcMesh model, candidate;
+    if (verify) {
+        // Alloc host
+        acHostMeshCreate(info, &model);
+        acHostMeshCreate(info, &candidate);
+        acHostMeshRandomize(&model);
+        acHostMeshRandomize(&candidate);
+        acHostMeshApplyPeriodicBounds(&model);
+
+        acGridLoadMesh(STREAM_DEFAULT, model);
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+
+        acGridStoreMesh(STREAM_DEFAULT, &candidate);
+        if (!pid) {
+            const AcResult res = acVerifyMesh("CPU-GPU Load/store", model, candidate);
+            ERRCHK_ALWAYS(res == AC_SUCCESS);
+        }
     }
+
+    // Make tmpdir for output
+    char cmd[4096];
+    snprintf(cmd, 4096, "mkdir -p %s", job_dir);
+    system(cmd);
 
     // Write
+    Timer t;
+    timer_reset(&t);
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        char file[4096] = "";
-        sprintf(file, "field-%lu.out", i);
-        printf("Storing %s\n", file);
-        // acGridStoreFieldToFile(file, (VertexBufferHandle)i);
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_WRITE);
+        char label[4096] = "";
+        sprintf(label, "field-%lu", i);
+        // printf("Storing %s/%s\n", job_dir, label);
+        // acGridStoreFieldToFile(label, (VertexBufferHandle)i);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, job_dir, label, ACCESS_WRITE);
+    }
+    double write_milliseconds = 0;
+    double write_bandwidth    = 0; // bytes per second
+
+    // if (!pid)
+    {
+        write_milliseconds   = (double)timer_diff_nsec(t) / 1e6;
+        const double seconds = (double)timer_diff_nsec(t) / 1e9;
+        const size_t bytes   = NUM_VTXBUF_HANDLES * acVertexBufferCompdomainSizeBytes(info);
+        write_bandwidth      = bytes / seconds;
+        timer_diff_print(t);
     }
 
-    // Scramble
-    acHostMeshRandomize(&candidate);
-    acGridLoadMesh(STREAM_DEFAULT, candidate);
-    // acGridStoreFieldToFile("field-tmp.out", 0);
-    acGridAccessMeshOnDiskSynchronous(0, "field-tmp.out",
-                                      ACCESS_WRITE); // Hacky, indirectly scramble vba.out to catch
-                                                     // false positives if the MPI calls fail
-                                                     // completely.
+    if (verify) {
+        // Scramble
+        acHostMeshRandomize(&candidate);
+        acGridLoadMesh(STREAM_DEFAULT, candidate);
+        // acGridStoreFieldToFile("field-tmp.out", 0);
+        for (size_t i = 0; i < NUM_FIELDS; ++i)
+            acGridAccessMeshOnDiskSynchronous(i, job_dir, "field-tmp",
+                                              ACCESS_WRITE); // Hacky, indirectly scramble vba.out
+                                                             // to catch false positives if the MPI
+                                                             // calls fail completely.
+    }
 
     // Read
+    timer_reset(&t);
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        char file[4096] = "";
-        sprintf(file, "field-%lu.out", i);
-        // acGridLoadFieldFromFile(file, (VertexBufferHandle)i);
-        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, file, ACCESS_READ);
+        char label[4096] = "";
+        sprintf(label, "field-%lu", i);
+        // acGridLoadFieldFromFile(label, (VertexBufferHandle)i);
+        acGridAccessMeshOnDiskSynchronous((VertexBufferHandle)i, job_dir, label, ACCESS_READ);
+    }
+    double read_milliseconds = 0;
+    double read_bandwidth    = 0; // bytes per second
+
+    // if (!pid)
+    {
+        read_milliseconds    = (double)timer_diff_nsec(t) / 1e6;
+        const double seconds = (double)timer_diff_nsec(t) / 1e9;
+        const size_t bytes   = NUM_VTXBUF_HANDLES * acVertexBufferCompdomainSizeBytes(info);
+        read_bandwidth       = bytes / seconds;
+        timer_diff_print(t);
     }
 
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
-    acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    if (verify) {
+        acGridPeriodicBoundconds(STREAM_DEFAULT);
+        acGridStoreMesh(STREAM_DEFAULT, &candidate);
 
-    if (!pid) {
-        const AcResult res = acVerifyMesh("MPI-IO disk read/write", model, candidate);
-        ERRCHK_ALWAYS(res == AC_SUCCESS);
+        if (!pid) {
+            const AcResult res = acVerifyMesh("MPI-IO disk read/write", model, candidate);
+            ERRCHK_ALWAYS(res == AC_SUCCESS);
+        }
     }
+
+    // Write out
+    // Format:
+    // proc,nprocs,writemilliseconds,writebandwidth,readmilliseconds,readbandwidth,usedistributedio,nx,ny,nz
+    // if (!pid) {
+
+    const size_t buflen = 4096;
+    char outfile[buflen];
+    snprintf(outfile, buflen, "scaling-io-benchmark-job%d-proc%d.csv", job_id, pid);
+
+    FILE* fp = fopen(outfile, "a");
+    ERRCHK_ALWAYS(fp);
+
+#if USE_DISTRIBUTED_IO
+    const bool use_distributed_io = true;
+#else
+    const bool use_distributed_io = false;
+#endif
+    fprintf(fp, "%d,%d,%g,%g,%g,%g,%d,%d,%d,%d\n", pid, nprocs, write_milliseconds, write_bandwidth,
+            read_milliseconds, read_bandwidth, use_distributed_io, info.int_params[AC_nx],
+            info.int_params[AC_ny], info.int_params[AC_nz]);
+    fclose(fp);
+    // }
 
     acGridQuit();
+
+    if (verify) {
+        // Deallocate
+        acHostMeshDestroy(&model);
+        acHostMeshDestroy(&candidate);
+    }
+
+    // Remove old files
+    // if (!pid)
+    {
+        printf("Removing fields\n");
+        // sprintf(cmd, "rm %s/*.mesh", job_dir);
+        sprintf(cmd, "rm -r %s", job_dir);
+        system(cmd);
+        printf("Done.\n");
+    }
 
     MPI_Finalize();
     return EXIT_SUCCESS;

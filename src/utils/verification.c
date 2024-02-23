@@ -124,7 +124,7 @@ acEvalError(const char* label, const Error error)
 static AcReal
 get_maximum_magnitude(const AcReal* field, const AcMeshInfo info)
 {
-    AcReal maximum = -INFINITY;
+    AcReal maximum = (AcReal)-INFINITY;
 
     for (size_t i = 0; i < acVertexBufferSize(info); ++i)
         maximum = max(maximum, fabs(field[i]));
@@ -135,7 +135,7 @@ get_maximum_magnitude(const AcReal* field, const AcMeshInfo info)
 static AcReal
 get_minimum_magnitude(const AcReal* field, const AcMeshInfo info)
 {
-    AcReal minimum = INFINITY;
+    AcReal minimum = (AcReal)INFINITY;
 
     for (size_t i = 0; i < acVertexBufferSize(info); ++i)
         minimum = min(minimum, fabs(field[i]));

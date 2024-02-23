@@ -18,7 +18,13 @@ As ACC is in active development, compiler bugs and cryptic error messages are
 expected. In case of issues, please check the following files in
 `acc-runtime/api` in the build directory.
 
+Intermediate files:
+
 1. `user_kernels.ac.pp_stage*`. The DSL file after a specific preprocessing stage.
+1. `user_kernels.h.raw`. The raw generated CUDA kernels without formatting applied.
+
+Final files:
+
 1. `user_defines.h`. The project-wide defines generated with the DSL.
 1. `user_declarations.h`. Forward declarations of user kernels.
 1. `user_kernels.h`. The generated CUDA kernels.
@@ -57,14 +63,14 @@ vertex shaders operate in graphics shading languages.
 
 # Syntax
 
-Comments and preprocessor directives
+#### Comments and preprocessor directives
 ```
 // This is a comment
 #define    ZERO (0)   // Visible only in device code
 hostdefine ONE  (1) // Visible in both device and host code
 ```
 
-Variables
+#### Variables
 ```
 real var    // Explicit type declaration
 real dconst // The type of device constants must be explicitly specified
@@ -80,26 +86,26 @@ var6 = "Hello"
 
 > Note: Shadowing is not allowed, all identifiers within a scope must be unique
 
-Arrays
+#### Arrays
 ```
 int arr0 = 1, 2, 3 // The type of arrays must be explicitly specified
 real arr1 = 1.0, 2.0, 3.0
 len(arr1) // Length of an array
 ```
 
-Casting
+#### Casting
 ```
 var7 = real(1)        // Cast
 vec0 = real3(1, 2, 3) // Cast
 ```
 
-Printing
+#### Printing
 ```
 // print is the same as `printf` in the C programming language
 print("Hello from thread (%d, %d, %d)\n", vertexIdx.x, vertexIdx.y, vertexIdx.z)
 ```
 
-Looping
+#### Looping
 ```
 int arr = 1, 2, 3
 for var in arr {
@@ -116,7 +122,7 @@ for i in 0:10 { // Note: 10 is exclusive
 }
 ```
 
-Functions
+#### Functions
 ```
 func(param) {
     print("%s", param)
@@ -136,7 +142,7 @@ Kernel func3() {
 
 > Note: Overloading is not allowed, all function identifiers must be unique
 
-Stencils
+#### Stencils
 ```
 // Format
 <Optional reduction operation> Stencil <identifier> {
@@ -206,7 +212,19 @@ gradient(field) {
 > Note: To reduce redundant communication or to enable larger stencils, the stencil order can be changed by modifying `static const size_t stencil_order = ...` in `acc-runtime/acc/codegen.c`. Modifying the stencil order with the DSL is currently not supported.
 
 
-Built-in variables and functions
+#### Fields
+
+A `Field` is a scalar array that can be used in conjuction with `Stencil` operations. For convenience, a vector field can be constructed from three scalar fields by declaring them a `Field3` structure.
+```
+Field ux, uy, uz // Three scalar fields `ux`, `uy`, and `uz`
+#define uu Field3(ux, uy, uz) // A vector field `uu` consisting of components `ux`, `uy`, and `uz`
+
+Kernel kernel() {
+    write(ux, derx(ux)) // Writes the x derivative of the field `ux` to the output buffer
+}
+```
+
+#### Built-in variables and functions
 ```
 // Variables
 dim3 threadIdx       // Current thread index within a thread block (see CUDA docs)
@@ -268,3 +286,9 @@ See also the functions `acDeviceLoadStencil`, `acDeviceStoreStencil`, `acGridLoa
 To enable additional API functions in the Astaroth Core library for integration (`acIntegrate` function family) and MHD-specific tasks (automated testing, MHD samples), one must set `hostdefine AC_INTEGRATION_ENABLED (1)` in the DSL file. Note that if used in the DSL code, the hostdefine must not define anything that is not visible at compile-time. For example, `hostdefine R_PI (M_PI)`, where `M_PI` is defined is some host header, `M_PI` will not be visible in the DSL code and will result in a compilation error. Additionally, code such as `#if M_PI` will be always false in the DSL source if `M_PI` is not visible in the DSL file.
 
 > Note: The extended API depends on several hardcoded fields and device constants. It is not recommended to enable it unless you work on the MHD sample case (`acc-runtime/samples/mhd`) or its derivatives.
+
+## Stencil order
+
+The stencil order can be set by the user by `hostdefine STENCIL_ORDER (x)`, where `x` is the total number of cells on both sides of the center point per axis. For example, a simple von Neumann stencil is of order 2.
+
+> Note: The size of the halo surrounding the computational domain depends on `STENCIL_ORDER`.

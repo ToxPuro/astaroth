@@ -36,6 +36,7 @@
 #define cudaDeviceSynchronize hipDeviceSynchronize
 #define cudaEvent_t hipEvent_t
 #define cudaEventCreate hipEventCreate
+#define cudaEventDestroy hipEventDestroy
 #define cudaEventRecord hipEventRecord
 #define cudaEventSynchronize hipEventSynchronize
 #define cudaEventElapsedTime hipEventElapsedTime
@@ -48,11 +49,15 @@
 #define cudaSetDevice hipSetDevice
 #define cudaMemcpy hipMemcpy
 #define cudaMemcpyAsync hipMemcpyAsync
+#define cudaMemcpyToSymbol hipMemcpyToSymbol
+#define cudaMemcpyFromSymbol hipMemcpyFromSymbol
 #define cudaMemcpyToSymbolAsync hipMemcpyToSymbolAsync
 #define cudaMemcpyFromSymbolAsync hipMemcpyFromSymbolAsync
 #define cudaMemcpy2DAsync hipMemcpy2DAsync
+#define cudaMemcpyDefault hipMemcpyDefault
 #define cudaMemset hipMemset
 #define cudaMalloc hipMalloc
+#define cudaMallocHost hipMallocHost
 #define cudaFree hipFree
 #define cudaDeviceProp hipDeviceProp_t
 #define cudaGetDeviceCount hipGetDeviceCount
@@ -65,3 +70,21 @@
 #define cudaStreamQuery hipStreamQuery
 #define cudaErrorNotReady hipErrorNotReady
 #define cudaDeviceGetStreamPriorityRange hipDeviceGetStreamPriorityRange
+
+#define cudaProfilerStart roctracer_start
+#define cudaProfilerStop roctracer_stop
+
+#define cudaDeviceSetSharedMemConfig hipDeviceSetSharedMemConfig
+#define cudaFuncSetSharedMemConfig hipFuncSetSharedMemConfig
+#define cudaSharedMemBankSizeEightByte hipSharedMemBankSizeEightByte
+#define cudaSharedMemBankSizeFourByte hipSharedMemBankSizeFourByte
+#define cudaDeviceSetCacheConfig hipDeviceSetCacheConfig
+#define cudaFuncCachePreferShared hipFuncCachePreferShared
+#define cudaFuncCachePreferL1 hipFuncCachePreferL1
+
+#define curandStateXORWOW_t hiprandStateXORWOW_t
+#define curandStateMRG32k3a_t hiprandStateMRG32k3a_t
+#define curandState hiprandState
+#define curand_init hiprand_init
+#define curand_uniform hiprand_uniform
+#define curand_uniform_double hiprand_uniform_double

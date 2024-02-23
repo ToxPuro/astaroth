@@ -1,6 +1,5 @@
 ## Options
 option(BUILD_ACC_RUNTIME_LIBRARY "Builds the standalone acc runtime library" OFF)
-option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF)
 
 ## DSL module dir
 
@@ -23,11 +22,14 @@ else()
 endif()
 
 ## Generate acc-runtime-headers
-# set(DSL_SOURCES "${DSL_MODULE_DIR}/*.ac")
-set(DSL_SOURCES "${DSL_MODULE_DIR}/*")
+set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
+                "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
+                "${PROJECT_SOURCE_DIR}/acc/stencil_accesses.cpp")
 set(DSL_HEADERS "user_kernels.h"
                 "user_defines.h"
-                "user_declarations.h")
+                "user_declarations.h"
+                "stencil_accesses.h"
+                "stencilgen.h")
 add_custom_command (
     COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
     COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac"
@@ -35,15 +37,30 @@ add_custom_command (
     OUTPUT ${DSL_HEADERS}
 )
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
-target_include_directories(acc-runtime-headers INTERFACE . ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(acc-runtime-headers INTERFACE . .. ${CMAKE_CURRENT_BINARY_DIR})
+target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})
+target_compile_options(acc-runtime-headers INTERFACE -DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
+
+if (USE_HIP)
+    target_link_libraries(acc-runtime-headers INTERFACE roctracer64)
+    target_link_libraries(acc-runtime-headers INTERFACE hiprand)
+endif()
+
+message("project source dir ${PROJECT_SOURCE_DIR}")
 
 ## Build the runtime library
 if (BUILD_ACC_RUNTIME_LIBRARY)
     if (USE_HIP)
         add_definitions(-DAC_USE_HIP=1)
+<<<<<<< HEAD
 	list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)             # Default
         list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0) # Triton
         list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3) # Lumi
+=======
+        list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)             # Default
+        list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3) # Lumi
+	list(APPEND CMAKE_PREFIX_PATH /opt/rocm-default/hip /opt/rocm-default) # Frontier
+>>>>>>> origin/master
 
         enable_language(CXX)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
@@ -61,11 +78,15 @@ if (BUILD_ACC_RUNTIME_LIBRARY)
         endif()
     endif()
 
-    add_library(acc-runtime acc_runtime.cu)
     include_directories(${PROJECT_BINARY_DIR})
-    target_link_libraries(acc-runtime acc-runtime-headers)
 
+    add_library(acc-runtime STATIC acc_runtime.cu)
+    target_link_libraries(acc-runtime acc-runtime-headers)
     target_compile_features(acc-runtime PRIVATE cxx_std_17)
+
+    add_library(acc-runtime-shared SHARED acc_runtime.cu)
+    target_link_libraries(acc-runtime-shared acc-runtime-headers)
+    target_compile_features(acc-runtime-shared PRIVATE cxx_std_17)
 endif()
 
 if (ADJACENT_VERTEX_BUFFERS)

@@ -3,7 +3,7 @@
 # Only use spaces to indent your .yml configuration.
 # -----
 # You can specify a custom docker image from Docker Hub as your build environment.
-image: nvidia/cuda:11.0-devel-ubuntu20.04
+image: nvidia/cuda:11.6.0-devel-ubuntu20.04
 
 # JP notes:
 # 1) We need a sufficiently recent GPU to run the code (needs to support CUDA 10 + NVIDIA drivers 418)
@@ -13,7 +13,7 @@ image: nvidia/cuda:11.0-devel-ubuntu20.04
 # ===> Which might not even work since I don't know what kind of hardware we're running on (lspci was not available)
 
 options:
-  max-time: 5 # Max time allowed for building (minutes) 
+  max-time: 10 # Max time allowed for building (minutes) 
 pipelines:
   # default: # Default is run at every push but we have only 500 build minutes / month so that probably wouldn't work out
   custom: # Manual/scheduled building only
@@ -31,12 +31,18 @@ pipelines:
           # Test ACC
           - mkdir -p acc-runtime/build
           - cd acc-runtime/build
-          - cmake -DBUILD_ACC_RUNTIME_LIBRARY=ON .. && make -j && cd acc
+          - cmake -DUSE_HIP=OFF -DBUILD_ACC_RUNTIME_LIBRARY=ON .. && make -j && cd acc
           - ../../tests/syntaxtest.sh
           - cd ../../../
           - mkdir -p build && cd build
-          - cmake -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=OFF -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=OFF .. # Single precision
+          - cmake -DUSE_HIP=OFF -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=OFF -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=OFF .. # Single precision
           - make -j
           - rm -rf *
-          - cmake -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Double precision
+          - cmake -DUSE_HIP=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Double precision
+          - make -j
+          - rm -rf *
+          - cmake -DUSE_HIP=OFF -DCMAKE_BUILD_TYPE=Debug -DBUILD_ACC_RUNTIME_LIBRARY=ON -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR="../acc-runtime/samples/mhd_modular" -DVERBOSE=ON -DBUILD_UTILS=ON -DBUILD_SAMPLES=ON -DDOUBLE_PRECISION=ON -DMULTIGPU_ENABLED=ON -DMPI_ENABLED=ON .. # Debug
+          - make -j
+          - rm -rf *
+          - cmake -DMPI_ENABLED=ON -DBUILD_STANDALONE=OFF -DBUILD_MHD_SAMPLES=OFF -DPROGRAM_MODULE_DIR=${PWD}/../samples/blur -DDSL_MODULE_DIR=../acc-runtime/samples/blur .. # Non-MHD sample
           - make -j
