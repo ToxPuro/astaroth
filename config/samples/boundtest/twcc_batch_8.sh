@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH	--account=MST110392		                # (-A) Account/project number
-#SBATCH --job-name=32_Btest512  	                # (-J) Job name
+#SBATCH --job-name=8_Btest512  		                # (-J) Job name
 #SBATCH	--partition=gp1d		                # (-p) Specific slurm partition
-#SBATCH --nodes=4			                # (-N) Maximum number of nodes to be allocated
+#SBATCH --nodes=1			                # (-N) Maximum number of nodes to be allocated
 #SBATCH --ntasks-per-node=8		                # Maximum number of tasks on each node
 #SBATCH --cpus-per-task=1                               # Number of CPUs per task
 #SBATCH --gres=gpu:8                                    # Number of GPUs per node
