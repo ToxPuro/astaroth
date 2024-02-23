@@ -259,16 +259,12 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Memory
     // VBA in/out
-    device->vba = acVBACreate(acVertexBufferSize(device_config));
+    device->vba = acVBACreate(device_config);
     // VBA Profiles
     const size_t profile_size_bytes = sizeof(AcReal) * max(device_config.int_params[AC_mx],
                                                            max(device_config.int_params[AC_my],
                                                                device_config.int_params[AC_mz]));
     
-    for (int i = 0; i < NUM_SCALARRAYS; ++i) {
-        //ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.profiles[i], profile_size_bytes));
-        //ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.profiles[i], 0, profile_size_bytes));
-    }
 
     // Reductions
     const int3 max_dims                = acConstructInt3Param(AC_mx, AC_my, AC_mz, device_config);
@@ -334,9 +330,6 @@ acDeviceDestroy(Device device)
 
     // Memory
     acVBADestroy(&device->vba);
-    for (int i = 0; i < NUM_SCALARRAYS; ++i) {
-        //cudaFree(device->vba.profiles[i]);
-    }
     
 #if PACKED_DATA_TRANSFERS
 // Free data required for packed tranfers here (cudaFree)
@@ -380,25 +373,6 @@ acDeviceSwapBuffers(const Device device)
 
     return (AcResult)retval;
 }
-#if LFORCING
-AcResult
-acDeviceLoadScalarArray(const Device device, const Stream stream, const ScalarArrayHandle handle,
-                        const size_t start, const AcReal* data, const size_t num)
-{
-    cudaSetDevice(device->id);
-
-    if (handle >= NUM_SCALARRAYS || !NUM_SCALARRAYS)
-        return AC_FAILURE;
-
-    ERRCHK((int)(start + num) <= max(device->local_config.int_params[AC_mx],
-                                     max(device->local_config.int_params[AC_my],
-                                         device->local_config.int_params[AC_mz])));
-    ERRCHK_ALWAYS(handle < NUM_SCALARRAYS);
-    ERRCHK_CUDA(cudaMemcpyAsync(&device->vba.profiles[handle][start], data, sizeof(data[0]) * num,
-                                cudaMemcpyHostToDevice, device->streams[stream]));
-    return AC_SUCCESS;
-}
-#endif
 AcResult
 acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream, const AcMesh host_mesh,
                                    const VertexBufferHandle vtxbuf_handle, const int3 src,
@@ -441,6 +415,53 @@ acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh 
     acDeviceLoadVertexBufferWithOffset(device, stream, host_mesh, vtxbuf_handle, src, dst,
                                        num_vertices);
 
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceLoadProfileWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
+                         const Profile profile, int src_idx, int dst_idx, size_t num_elems)
+{
+    ERRCHK_ALWAYS(&device->vba.profiles[profile] != nullptr) //in case the user loaded a nullptr at acGridInit
+    ERRCHK_ALWAYS(host_info.profiles[profile] != nullptr)
+    cudaSetDevice(device->id);
+    const AcReal* src_ptr = &host_info.profiles[profile][src_idx];
+    AcReal* dst_ptr       = &device->vba.profiles[profile][dst_idx];
+    const size_t bytes    = num_elems* sizeof(src_ptr[0]);
+
+    ERRCHK_CUDA(                                                                                  //
+        cudaMemcpyAsync(dst_ptr, src_ptr, bytes, cudaMemcpyHostToDevice, device->streams[stream]) //
+    );
+
+    return AC_SUCCESS;
+}
+AcResult
+acDeviceLoadProfile(const Device device, const Stream stream, const AcMeshInfo host_info,
+                         const Profile profile)
+{
+    acDeviceLoadProfileWithOffset(device, stream, host_info, profile, 0, 0, device->local_config.int_params[profile_lengths[profile]]);
+    return AC_SUCCESS;
+}
+AcResult
+acDeviceLoadArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
+                         const AcRealArrayParam array, int src_idx, int dst_idx, size_t num_elems)
+{
+    cudaSetDevice(device->id);
+    const AcReal* src_ptr = &host_info.real_array_params[array][src_idx];
+    AcReal* dst_ptr       = &device->vba.real_arrays[array][dst_idx];
+    const size_t bytes    = num_elems* sizeof(src_ptr[0]);
+
+    ERRCHK_CUDA(                                                                                  //
+        cudaMemcpyAsync(dst_ptr, src_ptr, bytes, cudaMemcpyHostToDevice, device->streams[stream]) //
+    );
+
+    return AC_SUCCESS;
+}
+AcResult
+acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info,
+                         const AcRealArrayParam array)
+{
+    acDeviceLoadArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[real_array_lengths[array]]);
     return AC_SUCCESS;
 }
 

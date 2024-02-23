@@ -1063,12 +1063,6 @@ AcResult acDeviceStoreIntUniform(const Device device, const Stream stream, const
 AcResult acDeviceStoreInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
                                   int3* value);
 
-/** */
-/*
-AcResult acDeviceLoadScalarArray(const Device device, const Stream stream,
-                                 const ScalarArrayHandle handle, const size_t start,
-                                 const AcReal* data, const size_t num);
-                                 */
 
 /** */
 AcResult acDeviceLoadMeshInfo(const Device device, const AcMeshInfo device_config);
