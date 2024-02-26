@@ -139,6 +139,10 @@ symboltable_reset(void)
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_ny");
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nz");
 
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nxgrid");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nygrid");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nzgrid");
+
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nx_min");
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_ny_min");
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nz_min");

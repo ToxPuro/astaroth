@@ -211,7 +211,7 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 }
 
 AcResult
-acGridInit(const AcMeshInfo info)
+acGridInit(AcMeshInfo info)
 {
     ERRCHK(!grid.initialized);
 
@@ -238,6 +238,10 @@ acGridInit(const AcMeshInfo info)
 
     // Decompose
     const uint3_64 decomp = decompose(nprocs);
+
+    // Done in order to copy AC_nxgrid -> AC_nx that will be decomposed
+    // This way you can use AC_nxgrid to get the global dimensions in the DSL and device layer
+    acHostUpdateBuiltinParams(&info);
 
     // Check that the decomposition is valid
     const int3 nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
