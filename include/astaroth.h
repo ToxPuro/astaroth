@@ -1159,6 +1159,9 @@ AcResult acDeviceLoadStencil(const Device device, const Stream stream, const Ste
 AcResult
 acDeviceLoadStencils(const Device device, const Stream stream,
                      const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+/** */
+AcResult
+acDeviceLoadStencilsFromConfig(const Device device, const Stream stream);
 
 /** */
 AcResult acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,

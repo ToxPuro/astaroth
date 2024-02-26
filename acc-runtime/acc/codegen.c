@@ -31,6 +31,7 @@
 #define STENCILACC_SRC ACC_DIR "/stencil_accesses.cpp"
 #define STENCILACC_EXEC "stencil_accesses.out"
 #define ACC_RUNTIME_API_DIR ACC_DIR "/../api"
+#define STENCIL_LOADER_HEADER "device_stencil_loader.h"
 
 // Symbols
 #define MAX_ID_LEN (256)
@@ -99,7 +100,11 @@ symboltable_reset(void)
   // add_symbol(NODE_UNKNOWN, NULL, NULL, "false");
 
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "previous");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vecprevious");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "value");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vecvalue");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vecwrite");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "Field3"); // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "dot");    // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cross");  // TODO RECHECK
@@ -156,7 +161,6 @@ symboltable_reset(void)
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nxyz");
 
   add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_multigpu_offset");
-  add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_global_grid_n");
 
   // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsx");
   // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsy");
@@ -608,6 +612,66 @@ gen_user_kernels(const ASTNode* root, const char* out)
   symboltable_reset();
 }
 
+
+bool is_real_constant(const char* name)
+{
+  {
+  const int l_current_nest = 0;
+  for (size_t i = 0; i < num_symbols[l_current_nest]; ++i)
+    if (symbol_table[i].type & NODE_DCONST_ID &&
+        !strcmp(symbol_table[i].tspecifier, "AcReal") && !strcmp(name,symbol_table[i].identifier))
+        return true;
+  }
+  return false;
+}
+bool is_int_constant(const char* name)
+{
+  {
+  const int l_current_nest = 0;
+  for (size_t i = 0; i < num_symbols[l_current_nest]; ++i)
+    if (symbol_table[i].type & NODE_DCONST_ID &&
+        !strcmp(symbol_table[i].tspecifier, "int") && !strcmp(name,symbol_table[i].identifier))
+        return true;
+  }
+  return false;
+}
+void
+replace_dynamic_coeffs_stencilpoint(ASTNode* node)
+{
+  if(node->lhs)
+    replace_dynamic_coeffs_stencilpoint(node->lhs);
+  if(node->buffer)
+  {
+    if(is_real_constant(node->buffer) || is_int_constant(node->buffer))
+    {
+      //replace with zero to compile the stencil
+      node->buffer = strdup("0.0");
+      node->prefix=strdup("AcReal(");
+      node->postfix = strdup(")");
+    }
+  }
+  if(node->rhs)
+    replace_dynamic_coeffs_stencilpoint(node->rhs);
+}
+void replace_dynamic_coeffs(ASTNode* node)
+{
+  if(node->type & NODE_STENCIL)
+  {
+    ASTNode* list = node->rhs->lhs;
+    while(list->rhs)
+    {
+      ASTNode* stencil_point = list->rhs;
+      replace_dynamic_coeffs_stencilpoint(stencil_point->rhs->rhs);
+      list = list -> lhs;
+    }
+    ASTNode* stencil_point = list->lhs;
+    replace_dynamic_coeffs_stencilpoint(stencil_point->rhs->rhs);
+  }
+  if(node->lhs)
+    replace_dynamic_coeffs(node->lhs);
+  if(node->rhs)
+    replace_dynamic_coeffs(node->rhs);
+}
 void
 generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 {
@@ -673,6 +737,27 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 
   // Stencil coefficients
   symboltable_reset();
+  FILE* stencil_loader_file = fopen(STENCIL_LOADER_HEADER, "w");
+  char* stencil_coeffs;
+  size_t file_size;
+  FILE* stencil_coeffs_fp = open_memstream(&stencil_coeffs, &file_size);
+  traverse(root,
+           NODE_STENCIL_ID | NODE_DCONST | NODE_FIELD | NODE_FUNCTION |
+               NODE_HOSTDEFINE,
+           stencil_coeffs_fp);
+  fflush(stencil_coeffs_fp);
+
+  fprintf(stencil_loader_file,"int\nGetParamFromInfo(AcIntParam param, AcMeshInfo info){return info.int_params[param];}\n");
+  fprintf(stencil_loader_file,"AcReal\nGetParamFromInfo(AcRealParam param, AcMeshInfo info){return info.real_params[param];}\n");
+  fprintf(stencil_loader_file,"#define DCONST(PARAM)                                        \\\n  GetParamFromInfo(PARAM,device->local_config)\n");
+  fprintf(stencil_loader_file,"AcResult\nacDeviceLoadStencilsFromConfig(const Device device, const Stream stream)\n{\n");
+  fprintf(stencil_loader_file, "#include \"coeffs.h\"\n");
+  fprintf(stencil_loader_file,"return acDeviceLoadStencils(device, stream, stencils);\n}");
+  replace_dynamic_coeffs(root);
+  symboltable_reset();
+  fprintf(stencilgen, "static char* "
+                      "dynamic_coeffs[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]["
+                      "STENCIL_WIDTH] = { %s };\n", stencil_coeffs);
   fprintf(stencilgen, "static char* "
                       "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]["
                       "STENCIL_WIDTH] = {");

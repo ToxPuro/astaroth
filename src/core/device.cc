@@ -211,6 +211,27 @@ acDeviceSynchronizeStream(const Device device, const Stream stream)
 }
 
 AcResult
+acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
+                    const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    cudaSetDevice(device->id);
+    return acLoadStencil(stencil, device->streams[stream], data);
+}
+
+AcResult
+acDeviceLoadStencils(const Device device, const Stream stream,
+                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    int retval = 0;
+    for (size_t i = 0; i < NUM_STENCILS; ++i)
+        retval |= acDeviceLoadStencil(device, stream, (Stencil)i, data[i]);
+    return (AcResult)retval;
+}
+
+//coeffs are auto generated from DSL
+#include "device_stencil_loader.h"
+
+AcResult
 acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_handle)
 {
     // Check
@@ -289,6 +310,8 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 #endif
     *device_handle = device;
 
+    acDeviceSynchronizeStream(device, STREAM_ALL);
+    acDeviceLoadStencilsFromConfig(device, STREAM_DEFAULT);
     acDeviceSynchronizeStream(device, STREAM_ALL);
     return AC_SUCCESS;
 }
@@ -584,23 +607,6 @@ acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 sta
     return acBenchmarkKernel(kernel, start, end, device->vba);
 }
 
-AcResult
-acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
-                    const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-    cudaSetDevice(device->id);
-    return acLoadStencil(stencil, device->streams[stream], data);
-}
-
-AcResult
-acDeviceLoadStencils(const Device device, const Stream stream,
-                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-    int retval = 0;
-    for (size_t i = 0; i < NUM_STENCILS; ++i)
-        retval |= acDeviceLoadStencil(device, stream, (Stencil)i, data[i]);
-    return (AcResult)retval;
-}
 
 /** */
 AcResult
@@ -851,3 +857,4 @@ acDeviceResetMesh(const Device device, const Stream stream)
     acDeviceSynchronizeStream(device, stream);
     return acVBAReset(device->streams[stream], &device->vba);
 }
+

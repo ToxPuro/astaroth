@@ -292,6 +292,11 @@ acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* inf
     info->int_params[AC_nxgrid] = nx;
     info->int_params[AC_nygrid] = ny;
     info->int_params[AC_nzgrid] = nz;
+    
+    //needed to keep since before acGridInit the user can call this arbitary number of times
+    info->int_params[AC_nx] = nx;
+    info->int_params[AC_ny] = ny;
+    info->int_params[AC_nz] = nz;
     return acHostUpdateBuiltinParams(info);
 }
 

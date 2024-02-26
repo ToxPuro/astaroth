@@ -518,7 +518,6 @@ static const char* builtin_int_params[] = {
 };
 
 static const char* builtin_int3_params[] = {
-    "AC_global_grid_n",
     "AC_multigpu_offset",
 };
 
