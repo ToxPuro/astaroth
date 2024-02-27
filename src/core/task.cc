@@ -231,14 +231,14 @@ Region::overlaps(const Region* other)
 }
 
 AcBoundary
-Region::boundary(uint3_64 decomp, int pid, const int proc_mapping_strategy)
+Region::boundary(uint3_64 decomp, int pid, AcProcMappingStrategy proc_mapping_strategy)
 {
     int3 pid3d = getPid3D(pid, decomp, proc_mapping_strategy);
     return boundary(decomp, pid3d, id);
 }
 
 bool
-Region::is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary, const int proc_mapping_strategy)
+Region::is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy)
 {
     int3 pid3d = getPid3D(pid, decomp, proc_mapping_strategy);
     return is_on_boundary(decomp, pid3d, id, boundary);
@@ -263,7 +263,7 @@ Region::tag_to_id(int _tag)
 }
 
 AcBoundary
-Region::boundary(uint3_64 decomp, int pid, int tag, const int proc_mapping_strategy)
+Region::boundary(uint3_64 decomp, int pid, int tag, AcProcMappingStrategy proc_mapping_strategy)
 {
     int3 pid3d = getPid3D(pid, decomp, proc_mapping_strategy);
     int3 id    = tag_to_id(tag);
@@ -283,7 +283,7 @@ Region::boundary(uint3_64 decomp, int3 pid3d, int3 id)
 }
 
 bool
-Region::is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary, const int proc_mapping_strategy)
+Region::is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy)
 {
     int3 pid3d     = getPid3D(pid, decomp, proc_mapping_strategy);
     int3 region_id = tag_to_id(tag);
@@ -654,7 +654,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     syncVBA();
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done syncing VBA\n");
 
-    counterpart_rank = getPid(getPid3D(rank, decomp, device->local_config.int_params[AC_proc_mapping_strategy]) + output_region.id, decomp, device->local_config.int_params[AC_proc_mapping_strategy]);
+    counterpart_rank = getPid(getPid3D(rank, decomp, (AcProcMappingStrategy)device->local_config.int_params[AC_proc_mapping_strategy]) + output_region.id, decomp, (AcProcMappingStrategy)device->local_config.int_params[AC_proc_mapping_strategy]);
     // MPI tags are namespaced to avoid collisions with other MPI tasks
     send_tag = tag_0 + input_region.tag;
     recv_tag = tag_0 + Region::id_to_tag(-output_region.id);

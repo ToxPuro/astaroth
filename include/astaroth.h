@@ -146,6 +146,17 @@ typedef enum {
     NUM_INIT_TYPES
 } InitType;
 
+#ifdef __cplusplus
+enum class AcProcMappingStrategy:int{
+    Morton = -1, //The default
+    Linear = 1,
+};
+enum class AcDecomposeStrategy:int{
+    Default = -1, 
+    External = 1,
+};
+#endif
+
 #undef AC_GEN_ID
 
 #define _UNUSED __attribute__((unused)) // Does not give a warning if unused

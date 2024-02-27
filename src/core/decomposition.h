@@ -120,22 +120,39 @@ wrap(const int3 i, const uint3_64 n)
 }
 
 static inline int
-getPid(const int3 pid_raw, const uint3_64 decomp, const int proc_mapping_strategy)
+getPid(const int3 pid_raw, const uint3_64 decomp, AcProcMappingStrategy proc_mapping_strategy)
 {
     const uint3_64 pid = wrap(pid_raw, decomp);
-    if(proc_mapping_strategy == 1)
-        return (int)pid.x + (int)pid.y*decomp.x + (int)pid.z*decomp.x*decomp.z;
-    else if(proc_mapping_strategy == -1)
-        return (int)morton1D(pid);
-    return -1;
+    switch(proc_mapping_strategy)
+    {
+        case AcProcMappingStrategy::Linear:
+            return (int)pid.x + (int)pid.y*decomp.x + (int)pid.z*decomp.x*decomp.z;
+        case AcProcMappingStrategy::Morton:
+            return (int)morton1D(pid);
+        default:
+            printf("Missing proc mapping strategy\n");
+            ERRCHK_ALWAYS(false);
+    }
 }
 
-static inline int3
-getPid3D(const uint64_t pid, const uint3_64 decomp, const int proc_mapping_strategy)
+static inline uint3_64
+get_uintPid3D(const uint64_t pid, const uint3_64 decomp, AcProcMappingStrategy proc_mapping_strategy)
 {
-    const uint3_64 pid3D = (proc_mapping_strategy == 1) ? 
-                            (uint3_64){pid % decomp.x, (pid/decomp.x) % decomp.y, (pid/(decomp.x*decomp.y)) % decomp.z}
-                            : (proc_mapping_strategy == -1) ? morton3D(pid) : (uint3_64){0,0,0};
+    switch(proc_mapping_strategy)
+    {
+        case AcProcMappingStrategy::Linear:
+            return (uint3_64){pid % decomp.x, (pid/decomp.x) % decomp.y, (pid/(decomp.x*decomp.y)) % decomp.z};
+        case AcProcMappingStrategy::Morton:
+            return morton3D(pid);
+        default:
+            printf("Missing proc mapping strategy\n");
+            ERRCHK_ALWAYS(false);
+    }
+}
+static inline int3
+getPid3D(const uint64_t pid, const uint3_64 decomp, AcProcMappingStrategy proc_mapping_strategy)
+{
+    const uint3_64 pid3D = get_uintPid3D(pid, decomp, proc_mapping_strategy);
     ERRCHK_ALWAYS(getPid(static_cast<int3>(pid3D), decomp, proc_mapping_strategy) == (int)pid);
     return (int3){(int)pid3D.x, (int)pid3D.y, (int)pid3D.z};
 }
