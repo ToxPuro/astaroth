@@ -23,8 +23,6 @@ option(BUILD_SHARED_LIBS "Build Astaroth as a collection of shared libraries ins
 option(USE_PERFSTUBS "Build with perfstubs" OFF)
 option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
 option(DEBUG_SYNC "Whether to sync after all tasks in default ops" OFF)
-option(LINEAR_PROC_MAPPING "Whether to use a linear process mapping or not" OFF)
-option(USE_EXTERNAL_DECOMP "Whether to use Astaroth provided process decomposition or a user provided one" OFF)
 option(AUTOTUNE_AT_INIT "Whether Astaroth will perform some initial autotuning" ON)
 
 if (USE_HIP)

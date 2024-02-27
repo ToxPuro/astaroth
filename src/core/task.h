@@ -88,9 +88,9 @@ struct Region {
     static int id_to_tag(int3 id);
     static int3 tag_to_id(int tag);
 
-    static AcBoundary boundary(uint3_64 decomp, int pid, int tag);
+    static AcBoundary boundary(uint3_64 decomp, int pid, int tag, const int proc_mapping_strategy);
     static AcBoundary boundary(uint3_64 decomp, int3 pid3d, int3 id);
-    static bool is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary);
+    static bool is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary, const int proc_mapping_strategy);
     static bool is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary);
 
     Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields);
@@ -99,8 +99,8 @@ struct Region {
 
     Region translate(int3 translation);
     bool overlaps(const Region* other);
-    AcBoundary boundary(uint3_64 decomp, int pid);
-    bool is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary);
+    AcBoundary boundary(uint3_64 decomp, int pid, const int proc_mapping_strategy);
+    bool is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary, const int proc_mapping_strategy);
 };
 
 /**

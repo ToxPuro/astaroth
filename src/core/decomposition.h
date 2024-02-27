@@ -120,25 +120,23 @@ wrap(const int3 i, const uint3_64 n)
 }
 
 static inline int
-getPid(const int3 pid_raw, const uint3_64 decomp)
+getPid(const int3 pid_raw, const uint3_64 decomp, const int proc_mapping_strategy)
 {
     const uint3_64 pid = wrap(pid_raw, decomp);
-    #if LINEAR_PROC_MAPPING
-    return (int)pid.x + (int)pid.y*decomp.x + (int)pid.z*decomp.x*decomp.z;
-    #else
-    return (int)morton1D(pid);
-    #endif
+    if(proc_mapping_strategy == 1)
+        return (int)pid.x + (int)pid.y*decomp.x + (int)pid.z*decomp.x*decomp.z;
+    else if(proc_mapping_strategy == -1)
+        return (int)morton1D(pid);
+    return -1;
 }
 
 static inline int3
-getPid3D(const uint64_t pid, const uint3_64 decomp)
+getPid3D(const uint64_t pid, const uint3_64 decomp, const int proc_mapping_strategy)
 {
-    #if LINEAR_PROC_MAPPING
-    const uint3_64 pid3D = {pid % decomp.x, (pid/decomp.x) % decomp.y, (pid/(decomp.x*decomp.y)) % decomp.z};
-    #else
-    const uint3_64 pid3D = morton3D(pid);
-    #endif
-    ERRCHK_ALWAYS(getPid(static_cast<int3>(pid3D), decomp) == (int)pid);
+    const uint3_64 pid3D = (proc_mapping_strategy == 1) ? 
+                            (uint3_64){pid % decomp.x, (pid/decomp.x) % decomp.y, (pid/(decomp.x*decomp.y)) % decomp.z}
+                            : (proc_mapping_strategy == -1) ? morton3D(pid) : (uint3_64){0,0,0};
+    ERRCHK_ALWAYS(getPid(static_cast<int3>(pid3D), decomp, proc_mapping_strategy) == (int)pid);
     return (int3){(int)pid3D.x, (int)pid3D.y, (int)pid3D.z};
 }
 

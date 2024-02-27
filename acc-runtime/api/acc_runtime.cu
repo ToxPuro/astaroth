@@ -453,8 +453,8 @@ acVBACreate(const AcMeshInfo config)
   for (size_t i = 0; i < NUM_WORK_BUFFERS; ++i)
     device_malloc((void**)&vba.w[i],bytes);
   //Allocate arrays
-  for (size_t i = 0; i < NUM_ARRAYS; ++i)
-    device_malloc((void**)&vba.arrays[i],sizeof(vba.in[0][0])*config.int_params[ac_array_lengths[i]]);
+  for (size_t i = 0; i < NUM_REAL_ARRAYS; ++i)
+    device_malloc((void**)&vba.arrays[i],sizeof(vba.in[0][0])*config.int_params[real_array_lengths[i]]);
   acVBAReset(0, &vba);
   cudaDeviceSynchronize();
   return vba;
@@ -490,8 +490,8 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
       device_free(&(vba->profiles[i]),config.int_params[profile_lengths[i]]);
     }
   //Free arrays
-  for(size_t i=0;i<NUM_ARRAYS; ++i)
-    device_free(&(vba->arrays[i]), config.int_params[ac_array_lengths[i]]);
+  for(size_t i=0;i<NUM_REAL_ARRAYS; ++i)
+    device_free(&(vba->arrays[i]), config.int_params[real_array_lengths[i]]);
   vba->bytes = 0;
 }
 

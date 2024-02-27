@@ -1069,7 +1069,7 @@ AcResult acDeviceLoadProfile(const Device device, const Stream stream, const AcM
                                   const Profile profile);
 /** */
 AcResult acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info,
-                                  const AcArray array);
+                                  const AcRealArrayParam array);
 
 /** */
 AcResult acDeviceSetVertexBuffer(const Device device, const Stream stream,
@@ -1228,7 +1228,7 @@ template <size_t num_fields>
 AcTaskDefinition
 acCompute(AcKernel kernel, Field (&fields)[num_fields])
 {
-    return acCompute(kernel, fields, num_fields, fields, num_fields, nullptr);
+    return acCompute(kernel, fields, num_fields, fields, num_fields, [](const TaskStepInfo step_info){ return acLoadIntUniform(step_info.stream, AC_step_number, step_info.step_number);});
 }
 
 template <size_t num_fields>
@@ -1244,7 +1244,7 @@ template <size_t num_fields_in, size_t num_fields_out>
 AcTaskDefinition
 acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out])
 {
-    return acCompute(kernel, fields_in, num_fields_in, fields_out, num_fields_out, nullptr);
+    return acCompute(kernel, fields_in, num_fields_in, fields_out, num_fields_out, [](const TaskStepInfo step_info){ return acLoadIntUniform(step_info.stream, AC_step_number, step_info.step_number);});
 }
 
 template <size_t num_fields_in, size_t num_fields_out>
