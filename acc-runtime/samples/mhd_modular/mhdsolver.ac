@@ -70,7 +70,7 @@ real AC_forcing_period_t
 // Initial time step index, default should be 0
 int AC_start_step
 
-real AC_dsx, AC_dsy, AC_dsz // WARNING UNUSED! NEED TO BE COMPILE-TIME CONSTANTS
+real AC_dsx, AC_dsy, AC_dsz 
 
 
 // Real params
