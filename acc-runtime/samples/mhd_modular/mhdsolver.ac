@@ -1080,10 +1080,11 @@ radial_vector_field(ampl) {
     center = real(AC_nx-1)*AC_dsx / 2.0
 
     xx = grid_position()
+    centre = grid_centre()
 
-    xx.x = xx.x - center
-    xx.y = xx.y - center
-    xx.z = xx.z - center
+    xx.x = xx.x - center.x
+    xx.y = xx.y - center.y
+    xx.z = xx.z - center.z
 
     rr = sqrt(xx.x*xx.x + xx.y*xx.y + xx.z*xx.z)
     rr_xy = sqrt(xx.x*xx.x + xx.y*xx.y)
