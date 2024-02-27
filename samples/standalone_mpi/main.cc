@@ -474,7 +474,7 @@ read_varfile_to_mesh_and_setup(const AcMeshInfo info, const char* file_path)
 {
     // Read PC varfile to Astaroth
 
-    const int3 nn = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+    const int3 nn = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
     const int3 rr = (int3){3, 3, 3};
 
     int pid;
@@ -1504,9 +1504,9 @@ main(int argc, char** argv)
                     bool changed_run_constants = false;
 
                     std::set<size_t> int_run_constants;
-                    int_run_constants.insert(AC_nx);
-                    int_run_constants.insert(AC_ny);
-                    int_run_constants.insert(AC_nz);
+                    int_run_constants.insert(AC_nxgrid);
+                    int_run_constants.insert(AC_nygrid);
+                    int_run_constants.insert(AC_nzgrid);
 
                     int_run_constants.insert(AC_dsx);
                     int_run_constants.insert(AC_dsy);
@@ -1629,6 +1629,7 @@ main(int argc, char** argv)
                     }
 
                     // Decompose the config
+		    acHostUpdateBuiltinParams(&new_info);
                     AcMeshInfo submesh_info = acGridDecomposeMeshInfo(new_info);
                     acDeviceLoadMeshInfo(acGridGetDevice(), submesh_info);
                     info = new_info;

@@ -232,9 +232,15 @@ acGetNode(void)
 AcResult
 acHostUpdateBuiltinParams(AcMeshInfo* config)
 {
-    ERRCHK_ALWAYS(config->int_params[AC_nx] > 0);
-    ERRCHK_ALWAYS(config->int_params[AC_ny] > 0);
-    ERRCHK_ALWAYS(config->int_params[AC_nz] > 0);
+    ERRCHK_ALWAYS(config->int_params[AC_nx] > 0 || config->int_params[AC_nxgrid] > 0);
+    ERRCHK_ALWAYS(config->int_params[AC_ny] > 0 || config->int_params[AC_nxgrid] > 0);
+    ERRCHK_ALWAYS(config->int_params[AC_nz] > 0 || config->int_params[AC_nxgrid] > 0);
+    if(config->int_params[AC_nx] <= 0)
+	config->int_params[AC_nx] = config->int_params[AC_nxgrid];
+    if(config->int_params[AC_ny] <= 0)
+	config->int_params[AC_ny] = config->int_params[AC_nygrid];
+    if(config->int_params[AC_nz] <= 0)
+	config->int_params[AC_nz] = config->int_params[AC_nzgrid];
 
     config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER;
     ///////////// PAD TEST
@@ -283,6 +289,11 @@ acHostUpdateBuiltinParams(AcMeshInfo* config)
 AcResult
 acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info)
 {
+    info->int_params[AC_nxgrid] = nx;
+    info->int_params[AC_nygrid] = ny;
+    info->int_params[AC_nzgrid] = nz;
+    
+    //needed to keep since before acGridInit the user can call this arbitary number of times
     info->int_params[AC_nx] = nx;
     info->int_params[AC_ny] = ny;
     info->int_params[AC_nz] = nz;

@@ -434,11 +434,6 @@ acGridInit(const AcMeshInfo info)
     submesh_info.int_params[AC_nx]             = submesh_nx;
     submesh_info.int_params[AC_ny]             = submesh_ny;
     submesh_info.int_params[AC_nz]             = submesh_nz;
-    submesh_info.int3_params[AC_global_grid_n] = (int3){
-        info.int_params[AC_nx],
-        info.int_params[AC_ny],
-        info.int_params[AC_nz],
-    };
     submesh_info.int3_params[AC_multigpu_offset] = pid3d *
                                                    (int3){submesh_nx, submesh_ny, submesh_nz};
     acHostUpdateBuiltinParams(&submesh_info);

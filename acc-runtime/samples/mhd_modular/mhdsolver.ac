@@ -72,12 +72,6 @@ int AC_start_step
 
 real AC_dsx, AC_dsy, AC_dsz // WARNING UNUSED! NEED TO BE COMPILE-TIME CONSTANTS
 
-hostdefine DSX (0.012271846303085129837744700715935558141395192)
-hostdefine DSY (0.012271846303085129837744700715935558141395192)
-hostdefine DSZ (0.012271846303085129837744700715935558141395192)
-#define AC_inv_dsx (1. / DSX)
-#define AC_inv_dsy (1. / DSY)
-#define AC_inv_dsz (1. / DSZ)
 
 // Real params
 // Spacing
@@ -211,9 +205,6 @@ real AC_current_time
 
 #endif 
 
-Stencil value {
-    [0][0][0] = 1
-}
 
 /*
 // A hax to access close by stencil values
@@ -275,148 +266,145 @@ Stencil value_zp3 {
 }
 */
 
-//MV: Based on the standard rules of multiplications, why -AC_inv_dsx etc could
+//MV: Based on the standard rules of multiplications, why -(1.0/AC_dsx) etc could
 //MV: not be outside of the stencil operation? 
 
 Stencil derx {
-    [0][0][-3] = -AC_inv_dsx * DER1_3,
-    [0][0][-2] = -AC_inv_dsx * DER1_2,
-    [0][0][-1] = -AC_inv_dsx * DER1_1,
-    [0][0][1]  = AC_inv_dsx * DER1_1,
-    [0][0][2]  = AC_inv_dsx * DER1_2,
-    [0][0][3]  = AC_inv_dsx * DER1_3
+    [0][0][-3] = -(1.0/AC_dsx) * DER1_3,
+    [0][0][-2] = -(1.0/AC_dsx) * DER1_2,
+    [0][0][-1] = -(1.0/AC_dsx) * DER1_1,
+    [0][0][1]  = (1.0/AC_dsx) * DER1_1,
+    [0][0][2]  = (1.0/AC_dsx) * DER1_2,
+    [0][0][3]  = (1.0/AC_dsx) * DER1_3
 }
 
 Stencil dery {
-    [0][-3][0] = -AC_inv_dsy * DER1_3,
-    [0][-2][0] = -AC_inv_dsy * DER1_2,
-    [0][-1][0] = -AC_inv_dsy * DER1_1,
-    [0][1][0]  = AC_inv_dsy * DER1_1,
-    [0][2][0]  = AC_inv_dsy * DER1_2,
-    [0][3][0]  = AC_inv_dsy * DER1_3
+    [0][-3][0] = -(1.0/AC_dsy) * DER1_3,
+    [0][-2][0] = -(1.0/AC_dsy) * DER1_2,
+    [0][-1][0] = -(1.0/AC_dsy) * DER1_1,
+    [0][1][0]  = (1.0/AC_dsy) * DER1_1,
+    [0][2][0]  = (1.0/AC_dsy) * DER1_2,
+    [0][3][0]  = (1.0/AC_dsy) * DER1_3
 }
 
 Stencil derz {
-    [-3][0][0] = -AC_inv_dsz * DER1_3,
-    [-2][0][0] = -AC_inv_dsz * DER1_2,
-    [-1][0][0] = -AC_inv_dsz * DER1_1,
-    [1][0][0]  = AC_inv_dsz * DER1_1,
-    [2][0][0]  = AC_inv_dsz * DER1_2,
-    [3][0][0]  = AC_inv_dsz * DER1_3
+    [-3][0][0] = -(1.0/AC_dsz) * DER1_3,
+    [-2][0][0] = -(1.0/AC_dsz) * DER1_2,
+    [-1][0][0] = -(1.0/AC_dsz) * DER1_1,
+    [1][0][0]  = (1.0/AC_dsz) * DER1_1,
+    [2][0][0]  = (1.0/AC_dsz) * DER1_2,
+    [3][0][0]  = (1.0/AC_dsz) * DER1_3
 }
 
 Stencil derxx {
-    [0][0][-3] = AC_inv_dsx * AC_inv_dsx * DER2_3,
-    [0][0][-2] = AC_inv_dsx * AC_inv_dsx * DER2_2,
-    [0][0][-1] = AC_inv_dsx * AC_inv_dsx * DER2_1,
-    [0][0][0]  = AC_inv_dsx * AC_inv_dsx * DER2_0,
-    [0][0][1]  = AC_inv_dsx * AC_inv_dsx * DER2_1,
-    [0][0][2]  = AC_inv_dsx * AC_inv_dsx * DER2_2,
-    [0][0][3]  = AC_inv_dsx * AC_inv_dsx * DER2_3
+    [0][0][-3] = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_3,
+    [0][0][-2] = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_2,
+    [0][0][-1] = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_1,
+    [0][0][0]  = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_0,
+    [0][0][1]  = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_1,
+    [0][0][2]  = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_2,
+    [0][0][3]  = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_3
 }
 
 Stencil deryy {
-    [0][-3][0] = AC_inv_dsy * AC_inv_dsy * DER2_3,
-    [0][-2][0] = AC_inv_dsy * AC_inv_dsy * DER2_2,
-    [0][-1][0] = AC_inv_dsy * AC_inv_dsy * DER2_1,
-    [0][0][0]  = AC_inv_dsy * AC_inv_dsy * DER2_0,
-    [0][1][0]  = AC_inv_dsy * AC_inv_dsy * DER2_1,
-    [0][2][0]  = AC_inv_dsy * AC_inv_dsy * DER2_2,
-    [0][3][0]  = AC_inv_dsy * AC_inv_dsy * DER2_3
+    [0][-3][0] = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_3,
+    [0][-2][0] = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_2,
+    [0][-1][0] = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_1,
+    [0][0][0]  = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_0,
+    [0][1][0]  = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_1,
+    [0][2][0]  = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_2,
+    [0][3][0]  = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_3
 }
 
 Stencil derzz {
-    [-3][0][0] = AC_inv_dsz * AC_inv_dsz * DER2_3,
-    [-2][0][0] = AC_inv_dsz * AC_inv_dsz * DER2_2,
-    [-1][0][0] = AC_inv_dsz * AC_inv_dsz * DER2_1,
-    [0][0][0]  = AC_inv_dsz * AC_inv_dsz * DER2_0,
-    [1][0][0]  = AC_inv_dsz * AC_inv_dsz * DER2_1,
-    [2][0][0]  = AC_inv_dsz * AC_inv_dsz * DER2_2,
-    [3][0][0]  = AC_inv_dsz * AC_inv_dsz * DER2_3
+    [-3][0][0] = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_3,
+    [-2][0][0] = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_2,
+    [-1][0][0] = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_1,
+    [0][0][0]  = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_0,
+    [1][0][0]  = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_1,
+    [2][0][0]  = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_2,
+    [3][0][0]  = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_3
 }
 
 Stencil derxy {
-    [0][-3][-3] = AC_inv_dsx * AC_inv_dsy * DERX_3,
-    [0][-2][-2] = AC_inv_dsx * AC_inv_dsy * DERX_2,
-    [0][-1][-1] = AC_inv_dsx * AC_inv_dsy * DERX_1,
-    [0][0][0]  = AC_inv_dsx * AC_inv_dsy * DERX_0,
-    [0][1][1]  = AC_inv_dsx * AC_inv_dsy * DERX_1,
-    [0][2][2]  = AC_inv_dsx * AC_inv_dsy * DERX_2,
-    [0][3][3]  = AC_inv_dsx * AC_inv_dsy * DERX_3,
-    [0][-3][3] = -AC_inv_dsx * AC_inv_dsy * DERX_3,
-    [0][-2][2] = -AC_inv_dsx * AC_inv_dsy * DERX_2,
-    [0][-1][1] = -AC_inv_dsx * AC_inv_dsy * DERX_1,
-    [0][1][-1] = -AC_inv_dsx * AC_inv_dsy * DERX_1,
-    [0][2][-2] = -AC_inv_dsx * AC_inv_dsy * DERX_2,
-    [0][3][-3] = -AC_inv_dsx * AC_inv_dsy * DERX_3
+    [0][-3][-3] = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_3,
+    [0][-2][-2] = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_2,
+    [0][-1][-1] = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_1,
+    [0][0][0]  = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_0,
+    [0][1][1]  = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_1,
+    [0][2][2]  = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_2,
+    [0][3][3]  = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_3,
+    [0][-3][3] = -(1.0/AC_dsx) * (1.0/AC_dsy) * DERX_3,
+    [0][-2][2] = -(1.0/AC_dsx) * (1.0/AC_dsy) * DERX_2,
+    [0][-1][1] = -(1.0/AC_dsx) * (1.0/AC_dsy) * DERX_1,
+    [0][1][-1] = -(1.0/AC_dsx) * (1.0/AC_dsy) * DERX_1,
+    [0][2][-2] = -(1.0/AC_dsx) * (1.0/AC_dsy) * DERX_2,
+    [0][3][-3] = -(1.0/AC_dsx) * (1.0/AC_dsy) * DERX_3
 }
 
 Stencil derxz {
-    [-3][0][-3] = AC_inv_dsx * AC_inv_dsz * DERX_3,
-    [-2][0][-2] = AC_inv_dsx * AC_inv_dsz * DERX_2,
-    [-1][0][-1] = AC_inv_dsx * AC_inv_dsz * DERX_1,
-    [0][0][0]  = AC_inv_dsx * AC_inv_dsz * DERX_0,
-    [1][0][1]  = AC_inv_dsx * AC_inv_dsz * DERX_1,
-    [2][0][2]  = AC_inv_dsx * AC_inv_dsz * DERX_2,
-    [3][0][3]  = AC_inv_dsx * AC_inv_dsz * DERX_3,
-    [-3][0][3] = -AC_inv_dsx * AC_inv_dsz * DERX_3,
-    [-2][0][2] = -AC_inv_dsx * AC_inv_dsz * DERX_2,
-    [-1][0][1] = -AC_inv_dsx * AC_inv_dsz * DERX_1,
-    [1][0][-1] = -AC_inv_dsx * AC_inv_dsz * DERX_1,
-    [2][0][-2] = -AC_inv_dsx * AC_inv_dsz * DERX_2,
-    [3][0][-3] = -AC_inv_dsx * AC_inv_dsz * DERX_3
+    [-3][0][-3] = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_3,
+    [-2][0][-2] = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_2,
+    [-1][0][-1] = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_1,
+    [0][0][0]  = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_0,
+    [1][0][1]  = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_1,
+    [2][0][2]  = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_2,
+    [3][0][3]  = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_3,
+    [-3][0][3] = -(1.0/AC_dsx) * (1.0/AC_dsz) * DERX_3,
+    [-2][0][2] = -(1.0/AC_dsx) * (1.0/AC_dsz) * DERX_2,
+    [-1][0][1] = -(1.0/AC_dsx) * (1.0/AC_dsz) * DERX_1,
+    [1][0][-1] = -(1.0/AC_dsx) * (1.0/AC_dsz) * DERX_1,
+    [2][0][-2] = -(1.0/AC_dsx) * (1.0/AC_dsz) * DERX_2,
+    [3][0][-3] = -(1.0/AC_dsx) * (1.0/AC_dsz) * DERX_3
 }
 
 Stencil deryz {
-    [-3][-3][0] = AC_inv_dsy * AC_inv_dsz * DERX_3,
-    [-2][-2][0] = AC_inv_dsy * AC_inv_dsz * DERX_2,
-    [-1][-1][0] = AC_inv_dsy * AC_inv_dsz * DERX_1,
-    [0][0][0]  = AC_inv_dsy * AC_inv_dsz * DERX_0,
-    [1][1][0]  = AC_inv_dsy * AC_inv_dsz * DERX_1,
-    [2][2][0]  = AC_inv_dsy * AC_inv_dsz * DERX_2,
-    [3][3][0]  = AC_inv_dsy * AC_inv_dsz * DERX_3,
-    [-3][3][0] = -AC_inv_dsy * AC_inv_dsz * DERX_3,
-    [-2][2][0] = -AC_inv_dsy * AC_inv_dsz * DERX_2,
-    [-1][1][0] = -AC_inv_dsy * AC_inv_dsz * DERX_1,
-    [1][-1][0] = -AC_inv_dsy * AC_inv_dsz * DERX_1,
-    [2][-2][0] = -AC_inv_dsy * AC_inv_dsz * DERX_2,
-    [3][-3][0] = -AC_inv_dsy * AC_inv_dsz * DERX_3
+    [-3][-3][0] = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_3,
+    [-2][-2][0] = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_2,
+    [-1][-1][0] = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_1,
+    [0][0][0]  = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_0,
+    [1][1][0]  = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_1,
+    [2][2][0]  = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_2,
+    [3][3][0]  = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_3,
+    [-3][3][0] = -(1.0/AC_dsy) * (1.0/AC_dsz) * DERX_3,
+    [-2][2][0] = -(1.0/AC_dsy) * (1.0/AC_dsz) * DERX_2,
+    [-1][1][0] = -(1.0/AC_dsy) * (1.0/AC_dsz) * DERX_1,
+    [1][-1][0] = -(1.0/AC_dsy) * (1.0/AC_dsz) * DERX_1,
+    [2][-2][0] = -(1.0/AC_dsy) * (1.0/AC_dsz) * DERX_2,
+    [3][-3][0] = -(1.0/AC_dsy) * (1.0/AC_dsz) * DERX_3
 }
 
 Stencil der6x_upwd {
-    [0][0][-3] =  AC_inv_dsx * DER6UPWD_3,
-    [0][0][-2] =  AC_inv_dsx * DER6UPWD_2,
-    [0][0][-1] =  AC_inv_dsx * DER6UPWD_1,
-    [0][0][0]  =  AC_inv_dsx * DER6UPWD_0,
-    [0][0][1]  =  AC_inv_dsx * DER6UPWD_1,
-    [0][0][2]  =  AC_inv_dsx * DER6UPWD_2,
-    [0][0][3]  =  AC_inv_dsx * DER6UPWD_3
+    [0][0][-3] =  (1.0/AC_dsx) * DER6UPWD_3,
+    [0][0][-2] =  (1.0/AC_dsx) * DER6UPWD_2,
+    [0][0][-1] =  (1.0/AC_dsx) * DER6UPWD_1,
+    [0][0][0]  =  (1.0/AC_dsx) * DER6UPWD_0,
+    [0][0][1]  =  (1.0/AC_dsx) * DER6UPWD_1,
+    [0][0][2]  =  (1.0/AC_dsx) * DER6UPWD_2,
+    [0][0][3]  =  (1.0/AC_dsx) * DER6UPWD_3
 }
 
 Stencil der6y_upwd {
-    [0][-3][0] =  AC_inv_dsy * DER6UPWD_3,
-    [0][-2][0] =  AC_inv_dsy * DER6UPWD_2,
-    [0][-1][0] =  AC_inv_dsy * DER6UPWD_1,
-    [0][0][0]  =  AC_inv_dsy * DER6UPWD_0,
-    [0][1][0]  =  AC_inv_dsy * DER6UPWD_1,
-    [0][2][0]  =  AC_inv_dsy * DER6UPWD_2,
-    [0][3][0]  =  AC_inv_dsy * DER6UPWD_3
+    [0][-3][0] =  (1.0/AC_dsy) * DER6UPWD_3,
+    [0][-2][0] =  (1.0/AC_dsy) * DER6UPWD_2,
+    [0][-1][0] =  (1.0/AC_dsy) * DER6UPWD_1,
+    [0][0][0]  =  (1.0/AC_dsy) * DER6UPWD_0,
+    [0][1][0]  =  (1.0/AC_dsy) * DER6UPWD_1,
+    [0][2][0]  =  (1.0/AC_dsy) * DER6UPWD_2,
+    [0][3][0]  =  (1.0/AC_dsy) * DER6UPWD_3
 }
 
 Stencil der6z_upwd {
-    [-3][0][0] =  AC_inv_dsz * DER6UPWD_3,
-    [-2][0][0] =  AC_inv_dsz * DER6UPWD_2,
-    [-1][0][0] =  AC_inv_dsz * DER6UPWD_1,
-    [0][0][0]  =  AC_inv_dsz * DER6UPWD_0,
-    [1][0][0]  =  AC_inv_dsz * DER6UPWD_1,
-    [2][0][0]  =  AC_inv_dsz * DER6UPWD_2,
-    [3][0][0]  =  AC_inv_dsz * DER6UPWD_3
+    [-3][0][0] =  (1.0/AC_dsz) * DER6UPWD_3,
+    [-2][0][0] =  (1.0/AC_dsz) * DER6UPWD_2,
+    [-1][0][0] =  (1.0/AC_dsz) * DER6UPWD_1,
+    [0][0][0]  =  (1.0/AC_dsz) * DER6UPWD_0,
+    [1][0][0]  =  (1.0/AC_dsz) * DER6UPWD_1,
+    [2][0][0]  =  (1.0/AC_dsz) * DER6UPWD_2,
+    [3][0][0]  =  (1.0/AC_dsz) * DER6UPWD_3
 }
 
 
-vecvalue(v) {
-    return real3(value(v.x), value(v.y), value(v.z))
-}
 
 vecvalue_abs(v) {
     return real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
@@ -503,9 +491,9 @@ grid_position() {
 }
 
 grid_centre() {
-    return real3(((globalGridN.x-1) * AC_dsx)/2.0, 
-                 ((globalGridN.y-1) * AC_dsy)/2.0, 
-                 ((globalGridN.z-1) * AC_dsz)/2.0)
+    return real3(((AC_nxgrid-1) * AC_dsx)/2.0, 
+                 ((AC_nygrid-1) * AC_dsy)/2.0, 
+                 ((AC_nzgrid-1) * AC_dsz)/2.0)
 }
 
 
@@ -515,9 +503,9 @@ grid_centre() {
 helical_forcing(k_force, xx, ff_re, ff_im, phi)
 {
     real3 yy
-    yy.x = xx.x * (2.0 * R_PI / (AC_dsx * globalGridN.x))
-    yy.y = xx.y * (2.0 * R_PI / (AC_dsy * globalGridN.x))
-    yy.z = xx.z * (2.0 * R_PI / (AC_dsz * globalGridN.x))
+    yy.x = xx.x * (2.0 * R_PI / (AC_dsx * AC_nxgrid))
+    yy.y = xx.y * (2.0 * R_PI / (AC_dsy * AC_nygrid))
+    yy.z = xx.z * (2.0 * R_PI / (AC_dsz * AC_nzgrid))
 
     cos_phi     = cos(phi)
     sin_phi     = sin(phi)
@@ -690,7 +678,7 @@ Kernel shock_2_max()
 
 Kernel shock_3_smooth()
 {
-    dsmin = DSX //Here assuming that all spacing are equal
+    dsmin = AC_dsx //Here assuming that all spacing are equal
     cshock = 1.0  
 
     s_shock = smooth_kernel(VTXBUF_SHOCK)
@@ -946,7 +934,7 @@ Kernel randomize() {
     AC_rng_scale = 1e-5
 
     for field in 0:NUM_FIELDS {
-        i = uint64_t(globalVertexIdx.x) + uint64_t(globalVertexIdx.y) * uint64_t(globalGridN.x) + uint64_t(globalVertexIdx.z) * uint64_t(globalGridN.x) * uint64_t(globalGridN.y) + uint64_t(field) * uint64_t(globalGridN.x) * uint64_t(globalGridN.y) * uint64_t(globalGridN.z)
+        i = uint64_t(globalVertexIdx.x) + uint64_t(globalVertexIdx.y) * uint64_t(AC_nxgrid) + uint64_t(globalVertexIdx.z) * uint64_t(AC_nxgrid) * uint64_t(AC_nygrid) + uint64_t(field) * uint64_t(AC_nxgrid) * uint64_t(AC_nygrid) * uint64_t(AC_nzgrid)
         //i += i*i + i*i*i + i*i*i*i + i*i*i*i*i // Add some non-linearity
         
         // Generate some entropy
@@ -961,7 +949,7 @@ Kernel randomize() {
         //write(Field(field), 2.0 * ((75 * i + 74 + 3257*i*i + 6067*i*i*i + 7919*i*i*i*i)%999331) / 999331 - 1.0)
         
         // xorshift*
-        //seed = uint64_t(globalGridN.x) * uint64_t(globalGridN.y) * uint64_t(globalGridN.z) * uint64_t(NUM_FIELDS)
+        //seed = uint64_t(AC_nxgrid) * uint64_t(AC_nygrid) * uint64_t(AC_nzgrid) * uint64_t(NUM_FIELDS)
         r = 2.0 * xorshift(i) / UINT64_MAX - 1.0
         write(Field(field), AC_rng_scale * r)
     }

@@ -205,9 +205,6 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     submesh_config.int_params[AC_nx]               = submesh_nx;
     submesh_config.int_params[AC_ny]               = submesh_ny;
     submesh_config.int_params[AC_nz]               = submesh_nz;
-    submesh_config.int3_params[AC_global_grid_n]   = (int3){global_config.int_params[AC_nx],
-                                                          global_config.int_params[AC_ny],
-                                                          global_config.int_params[AC_nz]};
     submesh_config.int3_params[AC_multigpu_offset] = pid3d *
                                                      (int3){submesh_nx, submesh_ny, submesh_nz};
     acHostUpdateBuiltinParams(&submesh_config);
@@ -215,7 +212,7 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 }
 
 AcResult
-acGridInit(const AcMeshInfo info)
+acGridInit(AcMeshInfo info)
 {
     ERRCHK(!grid.initialized);
 
@@ -241,11 +238,20 @@ acGridInit(const AcMeshInfo info)
     MPI_Barrier(acGridMPIComm());
 
     // Decompose
+<<<<<<< HEAD
     const uint3_64 decomp = (info.int_params[AC_decompose_strategy] == -1) ?
     				        decompose(nprocs)             :
 				            (info.int_params[AC_decompose_strategy] == 1) ?
 				            static_cast<uint3_64>(info.int3_params[AC_domain_decomposition]) :
 				            (uint3_64){0,0,0};
+=======
+    const uint3_64 decomp = decompose(nprocs);
+
+    // Done in order to copy AC_nxgrid -> AC_nx that will be decomposed
+    // This way you can use AC_nxgrid to get the global dimensions in the DSL and device layer
+    acHostUpdateBuiltinParams(&info);
+
+>>>>>>> origin/nxgrid
     // Check that the decomposition is valid
     const int3 nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const bool nx_valid = nn.x % decomp.x == 0;
@@ -364,7 +370,7 @@ acGridInit(const AcMeshInfo info)
     // Random number generator
     // const auto rr            = (int3){STENCIL_WIDTH, STENCIL_HEIGHT, STENCIL_DEPTH};
     // const auto local_m       = acConstructInt3Param(AC_mx, AC_my, AC_mz, submesh_info);
-    // const auto global_m      = submesh_info.int3_params[AC_global_grid_n] + 2 * rr;
+    // const auto global_m      = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid) + 2 * rr;
     // const auto global_offset = submesh_info.int3_params[AC_multigpu_offset];
     // acRandInit(1234UL, to_volume(local_m), to_volume(global_m), to_volume(global_offset));
     const size_t count = acVertexBufferCompdomainSize(submesh_info);
@@ -497,7 +503,7 @@ acGridLoadMeshWorking(const Stream stream, const AcMesh host_mesh)
         (STENCIL_HEIGHT - 1) / 2,
         (STENCIL_DEPTH - 1) / 2,
     };
-    const int3 monolithic_mm     = info.int3_params[AC_global_grid_n] + 2 * rr;
+    const int3 monolithic_mm     = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info)+ 2 * rr;
     const int3 monolithic_nn     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const int3 monolithic_offset = rr;
 
@@ -613,7 +619,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
         (STENCIL_HEIGHT - 1) / 2,
         (STENCIL_DEPTH - 1) / 2,
     };
-    const int3 monolithic_mm  = info.int3_params[AC_global_grid_n] + 2 * rr;
+    const int3 monolithic_mm  = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid) + 2 * rr;
     const int3 distributed_mm = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
 
     for (int block = 0; block < nprocs; ++block) {
@@ -780,7 +786,7 @@ get_subarray(const int pid, //
     }
 
     // Monolithic
-    to_mpi_array_order_c(info.int3_params[AC_global_grid_n] + 2 * rr, monolithic_mm_arr);
+    to_mpi_array_order_c(acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid,info) + 2 * rr, monolithic_mm_arr);
     to_mpi_array_order_c(distributed_nn, monolithic_nn_arr);
     to_mpi_array_order_c(pid3d * base_distributed_nn + distributed_offset, monolithic_offset_arr);
 
@@ -950,7 +956,7 @@ acGridStoreMeshWorking(const Stream stream, AcMesh* host_mesh)
         (STENCIL_HEIGHT - 1) / 2,
         (STENCIL_DEPTH - 1) / 2,
     };
-    const int3 input_nn     = info.int3_params[AC_global_grid_n]; // Without halo
+    const int3 input_nn     = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid); // Without halo
     const int3 input_mm     = input_nn + 2 * rr;
     const int3 input_offset = rr; //  + info.int3_params[AC_multigpu_offset];
 
@@ -994,7 +1000,7 @@ acGridStoreMeshWorking(const Stream stream, AcMesh* host_mesh)
         (STENCIL_HEIGHT - 1) / 2,
         (STENCIL_DEPTH - 1) / 2,
     };
-    const int3 monolithic_mm     = info.int3_params[AC_global_grid_n] + 2 * rr;
+    const int3 monolithic_mm     = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info)+ 2 * rr;
     const int3 monolithic_nn     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const int3 monolithic_offset = rr;
 
@@ -1981,7 +1987,7 @@ access_vtxbuf_on_disk(const VertexBufferHandle vtxbuf, const char* path, const A
 {
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
-    const int3 nn         = info.int3_params[AC_global_grid_n];
+    const int3 nn         = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid);
     const int3 nn_sub     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const int3 offset     = info.int3_params[AC_multigpu_offset]; // Without halo
 
@@ -2172,7 +2178,7 @@ acGridDiskAccessLaunch(const AccessType type)
         const Device device = grid.device;
         acDeviceSynchronizeStream(device, STREAM_ALL);
         const AcMeshInfo info = device->local_config;
-        // const int3 nn         = info.int3_params[AC_global_grid_n];
+        // const int3 nn         = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid);
         // const int3 nn_sub     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
         // const int3 offset     = info.int3_params[AC_multigpu_offset]; // Without halo
         AcReal* host_buffer = grid.submesh.vertex_buffer[i];
@@ -2238,7 +2244,7 @@ acGridDiskAccessLaunch(const AccessType type)
 #endif
 #else
             MPI_Datatype subarray;
-            const int3 nn          = info.int3_params[AC_global_grid_n];
+            const int3 nn          = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid);
             const int3 nn_sub      = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
             const int arr_nn[]     = {nn.z, nn.y, nn.x};
             const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
@@ -2301,7 +2307,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
         const Device device = grid.device;
         acDeviceSynchronizeStream(device, STREAM_ALL);
         const AcMeshInfo info = device->local_config;
-        // const int3 nn         = info.int3_params[AC_global_grid_n];
+        // const int3 nn         = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid);
         // const int3 nn_sub     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
         // const int3 offset     = info.int3_params[AC_multigpu_offset]; // Without halo
         AcReal* host_buffer = grid.submesh.vertex_buffer[i];
@@ -2367,7 +2373,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 #else
             WARNING("Collective mesh writing not working with async IO");
             MPI_Datatype subarray;
-            const int3 nn          = info.int3_params[AC_global_grid_n];
+            const int3 nn          = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
             const int3 nn_sub      = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
             const int arr_nn[]     = {nn.z, nn.y, nn.x};
             const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
@@ -2424,7 +2430,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
     const Device device       = grid.device;
     const AcMeshInfo info     = device->local_config;
     const int3 local_nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
-    const int3 global_nn      = info.int3_params[AC_global_grid_n];
+    const int3 global_nn      = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
     const int3 global_offset  = info.int3_params[AC_multigpu_offset];
     const int3 global_pos_min = global_offset;
     // const int3 global_pos_max = global_pos_min + local_nn;
@@ -2590,7 +2596,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
     const Device device       = grid.device;
     const AcMeshInfo info     = device->local_config;
     const int3 local_nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
-    const int3 global_nn      = info.int3_params[AC_global_grid_n];
+    const int3 global_nn      = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
     const int3 global_offset  = info.int3_params[AC_multigpu_offset];
     const int3 global_pos_min = global_offset;
     // const int3 global_pos_max = global_pos_min + local_nn;
@@ -2773,7 +2779,7 @@ acGridDiskAccessLaunch(const AccessType type)
         req_running[i] = true;
 #else
         MPI_Datatype subarray;
-        const int3 nn          = info.int3_params[AC_global_grid_n];
+        const int3 nn          = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
         const int3 nn_sub      = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
         const int arr_nn[]     = {nn.z, nn.y, nn.x};
         const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
@@ -2849,7 +2855,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
-    // const int3 nn         = info.int3_params[AC_global_grid_n];
+    // const int3 nn         = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid);
     const int3 nn_sub = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
 
@@ -2888,7 +2894,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
 #ifndef NDEBUG
     if (type == ACCESS_READ) {
-        const int3 nn              = info.int3_params[AC_global_grid_n];
+        const int3 nn              = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
         const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
         FILE* fp                   = fopen(filepath, "r");
         ERRCHK_ALWAYS(fp);
@@ -2934,7 +2940,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     fclose(fp);
 #else // Collective IO
     MPI_Datatype subarray;
-    const int3 nn = info.int3_params[AC_global_grid_n]; // TODO recheck whether this is correct
+    const int3 nn      = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info); // TODO recheck whether this is correct
     const int arr_nn[] = {nn.z, nn.y, nn.x};
     const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
     const int arr_offset[] = {offset.z, offset.y, offset.x};
@@ -2980,7 +2986,7 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
 
 #ifndef NDEBUG
     if (type == ACCESS_WRITE) {
-        const int3 nn              = info.int3_params[AC_global_grid_n];
+        const int3 nn              = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
         const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
         FILE* fp                   = fopen(filepath, "r");
         ERRCHK_ALWAYS(fp);
@@ -3048,7 +3054,7 @@ acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, co
 
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
-    // const int3 nn         = info.int3_params[AC_global_grid_n];
+    // const int3 nn         = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid);
     const int3 nn_sub = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
 
@@ -3152,7 +3158,7 @@ acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, con
 
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
-    const int3 nn         = info.int3_params[AC_global_grid_n];
+    const int3 nn         = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
     const int3 nn_sub     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const int3 offset     = info.int3_params[AC_multigpu_offset]; // Without halo
 
@@ -3402,7 +3408,7 @@ acGridLoadFieldFromFile(const char* path, const VertexBufferHandle vtxbuf)
 
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
-    const int3 global_nn  = info.int3_params[AC_global_grid_n];
+    const int3 global_nn  = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid);
     const int3 global_mm  = (int3){
         2 * STENCIL_ORDER + global_nn.x,
         2 * STENCIL_ORDER + global_nn.y,
@@ -3482,7 +3488,7 @@ acGridStoreFieldToFile(const char* path, const VertexBufferHandle vtxbuf)
 
     acGridDiskAccessSync();
 
-    const int3 global_nn = info.int3_params[AC_global_grid_n];
+    const int3 global_nn = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid);
     const int3 global_mm = (int3){
         2 * STENCIL_ORDER + global_nn.x,
         2 * STENCIL_ORDER + global_nn.y,

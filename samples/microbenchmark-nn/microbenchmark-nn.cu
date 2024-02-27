@@ -2,19 +2,19 @@
     Microbenchmark the GPU caches in 1D stencil computations and generate a plottable .csv output
 
     Examples:
-        # Usage
-        ./bwtest-benchmark <problem size in bytes> <working set size in bytes>
+        # Usage (see the main invocation for an up-to-date list of input parameters)
+        ./microbenchmark-nn <computational domain length in elements> <stencil radius in elements>
 
-        # 256 MiB problem size and working set of size 8 (one double), i.e. halo r=0
-        ./bwtest-benchmark 268435456 8
+        # Default problem size and radius
+        ./microbenchmark-nn
 
-        # 3-point von Neumann stencil
-        ./bwtest-benchmark 268435456 24
+        # Bandwidth test with r=0 stencil
+        ./microbenchmark-nn 33554432 0
 
         # Profiling
         cmake -DUSE_HIP=ON .. &&\
         make -j &&\
-        rocprof --trace-start off -i ~/rocprof-input-metrics.txt ./bwtest-benchmark 268435456 256
+        rocprof --trace-start off -i ~/rocprof-input-metrics.txt ./microbenchmark-nn
 
 cat ~/rocprof-input-metrics.txt
 ```
@@ -32,6 +32,7 @@ gpu: 0 1 2 3
 #kernel: singlepass_solve
 ```
 */
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -46,12 +47,14 @@ gpu: 0 1 2 3
 
 #include "array.h"
 #include "backend.h"
+#include "timer_hires.h"
 
 void
 model_kernel(const size_t domain_length, const int radius, const int stride, const Array in,
              Array out)
 {
-    for (int i = 0; i < domain_length; ++i) {
+    ERRCHK_ALWAYS(domain_length < INT_MAX)
+    for (int i = 0; i < (int)domain_length; ++i) {
         real tmp = 0;
         for (int r = -radius; r <= radius; r += stride) {
             const size_t idx = i + r;
@@ -73,7 +76,7 @@ verify(const size_t domain_length, const size_t radius, const size_t stride)
     arrayRandomize(&host_input);
     arrayRandomize(&host_output);
     for (size_t i = 0; i < domain_length; ++i)
-        host_input.data[i] = 1;
+        host_input.data[i] = (real)rand() / (real)RAND_MAX;
 
     // Model
     model_kernel(domain_length, radius, stride, host_input, host_output);
@@ -87,7 +90,7 @@ verify(const size_t domain_length, const size_t radius, const size_t stride)
     cudaMemcpy(input.data, host_input.data, host_input.bytes, cudaMemcpyHostToDevice);
     backendConvolutionFwd();
     cudaDeviceSynchronize();
-    cudaMemcpy(host_input.data, output.data, output.bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(host_input.data, output.data, output.bytes, cudaMemcpyDeviceToHost);
 
     const real* candidate = host_input.data;
     const real* model     = host_output.data;
@@ -95,10 +98,10 @@ verify(const size_t domain_length, const size_t radius, const size_t stride)
     size_t failure_count       = 0;
     const size_t failure_limit = 100;
     for (size_t i = 0; i < domain_length; ++i) {
-        printf("%zu: %g and %g\n", i, model[i], candidate[i]);
+        // printf("%zu: %g and %g\n", i, model[i], candidate[i]);
         if (model[i] != candidate[i]) {
-            fprintf(stderr, "Failure at %lu: %g (host) and %g (device)\n", i, model[i],
-                    candidate[i]);
+            fprintf(stderr, "Failure at %lu: %g (host) and %g (device)\n", i, (double)model[i],
+                    (double)candidate[i]);
             ++failure_count;
         }
         if (failure_count > failure_limit) {
@@ -120,12 +123,19 @@ benchmark(const size_t domain_length, const size_t radius, const size_t stride, 
           const size_t seed, const size_t num_samples)
 {
     // Allocate
-    Array a = arrayCreate(domain_length, true);
-    Array b = arrayCreate(domain_length, true);
+    backendInit(domain_length, radius, stride);
+    Array input  = backendGetInputTensor();
+    Array output = backendGetOutputTensor();
 
     // Randomize
-    arrayRandomize(&a);
-    arrayRandomize(&b);
+    arrayRandomize(&input);
+    arrayRandomize(&output);
+
+    // Dryrun
+    for (size_t i = 0; i < 10; ++i)
+        backendConvolutionFwd();
+    cudaDeviceSynchronize();
+    ERRCHK_CUDA_KERNEL_ALWAYS();
 
     // File
     const size_t buflen = 4096;
@@ -135,51 +145,60 @@ benchmark(const size_t domain_length, const size_t radius, const size_t stride, 
     ERRCHK_ALWAYS(fp);
 
     // File format
-    fprintf(fp, "implementation,problemsize,workingsetsize,stride,milliseconds,"
-                "effectivebandwidth,jobid,seed,iteration,double_precision\n");
-
-    // Dryrun
-    // kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.pad, c.radius, c.stride, a, b);
+    fprintf(fp, "implementation,maxthreadsperblock,domainlength,radius,stride,milliseconds,"
+                "effectivebandwidth,tpb,jobid,seed,iteration,double_precision\n");
 
     // Benchmark
-    cudaEvent_t tstart, tstop;
-    cudaEventCreate(&tstart);
-    cudaEventCreate(&tstop);
+    cudaProfilerStart();
+    Timer t;
+    //cudaEvent_t tstart, tstop;
+    //cudaEventCreate(&tstart);
+    //cudaEventCreate(&tstop);
 
     for (size_t i = 0; i < num_samples; ++i) {
         cudaDeviceSynchronize();
-        cudaEventRecord(tstart); // Timing start
-        // kernel<<<c.bpg, c.tpb, c.smem>>>(c.domain_length, c.pad, c.radius, c.stride, a, b);
-        cudaEventRecord(tstop); // Timing stop
-        cudaEventSynchronize(tstop);
+	timer_reset(&t);
+        //cudaEventRecord(tstart); // Timing start
+        backendConvolutionFwd();
+        //cudaEventRecord(tstop); // Timing stop
+        //cudaEventSynchronize(tstop);
+	cudaDeviceSynchronize();
+	const long double milliseconds = timer_diff_nsec(t)/1e6l;
         ERRCHK_CUDA_KERNEL_ALWAYS();
 
-        float milliseconds = 0;
-        cudaEventElapsedTime(&milliseconds, tstart, tstop);
+        //float milliseconds = 0;
+        //cudaEventElapsedTime(&milliseconds, tstart, tstop);
 
         // Derived statistics
-        const size_t bytes     = sizeof(a.data[0]) * (2 * domain_length + 2 * radius / stride);
-        const double seconds   = (double)milliseconds / 1e3;
-        const double bandwidth = bytes / seconds;
+        const size_t bytes     = sizeof(input.data[0]) * (2 * domain_length + 2 * radius / stride);
+        const long double seconds = (long double)milliseconds / 1e3l;
+        const long double bandwidth = bytes / seconds;
 
         if (i == num_samples - 1) {
-            printf("Effective bandwidth: %g GiB/s\n", bandwidth / pow(1024, 3));
-            printf("\tBytes transferred: %g GiB\n", bytes / pow(1024, 3));
-            printf("\tTime elapsed: %g ms\n", (double)milliseconds);
-        }
+		printf("Effective bandwidth: %Lg GiB/s\n", bandwidth / pow(1024, 3));
+		printf("\tBytes transferred: %Lg GiB\n", (long double)bytes / pow(1024, 3));
+		//printf("\tTime elapsed: %Lg ms (CUDA)\n", (long double)milliseconds);
+		printf("\tTime elapsed: %Lg ms (POSIX)\n", milliseconds);
+	}
+		
 
         // Write to file
-        fprintf(fp, "%s,%zu,%zu,%zu,%g,%g,%zu,%zu,%zu,%u\n", "cudnn-miopen",
-                domain_length * sizeof(a.data[0]), (2 * radius / stride + 1) * sizeof(a.data[0]),
-                stride, (double)milliseconds, bandwidth, jobid, seed, i, DOUBLE_PRECISION);
+        fprintf(fp, "%s,%d,%zu,%zu,%zu,%Lg,%Lg,%d,%zu,%zu,%zu,%u\n",
+#if AC_USE_HIP
+                "\"miopen\"",
+#else
+                "\"cudnn\"",
+#endif
+                -1, domain_length, radius, stride, milliseconds, bandwidth, -1, jobid, seed,
+                i, DOUBLE_PRECISION);
     }
-    cudaEventDestroy(tstart);
-    cudaEventDestroy(tstop);
+    //cudaEventDestroy(tstart);
+    //cudaEventDestroy(tstop);
+    cudaProfilerStop();
 
     // Free
     fclose(fp);
-    arrayDestroy(&a);
-    arrayDestroy(&b);
+    backendQuit();
     fflush(stdout);
 }
 
@@ -237,38 +256,35 @@ main(int argc, char* argv[])
     cudaProfilerStop();
 
     // Input parameters
-    fprintf(stderr, "Usage: ./benchmark-nn <problem size> <working set size> <stride> <jobid> "
+    fprintf(stderr, "Usage: ./benchmark <computational domain length> <radius> <stride> <jobid> "
                     "<num_samples> <salt>\n");
-    const size_t problem_size     = (argc > 1) ? (size_t)atol(argv[1]) : 268435456;
-    const size_t working_set_size = (argc > 2) ? (size_t)atol(argv[2]) : 8;
-    const int stride              = (argc > 3) ? (size_t)atol(argv[3]) : 1;
-    const size_t jobid            = (argc > 4) ? (size_t)atol(argv[4]) : 0;
-    const size_t num_samples      = (argc > 5) ? (size_t)atol(argv[5]) : 100;
-    const size_t salt             = (argc > 6) ? (size_t)atol(argv[6]) : 42;
+    const size_t domain_length = (argc > 1) ? (size_t)atol(argv[1])
+                                            : 128 * pow(1024, 2) / sizeof(real);
+    const size_t radius        = (argc > 2) ? (size_t)atol(argv[2]) : 1;
+    const int stride           = (argc > 3) ? (size_t)atol(argv[3]) : 1;
+    const size_t jobid         = (argc > 4) ? (size_t)atol(argv[4]) : 0;
+    const size_t num_samples   = (argc > 5) ? (size_t)atol(argv[5]) : 100;
+    const size_t salt          = (argc > 6) ? (size_t)atol(argv[6]) : 42;
 
     // Derived values
-    const int radius           = (((working_set_size / sizeof(real)) - 1) / 2) * stride;
-    const size_t domain_length = problem_size / sizeof(real);
-    const size_t seed          = 12345 + salt +
-                        (1 + problem_size + working_set_size + stride + jobid + num_samples) *
-                            time(NULL);
-    ERRCHK((2 * radius / stride + 1) * sizeof(real) == working_set_size);
-    ERRCHK(domain_length * sizeof(real) == problem_size);
+    ERRCHK_ALWAYS(stride == 1); // Not implemented yet
+    const size_t seed = 12345 + salt +
+                        (1 + domain_length + radius + stride + jobid + num_samples) * time(NULL);
 
     printf("Input parameters:\n");
-    printf("\tproblem_size: %zu\n", problem_size);
-    // printf("\tpad: %zu\n", pad);
+    printf("\tdomain_length: %zu\n", domain_length);
     printf("\tradius: %d\n", radius);
     printf("\tstride: %d\n", stride);
     printf("\tjobid: %zu\n", jobid);
     printf("\tnum_samples: %zu\n", num_samples);
     printf("\tseed: %zu\n", seed);
+    printf("\tsizeof(real): %zu\n", sizeof(real));
     fflush(stdout);
 
-    if (working_set_size > problem_size) {
-        fprintf(stderr, "Invalid working set size: %lu > %lu\n", working_set_size, problem_size);
-        return EXIT_FAILURE;
-    }
+    // if (working_set_size > domain_length) {
+    //     fprintf(stderr, "Invalid working set size: %lu > %lu\n", working_set_size, problem_size);
+    //     return EXIT_FAILURE;
+    // }
 
     printDeviceInfo(0);
     // printf("USE_SMEM=%d\n", USE_SMEM);
@@ -284,8 +300,6 @@ main(int argc, char* argv[])
     // Benchmark pipeline
     // KernelConfig c = autotune(array_length, domain_length, pad, radius, stride);
     ERRCHK_ALWAYS(verify(domain_length, radius, stride));
-    cudaProfilerStart();
-    // benchmark(c, jobid, seed, num_samples);
-    cudaProfilerStop();
+    benchmark(domain_length, radius, stride, jobid, seed, num_samples);
     return EXIT_SUCCESS;
 }
