@@ -62,11 +62,8 @@ real AC_forcing_period_t
 // Initial time step index, default should be 0
 int AC_start_step
 
-real AC_dsx, AC_dsy, AC_dsz // WARNING UNUSED! NEED TO BE COMPILE-TIME CONSTANTS
+real AC_dsx, AC_dsy, AC_dsz 
 
-hostdefine DSX (0.04908738657832)
-hostdefine DSY (0.04908738657832)
-hostdefine DSZ (0.04908738657832)
 
 #define AC_inv_dsy  (1.0/AC_dsx)
 #define AC_inv_dsx  (1.0/AC_dsy)
