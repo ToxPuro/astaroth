@@ -1077,26 +1077,30 @@ radial_vector_field(ampl) {
     // Based on Pencil Code beltrami_general() 
     // https://github.com/pencil-code/pencil-code/blob/43f0b658a905bbeb641daa0ccf88720a20f0c562/src/initcond.f90#L1818C16-L1818C32
 
-    center = real(AC_nx-1)*AC_dsx / 2.0
-
     xx = grid_position()
     centre = grid_centre()
 
-    xx.x = xx.x - center.x
-    xx.y = xx.y - center.y
-    xx.z = xx.z - center.z
+    xx.x = xx.x - centre.x
+    xx.y = xx.y - centre.y
+    xx.z = xx.z - centre.z
 
     rr = sqrt(xx.x*xx.x + xx.y*xx.y + xx.z*xx.z)
-    rr_xy = sqrt(xx.x*xx.x + xx.y*xx.y)
+    rr_xy = sqrt(xx.x*xx.x + xx.y*xx.y )
 
-    cos_theta = xx.z/rr
-    cos_phi   = xx.x/rr_xy
-    sin_phi   = xx.y/rr_xy
+    field = real3(0.0,
+                  0.0,
+                  0.0)
 
+    if rr >= 2.0*DSX {
 
-    field = real3(ampl * cos_theta * cos_phi,   
-                  ampl * cos_theta * sin_phi,   
-                  ampl * cos_theta )
+        theta = real(atan2(rr_xy, xx.z))
+
+        phi   = real(atan2(xx.y, xx.x))
+
+        field = real3(ampl * cos(theta)* cos(phi),  
+                      ampl * cos(theta)* sin(phi),  
+                      ampl * cos(theta))
+    }
 
     return field
 }

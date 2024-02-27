@@ -1068,7 +1068,7 @@ main(int argc, char** argv)
         break;
     }
     case InitialMeshProcedure::InitBoundTest: {
-        acLogFromRootProc(pid, "Boundara test \n");
+        acLogFromRootProc(pid, "Boundary test \n");
         AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
         acGridLaunchKernel(STREAM_DEFAULT, constant, dims.n0, dims.n1);
         //acGridLaunchKernel(STREAM_DEFAULT, beltrami_initcond, dims.n0, dims.n1);
