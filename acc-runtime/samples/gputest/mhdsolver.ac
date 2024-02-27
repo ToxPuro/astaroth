@@ -602,9 +602,6 @@ curl_from_matrix(m) {
   return real3(m.data[2][1]-m.data[1][2], m.data[0][2] - m.data[2][0], m.data[1][0] - m.data[0][1])
 }
 
-vecprevious(v){
-    return real3(previous(Field(v.x)),previous(Field(v.y)),previous(Field(v.z)))
-}
 vecvalue_abs(v) {
     return real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
 }
@@ -708,11 +705,6 @@ contract(mat) {
 
 length(v1,v2) {
     return sqrt( dot(v1-v2,v1-v2) )
-}
-write_vector(f,v) {
-   write( Field(f.x), v.x) 
-   write( Field(f.y), v.y) 
-   write( Field(f.z), v.z) 
 }
 
 grid_position() {
@@ -863,24 +855,24 @@ twopass_solve_intermediate_body(step_num){
   W_AA  = rk3_intermediate_vector(vecprevious(F_AA),DF_AA,step_num)
  
 
-  write_vector(F_UU,W_UU)
+  vecwrite(F_UU,W_UU)
   write(VTXBUF_ENTROPY,W_SS)
   write(VTXBUF_LNRHO, W_LNRHO)
-  write_vector(F_AA,W_AA)
+  vecwrite(F_AA,W_AA)
   /**
   beta_1 = 0.333333333333333333333333
-  write_vector(F_UU,vecvalue(F_UU)+AC_dt*DF_UU*beta_1)
+  vecwrite(F_UU,vecvalue(F_UU)+AC_dt*DF_UU*beta_1)
   write(VTXBUF_ENTROPY,value(VTXBUF_ENTROPY)+AC_dt*DF_SS*beta_1)
   write(VTXBUF_LNRHO, value(VTXBUF_LNRHO)+AC_dt*DF_LNRHO*beta_1)
-  write_vector(F_AA,vecvalue(F_AA)+AC_dt*DF_AA*beta_1)
+  vecwrite(F_AA,vecvalue(F_AA)+AC_dt*DF_AA*beta_1)
   **/
 }
 
 twopass_solve_final_body(step_num) {
-  write_vector(F_UU,rk3_final_vector(vecprevious(F_UU),vecvalue(F_UU),step_num))
+  vecwrite(F_UU,rk3_final_vector(vecprevious(F_UU),vecvalue(F_UU),step_num))
   write(VTXBUF_ENTROPY,rk3_final(previous(VTXBUF_ENTROPY),value(VTXBUF_ENTROPY),step_num))
   write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO),value(VTXBUF_LNRHO),step_num))
-  write_vector(F_AA,rk3_final_vector(vecprevious(F_AA),vecvalue(F_AA),step_num))
+  vecwrite(F_AA,rk3_final_vector(vecprevious(F_AA),vecvalue(F_AA),step_num))
 }
 
 
