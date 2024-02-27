@@ -32,7 +32,6 @@
 #define STENCILACC_SRC ACC_DIR "/stencil_accesses.cpp"
 #define STENCILACC_EXEC "stencil_accesses.out"
 #define ACC_RUNTIME_API_DIR ACC_DIR "/../api"
-#define STENCIL_LOADER_HEADER "device_stencil_loader.h"
 
 // Symbols
 #define MAX_ID_LEN (256)
@@ -1034,7 +1033,6 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 
   // Stencil coefficients
   symboltable_reset();
-  FILE* stencil_loader_file = fopen(STENCIL_LOADER_HEADER, "w");
   char* stencil_coeffs;
   size_t file_size;
   FILE* stencil_coeffs_fp = open_memstream(&stencil_coeffs, &file_size);
@@ -1044,12 +1042,6 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
            stencil_coeffs_fp);
   fflush(stencil_coeffs_fp);
 
-  fprintf(stencil_loader_file,"int\nGetParamFromInfo(AcIntParam param, AcMeshInfo info){return info.int_params[param];}\n");
-  fprintf(stencil_loader_file,"AcReal\nGetParamFromInfo(AcRealParam param, AcMeshInfo info){return info.real_params[param];}\n");
-  fprintf(stencil_loader_file,"#define DCONST(PARAM)                                        \\\n  GetParamFromInfo(PARAM,device->local_config)\n");
-  fprintf(stencil_loader_file,"AcResult\nacDeviceLoadStencilsFromConfig(const Device device, const Stream stream)\n{\n");
-  fprintf(stencil_loader_file, "#include \"coeffs.h\"\n");
-  fprintf(stencil_loader_file,"return acDeviceLoadStencils(device, stream, stencils);\n}");
   replace_dynamic_coeffs(root);
   symboltable_reset();
   fprintf(stencilgen, "static char* "

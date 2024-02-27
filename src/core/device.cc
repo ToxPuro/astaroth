@@ -228,7 +228,34 @@ acDeviceLoadStencils(const Device device, const Stream stream,
 }
 
 //coeffs are auto generated from DSL
-#include "device_stencil_loader.h"
+int
+GetParamFromInfo(AcIntParam param, AcMeshInfo info){return info.int_params[param];}
+AcReal
+GetParamFromInfo(AcRealParam param, AcMeshInfo info){return info.real_params[param];}
+#define DCONST(PARAM)                                        \
+  GetParamFromInfo(PARAM,device->local_config)
+AcResult
+acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
+{
+#include "coeffs.h"
+for(int stencil=0;stencil<NUM_STENCILS;stencil++)
+{
+        for(int x = 0; x<STENCIL_DEPTH; ++x)
+        {
+                for(int y=0;y<STENCIL_HEIGHT;++y)
+                {
+                        for(int z=0;z<STENCIL_DEPTH;++z)
+                        {
+                                if(isnan(stencils[stencil][x][y][z]))
+                                {
+                                        printf("loading a nan to stencil: %d, at %d,%d,%d!!\n", stencil,x,y,z);
+                                }
+                        }
+                }
+        }
+}
+return acDeviceLoadStencils(device, stream, stencils);
+}
 
 AcResult
 acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_handle)
