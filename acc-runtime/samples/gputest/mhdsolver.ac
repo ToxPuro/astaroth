@@ -256,9 +256,6 @@ real AC_current_time
 
 #endif 
 
-Stencil value {
-    [0][0][0] = 1
-}
 
 /*
 // A hax to access close by stencil values
@@ -607,9 +604,6 @@ curl_from_matrix(m) {
 
 vecprevious(v){
     return real3(previous(Field(v.x)),previous(Field(v.y)),previous(Field(v.z)))
-}
-vecvalue(v) {
-    return real3(value(v.x), value(v.y), value(v.z))
 }
 vecvalue_abs(v) {
     return real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
