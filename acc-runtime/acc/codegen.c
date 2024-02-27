@@ -1039,7 +1039,7 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   size_t file_size;
   FILE* stencil_coeffs_fp = open_memstream(&stencil_coeffs, &file_size);
   traverse(root,
-           NODE_STENCIL_ID | NODE_DCONST | NODE_FIELD | NODE_FUNCTION |
+           NODE_STENCIL_ID | NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION |
                NODE_HOSTDEFINE,
            stencil_coeffs_fp);
   fflush(stencil_coeffs_fp);
