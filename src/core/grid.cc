@@ -238,20 +238,15 @@ acGridInit(AcMeshInfo info)
     MPI_Barrier(acGridMPIComm());
 
     // Decompose
-<<<<<<< HEAD
     const uint3_64 decomp = (info.int_params[AC_decompose_strategy] == -1) ?
     				        decompose(nprocs)             :
 				            (info.int_params[AC_decompose_strategy] == 1) ?
 				            static_cast<uint3_64>(info.int3_params[AC_domain_decomposition]) :
 				            (uint3_64){0,0,0};
-=======
-    const uint3_64 decomp = decompose(nprocs);
 
     // Done in order to copy AC_nxgrid -> AC_nx that will be decomposed
     // This way you can use AC_nxgrid to get the global dimensions in the DSL and device layer
     acHostUpdateBuiltinParams(&info);
-
->>>>>>> origin/nxgrid
     // Check that the decomposition is valid
     const int3 nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const bool nx_valid = nn.x % decomp.x == 0;
