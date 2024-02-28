@@ -432,7 +432,8 @@ acVBACreate(const AcMeshInfo config)
 
   ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&allbuf_in, allbytes));
   ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&allbuf_out, allbytes));
-  acKernelFlush(allbuf_in, count*NUM_VTXBUF_HANDLES);
+
+  acKernelFlush(STREAM_DEFAULT,allbuf_in, count*NUM_VTXBUF_HANDLES, (AcReal)0.0);
   ERRCHK_CUDA_ALWAYS(cudaMemset((void*)allbuf_out, 0, allbytes));
 
   vba.in[0]=allbuf_in; vba.out[0]=allbuf_out;
