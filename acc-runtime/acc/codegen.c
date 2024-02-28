@@ -116,11 +116,15 @@ symboltable_reset(void)
   // add_symbol(NODE_UNKNOWN, NULL, NULL, "false");
 
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "previous");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vecprevious");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "value");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vecvalue");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "isnan");  // TODO RECHECK
   //In develop
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "read_w");
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write_w");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vecwrite");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "Field3"); // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "dot");    // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cross");  // TODO RECHECK
@@ -165,6 +169,10 @@ symboltable_reset(void)
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_ny");
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nz");
 
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nxgrid");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nygrid");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nzgrid");
+
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nx_min");
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_ny_min");
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nz_min");
@@ -181,10 +189,11 @@ symboltable_reset(void)
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_xz_plate_bufsize");
   add_symbol(NODE_DCONST_ID, NULL, "int", "AC_yz_plate_bufsize");
   add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_domain_decomposition");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_proc_mapping_strategy");
+  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_decompose_strategy");
   
 
   add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_multigpu_offset");
-  add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_global_grid_n");
 
   // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsx");
   // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsy");
@@ -862,6 +871,67 @@ void gen_profile_reads(ASTNode* node, const char* out){
   if(node->rhs)
     gen_profile_reads(node->rhs, out);
 }
+
+
+bool is_real_constant(const char* name)
+{
+  {
+  const int l_current_nest = 0;
+  for (size_t i = 0; i < num_symbols[l_current_nest]; ++i)
+    if (symbol_table[i].type & NODE_DCONST_ID &&
+        !strcmp(symbol_table[i].tspecifier, "AcReal") && !strcmp(name,symbol_table[i].identifier))
+        return true;
+  }
+  return false;
+}
+bool is_int_constant(const char* name)
+{
+  {
+  const int l_current_nest = 0;
+  for (size_t i = 0; i < num_symbols[l_current_nest]; ++i)
+    if (symbol_table[i].type & NODE_DCONST_ID &&
+        !strcmp(symbol_table[i].tspecifier, "int") && !strcmp(name,symbol_table[i].identifier))
+        return true;
+  }
+  return false;
+}
+void
+replace_dynamic_coeffs_stencilpoint(ASTNode* node)
+{
+  if(node->lhs)
+    replace_dynamic_coeffs_stencilpoint(node->lhs);
+  if(node->buffer)
+  {
+    if(is_real_constant(node->buffer) || is_int_constant(node->buffer))
+    {
+      //replace with zero to compile the stencil
+      node->buffer = strdup("0.0");
+      node->prefix=strdup("AcReal(");
+      node->postfix = strdup(")");
+    }
+  }
+  if(node->rhs)
+    replace_dynamic_coeffs_stencilpoint(node->rhs);
+}
+void replace_dynamic_coeffs(ASTNode* node)
+{
+  if(node->type & NODE_STENCIL)
+  {
+    ASTNode* list = node->rhs->lhs;
+    while(list->rhs)
+    {
+      ASTNode* stencil_point = list->rhs;
+      replace_dynamic_coeffs_stencilpoint(stencil_point->rhs->rhs);
+      list = list -> lhs;
+    }
+    ASTNode* stencil_point = list->lhs;
+    replace_dynamic_coeffs_stencilpoint(stencil_point->rhs->rhs);
+  }
+  if(node->lhs)
+    replace_dynamic_coeffs(node->lhs);
+  if(node->rhs)
+    replace_dynamic_coeffs(node->rhs);
+}
 void
 generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 {
@@ -966,6 +1036,20 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 
   // Stencil coefficients
   symboltable_reset();
+  char* stencil_coeffs;
+  size_t file_size;
+  FILE* stencil_coeffs_fp = open_memstream(&stencil_coeffs, &file_size);
+  traverse(root,
+           NODE_STENCIL_ID | NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION |
+               NODE_HOSTDEFINE,
+           stencil_coeffs_fp);
+  fflush(stencil_coeffs_fp);
+
+  replace_dynamic_coeffs(root);
+  symboltable_reset();
+  fprintf(stencilgen, "static char* "
+                      "dynamic_coeffs[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]["
+                      "STENCIL_WIDTH] = { %s };\n", stencil_coeffs);
   fprintf(stencilgen, "static char* "
                       "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]["
                       "STENCIL_WIDTH] = {");

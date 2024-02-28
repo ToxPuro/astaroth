@@ -251,7 +251,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 
             if (get_node_by_token(FIELD, $$->rhs)) {
                 variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_FIELD_ID, declaration_list);
+                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             } 
             else if(get_node_by_token(PROFILE_X, $$->rhs)) {
                 variable_definition->type |= NODE_VARIABLE;

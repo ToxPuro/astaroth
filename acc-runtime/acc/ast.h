@@ -49,7 +49,6 @@ typedef enum {
   NODE_MEMBER_ID      = (1 << 17),
   NODE_HOSTDEFINE     = (1 << 18),
   NODE_ASSIGNMENT     = (1 << 19),
-  NODE_FIELD_ID       = (1 << 20),
 
 } NodeType;
 

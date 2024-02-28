@@ -151,6 +151,17 @@ typedef enum {
     NUM_INIT_TYPES
 } InitType;
 
+#ifdef __cplusplus
+enum class AcProcMappingStrategy:int{
+    Morton = -1, //The default
+    Linear = 1,
+};
+enum class AcDecomposeStrategy:int{
+    Default = -1, 
+    External = 1,
+};
+#endif
+
 #undef AC_GEN_ID
 
 #define _UNUSED __attribute__((unused)) // Does not give a warning if unused
@@ -1205,6 +1216,9 @@ AcResult acDeviceLoadStencil(const Device device, const Stream stream, const Ste
 AcResult
 acDeviceLoadStencils(const Device device, const Stream stream,
                      const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+/** */
+AcResult
+acDeviceLoadStencilsFromConfig(const Device device, const Stream stream);
 
 /** */
 AcResult acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,
@@ -1262,7 +1276,7 @@ template <size_t num_fields>
 AcTaskDefinition
 acCompute(AcKernel kernel, Field (&fields)[num_fields])
 {
-    return acCompute(kernel, fields, num_fields, fields, num_fields, nullptr);
+    return acCompute(kernel, fields, num_fields, fields, num_fields, [](const TaskStepInfo step_info){ return acLoadIntUniform(step_info.stream, AC_step_number, step_info.step_number);});
 }
 
 template <size_t num_fields>
@@ -1278,7 +1292,7 @@ template <size_t num_fields_in, size_t num_fields_out>
 AcTaskDefinition
 acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out])
 {
-    return acCompute(kernel, fields_in, num_fields_in, fields_out, num_fields_out, nullptr);
+    return acCompute(kernel, fields_in, num_fields_in, fields_out, num_fields_out, [](const TaskStepInfo step_info){ return acLoadIntUniform(step_info.stream, AC_step_number, step_info.step_number);});
 }
 
 template <size_t num_fields_in, size_t num_fields_out>

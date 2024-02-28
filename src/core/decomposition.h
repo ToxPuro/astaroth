@@ -120,25 +120,40 @@ wrap(const int3 i, const uint3_64 n)
 }
 
 static inline int
-getPid(const int3 pid_raw, const uint3_64 decomp)
+getPid(const int3 pid_raw, const uint3_64 decomp, AcProcMappingStrategy proc_mapping_strategy)
 {
     const uint3_64 pid = wrap(pid_raw, decomp);
-    #if LINEAR_PROC_MAPPING
-    return (int)pid.x + (int)pid.y*decomp.x + (int)pid.z*decomp.x*decomp.z;
-    #else
-    return (int)morton1D(pid);
-    #endif
+    switch(proc_mapping_strategy)
+    {
+        case AcProcMappingStrategy::Linear:
+            return (int)pid.x + (int)pid.y*decomp.x + (int)pid.z*decomp.x*decomp.z;
+        case AcProcMappingStrategy::Morton:
+            return (int)morton1D(pid);
+        default:
+            printf("Missing proc mapping strategy\n");
+            ERRCHK_ALWAYS(false);
+    }
 }
 
-static inline int3
-getPid3D(const uint64_t pid, const uint3_64 decomp)
+static inline uint3_64
+get_uintPid3D(const uint64_t pid, const uint3_64 decomp, AcProcMappingStrategy proc_mapping_strategy)
 {
-    #if LINEAR_PROC_MAPPING
-    const uint3_64 pid3D = {pid % decomp.x, (pid/decomp.x) % decomp.y, (pid/(decomp.x*decomp.y)) % decomp.z};
-    #else
-    const uint3_64 pid3D = morton3D(pid);
-    #endif
-    ERRCHK_ALWAYS(getPid(static_cast<int3>(pid3D), decomp) == (int)pid);
+    switch(proc_mapping_strategy)
+    {
+        case AcProcMappingStrategy::Linear:
+            return (uint3_64){pid % decomp.x, (pid/decomp.x) % decomp.y, (pid/(decomp.x*decomp.y)) % decomp.z};
+        case AcProcMappingStrategy::Morton:
+            return morton3D(pid);
+        default:
+            printf("Missing proc mapping strategy\n");
+            ERRCHK_ALWAYS(false);
+    }
+}
+static inline int3
+getPid3D(const uint64_t pid, const uint3_64 decomp, AcProcMappingStrategy proc_mapping_strategy)
+{
+    const uint3_64 pid3D = get_uintPid3D(pid, decomp, proc_mapping_strategy);
+    ERRCHK_ALWAYS(getPid(static_cast<int3>(pid3D), decomp, proc_mapping_strategy) == (int)pid);
     return (int3){(int)pid3D.x, (int)pid3D.y, (int)pid3D.z};
 }
 

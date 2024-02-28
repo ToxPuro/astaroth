@@ -96,6 +96,29 @@ gen_stencil_definitions(void)
     printf("},");
   }
   printf("};");
+  FILE* stencil_coeffs_file= fopen("coeffs.h", "w");
+  fprintf(stencil_coeffs_file,
+      "AcReal "
+      "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]={");
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    fprintf(stencil_coeffs_file,"{");
+    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+      fprintf(stencil_coeffs_file,"{");
+      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+        fprintf(stencil_coeffs_file,"{");
+        for (int width = 0; width < STENCIL_WIDTH; ++width) {
+          fprintf(stencil_coeffs_file,"%s,", dynamic_coeffs[stencil][depth][height][width]
+                            ? dynamic_coeffs[stencil][depth][height][width]
+                            : "0");
+        }
+        fprintf(stencil_coeffs_file,"},");
+      }
+      fprintf(stencil_coeffs_file,"},");
+    }
+    fprintf(stencil_coeffs_file,"},");
+  }
+  fprintf(stencil_coeffs_file,"};");
+  fclose(stencil_coeffs_file);
 }
 
 void
@@ -111,7 +134,7 @@ gen_kernel_prefix(void)
          "d_multigpu_offset.y + vertexIdx.y,"
          "d_multigpu_offset.z + vertexIdx.z,"
          "};");
-  printf("const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];");
+  printf("const int3 globalGridN = (int3){d_mesh_info.int_params[AC_nxgrid], d_mesh_info.int_params[AC_nygrid], d_mesh_info.int_params[AC_nzgrid]};");
   printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
 
   printf(
@@ -131,6 +154,8 @@ gen_kernel_prefix(void)
   // Original
   printf("const auto write=[&](const Field field, const AcReal value)"
          "{ vba.out[field][idx] = value; };");
+  printf("const auto vecwrite=[&](const int3 field3, const AcReal3 value)"
+         "{ vba.out[field3.x][idx] = value.x; vba.out[field3.y][idx] = value.y; vba.out[field3.z][idx] = value.z;};");
 
   //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
   //  in practice (no effect on the first pass, a slight slowdown in the second
@@ -185,7 +210,7 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses)
   printf("default: return (AcReal)NAN;"
          "}");
   printf("};");
-
+  printf("const auto vecprevious __attribute__((unused)) = [&](const int3 field3){return (AcReal3) {previous((Field)field3.x), previous((Field)field3.y), previous((Field)field3.z)};};");
 
   //Note to Johannes, on HIP __ldg is no-op so we can safely use it both for CUDA and HIP
   for (int profile = 0; profile < NUM_PROFILES; ++profile){
@@ -211,6 +236,22 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses)
           printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.z+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
     }
   }
+
+  for (int field = 0; field < NUM_FIELDS; ++field)
+    if(gen_mem_accesses)
+      printf("const auto f%d_val= 0;", field);
+    else
+      printf("const auto f%d_val= __ldg(&vba.in[%d][idx]);", field, field);
+
+  printf("const auto value __attribute__((unused)) = [&](const auto field)"
+         "{ switch (field) {");
+  for (int field = 0; field < NUM_FIELDS; ++field)
+    printf("case %d: { return f%d_val; }", field, field);
+
+  printf("default: return (AcReal)NAN;"
+         "}");
+  printf("};");
+  printf("const auto vecvalue __attribute__((unused)) = [&](const int3 field3){return (AcReal3) {value((Field)field3.x), value((Field)field3.y), value((Field)field3.z)};};");
 #endif
 }
 

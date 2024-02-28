@@ -109,7 +109,7 @@ gen_kernel_prefix(void)
          "d_multigpu_offset.y + vertexIdx.y,"
          "d_multigpu_offset.z + vertexIdx.z,"
          "};");
-  printf("const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];");
+  printf("const int3 globalGridN = (int3){d_mesh_info.int_params[AC_nxgrid], d_mesh_info.int_params[AC_nygrid], d_mesh_info.int_params[AC_nzgrid]};");
   printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
 
   printf("(void)globalVertexIdx;"); // Silence unused warning
@@ -1955,7 +1955,7 @@ gen_kernel_body(const int curr_kernel)
          "d_multigpu_offset.y + vertexIdx.y,"
          "d_multigpu_offset.z + vertexIdx.z,"
          "};");
-  printf("const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];");
+  printf("const int3 globalGridN = (int3){d_mesh_info.int_params[AC_nxgrid], d_mesh_info.int_params[AC_nygrid], d_mesh_info.int_params[AC_nzgrid]};");
   printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
 
   printf("(void)globalVertexIdx;"); // Silence unused warning
@@ -2482,7 +2482,7 @@ gen_kernel_body(const int curr_kernel)
          "d_multigpu_offset.y + vertexIdx.y,"
          "d_multigpu_offset.z + vertexIdx.z,"
          "};");
-  printf("const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];");
+  printf("const int3 globalGridN = (int3){d_mesh_info.int_params[AC_nxgrid], d_mesh_info.int_params[AC_nygrid], d_mesh_info.int_params[AC_nzgrid]};");
   printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
 
   printf("(void)globalVertexIdx;"); // Silence unused warning

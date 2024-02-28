@@ -212,6 +212,54 @@ acDeviceSynchronizeStream(const Device device, const Stream stream)
 }
 
 AcResult
+acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
+                    const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    cudaSetDevice(device->id);
+    return acLoadStencil(stencil, device->streams[stream], data);
+}
+
+AcResult
+acDeviceLoadStencils(const Device device, const Stream stream,
+                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    int retval = 0;
+    for (size_t i = 0; i < NUM_STENCILS; ++i)
+        retval |= acDeviceLoadStencil(device, stream, (Stencil)i, data[i]);
+    return (AcResult)retval;
+}
+
+//coeffs are auto generated from DSL
+int
+GetParamFromInfo(AcIntParam param, AcMeshInfo info){return info.int_params[param];}
+AcReal
+GetParamFromInfo(AcRealParam param, AcMeshInfo info){return info.real_params[param];}
+#define DCONST(PARAM)                                        \
+  GetParamFromInfo(PARAM,device->local_config)
+AcResult
+acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
+{
+#include "coeffs.h"
+for(int stencil=0;stencil<NUM_STENCILS;stencil++)
+{
+        for(int x = 0; x<STENCIL_DEPTH; ++x)
+        {
+                for(int y=0;y<STENCIL_HEIGHT;++y)
+                {
+                        for(int z=0;z<STENCIL_DEPTH;++z)
+                        {
+                                if(isnan(stencils[stencil][x][y][z]))
+                                {
+                                        printf("loading a nan to stencil: %d, at %d,%d,%d!!\n", stencil,x,y,z);
+                                }
+                        }
+                }
+        }
+}
+return acDeviceLoadStencils(device, stream, stencils);
+}
+
+AcResult
 acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_handle)
 {
     // Check
@@ -299,6 +347,8 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 #endif
     *device_handle = device;
 
+    acDeviceSynchronizeStream(device, STREAM_ALL);
+    acDeviceLoadStencilsFromConfig(device, STREAM_DEFAULT);
     acDeviceSynchronizeStream(device, STREAM_ALL);
     return AC_SUCCESS;
 }
@@ -448,7 +498,7 @@ acDeviceLoadArrayWithOffset(const Device device, const Stream stream, const AcMe
 {
     cudaSetDevice(device->id);
     const AcReal* src_ptr = &host_info.real_array_params[array][src_idx];
-    AcReal* dst_ptr       = &device->vba.real_arrays[array][dst_idx];
+    AcReal* dst_ptr       = &device->vba.arrays[array][dst_idx];
     const size_t bytes    = num_elems* sizeof(src_ptr[0]);
 
     ERRCHK_CUDA(                                                                                  //
@@ -637,23 +687,6 @@ acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 sta
     return acBenchmarkKernel(kernel, start, end, device->vba);
 }
 
-AcResult
-acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
-                    const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-    cudaSetDevice(device->id);
-    return acLoadStencil(stencil, device->streams[stream], data);
-}
-
-AcResult
-acDeviceLoadStencils(const Device device, const Stream stream,
-                     const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
-{
-    int retval = 0;
-    for (size_t i = 0; i < NUM_STENCILS; ++i)
-        retval |= acDeviceLoadStencil(device, stream, (Stencil)i, data[i]);
-    return (AcResult)retval;
-}
 
 /** */
 AcResult
@@ -977,3 +1010,4 @@ acDeviceResetMesh(const Device device, const Stream stream)
     acDeviceSynchronizeStream(device, stream);
     return acVBAReset(device->streams[stream], &device->vba);
 }
+

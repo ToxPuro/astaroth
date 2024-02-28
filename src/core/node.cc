@@ -266,7 +266,6 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
     for (int i = 0; i < node->num_devices; ++i) {
         const int3 multinode_offset                    = (int3){0, 0, 0}; // Placeholder
         const int3 multigpu_offset                     = (int3){0, 0, i * node->subgrid.n.z};
-        subgrid_config.int3_params[AC_global_grid_n]   = node->grid.n;
         subgrid_config.int3_params[AC_multigpu_offset] = multinode_offset + multigpu_offset;
 
         acDeviceCreate(i, subgrid_config, &node->devices[i]);
