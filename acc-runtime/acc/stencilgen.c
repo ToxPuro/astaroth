@@ -239,7 +239,7 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses)
 
   for (int field = 0; field < NUM_FIELDS; ++field)
     if(gen_mem_accesses)
-      printf("const auto f%d_val= 0;", field);
+      printf("const auto f%d_val= 0.0;", field);
     else
       printf("const auto f%d_val= __ldg(&vba.in[%d][idx]);", field, field);
 
