@@ -12,8 +12,8 @@ rk3(s0, s1, roc) {
     real alpha= 0,     0.0, -1.0/2.0, 0.0
     real beta = 0, 1.0/2.0,      1.0, 0.0
 #elif RK_ORDER == 3
-    real alpha = 0., -5./9., -153. / 128.
-    real beta = 1. / 3., 15./ 16., 8. / 15.
+    real alpha = 0., -5./9., -153./128.
+    real beta = 1./3., 15./ 16., 8./15.
 #endif
     /*
     // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below
@@ -26,6 +26,15 @@ rk3(s0, s1, roc) {
     // Workaround
     return s1 + beta[AC_step_number + 1] * ((alpha[AC_step_number] / beta[AC_step_number]) * (s1 - s0) + roc * AC_dt)
 }
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk3_vector(f,w,roc){
+  return real3(
+    rk3(f.x,w.x,roc.x),
+    rk3(f.y,w.y,roc.y),
+    rk3(f.z,w.z,roc.z)
+  )
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_intermediate(w, roc) {
     real alpha = 0., -5./9., -153. / 128.
 
@@ -38,8 +47,24 @@ rk3_intermediate(w, roc) {
         return roc * AC_dt
     }
 }
-
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk3_intermediate_vector(w,roc){
+  return real3(
+    rk3_intermediate(w.x,roc.x),
+    rk3_intermediate(w.y,roc.y),
+    rk3_intermediate(w.z,roc.z)
+  )
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_final(f, w) {
     real beta = 1. / 3., 15./ 16., 8. / 15.
     return f + beta[AC_step_number] * w
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk3_final_vector(f,w){
+  return real3(
+    rk3_final(f.x,w.x),
+    rk3_final(f.y,w.y),
+    rk3_final(f.z,w.z)
+  )
 }
