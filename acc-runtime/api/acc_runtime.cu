@@ -22,6 +22,7 @@
 
 #include "errchk.h"
 #include "math_utils.h"
+#include <functional>
 
 #if AC_USE_HIP
 #include <hip/hip_runtime.h> // Needed in files that include kernels
@@ -33,6 +34,38 @@
 
 static dim3 last_tpb = (dim3){0, 0, 0};
 
+KernelLambda
+kernel_to_kernel_lambda(const Kernel kernel)
+{
+  kernel_lambda k_l = [kernel](const dim3 bpg,  const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba_in)
+                      {kernel<<<bpg, tpb, smem, stream>>>(start,end,vba_in);};
+  return {k_l, reinterpret_cast<void*>(kernel)};
+};
+
+KernelLambda
+curry_int(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int input_param), int input_param)
+{
+  return (KernelLambda){[kernel, input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param);}, reinterpret_cast<void*>(kernel)};
+}
+
+template <typename T>
+KernelLambda
+curry_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param), T input_param)
+{
+  return (KernelLambda){[kernel, input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param);}, reinterpret_cast<void*>(kernel)};
+}
+template <typename T, typename F>
+KernelLambda
+curry_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param), T input_param, F second_input_param)
+{
+  return (KernelLambda){[kernel, input_param, second_input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param, second_input_param);}, reinterpret_cast<void*>(kernel)};
+}
+template <typename T, typename F, typename H>
+KernelLambda
+curry_three_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param, H third_input_param), T input_param, F second_input_param, H third_input_param)
+{
+  return (KernelLambda){[kernel, input_param, second_input_param, third_input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param, second_input_param, third_input_param);}, reinterpret_cast<void*>(kernel)};
+}
 Volume
 acKernelLaunchGetLastTPB(void)
 {
@@ -275,7 +308,7 @@ IDX(const int3 idx)
 #include "user_kernels.h"
 
 typedef struct {
-  Kernel kernel;
+  void* kernel;
   int3 dims;
   dim3 tpb;
 } TBConfig;
@@ -284,6 +317,8 @@ static std::vector<TBConfig> tbconfigs;
 
 static TBConfig getOptimalTBConfig(const Kernel kernel, const int3 dims,
                                    VertexBufferArray vba);
+
+static TBConfig getOptimalTBConfig(const KernelLambda lambda, const int3 dims, VertexBufferArray vba);
 
 static __global__ void
 flush_kernel(AcReal* arr, const size_t n, const AcReal value)
@@ -496,20 +531,16 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 }
 
 AcResult
-acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
-               const int3 end, VertexBufferArray vba)
+acLaunchKernel(KernelLambda kernel, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba)
 {
   const int3 n = end - start;
-
   const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
   const dim3 tpb        = tbconf.tpb;
   const int3 dims       = tbconf.dims;
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
-
   const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
 
-  // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
-  kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
+  kernel.lambda(bpg,tpb,smem,stream,start,end,vba);
   ERRCHK_CUDA_KERNEL();
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
@@ -517,12 +548,20 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
 }
 
 AcResult
-acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
+acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
+               const int3 end, VertexBufferArray vba)
+{
+  return acLaunchKernel(kernel_to_kernel_lambda(kernel), stream, start, end, vba);
+}
+
+
+AcResult
+acBenchmarkKernel(KernelLambda lambda, const int3 start, const int3 end,
                   VertexBufferArray vba)
 {
   const int3 n = end - start;
 
-  const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
+  const TBConfig tbconf = getOptimalTBConfig(lambda, n, vba);
   const dim3 tpb        = tbconf.tpb;
   const int3 dims       = tbconf.dims;
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
@@ -535,7 +574,7 @@ acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
 
   // Warmup
   cudaEventRecord(tstart);
-  kernel<<<bpg, tpb, smem>>>(start, end, vba);
+  lambda.lambda(bpg, tpb, smem, 0, start, end, vba);
   cudaEventRecord(tstop);
   cudaEventSynchronize(tstop);
   ERRCHK_CUDA_KERNEL();
@@ -543,7 +582,7 @@ acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
 
   // Benchmark
   cudaEventRecord(tstart); // Timing start
-  kernel<<<bpg, tpb, smem>>>(start, end, vba);
+  lambda.lambda(bpg, tpb, smem, 0, start, end, vba);
   cudaEventRecord(tstop); // Timing stop
   cudaEventSynchronize(tstop);
   float milliseconds = 0;
@@ -551,7 +590,7 @@ acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
 
   size_t kernel_id = NUM_KERNELS;
   for (size_t i = 0; i < NUM_KERNELS; ++i) {
-    if (kernels[i] == kernel) {
+    if (kernels[i] == lambda.kernel) {
       kernel_id = i;
     }
   }
@@ -565,6 +604,13 @@ acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
 
   last_tpb = tpb; // Note: a bit hacky way to get the tpb
   return AC_SUCCESS;
+}
+
+AcResult
+acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
+                  VertexBufferArray vba)
+{
+  return acBenchmarkKernel(kernel_to_kernel_lambda(kernel), start, end, vba);
 }
 
 AcResult
@@ -701,20 +747,15 @@ acStoreInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
 }
 
 static TBConfig
-autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
+autotune(const KernelLambda lambda, const int3 dims, VertexBufferArray vba)
 {
-  size_t id = (size_t)-1;
-  for (size_t i = 0; i < NUM_KERNELS; ++i) {
-    if (kernels[i] == kernel) {
-      id = i;
-      break;
-    }
-  }
-  ERRCHK_ALWAYS(id < NUM_KERNELS);
-  // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
-  //        "(%d):\n",
-  //        kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
-  // fflush(stdout);
+#if 0
+  cudaDeviceProp prop;
+  cudaGetDeviceProperties(&prop, 0);
+  size_t size = min(int(prop.l2CacheSize * 0.75), prop.persistingL2CacheMaxSize);
+  cudaDeviceSetLimit(cudaLimitPersistingL2CacheSize, size);
+  // set-aside 3/4 of L2 cache for persisting accesses or the max allowed
+#endif
 
 #if 0
   cudaDeviceProp prop;
@@ -725,7 +766,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 #endif
 
   TBConfig c = {
-      .kernel = kernel,
+      .kernel = lambda.kernel,
       .dims   = dims,
       .tpb    = (dim3){0, 0, 0},
   };
@@ -837,11 +878,11 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         cudaEventCreate(&tstart);
         cudaEventCreate(&tstop);
 
-        kernel<<<bpg, tpb, smem>>>(start, end, vba); // Dryrun
+        lambda.lambda(bpg, tpb, smem, 0, start, end, vba);
         cudaDeviceSynchronize();
         cudaEventRecord(tstart); // Timing start
         for (int i = 0; i < num_iters; ++i)
-          kernel<<<bpg, tpb, smem>>>(start, end, vba);
+          lambda.lambda(bpg, tpb, smem, 0, start, end, vba);
         cudaEventRecord(tstop); // Timing stop
         cudaEventSynchronize(tstop);
 
@@ -895,16 +936,23 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   }
   ERRCHK_ALWAYS(c.tpb.x * c.tpb.y * c.tpb.z > 0);
   return c;
+
 }
 
 static TBConfig
 getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 {
+  return getOptimalTBConfig(kernel_to_kernel_lambda(kernel), dims, vba);
+}
+
+static TBConfig
+getOptimalTBConfig(const KernelLambda lambda, const int3 dims, VertexBufferArray vba)
+{
   for (auto c : tbconfigs) {
-    if (c.kernel == kernel && c.dims == dims)
+    if (c.kernel == lambda.kernel && c.dims == dims)
       return c;
   }
-  TBConfig c = autotune(kernel, dims, vba);
+  TBConfig c = autotune(lambda, dims, vba);
   tbconfigs.push_back(c);
   return c;
 }

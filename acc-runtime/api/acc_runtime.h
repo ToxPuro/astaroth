@@ -55,6 +55,30 @@ typedef struct {
 } VertexBufferArray;
 
 typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
+#ifdef __cplusplus
+#include <functional>
+typedef std::function<void(const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba)> kernel_lambda; 
+typedef struct KernelLambda {
+  kernel_lambda lambda;
+  //used in lookup into tbconfig, otherwise not needed
+  void* kernel;
+} KernelLambda;
+
+KernelLambda
+kernel_to_kernel_lambda(const Kernel kernel);
+
+KernelLambda
+curry_int(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int input_param), int input_param);
+template <typename T>
+KernelLambda
+curry_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param), T input_param);
+template <typename T, typename F>
+KernelLambda
+curry_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param), T input_param, F second_input_param);
+template <typename T, typename F, typename H>
+KernelLambda
+curry_three_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param, H third_input_param), T input_param, F second_input_param, H third_input_param);
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,11 +104,27 @@ AcResult acRandInitAlt(const uint64_t seed, const size_t count,
 void acRandQuit(void);
 
 AcResult acLaunchKernel(Kernel func, const cudaStream_t stream,
+                        const int3 start, const int3 end, VertexBufferArray);
+
+#ifdef __cplusplus
+//start and end C linkage
+}
+AcResult acLaunchKernel(KernelLambda lambda, const cudaStream_t stream,
                         const int3 start, const int3 end,
                         VertexBufferArray vba);
+extern "C" {
+#endif 
 
 AcResult acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
                            VertexBufferArray vba);
+
+#ifdef __cplusplus
+//start and end C linkage
+}
+AcResult acBenchmarkKernel(KernelLambda kernel, const int3 start, const int3 end,
+                           VertexBufferArray vba);
+extern "C" {
+#endif
 
 /** NOTE: stream unused. acUniform functions are completely synchronous. */
 AcResult
