@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH	--account=MST110392		                # (-A) Account/project number
+#SBATCH	--account=?????????		                # (-A) Account/project number
 #SBATCH --job-name=32_Btest512  	                # (-J) Job name
 #SBATCH	--partition=gp1d		                # (-p) Specific slurm partition
 #SBATCH --nodes=4			                # (-N) Maximum number of nodes to be allocated
@@ -10,7 +10,7 @@
 #SBATCH --output=output%j.log		                # (-o) Path to the standard output and error files relative to the working directory
 #SBATCH --error=output%j.err		                # (-e) Path to the standard error ouput
 #SBATCH --mail-type=ALL 				# Mail events (NONE, BEGIN, END, FAIL, ALL)
-#SBATCH --mail-user=mvaisala@asiaa.sinica.edu.tw 	# Where to send mail.  Set this to your email address
+#SBATCH --mail-user=???????????????????????????? 	# Where to send mail.  Set this to your email address
 ######SBATCH --exclude=gn08[07,17],gn09[12,14]
 
 module purge

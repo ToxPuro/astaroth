@@ -11,7 +11,7 @@ hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (1)
-hostdefine LENTROPY (0)
+hostdefine LENTROPY (1)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
 hostdefine LUPWD (1)
@@ -1074,9 +1074,6 @@ Kernel beltrami_initcond() {
 }
 
 radial_vector_field(ampl) {
-    // Based on Pencil Code beltrami_general() 
-    // https://github.com/pencil-code/pencil-code/blob/43f0b658a905bbeb641daa0ccf88720a20f0c562/src/initcond.f90#L1818C16-L1818C32
-
     xx = grid_position()
     centre = grid_centre()
 

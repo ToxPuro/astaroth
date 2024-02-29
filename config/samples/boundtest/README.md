@@ -1,14 +1,14 @@
-Created by *Miikka Väisälä*, at 2023/5
+Created by *Miikka Väisälä*, at 2024/2
 
 # Purpose of this simulation setup 
 
-This is a system with a Beltrami fields as initial conditions to test boundari condition is physcal systems
+This tests that velocity outflow but no inflow boundary condition behaves
+reasonably under radial velocity field.
 
 # What is a successful test
 
-A succesful test is that `standalone_mpi` runs properly on multiple GPUs
-without the system crashing due to unnatural resons, and results looks sensible
-without numerical garbage. **Please note that this is not a physics test, but a
+Boundary condition behaves smoothly and there is no weird segments. 
+**Please note that this is not a physics test, but a
 test to see that the code is working as expected.**
 
 # Required LSWITCHES 
@@ -22,7 +22,7 @@ configuration will have different LSWITCHES.
 LDENSITY (1)
 LHYDRO (1)
 LMAGNETIC (1)
-LENTROPY (1)
+LENTROPY (0)
 LTEMPERATURE (0)
 LFORCING (0)
 LUPWD (1)
