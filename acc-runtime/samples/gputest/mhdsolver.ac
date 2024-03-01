@@ -773,7 +773,7 @@ symmetric_derx(field)
   //res = AC_inv_dsx*DER1_3*(FIELD_IN[field][IDX(vertexIdx.x+3,vertexIdx.y,vertexIdx.z)]-FIELD_IN[field][IDX(vertexIdx.x-3,vertexIdx.y,vertexIdx.z)])
   return 0
 }
-Kernel twopass_solve_intermediate_body(int ac_input_step_num){
+Kernel twopass_solve_intermediate(int ac_input_step_num){
 	UU = vecvalue(F_UU)
   UIJ = gradients(F_UU)
   DIVU = divergence(F_UU)
@@ -884,7 +884,7 @@ Kernel twopass_solve_intermediate_body(int ac_input_step_num){
   **/
 }
 
-twopass_solve_final_body(int ac_input_step_num) {
+Kernel twopass_solve_final(int ac_input_step_num) {
   vecwrite(F_UU,rk3_final_vector(vecprevious(F_UU),vecvalue(F_UU),ac_input_step_num))
   write(VTXBUF_ENTROPY,rk3_final(previous(VTXBUF_ENTROPY),value(VTXBUF_ENTROPY),ac_input_step_num))
   write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO),value(VTXBUF_LNRHO),ac_input_step_num))
