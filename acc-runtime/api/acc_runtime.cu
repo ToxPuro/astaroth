@@ -42,18 +42,20 @@ kernel_to_kernel_lambda(const Kernel kernel)
   return {k_l, reinterpret_cast<void*>(kernel)};
 };
 
-KernelLambda
-bind_int(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int input_param), int input_param)
-{
-  return (KernelLambda){[kernel, input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param);}, reinterpret_cast<void*>(kernel)};
-}
 
-template <typename T>
-KernelLambda
-bind_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param), T input_param)
-{
-  return (KernelLambda){[kernel, input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param);}, reinterpret_cast<void*>(kernel)};
-}
+#define GEN_BIND_SINGLE(TYPE)                                                  \
+  KernelLambda bind_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param), TYPE input_param) \
+  { \
+  return (KernelLambda){[kernel, input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param);}, reinterpret_cast<void*>(kernel)}; \
+  } 
+
+GEN_BIND_SINGLE(int)
+GEN_BIND_SINGLE(AcReal)
+GEN_BIND_SINGLE(AcReal*)
+GEN_BIND_SINGLE(int*)
+GEN_BIND_SINGLE(bool)
+GEN_BIND_SINGLE(bool*)
+
 template <typename T, typename F>
 KernelLambda
 bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param), T input_param, F second_input_param)

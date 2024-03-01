@@ -77,6 +77,7 @@ acCompute(const KernelLambda kernel, Field fields_in[], const size_t num_fields_
     return task_def;
 }
 
+
 AcTaskDefinition
 acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
           const size_t num_fields_out)
@@ -111,7 +112,7 @@ convert_iter_to_normal_compute(AcTaskDefinition op, int step_num)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
-    task_def.kernel =  new KernelLambda(bind_int(op.iter_compute,step_num));
+    task_def.kernel =  new KernelLambda(bind_single_param(op.iter_compute,step_num));
     task_def.fields_in      = op.fields_in;
     task_def.num_fields_in  = op.num_fields_in;
     task_def.fields_out     = op.fields_out;

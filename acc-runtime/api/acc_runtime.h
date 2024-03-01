@@ -67,11 +67,16 @@
   KernelLambda
   kernel_to_kernel_lambda(const Kernel kernel);
 
-  KernelLambda
-  bind_int(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int input_param), int input_param);
-  template <typename T>
-  KernelLambda
-  bind_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param), T input_param);
+
+#define GEN_BIND_SINGLE_HEADER(TYPE)                                                  \
+  KernelLambda bind_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param), TYPE input_param);
+  GEN_BIND_SINGLE_HEADER(int)
+  GEN_BIND_SINGLE_HEADER(AcReal)
+  GEN_BIND_SINGLE_HEADER(AcReal*)
+  GEN_BIND_SINGLE_HEADER(int*)
+  GEN_BIND_SINGLE_HEADER(bool)
+  GEN_BIND_SINGLE_HEADER(bool*)
+
   template <typename T, typename F>
   KernelLambda
   bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param), T input_param, F second_input_param);

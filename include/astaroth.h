@@ -1348,11 +1348,22 @@ acGridBuildTaskGraph(const AcTaskDefinition (&ops)[n_ops], const int n_iteration
     return acGridBuildTaskGraph(ops, n_ops, n_iterations);
 }
 
+
+AcTaskDefinition
+acCompute(const KernelLambda kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
+          const size_t num_fields_out);
+
 template <typename T>
 AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param), Field fields_in[], const size_t num_fields_in,
                            Field fields_out[], const size_t num_fields_out, T input_param)
 {
-    return AcTaskDefinition(bind_single_param(kernel, input_param), fields_in, num_fields_in, fields_out, num_fields_out);
+    return acCompute(bind_single_param(kernel,input_param), fields_in, num_fields_in, fields_out, num_fields_out);
+}
+
+template <size_t num_fields, typename T>
+AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param), Field (&fields)[num_fields], T input_param)
+{
+    return acCompute(kernel, fields, num_fields, fields, num_fields, input_param);
 }
 
 template <size_t num_fields>

@@ -23,7 +23,6 @@ option(BUILD_SHARED_LIBS "Build Astaroth as a collection of shared libraries ins
 option(USE_PERFSTUBS "Build with perfstubs" OFF)
 option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
 option(DEBUG_SYNC "Whether to sync after all tasks in default ops" OFF)
-option(AUTOTUNE_AT_INIT "Whether Astaroth will perform some initial autotuning" ON)
 
 if (USE_HIP)
     find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
