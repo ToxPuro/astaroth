@@ -173,7 +173,6 @@ real AC_cs2_sound
 //
 real AC_current_time
 //realArray AC_test_array[AC_slice_steps]
-Profile_z AC_test_profile[AC_nz]
 
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
 
