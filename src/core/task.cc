@@ -62,18 +62,60 @@ using std::make_unique;
 #endif
 
 
+
 AcTaskDefinition
-acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out, const PrepareFn prepare_func)
+acCompute(const KernelLambda kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
+          const size_t num_fields_out)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
-    task_def.kernel         = kernel;
+    task_def.kernel         = new KernelLambda(kernel);
     task_def.fields_in      = fields_in;
     task_def.num_fields_in  = num_fields_in;
     task_def.fields_out     = fields_out;
     task_def.num_fields_out = num_fields_out;
-    task_def.prepare_func = prepare_func;
+    return task_def;
+}
+
+AcTaskDefinition
+acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
+          const size_t num_fields_out)
+{
+    return acCompute(kernel_to_kernel_lambda(kernels[(int)kernel]), fields_in, num_fields_in, fields_out, num_fields_out);
+}
+AcTaskDefinition
+acCompute(const Kernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
+          const size_t num_fields_out)
+{
+    return acCompute(kernel_to_kernel_lambda(kernel), fields_in, num_fields_in, fields_out, num_fields_out);
+}
+
+AcTaskDefinition
+acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num), Field fields_in[], const size_t num_fields_in, Field fields_out[],
+          const size_t num_fields_out)
+{
+
+    AcTaskDefinition task_def{};
+    task_def.task_type      = TASKTYPE_ITER_COMPUTE;
+    task_def.iter_compute   =  kernel;
+    task_def.fields_in      = fields_in;
+    task_def.num_fields_in  = num_fields_in;
+    task_def.fields_out     = fields_out;
+    task_def.num_fields_out = num_fields_out;
+    return task_def;
+}
+
+
+AcTaskDefinition
+convert_iter_to_normal_compute(AcTaskDefinition op, int step_num)
+{
+    AcTaskDefinition task_def{};
+    task_def.task_type      = TASKTYPE_COMPUTE;
+    task_def.kernel =  new KernelLambda(bind_int(op.iter_compute,step_num));
+    task_def.fields_in      = op.fields_in;
+    task_def.num_fields_in  = op.num_fields_in;
+    task_def.fields_out     = op.fields_out;
+    task_def.num_fields_out = op.num_fields_out;
     return task_def;
 }
 AcTaskDefinition
@@ -491,12 +533,11 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
 
     // compute_func = compute_func_;
 
-    params = KernelParameters{kernels[(int)op.kernel], stream, 0, output_region.position,
+    params = KernelParameters{*op.kernel, stream, 0, output_region.position,
                               output_region.position + output_region.dims};
     name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
-    prepare_compute = op.prepare_func;
 }
 
 void
@@ -504,7 +545,6 @@ ComputeTask::compute()
 {
     // IDEA: we could make loop_cntr.i point at params.step_number
     params.step_number = (int)(loop_cntr.i % 3);
-    prepare_compute({params.stream, params.step_number});
     acKernel(params, vba);
 }
 

@@ -18,6 +18,7 @@ int yylex();
 int yyparse();
 int yyerror(const char* str);
 int yyget_lineno();
+const char* global_func_declaration = "__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n";
 
 void
 cleanup(void)
@@ -31,6 +32,15 @@ void set_identifier_prefix(const char* prefix, ASTNode* curr);
 void set_identifier_infix(const char* infix, ASTNode* curr);
 ASTNode* get_node(const NodeType type, ASTNode* node);
 ASTNode* get_node_by_token(const int token, ASTNode* node);
+
+void combine_ast(const ASTNode* node, char* res){
+  if(node->buffer)
+    strcat(res,node->buffer);
+  if(node->lhs)
+    combine_ast(node->lhs, res);
+  if(node->rhs)
+    combine_ast(node->rhs, res);
+}
 
 void
 process_includes(const size_t depth, const char* dir, const char* file, FILE* out)
@@ -132,7 +142,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 {
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
         {
-          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h"};
+          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h"};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
             FILE* fp = fopen(files[i], "w");
             assert(fp);
@@ -330,7 +340,7 @@ auxiliary_field: AUXILIARY_FIELD  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL
 work_buffer: WORK_BUFFER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 stencil: STENCIL       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("", $$); /*astnode_set_buffer(yytext, $$);*/ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 return: RETURN         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$);};
-kernel: KERNEL         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n", $$); $$->token = 255 + yytoken; };
+kernel: KERNEL         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(global_func_declaration, $$); $$->token = 255 + yytoken; };
 sum: SUM               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("sum", $$); $$->token = 255 + yytoken; };
 max: MAX               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("max", $$); $$->token = 255 + yytoken; };
 hostdefine: HOSTDEFINE {
@@ -568,17 +578,51 @@ function_definition: declaration function_body {
                         set_identifier_type(NODE_FUNCTION_ID, fn_identifier);
 
                         const ASTNode* is_kernel = get_node_by_token(KERNEL, $$);
+                        char rest_params[4096];
+                        rest_params[0] = '\0';
+                        char param_default_args[4096];
+                        param_default_args[0] = '\0';
                         if (is_kernel) {
                             $$->type |= NODE_KFUNCTION;
                             set_identifier_type(NODE_KFUNCTION_ID, fn_identifier);
 
                             // Kernel function parameters
-                            astnode_set_prefix("(const int3 start, const int3 end, VertexBufferArray vba", $$->rhs);
+                            //if has parameter list
+                            if($$->rhs->lhs)
+                            {
+                              ASTNode* param_list_head = $$->rhs->lhs;
+                              ASTNode* param;
+                              char param_type[4096];
+                              while(param_list_head->rhs)
+                              {
+                                param_type[0] = '\0';
+                                param = param_list_head->rhs;
+                                combine_ast(param->lhs, param_type);
+                                sprintf(rest_params,",%s %s",param_type, param->rhs->buffer);
+                                if(param_type == "int")
+                                  sprintf(param_default_args, "%s,%s",param_default_args,"0");
+                                if(param_type == "AcReal")
+                                  sprintf(param_default_args, "%s,%s",param_default_args,"0.0");
+                                param_list_head = param_list_head->lhs;
+                              }
 
+                              param_type[0] = '\0';
+                              param = param_list_head->lhs;
+                              combine_ast(param->lhs, param_type);
+                              sprintf(rest_params,",%s %s",param_type, param->rhs->buffer);
+                              if(!strcmp(param_type,"int"))
+                                sprintf(param_default_args, "%s,%s",param_default_args,"0");
+                              if(!strcmp(param_type,"AcReal"))
+                                sprintf(param_default_args, "%s,%s",param_default_args,"0.0");
+                              $$->rhs->lhs=NULL;
+                            }
                             // Set kernel built-in variables
+                            char param_list[4096];
+                            const char* default_args =  "const int3 start, const int3 end, VertexBufferArray vba";
+                            sprintf(param_list,"(%s %s",default_args,rest_params);
+                            astnode_set_prefix(param_list, $$->rhs);
                             ASTNode* compound_statement = $$->rhs->rhs;
                             assert(compound_statement);
-
                             astnode_set_prefix("{", compound_statement);
                             astnode_set_postfix(
                               //"\n#pragma unroll\n"
@@ -586,6 +630,17 @@ function_definition: declaration function_body {
                               //"if (!isnan(out_buffer[field]))"
                               //"vba.out[field][idx] = out_buffer[field];"
                               "}", compound_statement);
+                            char* func_name = fn_identifier->buffer;
+
+
+                            char postfix[4096];
+                            sprintf(postfix,"\n#ifdef AC_STENCIL_ACCESSES\nvoid %s_cpu(%s){%s(start,end,vba%s);}\n#endif\n",fn_identifier->buffer,default_args,func_name,param_default_args);
+                            astnode_set_postfix(postfix,$$);
+
+                            FILE* fp = fopen("user_kernel_declarations.h","a");
+                            fprintf(fp, "void __global__ %s %s);\n", func_name, param_list);
+                            fclose(fp);
+
                         } else {
                             astnode_set_infix(" __attribute__((unused)) =[&]", $$);
                             astnode_set_postfix(";", $$);

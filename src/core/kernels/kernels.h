@@ -42,7 +42,7 @@ struct device_s {
 typedef AcReal AcRealPacked;
 
 typedef struct {
-    Kernel kernel;
+    KernelLambda kernel;
     cudaStream_t stream;
     int step_number;
     int3 start;

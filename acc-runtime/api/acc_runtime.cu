@@ -43,26 +43,26 @@ kernel_to_kernel_lambda(const Kernel kernel)
 };
 
 KernelLambda
-curry_int(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int input_param), int input_param)
+bind_int(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int input_param), int input_param)
 {
   return (KernelLambda){[kernel, input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param);}, reinterpret_cast<void*>(kernel)};
 }
 
 template <typename T>
 KernelLambda
-curry_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param), T input_param)
+bind_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param), T input_param)
 {
   return (KernelLambda){[kernel, input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param);}, reinterpret_cast<void*>(kernel)};
 }
 template <typename T, typename F>
 KernelLambda
-curry_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param), T input_param, F second_input_param)
+bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param), T input_param, F second_input_param)
 {
   return (KernelLambda){[kernel, input_param, second_input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param, second_input_param);}, reinterpret_cast<void*>(kernel)};
 }
 template <typename T, typename F, typename H>
 KernelLambda
-curry_three_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param, H third_input_param), T input_param, F second_input_param, H third_input_param)
+bind_three_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param, H third_input_param), T input_param, F second_input_param, H third_input_param)
 {
   return (KernelLambda){[kernel, input_param, second_input_param, third_input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param, second_input_param, third_input_param);}, reinterpret_cast<void*>(kernel)};
 }
@@ -474,7 +474,7 @@ acVBACreate(const AcMeshInfo config)
     }
   }
   //Allocate profiles
-  for(size_t i= 0; i < NUM_PROFILES; i++){
+  for(int i= 0; i < NUM_PROFILES; ++i){
     //if the user loads in a nullptr for the profile it won't be allocated and set to null (the user will be warned at acGridInit)
     if(config.profiles[i] != nullptr)
     {
@@ -485,10 +485,10 @@ acVBACreate(const AcMeshInfo config)
     }
   }
   //Allocate workbuffers
-  for (size_t i = 0; i < NUM_WORK_BUFFERS; ++i)
+  for (int i = 0; i < NUM_WORK_BUFFERS; ++i)
     device_malloc((void**)&vba.w[i],bytes);
   //Allocate arrays
-  for (size_t i = 0; i < NUM_REAL_ARRAYS; ++i)
+  for (int i = 0; i < NUM_REAL_ARRAYS; ++i)
     device_malloc((void**)&vba.arrays[i],sizeof(vba.in[0][0])*config.int_params[real_array_lengths[i]]);
   acVBAReset(0, &vba);
   cudaDeviceSynchronize();
@@ -508,7 +508,7 @@ device_free(AcReal** dst, const int bytes)
 void
 acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 {
-  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+  for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
     device_free(&(vba->in[i]), vba->bytes);
     if(vtxbuf_is_auxiliary[i])
       vba->out[i] = NULL;
@@ -516,16 +516,16 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
       device_free(&(vba->out[i]), vba->bytes);
   }
   //Free workbuffers 
-  for (size_t i = 0; i < NUM_WORK_BUFFERS; ++i) 
+  for (int i = 0; i < NUM_WORK_BUFFERS; ++i) 
     device_free(&(vba->w[i]), vba->bytes);
   //Free profiles
-  for(size_t i=0;i<NUM_PROFILES; ++i)
+  for(int i=0;i<NUM_PROFILES; ++i)
     //Nothing to free if nullptr, don't know if a nullptr would break compressed memory free so this is safest
     if(config.profiles[i] != nullptr){
       device_free(&(vba->profiles[i]),config.int_params[profile_lengths[i]]);
     }
   //Free arrays
-  for(size_t i=0;i<NUM_REAL_ARRAYS; ++i)
+  for(int i=0;i<NUM_REAL_ARRAYS; ++i)
     device_free(&(vba->arrays[i]), config.int_params[real_array_lengths[i]]);
   vba->bytes = 0;
 }
@@ -590,7 +590,7 @@ acBenchmarkKernel(KernelLambda lambda, const int3 start, const int3 end,
 
   size_t kernel_id = NUM_KERNELS;
   for (size_t i = 0; i < NUM_KERNELS; ++i) {
-    if (kernels[i] == lambda.kernel) {
+    if ((void*)kernels[i] == lambda.kernel) {
       kernel_id = i;
     }
   }

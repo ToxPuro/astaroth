@@ -1,4 +1,3 @@
-int AC_step_number
 real AC_dt
 
 /*

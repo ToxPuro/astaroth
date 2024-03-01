@@ -21,6 +21,6 @@
 
 #include "ast.h"
 
-void generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses);
+void generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses);
 
 void generate_mem_accesses(void);

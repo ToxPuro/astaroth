@@ -188,7 +188,6 @@ typedef class ComputeTask : public Task {
                 std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     ComputeTask(const ComputeTask& other)            = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
-    PrepareFn prepare_compute;
     void compute();
     void advance(const TraceFile* trace_file);
     bool test();
@@ -339,3 +338,4 @@ struct AcTaskGraph {
 
 AcBoundary boundary_from_normal(int3 normal);
 int3 normal_from_boundary(AcBoundary boundary);
+AcTaskDefinition convert_iter_to_normal_compute(AcTaskDefinition op, int step_num);

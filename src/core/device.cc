@@ -465,6 +465,8 @@ AcResult
 acDeviceLoadProfileWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
                          const Profile profile, int src_idx, int dst_idx, size_t num_elems)
 {
+    if constexpr(NUM_PROFILES == 0)
+        return AC_FAILURE;
     ERRCHK_ALWAYS(&device->vba.profiles[profile] != nullptr) //in case the user loaded a nullptr at acGridInit
     ERRCHK_ALWAYS(host_info.profiles[profile] != nullptr)
     cudaSetDevice(device->id);
@@ -482,6 +484,9 @@ AcResult
 acDeviceLoadProfile(const Device device, const Stream stream, const AcMeshInfo host_info,
                          const Profile profile)
 {
+
+    if constexpr(NUM_PROFILES == 0)
+        return AC_FAILURE;
     acDeviceLoadProfileWithOffset(device, stream, host_info, profile, 0, 0, device->local_config.int_params[profile_lengths[profile]]);
     return AC_SUCCESS;
 }
@@ -489,6 +494,10 @@ AcResult
 acDeviceLoadArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
                          const AcRealArrayParam array, int src_idx, int dst_idx, size_t num_elems)
 {
+
+    if constexpr(NUM_REAL_ARRAYS == 0)
+    
+        return AC_FAILURE;
     cudaSetDevice(device->id);
     const AcReal* src_ptr = &host_info.arrays[array][src_idx];
     AcReal* dst_ptr       = &device->vba.arrays[array][dst_idx];
@@ -664,19 +673,33 @@ acDeviceTransferMesh(const Device src_device, const Stream stream, Device dst_de
     }
     return AC_SUCCESS;
 }
-
 AcResult
-acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kernel,
+acDeviceLaunchKernel(const Device device, const Stream stream, const KernelLambda kernel,
                      const int3 start, const int3 end)
 {
     cudaSetDevice(device->id);
     return acLaunchKernel(kernel, device->streams[stream], start, end, device->vba);
 }
+
 AcResult
-acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start, const int3 end)
+acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kernel,
+                     const int3 start, const int3 end)
+{
+    return acDeviceLaunchKernel(device, stream, kernel_to_kernel_lambda(kernel),start,end);
+}
+
+
+AcResult
+acDeviceBenchmarkKernel(const Device device, const KernelLambda kernel, const int3 start, const int3 end)
 {
     cudaSetDevice(device->id);
     return acBenchmarkKernel(kernel, start, end, device->vba);
+}
+
+AcResult
+acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start, const int3 end)
+{
+    return acDeviceBenchmarkKernel(device, kernel_to_kernel_lambda(kernel), start, end);
 }
 
 
@@ -688,7 +711,6 @@ acDeviceStoreStencil(const Device device, const Stream stream, const Stencil ste
     cudaSetDevice(device->id);
     return acStoreStencil(stencil, device->streams[stream], data);
 }
-
 AcResult
 acDeviceIntegrateSubstep(const Device device, const Stream stream, const int step_number,
                          const int3 start, const int3 end, const AcReal dt)
@@ -697,9 +719,8 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
     cudaSetDevice(device->id);
 
     acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
-    acDeviceLoadIntUniform(device, stream, AC_step_number, step_number);
 #ifdef AC_SINGLEPASS_INTEGRATION
-    return acLaunchKernel(singlepass_solve, device->streams[stream], start, end, device->vba);
+    return acLaunchKernel(bind_int(singlepass_solve,step_number), device->streams[stream], start, end, device->vba);
 #else
     // Two-pass integration with acDeviceIntegrateSubstep works currently
     // only when integrating the whole subdomain
@@ -720,13 +741,13 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
     ERRCHK_ALWAYS(end.y == dims.n1.y);
     ERRCHK_ALWAYS(end.z == dims.n1.z);
 
-    const AcResult res = acLaunchKernel(twopass_solve_intermediate, device->streams[stream], start,
+    const AcResult res = acLaunchKernel(bind_int(twopass_solve_intermediate,step_number), device->streams[stream], start,
                                         end, device->vba);
     if (res != AC_SUCCESS)
         return res;
 
     acDeviceSwapBuffers(device);
-    return acLaunchKernel(twopass_solve_final, device->streams[stream], start, end, device->vba);
+    return acLaunchKernel(bind_int(twopass_solve_final,step_number), device->streams[stream], start, end, device->vba);
 #endif
 #else
     (void)device;      // Unused
