@@ -6,13 +6,13 @@ write_vector(f,v) {
    write( Field(f.z), v.z)
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-vecprevious(v){
-    return real3(previous(Field(v.x)),previous(Field(v.y)),previous(Field(v.z)))
-}
+//vecprevious(v){
+//    return real3(previous(Field(v.x)),previous(Field(v.y)),previous(Field(v.z)))
+//}
 /*--------------------------------------------------------------------------------------------------------------------------*/
-vecvalue(v) {
-    return real3(value(v.x), value(v.y), value(v.z))
-}
+//vecvalue(v) {
+//    return real3(value(v.x), value(v.y), value(v.z))
+//}
 /*--------------------------------------------------------------------------------------------------------------------------*/
 gradient(s) {
     return real3(derx(s), dery(s), derz(s))

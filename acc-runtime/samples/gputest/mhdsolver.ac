@@ -8,6 +8,7 @@ real AC_lnrho0, AC_mu0, AC_lnT0
 */
 // Note: not used by mhdsolver.ac at the moment (src/utils/modelsolver.c does)
 hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
+//#include "../../../../PC_moduleflags.h"
 hostdefine LDENSITY (0)
 hostdefine LHYDRO (0)
 hostdefine LMAGNETIC (0)
@@ -21,8 +22,8 @@ hostdefine LSHOCK (0)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
 
-//Field VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO, VTXBUF_ENTROPY
-Field VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO, VTXBUF_ENTROPY, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
+//Field UUX, UUY, UUZ, RHO, SS
+Field UUX, UUY, UUZ, RHO, SS, AAX, AAY, AAZ
 
 
 //Profile_X AC_PROFILE_GRAVX_XPENCIL
@@ -242,8 +243,8 @@ Profile_z AC_test_profile[AC_nz]
 //
 real AC_current_time
 
-#define F_UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
-#define F_AA Field3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
+#define F_UU Field3(UUX, UUY, UUZ)
+#define F_AA Field3(AAX, AAY, AAZ)
 
 #define DER1_3 (1.0 / 60.)
 #define DER1_2 (-3. / 20.)
@@ -803,20 +804,20 @@ twopass_solve_intermediate_body(step_num){
   //GRADDIVU = gradient_of_divergence(F_UU)
   //GRADDIVU = real3(2.0,2.0,2.0)
   GRADDIVU = divergence(F_UU)
-  LNRHO = value(VTXBUF_LNRHO)
+  LNRHO = value(RHO)
   RHO1 = exp(-LNRHO)
   //GLNRHO = real3(2.0,2.0,2.0)
-  GLNRHO = gradient(VTXBUF_LNRHO)
+  GLNRHO = gradient(RHO)
   UGLNRHO = dot(GLNRHO,UU)
-  DEL2LNRHO = laplace(VTXBUF_LNRHO)
+  DEL2LNRHO = laplace(RHO)
   //SGLNRHO = real3(2.0,2.0,2.0)
   SGLNRHO = SIJ*GLNRHO
   AC_cv1 = 1/AC_cv
-  SS = value(VTXBUF_ENTROPY)
-  GSS = gradient(VTXBUF_ENTROPY)
-  DEL2SS = laplace(VTXBUF_ENTROPY)
-  cs2 = AC_cs20*exp(AC_cv1*SS+AC_gamma_m1*(LNRHO-AC_lnrho0))
-  LNTT = AC_lnTT0+AC_cv1*SS+AC_gamma_m1*(LNRHO-AC_lnrho0)
+  SSV = value(SS)
+  GSS = gradient(SS)
+  DEL2SS = laplace(SS)
+  cs2 = AC_cs20*exp(AC_cv1*SSV+AC_gamma_m1*(LNRHO-AC_lnrho0))
+  LNTT = AC_lnTT0+AC_cv1*SSV+AC_gamma_m1*(LNRHO-AC_lnrho0)
   TT = exp(LNTT)
   TT1 = exp(-LNTT)
   GLNTT = AC_gamma_m1*GLNRHO+AC_cv1*GSS
@@ -863,28 +864,28 @@ twopass_solve_intermediate_body(step_num){
 
 
   W_UU = rk3_intermediate_vector(vecprevious(F_UU),DF_UU,step_num)
-  W_SS = rk3_intermediate(previous(VTXBUF_ENTROPY),DF_SS,step_num)
-  W_LNRHO = rk3_intermediate(previous(VTXBUF_LNRHO),DF_LNRHO,step_num)
+  W_SS = rk3_intermediate(previous(SS),DF_SS,step_num)
+  W_LNRHO = rk3_intermediate(previous(RHO),DF_LNRHO,step_num)
   W_AA  = rk3_intermediate_vector(vecprevious(F_AA),DF_AA,step_num)
  
 
   vecwrite(F_UU,W_UU)
-  write(VTXBUF_ENTROPY,W_SS)
-  write(VTXBUF_LNRHO, W_LNRHO)
+  write(SS,W_SS)
+  write(RHO, W_LNRHO)
   vecwrite(F_AA,W_AA)
   /**
   beta_1 = 0.333333333333333333333333
   vecwrite(F_UU,vecvalue(F_UU)+AC_dt*DF_UU*beta_1)
-  write(VTXBUF_ENTROPY,value(VTXBUF_ENTROPY)+AC_dt*DF_SS*beta_1)
-  write(VTXBUF_LNRHO, value(VTXBUF_LNRHO)+AC_dt*DF_LNRHO*beta_1)
+  write(SS,value(SS)+AC_dt*DF_SS*beta_1)
+  write(RHO, value(RHO)+AC_dt*DF_LNRHO*beta_1)
   vecwrite(F_AA,vecvalue(F_AA)+AC_dt*DF_AA*beta_1)
   **/
 }
 
 twopass_solve_final_body(step_num) {
   vecwrite(F_UU,rk3_final_vector(vecprevious(F_UU),vecvalue(F_UU),step_num))
-  write(VTXBUF_ENTROPY,rk3_final(previous(VTXBUF_ENTROPY),value(VTXBUF_ENTROPY),step_num))
-  write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO),value(VTXBUF_LNRHO),step_num))
+  write(SS,rk3_final(previous(SS),value(SS),step_num))
+  write(RHO, rk3_final(previous(RHO),value(RHO),step_num))
   vecwrite(F_AA,rk3_final_vector(vecprevious(F_AA),vecvalue(F_AA),step_num))
 }
 
@@ -912,7 +913,7 @@ Kernel write_previous(){
 }
 Kernel add_field0(){
   /**
-  write(VTXBUF_UUX,rk3_final(previous(VTXBUF_UUX),value(VTXBUF_UUX),0))
+  write(UUX,rk3_final(previous(UUX),value(UUX),0))
   **/
 }
 
@@ -998,12 +999,12 @@ Kernel rhs_kernel(){
   twopass_solve_intermediate_body(0)
 }
 Kernel copy_data(){
-  write(VTXBUF_UUX, value(VTXBUF_UUX))
-  write(VTXBUF_UUY, value(VTXBUF_UUY))
-  write(VTXBUF_UUZ, value(VTXBUF_UUZ))
-  write(VTXBUF_LNRHO,value(VTXBUF_LNRHO))
-  write(VTXBUF_ENTROPY,value(VTXBUF_ENTROPY))
-  write(VTXBUF_AX, value(VTXBUF_AX))
-  write(VTXBUF_AY, value(VTXBUF_AY))
-  write(VTXBUF_AZ, value(VTXBUF_AZ))
+  write(UUX, value(UUX))
+  write(UUY, value(UUY))
+  write(UUZ, value(UUZ))
+  write(RHO, value(RHO))
+  write(SS,  value(SS))
+  write(AAX, value(AAX))
+  write(AAY, value(AAY))
+  write(AAZ, value(AAZ))
 }
