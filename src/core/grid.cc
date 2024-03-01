@@ -336,14 +336,14 @@ acGridInit(AcMeshInfo info)
 #ifdef AC_SINGLEPASS_INTEGRATION
                                       acSync(),
                                       acSync(),
-                                      acCompute(KERNEL_singlepass_solve, all_fields)
+                                      acCompute(singlepass_solve, all_fields)
 #else
                                       acSync(),
                                       acSync(),
-                                      acCompute(KERNEL_twopass_solve_intermediate, all_fields),
+                                      acCompute(twopass_solve_intermediate, all_fields),
                                       acSync(),
                                       acSync(),
-                                      acCompute(KERNEL_twopass_solve_final, all_fields)
+                                      acCompute(twopass_solve_final, all_fields)
 #endif
 #endif // AC_INTEGRATION_ENABLED
     };
@@ -353,10 +353,10 @@ acGridInit(AcMeshInfo info)
                                                           all_fields),
 #ifdef AC_INTEGRATION_ENABLED
 #ifdef AC_SINGLEPASS_INTEGRATION
-                                      acCompute(KERNEL_singlepass_solve, all_fields)
+                                      acCompute(singlepass_solve, all_fields)
 #else
-                                      acCompute(KERNEL_twopass_solve_intermediate, all_fields),
-                                      acCompute(KERNEL_twopass_solve_final, all_fields)
+                                      acCompute(twopass_solve_intermediate, all_fields),
+                                      acCompute(twopass_solve_final, all_fields)
 #endif
 #endif // AC_INTEGRATION_ENABLED
     };
@@ -372,8 +372,6 @@ acGridInit(AcMeshInfo info)
     acRandInitAlt(1234UL, count, pid);
 
     grid.initialized   = true;
-    grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
-    acLogFromRootProc(pid, "acGridInit: Done creating default task graph\n");
 
     acVerboseLogFromRootProc(pid, "acGridInit: Synchronizing streams\n");
     acGridSynchronizeStream(STREAM_ALL);
@@ -391,24 +389,8 @@ acGridInit(AcMeshInfo info)
     }
 
 
-#if AUTOTUNE_AT_INIT // By default is ON
-    acLogFromRootProc(pid, "acGridInit: Autotuning\n");
-    AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-    for (int kernel = 0; kernel < NUM_KERNELS; kernel++) {
-        // dryrun for the most likely dimension of the whole computational subdomain
-        acGridLaunchKernel(STREAM_DEFAULT, kernels[kernel], dims.n0, dims.n1);
-    }
-
-    // dryrun a taskgraph with all compute kernels to autotune them
-    AcTaskDefinition my_ops[NUM_KERNELS + 2];
-    my_ops[0] = acHaloExchange(all_fields);
-    my_ops[1] = acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields);
-    for (int kernel = 0; kernel < NUM_KERNELS; kernel++)
-        my_ops[kernel + 2] = acCompute(static_cast<AcKernel>(kernel), all_fields);
-    auto all_compute_tasks = std::unique_ptr<AcTaskGraph>(acGridBuildTaskGraph(my_ops));
-    acGridExecuteTaskGraph(all_compute_tasks.get(), 1);
-    acLogFromRootProc(pid, "acGridInit: Done autotuning\n");
-#endif
+    grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops,3));
+    acLogFromRootProc(pid, "acGridInit: Done creating default task graph\n");
     return AC_SUCCESS;
 }
 
@@ -1449,6 +1431,11 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
                 auto task = std::make_shared<ComputeTask>(op, i, tag, nn, device, swap_offset);
                 graph->all_tasks.push_back(task);
+
+                //autotune compute
+                //done here since we want to write only to out not to in what launching the taskgraph would do
+                acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, *op.kernel, task->output_region.position, task->output_region.position + task->output_region.dims);
+
             }
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
@@ -1644,7 +1631,31 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     std::sort(graph->halo_tasks.begin(), graph->halo_tasks.end(), sort_lambda);
     std::sort(graph->all_tasks.begin(), graph->all_tasks.end(), sort_lambda);
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Done sorting tasks by priority\n");
+
+    //make sure after autotuning that out is 0
+    AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
+    acGridLaunchKernel(STREAM_DEFAULT, reset, dims.n0,dims.n1);
+    acGridSynchronizeStream(STREAM_ALL);
     return graph;
+}
+
+AcTaskGraph*
+acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops, const size_t n_iterations)
+{
+    AcTaskDefinition res_ops[n_ops*n_iterations];
+    for(int iteration = 0; iteration < n_iterations; ++iteration)
+    {
+        for(size_t i = 0; i < n_ops; ++i)
+        {
+            if(ops[i].task_type == TASKTYPE_ITER_COMPUTE)
+            {
+                res_ops[i + n_ops*iteration] = convert_iter_to_normal_compute(ops[i],iteration);
+            }
+            else
+                res_ops[i + n_ops*iteration] = ops[i];
+        }
+    }
+    return acGridBuildTaskGraph(res_ops, n_ops*n_iterations);
 }
 
 AcResult
@@ -1704,7 +1715,7 @@ acGridIntegrate(const Stream stream, const AcReal dt)
     ERRCHK(grid.initialized);
     acGridLoadScalarUniform(stream, AC_dt, dt);
     acDeviceSynchronizeStream(grid.device, stream);
-    return acGridExecuteTaskGraph(grid.default_tasks.get(), 3);
+    return acGridExecuteTaskGraph(grid.default_tasks.get(), 1);
 }
 #endif // AC_INTEGRATION_ENABLED
 

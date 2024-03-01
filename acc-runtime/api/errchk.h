@@ -166,6 +166,14 @@ as_size_t(const T i)
                 static_cast<long double>(SIZE_MAX));
   return static_cast<size_t>(i);
 }
+//overloaded with unsigned int to remove compiler warnings about unneeded checks
+static inline size_t
+as_size_t(unsigned int i)
+{
+  ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(SIZE_MAX));
+  return static_cast<size_t>(i);
+}
 #else
 // TODO: cleanup and integrate with the errors above someday
 #define INDIRECT_ERROR(str, file, line)                                                                          \

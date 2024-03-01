@@ -286,7 +286,7 @@ void combine(const ASTNode* node, char* res){
     combine(node->rhs, res);
 }
 bool is_profile_read_root(const ASTNode* node){
-  ASTNode* lhs = node;
+  const ASTNode* lhs = node;
   for(int i = 0; i<3; i++){
     if(!lhs->lhs)
       return false;
@@ -402,11 +402,12 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
         }
         else if (!(node->type & NODE_KFUNCTION_ID) &&
                  !get_parent_node(NODE_STENCIL, node) &&
-                 !(node->type & NODE_MEMBER_ID))
+                 !(node->type & NODE_MEMBER_ID) &&
+                 !strstr(node->buffer, "ac_input"))
           fprintf(stream, "auto ");
       }
       if (!(node->type & NODE_MEMBER_ID))
-        // if (tspec && !strcmp(tspec,""))
+      {
         if (tspec != NULL && (is_profile_specifier(tspec) |!strcmp(tspec,"AcReal*")))
         {
           const ASTNode* nd = decl->rhs->lhs->rhs->lhs->lhs->lhs->lhs;
@@ -429,6 +430,7 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
         else{
           add_symbol(node->type, tqual, tspec, node->buffer);
         }
+      }
     }
   }
 
@@ -819,7 +821,7 @@ gen_user_defines(const ASTNode* root, const char* out)
 }
 
 static void
-gen_user_kernels(const ASTNode* root, const char* out)
+gen_user_kernels(const ASTNode* root, const char* out, const bool gen_mem_accesses)
 {
   symboltable_reset();
   traverse(root, 0, NULL);
@@ -830,28 +832,38 @@ gen_user_kernels(const ASTNode* root, const char* out)
   // fprintf(fp, "#pragma once\n");
 
   // Kernels
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_KFUNCTION_ID)
-      fprintf(fp,
-              "__global__ void %s(const int3 start, const int3 end, "
-              "VertexBufferArray vba);",
-              symbol_table[i].identifier);
+  // for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  //   if (symbol_table[i].type & NODE_KFUNCTION_ID)
+  //     fprintf(fp,
+  //             "__global__ void %s(const int3 start, const int3 end, "
+  //             "VertexBufferArray vba);",
+  //             symbol_table[i].identifier);
 
   // Astaroth 2.0 backwards compatibility START
   // This is not really needed any more, the kernel function pointer is now
   // exposed in the API, so one could use that directly instead of handles.
+  fprintf(fp,"#include \"user_kernel_declarations.h\"\n");
   fprintf(fp, "static const Kernel kernels[] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_KFUNCTION_ID)
-      fprintf(fp, "%s,", symbol_table[i].identifier); // Host layer handle
+      fprintf(fp, "(Kernel)%s,", symbol_table[i].identifier); // Host layer handle
   fprintf(fp, "};");
+
+  if(gen_mem_accesses)
+  {
+    fprintf(fp, "static const Kernel cpu_kernels[] = {");
+    for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+      if (symbol_table[i].type & NODE_KFUNCTION_ID)
+        fprintf(fp, "%s_cpu,", symbol_table[i].identifier); // Host layer handle
+    fprintf(fp, "};");
+  }
   // Astaroth 2.0 backwards compatibility END
 
   fclose(fp);
 
   symboltable_reset();
 }
-void gen_profile_reads(ASTNode* node, const char* out){
+void gen_profile_reads(ASTNode* node){
 
   if(is_profile_read_root(node)){
     char* profile_name= node->lhs->lhs->lhs->buffer;
@@ -864,12 +876,13 @@ void gen_profile_reads(ASTNode* node, const char* out){
     char builder[4096];
     sprintf(builder, "p_%d_%d", profile_index, num_profile_read);
     node->buffer = strdup(builder);
-    node->postfix = node->infix = node->lhs=node->rhs = NULL;
+    node->postfix = node->infix;
+    node->lhs=node->rhs = NULL;
   }
   if(node->lhs)
-    gen_profile_reads(node->lhs, out);
+    gen_profile_reads(node->lhs);
   if(node->rhs)
-    gen_profile_reads(node->rhs, out);
+    gen_profile_reads(node->rhs);
 }
 
 
@@ -933,13 +946,13 @@ void replace_dynamic_coeffs(ASTNode* node)
     replace_dynamic_coeffs(node->rhs);
 }
 void
-generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
+generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 {
   num_profiles = 0;
   assert(root);
 
   gen_user_defines(root, "user_defines.h");
-  gen_user_kernels(root, "user_declarations.h");
+  gen_user_kernels(root, "user_declarations.h", gen_mem_accesses);
 
   // Fill the symbol table
   traverse(root, 0, NULL);
@@ -969,7 +982,7 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 
     if (is_profile_specifier(symbol_table[i].tspecifier))
       add_profile(symbol_table[i].identifier);
-  gen_profile_reads(root, "profile_reads.h");
+  gen_profile_reads(root);
 
   //generate profile_read_set_sizes and profile_read_set accessible to stencilgen.c
   FILE* profile_file = fopen(PROFILE_HEADER, "w");

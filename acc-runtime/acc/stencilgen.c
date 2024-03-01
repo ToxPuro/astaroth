@@ -152,9 +152,9 @@ gen_kernel_prefix(void)
 // Write vba.out
 #if 1
   // Original
-  printf("const auto write=[&](const Field field, const AcReal value)"
+  printf("const auto write __attribute__((unused))  = [&](const Field field, const AcReal value)"
          "{ vba.out[field][idx] = value; };");
-  printf("const auto vecwrite=[&](const int3 field3, const AcReal3 value)"
+  printf("const auto vecwrite __attribute__((unused)) = [&](const int3 field3, const AcReal3 value)"
          "{ vba.out[field3.x][idx] = value.x; vba.out[field3.y][idx] = value.y; vba.out[field3.z][idx] = value.z;};");
 
   //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
@@ -224,10 +224,7 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses)
         else
           printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.x+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
       if(profile_dims[profile] == 2) // Y Profile
-        if(gen_mem_accesses)
-          printf("const auto p_%d_%d= 0;", profile, read_index);
-        else
-          printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.y+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
+        if(gen_mem_accesses) printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.y+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
         // Z Profile
       if(profile_dims[profile] == 3) // Z Profile
         if(gen_mem_accesses)

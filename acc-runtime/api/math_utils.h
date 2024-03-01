@@ -46,9 +46,11 @@
 #if defined(__CUDACC__) || defined(__HIPCC__)
 #define HOST_DEVICE __host__ __device__ UNUSED
 #define HOST_DEVICE_INLINE __host__ __device__ __forceinline__ UNUSED
+#define HOST_INLINE __host__  __forceinline__ UNUSED
 #else
 #define HOST_DEVICE UNUSED
 #define HOST_DEVICE_INLINE inline UNUSED
+#define HOST_INLINE  __forceinline__ UNUSED
 #endif // __CUDACC__
 
 // Disabled for now, issues on lumi (exp, cos, sin ambiguous)
@@ -273,19 +275,19 @@ operator<=(const int3& a, const int3& b)
 /*
  * UINT3_64
  */
-static HOST_DEVICE_INLINE uint3_64
+static HOST_INLINE uint3_64
 operator+(const uint3_64& a, const uint3_64& b)
 {
   return (uint3_64){a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
-static HOST_DEVICE_INLINE uint3_64
+static HOST_INLINE uint3_64
 operator-(const uint3_64& a, const uint3_64& b)
 {
   return (uint3_64){a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
-static HOST_DEVICE_INLINE uint3_64
+static HOST_INLINE uint3_64
 operator*(const uint3_64& a, const uint3_64& b)
 {
   return (uint3_64){a.x * b.x, a.y * b.y, a.z * b.z};

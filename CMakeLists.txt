@@ -25,7 +25,6 @@ option(ADJACENT_VERTEX_BUFFERS "Allocate vertex buffers such that they form a si
 option(USE_PERFSTUBS "Build with perfstubs" OFF)
 option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
 option(DEBUG_SYNC "Whether to sync after all tasks in default ops" OFF)
-option(AUTOTUNE_AT_INIT "Whether Astaroth will perform some initial autotuning" ON)
 
 if (USE_HIP)
     find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
