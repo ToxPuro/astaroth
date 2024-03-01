@@ -881,7 +881,7 @@ Kernel twopass_solve_intermediate(int ac_input_step_num){
   **/
 }
 
-Kernel twopass_solve_final_body(ac_input_step_num) {
+Kernel twopass_solve_final(int ac_input_step_num) {
   vecwrite(F_UU,rk3_final_vector(vecprevious(F_UU),vecvalue(F_UU),ac_input_step_num))
   write(SS,rk3_final(previous(SS),value(SS),ac_input_step_num))
   write(RHO, rk3_final(previous(RHO),value(RHO),ac_input_step_num))

@@ -506,7 +506,7 @@ acDeviceLoadArrayWithOffset(const Device device, const Stream stream, const AcMe
     
         return AC_FAILURE;
     cudaSetDevice(device->id);
-    const AcReal* src_ptr = &host_info.real_array_params[array][src_idx];
+    const AcReal* src_ptr = &host_info.arrays[array][src_idx];
     AcReal* dst_ptr       = &device->vba.arrays[array][dst_idx];
     const size_t bytes    = num_elems* sizeof(src_ptr[0]);
 
