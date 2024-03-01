@@ -214,28 +214,34 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses)
 
   //Note to Johannes, on HIP __ldg is no-op so we can safely use it both for CUDA and HIP
   for (int profile = 0; profile < NUM_PROFILES; ++profile){
-    for(int read_index = 0; read_index < profile_read_set_sizes[profile]; ++read_index) 
+    for (int read_index = 0; read_index < profile_read_set_sizes[profile]; ++read_index)
     {
       //TP: if we are generating mem accesses for some reason reading from vba does not work
       //as a workaround simply set the values to zero
-      if(profile_dims[profile] == 1) // X Profile
-        if(gen_mem_accesses)
+      if (profile_dims[profile] == 1){ // X Profile
+        if (gen_mem_accesses)
           printf("const auto p_%d_%d= 0;", profile, read_index);
         else
           printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.x+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
-      if(profile_dims[profile] == 2) // Y Profile
-        if(gen_mem_accesses) printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.y+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
+      }
+      if (profile_dims[profile] == 2){ // Y Profile
+        if (gen_mem_accesses)
+          printf("const auto p_%d_%d= 0;", profile, read_index);
+        else
+          printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.y+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
+      }
         // Z Profile
-      if(profile_dims[profile] == 3) // Z Profile
-        if(gen_mem_accesses)
+      if (profile_dims[profile] == 3){ // Z Profile
+        if (gen_mem_accesses)
           printf("const auto p_%d_%d= 0;", profile, read_index);
         else
           printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.z+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
+      }
     }
   }
 
   for (int field = 0; field < NUM_FIELDS; ++field)
-    if(gen_mem_accesses)
+    if (gen_mem_accesses)
       printf("const auto f%d_val= (AcReal)0.0;", field);
     else
       printf("const auto f%d_val= __ldg(&vba.in[%d][idx]);", field, field);
