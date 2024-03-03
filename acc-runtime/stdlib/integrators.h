@@ -1,9 +1,9 @@
 int AC_step_number
 real AC_dt
 
-hostdefine RK_ORDER (3)
+#define RK_ORDER (3)
 
-rk3(s0, s1, roc) {
+rk3(s0, s1, roc, step_num) {
 #if RK_ORDER == 1
     // Euler
     real alpha= 0, 0.0, 0.0, 0.0
@@ -24,47 +24,45 @@ rk3(s0, s1, roc) {
     }
     */
     // Workaround
-    return s1 + beta[AC_step_number + 1] * ((alpha[AC_step_number] / beta[AC_step_number]) * (s1 - s0) + roc * AC_dt)
+    return s1 + beta[step_num + 1] * ((alpha[step_num] / beta[step_num]) * (s1 - s0) + roc * AC_dt)
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_vector(f,w,roc){
-  return real3(
-    rk3(f.x,w.x,roc.x),
-    rk3(f.y,w.y,roc.y),
-    rk3(f.z,w.z,roc.z)
-  )
+rk3_vector(f,w,roc,step_num){
+  return real3( rk3(f.x,w.x,roc.x,step_num),
+                rk3(f.y,w.y,roc.y,step_num),
+                rk3(f.z,w.z,roc.z,step_num)
+              )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_intermediate(w, roc) {
-    real alpha = 0., -5./9., -153. / 128.
+rk3_intermediate(w, roc, step_num) {
+    real alpha = 0., -5./9., -153./128.
 
     // return alpha[AC_step_number] * w + roc * AC_dt
     // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below
 
-    if AC_step_number > 0 {
-        return alpha[AC_step_number] * w + roc * AC_dt
-    } else {
-        return roc * AC_dt
-    }
+    //if step_num > 0 {
+    //    return alpha[step_num] * w + roc * AC_dt
+    //} else {
+    //    return roc * AC_dt
+    //}
+    return alpha[step_num] * w + roc * AC_dt
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_intermediate_vector(w,roc){
-  return real3(
-    rk3_intermediate(w.x,roc.x),
-    rk3_intermediate(w.y,roc.y),
-    rk3_intermediate(w.z,roc.z)
-  )
+rk3_intermediate_vector(w,roc,step_num){
+  return real3( rk3_intermediate(w.x,roc.x,step_num),
+                rk3_intermediate(w.y,roc.y,step_num),
+                rk3_intermediate(w.z,roc.z,step_num)
+              )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_final(f, w) {
-    real beta = 1. / 3., 15./ 16., 8. / 15.
-    return f + beta[AC_step_number] * w
+rk3_final(f, w, step_num) {
+    real beta = 1./3., 15./16., 8./15.
+    return f + beta[step_num] * w
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_final_vector(f,w){
-  return real3(
-    rk3_final(f.x,w.x),
-    rk3_final(f.y,w.y),
-    rk3_final(f.z,w.z)
-  )
+rk3_final_vector(f,w,step_num){
+  return real3( rk3_final(f.x,w.x,step_num),
+                rk3_final(f.y,w.y,step_num),
+                rk3_final(f.z,w.z,step_num)
+              )
 }

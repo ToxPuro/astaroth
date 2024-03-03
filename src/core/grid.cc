@@ -1643,11 +1643,11 @@ AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops, const size_t n_iterations)
 {
     AcTaskDefinition res_ops[n_ops*n_iterations];
-    for(int iteration = 0; iteration < n_iterations; ++iteration)
+    for (size_t iteration = 0; iteration < n_iterations; ++iteration)
     {
-        for(size_t i = 0; i < n_ops; ++i)
+        for (size_t i = 0; i < n_ops; ++i)
         {
-            if(ops[i].task_type == TASKTYPE_ITER_COMPUTE)
+            if (ops[i].task_type == TASKTYPE_ITER_COMPUTE)
             {
                 res_ops[i + n_ops*iteration] = convert_iter_to_normal_compute(ops[i],iteration);
             }

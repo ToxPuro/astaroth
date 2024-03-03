@@ -1,8 +1,8 @@
 #include "prerequisites.h"
 
-Kernel solve() {
-  write( UU, rk3(previous(UU), value(UU), dUU_dt()))
-  write( RHO, rk3(previous(RHO), value(RHO), dRHO_dt()))
-  write( AA, rk3(previous(AA), value(AA), dAA_dt()))
-  write( SS, rk3(previous(SS), value(SS), dSS_dt()))
+Kernel singlepass_solve(int ac_input_step_num) {
+  write( UU, rk3(previous(UU), value(UU), dUU_dt(), ac_input_step_num) )
+  write( RHO, rk3(previous(RHO), value(RHO), dRHO_dt(), ac_input_step_num) )
+  write( AA, rk3(previous(AA), value(AA), dAA_dt(), ac_input_step_num) )
+  write( SS, rk3(previous(SS), value(SS), dSS_dt(), ac_input_step_num) )
 }

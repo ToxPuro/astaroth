@@ -360,7 +360,7 @@ kernel_outflow_boundconds(const int3 region_id, const int3 normal, const int3 di
     int3 domain = boundary;
     int3 ghost  = boundary;
     int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
-    AcReal uudir, sign;
+    AcReal uudir = 0., sign;
     if (normal.x != 0) {
         uudir = vtxbuf[boundary_idx]*normal.x;
     }
@@ -436,7 +436,7 @@ kernel_inflow_boundconds(const int3 region_id, const int3 normal, const int3 dim
     int3 domain = boundary;
     int3 ghost  = boundary;
     int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
-    AcReal uudir, sign;
+    AcReal uudir = 0., sign;
     if (normal.x != 0) {
         uudir = vtxbuf[boundary_idx]*normal.x;
     }
