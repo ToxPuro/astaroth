@@ -599,9 +599,9 @@ function_definition: declaration function_body {
                                 param = param_list_head->rhs;
                                 combine_ast(param->lhs, param_type);
                                 sprintf(rest_params,",%s %s",param_type, param->rhs->buffer);
-                                if (strcmp(param_type,"int"))
+                                if (!strcmp(param_type,"int"))
                                   sprintf(param_default_args, "%s,%s",param_default_args,"0");
-                                if (strcmp(param_type,"AcReal"))
+                                if (!strcmp(param_type,"AcReal"))
                                   sprintf(param_default_args, "%s,%s",param_default_args,"0.0");
                                 param_list_head = param_list_head->lhs;
                               }
