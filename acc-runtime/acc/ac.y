@@ -142,7 +142,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 {
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
         {
-          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h"};
+          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", "user_cpu_kernels.h"};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
             FILE* fp = fopen(files[i], "w");
             assert(fp);
@@ -633,9 +633,9 @@ function_definition: declaration function_body {
                             char* func_name = fn_identifier->buffer;
 
 
-                            char postfix[4096];
-                            sprintf(postfix,"\n#ifdef AC_STENCIL_ACCESSES\nvoid %s_cpu(%s){%s(start,end,vba%s);}\n#endif\n",fn_identifier->buffer,default_args,func_name,param_default_args);
-                            astnode_set_postfix(postfix,$$);
+                            FILE* fp_cpu = fopen("user_cpu_kernels.h","a");
+                            fprintf(fp_cpu,"\nvoid %s_cpu(%s){%s(start,end,vba%s);}\n",fn_identifier->buffer,default_args,func_name,param_default_args);
+			    fclose(fp_cpu);
 
                             FILE* fp = fopen("user_kernel_declarations.h","a");
                             fprintf(fp, "void __global__ %s %s);\n", func_name, param_list);

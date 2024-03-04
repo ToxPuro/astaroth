@@ -825,8 +825,6 @@ gen_user_kernels(const ASTNode* root, const char* out, const bool gen_mem_access
 
   FILE* fp = fopen(out, "w");
   assert(fp);
-  if(gen_mem_accesses)
-  	fprintf(fp,"#define AC_STENCIL_ACCESSES");
 
   // fprintf(fp, "#pragma once\n");
 
@@ -849,12 +847,14 @@ gen_user_kernels(const ASTNode* root, const char* out, const bool gen_mem_access
   fprintf(fp, "};");
 
   if(gen_mem_accesses)
-  {
-    fprintf(fp, "static const Kernel cpu_kernels[] = {");
+  { 
+    FILE* fp_cpu = fopen("user_cpu_kernels.h","a");
+    fprintf(fp_cpu, "static const Kernel cpu_kernels[] = {");
     for (size_t i = 0; i < num_symbols[current_nest]; ++i)
       if (symbol_table[i].type & NODE_KFUNCTION_ID)
-        fprintf(fp, "%s_cpu,", symbol_table[i].identifier); // Host layer handle
-    fprintf(fp, "};");
+        fprintf(fp_cpu, "%s_cpu,", symbol_table[i].identifier); // Host layer handle
+    fprintf(fp_cpu, "};");
+    fclose(fp_cpu);
   }
   // Astaroth 2.0 backwards compatibility END
 
