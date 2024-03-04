@@ -176,7 +176,14 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
               assert(retval != -1);
           }
         }
-
+	//Add builtin kernels
+	FILE* f_in = fopen(stage3,"a");
+	fprintf(f_in,"Kernel AC_BUILTIN_RESET() {\n"
+		"for field in 0:NUM_FIELDS {\n"
+			"write(Field(field), 0.0)\n"
+                "}\n"
+	"}\n");
+	fclose(f_in);
         // Generate code
         yyin = fopen(stage3, "r");
         if (!yyin)
