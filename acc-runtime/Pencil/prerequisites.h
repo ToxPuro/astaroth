@@ -5,6 +5,7 @@
 #include "../stdlib/operators.h"
 #include "../stdlib/integrators.h"
 #include "../stdlib/units.h"
+#include "../stdlib/utils.h"
 #include "../../../PC_moduleflags.h"
 #include "../../../DSL/phys_consts.h"
 #include "PC_modulepardecs.h"
