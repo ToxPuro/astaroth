@@ -81,6 +81,7 @@ AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
 static int stencils_accessed[NUM_FIELDS][NUM_STENCILS] = {{0}};
 static AcMeshInfo d_mesh_info;
 #include "user_kernels.h"
+#include "user_cpu_kernels.h"
 
 VertexBufferArray
 vbaCreate(const size_t count)
@@ -125,7 +126,7 @@ main(int argc, char* argv[])
     memset(stencils_accessed, 0,
            sizeof(stencils_accessed[0][0]) * NUM_FIELDS * NUM_STENCILS);
     VertexBufferArray vba = vbaCreate(1);
-    kernels[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
+    cpu_kernels[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
     vbaDestroy(&vba);
 
     for (size_t j = 0; j < NUM_FIELDS; ++j)
