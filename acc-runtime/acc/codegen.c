@@ -828,6 +828,8 @@ gen_user_kernels(const ASTNode* root, const char* out, const bool gen_mem_access
 
   FILE* fp = fopen(out, "w");
   assert(fp);
+  if(gen_mem_accesses)
+	  fprintf(fp,"#define AC_STENCIL_ACCESSES\n");
 
   // fprintf(fp, "#pragma once\n");
 
