@@ -148,6 +148,7 @@ gen_kernel_prefix(void)
 
   printf("(void)globalVertexIdx;"); // Silence unused warning
   printf("(void)globalGridN;");     // Silence unused warning
+  printf("(void)local_compdomain_idx;");     // Silence unused warning
 
 // Write vba.out
 #if 1
@@ -218,25 +219,11 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses)
     {
       //TP: if we are generating mem accesses for some reason reading from vba does not work
       //as a workaround simply set the values to zero
-      if (profile_dims[profile] == 1){ // X Profile
-        if (gen_mem_accesses)
+      char* vertex_idx_coordinate = profile_dims[profile] == 1 ? "vertexIdx.x" : profile_dims[profile] == 2 ? "vertexIdx.y" : "vertexIdx.z";
+      if(gen_mem_accesses)
           printf("const auto p_%d_%d= 0;", profile, read_index);
-        else
-          printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.x+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
-      }
-      if (profile_dims[profile] == 2){ // Y Profile
-        if (gen_mem_accesses)
-          printf("const auto p_%d_%d= 0;", profile, read_index);
-        else
-          printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.y+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
-      }
-        // Z Profile
-      if (profile_dims[profile] == 3){ // Z Profile
-        if (gen_mem_accesses)
-          printf("const auto p_%d_%d= 0;", profile, read_index);
-        else
-          printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][vertexIdx.z+(%d)]);", profile, read_index, profile, profile_read_set[profile][read_index]);
-      }
+      else
+  printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][%s+(%d)]);", profile, read_index, profile, vertex_idx_coordinate,profile_read_set[profile][read_index]);
     }
   }
 
@@ -709,8 +696,9 @@ prefetch_stencil_elems_to_smem_4d_and_compute_stencil_ops(const int curr_kernel)
   }
 }
 /** Ping-pong 2D txw*/
-static void
-prefetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
+#if IMPLEMENTATION == EXPLICIT_PINGPONG_txw
+ static void
+ refetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
     const int curr_kernel)
 {
   printf("extern __shared__ AcReal smem[];");
@@ -788,7 +776,9 @@ prefetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
     printf("__syncthreads();");
   }
 }
+#endif
 /** Ping-pong 2D txy*/
+#if IMPLEMENTATION == EXPLICIT_PINGPONG_txy
 static void
 prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
     const int curr_kernel)
@@ -870,6 +860,7 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
       printf("__syncthreads();");
   }
 }
+#endif
 // /** Ping-pong 2D txy blocked (TODO need to rewrite)*/
 // static void
 // prefetch_stencil_elems_to_smem_pingpong_txyblocked_and_compute_stencil_ops(
@@ -1045,6 +1036,7 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
 //   }
 // }
 /** Rolling ping-pong, original, working */
+#if IMPLEMENTATION == EXPLICIT_ROLLING_PINGPONG
 static void
 prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_original(
     const int curr_kernel)
@@ -1133,7 +1125,9 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_original
     }
   }
 }
+#endif
 /** Rolling ping-pong, optimized: multiple fields */
+#if IMPLEMENTATION == EXPLICIT_ROLLING_PINGPONG
 static void
 prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v2(
     const int curr_kernel)
@@ -1258,9 +1252,11 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v2(
     }
   }
 }
+#endif
 /** Rolling ping-pong, original, working, rolling base slab, test, remove,
  * WORKS
  */
+#if IMPLEMENTATION == EXPLICIT_ROLLING_PINGPONG
 static void
 prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v3(
     const int curr_kernel)
@@ -1351,9 +1347,11 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v3(
     }
   }
 }
+#endif
 /** Rolling ping-pong, optimized: multiple fields, rolling base slab, basic
  * WORKING (only on V100 and MI250X likely due to warp lockstepping. Breaks
  on A100 likely because of the removal of lockstep) */
+#if IMPLEMENTATION == EXPLICIT_ROLLING_PINGPONG
 static void
 prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v4(
     const int curr_kernel)
@@ -1480,9 +1478,11 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v4(
     }
   }
 }
+#endif
 /** Rolling ping-pong, optimized: multiple fields, unrolled
 Note: requires sufficiently large tbdims s.t. can be unrolled with 2 by 2 blocks
 */
+#if IMPLEMENTATION == EXPLICIT_ROLLING_PINGPONG
 static void
 prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
     const int curr_kernel)
@@ -1643,6 +1643,7 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
     }
   }
 }
+#endif
 
 
 #include <stdint.h>
@@ -1871,6 +1872,7 @@ gen_kernel_body(const int curr_kernel)
     return;
   }
   case EXPLICIT_PINGPONG_txw: {
+    #if IMPLEMENTATION == EXPLICIT_PINGPONG_txw
     gen_kernel_prefix(); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
@@ -1879,9 +1881,11 @@ gen_kernel_body(const int curr_kernel)
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(false);
+    #endif
     return;
   }
   case EXPLICIT_PINGPONG_txy: {
+    #if IMPLEMENTATION == EXPLICIT_PINGPONG_txy
     gen_kernel_prefix(); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
@@ -1890,6 +1894,7 @@ gen_kernel_body(const int curr_kernel)
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(false);
+    #endif
     return;
   }
   case EXPLICIT_PINGPONG_txyblocked: {
@@ -1904,6 +1909,7 @@ gen_kernel_body(const int curr_kernel)
     return;
   }
   case EXPLICIT_ROLLING_PINGPONG: {
+    #if IMPLEMENTATION == EXPLICIT_ROLLING_PINGPONG
     gen_kernel_prefix(); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
@@ -1912,6 +1918,7 @@ gen_kernel_body(const int curr_kernel)
 
     gen_stencil_functions(curr_kernel);
     prefetch_output_elements_and_gen_prev_function(false);
+    #endif
     return;
   }
   default: {

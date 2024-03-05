@@ -1290,6 +1290,10 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
             // found_compute = true;
             task_graph_repr += "Compute,";
             break;
+        case TASKTYPE_SYNC:
+          task_graph_repr += "Sync,";
+        case TASKTYPE_ITER_COMPUTE:
+          task_graph_repr += "IterCompute,";
         }
     }
 
@@ -1523,6 +1527,10 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 #endif
             break;
         }
+        case TASKTYPE_ITER_COMPUTE: {
+            fprintf(stderr,"Iter compute only allowed when building multi-iteration taskgraph\n");
+            exit(0);
+        }
         }
     }
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Done creating tasks\n");
@@ -1634,7 +1642,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
     //make sure after autotuning that out is 0
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-    acGridLaunchKernel(STREAM_DEFAULT,AC_BUILTIN_RESET, dims.n0,dims.n1);
+    acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
     acGridSynchronizeStream(STREAM_ALL);
     return graph;
 }

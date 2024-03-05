@@ -140,10 +140,10 @@ acHostReduceScal(const AcMesh mesh, const ReductionType rtype, const VertexBuffe
     // fprintf(stderr, "%s host result %g\n", rtype_names[rtype], res);
     if (solve_mean) {
         const long double inv_n = 1.0l / mesh.info.int_params[AC_nxyz];
-        return sqrtl(inv_n * res);
+        return (AcReal) sqrtl(inv_n * res);
     }
     else {
-        return res;
+        return (AcReal) res;
     }
 }
 
@@ -212,10 +212,10 @@ acHostReduceVec(const AcMesh mesh, const ReductionType rtype, const VertexBuffer
 
     if (solve_mean) {
         const long double inv_n = (long double)1.0 / mesh.info.int_params[AC_nxyz];
-        return sqrt(inv_n * res);
+        return (AcReal) sqrtl(inv_n * res);
     }
     else {
-        return res;
+        return (AcReal) res;
     }
 }
 
@@ -280,9 +280,9 @@ acHostReduceVecScal(const AcMesh mesh, const ReductionType rtype, const VertexBu
 
     if (solve_mean) {
         const long double inv_n = (long double)1.0 / mesh.info.int_params[AC_nxyz];
-        return sqrtl(inv_n * res);
+        return (AcReal) sqrtl(inv_n * res);
     }
     else {
-        return res;
+        return (AcReal) res;
     }
 }

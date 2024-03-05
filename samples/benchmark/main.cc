@@ -28,7 +28,6 @@
 #include <string>
 #include <unistd.h> // getopt
 
-static const bool verify = false;
 
 #if !AC_MPI_ENABLED
 int
@@ -139,6 +138,7 @@ timer_event_stop(const char* format, ...)
 int
 main(int argc, char** argv)
 {
+    constexpr bool verify = false;
     MPI_Init(NULL, NULL);
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);

@@ -1217,14 +1217,14 @@ AcResult
 acDeviceLaunchKernel(const Device device, const Stream stream, void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param),
                      const int3 start, const int3 end, T input_param, F second_input_param)
 {
-    return acDeviceLaunchKernel(device, stream, bind_single_param(kernel, input_param, second_input_param),start,end);
+    return acDeviceLaunchKernel(device, stream, bind_two_params(kernel, input_param, second_input_param),start,end);
 }
 template <typename T, typename F, typename H>
 AcResult
 acDeviceLaunchKernel(const Device device, const Stream stream, void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param, H third_input_param),
                      const int3 start, const int3 end, T input_param, F second_input_param, H third_input_param)
 {
-    return acDeviceLaunchKernel(device, stream, bind_single_param(kernel, input_param, second_input_param),start,end);
+    return acDeviceLaunchKernel(device, stream, bind_three_params(kernel, input_param, second_input_param, third_input_param),start,end);
 }
 extern "C" {
 #endif

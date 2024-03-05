@@ -25,7 +25,6 @@
  *
  */
 #include "host_forcing.h"
-#include "simulation_control.h"
 #include "simulation_rng.h"
 
 #include "astaroth_utils.h"
@@ -112,7 +111,7 @@ helical_forcing_k_generator(const AcReal kmax, const AcReal kmin)
                     // equal to the square maximal integer
                     if ((min_squared <= dist_squared || min_squared_int == dist_squared) &&
                         (max_squared >= dist_squared || max_squared_int == dist_squared)) {
-                        pop.push_back(AcReal3{x, y, z});
+                        pop.push_back(AcReal3{(AcReal) x, (AcReal) y, (AcReal) z});
                     }
                 }
             }

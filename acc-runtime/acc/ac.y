@@ -142,7 +142,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 {
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
         {
-          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h","user_cpu_kernels.h"};
+          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", "user_cpu_kernels.h"};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
             FILE* fp = fopen(files[i], "w");
             assert(fp);
@@ -176,15 +176,14 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
               assert(retval != -1);
           }
         }
-
-        //Add builtin kernels
-        FILE* f_in = fopen(stage3,"a");
-        fprintf(f_in,"Kernel AC_BUILTIN_RESET() {\n"
-               "for field in 0:NUM_FIELDS {\n"
-                       "write(Field(field), 0.0)\n"
+	//Add builtin kernels
+	FILE* f_in = fopen(stage3,"a");
+	fprintf(f_in,"Kernel AC_BUILTIN_RESET() {\n"
+		"for field in 0:NUM_FIELDS {\n"
+			"write(Field(field), 0.0)\n"
                 "}\n"
-        "}\n");
-       	fclose(f_in);
+	"}\n");
+	fclose(f_in);
         // Generate code
         yyin = fopen(stage3, "r");
         if (!yyin)
@@ -607,9 +606,9 @@ function_definition: declaration function_body {
                                 param = param_list_head->rhs;
                                 combine_ast(param->lhs, param_type);
                                 sprintf(rest_params,",%s %s",param_type, param->rhs->buffer);
-                                if (!strcmp(param_type,"int"))
+                                if(!strcmp(param_type,"int"))
                                   sprintf(param_default_args, "%s,%s",param_default_args,"0");
-                                if (!strcmp(param_type,"AcReal"))
+                                if(!strcmp(param_type,"AcReal"))
                                   sprintf(param_default_args, "%s,%s",param_default_args,"0.0");
                                 param_list_head = param_list_head->lhs;
                               }
@@ -642,7 +641,7 @@ function_definition: declaration function_body {
 
 
                             FILE* fp_cpu = fopen("user_cpu_kernels.h","a");
-			     fprintf(fp_cpu,"\nvoid %s_cpu(%s){%s(start,end,vba%s);}\n",fn_identifier->buffer,default_args,func_name,param_default_args);
+                            fprintf(fp_cpu,"\nvoid %s_cpu(%s){%s(start,end,vba%s);}\n",fn_identifier->buffer,default_args,func_name,param_default_args);
 			    fclose(fp_cpu);
                             FILE* fp = fopen("user_kernel_declarations.h","a");
                             fprintf(fp, "void __global__ %s %s);\n", func_name, param_list);

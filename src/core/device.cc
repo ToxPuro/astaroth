@@ -20,6 +20,7 @@
 #include "astaroth.h"
 #include "../../acc-runtime/api/math_utils.h"
 #include "kernels/kernels.h"
+#include <math.h>
 
 #define GEN_DEVICE_FUNC_HOOK(ID)                                                                   \
     AcResult acDevice_##ID(const Device device, const Stream stream, const int3 start,             \
@@ -363,6 +364,9 @@ AcResult acDeviceGetVBApointers(Device device, AcReal *vbapointer[2]) {
         vbapointer[1]=device->vba.out[0];
         return AC_SUCCESS;
     #else
+	//suprres unused warning
+	(void) vbapointer;
+	(void) device;
         printf("Vertex buffers not adjacent - vbapointers useless for offloading!\n");
         return AC_FAILURE;
     #endif
