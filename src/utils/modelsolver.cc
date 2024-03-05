@@ -1039,20 +1039,20 @@ solve_alpha_step(AcMesh in, const int step_number, const AcReal dt, const int i,
     const Scalar alpha[] = {(Scalar)(.0), (Scalar)(-5. / 9.), (Scalar)(-153. / 128.)};
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         if (step_number == 0) {
-            out->vertex_buffer[w][idx] = rate_of_change[w] * (Scalar)dt;
+            out->vertex_buffer[w][idx] =(AcReal)(rate_of_change[w] * (Scalar)dt);
         }
         else {
-            out->vertex_buffer[w][idx] = alpha[step_number] * (Scalar)out->vertex_buffer[w][idx] +
-                                         rate_of_change[w] * (Scalar)dt;
+            out->vertex_buffer[w][idx] = (AcReal) (alpha[step_number] * (Scalar)out->vertex_buffer[w][idx] +
+                                         rate_of_change[w] * (Scalar)dt);
         }
     }
 
     if (step_number == 2) {
 #if LBFIELD
         const Vector bfield              = curl(aa);
-        out->vertex_buffer[BFIELDX][idx] = bfield.x;
-        out->vertex_buffer[BFIELDY][idx] = bfield.y;
-        out->vertex_buffer[BFIELDZ][idx] = bfield.z;
+        out->vertex_buffer[BFIELDX][idx] = (AcReal) bfield.x;
+        out->vertex_buffer[BFIELDY][idx] = (AcReal) bfield.y;
+        out->vertex_buffer[BFIELDZ][idx] = (AcReal) bfield.z;
 #endif
     }
 }
@@ -1067,7 +1067,7 @@ solve_beta_step(const AcMesh in, const int step_number, const AcReal dt, const i
     const Scalar beta[] = {(Scalar)(1. / 3.), (Scalar)(15. / 16.), (Scalar)(8. / 15.)};
 
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w)
-        out->vertex_buffer[w][idx] += beta[step_number] * (Scalar)in.vertex_buffer[w][idx];
+        out->vertex_buffer[w][idx] += (AcReal) (beta[step_number] * (Scalar)in.vertex_buffer[w][idx]);
 
     (void)dt; // Suppress unused variable warning if forcing not used
     if (step_number == 2) {
