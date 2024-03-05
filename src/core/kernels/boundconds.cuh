@@ -46,8 +46,8 @@ kernel_symmetric_boundconds(const int3 region_id, const int3 normal, const int3 
         domain = domain - normal;
         ghost  = ghost + normal;
 
-        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
-        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        const int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        const int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
 
         vtxbuf[ghost_idx] = vtxbuf[domain_idx];
     }
@@ -102,8 +102,8 @@ kernel_antisymmetric_boundconds(const int3 region_id, const int3 normal, const i
         domain = domain - normal;
         ghost  = ghost + normal;
 
-        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
-        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        const int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        const int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
 
         vtxbuf[ghost_idx] = -vtxbuf[domain_idx];
     }
@@ -154,7 +154,7 @@ kernel_a2_boundconds(const int3 region_id, const int3 normal, const int3 dims, A
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
 
-    int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
+    const int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
 
     AcReal boundary_val = vtxbuf[boundary_idx];
 
@@ -165,8 +165,8 @@ kernel_a2_boundconds(const int3 region_id, const int3 normal, const int3 dims, A
         domain = domain - normal;
         ghost  = ghost + normal;
 
-        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
-        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        const int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        const int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
 
         vtxbuf[ghost_idx] = 2 * boundary_val - vtxbuf[domain_idx];
     }
@@ -219,7 +219,7 @@ kernel_const_boundconds(const int3 region_id, const int3 normal, const int3 dims
     for (size_t i = 0; i < NGHOST; i++) {
         ghost  = ghost + normal;
 
-        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        const int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
 
         vtxbuf[ghost_idx] = const_value;
     }
@@ -274,27 +274,18 @@ kernel_prescribed_derivative_boundconds(const int3 region_id, const int3 normal,
     int3 domain = boundary;
     int3 ghost  = boundary;
 
-    AcReal d;
-    AcReal direction;
-    if (normal.x != 0) {
-        d = DCONST(AC_dsx);
-        direction = normal.x;
-    }
-    else if (normal.y != 0) {
-        d = DCONST(AC_dsy);
-        direction = normal.y;
-    }
-    else if (normal.z != 0) {
-        d = DCONST(AC_dsz);
-        direction = normal.z;
-    }
-
+    const AcReal d = normal.x != 0 ? DCONST(AC_dsx) :
+	   	     normal.y != 0 ? DCONST(AC_dsy) :
+		     normal.z != 0 ? DCONST(AC_dsz) : 0.0;
+    const AcReal direction = normal.x != 0 ? normal.x : 
+    			     normal.y != 0 ? normal.y :
+			     normal.z != 0 ? normal.z : 0.0;
     for (size_t i = 0; i < NGHOST; i++) {
         domain = domain - normal;
         ghost  = ghost + normal;
 
-        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
-        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        const int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        const int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
 
         AcReal distance = AcReal(2 * (i + 1)) * d;
         // Otherwise resulting derivatives are of different sign and opposite edges.
@@ -359,17 +350,17 @@ kernel_outflow_boundconds(const int3 region_id, const int3 normal, const int3 di
 
     int3 domain = boundary;
     int3 ghost  = boundary;
-    int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
-    AcReal uudir = normal.x != 0 ?  vtxbuf[boundary_idx]*normal.x :
+    const int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
+    const AcReal uudir = normal.x != 0 ?  vtxbuf[boundary_idx]*normal.x :
                    normal.y != 0 ?  vtxbuf[boundary_idx]*normal.y :
                    normal.z != 0 ?  vtxbuf[boundary_idx]*normal.z : 0.0;
-    AcReal sign = uudir >= 0.0 ? sign = -1.0 : 1.0;
+    const AcReal sign = uudir >= 0.0 ?  -1.0 : 1.0;
     for (size_t i = 0; i < NGHOST; i++) {
         domain = domain - normal;
         ghost  = ghost + normal;
 
-        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
-        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        const int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        const int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
         
 
         vtxbuf[ghost_idx] = sign*vtxbuf[domain_idx];
@@ -420,17 +411,17 @@ kernel_inflow_boundconds(const int3 region_id, const int3 normal, const int3 dim
 
     int3 domain = boundary;
     int3 ghost  = boundary;
-    int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
-    AcReal uudir = normal.x != 0 ?  vtxbuf[boundary_idx]*normal.x :
+    const int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
+    const AcReal uudir = normal.x != 0 ?  vtxbuf[boundary_idx]*normal.x :
                    normal.y != 0 ?  vtxbuf[boundary_idx]*normal.y :
                    normal.z != 0 ?  vtxbuf[boundary_idx]*normal.z : 0.0;
-    AcReal sign = uudir >= 0.0 ? sign = -1.0 : 1.0;
+    const AcReal sign = uudir >= 0.0 ?  -1.0 : 1.0;
     for (size_t i = 0; i < NGHOST; i++) {
         domain = domain - normal;
         ghost  = ghost + normal;
 
-        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
-        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        const int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        const int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
          
 
         vtxbuf[ghost_idx] = sign*vtxbuf[domain_idx];
@@ -488,18 +479,18 @@ kernel_entropy_const_temperature_boundconds(const int3 region_id, const int3 nor
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
 
-    int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
+    const int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
 
-    AcReal lnrho_diff   = vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0);
-    AcReal gas_constant = DCONST(AC_cp_sound) - DCONST(AC_cv_sound);
+    const AcReal lnrho_diff   = vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0);
+    const AcReal gas_constant = DCONST(AC_cp_sound) - DCONST(AC_cv_sound);
 
     // Same as lnT(), except we are reading the values from the boundary
-    AcReal lnT_boundary = DCONST(AC_lnT0) +
+    const AcReal lnT_boundary = DCONST(AC_lnT0) +
                           DCONST(AC_gamma) * vba.in[VTXBUF_ENTROPY][boundary_idx] /
                               DCONST(AC_cp_sound) +
                           (DCONST(AC_gamma) - AcReal(1.)) * lnrho_diff;
 
-    AcReal tmp = AcReal(2.0) * DCONST(AC_cv_sound) * (lnT_boundary - DCONST(AC_lnT0));
+    const AcReal tmp = AcReal(2.0) * DCONST(AC_cv_sound) * (lnT_boundary - DCONST(AC_lnT0));
 
     vba.in[VTXBUF_ENTROPY][boundary_idx] = AcReal(0.5) * tmp - gas_constant * lnrho_diff;
 
@@ -511,8 +502,8 @@ kernel_entropy_const_temperature_boundconds(const int3 region_id, const int3 nor
         domain = domain - normal;
         ghost  = ghost + normal;
 
-        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
-        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        const int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        const int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
 
         vba.in[VTXBUF_ENTROPY][ghost_idx] = -vba.in[VTXBUF_ENTROPY][domain_idx] + tmp -
                                             gas_constant * (vba.in[VTXBUF_LNRHO][domain_idx] +
@@ -568,15 +559,15 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
 
-    int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
+    const int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
 
-    AcReal rho_boundary = exp(vba.in[VTXBUF_LNRHO][boundary_idx]);
+    const AcReal rho_boundary = exp(vba.in[VTXBUF_LNRHO][boundary_idx]);
 
-    AcReal gamma_m1 = DCONST(AC_gamma) - AcReal(1.0);
-    AcReal cv1      = DCONST(AC_gamma) / DCONST(AC_cp_sound);
+    const AcReal gamma_m1 = DCONST(AC_gamma) - AcReal(1.0);
+    const AcReal cv1      = DCONST(AC_gamma) / DCONST(AC_cp_sound);
 
     // cs20*exp(gamma_m1*(f(l1,:,:,ilnrho)-lnrho0)+cv1*f(l1,:,:,iss))/(gamma_m1*cp)
-    AcReal T_boundary = DCONST(AC_cs2_sound) *
+    const AcReal T_boundary = DCONST(AC_cs2_sound) *
                         exp(gamma_m1 * (vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0)) +
                             cv1 * vba.in[VTXBUF_ENTROPY][boundary_idx]) /
                         gamma_m1 * DCONST(AC_cp_sound);
@@ -585,7 +576,7 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
     //            +coeffs_1_x(2)*(f(l1+2,:,:,ilnrho)-f(l1-2,:,:,ilnrho)) &
     //            +coeffs_1_x(3)*(f(l1+3,:,:,ilnrho)-f(l1-3,:,:,ilnrho))
 
-    AcReal c[3] = {(AcReal(1.) / (AcReal(0.04908738521))) * (AcReal(3.) / AcReal(4.)),
+    const AcReal c[3] = {(AcReal(1.) / (AcReal(0.04908738521))) * (AcReal(3.) / AcReal(4.)),
                    (AcReal(1.) / (AcReal(0.04908738521))) * (-AcReal(3.) / AcReal(20.)),
                    (AcReal(1.) / (AcReal(0.04908738521))) * (AcReal(1.) / AcReal(60.))};
 
@@ -607,23 +598,15 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
     // dsdx_yz=-cv*((sigmaSBt/hcond0_kramers)*TT_yz**(3-6.5*nkramers)*rho_yz**(2.*nkramers) &
     //        +gamma_m1*dlnrhodx_yz)
 
-    AcReal der_ss_boundary = -DCONST(AC_cv_sound) *
+    const AcReal der_ss_boundary = -DCONST(AC_cv_sound) *
                                  (DCONST(AC_sigma_SBt) / DCONST(AC_hcond0_kramers)) *
                                  pow(T_boundary, AcReal(3.0) - AcReal(6.5) * DCONST(AC_n_kramers)) *
                                  pow(rho_boundary, AcReal(2.0) * DCONST(AC_n_kramers)) +
                              gamma_m1 * der_lnrho_boundary;
 
-    AcReal d;
-    if (normal.x != 0) {
-        d = DCONST(AC_dsx);
-    }
-    else if (normal.y != 0) {
-        d = DCONST(AC_dsy);
-    }
-    else if (normal.z != 0) {
-        d = DCONST(AC_dsz);
-    }
-
+    const AcReal d = normal.x != 0 ? DCONST(AC_dsx) :
+	   	     normal.y != 0 ? DCONST(AC_dsy) :
+		     normal.z != 0 ? DCONST(AC_dsz) : 0.0;
     int3 domain = boundary;
     int3 ghost  = boundary;
 
@@ -631,10 +614,10 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
         domain = domain - normal;
         ghost  = ghost + normal;
 
-        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
-        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        const int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        const int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
 
-        AcReal distance = AcReal(2 * (i + 1)) * d;
+        const AcReal distance = AcReal(2 * (i + 1)) * d;
 
         vba.in[VTXBUF_ENTROPY][ghost_idx] = vba.in[VTXBUF_ENTROPY][domain_idx] -
                                             distance * der_ss_boundary;
@@ -691,7 +674,7 @@ kernel_entropy_prescribed_heat_flux_boundconds(const int3 region_id, const int3 
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
 
-    int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
+    const int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
 
 #if (L_HEAT_CONDUCTION_CHICONST) || (L_HEAT_CONDUCTION_KRAMERS)
     AcReal rho_boundary = exp(vba.in[VTXBUF_LNRHO][boundary_idx]);
@@ -726,17 +709,9 @@ kernel_entropy_prescribed_heat_flux_boundconds(const int3 region_id, const int3 
     AcReal tmp            = F_boundary / cs2_boundary;
 #endif
 
-    AcReal d;
-    if (normal.x != 0) {
-        d = DCONST(AC_dsx);
-    }
-    else if (normal.y != 0) {
-        d = DCONST(AC_dsy);
-    }
-    else if (normal.z != 0) {
-        d = DCONST(AC_dsz);
-    }
-
+    const AcReal d = normal.x != 0 ? DCONST(AC_dsx) :
+	   	     normal.y != 0 ? DCONST(AC_dsy) :
+		     normal.z != 0 ? DCONST(AC_dsz) : 0.0;
     int3 domain = boundary;
     int3 ghost  = boundary;
 
@@ -744,8 +719,8 @@ kernel_entropy_prescribed_heat_flux_boundconds(const int3 region_id, const int3 
         domain = domain - normal;
         ghost  = ghost + normal;
 
-        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
-        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        const int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        const int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
 
         AcReal distance = AcReal(2 * (i + 1)) * d;
 
@@ -806,54 +781,47 @@ kernel_entropy_prescribed_normal_and_turbulent_heat_flux_boundconds(
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
 
-    int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
+    const int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
 
-    AcReal gamma_m1 = DCONST(AC_gamma) - AcReal(1.0);
-    AcReal cv1      = DCONST(AC_gamma) / DCONST(AC_cp_sound);
+    const AcReal gamma_m1 = DCONST(AC_gamma) - AcReal(1.0);
+    const AcReal cv1      = DCONST(AC_gamma) / DCONST(AC_cp_sound);
 
     // cs20*exp(gamma_m1*(f(l1,:,:,ilnrho)-lnrho0)+cv1*f(l1,:,:,iss))/(gamma_m1*cp)
-    AcReal T_boundary = DCONST(AC_cs2_sound) *
+    const AcReal T_boundary = DCONST(AC_cs2_sound) *
                         exp(gamma_m1 * (vba.in[VTXBUF_LNRHO][boundary_idx] - DCONST(AC_lnrho0)) +
                             cv1 * vba.in[VTXBUF_ENTROPY][boundary_idx]) /
                         gamma_m1 * DCONST(AC_cp_sound);
 
     AcReal rho_boundary = exp(vba.in[VTXBUF_LNRHO][boundary_idx]);
 #if (L_HEAT_CONDUCTION_CHICONST) || (L_HEAT_CONDUCTION_KRAMERS)
-    AcReal cv           = DCONST(AC_cv_sound);
+    const AcReal cv           = DCONST(AC_cv_sound);
 #endif
 
 #if (L_HEAT_CONDUCTION_CHICONST)
     // TODO: use chi in the calculation
-    AcReal chi = DCONST(AC_chi);
-    AcReal K   = chi * rho_boundary * cv;
+    const AcReal chi = DCONST(AC_chi);
+    const AcReal K   = chi * rho_boundary * cv;
 #elif (L_HEAT_CONDUCTION_KRAMERS)
-    AcReal n_kramers      = DCONST(AC_n_kramers);
-    AcReal hcond0_kramers = DCONST(AC_hcond0_kramers);
-    AcReal K              = hcond0_kramers * pow(T_boundary, AcReal(6.5) * n_kramers) /
+    const AcReal n_kramers      = DCONST(AC_n_kramers);
+    const AcReal hcond0_kramers = DCONST(AC_hcond0_kramers);
+    const AcReal K              = hcond0_kramers * pow(T_boundary, AcReal(6.5) * n_kramers) /
                pow(rho_boundary, AcReal(2.0) * n_kramers);
 #else
-    AcReal hcond_boundary = DCONST(hcond_param);
-    AcReal K              = hcond_boundary;
+    const AcReal hcond_boundary = DCONST(hcond_param);
+    const AcReal K              = hcond_boundary;
 #endif
 
-    AcReal F_boundary  = DCONST(F_param);
-    AcReal chi_t_prof1 = DCONST(AC_chi_t_prof1);
-    AcReal chi_t       = DCONST(AC_chi_t);
+    const AcReal F_boundary  = DCONST(F_param);
+    const AcReal chi_t_prof1 = DCONST(AC_chi_t_prof1);
+    const AcReal chi_t       = DCONST(AC_chi_t);
 
-    AcReal der_s_boundary = (F_boundary / T_boundary) /
+    const AcReal der_s_boundary = (F_boundary / T_boundary) /
                             (chi_t_prof1 * chi_t * rho_boundary + K * cv1);
 
-    AcReal d;
-    if (normal.x != 0) {
-        d = DCONST(AC_dsx);
-    }
-    else if (normal.y != 0) {
-        d = DCONST(AC_dsy);
-    }
-    else if (normal.z != 0) {
-        d = DCONST(AC_dsz);
-    }
 
+    const AcReal d = normal.x != 0 ? DCONST(AC_dsx) :
+	   	     normal.y != 0 ? DCONST(AC_dsy) :
+		     normal.z != 0 ? DCONST(AC_dsz) : 0.0;
     int3 domain = boundary;
     int3 ghost  = boundary;
 
@@ -861,12 +829,12 @@ kernel_entropy_prescribed_normal_and_turbulent_heat_flux_boundconds(
         domain = domain - normal;
         ghost  = ghost + normal;
 
-        int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
-        int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
+        const int domain_idx = DEVICE_VTXBUF_IDX(domain.x, domain.y, domain.z);
+        const int ghost_idx  = DEVICE_VTXBUF_IDX(ghost.x, ghost.y, ghost.z);
 
-        AcReal der_lnrho = vba.in[VTXBUF_LNRHO][domain_idx] - vba.in[VTXBUF_LNRHO][ghost_idx];
+        const AcReal der_lnrho = vba.in[VTXBUF_LNRHO][domain_idx] - vba.in[VTXBUF_LNRHO][ghost_idx];
 
-        AcReal distance = AcReal(2 * (i + 1)) * d;
+        const AcReal distance = AcReal(2 * (i + 1)) * d;
 
         vba.in[VTXBUF_ENTROPY][ghost_idx] = vba.in[VTXBUF_ENTROPY][domain_idx] +
                                             K * gamma_m1 * der_lnrho /
