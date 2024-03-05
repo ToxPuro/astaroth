@@ -77,7 +77,7 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
     for (int i = 0; i < 2 * radius + 1; ++i)
         tmp += smem[threadIdx.x + i];
 
-    const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
+    const size_t tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
     if (tid < domain_length)
         out.data[tid + pad] = tmp;
 }
@@ -97,7 +97,7 @@ __launch_bounds__(MAX_THREADS_PER_BLOCK)
     kernel(const size_t domain_length, const int radius, const size_t pad, const Array in,
            Array out)
 {
-    const int tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
+    const size_t tid = (int)(threadIdx.x + blockIdx.x * blockDim.x);
     if (tid < domain_length) {
 
         double tmp = 0.0;
@@ -112,7 +112,7 @@ void
 model_kernel(const size_t domain_length, const int radius, const size_t pad, const Array in,
              Array out)
 {
-    for (int tid = 0; tid < domain_length; ++tid) {
+    for (size_t tid = 0; tid < domain_length; ++tid) {
         double tmp = 0.0;
         for (int i = -radius; i <= radius; ++i)
             tmp += in.data[tid + pad + i];

@@ -843,6 +843,8 @@ gen_user_kernels(const ASTNode* root, const char* out, const bool gen_mem_access
   fprintf(fp, "static const Kernel kernels[] = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_KFUNCTION_ID)
+      //TP: this cast is not safe if the user uses kernels with input parameters but this is anyways for backwards compatibility so would not break old code
+      // since old code only allows a single signature
       fprintf(fp, "(Kernel)%s,", symbol_table[i].identifier); // Host layer handle
   fprintf(fp, "};");
 

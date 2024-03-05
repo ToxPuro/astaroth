@@ -25,7 +25,6 @@
  *
  */
 #include "host_forcing.h"
-#include "simulation_control.h"
 #include "simulation_rng.h"
 
 #include "astaroth_utils.h"

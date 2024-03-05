@@ -317,8 +317,6 @@ typedef struct {
 
 static std::vector<TBConfig> tbconfigs;
 
-static TBConfig getOptimalTBConfig(const Kernel kernel, const int3 dims,
-                                   VertexBufferArray vba);
 
 static TBConfig getOptimalTBConfig(const KernelLambda lambda, const int3 dims, VertexBufferArray vba);
 
@@ -504,6 +502,8 @@ device_free(AcReal** dst, const int bytes)
   freeCompressible(*dst, bytes);
 #else
   cudaFree(*dst);
+  //used to silence unused warning
+  (void)bytes;
 #endif
   *dst = NULL;
 }
@@ -598,7 +598,7 @@ acBenchmarkKernel(KernelLambda lambda, const int3 start, const int3 end,
   }
   ERRCHK_ALWAYS(kernel_id < NUM_KERNELS);
   printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel_id],
-         milliseconds);
+         (double) milliseconds);
 
   // Timer destroy
   cudaEventDestroy(tstart);
@@ -941,11 +941,6 @@ autotune(const KernelLambda lambda, const int3 dims, VertexBufferArray vba)
 
 }
 
-static TBConfig
-getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
-{
-  return getOptimalTBConfig(kernel_to_kernel_lambda(kernel), dims, vba);
-}
 
 static TBConfig
 getOptimalTBConfig(const KernelLambda lambda, const int3 dims, VertexBufferArray vba)

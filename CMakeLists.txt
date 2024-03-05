@@ -38,7 +38,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Project-wide compilation flags
 # -Werror TODO readd
-set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
+set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result -Wno-cast-function-type") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_C_STANDARD 11)
@@ -74,8 +74,13 @@ if (USE_HIP)
     #link_directories(/opt/rocm/lib)
 
     # Roctracer
-    include_directories(/opt/rocm/roctracer/include)
-    link_directories(/opt/rocm/roctracer/lib)
+    #Deprecated (roctracer inlude will warn about deprecated header, better to include non deprecated header)
+    #include_directories(/opt/rocm/roctracer/include)
+    #link_directories(/opt/rocm/roctracer/lib)
+    #LUMI
+    include_directories(/opt/rocm-5.2.3/include/roctracer)
+    link_directories(/opt/rocm-5.2.3/include/roctracer)
+
 
     # Rocrand
     include_directories(/opt/rocm/hiprand/include)
@@ -145,15 +150,6 @@ endif()
 if (DEBUG_SYNC)
     add_definitions(-DDEBUG_SYNC)
 endif()
-if (LINEAR_PROC_MAPPING)
-    add_definitions(-DLINEAR_PROC_MAPPING)
-endif()
-if(USE_EXTERNAL_DECOMP)
-    add_definitions(-DUSE_EXTERNAL_DECOMP)
-endif()
-if(AUTOTUNE_AT_INIT)
-    add_definitions(-DAUTOTUNE_AT_INIT)
-endif()
 
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 
@@ -173,7 +169,7 @@ endif()
 add_subdirectory(acc-runtime)
 add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
-if (NOT BUILD_SHARED_LIBS)	
+if (NOT BUILD_SHARED_LIBS)
     add_subdirectory(samples/ac-interpreter)
 endif()
 
@@ -198,7 +194,6 @@ if (BUILD_SAMPLES)
     add_subdirectory(samples/pc-varfile-import)
     add_subdirectory(samples/bwtest)
     add_subdirectory(samples/microbenchmark)
-
 
     if (BUILD_MLLIB_SAMPLES)
 	# Workaround for finding miopen on Triton

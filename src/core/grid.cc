@@ -1290,6 +1290,10 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
             // found_compute = true;
             task_graph_repr += "Compute,";
             break;
+        case TASKTYPE_SYNC:
+          task_graph_repr += "Sync,";
+        case TASKTYPE_ITER_COMPUTE:
+          task_graph_repr += "IterCompute,";
         }
     }
 
@@ -1522,6 +1526,10 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             }
 #endif
             break;
+        }
+        case TASKTYPE_ITER_COMPUTE: {
+            fprintf(stderr,"Iter compute only allowed when building multi-iteration taskgraph\n");
+            exit(0);
         }
         }
     }

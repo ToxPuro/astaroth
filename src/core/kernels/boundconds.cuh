@@ -360,24 +360,10 @@ kernel_outflow_boundconds(const int3 region_id, const int3 normal, const int3 di
     int3 domain = boundary;
     int3 ghost  = boundary;
     int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
-    AcReal uudir, sign;
-    if (normal.x != 0) {
-        uudir = vtxbuf[boundary_idx]*normal.x;
-    }
-    else if (normal.y != 0) {
-        uudir = vtxbuf[boundary_idx]*normal.y;
-    }
-    else if (normal.z != 0) {
-        uudir = vtxbuf[boundary_idx]*normal.z;
-    }
-
-    if (uudir >= 0.0) {
-        sign = 1.0;
-    } 
-    else if (uudir < 0.0) {
-        sign = -1.0;
-    }
- 
+    AcReal uudir = normal.x != 0 ?  vtxbuf[boundary_idx]*normal.x :
+                   normal.y != 0 ?  vtxbuf[boundary_idx]*normal.y :
+                   normal.z != 0 ?  vtxbuf[boundary_idx]*normal.z : 0.0;
+    AcReal sign = uudir >= 0.0 ? sign = -1.0 : 1.0;
 
     for (size_t i = 0; i < NGHOST; i++) {
         domain = domain - normal;
@@ -436,25 +422,10 @@ kernel_inflow_boundconds(const int3 region_id, const int3 normal, const int3 dim
     int3 domain = boundary;
     int3 ghost  = boundary;
     int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
-    AcReal uudir, sign;
-    if (normal.x != 0) {
-        uudir = vtxbuf[boundary_idx]*normal.x;
-    }
-    else if (normal.y != 0) {
-        uudir = vtxbuf[boundary_idx]*normal.y;
-    }
-    else if (normal.z != 0) {
-        uudir = vtxbuf[boundary_idx]*normal.z;
-    }
-
-    if (uudir >= 0.0) {
-        sign = -1.0;
-    } 
-    else if (uudir < 0.0) {
-        sign = 1.0;
-    }    
- 
-
+    AcReal uudir = normal.x != 0 ?  vtxbuf[boundary_idx]*normal.x :
+                   normal.y != 0 ?  vtxbuf[boundary_idx]*normal.y :
+                   normal.z != 0 ?  vtxbuf[boundary_idx]*normal.z : 0.0;
+    AcReal sign = uudir >= 0.0 ? sign = -1.0 : 1.0;
     for (size_t i = 0; i < NGHOST; i++) {
         domain = domain - normal;
         ghost  = ghost + normal;
@@ -477,7 +448,7 @@ acKernelInflowBoundconds(const cudaStream_t stream, const int3 region_id, const 
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
-    kernel_outflow_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
+    kernel_inflow_boundconds<<<bpg, tpb, 0, stream>>>(region_id, normal, dims, vtxbuf);
     return AC_SUCCESS;
 }
 
