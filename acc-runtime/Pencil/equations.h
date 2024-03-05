@@ -2,11 +2,11 @@
 // All needed functions are provided, but unneeded ones are not removed.
 
 
-dUU_dt(){ }
+dUU_dt(){return real3(0.0,0.0,0.0) }
 
-dRHO_dt(){ }
+dRHO_dt(){return 0.0 }
 
-dAA_dt(){ }
+dAA_dt(){ return real3(0.0,0.0,0.0) }
 
-dSS_dt(){ }
+dSS_dt(){ return 0.0 }
 
