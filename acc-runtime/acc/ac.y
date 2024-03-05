@@ -178,7 +178,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         }
 	//Add builtin kernels
 	FILE* f_in = fopen(stage3,"a");
-	fprintf(f_in,"Kernel AC_BUILTIN_RESET() {\n"
+	fprintf(f_in,"\nKernel AC_BUILTIN_RESET() {\n"
 		"for field in 0:NUM_FIELDS {\n"
 			"write(Field(field), 0.0)\n"
                 "}\n"
