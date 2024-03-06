@@ -126,7 +126,7 @@ getPid(const int3 pid_raw, const uint3_64 decomp, AcProcMappingStrategy proc_map
     switch(proc_mapping_strategy)
     {
         case AcProcMappingStrategy::Linear:
-            return (int)pid.x + (int)pid.y*decomp.x + (int)pid.z*decomp.x*decomp.z;
+            return (int)pid.x + (int)pid.y*decomp.x + (int)pid.z*decomp.x*decomp.y;
         case AcProcMappingStrategy::Morton:
             return (int)morton1D(pid);
         default:
