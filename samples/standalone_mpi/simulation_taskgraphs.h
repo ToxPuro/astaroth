@@ -59,7 +59,7 @@ get_simulation_graph(int pid, Simulation sim)
                  acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
                  acCompute(singlepass_solve, all_fields)};
             acLogFromRootProc(pid, "Creating shock singlepass solve task graph\n");
-            return acGridBuildTaskGraph(shock_ops,3);
+            return acGridBuildTaskGraphWithIterations(shock_ops,3);
 #endif
         }
         case Simulation::Hydro_Heatduct_Solve: {
@@ -102,7 +102,7 @@ get_simulation_graph(int pid, Simulation sim)
                  acCompute(KERNEL_twopass_solve_intermediate, all_fields),
                  acCompute(KERNEL_twopass_solve_final, all_fields)};
             acLogFromRootProc(pid, "Creating heat duct task graph\n");
-            AcTaskGraph* my_taskgraph = acGridBuildTaskGraph(heatduct_ops);
+            AcTaskGraph* my_taskgraph = acGridBuildTaskGraphWithIterations(heatduct_ops,3);
             acGraphPrintDependencies(my_taskgraph);
             return my_taskgraph;
 #endif

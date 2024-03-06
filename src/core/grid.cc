@@ -389,7 +389,7 @@ acGridInit(AcMeshInfo info)
     }
 
 
-    grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops,3));
+    grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraphWithIterations(default_ops,3));
     acLogFromRootProc(pid, "acGridInit: Done creating default task graph\n");
     return AC_SUCCESS;
 }

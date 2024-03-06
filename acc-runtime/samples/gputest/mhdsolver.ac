@@ -812,11 +812,11 @@ Kernel twopass_solve_intermediate(int ac_input_step_num){
   //SGLNRHO = real3(2.0,2.0,2.0)
   SGLNRHO = SIJ*GLNRHO
   AC_cv1 = 1/AC_cv
-  SSV = value(SS)
+  SS = value(SS)
   GSS = gradient(SS)
   DEL2SS = laplace(SS)
-  cs2 = AC_cs20*exp(AC_cv1*SSV+AC_gamma_m1*(LNRHO-AC_lnrho0))
-  LNTT = AC_lnTT0+AC_cv1*SSV+AC_gamma_m1*(LNRHO-AC_lnrho0)
+  cs2 = AC_cs20*exp(AC_cv1*SS+AC_gamma_m1*(LNRHO-AC_lnrho0))
+  LNTT = AC_lnTT0+AC_cv1*SS+AC_gamma_m1*(LNRHO-AC_lnrho0)
   TT = exp(LNTT)
   TT1 = exp(-LNTT)
   GLNTT = AC_gamma_m1*GLNRHO+AC_cv1*GSS
@@ -969,5 +969,3 @@ Kernel randomize() {
     }
 }
 
-Kernel haatouken(){}
-Kernel singlepass_solve(){}
