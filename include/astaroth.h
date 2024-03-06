@@ -812,6 +812,10 @@ bool acGridTaskGraphHasPeriodicBoundcondsZ(AcTaskGraph* graph);
 AcTaskGraph* acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops);
 
 /** */
+AcTaskGraph*
+acGridBuildTaskGraphWithIterations(const AcTaskDefinition ops[], const size_t n_ops, const size_t n_iterations);
+
+/** */
 AcResult acGridDestroyTaskGraph(AcTaskGraph* graph);
 
 /** */
@@ -1377,9 +1381,9 @@ acGridBuildTaskGraph(const AcTaskDefinition (&ops)[n_ops])
 }
 template <size_t n_ops>
 AcTaskGraph*
-acGridBuildTaskGraphWithIterations(const AcTaskDefinition (&ops)[n_ops], const int n_iterations)
+acGridBuildTaskGraphWithIterations(const AcTaskDefinition (&ops)[n_ops], const size_t n_iterations)
 {
-    return acGridBuildTaskGraph(ops, n_ops, n_iterations);
+    return acGridBuildTaskGraphWithIterations(ops, n_ops, n_iterations);
 }
 
 
