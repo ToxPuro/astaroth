@@ -233,8 +233,8 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses)
     else
       printf("const auto f%d_val= __ldg(&vba.in[%d][idx]);", field, field);
 
-  printf("const auto value __attribute__((unused)) = [&](const auto field)"
-         "{ switch (field) {");
+  printf("const auto value __attribute__((unused)) = [&](const auto &field_in)"
+         "{ switch (field_in) {");
   for (int field = 0; field < NUM_FIELDS; ++field)
     printf("case %d: { return f%d_val; }", field, field);
 

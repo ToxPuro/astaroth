@@ -6,9 +6,10 @@ target_include_directories(microbenchmark PRIVATE ${CMAKE_SOURCE_DIR}/acc-runtim
 if (USE_HIP)
     set_source_files_properties(microbenchmark.cu PROPERTIES LANGUAGE CXX)
 
+    #ROC_TRACER_PATH comes from the first CMakeLists.txt
     # Roctracer
-    include_directories(/opt/rocm/roctracer/include)
-    link_directories(/opt/rocm/roctracer/lib)
+    include_directories(${ROC_TRACER_PATH})
+    link_directories(${ROC_TRACER_PATH})
     target_link_libraries(microbenchmark roctracer64)
 endif()
 

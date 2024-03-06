@@ -360,7 +360,7 @@ acGridInit(AcMeshInfo info)
 #endif
 #endif // AC_INTEGRATION_ENABLED
     };
-#endif DEBUG_SYNC
+#endif // DEBUG_SYNC
 
     // Random number generator
     // const auto rr            = (int3){STENCIL_WIDTH, STENCIL_HEIGHT, STENCIL_DEPTH};
@@ -1651,7 +1651,7 @@ AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops, const size_t n_iterations)
 {
     AcTaskDefinition res_ops[n_ops*n_iterations];
-    for (size_t iteration = 0; iteration < n_iterations; ++iteration)
+    for(size_t iteration = 0; iteration < n_iterations; ++iteration)
     {
         for (size_t i = 0; i < n_ops; ++i)
         {

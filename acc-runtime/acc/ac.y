@@ -20,6 +20,11 @@ int yyerror(const char* str);
 int yyget_lineno();
 const char* global_func_declaration = "__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n";
 
+//These are used to generate better error messages in case of errors
+FILE* yyin_backup;
+const char* stage3_name_backup;
+const char* dir_backup;
+
 void
 cleanup(void)
 {
@@ -186,6 +191,9 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	fclose(f_in);
         // Generate code
         yyin = fopen(stage3, "r");
+
+	stage3_name_backup = stage3;
+        yyin_backup = fopen(stage3, "r");
         if (!yyin)
             return EXIT_FAILURE;
 
@@ -225,6 +233,7 @@ main(int argc, char** argv)
         const char* stage2 = "user_kernels.ac.pp_stage2";
         const char* stage3 = "user_kernels.ac.pp_stage3";
         const char* dir = dirname(argv[1]); // WARNING: dirname has side effects!
+	dir_backup = dir;
 
         if (OPTIMIZE_MEM_ACCESSES) {
           code_generation_pass(stage0, stage1, stage2, stage3, dir, true); // Uncomment to enable stencil mem access checking
@@ -709,7 +718,14 @@ print(void)
 int
 yyerror(const char* str)
 {
-    fprintf(stderr, "%s on line %d when processing char %d: [%s]\n", str, yyget_lineno(), *yytext, yytext);
+    int line_num = yyget_lineno();
+    fprintf(stderr, "\n%s on line %d when processing char %d: [%s]\n", str, line_num, *yytext, yytext);
+    char* line;
+    size_t len;
+    for(int i=0;i<line_num;++i)
+	getline(&line,&len,yyin_backup);
+    fprintf(stderr, "erroneous line: %s", line);
+    fprintf(stderr, "in file: %s/%s\n\n",dir_backup,stage3_name_backup);
     return EXIT_FAILURE;
 }
 
