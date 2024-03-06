@@ -760,19 +760,6 @@ rk3_final_vector(f,w,step_num){
     rk3_final(f.z,w.z,step_num)
   )
 }
-symmetric_derx(field)
-{
-  /**
-    [0][0][-3] = -AC_inv_dsx * DER1_3,
-    [0][0][-2] = -AC_inv_dsx * DER1_2,
-    [0][0][-1] = -AC_inv_dsx * DER1_1,
-    [0][0][1]  = AC_inv_dsx * DER1_1,
-    [0][0][2]  = AC_inv_dsx * DER1_2,
-    [0][0][3]  = AC_inv_dsx * DER1_3
-  **/
-  //res = AC_inv_dsx*DER1_3*(FIELD_IN[field][IDX(vertexIdx.x+3,vertexIdx.y,vertexIdx.z)]-FIELD_IN[field][IDX(vertexIdx.x-3,vertexIdx.y,vertexIdx.z)])
-  return 0
-}
 Kernel twopass_solve_intermediate(int ac_input_step_num){
 	UU = vecvalue(F_UU)
   UIJ = gradients(F_UU)
