@@ -21,19 +21,31 @@
 #include <float.h> // DBL/FLT_EPSILON
 
 #if AC_USE_HIP
-#include "hip.h"
-#include <hip/hip_complex.h>
+  #include "hip.h"
+  #include <hip/hip_complex.h>
+  #if AC_DOUBLE_PRECISION
+    typedef hipDoubleComplex acComplex;
+    #define acComplex(x, y) make_hipDoubleComplex(x, y)
+  #else
+    typedef hipFloatComplex acComplex;
+    #define acComplex(x, y) make_hipFloatComplex(x, y)
+  #endif
 #else
-#include <cuComplex.h>    // CUDA complex types
-#include <vector_types.h> // CUDA vector types
+  #include <vector_types.h> // CUDA vector types
+  #include <cuComplex.h>    // CUDA complex types
+  #if AC_DOUBLE_PRECISION
+    typedef cuDoubleComplex acComplex;
+    #define acComplex(x, y) make_cuDoubleComplex(x, y)
+  #else
+    typedef cuFloatComplex acComplex;
+    #define acComplex(x, y) make_cuFloatComplex(x, y)
+  #endif
 #endif
 
 #if AC_DOUBLE_PRECISION
 typedef double AcReal;
 typedef double2 AcReal2;
 typedef double3 AcReal3;
-typedef cuDoubleComplex acComplex;
-#define acComplex(x, y) make_cuDoubleComplex(x, y)
 #define AC_REAL_MAX (DBL_MAX)
 #define AC_REAL_MIN (DBL_MIN)
 #define AcReal3(x, y, z) make_double3(x, y, z)
@@ -44,8 +56,6 @@ typedef cuDoubleComplex acComplex;
 typedef float AcReal;
 typedef float2 AcReal2;
 typedef float3 AcReal3;
-typedef cuFloatComplex acComplex;
-#define acComplex(x, y) make_cuFloatComplex(x, y)
 #define AC_REAL_MAX (FLT_MAX)
 #define AC_REAL_MIN (FLT_MIN)
 #define AcReal3(x, y, z) make_float3(x, y, z)

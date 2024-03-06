@@ -10,4 +10,6 @@
 #include "../../../DSL/phys_consts.h"
 #include "PC_modulepardecs.h"
 #include "equations.h"
-
+#if LFORCING
+#include "../../../DSL/forcing/pcstyleforcing.h"
+#endif

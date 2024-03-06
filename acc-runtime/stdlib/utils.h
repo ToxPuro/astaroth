@@ -9,3 +9,9 @@ Kernel randomize() {
         write(Field(field), AC_rng_scale * r)
     }
 }
+
+grid_position() {
+    return real3((globalVertexIdx.x - AC_nx_min) * AC_dsx,
+                 (globalVertexIdx.y - AC_ny_min) * AC_dsy,
+                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
+}
