@@ -13,8 +13,12 @@ if (USE_HIP)
     #link_directories(/opt/rocm/lib)
     
     # Roctracer
-    include_directories(/opt/rocm/roctracer/include)
-    link_directories(/opt/rocm/roctracer/lib)
+    #Deprecated (roctracer inlude will warn about deprecated header, better to include non deprecated header)
+    #include_directories(/opt/rocm/roctracer/include)
+    #link_directories(/opt/rocm/roctracer/lib)
+    #LUMI
+    include_directories(/opt/rocm-5.2.3/include/roctracer)
+    link_directories(/opt/rocm-5.2.3/include/roctracer)
 
     # Rocrand
     include_directories(/opt/rocm/hiprand/include)
