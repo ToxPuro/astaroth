@@ -1648,7 +1648,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 }
 
 AcTaskGraph*
-acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops, const size_t n_iterations)
+acGridBuildTaskGraphWithIterations(const AcTaskDefinition ops[], const size_t n_ops, const size_t n_iterations)
 {
     AcTaskDefinition res_ops[n_ops*n_iterations];
     for(size_t iteration = 0; iteration < n_iterations; ++iteration)
