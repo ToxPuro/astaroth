@@ -1343,7 +1343,7 @@ acGridBuildTaskGraph(const AcTaskDefinition (&ops)[n_ops])
 }
 template <size_t n_ops>
 AcTaskGraph*
-acGridBuildTaskGraph(const AcTaskDefinition (&ops)[n_ops], const int n_iterations)
+acGridBuildTaskGraphWithIterations(const AcTaskDefinition (&ops)[n_ops], const int n_iterations)
 {
     return acGridBuildTaskGraph(ops, n_ops, n_iterations);
 }
