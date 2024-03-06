@@ -16,9 +16,9 @@ if (USE_HIP)
     #Deprecated (roctracer inlude will warn about deprecated header, better to include non deprecated header)
     #include_directories(/opt/rocm/roctracer/include)
     #link_directories(/opt/rocm/roctracer/lib)
-    #LUMI
-    include_directories(/opt/rocm-5.2.3/include/roctracer)
-    link_directories(/opt/rocm-5.2.3/include/roctracer)
+    #ROC_TRACER_PATH set in the first CMakeLists.txt
+    include_directories(${ROC_TRACER_PATH})
+    link_directories(${ROC_TRACER_PATH})
 
     # Rocrand
     include_directories(/opt/rocm/hiprand/include)
@@ -47,7 +47,7 @@ add_compile_options(-DIMPLEMENTATION=${IMPLEMENTATION})
 add_compile_options(-DMAX_THREADS_PER_BLOCK=${MAX_THREADS_PER_BLOCK})
 if (USE_HIP)
 add_compile_options(-DAC_USE_HIP=1)
-add_compile_definitions(GPU_API_INCLUDES="/opt/rocm/include -I /opt/rocm/roctracer/include ")
+add_compile_definitions(GPU_API_INCLUDES="/opt/rocm/include -I ${ROC_TRACER_PATH} ")
 else()
 add_compile_definitions(GPU_API_INCLUDES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
 endif()

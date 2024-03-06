@@ -78,8 +78,9 @@ if (USE_HIP)
     #include_directories(/opt/rocm/roctracer/include)
     #link_directories(/opt/rocm/roctracer/lib)
     #LUMI
-    include_directories(/opt/rocm-5.2.3/include/roctracer)
-    link_directories(/opt/rocm-5.2.3/include/roctracer)
+    set(ROC_TRACER_PATH "/opt/rocm-5.2.3/include/roctracer")
+    include_directories(${ROC_TRACER_PATH})
+    link_directories(${ROC_TRACER_PATH})
 
 
     # Rocrand
