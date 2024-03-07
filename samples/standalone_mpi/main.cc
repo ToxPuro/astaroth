@@ -994,6 +994,9 @@ main(int argc, char** argv)
     ////////////////////////////////////////
 
     acLogFromRootProc(pid, "Initializing Astaroth (acGridInit)\n");
+    //these are the defaults but better to state them explicitly
+    info.int_params[AC_proc_mapping_strategy] = (int)AcProcMappingStrategy::Morton;
+    info.int_params[AC_decompose_strategy]    = (int)AcDecomposeStrategy::Default;
     acGridInit(info);
 
     // Compute stencil coefficients from `info` and load to device
