@@ -17,6 +17,7 @@ L [a-zA-Z_]
 "int3"                  { return INT3; }
 "real"                  { return REAL; }
 "real3"                 { return REAL3; }
+"complex"               { return COMPLEX; }
 "realArray"             { return REAL_ARRAY; }
 "Matrix"                { return MATRIX; }
 "Field"                 { return FIELD; }

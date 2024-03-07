@@ -23,23 +23,17 @@
 #if AC_USE_HIP
   #include "hip.h"
   #include <hip/hip_complex.h>
-  #if AC_DOUBLE_PRECISION
-    typedef hipDoubleComplex acComplex;
-    #define acComplex(x, y) make_hipDoubleComplex(x, y)
-  #else
-    typedef hipFloatComplex acComplex;
-    #define acComplex(x, y) make_hipFloatComplex(x, y)
-  #endif
 #else
   #include <vector_types.h> // CUDA vector types
   #include <cuComplex.h>    // CUDA complex types
-  #if AC_DOUBLE_PRECISION
-    typedef cuDoubleComplex acComplex;
-    #define acComplex(x, y) make_cuDoubleComplex(x, y)
-  #else
-    typedef cuFloatComplex acComplex;
-    #define acComplex(x, y) make_cuFloatComplex(x, y)
-  #endif
+#endif
+
+#if AC_DOUBLE_PRECISION
+  typedef cuDoubleComplex AcComplex;
+  #define AcComplex(x,y) make_cuDoubleComplex(x,y)
+#else
+  typedef cuFloatComplex AcComplex;
+  #define AcComplex(x,y) make_cuFloatComplex(x,y)
 #endif
 
 #if AC_DOUBLE_PRECISION

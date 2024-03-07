@@ -54,53 +54,53 @@
 #endif // __CUDACC__
 
 // Disabled for now, issues on lumi (exp, cos, sin ambiguous)
-#define ENABLE_COMPLEX_DATATYPE (0)
+#define ENABLE_COMPLEX_DATATYPE (1)
 #if ENABLE_COMPLEX_DATATYPE
-static __device__ AcReal
-cos(const AcReal& val)
-{
-  return cos(val);
-}
+//static __device__ AcReal
+//cos(const AcReal& val)
+//{
+//  return cos(val);
+//}
+//
+//static __device__ AcReal
+//sin(const AcReal& val)
+//{
+//  return sin(val);
+//}
+//
+//static __device__ AcReal
+//exp(const AcReal& val)
+//{
+//  return exp(val);
+//}
 
-static __device__ AcReal
-sin(const AcReal& val)
+static HOST_DEVICE_INLINE AcComplex
+exp(const AcComplex& val)
 {
-  return sin(val);
-}
-
-static __device__ AcReal
-exp(const AcReal& val)
-{
-  return exp(val);
-}
-
-static __device__ inline acComplex
-expc(const acComplex& val)
-{
-  return acComplex(exp(val.x) * cos(val.y), exp(val.x) * sin(val.y));
+  return AcComplex(exp(val.x) * cos(val.y), exp(val.x) * sin(val.y));
 }
 
 #if defined(__CUDACC__)
 // These are already overloaded in the HIP API
 /*
-static HOST_DEVICE_INLINE acComplex
-operator*(const AcReal& a, const acComplex& b)
+static HOST_DEVICE_INLINE AcComplex
+operator*(const AcReal& a, const AcComplex& b)
 {
-  return (acComplex){a * b.x, a * b.y};
+  return (AcComplex){a * b.x, a * b.y};
 }
 
-static HOST_DEVICE_INLINE acComplex
-operator*(const acComplex& b, const AcReal& a)
+static HOST_DEVICE_INLINE AcComplex
+operator*(const AcComplex& b, const AcReal& a)
 {
-  return (acComplex){a * b.x, a * b.y};
+  return (AcComplex){a * b.x, a * b.y};
+}
+
+static HOST_DEVICE_INLINE AcComplex
+operator*(const AcComplex& a, const AcComplex& b)
+{
+  return (AcComplex){a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x};
 }
 */
-
-static HOST_DEVICE_INLINE acComplex
-operator*(const acComplex& a, const acComplex& b)
-{
-  return (acComplex){a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x};
-}
 #endif
 #endif // ENABLE_COMPLEX_DATATYPE
 
