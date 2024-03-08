@@ -27,33 +27,64 @@ import pandas as pd
 import findiff
 
 # %%
-parser = argparse.ArgumentParser(
-    description='A tool for generating benchmarks')
-parser.add_argument('--dims', type=int, nargs=3,
-                    default=[128, 128, 128], help='Dimensions of the computational domain')
-parser.add_argument('--device', type=str, default='gpu',
-                    choices=['cpu', 'gpu'], help='The device used for the benchmarks')
-parser.add_argument('--radius', type=int, default=1,
-                    help='Sets the stencil radius')
-parser.add_argument('--dtype', default='fp32',
-                    choices=['fp32', 'fp64'], help='The precision used for the benchmarks')
-parser.add_argument('--library', required=True, choices=[
-                    'pytorch', 'tensorflow', 'jax'], help='The underlying library used for benchmarking')
-parser.add_argument('--verify', type=int, default=1,
-                    help='Verify results with the model solution')
-parser.add_argument('--jobid', type=int, default=0, help='Set the job id')
+parser = argparse.ArgumentParser(description="A tool for generating benchmarks")
+parser.add_argument(
+    "--dims",
+    type=int,
+    nargs=3,
+    default=[128, 128, 128],
+    help="Dimensions of the computational domain",
+)
+parser.add_argument(
+    "--device",
+    type=str,
+    default="gpu",
+    choices=["cpu", "gpu"],
+    help="The device used for the benchmarks",
+)
+parser.add_argument("--radius", type=int, default=1, help="Sets the stencil radius")
+parser.add_argument(
+    "--dtype",
+    default="fp32",
+    choices=["fp32", "fp64"],
+    help="The precision used for the benchmarks",
+)
+parser.add_argument(
+    "--library",
+    required=True,
+    choices=["pytorch", "tensorflow", "jax"],
+    help="The underlying library used for benchmarking",
+)
+parser.add_argument(
+    "--verify", type=int, default=1, help="Verify results with the model solution"
+)
+parser.add_argument("--jobid", type=int, default=0, help="Set the job id")
 # parser.add_argument('--seed', type=int, default=12345, help='Set seed for the random number generator')
-parser.add_argument('--salt', type=int, default=12345,
-                    help='Set salt for the random number generator')
-parser.add_argument('--nsamples', type=int, default=100,
-                    help='The number of samples to benchmark')
-parser.add_argument('--visualize', action='store_true', help='Visualize the results')
+parser.add_argument(
+    "--salt", type=int, default=12345, help="Set salt for the random number generator"
+)
+parser.add_argument(
+    "--nsamples", type=int, default=100, help="The number of samples to benchmark"
+)
+parser.add_argument("--visualize", action="store_true", help="Visualize the results")
 
 
 jupyter = False
 if jupyter:
     args = parser.parse_args(
-        ['--library', 'pytorch', '--device', 'cpu', '--dims', '128', '128', '2', '--nsamples', '3'])
+        [
+            "--library",
+            "pytorch",
+            "--device",
+            "cpu",
+            "--dims",
+            "128",
+            "128",
+            "2",
+            "--nsamples",
+            "3",
+        ]
+    )
 else:
     args = parser.parse_args()
 
@@ -66,13 +97,13 @@ else:
 #     args = parser.parse_args()
 #     print('Running a non-interactive session. Arguments parsed.')
 
-if args.dtype in 'fp64':
+if args.dtype in "fp64":
     args.dtype = np.float64
 else:
     args.dtype = np.float32
 
 # Global variables
-seed = int(args.salt + time.time() + args.jobid * time.time()) % (2**32-1)
+seed = int(args.salt + time.time() + args.jobid * time.time()) % (2**32 - 1)
 
 random_scale = 1e-3
 box_size = 2 * np.pi
@@ -88,17 +119,27 @@ gamma = 0.5
 lnrho0 = 1.3
 cp_sound = 1
 mu0 = 1.4
-eta = 1e-2 #5e-5
+eta = 1e-2  # 5e-5
 lnT0 = 1.2
 K_heatcond = 1e-3
 
-field_names = ['lnrho', 'ux', 'uy', 'uz', 'ax', 'ay', 'az', 'ss']
-stencil_names = ['value', 'ddx', 'ddy', 'ddz', 'd2dx2',
-            'd2dy2', 'd2dz2', 'd2dxdy', 'd2dxdz', 'd2dydz']
+field_names = ["lnrho", "ux", "uy", "uz", "ax", "ay", "az", "ss"]
+stencil_names = [
+    "value",
+    "ddx",
+    "ddy",
+    "ddz",
+    "d2dx2",
+    "d2dy2",
+    "d2dz2",
+    "d2dxdy",
+    "d2dxdz",
+    "d2dydz",
+]
 
 # Derived variables
 ndims = len(np.empty(args.dims).squeeze().shape)
-assert(ndims == 3) # Hardcoded 3D in forward() funtions
+assert ndims == 3  # Hardcoded 3D in forward() funtions
 field_indices = {field: i for i, field in enumerate(field_names)}
 stencil_indices = {stencil: i for i, stencil in enumerate(stencil_names)}
 
@@ -106,18 +147,22 @@ stencil_indices = {stencil: i for i, stencil in enumerate(stencil_names)}
 # %%
 # Construct the input and weights
 def get_coeffs(deriv, axis=0):
-    assert(axis < ndims)
+    assert axis < ndims
 
-    order = 2*args.radius
+    order = 2 * args.radius
     # Coefficients
     if deriv == 0:
-        coeffs = np.zeros(2*args.radius + 1, dtype=args.dtype)
+        coeffs = np.zeros(2 * args.radius + 1, dtype=args.dtype)
         coeffs[args.radius] = 1
     else:
-        coeffs = np.array(findiff.coefficients(deriv=deriv, acc=order, symbolic=True)[
-                          'center']['coefficients'], dtype=args.dtype)
+        coeffs = np.array(
+            findiff.coefficients(deriv=deriv, acc=order, symbolic=True)["center"][
+                "coefficients"
+            ],
+            dtype=args.dtype,
+        )
     l = len(coeffs)
-    r = int(np.rint((l-1)/2))
+    r = int(np.rint((l - 1) / 2))
     tensor = np.zeros((l, l, l), dtype=args.dtype)
 
     # Axis
@@ -138,16 +183,20 @@ def get_coeffs(deriv, axis=0):
 
 
 def get_mixed_coeffs(deriv, axis0=0, axis1=-1):
-    assert(axis0 < ndims)
-    assert(axis1 < ndims)
-    assert(axis0 != axis1)
-    assert(axis0 < axis1)
+    assert axis0 < ndims
+    assert axis1 < ndims
+    assert axis0 != axis1
+    assert axis0 < axis1
 
-    order = 2*args.radius
-    coeffs = np.array(findiff.coefficients(deriv=deriv, acc=order, symbolic=True)[
-                      'center']['coefficients'], dtype=args.dtype)
+    order = 2 * args.radius
+    coeffs = np.array(
+        findiff.coefficients(deriv=deriv, acc=order, symbolic=True)["center"][
+            "coefficients"
+        ],
+        dtype=args.dtype,
+    )
     l = len(coeffs)
-    r = int(np.rint((l-1)/2))
+    r = int(np.rint((l - 1) / 2))
     a = np.zeros((l, l, l), dtype=args.dtype)
 
     if axis0 == 0:
@@ -177,21 +226,38 @@ def get_input():
     np.random.seed(seed)
     fields = []
     for i in range(len(field_names)):
-        fields.append(random_scale * (2 * np.random.random((nn[2], nn[1], nn[0])) - 1).squeeze())
+        fields.append(
+            random_scale * (2 * np.random.random((nn[2], nn[1], nn[0])) - 1).squeeze()
+        )
 
-    fields[field_indices['lnrho']] = np.random.normal(loc=0.0, scale=1e-1, size=(nn[2], nn[1], nn[0]))
-    fields[field_indices['ux']] = np.random.normal(loc=0.0, scale=1e-12, size=(nn[2], nn[1], nn[0]))
-    fields[field_indices['uy']] = np.random.normal(loc=0.0, scale=1e-12, size=(nn[2], nn[1], nn[0]))
-    fields[field_indices['uz']] = np.random.normal(loc=0.0, scale=1e-12, size=(nn[2], nn[1], nn[0]))
-    fields[field_indices['ax']] = np.random.normal(loc=0.0, scale=1e-8, size=(nn[2], nn[1], nn[0]))
-    fields[field_indices['ay']] = np.random.normal(loc=0.0, scale=1e-8, size=(nn[2], nn[1], nn[0]))
-    fields[field_indices['az']] = np.random.normal(loc=0.0, scale=1e-8, size=(nn[2], nn[1], nn[0]))
-    fields[field_indices['ss']] = np.random.normal(loc=0.0, scale=1e-8, size=(nn[2], nn[1], nn[0]))
+    fields[field_indices["lnrho"]] = np.random.normal(
+        loc=0.0, scale=1e-1, size=(nn[2], nn[1], nn[0])
+    )
+    fields[field_indices["ux"]] = np.random.normal(
+        loc=0.0, scale=1e-12, size=(nn[2], nn[1], nn[0])
+    )
+    fields[field_indices["uy"]] = np.random.normal(
+        loc=0.0, scale=1e-12, size=(nn[2], nn[1], nn[0])
+    )
+    fields[field_indices["uz"]] = np.random.normal(
+        loc=0.0, scale=1e-12, size=(nn[2], nn[1], nn[0])
+    )
+    fields[field_indices["ax"]] = np.random.normal(
+        loc=0.0, scale=1e-8, size=(nn[2], nn[1], nn[0])
+    )
+    fields[field_indices["ay"]] = np.random.normal(
+        loc=0.0, scale=1e-8, size=(nn[2], nn[1], nn[0])
+    )
+    fields[field_indices["az"]] = np.random.normal(
+        loc=0.0, scale=1e-8, size=(nn[2], nn[1], nn[0])
+    )
+    fields[field_indices["ss"]] = np.random.normal(
+        loc=0.0, scale=1e-8, size=(nn[2], nn[1], nn[0])
+    )
     # fields[field_indices['ax']] = np.zeros((nn[2], nn[1], nn[0])) #np.random.normal(loc=0.0, scale=1e-15, size=(nn[2], nn[1], nn[0]))
     # fields[field_indices['ay']] = np.zeros((nn[2], nn[1], nn[0])) #np.random.normal(loc=0.0, scale=1e-15, size=(nn[2], nn[1], nn[0]))
     # fields[field_indices['az']] = np.zeros((nn[2], nn[1], nn[0])) #np.random.normal(loc=0.0, scale=1e-15, size=(nn[2], nn[1], nn[0]))
     # fields[field_indices['ss']] = np.zeros((nn[2], nn[1], nn[0])) #np.random.normal(loc=1.0, scale=1e-8, size=(nn[2], nn[1], nn[0]))
-
 
     return np.stack(fields)
 
@@ -204,19 +270,18 @@ def get_weights():
 
     # First derivatives
     for ax in range(ndims):
-        stencils.append((1/ds[ax]) * get_coeffs(1, ax))
+        stencils.append((1 / ds[ax]) * get_coeffs(1, ax))
 
     # Second derivatives
     for ax in range(ndims):
-        stencils.append((1/ds[ax]**2) * get_coeffs(2, ax))
+        stencils.append((1 / ds[ax] ** 2) * get_coeffs(2, ax))
 
     # Mixed derivatives
     for ax1 in range(ndims):
         for ax0 in range(ndims):
             if ax0 >= ax1:
                 continue
-            stencils.append(
-                (1/(ds[ax0]*ds[ax1]) * get_mixed_coeffs(1, ax0, ax1)))
+            stencils.append((1 / (ds[ax0] * ds[ax1]) * get_mixed_coeffs(1, ax0, ax1)))
 
     return np.stack(stencils)
 
@@ -228,14 +293,14 @@ def get_kronecker():
 def get_ddx():
     stencils = []
     for ax in range(ndims):
-        stencils.append((1/ds[ax]) * get_coeffs(1, ax))
+        stencils.append((1 / ds[ax]) * get_coeffs(1, ax))
     return np.stack(stencils)
 
 
 def get_d2dx2():
     stencils = []
     for ax in range(ndims):
-        stencils.append((1/ds[ax]**2) * get_coeffs(2, ax))
+        stencils.append((1 / ds[ax] ** 2) * get_coeffs(2, ax))
     return np.stack(stencils)
 
 
@@ -245,23 +310,26 @@ def get_d2dxdy():
         for ax1 in range(ndims):
             if ax0 >= ax1:
                 continue
-            stencils.append(
-                (1/(ds[ax0]*ds[ax1]) * get_mixed_coeffs(1, ax0, ax1)))
+            stencils.append((1 / (ds[ax0] * ds[ax1]) * get_mixed_coeffs(1, ax0, ax1)))
     return np.stack(stencils)
+
 
 # %%
 # Model
 def convolve(input, weights):
     # Flip weights: do cross-correlation like ML libs instead
     # or just use the correlate() directly
-    #weights = np.flip(np.flip(np.flip(weights, axis=-1), axis=-2), axis=-3)
+    # weights = np.flip(np.flip(np.flip(weights, axis=-1), axis=-2), axis=-3)
 
     tensor = None
     for field in range(len(input)):
         convolutions = []
         for stencil in range(len(weights)):
-            convolutions.append(scipy.ndimage.correlate(
-                input[field], weights[stencil], mode='constant', output=args.dtype))
+            convolutions.append(
+                scipy.ndimage.correlate(
+                    input[field], weights[stencil], mode="constant", output=args.dtype
+                )
+            )
         convolutions = np.expand_dims(np.stack(convolutions), 0)
         if tensor is not None:
             tensor = np.vstack((tensor, convolutions))
@@ -273,13 +341,15 @@ def convolve(input, weights):
 def dot(a, b):
     return np.sum(a * b, axis=0)
 
+
 # Expects a tensor of shape (fields, first derivatives, ...) as input
 # Assumes that f.ex. a[0,1] is ddy f_x
 def curl(a):
-    x = a[2,1] - a[1,2]
-    y = a[0,2] - a[2,0]
-    z = a[1,0] - a[0,1]
+    x = a[2, 1] - a[1, 2]
+    y = a[0, 2] - a[2, 0]
+    z = a[1, 0] - a[0, 1]
     return np.stack([x, y, z])
+
 
 def cross(a, b):
     x = a[1] * b[2] - a[2] * b[1]
@@ -292,23 +362,27 @@ def forward(input):
 
     # Inputs
     ## Hydro
-    uu = input[[field_indices['ux'],
-                        field_indices['uy'], field_indices['uz']]]
-    lnrho = input[field_indices['lnrho']:field_indices['lnrho']+1]
+    uu = input[[field_indices["ux"], field_indices["uy"], field_indices["uz"]]]
+    lnrho = input[field_indices["lnrho"] : field_indices["lnrho"] + 1]
     ## MHD
-    aa = input[[field_indices['ax'],
-                field_indices['ay'], field_indices['az']]]
-    ss = input[field_indices['ss']:field_indices['ss']+1]
+    aa = input[[field_indices["ax"], field_indices["ay"], field_indices["az"]]]
+    ss = input[field_indices["ss"] : field_indices["ss"] + 1]
 
     # Convolutions
     ## Hydro
-    grad_lnrho, hessian_lnrho = np.split(convolve(lnrho, np.concatenate([get_ddx(), get_d2dx2()])), 2, axis=1)
+    grad_lnrho, hessian_lnrho = np.split(
+        convolve(lnrho, np.concatenate([get_ddx(), get_d2dx2()])), 2, axis=1
+    )
     grad_uu, hessian_uu, mixed_uu = np.split(
-        convolve(uu, np.concatenate([get_ddx(), get_d2dx2(), get_d2dxdy()])), 3, axis=1)
+        convolve(uu, np.concatenate([get_ddx(), get_d2dx2(), get_d2dxdy()])), 3, axis=1
+    )
     ## MHD
-    grad_ss, hessian_ss = np.split(convolve(ss, np.concatenate([get_ddx(), get_d2dx2()])), 2, axis=1)
+    grad_ss, hessian_ss = np.split(
+        convolve(ss, np.concatenate([get_ddx(), get_d2dx2()])), 2, axis=1
+    )
     grad_aa, hessian_aa, mixed_aa = np.split(
-        convolve(aa, np.concatenate([get_ddx(), get_d2dx2(), get_d2dxdy()])), 3, axis=1)
+        convolve(aa, np.concatenate([get_ddx(), get_d2dx2(), get_d2dxdy()])), 3, axis=1
+    )
 
     # Flatten
     ## Hydro
@@ -328,8 +402,8 @@ def forward(input):
     grad_aa = np.reshape(grad_aa, (3, 3, -1))
     hessian_aa = np.reshape(hessian_aa, (3, 3, -1))
     mixed_aa = np.reshape(mixed_aa, (3, 3, -1))
-    cs2 = cs2_sound * np.exp((gamma/cp_sound) * ss + (gamma - 1) * (lnrho - lnrho0))
-    #cs2 = np.reshape(cs2, (-1))
+    cs2 = cs2_sound * np.exp((gamma / cp_sound) * ss + (gamma - 1) * (lnrho - lnrho0))
+    # cs2 = np.reshape(cs2, (-1))
 
     # More complex operations
     ## Hydro
@@ -341,21 +415,21 @@ def forward(input):
     grad_div_uy = mixed_uu[0, 0] + hessian_uu[1, 1] + mixed_uu[2, 2]
     grad_div_uz = mixed_uu[0, 1] + mixed_uu[1, 2] + hessian_uu[2, 2]
     ## Traceless rate-of-strain stress tensor
-    S00 = (2/3) * grad_uu[0, 0] - (1/3) * (grad_uu[1,1] + grad_uu[2, 2])
-    S01 = (1/2) * (grad_uu[0, 1] + grad_uu[1, 0])
-    S02 = (1/2) * (grad_uu[0,2] + grad_uu[2,0])
+    S00 = (2 / 3) * grad_uu[0, 0] - (1 / 3) * (grad_uu[1, 1] + grad_uu[2, 2])
+    S01 = (1 / 2) * (grad_uu[0, 1] + grad_uu[1, 0])
+    S02 = (1 / 2) * (grad_uu[0, 2] + grad_uu[2, 0])
     S0 = np.stack([S00, S01, S02])
-    
+
     S10 = S01
-    S11 = (2/3) * grad_uu[1, 1] - (1/3) * (grad_uu[0,0] + grad_uu[2, 2])
-    S12 = (1/2) * (grad_uu[1, 2] + grad_uu[2, 1])
+    S11 = (2 / 3) * grad_uu[1, 1] - (1 / 3) * (grad_uu[0, 0] + grad_uu[2, 2])
+    S12 = (1 / 2) * (grad_uu[1, 2] + grad_uu[2, 1])
     S1 = np.stack([S10, S11, S12])
 
     S20 = S02
     S21 = S12
-    S22 = (2/3) * grad_uu[2, 2] - (1/3) * (grad_uu[0,0] + grad_uu[1, 1])
+    S22 = (2 / 3) * grad_uu[2, 2] - (1 / 3) * (grad_uu[0, 0] + grad_uu[1, 1])
     S2 = np.stack([S20, S21, S22])
-    
+
     S = np.concatenate([S0, S1, S2])
     ## MHD
     laplace_aa = np.sum(hessian_aa, axis=1)
@@ -364,47 +438,59 @@ def forward(input):
     grad_div_ay = mixed_aa[0, 0] + hessian_aa[1, 1] + mixed_aa[2, 2]
     grad_div_az = mixed_aa[0, 1] + mixed_aa[1, 2] + hessian_aa[2, 2]
     grad_div_aa = np.stack([grad_div_ax, grad_div_ay, grad_div_az])
-    j = (1/mu0) * (grad_div_aa - laplace_aa)
+    j = (1 / mu0) * (grad_div_aa - laplace_aa)
     B = curl(grad_aa)
     inv_rho = 1 / np.exp(lnrho)
     lnT = lnT0 + (gamma / cp_sound) * ss + (gamma - 1) * (lnrho - lnrho0)
     inv_pT = 1 / (np.exp(lnrho) * np.exp(lnT))
     j_cross_B = cross(j, B)
-    entropy_rhs = (0) - (0) + eta * mu0 * dot(j, j)\
-     + 2 * np.exp(lnrho) * nu_visc * np.sum(S, axis=0)\
-     + zeta * np.exp(lnrho) * div_uu * div_uu
+    entropy_rhs = (
+        (0)
+        - (0)
+        + eta * mu0 * dot(j, j)
+        + 2 * np.exp(lnrho) * nu_visc * np.sum(S, axis=0)
+        + zeta * np.exp(lnrho) * div_uu * div_uu
+    )
     ## Heat conduction
     grad_ln_chi = -grad_lnrho
-    first_term = gamma * (1/cp_sound) * laplace_ss + (gamma - 1) * laplace_lnrho
-    second_term = gamma * (1/cp_sound) * grad_ss + (gamma - 1.) * grad_lnrho
-    third_term = gamma * ((1/cp_sound) * grad_ss + grad_lnrho) + grad_ln_chi
+    first_term = gamma * (1 / cp_sound) * laplace_ss + (gamma - 1) * laplace_lnrho
+    second_term = gamma * (1 / cp_sound) * grad_ss + (gamma - 1.0) * grad_lnrho
+    third_term = gamma * ((1 / cp_sound) * grad_ss + grad_lnrho) + grad_ln_chi
     chi = K_heatcond / (np.exp(lnrho) * cp_sound)
     heat_conduction = cp_sound * chi * (first_term + dot(second_term, third_term))
-
 
     # Equations
     ## Hydro
     continuity = -dot(uu, grad_lnrho) - div_uu
-    momx = - dot(uu, grad_uu[0])\
-        - cs2 * ((1/cp_sound) * grad_ss[0] + grad_lnrho[0])\
-        + nu_visc * (laplace_uu[0] + (1/3) * grad_div_ux + 2 * dot(S0, grad_lnrho))\
-        + zeta * grad_div_ux\
+    momx = (
+        -dot(uu, grad_uu[0])
+        - cs2 * ((1 / cp_sound) * grad_ss[0] + grad_lnrho[0])
+        + nu_visc * (laplace_uu[0] + (1 / 3) * grad_div_ux + 2 * dot(S0, grad_lnrho))
+        + zeta * grad_div_ux
         + inv_rho * j_cross_B[0]
-    momy = - dot(uu, grad_uu[1])\
-        - cs2 * ((1/cp_sound) * grad_ss[1] + grad_lnrho[1])\
-        + nu_visc * (laplace_uu[1] + (1/3) * grad_div_uy + 2 * dot(S1, grad_lnrho))\
-        + zeta * grad_div_uy\
+    )
+    momy = (
+        -dot(uu, grad_uu[1])
+        - cs2 * ((1 / cp_sound) * grad_ss[1] + grad_lnrho[1])
+        + nu_visc * (laplace_uu[1] + (1 / 3) * grad_div_uy + 2 * dot(S1, grad_lnrho))
+        + zeta * grad_div_uy
         + inv_rho * j_cross_B[1]
-    momz = - dot(uu, grad_uu[2])\
-        - cs2 * ((1/cp_sound) * grad_ss[2] + grad_lnrho[2])\
-        + nu_visc * (laplace_uu[2] + (1/3) * grad_div_uz + 2 * dot(S2, grad_lnrho))\
-        + zeta * grad_div_uz\
+    )
+    momz = (
+        -dot(uu, grad_uu[2])
+        - cs2 * ((1 / cp_sound) * grad_ss[2] + grad_lnrho[2])
+        + nu_visc * (laplace_uu[2] + (1 / 3) * grad_div_uz + 2 * dot(S2, grad_lnrho))
+        + zeta * grad_div_uz
         + inv_rho * j_cross_B[2]
+    )
     ## MHD
     ind = cross(uu, B) + eta * laplace_aa
-    entropy = - dot(uu, grad_ss) + inv_pT * entropy_rhs + heat_conduction
+    entropy = -dot(uu, grad_ss) + inv_pT * entropy_rhs + heat_conduction
 
-    return np.reshape(np.stack([continuity, momx, momy, momz, ind[0], ind[1], ind[2], entropy]), (len(field_names), nn[2], nn[1], nn[0]))
+    return np.reshape(
+        np.stack([continuity, momx, momy, momz, ind[0], ind[1], ind[2], entropy]),
+        (len(field_names), nn[2], nn[1], nn[0]),
+    )
 
 
 # %%
@@ -412,73 +498,90 @@ def forward(input):
 class Debug:
     def __str__(self):
         return str(self.__class__) + ": " + str(self.__dict__)
-    
+
+
 # %%
 # Benchmark output
 
 
 class Output:
     def __init__(self):
-        self.df = pd.DataFrame(columns=['kernel',
-                                        'implementation',
-                                        'maxthreadsperblock',
-                                        'nx', 'ny', 'nz', 'radius',
-                                        'milliseconds',
-                                        'tpbx', 'tpby', 'tpbz',
-                                        'jobid', 'seed', 'iteration', 'double_precision'])
+        self.df = pd.DataFrame(
+            columns=[
+                "kernel",
+                "implementation",
+                "maxthreadsperblock",
+                "nx",
+                "ny",
+                "nz",
+                "radius",
+                "milliseconds",
+                "tpbx",
+                "tpby",
+                "tpbz",
+                "jobid",
+                "seed",
+                "iteration",
+                "double_precision",
+            ]
+        )
 
     def record(self, milliseconds, iteration):
-        row = {'kernel': 'convolve',
-               'implementation': args.library,
-               'nx': args.dims[0],
-               'ny': args.dims[1],
-               'nz': args.dims[2],
-               'radius': args.radius,
-               'milliseconds': milliseconds,
-               'jobid': args.jobid,
-               'seed': seed,
-               'iteration': iteration,
-               'double_precision': int(args.dtype == np.float64)}
+        row = {
+            "kernel": "convolve",
+            "implementation": args.library,
+            "nx": args.dims[0],
+            "ny": args.dims[1],
+            "nz": args.dims[2],
+            "radius": args.radius,
+            "milliseconds": milliseconds,
+            "jobid": args.jobid,
+            "seed": seed,
+            "iteration": iteration,
+            "double_precision": int(args.dtype == np.float64),
+        }
         self.df.loc[len(self.df.index)] = row
 
     def __del__(self):
-        self.df.to_csv(f'nonlinear-mhd-python-{args.jobid}-{seed}.csv', index=False)
+        self.df.to_csv(f"nonlinear-mhd-python-{args.jobid}-{seed}.csv", index=False)
 
 
 # %%
 # Libraries
 lib = None
-if args.library in 'pytorch':
+if args.library in "pytorch":
     import torch
     import torch.utils.benchmark
-    print(f'Pytorch version: {torch.__version__}')
+
+    print(f"Pytorch version: {torch.__version__}")
 
     class Pytorch(torch.nn.Module):
         def get_weights(self, weights):
             weights = torch.tensor(
-                weights, dtype=self.dtype, device=self.device).unsqueeze(1)
+                weights, dtype=self.dtype, device=self.device
+            ).unsqueeze(1)
             return weights
 
         def __init__(self, device, dtype):
             super().__init__()
-            self.name = 'pytorch'
-            self.device = 'cpu' if device in 'cpu' else 'cuda'
+            self.name = "pytorch"
+            self.device = "cpu" if device in "cpu" else "cuda"
             self.dtype = torch.float64 if dtype == np.float64 else torch.float32
             torch.set_default_dtype(self.dtype)
-            #self.dtype = torch.double if dtype == np.float64 else torch.float
+            # self.dtype = torch.double if dtype == np.float64 else torch.float
 
-            print(f'Using {device} device')
+            print(f"Using {device} device")
 
             # Enable autotuning
             torch.backends.cudnn.benchmark = True
-            torch.backends.cudnn.benchmark_limit = 0 # Try every available algorithm
+            torch.backends.cudnn.benchmark_limit = 0  # Try every available algorithm
 
             # Disable tensor cores
-            # torch.backends.cuda.matmul.allow_tf32 = False
-            # torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = False
-            # torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False
-            # torch.backends.cudnn.allow_tf32 = False
-            #torch.backends.cudnn.deterministic = True
+            torch.backends.cuda.matmul.allow_tf32 = False
+            torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = False
+            torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False
+            torch.backends.cudnn.allow_tf32 = False
+            # torch.backends.cudnn.deterministic = True
 
             # Disable debugging APIs
             torch.autograd.set_detect_anomaly(False)
@@ -486,8 +589,8 @@ if args.library in 'pytorch':
             torch.autograd.gradgradcheck = False
 
             # Print information
-            print(f'cuDNN available: {torch.backends.cudnn.is_available()}')
-            print(f'cuDNN version: {torch.backends.cudnn.version()}')
+            print(f"cuDNN available: {torch.backends.cudnn.is_available()}")
+            print(f"cuDNN version: {torch.backends.cudnn.version()}")
 
             # Setup weights
             self.kronecker = self.get_weights(get_kronecker())
@@ -498,24 +601,27 @@ if args.library in 'pytorch':
 
         def get_input(self):
             input = get_input()
-            input = torch.tensor(input, dtype=self.dtype,
-                                 device=self.device).unsqueeze(1)
+            input = torch.tensor(input, dtype=self.dtype, device=self.device).unsqueeze(
+                1
+            )
             # .to(memory_format=torch.channels_last)
             return input
 
         def pad(self, input):
-            return torch.nn.functional.pad(input, (args.radius,) * 2 * ndims, mode='constant')
+            return torch.nn.functional.pad(
+                input, (args.radius,) * 2 * ndims, mode="constant"
+            )
             ##return torch.nn.functional.pad(input, (args.radius,) * 2 * ndims, mode='circular') #TODO NOTE DEBUG
 
         def convolve(self, input, weights):
-            if (len(input.shape) == 5):
+            if len(input.shape) == 5:
                 return torch.nn.functional.conv3d(input, weights)
-            elif (len(input.shape) == 4):
+            elif len(input.shape) == 4:
                 return torch.nn.functional.conv2d(input, weights)
             else:
                 return torch.nn.functional.conv1d(input, weights)
 
-        #def convolve_fft(self, input, weights):
+        # def convolve_fft(self, input, weights):
         #    fr_signal = torch.fft.rfftn
 
         # Element-wise dot product
@@ -525,9 +631,9 @@ if args.library in 'pytorch':
         # Expects a tensor of shape (fields, first derivatives, ...) as input
         # Assumes that f.ex. a[0,1] is ddy f_x
         def curl(self, a):
-            x = a[2,1] - a[1,2]
-            y = a[0,2] - a[2,0]
-            z = a[1,0] - a[0,1]
+            x = a[2, 1] - a[1, 2]
+            y = a[0, 2] - a[2, 0]
+            z = a[1, 0] - a[0, 1]
             return torch.stack([x, y, z])
 
         def cross(self, a, b):
@@ -536,39 +642,68 @@ if args.library in 'pytorch':
             z = a[0] * b[1] - a[1] * b[0]
             return torch.stack([x, y, z])
 
-        #@torch.compile(options={'max-autotune': True})
-        #@torch.compile(mode='max-autotune', fullgraph=True)
-        @torch.no_grad()
+        # @torch.compile(options={'max-autotune': True})
+        # @torch.compile(mode='max-autotune', fullgraph=True)
+        # @torch.no_grad()
+        @torch.inference_mode
         def forward(self, input):
             # Inputs
             ## Hydro
-            uu = input[[field_indices['ux'],
-                                field_indices['uy'], field_indices['uz']]]
-            lnrho = input[field_indices['lnrho']:field_indices['lnrho']+1]
+            uu = input[[field_indices["ux"], field_indices["uy"], field_indices["uz"]]]
+            lnrho = input[field_indices["lnrho"] : field_indices["lnrho"] + 1]
             ## MHD
-            aa = input[[field_indices['ax'],
-                        field_indices['ay'], field_indices['az']]]
-            ss = input[field_indices['ss']:field_indices['ss']+1]
+            aa = input[[field_indices["ax"], field_indices["ay"], field_indices["az"]]]
+            ss = input[field_indices["ss"] : field_indices["ss"] + 1]
 
             # Convolutions
             ## Hydro
-            grad_lnrho, hessian_lnrho = torch.split(self.convolve(lnrho, torch.concat([self.ddx, self.d2dx2])), 3, dim=1)
+            grad_lnrho, hessian_lnrho = torch.split(
+                self.convolve(lnrho, torch.concat([self.ddx, self.d2dx2])), 3, dim=1
+            )
             grad_uu, hessian_uu, mixed_uu = torch.split(
-                self.convolve(uu, torch.concat([self.ddx, self.d2dx2, self.d2dxdy])), 3, dim=1)
+                self.convolve(uu, torch.concat([self.ddx, self.d2dx2, self.d2dxdy])),
+                3,
+                dim=1,
+            )
             ## MHD
-            grad_ss, hessian_ss = torch.split(self.convolve(ss, torch.concat([self.ddx, self.d2dx2])), 3, dim=1)
+            grad_ss, hessian_ss = torch.split(
+                self.convolve(ss, torch.concat([self.ddx, self.d2dx2])), 3, dim=1
+            )
             grad_aa, hessian_aa, mixed_aa = torch.split(
-                self.convolve(aa, torch.concat([self.ddx, self.d2dx2, self.d2dxdy])), 3, dim=1)
+                self.convolve(aa, torch.concat([self.ddx, self.d2dx2, self.d2dxdy])),
+                3,
+                dim=1,
+            )
 
             # Squeeze input and remove padding
-            uu = uu[:, :, args.radius:-args.radius,
-                    args.radius:-args.radius, args.radius:-args.radius].squeeze()
-            lnrho = lnrho[:, :, args.radius:-args.radius, args.radius:-
-                          args.radius, args.radius:-args.radius].squeeze()
-            aa = aa[:, :, args.radius:-args.radius,
-                    args.radius:-args.radius, args.radius:-args.radius].squeeze()
-            ss = ss[:, :, args.radius:-args.radius, args.radius:-
-                          args.radius, args.radius:-args.radius].squeeze()
+            uu = uu[
+                :,
+                :,
+                args.radius : -args.radius,
+                args.radius : -args.radius,
+                args.radius : -args.radius,
+            ].squeeze()
+            lnrho = lnrho[
+                :,
+                :,
+                args.radius : -args.radius,
+                args.radius : -args.radius,
+                args.radius : -args.radius,
+            ].squeeze()
+            aa = aa[
+                :,
+                :,
+                args.radius : -args.radius,
+                args.radius : -args.radius,
+                args.radius : -args.radius,
+            ].squeeze()
+            ss = ss[
+                :,
+                :,
+                args.radius : -args.radius,
+                args.radius : -args.radius,
+                args.radius : -args.radius,
+            ].squeeze()
 
             # Flatten
             ## Hydro
@@ -588,7 +723,9 @@ if args.library in 'pytorch':
             grad_aa = torch.reshape(grad_aa, (3, 3, -1))
             hessian_aa = torch.reshape(hessian_aa, (3, 3, -1))
             mixed_aa = torch.reshape(mixed_aa, (3, 3, -1))
-            cs2 = cs2_sound * torch.exp((gamma/cp_sound) * ss + (gamma - 1) * (lnrho - lnrho0))
+            cs2 = cs2_sound * torch.exp(
+                (gamma / cp_sound) * ss + (gamma - 1) * (lnrho - lnrho0)
+            )
             cs2 = torch.flatten(cs2)
 
             # More complex operations
@@ -601,21 +738,21 @@ if args.library in 'pytorch':
             grad_div_uy = mixed_uu[0, 0] + hessian_uu[1, 1] + mixed_uu[2, 2]
             grad_div_uz = mixed_uu[0, 1] + mixed_uu[1, 2] + hessian_uu[2, 2]
             ## Traceless rate-of-strain stress tensor
-            S00 = (2/3) * grad_uu[0, 0] - (1/3) * (grad_uu[1,1] + grad_uu[2, 2])
-            S01 = (1/2) * (grad_uu[0, 1] + grad_uu[1, 0])
-            S02 = (1/2) * (grad_uu[0,2] + grad_uu[2,0])
+            S00 = (2 / 3) * grad_uu[0, 0] - (1 / 3) * (grad_uu[1, 1] + grad_uu[2, 2])
+            S01 = (1 / 2) * (grad_uu[0, 1] + grad_uu[1, 0])
+            S02 = (1 / 2) * (grad_uu[0, 2] + grad_uu[2, 0])
             S0 = torch.stack([S00, S01, S02])
-            
+
             S10 = S01
-            S11 = (2/3) * grad_uu[1, 1] - (1/3) * (grad_uu[0,0] + grad_uu[2, 2])
-            S12 = (1/2) * (grad_uu[1, 2] + grad_uu[2, 1])
+            S11 = (2 / 3) * grad_uu[1, 1] - (1 / 3) * (grad_uu[0, 0] + grad_uu[2, 2])
+            S12 = (1 / 2) * (grad_uu[1, 2] + grad_uu[2, 1])
             S1 = torch.stack([S10, S11, S12])
 
             S20 = S02
             S21 = S12
-            S22 = (2/3) * grad_uu[2, 2] - (1/3) * (grad_uu[0,0] + grad_uu[1, 1])
+            S22 = (2 / 3) * grad_uu[2, 2] - (1 / 3) * (grad_uu[0, 0] + grad_uu[1, 1])
             S2 = torch.stack([S20, S21, S22])
-            
+
             S = torch.concat([S0, S1, S2])
             ## MHD
             laplace_aa = torch.sum(hessian_aa, dim=1)
@@ -624,47 +761,65 @@ if args.library in 'pytorch':
             grad_div_ay = mixed_aa[0, 0] + hessian_aa[1, 1] + mixed_aa[2, 2]
             grad_div_az = mixed_aa[0, 1] + mixed_aa[1, 2] + hessian_aa[2, 2]
             grad_div_aa = torch.stack([grad_div_ax, grad_div_ay, grad_div_az])
-            j = (1/mu0) * (grad_div_aa - laplace_aa)
+            j = (1 / mu0) * (grad_div_aa - laplace_aa)
             B = self.curl(grad_aa)
             inv_rho = 1 / torch.exp(lnrho)
             lnT = lnT0 + (gamma / cp_sound) * ss + (gamma - 1) * (lnrho - lnrho0)
             inv_pT = 1 / (torch.exp(lnrho) * torch.exp(lnT))
             j_cross_B = self.cross(j, B)
-            entropy_rhs = (0) - (0) + eta * mu0 * self.dot(j, j)\
-            + 2 * torch.exp(lnrho) * nu_visc * torch.sum(S, dim=0)\
-            + zeta * torch.exp(lnrho) * div_uu * div_uu
+            entropy_rhs = (
+                (0)
+                - (0)
+                + eta * mu0 * self.dot(j, j)
+                + 2 * torch.exp(lnrho) * nu_visc * torch.sum(S, dim=0)
+                + zeta * torch.exp(lnrho) * div_uu * div_uu
+            )
             ## Heat conduction
             grad_ln_chi = -grad_lnrho
-            first_term = gamma * (1/cp_sound) * laplace_ss + (gamma - 1) * laplace_lnrho
-            second_term = gamma * (1/cp_sound) * grad_ss + (gamma - 1.) * grad_lnrho
-            third_term = gamma * ((1/cp_sound) * grad_ss + grad_lnrho) + grad_ln_chi
+            first_term = (
+                gamma * (1 / cp_sound) * laplace_ss + (gamma - 1) * laplace_lnrho
+            )
+            second_term = gamma * (1 / cp_sound) * grad_ss + (gamma - 1.0) * grad_lnrho
+            third_term = gamma * ((1 / cp_sound) * grad_ss + grad_lnrho) + grad_ln_chi
             chi = K_heatcond / (torch.exp(lnrho) * cp_sound)
-            heat_conduction = cp_sound * chi * (first_term + self.dot(second_term, third_term))
-
+            heat_conduction = (
+                cp_sound * chi * (first_term + self.dot(second_term, third_term))
+            )
 
             # Equations
             ## Hydro
             continuity = -self.dot(uu, grad_lnrho) - div_uu
-            momx = - self.dot(uu, grad_uu[0])\
-                - cs2 * ((1/cp_sound) * grad_ss[0] + grad_lnrho[0])\
-                + nu_visc * (laplace_uu[0] + (1/3) * grad_div_ux + 2 * self.dot(S0, grad_lnrho))\
-                + zeta * grad_div_ux\
+            momx = (
+                -self.dot(uu, grad_uu[0])
+                - cs2 * ((1 / cp_sound) * grad_ss[0] + grad_lnrho[0])
+                + nu_visc
+                * (laplace_uu[0] + (1 / 3) * grad_div_ux + 2 * self.dot(S0, grad_lnrho))
+                + zeta * grad_div_ux
                 + inv_rho * j_cross_B[0]
-            momy = - self.dot(uu, grad_uu[1])\
-                - cs2 * ((1/cp_sound) * grad_ss[1] + grad_lnrho[1])\
-                + nu_visc * (laplace_uu[1] + (1/3) * grad_div_uy + 2 * self.dot(S1, grad_lnrho))\
-                + zeta * grad_div_uy\
+            )
+            momy = (
+                -self.dot(uu, grad_uu[1])
+                - cs2 * ((1 / cp_sound) * grad_ss[1] + grad_lnrho[1])
+                + nu_visc
+                * (laplace_uu[1] + (1 / 3) * grad_div_uy + 2 * self.dot(S1, grad_lnrho))
+                + zeta * grad_div_uy
                 + inv_rho * j_cross_B[1]
-            momz = - self.dot(uu, grad_uu[2])\
-                - cs2 * ((1/cp_sound) * grad_ss[2] + grad_lnrho[2])\
-                + nu_visc * (laplace_uu[2] + (1/3) * grad_div_uz + 2 * self.dot(S2, grad_lnrho))\
-                + zeta * grad_div_uz\
+            )
+            momz = (
+                -self.dot(uu, grad_uu[2])
+                - cs2 * ((1 / cp_sound) * grad_ss[2] + grad_lnrho[2])
+                + nu_visc
+                * (laplace_uu[2] + (1 / 3) * grad_div_uz + 2 * self.dot(S2, grad_lnrho))
+                + zeta * grad_div_uz
                 + inv_rho * j_cross_B[2]
+            )
             ## MHD
             ind = self.cross(uu, B) + eta * laplace_aa
-            entropy = - self.dot(uu, grad_ss) + inv_pT * entropy_rhs + heat_conduction
+            entropy = -self.dot(uu, grad_ss) + inv_pT * entropy_rhs + heat_conduction
 
-            return torch.stack([continuity, momx, momy, momz, ind[0], ind[1], ind[2], entropy]).view(-1, 1, nn[2], nn[1], nn[0])
+            return torch.stack(
+                [continuity, momx, momy, momz, ind[0], ind[1], ind[2], entropy]
+            ).view(-1, 1, nn[2], nn[1], nn[0])
 
         def benchmark_cuda(self, num_samples):
             output = Output()
@@ -672,18 +827,18 @@ if args.library in 'pytorch':
             input = self.get_input()
             weights = self.get_weights(get_weights())
             traced = torch.jit.trace(self, self.pad(input))
-            #traced = torch.compile(self)
+            # traced = torch.compile(self)
             for i in range(num_samples):
                 input = self.pad(input)
 
-                if self.device == 'cuda':
+                if self.device == "cuda":
                     start = torch.cuda.Event(enable_timing=True)
                     end = torch.cuda.Event(enable_timing=True)
                     start.record()
                 else:
                     start = time.time()
                 input = traced.forward(input)
-                if self.device == 'cuda':
+                if self.device == "cuda":
                     end.record()
                     torch.cuda.synchronize()
                     milliseconds = start.elapsed_time(end)
@@ -691,38 +846,38 @@ if args.library in 'pytorch':
                     milliseconds = 1e3 * (time.time() - start)
 
                 output.record(milliseconds, i)
-                if i >= num_samples-10:
-                    print(f'{milliseconds} ms')
+                if i >= num_samples - 10:
+                    print(f"{milliseconds} ms")
 
         def benchmark(self, num_samples):
             output = Output()
 
             input = self.pad(self.get_input())
             traced = torch.jit.trace(self, input)
-            #traced = torch.compile(self, mode='max-autotune', fullgraph=True)
-            #traced = torch.compile(self, mode='max-autotune')
+            # traced = torch.compile(self, mode='max-autotune', fullgraph=True)
+            # traced = torch.compile(self, mode='max-autotune')
 
             timer = torch.utils.benchmark.Timer(
-                    stmt='traced.forward(input)',
-                    globals={'input': input, 'traced': traced}
-                    )
-            #timer = torch.utils.benchmark.Timer(
+                stmt="traced.forward(input)", globals={"input": input, "traced": traced}
+            )
+            # timer = torch.utils.benchmark.Timer(
             #    stmt='self.forward(input)',
             #    setup='from __main__ import Pytorch',
             #    globals={'input': input, 'self': self}
-            #)
+            # )
 
             for i in range(num_samples):
                 measurement = timer.timeit(1)
                 milliseconds = 1e3 * measurement.raw_times[0]
                 output.record(milliseconds, i)
-                if i >= num_samples-10:
-                    print(f'{milliseconds} ms')
+                if i >= num_samples - 10:
+                    print(f"{milliseconds} ms")
 
     lib = Pytorch(args.device, args.dtype)
-elif args.library in 'tensorflow':
+elif args.library in "tensorflow":
     import tensorflow as tf
-    print(f'TensorFlow version: {tf.__version__}')
+
+    print(f"TensorFlow version: {tf.__version__}")
 
     class Tensorflow(Debug):
 
@@ -733,18 +888,18 @@ elif args.library in 'tensorflow':
             return weights
 
         def __init__(self, device, dtype):
-            self.name = 'tensorflow'
+            self.name = "tensorflow"
 
             print(tf.sysconfig.get_build_info())
-            devices = tf.config.list_physical_devices('GPU')
+            devices = tf.config.list_physical_devices("GPU")
             # tf.config.set_visible_devices(devices[0], 'GPU') # Limit to one GPU
             print(devices)
 
-            if device in 'gpu':
-                assert(len(devices) > 0)
+            if device in "gpu":
+                assert len(devices) > 0
             # tf.debugging.set_log_device_placement(True)
 
-            self.device = '/device:CPU:0' if device in 'cpu' else '/GPU:0'
+            self.device = "/device:CPU:0" if device in "cpu" else "/GPU:0"
             self.dtype = tf.float64 if dtype == np.float64 else tf.float32
 
             # Warning: potential performance degradation due to this
@@ -765,10 +920,11 @@ elif args.library in 'tensorflow':
             return input
 
         def pad(self, input):
-            ndims = len(input.shape)-2
+            ndims = len(input.shape) - 2
             paddings = tf.constant(
-                [[0, 0]] + [[args.radius, args.radius]] * ndims + [[0, 0]])
-            return tf.pad(input, paddings, 'CONSTANT')
+                [[0, 0]] + [[args.radius, args.radius]] * ndims + [[0, 0]]
+            )
+            return tf.pad(input, paddings, "CONSTANT")
 
         def convolve(self, input, weights):
             return tf.nn.convolution(input, weights)
@@ -780,9 +936,9 @@ elif args.library in 'tensorflow':
         # Expects a tensor of shape (fields, first derivatives, ...) as input
         # Assumes that f.ex. a[0,1] is ddy f_x
         def curl(self, a):
-            x = a[2,1] - a[1,2]
-            y = a[0,2] - a[2,0]
-            z = a[1,0] - a[0,1]
+            x = a[2, 1] - a[1, 2]
+            y = a[0, 2] - a[2, 0]
+            z = a[1, 0] - a[0, 1]
             return tf.stack([x, y, z])
 
         def cross(self, a, b):
@@ -794,36 +950,86 @@ elif args.library in 'tensorflow':
         @tf.function(jit_compile=True)
         def forward(self, input):
             input = tf.stop_gradient(input)
-            
+
             # Inputs
             ## Hydro
-            uu = tf.gather(input, indices=[field_indices['ux'],
-                                           field_indices['uy'], field_indices['uz']])
-            lnrho = input[field_indices['lnrho']:field_indices['lnrho']+1]
+            uu = tf.gather(
+                input,
+                indices=[field_indices["ux"], field_indices["uy"], field_indices["uz"]],
+            )
+            lnrho = input[field_indices["lnrho"] : field_indices["lnrho"] + 1]
             ## MHD
-            aa = tf.gather(input, indices=[field_indices['ax'],
-                                           field_indices['ay'], field_indices['az']])
-            ss = input[field_indices['ss']:field_indices['ss']+1]
+            aa = tf.gather(
+                input,
+                indices=[field_indices["ax"], field_indices["ay"], field_indices["az"]],
+            )
+            ss = input[field_indices["ss"] : field_indices["ss"] + 1]
 
             # Convolutions
             ## Hydro
-            grad_lnrho, hessian_lnrho = tf.split(self.convolve(lnrho, tf.concat([self.ddx, self.d2dx2], axis=-1)), 2, axis=-1)
+            grad_lnrho, hessian_lnrho = tf.split(
+                self.convolve(lnrho, tf.concat([self.ddx, self.d2dx2], axis=-1)),
+                2,
+                axis=-1,
+            )
             grad_uu, hessian_uu, mixed_uu = tf.split(
-                self.convolve(uu, tf.concat([self.ddx, self.d2dx2, self.d2dxdy], axis=-1)), 3, axis=-1)
+                self.convolve(
+                    uu, tf.concat([self.ddx, self.d2dx2, self.d2dxdy], axis=-1)
+                ),
+                3,
+                axis=-1,
+            )
             ## MHD
-            grad_ss, hessian_ss = tf.split(self.convolve(ss, tf.concat([self.ddx, self.d2dx2], axis=-1)), 2, axis=-1)
+            grad_ss, hessian_ss = tf.split(
+                self.convolve(ss, tf.concat([self.ddx, self.d2dx2], axis=-1)),
+                2,
+                axis=-1,
+            )
             grad_aa, hessian_aa, mixed_aa = tf.split(
-                self.convolve(aa, tf.concat([self.ddx, self.d2dx2, self.d2dxdy], axis=-1)), 3, axis=-1)
+                self.convolve(
+                    aa, tf.concat([self.ddx, self.d2dx2, self.d2dxdy], axis=-1)
+                ),
+                3,
+                axis=-1,
+            )
 
             # Squeeze input and remove padding
-            uu = tf.squeeze(uu[:, args.radius:-args.radius,
-                               args.radius:-args.radius, args.radius:-args.radius, :])
-            lnrho = tf.squeeze(lnrho[:, args.radius:-args.radius, args.radius:-
-                                     args.radius, args.radius:-args.radius, :])
-            aa = tf.squeeze(aa[:, args.radius:-args.radius,
-                               args.radius:-args.radius, args.radius:-args.radius, :])
-            ss = tf.squeeze(ss[:, args.radius:-args.radius, args.radius:-
-                                     args.radius, args.radius:-args.radius, :])
+            uu = tf.squeeze(
+                uu[
+                    :,
+                    args.radius : -args.radius,
+                    args.radius : -args.radius,
+                    args.radius : -args.radius,
+                    :,
+                ]
+            )
+            lnrho = tf.squeeze(
+                lnrho[
+                    :,
+                    args.radius : -args.radius,
+                    args.radius : -args.radius,
+                    args.radius : -args.radius,
+                    :,
+                ]
+            )
+            aa = tf.squeeze(
+                aa[
+                    :,
+                    args.radius : -args.radius,
+                    args.radius : -args.radius,
+                    args.radius : -args.radius,
+                    :,
+                ]
+            )
+            ss = tf.squeeze(
+                ss[
+                    :,
+                    args.radius : -args.radius,
+                    args.radius : -args.radius,
+                    args.radius : -args.radius,
+                    :,
+                ]
+            )
 
             # Flatten
             ## Hydro
@@ -831,7 +1037,9 @@ elif args.library in 'tensorflow':
             lnrho = tf.reshape(lnrho, [-1])
             grad_lnrho = tf.reshape(tf.transpose(grad_lnrho, [0, 4, 1, 2, 3]), (3, -1))
             grad_uu = tf.reshape(tf.transpose(grad_uu, [0, 4, 1, 2, 3]), (3, 3, -1))
-            hessian_uu = tf.reshape(tf.transpose(hessian_uu, [0, 4, 1, 2, 3]), (3, 3, -1))
+            hessian_uu = tf.reshape(
+                tf.transpose(hessian_uu, [0, 4, 1, 2, 3]), (3, 3, -1)
+            )
             mixed_uu = tf.reshape(tf.transpose(mixed_uu, [0, 4, 1, 2, 3]), (3, 3, -1))
 
             ## MHD
@@ -840,9 +1048,13 @@ elif args.library in 'tensorflow':
             grad_ss = tf.reshape(tf.transpose(grad_ss, [0, 4, 1, 2, 3]), (3, -1))
             hessian_ss = tf.reshape(tf.transpose(hessian_ss, [0, 4, 1, 2, 3]), (3, -1))
             grad_aa = tf.reshape(tf.transpose(grad_aa, [0, 4, 1, 2, 3]), (3, 3, -1))
-            hessian_aa = tf.reshape(tf.transpose(hessian_aa, [0, 4, 1, 2, 3]), (3, 3, -1))
+            hessian_aa = tf.reshape(
+                tf.transpose(hessian_aa, [0, 4, 1, 2, 3]), (3, 3, -1)
+            )
             mixed_aa = tf.reshape(tf.transpose(mixed_aa, [0, 4, 1, 2, 3]), (3, 3, -1))
-            cs2 = cs2_sound * tf.exp((gamma/cp_sound) * ss + (gamma - 1) * (lnrho - lnrho0))
+            cs2 = cs2_sound * tf.exp(
+                (gamma / cp_sound) * ss + (gamma - 1) * (lnrho - lnrho0)
+            )
             cs2 = tf.reshape(cs2, [-1])
 
             # More complex operations
@@ -855,21 +1067,21 @@ elif args.library in 'tensorflow':
             grad_div_uy = mixed_uu[0, 0] + hessian_uu[1, 1] + mixed_uu[2, 2]
             grad_div_uz = mixed_uu[0, 1] + mixed_uu[1, 2] + hessian_uu[2, 2]
             ## Traceless rate-of-strain stress tensor
-            S00 = (2/3) * grad_uu[0, 0] - (1/3) * (grad_uu[1,1] + grad_uu[2, 2])
-            S01 = (1/2) * (grad_uu[0, 1] + grad_uu[1, 0])
-            S02 = (1/2) * (grad_uu[0,2] + grad_uu[2,0])
+            S00 = (2 / 3) * grad_uu[0, 0] - (1 / 3) * (grad_uu[1, 1] + grad_uu[2, 2])
+            S01 = (1 / 2) * (grad_uu[0, 1] + grad_uu[1, 0])
+            S02 = (1 / 2) * (grad_uu[0, 2] + grad_uu[2, 0])
             S0 = tf.stack([S00, S01, S02])
-            
+
             S10 = S01
-            S11 = (2/3) * grad_uu[1, 1] - (1/3) * (grad_uu[0,0] + grad_uu[2, 2])
-            S12 = (1/2) * (grad_uu[1, 2] + grad_uu[2, 1])
+            S11 = (2 / 3) * grad_uu[1, 1] - (1 / 3) * (grad_uu[0, 0] + grad_uu[2, 2])
+            S12 = (1 / 2) * (grad_uu[1, 2] + grad_uu[2, 1])
             S1 = tf.stack([S10, S11, S12])
 
             S20 = S02
             S21 = S12
-            S22 = (2/3) * grad_uu[2, 2] - (1/3) * (grad_uu[0,0] + grad_uu[1, 1])
+            S22 = (2 / 3) * grad_uu[2, 2] - (1 / 3) * (grad_uu[0, 0] + grad_uu[1, 1])
             S2 = tf.stack([S20, S21, S22])
-            
+
             S = tf.concat([S0, S1, S2], axis=0)
             ## MHD
             laplace_aa = tf.reduce_sum(hessian_aa, axis=1)
@@ -878,78 +1090,111 @@ elif args.library in 'tensorflow':
             grad_div_ay = mixed_aa[0, 0] + hessian_aa[1, 1] + mixed_aa[2, 2]
             grad_div_az = mixed_aa[0, 1] + mixed_aa[1, 2] + hessian_aa[2, 2]
             grad_div_aa = tf.stack([grad_div_ax, grad_div_ay, grad_div_az])
-            j = (1/mu0) * (grad_div_aa - laplace_aa)
+            j = (1 / mu0) * (grad_div_aa - laplace_aa)
             B = self.curl(grad_aa)
             inv_rho = 1 / tf.exp(lnrho)
             lnT = lnT0 + (gamma / cp_sound) * ss + (gamma - 1) * (lnrho - lnrho0)
             inv_pT = 1 / (tf.exp(lnrho) * tf.exp(lnT))
             j_cross_B = self.cross(j, B)
-            entropy_rhs = (0) - (0) + eta * mu0 * self.dot(j, j)\
-            + 2 * tf.exp(lnrho) * nu_visc * tf.reduce_sum(S, axis=0)\
-            + zeta * tf.exp(lnrho) * div_uu * div_uu
+            entropy_rhs = (
+                (0)
+                - (0)
+                + eta * mu0 * self.dot(j, j)
+                + 2 * tf.exp(lnrho) * nu_visc * tf.reduce_sum(S, axis=0)
+                + zeta * tf.exp(lnrho) * div_uu * div_uu
+            )
             ## Heat conduction
             grad_ln_chi = -grad_lnrho
-            first_term = gamma * (1/cp_sound) * laplace_ss + (gamma - 1) * laplace_lnrho
-            second_term = gamma * (1/cp_sound) * grad_ss + (gamma - 1.) * grad_lnrho
-            third_term = gamma * ((1/cp_sound) * grad_ss + grad_lnrho) + grad_ln_chi
+            first_term = (
+                gamma * (1 / cp_sound) * laplace_ss + (gamma - 1) * laplace_lnrho
+            )
+            second_term = gamma * (1 / cp_sound) * grad_ss + (gamma - 1.0) * grad_lnrho
+            third_term = gamma * ((1 / cp_sound) * grad_ss + grad_lnrho) + grad_ln_chi
             chi = K_heatcond / (tf.exp(lnrho) * cp_sound)
-            heat_conduction = cp_sound * chi * (first_term + self.dot(second_term, third_term))
-
+            heat_conduction = (
+                cp_sound * chi * (first_term + self.dot(second_term, third_term))
+            )
 
             # Equations
             ## Hydro
             continuity = -self.dot(uu, grad_lnrho) - div_uu
-            momx = - self.dot(uu, grad_uu[0])\
-                - cs2 * ((1/cp_sound) * grad_ss[0] + grad_lnrho[0])\
-                + nu_visc * (laplace_uu[0] + (1/3) * grad_div_ux + 2 * self.dot(S0, grad_lnrho))\
-                + zeta * grad_div_ux\
+            momx = (
+                -self.dot(uu, grad_uu[0])
+                - cs2 * ((1 / cp_sound) * grad_ss[0] + grad_lnrho[0])
+                + nu_visc
+                * (laplace_uu[0] + (1 / 3) * grad_div_ux + 2 * self.dot(S0, grad_lnrho))
+                + zeta * grad_div_ux
                 + inv_rho * j_cross_B[0]
-            momy = - self.dot(uu, grad_uu[1])\
-                - cs2 * ((1/cp_sound) * grad_ss[1] + grad_lnrho[1])\
-                + nu_visc * (laplace_uu[1] + (1/3) * grad_div_uy + 2 * self.dot(S1, grad_lnrho))\
-                + zeta * grad_div_uy\
+            )
+            momy = (
+                -self.dot(uu, grad_uu[1])
+                - cs2 * ((1 / cp_sound) * grad_ss[1] + grad_lnrho[1])
+                + nu_visc
+                * (laplace_uu[1] + (1 / 3) * grad_div_uy + 2 * self.dot(S1, grad_lnrho))
+                + zeta * grad_div_uy
                 + inv_rho * j_cross_B[1]
-            momz = - self.dot(uu, grad_uu[2])\
-                - cs2 * ((1/cp_sound) * grad_ss[2] + grad_lnrho[2])\
-                + nu_visc * (laplace_uu[2] + (1/3) * grad_div_uz + 2 * self.dot(S2, grad_lnrho))\
-                + zeta * grad_div_uz\
+            )
+            momz = (
+                -self.dot(uu, grad_uu[2])
+                - cs2 * ((1 / cp_sound) * grad_ss[2] + grad_lnrho[2])
+                + nu_visc
+                * (laplace_uu[2] + (1 / 3) * grad_div_uz + 2 * self.dot(S2, grad_lnrho))
+                + zeta * grad_div_uz
                 + inv_rho * j_cross_B[2]
+            )
             ## MHD
             ind = self.cross(uu, B) + eta * laplace_aa
-            entropy = - self.dot(uu, grad_ss) + inv_pT * entropy_rhs + heat_conduction
+            entropy = -self.dot(uu, grad_ss) + inv_pT * entropy_rhs + heat_conduction
 
-            return tf.reshape(tf.stack([continuity, momx, momy, momz, ind[0], ind[1], ind[2], entropy]), (len(field_names), nn[2], nn[1], nn[0], 1))
+            return tf.reshape(
+                tf.stack(
+                    [continuity, momx, momy, momz, ind[0], ind[1], ind[2], entropy]
+                ),
+                (len(field_names), nn[2], nn[1], nn[0], 1),
+            )
 
         @tf.function(jit_compile=True)
         def forward_old(self, input):
 
             # Fields
-            uu = tf.gather(input, indices=[field_indices['ux'],
-                                           field_indices['uy'], field_indices['uz']])
-            lnrho = input[field_indices['lnrho']:field_indices['lnrho']+1]
+            uu = tf.gather(
+                input,
+                indices=[field_indices["ux"], field_indices["uy"], field_indices["uz"]],
+            )
+            lnrho = input[field_indices["lnrho"] : field_indices["lnrho"] + 1]
 
             # Convolutions
             grad_lnrho = lib.convolve(lnrho, self.ddx)
-            grad_uu, hessian_uu, mixed_uu = tf.split(lib.convolve(
-                uu, tf.concat([self.ddx, self.d2dx2, self.d2dxdy], axis=-1)), 3, axis=-1)
+            grad_uu, hessian_uu, mixed_uu = tf.split(
+                lib.convolve(
+                    uu, tf.concat([self.ddx, self.d2dx2, self.d2dxdy], axis=-1)
+                ),
+                3,
+                axis=-1,
+            )
 
             # Squeeze input and remove padding
-            uu = tf.squeeze(uu[:, args.radius:-args.radius,
-                               args.radius:-args.radius, args.radius:-args.radius, :])
+            uu = tf.squeeze(
+                uu[
+                    :,
+                    args.radius : -args.radius,
+                    args.radius : -args.radius,
+                    args.radius : -args.radius,
+                    :,
+                ]
+            )
             # lnrho = tf.squeeze(lnrho[:, args.radius:-args.radius, args.radius:-
             #                          args.radius, args.radius:-args.radius, :])
 
             # Flatten
             uu = tf.reshape(uu, (3, -1))
-            #lnrho = tf.reshape(lnrho, shape=[-1])
-            grad_lnrho = tf.reshape(tf.transpose(
-                grad_lnrho, [0, 4, 1, 2, 3]), (3, -1))
-            grad_uu = tf.reshape(tf.transpose(
-                grad_uu, [0, 4, 1, 2, 3]), (3, 3, -1))
-            hessian_uu = tf.reshape(tf.transpose(
-                hessian_uu, [0, 4, 1, 2, 3]), (3, 3, -1))
-            mixed_uu = tf.reshape(tf.transpose(
-                mixed_uu, [0, 4, 1, 2, 3]), (3, 3, -1))
+            # lnrho = tf.reshape(lnrho, shape=[-1])
+            grad_lnrho = tf.reshape(tf.transpose(grad_lnrho, [0, 4, 1, 2, 3]), (3, -1))
+            grad_uu = tf.reshape(tf.transpose(grad_uu, [0, 4, 1, 2, 3]), (3, 3, -1))
+            hessian_uu = tf.reshape(
+                tf.transpose(hessian_uu, [0, 4, 1, 2, 3]), (3, 3, -1)
+            )
+            mixed_uu = tf.reshape(tf.transpose(mixed_uu, [0, 4, 1, 2, 3]), (3, 3, -1))
 
             # Computations
             laplace_uu = tf.reduce_sum(hessian_uu, axis=1)
@@ -959,36 +1204,48 @@ elif args.library in 'tensorflow':
             grad_div_uz = mixed_uu[0, 1] + mixed_uu[1, 2] + hessian_uu[2, 2]
 
             ## Traceless rate-of-strain stress tensor
-            S00 = (2/3) * grad_uu[0, 0] - (1/3) * (grad_uu[1,1] + grad_uu[2, 2])
-            S01 = (1/2) * (grad_uu[0, 1] + grad_uu[1, 0])
-            S02 = (1/2) * (grad_uu[0,2] + grad_uu[2,0])
+            S00 = (2 / 3) * grad_uu[0, 0] - (1 / 3) * (grad_uu[1, 1] + grad_uu[2, 2])
+            S01 = (1 / 2) * (grad_uu[0, 1] + grad_uu[1, 0])
+            S02 = (1 / 2) * (grad_uu[0, 2] + grad_uu[2, 0])
             S0 = tf.stack([S00, S01, S02])
-            
+
             S10 = S01
-            S11 = (2/3) * grad_uu[1, 1] - (1/3) * (grad_uu[0,0] + grad_uu[2, 2])
-            S12 = (1/2) * (grad_uu[1, 2] + grad_uu[2, 1])
+            S11 = (2 / 3) * grad_uu[1, 1] - (1 / 3) * (grad_uu[0, 0] + grad_uu[2, 2])
+            S12 = (1 / 2) * (grad_uu[1, 2] + grad_uu[2, 1])
             S1 = tf.stack([S10, S11, S12])
-            
+
             S20 = S02
             S21 = S12
-            S22 = (2/3) * grad_uu[2, 2] - (1/3) * (grad_uu[0,0] + grad_uu[1, 1])
+            S22 = (2 / 3) * grad_uu[2, 2] - (1 / 3) * (grad_uu[0, 0] + grad_uu[1, 1])
             S2 = tf.stack([S20, S21, S22])
 
             continuity = -self.dot(uu, grad_lnrho) - div_uu
-            momx = - self.dot(uu, grad_uu[0])\
-                - cs2 * grad_lnrho[0]\
-                + nu_visc * (laplace_uu[0] + (1/3) * grad_div_ux + 2 * self.dot(S0, grad_lnrho))\
+            momx = (
+                -self.dot(uu, grad_uu[0])
+                - cs2 * grad_lnrho[0]
+                + nu_visc
+                * (laplace_uu[0] + (1 / 3) * grad_div_ux + 2 * self.dot(S0, grad_lnrho))
                 + zeta * grad_div_ux
-            momy = - self.dot(uu, grad_uu[1])\
-                - cs2 * grad_lnrho[1]\
-                + nu_visc * (laplace_uu[1] + (1/3) * grad_div_uy + 2 * self.dot(S1, grad_lnrho))\
+            )
+            momy = (
+                -self.dot(uu, grad_uu[1])
+                - cs2 * grad_lnrho[1]
+                + nu_visc
+                * (laplace_uu[1] + (1 / 3) * grad_div_uy + 2 * self.dot(S1, grad_lnrho))
                 + zeta * grad_div_uy
-            momz = - self.dot(uu, grad_uu[2])\
-                - cs2 * grad_lnrho[2]\
-                + nu_visc * (laplace_uu[2] + (1/3) * grad_div_uz + 2 * self.dot(S2, grad_lnrho))\
+            )
+            momz = (
+                -self.dot(uu, grad_uu[2])
+                - cs2 * grad_lnrho[2]
+                + nu_visc
+                * (laplace_uu[2] + (1 / 3) * grad_div_uz + 2 * self.dot(S2, grad_lnrho))
                 + zeta * grad_div_uz
+            )
 
-            return tf.reshape(tf.stack([continuity, momx, momy, momz]), (len(field_names), nn[2], nn[1], nn[0], 1))
+            return tf.reshape(
+                tf.stack([continuity, momx, momy, momz]),
+                (len(field_names), nn[2], nn[1], nn[0], 1),
+            )
 
         def benchmark(self, num_samples):
             benchmark_output = Output()
@@ -1005,54 +1262,69 @@ elif args.library in 'tensorflow':
                     benchmark = tf.test.Benchmark()
                     for i in range(num_samples):
                         measurement = benchmark.run_op_benchmark(
-                            sess, self.forward(input), min_iters=1)
-                        benchmark_output.record(
-                            1e3*measurement['wall_time'], i)
+                            sess, self.forward(input), min_iters=1
+                        )
+                        benchmark_output.record(1e3 * measurement["wall_time"], i)
 
     lib = Tensorflow(args.device, args.dtype)
 
-print(f'Using library {lib.name}')
+print(f"Using library {lib.name}")
 
 # %%
 # Check correctness
 if args.verify:
-    print('Verifying results...')
+    print("Verifying results...")
     model = forward(get_input())
-    if lib.name == 'pytorch':
+    if lib.name == "pytorch":
         input = lib.pad(lib.get_input())
         traced = torch.jit.trace(lib, input)
         candidate = traced.forward(input).cpu().numpy().squeeze()
     else:
         candidate = lib.forward(lib.pad(lib.get_input())).cpu().numpy().squeeze()
-    epsilon = np.finfo(
-        np.float64).eps if args.dtype == np.float64 else np.finfo(np.float32).eps
+    epsilon = (
+        np.finfo(np.float64).eps
+        if args.dtype == np.float64
+        else np.finfo(np.float32).eps
+    )
     epsilon *= 100
     correct = np.allclose(model, candidate, rtol=epsilon, atol=epsilon)
-    print(f'Done. Results within rel/abs epsilon {epsilon}: {correct}')
+    print(f"Done. Results within rel/abs epsilon {epsilon}: {correct}")
     if not correct:
         diff = np.abs(model - candidate)
-        print(f'Largest absolute error: {diff.max()}')
-        print(f'Indices: {np.where(diff > epsilon)}')
+        print(f"Largest absolute error: {diff.max()}")
+        print(f"Indices: {np.where(diff > epsilon)}")
 
     # Check convolutions
     model = convolve(get_input(), get_weights())
-    candidate = lib.convolve(lib.pad(lib.get_input()),
-                             lib.get_weights(get_weights())).cpu().numpy().squeeze()
+    candidate = (
+        lib.convolve(lib.pad(lib.get_input()), lib.get_weights(get_weights()))
+        .cpu()
+        .numpy()
+        .squeeze()
+    )
     for field in range(len(model)):
         for stencil in range(len(model[0])):
-            if args.library in 'tensorflow':
+            if args.library in "tensorflow":
                 correct = np.allclose(
-                    model[field, stencil], candidate[field, :, :, :, stencil], rtol=epsilon, atol=epsilon)
-            elif args.library in 'pytorch':
+                    model[field, stencil],
+                    candidate[field, :, :, :, stencil],
+                    rtol=epsilon,
+                    atol=epsilon,
+                )
+            elif args.library in "pytorch":
                 correct = np.allclose(
-                    model[field, stencil], candidate[field, stencil, :, :, :], rtol=epsilon, atol=epsilon)
+                    model[field, stencil],
+                    candidate[field, stencil, :, :, :],
+                    rtol=epsilon,
+                    atol=epsilon,
+                )
 
             if not correct:
-                print(f'Convolution f{field}_s{stencil} correct: {correct}')
-    
+                print(f"Convolution f{field}_s{stencil} correct: {correct}")
+
 # %%
 # Benchmark
-print('Benchmarking')
+print("Benchmarking")
 lib.benchmark(args.nsamples)
 
 # %%
@@ -1063,26 +1335,26 @@ if args.visualize:
     from matplotlib.animation import FuncAnimation
     from IPython.display import HTML
 
-
-    def alpha_step(step, dt, intermediate, rate_of_change):    
-        alpha = [0., -5./9., -153. / 128.]
+    def alpha_step(step, dt, intermediate, rate_of_change):
+        alpha = [0.0, -5.0 / 9.0, -153.0 / 128.0]
         return alpha[step] * intermediate + rate_of_change * dt
 
     def beta_step(step, dt, field, intermediate):
-        beta = [1. / 3., 15./ 16., 8. / 15.]
+        beta = [1.0 / 3.0, 15.0 / 16.0, 8.0 / 15.0]
         return field + beta[step] * intermediate
 
-    fig, axs = plt.subplots(2, int(len(field_names)/2), figsize=(15,5), dpi=200)
+    fig, axs = plt.subplots(2, int(len(field_names) / 2), figsize=(15, 5), dpi=200)
     ims = []
     cbars = []
     for i, ax in enumerate(axs.flat):
-        im = ax.imshow(np.zeros((nn[1], nn[0])), cmap='plasma')
+        im = ax.imshow(np.zeros((nn[1], nn[0])), cmap="plasma")
         ims.append(im)
         cbars.append(fig.colorbar(im, ax=ax))
         ax.set_title(field_names[i])
 
     input = lib.get_input()
     winput = lib.get_input()
+
     def animate(i):
         global lib, input, winput
 
@@ -1094,28 +1366,28 @@ if args.visualize:
 
         for i, ax in enumerate(axs.flat):
             field = input[i].cpu().numpy().squeeze()
-            field = field[int(field.shape[0]/2),:,:]
+            field = field[int(field.shape[0] / 2), :, :]
 
-            #ax.imshow(field, cmap='plasma', interpolation='none')
+            # ax.imshow(field, cmap='plasma', interpolation='none')
             ims[i].set_data(field)
             ims[i].set_clim(np.min(field), np.max(field))
-            #fig.colorbar(ims[i])
+            # fig.colorbar(ims[i])
             # if i == 0:
             #     print(field)
 
-        #if torch.isnan(input).any():
+        # if torch.isnan(input).any():
         #    print(input)
         #    print('Found nan')
-        return ims,
+        return (ims,)
 
     ani = FuncAnimation(fig, animate, frames=100, blit=False)
-    ani.save(f'nonlinear-mhd-{args.library}.mp4', writer='ffmpeg')
-    #plt.show()
-    #plt.close()
-    #HTML(ani.to_html5_video())
+    ani.save(f"nonlinear-mhd-{args.library}.mp4", writer="ffmpeg")
+    # plt.show()
+    # plt.close()
+    # HTML(ani.to_html5_video())
 
 # %%
-'''
+"""
 # Move fields to device
 input = torch.from_numpy(input).reshape(1, 1, ny, nx).to(dtype=dtype, device=device)
 
@@ -1142,9 +1414,9 @@ def animate(i):
 
 ani = FuncAnimation(fig, animate, interval=1)
 plt.show()
-'''
+"""
 
-'''
+"""
 # %%
 # FFT test
 import torch
@@ -1188,4 +1460,4 @@ candidate = fprime[:, :args.dims[2], :args.dims[1], :args.dims[0]]
 candidate = torch.cat([candidate[:1], torch.flip(candidate[1:], dims=[0])])
 
 np.allclose(model, candidate)
-'''
+"""
