@@ -474,8 +474,8 @@ Task::syncVBA()
     for(int i=0;i<NUM_WORK_BUFFERS; ++i) {
         vba.w[i] = device->vba.w[i];
     }
-    for(int i=0;i<NUM_PROFILES; ++i) {
-        vba.profiles[i] = device->vba.profiles[i];
+    for(int i=0;i<NUM_REAL_ARRAYS; ++i) {
+        vba.real_arrays[i] = device->vba.real_arrays[i];
     }
 }
 

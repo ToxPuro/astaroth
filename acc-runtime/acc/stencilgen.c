@@ -48,7 +48,6 @@
 
 #include "stencil_accesses.h"
 #include "stencilgen.h"
-#include "profilegen.h"
 
 #include "implementation.h"
 
@@ -213,19 +212,6 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses)
   printf("};");
   printf("const auto vecprevious __attribute__((unused)) = [&](const int3 field3){return (AcReal3) {previous((Field)field3.x), previous((Field)field3.y), previous((Field)field3.z)};};");
 
-  //Note to Johannes, on HIP __ldg is no-op so we can safely use it both for CUDA and HIP
-  for (int profile = 0; profile < NUM_PROFILES; ++profile){
-    for (int read_index = 0; read_index < profile_read_set_sizes[profile]; ++read_index)
-    {
-      //TP: if we are generating mem accesses for some reason reading from vba does not work
-      //as a workaround simply set the values to zero
-      char* vertex_idx_coordinate = profile_dims[profile] == 1 ? "vertexIdx.x" : profile_dims[profile] == 2 ? "vertexIdx.y" : "vertexIdx.z";
-      if(gen_mem_accesses)
-          printf("const auto p_%d_%d= 0;", profile, read_index);
-      else
-  printf("const auto p_%d_%d= __ldg(&vba.profiles[%d][%s+(%d)]);", profile, read_index, profile, vertex_idx_coordinate,profile_read_set[profile][read_index]);
-    }
-  }
 
   for (int field = 0; field < NUM_FIELDS; ++field)
     if (gen_mem_accesses)

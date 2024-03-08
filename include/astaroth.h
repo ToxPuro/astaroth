@@ -1094,10 +1094,7 @@ AcResult acDeviceLoadVertexBuffer(const Device device, const Stream stream, cons
 AcResult acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mesh);
 
 /** */
-AcResult acDeviceLoadProfile(const Device device, const Stream stream, const AcMeshInfo host_info,
-                                  const Profile profile);
-/** */
-AcResult acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info,
+AcResult acDeviceLoadRealArray(const Device device, const Stream stream, const AcMeshInfo host_info,
                                   const AcRealArrayParam array);
 
 /** */

@@ -143,7 +143,7 @@ format_source(const char* file_in, const char* file_out)
   fclose(out);
 }
 
-int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* dir, const bool gen_mem_accesses)
+int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* stage4, const char* dir, const bool gen_mem_accesses)
 {
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
         {
@@ -181,8 +181,8 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
               assert(retval != -1);
           }
         }
-	//Add builtin kernels
 	FILE* f_in = fopen(stage3,"a");
+	//Add builtin kernels
 	fprintf(f_in,"\nKernel AC_BUILTIN_RESET() {\n"
 		"for field in 0:NUM_FIELDS {\n"
 			"write(Field(field), 0.0)\n"
@@ -232,14 +232,15 @@ main(int argc, char** argv)
         const char* stage1 = "user_kernels.ac.pp_stage1";
         const char* stage2 = "user_kernels.ac.pp_stage2";
         const char* stage3 = "user_kernels.ac.pp_stage3";
+        const char* stage4 = "user_kernels.ac.pp_stage4";
         const char* dir = dirname(argv[1]); // WARNING: dirname has side effects!
 	dir_backup = dir;
 
         if (OPTIMIZE_MEM_ACCESSES) {
-          code_generation_pass(stage0, stage1, stage2, stage3, dir, true); // Uncomment to enable stencil mem access checking
+          code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, true); // Uncomment to enable stencil mem access checking
           generate_mem_accesses(); // Uncomment to enable stencil mem access checking
         }
-        code_generation_pass(stage0, stage1, stage2, stage3, dir, false);
+        code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, false);
         
 
         return EXIT_SUCCESS;
@@ -253,7 +254,7 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP
-%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL PROFILE_X PROFILE_Y PROFILE_Z AUXILIARY_FIELD WORK_BUFFER REAL_ARRAY
+%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL AUXILIARY_FIELD WORK_BUFFER REAL_ARRAY
 %token KERNEL SUM MAX COMMUNICATED 
 %token HOSTDEFINE
 
@@ -279,18 +280,10 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             } 
-            else if(get_node_by_token(PROFILE_X, $$->rhs)) {
+            else if (get_node_by_token(REAL_ARRAY, $$->rhs)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-            }
-            else if(get_node_by_token(PROFILE_Y, $$->rhs)) {
-                variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-            }
-            else if(get_node_by_token(PROFILE_Z, $$->rhs)) {
-                variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-            }
+            } 
             else if(get_node_by_token(AUXILIARY_FIELD, $$->rhs)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
@@ -349,9 +342,6 @@ real3: REAL3           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 real_array: REAL_ARRAY { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal*", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcMatrix", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 field: FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-profile_x: PROFILE_X       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-profile_y: PROFILE_Y       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-profile_z: PROFILE_Z       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 auxiliary_field: AUXILIARY_FIELD  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 work_buffer: WORK_BUFFER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 stencil: STENCIL       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("", $$); /*astnode_set_buffer(yytext, $$);*/ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -392,9 +382,6 @@ type_specifier: int     { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real3   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | matrix  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | field   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | profile_x { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | profile_y { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | profile_z { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | auxiliary_field { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | work_buffer { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | stencil { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
