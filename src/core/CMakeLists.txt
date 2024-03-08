@@ -24,6 +24,7 @@ if (USE_HIP)
         )
     endif()
 
+# JP: disabled as this caused issues on Triton. CMake should resolve these automatically.
 #    message("AMD GPU targets: ${AMDGPU_TARGETS}\n")
 #    foreach(amdgpu_target ${AMDGPU_TARGETS})
 #	target_link_libraries(astaroth_core
