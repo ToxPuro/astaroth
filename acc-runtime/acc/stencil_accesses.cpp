@@ -77,6 +77,7 @@ LOCAL_COMPDOMAIN_IDX(const int3 coord)
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
                               // least the max smem size of the device
+AcReal big_array[8*1024*1024]{0.0};
 
 static int stencils_accessed[NUM_FIELDS][NUM_STENCILS] = {{0}};
 static AcMeshInfo d_mesh_info;

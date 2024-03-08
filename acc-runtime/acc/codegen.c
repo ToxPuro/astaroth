@@ -26,7 +26,6 @@
 #include "tab.h"
 
 #define STENCILGEN_HEADER "stencilgen.h"
-#define PROFILE_HEADER "profilegen.h"
 #define STENCILGEN_SRC ACC_DIR "/stencilgen.c"
 #define STENCILGEN_EXEC "stencilgen.out"
 #define STENCILACC_SRC ACC_DIR "/stencil_accesses.cpp"
@@ -51,12 +50,6 @@ char* symbol_var_length[SYMBOL_TABLE_SIZE];
 static size_t num_symbols[MAX_NESTS] = {};
 static size_t current_nest           = 0;
 
-//profiles symbol table
-#define MAX_NUM_PROFILES (256)
-char* profile_names[MAX_NUM_PROFILES];
-int profile_read_set_sizes[MAX_NUM_PROFILES];
-int* profile_read_set[MAX_NUM_PROFILES];
-int num_profiles = 0;
 
 //arrays symbol table
 #define MAX_NUM_ARRAYS (256)
@@ -274,6 +267,28 @@ get_node(const NodeType type, const ASTNode* node)
   else
     return NULL;
 }
+void
+gen_array_reads(ASTNode* node, bool gen_mem_accesses)
+{
+  if(node->buffer){
+  	const int l_current_nest = 0;
+  	for (size_t i = 0; i < num_symbols[l_current_nest]; ++i)
+    	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
+          !strcmp(symbol_table[i].tspecifier, "AcReal*") && !strcmp(node->buffer,symbol_table[i].identifier))
+	{
+		char new_name[4096];
+		if(gen_mem_accesses)
+			sprintf(new_name,"%s","big_array");
+		else
+			sprintf(new_name,"vba.real_arrays[(int)%s]",node->buffer);
+		node->buffer = strdup(new_name);
+	}
+  }
+  if(node->lhs)
+    gen_array_reads(node->lhs,gen_mem_accesses);
+  if(node->rhs)
+    gen_array_reads(node->rhs,gen_mem_accesses);
+}
 void combine(const ASTNode* node, char* res){
   if(node->buffer)
     strcat(res,node->buffer);
@@ -281,51 +296,6 @@ void combine(const ASTNode* node, char* res){
     combine(node->lhs, res);
   if(node->rhs)
     combine(node->rhs, res);
-}
-bool is_profile_read_root(const ASTNode* node){
-  const ASTNode* lhs = node;
-  for(int i = 0; i<3; i++){
-    if(!lhs->lhs)
-      return false;
-    lhs = lhs->lhs;
-  }
-  if(lhs->buffer && node->infix && node->postfix && (strcmp(node->infix, "[") == 0) && (strcmp(node->postfix, "]") == 0))
-    for(int i=0;i<num_profiles;i++){
-      if((strcmp(lhs->buffer, profile_names[i]) == 0))
-        return true;
-    }
-  return false;
-}
-bool
-is_profile_specifier(const char* tspecifier)
-{
-  return 
-    !strcmp(tspecifier,"Profile_x") |
-    !strcmp(tspecifier,"Profile_y") |
-    !strcmp(tspecifier,"Profile_z");
-}
-void add_profile(const char* profile_name){
-  profile_names[num_profiles] = strdup(profile_name);
-  profile_read_set_sizes[num_profiles] = 0;
-  profile_read_set[num_profiles] = (int*)malloc(MAX_NUM_PROFILES * sizeof(int));
-  num_profiles++;
-}
-int get_profile_index(char* profile_name){
-  for(int i=0;i<num_profiles;i++){
-    if(strcmp(profile_name, profile_names[i]) == 0)
-      return i;
-  }
-  return -1;
-}
-int add_profile_read_index(int profile_index, int array_index){
-  for(int  i=0; i<profile_read_set_sizes[profile_index]; i++){
-    if(array_index == profile_read_set[profile_index][i]){
-      return i;
-    }
-  }
-  profile_read_set[profile_index][profile_read_set_sizes[profile_index]] = array_index;
-  profile_read_set_sizes[profile_index]++;
-  return profile_read_set_sizes[profile_index]-1;
 }
 
 static void
@@ -405,7 +375,7 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
       }
       if (!(node->type & NODE_MEMBER_ID))
       {
-        if (tspec != NULL && (is_profile_specifier(tspec) |!strcmp(tspec,"AcReal*")))
+        if (tspec != NULL && !strcmp(tspec,"AcReal*"))
         {
           const ASTNode* nd = decl->rhs->lhs->rhs->lhs->lhs->lhs->lhs;
           if(nd)
@@ -604,13 +574,6 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "} Field;");
 
 
-  // Enums for profiles
-  fprintf(fp, "typedef enum {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (is_profile_specifier(symbol_table[i].tspecifier)){
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-    }
-  fprintf(fp, "NUM_PROFILES} Profile;");
 
   // Enums for work_buffers 
   fprintf(fp, "typedef enum {");
@@ -657,17 +620,15 @@ gen_user_defines(const ASTNode* root, const char* out)
       fprintf(fp, "%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_REAL_PARAMS} AcRealParam;");
 
+
   // Enums for arrays
   fprintf(fp, "typedef enum {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_VARIABLE_ID &&
        !strcmp(symbol_table[i].tspecifier, "AcReal*"))
-       {
-        printf("\n\nArrays are under development\n\n");
-        exit(0);
-        fprintf(fp, "%s,", symbol_table[i].identifier);
-       }
+	    fprintf(fp, "%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_REAL_ARRAYS} AcRealArrayParam;");
+
 
   fprintf(fp, "typedef enum {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -696,19 +657,7 @@ gen_user_defines(const ASTNode* root, const char* out)
     fprintf(fp, "%s,", "true");
   fprintf(fp, "};");
 
-  fprintf(fp, "static const char* profile_names[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (is_profile_specifier(symbol_table[i].tspecifier))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
 
-  fprintf(fp, "static const AcIntParam profile_lengths[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (is_profile_specifier(symbol_table[i].tspecifier))
-    {
-      fprintf(fp, "%s,", symbol_var_length[i]);
-    }
-  fprintf(fp, "};");
 
   fprintf(fp, "static const char* work_buffer_names[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -717,17 +666,6 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "};");
 
 
-
-  fprintf(fp, "static const int profile_dims[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i){
-    if(!strcmp(symbol_table[i].tspecifier,"Profile_x"))
-      fprintf(fp, "1,");
-    if(!strcmp(symbol_table[i].tspecifier,"Profile_y"))
-      fprintf(fp, "2,");
-    if(!strcmp(symbol_table[i].tspecifier,"Profile_z"))
-      fprintf(fp, "3,");
-  }
-  fprintf(fp, "};");
 
 
   fprintf(fp, "static const char* kernel_names[] __attribute__((unused)) = {");
@@ -864,28 +802,6 @@ gen_user_kernels(const ASTNode* root, const char* out, const bool gen_mem_access
 
   symboltable_reset();
 }
-void gen_profile_reads(ASTNode* node){
-
-  if(is_profile_read_root(node)){
-    char* profile_name= node->lhs->lhs->lhs->buffer;
-    int profile_index = get_profile_index(profile_name);
-    char array_index_str[4096];
-    strcpy(array_index_str, "");
-    combine(node->rhs, array_index_str);
-    int array_index = atoi(array_index_str);
-    int num_profile_read = add_profile_read_index(profile_index, array_index);
-    char builder[4096];
-    sprintf(builder, "p_%d_%d", profile_index, num_profile_read);
-    node->buffer = strdup(builder);
-    node->postfix = node->infix;
-    node->lhs=node->rhs = NULL;
-  }
-  if(node->lhs)
-    gen_profile_reads(node->lhs);
-  if(node->rhs)
-    gen_profile_reads(node->rhs);
-}
-
 
 bool is_real_constant(const char* name)
 {
@@ -949,7 +865,6 @@ void replace_dynamic_coeffs(ASTNode* node)
 void
 generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 {
-  num_profiles = 0;
   assert(root);
 
   gen_user_defines(root, "user_defines.h");
@@ -958,7 +873,6 @@ generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   // Fill the symbol table
   traverse(root, 0, NULL);
   // print_symbol_table();
-  num_profiles = 0;
 
   // Generate user_kernels.h
   fprintf(stream, "#pragma once\n");
@@ -979,44 +893,11 @@ generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
       ++num_kernels;
 
 
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
 
-    if (is_profile_specifier(symbol_table[i].tspecifier))
-      add_profile(symbol_table[i].identifier);
-  gen_profile_reads(root);
-
-  //generate profile_read_set_sizes and profile_read_set accessible to stencilgen.c
-  FILE* profile_file = fopen(PROFILE_HEADER, "w");
-  fprintf(profile_file,"int profile_read_set_sizes[%d] = {", num_profiles);
-  for(int profile=0;profile<num_profiles;profile++){
-    fprintf(profile_file,"%d",profile_read_set_sizes[profile]);
-    if(profile<num_profiles-1)
-      fprintf(profile_file,",");
-  }
-  fprintf(profile_file,"};\n");
-  fprintf(profile_file,"int profile_read_set[%d][%d] = {", num_profiles, MAX_NUM_PROFILES);
-  for(int profile=0;profile<num_profiles;profile++){
-    fprintf(profile_file,"{");
-    for(int read=0;read<profile_read_set_sizes[profile];read++){
-      fprintf(profile_file,"%d",profile_read_set[profile][read]);
-      if(read < MAX_NUM_PROFILES)
-        fprintf(profile_file,",");
-    }
-    for(int read=profile_read_set_sizes[profile];read<MAX_NUM_PROFILES;read++){
-      fprintf(profile_file,"%d",0);
-      if(read < MAX_NUM_PROFILES)
-        fprintf(profile_file,",");
-    }
-    fprintf(profile_file,"}");
-    if(profile<num_profiles-1)
-      fprintf(profile_file,",");
-    fprintf(profile_file,"\n");
-  }
-  fprintf(profile_file,"};\n");
-  fclose(profile_file);
 
   // Device constants
   // gen_dconsts(root, stream);
+  gen_array_reads(root,gen_mem_accesses);
 
   // Stencils
 

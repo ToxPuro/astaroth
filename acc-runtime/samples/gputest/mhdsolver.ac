@@ -28,8 +28,8 @@ Field UUX, UUY, UUZ, RHO, SS, AAX, AAY, AAZ
 //Profile_Y AC_PROFILE_GRAVY_YPENCIL
 //Profile_Z AC_PROFILE_GRAVZ_ZPENCIL, AC_PROFILE_Z
 //Profile_Z AC_PROFILE_DLNHCOND_PROF, AC_PROFILE_HCOND_PROF
-Profile_z AC_dlnhcond_prof[AC_nz]
-Profile_z AC_hcond_prof[AC_nz]
+realArray AC_dlnhcond_prof[AC_nz]
+realArray AC_hcond_prof[AC_nz]
 
 
 

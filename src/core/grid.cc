@@ -377,13 +377,13 @@ acGridInit(AcMeshInfo info)
     acGridSynchronizeStream(STREAM_ALL);
     acVerboseLogFromRootProc(pid, "acGridInit: Done synchronizing streams\n");
 
-    for(int profile=0;profile<NUM_PROFILES;++profile)
+    for(int array=0;array<NUM_REAL_ARRAYS;++array)
     {
       //in case the user loaded a nullptr to the profile do not load it
-      if(submesh.info.profiles[profile] != nullptr){
-        acDeviceLoadProfile(grid.device,STREAM_DEFAULT,submesh.info,static_cast<Profile>(profile));
+      if(submesh.info.real_arrays[array] != nullptr){
+        acDeviceLoadRealArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcRealArrayParam>(array));
       }else{
-        acLogFromRootProc(pid, "acGridInit: Warning!!!\tProfile %s will be null and not allocated since you loaded a nullptr to it\n", profile_names[profile]);
+        acLogFromRootProc(pid, "acGridInit: Warning!!!\tReal array%s will be null and not allocated since you loaded a nullptr to it\n", real_array_param_names[array]);
       }
       acGridSynchronizeStream(STREAM_ALL);
     }
