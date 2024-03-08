@@ -491,6 +491,7 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
       device_malloc((void**) &vba.out[i],bytes);
     }
   }
+#endif
   //Allocate workbuffers
   for (int i = 0; i < NUM_WORK_BUFFERS; ++i)
     device_malloc((void**)&vba.w[i],bytes);
