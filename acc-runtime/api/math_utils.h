@@ -81,14 +81,14 @@ exp(const AcComplex& val)
 }
 
 #if defined(__CUDACC__)
-// These are already overloaded in the HIP API
-/*
 static HOST_DEVICE_INLINE AcComplex
 operator*(const AcReal& a, const AcComplex& b)
 {
   return (AcComplex){a * b.x, a * b.y};
 }
 
+/*
+// These are already overloaded in the HIP API
 static HOST_DEVICE_INLINE AcComplex
 operator*(const AcComplex& b, const AcReal& a)
 {

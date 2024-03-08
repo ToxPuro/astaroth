@@ -60,6 +60,10 @@ typedef float3 AcReal3;
 
 #define AC_REAL_PI ((AcReal)M_PI)
 
+// convert 3-array into vector
+#define TOVEC3(type,arr) ((type){arr[0],arr[1],arr[2]})
+#define TOACREAL3(arr) TOVEC3(AcReal3,arr)
+
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
 
 typedef struct {
