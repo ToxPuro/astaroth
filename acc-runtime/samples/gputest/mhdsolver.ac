@@ -8,6 +8,7 @@ real AC_lnrho0, AC_mu0, AC_lnT0
 // Note: not used by mhdsolver.ac at the moment (src/utils/modelsolver.c does)
 hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
 //#include "../../../../PC_moduleflags.h"
+hostdefine STENCIL_ORDER (6)
 hostdefine LDENSITY (0)
 hostdefine LHYDRO (0)
 hostdefine LMAGNETIC (0)
