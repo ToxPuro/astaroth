@@ -51,28 +51,10 @@
 #define HOST_DEVICE UNUSED
 #define HOST_DEVICE_INLINE inline UNUSED
 #define HOST_INLINE  __forceinline__ UNUSED
-#endif // __CUDACC__
+#endif // __CUDACC__ || __HIPCC__
 
-// Disabled for now, issues on lumi (exp, cos, sin ambiguous)
 #define ENABLE_COMPLEX_DATATYPE (1)
 #if ENABLE_COMPLEX_DATATYPE
-//static __device__ AcReal
-//cos(const AcReal& val)
-//{
-//  return cos(val);
-//}
-//
-//static __device__ AcReal
-//sin(const AcReal& val)
-//{
-//  return sin(val);
-//}
-//
-//static __device__ AcReal
-//exp(const AcReal& val)
-//{
-//  return exp(val);
-//}
 
 static HOST_DEVICE_INLINE AcComplex
 exp(const AcComplex& val)
@@ -80,7 +62,7 @@ exp(const AcComplex& val)
   return AcComplex(exp(val.x) * cos(val.y), exp(val.x) * sin(val.y));
 }
 
-#if defined(__CUDACC__)
+#if defined(__HIPCC__)
 static HOST_DEVICE_INLINE AcComplex
 operator*(const AcReal& a, const AcComplex& b)
 {
