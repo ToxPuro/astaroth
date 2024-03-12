@@ -70,7 +70,7 @@ symboltable_lookup(const char* identifier)
 }
 
 bool
-str_array_contains(const char** str_array, const size_t n, const char* str)
+str_array_contains(char* const* str_array, const size_t n, const char* str)
 {
 	for(size_t i = 0; i <  n; ++i)
 		if(!strcmp(str_array[i],str)) return true;
@@ -79,7 +79,7 @@ str_array_contains(const char** str_array, const size_t n, const char* str)
 
 
 static int 
-add_symbol(const NodeType type, const char** tqualifiers, const size_t n_tqualifiers, const char* tspecifier,
+add_symbol(const NodeType type, char* const* tqualifiers, const size_t n_tqualifiers, const char* tspecifier,
            const char* id)
 {
   assert(num_symbols[current_nest] < SYMBOL_TABLE_SIZE);
@@ -87,10 +87,9 @@ add_symbol(const NodeType type, const char** tqualifiers, const size_t n_tqualif
   symbol_table[num_symbols[current_nest]].type          = type;
   symbol_table[num_symbols[current_nest]].tspecifier[0] = '\0';
 
-  if (n_tqualifiers)
-    symbol_table[num_symbols[current_nest]].n_tqualifiers = n_tqualifiers;
-    for(size_t i = 0; i < n_tqualifiers; ++i)
- 	symbol_table[num_symbols[current_nest]].tqualifiers[i] = strdup(tqualifiers[i]);
+  symbol_table[num_symbols[current_nest]].n_tqualifiers = n_tqualifiers;
+  for(size_t i = 0; i < n_tqualifiers; ++i)
+	symbol_table[num_symbols[current_nest]].tqualifiers[i] = strdup(tqualifiers[i]);
 
   if (tspecifier)
     strcpy(symbol_table[num_symbols[current_nest]].tspecifier, tspecifier);
@@ -578,8 +577,6 @@ gen_user_defines(const ASTNode* root, const char* out)
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   {
     if(!strcmp(symbol_table[i].tspecifier,"Field")){
-	      for(size_t ti = 0; ti<symbol_table[i].n_tqualifiers; ++ti)
-		      printf("aux tq TP: %s\n",symbol_table[i].tqualifiers[ti]);
       field_names[num_of_fields] = strdup(symbol_table[i].identifier);
       if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"auxiliary"))
       {
@@ -615,8 +612,6 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "NUM_FIELDS=%d,", num_of_fields);
   fprintf(fp, "NUM_COMMUNICATED_FIELDS=%d,", num_of_communicated_fields);
   fprintf(fp, "} Field;\n");
-  printf("NUM_AUX=%d\n", num_of_auxiliary_fields);
-  printf("NUM_COMMUNICATED_FIELDS=%d\n", num_of_communicated_fields);
 
   fprintf(fp, "static const bool vtxbuf_is_auxiliary[] = {");
   for(int i=0;i<num_of_fields;++i)
@@ -626,13 +621,6 @@ gen_user_defines(const ASTNode* root, const char* out)
     	fprintf(fp, "%s,", "false");
   fprintf(fp, "};");
 
-  printf("\n");
-  for(int i=0;i<num_of_fields;++i)
-    if(field_is_auxiliary[i])
-    	printf("%s,", "true");
-    else
-    	printf("%s,", "false");
-  printf("\n");
 
 
 

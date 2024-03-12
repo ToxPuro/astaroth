@@ -1,3 +1,8 @@
+typedef struct TimeParams
+{
+        real dt;
+        real current_time;
+} TimeParams;
 int AC_step_number
 real AC_dt
 
@@ -735,11 +740,11 @@ rk3(s0, s1, roc, step_num, dt) {
 }
 
 
-Kernel singlepass_solve(int ac_input_step_num, real ac_input_dt, real ac_input_current_time) {
-    write(VTXBUF_LNRHO, rk3(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity(), ac_input_step_num, ac_input_dt))
+Kernel singlepass_solve(int ac_input_step_num, TimeParams ac_input_time_params) {
+    write(VTXBUF_LNRHO, rk3(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity(), ac_input_step_num, ac_input_time_params.dt))
 
 #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy(), ac_input_step_num, ac_input_dt))
+    write(VTXBUF_ENTROPY, rk3(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy(), ac_input_step_num, ac_input_time_params.dt))
 #endif 
 
     mom = momentum()
@@ -749,24 +754,24 @@ Kernel singlepass_solve(int ac_input_step_num, real ac_input_dt, real ac_input_c
     //Important to init to zero here: ohterwise will produce numerical garbage! 
     forcing_step = real3(0.0, 0.0, 0.0)
     if ac_input_step_num == 2 {
-        if ac_input_current_time > AC_switch_forcing {
-            forcing_step = forcing(ac_input_dt)
+        if ac_input_time_params.current_time > AC_switch_forcing {
+            forcing_step = forcing(ac_input_time_params.dt)
         }
     }
-    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x, ac_input_step_num, ac_input_dt) + forcing_step.x)
-    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y, ac_input_step_num, ac_input_dt) + forcing_step.y)
-    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z, ac_input_step_num, ac_input_dt) + forcing_step.z)
+    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x, ac_input_step_num, ac_input_time_params.dt) + forcing_step.x)
+    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y, ac_input_step_num, ac_input_time_params.dt) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z, ac_input_step_num, ac_input_time_params.dt) + forcing_step.z)
 #else 
-    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x, ac_input_step_num, ac_input_dt))
-    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y, ac_input_step_num, ac_input_dt))
-    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z, ac_input_step_num, ac_input_dt))
+    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x, ac_input_step_num, ac_input_time_params.dt))
+    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y, ac_input_step_num, ac_input_time_params.dt))
+    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z, ac_input_step_num, ac_input_time_params.dt))
 #endif
 
 #if LMAGNETIC
     ind = induction()
-    write(VTXBUF_AX, rk3(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x, ac_input_step_num, ac_input_dt))
-    write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y, ac_input_step_num, ac_input_dt))
-    write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z, ac_input_step_num, ac_input_dt))
+    write(VTXBUF_AX, rk3(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x, ac_input_step_num, ac_input_time_params.dt))
+    write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y, ac_input_step_num, ac_input_time_params.dt))
+    write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z, ac_input_step_num, ac_input_time_params.dt))
 #endif
 
 #if LBFIELD

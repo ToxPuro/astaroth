@@ -3,9 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <libgen.h> // dirname
+#include <sys/stat.h>
 
 #include "ast.h"
 #include "codegen.h"
+#include <ctype.h>
 
 #define YYSTYPE ASTNode*
 
@@ -22,7 +24,7 @@ const char* global_func_declaration = "__global__ void \n#if MAX_THREADS_PER_BLO
 
 //These are used to generate better error messages in case of errors
 FILE* yyin_backup;
-const char* stage3_name_backup;
+const char* stage4_name_backup;
 const char* dir_backup;
 
 void
@@ -36,6 +38,36 @@ void strprepend(char* dst, const char* src)
     memmove(dst + strlen(src), dst, strlen(dst)+ 1); // Move existing data including null terminator
     memcpy(dst, src, strlen(src)); // Copy src to the beginning of dst
 }
+void remove_substring_parser(char *str, const char *sub) {
+	int len = strlen(sub);
+	char *found = strstr(str, sub); // Find the first occurrence of the substring
+
+	while (found) {
+		memmove(found, found + len, strlen(found + len) + 1); // Shift characters to overwrite the substring
+		found = strstr(found, sub); // Find the next occurrence of the substring
+	}
+}
+void strip_whitespace_parser(char *str) {
+    char *dest = str; // Destination pointer to overwrite the original string
+    char *src = str;  // Source pointer to traverse the original string
+
+    // Skip leading whitespace
+    while (isspace((unsigned char)(*src))) {
+        src++;
+    }
+
+    // Copy non-whitespace characters to the destination
+    while (*src) {
+        if (!isspace((unsigned char)(*src))) {
+            *dest++ = *src;
+        }
+        src++;
+    }
+
+    // Null-terminate the destination string
+    *dest = '\0';
+}
+
 
 void set_identifier_type(const NodeType type, ASTNode* curr);
 void set_identifier_prefix(const char* prefix, ASTNode* curr);
@@ -50,6 +82,37 @@ void combine_ast(const ASTNode* node, char* res){
     combine_ast(node->lhs, res);
   if(node->rhs)
     combine_ast(node->rhs, res);
+}
+
+void
+process_param(const ASTNode* param, char* rest_params, char* param_default_args)
+{
+				char param_type[4096];
+                                param_type[0] = '\0';
+                                combine_ast(param->lhs, param_type);
+			      	char param_str[4096];
+                              	sprintf(param_str,",%s %s",param_type, param->rhs->buffer);
+			      	strprepend(rest_params,param_str);
+				char default_param[4096];
+                                if(!strcmp(param_type,"int"))
+			          sprintf(default_param,",0");
+                                else if(!strcmp(param_type,"AcReal"))
+			          sprintf(default_param,",0.0");
+				//we assume it is a user specified struct
+				else
+			          sprintf(default_param,",{}");
+				strprepend(param_default_args,default_param);
+}
+void
+process_declaration(const ASTNode* dec, char* struct_def)
+{
+	char tmp[4096];
+	tmp[0] = '\0';
+	combine_ast(dec->lhs,tmp);
+	strcat(tmp," ");
+	combine_ast(dec->rhs,tmp);
+	strcat(tmp,";");
+	strcat(struct_def,tmp);
 }
 
 void
@@ -147,18 +210,55 @@ format_source(const char* file_in, const char* file_out)
   fclose(in);
   fclose(out);
 }
+bool
+file_exists(const char* filename)
+{
+  struct stat   buffer;
+  return (stat (filename, &buffer) == 0);
+}
 
 int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* stage4, const char* dir, const bool gen_mem_accesses)
 {
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
         {
-          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", "user_cpu_kernels.h"};
+          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", "user_cpu_kernels.h", "user_structs.h"};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
             FILE* fp = fopen(files[i], "w");
             assert(fp);
             fclose(fp);
           }
         }
+	FILE* fp_gen = fopen("bind_gen_two_header.h","w");
+	fprintf(fp_gen,"#define GEN_BIND_TWO_CALLS(TYPE) ");
+	fprintf(fp_gen,"\\\nGEN_BIND_TWO_HEADER(TYPE,int) ");
+	fprintf(fp_gen,"\\\nGEN_BIND_TWO_HEADER(TYPE,int*) ");
+	fprintf(fp_gen,"\\\nGEN_BIND_TWO_HEADER(TYPE,AcReal) ");
+	fprintf(fp_gen,"\\\nGEN_BIND_TWO_HEADER(TYPE,AcReal*) ");
+	fclose(fp_gen);
+
+	fp_gen = fopen("bind_gen_header.h","w");
+	fprintf(fp_gen,"#define GEN_BIND_CALLS_HEADER() ");
+	fprintf(fp_gen,"\\\nGEN_BIND_HEADERS(int) ");
+	fprintf(fp_gen,"\\\nGEN_BIND_HEADERS(int*) ");
+	fprintf(fp_gen,"\\\nGEN_BIND_HEADERS(AcReal) ");
+	fprintf(fp_gen,"\\\nGEN_BIND_HEADERS(AcReal*) ");
+	fclose(fp_gen);
+
+	fp_gen = fopen("bind_gen.h","w");
+	fprintf(fp_gen,"#define GEN_BIND_CALLS() ");
+	fprintf(fp_gen,"\\\nGEN_BIND(int) ");
+	fprintf(fp_gen,"\\\nGEN_BIND(int*) ");
+	fprintf(fp_gen,"\\\nGEN_BIND(AcReal) ");
+	fprintf(fp_gen,"\\\nGEN_BIND(AcReal*) ");
+	fclose(fp_gen);
+
+	fp_gen = fopen("bind_gen_two.h","w");
+	fprintf(fp_gen,"#define GEN_BIND_TWO(TYPE) ");
+	fprintf(fp_gen,"\\\nGEN_BIND_TWOS(TYPE,int) ");
+	fprintf(fp_gen,"\\\nGEN_BIND_TWOS(TYPE,int*) ");
+	fprintf(fp_gen,"\\\nGEN_BIND_TWOS(TYPE,AcReal) ");
+	fprintf(fp_gen,"\\\nGEN_BIND_TWOS(TYPE,AcReal*) ");
+	fclose(fp_gen);
 
         // Stage 1: Preprocess includes
         {
@@ -186,7 +286,17 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
               assert(retval != -1);
           }
         }
-	FILE* f_in = fopen(stage3,"a");
+	FILE* f_in = fopen(stage3,"r");
+	FILE* f_out = fopen(stage4,"w");
+	char line[10000];
+ 	while (fgets(line, sizeof(line), f_in) != NULL) {
+		remove_substring_parser(line,";");
+		fprintf(f_out,"%s",line);
+    	}
+	fclose(f_in);
+	fclose(f_out);
+
+	f_in = fopen(stage4,"a");
 	//Add builtin kernels
 	fprintf(f_in,"\nKernel AC_BUILTIN_RESET() {\n"
 		"for field in 0:NUM_FIELDS {\n"
@@ -195,16 +305,25 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	"}\n");
 	fclose(f_in);
         // Generate code
-        yyin = fopen(stage3, "r");
+        yyin = fopen(stage4, "r");
 
-	stage3_name_backup = stage3;
-        yyin_backup = fopen(stage3, "r");
+	stage4_name_backup = stage4;
+        yyin_backup = fopen(stage4, "r");
         if (!yyin)
             return EXIT_FAILURE;
 
         int error = yyparse();
         if (error)
             return EXIT_FAILURE;
+
+	//add newlines to fix compiler warnings
+        const char* bind_files[] = {"bind_gen.h", "bind_gen_header.h", "bind_gen_two.h", "bind_gen_two_header.h"};
+        for (size_t i = 0; i < sizeof(bind_files)/sizeof(bind_files[0]); ++i) {
+          fp_gen = fopen(bind_files[i], "a");
+          assert(fp_gen);
+	  fprintf(fp_gen," \n");
+          fclose(fp_gen);
+        }
 
         // generate(root, stdout);
         FILE* fp = fopen("user_kernels.h.raw", "w");
@@ -216,6 +335,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
         // Stage 4: Format
         format_source("user_kernels.h.raw", "user_kernels.h");
+
 
         return EXIT_SUCCESS;
 }
@@ -240,12 +360,13 @@ main(int argc, char** argv)
         const char* stage4 = "user_kernels.ac.pp_stage4";
         const char* dir = dirname(argv[1]); // WARNING: dirname has side effects!
 	dir_backup = dir;
+	printf("stage0: %s\n",stage0);
 
         if (OPTIMIZE_MEM_ACCESSES) {
           code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, true); // Uncomment to enable stencil mem access checking
           generate_mem_accesses(); // Uncomment to enable stencil mem access checking
         }
-        code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, false);
+        code_generation_pass(stage0, stage1, stage2, stage3, stage4,  dir, false);
         
 
         return EXIT_SUCCESS;
@@ -259,9 +380,10 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP
-%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL WORK_BUFFER REAL_ARRAY
+%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL WORK_BUFFER REAL_ARRAY TIME_PARAMS 
 %token KERNEL SUM MAX COMMUNICATED AUXILIARY
 %token HOSTDEFINE
+%token STRUCT_NAME STRUCT_TYPE
 
 %%
 
@@ -311,6 +433,8 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
        | program function_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
        | program stencil_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
        | program hostdefine          { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+       //for now simply discard the struct definition info since not needed
+       | program struct_definition   { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
        ;
 
 /*
@@ -318,6 +442,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
  * Terminals
  * =============================================================================
  */
+struct_name : STRUCT_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 identifier: IDENTIFIER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 number: NUMBER         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
       | REALNUMBER     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_prefix("AcReal(", $$); astnode_set_postfix(")", $$); }
@@ -350,6 +475,7 @@ return: RETURN         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 kernel: KERNEL         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(global_func_declaration, $$); $$->token = 255 + yytoken; };
 sum: SUM               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("sum", $$); $$->token = 255 + yytoken; };
 max: MAX               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("max", $$); $$->token = 255 + yytoken; };
+struct_type: STRUCT_TYPE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 hostdefine: HOSTDEFINE {
         $$ = astnode_create(NODE_HOSTDEFINE, NULL, NULL);
         astnode_set_buffer(yytext, $$);
@@ -373,6 +499,66 @@ hostdefine: HOSTDEFINE {
 
 /*
  * =============================================================================
+ * Structure Definitions 
+ * =============================================================================
+*/
+//empty rule for now since we don't need the output
+struct_definition: struct_name '{' declarations '}' struct_type
+		 {
+			$$ = astnode_create(NODE_UNKNOWN,$1,$3); 
+			char struct_def[5000]; 
+			char tmp[5000];
+			struct_def[0] = '\0';
+			tmp[0] = '\0';
+			sprintf(tmp,"%s",$1->buffer);	
+			remove_substring_parser(tmp,"typedef");
+			remove_substring_parser(tmp,"struct");
+			strip_whitespace_parser(tmp);
+
+			FILE* fp_gen = fopen("bind_gen_two_header.h", "a");
+			fprintf(fp_gen,"\\\nGEN_BIND_TWO_HEADER(TYPE,%s) ",tmp);
+			fprintf(fp_gen,"\\\nGEN_BIND_TWO_HEADER(TYPE,%s*) ",tmp);
+			fclose(fp_gen);
+
+			fp_gen = fopen("bind_gen_header.h", "a");
+			fprintf(fp_gen,"\\\nGEN_BIND_HEADERS(%s) ",tmp);
+			fprintf(fp_gen,"\\\nGEN_BIND_HEADERS(%s*) ",tmp);
+			fclose(fp_gen);
+
+			fp_gen = fopen("bind_gen.h", "a");
+			fprintf(fp_gen,"\\\nGEN_BIND(%s) ",tmp);
+			fprintf(fp_gen,"\\\nGEN_BIND(%s*) ",tmp);
+			fclose(fp_gen);
+
+			fp_gen = fopen("bind_gen_two.h", "a");
+			fprintf(fp_gen,"\\\nGEN_BIND_TWOS(TYPE,%s) ",tmp);
+			fprintf(fp_gen,"\\\nGEN_BIND_TWOS(TYPE,%s*) ",tmp);
+			fclose(fp_gen);
+			tmp[0] = '\0';
+
+			strcat(struct_def,$1->buffer);
+			strcat(struct_def,"{ ");
+			const ASTNode* dec_head = $3;
+			while(dec_head->rhs)
+			{
+				
+				process_declaration(dec_head->rhs,struct_def);
+				dec_head = dec_head->lhs;
+			}
+			process_declaration(dec_head->lhs,struct_def);
+			strcat(struct_def,"} ");
+			combine_ast($5,tmp);
+			strcat(struct_def,tmp);
+			strcat(struct_def,";");
+			tmp[0] = '\0';
+			FILE* fp  = fopen("user_structs.h","a");
+			fprintf(fp,"%s\n",struct_def);
+			fclose(fp);
+		 }
+		 ;
+
+/*
+ * =============================================================================
  * Types
  * =============================================================================
 */
@@ -386,6 +572,7 @@ type_specifier: int     { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | work_buffer { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | stencil { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real_array { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | struct_type { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               ;
 
 type_qualifier: kernel { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
@@ -471,6 +658,9 @@ variable_definition: declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); 
                    | assignment  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
                    ;
 
+declarations: declarations declaration {$$ = astnode_create(NODE_UNKNOWN, $1,$2); }
+	    | declaration {$$ = astnode_create(NODE_UNKNOWN, $1,NULL); }
+	    ;
 declaration: type_declaration declaration_list { $$ = astnode_create(NODE_DECLARATION, $1, $2); }
            ;
 
@@ -602,37 +792,13 @@ function_definition: declaration function_body {
                             if($$->rhs->lhs)
                             {
                               ASTNode* param_list_head = $$->rhs->lhs;
-                              ASTNode* param;
-                              char param_type[4096];
                               while(param_list_head->rhs)
                               {
-                                param_type[0] = '\0';
-                                param = param_list_head->rhs;
-                                combine_ast(param->lhs, param_type);
-			      	char param_str[4096];
-                              	sprintf(param_str,",%s %s",param_type, param->rhs->buffer);
-			      	strprepend(rest_params,param_str);
-				char default_param[4096];
-                                if(!strcmp(param_type,"int"))
-			          sprintf(default_param,",0");
-                                if(!strcmp(param_type,"AcReal"))
-			          sprintf(default_param,",0.0");
-				strprepend(param_default_args,default_param);
+				process_param(param_list_head->rhs,rest_params,param_default_args);
                                 param_list_head = param_list_head->lhs;
                               }
 
-                              param_type[0] = '\0';
-                              param = param_list_head->lhs;
-                              combine_ast(param->lhs, param_type);
-			      char param_str[4096];
-                              sprintf(param_str,",%s %s",param_type, param->rhs->buffer);
-			      strprepend(rest_params, param_str);	
-				char default_param[4096];
-                                if(!strcmp(param_type,"int"))
-			          sprintf(default_param,",0");
-                                if(!strcmp(param_type,"AcReal"))
-			          sprintf(default_param,",0.0");
-				strprepend(param_default_args,default_param);
+			      process_param(param_list_head->lhs,rest_params,param_default_args);
                               $$->rhs->lhs=NULL;
                             }
                             // Set kernel built-in variables
@@ -725,11 +891,11 @@ yyerror(const char* str)
     int line_num = yyget_lineno();
     fprintf(stderr, "\n%s on line %d when processing char %d: [%s]\n", str, line_num, *yytext, yytext);
     char* line;
-    size_t len;
+    size_t len = 0;
     for(int i=0;i<line_num;++i)
 	getline(&line,&len,yyin_backup);
     fprintf(stderr, "erroneous line: %s", line);
-    fprintf(stderr, "in file: %s/%s\n\n",dir_backup,stage3_name_backup);
+    fprintf(stderr, "in file: %s/%s\n\n",dir_backup,stage4_name_backup);
     return EXIT_FAILURE;
 }
 

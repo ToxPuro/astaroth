@@ -32,6 +32,8 @@
   #include "datatypes.h"
   #include "errchk.h"
 
+  //copied from the sample setup
+  #include "user_structs.h"
   #include "user_defines.h"
 
   #define NUM_REDUCE_SCRATCHPADS (2)
@@ -122,19 +124,18 @@
   GEN_BIND_THREE_TWO_HEADER(TYPE,int*) \
   GEN_BIND_THREE_TWO_HEADER(TYPE,AcReal) \
   GEN_BIND_THREE_TWO_HEADER(TYPE,AcReal*)
- 
+
+#include "bind_gen_two_header.h"
+
  #define GEN_BIND_HEADERS(TYPE) \
 	  GEN_BIND_SINGLE_HEADER(TYPE) \
-	  GEN_BIND_TWO_HEADER(TYPE,int) \
-	  GEN_BIND_TWO_HEADER(TYPE,int*) \
-	  GEN_BIND_TWO_HEADER(TYPE,AcReal) \
-	  GEN_BIND_TWO_HEADER(TYPE,AcReal*) \
+  	  GEN_BIND_TWO_CALLS(TYPE) \
   	  GEN_BIND_THREE_HEADER(TYPE)
 
-  GEN_BIND_HEADERS(int)
-  GEN_BIND_HEADERS(AcReal)
-  GEN_BIND_HEADERS(AcReal*)
-  GEN_BIND_HEADERS(int*)
+
+#include "bind_gen_header.h"
+
+GEN_BIND_CALLS_HEADER()
 
   #else
   //if not C++ then opaque struct

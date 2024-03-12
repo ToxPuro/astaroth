@@ -22,6 +22,8 @@
 
 #include "errchk.h"
 #include "math_utils.h"
+
+
 #include <functional>
 
 #if AC_USE_HIP
@@ -132,22 +134,19 @@ kernel_to_kernel_lambda(const IterKernel kernel)
 	GEN_BIND_TWO_BOTH(TYPE,TYPE2,TYPE,TYPE2*,input_param,*second_param) \
 	GEN_BIND_TWO_BOTH(TYPE,TYPE2,TYPE*,TYPE2*,*input_param,*second_param)
 
-#define GEN_BIND_TWO(TYPE)                                                  \
-	GEN_BIND_TWOS(TYPE,int) \
-	GEN_BIND_TWOS(TYPE,int*) \
-	GEN_BIND_TWOS(TYPE,AcReal) \
-	GEN_BIND_TWOS(TYPE,AcReal*)
+#include "bind_gen_two.h"
 
 #define GEN_BIND(TYPE) \
 	GEN_BIND_SINGLE(TYPE) \
-	GEN_BIND_TWO(TYPE) \
-	GEN_BIND_THREE(TYPE)
+	GEN_BIND_TWO(TYPE)
+	//Currently not used
+	//GEN_BIND_THREE(TYPE)
+
+#include "bind_gen.h"
+
+GEN_BIND_CALLS()
 
 
-GEN_BIND(int)
-GEN_BIND(AcReal)
-GEN_BIND(AcReal*)
-GEN_BIND(int*)
 
 KernelLambda
 bind_single_param(IterKernelLambda kernel, int step_num)

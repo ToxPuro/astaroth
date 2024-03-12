@@ -114,9 +114,8 @@ set_simulation_timestamp(int step, AcReal time)
     snprintf(sim_log_msg, sim_log_msg_len, "[i:%d, t:%.2e] ", step, time);
     sim_tstamp_len = strlen(sim_log_msg);
 }
-
 static void
-log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
+log_from_root_proc_with_sim_progress  (int pid, std::string msg, ...) 
 {
     if (pid == 0) {
         strncpy(sim_log_msg + sim_tstamp_len, msg.c_str(), sim_log_msg_len - sim_tstamp_len);
@@ -128,7 +127,7 @@ log_from_root_proc_with_sim_progress(int pid, std::string msg, ...)
 }
 
 static void
-log_from_root_proc_with_sim_progress(std::string msg, ...)
+__attribute__ ((unused))log_from_root_proc_with_sim_progress(std::string msg, ...)
 {
     int pid = 0;
 #if AC_MPI_ENABLED

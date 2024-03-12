@@ -789,6 +789,25 @@ check_event(uint16_t events, SimulationEvent mask)
     return (events & (uint16_t)mask) ? true : false;
 }
 
+Simulation
+GetSimulation(const int pid, PhysicsConfiguration simulation_physics)
+{
+    switch (simulation_physics) {
+    case PhysicsConfiguration::ShockSinglepass: {
+#if LSHOCK
+        acLogFromRootProc(pid, "PhysicsConfiguration ShockSinglepass !\n");
+        return Simulation::Shock_Singlepass_Solve;
+#endif
+	ERRCHK_ALWAYS(false); //Only usable with shock
+    }
+    case PhysicsConfiguration::HydroHeatduct: {
+        acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
+        return Simulation::Hydro_Heatduct_Solve;
+    }
+    default:
+	return Simulation::Default;
+    }
+}
 int
 main(int argc, char** argv)
 {
@@ -936,6 +955,8 @@ main(int argc, char** argv)
         acLogFromRootProc(pid, "Logging build configuration\n");
         const char* is_on  = "ON";
         const char* is_off = "OFF";
+	//silence unused warnings
+	(void)is_on; (void) is_off;
 
         const char* forcing_flag =
 #if LFORCING
@@ -1106,24 +1127,9 @@ main(int argc, char** argv)
     ////////////////////////////////////////////////////
 
     acLogFromRootProc(pid, "Setting simulation program\n");
-    Simulation sim = Simulation::Default;
-
+    Simulation sim = GetSimulation(pid,simulation_physics);
     acLogFromRootProc(pid, "simulation_physics = %i \n", simulation_physics);
 
-    switch (simulation_physics) {
-    case PhysicsConfiguration::ShockSinglepass: {
-#if LSHOCK
-        sim = Simulation::Shock_Singlepass_Solve;
-        acLogFromRootProc(pid, "PhysicsConfiguration ShockSinglepass !\n");
-#endif
-        break;
-    }
-    case PhysicsConfiguration::HydroHeatduct: {
-        sim = Simulation::Hydro_Heatduct_Solve;
-        acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
-        break;
-    }
-    }
 
     acLogFromRootProc(pid, "sim = %i \n", sim);
     acLogFromRootProc(pid, "Simulation::Default = %i\n", Simulation::Default);
