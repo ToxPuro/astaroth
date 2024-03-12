@@ -1138,7 +1138,7 @@ main(int argc, char** argv)
                       PhysicsConfiguration::HydroHeatduct);
 
     log_simulation_choice(pid, sim);
-    AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);
+    AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim, acGridGetLocalMeshInfo());
 
     ////////////////////////////////////////////////////////
     // Simulation loop setup: defining events and actions //
@@ -1337,11 +1337,12 @@ main(int argc, char** argv)
         // I'm sure a lot of these could be calculated locally in each proc.
         // And for the values that do need to be distributed, they could be distributed in fewer
         // calls
+	AcMeshInfo input_info = acGridGetLocalMeshInfo();
 
-        // Generic parameters
-        acGridLoadScalarUniform(STREAM_DEFAULT, AC_current_time, simulation_time);
-        acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, dt);
-
+	//Generic parameters
+	input_info.real_params[AC_dt] = dt;
+	input_info.real_params[AC_current_time] = simulation_time;
+	
         // Case-specific parameters
 #if LSINK
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_M_sink, sink_mass);

@@ -17,6 +17,10 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
+struct GpuVtxBufHandles 
+{
+	VertexBufferHandle data[NUM_COMMUNICATED_FIELDS];
+};
 static __global__ void
 kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 dims,
                  AcRealPacked* packed)
@@ -83,7 +87,7 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
 
 static __global__ void
 kernel_partial_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 dims,
-                         AcRealPacked* packed, VertexBufferHandle* vtxbufs, size_t num_vtxbufs)
+                         AcRealPacked* packed, GpuVtxBufHandles vtxbufs, size_t num_vtxbufs)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
@@ -109,16 +113,13 @@ kernel_partial_pack_data(const VertexBufferArray vba, const int3 vba_start, cons
     const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
     //#pragma unroll
-    // Note explicit cast size_t to int
-    for (int i = 0; i < (int)num_vtxbufs; ++i) {
-        int vtxbuf_id                          = vtxbufs[i];
-        packed[packed_idx + i * vtxbuf_offset] = vba.in[vtxbuf_id][unpacked_idx];
-    }
+    for (size_t i = 0; i < num_vtxbufs; ++i)
+        packed[packed_idx + i * vtxbuf_offset] = vba.in[vtxbufs.data[i]][unpacked_idx];
 }
 
 static __global__ void
 kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims,
-                           VertexBufferArray vba, VertexBufferHandle* vtxbufs, size_t num_vtxbufs)
+                           VertexBufferArray vba, GpuVtxBufHandles vtxbufs , size_t num_vtxbufs)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
@@ -145,10 +146,18 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
 
     //#pragma unroll
     // Note explicit cast size_t to int
+    /**
     for (int i = 0; i < (int)num_vtxbufs; ++i) {
         int vtxbuf_id                   = vtxbufs[i];
         vba.in[vtxbuf_id][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
     }
+    for (int i = 0; i < NUM_COMMUNICATED_FIELDS; ++i)
+        vba.in[i][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
+    **/
+
+     for (size_t i = 0; i < num_vtxbufs; ++i)
+	     vba.in[vtxbufs.data[i]][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
+
 }
 
 AcResult
@@ -190,7 +199,10 @@ acKernelPartialPackData(const cudaStream_t stream, const VertexBufferArray vba,
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
 
-    kernel_partial_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, dims, packed, vtxbufs,
+    GpuVtxBufHandles gpu_handles;
+    for(size_t i=0; i<num_vtxbufs; ++i)
+	    gpu_handles.data[i] = vtxbufs[i];
+    kernel_partial_pack_data<<<bpg, tpb, 0, stream>>>(vba, vba_start, dims, packed, gpu_handles,
                                                       num_vtxbufs);
     ERRCHK_CUDA_KERNEL();
 
@@ -206,8 +218,10 @@ acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
     const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
                    (unsigned int)ceil(dims.y / (double)tpb.y),
                    (unsigned int)ceil(dims.z / (double)tpb.z));
-
-    kernel_partial_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba, vtxbufs,
+    GpuVtxBufHandles gpu_handles;
+    for(size_t i=0; i<num_vtxbufs; ++i)
+	    gpu_handles.data[i] = vtxbufs[i];
+    kernel_partial_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba, gpu_handles,
                                                         num_vtxbufs);
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;

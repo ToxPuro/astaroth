@@ -31,6 +31,11 @@ cleanup(void)
     if (root)
         astnode_destroy(root); // Frees all children and itself
 }
+void strprepend(char* dst, const char* src)
+{	
+    memmove(dst + strlen(src), dst, strlen(dst)+ 1); // Move existing data including null terminator
+    memcpy(dst, src, strlen(src)); // Copy src to the beginning of dst
+}
 
 void set_identifier_type(const NodeType type, ASTNode* curr);
 void set_identifier_prefix(const char* prefix, ASTNode* curr);
@@ -254,8 +259,8 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP
-%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL AUXILIARY_FIELD WORK_BUFFER REAL_ARRAY
-%token KERNEL SUM MAX COMMUNICATED 
+%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL WORK_BUFFER REAL_ARRAY
+%token KERNEL SUM MAX COMMUNICATED AUXILIARY
 %token HOSTDEFINE
 
 %%
@@ -284,10 +289,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             } 
-            else if(get_node_by_token(AUXILIARY_FIELD, $$->rhs)) {
-                variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-            }
             else if(get_node_by_token(WORK_BUFFER, $$->rhs)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
@@ -334,6 +335,7 @@ while: WHILE           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 for: FOR               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 in: IN                 { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 communicated: COMMUNICATED { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+auxiliary: AUXILIARY   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int: INT               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int3: INT3             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -342,7 +344,6 @@ real3: REAL3           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 real_array: REAL_ARRAY { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal*", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcMatrix", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 field: FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-auxiliary_field: AUXILIARY_FIELD  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 work_buffer: WORK_BUFFER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 stencil: STENCIL       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("", $$); /*astnode_set_buffer(yytext, $$);*/ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 return: RETURN         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$);};
@@ -382,7 +383,6 @@ type_specifier: int     { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real3   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | matrix  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | field   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | auxiliary_field { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | work_buffer { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | stencil { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real_array { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
@@ -392,7 +392,15 @@ type_qualifier: kernel { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | sum    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | max    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | communicated { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | auxiliary { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               ;
+
+type_qualifiers: type_qualifiers type_qualifier {$$ = astnode_create(NODE_UNKNOWN,$1,$2); }
+	       | type_qualifier {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
+	       ;
+
+
+
 
 /*
  * =============================================================================
@@ -478,9 +486,9 @@ parameter_list: parameter                    { $$ = astnode_create(NODE_UNKNOWN,
               ;
 
 type_declaration: /* Empty */                   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL);}
-                | type_qualifier                { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
+                | type_qualifiers               { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
                 | type_specifier                { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
-                | type_qualifier type_specifier { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+                | type_qualifiers type_specifier { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
                 ;
 
 assignment: declaration assignment_body { $$ = astnode_create(NODE_ASSIGNMENT, $1, $2); }
@@ -601,22 +609,30 @@ function_definition: declaration function_body {
                                 param_type[0] = '\0';
                                 param = param_list_head->rhs;
                                 combine_ast(param->lhs, param_type);
-                                sprintf(rest_params,",%s %s",param_type, param->rhs->buffer);
+			      	char param_str[4096];
+                              	sprintf(param_str,",%s %s",param_type, param->rhs->buffer);
+			      	strprepend(rest_params,param_str);
+				char default_param[4096];
                                 if(!strcmp(param_type,"int"))
-                                  sprintf(param_default_args, "%s,%s",param_default_args,"0");
+			          sprintf(default_param,",0");
                                 if(!strcmp(param_type,"AcReal"))
-                                  sprintf(param_default_args, "%s,%s",param_default_args,"0.0");
+			          sprintf(default_param,",0.0");
+				strprepend(param_default_args,default_param);
                                 param_list_head = param_list_head->lhs;
                               }
 
                               param_type[0] = '\0';
                               param = param_list_head->lhs;
                               combine_ast(param->lhs, param_type);
-                              sprintf(rest_params,",%s %s",param_type, param->rhs->buffer);
-                              if(!strcmp(param_type,"int"))
-                                sprintf(param_default_args, "%s,%s",param_default_args,"0");
-                              if(!strcmp(param_type,"AcReal"))
-                                sprintf(param_default_args, "%s,%s",param_default_args,"0.0");
+			      char param_str[4096];
+                              sprintf(param_str,",%s %s",param_type, param->rhs->buffer);
+			      strprepend(rest_params, param_str);	
+				char default_param[4096];
+                                if(!strcmp(param_type,"int"))
+			          sprintf(default_param,",0");
+                                if(!strcmp(param_type,"AcReal"))
+			          sprintf(default_param,",0.0");
+				strprepend(param_default_args,default_param);
                               $$->rhs->lhs=NULL;
                             }
                             // Set kernel built-in variables

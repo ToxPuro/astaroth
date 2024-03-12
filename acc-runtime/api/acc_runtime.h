@@ -53,37 +53,93 @@
   } VertexBufferArray;
 
   typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
+  typedef void (*IterKernel)(const int3, const int3, VertexBufferArray vba, int step_num);
   #ifdef __cplusplus
   #include <functional>
   typedef std::function<void(const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba)> kernel_lambda; 
+  typedef std::function<void(const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba, int step_num)> iter_kernel_lambda; 
   typedef struct KernelLambda {
     kernel_lambda lambda;
     //used in lookup into tbconfig, otherwise not needed
     void* kernel;
   } KernelLambda;
 
+  typedef struct IterKernelLambda {
+    iter_kernel_lambda lambda;
+    //used in lookup into tbconfig, otherwise not needed
+    void* kernel;
+  } IterKernelLambda;
+
+
   KernelLambda
   kernel_to_kernel_lambda(const Kernel kernel);
 
+  IterKernelLambda
+  kernel_to_kernel_lambda(const IterKernel kernel);
+  KernelLambda
+  bind_single_param(IterKernelLambda kernel, int step_num);
+
 
 #define GEN_BIND_SINGLE_HEADER(TYPE)                                                  \
-  KernelLambda bind_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param), TYPE input_param);
-  GEN_BIND_SINGLE_HEADER(int)
-  GEN_BIND_SINGLE_HEADER(AcReal)
-  GEN_BIND_SINGLE_HEADER(AcReal*)
-  GEN_BIND_SINGLE_HEADER(int*)
-  GEN_BIND_SINGLE_HEADER(bool)
-  GEN_BIND_SINGLE_HEADER(bool*)
+  KernelLambda bind_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param), TYPE input_param); \
+  KernelLambda bind_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param), TYPE* input_param); \
+  IterKernelLambda bind_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, TYPE input_param), TYPE input_param); \
+  IterKernelLambda bind_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, TYPE input_param), TYPE* input_param);
 
-  template <typename T, typename F>
-  KernelLambda
-  bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param), T input_param, F second_input_param);
-  template <typename T, typename F, typename H>
-  KernelLambda
-  bind_three_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param, H third_input_param), T input_param, F second_input_param, H third_input_param);
+#define GEN_BIND_TWO_HEADER(TYPE, TYPE2)                                                  \
+  KernelLambda bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param, TYPE2 second_input_param), TYPE input_param, TYPE2 second_input_param); \
+  KernelLambda bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param, TYPE2 second_input_param), TYPE input_param, TYPE2* second_input_param); \
+  KernelLambda bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param, TYPE2 second_input_param), TYPE* input_param, TYPE2 second_input_param); \
+  KernelLambda bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param, TYPE2 second_input_param), TYPE* input_param, TYPE2* second_input_param); \
+  IterKernelLambda bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, TYPE input_param, TYPE2 second_input_param), TYPE input_param, TYPE2 second_input_param); \
+  IterKernelLambda bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, TYPE input_param, TYPE2 second_input_param), TYPE input_param, TYPE2* second_input_param); \
+  IterKernelLambda bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, TYPE input_param, TYPE2 second_input_param), TYPE* input_param, TYPE2 second_input_param); \
+  IterKernelLambda bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, TYPE input_param, TYPE2 second_input_param), TYPE* input_param, TYPE2* second_input_param);
+
+#define GEN_BIND_THREE_BOTH_HEADER(TYPE,TYPE2,TYPE3,PTYPE,PTYPE2,PTYPE3) \
+  KernelLambda bind_three_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param, TYPE2 second_input_param, TYPE3 third_input_param), TYPE input_param, TYPE2 second_input_param, TYPE3 third_input_param); \
+  IterKernelLambda bind_three_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, TYPE input_param, TYPE2 second_input_param, TYPE3 third_input_param), TYPE input_param, TYPE2 second_input_param, TYPE3 third_input_param); \
+
+
+#define GEN_BIND_THREE_ALL_HEADER(TYPE,TYPE2,TYPE3) \
+	  GEN_BIND_THREE_BOTH_HEADER(TYPE,TYPE2,TYPE3,TYPE,TYPE2,TYPE3) \
+	  GEN_BIND_THREE_BOTH_HEADER(TYPE,TYPE2,TYPE3,TYPE*,TYPE2,TYPE3) \
+	  GEN_BIND_THREE_BOTH_HEADER(TYPE,TYPE2,TYPE3,TYPE,TYPE2*,TYPE3) \
+	  GEN_BIND_THREE_BOTH_HEADER(TYPE,TYPE2,TYPE3,TYPE*,TYPE2*,TYPE3) \
+	  GEN_BIND_THREE_BOTH_HEADER(TYPE,TYPE2,TYPE3,TYPE,TYPE2,TYPE3*) \
+	  GEN_BIND_THREE_BOTH_HEADER(TYPE,TYPE2,TYPE3,TYPE*,TYPE2,TYPE3*) \
+	  GEN_BIND_THREE_BOTH_HEADER(TYPE,TYPE2,TYPE3,TYPE,TYPE2*,TYPE3*) \
+	  GEN_BIND_THREE_BOTH_HEADER(TYPE,TYPE2,TYPE3,TYPE*,TYPE2*,TYPE3*)
+
+#define GEN_BIND_THREE_TWO_HEADER(TYPE, TYPE2)                                                  \
+  GEN_BIND_THREE_ALL_HEADER(TYPE,TYPE2,int) \
+  GEN_BIND_THREE_ALL_HEADER(TYPE,TYPE2,int*) \
+  GEN_BIND_THREE_ALL_HEADER(TYPE,TYPE2,AcReal) \
+  GEN_BIND_THREE_ALL_HEADER(TYPE,TYPE2,AcReal*)
+
+#define GEN_BIND_THREE_HEADER(TYPE)                                                  \
+  GEN_BIND_THREE_TWO_HEADER(TYPE,int) \
+  GEN_BIND_THREE_TWO_HEADER(TYPE,int*) \
+  GEN_BIND_THREE_TWO_HEADER(TYPE,AcReal) \
+  GEN_BIND_THREE_TWO_HEADER(TYPE,AcReal*)
+ 
+ #define GEN_BIND_HEADERS(TYPE) \
+	  GEN_BIND_SINGLE_HEADER(TYPE) \
+	  GEN_BIND_TWO_HEADER(TYPE,int) \
+	  GEN_BIND_TWO_HEADER(TYPE,int*) \
+	  GEN_BIND_TWO_HEADER(TYPE,AcReal) \
+	  GEN_BIND_TWO_HEADER(TYPE,AcReal*) \
+  	  GEN_BIND_THREE_HEADER(TYPE)
+
+  GEN_BIND_HEADERS(int)
+  GEN_BIND_HEADERS(AcReal)
+  GEN_BIND_HEADERS(AcReal*)
+  GEN_BIND_HEADERS(int*)
+
   #else
   //if not C++ then opaque struct
   typedef struct KernelLambda KernelLambda;
+  typedef struct IterKernelLambda IterKernelLambda;
   #endif
 
   #ifdef __cplusplus

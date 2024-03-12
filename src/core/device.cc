@@ -690,11 +690,11 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
                          const int3 start, const int3 end, const AcReal dt)
 {
 #ifdef AC_INTEGRATION_ENABLED
+    const AcReal current_time = device->local_config.real_params[AC_current_time];
     cudaSetDevice(device->id);
 
-    acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
 #ifdef AC_SINGLEPASS_INTEGRATION
-    return acLaunchKernel(bind_single_param(singlepass_solve,step_number), device->streams[stream], start, end, device->vba);
+    return acLaunchKernel(bind_three_params(singlepass_solve,step_number,dt,current_time), device->streams[stream], start, end, device->vba);
 #else
     // Two-pass integration with acDeviceIntegrateSubstep works currently
     // only when integrating the whole subdomain
@@ -715,13 +715,13 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
     ERRCHK_ALWAYS(end.y == dims.n1.y);
     ERRCHK_ALWAYS(end.z == dims.n1.z);
 
-    const AcResult res = acLaunchKernel(bind_single_param(twopass_solve_intermediate,step_number), device->streams[stream], start,
+    const AcResult res = acLaunchKernel(bind_two_params(twopass_solve_intermediate,step_number,dt), device->streams[stream], start,
                                         end, device->vba);
     if (res != AC_SUCCESS)
         return res;
 
     acDeviceSwapBuffers(device);
-    return acLaunchKernel(bind_single_param(twopass_solve_final,step_number), device->streams[stream], start, end, device->vba);
+    return acLaunchKernel(bind_two_params(twopass_solve_final,step_number,current_time), device->streams[stream], start, end, device->vba);
 #endif
 #else
     (void)device;      // Unused

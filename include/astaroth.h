@@ -753,7 +753,7 @@ typedef struct AcTaskDefinition {
 
     AcRealParam* parameters;
     size_t num_parameters;
-    void(*iter_compute)(const int3, const int3, VertexBufferArray, int);
+    IterKernelLambda* iter_compute;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
@@ -1368,7 +1368,7 @@ AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, Vert
 }
 
 template <size_t num_fields>
-AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int input_param), 
+AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num), 
                             Field (&fields)[num_fields])
 {
     return acCompute(kernel, fields, num_fields, fields, num_fields);
@@ -1384,9 +1384,46 @@ AcTaskDefinition
 acCompute(Kernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
           const size_t num_fields_out);
 
+
 AcTaskDefinition
-acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num), Field fields_in[], const size_t num_fields_in, Field fields_out[],
+acCompute(IterKernelLambda kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
           const size_t num_fields_out);
+
+AcTaskDefinition
+acCompute(IterKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
+          const size_t num_fields_out);
+
+template <typename T>
+AcTaskDefinition
+acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, T input_param), Field fields_in[], const size_t num_fields_in, Field fields_out[],
+          const size_t num_fields_out, T input_param)
+{
+	return acCompute((IterKernelLambda) bind_single_param(kernel,input_param),fields_in,num_fields_in,fields_out,num_fields_out);
+}
+
+template <typename T>
+AcTaskDefinition
+acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, T input_param), Field fields_in[], const size_t num_fields_in, Field fields_out[],
+          const size_t num_fields_out, T* input_param)
+{
+	return acCompute(bind_single_param(kernel,input_param),fields_in,num_fields_in,fields_out,num_fields_out);
+}
+
+
+template <size_t num_fields, typename T>
+AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, T input_param), 
+                            Field (&fields)[num_fields], T input_param)
+{
+    return acCompute(kernel, fields, num_fields, fields, num_fields, input_param);
+}
+
+template <size_t num_fields, typename T>
+AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, T input_param), 
+                            Field (&fields)[num_fields], T* input_param)
+{
+    return acCompute(kernel, fields, num_fields, fields, num_fields, input_param);
+}
+
 
 template <typename T, typename F>
 AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param), Field fields_in[], const size_t num_fields_in,

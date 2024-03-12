@@ -36,7 +36,8 @@
 #define MAX_ID_LEN (256)
 typedef struct {
   NodeType type;
-  char tqualifier[MAX_ID_LEN];
+  char* tqualifiers[MAX_ID_LEN];
+  size_t n_tqualifiers;
   char tspecifier[MAX_ID_LEN];
   char identifier[MAX_ID_LEN];
   } Symbol;
@@ -68,19 +69,29 @@ symboltable_lookup(const char* identifier)
   return NULL;
 }
 
+bool
+str_array_contains(const char** str_array, const size_t n, const char* str)
+{
+	for(size_t i = 0; i <  n; ++i)
+		if(!strcmp(str_array[i],str)) return true;
+	return false;
+}
+
 
 static int 
-add_symbol(const NodeType type, const char* tqualifier, const char* tspecifier,
+add_symbol(const NodeType type, const char** tqualifiers, const size_t n_tqualifiers, const char* tspecifier,
            const char* id)
 {
   assert(num_symbols[current_nest] < SYMBOL_TABLE_SIZE);
 
   symbol_table[num_symbols[current_nest]].type          = type;
-  symbol_table[num_symbols[current_nest]].tqualifier[0] = '\0';
   symbol_table[num_symbols[current_nest]].tspecifier[0] = '\0';
 
-  if (tqualifier)
-    strcpy(symbol_table[num_symbols[current_nest]].tqualifier, tqualifier);
+  if (n_tqualifiers)
+    symbol_table[num_symbols[current_nest]].n_tqualifiers = n_tqualifiers;
+    for(size_t i = 0; i < n_tqualifiers; ++i)
+ 	symbol_table[num_symbols[current_nest]].tqualifiers[i] = strdup(tqualifiers[i]);
+
   if (tspecifier)
     strcpy(symbol_table[num_symbols[current_nest]].tspecifier, tspecifier);
 
@@ -98,92 +109,92 @@ symboltable_reset(void)
   num_symbols[current_nest] = 0;
 
   // Add built-in variables (TODO consider NODE_BUILTIN)
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "print");           // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "threadIdx");       // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "blockIdx");        // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vertexIdx");       // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "globalVertexIdx"); // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "globalGridN");     // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "print");           // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "threadIdx");       // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "blockIdx");        // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "vertexIdx");       // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "globalVertexIdx"); // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "globalGridN");     // TODO REMOVE
 
   // add_symbol(NODE_UNKNOWN, NULL, NULL, "true");
   // add_symbol(NODE_UNKNOWN, NULL, NULL, "false");
 
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "previous");
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vecprevious");
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "value");
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vecvalue");
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "isnan");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "previous");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "vecprevious");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "value");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "vecvalue");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "write");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "isnan");  // TODO RECHECK
   //In develop
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "read_w");
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write_w");
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "vecwrite");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "Field3"); // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "dot");    // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cross");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "len");    // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "vecwrite");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "Field3"); // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "dot");    // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "cross");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "len");    // TODO RECHECK
 
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "uint64_t");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "UINT64_MAX"); // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "uint64_t");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "UINT64_MAX"); // TODO RECHECK
 
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "rand_uniform");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "rand_uniform");
 
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "exp");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "sin");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "cos");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "sqrt");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "fabs");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "pow");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "multm2_sym");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "diagonal");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "sum");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "log");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "abs");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "atan2"); // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "exp");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "sin");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "cos");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "sqrt");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "fabs");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "pow");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "multm2_sym");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "diagonal");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "sum");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "log");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "abs");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "atan2"); // TODO RECHECK
 
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "AC_REAL_PI");
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_FIELDS");
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_VTXBUF_HANDLES");
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_ALL_FIELDS");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "AC_REAL_PI");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "NUM_FIELDS");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "NUM_VTXBUF_HANDLES");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "NUM_ALL_FIELDS");
 
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "FIELD_IN");
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "FIELD_OUT");
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "IDX");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "FIELD_IN");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "FIELD_OUT");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "IDX");
 
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "true");
-  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "false");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "true");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "false");
 
   // Astaroth 2.0 backwards compatibility START
   // (should be actually built-in externs in acc-runtime/api/acc-runtime.h)
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_mx");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_my");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_mz");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nx");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_ny");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nz");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_mx");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_my");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_mz");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nx");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_ny");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nz");
 
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nxgrid");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nygrid");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nzgrid");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nxgrid");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nygrid");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nzgrid");
 
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nx_min");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_ny_min");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nz_min");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nx_min");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_ny_min");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nz_min");
 
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nx_max");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_ny_max");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nz_max");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nx_max");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_ny_max");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nz_max");
 
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_mxy");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nxy");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_nxyz");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_mxy");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nxy");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nxyz");
 
-  add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_domain_decomposition");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_proc_mapping_strategy");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_decompose_strategy");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int3", "AC_domain_decomposition");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_proc_mapping_strategy");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_decompose_strategy");
   
 
-  add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_multigpu_offset");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int3", "AC_multigpu_offset");
 
   // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsx");
   // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_dsy");
@@ -194,21 +205,21 @@ symboltable_reset(void)
   // add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_inv_dsz");
 
   //For special reductions
-  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_center_x");
-  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_center_y");
-  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_center_z");
-  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_sum_radius");
-  add_symbol(NODE_DCONST_ID, NULL, "AcReal", "AC_window_radius");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "AcReal", "AC_center_x");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "AcReal", "AC_center_y");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "AcReal", "AC_center_z");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "AcReal", "AC_sum_radius");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "AcReal", "AC_window_radius");
 
   // (BC types do not belong here, BCs not handled with the DSL)
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_bot_x");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_bot_y");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_bot_z");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_bc_type_bot_x");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_bc_type_bot_y");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_bc_type_bot_z");
 
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_top_x");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_top_y");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_bc_type_top_z");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_init_type");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_bc_type_top_x");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_bc_type_top_y");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_bc_type_top_z");
+  add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_init_type");
   // Astaroth 2.0 backwards compatibility END
 }
 
@@ -224,8 +235,15 @@ print_symbol_table(void)
     if (strlen(symbol_table[i].tspecifier) > 0)
       printf("(tspec: %s) ", symbol_table[i].tspecifier);
 
-    if (strlen(symbol_table[i].tqualifier) > 0)
-      printf("(tqual: %s) ", symbol_table[i].tqualifier);
+    if (symbol_table[i].n_tqualifiers)
+    {
+	    char tqual[4096];
+	    tqual[0] = '\0';
+	    for(size_t tqi = 0; tqi < symbol_table[i].n_tqualifiers; ++tqi)
+		    strcat(tqual,symbol_table[i].tqualifiers[tqi]);
+      	    printf("(tquals: %s) ", tqual);
+    }
+	 
 
     if (symbol_table[i].type & NODE_FUNCTION_ID)
       printf("(%s function)",
@@ -342,7 +360,8 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
     }
     else if (!symbol) {
       char* tspec = NULL;
-      char* tqual = NULL;
+      char* tqualifiers[MAX_ID_LEN];
+      size_t n_tqualifiers = 0;
 
       const ASTNode* decl = get_parent_node(NODE_DECLARATION, node);
       if (decl) {
@@ -353,7 +372,20 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
           tspec = tspec_node->lhs->buffer;
         }
         if (tqual_node && tqual_node->lhs)
-          tqual = tqual_node->lhs->buffer;
+	{
+	  const ASTNode* tqual_list_node = tqual_node->parent;
+	  //backtrack to the start of the list
+	  while(tqual_list_node->parent && tqual_list_node->parent->rhs && tqual_list_node->parent->rhs->type & NODE_TQUAL)
+		  tqual_list_node = tqual_list_node->parent;
+	  while(tqual_list_node->rhs)
+	  {
+		  tqualifiers[n_tqualifiers] = strdup(tqual_list_node->rhs->lhs->buffer);
+		  ++n_tqualifiers;
+		  tqual_list_node = tqual_list_node->lhs;
+	  }
+	  tqualifiers[n_tqualifiers] = strdup(tqual_list_node->lhs->lhs->buffer);
+	  ++n_tqualifiers;
+	}
       }
 
       if (stream) {
@@ -361,8 +393,9 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
         if (is_dconst)
           fprintf(stream, "__device__ ");
 
-        if (tqual)
-          fprintf(stream, "%s ", tqual);
+        if (n_tqualifiers)
+	  for(size_t i=0; i<n_tqualifiers;++i)
+          	fprintf(stream, "%s ", tqualifiers[i]);
 
         if (tspec){
           fprintf(stream, "%s ", tspec);
@@ -390,12 +423,12 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
               printf("no right child\n");
               exit(0);
             }
-            const int symbol_index = add_symbol(node->type, tqual, tspec, node->buffer);
+            const int symbol_index = add_symbol(node->type, tqualifiers, n_tqualifiers, tspec, node->buffer);
             symbol_var_length[symbol_index] = nd->buffer;
           }
         }
         else{
-          add_symbol(node->type, tqual, tspec, node->buffer);
+          add_symbol(node->type, tqualifiers, n_tqualifiers, tspec, node->buffer);
         }
       }
     }
@@ -535,43 +568,73 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "NUM_STENCILS} Stencil;");
 
   // Enums
-  int num_of_fields=0;
-  fprintf(fp, "typedef enum {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if(!strcmp(symbol_table[i].tspecifier,"Field")){
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-      num_of_fields++;
-    }
-//Add Auxiliary fields into Fields after Full fields
-//Communicated Auxiliaries come first
+  int num_of_normal_fields=0;
   int num_of_auxiliary_fields=0;
   int num_of_communicated_auxiliary_fields = 0;
+  int num_of_fields=0;
+  bool field_is_auxiliary[256];
+  bool field_is_communicated[256];
+  const char* field_names[256];
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   {
-    if (!strcmp(symbol_table[i].tspecifier,"AuxiliaryField") && (!strcmp(symbol_table[i].tqualifier, "communicated")))
-    {
-      printf("Auxilaries are in development\n");
-      exit(0);
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-      num_of_communicated_auxiliary_fields++;
-      num_of_auxiliary_fields++;
+    if(!strcmp(symbol_table[i].tspecifier,"Field")){
+	      for(size_t ti = 0; ti<symbol_table[i].n_tqualifiers; ++ti)
+		      printf("aux tq TP: %s\n",symbol_table[i].tqualifiers[ti]);
+      field_names[num_of_fields] = strdup(symbol_table[i].identifier);
+      if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"auxiliary"))
+      {
+	      ++num_of_auxiliary_fields;
+	      field_is_auxiliary[num_of_fields] = true;
+	      if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"communicated"))
+	      {
+		      ++num_of_communicated_auxiliary_fields;
+      	      		field_is_communicated[num_of_fields] = true;
+	      }
+	      else
+      	      		field_is_communicated[num_of_fields] = false;
+
+      }
+      else
+      {
+	      ++num_of_normal_fields;
+      	      field_is_communicated[num_of_fields] = true;
+	      field_is_auxiliary[num_of_fields] = false;
+      }
+      ++num_of_fields;
     }
   }
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  {
-    if (!strcmp(symbol_table[i].tspecifier,"AuxiliaryField") && (strcmp(symbol_table[i].tqualifier, "communicated")))
-    {
-      printf("Auxilaries are in development\n");
-      exit(0);
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-      num_of_auxiliary_fields++;
-    }
-  }
-  fprintf(fp, "NUM_FIELDS=%d,", num_of_fields+num_of_auxiliary_fields);
-  fprintf(fp, "NUM_COMMUNICATED_FIELDS=%d,", num_of_fields+num_of_communicated_auxiliary_fields);
-  // fprintf(fp, "NUM_AUXILIARY_FIELDS=%d,", num_of_auxiliary_fields);
-  // fprintf(fp, "NUM_ALL_FIELDS=%d,", num_of_auxiliary_fields+num_of_fields);
-  fprintf(fp, "} Field;");
+  const int num_of_communicated_fields = num_of_normal_fields + num_of_communicated_auxiliary_fields;
+
+  fprintf(fp, "typedef enum {");
+  //first communicated fields
+  for(int i=0;i<num_of_fields;++i)
+	  if(field_is_communicated[i]) fprintf(fp, "%s,",field_names[i]);
+  for(int i=0;i<num_of_fields;++i)
+	  if(!field_is_communicated[i]) fprintf(fp, "%s,",field_names[i]);
+
+  fprintf(fp, "NUM_FIELDS=%d,", num_of_fields);
+  fprintf(fp, "NUM_COMMUNICATED_FIELDS=%d,", num_of_communicated_fields);
+  fprintf(fp, "} Field;\n");
+  printf("NUM_AUX=%d\n", num_of_auxiliary_fields);
+  printf("NUM_COMMUNICATED_FIELDS=%d\n", num_of_communicated_fields);
+
+  fprintf(fp, "static const bool vtxbuf_is_auxiliary[] = {");
+  for(int i=0;i<num_of_fields;++i)
+    if(field_is_auxiliary[i])
+    	fprintf(fp, "%s,", "true");
+    else
+    	fprintf(fp, "%s,", "false");
+  fprintf(fp, "};");
+
+  printf("\n");
+  for(int i=0;i<num_of_fields;++i)
+    if(field_is_auxiliary[i])
+    	printf("%s,", "true");
+    else
+    	printf("%s,", "false");
+  printf("\n");
+
+
 
 
 
@@ -650,12 +713,7 @@ gen_user_defines(const ASTNode* root, const char* out)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
 
-  fprintf(fp, "static const bool vtxbuf_is_auxiliary[] __attribute__((unused)) = {");
-  for(int i=0;i<num_of_fields;++i)
-    fprintf(fp, "%s,", "false");
-  for(int i=num_of_fields;i<num_of_fields+num_of_auxiliary_fields;++i)
-    fprintf(fp, "%s,", "true");
-  fprintf(fp, "};");
+
 
 
 
@@ -922,8 +980,17 @@ generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
     for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
       const Symbol symbol = symbol_table[i];
       if (symbol.type & NODE_STENCIL_ID) {
-        fprintf(stencilgen, "\"%s\",",
-                strlen(symbol.tqualifier) ? symbol.tqualifier : "sum");
+	      if(symbol.n_tqualifiers)
+	      {
+		if(symbol.n_tqualifiers > 1)
+		{
+			fprintf(stderr,"Stencils are supported only with a single type specifier\n");
+			exit(EXIT_FAILURE);
+		}
+        	fprintf(stencilgen, "\"%s\",",symbol.tqualifiers[0]);
+	      }
+	      else
+        	fprintf(stencilgen, "\"sum\",");
       }
     }
     fprintf(stencilgen, "};");

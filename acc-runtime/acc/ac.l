@@ -20,7 +20,6 @@ L [a-zA-Z_]
 "realArray"             { return REAL_ARRAY; }
 "Matrix"                { return MATRIX; }
 "Field"                 { return FIELD; }
-"AuxiliaryField"        {return AUXILIARY_FIELD; }
 "WorkBuffer"            {return WORK_BUFFER; }
 
 "Stencil"               { return STENCIL; }
@@ -28,6 +27,8 @@ L [a-zA-Z_]
 "Kernel"                { return KERNEL; } /* Type qualifiers */
 "Sum"                   { return SUM; }
 "Max"                   { return MAX; }
+"communicated"          { return COMMUNICATED; }
+"auxiliary"             { return AUXILIARY; }
 
 "if"        { return IF; } /* Keywords */
 "else if"   { return ELIF; }

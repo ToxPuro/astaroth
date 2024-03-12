@@ -70,7 +70,7 @@ main(void)
         return EXIT_FAILURE;
     }
     acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
-    // acSetMeshDims(32, 32, 32, &info);
+    //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {

@@ -122,24 +122,56 @@ acEvalError(const char* label, const Error error)
 }
 
 static AcReal
-get_maximum_magnitude(const AcReal* field, const AcMeshInfo info)
+get_maximum_magnitude(const AcReal* field, const AcMeshInfo info, const bool communicated_field)
 {
     AcReal maximum = (AcReal)-INFINITY;
 
-    for (size_t i = 0; i < acVertexBufferSize(info); ++i)
-        maximum = max(maximum, fabs(field[i]));
+    const int x_start = communicated_field ? 3 : 0;
+    const int y_start = communicated_field ? 3 : 0;
+    const int z_start = communicated_field ? 3 : 0;
 
+    const int x_end = communicated_field ? info.int_params[AC_nx] : info.int_params[AC_mx];
+    const int y_end = communicated_field ? info.int_params[AC_ny] : info.int_params[AC_my];
+    const int z_end = communicated_field ? info.int_params[AC_nz] : info.int_params[AC_mz];
+
+    for (int x = x_start; x < x_end; ++x) 
+    {
+    	for (int y = y_start; y < y_end; ++y) 
+	{
+    		for (int z = z_start; z < z_end; ++z) 
+		{
+			const size_t i = x+y*info.int_params[AC_mx]+z*info.int_params[AC_mx]*info.int_params[AC_my];
+        		maximum = max(maximum, fabs(field[i]));
+		}
+	}
+    }
     return maximum;
 }
 
 static AcReal
-get_minimum_magnitude(const AcReal* field, const AcMeshInfo info)
+get_minimum_magnitude(const AcReal* field, const AcMeshInfo info, const bool communicated_field)
 {
     AcReal minimum = (AcReal)INFINITY;
 
-    for (size_t i = 0; i < acVertexBufferSize(info); ++i)
-        minimum = min(minimum, fabs(field[i]));
+    const int x_start = communicated_field ? 3 : 0;
+    const int y_start = communicated_field ? 3 : 0;
+    const int z_start = communicated_field ? 3 : 0;
 
+    const int x_end = communicated_field ? info.int_params[AC_nx] : info.int_params[AC_mx];
+    const int y_end = communicated_field ? info.int_params[AC_ny] : info.int_params[AC_my];
+    const int z_end = communicated_field ? info.int_params[AC_nz] : info.int_params[AC_mz];
+
+    for (int x = x_start; x < x_end; ++x) 
+    {
+    	for (int y = y_start; y < y_end; ++y) 
+	{
+    		for (int z = z_start; z < z_end; ++z) 
+		{
+			const size_t i = x+y*info.int_params[AC_mx]+z*info.int_params[AC_mx]*info.int_params[AC_my];
+        		minimum = min(minimum, fabs(field[i]));
+		}
+	}
+    }
     return minimum;
 }
 
@@ -149,17 +181,34 @@ get_minimum_magnitude(const AcReal* field, const AcMeshInfo info)
 // floating-point precision range and gives huge errors with values that should be considered
 // zero (f.ex. 1e-19 and 1e-22 give error of around 1e4 ulps)
 static Error
-get_max_abs_error(const AcReal* model, const AcReal* candidate, const AcMeshInfo info)
+get_max_abs_error(const AcReal* model, const AcReal* candidate, const AcMeshInfo info, const bool communicated_field)
 {
     Error error = {.abs_error = -1};
 
-    for (size_t i = 0; i < acVertexBufferSize(info); ++i) {
-        Error curr_error = acGetError(model[i], candidate[i]);
-        if (curr_error.abs_error > error.abs_error)
-            error = curr_error;
+
+    const int x_start = communicated_field ? 3 : 0;
+    const int y_start = communicated_field ? 3 : 0;
+    const int z_start = communicated_field ? 3 : 0;
+
+    const int x_end = communicated_field ? info.int_params[AC_nx] : info.int_params[AC_mx];
+    const int y_end = communicated_field ? info.int_params[AC_ny] : info.int_params[AC_my];
+    const int z_end = communicated_field ? info.int_params[AC_nz] : info.int_params[AC_mz];
+
+    for (int x = x_start; x < x_end; ++x) 
+    {
+    	for (int y = y_start; y < y_end; ++y) 
+	{
+    		for (int z = z_start; z < z_end; ++z) 
+		{
+			const size_t i = x+y*info.int_params[AC_mx]+z*info.int_params[AC_mx]*info.int_params[AC_my];
+        		Error curr_error = acGetError(model[i], candidate[i]);
+        		if (curr_error.abs_error > error.abs_error)
+            			error = curr_error;
+		}
+	}
     }
-    error.maximum_magnitude = get_maximum_magnitude(model, info);
-    error.minimum_magnitude = get_minimum_magnitude(model, info);
+    error.maximum_magnitude = get_maximum_magnitude(model, info, communicated_field);
+    error.minimum_magnitude = get_minimum_magnitude(model, info, communicated_field);
 
     return error;
 }
@@ -175,7 +224,7 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
     int errors_found = 0;
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         const Error error = get_max_abs_error(model.vertex_buffer[i], candidate.vertex_buffer[i],
-                                              model.info);
+                                              model.info, i>=NUM_COMMUNICATED_FIELDS);
         const bool acceptable = acEvalError(vtxbuf_names[i], error);
         if (!acceptable)
             ++errors_found;
