@@ -399,26 +399,22 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 
 	    ASTNode* declaration_list_head = declaration_list;
 	    bool are_arrays = false;
-	    while(declaration_list_head->rhs)
+	    ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
+	    if(type_specifier)
 	    {
-		const ASTNode* 	declaration_postfix_expression = declaration_list_head->rhs;
-		if(declaration_postfix_expression->rhs && declaration_postfix_expression->rhs->type != NODE_MEMBER_ID)
-		{
-	    		char array_length[500];
-			array_length[0] = '\0';
-			combine_buffers(declaration_postfix_expression->rhs,array_length);
-			are_arrays = true;
-		}
-		declaration_list_head = declaration_list_head->lhs;
-	    }	
+		    while(declaration_list_head->rhs)
+		    {
+			const ASTNode* 	declaration_postfix_expression = declaration_list_head->rhs;
+			if(declaration_postfix_expression->rhs && declaration_postfix_expression->rhs->type != NODE_MEMBER_ID)
+				are_arrays = true;
+			declaration_list_head = declaration_list_head->lhs;
+		    }	
 
-	    const ASTNode* 	declaration_postfix_expression = declaration_list_head->lhs;
-	    if(declaration_postfix_expression->rhs && declaration_postfix_expression->rhs->type != NODE_MEMBER_ID)
-	    {
-	    	char array_length[500];
-		array_length[0] = '\0';
-	    	combine_buffers(declaration_postfix_expression->rhs,array_length);
-		are_arrays = true;
+		    const ASTNode* 	declaration_postfix_expression = declaration_list_head->lhs;
+		    if(declaration_postfix_expression->rhs && declaration_postfix_expression->rhs->type != NODE_MEMBER_ID)
+			are_arrays = true;
+		    if(are_arrays)
+			assert(!strcmp(type_specifier->lhs,"int") || !strcmp(type_specifier->lhs,"AcReal"));
 	    }
             if (get_node_by_token(FIELD, $$->rhs)) {
                 variable_definition->type |= NODE_VARIABLE;
@@ -432,7 +428,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-	    	ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
 		//make it an array type i.e. pointer
 		strcat(type_specifier->lhs->buffer,"*");
 	    }
