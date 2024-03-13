@@ -59,6 +59,7 @@ main(void)
     AcReal* stencils = get_stencil_coeffs(info);
     acDeviceLoadStencils(device, STREAM_DEFAULT, stencils);
     free(stencils);
+    acDevicePrintInfo(device);
 
     // Boundconds
     acDeviceLoadMesh(device, STREAM_DEFAULT, model);

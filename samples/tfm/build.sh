@@ -14,6 +14,7 @@ BUILD_OPTIONS="\
 -DBUILD_SAMPLES=OFF \
 -DDSL_MODULE_DIR=$ASTAROTH/samples/tfm/mhd \
 -DPROGRAM_MODULE_DIR=$ASTAROTH/samples/tfm
-"
+-DCUDA_ARCHITECTURES=61\
+" # NOTE CUDA_ARCHITECTURE to build for the work machine
 
 cmake $BUILD_OPTIONS $@ $ASTAROTH && make -j
