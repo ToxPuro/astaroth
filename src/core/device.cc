@@ -468,11 +468,33 @@ acDeviceLoadRealArrayWithOffset(const Device device, const Stream stream, const 
 {
 
     if constexpr(NUM_REAL_ARRAYS == 0)
-    
         return AC_FAILURE;
+
     cudaSetDevice(device->id);
     const AcReal* src_ptr = &host_info.real_arrays[array][src_idx];
     AcReal* dst_ptr       = &device->vba.real_arrays[array][dst_idx];
+    ERRCHK_ALWAYS(src_ptr != nullptr);
+    ERRCHK_ALWAYS(dst_ptr != nullptr);
+    const size_t bytes    = num_elems* sizeof(src_ptr[0]);
+
+    ERRCHK_CUDA(                                                                                  //
+        cudaMemcpyAsync(dst_ptr, src_ptr, bytes, cudaMemcpyHostToDevice, device->streams[stream]) //
+    );
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceLoadIntArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
+                         const AcIntArrayParam array, int src_idx, int dst_idx, size_t num_elems)
+{
+
+    if constexpr(NUM_INT_ARRAYS == 0)
+        return AC_FAILURE;
+
+    cudaSetDevice(device->id);
+    const int* src_ptr = &host_info.int_arrays[array][src_idx];
+    int* dst_ptr       = &device->vba.int_arrays[array][dst_idx];
     ERRCHK_ALWAYS(src_ptr != nullptr);
     ERRCHK_ALWAYS(dst_ptr != nullptr);
     const size_t bytes    = num_elems* sizeof(src_ptr[0]);
@@ -488,6 +510,14 @@ acDeviceLoadRealArray(const Device device, const Stream stream, const AcMeshInfo
                          const AcRealArrayParam array)
 {
     acDeviceLoadRealArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[real_array_lengths[array]]);
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceLoadIntArray(const Device device, const Stream stream, const AcMeshInfo host_info,
+                         const AcIntArrayParam array)
+{
+    acDeviceLoadIntArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[int_array_lengths[array]]);
     return AC_SUCCESS;
 }
 

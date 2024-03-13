@@ -161,7 +161,7 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
 }
 
 AcResult
-acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba, const int3 vba_start,
+acKernelPackDataFull(const cudaStream_t stream, const VertexBufferArray vba, const int3 vba_start,
                  const int3 dims, AcRealPacked* packed)
 {
     const dim3 tpb(32, 8, 1);
@@ -176,7 +176,7 @@ acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba, const i
 }
 
 AcResult
-acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed, const int3 vba_start,
+acKernelUnpackDataFull(const cudaStream_t stream, const AcRealPacked* packed, const int3 vba_start,
                    const int3 dims, VertexBufferArray vba)
 {
     const dim3 tpb(32, 8, 1);
@@ -190,10 +190,13 @@ acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed, const 
 }
 
 AcResult
-acKernelPartialPackData(const cudaStream_t stream, const VertexBufferArray vba,
+acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
                         const int3 vba_start, const int3 dims, AcRealPacked* packed,
-                        VertexBufferHandle* vtxbufs, size_t num_vtxbufs)
+                        const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs)
 {
+    //done to ensure performance backwards compatibility
+    if(num_vtxbufs == NUM_COMMUNICATED_FIELDS)
+	    return acKernelPackDataFull(stream,vba,vba_start,dims,packed);
     const dim3 tpb(32, 8, 1);
     const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
                    (unsigned int)ceil(dims.y / (double)tpb.y),
@@ -210,10 +213,20 @@ acKernelPartialPackData(const cudaStream_t stream, const VertexBufferArray vba,
 }
 
 AcResult
-acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
-                          const int3 vba_start, const int3 dims, VertexBufferArray vba,
-                          VertexBufferHandle* vtxbufs, size_t num_vtxbufs)
+acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
+                        const int3 vba_start, const int3 dims, AcRealPacked* packed)
 {
+	return acKernelPackDataFull(stream,vba,vba_start,dims,packed);
+}
+
+AcResult
+acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
+                          const int3 vba_start, const int3 dims, VertexBufferArray vba,
+                          const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs)
+{
+    //done to ensure performance backwards compatibility
+    if(num_vtxbufs == NUM_COMMUNICATED_FIELDS)
+	    return acKernelUnpackDataFull(stream,packed,vba_start,dims,vba);
     const dim3 tpb(32, 8, 1);
     const dim3 bpg((unsigned int)ceil(dims.x / (double)tpb.x),
                    (unsigned int)ceil(dims.y / (double)tpb.y),
@@ -225,4 +238,11 @@ acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
                                                         num_vtxbufs);
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
+}
+
+AcResult
+acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
+                          const int3 vba_start, const int3 dims, VertexBufferArray vba)
+{
+	return acKernelUnpackDataFull(stream,packed,vba_start,dims,vba);
 }

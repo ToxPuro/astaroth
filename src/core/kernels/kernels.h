@@ -127,25 +127,17 @@ AcResult acKernelDummy(void);
 
 /** */
 AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
-                          const int3 vba_start, const int3 dims, AcRealPacked* packed);
+                          const int3 vba_start, const int3 dims, AcRealPacked* packed,
+			  const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
 
 /** */
 // AcResult acKernelIntegrateSubstep(const KernelParameters params,
 // VertexBufferArray vba);
 
 /** */
-AcResult acKernelPartialPackData(const cudaStream_t stream, const VertexBufferArray vba,
-                                 const int3 vba_start, const int3 dims, AcRealPacked* packed,
-                                 VertexBufferHandle vtxbufs[], size_t num_vtxbufs);
-
-/** */
 AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
-                            const int3 vba_start, const int3 dims, VertexBufferArray vba);
-
-/** */
-AcResult acKernelPartialUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
-                                   const int3 vba_start, const int3 dims, VertexBufferArray vba,
-                                   VertexBufferHandle vtxbufs[], size_t num_vtxbufs);
+                            const int3 vba_start, const int3 dims, VertexBufferArray vba,
+			    const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
 
 /** */
 size_t acKernelReduceGetMinimumScratchpadSize(const int3 max_dims);
@@ -182,4 +174,14 @@ AcResult acKernel(const KernelParameters params, VertexBufferArray vba);
 
 #ifdef __cplusplus
 } // extern "C"
+
+// cplusplus overloads
+
+/** */
+AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
+                            const int3 vba_start, const int3 dims, VertexBufferArray vba);
+
+/** */
+AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba,
+                          const int3 vba_start, const int3 dims, AcRealPacked* packed);
 #endif

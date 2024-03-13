@@ -793,10 +793,9 @@ void
 HaloExchangeTask::pack()
 {
     auto msg = send_buffers.get_fresh_buffer();
-    acKernelPartialPackData(stream, vba, input_region.position, input_region.dims,
+    acKernelPackData(stream, vba, input_region.position, input_region.dims,
                              msg->data, input_region.fields.data(),
                              input_region.fields.size());
-    //acKernelPackData(stream, vba, input_region.position, input_region.dims, msg->data);
 }
 
 void
@@ -807,10 +806,9 @@ HaloExchangeTask::unpack()
 #if !(USE_CUDA_AWARE_MPI)
     msg->unpin(device, stream);
 #endif
-    acKernelPartialUnpackData(stream, msg->data, output_region.position, output_region.dims,
+    acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims,
                                vba, output_region.fields.data(),
 		    		output_region.fields.size());
-    //acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims, vba);
 }
 
 void

@@ -20,7 +20,14 @@ int yylex();
 int yyparse();
 int yyerror(const char* str);
 int yyget_lineno();
+
 const char* global_func_declaration = "__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n";
+const char* user_structs_filename = "user_structs.h";
+const char* user_cpu_kernels_filename = "user_cpu_kernels.h";
+const char* bind_gen_filename = "bind_gen.h";
+const char* bind_gen_header_filename = "bind_gen_header.h";
+const char* bind_gen_two_filename = "bind_gen_two.h";
+const char* bind_gen_two_header_filename = "bind_gen_two_header.h";
 
 //These are used to generate better error messages in case of errors
 FILE* yyin_backup;
@@ -47,26 +54,6 @@ void remove_substring_parser(char *str, const char *sub) {
 		found = strstr(found, sub); // Find the next occurrence of the substring
 	}
 }
-void strip_whitespace_parser(char *str) {
-    char *dest = str; // Destination pointer to overwrite the original string
-    char *src = str;  // Source pointer to traverse the original string
-
-    // Skip leading whitespace
-    while (isspace((unsigned char)(*src))) {
-        src++;
-    }
-
-    // Copy non-whitespace characters to the destination
-    while (*src) {
-        if (!isspace((unsigned char)(*src))) {
-            *dest++ = *src;
-        }
-        src++;
-    }
-
-    // Null-terminate the destination string
-    *dest = '\0';
-}
 
 
 void set_identifier_type(const NodeType type, ASTNode* curr);
@@ -75,13 +62,13 @@ void set_identifier_infix(const char* infix, ASTNode* curr);
 ASTNode* get_node(const NodeType type, ASTNode* node);
 ASTNode* get_node_by_token(const int token, ASTNode* node);
 
-void combine_ast(const ASTNode* node, char* res){
+void combine_buffers(const ASTNode* node, char* res){
   if(node->buffer)
     strcat(res,node->buffer);
   if(node->lhs)
-    combine_ast(node->lhs, res);
+    combine_buffers(node->lhs, res);
   if(node->rhs)
-    combine_ast(node->rhs, res);
+    combine_buffers(node->rhs, res);
 }
 
 void
@@ -89,7 +76,7 @@ process_param(const ASTNode* param, char* rest_params, char* param_default_args)
 {
 				char param_type[4096];
                                 param_type[0] = '\0';
-                                combine_ast(param->lhs, param_type);
+                                combine_buffers(param->lhs, param_type);
 			      	char param_str[4096];
                               	sprintf(param_str,",%s %s",param_type, param->rhs->buffer);
 			      	strprepend(rest_params,param_str);
@@ -108,9 +95,9 @@ process_declaration(const ASTNode* dec, char* struct_def)
 {
 	char tmp[4096];
 	tmp[0] = '\0';
-	combine_ast(dec->lhs,tmp);
+	combine_buffers(dec->lhs,tmp);
 	strcat(tmp," ");
-	combine_ast(dec->rhs,tmp);
+	combine_buffers(dec->rhs,tmp);
 	strcat(tmp,";");
 	strcat(struct_def,tmp);
 }
@@ -216,49 +203,56 @@ file_exists(const char* filename)
   struct stat   buffer;
   return (stat (filename, &buffer) == 0);
 }
+void
+gen_bind(const char* filename, const char* prefix, const char* type_name)
+{
+                        FILE* fp_gen = fopen(filename, "a");
+                        fprintf(fp_gen,"\\\n%s%s) ",prefix,type_name);
+                        fprintf(fp_gen,"\\\n%s%s*) ",prefix,type_name);
+                        fclose(fp_gen);
+}
+void
+add_type_bind_gens(const char* type_name)
+{
+			gen_bind(bind_gen_filename,"GEN_BIND(",type_name);
+			gen_bind(bind_gen_two_filename,"GEN_BIND_TWOS(TYPE,",type_name);
+			gen_bind(bind_gen_header_filename,"GEN_BIND_HEADERS(",type_name);
+			gen_bind(bind_gen_two_header_filename,"GEN_BIND_TWO_HEADER(TYPE,",type_name);
+}
+void
+add_default_bind_gens()
+{
+	FILE* fp_gen = fopen(bind_gen_two_header_filename,"w");
+	fprintf(fp_gen,"#define GEN_BIND_TWO_CALLS(TYPE) ");
+	fclose(fp_gen);
+
+	fp_gen = fopen(bind_gen_header_filename,"w");
+	fprintf(fp_gen,"#define GEN_BIND_CALLS_HEADER() ");
+	fclose(fp_gen);
+
+	fp_gen = fopen(bind_gen_filename,"w");
+	fprintf(fp_gen,"#define GEN_BIND_CALLS() ");
+	fclose(fp_gen);
+
+	fp_gen = fopen(bind_gen_two_filename,"w");
+	fprintf(fp_gen,"#define GEN_BIND_TWO(TYPE) ");
+	fclose(fp_gen);
+	add_type_bind_gens("int");
+	add_type_bind_gens("AcReal");
+}
 
 int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* stage4, const char* dir, const bool gen_mem_accesses)
 {
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
         {
-          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", "user_cpu_kernels.h", "user_structs.h"};
+          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", user_cpu_kernels_filename, user_structs_filename};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
             FILE* fp = fopen(files[i], "w");
             assert(fp);
             fclose(fp);
           }
         }
-	FILE* fp_gen = fopen("bind_gen_two_header.h","w");
-	fprintf(fp_gen,"#define GEN_BIND_TWO_CALLS(TYPE) ");
-	fprintf(fp_gen,"\\\nGEN_BIND_TWO_HEADER(TYPE,int) ");
-	fprintf(fp_gen,"\\\nGEN_BIND_TWO_HEADER(TYPE,int*) ");
-	fprintf(fp_gen,"\\\nGEN_BIND_TWO_HEADER(TYPE,AcReal) ");
-	fprintf(fp_gen,"\\\nGEN_BIND_TWO_HEADER(TYPE,AcReal*) ");
-	fclose(fp_gen);
-
-	fp_gen = fopen("bind_gen_header.h","w");
-	fprintf(fp_gen,"#define GEN_BIND_CALLS_HEADER() ");
-	fprintf(fp_gen,"\\\nGEN_BIND_HEADERS(int) ");
-	fprintf(fp_gen,"\\\nGEN_BIND_HEADERS(int*) ");
-	fprintf(fp_gen,"\\\nGEN_BIND_HEADERS(AcReal) ");
-	fprintf(fp_gen,"\\\nGEN_BIND_HEADERS(AcReal*) ");
-	fclose(fp_gen);
-
-	fp_gen = fopen("bind_gen.h","w");
-	fprintf(fp_gen,"#define GEN_BIND_CALLS() ");
-	fprintf(fp_gen,"\\\nGEN_BIND(int) ");
-	fprintf(fp_gen,"\\\nGEN_BIND(int*) ");
-	fprintf(fp_gen,"\\\nGEN_BIND(AcReal) ");
-	fprintf(fp_gen,"\\\nGEN_BIND(AcReal*) ");
-	fclose(fp_gen);
-
-	fp_gen = fopen("bind_gen_two.h","w");
-	fprintf(fp_gen,"#define GEN_BIND_TWO(TYPE) ");
-	fprintf(fp_gen,"\\\nGEN_BIND_TWOS(TYPE,int) ");
-	fprintf(fp_gen,"\\\nGEN_BIND_TWOS(TYPE,int*) ");
-	fprintf(fp_gen,"\\\nGEN_BIND_TWOS(TYPE,AcReal) ");
-	fprintf(fp_gen,"\\\nGEN_BIND_TWOS(TYPE,AcReal*) ");
-	fclose(fp_gen);
+	add_default_bind_gens();
 
         // Stage 1: Preprocess includes
         {
@@ -317,9 +311,9 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
             return EXIT_FAILURE;
 
 	//add newlines to fix compiler warnings
-        const char* bind_files[] = {"bind_gen.h", "bind_gen_header.h", "bind_gen_two.h", "bind_gen_two_header.h"};
+        const char* bind_files[] = {bind_gen_filename, bind_gen_header_filename, bind_gen_two_filename, bind_gen_two_header_filename};
         for (size_t i = 0; i < sizeof(bind_files)/sizeof(bind_files[0]); ++i) {
-          fp_gen = fopen(bind_files[i], "a");
+          FILE* fp_gen = fopen(bind_files[i], "a");
           assert(fp_gen);
 	  fprintf(fp_gen," \n");
           fclose(fp_gen);
@@ -403,11 +397,30 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             ASTNode* declaration_list = declaration->rhs;
             assert(declaration_list);
 
+	    ASTNode* declaration_list_head = declaration_list;
+	    bool are_arrays = false;
+	    while(declaration_list_head->rhs)
+	    {
+		const ASTNode* 	declaration_postfix_expression = declaration_list_head->rhs;
+		if(declaration_postfix_expression->rhs && declaration_postfix_expression->rhs->type != NODE_MEMBER_ID)
+		{
+	    		char array_length[500];
+			array_length[0] = '\0';
+			combine_buffers(declaration_postfix_expression->rhs,array_length);
+			are_arrays = true;
+		}
+		declaration_list_head = declaration_list_head->lhs;
+	    }	
+
+	    const ASTNode* 	declaration_postfix_expression = declaration_list_head->lhs;
+	    if(declaration_postfix_expression->rhs && declaration_postfix_expression->rhs->type != NODE_MEMBER_ID)
+	    {
+	    	char array_length[500];
+		array_length[0] = '\0';
+	    	combine_buffers(declaration_postfix_expression->rhs,array_length);
+		are_arrays = true;
+	    }
             if (get_node_by_token(FIELD, $$->rhs)) {
-                variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-            } 
-            else if (get_node_by_token(REAL_ARRAY, $$->rhs)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             } 
@@ -415,10 +428,14 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             }
-            else if(get_node_by_token(REAL_ARRAY, $$->rhs)){
+	    else if(are_arrays)
+	    {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-            }
+	    	ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
+		//make it an array type i.e. pointer
+		strcat(type_specifier->lhs->buffer,"*");
+	    }
             else {
                 variable_definition->type |= NODE_DCONST;
                 set_identifier_type(NODE_DCONST_ID, declaration_list);
@@ -502,59 +519,35 @@ hostdefine: HOSTDEFINE {
  * Structure Definitions 
  * =============================================================================
 */
-//empty rule for now since we don't need the output
+//Doesn't return an AST node since we don't need it currently 
 struct_definition: struct_name '{' declarations '}' struct_type
-		 {
-			$$ = astnode_create(NODE_UNKNOWN,$1,$3); 
-			char struct_def[5000]; 
-			char tmp[5000];
-			struct_def[0] = '\0';
-			tmp[0] = '\0';
-			sprintf(tmp,"%s",$1->buffer);	
-			remove_substring_parser(tmp,"typedef");
-			remove_substring_parser(tmp,"struct");
-			strip_whitespace_parser(tmp);
+                 {
+                        $$ = astnode_create(NODE_UNKNOWN,$1,$3);
+                        char struct_def[5000];
+                        char struct_name[5000];
+                        struct_def[0] = '\0';
+                        struct_name[0] = '\0';
+			combine_buffers($5,struct_name);
+			add_type_bind_gens(struct_name);
 
-			FILE* fp_gen = fopen("bind_gen_two_header.h", "a");
-			fprintf(fp_gen,"\\\nGEN_BIND_TWO_HEADER(TYPE,%s) ",tmp);
-			fprintf(fp_gen,"\\\nGEN_BIND_TWO_HEADER(TYPE,%s*) ",tmp);
-			fclose(fp_gen);
+                        strcat(struct_def,$1->buffer);
+                        strcat(struct_def,"{ ");
+                        const ASTNode* dec_head = $3;
+                        while(dec_head->rhs)
+                        {
 
-			fp_gen = fopen("bind_gen_header.h", "a");
-			fprintf(fp_gen,"\\\nGEN_BIND_HEADERS(%s) ",tmp);
-			fprintf(fp_gen,"\\\nGEN_BIND_HEADERS(%s*) ",tmp);
-			fclose(fp_gen);
-
-			fp_gen = fopen("bind_gen.h", "a");
-			fprintf(fp_gen,"\\\nGEN_BIND(%s) ",tmp);
-			fprintf(fp_gen,"\\\nGEN_BIND(%s*) ",tmp);
-			fclose(fp_gen);
-
-			fp_gen = fopen("bind_gen_two.h", "a");
-			fprintf(fp_gen,"\\\nGEN_BIND_TWOS(TYPE,%s) ",tmp);
-			fprintf(fp_gen,"\\\nGEN_BIND_TWOS(TYPE,%s*) ",tmp);
-			fclose(fp_gen);
-			tmp[0] = '\0';
-
-			strcat(struct_def,$1->buffer);
-			strcat(struct_def,"{ ");
-			const ASTNode* dec_head = $3;
-			while(dec_head->rhs)
-			{
-				
-				process_declaration(dec_head->rhs,struct_def);
-				dec_head = dec_head->lhs;
-			}
-			process_declaration(dec_head->lhs,struct_def);
-			strcat(struct_def,"} ");
-			combine_ast($5,tmp);
-			strcat(struct_def,tmp);
-			strcat(struct_def,";");
-			tmp[0] = '\0';
-			FILE* fp  = fopen("user_structs.h","a");
-			fprintf(fp,"%s\n",struct_def);
-			fclose(fp);
-		 }
+                                process_declaration(dec_head->rhs,struct_def);
+                                dec_head = dec_head->lhs;
+                        }
+                        process_declaration(dec_head->lhs,struct_def);
+                        strcat(struct_def,"} ");
+                        strcat(struct_def,struct_name);
+                        strcat(struct_def,";");
+                        struct_name[0] = '\0';
+                        FILE* fp  = fopen("user_structs.h","a");
+                        fprintf(fp,"%s\n",struct_def);
+                        fclose(fp);
+                 }
 		 ;
 
 /*
@@ -806,6 +799,15 @@ function_definition: declaration function_body {
                             const char* default_args =  "const int3 start, const int3 end, VertexBufferArray vba";
                             sprintf(param_list,"(%s %s",default_args,rest_params);
                             astnode_set_prefix(param_list, $$->rhs);
+
+                            FILE* fp_cpu = fopen(user_cpu_kernels_filename,"a");
+                            fprintf(fp_cpu,"\nvoid %s_cpu(%s){%s(start,end,vba%s);}\n",fn_identifier->buffer,default_args,fn_identifier->buffer,param_default_args);
+			    fclose(fp_cpu);
+
+                            FILE* fp = fopen("user_kernel_declarations.h","a");
+                            fprintf(fp, "void __global__ %s %s);\n", fn_identifier->buffer, param_list);
+                            fclose(fp);
+
                             ASTNode* compound_statement = $$->rhs->rhs;
                             assert(compound_statement);
                             astnode_set_prefix("{", compound_statement);
@@ -815,16 +817,6 @@ function_definition: declaration function_body {
                               //"if (!isnan(out_buffer[field]))"
                               //"vba.out[field][idx] = out_buffer[field];"
                               "}", compound_statement);
-                            char* func_name = fn_identifier->buffer;
-
-
-                            FILE* fp_cpu = fopen("user_cpu_kernels.h","a");
-                            fprintf(fp_cpu,"\nvoid %s_cpu(%s){%s(start,end,vba%s);}\n",fn_identifier->buffer,default_args,func_name,param_default_args);
-			    fclose(fp_cpu);
-
-                            FILE* fp = fopen("user_kernel_declarations.h","a");
-                            fprintf(fp, "void __global__ %s %s);\n", func_name, param_list);
-                            fclose(fp);
 
                         } else {
                             astnode_set_infix(" __attribute__((unused)) =[&]", $$);

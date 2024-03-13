@@ -388,6 +388,17 @@ acGridInit(AcMeshInfo info)
       acGridSynchronizeStream(STREAM_ALL);
     }
 
+    for(int array=0;array<NUM_INT_ARRAYS;++array)
+    {
+      //in case the user loaded a nullptr to the profile do not load it
+      if(submesh.info.int_arrays[array] != nullptr){
+        acDeviceLoadIntArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcIntArrayParam>(array));
+      }else{
+        acLogFromRootProc(pid, "acGridInit: Warning!!!\tInt array%s will be null and not allocated since you loaded a nullptr to it\n", int_array_param_names[array]);
+      }
+      acGridSynchronizeStream(STREAM_ALL);
+    }
+
 
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraphWithIterations(default_ops,3));
     acLogFromRootProc(pid, "acGridInit: Done creating default task graph\n");
@@ -1442,29 +1453,22 @@ TestRegions(std::vector<Region> regions, int target_volume)
 
 		}
 	}
-	if(passed)
-		printf("RegionTest: not overlapping\n");
-	else
+	if(!passed)
 		printf("RegionTest: overlapping\n");
 
 	int covered_volume = 0;
 	for(auto& region: regions)
 	{
 		covered_volume += region.volume;
-		printf("added: %ld\n",region.volume);
 	}
 	passed &= covered_volume == target_volume;
-	if(passed)
-		printf("Covers the volume\n");
-	else
+	if(!passed)
 	{
 		printf("Doesn't cover the volume\n");
 		printf("Target: %d\n",target_volume);
 		printf("Covered: %d\n",covered_volume);
 	}
-	if(passed)
-		printf("RegionTest: passed\n");
-	else
+	if(!passed)
 		printf("RegionTest: not passed\n");
 	return passed;
 }

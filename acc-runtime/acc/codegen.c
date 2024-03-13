@@ -290,15 +290,27 @@ gen_array_reads(ASTNode* node, bool gen_mem_accesses)
   if(node->buffer){
   	const int l_current_nest = 0;
   	for (size_t i = 0; i < num_symbols[l_current_nest]; ++i)
-    	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-          !strcmp(symbol_table[i].tspecifier, "AcReal*") && !strcmp(node->buffer,symbol_table[i].identifier))
 	{
+    	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
+          !strcmp(symbol_table[i].tspecifier,"AcReal*") && !strcmp(node->buffer,symbol_table[i].identifier))
+	  {
 		char new_name[4096];
 		if(gen_mem_accesses)
 			sprintf(new_name,"%s","big_array");
 		else
 			sprintf(new_name,"vba.real_arrays[(int)%s]",node->buffer);
 		node->buffer = strdup(new_name);
+	  }
+    	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
+          !strcmp(symbol_table[i].tspecifier,"int*") && !strcmp(node->buffer,symbol_table[i].identifier))
+	  {
+		char new_name[4096];
+		if(gen_mem_accesses)
+			sprintf(new_name,"%s","big_int_array");
+		else
+			sprintf(new_name,"vba.int_arrays[(int)%s]",node->buffer);
+		node->buffer = strdup(new_name);
+	  }
 	}
   }
   if(node->lhs)
@@ -407,28 +419,15 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
       }
       if (!(node->type & NODE_MEMBER_ID))
       {
-        if (tspec != NULL && !strcmp(tspec,"AcReal*"))
-        {
-          const ASTNode* nd = decl->rhs->lhs->rhs->lhs->lhs->lhs->lhs;
-          if(nd)
-          {
-            if(nd->lhs)
-            {
-              printf("no left child!\n");
-              exit(0);
-            }
-            if(nd->rhs)
-            {
-              printf("no right child\n");
-              exit(0);
-            }
-            const int symbol_index = add_symbol(node->type, tqualifiers, n_tqualifiers, tspec, node->buffer);
-            symbol_var_length[symbol_index] = nd->buffer;
-          }
-        }
-        else{
-          add_symbol(node->type, tqualifiers, n_tqualifiers, tspec, node->buffer);
-        }
+        const int symbol_index = add_symbol(node->type, tqualifiers, n_tqualifiers, tspec, node->buffer);
+	//get array length
+        if (tspec != NULL && (!strcmp(tspec,"AcReal*") || !strcmp(tspec,"int*")))
+	{
+		char array_length[4096];
+		array_length[0] = '\0';
+		combine(node->parent->parent->rhs,array_length);
+		symbol_var_length[symbol_index] =  strdup(array_length);
+	}
       }
     }
   }
@@ -680,6 +679,13 @@ gen_user_defines(const ASTNode* root, const char* out)
 	    fprintf(fp, "%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_REAL_ARRAYS} AcRealArrayParam;");
 
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+       !strcmp(symbol_table[i].tspecifier, "int*"))
+	    fprintf(fp, "%s,", symbol_table[i].identifier);
+  fprintf(fp, "NUM_INT_ARRAYS} AcIntArrayParam;");
+
 
   fprintf(fp, "typedef enum {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -760,10 +766,25 @@ gen_user_defines(const ASTNode* root, const char* out)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
 
+  fprintf(fp,
+          "static const char* int_array_param_names[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        !strcmp(symbol_table[i].tspecifier, "int*"))
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+
   fprintf(fp, "static const AcIntParam real_array_lengths[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_VARIABLE_ID &&
         !strcmp(symbol_table[i].tspecifier, "AcReal*"))
+      fprintf(fp, "%s,", symbol_var_length[i]);
+  fprintf(fp, "};");
+
+  fprintf(fp, "static const AcIntParam int_array_lengths[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        !strcmp(symbol_table[i].tspecifier, "int*"))
       fprintf(fp, "%s,", symbol_var_length[i]);
   fprintf(fp, "};");
 

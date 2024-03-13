@@ -1077,6 +1077,9 @@ AcResult acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh
 /** */
 AcResult acDeviceLoadRealArray(const Device device, const Stream stream, const AcMeshInfo host_info,
                                   const AcRealArrayParam array);
+/** */
+AcResult acDeviceLoadIntArray(const Device device, const Stream stream, const AcMeshInfo host_info,
+                                  const AcIntArrayParam array);
 
 /** */
 AcResult acDeviceSetVertexBuffer(const Device device, const Stream stream,
