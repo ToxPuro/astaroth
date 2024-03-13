@@ -614,7 +614,7 @@ ComputeTask::compute()
 {
     // IDEA: we could make loop_cntr.i point at params.step_number
     params.step_number = (int)(loop_cntr.i % 3);
-    acKernel(params, vba);
+    acLaunchKernel(params.kernel, params.stream, params.start, params.end, vba);
 }
 
 bool
