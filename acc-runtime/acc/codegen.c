@@ -188,12 +188,12 @@ symboltable_reset(void)
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nxy");
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nxyz");
 
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_xy_plate_bufsize");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_xz_plate_bufsize");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_yz_plate_bufsize");
-  add_symbol(NODE_DCONST_ID, NULL, "int3", "AC_domain_decomposition");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_proc_mapping_strategy");
-  add_symbol(NODE_DCONST_ID, NULL, "int", "AC_decompose_strategy");
+  add_symbol(NODE_DCONST_ID, NULL, 0,"int", "AC_xy_plate_bufsize");
+  add_symbol(NODE_DCONST_ID, NULL, 0,"int", "AC_xz_plate_bufsize");
+  add_symbol(NODE_DCONST_ID, NULL, 0,"int", "AC_yz_plate_bufsize");
+  add_symbol(NODE_DCONST_ID, NULL, 0,"int3", "AC_domain_decomposition");
+  add_symbol(NODE_DCONST_ID, NULL, 0,"int", "AC_proc_mapping_strategy");
+  add_symbol(NODE_DCONST_ID, NULL, 0,"int", "AC_decompose_strategy");
   
 
   add_symbol(NODE_DCONST_ID, NULL, 0, "int3", "AC_multigpu_offset");
