@@ -1603,6 +1603,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
         case TASKTYPE_COMPUTE: {
             acVerboseLogFromRootProc(rank, "Creating compute tasks\n");
+	    //This would be the better decomp strategy for now use the old on
+	    /**
 	    std::vector<Field> fields_out(op.fields_out,op.fields_out+op.num_fields_out);
 	    //std::vector<Region> comp_out_regions = getmyregions(nn,num_comp_tasks,fields_out);
 	    std::vector<Region> comp_out_regions = getmyregions(nn,0,fields_out);
@@ -1616,14 +1618,13 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                     //done here since we want to write only to out not to in what launching the taskgraph would do
                     acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, *op.kernel, task->output_region.position, task->output_region.position + task->output_region.dims);
 	    }
-	    /**
+	    **/
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
                 auto task = std::make_shared<ComputeTask>(op, i, tag, nn, device, swap_offset);
                 graph->all_tasks.push_back(task);
 
 
             }
-	    **/
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
                 swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
@@ -1828,7 +1829,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
     acGridSynchronizeStream(STREAM_ALL);
-    ERRCHK_ALWAYS(num_comp_tasks==6);
+    //ERRCHK_ALWAYS(num_comp_tasks==6);
     return graph;
 }
 
