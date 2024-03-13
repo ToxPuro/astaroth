@@ -383,7 +383,7 @@ acGridInit(AcMeshInfo info)
       if(submesh.info.real_arrays[array] != nullptr){
         acDeviceLoadRealArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcRealArrayParam>(array));
       }else{
-        acLogFromRootProc(pid, "acGridInit: Warning!!!\tReal array%s will be null and not allocated since you loaded a nullptr to it\n", real_array_param_names[array]);
+        acLogFromRootProc(pid, "acGridInit: Warning!!!\tReal array %s will be null and not allocated since you loaded a nullptr to it\n", real_array_param_names[array]);
       }
       acGridSynchronizeStream(STREAM_ALL);
     }
@@ -394,7 +394,7 @@ acGridInit(AcMeshInfo info)
       if(submesh.info.int_arrays[array] != nullptr){
         acDeviceLoadIntArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcIntArrayParam>(array));
       }else{
-        acLogFromRootProc(pid, "acGridInit: Warning!!!\tInt array%s will be null and not allocated since you loaded a nullptr to it\n", int_array_param_names[array]);
+        acLogFromRootProc(pid, "acGridInit: Warning!!!\tInt array %s will be null and not allocated since you loaded a nullptr to it\n", int_array_param_names[array]);
       }
       acGridSynchronizeStream(STREAM_ALL);
     }
