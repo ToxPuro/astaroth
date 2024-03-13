@@ -1,8 +1,0 @@
-#include "prerequisites.h"
-
-Kernel singlepass_solve(int ac_input_step_num) {
-  vecwrite( UU, rk3_vector(vecprevious(UU), vecvalue(UU), dUU_dt(), ac_input_step_num) )
-  write( RHO, rk3(previous(RHO), value(RHO), dRHO_dt(), ac_input_step_num) )
-  vecwrite( AA, rk3_vector(vecprevious(AA), vecvalue(AA), dAA_dt(), ac_input_step_num) )
-  write( SS, rk3(previous(SS), value(SS), dSS_dt(), ac_input_step_num) )
-}

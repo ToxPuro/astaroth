@@ -11,6 +11,8 @@
 #include <string.h>
 
 #include "errchk.h"
+#include "datatypes.h"
+#include "user_defines.h"
 
 #undef __device__
 #define __device__
@@ -38,8 +40,28 @@
 
 // Just nasty: Must evaluate all code branches given arbitrary input
 // if we want automated stencil generation to work in every case
-#define DCONST(x) (2)
 #define d_multigpu_offset ((int3){0, 0, 0})
+
+int
+DCONST(const AcIntParam param)
+{
+  return 0;
+}
+int3
+DCONST(const AcInt3Param param)
+{
+  return (int3){0,0,0};
+}
+AcReal
+DCONST(const AcRealParam param)
+{
+  return 0.0;
+}
+AcReal3
+DCONST(const AcReal3Param param)
+{
+  return (AcReal3){0,0,0};
+}
 
 constexpr int
 IDX(const int i)

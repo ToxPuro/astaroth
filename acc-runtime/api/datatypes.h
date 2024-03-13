@@ -21,19 +21,25 @@
 #include <float.h> // DBL/FLT_EPSILON
 
 #if AC_USE_HIP
-#include "hip.h"
-#include <hip/hip_complex.h>
+  #include "hip.h"
+  #include <hip/hip_complex.h>
 #else
-#include <cuComplex.h>    // CUDA complex types
-#include <vector_types.h> // CUDA vector types
+  #include <vector_types.h> // CUDA vector types
+  #include <cuComplex.h>    // CUDA complex types
+#endif
+
+#if AC_DOUBLE_PRECISION
+  typedef cuDoubleComplex AcComplex;
+  #define AcComplex(x,y) make_cuDoubleComplex(x,y)
+#else
+  typedef cuFloatComplex AcComplex;
+  #define AcComplex(x,y) make_cuFloatComplex(x,y)
 #endif
 
 #if AC_DOUBLE_PRECISION
 typedef double AcReal;
 typedef double2 AcReal2;
 typedef double3 AcReal3;
-typedef cuDoubleComplex acComplex;
-#define acComplex(x, y) make_cuDoubleComplex(x, y)
 #define AC_REAL_MAX (DBL_MAX)
 #define AC_REAL_MIN (DBL_MIN)
 #define AcReal3(x, y, z) make_double3(x, y, z)
@@ -44,8 +50,6 @@ typedef cuDoubleComplex acComplex;
 typedef float AcReal;
 typedef float2 AcReal2;
 typedef float3 AcReal3;
-typedef cuFloatComplex acComplex;
-#define acComplex(x, y) make_cuFloatComplex(x, y)
 #define AC_REAL_MAX (FLT_MAX)
 #define AC_REAL_MIN (FLT_MIN)
 #define AcReal3(x, y, z) make_float3(x, y, z)
@@ -55,6 +59,10 @@ typedef cuFloatComplex acComplex;
 #endif
 
 #define AC_REAL_PI ((AcReal)M_PI)
+
+// convert 3-array into vector
+#define TOVEC3(type,arr) ((type){arr[0],arr[1],arr[2]})
+#define TOACREAL3(arr) TOVEC3(AcReal3,arr)
 
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
 
