@@ -1,8 +1,7 @@
 // Provides all declarations and functions needed for the formulation of the PDEs' rhss by DSL code
 // and finally for the definition of the solve kernel.
 
-#include "../../../PC_nghost.h"
-hostdefine STENCIL_ORDER 2*NGHOST
+#include "PC_nghost.h"
 #define nghost NGHOST
 
 #include "fieldecs.h"
