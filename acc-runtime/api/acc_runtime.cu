@@ -772,6 +772,44 @@ acLoadRealUniform(const cudaStream_t /* stream */, const AcRealParam param,
   GEN_LOAD_UNIFORM(REAL, real);
 }
 
+//TODO: finalize
+//AcResult
+//acLoadRealArrayUniform(const cudaStream_t /* stream */, const AcRealArrayParam param,
+//                  const AcMeshInfo& info)
+//{
+//  ERRCHK_ALWAYS(int_array_is_dconst[param]);
+//  const AcReal* values = host_info.real_arrays[param];
+//  const int length  = info.int_params[real_array_lengths[param]];
+//  for(int i = 0; i < length; ++i)
+//  {
+//	  cudaDeviceSynchronize();
+//	  const size_t offset = (size_t)((&d_real_dconst_arrays[d_real_dconst_array_offsets[(int)param]] + i)-(size_t)&d_real_dconst_arrays);
+//  	  const cudaError_t retval = cudaMemcpyToSymbol(d_real_dconst_arrays, &values[i], sizeof(values[i]), offset, cudaMemcpyHostToDevice);
+//	  if retval != cudaSuccess
+//		  return AC_FAILURE;
+//
+//  }
+//  return AC_SUCCESS;
+//}
+//AcResult
+//acLoadIntArrayUniform(const cudaStream_t /* stream */, const AcIntArrayParam param,
+//                  const AcMeshInfo& host_info)
+//{
+//  const int* values = host_info.int_arrays[param];
+//  const int length  = info.int_params[int_array_lengths[param]];
+//  ERRCHK_ALWAYS(int_array_is_dconst[param]);
+//  for(int i = 0; i < length; ++i)
+//  {
+//          cudaDeviceSynchronize();
+//          const size_t offset = (size_t)((&d_int_dconst_arrays[d_int_dconst_array_offsets[(int)param]] + i)-(size_t)&d_int_dconst_arrays);
+//          const cudaError_t retval = cudaMemcpyToSymbol(d_int_dconst_arrays, &values[i], sizeof(values[i]), offset, cudaMemcpyHostToDevice);
+//          if retval != cudaSuccess
+//                  return AC_FAILURE;
+//  }
+//  return AC_SUCCESS;
+//}
+
+
 AcResult
 acLoadReal3Uniform(const cudaStream_t /* stream */, const AcReal3Param param,
                    const AcReal3 value)
