@@ -375,7 +375,7 @@ main(int argc, char** argv)
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP
 %token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL WORK_BUFFER 
-%token KERNEL SUM MAX COMMUNICATED AUXILIARY
+%token KERNEL SUM MAX COMMUNICATED AUXILIARY DCONST_QL
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE
 
@@ -477,6 +477,7 @@ while: WHILE           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 for: FOR               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 in: IN                 { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 communicated: COMMUNICATED { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+dconst_ql: DCONST_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 auxiliary: AUXILIARY   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int: INT               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -554,23 +555,24 @@ struct_definition: struct_name '{' declarations '}' struct_type
  * Types
  * =============================================================================
 */
-type_specifier: int     { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | uint   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | int3    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | real    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | real3   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | matrix  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | field   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+type_specifier: int         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | uint        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | int3        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | real        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | real3       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | matrix      { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | field       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | work_buffer { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | stencil { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | stencil     { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | struct_type { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               ;
 
-type_qualifier: kernel { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
-              | sum    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
-              | max    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+type_qualifier: kernel       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | max          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | communicated { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
-              | auxiliary { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | dconst_ql    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | auxiliary    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               ;
 
 type_qualifiers: type_qualifiers type_qualifier {$$ = astnode_create(NODE_UNKNOWN,$1,$2); }

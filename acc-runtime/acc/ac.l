@@ -78,6 +78,7 @@ void strip_whitespace(char *str) {
 "Sum"                   { return SUM; }
 "Max"                   { return MAX; }
 "communicated"          { return COMMUNICATED; }
+"dconst"          { return DCONST_QL; }
 "auxiliary"             { return AUXILIARY; }
 
 "if"        { return IF; } /* Keywords */
