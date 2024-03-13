@@ -69,7 +69,6 @@ void strip_whitespace(char *str) {
 "real"                  { return REAL; }
 "real3"                 { return REAL3; }
 "complex"               { return COMPLEX; }
-"realArray"             { return REAL_ARRAY; }
 "Matrix"                { return MATRIX; }
 "Field"                 { return FIELD; }
 "WorkBuffer"            {return WORK_BUFFER; }
