@@ -284,6 +284,14 @@ get_node(const NodeType type, const ASTNode* node)
   else
     return NULL;
 }
+void combine(const ASTNode* node, char* res){
+  if(node->buffer)
+    strcat(res,node->buffer);
+  if(node->lhs)
+    combine(node->lhs, res);
+  if(node->rhs)
+    combine(node->rhs, res);
+}
 void
 gen_array_reads(ASTNode* node, bool gen_mem_accesses)
 {
@@ -292,24 +300,28 @@ gen_array_reads(ASTNode* node, bool gen_mem_accesses)
   	for (size_t i = 0; i < num_symbols[l_current_nest]; ++i)
 	{
     	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-          !strcmp(symbol_table[i].tspecifier,"AcReal*") && !strcmp(node->buffer,symbol_table[i].identifier))
+          (!strcmp(symbol_table[i].tspecifier,"AcReal*") || !strcmp(symbol_table[i].tspecifier,"int*"))&& !strcmp(node->buffer,symbol_table[i].identifier))
 	  {
-		char new_name[4096];
 		if(gen_mem_accesses)
-			sprintf(new_name,"%s","big_array");
+		{
+			if(!strcmp(symbol_table[i].tspecifier,"AcReal*"))
+				node->buffer = strdup("big_array");
+			else if(!strcmp(symbol_table[i].tspecifier,"int*"))
+				node->buffer = strdup("big_int_array");
+		}
 		else
-			sprintf(new_name,"vba.real_arrays[(int)%s]",node->buffer);
-		node->buffer = strdup(new_name);
-	  }
-    	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-          !strcmp(symbol_table[i].tspecifier,"int*") && !strcmp(node->buffer,symbol_table[i].identifier))
-	  {
-		char new_name[4096];
-		if(gen_mem_accesses)
-			sprintf(new_name,"%s","big_int_array");
-		else
-			sprintf(new_name,"vba.int_arrays[(int)%s]",node->buffer);
-		node->buffer = strdup(new_name);
+		{
+			if(node->parent->parent->parent->rhs)
+			{
+				char new_name[4096];
+				if(!strcmp(symbol_table[i].tspecifier,"AcReal*"))
+					sprintf(new_name,"__ldg(&vba.real_arrays[(int)%s]",node->buffer);
+				else if(!strcmp(symbol_table[i].tspecifier,"int*"))
+					sprintf(new_name,"__ldg(&vba.int_arrays[(int)%s]",node->buffer);
+				node->parent->parent->parent->postfix = strdup("])");
+				node->buffer = strdup(new_name);
+			}
+		}
 	  }
 	}
   }
@@ -317,14 +329,6 @@ gen_array_reads(ASTNode* node, bool gen_mem_accesses)
     gen_array_reads(node->lhs,gen_mem_accesses);
   if(node->rhs)
     gen_array_reads(node->rhs,gen_mem_accesses);
-}
-void combine(const ASTNode* node, char* res){
-  if(node->buffer)
-    strcat(res,node->buffer);
-  if(node->lhs)
-    combine(node->lhs, res);
-  if(node->rhs)
-    combine(node->rhs, res);
 }
 
 static void
@@ -414,7 +418,8 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
         else if (!(node->type & NODE_KFUNCTION_ID) &&
                  !get_parent_node(NODE_STENCIL, node) &&
                  !(node->type & NODE_MEMBER_ID) &&
-                 !strstr(node->buffer, "ac_input"))
+                 !strstr(node->buffer, "ac_input") &&
+                 !strstr(node->buffer, "__ldg"))
           fprintf(stream, "auto ");
       }
       if (!(node->type & NODE_MEMBER_ID))

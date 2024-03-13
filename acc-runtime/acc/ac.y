@@ -563,7 +563,6 @@ type_specifier: int     { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | field   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | work_buffer { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | stencil { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | real_array { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | struct_type { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               ;
 
