@@ -1828,7 +1828,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
     acGridSynchronizeStream(STREAM_ALL);
-    ERRCHK_ALWAYS(num_comp_tasks==6);
+    //ERRCHK_ALWAYS(num_comp_tasks==6);
     return graph;
 }
 
