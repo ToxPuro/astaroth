@@ -1615,15 +1615,13 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 		    auto task = std::make_shared<ComputeTask>(op,region_index,comp_input_regions[region_index],comp_out_regions[region_index],device,swap_offset);
                     graph->all_tasks.push_back(task);
                     //autotune compute
-                    //done here since we want to write only to out not to in what launching the taskgraph would do
-                    acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, *op.kernel, task->output_region.position, task->output_region.position + task->output_region.dims);
 	    }
 	    **/
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
                 auto task = std::make_shared<ComputeTask>(op, i, tag, nn, device, swap_offset);
                 graph->all_tasks.push_back(task);
-
-
+                //done here since we want to write only to out not to in what launching the taskgraph would do
+                acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, *op.kernel, task->output_region.position, task->output_region.position + task->output_region.dims);
             }
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
