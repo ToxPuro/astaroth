@@ -478,11 +478,33 @@ acDeviceLoadRealArrayWithOffset(const Device device, const Stream stream, const 
 {
 
     if constexpr(NUM_REAL_ARRAYS == 0)
-    
         return AC_FAILURE;
+
     cudaSetDevice(device->id);
     const AcReal* src_ptr = &host_info.real_arrays[array][src_idx];
     AcReal* dst_ptr       = &device->vba.real_arrays[array][dst_idx];
+    ERRCHK_ALWAYS(src_ptr != nullptr);
+    ERRCHK_ALWAYS(dst_ptr != nullptr);
+    const size_t bytes    = num_elems* sizeof(src_ptr[0]);
+
+    ERRCHK_CUDA(                                                                                  //
+        cudaMemcpyAsync(dst_ptr, src_ptr, bytes, cudaMemcpyHostToDevice, device->streams[stream]) //
+    );
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceLoadIntArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
+                         const AcIntArrayParam array, int src_idx, int dst_idx, size_t num_elems)
+{
+
+    if constexpr(NUM_INT_ARRAYS == 0)
+        return AC_FAILURE;
+
+    cudaSetDevice(device->id);
+    const int* src_ptr = &host_info.int_arrays[array][src_idx];
+    int* dst_ptr       = &device->vba.int_arrays[array][dst_idx];
     ERRCHK_ALWAYS(src_ptr != nullptr);
     ERRCHK_ALWAYS(dst_ptr != nullptr);
     const size_t bytes    = num_elems* sizeof(src_ptr[0]);
@@ -498,6 +520,14 @@ acDeviceLoadRealArray(const Device device, const Stream stream, const AcMeshInfo
                          const AcRealArrayParam array)
 {
     acDeviceLoadRealArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[real_array_lengths[array]]);
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceLoadIntArray(const Device device, const Stream stream, const AcMeshInfo host_info,
+                         const AcIntArrayParam array)
+{
+    acDeviceLoadIntArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[int_array_lengths[array]]);
     return AC_SUCCESS;
 }
 
@@ -700,11 +730,11 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
                          const int3 start, const int3 end, const AcReal dt)
 {
 #ifdef AC_INTEGRATION_ENABLED
+    const AcReal current_time = device->local_config.real_params[AC_current_time];
     cudaSetDevice(device->id);
 
-    acDeviceLoadScalarUniform(device, stream, AC_dt, dt);
 #ifdef AC_SINGLEPASS_INTEGRATION
-    return acLaunchKernel(bind_single_param(singlepass_solve,step_number), device->streams[stream], start, end, device->vba);
+    return acLaunchKernel(bind_three_params(singlepass_solve,step_number,dt,current_time), device->streams[stream], start, end, device->vba);
 #else
     // Two-pass integration with acDeviceIntegrateSubstep works currently
     // only when integrating the whole subdomain
@@ -725,13 +755,13 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
     ERRCHK_ALWAYS(end.y == dims.n1.y);
     ERRCHK_ALWAYS(end.z == dims.n1.z);
 
-    const AcResult res = acLaunchKernel(bind_single_param(twopass_solve_intermediate,step_number), device->streams[stream], start,
+    const AcResult res = acLaunchKernel(bind_two_params(twopass_solve_intermediate,step_number,dt), device->streams[stream], start,
                                         end, device->vba);
     if (res != AC_SUCCESS)
         return res;
 
     acDeviceSwapBuffers(device);
-    return acLaunchKernel(bind_single_param(twopass_solve_final,step_number), device->streams[stream], start, end, device->vba);
+    return acLaunchKernel(bind_two_params(twopass_solve_final,step_number,current_time), device->streams[stream], start, end, device->vba);
 #endif
 #else
     (void)device;      // Unused

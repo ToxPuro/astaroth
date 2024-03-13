@@ -84,6 +84,16 @@ acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, 
 {
     return acCompute(kernel_to_kernel_lambda(kernels[(int)kernel]), fields_in, num_fields_in, fields_out, num_fields_out);
 }
+
+AcTaskDefinition
+acCompute(IterKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
+          const size_t num_fields_out)
+{
+        return acCompute(kernel_to_kernel_lambda(kernel), fields_in, num_fields_in, fields_out, num_fields_out);
+}
+
+
+
 AcTaskDefinition
 acCompute(const Kernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
           const size_t num_fields_out)
@@ -92,13 +102,13 @@ acCompute(const Kernel kernel, Field fields_in[], const size_t num_fields_in, Fi
 }
 
 AcTaskDefinition
-acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num), Field fields_in[], const size_t num_fields_in, Field fields_out[],
+acCompute(IterKernelLambda kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
           const size_t num_fields_out)
 {
 
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_ITER_COMPUTE;
-    task_def.iter_compute   =  kernel;
+    task_def.iter_compute   =  new IterKernelLambda(kernel);
     task_def.fields_in      = fields_in;
     task_def.num_fields_in  = num_fields_in;
     task_def.fields_out     = fields_out;
@@ -112,7 +122,7 @@ convert_iter_to_normal_compute(AcTaskDefinition op, int step_num)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
-    task_def.kernel =  new KernelLambda(bind_single_param(op.iter_compute,step_num));
+    task_def.kernel =  new KernelLambda(bind_single_param(*op.iter_compute,step_num));
     task_def.fields_in      = op.fields_in;
     task_def.num_fields_in  = op.num_fields_in;
     task_def.fields_out     = op.fields_out;
@@ -134,7 +144,7 @@ acHaloExchange(Field fields[], const size_t num_fields)
     task_def.task_type      = TASKTYPE_HALOEXCHANGE;
     task_def.fields_in      = fields;
     task_def.num_fields_in  = num_fields;
-    task_def.fields_out     = fields;
+    task_def.fields_out = fields;
     task_def.num_fields_out = num_fields;
     return task_def;
 }
@@ -182,10 +192,24 @@ acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBound
 }
 
 #endif
-
 Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields)
-    : family(family_), tag(tag_), fields(fields_, fields_ + num_fields)
+    : family(family_), tag(tag_) 
 {
+    fields = {};
+    switch (family) {
+    	case RegionFamily::Exchange_output: {} //Fallthrough
+    	case RegionFamily::Exchange_input : {
+    		for(size_t i = 0; i < num_fields; ++i)
+	    		if(fields_[i] < NUM_COMMUNICATED_FIELDS) fields.push_back(fields_[i]);
+		ERRCHK_ALWAYS(fields.size() <= NUM_COMMUNICATED_FIELDS);
+		break;
+	}
+	default:
+    		for(size_t i = 0; i < num_fields; ++i)
+			fields.push_back(fields_[i]);
+	break;
+
+    }
     id = tag_to_id(tag);
     // facet class 0 = inner core
     // facet class 1 = face
@@ -249,12 +273,32 @@ Region::Region(RegionFamily family_, int3 id_, int3 nn, Field fields_[], size_t 
     ERRCHK_ALWAYS(id_.x == id.x && id_.y == id.y && id_.z == id.z);
 }
 
-Region::Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_)
-    : position(position_), dims(dims_), family(RegionFamily::None), tag(tag_), fields(fields_)
+Region::Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_, RegionFamily family_)
+    : position(position_), dims(dims_), family(family_), tag(tag_)
 {
+    fields = {};
+    switch (family) {
+    	case RegionFamily::Exchange_output: {} //Fallthrough
+    	case RegionFamily::Exchange_input : {
+    		for(auto& field : fields_)
+	    		if(field < NUM_COMMUNICATED_FIELDS) fields.push_back(field);
+		break;
+	}
+	default:
+    		for(auto& field : fields_)
+	    		fields.push_back(field);
+		break;
+
+    }
     id          = tag_to_id(tag);
     facet_class = (id.x == 0 ? 0 : 1) + (id.y == 0 ? 0 : 1) + (id.z == 0 ? 0 : 1);
+    volume = dims.x*dims.y*dims.z;
 }
+
+Region::Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_)
+    : Region{position_, dims_, tag_, fields_, RegionFamily::None}{}
+
+
 
 Region
 Region::translate(int3 translation)
@@ -540,6 +584,30 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
 }
+ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+    : Task(order_,
+           input_region,
+           output_region,
+           op, device_, swap_offset_)
+{
+    // stream = device->streams[STREAM_DEFAULT + region_tag];
+    {
+        cudaSetDevice(device->id);
+        int low_prio, high_prio;
+        cudaDeviceGetStreamPriorityRange(&low_prio, &high_prio);
+        cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, high_prio);
+    }
+
+    syncVBA();
+
+    // compute_func = compute_func_;
+
+    params = KernelParameters{*op.kernel, stream, 0, output_region.position,
+                              output_region.position + output_region.dims};
+    name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
+           std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
+    task_type = TASKTYPE_COMPUTE;
+}
 
 void
 ComputeTask::compute()
@@ -673,13 +741,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
            Region(RegionFamily::Exchange_output, halo_region_tag, nn, op.fields_out,
                   op.num_fields_out),
            op, device_, swap_offset_),
-      recv_buffers(output_region.dims, NUM_COMMUNICATED_FIELDS),
-      send_buffers(input_region.dims, NUM_COMMUNICATED_FIELDS)
-// Below are for partial halo exchanges.
-// TODO: enable partial halo exchanges when
-// vtxbuf_dependencies_->num_vars < NUM_VTXBUF_HANDLES (see performance first)
-// recv_buffers(output_region.dims, vtxbuf_dependencies_->num_vars),
-// send_buffers(input_region.dims, vtxbuf_dependencies_->num_vars)
+      recv_buffers(output_region.dims, op.num_fields_in),
+      send_buffers(input_region.dims, op.num_fields_out)
 {
     // Create stream for packing/unpacking
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: creating CUDA stream\n");
@@ -730,10 +793,9 @@ void
 HaloExchangeTask::pack()
 {
     auto msg = send_buffers.get_fresh_buffer();
-    // acKernelPartialPackData(stream, vba, input_region.position, input_region.dims,
-    //                         msg->data, vtxbuf_dependencies->variables,
-    //                         vtxbuf_dependencies->num_vars);
-    acKernelPackData(stream, vba, input_region.position, input_region.dims, msg->data);
+    acKernelPackData(stream, vba, input_region.position, input_region.dims,
+                             msg->data, input_region.fields.data(),
+                             input_region.fields.size());
 }
 
 void
@@ -744,10 +806,9 @@ HaloExchangeTask::unpack()
 #if !(USE_CUDA_AWARE_MPI)
     msg->unpin(device, stream);
 #endif
-    // acKernelPartialUnpackData(stream, msg->data, output_region.position, output_region.dims,
-    //                           vba, vtxbuf_dependencies->variables,
-    //                           vtxbuf_dependencies->num_vars);
-    acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims, vba);
+    acKernelUnpackData(stream, msg->data, output_region.position, output_region.dims,
+                               vba, output_region.fields.data(),
+		    		output_region.fields.size());
 }
 
 void

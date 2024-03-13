@@ -3,9 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <libgen.h> // dirname
+#include <sys/stat.h>
 
 #include "ast.h"
 #include "codegen.h"
+#include <ctype.h>
 
 #define YYSTYPE ASTNode*
 
@@ -18,11 +20,18 @@ int yylex();
 int yyparse();
 int yyerror(const char* str);
 int yyget_lineno();
+
 const char* global_func_declaration = "__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n";
+const char* user_structs_filename = "user_structs.h";
+const char* user_cpu_kernels_filename = "user_cpu_kernels.h";
+const char* bind_gen_filename = "bind_gen.h";
+const char* bind_gen_header_filename = "bind_gen_header.h";
+const char* bind_gen_two_filename = "bind_gen_two.h";
+const char* bind_gen_two_header_filename = "bind_gen_two_header.h";
 
 //These are used to generate better error messages in case of errors
 FILE* yyin_backup;
-const char* stage3_name_backup;
+const char* stage4_name_backup;
 const char* dir_backup;
 
 void
@@ -31,6 +40,21 @@ cleanup(void)
     if (root)
         astnode_destroy(root); // Frees all children and itself
 }
+void strprepend(char* dst, const char* src)
+{	
+    memmove(dst + strlen(src), dst, strlen(dst)+ 1); // Move existing data including null terminator
+    memcpy(dst, src, strlen(src)); // Copy src to the beginning of dst
+}
+void remove_substring_parser(char *str, const char *sub) {
+	int len = strlen(sub);
+	char *found = strstr(str, sub); // Find the first occurrence of the substring
+
+	while (found) {
+		memmove(found, found + len, strlen(found + len) + 1); // Shift characters to overwrite the substring
+		found = strstr(found, sub); // Find the next occurrence of the substring
+	}
+}
+
 
 void set_identifier_type(const NodeType type, ASTNode* curr);
 void set_identifier_prefix(const char* prefix, ASTNode* curr);
@@ -38,13 +62,44 @@ void set_identifier_infix(const char* infix, ASTNode* curr);
 ASTNode* get_node(const NodeType type, ASTNode* node);
 ASTNode* get_node_by_token(const int token, ASTNode* node);
 
-void combine_ast(const ASTNode* node, char* res){
+void combine_buffers(const ASTNode* node, char* res){
   if(node->buffer)
     strcat(res,node->buffer);
   if(node->lhs)
-    combine_ast(node->lhs, res);
+    combine_buffers(node->lhs, res);
   if(node->rhs)
-    combine_ast(node->rhs, res);
+    combine_buffers(node->rhs, res);
+}
+
+void
+process_param(const ASTNode* param, char* rest_params, char* param_default_args)
+{
+				char param_type[4096];
+                                param_type[0] = '\0';
+                                combine_buffers(param->lhs, param_type);
+			      	char param_str[4096];
+                              	sprintf(param_str,",%s %s",param_type, param->rhs->buffer);
+			      	strprepend(rest_params,param_str);
+				char default_param[4096];
+                                if(!strcmp(param_type,"int"))
+			          sprintf(default_param,",0");
+                                else if(!strcmp(param_type,"AcReal"))
+			          sprintf(default_param,",0.0");
+				//we assume it is a user specified struct
+				else
+			          sprintf(default_param,",{}");
+				strprepend(param_default_args,default_param);
+}
+void
+process_declaration(const ASTNode* dec, char* struct_def)
+{
+	char tmp[4096];
+	tmp[0] = '\0';
+	combine_buffers(dec->lhs,tmp);
+	strcat(tmp," ");
+	combine_buffers(dec->rhs,tmp);
+	strcat(tmp,";");
+	strcat(struct_def,tmp);
 }
 
 void
@@ -142,18 +197,62 @@ format_source(const char* file_in, const char* file_out)
   fclose(in);
   fclose(out);
 }
+bool
+file_exists(const char* filename)
+{
+  struct stat   buffer;
+  return (stat (filename, &buffer) == 0);
+}
+void
+gen_bind(const char* filename, const char* prefix, const char* type_name)
+{
+                        FILE* fp_gen = fopen(filename, "a");
+                        fprintf(fp_gen,"\\\n%s%s) ",prefix,type_name);
+                        fprintf(fp_gen,"\\\n%s%s*) ",prefix,type_name);
+                        fclose(fp_gen);
+}
+void
+add_type_bind_gens(const char* type_name)
+{
+			gen_bind(bind_gen_filename,"GEN_BIND(",type_name);
+			gen_bind(bind_gen_two_filename,"GEN_BIND_TWOS(TYPE,",type_name);
+			gen_bind(bind_gen_header_filename,"GEN_BIND_HEADERS(",type_name);
+			gen_bind(bind_gen_two_header_filename,"GEN_BIND_TWO_HEADER(TYPE,",type_name);
+}
+void
+add_default_bind_gens()
+{
+	FILE* fp_gen = fopen(bind_gen_two_header_filename,"w");
+	fprintf(fp_gen,"#define GEN_BIND_TWO_CALLS(TYPE) ");
+	fclose(fp_gen);
+
+	fp_gen = fopen(bind_gen_header_filename,"w");
+	fprintf(fp_gen,"#define GEN_BIND_CALLS_HEADER() ");
+	fclose(fp_gen);
+
+	fp_gen = fopen(bind_gen_filename,"w");
+	fprintf(fp_gen,"#define GEN_BIND_CALLS() ");
+	fclose(fp_gen);
+
+	fp_gen = fopen(bind_gen_two_filename,"w");
+	fprintf(fp_gen,"#define GEN_BIND_TWO(TYPE) ");
+	fclose(fp_gen);
+	add_type_bind_gens("int");
+	add_type_bind_gens("AcReal");
+}
 
 int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* stage4, const char* dir, const bool gen_mem_accesses)
 {
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
         {
-          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", "user_cpu_kernels.h"};
+          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", user_cpu_kernels_filename, user_structs_filename};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
             FILE* fp = fopen(files[i], "w");
             assert(fp);
             fclose(fp);
           }
         }
+	add_default_bind_gens();
 
         // Stage 1: Preprocess includes
         {
@@ -181,7 +280,17 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
               assert(retval != -1);
           }
         }
-	FILE* f_in = fopen(stage3,"a");
+	FILE* f_in = fopen(stage3,"r");
+	FILE* f_out = fopen(stage4,"w");
+	char line[10000];
+ 	while (fgets(line, sizeof(line), f_in) != NULL) {
+		remove_substring_parser(line,";");
+		fprintf(f_out,"%s",line);
+    	}
+	fclose(f_in);
+	fclose(f_out);
+
+	f_in = fopen(stage4,"a");
 	//Add builtin kernels
 	fprintf(f_in,"\nKernel AC_BUILTIN_RESET() {\n"
 		"for field in 0:NUM_FIELDS {\n"
@@ -190,16 +299,25 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	"}\n");
 	fclose(f_in);
         // Generate code
-        yyin = fopen(stage3, "r");
+        yyin = fopen(stage4, "r");
 
-	stage3_name_backup = stage3;
-        yyin_backup = fopen(stage3, "r");
+	stage4_name_backup = stage4;
+        yyin_backup = fopen(stage4, "r");
         if (!yyin)
             return EXIT_FAILURE;
 
         int error = yyparse();
         if (error)
             return EXIT_FAILURE;
+
+	//add newlines to fix compiler warnings
+        const char* bind_files[] = {bind_gen_filename, bind_gen_header_filename, bind_gen_two_filename, bind_gen_two_header_filename};
+        for (size_t i = 0; i < sizeof(bind_files)/sizeof(bind_files[0]); ++i) {
+          FILE* fp_gen = fopen(bind_files[i], "a");
+          assert(fp_gen);
+	  fprintf(fp_gen," \n");
+          fclose(fp_gen);
+        }
 
         // generate(root, stdout);
         FILE* fp = fopen("user_kernels.h.raw", "w");
@@ -211,6 +329,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
         // Stage 4: Format
         format_source("user_kernels.h.raw", "user_kernels.h");
+
 
         return EXIT_SUCCESS;
 }
@@ -235,12 +354,13 @@ main(int argc, char** argv)
         const char* stage4 = "user_kernels.ac.pp_stage4";
         const char* dir = dirname(argv[1]); // WARNING: dirname has side effects!
 	dir_backup = dir;
+	printf("stage0: %s\n",stage0);
 
         if (OPTIMIZE_MEM_ACCESSES) {
           code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, true); // Uncomment to enable stencil mem access checking
           generate_mem_accesses(); // Uncomment to enable stencil mem access checking
         }
-        code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, false);
+        code_generation_pass(stage0, stage1, stage2, stage3, stage4,  dir, false);
         
 
         return EXIT_SUCCESS;
@@ -254,9 +374,10 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP
-%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL AUXILIARY_FIELD WORK_BUFFER REAL_ARRAY
-%token KERNEL SUM MAX COMMUNICATED 
+%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL WORK_BUFFER REAL_ARRAY TIME_PARAMS 
+%token KERNEL SUM MAX COMMUNICATED AUXILIARY
 %token HOSTDEFINE
+%token STRUCT_NAME STRUCT_TYPE
 
 %%
 
@@ -276,26 +397,45 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             ASTNode* declaration_list = declaration->rhs;
             assert(declaration_list);
 
+	    ASTNode* declaration_list_head = declaration_list;
+	    bool are_arrays = false;
+	    while(declaration_list_head->rhs)
+	    {
+		const ASTNode* 	declaration_postfix_expression = declaration_list_head->rhs;
+		if(declaration_postfix_expression->rhs && declaration_postfix_expression->rhs->type != NODE_MEMBER_ID)
+		{
+	    		char array_length[500];
+			array_length[0] = '\0';
+			combine_buffers(declaration_postfix_expression->rhs,array_length);
+			are_arrays = true;
+		}
+		declaration_list_head = declaration_list_head->lhs;
+	    }	
+
+	    const ASTNode* 	declaration_postfix_expression = declaration_list_head->lhs;
+	    if(declaration_postfix_expression->rhs && declaration_postfix_expression->rhs->type != NODE_MEMBER_ID)
+	    {
+	    	char array_length[500];
+		array_length[0] = '\0';
+	    	combine_buffers(declaration_postfix_expression->rhs,array_length);
+		are_arrays = true;
+	    }
             if (get_node_by_token(FIELD, $$->rhs)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             } 
-            else if (get_node_by_token(REAL_ARRAY, $$->rhs)) {
-                variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-            } 
-            else if(get_node_by_token(AUXILIARY_FIELD, $$->rhs)) {
-                variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-            }
             else if(get_node_by_token(WORK_BUFFER, $$->rhs)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             }
-            else if(get_node_by_token(REAL_ARRAY, $$->rhs)){
+	    else if(are_arrays)
+	    {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-            }
+	    	ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
+		//make it an array type i.e. pointer
+		strcat(type_specifier->lhs->buffer,"*");
+	    }
             else {
                 variable_definition->type |= NODE_DCONST;
                 set_identifier_type(NODE_DCONST_ID, declaration_list);
@@ -310,6 +450,8 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
        | program function_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
        | program stencil_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
        | program hostdefine          { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+       //for now simply discard the struct definition info since not needed
+       | program struct_definition   { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
        ;
 
 /*
@@ -317,6 +459,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
  * Terminals
  * =============================================================================
  */
+struct_name : STRUCT_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 identifier: IDENTIFIER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 number: NUMBER         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
       | REALNUMBER     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_prefix("AcReal(", $$); astnode_set_postfix(")", $$); }
@@ -334,6 +477,7 @@ while: WHILE           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 for: FOR               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 in: IN                 { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 communicated: COMMUNICATED { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+auxiliary: AUXILIARY   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int: INT               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int3: INT3             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -342,13 +486,13 @@ real3: REAL3           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 real_array: REAL_ARRAY { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal*", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcMatrix", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 field: FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-auxiliary_field: AUXILIARY_FIELD  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 work_buffer: WORK_BUFFER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 stencil: STENCIL       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("", $$); /*astnode_set_buffer(yytext, $$);*/ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 return: RETURN         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$);};
 kernel: KERNEL         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(global_func_declaration, $$); $$->token = 255 + yytoken; };
 sum: SUM               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("sum", $$); $$->token = 255 + yytoken; };
 max: MAX               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("max", $$); $$->token = 255 + yytoken; };
+struct_type: STRUCT_TYPE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 hostdefine: HOSTDEFINE {
         $$ = astnode_create(NODE_HOSTDEFINE, NULL, NULL);
         astnode_set_buffer(yytext, $$);
@@ -372,6 +516,42 @@ hostdefine: HOSTDEFINE {
 
 /*
  * =============================================================================
+ * Structure Definitions 
+ * =============================================================================
+*/
+//Doesn't return an AST node since we don't need it currently 
+struct_definition: struct_name '{' declarations '}' struct_type
+                 {
+                        $$ = astnode_create(NODE_UNKNOWN,$1,$3);
+                        char struct_def[5000];
+                        char struct_name[5000];
+                        struct_def[0] = '\0';
+                        struct_name[0] = '\0';
+			combine_buffers($5,struct_name);
+			add_type_bind_gens(struct_name);
+
+                        strcat(struct_def,$1->buffer);
+                        strcat(struct_def,"{ ");
+                        const ASTNode* dec_head = $3;
+                        while(dec_head->rhs)
+                        {
+
+                                process_declaration(dec_head->rhs,struct_def);
+                                dec_head = dec_head->lhs;
+                        }
+                        process_declaration(dec_head->lhs,struct_def);
+                        strcat(struct_def,"} ");
+                        strcat(struct_def,struct_name);
+                        strcat(struct_def,";");
+                        struct_name[0] = '\0';
+                        FILE* fp  = fopen("user_structs.h","a");
+                        fprintf(fp,"%s\n",struct_def);
+                        fclose(fp);
+                 }
+		 ;
+
+/*
+ * =============================================================================
  * Types
  * =============================================================================
 */
@@ -382,17 +562,25 @@ type_specifier: int     { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real3   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | matrix  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | field   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | auxiliary_field { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | work_buffer { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | stencil { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real_array { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | struct_type { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               ;
 
 type_qualifier: kernel { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | sum    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | max    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | communicated { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | auxiliary { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               ;
+
+type_qualifiers: type_qualifiers type_qualifier {$$ = astnode_create(NODE_UNKNOWN,$1,$2); }
+	       | type_qualifier {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
+	       ;
+
+
+
 
 /*
  * =============================================================================
@@ -463,6 +651,9 @@ variable_definition: declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); 
                    | assignment  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
                    ;
 
+declarations: declarations declaration {$$ = astnode_create(NODE_UNKNOWN, $1,$2); }
+	    | declaration {$$ = astnode_create(NODE_UNKNOWN, $1,NULL); }
+	    ;
 declaration: type_declaration declaration_list { $$ = astnode_create(NODE_DECLARATION, $1, $2); }
            ;
 
@@ -478,9 +669,9 @@ parameter_list: parameter                    { $$ = astnode_create(NODE_UNKNOWN,
               ;
 
 type_declaration: /* Empty */                   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL);}
-                | type_qualifier                { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
+                | type_qualifiers               { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
                 | type_specifier                { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
-                | type_qualifier type_specifier { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+                | type_qualifiers type_specifier { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
                 ;
 
 assignment: declaration assignment_body { $$ = astnode_create(NODE_ASSIGNMENT, $1, $2); }
@@ -594,29 +785,13 @@ function_definition: declaration function_body {
                             if($$->rhs->lhs)
                             {
                               ASTNode* param_list_head = $$->rhs->lhs;
-                              ASTNode* param;
-                              char param_type[4096];
                               while(param_list_head->rhs)
                               {
-                                param_type[0] = '\0';
-                                param = param_list_head->rhs;
-                                combine_ast(param->lhs, param_type);
-                                sprintf(rest_params,",%s %s",param_type, param->rhs->buffer);
-                                if(!strcmp(param_type,"int"))
-                                  sprintf(param_default_args, "%s,%s",param_default_args,"0");
-                                if(!strcmp(param_type,"AcReal"))
-                                  sprintf(param_default_args, "%s,%s",param_default_args,"0.0");
+				process_param(param_list_head->rhs,rest_params,param_default_args);
                                 param_list_head = param_list_head->lhs;
                               }
 
-                              param_type[0] = '\0';
-                              param = param_list_head->lhs;
-                              combine_ast(param->lhs, param_type);
-                              sprintf(rest_params,",%s %s",param_type, param->rhs->buffer);
-                              if(!strcmp(param_type,"int"))
-                                sprintf(param_default_args, "%s,%s",param_default_args,"0");
-                              if(!strcmp(param_type,"AcReal"))
-                                sprintf(param_default_args, "%s,%s",param_default_args,"0.0");
+			      process_param(param_list_head->lhs,rest_params,param_default_args);
                               $$->rhs->lhs=NULL;
                             }
                             // Set kernel built-in variables
@@ -624,6 +799,15 @@ function_definition: declaration function_body {
                             const char* default_args =  "const int3 start, const int3 end, VertexBufferArray vba";
                             sprintf(param_list,"(%s %s",default_args,rest_params);
                             astnode_set_prefix(param_list, $$->rhs);
+
+                            FILE* fp_cpu = fopen(user_cpu_kernels_filename,"a");
+                            fprintf(fp_cpu,"\nvoid %s_cpu(%s){%s(start,end,vba%s);}\n",fn_identifier->buffer,default_args,fn_identifier->buffer,param_default_args);
+			    fclose(fp_cpu);
+
+                            FILE* fp = fopen("user_kernel_declarations.h","a");
+                            fprintf(fp, "void __global__ %s %s);\n", fn_identifier->buffer, param_list);
+                            fclose(fp);
+
                             ASTNode* compound_statement = $$->rhs->rhs;
                             assert(compound_statement);
                             astnode_set_prefix("{", compound_statement);
@@ -633,16 +817,6 @@ function_definition: declaration function_body {
                               //"if (!isnan(out_buffer[field]))"
                               //"vba.out[field][idx] = out_buffer[field];"
                               "}", compound_statement);
-                            char* func_name = fn_identifier->buffer;
-
-
-                            FILE* fp_cpu = fopen("user_cpu_kernels.h","a");
-                            fprintf(fp_cpu,"\nvoid %s_cpu(%s){%s(start,end,vba%s);}\n",fn_identifier->buffer,default_args,func_name,param_default_args);
-			    fclose(fp_cpu);
-                            FILE* fp = fopen("user_kernel_declarations.h","a");
-                            fprintf(fp, "void __global__ %s %s);\n", func_name, param_list);
-                            fclose(fp);
-
                         } else {
                             astnode_set_infix(" __attribute__((unused)) =[&]", $$);
                             astnode_set_postfix(";", $$);
@@ -708,11 +882,11 @@ yyerror(const char* str)
     int line_num = yyget_lineno();
     fprintf(stderr, "\n%s on line %d when processing char %d: [%s]\n", str, line_num, *yytext, yytext);
     char* line;
-    size_t len;
+    size_t len = 0;
     for(int i=0;i<line_num;++i)
 	getline(&line,&len,yyin_backup);
     fprintf(stderr, "erroneous line: %s", line);
-    fprintf(stderr, "in file: %s/%s\n\n",dir_backup,stage3_name_backup);
+    fprintf(stderr, "in file: %s/%s\n\n",dir_backup,stage4_name_backup);
     return EXIT_FAILURE;
 }
 

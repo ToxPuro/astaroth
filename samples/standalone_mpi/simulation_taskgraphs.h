@@ -29,10 +29,10 @@ log_simulation_choice(int pid, Simulation sim)
 static std::map<Simulation, AcTaskGraph*> task_graphs;
 
 AcTaskGraph*
-get_simulation_graph(int pid, Simulation sim)
+get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
 {
 
-    auto make_graph = [pid](Simulation sim) -> AcTaskGraph* {
+    auto make_graph = [pid, &info](Simulation sim) -> AcTaskGraph* {
         acLogFromRootProc(pid, "Creating task graph for simulation\n");
         switch (sim) {
         case Simulation::Shock_Singlepass_Solve: {
@@ -57,7 +57,7 @@ get_simulation_graph(int pid, Simulation sim)
                  acCompute(KERNEL_shock_3_smooth, shock_field),
                  acHaloExchange(shock_field),
                  acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
-                 acCompute(singlepass_solve, all_fields)};
+                 acCompute(singlepass_solve, all_fields, &info.real_params[AC_dt], &info.real_params[AC_current_time])};
             acLogFromRootProc(pid, "Creating shock singlepass solve task graph\n");
             return acGridBuildTaskGraphWithIterations(shock_ops,3);
 #endif
@@ -68,7 +68,8 @@ get_simulation_graph(int pid, Simulation sim)
             VertexBufferHandle all_fields[]    = {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
                                                   VTXBUF_ENTROPY};
             VertexBufferHandle lnrho_field[]   = {VTXBUF_LNRHO};
-            VertexBufferHandle entropy_field[] = {VTXBUF_ENTROPY};
+	    //not used at the moment
+            //VertexBufferHandle entropy_field[] = {VTXBUF_ENTROPY};
             VertexBufferHandle scalar_fields[] = {VTXBUF_LNRHO, VTXBUF_ENTROPY};
             VertexBufferHandle uux_field[]     = {VTXBUF_UUX};
             VertexBufferHandle uuy_field[]     = {VTXBUF_UUY};
@@ -77,7 +78,8 @@ get_simulation_graph(int pid, Simulation sim)
             VertexBufferHandle uuxz_fields[]   = {VTXBUF_UUX, VTXBUF_UUZ};
             VertexBufferHandle uuyz_fields[]   = {VTXBUF_UUY, VTXBUF_UUZ};
 
-            AcRealParam const_lnrho_bound[1] = {AC_lnrho0};
+	    //not used at the moment
+            //AcRealParam const_lnrho_bound[1] = {AC_lnrho0};
             AcRealParam const_heat_flux[1]   = {AC_hflux};
 
             AcTaskDefinition heatduct_ops[] =
@@ -99,8 +101,8 @@ get_simulation_graph(int pid, Simulation sim)
                                                SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX,
                                                const_heat_flux),
 
-                 acCompute(KERNEL_twopass_solve_intermediate, all_fields),
-                 acCompute(KERNEL_twopass_solve_final, all_fields)};
+                 acCompute(twopass_solve_intermediate, all_fields, &info.real_params[AC_dt]),
+                 acCompute(twopass_solve_final, all_fields, &info.real_params[AC_current_time])};
             acLogFromRootProc(pid, "Creating heat duct task graph\n");
             AcTaskGraph* my_taskgraph = acGridBuildTaskGraphWithIterations(heatduct_ops,3);
             acGraphPrintDependencies(my_taskgraph);

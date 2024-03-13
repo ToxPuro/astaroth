@@ -96,6 +96,7 @@ struct Region {
     Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields);
     Region(RegionFamily family_, int3 id_, int3 nn, Field fields_[], size_t num_fields);
     Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_);
+    Region(int3 position_, int3 dims_, int tag_, std::vector<Field> fields_, RegionFamily family_);
 
     Region translate(int3 translation);
     bool overlaps(const Region* other);
@@ -186,6 +187,8 @@ typedef class ComputeTask : public Task {
   public:
     ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 nn, Device device_,
                 std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    ComputeTask(AcTaskDefinition op, int order_, Region input_region, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+
     ComputeTask(const ComputeTask& other)            = delete;
     ComputeTask& operator=(const ComputeTask& other) = delete;
     void compute();

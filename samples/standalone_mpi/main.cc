@@ -789,6 +789,25 @@ check_event(uint16_t events, SimulationEvent mask)
     return (events & (uint16_t)mask) ? true : false;
 }
 
+Simulation
+GetSimulation(const int pid, PhysicsConfiguration simulation_physics)
+{
+    switch (simulation_physics) {
+    case PhysicsConfiguration::ShockSinglepass: {
+#if LSHOCK
+        acLogFromRootProc(pid, "PhysicsConfiguration ShockSinglepass !\n");
+        return Simulation::Shock_Singlepass_Solve;
+#endif
+	ERRCHK_ALWAYS(false); //Only usable with shock
+    }
+    case PhysicsConfiguration::HydroHeatduct: {
+        acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
+        return Simulation::Hydro_Heatduct_Solve;
+    }
+    default:
+	return Simulation::Default;
+    }
+}
 int
 main(int argc, char** argv)
 {
@@ -936,6 +955,8 @@ main(int argc, char** argv)
         acLogFromRootProc(pid, "Logging build configuration\n");
         const char* is_on  = "ON";
         const char* is_off = "OFF";
+	//silence unused warnings
+	(void)is_on; (void) is_off;
 
         const char* forcing_flag =
 #if LFORCING
@@ -1106,24 +1127,9 @@ main(int argc, char** argv)
     ////////////////////////////////////////////////////
 
     acLogFromRootProc(pid, "Setting simulation program\n");
-    Simulation sim = Simulation::Default;
-
+    Simulation sim = GetSimulation(pid,simulation_physics);
     acLogFromRootProc(pid, "simulation_physics = %i \n", simulation_physics);
 
-    switch (simulation_physics) {
-    case PhysicsConfiguration::ShockSinglepass: {
-#if LSHOCK
-        sim = Simulation::Shock_Singlepass_Solve;
-        acLogFromRootProc(pid, "PhysicsConfiguration ShockSinglepass !\n");
-#endif
-        break;
-    }
-    case PhysicsConfiguration::HydroHeatduct: {
-        sim = Simulation::Hydro_Heatduct_Solve;
-        acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
-        break;
-    }
-    }
 
     acLogFromRootProc(pid, "sim = %i \n", sim);
     acLogFromRootProc(pid, "Simulation::Default = %i\n", Simulation::Default);
@@ -1138,7 +1144,7 @@ main(int argc, char** argv)
                       PhysicsConfiguration::HydroHeatduct);
 
     log_simulation_choice(pid, sim);
-    AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);
+    AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim, acGridGetLocalMeshInfo());
 
     ////////////////////////////////////////////////////////
     // Simulation loop setup: defining events and actions //
@@ -1337,11 +1343,12 @@ main(int argc, char** argv)
         // I'm sure a lot of these could be calculated locally in each proc.
         // And for the values that do need to be distributed, they could be distributed in fewer
         // calls
+	AcMeshInfo input_info = acGridGetLocalMeshInfo();
 
-        // Generic parameters
-        acGridLoadScalarUniform(STREAM_DEFAULT, AC_current_time, simulation_time);
-        acGridLoadScalarUniform(STREAM_DEFAULT, AC_dt, dt);
-
+	//Generic parameters
+	input_info.real_params[AC_dt] = dt;
+	input_info.real_params[AC_current_time] = simulation_time;
+	
         // Case-specific parameters
 #if LSINK
         acGridLoadScalarUniform(STREAM_DEFAULT, AC_M_sink, sink_mass);

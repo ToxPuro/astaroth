@@ -23,6 +23,8 @@
 
 #include "errchk.h"
 #include "math_utils.h"
+
+
 #include <functional>
 
 #if AC_USE_HIP
@@ -43,32 +45,117 @@ kernel_to_kernel_lambda(const Kernel kernel)
   return {k_l, reinterpret_cast<void*>(kernel)};
 };
 
+IterKernelLambda
+kernel_to_kernel_lambda(const IterKernel kernel)
+{
+  iter_kernel_lambda k_l = [kernel](const dim3 bpg,  const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba_in, int step_num)
+                      {kernel<<<bpg, tpb, smem, stream>>>(start,end,vba_in,step_num);};
+  return {k_l, reinterpret_cast<void*>(kernel)};
+};
 
-#define GEN_BIND_SINGLE(TYPE)                                                  \
-  KernelLambda bind_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param), TYPE input_param) \
+#define GEN_BIND_THREE_BASE(TYPE,TYPE2,TYPE3,PTYPE,PTYPE2,PTYPE3,FP,SP,TP)                                                  \
+  KernelLambda bind_three_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param, TYPE2 second_param, TYPE3 third_param), PTYPE input_param, PTYPE2 second_param, PTYPE3 third_param) \
   { \
-  return (KernelLambda){[kernel, input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param);}, reinterpret_cast<void*>(kernel)}; \
+  return (KernelLambda){[kernel, input_param, second_param, third_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,FP,SP,TP);}, reinterpret_cast<void*>(kernel)}; \
   } 
 
-GEN_BIND_SINGLE(int)
-GEN_BIND_SINGLE(AcReal)
-GEN_BIND_SINGLE(AcReal*)
-GEN_BIND_SINGLE(int*)
-GEN_BIND_SINGLE(bool)
-GEN_BIND_SINGLE(bool*)
+#define GEN_BIND_THREE_ITER_BASE(TYPE,TYPE2,TYPE3,PTYPE,PTYPE2,PTYPE3,FP,SP,TP)                                                  \
+  IterKernelLambda bind_three_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, TYPE input_param, TYPE2 second_param, TYPE3 third_param), PTYPE input_param, PTYPE2 second_param, PTYPE3 third_param) \
+  { \
+  return (IterKernelLambda){[kernel, input_param, second_param, third_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba, int step_num){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,step_num,FP,SP,TP);}, reinterpret_cast<void*>(kernel)}; \
+  } 
 
-template <typename T, typename F>
+
+#define GEN_BIND_TWO_BASE(TYPE,TYPE2,PTYPE,PTYPE2,FP,SP)                                                  \
+  KernelLambda bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param, TYPE2 second_param), PTYPE input_param, PTYPE2 second_param) \
+  { \
+  return (KernelLambda){[kernel, input_param, second_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,FP,SP);}, reinterpret_cast<void*>(kernel)}; \
+  } 
+
+#define GEN_BIND_TWO_ITER_BASE(TYPE,TYPE2,PTYPE,PTYPE2,FP,SP)                                                  \
+  IterKernelLambda bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, TYPE input_param, TYPE2 second_param), PTYPE input_param, PTYPE2 second_param) \
+  { \
+  return (IterKernelLambda){[kernel, input_param, second_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba, int step_num){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,step_num,FP,SP);}, reinterpret_cast<void*>(kernel)}; \
+  } 
+
+#define GEN_BIND_SINGLE_BASE(TYPE,PASSED_TYPE,INPUT_PARAM)                                                  \
+  KernelLambda bind_single_param(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, TYPE input_param), PASSED_TYPE input_param) \
+  { \
+  return (KernelLambda){[kernel, input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,INPUT_PARAM);}, reinterpret_cast<void*>(kernel)}; \
+  } 
+
+
+#define GEN_BIND_SINGLE_ITER_BASE(TYPE,PASSED_TYPE,INPUT_PARAM)                                                  \
+  IterKernelLambda bind_single_param(void (*kernel)(const int3 start, const int3 end,VertexBufferArray vba,int step_num, TYPE input_param), PASSED_TYPE input_param) \
+  { \
+  return (IterKernelLambda){[kernel, input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end,VertexBufferArray vba, int step_num){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,step_num,INPUT_PARAM);}, reinterpret_cast<void*>(kernel)}; \
+  } 
+
+#define GEN_BIND_SINGLE(TYPE)                                                  \
+	GEN_BIND_SINGLE_BASE(TYPE,TYPE,input_param) \
+	GEN_BIND_SINGLE_BASE(TYPE,TYPE*,*input_param) \
+	GEN_BIND_SINGLE_ITER_BASE(TYPE,TYPE,input_param) \
+	GEN_BIND_SINGLE_ITER_BASE(TYPE,TYPE*,*input_param)
+
+
+#define GEN_BIND_THREE_BOTH(TYPE,TYPE2,TYPE3,PTYPE,PTYPE2,PTYPE3,FP,SP,TP)                                                  \
+	GEN_BIND_THREE_BASE(TYPE,TYPE2,TYPE3,PTYPE,PTYPE2,PTYPE3,FP,SP,TP) \
+	GEN_BIND_THREE_ITER_BASE(TYPE,TYPE2,TYPE3,PTYPE,PTYPE2,PTYPE3,FP,SP,TP)
+
+#define GEN_BIND_THREE_ALL(TYPE,TYPE2,TYPE3)                                                  \
+	GEN_BIND_THREE_BOTH(TYPE,TYPE2,TYPE3,TYPE,TYPE2,TYPE3,input_param,second_param,third_param) \
+	GEN_BIND_THREE_BOTH(TYPE,TYPE2,TYPE3,TYPE*,TYPE2,TYPE3,*input_param,second_param,third_param) \
+	GEN_BIND_THREE_BOTH(TYPE,TYPE2,TYPE3,TYPE,TYPE2*,TYPE3,input_param,*second_param,third_param) \
+	GEN_BIND_THREE_BOTH(TYPE,TYPE2,TYPE3,TYPE*,TYPE2*,TYPE3,*input_param,*second_param,third_param) \
+	GEN_BIND_THREE_BOTH(TYPE,TYPE2,TYPE3,TYPE,TYPE2,TYPE3*,input_param,second_param,*third_param) \
+	GEN_BIND_THREE_BOTH(TYPE,TYPE2,TYPE3,TYPE*,TYPE2,TYPE3*,*input_param,second_param,*third_param) \
+	GEN_BIND_THREE_BOTH(TYPE,TYPE2,TYPE3,TYPE,TYPE2*,TYPE3*,input_param,*second_param,*third_param) \
+	GEN_BIND_THREE_BOTH(TYPE,TYPE2,TYPE3,TYPE*,TYPE2*,TYPE3*,*input_param,*second_param,*third_param)
+
+#define GEN_BIND_THREE_TWOS(TYPE,TYPE2)                                                  \
+	GEN_BIND_THREE_ALL(TYPE,TYPE2,int) \
+	GEN_BIND_THREE_ALL(TYPE,TYPE2,int*) \
+	GEN_BIND_THREE_ALL(TYPE,TYPE2,AcReal) \
+	GEN_BIND_THREE_ALL(TYPE,TYPE2,AcReal*)
+
+#define GEN_BIND_THREE(TYPE)                                                  \
+	GEN_BIND_THREE_TWOS(TYPE,int) \
+	GEN_BIND_THREE_TWOS(TYPE,int*) \
+	GEN_BIND_THREE_TWOS(TYPE,AcReal) \
+	GEN_BIND_THREE_TWOS(TYPE,AcReal*)
+
+
+#define GEN_BIND_TWO_BOTH(TYPE,TYPE2,PTYPE,PTYPE2,FP,SP)                                                  \
+	GEN_BIND_TWO_BASE(TYPE,TYPE2,PTYPE,PTYPE2,FP,SP) \
+	GEN_BIND_TWO_ITER_BASE(TYPE,TYPE2,PTYPE,PTYPE2,FP,SP)
+
+#define GEN_BIND_TWOS(TYPE,TYPE2)                                                  \
+	GEN_BIND_TWO_BOTH(TYPE,TYPE2,TYPE,TYPE2,input_param,second_param) \
+	GEN_BIND_TWO_BOTH(TYPE,TYPE2,TYPE*,TYPE2,*input_param,second_param) \
+	GEN_BIND_TWO_BOTH(TYPE,TYPE2,TYPE,TYPE2*,input_param,*second_param) \
+	GEN_BIND_TWO_BOTH(TYPE,TYPE2,TYPE*,TYPE2*,*input_param,*second_param)
+
+#include "bind_gen_two.h"
+
+#define GEN_BIND(TYPE) \
+	GEN_BIND_SINGLE(TYPE) \
+	GEN_BIND_TWO(TYPE)
+	//Currently not used
+	//GEN_BIND_THREE(TYPE)
+
+#include "bind_gen.h"
+
+GEN_BIND_CALLS()
+
+
+
 KernelLambda
-bind_two_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param), T input_param, F second_input_param)
+bind_single_param(IterKernelLambda kernel, int step_num)
 {
-  return (KernelLambda){[kernel, input_param, second_input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param, second_input_param);}, reinterpret_cast<void*>(kernel)};
+	return {[kernel, step_num](const dim3 bpg,  const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba_in)
+                      {kernel.lambda(bpg,tpb,smem,stream,start,end,vba_in,step_num);}, kernel.kernel};
 }
-template <typename T, typename F, typename H>
-KernelLambda
-bind_three_params(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param, H third_input_param), T input_param, F second_input_param, H third_input_param)
-{
-  return (KernelLambda){[kernel, input_param, second_input_param, third_input_param](const dim3 bpg, const dim3 tpb, const size_t smem, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray vba){kernel<<<bpg,tpb,smem,stream>>>(start,end,vba,input_param, second_input_param, third_input_param);}, reinterpret_cast<void*>(kernel)};
-}
+
 Volume
 acKernelLaunchGetLastTPB(void)
 {
@@ -497,7 +584,11 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
     device_malloc((void**)&vba.w[i],bytes);
   //Allocate arrays
   for (int i = 0; i < NUM_REAL_ARRAYS; ++i)
-    device_malloc((void**)&vba.real_arrays[i],sizeof(vba.in[0][0])*config.int_params[real_array_lengths[i]]);
+    if(config.real_arrays[i] != nullptr)
+    	device_malloc((void**)&vba.real_arrays[i],sizeof(vba.in[0][0])*config.int_params[real_array_lengths[i]]);
+  for (int i = 0; i < NUM_INT_ARRAYS; ++i)
+    if(config.int_arrays[i] != nullptr)
+    	device_malloc((void**)&vba.int_arrays[i],sizeof(int)*config.int_params[int_array_lengths[i]]);
   acVBAReset(0, &vba);
   cudaDeviceSynchronize();
   return vba;
@@ -505,6 +596,19 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
 
 void
 device_free(AcReal** dst, const int bytes)
+{
+#if USE_COMPRESSIBLE_MEMORY
+  freeCompressible(*dst, bytes);
+#else
+  cudaFree(*dst);
+  //used to silence unused warning
+  (void)bytes;
+#endif
+  *dst = NULL;
+}
+
+void
+device_free(int** dst, const int bytes)
 {
 #if USE_COMPRESSIBLE_MEMORY
   freeCompressible(*dst, bytes);
@@ -528,9 +632,14 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
   //Free workbuffers 
   for (int i = 0; i < NUM_WORK_BUFFERS; ++i) 
     device_free(&(vba->w[i]), vba->bytes);
+
   //Free arrays
   for(int i=0;i<NUM_REAL_ARRAYS; ++i)
-    device_free(&(vba->real_arrays[i]), config.int_params[real_array_lengths[i]]);
+    if(config.real_arrays[i] != nullptr)
+    	device_free(&(vba->real_arrays[i]), config.int_params[real_array_lengths[i]]);
+  for(int i=0;i<NUM_INT_ARRAYS; ++i)
+    if(config.int_arrays[i] != nullptr)
+    	device_free(&(vba->int_arrays[i]), config.int_params[int_array_lengths[i]]);
   vba->bytes = 0;
 }
 

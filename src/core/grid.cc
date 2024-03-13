@@ -336,14 +336,14 @@ acGridInit(AcMeshInfo info)
 #ifdef AC_SINGLEPASS_INTEGRATION
                                       acSync(),
                                       acSync(),
-                                      acCompute(singlepass_solve, all_fields)
+                                      acCompute(singlepass_solve, all_fields, &device->local_config.real_params[AC_dt], &device->local_config.real_params[AC_current_time])
 #else
                                       acSync(),
                                       acSync(),
-                                      acCompute(twopass_solve_intermediate, all_fields),
+                                      acCompute(twopass_solve_intermediate, all_fields, &device->local_config.real_params[AC_dt]),
                                       acSync(),
                                       acSync(),
-                                      acCompute(twopass_solve_final, all_fields)
+                                      acCompute(twopass_solve_final, all_fields,&device->local_config.real_params[AC_current_time])
 #endif
 #endif // AC_INTEGRATION_ENABLED
     };
@@ -353,10 +353,10 @@ acGridInit(AcMeshInfo info)
                                                           all_fields),
 #ifdef AC_INTEGRATION_ENABLED
 #ifdef AC_SINGLEPASS_INTEGRATION
-                                      acCompute(singlepass_solve, all_fields)
+                                      acCompute(singlepass_solve, all_fields, &device->local_config.real_params[AC_dt])
 #else
-                                      acCompute(twopass_solve_intermediate, all_fields),
-                                      acCompute(twopass_solve_final, all_fields)
+                                      acCompute(twopass_solve_intermediate, all_fields, &device->local_config.real_params[AC_dt]),
+                                      acCompute(twopass_solve_final, all_fields, &device->local_config.real_params[AC_current_time])
 #endif
 #endif // AC_INTEGRATION_ENABLED
     };
@@ -384,6 +384,17 @@ acGridInit(AcMeshInfo info)
         acDeviceLoadRealArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcRealArrayParam>(array));
       }else{
         acLogFromRootProc(pid, "acGridInit: Warning!!!\tReal array%s will be null and not allocated since you loaded a nullptr to it\n", real_array_param_names[array]);
+      }
+      acGridSynchronizeStream(STREAM_ALL);
+    }
+
+    for(int array=0;array<NUM_INT_ARRAYS;++array)
+    {
+      //in case the user loaded a nullptr to the profile do not load it
+      if(submesh.info.int_arrays[array] != nullptr){
+        acDeviceLoadIntArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcIntArrayParam>(array));
+      }else{
+        acLogFromRootProc(pid, "acGridInit: Warning!!!\tInt array%s will be null and not allocated since you loaded a nullptr to it\n", int_array_param_names[array]);
       }
       acGridSynchronizeStream(STREAM_ALL);
     }
@@ -1357,11 +1368,165 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
     }
 }
 
+Region
+InnerMostCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
+{
+	int3 position = {(2+decomp_level)*NGHOST,(2+decomp_level)*NGHOST,(2+decomp_level)*NGHOST};
+	int3 last_position = {mm.x-(2+decomp_level)*NGHOST, mm.y-(2+decomp_level)*NGHOST,mm.z-(2+decomp_level)*NGHOST};
+	int3 dims = last_position - position;
+        return Region(position,dims,0,fields,RegionFamily::Compute_output);
+}
+Region
+LeftCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
+{
+	int3 position = {2*NGHOST, 2*NGHOST, 2*NGHOST};
+	int3 last_position = {(decomp_level+2)*NGHOST, mm.y - 2*NGHOST,mm.z-2*NGHOST};
+	int3 dims = last_position - position;
+        return Region(position,dims,0,fields,RegionFamily::Compute_output);
+}
+
+Region
+RightCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
+{
+	int3 position = {mm.x-(decomp_level+2)*NGHOST, 2*NGHOST, 2*NGHOST};
+	int3 last_position = {mm.x-2*NGHOST, mm.y - 2*NGHOST,mm.z-2*NGHOST};
+	int3 dims = last_position - position;
+        return Region(position,dims,0,fields,RegionFamily::Compute_output);
+}
+Region
+BackCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
+{
+	int3 position = {(decomp_level+2)*NGHOST, 2*NGHOST, 2*NGHOST};
+	int3 last_position = {mm.x - (decomp_level+2)*NGHOST, (decomp_level+2)*NGHOST,mm.z-2*NGHOST};
+	int3 dims = last_position - position;
+        return Region(position,dims,0,fields,RegionFamily::Compute_output);
+}
+
+Region
+FrontCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
+{
+	int3 position = {(2+decomp_level)*NGHOST, mm.y-(decomp_level+2)*NGHOST, 2*NGHOST};
+	int3 last_position = {mm.x-(2+decomp_level)*NGHOST, mm.y-2*NGHOST,mm.z-2*NGHOST};
+	int3 dims = last_position - position;
+        return Region(position,dims,0,fields,RegionFamily::Compute_output);
+}
+
+Region
+LowerCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
+{
+	int3 position = {(decomp_level+2)*NGHOST, (decomp_level+2)*NGHOST, 2*NGHOST};
+	int3 last_position = {mm.x - (decomp_level+2)*NGHOST, mm.y - (decomp_level+2)*NGHOST,(2+decomp_level)*NGHOST};
+	int3 dims = last_position - position;
+        return Region(position,dims,0,fields,RegionFamily::Compute_output);
+}
+
+Region
+UpperCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
+{
+	int3 position = {(2+decomp_level)*NGHOST, (2+decomp_level)*NGHOST, mm.z-(2+decomp_level)*NGHOST};
+	int3 last_position = {mm.x-(2+decomp_level)*NGHOST, mm.y-(2+decomp_level)*NGHOST, mm.z-2*NGHOST};
+	int3 dims = last_position - position;
+        return Region(position,dims,0,fields,RegionFamily::Compute_output);
+}
+Region
+GetInputRegion(Region region, std::vector<Field> fields_in)
+{
+	int3 nghost = {NGHOST,NGHOST,NGHOST};
+	return Region{region.position-nghost,region.dims+2*nghost,0,fields_in,RegionFamily::Compute_input};
+}
+
+//test that the compute regions cover what they should cover without overlap
+bool
+TestRegions(std::vector<Region> regions, int target_volume)
+{
+	bool passed = true;
+	for(auto& region_1: regions)
+	{
+		for(auto& region_2:regions)
+		{
+			if(region_1.overlaps(&region_2) && !((region_1.position == region_2.position) && (region_1.dims == region_2.dims)))
+			{
+				passed=false;
+				printf("Region_1 position: %d,%d,%d\tdims %d,%d,%d\n",region_1.position.x,region_1.position.y,region_1.position.z,region_1.dims.x,region_1.dims.y,region_1.dims.z);
+				printf("Region_2 position: %d,%d,%d\tdims %d,%d,%d\n",region_2.position.x,region_2.position.y,region_2.position.z,region_2.dims.x,region_2.dims.y,region_2.dims.z);
+			}
+
+		}
+	}
+	if(!passed)
+		printf("RegionTest: overlapping\n");
+
+	int covered_volume = 0;
+	for(auto& region: regions)
+	{
+		covered_volume += region.volume;
+	}
+	passed &= covered_volume == target_volume;
+	if(!passed)
+	{
+		printf("Doesn't cover the volume\n");
+		printf("Target: %d\n",target_volume);
+		printf("Covered: %d\n",covered_volume);
+	}
+	if(!passed)
+		printf("RegionTest: not passed\n");
+	return passed;
+}
+std::vector<Region>
+getmyregions(int3 nn, int decomp_level, std::vector<Field> fields_out)
+{
+	std::vector<Region> regions{};
+	int3 mm = nn + (int3){2*NGHOST,2*NGHOST,2*NGHOST};
+	regions.push_back(InnerMostCompRegion(mm,decomp_level,fields_out));
+	/***
+
+		regions.push_back(LeftCommRegion(nn,fields_out));
+		regions.push_back(RightCommRegion(nn,fields_out));
+		regions.push_back(BackCommRegion(nn,fields_out));
+		regions.push_back(FrontCommRegion(nn,fields_out));
+		regions.push_back(LowerCommRegion(nn,fields_out));
+		regions.push_back(UpperCommRegion(nn,fields_out));
+		**/
+		for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
+				if(Region::tag_to_id(tag) != (int3){0,0,0})
+					regions.push_back(Region(RegionFamily::Compute_output,tag,nn,fields_out.data(),fields_out.size()));
+            }
+	if(decomp_level > 0) 
+	{
+	regions.push_back(LeftCompRegion(mm,decomp_level,fields_out));
+	regions.push_back(RightCompRegion(mm,decomp_level,fields_out));
+
+	regions.push_back(BackCompRegion(mm,decomp_level,fields_out));
+	regions.push_back(FrontCompRegion(mm,decomp_level,fields_out));
+
+	regions.push_back(LowerCompRegion(mm,decomp_level,fields_out));
+	regions.push_back(UpperCompRegion(mm,decomp_level,fields_out));
+	}
+	int target_volume = (nn.x)*(nn.y)*(nn.z);
+	bool passed = TestRegions(regions,target_volume);
+	if(!passed) exit(0);
+	return regions;
+}
+std::vector<Region>
+getinputregions(std::vector<Region> output_regions, std::vector<Field> input_fields)
+{
+	std::vector<Region> input_regions{};
+	for(auto& region : output_regions)
+		input_regions.push_back(GetInputRegion(region,input_fields));
+	return input_regions;
+}
+void
+testmydecomp(int3 nn, int decomp_level, std::vector<Field> fields_out)
+{
+	std::vector<Region> regions = getmyregions(nn,decomp_level,fields_out);
+	int target_volume = (nn.x)*(nn.y)*(nn.z);
+	bool passed = TestRegions(regions,target_volume);
+	if(!passed) exit(0);
+}
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 {
     // ERRCHK(grid.initialized);
-
     int rank;
     MPI_Comm_rank(astaroth_comm, &rank);
 
@@ -1380,6 +1545,14 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     op_indices.reserve(n_ops);
 
     int3 nn         = grid.nn;
+
+    printf("grid: %d,%d,%d\n",nn.x,nn.y,nn.z);
+    for(int i=0;i<5;++i)
+    {
+    	printf("\n");
+    	//testmydecomp(nn,i,{});
+    }
+
     uint3_64 decomp = grid.decomposition;
     int3 pid3d      = getPid3D(rank, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]);
     Device device   = grid.device;
@@ -1416,9 +1589,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     // The tasks start at different offsets from the beginning of the iteration
     // this array of bools keep track of that state
     std::array<bool, NUM_VTXBUF_HANDLES> swap_offset{};
-
+    int num_comp_tasks = 0;
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks: %lu ops\n", n_ops);
-
     for (size_t i = 0; i < n_ops; i++) {
         acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks for op %lu\n", i);
         auto op = ops[i];
@@ -1431,20 +1603,32 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
         case TASKTYPE_COMPUTE: {
             acVerboseLogFromRootProc(rank, "Creating compute tasks\n");
-            // Kernel kernel = kernels[(int)op.kernel];
+	    std::vector<Field> fields_out(op.fields_out,op.fields_out+op.num_fields_out);
+	    //std::vector<Region> comp_out_regions = getmyregions(nn,num_comp_tasks,fields_out);
+	    std::vector<Region> comp_out_regions = getmyregions(nn,0,fields_out);
+	    std::vector<Field> fields_in(op.fields_in,op.fields_in+op.num_fields_in);
+	    std::vector<Region> comp_input_regions = getinputregions(comp_out_regions,fields_in);
+	    for(size_t region_index=0; region_index< comp_out_regions.size(); ++region_index)
+	    {
+		    auto task = std::make_shared<ComputeTask>(op,region_index,comp_input_regions[region_index],comp_out_regions[region_index],device,swap_offset);
+                    graph->all_tasks.push_back(task);
+                    //autotune compute
+                    //done here since we want to write only to out not to in what launching the taskgraph would do
+                    acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, *op.kernel, task->output_region.position, task->output_region.position + task->output_region.dims);
+	    }
+	    /**
             for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
                 auto task = std::make_shared<ComputeTask>(op, i, tag, nn, device, swap_offset);
                 graph->all_tasks.push_back(task);
 
-                //autotune compute
-                //done here since we want to write only to out not to in what launching the taskgraph would do
-                acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, *op.kernel, task->output_region.position, task->output_region.position + task->output_region.dims);
 
             }
+	    **/
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
                 swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
             }
+	    ++num_comp_tasks;
             break;
         }
 
@@ -1644,6 +1828,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
     acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
     acGridSynchronizeStream(STREAM_ALL);
+    ERRCHK_ALWAYS(num_comp_tasks==6);
     return graph;
 }
 
@@ -1721,8 +1906,7 @@ AcResult
 acGridIntegrate(const Stream stream, const AcReal dt)
 {
     ERRCHK(grid.initialized);
-    acGridLoadScalarUniform(stream, AC_dt, dt);
-    acDeviceSynchronizeStream(grid.device, stream);
+    grid.device->local_config.real_params[AC_dt] = dt;
     return acGridExecuteTaskGraph(grid.default_tasks.get(), 1);
 }
 #endif // AC_INTEGRATION_ENABLED
