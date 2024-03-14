@@ -93,7 +93,6 @@ process_param(const ASTNode* param, char* struct_params)
 				strprepend(struct_params,param_str);
 				if(str_array_contains_ast(added_params_to_stencil_accesses,stencil_accesses_param_index,param->rhs->buffer))
 					return;
-				printf("SHOULD WORK\n");
 				added_params_to_stencil_accesses[stencil_accesses_param_index] = strdup(param->rhs->buffer);
 				++stencil_accesses_param_index;
 				char default_param[4096];
@@ -357,7 +356,7 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP
-%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL WORK_BUFFER 
+%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL WORK_BUFFER COMPLEX
 %token KERNEL SUM MAX COMMUNICATED AUXILIARY DCONST_QL
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE
@@ -431,7 +430,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
        //for now simply discard the struct definition info since not needed
        | program struct_definition   { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
        ;
-
 /*
  * =============================================================================
  * Terminals
@@ -462,6 +460,7 @@ uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 int3: INT3             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 real: REAL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 real3: REAL3           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal3", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+complex: COMPLEX       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcComplex", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcMatrix", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 field: FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 work_buffer: WORK_BUFFER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -532,13 +531,14 @@ struct_definition: struct_name '{' declarations '}' struct_type
  * Types
  * =============================================================================
 */
-type_specifier: int         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | uint        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | int3        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | real        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | real3       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | matrix      { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | field       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+type_specifier: int     { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | uint    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | int3    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | real    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | real3   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | complex { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | matrix  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | field   { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | work_buffer { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | stencil     { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | struct_type { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
@@ -760,7 +760,7 @@ function_definition: declaration function_body {
 
                             // Kernel function parameters
                             //if has parameter list
-                            if($$->rhs->lhs)
+                            if ($$->rhs->lhs)
                             {
                               ASTNode* param_list_head = $$->rhs->lhs;
                               while(param_list_head->rhs)
@@ -799,7 +799,6 @@ function_definition: declaration function_body {
                               //"if (!isnan(out_buffer[field]))"
                               //"vba.out[field][idx] = out_buffer[field];"
                               "}", compound_statement);
-
                         } else {
                             astnode_set_infix(" __attribute__((unused)) =[&]", $$);
                             astnode_set_postfix(";", $$);
@@ -947,3 +946,4 @@ get_node_by_token(const int token, ASTNode* node)
   else
     return NULL;
 }
+

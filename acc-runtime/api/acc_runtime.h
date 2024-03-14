@@ -102,12 +102,19 @@
                             const AcReal value);
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
+  AcResult acLoadRealArrayUniform(const cudaStream_t stream, const AcRealArrayParam param,
+                            const AcReal* values);
+
+  /** NOTE: stream unused. acUniform functions are completely synchronous. */
   AcResult acLoadReal3Uniform(const cudaStream_t stream, const AcReal3Param param,
                               const AcReal3 value);
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
   AcResult acLoadIntUniform(const cudaStream_t stream, const AcIntParam param,
                             const int value);
+  /** NOTE: stream unused. acUniform functions are completely synchronous. */
+  AcResult acLoadIntArrayUniform(const cudaStream_t stream, const AcIntArrayParam param,
+                            const int* values);
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
   AcResult acLoadInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
