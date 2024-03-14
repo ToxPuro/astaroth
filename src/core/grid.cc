@@ -341,8 +341,8 @@ acGridInit(AcMeshInfo info)
                                                           all_fields),
 				      acComputeWithParams(KERNEL_twopass_solve_intermediate, all_fields,intermediate_loader),
 				      acComputeWithParams(KERNEL_twopass_solve_final, all_fields,final_loader)
-#endif
     };
+#endif
 
     // Random number generator
     // const auto rr            = (int3){STENCIL_WIDTH, STENCIL_HEIGHT, STENCIL_DEPTH};
