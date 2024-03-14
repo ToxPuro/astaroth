@@ -343,7 +343,9 @@ void
 gen_dconsts(const ASTNode* root, FILE* stream)
 {
   symboltable_reset();
-  traverse(root, NODE_FUNCTION | NODE_FIELD | NODE_STENCIL | NODE_HOSTDEFINE,
+  traverse(root,
+           NODE_FUNCTION | NODE_FIELD | NODE_PROFILE | NODE_STENCIL |
+               NODE_HOSTDEFINE,
            stream);
 
   /*
@@ -429,7 +431,10 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "#pragma once\n");
 
   symboltable_reset();
-  traverse(root, NODE_DCONST | NODE_FIELD | NODE_FUNCTION | NODE_STENCIL, fp);
+  traverse(root,
+           NODE_DCONST | NODE_FIELD | NODE_PROFILE | NODE_FUNCTION |
+               NODE_STENCIL,
+           fp);
 
   symboltable_reset();
   traverse(root, 0, NULL);
@@ -441,12 +446,19 @@ gen_user_defines(const ASTNode* root, const char* out)
       fprintf(fp, "stencil_%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_STENCILS} Stencil;");
 
-  // Enums
+  // Fields
   fprintf(fp, "typedef enum {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_FIELD_ID)
       fprintf(fp, "%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_FIELDS} Field;");
+
+  // Profiles
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_PROFILE_ID)
+      fprintf(fp, "%s,", symbol_table[i].identifier);
+  fprintf(fp, "NUM_PROFILES} Profile;");
 
   // Kernels
   fprintf(fp, "typedef enum {");
@@ -495,6 +507,12 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "static const char* field_names[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_FIELD_ID)
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+
+  fprintf(fp, "static const char* profile_names[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_PROFILE_ID)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
 
@@ -551,6 +569,7 @@ gen_user_defines(const ASTNode* root, const char* out)
   for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
     if (!(symbol_table[i].type & NODE_FUNCTION_ID) &&
         !(symbol_table[i].type & NODE_FIELD_ID) &&
+        !(symbol_table[i].type & NODE_PROFILE_ID) &&
         !(symbol_table[i].type & NODE_STENCIL_ID)) {
       fprintf(fp, "// extern __device__ %s %s;\n", symbol_table[i].tspecifier,
               symbol_table[i].identifier);
@@ -629,6 +648,11 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
     if (symbol_table[i].type & NODE_FIELD_ID)
       ++num_fields;
 
+  size_t num_profiles = 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_PROFILE_ID)
+      ++num_profiles;
+
   size_t num_kernels = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_KFUNCTION_ID)
@@ -673,8 +697,8 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
                       "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]["
                       "STENCIL_WIDTH] = {");
   traverse(root,
-           NODE_STENCIL_ID | NODE_DCONST | NODE_FIELD | NODE_FUNCTION |
-               NODE_HOSTDEFINE,
+           NODE_STENCIL_ID | NODE_DCONST | NODE_FIELD | NODE_PROFILE |
+               NODE_FUNCTION | NODE_HOSTDEFINE,
            stencilgen);
   fprintf(stencilgen, "};");
   fclose(stencilgen);
@@ -749,8 +773,8 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   size_t sizeloc;
   FILE* dfunc_fp = open_memstream(&dfunctions, &sizeloc);
   traverse(root,
-           NODE_DCONST | NODE_FIELD | NODE_STENCIL | NODE_KFUNCTION |
-               NODE_HOSTDEFINE,
+           NODE_DCONST | NODE_FIELD | NODE_PROFILE | NODE_STENCIL |
+               NODE_KFUNCTION | NODE_HOSTDEFINE,
            dfunc_fp);
   fflush(dfunc_fp);
 
@@ -761,8 +785,8 @@ generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 
   symboltable_reset();
   traverse(root,
-           NODE_DCONST | NODE_FIELD | NODE_STENCIL | NODE_DFUNCTION |
-               NODE_HOSTDEFINE,
+           NODE_DCONST | NODE_FIELD | NODE_PROFILE | NODE_STENCIL |
+               NODE_DFUNCTION | NODE_HOSTDEFINE,
            stream);
 
   // print_symbol_table();

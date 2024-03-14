@@ -19,6 +19,7 @@ L [a-zA-Z_]
 "real3"                 { return REAL3; }
 "Matrix"                { return MATRIX; }
 "Field"                 { return FIELD; }
+"Profile"               { return PROFILE; }
 "Stencil"               { return STENCIL; }
 
 "Kernel"                { return KERNEL; } /* Type qualifiers */
