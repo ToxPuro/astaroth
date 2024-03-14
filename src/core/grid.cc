@@ -384,8 +384,10 @@ acGridInit(AcMeshInfo info)
     }
 
 
+#ifdef AC_INTEGRATION
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
     acLogFromRootProc(pid, "acGridInit: Done creating default task graph\n");
+#endif
     return AC_SUCCESS;
 }
 
