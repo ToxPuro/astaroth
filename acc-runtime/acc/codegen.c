@@ -882,9 +882,9 @@ gen_user_defines(const ASTNode* root, const char* out)
         !strcmp(symbol_table[i].tspecifier, "AcReal*"))
     {
         if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
-                fprintf(fp,"true");
+                fprintf(fp,"true,");
         else
-                fprintf(fp, "false");
+                fprintf(fp, "false,");
     }
   fprintf(fp, "};");
 
@@ -920,9 +920,9 @@ gen_user_defines(const ASTNode* root, const char* out)
         !strcmp(symbol_table[i].tspecifier, "int*"))
     {
         if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
-                fprintf(fp,"true");
+                fprintf(fp,"true,");
         else
-                fprintf(fp, "false");
+                fprintf(fp, "false,");
     }
   fprintf(fp, "};");
 
