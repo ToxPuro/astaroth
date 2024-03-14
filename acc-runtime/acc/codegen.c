@@ -292,6 +292,18 @@ void combine(const ASTNode* node, char* res){
   if(node->rhs)
     combine(node->rhs, res);
 }
+void combine_all(const ASTNode* node, char* res){
+  if(node->prefix)
+    strcat(res,node->prefix);
+  if(node->lhs)
+    combine_all(node->lhs, res);
+  if(node->buffer)
+    strcat(res,node->buffer);
+  if(node->rhs)
+    combine_all(node->rhs, res);
+  if(node->postfix)
+    strcat(res,node->postfix);
+}
 void
 gen_array_reads(ASTNode* node, bool gen_mem_accesses)
 {
@@ -329,6 +341,32 @@ gen_array_reads(ASTNode* node, bool gen_mem_accesses)
     gen_array_reads(node->lhs,gen_mem_accesses);
   if(node->rhs)
     gen_array_reads(node->rhs,gen_mem_accesses);
+}
+void
+gen_kernel_input_params(ASTNode* node, bool gen_mem_accesses)
+{
+	if(!gen_mem_accesses && node->buffer && strstr(node->buffer,"ac_input"))
+	{
+		const ASTNode* fn_declaration= get_parent_node(NODE_BEGIN_SCOPE,node)->parent->parent->lhs;
+		const ASTNode* fn_identifier = get_node(NODE_KFUNCTION_ID,fn_declaration);
+		while(!fn_identifier)
+		{
+			fn_declaration= get_parent_node(NODE_BEGIN_SCOPE,fn_declaration)->parent->parent->lhs;
+			fn_identifier = get_node(NODE_KFUNCTION_ID,fn_declaration);
+		}
+		if(fn_identifier)
+		{
+			char res[4096];
+			sprintf(res,"vba.kernel_input_params.%s.%s",fn_identifier->buffer,node->buffer);
+			node->buffer = strdup(res);
+			printf("PAPA: %s\n",node->buffer);
+		}
+	}
+	if(node->lhs)
+		gen_kernel_input_params(node->lhs,gen_mem_accesses);
+	if(node->rhs)
+		gen_kernel_input_params(node->rhs,gen_mem_accesses);
+
 }
 
 static void
@@ -970,6 +1008,7 @@ generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   // Device constants
   // gen_dconsts(root, stream);
   gen_array_reads(root,gen_mem_accesses);
+  gen_kernel_input_params(root,gen_mem_accesses);
 
   // Stencils
 

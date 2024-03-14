@@ -678,34 +678,20 @@ acDeviceTransferMesh(const Device src_device, const Stream stream, Device dst_de
     return AC_SUCCESS;
 }
 AcResult
-acDeviceLaunchKernel(const Device device, const Stream stream, const KernelLambda kernel,
+acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kernel,
                      const int3 start, const int3 end)
 {
     cudaSetDevice(device->id);
     return acLaunchKernel(kernel, device->streams[stream], start, end, device->vba);
 }
 
-AcResult
-acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kernel,
-                     const int3 start, const int3 end)
-{
-    return acDeviceLaunchKernel(device, stream, kernel_to_kernel_lambda(kernel),start,end);
-}
-
-
-AcResult
-acDeviceBenchmarkKernel(const Device device, const KernelLambda kernel, const int3 start, const int3 end)
-{
-    cudaSetDevice(device->id);
-    return acBenchmarkKernel(kernel, start, end, device->vba);
-}
 
 AcResult
 acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start, const int3 end)
 {
-    return acDeviceBenchmarkKernel(device, kernel_to_kernel_lambda(kernel), start, end);
+    cudaSetDevice(device->id);
+    return acBenchmarkKernel(kernel, start, end, device->vba);
 }
-
 
 /** */
 AcResult
@@ -745,13 +731,19 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
     ERRCHK_ALWAYS(end.y == dims.n1.y);
     ERRCHK_ALWAYS(end.z == dims.n1.z);
 
-    const AcResult res = acLaunchKernel(bind_two_params(twopass_solve_intermediate,step_number,dt), device->streams[stream], start,
+    device->vba.kernel_input_params.twopass_solve_intermediate.ac_input_step_num = step_number;
+    device->vba.kernel_input_params.twopass_solve_intermediate.ac_input_dt = dt;
+    const AcResult res = acLaunchKernel(twopass_solve_intermediate, device->streams[stream], start,
                                         end, device->vba);
     if (res != AC_SUCCESS)
         return res;
 
     acDeviceSwapBuffers(device);
-    return acLaunchKernel(bind_two_params(twopass_solve_final,step_number,current_time), device->streams[stream], start, end, device->vba);
+    device->vba.kernel_input_params.twopass_solve_final.ac_input_current_time = current_time;
+
+    device->vba.kernel_input_params.twopass_solve_final.ac_input_step_num = step_number;
+    device->vba.kernel_input_params.twopass_solve_final.ac_input_current_time= current_time;
+    return acLaunchKernel(twopass_solve_final, device->streams[stream], start, end, device->vba);
 #endif
 #else
     (void)device;      // Unused
@@ -950,5 +942,16 @@ acDeviceResetMesh(const Device device, const Stream stream)
     cudaSetDevice(device->id);
     acDeviceSynchronizeStream(device, stream);
     return acVBAReset(device->streams[stream], &device->vba);
+}
+acKernelInputParams*
+acDeviceGetKernelInputParamsObject(const Device device)
+{
+	return &device->vba.kernel_input_params;
+}
+
+AcMeshInfo
+acDeviceGetConfig(const Device device)
+{
+	return device->local_config;
 }
 

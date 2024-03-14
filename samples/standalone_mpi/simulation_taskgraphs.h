@@ -59,7 +59,7 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
                  acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
                  acCompute(singlepass_solve, all_fields, &info.real_params[AC_dt], &info.real_params[AC_current_time])};
             acLogFromRootProc(pid, "Creating shock singlepass solve task graph\n");
-            return acGridBuildTaskGraphWithIterations(shock_ops,3);
+            return acGridBuildTaskGraph(shock_ops);
 #endif
         }
         case Simulation::Hydro_Heatduct_Solve: {
@@ -81,7 +81,16 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
 	    //not used at the moment
             //AcRealParam const_lnrho_bound[1] = {AC_lnrho0};
             AcRealParam const_heat_flux[1]   = {AC_hflux};
-
+	    auto intermediate_loader = [&info](ParamLoadingInfo p){
+		    acKernelInputParams* params = acDeviceGetKernelInputParamsObject(p.device);
+		    params->twopass_solve_intermediate.ac_input_dt = info.real_params[AC_dt];
+		    params->twopass_solve_intermediate.ac_input_step_num= p.step_number;
+	    };
+	    auto final_loader = [&info](ParamLoadingInfo p){
+		    acKernelInputParams* params = acDeviceGetKernelInputParamsObject(p.device);
+		    params->twopass_solve_final.ac_input_current_time = info.real_params[AC_dt];
+		    params->twopass_solve_final.ac_input_step_num = p.step_number;
+	    };
             AcTaskDefinition heatduct_ops[] =
                 {acHaloExchange(all_fields),
                  acBoundaryCondition(BOUNDARY_XZ, BOUNDCOND_SYMMETRIC, scalar_fields),
@@ -101,10 +110,11 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
                                                SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX,
                                                const_heat_flux),
 
-                 acCompute(twopass_solve_intermediate, all_fields, &info.real_params[AC_dt]),
-                 acCompute(twopass_solve_final, all_fields, &info.real_params[AC_current_time])};
+		 acComputeWithParams(KERNEL_twopass_solve_intermediate, all_fields, intermediate_loader),
+                 acComputeWithParams(KERNEL_twopass_solve_final, all_fields, final_loader)
+		};
             acLogFromRootProc(pid, "Creating heat duct task graph\n");
-            AcTaskGraph* my_taskgraph = acGridBuildTaskGraphWithIterations(heatduct_ops,3);
+            AcTaskGraph* my_taskgraph = acGridBuildTaskGraph(heatduct_ops,1);
             acGraphPrintDependencies(my_taskgraph);
             return my_taskgraph;
 #endif

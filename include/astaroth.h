@@ -26,6 +26,7 @@
 
 #define NGHOST (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
 
+
 typedef struct {
     AcReal* vertex_buffer[NUM_VTXBUF_HANDLES];
     AcMeshInfo info;
@@ -175,6 +176,7 @@ static const char* special_bctype_names[] _UNUSED = {
 
 typedef struct node_s* Node;
 typedef struct device_s* Device;
+
 
 typedef struct {
     int3 m;
@@ -710,8 +712,7 @@ typedef enum AcTaskType {
     TASKTYPE_HALOEXCHANGE,
     TASKTYPE_BOUNDCOND,
     TASKTYPE_SPECIAL_MHD_BOUNDCOND,
-    TASKTYPE_SYNC,
-    TASKTYPE_ITER_COMPUTE
+    TASKTYPE_SYNC
 } AcTaskType;
 
 typedef enum AcBoundary {
@@ -731,13 +732,29 @@ typedef enum AcBoundary {
     BOUNDARY_XYZ   = BOUNDARY_X | BOUNDARY_Y | BOUNDARY_Z
 } AcBoundary;
 
+typedef struct ParamLoadingInfo {
+	acKernelInputParams* params;
+	Device device;
+	const int step_number;
+} ParamLoadingInfo;
+
+#ifdef __cplusplus
+} //END C linkage
+#include <functional>
+typedef struct LoadKernelParamsFunc{std::function<void(ParamLoadingInfo)> loader;} LoadKernelParamsFunc;
+extern "C" {
+#else
+//opaque for C to enable C++ lambdas
+typedef struct LoadKernelParamsFunc LoadKernelParamsFunc;
+#endif
+
 /** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
  * some operation.*/
 typedef struct AcTaskDefinition {
     AcTaskType task_type;
     union {
         //needs to be a pointer since opaque for C
-        KernelLambda* kernel;
+        Kernel kernel;
         AcBoundcond bound_cond;
 #ifdef AC_INTEGRATION_ENABLED
         AcSpecialMHDBoundcond special_mhd_bound_cond;
@@ -753,7 +770,7 @@ typedef struct AcTaskDefinition {
 
     AcRealParam* parameters;
     size_t num_parameters;
-    IterKernelLambda* iter_compute;
+    LoadKernelParamsFunc* load_kernel_params_func;
 } AcTaskDefinition;
 
 /** TaskGraph is an opaque datatype containing information necessary to execute a set of
@@ -763,6 +780,9 @@ typedef struct AcTaskGraph AcTaskGraph;
 /** */
 AcTaskDefinition acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
                            Field fields_out[], const size_t num_fields_out);
+/** */
+AcTaskDefinition acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
+                           Field fields_out[], const size_t num_fields_out, void (*load_func)(ParamLoadingInfo step_info));
 
 /** */
 AcTaskDefinition acHaloExchange(Field fields[], const size_t num_fields);
@@ -1093,6 +1113,12 @@ AcResult acDeviceStoreVertexBufferWithOffset(const Device device, const Stream s
                                              const VertexBufferHandle vtxbuf_handle, const int3 src,
                                              const int3 dst, const int num_vertices,
                                              AcMesh* host_mesh);
+AcMeshInfo
+acDeviceGetConfig(const Device device);
+
+acKernelInputParams*
+acDeviceGetKernelInputParamsObject(const Device device);
+
 
 /** Deprecated */
 AcResult acDeviceStoreMeshWithOffset(const Device device, const Stream stream, const int3 src,
@@ -1183,47 +1209,9 @@ AcResult acDeviceRunMPITest(void);
 /** */
 AcResult acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kernel,
                               const int3 start, const int3 end);
-#ifdef __cplusplus
-//stop and start C linkage
-}
-/** */
-AcResult acDeviceLaunchKernel(const Device device, const Stream stream, const KernelLambda kernel,
-                              const int3 start, const int3 end);
-
-template <typename T>
-AcResult
-acDeviceLaunchKernel(const Device device, const Stream stream, void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param),
-                     const int3 start, const int3 end, T input_param)
-{
-    return acDeviceLaunchKernel(device, stream, bind_single_param(kernel, input_param),start,end);
-}
-template <typename T, typename F>
-AcResult
-acDeviceLaunchKernel(const Device device, const Stream stream, void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param),
-                     const int3 start, const int3 end, T input_param, F second_input_param)
-{
-    return acDeviceLaunchKernel(device, stream, bind_two_params(kernel, input_param, second_input_param),start,end);
-}
-template <typename T, typename F, typename H>
-AcResult
-acDeviceLaunchKernel(const Device device, const Stream stream, void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param, H third_input_param),
-                     const int3 start, const int3 end, T input_param, F second_input_param, H third_input_param)
-{
-    return acDeviceLaunchKernel(device, stream, bind_three_params(kernel, input_param, second_input_param, third_input_param),start,end);
-}
-extern "C" {
-#endif
 /** */
 AcResult acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start,
                                  const int3 end);
-#ifdef __cplusplus
-//stop and start C linkage
-}
-/** */
-AcResult acDeviceBenchmarkKernel(const Device device, const KernelLambda kernel, const int3 start,
-                                 const int3 end);
-extern "C" {
-#endif
 
 /** */
 AcResult acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start,
@@ -1305,6 +1293,17 @@ acCompute(AcKernel kernel, Field (&fields)[num_fields])
     return acCompute(kernel, fields, num_fields, fields, num_fields);
 }
 
+/** */
+AcTaskDefinition acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
+                           Field fields_out[], const size_t num_fields_out, std::function<void(ParamLoadingInfo step_info)>);
+
+template <size_t num_fields>
+AcTaskDefinition
+acComputeWithParams(AcKernel kernel, Field (&fields)[num_fields], std::function<void(ParamLoadingInfo)> loader)
+{
+    return acComputeWithParams(kernel, fields, num_fields, fields, num_fields, loader);
+}
+
 
 
 
@@ -1313,6 +1312,13 @@ AcTaskDefinition
 acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out])
 {
     return acCompute(kernel, fields_in, num_fields_in, fields_out, num_fields_out);
+}
+
+template <size_t num_fields_in, size_t num_fields_out>
+AcTaskDefinition
+acComputeWithParams(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out], std::function<void(ParamLoadingInfo)> loader)
+{
+    return acComputeWithParams(kernel, fields_in, num_fields_in, fields_out, num_fields_out, loader);
 }
 
 /** */
@@ -1371,95 +1377,7 @@ acGridBuildTaskGraphWithIterations(const AcTaskDefinition (&ops)[n_ops], const s
 {
     return acGridBuildTaskGraphWithIterations(ops, n_ops, n_iterations);
 }
-
-
-AcTaskDefinition
-acCompute(const KernelLambda kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out);
-
-template <typename T>
-AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param), Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out, T input_param)
-{
-    return acCompute(bind_single_param(kernel,input_param), fields_in, num_fields_in, fields_out, num_fields_out);
-}
-
-template <size_t num_fields, typename T>
-AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param), Field (&fields)[num_fields], T input_param)
-{
-    return acCompute(kernel, fields, num_fields, fields, num_fields, input_param);
-}
-
-template <size_t num_fields>
-AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num), 
-                            Field (&fields)[num_fields])
-{
-    return acCompute(kernel, fields, num_fields, fields, num_fields);
-}
-template <size_t num_fields>
-AcTaskDefinition acCompute(Kernel kernel, 
-                            Field (&fields)[num_fields])
-{
-    return acCompute(kernel, fields, num_fields, fields, num_fields);
-}
-
-AcTaskDefinition
-acCompute(Kernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out);
-
-
-AcTaskDefinition
-acCompute(IterKernelLambda kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out);
-
-AcTaskDefinition
-acCompute(IterKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out);
-
-template <typename T>
-AcTaskDefinition
-acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, T input_param), Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out, T input_param)
-{
-	return acCompute((IterKernelLambda) bind_single_param(kernel,input_param),fields_in,num_fields_in,fields_out,num_fields_out);
-}
-
-template <typename T>
-AcTaskDefinition
-acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, T input_param), Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out, T* input_param)
-{
-	return acCompute(bind_single_param(kernel,input_param),fields_in,num_fields_in,fields_out,num_fields_out);
-}
-
-
-template <size_t num_fields, typename T>
-AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, T input_param), 
-                            Field (&fields)[num_fields], T input_param)
-{
-    return acCompute(kernel, fields, num_fields, fields, num_fields, input_param);
-}
-
-template <size_t num_fields, typename T>
-AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, int step_num, T input_param), 
-                            Field (&fields)[num_fields], T* input_param)
-{
-    return acCompute(kernel, fields, num_fields, fields, num_fields, input_param);
-}
-
-
-template <typename T, typename F>
-AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param), Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out, T input_param, F second_input_param)
-{
-    return AcTaskDefinition(bind_two_params(kernel, input_param, second_input_param), fields_in, num_fields_in, fields_out, num_fields_out);
-}
-
-template <typename T, typename F, typename H>
-AcTaskDefinition acCompute(void (*kernel)(const int3 start, const int3 end, VertexBufferArray vba, T input_param, F second_input_param), Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out, T input_param, F second_input_param, H third_input_param)
-{
-    return AcTaskDefinition(bind_three_params(kernel, input_param, second_input_param, third_input_param), fields_in, num_fields_in, fields_out, num_fields_out);
-}
 #endif
 #endif
+
+

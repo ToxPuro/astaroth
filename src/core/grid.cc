@@ -323,44 +323,23 @@ acGridInit(AcMeshInfo info)
     }
 
     acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
-#ifdef DEBUG_SYNC
-    printf("USING DEBUG SYNC");
-    AcTaskDefinition default_ops[] = {acSync(),
-                                      acSync(),
-                                      acHaloExchange(all_fields),
-                                      acSync(),
-                                      acSync(),
-                                      acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
-                                                          all_fields),
-#ifdef AC_INTEGRATION_ENABLED
-#ifdef AC_SINGLEPASS_INTEGRATION
-                                      acSync(),
-                                      acSync(),
-                                      acCompute(singlepass_solve, all_fields, &device->local_config.real_params[AC_dt], &device->local_config.real_params[AC_current_time])
-#else
-                                      acSync(),
-                                      acSync(),
-                                      acCompute(twopass_solve_intermediate, all_fields, &device->local_config.real_params[AC_dt]),
-                                      acSync(),
-                                      acSync(),
-                                      acCompute(twopass_solve_final, all_fields,&device->local_config.real_params[AC_current_time])
-#endif
-#endif // AC_INTEGRATION_ENABLED
+	    printf("TP: test:\n");
+    auto intermediate_loader = [](ParamLoadingInfo l){
+	    l.params -> twopass_solve_intermediate.ac_input_step_num = l.step_number;
+	    l.params -> twopass_solve_intermediate.ac_input_dt= 
+		    l.device->local_config.real_params[AC_dt];
     };
-#else
+    auto final_loader = [](ParamLoadingInfo l){
+	    l.params -> twopass_solve_final.ac_input_step_num = l.step_number;
+	    l.params -> twopass_solve_final.ac_input_current_time= 
+		    l.device->local_config.real_params[AC_current_time];
+    };
     AcTaskDefinition default_ops[] = {acHaloExchange(all_fields),
                                       acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
                                                           all_fields),
-#ifdef AC_INTEGRATION_ENABLED
-#ifdef AC_SINGLEPASS_INTEGRATION
-                                      acCompute(singlepass_solve, all_fields, &device->local_config.real_params[AC_dt])
-#else
-                                      acCompute(twopass_solve_intermediate, all_fields, &device->local_config.real_params[AC_dt]),
-                                      acCompute(twopass_solve_final, all_fields, &device->local_config.real_params[AC_current_time])
-#endif
-#endif // AC_INTEGRATION_ENABLED
+				      acComputeWithParams(KERNEL_twopass_solve_intermediate, all_fields,intermediate_loader),
+				      acComputeWithParams(KERNEL_twopass_solve_final, all_fields,final_loader)
     };
-#endif // DEBUG_SYNC
 
     // Random number generator
     // const auto rr            = (int3){STENCIL_WIDTH, STENCIL_HEIGHT, STENCIL_DEPTH};
@@ -400,7 +379,7 @@ acGridInit(AcMeshInfo info)
     }
 
 
-    grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraphWithIterations(default_ops,3));
+    grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
     acLogFromRootProc(pid, "acGridInit: Done creating default task graph\n");
     return AC_SUCCESS;
 }
@@ -1303,9 +1282,7 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
             break;
         case TASKTYPE_SYNC:
           task_graph_repr += "Sync,";
-        case TASKTYPE_ITER_COMPUTE:
-          task_graph_repr += "IterCompute,";
-        }
+	}
     }
 
     task_graph_repr += "}";
@@ -1526,6 +1503,8 @@ testmydecomp(int3 nn, int decomp_level, std::vector<Field> fields_out)
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 {
+	printf("start\n");
+	fflush(stdout);
     // ERRCHK(grid.initialized);
     int rank;
     MPI_Comm_rank(astaroth_comm, &rank);
@@ -1710,10 +1689,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 #endif
             break;
         }
-        case TASKTYPE_ITER_COMPUTE: {
-            fprintf(stderr,"Iter compute only allowed when building multi-iteration taskgraph\n");
-            exit(0);
-        }
         }
     }
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Done creating tasks\n");
@@ -1831,24 +1806,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     return graph;
 }
 
-AcTaskGraph*
-acGridBuildTaskGraphWithIterations(const AcTaskDefinition ops[], const size_t n_ops, const size_t n_iterations)
-{
-    AcTaskDefinition res_ops[n_ops*n_iterations];
-    for(size_t iteration = 0; iteration < n_iterations; ++iteration)
-    {
-        for(size_t i = 0; i < n_ops; ++i)
-        {
-            if(ops[i].task_type == TASKTYPE_ITER_COMPUTE)
-            {
-                res_ops[i + n_ops*iteration] = convert_iter_to_normal_compute(ops[i],iteration);
-            }
-            else
-                res_ops[i + n_ops*iteration] = ops[i];
-        }
-    }
-    return acGridBuildTaskGraph(res_ops, n_ops*n_iterations);
-}
 
 AcResult
 acGridDestroyTaskGraph(AcTaskGraph* graph)
@@ -1906,7 +1863,8 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 {
     ERRCHK(grid.initialized);
     grid.device->local_config.real_params[AC_dt] = dt;
-    return acGridExecuteTaskGraph(grid.default_tasks.get(), 1);
+    grid.device->local_config.real_params[AC_current_time] = dt;
+    return acGridExecuteTaskGraph(grid.default_tasks.get(), 3);
 }
 #endif // AC_INTEGRATION_ENABLED
 

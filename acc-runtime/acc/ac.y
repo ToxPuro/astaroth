@@ -23,11 +23,11 @@ int yyget_lineno();
 
 const char* global_func_declaration = "__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n";
 const char* user_structs_filename = "user_structs.h";
-const char* user_cpu_kernels_filename = "user_cpu_kernels.h";
-const char* bind_gen_filename = "bind_gen.h";
-const char* bind_gen_header_filename = "bind_gen_header.h";
-const char* bind_gen_two_filename = "bind_gen_two.h";
-const char* bind_gen_two_header_filename = "bind_gen_two_header.h";
+char user_kernel_params_struct_str[10000]; 
+char* added_params_to_stencil_accesses[256];
+int stencil_accesses_param_index = 0;
+const char* stencil_accesses_params_filename= "user_stencil_accesses_params.h";
+char stencil_accesses_default_params[10000];
 
 //These are used to generate better error messages in case of errors
 FILE* yyin_backup;
@@ -71,24 +71,42 @@ void combine_buffers(const ASTNode* node, char* res){
     combine_buffers(node->rhs, res);
 }
 
+bool
+str_array_contains_ast(char* const* str_array, const size_t n, const char* str)
+{
+	for(size_t i = 0; i <  n; ++i)
+		if(!strcmp(str_array[i],str)) return true;
+	return false;
+}
 void
-process_param(const ASTNode* param, char* rest_params, char* param_default_args)
+process_param(const ASTNode* param, char* struct_params)
 {
 				char param_type[4096];
                                 param_type[0] = '\0';
                                 combine_buffers(param->lhs, param_type);
 			      	char param_str[4096];
+				param_str[0] = '\0';
                               	sprintf(param_str,",%s %s",param_type, param->rhs->buffer);
-			      	strprepend(rest_params,param_str);
+			      	//strprepend(rest_params,param_str);
+				param_str[0] = '\0';
+                              	sprintf(param_str,"%s %s;",param_type, param->rhs->buffer);
+				strprepend(struct_params,param_str);
+				if(str_array_contains_ast(added_params_to_stencil_accesses,stencil_accesses_param_index,param->rhs->buffer))
+					return;
+				printf("SHOULD WORK\n");
+				added_params_to_stencil_accesses[stencil_accesses_param_index] = strdup(param->rhs->buffer);
+				++stencil_accesses_param_index;
 				char default_param[4096];
                                 if(!strcmp(param_type,"int"))
-			          sprintf(default_param,",0");
+			          sprintf(default_param,"0");
                                 else if(!strcmp(param_type,"AcReal"))
-			          sprintf(default_param,",0.0");
+			          sprintf(default_param,"0.0");
 				//we assume it is a user specified struct
 				else
-			          sprintf(default_param,",{}");
-				strprepend(param_default_args,default_param);
+			          sprintf(default_param,"{}");
+				sprintf(stencil_accesses_default_params,"%s %s %s = %s;",stencil_accesses_default_params,param_type,param->rhs->buffer,default_param);
+				//strprepend(param_default_args,default_param);
+
 }
 void
 process_declaration(const ASTNode* dec, char* struct_def)
@@ -203,56 +221,20 @@ file_exists(const char* filename)
   struct stat   buffer;
   return (stat (filename, &buffer) == 0);
 }
-void
-gen_bind(const char* filename, const char* prefix, const char* type_name)
-{
-                        FILE* fp_gen = fopen(filename, "a");
-                        fprintf(fp_gen,"\\\n%s%s) ",prefix,type_name);
-                        fprintf(fp_gen,"\\\n%s%s*) ",prefix,type_name);
-                        fclose(fp_gen);
-}
-void
-add_type_bind_gens(const char* type_name)
-{
-			gen_bind(bind_gen_filename,"GEN_BIND(",type_name);
-			gen_bind(bind_gen_two_filename,"GEN_BIND_TWOS(TYPE,",type_name);
-			gen_bind(bind_gen_header_filename,"GEN_BIND_HEADERS(",type_name);
-			gen_bind(bind_gen_two_header_filename,"GEN_BIND_TWO_HEADER(TYPE,",type_name);
-}
-void
-add_default_bind_gens()
-{
-	FILE* fp_gen = fopen(bind_gen_two_header_filename,"w");
-	fprintf(fp_gen,"#define GEN_BIND_TWO_CALLS(TYPE) ");
-	fclose(fp_gen);
-
-	fp_gen = fopen(bind_gen_header_filename,"w");
-	fprintf(fp_gen,"#define GEN_BIND_CALLS_HEADER() ");
-	fclose(fp_gen);
-
-	fp_gen = fopen(bind_gen_filename,"w");
-	fprintf(fp_gen,"#define GEN_BIND_CALLS() ");
-	fclose(fp_gen);
-
-	fp_gen = fopen(bind_gen_two_filename,"w");
-	fprintf(fp_gen,"#define GEN_BIND_TWO(TYPE) ");
-	fclose(fp_gen);
-	add_type_bind_gens("int");
-	add_type_bind_gens("AcReal");
-}
 
 int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* stage4, const char* dir, const bool gen_mem_accesses)
 {
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
         {
-          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", user_cpu_kernels_filename, user_structs_filename};
+          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", stencil_accesses_params_filename, user_structs_filename};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
             FILE* fp = fopen(files[i], "w");
             assert(fp);
             fclose(fp);
           }
         }
-	add_default_bind_gens();
+	user_kernel_params_struct_str[0] = '\0';
+	sprintf(user_kernel_params_struct_str,"typedef struct acKernelInputParams {\nunion {\n");
 
         // Stage 1: Preprocess includes
         {
@@ -310,18 +292,20 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         if (error)
             return EXIT_FAILURE;
 
-	//add newlines to fix compiler warnings
-        const char* bind_files[] = {bind_gen_filename, bind_gen_header_filename, bind_gen_two_filename, bind_gen_two_header_filename};
-        for (size_t i = 0; i < sizeof(bind_files)/sizeof(bind_files[0]); ++i) {
-          FILE* fp_gen = fopen(bind_files[i], "a");
-          assert(fp_gen);
-	  fprintf(fp_gen," \n");
-          fclose(fp_gen);
-        }
+	strcat(user_kernel_params_struct_str,"};\n} acKernelInputParams;\n");
+	printf("TP kernel params struct: %s\n", user_kernel_params_struct_str);
+
+
+	FILE* fp_structs = fopen(user_structs_filename,"a");
+	fprintf(fp_structs,"\n%s\n",user_kernel_params_struct_str);
+	fclose(fp_structs);
+
 
         // generate(root, stdout);
         FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
+	if(gen_mem_accesses)
+		fprintf(fp,"%s\n",stencil_accesses_default_params);
         generate(root, fp, gen_mem_accesses);
         fclose(fp);
 
@@ -523,7 +507,6 @@ struct_definition: struct_name '{' declarations '}' struct_type
                         struct_def[0] = '\0';
                         struct_name[0] = '\0';
 			combine_buffers($5,struct_name);
-			add_type_bind_gens(struct_name);
 
                         strcat(struct_def,$1->buffer);
                         strcat(struct_def,"{ ");
@@ -769,8 +752,9 @@ function_definition: declaration function_body {
                         const ASTNode* is_kernel = get_node_by_token(KERNEL, $$);
                         char rest_params[4096];
                         rest_params[0] = '\0';
-                        char param_default_args[4096];
-                        param_default_args[0] = '\0';
+			char struct_params[4096];
+			struct_params[0] = '\0';
+                        rest_params[0] = '\0';
                         if (is_kernel) {
                             $$->type |= NODE_KFUNCTION;
                             set_identifier_type(NODE_KFUNCTION_ID, fn_identifier);
@@ -782,26 +766,31 @@ function_definition: declaration function_body {
                               ASTNode* param_list_head = $$->rhs->lhs;
                               while(param_list_head->rhs)
                               {
-				process_param(param_list_head->rhs,rest_params,param_default_args);
+				process_param(param_list_head->rhs,struct_params);
                                 param_list_head = param_list_head->lhs;
                               }
 
-			      process_param(param_list_head->lhs,rest_params,param_default_args);
+			      process_param(param_list_head->lhs,struct_params);
                               $$->rhs->lhs=NULL;
                             }
+			      
                             // Set kernel built-in variables
-                            char param_list[4096];
-                            const char* default_args =  "const int3 start, const int3 end, VertexBufferArray vba";
-                            sprintf(param_list,"(%s %s",default_args,rest_params);
-                            astnode_set_prefix(param_list, $$->rhs);
-
-                            FILE* fp_cpu = fopen(user_cpu_kernels_filename,"a");
-                            fprintf(fp_cpu,"\nvoid %s_cpu(%s){%s(start,end,vba%s);}\n",fn_identifier->buffer,default_args,fn_identifier->buffer,param_default_args);
-			    fclose(fp_cpu);
-
+                            const char* default_param_list=  "(const int3 start, const int3 end, VertexBufferArray vba";
+                            astnode_set_prefix(default_param_list, $$->rhs);
                             FILE* fp = fopen("user_kernel_declarations.h","a");
-                            fprintf(fp, "void __global__ %s %s);\n", fn_identifier->buffer, param_list);
-                            fclose(fp);
+                            fprintf(fp, "void __global__ %s %s);\n", fn_identifier->buffer, default_param_list);
+			    fclose(fp);
+
+				
+			    char kernel_params_struct[4096];
+			    sprintf(kernel_params_struct,"typedef struct %sInputParams {%s} %sInputParams;\n",fn_identifier->buffer,struct_params,fn_identifier->buffer);
+			    printf("TP test: %s\n",kernel_params_struct);
+
+			    FILE* fp_structs= fopen(user_structs_filename,"a");
+			    fprintf(fp_structs,"%s\n",kernel_params_struct);
+			    fclose(fp_structs);
+
+			    sprintf(user_kernel_params_struct_str,"%s%sInputParams %s;\n",user_kernel_params_struct_str,fn_identifier->buffer,fn_identifier->buffer);
 
                             ASTNode* compound_statement = $$->rhs->rhs;
                             assert(compound_statement);
