@@ -21,8 +21,8 @@
 #include "errchk.h"
 
 #if AC_MPI_ENABLED
-
 #include <mpi.h>
+
 #include "stencil_loader.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))

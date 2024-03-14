@@ -2,12 +2,13 @@
 hostdefine AC_INTEGRATION_ENABLED (1) // Enables acIntegrate() and other non-generic library functions
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
-hostdefine LMAGNETIC (1)
-hostdefine LENTROPY (1)
+hostdefine LMAGNETIC (0)
+hostdefine LENTROPY (0)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
 hostdefine LUPWD (1)
 hostdefine R_PI (AC_REAL_PI)
+hostdefine LTFM (1)
 
 // Fields
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
@@ -22,8 +23,18 @@ Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
 Field VTXBUF_ENTROPY
 #endif
 
+#if LTFM
 // Test fields
-Field TF_B11, TF_B12, TF_B21, TF_B22
+Field TF_B11X, TF_B11Y, TF_B11Z
+Field TF_B12X, TF_B12Y, TF_B12Z
+Field TF_B21X, TF_B21Y, TF_B21Z
+Field TF_B22X, TF_B22Y, TF_B22Z
+
+#define TF_B11 Field3(TF_B11X, TF_B11Y, TF_B11Z)
+#define TF_B12 Field3(TF_B12X, TF_B12Y, TF_B12Z)
+#define TF_B21 Field3(TF_B21X, TF_B21Y, TF_B21Z)
+#define TF_B22 Field3(TF_B22X, TF_B22Y, TF_B22Z)
+#endif
 
 // Device constants
 real AC_dsx, AC_dsy, AC_dsz
@@ -442,6 +453,10 @@ entropy() {
     return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
 }
 #endif
+
+tfm_induction() {
+    return AC_eta * veclaplace(TF_B11)
+}
 
 // Integration: single-pass
 rk3(s0, s1, roc) {
