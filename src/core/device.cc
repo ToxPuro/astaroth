@@ -519,6 +519,11 @@ AcResult
 acDeviceLoadRealArray(const Device device, const Stream stream, const AcMeshInfo host_info,
                          const AcRealArrayParam array)
 {
+    if(real_array_is_dconst[array])
+    {
+    	    cudaSetDevice(device->id);
+	    return acLoadRealArrayUniform(STREAM_DEFAULT,array,host_info.real_arrays[array]);
+    }
     acDeviceLoadRealArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[real_array_lengths[array]]);
     return AC_SUCCESS;
 }
@@ -527,6 +532,11 @@ AcResult
 acDeviceLoadIntArray(const Device device, const Stream stream, const AcMeshInfo host_info,
                          const AcIntArrayParam array)
 {
+    if(real_array_is_dconst[array])
+    {
+    	    cudaSetDevice(device->id);
+	    return acLoadIntArrayUniform(STREAM_DEFAULT,array,host_info.int_arrays[array]);
+    }
     acDeviceLoadIntArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[int_array_lengths[array]]);
     return AC_SUCCESS;
 }

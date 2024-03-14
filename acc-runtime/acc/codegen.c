@@ -302,10 +302,34 @@ void combine_all(const ASTNode* node, char* res){
     combine_all(node->lhs, res);
   if(node->buffer)
     strcat(res,node->buffer);
+  if(node->infix)
+    strcat(res,node->infix);
   if(node->rhs)
     combine_all(node->rhs, res);
   if(node->postfix)
     strcat(res,node->postfix);
+}
+void
+gen_d_offsets(FILE* fp, const char* datatype, const bool declarations)
+{
+  char running_offset[4096];
+  sprintf(running_offset,"0");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        !strcmp(symbol_table[i].tspecifier,datatype))
+    {
+	    if(declarations && str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
+            	fprintf(fp,"\n#ifndef %s_offset\n#define %s_offset (%s)\n#endif\n",symbol_table[i].identifier,symbol_table[i].identifier,running_offset);
+	    else
+            	fprintf(fp," %s,\n",running_offset);
+	    if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
+            	sprintf(running_offset,"%s+%s",running_offset,symbol_var_length[i]);
+    }
+   if(declarations && !strcmp(datatype,"AcReal*"))
+   	fprintf(fp,"\n#ifndef D_REAL_ARRAYS_LEN\n#define D_REAL_ARRAYS_LEN (%s)\n#endif\n", running_offset);
+   else if(declarations && !strcmp(datatype,"int*"))
+   	fprintf(fp,"\n#ifndef D_INT_ARRAYS_LEN\n#define D_INT_ARRAYS_LEN (%s)\n#endif\n", running_offset);
+
 }
 void
 gen_array_reads(ASTNode* node, bool gen_mem_accesses)
@@ -329,12 +353,34 @@ gen_array_reads(ASTNode* node, bool gen_mem_accesses)
 			if(node->parent->parent->parent->rhs)
 			{
 				char new_name[4096];
+				new_name[0] = '\0';
+				char arrays_name[4096];
 				if(!strcmp(symbol_table[i].tspecifier,"AcReal*"))
-					sprintf(new_name,"__ldg(&vba.real_arrays[(int)%s]",node->buffer);
+					sprintf(arrays_name,"real_arrays");
 				else if(!strcmp(symbol_table[i].tspecifier,"int*"))
-					sprintf(new_name,"__ldg(&vba.int_arrays[(int)%s]",node->buffer);
-				node->parent->parent->parent->postfix = strdup("])");
-				node->buffer = strdup(new_name);
+					sprintf(arrays_name,"int_arrays");
+      				if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
+				{
+					//node->prefix = strdup("DCONST(");
+					//node->parent->parent->parent->postfix = strdup("])");
+					char index_str[4096];
+					index_str[0] = '\0';
+					combine_all(node->parent->parent->parent->rhs,index_str);
+					char res[4096];
+					sprintf(res,"d_%s[%s_offset+(%s)]\n",arrays_name,node->buffer,index_str);
+					printf("dconst test: %s\n",res);
+					node->parent->parent->parent->parent->buffer = strdup(res);
+					node->parent->parent->parent->parent->lhs=NULL;
+					node->parent->parent->parent->parent->rhs=NULL;
+					node->parent->parent->parent->parent->prefix=NULL;
+					node->parent->parent->parent->parent->postfix=NULL;
+				}
+				else
+				{
+					sprintf(new_name,"__ldg(&vba.%s[(int)%s]",arrays_name,node->buffer);
+					node->parent->parent->parent->postfix = strdup("])");
+					node->buffer = strdup(new_name);
+				}
 			}
 		}
 	  }
@@ -823,15 +869,68 @@ gen_user_defines(const ASTNode* root, const char* out)
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_VARIABLE_ID &&
         !strcmp(symbol_table[i].tspecifier, "AcReal*"))
-      fprintf(fp, "%s,", symbol_var_length[i]);
+    {
+  	if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
+      		fprintf(fp, "(AcIntParam)%s,", symbol_var_length[i]);
+	else
+      		fprintf(fp, "%s,", symbol_var_length[i]);
+    }
   fprintf(fp, "};");
+
+  fprintf(fp, "static const bool real_array_is_dconst[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        !strcmp(symbol_table[i].tspecifier, "AcReal*"))
+    {
+        if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
+                fprintf(fp,"true");
+        else
+                fprintf(fp, "false");
+    }
+  fprintf(fp, "};");
+
+  fprintf(fp, "static int d_real_array_offsets[] __attribute__((unused)) = {");
+  gen_d_offsets(fp,"AcReal*",false);
+  fprintf(fp, "};");
+
+  fprintf(fp, "static int d_int_array_offsets[] __attribute__((unused)) = {");
+  gen_d_offsets(fp,"int*",false);
+  fprintf(fp, "};");
+
+
+
+
 
   fprintf(fp, "static const AcIntParam int_array_lengths[] __attribute__((unused)) = {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_VARIABLE_ID &&
-        !strcmp(symbol_table[i].tspecifier, "int*"))
-      fprintf(fp, "%s,", symbol_var_length[i]);
+        !strcmp(symbol_table[i].tspecifier, "AcReal*"))
+    {
+  	if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
+      		fprintf(fp, "(AcIntParam)%s,", symbol_var_length[i]);
+	else
+      		fprintf(fp, "%s,", symbol_var_length[i]);
+    }
   fprintf(fp, "};");
+      				
+
+
+  fprintf(fp, "static const bool int_array_is_dconst[] __attribute__((unused)) = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        !strcmp(symbol_table[i].tspecifier, "int*"))
+    {
+        if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
+                fprintf(fp,"true");
+        else
+                fprintf(fp, "false");
+    }
+  fprintf(fp, "};");
+
+
+   gen_d_offsets(fp,"int*",true);
+   gen_d_offsets(fp,"AcReal*",true);
+
 
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
   fprintf(fp, "\n// Redefined for backwards compatibility START\n");

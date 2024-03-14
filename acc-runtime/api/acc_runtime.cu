@@ -189,6 +189,8 @@ get_smem(const Volume tpb, const size_t stencil_order,
 */
 
 __device__ __constant__ AcMeshInfo d_mesh_info;
+__device__ __constant__ AcReal d_real_arrays[D_REAL_ARRAYS_LEN];
+__device__ __constant__ AcReal d_int_arrays[D_INT_ARRAYS_LEN];
 
 // Astaroth 2.0 backwards compatibility START
 #define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
@@ -585,7 +587,7 @@ acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
   }
   ERRCHK_ALWAYS(kernel_id < NUM_KERNELS);
   printf("Kernel %s time elapsed: %g ms\n", kernel_names[kernel_id],
-         milliseconds);
+         (double)milliseconds);
 
   // Timer destroy
   cudaEventDestroy(tstart);
@@ -662,41 +664,39 @@ acLoadRealUniform(const cudaStream_t /* stream */, const AcRealParam param,
 }
 
 //TODO: finalize
-//AcResult
-//acLoadRealArrayUniform(const cudaStream_t /* stream */, const AcRealArrayParam param,
-//                  const AcMeshInfo& info)
-//{
-//  ERRCHK_ALWAYS(int_array_is_dconst[param]);
-//  const AcReal* values = host_info.real_arrays[param];
-//  const int length  = info.int_params[real_array_lengths[param]];
-//  for(int i = 0; i < length; ++i)
-//  {
-//	  cudaDeviceSynchronize();
-//	  const size_t offset = (size_t)((&d_real_dconst_arrays[d_real_dconst_array_offsets[(int)param]] + i)-(size_t)&d_real_dconst_arrays);
-//  	  const cudaError_t retval = cudaMemcpyToSymbol(d_real_dconst_arrays, &values[i], sizeof(values[i]), offset, cudaMemcpyHostToDevice);
-//	  if retval != cudaSuccess
-//		  return AC_FAILURE;
-//
-//  }
-//  return AC_SUCCESS;
-//}
-//AcResult
-//acLoadIntArrayUniform(const cudaStream_t /* stream */, const AcIntArrayParam param,
-//                  const AcMeshInfo& host_info)
-//{
-//  const int* values = host_info.int_arrays[param];
-//  const int length  = info.int_params[int_array_lengths[param]];
-//  ERRCHK_ALWAYS(int_array_is_dconst[param]);
-//  for(int i = 0; i < length; ++i)
-//  {
-//          cudaDeviceSynchronize();
-//          const size_t offset = (size_t)((&d_int_dconst_arrays[d_int_dconst_array_offsets[(int)param]] + i)-(size_t)&d_int_dconst_arrays);
-//          const cudaError_t retval = cudaMemcpyToSymbol(d_int_dconst_arrays, &values[i], sizeof(values[i]), offset, cudaMemcpyHostToDevice);
-//          if retval != cudaSuccess
-//                  return AC_FAILURE;
-//  }
-//  return AC_SUCCESS;
-//}
+AcResult
+acLoadRealArrayUniform(const cudaStream_t /* stream */, const AcRealArrayParam param,
+                  const AcReal* values)
+{
+  ERRCHK_ALWAYS(real_array_is_dconst[param]);
+  const int length  = (int)real_array_lengths[param];
+  for(int i = 0; i < length; ++i)
+  {
+	  cudaDeviceSynchronize();
+	  const size_t offset = (size_t)((&d_real_arrays[d_real_array_offsets[(int)param]] + i)-(size_t)&d_real_arrays);
+  	  const cudaError_t retval = cudaMemcpyToSymbol(d_real_arrays, &values[i], sizeof(values[i]), offset, cudaMemcpyHostToDevice);
+	  if(retval != cudaSuccess)
+		  return AC_FAILURE;
+
+  }
+  return AC_SUCCESS;
+}
+AcResult
+acLoadIntArrayUniform(const cudaStream_t /* stream */, const AcIntArrayParam param,
+                  const int* values)
+{
+  const int length  = (int)int_array_lengths[param];
+  ERRCHK_ALWAYS(int_array_is_dconst[param]);
+  for(int i = 0; i < length; ++i)
+  {
+          cudaDeviceSynchronize();
+          const size_t offset = (size_t)((&d_int_arrays[d_int_array_offsets[(int)param]] + i)-(size_t)&d_int_arrays);
+          const cudaError_t retval = cudaMemcpyToSymbol(d_int_arrays, &values[i], sizeof(values[i]), offset, cudaMemcpyHostToDevice);
+          if(retval != cudaSuccess)
+                  return AC_FAILURE;
+  }
+  return AC_SUCCESS;
+}
 
 
 AcResult

@@ -181,6 +181,9 @@ real AC_cs2_sound
 real AC_current_time
 //realArray AC_test_array[AC_slice_steps]
 
+dconst real AC_test_dconst_array[5]
+dconst int AC_test_int_dconst_array[120]
+
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
 
 #if LMAGNETIC
@@ -1014,6 +1017,6 @@ Kernel haatouken() {
     write(VTXBUF_UUX, uu.x)
     write(VTXBUF_UUY, uu.y)
     write(VTXBUF_UUZ, uu.z)
-
-
+    
+    val = AC_test_dconst_array[1*3-1]/AC_test_int_dconst_array[vertexIdx.x*2]
 }

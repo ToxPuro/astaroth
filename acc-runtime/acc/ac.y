@@ -93,7 +93,6 @@ process_param(const ASTNode* param, char* struct_params)
 				strprepend(struct_params,param_str);
 				if(str_array_contains_ast(added_params_to_stencil_accesses,stencil_accesses_param_index,param->rhs->buffer))
 					return;
-				printf("SHOULD WORK\n");
 				added_params_to_stencil_accesses[stencil_accesses_param_index] = strdup(param->rhs->buffer);
 				++stencil_accesses_param_index;
 				char default_param[4096];
