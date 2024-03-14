@@ -334,11 +334,14 @@ acGridInit(AcMeshInfo info)
 	    l.params -> twopass_solve_final.ac_input_current_time= 
 		    l.device->local_config.real_params[AC_current_time];
     };
-    AcTaskDefinition default_ops[] = {acHaloExchange(all_fields),
+    AcTaskDefinition default_ops[] = {
+#ifdef AC_INTEGRATION
+	    acHaloExchange(all_fields),
                                       acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
                                                           all_fields),
 				      acComputeWithParams(KERNEL_twopass_solve_intermediate, all_fields,intermediate_loader),
 				      acComputeWithParams(KERNEL_twopass_solve_final, all_fields,final_loader)
+#endif
     };
 
     // Random number generator

@@ -736,15 +736,15 @@ grid_centre() {
 
 
 
-rk3_intermediate(w, roc,step_num) {
+rk3_intermediate(w, roc,step_num,dt) {
     real alpha = 0., -5./9., -153. / 128.
-    return alpha[step_num] * w + roc * AC_dt
+    return alpha[step_num] * w + roc * dt
 }
-rk3_intermediate_vector(w,roc,step_num){
+rk3_intermediate_vector(w,roc,step_num,dt){
   return real3(
-    rk3_intermediate(w.x,roc.x,step_num),
-    rk3_intermediate(w.y,roc.y,step_num),
-    rk3_intermediate(w.z,roc.z,step_num)
+    rk3_intermediate(w.x,roc.x,step_num,dt),
+    rk3_intermediate(w.y,roc.y,step_num,dt),
+    rk3_intermediate(w.z,roc.z,step_num,dt)
   )
 }
 
@@ -759,7 +759,7 @@ rk3_final_vector(f,w,step_num){
     rk3_final(f.z,w.z,step_num)
   )
 }
-Kernel twopass_solve_intermediate(int ac_input_step_num){
+Kernel twopass_solve_intermediate(int ac_input_step_num, real ac_input_dt){
 	UU = vecvalue(F_UU)
   UIJ = gradients(F_UU)
   DIVU = divergence(F_UU)
@@ -850,23 +850,16 @@ Kernel twopass_solve_intermediate(int ac_input_step_num){
 
 
 
-  W_UU = rk3_intermediate_vector(vecprevious(F_UU),DF_UU,ac_input_step_num)
-  W_SS = rk3_intermediate(previous(SS),DF_SS,ac_input_step_num)
-  W_LNRHO = rk3_intermediate(previous(RHO),DF_LNRHO,ac_input_step_num)
-  W_AA  = rk3_intermediate_vector(vecprevious(F_AA),DF_AA,ac_input_step_num)
+  W_UU = rk3_intermediate_vector(vecprevious(F_UU),DF_UU,ac_input_step_num, ac_input_dt)
+  W_SS = rk3_intermediate(previous(SS),DF_SS,ac_input_step_num, ac_input_dt)
+  W_LNRHO = rk3_intermediate(previous(RHO),DF_LNRHO,ac_input_step_num, ac_input_dt)
+  W_AA  = rk3_intermediate_vector(vecprevious(F_AA),DF_AA,ac_input_step_num, ac_input_dt)
  
 
   vecwrite(F_UU,W_UU)
   write(SS,W_SS)
   write(RHO, W_LNRHO)
   vecwrite(F_AA,W_AA)
-  /**
-  beta_1 = 0.333333333333333333333333
-  vecwrite(F_UU,vecvalue(F_UU)+AC_dt*DF_UU*beta_1)
-  write(SS,value(SS)+AC_dt*DF_SS*beta_1)
-  write(RHO, value(RHO)+AC_dt*DF_LNRHO*beta_1)
-  vecwrite(F_AA,vecvalue(F_AA)+AC_dt*DF_AA*beta_1)
-  **/
 }
 
 Kernel twopass_solve_final(int ac_input_step_num) {
