@@ -136,10 +136,13 @@ main(int argc, char** argv)
     // Benchmark
     Timer t;
     const AcReal current_time = 0.0;
-    const TimeParams time_params{ dt, current_time};
+    const TimeParams time_params{step_number,current_time};
     for (size_t j = 0; j < num_samples; ++j) {
         // Dryrun and randomize
-        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1, step_number, time_params);
+	acKernelInputParams* params= acDeviceGetKernelInputParamsObject(device);
+	params->singlepass_solve.ac_input_step_num= step_number;
+	params->singlepass_solve.ac_input_time_params = time_params;
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
         acDeviceResetMesh(device, STREAM_DEFAULT);
         acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
         acDeviceSwapBuffers(device);
@@ -147,7 +150,7 @@ main(int argc, char** argv)
 
         // Benchmark
         timer_reset(&t);
-        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1, step_number, time_params);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
         // acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, dims.n0, dims.n1, dt);
         acDeviceSynchronizeStream(device, STREAM_ALL);
         const double milliseconds = timer_diff_nsec(t) / 1e6;
@@ -171,7 +174,7 @@ main(int argc, char** argv)
 
     // Profile
     cudaProfilerStart();
-    acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1, step_number,time_params);
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
     acDeviceSynchronizeStream(device, STREAM_ALL);
     cudaProfilerStop();
 

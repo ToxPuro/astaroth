@@ -64,71 +64,38 @@ using std::make_unique;
 
 
 AcTaskDefinition
-acCompute(const KernelLambda kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out)
-{
-    AcTaskDefinition task_def{};
-    task_def.task_type      = TASKTYPE_COMPUTE;
-    task_def.kernel         = new KernelLambda(kernel);
-    task_def.fields_in      = fields_in;
-    task_def.num_fields_in  = num_fields_in;
-    task_def.fields_out     = fields_out;
-    task_def.num_fields_out = num_fields_out;
-    return task_def;
-}
-
-
-AcTaskDefinition
 acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
           const size_t num_fields_out)
 {
-    return acCompute(kernel_to_kernel_lambda(kernels[(int)kernel]), fields_in, num_fields_in, fields_out, num_fields_out);
-}
-
-AcTaskDefinition
-acCompute(IterKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out)
-{
-        return acCompute(kernel_to_kernel_lambda(kernel), fields_in, num_fields_in, fields_out, num_fields_out);
-}
-
-
-
-AcTaskDefinition
-acCompute(const Kernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out)
-{
-    return acCompute(kernel_to_kernel_lambda(kernel), fields_in, num_fields_in, fields_out, num_fields_out);
-}
-
-AcTaskDefinition
-acCompute(IterKernelLambda kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
-          const size_t num_fields_out)
-{
-
     AcTaskDefinition task_def{};
-    task_def.task_type      = TASKTYPE_ITER_COMPUTE;
-    task_def.iter_compute   =  new IterKernelLambda(kernel);
+    task_def.task_type      = TASKTYPE_COMPUTE;
+    task_def.kernel         = kernels[(int)kernel];
     task_def.fields_in      = fields_in;
     task_def.num_fields_in  = num_fields_in;
     task_def.fields_out     = fields_out;
     task_def.num_fields_out = num_fields_out;
+    task_def.load_kernel_params_func = new LoadKernelParamsFunc{[](ParamLoadingInfo){;}};
     return task_def;
 }
 
-
 AcTaskDefinition
-convert_iter_to_normal_compute(AcTaskDefinition op, int step_num)
+acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
+          const size_t num_fields_out, std::function<void(ParamLoadingInfo)> load_func)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
-    task_def.kernel =  new KernelLambda(bind_single_param(*op.iter_compute,step_num));
-    task_def.fields_in      = op.fields_in;
-    task_def.num_fields_in  = op.num_fields_in;
-    task_def.fields_out     = op.fields_out;
-    task_def.num_fields_out = op.num_fields_out;
+    task_def.kernel         = kernels[(int)kernel];
+    task_def.fields_in      = fields_in;
+    task_def.num_fields_in  = num_fields_in;
+    task_def.fields_out     = fields_out;
+    task_def.num_fields_out = num_fields_out;
+    task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
     return task_def;
 }
+
+
+
+
 AcTaskDefinition
 acSync()
 {
@@ -578,8 +545,8 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
 
     // compute_func = compute_func_;
 
-    params = KernelParameters{*op.kernel, stream, 0, output_region.position,
-                              output_region.position + output_region.dims};
+    params = KernelParameters{op.kernel, stream, 0, output_region.position,
+                              output_region.position + output_region.dims, *op.load_kernel_params_func};
     name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
@@ -602,8 +569,8 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region, R
 
     // compute_func = compute_func_;
 
-    params = KernelParameters{*op.kernel, stream, 0, output_region.position,
-                              output_region.position + output_region.dims};
+    params = KernelParameters{op.kernel, stream, 0, output_region.position,
+                              output_region.position + output_region.dims,  *op.load_kernel_params_func};
     name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
@@ -612,8 +579,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region, R
 void
 ComputeTask::compute()
 {
-    // IDEA: we could make loop_cntr.i point at params.step_number
-    params.step_number = (int)(loop_cntr.i % 3);
+    params.load_func.loader({&vba.kernel_input_params, device, (int)loop_cntr.i});
     acLaunchKernel(params.kernel, params.stream, params.start, params.end, vba);
 }
 

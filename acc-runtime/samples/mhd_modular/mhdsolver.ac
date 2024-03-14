@@ -3,8 +3,6 @@ typedef struct TimeParams
         real dt;
         real current_time;
 } TimeParams;
-real AC_test_array[AC_mz],AC_test_second_array[AC_mx]
-int AC_test_int_array[AC_my]
 int AC_step_number
 real AC_dt
 
@@ -1016,7 +1014,6 @@ Kernel haatouken() {
     write(VTXBUF_UUX, uu.x)
     write(VTXBUF_UUY, uu.y)
     write(VTXBUF_UUZ, uu.z)
-    my_var = AC_test_array[vertexIdx.y + NGHOST] + AC_test_second_array[vertexIdx.x - NGHOST]*AC_test_int_array[3]
 
 
 }

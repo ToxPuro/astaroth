@@ -46,11 +46,12 @@ struct device_s {
 typedef AcReal AcRealPacked;
 
 typedef struct {
-    KernelLambda kernel;
+    Kernel kernel;
     cudaStream_t stream;
     int step_number;
     int3 start;
     int3 end;
+    LoadKernelParamsFunc load_func;
 } KernelParameters;
 
 #ifdef __cplusplus
