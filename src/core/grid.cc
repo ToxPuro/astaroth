@@ -335,9 +335,7 @@ acGridInit(AcMeshInfo info)
 	    l.params -> twopass_solve_final.ac_input_current_time= 
 		    l.device->local_config.real_params[AC_current_time];
     };
-#endif
     AcTaskDefinition default_ops[] = {
-#ifdef AC_INTEGRATION
 	    acHaloExchange(all_fields),
                                       acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
                                                           all_fields),
