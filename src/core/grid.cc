@@ -324,6 +324,7 @@ acGridInit(AcMeshInfo info)
 
     acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
 	    printf("TP: test:\n");
+#ifdef AC_INTEGRATION
     auto intermediate_loader = [](ParamLoadingInfo l){
 	    l.params -> twopass_solve_intermediate.ac_input_step_num = l.step_number;
 	    l.params -> twopass_solve_intermediate.ac_input_dt= 
@@ -334,6 +335,7 @@ acGridInit(AcMeshInfo info)
 	    l.params -> twopass_solve_final.ac_input_current_time= 
 		    l.device->local_config.real_params[AC_current_time];
     };
+#endif
     AcTaskDefinition default_ops[] = {
 #ifdef AC_INTEGRATION
 	    acHaloExchange(all_fields),

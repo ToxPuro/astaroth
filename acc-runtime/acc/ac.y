@@ -293,7 +293,6 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
             return EXIT_FAILURE;
 
 	strcat(user_kernel_params_struct_str,"};\n} acKernelInputParams;\n");
-	printf("TP kernel params struct: %s\n", user_kernel_params_struct_str);
 
 
 	FILE* fp_structs = fopen(user_structs_filename,"a");
@@ -784,7 +783,6 @@ function_definition: declaration function_body {
 				
 			    char kernel_params_struct[4096];
 			    sprintf(kernel_params_struct,"typedef struct %sInputParams {%s} %sInputParams;\n",fn_identifier->buffer,struct_params,fn_identifier->buffer);
-			    printf("TP test: %s\n",kernel_params_struct);
 
 			    FILE* fp_structs= fopen(user_structs_filename,"a");
 			    fprintf(fp_structs,"%s\n",kernel_params_struct);
