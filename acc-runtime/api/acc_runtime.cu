@@ -436,6 +436,59 @@ acVBADestroy(VertexBufferArray* vba)
 }
 
 AcResult
+acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba)
+{
+  const size_t count = pba->bytes / sizeof(pba->in[0][0]);
+
+  // Set pba.in data to all-nan and pba.out to 0
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    acKernelFlush(stream, pba->in[i], count, (AcReal)NAN);
+    acKernelFlush(stream, pba->out[i], count, (AcReal)0.0);
+  }
+  return AC_SUCCESS;
+}
+
+ProfileBufferArray
+acPBACreate(const size_t count)
+{
+  ProfileBufferArray pba;
+
+  const size_t bytes = sizeof(pba.in[0][0]) * count;
+  pba.bytes          = bytes;
+
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+#if USE_COMPRESSIBLE_MEMORY
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&pba.in[i], bytes));
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&pba.out[i], bytes));
+#else
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&pba.in[i], bytes));
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&pba.out[i], bytes));
+#endif
+  }
+
+  acPBAReset(0, &pba);
+  cudaDeviceSynchronize();
+  return pba;
+}
+
+void
+acPBADestroy(ProfileBufferArray* pba)
+{
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+#if USE_COMPRESSIBLE_MEMORY
+    freeCompressible(pba->in[i], pba->bytes);
+    freeCompressible(pba->out[i], pba->bytes);
+#else
+    cudaFree(pba->in[i]);
+    cudaFree(pba->out[i]);
+#endif
+    pba->in[i]  = NULL;
+    pba->out[i] = NULL;
+  }
+  pba->bytes = 0;
+}
+
+AcResult
 acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
                const int3 end, VertexBufferArray vba)
 {

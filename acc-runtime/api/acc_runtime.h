@@ -49,6 +49,12 @@ typedef struct {
   size_t bytes;
 } VertexBufferArray;
 
+typedef struct {
+  AcReal* in[NUM_PROFILES];
+  AcReal* out[NUM_PROFILES];
+  size_t bytes;
+} ProfileBufferArray;
+
 typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 
 #ifdef __cplusplus
@@ -65,6 +71,12 @@ AcResult acVBAReset(const cudaStream_t stream, VertexBufferArray* vba);
 VertexBufferArray acVBACreate(const size_t count);
 
 void acVBADestroy(VertexBufferArray* vba);
+
+AcResult acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba);
+
+ProfileBufferArray acPBACreate(const size_t count);
+
+void acPBADestroy(ProfileBufferArray* pba);
 
 AcResult acRandInit(const uint64_t seed, const Volume m_local,
                     const Volume m_global, const Volume global_offset);
