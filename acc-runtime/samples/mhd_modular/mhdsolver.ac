@@ -182,7 +182,7 @@ real AC_current_time
 //realArray AC_test_array[AC_slice_steps]
 
 dconst real AC_test_dconst_array[5]
-dconst int AC_test_int_dconst_array[120]
+int AC_test_int_dconst_array[120]
 
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
 

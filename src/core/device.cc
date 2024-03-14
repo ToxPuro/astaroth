@@ -309,11 +309,6 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     // Memory
     // VBA in/out
     device->vba = acVBACreate(device_config);
-    // VBA Profiles
-    const size_t profile_size_bytes = sizeof(AcReal) * max(device_config.int_params[AC_mx],
-                                                           max(device_config.int_params[AC_my],
-                                                               device_config.int_params[AC_mz]));
-    
 
     // Reductions
     const int3 max_dims                = acConstructInt3Param(AC_mx, AC_my, AC_mz, device_config);
@@ -519,7 +514,7 @@ AcResult
 acDeviceLoadRealArray(const Device device, const Stream stream, const AcMeshInfo host_info,
                          const AcRealArrayParam array)
 {
-    if(real_array_is_dconst[array])
+    if(real_array_is_dconst[(int)array])
     {
     	    cudaSetDevice(device->id);
 	    return acLoadRealArrayUniform(STREAM_DEFAULT,array,host_info.real_arrays[array]);
@@ -532,7 +527,7 @@ AcResult
 acDeviceLoadIntArray(const Device device, const Stream stream, const AcMeshInfo host_info,
                          const AcIntArrayParam array)
 {
-    if(real_array_is_dconst[array])
+    if(int_array_is_dconst[(int)array])
     {
     	    cudaSetDevice(device->id);
 	    return acLoadIntArrayUniform(STREAM_DEFAULT,array,host_info.int_arrays[array]);

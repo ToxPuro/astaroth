@@ -318,7 +318,7 @@ gen_d_offsets(FILE* fp, const char* datatype, const bool declarations)
     if (symbol_table[i].type & NODE_VARIABLE_ID &&
         !strcmp(symbol_table[i].tspecifier,datatype))
     {
-	    if(declarations && str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
+	    if(declarations)
             	fprintf(fp,"\n#ifndef %s_offset\n#define %s_offset (%s)\n#endif\n",symbol_table[i].identifier,symbol_table[i].identifier,running_offset);
 	    else
             	fprintf(fp," %s,\n",running_offset);
@@ -368,7 +368,6 @@ gen_array_reads(ASTNode* node, bool gen_mem_accesses)
 					combine_all(node->parent->parent->parent->rhs,index_str);
 					char res[4096];
 					sprintf(res,"d_%s[%s_offset+(%s)]\n",arrays_name,node->buffer,index_str);
-					printf("dconst test: %s\n",res);
 					node->parent->parent->parent->parent->buffer = strdup(res);
 					node->parent->parent->parent->parent->lhs=NULL;
 					node->parent->parent->parent->parent->rhs=NULL;
