@@ -258,7 +258,8 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Memory
     // VBA in/out
-    device->vba = acVBACreate(acVertexBufferSize(device_config));
+    const int3 mm = acConstructInt3Param(AC_mx, AC_my, AC_mz, device_config);
+    device->vba   = acVBACreate(mm.x, mm.y, mm.z);
     /*
     // VBA Profiles
     const size_t profile_size_bytes = sizeof(AcReal) * max(device_config.int_params[AC_mx],
@@ -734,8 +735,8 @@ acDeviceReduceScal(const Device device, const Stream stream, const ReductionType
     acDeviceReduceScalNotAveraged(device, stream, rtype, vtxbuf_handle, result);
 
     switch (rtype) {
-    case RTYPE_RMS:     /* Fallthrough */
-    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_RMS:                      /* Fallthrough */
+    case RTYPE_RMS_EXP:                  /* Fallthrough */
     case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
@@ -774,8 +775,8 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
     acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, result);
 
     switch (rtype) {
-    case RTYPE_RMS:     /* Fallthrough */
-    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_RMS:                      /* Fallthrough */
+    case RTYPE_RMS_EXP:                  /* Fallthrough */
     case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
@@ -818,8 +819,8 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
                                      result);
 
     switch (rtype) {
-    case RTYPE_RMS:     /* Fallthrough */
-    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_RMS:                      /* Fallthrough */
+    case RTYPE_RMS_EXP:                  /* Fallthrough */
     case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
