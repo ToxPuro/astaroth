@@ -946,3 +946,4 @@ get_node_by_token(const int token, ASTNode* node)
   else
     return NULL;
 }
+

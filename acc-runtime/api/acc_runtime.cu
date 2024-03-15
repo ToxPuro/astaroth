@@ -975,4 +975,3 @@ getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   return c;
 }
 
-
