@@ -1010,6 +1010,7 @@ prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
 //   }
 // }
 
+#if 0 // Smem implementation revisions, stored for reference
 /** Rolling ping-pong, original, working */
 static void
 prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_original(
@@ -1484,6 +1485,7 @@ prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops_v4(
     }
   }
 }
+#endif
 
 /** Rolling ping-pong, optimized: multiple fields, unrolled
 Note: requires sufficiently large tbdims s.t. can be unrolled with 2 by 2 blocks
