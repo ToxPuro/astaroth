@@ -688,7 +688,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                                         ? min(props.maxThreadsPerBlock,
                                               MAX_THREADS_PER_BLOCK)
                                         : props.maxThreadsPerBlock;
-  const size_t max_smem           = props.sharedMemPerBlock;
+  const size_t max_smem = props.sharedMemPerBlock;
 
   // Old heuristic
   // for (int z = 1; z <= max_threads_per_block; ++z) {
