@@ -44,16 +44,16 @@ typedef struct {
 } AcMeshInfo;
 
 typedef struct {
-  AcReal* in[NUM_FIELDS];
-  AcReal* out[NUM_FIELDS];
-  size_t bytes;
-} VertexBufferArray;
-
-typedef struct {
   AcReal* in[NUM_PROFILES];
   AcReal* out[NUM_PROFILES];
   size_t bytes;
 } ProfileBufferArray;
+
+typedef struct {
+  AcReal* in[NUM_FIELDS];
+  AcReal* out[NUM_FIELDS];
+  size_t bytes;
+} VertexBufferArray;
 
 typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 
@@ -66,17 +66,17 @@ extern "C" {
 AcResult acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
                        const AcReal value);
 
-AcResult acVBAReset(const cudaStream_t stream, VertexBufferArray* vba);
-
-VertexBufferArray acVBACreate(const size_t count);
-
-void acVBADestroy(VertexBufferArray* vba);
-
 AcResult acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba);
 
 ProfileBufferArray acPBACreate(const size_t count);
 
 void acPBADestroy(ProfileBufferArray* pba);
+
+AcResult acVBAReset(const cudaStream_t stream, VertexBufferArray* vba);
+
+VertexBufferArray acVBACreate(const size_t count);
+
+void acVBADestroy(VertexBufferArray* vba);
 
 AcResult acRandInit(const uint64_t seed, const Volume m_local,
                     const Volume m_global, const Volume global_offset);

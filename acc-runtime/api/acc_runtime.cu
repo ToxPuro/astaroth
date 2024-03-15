@@ -383,59 +383,6 @@ freeCompressible(void* ptr, const size_t requested_bytes)
 #endif
 
 AcResult
-acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
-{
-  const size_t count = vba->bytes / sizeof(vba->in[0][0]);
-
-  // Set vba.in data to all-nan and vba.out to 0
-  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    acKernelFlush(stream, vba->in[i], count, (AcReal)NAN);
-    acKernelFlush(stream, vba->out[i], count, (AcReal)0.0);
-  }
-  return AC_SUCCESS;
-}
-
-VertexBufferArray
-acVBACreate(const size_t count)
-{
-  VertexBufferArray vba;
-
-  const size_t bytes = sizeof(vba.in[0][0]) * count;
-  vba.bytes          = bytes;
-
-  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-#if USE_COMPRESSIBLE_MEMORY
-    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&vba.in[i], bytes));
-    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&vba.out[i], bytes));
-#else
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.in[i], bytes));
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
-#endif
-  }
-
-  acVBAReset(0, &vba);
-  cudaDeviceSynchronize();
-  return vba;
-}
-
-void
-acVBADestroy(VertexBufferArray* vba)
-{
-  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-#if USE_COMPRESSIBLE_MEMORY
-    freeCompressible(vba->in[i], vba->bytes);
-    freeCompressible(vba->out[i], vba->bytes);
-#else
-    cudaFree(vba->in[i]);
-    cudaFree(vba->out[i]);
-#endif
-    vba->in[i]  = NULL;
-    vba->out[i] = NULL;
-  }
-  vba->bytes = 0;
-}
-
-AcResult
 acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba)
 {
   const size_t count = pba->bytes / sizeof(pba->in[0][0]);
@@ -486,6 +433,59 @@ acPBADestroy(ProfileBufferArray* pba)
     pba->out[i] = NULL;
   }
   pba->bytes = 0;
+}
+
+AcResult
+acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
+{
+  const size_t count = vba->bytes / sizeof(vba->in[0][0]);
+
+  // Set vba.in data to all-nan and vba.out to 0
+  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+    acKernelFlush(stream, vba->in[i], count, (AcReal)NAN);
+    acKernelFlush(stream, vba->out[i], count, (AcReal)0.0);
+  }
+  return AC_SUCCESS;
+}
+
+VertexBufferArray
+acVBACreate(const size_t count)
+{
+  VertexBufferArray vba;
+
+  const size_t bytes = sizeof(vba.in[0][0]) * count;
+  vba.bytes          = bytes;
+
+  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+#if USE_COMPRESSIBLE_MEMORY
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&vba.in[i], bytes));
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&vba.out[i], bytes));
+#else
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.in[i], bytes));
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
+#endif
+  }
+
+  acVBAReset(0, &vba);
+  cudaDeviceSynchronize();
+  return vba;
+}
+
+void
+acVBADestroy(VertexBufferArray* vba)
+{
+  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+#if USE_COMPRESSIBLE_MEMORY
+    freeCompressible(vba->in[i], vba->bytes);
+    freeCompressible(vba->out[i], vba->bytes);
+#else
+    cudaFree(vba->in[i]);
+    cudaFree(vba->out[i]);
+#endif
+    vba->in[i]  = NULL;
+    vba->out[i] = NULL;
+  }
+  vba->bytes = 0;
 }
 
 AcResult
