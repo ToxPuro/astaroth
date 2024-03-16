@@ -118,16 +118,12 @@ symboltable_reset(void)
   // add_symbol(NODE_UNKNOWN, NULL, NULL, "true");
   // add_symbol(NODE_UNKNOWN, NULL, NULL, "false");
 
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "previous");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "vecprevious");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "value");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "vecvalue");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "previous");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "write");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "isnan");  // TODO RECHECK
   //In develop
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "read_w");
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write_w");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "vecwrite");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "Field3"); // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "dot");    // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "cross");  // TODO RECHECK
@@ -318,7 +314,7 @@ gen_d_offsets(FILE* fp, const char* datatype, const bool declarations)
     if (symbol_table[i].type & NODE_VARIABLE_ID &&
         !strcmp(symbol_table[i].tspecifier,datatype))
     {
-	    if(declarations && str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
+	    if(declarations)
             	fprintf(fp,"\n#ifndef %s_offset\n#define %s_offset (%s)\n#endif\n",symbol_table[i].identifier,symbol_table[i].identifier,running_offset);
 	    else
             	fprintf(fp," %s,\n",running_offset);
@@ -368,7 +364,6 @@ gen_array_reads(ASTNode* node, bool gen_mem_accesses)
 					combine_all(node->parent->parent->parent->rhs,index_str);
 					char res[4096];
 					sprintf(res,"d_%s[%s_offset+(%s)]\n",arrays_name,node->buffer,index_str);
-					printf("dconst test: %s\n",res);
 					node->parent->parent->parent->parent->buffer = strdup(res);
 					node->parent->parent->parent->parent->lhs=NULL;
 					node->parent->parent->parent->parent->rhs=NULL;
@@ -883,9 +878,9 @@ gen_user_defines(const ASTNode* root, const char* out)
         !strcmp(symbol_table[i].tspecifier, "AcReal*"))
     {
         if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
-                fprintf(fp,"true");
+                fprintf(fp,"true,");
         else
-                fprintf(fp, "false");
+                fprintf(fp, "false,");
     }
   fprintf(fp, "};");
 
@@ -921,9 +916,9 @@ gen_user_defines(const ASTNode* root, const char* out)
         !strcmp(symbol_table[i].tspecifier, "int*"))
     {
         if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
-                fprintf(fp,"true");
+                fprintf(fp,"true,");
         else
-                fprintf(fp, "false");
+                fprintf(fp, "false,");
     }
   fprintf(fp, "};");
 
@@ -1185,7 +1180,13 @@ generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
         for (size_t k = 0; k < num_stencils; ++k)
           fprintf(tmp, "[%lu][%lu][%lu] = 1,", i, j, k);
     fprintf(tmp, "};");
-
+    fprintf(tmp,
+            "static int "
+            "previous_accessed[NUM_KERNELS][NUM_FIELDS] = {");
+    for (size_t i = 0; i < num_kernels; ++i)
+      for (size_t j = 0; j < num_fields; ++j)
+          fprintf(tmp, "[%lu][%lu] = 1,", i, j);
+    fprintf(tmp, "};");
     fclose(tmp);
   }
   /*

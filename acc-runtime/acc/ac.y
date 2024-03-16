@@ -264,21 +264,24 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	FILE* f_in = fopen(stage3,"r");
 	FILE* f_out = fopen(stage4,"w");
 	char line[10000];
+
+	fprintf(f_out,"\n%s\n","Stencil value {[0][0][0] =1}");
+        fprintf(f_out,"\n%s\n","vecvalue(v) {\nreturn real3(value(v.x), value(v.y), value(v.z))\n}");
+        fprintf(f_out,"\n%s\n","vecprevious(v) {\nreturn real3(previous(v.x), previous(v.y), previous(v.z))\n}");
+        fprintf(f_out,"\n%s\n","vecwrite(dst,src) {write(dst.x,src.x)\n write(dst.y,src.y)\n write(dst.z,src.z)}");
+
  	while (fgets(line, sizeof(line), f_in) != NULL) {
 		remove_substring_parser(line,";");
 		fprintf(f_out,"%s",line);
     	}
 	fclose(f_in);
-	fclose(f_out);
-
-	f_in = fopen(stage4,"a");
-	//Add builtin kernels
-	fprintf(f_in,"\nKernel AC_BUILTIN_RESET() {\n"
+	fprintf(f_out,"\nKernel AC_BUILTIN_RESET() {\n"
 		"for field in 0:NUM_FIELDS {\n"
 			"write(Field(field), 0.0)\n"
                 "}\n"
 	"}\n");
-	fclose(f_in);
+	fclose(f_out);
+
         // Generate code
         yyin = fopen(stage4, "r");
 
@@ -946,3 +949,4 @@ get_node_by_token(const int token, ASTNode* node)
   else
     return NULL;
 }
+

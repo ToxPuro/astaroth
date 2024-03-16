@@ -154,8 +154,6 @@ gen_kernel_prefix(void)
   // Original
   printf("const auto write __attribute__((unused))  = [&](const Field field, const AcReal value)"
          "{ vba.out[field][idx] = value; };");
-  printf("const auto vecwrite __attribute__((unused)) = [&](const int3 field3, const AcReal3 value)"
-         "{ vba.out[field3.x][idx] = value.x; vba.out[field3.y][idx] = value.y; vba.out[field3.z][idx] = value.z;};");
 
   //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
   //  in practice (no effect on the first pass, a slight slowdown in the second
@@ -186,7 +184,7 @@ gen_return_if_oob(void)
 }
 
 static void
-prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses)
+prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses, const int cur_kernel)
 {
   // Read vba.out
 #if 0
@@ -199,35 +197,27 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses)
   // Prefetch output fields
   // SINGLEPASS_INTEGRATION=ON, 4.18 ms (full step, 128^3)
   // SINGLEPASS_INTEGRATION=OFF, 4.77 ms (full step, 128^3)
+  if(gen_mem_accesses)
+  {
+    printf("const auto previous=[&](const auto field)"
+           "{previous_accessed[field]=1;return AcReal(1.0);};");
+    return;
+
+  }
+
   for (int field = 0; field < NUM_FIELDS; ++field)
-    printf("const auto f%d_prev = vba.out[%d][idx];", field, field);
+    if(previous_accessed[cur_kernel][field])
+      printf("const auto f%d_prev = vba.out[%d][idx];", field, field);
 
   printf("const auto previous __attribute__((unused)) = [&](const Field field)"
          "{ switch (field) {");
   for (int field = 0; field < NUM_FIELDS; ++field)
-    printf("case %d: { return f%d_prev; }", field, field);
+    if(previous_accessed[cur_kernel][field])
+      printf("case %d: { return f%d_prev; }", field, field);
 
   printf("default: return (AcReal)NAN;"
          "}");
   printf("};");
-  printf("const auto vecprevious __attribute__((unused)) = [&](const int3 field3){return (AcReal3) {previous((Field)field3.x), previous((Field)field3.y), previous((Field)field3.z)};};");
-
-
-  for (int field = 0; field < NUM_FIELDS; ++field)
-    if (gen_mem_accesses)
-      printf("const auto f%d_val= (AcReal)0.0;", field);
-    else
-      printf("const auto f%d_val= __ldg(&vba.in[%d][idx]);", field, field);
-
-  printf("const auto value __attribute__((unused)) = [&](const auto &field_in)"
-         "{ switch (field_in) {");
-  for (int field = 0; field < NUM_FIELDS; ++field)
-    printf("case %d: { return f%d_val; }", field, field);
-
-  printf("default: return (AcReal)NAN;"
-         "}");
-  printf("};");
-  printf("const auto vecvalue __attribute__((unused)) = [&](const int3 field3){return (AcReal3) {value((Field)field3.x), value((Field)field3.y), value((Field)field3.z)};};");
 #endif
 }
 
@@ -236,7 +226,7 @@ gen_stencil_accesses(void)
 {
   gen_kernel_prefix();
   gen_return_if_oob();
-  prefetch_output_elements_and_gen_prev_function(true);
+  prefetch_output_elements_and_gen_prev_function(true,0);
 
   printf("AcReal /*__restrict__*/ "
          "processed_stencils[NUM_FIELDS][NUM_STENCILS];");
@@ -1692,7 +1682,7 @@ gen_kernel_body(const int curr_kernel)
   case IMPLICIT_CACHING: {
     gen_kernel_prefix();
     gen_return_if_oob();
-    prefetch_output_elements_and_gen_prev_function(false);
+    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
 
     int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
 
@@ -1817,7 +1807,7 @@ gen_kernel_body(const int curr_kernel)
     gen_kernel_prefix();
     gen_return_if_oob();
 
-    prefetch_output_elements_and_gen_prev_function(false);
+    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
     prefetch_stencil_elements(curr_kernel);
     prefetch_stencil_coeffs(curr_kernel, false);
 
@@ -1834,7 +1824,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false);
+    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
     return;
   }
   case EXPLICIT_CACHING_3D_BLOCKING: {
@@ -1844,7 +1834,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false);
+    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
     return;
   }
   case EXPLICIT_CACHING_4D_BLOCKING: {
@@ -1854,7 +1844,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false);
+    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
     return;
   }
   case EXPLICIT_PINGPONG_txw: {
@@ -1866,7 +1856,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false);
+    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
     #endif
     return;
   }
@@ -1879,7 +1869,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false);
+    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
     #endif
     return;
   }
@@ -1891,7 +1881,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false);
+    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
     return;
   }
   case EXPLICIT_ROLLING_PINGPONG: {
@@ -1903,7 +1893,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false);
+    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
     #endif
     return;
   }

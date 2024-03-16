@@ -1530,12 +1530,12 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
     int3 nn         = grid.nn;
 
-    printf("grid: %d,%d,%d\n",nn.x,nn.y,nn.z);
-    for(int i=0;i<5;++i)
-    {
-    	printf("\n");
-    	//testmydecomp(nn,i,{});
-    }
+    //TP test code to test new decomp
+    //for(int i=0;i<5;++i)
+    //{
+    //	printf("\n");
+    //	//testmydecomp(nn,i,{});
+    //}
 
     uint3_64 decomp = grid.decomposition;
     int3 pid3d      = getPid3D(rank, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]);

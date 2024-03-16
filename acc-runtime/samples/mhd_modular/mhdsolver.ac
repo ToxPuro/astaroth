@@ -25,6 +25,8 @@ hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
+dconst real AC_test_array[5]
+dconst int  AC_test_int_array[100]
 
 // Enables a set of special reductions. Currently for primarily for testing
 // purposes:  
@@ -1017,6 +1019,4 @@ Kernel haatouken() {
     write(VTXBUF_UUX, uu.x)
     write(VTXBUF_UUY, uu.y)
     write(VTXBUF_UUZ, uu.z)
-    
-    val = AC_test_dconst_array[1*3-1]/AC_test_int_dconst_array[vertexIdx.x*2]
 }
