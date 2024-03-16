@@ -62,28 +62,23 @@ exp(const AcComplex& val)
   return AcComplex(exp(val.x) * cos(val.y), exp(val.x) * sin(val.y));
 }
 
-#if defined(__HIPCC__)
+static HOST_DEVICE_INLINE AcComplex
+operator*(const AcComplex& a, const AcComplex& b)
+{
+  return (AcComplex){a.x*b.x - a.y*b.y,a.x*b.y + b.x*a.y};
+}
+
 static HOST_DEVICE_INLINE AcComplex
 operator*(const AcReal& a, const AcComplex& b)
 {
   return (AcComplex){a * b.x, a * b.y};
 }
-
-/*
-// These are already overloaded in the HIP API
 static HOST_DEVICE_INLINE AcComplex
-operator*(const AcComplex& b, const AcReal& a)
+operator*(const AcComplex& a, const AcReal& b)
 {
-  return (AcComplex){a * b.x, a * b.y};
+  return (AcComplex){a.x* b,a.y * b};
 }
 
-static HOST_DEVICE_INLINE AcComplex
-operator*(const AcComplex& a, const AcComplex& b)
-{
-  return (AcComplex){a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x};
-}
-*/
-#endif
 #endif // ENABLE_COMPLEX_DATATYPE
 
 typedef struct uint3_64 {

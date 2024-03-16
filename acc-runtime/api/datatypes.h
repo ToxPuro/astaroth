@@ -22,20 +22,10 @@
 
 #if AC_USE_HIP
   #include "hip.h"
-//#include <hip/hip_complex.h>
-  #include <hip/amd_detail/amd_hip_complex.h>
 #else
   #include <vector_types.h> // CUDA vector types
-  #include <cuComplex.h>    // CUDA complex types
 #endif
 
-#if AC_DOUBLE_PRECISION
-  typedef cuDoubleComplex AcComplex;
-  #define AcComplex(x,y) make_cuDoubleComplex(x,y)
-#else
-  typedef cuFloatComplex AcComplex;
-  #define AcComplex(x,y) make_cuFloatComplex(x,y)
-#endif
 
 #if AC_DOUBLE_PRECISION
 typedef double AcReal;
@@ -65,6 +55,9 @@ typedef float3 AcReal3;
 #define TOVEC3(type,arr) ((type){arr[0],arr[1],arr[2]})
 #define TOACREAL3(arr) TOVEC3(AcReal3,arr)
 #define AcVector AcReal3
+
+typedef struct AcComplex {AcReal x; AcReal y;} AcComplex;
+#define AcComplex(x,y) (AcComplex){x,y} 
 
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
 

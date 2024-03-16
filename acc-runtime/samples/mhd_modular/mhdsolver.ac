@@ -184,7 +184,7 @@ real AC_current_time
 //realArray AC_test_array[AC_slice_steps]
 
 dconst real AC_test_dconst_array[5]
-int AC_test_int_dconst_array[120]
+dconst int AC_test_int_dconst_array[120]
 
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
 
@@ -1019,4 +1019,11 @@ Kernel haatouken() {
     write(VTXBUF_UUX, uu.x)
     write(VTXBUF_UUY, uu.y)
     write(VTXBUF_UUZ, uu.z)
+    complex test
+    test2 = 2.0
+    complex test3 = complex(1.0,2.0)
+    complex test4 = test*test2
+    test4 = test2*test
+    test4 = test*test3
+    test4 = exp(test)
 }
