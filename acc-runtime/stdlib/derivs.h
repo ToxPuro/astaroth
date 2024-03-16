@@ -1,4 +1,4 @@
-#include "../stdlib/grid.h"
+#include "../../submodule/acc-runtime/stdlib/grid.h"
 
 #define DER1_3 ( 1. / 60.)
 #define DER1_2 (-3. / 20.)
