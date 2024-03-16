@@ -266,9 +266,9 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	char line[10000];
 
 	fprintf(f_out,"\n%s\n","Stencil value {[0][0][0] =1}");
-        fprintf(f_out,"\n%s\n","vecvalue(v) {\nreturn real3(value(v.x), value(v.y), value(v.z))\n}");
-        fprintf(f_out,"\n%s\n","vecprevious(v) {\nreturn real3(previous(v.x), previous(v.y), previous(v.z))\n}");
-        fprintf(f_out,"\n%s\n","vecwrite(dst,src) {write(dst.x,src.x)\n write(dst.y,src.y)\n write(dst.z,src.z)}");
+        fprintf(f_out,"\n%s\n","vecvalue(v) {\nreturn real3(value(Field(v.x)), value(Field(v.y)), value(Field(v.z)))\n}");
+        fprintf(f_out,"\n%s\n","vecprevious(v) {\nreturn real3(previous(Field(v.x)), previous(Field(v.y)), previous(Field(v.z)))\n}");
+        fprintf(f_out,"\n%s\n","vecwrite(dst,src) {write(Field(dst.x),src.x)\n write(Field(dst.y),src.y)\n write(Field(dst.z),src.z)}");
 
  	while (fgets(line, sizeof(line), f_in) != NULL) {
 		remove_substring_parser(line,";");
