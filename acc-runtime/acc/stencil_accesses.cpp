@@ -81,6 +81,7 @@ AcReal big_array[8*1024*1024]{0.0};
 int big_int_array[8*1024*1024]{0};
 
 static int stencils_accessed[NUM_FIELDS][NUM_STENCILS] = {{0}};
+static int previous_accessed[NUM_FIELDS] = {0};
 static AcMeshInfo d_mesh_info;
 #include "user_kernels.h"
 
@@ -134,6 +135,22 @@ main(int argc, char* argv[])
       for (size_t i = 0; i < NUM_STENCILS; ++i)
         if (stencils_accessed[j][i])
           fprintf(fp, "[%lu][%lu][%lu] = 1,", k, j, i);
+  }
+  fprintf(fp, "};");
+
+    fprintf(fp,
+          "static int previous_accessed[NUM_KERNELS][NUM_FIELDS] "
+          "= {");
+  for (size_t k = 0; k < NUM_KERNELS; ++k) {
+    memset(previous_accessed, 0,
+           sizeof(previous_accessed[0]) * NUM_FIELDS);
+    VertexBufferArray vba = vbaCreate(1);
+    kernels[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
+    vbaDestroy(&vba);
+
+    for (size_t j = 0; j < NUM_FIELDS; ++j)
+        if (previous_accessed[j])
+          fprintf(fp, "[%lu][%lu] = 1,", k, j);
   }
   fprintf(fp, "};");
 

@@ -118,16 +118,12 @@ symboltable_reset(void)
   // add_symbol(NODE_UNKNOWN, NULL, NULL, "true");
   // add_symbol(NODE_UNKNOWN, NULL, NULL, "false");
 
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "previous");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "vecprevious");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "value");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "vecvalue");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "previous");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "write");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "isnan");  // TODO RECHECK
   //In develop
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "read_w");
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write_w");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "vecwrite");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "Field3"); // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "dot");    // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "cross");  // TODO RECHECK
@@ -1184,7 +1180,13 @@ generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
         for (size_t k = 0; k < num_stencils; ++k)
           fprintf(tmp, "[%lu][%lu][%lu] = 1,", i, j, k);
     fprintf(tmp, "};");
-
+    fprintf(tmp,
+            "static int "
+            "previous_accessed[NUM_KERNELS][NUM_FIELDS] = {");
+    for (size_t i = 0; i < num_kernels; ++i)
+      for (size_t j = 0; j < num_fields; ++j)
+          fprintf(tmp, "[%lu][%lu] = 1,", i, j);
+    fprintf(tmp, "};");
     fclose(tmp);
   }
   /*
