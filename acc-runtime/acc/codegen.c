@@ -24,6 +24,20 @@
 
 #include "ast.h"
 #include "tab.h"
+#include <string.h>
+#include <ctype.h>
+char*
+strupr(const char* src)
+{
+	char* res = strdup(src);
+	int index = 0;
+	while(res[index] != '\0')
+	{
+		res[index] = toupper(res[index]);
+		++index;
+	}
+	return res;
+}
 
 #define STENCILGEN_HEADER "stencilgen.h"
 #define STENCILGEN_SRC ACC_DIR "/stencilgen.c"
@@ -305,11 +319,34 @@ void combine_all(const ASTNode* node, char* res){
   if(node->postfix)
     strcat(res,node->postfix);
 }
+const char*
+convert_to_enum_name(const char* name)
+{
+	if(!strcmp(name,"int"))
+		return "AcInt";
+	if(!strcmp(name,"int3"))
+		return "AcInt3";
+	return name;
+}
+const char*
+convert_to_define_name(const char* name)
+{
+	if(!strcmp(name,"AcReal"))
+		return "real";
+	if(!strcmp(name,"AcReal3"))
+		return "real3";
+	return name;
+}
 void
-gen_d_offsets(FILE* fp, const char* datatype, const bool declarations)
+gen_d_offsets(FILE* fp, const char* datatype_scalar, const bool declarations)
 {
   char running_offset[4096];
   sprintf(running_offset,"0");
+  char datatype[1000];
+  const char* define_name =  convert_to_define_name(datatype_scalar);
+  sprintf(datatype,"%s*",datatype_scalar);
+  if(!declarations)
+  	fprintf(fp, "static int d_%s_array_offsets[] __attribute__((unused)) = {",define_name);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_VARIABLE_ID &&
         !strcmp(symbol_table[i].tspecifier,datatype))
@@ -321,12 +358,84 @@ gen_d_offsets(FILE* fp, const char* datatype, const bool declarations)
 	    if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
             	sprintf(running_offset,"%s+%s",running_offset,symbol_var_length[i]);
     }
-   if(declarations && !strcmp(datatype,"AcReal*"))
-   	fprintf(fp,"\n#ifndef D_REAL_ARRAYS_LEN\n#define D_REAL_ARRAYS_LEN (%s)\n#endif\n", running_offset);
-   else if(declarations && !strcmp(datatype,"int*"))
-   	fprintf(fp,"\n#ifndef D_INT_ARRAYS_LEN\n#define D_INT_ARRAYS_LEN (%s)\n#endif\n", running_offset);
-
+   if(declarations)
+   	fprintf(fp,"\n#ifndef D_%s_ARRAYS_LEN\n#define D_%s_ARRAYS_LEN (%s)\n#endif\n", strupr(define_name), strupr(define_name),running_offset);
+   else
+  	fprintf(fp, "};");
 }
+void
+gen_array_lengths(FILE* fp, const char* datatype_scalar)
+{
+  char datatype[1000];
+  sprintf(datatype,"%s*",datatype_scalar);
+  fprintf(fp, "static const AcIntParam %s_array_lengths[] __attribute__((unused)) = {", convert_to_define_name(datatype_scalar));
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        !strcmp(symbol_table[i].tspecifier, datatype))
+    {
+  	if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
+      		fprintf(fp, "(AcIntParam)%s,", symbol_var_length[i]);
+	else
+      		fprintf(fp, "%s,", symbol_var_length[i]);
+    }
+  fprintf(fp, "};");
+}
+void
+gen_array_is_dconst(FILE* fp, const char* datatype_scalar)
+{
+  fprintf(fp, "static const bool %s_array_is_dconst[] __attribute__((unused)) = {",convert_to_define_name(datatype_scalar));
+  char datatype[1000];
+  sprintf(datatype,"%s*",datatype_scalar);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+        !strcmp(symbol_table[i].tspecifier, datatype))
+    {
+        if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
+                fprintf(fp,"true,");
+        else
+                fprintf(fp, "false,");
+    }
+  fprintf(fp, "};");
+}
+void
+gen_enums(FILE* fp, const char* datatype_scalar, const bool for_arrays)
+{
+  const NodeType type = for_arrays ? NODE_VARIABLE_ID : NODE_DCONST_ID;
+  char datatype[1000];
+  if(for_arrays)
+        sprintf(datatype,"%s*",datatype_scalar);
+  else
+        sprintf(datatype,"%s",datatype_scalar);
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & type &&
+        !strcmp(symbol_table[i].tspecifier, datatype))
+      fprintf(fp, "%s,", symbol_table[i].identifier);
+  if(for_arrays)
+  	fprintf(fp, "NUM_%s_ARRAYS} %sArrayParam;",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
+  else
+  	fprintf(fp, "NUM_%s_PARAMS} %sParam;",strupr(convert_to_define_name(datatype)),convert_to_enum_name(datatype));
+}
+void
+gen_param_names(FILE* fp, const char* datatype_scalar, const bool for_arrays)
+{
+  const NodeType type = for_arrays ? NODE_VARIABLE_ID : NODE_DCONST_ID;
+  if(for_arrays)
+  	fprintf(fp, "static const char* %s_array_param_names[] __attribute__((unused)) = {",convert_to_define_name(datatype_scalar));
+  else
+  	fprintf(fp, "static const char* %sparam_names[] __attribute__((unused)) = {",convert_to_define_name(datatype_scalar));
+  char datatype[1000];
+  if(for_arrays)
+  	sprintf(datatype,"%s*",datatype_scalar);
+  else
+  	sprintf(datatype,"%s",datatype_scalar);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & type &&
+        !strcmp(symbol_table[i].tspecifier, datatype))
+      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+  fprintf(fp, "};");
+}
+
 void
 gen_array_reads(ASTNode* node, bool gen_mem_accesses)
 {
@@ -735,50 +844,7 @@ gen_user_defines(const ASTNode* root, const char* out)
 
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
   // START---------------------------
-  fprintf(fp, "typedef enum {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_DCONST_ID &&
-        !strcmp(symbol_table[i].tspecifier, "int"))
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_INT_PARAMS} AcIntParam;");
 
-  fprintf(fp, "typedef enum {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_DCONST_ID &&
-        !strcmp(symbol_table[i].tspecifier, "int3"))
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_INT3_PARAMS} AcInt3Param;");
-
-  fprintf(fp, "typedef enum {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_DCONST_ID &&
-        !strcmp(symbol_table[i].tspecifier, "AcReal"))
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_REAL_PARAMS} AcRealParam;");
-
-
-  // Enums for arrays
-  fprintf(fp, "typedef enum {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_VARIABLE_ID &&
-       !strcmp(symbol_table[i].tspecifier, "AcReal*"))
-	    fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_REAL_ARRAYS} AcRealArrayParam;");
-
-  fprintf(fp, "typedef enum {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_VARIABLE_ID &&
-       !strcmp(symbol_table[i].tspecifier, "int*"))
-	    fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_INT_ARRAYS} AcIntArrayParam;");
-
-
-  fprintf(fp, "typedef enum {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_DCONST_ID &&
-        !strcmp(symbol_table[i].tspecifier, "AcReal3"))
-      fprintf(fp, "%s,", symbol_table[i].identifier);
-  fprintf(fp, "NUM_REAL3_PARAMS} AcReal3Param;");
 
   // Enum strings (convenience)
   fprintf(fp, "static const char* stencil_names[] __attribute__((unused)) = {");
@@ -812,119 +878,21 @@ gen_user_defines(const ASTNode* root, const char* out)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
 
-  fprintf(fp,
-          "static const char* intparam_names[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_DCONST_ID &&
-        !strcmp(symbol_table[i].tspecifier, "int"))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  const char* scalar_datatypes[] = {"int","AcReal","int3","AcReal3"};
+  for (size_t i = 0; i < sizeof(scalar_datatypes)/sizeof(scalar_datatypes[0]); ++i) {
+	  gen_param_names(fp,scalar_datatypes[i],false);
+	  gen_enums(fp,scalar_datatypes[i],false);
+  }
 
-  fprintf(fp,
-          "static const char* int3param_names[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_DCONST_ID &&
-        !strcmp(symbol_table[i].tspecifier, "int3"))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
-
-  fprintf(fp,
-          "static const char* realparam_names[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_DCONST_ID &&
-        !strcmp(symbol_table[i].tspecifier, "AcReal"))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
-
-  fprintf(fp,
-          "static const char* real3param_names[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_DCONST_ID &&
-        !strcmp(symbol_table[i].tspecifier, "AcReal3"))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
-
-  fprintf(fp,
-          "static const char* real_array_param_names[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_VARIABLE_ID &&
-        !strcmp(symbol_table[i].tspecifier, "AcReal*"))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
-
-  fprintf(fp,
-          "static const char* int_array_param_names[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_VARIABLE_ID &&
-        !strcmp(symbol_table[i].tspecifier, "int*"))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
-
-  fprintf(fp, "static const AcIntParam real_array_lengths[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_VARIABLE_ID &&
-        !strcmp(symbol_table[i].tspecifier, "AcReal*"))
-    {
-  	if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
-      		fprintf(fp, "(AcIntParam)%s,", symbol_var_length[i]);
-	else
-      		fprintf(fp, "%s,", symbol_var_length[i]);
-    }
-  fprintf(fp, "};");
-
-  fprintf(fp, "static const bool real_array_is_dconst[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_VARIABLE_ID &&
-        !strcmp(symbol_table[i].tspecifier, "AcReal*"))
-    {
-        if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
-                fprintf(fp,"true,");
-        else
-                fprintf(fp, "false,");
-    }
-  fprintf(fp, "};");
-
-  fprintf(fp, "static int d_real_array_offsets[] __attribute__((unused)) = {");
-  gen_d_offsets(fp,"AcReal*",false);
-  fprintf(fp, "};");
-
-  fprintf(fp, "static int d_int_array_offsets[] __attribute__((unused)) = {");
-  gen_d_offsets(fp,"int*",false);
-  fprintf(fp, "};");
-
-
-
-
-
-  fprintf(fp, "static const AcIntParam int_array_lengths[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_VARIABLE_ID &&
-        !strcmp(symbol_table[i].tspecifier, "AcReal*"))
-    {
-  	if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
-      		fprintf(fp, "(AcIntParam)%s,", symbol_var_length[i]);
-	else
-      		fprintf(fp, "%s,", symbol_var_length[i]);
-    }
-  fprintf(fp, "};");
-      				
-
-
-  fprintf(fp, "static const bool int_array_is_dconst[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_VARIABLE_ID &&
-        !strcmp(symbol_table[i].tspecifier, "int*"))
-    {
-        if(str_array_contains(symbol_table[i].tqualifiers, symbol_table[i].n_tqualifiers,"dconst"))
-                fprintf(fp,"true,");
-        else
-                fprintf(fp, "false,");
-    }
-  fprintf(fp, "};");
-
-
-   gen_d_offsets(fp,"int*",true);
-   gen_d_offsets(fp,"AcReal*",true);
+  const char* array_datatypes[] = {"int","AcReal"};
+  for (size_t i = 0; i < sizeof(array_datatypes)/sizeof(array_datatypes[0]); ++i) {
+  	gen_array_lengths(fp,array_datatypes[i]);
+  	gen_array_is_dconst(fp,array_datatypes[i]);
+  	gen_d_offsets(fp,array_datatypes[i],false);
+  	gen_d_offsets(fp,array_datatypes[i],true);
+	gen_param_names(fp,array_datatypes[i],true);
+	gen_enums(fp,array_datatypes[i],true);
+  }
 
 
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
