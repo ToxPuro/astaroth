@@ -318,6 +318,8 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
     const Symbol* symbol = symboltable_lookup(node->buffer);
     if (symbol && symbol->type & NODE_DCONST_ID)
       fprintf(stream, "DCONST(%s)", node->buffer);
+    else if (symbol && symbol->type & NODE_PROFILE_ID)
+      fprintf(stream, "(NUM_FIELDS+%s)", node->buffer);
     else
       fprintf(stream, "%s", node->buffer);
   }

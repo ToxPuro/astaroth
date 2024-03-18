@@ -128,8 +128,30 @@ gen_kernel_prefix(void)
 // Write vba.out
 #if 1
   // Original
-  printf("const auto write=[&](const Field field, const AcReal value)"
-         "{ vba.out[field][idx] = value; };");
+  printf("const auto write=[&](const int handle, const AcReal value) {");
+  printf("switch(handle) {\n");
+  for (size_t i = 0; i < NUM_FIELDS; ++i)
+    printf("case %zu: /* Fallthrough */\n", i);
+  printf("vba.out[handle][idx] = value;");
+  printf("break;");
+  for (size_t i = NUM_FIELDS; i < NUM_FIELDS + NUM_PROFILES; ++i)
+    printf("case %zu: /* Fallthrough */\n", i);
+  // JP: Only one thread writes out, but not trivial to choose which one
+  // Now assuming that the first thread of the xy slice writes
+  // the profile out. This works with arbitrary thread block dimensions
+  // in cases where the data that is written out also comes from a profile
+  // (i.e. not xy position dependent).
+  // However, the drawback is that the data written out is
+  // ambiguous if the data *is* xy position dependent, and
+  // I don't see a simple way to detect and warn about this
+  printf("if (threadIdx.x == 0 && threadIdx.y == 0) {");
+  printf("vba.profiles.out[handle - NUM_FIELDS][idx] = value;");
+  printf("}");
+  printf("break;");
+  printf("default:");
+  printf("printf(\"Warning: Invalid handle in write!\");");
+  printf("}");  // switch end
+  printf("};"); // write end
 
   //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
   //  in practice (no effect on the first pass, a slight slowdown in the second
@@ -175,6 +197,8 @@ prefetch_output_elements_and_gen_prev_function(void)
   // SINGLEPASS_INTEGRATION=OFF, 4.77 ms (full step, 128^3)
   for (int field = 0; field < NUM_FIELDS; ++field)
     printf("const auto f%d_prev = vba.out[%d][idx];", field, field);
+  // Note: previous() not enabled for profiles to avoid overhead.
+  // Can reconsider if there would be use for it.
 
   printf("const auto previous __attribute__((unused)) = [&](const Field field)"
          "{ switch (field) {");
@@ -195,10 +219,10 @@ gen_stencil_accesses(void)
   prefetch_output_elements_and_gen_prev_function();
 
   printf("AcReal /*__restrict__*/ "
-         "processed_stencils[NUM_FIELDS][NUM_STENCILS];");
+         "processed_stencils[NUM_FIELDS+NUM_PROFILES][NUM_STENCILS];");
 
   for (size_t i = 0; i < NUM_STENCILS; ++i)
-    printf("const auto %s=[&](const auto field)"
+    printf("const auto %s=[&](const int field)"
            "{stencils_accessed[field][stencil_%s]=1;return AcReal(1.0);};",
            stencil_names[i], stencil_names[i]);
 }
@@ -334,15 +358,48 @@ compute_stencil_ops(const int curr_kernel)
 */
 
 static void
+get_stencils_valid_for_profiles(bool stencil_valid_for_profiles[NUM_STENCILS])
+{
+  // Check which stencils are invalid for profiles
+  // (computed in a new array to avoid side effects).
+  for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    stencil_valid_for_profiles[stencil] = true;
+    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+        for (int width = 0; width < STENCIL_WIDTH; ++width) {
+          const bool hmid = (height == (STENCIL_HEIGHT - 1) / 2);
+          const bool wmid = (width == (STENCIL_WIDTH - 1) / 2);
+          if (hmid && wmid)
+            continue;
+
+          if (stencils[stencil][depth][height][width])
+            stencil_valid_for_profiles[stencil] = false;
+        }
+      }
+    }
+  }
+}
+
+static void
 gen_stencil_functions(const int curr_kernel)
 {
+  bool stencil_valid_for_profiles[NUM_STENCILS];
+  get_stencils_valid_for_profiles(stencil_valid_for_profiles);
+
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
-    printf("const auto %s __attribute__((unused)) = [&](const auto field){",
+    printf("const auto %s __attribute__((unused)) = [&](const int field){",
            stencil_names[stencil]);
     printf("switch (field) {");
     for (int field = 0; field < NUM_FIELDS; ++field) {
       if (stencils_accessed[curr_kernel][field][stencil])
         printf("case %d: return f%d_s%d;", field, field, stencil);
+    }
+
+    for (int profile = 0; profile < NUM_PROFILES; ++profile) {
+      if (stencil_valid_for_profiles[stencil])
+        if (stencils_accessed[curr_kernel][NUM_FIELDS + profile][stencil])
+          printf("case %d: return p%d_s%d;", NUM_FIELDS + profile, profile,
+                 stencil);
     }
     printf("default: return (AcReal)NAN;");
     printf("}");
@@ -1719,13 +1776,21 @@ max(const uint64_t a, const uint64_t b)
 void
 gen_kernel_body(const int curr_kernel)
 {
+  if (IMPLEMENTATION != IMPLICIT_CACHING) {
+    if (NUM_PROFILES > 0) {
+      fprintf(stderr, "Fatal error: NUM_PROFILES > 0 not supported with other "
+                      "than IMPLEMENTATION=IMPLICIT_CACHING\n");
+      return;
+    }
+  }
+
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: {
     gen_kernel_prefix();
     gen_return_if_oob();
     prefetch_output_elements_and_gen_prev_function();
 
-    int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
+    int stencil_initialized[NUM_FIELDS + NUM_PROFILES][NUM_STENCILS] = {0};
 
     // const size_t nbx  = nearest_power_of_to_above(STENCIL_WIDTH);
     // const size_t nby  = nearest_power_of_to_above(STENCIL_HEIGHT);
@@ -1828,6 +1893,96 @@ gen_kernel_body(const int curr_kernel)
                            "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                            "vertexIdx.z+(%d))])",
                            field, -STENCIL_ORDER / 2 + width,
+                           -STENCIL_ORDER / 2 + height,
+                           -STENCIL_ORDER / 2 + depth);
+#if !AC_USE_HIP
+                    printf(")");
+#endif
+                    printf(");");
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    bool stencil_valid_for_profiles[NUM_STENCILS];
+    get_stencils_valid_for_profiles(stencil_valid_for_profiles);
+
+    // Uncomment to print valid stencils
+    // for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    //   fprintf(stderr, "Stencil %s (%du): %d\n", stencil_names[stencil],
+    //   stencil,
+    //           stencil_valid_for_profiles[stencil]);
+    // }
+
+    // Profiles
+    const int PROFILE_BLOCK_SIZE = 8;
+    const int NUM_PROFILE_BLOCKS = (NUM_PROFILES + PROFILE_BLOCK_SIZE - 1) /
+                                   PROFILE_BLOCK_SIZE;
+    if (PROFILE_BLOCK_SIZE * NUM_PROFILE_BLOCKS < NUM_PROFILES)
+      raise_error(
+          "Invalid PROFILE_BLOCK_SIZE * NUM_PROFILE_BLOCKS, was smaller than "
+          "NUM_PROFILES in stencilgen.c\n");
+    for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
+      for (int height = 0; height < STENCIL_HEIGHT; ++height) {
+        for (int width = 0; width < STENCIL_WIDTH; ++width) {
+          for (int profile_block = 0; profile_block < NUM_PROFILE_BLOCKS;
+               ++profile_block) {
+            for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+              for (int foffset = 0; foffset < PROFILE_BLOCK_SIZE; ++foffset) {
+                const int profile = foffset +
+                                    profile_block * PROFILE_BLOCK_SIZE;
+                if (profile >= NUM_PROFILES)
+                  break;
+
+                // Skip if the stencil is not used
+                if (!stencils_accessed[curr_kernel][NUM_FIELDS + profile]
+                                      [stencil])
+                  continue;
+
+                // Skip if the stencil is invalid for profiles
+                if (!stencil_valid_for_profiles[stencil])
+                  continue;
+
+                if (stencils[stencil][depth][height][width]) {
+                  if (!stencil_initialized[NUM_FIELDS + profile][stencil]) {
+                    printf("auto p%d_s%d = ", profile, stencil);
+                    printf("stencils[%d][%d][%d][%d] *", //
+                           stencil, depth, height, width);
+                    printf("%s(", stencil_unary_ops[stencil]);
+#if !AC_USE_HIP
+                    printf("__ldg(&");
+#endif
+                    printf("vba.profiles.in[%d]"
+                           "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                           "vertexIdx.z+(%d))])",
+                           profile, -STENCIL_ORDER / 2 + width,
+                           -STENCIL_ORDER / 2 + height,
+                           -STENCIL_ORDER / 2 + depth);
+#if !AC_USE_HIP
+                    printf(")");
+#endif
+                    printf(";");
+
+                    stencil_initialized[NUM_FIELDS + profile][stencil] = 1;
+                  }
+                  else {
+                    printf("p%d_s%d = ", profile, stencil);
+                    printf("%s(p%d_s%d, ", stencil_binary_ops[stencil], profile,
+                           stencil);
+                    printf("stencils[%d][%d][%d][%d] *", //
+                           stencil, depth, height, width);
+                    printf("%s(", stencil_unary_ops[stencil]);
+#if !AC_USE_HIP
+                    printf("__ldg(&");
+#endif
+                    printf("vba.profiles.in[%d]"
+                           "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
+                           "vertexIdx.z+(%d))])",
+                           profile, -STENCIL_ORDER / 2 + width,
                            -STENCIL_ORDER / 2 + height,
                            -STENCIL_ORDER / 2 + depth);
 #if !AC_USE_HIP
