@@ -417,7 +417,7 @@ Stencil der6z_upwd {
 
 
 vecvalue_abs(v) {
-    return real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
+    return +real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
 }
 
 gradient(s) {

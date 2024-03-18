@@ -110,7 +110,7 @@ typedef[[:space:]]struct[[:space:]]{L}({L}|{D})* {
 \"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */
 [+-/*|&%^]?=              { return ASSIGNOP; }     /* Assignment */
 (<<=)|(>>=)               { return ASSIGNOP; }     /* Assignment */
-[/*-+<>|&%^]              { return BINARY_OP; }    /* Operators */
+[/*<>|&%^]              { return BINARY_OP; }    /* Operators */
 (&&)|(\|\|)|(<<)|(>>)     { return BINARY_OP; }    /* Operators */
 (==)|(>=)|(<=)|(!=)|(^=)  { return BINARY_OP; }    /* Operators */
 [-+*/:;=\[\]{}(),\.<>|&!] { return yytext[0]; }    /* Characters */
