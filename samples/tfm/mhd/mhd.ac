@@ -458,7 +458,8 @@ entropy() {
 #endif
 
 tfm_induction() {
-    return AC_eta * veclaplace(TF_B11)
+    // Placeholder
+    return value(MEAN_UUX) * AC_eta * veclaplace(TF_B11)
 }
 
 // Integration: single-pass
@@ -617,4 +618,8 @@ Kernel twopass_solve_final() {
         write(BFIELDZ, value(BFIELDZ))
     }
     #endif
+}
+
+Kernel meanfield_test() {
+    write(TF_B11X, value(TF_B11X) * value(MEAN_UUX) * derz(MEAN_UUX))
 }

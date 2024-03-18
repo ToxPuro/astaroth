@@ -48,10 +48,11 @@ main(void)
     }
 
     //
-    const int3 mmin = (int3){0, 0, 0};
-    const int3 mmax = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
-    const int3 nmin = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
-    const int3 nmax = acConstructInt3Param(AC_nx_max, AC_ny_max, AC_nz_max, info);
+    const AcMeshDims dims = acGetMeshDims(info);
+    const int3 mmin       = (int3){0, 0, 0};
+    const int3 mmax       = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+    const int3 nmin       = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
+    const int3 nmax       = acConstructInt3Param(AC_nx_max, AC_ny_max, AC_nz_max, info);
 
     // GPU alloc & compute
     Device device;
@@ -80,6 +81,7 @@ main(void)
     const AcReal dt = (AcReal)FLT_EPSILON;
     for (int i = 0; i < 3; ++i)
         acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, nmin, nmax, dt);
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, meanfield_test, dims.n0, dims.n1);
 
     // Integration
     acDeviceLoadMesh(device, STREAM_DEFAULT, model);
