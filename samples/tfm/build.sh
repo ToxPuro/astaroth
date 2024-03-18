@@ -17,5 +17,5 @@ BUILD_OPTIONS="\
 -DCUDA_ARCHITECTURES=61\
 " # NOTE CUDA_ARCHITECTURE to build for the work machine
 
-#cmake $BUILD_OPTIONS $@ $ASTAROTH && make -j # Build Astaroth
-cmake $BUILD_OPTIONS $@ $ASTAROTH/acc-runtime && make -j # Build ACC runtime only
+cmake $BUILD_OPTIONS $@ $ASTAROTH && make -j # Build Astaroth
+#cmake $BUILD_OPTIONS $@ $ASTAROTH/acc-runtime && make -j # Build ACC runtime only
