@@ -25,8 +25,7 @@ hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
-dconst real AC_test_array[5]
-dconst int  AC_test_int_array[100]
+
 
 // Enables a set of special reductions. Currently for primarily for testing
 // purposes:  
@@ -421,7 +420,7 @@ Stencil der6z_upwd {
 
 
 vecvalue_abs(v) {
-    return real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
+    	return +real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
 }
 
 gradient(s) {
