@@ -204,9 +204,9 @@ main(void)
     fflush(stdout);
 
     // Profiles
-    const AcResult mean = acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, MEAN_UUX);
-    printf("Mean result: %d\n", mean);
-    fflush(stdout);
+    // const AcResult mean = acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, MEAN_UUX);
+    // printf("Mean result: %d\n", mean);
+    // fflush(stdout);
 
     if (pid == 0) {
         acHostMeshDestroy(&model);
