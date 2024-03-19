@@ -636,6 +636,9 @@ AcResult acGridReduceVecScal(const Stream stream, const ReductionType rtype,
                              const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
                              AcReal* result);
 
+/** */
+AcResult acGridReduceXYAverage(const Stream stream, const Field field, const Profile profile);
+
 typedef enum {
     ACCESS_READ,
     ACCESS_WRITE,

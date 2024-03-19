@@ -243,6 +243,11 @@ main(void)
     }
     fflush(stdout);
 
+    // Profiles
+    const AcResult mean = acGridReduceXYAverage(STREAM_DEFAULT, VTXBUF_UUX, MEAN_UUX);
+    printf("Mean result: %d\n", mean);
+    fflush(stdout);
+
     if (pid == 0) {
         acHostMeshDestroy(&model);
         acHostMeshDestroy(&candidate);
