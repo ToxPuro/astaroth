@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define BUFFER_SIZE (4096)
 
@@ -49,6 +50,7 @@ typedef enum {
   NODE_MEMBER_ID      = (1 << 17),
   NODE_HOSTDEFINE     = (1 << 18),
   NODE_ASSIGNMENT     = (1 << 19),
+  NODE_INPUT          = (1 << 20),
 
 } NodeType;
 
@@ -153,4 +155,19 @@ astnode_print(const ASTNode* node)
   printf("\tprefix:  %p (\"%s\")\n", node->prefix, node->prefix);
   printf("\tinfix:   %p (\"%s\")\n", node->infix, node->infix);
   printf("\tpostfix: %p (\"%s\")\n", node->postfix, node->postfix);
+}
+
+typedef struct string_vec
+{
+	char* data[256];
+	size_t size;
+
+} string_vec;
+
+static inline bool
+str_vec_contains(string_vec vec, const char* str)
+{
+	for(size_t i = 0; i <  vec.size; ++i)
+		if(!strcmp(vec.data[i],str)) return true;
+	return false;
 }

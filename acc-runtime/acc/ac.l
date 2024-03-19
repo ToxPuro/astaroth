@@ -79,6 +79,7 @@ void strip_whitespace(char *str) {
 "Max"                   { return MAX; }
 "communicated"          { return COMMUNICATED; }
 "dconst"          { return DCONST_QL; }
+"gmem"          { return GLOBAL_MEMORY_QL; }
 "auxiliary"             { return AUXILIARY; }
 
 "if"        { return IF; } /* Keywords */

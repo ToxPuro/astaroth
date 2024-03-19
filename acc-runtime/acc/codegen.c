@@ -101,9 +101,17 @@ add_symbol(const NodeType type, char* const* tqualifiers, const size_t n_tqualif
   symbol_table[num_symbols[current_nest]].type          = type;
   symbol_table[num_symbols[current_nest]].tspecifier[0] = '\0';
 
-  symbol_table[num_symbols[current_nest]].n_tqualifiers = n_tqualifiers;
-  for(size_t i = 0; i < n_tqualifiers; ++i)
-	symbol_table[num_symbols[current_nest]].tqualifiers[i] = strdup(tqualifiers[i]);
+  if(tspecifier && (!strcmp(tspecifier,"AcReal*") || !strcmp(tspecifier,"int*")) && n_tqualifiers==0)
+  {
+    symbol_table[num_symbols[current_nest]].n_tqualifiers = 1;
+    symbol_table[num_symbols[current_nest]].tqualifiers[0] = strdup("dconst");
+  }
+  else
+  {
+    symbol_table[num_symbols[current_nest]].n_tqualifiers = n_tqualifiers;
+    for(size_t i = 0; i < n_tqualifiers; ++i)
+  	symbol_table[num_symbols[current_nest]].tqualifiers[i] = strdup(tqualifiers[i]);
+  }
 
   if (tspecifier)
     strcpy(symbol_table[num_symbols[current_nest]].tspecifier, tspecifier);
@@ -449,9 +457,9 @@ gen_array_reads(ASTNode* node, bool gen_mem_accesses)
 		if(gen_mem_accesses)
 		{
 			if(!strcmp(symbol_table[i].tspecifier,"AcReal*"))
-				node->buffer = strdup("big_array");
+				node->buffer = strdup("ac_input_big_real_array");
 			else if(!strcmp(symbol_table[i].tspecifier,"int*"))
-				node->buffer = strdup("big_int_array");
+				node->buffer = strdup("ac_input_big_int_array");
 		}
 		else
 		{
