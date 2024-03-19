@@ -81,7 +81,7 @@ main(void)
     const AcReal dt = (AcReal)FLT_EPSILON;
     for (int i = 0; i < 3; ++i)
         acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, nmin, nmax, dt);
-    acDeviceLaunchKernel(device, STREAM_DEFAULT, meanfield_test, dims.n0, dims.n1);
+    // acDeviceLaunchKernel(device, STREAM_DEFAULT, meanfield_test, dims.n0, dims.n1);
 
     // Integration
     acDeviceLoadMesh(device, STREAM_DEFAULT, model);
