@@ -741,18 +741,18 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
     ERRCHK_ALWAYS(end.y == dims.n1.y);
     ERRCHK_ALWAYS(end.z == dims.n1.z);
 
-    device->vba.kernel_input_params.twopass_solve_intermediate.ac_input_step_num = step_number;
-    device->vba.kernel_input_params.twopass_solve_intermediate.ac_input_dt = dt;
+    device->vba.kernel_input_params.twopass_solve_intermediate.step_num = step_number;
+    device->vba.kernel_input_params.twopass_solve_intermediate.dt = dt;
     const AcResult res = acLaunchKernel(twopass_solve_intermediate, device->streams[stream], start,
                                         end, device->vba);
     if (res != AC_SUCCESS)
         return res;
 
     acDeviceSwapBuffers(device);
-    device->vba.kernel_input_params.twopass_solve_final.ac_input_current_time = current_time;
+    device->vba.kernel_input_params.twopass_solve_final.current_time = current_time;
 
-    device->vba.kernel_input_params.twopass_solve_final.ac_input_step_num = step_number;
-    device->vba.kernel_input_params.twopass_solve_final.ac_input_current_time= current_time;
+    device->vba.kernel_input_params.twopass_solve_final.step_num = step_number;
+    device->vba.kernel_input_params.twopass_solve_final.current_time= current_time;
     return acLaunchKernel(twopass_solve_final, device->streams[stream], start, end, device->vba);
 #endif
 #else

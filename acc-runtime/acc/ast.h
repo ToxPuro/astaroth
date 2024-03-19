@@ -54,6 +54,7 @@ typedef enum {
 
 } NodeType;
 
+
 typedef struct astnode_s {
   int id;
   struct astnode_s* parent;
@@ -69,11 +70,34 @@ typedef struct astnode_s {
 } ASTNode;
 
 static inline ASTNode*
+astnode_dup(const ASTNode* node, ASTNode* parent)
+{
+	ASTNode* res = (ASTNode*)calloc(1,sizeof(node[0]));
+	res->id = node->id;
+	res->type = node->type;
+	res->parent = parent;
+	if(node->buffer)
+		res->buffer = strdup(node->buffer);
+	if(node->infix)
+		res->infix = strdup(node->infix);
+	if(node->postfix)
+		res->postfix = strdup(node->postfix);
+	res -> token = node->token;
+	if(node->lhs)
+		res->lhs= astnode_dup(node->lhs,res);
+	if(node->rhs)
+		res->rhs= astnode_dup(node->rhs,res);
+	return res;
+}
+
+
+
+static inline ASTNode*
 astnode_create(const NodeType type, ASTNode* lhs, ASTNode* rhs)
 {
+  static int id_counter = 0;
   ASTNode* node = (ASTNode*)calloc(1, sizeof(node[0]));
 
-  static int id_counter = 0;
   node->id              = id_counter++;
   node->type            = type;
   node->lhs             = lhs;
@@ -170,4 +194,36 @@ str_vec_contains(string_vec vec, const char* str)
 	for(size_t i = 0; i <  vec.size; ++i)
 		if(!strcmp(vec.data[i],str)) return true;
 	return false;
+}
+static inline void
+push(string_vec* dst, char* src)
+{
+	dst->data[dst->size] = src;
+	++(dst->size);
+}
+static inline  void combine_buffers_recursive(const ASTNode* node, char* res){
+  if(node->buffer)
+    strcat(res,node->buffer);
+  if(node->lhs)
+    combine_buffers_recursive(node->lhs, res);
+  if(node->rhs)
+    combine_buffers_recursive(node->rhs, res);
+}
+static inline  void combine_buffers(const ASTNode* node, char* res){
+  res[0] = '\0';	
+  combine_buffers_recursive(node,res);
+}
+static inline void combine_all(const ASTNode* node, char* res){
+  if(node->prefix)
+    strcat(res,node->prefix);
+  if(node->lhs)
+    combine_all(node->lhs, res);
+  if(node->buffer)
+    strcat(res,node->buffer);
+  if(node->infix)
+    strcat(res,node->infix);
+  if(node->rhs)
+    combine_all(node->rhs, res);
+  if(node->postfix)
+    strcat(res,node->postfix);
 }

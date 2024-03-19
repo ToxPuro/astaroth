@@ -25,15 +25,16 @@ hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
-real AC_test_array[5]
-int  AC_test_dconst_int_array[100]
-gmem int  AC_test_int_array[AC_nx]
+//real AC_test_array[5]
+//int  AC_test_dconst_int_array[100]
+//gmem int  AC_test_int_array[AC_nx]
 
 // Enables a set of special reductions. Currently for primarily for testing
 // purposes:  
 hostdefine LSPECIAL_REDUCTIONS (0)  
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
+
 
 #if LMAGNETIC
 Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
@@ -42,6 +43,8 @@ Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
 #if LENTROPY 
 Field VTXBUF_ENTROPY
 #endif
+
+//Field CHEMISTRY_FIELDS[5]
 
 #if LBFIELD
 auxiliary Field BFIELDX
@@ -188,6 +191,7 @@ real AC_current_time
 #if LMAGNETIC
 #define AA Field3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
 #endif
+
 
 #define DER1_3 (1. / 60.)
 #define DER1_2 (-3. / 20.)
@@ -744,11 +748,11 @@ rk3(s0, s1, roc, step_num, dt) {
 }
 
 
-Kernel singlepass_solve(int ac_input_step_num, TimeParams ac_input_time_params) {
-    write(VTXBUF_LNRHO, rk3(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity(), ac_input_step_num, ac_input_time_params.dt))
+Kernel singlepass_solve(int step_num, TimeParams time_params) {
+    write(VTXBUF_LNRHO, rk3(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity(), step_num, time_params.dt))
 
 #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy(), ac_input_step_num, ac_input_time_params.dt))
+    write(VTXBUF_ENTROPY, rk3(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy(), step_num, time_params.dt))
 #endif 
 
     mom = momentum()
@@ -757,29 +761,29 @@ Kernel singlepass_solve(int ac_input_step_num, TimeParams ac_input_time_params) 
     //Add the forcing component to the velocity field at the last integration step.
     //Important to init to zero here: ohterwise will produce numerical garbage! 
     forcing_step = real3(0.0, 0.0, 0.0)
-    if ac_input_step_num == 2 {
-        if ac_input_time_params.current_time > AC_switch_forcing {
-            forcing_step = forcing(ac_input_time_params.dt)
+    if step_num == 2 {
+        if time_params.current_time > AC_switch_forcing {
+            forcing_step = forcing(time_params.dt)
         }
     }
-    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x, ac_input_step_num, ac_input_time_params.dt) + forcing_step.x)
-    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y, ac_input_step_num, ac_input_time_params.dt) + forcing_step.y)
-    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z, ac_input_step_num, ac_input_time_params.dt) + forcing_step.z)
+    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x, step_num, time_params.dt) + forcing_step.x)
+    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y, step_num, time_params.dt) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z, step_num, time_params.dt) + forcing_step.z)
 #else 
-    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x, ac_input_step_num, ac_input_time_params.dt))
-    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y, ac_input_step_num, ac_input_time_params.dt))
-    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z, ac_input_step_num, ac_input_time_params.dt))
+    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x, step_num, time_params.dt))
+    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y, step_num, time_params.dt))
+    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z, step_num, time_params.dt))
 #endif
 
 #if LMAGNETIC
     ind = induction()
-    write(VTXBUF_AX, rk3(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x, ac_input_step_num, ac_input_time_params.dt))
-    write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y, ac_input_step_num, ac_input_time_params.dt))
-    write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z, ac_input_step_num, ac_input_time_params.dt))
+    write(VTXBUF_AX, rk3(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x, step_num, time_params.dt))
+    write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y, step_num, time_params.dt))
+    write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z, step_num, time_params.dt))
 #endif
 
 #if LBFIELD
-    if ac_input_step_num == 2 {
+    if step_num == 2 {
         bfield = curl(AA) 
         write(BFIELDX, bfield.x)
         write(BFIELDY, bfield.y)
@@ -831,27 +835,27 @@ rk3_final(f, w, step_num) {
 }
 
 
-Kernel twopass_solve_intermediate(int ac_input_step_num, real ac_input_dt) {
-    write(VTXBUF_LNRHO, rk3_intermediate(previous(VTXBUF_LNRHO), continuity(), ac_input_step_num, ac_input_dt))
+Kernel twopass_solve_intermediate(int step_num, real dt) {
+    write(VTXBUF_LNRHO, rk3_intermediate(previous(VTXBUF_LNRHO), continuity(), step_num, dt))
 
     #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3_intermediate(previous(VTXBUF_ENTROPY), entropy(), ac_input_step_num, ac_input_dt))
+    write(VTXBUF_ENTROPY, rk3_intermediate(previous(VTXBUF_ENTROPY), entropy(), step_num, dt))
     #endif
 
     mom = momentum()
-    write(VTXBUF_UUX, rk3_intermediate(previous(VTXBUF_UUX), mom.x, ac_input_step_num, ac_input_dt))
-    write(VTXBUF_UUY, rk3_intermediate(previous(VTXBUF_UUY), mom.y, ac_input_step_num, ac_input_dt))
-    write(VTXBUF_UUZ, rk3_intermediate(previous(VTXBUF_UUZ), mom.z, ac_input_step_num, ac_input_dt))
+    write(VTXBUF_UUX, rk3_intermediate(previous(VTXBUF_UUX), mom.x, step_num, dt))
+    write(VTXBUF_UUY, rk3_intermediate(previous(VTXBUF_UUY), mom.y, step_num, dt))
+    write(VTXBUF_UUZ, rk3_intermediate(previous(VTXBUF_UUZ), mom.z, step_num, dt))
 
     #if LMAGNETIC
     ind = induction()
-    write(VTXBUF_AX, rk3_intermediate(previous(VTXBUF_AX), ind.x, ac_input_step_num, ac_input_dt))
-    write(VTXBUF_AY, rk3_intermediate(previous(VTXBUF_AY), ind.y, ac_input_step_num, ac_input_dt))
-    write(VTXBUF_AZ, rk3_intermediate(previous(VTXBUF_AZ), ind.z, ac_input_step_num, ac_input_dt))
+    write(VTXBUF_AX, rk3_intermediate(previous(VTXBUF_AX), ind.x, step_num, dt))
+    write(VTXBUF_AY, rk3_intermediate(previous(VTXBUF_AY), ind.y, step_num, dt))
+    write(VTXBUF_AZ, rk3_intermediate(previous(VTXBUF_AZ), ind.z, step_num, dt))
     #endif
 
     #if LBFIELD
-    if ac_input_step_num == 2 {
+    if step_num == 2 {
         bfield = curl(AA) 
         write(BFIELDX, bfield.x)
         write(BFIELDY, bfield.y)
@@ -872,29 +876,29 @@ Kernel twopass_solve_intermediate(int ac_input_step_num, real ac_input_dt) {
     //
 }
 
-Kernel twopass_solve_final(int ac_input_step_num, real ac_input_current_time) {
-    write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), ac_input_step_num))
+Kernel twopass_solve_final(int step_num, real current_time) {
+    write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), step_num))
 
     #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), ac_input_step_num))
+    write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), step_num))
     #endif
 
     forcing_step = real3(0.0, 0.0, 0.0)
     #if LFORCING
-    if ac_input_step_num == 2 {
-        if ac_input_current_time > AC_switch_forcing {
+    if step_num == 2 {
+        if current_time > AC_switch_forcing {
             forcing_step = forcing()
         }
     }
     #endif
-    write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX), ac_input_step_num) + forcing_step.x)
-    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY), ac_input_step_num) + forcing_step.y)
-    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), ac_input_step_num) + forcing_step.z)
+    write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX), step_num) + forcing_step.x)
+    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY), step_num) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), step_num) + forcing_step.z)
 
     #if LMAGNETIC
-    write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX), ac_input_step_num))
-    write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY), ac_input_step_num))
-    write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ), ac_input_step_num))
+    write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX), step_num))
+    write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY), step_num))
+    write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ), step_num))
     #endif
 }
 
@@ -1016,5 +1020,5 @@ Kernel haatouken() {
     write(VTXBUF_UUX, uu.x)
     write(VTXBUF_UUY, uu.y)
     write(VTXBUF_UUZ, uu.z)
-    val = (AC_test_array[2]/AC_test_int_array[vertexIdx.x*2-1])*AC_test_dconst_int_array[0]
+    //val = (AC_test_array[2]/AC_test_int_array[vertexIdx.x*2-1])*AC_test_dconst_int_array[0]
 }

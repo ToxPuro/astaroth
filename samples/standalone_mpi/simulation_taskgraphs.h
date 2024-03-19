@@ -83,13 +83,13 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
             AcRealParam const_heat_flux[1]   = {AC_hflux};
 	    auto intermediate_loader = [&info](ParamLoadingInfo p){
 		    acKernelInputParams* params = acDeviceGetKernelInputParamsObject(p.device);
-		    params->twopass_solve_intermediate.ac_input_dt = info.real_params[AC_dt];
-		    params->twopass_solve_intermediate.ac_input_step_num= p.step_number;
+		    params->twopass_solve_intermediate.dt = info.real_params[AC_dt];
+		    params->twopass_solve_intermediate.step_num= p.step_number;
 	    };
 	    auto final_loader = [&info](ParamLoadingInfo p){
 		    acKernelInputParams* params = acDeviceGetKernelInputParamsObject(p.device);
-		    params->twopass_solve_final.ac_input_current_time = info.real_params[AC_dt];
-		    params->twopass_solve_final.ac_input_step_num = p.step_number;
+		    params->twopass_solve_final.current_time = info.real_params[AC_dt];
+		    params->twopass_solve_final.step_num = p.step_number;
 	    };
             AcTaskDefinition heatduct_ops[] =
                 {acHaloExchange(all_fields),

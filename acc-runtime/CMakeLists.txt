@@ -31,7 +31,7 @@ endif()
 project(acc-runtime)
 
 ## Project-wide compilation flags
-set(COMMON_FLAGS "-Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow")
+set(COMMON_FLAGS "-Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wno-shadow")
 
 ## Include directories
 include_directories(.)

@@ -326,13 +326,13 @@ acGridInit(AcMeshInfo info)
 	    printf("TP: test:\n");
 #ifdef AC_INTEGRATION
     auto intermediate_loader = [](ParamLoadingInfo l){
-	    l.params -> twopass_solve_intermediate.ac_input_step_num = l.step_number;
-	    l.params -> twopass_solve_intermediate.ac_input_dt= 
+	    l.params -> twopass_solve_intermediate.step_num = l.step_number;
+	    l.params -> twopass_solve_intermediate.dt= 
 		    l.device->local_config.real_params[AC_dt];
     };
     auto final_loader = [](ParamLoadingInfo l){
-	    l.params -> twopass_solve_final.ac_input_step_num = l.step_number;
-	    l.params -> twopass_solve_final.ac_input_current_time= 
+	    l.params -> twopass_solve_final.step_num = l.step_number;
+	    l.params -> twopass_solve_final.current_time= 
 		    l.device->local_config.real_params[AC_current_time];
     };
     AcTaskDefinition default_ops[] = {

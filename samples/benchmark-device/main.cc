@@ -140,8 +140,8 @@ main(int argc, char** argv)
     for (size_t j = 0; j < num_samples; ++j) {
         // Dryrun and randomize
 	acKernelInputParams* params= acDeviceGetKernelInputParamsObject(device);
-	params->singlepass_solve.ac_input_step_num= step_number;
-	params->singlepass_solve.ac_input_time_params = time_params;
+	params->singlepass_solve.step_num= step_number;
+	params->singlepass_solve.time_params = time_params;
         acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
         acDeviceResetMesh(device, STREAM_DEFAULT);
         acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
