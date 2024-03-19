@@ -56,7 +56,6 @@ void remove_substring_parser(char *str, const char *sub) {
 ASTNode*
 astnode_hostdefine(const char* buffer, const int token)
 {
-	printf("HMM: %s\n",buffer);
         ASTNode* res = astnode_create(NODE_HOSTDEFINE, NULL, NULL);
         astnode_set_buffer(buffer,res);
         res->token = 255 + token;
@@ -107,7 +106,6 @@ process_param(ASTNode* kernel_root, const ASTNode* param, char* struct_params)
 				param_str[0] = '\0';
                               	sprintf(param_str,"%s %s;",param_type, param->rhs->buffer);
 				strprepend(struct_params,param_str);
-				printf("Param type: %s\n",struct_params);
 				if(str_vec_contains(added_params_to_stencil_accesses,param->rhs->buffer))
 					return;
 				push(&added_params_to_stencil_accesses,strdup(param->rhs->buffer));
@@ -458,6 +456,8 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
+		//make it an array type i.e. pointer
+		strcat(type_specifier->lhs->buffer,"*");
 	    }
             else {
                 variable_definition->type |= NODE_DCONST;
