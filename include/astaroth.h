@@ -1140,6 +1140,11 @@ AcResult acDeviceReduceVecScal(const Device device, const Stream stream_type,
                                const ReductionType rtype, const VertexBufferHandle vtxbuf0,
                                const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
                                const VertexBufferHandle vtxbuf3, AcReal* result);
+
+/** */
+AcResult acDeviceReduceXYAverage(const Device device, const Stream stream, const Field field,
+                                 const Profile profile);
+
 /** */
 AcResult acDeviceRunMPITest(void);
 
@@ -1212,9 +1217,7 @@ acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out
 }
 
 /** */
-template <size_t num_fields>
-AcTaskDefinition
-acHaloExchange(Field (&fields)[num_fields])
+template <size_t num_fields> AcTaskDefinition acHaloExchange(Field (&fields)[num_fields])
 {
     return acHaloExchange(fields, num_fields);
 }
