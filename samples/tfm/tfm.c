@@ -66,12 +66,18 @@ main(void)
     // acDevicePrintProfiles(device);
     acDeviceLaunchKernel(device, STREAM_DEFAULT, init_profiles, dims.m0, dims.m1);
     acDeviceSwapAllProfileBuffers(device);
+    acDevicePrintProfiles(device);
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, diff_profiles, dims.n0, dims.n1);
+    acDeviceSwapAllProfileBuffers(device);
     acDeviceSynchronizeStream(device, STREAM_ALL);
     acDevicePrintProfiles(device);
     return EXIT_SUCCESS;
+    // acDeviceLaunchKernel(device, STREAM_DEFAULT, init_profiles, dims.m0, dims.m1);
+    // acDeviceSwapAllProfileBuffers(device);
     // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, PROFILE_Umean_x);
     // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUY, PROFILE_Umean_y);
     // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUZ, PROFILE_Umean_z);
+    // acDevicePrintProfiles(device);
 
     // Boundconds
     acDeviceLoadMesh(device, STREAM_DEFAULT, model);

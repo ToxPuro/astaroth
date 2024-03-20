@@ -726,3 +726,9 @@ Kernel init_profiles() {
         write(i, globalVertexIdx.z)
     }
 }
+
+Kernel diff_profiles() {
+    for i in PROFILE_Umean_x:PROFILE_Umean_x+NUM_PROFILES {
+        write(i, derz(i))
+    }
+}
