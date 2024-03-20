@@ -234,6 +234,24 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     device->id           = id;
     device->local_config = device_config;
 
+    // Check that AC_global_grid_n and AC_multigpu_offset are valid
+    // Replace if not and give a warning otherwise
+    if (device->local_config.int3_params[AC_global_grid_n].x <= 0 ||
+        device->local_config.int3_params[AC_global_grid_n].y <= 0 ||
+        device->local_config.int3_params[AC_global_grid_n].z <= 0 ||
+        device->local_config.int3_params[AC_multigpu_offset].x < 0 ||
+        device->local_config.int3_params[AC_multigpu_offset].y < 0 ||
+        device->local_config.int3_params[AC_multigpu_offset].z < 0) {
+        WARNING("Invalid AC_global_grid_n or AC_multigpu_offset passed in device_config to "
+                "acDeviceCreate. Replacing with AC_global_grid_n = local grid size and "
+                "AC_multigpu_offset = (int3){0,0,0}.");
+        device->local_config
+            .int3_params[AC_global_grid_n] = (int3){device_config.int_params[AC_nx],
+                                                    device_config.int_params[AC_ny],
+                                                    device_config.int_params[AC_nz]};
+        device->local_config.int3_params[AC_multigpu_offset] = (int3){0, 0, 0};
+    }
+
 #if AC_VERBOSE
     acDevicePrintInfo(device);
     printf("Trying to run a dummy kernel. If this fails, make sure that your\n"
@@ -258,13 +276,13 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Memory
     // VBA in/out
-    const int3 mm = acConstructInt3Param(AC_mx, AC_my, AC_mz, device_config);
+    const int3 mm = acConstructInt3Param(AC_mx, AC_my, AC_mz, device->local_config);
     device->vba   = acVBACreate(mm.x, mm.y, mm.z);
     /*
     // VBA Profiles
-    const size_t profile_size_bytes = sizeof(AcReal) * max(device_config.int_params[AC_mx],
-                                                           max(device_config.int_params[AC_my],
-                                                               device_config.int_params[AC_mz]));
+    const size_t profile_size_bytes = sizeof(AcReal) * max(device->local_config.int_params[AC_mx],
+                                                           max(device->local_config.int_params[AC_my],
+                                                               device->local_config.int_params[AC_mz]));
     for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.profiles[i], profile_size_bytes));
         ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.profiles[i], 0, profile_size_bytes));
@@ -272,8 +290,8 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     */
 
     // Reductions
-    const int3 max_dims                = acConstructInt3Param(AC_mx, AC_my, AC_mz, device_config);
-    const size_t scratchpad_size       = acKernelReduceGetMinimumScratchpadSize(max_dims);
+    const int3 max_dims          = acConstructInt3Param(AC_mx, AC_my, AC_mz, device->local_config);
+    const size_t scratchpad_size = acKernelReduceGetMinimumScratchpadSize(max_dims);
     const size_t scratchpad_size_bytes = acKernelReduceGetMinimumScratchpadSizeBytes(max_dims);
     for (size_t i = 0; i < NUM_REDUCE_SCRATCHPADS; ++i) {
         ERRCHK_CUDA_ALWAYS(
@@ -283,7 +301,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Device constants
     // acDeviceLoadDefaultUniforms(device); // TODO recheck
-    acDeviceLoadMeshInfo(device, device_config);
+    acDeviceLoadMeshInfo(device, device->local_config);
 
 #if AC_VERBOSE
     printf("Created device %d (%p)\n", device->id, device);
