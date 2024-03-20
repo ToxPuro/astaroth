@@ -632,6 +632,10 @@ Kernel singlepass_solve() {
     write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
     write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
 #endif
+
+#if LTFM
+    tfm_singlepass()
+#endif
 }
 
 Kernel twopass_solve_intermediate() {
@@ -673,6 +677,10 @@ Kernel twopass_solve_intermediate() {
     //
     // Is this correct?
     //
+
+    #if LTFM
+        tfm_twopass_intermediate()
+    #endif
 }
 
 Kernel twopass_solve_final() {
@@ -706,6 +714,10 @@ Kernel twopass_solve_final() {
         write(BFIELDY, value(BFIELDY))
         write(BFIELDZ, value(BFIELDZ))
     }
+    #endif
+
+    #if LTFM
+        tfm_twopass_final()
     #endif
 }
 
