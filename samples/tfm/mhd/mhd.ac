@@ -493,40 +493,6 @@ rk3(s0, s1, roc) {
     return s1 + beta[AC_step_number + 1] * ((alpha[AC_step_number] / beta[AC_step_number]) * (s1 - s0) + roc * AC_dt)
 }
 
-Kernel singlepass_solve() {
-    write(VTXBUF_LNRHO, rk3(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity()))
-
-#if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
-#endif 
-    mom = momentum()
-
-#if LFORCING
-    //Add the forcing component to the velocity field at the last integration step.
-    //Important to init to zero here: ohterwise will produce numerical garbage! 
-    forcing_step = real3(0.0, 0.0, 0.0)
-    if AC_step_number == 2 {
-        if AC_current_time > AC_switch_forcing {
-            forcing_step = forcing()
-        }
-    }
-    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x) + forcing_step.x)
-    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y) + forcing_step.y)
-    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z) + forcing_step.z)
-#else 
-    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
-    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
-    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
-#endif
-
-#if LMAGNETIC
-    ind = induction()
-    write(VTXBUF_AX, rk3(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x))
-    write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
-    write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
-#endif
-}
-
 // Integration: two-pass
 rk3_intermediate(w, roc) {
     real alpha = 0., -5./9., -153. / 128.
@@ -553,82 +519,6 @@ rk3_final(f, w) {
     */
 
     return f + beta[AC_step_number] * w
-}
-
-
-Kernel twopass_solve_intermediate() {
-    write(VTXBUF_LNRHO, rk3_intermediate(previous(VTXBUF_LNRHO), continuity()))
-
-    #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3_intermediate(previous(VTXBUF_ENTROPY), entropy()))
-    #endif
-
-    mom = momentum()
-    write(VTXBUF_UUX, rk3_intermediate(previous(VTXBUF_UUX), mom.x))
-    write(VTXBUF_UUY, rk3_intermediate(previous(VTXBUF_UUY), mom.y))
-    write(VTXBUF_UUZ, rk3_intermediate(previous(VTXBUF_UUZ), mom.z))
-
-    #if LMAGNETIC
-    ind = induction()
-    write(VTXBUF_AX, rk3_intermediate(previous(VTXBUF_AX), ind.x))
-    write(VTXBUF_AY, rk3_intermediate(previous(VTXBUF_AY), ind.y))
-    write(VTXBUF_AZ, rk3_intermediate(previous(VTXBUF_AZ), ind.z))
-    #endif
-
-    #if LBFIELD
-    if AC_step_number == 2 {
-        bfield = curl(AA) 
-        write(BFIELDX, bfield.x)
-        write(BFIELDY, bfield.y)
-        write(BFIELDZ, bfield.z)
-    }
-    #endif
-
-    // %JP: TODO NOTE IMPORTANT (MV please check)
-    // LSHOCK not yet adapted to two-pass integration.
-    // Unclear how should be written to memory to ensure proper swapping!
-    // 1) In the single-pass approach need to write the shock field to `out`
-    // because buffers are swapped afterwards
-    // 2) In the two-pass approach this may not be necessary: if the shock
-    // field is in `in` buffer and we swap twice, the correct shock values are
-    // still in the `in` buffer
-    //
-    // Is this correct?
-    //
-}
-
-Kernel twopass_solve_final() {
-    write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO)))
-
-    #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY)))
-    #endif
-
-    forcing_step = real3(0.0, 0.0, 0.0)
-    #if LFORCING
-    if AC_step_number == 2 {
-        if AC_current_time > AC_switch_forcing {
-            forcing_step = forcing()
-        }
-    }
-    #endif
-    write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX)) + forcing_step.x)
-    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY)) + forcing_step.y)
-    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ)) + forcing_step.z)
-
-    #if LMAGNETIC
-    write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX)))
-    write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY)))
-    write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ)))
-    #endif
-
-    #if LBFIELD
-    if AC_step_number == 2 {
-        write(BFIELDX, value(BFIELDX))
-        write(BFIELDY, value(BFIELDY))
-        write(BFIELDZ, value(BFIELDZ))
-    }
-    #endif
 }
 
 roc_TF_b21_x() {
@@ -708,5 +598,114 @@ tfm_twopass_final() {
     write(TF_b22_x, rk3_final(previous(TF_b22_x), value(TF_b22_x)))
     write(TF_b22_y, rk3_final(previous(TF_b22_y), value(TF_b22_y)))
     write(TF_b22_z, rk3_final(previous(TF_b22_z), value(TF_b22_z)))
+}
+
+Kernel singlepass_solve() {
+    write(VTXBUF_LNRHO, rk3(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity()))
+
+#if LENTROPY 
+    write(VTXBUF_ENTROPY, rk3(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy()))
+#endif 
+    mom = momentum()
+
+#if LFORCING
+    //Add the forcing component to the velocity field at the last integration step.
+    //Important to init to zero here: ohterwise will produce numerical garbage! 
+    forcing_step = real3(0.0, 0.0, 0.0)
+    if AC_step_number == 2 {
+        if AC_current_time > AC_switch_forcing {
+            forcing_step = forcing()
+        }
+    }
+    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x) + forcing_step.x)
+    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z) + forcing_step.z)
+#else 
+    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x))
+    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y))
+    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z))
+#endif
+
+#if LMAGNETIC
+    ind = induction()
+    write(VTXBUF_AX, rk3(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x))
+    write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
+    write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
+#endif
+}
+
+Kernel twopass_solve_intermediate() {
+    write(VTXBUF_LNRHO, rk3_intermediate(previous(VTXBUF_LNRHO), continuity()))
+
+    #if LENTROPY 
+    write(VTXBUF_ENTROPY, rk3_intermediate(previous(VTXBUF_ENTROPY), entropy()))
+    #endif
+
+    mom = momentum()
+    write(VTXBUF_UUX, rk3_intermediate(previous(VTXBUF_UUX), mom.x))
+    write(VTXBUF_UUY, rk3_intermediate(previous(VTXBUF_UUY), mom.y))
+    write(VTXBUF_UUZ, rk3_intermediate(previous(VTXBUF_UUZ), mom.z))
+
+    #if LMAGNETIC
+    ind = induction()
+    write(VTXBUF_AX, rk3_intermediate(previous(VTXBUF_AX), ind.x))
+    write(VTXBUF_AY, rk3_intermediate(previous(VTXBUF_AY), ind.y))
+    write(VTXBUF_AZ, rk3_intermediate(previous(VTXBUF_AZ), ind.z))
+    #endif
+
+    #if LBFIELD
+    if AC_step_number == 2 {
+        bfield = curl(AA) 
+        write(BFIELDX, bfield.x)
+        write(BFIELDY, bfield.y)
+        write(BFIELDZ, bfield.z)
+    }
+    #endif
+
+    // %JP: TODO NOTE IMPORTANT (MV please check)
+    // LSHOCK not yet adapted to two-pass integration.
+    // Unclear how should be written to memory to ensure proper swapping!
+    // 1) In the single-pass approach need to write the shock field to `out`
+    // because buffers are swapped afterwards
+    // 2) In the two-pass approach this may not be necessary: if the shock
+    // field is in `in` buffer and we swap twice, the correct shock values are
+    // still in the `in` buffer
+    //
+    // Is this correct?
+    //
+}
+
+Kernel twopass_solve_final() {
+    write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO)))
+
+    #if LENTROPY 
+    write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY)))
+    #endif
+
+    forcing_step = real3(0.0, 0.0, 0.0)
+    #if LFORCING
+    if AC_step_number == 2 {
+        if AC_current_time > AC_switch_forcing {
+            forcing_step = forcing()
+        }
+    }
+    #endif
+    write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX)) + forcing_step.x)
+    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY)) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ)) + forcing_step.z)
+
+    #if LMAGNETIC
+    write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX)))
+    write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY)))
+    write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ)))
+    #endif
+
+    #if LBFIELD
+    if AC_step_number == 2 {
+        write(BFIELDX, value(BFIELDX))
+        write(BFIELDY, value(BFIELDY))
+        write(BFIELDZ, value(BFIELDZ))
+    }
+    #endif
 }
 
