@@ -759,7 +759,7 @@ rk3_final_vector(f,w,step_num){
     rk3_final(f.z,w.z,step_num)
   )
 }
-Kernel twopass_solve_intermediate(int ac_input_step_num, real ac_input_dt){
+Kernel twopass_solve_intermediate(int step_num, real dt){
 	UU = vecvalue(F_UU)
   UIJ = gradients(F_UU)
   DIVU = divergence(F_UU)
@@ -850,10 +850,10 @@ Kernel twopass_solve_intermediate(int ac_input_step_num, real ac_input_dt){
 
 
 
-  W_UU = rk3_intermediate_vector(vecprevious(F_UU),DF_UU,ac_input_step_num, ac_input_dt)
-  W_SS = rk3_intermediate(previous(SS),DF_SS,ac_input_step_num, ac_input_dt)
-  W_LNRHO = rk3_intermediate(previous(RHO),DF_LNRHO,ac_input_step_num, ac_input_dt)
-  W_AA  = rk3_intermediate_vector(vecprevious(F_AA),DF_AA,ac_input_step_num, ac_input_dt)
+  W_UU = rk3_intermediate_vector(vecprevious(F_UU),DF_UU,step_num, dt)
+  W_SS = rk3_intermediate(previous(SS),DF_SS,step_num, dt)
+  W_LNRHO = rk3_intermediate(previous(RHO),DF_LNRHO,step_num, dt)
+  W_AA  = rk3_intermediate_vector(vecprevious(F_AA),DF_AA,step_num, dt)
  
 
   vecwrite(F_UU,W_UU)
@@ -862,11 +862,11 @@ Kernel twopass_solve_intermediate(int ac_input_step_num, real ac_input_dt){
   vecwrite(F_AA,W_AA)
 }
 
-Kernel twopass_solve_final(int ac_input_step_num) {
-  vecwrite(F_UU,rk3_final_vector(vecprevious(F_UU),vecvalue(F_UU),ac_input_step_num))
-  write(SS,rk3_final(previous(SS),value(SS),ac_input_step_num))
-  write(RHO, rk3_final(previous(RHO),value(RHO),ac_input_step_num))
-  vecwrite(F_AA,rk3_final_vector(vecprevious(F_AA),vecvalue(F_AA),ac_input_step_num))
+Kernel twopass_solve_final(int step_num) {
+  vecwrite(F_UU,rk3_final_vector(vecprevious(F_UU),vecvalue(F_UU),step_num))
+  write(SS,rk3_final(previous(SS),value(SS),step_num))
+  write(RHO, rk3_final(previous(RHO),value(RHO),step_num))
+  vecwrite(F_AA,rk3_final_vector(vecprevious(F_AA),vecvalue(F_AA),step_num))
 }
 
 
