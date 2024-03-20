@@ -1,21 +1,24 @@
-#include "../../submodule/acc-runtime/stdlib/derivs.h"
-/*--------------------------------------------------------------------------------------------------------------------------*/
-write_vector(f,v) {
-   write( Field(f.x), v.x)
-   write( Field(f.y), v.y)
-   write( Field(f.z), v.z)
+#include "../stdlib/derivs.h"
+
+u_dot_grad_vec(m,v){
+  //!!!return real3(dot(v,m.row(0)),dot(v,m.col(1)),dot(v,m.col(2)))
+  return real3(dot(v,m.col(0)),dot(v,m.col(1)),dot(v,m.col(2)))
 }
-/*--------------------------------------------------------------------------------------------------------------------------*/
-//vecprevious(v){
-//    return real3(previous(Field(v.x)),previous(Field(v.y)),previous(Field(v.z)))
-//}
-/*--------------------------------------------------------------------------------------------------------------------------*/
-//vecvalue(v) {
-//    return real3(value(v.x), value(v.y), value(v.z))
-//}
-/*--------------------------------------------------------------------------------------------------------------------------*/
+
+curl_from_matrix(m) {
+  return real3(m.data[2][1]-m.data[1][2], m.data[0][2] - m.data[2][0], m.data[1][0] - m.data[0][1])
+}
+
 gradient(s) {
     return real3(derx(s), dery(s), derz(s))
+}
+
+gradient6_upwd(s) {
+    return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
+}
+
+gradients_upwd(v) {
+    return Matrix(gradient6_upwd(v.x), gradient6_upwd(v.y), gradient6_upwd(v.z))
 }
 
 gradients(v) {
@@ -30,6 +33,18 @@ curl(v) {
     return real3(dery(v.z) - derz(v.y), derz(v.x) - derx(v.z), derx(v.y) - dery(v.x))
 }
 
+del4(s) {
+  return der4x(s) + der4y(s) + der4z(s)
+}
+
+del6(s) {
+  return der6x(s) + der6y(s) + der6z(s)
+}
+
+del6_upwd(s) {
+  return der6x_upwd(s) + der6y_upwd(s) + der6z_upwd(s)
+}
+
 laplace(s) {
     return derxx(s) + deryy(s) + derzz(s)
 }
@@ -38,7 +53,21 @@ veclaplace(v) {
     return real3(laplace(v.x), laplace(v.y), laplace(v.z))
 }
 
+traceless_strain(uij,divu)
+{
+  Matrix sij
+  for row in 0:3{
+    sij.data[row][row] = uij.data[row][row] - (1.0/3.0)*divu
+    for col in row+1:3{
+      sij.data[col][row] = 0.5*(uij.data[col][row]+uij.data[row][col])
+      sij.data[row][col] = sij.data[col][row]
+    }
+  }
+  return sij
+}
+
 stress_tensor(v) {
+
     Matrix S
 
     S.data[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))
@@ -68,5 +97,9 @@ contract(mat) {
     return dot(mat.row(0), mat.row(0)) +
            dot(mat.row(1), mat.row(1)) +
            dot(mat.row(2), mat.row(2))
+}
+
+length(v1,v2) {
+    return sqrt( dot(v1-v2,v1-v2) )
 }
 

@@ -1,16 +1,14 @@
-int AC_step_number
+#define RK_ORDER (3)
 real AC_dt
 
-#define RK_ORDER (3)
-
-rk3(s0, s1, roc, step_num) {
+rk3(s0, s1, roc, step_num, dt) {
 #if RK_ORDER == 1
     // Euler
-    real alpha= 0, 0.0, 0.0, 0.0
-    real beta = 0, 1.0, 0.0, 0.0
+    real alpha= 0.0, 0.0, 0.0, 0.0
+    real beta = 0.0, 1.0, 0.0, 0.0
 #elif RK_ORDER == 2
-    real alpha= 0,     0.0, -1.0/2.0, 0.0
-    real beta = 0, 1.0/2.0,      1.0, 0.0
+    real alpha= 0.0,     0.0, -1.0/2.0, 0.0
+    real beta = 0.0, 1.0/2.0,      1.0, 0.0
 #elif RK_ORDER == 3
     real alpha = 0., -5./9., -153./128.
     real beta = 1./3., 15./ 16., 8./15.
@@ -24,17 +22,17 @@ rk3(s0, s1, roc, step_num) {
     }
     */
     // Workaround
-    return s1 + beta[step_num + 1] * ((alpha[step_num] / beta[step_num]) * (s1 - s0) + roc * AC_dt)
+    return s1 + beta[step_num + 1] * ((alpha[step_num] / beta[step_num]) * (s1 - s0) + roc * dt)
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_vector(f,w,roc,step_num){
-  return real3( rk3(f.x,w.x,roc.x,step_num),
-                rk3(f.y,w.y,roc.y,step_num),
-                rk3(f.z,w.z,roc.z,step_num)
+rk3_vector(f,w,roc,step_num,dt){
+  return real3( rk3(f.x,w.x,roc.x,step_num,dt),
+                rk3(f.y,w.y,roc.y,step_num,dt),
+                rk3(f.z,w.z,roc.z,step_num,dt)
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_intermediate(w, roc, step_num) {
+rk3_intermediate(w, roc, step_num, dt) {
     real alpha = 0., -5./9., -153./128.
 
     // return alpha[AC_step_number] * w + roc * AC_dt
@@ -45,13 +43,13 @@ rk3_intermediate(w, roc, step_num) {
     //} else {
     //    return roc * AC_dt
     //}
-    return alpha[step_num] * w + roc * AC_dt
+    return alpha[step_num] * w + roc * dt
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
-rk3_intermediate_vector(w,roc,step_num){
-  return real3( rk3_intermediate(w.x,roc.x,step_num),
-                rk3_intermediate(w.y,roc.y,step_num),
-                rk3_intermediate(w.z,roc.z,step_num)
+rk3_intermediate_vector(w,roc,step_num,dt){
+  return real3( rk3_intermediate(w.x,roc.x,step_num,dt),
+                rk3_intermediate(w.y,roc.y,step_num,dt),
+                rk3_intermediate(w.z,roc.z,step_num,dt)
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
