@@ -22,6 +22,8 @@ Field lnrho, ux, uy, uz
 #define DERX_1 (INV_DS * INV_DS * 270. / 720.)
 #define DERX_0 (0)
 
+Profile mean_ux, mean_uy
+
 Stencil value {
     [0][0][0] = 1
 }
@@ -165,4 +167,9 @@ rk3(s0, s1, roc) {
 Kernel
 solve() {
     write(lnrho, rk3(previous(lnrho), value(lnrho), continuity()))
+}
+
+Kernel
+profiletest() {
+    write(mean_ux, derz(mean_ux))
 }

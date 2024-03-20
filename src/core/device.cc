@@ -276,7 +276,8 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Memory
     // VBA in/out
-    device->vba = acVBACreate(acVertexBufferSize(device->local_config));
+    const int3 mm = acConstructInt3Param(AC_mx, AC_my, AC_mz, device->local_config);
+    device->vba   = acVBACreate(mm.x, mm.y, mm.z);
     /*
     // VBA Profiles
     const size_t profile_size_bytes = sizeof(AcReal) * max(device->local_config.int_params[AC_mx],

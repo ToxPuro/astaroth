@@ -34,6 +34,9 @@ Field TF_B22X, TF_B22Y, TF_B22Z
 #define TF_B12 Field3(TF_B12X, TF_B12Y, TF_B12Z)
 #define TF_B21 Field3(TF_B21X, TF_B21Y, TF_B21Z)
 #define TF_B22 Field3(TF_B22X, TF_B22Y, TF_B22Z)
+
+// Mean-field profiles
+Profile MEAN_UUX, MEAN_UUY, MEAN_UUZ
 #endif
 
 // Device constants
@@ -455,7 +458,8 @@ entropy() {
 #endif
 
 tfm_induction() {
-    return AC_eta * veclaplace(TF_B11)
+    // Placeholder
+    return value(MEAN_UUX) * AC_eta * veclaplace(TF_B11)
 }
 
 // Integration: single-pass
@@ -614,4 +618,8 @@ Kernel twopass_solve_final() {
         write(BFIELDZ, value(BFIELDZ))
     }
     #endif
+}
+
+Kernel meanfield_test() {
+    write(TF_B11X, value(TF_B11X) * value(MEAN_UUX) * derz(MEAN_UUX))
 }
