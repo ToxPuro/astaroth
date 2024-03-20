@@ -122,6 +122,7 @@ symboltable_reset(void)
 
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "AC_REAL_PI");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_FIELDS");
+  add_symbol(NODE_FUNCTION_ID, NULL, NULL, "NUM_PROFILES");
 
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "FIELD_IN");
   add_symbol(NODE_FUNCTION_ID, NULL, NULL, "FIELD_OUT");
