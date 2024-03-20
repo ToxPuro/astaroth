@@ -1823,7 +1823,7 @@ acGridReduceXYAverage(const Stream stream, const Field field, const Profile prof
     const uint3_64 decomp = decompose(nprocs);
     const int3 pid3d      = getPid3D(pid, decomp);
     MPI_Comm xy_neighbors;
-    MPI_Comm_split(MPI_COMM_WORLD, pid3d.z, pid, &xy_neighbors);
+    MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
 
     // 3) Allreduce
     MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in[profile], device->vba.profiles.count,
