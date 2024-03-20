@@ -335,7 +335,6 @@ acGridInit(AcMeshInfo info)
     }
 
     acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
-	    printf("TP: test:\n");
 #ifdef AC_INTEGRATION
     auto intermediate_loader = [](ParamLoadingInfo l){
 	    l.params -> twopass_solve_intermediate.step_num = l.step_number;
@@ -1520,8 +1519,6 @@ testmydecomp(int3 nn, int decomp_level, std::vector<Field> fields_out)
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 {
-	printf("start\n");
-	fflush(stdout);
     // ERRCHK(grid.initialized);
     int rank;
     MPI_Comm_rank(astaroth_comm, &rank);
