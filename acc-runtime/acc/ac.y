@@ -426,8 +426,11 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 			const int num_fields = atoi(num_fields_str);
 			ASTNode* copy = astnode_dup(declaration_list_head->lhs,declaration_list_head);
 			ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
-			strcat(field_name->buffer,"_0");
-			for(int i=0; i<num_fields-1;++i)
+			const char* field_name_str = strdup(field_name->buffer);
+			char index[100];
+			sprintf(index,"_%d",num_fields);
+			strcat(field_name->buffer,index);
+			for(int i=num_fields-1; i>=0;--i)
 			{
 				ASTNode* new_head = astnode_create(NODE_UNKNOWN,NULL,NULL);
 				new_head->lhs  = astnode_dup(copy,new_head);
@@ -436,16 +439,20 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 				declaration_list_head ->lhs=new_head;
 				declaration_list_head  = new_head;
 				ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
-				char index[100];
-				sprintf(index,"_%d",i+1);
+				sprintf(index,"_%d",i);
 				strcat(field_name->buffer,index);
 			}
-			printf("should be 10: %d\n",num_fields);
 			ASTNode* tmp = $$;
 			char host_definition[1000];
-			sprintf(host_definition,"hostdefine NUM_CHEMISTRY_FIELDS (%d)",num_fields);
+			sprintf(host_definition,"hostdefine N%s_ROWS (%d)",field_name_str,num_fields);
 			ASTNode* hostdefine =astnode_hostdefine(host_definition,HOSTDEFINE);
-			$$ = astnode_create(NODE_UNKNOWN,tmp,hostdefine);
+			tmp = astnode_create(NODE_UNKNOWN,tmp,hostdefine);
+			sprintf(host_definition,"hostdefine N%s_COLS (%d)",field_name_str,1);
+			hostdefine =astnode_hostdefine(host_definition,HOSTDEFINE);
+			tmp = astnode_create(NODE_UNKNOWN,tmp,hostdefine);
+			ASTNode* input_to_codegen = astnode_create(NODE_CODEGEN_INPUT,NULL,NULL);
+			input_to_codegen->buffer = strdup(field_name_str);
+			$$ = astnode_create(NODE_UNKNOWN,tmp,input_to_codegen);
 		}
             } 
             else if(get_node_by_token(WORK_BUFFER, $$->rhs)) {

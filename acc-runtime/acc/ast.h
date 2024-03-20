@@ -51,7 +51,7 @@ typedef enum {
   NODE_HOSTDEFINE     = (1 << 18),
   NODE_ASSIGNMENT     = (1 << 19),
   NODE_INPUT          = (1 << 20),
-
+  NODE_CODEGEN_INPUT  = (1 << 21),
 } NodeType;
 
 

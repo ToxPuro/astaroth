@@ -44,7 +44,7 @@ Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
 Field VTXBUF_ENTROPY
 #endif
 
-//Field CHEMISTRY_FIELDS[5]
+Field CHEMISTRY_FIELDS[5]
 
 #if LBFIELD
 auxiliary Field BFIELDX
@@ -1020,5 +1020,5 @@ Kernel haatouken() {
     write(VTXBUF_UUX, uu.x)
     write(VTXBUF_UUY, uu.y)
     write(VTXBUF_UUZ, uu.z)
-    //val = (AC_test_array[2]/AC_test_int_array[vertexIdx.x*2-1])*AC_test_dconst_int_array[0]
+    der_val = derx(CHEMISTRY_FIELDS[2])
 }

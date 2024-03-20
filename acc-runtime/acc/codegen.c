@@ -45,6 +45,8 @@ strupr(const char* src)
 #define STENCILACC_SRC ACC_DIR "/stencil_accesses.cpp"
 #define STENCILACC_EXEC "stencil_accesses.out"
 #define ACC_RUNTIME_API_DIR ACC_DIR "/../api"
+//
+static string_vec array_fields; 
 
 // Symbols
 #define MAX_ID_LEN (256)
@@ -422,6 +424,27 @@ gen_param_names(FILE* fp, const char* datatype_scalar, const bool for_arrays)
 }
 
 void
+gen_field_array_reads(ASTNode* node)
+{
+  if(node->lhs)
+    gen_field_array_reads(node->lhs);
+  if(node->rhs)
+    gen_field_array_reads(node->rhs);
+  if((node->type && !(node->type & NODE_UNKNOWN)) || !node->buffer || !str_vec_contains(array_fields,node->buffer))
+	  return;
+  char index_str[4096];
+  index_str[0] = '\0';
+  combine_all(node->parent->parent->parent->rhs,index_str);
+  char res[4096];
+  sprintf(res,"%s_0 + %s",node->buffer,index_str);
+  ASTNode* base = node->parent->parent->parent->parent;
+  base->buffer = strdup(res);
+  base->lhs=NULL;
+  base->rhs=NULL;
+  base->prefix=NULL;
+  base->postfix=NULL;
+}
+void
 gen_array_reads(ASTNode* node, bool gen_mem_accesses, const char* datatype_scalar)
 {
   if(node->lhs)
@@ -459,11 +482,12 @@ gen_array_reads(ASTNode* node, bool gen_mem_accesses, const char* datatype_scala
 			combine_all(node->parent->parent->parent->rhs,index_str);
 			char res[4096];
 			sprintf(res,"d_%s[%s_offset+(%s)]\n",arrays_name,node->buffer,index_str);
-			node->parent->parent->parent->parent->buffer = strdup(res);
-			node->parent->parent->parent->parent->lhs=NULL;
-			node->parent->parent->parent->parent->rhs=NULL;
-			node->parent->parent->parent->parent->prefix=NULL;
-			node->parent->parent->parent->parent->postfix=NULL;
+			ASTNode* base = node->parent->parent->parent->parent;
+			base->buffer = strdup(res);
+			base->lhs=NULL;
+			base->rhs=NULL;
+			base->prefix=NULL;
+			base->postfix=NULL;
 			return;
 		}
 		sprintf(new_name,"__ldg(&vba.%s[(int)%s]",arrays_name,node->buffer);
@@ -499,8 +523,9 @@ gen_kernel_input_params(ASTNode* node, bool gen_mem_accesses)
 }
 
 static void
-traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
+traverse(const ASTNode* node, NodeType exclude, FILE* stream)
 {
+  exclude |= NODE_CODEGEN_INPUT;
   if (node->type & exclude)
     stream = NULL;
 
@@ -585,7 +610,6 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
         else if (!(node->type & NODE_KFUNCTION_ID) &&
                  !get_parent_node(NODE_STENCIL, node) &&
                  !(node->type & NODE_MEMBER_ID) &&
-                 //!strstr(node->buffer, "ac_input") &&
                  !(node->type & NODE_INPUT) &&
                  !strstr(node->buffer, "__ldg"))
           fprintf(stream, "auto ");
@@ -1011,8 +1035,22 @@ void replace_dynamic_coeffs(ASTNode* node)
     replace_dynamic_coeffs(node->rhs);
 }
 void
+read_codegen_input(const ASTNode* node)
+{
+	//currently all codegen_inputs are assumed to be
+	//information about which fields are bundled to enable
+	//field[index] syntax
+	if(node->type & NODE_CODEGEN_INPUT)
+		push(&array_fields,node->buffer);
+	if(node->lhs)
+		read_codegen_input(node->lhs);
+	if(node->rhs)
+		read_codegen_input(node->rhs);
+}
+void
 generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 {
+  array_fields.size = 0;
   assert(root);
 
   gen_user_defines(root, "user_defines.h");
@@ -1045,6 +1083,8 @@ generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 
   // Device constants
   // gen_dconsts(root, stream);
+  read_codegen_input(root);
+  gen_field_array_reads(root);
   const char* array_datatypes[] = {"int","AcReal"};
   for (size_t i = 0; i < sizeof(array_datatypes)/sizeof(array_datatypes[0]); ++i)
   	gen_array_reads(root,gen_mem_accesses,array_datatypes[i]);
