@@ -112,7 +112,6 @@ gen_kernel_prefix(void)
          "};");
   printf("const int3 globalGridN = d_mesh_info.int3_params[AC_global_grid_n];");
   printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
-  printf("const int profile_idx = vertexIdx.z;");
 
   printf(
       "const int3 localCompdomainVertexIdx = (int3){"
@@ -146,7 +145,7 @@ gen_kernel_prefix(void)
   // ambiguous if the data *is* xy position dependent, and
   // I don't see a simple way to detect and warn about this
   printf("if (threadIdx.x == 0 && threadIdx.y == 0) {");
-  printf("vba.profiles.out[handle - NUM_FIELDS][profile_idx] = value;");
+  printf("vba.profiles.out[handle - NUM_FIELDS][vertexIdx.z] = value;");
   printf("}");
   printf("break;");
   printf("default:");
@@ -1958,11 +1957,8 @@ gen_kernel_body(const int curr_kernel)
                     printf("__ldg(&");
 #endif
                     printf("vba.profiles.in[%d]"
-                           "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-                           "vertexIdx.z+(%d))])",
-                           profile, -STENCIL_ORDER / 2 + width,
-                           -STENCIL_ORDER / 2 + height,
-                           -STENCIL_ORDER / 2 + depth);
+                           "[vertexIdx.z+(%d)])",
+                           profile, -STENCIL_ORDER / 2 + depth);
 #if !AC_USE_HIP
                     printf(")");
 #endif
@@ -1981,11 +1977,8 @@ gen_kernel_body(const int curr_kernel)
                     printf("__ldg(&");
 #endif
                     printf("vba.profiles.in[%d]"
-                           "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
-                           "vertexIdx.z+(%d))])",
-                           profile, -STENCIL_ORDER / 2 + width,
-                           -STENCIL_ORDER / 2 + height,
-                           -STENCIL_ORDER / 2 + depth);
+                           "[vertexIdx.z+(%d)])",
+                           profile, -STENCIL_ORDER / 2 + depth);
 #if !AC_USE_HIP
                     printf(")");
 #endif
