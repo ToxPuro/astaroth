@@ -985,6 +985,9 @@ AcResult acDeviceSwapBuffer(const Device device, const VertexBufferHandle handle
 AcResult acDeviceSwapBuffers(const Device device);
 
 /** */
+AcResult acDevicePrintProfiles(const Device device);
+
+/** */
 AcResult acDeviceLoadScalarUniform(const Device device, const Stream stream,
                                    const AcRealParam param, const AcReal value);
 
@@ -1147,6 +1150,16 @@ AcResult acDeviceReduceVecScal(const Device device, const Stream stream_type,
 /** */
 AcResult acDeviceReduceXYAverage(const Device device, const Stream stream, const Field field,
                                  const Profile profile);
+
+/** */
+AcResult acDeviceSwapProfileBuffer(const Device device, const Profile handle);
+
+/** */
+AcResult acDeviceSwapProfileBuffers(const Device device, const Profile* profiles,
+                                    const size_t num_profiles);
+
+/** */
+AcResult acDeviceSwapAllProfileBuffers(const Device device);
 
 /** */
 AcResult acDeviceRunMPITest(void);

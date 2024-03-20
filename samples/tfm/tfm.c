@@ -62,6 +62,17 @@ main(void)
     free(stencils);
     acDevicePrintInfo(device);
 
+    // Profiles
+    // acDevicePrintProfiles(device);
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, init_profiles, dims.m0, dims.m1);
+    acDeviceSwapAllProfileBuffers(device);
+    acDeviceSynchronizeStream(device, STREAM_ALL);
+    acDevicePrintProfiles(device);
+    return EXIT_SUCCESS;
+    // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, PROFILE_Umean_x);
+    // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUY, PROFILE_Umean_y);
+    // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUZ, PROFILE_Umean_z);
+
     // Boundconds
     acDeviceLoadMesh(device, STREAM_DEFAULT, model);
     acDevicePeriodicBoundconds(device, STREAM_DEFAULT, mmin, mmax);
@@ -81,7 +92,6 @@ main(void)
     const AcReal dt = (AcReal)FLT_EPSILON;
     for (int i = 0; i < 3; ++i)
         acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, nmin, nmax, dt);
-    // acDeviceLaunchKernel(device, STREAM_DEFAULT, meanfield_test, dims.n0, dims.n1);
 
     // Integration
     acDeviceLoadMesh(device, STREAM_DEFAULT, model);
@@ -202,11 +212,6 @@ main(void)
         }
     }
     fflush(stdout);
-
-    // Profiles
-    // const AcResult mean = acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, MEAN_UUX);
-    // printf("Mean result: %d\n", mean);
-    // fflush(stdout);
 
     if (pid == 0) {
         acHostMeshDestroy(&model);
