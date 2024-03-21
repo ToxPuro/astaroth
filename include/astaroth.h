@@ -1162,6 +1162,14 @@ AcResult acDeviceSwapProfileBuffers(const Device device, const Profile* profiles
 AcResult acDeviceSwapAllProfileBuffers(const Device device);
 
 /** */
+AcResult acDeviceLoadProfile(const Device device, const AcReal* hostprofile,
+                             const size_t hostprofile_count, const Profile profile);
+
+/** */
+AcResult acDeviceStoreProfile(const Device device, const Profile profile, AcReal* hostprofile,
+                              const size_t hostprofile_count);
+
+/** */
 AcResult acDeviceRunMPITest(void);
 
 /** */

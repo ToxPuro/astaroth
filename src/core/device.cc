@@ -871,7 +871,7 @@ acDeviceReduceXYAverage(const Device device, const Stream stream, const Field fi
                                                               device->vba.in[field], start, end,
                                                               device->reduce_scratchpads,
                                                               device->scratchpad_size);
-        printf("%zu Profile: %g\n", k, result);
+        // printf("%zu Profile: %g\n", k, result);
         // Could be optimized by performing the reduction completely in
         // device memory without the redundant device-host-device transfer
         cudaMemcpy(&device->vba.profiles.in[profile][k], &result, sizeof(result),
@@ -910,6 +910,30 @@ acDeviceSwapAllProfileBuffers(const Device device)
         retval |= acDeviceSwapProfileBuffer(device, (Profile)i);
 
     return (AcResult)retval;
+}
+
+AcResult
+acDeviceLoadProfile(const Device device, const AcReal* hostprofile, const size_t hostprofile_count,
+                    const Profile profile)
+{
+    cudaSetDevice(device->id);
+    ERRCHK_ALWAYS(hostprofile_count == device->vba.profiles.count);
+    ERRCHK_CUDA(cudaMemcpy(device->vba.profiles.in[profile], hostprofile,
+                           sizeof(device->vba.profiles.in[profile][0]) * device->vba.profiles.count,
+                           cudaMemcpyHostToDevice));
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceStoreProfile(const Device device, const Profile profile, AcReal* hostprofile,
+                     const size_t hostprofile_count)
+{
+    cudaSetDevice(device->id);
+    ERRCHK_ALWAYS(hostprofile_count == device->vba.profiles.count);
+    ERRCHK_CUDA(cudaMemcpy(hostprofile, device->vba.profiles.in[profile],
+                           sizeof(device->vba.profiles.in[profile][0]) * device->vba.profiles.count,
+                           cudaMemcpyDeviceToHost));
+    return AC_SUCCESS;
 }
 
 AcResult
