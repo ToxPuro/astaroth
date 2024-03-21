@@ -16,11 +16,11 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifdef LTFM
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
 
+#ifdef LTFM
 #if AC_MPI_ENABLED
 #include <mpi.h>
 

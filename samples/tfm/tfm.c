@@ -16,13 +16,13 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifdef LTFM
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
 
 #include "stencil_loader.h"
 
+#ifdef LTFM
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 #define NUM_INTEGRATION_STEPS (100)
 
