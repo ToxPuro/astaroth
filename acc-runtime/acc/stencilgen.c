@@ -1919,7 +1919,7 @@ gen_kernel_body(const int curr_kernel)
     // }
 
     // Profiles
-    const int PROFILE_BLOCK_SIZE = 8;
+    const int PROFILE_BLOCK_SIZE = NUM_PROFILES;
     const int NUM_PROFILE_BLOCKS = (NUM_PROFILES + PROFILE_BLOCK_SIZE - 1) /
                                    PROFILE_BLOCK_SIZE;
     if (PROFILE_BLOCK_SIZE * NUM_PROFILE_BLOCKS < NUM_PROFILES)
