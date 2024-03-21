@@ -732,3 +732,9 @@ Kernel diff_profiles() {
         write(i, derz(i))
     }
 }
+
+Kernel diff2_profiles() {
+    for i in PROFILE_Umean_x:PROFILE_Umean_x+NUM_PROFILES {
+        write(i, derzz(i))
+    }
+}
