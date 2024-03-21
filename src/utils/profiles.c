@@ -80,8 +80,6 @@ acHostProfileDerzz(const AcReal* in, const size_t count, const AcReal grid_spaci
 #endif
 
     return xcorr(in, count, filter, ARRAY_LENGTH(filter), out);
-
-    return xcorr(in, count, filter, ARRAY_LENGTH(filter), out);
 }
 
 AcResult
