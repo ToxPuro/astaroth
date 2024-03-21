@@ -25,6 +25,12 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 #define NUM_INTEGRATION_STEPS (100)
 
+static inline AcReal
+randr()
+{
+    return (AcReal)(rand()) / (AcReal)(RAND_MAX);
+}
+
 int
 main(void)
 {
@@ -62,6 +68,11 @@ main(void)
     free(stencils);
     acDevicePrintInfo(device);
 
+    // Profiles
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, init_profiles, dims.m0, dims.m1);
+    acDeviceSwapAllProfileBuffers(device);
+    // acDevicePrintProfiles(device);
+
     // Boundconds
     acDeviceLoadMesh(device, STREAM_DEFAULT, model);
     acDevicePeriodicBoundconds(device, STREAM_DEFAULT, mmin, mmax);
@@ -81,7 +92,6 @@ main(void)
     const AcReal dt = (AcReal)FLT_EPSILON;
     for (int i = 0; i < 3; ++i)
         acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, nmin, nmax, dt);
-    // acDeviceLaunchKernel(device, STREAM_DEFAULT, meanfield_test, dims.n0, dims.n1);
 
     // Integration
     acDeviceLoadMesh(device, STREAM_DEFAULT, model);
@@ -204,9 +214,123 @@ main(void)
     fflush(stdout);
 
     // Profiles
-    const AcResult mean = acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, MEAN_UUX);
-    printf("Mean result: %d\n", mean);
+    if (pid == 0)
+        printf("---Test: Profile XY averages---\n");
+
+    {
+        const size_t field   = VTXBUF_UUX;
+        const size_t profile = PROFILE_B22mean_z;
+        for (size_t k = dims.m0.z; k < as_size_t(dims.m1.z); ++k) {
+            for (size_t j = dims.n0.y; j < as_size_t(dims.n1.y); ++j) {
+                for (size_t i = dims.n0.x; i < as_size_t(dims.n1.x); ++i) {
+                    const size_t si = (i - dims.n0.x) + (j - dims.n0.y) * dims.n1.x;
+                    const int salt  = 2 * (si % 2) - 1; // Generates -1,1,-1,1,...
+                    // Nice mathematical feature: nxy is always even for nx, ny > 1
+                    model.vertex_buffer[field][i + j * dims.m1.x +
+                                               k * dims.m1.x * dims.m1.y] = (int)k + salt;
+                }
+            }
+            // If one of the dimensions is 1 and the other one is odd
+            if ((dims.nn.x * dims.nn.y) % 2) //
+                ++model.vertex_buffer[field][dims.n0.x + dims.n0.y * dims.m1.x +
+                                             k * dims.m1.x * dims.m1.y];
+        }
+        acDeviceLoadMesh(device, STREAM_DEFAULT, model);
+        acDeviceReduceXYAverage(device, STREAM_DEFAULT, field, profile);
+
+        const size_t profile_count = dims.m1.z;
+        AcReal candidate_profile[profile_count];
+        acDeviceStoreProfile(device, profile, candidate_profile, dims.m1.z);
+
+        AcReal model_profile[profile_count];
+        acHostReduceXYAverage(model.vertex_buffer[field], dims, model_profile);
+
+        Error error = {.abs_error = -1};
+        for (size_t i = 0; i < profile_count; ++i) {
+            Error curr_error = acGetError(model_profile[i], candidate_profile[i]);
+
+            if (curr_error.abs_error > error.abs_error)
+                error = curr_error;
+        }
+        printf("Maximum absolute error:\n");
+        acEvalError("XY averages", error);
+    }
     fflush(stdout);
+
+    // TODO: Cleanup start
+    if (pid == 0)
+        printf("---Test: Profile derivatives---\n");
+
+    { // derz
+        const size_t profile       = PROFILE_B22mean_z;
+        const size_t profile_count = dims.m1.z;
+
+        AcReal initial_profile[profile_count];
+        AcReal model_profile[profile_count];
+        AcReal candidate_profile[profile_count];
+        for (size_t i = 0; i < profile_count; ++i)
+            initial_profile[i] = 2 * randr() - 1;
+
+        // Device
+        acDeviceLoadProfile(device, initial_profile, profile_count, profile);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, diff_profiles, dims.n0, dims.n1);
+        acDeviceSwapAllProfileBuffers(device);
+        acDeviceSynchronizeStream(device, STREAM_ALL);
+        acDeviceStoreProfile(device, profile, candidate_profile, profile_count);
+
+        // Host
+        acHostProfileDerz(initial_profile, profile_count, info.real_params[AC_dsz], model_profile);
+
+        // Verify
+        Error error = {.abs_error = -1};
+        for (size_t i = dims.n0.z; i < as_size_t(dims.n1.z); ++i) {
+            Error curr_error = acGetError(model_profile[i], candidate_profile[i]);
+
+            // printf("Initial: %g, Model: %g, candidate %g\n", initial_profile[i],
+            // model_profile[i],
+            //        candidate_profile[i]);
+            if (curr_error.abs_error > error.abs_error)
+                error = curr_error;
+        }
+        printf("Maximum absolute error:\n");
+        acEvalError("Profile derz", error);
+    }
+    { // derzz
+        const size_t profile       = PROFILE_B22mean_z;
+        const size_t profile_count = dims.m1.z;
+
+        AcReal initial_profile[profile_count];
+        AcReal model_profile[profile_count];
+        AcReal candidate_profile[profile_count];
+        for (size_t i = 0; i < profile_count; ++i)
+            initial_profile[i] = 2 * randr() - 1;
+
+        // Device
+        acDeviceLoadProfile(device, initial_profile, profile_count, profile);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, diff2_profiles, dims.n0, dims.n1);
+        acDeviceSwapAllProfileBuffers(device);
+        acDeviceSynchronizeStream(device, STREAM_ALL);
+        acDeviceStoreProfile(device, profile, candidate_profile, profile_count);
+
+        // Host
+        acHostProfileDerzz(initial_profile, profile_count, info.real_params[AC_dsz], model_profile);
+
+        // Verify
+        Error error = {.abs_error = -1};
+        for (size_t i = dims.n0.z; i < as_size_t(dims.n1.z); ++i) {
+            Error curr_error = acGetError(model_profile[i], candidate_profile[i]);
+
+            // printf("Initial: %g, Model: %g, candidate %g\n", initial_profile[i],
+            // model_profile[i],
+            //        candidate_profile[i]);
+            if (curr_error.abs_error > error.abs_error)
+                error = curr_error;
+        }
+        printf("Maximum absolute error:\n");
+        acEvalError("Profile derz", error);
+    }
+    fflush(stdout);
+    // TODO: Cleanup end
 
     if (pid == 0) {
         acHostMeshDestroy(&model);

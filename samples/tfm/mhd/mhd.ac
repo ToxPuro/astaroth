@@ -24,19 +24,35 @@ Field VTXBUF_ENTROPY
 #endif
 
 #if LTFM
-// Test fields
-Field TF_B11X, TF_B11Y, TF_B11Z
-Field TF_B12X, TF_B12Y, TF_B12Z
-Field TF_B21X, TF_B21Y, TF_B21Z
-Field TF_B22X, TF_B22Y, TF_B22Z
+// Aliases for VTXBUF_UU to avoid confusion with the notation convention
+// for mean and fluctuating fields
+#define FIELD_u_x (VTXBUF_UUX)
+#define FIELD_u_y (VTXBUF_UUY)
+#define FIELD_u_z (VTXBUF_UUZ)
 
-#define TF_B11 Field3(TF_B11X, TF_B11Y, TF_B11Z)
-#define TF_B12 Field3(TF_B12X, TF_B12Y, TF_B12Z)
-#define TF_B21 Field3(TF_B21X, TF_B21Y, TF_B21Z)
-#define TF_B22 Field3(TF_B22X, TF_B22Y, TF_B22Z)
+// Test fields
+Field TF_b11_x, TF_b11_y, TF_b11_z
+Field TF_b12_x, TF_b12_y, TF_b12_z
+Field TF_b21_x, TF_b21_y, TF_b21_z
+Field TF_b22_x, TF_b22_y, TF_b22_z
+
+#define TF_b11 Field3(TF_b11_x, TF_b11_y, TF_b11_z)
+#define TF_b12 Field3(TF_b12_x, TF_b12_y, TF_b12_z)
+#define TF_b21 Field3(TF_b21_x, TF_b21_y, TF_b21_z)
+#define TF_b22 Field3(TF_b22_x, TF_b22_y, TF_b22_z)
 
 // Mean-field profiles
-Profile MEAN_UUX, MEAN_UUY, MEAN_UUZ
+Profile PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z
+
+Profile PROFILE_ucrossb11mean_x, PROFILE_ucrossb11mean_y, PROFILE_ucrossb11mean_z
+Profile PROFILE_ucrossb12mean_x, PROFILE_ucrossb12mean_y, PROFILE_ucrossb12mean_z
+Profile PROFILE_ucrossb21mean_x, PROFILE_ucrossb21mean_y, PROFILE_ucrossb21mean_z
+Profile PROFILE_ucrossb22mean_x, PROFILE_ucrossb22mean_y, PROFILE_ucrossb22mean_z
+
+Profile PROFILE_B11mean_x, PROFILE_B11mean_y, PROFILE_B11mean_z
+Profile PROFILE_B12mean_x, PROFILE_B12mean_y, PROFILE_B12mean_z
+Profile PROFILE_B21mean_x, PROFILE_B21mean_y, PROFILE_B21mean_z
+Profile PROFILE_B22mean_x, PROFILE_B22mean_y, PROFILE_B22mean_z
 #endif
 
 // Device constants
@@ -457,11 +473,6 @@ entropy() {
 }
 #endif
 
-tfm_induction() {
-    // Placeholder
-    return value(MEAN_UUX) * AC_eta * veclaplace(TF_B11)
-}
-
 // Integration: single-pass
 rk3(s0, s1, roc) {
     /*
@@ -480,6 +491,113 @@ rk3(s0, s1, roc) {
     real beta  = 1., 1. / 3., 15./ 16., 8. / 15.
 
     return s1 + beta[AC_step_number + 1] * ((alpha[AC_step_number] / beta[AC_step_number]) * (s1 - s0) + roc * AC_dt)
+}
+
+// Integration: two-pass
+rk3_intermediate(w, roc) {
+    real alpha = 0., -5./9., -153. / 128.
+    return alpha[AC_step_number] * w + roc * AC_dt
+    /*
+    // TODO NOTE abysmal performance on AMD, needs a workaround like in rk3() 
+    if AC_step_number > 0 {
+        return alpha[AC_step_number] * w + roc * AC_dt
+    } else {
+        return roc * AC_dt
+    }
+    */
+}
+
+rk3_final(f, w) {
+    real beta = 1. / 3., 15./ 16., 8. / 15.
+
+    /*
+    #ifndef NDEBUG
+    if (AC_step_number >= len(beta)) {
+        print("AC_step_number invalid: '%d'\n", AC_step_number)
+    }
+    #endif
+    */
+
+    return f + beta[AC_step_number] * w
+}
+
+roc_TF_b21_x() {
+    return AC_eta*(derxx(TF_b21_x) + deryy(TF_b21_x) + derzz(TF_b21_x)) + FIELD_u_x*derz(PROFILE_B21mean_z) + FIELD_u_x*dery(TF_b21_y) + FIELD_u_x*derz(TF_b21_z) - FIELD_u_y*dery(TF_b21_x) - FIELD_u_z*derz(PROFILE_B21mean_x) - FIELD_u_z*derz(TF_b21_x) - PROFILE_B21mean_x*dery(FIELD_u_y) - PROFILE_B21mean_x*derz(FIELD_u_z) + PROFILE_B21mean_y*dery(FIELD_u_x) + PROFILE_B21mean_z*derz(FIELD_u_x) + PROFILE_Umean_x*dery(TF_b21_y) + PROFILE_Umean_x*derz(TF_b21_z) - PROFILE_Umean_y*dery(TF_b21_x) - PROFILE_Umean_z*derz(TF_b21_x) - TF_b21_x*dery(FIELD_u_y) - TF_b21_x*derz(FIELD_u_z) - TF_b21_x*derz(PROFILE_Umean_z) + TF_b21_y*dery(FIELD_u_x) + TF_b21_z*derz(FIELD_u_x) + TF_b21_z*derz(PROFILE_Umean_x) + derz(PROFILE_ucrossb21mean_y)
+}
+roc_TF_b21_y() {
+    return AC_eta*(derxx(TF_b21_y) + deryy(TF_b21_y) + derzz(TF_b21_y)) - FIELD_u_x*derx(TF_b21_y) + FIELD_u_y*derz(PROFILE_B21mean_z) + FIELD_u_y*derx(TF_b21_x) + FIELD_u_y*derz(TF_b21_z) - FIELD_u_z*derz(PROFILE_B21mean_y) - FIELD_u_z*derz(TF_b21_y) + PROFILE_B21mean_x*derx(FIELD_u_y) - PROFILE_B21mean_y*derx(FIELD_u_x) - PROFILE_B21mean_y*derz(FIELD_u_z) + PROFILE_B21mean_z*derz(FIELD_u_y) - PROFILE_Umean_x*derx(TF_b21_y) + PROFILE_Umean_y*derx(TF_b21_x) + PROFILE_Umean_y*derz(TF_b21_z) - PROFILE_Umean_z*derz(TF_b21_y) + TF_b21_x*derx(FIELD_u_y) - TF_b21_y*derx(FIELD_u_x) - TF_b21_y*derz(FIELD_u_z) - TF_b21_y*derz(PROFILE_Umean_z) + TF_b21_z*derz(FIELD_u_y) + TF_b21_z*derz(PROFILE_Umean_y) - derz(PROFILE_ucrossb21mean_x)
+}
+roc_TF_b21_z() {
+    return AC_eta*(derxx(TF_b21_z) + deryy(TF_b21_z) + derzz(TF_b21_z)) - FIELD_u_x*derx(TF_b21_z) - FIELD_u_y*dery(TF_b21_z) + FIELD_u_z*derx(TF_b21_x) + FIELD_u_z*dery(TF_b21_y) + PROFILE_B21mean_x*derx(FIELD_u_z) + PROFILE_B21mean_y*dery(FIELD_u_z) - PROFILE_B21mean_z*derx(FIELD_u_x) - PROFILE_B21mean_z*dery(FIELD_u_y) - PROFILE_Umean_x*derx(TF_b21_z) - PROFILE_Umean_y*dery(TF_b21_z) + PROFILE_Umean_z*derx(TF_b21_x) + PROFILE_Umean_z*dery(TF_b21_y) + TF_b21_x*derx(FIELD_u_z) + TF_b21_y*dery(FIELD_u_z) - TF_b21_z*derx(FIELD_u_x) - TF_b21_z*dery(FIELD_u_y)
+}
+roc_TF_b11_x() {
+    return AC_eta*(derxx(TF_b11_x) + deryy(TF_b11_x) + derzz(TF_b11_x)) + FIELD_u_x*derz(PROFILE_B11mean_z) + FIELD_u_x*dery(TF_b11_y) + FIELD_u_x*derz(TF_b11_z) - FIELD_u_y*dery(TF_b11_x) - FIELD_u_z*derz(PROFILE_B11mean_x) - FIELD_u_z*derz(TF_b11_x) - PROFILE_B11mean_x*dery(FIELD_u_y) - PROFILE_B11mean_x*derz(FIELD_u_z) + PROFILE_B11mean_y*dery(FIELD_u_x) + PROFILE_B11mean_z*derz(FIELD_u_x) + PROFILE_Umean_x*dery(TF_b11_y) + PROFILE_Umean_x*derz(TF_b11_z) - PROFILE_Umean_y*dery(TF_b11_x) - PROFILE_Umean_z*derz(TF_b11_x) - TF_b11_x*dery(FIELD_u_y) - TF_b11_x*derz(FIELD_u_z) - TF_b11_x*derz(PROFILE_Umean_z) + TF_b11_y*dery(FIELD_u_x) + TF_b11_z*derz(FIELD_u_x) + TF_b11_z*derz(PROFILE_Umean_x) + derz(PROFILE_ucrossb11mean_y)
+}
+roc_TF_b11_y() {
+    return AC_eta*(derxx(TF_b11_y) + deryy(TF_b11_y) + derzz(TF_b11_y)) - FIELD_u_x*derx(TF_b11_y) + FIELD_u_y*derz(PROFILE_B11mean_z) + FIELD_u_y*derx(TF_b11_x) + FIELD_u_y*derz(TF_b11_z) - FIELD_u_z*derz(PROFILE_B11mean_y) - FIELD_u_z*derz(TF_b11_y) + PROFILE_B11mean_x*derx(FIELD_u_y) - PROFILE_B11mean_y*derx(FIELD_u_x) - PROFILE_B11mean_y*derz(FIELD_u_z) + PROFILE_B11mean_z*derz(FIELD_u_y) - PROFILE_Umean_x*derx(TF_b11_y) + PROFILE_Umean_y*derx(TF_b11_x) + PROFILE_Umean_y*derz(TF_b11_z) - PROFILE_Umean_z*derz(TF_b11_y) + TF_b11_x*derx(FIELD_u_y) - TF_b11_y*derx(FIELD_u_x) - TF_b11_y*derz(FIELD_u_z) - TF_b11_y*derz(PROFILE_Umean_z) + TF_b11_z*derz(FIELD_u_y) + TF_b11_z*derz(PROFILE_Umean_y) - derz(PROFILE_ucrossb11mean_x)
+}
+roc_TF_b11_z() {
+    return AC_eta*(derxx(TF_b11_z) + deryy(TF_b11_z) + derzz(TF_b11_z)) - FIELD_u_x*derx(TF_b11_z) - FIELD_u_y*dery(TF_b11_z) + FIELD_u_z*derx(TF_b11_x) + FIELD_u_z*dery(TF_b11_y) + PROFILE_B11mean_x*derx(FIELD_u_z) + PROFILE_B11mean_y*dery(FIELD_u_z) - PROFILE_B11mean_z*derx(FIELD_u_x) - PROFILE_B11mean_z*dery(FIELD_u_y) - PROFILE_Umean_x*derx(TF_b11_z) - PROFILE_Umean_y*dery(TF_b11_z) + PROFILE_Umean_z*derx(TF_b11_x) + PROFILE_Umean_z*dery(TF_b11_y) + TF_b11_x*derx(FIELD_u_z) + TF_b11_y*dery(FIELD_u_z) - TF_b11_z*derx(FIELD_u_x) - TF_b11_z*dery(FIELD_u_y)
+}
+roc_TF_b12_x() {
+    return AC_eta*(derxx(TF_b12_x) + deryy(TF_b12_x) + derzz(TF_b12_x)) + FIELD_u_x*derz(PROFILE_B12mean_z) + FIELD_u_x*dery(TF_b12_y) + FIELD_u_x*derz(TF_b12_z) - FIELD_u_y*dery(TF_b12_x) - FIELD_u_z*derz(PROFILE_B12mean_x) - FIELD_u_z*derz(TF_b12_x) - PROFILE_B12mean_x*dery(FIELD_u_y) - PROFILE_B12mean_x*derz(FIELD_u_z) + PROFILE_B12mean_y*dery(FIELD_u_x) + PROFILE_B12mean_z*derz(FIELD_u_x) + PROFILE_Umean_x*dery(TF_b12_y) + PROFILE_Umean_x*derz(TF_b12_z) - PROFILE_Umean_y*dery(TF_b12_x) - PROFILE_Umean_z*derz(TF_b12_x) - TF_b12_x*dery(FIELD_u_y) - TF_b12_x*derz(FIELD_u_z) - TF_b12_x*derz(PROFILE_Umean_z) + TF_b12_y*dery(FIELD_u_x) + TF_b12_z*derz(FIELD_u_x) + TF_b12_z*derz(PROFILE_Umean_x) + derz(PROFILE_ucrossb12mean_y)
+}
+roc_TF_b12_y() {
+    return AC_eta*(derxx(TF_b12_y) + deryy(TF_b12_y) + derzz(TF_b12_y)) - FIELD_u_x*derx(TF_b12_y) + FIELD_u_y*derz(PROFILE_B12mean_z) + FIELD_u_y*derx(TF_b12_x) + FIELD_u_y*derz(TF_b12_z) - FIELD_u_z*derz(PROFILE_B12mean_y) - FIELD_u_z*derz(TF_b12_y) + PROFILE_B12mean_x*derx(FIELD_u_y) - PROFILE_B12mean_y*derx(FIELD_u_x) - PROFILE_B12mean_y*derz(FIELD_u_z) + PROFILE_B12mean_z*derz(FIELD_u_y) - PROFILE_Umean_x*derx(TF_b12_y) + PROFILE_Umean_y*derx(TF_b12_x) + PROFILE_Umean_y*derz(TF_b12_z) - PROFILE_Umean_z*derz(TF_b12_y) + TF_b12_x*derx(FIELD_u_y) - TF_b12_y*derx(FIELD_u_x) - TF_b12_y*derz(FIELD_u_z) - TF_b12_y*derz(PROFILE_Umean_z) + TF_b12_z*derz(FIELD_u_y) + TF_b12_z*derz(PROFILE_Umean_y) - derz(PROFILE_ucrossb12mean_x)
+}
+roc_TF_b12_z() {
+    return AC_eta*(derxx(TF_b12_z) + deryy(TF_b12_z) + derzz(TF_b12_z)) - FIELD_u_x*derx(TF_b12_z) - FIELD_u_y*dery(TF_b12_z) + FIELD_u_z*derx(TF_b12_x) + FIELD_u_z*dery(TF_b12_y) + PROFILE_B12mean_x*derx(FIELD_u_z) + PROFILE_B12mean_y*dery(FIELD_u_z) - PROFILE_B12mean_z*derx(FIELD_u_x) - PROFILE_B12mean_z*dery(FIELD_u_y) - PROFILE_Umean_x*derx(TF_b12_z) - PROFILE_Umean_y*dery(TF_b12_z) + PROFILE_Umean_z*derx(TF_b12_x) + PROFILE_Umean_z*dery(TF_b12_y) + TF_b12_x*derx(FIELD_u_z) + TF_b12_y*dery(FIELD_u_z) - TF_b12_z*derx(FIELD_u_x) - TF_b12_z*dery(FIELD_u_y)
+}
+roc_TF_b22_x() {
+    return AC_eta*(derxx(TF_b22_x) + deryy(TF_b22_x) + derzz(TF_b22_x)) + FIELD_u_x*derz(PROFILE_B22mean_z) + FIELD_u_x*dery(TF_b22_y) + FIELD_u_x*derz(TF_b22_z) - FIELD_u_y*dery(TF_b22_x) - FIELD_u_z*derz(PROFILE_B22mean_x) - FIELD_u_z*derz(TF_b22_x) - PROFILE_B22mean_x*dery(FIELD_u_y) - PROFILE_B22mean_x*derz(FIELD_u_z) + PROFILE_B22mean_y*dery(FIELD_u_x) + PROFILE_B22mean_z*derz(FIELD_u_x) + PROFILE_Umean_x*dery(TF_b22_y) + PROFILE_Umean_x*derz(TF_b22_z) - PROFILE_Umean_y*dery(TF_b22_x) - PROFILE_Umean_z*derz(TF_b22_x) - TF_b22_x*dery(FIELD_u_y) - TF_b22_x*derz(FIELD_u_z) - TF_b22_x*derz(PROFILE_Umean_z) + TF_b22_y*dery(FIELD_u_x) + TF_b22_z*derz(FIELD_u_x) + TF_b22_z*derz(PROFILE_Umean_x) + derz(PROFILE_ucrossb22mean_y)
+}
+roc_TF_b22_y() {
+    return AC_eta*(derxx(TF_b22_y) + deryy(TF_b22_y) + derzz(TF_b22_y)) - FIELD_u_x*derx(TF_b22_y) + FIELD_u_y*derz(PROFILE_B22mean_z) + FIELD_u_y*derx(TF_b22_x) + FIELD_u_y*derz(TF_b22_z) - FIELD_u_z*derz(PROFILE_B22mean_y) - FIELD_u_z*derz(TF_b22_y) + PROFILE_B22mean_x*derx(FIELD_u_y) - PROFILE_B22mean_y*derx(FIELD_u_x) - PROFILE_B22mean_y*derz(FIELD_u_z) + PROFILE_B22mean_z*derz(FIELD_u_y) - PROFILE_Umean_x*derx(TF_b22_y) + PROFILE_Umean_y*derx(TF_b22_x) + PROFILE_Umean_y*derz(TF_b22_z) - PROFILE_Umean_z*derz(TF_b22_y) + TF_b22_x*derx(FIELD_u_y) - TF_b22_y*derx(FIELD_u_x) - TF_b22_y*derz(FIELD_u_z) - TF_b22_y*derz(PROFILE_Umean_z) + TF_b22_z*derz(FIELD_u_y) + TF_b22_z*derz(PROFILE_Umean_y) - derz(PROFILE_ucrossb22mean_x)
+}
+roc_TF_b22_z() {
+    return AC_eta*(derxx(TF_b22_z) + deryy(TF_b22_z) + derzz(TF_b22_z)) - FIELD_u_x*derx(TF_b22_z) - FIELD_u_y*dery(TF_b22_z) + FIELD_u_z*derx(TF_b22_x) + FIELD_u_z*dery(TF_b22_y) + PROFILE_B22mean_x*derx(FIELD_u_z) + PROFILE_B22mean_y*dery(FIELD_u_z) - PROFILE_B22mean_z*derx(FIELD_u_x) - PROFILE_B22mean_z*dery(FIELD_u_y) - PROFILE_Umean_x*derx(TF_b22_z) - PROFILE_Umean_y*dery(TF_b22_z) + PROFILE_Umean_z*derx(TF_b22_x) + PROFILE_Umean_z*dery(TF_b22_y) + TF_b22_x*derx(FIELD_u_z) + TF_b22_y*dery(FIELD_u_z) - TF_b22_z*derx(FIELD_u_x) - TF_b22_z*dery(FIELD_u_y)
+}
+tfm_singlepass() {
+    write(TF_b21_x, rk3(previous(TF_b21_x), value(TF_b21_x), roc_TF_b21_x()))
+    write(TF_b21_y, rk3(previous(TF_b21_y), value(TF_b21_y), roc_TF_b21_y()))
+    write(TF_b21_z, rk3(previous(TF_b21_z), value(TF_b21_z), roc_TF_b21_z()))
+    write(TF_b11_x, rk3(previous(TF_b11_x), value(TF_b11_x), roc_TF_b11_x()))
+    write(TF_b11_y, rk3(previous(TF_b11_y), value(TF_b11_y), roc_TF_b11_y()))
+    write(TF_b11_z, rk3(previous(TF_b11_z), value(TF_b11_z), roc_TF_b11_z()))
+    write(TF_b12_x, rk3(previous(TF_b12_x), value(TF_b12_x), roc_TF_b12_x()))
+    write(TF_b12_y, rk3(previous(TF_b12_y), value(TF_b12_y), roc_TF_b12_y()))
+    write(TF_b12_z, rk3(previous(TF_b12_z), value(TF_b12_z), roc_TF_b12_z()))
+    write(TF_b22_x, rk3(previous(TF_b22_x), value(TF_b22_x), roc_TF_b22_x()))
+    write(TF_b22_y, rk3(previous(TF_b22_y), value(TF_b22_y), roc_TF_b22_y()))
+    write(TF_b22_z, rk3(previous(TF_b22_z), value(TF_b22_z), roc_TF_b22_z()))
+}
+tfm_twopass_intermediate() {
+    write(TF_b21_x, rk3_intermediate(previous(TF_b21_x), roc_TF_b21_x()))
+    write(TF_b21_y, rk3_intermediate(previous(TF_b21_y), roc_TF_b21_y()))
+    write(TF_b21_z, rk3_intermediate(previous(TF_b21_z), roc_TF_b21_z()))
+    write(TF_b11_x, rk3_intermediate(previous(TF_b11_x), roc_TF_b11_x()))
+    write(TF_b11_y, rk3_intermediate(previous(TF_b11_y), roc_TF_b11_y()))
+    write(TF_b11_z, rk3_intermediate(previous(TF_b11_z), roc_TF_b11_z()))
+    write(TF_b12_x, rk3_intermediate(previous(TF_b12_x), roc_TF_b12_x()))
+    write(TF_b12_y, rk3_intermediate(previous(TF_b12_y), roc_TF_b12_y()))
+    write(TF_b12_z, rk3_intermediate(previous(TF_b12_z), roc_TF_b12_z()))
+    write(TF_b22_x, rk3_intermediate(previous(TF_b22_x), roc_TF_b22_x()))
+    write(TF_b22_y, rk3_intermediate(previous(TF_b22_y), roc_TF_b22_y()))
+    write(TF_b22_z, rk3_intermediate(previous(TF_b22_z), roc_TF_b22_z()))
+}
+tfm_twopass_final() {
+    write(TF_b21_x, rk3_final(previous(TF_b21_x), value(TF_b21_x)))
+    write(TF_b21_y, rk3_final(previous(TF_b21_y), value(TF_b21_y)))
+    write(TF_b21_z, rk3_final(previous(TF_b21_z), value(TF_b21_z)))
+    write(TF_b11_x, rk3_final(previous(TF_b11_x), value(TF_b11_x)))
+    write(TF_b11_y, rk3_final(previous(TF_b11_y), value(TF_b11_y)))
+    write(TF_b11_z, rk3_final(previous(TF_b11_z), value(TF_b11_z)))
+    write(TF_b12_x, rk3_final(previous(TF_b12_x), value(TF_b12_x)))
+    write(TF_b12_y, rk3_final(previous(TF_b12_y), value(TF_b12_y)))
+    write(TF_b12_z, rk3_final(previous(TF_b12_z), value(TF_b12_z)))
+    write(TF_b22_x, rk3_final(previous(TF_b22_x), value(TF_b22_x)))
+    write(TF_b22_y, rk3_final(previous(TF_b22_y), value(TF_b22_y)))
+    write(TF_b22_z, rk3_final(previous(TF_b22_z), value(TF_b22_z)))
 }
 
 Kernel singlepass_solve() {
@@ -514,36 +632,11 @@ Kernel singlepass_solve() {
     write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y))
     write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z))
 #endif
+
+#if LTFM
+    tfm_singlepass()
+#endif
 }
-
-// Integration: two-pass
-rk3_intermediate(w, roc) {
-    real alpha = 0., -5./9., -153. / 128.
-    return alpha[AC_step_number] * w + roc * AC_dt
-    /*
-    // TODO NOTE abysmal performance on AMD, needs a workaround like in rk3() 
-    if AC_step_number > 0 {
-        return alpha[AC_step_number] * w + roc * AC_dt
-    } else {
-        return roc * AC_dt
-    }
-    */
-}
-
-rk3_final(f, w) {
-    real beta = 1. / 3., 15./ 16., 8. / 15.
-
-    /*
-    #ifndef NDEBUG
-    if (AC_step_number >= len(beta)) {
-        print("AC_step_number invalid: '%d'\n", AC_step_number)
-    }
-    #endif
-    */
-
-    return f + beta[AC_step_number] * w
-}
-
 
 Kernel twopass_solve_intermediate() {
     write(VTXBUF_LNRHO, rk3_intermediate(previous(VTXBUF_LNRHO), continuity()))
@@ -584,6 +677,10 @@ Kernel twopass_solve_intermediate() {
     //
     // Is this correct?
     //
+
+    #if LTFM
+        tfm_twopass_intermediate()
+    #endif
 }
 
 Kernel twopass_solve_final() {
@@ -618,8 +715,26 @@ Kernel twopass_solve_final() {
         write(BFIELDZ, value(BFIELDZ))
     }
     #endif
+
+    #if LTFM
+        tfm_twopass_final()
+    #endif
 }
 
-Kernel meanfield_test() {
-    write(TF_B11X, value(TF_B11X) * value(MEAN_UUX) * derz(MEAN_UUX))
+Kernel init_profiles() {
+    for i in PROFILE_Umean_x:PROFILE_Umean_x+NUM_PROFILES {
+        write(i, 0)
+    }
+}
+
+Kernel diff_profiles() {
+    for i in PROFILE_Umean_x:PROFILE_Umean_x+NUM_PROFILES {
+        write(i, derz(i))
+    }
+}
+
+Kernel diff2_profiles() {
+    for i in PROFILE_Umean_x:PROFILE_Umean_x+NUM_PROFILES {
+        write(i, derzz(i))
+    }
 }

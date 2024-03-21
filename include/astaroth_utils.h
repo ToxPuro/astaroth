@@ -91,6 +91,15 @@ AcResult acHostMeshWriteToFile(const AcMesh mesh, const size_t id);
 
 AcResult acHostMeshReadFromFile(const size_t id, AcMesh* mesh);
 
+// Profiles
+AcResult acHostProfileDerz(const AcReal* in, const size_t count, const AcReal grid_spacing,
+                           AcReal* out);
+
+AcResult acHostProfileDerzz(const AcReal* in, const size_t count, const AcReal grid_spacing,
+                            AcReal* out);
+
+AcResult acHostReduceXYAverage(const AcReal* in, const AcMeshDims dims, AcReal* out);
+
 // Logging utils
 
 /* Log a message with a timestamp from the root proc (if pid == 0) */
