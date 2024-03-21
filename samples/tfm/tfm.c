@@ -16,6 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef LTFM
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
@@ -346,3 +347,14 @@ main(void)
 
     return EXIT_SUCCESS;
 }
+#else // LTFM
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(void)
+{
+    printf("Error: LTFM was not enabled.\n");
+    return EXIT_FAILURE;
+}
+#endif

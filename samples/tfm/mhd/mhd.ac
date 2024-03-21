@@ -521,6 +521,7 @@ rk3_final(f, w) {
     return f + beta[AC_step_number] * w
 }
 
+#if LTFM
 roc_TF_b21_x() {
     return AC_eta*(derxx(TF_b21_x) + deryy(TF_b21_x) + derzz(TF_b21_x)) + FIELD_u_x*derz(PROFILE_B21mean_z) + FIELD_u_x*dery(TF_b21_y) + FIELD_u_x*derz(TF_b21_z) - FIELD_u_y*dery(TF_b21_x) - FIELD_u_z*derz(PROFILE_B21mean_x) - FIELD_u_z*derz(TF_b21_x) - PROFILE_B21mean_x*dery(FIELD_u_y) - PROFILE_B21mean_x*derz(FIELD_u_z) + PROFILE_B21mean_y*dery(FIELD_u_x) + PROFILE_B21mean_z*derz(FIELD_u_x) + PROFILE_Umean_x*dery(TF_b21_y) + PROFILE_Umean_x*derz(TF_b21_z) - PROFILE_Umean_y*dery(TF_b21_x) - PROFILE_Umean_z*derz(TF_b21_x) - TF_b21_x*dery(FIELD_u_y) - TF_b21_x*derz(FIELD_u_z) - TF_b21_x*derz(PROFILE_Umean_z) + TF_b21_y*dery(FIELD_u_x) + TF_b21_z*derz(FIELD_u_x) + TF_b21_z*derz(PROFILE_Umean_x) + derz(PROFILE_ucrossb21mean_y)
 }
@@ -599,6 +600,7 @@ tfm_twopass_final() {
     write(TF_b22_y, rk3_final(previous(TF_b22_y), value(TF_b22_y)))
     write(TF_b22_z, rk3_final(previous(TF_b22_z), value(TF_b22_z)))
 }
+#endif
 
 Kernel singlepass_solve() {
     write(VTXBUF_LNRHO, rk3(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity()))
@@ -721,6 +723,7 @@ Kernel twopass_solve_final() {
     #endif
 }
 
+#if LTFM
 Kernel init_profiles() {
     for i in PROFILE_Umean_x:PROFILE_Umean_x+NUM_PROFILES {
         write(i, 0)
@@ -736,5 +739,17 @@ Kernel diff_profiles() {
 Kernel diff2_profiles() {
     for i in PROFILE_Umean_x:PROFILE_Umean_x+NUM_PROFILES {
         write(i, derzz(i))
+    }
+}
+#endif
+
+Kernel randomize() {
+    
+    // N.B. scale: result in (-AC_rng_scale, AC_rng_scale] range
+    AC_rng_scale = 1e-5
+
+    for field in 0:NUM_FIELDS+NUM_PROFILES {
+        r = 2.0 * rand_uniform() - 1.0
+        write(field, AC_rng_scale * r)
     }
 }
