@@ -764,41 +764,17 @@ Kernel twopass_solve_intermediate(int step_num, real dt){
   UIJ = gradients(F_UU)
   DIVU = divergence(F_UU)
 
-  /**
-  Matrix SIJ
-  SIJ.data[0][0] = 2.0
-  SIJ.data[0][1] = 2.0
-  SIJ.data[0][2] = 2.0
-
-  SIJ.data[1][0] = 2.0
-  SIJ.data[1][1] = 2.0
-  SIJ.data[1][2] = 2.0
-
-  SIJ.data[2][0] = 2.0
-  SIJ.data[2][1] = 2.0
-  SIJ.data[2][2] = 2.0
-  **/
-
   SIJ = traceless_strain(UIJ,DIVU)
 
-  //SIJ2 = 2.0
   SIJ2 = multm2_sym(SIJ)
   UGU = UIJ*UU
-  //UGU_1 = UIJ.data[0][0] + UIJ.data[1][1]+ UIJ.data[2][2]
-  //UGU = UIJ.row(0)
-  //UIJ_SUM = UIJ.data[0][0] + UIJ.data[0][1] + UIJ.data[0][2]
-  //UGU = real3(UIJ_SUM, UIJ_SUM, UIJ_SUM)
   DEL2U = veclaplace(F_UU)
-  //GRADDIVU = gradient_of_divergence(F_UU)
-  //GRADDIVU = real3(2.0,2.0,2.0)
   GRADDIVU = divergence(F_UU)
   LNRHO = value(RHO)
   RHO1 = exp(-LNRHO)
-  //GLNRHO = real3(2.0,2.0,2.0)
   GLNRHO = gradient(RHO)
   UGLNRHO = dot(GLNRHO,UU)
   DEL2LNRHO = laplace(RHO)
-  //SGLNRHO = real3(2.0,2.0,2.0)
   SGLNRHO = SIJ*GLNRHO
   AC_cv1 = 1/AC_cv
   GSS = gradient(SS)
@@ -811,41 +787,20 @@ Kernel twopass_solve_intermediate(int step_num, real dt){
   DEL2LNTT = AC_gamma_m1*DEL2LNRHO+AC_cv1*DEL2SS
   UGSS = dot(GSS,UU)
   FPRES = -cs2*(GLNRHO+GLNTT)*AC_gamma1
-  //FVISC = AC_nu*(DEL2U + 2.*SGLNRHO + (1.0/3.0)*GRADDIVU)
-  //FVISC = AC_nu*(DEL2U + 2.*2.0+ (1.0/3.0)*GRADDIVU)
-  //FVISC = AC_nu*(DEL2U + (1.0/3.0)*GRADDIVU)
   FVISC = AC_nu*(DEL2U+2.0*SGLNRHO + (1.0/3.0)*gradient_of_divergence(F_UU))
   VISC_HEAT = 2.0*AC_nu*SIJ2
   BB = curl(F_AA)
   UXB = cross(UU,BB)
   DEL2A = veclaplace(F_AA)
-  //JJ = (1. / AC_mu0) * (2.0 - veclaplace(F_AA))
   JJ = (1. / AC_mu0)*(gradient_of_divergence(F_AA)-DEL2A)
   J2 = dot(JJ,JJ)
-  //J2 = 2.0
   JXB = cross(JJ,BB)
-  //JXB = real3(2.0,2.0,2.0)
   JXBR = RHO1*JXB
 
-  //DF_UU = -UGU+FPRES+JXBR
-  //+FVISC
-  //
-  //DF_UU = -UGU
-  //+JXBR+FPRES+FVISC
-  //DF_UU = 2.0*vecvalue(F_UU)
   DF_UU = -UGU+FPRES+JXBR+FVISC
-  //+FVISC
-  //+JXBR+FVISC
-  //+FPRES+JXBR+FVISC
-  //DF_UU = -UGU+JXBR
-  //+2.0
-  //DF_UU = real3(2.0,2.0,2.0)
-  //DF_LNRHO = 2.0
   DF_LNRHO = -DIVU-UGLNRHO
-  //DF_SS = 2.0
-  DF_SS = -UGSS+TT1*VISC_HEAT+AC_nu*AC_mu0*J2*RHO1*TT1
+  DF_SS = -UGSS+TT1*VISC_HEAT+AC_eta*AC_mu0*J2*RHO1*TT1
 
-  //DF_AA = real3(2.0,2.0,2.0)
   DF_AA = UXB+(AC_nu*DEL2A)
 
 
