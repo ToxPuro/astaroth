@@ -26,6 +26,7 @@
 #include "tab.h"
 #include <string.h>
 #include <ctype.h>
+static NodeType always_excluded = NODE_CODEGEN_INPUT;
 char*
 strupr(const char* src)
 {
@@ -523,9 +524,8 @@ gen_kernel_input_params(ASTNode* node, bool gen_mem_accesses)
 }
 
 static void
-traverse(const ASTNode* node, NodeType exclude, FILE* stream)
+traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 {
-  exclude |= NODE_CODEGEN_INPUT;
   if (node->type & exclude)
     stream = NULL;
 
@@ -663,7 +663,7 @@ void
 gen_dconsts(const ASTNode* root, FILE* stream)
 {
   symboltable_reset();
-  traverse(root, NODE_FUNCTION | NODE_VARIABLE | NODE_STENCIL | NODE_HOSTDEFINE,
+  traverse(root, NODE_FUNCTION | NODE_VARIABLE | NODE_STENCIL | NODE_HOSTDEFINE | always_excluded,
            stream);
 
   /*
@@ -749,7 +749,7 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "#pragma once\n");
 
   symboltable_reset();
-  traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL, fp);
+  traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | always_excluded, fp);
 
   symboltable_reset();
   traverse(root, 0, NULL);
@@ -934,7 +934,7 @@ static void
 gen_user_kernels(const ASTNode* root, const char* out, const bool gen_mem_accesses)
 {
   symboltable_reset();
-  traverse(root, 0, NULL);
+  traverse(root, always_excluded, NULL);
 
   FILE* fp = fopen(out, "w");
   assert(fp);
@@ -1057,7 +1057,7 @@ generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   gen_user_kernels(root, "user_declarations.h", gen_mem_accesses);
 
   // Fill the symbol table
-  traverse(root, 0, NULL);
+  traverse(root, always_excluded, NULL);
   // print_symbol_table();
 
   // Generate user_kernels.h
@@ -1098,7 +1098,7 @@ generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
 
   // Stencil ops
   symboltable_reset();
-  traverse(root, 0, NULL);
+  traverse(root, always_excluded, NULL);
   { // Unary (non-functional, default string 'val')
     fprintf(stencilgen,
             "static const char* stencil_unary_ops[NUM_STENCILS] = {");
@@ -1136,7 +1136,7 @@ generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   FILE* stencil_coeffs_fp = open_memstream(&stencil_coeffs, &file_size);
   traverse(root,
            NODE_STENCIL_ID | NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION |
-               NODE_HOSTDEFINE,
+               NODE_HOSTDEFINE | always_excluded,
            stencil_coeffs_fp);
   fflush(stencil_coeffs_fp);
 
@@ -1150,7 +1150,7 @@ generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
                       "STENCIL_WIDTH] = {");
   traverse(root,
            NODE_STENCIL_ID | NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION |
-               NODE_HOSTDEFINE,
+               NODE_HOSTDEFINE | always_excluded,
            stencilgen);
   fprintf(stencilgen, "};");
   fclose(stencilgen);
@@ -1232,7 +1232,7 @@ generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   FILE* dfunc_fp = open_memstream(&dfunctions, &sizeloc);
   traverse(root,
            NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_KFUNCTION |
-               NODE_HOSTDEFINE,
+               NODE_HOSTDEFINE | always_excluded,
            dfunc_fp);
   fflush(dfunc_fp);
 
@@ -1244,7 +1244,7 @@ generate(ASTNode* root, FILE* stream, const bool gen_mem_accesses)
   symboltable_reset();
   traverse(root,
            NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
-               NODE_HOSTDEFINE,
+               NODE_HOSTDEFINE | always_excluded,
            stream);
 
   // print_symbol_table();
