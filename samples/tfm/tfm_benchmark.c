@@ -14,6 +14,8 @@
 #endif
 
 #ifdef AC_INTEGRATION_ENABLED
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
+
 int
 main(int argc, char** argv)
 {
@@ -127,7 +129,8 @@ main(int argc, char** argv)
     ERRCHK_ALWAYS(fp);
 
     // File format
-    fprintf(fp, "implementation,maxthreadsperblock,nx,ny,nz,milliseconds,tpbx,tpby,tpbz,jobid,seed,"
+    fprintf(fp, "kernel,implementation,maxthreadsperblock,nx,ny,nz,milliseconds,tpbx,tpby,tpbz,"
+                "jobid,seed,"
                 "iteration,double_precision\n");
 
     // Benchmark configuration
@@ -136,43 +139,53 @@ main(int argc, char** argv)
 
     // Benchmark
     Timer t;
-    for (size_t j = 0; j < num_samples; ++j) {
-        // Dryrun and randomize
-        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
-        acDeviceResetMesh(device, STREAM_DEFAULT);
-        acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
-        acDeviceSwapBuffers(device);
-        acDeviceSynchronizeStream(device, STREAM_ALL);
+    Kernel benchmark_kernels[] =
+    { singlepass_solve,
+#if LTFM
+      singlepass_solve_tfm_b21,
+#endif
+    };
+    for (size_t i = 0; i < ARRAY_SIZE(benchmark_kernels); ++i) {
+        const Kernel kernel = benchmark_kernels[i];
+        for (size_t j = 0; j < num_samples; ++j) {
+            // Dryrun and randomize
+            acDeviceLaunchKernel(device, STREAM_DEFAULT, kernel, dims.n0, dims.n1);
+            acDeviceResetMesh(device, STREAM_DEFAULT);
+            acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+            acDeviceSwapBuffers(device);
+            acDeviceSynchronizeStream(device, STREAM_ALL);
 
-        // Benchmark
-        timer_reset(&t);
-        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
-        // acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, dims.n0, dims.n1, dt);
-        acDeviceSynchronizeStream(device, STREAM_ALL);
-        const double milliseconds = timer_diff_nsec(t) / 1e6;
+            // Benchmark
+            timer_reset(&t);
+            acDeviceLaunchKernel(device, STREAM_DEFAULT, kernel, dims.n0, dims.n1);
+            // acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, dims.n0, dims.n1, dt);
+            acDeviceSynchronizeStream(device, STREAM_ALL);
+            const double milliseconds = timer_diff_nsec(t) / 1e6;
 
-        const Volume tpb = acKernelLaunchGetLastTPB();
-        fprintf(fp, "%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu,%u\n", IMPLEMENTATION,
-                MAX_THREADS_PER_BLOCK, nx, ny, nz, milliseconds, tpb.x, tpb.y, tpb.z, jobid, seed,
-                j, DOUBLE_PRECISION);
+            const Volume tpb = acKernelLaunchGetLastTPB();
+            fprintf(fp, "%s,%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu,%u\n",
+                    kernel_names[acGetKernelId(kernel)], IMPLEMENTATION, MAX_THREADS_PER_BLOCK, nx,
+                    ny, nz, milliseconds, tpb.x, tpb.y, tpb.z, jobid, seed, j, DOUBLE_PRECISION);
 
-        if (j == num_samples - 1) {
-            fprintf(stdout, "implementation,maxthreadsperblock,nx,ny,nz,milliseconds,tpbx,tpby,"
-                            "tpbz,jobid,seed,"
-                            "iteration,double_precision\n");
-            fprintf(stdout, "%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu,%u\n", IMPLEMENTATION,
-                    MAX_THREADS_PER_BLOCK, nx, ny, nz, milliseconds, tpb.x, tpb.y, tpb.z, jobid,
-                    seed, j, DOUBLE_PRECISION);
-            printf("Milliseconds per kernel launch: %g\n", milliseconds);
-            printf("Optimal tpb: (%zu, %zu, %zu)\n", tpb.x, tpb.y, tpb.z);
+            if (j == num_samples - 1) {
+                fprintf(stdout,
+                        "kernel,implementation,maxthreadsperblock,nx,ny,nz,milliseconds,tpbx,tpby,"
+                        "tpbz,jobid,seed,"
+                        "iteration,double_precision\n");
+                fprintf(stdout, "%s,%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%zu,%zu,%zu,%u\n",
+                        kernel_names[acGetKernelId(kernel)], IMPLEMENTATION, MAX_THREADS_PER_BLOCK,
+                        nx, ny, nz, milliseconds, tpb.x, tpb.y, tpb.z, jobid, seed, j,
+                        DOUBLE_PRECISION);
+                printf("Milliseconds per kernel launch: %g\n", milliseconds);
+                printf("Optimal tpb: (%zu, %zu, %zu)\n", tpb.x, tpb.y, tpb.z);
+            }
         }
+        // Profile
+        cudaProfilerStart();
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, kernel, dims.n0, dims.n1);
+        acDeviceSynchronizeStream(device, STREAM_ALL);
+        cudaProfilerStop();
     }
-
-    // Profile
-    cudaProfilerStart();
-    acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
-    acDeviceSynchronizeStream(device, STREAM_ALL);
-    cudaProfilerStop();
 
     // Free
     fclose(fp);
