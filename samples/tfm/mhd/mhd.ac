@@ -572,6 +572,26 @@ tfm_singlepass() {
     write(TF_b22_y, rk3(previous(TF_b22_y), value(TF_b22_y), roc_TF_b22_y()))
     write(TF_b22_z, rk3(previous(TF_b22_z), value(TF_b22_z), roc_TF_b22_z()))
 }
+Kernel singlepass_solve_tfm_b21(){
+    write(TF_b21_x, rk3(previous(TF_b21_x), value(TF_b21_x), roc_TF_b21_x()))
+    write(TF_b21_y, rk3(previous(TF_b21_y), value(TF_b21_y), roc_TF_b21_y()))
+    write(TF_b21_z, rk3(previous(TF_b21_z), value(TF_b21_z), roc_TF_b21_z()))
+}
+Kernel singlepass_solve_tfm_b11(){
+    write(TF_b11_x, rk3(previous(TF_b11_x), value(TF_b11_x), roc_TF_b11_x()))
+    write(TF_b11_y, rk3(previous(TF_b11_y), value(TF_b11_y), roc_TF_b11_y()))
+    write(TF_b11_z, rk3(previous(TF_b11_z), value(TF_b11_z), roc_TF_b11_z()))
+}
+Kernel singlepass_solve_tfm_b12(){
+    write(TF_b12_x, rk3(previous(TF_b12_x), value(TF_b12_x), roc_TF_b12_x()))
+    write(TF_b12_y, rk3(previous(TF_b12_y), value(TF_b12_y), roc_TF_b12_y()))
+    write(TF_b12_z, rk3(previous(TF_b12_z), value(TF_b12_z), roc_TF_b12_z()))
+}
+Kernel singlepass_solve_tfm_b22(){
+    write(TF_b22_x, rk3(previous(TF_b22_x), value(TF_b22_x), roc_TF_b22_x()))
+    write(TF_b22_y, rk3(previous(TF_b22_y), value(TF_b22_y), roc_TF_b22_y()))
+    write(TF_b22_z, rk3(previous(TF_b22_z), value(TF_b22_z), roc_TF_b22_z()))
+}
 tfm_twopass_intermediate() {
     write(TF_b21_x, rk3_intermediate(previous(TF_b21_x), roc_TF_b21_x()))
     write(TF_b21_y, rk3_intermediate(previous(TF_b21_y), roc_TF_b21_y()))
