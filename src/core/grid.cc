@@ -73,6 +73,7 @@ typedef struct Grid {
     int3 nn;
     std::shared_ptr<AcTaskGraph> default_tasks;
     size_t mpi_tag_space_count;
+    bool mpi_initialized;
 } Grid;
 
 static Grid grid = {};
@@ -80,11 +81,12 @@ static Grid grid = {};
 static constexpr int astaroth_comm_split_key = 666;
 
 // In case some old programs still  use MPI_Init or MPI_Init_thread, we don't want to break them
-static MPI_Comm astaroth_comm = MPI_COMM_WORLD;
+static MPI_Comm astaroth_comm;
 
 AcResult
 ac_MPI_Init()
 {
+    ERRCHK_ALWAYS(!grid.mpi_initialized);
     if (MPI_Init(NULL, NULL)) {
         return AC_FAILURE;
     }
@@ -100,12 +102,14 @@ ac_MPI_Init()
         MPI_SUCCESS) {
         return AC_FAILURE;
     }
+    grid.mpi_initialized = true;
     return AC_SUCCESS;
 }
 
 AcResult
 ac_MPI_Init_thread(int thread_level)
 {
+    ERRCHK_ALWAYS(!grid.mpi_initialized);
     int thread_support_level = -1;
     int result               = MPI_Init_thread(NULL, NULL, thread_level, &thread_support_level);
     if (thread_support_level < thread_level || result != MPI_SUCCESS) {
@@ -124,6 +128,7 @@ ac_MPI_Init_thread(int thread_level)
         MPI_SUCCESS) {
         return AC_FAILURE;
     }
+    grid.mpi_initialized = true;
     return AC_SUCCESS;
 }
 
@@ -215,6 +220,13 @@ AcResult
 acGridInit(AcMeshInfo info)
 {
     ERRCHK(!grid.initialized);
+    if(!grid.mpi_initialized)
+    {
+	    ERRCHK_ALWAYS(MPI_Comm_dup(MPI_COMM_WORLD,&astaroth_comm) == MPI_SUCCESS);
+	    //astaroth_comm = MPI_COMM_WORLD;
+      MPI_Barrier(MPI_COMM_WORLD);
+	    grid.mpi_initialized = true;
+    }
 
     // Check that MPI is initialized
     int nprocs, pid;
@@ -323,16 +335,15 @@ acGridInit(AcMeshInfo info)
     }
 
     acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
-	    printf("TP: test:\n");
 #ifdef AC_INTEGRATION
     auto intermediate_loader = [](ParamLoadingInfo l){
-	    l.params -> twopass_solve_intermediate.ac_input_step_num = l.step_number;
-	    l.params -> twopass_solve_intermediate.ac_input_dt= 
+	    l.params -> twopass_solve_intermediate.step_num = l.step_number;
+	    l.params -> twopass_solve_intermediate.dt= 
 		    l.device->local_config.real_params[AC_dt];
     };
     auto final_loader = [](ParamLoadingInfo l){
-	    l.params -> twopass_solve_final.ac_input_step_num = l.step_number;
-	    l.params -> twopass_solve_final.ac_input_current_time= 
+	    l.params -> twopass_solve_final.step_num = l.step_number;
+	    l.params -> twopass_solve_final.current_time= 
 		    l.device->local_config.real_params[AC_current_time];
     };
     AcTaskDefinition default_ops[] = {
@@ -1508,8 +1519,6 @@ testmydecomp(int3 nn, int decomp_level, std::vector<Field> fields_out)
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 {
-	printf("start\n");
-	fflush(stdout);
     // ERRCHK(grid.initialized);
     int rank;
     MPI_Comm_rank(astaroth_comm, &rank);

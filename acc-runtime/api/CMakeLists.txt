@@ -64,7 +64,6 @@ if (BUILD_ACC_RUNTIME_LIBRARY)
         enable_language(CUDA)
         string (REPLACE " " "," CUDA_COMMON_FLAGS "${COMMON_FLAGS}")
         set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wall -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-#warnings -Wno-#pragma-messages -Wno-extra-tokens -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow --compiler-options=${CUDA_COMMON_FLAGS}")
-
         # Set device code architecture
         if (NOT CUDA_ARCHITECTURES)
             set(CMAKE_CUDA_ARCHITECTURES 70) # Default

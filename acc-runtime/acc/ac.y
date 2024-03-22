@@ -24,8 +24,7 @@ int yyget_lineno();
 const char* global_func_declaration = "__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n";
 const char* user_structs_filename = "user_structs.h";
 char user_kernel_params_struct_str[10000]; 
-char* added_params_to_stencil_accesses[256];
-int stencil_accesses_param_index = 0;
+string_vec added_params_to_stencil_accesses;
 const char* stencil_accesses_params_filename= "user_stencil_accesses_params.h";
 char stencil_accesses_default_params[10000];
 
@@ -54,6 +53,29 @@ void remove_substring_parser(char *str, const char *sub) {
 		found = strstr(found, sub); // Find the next occurrence of the substring
 	}
 }
+ASTNode*
+astnode_hostdefine(const char* buffer, const int token)
+{
+        ASTNode* res = astnode_create(NODE_HOSTDEFINE, NULL, NULL);
+        astnode_set_buffer(buffer,res);
+        res->token = 255 + token;
+
+        astnode_set_prefix("#",res); 
+
+        // Ugly hack
+        const char* def_in = "hostdefine";
+        const char* def_out = "define";
+        assert(strlen(def_in) > strlen(def_out));
+        assert(!strncmp(res->buffer, def_in, strlen(def_in)));
+
+        for (size_t i = 0; i < strlen(def_in); ++i)
+            res->buffer[i] = ' ';
+        strcpy(res->buffer, def_out);
+        res->buffer[strlen(def_out)] = ' ';
+
+        astnode_set_postfix("\n", res);
+	return res;
+}
 
 
 void set_identifier_type(const NodeType type, ASTNode* curr);
@@ -62,39 +84,31 @@ void set_identifier_infix(const char* infix, ASTNode* curr);
 ASTNode* get_node(const NodeType type, ASTNode* node);
 ASTNode* get_node_by_token(const int token, ASTNode* node);
 
-void combine_buffers(const ASTNode* node, char* res){
-  if(node->buffer)
-    strcat(res,node->buffer);
-  if(node->lhs)
-    combine_buffers(node->lhs, res);
-  if(node->rhs)
-    combine_buffers(node->rhs, res);
-}
 
-bool
-str_array_contains_ast(char* const* str_array, const size_t n, const char* str)
+void
+mark_as_input(ASTNode* node, const char* name)
 {
-	for(size_t i = 0; i <  n; ++i)
-		if(!strcmp(str_array[i],str)) return true;
-	return false;
+	if(node->lhs)
+		mark_as_input(node->lhs,name);
+	if(node->rhs)
+		mark_as_input(node->rhs,name);
+	if(node->buffer && !strcmp(node->buffer,name))
+		node->type |= NODE_INPUT;
+	
 }
 void
-process_param(const ASTNode* param, char* struct_params)
+process_param(ASTNode* kernel_root, const ASTNode* param, char* struct_params)
 {
+				mark_as_input(kernel_root,param->rhs->buffer);
 				char param_type[4096];
-                                param_type[0] = '\0';
                                 combine_buffers(param->lhs, param_type);
 			      	char param_str[4096];
 				param_str[0] = '\0';
-                              	sprintf(param_str,",%s %s",param_type, param->rhs->buffer);
-			      	//strprepend(rest_params,param_str);
-				param_str[0] = '\0';
                               	sprintf(param_str,"%s %s;",param_type, param->rhs->buffer);
 				strprepend(struct_params,param_str);
-				if(str_array_contains_ast(added_params_to_stencil_accesses,stencil_accesses_param_index,param->rhs->buffer))
+				if(str_vec_contains(added_params_to_stencil_accesses,param->rhs->buffer))
 					return;
-				added_params_to_stencil_accesses[stencil_accesses_param_index] = strdup(param->rhs->buffer);
-				++stencil_accesses_param_index;
+				push(&added_params_to_stencil_accesses,strdup(param->rhs->buffer));
 				char default_param[4096];
                                 if(!strcmp(param_type,"int"))
 			          sprintf(default_param,"0");
@@ -111,12 +125,12 @@ void
 process_declaration(const ASTNode* dec, char* struct_def)
 {
 	char tmp[4096];
-	tmp[0] = '\0';
 	combine_buffers(dec->lhs,tmp);
-	strcat(tmp," ");
-	combine_buffers(dec->rhs,tmp);
-	strcat(tmp,";");
 	strcat(struct_def,tmp);
+	strcat(struct_def," ");
+	combine_buffers(dec->rhs,tmp);
+	strcat(struct_def,tmp);
+	strcat(struct_def,";");
 }
 
 void
@@ -324,6 +338,7 @@ main(int argc, char** argv)
 {
     atexit(&cleanup);
 
+    added_params_to_stencil_accesses.size = 0;
     if (argc > 2) {
       fprintf(stderr, "Error multiple .ac files passed to acc, can only process one at a time. Ensure that DSL_MODULE_DIR contains only one .ac file.\n");
       return EXIT_FAILURE;
@@ -360,7 +375,7 @@ main(int argc, char** argv)
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP
 %token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL WORK_BUFFER COMPLEX
-%token KERNEL SUM MAX COMMUNICATED AUXILIARY DCONST_QL
+%token KERNEL SUM MAX COMMUNICATED AUXILIARY DCONST_QL GLOBAL_MEMORY_QL
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE
 
@@ -404,6 +419,41 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             if (get_node_by_token(FIELD, $$->rhs)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
+		if(are_arrays)
+		{
+			char num_fields_str[1000];
+			combine_buffers(declaration_list_head->lhs->rhs, num_fields_str);
+			const int num_fields = atoi(num_fields_str);
+			ASTNode* copy = astnode_dup(declaration_list_head->lhs,declaration_list_head);
+			ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
+			const char* field_name_str = strdup(field_name->buffer);
+			char index[100];
+			sprintf(index,"_%d",num_fields);
+			strcat(field_name->buffer,index);
+			for(int i=num_fields-1; i>=0;--i)
+			{
+				ASTNode* new_head = astnode_create(NODE_UNKNOWN,NULL,NULL);
+				new_head->lhs  = astnode_dup(copy,new_head);
+				new_head->parent=declaration_list_head;
+				declaration_list_head ->rhs = declaration_list_head->lhs;
+				declaration_list_head ->lhs=new_head;
+				declaration_list_head  = new_head;
+				ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
+				sprintf(index,"_%d",i);
+				strcat(field_name->buffer,index);
+			}
+			ASTNode* tmp = $$;
+			char host_definition[1000];
+			sprintf(host_definition,"hostdefine N%s_ROWS (%d)",field_name_str,num_fields);
+			ASTNode* hostdefine =astnode_hostdefine(host_definition,HOSTDEFINE);
+			tmp = astnode_create(NODE_UNKNOWN,tmp,hostdefine);
+			sprintf(host_definition,"hostdefine N%s_COLS (%d)",field_name_str,1);
+			hostdefine =astnode_hostdefine(host_definition,HOSTDEFINE);
+			tmp = astnode_create(NODE_UNKNOWN,tmp,hostdefine);
+			ASTNode* input_to_codegen = astnode_create(NODE_CODEGEN_INPUT,NULL,NULL);
+			input_to_codegen->buffer = strdup(field_name_str);
+			$$ = astnode_create(NODE_UNKNOWN,tmp,input_to_codegen);
+		}
             } 
             else if(get_node_by_token(WORK_BUFFER, $$->rhs)) {
                 variable_definition->type |= NODE_VARIABLE;
@@ -457,6 +507,7 @@ for: FOR               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 in: IN                 { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 communicated: COMMUNICATED { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 dconst_ql: DCONST_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+global_ql: GLOBAL_MEMORY_QL{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 auxiliary: AUXILIARY   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int: INT               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -474,24 +525,7 @@ sum: SUM               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 max: MAX               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("max", $$); $$->token = 255 + yytoken; };
 struct_type: STRUCT_TYPE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 hostdefine: HOSTDEFINE {
-        $$ = astnode_create(NODE_HOSTDEFINE, NULL, NULL);
-        astnode_set_buffer(yytext, $$);
-        $$->token = 255 + yytoken;
-
-        astnode_set_prefix("#", $$);
-
-        // Ugly hack
-        const char* def_in = "hostdefine";
-        const char* def_out = "define";
-        assert(strlen(def_in) > strlen(def_out));
-        assert(!strncmp($$->buffer, def_in, strlen(def_in)));
-
-        for (size_t i = 0; i < strlen(def_in); ++i)
-            $$->buffer[i] = ' ';
-        strcpy($$->buffer, def_out);
-        $$->buffer[strlen(def_out)] = ' ';
-
-        astnode_set_postfix("\n", $$);
+	$$ = astnode_hostdefine(yytext,yytoken);
     };
 
 /*
@@ -504,9 +538,8 @@ struct_definition: struct_name '{' declarations '}' struct_type
                  {
                         $$ = astnode_create(NODE_UNKNOWN,$1,$3);
                         char struct_def[5000];
-                        char struct_name[5000];
                         struct_def[0] = '\0';
-                        struct_name[0] = '\0';
+                        char struct_name[5000];
 			combine_buffers($5,struct_name);
 
                         strcat(struct_def,$1->buffer);
@@ -522,7 +555,6 @@ struct_definition: struct_name '{' declarations '}' struct_type
                         strcat(struct_def,"} ");
                         strcat(struct_def,struct_name);
                         strcat(struct_def,";");
-                        struct_name[0] = '\0';
                         FILE* fp  = fopen("user_structs.h","a");
                         fprintf(fp,"%s\n",struct_def);
                         fclose(fp);
@@ -552,6 +584,7 @@ type_qualifier: kernel       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | max          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | communicated { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | dconst_ql    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | global_ql{ $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | auxiliary    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               ;
 
@@ -568,8 +601,7 @@ type_qualifiers: type_qualifiers type_qualifier {$$ = astnode_create(NODE_UNKNOW
  * =============================================================================
 */
 
-//Plus and minus have to be inside the parser since based on context they are unary or binary ops
-
+//Plus and minus have to be in the parser since based on context they are unary or binary ops
 binary_op: '+'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
          | '-'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
          | BINARY_OP   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
@@ -768,11 +800,11 @@ function_definition: declaration function_body {
                               ASTNode* param_list_head = $$->rhs->lhs;
                               while(param_list_head->rhs)
                               {
-				process_param(param_list_head->rhs,struct_params);
+				process_param($$,param_list_head->rhs,struct_params);
                                 param_list_head = param_list_head->lhs;
                               }
 
-			      process_param(param_list_head->lhs,struct_params);
+			      process_param($$,param_list_head->lhs,struct_params);
                               $$->rhs->lhs=NULL;
                             }
 			      
