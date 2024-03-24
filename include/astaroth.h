@@ -161,7 +161,20 @@ enum class AcDecomposeStrategy:int{
     Default = -1, 
     External = 1,
 };
+enum class AcMPICommStrategy:int{
+	DuplicateMPICommWorld = -1,
+	DuplicateUserComm = 1,
+};
 #endif
+
+#define  AcProcMappingStrategy_MORTON (-1)
+#define  AcProcMappingStrategy_LINEAR (1)
+
+#define  AcDecompStrategy_DEFAULT (-1)
+#define  AcDecompStrategy_EXTERNAL (1)
+
+#define  AcMPICommStrategy_DUPLICATE_MPI_COMM_WORLD (-1)
+#define  AcMPICommStrategy_DUPLICATE_USER_COMM (1)
 
 #undef AC_GEN_ID
 

@@ -214,6 +214,7 @@ symboltable_reset(void)
   add_symbol(NODE_DCONST_ID, NULL, 0,"int3", "AC_domain_decomposition");
   add_symbol(NODE_DCONST_ID, NULL, 0,"int", "AC_proc_mapping_strategy");
   add_symbol(NODE_DCONST_ID, NULL, 0,"int", "AC_decompose_strategy");
+  add_symbol(NODE_DCONST_ID, NULL, 0,"int", "AC_MPI_comm_strategy");
   
 
   add_symbol(NODE_DCONST_ID, NULL, 0, "int3", "AC_multigpu_offset");

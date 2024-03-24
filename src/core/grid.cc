@@ -222,10 +222,17 @@ acGridInit(AcMeshInfo info)
     ERRCHK(!grid.initialized);
     if(!grid.mpi_initialized)
     {
-	    ERRCHK_ALWAYS(MPI_Comm_dup(MPI_COMM_WORLD,&astaroth_comm) == MPI_SUCCESS);
-	    //astaroth_comm = MPI_COMM_WORLD;
+      if((AcMPICommStrategy)info.int_params[AC_MPI_comm_strategy] == AcMPICommStrategy::DuplicateMPICommWorld)
+      {
+      	ERRCHK_ALWAYS(MPI_Comm_dup(MPI_COMM_WORLD,&astaroth_comm) == MPI_SUCCESS);
+      }
+      else
+      {
+        ERRCHK_ALWAYS((AcMPICommStrategy)info.int_params[AC_MPI_comm_strategy] == AcMPICommStrategy::DuplicateUserComm);
+      	ERRCHK_ALWAYS(MPI_Comm_dup(info.comm,&astaroth_comm) == MPI_SUCCESS);
+      }
       MPI_Barrier(MPI_COMM_WORLD);
-	    grid.mpi_initialized = true;
+      grid.mpi_initialized = true;
     }
 
     // Check that MPI is initialized

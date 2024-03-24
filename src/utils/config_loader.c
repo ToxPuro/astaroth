@@ -28,7 +28,7 @@
 
 #include <stdint.h> // uint8_t, uint32_t
 #include <string.h>
-
+#include <math.h>
 #include "errchk.h"
 
 /**

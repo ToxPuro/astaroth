@@ -18,6 +18,9 @@
   */
   #pragma once
   #include <stdio.h>
+  #if AC_MPI_ENABLED
+  #include <mpi.h>
+  #endif
 
   #if AC_USE_HIP
   #include "hip.h"
@@ -43,8 +46,20 @@
     int3 int3_params[NUM_INT3_PARAMS];
     AcReal real_params[NUM_REAL_PARAMS];
     AcReal3 real3_params[NUM_REAL3_PARAMS];
+  } AcDeviceMeshInfo;
+
+  //could combine these into base struct
+  //with struct inheritance, but not sure would that break C ABI
+  typedef struct {
+    int int_params[NUM_INT_PARAMS];
+    int3 int3_params[NUM_INT3_PARAMS];
+    AcReal real_params[NUM_REAL_PARAMS];
+    AcReal3 real3_params[NUM_REAL3_PARAMS];
     AcReal* real_arrays[NUM_REAL_ARRAYS];
     int* int_arrays[NUM_INT_ARRAYS];
+#if AC_MPI_ENABLED
+    MPI_Comm comm;
+#endif
   } AcMeshInfo;
 
   typedef struct {
