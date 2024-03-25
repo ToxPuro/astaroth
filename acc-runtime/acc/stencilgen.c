@@ -1920,8 +1920,10 @@ gen_kernel_body(const int curr_kernel)
 
     // Profiles
     const int PROFILE_BLOCK_SIZE = NUM_PROFILES;
-    const int NUM_PROFILE_BLOCKS = (NUM_PROFILES + PROFILE_BLOCK_SIZE - 1) /
-                                   PROFILE_BLOCK_SIZE;
+    const int NUM_PROFILE_BLOCKS = NUM_PROFILES ? (NUM_PROFILES +
+                                                   PROFILE_BLOCK_SIZE - 1) /
+                                                      PROFILE_BLOCK_SIZE
+                                                : 0;
     if (PROFILE_BLOCK_SIZE * NUM_PROFILE_BLOCKS < NUM_PROFILES)
       raise_error(
           "Invalid PROFILE_BLOCK_SIZE * NUM_PROFILE_BLOCKS, was smaller than "
