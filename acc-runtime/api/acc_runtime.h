@@ -147,6 +147,23 @@ AcResult acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
 // Diagnostics
 Volume acKernelLaunchGetLastTPB(void);
 
+// Testing
+typedef struct {
+  AcReal** buffers;
+  size_t num_buffers;
+  size_t count;
+} AcBufferArray;
+
+AcBufferArray acBufferArrayCreate(const size_t num_buffers, const size_t count);
+
+void acBufferArrayDestroy(AcBufferArray* ba);
+
+size_t acMapCross(const VertexBufferArray vba, const cudaStream_t stream,
+                  const int3 start, const int3 end, AcBufferArray scratchpad);
+
+void acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
+                      AcBufferArray scratchpad, ProfileBufferArray pba);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

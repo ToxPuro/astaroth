@@ -56,21 +56,29 @@ main(int argc, char** argv)
 
     benchmark_thrust(mx, my, mz);
 
-    VertexBufferArray vba = acVBACreate(mx, my, mz);
-    acMapInit(vba);
-    acMapCross(vba, 0, (int3){radius, radius, 0}, (int3){radius + nx, radius + ny, 1});
+    VertexBufferArray vba    = acVBACreate(mx, my, mz);
+    ProfileBufferArray pba   = acPBACreate(mz);
+    AcBufferArray scratchpad = acBufferArrayCreate(12, mx * my);
+    // acMapCross(vba, 0, (int3){radius, radius, 0}, (int3){radius + nx, radius + ny, 1},
+    // scratchpad);
+    acMapCrossReduce(vba, 0, scratchpad, pba);
 
     Timer t;
 
     cudaDeviceSynchronize();
     timer_reset(&t);
-    for (size_t k = 0; k < mz; ++k)
-        acMapCross(vba, 0, (int3){radius, radius, k}, (int3){radius + nx, radius + ny, k + 1});
+    // for (size_t k = 0; k < mz; ++k)
+    // acMapCross(vba, 0, (int3){radius, radius, k}, (int3){radius + nx, radius + ny, k +
+    // 1},
+    //            scratchpad);
+    acMapCrossReduce(vba, 0, scratchpad, pba);
+
     cudaDeviceSynchronize();
     timer_diff_print(t);
 
     ERRCHK_CUDA_KERNEL_ALWAYS();
-    acMapQuit();
+    acBufferArrayDestroy(&scratchpad);
+    acPBADestroy(&pba);
     acVBADestroy(&vba);
     return EXIT_SUCCESS;
 }
