@@ -164,6 +164,16 @@ size_t acMapCross(const VertexBufferArray vba, const cudaStream_t stream,
 void acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
                       AcBufferArray scratchpad, ProfileBufferArray pba);
 
+void acVBASwapBuffer(const Field field, VertexBufferArray* vba);
+
+void acVBASwapBuffers(VertexBufferArray* vba);
+
+void acPBASwapBuffer(const Profile profile, VertexBufferArray* vba);
+
+void acPBASwapBuffers(VertexBufferArray* vba);
+
+void acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

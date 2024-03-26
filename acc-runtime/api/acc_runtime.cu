@@ -753,7 +753,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                                         ? min(props.maxThreadsPerBlock,
                                               MAX_THREADS_PER_BLOCK)
                                         : props.maxThreadsPerBlock;
-  const size_t max_smem = props.sharedMemPerBlock;
+  const size_t max_smem           = props.sharedMemPerBlock;
 
   // Old heuristic
   // for (int z = 1; z <= max_threads_per_block; ++z) {
@@ -912,4 +912,50 @@ getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   TBConfig c = autotune(kernel, dims, vba);
   tbconfigs.push_back(c);
   return c;
+}
+
+void
+acVBASwapBuffer(const Field field, VertexBufferArray* vba)
+{
+  AcReal* tmp     = vba->in[field];
+  vba->in[field]  = vba->out[field];
+  vba->out[field] = tmp;
+}
+
+void
+acVBASwapBuffers(VertexBufferArray* vba)
+{
+  for (size_t i = 0; i < NUM_FIELDS; ++i)
+    acVBASwapBuffer((Field)i, vba);
+}
+
+void
+acPBASwapBuffer(const Profile profile, VertexBufferArray* vba)
+{
+  AcReal* tmp                = vba->profiles.in[profile];
+  vba->profiles.in[profile]  = vba->profiles.out[profile];
+  vba->profiles.out[profile] = tmp;
+}
+
+void
+acPBASwapBuffers(VertexBufferArray* vba)
+{
+  for (size_t i = 0; i < NUM_PROFILES; ++i)
+    acPBASwapBuffer((Profile)i, vba);
+}
+
+void
+acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
+{
+  for (int i = 0; i < NUM_INT_PARAMS; ++i)
+    acLoadIntUniform(stream, (AcIntParam)i, info.int_params[i]);
+
+  for (int i = 0; i < NUM_INT3_PARAMS; ++i)
+    acLoadInt3Uniform(stream, (AcInt3Param)i, info.int3_params[i]);
+
+  for (int i = 0; i < NUM_REAL_PARAMS; ++i)
+    acLoadRealUniform(stream, (AcRealParam)i, info.real_params[i]);
+
+  for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
+    acLoadReal3Uniform(stream, (AcReal3Param)i, info.real3_params[i]);
 }
