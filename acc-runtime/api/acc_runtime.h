@@ -54,6 +54,7 @@ typedef struct {
   AcReal* in[NUM_FIELDS];
   AcReal* out[NUM_FIELDS];
   size_t bytes; // Suggest deprecation: replace with mx,my,mz
+  size_t mx, my, mz;
 
   // Profiles
   ProfileBufferArray profiles;

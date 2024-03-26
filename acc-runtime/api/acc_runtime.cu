@@ -454,6 +454,9 @@ acVBACreate(const size_t mx, const size_t my, const size_t mz)
 
   const size_t bytes = sizeof(vba.in[0][0]) * mx * my * mz;
   vba.bytes          = bytes;
+  vba.mx             = mx;
+  vba.my             = my;
+  vba.mz             = mz;
 
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
 #if USE_COMPRESSIBLE_MEMORY
@@ -488,6 +491,9 @@ acVBADestroy(VertexBufferArray* vba)
     vba->out[i] = NULL;
   }
   vba->bytes = 0;
+  vba->mx    = 0;
+  vba->my    = 0;
+  vba->mz    = 0;
 
   // Note: should be moved out when refactoring VBA to KernelParameterArray
   acPBADestroy(&vba->profiles);
