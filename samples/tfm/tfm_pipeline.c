@@ -184,9 +184,9 @@ main(int argc, char** argv)
 
     fprintf(stderr,
             "Usage: ./benchmark-device <nx> <ny> <nz> <jobid> <num_samples> <verify> <salt>\n");
-    const size_t nx          = (argc > 1) ? (size_t)atol(argv[1]) : 256;
-    const size_t ny          = (argc > 2) ? (size_t)atol(argv[2]) : 256;
-    const size_t nz          = (argc > 3) ? (size_t)atol(argv[3]) : 256;
+    const size_t nx          = (argc > 1) ? (size_t)atol(argv[1]) : 32;
+    const size_t ny          = (argc > 2) ? (size_t)atol(argv[2]) : 32;
+    const size_t nz          = (argc > 3) ? (size_t)atol(argv[3]) : 32;
     const size_t jobid       = (argc > 4) ? (size_t)atol(argv[4]) : 0;
     const size_t num_samples = (argc > 5) ? (size_t)atol(argv[5]) : 100;
     const size_t verify      = (argc > 6) ? (size_t)atol(argv[6]) : 0;

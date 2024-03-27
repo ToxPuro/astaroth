@@ -182,6 +182,43 @@ acMapCross(const VertexBufferArray vba, const cudaStream_t stream,
   return count;
 }
 
+// struct CrossProduct {
+//   /*
+//   __host__ __device__ void operator()(                      //
+//       const AcReal& a1, const AcReal& a2, const AcReal& a3, //
+//       const AcReal& b1, const AcReal& b2, const AcReal& b3, //
+//       AcReal& c1, AcReal& c2, AcReal& c3)
+//   {
+//     c1 = a2 * b3 - a3 * b2;
+//     c2 = a3 * b1 - a1 * b3;
+//     c3 = a1 * b2 - a2 * b1;
+//   }
+//   */
+//   template <typename Tuple> __host__ __device__ void operator()(Tuple t)
+//   {
+//     thrust::get<2>(t) = thrust::get<0>(t);
+//   }
+// };
+
+// #include <thrust/for_each.h>
+// #include <thrust/iterator/zip_iterator.h>
+// #include <thrust/tuple.h>
+// void
+// acThrustMapCross(const AcReal* a0, const AcReal* a1, const AcReal* a2,
+//                  const AcReal* b0, const AcReal* b1, const AcReal* b2,
+//                  const size_t count, AcReal* c0, AcReal* c1, AcReal* c2)
+// {
+//   thrust::for_each(thrust::make_zip_iterator(
+//                        thrust::make_tuple(a0, a1, a2, b0, b1, b2, c0, c1,
+//                        c2)),
+//                    thrust::make_zip_iterator(
+//                        thrust::make_tuple(a0 + count, a1 + count, a2 + count,
+//                                           b0 + count, b1 + count, b2 + count,
+//                                           c0 + count, c1 + count, c2 +
+//                                           count)),
+//                    CrossProduct);
+// }
+
 __global__ void
 greduce(const AcReal* in, const size_t count, AcReal* out)
 {
@@ -305,16 +342,16 @@ acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
       //   acKernelReduceScal(stream, scratchpad.buffers[i], count,
       //                      scratchpad.buffers[12], scratchpad.buffers[13]);
 
-      AcReal ac_result;
-      cudaMemcpyAsync(&ac_result, &pba.in[PROFILE_ucrossb11mean_x + i][k],
-                      sizeof(AcReal), cudaMemcpyHostToDevice, stream);
-      cudaStreamSynchronize(stream);
-      AcReal thrust_result = thrust::reduce(
-          thrust::cuda::par.on(stream),
-          thrust::device_pointer_cast(scratchpad.buffers[0]),
-          thrust::device_pointer_cast(scratchpad.buffers[0]) + count);
-      printf("%zu results: %g (ac) and %g (thrust)\n", i, ac_result,
-             thrust_result);
+      // AcReal ac_result;
+      // cudaMemcpyAsync(&ac_result, &pba.in[PROFILE_ucrossb11mean_x + i][k],
+      //                 sizeof(AcReal), cudaMemcpyHostToDevice, stream);
+      // cudaStreamSynchronize(stream);
+      // AcReal thrust_result = thrust::reduce(
+      //     thrust::cuda::par.on(stream),
+      //     thrust::device_pointer_cast(scratchpad.buffers[0]),
+      //     thrust::device_pointer_cast(scratchpad.buffers[0]) + count);
+      // printf("%zu results: %g (ac) and %g (thrust)\n", i, ac_result,
+      //        thrust_result);
     }
     // ucrossb11mean_x[k] = thrust::reduce(
     //     thrust::cuda::par.on(stream),
@@ -368,5 +405,5 @@ acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
     //     thrust::device_pointer_cast(scratchpad.buffers[11]),
     //     thrust::device_pointer_cast(scratchpad.buffers[11]) + count);
   }
-  cudaStreamSynchronize(stream);
+  // cudaStreamSynchronize(stream);
 }
