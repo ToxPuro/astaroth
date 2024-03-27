@@ -220,7 +220,7 @@ acMapCross(const VertexBufferArray vba, const cudaStream_t stream,
 // }
 
 __global__ void
-greduce(const AcReal* in, const size_t count, AcReal* out)
+greduce(const AcReal* in, const size_t count, AcReal* out, AcReal* output)
 {
   // Note: possible integer overflow when GPU memory becomes large enough
   const size_t curr = threadIdx.x + blockIdx.x * blockDim.x;
@@ -254,8 +254,11 @@ greduce(const AcReal* in, const size_t count, AcReal* out)
     __syncthreads();
   }
 
-  if (!threadIdx.x)
+  if (!threadIdx.x) {
     out[blockIdx.x] = smem[threadIdx.x];
+    if (!blockIdx.x)
+      output[0] = smem[threadIdx.x];
+  }
 }
 
 static void
@@ -267,14 +270,12 @@ swap_pointers(AcReal** a, AcReal** b)
 }
 
 AcReal*
-acKernelReduceScal(const cudaStream_t stream, const AcReal* input,
-                   const size_t initial_count, AcReal* scratchpad0,
-                   AcReal* scratchpad1)
+acKernelReduceScalToOutput(const cudaStream_t stream, const AcReal* input,
+                           const size_t initial_count, AcReal* scratchpad0,
+                           AcReal* scratchpad1, AcReal* output)
 {
   AcReal* in  = scratchpad0;
   AcReal* out = scratchpad1;
-  cudaMemcpy(in, input, sizeof(input[0]) * initial_count,
-             cudaMemcpyDeviceToDevice);
 
   // Reduce
   size_t count = initial_count;
@@ -283,14 +284,43 @@ acKernelReduceScal(const cudaStream_t stream, const AcReal* input,
     const size_t bpg  = as_size_t(ceil(double(count) / tpb));
     const size_t smem = tpb * sizeof(in[0]);
 
-    greduce<<<bpg, tpb, smem, stream>>>(in, count, out);
-    ERRCHK_CUDA_KERNEL();
     swap_pointers(&in, &out);
+    if (count == initial_count)
+      greduce<<<bpg, tpb, smem, stream>>>(input, count, out, output);
+    else
+      greduce<<<bpg, tpb, smem, stream>>>(in, count, out, output);
+    ERRCHK_CUDA_KERNEL();
 
     count = bpg;
   } while (count > 1);
-  return in;
+  return out;
 }
+
+// AcReal*
+// acKernelReduceScal(const cudaStream_t stream, const AcReal* input,
+//                    const size_t initial_count, AcReal* scratchpad0,
+//                    AcReal* scratchpad1)
+// {
+//   AcReal* in  = scratchpad0;
+//   AcReal* out = scratchpad1;
+//   cudaMemcpy(in, input, sizeof(input[0]) * initial_count,
+//              cudaMemcpyDeviceToDevice);
+
+//   // Reduce
+//   size_t count = initial_count;
+//   do {
+//     const size_t tpb  = 128;
+//     const size_t bpg  = as_size_t(ceil(double(count) / tpb));
+//     const size_t smem = tpb * sizeof(in[0]);
+
+//     greduce<<<bpg, tpb, smem, stream>>>(in, count, out);
+//     ERRCHK_CUDA_KERNEL();
+//     swap_pointers(&in, &out);
+
+//     count = bpg;
+//   } while (count > 1);
+//   return in;
+// }
 
 void
 acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
@@ -334,11 +364,15 @@ acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
     ERRCHK_ALWAYS(count == (vba.mx - 2 * radius) * (vba.my - 2 * radius));
 
     for (size_t i = 0; i < 12; ++i) {
-      cudaMemcpyAsync(&pba.in[PROFILE_ucrossb11mean_x + i][k],
-                      acKernelReduceScal(stream, scratchpad.buffers[i], count,
-                                         scratchpad.buffers[12],
-                                         scratchpad.buffers[13]),
-                      sizeof(AcReal), cudaMemcpyDeviceToDevice, stream);
+      acKernelReduceScalToOutput(stream, scratchpad.buffers[i], count,
+                                 scratchpad.buffers[12], scratchpad.buffers[13],
+                                 &pba.in[PROFILE_ucrossb11mean_x + i][k]);
+      // cudaMemcpyAsync(&pba.in[PROFILE_ucrossb11mean_x + i][k],
+      //                 acKernelReduceScal(stream, scratchpad.buffers[i],
+      //                 count,
+      //                                    scratchpad.buffers[12],
+      //                                    scratchpad.buffers[13]),
+      //                 sizeof(AcReal), cudaMemcpyDeviceToDevice, stream);
       //   acKernelReduceScal(stream, scratchpad.buffers[i], count,
       //                      scratchpad.buffers[12], scratchpad.buffers[13]);
 

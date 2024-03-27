@@ -181,6 +181,12 @@ AcResult acKernelVolumeCopy(const cudaStream_t stream,                          
                             const AcReal* in, const int3 in_offset, const int3 in_volume, //
                             AcReal* out, const int3 out_offset, const int3 out_volume);
 
+/** */
+AcReal acKernelReduceScalAsyncToOutput(const cudaStream_t stream, const ReductionType rtype,
+                                       const AcReal* vtxbuf, const int3 start, const int3 end,
+                                       AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
+                                       const size_t scratchpad_size, AcReal* output);
+
 // Astaroth 2.0 backwards compatibility.
 AcResult acKernel(const KernelParameters params, VertexBufferArray vba);
 

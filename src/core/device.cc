@@ -874,18 +874,28 @@ acDeviceReduceXYAverage(const Device device, const Stream stream, const Field fi
     const AcMeshDims dims = acGetMeshDims(device->local_config);
 
     for (size_t k = 0; k < dims.m1.z; ++k) {
-        const int3 start    = (int3){dims.n0.x, dims.n0.y, k};
-        const int3 end      = (int3){dims.n1.x, dims.n1.y, k + 1};
-        const size_t nxy    = (end.x - start.x) * (end.y - start.y);
-        const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream], RTYPE_SUM,
-                                                              device->vba.in[field], start, end,
-                                                              device->reduce_scratchpads,
-                                                              device->scratchpad_size);
-        // printf("%zu Profile: %g\n", k, result);
-        // Could be optimized by performing the reduction completely in
-        // device memory without the redundant device-host-device transfer
-        cudaMemcpy(&device->vba.profiles.in[profile][k], &result, sizeof(result),
-                   cudaMemcpyHostToDevice);
+        const int3 start = (int3){dims.n0.x, dims.n0.y, k};
+        const int3 end   = (int3){dims.n1.x, dims.n1.y, k + 1};
+        // const size_t nxy    = (end.x - start.x) * (end.y - start.y);
+        // const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream], RTYPE_SUM,
+        //                                                       device->vba.in[field], start, end,
+        //                                                       device->reduce_scratchpads,
+        //                                                       device->scratchpad_size);
+        // // printf("%zu Profile: %g\n", k, result);
+        // // Could be optimized by performing the reduction completely in
+        // // device memory without the redundant device-host-device transfer
+        // cudaMemcpy(&device->vba.profiles.in[profile][k], &result, sizeof(result),
+        //            cudaMemcpyHostToDevice);
+        //
+        // const size_t count = (end.x - start.x) * (end.y - start.y);
+        // acKernelReduceScalToOutput(device->streams[stream], device->vba.in[field][], count,
+        //                            device->tfm_scratchpads.buffers[12],
+        //                            device->tfm_scratchpads.buffers[13],
+        //                            &device->vba.profiles.in[profile][k]);
+        acKernelReduceScalAsyncToOutput(device->streams[stream], RTYPE_SUM, device->vba.in[field],
+                                        start, end, device->reduce_scratchpads,
+                                        device->scratchpad_size,
+                                        &device->vba.profiles.in[profile][k]);
     }
     return AC_SUCCESS;
 }
