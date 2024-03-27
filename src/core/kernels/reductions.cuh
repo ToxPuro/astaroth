@@ -825,7 +825,7 @@ reduce_to_output(const AcReal* in, const size_t count, AcReal* out, AcReal* outp
     }
 }
 
-AcReal
+AcResult
 acKernelReduceScalAsyncToOutput(const cudaStream_t stream, const ReductionType rtype,
                                 const AcReal* vtxbuf, const int3 start, const int3 end,
                                 AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS],
@@ -910,4 +910,5 @@ acKernelReduceScalAsyncToOutput(const cudaStream_t stream, const ReductionType r
 
         count = bpg;
     } while (count > 1);
+    return AC_SUCCESS;
 }
