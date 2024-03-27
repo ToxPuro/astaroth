@@ -303,6 +303,11 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     // acDeviceLoadDefaultUniforms(device); // TODO recheck
     acDeviceLoadMeshInfo(device, device->local_config);
 
+    // LTFM
+    const size_t mxy        = device->vba.mx * device->vba.my;
+    device->tfm_scratchpads = acBufferArrayCreate(14, mxy);
+    // LTFM
+
 #if AC_VERBOSE
     printf("Created device %d (%p)\n", device->id, device);
 #endif
@@ -320,6 +325,11 @@ acDeviceDestroy(Device device)
     printf("Destroying device %d (%p)\n", device->id, device);
 #endif
     acDeviceSynchronizeStream(device, STREAM_ALL);
+
+    // LTFM
+    const size_t mxy = device->vba.mx * device->vba.my;
+    acBufferArrayDestroy(&device->tfm_scratchpads);
+    // LTFM
 
     // Memory
     acVBADestroy(&device->vba);
@@ -879,6 +889,19 @@ acDeviceReduceXYAverage(const Device device, const Stream stream, const Field fi
     }
     return AC_SUCCESS;
 }
+
+// LTFM
+AcResult
+acDeviceReduceXYAverageTFMucrossb(const Device device, const Stream stream)
+{
+    cudaSetDevice(device->id);
+    acDeviceSynchronizeStream(device, stream);
+
+    acMapCrossReduce(device->vba, device->streams[stream], device->tfm_scratchpads,
+                     device->vba.profiles);
+    return AC_SUCCESS;
+}
+// LTFM
 
 AcResult
 acDeviceSwapProfileBuffer(const Device device, const Profile handle)

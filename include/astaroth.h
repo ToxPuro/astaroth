@@ -1152,6 +1152,11 @@ AcResult acDeviceReduceXYAverage(const Device device, const Stream stream, const
                                  const Profile profile);
 
 /** */
+// LTFM
+AcResult acDeviceReduceXYAverageTFMucrossb(const Device device, const Stream stream);
+// LTFM
+
+/** */
 AcResult acDeviceSwapProfileBuffer(const Device device, const Profile handle);
 
 /** */
