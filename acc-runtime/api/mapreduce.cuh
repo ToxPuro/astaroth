@@ -411,33 +411,6 @@ acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
 {
   ERRCHK_ALWAYS(vba.mz == pba.count);
 
-  //   auto ucrossb11mean_x = thrust::device_pointer_cast(
-  //       pba.in[PROFILE_ucrossb11mean_x]);
-  //   auto ucrossb11mean_y = thrust::device_pointer_cast(
-  //       pba.in[PROFILE_ucrossb11mean_y]);
-  //   auto ucrossb11mean_z = thrust::device_pointer_cast(
-  //       pba.in[PROFILE_ucrossb11mean_z]);
-
-  //   auto ucrossb12mean_x = thrust::device_pointer_cast(
-  //       pba.in[PROFILE_ucrossb12mean_x]);
-  //   auto ucrossb12mean_y = thrust::device_pointer_cast(
-  //       pba.in[PROFILE_ucrossb12mean_y]);
-  //   auto ucrossb12mean_z = thrust::device_pointer_cast(
-  //       pba.in[PROFILE_ucrossb12mean_z]);
-
-  //   auto ucrossb21mean_x = thrust::device_pointer_cast(
-  //       pba.in[PROFILE_ucrossb21mean_x]);
-  //   auto ucrossb21mean_y = thrust::device_pointer_cast(
-  //       pba.in[PROFILE_ucrossb21mean_y]);
-  //   auto ucrossb21mean_z = thrust::device_pointer_cast(
-  //       pba.in[PROFILE_ucrossb21mean_z]);
-
-  //   auto ucrossb22mean_x = thrust::device_pointer_cast(
-  //       pba.in[PROFILE_ucrossb22mean_x]);
-  //   auto ucrossb22mean_y = thrust::device_pointer_cast(
-  //       pba.in[PROFILE_ucrossb22mean_y]);
-  //   auto ucrossb22mean_z = thrust::device_pointer_cast(
-  //       pba.in[PROFILE_ucrossb22mean_z]);
   const size_t num_uxb_profiles = 3 * 4;
   ERRCHK_ALWAYS(scratchpad.num_buffers >= num_uxb_profiles);
 
@@ -454,87 +427,7 @@ acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
     ERRCHK_ALWAYS(scratchpad.num_buffers == scratchpad1.num_buffers);
     ERRCHK_ALWAYS(scratchpad.num_buffers == scratchpad2.num_buffers);
 
-    // TODO fuse reduction kernels
-
     acKernelReduceScalToOutput(stream, scratchpad, scratchpad1, scratchpad2,
                                pba, k);
-    // for (size_t i = 0; i < 12; ++i) {
-    //   acKernelReduceScalToOutput(stream, scratchpad.buffers[i], count,
-    //                              scratchpad.buffers[12],
-    //                              scratchpad.buffers[13],
-    //                              &pba.in[PROFILE_ucrossb11mean_x + i][k]);
-    // cudaMemcpyAsync(&pba.in[PROFILE_ucrossb11mean_x + i][k],
-    //                 acKernelReduceScal(stream, scratchpad.buffers[i],
-    //                 count,
-    //                                    scratchpad.buffers[12],
-    //                                    scratchpad.buffers[13]),
-    //                 sizeof(AcReal), cudaMemcpyDeviceToDevice, stream);
-    //   acKernelReduceScal(stream, scratchpad.buffers[i], count,
-    //                      scratchpad.buffers[12], scratchpad.buffers[13]);
-
-    // AcReal ac_result;
-    // cudaMemcpyAsync(&ac_result, &pba.in[PROFILE_ucrossb11mean_x + i][k],
-    //                 sizeof(AcReal), cudaMemcpyHostToDevice, stream);
-    // cudaStreamSynchronize(stream);
-    // AcReal thrust_result = thrust::reduce(
-    //     thrust::cuda::par.on(stream),
-    //     thrust::device_pointer_cast(scratchpad.buffers[0]),
-    //     thrust::device_pointer_cast(scratchpad.buffers[0]) + count);
-    // printf("%zu results: %g (ac) and %g (thrust)\n", i, ac_result,
-    //        thrust_result);
   }
-
-  // ucrossb11mean_x[k] = thrust::reduce(
-  //     thrust::cuda::par.on(stream),
-  //     thrust::device_pointer_cast(scratchpad.buffers[0]),
-  //     thrust::device_pointer_cast(scratchpad.buffers[0]) + count);
-  // ucrossb11mean_y[k] = thrust::reduce(
-  //     thrust::cuda::par.on(stream),
-  //     thrust::device_pointer_cast(scratchpad.buffers[1]),
-  //     thrust::device_pointer_cast(scratchpad.buffers[1]) + count);
-  // ucrossb11mean_z[k] = thrust::reduce(
-  //     thrust::cuda::par.on(stream),
-  //     thrust::device_pointer_cast(scratchpad.buffers[2]),
-  //     thrust::device_pointer_cast(scratchpad.buffers[2]) + count);
-
-  // ucrossb12mean_x[k] = thrust::reduce(
-  //     thrust::cuda::par.on(stream),
-  //     thrust::device_pointer_cast(scratchpad.buffers[3]),
-  //     thrust::device_pointer_cast(scratchpad.buffers[3]) + count);
-  // ucrossb12mean_y[k] = thrust::reduce(
-  //     thrust::cuda::par.on(stream),
-  //     thrust::device_pointer_cast(scratchpad.buffers[4]),
-  //     thrust::device_pointer_cast(scratchpad.buffers[4]) + count);
-  // ucrossb12mean_z[k] = thrust::reduce(
-  //     thrust::cuda::par.on(stream),
-  //     thrust::device_pointer_cast(scratchpad.buffers[5]),
-  //     thrust::device_pointer_cast(scratchpad.buffers[5]) + count);
-
-  // ucrossb21mean_x[k] = thrust::reduce(
-  //     thrust::cuda::par.on(stream),
-  //     thrust::device_pointer_cast(scratchpad.buffers[6]),
-  //     thrust::device_pointer_cast(scratchpad.buffers[6]) + count);
-  // ucrossb21mean_y[k] = thrust::reduce(
-  //     thrust::cuda::par.on(stream),
-  //     thrust::device_pointer_cast(scratchpad.buffers[7]),
-  //     thrust::device_pointer_cast(scratchpad.buffers[7]) + count);
-  // ucrossb21mean_z[k] = thrust::reduce(
-  //     thrust::cuda::par.on(stream),
-  //     thrust::device_pointer_cast(scratchpad.buffers[8]),
-  //     thrust::device_pointer_cast(scratchpad.buffers[8]) + count);
-
-  // ucrossb22mean_x[k] = thrust::reduce(
-  //     thrust::cuda::par.on(stream),
-  //     thrust::device_pointer_cast(scratchpad.buffers[9]),
-  //     thrust::device_pointer_cast(scratchpad.buffers[9]) + count);
-  // ucrossb22mean_y[k] = thrust::reduce(
-  //     thrust::cuda::par.on(stream),
-  //     thrust::device_pointer_cast(scratchpad.buffers[10]),
-  //     thrust::device_pointer_cast(scratchpad.buffers[10]) + count);
-  // ucrossb22mean_z[k] = thrust::reduce(
-  //     thrust::cuda::par.on(stream),
-  //     thrust::device_pointer_cast(scratchpad.buffers[11]),
-  //     thrust::device_pointer_cast(scratchpad.buffers[11]) + count);
-  // }
-  // cudaStreamSynchronize(stream);
 }
