@@ -81,10 +81,11 @@ AcBufferArray
 acBufferArrayCreate(const size_t num_buffers, const size_t count)
 {
   AcBufferArray ba = {
-      .buffers     = (AcReal**)malloc(sizeof(AcReal*) * num_buffers),
+      // .buffers     = (AcReal**)malloc(sizeof(AcReal*) * num_buffers),
       .num_buffers = num_buffers,
       .count       = count,
   };
+  ERRCHK_ALWAYS(ba.num_buffers <= MAX_BA_NUM_BUFFERS);
   ERRCHK_ALWAYS(ba.buffers);
 
   const size_t bytes = sizeof(ba.buffers[0][0]) * ba.count;
@@ -103,8 +104,8 @@ acBufferArrayDestroy(AcBufferArray* ba)
   }
   ba->count = 0;
 
-  free(ba->buffers);
-  ba->buffers     = NULL;
+  // free(ba->buffers);
+  // ba->buffers     = NULL;
   ba->num_buffers = 0;
 }
 
@@ -234,43 +235,41 @@ greduce(const AcBufferArray in, AcBufferArray out, ProfileBufferArray pba,
   // Note: possible integer overflow when GPU memory becomes large enough
   const size_t curr = threadIdx.x + blockIdx.x * blockDim.x;
 
-  const size_t buffer = threadIdx.z + blockIdx.z * blockDim.z;
-  if (buffer >= in.num_buffers)
-    return;
-
   extern __shared__ AcReal smem[];
-  if (curr < in.count)
-    smem[threadIdx.x] = in.buffers[buffer][curr];
-  else
-    smem[threadIdx.x] = AC_REAL_INVALID_VALUE;
+  for (size_t buffer = 0; buffer < in.num_buffers; ++buffer) {
+    if (curr < in.count)
+      smem[threadIdx.x] = in.buffers[buffer][curr];
+    else
+      smem[threadIdx.x] = AC_REAL_INVALID_VALUE;
 
-  __syncthreads();
+    __syncthreads();
 
-  size_t offset = blockDim.x / 2;
-  while (offset > 0) {
-    if (threadIdx.x < offset) {
-      const AcReal a = smem[threadIdx.x];
-      const AcReal b = smem[threadIdx.x + offset];
+    size_t offset = blockDim.x / 2;
+    while (offset > 0) {
+      if (threadIdx.x < offset) {
+        const AcReal a = smem[threadIdx.x];
+        const AcReal b = smem[threadIdx.x + offset];
 
-      // If the mesh dimensions are not divisible by mapping tbdims, and mapping
-      // tb dims are not divisible by reduction tb dims, then it is possible for
-      // `a` to be invalid but `b` to be valid
-      if (a != AC_REAL_INVALID_VALUE && b != AC_REAL_INVALID_VALUE)
-        smem[threadIdx.x] = a + b;
-      else if (a != AC_REAL_INVALID_VALUE)
-        smem[threadIdx.x] = a;
-      else
-        smem[threadIdx.x] = b;
+        // If the mesh dimensions are not divisible by mapping tbdims, and
+        // mapping tb dims are not divisible by reduction tb dims, then it
+        // is possible for `a` to be invalid but `b` to be valid
+        if (a != AC_REAL_INVALID_VALUE && b != AC_REAL_INVALID_VALUE)
+          smem[threadIdx.x] = a + b;
+        else if (a != AC_REAL_INVALID_VALUE)
+          smem[threadIdx.x] = a;
+        else
+          smem[threadIdx.x] = b;
+      }
+
+      offset /= 2;
+      __syncthreads();
     }
 
-    offset /= 2;
-    __syncthreads();
-  }
-
-  if (!threadIdx.x) {
-    out.buffers[buffer][blockIdx.x] = smem[threadIdx.x];
-    if (!blockIdx.x)
-      pba.in[buffer][depth] = smem[threadIdx.x];
+    if (!threadIdx.x) {
+      out.buffers[buffer][blockIdx.x] = smem[threadIdx.x];
+      if (!blockIdx.x)
+        pba.in[buffer][depth] = smem[threadIdx.x];
+    }
   }
 }
 
@@ -285,26 +284,25 @@ acKernelReduceScalToOutput(const cudaStream_t stream, const AcBufferArray input,
   // Reduce
   size_t count = input.count;
   do {
-    // const size_t tpb  = 128;
-    // const size_t bpg  = as_size_t(ceil(double(count) / tpb));
-    // const size_t smem = tpb * sizeof(in[0]);
-    const dim3 tpb = (dim3){128, 1, 4};
-    // Integer round-up division
-    const dim3 bpg = (dim3){
-        (unsigned int)((count + tpb.x - 1) / tpb.x),
-        1,
-        (unsigned int)((input.num_buffers + tpb.z - 1) / tpb.z),
-    };
-    const size_t smem = tpb.x * sizeof(in[0]);
+    const size_t tpb  = 128;
+    const size_t bpg  = (count + tpb - 1) / tpb;
+    const size_t smem = tpb * sizeof(input.buffers[0][0]);
+    // const dim3 tpb = (dim3){128, 1, 4};
+    // const dim3 bpg = (dim3){
+    //     (unsigned int)((count + tpb.x - 1) / tpb.x),
+    //     1,
+    //     (unsigned int)((input.num_buffers + tpb.z - 1) / tpb.z),
+    // };
+    // const size_t smem = tpb.x * sizeof(in[0]);
 
     swap_pointers(&in, &out);
     if (count == input.count)
       greduce<<<bpg, tpb, smem, stream>>>(input, *out, pba, depth);
     else
       greduce<<<bpg, tpb, smem, stream>>>(*in, *out, pba, depth);
-    ERRCHK_CUDA_KERNEL();
+    ERRCHK_CUDA_KERNEL_ALWAYS();
 
-    count = bpg.x;
+    count = bpg;
   } while (count > 1);
 }
 
@@ -453,6 +451,12 @@ acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
     const int3 end     = (int3){vba.mx - radius, vba.my - radius, 1};
     const size_t count = acMapCross(vba, stream, start, end, scratchpad);
     ERRCHK_ALWAYS(count == (vba.mx - 2 * radius) * (vba.my - 2 * radius));
+    ERRCHK_ALWAYS(count == scratchpad.count);
+    ERRCHK_ALWAYS(count == scratchpad1.count);
+    ERRCHK_ALWAYS(count == scratchpad2.count);
+    ERRCHK_ALWAYS(pba.count == vba.mz);
+    ERRCHK_ALWAYS(scratchpad.num_buffers == scratchpad1.num_buffers);
+    ERRCHK_ALWAYS(scratchpad.num_buffers == scratchpad2.num_buffers);
 
     // TODO fuse reduction kernels
 
