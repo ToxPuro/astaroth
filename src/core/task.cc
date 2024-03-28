@@ -546,7 +546,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
     // compute_func = compute_func_;
 
     params = KernelParameters{op.kernel, stream, 0, output_region.position,
-                              output_region.position + output_region.dims, *op.load_kernel_params_func};
+                              output_region.position + output_region.dims, op.load_kernel_params_func};
     name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
@@ -570,7 +570,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region, R
     // compute_func = compute_func_;
 
     params = KernelParameters{op.kernel, stream, 0, output_region.position,
-                              output_region.position + output_region.dims,  *op.load_kernel_params_func};
+                              output_region.position + output_region.dims,  op.load_kernel_params_func};
     name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
@@ -579,7 +579,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region, R
 void
 ComputeTask::compute()
 {
-    params.load_func.loader({&vba.kernel_input_params, device, (int)loop_cntr.i});
+    params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i});
     acLaunchKernel(params.kernel, params.stream, params.start, params.end, vba);
 }
 

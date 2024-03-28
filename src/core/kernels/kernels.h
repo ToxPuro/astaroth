@@ -51,7 +51,7 @@ typedef struct {
     int step_number;
     int3 start;
     int3 end;
-    LoadKernelParamsFunc load_func;
+    LoadKernelParamsFunc* load_func;
 } KernelParameters;
 
 #ifdef __cplusplus
