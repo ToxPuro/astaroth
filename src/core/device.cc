@@ -304,8 +304,9 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     acDeviceLoadMeshInfo(device, device->local_config);
 
     // LTFM
-    const size_t mxy        = device->vba.mx * device->vba.my;
-    device->tfm_scratchpads = acBufferArrayCreate(14, mxy);
+    const int3 nn           = acConstructInt3Param(AC_nx, AC_ny, AC_nz, device->local_config);
+    const size_t nxy        = as_size_t(nn.x) * as_size_t(nn.y);
+    device->tfm_scratchpads = acBufferArrayCreate(12, nxy);
     // LTFM
 
 #if AC_VERBOSE
