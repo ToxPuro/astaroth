@@ -164,11 +164,9 @@ size_t acMapCross(const VertexBufferArray vba, const cudaStream_t stream,
 void acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
                       AcBufferArray scratchpad, ProfileBufferArray pba);
 
-AcReal* acKernelReduceScalToOutput(const cudaStream_t stream,
-                                   const AcReal* input,
-                                   const size_t initial_count,
-                                   AcReal* scratchpad0, AcReal* scratchpad1,
-                                   AcReal* output);
+void acKernelReduceScalToOutput(const cudaStream_t stream, const AcReal* input,
+                                const size_t initial_count, AcReal* scratchpad0,
+                                AcReal* scratchpad1, AcReal* output);
 
 void acVBASwapBuffer(const Field field, VertexBufferArray* vba);
 
