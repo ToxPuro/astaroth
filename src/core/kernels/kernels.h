@@ -51,7 +51,9 @@ typedef struct {
     int step_number;
     int3 start;
     int3 end;
+    #if AC_MPI_ENABLED
     LoadKernelParamsFunc* load_func;
+    #endif
 } KernelParameters;
 
 #ifdef __cplusplus
