@@ -148,8 +148,9 @@ AcResult acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
 Volume acKernelLaunchGetLastTPB(void);
 
 // Testing
+#define MAX_BA_NUM_BUFFERS (12)
 typedef struct {
-  AcReal** buffers;
+  AcReal* buffers[MAX_BA_NUM_BUFFERS];
   size_t num_buffers;
   size_t count;
 } AcBufferArray;
