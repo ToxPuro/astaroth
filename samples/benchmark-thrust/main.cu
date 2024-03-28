@@ -58,11 +58,14 @@ main(int argc, char** argv)
     printf("\tmy: %zu\n", my);
     printf("\tmz: %zu\n", mz);
 
-    benchmark_thrust(mx, my, mz);
-
     // Device
     cudaSetDevice(0);
 
+#if 1
+    cudaProfilerStart();
+    benchmark_thrust(mx, my, mz);
+    cudaProfilerStop();
+#else
     // Mesh info
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
@@ -81,11 +84,13 @@ main(int argc, char** argv)
     acLaunchKernel(randomize, 0, dims.n0, dims.n1, vba);
     acVBASwapBuffers(&vba);
 
-    ProfileBufferArray pba   = acPBACreate(mz);
-    AcBufferArray scratchpad = acBufferArrayCreate(14, mx * my);
+    ProfileBufferArray pba = acPBACreate(mz);
+    AcBufferArray ba0      = acBufferArrayCreate(12, nx * ny);
+    AcBufferArray ba1      = acBufferArrayCreate(12, nx * ny);
+    AcBufferArray ba2      = acBufferArrayCreate(12, nx * ny);
     // acMapCross(vba, 0, (int3){radius, radius, 0}, (int3){radius + nx, radius + ny, 1},
     // scratchpad);
-    acMapCrossReduce(vba, 0, scratchpad, pba);
+    acMapCrossReduce(vba, 0, ba0, ba1, ba2, pba);
 
     Timer t;
 
@@ -96,7 +101,7 @@ main(int argc, char** argv)
     // acMapCross(vba, 0, (int3){radius, radius, k}, (int3){radius + nx, radius + ny, k +
     // 1},
     //            scratchpad);
-    acMapCrossReduce(vba, 0, scratchpad, pba);
+    acMapCrossReduce(vba, 0, ba0, ba1, ba2, pba);
 
     cudaDeviceSynchronize();
     timer_diff_print(t);
@@ -105,8 +110,11 @@ main(int argc, char** argv)
 
     ERRCHK_CUDA_KERNEL_ALWAYS();
     acRandQuit();
-    acBufferArrayDestroy(&scratchpad);
+    acBufferArrayDestroy(&ba2);
+    acBufferArrayDestroy(&ba1);
+    acBufferArrayDestroy(&ba0);
     acPBADestroy(&pba);
     acVBADestroy(&vba);
+#endif
     return EXIT_SUCCESS;
 }
