@@ -304,9 +304,11 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     acDeviceLoadMeshInfo(device, device->local_config);
 
     // LTFM
-    const int3 nn           = acConstructInt3Param(AC_nx, AC_ny, AC_nz, device->local_config);
-    const size_t nxy        = as_size_t(nn.x) * as_size_t(nn.y);
-    device->tfm_scratchpads = acBufferArrayCreate(12, nxy);
+    const int3 nn    = acConstructInt3Param(AC_nx, AC_ny, AC_nz, device->local_config);
+    const size_t nxy = as_size_t(nn.x) * as_size_t(nn.y);
+    device->ba0      = acBufferArrayCreate(12, nxy);
+    device->ba1      = acBufferArrayCreate(12, nxy);
+    device->ba2      = acBufferArrayCreate(12, nxy);
     // LTFM
 
 #if AC_VERBOSE
@@ -328,8 +330,9 @@ acDeviceDestroy(Device device)
     acDeviceSynchronizeStream(device, STREAM_ALL);
 
     // LTFM
-    const size_t mxy = device->vba.mx * device->vba.my;
-    acBufferArrayDestroy(&device->tfm_scratchpads);
+    acBufferArrayDestroy(&device->ba0);
+    acBufferArrayDestroy(&device->ba1);
+    acBufferArrayDestroy(&device->ba2);
     // LTFM
 
     // Memory
@@ -908,7 +911,7 @@ acDeviceReduceXYAverageTFMucrossb(const Device device, const Stream stream)
     cudaSetDevice(device->id);
     acDeviceSynchronizeStream(device, stream);
 
-    acMapCrossReduce(device->vba, device->streams[stream], device->tfm_scratchpads,
+    acMapCrossReduce(device->vba, device->streams[stream], device->ba0, device->ba1, device->ba2,
                      device->vba.profiles);
     return AC_SUCCESS;
 }

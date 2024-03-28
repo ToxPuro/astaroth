@@ -39,7 +39,9 @@ struct device_s {
     size_t scratchpad_size;
 
     // LTFM
-    AcBufferArray tfm_scratchpads;
+    AcBufferArray ba0;
+    AcBufferArray ba1;
+    AcBufferArray ba2;
     // LTFM
 };
 

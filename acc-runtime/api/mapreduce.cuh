@@ -406,7 +406,8 @@ acKernelReduceScalToOutput(const cudaStream_t stream, const AcReal* input,
 
 void
 acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
-                 AcBufferArray scratchpad, ProfileBufferArray pba)
+                 AcBufferArray scratchpad, AcBufferArray scratchpad1,
+                 AcBufferArray scratchpad2, ProfileBufferArray pba)
 {
   ERRCHK_ALWAYS(vba.mz == pba.count);
 
@@ -439,11 +440,6 @@ acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
   //       pba.in[PROFILE_ucrossb22mean_z]);
   const size_t num_uxb_profiles = 3 * 4;
   ERRCHK_ALWAYS(scratchpad.num_buffers >= num_uxb_profiles);
-
-  AcBufferArray scratchpad1 = acBufferArrayCreate(scratchpad.num_buffers,
-                                                  scratchpad.count);
-  AcBufferArray scratchpad2 = acBufferArrayCreate(scratchpad.num_buffers,
-                                                  scratchpad.count);
 
   const size_t radius = STENCIL_ORDER / 2;
   for (size_t k = 0; k < vba.mz; ++k) {
@@ -487,6 +483,7 @@ acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
     // printf("%zu results: %g (ac) and %g (thrust)\n", i, ac_result,
     //        thrust_result);
   }
+
   // ucrossb11mean_x[k] = thrust::reduce(
   //     thrust::cuda::par.on(stream),
   //     thrust::device_pointer_cast(scratchpad.buffers[0]),
@@ -540,6 +537,4 @@ acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
   //     thrust::device_pointer_cast(scratchpad.buffers[11]) + count);
   // }
   // cudaStreamSynchronize(stream);
-  acBufferArrayDestroy(&scratchpad1);
-  acBufferArrayDestroy(&scratchpad2);
 }
