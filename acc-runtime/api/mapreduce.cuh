@@ -411,7 +411,6 @@ acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
                  AcBufferArray scratchpad, ProfileBufferArray pba)
 {
   ERRCHK_ALWAYS(vba.mz == pba.count);
-  return;
 
   //   auto ucrossb11mean_x = thrust::device_pointer_cast(
   //       pba.in[PROFILE_ucrossb11mean_x]);
