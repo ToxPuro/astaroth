@@ -342,3 +342,4 @@ struct AcTaskGraph {
 AcBoundary boundary_from_normal(int3 normal);
 int3 normal_from_boundary(AcBoundary boundary);
 AcTaskDefinition convert_iter_to_normal_compute(AcTaskDefinition op, int step_num);
+typedef struct LoadKernelParamsFunc{std::function<void(ParamLoadingInfo)> loader;} LoadKernelParamsFunc;

@@ -761,15 +761,8 @@ typedef struct ParamLoadingInfo {
 	const int step_number;
 } ParamLoadingInfo;
 
-#ifdef __cplusplus
-} //END C linkage
-#include <functional>
-typedef struct LoadKernelParamsFunc{std::function<void(ParamLoadingInfo)> loader;} LoadKernelParamsFunc;
-extern "C" {
-#else
 //opaque for C to enable C++ lambdas
 typedef struct LoadKernelParamsFunc LoadKernelParamsFunc;
-#endif
 
 /** TaskDefinition is a datatype containing information necessary to generate a set of tasks for
  * some operation.*/
@@ -1339,6 +1332,7 @@ acCompute(AcKernel kernel, Field (&fields)[num_fields])
 {
     return acCompute(kernel, fields, num_fields, fields, num_fields);
 }
+#include <functional>
 
 /** */
 AcTaskDefinition acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
