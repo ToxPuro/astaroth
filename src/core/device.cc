@@ -873,7 +873,7 @@ acDeviceReduceXYAverage(const Device device, const Stream stream, const Field fi
                         const Profile profile)
 {
     cudaSetDevice(device->id);
-    acDeviceSynchronizeStream(device, stream);
+    // acDeviceSynchronizeStream(device, stream);
 
     const AcMeshDims dims = acGetMeshDims(device->local_config);
 
@@ -909,7 +909,7 @@ AcResult
 acDeviceReduceXYAverageTFMucrossb(const Device device, const Stream stream)
 {
     cudaSetDevice(device->id);
-    acDeviceSynchronizeStream(device, stream);
+    // acDeviceSynchronizeStream(device, stream);
 
     acMapCrossReduce(device->vba, device->streams[stream], device->ba0, device->ba1, device->ba2,
                      device->vba.profiles);
@@ -1010,4 +1010,10 @@ acDeviceResetMesh(const Device device, const Stream stream)
     cudaSetDevice(device->id);
     acDeviceSynchronizeStream(device, stream);
     return acVBAReset(device->streams[stream], &device->vba);
+}
+
+cudaStream_t
+acDeviceGetCUDAStream(const Device device, const Stream stream)
+{
+    return device->streams[stream];
 }

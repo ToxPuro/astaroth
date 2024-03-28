@@ -1154,6 +1154,8 @@ AcResult acDeviceReduceXYAverage(const Device device, const Stream stream, const
 /** */
 // LTFM
 AcResult acDeviceReduceXYAverageTFMucrossb(const Device device, const Stream stream);
+
+cudaStream_t acDeviceGetCUDAStream(const Device device, const Stream stream);
 // LTFM
 
 /** */
@@ -1246,7 +1248,9 @@ acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out
 }
 
 /** */
-template <size_t num_fields> AcTaskDefinition acHaloExchange(Field (&fields)[num_fields])
+template <size_t num_fields>
+AcTaskDefinition
+acHaloExchange(Field (&fields)[num_fields])
 {
     return acHaloExchange(fields, num_fields);
 }

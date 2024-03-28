@@ -300,7 +300,7 @@ acKernelReduceScalToOutput(const cudaStream_t stream, const AcBufferArray input,
       greduce<<<bpg, tpb, smem, stream>>>(input, *out, pba, depth);
     else
       greduce<<<bpg, tpb, smem, stream>>>(*in, *out, pba, depth);
-    ERRCHK_CUDA_KERNEL_ALWAYS();
+    ERRCHK_CUDA_KERNEL();
 
     count = bpg;
   } while (count > 1);
@@ -403,6 +403,47 @@ acKernelReduceScalToOutput(const cudaStream_t stream, const AcReal* input,
 //   } while (count > 1);
 //   return in;
 // }
+
+void
+acMapCrossReduceCUDAGraph(const VertexBufferArray vba,
+                          const cudaStream_t stream, AcBufferArray scratchpad,
+                          AcBufferArray scratchpad1, AcBufferArray scratchpad2,
+                          ProfileBufferArray pba)
+{
+  static bool cg_created = false;
+  static cudaGraph_t cg;
+  static cudaGraphExec_t cg_instance;
+
+  ERRCHK_ALWAYS(vba.mz == pba.count);
+  const size_t num_uxb_profiles = 3 * 4;
+  ERRCHK_ALWAYS(scratchpad.num_buffers >= num_uxb_profiles);
+
+  if (!cg_created) {
+    cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+
+    const size_t radius = STENCIL_ORDER / 2;
+    for (size_t k = 0; k < vba.mz; ++k) {
+      const int3 start   = (int3){radius, radius, 0};
+      const int3 end     = (int3){vba.mx - radius, vba.my - radius, 1};
+      const size_t count = acMapCross(vba, stream, start, end, scratchpad);
+      ERRCHK_ALWAYS(count == (vba.mx - 2 * radius) * (vba.my - 2 * radius));
+      ERRCHK_ALWAYS(count == scratchpad.count);
+      ERRCHK_ALWAYS(count == scratchpad1.count);
+      ERRCHK_ALWAYS(count == scratchpad2.count);
+      ERRCHK_ALWAYS(pba.count == vba.mz);
+      ERRCHK_ALWAYS(scratchpad.num_buffers == scratchpad1.num_buffers);
+      ERRCHK_ALWAYS(scratchpad.num_buffers == scratchpad2.num_buffers);
+
+      acKernelReduceScalToOutput(stream, scratchpad, scratchpad1, scratchpad2,
+                                 pba, k);
+    }
+
+    cudaStreamEndCapture(stream, &cg);
+    cudaGraphInstantiate(&cg_instance, cg, NULL, NULL, 0);
+    cg_created = true;
+  }
+  cudaGraphLaunch(cg_instance, stream);
+}
 
 void
 acMapCrossReduce(const VertexBufferArray vba, const cudaStream_t stream,
