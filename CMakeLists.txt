@@ -65,11 +65,15 @@ if (USE_HIP)
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)
     # Workaround for finding HIP on Lumi
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3)
+    # Workaround for finding HIP on Dardel
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.3.3/hip /opt/rocm-5.3.3)
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/roctracer /opt/rocm)
+    include_directories(/opt/rocm/roctracer/include)
+    link_directories(/opt/rocm/roctracer/lib)
     # Workaround for finding roctracer on Frontier
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-default/roctracer /opt/rocm-default)
     include_directories(/opt/rocm-default/roctracer/include)
     link_directories(/opt/rocm-default/roctracer/lib)
-
 
     # Rocm
     #include_directories(/opt/rocm/include)
@@ -79,11 +83,11 @@ if (USE_HIP)
     #Deprecated (roctracer inlude will warn about deprecated header, better to include non deprecated header)
     #include_directories(/opt/rocm/roctracer/include)
     #link_directories(/opt/rocm/roctracer/lib)
-    #LUMI
-    set(ROC_TRACER_PATH "/opt/rocm-5.2.3/include/roctracer")
+    #LUMI & Dardel
+    #set(ROC_TRACER_PATH "/opt/rocm-5.2.3/include/roctracer /opt/rocm/include/roctracer")
+    set(ROC_TRACER_PATH "/opt/rocm*/include/roctracer")
     include_directories(${ROC_TRACER_PATH})
     link_directories(${ROC_TRACER_PATH})
-
 
     # Rocrand
     include_directories(/opt/rocm/hiprand/include)
@@ -130,8 +134,15 @@ if (VERBOSE)
     add_definitions(-DAC_VERBOSE=1)
 endif ()
 if (MPI_ENABLED)
-    find_package(MPI REQUIRED COMPONENTS C)
-    include_directories(${MPI_C_INCLUDE_DIRS})
+    if (USE_DARDEL)
+      set(MPI_INCLUDE /opt/cray/pe/mpich/8.1.25/ofi/cray/10.0/include)
+      set(MPI_LIB /opt/cray/pe/mpich/8.1.25/ofi/cray/10.0/lib)
+      include_directories(${MPI_INCLUDE})
+      link_directories(${MPI_LIB})
+    else()
+      find_package(MPI REQUIRED COMPONENTS C)
+      include_directories(${MPI_C_INCLUDE_DIRS})
+    endif()
     add_definitions(-DAC_MPI_ENABLED=1)
 endif ()
 if (USE_CUDA_AWARE_MPI)

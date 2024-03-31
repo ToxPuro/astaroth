@@ -64,10 +64,15 @@ endif ()
 
 ## Options
 if (MPI_ENABLED)
-    target_link_libraries(astaroth_core
+    if (USE_DARDEL)
+      target_include_directories(astaroth_core PUBLIC ${MPI_INCLUDE})
+      target_link_directories(astaroth_core PUBLIC ${MPI_LIB})
+    else()
+      target_link_libraries(astaroth_core
 	PUBLIC
 	MPI::MPI_C
-    )
+      )
+    endif()
 endif()
 
 

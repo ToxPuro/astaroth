@@ -55,6 +55,7 @@ if (BUILD_ACC_RUNTIME_LIBRARY)
 	list(APPEND CMAKE_PREFIX_PATH /opt/rocm/hip /opt/rocm)             # Default
         list(APPEND CMAKE_PREFIX_PATH /opt/rocm-4.3.0/hip /opt/rocm-4.3.0) # Triton
         list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3) # Lumi
+	list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.3.3/hip /opt/rocm-5.3.3) # Dardel
 	list(APPEND CMAKE_PREFIX_PATH /opt/rocm-default/hip /opt/rocm-default) # Frontier
 
         enable_language(CXX)
