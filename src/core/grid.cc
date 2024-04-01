@@ -220,9 +220,9 @@ AcResult
 acGridInit(AcMeshInfo info)
 {
     ERRCHK(!grid.initialized);
-    if(!grid.mpi_initialized)
+    if (!grid.mpi_initialized)
     {
-      if((AcMPICommStrategy)info.int_params[AC_MPI_comm_strategy] == AcMPICommStrategy::DuplicateMPICommWorld)
+      if ((AcMPICommStrategy)info.int_params[AC_MPI_comm_strategy] == AcMPICommStrategy::DuplicateMPICommWorld)
       {
       	ERRCHK_ALWAYS(MPI_Comm_dup(MPI_COMM_WORLD,&astaroth_comm) == MPI_SUCCESS);
       }
@@ -377,10 +377,10 @@ acGridInit(AcMeshInfo info)
     acGridSynchronizeStream(STREAM_ALL);
     acVerboseLogFromRootProc(pid, "acGridInit: Done synchronizing streams\n");
 
-    for(int array=0;array<NUM_REAL_ARRAYS;++array)
+    for (int array=0;array<NUM_REAL_ARRAYS;++array)
     {
       //in case the user loaded a nullptr to the profile do not load it
-      if(submesh.info.real_arrays[array] != nullptr){
+      if (submesh.info.real_arrays[array] != nullptr){
         acDeviceLoadRealArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcRealArrayParam>(array));
       }else{
         acLogFromRootProc(pid, "acGridInit: Warning!!!\tReal array %s will be null and not allocated since you loaded a nullptr to it\n", real_array_param_names[array]);
@@ -388,17 +388,16 @@ acGridInit(AcMeshInfo info)
       acGridSynchronizeStream(STREAM_ALL);
     }
 
-    for(int array=0;array<NUM_INT_ARRAYS;++array)
+    for (int array=0;array<NUM_INT_ARRAYS;++array)
     {
       //in case the user loaded a nullptr to the profile do not load it
-      if(submesh.info.int_arrays[array] != nullptr){
+      if (submesh.info.int_arrays[array] != nullptr){
         acDeviceLoadIntArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcIntArrayParam>(array));
       }else{
         acLogFromRootProc(pid, "acGridInit: Warning!!!\tInt array %s will be null and not allocated since you loaded a nullptr to it\n", int_array_param_names[array]);
       }
       acGridSynchronizeStream(STREAM_ALL);
     }
-
 
 #ifdef AC_INTEGRATION
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
@@ -1440,11 +1439,11 @@ bool
 TestRegions(std::vector<Region> regions, int target_volume)
 {
 	bool passed = true;
-	for(auto& region_1: regions)
+	for (auto& region_1: regions)
 	{
-		for(auto& region_2:regions)
+		for (auto& region_2:regions)
 		{
-			if(region_1.overlaps(&region_2) && !((region_1.position == region_2.position) && (region_1.dims == region_2.dims)))
+			if (region_1.overlaps(&region_2) && !((region_1.position == region_2.position) && (region_1.dims == region_2.dims)))
 			{
 				passed=false;
 				printf("Region_1 position: %d,%d,%d\tdims %d,%d,%d\n",region_1.position.x,region_1.position.y,region_1.position.z,region_1.dims.x,region_1.dims.y,region_1.dims.z);
@@ -1453,22 +1452,22 @@ TestRegions(std::vector<Region> regions, int target_volume)
 
 		}
 	}
-	if(!passed)
+	if (!passed)
 		printf("RegionTest: overlapping\n");
 
 	int covered_volume = 0;
-	for(auto& region: regions)
+	for (auto& region: regions)
 	{
 		covered_volume += region.volume;
 	}
 	passed &= covered_volume == target_volume;
-	if(!passed)
+	if (!passed)
 	{
 		printf("Doesn't cover the volume\n");
 		printf("Target: %d\n",target_volume);
 		printf("Covered: %d\n",covered_volume);
 	}
-	if(!passed)
+	if (!passed)
 		printf("RegionTest: not passed\n");
 	return passed;
 }
@@ -1488,10 +1487,10 @@ getmyregions(int3 nn, int decomp_level, std::vector<Field> fields_out)
 		regions.push_back(UpperCommRegion(nn,fields_out));
 		**/
 		for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
-				if(Region::tag_to_id(tag) != (int3){0,0,0})
+				if (Region::tag_to_id(tag) != (int3){0,0,0})
 					regions.push_back(Region(RegionFamily::Compute_output,tag,nn,fields_out.data(),fields_out.size()));
             }
-	if(decomp_level > 0) 
+	if (decomp_level > 0) 
 	{
 	regions.push_back(LeftCompRegion(mm,decomp_level,fields_out));
 	regions.push_back(RightCompRegion(mm,decomp_level,fields_out));
@@ -1504,14 +1503,14 @@ getmyregions(int3 nn, int decomp_level, std::vector<Field> fields_out)
 	}
 	int target_volume = (nn.x)*(nn.y)*(nn.z);
 	bool passed = TestRegions(regions,target_volume);
-	if(!passed) exit(0);
+	if (!passed) exit(0);
 	return regions;
 }
 std::vector<Region>
 getinputregions(std::vector<Region> output_regions, std::vector<Field> input_fields)
 {
 	std::vector<Region> input_regions{};
-	for(auto& region : output_regions)
+	for (auto& region : output_regions)
 		input_regions.push_back(GetInputRegion(region,input_fields));
 	return input_regions;
 }
@@ -1521,7 +1520,7 @@ testmydecomp(int3 nn, int decomp_level, std::vector<Field> fields_out)
 	std::vector<Region> regions = getmyregions(nn,decomp_level,fields_out);
 	int target_volume = (nn.x)*(nn.y)*(nn.z);
 	bool passed = TestRegions(regions,target_volume);
-	if(!passed) exit(0);
+	if (!passed) exit(0);
 }
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
@@ -1547,7 +1546,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     int3 nn         = grid.nn;
 
     //TP test code to test new decomp
-    //for(int i=0;i<5;++i)
+    //for (int i=0;i<5;++i)
     //{
     //	printf("\n");
     //	//testmydecomp(nn,i,{});
@@ -1610,7 +1609,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 	    std::vector<Region> comp_out_regions = getmyregions(nn,0,fields_out);
 	    std::vector<Field> fields_in(op.fields_in,op.fields_in+op.num_fields_in);
 	    std::vector<Region> comp_input_regions = getinputregions(comp_out_regions,fields_in);
-	    for(size_t region_index=0; region_index< comp_out_regions.size(); ++region_index)
+	    for (size_t region_index=0; region_index< comp_out_regions.size(); ++region_index)
 	    {
 		    auto task = std::make_shared<ComputeTask>(op,region_index,comp_input_regions[region_index],comp_out_regions[region_index],device,swap_offset);
                     graph->all_tasks.push_back(task);
