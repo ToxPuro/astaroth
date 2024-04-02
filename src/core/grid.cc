@@ -340,18 +340,39 @@ acGridInit(AcMeshInfo info)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
         all_fields[i] = (Field)i;
     }
+    for (int array=0;array<NUM_REAL_ARRAYS;++array)
+    {
+      //in case the user loaded a nullptr to the profile do not load it
+      if (submesh.info.real_arrays[array] != nullptr){
+        acDeviceLoadRealArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcRealArrayParam>(array));
+      }else{
+        acLogFromRootProc(pid, "acGridInit: Warning!!!\tReal array %s will be null and not allocated since you loaded a nullptr to it\n", real_array_param_names[array]);
+      }
+      acGridSynchronizeStream(STREAM_ALL);
+    }
 
-    acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
-#ifdef AC_INTEGRATION
+    for (int array=0;array<NUM_INT_ARRAYS;++array)
+    {
+      //in case the user loaded a nullptr to the profile do not load it
+      if (submesh.info.int_arrays[array] != nullptr){
+        acDeviceLoadIntArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcIntArrayParam>(array));
+      }else{
+        acLogFromRootProc(pid, "acGridInit: Warning!!!\tInt array %s will be null and not allocated since you loaded a nullptr to it\n", int_array_param_names[array]);
+      }
+      acGridSynchronizeStream(STREAM_ALL);
+    }
+
+    acLogFromRootProc(pid, "acGridInit: Creating default task graph :)\n");
+#ifdef AC_INTEGRATION_ENABLED
     auto intermediate_loader = [](ParamLoadingInfo l){
 	    l.params -> twopass_solve_intermediate.step_num = l.step_number;
 	    l.params -> twopass_solve_intermediate.dt= 
-		    l.device->local_config.real_params[AC_dt];
+            l.device->local_config.real_params[AC_dt];
     };
     auto final_loader = [](ParamLoadingInfo l){
 	    l.params -> twopass_solve_final.step_num = l.step_number;
 	    l.params -> twopass_solve_final.current_time= 
-		    l.device->local_config.real_params[AC_current_time];
+		   l.device->local_config.real_params[AC_current_time];
     };
     AcTaskDefinition default_ops[] = {
 	    acHaloExchange(all_fields),
@@ -377,31 +398,10 @@ acGridInit(AcMeshInfo info)
     acGridSynchronizeStream(STREAM_ALL);
     acVerboseLogFromRootProc(pid, "acGridInit: Done synchronizing streams\n");
 
-    for (int array=0;array<NUM_REAL_ARRAYS;++array)
-    {
-      //in case the user loaded a nullptr to the profile do not load it
-      if (submesh.info.real_arrays[array] != nullptr){
-        acDeviceLoadRealArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcRealArrayParam>(array));
-      }else{
-        acLogFromRootProc(pid, "acGridInit: Warning!!!\tReal array %s will be null and not allocated since you loaded a nullptr to it\n", real_array_param_names[array]);
-      }
-      acGridSynchronizeStream(STREAM_ALL);
-    }
 
-    for (int array=0;array<NUM_INT_ARRAYS;++array)
-    {
-      //in case the user loaded a nullptr to the profile do not load it
-      if (submesh.info.int_arrays[array] != nullptr){
-        acDeviceLoadIntArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcIntArrayParam>(array));
-      }else{
-        acLogFromRootProc(pid, "acGridInit: Warning!!!\tInt array %s will be null and not allocated since you loaded a nullptr to it\n", int_array_param_names[array]);
-      }
-      acGridSynchronizeStream(STREAM_ALL);
-    }
-
-#ifdef AC_INTEGRATION
+#ifdef AC_INTEGRATION_ENABLED
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
-    acLogFromRootProc(pid, "acGridInit: Done creating default task graph\n");
+    acLogFromRootProc(pid, "acGridInit: Done creating default task graph :)\n");
 #endif
     return AC_SUCCESS;
 }
@@ -1545,12 +1545,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
     int3 nn         = grid.nn;
 
-    //TP test code to test new decomp
-    //for (int i=0;i<5;++i)
-    //{
-    //	printf("\n");
-    //	//testmydecomp(nn,i,{});
-    //}
 
     uint3_64 decomp = grid.decomposition;
     int3 pid3d      = getPid3D(rank, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]);
@@ -1620,7 +1614,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                 auto task = std::make_shared<ComputeTask>(op, i, tag, nn, device, swap_offset);
                 graph->all_tasks.push_back(task);
                 //done here since we want to write only to out not to in what launching the taskgraph would do
-                acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, *op.kernel, task->output_region.position, task->output_region.position + task->output_region.dims);
+                //acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, *op.kernel, task->output_region.position, task->output_region.position + task->output_region.dims);
             }
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
@@ -1823,6 +1817,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
     acGridSynchronizeStream(STREAM_ALL);
     //ERRCHK_ALWAYS(num_comp_tasks==6);
+    printf("done building\n");
+    fflush(stdout);
     return graph;
 }
 
