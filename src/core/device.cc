@@ -726,8 +726,7 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
 
 #ifdef AC_SINGLEPASS_INTEGRATION
     device->vba.kernel_input_params.singlepass_solve.step_num = step_number;
-    device->vba.kernel_input_params.singlepass_solve.dt = dt;
-    device->vba.kernel_input_params.singlepass_solve.current_time= current_time;
+    device->vba.kernel_input_params.singlepass_solve.time_params = {dt,current_time};
     return acLaunchKernel(singlepass_solve, device->streams[stream], start, end, device->vba);
 #else
     // Two-pass integration with acDeviceIntegrateSubstep works currently
