@@ -725,7 +725,10 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
     cudaSetDevice(device->id);
 
 #ifdef AC_SINGLEPASS_INTEGRATION
-    return acLaunchKernel(bind_three_params(singlepass_solve,step_number,dt,current_time), device->streams[stream], start, end, device->vba);
+    device->vba.kernel_input_params.singlepass_solve.step_num = step_number;
+    device->vba.kernel_input_params.singlepass_solve.dt = dt;
+    device->vba.kernel_input_params.singlepass_solve.current_time= current_time;
+    return acLaunchKernel(singlepass_solve, device->streams[stream], start, end, device->vba);
 #else
     // Two-pass integration with acDeviceIntegrateSubstep works currently
     // only when integrating the whole subdomain
