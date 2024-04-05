@@ -1817,7 +1817,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
     acGridSynchronizeStream(STREAM_ALL);
     //ERRCHK_ALWAYS(num_comp_tasks==6);
-    printf("done building\n");
+    if (rank==0) printf("done building\n");
     fflush(stdout);
     return graph;
 }
