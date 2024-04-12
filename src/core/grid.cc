@@ -362,7 +362,7 @@ acGridInit(AcMeshInfo info)
       acGridSynchronizeStream(STREAM_ALL);
     }
 
-    acLogFromRootProc(pid, "acGridInit: Creating default task graph :)\n");
+    acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
 #ifdef AC_INTEGRATION_ENABLED
     auto intermediate_loader = [](ParamLoadingInfo l){
 	    l.params -> twopass_solve_intermediate.step_num = l.step_number;
@@ -401,7 +401,7 @@ acGridInit(AcMeshInfo info)
 
 #ifdef AC_INTEGRATION_ENABLED
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
-    acLogFromRootProc(pid, "acGridInit: Done creating default task graph :)\n");
+    acLogFromRootProc(pid, "acGridInit: Done creating default task graph\n");
 #endif
     return AC_SUCCESS;
 }
@@ -1614,7 +1614,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                 auto task = std::make_shared<ComputeTask>(op, i, tag, nn, device, swap_offset);
                 graph->all_tasks.push_back(task);
                 //done here since we want to write only to out not to in what launching the taskgraph would do
-                acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, *op.kernel, task->output_region.position, task->output_region.position + task->output_region.dims);
+                acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, kernels[(int)op.kernel_enum], task->output_region.position, task->output_region.position + task->output_region.dims);
             }
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
@@ -1817,8 +1817,6 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     acGridLaunchKernel(STREAM_DEFAULT, AC_BUILTIN_RESET, dims.n0,dims.n1);
     acGridSynchronizeStream(STREAM_ALL);
     //ERRCHK_ALWAYS(num_comp_tasks==6);
-    printf("done building\n");
-    fflush(stdout);
     return graph;
 }
 
@@ -1839,8 +1837,10 @@ acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
     ERRCHK(grid.initialized);
     // acGridSynchronizeStream(stream);
     // acDeviceSynchronizeStream(grid.device, stream);
+    int reduce_output = -1;
+    AcKernel kernel;
+    KernelReduceOp reduce_op;
     cudaSetDevice(grid.device->id);
-
     if (graph->trace_file.enabled) {
         timer_reset(&(graph->trace_file.timer));
     }
@@ -1849,9 +1849,15 @@ acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
         if (task->active) {
             task->syncVBA();
             task->setIterationParams(0, n_iterations);
+	    if(reduce_output<0 && task->isComputeTask())
+	    {
+		    auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
+		    kernel = compute_task -> getKernel();
+		    reduce_output =  kernel_reduce_outputs[(int)kernel];
+		    reduce_op = kernel_reduce_ops[(int)kernel];
+	    }
         }
     }
-
     bool ready;
     do {
         ready = true;
@@ -1869,6 +1875,29 @@ acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
                 acDeviceSwapBuffer(grid.device, (VertexBufferHandle)i);
             }
         }
+    }
+    if(reduce_output>=0)
+    {
+	    AcReal local_res;
+	    acDeviceFinishReduce(grid.device,&local_res,kernel,reduce_op);
+	    AcReal mpi_res;
+	    switch(reduce_op)
+	    {
+		case(REDUCE_SUM):
+    	    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_SUM, astaroth_comm);
+	    		grid.device->output.real_outputs[reduce_output] = mpi_res;
+			break;
+		case(REDUCE_MIN):
+    	    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_MIN, astaroth_comm);
+	    		grid.device->output.real_outputs[reduce_output] = mpi_res;
+			break;
+		case(REDUCE_MAX):
+    	    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_MAX, astaroth_comm);
+	    		grid.device->output.real_outputs[reduce_output] = mpi_res;
+			break;
+		case(NO_REDUCE):
+			break;
+	    }
     }
     return AC_SUCCESS;
 }

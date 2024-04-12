@@ -35,18 +35,17 @@ struct device_s {
 
     // Memory
     VertexBufferArray vba;
-    AcReal* reduce_scratchpads[NUM_REDUCE_SCRATCHPADS];
-    size_t scratchpad_size;
 #if PACKED_DATA_TRANSFERS
     // Declare memory for buffers in device memory needed for packed data transfers.
     AcReal *plate_buffers[NUM_PLATE_BUFFERS];
 #endif
+    AcDeviceKernelOutput output;
 };
 
 typedef AcReal AcRealPacked;
 
 typedef struct {
-    Kernel kernel;
+    AcKernel kernel_enum;
     cudaStream_t stream;
     int step_number;
     int3 start;
@@ -197,4 +196,8 @@ AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba
 #endif
 
 template <int direction>  static __global__ void packUnpackPlate(AcReal* __restrict__ buffer, VertexBufferArray vba, int3 start, int3 end);
+
+AcReal
+AcKernelReduce(const cudaStream_t stream, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS], const int initial_count, const KernelReduceOp reduce_op);
+
 

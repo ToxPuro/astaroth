@@ -92,6 +92,19 @@ LOCAL_COMPDOMAIN_IDX(const int3 coord)
   (void)coord; // Unused
   return 0;
 }
+template <typename T>
+T
+__ldg(T* val)
+{
+	return *val;
+}
+#if AC_USE_HIP
+uint64_t
+__ballot(bool val)
+{
+	return 0;
+}
+#endif
 
 #include "math_utils.h"
 

@@ -69,7 +69,7 @@ acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, 
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
-    task_def.kernel         = kernels[(int)kernel];
+    task_def.kernel_enum         = kernel;
     task_def.fields_in      = fields_in;
     task_def.num_fields_in  = num_fields_in;
     task_def.fields_out     = fields_out;
@@ -84,7 +84,7 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
-    task_def.kernel         = kernels[(int)kernel];
+    task_def.kernel_enum         = kernel;
     task_def.fields_in      = fields_in;
     task_def.num_fields_in  = num_fields_in;
     task_def.fields_out     = fields_out;
@@ -393,6 +393,10 @@ Task::isPrerequisiteTo(std::shared_ptr<Task> other)
     return false;
 }
 
+bool
+Task::isComputeTask() { return false;}
+
+
 void
 Task::setIterationParams(size_t begin, size_t end)
 {
@@ -482,12 +486,14 @@ Task::syncVBA()
             vba.out[i] = device->vba.out[i];
         }
     }
-    for(int i=0;i<NUM_WORK_BUFFERS; ++i) {
+    for(int i=0;i<NUM_WORK_BUFFERS; ++i)
         vba.w[i] = device->vba.w[i];
-    }
-    for(int i=0;i<NUM_REAL_ARRAYS; ++i) {
+    for(int i=0;i<NUM_REAL_ARRAYS; ++i)
         vba.real_arrays[i] = device->vba.real_arrays[i];
-    }
+    for(int i=0;i<NUM_INT_ARRAYS; ++i)
+        vba.int_arrays[i] = device->vba.int_arrays[i];
+    for(int i=0;i<NUM_REDUCE_SCRATCHPADS; ++i)
+    	vba.reduce_scratchpads[i]  = device->vba.reduce_scratchpads[i];
 }
 
 void
@@ -545,7 +551,7 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
 
     // compute_func = compute_func_;
 
-    params = KernelParameters{op.kernel, stream, 0, output_region.position,
+    params = KernelParameters{op.kernel_enum, stream, 0, output_region.position,
                               output_region.position + output_region.dims, op.load_kernel_params_func};
     name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
@@ -569,18 +575,27 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region, R
 
     // compute_func = compute_func_;
 
-    params = KernelParameters{op.kernel, stream, 0, output_region.position,
+    params = KernelParameters{op.kernel_enum, stream, 0, output_region.position,
                               output_region.position + output_region.dims,  op.load_kernel_params_func};
     name   = "Compute " + std::to_string(order_) + ".(" + std::to_string(output_region.id.x) + "," +
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
+}
+bool
+ComputeTask::isComputeTask() { return true; }
+
+
+AcKernel
+ComputeTask::getKernel()
+{
+	return params.kernel_enum;
 }
 
 void
 ComputeTask::compute()
 {
     params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i});
-    acLaunchKernel(params.kernel, params.stream, params.start, params.end, vba);
+    acLaunchKernel(GetOptimizedKernel(params.kernel_enum,vba), params.stream, params.start, params.end, vba);
 }
 
 bool

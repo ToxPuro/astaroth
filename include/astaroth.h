@@ -769,8 +769,7 @@ typedef struct LoadKernelParamsFunc LoadKernelParamsFunc;
 typedef struct AcTaskDefinition {
     AcTaskType task_type;
     union {
-        //needs to be a pointer since opaque for C
-        Kernel kernel;
+        AcKernel kernel_enum;
         AcBoundcond bound_cond;
 #ifdef AC_INTEGRATION_ENABLED
         AcSpecialMHDBoundcond special_mhd_bound_cond;
@@ -1229,10 +1228,22 @@ AcResult acDeviceReduceVecScal(const Device device, const Stream stream_type,
                                const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
                                const VertexBufferHandle vtxbuf3, AcReal* result);
 /** */
+AcResult 
+acDeviceFinishReduce(Device device, AcReal* res, const AcKernel kernel, const KernelReduceOp reduce_op);
+
+/** */
+AcDeviceKernelOutput
+acDeviceGetKernelOutput(const Device device);
+
+/** */
 AcResult acDeviceRunMPITest(void);
 
 /** */
 AcResult acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kernel,
+                              const int3 start, const int3 end);
+
+/** */
+AcResult acDeviceLaunchKernelWithEnum(const Device device, const Stream stream, const AcKernel kernel,
                               const int3 start, const int3 end);
 /** */
 AcResult acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start,

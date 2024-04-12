@@ -23,10 +23,12 @@
 
 #include "errchk.h"
 #include "math_utils.h"
-
+#include <unordered_map>
+#include <utility>
 
 #if AC_USE_HIP
 #include <hip/hip_runtime.h> // Needed in files that include kernels
+#include <rocprim/rocprim.hpp>
 #endif
 
 #define USE_COMPRESSIBLE_MEMORY (0)
@@ -35,13 +37,28 @@
 
 static dim3 last_tpb = (dim3){0, 0, 0};
 
+//the int key in the nested map corresponds to the starting vertexIdx linearized
+std::unordered_map<Kernel,std::unordered_map<int,int>> reduce_offsets;
+int kernel_running_reduce_offsets[NUM_KERNELS];
 
 Volume
 acKernelLaunchGetLastTPB(void)
 {
   return to_volume(last_tpb);
 }
-
+int
+acGetKernelReduceScratchPadSize(const AcKernel kernel)
+{
+	return kernel_running_reduce_offsets[(int)kernel];
+}
+int
+acGetKernelReduceScratchPadMinSize()
+{
+	int res = 0; 
+	for(int i = 0; i < NUM_KERNELS; ++i)
+		res = (res < kernel_running_reduce_offsets[i]) ? kernel_running_reduce_offsets[i] : res;
+	return res;
+}
 Volume
 get_bpg(const Volume dims, const Volume tpb)
 {
@@ -418,6 +435,11 @@ device_malloc(void** dst, const int bytes)
 VertexBufferArray
 acVBACreate(const AcMeshInfo config)
 {
+  for(int i = 0; i < NUM_KERNELS; ++i)
+  {
+	  kernel_running_reduce_offsets[i] = 0;
+	  reduce_offsets[kernels[i]] = {};
+  }
   //can't use acVertexBufferDims because of linking issues
   const int3 counts = (int3){
         (config.int_params[AC_mx]),
@@ -524,7 +546,26 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
     	device_free(&(vba->int_arrays[i]), config.int_params[int_array_lengths[i]]);
   vba->bytes = 0;
 }
+int
+get_num_of_reduce_output(const dim3 bpg, const dim3 tpb)
+{
+#if AC_USE_HIP
+	const int warp_size = rocprim::host_warp_size();
+#else
+	const int warp_size = 32;
+#endif
+	const int num_of_warps_per_block = (tpb.x*tpb.y*tpb.z + warp_size-1)/warp_size;
+	const int num_of_blocks = bpg.x*bpg.y*bpg.z;
+	return num_of_warps_per_block*num_of_blocks;
+}
 
+int
+get_kernel_index(const Kernel kernel)
+{
+	for(int i = 0; i < NUM_KERNELS; ++i)
+		if(kernel == kernels[i]) return i;
+	return -1;
+}
 AcResult
 acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
                const int3 end, VertexBufferArray vba)
@@ -537,7 +578,14 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
   const dim3 bpg        = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
 
   const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER, sizeof(AcReal));
+  const int key = start.x + 10000*start.y + 10000*10000*start.z;
+  if(reduce_offsets[kernel].find(key) == reduce_offsets[kernel].end())
+  {
+  	reduce_offsets[kernel][key] = kernel_running_reduce_offsets[get_kernel_index(kernel)];
+  	kernel_running_reduce_offsets[get_kernel_index(kernel)] += get_num_of_reduce_output(bpg,tpb);
+  }
 
+  vba.reduce_offset = reduce_offsets[kernel][key];
   // cudaFuncSetCacheConfig(kernel, cudaFuncCachePreferL1);
   kernel<<<bpg, tpb, smem, stream>>>(start, end, vba);
   ERRCHK_CUDA_KERNEL();
@@ -769,6 +817,7 @@ acStoreInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
 static TBConfig
 autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 {
+  vba.reduce_offset = 0;
   size_t id = (size_t)-1;
   for (size_t i = 0; i < NUM_KERNELS; ++i) {
     if (kernels[i] == kernel) {
@@ -960,6 +1009,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
             "Fatal error: failed to find valid thread block dimensions.\n");
   }
   ERRCHK_ALWAYS(c.tpb.x * c.tpb.y * c.tpb.z > 0);
+  acKernelFlush(STREAM_DEFAULT,vba.reduce_scratchpads[0], vba.scratchpad_size, (AcReal)0.0);
   return c;
 }
 
@@ -973,5 +1023,13 @@ getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   TBConfig c = autotune(kernel, dims, vba);
   tbconfigs.push_back(c);
   return c;
+}
+Kernel
+GetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
+{
+	#include "user_kernel_ifs.h"
+	//silence unused warnings
+	(void)vba;
+	return kernels[(int) kernel_enum];
 }
 

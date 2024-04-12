@@ -1,8 +1,22 @@
-typedef struct TimeParams
+enum IHEATCOND
+{
+	NOTHING,
+	K_const,
+	SOMETHING
+} 
+
+struct TimeParams
 {
         real dt;
         real current_time;
-} TimeParams;
+}
+
+struct EnumParams
+{
+	bool test;
+	IHEATCOND heatcond;
+}  
+
 int AC_step_number
 real AC_dt
 
@@ -182,6 +196,7 @@ real AC_sq2GM_star
 real AC_cs2_sound
 //
 real AC_current_time
+output real timestep_out;
 //realArray AC_test_array[AC_slice_steps]
 
 //dconst real AC_test_dconst_array[5]
@@ -748,7 +763,19 @@ rk3(s0, s1, roc, step_num, dt) {
 }
 
 
-Kernel singlepass_solve(int step_num, TimeParams time_params) {
+Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums, bool bool_param) {
+    if enums.heatcond == NOTHING 
+    {
+	print("HI\n")
+    }
+    else if enums.heatcond == K_const
+    {
+	print("Kobra\n")
+    }
+	if bool_param
+	{
+		print("BYE\n")
+	}
     write(VTXBUF_LNRHO, rk3(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity(), step_num, time_params.dt))
 
 #if LENTROPY 
@@ -795,7 +822,6 @@ Kernel singlepass_solve(int step_num, TimeParams time_params) {
     // Required for buffers to match correctly. 
     write(VTXBUF_SHOCK, value(VTXBUF_SHOCK))
 #endif
-
 }
 
 rk3_intermediate(w, roc, step_num,dt) {
@@ -861,6 +887,7 @@ Kernel twopass_solve_intermediate(int step_num, real dt) {
         write(BFIELDY, bfield.y)
         write(BFIELDZ, bfield.z)
     }
+    reduce_max(step_num == 2, 2.0, timestep_out)
     #endif
 
     // %JP: TODO NOTE IMPORTANT (MV please check)

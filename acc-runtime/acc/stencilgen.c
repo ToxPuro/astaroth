@@ -121,7 +121,7 @@ gen_stencil_definitions(void)
 }
 
 void
-gen_kernel_prefix(void)
+gen_kernel_prefix()
 {
   printf("const int3 vertexIdx = (int3){"
          "threadIdx.x + blockIdx.x * blockDim.x + start.x,"
@@ -174,13 +174,26 @@ for (int field = 0; field < NUM_FIELDS; ++field)
 printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
 */
 #endif
+  printf("AcReal reduce_sum_res = 0.0;\n");
+  printf("AcReal reduce_max_res = -1000000.0;\n");
+  printf("AcReal reduce_min_res = 1000000.0;\n");
+
+  printf("(void)reduce_sum_res;");
+  printf("(void)reduce_min_res;");
+  printf("(void)reduce_max_res;");
+  printf("const auto reduce_sum __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutput& output)"
+		  "{ (void)condition; (void)output; reduce_sum_res = val; };");
+  printf("const auto reduce_min __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutput& output)"
+		  "{ (void)condition; (void)output; reduce_min_res = val; };");
+  printf("const auto reduce_max __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutput& output)"
+		  "{ (void)condition; (void)output; reduce_max_res = val; };");
 }
 
 static void
-gen_return_if_oob(void)
+gen_return_if_oob()
 {
-  printf("if (vertexIdx.x >= end.x || vertexIdx.y >= end.y || "
-         "vertexIdx.z >= end.z) { return; }");
+  	printf("if (!(vertexIdx.x >= end.x || vertexIdx.y >= end.y || "
+         "vertexIdx.z >= end.z)){\n");
 }
 
 static void
@@ -222,7 +235,7 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses, cons
 }
 
 void
-gen_stencil_accesses(void)
+gen_stencil_accesses()
 {
   gen_kernel_prefix();
   gen_return_if_oob();
@@ -298,16 +311,12 @@ prefetch_stencil_elements(const int curr_kernel)
                 !cell_initialized[field][depth][height][width]) {
               printf("const auto f%d_%d_%d_%d = ", //
                      field, depth, height, width);
-#if !AC_USE_HIP
               printf("__ldg(&");
-#endif
               printf("vba.in[%d][IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                      "vertexIdx.z+(%d))]",
                      field, -STENCIL_ORDER / 2 + width,
                      -STENCIL_ORDER / 2 + height, -STENCIL_ORDER / 2 + depth);
-#if !AC_USE_HIP
               printf(")");
-#endif
               printf(";");
               cell_initialized[field][depth][height][width] = 1;
             }
@@ -516,14 +525,10 @@ prefetch_stencil_elems_to_smem_3d_and_compute_stencil_ops(const int curr_kernel)
     printf("if (baseIdx.y + j >= end.y + (STENCIL_HEIGHT-1)/2){ break; }");
     printf("if (baseIdx.z + k >= end.z + (STENCIL_DEPTH-1)/2){ break; }");
     printf("smem[i + j * sx + k * sx * sy] = ");
-#if !AC_USE_HIP
     printf("__ldg(&");
-#endif
     printf("vba.in[%d]", field);
     printf("[IDX(baseIdx.x + i, baseIdx.y + j, baseIdx.z + k)]");
-#if !AC_USE_HIP
     printf(")");
-#endif
     printf(";");
     printf("}");
     printf("__syncthreads();");
@@ -1757,18 +1762,14 @@ gen_kernel_body(const int curr_kernel)
                     printf("stencils[%d][%d][%d][%d] *", //
                            stencil, depth, height, width);
                     printf("%s(", stencil_unary_ops[stencil]);
-#if !AC_USE_HIP
                     printf("__ldg(&");
-#endif
                     printf("vba.in[%d]"
                            "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                            "vertexIdx.z+(%d))])",
                            field, -STENCIL_ORDER / 2 + width,
                            -STENCIL_ORDER / 2 + height,
                            -STENCIL_ORDER / 2 + depth);
-#if !AC_USE_HIP
                     printf(")");
-#endif
                     printf(";");
 
                     stencil_initialized[field][stencil] = 1;
@@ -1780,18 +1781,14 @@ gen_kernel_body(const int curr_kernel)
                     printf("stencils[%d][%d][%d][%d] *", //
                            stencil, depth, height, width);
                     printf("%s(", stencil_unary_ops[stencil]);
-#if !AC_USE_HIP
                     printf("__ldg(&");
-#endif
                     printf("vba.in[%d]"
                            "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                            "vertexIdx.z+(%d))])",
                            field, -STENCIL_ORDER / 2 + width,
                            -STENCIL_ORDER / 2 + height,
                            -STENCIL_ORDER / 2 + depth);
-#if !AC_USE_HIP
                     printf(")");
-#endif
                     printf(");");
                   }
                 }
@@ -1929,3 +1926,4 @@ main(int argc, char** argv)
 
   return EXIT_SUCCESS;
 }
+

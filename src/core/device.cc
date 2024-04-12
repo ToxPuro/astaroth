@@ -165,6 +165,13 @@ acDeviceStoreInt3Uniform(const Device device, const Stream stream, const AcInt3P
 }
 
 AcResult
+acDeviceVBAUpdate(const Device device, const AcMeshInfo config)
+{
+	acDeviceLoadMeshInfo(device,config);
+	return AC_SUCCESS;
+}
+
+AcResult
 acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
 {
     cudaSetDevice(device->id);
@@ -314,11 +321,17 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     const int3 max_dims                = acConstructInt3Param(AC_mx, AC_my, AC_mz, device_config);
     const size_t scratchpad_size       = acKernelReduceGetMinimumScratchpadSize(max_dims);
     const size_t scratchpad_size_bytes = acKernelReduceGetMinimumScratchpadSizeBytes(max_dims);
+    const int reduce_tpb_size = 128;
     for (size_t i = 0; i < NUM_REDUCE_SCRATCHPADS; ++i) {
         ERRCHK_CUDA_ALWAYS(
-            cudaMalloc((void**)&device->reduce_scratchpads[i], scratchpad_size_bytes));
+            cudaMalloc((void**)&device->vba.reduce_scratchpads[i], scratchpad_size_bytes));
+	if(i == 0)
+		acKernelFlush(STREAM_DEFAULT,device->vba.reduce_scratchpads[i], scratchpad_size,0);
+	else
+		acKernelFlush(STREAM_DEFAULT,device->vba.reduce_scratchpads[i], (scratchpad_size+reduce_tpb_size-1)/reduce_tpb_size,0);
     }
-    device->scratchpad_size = scratchpad_size;
+    acDeviceSynchronizeStream(device,STREAM_ALL);
+    device->vba.scratchpad_size = scratchpad_size;
 
 // Allocate any data buffer required for packed transfers here.
 #if PACKED_DATA_TRANSFERS
@@ -387,7 +400,7 @@ acDeviceDestroy(Device device)
 #endif
 
     for (size_t i = 0; i < NUM_REDUCE_SCRATCHPADS; ++i)
-        cudaFree(device->reduce_scratchpads[i]);
+        cudaFree(device->vba.reduce_scratchpads[i]);
 
     // Concurrency
     for (int i = 0; i < NUM_STREAMS; ++i) {
@@ -701,6 +714,7 @@ acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kern
 }
 
 
+
 AcResult
 acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start, const int3 end)
 {
@@ -835,7 +849,7 @@ acDeviceReduceScalNotAveraged(const Device device, const Stream stream, const Re
     const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
 
     *result = acKernelReduceScal(device->streams[stream], rtype, device->vba.in[vtxbuf_handle],
-                                 start, end, device->reduce_scratchpads, device->scratchpad_size);
+                                 start, end, device->vba.reduce_scratchpads, device->vba.scratchpad_size);
     return AC_SUCCESS;
 }
 
@@ -874,7 +888,7 @@ acDeviceReduceVecNotAveraged(const Device device, const Stream stream, const Red
 
     *result = acKernelReduceVec(device->streams[stream], rtype, start, end, device->vba.in[vtxbuf0],
                                 device->vba.in[vtxbuf1], device->vba.in[vtxbuf2],
-                                device->reduce_scratchpads, device->scratchpad_size);
+                                device->vba.reduce_scratchpads, device->vba.scratchpad_size);
     return AC_SUCCESS;
 }
 
@@ -903,6 +917,13 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
 }
 
 AcResult
+acDeviceFinishReduce(Device device, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op)
+{
+	AcReal res = AcKernelReduce(STREAM_DEFAULT,device->vba.reduce_scratchpads, acGetKernelReduceScratchPadSize(kernel),reduce_op);
+	*result = res;
+	return AC_SUCCESS;
+}
+AcResult
 acDeviceReduceVecScalNotAveraged(const Device device, const Stream stream,
                                  const ReductionType rtype, const VertexBufferHandle vtxbuf0,
                                  const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
@@ -916,7 +937,7 @@ acDeviceReduceVecScalNotAveraged(const Device device, const Stream stream,
     *result = acKernelReduceVecScal(device->streams[stream], rtype, start, end,
                                     device->vba.in[vtxbuf0], device->vba.in[vtxbuf1],
                                     device->vba.in[vtxbuf2], device->vba.in[vtxbuf3],
-                                    device->reduce_scratchpads, device->scratchpad_size);
+                                    device->vba.reduce_scratchpads, device->vba.scratchpad_size);
     return AC_SUCCESS;
 }
 
@@ -1046,5 +1067,10 @@ AcMeshInfo
 acDeviceGetConfig(const Device device)
 {
 	return device->local_config;
+}
+AcDeviceKernelOutput
+acDeviceGetKernelOutput(const Device device)
+{
+	return device->output;
 }
 

@@ -48,6 +48,14 @@
     AcReal3 real3_params[NUM_REAL3_PARAMS];
   } AcDeviceMeshInfo;
 
+
+  typedef struct {
+    int int_outputs[NUM_INT_PARAMS];
+    int3 int3_outputs[NUM_INT3_PARAMS];
+    AcReal real_outputs[NUM_REAL_PARAMS];
+    AcReal3 real3_outputs[NUM_REAL3_PARAMS];
+  } AcDeviceKernelOutput;
+
   //could combine these into base struct
   //with struct inheritance, but not sure would that break C ABI
   typedef struct {
@@ -70,6 +78,9 @@
     int* int_arrays[NUM_INT_ARRAYS];
     size_t bytes;
     acKernelInputParams kernel_input_params;
+    AcReal* reduce_scratchpads[NUM_REDUCE_SCRATCHPADS];
+    int reduce_offset;
+    size_t scratchpad_size;
   } VertexBufferArray;
 
   typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
@@ -153,6 +164,12 @@
 
   // Diagnostics
   Volume acKernelLaunchGetLastTPB(void);
+
+  Kernel GetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
+
+  int acGetKernelReduceScratchPadSize(const AcKernel kernel);
+
+  int acGetKernelReduceScratchPadMinSize();
 
   #ifdef __cplusplus
   } // extern "C"

@@ -15,6 +15,10 @@ S [\s]
 %{
 	char* struct_names[256];
 	size_t num_structs = 0;
+
+	char* enum_names[256];
+	size_t num_enums= 0;
+
 	void add_struct_name(const char* struct_name)
 	{
 		struct_names[num_structs] = strdup(struct_name);
@@ -25,6 +29,21 @@ S [\s]
 	{	
 		for(size_t i = 0; i < num_structs; ++i)
 			if(!strcmp(struct_names[i], name))
+				return true;
+		return false;
+	}
+
+	void add_enum_name(const char* enum_name)
+	{
+		enum_names[num_enums] = strdup(enum_name);
+		++num_enums;
+	}	
+
+	bool
+	is_enum_name(const char* name)
+	{	
+		for(size_t i = 0; i < num_enums; ++i)
+			if(!strcmp(enum_names[i], name))
 				return true;
 		return false;
 	}
@@ -69,6 +88,7 @@ void strip_whitespace(char *str) {
 "real"                  { return REAL; }
 "real3"                 { return REAL3; }
 "complex"               { return COMPLEX; }
+"bool"                  { return BOOL; }
 "Matrix"                { return MATRIX; }
 "Field"                 { return FIELD; }
 "WorkBuffer"            {return WORK_BUFFER; }
@@ -80,6 +100,7 @@ void strip_whitespace(char *str) {
 "Max"                   { return MAX; }
 "communicated"          { return COMMUNICATED; }
 "dconst"          { return DCONST_QL; }
+"output"          { return OUTPUT; }
 "gmem"          { return GLOBAL_MEMORY_QL; }
 "auxiliary"             { return AUXILIARY; }
 
@@ -93,6 +114,14 @@ void strip_whitespace(char *str) {
 "continue"  { return CONTINUE; }
 "return"    { return RETURN; }
 
+struct[[:space:]]{L}({L}|{D})* {
+					char* name = strdup(yytext);
+					remove_substring(name,"struct");
+					remove_substring(name,"typedef");
+					strip_whitespace(name);
+					add_struct_name(name);
+					return STRUCT_NAME;
+				}
 typedef[[:space:]]struct[[:space:]]{L}({L}|{D})* {
 					char* name = strdup(yytext);
 					remove_substring(name,"struct");
@@ -101,12 +130,30 @@ typedef[[:space:]]struct[[:space:]]{L}({L}|{D})* {
 					add_struct_name(name);
 					return STRUCT_NAME;
 				}
+enum[[:space:]]{L}({L}|{D})* {
+				char* name = strdup(yytext);
+				remove_substring(name,"enum");
+				remove_substring(name,"typedef");
+				strip_whitespace(name);
+				add_enum_name(name);
+				return ENUM_NAME;
+			}
+typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
+				char* name = strdup(yytext);
+				remove_substring(name,"enum");
+				remove_substring(name,"typedef");
+				strip_whitespace(name);
+				add_enum_name(name);
+				return ENUM_NAME;
+			}
 
 "hostdefine".*        { return HOSTDEFINE; }
 
 {L}({L}|{D})*             {  /* Literals */
 				if(is_struct_name(yytext))
 					return STRUCT_TYPE;
+				if(is_enum_name(yytext))
+					return ENUM_TYPE;
 				return IDENTIFIER; 
 			  }   
 \"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */

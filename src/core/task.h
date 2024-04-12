@@ -174,6 +174,7 @@ typedef class Task {
     void swapVBA(std::array<bool, NUM_VTXBUF_HANDLES> vtxbuf_swaps);
 
     void logStateChangedEvent(const char* from, const char* to);
+    bool isComputeTask();
 } Task;
 
 // Compute tasks
@@ -194,6 +195,8 @@ typedef class ComputeTask : public Task {
     void compute();
     void advance(const TraceFile* trace_file);
     bool test();
+    bool isComputeTask();
+    AcKernel getKernel();
 } ComputeTask;
 
 // Communication

@@ -53,7 +53,7 @@ AcResult
 acKernel(const KernelParameters params, VertexBufferArray vba)
 {
 #ifdef AC_INTEGRATION_ENABLED
-    acLaunchKernel(params.kernel, params.stream, params.start, params.end, vba);
+    acLaunchKernel(kernels[(int)params.kernel_enum], params.stream, params.start, params.end, vba);
     return AC_SUCCESS;
 #else
     (void)params; // Unused

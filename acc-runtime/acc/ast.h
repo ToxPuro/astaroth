@@ -52,6 +52,12 @@ typedef enum {
   NODE_ASSIGNMENT     = (1 << 19),
   NODE_INPUT          = (1 << 20),
   NODE_CODEGEN_INPUT  = (1 << 21),
+  NODE_ENUM_DEF       = (1 << 22),
+  NODE_ENUM           = (1 << 23),
+  NODE_SELECTION_STATEMENT = (1 << 24),
+  NODE_STRUCT_DEF     = (1 << 25),
+  NODE_IF             = (1 << 26),
+  NODE_FUNCTION_CALL  = (1 << 27),
 } NodeType;
 
 
@@ -69,6 +75,7 @@ typedef struct astnode_s {
   char* postfix; // (which makes it much harder to read)
 } ASTNode;
 
+
 static inline ASTNode*
 astnode_dup(const ASTNode* node, ASTNode* parent)
 {
@@ -78,6 +85,8 @@ astnode_dup(const ASTNode* node, ASTNode* parent)
 	res->parent = parent;
 	if(node->buffer)
 		res->buffer = strdup(node->buffer);
+	if(node->prefix)
+		res->prefix= strdup(node->prefix);
 	if(node->infix)
 		res->infix = strdup(node->infix);
 	if(node->postfix)
@@ -188,21 +197,45 @@ typedef struct string_vec
 
 } string_vec;
 
+static inline int
+str_vec_get_index(string_vec vec, const char* str)
+{
+	for(size_t i = 0; i <  vec.size; ++i)
+		if(!strcmp(vec.data[i],str)) return i;
+	return -1;
+}
 static inline bool
 str_vec_contains(string_vec vec, const char* str)
 {
-	for(size_t i = 0; i <  vec.size; ++i)
-		if(!strcmp(vec.data[i],str)) return true;
-	return false;
+	return str_vec_get_index(vec,str) >= 0;
 }
-static inline void
+static inline int
 push(string_vec* dst, char* src)
 {
-	dst->data[dst->size] = src;
+	dst->data[dst->size] = strdup(src);
 	++(dst->size);
+	return dst->size-1;
 }
+static inline string_vec
+str_vec_copy(string_vec vec)
+{
+	string_vec copy;
+	copy.size = 0;
+	for(size_t i = 0; i<vec.size; ++i)
+		push(&copy,vec.data[i]);
+	return copy;
+}
+static inline void
+print_str_vec(string_vec vec)
+{
+	for(size_t i = 0; i < vec.size; ++i)
+	{
+		printf("%s\n",vec.data[i]);
+	}
+}
+
 static inline  void combine_buffers_recursive(const ASTNode* node, char* res){
-  if(node->buffer)
+  if(node->buffer && !(node->type & NODE_CODEGEN_INPUT))
     strcat(res,node->buffer);
   if(node->lhs)
     combine_buffers_recursive(node->lhs, res);
@@ -213,17 +246,36 @@ static inline  void combine_buffers(const ASTNode* node, char* res){
   res[0] = '\0';	
   combine_buffers_recursive(node,res);
 }
-static inline void combine_all(const ASTNode* node, char* res){
+static inline void combine_all_recursive(const ASTNode* node, char* res){
   if(node->prefix)
     strcat(res,node->prefix);
   if(node->lhs)
-    combine_all(node->lhs, res);
+    combine_all_recursive(node->lhs, res);
   if(node->buffer)
     strcat(res,node->buffer);
   if(node->infix)
     strcat(res,node->infix);
   if(node->rhs)
-    combine_all(node->rhs, res);
+    combine_all_recursive(node->rhs, res);
   if(node->postfix)
     strcat(res,node->postfix);
+}
+static inline void combine_all(const ASTNode* node, char* res){
+  res[0] = '\0';	
+  combine_all_recursive(node,res);
+}
+
+static inline ASTNode*
+get_node_by_token(const int token, ASTNode* node)
+{
+  assert(node);
+
+  if (node->token == token)
+    return node;
+  else if (node->lhs && get_node_by_token(token, node->lhs))
+    return get_node_by_token(token, node->lhs);
+  else if (node->rhs && get_node_by_token(token, node->rhs))
+    return get_node_by_token(token, node->rhs);
+  else
+    return NULL;
 }
