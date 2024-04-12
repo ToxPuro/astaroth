@@ -393,12 +393,6 @@ operator-(const AcReal2& a)
   return (AcReal2){-a.x, -a.y};
 }
 
-static HOST_DEVICE_INLINE AcReal2
-operator+(const AcReal2& a)
-{
-  return (AcReal2){a.x, a.y};
-}
-
 static HOST_DEVICE_INLINE void
 operator-=(AcReal2& lhs, const AcReal2& rhs)
 {

@@ -901,36 +901,54 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 		return;
 	ASTNode* compound_statement = node->rhs->rhs;
 	char new_postfix[10000];
-#if AC_USE_HIP
 	sprintf(new_postfix,"%s",compound_statement->postfix);
 	ReduceOp reduce_op = get_reduce_op(node);
 	if(!gen_mem_accesses && reduce_op != NO_REDUCE)
 	{
 	 const char* condition = get_reduce_condition(node);
 	 sprintf(new_postfix,"%sif(%s){\n",new_postfix,condition);
-  	 strcat(new_postfix,"const size_t warp_tid = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) % rocprim::warp_size()\n;");
-  	 strcat(new_postfix,"const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + rocprim::warp_size() -1)/rocprim::warp_size();\n");
+#if AC_USE_HIP
+	 strcat(new_postfix, "const size_t warp_size = rocprim::warp_size();\n");
+	 strcat(new_postfix, "const size_t warp_id = rocprim::warp_id();\n");
+#else
+	 strcat(new_postfix, "constexpr size_t warp_size = 32;\n");
+  	 strcat(new_postfix,"const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size\n;");
+#endif
+  	 strcat(new_postfix,"const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) % warp_size\n;");
+  	 strcat(new_postfix,"const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;\n");
   	 strcat(new_postfix,"const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;\n");
-  	 strcat(new_postfix,"const int out_index =  vba.reduce_offset + rocprim::warp_id() + block_id*warps_per_block;\n");
-	 strcat(new_postfix,"for(int offset = rocprim::warp_size()/2; offset > 0; offset /= 2){ \n");
+  	 strcat(new_postfix,"const int out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;\n");
+	 strcat(new_postfix,"for(int offset = warp_size/2; offset > 0; offset /= 2){ \n");
 	 switch(reduce_op)
 	 {
 		 case(REDUCE_SUM):
+#if AC_USE_HIP
 		 	strcat(new_postfix,"reduce_sum_res += rocprim::warp_shuffle_down(reduce_sum_res,offset);\n"); 
+#else
+		 	strcat(new_postfix,"reduce_sum_res += __shfl_down_sync(0xffffffff,reduce_sum_res,offset);\n"); 
+#endif
 	 		strcat(new_postfix,"}\n");
-	 		strcat(new_postfix,"if(warp_tid == 0) {vba.reduce_scratchpads[0][out_index] = reduce_sum_res;}");
+	 		strcat(new_postfix,"if(lane_id == 0) {vba.reduce_scratchpads[0][out_index] = reduce_sum_res;}");
 			break;
 		 case(REDUCE_MIN):
+#if AC_USE_HIP
 		 	strcat(new_postfix,"const AcReal shuffle_tmp = rocprim::warp_shuffle_down(reduce_min_res,offset);"); 
+#else
+		 	strcat(new_postfix,"const AcReal shuffle_tmp =  __shfl_down_sync(0xffffffff,reduce_min_res,offset);\n"); 
+#endif
 		 	strcat(new_postfix,"reduce_min_res = (shuffle_tmp < reduce_min_res) ? shuffle_tmp : reduce_min_res;\n"); 
 	 		strcat(new_postfix,"}\n");
-	 		strcat(new_postfix,"if(warp_tid == 0) {vba.reduce_scratchpads[0][out_index] = reduce_min_res;}");
+	 		strcat(new_postfix,"if(lane_id == 0) {vba.reduce_scratchpads[0][out_index] = reduce_min_res;}");
 			break;
 		 case(REDUCE_MAX):
+#if AC_USE_HIP
 		 	strcat(new_postfix,"const AcReal shuffle_tmp = rocprim::warp_shuffle_down(reduce_max_res,offset);"); 
+#else
+		 	strcat(new_postfix,"const AcReal shuffle_tmp =  __shfl_down_sync(0xffffffff,reduce_max_res,offset);\n"); 
+#endif
 		 	strcat(new_postfix,"reduce_max_res = (shuffle_tmp > reduce_max_res) ? shuffle_tmp : reduce_max_res;\n"); 
 	 		strcat(new_postfix,"}\n");
-	 		strcat(new_postfix,"if(warp_tid == 0) {vba.reduce_scratchpads[0][out_index] = reduce_max_res;}");
+	 		strcat(new_postfix,"if(lane_id == 0) {vba.reduce_scratchpads[0][out_index] = reduce_max_res;}");
 			break;
 		 case(NO_REDUCE):
 		 	exit(0);
@@ -940,7 +958,6 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 	kernel_reduce_outputs[kernel_index] = get_reduce_output(node);
 	kernel_reduce_ops[kernel_index] = reduce_op;
 	}
-#endif
 	strcat(new_postfix,"}");
 	compound_statement->postfix = strdup(new_postfix);
 }
@@ -1815,9 +1832,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
            "-o %s",
            IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,
            STENCILGEN_EXEC);
-#if AC_USE_HIP
-  strcat(build_cmd," -DAC_USE_HIP=1");
-#endif
 
   const int retval = system(build_cmd);
 

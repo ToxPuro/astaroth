@@ -206,8 +206,9 @@ get_smem(const Volume tpb, const size_t stencil_order,
 */
 
 __device__ __constant__ AcMeshInfo d_mesh_info;
-__device__ __constant__ AcReal d_real_arrays[D_REAL_ARRAYS_LEN];
-__device__ __constant__ AcReal d_int_arrays[D_INT_ARRAYS_LEN];
+//we pad with 1 since zero sized arrays are not allowed with some CUDA compilers
+__device__ __constant__ AcReal d_real_arrays[D_REAL_ARRAYS_LEN+1];
+__device__ __constant__ AcReal d_int_arrays[D_INT_ARRAYS_LEN+1];
 
 // Astaroth 2.0 backwards compatibility START
 #define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])

@@ -1235,6 +1235,10 @@ AcResult
 acDeviceFinishReduce(Device device, AcReal* res, const AcKernel kernel, const KernelReduceOp reduce_op);
 
 /** */
+AcResult
+acDeviceUpdate(Device device, const AcMeshInfo info);
+
+/** */
 AcDeviceKernelOutput
 acDeviceGetKernelOutput(const Device device);
 
