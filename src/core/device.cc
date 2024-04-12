@@ -378,13 +378,6 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     return AC_SUCCESS;
 }
 
-AcResult acDeviceUpdateArrays(Device device, const AcMeshInfo config){
-
-    device->local_config = config;
-    acVBAUpdate(&device->vba,config);
-    return AC_SUCCESS;
-}
-
 AcResult acDeviceGetVBApointers(Device device, AcReal *vbapointer[2]) {
 #if USE_COMPRESSIBLE_MEMORY
     printf("Compressible memory - vbapointers useless for offloading!\n");
