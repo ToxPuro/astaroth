@@ -1043,9 +1043,6 @@ AcResult acDeviceCreate(const int id, const AcMeshInfo device_config, Device* de
 /** */
 AcResult acDeviceDestroy(Device device);
 
-/** */
-AcResult acDeviceUpdateArrays(Device device, const AcMeshInfo config);
-
 /** Resets the mesh to default values defined in acc_runtime.cu:acVBAReset */
 AcResult acDeviceResetMesh(const Device device, const Stream stream);
 
@@ -1233,6 +1230,10 @@ AcResult acDeviceReduceVecScal(const Device device, const Stream stream_type,
 /** */
 AcResult 
 acDeviceFinishReduce(Device device, AcReal* res, const AcKernel kernel, const KernelReduceOp reduce_op);
+
+/** */
+AcResult 
+acDeviceUpdate(Device device, const AcMeshInfo info);
 
 /** */
 AcDeviceKernelOutput
