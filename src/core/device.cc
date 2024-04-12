@@ -165,9 +165,25 @@ acDeviceStoreInt3Uniform(const Device device, const Stream stream, const AcInt3P
 }
 
 AcResult
-acDeviceVBAUpdate(const Device device, const AcMeshInfo config)
+acDeviceUpdate(Device device, const AcMeshInfo config)
 {
 	acDeviceLoadMeshInfo(device,config);
+	acVBAUpdate(&(device->vba),config);
+        for (int array=0;array<NUM_REAL_ARRAYS;++array)
+        {
+          //in case the user loaded a nullptr to the profile do not load it
+          if (config.real_arrays[array] != nullptr)
+            acDeviceLoadRealArray(device,STREAM_DEFAULT,config,static_cast<AcRealArrayParam>(array));
+          acDeviceSynchronizeStream(device,STREAM_ALL);
+        }
+
+        for (int array=0;array<NUM_INT_ARRAYS;++array)
+        {
+          //in case the user loaded a nullptr to the profile do not load it
+          if (config.int_arrays[array] != nullptr)
+            acDeviceLoadIntArray(device,STREAM_DEFAULT,config,static_cast<AcIntArrayParam>(array));
+          acDeviceSynchronizeStream(device,STREAM_ALL);
+        }
 	return AC_SUCCESS;
 }
 
@@ -359,6 +375,13 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     acDeviceSynchronizeStream(device, STREAM_ALL);
     acDeviceLoadStencilsFromConfig(device, STREAM_DEFAULT);
     acDeviceSynchronizeStream(device, STREAM_ALL);
+    return AC_SUCCESS;
+}
+
+AcResult acDeviceUpdateArrays(Device device, const AcMeshInfo config){
+
+    device->local_config = config;
+    acVBAUpdate(&device->vba,config);
     return AC_SUCCESS;
 }
 

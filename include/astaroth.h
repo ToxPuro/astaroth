@@ -1043,6 +1043,9 @@ AcResult acDeviceCreate(const int id, const AcMeshInfo device_config, Device* de
 /** */
 AcResult acDeviceDestroy(Device device);
 
+/** */
+AcResult acDeviceUpdateArrays(Device device, const AcMeshInfo config);
+
 /** Resets the mesh to default values defined in acc_runtime.cu:acVBAReset */
 AcResult acDeviceResetMesh(const Device device, const Stream stream);
 

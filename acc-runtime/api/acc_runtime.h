@@ -97,6 +97,8 @@
 
   VertexBufferArray acVBACreate(const AcMeshInfo config);
 
+  void acVBAUpdate(VertexBufferArray* vba, const AcMeshInfo config);
+
   void acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config);
 
   AcResult acRandInit(const uint64_t seed, const Volume m_local,

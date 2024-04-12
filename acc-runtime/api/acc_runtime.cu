@@ -411,7 +411,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 
   // Set vba.in data to all-nan and vba.out to 0
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    if(vtxbuf_is_auxiliary[i])
+    if (vtxbuf_is_auxiliary[i])
     {
       acKernelFlush(stream, vba->in[i],count, (AcReal)0.0);
     } else{
@@ -430,72 +430,6 @@ device_malloc(void** dst, const int bytes)
  #else
     ERRCHK_CUDA_ALWAYS(cudaMalloc(dst, bytes));
   #endif
-}
-
-VertexBufferArray
-acVBACreate(const AcMeshInfo config)
-{
-  for(int i = 0; i < NUM_KERNELS; ++i)
-  {
-	  kernel_running_reduce_offsets[i] = 0;
-	  reduce_offsets[kernels[i]] = {};
-  }
-  //can't use acVertexBufferDims because of linking issues
-  const int3 counts = (int3){
-        (config.int_params[AC_mx]),
-        (config.int_params[AC_my]),
-        (config.int_params[AC_mz])
-  };
-
-
-  VertexBufferArray vba;
-  size_t count = counts.x*counts.y*counts.z;
-  const size_t bytes = sizeof(vba.in[0][0]) * count;
-  vba.bytes          = bytes;
-#if AC_ADJACENT_VERTEX_BUFFERS
-  const size_t allbytes = bytes*NUM_VTXBUF_HANDLES;
-  AcReal *allbuf_in, *allbuf_out;
-
-  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&allbuf_in, allbytes));
-  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&allbuf_out, allbytes));
-
-  acKernelFlush(STREAM_DEFAULT,allbuf_in, count*NUM_VTXBUF_HANDLES, (AcReal)0.0);
-  ERRCHK_CUDA_ALWAYS(cudaMemset((void*)allbuf_out, 0, allbytes));
-
-  vba.in[0]=allbuf_in; vba.out[0]=allbuf_out;
-printf("i,vbas[0]= %p %p \n",vba.in[0],vba.out[0]);
-  for (size_t i = 1; i < NUM_VTXBUF_HANDLES; ++i) {
-    vba.in [i]=vba.in [i-1]+count;
-    vba.out[i]=vba.out[i-1]+count;
-printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
-  }
-#else
-  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    //Allocate auxilary fields
-    //They need only a single copy so out can point to in
-    if(vtxbuf_is_auxiliary[i])
-    {
-      device_malloc((void**) &vba.in[i],bytes);
-      vba.out[i] = vba.in[i];
-    }else{
-      device_malloc((void**) &vba.in[i],bytes);
-      device_malloc((void**) &vba.out[i],bytes);
-    }
-  }
-#endif
-  //Allocate workbuffers
-  for (int i = 0; i < NUM_WORK_BUFFERS; ++i)
-    device_malloc((void**)&vba.w[i],bytes);
-  //Allocate arrays
-  for (int i = 0; i < NUM_REAL_ARRAYS; ++i)
-    if(config.real_arrays[i] != nullptr)
-    	device_malloc((void**)&vba.real_arrays[i],sizeof(vba.in[0][0])*config.int_params[real_array_lengths[i]]);
-  for (int i = 0; i < NUM_INT_ARRAYS; ++i)
-    if(config.int_arrays[i] != nullptr)
-    	device_malloc((void**)&vba.int_arrays[i],sizeof(int)*config.int_params[int_array_lengths[i]]);
-  acVBAReset(0, &vba);
-  cudaDeviceSynchronize();
-  return vba;
 }
 
 void
@@ -523,12 +457,99 @@ device_free(int** dst, const int bytes)
 #endif
   *dst = NULL;
 }
+
+
+VertexBufferArray
+acVBACreate(const AcMeshInfo config)
+{
+  //can't use acVertexBufferDims because of linking issues
+  const int3 counts = (int3){
+        (config.int_params[AC_mx]),
+        (config.int_params[AC_my]),
+        (config.int_params[AC_mz])
+  };
+
+  VertexBufferArray vba;
+  size_t count = counts.x*counts.y*counts.z;
+  size_t bytes = sizeof(vba.in[0][0]) * count;
+  vba.bytes          = bytes;
+#if AC_ADJACENT_VERTEX_BUFFERS
+  const size_t allbytes = bytes*NUM_VTXBUF_HANDLES;
+  AcReal *allbuf_in, *allbuf_out;
+
+  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&allbuf_in, allbytes));
+  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&allbuf_out, allbytes));
+
+  acKernelFlush(STREAM_DEFAULT,allbuf_in, count*NUM_VTXBUF_HANDLES, (AcReal)0.0);
+  ERRCHK_CUDA_ALWAYS(cudaMemset((void*)allbuf_out, 0, allbytes));
+
+  vba.in[0]=allbuf_in; vba.out[0]=allbuf_out;
+printf("i,vbas[0]= %p %p \n",vba.in[0],vba.out[0]);
+  for (size_t i = 1; i < NUM_VTXBUF_HANDLES; ++i) {
+    vba.in [i]=vba.in [i-1]+count;
+    vba.out[i]=vba.out[i-1]+count;
+printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
+  }
+#else
+  for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+    //Allocate auxilary fields
+    //They need only a single copy so out can point to in
+    if (vtxbuf_is_auxiliary[i])
+    {
+      device_malloc((void**) &vba.in[i],bytes);
+      vba.out[i] = vba.in[i];
+    }else{
+      device_malloc((void**) &vba.in[i],bytes);
+      device_malloc((void**) &vba.out[i],bytes);
+    }
+  }
+#endif
+  //Allocate workbuffers
+  for (int i = 0; i < NUM_WORK_BUFFERS; ++i)
+    device_malloc((void**)&vba.w[i],bytes);
+
+  //Allocate arrays
+  for (int i = 0; i < NUM_REAL_ARRAYS; ++i)
+    if (config.real_arrays[i] != nullptr)
+       device_malloc((void**)&vba.real_arrays[i],sizeof(vba.in[0][0])*config.int_params[real_array_lengths[i]]);
+  for (int i = 0; i < NUM_INT_ARRAYS; ++i)
+    if (config.int_arrays[i] != nullptr)
+       device_malloc((void**)&vba.int_arrays[i],sizeof(int)*config.int_params[int_array_lengths[i]]);
+
+  acVBAReset(0, &vba);
+  cudaDeviceSynchronize();
+  return vba;
+}
+
+void
+acVBAUpdate(VertexBufferArray* vba, const AcMeshInfo config)
+{
+  size_t bytes;
+  //Allocate/Free arrays
+  for (int i = 0; i < NUM_REAL_ARRAYS; ++i){
+    bytes = sizeof(vba->in[0][0])*config.int_params[real_array_lengths[i]];
+    if (config.real_arrays[i] == nullptr){
+      if (vba->real_arrays[i] != nullptr) device_free(&vba->real_arrays[i], bytes);
+    }
+    else{
+      if (vba->real_arrays[i] == nullptr) device_malloc((void**)&vba->real_arrays[i],bytes);
+    }
+  }
+  for (int i = 0; i < NUM_INT_ARRAYS; ++i){
+    bytes = sizeof(int)*config.int_params[int_array_lengths[i]];
+    if (config.int_arrays[i] == nullptr){
+      if (vba->int_arrays[i] != nullptr) device_free(&vba->int_arrays[i],bytes);
+    }else{
+      if (vba->int_arrays[i] == nullptr) device_malloc((void**)&vba->int_arrays[i],bytes);
+    }
+  }
+}
 void
 acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 {
   for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
     device_free(&(vba->in[i]), vba->bytes);
-    if(vtxbuf_is_auxiliary[i])
+    if (vtxbuf_is_auxiliary[i])
       vba->out[i] = NULL;
     else
       device_free(&(vba->out[i]), vba->bytes);
@@ -538,11 +559,11 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
     device_free(&(vba->w[i]), vba->bytes);
 
   //Free arrays
-  for(int i=0;i<NUM_REAL_ARRAYS; ++i)
-    if(config.real_arrays[i] != nullptr)
+  for (int i=0;i<NUM_REAL_ARRAYS; ++i)
+    if (config.real_arrays[i] != nullptr)
     	device_free(&(vba->real_arrays[i]), config.int_params[real_array_lengths[i]]);
-  for(int i=0;i<NUM_INT_ARRAYS; ++i)
-    if(config.int_arrays[i] != nullptr)
+  for (int i=0;i<NUM_INT_ARRAYS; ++i)
+    if (config.int_arrays[i] != nullptr)
     	device_free(&(vba->int_arrays[i]), config.int_params[int_array_lengths[i]]);
   vba->bytes = 0;
 }
@@ -718,12 +739,12 @@ acLoadRealArrayUniform(const cudaStream_t /* stream */, const AcRealArrayParam p
 {
   ERRCHK_ALWAYS(real_array_is_dconst[param]);
   const int length  = (int)real_array_lengths[param];
-  for(int i = 0; i < length; ++i)
+  for (int i = 0; i < length; ++i)
   {
 	  cudaDeviceSynchronize();
 	  const size_t offset = (size_t)((&d_real_arrays[d_real_array_offsets[(int)param]] + i)-(size_t)&d_real_arrays);
   	  const cudaError_t retval = cudaMemcpyToSymbol(d_real_arrays, &values[i], sizeof(values[i]), offset, cudaMemcpyHostToDevice);
-	  if(retval != cudaSuccess)
+	  if (retval != cudaSuccess)
 		  return AC_FAILURE;
 
   }
@@ -735,12 +756,12 @@ acLoadIntArrayUniform(const cudaStream_t /* stream */, const AcIntArrayParam par
 {
   const int length  = (int)int_array_lengths[param];
   ERRCHK_ALWAYS(int_array_is_dconst[param]);
-  for(int i = 0; i < length; ++i)
+  for (int i = 0; i < length; ++i)
   {
           cudaDeviceSynchronize();
           const size_t offset = (size_t)((&d_int_arrays[d_int_array_offsets[(int)param]] + i)-(size_t)&d_int_arrays);
           const cudaError_t retval = cudaMemcpyToSymbol(d_int_arrays, &values[i], sizeof(values[i]), offset, cudaMemcpyHostToDevice);
-          if(retval != cudaSuccess)
+          if (retval != cudaSuccess)
                   return AC_FAILURE;
   }
   return AC_SUCCESS;

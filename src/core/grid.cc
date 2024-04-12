@@ -340,28 +340,7 @@ acGridInit(AcMeshInfo info)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
         all_fields[i] = (Field)i;
     }
-    for (int array=0;array<NUM_REAL_ARRAYS;++array)
-    {
-      //in case the user loaded a nullptr to the profile do not load it
-      if (submesh.info.real_arrays[array] != nullptr){
-        acDeviceLoadRealArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcRealArrayParam>(array));
-      }else{
-        acLogFromRootProc(pid, "acGridInit: Warning!!!\tReal array %s will be null and not allocated since you loaded a nullptr to it\n", real_array_param_names[array]);
-      }
-      acGridSynchronizeStream(STREAM_ALL);
-    }
-
-    for (int array=0;array<NUM_INT_ARRAYS;++array)
-    {
-      //in case the user loaded a nullptr to the profile do not load it
-      if (submesh.info.int_arrays[array] != nullptr){
-        acDeviceLoadIntArray(grid.device,STREAM_DEFAULT,submesh.info,static_cast<AcIntArrayParam>(array));
-      }else{
-        acLogFromRootProc(pid, "acGridInit: Warning!!!\tInt array %s will be null and not allocated since you loaded a nullptr to it\n", int_array_param_names[array]);
-      }
-      acGridSynchronizeStream(STREAM_ALL);
-    }
-
+    acDeviceUpdate(device,device->local_config);
     acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
 #ifdef AC_INTEGRATION_ENABLED
     auto intermediate_loader = [](ParamLoadingInfo l){
