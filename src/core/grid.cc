@@ -336,13 +336,13 @@ acGridInit(AcMeshInfo info)
 
     grid.mpi_tag_space_count = 0;
 
+    acDeviceUpdate(device,device->local_config);
+    acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
+#ifdef AC_INTEGRATION_ENABLED
     Field all_fields[NUM_VTXBUF_HANDLES];
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
         all_fields[i] = (Field)i;
     }
-    acDeviceUpdate(device,device->local_config);
-    acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
-#ifdef AC_INTEGRATION_ENABLED
     auto intermediate_loader = [](ParamLoadingInfo l){
 	    l.params -> twopass_solve_intermediate.step_num = l.step_number;
 	    l.params -> twopass_solve_intermediate.dt= 
@@ -1885,6 +1885,7 @@ acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
 AcResult
 acGridIntegrate(const Stream stream, const AcReal dt)
 {
+    (void)stream;
     ERRCHK(grid.initialized);
     grid.device->local_config.real_params[AC_dt] = dt;
     grid.device->local_config.real_params[AC_current_time] = dt;
@@ -2513,8 +2514,8 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
         sprintf(filepath, "%s/%s-%s.mesh", dir, vtxbuf_names[i], label);
 #endif
 
-        const auto write_async = [filepath, offset](const AcMeshInfo info,
-                                                    const AcReal* host_buffer) {
+        const auto write_async = [filepath, offset](const AcMeshInfo info_in,
+                                                    const AcReal* host_buffer_in) {
 
 #if USE_PERFSTUBS
             PERFSTUBS_REGISTER_THREAD();
@@ -2528,8 +2529,8 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
             FILE* fp = fopen(outfile, "w");
             ERRCHK_ALWAYS(fp);
 
-            const size_t count         = acVertexBufferCompdomainSize(info);
-            const size_t count_written = fwrite(host_buffer, sizeof(AcReal), count, fp);
+            const size_t count         = acVertexBufferCompdomainSize(info_in);
+            const size_t count_written = fwrite(host_buffer_in, sizeof(AcReal), count, fp);
             ERRCHK_ALWAYS(count_written == count);
 
             fclose(fp);
@@ -2541,8 +2542,8 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
             MPI_Status status;
-            const size_t count = acVertexBufferCompdomainSize(info);
-            retval = MPI_File_write(file, host_buffer, count, AC_REAL_MPI_TYPE, &status);
+            const size_t count = acVertexBufferCompdomainSize(info_in);
+            retval = MPI_File_write(file, host_buffer_in, count, AC_REAL_MPI_TYPE, &status);
             ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
             retval = MPI_File_close(&file);
@@ -2552,8 +2553,8 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 #else
             WARNING("Collective mesh writing not working with async IO");
             MPI_Datatype subarray;
-            const int3 nn          = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
-            const int3 nn_sub      = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+            const int3 nn          = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info_in);
+            const int3 nn_sub      = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info_in);
             const int arr_nn[]     = {nn.z, nn.y, nn.x};
             const int arr_nn_sub[] = {nn_sub.z, nn_sub.y, nn_sub.x};
             const int arr_offset[] = {offset.z, offset.y, offset.x};
@@ -2580,7 +2581,7 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
             MPI_Status status;
 
             const size_t nelems = nn_sub.x * nn_sub.y * nn_sub.z;
-            ERRCHK_ALWAYS(MPI_File_write_all(file, host_buffer, nelems, AC_REAL_MPI_TYPE,
+            ERRCHK_ALWAYS(MPI_File_write_all(file, host_buffer_in, nelems, AC_REAL_MPI_TYPE,
                                              &status) == MPI_SUCCESS);
 
             ERRCHK_ALWAYS(MPI_File_close(&file) == MPI_SUCCESS);
@@ -2665,7 +2666,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
         acGridSynchronizeStream(STREAM_ALL);
         const auto write_async = [filepath, global_nn, global_pos_min, slice_volume,
-                                  color](const AcReal* host_buffer, const size_t count,
+                                  color](const AcReal* host_buffer_in, const size_t count_in,
                                          const int device_id) {
 #if USE_PERFSTUBS
             PERFSTUBS_REGISTER_THREAD();
@@ -2685,8 +2686,8 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
                 FILE* fp = fopen(filepath, "w");
                 ERRCHK_ALWAYS(fp);
 
-                const size_t count_written = fwrite(host_buffer, sizeof(AcReal), count, fp);
-                ERRCHK_ALWAYS(count_written == count);
+                const size_t count_written = fwrite(host_buffer_in, sizeof(AcReal), count, fp);
+                ERRCHK_ALWAYS(count_written == count_in);
 
                 fclose(fp);
             }
@@ -2699,7 +2700,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
                 ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
                 MPI_Status status;
-                retval = MPI_File_write(file, host_buffer, count, AC_REAL_MPI_TYPE, &status);
+                retval = MPI_File_write(file, host_buffer_in, count_in, AC_REAL_MPI_TYPE, &status);
                 ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
                 retval = MPI_File_close(&file);
@@ -2741,7 +2742,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
                 ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
                 MPI_Status status;
-                retval = MPI_File_write_all(fp, host_buffer, count, AC_REAL_MPI_TYPE, &status);
+                retval = MPI_File_write_all(fp, host_buffer_in, count_in, AC_REAL_MPI_TYPE, &status);
                 ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
                 retval = MPI_File_close(&fp);
@@ -2826,7 +2827,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
 
         acGridSynchronizeStream(STREAM_ALL);
         const auto write_sync = [filepath, global_nn, global_pos_min, slice_volume,
-                                 color](const AcReal* host_buffer, const size_t count,
+                                 color](const AcReal* host_buffer_in, const size_t count_in,
                                         const int device_id) {
             cudaSetDevice(device_id);
             // Write to file
@@ -2863,7 +2864,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
                 ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
                 MPI_Status status;
-                retval = MPI_File_write_all(fp, host_buffer, count, AC_REAL_MPI_TYPE, &status);
+                retval = MPI_File_write_all(fp, host_buffer_in, count_in, AC_REAL_MPI_TYPE, &status);
                 ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
                 retval = MPI_File_close(&fp);
@@ -2981,12 +2982,14 @@ acGridDiskAccessLaunch(const AccessType type)
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
         const size_t nelems = nn_sub.x * nn_sub.y * nn_sub.z;
-#if 0   // Does not work
+// Does not work
+#if 0   
         retval = MPI_File_iwrite_all(files[i], host_buffer, nelems, AC_REAL_MPI_TYPE, &reqs[i]);
         ERRCHK_ALWAYS(retval == MPI_SUCCESS);
         MPI_Type_free(&subarray);
         req_running[i] = true;
-#elif 0 // Does not work either, even though otherwise identical to the blocking version below \
+// Does not work either, even though otherwise identical to the blocking version below
+#elif 0 
         // (except iwrite + wait)
         ERRCHK_ALWAYS(&files[i]);
         ERRCHK_ALWAYS(&reqs[i]);

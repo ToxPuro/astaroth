@@ -32,9 +32,9 @@ AcTaskGraph*
 get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
 {
 
-    auto make_graph = [pid, &info](Simulation sim) -> AcTaskGraph* {
+    auto make_graph = [pid, &info](Simulation sim_in) -> AcTaskGraph* {
         acLogFromRootProc(pid, "Creating task graph for simulation\n");
-        switch (sim) {
+        switch (sim_in) {
         case Simulation::Shock_Singlepass_Solve: {
 #if LSHOCK
             // This still has to be behind a preprocessor feature, because e.g., VTXBUF_SHOCK is not

@@ -100,8 +100,8 @@ main(int argc, char** argv)
     }
 
     // Make tmpdir for output
-    char cmd[4096];
-    snprintf(cmd, 4096, "mkdir -p %s", job_dir);
+    char cmd[4096*2];
+    snprintf(cmd, 4096*2, "mkdir -p %s", job_dir);
     system(cmd);
 
     // Write

@@ -368,7 +368,11 @@ gen_d_offsets(FILE* fp, const char* datatype_scalar, const bool declarations)
 	    else
             	fprintf(fp," %s,\n",running_offset);
 	    if(str_vec_contains(symbol_table[i].tqualifiers,"dconst"))
-            	sprintf(running_offset,"%s+%s",running_offset,symbol_var_length[i]);
+	    {
+		char tmp[4096];
+		sprintf(tmp,"+%s",symbol_var_length[i]);
+		strcat(running_offset,tmp);
+	    }
     }
    if(declarations)
    	fprintf(fp,"\n#ifndef D_%s_ARRAYS_LEN\n#define D_%s_ARRAYS_LEN (%s)\n#endif\n", strupr(define_name), strupr(define_name),running_offset);
@@ -510,15 +514,15 @@ gen_array_reads(ASTNode* node, bool gen_mem_accesses, const char* datatype_scala
 			node->type |= NODE_INPUT;
 			return;
 		}
-		char new_name[4096];
+		char new_name[4096-19];
 		new_name[0] = '\0';
-		char arrays_name[4096];
+		char arrays_name[4096/2];
 		sprintf(arrays_name,"%s_arrays",convert_to_define_name(datatype_scalar));
       		if(str_vec_contains(symbol_table[i].tqualifiers,"dconst"))
 		{
 			//node->prefix = strdup("DCONST(");
 			//node->parent->parent->parent->postfix = strdup("])");
-			char index_str[4096];
+			char index_str[4096/2];
 			combine_all(node->parent->parent->parent->rhs,index_str);
 			char res[4096];
 			sprintf(res,"d_%s[%s_offset+(%s)]\n",arrays_name,node->buffer,index_str);
@@ -906,7 +910,10 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 	if(!gen_mem_accesses && reduce_op != NO_REDUCE)
 	{
 	 const char* condition = get_reduce_condition(node);
-	 sprintf(new_postfix,"%sif(%s){\n",new_postfix,condition);
+	 char tmp[4096];
+	 sprintf(tmp,"if(%s){\n",condition);
+	 strcat(new_postfix,tmp);
+	 //sprintf(new_postfix,"%sif(%s){\n",new_postfix,condition);
 #if AC_USE_HIP
 	 strcat(new_postfix, "const size_t warp_size = rocprim::warp_size();\n");
 	 strcat(new_postfix, "const size_t warp_id = rocprim::warp_id();\n");
@@ -986,10 +993,15 @@ gen_kernel_ifs(ASTNode* node)
 		sprintf(res,"if(kernel_enum == KERNEL_%s ",get_node(NODE_KFUNCTION_ID,node)->buffer);
 		for(size_t j = 0; j < combinations.size; ++j)
 		{
-			sprintf(res, "%s && vba.kernel_input_params.%s.%s ==  %s ",res, get_node(NODE_KFUNCTION_ID,node)->buffer,combination_params.data[j],combinations.data[j]);
+			char tmp[4096];
+			sprintf(tmp, " && vba.kernel_input_params.%s.%s ==  %s ",get_node(NODE_KFUNCTION_ID,node)->buffer,combination_params.data[j],combinations.data[j]);
+			strcat(res,tmp);
 		}
 		strcat(res,")\n{\n\t");
-		sprintf(res,"%sreturn %s_optimized_%d;\n}\n",res,get_node(NODE_KFUNCTION_ID,node)->buffer,i);
+		char tmp[4096];
+		sprintf(tmp,"return %s_optimized_%d;\n}\n",get_node(NODE_KFUNCTION_ID,node)->buffer,i);
+		strcat(res,tmp);
+		//sprintf(res,"%sreturn %s_optimized_%d;\n}\n",tmp);
 		fprintf(fp_defs,"%s_optimized_%d,",get_node(NODE_KFUNCTION_ID,node)->buffer,i);
 		fprintf(fp,"%s",res);
 		bool is_left = (old_parent->lhs == node);
@@ -1017,8 +1029,13 @@ gen_kernel_input_params(ASTNode* node, bool gen_mem_accesses)
 		gen_kernel_input_params(node->lhs,gen_mem_accesses);
 	if(node->rhs)
 		gen_kernel_input_params(node->rhs,gen_mem_accesses);
-	if(!(!gen_mem_accesses && node->buffer && node->type & NODE_INPUT))
+	if(!(node->type & NODE_INPUT && node->buffer))
 		return;
+	if(gen_mem_accesses)
+	{
+		strcat(node->buffer,"AC_INTERNAL_INPUT");
+		return;
+	}
 
 	const ASTNode* begin_scope = get_parent_node(NODE_BEGIN_SCOPE,node);
 	if(!begin_scope)
@@ -1041,6 +1058,7 @@ gen_kernel_input_params(ASTNode* node, bool gen_mem_accesses)
 	const int combinations_index = get_suffix_int(kernel_name,"_optimized_");
 	remove_suffix(kernel_name,"_optimized_");
 	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,kernel_name);
+
 	if(combinations_index == -1)
 	{
 	  	char res[4096];
@@ -1065,7 +1083,7 @@ gen_kernel_input_params(ASTNode* node, bool gen_mem_accesses)
 	const int param_index = str_vec_get_index(user_kernel_combinatorial_params[kernel_index],full_name);
 	if(param_index >= 0)
 	{
-		sprintf(res,"%s",combinations.data[param_index]);
+	       sprintf(res,"%s",combinations.data[param_index]);
 	       node->parent->parent->parent->buffer = strdup(res);
 	       node->parent->parent->parent->buffer = strdup(res);
 

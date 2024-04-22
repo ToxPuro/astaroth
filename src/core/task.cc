@@ -557,10 +557,10 @@ ComputeTask::ComputeTask(AcTaskDefinition op, int order_, int region_tag, int3 n
            std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) + ")";
     task_type = TASKTYPE_COMPUTE;
 }
-ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region, Region output_region, Device device_,std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+ComputeTask::ComputeTask(AcTaskDefinition op, int order_, Region input_region_, Region output_region_, Device device_,std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
-           input_region,
-           output_region,
+           input_region_,
+           output_region_,
            op, device_, swap_offset_)
 {
     // stream = device->streams[STREAM_DEFAULT + region_tag];

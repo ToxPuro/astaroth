@@ -24,10 +24,10 @@ int yyget_lineno();
 static const char* global_func_declaration = "__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n";
 static const char* user_structs_filename = "user_structs.h";
 static const char* user_kernel_ifs       = "user_kernel_ifs.h";
-char user_kernel_params_struct_str[10000]; 
-string_vec added_params_to_stencil_accesses;
-const char* stencil_accesses_params_filename= "user_stencil_accesses_params.h";
-char stencil_accesses_default_params[10000];
+static char user_kernel_params_struct_str[10000]; 
+static string_vec added_params_to_stencil_accesses;
+static const char* stencil_accesses_params_filename= "user_stencil_accesses_params.h";
+static char stencil_accesses_default_params[10000];
 
 //These are used to generate better error messages in case of errors
 FILE* yyin_backup;
@@ -146,7 +146,10 @@ process_param(ASTNode* kernel_root, const ASTNode* param, char* struct_params)
 				//we assume it is a user specified struct
 				else
 			          sprintf(default_param,"{}");
-				sprintf(stencil_accesses_default_params,"%s %s %s = %s;",stencil_accesses_default_params,param_type,param->rhs->buffer,default_param);
+				char tmp[4096*2];
+				sprintf(tmp," %s %sAC_INTERNAL_INPUT = %s;",param_type,param->rhs->buffer,default_param);
+				strcat(stencil_accesses_default_params,tmp);
+				//sprintf(stencil_accesses_default_params,"%s,stencil_accesses_default_param);
 				//strprepend(param_default_args,default_param);
 
 }
@@ -804,11 +807,8 @@ function_definition: declaration function_body {
                         set_identifier_type(NODE_FUNCTION_ID, fn_identifier);
 
                         const ASTNode* is_kernel = get_node_by_token(KERNEL, $$);
-                        char rest_params[4096];
-                        rest_params[0] = '\0';
 			char struct_params[4096];
 			struct_params[0] = '\0';
-                        rest_params[0] = '\0';
                         ASTNode* compound_statement = $$->rhs->rhs;
                         if (is_kernel) {
                             $$->type |= NODE_KFUNCTION;
@@ -843,7 +843,9 @@ function_definition: declaration function_body {
 			    fprintf(fp_structs,"%s\n",kernel_params_struct);
 			    fclose(fp_structs);
 
-			    sprintf(user_kernel_params_struct_str,"%s%sInputParams %s;\n",user_kernel_params_struct_str,fn_identifier->buffer,fn_identifier->buffer);
+			    char tmp[4096];
+			    sprintf(tmp,"%sInputParams %s;\n", fn_identifier->buffer,fn_identifier->buffer);
+			    strcat(user_kernel_params_struct_str,tmp);
 
                             assert(compound_statement);
                             astnode_set_prefix("{", compound_statement);
