@@ -18,19 +18,28 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "astaroth.h"
 
 // Tester for boundary condition with GPU vs 
 // TODO: Write first for single GPU and then for MPI. 
 // TODO: Do first without taskgrap. Then add taskgraph.
 
-// Loop this for each individual boundary condition in the list
-//
-// 1. Initialize a random grid on CPU.
-//
-// 2. Send grid to Device
-//
-// 3. Calculate boundary condition on Host and Device
-//
-// 4. Trasfer data from the device to host
-//
-// 5. Compare aqrray values close to the inner 
+// MV: Actually, IMPROVEMENTS TO THE samples/boundcons_test MIGHT BE BETTER. 
+// MV: I might delete this one after further investigation. 
+
+int
+main(int argc, char** argv)
+{
+    // Loop this for each individual boundary condition in the list
+    //
+    // 1. Initialize a random grid on CPU.
+    
+    // 2. Send grid to Device
+    
+    // 3. Calculate boundary condition on Host and Device
+    
+    // 4. Trasfer data from the device to host
+    
+    // 5. Compare aqrray values close to the inner 
+
+}
