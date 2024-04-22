@@ -1688,15 +1688,15 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   FILE* fp = fopen("user_defines.h","a");
 
   fprintf(fp,"%s","static const int kernel_reduce_outputs[NUM_KERNELS] = { ");
+  int iterator = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_KFUNCTION_ID)
     {
-      ++num_kernels;
-      if(kernel_reduce_outputs[i] == NULL)
+      if(kernel_reduce_outputs[num_kernels] == NULL)
 	      fprintf(fp,"%d,",-1);
       else
-	      fprintf(fp,"(int)%s,",kernel_reduce_outputs[i]);
-
+	      fprintf(fp,"(int)%s,",kernel_reduce_outputs[num_kernels]);
+      ++num_kernels;
     }
   fprintf(fp,"%s","};\n");
 
