@@ -1013,7 +1013,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   // best_tpb.y,
   //        best_tpb.z, (double)best_time / num_iters);
 
-  FILE* fp = fopen("autotune.csv", "a");
+  FILE* fp = fopen(autotune_csv_path, "a");
   ERRCHK_ALWAYS(fp);
 #if IMPLEMENTATION == SMEM_HIGH_OCCUPANCY_CT_CONST_TB
   fprintf(fp, "%d, (%d, %d, %d), (%d, %d, %d), %g\n", IMPLEMENTATION, nx, ny,
@@ -1034,10 +1034,68 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   acKernelFlush(STREAM_DEFAULT,vba.reduce_scratchpads[0], vba.scratchpad_size, (AcReal)0.0);
   return c;
 }
+int
+get_entries(char** dst, const char* line)
+{
+      char* line_copy = strdup(line);
+      int counter = 0;
+      char* token;
+      token = strtok(line_copy,",");
+      while(token != NULL)
+      {
+              dst[counter] = strdup(token);
+              ++counter;
+              token = strtok(NULL,",");
+      }
+      return counter;
+}
+static int3
+read_optim_tpb(const int3 dims)
+{
+  const char* filename = autotune_csv_path;
+  FILE *file = fopen ( filename, "r" );
+  int3 res = {-1,-1,-1};
+  const double best_time = pow(10.0,20);
+  if (file != NULL) {
+    char line [1000];
+    while(fgets(line,sizeof line,file)!= NULL) /* read a line from a file */ {
+      char* entries[8];
+      int num_entries = get_entries(entries,line);
+      if(num_entries > 1)
+      {
+         //for(int i = 0; i< num_entries; ++i)
+         //        printf("%s,",entries[i]);
+         //}
+         int3 read_dims = {atoi(entries[1]), atoi(entries[2]), atoi(entries[3])};
+         int3 tpb = {atoi(entries[4]), atoi(entries[5]), atoi(entries[6])};
+         double time = atof(entries[7]);
+         if(read_dims == dims && time < best_time)
+                 res = tpb;
+
+      }
+  }
+    fclose(file);
+  }
+  else {
+    perror(filename); //print the error message on stderr.
+  }
+  return res;
+}
+
 
 static TBConfig
 getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 {
+  const int3 read_tpb = read_optim_tpb(dims); 
+  if(read_tpb != (int3){-1,-1,-1})
+  {
+	  return 
+	  {
+		  kernel,
+		  dims,
+		  (dim3){(uint32_t)read_tpb.x, (uint32_t)read_tpb.y, (uint32_t)read_tpb.z}
+	  };
+  }
   for (auto c : tbconfigs) {
     if (c.kernel == kernel && c.dims == dims)
       return c;

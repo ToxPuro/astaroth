@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "ast.h"
 #include "tab.h"
@@ -1505,7 +1506,16 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "#define STENCIL_DEPTH (STENCIL_ORDER+1)\n");
   fprintf(fp, "#define STENCIL_HEIGHT (STENCIL_ORDER+1)\n");
   fprintf(fp, "#define STENCIL_WIDTH (STENCIL_ORDER+1)\n");
-
+  char cwd[10004];
+  cwd[0] = '\0';
+  char* err = getcwd(cwd, sizeof(cwd));
+  assert(err != NULL);
+  char autotune_path[10004];
+  sprintf(autotune_path,"%s/autotune.csv",cwd);
+  fprintf(fp,"__attribute__((unused)) static const char* autotune_csv_path= \"%s\";\n",autotune_path);
+  fclose(fp);
+  //Done to refresh the autotune file when recompiling DSL code
+  fp = fopen(autotune_path,"w");
   fclose(fp);
 
   symboltable_reset();
