@@ -1809,51 +1809,20 @@ acGridDestroyTaskGraph(AcTaskGraph* graph)
     delete graph;
     return AC_SUCCESS;
 }
-
 AcResult
-acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
+acGridFinalizeReduce(AcTaskGraph* graph)
 {
-    ERRCHK(grid.initialized);
-    // acGridSynchronizeStream(stream);
-    // acDeviceSynchronizeStream(grid.device, stream);
     int reduce_output = -1;
     AcKernel kernel;
     KernelReduceOp reduce_op;
-    cudaSetDevice(grid.device->id);
-    if (graph->trace_file.enabled) {
-        timer_reset(&(graph->trace_file.timer));
-    }
-
     for (auto& task : graph->all_tasks) {
-        if (task->active) {
-            task->syncVBA();
-            task->setIterationParams(0, n_iterations);
-	    if(reduce_output<0 && task->isComputeTask())
-	    {
-		    auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
-		    kernel = compute_task -> getKernel();
-		    reduce_output =  kernel_reduce_outputs[(int)kernel];
-		    reduce_op = kernel_reduce_ops[(int)kernel];
-	    }
-        }
-    }
-    bool ready;
-    do {
-        ready = true;
-        for (auto& task : graph->all_tasks) {
-            if (task->active) {
-                task->update(graph->vtxbuf_swaps, &(graph->trace_file));
-                ready &= task->isFinished();
-            }
-        }
-    } while (!ready);
-
-    if (n_iterations % 2 != 0) {
-        for (size_t i = 0; i < NUM_VTXBUF_HANDLES; i++) {
-            if (graph->vtxbuf_swaps[i]) {
-                acDeviceSwapBuffer(grid.device, (VertexBufferHandle)i);
-            }
-        }
+	if(reduce_output<0 && task->isComputeTask())
+	{
+	        auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
+	        kernel = compute_task -> getKernel();
+	        reduce_output =  kernel_reduce_outputs[(int)kernel];
+	        reduce_op = kernel_reduce_ops[(int)kernel];
+	}
     }
     if(reduce_output>=0)
     {
@@ -1877,6 +1846,44 @@ acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
 		case(NO_REDUCE):
 			break;
 	    }
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)
+{
+    ERRCHK(grid.initialized);
+    // acGridSynchronizeStream(stream);
+    // acDeviceSynchronizeStream(grid.device, stream);
+    cudaSetDevice(grid.device->id);
+    if (graph->trace_file.enabled) {
+        timer_reset(&(graph->trace_file.timer));
+    }
+
+    for (auto& task : graph->all_tasks) {
+        if (task->active) {
+            task->syncVBA();
+            task->setIterationParams(0, n_iterations);
+        }
+    }
+    bool ready;
+    do {
+        ready = true;
+        for (auto& task : graph->all_tasks) {
+            if (task->active) {
+                task->update(graph->vtxbuf_swaps, &(graph->trace_file));
+                ready &= task->isFinished();
+            }
+        }
+    } while (!ready);
+
+    if (n_iterations % 2 != 0) {
+        for (size_t i = 0; i < NUM_VTXBUF_HANDLES; i++) {
+            if (graph->vtxbuf_swaps[i]) {
+                acDeviceSwapBuffer(grid.device, (VertexBufferHandle)i);
+            }
+        }
     }
     return AC_SUCCESS;
 }

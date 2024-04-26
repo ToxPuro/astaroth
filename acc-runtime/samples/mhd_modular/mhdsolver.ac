@@ -196,7 +196,9 @@ real AC_sq2GM_star
 real AC_cs2_sound
 //
 real AC_current_time
+
 output real timestep_out;
+
 //realArray AC_test_array[AC_slice_steps]
 
 //dconst real AC_test_dconst_array[5]
@@ -887,7 +889,6 @@ Kernel twopass_solve_intermediate(int step_num, real dt) {
         write(BFIELDY, bfield.y)
         write(BFIELDZ, bfield.z)
     }
-    reduce_max(step_num == 2, 2.0, timestep_out)
     #endif
 
     // %JP: TODO NOTE IMPORTANT (MV please check)

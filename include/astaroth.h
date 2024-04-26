@@ -845,6 +845,9 @@ AcResult acGridDestroyTaskGraph(AcTaskGraph* graph);
 
 /** */
 AcResult acGridExecuteTaskGraph(AcTaskGraph* graph, const size_t n_iterations);
+/** */
+AcResult
+acGridFinalizeReduce(AcTaskGraph* graph);
 
 /** */
 AcResult acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3 start,
