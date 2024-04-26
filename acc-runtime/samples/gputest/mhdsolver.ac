@@ -34,7 +34,7 @@ real AC_hcond_prof[AC_nz]
 
 
 
-output real AC_alfven_speec
+output real AC_alfven_speed
 
 
 // slices output period
