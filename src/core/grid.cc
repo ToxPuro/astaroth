@@ -1815,6 +1815,7 @@ acGridFinalizeReduce(AcTaskGraph* graph)
     int reduce_output = -1;
     AcKernel kernel;
     KernelReduceOp reduce_op;
+    acDeviceSynchronizeStream(acGridGetDevice(), STREAM_ALL);
     for (auto& task : graph->all_tasks) {
 	if(reduce_output<0 && task->isComputeTask())
 	{
