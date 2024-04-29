@@ -4,7 +4,6 @@ u_dot_grad_vec(m,v){
   //!!!return real3(dot(v,m.row(0)),dot(v,m.col(1)),dot(v,m.col(2)))
   return real3(dot(v,m.col(0)),dot(v,m.col(1)),dot(v,m.col(2)))
 }
-
 curl_from_matrix(m) {
   return real3(m.data[2][1]-m.data[1][2], m.data[0][2] - m.data[2][0], m.data[1][0] - m.data[0][1])
 }
@@ -32,7 +31,6 @@ divergence(v) {
 curl(v) {
     return real3(dery(v.z) - derz(v.y), derz(v.x) - derx(v.z), derx(v.y) - dery(v.x))
 }
-
 del4(s) {
   return der4x(s) + der4y(s) + der4z(s)
 }
@@ -99,7 +97,6 @@ contract(mat) {
            dot(mat.row(2), mat.row(2))
 }
 
-length(v1,v2) {
-    return sqrt( dot(v1-v2,v1-v2) )
+length(v) {
+    return sqrt( dot(v,v) )
 }
-
