@@ -955,9 +955,15 @@ get_dfuncs_reduce_op(ASTNode* node)
 int
 get_kernel_index(const char* kernel_name)
 {
+  int index = 0;
   for (size_t i = 0; i < num_symbols[0]; ++i)
-    if (symbol_table[i].type & NODE_KFUNCTION_ID && !strcmp(kernel_name,symbol_table[i].identifier))
-		    return i;
+    if (symbol_table[i].type & NODE_KFUNCTION_ID)
+    {
+	    if(!strcmp(kernel_name,symbol_table[i].identifier))
+		    return index;
+	    ++index;
+    }
+	    
   return -1;
 }
 void
@@ -1763,7 +1769,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_DFUNCTION_ID)
 	    push(&dfuncs, symbol_table[i].identifier);
-  printf("num of dfuncs: %zu\n",dfuncs.size);
   get_dfuncs_reduce_output(root);
   get_dfuncs_reduce_condition(root);
   get_dfuncs_reduce_op(root);
@@ -1787,7 +1792,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   FILE* fp = fopen("user_defines.h","a");
 
   fprintf(fp,"%s","static const int kernel_reduce_outputs[NUM_KERNELS] = { ");
-  int iterator = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_KFUNCTION_ID)
     {
