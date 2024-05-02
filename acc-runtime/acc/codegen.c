@@ -1805,10 +1805,11 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 
   fprintf(fp,"%s","typedef enum KernelReduceOp\n{\n\tNO_REDUCE,\n\tREDUCE_MIN,\n\tREDUCE_MAX,\n\tREDUCE_SUM,\n} KernelReduceOp;\n");
   fprintf(fp,"%s","static const KernelReduceOp kernel_reduce_ops[NUM_KERNELS] = { ");
+  int iterator = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_KFUNCTION_ID)
     {
-      switch(kernel_reduce_ops[i])
+      switch(kernel_reduce_ops[iterator])
       {
               case(NO_REDUCE):
               	fprintf(fp,"%s,","NO_REDUCE");
@@ -1823,6 +1824,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
               	fprintf(fp,"%s,","REDUCE_SUM");
               	break;
       }
+      ++iterator;
     }
   fprintf(fp,"%s","};\n");
   fclose(fp);
