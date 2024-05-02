@@ -651,8 +651,8 @@ primary_expression: identifier         { $$ = astnode_create(NODE_UNKNOWN, $1, N
 
 postfix_expression: primary_expression                         { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
                   | postfix_expression '[' expression ']'      { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix("[", $$); astnode_set_postfix("]", $$); }
-                  | postfix_expression '(' ')'                 { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }
-                  | postfix_expression '(' expression_list ')' { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }
+                  | postfix_expression '(' ')'                 { $$ = astnode_create(NODE_FUNCTION_CALL, $1, NULL); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }
+                  | postfix_expression '(' expression_list ')' { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); } 
                   | postfix_expression '.' identifier          { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(".", $$); set_identifier_type(NODE_MEMBER_ID, $$->rhs); }
                   | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); $$->lhs->type ^= NODE_TSPEC; /* Unset NODE_TSPEC flag, casts are handled as functions */ }
                   ;
@@ -859,7 +859,7 @@ function_definition: declaration function_body {
                             astnode_set_infix(" __attribute__((unused)) =[&]", $$);
                             astnode_set_postfix(";", $$);
                             $$->type |= NODE_DFUNCTION;
-                            //set_identifier_type(NODE_DFUNCTION_ID, fn_identifier);
+                            set_identifier_type(NODE_DFUNCTION_ID, fn_identifier);
 
                             // Pass device function parameters by const reference
                             if ($$->rhs->lhs) {
@@ -876,7 +876,7 @@ function_body: '(' ')' compound_statement                { $$ = astnode_create(N
              ;
 
 function_call: declaration '(' ')'                 { $$ = astnode_create(NODE_FUNCTION_CALL, $1, NULL); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }
-             | declaration '(' expression_list ')' { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }
+             | declaration '(' expression_list ')' { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$);   }
              ;
 
 /*

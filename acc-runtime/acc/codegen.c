@@ -62,8 +62,9 @@ static string_vec user_kernel_combinatorial_param_options[100][100];
 
 static string_vec user_kernel_combinations[100][1000];
 static int user_kernel_num_combinations[100];
-
-char* kernel_reduce_outputs[100];
+static string_vec dfuncs;
+static const char* dfuncs_reduce_output[1000];
+static const char* dfuncs_reduce_condition[1000];
 typedef enum ReduceOp
 {
 	NO_REDUCE,
@@ -71,6 +72,9 @@ typedef enum ReduceOp
 	REDUCE_MAX,
 	REDUCE_SUM,
 } ReduceOp;
+static ReduceOp dfuncs_reduce_op[1000];
+
+char* kernel_reduce_outputs[100];
 ReduceOp kernel_reduce_ops[100];
 
 static const char* user_kernel_ifs       = "user_kernel_ifs.h";
@@ -838,6 +842,9 @@ get_reduce_op(ASTNode* node)
 				res = REDUCE_MIN;
 		if(!strcmp(func_name,"reduce_max"))
 				res = REDUCE_MAX;
+		const int dfunc_index = str_vec_get_index(dfuncs,func_name);
+		if(dfunc_index > 0 && res == NO_REDUCE)
+			res = dfuncs_reduce_op[dfunc_index];
 	}
 	if(node->lhs && res == NO_REDUCE) 
 		res = get_reduce_op(node->lhs);
@@ -858,6 +865,11 @@ get_reduce_condition(ASTNode* node)
 		  char condition[5000];
 		  combine_buffers(node->rhs->lhs->lhs,condition);
 		  res = strdup(condition);
+		}
+		const int dfunc_index = str_vec_get_index(dfuncs,func_name);
+		if(dfunc_index > 0 && res == NULL && dfuncs_reduce_condition[dfunc_index])
+		{
+			res = strdup(dfuncs_reduce_condition[dfunc_index]);
 		}
 	}
 	if(node->lhs && res == NULL) 
@@ -880,12 +892,65 @@ get_reduce_output(ASTNode* node)
 		  combine_buffers(node->rhs->rhs,condition);
 		  res = strdup(condition);
 		}
+		const int dfunc_index = str_vec_get_index(dfuncs,func_name);
+		if(dfunc_index > 0 && res == NULL && dfuncs_reduce_output[dfunc_index])
+			res = strdup(dfuncs_reduce_output[dfunc_index]);
+
 	}
 	if(node->lhs && res == NULL) 
 		res = get_reduce_output(node->lhs);
 	if(node->rhs && res == NULL) 
 		res = get_reduce_output(node->rhs);
 	return res;
+}
+void
+get_dfuncs_reduce_output(ASTNode* node)
+{
+	if(node->lhs) 
+		get_dfuncs_reduce_output(node->lhs);
+	if(node->rhs) 
+		get_dfuncs_reduce_output(node->rhs);
+	if(!(node->type & NODE_DFUNCTION))
+		return;
+	char func_name[5000];
+	combine_buffers(node->lhs,func_name);
+	const char* reduce_output = get_reduce_output(node);
+	const int dfunc_index = str_vec_get_index(dfuncs,func_name);
+	if(reduce_output)
+		dfuncs_reduce_output[dfunc_index] = strdup(reduce_output);
+}
+void
+get_dfuncs_reduce_condition(ASTNode* node)
+{
+	if(node->lhs) 
+		get_dfuncs_reduce_condition(node->lhs);
+	if(node->rhs) 
+		get_dfuncs_reduce_condition(node->rhs);
+	if(!(node->type & NODE_DFUNCTION))
+		return;
+	char func_name[5000];
+	combine_buffers(node->lhs,func_name);
+	const char* reduce_condition= get_reduce_condition(node);
+	const int dfunc_index = str_vec_get_index(dfuncs,func_name);
+	if(reduce_condition)
+	{
+		dfuncs_reduce_condition[dfunc_index] = strdup(reduce_condition);
+	}
+}
+void
+get_dfuncs_reduce_op(ASTNode* node)
+{
+	if(node->lhs) 
+		get_dfuncs_reduce_op(node->lhs);
+	if(node->rhs) 
+		get_dfuncs_reduce_op(node->rhs);
+	if(!(node->type & NODE_DFUNCTION))
+		return;
+	char func_name[5000];
+	combine_buffers(node->lhs,func_name);
+	const ReduceOp reduce_op = get_reduce_op(node);
+	const int dfunc_index = str_vec_get_index(dfuncs,func_name);
+	dfuncs_reduce_op[dfunc_index] = reduce_op;
 }
 int
 get_kernel_index(const char* kernel_name)
@@ -910,7 +975,17 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 	ReduceOp reduce_op = get_reduce_op(node);
 	if(!gen_mem_accesses && reduce_op != NO_REDUCE)
 	{
-	 const char* condition = get_reduce_condition(node);
+	 const ASTNode* fn_identifier = get_node(NODE_KFUNCTION_ID,node);
+	 char* condition = get_reduce_condition(node);
+	 //HACK!
+	 if(!strstr(condition,fn_identifier))
+	 {
+		 char* ptr = strtok(condition, "==");
+		 char* ptr2 = strtok(NULL, "==");
+		 char new_condition[4096];
+		 sprintf(new_condition, "vba.kernel_input_params.%s.%s == %s",fn_identifier->buffer,ptr,ptr2);
+		 condition = strdup(new_condition);
+	 }
 	 char tmp[4096];
 	 sprintf(tmp,"if(%s){\n",condition);
 	 strcat(new_postfix,tmp);
@@ -1653,6 +1728,13 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   user_kernels_with_input_params.size = 0;
   user_enums.size = 0;
   user_structs.size = 0;
+  dfuncs.size = 0;
+  for(int i = 0; i <1000; ++i)
+  {
+	  dfuncs_reduce_output[i] = NULL;
+	  dfuncs_reduce_condition[i] = NULL;
+	  dfuncs_reduce_op[i] = NO_REDUCE;
+  }
   for(int i=0; i<100;++i)
   {
 	  user_enum_options[i].size = 0;
@@ -1673,12 +1755,19 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   if(optimize_conditionals)
   	gen_kernel_ifs(root);
   gen_kernel_input_params(root,gen_mem_accesses);
-  gen_kernel_postfixes(root,gen_mem_accesses);
   gen_user_defines(root, "user_defines.h");
   gen_user_kernels(root, "user_declarations.h", gen_mem_accesses);
 
   // Fill the symbol table
   traverse(root, always_excluded, NULL);
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].type & NODE_DFUNCTION_ID)
+	    push(&dfuncs, symbol_table[i].identifier);
+  printf("num of dfuncs: %zu\n",dfuncs.size);
+  get_dfuncs_reduce_output(root);
+  get_dfuncs_reduce_condition(root);
+  get_dfuncs_reduce_op(root);
+  gen_kernel_postfixes(root,gen_mem_accesses);
   // print_symbol_table();
 
   // Generate user_kernels.h
@@ -1732,9 +1821,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
       }
     }
   fprintf(fp,"%s","};\n");
-
   fclose(fp);
-
 
 
 

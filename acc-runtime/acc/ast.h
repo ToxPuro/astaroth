@@ -58,6 +58,7 @@ typedef enum {
   NODE_STRUCT_DEF     = (1 << 25),
   NODE_IF             = (1 << 26),
   NODE_FUNCTION_CALL  = (1 << 27),
+  NODE_DFUNCTION_ID   = (1 << 28),
 } NodeType;
 
 
