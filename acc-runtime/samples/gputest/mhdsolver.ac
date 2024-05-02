@@ -802,7 +802,8 @@ Kernel twopass_solve_intermediate(int step_num, real dt){
 
   DF_AA = UXB+(AC_nu*DEL2A)
 
-  reduce_max(step_num == 3, length(UU), AC_maxadvec)
+  //reduce_max(step_num == 2, length(UU), AC_maxadvec)
+  reduce_max(step_num == 2, 2.0, AC_maxadvec)
 
   W_UU = rk3_intermediate_vector(vecprevious(F_UU),DF_UU,step_num, dt)
   W_SS = rk3_intermediate(previous(SS),DF_SS,step_num, dt)
