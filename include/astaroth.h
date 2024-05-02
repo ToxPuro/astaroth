@@ -847,6 +847,9 @@ AcResult acGridDestroyTaskGraph(AcTaskGraph* graph);
 AcResult acGridExecuteTaskGraph(AcTaskGraph* graph, const size_t n_iterations);
 /** */
 AcResult
+acGridFinalizeReduceLocal(AcTaskGraph* graph);
+/** */
+AcResult
 acGridFinalizeReduce(AcTaskGraph* graph);
 
 /** */
