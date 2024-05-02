@@ -978,7 +978,7 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 	 const ASTNode* fn_identifier = get_node(NODE_KFUNCTION_ID,node);
 	 char* condition = get_reduce_condition(node);
 	 //HACK!
-	 if(!strstr(condition,fn_identifier))
+	 if(!strstr(condition,fn_identifier->buffer))
 	 {
 		 char* ptr = strtok(condition, "==");
 		 char* ptr2 = strtok(NULL, "==");
