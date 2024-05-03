@@ -78,7 +78,7 @@
     int* int_arrays[NUM_INT_ARRAYS];
     size_t bytes;
     acKernelInputParams kernel_input_params;
-    AcReal* reduce_scratchpads[NUM_REDUCE_SCRATCHPADS];
+    AcReal* reduce_scratchpads[NUM_REAL_OUTPUTS+1][NUM_REDUCE_SCRATCHPADS];
     int reduce_offset;
     size_t scratchpad_size;
   } VertexBufferArray;

@@ -174,19 +174,28 @@ for (int field = 0; field < NUM_FIELDS; ++field)
 printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
 */
 #endif
-  printf("AcReal reduce_sum_res = 0.0;\n");
-  printf("AcReal reduce_max_res = -1000000.0;\n");
-  printf("AcReal reduce_min_res = 1000000.0;\n");
+  printf("AcReal reduce_sum_res[NUM_REAL_OUTPUTS] = {\n");
+  for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
+	  printf("0.0,");
+  printf("};\n");
+  printf("AcReal reduce_max_res[NUM_REAL_OUTPUTS] = {\n");
+  for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
+	  printf("-1000000.0,");
+  printf("};\n");
+  printf("AcReal reduce_min_res[NUM_REAL_OUTPUTS] = {\n");
+  for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
+	  printf("1000000.0,");
+  printf("};\n");
 
   printf("(void)reduce_sum_res;");
   printf("(void)reduce_min_res;");
   printf("(void)reduce_max_res;");
   printf("const auto reduce_sum __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutput& output)"
-		  "{ (void)condition; (void)output; reduce_sum_res = val; };");
+		  "{ (void)condition; reduce_sum_res[(int)output] = val; };");
   printf("const auto reduce_min __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutput& output)"
-		  "{ (void)condition; (void)output; reduce_min_res = val; };");
+		  "{ (void)condition; reduce_min_res[(int)output] = val; };");
   printf("const auto reduce_max __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutput& output)"
-		  "{ (void)condition; (void)output; reduce_max_res = val; };");
+		  "{ (void)condition; reduce_max_res[(int)output] = val; };");
 }
 
 static void

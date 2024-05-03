@@ -338,13 +338,17 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     const size_t scratchpad_size       = acKernelReduceGetMinimumScratchpadSize(max_dims);
     const size_t scratchpad_size_bytes = acKernelReduceGetMinimumScratchpadSizeBytes(max_dims);
     const int reduce_tpb_size = 128;
-    for (size_t i = 0; i < NUM_REDUCE_SCRATCHPADS; ++i) {
-        ERRCHK_CUDA_ALWAYS(
-            cudaMalloc((void**)&device->vba.reduce_scratchpads[i], scratchpad_size_bytes));
-	if(i == 0)
-		acKernelFlush(STREAM_DEFAULT,device->vba.reduce_scratchpads[i], scratchpad_size,0);
-	else
-		acKernelFlush(STREAM_DEFAULT,device->vba.reduce_scratchpads[i], (scratchpad_size+reduce_tpb_size-1)/reduce_tpb_size,0);
+    //for (size_t i = 0; i < NUM_REDUCE_SCRATCHPADS; ++i) {
+    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i) {
+	for(int j = 0; j < 2; ++j)
+	{
+        	ERRCHK_CUDA_ALWAYS(
+        	    cudaMalloc((void**)&device->vba.reduce_scratchpads[i][j], scratchpad_size_bytes));
+		if(j == 0)
+			acKernelFlush(STREAM_DEFAULT,device->vba.reduce_scratchpads[i][j], scratchpad_size,0);
+		else
+			acKernelFlush(STREAM_DEFAULT,device->vba.reduce_scratchpads[i][j], (scratchpad_size+reduce_tpb_size-1)/reduce_tpb_size,0);
+	}
     }
     acDeviceSynchronizeStream(device,STREAM_ALL);
     device->vba.scratchpad_size = scratchpad_size;
@@ -869,7 +873,7 @@ acDeviceReduceScalNotAveraged(const Device device, const Stream stream, const Re
     const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
 
     *result = acKernelReduceScal(device->streams[stream], rtype, device->vba.in[vtxbuf_handle],
-                                 start, end, device->vba.reduce_scratchpads, device->vba.scratchpad_size);
+                                 start, end, device->vba.reduce_scratchpads[0], device->vba.scratchpad_size);
     return AC_SUCCESS;
 }
 
@@ -908,7 +912,7 @@ acDeviceReduceVecNotAveraged(const Device device, const Stream stream, const Red
 
     *result = acKernelReduceVec(device->streams[stream], rtype, start, end, device->vba.in[vtxbuf0],
                                 device->vba.in[vtxbuf1], device->vba.in[vtxbuf2],
-                                device->vba.reduce_scratchpads, device->vba.scratchpad_size);
+                                device->vba.reduce_scratchpads[0], device->vba.scratchpad_size);
     return AC_SUCCESS;
 }
 
@@ -937,9 +941,9 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
 }
 
 AcResult
-acDeviceFinishReduce(Device device, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op)
+acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcRealOutput output)
 {
-	AcReal res = AcKernelReduce(STREAM_DEFAULT,device->vba.reduce_scratchpads, acGetKernelReduceScratchPadSize(kernel),reduce_op);
+	AcReal res = AcKernelReduce(device->streams[stream],device->vba.reduce_scratchpads[(int) output], acGetKernelReduceScratchPadSize(kernel),reduce_op);
 	*result = res;
 	return AC_SUCCESS;
 }
@@ -957,7 +961,7 @@ acDeviceReduceVecScalNotAveraged(const Device device, const Stream stream,
     *result = acKernelReduceVecScal(device->streams[stream], rtype, start, end,
                                     device->vba.in[vtxbuf0], device->vba.in[vtxbuf1],
                                     device->vba.in[vtxbuf2], device->vba.in[vtxbuf3],
-                                    device->vba.reduce_scratchpads, device->vba.scratchpad_size);
+                                    device->vba.reduce_scratchpads[0], device->vba.scratchpad_size);
     return AC_SUCCESS;
 }
 

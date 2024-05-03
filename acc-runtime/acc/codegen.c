@@ -1,6 +1,5 @@
 /*
     Copyright (C) 2021, Johannes Pekkila.
-
     This file is part of Astaroth.
 
     Astaroth is free software: you can redistribute it and/or modify
@@ -63,19 +62,12 @@ static string_vec user_kernel_combinatorial_param_options[100][100];
 static string_vec user_kernel_combinations[100][1000];
 static int user_kernel_num_combinations[100];
 static string_vec dfuncs;
-static const char* dfuncs_reduce_output[1000];
-static const char* dfuncs_reduce_condition[1000];
-typedef enum ReduceOp
-{
-	NO_REDUCE,
-	REDUCE_MIN,
-	REDUCE_MAX,
-	REDUCE_SUM,
-} ReduceOp;
-static ReduceOp dfuncs_reduce_op[1000];
 
-char* kernel_reduce_outputs[100];
-ReduceOp kernel_reduce_ops[100];
+op_vec dfuncs_reduce_ops[1000];
+string_vec dfuncs_reduce_conditions[1000];
+string_vec dfuncs_reduce_outputs[1000];
+string_vec kernel_reduce_outputs[100];
+op_vec kernel_reduce_ops[100];
 
 static const char* user_kernel_ifs       = "user_kernel_ifs.h";
 
@@ -828,8 +820,8 @@ remove_suffix(char *str, const char* suffix_match) {
         *optimizedPos = '\0'; // Replace '_' with null character
     }
 }
-ReduceOp
-get_reduce_op(ASTNode* node)
+void
+get_reduce_ops(ASTNode* node, ReduceOp* src, int* n)
 {
 	ReduceOp res = NO_REDUCE;
 	if(node->type & NODE_FUNCTION_CALL)
@@ -837,23 +829,35 @@ get_reduce_op(ASTNode* node)
 		char func_name[5000];
 		combine_buffers(node->lhs,func_name);
 		if(!strcmp(func_name,"reduce_sum"))
-				res = REDUCE_SUM;
+		{
+			src[(*n)] = REDUCE_SUM;
+			++(*n);
+		}
 		if(!strcmp(func_name,"reduce_min"))
-				res = REDUCE_MIN;
+		{
+			src[(*n)] = REDUCE_MIN;
+			++(*n);
+		}
 		if(!strcmp(func_name,"reduce_max"))
-				res = REDUCE_MAX;
+		{
+			src[(*n)] = REDUCE_MAX;
+			++(*n);
+		}
 		const int dfunc_index = str_vec_get_index(dfuncs,func_name);
-		if(dfunc_index > 0 && res == NO_REDUCE)
-			res = dfuncs_reduce_op[dfunc_index];
+		if(dfunc_index > 0)
+			for(size_t i = 0; i < dfuncs_reduce_ops[dfunc_index].size; ++i)
+			{
+				src[(*n)] = dfuncs_reduce_ops[dfunc_index].data[i];
+				++(*n);
+			}
 	}
-	if(node->lhs && res == NO_REDUCE) 
-		res = get_reduce_op(node->lhs);
-	if(node->rhs && res == NO_REDUCE) 
-		res = get_reduce_op(node->rhs);
-	return res;
+	if(node->lhs) 
+		get_reduce_ops(node->lhs,src,n);
+	if(node->rhs) 
+		get_reduce_ops(node->rhs,src,n);
 }
-char*
-get_reduce_condition(ASTNode* node)
+void
+get_reduce_conditions(ASTNode* node, string_vec* src)
 {
 	char* res = NULL;
 	if(node->type & NODE_FUNCTION_CALL)
@@ -864,44 +868,43 @@ get_reduce_condition(ASTNode* node)
 		{
 		  char condition[5000];
 		  combine_buffers(node->rhs->lhs->lhs,condition);
-		  res = strdup(condition);
+		  push(src,condition);
 		}
 		const int dfunc_index = str_vec_get_index(dfuncs,func_name);
-		if(dfunc_index > 0 && res == NULL && dfuncs_reduce_condition[dfunc_index])
-		{
-			res = strdup(dfuncs_reduce_condition[dfunc_index]);
-		}
+		if(dfunc_index > 0)
+			for(size_t i = 0; i < dfuncs_reduce_conditions[dfunc_index].size; ++i)
+				push(src,dfuncs_reduce_conditions[dfunc_index].data[i]);
 	}
 	if(node->lhs && res == NULL) 
-		res = get_reduce_condition(node->lhs);
+		get_reduce_conditions(node->lhs,src);
 	if(node->rhs && res == NULL) 
-		res = get_reduce_condition(node->rhs);
-	return res;
+		get_reduce_conditions(node->rhs,src);
 }
-char*
-get_reduce_output(ASTNode* node)
+void
+get_reduce_outputs(ASTNode* node, string_vec* src)
 {
 	char* res = NULL;
+	const size_t orig_src_size = (*src).size;
 	if(node->type & NODE_FUNCTION_CALL)
 	{
 		char func_name[5000];
 		combine_buffers(node->lhs,func_name);
 		if (!strcmp(func_name,"reduce_sum") || !strcmp(func_name,"reduce_min") || !strcmp(func_name,"reduce_max"))
 		{
-		  char condition[5000];
-		  combine_buffers(node->rhs->rhs,condition);
-		  res = strdup(condition);
+		  char output[5000];
+		  combine_buffers(node->rhs->rhs,output);
+		  push(src,output);
 		}
 		const int dfunc_index = str_vec_get_index(dfuncs,func_name);
-		if(dfunc_index > 0 && res == NULL && dfuncs_reduce_output[dfunc_index])
-			res = strdup(dfuncs_reduce_output[dfunc_index]);
+		if(dfunc_index > 0)
+			for(size_t i = 0; i < dfuncs_reduce_outputs[dfunc_index].size; ++i)
+				push(src,dfuncs_reduce_outputs[dfunc_index].data[i]);
 
 	}
 	if(node->lhs && res == NULL) 
-		res = get_reduce_output(node->lhs);
+		get_reduce_outputs(node->lhs,src);
 	if(node->rhs && res == NULL) 
-		res = get_reduce_output(node->rhs);
-	return res;
+		get_reduce_outputs(node->rhs,src);
 }
 void
 get_dfuncs_reduce_output(ASTNode* node)
@@ -914,10 +917,12 @@ get_dfuncs_reduce_output(ASTNode* node)
 		return;
 	char func_name[5000];
 	combine_buffers(node->lhs,func_name);
-	const char* reduce_output = get_reduce_output(node);
 	const int dfunc_index = str_vec_get_index(dfuncs,func_name);
-	if(reduce_output)
-		dfuncs_reduce_output[dfunc_index] = strdup(reduce_output);
+	string_vec reduce_outputs;
+	reduce_outputs.size = 0;
+	get_reduce_outputs(node,&reduce_outputs);
+	for(size_t i = 0; i < reduce_outputs.size; ++i)
+		push(&dfuncs_reduce_outputs[dfunc_index], reduce_outputs.data[i]);
 }
 void
 get_dfuncs_reduce_condition(ASTNode* node)
@@ -930,12 +935,12 @@ get_dfuncs_reduce_condition(ASTNode* node)
 		return;
 	char func_name[5000];
 	combine_buffers(node->lhs,func_name);
-	const char* reduce_condition= get_reduce_condition(node);
 	const int dfunc_index = str_vec_get_index(dfuncs,func_name);
-	if(reduce_condition)
-	{
-		dfuncs_reduce_condition[dfunc_index] = strdup(reduce_condition);
-	}
+	string_vec reduce_conditions;
+	reduce_conditions.size = 0;
+	get_reduce_conditions(node,&reduce_conditions);
+	for(size_t i = 0; i < reduce_conditions.size; ++i)
+		push(&dfuncs_reduce_conditions[dfunc_index], reduce_conditions.data[i]);
 }
 void
 get_dfuncs_reduce_op(ASTNode* node)
@@ -948,9 +953,12 @@ get_dfuncs_reduce_op(ASTNode* node)
 		return;
 	char func_name[5000];
 	combine_buffers(node->lhs,func_name);
-	const ReduceOp reduce_op = get_reduce_op(node);
+	ReduceOp reduce_ops[100];
+	int n = 0;
+	get_reduce_ops(node,reduce_ops,&n);
 	const int dfunc_index = str_vec_get_index(dfuncs,func_name);
-	dfuncs_reduce_op[dfunc_index] = reduce_op;
+	for(int i = 0; i < n; ++i)
+		push_op(&dfuncs_reduce_ops[dfunc_index], reduce_ops[i]);
 }
 int
 get_kernel_index(const char* kernel_name)
@@ -978,74 +986,117 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 	ASTNode* compound_statement = node->rhs->rhs;
 	char new_postfix[10000];
 	sprintf(new_postfix,"%s",compound_statement->postfix);
-	ReduceOp reduce_op = get_reduce_op(node);
-	if(!gen_mem_accesses && reduce_op != NO_REDUCE)
+	if(gen_mem_accesses)
 	{
-	 const ASTNode* fn_identifier = get_node(NODE_KFUNCTION_ID,node);
-	 char* condition = get_reduce_condition(node);
-	 //HACK!
-	 if(!strstr(condition,fn_identifier->buffer))
-	 {
-		 char* ptr = strtok(condition, "==");
-		 char* ptr2 = strtok(NULL, "==");
-		 char new_condition[4096];
-		 sprintf(new_condition, "vba.kernel_input_params.%s.%s == %s",fn_identifier->buffer,ptr,ptr2);
-		 condition = strdup(new_condition);
-	 }
-	 char tmp[4096];
-	 sprintf(tmp,"if(%s){\n",condition);
-	 strcat(new_postfix,tmp);
-	 //sprintf(new_postfix,"%sif(%s){\n",new_postfix,condition);
-#if AC_USE_HIP
-	 strcat(new_postfix, "const size_t warp_size = rocprim::warp_size();\n");
-	 strcat(new_postfix, "const size_t warp_id = rocprim::warp_id();\n");
-#else
-	 strcat(new_postfix, "constexpr size_t warp_size = 32;\n");
-  	 strcat(new_postfix,"const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size\n;");
-#endif
-  	 strcat(new_postfix,"const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) % warp_size\n;");
-  	 strcat(new_postfix,"const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;\n");
-  	 strcat(new_postfix,"const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;\n");
-  	 strcat(new_postfix,"const int out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;\n");
-	 strcat(new_postfix,"for(int offset = warp_size/2; offset > 0; offset /= 2){ \n");
-	 switch(reduce_op)
-	 {
-		 case(REDUCE_SUM):
-#if AC_USE_HIP
-		 	strcat(new_postfix,"reduce_sum_res += rocprim::warp_shuffle_down(reduce_sum_res,offset);\n"); 
-#else
-		 	strcat(new_postfix,"reduce_sum_res += __shfl_down_sync(0xffffffff,reduce_sum_res,offset);\n"); 
-#endif
-	 		strcat(new_postfix,"}\n");
-	 		strcat(new_postfix,"if(lane_id == 0) {vba.reduce_scratchpads[0][out_index] = reduce_sum_res;}");
-			break;
-		 case(REDUCE_MIN):
-#if AC_USE_HIP
-		 	strcat(new_postfix,"const AcReal shuffle_tmp = rocprim::warp_shuffle_down(reduce_min_res,offset);"); 
-#else
-		 	strcat(new_postfix,"const AcReal shuffle_tmp =  __shfl_down_sync(0xffffffff,reduce_min_res,offset);\n"); 
-#endif
-		 	strcat(new_postfix,"reduce_min_res = (shuffle_tmp < reduce_min_res) ? shuffle_tmp : reduce_min_res;\n"); 
-	 		strcat(new_postfix,"}\n");
-	 		strcat(new_postfix,"if(lane_id == 0) {vba.reduce_scratchpads[0][out_index] = reduce_min_res;}");
-			break;
-		 case(REDUCE_MAX):
-#if AC_USE_HIP
-		 	strcat(new_postfix,"const AcReal shuffle_tmp = rocprim::warp_shuffle_down(reduce_max_res,offset);"); 
-#else
-		 	strcat(new_postfix,"const AcReal shuffle_tmp =  __shfl_down_sync(0xffffffff,reduce_max_res,offset);\n"); 
-#endif
-		 	strcat(new_postfix,"reduce_max_res = (shuffle_tmp > reduce_max_res) ? shuffle_tmp : reduce_max_res;\n"); 
-	 		strcat(new_postfix,"}\n");
-	 		strcat(new_postfix,"if(lane_id == 0) {vba.reduce_scratchpads[0][out_index] = reduce_max_res;}");
-			break;
-		 case(NO_REDUCE):
-		 	exit(0);
-	 }
-	strcat(new_postfix,"}\n");
+	  strcat(new_postfix,"}");
+	  compound_statement->postfix = strdup(new_postfix);
+	  return;
+	}
+	ReduceOp reduce_ops[100];
+	int n_ops = 0;
+	get_reduce_ops(node,reduce_ops,&n_ops);
+	if(!n_ops)
+	{
+	  strcat(new_postfix,"}");
+	  compound_statement->postfix = strdup(new_postfix);
+	  return;
+	}
 	const int kernel_index = get_kernel_index(get_node(NODE_KFUNCTION_ID,node)->buffer);
-	kernel_reduce_outputs[kernel_index] = get_reduce_output(node);
-	kernel_reduce_ops[kernel_index] = reduce_op;
+	const ASTNode* fn_identifier = get_node(NODE_KFUNCTION_ID,node);
+	string_vec conditions; 	
+	conditions.size = 0;
+	get_reduce_conditions(node,&conditions);
+	if(conditions.size == 0) return;
+	string_vec reduce_outputs;
+	reduce_outputs.size = 0;
+	get_reduce_outputs(node,&reduce_outputs);
+	if(reduce_outputs.size == 0) return;
+	assert((size_t) n_ops == reduce_outputs.size && n_ops == reduce_conditions.size);
+	for(int i = 0; i < n_ops; ++i)
+	{
+		ReduceOp reduce_op = reduce_ops[i];
+		char* condition = conditions.data[i];
+		char* output = reduce_outputs.data[i];
+		push_op(&kernel_reduce_ops[kernel_index],  reduce_op);
+		push(&kernel_reduce_outputs[kernel_index],  output);
+	 	//HACK!
+	 	if(!strstr(condition,fn_identifier->buffer))
+	 	{
+	 	        char* ptr = strtok(condition, "==");
+	 	        char* ptr2 = strtok(NULL, "==");
+	 	        char new_condition[4096];
+	 	        sprintf(new_condition, "vba.kernel_input_params.%s.%s == %s",fn_identifier->buffer,ptr,ptr2);
+	 	        condition = strdup(new_condition);
+	 	}
+	 	char tmp[4096];
+	 	sprintf(tmp,"if(%s){\n",condition);
+	 	strcat(new_postfix,tmp);
+#if AC_USE_HIP
+	 	strcat(new_postfix, "const size_t warp_size = rocprim::warp_size();\n");
+	 	strcat(new_postfix, "const size_t warp_id = rocprim::warp_id();\n");
+#else
+	 	strcat(new_postfix, "constexpr size_t warp_size = 32;\n");
+  	 	strcat(new_postfix,"const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size\n;");
+#endif
+  	 	strcat(new_postfix,"const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) % warp_size\n;");
+  	 	strcat(new_postfix,"const int warps_per_block = (blockDim.x*blockDim.y*blockDim.z + warp_size -1)/warp_size;\n");
+  	 	strcat(new_postfix,"const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;\n");
+  	 	strcat(new_postfix,"const int out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;\n");
+	 	strcat(new_postfix,"for(int offset = warp_size/2; offset > 0; offset /= 2){ \n");
+		char* array_name;
+	 	switch(reduce_op)
+	 	{
+		 	case(REDUCE_SUM):
+				array_name = "reduce_sum_res";
+				break;
+		 	case(REDUCE_MIN):
+				array_name = "reduce_min_res";
+				break;
+		 	case(REDUCE_MAX):
+				array_name = "reduce_max_res";
+				break;
+		 	case(NO_REDUCE):
+				printf("WRONG!\n");
+				printf("%s\n",fn_identifier->buffer);
+		 		exit(0);
+		}
+		char res_name[4098];
+		sprintf(res_name,"%s[(int)%s]",array_name,output);
+		char shuffle_instruction[4098];
+#if AC_USE_HIP
+		sprintf(shuffle_instruction, "rocprim::warp_shuffle_down(");
+#else
+		sprintf(shuffle_instruction, "__shfl_down_sync(0xffffffff,");
+#endif
+	 	switch(reduce_op)
+	 	{
+		 	case(REDUCE_SUM):
+
+				sprintf(tmp,"%s += %s%s,offset);\n",res_name,shuffle_instruction,res_name);
+		 		strcat(new_postfix,tmp); 
+	 			strcat(new_postfix,"}\n");
+				break;
+		 	case(REDUCE_MIN):
+				sprintf(tmp,"const AcReal shuffle_tmp = %s%s,offset);",shuffle_instruction,res_name);
+				strcat(new_postfix,tmp);
+				sprintf(tmp,"%s = (shuffle_tmp < %s) ? shuffle_tmp : %s;\n",res_name,res_name,res_name);
+				strcat(new_postfix,tmp);
+				break;
+		 	case(REDUCE_MAX):
+				sprintf(tmp,"const AcReal shuffle_tmp = %s%s,offset);",shuffle_instruction,res_name);
+				strcat(new_postfix,tmp);
+				sprintf(tmp,"%s = (shuffle_tmp > %s) ? shuffle_tmp : %s;\n",res_name,res_name,res_name);
+				strcat(new_postfix,tmp);
+				break;
+		 	case(NO_REDUCE):
+				printf("WRONG!\n");
+				printf("%s\n",fn_identifier->buffer);
+		 		exit(0);
+	 	}
+		char output_str[4098];
+		sprintf(output_str, "if(lane_id == 0) {vba.reduce_scratchpads[(int)%s][0][out_index] = %s;}", output, res_name);
+	 	strcat(new_postfix,output_str);
+		strcat(new_postfix,"}\n");
 	}
 	strcat(new_postfix,"}");
 	compound_statement->postfix = strdup(new_postfix);
@@ -1737,9 +1788,9 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   dfuncs.size = 0;
   for(int i = 0; i <1000; ++i)
   {
-	  dfuncs_reduce_output[i] = NULL;
-	  dfuncs_reduce_condition[i] = NULL;
-	  dfuncs_reduce_op[i] = NO_REDUCE;
+	  dfuncs_reduce_outputs[i].size = 0;
+	  dfuncs_reduce_conditions[i].size = 0;
+	  dfuncs_reduce_ops[i].size = 0;
   }
   for(int i=0; i<100;++i)
   {
@@ -1748,10 +1799,10 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   	  user_struct_field_names[i].size = 0;
 	  user_kernel_num_combinations[i] = 0;
 	  user_kernel_combinatorial_params[i].size = 0;
+	  kernel_reduce_outputs[i].size = 0;
 	  for(int j=0;j<100;++j)
 		  user_kernel_combinatorial_param_options[i][j].size = 0;
-	  kernel_reduce_outputs[i] = NULL;
-	  kernel_reduce_ops[i] = NO_REDUCE;
+	  kernel_reduce_ops[i].size = 0;
   }
   assert(root);
   read_user_structs(root);
@@ -1791,39 +1842,59 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   size_t num_kernels = 0;
   FILE* fp = fopen("user_defines.h","a");
 
-  fprintf(fp,"%s","static const int kernel_reduce_outputs[NUM_KERNELS] = { ");
+  int num_real_reduce_output = 0;
+  for (size_t i = 0; i < num_symbols[0]; ++i)
+    if (!strcmp(symbol_table[i].tspecifier, "AcReal") && str_vec_contains(symbol_table[i].tqualifiers,"output"))
+	    ++num_real_reduce_output;
+  fprintf(fp,"%s","static const int kernel_reduce_outputs[NUM_KERNELS][NUM_REAL_OUTPUTS] = { ");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_KFUNCTION_ID)
     {
-      if(kernel_reduce_outputs[num_kernels] == NULL)
-	      fprintf(fp,"%d,",-1);
-      else
-	      fprintf(fp,"(int)%s,",kernel_reduce_outputs[num_kernels]);
+      fprintf(fp,"%s","{");
+      for(int j = 0; j < num_real_reduce_output; ++j)
+      {
+      	if(kernel_reduce_outputs[num_kernels].size < (size_t) j+1)
+	        fprintf(fp,"%d,",-1);
+      	else
+	      	fprintf(fp,"(int)%s,",kernel_reduce_outputs[num_kernels].data[j]);
+      }
+      fprintf(fp,"%s","},");
       ++num_kernels;
     }
   fprintf(fp,"%s","};\n");
 
   fprintf(fp,"%s","typedef enum KernelReduceOp\n{\n\tNO_REDUCE,\n\tREDUCE_MIN,\n\tREDUCE_MAX,\n\tREDUCE_SUM,\n} KernelReduceOp;\n");
-  fprintf(fp,"%s","static const KernelReduceOp kernel_reduce_ops[NUM_KERNELS] = { ");
+  fprintf(fp,"%s","static const KernelReduceOp kernel_reduce_ops[NUM_KERNELS][NUM_REAL_OUTPUTS] = { ");
   int iterator = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].type & NODE_KFUNCTION_ID)
     {
-      switch(kernel_reduce_ops[iterator])
+      fprintf(fp,"%s","{");
+      for(int j = 0; j < num_real_reduce_output; ++j)
       {
-              case(NO_REDUCE):
-              	fprintf(fp,"%s,","NO_REDUCE");
-              	break;
-              case(REDUCE_MIN):
-              	fprintf(fp,"%s,","REDUCE_MIN");
-              	break;
-              case(REDUCE_MAX):
-              	fprintf(fp,"%s,","REDUCE_MAX");
-              	break;
-              case(REDUCE_SUM):
-              	fprintf(fp,"%s,","REDUCE_SUM");
-              	break;
+
+      	if(kernel_reduce_ops[iterator].size < (size_t) i+1)
+        	fprintf(fp,"%s,","NO_REDUCE");
+	else
+	{
+      		switch(kernel_reduce_ops[iterator].data[j])
+      		{
+      		        case(NO_REDUCE):
+      		        	fprintf(fp,"%s,","NO_REDUCE");
+      		        	break;
+      		        case(REDUCE_MIN):
+      		        	fprintf(fp,"%s,","REDUCE_MIN");
+      		        	break;
+      		        case(REDUCE_MAX):
+      		        	fprintf(fp,"%s,","REDUCE_MAX");
+      		        	break;
+      		        case(REDUCE_SUM):
+      		        	fprintf(fp,"%s,","REDUCE_SUM");
+      		        	break;
+      		}
+	}
       }
+      fprintf(fp,"%s","},");
       ++iterator;
     }
   fprintf(fp,"%s","};\n");

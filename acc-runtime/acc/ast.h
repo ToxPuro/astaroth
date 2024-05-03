@@ -191,12 +191,27 @@ astnode_print(const ASTNode* node)
   printf("\tpostfix: %p (\"%s\")\n", node->postfix, node->postfix);
 }
 
+typedef enum ReduceOp
+{
+	NO_REDUCE,
+	REDUCE_MIN,
+	REDUCE_MAX,
+	REDUCE_SUM,
+} ReduceOp;
+
 typedef struct string_vec
 {
 	char* data[256];
 	size_t size;
 
 } string_vec;
+
+typedef struct op_vec 
+{
+	ReduceOp data[256];
+	size_t size;
+
+} op_vec;
 
 static inline int
 str_vec_get_index(string_vec vec, const char* str)
@@ -210,7 +225,7 @@ str_vec_contains(string_vec vec, const char* str)
 {
 	return str_vec_get_index(vec,str) >= 0;
 }
-static inline int
+static inline int 
 push(string_vec* dst, char* src)
 {
 	dst->data[dst->size] = strdup(src);
@@ -220,19 +235,19 @@ push(string_vec* dst, char* src)
 static inline string_vec
 str_vec_copy(string_vec vec)
 {
-	string_vec copy;
-	copy.size = 0;
-	for(size_t i = 0; i<vec.size; ++i)
-		push(&copy,vec.data[i]);
-	return copy;
+        string_vec copy;
+        copy.size = 0;
+        for(size_t i = 0; i<vec.size; ++i)
+                push(&copy,vec.data[i]);
+        return copy;
 }
-static inline void
-print_str_vec(string_vec vec)
+
+static inline int
+push_op(op_vec* dst, ReduceOp src)
 {
-	for(size_t i = 0; i < vec.size; ++i)
-	{
-		printf("%s\n",vec.data[i]);
-	}
+	dst->data[dst->size] = src;
+	++(dst->size);
+	return dst->size-1;
 }
 
 static inline  void combine_buffers_recursive(const ASTNode* node, char* res){

@@ -1235,7 +1235,7 @@ AcResult acDeviceReduceVecScal(const Device device, const Stream stream_type,
                                const VertexBufferHandle vtxbuf3, AcReal* result);
 /** */
 AcResult 
-acDeviceFinishReduce(Device device, AcReal* res, const AcKernel kernel, const KernelReduceOp reduce_op);
+acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcRealOutput output);
 
 /** */
 AcResult 

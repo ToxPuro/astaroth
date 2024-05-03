@@ -198,6 +198,6 @@ AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba
 template <int direction>  static __global__ void packUnpackPlate(AcReal* __restrict__ buffer, VertexBufferArray vba, int3 start, int3 end);
 
 AcReal
-AcKernelReduce(const cudaStream_t stream, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS], const int initial_count, const KernelReduceOp reduce_op);
+AcKernelReduce(const cudaStream_t stream, AcReal* scratchpads[2], const int initial_count, const KernelReduceOp reduce_op);
 
 

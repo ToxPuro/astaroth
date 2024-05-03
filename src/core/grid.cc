@@ -1809,72 +1809,96 @@ acGridDestroyTaskGraph(AcTaskGraph* graph)
     delete graph;
     return AC_SUCCESS;
 }
+
 AcResult
-acGridFinalizeReduce(AcTaskGraph* graph)
+acGridFinalizeReduceLocal(AcTaskGraph* graph)
 {
-    acGridFinalizeReduceLocal(graph);
-    int reduce_output = -1;
-    AcKernel kernel;
-    KernelReduceOp reduce_op;
+
+    int reduce_outputs[2] = {-1,-1};
+    AcKernel kernels[NUM_REAL_OUTPUTS];
+    KernelReduceOp reduce_ops[NUM_REAL_OUTPUTS];
     acDeviceSynchronizeStream(acGridGetDevice(), STREAM_ALL);
-    for (auto& task : graph->all_tasks) {
-	if(reduce_output<0 && task->isComputeTask())
-	{
-	        auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
-	        kernel = compute_task -> getKernel();
-	        reduce_output =  kernel_reduce_outputs[(int)kernel];
-	        reduce_op = kernel_reduce_ops[(int)kernel];
-	}
-    }
-    if(reduce_output>=0)
+    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
     {
-    	    AcReal local_res = grid.device -> output.real_outputs[reduce_output];
-	    AcReal mpi_res;
-	    switch(reduce_op)
-	    {
-		case(REDUCE_SUM):
-    	    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_SUM, astaroth_comm);
-	    		grid.device->output.real_outputs[reduce_output] = mpi_res;
-			break;
-		case(REDUCE_MIN):
-    	    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_MIN, astaroth_comm);
-	    		grid.device->output.real_outputs[reduce_output] = mpi_res;
-			break;
-		case(REDUCE_MAX):
-    	    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_MAX, astaroth_comm);
-	    		grid.device->output.real_outputs[reduce_output] = mpi_res;
-			break;
-		case(NO_REDUCE):
-			break;
-	    }
+    	for (auto& task : graph->all_tasks) {
+    	    if(reduce_outputs[i] < 0 && task->isComputeTask())
+    	    {
+    	            auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
+    	            kernels[i] = compute_task -> getKernel();
+    	            reduce_outputs[i] =  kernel_reduce_outputs[(int)kernels[i]][i];
+    	            reduce_ops[i] = kernel_reduce_ops[(int)kernels[i]][i];
+    	    }
+    	}
+    }
+
+
+    AcReal local_res[2];
+    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+    {
+	    if(reduce_outputs[i] >= 0)
+	    	acDeviceFinishReduce(grid.device,reduce_outputs[i],&local_res[i],kernels[i],reduce_ops[i],(AcRealOutput)reduce_outputs[i]);
+    }
+    acDeviceSynchronizeStream(grid.device,STREAM_ALL);
+    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+    {
+	    if(reduce_outputs[i] >= 0)
+    	    	grid.device -> output.real_outputs[reduce_outputs[i]] = local_res[i];
     }
     return AC_SUCCESS;
 }
 
 AcResult
-acGridFinalizeReduceLocal(AcTaskGraph* graph)
+acGridFinalizeReduce(AcTaskGraph* graph)
 {
-    int reduce_output = -1;
-    AcKernel kernel;
-    KernelReduceOp reduce_op;
+    acGridFinalizeReduceLocal(graph);
+    //copypasted from acGridFinalizeReduceLocal.
+    //TODO: remove copypaste
+    int reduce_outputs[2] = {-1,-1};
+    AcKernel kernels[NUM_REAL_OUTPUTS];
+    KernelReduceOp reduce_ops[NUM_REAL_OUTPUTS];
     acDeviceSynchronizeStream(acGridGetDevice(), STREAM_ALL);
-    for (auto& task : graph->all_tasks) {
-	if(reduce_output<0 && task->isComputeTask())
-	{
-	        auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
-	        kernel = compute_task -> getKernel();
-	        reduce_output =  kernel_reduce_outputs[(int)kernel];
-	        reduce_op = kernel_reduce_ops[(int)kernel];
-	}
-    }
-    if(reduce_output>=0)
+    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
     {
-	    AcReal local_res;
-	    acDeviceFinishReduce(grid.device,&local_res,kernel,reduce_op);
-    	    grid.device -> output.real_outputs[reduce_output] = local_res;
+    	for (auto& task : graph->all_tasks) {
+    	    if(reduce_outputs[i] < 0 && task->isComputeTask())
+    	    {
+    	            auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
+    	            kernels[i] = compute_task -> getKernel();
+    	            reduce_outputs[i] =  kernel_reduce_outputs[(int)kernels[i]][i];
+    	            reduce_ops[i] = kernel_reduce_ops[(int)kernels[i]][i];
+    	    }
+    	}
+    }
+    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+    {
+    	if(reduce_outputs[i]>=0)
+    	{
+    		AcReal local_res = grid.device -> output.real_outputs[reduce_outputs[i]];
+    	        AcReal mpi_res;
+    	        switch(reduce_ops[i])
+    	        {
+    	    	case(REDUCE_SUM):
+    		    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_SUM, astaroth_comm);
+    	        		grid.device->output.real_outputs[reduce_outputs[i]] = mpi_res;
+    	    		break;
+    	    	case(REDUCE_MIN):
+    		    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_MIN, astaroth_comm);
+    	        		grid.device->output.real_outputs[reduce_outputs[i]] = mpi_res;
+    	    		break;
+    	    	case(REDUCE_MAX):
+    		    		MPI_Allreduce(&local_res, &mpi_res, 1, AC_REAL_MPI_TYPE, MPI_MAX, astaroth_comm);
+    	        		grid.device->output.real_outputs[reduce_outputs[i]] = mpi_res;
+    	    		break;
+    	    	case(NO_REDUCE):
+    	    		break;
+    	        }
+    	}
+
     }
     return AC_SUCCESS;
 }
+
+
 
 AcResult
 acGridExecuteTaskGraph(AcTaskGraph* graph, size_t n_iterations)

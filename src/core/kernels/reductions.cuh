@@ -455,12 +455,11 @@ acKernelReduceGetMinimumScratchpadSizeBytes(const int3 max_dims)
     return sizeof(AcReal) * acKernelReduceGetMinimumScratchpadSize(max_dims);
 }
 AcReal
-AcKernelReduce(const cudaStream_t stream, AcReal* scratchpads[NUM_REDUCE_SCRATCHPADS], const int initial_count, const KernelReduceOp reduce_op)
+AcKernelReduce(const cudaStream_t stream, AcReal* scratchpads[2], const int initial_count, const KernelReduceOp reduce_op)
 {
-    ERRCHK_ALWAYS(NUM_REDUCE_SCRATCHPADS >= 2);
+    // Reduce
     AcReal* in  = scratchpads[0];
     AcReal* out = scratchpads[1];
-    // Reduce
     size_t count = initial_count;
     do {
         const size_t tpb  = 128;
@@ -489,13 +488,10 @@ AcKernelReduce(const cudaStream_t stream, AcReal* scratchpads[NUM_REDUCE_SCRATCH
      // Copy the result back to host
     AcReal result;
     cudaMemcpyAsync(&result, in, sizeof(in[0]), cudaMemcpyDeviceToHost, stream);
-    cudaStreamSynchronize(stream);
+    // NOTE This function does NOT synchronize the device or even the stream after reduction to allow overlap of multiple streams
+    //cudaStreamSynchronize(stream);
 
-    // NOTE synchronization here: we have only one scratchpad at the moment and multiple reductions
-    // cannot be parallelized due to race conditions to this scratchpad Communication/memcopies
-    // could be done in parallel, but allowing that also exposes the users to potential bugs with
-    // race conditions
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
     // fprintf(stderr, "%s device result %g\n", rtype_names[rtype], result);
     return result;
 }
