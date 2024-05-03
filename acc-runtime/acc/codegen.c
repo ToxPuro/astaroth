@@ -1074,7 +1074,6 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 
 				sprintf(tmp,"%s += %s%s,offset);\n",res_name,shuffle_instruction,res_name);
 		 		strcat(new_postfix,tmp); 
-	 			strcat(new_postfix,"}\n");
 				break;
 		 	case(REDUCE_MIN):
 				sprintf(tmp,"const AcReal shuffle_tmp = %s%s,offset);",shuffle_instruction,res_name);
@@ -1093,6 +1092,7 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 				printf("%s\n",fn_identifier->buffer);
 		 		exit(0);
 	 	}
+	 	strcat(new_postfix,"}\n");
 		char output_str[4098];
 		sprintf(output_str, "if(lane_id == 0) {vba.reduce_scratchpads[(int)%s][0][out_index] = %s;}", output, res_name);
 	 	strcat(new_postfix,output_str);
