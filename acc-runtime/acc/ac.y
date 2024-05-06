@@ -8,6 +8,7 @@
 #include "ast.h"
 #include "codegen.h"
 #include <ctype.h>
+#include "tinyexpr.h"
 
 #define YYSTYPE ASTNode*
 
@@ -33,6 +34,10 @@ static char stencil_accesses_default_params[10000];
 FILE* yyin_backup;
 const char* stage4_name_backup;
 const char* dir_backup;
+static string_vec const_ints;
+static string_vec const_int_values;
+
+
 
 void
 cleanup(void)
@@ -53,26 +58,6 @@ void remove_substring_parser(char *str, const char *sub) {
 		memmove(found, found + len, strlen(found + len) + 1); // Shift characters to overwrite the substring
 		found = strstr(found, sub); // Find the next occurrence of the substring
 	}
-}
-void strip_whitespace_parser(char *str) {
-    char *dest = str; // Destination pointer to overwrite the original string
-    char *src = str;  // Source pointer to traverse the original string
-
-    // Skip leading whitespace
-    while (isspace((unsigned char)(*src))) {
-        src++;
-    }
-
-    // Copy non-whitespace characters to the destination
-    while (*src) {
-        if (!isspace((unsigned char)(*src))) {
-            *dest++ = *src;
-        }
-        src++;
-    }
-
-    // Null-terminate the destination string
-    *dest = '\0';
 }
 ASTNode*
 astnode_hostdefine(const char* buffer, const int token)
@@ -104,6 +89,8 @@ void set_identifier_prefix(const char* prefix, ASTNode* curr);
 void set_identifier_infix(const char* infix, ASTNode* curr);
 ASTNode* get_node(const NodeType type, ASTNode* node);
 ASTNode* get_node_by_token(const int token, ASTNode* node);
+static inline int eval_int(const char* str);
+
 
 
 static inline void
@@ -258,6 +245,9 @@ file_exists(const char* filename)
 
 int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* stage4, const char* dir, const bool gen_mem_accesses, const bool optimize_conditionals)
 {
+    	init_str_vec(&added_params_to_stencil_accesses);
+	init_str_vec(&const_ints);
+	init_str_vec(&const_int_values);
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
         {
           const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", stencil_accesses_params_filename, user_structs_filename, user_kernel_ifs};
@@ -359,7 +349,6 @@ main(int argc, char** argv)
 {
     atexit(&cleanup);
 
-    added_params_to_stencil_accesses.size = 0;
     if (argc > 2) {
       fprintf(stderr, "Error multiple .ac files passed to acc, can only process one at a time. Ensure that DSL_MODULE_DIR contains only one .ac file.\n");
       return EXIT_FAILURE;
@@ -375,7 +364,6 @@ main(int argc, char** argv)
         const char* stage4 = "user_kernels.ac.pp_stage4";
         const char* dir = dirname(argv[1]); // WARNING: dirname has side effects!
 	dir_backup = dir;
-	printf("stage0: %s\n",stage0);
 
         if (OPTIMIZE_MEM_ACCESSES) {
           code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, true, OPTIMIZE_CONDITIONALS); // Uncomment to enable stencil mem access checking
@@ -396,11 +384,12 @@ main(int argc, char** argv)
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP
 %token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL WORK_BUFFER COMPLEX BOOL
-%token KERNEL SUM MAX COMMUNICATED AUXILIARY DCONST_QL GLOBAL_MEMORY_QL OUTPUT
+%token KERNEL SUM MAX COMMUNICATED AUXILIARY DCONST_QL CONST_QL GLOBAL_MEMORY_QL OUTPUT
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE
 
 %%
+
 
 root: program { root = astnode_create(NODE_UNKNOWN, $1, NULL); }
     ;
@@ -434,17 +423,23 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 		    const ASTNode* 	declaration_postfix_expression = declaration_list_head->lhs;
 		    if(declaration_postfix_expression->rhs && declaration_postfix_expression->rhs->type != NODE_MEMBER_ID)
 			are_arrays = true;
-		    if(are_arrays)
-			assert(!strcmp(type_specifier->lhs,"int") || !strcmp(type_specifier->lhs,"AcReal"));
+		//    if(are_arrays)
+		//	assert(!strcmp(type_specifier->lhs->buffer,"int") || !strcmp(type_specifier->lhs->buffer,"AcReal"));
 	    }
-            if (get_node_by_token(FIELD, $$->rhs)) {
+            ASTNode* assignment = get_node(NODE_ASSIGNMENT, variable_definition);
+            //if (assignment) {
+	    //    
+            //    fprintf(stderr, "FATAL ERROR: Device constant assignment is not supported. Load the value at runtime with ac[Grid|Device]Load[Int|Int3|Real|Real3]Uniform-type API functions or use #define.\n");
+            //    assert(!assignment);
+            //}
+            if (get_node_by_token(FIELD, variable_definition)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
 		if(are_arrays)
 		{
 			char num_fields_str[1000];
-			combine_buffers(declaration_list_head->lhs->rhs, num_fields_str);
-			const int num_fields = atoi(num_fields_str);
+			combine_all(declaration_list_head->lhs->rhs, num_fields_str);
+			const int num_fields = eval_int(num_fields_str);
 			ASTNode* copy = astnode_dup(declaration_list_head->lhs,declaration_list_head);
 			ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
 			const char* field_name_str = strdup(field_name->buffer);
@@ -471,12 +466,18 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 			sprintf(host_definition,"hostdefine N%s_COLS (%d)",field_name_str,1);
 			hostdefine =astnode_hostdefine(host_definition,HOSTDEFINE);
 			tmp = astnode_create(NODE_UNKNOWN,tmp,hostdefine);
-			ASTNode* input_to_codegen = astnode_create(NODE_CODEGEN_INPUT,NULL,NULL);
+			ASTNode* field_size_node = astnode_create(NODE_UNKNOWN, NULL, NULL);
+			//char tmp_str[4000];
+			//sprintf(tmp_str,"%d",num_fields);
+			//field_size_node->buffer = strdup(tmp_str);
+			field_size_node->buffer = strdup(itoa(num_fields));
+			ASTNode* input_to_codegen = astnode_create(NODE_CODEGEN_INPUT,field_size_node,NULL);
+			//input_to_codegen->type  = input_to_codegen->type & NODE_VARIABLE_ID;
 			input_to_codegen->buffer = strdup(field_name_str);
 			$$ = astnode_create(NODE_UNKNOWN,tmp,input_to_codegen);
 		}
             } 
-            else if(get_node_by_token(WORK_BUFFER, $$->rhs)) {
+            else if(get_node_by_token(WORK_BUFFER, variable_definition)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             }
@@ -486,17 +487,49 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
 		//make it an array type i.e. pointer
 		strcat(type_specifier->lhs->buffer,"*");
+
+		//if dconst array evaluate the dimension to a single integer to make further transformations easier
+		const ASTNode* tqual = get_node(NODE_TQUAL,variable_definition);
+		if(!tqual || !strcmp(tqual->lhs->buffer,"donst"))
+		{
+			char tmp[1000];
+			ASTNode* array_len_node = variable_definition->lhs->rhs->lhs->rhs;
+			combine_all(array_len_node,tmp);
+			const int array_len = eval_int(tmp);
+			set_buffers_empty(array_len_node);
+			array_len_node -> buffer = itoa(array_len);
+		}
+				
+	    }
+	    //assume is a dconst var
+	    else if (assignment)
+	    {
+		ASTNode* tqual = get_node(NODE_TQUAL,$$->rhs->lhs);
+		const bool is_const = !strcmp(tqual->lhs->buffer,"const");
+		if(!is_const)
+		{
+                  fprintf(stderr, "FATAL ERROR: assigment to a global variable only allowed for constant values\n");
+                  assert(is_const);
+		}
+                variable_definition->type |= NODE_VARIABLE;
+                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
+		const char* spec = get_node(NODE_TSPEC,$$->rhs)->lhs->buffer;
+		if(!strcmp(spec,"int"))
+		{	
+			char* name  = get_node_by_token(IDENTIFIER, $$->rhs)->buffer;
+			char assignment_val[4098];
+			combine_all(assignment->rhs->rhs,assignment_val);
+			int val = eval_int(assignment_val);
+			push(&const_ints,name);
+			push(&const_int_values,itoa(val));
+		}
+	
 	    }
             else {
                 variable_definition->type |= NODE_DCONST;
                 set_identifier_type(NODE_DCONST_ID, declaration_list);
             }
 
-            ASTNode* assignment = get_node(NODE_ASSIGNMENT, variable_definition);
-            if (assignment) {
-                fprintf(stderr, "FATAL ERROR: Device constant assignment is not supported. Load the value at runtime with ac[Grid|Device]Load[Int|Int3|Real|Real3]Uniform-type API functions or use #define.\n");
-                assert(!assignment);
-            }
          }
        | program function_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
        | program stencil_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
@@ -530,6 +563,7 @@ for: FOR               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 in: IN                 { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 communicated: COMMUNICATED { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 dconst_ql: DCONST_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+const_ql: CONST_QL     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 output: OUTPUT         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 global_ql: GLOBAL_MEMORY_QL{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 auxiliary: AUXILIARY   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -564,20 +598,20 @@ struct_definition:     struct_name '{' declarations '}' {
                         $$ = astnode_create(NODE_STRUCT_DEF,$1,$3);
 			remove_substring_parser($1->buffer,"typedef");
 			remove_substring_parser($1->buffer,"struct");
-			strip_whitespace_parser($1->buffer);
+			strip_whitespace($1->buffer);
                  }
 		 ;
 enum_definition: enum_name '{' expression_list '}'{
                         $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
 			remove_substring_parser($1->buffer,"typedef");
 		        remove_substring_parser($1->buffer,"enum");
-		        strip_whitespace_parser($1->buffer);
+		        strip_whitespace($1->buffer);
 		}
 		//| enum_name '{' expression_list '}' enum_type {
                 //        $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
 		//	remove_substring_parser($1->buffer,"typedef");
 		//        remove_substring_parser($1->buffer,"enum");
-		//        strip_whitespace_parser($1->buffer);
+		//        strip_whitespace($1->buffer);
 		//}
 		;
 
@@ -606,6 +640,7 @@ type_qualifier: kernel       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | max          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | communicated { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | dconst_ql    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | const_ql     { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | global_ql    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | output       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | auxiliary    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
@@ -989,3 +1024,32 @@ get_node(const NodeType type, ASTNode* node)
 }
 
 
+static inline int eval_int(const char* str)
+{
+	char* copy = strdup(str);
+	strip_whitespace(copy);
+        te_variable* vars = malloc(sizeof(te_variable)*const_ints.size);
+        double* vals = malloc(sizeof(double)*const_ints.size);
+        for(size_t i = 0; i < const_ints.size; ++i)
+        {
+                vars[i].name = const_ints.data[i];
+                vals[i] = (double)atoi(const_int_values.data[i]);
+                vars[i].address = &vals[i];
+        }
+        int err;
+        te_expr* expr = te_compile(copy, vars, (int)const_ints.size, &err);
+        if(!expr)
+        {
+                fprintf(stderr,"Parse error at tinyexpr\n");
+		fprintf(stderr,"Was not able to parse: %s\n",str);
+		fprintf(stderr,"place %d\n",err);
+		fprintf(stderr,"symbol %c\n",str[err]);
+                exit(EXIT_FAILURE);
+        }
+        int res = (int) te_eval(expr);
+        te_free(expr);
+        free(vars);
+        free(vals);
+	free(copy);
+        return res;
+}

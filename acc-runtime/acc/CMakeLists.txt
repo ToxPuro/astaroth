@@ -13,6 +13,7 @@ option(OPTIMIZE_CONDITIONALS "Optimizes conditionals based on kernel input param
 ## Find dependencies
 find_package(BISON)
 find_package(FLEX)
+add_library(tinyexpr STATIC tinyexpr.c)
 
 bison_target(parser ac.y ${PROJECT_BINARY_DIR}/tab.c VERBOSE) # COMPILE_FLAGS -Wcounterexamples) # Counterexamples need relatively new Bison (at least 3.7 works)
 flex_target(scanner ac.l ${PROJECT_BINARY_DIR}/yy.c)
@@ -25,6 +26,7 @@ include_directories(${PROJECT_BINARY_DIR})
 ## Executable
 add_executable(acc codegen.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
 target_compile_definitions(acc PRIVATE -DACC_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(acc PRIVATE tinyexpr)
 
 if (OPTIMIZE_MEM_ACCESSES)
 	if(OPTIMIZE_CONDITIONALS)

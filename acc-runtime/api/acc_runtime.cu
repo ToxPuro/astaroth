@@ -286,7 +286,24 @@ IDX(const int3 idx)
   return DEVICE_VTXBUF_IDX(idx.x, idx.y, idx.z);
 }
 
-#define Field3(x, y, z) make_int3((x), (y), (z))
+//#define Field3(x, y, z) make_int3((x), (y), (z))
+constexpr int3
+Field3(const int& x, const int& y, const int& z)
+{
+	return make_int3(x,y,z);
+}
+template <size_t N>
+constexpr __device__ __forceinline__
+std::array<int3,N>
+Field3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
+{
+	std::array<int3,N> res;
+	for(size_t i = 0; i < N; ++i)
+	{
+		res[i] = make_int3(x[i],y[i],z[i]);
+	}
+	return res;
+}
 #define print printf                          // TODO is this a good idea?
 #define len(arr) sizeof(arr) / sizeof(arr[0]) // Leads to bugs if the user
 // passes an array into a device function and then calls len (need to modify

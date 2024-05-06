@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <ctype.h>
 
 #define BUFFER_SIZE (4096)
 
@@ -60,7 +61,6 @@ typedef enum {
   NODE_FUNCTION_CALL  = (1 << 27),
   NODE_DFUNCTION_ID   = (1 << 28),
 } NodeType;
-
 
 typedef struct astnode_s {
   int id;
@@ -201,18 +201,64 @@ typedef enum ReduceOp
 
 typedef struct string_vec
 {
-	char* data[256];
+	//char* data[256];
+	char** data;
 	size_t size;
+	int capacity;
 
 } string_vec;
+typedef struct int_vec 
+{
+	int* data;
+	size_t size;
+	int capacity;
+
+} int_vec;
 
 typedef struct op_vec 
 {
-	ReduceOp data[256];
+	ReduceOp* data;
 	size_t size;
+	int capacity;
 
 } op_vec;
 
+static inline void
+init_str_vec(string_vec* vec)
+{
+	//for(size_t i = 0; i < vec->size; ++i)
+	//	free(vec->data[i]);
+	free(vec->data);
+	vec -> size = 0;
+	vec -> capacity = 100;
+	vec -> data = malloc(sizeof(char*)*vec ->capacity);
+}
+
+static inline void
+free_str_vec(string_vec* vec)
+{
+	free(vec->data);
+	vec -> size = 0;
+	vec -> capacity = 0;
+	vec -> data = NULL;
+	//vec -> data = malloc(sizeof(char*)*vec ->capacity);
+}
+static inline void
+init_int_vec(int_vec* vec)
+{
+	free(vec->data);
+	vec -> size = 0;
+	vec -> capacity = 1;
+	vec -> data = malloc(sizeof(int)*vec ->capacity);
+}
+static inline void
+init_op_vec(op_vec* vec)
+{
+	free(vec->data);
+	vec -> size = 0;
+	vec -> capacity = 1;
+	vec -> data = malloc(sizeof(ReduceOp)*vec ->capacity);
+}
 static inline int
 str_vec_get_index(string_vec vec, const char* str)
 {
@@ -226,17 +272,42 @@ str_vec_contains(string_vec vec, const char* str)
 	return str_vec_get_index(vec,str) >= 0;
 }
 static inline int 
-push(string_vec* dst, char* src)
+push(string_vec* dst, const char* src)
 {
 	dst->data[dst->size] = strdup(src);
 	++(dst->size);
+	if(dst->size == (size_t)dst->capacity)
+	{
+		dst->capacity = dst->capacity*2;
+		char** tmp = malloc(sizeof(char*)*dst->capacity);
+		for(size_t i = 0; i < dst->size; ++i)
+			tmp[i] = dst->data[i];
+		free(dst->data);
+		dst->data = tmp;
+	}
+	return dst->size-1;
+}
+static inline int 
+push_int(int_vec* dst, int src)
+{
+	dst->data[dst->size] = src;
+	++(dst->size);
+	if(dst->size == (size_t)dst->capacity)
+	{
+		dst->capacity = dst->capacity*2;
+		int* tmp = malloc(sizeof(int)*dst->capacity);
+		for(size_t i = 0; i < dst->size; ++i)
+			tmp[i] = dst->data[i];
+		free(dst->data);
+		dst->data = tmp;
+	}
 	return dst->size-1;
 }
 static inline string_vec
 str_vec_copy(string_vec vec)
 {
         string_vec copy;
-        copy.size = 0;
+	init_str_vec(&copy);
         for(size_t i = 0; i<vec.size; ++i)
                 push(&copy,vec.data[i]);
         return copy;
@@ -247,6 +318,15 @@ push_op(op_vec* dst, ReduceOp src)
 {
 	dst->data[dst->size] = src;
 	++(dst->size);
+	if(dst->size == (size_t)dst->capacity)
+	{
+		dst->capacity = dst->capacity*2;
+		ReduceOp* tmp = malloc(sizeof(ReduceOp)*dst->capacity);
+		for(size_t i = 0; i < dst->size; ++i)
+			tmp[i] = dst->data[i];
+		free(dst->data);
+		dst->data = tmp;
+	}
 	return dst->size-1;
 }
 
@@ -294,4 +374,77 @@ get_node_by_token(const int token, ASTNode* node)
     return get_node_by_token(token, node->rhs);
   else
     return NULL;
+}
+static inline ASTNode*
+get_node_by_buffer(const char* test, ASTNode* node)
+{
+  assert(node);
+
+  if (node->buffer && !strcmp(test,node->buffer))
+    return node;
+  else if (node->lhs && get_node_by_buffer(test, node->lhs))
+    return get_node_by_buffer(test, node->lhs);
+  else if (node->rhs && get_node_by_buffer(test, node->rhs))
+    return get_node_by_buffer(test, node->rhs);
+  else
+    return NULL;
+}
+static const inline ASTNode*
+get_parent_node(const NodeType type, const ASTNode* node)
+{
+  if (node->type & type)
+    return node;
+  else if (node->parent)
+    return get_parent_node(type, node->parent);
+  else
+    return NULL;
+}
+typedef struct CodeGenInput
+{
+	string_vec const_ints;
+	string_vec const_int_values;
+} CodeGenInput;
+
+static inline void 
+strip_whitespace(char *str) {
+    char *dest = str; // Destination pointer to overwrite the original string
+    char *src = str;  // Source pointer to traverse the original string
+
+    // Skip leading whitespace
+    while (isspace((unsigned char)(*src))) {
+        src++;
+    }
+
+    // Copy non-whitespace characters to the destination
+    while (*src) {
+        if (!isspace((unsigned char)(*src))) {
+            *dest++ = *src;
+        }
+        src++;
+    }
+
+    // Null-terminate the destination string
+    *dest = '\0';
+}
+static inline char* itoa(const int x)
+{
+	char* tmp = (char*)malloc(100*sizeof(char));
+	sprintf(tmp,"%d",x);
+	const int n = strlen(tmp);
+	char* res = (char*)malloc(n*sizeof(char));
+	sprintf(res,"%d",x);
+	free(tmp);
+	return res;
+}
+static inline void
+set_buffers_empty(ASTNode* node)
+{
+	node->buffer = NULL;
+	node->prefix = NULL;
+	node->infix  = NULL;
+	node->postfix = NULL;
+	if(node->lhs)
+		set_buffers_empty(node->lhs);
+	if(node->rhs)
+		set_buffers_empty(node->rhs);
 }

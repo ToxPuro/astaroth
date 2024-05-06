@@ -29,7 +29,6 @@
 #define blockIdx ((int3){0, 0, 0})
 #define blockDim ((int3){0, 0, 0})
 #define make_int3(x, y, z) ((int3){x, y, z})
-#define Field3(x, y, z) make_int3((x), (y), (z))
 #define make_float3(x, y, z) ((float3){x, y, z})
 #define make_double3(x, y, z) ((double3){x, y, z})
 #define print printf
@@ -42,6 +41,25 @@
 // if we want automated stencil generation to work in every case
 #define d_multigpu_offset ((int3){0, 0, 0})
 
+constexpr int3
+Field3(const int& x, const int& y, const int& z)
+{
+	return make_int3(x,y,z);
+}
+
+
+template <size_t N>
+constexpr
+std::array<int3,N>
+Field3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
+{
+	std::array<int3,N> res;
+	for(size_t i = 0; i < N; ++i)
+	{
+		res[i] = make_int3(x[i],y[i],z[i]);
+	}
+	return res;
+}
 int
 DCONST(const AcIntParam param)
 {

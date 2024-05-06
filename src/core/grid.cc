@@ -1814,8 +1814,10 @@ AcResult
 acGridFinalizeReduceLocal(AcTaskGraph* graph)
 {
 
-    int reduce_outputs[2] = {-1,-1};
-    AcKernel kernels[NUM_REAL_OUTPUTS];
+    int reduce_outputs[NUM_REAL_OUTPUTS];
+    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+	    reduce_outputs[i] = -1;
+    AcKernel reduce_kernels[NUM_REAL_OUTPUTS];
     KernelReduceOp reduce_ops[NUM_REAL_OUTPUTS];
     acDeviceSynchronizeStream(acGridGetDevice(), STREAM_ALL);
     for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
@@ -1824,9 +1826,9 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
     	    if(reduce_outputs[i] < 0 && task->isComputeTask())
     	    {
     	            auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
-    	            kernels[i] = compute_task -> getKernel();
-    	            reduce_outputs[i] =  kernel_reduce_outputs[(int)kernels[i]][i];
-    	            reduce_ops[i] = kernel_reduce_ops[(int)kernels[i]][i];
+    	            reduce_kernels[i] = compute_task -> getKernel();
+    	            reduce_outputs[i] =  kernel_reduce_outputs[(int)reduce_kernels[i]][i];
+    	            reduce_ops[i] = kernel_reduce_ops[(int)reduce_kernels[i]][i];
     	    }
     	}
     }
@@ -1836,7 +1838,7 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
     for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
     {
 	    if(reduce_outputs[i] >= 0)
-	    	acDeviceFinishReduce(grid.device,reduce_outputs[i],&local_res[i],kernels[i],reduce_ops[i],(AcRealOutput)reduce_outputs[i]);
+	    	acDeviceFinishReduce(grid.device,reduce_outputs[i],&local_res[i],reduce_kernels[i],reduce_ops[i],(AcRealOutput)reduce_outputs[i]);
     }
     acDeviceSynchronizeStream(grid.device,STREAM_ALL);
     for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
@@ -1853,8 +1855,10 @@ acGridFinalizeReduce(AcTaskGraph* graph)
     acGridFinalizeReduceLocal(graph);
     //copypasted from acGridFinalizeReduceLocal.
     //TODO: remove copypaste
-    int reduce_outputs[2] = {-1,-1};
-    AcKernel kernels[NUM_REAL_OUTPUTS];
+    int reduce_outputs[NUM_REAL_OUTPUTS];
+    for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
+	    reduce_outputs[i] = -1;
+    AcKernel reduce_kernels[NUM_REAL_OUTPUTS];
     KernelReduceOp reduce_ops[NUM_REAL_OUTPUTS];
     acDeviceSynchronizeStream(acGridGetDevice(), STREAM_ALL);
     for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
@@ -1863,9 +1867,9 @@ acGridFinalizeReduce(AcTaskGraph* graph)
     	    if(reduce_outputs[i] < 0 && task->isComputeTask())
     	    {
     	            auto compute_task = std::dynamic_pointer_cast<ComputeTask>(task); 
-    	            kernels[i] = compute_task -> getKernel();
-    	            reduce_outputs[i] =  kernel_reduce_outputs[(int)kernels[i]][i];
-    	            reduce_ops[i] = kernel_reduce_ops[(int)kernels[i]][i];
+    	            reduce_kernels[i] = compute_task -> getKernel();
+    	            reduce_outputs[i] =  kernel_reduce_outputs[(int)reduce_kernels[i]][i];
+    	            reduce_ops[i] = kernel_reduce_ops[(int)reduce_kernels[i]][i];
     	    }
     	}
     }

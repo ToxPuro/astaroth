@@ -331,14 +331,6 @@ typedef struct AcBool3 {
     bool x;
     bool y;
     bool z;
-
-    HOST_DEVICE AcBool3(const bool _x, const bool _y, const bool _z)
-    
-    {
-        x = _x;
-        y = _y;
-        z = _z;
-    }
 } AcBool3;
 static HOST_DEVICE bool
 any(const AcBool3& a){
@@ -436,13 +428,13 @@ is_valid(const AcReal2& a)
 /*
  * AcReal3
  */
-static HOST_DEVICE_INLINE AcReal3
+static constexpr HOST_DEVICE_INLINE AcReal3
 operator+(const AcReal3& a, const AcReal3& b)
 {
   return (AcReal3){a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
-static HOST_DEVICE_INLINE void
+static constexpr HOST_DEVICE_INLINE void
 operator+=(AcReal3& lhs, const AcReal3& rhs)
 {
   lhs.x += rhs.x;
@@ -450,7 +442,7 @@ operator+=(AcReal3& lhs, const AcReal3& rhs)
   lhs.z += rhs.z;
 }
 
-static HOST_DEVICE_INLINE AcBool3 
+static constexpr HOST_DEVICE_INLINE AcBool3 
 operator!=(const AcReal3& a, const AcReal b)
 {
   return (AcBool3){
@@ -461,7 +453,7 @@ operator!=(const AcReal3& a, const AcReal b)
 }
 
 
-static HOST_DEVICE_INLINE AcBool3 
+static constexpr HOST_DEVICE_INLINE AcBool3 
 operator==(const AcReal3& a, const AcReal b)
 {
   return (AcBool3){
@@ -471,25 +463,25 @@ operator==(const AcReal3& a, const AcReal b)
   };
 }
 
-static HOST_DEVICE_INLINE AcReal3
+static constexpr HOST_DEVICE_INLINE AcReal3
 operator-(const AcReal3& a, const AcReal3& b)
 {
   return (AcReal3){a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
-static HOST_DEVICE_INLINE AcReal3
+static constexpr HOST_DEVICE_INLINE AcReal3
 operator-(const AcReal3& a)
 {
   return (AcReal3){-a.x, -a.y, -a.z};
 }
 
-static HOST_DEVICE_INLINE AcReal3
+static constexpr HOST_DEVICE_INLINE AcReal3
 operator+(const AcReal3& a)
 {
   return (AcReal3){a.x, a.y, a.z};
 }
 
-static HOST_DEVICE_INLINE void
+static constexpr HOST_DEVICE_INLINE void
 operator-=(AcReal3& lhs, const AcReal3& rhs)
 {
   lhs.x -= rhs.x;
@@ -497,45 +489,44 @@ operator-=(AcReal3& lhs, const AcReal3& rhs)
   lhs.z -= rhs.z;
 }
 
-static HOST_DEVICE_INLINE AcReal3
+static constexpr HOST_DEVICE_INLINE AcReal3
 operator*(const AcReal& a, const AcReal3& b)
 {
   return (AcReal3){a * b.x, a * b.y, a * b.z};
 }
 
-static HOST_DEVICE_INLINE AcReal3
+static constexpr HOST_DEVICE_INLINE AcReal3
 operator*(const AcReal3& b, const AcReal& a)
 {
   return (AcReal3){a * b.x, a * b.y, a * b.z};
 }
 
-static HOST_DEVICE_INLINE AcReal3
+static constexpr HOST_DEVICE_INLINE AcReal3
 operator/(const AcReal3& a, const AcReal& b)
 {
   return (AcReal3){a.x / b, a.y / b, a.z / b};
 }
-static HOST_DEVICE_INLINE AcReal
+static constexpr HOST_DEVICE_INLINE AcReal
 sum(const AcReal3& a)
 {
     return a.x+a.y+a.z;
 }
 
-static HOST_DEVICE_INLINE AcReal
+static constexpr HOST_DEVICE_INLINE AcReal
 dot(const AcReal3& a, const AcReal3& b)
 {
   return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
-static HOST_DEVICE_INLINE AcReal3
+static constexpr HOST_DEVICE_INLINE AcReal3
 cross(const AcReal3& a, const AcReal3& b)
 {
-  AcReal3 c;
-
-  c.x = a.y * b.z - a.z * b.y;
-  c.y = a.z * b.x - a.x * b.z;
-  c.z = a.x * b.y - a.y * b.x;
-
-  return c;
+  return
+  {
+	a.y * b.z - a.z * b.y,
+	a.z * b.x - a.x * b.z,
+	a.x * b.y - a.y * b.x,  
+  };
 }
 
 static HOST_DEVICE_INLINE bool
@@ -568,7 +559,7 @@ typedef struct AcMatrix {
     data[2][2] = row2.z;
   }
 
-  HOST_DEVICE AcReal3 row(const int row) const
+  HOST_DEVICE constexpr AcReal3 row(const int row) const
   {
     return (AcReal3){data[row][0], data[row][1], data[row][2]};
   }
@@ -577,7 +568,7 @@ typedef struct AcMatrix {
     return (AcReal3){data[0][col], data[1][col], data[2][col]};
   }
 
-  HOST_DEVICE AcReal3 operator*(const AcReal3& v) const
+  HOST_DEVICE constexpr AcReal3 operator*(const AcReal3& v) const
   {
     return (AcReal3){
         dot(row(0), v),
@@ -619,8 +610,8 @@ operator-(const AcMatrix& A, const AcMatrix& B)
                   A.row(1) - B.row(1), //
                   A.row(2) - B.row(2));
 }
-static HOST_DEVICE_INLINE AcReal
-multm2_sym(const AcMatrix m)
+static constexpr HOST_DEVICE_INLINE AcReal
+multm2_sym(const AcMatrix& m)
 {
 //Squared sum of symmetric matix
   AcReal res = m.data[0][0]*m.data[0][0];
@@ -632,8 +623,8 @@ multm2_sym(const AcMatrix m)
   }
   return res;
 }
-static HOST_DEVICE_INLINE AcReal3
-diagonal(const AcMatrix m)
+static constexpr HOST_DEVICE_INLINE AcReal3
+diagonal(const AcMatrix& m)
 {
   return (AcReal3){m.data[0][0], m.data[1][1], m.data[2][2]};
 }

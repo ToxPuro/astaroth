@@ -17,6 +17,11 @@ struct EnumParams
 	IHEATCOND heatcond;
 }  
 
+const int AC_const_int = 2
+const real AC_const_real = 2.0
+const int AC_const_ints_len = 3
+const int AC_const_ints = 1,2,3
+const real AC_const_reals = 1.0,2,0,3.0
 int AC_step_number
 real AC_dt
 
@@ -54,6 +59,11 @@ Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
 #if LENTROPY 
 Field VTXBUF_ENTROPY
 #endif
+
+Field Chemistry_x[AC_const_int/2]
+Field Chemistry_y[AC_const_int/2]
+Field Chemistry_z[AC_const_int/2]
+#define Chemistry Field3(Chemistry_x, Chemistry_y,Chemistry_z)
 
 //Field CHEMISTRY_FIELDS[5]
 
@@ -199,10 +209,9 @@ real AC_current_time
 
 output real timestep_out;
 
-//realArray AC_test_array[AC_slice_steps]
+real AC_test_array[(AC_const_int+1)*2]
+real AC_test_array_2[(AC_const_int-1)*2]
 
-//dconst real AC_test_dconst_array[5]
-//dconst int AC_test_int_dconst_array[120]
 
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
 
@@ -1048,4 +1057,7 @@ Kernel haatouken() {
     write(VTXBUF_UUX, uu.x)
     write(VTXBUF_UUY, uu.y)
     write(VTXBUF_UUZ, uu.z)
+    chemistry_val = vecvalue(Chemistry[0])
+    const_val = AC_const_int*AC_const_real
+    const_sum = AC_const_ints[0]*AC_const_reals[0] + AC_const_ints[1]*AC_const_reals[1]
 }

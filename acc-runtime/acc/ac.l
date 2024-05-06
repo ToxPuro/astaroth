@@ -100,6 +100,7 @@ void strip_whitespace(char *str) {
 "Max"                   { return MAX; }
 "communicated"          { return COMMUNICATED; }
 "dconst"          { return DCONST_QL; }
+"const"          { return CONST_QL; }
 "output"          { return OUTPUT; }
 "gmem"          { return GLOBAL_MEMORY_QL; }
 "auxiliary"             { return AUXILIARY; }
