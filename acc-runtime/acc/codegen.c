@@ -544,17 +544,27 @@ gen_field_accesses(ASTNode* node)
 		return;
 	char tmp[1000];
 	combine_all(node->parent->parent->parent->parent,tmp);
-	const char* search = "][";
-	const char* substr = strstr(tmp,search);
+	const char* search_str = "][";
+	const char* substr = strstr(tmp,search_str);
 	if(!substr)
 		return;
 	char x_index[1000];
 	char y_index[1000];
 	char z_index[1000];
-	combine_all(node->parent->parent->parent->rhs,x_index);
-	combine_all(node->parent->parent->parent->parent->rhs,y_index);
-	combine_all(node->parent->parent->parent->parent->parent->rhs,z_index);
-	ASTNode* base= node->parent->parent->parent->parent->parent;
+	bool is_assigned = false;
+       	const ASTNode* assign_node = get_parent_node(NODE_ASSIGNMENT,node);
+	if(assign_node)
+	{
+		const ASTNode* search = get_node_by_id(node->id,assign_node->lhs);
+	      is_assigned = search != NULL;
+	}
+	const ASTNode* start = is_assigned
+				? node->parent->parent
+				: node->parent->parent->parent;
+	combine_all(start->rhs,x_index);
+	combine_all(start->parent->rhs,y_index);
+	combine_all(start->parent->parent->rhs,z_index);
+	ASTNode* base= start->parent->parent;
 	base->lhs = NULL;
 	base->rhs = NULL;
 	base->infix= NULL;

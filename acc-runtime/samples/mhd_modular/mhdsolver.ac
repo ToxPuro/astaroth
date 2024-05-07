@@ -1062,5 +1062,5 @@ Kernel haatouken() {
     const_val = AC_const_int*AC_const_real
     const_sum = AC_const_ints[0]*AC_const_reals[0] + AC_const_ints[1]*AC_const_reals[1]
     int3 local_idx = int3(1,2,3)
-    uux = VTXBUF_UUX[local_idx.x*2+1][local_idx.y][local_idx.z*2+1]
+    VTXBUF_UUX[local_idx.x*2+1][local_idx.y][local_idx.z*2+1] = VTXBUF_UUX[local_idx.x*2+1][local_idx.y][local_idx.z*2+1] +VTXBUF_UUX[local_idx.x*2+1][local_idx.y][local_idx.z*2+1]
 }
