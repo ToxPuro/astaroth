@@ -389,6 +389,20 @@ get_node_by_buffer(const char* test, ASTNode* node)
   else
     return NULL;
 }
+static inline ASTNode*
+get_node_by_id(const int id, ASTNode* node)
+{
+  assert(node);
+
+  if (node->id == id)
+    return node;
+  else if (node->lhs && get_node_by_id(id, node->lhs))
+    return get_node_by_id(id, node->lhs);
+  else if (node->rhs && get_node_by_id(id, node->rhs))
+    return get_node_by_id(id, node->rhs);
+  else
+    return NULL;
+}
 static const inline ASTNode*
 get_parent_node(const NodeType type, const ASTNode* node)
 {

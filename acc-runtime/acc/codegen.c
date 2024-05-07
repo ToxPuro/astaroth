@@ -1411,7 +1411,7 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 	  const ASTNode* assign_node = get_parent_node(NODE_ASSIGNMENT,node);
 	  if(assign_node)
 	  {
-	  	const ASTNode* search = get_node_by_buffer(node->buffer,assign_node->rhs);
+	  	const ASTNode* search = get_node_by_id(node->id,assign_node->rhs);
 		if(search)
 		{
 			fprintf(stderr,"Undeclared variable or function used on the right hand side of an assignment: %s\n",node->buffer);
@@ -1421,7 +1421,7 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 	  const ASTNode* func_call_node = get_parent_node(NODE_FUNCTION_CALL,node);
 	  if(func_call_node)
 	  {
-	  	const ASTNode* search = get_node_by_buffer(node->buffer,func_call_node->lhs);
+	  	const ASTNode* search = get_node_by_id(node->id,func_call_node->lhs);
 		if(search)
 		{
 			fprintf(stderr,"Undeclared function used: %s\n",node->buffer);
