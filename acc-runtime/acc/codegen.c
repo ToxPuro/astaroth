@@ -70,6 +70,7 @@ static string_vec dfuncs_reduce_outputs[1000];
 
 static string_vec kernel_reduce_outputs[100];
 static op_vec kernel_reduce_ops[100];
+static string_vec field_names;
 
 
 static const char* user_kernel_ifs       = "user_kernel_ifs.h";
@@ -523,6 +524,46 @@ gen_field_array_declarations(FILE* fp)
   //base->postfix=NULL;
 }
 void
+gen_field_accesses(ASTNode* node)
+{
+	if(node->lhs)
+		gen_field_accesses(node->lhs);
+	if(node->rhs)
+		gen_field_accesses(node->rhs);
+	if(!(node->token == IDENTIFIER))
+		return;
+	if(!node->buffer)
+		return;
+	if(!str_vec_contains(field_names,node->buffer))
+		return;
+	if(!node->parent)
+		return;
+	if(!node->parent->parent)
+		return;
+	if(!node->parent->parent->parent)
+		return;
+	char tmp[1000];
+	combine_all(node->parent->parent->parent->parent,tmp);
+	const char* search = "][";
+	const char* substr = strstr(tmp,search);
+	if(!substr)
+		return;
+	char x_index[1000];
+	char y_index[1000];
+	char z_index[1000];
+	combine_all(node->parent->parent->parent->rhs,x_index);
+	combine_all(node->parent->parent->parent->parent->rhs,y_index);
+	combine_all(node->parent->parent->parent->parent->parent->rhs,z_index);
+	ASTNode* base= node->parent->parent->parent->parent->parent;
+	base->lhs = NULL;
+	base->rhs = NULL;
+	base->infix= NULL;
+	base->postfix= NULL;
+	char res[4000];
+	sprintf(res,"vba.in[%s][IDX(%s,%s,%s)]\n",node->buffer,x_index,y_index,z_index);
+	base->buffer = strdup(res);
+}
+void
 gen_array_reads(ASTNode* node, bool gen_mem_accesses, const char* datatype_scalar)
 {
   if(node->lhs)
@@ -746,13 +787,13 @@ add_param_combinations(const char* type, const char* name, const int kernel_inde
 	sprintf(full_name,"%s%s",prefix,name);
 	if(is_struct(type))
 	{
-	  string_vec field_types = get_struct_field_types(type);
-	  string_vec field_names = get_struct_field_names(type);
-	  for(size_t i=0; i<field_types.size; ++i)
+	  string_vec struct_field_types = get_struct_field_types(type);
+	  string_vec struct_field_names = get_struct_field_names(type);
+	  for(size_t i=0; i<struct_field_types.size; ++i)
 	  {
 		  char new_prefix[10000];
 		  sprintf(new_prefix, "%s%s.",prefix,name);
-		  add_param_combinations(field_types.data[i],field_names.data[i],kernel_index,new_prefix);
+		  add_param_combinations(struct_field_types.data[i],struct_field_names.data[i],kernel_index,new_prefix);
 	  }
 	}
 	if(is_enum(type))
@@ -1365,7 +1406,30 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
                  !(node->type & NODE_ENUM) &&
                  !strstr(node->buffer, "__ldg") &&
                  !str_vec_contains(array_fields,node->buffer))
+	{
           fprintf(stream, "auto ");
+	  const ASTNode* assign_node = get_parent_node(NODE_ASSIGNMENT,node);
+	  if(assign_node)
+	  {
+	  	const ASTNode* search = get_node_by_buffer(node->buffer,assign_node->rhs);
+		if(search)
+		{
+			fprintf(stderr,"Undeclared variable or function used on the right hand side of an assignment: %s\n",node->buffer);
+			exit(EXIT_FAILURE);
+		}
+	  }
+	  const ASTNode* func_call_node = get_parent_node(NODE_FUNCTION_CALL,node);
+	  if(func_call_node)
+	  {
+	  	const ASTNode* search = get_node_by_buffer(node->buffer,func_call_node->lhs);
+		if(search)
+		{
+			fprintf(stderr,"Undeclared function used: %s\n",node->buffer);
+			exit(EXIT_FAILURE);
+		}
+
+	  }
+	}
       }
       if (!(node->type & NODE_MEMBER_ID))
       {
@@ -1553,11 +1617,11 @@ gen_user_defines(const ASTNode* root, const char* out)
   int num_of_fields=0;
   bool field_is_auxiliary[256];
   bool field_is_communicated[256];
-  const char* field_names[256];
+  init_str_vec(&field_names);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   {
     if(!strcmp(symbol_table[i].tspecifier,"Field")){
-      field_names[num_of_fields] = strdup(symbol_table[i].identifier);
+      push(&field_names, symbol_table[i].identifier);
       if(str_vec_contains(symbol_table[i].tqualifiers,"auxiliary"))
       {
 	      ++num_of_auxiliary_fields;
@@ -1585,9 +1649,9 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "typedef enum {");
   //first communicated fields
   for(int i=0;i<num_of_fields;++i)
-	  if(field_is_communicated[i]) fprintf(fp, "%s,",field_names[i]);
+	  if(field_is_communicated[i]) fprintf(fp, "%s,",field_names.data[i]);
   for(int i=0;i<num_of_fields;++i)
-	  if(!field_is_communicated[i]) fprintf(fp, "%s,",field_names[i]);
+	  if(!field_is_communicated[i]) fprintf(fp, "%s,",field_names.data[i]);
 
   fprintf(fp, "NUM_FIELDS=%d,", num_of_fields);
   fprintf(fp, "NUM_COMMUNICATED_FIELDS=%d,", num_of_communicated_fields);
@@ -1892,6 +1956,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   }
   gen_kernel_input_params(root,gen_mem_accesses);
   gen_user_defines(root, "user_defines.h");
+  gen_field_accesses(root);
   gen_user_kernels(root, "user_declarations.h", gen_mem_accesses);
 
   // Fill the symbol table
