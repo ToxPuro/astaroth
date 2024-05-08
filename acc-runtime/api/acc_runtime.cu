@@ -1048,8 +1048,6 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
             "Fatal error: failed to find valid thread block dimensions.\n");
   }
   ERRCHK_ALWAYS(c.tpb.x * c.tpb.y * c.tpb.z > 0);
-  for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
-  	acKernelFlush(STREAM_DEFAULT,vba.reduce_scratchpads[i][0], vba.scratchpad_size, (AcReal)0.0);
   return c;
 }
 int
