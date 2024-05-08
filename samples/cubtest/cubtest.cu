@@ -2,7 +2,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#if USE_HIP
+#include <hipcub/hipcub.hpp>
+
+#define cub hipcub
+#define cudaMalloc hipMalloc
+#define cudaFree hipFree
+#define cudaMemcpy hipMemcpy
+#define cudaMemcpyHostToDevice hipMemcpyHostToDevice
+#define cudaMemcpyDeviceToHost hipMemcpyDeviceToHost
+#define cudaDeviceSynchronize hipDeviceSynchronize
+#else
 #include <cub/cub.cuh>
+#endif
 
 #include "timer_hires.h"
 
