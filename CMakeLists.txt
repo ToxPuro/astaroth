@@ -85,7 +85,7 @@ if (USE_HIP)
     #link_directories(/opt/rocm/roctracer/lib)
     #LUMI & Dardel
     #set(ROC_TRACER_PATH "/opt/rocm-5.2.3/include/roctracer /opt/rocm/include/roctracer")
-    set(ROC_TRACER_PATH "/opt/rocm*/include/roctracer")
+    set(ROC_TRACER_PATH "/opt/rocm/include/roctracer")
     include_directories(${ROC_TRACER_PATH})
     link_directories(${ROC_TRACER_PATH})
 

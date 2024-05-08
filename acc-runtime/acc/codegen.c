@@ -2247,7 +2247,7 @@ generate_mem_accesses(void)
 #if AC_USE_HIP
   strcat(cmd, "-DAC_USE_HIP=1 ");
 #endif
-  strcat(cmd, STENCILACC_SRC " -lm -o " STENCILACC_EXEC " ");
+  strcat(cmd, STENCILACC_SRC " -lm -lstdc++ -o " STENCILACC_EXEC " ");
 
   /*
   const char* cmd = "gcc -Wshadow -I. "
