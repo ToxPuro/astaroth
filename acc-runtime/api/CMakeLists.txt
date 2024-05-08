@@ -13,6 +13,8 @@ if (DEFINED DSL_MODULE)
     set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/${DSL_MODULE})
 endif ()
 
+set(EXT_SOURCES $ENV{EXT_SOURCES})
+
 if (NOT DEFINED DSL_MODULE_DIR)
     set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/samples/mhd_modular) # Default
 else()
@@ -24,18 +26,29 @@ endif()
 ## Generate acc-runtime-headers
 set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
                 "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
-                "${PROJECT_SOURCE_DIR}/acc/stencil_accesses.cpp")
+                "${PROJECT_SOURCE_DIR}/acc/stencil_accesses.cpp"
+		"${PROJECT_SOURCE_DIR}/${EXT_SOURCES}")
 set(DSL_HEADERS "user_kernels.h"
                 "user_defines.h"
                 "user_declarations.h"
                 "stencil_accesses.h"
                 "stencilgen.h")
+if (SINGLEPASS_INTEGRATION) 
 add_custom_command (
-    COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
-    COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac"
+    COMMENT "Building ACC objects (singlepass): ${DSL_MODULE_DIR}"
+    COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*single.ac"
     DEPENDS ${DSL_SOURCES} acc
     OUTPUT ${DSL_HEADERS}
 )
+else ()
+add_custom_command (
+    COMMENT "Building ACC objects (twopass): ${DSL_MODULE_DIR}"
+    COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac"
+    #COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*two.ac"
+    DEPENDS ${DSL_SOURCES} acc
+    OUTPUT ${DSL_HEADERS}
+)
+endif ()
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
 target_include_directories(acc-runtime-headers INTERFACE . .. ${CMAKE_CURRENT_BINARY_DIR})
 target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})
