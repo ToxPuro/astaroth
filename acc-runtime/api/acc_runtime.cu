@@ -399,15 +399,18 @@ acPBACreate(const size_t count)
 {
   ProfileBufferArray pba = {.count = count};
 
-  const size_t bytes = sizeof(pba.in[0][0]) * count;
-  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+  const size_t bytes = sizeof(pba.in[0][0]) * pba.count * NUM_PROFILES;
+  AcReal *in, *out;
 #if USE_COMPRESSIBLE_MEMORY
-    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&pba.in[i], bytes));
-    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&pba.out[i], bytes));
+  ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&in, bytes));
+  ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&out, bytes));
 #else
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&pba.in[i], bytes));
-    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&pba.out[i], bytes));
+  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&in, bytes));
+  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&out, bytes));
 #endif
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    pba.in[i]  = &in[i * pba.count];
+    pba.out[i] = &out[i * pba.count];
   }
 
   acPBAReset(0, &pba);
@@ -418,14 +421,16 @@ acPBACreate(const size_t count)
 void
 acPBADestroy(ProfileBufferArray* pba)
 {
-  for (size_t i = 0; i < NUM_PROFILES; ++i) {
 #if USE_COMPRESSIBLE_MEMORY
-    freeCompressible(pba->in[i], sizeof(pba.in[0][0]) * pba->count);
-    freeCompressible(pba->out[i], sizeof(pba.out[0][0]) * pba->count);
+  freeCompressible(pba->in[0],
+                   sizeof(pba.in[0][0]) * pba->count * NUM_PROFILES);
+  freeCompressible(pba->out[0],
+                   sizeof(pba.out[0][0]) * pba->count * NUM_PROFILES);
 #else
-    cudaFree(pba->in[i]);
-    cudaFree(pba->out[i]);
+  cudaFree(pba->in[0]);
+  cudaFree(pba->out[0]);
 #endif
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
     pba->in[i]  = NULL;
     pba->out[i] = NULL;
   }
@@ -753,7 +758,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                                         ? min(props.maxThreadsPerBlock,
                                               MAX_THREADS_PER_BLOCK)
                                         : props.maxThreadsPerBlock;
-  const size_t max_smem           = props.sharedMemPerBlock;
+  const size_t max_smem = props.sharedMemPerBlock;
 
   // Old heuristic
   // for (int z = 1; z <= max_threads_per_block; ++z) {
