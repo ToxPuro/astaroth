@@ -1198,6 +1198,9 @@ AcResult acDeviceVolumeCopy(const Device device, const Stream stream,           
                             const AcReal* in, const int3 in_offset, const int3 in_volume, //
                             AcReal* out, const int3 out_offset, const int3 out_volume);
 
+// Test
+void acDeviceTest(const Device device);
+
 /*
  * =============================================================================
  * Helper functions

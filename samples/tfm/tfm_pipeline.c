@@ -325,6 +325,8 @@ main(int argc, char** argv)
     acDeviceSynchronizeStream(device, STREAM_ALL);
     cudaProfilerStop();
 
+    acDeviceTest(device);
+
     // Free
     fclose(fp);
     acDeviceDestroy(device);

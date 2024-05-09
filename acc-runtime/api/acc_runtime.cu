@@ -270,7 +270,6 @@ IDX(const int3 idx)
 // the compiler to always pass arrays to functions as references before
 // re-enabling)
 
-#include "mapreduce.cuh"
 #include "random.cuh"
 
 #include "user_kernels.h"
@@ -963,4 +962,230 @@ acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
 
   for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
     acLoadReal3Uniform(stream, (AcReal3Param)i, info.real3_params[i]);
+}
+
+//---------------
+size_t
+acShapeSize(const AcShape shape)
+{
+  return shape.x * shape.y * shape.z * shape.w;
+}
+
+static __host__ __device__ constexpr const AcIndex
+min(const AcIndex& a, const AcIndex& b)
+{
+  return (AcIndex){
+      a.x < b.x ? a.x : b.x,
+      a.y < b.y ? a.y : b.y,
+      a.z < b.z ? a.z : b.z,
+      a.w < b.w ? a.w : b.w,
+  };
+}
+
+static __host__ __device__ constexpr AcIndex
+operator+(const AcIndex& a, const AcIndex& b)
+{
+  return (AcIndex){
+      a.x + b.x,
+      a.y + b.y,
+      a.z + b.z,
+      a.w + b.w,
+  };
+}
+
+static __host__ __device__ constexpr AcIndex
+operator-(const AcIndex& a, const AcIndex& b)
+{
+  return (AcIndex){
+      a.x - b.x,
+      a.y - b.y,
+      a.z - b.z,
+      a.w - b.w,
+  };
+}
+
+static __global__ void
+reindex(const AcReal* in, const AcIndex in_offset,
+        const AcShape in_volume, //
+        AcReal* out, const AcIndex out_offset, const AcShape out_volume)
+{
+  const size_t i    = (size_t)threadIdx.x + blockIdx.x * blockDim.x;
+  const AcIndex idx = {
+      .x = i % out_volume.x,
+      .y = (i / out_volume.x) % out_volume.y,
+      .z = (i / (out_volume.x * out_volume.y)) % out_volume.z,
+      .w = i / (out_volume.x * out_volume.y * out_volume.z),
+      // .x = i % out_volume.x,
+      // .y = (i % (out_volume.x * out_volume.y)) / out_volume.x,
+      // .z = (i % (out_volume.x * out_volume.y * out_volume.z)) /
+      //      (out_volume.x * out_volume.y),
+      // .w = i / (out_volume.x * out_volume.y * out_volume.z),
+  };
+  if (idx.x >= min(in_volume.x, out_volume.x) || //
+      idx.y >= min(in_volume.y, out_volume.y) || //
+      idx.z >= min(in_volume.z, out_volume.z) || //
+      idx.w >= min(in_volume.w, out_volume.w))
+    return;
+
+  const AcIndex in_pos  = idx + in_offset;
+  const AcIndex out_pos = idx + out_offset;
+
+  const size_t in_idx = in_pos.x +               //
+                        in_pos.y * in_volume.x + //
+                        in_pos.z * in_volume.x * in_volume.y +
+                        in_pos.w * in_volume.x * in_volume.y * in_volume.z;
+  const size_t out_idx = out_pos.x +                //
+                         out_pos.y * out_volume.x + //
+                         out_pos.z * out_volume.x * out_volume.y +
+                         out_pos.w * out_volume.x * out_volume.y * out_volume.z;
+
+  out[out_idx] = in[in_idx];
+}
+
+AcResult
+acReindex(const cudaStream_t stream, //
+          const AcReal* in, const AcIndex in_offset,
+          const AcShape in_volume, //
+          AcReal* out, const AcIndex out_offset, const AcShape out_volume)
+{
+  const size_t count = min(acShapeSize(in_volume), acShapeSize(out_volume));
+  const size_t tpb   = min(512ul, count);
+  const size_t bpg   = (count + tpb - 1) / tpb;
+
+  reindex<<<bpg, tpb, 0, stream>>>(in, in_offset, in_volume, //
+                                   out, out_offset, out_volume);
+  ERRCHK_CUDA_KERNEL();
+
+  return AC_SUCCESS;
+}
+
+typedef struct {
+  AcReal *x, *y, *z;
+} SOAVector;
+
+typedef struct {
+  SOAVector A[1];
+  size_t A_count;
+  SOAVector B[4];
+  size_t B_count;
+  SOAVector outputs[4]; // Same count as B_count
+} CrossProductInputs;
+
+__global__ void
+map_cross_product(const CrossProductInputs inputs, const AcIndex start,
+                  const AcIndex end)
+{
+
+  const AcIndex tid = {
+      .x = threadIdx.x + blockIdx.x * blockDim.x,
+      .y = threadIdx.y + blockIdx.y * blockDim.y,
+      .z = threadIdx.z + blockIdx.z * blockDim.z,
+      .w = 0,
+  };
+
+  const AcIndex in_idx3d = start + tid;
+  const size_t in_idx = DEVICE_VTXBUF_IDX(in_idx3d.x, in_idx3d.y, in_idx3d.z);
+
+  const AcShape dims   = end - start;
+  const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
+
+  const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y &&
+                             in_idx3d.z < end.z;
+  if (within_bounds) {
+    for (size_t i = 0; i < inputs.A_count; ++i) {
+      const AcReal3 a = (AcReal3){
+          inputs.A[i].x[in_idx],
+          inputs.A[i].y[in_idx],
+          inputs.A[i].z[in_idx],
+      };
+      for (size_t j = 0; j < inputs.B_count; ++j) {
+        const AcReal3 b = (AcReal3){
+            inputs.B[j].x[in_idx],
+            inputs.B[j].y[in_idx],
+            inputs.B[j].z[in_idx],
+        };
+        const AcReal3 res            = cross(a, b);
+        inputs.outputs[j].x[out_idx] = res.x;
+        inputs.outputs[j].y[out_idx] = res.y;
+        inputs.outputs[j].z[out_idx] = res.z;
+      }
+    }
+  }
+}
+
+AcResult
+acMapCross(const cudaStream_t stream, const VertexBufferArray vba,
+           const AcIndex start, const AcIndex end, AcReal* output,
+           const AcShape out_volume)
+{
+  // ERRCHK_ALWAYS((start >= (int3){0, 0, 0}));
+  // ERRCHK_ALWAYS((end <= (int3){DCONST(AC_mx), DCONST(AC_my),
+  // DCONST(AC_mz)}));
+  const AcShape dims = end - start;
+
+  const SOAVector uu = {
+      .x = vba.in[VTXBUF_UUX],
+      .y = vba.in[VTXBUF_UUY],
+      .z = vba.in[VTXBUF_UUZ],
+  };
+  const SOAVector bb11 = {
+      .x = vba.in[TF_b11_x],
+      .y = vba.in[TF_b11_y],
+      .z = vba.in[TF_b11_z],
+  };
+  const SOAVector bb12 = {
+      .x = vba.in[TF_b12_x],
+      .y = vba.in[TF_b12_y],
+      .z = vba.in[TF_b12_z],
+  };
+  const SOAVector bb21 = {
+      .x = vba.in[TF_b21_x],
+      .y = vba.in[TF_b21_y],
+      .z = vba.in[TF_b21_z],
+  };
+  const SOAVector bb22 = {
+      .x = vba.in[TF_b22_x],
+      .y = vba.in[TF_b22_y],
+      .z = vba.in[TF_b22_z],
+  };
+
+  const size_t block_offset = out_volume.x * out_volume.y * out_volume.z;
+  const SOAVector out_bb11  = {
+      .x = &output[3 * block_offset],
+      .y = &output[4 * block_offset],
+      .z = &output[5 * block_offset],
+  };
+  const SOAVector out_bb12 = {
+      .x = &output[6 * block_offset],
+      .y = &output[7 * block_offset],
+      .z = &output[8 * block_offset],
+  };
+  const SOAVector out_bb21 = {
+      .x = &output[9 * block_offset],
+      .y = &output[10 * block_offset],
+      .z = &output[11 * block_offset],
+  };
+  const SOAVector out_bb22 = {
+      .x = &output[12 * block_offset],
+      .y = &output[13 * block_offset],
+      .z = &output[14 * block_offset],
+  };
+
+  const CrossProductInputs inputs = {
+      .A       = {uu},
+      .A_count = 1,
+      .B       = {bb11, bb12, bb21, bb22},
+      .B_count = 4,
+      .outputs = {out_bb11, out_bb12, out_bb21, out_bb22},
+  };
+
+  const dim3 tpb = (dim3){64, 8, 1};
+  // Integer round-up division
+  const dim3 bpg = (dim3){
+      (dims.x + tpb.x - 1) / tpb.x,
+      (dims.y + tpb.y - 1) / tpb.y,
+      (dims.z + tpb.z - 1) / tpb.z,
+  };
+  map_cross_product<<<bpg, tpb, 0, stream>>>(inputs, start, end);
+  return AC_SUCCESS;
 }

@@ -974,3 +974,124 @@ acDeviceResetMesh(const Device device, const Stream stream)
     acDeviceSynchronizeStream(device, stream);
     return acVBAReset(device->streams[stream], &device->vba);
 }
+
+//--------------------------------------
+
+typedef struct {
+    AcReal* data;
+    size_t count;
+    bool on_device;
+} AcBuffer;
+
+AcBuffer
+acBufferCreate(const size_t count, const bool on_device)
+{
+    AcBuffer buffer    = {.count = count, .on_device = on_device};
+    const size_t bytes = sizeof(buffer.data[0]) * count;
+    if (buffer.on_device) {
+        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&buffer.data, bytes));
+    }
+    else {
+        buffer.data = (AcReal*)malloc(bytes);
+    }
+    ERRCHK_ALWAYS(buffer.data);
+    return buffer;
+}
+
+void
+acBufferDestroy(AcBuffer* buffer)
+{
+    if (buffer->on_device)
+        cudaFree(buffer->data);
+    else
+        free(buffer->data);
+    buffer->data  = NULL;
+    buffer->count = 0;
+}
+
+AcResult
+acBufferMigrate(const AcBuffer in, AcBuffer* out)
+{
+    cudaMemcpyKind kind;
+    if (in.on_device) {
+        if (out->on_device)
+            kind = cudaMemcpyDeviceToDevice;
+        else
+            kind = cudaMemcpyDeviceToHost;
+    }
+    else {
+        if (out->on_device)
+            kind = cudaMemcpyHostToDevice;
+        else
+            kind = cudaMemcpyHostToHost;
+    }
+
+    ERRCHK_ALWAYS(in.count == out->count);
+    ERRCHK_CUDA_ALWAYS(cudaMemcpy(out->data, in.data, sizeof(in.data[0]) * in.count, kind));
+    return AC_SUCCESS;
+}
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
+void
+acDeviceTest(const Device device)
+{
+    AcMeshDims dims         = acGetMeshDims(device->local_config);
+    const size_t num_blocks = 3 + 3 * 4;
+    const size_t count      = num_blocks * dims.nn.x * dims.nn.y * dims.m1.z;
+    AcBuffer buffer         = acBufferCreate(count, true);
+
+    const AcIndex in_offset = {
+        .x = dims.n0.x,
+        .y = dims.n0.y,
+        .z = 0,
+        .w = 0,
+    };
+    const AcShape in_volume = {
+        .x = dims.m1.x,
+        .y = dims.m1.y,
+        .z = dims.m1.z,
+        .w = 1,
+    };
+    const AcShape out_volume = {
+        .x = dims.nn.x,
+        .y = dims.nn.y,
+        .z = dims.m1.z,
+        .w = 1,
+    };
+
+    const Field basic_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
+    for (size_t w = 0; w < ARRAY_SIZE(basic_fields); ++w) {
+        const AcIndex out_offset = {
+            .x = 0,
+            .y = 0,
+            .z = 0,
+            .w = w,
+        };
+
+        acReindex(device->streams[STREAM_DEFAULT], device->vba.in[basic_fields[w]], in_offset,
+                  in_volume, buffer.data, out_offset, out_volume);
+    }
+    const AcIndex start = in_offset;
+    const AcIndex end   = {
+        .x = dims.n1.x,
+        .y = dims.n1.y,
+        .z = dims.m1.z,
+        .w = 0,
+    };
+    acMapCross(device->streams[STREAM_DEFAULT], device->vba, start, end, buffer.data, out_volume);
+
+    // Test
+    cudaDeviceSynchronize();
+    AcBuffer hostbuffer = acBufferCreate(count, false);
+    acBufferMigrate(buffer, &hostbuffer);
+    for (size_t w = 0; w < num_blocks; ++w) {
+        printf("start %zu: %g\n", w,
+               hostbuffer.data[w * out_volume.x * out_volume.y * out_volume.z]);
+        printf("end %zu: %g\n", w,
+               hostbuffer.data[(w + 1) * out_volume.x * out_volume.y * out_volume.z - 1]);
+    }
+    acBufferDestroy(&hostbuffer);
+
+    acBufferDestroy(&buffer);
+}
