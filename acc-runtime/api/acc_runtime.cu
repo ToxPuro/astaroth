@@ -965,13 +965,24 @@ acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
 }
 
 //---------------
+// static __host__ __device__ constexpr size_t
+// acShapeSize(const AcShape& shape)
 size_t
 acShapeSize(const AcShape shape)
 {
   return shape.x * shape.y * shape.z * shape.w;
 }
 
-static __host__ __device__ constexpr const AcIndex
+static __host__ __device__ constexpr bool
+acOutOfBounds(const AcIndex& index, const AcShape& shape)
+{
+  return (index.x >= shape.x) || //
+         (index.y >= shape.y) || //
+         (index.z >= shape.z) || //
+         (index.w >= shape.w);
+}
+
+static __host__ __device__ constexpr AcIndex
 min(const AcIndex& a, const AcIndex& b)
 {
   return (AcIndex){
@@ -1004,56 +1015,60 @@ operator-(const AcIndex& a, const AcIndex& b)
   };
 }
 
+static __host__ __device__ constexpr AcIndex
+to_spatial(const size_t i, const AcShape& volume)
+{
+  return (AcIndex){
+      .x = i % volume.x,
+      .y = (i / volume.x) % volume.y,
+      .z = (i / (volume.x * volume.y)) % volume.z,
+      .w = i / (volume.x * volume.y * volume.z),
+  };
+}
+
+static __host__ __device__ constexpr size_t
+to_linear(const AcIndex& index, const AcShape& volume)
+{
+  return index.x +            //
+         index.y * volume.x + //
+         index.z * volume.x * volume.y +
+         index.w * volume.x * volume.y * volume.z;
+}
+
 static __global__ void
-reindex(const AcReal* in, const AcIndex in_offset,
-        const AcShape in_volume, //
-        AcReal* out, const AcIndex out_offset, const AcShape out_volume)
+reindex(const AcReal* in, const AcIndex in_offset, const AcShape in_volume,
+        AcReal* out, const AcIndex out_offset, const AcShape out_volume,
+        const AcShape block_volume)
 {
   const size_t i    = (size_t)threadIdx.x + blockIdx.x * blockDim.x;
-  const AcIndex idx = {
-      .x = i % out_volume.x,
-      .y = (i / out_volume.x) % out_volume.y,
-      .z = (i / (out_volume.x * out_volume.y)) % out_volume.z,
-      .w = i / (out_volume.x * out_volume.y * out_volume.z),
-      // .x = i % out_volume.x,
-      // .y = (i % (out_volume.x * out_volume.y)) / out_volume.x,
-      // .z = (i % (out_volume.x * out_volume.y * out_volume.z)) /
-      //      (out_volume.x * out_volume.y),
-      // .w = i / (out_volume.x * out_volume.y * out_volume.z),
-  };
-  if (idx.x >= min(in_volume.x, out_volume.x) || //
-      idx.y >= min(in_volume.y, out_volume.y) || //
-      idx.z >= min(in_volume.z, out_volume.z) || //
-      idx.w >= min(in_volume.w, out_volume.w))
-    return;
+  const AcIndex idx = to_spatial(i, block_volume);
 
   const AcIndex in_pos  = idx + in_offset;
   const AcIndex out_pos = idx + out_offset;
 
-  const size_t in_idx = in_pos.x +               //
-                        in_pos.y * in_volume.x + //
-                        in_pos.z * in_volume.x * in_volume.y +
-                        in_pos.w * in_volume.x * in_volume.y * in_volume.z;
-  const size_t out_idx = out_pos.x +                //
-                         out_pos.y * out_volume.x + //
-                         out_pos.z * out_volume.x * out_volume.y +
-                         out_pos.w * out_volume.x * out_volume.y * out_volume.z;
+  if (acOutOfBounds(idx, block_volume) || //
+      acOutOfBounds(in_pos, in_volume) || //
+      acOutOfBounds(out_pos, out_volume))
+    return;
+
+  const size_t in_idx  = to_linear(in_pos, in_volume);
+  const size_t out_idx = to_linear(out_pos, out_volume);
 
   out[out_idx] = in[in_idx];
 }
 
 AcResult
 acReindex(const cudaStream_t stream, //
-          const AcReal* in, const AcIndex in_offset,
-          const AcShape in_volume, //
-          AcReal* out, const AcIndex out_offset, const AcShape out_volume)
+          const AcReal* in, const AcIndex in_offset, const AcShape in_volume,
+          AcReal* out, const AcIndex out_offset, const AcShape out_volume,
+          const AcShape block_volume)
 {
-  const size_t count = min(acShapeSize(in_volume), acShapeSize(out_volume));
-  const size_t tpb   = min(512ul, count);
+  const size_t count = acShapeSize(block_volume);
+  const size_t tpb   = min(256ul, count);
   const size_t bpg   = (count + tpb - 1) / tpb;
 
   reindex<<<bpg, tpb, 0, stream>>>(in, in_offset, in_volume, //
-                                   out, out_offset, out_volume);
+                                   out, out_offset, out_volume, block_volume);
   ERRCHK_CUDA_KERNEL();
 
   return AC_SUCCESS;
@@ -1064,13 +1079,58 @@ typedef struct {
 } SOAVector;
 
 typedef struct {
+  // Input vectors
   SOAVector A[1];
   size_t A_count;
   SOAVector B[4];
   size_t B_count;
-  SOAVector outputs[4]; // Same count as B_count
-} CrossProductInputs;
+  // Note: more efficient with A_count < B_count
 
+  // Output vectors
+  SOAVector C[1 * 4];
+  // C count = A_count*B_count
+} CrossProductArrays;
+
+static __global__ void
+reindex_cross(const CrossProductArrays arrays, const AcIndex in_offset,
+              const AcShape in_volume, const AcIndex out_offset,
+              const AcShape out_volume, const AcShape block_volume)
+{
+  const size_t i    = (size_t)threadIdx.x + blockIdx.x * blockDim.x;
+  const AcIndex idx = to_spatial(i, block_volume);
+
+  const AcIndex in_pos  = idx + in_offset;
+  const AcIndex out_pos = idx + out_offset;
+
+  if (acOutOfBounds(idx, block_volume) || //
+      acOutOfBounds(in_pos, in_volume) || //
+      acOutOfBounds(out_pos, out_volume))
+    return;
+
+  const size_t in_idx  = to_linear(in_pos, in_volume);
+  const size_t out_idx = to_linear(out_pos, out_volume);
+
+  for (size_t j = 0; j < arrays.A_count; ++j) {
+    const AcReal3 a = {
+        .x = arrays.A[j].x[in_idx],
+        .y = arrays.A[j].y[in_idx],
+        .z = arrays.A[j].z[in_idx],
+    };
+    for (size_t i = 0; i < arrays.B_count; ++i) {
+      const AcReal3 b = {
+          .x = arrays.B[i].x[in_idx],
+          .y = arrays.B[i].y[in_idx],
+          .z = arrays.B[i].z[in_idx],
+      };
+      const AcReal3 res                           = cross(a, b);
+      arrays.C[i + j * arrays.B_count].x[out_idx] = res.x;
+      arrays.C[i + j * arrays.B_count].y[out_idx] = res.y;
+      arrays.C[i + j * arrays.B_count].z[out_idx] = res.z;
+    }
+  }
+}
+
+#if 0
 __global__ void
 map_cross_product(const CrossProductInputs inputs, const AcIndex start,
                   const AcIndex end)
@@ -1112,17 +1172,19 @@ map_cross_product(const CrossProductInputs inputs, const AcIndex start,
     }
   }
 }
+#endif
 
+// AcResult
+// acMapCross(const cudaStream_t stream, const VertexBufferArray vba,
+//            const AcIndex start, const AcIndex end, AcReal* output,
+//            const AcShape out_volume)
 AcResult
-acMapCross(const cudaStream_t stream, const VertexBufferArray vba,
-           const AcIndex start, const AcIndex end, AcReal* output,
-           const AcShape out_volume)
+acMapCross(const cudaStream_t stream, //
+           const VertexBufferArray vba, const AcIndex in_offset,
+           const AcShape in_volume, //
+           AcReal* out, const AcIndex out_offset, const AcShape out_volume,
+           const AcShape block_volume)
 {
-  // ERRCHK_ALWAYS((start >= (int3){0, 0, 0}));
-  // ERRCHK_ALWAYS((end <= (int3){DCONST(AC_mx), DCONST(AC_my),
-  // DCONST(AC_mz)}));
-  const AcShape dims = end - start;
-
   const SOAVector uu = {
       .x = vba.in[VTXBUF_UUX],
       .y = vba.in[VTXBUF_UUY],
@@ -1151,41 +1213,90 @@ acMapCross(const cudaStream_t stream, const VertexBufferArray vba,
 
   const size_t block_offset = out_volume.x * out_volume.y * out_volume.z;
   const SOAVector out_bb11  = {
-      .x = &output[3 * block_offset],
-      .y = &output[4 * block_offset],
-      .z = &output[5 * block_offset],
+      .x = &out[3 * block_offset],
+      .y = &out[4 * block_offset],
+      .z = &out[5 * block_offset],
   };
   const SOAVector out_bb12 = {
-      .x = &output[6 * block_offset],
-      .y = &output[7 * block_offset],
-      .z = &output[8 * block_offset],
+      .x = &out[6 * block_offset],
+      .y = &out[7 * block_offset],
+      .z = &out[8 * block_offset],
   };
   const SOAVector out_bb21 = {
-      .x = &output[9 * block_offset],
-      .y = &output[10 * block_offset],
-      .z = &output[11 * block_offset],
+      .x = &out[9 * block_offset],
+      .y = &out[10 * block_offset],
+      .z = &out[11 * block_offset],
   };
   const SOAVector out_bb22 = {
-      .x = &output[12 * block_offset],
-      .y = &output[13 * block_offset],
-      .z = &output[14 * block_offset],
+      .x = &out[12 * block_offset],
+      .y = &out[13 * block_offset],
+      .z = &out[14 * block_offset],
   };
 
-  const CrossProductInputs inputs = {
+  const CrossProductArrays arrays = {
       .A       = {uu},
       .A_count = 1,
       .B       = {bb11, bb12, bb21, bb22},
       .B_count = 4,
-      .outputs = {out_bb11, out_bb12, out_bb21, out_bb22},
+      .C       = {out_bb11, out_bb12, out_bb21, out_bb22},
   };
 
-  const dim3 tpb = (dim3){64, 8, 1};
-  // Integer round-up division
-  const dim3 bpg = (dim3){
-      (dims.x + tpb.x - 1) / tpb.x,
-      (dims.y + tpb.y - 1) / tpb.y,
-      (dims.z + tpb.z - 1) / tpb.z,
-  };
-  map_cross_product<<<bpg, tpb, 0, stream>>>(inputs, start, end);
+  const size_t count = acShapeSize(block_volume);
+  const size_t tpb   = min(256ul, count);
+  const size_t bpg   = (count + tpb - 1) / tpb;
+
+  reindex_cross<<<bpg, tpb, 0, stream>>>(arrays, in_offset, in_volume,
+                                         out_offset, out_volume, block_volume);
+  return AC_SUCCESS;
+}
+
+#if USE_HIP
+#include <hipcub/hipcub.hpp>
+
+#define cub hipcub
+#define cudaMalloc hipMalloc
+#define cudaFree hipFree
+#define cudaMemcpy hipMemcpy
+#define cudaMemcpyHostToDevice hipMemcpyHostToDevice
+#define cudaMemcpyDeviceToHost hipMemcpyDeviceToHost
+#define cudaDeviceSynchronize hipDeviceSynchronize
+#else
+#include <cub/cub.cuh>
+#endif
+
+AcResult
+acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
+                  const size_t count, const size_t num_segments, AcReal* d_out)
+{
+  size_t* offsets = (size_t*)malloc(sizeof(offsets[0]) * (num_segments + 1));
+  ERRCHK_ALWAYS(offsets);
+  for (size_t i = 0; i <= num_segments; ++i) {
+    offsets[i] = i * (count / num_segments);
+    printf("Offset %zu: %zu\n", i, offsets[i]);
+  }
+
+  size_t* d_offsets = NULL;
+  cudaMalloc(&d_offsets, sizeof(d_offsets[0]) * (num_segments + 1));
+  ERRCHK_ALWAYS(d_offsets);
+  cudaMemcpy(d_offsets, offsets, sizeof(d_offsets[0]) * (num_segments + 1),
+             cudaMemcpyHostToDevice);
+
+  void* d_temp_storage      = NULL;
+  size_t temp_storage_bytes = 0;
+  cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+                                  d_out, num_segments, d_offsets,
+                                  d_offsets + 1);
+  printf("Temp storage: %zu bytes\n", temp_storage_bytes);
+  cudaMalloc(&d_temp_storage, temp_storage_bytes);
+  ERRCHK_ALWAYS(d_temp_storage);
+
+  cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+                                  d_out, num_segments, d_offsets,
+                                  d_offsets + 1);
+
+  cudaFree(d_temp_storage);
+
+  cudaFree(d_offsets);
+  free(offsets);
   return AC_SUCCESS;
 }

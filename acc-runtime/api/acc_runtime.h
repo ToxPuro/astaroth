@@ -170,11 +170,20 @@ AcResult acReindex(const cudaStream_t stream, //
                    const AcReal* in, const AcIndex in_offset,
                    const AcIndex in_volume, //
                    AcReal* out, const AcIndex out_offset,
-                   const AcIndex out_volume);
+                   const AcIndex out_volume, const AcShape block_volume);
 
-AcResult acMapCross(const cudaStream_t stream, const VertexBufferArray vba,
-                    const AcIndex start, const AcIndex end, AcReal* output,
-                    const AcShape out_volume);
+// AcResult acMapCross(const cudaStream_t stream, const VertexBufferArray vba,
+//                     const AcIndex start, const AcIndex end, AcReal* output,
+//                     const AcShape out_volume);
+AcResult acMapCross(const cudaStream_t stream, //
+                    const VertexBufferArray vba, const AcIndex in_offset,
+                    const AcShape in_volume, //
+                    AcReal* out, const AcIndex out_offset,
+                    const AcShape out_volume, const AcShape block_volume);
+
+AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
+                           const size_t count, const size_t num_segments,
+                           AcReal* d_out);
 
 #ifdef __cplusplus
 } // extern "C"

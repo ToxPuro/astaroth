@@ -1152,6 +1152,9 @@ AcResult acDeviceReduceXYAverage(const Device device, const Stream stream, const
                                  const Profile profile);
 
 /** */
+AcResult acDeviceReduceXYAverages(const Device device, const Stream stream);
+
+/** */
 AcResult acDeviceSwapProfileBuffer(const Device device, const Profile handle);
 
 /** */
