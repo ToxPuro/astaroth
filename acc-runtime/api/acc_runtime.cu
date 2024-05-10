@@ -1290,7 +1290,6 @@ acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
                                   d_offsets + 1);
 
   cudaFree(d_temp_storage);
-
   cudaFree(d_offsets);
   free(offsets);
   return AC_SUCCESS;
