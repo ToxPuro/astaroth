@@ -213,10 +213,10 @@ acPackCommData(const Device device, const int3* b0s, CommData* data)
         device->local_config.int_params[AC_ny],
         device->local_config.int_params[AC_nz],
     };
-    const int3 nghost = (int3){NGHOST, NGHOST, NGHOST};
+    const int3 nghost3 = (int3){NGHOST, NGHOST, NGHOST};
 
     for (size_t i = 0; i < data->count; ++i) {
-        const int3 a0 = mod(b0s[i] - nghost, nn) + nghost;
+        const int3 a0 = mod(b0s[i] - nghost3, nn) + nghost3;
         acKernelPackData(data->streams[i], device->vba, a0, data->srcs[i]);
     }
 }
