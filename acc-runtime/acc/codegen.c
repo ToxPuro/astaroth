@@ -1006,11 +1006,7 @@ get_dfuncs_reduce_output(ASTNode* node)
 	char func_name[5000];
 	combine_buffers(node->lhs,func_name);
 	const int dfunc_index = str_vec_get_index(dfuncs,func_name);
-	string_vec reduce_outputs;
-	init_str_vec(&reduce_outputs);
-	get_reduce_outputs(node,&reduce_outputs);
-	for(size_t i = 0; i < reduce_outputs.size; ++i)
-		push(&dfuncs_reduce_outputs[dfunc_index], reduce_outputs.data[i]);
+	get_reduce_outputs(node,&dfuncs_reduce_outputs[dfunc_index]);
 }
 void
 get_dfuncs_reduce_condition(ASTNode* node)
@@ -1024,11 +1020,7 @@ get_dfuncs_reduce_condition(ASTNode* node)
 	char func_name[5000];
 	combine_buffers(node->lhs,func_name);
 	const int dfunc_index = str_vec_get_index(dfuncs,func_name);
-	string_vec reduce_conditions;
-	init_str_vec(&reduce_conditions);
-	get_reduce_conditions(node,&reduce_conditions);
-	for(size_t i = 0; i < reduce_conditions.size; ++i)
-		push(&dfuncs_reduce_conditions[dfunc_index], reduce_conditions.data[i]);
+	get_reduce_conditions(node,&dfuncs_reduce_conditions[dfunc_index]);
 }
 void
 get_dfuncs_reduce_op(ASTNode* node)
@@ -1072,7 +1064,7 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 	if(!(node->type & NODE_KFUNCTION))
 		return;
 	ASTNode* compound_statement = node->rhs->rhs;
-	char new_postfix[10000];
+	char* new_postfix = malloc(sizeof(char)*4000);
 	sprintf(new_postfix,"%s",compound_statement->postfix);
 	if(gen_mem_accesses)
 	{
@@ -1100,17 +1092,17 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 	get_reduce_outputs(node,&reduce_outputs);
 	if(reduce_outputs.size == 0) return;
 	assert((size_t) n_ops == reduce_outputs.size && (size_t) n_ops == conditions.size);
-	char shuffle_instruction[4098];
-	char warp_id[4098];
-	char warp_size[4098];
+	char* tmp = malloc(sizeof(char)*4096);
+	char* res_name   = malloc(sizeof(char)*4096);
+	char* output_str = malloc(sizeof(char)*4096);
 #if AC_USE_HIP
-	sprintf(shuffle_instruction, "rocprim::warp_shuffle_down(");
-	sprintf(warp_size, "const size_t warp_size = rocprim::warp_size();\n");
-	sprintf(warp_id, "const size_t warp_id = rocprim::warp_id();\n");
+	const char* shuffle_instruction = "rocprim::warp_shuffle_down(";
+	const char* warp_size  = "const size_t warp_size = rocprim::warp_size();\n";
+	const char* warp_id= "const size_t warp_id = rocprim::warp_id();\n";
 #else
-	sprintf(shuffle_instruction, "__shfl_down_sync(0xffffffff,");
-	sprintf(warp_size, "constexpr size_t warp_size = 32;\n");
-  	sprintf(warp_id,"const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size\n;");
+	const char* shuffle_instruction = "__shfl_down_sync(0xffffffff,";
+	const char* warp_size  = "constexpr size_t warp_size = 32;\n";
+	const char* warp_id= "const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size\n;";
 #endif
 
 	for(int i = 0; i < n_ops; ++i)
@@ -1129,7 +1121,6 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 	 	        sprintf(new_condition, "vba.kernel_input_params.%s.%s == %s",fn_identifier->buffer,ptr,ptr2);
 	 	        condition = strdup(new_condition);
 	 	}
-	 	char tmp[4096];
 	 	sprintf(tmp,"if(%s){\n",condition);
 	 	strcat(new_postfix,tmp);
 		strcat(new_postfix,warp_size);
@@ -1156,7 +1147,6 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 				printf("%s\n",fn_identifier->buffer);
       				exit(EXIT_FAILURE);
 		}
-		char res_name[4098];
 		sprintf(res_name,"%s[(int)%s]",array_name,output);
 	 	switch(reduce_op)
 	 	{
@@ -1183,13 +1173,18 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
       				exit(EXIT_FAILURE);
 	 	}
 	 	strcat(new_postfix,"}\n");
-		char output_str[4098];
 		sprintf(output_str, "if(lane_id == 0) {vba.reduce_scratchpads[(int)%s][0][out_index] = %s;}", output, res_name);
 	 	strcat(new_postfix,output_str);
 		strcat(new_postfix,"}\n");
 	}
 	strcat(new_postfix,"}");
 	compound_statement->postfix = strdup(new_postfix);
+	free_str_vec(&conditions);
+	free_str_vec(&reduce_outputs);
+	free(new_postfix);
+	free(tmp);
+	free(res_name);
+	free(output_str);
 }
 void
 gen_kernel_ifs(ASTNode* node)
@@ -1952,7 +1947,8 @@ read_codegen_input(const ASTNode* node)
 void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool optimize_conditionals)
 { 
-  ASTNode* root = astnode_dup(root_in,NULL);
+  //ASTNode* root = astnode_dup(root_in,NULL);
+  ASTNode* root = (ASTNode*) root_in;
   init_str_vec(&array_fields);
   init_int_vec(&array_field_sizes);
   init_str_vec(&user_kernels_with_input_params);
@@ -2002,6 +1998,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   get_dfuncs_reduce_output(root);
   get_dfuncs_reduce_condition(root);
   get_dfuncs_reduce_op(root);
+
   gen_kernel_postfixes(root,gen_mem_accesses);
   // print_symbol_table();
 

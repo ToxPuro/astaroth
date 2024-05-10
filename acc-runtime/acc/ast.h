@@ -231,7 +231,7 @@ init_str_vec(string_vec* vec)
 	//	free(vec->data[i]);
 	free(vec->data);
 	vec -> size = 0;
-	vec -> capacity = 100;
+	vec -> capacity = 1;
 	vec -> data = malloc(sizeof(char*)*vec ->capacity);
 }
 
