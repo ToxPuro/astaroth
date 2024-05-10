@@ -2016,7 +2016,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   }
   gen_kernel_input_params(root,gen_mem_accesses);
   gen_user_defines(root, "user_defines.h");
-  //printf("HI\n");
   gen_field_accesses(root);
   gen_user_kernels(root, "user_declarations.h", gen_mem_accesses);
 
@@ -2030,7 +2029,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   get_dfuncs_reduce_op(root);
 
   gen_kernel_postfixes(root,gen_mem_accesses);
-  printf("HI\n");
   // print_symbol_table();
 
   // Generate user_kernels.h
@@ -2119,7 +2117,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   for (size_t i = 0; i < sizeof(array_datatypes)/sizeof(array_datatypes[0]); ++i)
   	gen_array_reads(root,gen_mem_accesses,array_datatypes[i]);
 
-  printf("Bye\n");
   // Stencils
 
   // Stencil generator
