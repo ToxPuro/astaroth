@@ -1515,19 +1515,42 @@ gen_const_variables(const ASTNode* node, FILE* fp)
 		gen_const_variables(node->lhs,fp);
 	if(node->rhs)
 		gen_const_variables(node->rhs,fp);
-	if(!(node->type & NODE_DECLARATION)) return;
+	if(!(node->type & NODE_ASSIGN_LIST)) return;
 	const ASTNode* tqual= get_node(NODE_TQUAL,node);
 	if(!tqual) return;
 	const ASTNode* tspec = get_node(NODE_TSPEC,node);
 	if(!tspec) return;
 	const bool is_const = !strcmp(tqual->lhs->buffer, "const");
 	if(!is_const) return;
-	const char* name  = get_node_by_token(IDENTIFIER, node->rhs)->buffer;
+	const ASTNode* def_list_head = node->rhs;
+	while(def_list_head -> rhs)
+	{
+		const ASTNode* def = def_list_head->rhs;
+		const char* name  = get_node_by_token(IDENTIFIER, def)->buffer;
+		if(!name) return;
+        	const ASTNode* assignment = def->rhs;
+		if(!assignment) return;
+		char assignment_val[4098];
+		combine_all(assignment,assignment_val);
+		//char datatype_scalar[1000];
+		const char* datatype = tspec->lhs->buffer;
+		if(strstr(assignment_val,","))
+		{
+			fprintf(fp, "\n#ifdef __cplusplus\nconst %s %s[] = {%s};\n#endif\n",datatype, name, assignment_val);
+		}
+		else
+		{
+			fprintf(fp, "\n#ifdef __cplusplus\nconst %s %s = %s;\n#endif\n",datatype, name, assignment_val);
+		}
+		def_list_head = def_list_head -> lhs;
+	}
+	const ASTNode* def = def_list_head->lhs;
+	const char* name  = get_node_by_token(IDENTIFIER, def)->buffer;
 	if(!name) return;
-        const ASTNode* assignment = get_node(NODE_ASSIGNMENT, node->parent);
+        const ASTNode* assignment = def->rhs;
 	if(!assignment) return;
 	char assignment_val[4098];
-	combine_all(assignment->rhs->rhs,assignment_val);
+	combine_all(assignment,assignment_val);
 	//char datatype_scalar[1000];
 	const char* datatype = tspec->lhs->buffer;
 	if(strstr(assignment_val,","))
@@ -1754,7 +1777,6 @@ gen_user_defines(const ASTNode* root, const char* out)
 	gen_enums(fp,array_datatypes[i],true);
   }
 
-  gen_const_variables(root,fp);
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
   fprintf(fp, "\n// Redefined for backwards compatibility START\n");
   fprintf(fp, "#define NUM_VTXBUF_HANDLES (NUM_FIELDS)\n");
@@ -1797,6 +1819,9 @@ gen_user_defines(const ASTNode* root, const char* out)
   fclose(fp);
 
   symboltable_reset();
+  fp = fopen("user_constants.h","w");
+  gen_const_variables(root,fp);
+  fclose(fp);
 }
 
 
@@ -2261,14 +2286,14 @@ generate_mem_accesses(void)
   */
   printf("Compile command: %s\n", cmd);
   const int retval = system(cmd);
-  printf("%s compilation done\n", STENCILACC_SRC);
-  if (retval == -1) {
+  if (retval != 0) {
     fprintf(stderr, "Catastrophic error: could not compile the stencil access "
                     "generator.\n");
-    assert(retval != -1);
+    fprintf(stderr, "Compiler error code: %d\n",retval);
+    assert(retval != 0);
     exit(EXIT_FAILURE);
   }
-
+  printf("%s compilation done\n", STENCILACC_SRC);
   // Generate stencil accesses
   FILE* proc = popen("./" STENCILACC_EXEC " stencil_accesses.h", "r");
   assert(proc);

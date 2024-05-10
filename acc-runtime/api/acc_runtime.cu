@@ -34,6 +34,7 @@
 #define USE_COMPRESSIBLE_MEMORY (0)
 
 #include "acc/implementation.h"
+#include "user_constants.h"
 
 static dim3 last_tpb = (dim3){0, 0, 0};
 

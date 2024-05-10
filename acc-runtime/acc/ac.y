@@ -88,7 +88,7 @@ void set_identifier_type(const NodeType type, ASTNode* curr);
 void set_identifier_prefix(const char* prefix, ASTNode* curr);
 void set_identifier_infix(const char* infix, ASTNode* curr);
 ASTNode* get_node(const NodeType type, ASTNode* node);
-ASTNode* get_node_by_token(const int token, ASTNode* node);
+ASTNode* get_node_by_token(const int token, const ASTNode* node);
 static inline int eval_int(const char* str);
 
 
@@ -395,7 +395,7 @@ root: program { root = astnode_create(NODE_UNKNOWN, $1, NULL); }
     ;
 
 program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); }
-       | program variable_definition {
+       | program variable_definitions {
             $$ = astnode_create(NODE_UNKNOWN, $1, $2);
 
             ASTNode* variable_definition = $$->rhs;
@@ -410,7 +410,8 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    ASTNode* declaration_list_head = declaration_list;
 	    bool are_arrays = false;
 	    ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
-	    if(type_specifier)
+            ASTNode* assignment = get_node(NODE_ASSIGNMENT, variable_definition);
+	    if(type_specifier && assignment == NULL)
 	    {
 		    while(declaration_list_head->rhs)
 		    {
@@ -426,7 +427,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 		//    if(are_arrays)
 		//	assert(!strcmp(type_specifier->lhs->buffer,"int") || !strcmp(type_specifier->lhs->buffer,"AcReal"));
 	    }
-            ASTNode* assignment = get_node(NODE_ASSIGNMENT, variable_definition);
             //if (assignment) {
 	    //    
             //    fprintf(stderr, "FATAL ERROR: Device constant assignment is not supported. Load the value at runtime with ac[Grid|Device]Load[Int|Int3|Real|Real3]Uniform-type API functions or use #define.\n");
@@ -504,7 +504,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    //assume is a dconst var
 	    else if (assignment)
 	    {
-		ASTNode* tqual = get_node(NODE_TQUAL,$$->rhs->lhs);
+		ASTNode* tqual = get_node(NODE_TQUAL,$$->rhs);
 		const bool is_const = !strcmp(tqual->lhs->buffer,"const");
 		if(!is_const)
 		{
@@ -516,12 +516,26 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 		const char* spec = get_node(NODE_TSPEC,$$->rhs)->lhs->buffer;
 		if(!strcmp(spec,"int"))
 		{	
-			char* name  = get_node_by_token(IDENTIFIER, $$->rhs)->buffer;
+			ASTNode* def_list_head = get_node(NODE_ASSIGN_LIST,$$->rhs)->rhs;
+			while(def_list_head->rhs)
+			{
+				ASTNode* def = def_list_head->rhs;
+				char* name  = get_node_by_token(IDENTIFIER, def)->buffer;
+				char assignment_val[4098];
+				combine_all(def->rhs,assignment_val);
+				int val = eval_int(assignment_val);
+				push(&const_ints,name);
+				push(&const_int_values,itoa(val));
+				def_list_head = def_list_head->lhs;
+			}
+			ASTNode* def = def_list_head->lhs;
+			char* name  = get_node_by_token(IDENTIFIER, def)->buffer;
 			char assignment_val[4098];
-			combine_all(assignment->rhs->rhs,assignment_val);
+			combine_all(def->rhs,assignment_val);
 			int val = eval_int(assignment_val);
 			push(&const_ints,name);
 			push(&const_int_values,itoa(val));
+			def_list_head = def_list_head->lhs;
 		}
 	
 	    }
@@ -706,7 +720,10 @@ binary_expression: binary_op unary_expression { $$ = astnode_create(NODE_UNKNOWN
 
 expression: unary_expression             { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
           | expression binary_expression { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
-          ;
+
+assign_expression: expression                     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
+               |  '{' expression_list '}' { $$ = astnode_create(NODE_UNKNOWN, $2, NULL);}
+               ;
 
 expression_list: expression                     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
                | expression_list ',' expression { $$ = astnode_create(NODE_UNKNOWN, $1, $3); astnode_set_infix(",", $$); }
@@ -720,6 +737,14 @@ expression_list: expression                     { $$ = astnode_create(NODE_UNKNO
 variable_definition: declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
                    | assignment  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
                    ;
+variable_definitions: declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
+                   |  type_declaration assignment_list  { $$ = astnode_create(NODE_ASSIGN_LIST, $1, $2); $$->type |= NODE_DECLARATION; astnode_set_postfix(";", $$); }
+                   ;
+
+assignment_list_leaf: identifier assignment_op assign_expression {$$ = astnode_create(NODE_ASSIGNMENT,$1,$3);}
+		    ;
+assignment_list: assignment_list ',' assignment_list_leaf {$$ = astnode_create(NODE_UNKNOWN,$1,$3);}
+	       | assignment_list_leaf {$$ = astnode_create(NODE_UNKNOWN,$1,NULL);}
 
 declarations: declarations declaration {$$ = astnode_create(NODE_UNKNOWN, $1,$2); }
 	    | declaration {$$ = astnode_create(NODE_UNKNOWN, $1,NULL); }

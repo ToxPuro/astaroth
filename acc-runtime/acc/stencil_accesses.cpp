@@ -125,7 +125,8 @@ __ballot(bool val)
 #endif
 
 #include "math_utils.h"
-
+ 
+#include "user_constants.h"
 #include "acc_runtime.h"
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at

@@ -60,6 +60,7 @@ typedef enum {
   NODE_IF             = (1 << 26),
   NODE_FUNCTION_CALL  = (1 << 27),
   NODE_DFUNCTION_ID   = (1 << 28),
+  NODE_ASSIGN_LIST       = (1 << 29),
 } NodeType;
 
 typedef struct astnode_s {
@@ -362,12 +363,12 @@ static inline void combine_all(const ASTNode* node, char* res){
 }
 
 static inline ASTNode*
-get_node_by_token(const int token, ASTNode* node)
+get_node_by_token(const int token, const ASTNode* node)
 {
   assert(node);
 
   if (node->token == token)
-    return node;
+    return (ASTNode*) node;
   else if (node->lhs && get_node_by_token(token, node->lhs))
     return get_node_by_token(token, node->lhs);
   else if (node->rhs && get_node_by_token(token, node->rhs))
