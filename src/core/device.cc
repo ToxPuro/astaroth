@@ -1237,9 +1237,9 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
     // Intermediate buffer
     const size_t num_compute_profiles = 3 + 4 * 3;
     const AcShape buffer_shape        = {
-        .x = dims.nn.x,
-        .y = dims.nn.y,
-        .z = dims.m1.z,
+        .x = as_size_t(dims.nn.x),
+        .y = as_size_t(dims.nn.y),
+        .z = as_size_t(dims.m1.z),
         .w = num_compute_profiles,
     };
     const size_t buffer_size = acShapeSize(buffer_shape);
@@ -1247,15 +1247,15 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
 
     // Indices and shapes
     const AcIndex in_offset = {
-        .x = dims.n0.x,
-        .y = dims.n0.y,
+        .x = as_size_t(dims.n0.x),
+        .y = as_size_t(dims.n0.y),
         .z = 0,
         .w = 0,
     };
     const AcShape in_shape = {
-        .x = dims.m1.x,
-        .y = dims.m1.y,
-        .z = dims.m1.z,
+        .x = as_size_t(dims.m1.x),
+        .y = as_size_t(dims.m1.y),
+        .z = as_size_t(dims.m1.z),
         .w = 1,
     };
     const AcShape block_shape = {

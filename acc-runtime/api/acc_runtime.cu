@@ -1111,15 +1111,15 @@ reindex_cross(const CrossProductArrays arrays, const AcIndex in_offset,
 
   for (size_t j = 0; j < arrays.A_count; ++j) {
     const AcReal3 a = {
-        .x = arrays.A[j].x[in_idx],
-        .y = arrays.A[j].y[in_idx],
-        .z = arrays.A[j].z[in_idx],
+        arrays.A[j].x[in_idx],
+        arrays.A[j].y[in_idx],
+        arrays.A[j].z[in_idx],
     };
     for (size_t i = 0; i < arrays.B_count; ++i) {
       const AcReal3 b = {
-          .x = arrays.B[i].x[in_idx],
-          .y = arrays.B[i].y[in_idx],
-          .z = arrays.B[i].z[in_idx],
+          arrays.B[i].x[in_idx],
+          arrays.B[i].y[in_idx],
+          arrays.B[i].z[in_idx],
       };
       const AcReal3 res                           = cross(a, b);
       arrays.C[i + j * arrays.B_count].x[out_idx] = res.x;
@@ -1245,16 +1245,9 @@ acReindexCross(const cudaStream_t stream, //
   return AC_SUCCESS;
 }
 
-#if USE_HIP
+#if AC_USE_HIP
 #include <hipcub/hipcub.hpp>
-
 #define cub hipcub
-#define cudaMalloc hipMalloc
-#define cudaFree hipFree
-#define cudaMemcpy hipMemcpy
-#define cudaMemcpyHostToDevice hipMemcpyHostToDevice
-#define cudaMemcpyDeviceToHost hipMemcpyDeviceToHost
-#define cudaDeviceSynchronize hipDeviceSynchronize
 #else
 #include <cub/cub.cuh>
 #endif
@@ -1280,15 +1273,16 @@ acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
   size_t temp_storage_bytes = 0;
   cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
                                   d_out, num_segments, d_offsets,
-                                  d_offsets + 1);
+                                  d_offsets + 1, stream);
   // printf("Temp storage: %zu bytes\n", temp_storage_bytes);
   cudaMalloc(&d_temp_storage, temp_storage_bytes);
   ERRCHK_ALWAYS(d_temp_storage);
 
   cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
                                   d_out, num_segments, d_offsets,
-                                  d_offsets + 1);
+                                  d_offsets + 1, stream);
 
+  cudaStreamSynchronize(stream); // Note, would not be needed if allocated at initialization
   cudaFree(d_temp_storage);
   cudaFree(d_offsets);
   free(offsets);
