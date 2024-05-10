@@ -377,7 +377,6 @@ acGridInit(AcMeshInfo info)
     acGridSynchronizeStream(STREAM_ALL);
     acVerboseLogFromRootProc(pid, "acGridInit: Done synchronizing streams\n");
 
-
 #ifdef AC_INTEGRATION_ENABLED
     grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
     acLogFromRootProc(pid, "acGridInit: Done creating default task graph\n");
@@ -1409,8 +1408,8 @@ UpperCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
 Region
 GetInputRegion(Region region, std::vector<Field> fields_in)
 {
-	int3 nghost = {NGHOST,NGHOST,NGHOST};
-	return Region{region.position-nghost,region.dims+2*nghost,0,fields_in,RegionFamily::Compute_input};
+	int3 nghost3 = {NGHOST,NGHOST,NGHOST};
+	return Region{region.position-nghost3,region.dims+2*nghost3,0,fields_in,RegionFamily::Compute_input};
 }
 
 //test that the compute regions cover what they should cover without overlap
