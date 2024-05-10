@@ -542,15 +542,16 @@ gen_field_accesses(ASTNode* node)
 		return;
 	if(!node->parent->parent->parent)
 		return;
-	char tmp[1000];
+	char* tmp = malloc(sizeof(char)*1000);
 	combine_all(node->parent->parent->parent->parent,tmp);
 	const char* search_str = "][";
 	const char* substr = strstr(tmp,search_str);
 	if(!substr)
 		return;
-	char x_index[1000];
-	char y_index[1000];
-	char z_index[1000];
+
+	char* x_index = malloc(sizeof(char)*1000);
+	char* y_index = malloc(sizeof(char)*1000);
+	char* z_index = malloc(sizeof(char)*1000);
 	bool is_assigned = false;
        	const ASTNode* assign_node = get_parent_node(NODE_ASSIGNMENT,node);
 	if(assign_node)
@@ -569,9 +570,14 @@ gen_field_accesses(ASTNode* node)
 	base->rhs = NULL;
 	base->infix= NULL;
 	base->postfix= NULL;
-	char res[4000];
+	char* res = malloc(sizeof(char)*4000);
 	sprintf(res,"vba.in[%s][IDX(%s,%s,%s)]\n",node->buffer,x_index,y_index,z_index);
 	base->buffer = strdup(res);
+	free(tmp);
+	free(x_index);
+	free(y_index);
+	free(z_index);
+	free(res);
 }
 void
 gen_array_reads(ASTNode* node, bool gen_mem_accesses, const char* datatype_scalar)
@@ -580,49 +586,55 @@ gen_array_reads(ASTNode* node, bool gen_mem_accesses, const char* datatype_scala
     gen_array_reads(node->lhs,gen_mem_accesses,datatype_scalar);
   if(node->rhs)
     gen_array_reads(node->rhs,gen_mem_accesses,datatype_scalar);
-  char datatype[1000];
-  sprintf(datatype,"%s*",datatype_scalar);
   if(!node->buffer)
 	  return;
-  	const int l_current_nest = 0;
-  	for (size_t i = 0; i < num_symbols[l_current_nest]; ++i)
-	{
-    	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-          (!strcmp(symbol_table[i].tspecifier,datatype)) && !strcmp(node->buffer,symbol_table[i].identifier) && node->parent->parent->parent->rhs)
-	  {
-		if(gen_mem_accesses)
-		{
-			char big_array_name[1000];
-			sprintf(big_array_name,"big_%s_array",convert_to_define_name(datatype_scalar));
-			node->buffer = strdup(big_array_name);
-			node->type |= NODE_INPUT;
-			return;
-		}
-		char new_name[4096-19];
-		new_name[0] = '\0';
-		char arrays_name[4096/2];
-		sprintf(arrays_name,"%s_arrays",convert_to_define_name(datatype_scalar));
-      		if(str_vec_contains(symbol_table[i].tqualifiers,"dconst"))
-		{
-			//node->prefix = strdup("DCONST(");
-			//node->parent->parent->parent->postfix = strdup("])");
-			char index_str[4096/2];
-			combine_all(node->parent->parent->parent->rhs,index_str);
-			char res[4096];
-			sprintf(res,"d_%s[%s_offset+(%s)]\n",arrays_name,node->buffer,index_str);
-			ASTNode* base = node->parent->parent->parent->parent;
-			base->buffer = strdup(res);
-			base->lhs=NULL;
-			base->rhs=NULL;
-			base->prefix=NULL;
-			base->postfix=NULL;
-			return;
-		}
-		sprintf(new_name,"__ldg(&vba.%s[(int)%s]",arrays_name,node->buffer);
-		node->parent->parent->parent->postfix = strdup("])");
-		node->buffer = strdup(new_name);
-	  }
-	}
+  char* datatype = malloc(sizeof(char)*(1000));
+  sprintf(datatype,"%s*",datatype_scalar);
+  const int l_current_nest = 0;
+  for (size_t i = 0; i < num_symbols[l_current_nest]; ++i)
+  {
+    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+    (!strcmp(symbol_table[i].tspecifier,datatype)) && !strcmp(node->buffer,symbol_table[i].identifier) && node->parent->parent->parent->rhs)
+    {
+  	if(gen_mem_accesses)
+  	{
+  		char* big_array_name = malloc(sizeof(char)*1000);
+  		sprintf(big_array_name,"big_%s_array",convert_to_define_name(datatype_scalar));
+  		node->buffer = strdup(big_array_name);
+  		node->type |= NODE_INPUT;
+  		free(big_array_name);
+  		return;
+  	}
+  	char* new_name = malloc(sizeof(char)*(4096-19));
+  	new_name[0] = '\0';
+  	char* arrays_name = malloc(sizeof(char)*(4096/2));
+  	sprintf(arrays_name,"%s_arrays",convert_to_define_name(datatype_scalar));
+  	if(str_vec_contains(symbol_table[i].tqualifiers,"dconst"))
+  	{
+  		//node->prefix = strdup("DCONST(");
+  		//node->parent->parent->parent->postfix = strdup("])");
+  		char* index_str = malloc(sizeof(char)*(4096/2));
+  		combine_all(node->parent->parent->parent->rhs,index_str);
+  		char* res = malloc(sizeof(char)*(4096));
+  		sprintf(res,"d_%s[%s_offset+(%s)]\n",arrays_name,node->buffer,index_str);
+  		ASTNode* base = node->parent->parent->parent->parent;
+  		base->buffer = strdup(res);
+  		base->lhs=NULL;
+  		base->rhs=NULL;
+  		base->prefix=NULL;
+  		base->postfix=NULL;
+		free(res);
+		free(index_str);
+  		return;
+  	}
+  	sprintf(new_name,"__ldg(&vba.%s[(int)%s]",arrays_name,node->buffer);
+  	node->parent->parent->parent->postfix = strdup("])");
+  	node->buffer = strdup(new_name);
+  	free(new_name);
+  	free(arrays_name);
+    }
+  }
+  free(datatype);
 }
 bool
 is_enum(const char* type)
@@ -705,9 +717,9 @@ read_user_enums(ASTNode* node)
 {
 	if(node->type & NODE_ENUM_DEF)
 	{
-		char tmp[4096];
+		char* tmp = malloc(sizeof(char)*4096);
 		combine_all(node->rhs,tmp);
-		char enum_def[4096];
+		char* enum_def = malloc(sizeof(char)*4096);
 		sprintf(enum_def, "typedef enum %s{%s} %s;",node->lhs->buffer,tmp,node->lhs->buffer);
 		file_prepend("user_structs.h",enum_def);
 		const int enum_index = push(&user_enums,node->lhs->buffer);
@@ -718,6 +730,8 @@ read_user_enums(ASTNode* node)
 			enums_head = enums_head->lhs;
 		}
 		push(&user_enum_options[enum_index],get_node_by_token(IDENTIFIER,enums_head->lhs)->buffer);
+		free(tmp);
+		free(enum_def);
 	}
 	if(node->buffer && str_vec_contains(user_enums,node->buffer))
 		node->type |= NODE_ENUM;
@@ -749,7 +763,7 @@ read_user_structs(ASTNode* node)
 	{
 		const int struct_index = push(&user_structs,node->lhs->buffer);
 		ASTNode* fields_head = node->rhs;
-                char struct_def[5000];
+		char* struct_def = malloc(sizeof(char)*5000);
 		sprintf(struct_def,"typedef struct %s {",node->lhs->buffer);
 		while(fields_head->rhs)
 		{
@@ -763,6 +777,7 @@ read_user_structs(ASTNode* node)
 		file_prepend("user_structs.h",struct_def);
 		node->lhs=NULL;
 		node->rhs=NULL;
+		free(struct_def);
 	}
 	if(node->lhs)
 		read_user_structs(node->lhs);
@@ -867,23 +882,24 @@ gen_kernel_num_of_combinations(const ASTNode* node)
 	{
 	   const int kernel_index = push(&user_kernels_with_input_params,get_node(NODE_KFUNCTION_ID, node)->buffer);
 	   ASTNode* param_list_head = node->rhs->lhs;
+	   char* type = malloc(sizeof(char)*4096);
+	   char* name = malloc(sizeof(char)*4096);
 	   while(param_list_head->rhs)
 	   {
-	   	char type[4096];
-	   	char name[4096];
+
 	        const ASTNode* type_node = get_node(NODE_TSPEC,param_list_head->rhs);
 	   	combine_buffers(type_node,type);
 	   	combine_buffers(param_list_head->rhs->rhs,name);
 	        add_param_combinations(type,name,kernel_index,"");
 	        param_list_head = param_list_head->lhs;
 	   }
-	   char type[4096];
-	   char name[4096];
 	   const ASTNode* type_node = get_node(NODE_TSPEC,param_list_head->lhs);
 	   combine_buffers(type_node,type);
 	   combine_buffers(param_list_head->lhs->rhs,name);
 	   add_param_combinations(type,name,kernel_index,"");
 	   gen_combinations(kernel_index);
+	   free(type);
+	   free(name);
 	}
 }
 
@@ -1003,10 +1019,11 @@ get_dfuncs_reduce_output(ASTNode* node)
 		get_dfuncs_reduce_output(node->rhs);
 	if(!(node->type & NODE_DFUNCTION))
 		return;
-	char func_name[5000];
+	char* func_name = malloc(sizeof(char)*5000);
 	combine_buffers(node->lhs,func_name);
 	const int dfunc_index = str_vec_get_index(dfuncs,func_name);
 	get_reduce_outputs(node,&dfuncs_reduce_outputs[dfunc_index]);
+	free(func_name);
 }
 void
 get_dfuncs_reduce_condition(ASTNode* node)
@@ -1017,10 +1034,11 @@ get_dfuncs_reduce_condition(ASTNode* node)
 		get_dfuncs_reduce_condition(node->rhs);
 	if(!(node->type & NODE_DFUNCTION))
 		return;
-	char func_name[5000];
+	char* func_name = malloc(sizeof(char)*5000);
 	combine_buffers(node->lhs,func_name);
 	const int dfunc_index = str_vec_get_index(dfuncs,func_name);
 	get_reduce_conditions(node,&dfuncs_reduce_conditions[dfunc_index]);
+	free(func_name);
 }
 void
 get_dfuncs_reduce_op(ASTNode* node)
@@ -1031,14 +1049,16 @@ get_dfuncs_reduce_op(ASTNode* node)
 		get_dfuncs_reduce_op(node->rhs);
 	if(!(node->type & NODE_DFUNCTION))
 		return;
-	char func_name[5000];
+	char* func_name = malloc(sizeof(char)*5000);
 	combine_buffers(node->lhs,func_name);
-	ReduceOp reduce_ops[100];
+	ReduceOp* reduce_ops = malloc(sizeof(ReduceOp)*10);
 	int n = 0;
 	get_reduce_ops(node,reduce_ops,&n);
 	const int dfunc_index = str_vec_get_index(dfuncs,func_name);
 	for(int i = 0; i < n; ++i)
 		push_op(&dfuncs_reduce_ops[dfunc_index], reduce_ops[i]);
+	free(func_name);
+	free(reduce_ops);
 }
 int
 get_kernel_index(const char* kernel_name)
@@ -1072,7 +1092,7 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 	  compound_statement->postfix = strdup(new_postfix);
 	  return;
 	}
-	ReduceOp reduce_ops[100];
+	ReduceOp* reduce_ops = malloc(sizeof(ReduceOp)*100);
 	int n_ops = 0;
 	get_reduce_ops(node,reduce_ops,&n_ops);
 	if(!n_ops)
@@ -1117,9 +1137,10 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 	 	{
 	 	        char* ptr = strtok(condition, "==");
 	 	        char* ptr2 = strtok(NULL, "==");
-	 	        char new_condition[4096];
+			char* new_condition = malloc(sizeof(char)*4096);
 	 	        sprintf(new_condition, "vba.kernel_input_params.%s.%s == %s",fn_identifier->buffer,ptr,ptr2);
 	 	        condition = strdup(new_condition);
+			free(new_condition);
 	 	}
 	 	sprintf(tmp,"if(%s){\n",condition);
 	 	strcat(new_postfix,tmp);
@@ -1185,6 +1206,7 @@ gen_kernel_postfixes(ASTNode* node, const bool gen_mem_accesses)
 	free(tmp);
 	free(res_name);
 	free(output_str);
+	free(reduce_ops);
 }
 void
 gen_kernel_ifs(ASTNode* node)
@@ -1277,22 +1299,23 @@ gen_kernel_input_params(ASTNode* node, bool gen_mem_accesses)
 	remove_suffix(kernel_name,"_optimized_");
 	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,kernel_name);
 
+	char* res = malloc(sizeof(char)*4096);
 	if(combinations_index == -1)
 	{
-	  	char res[4096];
 	  	sprintf(res,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
 	  	node->buffer = strdup(res);
+		free(res);
 		return;
 	}
 	const string_vec combinations = user_kernel_combinations[kernel_index][combinations_index];
-	char res[4096];
-	char full_name[4096];
+	char* full_name = malloc(sizeof(char)*4096);
 	if(node->parent->parent->parent->rhs)
 	{
-		char member_str[4096];
+		char* member_str = malloc(sizeof(char)*4096);
 		member_str[0] = '\0';
 		combine_buffers(node->parent->parent->parent->rhs,member_str);
 		sprintf(full_name,"%s.%s",node->buffer,member_str);
+		free(member_str);
 	}
 	else
 	{
@@ -1317,6 +1340,8 @@ gen_kernel_input_params(ASTNode* node, bool gen_mem_accesses)
 		sprintf(res,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
 		node->buffer = strdup(res);
 	}
+	free(full_name);
+	free(res);
 }
 
 static void
@@ -1364,7 +1389,7 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
     }
     else if (!symbol) {
       char* tspec = NULL;
-      char* tqualifiers[MAX_ID_LEN];
+      char** tqualifiers = malloc(sizeof(char*)*MAX_ID_LEN);
       size_t n_tqualifiers = 0;
 
       const ASTNode* decl = get_parent_node(NODE_DECLARATION, node);
@@ -1442,11 +1467,13 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 	//get array length
         if (tspec != NULL && (!strcmp(tspec,"AcReal*") || !strcmp(tspec,"int*")))
 	{
-		char array_length_str[4096];
+		char* array_length_str = malloc(sizeof(char)*4096);
 		combine_all(decl->rhs->lhs->rhs,array_length_str);
 		symbol_var_length[symbol_index] =  strdup(array_length_str);
+		free(array_length_str);
 	}
       }
+      free(tqualifiers);
     }
   }
 
@@ -1518,6 +1545,7 @@ gen_const_variables(const ASTNode* node, FILE* fp)
 	const bool is_const = !strcmp(tqual->lhs->buffer, "const");
 	if(!is_const) return;
 	const ASTNode* def_list_head = node->rhs;
+	char* assignment_val = malloc(sizeof(char)*4098);
 	while(def_list_head -> rhs)
 	{
 		const ASTNode* def = def_list_head->rhs;
@@ -1525,7 +1553,6 @@ gen_const_variables(const ASTNode* node, FILE* fp)
 		if(!name) return;
         	const ASTNode* assignment = def->rhs;
 		if(!assignment) return;
-		char assignment_val[4098];
 		combine_all(assignment,assignment_val);
 		//char datatype_scalar[1000];
 		const char* datatype = tspec->lhs->buffer;
@@ -1544,7 +1571,6 @@ gen_const_variables(const ASTNode* node, FILE* fp)
 	if(!name) return;
         const ASTNode* assignment = def->rhs;
 	if(!assignment) return;
-	char assignment_val[4098];
 	combine_all(assignment,assignment_val);
 	//char datatype_scalar[1000];
 	const char* datatype = tspec->lhs->buffer;
@@ -1556,6 +1582,7 @@ gen_const_variables(const ASTNode* node, FILE* fp)
 	{
 		fprintf(fp, "\n#ifdef __cplusplus\nconst %s %s = %s;\n#endif\n",datatype, name, assignment_val);
 	}
+	free(assignment_val);
 }
 
 static int curr_kernel = 0;
@@ -1580,7 +1607,8 @@ gen_kernels(const ASTNode* node, const char* dfunctions,
     strcat(prefix, compound_statement->prefix);
 
     // Generate stencil FMADs
-    char cmdoptions[4096] = "\0";
+    char* cmdoptions = malloc(sizeof(char)*4096);
+    cmdoptions[0] = '\0';
     if (gen_mem_accesses) {
       sprintf(cmdoptions, "./" STENCILGEN_EXEC " -mem-accesses");
     }
@@ -1594,7 +1622,7 @@ gen_kernels(const ASTNode* node, const char* dfunctions,
     char* sdefinitions = malloc(10 * 1024 * 1024);
     assert(sdefinitions);
     sdefinitions[0] = '\0';
-    char buf[4096]  = {0};
+    char* buf = malloc(sizeof(char)*4096);
     while (fgets(buf, sizeof(buf), proc))
       strcat(sdefinitions, buf);
 
@@ -1607,6 +1635,7 @@ gen_kernels(const ASTNode* node, const char* dfunctions,
 
     astnode_set_prefix(prefix, compound_statement);
     free(prefix);
+    free(cmdoptions);
   }
 
   if (node->lhs)
@@ -1987,6 +2016,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   }
   gen_kernel_input_params(root,gen_mem_accesses);
   gen_user_defines(root, "user_defines.h");
+  //printf("HI\n");
   gen_field_accesses(root);
   gen_user_kernels(root, "user_declarations.h", gen_mem_accesses);
 
@@ -2000,6 +2030,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   get_dfuncs_reduce_op(root);
 
   gen_kernel_postfixes(root,gen_mem_accesses);
+  printf("HI\n");
   // print_symbol_table();
 
   // Generate user_kernels.h
@@ -2088,6 +2119,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   for (size_t i = 0; i < sizeof(array_datatypes)/sizeof(array_datatypes[0]); ++i)
   	gen_array_reads(root,gen_mem_accesses,array_datatypes[i]);
 
+  printf("Bye\n");
   // Stencils
 
   // Stencil generator
