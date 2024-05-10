@@ -1016,59 +1016,58 @@ operator-(const AcIndex& a, const AcIndex& b)
 }
 
 static __host__ __device__ constexpr AcIndex
-to_spatial(const size_t i, const AcShape& volume)
+to_spatial(const size_t i, const AcShape& shape)
 {
   return (AcIndex){
-      .x = i % volume.x,
-      .y = (i / volume.x) % volume.y,
-      .z = (i / (volume.x * volume.y)) % volume.z,
-      .w = i / (volume.x * volume.y * volume.z),
+      .x = i % shape.x,
+      .y = (i / shape.x) % shape.y,
+      .z = (i / (shape.x * shape.y)) % shape.z,
+      .w = i / (shape.x * shape.y * shape.z),
   };
 }
 
 static __host__ __device__ constexpr size_t
-to_linear(const AcIndex& index, const AcShape& volume)
+to_linear(const AcIndex& index, const AcShape& shape)
 {
-  return index.x +            //
-         index.y * volume.x + //
-         index.z * volume.x * volume.y +
-         index.w * volume.x * volume.y * volume.z;
+  return index.x +           //
+         index.y * shape.x + //
+         index.z * shape.x * shape.y + index.w * shape.x * shape.y * shape.z;
 }
 
 static __global__ void
-reindex(const AcReal* in, const AcIndex in_offset, const AcShape in_volume,
-        AcReal* out, const AcIndex out_offset, const AcShape out_volume,
-        const AcShape block_volume)
+reindex(const AcReal* in, const AcIndex in_offset, const AcShape in_shape,
+        AcReal* out, const AcIndex out_offset, const AcShape out_shape,
+        const AcShape block_shape)
 {
   const size_t i    = (size_t)threadIdx.x + blockIdx.x * blockDim.x;
-  const AcIndex idx = to_spatial(i, block_volume);
+  const AcIndex idx = to_spatial(i, block_shape);
 
   const AcIndex in_pos  = idx + in_offset;
   const AcIndex out_pos = idx + out_offset;
 
-  if (acOutOfBounds(idx, block_volume) || //
-      acOutOfBounds(in_pos, in_volume) || //
-      acOutOfBounds(out_pos, out_volume))
+  if (acOutOfBounds(idx, block_shape) || //
+      acOutOfBounds(in_pos, in_shape) || //
+      acOutOfBounds(out_pos, out_shape))
     return;
 
-  const size_t in_idx  = to_linear(in_pos, in_volume);
-  const size_t out_idx = to_linear(out_pos, out_volume);
+  const size_t in_idx  = to_linear(in_pos, in_shape);
+  const size_t out_idx = to_linear(out_pos, out_shape);
 
   out[out_idx] = in[in_idx];
 }
 
 AcResult
 acReindex(const cudaStream_t stream, //
-          const AcReal* in, const AcIndex in_offset, const AcShape in_volume,
-          AcReal* out, const AcIndex out_offset, const AcShape out_volume,
-          const AcShape block_volume)
+          const AcReal* in, const AcIndex in_offset, const AcShape in_shape,
+          AcReal* out, const AcIndex out_offset, const AcShape out_shape,
+          const AcShape block_shape)
 {
-  const size_t count = acShapeSize(block_volume);
+  const size_t count = acShapeSize(block_shape);
   const size_t tpb   = min(256ul, count);
   const size_t bpg   = (count + tpb - 1) / tpb;
 
-  reindex<<<bpg, tpb, 0, stream>>>(in, in_offset, in_volume, //
-                                   out, out_offset, out_volume, block_volume);
+  reindex<<<bpg, tpb, 0, stream>>>(in, in_offset, in_shape, //
+                                   out, out_offset, out_shape, block_shape);
   ERRCHK_CUDA_KERNEL();
 
   return AC_SUCCESS;
@@ -1093,22 +1092,22 @@ typedef struct {
 
 static __global__ void
 reindex_cross(const CrossProductArrays arrays, const AcIndex in_offset,
-              const AcShape in_volume, const AcIndex out_offset,
-              const AcShape out_volume, const AcShape block_volume)
+              const AcShape in_shape, const AcIndex out_offset,
+              const AcShape out_shape, const AcShape block_shape)
 {
   const size_t i    = (size_t)threadIdx.x + blockIdx.x * blockDim.x;
-  const AcIndex idx = to_spatial(i, block_volume);
+  const AcIndex idx = to_spatial(i, block_shape);
 
   const AcIndex in_pos  = idx + in_offset;
   const AcIndex out_pos = idx + out_offset;
 
-  if (acOutOfBounds(idx, block_volume) || //
-      acOutOfBounds(in_pos, in_volume) || //
-      acOutOfBounds(out_pos, out_volume))
+  if (acOutOfBounds(idx, block_shape) || //
+      acOutOfBounds(in_pos, in_shape) || //
+      acOutOfBounds(out_pos, out_shape))
     return;
 
-  const size_t in_idx  = to_linear(in_pos, in_volume);
-  const size_t out_idx = to_linear(out_pos, out_volume);
+  const size_t in_idx  = to_linear(in_pos, in_shape);
+  const size_t out_idx = to_linear(out_pos, out_shape);
 
   for (size_t j = 0; j < arrays.A_count; ++j) {
     const AcReal3 a = {
@@ -1177,9 +1176,9 @@ map_cross_product(const CrossProductInputs inputs, const AcIndex start,
 AcResult
 acReindexCross(const cudaStream_t stream, //
                const VertexBufferArray vba, const AcIndex in_offset,
-               const AcShape in_volume, //
-               AcReal* out, const AcIndex out_offset, const AcShape out_volume,
-               const AcShape block_volume)
+               const AcShape in_shape, //
+               AcReal* out, const AcIndex out_offset, const AcShape out_shape,
+               const AcShape block_shape)
 {
   const SOAVector uu = {
       .x = vba.in[VTXBUF_UUX],
@@ -1207,7 +1206,7 @@ acReindexCross(const cudaStream_t stream, //
       .z = vba.in[TF_b22_z],
   };
 
-  const size_t block_offset = out_volume.x * out_volume.y * out_volume.z;
+  const size_t block_offset = out_shape.x * out_shape.y * out_shape.z;
   const SOAVector out_bb11  = {
       .x = &out[3 * block_offset],
       .y = &out[4 * block_offset],
@@ -1237,12 +1236,12 @@ acReindexCross(const cudaStream_t stream, //
       .C       = {out_bb11, out_bb12, out_bb21, out_bb22},
   };
 
-  const size_t count = acShapeSize(block_volume);
+  const size_t count = acShapeSize(block_shape);
   const size_t tpb   = min(256ul, count);
   const size_t bpg   = (count + tpb - 1) / tpb;
 
-  reindex_cross<<<bpg, tpb, 0, stream>>>(arrays, in_offset, in_volume,
-                                         out_offset, out_volume, block_volume);
+  reindex_cross<<<bpg, tpb, 0, stream>>>(arrays, in_offset, in_shape,
+                                         out_offset, out_shape, block_shape);
   return AC_SUCCESS;
 }
 

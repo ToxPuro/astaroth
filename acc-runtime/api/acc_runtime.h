@@ -168,15 +168,15 @@ size_t acShapeSize(const AcShape shape);
 
 AcResult acReindex(const cudaStream_t stream, //
                    const AcReal* in, const AcIndex in_offset,
-                   const AcIndex in_volume, //
+                   const AcIndex in_shape, //
                    AcReal* out, const AcIndex out_offset,
-                   const AcIndex out_volume, const AcShape block_volume);
+                   const AcIndex out_shape, const AcShape block_shape);
 
 AcResult acReindexCross(const cudaStream_t stream, //
                         const VertexBufferArray vba, const AcIndex in_offset,
-                        const AcShape in_volume, //
+                        const AcShape in_shape, //
                         AcReal* out, const AcIndex out_offset,
-                        const AcShape out_volume, const AcShape block_volume);
+                        const AcShape out_shape, const AcShape block_shape);
 
 AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
                            const size_t count, const size_t num_segments,
