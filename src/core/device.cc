@@ -1033,6 +1033,7 @@ acBufferMigrate(const AcBuffer in, AcBuffer* out)
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
+#if 0
 void
 acDeviceTest(const Device device)
 {
@@ -1226,9 +1227,73 @@ acDeviceTest(const Device device)
 
     acBufferDestroy(&buffer);
 }
+#endif
 
 AcResult
 acDeviceReduceXYAverages(const Device device, const Stream stream)
 {
+    AcMeshDims dims = acGetMeshDims(device->local_config);
+
+    // Intermediate buffer
+    const size_t num_compute_profiles = 3 + 4 * 3;
+    const AcShape buffer_shape        = {
+        .x = dims.nn.x,
+        .y = dims.nn.y,
+        .z = dims.m1.z,
+        .w = num_compute_profiles,
+    };
+    const size_t buffer_size = acShapeSize(buffer_shape);
+    AcBuffer buffer          = acBufferCreate(buffer_size, true);
+
+    // Indices and shapes
+    const AcIndex in_offset = {
+        .x = dims.n0.x,
+        .y = dims.n0.y,
+        .z = 0,
+        .w = 0,
+    };
+    const AcShape in_shape = {
+        .x = dims.m1.x,
+        .y = dims.m1.y,
+        .z = dims.m1.z,
+        .w = 1,
+    };
+    const AcShape block_shape = {
+        .x = buffer_shape.x,
+        .y = buffer_shape.y,
+        .z = buffer_shape.z,
+        .w = 1,
+    };
+
+    // Reindex
+    VertexBufferHandle reindex_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
+    for (size_t w = 0; w < ARRAY_SIZE(reindex_fields); ++w) {
+        const AcIndex buffer_offset = {
+            .x = 0,
+            .y = 0,
+            .z = 0,
+            .w = w,
+        };
+        acReindex(device->streams[STREAM_DEFAULT],                        //
+                  device->vba.in[reindex_fields[w]], in_offset, in_shape, //
+                  buffer.data, buffer_offset, buffer_shape, block_shape);
+    }
+    // Note no offset here: is applied in acMapCross instead due to how it works with SOA vectors
+    const AcIndex buffer_offset = {
+        .x = 0,
+        .y = 0,
+        .z = 0,
+        .w = 0,
+    };
+    acReindexCross(device->streams[STREAM_DEFAULT],  //
+                   device->vba, in_offset, in_shape, //
+                   buffer.data, buffer_offset, buffer_shape, block_shape);
+
+    // Reduce
+    const size_t num_segments = buffer_shape.z * buffer_shape.w;
+    acSegmentedReduce(device->streams[STREAM_DEFAULT], //
+                      buffer.data, buffer_size, num_segments, device->vba.profiles.in[0]);
+
+    acBufferDestroy(&buffer);
     return AC_FAILURE;
 }

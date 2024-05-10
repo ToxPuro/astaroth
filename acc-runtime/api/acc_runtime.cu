@@ -1174,16 +1174,12 @@ map_cross_product(const CrossProductInputs inputs, const AcIndex start,
 }
 #endif
 
-// AcResult
-// acMapCross(const cudaStream_t stream, const VertexBufferArray vba,
-//            const AcIndex start, const AcIndex end, AcReal* output,
-//            const AcShape out_volume)
 AcResult
-acMapCross(const cudaStream_t stream, //
-           const VertexBufferArray vba, const AcIndex in_offset,
-           const AcShape in_volume, //
-           AcReal* out, const AcIndex out_offset, const AcShape out_volume,
-           const AcShape block_volume)
+acReindexCross(const cudaStream_t stream, //
+               const VertexBufferArray vba, const AcIndex in_offset,
+               const AcShape in_volume, //
+               AcReal* out, const AcIndex out_offset, const AcShape out_volume,
+               const AcShape block_volume)
 {
   const SOAVector uu = {
       .x = vba.in[VTXBUF_UUX],
@@ -1272,7 +1268,7 @@ acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
   ERRCHK_ALWAYS(offsets);
   for (size_t i = 0; i <= num_segments; ++i) {
     offsets[i] = i * (count / num_segments);
-    printf("Offset %zu: %zu\n", i, offsets[i]);
+    // printf("Offset %zu: %zu\n", i, offsets[i]);
   }
 
   size_t* d_offsets = NULL;
@@ -1286,7 +1282,7 @@ acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
   cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
                                   d_out, num_segments, d_offsets,
                                   d_offsets + 1);
-  printf("Temp storage: %zu bytes\n", temp_storage_bytes);
+  // printf("Temp storage: %zu bytes\n", temp_storage_bytes);
   cudaMalloc(&d_temp_storage, temp_storage_bytes);
   ERRCHK_ALWAYS(d_temp_storage);
 
