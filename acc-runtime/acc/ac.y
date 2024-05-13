@@ -772,7 +772,8 @@ type_declaration: /* Empty */                   { $$ = astnode_create(NODE_UNKNO
 assignment: declaration assignment_body { $$ = astnode_create(NODE_ASSIGNMENT, $1, $2); }
           ;
 
-assignment_body: assignment_op expression_list {
+assignment_body: assignment_op expression_list 
+	       {
                     $$ = astnode_create(NODE_UNKNOWN, $1, $2);
 
                     // If more than one expression, it's an array declaration
@@ -782,6 +783,18 @@ assignment_body: assignment_op expression_list {
                         astnode_set_postfix("}", $$);
                     }
                 }
+	       |
+	       assignment_op '{' expression_list '}'
+	       {
+                    $$ = astnode_create(NODE_UNKNOWN, $1, $3);
+
+                    // If more than one expression, it's an array declaration
+                    if ($$->rhs && $$->rhs->rhs) {
+                        astnode_set_prefix("[]", $$);
+                        astnode_set_infix("{", $$);
+                        astnode_set_postfix("}", $$);
+                    }
+               }
                ;
 
 /*
@@ -985,7 +998,7 @@ yyerror(const char* str)
 	getline(&line,&len,yyin_backup);
     fprintf(stderr, "erroneous line: %s", line);
     fprintf(stderr, "in file: %s/%s\n\n",dir_backup,stage4_name_backup);
-    return EXIT_FAILURE;
+    exit(EXIT_FAILURE);
 }
 
 void
