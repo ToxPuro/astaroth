@@ -254,8 +254,8 @@ gen_stencil_accesses()
          "processed_stencils[NUM_FIELDS][NUM_STENCILS];");
 
   for (size_t i = 0; i < NUM_STENCILS; ++i)
-    printf("const auto %s=[&](const auto field)"
-           "{stencils_accessed[field][stencil_%s]=1;return AcReal(1.0);};",
+    printf("const auto %s=[&](const auto field_in)"
+           "{stencils_accessed[field_in][stencil_%s]=1;return AcReal(1.0);};",
            stencil_names[i], stencil_names[i]);
 }
 

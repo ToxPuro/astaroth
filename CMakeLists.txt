@@ -67,9 +67,7 @@ if (USE_HIP)
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.2.3/hip /opt/rocm-5.2.3)
     # Workaround for finding HIP on Dardel
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-5.3.3/hip /opt/rocm-5.3.3)
-    list(APPEND CMAKE_PREFIX_PATH /opt/rocm/roctracer /opt/rocm)
-    include_directories(/opt/rocm/roctracer/include)
-    link_directories(/opt/rocm/roctracer/lib)
+    list(APPEND CMAKE_PREFIX_PATH /opt/rocm)
     # Workaround for finding roctracer on Frontier
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-default/roctracer /opt/rocm-default)
     include_directories(/opt/rocm-default/roctracer/include)
@@ -84,10 +82,11 @@ if (USE_HIP)
     #include_directories(/opt/rocm/roctracer/include)
     #link_directories(/opt/rocm/roctracer/lib)
     #LUMI & Dardel
-    #set(ROC_TRACER_PATH "/opt/rocm-5.2.3/include/roctracer /opt/rocm/include/roctracer")
-    set(ROC_TRACER_PATH "/opt/rocm/include/roctracer")
+    set(ROC_TRACER_PATH "/opt/rocm-5.2.3/include/roctracer")
+    #set(ROC_TRACER_PATH "/opt/rocm/include/roctracer")
     include_directories(${ROC_TRACER_PATH})
     link_directories(${ROC_TRACER_PATH})
+    list(APPEND CMAKE_PREFIX_PATH ${ROC_TRACER_PATH})
 
     # Rocrand
     include_directories(/opt/rocm/hiprand/include)
