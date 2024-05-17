@@ -29,8 +29,8 @@ Field UUX, UUY, UUZ, RHO, SS, AAX, AAY, AAZ
 //Profile_Y AC_PROFILE_GRAVY_YPENCIL
 //Profile_Z AC_PROFILE_GRAVZ_ZPENCIL, AC_PROFILE_Z
 //Profile_Z AC_PROFILE_DLNHCOND_PROF, AC_PROFILE_HCOND_PROF
-real AC_dlnhcond_prof[AC_nz]
-real AC_hcond_prof[AC_nz]
+gmem real AC_dlnhcond_prof[AC_nz]
+gmem real AC_hcond_prof[AC_nz]
 
 
 
@@ -240,7 +240,6 @@ real AC_GM_star
 real AC_unit_mass
 real AC_sq2GM_star
 real AC_cs2_sound
-real AC_test_profile[AC_nz]
 //
 real AC_current_time
 
