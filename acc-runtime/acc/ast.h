@@ -245,6 +245,24 @@ free_str_vec(string_vec* vec)
 	//vec -> data = malloc(sizeof(char*)*vec ->capacity);
 }
 static inline void
+free_int_vec(int_vec* vec)
+{
+	free(vec->data);
+	vec -> size = 0;
+	vec -> capacity = 0;
+	vec -> data = NULL;
+	//vec -> data = malloc(sizeof(char*)*vec ->capacity);
+}
+static inline void
+free_op_vec(op_vec* vec)
+{
+	free(vec->data);
+	vec -> size = 0;
+	vec -> capacity = 0;
+	vec -> data = NULL;
+	//vec -> data = malloc(sizeof(char*)*vec ->capacity);
+}
+static inline void
 init_int_vec(int_vec* vec)
 {
 	free(vec->data);

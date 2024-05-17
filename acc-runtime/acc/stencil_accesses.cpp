@@ -137,6 +137,7 @@ int big_int_array[8*1024*1024]{0};
 static int stencils_accessed[NUM_FIELDS][NUM_STENCILS] = {{0}};
 static int previous_accessed[NUM_FIELDS] = {0};
 static AcMeshInfo d_mesh_info;
+#include "user_dfuncs.h"
 #include "user_kernels.h"
 
 VertexBufferArray

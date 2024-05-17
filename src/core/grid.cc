@@ -3230,11 +3230,11 @@ acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* d
     if (type == ACCESS_WRITE) {
         const int3 nn              = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
         const size_t expected_size = sizeof(AcReal) * nn.x * nn.y * nn.z;
-        FILE* fp                   = fopen(filepath, "r");
-        ERRCHK_ALWAYS(fp);
+        FILE* fp_in                   = fopen(filepath, "r");
+        ERRCHK_ALWAYS(fp_in);
         fseek(fp, 0L, SEEK_END);
-        const size_t measured_size = ftell(fp);
-        fclose(fp);
+        const size_t measured_size = ftell(fp_in);
+        fclose(fp_in);
         if (expected_size != measured_size) {
             fprintf(stderr,
                     "Expected size did not match measured size (%lu vs %lu), factor of %g "

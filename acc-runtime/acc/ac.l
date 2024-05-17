@@ -96,6 +96,7 @@ void strip_whitespace(char *str) {
 "Stencil"               { return STENCIL; }
 
 "Kernel"                { return KERNEL; } /* Type qualifiers */
+"inline"                { return INLINE; } /* Type qualifiers */
 "Sum"                   { return SUM; }
 "Max"                   { return MAX; }
 "communicated"          { return COMMUNICATED; }
@@ -106,7 +107,9 @@ void strip_whitespace(char *str) {
 "auxiliary"             { return AUXILIARY; }
 
 "if"        { return IF; } /* Keywords */
+"if constexpr"        { return IF; } /* Keywords */
 "else if"   { return ELIF; }
+"else if constexpr"   { return ELIF; }
 "else"      { return ELSE; }
 "while"     { return WHILE; }
 "for"       { return FOR; }

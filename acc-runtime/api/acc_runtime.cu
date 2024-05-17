@@ -313,6 +313,7 @@ Field3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
 
 #include "random.cuh"
 
+#include "user_dfuncs.h"
 #include "user_kernels.h"
 
 typedef struct {
