@@ -1114,7 +1114,7 @@ void change(char *str, const char *old, const char *new_str) {
     char *result;
     char *temp = malloc(strlen(str) + 1);
     if (temp == NULL) {
-        free(result);
+        free(temp);
         printf("Memory allocation failed\n");
         return;
     }
@@ -1180,7 +1180,6 @@ static inline int eval_int(const char* str)
 		fprintf(stderr,"Was not able to parse: %s\n",str);
 		fprintf(stderr,"place %d\n",err);
 		fprintf(stderr,"symbol %c\n",str[err]);
-		fprintf(stderr,"strlen: %d\n",strlen(copy));
                 exit(EXIT_FAILURE);
         }
         int res = (int) te_eval(expr);
