@@ -1804,41 +1804,6 @@ acGridReduceVecScal(const Stream stream, const ReductionType rtype,
     return distributedScalarReduction(local_result, rtype, result);
 }
 
-AcResult
-acGridReduceXYAverage(const Stream stream, const Field field, const Profile profile)
-{
-    ERRCHK(grid.initialized);
-    const Device device = grid.device;
-    acGridSynchronizeStream(STREAM_ALL);
-
-    // Strategy:
-    // 1) Reduce the local result to device->vba.profiles.in
-    acDeviceReduceXYAverage(device, stream, field, profile);
-
-    // 2) Create communicator that encompasses the processes that are neighbors in the xy direction
-    int nprocs, pid;
-    MPI_Comm_size(astaroth_comm, &nprocs);
-    MPI_Comm_rank(astaroth_comm, &pid);
-
-    const uint3_64 decomp = decompose(nprocs);
-    const int3 pid3d      = getPid3D(pid, decomp);
-    MPI_Comm xy_neighbors;
-    MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
-
-    // 3) Allreduce
-    MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in[profile], device->vba.profiles.count,
-                  AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
-
-    // 4) Optional: Test
-    // AcReal arr[device->vba.profiles.count];
-    // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
-    //            cudaMemcpyDeviceToHost);
-    // for (size_t i = 0; i < device->vba.profiles.count; ++i)
-    //     printf("%i: %g\n", i, arr[i]);
-
-    return AC_SUCCESS;
-}
-
 /** */
 AcResult
 acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3 start, const int3 end)

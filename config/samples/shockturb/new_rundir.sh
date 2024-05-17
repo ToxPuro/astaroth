@@ -66,13 +66,10 @@ fi
 cd $newdir
 targetdir=`pwd`
 #
-#  go back into source directory and write the name
-#  of the new target directory into file new_to.dir
-#
-cd $olddir
-#
+#  go back into source directory to
 #  copy setup files required into new directory
 #
+cd $olddir
 rsync -avu *.sh $targetdir
 rsync -avu moduleinfo* $targetdir
 cp -vr a2_timeseries.ts $targetdir
