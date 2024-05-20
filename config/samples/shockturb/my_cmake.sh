@@ -30,7 +30,7 @@ sed -i "s/LSHOCK (0)/LSHOCK (1)/" $DIR/mhdsolver.ac
 if  [[ "${HOSTNAME}" =~ *"tiara"* || "${HOSTNAME}" =~ "gp"*[8-11] ]];
 then
      echo "building on Tiara"
-     cmake -DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DBUILD_SAMPLES=OFF  -DMPI_ENABLED=ON -DUSE_HIP=OFF -DUSE_CUDA_AWARE_MPI=OFF -DDSL_MODULE_DIR=$DIR -DCMAKE_CXX_COMPILER=/software/opt/gcc/9.1.0/bin/gcc -DCMAKE_C_COMPILER=/software/opt/gcc/9.1.0/bin/gcc $AC_HOME
+     cmake -DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DBUILD_SAMPLES=OFF  -DMPI_ENABLED=ON -DUSE_HIP=OFF -DUSE_CUDA_AWARE_MPI=OFF -DUSE_POSIX_IO=ON -DDSL_MODULE_DIR=$DIR -DCMAKE_CXX_COMPILER=/software/opt/gcc/9.1.0/bin/gcc -DCMAKE_C_COMPILER=/software/opt/gcc/9.1.0/bin/gcc $AC_HOME
 elif  [[ "${HOSTNAME}" =~ "puhti"*[0-24]* ]];
 then
      echo "building on Puhti"
@@ -41,8 +41,28 @@ then
      cmake -DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DMPI_ENABLED=ON -DUSE_HIP=OFF -DUSE_CUDA_AWARE_MPI=ON -DUSE_POSIX_IO=ON -DDSL_MODULE_DIR=$DIR $AC_HOME
 else
      echo "building on ${HOSTNAME}"
-     cmake -DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DMPI_ENABLED=ON -DUSE_CUDA_AWARE_MPI=ON -DDSL_MODULE_DIR=$DIR $AC_HOME
+     cmake -DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DMPI_ENABLED=ON -DUSE_CUDA_AWARE_MPI=ON -DUSE_POSIX_IO=ON -DDSL_MODULE_DIR=$DIR $AC_HOME
 fi
+
+#MV: Alternative take for consideration (commented out)
+####case $HOSTNAME in 
+####    ( tiara* | gp* ) 
+####        echo "Building on Tiara, ${HOSTNAME}"
+####        cmake -DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DBUILD_SAMPLES=OFF  -DMPI_ENABLED=ON -DUSE_HIP=OFF -DUSE_CUDA_AWARE_MPI=OFF -DUSE_POSIX_IO=ON -DDSL_MODULE_DIR=$DIR -DCMAKE_CXX_COMPILER=/software/opt/gcc/9.1.0/bin/gcc -DCMAKE_C_COMPILER=/software/opt/gcc/9.1.0/bin/gcc $AC_HOME
+####    ;;
+####    ( puhti* )
+####        echo "Building on Puhti, ${HOSTNAME}"
+####        cmake -DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DMPI_ENABLED=ON -DUSE_HIP=OFF -DUSE_CUDA_AWARE_MPI=ON -DUSE_POSIX_IO=ON -DDSL_MODULE_DIR=$DIR $AC_HOME
+####    ;;
+####    ( mahti* ) 
+####        echo "Building on Mahti exact, ${HOSTNAME}"
+####        cmake -DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DMPI_ENABLED=ON -DUSE_HIP=OFF -DUSE_CUDA_AWARE_MPI=ON -DUSE_POSIX_IO=ON -DDSL_MODULE_DIR=$DIR $AC_HOME
+####    ;;
+####    (*)
+####        echo "Building on default, ${HOSTNAME}"
+####        cmake -DOPTIMIZE_MEM_ACCESSES=ON -DDOUBLE_PRECISION=ON -DMPI_ENABLED=ON -DUSE_CUDA_AWARE_MPI=ON -DUSE_POSIX_IO=ON -DDSL_MODULE_DIR=$DIR $AC_HOME
+####    ;;
+####esac
 
 # Standard compilation
 
