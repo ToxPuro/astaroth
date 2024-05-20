@@ -10,7 +10,7 @@
 #SBATCH --output=output%j.log		                # (-o) Path to the standard output and error files relative to the working directory
 #SBATCH --error=output%j.err		                # (-e) Path to the standard error ouput
 #SBATCH --mail-type=ALL 				# Mail events (NONE, BEGIN, END, FAIL, ALL)
-#SBATCH --mail-user=mvaisala@asiaa.sinica.edu.tw 	# Where to send mail.  Set this to your email address
+#SBATCH --mail-user=YOUR_EMAIL_ADDRESS 	# Where to send mail.  Set this to your email address
 
 module purge
 module load cmake/3.23.2 cuda/11.7 gcc9/9.3.1 mpich/4.1.2-mlnx5 
