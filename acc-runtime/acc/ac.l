@@ -91,6 +91,7 @@ void strip_whitespace(char *str) {
 "bool"                  { return BOOL; }
 "Matrix"                { return MATRIX; }
 "Field"                 { return FIELD; }
+"VtxBuffer"                 { return VTXBUFFER; }
 "WorkBuffer"            {return WORK_BUFFER; }
 
 "Stencil"               { return STENCIL; }

@@ -36,8 +36,8 @@
   #include "errchk.h"
 
   //copied from the sample setup
-  #include "user_structs.h"
   #include "user_defines.h"
+  #include "user_structs.h"
 
   #define NUM_REDUCE_SCRATCHPADS (2)
 

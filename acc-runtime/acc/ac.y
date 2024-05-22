@@ -9,6 +9,7 @@
 #include "codegen.h"
 #include <ctype.h>
 #include "tinyexpr.h"
+#include <math.h>
 
 #define YYSTYPE ASTNode*
 
@@ -22,22 +23,17 @@ int yyparse();
 int yyerror(const char* str);
 int yyget_lineno();
 
-static const char* global_func_declaration = "__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n";
-static const char* user_structs_filename = "user_structs.h";
-static const char* user_kernel_ifs       = "user_kernel_ifs.h";
-static char user_kernel_params_struct_str[10000]; 
-static string_vec added_params_to_stencil_accesses;
-static const char* stencil_accesses_params_filename= "user_stencil_accesses_params.h";
-static char stencil_accesses_default_params[10000];
-static int_vec tinyexpr_cache;
-static string_vec tinyexpr_cache_str;
 
 //These are used to generate better error messages in case of errors
 FILE* yyin_backup;
 const char* stage4_name_backup;
 const char* dir_backup;
+
+//These are used to evaluate constant int expressions 
 static string_vec const_ints;
 static string_vec const_int_values;
+static int_vec tinyexpr_cache;
+static string_vec tinyexpr_cache_str;
 
 
 
@@ -46,11 +42,6 @@ cleanup(void)
 {
     if (root)
         astnode_destroy(root); // Frees all children and itself
-}
-void strprepend(char* dst, const char* src)
-{	
-    memmove(dst + strlen(src), dst, strlen(dst)+ 1); // Move existing data including null terminator
-    memcpy(dst, src, strlen(src)); // Copy src to the beginning of dst
 }
 void remove_substring_parser(char *str, const char *sub) {
 	int len = strlen(sub);
@@ -95,52 +86,8 @@ static inline int eval_int(const char* str);
 
 
 
-static inline void
-mark_as_input(ASTNode* node, const char* name, char* type)
-{
-	if(node->lhs)
-		mark_as_input(node->lhs,name,type);
-	if(node->rhs)
-		mark_as_input(node->rhs,name,type);
-	if(node->buffer && !strcmp(node->buffer,name) && !node->lhs)
-	{
-		node->type |= NODE_INPUT;
-		node->lhs = astnode_create(NODE_CODEGEN_INPUT, NULL,NULL);
-		node->lhs->type |= NODE_TSPEC;
-		node->lhs->buffer=strdup(type);
-	}
-	
-}
-void
-process_param(ASTNode* kernel_root, const ASTNode* param, char* struct_params)
-{
-				char* param_type = malloc(4096*sizeof(char));
-                                combine_buffers(param->lhs, param_type);
-				char* param_str = malloc(4096*sizeof(char));
-				param_str[0] = '\0';
-                              	sprintf(param_str,"%s %s;",param_type, param->rhs->buffer);
-				mark_as_input(kernel_root,param->rhs->buffer,param_type);
-				strprepend(struct_params,param_str);
-				if(str_vec_contains(added_params_to_stencil_accesses,param->rhs->buffer))
-					return;
-				push(&added_params_to_stencil_accesses,strdup(param->rhs->buffer));
-				char* default_param = malloc(4096*sizeof(char));
-                                if(!strcmp(param_type,"int"))
-			          sprintf(default_param,"0");
-                                else if(!strcmp(param_type,"AcReal"))
-			          sprintf(default_param,"0.0");
-				//we assume it is a user specified struct
-				else
-			          sprintf(default_param,"{}");
-				char* tmp = malloc(4096*2*sizeof(char));
-				sprintf(tmp," %s %sAC_INTERNAL_INPUT = %s;",param_type,param->rhs->buffer,default_param);
-				strcat(stencil_accesses_default_params,tmp);
-				free(param_type);
-				free(tmp);
-				free(param_str);
-				free(default_param);
 
-}
+
 
 void
 process_includes(const size_t depth, const char* dir, const char* file, FILE* out)
@@ -247,21 +194,17 @@ file_exists(const char* filename)
 
 int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* stage4, const char* dir, const bool gen_mem_accesses, const bool optimize_conditionals)
 {
-    	init_str_vec(&added_params_to_stencil_accesses);
 	init_str_vec(&const_ints);
 	init_str_vec(&const_int_values);
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
         {
-          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", stencil_accesses_params_filename, user_structs_filename, user_kernel_ifs, "user_dfuncs.h"};
+          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", "user_structs.h","user_kernel_ifs.h", "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw"};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
             FILE* fp = fopen(files[i], "w");
             assert(fp);
             fclose(fp);
           }
         }
-	user_kernel_params_struct_str[0] = '\0';
-	sprintf(user_kernel_params_struct_str,"typedef struct acKernelInputParams {\nunion {\n");
-
         // Stage 1: Preprocess includes
         {
           FILE* out = fopen(stage1, "w");
@@ -323,19 +266,9 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         if (error)
             return EXIT_FAILURE;
 
-	strcat(user_kernel_params_struct_str,"};\n} acKernelInputParams;\n");
-
-
-	FILE* fp_structs = fopen(user_structs_filename,"a");
-	fprintf(fp_structs,"\n%s\n",user_kernel_params_struct_str);
-	fclose(fp_structs);
-
-
         // generate(root, stdout);
-        FILE* fp = fopen("user_kernels.h.raw", "w");
+        FILE* fp = fopen("user_kernels.h.raw", "a");
         assert(fp);
-	if(gen_mem_accesses)
-		fprintf(fp,"%s\n",stencil_accesses_default_params);
         generate(root, fp, gen_mem_accesses, optimize_conditionals);
         fclose(fp);
 
@@ -390,7 +323,7 @@ main(int argc, char** argv)
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP
 %token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL WORK_BUFFER COMPLEX BOOL
-%token KERNEL INLINE SUM MAX COMMUNICATED AUXILIARY DCONST_QL CONST_QL GLOBAL_MEMORY_QL OUTPUT
+%token KERNEL INLINE SUM MAX COMMUNICATED AUXILIARY DCONST_QL CONST_QL GLOBAL_MEMORY_QL OUTPUT INPUT VTXBUFFER
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE
 
@@ -447,12 +380,15 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 			combine_all(declaration_list_head->lhs->rhs, num_fields_str);
 			const int num_fields = eval_int(num_fields_str);
 			ASTNode* copy = astnode_dup(declaration_list_head->lhs,declaration_list_head);
-			ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
-			const char* field_name_str = strdup(field_name->buffer);
 			char* index = malloc(100*sizeof(char));
-			sprintf(index,"_%d",num_fields);
+			ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
+                        const char* field_name_str = strdup(field_name->buffer);
+			sprintf(index,"_%d",num_fields-1);
 			strcat(field_name->buffer,index);
-			for(int i=num_fields-1; i>=0;--i)
+			char* array_val     = malloc(4098*sizeof(char));
+			char* array_val_tmp = malloc(4098*sizeof(char));
+			sprintf(array_val,"%s",field_name->buffer);
+			for(int i=num_fields-2; i>=0;--i)
 			{
 				ASTNode* new_head = astnode_create(NODE_UNKNOWN,NULL,NULL);
 				new_head->lhs  = astnode_dup(copy,new_head);
@@ -463,23 +399,67 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 				ASTNode* field_name_inner = declaration_list_head->lhs->lhs->lhs;
 				sprintf(index,"_%d",i);
 				strcat(field_name_inner->buffer,index);
+				sprintf(array_val_tmp,"%s,%s",field_name_inner->buffer,array_val);
+				//swap
+				char* swap_tmp;
+				swap_tmp = array_val;
+				array_val = array_val_tmp;
+				array_val_tmp = swap_tmp;
+				
 			}
 			ASTNode* tmp = $$;
-			char* host_definition = malloc(1000*sizeof(char));
-			sprintf(host_definition,"hostdefine N%s_ROWS (%d)",field_name_str,num_fields);
-			ASTNode* hostdefine =astnode_hostdefine(host_definition,HOSTDEFINE);
-			tmp = astnode_create(NODE_UNKNOWN,tmp,hostdefine);
-			sprintf(host_definition,"hostdefine N%s_COLS (%d)",field_name_str,1);
-			hostdefine =astnode_hostdefine(host_definition,HOSTDEFINE);
-			tmp = astnode_create(NODE_UNKNOWN,tmp,hostdefine);
-			ASTNode* field_size_node = astnode_create(NODE_UNKNOWN, NULL, NULL);
-			field_size_node->buffer = strdup(itoa(num_fields));
-			ASTNode* input_to_codegen = astnode_create(NODE_CODEGEN_INPUT,field_size_node,NULL);
-			input_to_codegen->buffer = strdup(field_name_str);
-			$$ = astnode_create(NODE_UNKNOWN,tmp,input_to_codegen);
+
+			ASTNode* tqual_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
+			tqual_identifier -> buffer = strdup("const");
+			tqual_identifier -> token = IDENTIFIER;
+			ASTNode* type_qualifier  = astnode_create(NODE_TQUAL,tqual_identifier,NULL);
+			ASTNode* type_qualifiers = astnode_create(NODE_UNKNOWN,type_qualifier,NULL);
+
+			ASTNode* tspec_identifier  = astnode_create(NODE_UNKNOWN,NULL,NULL);
+			tspec_identifier -> buffer = strdup("VertexBufferHandle*");
+			tspec_identifier -> token = IDENTIFIER;
+			ASTNode* tspec  = astnode_create(NODE_TSPEC,tspec_identifier,NULL);
+			ASTNode* type_declaration = astnode_create(NODE_UNKNOWN,tspec,type_qualifiers);
+
+			ASTNode* var_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
+			var_identifier->buffer = malloc(sizeof(char)*4098);
+			snprintf(var_identifier->buffer,4098,"%s",field_name_str);
+			var_identifier->token = IDENTIFIER;
+			var_identifier->type = NODE_VARIABLE_ID;
+			
+
+			ASTNode* expression_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
+			expression_identifier->buffer = strdup(array_val);
+			expression_identifier->token = IDENTIFIER;
+			ASTNode* expression = astnode_create(NODE_UNKNOWN,expression_identifier,NULL);
+			ASTNode* assign_expression = astnode_create(NODE_UNKNOWN,expression,NULL);
+
+			ASTNode* assign_leaf = astnode_create(NODE_ASSIGNMENT, var_identifier,assign_expression);
+
+			ASTNode* assignment_list = astnode_create(NODE_UNKNOWN, assign_leaf,NULL);
+
+			ASTNode* var_definitions = astnode_create(NODE_ASSIGN_LIST,type_declaration,assignment_list);
+			var_definitions -> type |= NODE_NO_OUT;
+			var_definitions -> type |= NODE_DECLARATION;
+			var_definitions->postfix = strdup(";");
+
+			//ASTNode* new_declaration_postfix_expression = astnode_create(NODE_UNKNOWN,var_identifier,NULL);
+			//ASTNode* new_declaration_list = astnode_create(NODE_UNKNOWN, new_declaration_postfix_expression,NULL);
+			//ASTNode* new_declaration = astnode_create(NODE_DECLARATION,type_declaration,new_declaration_list);
+			//ASTNode* assignment_op = astnode_create(NODE_UNKNOWN,NULL,NULL);
+			//assignment_op -> buffer = strdup("=");
+			//ASTNode* expression_list = astnode_create(NODE_UNKNOWN,expression,NULL);
+			//ASTNode* assign_body = astnode_create(NODE_UNKNOWN, assignment_op, expression_list);
+			//ASTNode* assign = astnode_create(NODE_ASSIGNMENT,new_declaration,assign_body);
+			//assign -> type |= NODE_NO_OUT;
+			//new_declaration -> type |= NODE_NO_OUT;
+			//$$ = astnode_create(NODE_UNKNOWN,tmp,new_declaration);
+			$$ = astnode_create(NODE_UNKNOWN,tmp,var_definitions);
+			tmp = $$;
 			free(num_fields_str);
-			free(host_definition);
 			free(index);
+			free(array_val);
+			free(array_val_tmp);
 		}
             } 
             else if(get_node_by_token(WORK_BUFFER, variable_definition)) {
@@ -592,6 +572,7 @@ communicated: COMMUNICATED { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astn
 dconst_ql: DCONST_QL   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 const_ql: CONST_QL     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 output: OUTPUT         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+input:  INPUT          { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 global_ql: GLOBAL_MEMORY_QL{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 auxiliary: AUXILIARY   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int: INT               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -606,7 +587,8 @@ field: FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 work_buffer: WORK_BUFFER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 stencil: STENCIL       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("", $$); /*astnode_set_buffer(yytext, $$);*/ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 return: RETURN         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$);};
-kernel: KERNEL         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(global_func_declaration, $$); $$->token = 255 + yytoken; };
+kernel: KERNEL         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("__global__ void \n#if MAX_THREADS_PER_BLOCK\n__launch_bounds__(MAX_THREADS_PER_BLOCK)\n#endif\n", $$); $$->token = 255 + yytoken; };
+vtxbuffer: VTXBUFFER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("VertexBufferHandle", $$); $$->token = 255 + yytoken; };
 inline: INLINE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("inline", $$); $$->token = 255 + yytoken; };
 sum: SUM               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("sum", $$); $$->token = 255 + yytoken; };
 max: MAX               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("max", $$); $$->token = 255 + yytoken; };
@@ -661,6 +643,7 @@ type_specifier: int     { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | stencil     { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | struct_type { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | enum_type { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | vtxbuffer    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               ;
 
 type_qualifier: kernel       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
@@ -671,6 +654,7 @@ type_qualifier: kernel       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | const_ql     { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | global_ql    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | output       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | input        { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | auxiliary    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | inline       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               ;
@@ -753,10 +737,22 @@ variable_definition: declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); 
                    | assignment  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
                    ;
 variable_definitions: declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
-                   |  type_declaration assignment_list  { $$ = astnode_create(NODE_ASSIGN_LIST, $1, $2); $$->type |= NODE_DECLARATION; astnode_set_postfix(";", $$); }
+                   |  type_declaration assignment_list  
+				{ 
+				  $$ = astnode_create(NODE_ASSIGN_LIST, $1, $2); $$->type |= NODE_DECLARATION; astnode_set_postfix(";", $$); 
+				  //if list assignment make the type a pointer type
+				  ASTNode* assignment = get_node(NODE_ASSIGNMENT, $2);
+				  if(assignment->rhs->lhs->rhs)
+				  {
+					ASTNode* tspec = get_node(NODE_TSPEC,$1);
+					strcat(tspec->lhs->buffer,"*");
+				  }
+				}
                    ;
 
-assignment_list_leaf: identifier assignment_op assign_expression {$$ = astnode_create(NODE_ASSIGNMENT,$1,$3);}
+assignment_list_leaf: identifier assignment_op assign_expression {
+		    							$$ = astnode_create(NODE_ASSIGNMENT,$1,$3);
+								 }
 		    ;
 assignment_list: assignment_list ',' assignment_list_leaf {$$ = astnode_create(NODE_UNKNOWN,$1,$3);}
 	       | assignment_list_leaf {$$ = astnode_create(NODE_UNKNOWN,$1,NULL);}
@@ -895,48 +891,14 @@ function_definition: declaration function_body {
                         set_identifier_type(NODE_FUNCTION_ID, fn_identifier);
 
                         const ASTNode* is_kernel = get_node_by_token(KERNEL, $$);
-			char* struct_params = malloc(4096*sizeof(char));
-			struct_params[0] = '\0';
                         ASTNode* compound_statement = $$->rhs->rhs;
                         if (is_kernel) {
                             $$->type |= NODE_KFUNCTION;
                             set_identifier_type(NODE_KFUNCTION_ID, fn_identifier);
 
-                            // Kernel function parameters
-                            //if has parameter list
-                            if ($$->rhs->lhs)
-                            {
-                              ASTNode* param_list_head = $$->rhs->lhs;
-                              param_list_head->type |= NODE_CODEGEN_INPUT;
-                              param_list_head->type |= NODE_INPUT;
-                              while(param_list_head->rhs)
-                              {
-				process_param(compound_statement,param_list_head->rhs,struct_params);
-                                param_list_head = param_list_head->lhs;
-                              }
-
-			      process_param(compound_statement,param_list_head->lhs,struct_params);
-			      //Done since we don't want to codegen the param list in
-                            }
-			      
                             // Set kernel built-in variables
                             const char* default_param_list=  "(const int3 start, const int3 end, VertexBufferArray vba";
                             astnode_set_prefix(default_param_list, $$->rhs);
-
-				
-			    char* kernel_params_struct = malloc(4096*sizeof(char));
-			    sprintf(kernel_params_struct,"typedef struct %sInputParams {%s} %sInputParams;\n",fn_identifier->buffer,struct_params,fn_identifier->buffer);
-
-			    FILE* fp_structs= fopen(user_structs_filename,"a");
-			    fprintf(fp_structs,"%s\n",kernel_params_struct);
-			    fclose(fp_structs);
-			    free(struct_params);
-			    free(kernel_params_struct);
-
-			    char* tmp = malloc(4096*sizeof(char));
-			    sprintf(tmp,"%sInputParams %s;\n", fn_identifier->buffer,fn_identifier->buffer);
-			    strcat(user_kernel_params_struct_str,tmp);
-			    free(tmp);
 
                             assert(compound_statement);
                             astnode_set_prefix("{", compound_statement);
@@ -1033,6 +995,7 @@ set_identifier_type(const NodeType type, ASTNode* curr)
     if (curr->lhs)
         set_identifier_type(type, curr->lhs);
 }
+
 
 void
 set_identifier_prefix(const char* prefix, ASTNode* curr)
@@ -1182,7 +1145,7 @@ static inline int eval_int(const char* str)
 		fprintf(stderr,"symbol %c\n",str[err]);
                 exit(EXIT_FAILURE);
         }
-        int res = (int) te_eval(expr);
+        int res = (int) round(te_eval(expr));
         te_free(expr);
 	free(copy);
 	free(vals);

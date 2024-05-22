@@ -355,10 +355,10 @@ acGridInit(AcMeshInfo info)
     };
     AcTaskDefinition default_ops[] = {
 	    acHaloExchange(all_fields),
-                                      acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
-                                                          all_fields),
-				      acComputeWithParams(KERNEL_twopass_solve_intermediate, all_fields,intermediate_loader),
-				      acComputeWithParams(KERNEL_twopass_solve_final, all_fields,final_loader)
+            acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
+                                all_fields),
+	    acComputeWithParams(KERNEL_twopass_solve_intermediate, all_fields,intermediate_loader),
+	    acComputeWithParams(KERNEL_twopass_solve_final, all_fields,final_loader)
     };
 #endif
 

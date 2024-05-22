@@ -52,15 +52,19 @@ typedef enum {
   NODE_HOSTDEFINE     = (1 << 18),
   NODE_ASSIGNMENT     = (1 << 19),
   NODE_INPUT          = (1 << 20),
-  NODE_CODEGEN_INPUT  = (1 << 21),
-  NODE_ENUM_DEF       = (1 << 22),
+  NODE_DEF            = (1 << 21),
+  NODE_STRUCT         = (1 << 22),
   NODE_ENUM           = (1 << 23),
   NODE_SELECTION_STATEMENT = (1 << 24),
-  NODE_STRUCT_DEF     = (1 << 25),
-  NODE_IF             = (1 << 26),
-  NODE_FUNCTION_CALL  = (1 << 27),
-  NODE_DFUNCTION_ID   = (1 << 28),
-  NODE_ASSIGN_LIST       = (1 << 29),
+  NODE_IF             = (1 << 25),
+  NODE_FUNCTION_CALL  = (1 << 26),
+  NODE_DFUNCTION_ID   = (1 << 27),
+  NODE_ASSIGN_LIST    = (1 << 28),
+  NODE_NO_AUTO        = (1 << 29),
+  NODE_NO_OUT         = (1 << 30),
+  NODE_ENUM_DEF       = NODE_DEF + NODE_ENUM + NODE_NO_OUT,
+  NODE_STRUCT_DEF     = NODE_DEF + NODE_STRUCT + NODE_NO_OUT,
+  NODE_ANY            = ~0,
 } NodeType;
 
 typedef struct astnode_s {
@@ -229,7 +233,6 @@ init_str_vec(string_vec* vec)
 {
 	//for(size_t i = 0; i < vec->size; ++i)
 	//	free(vec->data[i]);
-	free(vec->data);
 	vec -> size = 0;
 	vec -> capacity = 1;
 	vec -> data = malloc(sizeof(char*)*vec ->capacity);
@@ -260,12 +263,12 @@ free_op_vec(op_vec* vec)
 	vec -> size = 0;
 	vec -> capacity = 0;
 	vec -> data = NULL;
+	vec = NULL;
 	//vec -> data = malloc(sizeof(char*)*vec ->capacity);
 }
 static inline void
 init_int_vec(int_vec* vec)
 {
-	free(vec->data);
 	vec -> size = 0;
 	vec -> capacity = 1;
 	vec -> data = malloc(sizeof(int)*vec ->capacity);
@@ -273,7 +276,6 @@ init_int_vec(int_vec* vec)
 static inline void
 init_op_vec(op_vec* vec)
 {
-	free(vec->data);
 	vec -> size = 0;
 	vec -> capacity = 1;
 	vec -> data = malloc(sizeof(ReduceOp)*vec ->capacity);
@@ -350,7 +352,7 @@ push_op(op_vec* dst, ReduceOp src)
 }
 
 static inline  void combine_buffers_recursive(const ASTNode* node, char* res){
-  if(node->buffer && !(node->type & NODE_CODEGEN_INPUT))
+  if(node->buffer)
     strcat(res,node->buffer);
   if(node->lhs)
     combine_buffers_recursive(node->lhs, res);
@@ -395,32 +397,46 @@ get_node_by_token(const int token, const ASTNode* node)
     return NULL;
 }
 static inline ASTNode*
-get_node_by_buffer(const char* test, ASTNode* node)
+get_node_by_buffer(const char* test, const ASTNode* node)
 {
   assert(node);
 
+  ASTNode* res = NULL;
   if (node->buffer && !strcmp(test,node->buffer))
-    return node;
-  else if (node->lhs && get_node_by_buffer(test, node->lhs))
-    return get_node_by_buffer(test, node->lhs);
-  else if (node->rhs && get_node_by_buffer(test, node->rhs))
-    return get_node_by_buffer(test, node->rhs);
-  else
-    return NULL;
+    res = (ASTNode*) node;
+  if (node->lhs && !res)
+    res = get_node_by_buffer(test, node->lhs);
+  if (node->rhs && !res)
+    res = get_node_by_buffer(test, node->rhs);
+  return res;
 }
 static inline ASTNode*
-get_node_by_id(const int id, ASTNode* node)
+get_node_by_buffer_and_type(const char* test, const NodeType type, const ASTNode* node)
 {
   assert(node);
 
+  ASTNode* res = NULL;
+  if (node->buffer && !strcmp(test,node->buffer) && node->type & type)
+    res =  (ASTNode*) node;
+  if (node->lhs && !res)
+    res = get_node_by_buffer_and_type(test, type, node->lhs);
+  if (node->rhs && !res)
+    res = get_node_by_buffer_and_type(test, type, node->rhs);
+  return res;
+}
+static inline ASTNode*
+get_node_by_id(const int id, const ASTNode* node)
+{
+  assert(node);
+
+  ASTNode* res = NULL;
   if (node->id == id)
-    return node;
-  else if (node->lhs && get_node_by_id(id, node->lhs))
-    return get_node_by_id(id, node->lhs);
-  else if (node->rhs && get_node_by_id(id, node->rhs))
-    return get_node_by_id(id, node->rhs);
-  else
-    return NULL;
+    res = (ASTNode*) node;
+  if (node->lhs && !res)
+    res = get_node_by_id(id, node->lhs);
+  if (node->rhs && !res)
+    res = get_node_by_id(id, node->rhs);
+  return res;
 }
 static const inline ASTNode*
 get_parent_node(const NodeType type, const ASTNode* node)
@@ -480,4 +496,66 @@ set_buffers_empty(ASTNode* node)
 		set_buffers_empty(node->lhs);
 	if(node->rhs)
 		set_buffers_empty(node->rhs);
+}
+static inline void
+add_node_type(const NodeType type, ASTNode* node, const char* str_to_check)
+{
+	if(node->lhs)
+		add_node_type(type,node->lhs,str_to_check);
+	if(node->rhs)
+		add_node_type(type,node->rhs,str_to_check);
+	if(!str_to_check || (node->buffer && !strcmp(node->buffer,str_to_check)))
+		node->type |= type;
+}
+static inline void strprepend(char* dst, const char* src)
+{	
+    memmove(dst + strlen(src), dst, strlen(dst)+ 1); // Move existing data including null terminator
+    memcpy(dst, src, strlen(src)); // Copy src to the beginning of dst
+}
+static inline char* readFile(const char *filename) {
+    FILE *file = fopen(filename, "rb"); // Open the file in binary mode
+
+    if (file == NULL) {
+        perror("Error opening file");
+        return NULL;
+    }
+
+    // Determine the size of the file
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    rewind(file);
+
+    // Allocate memory for the string
+    char *buffer = (char *)malloc(file_size + 1); // Plus one for the null terminator
+    if (buffer == NULL) {
+        perror("Memory allocation failed");
+        fclose(file);
+        return NULL;
+    }
+
+    // Read the entire contents of the file into the allocated memory
+    size_t bytes_read = fread(buffer, 1, file_size, file);
+    if ((long) bytes_read != file_size) {
+        perror("Error reading file");
+        free(buffer);
+        fclose(file);
+        return NULL;
+    }
+
+    // Null-terminate the string
+    buffer[file_size] = '\0';
+
+    // Close the file
+    fclose(file);
+
+    return buffer;
+}
+static inline void
+file_prepend(const char* filename, const char* str_to_prepend)
+{
+	const char* file_tmp = readFile(filename);
+	FILE* fp = fopen(filename,"w");
+	fprintf(fp,"%s%s",str_to_prepend,file_tmp);
+	fclose(fp);
+	free((void*)file_tmp);
 }

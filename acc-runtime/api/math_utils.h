@@ -584,7 +584,7 @@ typedef struct AcMatrix {
 } AcMatrix;
 
 static HOST_DEVICE AcMatrix
-operator*(const AcReal v, const AcMatrix& m)
+operator*(const AcReal& v, const AcMatrix& m)
 {
   AcMatrix out;
 
@@ -602,6 +602,58 @@ operator*(const AcReal v, const AcMatrix& m)
 
   return out;
 }
+
+#define GEN_STD_ARRAY_OPERATOR(OPERATOR)  \
+template <typename T, std::size_t N, typename F> \
+static constexpr HOST_DEVICE void \
+operator OPERATOR##=(std::array<T, N>& lhs, const F& rhs) {\
+    for (std::size_t i = 0; i < N; ++i) {\
+        lhs[i] OPERATOR##= rhs;\
+    }\
+}\
+template <typename T, std::size_t N, typename F> \
+static constexpr HOST_DEVICE std::array<T, N>  \
+operator OPERATOR (const std::array<T, N>& lhs, const F& rhs) {\
+    std::array<T, N> result = {}; \
+    for (std::size_t i = 0; i < N; ++i) {\
+        result[i] = lhs[i] OPERATOR rhs;\
+    }\
+    return result; \
+}\
+template <typename T, std::size_t N> \
+static constexpr HOST_DEVICE std::array<T, N>  \
+operator OPERATOR (const std::array<T, N>& lhs, const std::array<T, N>& rhs) {\
+    std::array<T, N> result = {}; \
+    for (std::size_t i = 0; i < N; ++i) {\
+        result[i] = lhs[i] OPERATOR rhs[i];\
+    }\
+    return result; \
+}\
+
+
+
+GEN_STD_ARRAY_OPERATOR(*)
+GEN_STD_ARRAY_OPERATOR(/)
+GEN_STD_ARRAY_OPERATOR(+)
+GEN_STD_ARRAY_OPERATOR(-)
+
+template <typename T, std::size_t N>
+static HOST_DEVICE std::array<T, N>  
+operator -(const std::array<T, N>& lhs) {
+    std::array<T, N> result; 
+    for (std::size_t i = 0; i < N; ++i) {
+        result[i] = -lhs[i];
+    }
+    return result;
+}
+
+template <typename T, std::size_t N>
+static HOST_DEVICE std::array<T, N>  
+operator +(const std::array<T, N>& lhs) {
+    std::array<T, N> result = lhs; 
+    return result;
+}
+
 
 static HOST_DEVICE AcMatrix
 operator-(const AcMatrix& A, const AcMatrix& B)

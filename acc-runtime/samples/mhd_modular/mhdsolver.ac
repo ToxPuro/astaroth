@@ -30,7 +30,7 @@ const int AC_first = 2
 const int AC_second = 2
 const bool AC_first_bool = false, AC_second_bool = true
 const bool AC_first_bool_arr = {false,false}, AC_third_bool= true
-const int NGHOST_INT = 3
+#define NGHOST (3)
 
 int AC_step_number
 real AC_dt
@@ -52,6 +52,7 @@ hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
+hostdefine LTEST (0)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
 
@@ -73,12 +74,6 @@ Field VTXBUF_ENTROPY
 const int AC_const_int = 2
 const int AC_const_int_2nd = 4
 //const int nghost = 3
-real AC_test_array[AC_const_int+1*2]
-real AC_test_array_2[AC_const_int-1*2]
-Field Chemistry_x[(AC_const_int-1)*3 + AC_const_int_2nd]
-Field Chemistry_y[(AC_const_int-1)*3 + AC_const_int_2nd]
-Field Chemistry_z[(AC_const_int-1)*3 + AC_const_int_2nd]
-#define Chemistry Field3(Chemistry_x, Chemistry_y,Chemistry_z)
 //Field CHEMISTRY_FIELDS[5]
 
 #if LBFIELD
@@ -222,6 +217,14 @@ real AC_cs2_sound
 real AC_current_time
 
 output real timestep_out;
+output real timestep_out1;
+output real timestep_out2;
+const int test_arr_size = 6;
+#if LTEST
+real AC_test_arr[test_arr_size];
+real AC_test_arr_2[(2-1)*2+1];
+int AC_test_int_arr[test_arr_size/2];
+#endif
 
 
 
@@ -773,6 +776,11 @@ rk3(s0, s1, roc, step_num, dt) {
     */
 }
 
+reduce_test(step_num)
+{
+    reduce_sum(step_num == 0, 2.0, timestep_out)
+}
+
 
 Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums, bool bool_param) {
     if enums.heatcond == NOTHING 
@@ -792,7 +800,6 @@ Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums, 
 #if LENTROPY 
     write(VTXBUF_ENTROPY, rk3(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy(), step_num, time_params.dt))
 #endif 
-
     mom = momentum()
 
 #if LFORCING
@@ -833,6 +840,9 @@ Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums, 
     // Required for buffers to match correctly. 
     write(VTXBUF_SHOCK, value(VTXBUF_SHOCK))
 #endif
+    reduce_min(step_num == 0, 2.0, timestep_out1)
+    reduce_test(step_num)
+    reduce_max(step_num == 0, 2.0, timestep_out2)
 }
 
 inline rk3_intermediate(w, roc, step_num,dt) {
@@ -854,6 +864,15 @@ inline rk3_intermediate(w, roc, step_num,dt) {
         return roc * dt
     }
     */
+}
+inline array_val(field_array, size)
+{
+	real res[size]
+	for i in 0:size
+	{
+		res[i] = value(field_array[i])
+	}
+	return res
 }
 
 rk3_final(f, w, step_num) {
@@ -1010,6 +1029,17 @@ Kernel randomize() {
     }
 }
 
+#if LTEST
+Kernel test_dconst_arr()
+{
+	write(VTXBUF_UUX,AC_test_int_arr[0]*(AC_test_arr[0] + AC_test_arr[3] + AC_test_arr_2[0]));
+	write(VTXBUF_UUY,AC_test_int_arr[1]*(AC_test_arr[1] + AC_test_arr[4] + AC_test_arr_2[1]));
+	write(VTXBUF_UUZ,AC_test_int_arr[2]*(AC_test_arr[2] + AC_test_arr[5] + AC_test_arr_2[2]));
+
+}
+#endif
+
+
 Kernel haatouken() {
     // Parameters
     // Shock punch the air in front of you.
@@ -1056,21 +1086,115 @@ Kernel haatouken() {
     write(VTXBUF_UUX, uu.x)
     write(VTXBUF_UUY, uu.y)
     write(VTXBUF_UUZ, uu.z)
-    chemistry_val = vecvalue(Chemistry[0])
-    const_val = AC_const_int*AC_const_real
-    const_sum = AC_const_ints[0]*AC_const_reals[0] + AC_const_ints[1]*AC_const_reals[1]
-    int3 local_idx = int3(1,2,3)
-    VTXBUF_UUX[local_idx.x*2+1][local_idx.y][local_idx.z*2+1] = VTXBUF_UUX[local_idx.x*2+1][local_idx.y][local_idx.z*2+1] +VTXBUF_UUX[local_idx.x*2+1][local_idx.y][local_idx.z*2+1]
-    const int x = 2
-    int y
-    if constexpr(x > 1)
+}
+get_d_from_normal(normal)
+{
+    real d_out
+    if normal.x != 0.0
     {
-	y = x
-    } else if constexpr(x < 1)
-    {
-	y = -x
+	d_out = AC_dsx
     }
-    for i in 0:NGHOST_INT{
-	y += i
+    if normal.y != 0.0
+    {
+	d_out = AC_dsy
+    }
+    if normal.z != 0.0
+    {
+	d_out = AC_dsz
+    }
+    return d_out
+}
+get_uudir(boundary_in, int3 normal_in, VtxBuffer vtxbuf)
+{
+    real uudir_out
+    if normal_in.x != 0
+    {
+        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.x
+    }
+    if(normal_in.y != 0)
+    {
+        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.y
+    }
+    if(normal_in.z != 0)
+    {
+        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.z
+    }
+    return uudir_out
+}
+
+get_boundary_from_normal(normal_in)
+{
+    int3 boundary_out
+    if normal_in.x == 1
+    {
+	boundary_out.x = NGHOST + AC_nx -1
+    }
+    if normal_in.x == 0
+    {
+	boundary_out.x = vertexIdx.x
+    }
+    if normal_in.x == -1
+    {
+	boundary_out.x = NGHOST
+    }
+
+
+    if normal_in.y == 1
+    {
+	boundary_out.y = NGHOST + AC_ny -1
+    }
+    if normal_in.y == 0
+    {
+	boundary_out.y = vertexIdx.y
+    }
+    if normal_in.y == -1
+    {
+	boundary_out.y = NGHOST
+    }
+
+
+    if normal_in.z == 1
+    {
+	boundary_out.z = NGHOST + AC_nz -1
+    }
+    if normal_in.z == 0
+    {
+	boundary_out.z = vertexIdx.z
+    }
+    if normal_in.z == -1
+    {
+	boundary_out.z = NGHOST
+    }
+    return boundary_out
+}
+Kernel prescribed_derivative_boundcond(int3 normal, VtxBuffer vtxbuf, real der_val)
+{
+    d = get_d_from_normal(normal)
+    real direction
+    if(normal.x != 0)
+    {
+        direction = normal.x
+    }
+    if(normal.y != 0)
+    {
+	direction = normal.y
+    }
+    if(normal.z != 0)
+    {
+	direction = normal.z
+    }
+    int3 boundary = get_boundary_from_normal(normal)
+    int3 ghost  = boundary
+    int3 domain = boundary
+    for  i  in 0:NGHOST {
+        domain = domain - normal
+        ghost  = ghost + normal
+	distance = 2 * (i + 1)*d
+	if direction < 0.0
+	{
+		distance = -distance
+	}
+	vtxbuf[ghost.x][ghost.y][ghost.z] = vtxbuf[domain.x][domain.y][domain.z] + distance*der_val
     }
 }
+

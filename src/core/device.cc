@@ -167,24 +167,24 @@ acDeviceStoreInt3Uniform(const Device device, const Stream stream, const AcInt3P
 AcResult
 acDeviceUpdate(Device device, const AcMeshInfo config)
 {
-	acDeviceLoadMeshInfo(device,config);
-	acVBAUpdate(&(device->vba),config);
-        for (int array=0;array<NUM_REAL_ARRAYS;++array)
-        {
-          //in case the user loaded a nullptr to the profile do not load it
-          if (config.real_arrays[array] != nullptr)
-            acDeviceLoadRealArray(device,STREAM_DEFAULT,config,static_cast<AcRealArrayParam>(array));
-          acDeviceSynchronizeStream(device,STREAM_ALL);
-        }
+    acDeviceLoadMeshInfo(device,config);
+    acVBAUpdate(&(device->vba),config);
+    for (int array=0;array<NUM_REAL_ARRAYS;++array)
+    {
+      //in case the user loaded a nullptr to the profile do not load it
+      if (config.real_arrays[array] != nullptr)
+        acDeviceLoadRealArray(device,STREAM_DEFAULT,config,static_cast<AcRealArrayParam>(array));
+      acDeviceSynchronizeStream(device,STREAM_ALL);
+    }
 
-        for (int array=0;array<NUM_INT_ARRAYS;++array)
-        {
-          //in case the user loaded a nullptr to the profile do not load it
-          if (config.int_arrays[array] != nullptr)
-            acDeviceLoadIntArray(device,STREAM_DEFAULT,config,static_cast<AcIntArrayParam>(array));
-          acDeviceSynchronizeStream(device,STREAM_ALL);
-        }
-	return AC_SUCCESS;
+    for (int array=0;array<NUM_INT_ARRAYS;++array)
+    {
+      //in case the user loaded a nullptr to the profile do not load it
+      if (config.int_arrays[array] != nullptr)
+        acDeviceLoadIntArray(device,STREAM_DEFAULT,config,static_cast<AcIntArrayParam>(array));
+      acDeviceSynchronizeStream(device,STREAM_ALL);
+    }
+    return AC_SUCCESS;
 }
 
 AcResult
@@ -523,6 +523,21 @@ acDeviceLoadRealArrayWithOffset(const Device device, const Stream stream, const 
 }
 
 AcResult
+acDeviceLoadRealArray(const Device device, const Stream stream, const AcMeshInfo host_info,
+                         const AcRealArrayParam array)
+{
+    if constexpr (NUM_REAL_ARRAYS == 0)
+	    return AC_FAILURE;
+    if(real_array_is_dconst[(int)array])
+    {
+    	    cudaSetDevice(device->id);
+	    return acLoadRealArrayUniform(STREAM_DEFAULT,array,host_info.real_arrays[array]);
+    }
+    acDeviceLoadRealArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[real_array_lengths[array]]);
+    return AC_SUCCESS;
+}
+
+AcResult
 acDeviceLoadIntArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
                          const AcIntArrayParam array, int src_idx, int dst_idx, size_t num_elems)
 {
@@ -541,20 +556,6 @@ acDeviceLoadIntArrayWithOffset(const Device device, const Stream stream, const A
         cudaMemcpyAsync(dst_ptr, src_ptr, bytes, cudaMemcpyHostToDevice, device->streams[stream]) //
     );
 
-    return AC_SUCCESS;
-}
-AcResult
-acDeviceLoadRealArray(const Device device, const Stream stream, const AcMeshInfo host_info,
-                         const AcRealArrayParam array)
-{
-    if constexpr (NUM_REAL_ARRAYS == 0)
-	    return AC_FAILURE;
-    if(real_array_is_dconst[(int)array])
-    {
-    	    cudaSetDevice(device->id);
-	    return acLoadRealArrayUniform(STREAM_DEFAULT,array,host_info.real_arrays[array]);
-    }
-    acDeviceLoadRealArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[real_array_lengths[array]]);
     return AC_SUCCESS;
 }
 
