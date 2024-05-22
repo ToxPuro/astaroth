@@ -97,6 +97,23 @@ parse_intparam(const size_t idx, const char* value)
     }
 }
 
+int
+get_entries(char** dst, const char* line)
+{
+      char* line_copy = strdup(line);
+      int counter = 0;
+      char* token;
+      token = strtok(line_copy,",");
+      while(token != NULL)
+      {
+              dst[counter] = strdup(token);
+              ++counter;
+              token = strtok(NULL,",");
+      }
+      free(line_copy);
+      return counter;
+}
+
 static void
 parse_config(const char* path, AcMeshInfo* config)
 {
@@ -129,6 +146,45 @@ parse_config(const char* path, AcMeshInfo* config)
             // OL: should we fail here? Could be dangerous to continue
             config->real_params[idx] = real_val;
         }
+        else if ((idx = find_str(keyword, int_array_param_names, NUM_INT_ARRAYS)) >= 0) {
+		if(!int_array_is_dconst[idx])
+			fprintf(stderr,"ERROR PARSING CONFIG: can't assign to global array: \"%s\": SKIPPING\n",keyword);
+		char* array_vals[int_array_lengths[idx]];
+		const int n_vals = get_entries(array_vals, value);
+		if(n_vals != int_array_lengths[idx])
+			fprintf(stderr,"ERROR PARSING CONFIG: gave %d values to array %s which of size %d: SKIPPING\n",n_vals,keyword,int_array_lengths[idx]);
+		else
+		{
+			config->int_arrays[idx] = malloc(sizeof(AcReal)*int_array_lengths[idx]);
+			for(int i = 0; i < int_array_lengths[idx]; ++i)
+			{
+				config->int_arrays[idx][i] =  atoi(array_vals[i]);
+				free(array_vals[i]);
+			}
+		}
+
+
+	}
+        else if ((idx = find_str(keyword, real_array_param_names, NUM_REAL_ARRAYS)) >= 0) {
+		if(!real_array_is_dconst[idx])
+			fprintf(stderr,"ERROR PARSING CONFIG: can't assign to global array: \"%s\": SKIPPING\n",keyword);
+		char* array_vals[real_array_lengths[idx]];
+		const int n_vals = get_entries(array_vals, value);
+		if(n_vals != real_array_lengths[idx])
+			fprintf(stderr,"ERROR PARSING CONFIG: gave %d values to array %s which of size %d: SKIPPING\n",n_vals,keyword,real_array_lengths[idx]);
+		else
+		{
+			fprintf(stderr,"Reading in real array: %s\n",keyword);
+			config->real_arrays[idx] = malloc(sizeof(AcReal)*real_array_lengths[idx]);
+			for(int i = 0; i < real_array_lengths[idx]; ++i)
+			{
+				config->real_arrays[idx][i] =  atof(array_vals[i]);
+				free(array_vals[i]);
+			}
+		}
+
+
+	}
     }
 
     fclose(fp);
@@ -143,9 +199,18 @@ acLoadConfig(const char* config_path, AcMeshInfo* config)
 {
     ERRCHK_ALWAYS(config_path);
 
+
     // memset reads the second parameter as a byte even though it says int in
     // the function declaration
     memset(config, (uint8_t)0xFF, sizeof(*config));
+
+    //these are set to nullpointers for the users convenience that the user doesn't have to set them to null elsewhere
+    //if they are present in the config then they are initialized correctly
+    //sticks to the old API since we anyways overwrite the whole config
+    for(int i = 0; i < NUM_REAL_ARRAYS; ++i)
+	    config->real_arrays[i] = NULL;
+    for(int i = 0; i < NUM_INT_ARRAYS; ++i)
+	    config->int_arrays[i] = NULL;
 
     parse_config(config_path, config);
     acHostUpdateBuiltinParams(config);

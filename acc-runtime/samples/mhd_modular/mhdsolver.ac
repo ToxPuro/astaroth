@@ -1087,6 +1087,7 @@ Kernel haatouken() {
     write(VTXBUF_UUY, uu.y)
     write(VTXBUF_UUZ, uu.z)
 }
+
 get_d_from_normal(normal)
 {
     real d_out
@@ -1198,3 +1199,87 @@ Kernel prescribed_derivative_boundcond(int3 normal, VtxBuffer vtxbuf, real der_v
     }
 }
 
+
+beltrami(ampl, ex, ey, ez, kx, ky, kz, phase) {
+    // Based on Pencil Code beltrami_general() 
+    // https://github.com/pencil-code/pencil-code/blob/43f0b658a905bbeb641daa0ccf88720a20f0c562/src/initcond.f90#L1818C16-L1818C32
+
+    kxe_x = ky*ez - kz*ey
+    kxe_y = kz*ex - kx*ez
+    kxe_z = kx*ey - ky*ex
+
+    kxkxe_x = ky*kxe_z - kz*kxe_y
+    kxkxe_y = kz*kxe_x - kx*kxe_z
+    kxkxe_z = kx*kxe_y - ky*kxe_x
+
+    kk=sqrt(kx*kx+ky*ky+kz*kz)
+
+    xx = grid_position()
+
+    cfunc = abs(ampl) * cos(kx*xx.x + ky*xx.y + kz*xx.z + phase)
+    sfunc =     ampl  * sin(kx*xx.x + ky*xx.y + kz*xx.z + phase)
+
+    field = real3(kxkxe_x*cfunc + kk*kxe_x*sfunc,   
+                  kxkxe_y*cfunc + kk*kxe_y*sfunc,   
+                  kxkxe_z*cfunc + kk*kxe_z*sfunc)
+
+    return field
+}
+
+Kernel beltrami_initcond() {
+    //uu = beltrami(1e-5, 0.0, 0.0, 1.0, 3.0, 2.0, 3.0, 0.0)
+    aa = beltrami(1e-5, 0.0, 0.0, 1.0, 6.0, 4.0, 6.0, 0.0)
+
+    //write(VTXBUF_UUX, uu.x)
+    //write(VTXBUF_UUY, uu.y)
+    //write(VTXBUF_UUZ, uu.z)
+    write(VTXBUF_AX, aa.x)
+    write(VTXBUF_AY, aa.y)
+    write(VTXBUF_AZ, aa.z)
+}
+
+radial_vector_field(ampl) {
+    xx = grid_position()
+    centre = grid_centre()
+
+    xx.x = xx.x - centre.x
+    xx.y = xx.y - centre.y
+    xx.z = xx.z - centre.z
+
+    rr = sqrt(xx.x*xx.x + xx.y*xx.y + xx.z*xx.z)
+    rr_xy = sqrt(xx.x*xx.x + xx.y*xx.y )
+
+    field = real3(0.0,
+                  0.0,
+                  0.0)
+
+    if rr >= 2.0*AC_dsx{
+
+        theta = real(atan2(rr_xy, xx.z))
+
+        phi   = real(atan2(xx.y, xx.x))
+
+        field = real3(ampl * cos(theta)* cos(phi),  
+                      ampl * cos(theta)* sin(phi),  
+                      ampl * cos(theta))
+    }
+
+    return field
+}
+
+Kernel radial_vec_initcond() {
+    uu = radial_vector_field(-1e-5) 
+
+    write(VTXBUF_UUX, uu.x)
+    write(VTXBUF_UUY, uu.y)
+    write(VTXBUF_UUZ, uu.z)
+}
+
+Kernel constant() {
+    
+    AC_value = 1.0
+
+    for field in 0:NUM_FIELDS {
+        write(Field(field), AC_value)
+    }
+}

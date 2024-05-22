@@ -770,7 +770,6 @@ AcResult
 acLoadIntArrayUniform(const cudaStream_t /* stream */, const AcIntArrayParam param,
                   const int* values)
 {
-  printf("Loading int dconst array\n");
   ERRCHK_ALWAYS(int_array_is_dconst[(int)param]);
   const int length  = (int)int_array_lengths[(int)param];
   cudaDeviceSynchronize();
@@ -778,9 +777,6 @@ acLoadIntArrayUniform(const cudaStream_t /* stream */, const AcIntArrayParam par
   const cudaError_t retval = cudaMemcpyToSymbol(d_int_arrays, values, sizeof(int)*length, offset, cudaMemcpyHostToDevice);
   if (retval != cudaSuccess)
         return AC_FAILURE;
-  printf("values: %d,%d,%d\n",values[0],values[1],values[2]);
-  printf("param: %d\n",(int)param);
-  printf("Loaded succesfully\n");
   return AC_SUCCESS;
 }
 
@@ -1062,6 +1058,7 @@ get_entries(char** dst, const char* line)
               ++counter;
               token = strtok(NULL,",");
       }
+      free(line_copy);
       return counter;
 }
 static int3

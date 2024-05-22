@@ -65,11 +65,10 @@ main(void)
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
-    const int max_devices = 2 * 2 * 4;
+    const int max_devices = 1;
     if (nprocs > max_devices) {
         fprintf(stderr,
-                "Cannot run autotest, nprocs (%d) > max_devices (%d). Please modify "
-                "mpitest/main.cc to use a larger mesh.\n",
+                "Cannot run autotest, nprocs (%d) > max_devices (%d) this test works only with a single device\n",
                 nprocs, max_devices);
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
@@ -86,18 +85,15 @@ main(void)
     }
 
     // GPU alloc & compute
-    int test_int_arr[3];
-    for(int i = 0; i < 3; ++i)
-	    test_int_arr[i] = rand();
+    const int test_int_arr[3] = {-3, 50, 42};
     AcReal test_arr[6];
     for(int i = 0; i < 6; ++i)
 	    test_arr[i] = drand();
-    AcReal test_arr_2[3];
-    for(int i = 0; i < 3; ++i)
-	    test_arr_2[i] = drand();
-    info.int_arrays[AC_test_int_arr] = (int*)test_int_arr;
+    const AcReal test_arr_2[3] = {1.0, -2.0, 3.0};
     info.real_arrays[AC_test_arr] = (AcReal*)test_arr;
-    info.real_arrays[AC_test_arr_2] = (AcReal*)test_arr_2;
+    //these are read from config
+    //info.int_arrays[AC_test_int_arr] = (int*)test_int_arr;
+    //info.real_arrays[AC_test_arr_2] = (AcReal*)test_arr_2;
     acGridInit(info);
 
     Field all_fields[NUM_VTXBUF_HANDLES];
@@ -175,7 +171,7 @@ main(void)
     finalized = true;
 
     if (pid == 0)
-        fprintf(stderr, "MPITEST complete: %s\n",
+        fprintf(stderr, "DCONST_ARR_TEST complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
     return EXIT_SUCCESS;

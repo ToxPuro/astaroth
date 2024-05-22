@@ -307,6 +307,23 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     device->id           = id;
     device->local_config = device_config;
 
+    // Check that AC_global_grid_n and AC_multigpu_offset are valid
+    // Replace if not and give a warning otherwise
+    if (device->local_config.int_params[AC_nxgrid] <= 0 ||
+        device->local_config.int_params[AC_nygrid] <= 0 ||
+        device->local_config.int_params[AC_nzgrid] <= 0 ||
+        device->local_config.int3_params[AC_multigpu_offset].x < 0 ||
+        device->local_config.int3_params[AC_multigpu_offset].y < 0 ||
+        device->local_config.int3_params[AC_multigpu_offset].z < 0) {
+        WARNING("Invalid AC_global_grid_n or AC_multigpu_offset passed in device_config to "
+                "acDeviceCreate. Replacing with AC_global_grid_n = local grid size and "
+                "AC_multigpu_offset = (int3){0,0,0}.");
+        device->local_config.int3_params[AC_multigpu_offset] = (int3){0, 0, 0};
+	device->local_config.int_params[AC_nxgrid] = device_config.int_params[AC_nxgrid];
+	device->local_config.int_params[AC_nygrid] = device_config.int_params[AC_nygrid];
+	device->local_config.int_params[AC_nzgrid] = device_config.int_params[AC_nzgrid];
+    }
+
 #if AC_VERBOSE
     acDevicePrintInfo(device);
     printf("Trying to run a dummy kernel. If this fails, make sure that your\n"
@@ -334,8 +351,8 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     device->vba = acVBACreate(device_config);
 
     // Reductions
-    const int3 max_dims                = acConstructInt3Param(AC_mx, AC_my, AC_mz, device_config);
-    const size_t scratchpad_size       = acKernelReduceGetMinimumScratchpadSize(max_dims);
+    const int3 max_dims          = acConstructInt3Param(AC_mx, AC_my, AC_mz, device->local_config);
+    const size_t scratchpad_size = acKernelReduceGetMinimumScratchpadSize(max_dims);
     const size_t scratchpad_size_bytes = acKernelReduceGetMinimumScratchpadSizeBytes(max_dims);
     const int reduce_tpb_size = 128;
     //for (size_t i = 0; i < NUM_REDUCE_SCRATCHPADS; ++i) {
@@ -369,7 +386,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 #endif
     // Device constants
     // acDeviceLoadDefaultUniforms(device); // TODO recheck
-    acDeviceLoadMeshInfo(device, device_config);
+    acDeviceLoadMeshInfo(device, device->local_config);
 
 #if AC_VERBOSE
     printf("Created device %d (%p)\n", device->id, device);
@@ -885,8 +902,8 @@ acDeviceReduceScal(const Device device, const Stream stream, const ReductionType
     acDeviceReduceScalNotAveraged(device, stream, rtype, vtxbuf_handle, result);
 
     switch (rtype) {
-    case RTYPE_RMS:     /* Fallthrough */
-    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_RMS:                      /* Fallthrough */
+    case RTYPE_RMS_EXP:                  /* Fallthrough */
     case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
@@ -925,8 +942,8 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
     acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, result);
 
     switch (rtype) {
-    case RTYPE_RMS:     /* Fallthrough */
-    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_RMS:                      /* Fallthrough */
+    case RTYPE_RMS_EXP:                  /* Fallthrough */
     case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
@@ -976,8 +993,8 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
                                      result);
 
     switch (rtype) {
-    case RTYPE_RMS:     /* Fallthrough */
-    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_RMS:                      /* Fallthrough */
+    case RTYPE_RMS_EXP:                  /* Fallthrough */
     case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
