@@ -29,6 +29,7 @@
 #include <stdint.h> // uint8_t, uint32_t
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
 #include "errchk.h"
 
 /**
@@ -96,7 +97,6 @@ parse_intparam(const size_t idx, const char* value)
         return atoi(value);
     }
 }
-
 int
 get_entries(char** dst, const char* line)
 {
@@ -127,7 +127,7 @@ parse_config(const char* path, AcMeshInfo* config)
     char keyword[BUF_SIZE];
     char value[BUF_SIZE];
     int items_matched;
-    while ((items_matched = fscanf(fp, "%s = %s", keyword, value)) != EOF) {
+    while ((items_matched = fscanf(fp, "%s = %[^\n]", keyword, value)) != EOF) {
 
         if (items_matched < 2)
             continue;
