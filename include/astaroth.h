@@ -1306,10 +1306,10 @@ AcResult
 acDeviceSetIntInput(const Device device, const AcIntInputParam param, const int val);
 
 AcReal
-acDeviceGetRealInput(const Device device, const AcRealInputParam param, const AcReal val);
+acDeviceGetRealInput(const Device device, const AcRealInputParam param);
 
 int
-acDeviceGetIntInput(const Device device, const AcIntInputParam param, const int val);
+acDeviceGetIntInput(const Device device, const AcIntInputParam param);
 
 /*
  * =============================================================================
@@ -1369,7 +1369,9 @@ acCompute(AcKernel kernel, Field (&fields)[num_fields])
 
 /** */
 AcTaskDefinition acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
-                           Field fields_out[], const size_t num_fields_out, std::function<void(ParamLoadingInfo step_info)>);
+                           Field fields_out[], const size_t num_fields_out, std::function<void(ParamLoadingInfo step_info)> loader);
+
+
 
 template <size_t num_fields>
 AcTaskDefinition
@@ -1395,12 +1397,37 @@ acComputeWithParams(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&
     return acComputeWithParams(kernel, fields_in, num_fields_in, fields_out, num_fields_out, loader);
 }
 
+static inline AcTaskDefinition
+acComputeWithParams(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::function<void(ParamLoadingInfo)> loader)
+{
+    return acComputeWithParams(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), loader);
+}
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out, std::function<void(ParamLoadingInfo)> loader)
+{
+    return acComputeWithParams(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), loader);
+}
+
+template <size_t num_fields_in, size_t num_fields_out>
+AcTaskDefinition
+acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out], std::function<void(ParamLoadingInfo)> loader)
+{
+    return acComputeWithParams(kernel, fields_in, num_fields_in, fields_out, num_fields_out, loader);
+}
+
 /** */
 template <size_t num_fields>
 AcTaskDefinition
 acHaloExchange(Field (&fields)[num_fields])
 {
     return acHaloExchange(fields, num_fields);
+}
+
+AcTaskDefinition
+static inline acHaloExchange(std::vector<Field> fields)
+{
+    return acHaloExchange(fields.data(), fields.size());
 }
 
 /** */
@@ -1410,6 +1437,12 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond,
                     Field (&fields)[num_fields])
 {
     return acBoundaryCondition(boundary, bound_cond, fields, num_fields, nullptr, 0);
+}
+
+static inline AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond, std::vector<Field> fields)
+{
+    return acBoundaryCondition(boundary, bound_cond, fields.data(), fields.size(), nullptr, 0);
 }
 
 /** */

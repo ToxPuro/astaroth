@@ -1136,7 +1136,7 @@ acDeviceGetRealInput(const Device device, const AcRealInputParam param)
 }
 
 int
-acDeviceGetIntInput(const Device device, const AcRealInputParam param)
+acDeviceGetIntInput(const Device device, const AcIntInputParam param)
 {
 	return device->input.int_params[param];
 }

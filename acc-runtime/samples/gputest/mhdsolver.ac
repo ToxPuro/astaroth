@@ -1,5 +1,4 @@
 
-real AC_dt
 /*
 real AC_cs_sound, AC_cp_sound
 real AC_gamma, AC_nu_visc, AC_zeta, AC_eta
@@ -908,3 +907,24 @@ Kernel randomize() {
     }
 }
 
+BoundConds rhs_boundconds
+{
+	periodic(BOUNDARY_XYZ)
+}
+ComputeSteps AC_rhs_0(rhs_boundconds)
+{
+	twopass_solve_intermediate(0,AC_dt),
+	twopass_solve_final(0)
+}
+
+ComputeSteps AC_rhs_1(rhs_boundconds)
+{
+	twopass_solve_intermediate(1,AC_dt),
+	twopass_solve_final(1)
+}
+
+ComputeSteps AC_rhs_2(rhs_boundconds)
+{
+	twopass_solve_intermediate(2,AC_dt),
+	twopass_solve_final(2)
+}

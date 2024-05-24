@@ -947,7 +947,7 @@ get_kernel_param_types_and_names(const ASTNode* node, const char* kernel_name, s
 }
 
 void
-gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char* global_res, string_vec* output_symbols, string_vec* output_types)
+gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char* global_res, string_vec* output_symbols, string_vec* output_types, const char* taskgraph_name)
 {
 	assert(kernel_call);
 	char* res = malloc(sizeof(char)*4000);
@@ -981,7 +981,7 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 	strcat(fields_out_str, "}");
 	if(kernel_call->rhs)
 	{
-		sprintf(res,"acCompute(KERNEL_%s,%s,%s,%s,%s_loader),\n",func_name,all_fields,fields_in_str,fields_out_str,func_name);
+		sprintf(res,"acCompute(KERNEL_%s,%s,%s,%s_%s_loader),\n",func_name,fields_in_str,fields_out_str,taskgraph_name,func_name);
 		ASTNode* param_list_head = kernel_call->rhs;
 		string_vec params;
 		init_str_vec(&params);
@@ -1017,13 +1017,15 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 		get_kernel_param_types_and_names(root,func_name,&param_types,&param_list_names);
 
 		char* loader_str = malloc(sizeof(char)*4000);
-		sprintf(loader_str,"auto %s_loader = [](ParamLoadingInfo p){\n",func_name);
+		sprintf(loader_str,"auto %s_%s_loader = [](ParamLoadingInfo p){\n",taskgraph_name, func_name);
 		for(size_t i = 0; i < param_types.size; ++i)
 		{
-			if(!strcmp(param_types.data[i],"AcReal"))
-				sprintf(tmp, "p.params -> %s.%s = acDeviceGetRealInput(dev,%s);\n", func_name,param_list_names.data[i], params.data[i]);
+			if(is_number(params.data[i]) || is_real(params.data[i]))
+				sprintf(tmp, "p.params -> %s.%s = %s;\n", func_name, param_list_names.data[i], params.data[i]);
+			else if(!strcmp(param_types.data[i],"AcReal"))
+				sprintf(tmp, "p.params -> %s.%s = acDeviceGetRealInput(acGridGetDevice(),%s);\n", func_name,param_list_names.data[i], params.data[i]);
 			else if(!strcmp(param_types.data[i],"int"))
-				sprintf(tmp, "p.params -> %s.%s = acDeviceGetIntInput(dev,%s); \n", func_name,param_list_names.data[i], params.data[i]);
+				sprintf(tmp, "p.params -> %s.%s = acDeviceGetIntInput(acGridGetDevice(),%s); \n", func_name,param_list_names.data[i], params.data[i]);
 			strcat(loader_str,tmp);
 			if(!str_vec_contains(*output_symbols,params.data[i]))
 			{
@@ -1043,7 +1045,7 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 		free(loader_str);
 	}
 	else
-		sprintf(res,"acCompute(KERNEL_%s,%s,%s,%s),\n",func_name,fields_in_str,fields_out_str,all_fields);
+		sprintf(res,"acCompute(KERNEL_%s,%s,%s),\n",func_name,fields_in_str,fields_out_str);
 	free(all_fields);
 	free(fields_in_str);
 	free(fields_out_str);
@@ -1217,7 +1219,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	
 	const char* name = node->lhs->lhs->buffer;
 	char* res = malloc(sizeof(char)*10000);
-	sprintf(res, "AcTaskGraph* %s = acGridBuildTaskGraphs({\n",name);
+	sprintf(res, "AcTaskGraph* %s = acGridBuildTaskGraph({\n",name);
 	const ASTNode* function_call_list_head = node->rhs;
 	//have to traverse in reverse order to generate the right order in taskgraph
 	int n_entries = 1;
@@ -1320,7 +1322,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 		{
 			strcat(res,"acHaloExchange(");
 			strcat(res,communicated_fields_str);
-			strcat(res,",\n");
+			strcat(res,"),\n");
 			bool x_is_periodic = !strcmp(field_boundconds[0 + num_fields*0],"periodic");
 			bool y_is_periodic = !strcmp(field_boundconds[0 + num_fields*1],"periodic");
 			bool z_is_periodic = !strcmp(field_boundconds[0 + num_fields*2],"periodic");
@@ -1341,13 +1343,13 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 			{
 				int call_index = call;
 				if(call_index == 0)
-					gen_taskgraph_kernel_entry(function_call_list_head->lhs,root,res,output_symbols,output_types);
+					gen_taskgraph_kernel_entry(function_call_list_head->lhs,root,res,output_symbols,output_types,name);
 				else
 				{
 					const ASTNode* new_head = function_call_list_head;
 					while(call_index--)
 						new_head = new_head->parent;
-					gen_taskgraph_kernel_entry(new_head->rhs,root,res,output_symbols,output_types);
+					gen_taskgraph_kernel_entry(new_head->rhs,root,res,output_symbols,output_types,name);
 				}
 
 
