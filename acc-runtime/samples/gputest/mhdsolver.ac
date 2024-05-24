@@ -39,7 +39,7 @@ output real AC_maxadvec
 output real AC_test
 real AC_nkramers
 real AC_hcond_Kconst
-real output AC_maxchi
+output real AC_maxchi
 
 
 // slices output period
