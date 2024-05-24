@@ -1120,12 +1120,14 @@ AcResult
 acDeviceSetRealInput(const Device device, const AcRealInputParam param, const AcReal val)
 {
 	device->input.real_params[param] = val;
+	return AC_SUCCESS;
 }
 
 AcResult
 acDeviceSetIntInput(const Device device, const AcIntInputParam param, const int val)
 {
 	device->input.int_params[param] = val;
+	return AC_SUCCESS;
 }
 AcReal
 acDeviceGetRealInput(const Device device, const AcRealInputParam param)
