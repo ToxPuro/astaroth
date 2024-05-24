@@ -37,6 +37,8 @@ gmem real AC_hcond_prof[AC_nz]
 //output real AC_alfven_speed
 output real AC_maxadvec
 output real AC_test
+real AC_nkramers
+real AC_hcond_Kconst
 
 
 // slices output period
@@ -198,7 +200,6 @@ real AC_boundary_derivative
 real AC_hcond0_kramers
 real AC_hcond0
 real AC_hflux
-real AC_n_kramers
 real AC_sigma_SBt
 real AC_chi
 real AC_chi_t
