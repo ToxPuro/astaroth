@@ -101,7 +101,6 @@ main(void)
         all_fields[i] = (Field)i;
     }
     auto null_loader = [&](ParamLoadingInfo l){(void)l;};
-
     AcTaskDefinition ops[] = {
 	    acComputeWithParams(KERNEL_test_dconst_arr,all_fields,null_loader)
     };

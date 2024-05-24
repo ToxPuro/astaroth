@@ -93,11 +93,14 @@ void strip_whitespace(char *str) {
 "Field"                 { return FIELD; }
 "VtxBuffer"                 { return VTXBUFFER; }
 "WorkBuffer"            {return WORK_BUFFER; }
+"ComputeSteps"          {return COMPUTESTEPS; }
+"BoundConds"          {return BOUNDCONDS; }
 
 "Stencil"               { return STENCIL; }
 
 "Kernel"                { return KERNEL; } /* Type qualifiers */
 "inline"                { return INLINE; } /* Type qualifiers */
+"boundary_condition"    { return BOUNDARY_CONDITION; } /* Type qualifiers */
 "Sum"                   { return SUM; }
 "Max"                   { return MAX; }
 "communicated"          { return COMMUNICATED; }

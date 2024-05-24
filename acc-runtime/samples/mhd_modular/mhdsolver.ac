@@ -77,9 +77,9 @@ const int AC_const_int_2nd = 4
 //Field CHEMISTRY_FIELDS[5]
 
 #if LBFIELD
-auxiliary Field BFIELDX
-auxiliary Field BFIELDY
-auxiliary Field BFIELDZ
+Field BFIELDX
+Field BFIELDY
+Field BFIELDZ
 #endif
 
 #if LSHOCK 
@@ -1168,7 +1168,8 @@ get_boundary_from_normal(normal_in)
     }
     return boundary_out
 }
-Kernel prescribed_derivative_boundcond(int3 normal, VtxBuffer vtxbuf, real der_val)
+boundary_condition Kernel prescribed_derivative_boundcond
+(int3 normal, VtxBuffer vtxbuf, real der_val)
 {
     d = get_d_from_normal(normal)
     real direction
@@ -1283,3 +1284,18 @@ Kernel constant() {
         write(Field(field), AC_value)
     }
 }
+
+BoundConds rhs_boundconds
+{
+	periodic(BOUNDARY_XYZ)
+}
+
+
+ComputeSteps rhs_STEP_NUM(rhs_boundconds)
+{
+	twopass_solve_intermediate(STEP_NUM,AC_dt),
+	twopass_solve_final(STEP_NUM,AC_current_time)
+}
+
+
+

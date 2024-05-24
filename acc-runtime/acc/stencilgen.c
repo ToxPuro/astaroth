@@ -121,7 +121,7 @@ gen_stencil_definitions(void)
 }
 
 void
-gen_kernel_prefix()
+gen_kernel_prefix(const bool gen_mem_accesses)
 {
   printf("const int3 vertexIdx = (int3){"
          "threadIdx.x + blockIdx.x * blockDim.x + start.x,"
@@ -152,7 +152,12 @@ gen_kernel_prefix()
 // Write vba.out
 #if 1
   // Original
-  printf("const auto write __attribute__((unused))  = [&](const Field field, const AcReal value)"
+
+  if(gen_mem_accesses)
+    printf("const auto write __attribute__((unused))  = [&](const Field field, const AcReal value)"
+         "{ written_fields_stencil_accesses[field]=1; vba.out[field][idx] = value; };");
+  else
+    printf("const auto write __attribute__((unused))  = [&](const Field field, const AcReal value)"
          "{ vba.out[field][idx] = value; };");
 
   //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
@@ -244,9 +249,9 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses, cons
 }
 
 void
-gen_stencil_accesses()
+gen_stencil_accesses(const bool gen_mem_accesses)
 {
-  gen_kernel_prefix();
+  gen_kernel_prefix(gen_mem_accesses);
   gen_return_if_oob();
   prefetch_output_elements_and_gen_prev_function(true,0);
 
@@ -1692,11 +1697,12 @@ max(const uint64_t a, const uint64_t b)
 void
 gen_kernel_body(const int curr_kernel)
 {
+  const bool gen_mem_accesses = false;
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: {
-    gen_kernel_prefix();
+    gen_kernel_prefix(gen_mem_accesses);
     gen_return_if_oob();
-    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
+    prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
 
     int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
 
@@ -1810,7 +1816,7 @@ gen_kernel_body(const int curr_kernel)
 
     gen_stencil_functions(curr_kernel);
     /*
-    gen_kernel_prefix();
+    gen_kernel_prefix(gen_mem_accesses);
     gen_return_if_oob();
 
     prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
@@ -1824,82 +1830,82 @@ gen_kernel_body(const int curr_kernel)
     return;
   }
   case EXPLICIT_CACHING: {
-    gen_kernel_prefix(); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_and_compute_stencil_ops(curr_kernel);
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
+    prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
     return;
   }
   case EXPLICIT_CACHING_3D_BLOCKING: {
-    gen_kernel_prefix(); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_3d_and_compute_stencil_ops(curr_kernel);
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
+    prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
     return;
   }
   case EXPLICIT_CACHING_4D_BLOCKING: {
-    gen_kernel_prefix(); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_4d_and_compute_stencil_ops(curr_kernel);
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
+    prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
     return;
   }
   case EXPLICIT_PINGPONG_txw: {
     #if IMPLEMENTATION == EXPLICIT_PINGPONG_txw
-    gen_kernel_prefix(); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
         curr_kernel);
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
+    prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
     #endif
     return;
   }
   case EXPLICIT_PINGPONG_txy: {
     #if IMPLEMENTATION == EXPLICIT_PINGPONG_txy
-    gen_kernel_prefix(); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
         curr_kernel);
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
+    prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
     #endif
     return;
   }
   case EXPLICIT_PINGPONG_txyblocked: {
-    gen_kernel_prefix(); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
 
     // prefetch_stencil_elems_to_smem_pingpong_txyblocked_and_compute_stencil_ops(
     //     curr_kernel);
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
+    prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
     return;
   }
   case EXPLICIT_ROLLING_PINGPONG: {
     #if IMPLEMENTATION == EXPLICIT_ROLLING_PINGPONG
-    gen_kernel_prefix(); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
         curr_kernel);
     gen_return_if_oob();
 
     gen_stencil_functions(curr_kernel);
-    prefetch_output_elements_and_gen_prev_function(false,curr_kernel);
+    prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
     #endif
     return;
   }
@@ -1920,10 +1926,10 @@ main(int argc, char** argv)
   if (argc == 2 && !strcmp(argv[1], "-definitions")) {
     gen_stencil_definitions();
   }
-  else if (argc == 2 && !strcmp(argv[1], "-mem-accesses")) {
-    gen_stencil_accesses();
-  }
   // Generate memory accesses for the DSL kernels
+  else if (argc == 2 && !strcmp(argv[1], "-mem-accesses")) {
+    gen_stencil_accesses(true);
+  }
   else if (argc == 3) {
     const int curr_kernel = atoi(argv[2]);
     gen_kernel_body(curr_kernel);

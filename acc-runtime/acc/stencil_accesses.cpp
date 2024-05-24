@@ -136,6 +136,7 @@ int big_int_array[8*1024*1024]{0};
 
 static int stencils_accessed[NUM_FIELDS][NUM_STENCILS] = {{0}};
 static int previous_accessed[NUM_FIELDS] = {0};
+static int written_fields_stencil_accesses[NUM_FIELDS] = {0};
 static AcMeshInfo d_mesh_info;
 #include "user_dfuncs.h"
 #include "user_kernels.h"
@@ -176,24 +177,42 @@ main(int argc, char* argv[])
   FILE* fp           = fopen(output, "w+");
   assert(fp);
 
+  FILE* fp_fields_read = fopen("user_read_fields.bin","wb");
+  FILE* fp_field_has_stencil_op = fopen("user_field_has_stencil_op.bin","wb");
+  static int read_fields[NUM_FIELDS];
+  static int field_has_stencil_op[NUM_FIELDS];
   fprintf(fp,
           "static int stencils_accessed[NUM_KERNELS][NUM_FIELDS][NUM_STENCILS] "
           "= {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     memset(stencils_accessed, 0,
            sizeof(stencils_accessed[0][0]) * NUM_FIELDS * NUM_STENCILS);
+    memset(read_fields,0, sizeof(read_fields[0]) * NUM_FIELDS);
+    memset(field_has_stencil_op,0, sizeof(field_has_stencil_op[0]) * NUM_FIELDS);
     VertexBufferArray vba = vbaCreate(1);
     kernels[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
     vbaDestroy(&vba);
 
     for (size_t j = 0; j < NUM_FIELDS; ++j)
+    {
       for (size_t i = 0; i < NUM_STENCILS; ++i)
+      {
         if (stencils_accessed[j][i])
+	{
+	  read_fields[j] = (i == 0);
+	  field_has_stencil_op[j] = (i != 0);
           fprintf(fp, "[%lu][%lu][%lu] = 1,", k, j, i);
+	}
+      }
+    }
+    fwrite(read_fields,sizeof(int), NUM_FIELDS,fp_fields_read);
+    fwrite(field_has_stencil_op,sizeof(int), NUM_FIELDS,fp_field_has_stencil_op);
   }
   fprintf(fp, "};");
+  fclose(fp_fields_read);
+  fclose(fp_field_has_stencil_op);
 
-    fprintf(fp,
+  fprintf(fp,
           "static int previous_accessed[NUM_KERNELS][NUM_FIELDS] "
           "= {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
@@ -208,6 +227,21 @@ main(int argc, char* argv[])
           fprintf(fp, "[%lu][%lu] = 1,", k, j);
   }
   fprintf(fp, "};");
+
+
+  FILE* fp_written_fields = fopen("user_written_fields.bin", "wb");
+  for (size_t k = 0; k < NUM_KERNELS; ++k) {
+    memset(written_fields_stencil_accesses, 0,
+           sizeof(written_fields_stencil_accesses[0]) * NUM_FIELDS);
+    VertexBufferArray vba = vbaCreate(1);
+    kernels[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
+    vbaDestroy(&vba);
+    fwrite(written_fields_stencil_accesses,sizeof(int),NUM_FIELDS,fp_written_fields);
+  }
+  fclose(fp_written_fields);
+
+
+  
 
   fclose(fp);
   return EXIT_SUCCESS;

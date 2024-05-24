@@ -55,15 +55,20 @@ typedef enum {
   NODE_DEF            = (1 << 21),
   NODE_STRUCT         = (1 << 22),
   NODE_ENUM           = (1 << 23),
-  NODE_SELECTION_STATEMENT = (1 << 24),
+  //NODE_SELECTION_STATEMENT = (1 << 24),
+  NODE_BOUNDCOND      = (1 << 24),
   NODE_IF             = (1 << 25),
   NODE_FUNCTION_CALL  = (1 << 26),
   NODE_DFUNCTION_ID   = (1 << 27),
   NODE_ASSIGN_LIST    = (1 << 28),
   NODE_NO_AUTO        = (1 << 29),
   NODE_NO_OUT         = (1 << 30),
-  NODE_ENUM_DEF       = NODE_DEF + NODE_ENUM + NODE_NO_OUT,
+  NODE_TASKGRAPH      = (1 << 31),
+  //NODE_BOUNDCOND      = (1 << 32),
+  NODE_ENUM_DEF       = NODE_DEF + NODE_ENUM   + NODE_NO_OUT,
   NODE_STRUCT_DEF     = NODE_DEF + NODE_STRUCT + NODE_NO_OUT,
+  NODE_TASKGRAPH_DEF =  NODE_DEF + NODE_TASKGRAPH + NODE_NO_OUT,
+  NODE_BOUNDCONDS_DEF = NODE_DEF + NODE_BOUNDCOND + NODE_NO_OUT,
   NODE_ANY            = ~0,
 } NodeType;
 
@@ -89,6 +94,7 @@ astnode_dup(const ASTNode* node, ASTNode* parent)
 	res->id = node->id;
 	res->type = node->type;
 	res->parent = parent;
+	res -> token = node->token;
 	if(node->buffer)
 		res->buffer = strdup(node->buffer);
 	if(node->prefix)
@@ -97,7 +103,6 @@ astnode_dup(const ASTNode* node, ASTNode* parent)
 		res->infix = strdup(node->infix);
 	if(node->postfix)
 		res->postfix = strdup(node->postfix);
-	res -> token = node->token;
 	if(node->lhs)
 		res->lhs= astnode_dup(node->lhs,res);
 	if(node->rhs)
@@ -272,6 +277,18 @@ init_int_vec(int_vec* vec)
 	vec -> size = 0;
 	vec -> capacity = 1;
 	vec -> data = malloc(sizeof(int)*vec ->capacity);
+}
+static inline int
+int_vec_get_index(const int_vec vec, const int val)
+{
+	for(size_t i = 0; i <  vec.size; ++i)
+		if(vec.data[i] == val) return i;
+	return -1;
+}
+static inline bool
+int_vec_contains(const int_vec vec, const int val)
+{
+	return int_vec_get_index(vec,val) >= 0;
 }
 static inline void
 init_op_vec(op_vec* vec)
