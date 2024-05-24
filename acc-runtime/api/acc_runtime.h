@@ -70,6 +70,12 @@
 #endif
   } AcMeshInfo;
 
+  //pad by one to avoid 0 length arrays that might not work
+  typedef struct {
+    int int_params[NUM_INT_INPUT_PARAMS+1];
+    AcReal real_params[NUM_REAL_INPUT_PARAMS+1];
+  } AcInputs;
+
   typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];

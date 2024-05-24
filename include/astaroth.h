@@ -1299,6 +1299,18 @@ AcResult acDeviceStoreIXYPlate(const Device device, int3 start, int3 end, int sr
 /** */
 AcResult acDeviceGetVBApointers(Device device, AcReal *vbapointer[2]);
 
+AcResult
+acDeviceSetRealInput(const Device device, const AcRealInputParam param, const AcReal val);
+
+AcResult
+acDeviceSetIntInput(const Device device, const AcIntInputParam param, const int val);
+
+AcReal
+acDeviceGetRealInput(const Device device, const AcRealInputParam param, const AcReal val);
+
+int
+acDeviceGetIntInput(const Device device, const AcIntInputParam param, const int val);
+
 /*
  * =============================================================================
  * Helper functions

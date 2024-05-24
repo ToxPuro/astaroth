@@ -1293,8 +1293,8 @@ BoundConds rhs_boundconds
 
 ComputeSteps rhs_STEP_NUM(rhs_boundconds)
 {
-	twopass_solve_intermediate(STEP_NUM,AC_dt),
-	twopass_solve_final(STEP_NUM,AC_current_time)
+	twopass_solve_intermediate(AC_step_num_input,AC_dt_input),
+	twopass_solve_final(AC_step_num_input,0.0)
 }
 
 

@@ -43,15 +43,6 @@ cleanup(void)
     if (root)
         astnode_destroy(root); // Frees all children and itself
 }
-void remove_substring_parser(char *str, const char *sub) {
-	int len = strlen(sub);
-	char *found = strstr(str, sub); // Find the first occurrence of the substring
-
-	while (found) {
-		memmove(found, found + len, strlen(found + len) + 1); // Shift characters to overwrite the substring
-		found = strstr(found, sub); // Find the next occurrence of the substring
-	}
-}
 ASTNode*
 astnode_hostdefine(const char* buffer, const int token)
 {
@@ -242,7 +233,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         fprintf(f_out,"\n%s\n","vecwrite(dst,src) {write(Field(dst.x),src.x)\n write(Field(dst.y),src.y)\n write(Field(dst.z),src.z)}");
 
  	while (fgets(line, sizeof(line), f_in) != NULL) {
-		remove_substring_parser(line,";");
+		remove_substring(line,";");
 		fprintf(f_out,"%s",line);
     	}
 	free(line);
@@ -622,15 +613,13 @@ steps_definition: computesteps steps_definition_call '{' function_call_csv_list 
 
 struct_definition:     struct_name '{' declarations '}' {
                         $$ = astnode_create(NODE_STRUCT_DEF,$1,$3);
-			remove_substring_parser($1->buffer,"typedef");
-			remove_substring_parser($1->buffer,"struct");
+			remove_substring($1->buffer,"struct");
 			strip_whitespace($1->buffer);
                  }
 		 ;
 enum_definition: enum_name '{' expression_list '}'{
                         $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
-			remove_substring_parser($1->buffer,"typedef");
-		        remove_substring_parser($1->buffer,"enum");
+		        remove_substring($1->buffer,"enum");
 		        strip_whitespace($1->buffer);
 		}
 		//| enum_name '{' expression_list '}' enum_type {
@@ -1060,15 +1049,6 @@ get_node(const NodeType type, ASTNode* node)
     return NULL;
 }
 
-bool
-is_number(const char* str)
-{
-	const size_t n = strlen(str);
-	bool res = true;
-	for(size_t i = 0; i < n; ++i)
-		res &= (isdigit(str[i]) > 0);
-	return res;
-}
 // Function to check if a substring is a standalone word
 bool is_whole_word(const char *str, const char *sub, int pos) {
     int sub_len = strlen(sub);

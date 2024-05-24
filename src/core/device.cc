@@ -1116,3 +1116,25 @@ acDeviceGetKernelOutput(const Device device)
 	return device->output;
 }
 
+AcResult
+acDeviceSetRealInput(const Device device, const AcRealInputParam param, const AcReal val)
+{
+	device->input.real_params[param] = val;
+}
+
+AcResult
+acDeviceSetIntInput(const Device device, const AcIntInputParam param, const int val)
+{
+	device->input.int_params[param] = val;
+}
+AcReal
+acDeviceGetRealInput(const Device device, const AcRealInputParam param)
+{
+	return device->input.real_params[param];
+}
+
+int
+acDeviceGetIntInput(const Device device, const AcRealInputParam param)
+{
+	return device->input.int_params[param];
+}

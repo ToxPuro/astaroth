@@ -576,3 +576,32 @@ file_prepend(const char* filename, const char* str_to_prepend)
 	fclose(fp);
 	free((void*)file_tmp);
 }
+
+static inline void remove_substring(char *str, const char *sub) {
+	int len = strlen(sub);
+	char *found = strstr(str, sub); // Find the first occurrence of the substring
+
+	while (found) {
+		memmove(found, found + len, strlen(found + len) + 1); // Shift characters to overwrite the substring
+		found = strstr(found, sub); // Find the next occurrence of the substring
+	}
+}
+
+static inline bool
+is_number(const char* str)
+{
+	const size_t n = strlen(str);
+	bool res = true;
+	for(size_t i = 0; i < n; ++i)
+		res &= (isdigit(str[i]) > 0);
+	return res;
+}
+static inline bool
+is_real(const char* str)
+{
+	char* tmp = strdup(str);
+	remove_substring(tmp,".");
+	const bool res = is_number(tmp);
+	free(tmp);
+	return res;
+}

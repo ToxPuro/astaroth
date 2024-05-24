@@ -513,15 +513,6 @@ check_symbol(const NodeType type, const char* name, const char* tspecifier, cons
 	    return true;
   return false;
 }
-void remove_substring_codegen(char *str, const char *sub) {
-	int len = strlen(sub);
-	char *found = strstr(str, sub); // Find the first occurrence of the substring
-
-	while (found) {
-		memmove(found, found + len, strlen(found + len) + 1); // Shift characters to overwrite the substring
-		found = strstr(found, sub); // Find the next occurrence of the substring
-	}
-}
 
 
 bool
@@ -538,7 +529,7 @@ check_for_vtxbuf(const ASTNode* node)
 		return false;
 	char* kernel_search_buffer = strdup(node->buffer);;
 	//remove internal input string in case it is a kernel input when doing mem accesses
-	remove_substring_codegen(kernel_search_buffer,"AC_INTERNAL_INPUT");
+	remove_substring(kernel_search_buffer,"AC_INTERNAL_INPUT");
 	const ASTNode* search = get_node_by_buffer(kernel_search_buffer,param_list);
 	free(kernel_search_buffer);
 	if(!search)
@@ -956,7 +947,7 @@ get_kernel_param_types_and_names(const ASTNode* node, const char* kernel_name, s
 }
 
 void
-gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char* global_res)
+gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char* global_res, string_vec* output_symbols, string_vec* output_types)
 {
 	assert(kernel_call);
 	char* res = malloc(sizeof(char)*4000);
@@ -971,11 +962,15 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 	sprintf(communicated_fields_after, "%s", "{");
 	char* tmp = malloc(sizeof(char)*4000);
 	const int kernel_index = get_symbol_index(NODE_KFUNCTION_ID,func_name,NULL);
+	char* all_fields = malloc(sizeof(char)*4000);
+	all_fields[0] = '\0';
 	for(size_t field = 0; field < num_fields; ++field)
 	{
 		const bool field_in  = (read_fields[field + num_fields*kernel_index] || field_has_stencil_op[field + num_fields*kernel_index]);
 		const bool field_out = (written_fields[field + num_fields*kernel_index]);
 		const char* field_str = get_symbol(NODE_VARIABLE_ID,field,"Field")->identifier;
+		strcat(all_fields,",");
+		strcat(all_fields,field_str);
 		sprintf(tmp,"%s,",field_str);
 		if(field_in)
 			strcat(fields_in_str,tmp);
@@ -986,17 +981,31 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 	strcat(fields_out_str, "}");
 	if(kernel_call->rhs)
 	{
-		sprintf(res,"acCompute(KERNEL_%s,all_fields,%s,%s,%s_loader),\n",func_name,fields_in_str,fields_out_str,func_name);
+		sprintf(res,"acCompute(KERNEL_%s,%s,%s,%s,%s_loader),\n",func_name,all_fields,fields_in_str,fields_out_str,func_name);
 		ASTNode* param_list_head = kernel_call->rhs;
 		string_vec params;
 		init_str_vec(&params);
 		while(param_list_head->rhs)
 		{
-			const char* param = get_node_by_token(IDENTIFIER,param_list_head->rhs)->buffer;
+			char* param = NULL;
+			if(get_node_by_token(IDENTIFIER,param_list_head->rhs))
+				 param = get_node_by_token(IDENTIFIER,param_list_head->rhs)->buffer;
+			if(get_node_by_token(NUMBER,param_list_head->rhs))
+				 param = get_node_by_token(NUMBER,param_list_head->rhs)->buffer;
+			if(get_node_by_token(REALNUMBER,param_list_head->rhs))
+				 param = get_node_by_token(REALNUMBER,param_list_head->rhs)->buffer;
+			assert(param);
 			push(&params,param);
 			param_list_head = param_list_head->lhs;
 		}
-		const char* param = get_node_by_token(IDENTIFIER,param_list_head->lhs)->buffer;
+		char* param= NULL;
+		if(get_node_by_token(IDENTIFIER,param_list_head->lhs))
+			 param = get_node_by_token(IDENTIFIER,param_list_head->lhs)->buffer;
+		if(get_node_by_token(NUMBER,param_list_head->lhs))
+			 param = get_node_by_token(NUMBER,param_list_head->lhs)->buffer;
+		if(get_node_by_token(REALNUMBER,param_list_head->lhs))
+			 param = get_node_by_token(REALNUMBER,param_list_head->lhs)->buffer;
+		assert(param);
 		push(&params,param);
 
 		string_vec param_types;
@@ -1012,10 +1021,18 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 		for(size_t i = 0; i < param_types.size; ++i)
 		{
 			if(!strcmp(param_types.data[i],"AcReal"))
-				sprintf(tmp, "p.params -> %s.%s = dev->input.real_params[%s];\n", func_name,param_list_names.data[i], params.data[i]);
+				sprintf(tmp, "p.params -> %s.%s = acDeviceGetRealInput(dev,%s);\n", func_name,param_list_names.data[i], params.data[i]);
 			else if(!strcmp(param_types.data[i],"int"))
-				sprintf(tmp, "p.params -> %s.%s = dev->input.int_params[%s];\n", func_name,param_list_names.data[i], params.data[i]);
+				sprintf(tmp, "p.params -> %s.%s = acDeviceGetIntInput(dev,%s); \n", func_name,param_list_names.data[i], params.data[i]);
 			strcat(loader_str,tmp);
+			if(!str_vec_contains(*output_symbols,params.data[i]))
+			{
+				if(!is_number(params.data[i]) && !is_real(params.data[i]))
+				{
+					push(output_symbols,params.data[i]);
+					push(output_types,param_types.data[i]);
+				}
+			}
 		}
 		strcat(loader_str,"};\n");
 		file_prepend("user_loaders.h",loader_str);
@@ -1026,7 +1043,8 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 		free(loader_str);
 	}
 	else
-		sprintf(res,"acCompute(KERNEL_%s,%s,%s,all_fields),\n",func_name,fields_in_str,fields_out_str);
+		sprintf(res,"acCompute(KERNEL_%s,%s,%s,%s),\n",func_name,fields_in_str,fields_out_str,all_fields);
+	free(all_fields);
 	free(fields_in_str);
 	free(fields_out_str);
 	free(tmp);
@@ -1176,15 +1194,15 @@ get_field_boundconds(const ASTNode* root, const char* boundconds_name)
 	return res;
 }
 void
-gen_user_taskgraphs(const ASTNode* node, const ASTNode* root)
+gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* output_symbols, string_vec* output_types)
 {
   	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
 	if(!has_optimization_info)
 		return;
 	if(node->lhs)
-		gen_user_taskgraphs(node->lhs,root);
+		gen_user_taskgraphs_recursive(node->lhs,root,output_symbols,output_types);
 	if(node->rhs)
-		gen_user_taskgraphs(node->rhs,root);
+		gen_user_taskgraphs_recursive(node->rhs,root,output_symbols,output_types);
 	if(node->type != NODE_TASKGRAPH_DEF)
 		return;
 	const char* boundconds = node->lhs->rhs->buffer;
@@ -1274,6 +1292,14 @@ gen_user_taskgraphs(const ASTNode* node, const ASTNode* root)
 	free(field_stencil_ops_at_next_level_set);
 	free(next_level_set);
 	free(field_need_to_communicate);
+	char all_fields[4000];
+	all_fields[0] = '\0';
+	for(size_t field = 0; field < num_fields; ++field)
+	{
+		const char* field_str = get_symbol(NODE_VARIABLE_ID,field,"Field")->identifier;
+		strcat(all_fields,field_str);
+		strcat(all_fields,",");
+	}
 	for(int level_set = 0; level_set < n_level_sets; ++level_set)
 	{
 		bool need_to_communicate = false;
@@ -1303,7 +1329,11 @@ gen_user_taskgraphs(const ASTNode* node, const ASTNode* root)
 				fprintf(stderr,"only fully periodic boundconds supported for now\n");
 				exit(EXIT_FAILURE);
 			}
-			strcat(res,"acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,all_fields),\n");
+			strcat(res,"acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,");
+			strcat(res,"{");
+			strcat(res,all_fields);
+			strcat(res,"}");
+			strcat(res,"),\n");
 		}
 		for(size_t call = 0; call < kernel_calls.size; ++call) 
 		{
@@ -1311,13 +1341,13 @@ gen_user_taskgraphs(const ASTNode* node, const ASTNode* root)
 			{
 				int call_index = call;
 				if(call_index == 0)
-					gen_taskgraph_kernel_entry(function_call_list_head->lhs,root,res);
+					gen_taskgraph_kernel_entry(function_call_list_head->lhs,root,res,output_symbols,output_types);
 				else
 				{
 					const ASTNode* new_head = function_call_list_head;
 					while(call_index--)
 						new_head = new_head->parent;
-					gen_taskgraph_kernel_entry(new_head->rhs,root,res);
+					gen_taskgraph_kernel_entry(new_head->rhs,root,res,output_symbols,output_types);
 				}
 
 
@@ -1329,6 +1359,35 @@ gen_user_taskgraphs(const ASTNode* node, const ASTNode* root)
 	free(res);
 	free_int_vec(&kernel_calls);
 	free_int_vec(&kernel_calls_in_level_order);
+}
+
+
+void
+gen_input_enums(FILE* fp, string_vec output_symbols, string_vec output_types, const char* datatype)
+{
+  const char* datatype_scalar = datatype;
+  fprintf(fp,"typedef enum {");
+  for (size_t i = 0; i < output_types.size; ++i)
+  {
+	  if(strcmp(datatype,output_types.data[i]))
+		  continue;
+	  fprintf(fp,"%s,",output_symbols.data[i]);
+  }
+  fprintf(fp, "NUM_%s_INPUT_PARAMS} %sInputParam;",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
+	
+}
+void
+gen_user_taskgraphs(FILE* fp, const ASTNode* root)
+{
+	string_vec output_symbols;
+	string_vec output_types;
+	init_str_vec(&output_symbols);
+	init_str_vec(&output_types);
+	gen_user_taskgraphs_recursive(root,root,&output_symbols,&output_types);
+	gen_input_enums(fp,output_symbols,output_types,"AcReal");
+	gen_input_enums(fp,output_symbols,output_types,"int");
+	free_str_vec(&output_symbols);
+	free_str_vec(&output_types);
 }
 
 ASTNode*
@@ -2220,7 +2279,7 @@ gen_const_variables(const ASTNode* node, FILE* fp)
 		combine_all(assignment,assignment_val);
 		const char* datatype = tspec->lhs->buffer;
 		char* datatype_scalar = strdup(datatype);
-		remove_substring_codegen(datatype_scalar,"*");
+		remove_substring(datatype_scalar,"*");
 		if(strstr(assignment_val,","))
 		{
 			fprintf(fp, "\n#ifdef __cplusplus\nconst %s %s[] = {%s};\n#endif\n",datatype_scalar, name, assignment_val);
@@ -2240,7 +2299,7 @@ gen_const_variables(const ASTNode* node, FILE* fp)
 	combine_all(assignment,assignment_val);
 	const char* datatype = tspec->lhs->buffer;
 	char* datatype_scalar = strdup(datatype);
-	remove_substring_codegen(datatype_scalar,"*");
+	remove_substring(datatype_scalar,"*");
 	if(strstr(assignment_val,","))
 	{
 		fprintf(fp, "\n#ifdef __cplusplus\nconst %s %s[] = {%s};\n#endif\n",datatype_scalar, name, assignment_val);
@@ -2471,6 +2530,8 @@ gen_user_defines(const ASTNode* root, const char* out)
 	  gen_enums(fp,scalar_datatypes[i],false);
   }
 
+  gen_user_taskgraphs(fp,root);
+
   const char* array_datatypes[] = {"int","AcReal"};
   for (size_t i = 0; i < sizeof(array_datatypes)/sizeof(array_datatypes[0]); ++i) {
   	gen_array_lengths(fp,array_datatypes[i],root);
@@ -2525,7 +2586,6 @@ gen_user_defines(const ASTNode* root, const char* out)
   fp = fopen("user_constants.h","w");
   gen_const_variables(root,fp);
   fclose(fp);
-  gen_user_taskgraphs(root,root);
   symboltable_reset();
 }
 
@@ -2774,7 +2834,7 @@ remove_constexpr(ASTNode* node)
 	if(node->rhs)
 		remove_constexpr(node->rhs);
 	if(node->buffer)
-		remove_substring_codegen(node->buffer,"constexpr");
+		remove_substring(node->buffer,"constexpr");
 }
 void
 transform_arrays_to_std_arrays(ASTNode* node)
