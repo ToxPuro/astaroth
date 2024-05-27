@@ -577,7 +577,7 @@ file_prepend(const char* filename, const char* str_to_prepend)
 	free((void*)file_tmp);
 }
 
-static inline void remove_substring(char *str, const char *sub) {
+static inline char* remove_substring(char *str, const char *sub) {
 	int len = strlen(sub);
 	char *found = strstr(str, sub); // Find the first occurrence of the substring
 
@@ -585,6 +585,7 @@ static inline void remove_substring(char *str, const char *sub) {
 		memmove(found, found + len, strlen(found + len) + 1); // Shift characters to overwrite the substring
 		found = strstr(found, sub); // Find the next occurrence of the substring
 	}
+	return str;
 }
 
 static inline bool

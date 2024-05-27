@@ -1088,109 +1088,108 @@ Kernel haatouken() {
     write(VTXBUF_UUZ, uu.z)
 }
 
-get_d_from_normal(normal)
+get_d_from_boundary_normal(boundary_normal)
 {
     real d_out
-    if normal.x != 0.0
+    if boundary_normal.x != 0.0
     {
 	d_out = AC_dsx
     }
-    if normal.y != 0.0
+    if boundary_normal.y != 0.0
     {
 	d_out = AC_dsy
     }
-    if normal.z != 0.0
+    if boundary_normal.z != 0.0
     {
 	d_out = AC_dsz
     }
     return d_out
 }
-get_uudir(boundary_in, int3 normal_in, VtxBuffer vtxbuf)
+get_uudir(boundary_in, int3 boundary_normal_in, VtxBuffer vtxbuf)
 {
     real uudir_out
-    if normal_in.x != 0
+    if boundary_normal_in.x != 0
     {
-        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.x
+        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*boundary_normal_in.x
     }
-    if(normal_in.y != 0)
+    if(boundary_normal_in.y != 0)
     {
-        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.y
+        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*boundary_normal_in.y
     }
-    if(normal_in.z != 0)
+    if(boundary_normal_in.z != 0)
     {
-        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.z
+        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*boundary_normal_in.z
     }
     return uudir_out
 }
 
-get_boundary_from_normal(normal_in)
+get_boundary_from_boundary_normal(boundary_normal_in)
 {
     int3 boundary_out
-    if normal_in.x == 1
+    if boundary_normal_in.x == 1
     {
 	boundary_out.x = NGHOST + AC_nx -1
     }
-    if normal_in.x == 0
+    if boundary_normal_in.x == 0
     {
 	boundary_out.x = vertexIdx.x
     }
-    if normal_in.x == -1
+    if boundary_normal_in.x == -1
     {
 	boundary_out.x = NGHOST
     }
 
 
-    if normal_in.y == 1
+    if boundary_normal_in.y == 1
     {
 	boundary_out.y = NGHOST + AC_ny -1
     }
-    if normal_in.y == 0
+    if boundary_normal_in.y == 0
     {
 	boundary_out.y = vertexIdx.y
     }
-    if normal_in.y == -1
+    if boundary_normal_in.y == -1
     {
 	boundary_out.y = NGHOST
     }
 
 
-    if normal_in.z == 1
+    if boundary_normal_in.z == 1
     {
 	boundary_out.z = NGHOST + AC_nz -1
     }
-    if normal_in.z == 0
+    if boundary_normal_in.z == 0
     {
 	boundary_out.z = vertexIdx.z
     }
-    if normal_in.z == -1
+    if boundary_normal_in.z == -1
     {
 	boundary_out.z = NGHOST
     }
     return boundary_out
 }
-boundary_condition Kernel prescribed_derivative_boundcond
-(int3 normal, VtxBuffer vtxbuf, real der_val)
+boundary_condition Kernel prescribed_derivative_boundcond(int3 boundary_normal, VtxBuffer vtxbuf, real der_val)
 {
-    d = get_d_from_normal(normal)
+    d = get_d_from_boundary_normal(boundary_normal)
     real direction
-    if(normal.x != 0)
+    if(boundary_normal.x != 0)
     {
-        direction = normal.x
+        direction = boundary_normal.x
     }
-    if(normal.y != 0)
+    if(boundary_normal.y != 0)
     {
-	direction = normal.y
+	direction = boundary_normal.y
     }
-    if(normal.z != 0)
+    if(boundary_normal.z != 0)
     {
-	direction = normal.z
+	direction = boundary_normal.z
     }
-    int3 boundary = get_boundary_from_normal(normal)
+    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
     int3 ghost  = boundary
     int3 domain = boundary
     for  i  in 0:NGHOST {
-        domain = domain - normal
-        ghost  = ghost + normal
+        domain = domain - boundary_normal
+        ghost  = ghost + boundary_normal
 	distance = 2 * (i + 1)*d
 	if direction < 0.0
 	{
@@ -1285,10 +1284,68 @@ Kernel constant() {
     }
 }
 
+boundary_condition Kernel symmetric_boundcond(int3 boundary_normal, VtxBuffer vtxbuf)
+{
+    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
+    int3 domain = boundary
+    int3 ghost  = boundary
+    for  i  in 0:NGHOST {
+        domain = domain - boundary_normal
+        ghost  = ghost + boundary_normal
+        vtxbuf[ghost.x][ghost.y][ghost.z] = vtxbuf[domain.x][domain.y][domain.z]
+    }
+}
+boundary_condition Kernel anti_symmetric_boundcond(int3 boundary_normal, VtxBuffer vtxbuf)
+{
+    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
+    int3 domain = boundary
+    int3 ghost  = boundary
+    for  i  in 0:NGHOST {
+        domain = domain - boundary_normal
+        ghost  = ghost + boundary_normal
+        vtxbuf[ghost.x][ghost.y][ghost.z] = -vtxbuf[domain.x][domain.y][domain.z]
+    }
+}   
+
+boundary_condition Kernel a2_boundcond(int3 boundary_normal, VtxBuffer vtxbuf)
+{   
+    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
+    boundary_val = vtxbuf[boundary.x][boundary.y][boundary.z]
+    int3 domain = boundary
+    int3 ghost  = boundary
+    for  i  in 0:NGHOST {
+        domain = domain - boundary_normal
+        ghost  = ghost + boundary_normal
+        vtxbuf[ghost.x][ghost.y][ghost.z] = 2 * boundary_val -vtxbuf[domain.x][domain.y][domain.z]
+    }   
+}
+
+boundary_condition Kernel const_boundcond(int3 boundary_normal, VtxBuffer vtxbuf, real const_value)
+{
+    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
+    int3 ghost  = boundary
+    for  i  in 0:NGHOST {
+        ghost  = ghost + boundary_normal
+        vtxbuf[ghost.x][ghost.y][ghost.z] = const_value
+    }
+}
+
+
+
+
+BoundConds rhs_boundconds_test
+{
+	periodic(BOUNDARY_XY),
+	symmetric_boundcond(BOUNDARY_Z),
+	prescribed_derivative_boundcond(BOUNDARY_Z_TOP,VTXBUF_ENTROPY,F_top_param),
+	prescribed_derivative_boundcond(BOUNDARY_Z_BOT,VTXBUF_ENTROPY,F_bot_param),
+	a2_boundcond(BOUNDARY_Z,VTXBUF_LNRHO,VTXBUF_UUX)
+}
 BoundConds rhs_boundconds
 {
 	periodic(BOUNDARY_XYZ)
 }
+
 
 
 ComputeSteps rhs_STEP_NUM(rhs_boundconds)

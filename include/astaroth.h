@@ -756,9 +756,11 @@ typedef enum AcBoundary {
 } AcBoundary;
 
 typedef struct ParamLoadingInfo {
-	acKernelInputParams* params;
-	Device device;
-	const int step_number;
+        acKernelInputParams* params;
+        Device device;
+        const int step_number;
+        const int3 boundary_normal;
+        const Field vtxbuf;
 } ParamLoadingInfo;
 
 //opaque for C to enable C++ lambdas

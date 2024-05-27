@@ -945,9 +945,100 @@ get_kernel_param_types_and_names(const ASTNode* node, const char* kernel_name, s
 	push(names_dst,param->rhs->buffer);
 	free(param_type);
 }
+string_vec
+get_func_call_params(const ASTNode* func_call)
+{
+		string_vec params;
+		init_str_vec(&params);
+		ASTNode* param_list_head = func_call->rhs;
+		while(param_list_head->rhs)
+		{
+			char* param = NULL;
+			if(get_node_by_token(IDENTIFIER,param_list_head->rhs))
+				 param = get_node_by_token(IDENTIFIER,param_list_head->rhs)->buffer;
+			if(get_node_by_token(NUMBER,param_list_head->rhs))
+				 param = get_node_by_token(NUMBER,param_list_head->rhs)->buffer;
+			if(get_node_by_token(REALNUMBER,param_list_head->rhs))
+				 param = get_node_by_token(REALNUMBER,param_list_head->rhs)->buffer;
+			assert(param);
+			push(&params,param);
+			param_list_head = param_list_head->lhs;
+		}
+		char* param= NULL;
+		if(get_node_by_token(IDENTIFIER,param_list_head->lhs))
+			 param = get_node_by_token(IDENTIFIER,param_list_head->lhs)->buffer;
+		if(get_node_by_token(NUMBER,param_list_head->lhs))
+			 param = get_node_by_token(NUMBER,param_list_head->lhs)->buffer;
+		if(get_node_by_token(REALNUMBER,param_list_head->lhs))
+			 param = get_node_by_token(REALNUMBER,param_list_head->lhs)->buffer;
+		assert(param);
+		push(&params,param);
+		return params;
+}
 
+void gen_loader(const ASTNode* kernel_call, const ASTNode* root, const char* prefix, string_vec* input_symbols, string_vec* input_types)
+{
+		char tmp[4000];
+		const char* func_name = get_node_by_token(IDENTIFIER,kernel_call)->buffer;
+		if(!strcmp(func_name,"periodic"))
+			return;
+		ASTNode* param_list_head = kernel_call->rhs;
+		if(!param_list_head)
+			return;
+		string_vec params = get_func_call_params(kernel_call);
+		bool is_boundcond = false;
+		for(size_t i = 0; i< params.size; ++i)
+			is_boundcond |= (strstr(params.data[i],"BOUNDARY_") != NULL);
+		string_vec param_types;
+		init_str_vec(&param_types);
+
+		string_vec param_list_names;
+		init_str_vec(&param_list_names);
+
+		get_kernel_param_types_and_names(root,func_name,&param_types,&param_list_names);
+
+		char* loader_str = malloc(sizeof(char)*4000);
+		sprintf(loader_str,"auto %s_%s_loader = [](ParamLoadingInfo p){\n",prefix, func_name);
+		const int params_offset = is_boundcond ? 2 : 0;
+		for(size_t i = 0; i < param_types.size-params_offset; ++i)
+		{
+			if(is_number(params.data[i]) || is_real(params.data[i]))
+				sprintf(tmp, "p.params -> %s.%s = %s;\n", func_name, param_list_names.data[i], params.data[i]);
+			else if(!strcmp(param_types.data[i],"AcReal"))
+			{
+				sprintf(tmp, "p.params -> %s.%s = acDeviceGetRealInput(acGridGetDevice(),%s);\n", func_name,param_list_names.data[i], params.data[i]);
+			}
+			else if(!strcmp(param_types.data[i],"int"))
+				sprintf(tmp, "p.params -> %s.%s = acDeviceGetIntInput(acGridGetDevice(),%s); \n", func_name,param_list_names.data[i], params.data[i]);
+			strcat(loader_str,tmp);
+			if(!str_vec_contains(*input_symbols,params.data[i]))
+			{
+				if(!is_number(params.data[i]) && !is_real(params.data[i]))
+				{
+					push(input_symbols,params.data[i]);
+					push(input_types,param_types.data[i]);
+				}
+			}
+		}
+		//add predefined input params for boundcond functions
+		if(is_boundcond)
+		{
+			sprintf(tmp, "p.params -> %s.boundary_normal= p.boundary_normal;\n",func_name);
+			strcat(loader_str,tmp);
+			sprintf(tmp, "p.params -> %s.vtxbuf = p.vtxbuf;\n",func_name);
+			strcat(loader_str,tmp);
+		}
+		strcat(loader_str,"};\n");
+		file_prepend("user_loaders.h",loader_str);
+
+		free_str_vec(&param_types);
+		free_str_vec(&param_list_names);
+		free_str_vec(&params);
+		free(loader_str);
+}
+	 
 void
-gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char* global_res, string_vec* output_symbols, string_vec* output_types, const char* taskgraph_name)
+gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char* global_res, string_vec* input_symbols, string_vec* input_types, const char* taskgraph_name)
 {
 	assert(kernel_call);
 	char* res = malloc(sizeof(char)*4000);
@@ -980,72 +1071,10 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 	strcat(fields_in_str,  "}");
 	strcat(fields_out_str, "}");
 	if(kernel_call->rhs)
-	{
 		sprintf(res,"acCompute(KERNEL_%s,%s,%s,%s_%s_loader),\n",func_name,fields_in_str,fields_out_str,taskgraph_name,func_name);
-		ASTNode* param_list_head = kernel_call->rhs;
-		string_vec params;
-		init_str_vec(&params);
-		while(param_list_head->rhs)
-		{
-			char* param = NULL;
-			if(get_node_by_token(IDENTIFIER,param_list_head->rhs))
-				 param = get_node_by_token(IDENTIFIER,param_list_head->rhs)->buffer;
-			if(get_node_by_token(NUMBER,param_list_head->rhs))
-				 param = get_node_by_token(NUMBER,param_list_head->rhs)->buffer;
-			if(get_node_by_token(REALNUMBER,param_list_head->rhs))
-				 param = get_node_by_token(REALNUMBER,param_list_head->rhs)->buffer;
-			assert(param);
-			push(&params,param);
-			param_list_head = param_list_head->lhs;
-		}
-		char* param= NULL;
-		if(get_node_by_token(IDENTIFIER,param_list_head->lhs))
-			 param = get_node_by_token(IDENTIFIER,param_list_head->lhs)->buffer;
-		if(get_node_by_token(NUMBER,param_list_head->lhs))
-			 param = get_node_by_token(NUMBER,param_list_head->lhs)->buffer;
-		if(get_node_by_token(REALNUMBER,param_list_head->lhs))
-			 param = get_node_by_token(REALNUMBER,param_list_head->lhs)->buffer;
-		assert(param);
-		push(&params,param);
-
-		string_vec param_types;
-		init_str_vec(&param_types);
-
-		string_vec param_list_names;
-		init_str_vec(&param_list_names);
-
-		get_kernel_param_types_and_names(root,func_name,&param_types,&param_list_names);
-
-		char* loader_str = malloc(sizeof(char)*4000);
-		sprintf(loader_str,"auto %s_%s_loader = [](ParamLoadingInfo p){\n",taskgraph_name, func_name);
-		for(size_t i = 0; i < param_types.size; ++i)
-		{
-			if(is_number(params.data[i]) || is_real(params.data[i]))
-				sprintf(tmp, "p.params -> %s.%s = %s;\n", func_name, param_list_names.data[i], params.data[i]);
-			else if(!strcmp(param_types.data[i],"AcReal"))
-				sprintf(tmp, "p.params -> %s.%s = acDeviceGetRealInput(acGridGetDevice(),%s);\n", func_name,param_list_names.data[i], params.data[i]);
-			else if(!strcmp(param_types.data[i],"int"))
-				sprintf(tmp, "p.params -> %s.%s = acDeviceGetIntInput(acGridGetDevice(),%s); \n", func_name,param_list_names.data[i], params.data[i]);
-			strcat(loader_str,tmp);
-			if(!str_vec_contains(*output_symbols,params.data[i]))
-			{
-				if(!is_number(params.data[i]) && !is_real(params.data[i]))
-				{
-					push(output_symbols,params.data[i]);
-					push(output_types,param_types.data[i]);
-				}
-			}
-		}
-		strcat(loader_str,"};\n");
-		file_prepend("user_loaders.h",loader_str);
-
-		free_str_vec(&param_types);
-		free_str_vec(&param_list_names);
-		free_str_vec(&params);
-		free(loader_str);
-	}
 	else
 		sprintf(res,"acCompute(KERNEL_%s,%s,%s),\n",func_name,fields_in_str,fields_out_str);
+	gen_loader(kernel_call,root,taskgraph_name,input_symbols,input_types);
 	free(all_fields);
 	free(fields_in_str);
 	free(fields_out_str);
@@ -1120,101 +1149,174 @@ compute_next_level_set(bool* src, const int_vec kernel_calls, bool* field_writte
 			src[i] = true;
 	}
 }
-#define BOUNDARY_X (1 << 0)
-#define BOUNDARY_Y (1 << 1)
-#define BOUNDARY_Z (1 << 2)
+#define BOUNDARY_X_BOT (1 << 0)
+#define BOUNDARY_X_TOP (1 << 1)
+#define BOUNDARY_Y_BOT (1 << 2)
+#define BOUNDARY_Y_TOP (1 << 3)
+#define BOUNDARY_Z_BOT (1 << 4)
+#define BOUNDARY_Z_TOP (1 << 5)
+#define BOUNDARY_X (BOUNDARY_X_BOT | BOUNDARY_X_TOP)
+#define BOUNDARY_Y (BOUNDARY_Y_BOT | BOUNDARY_Y_TOP)
+#define BOUNDARY_Z (BOUNDARY_Z_BOT | BOUNDARY_Z_TOP)
+
 int
-get_boundary_int(const char* boundary)
+get_boundary_int(const char* boundary_in)
 {
 	int res = 0;
-	assert(strstr(boundary,"BOUNDARY_"));
-	if(strstr(boundary,"BOUNDARY_"))
-		res |= BOUNDARY_X;
-	if(strstr(boundary,"BOUNDARY_"))
-		res |= BOUNDARY_Y;
-	if(strstr(boundary,"BOUNDARY_"))
-		res |= BOUNDARY_Z;
+	if(!strstr(boundary_in,"BOUNDARY_"))
+	{
+		fprintf(stderr,"incorrect boundary specification: %s\n",boundary_in);
+		exit(EXIT_FAILURE);
+	}
+	char* boundary = remove_substring(strdup(boundary_in),"BOUNDARY");
+	if(strstr(boundary,"BOT"))
+	{
+		if(strstr(boundary,"X"))
+			res |= BOUNDARY_X_BOT;
+		if(strstr(boundary,"Y"))
+			res |= BOUNDARY_Y_BOT;
+		if(strstr(boundary,"Z"))
+			res |= BOUNDARY_Z_BOT;
+	}
+	else if(strstr(boundary,"TOP"))
+	{
+		if(strstr(boundary,"X"))
+			res |= BOUNDARY_X_TOP;
+		if(strstr(boundary,"Y"))
+			res |= BOUNDARY_Y_TOP;
+		if(strstr(boundary,"Z"))
+			res |= BOUNDARY_Z_TOP;
+	}
+	else
+	{
+		if(strstr(boundary,"X"))
+			res |= BOUNDARY_X;
+		if(strstr(boundary,"Y"))
+			res |= BOUNDARY_Y;
+		if(strstr(boundary,"Z"))
+			res |= BOUNDARY_Z;
+	}
+	free(boundary);
 	return res;
 
 }
 void
-get_field_boundconds_recursive(const ASTNode* node, char** res, const char* boundconds_name)
+process_boundcond(const ASTNode* func_call, char** res, const ASTNode* root, const char* boundconds_name, string_vec* input_symbols,string_vec* input_types)
+{
+	char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
+	const char* boundary = get_node_by_token(IDENTIFIER,func_call->rhs)->buffer;
+	const int boundary_int = get_boundary_int(boundary);
+	const int boundaries[] = {BOUNDARY_X_BOT, BOUNDARY_Y_BOT,BOUNDARY_Z_BOT,BOUNDARY_X_TOP,BOUNDARY_Y_TOP,BOUNDARY_Z_TOP};
+	const int num_boundaries = 6;
+	bool* fields_included = (bool*)malloc(sizeof(bool)*num_fields);
+	memset(fields_included,0,sizeof(bool)*num_fields);
+
+
+	ASTNode* param_list_head = func_call->rhs;
+	string_vec params = get_func_call_params(func_call);
+	for(size_t field = 0; field < num_fields; ++field)
+		fields_included[field] = str_vec_contains(params,get_symbol(NODE_VARIABLE_ID,field,"Field")->identifier);
+	free_str_vec(&params);
+	//if none are included then by default all are included
+	bool none_included = true;
+	for(size_t field = 0; field < num_fields; ++field)
+		none_included &= !fields_included[field];
+	for(size_t field = 0; field < num_fields; ++field)
+		fields_included[field] |= none_included;
+
+	for(size_t field = 0; field < num_fields; ++field)
+	     for(int bc = 0;  bc < num_boundaries; ++bc) 
+	     	     res[field + num_fields*bc] = (boundary_int & boundaries[bc] && fields_included[field]) ? func_name : res[field + num_fields*bc];
+	free(fields_included);
+	if(!strcmp(func_name,"periodic"))
+		return;
+	char* prefix = malloc(sizeof(char)*4000);
+	for(int bc = 0;  bc < num_boundaries; ++bc) 
+	{
+		if(boundary_int & boundaries[bc])
+		{
+			sprintf(prefix,"%s_",boundconds_name);
+			if(bc == 0)
+				strcat(prefix,"X_BOT");
+			if(bc == 1)
+				strcat(prefix,"Y_BOT");
+			if(bc == 2)
+				strcat(prefix,"Z_BOT");
+			if(bc == 3)
+				strcat(prefix,"X_TOP");
+			if(bc == 4)
+				strcat(prefix,"Y_TOP");
+			if(bc == 5)
+				strcat(prefix,"Z_TOP");
+			gen_loader(func_call,root,prefix,input_symbols,input_types);
+		}
+	}
+	free(prefix);
+}
+void
+get_field_boundconds_recursive(const ASTNode* node, const ASTNode* root, char** res, const char* boundconds_name, string_vec* input_symbols, string_vec* input_types)
 {
 	if(node->lhs)
-		get_field_boundconds_recursive(node->lhs,res,boundconds_name);
+		get_field_boundconds_recursive(node->lhs,root,res,boundconds_name,input_symbols,input_types);
 	if(node->rhs)
-		get_field_boundconds_recursive(node->rhs,res,boundconds_name);
+		get_field_boundconds_recursive(node->rhs,root,res,boundconds_name,input_symbols,input_types);
 	if(node->type != NODE_BOUNDCONDS_DEF)
 		return;
 	if(strcmp(node->lhs->buffer,boundconds_name))
 		return;
 	const char* name = node->lhs->buffer;
 	const ASTNode* function_call_list_head = node->rhs;
+	int n_entries = 1;
 	while(function_call_list_head->rhs)
 	{
+		++n_entries;
 		function_call_list_head = function_call_list_head->lhs;
 	}
-	const ASTNode* func_call = function_call_list_head->lhs;
-	char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
-	if(!strcmp(func_name,"periodic"))
+	process_boundcond(function_call_list_head->lhs,res,root,boundconds_name,input_symbols,input_types);
+	while(--n_entries)
 	{
-	   const char* boundary = get_node_by_token(IDENTIFIER,func_call->rhs)->buffer;
-	   const int boundary_int = get_boundary_int(boundary);
-	   for(size_t field = 0; field < num_fields; ++field)
-	   {
-		if(boundary_int & BOUNDARY_X)
-			res[field + num_fields*0] = func_name;
-		if(boundary_int & BOUNDARY_Y)
-			res[field + num_fields*1] = func_name;
-		if(boundary_int & BOUNDARY_Z)
-			res[field + num_fields*2] = func_name;
-	   }
-	}
-	else
-	{
-		printf("Only periodic boundconds supported for now\n");
-		exit(0);
+		function_call_list_head = function_call_list_head->parent;
+		process_boundcond(function_call_list_head->rhs,res,root,boundconds_name,input_symbols,input_types);
 	}
 }
 char**
-get_field_boundconds(const ASTNode* root, const char* boundconds_name)
+get_field_boundconds(const ASTNode* root, const char* boundconds_name, string_vec* input_symbols, string_vec* input_types)
 {
 	char** res = NULL;
   	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
 	if(!has_optimization_info)
 		return res;
-	const int num_boundaries = 3;
+	const int num_boundaries = 6;
 	res = malloc(sizeof(char*)*num_fields*num_boundaries);
 	memset(res,0,sizeof(char*)*num_fields*num_boundaries);
-	get_field_boundconds_recursive(root,res,boundconds_name);
-	for(size_t field = 0; field < num_fields; ++field)
-	{
-		assert(res[field + num_fields*0]);
-		assert(res[field + num_fields*1]);
-		assert(res[field + num_fields*2]);
-	}
+	get_field_boundconds_recursive(root,root,res,boundconds_name,input_symbols,input_types);
 	return res;
 }
 void
-gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* output_symbols, string_vec* output_types)
+gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* input_symbols, string_vec* input_types)
 {
   	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
 	if(!has_optimization_info)
 		return;
 	if(node->lhs)
-		gen_user_taskgraphs_recursive(node->lhs,root,output_symbols,output_types);
+		gen_user_taskgraphs_recursive(node->lhs,root,input_symbols,input_types);
 	if(node->rhs)
-		gen_user_taskgraphs_recursive(node->rhs,root,output_symbols,output_types);
+		gen_user_taskgraphs_recursive(node->rhs,root,input_symbols,input_types);
 	if(node->type != NODE_TASKGRAPH_DEF)
 		return;
-	const char* boundconds = node->lhs->rhs->buffer;
-	char** field_boundconds = get_field_boundconds(root,boundconds);
+	const char* boundconds_name = node->lhs->rhs->buffer;
+	char** field_boundconds = get_field_boundconds(root,boundconds_name,input_symbols,input_types);
+	const int num_boundaries = 6;
+	bool* field_boundconds_processed = (bool*)malloc(num_fields*num_boundaries);
 
 	//for(size_t field = 0; field < num_fields; ++field)
 	//{
-	//	printf("%lu|x: %s\n",field,field_boundconds[field + num_fields*0]);
-	//	printf("%lu|y: %s\n",field,field_boundconds[field + num_fields*1]);
-	//	printf("%lu|z: %s\n",field,field_boundconds[field + num_fields*2]);
+	//	printf("%lu|x_bot: %s\n",field,field_boundconds[field + num_fields*0]);
+	//	printf("%lu|y_bot: %s\n",field,field_boundconds[field + num_fields*1]);
+	//	printf("%lu|z_bot: %s\n",field,field_boundconds[field + num_fields*2]);
+	//	printf("%lu|x_top: %s\n",field,field_boundconds[field + num_fields*3]);
+	//	printf("%lu|y_top: %s\n",field,field_boundconds[field + num_fields*4]);
+	//	printf("%lu|z_top: %s\n",field,field_boundconds[field + num_fields*5]);
 	//}
 	
 	const char* name = node->lhs->lhs->buffer;
@@ -1304,6 +1406,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	}
 	for(int level_set = 0; level_set < n_level_sets; ++level_set)
 	{
+		memset(field_boundconds_processed,0,num_fields*num_boundaries*sizeof(bool));
 		bool need_to_communicate = false;
 		char communicated_fields_str[4000];
 		sprintf(communicated_fields_str,"{");
@@ -1323,19 +1426,88 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 			strcat(res,"acHaloExchange(");
 			strcat(res,communicated_fields_str);
 			strcat(res,"),\n");
-			bool x_is_periodic = !strcmp(field_boundconds[0 + num_fields*0],"periodic");
-			bool y_is_periodic = !strcmp(field_boundconds[0 + num_fields*1],"periodic");
-			bool z_is_periodic = !strcmp(field_boundconds[0 + num_fields*2],"periodic");
-			if(!x_is_periodic && !y_is_periodic && !z_is_periodic)
+
+			const char* x_boundcond = field_boundconds[0 + num_fields*0];
+			const char* y_boundcond = field_boundconds[0 + num_fields*1];
+			const char* z_boundcond = field_boundconds[0 + num_fields*2];
+
+			if(!strcmp(x_boundcond,"periodic") || !strcmp(y_boundcond,"periodic") || !strcmp(z_boundcond,"periodic"))
 			{
-				fprintf(stderr,"only fully periodic boundconds supported for now\n");
-				exit(EXIT_FAILURE);
+				if(!strcmp(x_boundcond,"periodic") && !strcmp(y_boundcond,"periodic") && !strcmp(z_boundcond,"periodic"))
+					strcat(res,"acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,");
+				else if(!strcmp(x_boundcond,"periodic") && !strcmp(y_boundcond,"periodic") && strcmp(z_boundcond,"periodic"))
+					strcat(res,"acBoundaryCondition(BOUNDARY_XY,BOUNDCOND_PERIODIC,");
+				else if(!strcmp(x_boundcond,"periodic") && strcmp(y_boundcond,"periodic") && !strcmp(z_boundcond,"periodic"))
+					strcat(res,"acBoundaryCondition(BOUNDARY_XZ,BOUNDCOND_PERIODIC,");
+				else if(!strcmp(x_boundcond,"periodic") && strcmp(y_boundcond,"periodic") && strcmp(z_boundcond,"periodic"))
+					strcat(res,"acBoundaryCondition(BOUNDARY_X,BOUNDCOND_PERIODIC,");
+				else if(strcmp(x_boundcond,"periodic") && !strcmp(y_boundcond,"periodic") && !strcmp(z_boundcond,"periodic"))
+					strcat(res,"acBoundaryCondition(BOUNDARY_YZ,BOUNDCOND_PERIODIC,");
+				else if(strcmp(x_boundcond,"periodic") && !strcmp(y_boundcond,"periodic") && strcmp(z_boundcond,"periodic"))
+					strcat(res,"acBoundaryCondition(BOUNDARY_Y,BOUNDCOND_PERIODIC,");
+				else if(strcmp(x_boundcond,"periodic") && strcmp(y_boundcond,"periodic") && !strcmp(z_boundcond,"periodic"))
+					strcat(res,"acBoundaryCondition(BOUNDARY_Z,BOUNDCOND_PERIODIC,");
+				strcat(res,communicated_fields_str);
+				strcat(res,"),\n");
 			}
-			strcat(res,"acBoundaryCondition(BOUNDARY_XYZ,BOUNDCOND_PERIODIC,");
-			strcat(res,"{");
-			strcat(res,all_fields);
-			strcat(res,"}");
-			strcat(res,"),\n");
+
+			for(int boundcond = 0; boundcond < num_boundaries; ++boundcond)
+				for(size_t field = 0; field < num_fields; ++field)
+					field_boundconds_processed[field + num_fields*boundcond]  = !strcmp(field_boundconds[field + num_fields*boundcond],"periodic")  || !field_needs_to_be_communicated_before_level_set[field + num_fields*level_set];
+
+			bool all_are_processed = false;
+			while(!all_are_processed)
+			{
+				for(int boundcond = 0; boundcond < num_boundaries; ++boundcond)
+				{
+					char* processed_boundcond = NULL;
+
+					for(size_t field = 0; field < num_fields; ++field)
+						processed_boundcond = !field_boundconds_processed[field + num_fields*boundcond] ? field_boundconds[field + num_fields*boundcond] : processed_boundcond;
+					if(!processed_boundcond) continue;
+					char* boundary_str;
+					if(boundcond == 0)
+						boundary_str = "X_BOT";
+					else if(boundcond == 1)
+						boundary_str = "Y_BOT";
+					else if(boundcond == 2)
+						boundary_str = "Z_BOT";
+					else if(boundcond == 3)
+						boundary_str = "X_TOP";
+					else if(boundcond == 4)
+						boundary_str = "Y_TOP";
+					else if(boundcond == 5)
+						boundary_str = "Z_TOP";
+					strcat(res,"acBoundaryCondition(BOUNDARY_");
+					strcat(res,boundary_str);
+					strcat(res,",KERNEL_");
+					strcat(res,processed_boundcond);
+					strcat(res,",");
+					strcat(res,"{");
+					for(size_t field = 0; field < num_fields; ++field)
+					{
+						const char* field_str = get_symbol(NODE_VARIABLE_ID,field,"Field")->identifier;
+						const char* boundcond_str = field_boundconds[field + num_fields*boundcond];
+						if(strcmp(boundcond_str,processed_boundcond)) continue;
+						if(field_boundconds_processed[field + num_fields*boundcond]) continue;
+						field_boundconds_processed[field + num_fields*boundcond] |= true;
+						strcat(res,field_str);
+						strcat(res,",");
+					}
+					strcat(res,"},");
+					strcat(res,boundconds_name);
+					strcat(res,"_");
+					strcat(res,boundary_str);
+					strcat(res,"_");
+					strcat(res,processed_boundcond);
+					strcat(res,"_loader");
+					strcat(res,"),\n");
+				}
+				all_are_processed = true;
+				for(int boundcond = 0; boundcond < num_boundaries; ++boundcond)
+					for(size_t field = 0; field < num_fields; ++field)
+						all_are_processed &= field_boundconds_processed[field + num_fields*boundcond];
+			}
 		}
 		for(size_t call = 0; call < kernel_calls.size; ++call) 
 		{
@@ -1343,13 +1515,13 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 			{
 				int call_index = call;
 				if(call_index == 0)
-					gen_taskgraph_kernel_entry(function_call_list_head->lhs,root,res,output_symbols,output_types,name);
+					gen_taskgraph_kernel_entry(function_call_list_head->lhs,root,res,input_symbols,input_types,name);
 				else
 				{
 					const ASTNode* new_head = function_call_list_head;
 					while(call_index--)
 						new_head = new_head->parent;
-					gen_taskgraph_kernel_entry(new_head->rhs,root,res,output_symbols,output_types,name);
+					gen_taskgraph_kernel_entry(new_head->rhs,root,res,input_symbols,input_types,name);
 				}
 
 
@@ -1365,15 +1537,15 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 
 
 void
-gen_input_enums(FILE* fp, string_vec output_symbols, string_vec output_types, const char* datatype)
+gen_input_enums(FILE* fp, string_vec input_symbols, string_vec input_types, const char* datatype)
 {
   const char* datatype_scalar = datatype;
   fprintf(fp,"typedef enum {");
-  for (size_t i = 0; i < output_types.size; ++i)
+  for (size_t i = 0; i < input_types.size; ++i)
   {
-	  if(strcmp(datatype,output_types.data[i]))
+	  if(strcmp(datatype,input_types.data[i]))
 		  continue;
-	  fprintf(fp,"%s,",output_symbols.data[i]);
+	  fprintf(fp,"%s,",input_symbols.data[i]);
   }
   fprintf(fp, "NUM_%s_INPUT_PARAMS} %sInputParam;",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
 	
@@ -1381,15 +1553,15 @@ gen_input_enums(FILE* fp, string_vec output_symbols, string_vec output_types, co
 void
 gen_user_taskgraphs(FILE* fp, const ASTNode* root)
 {
-	string_vec output_symbols;
-	string_vec output_types;
-	init_str_vec(&output_symbols);
-	init_str_vec(&output_types);
-	gen_user_taskgraphs_recursive(root,root,&output_symbols,&output_types);
-	gen_input_enums(fp,output_symbols,output_types,"AcReal");
-	gen_input_enums(fp,output_symbols,output_types,"int");
-	free_str_vec(&output_symbols);
-	free_str_vec(&output_types);
+	string_vec input_symbols;
+	string_vec input_types;
+	init_str_vec(&input_symbols);
+	init_str_vec(&input_types);
+	gen_user_taskgraphs_recursive(root,root,&input_symbols,&input_types);
+	gen_input_enums(fp,input_symbols,input_types,"AcReal");
+	gen_input_enums(fp,input_symbols,input_types,"int");
+	free_str_vec(&input_symbols);
+	free_str_vec(&input_types);
 }
 
 ASTNode*
@@ -2280,7 +2452,7 @@ gen_const_variables(const ASTNode* node, FILE* fp)
 		if(!assignment) return;
 		combine_all(assignment,assignment_val);
 		const char* datatype = tspec->lhs->buffer;
-		char* datatype_scalar = strdup(datatype);
+		char* datatype_scalar = remove_substring(strdup(datatype),"*");
 		remove_substring(datatype_scalar,"*");
 		if(strstr(assignment_val,","))
 		{
@@ -2300,8 +2472,7 @@ gen_const_variables(const ASTNode* node, FILE* fp)
 	if(!assignment) return;
 	combine_all(assignment,assignment_val);
 	const char* datatype = tspec->lhs->buffer;
-	char* datatype_scalar = strdup(datatype);
-	remove_substring(datatype_scalar,"*");
+	char* datatype_scalar = remove_substring(strdup(datatype),"*");
 	if(strstr(assignment_val,","))
 	{
 		fprintf(fp, "\n#ifdef __cplusplus\nconst %s %s[] = {%s};\n#endif\n",datatype_scalar, name, assignment_val);
