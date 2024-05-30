@@ -208,6 +208,7 @@ get_smem(const Volume tpb, const size_t stencil_order,
 
 __device__ __constant__ AcMeshInfo d_mesh_info;
 //we pad with 1 since zero sized arrays are not allowed with some CUDA compilers
+
 __device__ __constant__ AcReal d_real_arrays[D_REAL_ARRAYS_LEN+1];
 __device__ __constant__ int d_int_arrays[D_INT_ARRAYS_LEN+1];
 
@@ -1032,7 +1033,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
           nz, best_tpb.x, best_tpb.y, best_tpb.z,
           (double)best_time / num_iters);
 #else
-  fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %g\n", IMPLEMENTATION, dims.x,
+  fprintf(fp, "%d, %d, %d, %d, %d, %d, %d, %d, %g\n", IMPLEMENTATION, get_kernel_index(kernel), dims.x,
           dims.y, dims.z, best_tpb.x, best_tpb.y, best_tpb.z,
           (double)best_time / num_iters);
 #endif
@@ -1062,7 +1063,7 @@ get_entries(char** dst, const char* line)
       return counter;
 }
 static int3
-read_optim_tpb(const int3 dims)
+read_optim_tpb(const Kernel kernel, const int3 dims)
 {
   const char* filename = autotune_csv_path;
   FILE *file = fopen ( filename, "r" );
@@ -1071,19 +1072,15 @@ read_optim_tpb(const int3 dims)
   if (file != NULL) {
     char line [1000];
     while(fgets(line,sizeof line,file)!= NULL) /* read a line from a file */ {
-      char* entries[8];
+      char* entries[9];
       int num_entries = get_entries(entries,line);
       if(num_entries > 1)
       {
-         //for(int i = 0; i< num_entries; ++i)
-         //        printf("%s,",entries[i]);
-         //}
-         int3 read_dims = {atoi(entries[1]), atoi(entries[2]), atoi(entries[3])};
-         int3 tpb = {atoi(entries[4]), atoi(entries[5]), atoi(entries[6])};
-         double time = atof(entries[7]);
-         if(read_dims == dims && time < best_time)
-                 res = tpb;
-
+         int kernel_index  = atoi(entries[1]);
+         int3 read_dims = {atoi(entries[2]), atoi(entries[3]), atoi(entries[4])};
+         int3 tpb = {atoi(entries[5]), atoi(entries[6]), atoi(entries[7])};
+         double time = atof(entries[8]);
+	 res =  (read_dims == dims && kernel_index == get_kernel_index(kernel) && time < best_time) ? tpb  : res;
       }
   }
     fclose(file);
@@ -1098,7 +1095,7 @@ read_optim_tpb(const int3 dims)
 static TBConfig
 getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 {
-  const int3 read_tpb = read_optim_tpb(dims); 
+  const int3 read_tpb = read_optim_tpb(kernel,dims); 
   if(read_tpb != (int3){-1,-1,-1})
   {
 	  return 
