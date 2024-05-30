@@ -1261,6 +1261,7 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
             break;
         case TASKTYPE_BOUNDCOND:
         case TASKTYPE_SPECIAL_MHD_BOUNDCOND:
+        case TASKTYPE_DSL_BOUNDCOND:
             if (!found_halo_exchange) {
                 boundary_condition_before_halo_exchange = true;
                 error                                   = true;
@@ -1350,6 +1351,14 @@ InnerMostCompRegion(int3 mm, int decomp_level, std::vector<Field> fields)
 {
 	int3 position = {(2+decomp_level)*NGHOST,(2+decomp_level)*NGHOST,(2+decomp_level)*NGHOST};
 	int3 last_position = {mm.x-(2+decomp_level)*NGHOST, mm.y-(2+decomp_level)*NGHOST,mm.z-(2+decomp_level)*NGHOST};
+	int3 dims = last_position - position;
+        return Region(position,dims,0,fields,RegionFamily::Compute_output);
+}
+Region
+FullRegion(int3 mm, std::vector<Field> fields)
+{
+	int3 position = {NGHOST,NGHOST,NGHOST};
+	int3 last_position = {mm.x-NGHOST, mm.y-NGHOST,mm.z-NGHOST};
 	int3 dims = last_position - position;
         return Region(position,dims,0,fields,RegionFamily::Compute_output);
 }
@@ -1506,6 +1515,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     // ERRCHK(grid.initialized);
     int rank;
     MPI_Comm_rank(astaroth_comm, &rank);
+    int comm_size;
+    MPI_Comm_size(astaroth_comm, &comm_size);
 
     check_ops(ops, n_ops);
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Allocating task graph\n");
@@ -1552,10 +1563,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             // Something went wrong, this tag does not identify a boundary region.
             return int3{0, 0, 0};
         }
-        // return int3{(neighbor.x == -1) ? -1 : (neighbor.x == (int)decomp.x ? 1 : 0),
-        //             (neighbor.y == -1) ? -1 : (neighbor.y == (int)decomp.y ? 1 : 0),
-        //             (neighbor.z == -1) ? -1 : (neighbor.z == (int)decomp.z ? 1 : 0)};
     };
+    
 
     // The tasks start at different offsets from the beginning of the iteration
     // this array of bools keep track of that state
@@ -1588,12 +1597,32 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                     //autotune compute
 	    }
 	    **/
-            for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
-                auto task = std::make_shared<ComputeTask>(op, i, tag, nn, device, swap_offset);
-                graph->all_tasks.push_back(task);
-                //done here since we want to write only to out not to in what launching the taskgraph would do
-                acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, kernels[(int)op.kernel_enum], task->output_region.position, task->output_region.position + task->output_region.dims);
-            }
+            //for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
+	    std::vector<Field> fields_out(op.fields_out,op.fields_out+op.num_fields_out);
+	    std::vector<Field> fields_in(op.fields_in,op.fields_in+op.num_fields_in);
+	    int3 mm = nn + (int3){2*NGHOST,2*NGHOST,2*NGHOST};
+	    Region full_region = FullRegion(mm,fields_out);
+	    Region full_input_region = getinputregions({full_region},fields_in)[0];
+            //for (int tag = Region::min_comp_tag; tag < 1; tag++) {
+	    //TP: if only a single GPU then now point in splitting the domain, simply process it as one large one
+	    if(comm_size == 1)
+	    {
+	      auto task = std::make_shared<ComputeTask>(op,0,full_input_region,full_region,device,swap_offset);
+              graph->all_tasks.push_back(task);
+              //done here since we want to write only to out not to in what launching the taskgraph would do
+              acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, kernels[(int)op.kernel_enum], task->output_region.position, task->output_region.position + task->output_region.dims);
+	    }
+	    else
+	    {
+            	for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
+	    	    //auto task = std::make_shared<ComputeTask>(op,tag,full_input_region,full_region,device,swap_offset);
+            	    //graph->all_tasks.push_back(task);
+            	    auto task = std::make_shared<ComputeTask>(op, i, tag, nn, device, swap_offset);
+            	    graph->all_tasks.push_back(task);
+            	    //done here since we want to write only to out not to in what launching the taskgraph would do
+            	    acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, kernels[(int)op.kernel_enum], task->output_region.position, task->output_region.position + task->output_region.dims);
+            	}
+	    }
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
                 swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
@@ -1627,14 +1656,13 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                     if (bc == BOUNDCOND_PERIODIC) {
                         acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
                                                  tag);
-                        auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, nn, decomp,
-                                                                       device, swap_offset);
+                        auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, nn, decomp, device, swap_offset);
+                        graph->halo_tasks.push_back(task);
+                        graph->all_tasks.push_back(task);
                         acVerboseLogFromRootProc(rank,
                                                  "Done creating periodic bc task with tag%d\n",
                                                  tag);
 
-                        graph->halo_tasks.push_back(task);
-                        graph->all_tasks.push_back(task);
                     }
                     else {
                         acVerboseLogFromRootProc(rank, "Creating generic bc with tag%d\n", tag);
@@ -1679,6 +1707,26 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                 }
             }
 #endif
+            break;
+        }
+        case TASKTYPE_DSL_BOUNDCOND: {
+            for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
+                acVerboseLogFromRootProc(rank,
+                                         "tag %d, decomp %i %i %i, rank %i, op.boundary  %i \n ",
+                                         tag, decomp.x, decomp.y, decomp.z, rank, op.boundary);
+                acVerboseLogFromRootProc(rank,
+                                         "acGridBuildTaskGraph: Region::is_on_boundary(decomp, "
+                                         "rank, tag, op.boundary) = %i \n",
+                                         Region::is_on_boundary(decomp, rank, tag, op.boundary, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]));
+                if (Region::is_on_boundary(decomp, rank, tag, op.boundary, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy])) {
+                    auto task = std::make_shared<DSLBoundaryConditionTask>(op,
+                                                                           boundary_normal(tag),
+                                                                           i, tag, nn,
+                                                                           device,
+                                                                           swap_offset);
+                    graph->all_tasks.push_back(task);
+                }
+            }
             break;
         }
         }

@@ -735,7 +735,8 @@ typedef enum AcTaskType {
     TASKTYPE_HALOEXCHANGE,
     TASKTYPE_BOUNDCOND,
     TASKTYPE_SPECIAL_MHD_BOUNDCOND,
-    TASKTYPE_SYNC
+    TASKTYPE_SYNC,
+    TASKTYPE_DSL_BOUNDCOND,
 } AcTaskType;
 
 typedef enum AcBoundary {
@@ -800,6 +801,8 @@ AcTaskDefinition acCompute(const AcKernel kernel, Field fields_in[], const size_
 /** */
 AcTaskDefinition acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
                            Field fields_out[], const size_t num_fields_out, void (*load_func)(ParamLoadingInfo step_info));
+AcTaskDefinition
+acDSLBoundaryCondition(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,void (*load_func)(ParamLoadingInfo step_info));
 
 /** */
 AcTaskDefinition acHaloExchange(Field fields[], const size_t num_fields);
@@ -1373,6 +1376,10 @@ acCompute(AcKernel kernel, Field (&fields)[num_fields])
 AcTaskDefinition acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_fields_in,
                            Field fields_out[], const size_t num_fields_out, std::function<void(ParamLoadingInfo step_info)> loader);
 
+AcTaskDefinition
+acDSLBoundaryCondition(const AcBoundary boundary, AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,std::function<void(ParamLoadingInfo step_info)>);
+
+
 
 
 template <size_t num_fields>
@@ -1382,7 +1389,19 @@ acComputeWithParams(AcKernel kernel, Field (&fields)[num_fields], std::function<
     return acComputeWithParams(kernel, fields, num_fields, fields, num_fields, loader);
 }
 
+template <size_t num_fields_in, size_t num_fields_out>
+AcTaskDefinition
+acDSLBoundaryCondition(const AcBoundary boundary, AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out], std::function<void(ParamLoadingInfo)> loader)
+{
+    return acDSLBoundaryCondition(boundary, kernel, fields_in, num_fields_in, fields_out, num_fields_out, loader);
+}
 
+template <size_t num_fields>
+AcTaskDefinition
+acDSLBoundaryCondition(const AcBoundary boundary, AcKernel kernel, Field (&fields)[num_fields], std::function<void(ParamLoadingInfo)> loader)
+{
+    return acDSLBoundaryCondition(boundary, kernel, fields, num_fields, fields, num_fields, loader);
+}
 
 
 template <size_t num_fields_in, size_t num_fields_out>
@@ -1446,6 +1465,14 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond, std
 {
     return acBoundaryCondition(boundary, bound_cond, fields.data(), fields.size(), nullptr, 0);
 }
+
+static inline
+AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields, std::function<void(ParamLoadingInfo)> loader)
+{
+    return acDSLBoundaryCondition(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
+}
+
 
 /** */
 template <size_t num_fields, size_t num_parameters>

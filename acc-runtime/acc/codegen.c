@@ -1000,6 +1000,14 @@ void gen_loader(const ASTNode* kernel_call, const ASTNode* root, const char* pre
 		char* loader_str = malloc(sizeof(char)*4000);
 		sprintf(loader_str,"auto %s_%s_loader = [](ParamLoadingInfo p){\n",prefix, func_name);
 		const int params_offset = is_boundcond ? 2 : 0;
+		if(!is_boundcond)
+		{
+			if(param_types.size != params.size)
+			{
+				fprintf(stderr,"Number of inputs for %s in ComputeSteps does not match the number of input params\n", func_name);
+				exit(EXIT_FAILURE);
+			}
+		}
 		for(size_t i = 0; i < param_types.size-params_offset; ++i)
 		{
 			if(is_number(params.data[i]) || is_real(params.data[i]))

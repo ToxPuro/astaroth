@@ -319,6 +319,24 @@ typedef class SpecialMHDBoundaryConditionTask : public Task {
 } SpecialMHDBoundaryConditionTask;
 #endif
 
+enum class DSLBoundaryConditionState { Waiting = Task::wait_state, Running };
+typedef class DSLBoundaryConditionTask : public Task {
+  private:
+    KernelParameters params;
+    int3 boundary_normal;
+    int3 boundary_dims;
+
+  public:
+    DSLBoundaryConditionTask(AcTaskDefinition op, int3 boundary_normal_, int order_,
+                                    int region_tag, int3 nn, Device device_,
+                                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    void populate_boundary_region();
+    void advance(const TraceFile* trace_file);
+    bool test();
+} DSLBoundaryConditionTask;
+
+
+
 // A TaskGraph is a graph structure of tasks that will be executed
 // The tasks have dependencies, which are defined both within an iteration and between iterations
 // This allows the graph to be executed for any number of iterations

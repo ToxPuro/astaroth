@@ -63,7 +63,7 @@ Field3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
 int
 DCONST(const AcIntParam param)
 {
-  return 0;
+  return 1;
 }
 int3
 DCONST(const AcInt3Param param)
@@ -189,7 +189,7 @@ main(int argc, char* argv[])
            sizeof(stencils_accessed[0][0]) * NUM_FIELDS * NUM_STENCILS);
     memset(read_fields,0, sizeof(read_fields[0]) * NUM_FIELDS);
     memset(field_has_stencil_op,0, sizeof(field_has_stencil_op[0]) * NUM_FIELDS);
-    VertexBufferArray vba = vbaCreate(1);
+    VertexBufferArray vba = vbaCreate(1000);
     kernels[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
     vbaDestroy(&vba);
 
@@ -218,7 +218,7 @@ main(int argc, char* argv[])
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     memset(previous_accessed, 0,
            sizeof(previous_accessed[0]) * NUM_FIELDS);
-    VertexBufferArray vba = vbaCreate(1);
+    VertexBufferArray vba = vbaCreate(1000);
     kernels[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
     vbaDestroy(&vba);
 
@@ -233,7 +233,7 @@ main(int argc, char* argv[])
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     memset(written_fields_stencil_accesses, 0,
            sizeof(written_fields_stencil_accesses[0]) * NUM_FIELDS);
-    VertexBufferArray vba = vbaCreate(1);
+    VertexBufferArray vba = vbaCreate(1000);
     kernels[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
     vbaDestroy(&vba);
     fwrite(written_fields_stencil_accesses,sizeof(int),NUM_FIELDS,fp_written_fields);
