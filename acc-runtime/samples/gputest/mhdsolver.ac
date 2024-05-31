@@ -6,6 +6,7 @@ real AC_lnrho0, AC_mu0, AC_lnT0
 */
 // Note: not used by mhdsolver.ac at the moment (src/utils/modelsolver.c does)
 //#include "../../../../PC_moduleflags.h"
+hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
 hostdefine STENCIL_ORDER (6)
 hostdefine LDENSITY (0)
 hostdefine LHYDRO (0)
@@ -19,9 +20,10 @@ hostdefine LBFIELD (0 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
+#define NGHOST (3)
 
-//Field UUX, UUY, UUZ, RHO, SS
-Field UUX, UUY, UUZ, RHO, SS, AAX, AAY, AAZ
+//Field VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO, VTXBUF_ENTROPY
+Field VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, VTXBUF_LNRHO, VTXBUF_ENTROPY, VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
 
 
 //Profile_X AC_PROFILE_GRAVX_XPENCIL
@@ -30,6 +32,15 @@ Field UUX, UUY, UUZ, RHO, SS, AAX, AAY, AAZ
 //Profile_Z AC_PROFILE_DLNHCOND_PROF, AC_PROFILE_HCOND_PROF
 gmem real AC_dlnhcond_prof[AC_nz]
 gmem real AC_hcond_prof[AC_nz]
+
+real AC_diffrho_hyper3
+real AC_eta_hyper3
+real AC_chi_hyper3
+real AC_nu_hyper3
+real AC_chi_t0
+gmem real AC_chit_prof_stored[AC_nz]
+gmem real AC_dchit_prof_stored[AC_nz]
+
 
 
 
@@ -244,8 +255,8 @@ real AC_cs2_sound
 //
 real AC_current_time
 
-#define F_UU Field3(UUX, UUY, UUZ)
-#define F_AA Field3(AAX, AAY, AAZ)
+#define F_UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
+#define F_AA Field3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
 
 #define DER1_3 (1.0 / 60.)
 #define DER1_2 (-3. / 20.)
@@ -740,6 +751,7 @@ rk3_intermediate(w, roc,step_num,dt) {
     real alpha = 0., -5./9., -153. / 128.
     return alpha[step_num] * w + roc * dt
 }
+
 rk3_intermediate_vector(w,roc,step_num,dt){
   return real3(
     rk3_intermediate(w.x,roc.x,step_num,dt),
@@ -747,6 +759,7 @@ rk3_intermediate_vector(w,roc,step_num,dt){
     rk3_intermediate(w.z,roc.z,step_num,dt)
   )
 }
+
 
 rk3_final(f, w,step_num) {
     real beta = 1. / 3., 15./ 16., 8. / 15.
@@ -760,7 +773,7 @@ rk3_final_vector(f,w,step_num){
   )
 }
 Kernel twopass_solve_intermediate(int step_num, real dt){
-	UU = vecvalue(F_UU)
+  UU = vecvalue(F_UU)
   UIJ = gradients(F_UU)
   DIVU = divergence(F_UU)
 
@@ -770,17 +783,17 @@ Kernel twopass_solve_intermediate(int step_num, real dt){
   UGU = UIJ*UU
   DEL2U = veclaplace(F_UU)
   GRADDIVU = divergence(F_UU)
-  LNRHO = value(RHO)
+  LNRHO = value(VTXBUF_LNRHO)
   RHO1 = exp(-LNRHO)
-  GLNRHO = gradient(RHO)
+  GLNRHO = gradient(VTXBUF_LNRHO)
   UGLNRHO = dot(GLNRHO,UU)
-  DEL2LNRHO = laplace(RHO)
+  DEL2LNRHO = laplace(VTXBUF_LNRHO)
   SGLNRHO = SIJ*GLNRHO
   AC_cv1 = 1/AC_cv
-  GSS = gradient(SS)
-  DEL2SS = laplace(SS)
-  cs2 = AC_cs20*exp(AC_cv1*value(SS)+AC_gamma_m1*(LNRHO-AC_lnrho0))
-  LNTT = AC_lnTT0+AC_cv1*value(SS)+AC_gamma_m1*(LNRHO-AC_lnrho0)
+  GSS = gradient(VTXBUF_ENTROPY)
+  DEL2SS = laplace(VTXBUF_ENTROPY)
+  cs2 = AC_cs20*exp(AC_cv1*value(VTXBUF_ENTROPY)+AC_gamma_m1*(LNRHO-AC_lnrho0))
+  LNTT = AC_lnTT0+AC_cv1*value(VTXBUF_ENTROPY)+AC_gamma_m1*(LNRHO-AC_lnrho0)
   TT = exp(LNTT)
   TT1 = exp(-LNTT)
   GLNTT = AC_gamma_m1*GLNRHO+AC_cv1*GSS
@@ -803,27 +816,23 @@ Kernel twopass_solve_intermediate(int step_num, real dt){
 
   DF_AA = UXB+(AC_nu*DEL2A)
 
-  //reduce_max(step_num == 2, length(UU), AC_maxadvec)
-  reduce_max(step_num == 2, 2.0, AC_maxadvec)
-  reduce_max(step_num == 2, 1.4, AC_test)
-
   W_UU = rk3_intermediate_vector(vecprevious(F_UU),DF_UU,step_num, dt)
-  W_SS = rk3_intermediate(previous(SS),DF_SS,step_num, dt)
-  W_LNRHO = rk3_intermediate(previous(RHO),DF_LNRHO,step_num, dt)
+  W_SS = rk3_intermediate(previous(VTXBUF_ENTROPY),DF_SS,step_num, dt)
+  W_LNRHO = rk3_intermediate(previous(VTXBUF_LNRHO),DF_LNRHO,step_num, dt)
   W_AA  = rk3_intermediate_vector(vecprevious(F_AA),DF_AA,step_num, dt)
  
 
   vecwrite(F_UU,W_UU)
-  write(SS,W_SS)
-  write(RHO, W_LNRHO)
+  write(VTXBUF_ENTROPY,W_SS)
+  write(VTXBUF_LNRHO, W_LNRHO)
   vecwrite(F_AA,W_AA)
 }
 
-Kernel twopass_solve_final(int step_num) {
-  vecwrite(F_UU,rk3_final_vector(vecprevious(F_UU),vecvalue(F_UU),step_num))
-  write(SS,rk3_final(previous(SS),value(SS),step_num))
-  write(RHO, rk3_final(previous(RHO),value(RHO),step_num))
-  vecwrite(F_AA,rk3_final_vector(vecprevious(F_AA),vecvalue(F_AA),step_num))
+Kernel twopass_solve_final(int step_num, real current_time) {
+  for field in 1:NUM_FIELDS
+  {
+	write(Field(field), rk3_final(previous(Field(field)), value(Field(field)), step_num))
+  }
 }
 
 
@@ -850,7 +859,7 @@ Kernel write_previous(){
 }
 Kernel add_field0(){
   /**
-  write(UUX,rk3_final(previous(UUX),value(UUX),0))
+  write(VTXBUF_UUX,rk3_final(previous(VTXBUF_UUX),value(VTXBUF_UUX),0))
   **/
 }
 
@@ -907,6 +916,110 @@ Kernel randomize() {
     }
 }
 
+get_boundary_from_boundary_normal(boundary_normal_in)
+{
+    int3 boundary_out
+    if boundary_normal_in.x == 1
+    {
+	boundary_out.x = NGHOST + AC_nxgrid -1
+    }
+    if boundary_normal_in.x == 0
+    {
+	boundary_out.x = vertexIdx.x
+    }
+    if boundary_normal_in.x == -1
+    {
+	boundary_out.x = NGHOST
+    }
+
+
+    if boundary_normal_in.y == 1
+    {
+	boundary_out.y = NGHOST + AC_nygrid -1
+    }
+    if boundary_normal_in.y == 0
+    {
+	boundary_out.y = vertexIdx.y
+    }
+    if boundary_normal_in.y == -1
+    {
+	boundary_out.y = NGHOST
+    }
+
+
+    if boundary_normal_in.z == 1
+    {
+	boundary_out.z = NGHOST + AC_nzgrid -1
+    }
+    if boundary_normal_in.z == 0
+    {
+	boundary_out.z = vertexIdx.z
+    }
+    if boundary_normal_in.z == -1
+    {
+	boundary_out.z = NGHOST
+    }
+    return boundary_out
+}
+
+boundary_condition Kernel symmetric_boundcond(int3 boundary_normal, VtxBuffer vtxbuf)
+{
+    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
+    int3 domain = boundary
+    int3 ghost  = boundary
+    for  i  in 0:NGHOST {
+        domain = domain - boundary_normal
+        ghost  = ghost + boundary_normal
+        vtxbuf[ghost.x][ghost.y][ghost.z] = vtxbuf[domain.x][domain.y][domain.z]
+    }
+}
+boundary_condition Kernel periodic_boundcond(int3 boundary_normal, VtxBuffer vtxbuf)
+{
+    int3 ghost = get_boundary_from_boundary_normal(boundary_normal)
+    int3 domain = get_boundary_from_boundary_normal(-boundary_normal)
+    for  i  in 0:NGHOST {
+        ghost  = ghost + boundary_normal
+        vtxbuf[ghost.x][ghost.y][ghost.z] = vtxbuf[domain.x][domain.y][domain.z]
+        domain = domain + boundary_normal
+    }
+}
+boundary_condition Kernel anti_symmetric_boundcond(int3 boundary_normal, VtxBuffer vtxbuf)
+{
+    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
+    int3 domain = boundary
+    int3 ghost  = boundary
+    for  i  in 0:NGHOST {
+        domain = domain - boundary_normal
+        ghost  = ghost + boundary_normal
+        vtxbuf[ghost.x][ghost.y][ghost.z] = -vtxbuf[domain.x][domain.y][domain.z]
+    }
+}
+
+boundary_condition Kernel a2_boundcond(int3 boundary_normal, VtxBuffer vtxbuf)
+{
+    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
+    boundary_val = vtxbuf[boundary.x][boundary.y][boundary.z]
+    int3 domain = boundary
+    int3 ghost  = boundary
+    for  i  in 0:NGHOST {
+        domain = domain - boundary_normal
+        ghost  = ghost + boundary_normal
+        vtxbuf[ghost.x][ghost.y][ghost.z] = 2 * boundary_val -vtxbuf[domain.x][domain.y][domain.z]
+    }
+}
+
+boundary_condition Kernel const_boundcond(int3 boundary_normal, VtxBuffer vtxbuf, real const_value)
+{
+    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
+    int3 ghost  = boundary
+    for  i  in 0:NGHOST {
+        ghost  = ghost + boundary_normal
+        vtxbuf[ghost.x][ghost.y][ghost.z] = const_value
+    }
+}
+
+
+
 BoundConds rhs_boundconds
 {
 	periodic(BOUNDARY_XYZ)
@@ -914,17 +1027,17 @@ BoundConds rhs_boundconds
 ComputeSteps AC_rhs_0(rhs_boundconds)
 {
 	twopass_solve_intermediate(0,AC_dt),
-	twopass_solve_final(0)
+	twopass_solve_final(0,0.0)
 }
 
 ComputeSteps AC_rhs_1(rhs_boundconds)
 {
 	twopass_solve_intermediate(1,AC_dt),
-	twopass_solve_final(1)
+	twopass_solve_final(1,0.0)
 }
 
 ComputeSteps AC_rhs_2(rhs_boundconds)
 {
 	twopass_solve_intermediate(2,AC_dt),
-	twopass_solve_final(2)
+	twopass_solve_final(2,0.0)
 }
