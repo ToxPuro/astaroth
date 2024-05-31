@@ -228,13 +228,14 @@ typedef struct HaloMessageSwapChain {
     HaloMessage* get_fresh_buffer();
 } HaloMessageSwapChain;
 
-enum class HaloExchangeState { Waiting = Task::wait_state, Packing, Exchanging, Unpacking };
+enum class HaloExchangeState { Waiting = Task::wait_state, Packing, Exchanging, Unpacking, Moving };
 
 typedef class HaloExchangeTask : public Task {
   private:
     int counterpart_rank;
     int send_tag;
     int recv_tag;
+    int3 nn;
 
     HaloMessageSwapChain recv_buffers;
     HaloMessageSwapChain send_buffers;
@@ -254,6 +255,8 @@ typedef class HaloExchangeTask : public Task {
     void pack();
     void unpack();
 
+    void move();
+
     void send();
     void receive();
     void exchange();
@@ -261,6 +264,7 @@ typedef class HaloExchangeTask : public Task {
     void sendDevice();
     void receiveDevice();
     void exchangeDevice();
+    bool sendingToItself();
 
 #if !(USE_CUDA_AWARE_MPI)
     void sendHost();

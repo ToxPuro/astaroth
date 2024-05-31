@@ -180,19 +180,18 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t 
 {
     fields = {};
     switch (family) {
-    	case RegionFamily::Exchange_output: {} //Fallthrough
+    	case RegionFamily::Exchange_output: //Fallthrough
     	case RegionFamily::Exchange_input : {
-    		for(size_t i = 0; i < num_fields; ++i)
-	    		if(fields_[i] < NUM_COMMUNICATED_FIELDS) fields.push_back(fields_[i]);
-	ERRCHK_ALWAYS(fields.size() <= NUM_COMMUNICATED_FIELDS);
-	break;
-}
-default:
-	for(size_t i = 0; i < num_fields; ++i)
+    	    for(size_t i = 0; i < num_fields; ++i)
+	    	if(fields_[i] < NUM_COMMUNICATED_FIELDS) fields.push_back(fields_[i]);
+	    ERRCHK_ALWAYS(fields.size() <= NUM_COMMUNICATED_FIELDS);
+	    break;
+	}
+	default:
+	    for(size_t i = 0; i < num_fields; ++i)
 		fields.push_back(fields_[i]);
-break;
-
-}
+	break;
+      }
 id = tag_to_id(tag);
 // facet class 0 = inner core
 // facet class 1 = face
@@ -313,7 +312,6 @@ Region::is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary, AcProcMapp
     int3 pid3d = getPid3D(pid, decomp, proc_mapping_strategy);
     return is_on_boundary(decomp, pid3d, id, boundary);
 }
-
 // Static functions
 int
 Region::id_to_tag(int3 id)
@@ -741,6 +739,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
            Region(RegionFamily::Exchange_output, halo_region_tag, nn, op.fields_out,
                   op.num_fields_out),
            op, device_, swap_offset_),
+      nn(nn),
       recv_buffers(output_region.dims, op.num_fields_in),
       send_buffers(input_region.dims, op.num_fields_out)
 {
@@ -776,6 +775,7 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     task_type = TASKTYPE_HALOEXCHANGE;
 }
 
+
 HaloExchangeTask::~HaloExchangeTask()
 {
     // Cancel last eager request
@@ -799,6 +799,17 @@ HaloExchangeTask::pack()
 }
 
 void
+HaloExchangeTask::move()
+{
+
+	//TP: HaloExchangeTasks usually have input and output regions on the same side of the boundary
+	//Thus if you directly moving data through kernels you have to remap the output position to the other side of the boundary
+	const int3 mm = {nn.x + NGHOST, nn.y + NGHOST, nn.z + NGHOST};
+	const int3 dst_pos = output_region.position - int3{output_region.id.x*mm.x, output_region.id.y*mm.y, output_region.id.z*mm.z};
+	acKernelMoveData(stream, input_region.position, dst_pos, input_region.dims, output_region.dims, vba,input_region.fields.data(), input_region.fields.size());
+}
+
+void
 HaloExchangeTask::unpack()
 {
 
@@ -815,6 +826,11 @@ void
 HaloExchangeTask::sync()
 {
     cudaStreamSynchronize(stream);
+}
+bool
+HaloExchangeTask::sendingToItself()
+{
+	return rank == counterpart_rank;
 }
 
 void
@@ -954,6 +970,9 @@ bool
 HaloExchangeTask::test()
 {
     switch (static_cast<HaloExchangeState>(state)) {
+    case HaloExchangeState::Moving: {
+        return poll_stream();
+    }
     case HaloExchangeState::Packing: {
         return poll_stream();
     }
@@ -976,6 +995,23 @@ HaloExchangeTask::test()
 void
 HaloExchangeTask::advance(const TraceFile* trace_file)
 {
+
+    //move directly inside cuda kernels
+    if (sendingToItself())
+    {
+    	switch (static_cast<HaloExchangeState>(state)) {
+
+    	case HaloExchangeState::Waiting:
+    	    trace_file->trace(this, "waiting", "moving");
+    	    move();
+    	    state = static_cast<int>(HaloExchangeState::Waiting);
+    	    break;
+    	default: /* Fallthrough */
+            	ERROR("HaloExchangeTask in an invalid state.");
+        }
+        return;
+    }
+
     switch (static_cast<HaloExchangeState>(state)) {
     case HaloExchangeState::Waiting:
         trace_file->trace(this, "waiting", "packing");

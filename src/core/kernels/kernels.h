@@ -137,6 +137,10 @@ AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba
                           const int3 vba_start, const int3 dims, AcRealPacked* packed,
 			  const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
 
+AcResult
+acKernelMoveData(const cudaStream_t stream, const int3 src_start, const int3 dst_start, const int3 src_dims, const int3 dst_dims, VertexBufferArray vba,
+                          const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
+
 /** */
 // AcResult acKernelIntegrateSubstep(const KernelParameters params,
 // VertexBufferArray vba);

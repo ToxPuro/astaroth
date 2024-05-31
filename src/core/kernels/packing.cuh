@@ -118,8 +118,8 @@ kernel_partial_pack_data(const VertexBufferArray vba, const int3 vba_start, cons
 }
 
 static __global__ void
-kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims,
-                           VertexBufferArray vba, GpuVtxBufHandles vtxbufs , size_t num_vtxbufs)
+kernel_partial_move_data(const VertexBufferArray vba, const int3 src_start, const int3 dst_start, const int3 dims,
+                         GpuVtxBufHandles vtxbufs, size_t num_vtxbufs)
 {
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
@@ -129,6 +129,38 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
     // divisible by end - start)
     if (i_packed >= dims.x || //
         j_packed >= dims.y || //
+        k_packed >= dims.z) {
+        return;
+    }
+
+    const int i_unpacked = i_packed + src_start.x;
+    const int j_unpacked = j_packed + src_start.y;
+    const int k_unpacked = k_packed + src_start.z;
+
+    const int i_dst = i_packed + dst_start.x;
+    const int j_dst = j_packed + dst_start.y;
+    const int k_dst = k_packed + dst_start.z;
+
+
+    const int unpacked_idx = DEVICE_VTXBUF_IDX(i_unpacked, j_unpacked, k_unpacked);
+    const int dst_idx = DEVICE_VTXBUF_IDX(i_dst, j_dst, k_dst);
+
+    //#pragma unroll
+    for (size_t i = 0; i < num_vtxbufs; ++i)
+        vba.in[vtxbufs.data[i]][dst_idx] = vba.in[vtxbufs.data[i]][unpacked_idx];
+}
+
+static __global__ void
+kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 dims,
+                           VertexBufferArray vba, GpuVtxBufHandles vtxbufs , size_t num_vtxbufs)
+{
+    const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
+    const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
+    const int k_packed = threadIdx.z + blockIdx.z * blockDim.z;
+
+    // If within the start-end range (this allows threadblock dims that are not
+    // divisible by end - start)
+    if (i_packed >= dims.x || // j_packed >= dims.y || //
         k_packed >= dims.z) {
         return;
     }
@@ -235,6 +267,30 @@ acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
     for(size_t i=0; i<num_vtxbufs; ++i)
 	    gpu_handles.data[i] = vtxbufs[i];
     kernel_partial_unpack_data<<<bpg, tpb, 0, stream>>>(packed, vba_start, dims, vba, gpu_handles,
+                                                        num_vtxbufs);
+    ERRCHK_CUDA_KERNEL();
+    return AC_SUCCESS;
+}
+
+AcResult
+acKernelMoveData(const cudaStream_t stream, const int3 src_start, const int3 dst_start, const int3 src_dims, const int3 dst_dims, VertexBufferArray vba,
+                          const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs)
+{
+    assert(src_dims == dst_dims);
+    if(src_dims != dst_dims)
+    {
+	    fprintf(stderr,"src and dst dims have to be the same\n");
+	    fflush(stderr);
+	    exit(EXIT_FAILURE);
+    }
+    const dim3 tpb(32, 8, 1);
+    const dim3 bpg((unsigned int)ceil(src_dims.x / (double)tpb.x),
+                   (unsigned int)ceil(src_dims.y / (double)tpb.y),
+                   (unsigned int)ceil(src_dims.z / (double)tpb.z));
+    GpuVtxBufHandles gpu_handles;
+    for(size_t i=0; i<num_vtxbufs; ++i)
+	    gpu_handles.data[i] = vtxbufs[i];
+    kernel_partial_move_data<<<bpg, tpb, 0, stream>>>(vba,src_start, dst_start, src_dims, gpu_handles,
                                                         num_vtxbufs);
     ERRCHK_CUDA_KERNEL();
     return AC_SUCCESS;
