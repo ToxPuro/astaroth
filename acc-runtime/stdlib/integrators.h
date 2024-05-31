@@ -1,5 +1,4 @@
 #define RK_ORDER (3)
-real AC_dt
 
 rk3(s0, s1, roc, step_num, dt) {
 #if RK_ORDER == 1
