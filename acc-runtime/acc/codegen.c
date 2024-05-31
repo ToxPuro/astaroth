@@ -3259,8 +3259,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   // Device functions
   //gen_dfunc_internal_names(root);
   transform_arrays_to_std_arrays(root);
-  gen_dfunc_macros(astnode_dup(root,NULL));
-  remove_inlined_dfunc_nodes(root,root);
+  //gen_dfunc_macros(astnode_dup(root,NULL));
+  //remove_inlined_dfunc_nodes(root,root);
   if(gen_mem_accesses) remove_constexpr(root);
   symboltable_reset();
   char* dfunctions;
