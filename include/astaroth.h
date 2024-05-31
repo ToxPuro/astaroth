@@ -1314,6 +1314,12 @@ int
 acDeviceGetIntOutput(const Device device, const AcIntOutputParam param);
 
 AcReal
+acDeviceGetRealInput(const Device device, const AcRealInputParam param);
+
+int
+acDeviceGetIntInput(const Device device, const AcIntInputParam param);
+
+AcReal
 acDeviceGetRealOutput(const Device device, const AcRealOutputParam param);
 
 /*
