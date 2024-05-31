@@ -1885,7 +1885,7 @@ acGridFinalizeReduceLocal(AcTaskGraph* graph)
     for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)
     {
 	    if(reduce_outputs[i] >= 0)
-	    	acDeviceFinishReduce(grid.device,reduce_outputs[i],&local_res[i],reduce_kernels[i],reduce_ops[i],(AcRealOutput)reduce_outputs[i]);
+	    	acDeviceFinishReduce(grid.device,reduce_outputs[i],&local_res[i],reduce_kernels[i],reduce_ops[i],(AcRealOutputParam)reduce_outputs[i]);
     }
     acDeviceSynchronizeStream(grid.device,STREAM_ALL);
     for(int i = 0; i < NUM_REAL_OUTPUTS; ++i)

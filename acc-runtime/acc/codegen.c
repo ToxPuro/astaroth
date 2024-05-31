@@ -471,9 +471,9 @@ gen_enums(FILE* fp, const char* datatype_scalar, const bool for_arrays)
     if (symbol_table[i].type & type && !strcmp(symbol_table[i].tspecifier, datatype) && str_vec_contains(symbol_table[i].tqualifiers,"output") && !str_vec_contains(symbol_table[i].tqualifiers,"const"))
       fprintf(fp, "%s,", symbol_table[i].identifier);
   if(for_arrays)
-  	fprintf(fp, "NUM_%s_OUTPUT_ARRAYS} %sArrayOutput;",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
+  	fprintf(fp, "NUM_%s_OUTPUT_ARRAYS} %sArrayOutputParam;",strupr(convert_to_define_name(datatype_scalar)),convert_to_enum_name(datatype_scalar));
   else
-  	fprintf(fp, "NUM_%s_OUTPUTS} %sOutput;",strupr(convert_to_define_name(datatype)),convert_to_enum_name(datatype));
+  	fprintf(fp, "NUM_%s_OUTPUTS} %sOutputParam;",strupr(convert_to_define_name(datatype)),convert_to_enum_name(datatype));
 }
 void
 gen_param_names(FILE* fp, const char* datatype_scalar, const bool for_arrays)

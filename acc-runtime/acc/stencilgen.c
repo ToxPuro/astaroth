@@ -195,11 +195,11 @@ printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
   printf("(void)reduce_sum_res;");
   printf("(void)reduce_min_res;");
   printf("(void)reduce_max_res;");
-  printf("const auto reduce_sum __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutput& output)"
+  printf("const auto reduce_sum __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
 		  "{ (void)condition; reduce_sum_res[(int)output] = val; };");
-  printf("const auto reduce_min __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutput& output)"
+  printf("const auto reduce_min __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
 		  "{ (void)condition; reduce_min_res[(int)output] = val; };");
-  printf("const auto reduce_max __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutput& output)"
+  printf("const auto reduce_max __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
 		  "{ (void)condition; reduce_max_res[(int)output] = val; };");
 }
 

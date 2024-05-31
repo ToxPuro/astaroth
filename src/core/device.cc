@@ -959,7 +959,7 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
 }
 
 AcResult
-acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcRealOutput output)
+acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcRealOutputParam output)
 {
 	AcReal res = AcKernelReduce(device->streams[stream],device->vba.reduce_scratchpads[(int) output], acGetKernelReduceScratchPadSize(kernel),reduce_op);
 	*result = res;
@@ -1116,6 +1116,7 @@ acDeviceGetKernelOutput(const Device device)
 	return device->output;
 }
 
+
 AcResult
 acDeviceSetRealInput(const Device device, const AcRealInputParam param, const AcReal val)
 {
@@ -1129,14 +1130,15 @@ acDeviceSetIntInput(const Device device, const AcIntInputParam param, const int 
 	device->input.int_params[param] = val;
 	return AC_SUCCESS;
 }
-AcReal
-acDeviceGetRealInput(const Device device, const AcRealInputParam param)
-{
-	return device->input.real_params[param];
-}
 
 int
-acDeviceGetIntInput(const Device device, const AcIntInputParam param)
+acDeviceGetIntOutput(const Device device, const AcIntOutputParam param)
 {
-	return device->input.int_params[param];
+	return device->output.int_outputs[param];
 }
+AcReal
+acDeviceGetRealOutput(const Device device, const AcRealOutputParam param)
+{
+	return device->output.real_outputs[param];
+}
+

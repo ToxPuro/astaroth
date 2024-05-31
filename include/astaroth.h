@@ -1240,7 +1240,7 @@ AcResult acDeviceReduceVecScal(const Device device, const Stream stream_type,
                                const VertexBufferHandle vtxbuf3, AcReal* result);
 /** */
 AcResult 
-acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcRealOutput output);
+acDeviceFinishReduce(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcRealOutputParam output);
 
 /** */
 AcResult 
@@ -1310,11 +1310,11 @@ acDeviceSetRealInput(const Device device, const AcRealInputParam param, const Ac
 AcResult
 acDeviceSetIntInput(const Device device, const AcIntInputParam param, const int val);
 
-AcReal
-acDeviceGetRealInput(const Device device, const AcRealInputParam param);
-
 int
-acDeviceGetIntInput(const Device device, const AcIntInputParam param);
+acDeviceGetIntOutput(const Device device, const AcIntOutputParam param);
+
+AcReal
+acDeviceGetRealOutput(const Device device, const AcRealOutputParam param);
 
 /*
  * =============================================================================
@@ -1362,6 +1362,31 @@ void acVA_DebugFromRootProc(const int pid, const char* msg, va_list arg);
 #endif
 
 #ifdef __cplusplus
+
+static inline AcResult
+acDeviceSetInput(const Device device, const AcRealInputParam param, const AcReal val)
+{
+	return acDeviceSetRealInput(device,param,val);
+}
+
+static inline AcResult
+acDeviceSetInput(const Device device, const AcIntInputParam param, const int val)
+{
+	return acDeviceSetIntInput(device,param,val);
+}
+static inline int
+acDeviceGetOutput(const Device device, const AcIntOutputParam param)
+{
+	return acDeviceGetIntOutput(device,param);
+}
+
+
+static inline AcReal
+acDeviceGetOutput(const Device device, const AcRealOutputParam param)
+{
+	return acDeviceGetRealOutput(device,param);
+}
+
 #if AC_MPI_ENABLED
 /** Backwards compatible interface, input fields = output fields*/
 template <size_t num_fields>
