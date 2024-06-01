@@ -193,7 +193,6 @@ symboltable_reset(void)
 
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "previous");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "write");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "isnan");  // TODO RECHECK
 							 //
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "reduce_sum");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "reduce_min");  // TODO RECHECK
@@ -211,18 +210,9 @@ symboltable_reset(void)
 
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "rand_uniform");
 
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "exp");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "sin");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "cos");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "sqrt");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "fabs");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "pow");   // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "multm2_sym");   // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "diagonal");   // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "sum");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "log");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "abs");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "atan2"); // TODO RECHECK
 
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "AC_REAL_PI");
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "NUM_FIELDS");

@@ -9,6 +9,7 @@
 #include "codegen.h"
 #include <ctype.h>
 #include "tinyexpr.h"
+#include <dirent.h>
 #include <math.h>
 
 #define YYSTYPE ASTNode*
@@ -77,12 +78,36 @@ static inline int eval_int(const char* str);
 
 
 
+bool is_directory(const char *path) {
+    if(!path) return false;
+    struct stat statbuf;
+    if (stat(path, &statbuf) != 0) {
+        // If stat fails, return false
+        return false;
+    }
+    return S_ISDIR(statbuf.st_mode);
+}
 
 
 
 void
 process_includes(const size_t depth, const char* dir, const char* file, FILE* out)
 {
+  if(is_directory(file)) 
+  {
+	DIR* d = opendir(file);
+	struct dirent *dir_entry;
+	while((dir_entry = readdir(d)) != NULL)
+		if(strcmp(dir_entry->d_name,".") && strcmp(dir_entry->d_name,".."))
+		{
+		        char* file_path = malloc((strlen(file) + strlen(dir_entry->d_name))*sizeof(char));
+			sprintf(file_path,"%s/%s",file,dir_entry->d_name);
+		        process_includes(depth+1,dir,file_path,out);
+			free(file_path);
+		}
+
+	return;
+  }
   const size_t max_nests = 64;
   if (depth >= max_nests) {
     fprintf(stderr, "CRITICAL ERROR: Max nests %lu reached when processing includes. Aborting to avoid thrashing the disk. Possible reason: circular includes.\n", max_nests);
@@ -200,7 +225,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         {
           FILE* out = fopen(stage1, "w");
           assert(out);
-        
+       	  process_includes(1, dir, ACC_MATH_DIR, out);
           process_includes(0, dir, stage0, out);
 
           fclose(out);
@@ -313,7 +338,7 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP
-%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL WORK_BUFFER COMPLEX BOOL
+%token INT UINT INT3 REAL REAL3 MATRIX FIELD STENCIL WORK_BUFFER COMPLEX BOOL INTRINSIC 
 %token KERNEL INLINE BOUNDARY_CONDITION SUM MAX COMMUNICATED AUXILIARY DCONST_QL CONST_QL GLOBAL_MEMORY_QL OUTPUT INPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE
@@ -362,7 +387,13 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             //    fprintf(stderr, "FATAL ERROR: Device constant assignment is not supported. Load the value at runtime with ac[Grid|Device]Load[Int|Int3|Real|Real3]Uniform-type API functions or use #define.\n");
             //    assert(!assignment);
             //}
-            if (get_node_by_token(FIELD, variable_definition)) {
+            //user specified intrinsic function provided by the GPU library
+	    if(!strcmp(type_specifier->lhs->buffer,"intrinsic"))
+	    {
+                variable_definition->type |= NODE_NO_OUT;
+                set_identifier_type(NODE_DFUNCTION_ID, declaration_list);
+	    }
+            else if (get_node_by_token(FIELD, variable_definition)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
 		if(are_arrays)
@@ -584,6 +615,7 @@ kernel: KERNEL         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 vtxbuffer: VTXBUFFER   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("VertexBufferHandle", $$); $$->token = 255 + yytoken; };
 computesteps: COMPUTESTEPS { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("ComputeSteps", $$); $$->token = 255 + yytoken; };
 boundconds: BOUNDCONDS{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("BoundConds", $$); $$->token = 255 + yytoken; };
+intrinsic: INTRINSIC{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("intrinsic", $$); $$->token = 255 + yytoken; };
 inline: INLINE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("inline", $$); $$->token = 255 + yytoken; };
 boundary_condition: BOUNDARY_CONDITION { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("boundary_condition", $$); $$->token = 255 + yytoken;};
 sum: SUM               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("sum", $$); $$->token = 255 + yytoken; };
@@ -649,6 +681,7 @@ type_specifier: int          { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | struct_type  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | enum_type    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | vtxbuffer    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | intrinsic    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               ;
 
 type_qualifier: kernel       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }

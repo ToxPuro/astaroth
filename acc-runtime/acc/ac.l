@@ -95,6 +95,7 @@ void strip_whitespace(char *str) {
 "WorkBuffer"            {return WORK_BUFFER; }
 "ComputeSteps"          {return COMPUTESTEPS; }
 "BoundConds"          {return BOUNDCONDS; }
+"intrinsic"          {return INTRINSIC; }
 
 "Stencil"               { return STENCIL; }
 

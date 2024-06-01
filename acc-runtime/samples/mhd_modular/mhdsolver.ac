@@ -220,11 +220,9 @@ output real timestep_out;
 output real timestep_out1;
 output real timestep_out2;
 const int test_arr_size = 6;
-#if LTEST
 real AC_test_arr[test_arr_size];
 real AC_test_arr_2[(2-1)*2+1];
 int AC_test_int_arr[test_arr_size/2];
-#endif
 
 
 
@@ -845,7 +843,7 @@ Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums, 
     reduce_max(step_num == 0, 2.0, timestep_out2)
 }
 
-inline rk3_intermediate(w, roc, step_num,dt) {
+rk3_intermediate(w, roc, step_num,dt) {
     real alpha = 0., -5./9., -153. / 128.
     return alpha[step_num] * w + roc * dt 
 
@@ -865,13 +863,15 @@ inline rk3_intermediate(w, roc, step_num,dt) {
     }
     */
 }
-inline array_val(field_array, size)
+array_val(field_array, size)
 {
 	real res[size]
 	for i in 0:size
 	{
 		res[i] = value(field_array[i])
 	}
+        test_val = 2.0
+	test_val = tanh(test_val)
 	return res
 }
 
@@ -1040,7 +1040,21 @@ Kernel test_dconst_arr()
 #endif
 
 
+loop()
+{
+    for i in 0:2	
+    {
+      if(AC_test_arr[i] <= 2 && AC_test_arr[i+1] < 2){
+          print("HI\n")
+      }
+    }
+}
+
 Kernel haatouken() {
+    test_x = 2
+    y = 2
+    c = 3
+    test_x += (y > 2)*c
     // Parameters
     // Shock punch the air in front of you.
     // AC_init_ampl_uu
@@ -1128,7 +1142,7 @@ get_boundary_from_boundary_normal(boundary_normal_in)
     int3 boundary_out
     if boundary_normal_in.x == 1
     {
-	boundary_out.x = NGHOST + AC_nx -1
+	boundary_out.x = NGHOST + AC_nx-1
     }
     if boundary_normal_in.x == 0
     {
@@ -1142,7 +1156,7 @@ get_boundary_from_boundary_normal(boundary_normal_in)
 
     if boundary_normal_in.y == 1
     {
-	boundary_out.y = NGHOST + AC_ny -1
+	boundary_out.y = NGHOST + AC_ny-1
     }
     if boundary_normal_in.y == 0
     {
@@ -1156,7 +1170,7 @@ get_boundary_from_boundary_normal(boundary_normal_in)
 
     if boundary_normal_in.z == 1
     {
-	boundary_out.z = NGHOST + AC_nz -1
+	boundary_out.z = NGHOST + AC_nz-1
     }
     if boundary_normal_in.z == 0
     {
@@ -1329,8 +1343,6 @@ boundary_condition Kernel const_boundcond(int3 boundary_normal, VtxBuffer vtxbuf
         vtxbuf[ghost.x][ghost.y][ghost.z] = const_value
     }
 }
-
-
 
 
 BoundConds rhs_boundconds_test
