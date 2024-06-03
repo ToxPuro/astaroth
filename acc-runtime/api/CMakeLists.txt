@@ -32,23 +32,44 @@ set(DSL_HEADERS "user_kernels.h"
                 "user_defines.h"
                 "user_declarations.h"
                 "stencil_accesses.h"
+                "user_taskgraphs.h"
+                "user_loaders.h"
                 "stencilgen.h")
-if (SINGLEPASS_INTEGRATION) 
-add_custom_command (
-    COMMENT "Building ACC objects (singlepass): ${DSL_MODULE_DIR}"
-    COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*single.ac"
-    DEPENDS ${DSL_SOURCES} acc
-    OUTPUT ${DSL_HEADERS}
-)
-else ()
-add_custom_command (
-    COMMENT "Building ACC objects (twopass): ${DSL_MODULE_DIR}"
-    COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac"
-    #COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*two.ac"
-    DEPENDS ${DSL_SOURCES} acc
-    OUTPUT ${DSL_HEADERS}
-)
-endif ()
+if (NOT DEFINED DSL_MODULE_FILE)
+  if (SINGLEPASS_INTEGRATION) 
+  add_custom_command (
+      COMMENT "Building ACC objects (singlepass): ${DSL_MODULE_DIR}"
+      COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*single.ac"
+      DEPENDS ${DSL_SOURCES} acc
+      OUTPUT ${DSL_HEADERS}
+  )
+  else ()
+  add_custom_command (
+      COMMENT "Building ACC objects (twopass): ${DSL_MODULE_DIR}"
+      COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac"
+      #COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*two.ac"
+      DEPENDS ${DSL_SOURCES} acc
+      OUTPUT ${DSL_HEADERS}
+  )
+  endif ()
+else()
+  if (SINGLEPASS_INTEGRATION) 
+  add_custom_command (
+      COMMENT "Building ACC objects (singlepass): ${DSL_MODULE_DIR}"
+      COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*single.ac" "${DSL_MODULE_FILE}"
+      DEPENDS ${DSL_SOURCES} acc
+      OUTPUT ${DSL_HEADERS}
+  )
+  else ()
+  add_custom_command (
+      COMMENT "Building ACC objects (twopass): ${DSL_MODULE_DIR}"
+      COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac" "${DSL_MODULE_FILE}"
+      #COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*two.ac"
+      DEPENDS ${DSL_SOURCES} acc
+      OUTPUT ${DSL_HEADERS}
+  )
+  endif()
+endif()
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
 target_include_directories(acc-runtime-headers INTERFACE . .. ${CMAKE_CURRENT_BINARY_DIR})
 target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})

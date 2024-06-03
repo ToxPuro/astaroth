@@ -303,35 +303,53 @@ main(int argc, char** argv)
     init_int_vec(&tinyexpr_cache);
     init_str_vec(&tinyexpr_cache_str);
     atexit(&cleanup);
-
-    if (argc > 2) {
-      fprintf(stderr, "Error multiple .ac files passed to acc, can only process one at a time. Ensure that DSL_MODULE_DIR contains only one .ac file.\n");
-      return EXIT_FAILURE;
+    printf("%s|%s\n",argv[1],argv[argc-1]);
+    string_vec filenames;
+    init_str_vec(&filenames);
+    char* file = NULL;
+    if(argc > 2)
+    {
+	file = malloc(sizeof(char)*(strlen(argv[1]) + strlen(argv[argc-1])));
+	sprintf(file,"%s/%s",dirname(strdup(argv[1])), argv[argc-1]);
     }
-
-    if (argc == 2) {
-
-        char stage0[strlen(argv[1])];
-        strcpy(stage0, argv[1]);
-        const char* stage1 = "user_kernels.ac.pp_stage1";
-        const char* stage2 = "user_kernels.ac.pp_stage2";
-        const char* stage3 = "user_kernels.ac.pp_stage3";
-        const char* stage4 = "user_kernels.ac.pp_stage4";
-        const char* dir = dirname(argv[1]); // WARNING: dirname has side effects!
-	dir_backup = dir;
-
-        if (OPTIMIZE_MEM_ACCESSES) {
-          code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, true, OPTIMIZE_CONDITIONALS); // Uncomment to enable stencil mem access checking
-          generate_mem_accesses(); // Uncomment to enable stencil mem access checking
-        }
-        code_generation_pass(stage0, stage1, stage2, stage3, stage4,  dir, false, OPTIMIZE_CONDITIONALS);
-        
-
-        return EXIT_SUCCESS;
-    } else {
+    else if (argc == 2)
+	file = argv[1];
+    else {
         puts("Usage: ./acc [source file]");
         return EXIT_FAILURE;
     }
+    //HACK to find if multiple .ac files without DSL_MODULE_FILE
+    if(strstr(file,"//"))
+    {
+      fprintf(stderr, "Error multiple .ac files passed to acc, can only process one at a time. Ensure that DSL_MODULE_DIR contains only one .ac file or specify the file with DSL_MODULE_FILE.\n");
+	return EXIT_FAILURE;
+    }
+	
+    bool found_file = false;
+    for(int i = 1; i < argc; ++i)
+	found_file |= !strcmp(argv[i], file);
+    if(!found_file)
+    {
+	fprintf(stderr,"Did not find file: %s in %s\n",argv[argc-1],dirname(argv[1]));
+        return EXIT_FAILURE;
+    }
+    char stage0[strlen(file)];
+    strcpy(stage0, file);
+    const char* stage1 = "user_kernels.ac.pp_stage1";
+    const char* stage2 = "user_kernels.ac.pp_stage2";
+    const char* stage3 = "user_kernels.ac.pp_stage3";
+    const char* stage4 = "user_kernels.ac.pp_stage4";
+    const char* dir = dirname(file); // WARNING: dirname has side effects!
+    dir_backup = dir;
+
+    if (OPTIMIZE_MEM_ACCESSES) {
+      code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, true, OPTIMIZE_CONDITIONALS); // Uncomment to enable stencil mem access checking
+      generate_mem_accesses(); // Uncomment to enable stencil mem access checking
+    }
+    code_generation_pass(stage0, stage1, stage2, stage3, stage4,  dir, false, OPTIMIZE_CONDITIONALS);
+    
+
+    return EXIT_SUCCESS;
 }
 %}
 

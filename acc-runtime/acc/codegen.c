@@ -1132,21 +1132,30 @@ get_taskgraph_kernel_calls(const ASTNode* function_call_list_head, int n)
 void
 compute_next_level_set(bool* src, const int_vec kernel_calls, bool* field_written_to, int* call_level_set)
 {
+	bool* field_consumed = (bool*)malloc(sizeof(bool)*num_fields);
 	memset(field_written_to,0,sizeof(bool)*num_fields);
+	memset(field_consumed,0,sizeof(bool)*num_fields);
 	for(size_t i = 0; i < kernel_calls.size; ++i)
 	{
-		const int kernel_index = kernel_calls.data[i];
-		bool can_compute = true;
-		for(size_t j = 0; j < num_fields; ++j)
+		if(call_level_set[i] == -1)
 		{
-			can_compute &= !((read_fields[j + num_fields*kernel_index] || field_has_stencil_op[j + num_fields*kernel_index]) && field_written_to[j]);
-			if(call_level_set[i] == -1)
-				field_written_to[j] |= written_fields[j + num_fields*kernel_index];
+		  const int kernel_index = kernel_calls.data[i];
+		  bool can_compute = true;
+		  for(size_t j = 0; j < num_fields; ++j)
+		  {
+			const int index = j + num_fields*kernel_index;
+			const bool field_accessed = read_fields[index] || field_has_stencil_op[index];
+		  	can_compute &= !(field_consumed[j] && field_accessed);
+		  	field_consumed[j] |= written_fields[index];
+		  }
+		  for(size_t j = 0; j < num_fields; ++j)
+		  	field_written_to[j] |= (can_compute && written_fields[j + num_fields*kernel_index]);
+		  src[i] |= can_compute;
 		}
-		if(call_level_set[i] == -1 &&  can_compute)
-			src[i] = true;
 	}
+	free(field_consumed);
 }
+
 #define BOUNDARY_X_BOT (1 << 0)
 #define BOUNDARY_X_TOP (1 << 1)
 #define BOUNDARY_Y_BOT (1 << 2)
@@ -1290,126 +1299,26 @@ get_field_boundconds(const ASTNode* root, const char* boundconds_name, string_ve
 	get_field_boundconds_recursive(root,root,res,boundconds_name,input_symbols,input_types);
 	return res;
 }
+
 void
-gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* input_symbols, string_vec* input_types)
+gen_halo_exchange_and_boundconds(
+		const bool* field_needs_to_be_communicated_before_level_set, 
+		char** field_boundconds,
+		const int level_set,
+		char* res,
+		const char* boundconds_name,
+		int_vec fields
+		)
 {
-  	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
-	if(!has_optimization_info)
-		return;
-	if(node->lhs)
-		gen_user_taskgraphs_recursive(node->lhs,root,input_symbols,input_types);
-	if(node->rhs)
-		gen_user_taskgraphs_recursive(node->rhs,root,input_symbols,input_types);
-	if(node->type != NODE_TASKGRAPH_DEF)
-		return;
-	const char* boundconds_name = node->lhs->rhs->buffer;
-	char** field_boundconds = get_field_boundconds(root,boundconds_name,input_symbols,input_types);
-	const int num_boundaries = 6;
-	bool* field_boundconds_processed = (bool*)malloc(num_fields*num_boundaries);
-
-	//for(size_t field = 0; field < num_fields; ++field)
-	//{
-	//	printf("%lu|x_bot: %s\n",field,field_boundconds[field + num_fields*0]);
-	//	printf("%lu|y_bot: %s\n",field,field_boundconds[field + num_fields*1]);
-	//	printf("%lu|z_bot: %s\n",field,field_boundconds[field + num_fields*2]);
-	//	printf("%lu|x_top: %s\n",field,field_boundconds[field + num_fields*3]);
-	//	printf("%lu|y_top: %s\n",field,field_boundconds[field + num_fields*4]);
-	//	printf("%lu|z_top: %s\n",field,field_boundconds[field + num_fields*5]);
-	//}
-	
-	const char* name = node->lhs->lhs->buffer;
-	char* res = malloc(sizeof(char)*10000);
-	sprintf(res, "AcTaskGraph* %s = acGridBuildTaskGraph({\n",name);
-	const ASTNode* function_call_list_head = node->rhs;
-	//have to traverse in reverse order to generate the right order in taskgraph
-	int n_entries = 1;
-	while(function_call_list_head->rhs)
-	{
-		function_call_list_head = function_call_list_head -> lhs;
-		++n_entries;
-	}
-
-	int_vec kernel_calls = get_taskgraph_kernel_calls(function_call_list_head,n_entries);
-
-	int_vec kernel_calls_in_level_order;
-	init_int_vec(&kernel_calls_in_level_order);
-	bool* field_halo_in_sync = malloc(sizeof(bool)*num_fields);
-	bool* field_out_from_last_level_set = malloc(sizeof(bool)*num_fields);
-	bool* field_out_from_level_set = malloc(sizeof(bool)*num_fields);
-	bool* field_stencil_ops_at_next_level_set = malloc(sizeof(bool)*num_fields);
-	bool* current_level_set = malloc(sizeof(bool)*num_kernels);
-	bool* next_level_set    = malloc(sizeof(bool)*num_kernels);
-	bool* field_need_to_communicate = malloc(sizeof(bool)*num_fields);
-	memset(field_halo_in_sync,0,sizeof(bool)*num_fields);
-	int n_level_sets = 0;
-	int* call_level_set  = malloc(sizeof(int)*kernel_calls.size);
-	const int MAX_TASKS = 100;
-	bool* field_needs_to_be_communicated_before_level_set = malloc(sizeof(int)*MAX_TASKS*num_fields);
-
-	memset(call_level_set,-1,sizeof(int)*kernel_calls.size);
-	memset(field_out_from_level_set,0,sizeof(bool)*num_fields);
-	memset(field_out_from_last_level_set,0,sizeof(bool)*num_fields);
-	
-	bool all_processed = false;
-	while(!all_processed)
-	{
-		memset(field_stencil_ops_at_next_level_set,0,sizeof(bool)*num_fields);
-		memset(field_need_to_communicate,0,sizeof(bool)*num_fields);
-		memset(next_level_set,0,sizeof(bool)*num_kernels);
-		compute_next_level_set(next_level_set, kernel_calls,field_out_from_level_set,call_level_set);
-		for(size_t i = 0; i < kernel_calls.size; ++i)
-		{
-			if(next_level_set[i])
-			{
-				call_level_set[i] = n_level_sets;
-				const int k = kernel_calls.data[i];
-				for(size_t j = 0; j < num_fields; ++j)
-					field_stencil_ops_at_next_level_set[j] |= field_has_stencil_op[j + num_fields*k];
-			}
-		}
-		for(size_t j = 0; j < num_fields; ++j)
-		    field_halo_in_sync[j] &= !field_out_from_last_level_set[j];
-		for(size_t j = 0; j < num_fields; ++j)
-		    field_need_to_communicate[j] |= (!field_halo_in_sync[j] && field_stencil_ops_at_next_level_set[j]);
-		for(size_t j = 0; j < num_fields; ++j)
-		{
-			field_halo_in_sync[j] |= field_need_to_communicate[j];
-			field_needs_to_be_communicated_before_level_set[j + num_fields*n_level_sets] = field_need_to_communicate[j];
-
-		}
-		bool* swap_tmp;
-		swap_tmp = field_out_from_level_set;
-		field_out_from_level_set = field_out_from_last_level_set;
-		field_out_from_last_level_set = swap_tmp;
-		++n_level_sets;
-		all_processed = true;
-
-		for(size_t k = 0; k < kernel_calls.size; ++k)
-			all_processed &= (call_level_set[k] != -1);
-
-	}
-	
-	free(field_halo_in_sync);
-	free(field_out_from_level_set);
-	free(field_stencil_ops_at_next_level_set);
-	free(next_level_set);
-	free(field_need_to_communicate);
-	char all_fields[4000];
-	all_fields[0] = '\0';
-	for(size_t field = 0; field < num_fields; ++field)
-	{
-		const char* field_str = get_symbol(NODE_VARIABLE_ID,field,"Field")->identifier;
-		strcat(all_fields,field_str);
-		strcat(all_fields,",");
-	}
-	for(int level_set = 0; level_set < n_level_sets; ++level_set)
-	{
+		const int num_boundaries = 6;
+		bool* field_boundconds_processed = (bool*)malloc(num_fields*num_boundaries);
 		memset(field_boundconds_processed,0,num_fields*num_boundaries*sizeof(bool));
 		bool need_to_communicate = false;
 		char communicated_fields_str[4000];
 		sprintf(communicated_fields_str,"{");
-		for(size_t field = 0; field < num_fields; ++field)
+		for(size_t i = 0; i < fields.size; ++i)
 		{
+			const int field = fields.data[i];
 			need_to_communicate |= field_needs_to_be_communicated_before_level_set[field + num_fields*level_set];
 			if(field_needs_to_be_communicated_before_level_set[field + num_fields*level_set])
 			{
@@ -1450,18 +1359,19 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 			}
 
 			for(int boundcond = 0; boundcond < num_boundaries; ++boundcond)
-				for(size_t field = 0; field < num_fields; ++field)
-					field_boundconds_processed[field + num_fields*boundcond]  = !strcmp(field_boundconds[field + num_fields*boundcond],"periodic")  || !field_needs_to_be_communicated_before_level_set[field + num_fields*level_set];
+				for(size_t i = 0; i < fields.size; ++i)
+					field_boundconds_processed[fields.data[i] + num_fields*boundcond]  = !strcmp(field_boundconds[fields.data[i] + num_fields*boundcond],"periodic")  
+												              || !field_needs_to_be_communicated_before_level_set[fields.data[i] + num_fields*level_set];
 
 			bool all_are_processed = false;
 			while(!all_are_processed)
 			{
 				for(int boundcond = 0; boundcond < num_boundaries; ++boundcond)
 				{
-					char* processed_boundcond = NULL;
+					const char* processed_boundcond = NULL;
 
-					for(size_t field = 0; field < num_fields; ++field)
-						processed_boundcond = !field_boundconds_processed[field + num_fields*boundcond] ? field_boundconds[field + num_fields*boundcond] : processed_boundcond;
+					for(size_t i = 0; i < fields.size; ++i)
+						processed_boundcond = !field_boundconds_processed[fields.data[i] + num_fields*boundcond] ? field_boundconds[fields.data[i] + num_fields*boundcond] : processed_boundcond;
 					if(!processed_boundcond) continue;
 					char* boundary_str;
 					if(boundcond == 0)
@@ -1482,13 +1392,13 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 					strcat(res,processed_boundcond);
 					strcat(res,",");
 					strcat(res,"{");
-					for(size_t field = 0; field < num_fields; ++field)
+					for(size_t i = 0; i < fields.size; ++i)
 					{
-						const char* field_str = get_symbol(NODE_VARIABLE_ID,field,"Field")->identifier;
-						const char* boundcond_str = field_boundconds[field + num_fields*boundcond];
+						const char* field_str = get_symbol(NODE_VARIABLE_ID,fields.data[i],"Field")->identifier;
+						const char* boundcond_str = field_boundconds[fields.data[i] + num_fields*boundcond];
 						if(strcmp(boundcond_str,processed_boundcond)) continue;
-						if(field_boundconds_processed[field + num_fields*boundcond]) continue;
-						field_boundconds_processed[field + num_fields*boundcond] |= true;
+						if(field_boundconds_processed[fields.data[i] + num_fields*boundcond]) continue;
+						field_boundconds_processed[fields.data[i] + num_fields*boundcond] |= true;
 						strcat(res,field_str);
 						strcat(res,",");
 					}
@@ -1503,29 +1413,191 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 				}
 				all_are_processed = true;
 				for(int boundcond = 0; boundcond < num_boundaries; ++boundcond)
-					for(size_t field = 0; field < num_fields; ++field)
-						all_are_processed &= field_boundconds_processed[field + num_fields*boundcond];
+					for(size_t i = 0; i < fields.size; ++i)
+						all_are_processed &= field_boundconds_processed[fields.data[i] + num_fields*boundcond];
 			}
 		}
+		free(field_boundconds_processed);
+}
+ASTNode*
+get_list_elem_from_leaf(const ASTNode* leaf, int index)
+{
+
+	if(index == 0)
+		return leaf->lhs;
+	while(index--)
+		leaf = leaf->parent;
+	return leaf->rhs;
+}
+void
+gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* input_symbols, string_vec* input_types)
+{
+  	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
+	if(!has_optimization_info)
+		return;
+	if(node->lhs)
+		gen_user_taskgraphs_recursive(node->lhs,root,input_symbols,input_types);
+	if(node->rhs)
+		gen_user_taskgraphs_recursive(node->rhs,root,input_symbols,input_types);
+	if(node->type != NODE_TASKGRAPH_DEF)
+		return;
+	const char* boundconds_name = node->lhs->rhs->buffer;
+	char** field_boundconds = get_field_boundconds(root,boundconds_name,input_symbols,input_types);
+	const int num_boundaries = 6;
+
+	//for(size_t field = 0; field < num_fields; ++field)
+	//{
+	//	printf("%lu|x_bot: %s\n",field,field_boundconds[field + num_fields*0]);
+	//	printf("%lu|y_bot: %s\n",field,field_boundconds[field + num_fields*1]);
+	//	printf("%lu|z_bot: %s\n",field,field_boundconds[field + num_fields*2]);
+	//	printf("%lu|x_top: %s\n",field,field_boundconds[field + num_fields*3]);
+	//	printf("%lu|y_top: %s\n",field,field_boundconds[field + num_fields*4]);
+	//	printf("%lu|z_top: %s\n",field,field_boundconds[field + num_fields*5]);
+	//}
+	
+	const char* name = node->lhs->lhs->buffer;
+	char* res = malloc(sizeof(char)*10000);
+	sprintf(res, "AcTaskGraph* %s = acGridBuildTaskGraph({\n",name);
+	const ASTNode* function_call_list_head = node->rhs;
+	//have to traverse in reverse order to generate the right order in taskgraph
+	int n_entries = 1;
+	while(function_call_list_head->rhs)
+	{
+		function_call_list_head = function_call_list_head -> lhs;
+		++n_entries;
+	}
+
+	int_vec kernel_calls = get_taskgraph_kernel_calls(function_call_list_head,n_entries);
+
+	int_vec kernel_calls_in_level_order;
+	init_int_vec(&kernel_calls_in_level_order);
+	bool* field_halo_in_sync = malloc(sizeof(bool)*num_fields);
+	bool* field_communicated_once = malloc(sizeof(bool)*num_fields);
+	bool* field_out_from_last_level_set = malloc(sizeof(bool)*num_fields);
+	bool* field_out_from_level_set = malloc(sizeof(bool)*num_fields);
+	bool* field_stencil_ops_at_next_level_set = malloc(sizeof(bool)*num_fields);
+	bool* current_level_set = malloc(sizeof(bool)*num_kernels);
+	bool* next_level_set    = malloc(sizeof(bool)*num_kernels);
+	bool* field_need_to_communicate = malloc(sizeof(bool)*num_fields);
+	memset(field_halo_in_sync,0,sizeof(bool)*num_fields);
+	int n_level_sets = 0;
+	int* call_level_set  = malloc(sizeof(int)*kernel_calls.size);
+	const int MAX_TASKS = 100;
+	bool* field_needs_to_be_communicated_before_level_set = malloc(sizeof(int)*MAX_TASKS*num_fields);
+
+	memset(call_level_set,-1,sizeof(int)*kernel_calls.size);
+	memset(field_out_from_level_set,0,sizeof(bool)*num_fields);
+	memset(field_out_from_last_level_set,0,sizeof(bool)*num_fields);
+
+	
+	bool all_processed = false;
+	while(!all_processed)
+	{
+		memset(field_stencil_ops_at_next_level_set,0,sizeof(bool)*num_fields);
+		memset(field_need_to_communicate,0,sizeof(bool)*num_fields);
+		memset(next_level_set,0,sizeof(bool)*num_kernels);
+		compute_next_level_set(next_level_set, kernel_calls,field_out_from_level_set,call_level_set);
+		for(size_t i = 0; i < kernel_calls.size; ++i)
+		{
+			if(next_level_set[i])
+			{
+				call_level_set[i] = n_level_sets;
+				const int k = kernel_calls.data[i];
+				for(size_t j = 0; j < num_fields; ++j)
+					field_stencil_ops_at_next_level_set[j] |= field_has_stencil_op[j + num_fields*k];
+			}
+		}
+		for(size_t j = 0; j < num_fields; ++j)
+		    field_halo_in_sync[j] &= !field_out_from_last_level_set[j];
+		for(size_t j = 0; j < num_fields; ++j)
+		    field_need_to_communicate[j] |= (!field_halo_in_sync[j] && field_stencil_ops_at_next_level_set[j]);
+		for(size_t j = 0; j < num_fields; ++j)
+		{
+			field_halo_in_sync[j] |= field_need_to_communicate[j];
+			field_needs_to_be_communicated_before_level_set[j + num_fields*n_level_sets] = field_need_to_communicate[j];
+
+		}
+		//for(size_t j = 0; j < num_fields; ++j)
+			//printf("field out from level set: %d,%ld,%d\n",n_level_sets,j,field_out_from_level_set[j]);
+		bool* swap_tmp;
+		swap_tmp = field_out_from_level_set;
+		field_out_from_level_set = field_out_from_last_level_set;
+		field_out_from_last_level_set = swap_tmp;
+		++n_level_sets;
+		all_processed = true;
+
+		for(size_t k = 0; k < kernel_calls.size; ++k)
+			all_processed &= (call_level_set[k] != -1);
+		if((size_t) n_level_sets > kernel_calls.size)
+		{
+			fprintf(stderr,"Bug in the compiler aborting\n");
+			exit(EXIT_FAILURE);
+		}
+
+	}
+	
+	free(field_halo_in_sync);
+	free(field_out_from_level_set);
+	free(field_stencil_ops_at_next_level_set);
+	free(next_level_set);
+	free(field_need_to_communicate);
+	char all_fields[4000];
+	all_fields[0] = '\0';
+	for(size_t field = 0; field < num_fields; ++field)
+	{
+		const char* field_str = get_symbol(NODE_VARIABLE_ID,field,"Field")->identifier;
+		strcat(all_fields,field_str);
+		strcat(all_fields,",");
+	}
+	bool* field_written_out_before = (bool*)malloc(sizeof(bool)*num_fields);
+	memset(field_written_out_before,0,sizeof(bool)*num_fields);
+	int_vec fields_written_to;
+	int_vec fields_not_written_to;
+	for(int level_set = 0; level_set < n_level_sets; ++level_set)
+	{
+		init_int_vec(&fields_written_to);
+		init_int_vec(&fields_not_written_to);
+		for(size_t i = 0; i < num_fields; ++i)
+			if(field_written_out_before[i])
+				push_int(&fields_written_to,i);
+			else
+				push_int(&fields_not_written_to,i);
+		gen_halo_exchange_and_boundconds(
+		  field_needs_to_be_communicated_before_level_set, 
+		  field_boundconds,
+		  level_set,
+		  res,
+		  boundconds_name,
+		  fields_written_to
+		);
+		gen_halo_exchange_and_boundconds(
+		  field_needs_to_be_communicated_before_level_set, 
+		  field_boundconds,
+		  level_set,
+		  res,
+		  boundconds_name,
+		  fields_not_written_to
+		);
 		for(size_t call = 0; call < kernel_calls.size; ++call) 
 		{
 			if(call_level_set[call] == level_set)
 			{
-				int call_index = call;
-				if(call_index == 0)
-					gen_taskgraph_kernel_entry(function_call_list_head->lhs,root,res,input_symbols,input_types,name);
-				else
-				{
-					const ASTNode* new_head = function_call_list_head;
-					while(call_index--)
-						new_head = new_head->parent;
-					gen_taskgraph_kernel_entry(new_head->rhs,root,res,input_symbols,input_types,name);
-				}
-
+				const ASTNode* kernel_call = get_list_elem_from_leaf(function_call_list_head,call);
+				gen_taskgraph_kernel_entry(
+						kernel_call,
+						root,res,input_symbols,input_types,name
+				);
+				const char* func_name = get_node_by_token(IDENTIFIER,kernel_call)->buffer;
+				const int kernel_index = get_symbol_index(NODE_KFUNCTION_ID,func_name,NULL);
+				for(size_t field = 0; field < num_fields; ++field)
+					field_written_out_before[field] |= written_fields[field + num_fields*kernel_index];
 
 			}
 		}
+		free_int_vec(&fields_written_to);
+		free_int_vec(&fields_not_written_to);
 	}
+	free(field_written_out_before);
 	strcat(res,"});\n");
 	file_prepend("user_taskgraphs.h", res);
 	free(res);
@@ -3343,7 +3415,7 @@ generate_mem_accesses(void)
   fclose(fp);
 
 
-//  const size_t k = 8;
+//  const size_t k = 4;
 //  for(size_t i = 0; i < num_fields; ++i)
 //	  printf("written to: %d\n",written_fields[i + num_fields*k]);
 //  for(size_t i = 0; i < num_fields; ++i)

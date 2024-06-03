@@ -46,7 +46,14 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
                 {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
                  VTXBUF_AX,    VTXBUF_AY,  VTXBUF_AZ, // VTXBUF_ENTROPY,
                  VTXBUF_SHOCK, BFIELDX,    BFIELDY,    BFIELDZ};
-
+	    auto single_loader = [&info](ParamLoadingInfo p){
+		    acKernelInputParams* params = acDeviceGetKernelInputParamsObject(p.device);
+		    params->singlepass_solve.time_params= {
+			    					info.real_params[AC_dt],
+			    					info.real_params[AC_current_time]
+		    					   };
+		    params->singlepass_solve.step_num = p.step_number;
+	    };
             VertexBufferHandle shock_field[] = {VTXBUF_SHOCK};
             AcTaskDefinition shock_ops[] =
                 {acHaloExchange(all_fields),
@@ -60,7 +67,8 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
                  acCompute(KERNEL_shock_3_smooth, shock_field),
                  acHaloExchange(shock_field),
                  acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, shock_field),
-                 acCompute(singlepass_solve, all_fields, &info.real_params[AC_dt], &info.real_params[AC_current_time])};
+                 acComputeWithParams(KERNEL_singlepass_solve, all_fields, single_loader),
+		};
             acLogFromRootProc(pid, "Creating shock singlepass solve task graph\n");
             return acGridBuildTaskGraph(shock_ops);
 #endif
@@ -91,7 +99,7 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
 	    };
 	    auto final_loader = [&info](ParamLoadingInfo p){
 		    acKernelInputParams* params = acDeviceGetKernelInputParamsObject(p.device);
-		    params->twopass_solve_final.current_time = info.real_params[AC_dt];
+		    params->twopass_solve_final.current_time = info.real_params[AC_current_time];
 		    params->twopass_solve_final.step_num = p.step_number;
 	    };
             AcTaskDefinition heatduct_ops[] =
@@ -122,6 +130,7 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
             return my_taskgraph;
 #endif
         }
+#if LBFIELD
         case Simulation::Bound_Test_Solve: {
             VertexBufferHandle all_fields[] =
                 {VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
@@ -172,6 +181,7 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
             acGraphPrintDependencies(my_taskgraph);
             return my_taskgraph;
         }
+#endif
         default:
             acLogFromRootProc(pid, "ERROR: no custom task graph exists for selected simulation. "
                                    "This is probably a fatal error.\n");
