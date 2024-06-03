@@ -46,9 +46,6 @@ gmem real AC_dchit_prof_stored[AC_nz]
 
 //output real AC_alfven_speed
 output real AC_maxadvec
-output real AC_test
-real AC_nkramers
-real AC_hcond_Kconst
 output real AC_maxchi
 
 
@@ -201,7 +198,7 @@ real AC_lnrho0
 real AC_zeta
 real AC_trans
 real AC_nu_shock
-real AC_K_heatcond
+real AC_hcond_Kconst
 
 //  Parameters for generic boundary conditions, this is a dummy variable for testing, please use different ones for each field
 real AC_boundary_derivative
@@ -211,6 +208,7 @@ real AC_boundary_derivative
 real AC_hcond0_kramers
 real AC_hcond0
 real AC_hflux
+real AC_nkramers
 real AC_sigma_SBt
 real AC_chi
 real AC_chi_t
@@ -812,16 +810,23 @@ Kernel twopass_solve_intermediate(int step_num, real dt){
 
   DF_UU = -UGU+FPRES+JXBR+FVISC
   DF_LNRHO = -DIVU-UGLNRHO
-  DF_SS = -UGSS+TT1*VISC_HEAT+AC_eta*AC_mu0*J2*RHO1*TT1
+
+  chi = RHO1 * AC_hcond_Kconst/AC_cp
+
+  reduce_max(step_num==2,chi,AC_maxchi)
+
+  DF_SS = -UGSS+TT1*VISC_HEAT+AC_eta*AC_mu0*J2*RHO1*TT1 + chi * ( DEL2LNTT + dot(GLNTT,GLNTT) )
 
   DF_AA = UXB+(AC_nu*DEL2A)
+
+  advec2 = cs2 + dot(BB,BB)*RHO1
+  reduce_max(step_num==0, abs(UU.x/AC_dsx+UU.y/AC_dsy+UU.z/AC_dsz) + sqrt(advec2)/AC_dsx, AC_maxadvec)
 
   W_UU = rk3_intermediate_vector(vecprevious(F_UU),DF_UU,step_num, dt)
   W_SS = rk3_intermediate(previous(VTXBUF_ENTROPY),DF_SS,step_num, dt)
   W_LNRHO = rk3_intermediate(previous(VTXBUF_LNRHO),DF_LNRHO,step_num, dt)
   W_AA  = rk3_intermediate_vector(vecprevious(F_AA),DF_AA,step_num, dt)
  
-
   vecwrite(F_UU,W_UU)
   write(VTXBUF_ENTROPY,W_SS)
   write(VTXBUF_LNRHO, W_LNRHO)
