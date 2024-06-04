@@ -1051,6 +1051,11 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 	sprintf(communicated_fields_after, "%s", "{");
 	char* tmp = malloc(sizeof(char)*4000);
 	const int kernel_index = get_symbol_index(NODE_KFUNCTION_ID,func_name,NULL);
+	if(kernel_index == -1)
+	{
+		fprintf(stderr,"Undeclared kernel %s used in ComputeSteps %s\n",func_name,taskgraph_name);
+		exit(EXIT_FAILURE);
+	}
 	char* all_fields = malloc(sizeof(char)*4000);
 	all_fields[0] = '\0';
 	for(size_t field = 0; field < num_fields; ++field)
