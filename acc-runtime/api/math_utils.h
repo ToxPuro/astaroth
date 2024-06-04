@@ -434,6 +434,9 @@ operator+(const AcReal3& a, const AcReal3& b)
   return (AcReal3){a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
+//Do not compile if using HIP since it already somes from HIP
+#if AC_USE_HIP 
+#else
 static constexpr HOST_DEVICE_INLINE void
 operator+=(AcReal3& lhs, const AcReal3& rhs)
 {
@@ -441,6 +444,7 @@ operator+=(AcReal3& lhs, const AcReal3& rhs)
   lhs.y += rhs.y;
   lhs.z += rhs.z;
 }
+#endif
 
 static constexpr HOST_DEVICE_INLINE AcBool3 
 operator!=(const AcReal3& a, const AcReal b)
@@ -481,6 +485,9 @@ operator+(const AcReal3& a)
   return (AcReal3){a.x, a.y, a.z};
 }
 
+//Do not compile if using HIP since it already somes from HIP
+#if AC_USE_HIP 
+#else
 static constexpr HOST_DEVICE_INLINE void
 operator-=(AcReal3& lhs, const AcReal3& rhs)
 {
@@ -488,6 +495,7 @@ operator-=(AcReal3& lhs, const AcReal3& rhs)
   lhs.y -= rhs.y;
   lhs.z -= rhs.z;
 }
+#endif
 
 static constexpr HOST_DEVICE_INLINE AcReal3
 operator*(const AcReal& a, const AcReal3& b)
