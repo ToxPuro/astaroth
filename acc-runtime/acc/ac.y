@@ -130,6 +130,7 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
   if (!in) {
     fprintf(stderr, "FATAL ERROR: could not open include file '%s'\n", file);
     assert(in);
+    exit(EXIT_FAILURE);
   }
 
   const size_t  len = 4096;
