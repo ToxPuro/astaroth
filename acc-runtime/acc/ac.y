@@ -315,7 +315,6 @@ main(int argc, char** argv)
     init_int_vec(&tinyexpr_cache);
     init_str_vec(&tinyexpr_cache_str);
     atexit(&cleanup);
-    printf("%s|%s\n",argv[1],argv[argc-1]);
     string_vec filenames;
     init_str_vec(&filenames);
     char* file = NULL;
