@@ -22,6 +22,7 @@ option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF
 option(BUILD_SHARED_LIBS "Build Astaroth as a collection of shared libraries instead of statically built modules" OFF)
 option(PACKED_DATA_TRANSFERS    "Enables kernel for packed data transfers"          OFF)
 option(ADJACENT_VERTEX_BUFFERS "Allocate vertex buffers such that they form a single massive" OFF)
+option(2D  "Compile Astaroth for 2D simulation" OFF)
 
 option(USE_PERFSTUBS "Build with perfstubs" OFF)
 option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
@@ -171,6 +172,12 @@ else ()
     add_definitions(-DAC_ADJACENT_VERTEX_BUFFERS=0)
 endif ()
 
+if (2D)
+     add_definitions(-DTWO_D=1)
+else () 
+     add_definitions(-DTWO_D=0)
+endif ()
+
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 
 ## Includes
@@ -226,7 +233,10 @@ if (BUILD_SAMPLES)
         # add_subdirectory(samples/standalone_mpi)
         add_subdirectory(samples/mpitest)
         add_subdirectory(samples/devicetest)
-        add_subdirectory(samples/stencil-loader)
+	if(TWO_D)
+	else()
+        	add_subdirectory(samples/stencil-loader)
+	endif()
     endif()
 
   # add_subdirectory(samples/standalone)

@@ -688,6 +688,7 @@ acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
 }
 
 
+#if TWO_D == 0
 AcResult
 acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
               const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -710,7 +711,31 @@ acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
 
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 };
+#else
+AcResult
+acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
+              const AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+  ERRCHK_ALWAYS(stencil < NUM_STENCILS);
 
+  // Note important cudaDeviceSynchronize below
+  //
+  // Constant memory allocated for stencils is shared among kernel
+  // invocations, therefore a race condition is possible when updating
+  // the coefficients. To avoid this, all kernels that can access
+  // the coefficients must be completed before starting async copy to
+  // constant memory
+  cudaDeviceSynchronize();
+
+  const size_t bytes = sizeof(data[0][0]) * STENCIL_HEIGHT * STENCIL_WIDTH;
+  const cudaError_t retval = cudaMemcpyToSymbol(
+      stencils, data, bytes, stencil * bytes, cudaMemcpyHostToDevice);
+
+  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+};
+#endif
+
+#if TWO_D == 0
 AcResult
 acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
                AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -727,6 +752,23 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
 
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 };
+#else
+AcResult
+acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
+               AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+  ERRCHK_ALWAYS(stencil < NUM_STENCILS);
+
+  // Ensure all acLoadUniform calls have completed before continuing
+  cudaDeviceSynchronize();
+
+  const size_t bytes = sizeof(data[0][0]) * STENCIL_HEIGHT * STENCIL_WIDTH;
+  const cudaError_t retval = cudaMemcpyFromSymbol(
+      data, stencils, bytes, stencil * bytes, cudaMemcpyDeviceToHost);
+
+  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+};
+#endif
 
 #define GEN_LOAD_UNIFORM(LABEL_UPPER, LABEL_LOWER)                             \
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \

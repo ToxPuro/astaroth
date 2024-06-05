@@ -122,14 +122,26 @@
                             VertexBufferArray vba);
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
+#if TWO_D == 0
   AcResult
   acLoadStencil(const Stencil stencil, const cudaStream_t stream,
                 const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+#else
+  AcResult
+  acLoadStencil(const Stencil stencil, const cudaStream_t stream,
+                const AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]);
+#endif
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
+#if TWO_D == 0
   AcResult
   acStoreStencil(const Stencil stencil, const cudaStream_t stream,
                 AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+#else
+  AcResult
+  acStoreStencil(const Stencil stencil, const cudaStream_t stream,
+                AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]);
+#endif
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
   AcResult acLoadRealUniform(const cudaStream_t stream, const AcRealParam param,

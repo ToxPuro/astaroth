@@ -264,12 +264,14 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	FILE* f_out = fopen(stage4,"w");
         char* line = malloc(10000*sizeof(char));	
 
-	fprintf(f_out,"\n%s\n","Stencil value {[0][0][0] =1}");
+	if(!TWO_D)
+	  fprintf(f_out,"\n%s\n","Stencil value {[0][0][0] =1}");
+	else
+	  fprintf(f_out,"\n%s\n","Stencil value {[0][0] =1}");
         fprintf(f_out,"\n%s\n","vecvalue(v) {\nreturn real3(value(Field(v.x)), value(Field(v.y)), value(Field(v.z)))\n}");
         fprintf(f_out,"\n%s\n","vecprevious(v) {\nreturn real3(previous(Field(v.x)), previous(Field(v.y)), previous(Field(v.z)))\n}");
         fprintf(f_out,"\n%s\n","vecwrite(dst,src) {write(Field(dst.x),src.x)\n write(Field(dst.y),src.y)\n write(Field(dst.z),src.z)}");
-
- 	while (fgets(line, sizeof(line), f_in) != NULL) {
+	while (fgets(line, sizeof(line), f_in) != NULL) {
 		remove_substring(line,";");
 		fprintf(f_out,"%s",line);
     	}
@@ -1039,7 +1041,25 @@ function_call: declaration '(' ')'                 { $$ = astnode_create(NODE_FU
 assignment_body_designated: assignment_op expression { $$ = astnode_create(NODE_UNKNOWN, $1, $2); astnode_set_infix("\"", $$); astnode_set_postfix("\"", $$); }
           ;
 
-stencilpoint: stencil_index_list assignment_body_designated { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+stencilpoint: stencil_index_list assignment_body_designated { 
+	    								$$ = astnode_create(NODE_UNKNOWN, $1, $2); 
+									const int num_of_indexes = count_num_of_nodes_in_list($1);
+									if(TWO_D && num_of_indexes != 2)
+									{
+										fprintf(stderr,"Can only use 2D stencils when building for 2D simulation\n");
+										assert(num_of_indexes == 2);
+										exit(EXIT_FAILURE);
+									}
+									else if(!TWO_D && num_of_indexes < 3)
+										fprintf(stderr,"Specify indexes for all three dimensions\n");
+									else if(!TWO_D && num_of_indexes > 3)
+										fprintf(stderr,"Only three dimensional stencils for 3D simulation\n");
+									if(!TWO_D && num_of_indexes != 3)	
+									{
+										assert(num_of_indexes == 3);
+										exit(EXIT_FAILURE);
+									}
+							    }
             ;
 
 stencil_index: '[' expression ']' { $$ = astnode_create(NODE_UNKNOWN, $2, NULL); astnode_set_prefix("[STENCIL_ORDER/2 +", $$); astnode_set_postfix("]", $$); }

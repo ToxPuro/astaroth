@@ -863,22 +863,43 @@ AcResult acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3
 
 
 /** */
+#if TWO_D == 0
 AcResult acGridLoadStencil(const Stream stream, const Stencil stencil,
                            const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+#else
+AcResult acGridLoadStencil(const Stream stream, const Stencil stencil,
+                           const AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]);
+#endif
 
 /** */
+#if TWO_D == 0
 AcResult acGridStoreStencil(const Stream stream, const Stencil stencil,
                             AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
-
+#else
+AcResult acGridStoreStencil(const Stream stream, const Stencil stencil,
+                            AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]);
+#endif
 /** */
+#if TWO_D == 0
 AcResult
 acGridLoadStencils(const Stream stream,
                    const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+#else
+AcResult
+acGridLoadStencils(const Stream stream,
+                   const AcReal data[NUM_STENCILS][STENCIL_HEIGHT][STENCIL_WIDTH]);
+#endif
 
 /** */
+#if TWO_D == 0
 AcResult
 acGridStoreStencils(const Stream stream,
                     AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+#else
+AcResult
+acGridStoreStencils(const Stream stream,
+                    AcReal data[NUM_STENCILS][STENCIL_HEIGHT][STENCIL_WIDTH]);
+#endif
 
 #endif // AC_MPI_ENABLED
 
@@ -1269,20 +1290,36 @@ AcResult acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const
                                  const int3 end);
 
 /** */
+#if TWO_D == 0
 AcResult acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
                              const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+#else
+AcResult acDeviceLoadStencil(const Device device, const Stream stream, const Stencil stencil,
+                             const AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]);
+#endif
 
 /** */
+#if TWO_D == 0
 AcResult
 acDeviceLoadStencils(const Device device, const Stream stream,
                      const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+#else
+AcResult
+acDeviceLoadStencils(const Device device, const Stream stream,
+                     const AcReal data[NUM_STENCILS][STENCIL_HEIGHT][STENCIL_WIDTH]);
+#endif
 /** */
 AcResult
 acDeviceLoadStencilsFromConfig(const Device device, const Stream stream);
 
 /** */
+#if TWO_D == 0
 AcResult acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,
                               AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+#else
+AcResult acDeviceStoreStencil(const Device device, const Stream stream, const Stencil stencil,
+                              AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]);
+#endif
 
 /** */
 AcResult acDeviceVolumeCopy(const Device device, const Stream stream,

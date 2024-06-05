@@ -282,8 +282,10 @@ acGridInit(AcMeshInfo info)
     if (nn.y < STENCIL_HEIGHT)
         fprintf(stderr, "nn.y %d too small, must be >= %d (stencil height)\n", nn.y,
                 STENCIL_HEIGHT);
+#if TWO_D == 0
     if (nn.z < STENCIL_DEPTH)
         fprintf(stderr, "nn.z %d too small, must be >= %d (stencil depth)\n", nn.z, STENCIL_DEPTH);
+#endif
 
     MPI_Barrier(astaroth_comm);
 
@@ -465,11 +467,19 @@ acGridLoadMeshWorking(const Stream stream, const AcMesh host_mesh)
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
 
+#if TWO_D == 0
     const int3 rr = (int3){
         (STENCIL_WIDTH - 1) / 2,
         (STENCIL_HEIGHT - 1) / 2,
         (STENCIL_DEPTH - 1) / 2,
     };
+#else
+    const int3 rr = (int3){
+        (STENCIL_WIDTH - 1) / 2,
+        (STENCIL_HEIGHT - 1) / 2,
+	0,
+    };
+#endif
     const int3 monolithic_mm     = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info)+ 2 * rr;
     const int3 monolithic_nn     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const int3 monolithic_offset = rr;
@@ -716,11 +726,19 @@ get_subarray(const int pid, //
     const AcMeshInfo info = device->local_config;
 
     const int3 pid3d = getPid3D(pid, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]);
-    const int3 rr    = (int3){
+#if TWO_D == 0
+    const int3 rr = (int3){
         (STENCIL_WIDTH - 1) / 2,
         (STENCIL_HEIGHT - 1) / 2,
         (STENCIL_DEPTH - 1) / 2,
     };
+#else
+    const int3 rr = (int3){
+        (STENCIL_WIDTH - 1) / 2,
+        (STENCIL_HEIGHT - 1) / 2,
+	0,
+    };
+#endif
 
     const int3 min = (int3){0, 0, 0};
     const int3 max = getPid3D(nprocs - 1, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]); // inclusive
@@ -962,11 +980,19 @@ acGridStoreMeshWorking(const Stream stream, AcMesh* host_mesh)
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
 
+#if TWO_D == 0
     const int3 rr = (int3){
         (STENCIL_WIDTH - 1) / 2,
         (STENCIL_HEIGHT - 1) / 2,
         (STENCIL_DEPTH - 1) / 2,
     };
+#else
+    const int3 rr = (int3){
+        (STENCIL_WIDTH - 1) / 2,
+        (STENCIL_HEIGHT - 1) / 2,
+	0,
+    };
+#endif
     const int3 monolithic_mm     = acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info)+ 2 * rr;
     const int3 monolithic_nn     = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
     const int3 monolithic_offset = rr;
@@ -2170,6 +2196,7 @@ acGridSwapBuffers(void)
 }
 
 /** */
+#if TWO_D == 0
 AcResult
 acGridLoadStencil(const Stream stream, const Stencil stencil,
                   const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -2179,8 +2206,20 @@ acGridLoadStencil(const Stream stream, const Stencil stencil,
     acGridSynchronizeStream(stream);
     return acDeviceLoadStencil(grid.device, stream, stencil, data);
 }
+#else
+AcResult
+acGridLoadStencil(const Stream stream, const Stencil stencil,
+                  const AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    ERRCHK(grid.initialized);
+
+    acGridSynchronizeStream(stream);
+    return acDeviceLoadStencil(grid.device, stream, stencil, data);
+}
+#endif
 
 /** */
+#if TWO_D == 0
 AcResult
 acGridStoreStencil(const Stream stream, const Stencil stencil,
                    AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -2190,8 +2229,20 @@ acGridStoreStencil(const Stream stream, const Stencil stencil,
     acGridSynchronizeStream(stream);
     return acDeviceStoreStencil(grid.device, stream, stencil, data);
 }
+#else
+AcResult
+acGridStoreStencil(const Stream stream, const Stencil stencil,
+                   AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    ERRCHK(grid.initialized);
+
+    acGridSynchronizeStream(stream);
+    return acDeviceStoreStencil(grid.device, stream, stencil, data);
+}
+#endif
 
 /** */
+#if TWO_D == 0
 AcResult
 acGridLoadStencils(const Stream stream,
                    const AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -2207,8 +2258,26 @@ acGridLoadStencils(const Stream stream,
 
     return (AcResult)retval;
 }
+#else
+AcResult
+acGridLoadStencils(const Stream stream,
+                   const AcReal data[NUM_STENCILS][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    ERRCHK(grid.initialized);
+    ERRCHK((int)AC_SUCCESS == 0);
+    ERRCHK((int)AC_FAILURE == 1);
+    acGridSynchronizeStream(stream);
+
+    int retval = 0;
+    for (size_t i = 0; i < NUM_STENCILS; ++i)
+        retval |= acGridLoadStencil(stream, (Stencil)i, data[i]);
+
+    return (AcResult)retval;
+}
+#endif
 
 /** */
+#if TWO_D == 0
 AcResult
 acGridStoreStencils(const Stream stream,
                     AcReal data[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -2224,6 +2293,23 @@ acGridStoreStencils(const Stream stream,
 
     return (AcResult)retval;
 }
+#else
+AcResult
+acGridStoreStencils(const Stream stream,
+                    AcReal data[NUM_STENCILS][STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+    ERRCHK(grid.initialized);
+    ERRCHK((int)AC_SUCCESS == 0);
+    ERRCHK((int)AC_FAILURE == 1);
+    acGridSynchronizeStream(stream);
+
+    int retval = 0;
+    for (size_t i = 0; i < NUM_STENCILS; ++i)
+        retval |= acGridStoreStencil(stream, (Stencil)i, data[i]);
+
+    return (AcResult)retval;
+}
+#endif
 
 /*
 static AcResult
