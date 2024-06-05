@@ -418,7 +418,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             //    assert(!assignment);
             //}
             //user specified intrinsic function provided by the GPU library
-	    if(!strcmp(type_specifier->lhs->buffer,"intrinsic"))
+	    if(type_specifier && !strcmp(type_specifier->lhs->buffer,"intrinsic"))
 	    {
                 variable_definition->type |= NODE_NO_OUT;
                 set_identifier_type(NODE_DFUNCTION_ID, declaration_list);

@@ -1,3 +1,4 @@
+//NOTE: max and min are defined macros elsewhere in Astaroth and thus they do not appear here but are still usable
 intrinsic sin
 intrinsic cos 
 intrinsic tan 
