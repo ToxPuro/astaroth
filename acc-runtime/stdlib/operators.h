@@ -39,9 +39,9 @@ del6(s) {
   return der6x(s) + der6y(s) + der6z(s)
 }
 
-del6s(v) {
+del6v(v) {
   return real3(del6(v.x), del6(v.y), del6(v.z))
-
+}
 
 del6_upwd(s) {
   return der6x_upwd(s) + der6y_upwd(s) + der6z_upwd(s)
@@ -69,13 +69,9 @@ traceless_strain(uij,divu)
 }
 
 gij5(v) {
-  Matrix sij5
-    sij5.data[0][0:3] = real3(der5x(v.x),der5y(v.x),der5z(v.x))
-    sij5.data[1][0:3] = real3(der5x(v.y),der5y(v.y),der5z(v.y))
-    sij5.data[2][0:3] = real3(der5x(v.z),der5y(v.z),der5z(v.z))
-    }
-  }
-  return sij5
+    return Matrix(real3( der5x(v.x), der5y(v.x), der5z(v.x) ), 
+		  real3( der5x(v.y), der5y(v.y), der5z(v.y) ), 
+		  real3( der5x(v.z), der5y(v.z), der5z(v.z) ))
 }
 
 stress_tensor(v) {
@@ -111,6 +107,10 @@ contract(mat) {
            dot(mat.row(2), mat.row(2))
 }
 
+norm2(v) {
+    return ( dot(v,v) )
+}
+
 length(v) {
-    return sqrt( dot(v,v) )
+    return sqrt( norm2(v) )
 }

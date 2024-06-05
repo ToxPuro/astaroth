@@ -9,3 +9,7 @@ Kernel randomize() {
         write(Field(field), rng_scale * r)
     }
 }
+
+/*Kernel smoothing() {
+	weights(-width:width) = (/1.,9.,45.,70.,45.,9.,1./)
+	*/
