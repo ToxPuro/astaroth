@@ -1,6 +1,7 @@
 const int AC_const_ints = {1,2,3}
 const int AC_const_ints_len = 3
 const real AC_const_real = 2.0
+const int Matrix_size = 2;
 enum IHEATCOND
 {
 	NOTHING,
@@ -33,7 +34,6 @@ const bool AC_first_bool_arr = {false,false}, AC_third_bool= true
 #define NGHOST (3)
 
 int AC_step_number
-real AC_dt
 
 /*
 real AC_cs_sound, AC_cp_sound
@@ -515,6 +515,12 @@ stress_tensor(v) {
     S.data[2][0] = S.data[0][2]
     S.data[2][1] = S.data[1][2]
     S.data[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
+    S.data[4][4] = 2.0
+
+    //real vec = {0., 0., 0., 0.}
+    real vec[Matrix_size*2]
+    Matrix[Matrix_size*2] BigMatrix(vec,vec,vec,vec)
+    vec2 = BigMatrix*vec
 
     return S
 }
@@ -697,12 +703,14 @@ divu_shock()
 {
     // Set discard the values which do not contain negative divergence.
     divu = divergence(UU)
-    if divu < 0.0 {
-        return -divu
-    }
-    else {
-        return 0.0
-    }
+    return divu*(-(divu < 0.0))
+
+    //if divu < 0.0 {
+    //    return -divu
+    //}
+    //else {
+    //    return 0.0
+    //}
 }
 
 // Calculate local maximum from divergences.
@@ -713,19 +721,11 @@ max5_shock()
 
 Kernel shock_1_divu()
 {
-    //for field in 0:NUM_FIELDS {
-    //    write(Field(field), value(field))
-    //}
-
     write(VTXBUF_SHOCK, divu_shock())
 }
 
 Kernel shock_2_max()
 {
-    //for field in 0:NUM_FIELDS {
-    //    write(Field(field), value(field))
-    //}
-
     write(VTXBUF_SHOCK, max5_shock())
 }
 
@@ -736,10 +736,6 @@ Kernel shock_3_smooth()
 
     s_shock = smooth_kernel(VTXBUF_SHOCK)
     out_shock = cshock*dsmin*dsmin*s_shock //Add scaling constant cshock
-
-    //for field in 0:NUM_FIELDS {
-    //    write(Field(field), value(field))
-    //}
 
     write(VTXBUF_SHOCK, out_shock)
 }
@@ -931,31 +927,6 @@ Kernel twopass_solve_intermediate(int step_num, real dt) {
     //
 }
 
-Kernel twopass_solve_final(int step_num, real current_time) {
-    write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), step_num))
-
-    #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), step_num))
-    #endif
-
-    forcing_step = real3(0.0, 0.0, 0.0)
-    #if LFORCING
-    if step_num == 2 {
-        if current_time > AC_switch_forcing {
-            forcing_step = forcing()
-        }
-    }
-    #endif
-    write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX), step_num) + forcing_step.x)
-    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY), step_num) + forcing_step.y)
-    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), step_num) + forcing_step.z)
-
-    #if LMAGNETIC
-    write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX), step_num))
-    write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY), step_num))
-    write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ), step_num))
-    #endif
-}
 
 // Scale all fields by a scaling factor
 // TODO ensure AC_scaling_factor is set!
@@ -1343,6 +1314,28 @@ boundary_condition Kernel const_boundcond(int3 boundary_normal, VtxBuffer vtxbuf
         vtxbuf[ghost.x][ghost.y][ghost.z] = const_value
     }
 }
+//Kernel twopass_solve_final(int step_num, real current_time) {
+Kernel twopass_solve_final(int step_num, real current_time) {
+    write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), step_num))
+
+    #if LENTROPY 
+    write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), step_num))
+    #endif
+
+    write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX), step_num))
+    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY), step_num))
+    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), step_num))
+
+    #if LMAGNETIC
+    write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX), step_num))
+    write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY), step_num))
+    write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ), step_num))
+    #endif
+    real3 lhs = real3(0.0,0.0,0.0);
+    real3 rhs = real3(0.0,0.0,0.0);
+    lhs += rhs;
+    lhs -= rhs;
+}
 
 
 BoundConds rhs_boundconds_test
@@ -1353,10 +1346,6 @@ BoundConds rhs_boundconds_test
 	prescribed_derivative_boundcond(BOUNDARY_Z_BOT,VTXBUF_ENTROPY,F_bot_param),
 	a2_boundcond(BOUNDARY_Z,VTXBUF_LNRHO,VTXBUF_UUX)
 }
-BoundConds rhs_boundconds
-{
-	periodic(BOUNDARY_XYZ)
-}
 
 
 
@@ -1365,6 +1354,13 @@ ComputeSteps rhs_STEP_NUM(rhs_boundconds)
 	shock_1_divu(),
 	shock_2_max(),
 	shock_3_smooth(),
-	twopass_solve_intermediate(AC_step_num_input,AC_dt_input),
-	twopass_solve_final(AC_step_num_input,0.0)
+	twopass_solve_intermediate(AC_step_num,AC_dt),
+	twopass_solve_final(AC_step_num,0.0)
+	
 }
+
+BoundConds rhs_boundconds
+{
+	periodic(BOUNDARY_XYZ)
+}
+
