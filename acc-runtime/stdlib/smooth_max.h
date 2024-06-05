@@ -350,7 +350,7 @@
 
 
 
-Stencil smooth_kernel {
+Stencil smooth {
 [-3][-3][-3] = SMOOTH_XM3_YM3_ZM3,
 [-3][-3][-2] = SMOOTH_XM2_YM3_ZM3,
 [-3][-3][-1] = SMOOTH_XM1_YM3_ZM3,
