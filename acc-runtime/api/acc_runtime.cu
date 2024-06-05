@@ -299,7 +299,7 @@ constexpr __device__ __forceinline__
 std::array<int3,N>
 Field3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
 {
-	std::array<int3,N> res;
+	std::array<int3,N> res{};
 	for(size_t i = 0; i < N; ++i)
 	{
 		res[i] = make_int3(x[i],y[i],z[i]);

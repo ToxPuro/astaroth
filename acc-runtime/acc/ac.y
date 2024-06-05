@@ -37,7 +37,18 @@ static int_vec tinyexpr_cache;
 static string_vec tinyexpr_cache_str;
 
 
-
+int
+count_num_of_nodes_in_list(const ASTNode* list_head)
+{
+	int res = 0;
+	while(list_head->rhs)
+	{
+		list_head = list_head->lhs;
+		++res;
+	}
+	res += (list_head->lhs != NULL);
+	return res;
+}
 void
 cleanup(void)
 {
@@ -693,6 +704,17 @@ type_specifier: int          { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | complex      { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | bool         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | matrix       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | matrix '[' expression ']'
+		{ 
+ 		   char* express_str = malloc(sizeof(char)*4098);
+		   combine_all($3, express_str);
+		   $$ = astnode_create(NODE_TSPEC, $1, NULL); 
+		   char* tmp = malloc(sizeof(char)*(strlen($1->buffer)+ strlen(express_str) + 100));  
+		   sprintf(tmp,"AcMatrixN<%s>",express_str);
+		   astnode_set_buffer(tmp,$1);
+		   free(tmp);
+		   free(express_str);
+  		}
               | field        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | work_buffer  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | stencil      { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
@@ -837,7 +859,24 @@ type_declaration: /* Empty */                   { $$ = astnode_create(NODE_UNKNO
                 | type_qualifiers type_specifier { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
                 ;
 
-assignment: declaration assignment_body { $$ = astnode_create(NODE_ASSIGNMENT, $1, $2); }
+assignment: declaration assignment_body { 
+	  		$$ = astnode_create(NODE_ASSIGNMENT, $1, $2); 
+			//Convert C-arrays to std::arrays to standardize all arrays to std::arrays such that each DSL array has the same functionality.
+			//If the std::array implementation was better on HIP could also not require type specifier since it could be inferred
+			if($2->prefix && !strcmp($2->prefix,"[]"))
+			{
+				ASTNode* tspec = get_node(NODE_TSPEC,$1);
+				if(tspec)
+				{
+					astnode_set_prefix("",$2);
+					const size_t old_size = strlen(tspec->lhs->buffer);
+					char* tmp = malloc(sizeof(char)*(old_size + 1000));
+					sprintf(tmp,"std::array<%s,%d>",tspec->lhs->buffer,count_num_of_nodes_in_list($2->rhs));
+					free(tspec->lhs->buffer);
+					tspec->lhs->buffer = tmp;
+				}
+			}
+		}
           ;
 
 assignment_body: assignment_op expression_list 

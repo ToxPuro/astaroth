@@ -3093,9 +3093,6 @@ transform_arrays_to_std_arrays(ASTNode* node)
 		transform_arrays_to_std_arrays(node->rhs);
 	if(!(node->type & NODE_DECLARATION))
 		return;
-	const ASTNode* tspec = get_node(NODE_TSPEC,node->lhs);
-	if(!tspec)
-		return;
 	if(!get_parent_node(NODE_FUNCTION,node))
 		return;
 	if(!node->rhs)
@@ -3104,14 +3101,16 @@ transform_arrays_to_std_arrays(ASTNode* node)
 		return;
 	if(!node->rhs->lhs->rhs)
 		return;
+	const ASTNode* tspec = get_node(NODE_TSPEC,node->lhs);
+	if(!tspec)
+		return;
 	char* size = malloc(sizeof(char)*4098);
-	const char* type = tspec->lhs->buffer;
 	combine_all(node->rhs->lhs->rhs,size);
 	node->rhs->lhs->infix = NULL;
 	node->rhs->lhs->postfix= NULL;
 	node->rhs->lhs->rhs = NULL;
 	char* new_res = malloc(sizeof(char)*4098);
-	sprintf(new_res,"std::array<%s,%s>",type,size);
+	sprintf(new_res,"std::array<%s,%s>",tspec->lhs->buffer,size);
 	tspec->lhs->buffer = strdup(new_res);
 	free(size);
 	free(new_res);

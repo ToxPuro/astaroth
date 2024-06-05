@@ -547,7 +547,9 @@ is_valid(const AcReal3& a)
  * AcMatrix
  */
 typedef struct AcMatrix {
-  AcReal data[3][3] = {{0}};
+  //AcReal data[3][3] = {{0}};
+  //TP: default initializer will initialize all values to 0.0
+  std::array<std::array<AcReal,3>,3> data = {};
 
   HOST_DEVICE AcMatrix() {}
 
@@ -612,15 +614,14 @@ operator*(const AcReal& v, const AcMatrix& m)
 }
 
 #define GEN_STD_ARRAY_OPERATOR(OPERATOR)  \
-template <typename T, std::size_t N, typename F> \
-static constexpr HOST_DEVICE void \
+template <typename T, const size_t N, typename F> \
+static constexpr  void \
 operator OPERATOR##=(std::array<T, N>& lhs, const F& rhs) {\
-    for (std::size_t i = 0; i < N; ++i) {\
+    for (std::size_t i = 0; i < N; ++i) \
         lhs[i] OPERATOR##= rhs;\
-    }\
 }\
-template <typename T, std::size_t N, typename F> \
-static constexpr HOST_DEVICE std::array<T, N>  \
+template <typename T, const size_t N, typename F> \
+static constexpr  std::array<T, N>  \
 operator OPERATOR (const std::array<T, N>& lhs, const F& rhs) {\
     std::array<T, N> result = {}; \
     for (std::size_t i = 0; i < N; ++i) {\
@@ -628,14 +629,29 @@ operator OPERATOR (const std::array<T, N>& lhs, const F& rhs) {\
     }\
     return result; \
 }\
-template <typename T, std::size_t N> \
-static constexpr HOST_DEVICE std::array<T, N>  \
+template <typename T, const size_t N, typename F> \
+static constexpr  std::array<T, N>  \
+operator OPERATOR (const F& rhs,const std::array<T, N>& lhs) {\
+    std::array<T, N> result = {}; \
+    for (std::size_t i = 0; i < N; ++i) {\
+        result[i] = lhs[i] OPERATOR rhs;\
+    }\
+    return result; \
+}\
+template <typename T, const size_t N> \
+static constexpr  std::array<T, N>  \
 operator OPERATOR (const std::array<T, N>& lhs, const std::array<T, N>& rhs) {\
     std::array<T, N> result = {}; \
     for (std::size_t i = 0; i < N; ++i) {\
         result[i] = lhs[i] OPERATOR rhs[i];\
     }\
     return result; \
+}\
+template <typename T, const size_t N> \
+static constexpr  void \
+operator OPERATOR##=(std::array<T, N>& lhs, const std::array<T, N>& rhs) {\
+    for (std::size_t i = 0; i < N; ++i) \
+        lhs[i] OPERATOR##= rhs[i];\
 }\
 
 
@@ -661,6 +677,132 @@ operator +(const std::array<T, N>& lhs) {
     std::array<T, N> result = lhs; 
     return result;
 }
+
+template <typename T, std::size_t N>
+static constexpr  T
+dot(const std::array<T,N>& a, const std::array<T,N>& b)
+{
+        T res = 0;
+        for(size_t i = 0; i < N; ++i)
+                res += a[i]*b[i];
+        return res;
+}
+
+template <size_t N>
+class AcMatrixN {
+public:
+    std::array<std::array<AcReal, N>, N> data;
+    template<typename... Args,typename = std::enable_if_t<sizeof...(Args) == N>>
+    constexpr AcMatrixN(Args&&... args) : data{std::forward<Args>(args)...} {
+	     static_assert(sizeof...(Args) == N, "You need to pass N vectors of length N");
+    }
+    constexpr AcMatrixN(): data{} {}
+    constexpr std::array<AcReal,N> row(const size_t row)  const { return data[row];}
+    constexpr std::array<AcReal,N> col(const size_t col)  const
+    { 
+	    std::array<AcReal,N> res{};
+	    for(size_t i = 0; i < N; ++i)
+		    res[i] = data[i][col];
+	    return res;
+    }
+   constexpr std::array<AcReal,N> operator*(const std::array<AcReal,N>& v) const
+   {
+     std::array<AcReal,N> res{};
+     for(size_t i = 0; i < N; ++i)
+	     res[i] = dot(data[i],v);
+     return res;
+   }
+   constexpr AcMatrixN<N> operator-() const
+   {
+	   AcMatrixN<N> res{};
+	   for(size_t i = 0; i < N; ++i)
+	           res.data[i] = -data[i];
+	   return res;
+
+   }
+};
+template <const size_t N>
+constexpr static AcMatrixN<N>
+operator*(const double& v, const AcMatrixN<N>& m)
+{
+	AcMatrixN<N> res;
+	for(size_t i = 0; i < N; ++i)
+		res.data[i] = v*m.data[i];
+	return res;
+}
+
+template <const size_t N>
+constexpr static AcMatrixN<N>
+operator-(const AcMatrixN<N>& A, const AcMatrixN<N>& B)
+{
+  AcMatrixN<N> res;
+  for(size_t i = 0; i < N; ++i)
+	  res.data[i] = A.data[i] - B.data[i];
+  return res;
+}
+
+template <const size_t N>
+constexpr static AcMatrixN<N>
+operator+(const AcMatrixN<N>& A, const AcMatrixN<N>& B)
+{
+  AcMatrixN<N> res;
+  for(size_t i = 0; i < N; ++i)
+	  res.data[i] = A.data[i] + B.data[i];
+  return res;
+}
+
+template <const size_t N>
+constexpr static AcMatrixN<N>
+operator*(const AcMatrixN<N>& A, const AcMatrixN<N>& B)
+{
+  AcMatrixN<N> res;
+  for(size_t i = 0; i < N; ++i)
+	  res.data[i] = A.data[i] * B.data[i];
+  return res;
+}
+
+template <const size_t N>
+constexpr static AcMatrixN<N>
+operator/(const AcMatrixN<N>& A, const AcMatrixN<N>& B)
+{
+  AcMatrixN<N> res;
+  for(size_t i = 0; i < N; ++i)
+	  res.data[i] = A.data[i] / B.data[i];
+  return res;
+}
+
+template <const size_t N>
+constexpr static void
+operator+=(AcMatrixN<N>& A, const AcMatrixN<N>& B)
+{
+  for(size_t i = 0; i < N; ++i)
+	  A.data[i] += B.data[i];
+}
+
+template <const size_t N>
+constexpr static void
+operator-=(AcMatrixN<N>& A, const AcMatrixN<N>& B)
+{
+  for(size_t i = 0; i < N; ++i)
+	  A.data[i] -= B.data[i];
+}
+
+template <const size_t N>
+constexpr static void
+operator*=(AcMatrixN<N>& A, const AcMatrixN<N>& B)
+{
+  for(size_t i = 0; i < N; ++i)
+	  A.data[i] *= B.data[i];
+}
+
+template <const size_t N>
+constexpr static void
+operator/=(AcMatrixN<N>& A, const AcMatrixN<N>& B)
+{
+  for(size_t i = 0; i < N; ++i)
+	  A.data[i] /= B.data[i];
+}
+
 
 
 static HOST_DEVICE AcMatrix
