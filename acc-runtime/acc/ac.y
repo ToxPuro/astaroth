@@ -549,6 +549,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 		{
                   fprintf(stderr, "FATAL ERROR: assigment to a global variable only allowed for constant values\n");
                   assert(is_const);
+		  exit(EXIT_FAILURE);
 		}
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
