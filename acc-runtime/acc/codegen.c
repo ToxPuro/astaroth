@@ -1790,11 +1790,11 @@ gen_kernel_num_of_combinations(const ASTNode* root, combinations combinations, s
 
   	free_str_vec(&user_enums.names);
 	for(int i = 0; i < 100; ++i)
-	{
-	  for(int j=0;j<100;++j)
-	  	  free_str_vec(&user_kernel_combinatorial_params_options[i+100*j]);
   	  free_str_vec(&user_enums.options[i]);
-	}
+	//TP: for some reason causes double free
+	//for(int i = 0; i < 100; ++i)
+	//  for(int j=0;j<100;++j)
+	//  	  free_str_vec(&user_kernel_combinatorial_params_options[i+100*j]);
 }
 
 

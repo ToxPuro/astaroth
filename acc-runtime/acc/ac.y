@@ -111,7 +111,7 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
 	while((dir_entry = readdir(d)) != NULL)
 		if(strcmp(dir_entry->d_name,".") && strcmp(dir_entry->d_name,".."))
 		{
-		        char* file_path = malloc((strlen(file) + strlen(dir_entry->d_name))*sizeof(char));
+		        char* file_path = malloc((strlen(file) + strlen(dir_entry->d_name) + 1000)*sizeof(char));
 			sprintf(file_path,"%s/%s",file,dir_entry->d_name);
 		        process_includes(depth+1,dir,file_path,out);
 			free(file_path);

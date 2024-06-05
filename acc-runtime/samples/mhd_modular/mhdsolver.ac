@@ -1,7 +1,6 @@
 const int AC_const_ints = {1,2,3}
 const int AC_const_ints_len = 3
 const real AC_const_real = 2.0
-const int Matrix_size = 2;
 enum IHEATCOND
 {
 	NOTHING,
@@ -34,6 +33,7 @@ const bool AC_first_bool_arr = {false,false}, AC_third_bool= true
 #define NGHOST (3)
 
 int AC_step_number
+real AC_dt
 
 /*
 real AC_cs_sound, AC_cp_sound
@@ -51,7 +51,7 @@ hostdefine LFORCING (0)
 hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
-hostdefine LSHOCK (1)
+hostdefine LSHOCK (0)
 hostdefine LTEST (0)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
@@ -77,9 +77,9 @@ const int AC_const_int_2nd = 4
 //Field CHEMISTRY_FIELDS[5]
 
 #if LBFIELD
-Field BFIELDX
-Field BFIELDY
-Field BFIELDZ
+auxiliary Field BFIELDX
+auxiliary Field BFIELDY
+auxiliary Field BFIELDZ
 #endif
 
 #if LSHOCK 
@@ -220,9 +220,11 @@ output real timestep_out;
 output real timestep_out1;
 output real timestep_out2;
 const int test_arr_size = 6;
+#if LTEST
 real AC_test_arr[test_arr_size];
 real AC_test_arr_2[(2-1)*2+1];
 int AC_test_int_arr[test_arr_size/2];
+#endif
 
 
 
@@ -515,12 +517,6 @@ stress_tensor(v) {
     S.data[2][0] = S.data[0][2]
     S.data[2][1] = S.data[1][2]
     S.data[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
-    S.data[4][4] = 2.0
-
-    //real vec = {0., 0., 0., 0.}
-    real vec[Matrix_size*2]
-    Matrix[Matrix_size*2] BigMatrix(vec,vec,vec,vec)
-    vec2 = BigMatrix*vec
 
     return S
 }
@@ -703,14 +699,12 @@ divu_shock()
 {
     // Set discard the values which do not contain negative divergence.
     divu = divergence(UU)
-    return divu*(-(divu < 0.0))
-
-    //if divu < 0.0 {
-    //    return -divu
-    //}
-    //else {
-    //    return 0.0
-    //}
+    if divu < 0.0 {
+        return -divu
+    }
+    else {
+        return 0.0
+    }
 }
 
 // Calculate local maximum from divergences.
@@ -721,11 +715,19 @@ max5_shock()
 
 Kernel shock_1_divu()
 {
+    for field in 0:NUM_FIELDS {
+        write(Field(field), value(field))
+    }
+
     write(VTXBUF_SHOCK, divu_shock())
 }
 
 Kernel shock_2_max()
 {
+    for field in 0:NUM_FIELDS {
+        write(Field(field), value(field))
+    }
+
     write(VTXBUF_SHOCK, max5_shock())
 }
 
@@ -736,6 +738,10 @@ Kernel shock_3_smooth()
 
     s_shock = smooth_kernel(VTXBUF_SHOCK)
     out_shock = cshock*dsmin*dsmin*s_shock //Add scaling constant cshock
+
+    for field in 0:NUM_FIELDS {
+        write(Field(field), value(field))
+    }
 
     write(VTXBUF_SHOCK, out_shock)
 }
@@ -866,8 +872,6 @@ array_val(field_array, size)
 	{
 		res[i] = value(field_array[i])
 	}
-        test_val = 2.0
-	test_val = tanh(test_val)
 	return res
 }
 
@@ -927,6 +931,31 @@ Kernel twopass_solve_intermediate(int step_num, real dt) {
     //
 }
 
+Kernel twopass_solve_final(int step_num, real current_time) {
+    write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), step_num))
+
+    #if LENTROPY 
+    write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), step_num))
+    #endif
+
+    forcing_step = real3(0.0, 0.0, 0.0)
+    #if LFORCING
+    if step_num == 2 {
+        if current_time > AC_switch_forcing {
+            forcing_step = forcing()
+        }
+    }
+    #endif
+    write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX), step_num) + forcing_step.x)
+    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY), step_num) + forcing_step.y)
+    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), step_num) + forcing_step.z)
+
+    #if LMAGNETIC
+    write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX), step_num))
+    write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY), step_num))
+    write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ), step_num))
+    #endif
+}
 
 // Scale all fields by a scaling factor
 // TODO ensure AC_scaling_factor is set!
@@ -1011,21 +1040,7 @@ Kernel test_dconst_arr()
 #endif
 
 
-loop()
-{
-    for i in 0:2	
-    {
-      if(AC_test_arr[i] <= 2 && AC_test_arr[i+1] < 2){
-          print("HI\n")
-      }
-    }
-}
-
 Kernel haatouken() {
-    test_x = 2
-    y = 2
-    c = 3
-    test_x += (y > 2)*c
     // Parameters
     // Shock punch the air in front of you.
     // AC_init_ampl_uu
@@ -1073,108 +1088,108 @@ Kernel haatouken() {
     write(VTXBUF_UUZ, uu.z)
 }
 
-get_d_from_boundary_normal(boundary_normal)
+get_d_from_normal(normal)
 {
     real d_out
-    if boundary_normal.x != 0.0
+    if normal.x != 0.0
     {
 	d_out = AC_dsx
     }
-    if boundary_normal.y != 0.0
+    if normal.y != 0.0
     {
 	d_out = AC_dsy
     }
-    if boundary_normal.z != 0.0
+    if normal.z != 0.0
     {
 	d_out = AC_dsz
     }
     return d_out
 }
-get_uudir(boundary_in, int3 boundary_normal_in, VtxBuffer vtxbuf)
+get_uudir(boundary_in, int3 normal_in, VtxBuffer vtxbuf)
 {
     real uudir_out
-    if boundary_normal_in.x != 0
+    if normal_in.x != 0
     {
-        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*boundary_normal_in.x
+        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.x
     }
-    if(boundary_normal_in.y != 0)
+    if(normal_in.y != 0)
     {
-        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*boundary_normal_in.y
+        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.y
     }
-    if(boundary_normal_in.z != 0)
+    if(normal_in.z != 0)
     {
-        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*boundary_normal_in.z
+        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.z
     }
     return uudir_out
 }
 
-get_boundary_from_boundary_normal(boundary_normal_in)
+get_boundary_from_normal(normal_in)
 {
     int3 boundary_out
-    if boundary_normal_in.x == 1
+    if normal_in.x == 1
     {
-	boundary_out.x = NGHOST + AC_nx-1
+	boundary_out.x = NGHOST + AC_nx -1
     }
-    if boundary_normal_in.x == 0
+    if normal_in.x == 0
     {
 	boundary_out.x = vertexIdx.x
     }
-    if boundary_normal_in.x == -1
+    if normal_in.x == -1
     {
 	boundary_out.x = NGHOST
     }
 
 
-    if boundary_normal_in.y == 1
+    if normal_in.y == 1
     {
-	boundary_out.y = NGHOST + AC_ny-1
+	boundary_out.y = NGHOST + AC_ny -1
     }
-    if boundary_normal_in.y == 0
+    if normal_in.y == 0
     {
 	boundary_out.y = vertexIdx.y
     }
-    if boundary_normal_in.y == -1
+    if normal_in.y == -1
     {
 	boundary_out.y = NGHOST
     }
 
 
-    if boundary_normal_in.z == 1
+    if normal_in.z == 1
     {
-	boundary_out.z = NGHOST + AC_nz-1
+	boundary_out.z = NGHOST + AC_nz -1
     }
-    if boundary_normal_in.z == 0
+    if normal_in.z == 0
     {
 	boundary_out.z = vertexIdx.z
     }
-    if boundary_normal_in.z == -1
+    if normal_in.z == -1
     {
 	boundary_out.z = NGHOST
     }
     return boundary_out
 }
-boundary_condition Kernel prescribed_derivative_boundcond(int3 boundary_normal, VtxBuffer vtxbuf, real der_val)
+Kernel prescribed_derivative_boundcond(int3 normal, VtxBuffer vtxbuf, real der_val)
 {
-    d = get_d_from_boundary_normal(boundary_normal)
+    d = get_d_from_normal(normal)
     real direction
-    if(boundary_normal.x != 0)
+    if(normal.x != 0)
     {
-        direction = boundary_normal.x
+        direction = normal.x
     }
-    if(boundary_normal.y != 0)
+    if(normal.y != 0)
     {
-	direction = boundary_normal.y
+	direction = normal.y
     }
-    if(boundary_normal.z != 0)
+    if(normal.z != 0)
     {
-	direction = boundary_normal.z
+	direction = normal.z
     }
-    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
+    int3 boundary = get_boundary_from_normal(normal)
     int3 ghost  = boundary
     int3 domain = boundary
     for  i  in 0:NGHOST {
-        domain = domain - boundary_normal
-        ghost  = ghost + boundary_normal
+        domain = domain - normal
+        ghost  = ghost + normal
 	distance = 2 * (i + 1)*d
 	if direction < 0.0
 	{
@@ -1267,100 +1282,5 @@ Kernel constant() {
     for field in 0:NUM_FIELDS {
         write(Field(field), AC_value)
     }
-}
-
-boundary_condition Kernel symmetric_boundcond(int3 boundary_normal, VtxBuffer vtxbuf)
-{
-    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
-    int3 domain = boundary
-    int3 ghost  = boundary
-    for  i  in 0:NGHOST {
-        domain = domain - boundary_normal
-        ghost  = ghost + boundary_normal
-        vtxbuf[ghost.x][ghost.y][ghost.z] = vtxbuf[domain.x][domain.y][domain.z]
-    }
-}
-boundary_condition Kernel anti_symmetric_boundcond(int3 boundary_normal, VtxBuffer vtxbuf)
-{
-    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
-    int3 domain = boundary
-    int3 ghost  = boundary
-    for  i  in 0:NGHOST {
-        domain = domain - boundary_normal
-        ghost  = ghost + boundary_normal
-        vtxbuf[ghost.x][ghost.y][ghost.z] = -vtxbuf[domain.x][domain.y][domain.z]
-    }
-}   
-
-boundary_condition Kernel a2_boundcond(int3 boundary_normal, VtxBuffer vtxbuf)
-{   
-    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
-    boundary_val = vtxbuf[boundary.x][boundary.y][boundary.z]
-    int3 domain = boundary
-    int3 ghost  = boundary
-    for  i  in 0:NGHOST {
-        domain = domain - boundary_normal
-        ghost  = ghost + boundary_normal
-        vtxbuf[ghost.x][ghost.y][ghost.z] = 2 * boundary_val -vtxbuf[domain.x][domain.y][domain.z]
-    }   
-}
-
-boundary_condition Kernel const_boundcond(int3 boundary_normal, VtxBuffer vtxbuf, real const_value)
-{
-    int3 boundary = get_boundary_from_boundary_normal(boundary_normal)
-    int3 ghost  = boundary
-    for  i  in 0:NGHOST {
-        ghost  = ghost + boundary_normal
-        vtxbuf[ghost.x][ghost.y][ghost.z] = const_value
-    }
-}
-//Kernel twopass_solve_final(int step_num, real current_time) {
-Kernel twopass_solve_final(int step_num, real current_time) {
-    write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), step_num))
-
-    #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), step_num))
-    #endif
-
-    write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX), step_num))
-    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY), step_num))
-    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), step_num))
-
-    #if LMAGNETIC
-    write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX), step_num))
-    write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY), step_num))
-    write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ), step_num))
-    #endif
-    real3 lhs = real3(0.0,0.0,0.0);
-    real3 rhs = real3(0.0,0.0,0.0);
-    lhs += rhs;
-    lhs -= rhs;
-}
-
-
-BoundConds rhs_boundconds_test
-{
-	periodic(BOUNDARY_XY),
-	symmetric_boundcond(BOUNDARY_Z),
-	prescribed_derivative_boundcond(BOUNDARY_Z_TOP,VTXBUF_ENTROPY,F_top_param),
-	prescribed_derivative_boundcond(BOUNDARY_Z_BOT,VTXBUF_ENTROPY,F_bot_param),
-	a2_boundcond(BOUNDARY_Z,VTXBUF_LNRHO,VTXBUF_UUX)
-}
-
-
-
-ComputeSteps rhs_STEP_NUM(rhs_boundconds)
-{
-	shock_1_divu(),
-	shock_2_max(),
-	shock_3_smooth(),
-	twopass_solve_intermediate(AC_step_num,AC_dt),
-	twopass_solve_final(AC_step_num,0.0)
-	
-}
-
-BoundConds rhs_boundconds
-{
-	periodic(BOUNDARY_XYZ)
 }
 
