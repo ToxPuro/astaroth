@@ -2692,13 +2692,13 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "typedef enum {");
   //first communicated fields
   for(int i=0;i<num_of_fields;++i)
-	  if(field_is_communicated[i]) fprintf(fp, "%s,",field_names.data[i]);
-  for(int i=0;i<num_of_fields;++i)
-	  if(!field_is_communicated[i]) fprintf(fp, "%s,",field_names.data[i]);
+	fprintf(fp, "%s,",field_names.data[i]);
 
   fprintf(fp, "NUM_FIELDS=%d,", num_of_fields);
   fprintf(fp, "NUM_COMMUNICATED_FIELDS=%d,", num_of_communicated_fields);
   fprintf(fp, "} Field;\n");
+
+
 
   fprintf(fp, "static const bool vtxbuf_is_auxiliary[] = {");
   for(int i=0;i<num_of_fields;++i)
@@ -2707,6 +2707,15 @@ gen_user_defines(const ASTNode* root, const char* out)
     else
     	fprintf(fp, "%s,", "false");
   fprintf(fp, "};");
+
+  fprintf(fp, "static const bool vtxbuf_is_communicated[] = {");
+  for(int i=0;i<num_of_fields;++i)
+    if(field_is_communicated[i])
+    	fprintf(fp, "%s,", "true");
+    else
+    	fprintf(fp, "%s,", "false");
+  fprintf(fp, "};");
+
   //free_str_vec(&field_names);
 
 

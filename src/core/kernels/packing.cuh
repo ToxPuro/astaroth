@@ -49,8 +49,13 @@ kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 d
     const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
     //#pragma unroll
-    for (int i = 0; i < NUM_COMMUNICATED_FIELDS; ++i)
-      packed[packed_idx + i * vtxbuf_offset] = vba.in[i][unpacked_idx];
+    int i = 0;
+    for (int j = 0; j < NUM_VTXBUF_HANDLES; ++j)
+    {
+      packed[packed_idx + i * vtxbuf_offset] = vba.in[j][unpacked_idx];
+      i += vtxbuf_is_communicated[j];
+    }
+
 }
 
 static __global__ void
@@ -80,9 +85,12 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
 
     const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
-    //#pragma unroll
-    for (int i = 0; i < NUM_COMMUNICATED_FIELDS; ++i)
-        vba.in[i][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
+    int i = 0;
+    for (int j = 0; j < NUM_VTXBUF_HANDLES; ++j)
+    {
+      vba.in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
+      i += vtxbuf_is_communicated[j];
+    }
 }
 
 static __global__ void

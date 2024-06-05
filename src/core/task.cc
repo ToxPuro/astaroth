@@ -183,7 +183,7 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t 
     	case RegionFamily::Exchange_output: //Fallthrough
     	case RegionFamily::Exchange_input : {
     	    for(size_t i = 0; i < num_fields; ++i)
-	    	if(fields_[i] < NUM_COMMUNICATED_FIELDS) fields.push_back(fields_[i]);
+	    	if(vtxbuf_is_communicated[fields_[i]]) fields.push_back(fields_[i]);
 	    ERRCHK_ALWAYS(fields.size() <= NUM_COMMUNICATED_FIELDS);
 	    break;
 	}
@@ -263,7 +263,7 @@ switch (family) {
 case RegionFamily::Exchange_output: {} //Fallthrough
 case RegionFamily::Exchange_input : {
 	for(auto& field : fields_)
-		if(field < NUM_COMMUNICATED_FIELDS) fields.push_back(field);
+	    	if(vtxbuf_is_communicated[field]) fields.push_back(field);
 	break;
 }
 default:
