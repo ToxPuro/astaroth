@@ -2389,7 +2389,9 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 	}
       }
       if (!(node->type & NODE_MEMBER_ID))
+      {
         add_symbol(node->type, tqualifiers, n_tqualifiers, tspec, node->buffer);
+      }
 
       free(tqualifiers);
     }
@@ -2975,19 +2977,27 @@ rename_local_vars(const char* str_to_append, ASTNode* node, ASTNode* root)
 	append_to_identifiers(str_to_append,root,name);
 }
 void
-gen_dfunc_internal_names(ASTNode* node)
+gen_dfunc_internal_names_recursive(ASTNode* node)
 {
 
 	if(node->lhs)
-		gen_dfunc_internal_names(node->lhs);
+		gen_dfunc_internal_names_recursive(node->lhs);
 	if(node->rhs)
-		gen_dfunc_internal_names(node->rhs);
+		gen_dfunc_internal_names_recursive(node->rhs);
 	if(!(node->type & NODE_DFUNCTION))
 		return;
 	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,node);
 	//to exclude input params
 	//rename_local_vars(fn_identifier->buffer,node->rhs->rhs,node->rhs->rhs);
 	rename_local_vars(fn_identifier->buffer,node->rhs,node->rhs);
+}
+void
+gen_dfunc_internal_names(ASTNode* root)
+{
+  symboltable_reset();
+  traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
+  gen_dfunc_internal_names_recursive(root);
+  symboltable_reset();
 }
 void
 rename_all(const char* to_rename, const char* new_name, ASTNode* node)
