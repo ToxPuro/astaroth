@@ -140,6 +140,7 @@ static int previous_accessed[NUM_FIELDS] = {0};
 static int written_fields_stencil_accesses[NUM_FIELDS] = {0};
 static AcMeshInfo d_mesh_info;
 #include "user_dfuncs.h"
+#define suppress_unused_warning(X) (void)X
 #include "user_kernels.h"
 
 VertexBufferArray

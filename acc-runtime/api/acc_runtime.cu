@@ -315,6 +315,7 @@ Field3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
 #include "random.cuh"
 
 #include "user_dfuncs.h"
+#define suppress_unused_warning(X) (void)X
 #include "user_kernels.h"
 
 typedef struct {

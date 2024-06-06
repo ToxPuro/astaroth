@@ -238,6 +238,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
           FILE* out = fopen(stage1, "w");
           assert(out);
        	  process_includes(1, dir, ACC_MATH_DIR, out);
+       	  process_includes(1, dir, ACC_UTILS_INTRINSICS, out);
           process_includes(0, dir, stage0, out);
 
           fclose(out);

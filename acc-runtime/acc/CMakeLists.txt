@@ -25,7 +25,7 @@ include_directories(${PROJECT_BINARY_DIR})
 
 ## Executable
 add_executable(acc codegen.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
-target_compile_definitions(acc PRIVATE -DACC_DIR="${CMAKE_CURRENT_SOURCE_DIR}" -DACC_MATH_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../stdlib/math")
+target_compile_definitions(acc PRIVATE -DACC_DIR="${CMAKE_CURRENT_SOURCE_DIR}" -DACC_MATH_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../stdlib/math" -DACC_UTILS_INTRINSICS="${CMAKE_CURRENT_SOURCE_DIR}/../stdlib/utils/intrinsics.h")
 target_link_libraries(acc PRIVATE tinyexpr)
 
 if (OPTIMIZE_MEM_ACCESSES)
