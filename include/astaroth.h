@@ -1461,6 +1461,12 @@ acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fiel
     return acComputeWithParams(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), loader);
 }
 
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fields_out)
+{
+    return acCompute(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size());
+}
+
 template <size_t num_fields_in, size_t num_fields_out>
 AcTaskDefinition
 acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out)[num_fields_out], std::function<void(ParamLoadingInfo)> loader)
