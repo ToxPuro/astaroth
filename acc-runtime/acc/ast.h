@@ -49,7 +49,7 @@ typedef enum {
   NODE_DCONST         = (1 << 15),
   NODE_DCONST_ID      = (1 << 16),
   NODE_MEMBER_ID      = (1 << 17),
-  //NODE_HOSTDEFINE     = (1 << 18),
+  NODE_HOSTDEFINE     = (1 << 18),
   NODE_ASSIGNMENT     = (1 << 19),
   NODE_INPUT          = (1 << 20),
   NODE_DEF            = (1 << 21),
@@ -70,7 +70,6 @@ typedef enum {
   NODE_TASKGRAPH_DEF =  NODE_DEF + NODE_TASKGRAPH + NODE_NO_OUT,
   NODE_BOUNDCONDS_DEF = NODE_DEF + NODE_BOUNDCOND + NODE_NO_OUT,
   NODE_ANY            = ~0,
-  NODE_HOSTDEFINE     = NODE_NO_OUT,
 } NodeType;
 
 typedef struct astnode_s {

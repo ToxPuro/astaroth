@@ -1307,12 +1307,11 @@ get_field_boundconds(const ASTNode* root, const char* boundconds_name, string_ve
 
 void
 gen_halo_exchange_and_boundconds(
-		const bool* field_needs_to_be_communicated_before_level_set, 
 		char** field_boundconds,
-		const int level_set,
 		char* res,
 		const char* boundconds_name,
-		int_vec fields
+		int_vec fields,
+		int_vec communicated_fields
 		)
 {
 		const int num_boundaries = 6;
@@ -1324,8 +1323,8 @@ gen_halo_exchange_and_boundconds(
 		for(size_t i = 0; i < fields.size; ++i)
 		{
 			const int field = fields.data[i];
-			need_to_communicate |= field_needs_to_be_communicated_before_level_set[field + num_fields*level_set];
-			if(field_needs_to_be_communicated_before_level_set[field + num_fields*level_set])
+			need_to_communicate |= int_vec_contains(communicated_fields,field);
+			if(int_vec_contains(communicated_fields,field))
 			{
 				const char* field_str = get_symbol(NODE_VARIABLE_ID,field,"Field")->identifier;
 				strcat(communicated_fields_str,field_str);
@@ -1366,7 +1365,7 @@ gen_halo_exchange_and_boundconds(
 			for(int boundcond = 0; boundcond < num_boundaries; ++boundcond)
 				for(size_t i = 0; i < fields.size; ++i)
 					field_boundconds_processed[fields.data[i] + num_fields*boundcond]  = !strcmp(field_boundconds[fields.data[i] + num_fields*boundcond],"periodic")  
-												              || !field_needs_to_be_communicated_before_level_set[fields.data[i] + num_fields*level_set];
+												              || !int_vec_contains(communicated_fields,fields.data[i]);
 
 			bool all_are_processed = false;
 			while(!all_are_processed)
@@ -1556,32 +1555,24 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	}
 	bool* field_written_out_before = (bool*)malloc(sizeof(bool)*num_fields);
 	memset(field_written_out_before,0,sizeof(bool)*num_fields);
-	int_vec fields_written_to;
-	int_vec fields_not_written_to;
+	int_vec fields;
+	int_vec communicated_fields;
 	for(int level_set = 0; level_set < n_level_sets; ++level_set)
 	{
-		init_int_vec(&fields_written_to);
-		init_int_vec(&fields_not_written_to);
+		init_int_vec(&fields);
+		init_int_vec(&communicated_fields);
 		for(size_t i = 0; i < num_fields; ++i)
-			if(field_written_out_before[i])
-				push_int(&fields_written_to,i);
-			else
-				push_int(&fields_not_written_to,i);
+		{
+			push_int(&fields,i);
+			if(field_needs_to_be_communicated_before_level_set[i + num_fields*level_set])
+				push_int(&communicated_fields,i);
+		}
 		gen_halo_exchange_and_boundconds(
-		  field_needs_to_be_communicated_before_level_set, 
 		  field_boundconds,
-		  level_set,
 		  res,
 		  boundconds_name,
-		  fields_written_to
-		);
-		gen_halo_exchange_and_boundconds(
-		  field_needs_to_be_communicated_before_level_set, 
-		  field_boundconds,
-		  level_set,
-		  res,
-		  boundconds_name,
-		  fields_not_written_to
+		  fields,
+		  communicated_fields
 		);
 		for(size_t call = 0; call < kernel_calls.size; ++call) 
 		{
@@ -1599,8 +1590,8 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 
 			}
 		}
-		free_int_vec(&fields_written_to);
-		free_int_vec(&fields_not_written_to);
+		free_int_vec(&fields);
+		free_int_vec(&communicated_fields);
 	}
 	free(field_written_out_before);
 	strcat(res,"});\n");
