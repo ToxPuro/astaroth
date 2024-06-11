@@ -289,7 +289,7 @@ return Region(this->position + translation, this->dims, this->tag, this->fields)
 }
 
 bool
-Region::overlap(const Region* other)
+Region::overlaps(const Region* other)
 {
 	return this->geometry_overlaps(other) && this->fields_overlap(other);
 }
