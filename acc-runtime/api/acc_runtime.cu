@@ -441,6 +441,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
       acKernelFlush(stream, vba->out[i],count, (AcReal)0.0);
     }
   }
+  memset(&vba->kernel_input_params,0,sizeof(acKernelInputParams));
   return AC_SUCCESS;
 }
 
