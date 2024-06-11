@@ -307,8 +307,8 @@ bool
 Region::fields_overlap(const Region* other)
 {
 	bool overlap = false;
-	for(&auto field_1 : this->fields)
-		for(&auto field_2 : other->fields)
+	for(auto& field_1 : this->fields)
+		for(auto& field_2 : other->fields)
 			overlap |= (field_1 == field_2);
 	return overlap;
 }
