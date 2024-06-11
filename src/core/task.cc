@@ -289,7 +289,12 @@ return Region(this->position + translation, this->dims, this->tag, this->fields)
 }
 
 bool
-Region::overlaps(const Region* other)
+Region::overlap(const Region* other)
+{
+	return this->geometry_overlaps(other) && this->fields_overlap(other);
+}
+bool
+Region::geometry_overlaps(const Region* other)
 {
     return (this->position.x < other->position.x + other->dims.x) &&
            (other->position.x < this->position.x + this->dims.x) &&
@@ -297,6 +302,15 @@ Region::overlaps(const Region* other)
            (other->position.y < this->position.y + this->dims.y) &&
            (this->position.z < other->position.z + other->dims.z) &&
            (other->position.z < this->position.z + this->dims.z);
+}
+bool
+Region::fields_overlap(const Region* other)
+{
+	bool overlap = false;
+	for(&auto field_1 : this->fields)
+		for(&auto field_2 : other->fields)
+			overlap |= (field_1 == field_2);
+	return overlap;
 }
 
 AcBoundary

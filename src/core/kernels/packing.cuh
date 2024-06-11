@@ -168,7 +168,8 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
 
     // If within the start-end range (this allows threadblock dims that are not
     // divisible by end - start)
-    if (i_packed >= dims.x || // j_packed >= dims.y || //
+    if (i_packed >= dims.x || //
+        j_packed >= dims.y || //
         k_packed >= dims.z) {
         return;
     }
