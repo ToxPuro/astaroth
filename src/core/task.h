@@ -100,6 +100,8 @@ struct Region {
 
     Region translate(int3 translation);
     bool overlaps(const Region* other);
+    bool geometry_overlaps(const Region* other);
+    bool fields_overlap(const Region* other);
     AcBoundary boundary(uint3_64 decomp, int pid, AcProcMappingStrategy proc_mapping_strategy);
     bool is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy);
 };

@@ -441,6 +441,7 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
       acKernelFlush(stream, vba->out[i],count, (AcReal)0.0);
     }
   }
+  memset(&vba->kernel_input_params,0,sizeof(acKernelInputParams));
   return AC_SUCCESS;
 }
 
@@ -1085,6 +1086,9 @@ read_optim_tpb(const Kernel kernel, const int3 dims)
          double time = atof(entries[8]);
 	 res =  (read_dims == dims && kernel_index == get_kernel_index(kernel) && time < best_time) ? tpb  : res;
       }
+      for(int i = 0; i < num_entries; ++i)
+             free(entries[i]);
+
   }
     fclose(file);
   }
@@ -1098,24 +1102,18 @@ read_optim_tpb(const Kernel kernel, const int3 dims)
 static TBConfig
 getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 {
-  const int3 read_tpb = read_optim_tpb(kernel,dims); 
-  if(read_tpb != (int3){-1,-1,-1})
-  {
-	  return 
-	  {
-		  kernel,
-		  dims,
-		  (dim3){(uint32_t)read_tpb.x, (uint32_t)read_tpb.y, (uint32_t)read_tpb.z}
-	  };
-  }
-  for (auto c : tbconfigs) {
+  for (auto c : tbconfigs)
     if (c.kernel == kernel && c.dims == dims)
       return c;
-  }
-  TBConfig c = autotune(kernel, dims, vba);
+
+  const int3 read_tpb = read_optim_tpb(kernel,dims);
+  TBConfig c  = (read_tpb != (int3){-1,-1,-1})
+          ? (TBConfig){kernel,dims,(dim3){(uint32_t)read_tpb.x, (uint32_t)read_tpb.y, (uint32_t)read_tpb.z}}
+          : autotune(kernel,dims,vba);
   tbconfigs.push_back(c);
   return c;
 }
+
 Kernel
 GetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
 {
