@@ -20,13 +20,39 @@
 #include <stdint.h> //uint64_t
 
 #include "errchk.h"
-#include "math_utils.h" // uint3_64
+#include "math_utils.h" //uint64_t, uint3_64
+
+typedef struct {
+    size_t ndims;
+    size_t* global_dims; // [ndims]
+    size_t* local_dims;  // [ndims]
+
+    size_t nlayers;
+    size_t* decomposition;        // [nlayers*ndims]
+    size_t* global_decomposition; // [ndims]
+} AcDecompositionInfo;
+
+void acDecompositionInfoPrint(const AcDecompositionInfo info);
+
+AcDecompositionInfo acDecompositionInfoCreate(const size_t ndims, const size_t* global_dims,
+                                              const size_t nlayers,
+                                              const size_t* partitions_per_layer);
+
+void acDecompositionInfoDestroy(AcDecompositionInfo* info);
+
+int acGetPid(const int3 pid_input, const AcDecompositionInfo info);
+
+int3 acGetPid3D(const int i, const AcDecompositionInfo info);
+
+// --------------------
+// Backwards compatibility
+// --------------------
+void compat_acDecompositionInit(const size_t ndims, const size_t* global_dims, const size_t nlayers,
+                                const size_t* partitions_per_layer);
+void compat_acDecompositionQuit(void);
 
 uint3_64 decompose(const uint64_t target);
 
 int getPid(const int3 pid_raw, const uint3_64 decomp);
 
 int3 getPid3D(const uint64_t pid, const uint3_64 decomp);
-
-/** Assumes that contiguous pids are on the same node and there is one process per GPU. */
-bool onTheSameNode(const uint64_t pid_a, const uint64_t pid_b);
