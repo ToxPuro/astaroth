@@ -17,11 +17,9 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-
-#include "astaroth.h"
-
 #include <stdint.h> //uint64_t
 
+#include "errchk.h"
 #include "math_utils.h" // uint3_64
 
 uint3_64 decompose(const uint64_t target);

@@ -18,13 +18,6 @@
 */
 #include "decomposition.h"
 
-#include "astaroth.h"
-
-#include <stdint.h> //uint64_t
-
-#include "errchk.h"
-#include "math_utils.h"
-
 #define MPI_DECOMPOSITION_AXES (3)
 
 static inline uint3_64
