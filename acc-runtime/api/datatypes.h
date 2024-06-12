@@ -57,5 +57,3 @@ typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
 typedef struct {
   size_t x, y, z;
 } Volume;
-
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
