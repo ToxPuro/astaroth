@@ -344,7 +344,7 @@ acGetPid(const int3 pid_input, const AcDecompositionInfo info)
     const size_t nlayers = info.nlayers;
     ERRCHK_ALWAYS(ndims == 3);
 
-    const int64_t pid_unwrapped[ndims] = {
+    const int64_t pid_unwrapped[] = {
         pid_input.x,
         pid_input.y,
         pid_input.z,
