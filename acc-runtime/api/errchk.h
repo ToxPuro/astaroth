@@ -168,7 +168,7 @@ as_size_t(const T i)
 }
 
 template <typename T>
-static inline size_t
+static inline int64_t
 as_int64_t(const T i)
 {
   ERRCHK_ALWAYS(static_cast<long double>(i) >
@@ -179,7 +179,7 @@ as_int64_t(const T i)
 }
 
 template <typename T>
-static inline size_t
+static inline int
 as_int(const T i)
 {
   ERRCHK_ALWAYS(static_cast<long double>(i) >
