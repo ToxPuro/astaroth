@@ -320,7 +320,7 @@ static void
 mod_pointwise(const size_t count, const int64_t* a, const int64_t* b, int64_t* c)
 {
     for (size_t i = 0; i < count; ++i)
-        c[i] = a[i] % b[i];
+        c[i] = mod(a[i], b[i]);
 }
 
 static void
