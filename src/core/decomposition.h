@@ -17,7 +17,7 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-#if AC_MPI_ENABLED
+
 #include "astaroth.h"
 
 #include <stdint.h> //uint64_t
@@ -32,4 +32,3 @@ int3 getPid3D(const uint64_t pid, const uint3_64 decomp);
 
 /** Assumes that contiguous pids are on the same node and there is one process per GPU. */
 bool onTheSameNode(const uint64_t pid_a, const uint64_t pid_b);
-#endif // AC_MPI_ENABLED

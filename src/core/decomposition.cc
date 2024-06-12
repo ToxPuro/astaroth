@@ -18,7 +18,6 @@
 */
 #include "decomposition.h"
 
-#if AC_MPI_ENABLED
 #include "astaroth.h"
 
 #include <stdint.h> //uint64_t
@@ -146,4 +145,3 @@ onTheSameNode(const uint64_t pid_a, const uint64_t pid_b)
 
     return node_a == node_b;
 }
-#endif // AC_MPI_ENABLED
