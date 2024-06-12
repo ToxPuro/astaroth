@@ -576,3 +576,34 @@ getPid3D(const uint64_t pid, const uint3_64 decomp)
     return (int3){(int)pid3D.x, (int)pid3D.y, (int)pid3D.z};
 }
 #endif
+
+void
+acVerifyDecomposition(const uint3_64 decomp)
+{
+    const size_t n = decomp.x * decomp.y * decomp.z; // prod(info.ndims, info.global_decomposition);
+    for (size_t i = 0; i < n; ++i)
+        ERRCHK_ALWAYS(getPid(getPid3D(i, decomp), decomp) == i);
+
+    for (size_t k = 0; k < decomp.z; ++k) {
+        for (size_t j = 0; j < decomp.y; ++j) {
+            for (size_t i = 0; i < decomp.x; ++i) {
+
+                const int3 center = {i, j, k};
+
+                for (int k0 = -1; k0 <= 1; ++k0) {
+                    for (int j0 = -1; j0 <= 1; ++j0) {
+                        for (int i0 = -1; i0 <= 1; ++i0) {
+                            if (i0 == 0 && j0 == 0 && k0 == 0)
+                                continue;
+                            int3 dir = (int3){i0, j0, k0};
+
+                            const int3 a = getPid3D(getPid(center + dir, decomp), decomp);
+                            const int3 b = getPid3D(getPid(a - dir, decomp), decomp);
+                            ERRCHK_ALWAYS(b == center);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

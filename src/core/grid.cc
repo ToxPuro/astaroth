@@ -255,6 +255,7 @@ acGridInit(const AcMeshInfo info)
     // nlayers,partitions_per_layer);
 
     const uint3_64 decomp = decompose(nprocs);
+    acVerifyDecomposition(decomp);
 
     // Check that the decomposition is valid
     const int3 nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
