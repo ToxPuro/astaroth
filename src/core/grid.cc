@@ -59,6 +59,8 @@
 #include "math_utils.h"
 #include "timer_hires.h"
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
 #ifdef USE_PERFSTUBS
 #define PERFSTUBS_USE_TIMER
 #include "perfstubs_api/timer.h"
@@ -67,12 +69,15 @@
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
     Device device;
-    AcMesh submesh; // Submesh in host memory. Used as scratch space.
-    uint3_64 decomposition;
+    AcMesh submesh;         // Submesh in host memory. Used as scratch space.
+    uint3_64 decomposition; // For backwards compatibility. Should use AcDecompositionInfo.
     bool initialized;
     int3 nn;
     std::shared_ptr<AcTaskGraph> default_tasks;
     size_t mpi_tag_space_count;
+
+    // Decomposition
+    // AcDecompositionInfo decomposition_info;
 } Grid;
 
 static Grid grid = {};
@@ -237,7 +242,22 @@ acGridInit(const AcMeshInfo info)
     MPI_Barrier(acGridMPIComm());
 
     // Decompose
+    const AcMeshDims mesh_dims = acGetMeshDims(info);
+    const size_t global_dims[] = {
+        as_size_t(mesh_dims.nn.x),
+        as_size_t(mesh_dims.nn.y),
+        as_size_t(mesh_dims.nn.z),
+    };
+    const size_t ndims                  = ARRAY_SIZE(global_dims);
+    const size_t node_count             = as_size_t((nprocs + device_count - 1) / device_count);
+    const size_t partitions_per_layer[] = {as_size_t(device_count), as_size_t(node_count)};
+    const size_t nlayers                = ARRAY_SIZE(partitions_per_layer);
+    compat_acDecompositionInit(ndims, global_dims, nlayers, partitions_per_layer);
+    // grid.decomposition_info = acDecompositionInit(ndims, global_dims,
+    // nlayers,partitions_per_layer);
+
     const uint3_64 decomp = decompose(nprocs);
+    acVerifyDecomposition(decomp);
 
     // Check that the decomposition is valid
     const int3 nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
@@ -388,6 +408,8 @@ acGridQuit(void)
     grid.decomposition = (uint3_64){0, 0, 0};
     acHostMeshDestroy(&grid.submesh);
     acDeviceDestroy(grid.device);
+    compat_acDecompositionQuit();
+    // acDecompositionInfoDestroy(&grid.decomposition_info);
 
     return AC_SUCCESS;
 }
