@@ -23,7 +23,8 @@
 #define DECOMPOSITION_TYPE_ZORDER (1)
 #define DECOMPOSITION_TYPE_HIERARCHICAL (2)
 
-#define DECOMPOSITION_TYPE (DECOMPOSITION_TYPE_HIERARCHICAL)
+#define DECOMPOSITION_TYPE (DECOMPOSITION_TYPE_ZORDER)
+// #define DECOMPOSITION_TYPE (DECOMPOSITION_TYPE_HIERARCHICAL)
 
 static void
 acPrint_size_t(const char* label, const size_t value)
@@ -425,14 +426,14 @@ compat_acDecompositionQuit(void)
 }
 
 int
-getPid(const int3 pid3D, const uint3_64 decomp)
+getPid(const int3 pid3D, const uint3_64 /* decomp */)
 {
     ERRCHK_ALWAYS(initialized == true);
     return acGetPid(pid3D, g_decomposition_info);
 }
 
 int3
-getPid3D(const uint64_t pid, const uint3_64 decomp)
+getPid3D(const uint64_t pid, const uint3_64 /* decomp*/)
 {
     ERRCHK_ALWAYS(initialized == true);
     return acGetPid3D(pid, g_decomposition_info);
@@ -442,11 +443,13 @@ uint3_64
 decompose(const uint64_t target)
 {
     ERRCHK_ALWAYS(initialized == true);
-    return (uint3_64){
+    const uint3_64 p = (uint3_64){
         .x = g_decomposition_info.global_decomposition[0],
         .y = g_decomposition_info.global_decomposition[1],
         .z = g_decomposition_info.global_decomposition[2],
     };
+    ERRCHK_ALWAYS(p.x * p.y * p.z == target);
+    return p;
 }
 
 #elif DECOMPOSITION_TYPE == DECOMPOSITION_TYPE_ZORDER
@@ -456,7 +459,7 @@ void
 compat_acDecompositionInit(const size_t ndims, const size_t* global_dims, const size_t nlayers,
                            const size_t* partitions_per_layer)
 {
-    WARNING("Called compat_acDecompositionInit called but nothing done, using the legacy Z-order "
+    WARNING("Called compat_acDecompositionInit but nothing done, using the legacy Z-order "
             "decomposition implementation");
     return;
 }
