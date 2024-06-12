@@ -532,10 +532,10 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
 
   //Allocate arrays
   for (int i = 0; i < NUM_REAL_ARRAYS; ++i)
-    if (config.real_arrays[i] != nullptr)
+    if (config.real_arrays[i] != nullptr && !real_array_is_dconst[i])
        device_malloc((void**)&vba.real_arrays[i],sizeof(vba.in[0][0])*config.int_params[real_array_lengths[i]]);
   for (int i = 0; i < NUM_INT_ARRAYS; ++i)
-    if (config.int_arrays[i] != nullptr)
+    if (config.int_arrays[i] != nullptr && !int_array_is_dconst[i])
        device_malloc((void**)&vba.int_arrays[i],sizeof(int)*config.int_params[int_array_lengths[i]]);
 
   acVBAReset(0, &vba);
@@ -549,6 +549,7 @@ acVBAUpdate(VertexBufferArray* vba, const AcMeshInfo config)
   size_t bytes;
   //Allocate/Free arrays
   for (int i = 0; i < NUM_REAL_ARRAYS; ++i){
+    if(real_array_is_dconst[i]) continue;
     bytes = sizeof(vba->in[0][0])*config.int_params[real_array_lengths[i]];
     if (config.real_arrays[i] == nullptr){
       if (vba->real_arrays[i] != nullptr) device_free(&vba->real_arrays[i], bytes);
@@ -558,6 +559,7 @@ acVBAUpdate(VertexBufferArray* vba, const AcMeshInfo config)
     }
   }
   for (int i = 0; i < NUM_INT_ARRAYS; ++i){
+    if(int_array_is_dconst[i]) continue;
     bytes = sizeof(int)*config.int_params[int_array_lengths[i]];
     if (config.int_arrays[i] == nullptr){
       if (vba->int_arrays[i] != nullptr) device_free(&vba->int_arrays[i],bytes);
@@ -582,10 +584,10 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 
   //Free arrays
   for (int i=0;i<NUM_REAL_ARRAYS; ++i)
-    if (config.real_arrays[i] != nullptr)
+    if (config.real_arrays[i] != nullptr && !real_array_is_dconst[i])
     	device_free(&(vba->real_arrays[i]), config.int_params[real_array_lengths[i]]);
   for (int i=0;i<NUM_INT_ARRAYS; ++i)
-    if (config.int_arrays[i] != nullptr)
+    if (config.int_arrays[i] != nullptr && !int_array_is_dconst[i])
     	device_free(&(vba->int_arrays[i]), config.int_params[int_array_lengths[i]]);
   vba->bytes = 0;
 }
