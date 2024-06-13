@@ -1888,11 +1888,13 @@ acGridReduceXYAverages(const Stream stream)
 
     // 4) Average
     // auto array_begin = thrust::device_pointer_cast(device->vba.profiles.in);
-    // auto array_end = thrust::device_pointer_cast(device->vba.profiles.in + NUM_PROFILES * device->vba.profiles.count);
+    // auto array_end = thrust::device_pointer_cast(device->vba.profiles.in + NUM_PROFILES *
+    // device->vba.profiles.count);
     const size_t gnx = as_size_t(device->local_config.int3_params[AC_global_grid_n].x);
     const size_t gny = as_size_t(device->local_config.int3_params[AC_global_grid_n].y);
     cudaSetDevice(device->id);
-    acMultiplyInplace(1. / (gnx*gny), NUM_PROFILES*device->vba.profiles.count, device->vba.profiles.in[0]);
+    acMultiplyInplace(1. / (gnx * gny), NUM_PROFILES * device->vba.profiles.count,
+                      device->vba.profiles.in[0]);
 
     // 5) Optional: Test
     // AcReal arr[device->vba.profiles.count];

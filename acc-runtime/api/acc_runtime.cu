@@ -1210,9 +1210,9 @@ acReindexCross(const cudaStream_t stream, //
 
   const size_t block_offset = out_shape.x * out_shape.y * out_shape.z;
   const SOAVector out_bb11  = {
-      .x = &out[3 * block_offset],
-      .y = &out[4 * block_offset],
-      .z = &out[5 * block_offset],
+       .x = &out[3 * block_offset],
+       .y = &out[4 * block_offset],
+       .z = &out[5 * block_offset],
   };
   const SOAVector out_bb12 = {
       .x = &out[6 * block_offset],
@@ -1274,26 +1274,25 @@ acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
   void* d_temp_storage      = NULL;
   size_t temp_storage_bytes = 0;
   cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
-                                  d_out, num_segments, d_offsets,
-                                  d_offsets + 1, stream);
+                                  d_out, num_segments, d_offsets, d_offsets + 1,
+                                  stream);
   // printf("Temp storage: %zu bytes\n", temp_storage_bytes);
   cudaMalloc(&d_temp_storage, temp_storage_bytes);
   ERRCHK_ALWAYS(d_temp_storage);
 
   cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
-                                  d_out, num_segments, d_offsets,
-                                  d_offsets + 1, stream);
+                                  d_out, num_segments, d_offsets, d_offsets + 1,
+                                  stream);
 
-  cudaStreamSynchronize(stream); // Note, would not be needed if allocated at initialization
+  cudaStreamSynchronize(
+      stream); // Note, would not be needed if allocated at initialization
   cudaFree(d_temp_storage);
   cudaFree(d_offsets);
   free(offsets);
   return AC_SUCCESS;
 }
 
-static
-__global__
-void
+static __global__ void
 multiply_inplace(const AcReal value, const size_t count, AcReal* array)
 {
   const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -1301,9 +1300,10 @@ multiply_inplace(const AcReal value, const size_t count, AcReal* array)
     array[idx] *= value;
 }
 
-AcResult acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
+AcResult
+acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
 {
-  const size_t tpb  = 256;
+  const size_t tpb = 256;
   const size_t bpg = (count + tpb - 1) / tpb;
   multiply_inplace<<<bpg, tpb>>>(value, count, array);
   ERRCHK_CUDA_KERNEL();
