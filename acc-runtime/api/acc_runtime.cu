@@ -212,7 +212,7 @@ DCONST(const AcReal3Param param)
 }
 
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
-  ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mxy))
+  ((i) + (j) * DCONST(AC_mx) + (k) * DCONST(AC_mxy))
 
 __device__ int
 LOCAL_COMPDOMAIN_IDX(const int3 coord)
@@ -620,8 +620,9 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
   cudaDeviceSynchronize(); /* See note in acLoadStencil */                     \
                                                                                \
-  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
-                        (size_t)&d_mesh_info;                                  \
+  const size_t offset = (size_t) &                                             \
+                        d_mesh_info.LABEL_LOWER##_params[param] - (size_t) &   \
+                        d_mesh_info;                                           \
                                                                                \
   const cudaError_t retval = cudaMemcpyToSymbol(                               \
       d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);     \
@@ -674,8 +675,9 @@ acLoadInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
   cudaDeviceSynchronize(); /* See notes in GEN_LOAD_UNIFORM */                 \
                                                                                \
-  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
-                        (size_t)&d_mesh_info;                                  \
+  const size_t offset = (size_t) &                                             \
+                        d_mesh_info.LABEL_LOWER##_params[param] - (size_t) &   \
+                        d_mesh_info;                                           \
                                                                                \
   const cudaError_t retval = cudaMemcpyFromSymbol(                             \
       value, d_mesh_info, sizeof(*value), offset, cudaMemcpyDeviceToHost);     \
@@ -757,7 +759,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                                         ? min(props.maxThreadsPerBlock,
                                               MAX_THREADS_PER_BLOCK)
                                         : props.maxThreadsPerBlock;
-  const size_t max_smem = props.sharedMemPerBlock;
+  const size_t max_smem           = props.sharedMemPerBlock;
 
   // Old heuristic
   // for (int z = 1; z <= max_threads_per_block; ++z) {

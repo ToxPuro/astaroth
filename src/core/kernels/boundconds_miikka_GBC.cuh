@@ -209,10 +209,10 @@ acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int
     int3 bc_bot = {config.int_params[AC_bc_type_bot_x], config.int_params[AC_bc_type_bot_y],
                    config.int_params[AC_bc_type_bot_z]};
 
-    //#if AC_MPI_ENABLED
-    //    printf( "WARNING : NON-PERIODIC BOUNDARY CONDITIONS NOT SUPPORTER BY MPI! Only working at
-    //    node level.\n"); return AC_FAILURE;
-    //#endif
+    // #if AC_MPI_ENABLED
+    //     printf( "WARNING : NON-PERIODIC BOUNDARY CONDITIONS NOT SUPPORTER BY MPI! Only working at
+    //     node level.\n"); return AC_FAILURE;
+    // #endif
 
     if (vtxbuf_handle != -1) // This is a dummy to make swithing boundary condition with respect to
                              // more possible later
