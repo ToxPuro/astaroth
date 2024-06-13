@@ -1288,3 +1288,22 @@ acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
   free(offsets);
   return AC_SUCCESS;
 }
+
+static
+__global__
+void
+multiply_inplace(const AcReal value, const size_t count, AcReal* array)
+{
+  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < count)
+    array[idx] *= value;
+}
+
+AcResult acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
+{
+  const size_t tpb  = 256;
+  const size_t bpg = (count + tpb - 1) / tpb;
+  multiply_inplace<<<bpg, tpb>>>(value, count, array);
+  ERRCHK_CUDA_KERNEL();
+  return AC_SUCCESS;
+}
