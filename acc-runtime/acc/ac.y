@@ -46,6 +46,7 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
   if (!in) {
     fprintf(stderr, "FATAL ERROR: could not open include file '%s'\n", file);
     assert(in);
+    exit(EXIT_FAILURE);
   }
 
   const size_t  len = 4096;
@@ -266,6 +267,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             if (assignment) {
                 fprintf(stderr, "FATAL ERROR: Device constant assignment is not supported. Load the value at runtime with ac[Grid|Device]Load[Int|Int3|Real|Real3]Uniform-type API functions or use #define.\n");
                 assert(!assignment);
+    		exit(EXIT_FAILURE);
             }
          }
        | program function_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }

@@ -2263,7 +2263,6 @@ acGridDiskAccessLaunch(const AccessType type)
 
             const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
 #if USE_DISTRIBUTED_IO
-#define USE_POSIX_IO (0)
 
 #if USE_POSIX_IO
             char outfile[4096] = "";
@@ -2398,9 +2397,8 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 
 #if USE_DISTRIBUTED_IO
             (void)offset; // Unused
-#define USE_POSIX_IO (0)
 #if USE_POSIX_IO
-            FILE* fp = fopen(outfile, "w");
+            FILE* fp = fopen(filepath, "w");
             ERRCHK_ALWAYS(fp);
 
             const size_t count         = acVertexBufferCompdomainSize(info);
@@ -2554,7 +2552,6 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
             (void)global_nn;      // Unused
             (void)global_pos_min; // Unused
             (void)slice_volume;   // Unused
-#define USE_POSIX_IO (0)
 #if USE_POSIX_IO
             if (color != MPI_UNDEFINED) {
                 FILE* fp = fopen(filepath, "w");
