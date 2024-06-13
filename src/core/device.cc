@@ -1278,7 +1278,7 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
                   device->vba.in[reindex_fields[w]], in_offset, in_shape, //
                   buffer.data, buffer_offset, buffer_shape, block_shape);
     }
-    // Note no offset here: is applied in acMapCross instead due to how it works with SOA vectors
+    // Note no offset here: is applied in acMapCross instead due to how it works with SOA vectors.
     const AcIndex buffer_offset = {
         .x = 0,
         .y = 0,
@@ -1290,6 +1290,9 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
                    buffer.data, buffer_offset, buffer_shape, block_shape);
 
     // Reduce
+    // Note the ordering of the fields. The ordering of the fields
+    // in the input buffer must be the same as desired for the ordering of
+    // profiles in the output array.
     const size_t num_segments = buffer_shape.z * buffer_shape.w;
     acSegmentedReduce(device->streams[STREAM_DEFAULT], //
                       buffer.data, buffer_size, num_segments, device->vba.profiles.in[0]);
