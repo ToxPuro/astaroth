@@ -678,19 +678,11 @@ max5_shock()
 
 Kernel shock_1_divu()
 {
-    for field in 0:NUM_FIELDS {
-        write(Field(field), value(field))
-    }
-
     write(VTXBUF_SHOCK, divu_shock())
 }
 
 Kernel shock_2_max()
 {
-    for field in 0:NUM_FIELDS {
-        write(Field(field), value(field))
-    }
-
     write(VTXBUF_SHOCK, max5_shock())
 }
 
@@ -701,10 +693,6 @@ Kernel shock_3_smooth()
 
     s_shock = smooth_kernel(VTXBUF_SHOCK)
     out_shock = cshock*dsmin*dsmin*s_shock //Add scaling constant cshock
-
-    for field in 0:NUM_FIELDS {
-        write(Field(field), value(field))
-    }
 
     write(VTXBUF_SHOCK, out_shock)
 }
