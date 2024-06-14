@@ -26,7 +26,11 @@
 #include "math_utils.h"
 
 
+#if TWO_D == 0
 #define MPI_DECOMPOSITION_AXES (3)
+#else
+#define MPI_DECOMPOSITION_AXES (2)
+#endif
 
 static inline uint3_64
 morton3D(const uint64_t pid)
@@ -46,8 +50,13 @@ morton3D(const uint64_t pid)
     else if (MPI_DECOMPOSITION_AXES == 2) {
         for (int bit = 0; bit <= 21; ++bit) {
             const uint64_t mask = 0x1l << 2 * bit;
+#if TWO_D == 0
             j |= ((pid & (mask << 0)) >> 1 * bit) >> 0;
             k |= ((pid & (mask << 1)) >> 1 * bit) >> 1;
+#else
+            i |= ((pid & (mask << 0)) >> 1 * bit) >> 0;
+            j |= ((pid & (mask << 1)) >> 1 * bit) >> 1;
+#endif
         }
     }
     else if (MPI_DECOMPOSITION_AXES == 1) {
@@ -80,8 +89,13 @@ morton1D(const uint3_64 pid)
     else if (MPI_DECOMPOSITION_AXES == 2) {
         for (int bit = 0; bit <= 21; ++bit) {
             const uint64_t mask = 0x1l << bit;
+#if TWO_D == 0
             i |= ((pid.y & mask) << 0) << 1 * bit;
             i |= ((pid.z & mask) << 1) << 1 * bit;
+#else
+            i |= ((pid.x & mask) << 0) << 1 * bit;
+            i |= ((pid.y & mask) << 1) << 1 * bit;
+#endif
         }
     }
     else if (MPI_DECOMPOSITION_AXES == 1) {

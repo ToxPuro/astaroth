@@ -40,6 +40,9 @@ typedef struct {
     long double rel_error;
     AcReal maximum_magnitude;
     AcReal minimum_magnitude;
+    int x;
+    int y;
+    int z;
 } Error;
 
 /** Loads data from the config file */

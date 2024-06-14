@@ -255,9 +255,9 @@ int AC_test_int_arr[test_arr_size/2];
 #define DER6UPWD_1 ( 15. / 60.)     
 #define DER6UPWD_0 (-20. / 60.)  
 
+#include "smooth_kernel.ach" 
 #if LSHOCK
 
-#include "smooth_kernel.ach" 
 
 #endif 
 

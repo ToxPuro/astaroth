@@ -197,7 +197,9 @@ add_subdirectory(acc-runtime)
 add_subdirectory(src/core/kernels)
 add_subdirectory(src/core)
 if (NOT BUILD_SHARED_LIBS)
-    add_subdirectory(samples/ac-interpreter)
+    if(NOT 2D)
+    	add_subdirectory(samples/ac-interpreter)
+    endif()
 endif()
 
 if (BUILD_UTILS)
@@ -206,11 +208,11 @@ endif()
 
 ## Have this as a separate option when no other "samples" aree needed.
 ## Useful e.g. when compilation time is long e.g. with shock viscosity. 
-if (BUILD_STANDALONE)
+if (BUILD_STANDALONE AND NOT BUILD_TESTS)
     add_subdirectory(samples/standalone_mpi)
 endif()
 
-if (BUILD_SAMPLES)
+if (BUILD_SAMPLES AND NOT BUILD_TESTS)
     add_subdirectory(samples/ctest)
     add_subdirectory(samples/cpptest)
     add_subdirectory(samples/benchmark)

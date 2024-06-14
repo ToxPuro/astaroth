@@ -120,6 +120,12 @@ AcTaskDefinition
 acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond, Field fields[],
                     const size_t num_fields, AcRealParam parameters[], const size_t num_parameters)
 { 
+    if((boundary & BOUNDARY_Z) && TWO_D)
+    {
+	    fprintf(stderr,"Can't have Z boundary conditions in 2d simulation\n");
+	    MPI_Finalize();
+	    exit(EXIT_FAILURE);
+    }
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_BOUNDCOND;
     task_def.boundary       = boundary;
@@ -136,6 +142,12 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond, Fie
 AcTaskDefinition
 acDSLBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[], const size_t num_fields_out,std::function<void(ParamLoadingInfo)> load_func)
 {
+    if((boundary & BOUNDARY_Z) && TWO_D)
+    {
+	    fprintf(stderr,"Can't have Z boundary conditions in 2d simulation\n");
+	    MPI_Finalize();
+	    exit(EXIT_FAILURE);
+    }
     AcTaskDefinition task_def{};
     task_def.task_type              = TASKTYPE_DSL_BOUNDCOND;
     task_def.boundary               = boundary;
@@ -154,6 +166,12 @@ AcTaskDefinition
 acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBoundcond bound_cond,
                               AcRealParam parameters[], const size_t num_parameters)
 {
+    if((boundary & BOUNDARY_Z) && TWO_D)
+    {
+	    fprintf(stderr,"Can't have Z boundary conditions in 2d simulation\n");
+	    MPI_Finalize();
+	    exit(EXIT_FAILURE);
+    }
     AcTaskDefinition task_def{};
     task_def.task_type              = TASKTYPE_SPECIAL_MHD_BOUNDCOND;
     task_def.boundary               = boundary;
@@ -183,7 +201,7 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t 
     	case RegionFamily::Exchange_output: //Fallthrough
     	case RegionFamily::Exchange_input : {
     	    for(size_t i = 0; i < num_fields; ++i)
-	    	if(fields_[i] < NUM_COMMUNICATED_FIELDS) fields.push_back(fields_[i]);
+	    	if(vtxbuf_is_communicated[fields_[i]]) fields.push_back(fields_[i]);
 	    ERRCHK_ALWAYS(fields.size() <= NUM_COMMUNICATED_FIELDS);
 	    break;
 	}
@@ -204,42 +222,42 @@ switch (family) {
 case RegionFamily::Compute_output: {
 // clang-format off
 position = (int3){
-	    id.x == -1  ? NGHOST : id.x == 1 ? nn.x : NGHOST * 2,
-	    id.y == -1  ? NGHOST : id.y == 1 ? nn.y : NGHOST * 2,
-	    id.z == -1  ? NGHOST : id.z == 1 ? nn.z : NGHOST * 2};
+	    id.x == -1  ? NGHOST_X : id.x == 1 ? nn.x : NGHOST_X * 2,
+	    id.y == -1  ? NGHOST_Y : id.y == 1 ? nn.y : NGHOST_Y * 2,
+	    id.z == -1  ? NGHOST_Z : id.z == 1 ? nn.z : NGHOST_Z * 2};
 // clang-format on
-dims = (int3){id.x == 0 ? nn.x - NGHOST * 2 : NGHOST,
-	      id.y == 0 ? nn.y - NGHOST * 2 : NGHOST,
-	      id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
+dims = (int3){id.x == 0 ? nn.x - NGHOST_X * 2 : NGHOST_X,
+	      id.y == 0 ? nn.y - NGHOST_Y * 2 : NGHOST_Y,
+	      id.z == 0 ? nn.z - NGHOST_Z * 2 : NGHOST_Z};
 break;
 }
 case RegionFamily::Compute_input: {
 // clang-format off
 position = (int3){
-	    id.x == -1  ? 0 : id.x == 1 ? nn.x - NGHOST : NGHOST ,
-	    id.y == -1  ? 0 : id.y == 1 ? nn.y - NGHOST : NGHOST ,
-	    id.z == -1  ? 0 : id.z == 1 ? nn.z - NGHOST : NGHOST };
+	    id.x == -1  ? 0 : id.x == 1 ? nn.x - NGHOST_X : NGHOST_X ,
+	    id.y == -1  ? 0 : id.y == 1 ? nn.y - NGHOST_Y : NGHOST_Y ,
+	    id.z == -1  ? 0 : id.z == 1 ? nn.z - NGHOST_Z : NGHOST_Z };
 // clang-format on
-dims = (int3){id.x == 0 ? nn.x : NGHOST * 3, id.y == 0 ? nn.y : NGHOST * 3,
-	      id.z == 0 ? nn.z : NGHOST * 3};
+dims = (int3){id.x == 0 ? nn.x : NGHOST_X * 3, id.y == 0 ? nn.y : NGHOST_Y * 3,
+	      id.z == 0 ? nn.z : NGHOST_Z * 3};
 break;
 }
 case RegionFamily::Exchange_output: {
 // clang-format off
 position = (int3){
-	    id.x == -1  ? 0 : id.x == 1 ? NGHOST + nn.x : NGHOST,
-	    id.y == -1  ? 0 : id.y == 1 ? NGHOST + nn.y : NGHOST,
-	    id.z == -1  ? 0 : id.z == 1 ? NGHOST + nn.z : NGHOST};
+	    id.x == -1  ? 0 : id.x == 1 ? NGHOST_X + nn.x : NGHOST_X,
+	    id.y == -1  ? 0 : id.y == 1 ? NGHOST_Y + nn.y : NGHOST_Y,
+	    id.z == -1  ? 0 : id.z == 1 ? NGHOST_Z + nn.z : NGHOST_Z};
 // clang-format on
-dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
-	      id.z == 0 ? nn.z : NGHOST};
+dims = (int3){id.x == 0 ? nn.x : NGHOST_X, id.y == 0 ? nn.y : NGHOST_Y,
+	      id.z == 0 ? nn.z : NGHOST_Z};
 break;
 }
 case RegionFamily::Exchange_input: {
-position = (int3){id.x == 1 ? nn.x : NGHOST, id.y == 1 ? nn.y : NGHOST,
-		  id.z == 1 ? nn.z : NGHOST};
-dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
-	      id.z == 0 ? nn.z : NGHOST};
+position = (int3){id.x == 1 ? nn.x : NGHOST_X, id.y == 1 ? nn.y : NGHOST_Y,
+		  id.z == 1 ? nn.z : NGHOST_Z};
+dims = (int3){id.x == 0 ? nn.x : NGHOST_X, id.y == 0 ? nn.y : NGHOST_Y,
+	      id.z == 0 ? nn.z : NGHOST_Z};
 break;
 }
 default: {
@@ -263,7 +281,7 @@ switch (family) {
 case RegionFamily::Exchange_output: {} //Fallthrough
 case RegionFamily::Exchange_input : {
 	for(auto& field : fields_)
-		if(field < NUM_COMMUNICATED_FIELDS) fields.push_back(field);
+	    	if(vtxbuf_is_communicated[field]) fields.push_back(field);
 	break;
 }
 default:
@@ -291,12 +309,27 @@ return Region(this->position + translation, this->dims, this->tag, this->fields)
 bool
 Region::overlaps(const Region* other)
 {
+	return this->geometry_overlaps(other) && this->fields_overlap(other)
+}
+bool
+Region::geometry_overlaps(const Region* other)
+{
     return (this->position.x < other->position.x + other->dims.x) &&
            (other->position.x < this->position.x + this->dims.x) &&
            (this->position.y < other->position.y + other->dims.y) &&
            (other->position.y < this->position.y + this->dims.y) &&
            (this->position.z < other->position.z + other->dims.z) &&
            (other->position.z < this->position.z + this->dims.z);
+}
+
+bool
+Region::fields_overlaps(const Region* other)
+{
+    bool overlaps false;
+    for(auto& field_1 : this->fields)
+	    for(auto& field_2 : other->fields)
+		    overlaps |= (field_1  == field_2)
+    return overlaps;
 }
 
 AcBoundary
@@ -804,8 +837,9 @@ HaloExchangeTask::move()
 
 	//TP: HaloExchangeTasks usually have input and output regions on the same side of the boundary
 	//Thus if you directly moving data through kernels you have to remap the output position to the other side of the boundary
-	const int3 mm = {nn.x + NGHOST, nn.y + NGHOST, nn.z + NGHOST};
+	const int3 mm = {nn.x + NGHOST_X, nn.y + NGHOST_Y, nn.z + NGHOST_Z};
 	const int3 dst_pos = output_region.position - int3{output_region.id.x*mm.x, output_region.id.y*mm.y, output_region.id.z*mm.z};
+	printf("Moving: %d,%d,%d\n",input_region.dims.x,input_region.dims.y,input_region.dims.z);
 	acKernelMoveData(stream, input_region.position, dst_pos, input_region.dims, output_region.dims, vba,input_region.fields.data(), input_region.fields.size());
 }
 
@@ -830,7 +864,8 @@ HaloExchangeTask::sync()
 bool
 HaloExchangeTask::sendingToItself()
 {
-	return rank == counterpart_rank;
+	return false;
+	//return rank == counterpart_rank;
 }
 
 void
@@ -859,8 +894,9 @@ HaloExchangeTask::receiveDevice()
     if (rank == 0) {
         // fprintf(stderr, "calling MPI_Irecv\n");
     }
-    MPI_Irecv(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              recv_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
+
+    ERRCHK_ALWAYS(MPI_Irecv(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
+              recv_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request) == MPI_SUCCESS);
     if (rank == 0) {
         // fprintf(stderr, "Returned from MPI_Irecv\n");
     }
@@ -871,8 +907,8 @@ HaloExchangeTask::sendDevice()
 {
     auto msg = send_buffers.get_current_buffer();
     sync();
-    MPI_Isend(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
-              send_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request);
+    ERRCHK_ALWAYS(MPI_Isend(msg->data, msg->length, AC_REAL_MPI_TYPE, counterpart_rank,
+              send_tag + HALO_TAG_OFFSET, acGridMPIComm(), &msg->request) == MPI_SUCCESS);
 }
 
 void
@@ -982,7 +1018,7 @@ HaloExchangeTask::test()
     case HaloExchangeState::Exchanging: {
         auto msg = recv_buffers.get_current_buffer();
         int request_complete;
-        MPI_Test(&msg->request, &request_complete, MPI_STATUS_IGNORE);
+        ERRCHK_ALWAYS(MPI_Test(&msg->request, &request_complete, MPI_STATUS_IGNORE) == MPI_SUCCESS);
         return request_complete ? true : false;
     }
     default: {
@@ -1165,8 +1201,8 @@ BoundaryConditionTask::advance(const TraceFile* trace_file)
 }
 SyncTask::SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
-           Region({0,0,0},{2*NGHOST+nn.x,2*NGHOST+nn.y,2*NGHOST+nn.z}, 0, {}),
-           Region({0,0,0},{2*NGHOST+nn.x,2*NGHOST+nn.y,2*NGHOST+nn.z}, 0, {}),
+           Region({0,0,0},{2*NGHOST_X+nn.x,2*NGHOST_Y+nn.y,2*NGHOST_Z+nn.z}, 0, {}),
+           Region({0,0,0},{2*NGHOST_X+nn.x,2*NGHOST_Y+nn.y,2*NGHOST_Z+nn.z}, 0, {}),
            op, device_, swap_offset_)
 {
 
@@ -1369,12 +1405,16 @@ DSLBoundaryConditionTask::populate_boundary_region()
      for (auto variable : output_region.fields) {
      	params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable});
      	const int3 region_id = output_region.id;
-     	const int3 start = (int3){(region_id.x == 1 ? NGHOST + device->local_config.int_params[AC_nx]
-     	                                           : region_id.x == -1 ? 0 : NGHOST),
-     	                         (region_id.y == 1 ? NGHOST + device->local_config.int_params[AC_ny]
-     	                                           : region_id.y == -1 ? 0 : NGHOST),
-     	                         (region_id.z == 1 ? NGHOST + device->local_config.int_params[AC_nz]
-     	                                           : region_id.z == -1 ? 0 : NGHOST)};
+     	const int3 start = (int3){(region_id.x == 1 ? NGHOST_X + device->local_config.int_params[AC_nx]
+     	                                           : region_id.x == -1 ? 0 : NGHOST_X),
+     	                         (region_id.y == 1 ? NGHOST_Y + device->local_config.int_params[AC_ny]
+     	                                           : region_id.y == -1 ? 0 : NGHOST_Y),
+#if TWO_D == 0
+     	                         (region_id.z == 1 ? NGHOST_Z + device->local_config.int_params[AC_nz]
+     	                                           : region_id.z == -1 ? 0 : NGHOST_Z)};
+#else
+				 0};
+#endif
      	const int3 end = start + boundary_dims;
      	acLaunchKernel(kernels[(int)params.kernel_enum], params.stream, start, end, vba);
      }

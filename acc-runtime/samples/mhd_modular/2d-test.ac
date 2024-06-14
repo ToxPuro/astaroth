@@ -249,13 +249,25 @@ Stencil deryy {
     [2][0]  = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_2,
     [3][0]  = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_3
 }
+Stencil scaled_val
+{
+   [0][0] =  (1.0 / AC_dsx)
+}
+
+Stencil temp_val 
+{
+   [0][0] =  (1.0 / AC_dsx)
+}
+
+Stencil temp_next_val 
+{
+   [0][1] =  1.0 
+}
 
 
 
-Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums, bool bool_param) {
-    deru_xx =  derxx(UU)
-    deru_yy  = deryy(UU)
-    write(UU, value(UU) + time_params.dt*(deru_xx + deru_yy));
+Kernel singlepass_solve(real dt) {
+    write(UU, value(UU) + dt*( derxx(UU) + deryy(UU)))
 }
 
 

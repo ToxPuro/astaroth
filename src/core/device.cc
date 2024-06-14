@@ -197,7 +197,9 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
 
     ERRCHK_ALWAYS(device_config.int_params[AC_nx] == device->local_config.int_params[AC_nx]);
     ERRCHK_ALWAYS(device_config.int_params[AC_ny] == device->local_config.int_params[AC_ny]);
+#if TWO_D == 0
     ERRCHK_ALWAYS(device_config.int_params[AC_nz] == device->local_config.int_params[AC_nz]);
+#endif
     ERRCHK_ALWAYS(device_config.int_params[AC_multigpu_offset] ==
                   device->local_config.int_params[AC_multigpu_offset]);
 
@@ -355,7 +357,9 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     // Replace if not and give a warning otherwise
     if (device->local_config.int_params[AC_nxgrid] <= 0 ||
         device->local_config.int_params[AC_nygrid] <= 0 ||
+#if TWO_D == 0
         device->local_config.int_params[AC_nzgrid] <= 0 ||
+#endif
         device->local_config.int3_params[AC_multigpu_offset].x < 0 ||
         device->local_config.int3_params[AC_multigpu_offset].y < 0 ||
         device->local_config.int3_params[AC_multigpu_offset].z < 0) {
@@ -365,7 +369,9 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
         device->local_config.int3_params[AC_multigpu_offset] = (int3){0, 0, 0};
 	device->local_config.int_params[AC_nxgrid] = device_config.int_params[AC_nxgrid];
 	device->local_config.int_params[AC_nygrid] = device_config.int_params[AC_nygrid];
+#if TWO_D == 0
 	device->local_config.int_params[AC_nzgrid] = device_config.int_params[AC_nzgrid];
+#endif
     }
 
 #if AC_VERBOSE
@@ -395,7 +401,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     device->vba = acVBACreate(device_config);
 
     // Reductions
-    const int3 max_dims          = acConstructInt3Param(AC_mx, AC_my, AC_mz, device->local_config);
+    const int3 max_dims          = acGetLocalMM(device->local_config);
     const size_t scratchpad_size = acKernelReduceGetMinimumScratchpadSize(max_dims);
     const size_t scratchpad_size_bytes = acKernelReduceGetMinimumScratchpadSizeBytes(max_dims);
     const int reduce_tpb_size = 128;
@@ -795,6 +801,7 @@ AcResult
 acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kernel,
                      const int3 start, const int3 end)
 {
+    const int3 dims = end-start;
     cudaSetDevice(device->id);
     return acLaunchKernel(kernel, device->streams[stream], start, end, device->vba);
 }
@@ -909,9 +916,14 @@ acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
                              const VertexBufferHandle vtxbuf_handle, const int3 start,
                              const int3 end, const AcMeshInfo config, const int3 bindex)
 {
+#if TWO_D == 1
+	fprintf(stderr,"acDeviceGeneralBoundCondStep not supported for 2d\n");
+	exit(EXIT_FAILURE);
+#else
     cudaSetDevice(device->id);
     return acKernelGeneralBoundconds(device->streams[stream], start, end,
                                      device->vba.in[vtxbuf_handle], vtxbuf_handle, config, bindex);
+#endif
 }
 
 AcResult
@@ -941,8 +953,8 @@ acDeviceReduceScalNotAveraged(const Device device, const Stream stream, const Re
 {
     cudaSetDevice(device->id);
 
-    const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
-    const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
+    const int3 start = acGetMinNN(device->local_config);
+    const int3 end   = acGetMaxNN(device->local_config);
 
     *result = acKernelReduceScal(device->streams[stream], rtype, device->vba.in[vtxbuf_handle],
                                  start, end, device->vba.reduce_scratchpads[0], device->vba.scratchpad_size);
@@ -960,7 +972,7 @@ acDeviceReduceScal(const Device device, const Stream stream, const ReductionType
     case RTYPE_RMS_EXP:                  /* Fallthrough */
     case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
-        const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
+	const int3 nn = acGetLocalNN(device->local_config);
         const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
         *result            = sqrt(inv_n * *result);
         break;
@@ -979,8 +991,8 @@ acDeviceReduceVecNotAveraged(const Device device, const Stream stream, const Red
 {
     cudaSetDevice(device->id);
 
-    const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
-    const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
+    const int3 start = acGetMinNN(device->local_config);
+    const int3 end   = acGetMaxNN(device->local_config);
 
     *result = acKernelReduceVec(device->streams[stream], rtype, start, end, device->vba.in[vtxbuf0],
                                 device->vba.in[vtxbuf1], device->vba.in[vtxbuf2],
@@ -1000,7 +1012,7 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
     case RTYPE_RMS_EXP:                  /* Fallthrough */
     case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
-        const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
+	const int3 nn = acGetLocalNN(device->local_config);
         const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
         *result            = sqrt(inv_n * *result);
         break;
@@ -1027,8 +1039,8 @@ acDeviceReduceVecScalNotAveraged(const Device device, const Stream stream,
 {
     cudaSetDevice(device->id);
 
-    const int3 start = constructInt3Param(device, AC_nx_min, AC_ny_min, AC_nz_min);
-    const int3 end   = constructInt3Param(device, AC_nx_max, AC_ny_max, AC_nz_max);
+    const int3 start = acGetMinNN(device->local_config);
+    const int3 end   = acGetMaxNN(device->local_config);
 
     *result = acKernelReduceVecScal(device->streams[stream], rtype, start, end,
                                     device->vba.in[vtxbuf0], device->vba.in[vtxbuf1],
@@ -1051,7 +1063,7 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
     case RTYPE_RMS_EXP:                  /* Fallthrough */
     case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
-        const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
+	const int3 nn = acGetLocalNN(device->local_config);
         const AcReal inv_n = AcReal(1.) / (nn.x * nn.y * nn.z);
         *result            = sqrt(inv_n * *result);
         break;

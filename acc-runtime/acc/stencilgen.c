@@ -173,7 +173,11 @@ gen_kernel_prefix(const bool gen_mem_accesses)
          "d_multigpu_offset.y + vertexIdx.y,"
          "d_multigpu_offset.z + vertexIdx.z,"
          "};");
+#if TWO_D == 0
   printf("const int3 globalGridN = (int3){d_mesh_info.int_params[AC_nxgrid], d_mesh_info.int_params[AC_nygrid], d_mesh_info.int_params[AC_nzgrid]};");
+#else
+  printf("const int3 globalGridN = (int3){d_mesh_info.int_params[AC_nxgrid], d_mesh_info.int_params[AC_nygrid], 1};");
+#endif
   printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
 
 #if TWO_D == 0

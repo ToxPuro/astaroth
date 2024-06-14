@@ -25,6 +25,13 @@
 #endif
 
 #define NGHOST (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
+#define NGHOST_X (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
+#define NGHOST_Y (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
+#if TWO_D == 0
+#define NGHOST_Z (STENCIL_ORDER / 2) // Astaroth 2.0 backwards compatibility
+#else
+#define NGHOST_Z (0) // Astaroth 2.0 backwards compatibility
+#endif
 
 
 typedef struct {
@@ -218,12 +225,14 @@ extern "C" {
  * Helper functions
  * =============================================================================
  */
+#if TWO_D == 0
 static inline size_t
 acVertexBufferSize(const AcMeshInfo info)
 {
     return as_size_t(info.int_params[AC_mx]) * as_size_t(info.int_params[AC_my]) *
            as_size_t(info.int_params[AC_mz]);
 }
+
 static inline int3
 acVertexBufferDims(const AcMeshInfo info)
 {
@@ -233,6 +242,23 @@ acVertexBufferDims(const AcMeshInfo info)
         (info.int_params[AC_mz])
     };
 }
+#else
+static inline size_t
+acVertexBufferSize(const AcMeshInfo info)
+{
+    return as_size_t(info.int_params[AC_mx]) * as_size_t(info.int_params[AC_my]) * 1;
+}
+
+static inline int3
+acVertexBufferDims(const AcMeshInfo info)
+{
+    return (int3){
+        (info.int_params[AC_mx]), 
+        (info.int_params[AC_my]), 
+	1,
+    };
+}
+#endif
 
 static inline size_t
 acVertexBufferSizeBytes(const AcMeshInfo info)
@@ -240,12 +266,20 @@ acVertexBufferSizeBytes(const AcMeshInfo info)
     return sizeof(AcReal) * acVertexBufferSize(info);
 }
 
+#if TWO_D == 0
 static inline size_t
 acVertexBufferCompdomainSize(const AcMeshInfo info)
 {
     return as_size_t(info.int_params[AC_nx]) * as_size_t(info.int_params[AC_ny]) *
            as_size_t(info.int_params[AC_nz]);
 }
+#else
+static inline size_t
+acVertexBufferCompdomainSize(const AcMeshInfo info)
+{
+    return as_size_t(info.int_params[AC_nx]) * as_size_t(info.int_params[AC_ny]) * 1;
+}
+#endif
 
 static inline size_t
 acVertexBufferCompdomainSizeBytes(const AcMeshInfo info)
@@ -270,38 +304,93 @@ typedef struct {
     int3 nn;
 } AcMeshDims;
 
+#if TWO_D == 0
+static inline int3
+acGetLocalMM(const AcMeshInfo info)
+{
+    return acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+}
+static inline int3
+acGetLocalNN(const AcMeshInfo info)
+{
+    return acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
+}
+
+static inline int3
+acGetMinNN(const AcMeshInfo info)
+{
+    return acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
+}
+static inline int3
+acGetMaxNN(const AcMeshInfo info)
+{
+    return (int3)
+    {
+	    info.int_params[AC_nx_max],
+	    info.int_params[AC_ny_max],
+	    info.int_params[AC_nz_max],
+    };
+}
+#else
+static inline int3
+acGetLocalMM(const AcMeshInfo info)
+{
+    return (int3)
+    {
+	    info.int_params[AC_mx],
+	    info.int_params[AC_my],
+	    1
+    };
+}
+static inline int3
+acGetLocalNN(const AcMeshInfo info)
+{
+    return (int3)
+    {
+	    info.int_params[AC_nx],
+	    info.int_params[AC_ny],
+	    1
+    };
+}
+static inline int3
+acGetMinNN(const AcMeshInfo info)
+{
+    return (int3)
+    {
+	    info.int_params[AC_nx_min],
+	    info.int_params[AC_ny_min],
+	    0
+    };
+}
+
+static inline int3
+acGetMaxNN(const AcMeshInfo info)
+{
+    return (int3)
+    {
+	    info.int_params[AC_nx_max],
+	    info.int_params[AC_ny_max],
+	    1
+    };
+}
+#endif
+
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info)
 {
-    const int3 n0 = (int3){
-        info.int_params[AC_nx_min],
-        info.int_params[AC_ny_min],
-        info.int_params[AC_nz_min],
-    };
-    const int3 n1 = (int3){
-        info.int_params[AC_nx_max],
-        info.int_params[AC_ny_max],
-        info.int_params[AC_nz_max],
-    };
-    const int3 m0 = (int3){0, 0, 0};
-    const int3 m1 = (int3){
-        info.int_params[AC_mx],
-        info.int_params[AC_my],
-        info.int_params[AC_mz],
-    };
-    const int3 nn = (int3){
-        info.int_params[AC_nx],
-        info.int_params[AC_ny],
-        info.int_params[AC_nz],
-    };
+   const int3 n0 = acGetMinNN(info);
+   const int3 n1 = acGetMaxNN(info);
+   const int3 m0 = (int3){0, 0, 0};
+   const int3 m1 = acGetLocalMM(info);
+   const int3 nn = acGetLocalNN(info);
 
-    return (AcMeshDims){
-        .n0 = n0,
-        .n1 = n1,
-        .m0 = m0,
-        .m1 = m1,
-        .nn = nn,
-    };
+   return (AcMeshDims){
+       .n0 = n0,
+       .n1 = n1,
+       .m0 = m0,
+       .m1 = m1,
+       .nn = nn,
+   };
 }
 
 size_t acGetKernelId(const Kernel kernel);
@@ -325,7 +414,7 @@ acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 static inline int3
 acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
 {
-    const int3 mm = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+    const int3 mm = acGetLocalMM(info);
 
     return (int3){
         (int)i % mm.x,
@@ -1497,6 +1586,13 @@ acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fiel
 {
     return acComputeWithParams(kernel, fields_in.data(), fields_in.size(), fields_out.data(), fields_out.size(), loader);
 }
+
+static inline AcTaskDefinition
+acCompute(AcKernel kernel, std::vector<Field> fields, std::function<void(ParamLoadingInfo)> loader)
+{
+    return acComputeWithParams(kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
+}
+
 
 template <size_t num_fields_in, size_t num_fields_out>
 AcTaskDefinition

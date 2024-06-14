@@ -440,6 +440,8 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
       acKernelFlush(stream, vba->out[i],count, (AcReal)0.0);
     }
   }
+  for (int i = 0; i < NUM_REAL_ARRAYS; ++i)
+	  vba->real_arrays[i] = nullptr;
   return AC_SUCCESS;
 }
 
@@ -484,11 +486,19 @@ VertexBufferArray
 acVBACreate(const AcMeshInfo config)
 {
   //can't use acVertexBufferDims because of linking issues
+#if TWO_D == 0
   const int3 counts = (int3){
         (config.int_params[AC_mx]),
         (config.int_params[AC_my]),
         (config.int_params[AC_mz])
   };
+#else
+  const int3 counts = (int3){
+        (config.int_params[AC_mx]),
+        (config.int_params[AC_my]),
+	1,
+  };
+#endif
 
   VertexBufferArray vba;
   size_t count = counts.x*counts.y*counts.z;
@@ -895,14 +905,7 @@ static TBConfig
 autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 {
   vba.reduce_offset = 0;
-  size_t id = (size_t)-1;
-  for (size_t i = 0; i < NUM_KERNELS; ++i) {
-    if (kernels[i] == kernel) {
-      id = i;
-      break;
-    }
-  }
-  ERRCHK_ALWAYS(id < NUM_KERNELS);
+  ERRCHK_ALWAYS(get_kernel_index(kernel) < NUM_KERNELS);
   // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
   //        "(%d):\n",
   //        kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
@@ -922,11 +925,19 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
       .tpb    = (dim3){0, 0, 0},
   };
 
+#if TWO_D == 0
   const int3 start = (int3){
       STENCIL_ORDER / 2,
       STENCIL_ORDER / 2,
       STENCIL_ORDER / 2,
   };
+#else
+  const int3 start = (int3){
+      STENCIL_ORDER / 2,
+      STENCIL_ORDER / 2,
+      0,
+  };
+#endif
   const int3 end = start + dims;
 
   dim3 best_tpb(0, 0, 0);

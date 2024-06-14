@@ -111,7 +111,7 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
 	while((dir_entry = readdir(d)) != NULL)
 		if(strcmp(dir_entry->d_name,".") && strcmp(dir_entry->d_name,".."))
 		{
-		        char* file_path = malloc((strlen(file) + strlen(dir_entry->d_name))*sizeof(char));
+		        char* file_path = malloc((strlen(file) + strlen(dir_entry->d_name) + 1000)*sizeof(char));
 			sprintf(file_path,"%s/%s",file,dir_entry->d_name);
 		        process_includes(depth+1,dir,file_path,out);
 			free(file_path);
@@ -317,7 +317,6 @@ main(int argc, char** argv)
     init_int_vec(&tinyexpr_cache);
     init_str_vec(&tinyexpr_cache_str);
     atexit(&cleanup);
-    printf("%s|%s\n",argv[1],argv[argc-1]);
     string_vec filenames;
     init_str_vec(&filenames);
     char* file = NULL;
@@ -420,7 +419,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             //    assert(!assignment);
             //}
             //user specified intrinsic function provided by the GPU library
-	    if(!strcmp(type_specifier->lhs->buffer,"intrinsic"))
+	    if(type_specifier && !strcmp(type_specifier->lhs->buffer,"intrinsic"))
 	    {
                 variable_definition->type |= NODE_NO_OUT;
                 set_identifier_type(NODE_DFUNCTION_ID, declaration_list);

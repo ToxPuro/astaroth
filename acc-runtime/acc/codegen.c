@@ -230,30 +230,44 @@ symboltable_reset(void)
   // (should be actually built-in externs in acc-runtime/api/acc-runtime.h)
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_mx");
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_my");
+#if TWO_D == 0
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_mz");
+#endif
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nx");
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_ny");
+#if TWO_D == 0
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nz");
+#endif
 
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nxgrid");
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nygrid");
+#if TWO_D == 0
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nzgrid");
+#endif
 
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nx_min");
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_ny_min");
+#if TWO_D == 0
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nz_min");
+#endif
 
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nx_max");
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_ny_max");
+#if TWO_D == 0
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nz_max");
+#endif
 
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_mxy");
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nxy");
+#if TWO_D == 0
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_nxyz");
+#endif
 
+#if PACKED_DATA_TRANSFERS
   add_symbol(NODE_DCONST_ID, NULL, 0,"int", "AC_xy_plate_bufsize");
   add_symbol(NODE_DCONST_ID, NULL, 0,"int", "AC_xz_plate_bufsize");
   add_symbol(NODE_DCONST_ID, NULL, 0,"int", "AC_yz_plate_bufsize");
+#endif
   add_symbol(NODE_DCONST_ID, NULL, 0,"int3", "AC_domain_decomposition");
   add_symbol(NODE_DCONST_ID, NULL, 0,"int", "AC_proc_mapping_strategy");
   add_symbol(NODE_DCONST_ID, NULL, 0,"int", "AC_decompose_strategy");
@@ -280,11 +294,15 @@ symboltable_reset(void)
   // (BC types do not belong here, BCs not handled with the DSL)
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_bc_type_bot_x");
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_bc_type_bot_y");
+#if TWO_D == 0
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_bc_type_bot_z");
+#endif
 
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_bc_type_top_x");
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_bc_type_top_y");
+#if TWO_D == 0
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_bc_type_top_z");
+#endif
   add_symbol(NODE_DCONST_ID, NULL, 0, "int", "AC_init_type");
   // Astaroth 2.0 backwards compatibility END
 }
@@ -1789,13 +1807,10 @@ gen_kernel_num_of_combinations(const ASTNode* root, combinations combinations, s
 	gen_kernel_num_of_combinations_recursive(root,combinations,user_enums,user_kernels_with_input_params,(combinatorial_params){user_kernel_combinatorial_params,user_kernel_combinatorial_params_options},struct_info);
 
   	free_str_vec(&user_enums.names);
-	for(int i = 0; i < 100; ++i)
-	{
-	  //TP: for some reason causes double free
-	  //for(int j=0;j<100;++j)
-	  //	  free_str_vec(&user_kernel_combinatorial_params_options[i+100*j]);
-  	  free_str_vec(&user_enums.options[i]);
-	}
+	//TP: for some reason causes double free
+	//for(int i = 0; i < 100; ++i)
+	//  for(int j=0;j<100;++j)
+	//  	  free_str_vec(&user_kernel_combinatorial_params_options[i+100*j]);
 }
 
 
@@ -2693,13 +2708,13 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "typedef enum {");
   //first communicated fields
   for(int i=0;i<num_of_fields;++i)
-	  if(field_is_communicated[i]) fprintf(fp, "%s,",field_names.data[i]);
-  for(int i=0;i<num_of_fields;++i)
-	  if(!field_is_communicated[i]) fprintf(fp, "%s,",field_names.data[i]);
+	fprintf(fp, "%s,",field_names.data[i]);
 
   fprintf(fp, "NUM_FIELDS=%d,", num_of_fields);
   fprintf(fp, "NUM_COMMUNICATED_FIELDS=%d,", num_of_communicated_fields);
   fprintf(fp, "} Field;\n");
+
+
 
   fprintf(fp, "static const bool vtxbuf_is_auxiliary[] = {");
   for(int i=0;i<num_of_fields;++i)
@@ -2708,6 +2723,15 @@ gen_user_defines(const ASTNode* root, const char* out)
     else
     	fprintf(fp, "%s,", "false");
   fprintf(fp, "};");
+
+  fprintf(fp, "static const bool vtxbuf_is_communicated[] = {");
+  for(int i=0;i<num_of_fields;++i)
+    if(field_is_communicated[i])
+    	fprintf(fp, "%s,", "true");
+    else
+    	fprintf(fp, "%s,", "false");
+  fprintf(fp, "};");
+
   //free_str_vec(&field_names);
 
 

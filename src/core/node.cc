@@ -126,6 +126,7 @@
 #include "astaroth.h"
 
 #include "math_utils.h"
+#if TWO_D == 0
 
 static const int MAX_NUM_DEVICES = 32;
 
@@ -1003,3 +1004,4 @@ acNodeReduceVecScal(const Node node, const Stream stream, const ReductionType rt
     *result = simple_final_reduce_scal(node, rtype, results, node->num_devices);
     return AC_SUCCESS;
 }
+#endif
