@@ -25,6 +25,21 @@
 
 #include "timer_hires.h"
 
+
+#define BENCHMARK_BEGIN() \
+{\
+acDeviceSynchronizeStream(device, STREAM_ALL);\
+timer_reset(&t);\
+}
+
+#define BENCHMARK_STOP(label)\
+{\
+acDeviceSynchronizeStream(device, STREAM_ALL);\
+const double macro_milliseconds = timer_diff_nsec(t) / 1e6;\
+fprintf(fp, "%s,%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%u\n", label, IMPLEMENTATION, \
+                MAX_THREADS_PER_BLOCK, nx, ny, nz, macro_milliseconds, jobid, seed, j, DOUBLE_PRECISION); \
+}
+
 #if AC_DOUBLE_PRECISION
 #define DOUBLE_PRECISION (1)
 #else
@@ -319,6 +334,76 @@ main(int argc, char** argv)
                     DOUBLE_PRECISION);
             printf("Milliseconds per kernel launch: %g\n", milliseconds);
         }
+
+        // Benchmark individual components
+        BENCHMARK_BEGIN();
+        acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, 2);
+        BENCHMARK_STOP("acDeviceLoadIntUniform");
+
+        // Compute: hydrodynamics
+        BENCHMARK_BEGIN();
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
+        BENCHMARK_STOP("singlepass_hydro");
+
+        // Boundary conditions: hydrodynamics
+        BENCHMARK_BEGIN();
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_LNRHO, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_UUX, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_UUY, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_UUZ, dims.m0, dims.m1);
+        BENCHMARK_STOP("bc_hydro");
+
+        // Profile averages
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, PROFILE_Umean_x);
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUY, PROFILE_Umean_y);
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUZ, PROFILE_Umean_z);
+
+        // TODO proper \overline{u x b^{pq}} calculation
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, PROFILE_ucrossb11mean_x);
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUY, PROFILE_ucrossb11mean_y);
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUZ, PROFILE_ucrossb11mean_z);
+
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, PROFILE_ucrossb12mean_x);
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUY, PROFILE_ucrossb12mean_y);
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUZ, PROFILE_ucrossb12mean_z);
+
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, PROFILE_ucrossb21mean_x);
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUY, PROFILE_ucrossb21mean_y);
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUZ, PROFILE_ucrossb21mean_z);
+
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, PROFILE_ucrossb22mean_x);
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUY, PROFILE_ucrossb22mean_y);
+        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUZ, PROFILE_ucrossb22mean_z);
+        BENCHMARK_BEGIN();
+        acDeviceReduceXYAverages(device, STREAM_DEFAULT);
+        BENCHMARK_STOP("reduce_xy_averages");
+
+        // Compute: test fields
+        BENCHMARK_BEGIN();
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve_tfm_b11, dims.n0, dims.n1);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve_tfm_b12, dims.n0, dims.n1);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve_tfm_b21, dims.n0, dims.n1);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve_tfm_b22, dims.n0, dims.n1);
+        BENCHMARK_STOP("singlepass_tfs");
+
+        // Boundary conditions: test fields
+        BENCHMARK_BEGIN();
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b11_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b11_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b11_z, dims.m0, dims.m1);
+
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b12_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b12_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b12_z, dims.m0, dims.m1);
+
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b21_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b21_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b21_z, dims.m0, dims.m1);
+
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b22_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b22_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b22_z, dims.m0, dims.m1);
+        BENCHMARK_STOP("bc_tfs");
     }
     // Profile
     cudaProfilerStart();
