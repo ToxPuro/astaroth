@@ -204,8 +204,6 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 #if TWO_D == 0
     ERRCHK_ALWAYS(submesh_config.int_params[AC_nz] % decomp.z == 0);
 #else
-    printf("Decomp z: %d\n",decomp.z);
-    fflush(stdout);
     ERRCHK_ALWAYS(decomp.z == 1);
 #endif
 
@@ -1631,6 +1629,13 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
         if (op.task_type == TASKTYPE_BOUNDCOND && op.bound_cond == BOUNDCOND_PERIODIC) {
             graph->periodic_boundaries = (AcBoundary)(graph->periodic_boundaries | op.boundary);
         }
+	if(op.task_type == TASKTYPE_HALOEXCHANGE)
+	{
+	  for(size_t i = 0; i < op.num_fields_in; ++i)
+	  	ERRCHK_ALWAYS(op.fields_in[i]  <= NUM_VTXBUF_HANDLES);
+	  for(size_t i = 0; i < op.num_fields_out; ++i)
+	  	ERRCHK_ALWAYS(op.fields_out[i]  <= NUM_VTXBUF_HANDLES);
+	}
         switch (op.task_type) {
 
         case TASKTYPE_COMPUTE: {

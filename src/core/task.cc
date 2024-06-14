@@ -62,6 +62,14 @@ using std::make_unique;
 #endif
 
 
+template <typename T>
+T*
+ptr_copy(const T* src, const int n)
+{
+	T* res = (T*)malloc(sizeof(T)*n);
+	memcpy(res,src,sizeof(T)*n);
+	return res;
+}
 
 AcTaskDefinition
 acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
@@ -70,11 +78,16 @@ acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, 
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
     task_def.kernel_enum         = kernel;
-    task_def.fields_in      = fields_in;
+    task_def.fields_in      = ptr_copy(fields_in,num_fields_in);
     task_def.num_fields_in  = num_fields_in;
-    task_def.fields_out     = fields_out;
+    task_def.fields_out     = ptr_copy(fields_out,num_fields_out);
     task_def.num_fields_out = num_fields_out;
     task_def.load_kernel_params_func = new LoadKernelParamsFunc{[](ParamLoadingInfo){;}};
+
+    for(size_t i = 0; i < task_def.num_fields_in; ++i)
+	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
+    for(size_t i = 0; i < task_def.num_fields_out; ++i)
+	    ERRCHK_ALWAYS(task_def.fields_out[i] <= NUM_VTXBUF_HANDLES);
     return task_def;
 }
 
@@ -85,11 +98,17 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
     task_def.kernel_enum         = kernel;
-    task_def.fields_in      = fields_in;
+    task_def.fields_in      = ptr_copy(fields_in,num_fields_in);
     task_def.num_fields_in  = num_fields_in;
-    task_def.fields_out     = fields_out;
+    task_def.fields_out     = ptr_copy(fields_out,num_fields_out);
     task_def.num_fields_out = num_fields_out;
     task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
+
+    for(size_t i = 0; i < task_def.num_fields_in; ++i)
+	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
+    for(size_t i = 0; i < task_def.num_fields_out; ++i)
+	    ERRCHK_ALWAYS(task_def.fields_out[i] <= NUM_VTXBUF_HANDLES);
+    return task_def;
     return task_def;
 }
 
@@ -109,10 +128,15 @@ acHaloExchange(Field fields[], const size_t num_fields)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_HALOEXCHANGE;
-    task_def.fields_in      = fields;
+    task_def.fields_in      = ptr_copy(fields,num_fields);
     task_def.num_fields_in  = num_fields;
-    task_def.fields_out = fields;
+    task_def.fields_out = ptr_copy(fields,num_fields);
     task_def.num_fields_out = num_fields;
+
+    for(size_t i = 0; i < task_def.num_fields_in; ++i)
+	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
+    for(size_t i = 0; i < task_def.num_fields_out; ++i)
+	    ERRCHK_ALWAYS(task_def.fields_out[i] <= NUM_VTXBUF_HANDLES);
     return task_def;
 }
 
@@ -130,12 +154,16 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond, Fie
     task_def.task_type      = TASKTYPE_BOUNDCOND;
     task_def.boundary       = boundary;
     task_def.bound_cond     = bound_cond;
-    task_def.fields_in      = fields;
+    task_def.fields_in      = ptr_copy(fields,num_fields);
     task_def.num_fields_in  = num_fields;
-    task_def.fields_out     = fields;
+    task_def.fields_out     = ptr_copy(fields,num_fields);
     task_def.num_fields_out = num_fields;
     task_def.parameters     = parameters;
     task_def.num_parameters = num_parameters;
+    for(size_t i = 0; i < task_def.num_fields_in; ++i)
+	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
+    for(size_t i = 0; i < task_def.num_fields_out; ++i)
+	    ERRCHK_ALWAYS(task_def.fields_out[i] <= NUM_VTXBUF_HANDLES);
     return task_def;
 }
 
@@ -153,11 +181,15 @@ acDSLBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, Field f
     task_def.boundary               = boundary;
     task_def.kernel_enum         = kernel;
 
-    task_def.fields_in      = fields_in;
+    task_def.fields_in      = ptr_copy(fields_in,num_fields_in);
     task_def.num_fields_in  = num_fields_in;
-    task_def.fields_out     = fields_out;
+    task_def.fields_out     = ptr_copy(fields_out,num_fields_out);
     task_def.num_fields_out = num_fields_out;
     task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
+    for(size_t i = 0; i < task_def.num_fields_in; ++i)
+	    ERRCHK_ALWAYS(task_def.fields_in[i] <= NUM_VTXBUF_HANDLES);
+    for(size_t i = 0; i < task_def.num_fields_out; ++i)
+	    ERRCHK_ALWAYS(task_def.fields_out[i] <= NUM_VTXBUF_HANDLES);
     return task_def;
 }
 
@@ -196,13 +228,15 @@ acSpecialMHDBoundaryCondition(const AcBoundary boundary, const AcSpecialMHDBound
 Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t num_fields)
     : family(family_), tag(tag_) 
 {
+    if(family == RegionFamily::Exchange_output)
+    	for(size_t i = 0; i < num_fields; ++i)
+	    ERRCHK_ALWAYS(fields_[i] <= NUM_VTXBUF_HANDLES);
     fields = {};
     switch (family) {
     	case RegionFamily::Exchange_output: //Fallthrough
     	case RegionFamily::Exchange_input : {
     	    for(size_t i = 0; i < num_fields; ++i)
 	    	if(vtxbuf_is_communicated[fields_[i]]) fields.push_back(fields_[i]);
-	    ERRCHK_ALWAYS(fields.size() <= NUM_COMMUNICATED_FIELDS);
 	    break;
 	}
 	default:
@@ -309,7 +343,7 @@ return Region(this->position + translation, this->dims, this->tag, this->fields)
 bool
 Region::overlaps(const Region* other)
 {
-	return this->geometry_overlaps(other) && this->fields_overlap(other)
+	return this->geometry_overlaps(other) && this->fields_overlap(other);
 }
 bool
 Region::geometry_overlaps(const Region* other)
@@ -323,13 +357,12 @@ Region::geometry_overlaps(const Region* other)
 }
 
 bool
-Region::fields_overlaps(const Region* other)
+Region::fields_overlap(const Region* other)
 {
-    bool overlaps false;
-    for(auto& field_1 : this->fields)
-	    for(auto& field_2 : other->fields)
-		    overlaps |= (field_1  == field_2)
-    return overlaps;
+    for(auto field_1 : this->fields)
+	    for(auto field_2 : other->fields)
+		    if(field_1 == field_2) return true;
+    return false;
 }
 
 AcBoundary
@@ -349,8 +382,7 @@ Region::is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary, AcProcMapp
 int
 Region::id_to_tag(int3 id)
 {
-    return ((3 + id.x) % 3) * 9 + ((3 + id.y) % 3) * 3 + (3 + id.z) % 3;
-}
+    return ((3 + id.x) % 3) * 9 + ((3 + id.y) % 3) * 3 + (3 + id.z) % 3; }
 
 int3
 Region::tag_to_id(int _tag)
