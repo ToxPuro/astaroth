@@ -63,6 +63,14 @@ using std::make_unique;
 
 
 
+template <typename T>
+T*
+ptr_copy(const T* src, const int n)
+{
+	T* res = (T*)malloc(sizeof(T)*n);
+	memcpy(res,src,sizeof(T)*n);
+	return res;
+}
 AcTaskDefinition
 acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, Field fields_out[],
           const size_t num_fields_out)
@@ -70,9 +78,9 @@ acCompute(const AcKernel kernel, Field fields_in[], const size_t num_fields_in, 
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
     task_def.kernel_enum         = kernel;
-    task_def.fields_in      = fields_in;
+    task_def.fields_in      = ptr_copy(fields_in,num_fields_in);
     task_def.num_fields_in  = num_fields_in;
-    task_def.fields_out     = fields_out;
+    task_def.fields_out     = ptr_copy(fields_out,num_fields_out);
     task_def.num_fields_out = num_fields_out;
     task_def.load_kernel_params_func = new LoadKernelParamsFunc{[](ParamLoadingInfo){;}};
     return task_def;
@@ -85,9 +93,9 @@ acComputeWithParams(const AcKernel kernel, Field fields_in[], const size_t num_f
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_COMPUTE;
     task_def.kernel_enum         = kernel;
-    task_def.fields_in      = fields_in;
+    task_def.fields_in      = ptr_copy(fields_in,num_fields_in);
     task_def.num_fields_in  = num_fields_in;
-    task_def.fields_out     = fields_out;
+    task_def.fields_out     = ptr_copy(fields_out,num_fields_out);
     task_def.num_fields_out = num_fields_out;
     task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
     return task_def;
@@ -109,9 +117,9 @@ acHaloExchange(Field fields[], const size_t num_fields)
 {
     AcTaskDefinition task_def{};
     task_def.task_type      = TASKTYPE_HALOEXCHANGE;
-    task_def.fields_in      = fields;
+    task_def.fields_in      = ptr_copy(fields,num_fields);
     task_def.num_fields_in  = num_fields;
-    task_def.fields_out = fields;
+    task_def.fields_out = ptr_copy(fields,num_fields);
     task_def.num_fields_out = num_fields;
     return task_def;
 }
@@ -124,9 +132,9 @@ acBoundaryCondition(const AcBoundary boundary, const AcBoundcond bound_cond, Fie
     task_def.task_type      = TASKTYPE_BOUNDCOND;
     task_def.boundary       = boundary;
     task_def.bound_cond     = bound_cond;
-    task_def.fields_in      = fields;
+    task_def.fields_in      = ptr_copy(fields,num_fields);
     task_def.num_fields_in  = num_fields;
-    task_def.fields_out     = fields;
+    task_def.fields_out     = ptr_copy(fields,num_fields);
     task_def.num_fields_out = num_fields;
     task_def.parameters     = parameters;
     task_def.num_parameters = num_parameters;
@@ -141,9 +149,9 @@ acDSLBoundaryCondition(const AcBoundary boundary, const AcKernel kernel, Field f
     task_def.boundary               = boundary;
     task_def.kernel_enum         = kernel;
 
-    task_def.fields_in      = fields_in;
+    task_def.fields_in      = ptr_copy(fields_in,num_fields_in);
     task_def.num_fields_in  = num_fields_in;
-    task_def.fields_out     = fields_out;
+    task_def.fields_out     = ptr_copy(fields_out,num_fields_out);
     task_def.num_fields_out = num_fields_out;
     task_def.load_kernel_params_func = new LoadKernelParamsFunc({load_func});
     return task_def;
