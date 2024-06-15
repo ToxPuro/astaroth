@@ -1026,6 +1026,11 @@ HaloExchangeTask::advance(const TraceFile* trace_file)
     	case HaloExchangeState::Waiting:
     	    trace_file->trace(this, "waiting", "moving");
     	    move();
+    	    state = static_cast<int>(HaloExchangeState::Moving);
+    	    break;
+    	case HaloExchangeState::Moving:
+    	    trace_file->trace(this, "moving", "waiting");
+	    sync();
     	    state = static_cast<int>(HaloExchangeState::Waiting);
     	    break;
     	default: /* Fallthrough */
