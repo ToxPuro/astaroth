@@ -675,7 +675,7 @@ traceless_strain(uij,divu)
 }
 
 
-stress_tensor(v) {
+traceless_rateof_strain(v) {
 
     Matrix S
 

@@ -167,7 +167,7 @@ induction() {
     return cross(vecvalue(UU), curl(AA)) + AC_eta * veclaplace(AA)
 }
 
-stress_tensor(v) {
+traceless_rateof_strain(v) {
     Matrix S
 
     S.data[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))
@@ -204,7 +204,7 @@ continuity() {
 }
 
 momentum() {
-    S = stress_tensor(UU)
+    S = traceless_rateof_strain(UU)
     cs2_sound = AC_cs_sound * AC_cs_sound
     cs2 = cs2_sound * exp(AC_gamma * value(VTXBUF_ENTROPY) / AC_cp_sound + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0))
 
@@ -243,7 +243,7 @@ heat_conduction() {
 }
 
 entropy() {
-    S = stress_tensor(UU)
+    S = traceless_rateof_strain(UU)
     inv_pT = 1. / (exp(value(VTXBUF_LNRHO)) * exp(lnT()))
     j = (1. / AC_mu0) * (gradient_of_divergence(AA) - veclaplace(AA))
     RHS = (0) - (0) + AC_eta * AC_mu0 * dot(j, j) +
