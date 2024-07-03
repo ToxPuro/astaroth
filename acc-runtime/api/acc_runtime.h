@@ -22,8 +22,8 @@
 #if AC_USE_HIP
 #include "hip.h"
 
-#include <hip/hip_runtime_api.h> // Streams
-#include <roctracer_ext.h>       // Profiling
+#include <hip/hip_runtime_api.h>     // Streams
+#include <roctracer/roctracer_ext.h> // Profiling
 #else
 #include <cuda_profiler_api.h> // Profiling
 #include <cuda_runtime_api.h>  // Streams
@@ -44,9 +44,22 @@ typedef struct {
 } AcMeshInfo;
 
 typedef struct {
+  AcReal* in[NUM_PROFILES];
+  AcReal* out[NUM_PROFILES];
+  size_t count;
+} ProfileBufferArray;
+
+typedef struct {
+  // Fields
   AcReal* in[NUM_FIELDS];
   AcReal* out[NUM_FIELDS];
-  size_t bytes;
+  size_t bytes; // Suggest deprecation: replace with mx,my,mz
+
+  // Profiles
+  ProfileBufferArray profiles;
+
+  // Other kernel parameters
+  // (Placeholder, add new parameters here)
 } VertexBufferArray;
 
 typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
@@ -60,9 +73,16 @@ extern "C" {
 AcResult acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
                        const AcReal value);
 
+AcResult acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba);
+
+ProfileBufferArray acPBACreate(const size_t count);
+
+void acPBADestroy(ProfileBufferArray* pba);
+
 AcResult acVBAReset(const cudaStream_t stream, VertexBufferArray* vba);
 
-VertexBufferArray acVBACreate(const size_t count);
+VertexBufferArray acVBACreate(const size_t mx, const size_t my,
+                              const size_t mz);
 
 void acVBADestroy(VertexBufferArray* vba);
 

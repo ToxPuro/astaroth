@@ -212,7 +212,7 @@ DCONST(const AcReal3Param param)
 }
 
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
-  ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mxy))
+  ((i) + (j) * DCONST(AC_mx) + (k) * DCONST(AC_mxy))
 
 __device__ int
 LOCAL_COMPDOMAIN_IDX(const int3 coord)
@@ -383,6 +383,55 @@ freeCompressible(void* ptr, const size_t requested_bytes)
 #endif
 
 AcResult
+acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba)
+{
+  // Set pba.in data to all-nan and pba.out to 0
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    acKernelFlush(stream, pba->in[i], pba->count, (AcReal)NAN);
+    acKernelFlush(stream, pba->out[i], pba->count, (AcReal)0.0);
+  }
+  return AC_SUCCESS;
+}
+
+ProfileBufferArray
+acPBACreate(const size_t count)
+{
+  ProfileBufferArray pba = {.count = count};
+
+  const size_t bytes = sizeof(pba.in[0][0]) * count;
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+#if USE_COMPRESSIBLE_MEMORY
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&pba.in[i], bytes));
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&pba.out[i], bytes));
+#else
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&pba.in[i], bytes));
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&pba.out[i], bytes));
+#endif
+  }
+
+  acPBAReset(0, &pba);
+  cudaDeviceSynchronize();
+  return pba;
+}
+
+void
+acPBADestroy(ProfileBufferArray* pba)
+{
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+#if USE_COMPRESSIBLE_MEMORY
+    freeCompressible(pba->in[i], sizeof(pba.in[0][0]) * pba->count);
+    freeCompressible(pba->out[i], sizeof(pba.out[0][0]) * pba->count);
+#else
+    cudaFree(pba->in[i]);
+    cudaFree(pba->out[i]);
+#endif
+    pba->in[i]  = NULL;
+    pba->out[i] = NULL;
+  }
+  pba->count = 0;
+}
+
+AcResult
 acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
   const size_t count = vba->bytes / sizeof(vba->in[0][0]);
@@ -392,15 +441,18 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
     acKernelFlush(stream, vba->in[i], count, (AcReal)NAN);
     acKernelFlush(stream, vba->out[i], count, (AcReal)0.0);
   }
+
+  // Note: should be moved out when refactoring VBA to KernelParameterArray
+  acPBAReset(stream, &vba->profiles);
   return AC_SUCCESS;
 }
 
 VertexBufferArray
-acVBACreate(const size_t count)
+acVBACreate(const size_t mx, const size_t my, const size_t mz)
 {
   VertexBufferArray vba;
 
-  const size_t bytes = sizeof(vba.in[0][0]) * count;
+  const size_t bytes = sizeof(vba.in[0][0]) * mx * my * mz;
   vba.bytes          = bytes;
 
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
@@ -412,6 +464,9 @@ acVBACreate(const size_t count)
     ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&vba.out[i], bytes));
 #endif
   }
+
+  // Note: should be moved out when refactoring VBA to KernelParameterArray
+  vba.profiles = acPBACreate(mz);
 
   acVBAReset(0, &vba);
   cudaDeviceSynchronize();
@@ -433,6 +488,9 @@ acVBADestroy(VertexBufferArray* vba)
     vba->out[i] = NULL;
   }
   vba->bytes = 0;
+
+  // Note: should be moved out when refactoring VBA to KernelParameterArray
+  acPBADestroy(&vba->profiles);
 }
 
 AcResult
@@ -551,8 +609,9 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
   cudaDeviceSynchronize(); /* See note in acLoadStencil */                     \
                                                                                \
-  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
-                        (size_t)&d_mesh_info;                                  \
+  const size_t offset = (size_t) &                                             \
+                        d_mesh_info.LABEL_LOWER##_params[param] - (size_t) &   \
+                        d_mesh_info;                                           \
                                                                                \
   const cudaError_t retval = cudaMemcpyToSymbol(                               \
       d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);     \
@@ -605,8 +664,9 @@ acLoadInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
   cudaDeviceSynchronize(); /* See notes in GEN_LOAD_UNIFORM */                 \
                                                                                \
-  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
-                        (size_t)&d_mesh_info;                                  \
+  const size_t offset = (size_t) &                                             \
+                        d_mesh_info.LABEL_LOWER##_params[param] - (size_t) &   \
+                        d_mesh_info;                                           \
                                                                                \
   const cudaError_t retval = cudaMemcpyFromSymbol(                             \
       value, d_mesh_info, sizeof(*value), offset, cudaMemcpyDeviceToHost);     \

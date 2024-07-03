@@ -1,5 +1,5 @@
 ## Astaroth Core
-add_library(astaroth_core device.cc grid.cc task.cc node.cc astaroth.cc astaroth_fortran.cc debug.cc)
+add_library(astaroth_core device.cc grid.cc task.cc node.cc astaroth.cc astaroth_fortran.cc debug.cc decomposition.cc)
 
 if (USE_HIP)
     find_package(hip)
@@ -24,6 +24,7 @@ if (USE_HIP)
         )
     endif()
 
+# JP: disabled as this caused issues on Triton. CMake should resolve these automatically.
 #    message("AMD GPU targets: ${AMDGPU_TARGETS}\n")
 #    foreach(amdgpu_target ${AMDGPU_TARGETS})
 #	target_link_libraries(astaroth_core

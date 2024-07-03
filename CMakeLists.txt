@@ -11,6 +11,7 @@ option(BUILD_SAMPLES      "Builds projects in samples subdirectory."            
 option(BUILD_MHD_SAMPLES  "Builds MHD samples. Has no effect if BUILD_SAMPLES=OFF." OFF)
 option(BUILD_MLLIB_SAMPLES "Builds samples that use cuDNN or MIOpen" ON)
 option(MPI_ENABLED        "Enables additional functions for MPI communciation." OFF)
+option(USE_POSIX_IO       "Uses POSIX I/O less error prone, but increased overheads." OFF)
 option(USE_CUDA_AWARE_MPI "Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory" ON)
 option(MULTIGPU_ENABLED   "Enables multi-GPU on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only." ON)
 option(VERBOSE            "Enables various status and warning messages"         ON)
@@ -74,14 +75,14 @@ if (USE_HIP)
     #link_directories(/opt/rocm/lib)
 
     # Roctracer
-    include_directories(/opt/rocm/roctracer/include)
-    link_directories(/opt/rocm/roctracer/lib)
+    include_directories(/opt/rocm-5.2.3/roctracer/include)
+    link_directories(/opt/rocm-5.2.3/roctracer/lib)
 
     # Rocrand
-    include_directories(/opt/rocm/hiprand/include)
-    include_directories(/opt/rocm/rocrand/include)
-    link_directories(/opt/rocm/hiprand/lib)
-    link_directories(/opt/rocm/rocrand/lib)
+    include_directories(/opt/rocm-5.2.3/hiprand/include)
+    include_directories(/opt/rocm-5.2.3/rocrand/include)
+    link_directories(/opt/rocm-5.2.3/hiprand/lib)
+    link_directories(/opt/rocm-5.2.3/rocrand/lib)
 
     find_package(hip)
 else ()
@@ -126,6 +127,9 @@ if (MPI_ENABLED)
     include_directories(${MPI_C_INCLUDE_DIRS})
     add_definitions(-DAC_MPI_ENABLED=1)
 endif ()
+if (USE_POSIX_IO)
+    add_definitions(-DUSE_POSIX_IO=1)
+endif()
 if (USE_CUDA_AWARE_MPI)
     add_definitions(-DUSE_CUDA_AWARE_MPI=1)
 endif()
@@ -173,7 +177,7 @@ if (BUILD_UTILS)
 endif()
 
 ## Have this as a separate option when no other "samples" aree needed.
-## Useful e.g. when compilation time is long e.g. with shock viscosity. 
+## Useful e.g. when compilation time is long e.g. with shock viscosity.
 if (BUILD_STANDALONE)
     add_subdirectory(samples/standalone_mpi)
 endif()

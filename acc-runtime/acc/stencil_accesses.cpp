@@ -78,7 +78,7 @@ LOCAL_COMPDOMAIN_IDX(const int3 coord)
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
                               // least the max smem size of the device
 
-static int stencils_accessed[NUM_FIELDS][NUM_STENCILS] = {{0}};
+static int stencils_accessed[NUM_FIELDS + NUM_PROFILES][NUM_STENCILS] = {{0}};
 static AcMeshInfo d_mesh_info;
 #include "user_kernels.h"
 
@@ -91,6 +91,10 @@ vbaCreate(const size_t count)
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
     vba.in[i]  = (AcReal*)malloc(bytes);
     vba.out[i] = (AcReal*)malloc(bytes);
+  }
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    vba.profiles.in[i]  = (AcReal*)malloc(bytes);
+    vba.profiles.out[i] = (AcReal*)malloc(bytes);
   }
 
   return vba;
@@ -105,6 +109,12 @@ vbaDestroy(VertexBufferArray* vba)
     vba->in[i]  = NULL;
     vba->out[i] = NULL;
   }
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    free(vba->profiles.in[i]);
+    free(vba->profiles.out[i]);
+    vba->profiles.in[i]  = NULL;
+    vba->profiles.out[i] = NULL;
+  }
 }
 
 int
@@ -118,17 +128,20 @@ main(int argc, char* argv[])
   FILE* fp           = fopen(output, "w+");
   assert(fp);
 
-  fprintf(fp,
-          "static int stencils_accessed[NUM_KERNELS][NUM_FIELDS][NUM_STENCILS] "
-          "= {");
+  fprintf(
+      fp,
+      "static int "
+      "stencils_accessed[NUM_KERNELS][NUM_FIELDS+NUM_PROFILES][NUM_STENCILS] "
+      "= {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     memset(stencils_accessed, 0,
-           sizeof(stencils_accessed[0][0]) * NUM_FIELDS * NUM_STENCILS);
+           sizeof(stencils_accessed[0][0]) * (NUM_FIELDS + NUM_PROFILES) *
+               NUM_STENCILS);
     VertexBufferArray vba = vbaCreate(1);
     kernels[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
     vbaDestroy(&vba);
 
-    for (size_t j = 0; j < NUM_FIELDS; ++j)
+    for (size_t j = 0; j < NUM_FIELDS + NUM_PROFILES; ++j)
       for (size_t i = 0; i < NUM_STENCILS; ++i)
         if (stencils_accessed[j][i])
           fprintf(fp, "[%lu][%lu][%lu] = 1,", k, j, i);

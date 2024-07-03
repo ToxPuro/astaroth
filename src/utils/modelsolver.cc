@@ -781,7 +781,7 @@ momentum(const VectorData uu, const ScalarData lnrho
     const Vector B       = curl(aa);
     const Scalar inv_rho = (Scalar)(1.) / exp(value(lnrho));
 #endif
-    const Vector mom     = -mul(gradients(uu), vecvalue(uu)) -
+    const Vector mom = -mul(gradients(uu), vecvalue(uu)) -
                        cs2 * gradient(lnrho)
 #if LUPWD
                        // Note: dangerous implementation, upwd calculation duplicated (w/ and w/o
@@ -862,7 +862,7 @@ entropy(const ScalarData ss, const VectorData uu, const ScalarData lnrho)
     const Vector j = ((Scalar)(1.) / getReal(AC_mu0)) *
                      (gradient_of_divergence(aa) - laplace_vec(aa)); // Current density
 #else
-    const Vector j                 = (Vector){0.0, 0.0, 0.0};
+    const Vector j = (Vector){0.0, 0.0, 0.0};
 #endif
     const Scalar RHS = H_CONST - C_CONST + getReal(AC_eta) * getReal(AC_mu0) * dot(j, j) +
                        (Scalar)(2.) * exp(value(lnrho)) * getReal(AC_nu_visc) * contract(S) +
@@ -1014,7 +1014,7 @@ solve_alpha_step(AcMesh in, const int step_number, const AcReal dt, const int i,
 #if LMAGNETIC
     const Vector uu_res = momentum(uu, lnrho, ss, aa);
 #else
-    const Vector uu_res            = momentum(uu, lnrho, ss);
+    const Vector uu_res = momentum(uu, lnrho, ss);
 #endif
     rate_of_change[VTXBUF_UUX] = uu_res.x;
     rate_of_change[VTXBUF_UUY] = uu_res.y;
@@ -1026,7 +1026,7 @@ solve_alpha_step(AcMesh in, const int step_number, const AcReal dt, const int i,
 #endif
 #else
 #if LMAGNETIC
-    const Vector uu_res        = momentum(uu, lnrho, aa);
+    const Vector uu_res = momentum(uu, lnrho, aa);
 #else
     const Vector uu_res = momentum(uu, lnrho);
 #endif

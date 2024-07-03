@@ -166,6 +166,28 @@ as_size_t(const T i)
                 static_cast<long double>(SIZE_MAX));
   return static_cast<size_t>(i);
 }
+
+template <typename T>
+static inline int64_t
+as_int64_t(const T i)
+{
+  ERRCHK_ALWAYS(static_cast<long double>(i) >
+                static_cast<long double>(INT64_MIN));
+  ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(INT64_MAX));
+  return static_cast<int64_t>(i);
+}
+
+template <typename T>
+static inline int
+as_int(const T i)
+{
+  ERRCHK_ALWAYS(static_cast<long double>(i) >
+                static_cast<long double>(INT_MIN));
+  ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(INT_MAX));
+  return static_cast<int>(i);
+}
 #else
 // TODO: cleanup and integrate with the errors above someday
 #define INDIRECT_ERROR(str, file, line)                                                                          \

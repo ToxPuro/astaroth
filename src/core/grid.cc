@@ -59,6 +59,8 @@
 #include "math_utils.h"
 #include "timer_hires.h"
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
 #ifdef USE_PERFSTUBS
 #define PERFSTUBS_USE_TIMER
 #include "perfstubs_api/timer.h"
@@ -67,12 +69,15 @@
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
     Device device;
-    AcMesh submesh; // Submesh in host memory. Used as scratch space.
-    uint3_64 decomposition;
+    AcMesh submesh;         // Submesh in host memory. Used as scratch space.
+    uint3_64 decomposition; // For backwards compatibility. Should use AcDecompositionInfo.
     bool initialized;
     int3 nn;
     std::shared_ptr<AcTaskGraph> default_tasks;
     size_t mpi_tag_space_count;
+
+    // Decomposition
+    // AcDecompositionInfo decomposition_info;
 } Grid;
 
 static Grid grid = {};
@@ -237,7 +242,22 @@ acGridInit(const AcMeshInfo info)
     MPI_Barrier(acGridMPIComm());
 
     // Decompose
+    const AcMeshDims mesh_dims = acGetMeshDims(info);
+    const size_t global_dims[] = {
+        as_size_t(mesh_dims.nn.x),
+        as_size_t(mesh_dims.nn.y),
+        as_size_t(mesh_dims.nn.z),
+    };
+    const size_t ndims                  = ARRAY_SIZE(global_dims);
+    const size_t node_count             = as_size_t((nprocs + device_count - 1) / device_count);
+    const size_t partitions_per_layer[] = {as_size_t(device_count), as_size_t(node_count)};
+    const size_t nlayers                = ARRAY_SIZE(partitions_per_layer);
+    compat_acDecompositionInit(ndims, global_dims, nlayers, partitions_per_layer);
+    // grid.decomposition_info = acDecompositionInit(ndims, global_dims,
+    // nlayers,partitions_per_layer);
+
     const uint3_64 decomp = decompose(nprocs);
+    acVerifyDecomposition(decomp);
 
     // Check that the decomposition is valid
     const int3 nn       = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
@@ -317,8 +337,7 @@ acGridInit(const AcMeshInfo info)
     acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
 #ifdef DEBUG_SYNC
     printf("USING DEBUG SYNC");
-    AcTaskDefinition default_ops[] = {
-                                      acSync(),
+    AcTaskDefinition default_ops[] = {acSync(),
                                       acSync(),
                                       acHaloExchange(all_fields),
                                       acSync(),
@@ -341,8 +360,7 @@ acGridInit(const AcMeshInfo info)
 #endif // AC_INTEGRATION_ENABLED
     };
 #else
-    AcTaskDefinition default_ops[] = {
-                                      acHaloExchange(all_fields),
+    AcTaskDefinition default_ops[] = {acHaloExchange(all_fields),
                                       acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
                                                           all_fields),
 #ifdef AC_INTEGRATION_ENABLED
@@ -390,6 +408,8 @@ acGridQuit(void)
     grid.decomposition = (uint3_64){0, 0, 0};
     acHostMeshDestroy(&grid.submesh);
     acDeviceDestroy(grid.device);
+    compat_acDecompositionQuit();
+    // acDecompositionInfoDestroy(&grid.decomposition_info);
 
     return AC_SUCCESS;
 }
@@ -1467,8 +1487,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             break;
         }
         case TASKTYPE_SYNC: {
-            auto task = std::make_shared<SyncTask>(op, i,nn,device,swap_offset);
-            graph -> all_tasks.push_back(task);
+            auto task = std::make_shared<SyncTask>(op, i, nn, device, swap_offset);
+            graph->all_tasks.push_back(task);
             break;
         }
 
@@ -1707,22 +1727,19 @@ static AcResult
 distributedScalarReduction(const AcReal local_result, const ReductionType rtype, AcReal* result)
 {
     MPI_Op op;
-    if (rtype == RTYPE_MAX || rtype == RTYPE_ALFVEN_MAX || 
-        rtype == RTYPE_ALFVEN_RADIAL_WINDOW_MAX || 
-        rtype == RTYPE_GAUSSIAN_WINDOW_MAX || 
-        rtype == RTYPE_RADIAL_WINDOW_MAX ) {
+    if (rtype == RTYPE_MAX || rtype == RTYPE_ALFVEN_MAX ||
+        rtype == RTYPE_ALFVEN_RADIAL_WINDOW_MAX || rtype == RTYPE_GAUSSIAN_WINDOW_MAX ||
+        rtype == RTYPE_RADIAL_WINDOW_MAX) {
         op = MPI_MAX;
     }
-    else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN || 
-             rtype == RTYPE_ALFVEN_RADIAL_WINDOW_MIN || 
-             rtype == RTYPE_GAUSSIAN_WINDOW_MIN || 
-             rtype == RTYPE_RADIAL_WINDOW_MIN ) {
+    else if (rtype == RTYPE_MIN || rtype == RTYPE_ALFVEN_MIN ||
+             rtype == RTYPE_ALFVEN_RADIAL_WINDOW_MIN || rtype == RTYPE_GAUSSIAN_WINDOW_MIN ||
+             rtype == RTYPE_RADIAL_WINDOW_MIN) {
         op = MPI_MIN;
     }
     else if (rtype == RTYPE_RMS || rtype == RTYPE_RMS_EXP || rtype == RTYPE_SUM ||
-             rtype == RTYPE_ALFVEN_RMS || rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS || 
-             rtype == RTYPE_GAUSSIAN_WINDOW_SUM || 
-             rtype == RTYPE_RADIAL_WINDOW_SUM ) {
+             rtype == RTYPE_ALFVEN_RMS || rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS ||
+             rtype == RTYPE_GAUSSIAN_WINDOW_SUM || rtype == RTYPE_RADIAL_WINDOW_SUM) {
         op = MPI_SUM;
     }
     else {
@@ -1742,22 +1759,22 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     }
 
 #ifdef AC_INTEGRATION_ENABLED
-    if ( rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS ) {
+    if (rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS) {
         // MV NOTE: This has to be calculated here separately, because does not
-        //          know what GPU is doing. 
-        const AcReal cell_volume   = grid.device->local_config.real_params[AC_dsx] *
-                                     grid.device->local_config.real_params[AC_dsy] *
-                                     grid.device->local_config.real_params[AC_dsz];
+        //          know what GPU is doing.
+        const AcReal cell_volume = grid.device->local_config.real_params[AC_dsx] *
+                                   grid.device->local_config.real_params[AC_dsy] *
+                                   grid.device->local_config.real_params[AC_dsz];
 
-        const AcReal sphere_volume = (4.0/3.0) * M_PI *
-                                     grid.device->local_config.real_params[AC_window_radius] * 
-                                     grid.device->local_config.real_params[AC_window_radius] * 
-                                     grid.device->local_config.real_params[AC_window_radius];  
+        const AcReal sphere_volume = (4.0 / 3.0) * M_PI *
+                                     grid.device->local_config.real_params[AC_window_radius] *
+                                     grid.device->local_config.real_params[AC_window_radius] *
+                                     grid.device->local_config.real_params[AC_window_radius];
 
-        //only include whole cells
-        const AcReal cell_number   = AcReal(int(sphere_volume/cell_volume));
+        // only include whole cells
+        const AcReal cell_number = AcReal(int(sphere_volume / cell_volume));
 
-        mpi_res                    = sqrt(mpi_res / cell_number);
+        mpi_res = sqrt(mpi_res / cell_number);
     }
 #endif
     *result = mpi_res;
@@ -1807,6 +1824,41 @@ acGridReduceVecScal(const Stream stream, const ReductionType rtype,
                                      &local_result);
 
     return distributedScalarReduction(local_result, rtype, result);
+}
+
+AcResult
+acGridReduceXYAverage(const Stream stream, const Field field, const Profile profile)
+{
+    ERRCHK(grid.initialized);
+    const Device device = grid.device;
+    acGridSynchronizeStream(STREAM_ALL);
+
+    // Strategy:
+    // 1) Reduce the local result to device->vba.profiles.in
+    acDeviceReduceXYAverage(device, stream, field, profile);
+
+    // 2) Create communicator that encompasses the processes that are neighbors in the xy direction
+    int nprocs, pid;
+    MPI_Comm_size(astaroth_comm, &nprocs);
+    MPI_Comm_rank(astaroth_comm, &pid);
+
+    const uint3_64 decomp = decompose(nprocs);
+    const int3 pid3d      = getPid3D(pid, decomp);
+    MPI_Comm xy_neighbors;
+    MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
+
+    // 3) Allreduce
+    MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in[profile], device->vba.profiles.count,
+                  AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
+
+    // 4) Optional: Test
+    // AcReal arr[device->vba.profiles.count];
+    // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
+    //            cudaMemcpyDeviceToHost);
+    // for (size_t i = 0; i < device->vba.profiles.count; ++i)
+    //     printf("%i: %g\n", i, arr[i]);
+
+    return AC_SUCCESS;
 }
 
 /** */
@@ -2166,7 +2218,6 @@ acGridDiskAccessLaunch(const AccessType type)
 
             const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
 #if USE_DISTRIBUTED_IO
-#define USE_POSIX_IO (0)
 
 #if USE_POSIX_IO
             char outfile[4096] = "";
@@ -2301,9 +2352,8 @@ acGridWriteMeshToDiskLaunch(const char* dir, const char* label)
 
 #if USE_DISTRIBUTED_IO
             (void)offset; // Unused
-#define USE_POSIX_IO (0)
 #if USE_POSIX_IO
-            FILE* fp = fopen(outfile, "w");
+            FILE* fp = fopen(filepath, "w");
             ERRCHK_ALWAYS(fp);
 
             const size_t count         = acVertexBufferCompdomainSize(info);
@@ -2457,7 +2507,6 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
             (void)global_nn;      // Unused
             (void)global_pos_min; // Unused
             (void)slice_volume;   // Unused
-#define USE_POSIX_IO (0)
 #if USE_POSIX_IO
             if (color != MPI_UNDEFINED) {
                 FILE* fp = fopen(filepath, "w");
@@ -2715,7 +2764,7 @@ acGridDiskAccessLaunch(const AccessType type)
         char path[4096] = "";
         sprintf(path, "%s.out", vtxbuf_names[i]);
 
-        const int3 offset  = info.int3_params[AC_multigpu_offset]; // Without halo
+        const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
 #if USE_DISTRIBUTED_IO
         int mode           = MPI_MODE_CREATE | MPI_MODE_WRONLY;
         char outfile[4096] = "";

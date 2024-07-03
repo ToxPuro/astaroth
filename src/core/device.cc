@@ -234,6 +234,24 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     device->id           = id;
     device->local_config = device_config;
 
+    // Check that AC_global_grid_n and AC_multigpu_offset are valid
+    // Replace if not and give a warning otherwise
+    if (device->local_config.int3_params[AC_global_grid_n].x <= 0 ||
+        device->local_config.int3_params[AC_global_grid_n].y <= 0 ||
+        device->local_config.int3_params[AC_global_grid_n].z <= 0 ||
+        device->local_config.int3_params[AC_multigpu_offset].x < 0 ||
+        device->local_config.int3_params[AC_multigpu_offset].y < 0 ||
+        device->local_config.int3_params[AC_multigpu_offset].z < 0) {
+        WARNING("Invalid AC_global_grid_n or AC_multigpu_offset passed in device_config to "
+                "acDeviceCreate. Replacing with AC_global_grid_n = local grid size and "
+                "AC_multigpu_offset = (int3){0,0,0}.");
+        device->local_config
+            .int3_params[AC_global_grid_n] = (int3){device_config.int_params[AC_nx],
+                                                    device_config.int_params[AC_ny],
+                                                    device_config.int_params[AC_nz]};
+        device->local_config.int3_params[AC_multigpu_offset] = (int3){0, 0, 0};
+    }
+
 #if AC_VERBOSE
     acDevicePrintInfo(device);
     printf("Trying to run a dummy kernel. If this fails, make sure that your\n"
@@ -258,12 +276,13 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Memory
     // VBA in/out
-    device->vba = acVBACreate(acVertexBufferSize(device_config));
+    const int3 mm = acConstructInt3Param(AC_mx, AC_my, AC_mz, device->local_config);
+    device->vba   = acVBACreate(mm.x, mm.y, mm.z);
     /*
     // VBA Profiles
-    const size_t profile_size_bytes = sizeof(AcReal) * max(device_config.int_params[AC_mx],
-                                                           max(device_config.int_params[AC_my],
-                                                               device_config.int_params[AC_mz]));
+    const size_t profile_size_bytes = sizeof(AcReal) * max(device->local_config.int_params[AC_mx],
+                                                           max(device->local_config.int_params[AC_my],
+                                                               device->local_config.int_params[AC_mz]));
     for (int i = 0; i < NUM_SCALARARRAY_HANDLES; ++i) {
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&device->vba.profiles[i], profile_size_bytes));
         ERRCHK_CUDA_ALWAYS(cudaMemset((void*)device->vba.profiles[i], 0, profile_size_bytes));
@@ -271,8 +290,8 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     */
 
     // Reductions
-    const int3 max_dims                = acConstructInt3Param(AC_nx, AC_ny, AC_nz, device_config);
-    const size_t scratchpad_size       = acKernelReduceGetMinimumScratchpadSize(max_dims);
+    const int3 max_dims          = acConstructInt3Param(AC_nx, AC_ny, AC_nz, device->local_config);
+    const size_t scratchpad_size = acKernelReduceGetMinimumScratchpadSize(max_dims);
     const size_t scratchpad_size_bytes = acKernelReduceGetMinimumScratchpadSizeBytes(max_dims);
     for (size_t i = 0; i < NUM_REDUCE_SCRATCHPADS; ++i) {
         ERRCHK_CUDA_ALWAYS(
@@ -282,7 +301,7 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Device constants
     // acDeviceLoadDefaultUniforms(device); // TODO recheck
-    acDeviceLoadMeshInfo(device, device_config);
+    acDeviceLoadMeshInfo(device, device->local_config);
 
 #if AC_VERBOSE
     printf("Created device %d (%p)\n", device->id, device);
@@ -734,8 +753,8 @@ acDeviceReduceScal(const Device device, const Stream stream, const ReductionType
     acDeviceReduceScalNotAveraged(device, stream, rtype, vtxbuf_handle, result);
 
     switch (rtype) {
-    case RTYPE_RMS:     /* Fallthrough */
-    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_RMS:                      /* Fallthrough */
+    case RTYPE_RMS_EXP:                  /* Fallthrough */
     case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
@@ -774,8 +793,8 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
     acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, result);
 
     switch (rtype) {
-    case RTYPE_RMS:     /* Fallthrough */
-    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_RMS:                      /* Fallthrough */
+    case RTYPE_RMS_EXP:                  /* Fallthrough */
     case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
@@ -818,8 +837,8 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
                                      result);
 
     switch (rtype) {
-    case RTYPE_RMS:     /* Fallthrough */
-    case RTYPE_RMS_EXP: /* Fallthrough */
+    case RTYPE_RMS:                      /* Fallthrough */
+    case RTYPE_RMS_EXP:                  /* Fallthrough */
     case RTYPE_ALFVEN_RADIAL_WINDOW_RMS: /* Fallthrough */
     case RTYPE_ALFVEN_RMS: {
         const int3 nn      = constructInt3Param(device, AC_nx, AC_ny, AC_nz);
@@ -831,6 +850,110 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
         break;
     };
 
+    return AC_SUCCESS;
+}
+
+/** XY averages */
+AcResult
+acDeviceReduceXYAverage(const Device device, const Stream stream, const Field field,
+                        const Profile profile)
+{
+    cudaSetDevice(device->id);
+    acDeviceSynchronizeStream(device, stream);
+
+    const AcMeshDims dims = acGetMeshDims(device->local_config);
+
+    for (size_t k = 0; k < dims.m1.z; ++k) {
+        const int3 start    = (int3){dims.n0.x, dims.n0.y, k};
+        const int3 end      = (int3){dims.n1.x, dims.n1.y, k + 1};
+        const size_t nxy    = (end.x - start.x) * (end.y - start.y);
+        const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream], RTYPE_SUM,
+                                                              device->vba.in[field], start, end,
+                                                              device->reduce_scratchpads,
+                                                              device->scratchpad_size);
+        // printf("%zu Profile: %g\n", k, result);
+        // Could be optimized by performing the reduction completely in
+        // device memory without the redundant device-host-device transfer
+        cudaMemcpy(&device->vba.profiles.in[profile][k], &result, sizeof(result),
+                   cudaMemcpyHostToDevice);
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceSwapProfileBuffer(const Device device, const Profile handle)
+{
+    cudaSetDevice(device->id);
+
+    AcReal* tmp                      = device->vba.profiles.in[handle];
+    device->vba.profiles.in[handle]  = device->vba.profiles.out[handle];
+    device->vba.profiles.out[handle] = tmp;
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceSwapProfileBuffers(const Device device, const Profile* profiles, const size_t num_profiles)
+{
+    int retval = AC_SUCCESS;
+    for (size_t i = 0; i < num_profiles; ++i)
+        retval |= acDeviceSwapProfileBuffer(device, profiles[i]);
+
+    return (AcResult)retval;
+}
+
+AcResult
+acDeviceSwapAllProfileBuffers(const Device device)
+{
+    int retval = AC_SUCCESS;
+    for (size_t i = 0; i < NUM_PROFILES; ++i)
+        retval |= acDeviceSwapProfileBuffer(device, (Profile)i);
+
+    return (AcResult)retval;
+}
+
+AcResult
+acDeviceLoadProfile(const Device device, const AcReal* hostprofile, const size_t hostprofile_count,
+                    const Profile profile)
+{
+    cudaSetDevice(device->id);
+    ERRCHK_ALWAYS(hostprofile_count == device->vba.profiles.count);
+    ERRCHK_CUDA(cudaMemcpy(device->vba.profiles.in[profile], hostprofile,
+                           sizeof(device->vba.profiles.in[profile][0]) * device->vba.profiles.count,
+                           cudaMemcpyHostToDevice));
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceStoreProfile(const Device device, const Profile profile, AcReal* hostprofile,
+                     const size_t hostprofile_count)
+{
+    cudaSetDevice(device->id);
+    ERRCHK_ALWAYS(hostprofile_count == device->vba.profiles.count);
+    ERRCHK_CUDA(cudaMemcpy(hostprofile, device->vba.profiles.in[profile],
+                           sizeof(device->vba.profiles.in[profile][0]) * device->vba.profiles.count,
+                           cudaMemcpyDeviceToHost));
+    return AC_SUCCESS;
+}
+
+AcResult
+acDevicePrintProfiles(const Device device)
+{
+    // int3 multigpu_offset;
+    // acStoreInt3Uniform(device->streams[STREAM_DEFAULT], AC_multigpu_offset, &multigpu_offset);
+    // printf("%d, %d, %d\n", multigpu_offset.x, multigpu_offset.y, multigpu_offset.z);
+    // printf("Num profiles: %zu\n", NUM_PROFILES);
+    for (size_t i = 0; i < NUM_PROFILES; ++i) {
+        const size_t count = device->vba.profiles.count;
+        AcReal host_profile[count];
+        cudaMemcpy(host_profile, device->vba.profiles.in[i], sizeof(AcReal) * count,
+                   cudaMemcpyDeviceToHost);
+        printf("Profile %s (%zu)-----------------\n", profile_names[i], i);
+        for (size_t j = 0; j < count; ++j) {
+            printf("%g (%zu), ", host_profile[j], j);
+        }
+        printf("\n");
+    }
     return AC_SUCCESS;
 }
 

@@ -44,7 +44,7 @@ kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 d
 
     const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
-    //#pragma unroll
+    // #pragma unroll
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
         packed[packed_idx + i * vtxbuf_offset] = vba.in[i][unpacked_idx];
 }
@@ -76,7 +76,7 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
 
     const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
-    //#pragma unroll
+    // #pragma unroll
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
         vba.in[i][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
 }
@@ -108,8 +108,8 @@ kernel_partial_pack_data(const VertexBufferArray vba, const int3 vba_start, cons
 
     const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
-    //#pragma unroll
-    // Note explicit cast size_t to int
+    // #pragma unroll
+    //  Note explicit cast size_t to int
     for (int i = 0; i < (int)num_vtxbufs; ++i) {
         int vtxbuf_id                          = vtxbufs[i];
         packed[packed_idx + i * vtxbuf_offset] = vba.in[vtxbuf_id][unpacked_idx];
@@ -143,8 +143,8 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
 
     const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
-    //#pragma unroll
-    // Note explicit cast size_t to int
+    // #pragma unroll
+    //  Note explicit cast size_t to int
     for (int i = 0; i < (int)num_vtxbufs; ++i) {
         int vtxbuf_id                   = vtxbufs[i];
         vba.in[vtxbuf_id][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
