@@ -180,6 +180,14 @@ module load flex gcc bison cmake openmpi #anaconda # anaconda seems to mess thin
 module load flex gcc bison # workaround for some esoteric ccv1 resolution issue
 module load git # The default version is something like 10 years old
 ''', use_hip=True, optimal_implementation=1, optimal_tpb=512)
+triton_nvidia = System(id='h100', account='', partition='gpu-h100-80g', ngpus_per_node=1, gres='gpu:h100',
+                modules=
+'''
+module load flex gcc bison cmake openmpi #anaconda # anaconda seems to mess things up
+module load flex gcc bison # workaround for some esoteric ccv1 resolution issue
+module load git # The default version is something like 10 years old
+module load cuda/12.2.1
+''', use_hip=False, optimal_implementation=1, optimal_tpb=0)
 lumi = System(id='mi250x', account='project_462000448', partition='small-g', ngpus_per_node=8, gres='', additional_commands='''
 ''',
 #srun_params='--cpu-bind=map_cpu:48,56,16,24,1,8,32,40',
@@ -205,6 +213,7 @@ elif 'uan' in hostname:
     system = lumi
 elif 'triton' in hostname:
     system = triton
+    #system = triton_nvidia
 else:
     print(f'Unknown system {hostname}')
     exit(-1)
