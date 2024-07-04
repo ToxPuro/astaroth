@@ -54,6 +54,7 @@ typedef struct {
   AcReal* in[NUM_FIELDS];
   AcReal* out[NUM_FIELDS];
   size_t bytes; // Suggest deprecation: replace with mx,my,mz
+  size_t mx, my, mz;
 
   // Profiles
   ProfileBufferArray profiles;
@@ -145,6 +146,44 @@ AcResult acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
 
 // Diagnostics
 Volume acKernelLaunchGetLastTPB(void);
+
+void acVBASwapBuffer(const Field field, VertexBufferArray* vba);
+
+void acVBASwapBuffers(VertexBufferArray* vba);
+
+void acPBASwapBuffer(const Profile profile, VertexBufferArray* vba);
+
+void acPBASwapBuffers(VertexBufferArray* vba);
+
+void acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
+
+// Testing
+typedef struct {
+  size_t x, y, z, w;
+} AcShape;
+typedef AcShape AcIndex;
+
+// Returns the number of elements contained within shape
+size_t acShapeSize(const AcShape shape);
+
+AcResult acReindex(const cudaStream_t stream, //
+                   const AcReal* in, const AcIndex in_offset,
+                   const AcIndex in_shape, //
+                   AcReal* out, const AcIndex out_offset,
+                   const AcIndex out_shape, const AcShape block_shape);
+
+AcResult acReindexCross(const cudaStream_t stream, //
+                        const VertexBufferArray vba, const AcIndex in_offset,
+                        const AcShape in_shape, //
+                        AcReal* out, const AcIndex out_offset,
+                        const AcShape out_shape, const AcShape block_shape);
+
+AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
+                           const size_t count, const size_t num_segments,
+                           AcReal* d_out);
+
+AcResult acMultiplyInplace(const AcReal value, const size_t count,
+                           AcReal* array);
 
 #ifdef __cplusplus
 } // extern "C"

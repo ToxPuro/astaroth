@@ -20,6 +20,7 @@
 #include "astaroth_utils.h"
 #include "errchk.h"
 
+#ifdef LTFM
 #if AC_MPI_ENABLED
 #include <mpi.h>
 
@@ -274,3 +275,14 @@ main(void)
     return EXIT_FAILURE;
 }
 #endif // AC_MPI_ENABLES
+#else  // LTFM
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(void)
+{
+    printf("Error: LTFM was not enabled.\n");
+    return EXIT_FAILURE;
+}
+#endif

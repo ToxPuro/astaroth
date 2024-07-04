@@ -111,6 +111,10 @@ else ()
     else ()
         set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCHITECTURES}) # User-specified
     endif()
+
+    # CUB and Thrust
+    include_directories(${CUB_PATH})
+    include_directories(${THRUST_PATH})
 endif()
 
 include(FetchContent)
