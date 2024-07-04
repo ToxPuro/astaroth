@@ -1182,6 +1182,10 @@ acReindexCross(const cudaStream_t stream, //
                AcReal* out, const AcIndex out_offset, const AcShape out_shape,
                const AcShape block_shape)
 {
+  #if defined(TF_b11_x) && defined(TF_b11_y) && defined(TF_b11_z) && \
+      defined(TF_b12_x) && defined(TF_b12_y) && defined(TF_b12_z) && \
+      defined(TF_b21_x) && defined(TF_b21_y) && defined(TF_b21_z) && \
+      defined(TF_b22_x) && defined(TF_b22_y) && defined(TF_b22_z)
   const SOAVector uu = {
       .x = vba.in[VTXBUF_UUX],
       .y = vba.in[VTXBUF_UUY],
@@ -1245,6 +1249,10 @@ acReindexCross(const cudaStream_t stream, //
   reindex_cross<<<bpg, tpb, 0, stream>>>(arrays, in_offset, in_shape,
                                          out_offset, out_shape, block_shape);
   return AC_SUCCESS;
+  #else
+  ERROR("acReindexCross called but test fields TF_b([0-9]*)_[xyz] not defined");
+  return AC_FAILURE;
+  #endif
 }
 
 #if AC_USE_HIP
