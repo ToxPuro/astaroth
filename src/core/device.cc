@@ -1232,6 +1232,7 @@ acDeviceTest(const Device device)
 AcResult
 acDeviceReduceXYAverages(const Device device, const Stream stream)
 {
+    #if defined(VTXBUF_UUX) && defined(VTXBUF_UUY) && defined(VTXBUF_UUZ)
     AcMeshDims dims = acGetMeshDims(device->local_config);
 
     // Intermediate buffer
@@ -1299,4 +1300,8 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
 
     acBufferDestroy(&buffer);
     return AC_FAILURE;
+    #else
+    ERROR("acDeviceReduceXYAverages called but VTXBUF_UU[XYZ] not defined");
+    return AC_FAILURE;
+    #endif
 }
