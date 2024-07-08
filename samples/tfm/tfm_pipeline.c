@@ -25,20 +25,20 @@
 
 #include "timer_hires.h"
 
+#define BENCHMARK_BEGIN()                                                                          \
+    {                                                                                              \
+        acDeviceSynchronizeStream(device, STREAM_ALL);                                             \
+        timer_reset(&t);                                                                           \
+    }
 
-#define BENCHMARK_BEGIN() \
-{\
-acDeviceSynchronizeStream(device, STREAM_ALL);\
-timer_reset(&t);\
-}
-
-#define BENCHMARK_STOP(label)\
-{\
-acDeviceSynchronizeStream(device, STREAM_ALL);\
-const double macro_milliseconds = timer_diff_nsec(t) / 1e6;\
-fprintf(fp, "%s,%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%u\n", label, IMPLEMENTATION, \
-                MAX_THREADS_PER_BLOCK, nx, ny, nz, macro_milliseconds, jobid, seed, j, DOUBLE_PRECISION); \
-}
+#define BENCHMARK_STOP(label)                                                                      \
+    {                                                                                              \
+        acDeviceSynchronizeStream(device, STREAM_ALL);                                             \
+        const double macro_milliseconds = timer_diff_nsec(t) / 1e6;                                \
+        fprintf(fp, "%s,%d,%d,%zu,%zu,%zu,%g,%zu,%zu,%zu,%u\n", label, IMPLEMENTATION,             \
+                MAX_THREADS_PER_BLOCK, nx, ny, nz, macro_milliseconds, jobid, seed, j,             \
+                DOUBLE_PRECISION);                                                                 \
+    }
 
 #if AC_DOUBLE_PRECISION
 #define DOUBLE_PRECISION (1)
@@ -132,26 +132,6 @@ tfm_pipeline(const Device device, const AcMeshInfo info)
         acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_UUZ, dims.m0, dims.m1);
 
         // Profile averages
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, PROFILE_Umean_x);
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUY, PROFILE_Umean_y);
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUZ, PROFILE_Umean_z);
-
-        // TODO proper \overline{u x b^{pq}} calculation
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, PROFILE_ucrossb11mean_x);
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUY, PROFILE_ucrossb11mean_y);
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUZ, PROFILE_ucrossb11mean_z);
-
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, PROFILE_ucrossb12mean_x);
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUY, PROFILE_ucrossb12mean_y);
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUZ, PROFILE_ucrossb12mean_z);
-
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, PROFILE_ucrossb21mean_x);
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUY, PROFILE_ucrossb21mean_y);
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUZ, PROFILE_ucrossb21mean_z);
-
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUX, PROFILE_ucrossb22mean_x);
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUY, PROFILE_ucrossb22mean_y);
-        // acDeviceReduceXYAverage(device, STREAM_DEFAULT, VTXBUF_UUZ, PROFILE_ucrossb22mean_z);
         acDeviceReduceXYAverages(device, STREAM_DEFAULT);
 
         // Compute: test fields
