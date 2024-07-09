@@ -30,7 +30,7 @@ Field TF_b22_x, TF_b22_y, TF_b22_z
 defined in the beginning of tfm/mhd/mhd.ac.
 
 Profiles are in
-````
+```
 // Mean-field profiles
 Profile PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z
 
@@ -55,7 +55,7 @@ cd astaroth
 mkdir build && cd build # Create a build directory and move there
 ../samples/tfm/build.sh <additional cmake options>
 # F.ex. for Nvidia ../samples/tfm/build.sh -DUSE_HIP=OFF
-./tfm_pipeline # Runs the program where the single-GPU TFM pipeline has been implemented.
+$SRUN_COMMAND ./tfm_pipeline # Run tfm_pipeline
 ```
 
 ### Implementation notes
