@@ -1224,7 +1224,7 @@ get_expr_type(const ASTNode* node, const ASTNode* root, const string_vec* exclud
 			return "AcReal";
 		return lhs_res;
 	}
-	else if(node->type == NODE_CHOICE_EXPRESSION)
+	else if(node->type == NODE_TERNARY_EXPRESSION)
 	{
 		char* first_expr  = get_expr_type(node->rhs->lhs,root,excluded_funcs);
 		if(!first_expr) return NULL;

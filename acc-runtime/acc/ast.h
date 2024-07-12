@@ -46,7 +46,7 @@ typedef enum {
   NODE_VARIABLE           = (1 << 12),
   NODE_VARIABLE_ID        = (1 << 13),
   NODE_DCONST             = (1 << 15),
-  NODE_CHOICE             = (1 << 16),
+  NODE_TERNARY            = (1 << 16),
   NODE_MEMBER_ID          = (1 << 17),
   NODE_HOSTDEFINE         = (1 << 18),
   NODE_ASSIGNMENT         = (1 << 19),
@@ -66,7 +66,7 @@ typedef enum {
   NODE_TASKGRAPH_DEF      = (NODE_DEF + 2 + NODE_NO_OUT),
   NODE_BOUNDCONDS_DEF     = (NODE_DEF + 3 + NODE_NO_OUT),
   NODE_BINARY_EXPRESSION  = (NODE_BINARY + NODE_EXPRESSION),
-  NODE_CHOICE_EXPRESSION  = (NODE_CHOICE + NODE_EXPRESSION),
+  NODE_TERNARY_EXPRESSION = (NODE_TERNARY+ NODE_EXPRESSION),
   NODE_ANY                = ~0,
 } NodeType;
 
