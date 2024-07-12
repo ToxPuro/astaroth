@@ -854,7 +854,7 @@ binary_expression: binary_op unary_expression { $$ = astnode_create(NODE_UNKNOWN
 choose: QUESTION expression ':' expression {$$ = astnode_create(NODE_UNKNOWN,$2,$4);  astnode_set_prefix("? ",$$->lhs);  astnode_set_prefix(": ",$$->rhs);}
       ;
 expression: unary_expression             { $$ = astnode_create(NODE_EXPRESSION, $1, NULL); }
-	  | expression choose            { $$ = astnode_create(NODE_EXPRESSION,$1,$2); } 
+	  | expression choose            { $$ = astnode_create(NODE_CHOICE_EXPRESSION,$1,$2); } 
           | expression binary_expression { $$ = astnode_create(NODE_BINARY_EXPRESSION, $1, $2); }
 
 
