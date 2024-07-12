@@ -116,21 +116,17 @@ acDeviceLoadVectorUniform(const Device device, const Stream stream, const AcReal
     return acLoadReal3Uniform(device->streams[stream], param, value);
 }
 
-AcResult
-acDeviceLoadIntUniform(const Device device, const Stream stream, const AcIntParam param,
-                       const int value)
-{
-    cudaSetDevice(device->id);
-    return acLoadIntUniform(device->streams[stream], param, value);
-}
+#define GEN_DEVICE_LOAD_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
+	AcResult \
+	acDeviceLoad##VAL_TYPE_UPPER_CASE##Uniform(const Device device, const Stream stream, const PARAM_TYPE param, const VAL_TYPE value) \
+	{ \
+    		cudaSetDevice(device->id);\
+    		return acLoad##VAL_TYPE_UPPER_CASE##Uniform(device->streams[stream], param, value);\
+	}
 
-AcResult
-acDeviceLoadInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
-                        const int3 value)
-{
-    cudaSetDevice(device->id);
-    return acLoadInt3Uniform(device->streams[stream], param, value);
-}
+GEN_DEVICE_LOAD_UNIFORM(AcIntParam, int, Int)
+GEN_DEVICE_LOAD_UNIFORM(AcInt3Param, int3, Int3)
+GEN_DEVICE_LOAD_UNIFORM(AcBoolParam, bool, Bool)
 
 AcResult
 acDeviceStoreScalarUniform(const Device device, const Stream stream, const AcRealParam param,
@@ -148,42 +144,23 @@ acDeviceStoreVectorUniform(const Device device, const Stream stream, const AcRea
     return acStoreReal3Uniform(device->streams[stream], param, value);
 }
 
-AcResult
-acDeviceStoreIntUniform(const Device device, const Stream stream, const AcIntParam param,
-                        int* value)
-{
-    cudaSetDevice(device->id);
-    return acStoreIntUniform(device->streams[stream], param, value);
-}
+#define GEN_DEVICE_STORE_UNIFORM(PARAM_TYPE,VAL_TYPE,VAL_TYPE_UPPER_CASE) \
+	AcResult \
+	acDeviceStore##VAL_TYPE_UPPER_CASE##Uniform(const Device device, const Stream stream, const PARAM_TYPE param, VAL_TYPE* value) \
+	{ \
+    		cudaSetDevice(device->id);\
+    		return acStore##VAL_TYPE_UPPER_CASE##Uniform(device->streams[stream], param, value);\
+	}
 
-AcResult
-acDeviceStoreInt3Uniform(const Device device, const Stream stream, const AcInt3Param param,
-                         int3* value)
-{
-    cudaSetDevice(device->id);
-    return acStoreInt3Uniform(device->streams[stream], param, value);
-}
+GEN_DEVICE_STORE_UNIFORM(AcIntParam, int, Int)
+GEN_DEVICE_STORE_UNIFORM(AcInt3Param, int3, Int3)
+GEN_DEVICE_STORE_UNIFORM(AcBoolParam, bool, Bool)
 
 AcResult
 acDeviceUpdate(Device device, const AcMeshInfo config)
 {
-    acDeviceLoadMeshInfo(device,config);
     acVBAUpdate(&(device->vba),config);
-    for (int array=0;array<NUM_REAL_ARRAYS;++array)
-    {
-      //in case the user loaded a nullptr to the profile do not load it
-      if (config.real_arrays[array] != nullptr)
-        acDeviceLoadRealArray(device,STREAM_DEFAULT,config,static_cast<AcRealArrayParam>(array));
-      acDeviceSynchronizeStream(device,STREAM_ALL);
-    }
-
-    for (int array=0;array<NUM_INT_ARRAYS;++array)
-    {
-      //in case the user loaded a nullptr to the profile do not load it
-      if (config.int_arrays[array] != nullptr)
-        acDeviceLoadIntArray(device,STREAM_DEFAULT,config,static_cast<AcIntArrayParam>(array));
-      acDeviceSynchronizeStream(device,STREAM_ALL);
-    }
+    acDeviceLoadMeshInfo(device,config);
     return AC_SUCCESS;
 }
 
@@ -204,6 +181,9 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
     for (int i = 0; i < NUM_INT_PARAMS; ++i)
         acDeviceLoadIntUniform(device, STREAM_DEFAULT, (AcIntParam)i, device_config.int_params[i]);
 
+    for (int i = 0; i < NUM_BOOL_PARAMS; ++i)
+        acDeviceLoadBoolUniform(device, STREAM_DEFAULT, (AcBoolParam)i, device_config.bool_params[i]);
+
     for (int i = 0; i < NUM_INT3_PARAMS; ++i)
         acDeviceLoadInt3Uniform(device, STREAM_DEFAULT, (AcInt3Param)i,
                                 device_config.int3_params[i]);
@@ -216,9 +196,50 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
         acDeviceLoadVectorUniform(device, STREAM_DEFAULT, (AcReal3Param)i,
                                   device_config.real3_params[i]);
 
+    for (int array=0;array<NUM_REAL_ARRAYS;++array)
+    {
+      //in case the user loaded a nullptr to the profile do not load it
+      if (device_config.real_arrays[array] != nullptr)
+        acDeviceLoadRealArray(device,STREAM_DEFAULT,device_config,static_cast<AcRealArrayParam>(array));
+      acDeviceSynchronizeStream(device,STREAM_ALL);
+    }
+
+    for (int array=0;array<NUM_INT_ARRAYS;++array)
+    {
+      //in case the user loaded a nullptr to the profile do not load it
+      if (device_config.int_arrays[array] != nullptr)
+        acDeviceLoadIntArray(device,STREAM_DEFAULT,device_config,static_cast<AcIntArrayParam>(array));
+      acDeviceSynchronizeStream(device,STREAM_ALL);
+    }
+
+    for (int array=0;array<NUM_BOOL_ARRAYS;++array)
+    {
+      //in case the user loaded a nullptr to the profile do not load it
+      if (device_config.bool_arrays[array] != nullptr)
+        acDeviceLoadBoolArray(device,STREAM_DEFAULT,device_config,static_cast<AcBoolArrayParam>(array));
+      acDeviceSynchronizeStream(device,STREAM_ALL);
+    }
+    for (int array=0;array<NUM_REAL3_ARRAYS;++array)
+    {
+      //in case the user loaded a nullptr to the profile do not load it
+      if (device_config.real3_arrays[array] != nullptr)
+        acDeviceLoadReal3Array(device,STREAM_DEFAULT,device_config,static_cast<AcReal3ArrayParam>(array));
+      acDeviceSynchronizeStream(device,STREAM_ALL);
+    }
+    for (int array=0;array<NUM_INT3_ARRAYS;++array)
+    {
+      //in case the user loaded a nullptr to the profile do not load it
+      if (device_config.int3_arrays[array] != nullptr)
+        acDeviceLoadInt3Array(device,STREAM_DEFAULT,device_config,static_cast<AcInt3ArrayParam>(array));
+      acDeviceSynchronizeStream(device,STREAM_ALL);
+    }
+
+
     // OL: added this assignment to make sure that whenever we load a new config,
     // it's updated on both the host Device structure, and the GPU
     device->local_config = device_config;
+
+    acDeviceLoadStencilsFromConfig(device, STREAM_DEFAULT);
     return AC_SUCCESS;
 }
 
@@ -394,7 +415,6 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
     *device_handle = device;
 
     acDeviceSynchronizeStream(device, STREAM_ALL);
-    acDeviceLoadStencilsFromConfig(device, STREAM_DEFAULT);
     acDeviceSynchronizeStream(device, STREAM_ALL);
     return AC_SUCCESS;
 }
@@ -517,79 +537,73 @@ acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh 
     return AC_SUCCESS;
 }
 
+
+
+
+template <typename T, typename P>
 AcResult
-acDeviceLoadRealArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
-                         const AcRealArrayParam array, int src_idx, int dst_idx, size_t num_elems)
+acDeviceLoadArrayWithOffset(
+		const Device device, const Stream stream, const T* const* src_arrays, T** dst_arrays, const P array, int src_idx, int dst_idx, size_t num_elems,
+		const bool* is_dconst
+		)
 {
-
-    if constexpr(NUM_REAL_ARRAYS == 0)
-        return AC_FAILURE;
-
-    cudaSetDevice(device->id);
-    const AcReal* src_ptr = &host_info.real_arrays[array][src_idx];
-    AcReal* dst_ptr       = &device->vba.real_arrays[array][dst_idx];
-    ERRCHK_ALWAYS(src_ptr != nullptr);
-    ERRCHK_ALWAYS(dst_ptr != nullptr);
-    const size_t bytes    = num_elems* sizeof(src_ptr[0]);
-
-    ERRCHK_CUDA(                                                                                  //
-        cudaMemcpyAsync(dst_ptr, src_ptr, bytes, cudaMemcpyHostToDevice, device->streams[stream]) //
-    );
-
-    return AC_SUCCESS;
+	cudaSetDevice(device->id);
+	ERRCHK_ALWAYS(!is_dconst[(int)array]);
+	const T* src_ptr       = &src_arrays[array][src_idx];
+	T* dst_ptr       = &dst_arrays[array][dst_idx];
+	ERRCHK_ALWAYS(src_ptr != nullptr);
+	ERRCHK_ALWAYS(dst_ptr != nullptr);
+	const size_t bytes = num_elems*sizeof(src_ptr[0]);
+	ERRCHK_CUDA(
+			cudaMemcpyAsync(dst_ptr,src_ptr,bytes,cudaMemcpyHostToDevice, device->streams[stream]);
+	);
+	return AC_SUCCESS;
 }
 
 AcResult
-acDeviceLoadRealArray(const Device device, const Stream stream, const AcMeshInfo host_info,
-                         const AcRealArrayParam array)
+acDeviceLoadIntArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info, const AcIntArrayParam array, int src_idx, int dst_idx, size_t num_elems)
 {
-    if constexpr (NUM_REAL_ARRAYS == 0)
-	    return AC_FAILURE;
-    if(real_array_is_dconst[(int)array])
-    {
-    	    cudaSetDevice(device->id);
-	    return acLoadRealArrayUniform(STREAM_DEFAULT,array,host_info.real_arrays[array]);
-    }
-    acDeviceLoadRealArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[real_array_lengths[array]]);
-    return AC_SUCCESS;
+	return acDeviceLoadArrayWithOffset(device,stream,host_info.int_arrays,device->vba.int_arrays,array,src_idx,dst_idx,num_elems, int_array_is_dconst);
 }
 
 AcResult
-acDeviceLoadIntArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info,
-                         const AcIntArrayParam array, int src_idx, int dst_idx, size_t num_elems)
+acDeviceLoadInt3ArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info, const AcInt3ArrayParam array, int src_idx, int dst_idx, size_t num_elems)
 {
-
-    if constexpr(NUM_INT_ARRAYS == 0)
-        return AC_FAILURE;
-
-    cudaSetDevice(device->id);
-    const int* src_ptr = &host_info.int_arrays[array][src_idx];
-    int* dst_ptr       = &device->vba.int_arrays[array][dst_idx];
-    ERRCHK_ALWAYS(src_ptr != nullptr);
-    ERRCHK_ALWAYS(dst_ptr != nullptr);
-    const size_t bytes    = num_elems* sizeof(src_ptr[0]);
-
-    ERRCHK_CUDA(                                                                                  //
-        cudaMemcpyAsync(dst_ptr, src_ptr, bytes, cudaMemcpyHostToDevice, device->streams[stream]) //
-    );
-
-    return AC_SUCCESS;
+	return acDeviceLoadArrayWithOffset(device,stream,host_info.int3_arrays,device->vba.int3_arrays,array,src_idx,dst_idx,num_elems,int3_array_is_dconst);
+}
+AcResult
+acDeviceLoadRealArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info, const AcRealArrayParam array, int src_idx, int dst_idx, size_t num_elems)
+{
+	return acDeviceLoadArrayWithOffset(device,stream,host_info.real_arrays,device->vba.real_arrays,array,src_idx,dst_idx,num_elems,real_array_is_dconst);
 }
 
 AcResult
-acDeviceLoadIntArray(const Device device, const Stream stream, const AcMeshInfo host_info,
-                         const AcIntArrayParam array)
+acDeviceLoadReal3ArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info, const AcReal3ArrayParam array, int src_idx, int dst_idx, size_t num_elems)
 {
-    if constexpr (NUM_INT_ARRAYS == 0)
-	    return AC_FAILURE;
-    if(int_array_is_dconst[(int)array])
-    {
-    	    cudaSetDevice(device->id);
-	    return acLoadIntArrayUniform(STREAM_DEFAULT,array,host_info.int_arrays[array]);
-    }
-    acDeviceLoadIntArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[int_array_lengths[array]]);
-    return AC_SUCCESS;
+	return acDeviceLoadArrayWithOffset(device,stream,host_info.real3_arrays,device->vba.real3_arrays,array,src_idx,dst_idx,num_elems,real3_array_is_dconst);
 }
+
+AcResult
+acDeviceLoadBoolArrayWithOffset(const Device device, const Stream stream, const AcMeshInfo host_info, const AcBoolArrayParam array, int src_idx, int dst_idx, size_t num_elems)
+{
+	return acDeviceLoadArrayWithOffset(device,stream,host_info.bool_arrays,device->vba.bool_arrays,array,src_idx,dst_idx,num_elems,bool_array_is_dconst);
+}
+
+#define GEN_DEVICE_LOAD_ARRAY(PARAM_NAME, ARRAY_NAME, NAME_UPPER_CASE) \
+	AcResult \
+	acDeviceLoad##NAME_UPPER_CASE##Array(const Device device, const Stream stream, const AcMeshInfo host_info, const PARAM_NAME array) \
+	{ \
+	  cudaSetDevice(device->id); \
+	  if(ARRAY_NAME##_is_dconst[(int)array]) \
+		  return acLoad##NAME_UPPER_CASE##ArrayUniform(device->streams[stream],array,host_info.ARRAY_NAME##s[array]); \
+	  return acDeviceLoad##NAME_UPPER_CASE##ArrayWithOffset(device, stream, host_info, array, 0, 0, host_info.int_params[ARRAY_NAME##_lengths[array]]); \
+	}
+
+GEN_DEVICE_LOAD_ARRAY(AcRealArrayParam,  real_array, Real)
+GEN_DEVICE_LOAD_ARRAY(AcIntArrayParam,   int_array,  Int)
+GEN_DEVICE_LOAD_ARRAY(AcBoolArrayParam,  bool_array, Bool)
+GEN_DEVICE_LOAD_ARRAY(AcReal3ArrayParam, real3_array,Real3)
+GEN_DEVICE_LOAD_ARRAY(AcInt3ArrayParam,  int3_array, Int3)
 
 AcResult
 acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mesh)

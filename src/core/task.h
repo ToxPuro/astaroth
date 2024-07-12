@@ -177,6 +177,8 @@ typedef class Task {
 
     void logStateChangedEvent(const char* from, const char* to);
     virtual bool isComputeTask();
+    virtual bool isHaloExchangeTask();
+    bool swaps_overlap(const Task* other);
 } Task;
 
 // Compute tasks
@@ -237,13 +239,12 @@ typedef class HaloExchangeTask : public Task {
     int counterpart_rank;
     int send_tag;
     int recv_tag;
-    int3 nn;
 
     HaloMessageSwapChain recv_buffers;
     HaloMessageSwapChain send_buffers;
 
   public:
-    HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag, int3 nn,
+    HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag, AcGridInfo grid_info,
                      uint3_64 decomp, Device device_,
                      std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     ~HaloExchangeTask();
@@ -276,6 +277,7 @@ typedef class HaloExchangeTask : public Task {
 
     void advance(const TraceFile* trace_file);
     bool test();
+    bool isHaloExchangeTask();
 } HaloExchangeTask;
 
 enum class BoundaryConditionState { Waiting = Task::wait_state, Running };

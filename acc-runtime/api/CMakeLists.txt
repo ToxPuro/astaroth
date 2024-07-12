@@ -34,7 +34,9 @@ set(DSL_HEADERS "user_kernels.h"
                 "stencil_accesses.h"
                 "user_taskgraphs.h"
                 "user_loaders.h"
-                "stencilgen.h")
+                "stencilgen.h"
+		"coeffs.h"
+		)
 if (NOT DEFINED DSL_MODULE_FILE)
   if (SINGLEPASS_INTEGRATION) 
   add_custom_command (

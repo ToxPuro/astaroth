@@ -212,6 +212,8 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     submesh_config.int_params[AC_nz]               = submesh_nz;
     submesh_config.int3_params[AC_multigpu_offset] = pid3d *
                                                      (int3){submesh_nx, submesh_ny, submesh_nz};
+    submesh_config.int3_params[AC_domain_decomposition] = (int3){decomp.x, decomp.y, decomp.z};
+    submesh_config.int3_params[AC_domain_coordinates] = (int3){pid3d.x, pid3d.y, pid3d.z};
     acHostUpdateBuiltinParams(&submesh_config);
     return submesh_config;
 }
@@ -231,7 +233,7 @@ acGridInit(AcMeshInfo info)
         ERRCHK_ALWAYS((AcMPICommStrategy)info.int_params[AC_MPI_comm_strategy] == AcMPICommStrategy::DuplicateUserComm);
       	ERRCHK_ALWAYS(MPI_Comm_dup(info.comm,&astaroth_comm) == MPI_SUCCESS);
       }
-      MPI_Barrier(MPI_COMM_WORLD);
+      MPI_Barrier(astaroth_comm);
       grid.mpi_initialized = true;
     }
 
@@ -1509,6 +1511,23 @@ testmydecomp(int3 nn, int decomp_level, std::vector<Field> fields_out)
 	bool passed = TestRegions(regions,target_volume);
 	if (!passed) exit(0);
 }
+static AcReal3 
+get_spacings()
+{
+	const AcMeshInfo info = grid.device -> local_config;
+	return (AcReal3){info.real_params[AC_dsx], info.real_params[AC_dsy], info.real_params[AC_dsz]};
+}
+static int3
+get_nn_global()
+{
+	const AcMeshInfo info = grid.device -> local_config;
+	return (int3)
+	{
+		info.int_params[AC_nxgrid],
+		info.int_params[AC_nygrid],
+		info.int_params[AC_nzgrid]
+	};
+}
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 {
@@ -1532,7 +1551,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     std::vector<size_t> op_indices;
     op_indices.reserve(n_ops);
 
-    int3 nn         = grid.nn;
+    const AcGridInfo grid_info = {grid.nn, get_nn_global()*get_spacings()};
+
 
 
     uint3_64 decomp = grid.decomposition;
@@ -1600,7 +1620,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             //for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
 	    std::vector<Field> fields_out(op.fields_out,op.fields_out+op.num_fields_out);
 	    std::vector<Field> fields_in(op.fields_in,op.fields_in+op.num_fields_in);
-	    int3 mm = nn + (int3){2*NGHOST,2*NGHOST,2*NGHOST};
+	    int3 mm = grid_info.nn + (int3){2*NGHOST,2*NGHOST,2*NGHOST};
 	    Region full_region = FullRegion(mm,fields_out);
 	    Region full_input_region = getinputregions({full_region},fields_in)[0];
             //for (int tag = Region::min_comp_tag; tag < 1; tag++) {
@@ -1617,7 +1637,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             	for (int tag = Region::min_comp_tag; tag < Region::max_comp_tag; tag++) {
 	    	    //auto task = std::make_shared<ComputeTask>(op,tag,full_input_region,full_region,device,swap_offset);
             	    //graph->all_tasks.push_back(task);
-            	    auto task = std::make_shared<ComputeTask>(op, i, tag, nn, device, swap_offset);
+            	    auto task = std::make_shared<ComputeTask>(op, i, tag, grid_info.nn, device, swap_offset);
             	    graph->all_tasks.push_back(task);
             	    //done here since we want to write only to out not to in what launching the taskgraph would do
             	    acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, kernels[(int)op.kernel_enum], task->output_region.position, task->output_region.position + task->output_region.dims);
@@ -1636,7 +1656,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
                 if (!Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy])) {
-                    auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, nn, decomp,
+                    auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, decomp,
                                                                    device, swap_offset);
                     graph->halo_tasks.push_back(task);
                     graph->all_tasks.push_back(task);
@@ -1656,7 +1676,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                     if (bc == BOUNDCOND_PERIODIC) {
                         acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
                                                  tag);
-                        auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, nn, decomp, device, swap_offset);
+                        auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, decomp, device, swap_offset);
                         graph->halo_tasks.push_back(task);
                         graph->all_tasks.push_back(task);
                         acVerboseLogFromRootProc(rank,
@@ -1668,7 +1688,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                         acVerboseLogFromRootProc(rank, "Creating generic bc with tag%d\n", tag);
                         auto task = std::make_shared<BoundaryConditionTask>(op,
                                                                             boundary_normal(tag), i,
-                                                                            tag, nn, device,
+                                                                            tag, grid_info.nn, device,
                                                                             swap_offset);
                         graph->all_tasks.push_back(task);
                     }
@@ -1679,7 +1699,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             break;
         }
         case TASKTYPE_SYNC: {
-            auto task = std::make_shared<SyncTask>(op, i, nn, device, swap_offset);
+            auto task = std::make_shared<SyncTask>(op, i, grid_info.nn, device, swap_offset);
             graph->all_tasks.push_back(task);
             break;
         }
@@ -1698,7 +1718,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                     auto task = std::make_shared<SpecialMHDBoundaryConditionTask>(op,
                                                                                   boundary_normal(
                                                                                       tag),
-                                                                                  i, tag, nn,
+                                                                                  i, tag, grid_info.nn,
                                                                                   device,
                                                                                   swap_offset);
                     graph->all_tasks.push_back(task);
@@ -1721,7 +1741,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                 if (Region::is_on_boundary(decomp, rank, tag, op.boundary, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy])) {
                     auto task = std::make_shared<DSLBoundaryConditionTask>(op,
                                                                            boundary_normal(tag),
-                                                                           i, tag, nn,
+                                                                           i, tag, grid_info.nn,
                                                                            device,
                                                                            swap_offset);
                     graph->all_tasks.push_back(task);
@@ -1802,8 +1822,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                         // Task A depends on task B if the output region of A overlaps with the
                         // input region of B.
                         if (dept_task->active &&
-                            (preq_task->output_region.overlaps(&(dept_task->input_region)) ||
-                             preq_task->output_region.overlaps(&(dept_task->output_region)))) {
+                            (preq_task->output_region.overlaps(&dept_task->input_region)  ||
+                             preq_task->output_region.overlaps(&dept_task->output_region))) {
                             // iteration offset of 0 -> dependency in the same iteration
                             // iteration offset of 1 -> dependency from preq_task in iteration k to
                             // dept_task in iteration k+1
@@ -2004,6 +2024,9 @@ acGridIntegrate(const Stream stream, const AcReal dt)
 AcResult
 acGridPeriodicBoundconds(const Stream stream)
 {
+#ifndef AC_INTEGRATION_ENABLED
+    return AC_FAILURE;
+#endif
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
 

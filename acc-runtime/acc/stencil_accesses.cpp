@@ -13,6 +13,13 @@
 #include "errchk.h"
 #include "datatypes.h"
 #include "user_defines.h"
+
+typedef struct
+{
+	VertexBufferHandle x;
+	VertexBufferHandle y;
+	VertexBufferHandle z;
+} Field3;
 #include <array>
 
 #undef __device__
@@ -41,24 +48,19 @@
 // Just nasty: Must evaluate all code branches given arbitrary input
 // if we want automated stencil generation to work in every case
 #define d_multigpu_offset ((int3){0, 0, 0})
-
-constexpr int3
-Field3(const int& x, const int& y, const int& z)
+constexpr Field3 
+MakeField3(const Field& x, const Field& y, const Field& z)
 {
-	return make_int3(x,y,z);
+	return (Field3){x,y,z};
 }
-
-
 template <size_t N>
-constexpr
-std::array<int3,N>
-Field3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
+constexpr __device__ __forceinline__
+std::array<Field3,N>
+MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
 {
 	std::array<int3,N> res{};
 	for(size_t i = 0; i < N; ++i)
-	{
-		res[i] = make_int3(x[i],y[i],z[i]);
-	}
+		res[i] = (Field3){x,y,z};
 	return res;
 }
 int
@@ -66,20 +68,25 @@ DCONST(const AcIntParam param)
 {
   return 1;
 }
+bool
+DCONST(const AcBoolParam param)
+{
+  return true;
+}
 int3
 DCONST(const AcInt3Param param)
 {
-  return (int3){0,0,0};
+  return (int3){1,1,1};
 }
 AcReal
 DCONST(const AcRealParam param)
 {
-  return 0.0;
+  return 1.0;
 }
 AcReal3
 DCONST(const AcReal3Param param)
 {
-  return (AcReal3){0,0,0};
+  return (AcReal3){1.0,1.0,1.0};
 }
 
 constexpr int
@@ -127,13 +134,19 @@ __ballot(bool val)
 
 #include "math_utils.h"
  
-#include "user_constants.h"
 #include "acc_runtime.h"
+#include "user_constants.h"
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
                               // least the max smem size of the device
-AcReal big_real_array[8*1024*1024]{0.0};
-int big_int_array[8*1024*1024]{0};
+static AcReal AC_INTERNAL_big_real_array[8*1024*1024]{0.0};
+static int AC_INTERNAL_big_int_array[8*1024*1024]{0};
+static AcReal3 AC_INTERNAL_big_real3_array[8*1024*1024]{(AcReal3){0.0,0.0,0.0}};
+static int3 AC_INTERNAL_big_int3_array[8*1024*1024]{(int3){0,0,0}};
+static bool AC_INTERNAL_big_bool_array[8*1024*1024]{false};
+
+static AcReal3 AC_INTERNAL_global_real_vec = {0.0,0.0,0.0};
+static int3 AC_INTERNAL_global_int_vec = {0,0,0};
 
 static int stencils_accessed[NUM_FIELDS][NUM_STENCILS] = {{0}};
 static int previous_accessed[NUM_FIELDS] = {0};

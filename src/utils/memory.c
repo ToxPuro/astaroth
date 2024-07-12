@@ -44,7 +44,13 @@ AcResult
 acHostMeshApplyPeriodicBounds(AcMesh* mesh)
 {
     const AcMeshInfo info = mesh->info;
+
+    const AcReal x_length = info.int_params[AC_nxgrid]*info.real_params[AC_dsx];
+    const AcReal y_length = info.int_params[AC_nygrid]*info.real_params[AC_dsy];
+    const AcReal z_length = info.int_params[AC_nzgrid]*info.real_params[AC_dsz];
+
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+	if (!vtxbuf_is_communicated[w]) continue;
         const int3 start = (int3){0, 0, 0};
         const int3 end   = (int3){info.int_params[AC_mx], info.int_params[AC_my],
                                   info.int_params[AC_mz]};
@@ -99,6 +105,11 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
                     ERRCHK(src_idx < acVertexBufferSize(info));
                     ERRCHK(dst_idx < acVertexBufferSize(info));
                     mesh->vertex_buffer[w][dst_idx] = mesh->vertex_buffer[w][src_idx];
+#if AC_LAGRANGIAN_GRID
+                    mesh->vertex_buffer[COORDS_X][dst_idx] += (w == COORDS_X) * x_length*((i_dst > nx_max) -(i_dst < nx_min));
+                    mesh->vertex_buffer[COORDS_Y][dst_idx] += (w == COORDS_Y) * y_length*((j_dst > ny_max) -(j_dst < ny_min));
+                    mesh->vertex_buffer[COORDS_Z][dst_idx] += (w == COORDS_Z) * z_length*((k_dst > nz_max) -(k_dst < nz_min));
+#endif
                 }
             }
         }

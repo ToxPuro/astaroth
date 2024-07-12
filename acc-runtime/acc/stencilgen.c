@@ -120,8 +120,9 @@ gen_stencil_definitions(void)
   fclose(stencil_coeffs_file);
 }
 
+#include "kernel_reduce_info.h"
 void
-gen_kernel_prefix(const bool gen_mem_accesses)
+gen_kernel_prefix(const bool gen_mem_accesses, const int curr_kernel)
 {
   printf("const int3 vertexIdx = (int3){"
          "threadIdx.x + blockIdx.x * blockDim.x + start.x,"
@@ -154,10 +155,10 @@ gen_kernel_prefix(const bool gen_mem_accesses)
   // Original
 
   if(gen_mem_accesses)
-    printf("const auto write __attribute__((unused))  = [&](const Field field, const AcReal value)"
+    printf("const auto write_base __attribute__((unused))  = [&](const Field field, const AcReal value)"
          "{ written_fields_stencil_accesses[field]=1; vba.out[field][idx] = value; };");
   else
-    printf("const auto write __attribute__((unused))  = [&](const Field field, const AcReal value)"
+    printf("const auto write_base __attribute__((unused))  = [&](const Field field, const AcReal value)"
          "{ vba.out[field][idx] = value; };");
 
   //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
@@ -179,28 +180,31 @@ for (int field = 0; field < NUM_FIELDS; ++field)
 printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
 */
 #endif
-  printf("AcReal reduce_sum_res[NUM_REAL_OUTPUTS] = {\n");
-  for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
-	  printf("0.0,");
-  printf("};\n");
-  printf("AcReal reduce_max_res[NUM_REAL_OUTPUTS] = {\n");
-  for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
-	  printf("-1000000.0,");
-  printf("};\n");
-  printf("AcReal reduce_min_res[NUM_REAL_OUTPUTS] = {\n");
-  for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
-	  printf("1000000.0,");
-  printf("};\n");
+  if(curr_kernel == -1 || kernel_calls_reduce[curr_kernel])
+  {
+    printf("AcReal reduce_sum_res[NUM_REAL_OUTPUTS] = {\n");
+    for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
+            printf("0.0,");
+    printf("};\n");
+    printf("AcReal reduce_max_res[NUM_REAL_OUTPUTS] = {\n");
+    for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
+            printf("-1000000.0,");
+    printf("};\n");
+    printf("AcReal reduce_min_res[NUM_REAL_OUTPUTS] = {\n");
+    for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
+            printf("1000000.0,");
+    printf("};\n");
 
-  printf("(void)reduce_sum_res;");
-  printf("(void)reduce_min_res;");
-  printf("(void)reduce_max_res;");
-  printf("const auto reduce_sum __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-		  "{ (void)condition; reduce_sum_res[(int)output] = val; };");
-  printf("const auto reduce_min __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-		  "{ (void)condition; reduce_min_res[(int)output] = val; };");
-  printf("const auto reduce_max __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
+    printf("(void)reduce_sum_res;");
+    printf("(void)reduce_min_res;");
+    printf("(void)reduce_max_res;");
+    printf("const auto reduce_sum __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
+          	  "{ (void)condition; reduce_sum_res[(int)output] = val; };");
+    printf("const auto reduce_min __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
+          	  "{ (void)condition; reduce_min_res[(int)output] = val; };");
+    printf("const auto reduce_max __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
 		  "{ (void)condition; reduce_max_res[(int)output] = val; };");
+  }
 }
 
 static void
@@ -226,17 +230,21 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses, cons
   // SINGLEPASS_INTEGRATION=OFF, 4.77 ms (full step, 128^3)
   if(gen_mem_accesses)
   {
-    printf("const auto previous=[&](const auto field)"
+    printf("const auto previous_base =[&](const auto field)"
            "{previous_accessed[field]=1;return AcReal(1.0);};");
     return;
 
   }
 
+  //TP: don't gen previous at all if no fields use it. Done to declutter the resulting code and to speedup compilation
+  bool gen_previous = false;
+  for(int field = 0;  field < NUM_FIELDS; ++field) gen_previous |= previous_accessed[cur_kernel][field];
+  if(!gen_previous) return;
   for (int field = 0; field < NUM_FIELDS; ++field)
     if(previous_accessed[cur_kernel][field])
       printf("const auto f%d_prev = vba.out[%d][idx];", field, field);
 
-  printf("const auto previous __attribute__((unused)) = [&](const Field field)"
+  printf("const auto previous_base __attribute__((unused)) = [&](const Field field)"
          "{ switch (field) {");
   for (int field = 0; field < NUM_FIELDS; ++field)
     if(previous_accessed[cur_kernel][field])
@@ -251,7 +259,7 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses, cons
 void
 gen_stencil_accesses(const bool gen_mem_accesses)
 {
-  gen_kernel_prefix(gen_mem_accesses);
+  gen_kernel_prefix(gen_mem_accesses,-1);
   gen_return_if_oob();
   prefetch_output_elements_and_gen_prev_function(true,0);
 
@@ -393,7 +401,12 @@ compute_stencil_ops(const int curr_kernel)
 static void
 gen_stencil_functions(const int curr_kernel)
 {
+  
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
+    //TP: don't gen stencil function at all if no fields use it. Done to declutter the resulting code and to speedup compilation
+    bool gen_stencil = false;
+    for (int field = 0; field < NUM_FIELDS; ++field) gen_stencil |= stencils_accessed[curr_kernel][field][stencil];
+    if(!gen_stencil) continue;
     printf("const auto %s __attribute__((unused)) = [&](const auto field){",
            stencil_names[stencil]);
     printf("switch (field) {");
@@ -1700,7 +1713,7 @@ gen_kernel_body(const int curr_kernel)
   const bool gen_mem_accesses = false;
   switch (IMPLEMENTATION) {
   case IMPLICIT_CACHING: {
-    gen_kernel_prefix(gen_mem_accesses);
+    gen_kernel_prefix(gen_mem_accesses,curr_kernel);
     gen_return_if_oob();
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
 
@@ -1830,7 +1843,7 @@ gen_kernel_body(const int curr_kernel)
     return;
   }
   case EXPLICIT_CACHING: {
-    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses,curr_kernel); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_and_compute_stencil_ops(curr_kernel);
     gen_return_if_oob();
@@ -1840,7 +1853,7 @@ gen_kernel_body(const int curr_kernel)
     return;
   }
   case EXPLICIT_CACHING_3D_BLOCKING: {
-    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses,curr_kernel); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_3d_and_compute_stencil_ops(curr_kernel);
     gen_return_if_oob();
@@ -1850,7 +1863,7 @@ gen_kernel_body(const int curr_kernel)
     return;
   }
   case EXPLICIT_CACHING_4D_BLOCKING: {
-    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses,curr_kernel); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_4d_and_compute_stencil_ops(curr_kernel);
     gen_return_if_oob();
@@ -1861,7 +1874,7 @@ gen_kernel_body(const int curr_kernel)
   }
   case EXPLICIT_PINGPONG_txw: {
     #if IMPLEMENTATION == EXPLICIT_PINGPONG_txw
-    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses,curr_kernel); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_pingpong_txw_and_compute_stencil_ops(
         curr_kernel);
@@ -1874,7 +1887,7 @@ gen_kernel_body(const int curr_kernel)
   }
   case EXPLICIT_PINGPONG_txy: {
     #if IMPLEMENTATION == EXPLICIT_PINGPONG_txy
-    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses,curr_kernel); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_pingpong_txy_and_compute_stencil_ops(
         curr_kernel);
@@ -1886,7 +1899,7 @@ gen_kernel_body(const int curr_kernel)
     return;
   }
   case EXPLICIT_PINGPONG_txyblocked: {
-    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses,curr_kernel); // Note no bounds check
 
     // prefetch_stencil_elems_to_smem_pingpong_txyblocked_and_compute_stencil_ops(
     //     curr_kernel);
@@ -1898,7 +1911,7 @@ gen_kernel_body(const int curr_kernel)
   }
   case EXPLICIT_ROLLING_PINGPONG: {
     #if IMPLEMENTATION == EXPLICIT_ROLLING_PINGPONG
-    gen_kernel_prefix(gen_mem_accesses); // Note no bounds check
+    gen_kernel_prefix(gen_mem_accesses,curr_kernel); // Note no bounds check
 
     prefetch_stencil_elems_to_smem_rolling_pingpong_and_compute_stencil_ops(
         curr_kernel);

@@ -1168,6 +1168,9 @@ main(int argc, char** argv)
         acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
         break;
     }
+    case PhysicsConfiguration::Default: {
+	break;
+    }
     }
 
     acLogFromRootProc(pid, "sim = %i \n", sim);

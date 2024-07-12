@@ -37,7 +37,11 @@
 
   //copied from the sample setup
   #include "user_defines.h"
-  #include "user_structs.h"
+  #include "user_typedefs.h"
+
+#if AC_RUNTIME_COMPILATION
+  #include <dlfcn.h>
+#endif
 
   #define NUM_REDUCE_SCRATCHPADS (2)
 
@@ -46,14 +50,21 @@
     int3 int3_params[NUM_INT3_PARAMS];
     AcReal real_params[NUM_REAL_PARAMS];
     AcReal3 real3_params[NUM_REAL3_PARAMS];
+    bool bool_params[NUM_BOOL_PARAMS];
   } AcDeviceMeshInfo;
+
+  typedef struct {
+    int3 nn;
+    AcReal3 lengths;
+  } AcGridInfo;
 
 
   typedef struct {
-    int int_outputs[NUM_INT_PARAMS];
-    int3 int3_outputs[NUM_INT3_PARAMS];
-    AcReal real_outputs[NUM_REAL_PARAMS];
-    AcReal3 real3_outputs[NUM_REAL3_PARAMS];
+    int int_outputs[NUM_INT_OUTPUTS];
+    int3 int3_outputs[NUM_INT3_OUTPUTS];
+    AcReal real_outputs[NUM_REAL_OUTPUTS];
+    AcReal3 real3_outputs[NUM_REAL3_OUTPUTS];
+    bool bool_outputs[NUM_BOOL_OUTPUTS];
   } AcDeviceKernelOutput;
 
   //could combine these into base struct
@@ -63,25 +74,66 @@
     int3 int3_params[NUM_INT3_PARAMS];
     AcReal real_params[NUM_REAL_PARAMS];
     AcReal3 real3_params[NUM_REAL3_PARAMS];
+    bool bool_params[NUM_BOOL_PARAMS];
     AcReal* real_arrays[NUM_REAL_ARRAYS];
     int* int_arrays[NUM_INT_ARRAYS];
+    bool* bool_arrays[NUM_BOOL_ARRAYS];
+    AcReal3* real3_arrays[NUM_REAL3_ARRAYS];
+    int3* int3_arrays[NUM_INT3_ARRAYS];
 #if AC_MPI_ENABLED
     MPI_Comm comm;
 #endif
   } AcMeshInfo;
 
+  typedef struct {
+    bool int_params[NUM_INT_COMP_PARAMS];
+    bool int3_params[NUM_INT3_COMP_PARAMS];
+    bool real_params[NUM_REAL_COMP_PARAMS];
+    bool real3_params[NUM_REAL3_COMP_PARAMS];
+    bool real_arrays[NUM_REAL_COMP_ARRAYS];
+    bool bool_params[NUM_BOOL_COMP_PARAMS];
+    bool int_arrays[NUM_INT_COMP_ARRAYS];
+    bool bool_arrays[NUM_BOOL_COMP_ARRAYS];
+    bool int3_arrays[NUM_INT3_COMP_ARRAYS];
+    bool real3_arrays[NUM_REAL3_COMP_ARRAYS];
+  } AcCompInfoLoaded;
+
+  typedef struct {
+    int int_params[NUM_INT_COMP_PARAMS];
+    int3 int3_params[NUM_INT3_COMP_PARAMS];
+    AcReal real_params[NUM_REAL_COMP_PARAMS];
+    AcReal3 real3_params[NUM_REAL3_COMP_PARAMS];
+    bool bool_params[NUM_BOOL_COMP_PARAMS];
+    const AcReal*    real_arrays[NUM_REAL_COMP_ARRAYS];
+    const int*       int_arrays[NUM_INT_COMP_ARRAYS];
+    const bool*      bool_arrays[NUM_BOOL_COMP_ARRAYS];
+    const AcReal3*   real3_arrays[NUM_REAL3_COMP_ARRAYS]; 
+    const int3*      int3_arrays[NUM_INT3_COMP_ARRAYS]; 
+  } AcCompInfoConfig;
+
+  typedef struct {
+	  AcCompInfoConfig config;
+	  AcCompInfoLoaded is_loaded;
+  } AcCompInfo;
+
   //pad by one to avoid 0 length arrays that might not work
   typedef struct {
     int int_params[NUM_INT_INPUT_PARAMS+1];
     AcReal real_params[NUM_REAL_INPUT_PARAMS+1];
+    bool bool_params[NUM_BOOL_INPUT_PARAMS+1];
   } AcInputs;
 
   typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
     AcReal* w[NUM_WORK_BUFFERS];
-    AcReal* real_arrays[NUM_REAL_ARRAYS];
-    int* int_arrays[NUM_INT_ARRAYS];
+
+    AcReal*   real_arrays[NUM_REAL_ARRAYS];
+    int*      int_arrays[NUM_INT_ARRAYS];
+    bool*     bool_arrays[NUM_BOOL_ARRAYS];
+    AcReal3*  real3_arrays[NUM_REAL3_ARRAYS];
+    int3*     int3_arrays[NUM_INT3_ARRAYS];
+
     size_t bytes;
     acKernelInputParams kernel_input_params;
     AcReal* reduce_scratchpads[NUM_REAL_OUTPUTS+1][NUM_REDUCE_SCRATCHPADS];
@@ -89,95 +141,229 @@
     size_t scratchpad_size;
   } VertexBufferArray;
 
+
   typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
+
+#if AC_RUNTIME_COMPILATION
+
+#ifndef FUNC_DEFINE
+#define FUNC_DEFINE(return_type, func_name, ...) static return_type (*func_name) __VA_ARGS__
+#endif
+
+#else
+
+#ifndef FUNC_DEFINE
+#define FUNC_DEFINE(return_type, func_name, ...) return_type func_name __VA_ARGS__
+#endif
+
+#endif
   #ifdef __cplusplus
   extern "C" {
   #endif
 
   #include "user_declarations.h"
+  FUNC_DEFINE(AcResult, acKernelFlush,(const cudaStream_t stream, AcReal* arr, const size_t n, const AcReal value));
 
-  AcResult acKernelFlush(const cudaStream_t stream, AcReal* arr, const size_t n,
-                        const AcReal value);
+  FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
 
-  AcResult acVBAReset(const cudaStream_t stream, VertexBufferArray* vba);
+  FUNC_DEFINE(VertexBufferArray, acVBACreate,(const AcMeshInfo config));
 
-  VertexBufferArray acVBACreate(const AcMeshInfo config);
+  FUNC_DEFINE(void, acVBAUpdate,(VertexBufferArray* vba, const AcMeshInfo config));
 
-  void acVBAUpdate(VertexBufferArray* vba, const AcMeshInfo config);
+  FUNC_DEFINE(void, acVBADestroy,(VertexBufferArray* vba, const AcMeshInfo config));
 
-  void acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config);
+  FUNC_DEFINE(AcResult, acRandInitAlt,(const uint64_t seed, const size_t count, const size_t rank));
 
-  AcResult acRandInit(const uint64_t seed, const Volume m_local,
-                      const Volume m_global, const Volume global_offset);
+  FUNC_DEFINE(void, acRandQuit,(void));
 
-  AcResult acRandInitAlt(const uint64_t seed, const size_t count,
-                        const size_t rank);
+  FUNC_DEFINE(AcResult, acLaunchKernel,(Kernel func, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray));
 
-  void acRandQuit(void);
-
-  AcResult acLaunchKernel(Kernel func, const cudaStream_t stream,
-                          const int3 start, const int3 end, VertexBufferArray);
-
-  AcResult acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
-                            VertexBufferArray vba);
+  FUNC_DEFINE(AcResult, acBenchmarkKernel,(Kernel kernel, const int3 start, const int3 end, VertexBufferArray vba));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  AcResult
-  acLoadStencil(const Stencil stencil, const cudaStream_t stream,
-                const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+  FUNC_DEFINE(AcResult, acLoadStencil,(const Stencil stencil, const cudaStream_t stream, const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  AcResult
-  acStoreStencil(const Stencil stencil, const cudaStream_t stream,
-                AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]);
+  FUNC_DEFINE(AcResult, acStoreStencil,(const Stencil stencil, const cudaStream_t stream, AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  AcResult acLoadRealUniform(const cudaStream_t stream, const AcRealParam param,
-                            const AcReal value);
+  FUNC_DEFINE(AcResult, acLoadRealUniform,(const cudaStream_t stream, const AcRealParam param, const AcReal value));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  AcResult acLoadRealArrayUniform(const cudaStream_t stream, const AcRealArrayParam param,
-                            const AcReal* values);
+  FUNC_DEFINE(AcResult, acLoadRealArrayUniform,(const cudaStream_t stream, const AcRealArrayParam param, const AcReal* values));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  AcResult acLoadReal3Uniform(const cudaStream_t stream, const AcReal3Param param,
-                              const AcReal3 value);
+  FUNC_DEFINE(AcResult, acLoadReal3Uniform,(const cudaStream_t stream, const AcReal3Param param, const AcReal3 value));
+  /** NOTE: stream unused. acUniform functions are completely synchronous. */
+  FUNC_DEFINE(AcResult, acLoadReal3ArrayUniform,(const cudaStream_t stream, const AcReal3ArrayParam param, const AcReal3* values));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  AcResult acLoadIntUniform(const cudaStream_t stream, const AcIntParam param,
-                            const int value);
+  FUNC_DEFINE(AcResult, acLoadIntUniform,(const cudaStream_t stream, const AcIntParam param, const int value));
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  AcResult acLoadIntArrayUniform(const cudaStream_t stream, const AcIntArrayParam param,
-                            const int* values);
+  FUNC_DEFINE(AcResult, acLoadBoolUniform,(const cudaStream_t stream, const AcBoolParam param, const bool value));
+  /** NOTE: stream unused. acUniform functions are completely synchronous. */
+  FUNC_DEFINE(AcResult, acLoadIntArrayUniform,(const cudaStream_t stream, const AcIntArrayParam param, const int* values));
+  /** NOTE: stream unused. acUniform functions are completely synchronous. */
+  FUNC_DEFINE(AcResult, acLoadBoolArrayUniform,(const cudaStream_t stream, const AcBoolArrayParam param, const bool* values));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  AcResult acLoadInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
-                            const int3 value);
+  FUNC_DEFINE(AcResult, acLoadInt3Uniform,(const cudaStream_t stream, const AcInt3Param param, const int3 value));
+  /** NOTE: stream unused. acUniform functions are completely synchronous. */
+  FUNC_DEFINE(AcResult, acLoadInt3ArrayUniform,(const cudaStream_t stream, const AcInt3ArrayParam param, const int3* values));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  AcResult acStoreRealUniform(const cudaStream_t stream, const AcRealParam param,
-                              AcReal* value);
+  FUNC_DEFINE(AcResult, acStoreRealUniform,(const cudaStream_t stream, const AcRealParam param, AcReal* value));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  AcResult acStoreReal3Uniform(const cudaStream_t stream,
-                              const AcReal3Param param, AcReal3* value);
+  FUNC_DEFINE(AcResult, acStoreReal3Uniform,(const cudaStream_t stream, const AcReal3Param param, AcReal3* value));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  AcResult acStoreIntUniform(const cudaStream_t stream, const AcIntParam param,
-                            int* value);
+  FUNC_DEFINE(AcResult, acStoreIntUniform,(const cudaStream_t stream, const AcIntParam param, int* value));
+  /** NOTE: stream unused. acUniform functions are completely synchronous. */
+  FUNC_DEFINE(AcResult, acStoreBoolUniform,(const cudaStream_t stream, const AcBoolParam param, bool* value));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  AcResult acStoreInt3Uniform(const cudaStream_t stream, const AcInt3Param param,
-                              int3* value);
+  FUNC_DEFINE(AcResult, acStoreInt3Uniform,(const cudaStream_t stream, const AcInt3Param param, int3* value));
 
   // Diagnostics
-  Volume acKernelLaunchGetLastTPB(void);
+  FUNC_DEFINE(Volume, acKernelLaunchGetLastTPB,(void));
 
-  Kernel GetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
+  FUNC_DEFINE(Kernel, GetOptimizedKernel,(const AcKernel, const VertexBufferArray vba));
 
-  int acGetKernelReduceScratchPadSize(const AcKernel kernel);
+  FUNC_DEFINE(int, acGetKernelReduceScratchPadSize,(const AcKernel kernel));
 
-  int acGetKernelReduceScratchPadMinSize();
+  FUNC_DEFINE(int, acGetKernelReduceScratchPadMinSize,());
+
+#if AC_RUNTIME_COMPILATION
+  static AcResult __attribute__((unused)) acLoadRunTime(void* handle)
+  {
+	*(void**)(&acKernelFlush) = dlsym(handle,"acKernelFlush");
+	if(!acKernelFlush) fprintf(stderr,"Astaroth error: was not able to load %s\n","acKernelFlush");
+	*(void**)(&acVBAReset) = dlsym(handle,"acVBAReset");
+	if(!acVBAReset) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBAReset");
+	*(void**)(&acVBACreate) = dlsym(handle,"acVBACreate");
+	if(!acVBACreate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBACreate");
+	*(void**)(&acVBAUpdate) = dlsym(handle,"acVBAUpdate");
+	if(!acVBAUpdate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBAUpdate");
+	*(void**)(&acVBADestroy) = dlsym(handle,"acVBADestroy");
+	if(!acVBADestroy) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBADestroy");
+	*(void**)(&acRandInitAlt) = dlsym(handle,"acRandInitAlt");
+	if(!acRandInitAlt) fprintf(stderr,"Astaroth error: was not able to load %s\n","acRandInitAlt");
+	*(void**)(&acRandQuit) = dlsym(handle,"acRandQuit");
+	if(!acRandQuit) fprintf(stderr,"Astaroth error: was not able to load %s\n","acRandQuit");
+	*(void**)(&acLaunchKernel) = dlsym(handle,"acLaunchKernel");
+	if(!acLaunchKernel) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLaunchKernel");
+	*(void**)(&acBenchmarkKernel) = dlsym(handle,"acBenchmarkKernel");
+	if(!acBenchmarkKernel) fprintf(stderr,"Astaroth error: was not able to load %s\n","acBenchmarkKernel");
+	*(void**)(&acLoadStencil) = dlsym(handle,"acLoadStencil");
+	if(!acLoadStencil) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadStencil");
+	*(void**)(&acStoreStencil) = dlsym(handle,"acStoreStencil");
+	if(!acStoreStencil) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreStencil");
+	*(void**)(&acLoadRealUniform) = dlsym(handle,"acLoadRealUniform");
+	if(!acLoadRealUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadRealUniform");
+	*(void**)(&acLoadRealArrayUniform) = dlsym(handle,"acLoadRealArrayUniform");
+	if(!acLoadRealArrayUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadRealArrayUniform");
+	*(void**)(&acLoadReal3Uniform) = dlsym(handle,"acLoadReal3Uniform");
+	if(!acLoadReal3Uniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadReal3Uniform");
+	*(void**)(&acLoadIntUniform) = dlsym(handle,"acLoadIntUniform");
+	if(!acLoadIntUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadIntUniform");
+	*(void**)(&acLoadBoolUniform) = dlsym(handle,"acLoadBoolUniform");
+	if(!acLoadBoolUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadBoolUniform");
+	*(void**)(&acLoadIntArrayUniform) = dlsym(handle,"acLoadIntArrayUniform");
+	if(!acLoadIntArrayUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadIntArrayUniform");
+	*(void**)(&acLoadInt3Uniform) = dlsym(handle,"acLoadInt3Uniform");
+	if(!acLoadInt3Uniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadInt3Uniform");
+	*(void**)(&acStoreRealUniform) = dlsym(handle,"acStoreRealUniform");
+	if(!acStoreRealUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreRealUniform");
+	*(void**)(&acStoreReal3Uniform) = dlsym(handle,"acStoreReal3Uniform");
+	if(!acStoreReal3Uniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreReal3Uniform");
+	*(void**)(&acStoreIntUniform) = dlsym(handle,"acStoreIntUniform");
+	if(!acStoreIntUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreIntUniform");
+	*(void**)(&acStoreBoolUniform) = dlsym(handle,"acStoreBoolUniform");
+	if(!acStoreBoolUniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreBoolUniform");
+	*(void**)(&acStoreInt3Uniform) = dlsym(handle,"acStoreInt3Uniform");
+	if(!acStoreInt3Uniform) fprintf(stderr,"Astaroth error: was not able to load %s\n","acStoreInt3Uniform");
+	*(void**)(&acKernelLaunchGetLastTPB) = dlsym(handle,"acKernelLaunchGetLastTPB");
+	if(!acKernelLaunchGetLastTPB) fprintf(stderr,"Astaroth error: was not able to load %s\n","acKernelLaunchGetLastTPB");
+	*(void**)(&GetOptimizedKernel) = dlsym(handle,"GetOptimizedKernel");
+	if(!GetOptimizedKernel) fprintf(stderr,"Astaroth error: was not able to load %s\n","GetOptimizedKernel");
+	*(void**)(&acGetKernelReduceScratchPadSize) = dlsym(handle,"acGetKernelReduceScratchPadSize");
+	if(!acGetKernelReduceScratchPadSize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelReduceScratchPadSize");
+	*(void**)(&acGetKernelReduceScratchPadMinSize) = dlsym(handle,"acGetKernelReduceScratchPadMinSize");
+	if(!acGetKernelReduceScratchPadMinSize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelReduceScratchPadMinSize");
+	return AC_SUCCESS;
+  }
+  static AcCompInfo __attribute__((unused)) acInitCompInfo()
+  {
+	  AcCompInfo res;
+	  memset(&res.is_loaded,0,sizeof(res.is_loaded));
+	  return res;
+  }
+  static AcResult __attribute__((unused)) acLoadRealCompInfo(const AcRealCompParam param, const AcReal val, AcCompInfo* info)
+  {
+	  info->is_loaded.real_params[(int)param] = true;
+	  info->config.real_params[(int)param] = val;
+	  return AC_SUCCESS;
+  }
+  static AcResult __attribute__((unused)) acLoadIntCompInfo(const AcIntCompParam param, const int val, AcCompInfo* info)
+  {
+	  info->is_loaded.int_params[(int)param] = true;
+	  info->config.int_params[(int)param] = val;
+	  return AC_SUCCESS;
+  }
+  static AcResult __attribute__((unused)) acLoadReal3CompInfo(const AcReal3CompParam param, const AcReal3 val, AcCompInfo* info)
+  {
+	  info->is_loaded.real3_params[(int)param] = true;
+	  info->config.real3_params[(int)param] = val;
+	  return AC_SUCCESS;
+  }
+  static AcResult __attribute__((unused)) acLoadInt3CompInfo(const AcInt3CompParam param, const int3 val, AcCompInfo* info)
+  {
+	  info->is_loaded.int3_params[(int)param] = true;
+	  info->config.int3_params[(int)param] = val;
+	  return AC_SUCCESS;
+  }
+
+  static AcResult __attribute__((unused)) acLoadRealArrayCompInfo(const AcRealCompArrayParam param, const AcReal* val, AcCompInfo* info)
+  {
+	  info->is_loaded.real_arrays[(int)param] = true;
+	  info->config.real_arrays[(int)param] = val;
+	  return AC_SUCCESS;
+  }
+
+  static AcResult __attribute__((unused)) acLoadIntArrayCompInfo(const AcIntCompArrayParam param, const int* val, AcCompInfo* info)
+  {
+	  info->is_loaded.int_arrays[(int)param] = true;
+	  info->config.int_arrays[(int)param] = val;
+	  return AC_SUCCESS;
+  }
+  static AcResult __attribute__((unused)) acLoadBoolCompInfo(const AcBoolCompParam param, const bool val, AcCompInfo* info)
+  {
+	  info->is_loaded.bool_params[(int)param] = true;
+	  info->config.bool_params[(int)param] = val;
+	  return AC_SUCCESS;
+  }
+  static AcResult __attribute__((unused)) acLoadBoolArrayCompInfo(const AcBoolCompArrayParam param, const bool* val, AcCompInfo* info)
+  {
+	  info->is_loaded.bool_arrays[(int)param] = true;
+	  info->config.bool_arrays[(int)param] = val;
+	  return AC_SUCCESS;
+  }
+
+#if __cplusplus
+#define GEN_LOAD_COMP_INFO(PARAM_TYPE,VAL_TYPE,TYPE) \
+  static AcResult __attribute__((unused)) acLoadCompInfo(const PARAM_TYPE param, const VAL_TYPE val, AcCompInfo* info) {return acLoad##TYPE##CompInfo(param,val,info);};
+
+  GEN_LOAD_COMP_INFO(AcBoolCompParam, bool, Bool)
+  GEN_LOAD_COMP_INFO(AcIntCompParam,  int, Int)
+  GEN_LOAD_COMP_INFO(AcInt3CompParam, int3, Int3)
+  GEN_LOAD_COMP_INFO(AcRealCompParam, AcReal,Real)
+  GEN_LOAD_COMP_INFO(AcReal3CompParam,AcReal3,Real3)
+  GEN_LOAD_COMP_INFO(AcRealCompArrayParam,AcReal*,RealArray)
+  GEN_LOAD_COMP_INFO(AcIntCompArrayParam,int*,IntArray)
+  GEN_LOAD_COMP_INFO(AcBoolCompArrayParam,bool*,BoolArray)
+#endif
+#endif
 
   #ifdef __cplusplus
   } // extern "C"

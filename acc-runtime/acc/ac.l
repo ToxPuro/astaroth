@@ -91,6 +91,7 @@ void strip_whitespace(char *str) {
 "bool"                  { return BOOL; }
 "Matrix"                { return MATRIX; }
 "Field"                 { return FIELD; }
+"Field3"                { return FIELD3; }
 "VtxBuffer"                 { return VTXBUFFER; }
 "WorkBuffer"            {return WORK_BUFFER; }
 "ComputeSteps"          {return COMPUTESTEPS; }
@@ -107,7 +108,9 @@ void strip_whitespace(char *str) {
 "communicated"          { return COMMUNICATED; }
 "dconst"          { return DCONST_QL; }
 "const"          { return CONST_QL; }
+"constexpr"      { return CONSTEXPR; }
 "output"          { return OUTPUT; }
+"run_const"          { return RUN_CONST; }
 "gmem"          { return GLOBAL_MEMORY_QL; }
 "auxiliary"             { return AUXILIARY; }
 
@@ -122,6 +125,7 @@ void strip_whitespace(char *str) {
 "break"     { return BREAK; }
 "continue"  { return CONTINUE; }
 "return"    { return RETURN; }
+[?]         { return QUESTION; }
 
 struct[[:space:]]{L}({L}|{D})* {
 					char* name = strdup(yytext);
@@ -173,9 +177,9 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 (==)|(>=)|(<=)|(!=)|(^=)  { return BINARY_OP; }    /* Operators */
 [-+*/:;=\[\]{}(),\.<>|&!] { return yytext[0]; }    /* Characters */
 {D}+[.]{D}*               { return REALNUMBER; }
-{D}+[.]?{D}*(e[-]?{D}+)   { return REALNUMBER; }
-{D}+[.]?{D}*(e[-]?{D}+)?[d]  { return DOUBLENUMBER; } /* Numbers */
-{D}+[.]?{D}*(e[-]?{D}+)?[f]?  { return NUMBER; }      /* Numbers */
+{D}+[.]?{D}*(e[-+]?{D}+)   { return REALNUMBER; }
+{D}+[.]?{D}*(e[-+]?{D}+)?[d]  { return DOUBLENUMBER; } /* Numbers */
+{D}+[.]?{D}*(e[-+]?{D}+)?[f]?  { return NUMBER; }      /* Numbers */
 0[xX][0-9a-fA-F]+[ulUL]*      { return NUMBER; }      /* Hex */
 
 

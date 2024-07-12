@@ -125,7 +125,7 @@ get_simulation_graph(int pid, Simulation sim, AcMeshInfo info)
                  acComputeWithParams(KERNEL_twopass_solve_final, all_fields, final_loader)
 		};
             acLogFromRootProc(pid, "Creating heat duct task graph\n");
-            AcTaskGraph* my_taskgraph = acGridBuildTaskGraph(heatduct_ops,1);
+            AcTaskGraph* my_taskgraph = acGridBuildTaskGraph(heatduct_ops);
             acGraphPrintDependencies(my_taskgraph);
             return my_taskgraph;
 #endif

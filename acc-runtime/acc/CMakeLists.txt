@@ -25,7 +25,20 @@ include_directories(${PROJECT_BINARY_DIR})
 
 ## Executable
 add_executable(acc codegen.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
-target_compile_definitions(acc PRIVATE -DACC_DIR="${CMAKE_CURRENT_SOURCE_DIR}" -DACC_MATH_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../stdlib/math" -DACC_UTILS_INTRINSICS="${CMAKE_CURRENT_SOURCE_DIR}/../stdlib/utils/intrinsics.h")
+
+target_compile_definitions(acc PRIVATE -DACC_BUILTIN_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../built-in")
+target_compile_definitions(acc PRIVATE -DACC_BUILTIN_FUNCS="${CMAKE_CURRENT_SOURCE_DIR}/../built-in/functions.h")
+target_compile_definitions(acc PRIVATE -DACC_BUILTIN_TYPEDEFS="${CMAKE_CURRENT_SOURCE_DIR}/../built-in/typedefs.h")
+target_compile_definitions(acc PRIVATE -DACC_BUILTIN_KERNELS="${CMAKE_CURRENT_SOURCE_DIR}/../built-in/kernels.h")
+target_compile_definitions(acc PRIVATE -DACC_BUILTIN_DEFAULT_VALUES="${CMAKE_CURRENT_SOURCE_DIR}/../built-in/default_values.h")
+target_compile_definitions(acc PRIVATE -DACC_BUILTIN_VARIABLES="${CMAKE_CURRENT_SOURCE_DIR}/../built-in/variables.h")
+target_compile_definitions(acc PRIVATE -DACC_OVERRIDES_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../overrides.h")
+target_compile_definitions(acc PRIVATE -DACC_GEN_KERNELS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../dynamic-kernels")
+target_compile_definitions(acc PRIVATE -DACC_MATH_DIR="${AC_BASE_PATH}/acc-runtime/stdlib/math")
+target_compile_definitions(acc PRIVATE -DACC_UTILS_INTRINSICS="${AC_BASE_PATH}/acc-runtime/stdlib/utils/intrinsics.h")
+target_compile_definitions(acc PRIVATE -DACC_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+
+#target_compile_definitions(acc PRIVATE -DACC_DIR="${CMAKE_CURRENT_SOURCE_DIR}" -DACC_MATH_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../stdlib/math" -DACC_UTILS_INTRINSICS="${CMAKE_CURRENT_SOURCE_DIR}/../stdlib/utils/intrinsics.h")
 target_link_libraries(acc PRIVATE tinyexpr)
 
 if (OPTIMIZE_MEM_ACCESSES)

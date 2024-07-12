@@ -32,11 +32,38 @@
 #endif
 
 #define USE_COMPRESSIBLE_MEMORY (0)
+typedef struct
+{
+	VertexBufferHandle x;
+	VertexBufferHandle y;
+	VertexBufferHandle z;
+} Field3;
+
+constexpr Field3 
+MakeField3(const Field& x, const Field& y, const Field& z)
+{
+	return (Field3){x,y,z};
+}
+template <size_t N>
+constexpr __device__ __forceinline__
+std::array<Field3,N>
+MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
+{
+	std::array<int3,N> res{};
+	for(size_t i = 0; i < N; ++i)
+		res[i] = (Field3){x,y,z};
+	return res;
+}
 
 #include "acc/implementation.h"
 #include "user_constants.h"
 
 static dim3 last_tpb = (dim3){0, 0, 0};
+static AcReal3 AC_INTERNAL_global_real_vec = {0.0,0.0,0.0};
+static int3 AC_INTERNAL_global_int_vec = {0,0,0};
+
+static AcReal AC_INTERNAL_big_real_array[8*1024*1024]{0.0};
+static int AC_INTERNAL_big_int_array[8*1024*1024]{0};
 
 //the int key in the nested map corresponds to the starting vertexIdx linearized
 std::unordered_map<Kernel,std::unordered_map<int,int>> reduce_offsets;
@@ -209,32 +236,34 @@ get_smem(const Volume tpb, const size_t stencil_order,
 __device__ __constant__ AcMeshInfo d_mesh_info;
 //we pad with 1 since zero sized arrays are not allowed with some CUDA compilers
 
-__device__ __constant__ AcReal d_real_arrays[D_REAL_ARRAYS_LEN+1];
-__device__ __constant__ int d_int_arrays[D_INT_ARRAYS_LEN+1];
+#define GEN_DARRAYS(VAL_TYPE,NAME_LOWER,NAME_UPPER) \
+	__device__ __constant__ VAL_TYPE d_##NAME_LOWER##_arrays[D_##NAME_UPPER##_ARRAYS_LEN+1];
+
+GEN_DARRAYS(AcReal, real, REAL)
+GEN_DARRAYS(int, int, INT)
+GEN_DARRAYS(bool, bool, BOOL)
+GEN_DARRAYS(AcReal3, real3, REAL3)
+GEN_DARRAYS(int3, int3, INT3)
+
+//The macros above generate d arrays like these:
+//__device__ __constant__ AcReal d_real_arrays[D_REAL_ARRAYS_LEN+1];
+//__device__ __constant__ int d_int_arrays[D_INT_ARRAYS_LEN+1];
 
 // Astaroth 2.0 backwards compatibility START
 #define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
 
-int __device__ __forceinline__
-DCONST(const AcIntParam param)
-{
-  return d_mesh_info.int_params[param];
-}
-int3 __device__ __forceinline__
-DCONST(const AcInt3Param param)
-{
-  return d_mesh_info.int3_params[param];
-}
-AcReal __device__ __forceinline__
-DCONST(const AcRealParam param)
-{
-  return d_mesh_info.real_params[param];
-}
-AcReal3 __device__ __forceinline__
-DCONST(const AcReal3Param param)
-{
-  return d_mesh_info.real3_params[param];
-}
+#define GEN_DCONST(PARAM_TYPE, VAL_TYPE,MESH_NAME) \
+	VAL_TYPE __device__ __forceinline__ \
+	DCONST(const PARAM_TYPE param) \
+	{ \
+		return d_mesh_info.MESH_NAME[param]; \
+	}
+
+GEN_DCONST(AcBoolParam, bool, bool_params)
+GEN_DCONST(AcIntParam, int, int_params)
+GEN_DCONST(AcInt3Param, int3, int3_params)
+GEN_DCONST(AcRealParam, AcReal, real_params)
+GEN_DCONST(AcReal3Param, AcReal3, real3_params)
 
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
   ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mxy))
@@ -289,23 +318,6 @@ IDX(const int3 idx)
 }
 
 //#define Field3(x, y, z) make_int3((x), (y), (z))
-constexpr int3
-Field3(const int& x, const int& y, const int& z)
-{
-	return make_int3(x,y,z);
-}
-template <size_t N>
-constexpr __device__ __forceinline__
-std::array<int3,N>
-Field3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
-{
-	std::array<int3,N> res{};
-	for(size_t i = 0; i < N; ++i)
-	{
-		res[i] = make_int3(x[i],y[i],z[i]);
-	}
-	return res;
-}
 #define print printf                          // TODO is this a good idea?
 #define len(arr) sizeof(arr) / sizeof(arr[0]) // Leads to bugs if the user
 // passes an array into a device function and then calls len (need to modify
@@ -317,6 +329,7 @@ Field3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
 #include "user_dfuncs.h"
 #define suppress_unused_warning(X) (void)X
 #include "user_kernels.h"
+#include "user_handwritten_kernels.h"
 
 typedef struct {
   Kernel kernel;
@@ -455,8 +468,9 @@ device_malloc(void** dst, const int bytes)
   #endif
 }
 
+template <typename T>
 void
-device_free(AcReal** dst, const int bytes)
+device_free(T** dst, const int bytes)
 {
 #if USE_COMPRESSIBLE_MEMORY
   freeCompressible(*dst, bytes);
@@ -468,17 +482,14 @@ device_free(AcReal** dst, const int bytes)
   *dst = NULL;
 }
 
+
+template <typename T>
 void
-device_free(int** dst, const int bytes)
+allocate_arrays(const int n_arrays, const bool* is_dconst, const T* const* arrays, T** vba_arrays, const int* lengths, const AcMeshInfo config)
 {
-#if USE_COMPRESSIBLE_MEMORY
-  freeCompressible(*dst, bytes);
-#else
-  cudaFree(*dst);
-  //used to silence unused warning
-  (void)bytes;
-#endif
-  *dst = NULL;
+	for(int i = 0; i < n_arrays; ++i)
+		if(arrays[i] != nullptr && !is_dconst[i])
+			device_malloc((void**)&vba_arrays[i],sizeof(T)*config.int_params[lengths[i]]);
 }
 
 
@@ -531,43 +542,37 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
   for (int i = 0; i < NUM_WORK_BUFFERS; ++i)
     device_malloc((void**)&vba.w[i],bytes);
 
-  //Allocate arrays
-  for (int i = 0; i < NUM_REAL_ARRAYS; ++i)
-    if (config.real_arrays[i] != nullptr && !real_array_is_dconst[i])
-       device_malloc((void**)&vba.real_arrays[i],sizeof(vba.in[0][0])*config.int_params[real_array_lengths[i]]);
-  for (int i = 0; i < NUM_INT_ARRAYS; ++i)
-    if (config.int_arrays[i] != nullptr && !int_array_is_dconst[i])
-       device_malloc((void**)&vba.int_arrays[i],sizeof(int)*config.int_params[int_array_lengths[i]]);
+  allocate_arrays(NUM_REAL_ARRAYS,real_array_is_dconst,config.real_arrays,    vba.real_arrays,  real_array_lengths,  config);
+  allocate_arrays(NUM_INT_ARRAYS, int_array_is_dconst, config.int_arrays ,    vba.int_arrays,   int_array_lengths,   config);
+  allocate_arrays(NUM_BOOL_ARRAYS,bool_array_is_dconst,config.bool_arrays,    vba.bool_arrays,  bool_array_lengths,  config);
+  allocate_arrays(NUM_INT3_ARRAYS,int3_array_is_dconst,config.int3_arrays,    vba.int3_arrays,  int3_array_lengths,  config);
+  allocate_arrays(NUM_REAL3_ARRAYS, real3_array_is_dconst,config.real3_arrays,vba.real3_arrays, real3_array_lengths, config);
 
   acVBAReset(0, &vba);
   cudaDeviceSynchronize();
   return vba;
 }
 
+template <typename T>
+void
+update_arrays(const int n_arrays, const bool* is_dconst, const T* const* arrays, T** vba_arrays, const int* lengths, const AcMeshInfo config)
+{
+	for(int i = 0; i < n_arrays; ++i)
+	{
+		if(is_dconst[i]) continue;
+		size_t bytes = sizeof(T)*config.int_params[lengths[i]];
+		if(arrays[i] == nullptr && vba_arrays[i] != nullptr) device_free(&vba_arrays[i],bytes);
+		else if(arrays[i] != nullptr && vba_arrays[i] == nullptr) device_malloc((void**)&vba_arrays[i],bytes);
+	}
+}
 void
 acVBAUpdate(VertexBufferArray* vba, const AcMeshInfo config)
 {
-  size_t bytes;
-  //Allocate/Free arrays
-  for (int i = 0; i < NUM_REAL_ARRAYS; ++i){
-    if(real_array_is_dconst[i]) continue;
-    bytes = sizeof(vba->in[0][0])*config.int_params[real_array_lengths[i]];
-    if (config.real_arrays[i] == nullptr){
-      if (vba->real_arrays[i] != nullptr) device_free(&vba->real_arrays[i], bytes);
-    }
-    else{
-      if (vba->real_arrays[i] == nullptr) device_malloc((void**)&vba->real_arrays[i],bytes);
-    }
-  }
-  for (int i = 0; i < NUM_INT_ARRAYS; ++i){
-    if(int_array_is_dconst[i]) continue;
-    bytes = sizeof(int)*config.int_params[int_array_lengths[i]];
-    if (config.int_arrays[i] == nullptr){
-      if (vba->int_arrays[i] != nullptr) device_free(&vba->int_arrays[i],bytes);
-    }else{
-      if (vba->int_arrays[i] == nullptr) device_malloc((void**)&vba->int_arrays[i],bytes);
-    }
-  }
+  update_arrays(NUM_REAL_ARRAYS,real_array_is_dconst,config.real_arrays,    vba->real_arrays,  real_array_lengths,  config);
+  update_arrays(NUM_INT_ARRAYS, int_array_is_dconst, config.int_arrays ,    vba->int_arrays,   int_array_lengths,   config);
+  update_arrays(NUM_BOOL_ARRAYS,bool_array_is_dconst,config.bool_arrays,    vba->bool_arrays,  bool_array_lengths,  config);
+  update_arrays(NUM_INT3_ARRAYS,int3_array_is_dconst,config.int3_arrays,    vba->int3_arrays,  int3_array_lengths,  config);
+  update_arrays(NUM_REAL3_ARRAYS, real3_array_is_dconst,config.real3_arrays,vba->real3_arrays, real3_array_lengths, config);
 }
 void
 acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
@@ -732,6 +737,7 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 };
 
+
 #define GEN_LOAD_UNIFORM(LABEL_UPPER, LABEL_LOWER)                             \
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
   cudaDeviceSynchronize(); /* See note in acLoadStencil */                     \
@@ -742,6 +748,7 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   const cudaError_t retval = cudaMemcpyToSymbol(                               \
       d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);     \
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+
 
 AcResult
 acLoadRealUniform(const cudaStream_t /* stream */, const AcRealParam param,
@@ -755,34 +762,6 @@ acLoadRealUniform(const cudaStream_t /* stream */, const AcRealParam param,
     return AC_FAILURE;
   }
   GEN_LOAD_UNIFORM(REAL, real);
-}
-
-AcResult
-acLoadRealArrayUniform(const cudaStream_t /* stream */, const AcRealArrayParam param,
-                  const AcReal* values)
-{
-  ERRCHK_ALWAYS(real_array_is_dconst[(int)param]);
-  const int length  = (int)real_array_lengths[(int)param];
-  cudaDeviceSynchronize();
-  const size_t offset = (size_t)d_real_array_offsets[(int)param]*sizeof(AcReal);
-  const cudaError_t retval = cudaMemcpyToSymbol(d_real_arrays, values, sizeof(AcReal)*length, offset, cudaMemcpyHostToDevice);
-  if (retval != cudaSuccess)
-        return AC_FAILURE;
-  return AC_SUCCESS;
-}
-
-AcResult
-acLoadIntArrayUniform(const cudaStream_t /* stream */, const AcIntArrayParam param,
-                  const int* values)
-{
-  ERRCHK_ALWAYS(int_array_is_dconst[(int)param]);
-  const int length  = (int)int_array_lengths[(int)param];
-  cudaDeviceSynchronize();
-  const size_t offset = (size_t)d_int_array_offsets[(int)param]*sizeof(int);
-  const cudaError_t retval = cudaMemcpyToSymbol(d_int_arrays, values, sizeof(int)*length, offset, cudaMemcpyHostToDevice);
-  if (retval != cudaSuccess)
-        return AC_FAILURE;
-  return AC_SUCCESS;
 }
 
 
@@ -801,19 +780,39 @@ acLoadReal3Uniform(const cudaStream_t /* stream */, const AcReal3Param param,
   GEN_LOAD_UNIFORM(REAL3, real3);
 }
 
-AcResult
-acLoadIntUniform(const cudaStream_t /* stream */, const AcIntParam param,
-                 const int value)
-{
-  GEN_LOAD_UNIFORM(INT, int);
-}
 
-AcResult
-acLoadInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
-                  const int3 value)
-{
-  GEN_LOAD_UNIFORM(INT3, int3);
-}
+#define GEN_LOAD_UNIFORM_FUNC(LABEL_UPPER,LABEL_LOWER, LABEL_UPPER_CASE) \
+	AcResult				       \
+	acLoad##LABEL_UPPER_CASE##Uniform(const cudaStream_t, const Ac##LABEL_UPPER_CASE##Param param, const LABEL_LOWER value) \
+	{ \
+	GEN_LOAD_UNIFORM( LABEL_UPPER , LABEL_LOWER ); \
+	} 
+
+GEN_LOAD_UNIFORM_FUNC(INT,int,Int)
+GEN_LOAD_UNIFORM_FUNC(INT3,int3,Int3)
+GEN_LOAD_UNIFORM_FUNC(BOOL,bool,Bool)
+
+#define GEN_LOAD_ARRAY_UNIFORM_FUNC(ARRAY_NAME,PARAM_NAME, VAL_TYPE, LABEL_UPPER_CASE) \
+	AcResult				       \
+	acLoad##LABEL_UPPER_CASE##ArrayUniform(const cudaStream_t, const PARAM_NAME param, const VAL_TYPE* values) \
+	{ \
+	ERRCHK_ALWAYS(ARRAY_NAME##_is_dconst[(int)param]); \
+	const int length = (int) ARRAY_NAME##_lengths[(int)param]; \
+	cudaDeviceSynchronize(); \
+	const size_t offset = (size_t) d_##ARRAY_NAME##_offsets[(int)param]*sizeof(VAL_TYPE); \
+	const cudaError_t retval = cudaMemcpyToSymbol(d_##ARRAY_NAME##s, values, sizeof(VAL_TYPE)*length, offset, cudaMemcpyHostToDevice); \
+	if (retval != cudaSuccess) \
+		return AC_FAILURE; \
+	return AC_SUCCESS; \
+	} \
+
+GEN_LOAD_ARRAY_UNIFORM_FUNC(int_array,   AcIntArrayParam, int,Int)
+GEN_LOAD_ARRAY_UNIFORM_FUNC(real_array,  AcRealArrayParam, AcReal, Real)
+GEN_LOAD_ARRAY_UNIFORM_FUNC(bool_array,  AcBoolArrayParam, bool, Bool)
+GEN_LOAD_ARRAY_UNIFORM_FUNC(real3_array, AcReal3ArrayParam, AcReal3, Real3)
+GEN_LOAD_ARRAY_UNIFORM_FUNC(int3_array,  AcInt3ArrayParam, int3, Int3)
+
+
 
 #define GEN_STORE_UNIFORM(LABEL_UPPER, LABEL_LOWER)                            \
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
@@ -826,33 +825,26 @@ acLoadInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
       value, d_mesh_info, sizeof(*value), offset, cudaMemcpyDeviceToHost);     \
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 
-AcResult
-acStoreRealUniform(const cudaStream_t /* stream */, const AcRealParam param,
-                   AcReal* value)
-{
-  GEN_STORE_UNIFORM(REAL, real);
-}
+#define GEN_STORE_UNIFORM_FUNC(LABEL_UPPER,LABEL_LOWER, LABEL_UPPER_CASE, VAL_TYPE) \
+	AcResult				       \
+	acStore##LABEL_UPPER_CASE##Uniform(const cudaStream_t, const Ac##LABEL_UPPER_CASE##Param param, VAL_TYPE* value) \
+	{ \
+	GEN_STORE_UNIFORM(LABEL_UPPER,LABEL_LOWER); \
+	} 
 
-AcResult
-acStoreReal3Uniform(const cudaStream_t /* stream */, const AcReal3Param param,
-                    AcReal3* value)
-{
-  GEN_STORE_UNIFORM(REAL3, real3);
-}
 
-AcResult
-acStoreIntUniform(const cudaStream_t /* stream */, const AcIntParam param,
-                  int* value)
-{
-  GEN_STORE_UNIFORM(INT, int);
-}
+//AcResult
+//acStoreRealUniform(const cudaStream_t /* stream */, const AcRealParam param,
+//                   AcReal* value)
+//{
+//  GEN_STORE_UNIFORM(REAL, real);
+//}
+GEN_STORE_UNIFORM_FUNC(REAL,real,Real,AcReal)
+GEN_STORE_UNIFORM_FUNC(INT,int,Int,int)
+GEN_STORE_UNIFORM_FUNC(REAL3, real3, Real3, AcReal3)
+GEN_STORE_UNIFORM_FUNC(INT3, int3, Int3, int3)
+GEN_STORE_UNIFORM_FUNC(BOOL, bool, Bool, bool)
 
-AcResult
-acStoreInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
-                   int3* value)
-{
-  GEN_STORE_UNIFORM(INT3, int3);
-}
 static TBConfig
 autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 {

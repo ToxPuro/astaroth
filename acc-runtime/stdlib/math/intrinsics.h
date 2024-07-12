@@ -13,9 +13,9 @@ intrinsic log
 intrinsic sqrt 
 intrinsic pow 
 intrinsic fabs 
-intrinsic abs
 
-intrinsic isnan
 
 intrinsic min
 intrinsic max
+
+intrinsic ceil

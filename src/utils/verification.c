@@ -126,13 +126,13 @@ get_maximum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
 {
     AcReal maximum = (AcReal)-INFINITY;
 
-    const int x_start = communicated_field ? 3 : 0;
-    const int y_start = communicated_field ? 3 : 0;
-    const int z_start = communicated_field ? 3 : 0;
+    const int x_start = communicated_field ? 0 : 3;
+    const int y_start = communicated_field ? 0 : 3;
+    const int z_start = communicated_field ? 0 : 3;
 
-    const int x_end = communicated_field ? info.int_params[AC_nx] : info.int_params[AC_mx];
-    const int y_end = communicated_field ? info.int_params[AC_ny] : info.int_params[AC_my];
-    const int z_end = communicated_field ? info.int_params[AC_nz] : info.int_params[AC_mz];
+    const int x_end = communicated_field ? info.int_params[AC_mx] : info.int_params[AC_nx];
+    const int y_end = communicated_field ? info.int_params[AC_my] : info.int_params[AC_ny];
+    const int z_end = communicated_field ? info.int_params[AC_mz] : info.int_params[AC_nz];
 
     for (int x = x_start; x < x_end; ++x) 
     {
@@ -153,13 +153,13 @@ get_minimum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
 {
     AcReal minimum = (AcReal)INFINITY;
 
-    const int x_start = communicated_field ? 3 : 0;
-    const int y_start = communicated_field ? 3 : 0;
-    const int z_start = communicated_field ? 3 : 0;
+    const int x_start = communicated_field ? 0 : 3;
+    const int y_start = communicated_field ? 0 : 3;
+    const int z_start = communicated_field ? 0 : 3;
 
-    const int x_end = communicated_field ? info.int_params[AC_nx] : info.int_params[AC_mx];
-    const int y_end = communicated_field ? info.int_params[AC_ny] : info.int_params[AC_my];
-    const int z_end = communicated_field ? info.int_params[AC_nz] : info.int_params[AC_mz];
+    const int x_end = communicated_field ? info.int_params[AC_mx] : info.int_params[AC_nx];
+    const int y_end = communicated_field ? info.int_params[AC_my] : info.int_params[AC_ny];
+    const int z_end = communicated_field ? info.int_params[AC_mz] : info.int_params[AC_nz];
 
     for (int x = x_start; x < x_end; ++x) 
     {
@@ -186,13 +186,13 @@ get_max_abs_error(const AcReal* model, const AcReal* candidate, const AcMeshInfo
     Error error = {.abs_error = -1};
 
 
-    const int x_start = communicated_field ? 3 : 0;
-    const int y_start = communicated_field ? 3 : 0;
-    const int z_start = communicated_field ? 3 : 0;
+    const int x_start = communicated_field ? 0 : 3;
+    const int y_start = communicated_field ? 0 : 3;
+    const int z_start = communicated_field ? 0 : 3;
 
-    const int x_end = communicated_field ? info.int_params[AC_nx] : info.int_params[AC_mx];
-    const int y_end = communicated_field ? info.int_params[AC_ny] : info.int_params[AC_my];
-    const int z_end = communicated_field ? info.int_params[AC_nz] : info.int_params[AC_mz];
+    const int x_end = communicated_field ? info.int_params[AC_mx] : info.int_params[AC_nx];
+    const int y_end = communicated_field ? info.int_params[AC_my] : info.int_params[AC_ny];
+    const int z_end = communicated_field ? info.int_params[AC_mz] : info.int_params[AC_nz];
 
     for (int x = x_start; x < x_end; ++x) 
     {
@@ -224,7 +224,7 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
     int errors_found = 0;
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         const Error error = get_max_abs_error(model.vertex_buffer[i], candidate.vertex_buffer[i],
-                                              model.info, i>=NUM_COMMUNICATED_FIELDS);
+                                              model.info, vtxbuf_is_communicated[i]);
         const bool acceptable = acEvalError(vtxbuf_names[i], error);
         if (!acceptable)
             ++errors_found;

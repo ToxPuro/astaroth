@@ -37,6 +37,8 @@
  \return Index in range 0...n if the keyword is in names. -1 if the keyword was
  not found.
  */
+extern "C"
+{
 static int
 find_str(const char keyword[], const char* names[], const int n)
 {
@@ -155,7 +157,7 @@ parse_config(const char* path, AcMeshInfo* config)
 			fprintf(stderr,"ERROR PARSING CONFIG: gave %d values to array %s which of size %d: SKIPPING\n",n_vals,keyword,int_array_lengths[idx]);
 		else
 		{
-			config->int_arrays[idx] = malloc(sizeof(AcReal)*int_array_lengths[idx]);
+			config->int_arrays[idx] = (int*)malloc(sizeof(AcReal)*int_array_lengths[idx]);
 			for(int i = 0; i < int_array_lengths[idx]; ++i)
 			{
 				config->int_arrays[idx][i] =  atoi(array_vals[i]);
@@ -175,7 +177,7 @@ parse_config(const char* path, AcMeshInfo* config)
 		else
 		{
 			fprintf(stderr,"Reading in real array: %s\n",keyword);
-			config->real_arrays[idx] = malloc(sizeof(AcReal)*real_array_lengths[idx]);
+			config->real_arrays[idx] = (AcReal*)malloc(sizeof(AcReal)*real_array_lengths[idx]);
 			for(int i = 0; i < real_array_lengths[idx]; ++i)
 			{
 				config->real_arrays[idx][i] =  atof(array_vals[i]);
@@ -207,10 +209,11 @@ acLoadConfig(const char* config_path, AcMeshInfo* config)
     //these are set to nullpointers for the users convenience that the user doesn't have to set them to null elsewhere
     //if they are present in the config then they are initialized correctly
     //sticks to the old API since we anyways overwrite the whole config
-    for(int i = 0; i < NUM_REAL_ARRAYS; ++i)
-	    config->real_arrays[i] = NULL;
-    for(int i = 0; i < NUM_INT_ARRAYS; ++i)
-	    config->int_arrays[i] = NULL;
+    memset(config->real_arrays, 0,NUM_REAL_ARRAYS *sizeof(AcReal*));
+    memset(config->int_arrays,  0,NUM_INT_ARRAYS  *sizeof(int*));
+    memset(config->bool_arrays, 0,NUM_BOOL_ARRAYS *sizeof(bool*));
+    memset(config->int3_arrays, 0,NUM_INT3_ARRAYS *sizeof(int*));
+    memset(config->real3_arrays,0,NUM_REAL3_ARRAYS*sizeof(int*));
 
     parse_config(config_path, config);
     acHostUpdateBuiltinParams(config);
@@ -238,4 +241,5 @@ acLoadConfig(const char* config_path, AcMeshInfo* config)
 #endif
 
     return uninitialized_config_val ? AC_FAILURE : AC_SUCCESS;
+}
 }

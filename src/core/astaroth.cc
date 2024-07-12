@@ -282,6 +282,10 @@ acHostUpdateBuiltinParams(AcMeshInfo* config)
     config->int_params[AC_mxy]  = config->int_params[AC_mx] * config->int_params[AC_my];
     config->int_params[AC_nxy]  = config->int_params[AC_nx] * config->int_params[AC_ny];
     config->int_params[AC_nxyz] = config->int_params[AC_nxy] * config->int_params[AC_nz];
+    
+    config->real_params[AC_xlen] = config->int_params[AC_nxgrid]*config->real_params[AC_dsx];
+    config->real_params[AC_ylen] = config->int_params[AC_nygrid]*config->real_params[AC_dsy];
+    config->real_params[AC_zlen] = config->int_params[AC_nzgrid]*config->real_params[AC_dsz];
 
     return AC_SUCCESS;
 }
@@ -304,7 +308,6 @@ AcResult
 acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 {
     mesh->info = info;
-
     const size_t n_cells = acVertexBufferSize(mesh->info);
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         mesh->vertex_buffer[w] = (AcReal*)calloc(n_cells, sizeof(AcReal));
@@ -312,6 +315,48 @@ acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
     }
 
     return AC_SUCCESS;
+}
+AcResult
+acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const int num_reals, 
+		      const int num_ints, const int num_bools, const int num_real_arrays,
+		      const int num_int_arrays, const int num_bool_arrays)
+{
+	AcResult res = AC_SUCCESS;
+	if(mesh_size != sizeof(AcMesh))
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in AcMesh size: %zu|%zu\n",mesh_size,sizeof(AcMesh));
+		res = AC_FAILURE;
+	}
+	if(mesh_info_size != sizeof(AcMeshInfo))
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in AcMeshInfo size: %zu|%zu\n",mesh_info_size,sizeof(AcMeshInfo));
+		res = AC_FAILURE;
+	}
+	if(num_ints != NUM_INT_PARAMS)
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_INT_PARAMS : %d|%d\n",num_ints,NUM_INT_PARAMS);
+	}
+	if(num_reals != NUM_REAL_PARAMS)
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_INT_PARAMS : %d|%d\n",num_reals,NUM_REAL_PARAMS);
+	}
+	if(num_bools != NUM_BOOL_PARAMS)
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_INT_PARAMS : %d|%d\n",num_bools,NUM_BOOL_PARAMS);
+	}
+	if(num_int_arrays != NUM_INT_ARRAYS)
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_INT_ARRAYS: %d|%d\n",num_int_arrays,NUM_INT_ARRAYS);
+	}
+	if(num_bool_arrays != NUM_BOOL_ARRAYS)
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_INT_ARRAYS: %d|%d\n",num_bool_arrays,NUM_BOOL_ARRAYS);
+	}
+	if(num_real_arrays != NUM_REAL_ARRAYS)
+	{
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_INT_ARRAYS: %d|%d\n",num_real_arrays,NUM_REAL_ARRAYS);
+	}
+	return res;
 }
 
 static AcReal

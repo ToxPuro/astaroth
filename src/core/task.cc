@@ -200,61 +200,61 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t 
 		fields.push_back(fields_[i]);
 	break;
       }
-id = tag_to_id(tag);
-// facet class 0 = inner core
-// facet class 1 = face
-// facet class 2 = edge
-// facet class 3 = corner
-facet_class = (id.x == 0 ? 0 : 1) + (id.y == 0 ? 0 : 1) + (id.z == 0 ? 0 : 1);
-ERRCHK_ALWAYS(facet_class <= 3);
-
-switch (family) {
-case RegionFamily::Compute_output: {
-// clang-format off
-position = (int3){
-	    id.x == -1  ? NGHOST : id.x == 1 ? nn.x : NGHOST * 2,
-	    id.y == -1  ? NGHOST : id.y == 1 ? nn.y : NGHOST * 2,
-	    id.z == -1  ? NGHOST : id.z == 1 ? nn.z : NGHOST * 2};
-// clang-format on
-dims = (int3){id.x == 0 ? nn.x - NGHOST * 2 : NGHOST,
-	      id.y == 0 ? nn.y - NGHOST * 2 : NGHOST,
-	      id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
-break;
-}
-case RegionFamily::Compute_input: {
-// clang-format off
-position = (int3){
-	    id.x == -1  ? 0 : id.x == 1 ? nn.x - NGHOST : NGHOST ,
-	    id.y == -1  ? 0 : id.y == 1 ? nn.y - NGHOST : NGHOST ,
-	    id.z == -1  ? 0 : id.z == 1 ? nn.z - NGHOST : NGHOST };
-// clang-format on
-dims = (int3){id.x == 0 ? nn.x : NGHOST * 3, id.y == 0 ? nn.y : NGHOST * 3,
-	      id.z == 0 ? nn.z : NGHOST * 3};
-break;
-}
-case RegionFamily::Exchange_output: {
-// clang-format off
-position = (int3){
-	    id.x == -1  ? 0 : id.x == 1 ? NGHOST + nn.x : NGHOST,
-	    id.y == -1  ? 0 : id.y == 1 ? NGHOST + nn.y : NGHOST,
-	    id.z == -1  ? 0 : id.z == 1 ? NGHOST + nn.z : NGHOST};
-// clang-format on
-dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
-	      id.z == 0 ? nn.z : NGHOST};
-break;
-}
-case RegionFamily::Exchange_input: {
-position = (int3){id.x == 1 ? nn.x : NGHOST, id.y == 1 ? nn.y : NGHOST,
-		  id.z == 1 ? nn.z : NGHOST};
-dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
-	      id.z == 0 ? nn.z : NGHOST};
-break;
-}
-default: {
-ERROR("Unknown region family.");
-}
-}
-volume = dims.x * dims.y * dims.z;
+	id = tag_to_id(tag);
+	// facet class 0 = inner core
+	// facet class 1 = face
+	// facet class 2 = edge
+	// facet class 3 = corner
+	facet_class = (id.x == 0 ? 0 : 1) + (id.y == 0 ? 0 : 1) + (id.z == 0 ? 0 : 1);
+	ERRCHK_ALWAYS(facet_class <= 3);
+	
+	switch (family) {
+	case RegionFamily::Compute_output: {
+	// clang-format off
+	position = (int3){
+		    id.x == -1  ? NGHOST : id.x == 1 ? nn.x : NGHOST * 2,
+		    id.y == -1  ? NGHOST : id.y == 1 ? nn.y : NGHOST * 2,
+		    id.z == -1  ? NGHOST : id.z == 1 ? nn.z : NGHOST * 2};
+	// clang-format on
+	dims = (int3){id.x == 0 ? nn.x - NGHOST * 2 : NGHOST,
+		      id.y == 0 ? nn.y - NGHOST * 2 : NGHOST,
+		      id.z == 0 ? nn.z - NGHOST * 2 : NGHOST};
+	break;
+	}
+	case RegionFamily::Compute_input: {
+	// clang-format off
+	position = (int3){
+		    id.x == -1  ? 0 : id.x == 1 ? nn.x - NGHOST : NGHOST ,
+		    id.y == -1  ? 0 : id.y == 1 ? nn.y - NGHOST : NGHOST ,
+		    id.z == -1  ? 0 : id.z == 1 ? nn.z - NGHOST : NGHOST };
+	// clang-format on
+	dims = (int3){id.x == 0 ? nn.x : NGHOST * 3, id.y == 0 ? nn.y : NGHOST * 3,
+		      id.z == 0 ? nn.z : NGHOST * 3};
+	break;
+	}
+	case RegionFamily::Exchange_output: {
+	// clang-format off
+	position = (int3){
+		    id.x == -1  ? 0 : id.x == 1 ? NGHOST + nn.x : NGHOST,
+		    id.y == -1  ? 0 : id.y == 1 ? NGHOST + nn.y : NGHOST,
+		    id.z == -1  ? 0 : id.z == 1 ? NGHOST + nn.z : NGHOST};
+	// clang-format on
+	dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
+		      id.z == 0 ? nn.z : NGHOST};
+	break;
+	}
+	case RegionFamily::Exchange_input: {
+	position = (int3){id.x == 1 ? nn.x : NGHOST, id.y == 1 ? nn.y : NGHOST,
+			  id.z == 1 ? nn.z : NGHOST};
+	dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
+		      id.z == 0 ? nn.z : NGHOST};
+	break;
+	}
+	default: {
+	ERROR("Unknown region family.");
+	}
+	}
+	volume = dims.x * dims.y * dims.z;
 }
 
 Region::Region(RegionFamily family_, int3 id_, int3 nn, Field fields_[], size_t num_fields)
@@ -318,6 +318,15 @@ Region::fields_overlap(const Region* other)
 	for(auto& field_1 : this->fields)
 		for(auto& field_2 : other->fields)
 			overlap |= (field_1 == field_2);
+	return overlap;
+}
+bool
+Task::swaps_overlap(const Task* other)
+{
+	bool overlap = false;
+	for(bool swap_1 : this->swap_offset)
+		for(bool swap_2 : other->swap_offset)
+			overlap |= (swap_1 == swap_2);
 	return overlap;
 }
 
@@ -430,7 +439,10 @@ Task::isPrerequisiteTo(std::shared_ptr<Task> other)
 }
 
 bool
-Task::isComputeTask() { return false;}
+Task::isComputeTask()      { return false;}
+
+bool
+Task::isHaloExchangeTask() { return false;}
 
 
 void
@@ -751,17 +763,18 @@ HaloMessageSwapChain::get_fresh_buffer()
     return &buffers[buf_idx];
 }
 
+
+
 // HaloExchangeTask
 HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, int halo_region_tag,
-                                   int3 nn, uint3_64 decomp, Device device_,
+                                   AcGridInfo grid_info, uint3_64 decomp, Device device_,
                                    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
-           Region(RegionFamily::Exchange_input, halo_region_tag, nn, op.fields_in,
+           Region(RegionFamily::Exchange_input, halo_region_tag, grid_info.nn, op.fields_in,
                   op.num_fields_in),
-           Region(RegionFamily::Exchange_output, halo_region_tag, nn, op.fields_out,
+           Region(RegionFamily::Exchange_output, halo_region_tag, grid_info.nn, op.fields_out,
                   op.num_fields_out),
            op, device_, swap_offset_),
-      nn(nn),
       recv_buffers(output_region.dims, op.num_fields_in),
       send_buffers(input_region.dims, op.num_fields_out)
 {
@@ -795,7 +808,19 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
            "," + std::to_string(output_region.id.y) + "," + std::to_string(output_region.id.z) +
            ")";
     task_type = TASKTYPE_HALOEXCHANGE;
+
+    //TP: HaloExchangeTasks usually have input and output regions on the same side of the boundary
+    //Thus if you directly moving data through kernels you have to remap the output position to the other side of the boundary
+    if(sendingToItself())
+    {
+	    const int3 mm = {grid_info.nn.x + NGHOST, grid_info.nn.y + NGHOST, grid_info.nn.z + NGHOST};
+	    output_region.position -= int3{input_region.id.x*mm.x, input_region.id.y*mm.y, input_region.id.z*mm.z};
+	    output_region.id = -input_region.id;
+    }
+
 }
+bool
+HaloExchangeTask::isHaloExchangeTask(){ return true; }
 
 
 HaloExchangeTask::~HaloExchangeTask()
@@ -823,12 +848,7 @@ HaloExchangeTask::pack()
 void
 HaloExchangeTask::move()
 {
-
-	//TP: HaloExchangeTasks usually have input and output regions on the same side of the boundary
-	//Thus if you directly moving data through kernels you have to remap the output position to the other side of the boundary
-	const int3 mm = {nn.x + NGHOST, nn.y + NGHOST, nn.z + NGHOST};
-	const int3 dst_pos = output_region.position - int3{output_region.id.x*mm.x, output_region.id.y*mm.y, output_region.id.z*mm.z};
-	acKernelMoveData(stream, input_region.position, dst_pos, input_region.dims, output_region.dims, vba,input_region.fields.data(), input_region.fields.size());
+	acKernelMoveData(stream, input_region.position, output_region.position, input_region.dims, output_region.dims, vba,input_region.fields.data(), input_region.fields.size());
 }
 
 void
@@ -852,7 +872,12 @@ HaloExchangeTask::sync()
 bool
 HaloExchangeTask::sendingToItself()
 {
-	return rank == counterpart_rank;
+	return false;
+	int n_procs;
+	MPI_Comm_size(acGridMPIComm(), &n_procs);
+	//For now enable optim only if there is only a single proc
+	//Because reasoning about kernel moves is too difficult for the async tasks in TaskGraph
+	return rank == counterpart_rank && n_procs == 1;
 }
 
 void

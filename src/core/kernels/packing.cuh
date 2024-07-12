@@ -52,10 +52,10 @@ kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 d
     int i = 0;
     for (int j = 0; j < NUM_VTXBUF_HANDLES; ++j)
     {
-      packed[packed_idx + i * vtxbuf_offset] = vba.in[j][unpacked_idx];
+      const int dst_idx = packed_idx + i * vtxbuf_offset;
+      packed[dst_idx] = vba.in[j][unpacked_idx];
       i += vtxbuf_is_communicated[j];
     }
-
 }
 
 static __global__ void
@@ -86,9 +86,28 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
     const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
     int i = 0;
+#if AC_LAGRANGIAN_GRID
+    const int on_x_boundary = (DCONST(AC_domain_coordinates).x == DCONST(AC_domain_decomposition).x - 1 || 
+	      		        DCONST(AC_domain_coordinates).x == 0);
+    const int on_y_boundary = (DCONST(AC_domain_coordinates).y == DCONST(AC_domain_decomposition).y - 1 || 
+	      		        DCONST(AC_domain_coordinates).y == 0);
+    const int on_z_boundary = (DCONST(AC_domain_coordinates).z == DCONST(AC_domain_decomposition).z - 1 || 
+	      		        DCONST(AC_domain_coordinates).z == 0);
+#endif
     for (int j = 0; j < NUM_VTXBUF_HANDLES; ++j)
     {
       vba.in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
+#if AC_LAGRANGIAN_GRID
+      const AcReal x_coeff = on_x_boundary*(j == COORDS_X)*DCONST(AC_xlen);
+      const AcReal y_coeff = on_y_boundary*(j == COORDS_Y)*DCONST(AC_ylen);
+      const AcReal z_coeff = on_z_boundary*(j == COORDS_Z)*DCONST(AC_zlen);
+
+      const AcReal add = x_coeff*((i_unpacked > DCONST(AC_nx_max)) - (i_unpacked < DCONST(AC_nx_min)))
+      		       + y_coeff*((j_unpacked > DCONST(AC_ny_max)) - (j_unpacked < DCONST(AC_ny_min)))
+      		       + z_coeff*((k_unpacked > DCONST(AC_nz_max)) - (k_unpacked < DCONST(AC_nz_min)));
+
+      vba.in[j][unpacked_idx] += add;
+#endif
       i += vtxbuf_is_communicated[j];
     }
 }
@@ -100,6 +119,7 @@ kernel_partial_pack_data(const VertexBufferArray vba, const int3 vba_start, cons
     const int i_packed = threadIdx.x + blockIdx.x * blockDim.x;
     const int j_packed = threadIdx.y + blockIdx.y * blockDim.y;
     const int k_packed = threadIdx.z + blockIdx.z * blockDim.z;
+
 
     // If within the start-end range (this allows threadblock dims that are not
     // divisible by end - start)
@@ -122,7 +142,10 @@ kernel_partial_pack_data(const VertexBufferArray vba, const int3 vba_start, cons
 
     //#pragma unroll
     for (size_t i = 0; i < num_vtxbufs; ++i)
-        packed[packed_idx + i * vtxbuf_offset] = vba.in[vtxbufs.data[i]][unpacked_idx];
+    {
+	const int dst_idx = packed_idx + i * vtxbuf_offset;
+        packed[dst_idx] = vba.in[vtxbufs.data[i]][unpacked_idx];
+    }
 }
 
 static __global__ void
@@ -155,7 +178,14 @@ kernel_partial_move_data(const VertexBufferArray vba, const int3 src_start, cons
 
     //#pragma unroll
     for (size_t i = 0; i < num_vtxbufs; ++i)
+    {
         vba.in[vtxbufs.data[i]][dst_idx] = vba.in[vtxbufs.data[i]][unpacked_idx];
+    }
+#if AC_LAGRANGIAN_GRID
+    vba.in[COORDS_X][dst_idx] += DCONST(AC_xlen)*((i_dst > DCONST(AC_nx_max)) -(i_dst < DCONST(AC_nx_min)));
+    vba.in[COORDS_Y][dst_idx] += DCONST(AC_ylen)*((j_dst > DCONST(AC_ny_max)) -(j_dst < DCONST(AC_ny_min)));
+    vba.in[COORDS_Z][dst_idx] += DCONST(AC_zlen)*((k_dst > DCONST(AC_nz_max)) -(k_dst < DCONST(AC_nz_min)));
+#endif
 }
 
 static __global__ void
@@ -195,9 +225,30 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
     for (int i = 0; i < NUM_COMMUNICATED_FIELDS; ++i)
         vba.in[i][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
     **/
+#if AC_LAGRANGIAN_GRID
+    const int on_x_boundary = (DCONST(AC_domain_coordinates).x == DCONST(AC_domain_decomposition).x - 1 || 
+	      		        DCONST(AC_domain_coordinates).x == 0);
+    const int on_y_boundary = (DCONST(AC_domain_coordinates).y == DCONST(AC_domain_decomposition).y - 1 || 
+	      		        DCONST(AC_domain_coordinates).y == 0);
+    const int on_z_boundary = (DCONST(AC_domain_coordinates).z == DCONST(AC_domain_decomposition).z - 1 || 
+	      		        DCONST(AC_domain_coordinates).z == 0);
+#endif
 
      for (size_t i = 0; i < num_vtxbufs; ++i)
-	     vba.in[vtxbufs.data[i]][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
+     {
+	     const int j = vtxbufs.data[i];
+	     vba.in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
+#if AC_LAGRANGIAN_GRID
+             const AcReal x_coeff = on_x_boundary*(j == COORDS_X)*DCONST(AC_xlen);
+             const AcReal y_coeff = on_y_boundary*(j == COORDS_Y)*DCONST(AC_ylen);
+             const AcReal z_coeff = on_z_boundary*(j == COORDS_Z)*DCONST(AC_zlen);
+
+             const AcReal add = x_coeff*((i_unpacked > DCONST(AC_nx_max)) - (i_unpacked < DCONST(AC_nx_min)))
+             		       + y_coeff*((j_unpacked > DCONST(AC_ny_max)) - (j_unpacked < DCONST(AC_ny_min)))
+             		       + z_coeff*((k_unpacked > DCONST(AC_nz_max)) - (k_unpacked < DCONST(AC_nz_min)));
+             vba.in[j][unpacked_idx] += add;
+#endif
+     }
 
 }
 

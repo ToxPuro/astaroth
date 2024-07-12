@@ -1,0 +1,295 @@
+#include "../../stdlib/integrators.h"
+#include "../../stdlib/derivs.h"
+hostdefine STENCIL_ORDER (6)
+hostdefine AC_INTEGRATION_ENABLED // Enables acIntegrate() and other non-generic library functions
+real AC_current_time
+real AC_dt
+int AC_step_num
+
+Stencil diff_front
+{
+	[1][0][0]  =  1,
+	[0][0][0]  = -1
+}
+
+Stencil diff_back
+{
+	[-1][0][0]  = 1,
+	[0][0][0]  = -1
+}
+
+Stencil diff_up
+{
+	[0][1][0]  =  1,
+	[0][0][0]  = -1
+}
+
+Stencil diff_down
+{
+	[0][-1][0] =  1,
+	[0][0][0]  = -1
+}
+
+Stencil diff_right
+{
+	[0][0][1]  =  1,
+	[0][0][0]  = -1
+}
+
+Stencil right_stencil
+{
+	[0][0][1] = 1
+}
+
+Stencil diff_left
+{
+	[0][0][-1] =  1,
+	[0][0][0]  = -1
+}
+
+const real dt=(0.25*0.5)/8;
+const real M=0.1;
+const real D=1.0;
+const real SimTime=dt*1000;
+const int Lengthscale = 162
+const int nsteps = 1000
+const real inittime = 1.0
+
+Kernel twopass_solve_intermediate(int step_num, real dt) {
+}
+Kernel twopass_solve_final(int step_num, real current_time) {
+}
+get_diffusion_val(real time, real distance_2)
+{
+	return M/(pow(4*AC_REAL_PI*time,1.5)*D)*exp(-distance_2/(4*D*time));
+}
+
+GetCoordsBase(i,j,k)
+{
+
+	real res_x =  AC_dsx*(i-((AC_nxgrid+1)/2.0));
+	real res_y =  AC_dsy*(j-((AC_nygrid+1)/2.0));
+	real res_z =  AC_dsz*(k-((AC_nzgrid+1)/2.0));
+        return (real3){res_x,res_y, res_z};
+}
+GetCoords(i,j,k)
+{
+	return GetCoordsBase(i,j,k)
+}
+
+Field U
+Field SOLUTION
+Kernel initial_condition()
+{
+	x,y,z = GetCoords(globalVertexIdx.x+1-NGHOST,globalVertexIdx.y+1-NGHOST,globalVertexIdx.z+1-NGHOST)
+	write(COORDS_X,x)
+	write(COORDS_Y,y)
+	write(COORDS_Z,z)
+	x_center, y_center, z_center = GetCoords(AC_nxgrid/2, AC_nygrid/2, AC_nzgrid/2);
+	distance_to_center_squared = pow(x-x_center,2.0) + pow(y-y_center,2.0) + pow(z-z_center,2.0)
+
+	const real accumulated_time = nsteps*dt;
+        const real final_time = inittime + accumulated_time;
+
+	write(U, get_diffusion_val(inittime,distance_to_center_squared))
+	write(SOLUTION, get_diffusion_val(final_time,distance_to_center_squared))
+
+}
+Kernel singlepass_solve()
+{	
+	const real v0x     = diff_left(COORDS_X)
+	const real v1x     =  diff_down(COORDS_X)
+	const real v2x     = diff_right(COORDS_X)
+	const real v3x     =    diff_up(COORDS_X)
+	const real v4x     =  diff_back(COORDS_X)
+	const real v5x     = diff_front(COORDS_X)
+	
+	const real v0y     = diff_left(COORDS_Y)
+	const real v1y     =  diff_down(COORDS_Y)
+	const real v2y     = diff_right(COORDS_Y)
+	const real v3y     =    diff_up(COORDS_Y)
+	const real v4y     =  diff_back(COORDS_Y)
+	const real v5y     = diff_front(COORDS_Y)
+
+
+	const real v0z     = diff_left(COORDS_Z)
+	const real v1z     =  diff_down(COORDS_Z)
+	const real v2z     = diff_right(COORDS_Z)
+	const real v3z     =    diff_up(COORDS_Z)
+	const real v4z     =  diff_back(COORDS_Z)
+	const real v5z     = diff_front(COORDS_Z)
+
+
+
+
+	const v0f     = diff_left(U)
+	const v1f     =  diff_down(U)
+	const v2f     = diff_right(U)
+	const v3f     =    diff_up(U)
+	const v4f     =  diff_back(U)
+	const v5f     = diff_front(U)
+
+	const real3 p0_coords = {v0x,v0y,v0z}
+        const real3 p1_coords = {v1x,v1y,v1z}
+        const real3 p2_coords = {v2x,v2y,v2z}
+        const real3 p3_coords = {v3x,v3y,v3z}
+        const real3 p4_coords = {v4x,v4y,v4z}
+        const real3 p5_coords = {v5x,v5y,v5z}
+
+	const real V0 = TetrahedronVolume(p1_coords,p0_coords,p4_coords)
+        const real V1 = TetrahedronVolume(p2_coords,p1_coords,p4_coords)
+        const real V2 = TetrahedronVolume(p3_coords,p2_coords,p4_coords)
+        const real V3 = TetrahedronVolume(p0_coords,p3_coords,p4_coords)
+
+        const real V4 = TetrahedronVolume(p0_coords,p1_coords,p5_coords)
+        const real V5 = TetrahedronVolume(p1_coords,p2_coords,p5_coords)
+        const real V6 = TetrahedronVolume(p2_coords,p3_coords,p5_coords)
+        const real V7 = TetrahedronVolume(p3_coords,p0_coords,p5_coords)
+
+
+        const real totalVolumeInv = 1.0/(V0 + V1 + V2 + V3 + V4 + V5 + V6 + V7);
+        const real p0_volume_inv = 1.0/(V0 + V3 + V4 + V7);
+        const real p1_volume_inv = 1.0/(V1 + V0 + V5 + V4);
+        const real p2_volume_inv = 1.0/(V2 + V1 + V6 + V5);
+        const real p3_volume_inv = 1.0/(V3 + V2 + V7 + V6);
+        const real p4_volume_inv = 1.0/(V0 + V1 + V2 + V3);
+        const real p5_volume_inv = 1.0/(V4 + V5 + V6 + V7);
+
+	const real3 V0_precomputed = 
+        {
+                p0_coords.z*p1_coords.y - p0_coords.y*p1_coords.z,
+                p0_coords.x*p1_coords.z - p0_coords.z*p1_coords.x,
+                p0_coords.y*p1_coords.x - p0_coords.x*p1_coords.y
+        };
+        const real3 V1_precomputed =
+        {
+                p1_coords.z*p2_coords.y - p1_coords.y*p2_coords.z,
+                p1_coords.x*p2_coords.z - p1_coords.z*p2_coords.x,
+                p1_coords.y*p2_coords.x - p1_coords.x*p2_coords.y
+        };
+        const real3 V2_precomputed =
+        {
+                p2_coords.z*p3_coords.y - p2_coords.y*p3_coords.z,
+                p2_coords.x*p3_coords.z - p2_coords.z*p3_coords.x,
+                p2_coords.y*p3_coords.x - p2_coords.x*p3_coords.y
+        };
+        const real3 V3_precomputed =
+        {
+                p3_coords.z*p0_coords.y - p3_coords.y*p0_coords.z,
+                p3_coords.x*p0_coords.z - p3_coords.z*p0_coords.x,
+                p3_coords.y*p0_coords.x - p3_coords.x*p0_coords.y
+        };
+
+        const real3 V4_precomputed = -V0_precomputed;
+        const real3 V5_precomputed = -V1_precomputed;
+        const real3 V6_precomputed = -V2_precomputed;
+        const real3 V7_precomputed = -V3_precomputed;
+
+	real4 p0 = {v0x,v0y,v0z,v0f};
+        real4 p1 = {v1x,v1y,v1z,v1f};
+        real4 p2 = {v2x,v2y,v2z,v2f};
+        real4 p3 = {v3x,v3y,v3z,v3f};
+        real4 p4 = {v4x,v4y,v4z,v4f};
+        real4 p5 = {v5x,v5y,v5z,v5f};
+
+
+	partials_first = PlaneCoefficients3D_without_inv(p4,p0,p1,V0_precomputed);
+	partials0x = partials_first.x
+	partials0y = partials_first.y
+	partials0z = partials_first.z
+        partials1x, partials1y, partials1z = PlaneCoefficients3D_without_inv(p4,p1,p2,V1_precomputed);
+        partials2x, partials2y, partials2z = PlaneCoefficients3D_without_inv(p4,p2,p3,V2_precomputed);
+        partials3x, partials3y, partials3z = PlaneCoefficients3D_without_inv(p4,p3,p0,V3_precomputed);
+        partials4x, partials4y, partials4z = PlaneCoefficients3D_without_inv(p5,p1,p0,V4_precomputed);
+        partials5x, partials5y, partials5z = PlaneCoefficients3D_without_inv(p5,p2,p1,V5_precomputed);
+        partials6x, partials6y, partials6z = PlaneCoefficients3D_without_inv(p5,p3,p2,V6_precomputed);
+        partials7x, partials7y, partials7z = PlaneCoefficients3D_without_inv(p5,p0,p3,V7_precomputed);
+
+	const real p0x_local = (partials0x + partials1x + partials2x + partials3x + partials4x + partials5x + partials6x + partials7x)*totalVolumeInv;
+        const real p0y_local = (partials0y + partials1y + partials2y + partials3y + partials4y + partials5y + partials6y + partials7y)*totalVolumeInv;
+        const real p0z_local = (partials0z + partials1z + partials2z + partials3z + partials4z + partials5z + partials6z + partials7z)*totalVolumeInv;
+
+        const real p0x = (partials0x + partials3x + partials4x + partials7x)*p0_volume_inv - p0x_local;
+        const real p1x = (partials1x + partials0x + partials5x + partials4x)*p1_volume_inv - p0x_local;
+        const real p2x = (partials2x + partials1x + partials6x + partials5x)*p2_volume_inv - p0x_local;
+        const real p3x = (partials3x + partials2x + partials7x + partials6x)*p3_volume_inv - p0x_local;
+        const real p4x = (partials0x + partials1x + partials2x + partials3x)*p4_volume_inv - p0x_local;
+        const real p5x = (partials4x + partials5x + partials6x + partials7x)*p5_volume_inv - p0x_local;
+
+        const real p0y = (partials0y + partials3y + partials4y + partials7y)*p0_volume_inv - p0y_local;
+        const real p1y = (partials1y + partials0y + partials5y + partials4y)*p1_volume_inv - p0y_local;
+        const real p2y = (partials2y + partials1y + partials6y + partials5y)*p2_volume_inv - p0y_local;
+        const real p3y = (partials3y + partials2y + partials7y + partials6y)*p3_volume_inv - p0y_local;
+        const real p4y = (partials0y + partials1y + partials2y + partials3y)*p4_volume_inv - p0y_local;
+        const real p5y = (partials4y + partials5y + partials6y + partials7y)*p5_volume_inv - p0y_local;
+
+        const real p0z = (partials0z + partials3z + partials4z + partials7z)*p0_volume_inv - p0z_local;
+        const real p1z = (partials1z + partials0z + partials5z + partials4z)*p1_volume_inv - p0z_local;
+        const real p2z = (partials2z + partials1z + partials6z + partials5z)*p2_volume_inv - p0z_local;
+        const real p3z = (partials3z + partials2z + partials7z + partials6z)*p3_volume_inv - p0z_local;
+        const real p4z = (partials0z + partials1z + partials2z + partials3z)*p4_volume_inv - p0z_local;
+        const real p5z = (partials4z + partials5z + partials6z + partials7z)*p5_volume_inv - p0z_local;
+
+	p0 = {v0x,v0y,v0z,p0x};
+        p1 = {v1x,v1y,v1z,p1x};
+        p2 = {v2x,v2y,v2z,p2x};
+        p3 = {v3x,v3y,v3z,p3x};
+        p4 = {v4x,v4y,v4z,p4x};
+        p5 = {v5x,v5y,v5z,p5x};
+
+	partials0xx = Plane3D_x_coefficient(p4,p0,p1,V0_precomputed);
+        partials1xx = Plane3D_x_coefficient(p4,p1,p2,V1_precomputed);
+        partials2xx = Plane3D_x_coefficient(p4,p2,p3,V2_precomputed);
+        partials3xx = Plane3D_x_coefficient(p4,p3,p0,V3_precomputed);
+        partials4xx = Plane3D_x_coefficient(p5,p1,p0,V4_precomputed);
+        partials5xx = Plane3D_x_coefficient(p5,p2,p1,V5_precomputed);
+        partials6xx = Plane3D_x_coefficient(p5,p3,p2,V6_precomputed);
+        partials7xx = Plane3D_x_coefficient(p5,p0,p3,V7_precomputed);
+
+
+        p0 = {v0x,v0y,v0z,p0y};
+        p1 = {v1x,v1y,v1z,p1y};
+        p2 = {v2x,v2y,v2z,p2y};
+        p3 = {v3x,v3y,v3z,p3y};
+        p4 = {v4x,v4y,v4z,p4y};
+        p5 = {v5x,v5y,v5z,p5y};
+
+        partials0yy = Plane3D_y_coefficient(p4,p0,p1,V0_precomputed);
+        partials1yy = Plane3D_y_coefficient(p4,p1,p2,V1_precomputed);
+        partials2yy = Plane3D_y_coefficient(p4,p2,p3,V2_precomputed);
+        partials3yy = Plane3D_y_coefficient(p4,p3,p0,V3_precomputed);
+        partials4yy = Plane3D_y_coefficient(p5,p1,p0,V4_precomputed);
+        partials5yy = Plane3D_y_coefficient(p5,p2,p1,V5_precomputed);
+        partials6yy = Plane3D_y_coefficient(p5,p3,p2,V6_precomputed);
+        partials7yy = Plane3D_y_coefficient(p5,p0,p3,V7_precomputed);
+
+	p0 = {v0x,v0y,v0z,p0z};
+        p1 = {v1x,v1y,v1z,p1z};
+        p2 = {v2x,v2y,v2z,p2z};
+        p3 = {v3x,v3y,v3z,p3z};
+        p4 = {v4x,v4y,v4z,p4z};
+        p5 = {v5x,v5y,v5z,p5z};
+
+        partials0zz = Plane3D_z_coefficient(p4,p0,p1,V0_precomputed);
+        partials1zz = Plane3D_z_coefficient(p4,p1,p2,V1_precomputed);
+        partials2zz = Plane3D_z_coefficient(p4,p2,p3,V2_precomputed);
+        partials3zz = Plane3D_z_coefficient(p4,p3,p0,V3_precomputed);
+        partials4zz = Plane3D_z_coefficient(p5,p1,p0,V4_precomputed);
+        partials5zz = Plane3D_z_coefficient(p5,p2,p1,V5_precomputed);
+        partials6zz = Plane3D_z_coefficient(p5,p3,p2,V6_precomputed);
+        partials7zz = Plane3D_z_coefficient(p5,p0,p3,V7_precomputed);
+
+	const real Dxx = 2*(partials0xx + partials1xx + partials2xx + partials3xx + partials4xx + partials5xx + partials6xx + partials7xx)*totalVolumeInv;
+        const real Dyy = 2*(partials0yy + partials1yy + partials2yy + partials3yy + partials4yy + partials5yy + partials6yy + partials7yy)*totalVolumeInv;
+        const real Dzz = 2*(partials0zz + partials1zz + partials2zz + partials3zz + partials4zz + partials5zz + partials6zz + partials7zz)*totalVolumeInv;
+	update_val = dt*D*(Dxx + Dyy+ Dzz)
+	write(U, value(U) + update_val)
+}	
+
+Kernel solve()
+{
+	Dxx = derxx(U)
+	Dyy = deryy(U)
+	Dzz = derzz(U)
+	write(U, value(U) + dt*D*(Dxx+Dyy+Dzz))
+}

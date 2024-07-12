@@ -1,8 +1,10 @@
-#include "../stdlib/grid.h"
-
-#define AC_inv_dsy  (1.0/AC_dsx)
-#define AC_inv_dsx  (1.0/AC_dsy)
+#define AC_inv_dsx  (1.0/AC_dsx)
+#define AC_inv_dsy  (1.0/AC_dsy)
 #define AC_inv_dsz  (1.0/AC_dsz)
+
+#define AC_inv_dsx_2 AC_inv_dsx*AC_inv_dsx
+#define AC_inv_dsy_2 AC_inv_dsy*AC_inv_dsy
+#define AC_inv_dsz_2 AC_inv_dsz*AC_inv_dsz
 
 //TP for pencil
 #define AC_inv_dsx_6 AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx
@@ -30,6 +32,7 @@
 #define DER2_2 (-3. / 20.)
 #define DER2_1 (3. / 2.)
 #define DER2_0 (-49. / 18.)
+
 
 #define DERX_3 (2. / 720.)
 #define DERX_2 (-27. / 720.)
@@ -196,33 +199,33 @@ Stencil derz {
 }
 
 Stencil derxx {
-    [0][0][-3] = AC_inv_dsx * AC_inv_dsx * DER2_3,
-    [0][0][-2] = AC_inv_dsx * AC_inv_dsx * DER2_2,
-    [0][0][-1] = AC_inv_dsx * AC_inv_dsx * DER2_1,
-    [0][0][0]  = AC_inv_dsx * AC_inv_dsx * DER2_0,
-    [0][0][1]  = AC_inv_dsx * AC_inv_dsx * DER2_1,
-    [0][0][2]  = AC_inv_dsx * AC_inv_dsx * DER2_2,
-    [0][0][3]  = AC_inv_dsx * AC_inv_dsx * DER2_3
+    [0][0][-3] = AC_inv_dsx_2 * DER2_3,
+    [0][0][-2] = AC_inv_dsx_2 * DER2_2,
+    [0][0][-1] = AC_inv_dsx_2 * DER2_1,
+    [0][0][0]  = AC_inv_dsx_2 * DER2_0,
+    [0][0][1]  = AC_inv_dsx_2 * DER2_1,
+    [0][0][2]  = AC_inv_dsx_2 * DER2_2,
+    [0][0][3]  = AC_inv_dsx_2 * DER2_3
 }
 
 Stencil deryy {
-    [0][-3][0] = AC_inv_dsy * AC_inv_dsy * DER2_3,
-    [0][-2][0] = AC_inv_dsy * AC_inv_dsy * DER2_2,
-    [0][-1][0] = AC_inv_dsy * AC_inv_dsy * DER2_1,
-    [0][0][0]  = AC_inv_dsy * AC_inv_dsy * DER2_0,
-    [0][1][0]  = AC_inv_dsy * AC_inv_dsy * DER2_1,
-    [0][2][0]  = AC_inv_dsy * AC_inv_dsy * DER2_2,
-    [0][3][0]  = AC_inv_dsy * AC_inv_dsy * DER2_3
+    [0][-3][0] = AC_inv_dsy_2 * DER2_3,
+    [0][-2][0] = AC_inv_dsy_2 * DER2_2,
+    [0][-1][0] = AC_inv_dsy_2 * DER2_1,
+    [0][0][0]  = AC_inv_dsy_2 * DER2_0,
+    [0][1][0]  = AC_inv_dsy_2 * DER2_1,
+    [0][2][0]  = AC_inv_dsy_2 * DER2_2,
+    [0][3][0]  = AC_inv_dsy_2 * DER2_3
 }
 
 Stencil derzz {
-    [-3][0][0] = AC_inv_dsz * AC_inv_dsz * DER2_3,
-    [-2][0][0] = AC_inv_dsz * AC_inv_dsz * DER2_2,
-    [-1][0][0] = AC_inv_dsz * AC_inv_dsz * DER2_1,
-    [0][0][0]  = AC_inv_dsz * AC_inv_dsz * DER2_0,
-    [1][0][0]  = AC_inv_dsz * AC_inv_dsz * DER2_1,
-    [2][0][0]  = AC_inv_dsz * AC_inv_dsz * DER2_2,
-    [3][0][0]  = AC_inv_dsz * AC_inv_dsz * DER2_3
+    [-3][0][0] = AC_inv_dsz_2 * DER2_3,
+    [-2][0][0] = AC_inv_dsz_2 * DER2_2,
+    [-1][0][0] = AC_inv_dsz_2 * DER2_1,
+    [0][0][0]  = AC_inv_dsz_2 * DER2_0,
+    [1][0][0]  = AC_inv_dsz_2 * DER2_1,
+    [2][0][0]  = AC_inv_dsz_2 * DER2_2,
+    [3][0][0]  = AC_inv_dsz_2 * DER2_3
 }
 
 Stencil derxy {
