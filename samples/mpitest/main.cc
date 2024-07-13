@@ -88,6 +88,7 @@ main(void)
     // CPU alloc
     AcMeshInfo info;
     acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    info.int_params[AC_proc_mapping_strategy] = (int)AcProcMappingStrategy::Linear;
 
     const int max_devices = 2 * 2 * 4;
     if (nprocs > max_devices) {

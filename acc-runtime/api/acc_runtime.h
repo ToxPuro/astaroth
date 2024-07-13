@@ -181,10 +181,16 @@
   FUNC_DEFINE(AcResult, acBenchmarkKernel,(Kernel kernel, const int3 start, const int3 end, VertexBufferArray vba));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
+#if TWO_D == 0
   FUNC_DEFINE(AcResult, acLoadStencil,(const Stencil stencil, const cudaStream_t stream, const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
   FUNC_DEFINE(AcResult, acStoreStencil,(const Stencil stencil, const cudaStream_t stream, AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH]));
+#else
+  FUNC_DEFINE(AcResult,acLoadStencil,(const Stencil stencil, const cudaStream_t stream, const AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]));
+
+  FUNC_DEFINE(AcResult, acStoreStencil(const Stencil stencil, const cudaStream_t stream, AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH]));
+#endif
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
   FUNC_DEFINE(AcResult, acLoadRealUniform,(const cudaStream_t stream, const AcRealParam param, const AcReal value));

@@ -1,7 +1,15 @@
+#if TWO_D
+Stencil value_stencil
+{
+	[0][0] = 1
+}
+#else
 Stencil value_stencil
 {
 	[0][0][0] = 1
 }
+#endif
+
 
 value(Field s)
 {

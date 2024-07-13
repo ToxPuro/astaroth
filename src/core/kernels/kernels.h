@@ -120,10 +120,12 @@ AcResult acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(
 
 #endif
 
+#if TWO_D == 0
 /** */
 AcResult acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int3 end,
                                    AcReal* vtxbuf, const VertexBufferHandle vtxbuf_handle,
                                    const AcMeshInfo config, const int3 bindex);
+#endif
 
 /** */
 AcResult acKernelDummy(void);
@@ -137,6 +139,10 @@ AcResult acKernelPackData(const cudaStream_t stream, const VertexBufferArray vba
                           const int3 vba_start, const int3 dims, AcRealPacked* packed,
 			  const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
 
+AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
+                            const int3 vba_start, const int3 dims, VertexBufferArray vba,
+			    const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
+
 AcResult
 acKernelMoveData(const cudaStream_t stream, const int3 src_start, const int3 dst_start, const int3 src_dims, const int3 dst_dims, VertexBufferArray vba,
                           const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
@@ -146,9 +152,6 @@ acKernelMoveData(const cudaStream_t stream, const int3 src_start, const int3 dst
 // VertexBufferArray vba);
 
 /** */
-AcResult acKernelUnpackData(const cudaStream_t stream, const AcRealPacked* packed,
-                            const int3 vba_start, const int3 dims, VertexBufferArray vba,
-			    const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs);
 
 /** */
 size_t acKernelReduceGetMinimumScratchpadSize(const int3 max_dims);

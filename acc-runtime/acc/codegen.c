@@ -284,16 +284,20 @@ symboltable_reset(void)
   add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "AcReal", "AC_sum_radius");
   add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "AcReal", "AC_window_radius");
 
-  // (BC types do not belong here, 1Cs not handled with the DSL)
+  // (BC types do not belong here, BCs not handled with the DSL)
   add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_bc_type_bot_x");
   add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_bc_type_bot_y");
+#if TWO_D == 0
   add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_bc_type_bot_z");
+#endif
 
   add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_bc_type_top_x");
   add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_bc_type_top_y");
+#if TWO_D == 0
   add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_bc_type_top_z");
+#endif
   add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_init_type");
-  add_symbol(NODE_VARIABLE_ID, const_qualifier, 1, "int", "NGHOST");
+  add_symbol(NODE_VARIABLE_ID, const_qualifier, 1, "int", "STENCIL_ORDER");
   // Astaroth 2.0 backwards compatibility END
 }
 
@@ -2201,8 +2205,6 @@ gen_kernel_num_of_combinations(const ASTNode* root, combinations combinations, s
 	gen_kernel_num_of_combinations_recursive(root,combinations,user_enums,user_kernels_with_input_params,(combinatorial_params){user_kernel_combinatorial_params,user_kernel_combinatorial_params_options},struct_info);
 
   	free_str_vec(&user_enums.names);
-	for(int i = 0; i < 100; ++i)
-  	  free_str_vec(&user_enums.options[i]);
 	//TP: for some reason causes double free
 	//for(int i = 0; i < 100; ++i)
 	//  for(int j=0;j<100;++j)
@@ -3279,7 +3281,8 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "#ifndef STENCIL_ORDER\n");
   fprintf(fp, "#define STENCIL_ORDER (6)\n");
   fprintf(fp, "#endif\n");
-  fprintf(fp, "#define STENCIL_DEPTH (STENCIL_ORDER+1)\n");
+  if(!TWO_D)
+  	fprintf(fp, "#define STENCIL_DEPTH (STENCIL_ORDER+1)\n");
   fprintf(fp, "#define STENCIL_HEIGHT (STENCIL_ORDER+1)\n");
   fprintf(fp, "#define STENCIL_WIDTH (STENCIL_ORDER+1)\n");
   fprintf(fp, "#define NGHOST (STENCIL_ORDER/2)\n");
@@ -4194,7 +4197,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 	      {
 		if(symbol.tqualifiers.size > 1)
 		{
-			fprintf(stderr,"Stencils are supported only with a single type specifier\n");
+			fprintf(stderr,"Stencils are supported only with a single type qualifier\n");
 			exit(EXIT_FAILURE);
 		}
         	fprintf(stencilgen, "\"%s\",",symbol.tqualifiers.data[0]);
@@ -4221,11 +4224,21 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 
   replace_dynamic_coeffs(root);
   symboltable_reset();
-  fprintf(stencilgen, "static char* "
+  if(!TWO_D)
+  	fprintf(stencilgen, "static char* "
                       "dynamic_coeffs[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]["
                       "STENCIL_WIDTH] = { %s };\n", stencil_coeffs);
-  fprintf(stencilgen, "static char* "
+  else
+  	fprintf(stencilgen, "static char* "
+                      "dynamic_coeffs[NUM_STENCILS][STENCIL_HEIGHT]["
+                      "STENCIL_WIDTH] = { %s };\n", stencil_coeffs);
+  if(!TWO_D)
+  	fprintf(stencilgen, "static char* "
                       "stencils[NUM_STENCILS][STENCIL_DEPTH][STENCIL_HEIGHT]["
+                      "STENCIL_WIDTH] = {");
+  else
+  	fprintf(stencilgen, "static char* "
+                      "stencils[NUM_STENCILS][STENCIL_HEIGHT]["
                       "STENCIL_WIDTH] = {");
   traverse(root,
            NODE_VARIABLE_ID | NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION |
@@ -4281,9 +4294,10 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
            "gcc -std=c11 -Wfatal-errors -Wall -Wextra -Wdouble-promotion "
            "-DIMPLEMENTATION=%d "
            "-DMAX_THREADS_PER_BLOCK=%d "
+           "-DTWO_D=%d "
            "-Wfloat-conversion -Wshadow -I. %s -lm "
            "-o %s",
-           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, STENCILGEN_SRC,
+           IMPLEMENTATION, MAX_THREADS_PER_BLOCK, TWO_D,STENCILGEN_SRC,
            STENCILGEN_EXEC);
 
   const int retval = system(build_cmd);
@@ -4389,6 +4403,10 @@ generate_mem_accesses(void)
 #if AC_USE_HIP
   strcat(cmd, "-DAC_USE_HIP=1 ");
 #endif
+  if(TWO_D)
+  	strcat(cmd, "-DTWO_D=1 ");
+  else
+  	strcat(cmd, "-DTWO_D=0 ");
   strcat(cmd, STENCILACC_SRC " -lm -lstdc++ -o " STENCILACC_EXEC " ");
 
   /*

@@ -31,7 +31,10 @@ const int AC_first = 2
 const int AC_second = 2
 const bool AC_first_bool = false, AC_second_bool = true
 const bool AC_first_bool_arr = {false,false}, AC_third_bool= true
-#define NGHOST (3)
+
+
+const int AC_const_int = 2
+int AC_2d_int[2][AC_const_int*2]
 
 int AC_step_number
 real AC_dt
@@ -72,7 +75,6 @@ Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
 Field VTXBUF_ENTROPY
 #endif
 
-const int AC_const_int = 2
 const int AC_const_int_2nd = 4
 //const int nghost = 3
 //Field CHEMISTRY_FIELDS[5]
@@ -263,9 +265,9 @@ int AC_test_int_arr[test_arr_size/2];
 #define DER6UPWD_1 ( 15. / 60.)     
 #define DER6UPWD_0 (-20. / 60.)  
 
+#include "smooth_kernel.ach" 
 #if LSHOCK
 
-#include "smooth_kernel.ach" 
 
 #endif 
 

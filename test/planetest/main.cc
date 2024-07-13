@@ -197,8 +197,9 @@ main(void)
 
 
     acGridLoadMesh(STREAM_DEFAULT, model);
-    acGridExecuteTaskGraph(periodic, 1);
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridSynchronizeStream(STREAM_ALL);
+
+    acGridPeriodicBoundconds(STREAM_ALL);
     acGridSynchronizeStream(STREAM_ALL);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (pid == 0) {
@@ -272,7 +273,6 @@ main(void)
     const int ny_max = info.int_params[AC_ny_max];
     const int nz_max = info.int_params[AC_nz_max];
     AcReal* update = (AcReal*)malloc(sizeof(AcReal)*acVertexBufferSize(info));
-    printf("AC_dsx: %.14e\n",info.real_params[AC_dsx]);
     for (int i = 0; i < nsteps; ++i)
     {
 	    acGridExecuteTaskGraph(integrate, 1);

@@ -45,28 +45,34 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
 {
     const AcMeshInfo info = mesh->info;
 
-    const AcReal x_length = info.int_params[AC_nxgrid]*info.real_params[AC_dsx];
-    const AcReal y_length = info.int_params[AC_nygrid]*info.real_params[AC_dsy];
-    const AcReal z_length = info.int_params[AC_nzgrid]*info.real_params[AC_dsz];
-
+#if AC_LAGRANGIAN_GRID
+    const AcReal3 lengths = acGetLengths(info);
+    const AcReal x_length = lengths.x;
+    const AcReal y_length = lengths.y;
+    const AcReal z_length = lengths.z;
+#endif
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
 	if (!vtxbuf_is_communicated[w]) continue;
         const int3 start = (int3){0, 0, 0};
-        const int3 end   = (int3){info.int_params[AC_mx], info.int_params[AC_my],
-                                  info.int_params[AC_mz]};
+	const int3 end = acGetLocalMM(info);
 
-        const int nx = info.int_params[AC_nx];
-        const int ny = info.int_params[AC_ny];
-        const int nz = info.int_params[AC_nz];
+	const int3 nn = acGetLocalNN(info);
+	const int nx = nn.x;
+	const int ny = nn.y;
+	const int nz = nn.z;
 
-        const int nx_min = info.int_params[AC_nx_min];
-        const int ny_min = info.int_params[AC_ny_min];
-        const int nz_min = info.int_params[AC_nz_min];
+	const int3 nn_min = acGetMinNN(info);
+
+	const int nx_min = nn_min.x;
+	const int ny_min = nn_min.y;
+	const int nz_min = nn_min.z;
+
 
         // The old kxt was inclusive, but our mx_max is exclusive
-        const int nx_max = info.int_params[AC_nx_max];
-        const int ny_max = info.int_params[AC_ny_max];
-        const int nz_max = info.int_params[AC_nz_max];
+	const int3 nn_max  = acGetMaxNN(info);
+        const int nx_max = nn_max.x;
+        const int ny_max = nn_max.y;
+        const int nz_max = nn_max.z;
 
         // #pragma omp parallel for
         for (int k_dst = start.z; k_dst < end.z; ++k_dst) {
@@ -78,7 +84,6 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
                     if (i_dst >= nx_min && i_dst < nx_max && j_dst >= ny_min && j_dst < ny_max &&
                         k_dst >= nz_min && k_dst < nz_max)
                         continue;
-
                     // Find the source index
                     // Map to nx, ny, nz coordinates
                     int i_src = i_dst - nx_min;
@@ -150,11 +155,11 @@ acHostMeshClear(AcMesh* mesh)
 AcResult
 acHostMeshWriteToFile(const AcMesh mesh, const size_t id)
 {
+    const int3 mm = acGetLocalMM(mesh.info);
     FILE* header = fopen(dataformat_path, "w");
     ERRCHK_ALWAYS(header);
     fprintf(header, "use_double, mx, my, mz\n");
-    fprintf(header, "%d, %d, %d, %d\n", sizeof(AcReal) == 8, mesh.info.int_params[AC_mx],
-            mesh.info.int_params[AC_my], mesh.info.int_params[AC_mz]);
+    fprintf(header, "%d, %d, %d, %d\n", sizeof(AcReal) == 8, mm.x, mm.y, mm.z);
     fclose(header);
 
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
@@ -189,11 +194,12 @@ acHostMeshReadFromFile(const size_t id, AcMesh* mesh)
     fgets(buf, len, header);
     fscanf(header, "%d, %d, %d, %d\n", &use_double, &mx, &my, &mz);
     fclose(header);
+    const int3 mm = acGetLocalMM(mesh->info);
 
     ERRCHK_ALWAYS(use_double == (sizeof(AcReal) == 8));
-    ERRCHK_ALWAYS(mx == mesh->info.int_params[AC_mx]);
-    ERRCHK_ALWAYS(my == mesh->info.int_params[AC_my]);
-    ERRCHK_ALWAYS(mz == mesh->info.int_params[AC_mz]);
+    ERRCHK_ALWAYS(mx == mm.x);
+    ERRCHK_ALWAYS(my == mm.y);
+    ERRCHK_ALWAYS(mz == mm.z);
 
     for (size_t i = 0; i < NUM_FIELDS; ++i) {
 

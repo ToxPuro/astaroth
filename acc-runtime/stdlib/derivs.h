@@ -90,6 +90,7 @@
 #define DER6UPWD_0 (-20. / 60.)
 
 //Corresponds to der5 in Pencil Code
+#if TWO_D == 0
 Stencil der5x {
     [0][0][-3] = -AC_inv_dsx_5 * DER5_3,
     [0][0][-2] = -AC_inv_dsx_5 * DER5_2,
@@ -305,3 +306,167 @@ Stencil der6z_upwd {
     [2][0][0]  =  AC_inv_dsz * DER6UPWD_2,
     [3][0][0]  =  AC_inv_dsz * DER6UPWD_3
 }
+#else
+Stencil der5x {
+    [0][-3] = -AC_inv_dsx_5 * DER5_3,
+    [0][-2] = -AC_inv_dsx_5 * DER5_2,
+    [0][-1] = -AC_inv_dsx_5 * DER5_1,
+    [0][1]  = AC_inv_dsx_5 * DER5_1,
+    [0][2]  = AC_inv_dsx_5 * DER5_2,
+    [0][3]  = AC_inv_dsx_5 * DER5_3
+}
+Stencil der5y {
+    [-3][0] = -AC_inv_dsy_5 * DER5_3,
+    [-2][0] = -AC_inv_dsy_5 * DER5_2,
+    [-1][0] = -AC_inv_dsy_5 * DER5_1,
+    [1][0]  = AC_inv_dsy_5 * DER5_1,
+    [2][0]  = AC_inv_dsy_5 * DER5_2,
+    [3][0]  = AC_inv_dsy_5 * DER5_3
+}
+der5z(Field field)
+{
+	return 0.0
+}
+//TP: corresponds to der4 in Pencil Code
+Stencil der4x {
+    [0][-3] = AC_inv_dsx_4 * DER4_3,
+    [0][-2] = AC_inv_dsx_4 * DER4_2,
+    [0][-1] = AC_inv_dsx_4 * DER4_1,
+    [0][0]  = AC_inv_dsx_4 * DER4_0,
+    [0][1]  = AC_inv_dsx_4 * DER4_1,
+    [0][2]  = AC_inv_dsx_4 * DER4_2,
+    [0][3]  = AC_inv_dsx_4 * DER4_3
+}
+Stencil der4y {
+    [-3][0] = AC_inv_dsy_4 * DER4_3,
+    [-2][0] = AC_inv_dsy_4 * DER4_2,
+    [-1][0] = AC_inv_dsy_4 * DER4_1,
+    [0][0]  = AC_inv_dsy_4 * DER4_0,
+    [1][0]  = AC_inv_dsy_4 * DER4_1,
+    [2][0]  = AC_inv_dsy_4 * DER4_2,
+    [3][0]  = AC_inv_dsy_4 * DER4_3
+}
+der4z(Field field)
+{
+	return 0.0
+}
+//TP: corresponds to der6_main
+Stencil der6x {
+    [0][-3] = AC_inv_dsx_6 * DER6_3,
+    [0][-2] = AC_inv_dsx_6 * DER6_2,
+    [0][-1] = AC_inv_dsx_6 * DER6_1,
+    [0][0]  = AC_inv_dsx_6 * DER6_0,
+    [0][1]  = AC_inv_dsx_6 * DER6_1,
+    [0][2]  = AC_inv_dsx_6 * DER6_2,
+    [0][3]  = AC_inv_dsx_6 * DER6_3
+}
+Stencil der6y {
+    [-3][0] = AC_inv_dsy_6 * DER6_3,
+    [-2][0] = AC_inv_dsy_6 * DER6_2,
+    [-1][0] = AC_inv_dsy_6 * DER6_1,
+    [0][0]  = AC_inv_dsy_6 * DER6_0,
+    [1][0]  = AC_inv_dsy_6 * DER6_1,
+    [2][0]  = AC_inv_dsy_6 * DER6_2,
+    [3][0]  = AC_inv_dsy_6 * DER6_3
+}
+der6z(Field field)
+{
+	return 0.0
+}
+
+Stencil derx {
+    [0][-3] = -AC_inv_dsx * DER1_3,
+    [0][-2] = -AC_inv_dsx * DER1_2,
+    [0][-1] = -AC_inv_dsx * DER1_1,
+    [0][1]  = AC_inv_dsx * DER1_1,
+    [0][2]  = AC_inv_dsx * DER1_2,
+    [0][3]  = AC_inv_dsx * DER1_3
+}
+
+Stencil dery {
+    [-3][0] = -AC_inv_dsy * DER1_3,
+    [-2][0] = -AC_inv_dsy * DER1_2,
+    [-1][0] = -AC_inv_dsy * DER1_1,
+    [1][0]  = AC_inv_dsy * DER1_1,
+    [2][0]  = AC_inv_dsy * DER1_2,
+    [3][0]  = AC_inv_dsy * DER1_3
+}
+der6z(Field field)
+{
+	return 0.0
+}
+
+Stencil derxx {
+    [0][-3] = AC_inv_dsx_2 * DER2_3,
+    [0][-2] = AC_inv_dsx_2 * DER2_2,
+    [0][-1] = AC_inv_dsx_2 * DER2_1,
+    [0][0]  = AC_inv_dsx_2 * DER2_0,
+    [0][1]  = AC_inv_dsx_2 * DER2_1,
+    [0][2]  = AC_inv_dsx_2 * DER2_2,
+    [0][3]  = AC_inv_dsx_2 * DER2_3
+}
+
+Stencil deryy {
+    [-3][0] = AC_inv_dsy_2 * DER2_3,
+    [-2][0] = AC_inv_dsy_2 * DER2_2,
+    [-1][0] = AC_inv_dsy_2 * DER2_1,
+    [0][0]  = AC_inv_dsy_2 * DER2_0,
+    [1][0]  = AC_inv_dsy_2 * DER2_1,
+    [2][0]  = AC_inv_dsy_2 * DER2_2,
+    [3][0]  = AC_inv_dsy_2 * DER2_3
+}
+derzz(Field field)
+{
+	return 0.0
+}
+
+Stencil derxy {
+    [-3][-3] = AC_inv_dsx * AC_inv_dsy * DERX_3,
+    [-2][-2] = AC_inv_dsx * AC_inv_dsy * DERX_2,
+    [-1][-1] = AC_inv_dsx * AC_inv_dsy * DERX_1,
+    [0][0]  = AC_inv_dsx * AC_inv_dsy * DERX_0,
+    [1][1]  = AC_inv_dsx * AC_inv_dsy * DERX_1,
+    [2][2]  = AC_inv_dsx * AC_inv_dsy * DERX_2,
+    [3][3]  = AC_inv_dsx * AC_inv_dsy * DERX_3,
+    [-3][3] = -AC_inv_dsx * AC_inv_dsy * DERX_3,
+    [-2][2] = -AC_inv_dsx * AC_inv_dsy * DERX_2,
+    [-1][1] = -AC_inv_dsx * AC_inv_dsy * DERX_1,
+    [1][-1] = -AC_inv_dsx * AC_inv_dsy * DERX_1,
+    [2][-2] = -AC_inv_dsx * AC_inv_dsy * DERX_2,
+    [3][-3] = -AC_inv_dsx * AC_inv_dsy * DERX_3
+}
+
+derxz(Field field)
+{
+	return 0.0
+}
+deryz(Field field)
+{
+	return 0.0
+}
+
+Stencil der6x_upwd {
+    [0][-3] =  AC_inv_dsx * DER6UPWD_3,
+    [0][-2] =  AC_inv_dsx * DER6UPWD_2,
+    [0][-1] =  AC_inv_dsx * DER6UPWD_1,
+    [0][0]  =  AC_inv_dsx * DER6UPWD_0,
+    [0][1]  =  AC_inv_dsx * DER6UPWD_1,
+    [0][2]  =  AC_inv_dsx * DER6UPWD_2,
+    [0][3]  =  AC_inv_dsx * DER6UPWD_3
+}
+
+Stencil der6y_upwd {
+    [-3][0] =  AC_inv_dsy * DER6UPWD_3,
+    [-2][0] =  AC_inv_dsy * DER6UPWD_2,
+    [-1][0] =  AC_inv_dsy * DER6UPWD_1,
+    [0][0]  =  AC_inv_dsy * DER6UPWD_0,
+    [1][0]  =  AC_inv_dsy * DER6UPWD_1,
+    [2][0]  =  AC_inv_dsy * DER6UPWD_2,
+    [3][0]  =  AC_inv_dsy * DER6UPWD_3
+}
+
+der6z_upwd(Field field)
+{
+	return 0.0
+}
+#endif

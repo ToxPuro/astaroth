@@ -29,7 +29,6 @@
 #include "math_utils.h"      //max. Also included in decomposition.h
 #include "timer_hires.h"
 
-#define MPI_INCL_CORNERS (0) // Include the 3D corners of subdomains in halo
 
 #define SWAP_CHAIN_LENGTH (2) // Swap chain lengths other than two not supported
 static_assert(SWAP_CHAIN_LENGTH == 2);

@@ -497,11 +497,19 @@ VertexBufferArray
 acVBACreate(const AcMeshInfo config)
 {
   //can't use acVertexBufferDims because of linking issues
+#if TWO_D == 0
   const int3 counts = (int3){
         (config.int_params[AC_mx]),
         (config.int_params[AC_my]),
         (config.int_params[AC_mz])
   };
+#else
+  const int3 counts = (int3){
+        (config.int_params[AC_mx]),
+        (config.int_params[AC_my]),
+	1,
+  };
+#endif
 
   VertexBufferArray vba;
   size_t count = counts.x*counts.y*counts.z;
@@ -697,6 +705,7 @@ acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
 }
 
 
+#if TWO_D == 0
 AcResult
 acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
               const AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -719,7 +728,31 @@ acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
 
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 };
+#else
+AcResult
+acLoadStencil(const Stencil stencil, const cudaStream_t /* stream */,
+              const AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+  ERRCHK_ALWAYS(stencil < NUM_STENCILS);
 
+  // Note important cudaDeviceSynchronize below
+  //
+  // Constant memory allocated for stencils is shared among kernel
+  // invocations, therefore a race condition is possible when updating
+  // the coefficients. To avoid this, all kernels that can access
+  // the coefficients must be completed before starting async copy to
+  // constant memory
+  cudaDeviceSynchronize();
+
+  const size_t bytes = sizeof(data[0][0]) * STENCIL_HEIGHT * STENCIL_WIDTH;
+  const cudaError_t retval = cudaMemcpyToSymbol(
+      stencils, data, bytes, stencil * bytes, cudaMemcpyHostToDevice);
+
+  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+};
+#endif
+
+#if TWO_D == 0
 AcResult
 acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
                AcReal data[STENCIL_DEPTH][STENCIL_HEIGHT][STENCIL_WIDTH])
@@ -736,6 +769,23 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
 
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 };
+#else
+AcResult
+acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
+               AcReal data[STENCIL_HEIGHT][STENCIL_WIDTH])
+{
+  ERRCHK_ALWAYS(stencil < NUM_STENCILS);
+
+  // Ensure all acLoadUniform calls have completed before continuing
+  cudaDeviceSynchronize();
+
+  const size_t bytes = sizeof(data[0][0]) * STENCIL_HEIGHT * STENCIL_WIDTH;
+  const cudaError_t retval = cudaMemcpyFromSymbol(
+      data, stencils, bytes, stencil * bytes, cudaMemcpyDeviceToHost);
+
+  return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
+};
+#endif
 
 
 #define GEN_LOAD_UNIFORM(LABEL_UPPER, LABEL_LOWER)                             \
@@ -849,14 +899,7 @@ static TBConfig
 autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 {
   vba.reduce_offset = 0;
-  size_t id = (size_t)-1;
-  for (size_t i = 0; i < NUM_KERNELS; ++i) {
-    if (kernels[i] == kernel) {
-      id = i;
-      break;
-    }
-  }
-  ERRCHK_ALWAYS(id < NUM_KERNELS);
+  ERRCHK_ALWAYS(get_kernel_index(kernel) < NUM_KERNELS);
   // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
   //        "(%d):\n",
   //        kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
@@ -876,11 +919,19 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
       .tpb    = (dim3){0, 0, 0},
   };
 
+#if TWO_D == 0
   const int3 start = (int3){
       STENCIL_ORDER / 2,
       STENCIL_ORDER / 2,
       STENCIL_ORDER / 2,
   };
+#else
+  const int3 start = (int3){
+      STENCIL_ORDER / 2,
+      STENCIL_ORDER / 2,
+      0,
+  };
+#endif
   const int3 end = start + dims;
 
   dim3 best_tpb(0, 0, 0);

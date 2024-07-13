@@ -53,8 +53,11 @@ static bool
 is_bctype(const int idx)
 {
     return idx == AC_bc_type_top_x || idx == AC_bc_type_bot_x || //
-           idx == AC_bc_type_top_y || idx == AC_bc_type_bot_y || //
-           idx == AC_bc_type_top_z || idx == AC_bc_type_bot_z;
+           idx == AC_bc_type_top_y || idx == AC_bc_type_bot_y 
+#if TWO_D == 0
+	   || idx == AC_bc_type_top_z || idx == AC_bc_type_bot_z
+#endif
+	  ;
 }
 
 static bool

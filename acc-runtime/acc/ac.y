@@ -263,6 +263,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
           FILE* out = fopen(stage1, "w");
           assert(out);
 	  fprintf(out,"#define AC_LAGRANGIAN_GRID (%d)\n",AC_LAGRANGIAN_GRID);
+	  fprintf(out,"#define TWO_D (%d)\n",TWO_D);
        	  process_includes(1, dir, ACC_BUILTIN_VARIABLES, out);
        	  process_includes(1, dir, ACC_BUILTIN_TYPEDEFS, out);
        	  process_includes(1, dir, ACC_BUILTIN_FUNCS, out);
@@ -562,15 +563,15 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 			
 			char* tmp = malloc(1000*sizeof(char));
 			const ASTNode* base = variable_definition->lhs->rhs->lhs;
-			//while(base->rhs)
-			//{
-			//  ASTNode* array_len_node = base->rhs;
-			//  combine_all(array_len_node,tmp);
-			//  const int array_len = eval_int(tmp);
-			//  set_buffers_empty(array_len_node);
-			//  array_len_node -> buffer = itoa(array_len);
-			//  base = base->lhs;
-			//}
+			while(base->rhs)
+			{
+			  ASTNode* array_len_node = base->rhs;
+			  combine_all(array_len_node,tmp);
+			  const int array_len = eval_int(tmp);
+			  set_buffers_empty(array_len_node);
+			  array_len_node -> buffer = itoa(array_len);
+			  base = base->lhs;
+			}
 			free(tmp);
 		}
 				
@@ -1119,7 +1120,25 @@ function_call: declaration '(' ')'                 { $$ = astnode_create(NODE_FU
 assignment_body_designated: assignment_op expression { $$ = astnode_create(NODE_UNKNOWN, $1, $2); astnode_set_infix("\"", $$); astnode_set_postfix("\"", $$); }
           ;
 
-stencilpoint: stencil_index_list assignment_body_designated { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+stencilpoint: stencil_index_list assignment_body_designated { 
+	    								$$ = astnode_create(NODE_UNKNOWN, $1, $2); 
+									const int num_of_indexes = count_num_of_nodes_in_list($1);
+									if(TWO_D && num_of_indexes != 2)
+									{
+										fprintf(stderr,"Can only use 2D stencils when building for 2D simulation\n");
+										assert(num_of_indexes == 2);
+										exit(EXIT_FAILURE);
+									}
+									else if(!TWO_D && num_of_indexes < 3)
+										fprintf(stderr,"Specify indexes for all three dimensions\n");
+									else if(!TWO_D && num_of_indexes > 3)
+										fprintf(stderr,"Only three dimensional stencils for 3D simulation\n");
+									if(!TWO_D && num_of_indexes != 3)	
+									{
+										assert(num_of_indexes == 3);
+										exit(EXIT_FAILURE);
+									}
+							    }
             ;
 
 stencil_index: '[' expression ']' { $$ = astnode_create(NODE_UNKNOWN, $2, NULL); astnode_set_prefix("[STENCIL_ORDER/2 +", $$); astnode_set_postfix("]", $$); }
