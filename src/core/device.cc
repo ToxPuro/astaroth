@@ -1232,16 +1232,16 @@ acDeviceTest(const Device device)
 AcResult
 acDeviceReduceXYAverages(const Device device, const Stream stream)
 {
-    #if defined(VTXBUF_UUX) && defined(VTXBUF_UUY) && defined(VTXBUF_UUZ)
+#if AC_INTEGRATION_ENABLED
     AcMeshDims dims = acGetMeshDims(device->local_config);
 
     // Intermediate buffer
     const size_t num_compute_profiles = 3 + 4 * 3;
     const AcShape buffer_shape        = {
-               .x = as_size_t(dims.nn.x),
-               .y = as_size_t(dims.nn.y),
-               .z = as_size_t(dims.m1.z),
-               .w = num_compute_profiles,
+        .x = as_size_t(dims.nn.x),
+        .y = as_size_t(dims.nn.y),
+        .z = as_size_t(dims.m1.z),
+        .w = num_compute_profiles,
     };
     const size_t buffer_size = acShapeSize(buffer_shape);
     AcBuffer buffer          = acBufferCreate(buffer_size, true);
@@ -1300,8 +1300,8 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
 
     acBufferDestroy(&buffer);
     return AC_FAILURE;
-    #else
-    ERROR("acDeviceReduceXYAverages called but VTXBUF_UU[XYZ] not defined");
+#else
+    ERROR("acDeviceReduceXYAverages called but AC_TFM_ENABLED was false");
     return AC_FAILURE;
-    #endif
+#endif
 }

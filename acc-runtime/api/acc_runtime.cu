@@ -212,7 +212,7 @@ DCONST(const AcReal3Param param)
 }
 
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
-  ((i) + (j) * DCONST(AC_mx) + (k) * DCONST(AC_mxy))
+  ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mxy))
 
 __device__ int
 LOCAL_COMPDOMAIN_IDX(const int3 coord)
@@ -620,9 +620,8 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
   cudaDeviceSynchronize(); /* See note in acLoadStencil */                     \
                                                                                \
-  const size_t offset = (size_t) &                                             \
-                        d_mesh_info.LABEL_LOWER##_params[param] - (size_t) &   \
-                        d_mesh_info;                                           \
+  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
+                        (size_t)&d_mesh_info;                                  \
                                                                                \
   const cudaError_t retval = cudaMemcpyToSymbol(                               \
       d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);     \
@@ -675,9 +674,8 @@ acLoadInt3Uniform(const cudaStream_t /* stream */, const AcInt3Param param,
   ERRCHK_ALWAYS(param < NUM_##LABEL_UPPER##_PARAMS);                           \
   cudaDeviceSynchronize(); /* See notes in GEN_LOAD_UNIFORM */                 \
                                                                                \
-  const size_t offset = (size_t) &                                             \
-                        d_mesh_info.LABEL_LOWER##_params[param] - (size_t) &   \
-                        d_mesh_info;                                           \
+  const size_t offset = (size_t)&d_mesh_info.LABEL_LOWER##_params[param] -     \
+                        (size_t)&d_mesh_info;                                  \
                                                                                \
   const cudaError_t retval = cudaMemcpyFromSymbol(                             \
       value, d_mesh_info, sizeof(*value), offset, cudaMemcpyDeviceToHost);     \
@@ -759,7 +757,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                                         ? min(props.maxThreadsPerBlock,
                                               MAX_THREADS_PER_BLOCK)
                                         : props.maxThreadsPerBlock;
-  const size_t max_smem           = props.sharedMemPerBlock;
+  const size_t max_smem = props.sharedMemPerBlock;
 
   // Old heuristic
   // for (int z = 1; z <= max_threads_per_block; ++z) {
@@ -1182,10 +1180,7 @@ acReindexCross(const cudaStream_t stream, //
                AcReal* out, const AcIndex out_offset, const AcShape out_shape,
                const AcShape block_shape)
 {
-  #if defined(TF_b11_x) && defined(TF_b11_y) && defined(TF_b11_z) && \
-      defined(TF_b12_x) && defined(TF_b12_y) && defined(TF_b12_z) && \
-      defined(TF_b21_x) && defined(TF_b21_y) && defined(TF_b21_z) && \
-      defined(TF_b22_x) && defined(TF_b22_y) && defined(TF_b22_z)
+#if AC_TFM_ENABLED
   const SOAVector uu = {
       .x = vba.in[VTXBUF_UUX],
       .y = vba.in[VTXBUF_UUY],
@@ -1214,9 +1209,9 @@ acReindexCross(const cudaStream_t stream, //
 
   const size_t block_offset = out_shape.x * out_shape.y * out_shape.z;
   const SOAVector out_bb11  = {
-       .x = &out[3 * block_offset],
-       .y = &out[4 * block_offset],
-       .z = &out[5 * block_offset],
+      .x = &out[3 * block_offset],
+      .y = &out[4 * block_offset],
+      .z = &out[5 * block_offset],
   };
   const SOAVector out_bb12 = {
       .x = &out[6 * block_offset],
@@ -1249,10 +1244,10 @@ acReindexCross(const cudaStream_t stream, //
   reindex_cross<<<bpg, tpb, 0, stream>>>(arrays, in_offset, in_shape,
                                          out_offset, out_shape, block_shape);
   return AC_SUCCESS;
-  #else
-  ERROR("acReindexCross called but test fields TF_b([0-9]*)_[xyz] not defined");
+#else
+  ERROR("acReindexCross called but AC_TFM_ENABLED was false");
   return AC_FAILURE;
-  #endif
+#endif
 }
 
 #if AC_USE_HIP
