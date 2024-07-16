@@ -31,6 +31,7 @@
 #include <rocprim/rocprim.hpp>
 #endif
 
+
 #define USE_COMPRESSIBLE_MEMORY (0)
 typedef struct
 {
@@ -38,6 +39,8 @@ typedef struct
 	VertexBufferHandle y;
 	VertexBufferHandle z;
 } Field3;
+
+
 
 constexpr Field3 
 MakeField3(const Field& x, const Field& y, const Field& z)
@@ -246,8 +249,6 @@ GEN_DARRAYS(AcReal3, real3, REAL3)
 GEN_DARRAYS(int3, int3, INT3)
 
 //The macros above generate d arrays like these:
-//__device__ __constant__ AcReal d_real_arrays[D_REAL_ARRAYS_LEN+1];
-//__device__ __constant__ int d_int_arrays[D_INT_ARRAYS_LEN+1];
 
 // Astaroth 2.0 backwards compatibility START
 #define d_multigpu_offset (d_mesh_info.int3_params[AC_multigpu_offset])
@@ -264,6 +265,69 @@ GEN_DCONST(AcIntParam, int, int_params)
 GEN_DCONST(AcInt3Param, int3, int3_params)
 GEN_DCONST(AcRealParam, AcReal, real_params)
 GEN_DCONST(AcReal3Param, AcReal3, real3_params)
+
+
+size_t
+get_address(AcRealParam param)
+{
+	return (size_t)&d_mesh_info.real_params[(int)param];
+}
+
+size_t
+get_address(AcIntParam param)
+{
+	return (size_t)&d_mesh_info.int_params[(int)param];
+}
+
+size_t
+get_address(AcBoolParam param)
+{
+	return (size_t)&d_mesh_info.bool_params[(int)param];
+}
+
+size_t
+get_address(AcReal3Param param)
+{
+	return (size_t)&d_mesh_info.real3_params[(int)param];
+}
+
+size_t
+get_address(AcInt3Param param)
+{
+	return (size_t)&d_mesh_info.int3_params[(int)param];
+}
+
+cudaError_t
+load_array(const AcReal* values, const size_t bytes, const size_t offset)
+{
+	return cudaMemcpyToSymbol(d_real_arrays, values, bytes, offset, cudaMemcpyHostToDevice);
+}
+
+cudaError_t
+load_array(const int* values, const size_t bytes, const size_t offset)
+{
+	return cudaMemcpyToSymbol(d_int_arrays, values, bytes, offset, cudaMemcpyHostToDevice);
+}
+
+cudaError_t
+load_array(const bool* values, const size_t bytes, const size_t offset)
+{
+	return cudaMemcpyToSymbol(d_bool_arrays, values, bytes, offset, cudaMemcpyHostToDevice);
+}
+
+cudaError_t
+load_array(const AcReal3* values, const size_t bytes, const size_t offset)
+{
+	return cudaMemcpyToSymbol(d_real3_arrays, values, bytes, offset, cudaMemcpyHostToDevice);
+}
+
+cudaError_t
+load_array(const int3* values, const size_t bytes, const size_t offset)
+{
+	return cudaMemcpyToSymbol(d_int3_arrays, values, bytes, offset, cudaMemcpyHostToDevice);
+}
+
+
 
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
   ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mxy))
@@ -329,7 +393,8 @@ IDX(const int3 idx)
 #include "user_dfuncs.h"
 #define suppress_unused_warning(X) (void)X
 #include "user_kernels.h"
-#include "user_handwritten_kernels.h"
+
+#include "extern_kernels.h"
 
 typedef struct {
   Kernel kernel;
@@ -483,14 +548,21 @@ device_free(T** dst, const int bytes)
 }
 
 
-template <typename T>
-void
-allocate_arrays(const int n_arrays, const bool* is_dconst, const T* const* arrays, T** vba_arrays, const int* lengths, const AcMeshInfo config)
+template <typename P>
+struct allocate_arrays
 {
-	for(int i = 0; i < n_arrays; ++i)
-		if(arrays[i] != nullptr && !is_dconst[i])
-			device_malloc((void**)&vba_arrays[i],sizeof(T)*config.int_params[lengths[i]]);
-}
+	void operator()(VertexBufferArray& vba, const AcMeshInfo& config) 
+	{
+		auto arrays = get_config_arrays<P>(config);
+		auto vba_arrays = get_vba_arrays<P>(vba);
+		for(int i = 0; i < get_num_params<P>(); ++i)
+		{
+			const P array = static_cast<P>(i);
+			if(arrays[i] != nullptr && !is_dconst(array))
+				device_malloc((void**)&vba_arrays[i],sizeof(arrays[0][0])*get_array_length(array,config));
+		}
+	}
+};
 
 
 VertexBufferArray
@@ -550,43 +622,56 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
   for (int i = 0; i < NUM_WORK_BUFFERS; ++i)
     device_malloc((void**)&vba.w[i],bytes);
 
-  allocate_arrays(NUM_REAL_ARRAYS,real_array_is_dconst,config.real_arrays,    vba.real_arrays,  real_array_lengths,  config);
-  allocate_arrays(NUM_INT_ARRAYS, int_array_is_dconst, config.int_arrays ,    vba.int_arrays,   int_array_lengths,   config);
-  allocate_arrays(NUM_BOOL_ARRAYS,bool_array_is_dconst,config.bool_arrays,    vba.bool_arrays,  bool_array_lengths,  config);
-  allocate_arrays(NUM_INT3_ARRAYS,int3_array_is_dconst,config.int3_arrays,    vba.int3_arrays,  int3_array_lengths,  config);
-  allocate_arrays(NUM_REAL3_ARRAYS, real3_array_is_dconst,config.real3_arrays,vba.real3_arrays, real3_array_lengths, config);
+
+  AcArrayTypes::run<allocate_arrays>(vba,config);
 
   acVBAReset(0, &vba);
   cudaDeviceSynchronize();
   return vba;
 }
 
-template <typename T>
-void
-update_arrays(const int n_arrays, const bool* is_dconst, const T* const* arrays, T** vba_arrays, const int* lengths, const AcMeshInfo config)
+template <typename P>
+struct update_arrays
 {
-	for(int i = 0; i < n_arrays; ++i)
+	void operator()(VertexBufferArray* vba, const AcMeshInfo& config)
 	{
-		if(is_dconst[i]) continue;
-		size_t bytes = sizeof(T)*config.int_params[lengths[i]];
-		if(arrays[i] == nullptr && vba_arrays[i] != nullptr) device_free(&vba_arrays[i],bytes);
-		else if(arrays[i] != nullptr && vba_arrays[i] == nullptr) device_malloc((void**)&vba_arrays[i],bytes);
+		auto arrays      = get_config_arrays<P>(config);
+		auto vba_arrays  = get_vba_arrays<P>(*vba);
+		for(int i = 0; i < get_num_params<P>(); ++i)
+		{
+			const P array = static_cast<P>(i);
+			if(is_dconst(array)) continue;
+			size_t bytes = sizeof(arrays[0][0])*get_array_length(array,config);
+			if(arrays[i] == nullptr && vba_arrays[i] != nullptr) device_free(&vba_arrays[i],bytes);
+			else if(arrays[i] != nullptr && vba_arrays[i] == nullptr) device_malloc((void**)&vba_arrays[i],bytes);
+		}
 	}
-}
+};
 void
 acVBAUpdate(VertexBufferArray* vba, const AcMeshInfo config)
 {
-  update_arrays(NUM_REAL_ARRAYS,real_array_is_dconst,config.real_arrays,    vba->real_arrays,  real_array_lengths,  config);
-  update_arrays(NUM_INT_ARRAYS, int_array_is_dconst, config.int_arrays ,    vba->int_arrays,   int_array_lengths,   config);
-  update_arrays(NUM_BOOL_ARRAYS,bool_array_is_dconst,config.bool_arrays,    vba->bool_arrays,  bool_array_lengths,  config);
-  update_arrays(NUM_INT3_ARRAYS,int3_array_is_dconst,config.int3_arrays,    vba->int3_arrays,  int3_array_lengths,  config);
-  update_arrays(NUM_REAL3_ARRAYS, real3_array_is_dconst,config.real3_arrays,vba->real3_arrays, real3_array_lengths, config);
+  AcArrayTypes::run<update_arrays>(vba,config);
 }
+
+template <typename P>
+struct free_arrays
+{
+	void operator()(VertexBufferArray& vba, const AcMeshInfo& config)
+	{
+		auto arrays     = get_config_arrays<P>(config);
+		auto vba_arrays = get_vba_arrays<P>(vba);
+		for(int i = 0; i < get_num_params<P>(); ++i)
+		{
+			const P array = static_cast<P>(i);
+			if(arrays[i] == nullptr ||is_dconst(array)) continue;
+			device_free(&vba_arrays[i], get_array_length(array,config));
+		}
+	}
+};
 void
 acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 {
-  for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    device_free(&(vba->in[i]), vba->bytes);
+  for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) { device_free(&(vba->in[i]), vba->bytes);
     if (vtxbuf_is_auxiliary[i])
       vba->out[i] = NULL;
     else
@@ -597,12 +682,7 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
     device_free(&(vba->w[i]), vba->bytes);
 
   //Free arrays
-  for (int i=0;i<NUM_REAL_ARRAYS; ++i)
-    if (config.real_arrays[i] != nullptr && !real_array_is_dconst[i])
-    	device_free(&(vba->real_arrays[i]), config.int_params[real_array_lengths[i]]);
-  for (int i=0;i<NUM_INT_ARRAYS; ++i)
-    if (config.int_arrays[i] != nullptr && !int_array_is_dconst[i])
-    	device_free(&(vba->int_arrays[i]), config.int_params[int_array_lengths[i]]);
+  AcArrayTypes::run<free_arrays>(*vba,config);
   vba->bytes = 0;
 }
 int
@@ -800,61 +880,77 @@ acStoreStencil(const Stencil stencil, const cudaStream_t /* stream */,
   return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 
 
-AcResult
-acLoadRealUniform(const cudaStream_t /* stream */, const AcRealParam param,
-                  const AcReal value)
+template <typename P, typename V>
+static AcResult
+acLoadUniform(const P param, const V value)
 {
-  if (isnan(value)) {
-    fprintf(stderr,
-            "WARNING: Passed an invalid value %g to device constant %s. "
-            "Skipping.\n",
-            (double)value, realparam_names[param]);
-    return AC_FAILURE;
-  }
-  GEN_LOAD_UNIFORM(REAL, real);
+	if constexpr (std::is_same<P,AcReal>::value)
+	{
+  		if (isnan(value)) {
+  		  fprintf(stderr,
+  		          "WARNING: Passed an invalid value %g to device constant %s. "
+  		          "Skipping.\n",
+  		          (double)value, realparam_names[param]);
+  		  return AC_FAILURE;
+  		}
+	}
+	else if constexpr (std::is_same<P,AcReal3>::value)
+	{
+  		if (isnan(value.x) || isnan(value.y) || isnan(value.z)) {
+  		  fprintf(stderr,
+  		          "WARNING: Passed an invalid value (%g, %g, %g) to device constant "
+  		          "%s. Skipping.\n",
+  		          (double)value.x, (double)value.y, (double)value.z,
+  		          real3param_names[param]);
+  		  return AC_FAILURE;
+  		}
+	}
+  	ERRCHK_ALWAYS(param < get_num_params<P>());
+  	cudaDeviceSynchronize(); /* See note in acLoadStencil */
+
+  	const size_t offset =  get_address(param) - (size_t)&d_mesh_info;
+  	const cudaError_t retval = cudaMemcpyToSymbol(d_mesh_info, &value, sizeof(value), offset, cudaMemcpyHostToDevice);
+  	return retval == cudaSuccess ? AC_SUCCESS : AC_FAILURE;
 }
 
-
-AcResult
-acLoadReal3Uniform(const cudaStream_t /* stream */, const AcReal3Param param,
-                   const AcReal3 value)
-{
-  if (isnan(value.x) || isnan(value.y) || isnan(value.z)) {
-    fprintf(stderr,
-            "WARNING: Passed an invalid value (%g, %g, %g) to device constant "
-            "%s. Skipping.\n",
-            (double)value.x, (double)value.y, (double)value.z,
-            real3param_names[param]);
-    return AC_FAILURE;
-  }
-  GEN_LOAD_UNIFORM(REAL3, real3);
-}
-
-
-#define GEN_LOAD_UNIFORM_FUNC(LABEL_UPPER,LABEL_LOWER, LABEL_UPPER_CASE) \
+#define GEN_LOAD_UNIFORM_FUNC(LABEL_LOWER, LABEL_UPPER_CASE) \
 	AcResult				       \
 	acLoad##LABEL_UPPER_CASE##Uniform(const cudaStream_t, const Ac##LABEL_UPPER_CASE##Param param, const LABEL_LOWER value) \
 	{ \
-	GEN_LOAD_UNIFORM( LABEL_UPPER , LABEL_LOWER ); \
+ 	  return acLoadUniform(param,value);  \
 	} 
 
-GEN_LOAD_UNIFORM_FUNC(INT,int,Int)
-GEN_LOAD_UNIFORM_FUNC(INT3,int3,Int3)
-GEN_LOAD_UNIFORM_FUNC(BOOL,bool,Bool)
+
+GEN_LOAD_UNIFORM_FUNC(AcReal,Real)
+GEN_LOAD_UNIFORM_FUNC(AcReal3,Real3)
+GEN_LOAD_UNIFORM_FUNC(int,Int)
+GEN_LOAD_UNIFORM_FUNC(int3,Int3)
+GEN_LOAD_UNIFORM_FUNC(bool,Bool)
+
+template <typename P, typename V>
+static AcResult
+acLoadArrayUniform(const cudaStream_t, const P array, const V* values)
+{
+	ERRCHK_ALWAYS(is_dconst(array));
+	const int length = get_dconst_array_length(array);
+	cudaDeviceSynchronize();
+	const size_t offset = (size_t) get_dconst_array_offset(array)*sizeof(V);
+	const cudaError_t retval = load_array(values, length*sizeof(V), offset);
+	if(retval != cudaSuccess)
+	{
+		fprintf(stderr,"%s\n","dconst loading failed\n");
+		return AC_FAILURE;
+	}
+	return AC_SUCCESS;
+}
 
 #define GEN_LOAD_ARRAY_UNIFORM_FUNC(ARRAY_NAME,PARAM_NAME, VAL_TYPE, LABEL_UPPER_CASE) \
 	AcResult				       \
-	acLoad##LABEL_UPPER_CASE##ArrayUniform(const cudaStream_t, const PARAM_NAME param, const VAL_TYPE* values) \
+	acLoad##LABEL_UPPER_CASE##ArrayUniform(const cudaStream_t stream, const PARAM_NAME array, const VAL_TYPE* values) \
 	{ \
-	ERRCHK_ALWAYS(ARRAY_NAME##_is_dconst[(int)param]); \
-	const int length = (int) ARRAY_NAME##_lengths[(int)param]; \
-	cudaDeviceSynchronize(); \
-	const size_t offset = (size_t) d_##ARRAY_NAME##_offsets[(int)param]*sizeof(VAL_TYPE); \
-	const cudaError_t retval = cudaMemcpyToSymbol(d_##ARRAY_NAME##s, values, sizeof(VAL_TYPE)*length, offset, cudaMemcpyHostToDevice); \
-	if (retval != cudaSuccess) \
-		return AC_FAILURE; \
-	return AC_SUCCESS; \
+		return acLoadArrayUniform(stream, array, values); \
 	} \
+
 
 GEN_LOAD_ARRAY_UNIFORM_FUNC(int_array,   AcIntArrayParam, int,Int)
 GEN_LOAD_ARRAY_UNIFORM_FUNC(real_array,  AcRealArrayParam, AcReal, Real)

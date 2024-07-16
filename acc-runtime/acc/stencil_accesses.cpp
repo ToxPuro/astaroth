@@ -1,3 +1,5 @@
+#define AC_RUNTIME_SOURCE
+
 #include <assert.h>
 /*
 #if AC_USE_HIP || __HIP_PLATFORM_HCC__ // Hack to ensure hip is used even if
@@ -155,6 +157,8 @@ static AcMeshInfo d_mesh_info;
 #include "user_dfuncs.h"
 #define suppress_unused_warning(X) (void)X
 #include "user_kernels.h"
+#include "extern_kernels.h"
+
 
 VertexBufferArray
 vbaCreate(const size_t count)

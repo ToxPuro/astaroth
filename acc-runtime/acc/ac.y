@@ -248,7 +248,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	init_str_vec(&const_int_values);
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
         {
-          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", "user_typedefs.h","user_kernel_ifs.h", "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_loaders.h", "user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin"};
+          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h", "device_mesh_info_decl.h", "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h", "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_loaders.h", "user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin"};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
             FILE* fp = fopen(files[i], "w");
 	    check_file(fp,files[i]);
@@ -379,6 +379,24 @@ main(int argc, char** argv)
     const char* stage4 = "user_kernels.ac.pp_stage4";
     const char* dir = dirname(file); // WARNING: dirname has side effects!
     dir_backup = dir;
+    
+    {
+    	char extern_kernels_filename[10000];
+    	char command[10000];
+	sprintf(extern_kernels_filename,"%s/%s",dir,"extern_kernels.h");
+	if(file_exists(extern_kernels_filename))
+		sprintf(command,"cp %s %s\n",extern_kernels_filename,"extern_kernels.h");
+	else
+		sprintf(command,"touch %s\n","extern_kernels.h");
+	int res = system(command);
+	if(res)
+	{
+		fprintf(stderr,"%s\n","FATAL ERROR");
+		exit(EXIT_FAILURE);
+	}
+    }
+   
+ 
 
     if (OPTIMIZE_MEM_ACCESSES) {
       code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, true, OPTIMIZE_CONDITIONALS); // Uncomment to enable stencil mem access checking
@@ -394,8 +412,8 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP QUESTION
-%token INT UINT INT3 REAL REAL3 MATRIX FIELD FIELD3 STENCIL WORK_BUFFER COMPLEX BOOL INTRINSIC 
-%token KERNEL INLINE BOUNDARY_CONDITION SUM MAX COMMUNICATED AUXILIARY DCONST_QL CONST_QL CONSTEXPR RUN_CONST GLOBAL_MEMORY_QL OUTPUT INPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS
+%token INT UINT INT3 REAL MATRIX FIELD FIELD3 STENCIL WORK_BUFFER BOOL INTRINSIC 
+%token KERNEL INLINE BOUNDARY_CONDITION SUM MAX COMMUNICATED AUXILIARY DCONST_QL CONST_QL CONSTEXPR RUN_CONST GLOBAL_MEMORY_QL OUTPUT INPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS EXTERN
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE
 
@@ -645,7 +663,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
  * Terminals
  * =============================================================================
  */
-struct_name : STRUCT_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
+struct_name : STRUCT_NAME { $$ = astnode_create(NODE_TSPEC, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 enum_name: ENUM_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 identifier: IDENTIFIER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 number: NUMBER         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
@@ -679,12 +697,11 @@ output: OUTPUT         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 input:  INPUT          { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 global_ql: GLOBAL_MEMORY_QL{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 auxiliary: AUXILIARY   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+extern: EXTERN { $$ = astnode_create(NODE_NO_OUT, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int: INT               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int3: INT3             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 real: REAL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-real3: REAL3           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal3", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-complex: COMPLEX       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcComplex", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 bool: BOOL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("bool", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcMatrix", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 field: FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -725,8 +742,9 @@ steps_definition: computesteps steps_definition_call '{' function_call_csv_list 
 
 struct_definition:     struct_name '{' declarations '}' {
                         $$ = astnode_create(NODE_STRUCT_DEF,$1,$3);
-			remove_substring($1->buffer,"struct");
-			strip_whitespace($1->buffer);
+			ASTNode* struct_type = get_node(NODE_TSPEC,$$);
+			remove_substring(struct_type->buffer,"struct");
+			strip_whitespace(struct_type->buffer);
                  }
 		 ;
 enum_definition: enum_name '{' expression_list '}'{
@@ -751,8 +769,6 @@ type_specifier: int          { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | uint         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | int3         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | real3        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | complex      { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | bool         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | matrix       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | matrix '[' expression ']'
@@ -788,6 +804,7 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | output       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | input        { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | auxiliary    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
+              | extern       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | inline       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | boundary_condition     { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
               ;
@@ -1064,6 +1081,11 @@ function_definition: declaration function_body {
 				fprintf(stderr,"Offending function: %s\n",get_node_by_token(IDENTIFIER,$$->lhs)->buffer);
 				assert(false);
 				exit(EXIT_FAILURE);
+			}
+
+			if(has_qualifier($$,"extern"))
+			{
+				$$->type |= NODE_NO_OUT;
 			}
 
                         ASTNode* fn_identifier = get_node_by_token(IDENTIFIER, $$->lhs);

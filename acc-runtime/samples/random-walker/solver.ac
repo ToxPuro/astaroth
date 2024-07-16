@@ -1,0 +1,6 @@
+gmem bool exists[AC_nx]
+extern Kernel
+solve()
+{
+}
+

@@ -52,7 +52,6 @@ typedef float AcReal;
 #define TOACREAL3(arr) TOVEC3(AcReal3,arr)
 #define AcVector AcReal3
 
-typedef struct AcComplex {AcReal x; AcReal y;} AcComplex;
 #define AcComplex(x,y) (AcComplex){x,y} 
 
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
@@ -61,15 +60,5 @@ typedef struct {
   size_t x, y, z;
 } Volume;
 
-typedef struct
-{
-	AcReal x;
-	AcReal y;
-} AcReal2;
 
-typedef struct
-{
-	AcReal x;
-	AcReal y;
-	AcReal z;
-} AcReal3;
+#include "user_typedefs.h"

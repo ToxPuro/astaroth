@@ -228,10 +228,14 @@ typedef struct {
 
 #if AC_RUNTIME_COMPILATION
 
+#ifndef BASE_FUNC_NAME
+
 #if __cplusplus
 #define BASE_FUNC_NAME(func_name) func_name##_BASE
 #else
 #define BASE_FUNC_NAME(func_name) func_name
+#endif
+
 #endif
 
 #ifndef FUNC_DEFINE
