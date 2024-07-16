@@ -1180,7 +1180,7 @@ acReindexCross(const cudaStream_t stream, //
                AcReal* out, const AcIndex out_offset, const AcShape out_shape,
                const AcShape block_shape)
 {
-#if AC_TFM_ENABLED
+#ifdef AC_TFM_ENABLED
   const SOAVector uu = {
       .x = vba.in[VTXBUF_UUX],
       .y = vba.in[VTXBUF_UUY],

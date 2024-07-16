@@ -1232,7 +1232,7 @@ acDeviceTest(const Device device)
 AcResult
 acDeviceReduceXYAverages(const Device device, const Stream stream)
 {
-#if AC_INTEGRATION_ENABLED
+#ifdef AC_INTEGRATION_ENABLED
     AcMeshDims dims = acGetMeshDims(device->local_config);
 
     // Intermediate buffer
