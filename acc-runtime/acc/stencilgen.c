@@ -209,11 +209,20 @@ gen_kernel_prefix(const bool gen_mem_accesses, const int curr_kernel)
 
 
   if(gen_mem_accesses)
+  {
     printf("const auto write_base __attribute__((unused))  = [&](const Field field, const AcReal value)"
          "{ written_fields_stencil_accesses[field]=1; vba.out[field][idx] = value; };");
+    printf("const auto write_to_index __attribute__((unused))  = [&](const Field field, const int index_out, const AcReal value)"
+         "{ written_fields_stencil_accesses[field]=1; vba.out[field][index_out] = value; };");
+  }
   else
+  {
     printf("const auto write_base __attribute__((unused))  = [&](const Field field, const AcReal value)"
          "{ vba.out[field][idx] = value; };");
+    printf("const auto write_to_index __attribute__((unused))  = [&](const Field field, const int index_out, const AcReal value)"
+         "{vba.out[field][index_out] = value; };");
+  }
+
 
   //  Non-temporal store intrinsic could reduce L2 pressure on AMD but no effect
   //  in practice (no effect on the first pass, a slight slowdown in the second

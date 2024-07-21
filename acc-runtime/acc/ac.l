@@ -57,6 +57,7 @@ void strip_whitespace(char *str) {
 "ComputeSteps"          {return COMPUTESTEPS; }
 "BoundConds"          {return BOUNDCONDS; }
 "intrinsic"          {return INTRINSIC; }
+"__shared__"          {return SHARED; }
 
 "Stencil"               { return STENCIL; }
 
@@ -68,6 +69,7 @@ void strip_whitespace(char *str) {
 "communicated"          { return COMMUNICATED; }
 "dconst"          { return DCONST_QL; }
 "const"          { return CONST_QL; }
+"dynamic"          { return DYNAMIC_QL; }
 "constexpr"      { return CONSTEXPR; }
 "output"          { return OUTPUT; }
 "run_const"          { return RUN_CONST; }
@@ -140,7 +142,7 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 \"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */
 [+-/*|&%^]?=              { return ASSIGNOP; }     /* Assignment */
 (<<=)|(>>=)               { return ASSIGNOP; }     /* Assignment */
-[/*<>|&%^]              { return BINARY_OP; }    /* Operators */
+[/*<>|%^]                 { return BINARY_OP; }      /* Operators */
 (&&)|(\|\|)|(<<)|(>>)     { return BINARY_OP; }    /* Operators */
 (==)|(>=)|(<=)|(!=)|(^=)  { return BINARY_OP; }    /* Operators */
 [-+*/:;=\[\]{}(),\.<>|&!] { return yytext[0]; }    /* Characters */

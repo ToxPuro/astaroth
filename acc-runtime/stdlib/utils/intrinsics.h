@@ -1,1 +1,3 @@
 intrinsic suppress_unused_warning
+intrinsic __syncthreads 
+intrinsic write_to_index

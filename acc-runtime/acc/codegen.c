@@ -301,6 +301,8 @@ symboltable_reset(void)
   add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_init_type");
   add_symbol(NODE_VARIABLE_ID, const_qualifier, 1, "int", "STENCIL_ORDER");
   // Astaroth 2.0 backwards compatibility END
+  int index = add_symbol(NODE_VARIABLE_ID, NULL, 0 , "int3", "blockDim");
+  symbol_table[index].tqualifiers.size = 0;
 }
 
 void
@@ -378,8 +380,6 @@ convert_to_define_name(const char* name)
 string_vec
 get_array_accesses(const ASTNode* base)
 {
-	    if(!base) printf("WRONG\n");
-	    if(!base->rhs) printf("WRONG\n");
 	    string_vec dst = VEC_INITIALIZER;
 	    char tmp[4098];
 	    int counter = 0;
@@ -397,11 +397,13 @@ get_array_accesses(const ASTNode* base)
 	    return dst;
 }
 string_vec 
-get_array_var_dims(const char* var, const ASTNode* root)
+get_array_var_dims(const char* var_in, const ASTNode* root)
 {
+	    char* var = strdup(var_in);
+	    strip_whitespace(var);
+	
 	    const ASTNode* var_identifier = get_node_by_buffer_and_type(var,NODE_VARIABLE_ID,root);
 	    const ASTNode* decl = get_parent_node(NODE_DECLARATION,var_identifier);
-	    assert(decl);
 	    return get_array_accesses(decl->rhs->lhs);
 }
 void
@@ -938,6 +940,9 @@ gen_3d_array_access(ASTNode* node)
 	res[0] = '\0';
 	base->prefix= strdup("vba.in[");
 	ASTNode* rhs = astnode_create(NODE_UNKNOWN, NULL, NULL);
+
+
+
 	sprintf(res,"[IDX(%s,%s,%s)]",x_index,y_index,z_index);
 	free(x_index);
 	free(y_index);
@@ -959,85 +964,10 @@ gen_3d_array_access(ASTNode* node)
 	return base;
 }
 
-ASTNode* 
-gen_4d_array_access(ASTNode* node)
+
+char*
+get_index(const ASTNode* array_access_start, const string_vec var_dims, const bool has_dconst_dims)
 {
-	char* array_index = malloc(sizeof(char)*1000);
-	char* x_index = malloc(sizeof(char)*1000);
-	char* y_index = malloc(sizeof(char)*1000);
-	char* z_index = malloc(sizeof(char)*1000);
-	bool is_assigned = false;
-       	const ASTNode* assign_node = get_parent_node(NODE_ASSIGNMENT,node);
-	if(assign_node)
-	{
-	      const ASTNode* search = get_node_by_id(node->id,assign_node->lhs);
-	      is_assigned = search != NULL;
-	}
-	const ASTNode* start = is_assigned
-				? node->parent->parent
-				: node->parent->parent->parent;
-	combine_all(start->rhs,array_index);
-	combine_all(start->parent->rhs,x_index);
-	combine_all(start->parent->rhs,y_index);
-	combine_all(start->parent->parent->rhs,z_index);
-	ASTNode* base= start->parent->parent->parent;
-        free(base->buffer);
-	base->lhs = NULL;
-	base->rhs = NULL;
-	base->infix= NULL;
-	base->postfix= NULL;
-	char* res = malloc(sizeof(char)*4000);
-	res[0] = '\0';
-	base->prefix= strdup("vba.in[");
-	ASTNode* rhs = astnode_create(NODE_UNKNOWN, NULL, NULL);
-	sprintf(res,"[IDX(%s,%s,%s)]",x_index,y_index,z_index);
-	free(x_index);
-	free(y_index);
-	free(z_index);
-	rhs->buffer = strdup(res);
-
-	sprintf(res,"%s",node->buffer);
-        base->buffer = strdup(res);
-        base->rhs = rhs;
-	rhs->prefix= strdup("]");
-
-        sprintf(res,"%s[%s]",node->buffer,array_index);
-	free(res);
-	free(array_index);
-
-	ASTNode* lhs = astnode_create(NODE_UNKNOWN, NULL, NULL);
-	base->lhs = lhs;
-	lhs->parent = base;
-        lhs->buffer = strdup(node->buffer);
-	lhs->token = IDENTIFIER;
-	lhs->type |= node->type & NODE_INPUT;
-
-	return base;
-}
-
-
-void
-gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
-{
-  if(node->lhs)
-    gen_array_reads(root,node->lhs,datatype_scalar);
-  if(node->rhs)
-    gen_array_reads(root,node->rhs,datatype_scalar);
-  if(!node->buffer)
-	  return;
-  char* datatype = malloc(sizeof(char)*(1000));
-  sprintf(datatype,"%s*",datatype_scalar);
-  const int l_current_nest = 0;
-  for (size_t i = 0; i < num_symbols[l_current_nest]; ++i)
-  {
-    if (!(symbol_table[i].type & NODE_VARIABLE_ID &&
-    (!strcmp(symbol_table[i].tspecifier,datatype)) && !strcmp(node->buffer,symbol_table[i].identifier) && node->parent->parent->parent->rhs && !str_vec_contains(symbol_table[i].tqualifiers,"const")))
-	    continue;
-    string_vec var_dims = get_array_var_dims(node->buffer, root);
-    ASTNode* array_access_start = (ASTNode*) get_parent_node(NODE_ARRAY_ACCESS,node);
-    if(!array_access_start) return;
-    while(get_parent_node(NODE_ARRAY_ACCESS,array_access_start) != NULL ) array_access_start = (ASTNode*) get_parent_node(NODE_ARRAY_ACCESS,array_access_start);
-
     string_vec array_accesses = get_array_accesses(array_access_start);
     char* index = malloc(sizeof(char)*4098);
     sprintf(index,"%s","");
@@ -1046,7 +976,7 @@ gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
     	if(j)
     	{
     		strcat(index,"+");
-    		if(str_vec_contains(symbol_table[i].tqualifiers,"gmem"))
+		if(has_dconst_dims)
     			strcat(index,"DCONST");
     		strcat(index,"(");
     		for(size_t k = 0; k < j; ++k)
@@ -1060,6 +990,35 @@ gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
     	strcat(index,array_accesses.data[j]);
 	strcat(index,")");
     }
+    free_str_vec(&array_accesses);
+    return index;
+}
+
+void
+gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
+{
+  if(node->lhs)
+    gen_array_reads(root,node->lhs,datatype_scalar);
+  if(node->rhs)
+    gen_array_reads(root,node->rhs,datatype_scalar);
+  if(node->type != NODE_ARRAY_ACCESS)
+	  return;
+  if(!node->lhs) return;
+  if(get_parent_node(NODE_VARIABLE,node)) return;
+  char* array_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+  char* datatype = malloc(sizeof(char)*(1000));
+  sprintf(datatype,"%s*",datatype_scalar);
+  const int l_current_nest = 0;
+  for (size_t i = 0; i < num_symbols[l_current_nest]; ++i)
+  {
+    if (!(symbol_table[i].type & NODE_VARIABLE_ID &&
+    (!strcmp(symbol_table[i].tspecifier,datatype)) && !strcmp(array_name,symbol_table[i].identifier) && !str_vec_contains(symbol_table[i].tqualifiers,"const")))
+	    continue;
+    ASTNode* array_access_start = node;
+    string_vec var_dims = get_array_var_dims(array_name, root);
+	
+    char* index = get_index(array_access_start,var_dims,
+		    str_vec_contains(symbol_table[i].tqualifiers,"gmem"));
     ASTNode* base = array_access_start;
     base->lhs=NULL;
     base->rhs=NULL;
@@ -1069,16 +1028,21 @@ gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
     free(base->buffer);
     base->buffer = malloc(sizeof(char)*10000);
     if(str_vec_contains(symbol_table[i].tqualifiers,"dconst"))
-    	sprintf(base->buffer,"d_%s_arrays[%s_offset+(%s)]",convert_to_define_name(datatype_scalar),node->buffer,index);
+    	sprintf(base->buffer,"d_%s_arrays[%s_offset+(%s)]",convert_to_define_name(datatype_scalar),array_name,index);
     else if(str_vec_contains(symbol_table[i].tqualifiers,"gmem"))
-    	sprintf(base->buffer,"__ldg(&gmem_%s_arrays[(int)%s][%s])",convert_to_define_name(datatype_scalar),node->buffer,index);
+    {
+	
+    	if(str_vec_contains(symbol_table[i].tqualifiers,"dynamic"))
+    		sprintf(base->buffer,"gmem_%s_arrays[(int)%s][%s]",convert_to_define_name(datatype_scalar),array_name,index);
+	else
+    		sprintf(base->buffer,"__ldg(&gmem_%s_arrays[(int)%s][%s])",convert_to_define_name(datatype_scalar),array_name,index);
+    }
     else
     {
 	    fprintf(stderr,"Fatal error: no case for array read\n");
 	    exit(EXIT_FAILURE);
     }
     free_str_vec(&var_dims);
-    free_str_vec(&array_accesses);
     free(index);
   }
   free(datatype);
@@ -2991,11 +2955,10 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
         else if (!get_parent_node_exclusive(NODE_STENCIL, node) &&
                  !(node->type & NODE_MEMBER_ID) &&
                  !(node->type & NODE_INPUT) &&
-                 !strstr(node->buffer, "__ldg") &&
 		 !(node->no_auto)
 		 )
 	{
-	  if(node->is_constexpr && !(node->type & NODE_FUNCTION_ID)) fprintf(stream, "constexpr ");
+	  if(node->is_constexpr && !(node->type & NODE_FUNCTION_ID)) fprintf(stream, " constexpr ");
           fprintf(stream, "auto ");
 	  const ASTNode* func_call_node = get_parent_node(NODE_FUNCTION_CALL,node);
 	  if(func_call_node)
@@ -3070,29 +3033,45 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node)
 		return;
 	if(!node->buffer)
 		return;
-	if(!node->parent)
-		return;
-	if(!node->parent->parent)
-		return;
-	if(!node->parent->parent->parent)
-		return;
 	//discard global const declarations
 	if(node->parent->parent->parent->type & NODE_ASSIGN_LIST)
 		return;
 	if(!check_for_vtxbuf(node) && !check_symbol(NODE_VARIABLE_ID,node->buffer,"Field",NULL))
 		return;
 
-	char* tmp = malloc(10000*sizeof(char));
-	combine_all(node->parent->parent->parent->parent,tmp);
-	const char* search_str = "][";
-	const char* substr = strstr(tmp,search_str);
-	free(tmp);
-	if(!substr)
-		return;
-	if(check_symbol(NODE_VARIABLE_ID, node->buffer, "Field*", NULL))
-		gen_4d_array_access(node);
-	else
-		 gen_3d_array_access(node);
+	ASTNode* array_access = (ASTNode*)get_parent_node(NODE_ARRAY_ACCESS,node);
+	if(!array_access || get_node_by_id(node->id,array_access->lhs)->id != node->id)	return;
+
+	string_vec array_accesses = get_array_accesses(array_access);
+	array_access->rhs = NULL;
+	array_access->lhs = NULL;
+	array_access->buffer = NULL;
+	array_access->rhs = NULL;
+	array_access->infix= NULL;
+	array_access->postfix= NULL;
+	array_access->prefix = NULL;
+	char* res = malloc(sizeof(char)*4000);
+	res[0] = '\0';
+	ASTNode* rhs = astnode_create(NODE_UNKNOWN, NULL, NULL);
+
+	const char* x_index = array_accesses.data[0];
+	const char* y_index = array_accesses.size > 1
+			      ? array_accesses.data[1] : "0";
+	const char* z_index = array_accesses.size > 2
+			      ? array_accesses.data[2] : "0";
+	sprintf(res,"[IDX(%s,%s,%s)]",x_index,y_index,z_index);
+	rhs->buffer = strdup(res);
+        array_access->rhs = rhs;
+	free(res);
+
+	ASTNode* lhs = astnode_create(NODE_UNKNOWN, NULL, NULL);
+	array_access->lhs = lhs;
+	lhs->prefix  = strdup("vba.in[");
+	lhs->postfix = strdup("]");
+	lhs->parent = array_access;
+        lhs->buffer = strdup(node->buffer);
+	lhs->token = IDENTIFIER;
+	lhs->type |= node->type & NODE_INPUT;
 }
 void
 gen_multidimensional_field_accesses(ASTNode* root)
@@ -4025,7 +4004,7 @@ gen_constexpr_info_base(ASTNode* node, ASTNode* func_base, const bool gen_mem_ac
 	  {
 		  ASTNode* tspec = (ASTNode*) get_node(NODE_TSPEC,node->lhs);
 		  char* new_type = malloc(sizeof(char)* (strlen(tspec->lhs->buffer) + 100));
-		  sprintf(new_type,"constexpr %s",tspec->lhs->buffer);
+		  sprintf(new_type," constexpr %s",tspec->lhs->buffer);
 		  free(tspec->lhs->buffer);
 		  tspec->lhs->buffer = new_type;
 	  }

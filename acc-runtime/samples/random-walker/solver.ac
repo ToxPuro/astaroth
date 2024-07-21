@@ -1,7 +1,7 @@
 gmem real global_radius_start[1]
 gmem real global_radius_tmp[1]
 
-gmem bool AC_exists[AC_nx]
+gmem dynamic bool AC_exists[AC_nx]
 const int sf = 6; // scaling factor to keep number of atoms per geometry the same
 const int npoints = sf*sf * 12800; // number of atoms
 const int lsf = 1; // length scaling factor to increase geometry but not atoms
@@ -13,9 +13,52 @@ const real dx = lengthx / nsegmentsx; // length of one cell in x dir
 const real dy = lengthy / nsegmentsy; // length of one cell in y dir
 const real Aat = AC_REAL_PI* (dx / 3.0 / 2.0)*(dx / 3.0 / 2.0); // Area of one atom in 2D simulation
 const real ceq = -Aat;
+const int POINTS_PER_THREAD = 1
+const int ADVANCEMENTS_PER_UPDATE = 1
 
-extern Kernel
+Kernel
 solve(int step_num)
 {
+	int tid_orig = threadIdx.x + blockIdx.x*POINTS_PER_THREAD*blockDim.x
+	__shared__ real tpb_radius_sum;
+	if(threadIdx.x == 0)
+		tpb_radius_sum = 0.0;
+	__syncthreads();
+	
+	real radius_sum = 0.0;
+	const bool even_step = (step_num % 2 == 0)
+	real global_radius = even_step ? global_radius_start[0] : global_radius_tmp[0]
+	const real global_radius_2 = global_radius*global_radius
+	for point_offset in 0:POINTS_PER_THREAD
+	{
+		const int tid = tid_orig + point_offset*blockDim.x;
+		real xcoord_local = COORDS_X[tid]
+		real ycoord_local = COORDS_Y[tid]
+		for i in 0:ADVANCEMENTS_PER_UPDATE 
+		{
+			const real randx = random_uniform(tid)
+			const real randy = random_uniform(tid)
+                        xcoord_local += ((randx > 0.75) - (randx < 0.25))*dx;
+                        ycoord_local += ((randy > 0.75) - (randy < 0.25))*dy;
+                        xcoord_local += ((xcoord_local < -lengthx/ 2.0) - (xcoord_local > lengthx/ 2.0))*lengthx;
+                        ycoord_local += ((ycoord_local < -lengthy/ 2.0) - (ycoord_local > lengthy/ 2.0))*lengthy;
+                        const bool inside = ((xcoord_local*xcoord_local) + (ycoord_local*ycoord_local) < global_radius_2);
+			// if atom is within radius, it is is assimilated to the precipitate which then grows
+                        if (inside && AC_exists[tid])
+			{
+				AC_exists[tid] = 0
+				const real aeq = AC_REAL_PI
+				const real beq = 2 * AC_REAL_PI*global_radius
+				// solve deltar from quadratic eq.
+                            	const real deltar = (-beq + sqrt(beq*beq - 4 * aeq * ceq)) / (2 * aeq); 
+				//increase precipitate radius
+			        radius_sum += deltar	
+			}
+		}
+		write_to_index(COORDS_X,tid,xcoord_local)
+		write_to_index(COORDS_Y,tid,ycoord_local)
+	}
+	if(radius_sum != 0.0)
+		atomicAdd(&tpb_radius_sum, radius_sum)
 }
 

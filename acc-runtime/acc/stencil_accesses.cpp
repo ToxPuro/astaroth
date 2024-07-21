@@ -45,6 +45,7 @@ typedef struct
 #define len(arr) sizeof(arr) / sizeof(arr[0])
 #define rand_uniform()        (0.5065983774206012); // Chosen by a fair dice roll
 #define random_uniform(TID) (0.5065983774206012); // Chosen by a fair dice roll
+#define __syncthreads() 
 
 template <typename T>
 T
