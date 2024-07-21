@@ -872,6 +872,7 @@ diagonal(const AcMatrix& m)
   return (AcReal3){m.data[0][0], m.data[1][1], m.data[2][2]};
 }
 
+
 /*
  * AcTensor
  */

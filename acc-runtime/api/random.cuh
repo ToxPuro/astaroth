@@ -177,3 +177,15 @@ acRandQuit(void)
 #else
 #define rand_uniform() curand_uniform(&states[local_compdomain_idx])
 #endif
+
+__device__ __forceinline__
+AcReal
+random_uniform(const size_t idx)
+{
+#if AC_DOUBLE_PRECISION
+		return curand_uniform_double(&states[idx]);
+#else
+		return curand_uniform(&states[idx])
+
+#endif
+}

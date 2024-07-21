@@ -43,10 +43,16 @@ typedef struct
 #define make_double3(x, y, z) ((double3){x, y, z})
 #define print printf
 #define len(arr) sizeof(arr) / sizeof(arr[0])
-#define rand_uniform() (0.5065983774206012) // Chosen by a fair dice roll.
-// Guaranteed to be random.
-// ref. xkcd :)
+#define rand_uniform()        (0.5065983774206012); // Chosen by a fair dice roll
+#define random_uniform(TID) (0.5065983774206012); // Chosen by a fair dice roll
 
+template <typename T>
+T
+atomicAdd(T* dst, T val)
+{
+	*dst += val;
+	return val;
+}
 // Just nasty: Must evaluate all code branches given arbitrary input
 // if we want automated stencil generation to work in every case
 #define d_multigpu_offset ((int3){0, 0, 0})
@@ -65,31 +71,7 @@ MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
 		res[i] = (Field3){x,y,z};
 	return res;
 }
-int
-DCONST(const AcIntParam param)
-{
-  return 1;
-}
-bool
-DCONST(const AcBoolParam param)
-{
-  return true;
-}
-int3
-DCONST(const AcInt3Param param)
-{
-  return (int3){1,1,1};
-}
-AcReal
-DCONST(const AcRealParam param)
-{
-  return 1.0;
-}
-AcReal3
-DCONST(const AcReal3Param param)
-{
-  return (AcReal3){1.0,1.0,1.0};
-}
+#include "dconst_accesses_decl.h"
 
 constexpr int
 IDX(const int i)
@@ -138,15 +120,11 @@ __ballot(bool val)
  
 #include "acc_runtime.h"
 #include "user_constants.h"
+#include "dconst_arrays_decl.h"
+#include "gmem_arrays_decl.h"
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
                               // least the max smem size of the device
-static AcReal AC_INTERNAL_big_real_array[8*1024*1024]{0.0};
-static int AC_INTERNAL_big_int_array[8*1024*1024]{0};
-static AcReal3 AC_INTERNAL_big_real3_array[8*1024*1024]{(AcReal3){0.0,0.0,0.0}};
-static int3 AC_INTERNAL_big_int3_array[8*1024*1024]{(int3){0,0,0}};
-static bool AC_INTERNAL_big_bool_array[8*1024*1024]{false};
-
 static AcReal3 AC_INTERNAL_global_real_vec = {0.0,0.0,0.0};
 static int3 AC_INTERNAL_global_int_vec = {0,0,0};
 

@@ -66,11 +66,7 @@
   //could combine these into base struct
   //with struct inheritance, but not sure would that break C ABI
   typedef struct {
-    AcReal* real_arrays[NUM_REAL_ARRAYS];
-    int* int_arrays[NUM_INT_ARRAYS];
-    bool* bool_arrays[NUM_BOOL_ARRAYS];
-    AcReal3* real3_arrays[NUM_REAL3_ARRAYS];
-    int3* int3_arrays[NUM_INT3_ARRAYS];
+#include "array_decl.h"
 #include "device_mesh_info_decl.h"
 #if AC_MPI_ENABLED
     MPI_Comm comm;
@@ -78,29 +74,11 @@
   } AcMeshInfo;
 
   typedef struct {
-    bool int_params[NUM_INT_COMP_PARAMS];
-    bool int3_params[NUM_INT3_COMP_PARAMS];
-    bool real_params[NUM_REAL_COMP_PARAMS];
-    bool real3_params[NUM_REAL3_COMP_PARAMS];
-    bool real_arrays[NUM_REAL_COMP_ARRAYS];
-    bool bool_params[NUM_BOOL_COMP_PARAMS];
-    bool int_arrays[NUM_INT_COMP_ARRAYS];
-    bool bool_arrays[NUM_BOOL_COMP_ARRAYS];
-    bool int3_arrays[NUM_INT3_COMP_ARRAYS];
-    bool real3_arrays[NUM_REAL3_COMP_ARRAYS];
+#include "comp_loaded_decl.h"
   } AcCompInfoLoaded;
 
   typedef struct {
-    int int_params[NUM_INT_COMP_PARAMS];
-    int3 int3_params[NUM_INT3_COMP_PARAMS];
-    AcReal real_params[NUM_REAL_COMP_PARAMS];
-    AcReal3 real3_params[NUM_REAL3_COMP_PARAMS];
-    bool bool_params[NUM_BOOL_COMP_PARAMS];
-    const AcReal*    real_arrays[NUM_REAL_COMP_ARRAYS];
-    const int*       int_arrays[NUM_INT_COMP_ARRAYS];
-    const bool*      bool_arrays[NUM_BOOL_COMP_ARRAYS];
-    const AcReal3*   real3_arrays[NUM_REAL3_COMP_ARRAYS]; 
-    const int3*      int3_arrays[NUM_INT3_COMP_ARRAYS]; 
+#include "comp_decl.h"
   } AcCompInfoConfig;
 
   typedef struct {
@@ -110,21 +88,15 @@
 
   //pad by one to avoid 0 length arrays that might not work
   typedef struct {
-    int int_params[NUM_INT_INPUT_PARAMS+1];
-    AcReal real_params[NUM_REAL_INPUT_PARAMS+1];
-    bool bool_params[NUM_BOOL_INPUT_PARAMS+1];
+	  AcReal real_params[NUM_REAL_INPUT_PARAMS];
+	  int    int_params[NUM_INT_INPUT_PARAMS];
+	  bool   bool_params[NUM_BOOL_INPUT_PARAMS];
   } AcInputs;
 
   typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
     AcReal* w[NUM_WORK_BUFFERS];
-
-    AcReal*   real_arrays[NUM_REAL_ARRAYS];
-    int*      int_arrays[NUM_INT_ARRAYS];
-    bool*     bool_arrays[NUM_BOOL_ARRAYS];
-    AcReal3*  real3_arrays[NUM_REAL3_ARRAYS];
-    int3*     int3_arrays[NUM_INT3_ARRAYS];
 
     size_t bytes;
     acKernelInputParams kernel_input_params;
@@ -199,29 +171,7 @@
 #endif
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acLoadRealUniform,(const cudaStream_t stream, const AcRealParam param, const AcReal value));
-
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acLoadRealArrayUniform,(const cudaStream_t stream, const AcRealArrayParam param, const AcReal* values));
-
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acLoadReal3Uniform,(const cudaStream_t stream, const AcReal3Param param, const AcReal3 value));
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acLoadReal3ArrayUniform,(const cudaStream_t stream, const AcReal3ArrayParam param, const AcReal3* values));
-
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acLoadIntUniform,(const cudaStream_t stream, const AcIntParam param, const int value));
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acLoadBoolUniform,(const cudaStream_t stream, const AcBoolParam param, const bool value));
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acLoadIntArrayUniform,(const cudaStream_t stream, const AcIntArrayParam param, const int* values));
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acLoadBoolArrayUniform,(const cudaStream_t stream, const AcBoolArrayParam param, const bool* values));
-
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acLoadInt3Uniform,(const cudaStream_t stream, const AcInt3Param param, const int3 value));
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acLoadInt3ArrayUniform,(const cudaStream_t stream, const AcInt3ArrayParam param, const int3* values));
+#include "load_and_store_uniform_header.h"
 
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
@@ -383,188 +333,148 @@
     //
     //
 #include <type_traits>
+
   template <typename P>
-  static bool
+  constexpr static array_info
+  get_array_info(const P array)
+  {
+#include "get_array_info.h"
+  }
+
+  template <typename P>
+  constexpr static bool
   is_dconst(const P array)
   {
-	  constexpr const bool* dconst_arr =
-		  std::is_same<P,AcRealArrayParam>::value  ? real_array_is_dconst :
-		  std::is_same<P,AcIntArrayParam>::value   ? int_array_is_dconst  :
-		  std::is_same<P,AcBoolArrayParam>::value  ? bool_array_is_dconst :
-		  std::is_same<P,AcReal3ArrayParam>::value ? real3_array_is_dconst :
-		  std::is_same<P,AcInt3ArrayParam>::value  ? real3_array_is_dconst : 
-		  NULL;
-	  return dconst_arr[(int)array];
+	  return get_array_info(array).is_dconst;
   }
 
   template <typename P>
-  static int
+  constexpr static int3
+  get_array_dims(const P array)
+  {
+	  return get_array_info(array).dims;
+  }
+
+  template <typename P>
+  constexpr static int
+  get_array_n_dims(const P array)
+  {
+	  return get_array_info(array).num_dims;
+  }
+
+  template <typename P>
+  constexpr const char*
+  get_param_name(const P param)
+  {
+#include "get_param_name.h"
+  }
+  template <typename P>
+  constexpr const char*
+  get_array_name(const P array)
+  {
+	  return get_array_info(array).name;
+  }
+  template <typename P>
+  constexpr bool
+  get_is_loaded(const P param, const AcCompInfoLoaded config)
+  {
+#include "get_from_comp_config.h"
+  };
+
+  template <typename P>
+  auto
+  get_loaded_val(const P param, const AcCompInfoConfig config)
+  {
+#include "get_from_comp_config.h"
+  };
+
+  template <typename P>
+  constexpr static int
   get_array_length(const P array, const AcMeshInfo host_info)
   {
-	  constexpr const int* length_arr=
-		  std::is_same<P,AcRealArrayParam>::value  ? real_array_lengths:
-		  std::is_same<P,AcIntArrayParam>::value   ? int_array_lengths:
-		  std::is_same<P,AcBoolArrayParam>::value  ? bool_array_lengths:
-		  std::is_same<P,AcReal3ArrayParam>::value ? real3_array_lengths:
-		  std::is_same<P,AcInt3ArrayParam>::value  ? real3_array_lengths: 
-		  NULL;
-	  static_assert(length_arr != NULL);
+	  const array_info arr_info = get_array_info(array);
 	  if(is_dconst(array))
-		  return length_arr[(int)array];
-	  return host_info.int_params[length_arr[(int)array]];
+		  return arr_info.length;
+	  return host_info.int_params[arr_info.length];
   }
 
   template <typename P>
-  static int
+  constexpr static int
   get_dconst_array_length(const P array)
   {
-	  constexpr const int* length_arr=
-		  std::is_same<P,AcRealArrayParam>::value  ? real_array_lengths:
-		  std::is_same<P,AcIntArrayParam>::value   ? int_array_lengths:
-		  std::is_same<P,AcBoolArrayParam>::value  ? bool_array_lengths:
-		  std::is_same<P,AcReal3ArrayParam>::value ? real3_array_lengths:
-		  std::is_same<P,AcInt3ArrayParam>::value  ? real3_array_lengths: 
-		  NULL;
-	  static_assert(length_arr != NULL);
-	  return length_arr[(int)array];
+	  return get_array_info(array).length;
   }
 
   template <typename P>
   static int
   get_dconst_array_offset(const P array)
   {
-	  constexpr const int* offset_arr =
-		  std::is_same<P,AcRealArrayParam>::value  ? d_real_array_offsets:
-		  std::is_same<P,AcIntArrayParam>::value   ? d_int_array_offsets:
-		  std::is_same<P,AcBoolArrayParam>::value  ? d_bool_array_offsets:
-		  std::is_same<P,AcReal3ArrayParam>::value ? d_real3_array_offsets:
-		  std::is_same<P,AcInt3ArrayParam>::value  ? d_real3_array_offsets: 
-		  NULL;
-	  if(offset_arr == NULL)
-	  {
-		  fprintf(stderr,"%s\n","FATAL ERROR: missing array type\n");
-		  exit(EXIT_FAILURE);
-	  }
-	  return offset_arr[(int)array];
+	  return get_array_info(array).d_offset;
   }
 
   template <typename P>
-  static int
+  constexpr static size_t
   get_num_params()
   {
-	  constexpr const int res=
-		  std::is_same<P,AcRealParam>::value    ? NUM_REAL_PARAMS:
-		  std::is_same<P,AcIntParam>::value     ? NUM_INT_PARAMS:
-		  std::is_same<P,AcBoolParam>::value    ? NUM_BOOL_PARAMS:
-		  std::is_same<P,AcReal3Param>::value   ? NUM_REAL3_PARAMS:
-		  std::is_same<P,AcInt3Param>::value    ? NUM_INT3_PARAMS:
-
-		  std::is_same<P,AcRealArrayParam>::value  ? NUM_REAL_ARRAYS:
-		  std::is_same<P,AcIntArrayParam>::value   ? NUM_INT_ARRAYS:
-		  std::is_same<P,AcBoolArrayParam>::value  ? NUM_BOOL_ARRAYS:
-		  std::is_same<P,AcReal3ArrayParam>::value ? NUM_REAL_ARRAYS:
-		  std::is_same<P,AcInt3ArrayParam>::value  ? NUM_INT_ARRAYS: 
+	  const int res=
+#include "get_num_params.h"
 		  -1;
-
 	  static_assert(res >= 0);
 	  return res;
   }
 
-  template <typename T>
-  auto
-  get_config_params(const AcMeshInfo& config)
-  {
-	  if constexpr(std::is_same<T,AcRealParam>::value)
-	  	return config.real_params;
-	  else if constexpr(std::is_same<T,AcIntParam>::value)
-	  	return config.int_params;
-	  else if constexpr(std::is_same<T,AcBoolParam>::value)
-	  	return config.bool_params;
-	  else if constexpr(std::is_same<T,AcReal3Param>::value)
-	  	return config.real3_params;
-	  else if constexpr(std::is_same<T,AcInt3Param>::value)
-	  	return config.int3_params;
-  }	  
+  // Helper to generate a sequence of integers at compile-time
+  template<std::size_t... Is>
+  constexpr std::array<int, sizeof...(Is)> make_array(std::index_sequence<Is...>) {
+      return {{ Is... }};
+  }
   
-  template <typename T>
-  auto
-  get_config_arrays(const AcMeshInfo& config)
+  // Function to create an array of integers from 0 to N-1
+  template<std::size_t N>
+  constexpr std::array<int, N> createIntArray() {
+      return make_array(std::make_index_sequence<N>{});
+  }
+  
+  // Function to create an array of enums from an array of integers
+  template<typename P, std::size_t N, std::size_t... Is>
+  constexpr std::array<P, N> createEnumArrayImpl(const std::array<int, N>& intArray, std::index_sequence<Is...>) {
+      return {{ static_cast<P>(intArray[Is])... }};
+  }
+  
+  template<typename P, std::size_t N>
+  constexpr std::array<P, N> createEnumArray(const std::array<int, N>& intArray) {
+      return createEnumArrayImpl<P>(intArray, std::make_index_sequence<N>{});
+  }
+
+  template <typename P>
+  constexpr auto
+  get_params()
   {
-	  if constexpr(std::is_same<T,AcRealArrayParam>::value)
-	  	return config.real_arrays;
-	  else if constexpr(std::is_same<T,AcIntArrayParam>::value)
-	  	return config.int_arrays;
-	  else if constexpr(std::is_same<T,AcBoolArrayParam>::value)
-	  	return config.bool_arrays;
-	  else if constexpr(std::is_same<T,AcReal3ArrayParam>::value)
-	  	return config.real3_arrays;
-	  else if constexpr(std::is_same<T,AcInt3ArrayParam>::value)
-	  	return config.int3_arrays;
+	  return createEnumArray<P>(
+			  createIntArray<get_num_params<P>()>()
+	  );
+  }
+  constexpr auto
+  get_vtxbuf_handles()
+  {
+	  return createEnumArray<Field>(createIntArray<NUM_VTXBUF_HANDLES>());
+  }
+
+	
+
+
+  template <typename P>
+  constexpr auto
+  get_config_param(const P param, const AcMeshInfo& config)
+  {
+#include "get_config_param.h"
   }	  
 
-  template <typename T>
-  auto
-  get_vba_arrays(VertexBufferArray& vba)
-  {
-	  if constexpr(std::is_same<T,AcRealArrayParam>::value)
-	  	return vba.real_arrays;
-	  else if constexpr(std::is_same<T,AcIntArrayParam>::value)
-	  	return vba.int_arrays;
-	  else if constexpr(std::is_same<T,AcBoolArrayParam>::value)
-	  	return vba.bool_arrays;
-	  else if constexpr(std::is_same<T,AcReal3ArrayParam>::value)
-	  	return vba.real3_arrays;
-	  else if constexpr(std::is_same<T,AcInt3ArrayParam>::value)
-	  	return vba.int3_arrays;
-  }	  
   
 
 #ifndef AC_RUNTIME_SOURCE
-  static AcResult __attribute__((unused))
-  acLoadUniform(const cudaStream_t stream, const AcRealParam param, const AcReal value)          { return BASE_FUNC_NAME(acLoadRealUniform)(stream,param,value);}
+#include "load_and_store_uniform_overloads.h"
   
-  static AcResult __attribute__((unused))
-  acLoadUniform(const cudaStream_t stream, const AcIntParam param, const int value)              { return BASE_FUNC_NAME(acLoadIntUniform)(stream,param,value);}
-  
-  static AcResult __attribute__((unused))
-  acLoadUniform(const cudaStream_t stream, const AcBoolParam param, const int value)             { return BASE_FUNC_NAME(acLoadBoolUniform)(stream,param,value);}
-  
-  static AcResult __attribute__((unused))
-  acLoadUniform(const cudaStream_t stream, const AcReal3Param param, const AcReal3 value)        { return BASE_FUNC_NAME(acLoadReal3Uniform)(stream,param,value);}
-  
-  static AcResult __attribute__((unused))
-  acLoadUniform(const cudaStream_t stream, const AcInt3Param param, const int3 value)            { return BASE_FUNC_NAME(acLoadInt3Uniform)(stream,param,value);}
-  
-  static AcResult __attribute__((unused))
-  acLoadUniform(const cudaStream_t stream, const AcRealArrayParam param, const AcReal* values)   { return BASE_FUNC_NAME(acLoadRealArrayUniform)(stream,param,values);}
-
-  static AcResult __attribute__((unused))
-  acLoadUniform(const cudaStream_t stream, const AcIntArrayParam param, const int* values)       { return BASE_FUNC_NAME(acLoadIntArrayUniform)(stream,param,values);}
-  
-  static AcResult __attribute__((unused))
-  acLoadUniform(const cudaStream_t stream, const AcBoolArrayParam param, const bool* values)     { return BASE_FUNC_NAME(acLoadBoolArrayUniform)(stream,param,values);}
-  
-  static AcResult __attribute__((unused))
-  acLoadUniform(const cudaStream_t stream, const AcReal3ArrayParam param, const AcReal3* values) { return BASE_FUNC_NAME(acLoadReal3ArrayUniform)(stream,param,values);}
-  
-  static AcResult __attribute__((unused))
-  acLoadUniform(const cudaStream_t stream, const AcInt3ArrayParam param, const int3* values)     { return BASE_FUNC_NAME(acLoadInt3ArrayUniform)(stream,param,values);}
-
-  static AcResult __attribute__((unused))
-  acStoreUniform(const cudaStream_t stream, const AcRealParam param, AcReal* value)         { return BASE_FUNC_NAME(acStoreRealUniform)(stream,param,value);}
-  
-  static AcResult __attribute__((unused))
-  acStoreUniform(const cudaStream_t stream, const AcIntParam param,  int* value)                 { return BASE_FUNC_NAME(acStoreIntUniform)(stream,param,value);}
-  
-  static AcResult __attribute__((unused))
-  acStoreUniform(const cudaStream_t stream, const AcBoolParam param, bool* value)                 { return BASE_FUNC_NAME(acStoreBoolUniform)(stream,param,value);}
-  
-  static AcResult __attribute__((unused))
-  acStoreUniform(const cudaStream_t stream, const AcReal3Param param,AcReal3* value)             { return BASE_FUNC_NAME(acStoreReal3Uniform)(stream,param,value);}
-  
-  static AcResult __attribute__((unused))
-  acStoreUniform(const cudaStream_t stream, const AcInt3Param param, int3* value)                { return BASE_FUNC_NAME(acStoreInt3Uniform)(stream,param,value);}
-
   template<typename T, typename... Ts>
   struct ForEach
   {
@@ -588,19 +498,23 @@
 
 
   using AcScalarTypes = ForEach<
-  	AcRealParam,
-	AcIntParam,
-	AcBoolParam,
-	AcInt3Param,
-	AcReal3Param
+#include "scalar_types.h"
+  AcIntParam
   >;
 
+  using AcScalarCompTypes = ForEach<
+  AcIntCompParam
+  >;
+  
+
   using AcArrayTypes = ForEach<
-	AcRealArrayParam,
-	AcIntArrayParam,
-	AcBoolArrayParam,
-	AcInt3ArrayParam,
-	AcReal3ArrayParam
+#include "array_types.h"
+  AcIntArrayParam
+  >;
+
+  using AcArrayCompTypes = ForEach<
+#include "array_comp_types.h"
+  AcIntCompArrayParam
   >;
 
 #endif

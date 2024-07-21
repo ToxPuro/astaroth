@@ -1,7 +1,8 @@
-const int AC_2d_ints = {{1,2,3}, {2,3,4}}
-const int AC_const_ints = {1,2,3}
+const int AC_2d_ints = [[1,2,3], [2,3,4]]
+const int AC_const_ints = [1,2,3]
 const int AC_const_ints_len = 3
 const real AC_const_real = 2.0
+const int3 AC_const_int3 = {1,2,3}
 enum IHEATCOND
 {
 	NOTHING,
@@ -21,18 +22,25 @@ struct EnumParams
 	IHEATCOND heatcond;
 }  
 
-const real AC_const_reals = {1.0,2,0,3.0}
+const real AC_const_reals = [1.0,2,0,3.0]
 
 const bool AC_const_bool = false
 const bool AC_const_bool_true = true
-const bool AC_const_bool_arr = {true,false}
+const bool AC_const_bool_arr = [true,false]
 //const int AC_first = 1, AC_second = 2
 const int AC_first = 2
 const int AC_second = 2
 const bool AC_first_bool = false, AC_second_bool = true
-const bool AC_first_bool_arr = {false,false}, AC_third_bool= true
+const bool AC_first_bool_arr = [false,false], AC_third_bool= true
 
 dconst real4 AC_real_4
+dconst complex AC_complex_dconst
+const real3 AC_const_real3 = {1.0, 2.0, 3.0}
+const real3 AC_const_real3_arr = [ {1.0, 2.0, 3.0}, {1.0, 2.0, 3.0}]
+const real3 AC_const_real3_arr_2 = [AC_const_real3, AC_const_real3]
+
+gmem real AC_real_gmem_arr[AC_nx]
+
 
 
 const int AC_const_int = 2
@@ -121,7 +129,9 @@ int AC_start_step
 
 run_const real  AC_runtime_real_arr[4]
 run_const int   AC_runtime_int_arr[2]
+
 run_const bool  AC_runtime_bool_arr[2]
+
 run_const int   AC_runtime_int
 run_const real  AC_runtime_real
 run_const int3  AC_runtime_int3
@@ -1236,6 +1246,9 @@ Kernel constant() {
         write(Field(field), AC_value)
     }
 }
-
+Kernel test()
+{
+	val = AC_real_gmem_arr[0]
+}
 
 

@@ -1,88 +1,173 @@
 #include "acc_runtime.h"
 #include "user_array_dims.h"
 
-template <const bool is_real, typename T, typename F>
-void
-load_arrays(const char* type, const bool* is_loaded, const T* const* vals, const int* num_dims, const int3* dims, const int n_elems, F names, FILE* fp, const T default_value)
+
+
+template <typename P>
+auto
+get_default_value()
 {
-	for(int i = 0; i < n_elems; ++i)
+	//if constexpr(std::is_same<P,AcRealCompArrayParam>::value) return (AcReal)NAN;
+	//if constexpr(std::is_same<P,AcIntCompArrayParam>::value)  return (int)0;
+	//if constexpr(std::is_same<P,AcBoolCompArrayParam>::value) return (bool)false;
+
+	//if constexpr(std::is_same<P,AcRealCompParam>::value)  return (AcReal)NAN;
+	//if constexpr(std::is_same<P,AcIntCompParam>::value)   return (int)0;
+	//if constexpr(std::is_same<P,AcBoolCompParam>::value)  return (bool)false;
+	//if constexpr(std::is_same<P,AcReal3CompParam>::value) return (AcReal3){(AcReal) NAN,(AcReal) NAN,(AcReal) NAN};
+	//if constexpr(std::is_same<P,AcInt3CompParam>::value)  return (int3){0,0,0};
+#include"get_default_value.h"
+}
+
+template <typename V>
+const char*
+get_datatype(){}
+
+template <>
+const char*
+get_datatype<int>()     {return "int";};
+
+template <>
+const char*
+get_datatype<bool>()    {return "bool";};
+
+
+template <>
+const char*
+get_datatype<AcReal>()  {return "real";};
+
+template <>
+const char*
+get_datatype<int3>()    {return "int3";};
+
+
+char*
+to_str(const int value)
+{
+	char* res = (char*)malloc(sizeof(char)*4098);
+	sprintf(res,"%d\n",value);
+	return res;
+}
+
+char*
+to_str(const AcReal value)
+{
+	char* res = (char*)malloc(sizeof(char)*4098);
+	sprintf(res,"%.14e\n",value);
+	return res;
+}
+
+char*
+to_str(const bool value)
+{
+	char* res = (char*)malloc(sizeof(char)*4098);
+	sprintf(res,"%d\n",value);
+	return res;
+}
+
+char*
+to_str(const int3 value)
+{
+	char* res = (char*)malloc(sizeof(char)*4098);
+	sprintf(res,"{%d,%d,%d}\n",value.x, value.y, value.z);
+	return res;
+}
+
+
+template <typename V>
+char*
+to_str(const V value, const char* name)
+{
+	char* res = (char*)malloc(sizeof(char)*4098);
+	char* val_str = to_str(value);
+	sprintf(res,"%s %s = %s\n",get_datatype<V>(), name, val_str);
+	free(val_str);
+	return res;
+}
+
+#include "to_str_funcs.h"
+
+template <typename V>
+const char*
+get_value_type(V value)
+{
+	(void)value;
+	return get_datatype<V>();
+}
+
+
+template <typename P>
+struct load_arrays
+{
+	void operator()(const AcCompInfo info, FILE* fp)
 	{
-		if(num_dims[i] == 1)
+		auto default_value = get_default_value<P>();
+		const char* type = get_value_type(default_value);
+		for(P array : get_params<P>())
 		{
-			fprintf(fp,"const %s %s = {",type,names[i]);
-			for(int j = 0; j < dims[i].x; ++j)
+			const int n_dims = get_array_n_dims(array);
+			const char* name = get_array_name(array);
+			const bool is_loaded = get_is_loaded(array,info.is_loaded);
+			auto* loaded_val = get_loaded_val(array,info.config);
+			if(n_dims == 1)
 			{
-				const T val = is_loaded[i] ? vals[i][j] : default_value;
-				if constexpr (is_real)
-					fprintf(fp,"%.14e",val);
-				else
-					fprintf(fp,"%d",val);
-				if(j < dims[i].x-1) fprintf(fp,"%s",",");
-			}
-			fprintf(fp,"%s","}\n");
-		}
-		else if(num_dims[i] == 2)
-		{
-			fprintf(fp,"const %s %s = {", type, names[i]);
-			for(int y = 0; y < dims[i].y; ++y)
-			{
-				fprintf(fp,"%s","{");
-				for(int x = 0; x < dims[i].x; ++x)
+				fprintf(fp,"const %s %s = [",type,name);
+				const int3 dims = get_array_dims(array);
+				for(int j = 0; j < dims.x; ++j)
 				{
-					const T val = is_loaded[i] ? vals[i][x + y*dims[i].x] : default_value;
-					if constexpr (is_real)
-						fprintf(fp,"%.14e",val);
-					else
-						fprintf(fp,"%d",val);
-					if(x < dims[i].x-1) fprintf(fp,"%s",",");
+					auto val = is_loaded ? loaded_val[j] : default_value;
+					char* val_string = to_str(val);
+					fprintf(fp,"%s",val_string);
+					free(val_string);
+					if(j < dims.x-1) fprintf(fp,"%s",",");
 				}
-				fprintf(fp,"%s","}");
-				if(y < dims[i].y-1) fprintf(fp,"%s",",");
+				fprintf(fp,"%s","]\n");
 			}
-			fprintf(fp,"}\n");
+			else if(n_dims == 2)
+			{
+				fprintf(fp,"const %s %s = [", type, name);
+				const int3 dims = get_array_dims(array);
+				for(int y = 0; y < dims.y; ++y)
+				{
+					fprintf(fp,"%s","[");
+					for(int x = 0; x < dims.x; ++x)
+					{
+						auto val = is_loaded ? loaded_val[x + y*dims.x] : default_value;
+						char* val_string = to_str(val);
+						fprintf(fp,"%s",val_string);
+						free(val_string);
+						if(x < dims.x-1) fprintf(fp,"%s",",");
+					}
+					fprintf(fp,"%s","]");
+					if(y < dims.y-1) fprintf(fp,"%s",",");
+				}
+				fprintf(fp,"]\n");
+			}
 		}
 	}
-}
-template <const bool is_real, typename T, typename F>
-void
-load_scalars(const char* type, const bool* is_loaded, const T* vals, const int n_elems, F names, FILE* fp, const T default_value)
+};
+template <typename P>
+struct load_scalars
 {
-	for(int i = 0; i < n_elems; ++i)
+	void operator()(const AcCompInfo info, FILE* fp)
 	{
-		const T val = (is_loaded[i]) ? vals[i] : default_value;
-		if constexpr(is_real)
-			fprintf(fp,"const %s %s = %.14e\n",type, names[i], val);
-		else
-			fprintf(fp,"const %s %s = %d\n",type, names[i], val);
+		for(P var : get_params<P>())
+		{
+			auto val =  get_is_loaded(var,info.is_loaded) ? get_loaded_val(var,info.config) : get_default_value<P>();
+			char* res = to_str(val,get_param_name(var));
+			fprintf(fp,"%s",res);
+			free(res);
+		}
 	}
-}
-template <const bool is_real, typename T, typename F>
-void
-load_vecs(const char* type, const bool* is_loaded, const T* vals, const int n_elems, F names, FILE* fp, const T default_value)
-{
-	for(int i = 0; i < n_elems; ++i)
-	{
-		const T val = (is_loaded[i]) ? vals[i] : default_value;
-		if constexpr(is_real)
-			fprintf(fp,"const %s %s = real3(%.14e, %.14e, %.14e) \n",type, names[i], val.x, val.y, val.z);
-		else
-			fprintf(fp,"const %s %s = int3(%d, %d, %d) \n",type, names[i], val.x, val.y, val.z);
-	}
-}
+};
 void
 acCompile(const char* compilation_string, const AcCompInfo info)
 {
 	FILE* fp = fopen(AC_OVERRIDES_PATH,"w");
-	load_scalars<true>("real",info.is_loaded.real_params,info.config.real_params,NUM_REAL_COMP_PARAMS,real_comp_param_names,fp,(AcReal) NAN);
-	load_scalars<false>("int",info.is_loaded.int_params,info.config.int_params,NUM_INT_COMP_PARAMS,int_comp_param_names,fp,0);
-	load_scalars<false>("bool",info.is_loaded.bool_params,info.config.bool_params,NUM_BOOL_COMP_PARAMS,bool_comp_param_names,fp,false);
 
-	load_vecs<true>("real3",info.is_loaded.real3_params,info.config.real3_params,NUM_REAL3_COMP_PARAMS,real3_comp_param_names,fp, (AcReal3){(AcReal) NAN,(AcReal) NAN,(AcReal) NAN});
-	load_vecs<false>("int3",info.is_loaded.int3_params,info.config.int3_params,NUM_INT3_COMP_PARAMS,int3_comp_param_names,fp, (int3){0,0,0});
+	AcScalarCompTypes::run<load_scalars>(info, fp);
+	AcArrayCompTypes::run<load_arrays>(info, fp);
 
-	load_arrays<true>("real", info.is_loaded.real_arrays,info.config.real_arrays,real_array_num_dims + NUM_REAL_ARRAYS, real_array_dims + NUM_REAL_ARRAYS, NUM_REAL_COMP_ARRAYS, real_array_comp_param_names,fp,(AcReal)NAN);
-	load_arrays<false>("int", info.is_loaded.int_arrays,info.config.int_arrays,int_array_num_dims + NUM_INT_ARRAYS, int_array_dims + NUM_INT_ARRAYS, NUM_INT_COMP_ARRAYS, int_array_comp_param_names,fp,0);
-	load_arrays<false>("bool", info.is_loaded.bool_arrays,info.config.bool_arrays,bool_array_num_dims + NUM_BOOL_ARRAYS, bool_array_dims + NUM_BOOL_ARRAYS, NUM_BOOL_COMP_ARRAYS, bool_array_comp_param_names,fp,false);
 	fclose(fp);
 	char cmd[10000];
 

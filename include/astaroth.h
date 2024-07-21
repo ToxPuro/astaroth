@@ -1974,7 +1974,7 @@ acCompute(AcKernel kernel, Field (&fields)[num_fields])
 static __attribute__((unused)) AcTaskDefinition
 acCompute(AcKernel kernel, std::vector<Field> fields)
 {
-	return acCompute(kernel, fields.data(), fields.size(), fields.data(), fields.size());
+	return BASE_FUNC_NAME(acCompute)(kernel, fields.data(), fields.size(), fields.data(), fields.size());
 }
 
 /** */
@@ -2040,7 +2040,7 @@ acCompute(AcKernel kernel, std::vector<Field> fields_in, std::vector<Field> fiel
 static inline AcTaskDefinition
 acCompute(AcKernel kernel, std::vector<Field> fields, std::function<void(ParamLoadingInfo)> loader)
 {
-    return acComputeWithParams(kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
+    return BASE_FUNC_NAME(acComputeWithParams)(kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
 }
 
 

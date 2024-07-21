@@ -45,6 +45,7 @@ typedef enum {
   NODE_EXPRESSION         = (1 << 11),
   NODE_VARIABLE           = (1 << 12),
   NODE_VARIABLE_ID        = (1 << 13),
+  NODE_ARRAY_INITIALIZER  = (1 << 14),
   NODE_DCONST             = (1 << 15),
   NODE_TERNARY            = (1 << 16),
   NODE_MEMBER_ID          = (1 << 17),
@@ -452,6 +453,14 @@ file_prepend(const char* filename, const char* str_to_prepend)
 	fprintf(fp,"%s%s",str_to_prepend,file_tmp);
 	fclose(fp);
 	free((void*)file_tmp);
+}
+
+static inline void
+file_append(const char* filename, const char* str_to_append)
+{
+	FILE* fp = fopen(filename,"a");
+	fprintf(fp,"%s",str_to_append);
+	fclose(fp);
 }
 
 static void

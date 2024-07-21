@@ -207,6 +207,7 @@ gen_kernel_prefix(const bool gen_mem_accesses, const int curr_kernel)
 #if 1
   // Original
 
+
   if(gen_mem_accesses)
     printf("const auto write_base __attribute__((unused))  = [&](const Field field, const AcReal value)"
          "{ written_fields_stencil_accesses[field]=1; vba.out[field][idx] = value; };");

@@ -20,11 +20,11 @@
 
 #include <float.h> // DBL/FLT_EPSILON
 
-#if AC_USE_HIP
-  #include "hip.h"
-#else
-  #include <vector_types.h> // CUDA vector types
-#endif
+//#if AC_USE_HIP
+//  #include "hip.h"
+//#else
+//  #include <vector_types.h> // CUDA vector types
+//#endif
 
 
 #if AC_DOUBLE_PRECISION
@@ -59,6 +59,5 @@ typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
 typedef struct {
   size_t x, y, z;
 } Volume;
-
 
 #include "user_typedefs.h"

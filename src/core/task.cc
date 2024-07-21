@@ -579,10 +579,6 @@ Task::syncVBA()
     }
     for(int i=0;i<NUM_WORK_BUFFERS; ++i)
         vba.w[i] = device->vba.w[i];
-    for(int i=0;i<NUM_REAL_ARRAYS; ++i)
-        vba.real_arrays[i] = device->vba.real_arrays[i];
-    for(int i=0;i<NUM_INT_ARRAYS; ++i)
-        vba.int_arrays[i] = device->vba.int_arrays[i];
     for(int i=0;i<NUM_REAL_OUTPUTS; ++i)
     {
     	vba.reduce_scratchpads[i][0]  = device->vba.reduce_scratchpads[i][0];

@@ -178,34 +178,13 @@ acDeviceUpdate(Device device, const AcMeshInfo config)
     return AC_SUCCESS;
 }
 
-template <typename P>
-AcResult
-acDeviceLoadArrayWithOffset(
-		const Device device, const Stream stream, const AcMeshInfo config, const P array, int src_idx, int dst_idx, size_t num_elems)
-{
-	auto src_arrays = get_config_arrays<P>(config);
-	auto dst_arrays = get_vba_arrays<P>(device->vba);
-	cudaSetDevice(device->id);
-	ERRCHK_ALWAYS(is_dconst(array));
-	const auto* src_ptr       = &src_arrays[array][src_idx];
-	auto* dst_ptr       = &dst_arrays[array][dst_idx];
-	ERRCHK_ALWAYS(src_ptr != nullptr);
-	ERRCHK_ALWAYS(dst_ptr != nullptr);
-	const size_t bytes = num_elems*sizeof(src_ptr[0]);
-	ERRCHK_CUDA(
-			cudaMemcpyAsync(dst_ptr,src_ptr,bytes,cudaMemcpyHostToDevice, device->streams[stream]);
-	);
-	return AC_SUCCESS;
-}
 
 template <typename P>
 AcResult
 acDeviceLoadArray(const Device device, const Stream stream, const AcMeshInfo host_info, const P array)
 {
 	cudaSetDevice(device->id);
-	if(is_dconst(array))
-		return acLoadUniform(device->streams[stream],array,get_config_arrays<P>(host_info)[(int)array]);
-	return acDeviceLoadArrayWithOffset(device, stream, host_info, array, 0, 0, get_array_length(array,host_info));
+	return acLoadUniform(device->streams[stream],array,get_config_param(array,host_info), get_array_length(array,host_info));
 }
 
 
@@ -216,10 +195,9 @@ struct load_all_scalars_uniform
 {
 	AcResult operator()(const Device device, const AcMeshInfo config)
 	{
-		auto elems = get_config_params<P>(config);
 		AcResult res = AC_SUCCESS;
-		for(int i = 0; i < get_num_params<P>(); ++i)
-			res = acDeviceLoadUniform(device, STREAM_DEFAULT, (P)i, elems[i]) ? res : AC_FAILURE;
+		for(P i : get_params<P>())
+			res = acDeviceLoadUniform(device, STREAM_DEFAULT, i, get_config_param(i, config)) ? res : AC_FAILURE;
 		return res;
 	}
 };
@@ -229,12 +207,12 @@ struct load_all_arrays_uniform
 {
 	AcResult operator()(const Device device, const AcMeshInfo device_config)
 	{
-		auto arrays = get_config_arrays<P>(device_config);
 		AcResult res = AC_SUCCESS;
-		for(int array = 0; array < get_num_params<P>(); ++array)
+		for(P array : get_params<P>())
 		{
-      			if (arrays[array] != nullptr)
-				res = acDeviceLoadArray(device,STREAM_DEFAULT,device_config,static_cast<P>(array)) ? res : AC_FAILURE;
+			auto config_array = get_config_param(array,device_config);
+      			if (config_array != nullptr)
+				res = acDeviceLoadArray(device,STREAM_DEFAULT,device_config,array) ? res : AC_FAILURE;
 			acDeviceSynchronizeStream(device,STREAM_ALL);
 		}
 		return res;

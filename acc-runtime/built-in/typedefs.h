@@ -1,12 +1,12 @@
-enum AcCoordinatesType
-{
-	AcCartesianCoordinates
-}
-enum AcGridType
-{
-	AcEulerianGrid,
-	AcLagrangianGrid
-}
+//enum AcCoordinatesType
+//{
+//	AcCartesianCoordinates
+//}
+//enum AcGridType
+//{
+//	AcEulerianGrid,
+//	AcLagrangianGrid
+//}
 
 typedef AcReal2 struct real2
 {

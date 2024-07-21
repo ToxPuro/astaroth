@@ -1,6 +1,21 @@
-gmem bool exists[AC_nx]
+gmem real global_radius_start[1]
+gmem real global_radius_tmp[1]
+
+gmem bool AC_exists[AC_nx]
+const int sf = 6; // scaling factor to keep number of atoms per geometry the same
+const int npoints = sf*sf * 12800; // number of atoms
+const int lsf = 1; // length scaling factor to increase geometry but not atoms
+const real  lengthx = lsf * sf * 400; // length of sim domain in x dir
+const real  lengthy = lsf * sf * 400; // length of sim domain in y dir
+const int nsegmentsx = lsf * sf * 400; // number of segments in x dir
+const int nsegmentsy = lsf * sf * 400; // number of segments in y dir
+const real dx = lengthx / nsegmentsx; // length of one cell in x dir
+const real dy = lengthy / nsegmentsy; // length of one cell in y dir
+const real Aat = AC_REAL_PI* (dx / 3.0 / 2.0)*(dx / 3.0 / 2.0); // Area of one atom in 2D simulation
+const real ceq = -Aat;
+
 extern Kernel
-solve()
+solve(int step_num)
 {
 }
 

@@ -212,6 +212,7 @@ symboltable_reset(void)
 {
   for(size_t i = 0; i < SYMBOL_TABLE_SIZE ; ++i)
 	  free_str_vec(&symbol_table[i].tqualifiers);
+
   current_nest              = 0;
   num_symbols[current_nest] = 0;
 
@@ -358,10 +359,6 @@ get_node(const NodeType type, const ASTNode* node)
 const char*
 convert_to_enum_name(const char* name)
 {
-	if(!strcmp(name,"int"))
-		return "AcInt";
-	if(!strcmp(name,"int3"))
-		return "AcInt3";
 	if(strstr(name,"Ac")) return name;
 	char* res = malloc(sizeof(char)* (strlen(name) + strlen("Ac") + 100));
 	sprintf(res,"Ac%s",to_upper_case(name));
@@ -419,30 +416,16 @@ get_array_var_length(const char* var, const ASTNode* root, char* dst)
 	    }
 	    free_str_vec(&tmp);
 }
+
 void
-gen_d_offsets(FILE* fp, const char* datatype_scalar, const ASTNode* root)
+gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
 {
-  const char* define_name =  convert_to_define_name(datatype_scalar);
+
   char datatype[1000];
   sprintf(datatype,"%s*",datatype_scalar);
-  char running_offset[4096];
+  const char* define_name =  convert_to_define_name(datatype_scalar);
   {
-  	sprintf(running_offset,"0");
-  	fprintf(fp, "static int d_%s_array_offsets[] __attribute__((unused)) = {",define_name);
-  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	{
-  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	      !strcmp(symbol_table[i].tspecifier,datatype) && str_vec_contains(symbol_table[i].tqualifiers,"dconst"))
-  	  {
-  	          fprintf(fp," %s,\n",running_offset);
-  	          char array_length_str[4098];
-  	          get_array_var_length(symbol_table[i].identifier,root,array_length_str);
-  	          sprintf(running_offset,"%s+%s",running_offset,array_length_str);
-  	  }
-  	}
-  	fprintf(fp, "};");
-  }
-  {
+  	char running_offset[4096];
   	  sprintf(running_offset,"0");
   	  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   	  {
@@ -457,41 +440,90 @@ gen_d_offsets(FILE* fp, const char* datatype_scalar, const ASTNode* root)
   	  }
   	  fprintf(fp,"\n#ifndef D_%s_ARRAYS_LEN\n#define D_%s_ARRAYS_LEN (%s)\n#endif\n", strupr(define_name), strupr(define_name),running_offset);
   }
-}
-
-void
-gen_array_lengths(FILE* fp, const char* datatype_scalar, const ASTNode* root)
-{
-  char datatype[1000];
-  sprintf(datatype,"%s*",datatype_scalar);
-  fprintf(fp, "static const int %s_array_lengths[] __attribute__((unused)) = {", convert_to_define_name(datatype_scalar));
+  char running_offset[4096];
+  sprintf(running_offset,"0");
+  fprintf(fp, "static const array_info %s_array_info[] __attribute__((unused)) = {", convert_to_define_name(datatype_scalar));
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  {
     if (symbol_table[i].type & NODE_VARIABLE_ID &&
         !strcmp(symbol_table[i].tspecifier, datatype))
     {
+  	if(
+		str_vec_contains(symbol_table[i].tqualifiers,"const") ||
+		str_vec_contains(symbol_table[i].tqualifiers,"run_const")
+	) continue;
 	char array_length_str[4098];
-  	if(str_vec_contains(symbol_table[i].tqualifiers,"const")) continue;
 	get_array_var_length(symbol_table[i].identifier,root,array_length_str);
+	fprintf(fp,"%s","{");
 
-  	if(str_vec_contains(symbol_table[i].tqualifiers,"dconst"))
-      		fprintf(fp, "%s,", array_length_str);
-	else if(str_vec_contains(symbol_table[i].tqualifiers,"gmem"))
-      		fprintf(fp, "(int)%s,", array_length_str);
+	if(str_vec_contains(symbol_table[i].tqualifiers,"gmem")) fprintf(fp, "(int)%s,", array_length_str);
+	else fprintf(fp, "%s,", array_length_str);
+
+        if(str_vec_contains(symbol_table[i].tqualifiers,"dconst"))  fprintf(fp,"true,");
+        else fprintf(fp, "false,");
+
+        if(str_vec_contains(symbol_table[i].tqualifiers,"dconst"))
+  	{
+  	        fprintf(fp,"%s,",running_offset);
+  	        sprintf(running_offset,"%s+%s",running_offset,array_length_str);
+  	}
+	else
+	{
+  		fprintf(fp,"%d,",-1);
+	}
+
+	string_vec dims = get_array_var_dims(symbol_table[i].identifier,root);
+      	fprintf(fp, "%lu,", dims.size);
+
+	fprintf(fp,"%s","{");
+	for(size_t dim = 0; dim < 3; ++dim)
+	{
+		if(dim >= dims.size) fprintf(fp,"%s,","-1");
+		else fprintf(fp,"%s,",dims.data[dim]);
+	}
+	fprintf(fp,"%s","},");
+
+	free_str_vec(&dims);
+        fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+	fprintf(fp,"%s","},");
     }
+  }
 
   //runtime array lengths come after other arrays
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  {
     if (symbol_table[i].type & NODE_VARIABLE_ID &&
         !strcmp(symbol_table[i].tspecifier, datatype))
     {
   	if(!str_vec_contains(symbol_table[i].tqualifiers,"run_const")) continue;
 	char array_length_str[4098];
 	get_array_var_length(symbol_table[i].identifier,root,array_length_str);
+	fprintf(fp,"%s","{");
       	fprintf(fp, "%s,", array_length_str);
+        fprintf(fp, "false,");
+  	fprintf(fp,"%d,",-1);
+
+	string_vec dims = get_array_var_dims(symbol_table[i].identifier,root);
+      	fprintf(fp, "%lu,", dims.size);
+
+	fprintf(fp,"%s","{");
+	for(size_t dim = 0; dim < 3; ++dim)
+	{
+		if(dim >= dims.size) fprintf(fp,"%s,","-1");
+		else fprintf(fp,"%s,",dims.data[dim]);
+	}
+	fprintf(fp,"%s","},");
+	free_str_vec(&dims);
+
+        fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+	fprintf(fp,"%s","},");
     }
+  }
   fprintf(fp, "};");
+
 }
 
+/**
 void
 gen_array_dims(FILE* fp, const char* datatype_scalar, const ASTNode* root)
 {
@@ -555,30 +587,198 @@ gen_array_dims(FILE* fp, const char* datatype_scalar, const ASTNode* root)
     }
   fprintf(fp, "};\n");
 }
+**/
 
 void
-gen_dmesh_declarations(FILE* fp, const char* datatype_scalar)
+gen_dmesh_declarations(const char* datatype_scalar)
 {
+	FILE* fp = fopen("device_mesh_info_decl.h","a");
 	fprintf(fp,"%s %s_params[NUM_%s_PARAMS];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fclose(fp);
 }
 
 void
-gen_array_is_dconst(FILE* fp, const char* datatype_scalar)
+gen_array_declarations(const char* datatype_scalar, const bool gen_mem_accesses)
 {
-  fprintf(fp, "static const bool %s_array_is_dconst[] __attribute__((unused)) = {",convert_to_define_name(datatype_scalar));
-  char datatype[1000];
-  sprintf(datatype,"%s*",datatype_scalar);
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].type & NODE_VARIABLE_ID &&
-        !strcmp(symbol_table[i].tspecifier, datatype) && !str_vec_contains(symbol_table[i].tqualifiers,"const"))
-    {
-        if(str_vec_contains(symbol_table[i].tqualifiers,"dconst"))
-                fprintf(fp,"true,");
-        else
-                fprintf(fp, "false,");
-    }
-  fprintf(fp, "};");
+	char tmp[7000];
+
+	sprintf(tmp,"%s* %s_arrays[NUM_%s_ARRAYS];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	file_append("array_decl.h",tmp);
+
+	sprintf(tmp,"if constexpr(std::is_same<P,%sArrayParam>::value) return vba.%s_arrays[(int)param];\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	file_append("get_vba_array.h",tmp);
+
+	sprintf(tmp,"if constexpr(std::is_same<P,%sCompParam>::value) return (%s){};\n",convert_to_enum_name(datatype_scalar),datatype_scalar);
+	file_append("get_default_value.h",tmp);
+
+	sprintf(tmp,"if constexpr(std::is_same<P,%sCompArrayParam>::value) return (%s){};\n",convert_to_enum_name(datatype_scalar),datatype_scalar);
+	file_append("get_default_value.h",tmp);
+
+
+	sprintf(tmp,"if constexpr(std::is_same<P,%sCompArrayParam>::value) return config.%s_arrays[(int)param];\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	file_append("get_from_comp_config.h",tmp);
+
+	sprintf(tmp,"if constexpr(std::is_same<P,%sCompParam>::value) return config.%s_params[(int)param];\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	file_append("get_from_comp_config.h",tmp);
+
+
+	FILE* fp = fopen("get_config_param.h","a");
+	fprintf(fp,"if constexpr(std::is_same<P,%sParam>::value) return config.%s_params[(int)param];\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) return config.%s_arrays[(int)param];\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	fclose(fp);
+
+	fp = fopen("memcpy_to_gmem_arrays.h","a");
+	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) cudaMemcpyToSymbol(gmem_%s_arrays[(int)param], &ptr, sizeof(ptr), 0, cudaMemcpyHostToDevice);\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	fclose(fp);
+
+	fp = fopen("memcpy_from_gmem_arrays.h","a");
+	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) cudaMemcpyFromSymbol(&ptr,gmem_%s_arrays[(int)param],sizeof(ptr), 0, cudaMemcpyDeviceToHost);\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	fclose(fp);
+
+
+	sprintf(tmp,"if constexpr(std::is_same<P,%sCompParam>::value) return %s_comp_param_names[(int)param];\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	file_append("get_param_name.h",tmp);
+
+
+	fp = fopen("get_num_params.h","a");
+	fprintf(fp," (std::is_same<P,%sParam>::value)      ? NUM_%s_PARAMS : \n",convert_to_enum_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp," (std::is_same<P,%sArrayParam>::value) ? NUM_%s_ARRAYS : \n",convert_to_enum_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+
+	fprintf(fp," (std::is_same<P,%sCompParam>::value)      ? NUM_%s_COMP_PARAMS : \n",convert_to_enum_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp," (std::is_same<P,%sCompArrayParam>::value) ? NUM_%s_COMP_ARRAYS : \n",convert_to_enum_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fclose(fp);
+	
+	fp = fopen("get_array_info.h","a");
+	fprintf(fp," if(std::is_same<P,%sArrayParam>::value) return %s_array_info[(int)array]; \n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	fprintf(fp," if(std::is_same<P,%sCompArrayParam>::value) return %s_array_info[(int)array + NUM_%s_ARRAYS]; \n",
+	convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar), strupr(convert_to_define_name(datatype_scalar)));
+	fclose(fp);
+
+	fp = fopen("dconst_decl.h","a");
+	fprintf(fp,"%s __device__ __forceinline__ DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
+			,datatype_scalar, convert_to_enum_name(datatype_scalar), convert_to_define_name(datatype_scalar));
+	fclose(fp);
+
+	fp = fopen("dconst_accesses_decl.h","a");
+	fprintf(fp,"%s  DCONST(const %sParam& param){%s res{}; return res; }\n"
+			,datatype_scalar, convert_to_enum_name(datatype_scalar), datatype_scalar);
+	fclose(fp);
+	fp = fopen("get_address.h","a");
+	fprintf(fp,"size_t  get_address(const %sParam& param){ return (size_t)&d_mesh_info.%s_params[(int)param];}\n"
+			,convert_to_enum_name(datatype_scalar), convert_to_define_name(datatype_scalar));
+	fclose(fp);
+	fp = fopen("load_and_store_array.h","a");
+	fprintf(fp,"cudaError_t load_array(const %s* values, const size_t bytes, const size_t offset)"
+			"{ return cudaMemcpyToSymbol(d_%s_arrays,values,bytes,offset,cudaMemcpyHostToDevice); }\n"
+			,datatype_scalar, convert_to_define_name(datatype_scalar));
+	fprintf(fp,"cudaError_t store_array(%s* values, const size_t bytes, const size_t offset)"
+			"{ return cudaMemcpyFromSymbol(values,d_%s_arrays,bytes,offset,cudaMemcpyDeviceToHost); }\n"
+			,datatype_scalar, convert_to_define_name(datatype_scalar));
+	fclose(fp);
+
+	//we pad with 1 since zero sized arrays are not allowed with some CUDA compilers
+	fp = fopen("dconst_arrays_decl.h","a");
+	if(gen_mem_accesses)
+		fprintf(fp,"%s d_%s_arrays[D_%s_ARRAYS_LEN+1] {};\n",datatype_scalar, convert_to_define_name(datatype_scalar), strupr(convert_to_define_name(datatype_scalar)));
+	else
+		fprintf(fp,"__device__ __constant__ %s d_%s_arrays[D_%s_ARRAYS_LEN+1];\n",datatype_scalar, convert_to_define_name(datatype_scalar), strupr(convert_to_define_name(datatype_scalar)));
+	fclose(fp);
+
+	fp = fopen("gmem_arrays_decl.h","a");
+	if(gen_mem_accesses)
+		fprintf(fp,"%s gmem_%s_arrays[NUM_%s_ARRAYS][1000] {};\n",datatype_scalar, convert_to_define_name(datatype_scalar), strupr(convert_to_define_name(datatype_scalar)));
+	else
+		fprintf(fp,"__device__ __constant__ %s* gmem_%s_arrays[NUM_%s_ARRAYS];\n",datatype_scalar, convert_to_define_name(datatype_scalar), strupr(convert_to_define_name(datatype_scalar)));
+	fclose(fp);
+
+
+
+
+	fp = fopen("load_and_store_uniform_overloads.h","a");
+	fprintf(fp,"static AcResult __attribute ((unused))"
+	        "acLoadUniform(const cudaStream_t stream, const %sParam param, const %s value) { return acLoad%sUniform(stream,param,value);}\n"
+		,convert_to_enum_name(datatype_scalar), datatype_scalar, to_upper_case(convert_to_define_name(datatype_scalar)));
+
+	fprintf(fp,"static AcResult __attribute ((unused))"
+	        "acLoadUniform(const cudaStream_t stream, const %sArrayParam param, const %s* values, const size_t length) { return acLoad%sArrayUniform(stream,param,values,length);}\n"
+		,convert_to_enum_name(datatype_scalar), datatype_scalar, to_upper_case(convert_to_define_name(datatype_scalar)));
+
+	fprintf(fp,"static AcResult __attribute ((unused))"
+	        "acStoreUniform(const cudaStream_t stream, const %sParam param, %s* value) { return acStore%sUniform(stream,param,value);}\n"
+		,convert_to_enum_name(datatype_scalar), datatype_scalar, to_upper_case(convert_to_define_name(datatype_scalar)));
+
+	fprintf(fp,"static AcResult __attribute ((unused))"
+	        "acStoreUniform(const %sArrayParam param, %s* values, const size_t length) { return acStore%sArrayUniform(param,values,length);}\n"
+		,convert_to_enum_name(datatype_scalar), datatype_scalar, to_upper_case(convert_to_define_name(datatype_scalar)));
+	fclose(fp);
+
+	fp = fopen("load_and_store_uniform_funcs.h","a");
+	fprintf(fp, "AcResult acLoad%sUniform(const cudaStream_t, const %sParam param, const %s value) { return acLoadUniform(param,value); }\n",
+			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+	fprintf(fp, "AcResult acLoad%sArrayUniform(const cudaStream_t, const %sArrayParam param, const %s* values, const size_t length) { return acLoadArrayUniform(param ,values, length); }\n",
+			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+	fprintf(fp, "AcResult acStore%sUniform(const cudaStream_t, const %sParam param, %s* value) { return acStoreUniform(param,value); }\n",
+			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+	fprintf(fp, "AcResult acStore%sArrayUniform(const %sArrayParam param, %s* values, const size_t length) { return acStoreArrayUniform(param ,values, length); }\n",
+			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+
+	fclose(fp);
+	
+	fp = fopen("load_and_store_uniform_header.h","a");
+	fprintf(fp, "FUNC_DEFINE(AcResult, acLoad%sUniform,(const cudaStream_t, const %sParam param, const %s value));\n",
+			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+
+	fprintf(fp, "FUNC_DEFINE(AcResult, acLoad%sArrayUniform, (const cudaStream_t, const %sArrayParam param, const %s* values, const size_t length));\n",
+			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+
+	fprintf(fp, "FUNC_DEFINE(AcResult, acStore%sUniform,(const cudaStream_t, const %sParam param, %s* value));\n",
+			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+
+	fprintf(fp, "FUNC_DEFINE(AcResult, acStore%sArrayUniform, (const %sArrayParam param, %s* values, const size_t length));\n",
+			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+	fclose(fp);
+
+
+	if(!strcmp(datatype_scalar,"int")) return;
+	fp = fopen("scalar_types.h","a");
+	fprintf(fp,"%sParam,\n",convert_to_enum_name(datatype_scalar));
+	fclose(fp);
+
+	fp = fopen("scalar_comp_types.h","a");
+	fprintf(fp,"%sCompParam,\n",convert_to_enum_name(datatype_scalar));
+	fclose(fp);
+
+	fp = fopen("array_types.h","a");
+	fprintf(fp,"%sArrayParam,\n",convert_to_enum_name(datatype_scalar));
+	fclose(fp);
+
+	fp = fopen("array_comp_types.h","a");
+	fprintf(fp,"%sCompArrayParam,\n",convert_to_enum_name(datatype_scalar));
+	fclose(fp);
 }
+
+void
+gen_comp_declarations(const char* datatype_scalar)
+{
+	FILE* fp = fopen("comp_decl.h","a");
+	fprintf(fp,"%s %s_params[NUM_%s_COMP_PARAMS];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp,"const %s* %s_arrays[NUM_%s_COMP_ARRAYS];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fclose(fp);
+	fp = fopen("comp_loaded_decl.h","a");
+	fprintf(fp,"bool %s_params[NUM_%s_COMP_PARAMS];\n",convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp,"bool  %s_arrays[NUM_%s_COMP_ARRAYS];\n",convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fclose(fp);
+}
+
+void
+gen_input_declarations(const char* datatype_scalar)
+{
+	FILE* fp = fopen("input_decl.h","a");
+	fprintf(fp,"const %s %s_params[NUM_%s_INPUT_PARAMS+1];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fclose(fp);
+}
+
+
 
 
 void
@@ -639,12 +839,6 @@ gen_param_names(FILE* fp, const char* datatype_scalar)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
 
-  fprintf(fp, "static const char* %s_array_param_names[] __attribute__((unused)) = {",convert_to_define_name(datatype_scalar));
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (!strcmp(symbol_table[i].tspecifier, datatype_arr) && str_vec_contains(symbol_table[i].tqualifiers,"dconst"))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
-
   fprintf(fp, "static const char* %s_output_names[] __attribute__((unused)) = {",convert_to_define_name(datatype_scalar));
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (!strcmp(symbol_table[i].tspecifier, datatype_scalar) && str_vec_contains(symbol_table[i].tqualifiers,"output"))
@@ -663,11 +857,6 @@ gen_param_names(FILE* fp, const char* datatype_scalar)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
 
-  fprintf(fp, "static const char* %s_array_comp_param_names[] __attribute__((unused)) = {",convert_to_define_name(datatype_scalar));
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (!strcmp(symbol_table[i].tspecifier, datatype_arr) && str_vec_contains(symbol_table[i].tqualifiers,"run_const"))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
 
 }
 
@@ -828,12 +1017,12 @@ gen_4d_array_access(ASTNode* node)
 
 
 void
-gen_array_reads(const ASTNode* root, ASTNode* node, bool gen_mem_accesses, const char* datatype_scalar)
+gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
 {
   if(node->lhs)
-    gen_array_reads(root,node->lhs,gen_mem_accesses,datatype_scalar);
+    gen_array_reads(root,node->lhs,datatype_scalar);
   if(node->rhs)
-    gen_array_reads(root,node->rhs,gen_mem_accesses,datatype_scalar);
+    gen_array_reads(root,node->rhs,datatype_scalar);
   if(!node->buffer)
 	  return;
   char* datatype = malloc(sizeof(char)*(1000));
@@ -879,12 +1068,10 @@ gen_array_reads(const ASTNode* root, ASTNode* node, bool gen_mem_accesses, const
     base->infix=NULL;
     free(base->buffer);
     base->buffer = malloc(sizeof(char)*10000);
-    if(gen_mem_accesses)
-    	sprintf(base->buffer,"AC_INTERNAL_big_%s_array[%s]",convert_to_define_name(datatype_scalar),index);
-    else if(str_vec_contains(symbol_table[i].tqualifiers,"dconst"))
+    if(str_vec_contains(symbol_table[i].tqualifiers,"dconst"))
     	sprintf(base->buffer,"d_%s_arrays[%s_offset+(%s)]",convert_to_define_name(datatype_scalar),node->buffer,index);
     else if(str_vec_contains(symbol_table[i].tqualifiers,"gmem"))
-    	sprintf(base->buffer,"__ldg(&vba.%s_arrays[(int)%s][%s])",convert_to_define_name(datatype_scalar),node->buffer,index);
+    	sprintf(base->buffer,"__ldg(&gmem_%s_arrays[(int)%s][%s])",convert_to_define_name(datatype_scalar),node->buffer,index);
     else
     {
 	    fprintf(stderr,"Fatal error: no case for array read\n");
@@ -911,16 +1098,11 @@ is_user_enum_option(const ASTNode* node, const char* identifier)
 	return res;
 }
 void
-read_user_enums_recursive(const ASTNode* node,string_vec user_enums, string_vec* user_enum_options)
+read_user_enums_recursive(const ASTNode* node,string_vec* user_enums, string_vec* user_enum_options)
 {
 	if(node->type == NODE_ENUM_DEF)
 	{
-		char* tmp = malloc(sizeof(char)*4096);
-		combine_all(node->rhs,tmp);
-		char* enum_def = malloc(sizeof(char)*4096);
-		sprintf(enum_def, "typedef enum %s{%s} %s;",node->lhs->buffer,tmp,node->lhs->buffer);
-		file_prepend("user_typedefs.h",enum_def);
-		const int enum_index = push(&user_enums,node->lhs->buffer);
+		const int enum_index = push(user_enums,node->lhs->buffer);
 		ASTNode* enums_head = node->rhs;
 		while(enums_head->rhs)
 		{
@@ -928,8 +1110,6 @@ read_user_enums_recursive(const ASTNode* node,string_vec user_enums, string_vec*
 			enums_head = enums_head->lhs;
 		}
 		push(&user_enum_options[enum_index],get_node_by_token(IDENTIFIER,enums_head->lhs)->buffer);
-		free(tmp);
-		free(enum_def);
 	}
 	if(node->lhs)
 		read_user_enums_recursive(node->lhs,user_enums,user_enum_options);
@@ -947,7 +1127,7 @@ read_user_enums(const ASTNode* node)
 {
         string_vec user_enum_options[100] = { [0 ... 100-1] = VEC_INITIALIZER};
 	string_vec user_enums = VEC_INITIALIZER;
-	read_user_enums_recursive(node,user_enums,user_enum_options);
+	read_user_enums_recursive(node,&user_enums,user_enum_options);
 	user_enums_info res;
 	res.names = user_enums;
 	memcpy(&res.options,&user_enum_options,sizeof(string_vec)*100);
@@ -2946,6 +3126,14 @@ gen_dconsts(const ASTNode* root, FILE* stream)
 }
 
 
+#define max(a,b) (a > b ? a : b)
+static int
+count_nest(const ASTNode* node,const NodeType type)
+{
+	int lhs_res =  (node->lhs) ? count_nest(node->lhs,type) : 0;
+	int rhs_res =  (node->rhs) ? count_nest(node->rhs,type) : 0;
+	return max(lhs_res,rhs_res) + (node->type == type);
+}
 void
 gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp)
 {
@@ -2958,13 +3146,16 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp)
 		const char* datatype = tspec->lhs->buffer;
 		char* datatype_scalar = remove_substring(strdup(datatype),"*");
 		remove_substring(datatype_scalar,"*");
-		const ASTNode* array_initializer = get_node(NODE_STRUCT_INITIALIZER, assignment);
+		const ASTNode* array_initializer = get_node(NODE_ARRAY_INITIALIZER, assignment);
+		const int array_dim = array_initializer ? count_nest(array_initializer,NODE_ARRAY_INITIALIZER) : 0;
+		const int num_of_elems = array_initializer ? count_num_of_nodes_in_list(array_initializer->lhs) : 0;
 		if(array_initializer)
 		{
-			const int num_of_elems = count_num_of_nodes_in_list(array_initializer->lhs);
-			const ASTNode* second_array_initializer = get_node(NODE_STRUCT_INITIALIZER, array_initializer->lhs);
-			if(!second_array_initializer)
+			const ASTNode* second_array_initializer = get_node(NODE_ARRAY_INITIALIZER, array_initializer->lhs);
+			if(array_dim == 1)
+			{
 				fprintf(fp, "\n#ifdef __cplusplus\nconstexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
+			}
 			else
 			{
 				const int num_of_elems_in_list = count_num_of_nodes_in_list(second_array_initializer->lhs);
@@ -3073,7 +3264,7 @@ gen_kernels(const ASTNode* node, char** dfunctions,
 
 // Generate User Defines
 static void
-gen_user_defines(const ASTNode* root, const char* out)
+gen_user_defines(const ASTNode* root, const char* out, const bool gen_mem_accesses)
 {
   FILE* fp = fopen(out, "w");
   assert(fp);
@@ -3218,36 +3409,96 @@ gen_user_defines(const ASTNode* root, const char* out)
       fprintf(fp, "\"%s\",", symbol_table[i].identifier);
   fprintf(fp, "};");
 
-  FILE* fp_dims = fopen("user_array_dims.h","w");
-  FILE* fp_device_mesh_decl = fopen("device_mesh_info_decl.h","w");
+  structs_info s_info = read_user_structs(root);
+  for (size_t i = 0; i < s_info.user_structs.size; ++i)
+  {
+	  char res[7000];
+	  sprintf(res,"char* to_str(const %s value)\n"
+		       "{\n"
+		       "char* res = (char*)malloc(sizeof(char)*7000);\n"
+		       "char* tmp;\n"
+		       "res[0] = '{';\n"
+		       ,s_info.user_structs.data[i]);
+
+	  for(size_t j = 0; j < s_info.user_struct_field_names[i].size; ++j)
+	  {
+	  	char tmp[7000];
+		sprintf(tmp,"tmp = to_str(value.%s); strcat(res,tmp);\n",s_info.user_struct_field_names[i].data[j]);
+		if(j < s_info.user_struct_field_names[i].size -1) strcat(tmp,"strcat(res,\",\");\n");
+		strcat(tmp,"free(tmp);\n");
+		strcat(res,tmp);
+	  }
+	  strcat(res,"strcat(res,\"}\");\n");
+	  strcat(res,"return res;\n");
+	  strcat(res,"}\n");
+	  file_append("to_str_funcs.h",res);
+
+	  sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], s_info.user_structs.data[i]);
+	  file_append("to_str_funcs.h",res);
+  }
+
+
+  string_vec datatypes = s_info.user_structs;
+
   const char* builtin_datatypes[] = {"int","AcReal","int3","bool"};
-  for (size_t i = 0; i < sizeof(builtin_datatypes)/sizeof(builtin_datatypes[0]); ++i) {
-	  const char* datatype = builtin_datatypes[i];
+  for (size_t i = 0; i < sizeof(builtin_datatypes)/sizeof(builtin_datatypes[0]); ++i)
+	  push(&datatypes,builtin_datatypes[i]);
+
+  user_enums_info enum_info =read_user_enums(root);
+  for (size_t i = 0; i < enum_info.names.size; ++i)
+  {
+	  char res[7000];
+	  char tmp[7000];
+	  sprintf(res,"%s {\n","typedef enum");
+	  for(size_t j = 0; j < enum_info.options[i].size; ++j)
+	  {
+		  strcat(res,enum_info.options[i].data[j]);
+		  if(j < enum_info.options[i].size - 1)  strcat(res,",\n");
+	  }
+	  strcat(res,"} ");
+	  strcat(res,enum_info.names.data[i]);
+	  strcat(res,";\n");
+  	  file_prepend("user_typedefs.h",res);
+
+	  sprintf(res,"char* to_str(const %s value)\n"
+		       "{\n"
+		       "switch(value)\n"
+		       "{\n"
+		       ,enum_info.names.data[i]);
+
+	  for(size_t j = 0; j < enum_info.options[i].size; ++j)
+	  {
+		  sprintf(tmp,"case %s: return strdup(\"%s\");\n",enum_info.options[i].data[j],enum_info.options[i].data[j]);
+		  strcat(res,tmp);
+	  }
+	  strcat(res,"}\n}\n");
+	  file_prepend("to_str_funcs.h",res);
+
+	  sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n",enum_info.names.data[i], enum_info.names.data[i]);
+	  file_prepend("to_str_funcs.h",res);
+
+	  push(&datatypes,enum_info.names.data[i]);
+  }
+
+
+  for (size_t i = 0; i < datatypes.size; ++i)
+  {
+	  const char* datatype = datatypes.data[i];
 	  gen_param_names(fp,datatype);
 	  gen_enums(fp,datatype);
 
-  	  gen_array_lengths(fp,datatype,root);
-  	  gen_array_is_dconst(fp,datatype);
-  	  gen_d_offsets(fp,datatype,root);	
-  	  gen_array_dims(fp_dims,datatype,root);
-	  gen_dmesh_declarations(fp_device_mesh_decl,datatype);
-  }
-  structs_info structs_info = read_user_structs(root);
-  for (size_t i = 0; i < structs_info.user_structs.size; ++i) {
-	  const char* datatype = structs_info.user_structs.data[i];
-
-	  gen_param_names(fp,datatype);
-	  gen_enums(fp,datatype);
-
-  	  gen_array_lengths(fp,datatype,root);
-  	  gen_array_is_dconst(fp,datatype);
-  	  gen_d_offsets(fp,datatype,root);	
-  	  gen_array_dims(fp_dims,datatype,root);
-	  gen_dmesh_declarations(fp_device_mesh_decl,datatype);
+	  gen_dmesh_declarations(datatype);
+	  gen_array_declarations(datatype,gen_mem_accesses);
+	  gen_comp_declarations(datatype);
+	  //gen_input_declarations(datatype);
 
   }
-  fclose(fp_dims);
-  fclose(fp_device_mesh_decl);
+
+  fprintf(fp,"\n #ifdef __cplusplus\n");
+  fprintf(fp,"typedef struct { int length; bool is_dconst; int d_offset; int num_dims; int3 dims; const char* name;} array_info;\n");
+  for (size_t i = 0; i < datatypes.size; ++i)
+  	  gen_array_info(fp,datatypes.data[i],root);
+  fprintf(fp,"\n #endif\n");
 
   gen_user_taskgraphs(fp,root);
 
@@ -4126,7 +4377,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 
   gen_kernel_structs(root,gen_mem_accesses);
   gen_user_structs(root);
-  gen_user_defines(root, "user_defines.h");
+  gen_user_defines(root, "user_defines.h",gen_mem_accesses);
   gen_multidimensional_field_accesses(root);
   gen_user_kernels(root, "user_declarations.h", gen_mem_accesses);
 
@@ -4156,7 +4407,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   // gen_dconsts(root, stream);
   const char* array_datatypes[] = {"int","AcReal","bool","int3","AcReal3"};
   for (size_t i = 0; i < sizeof(array_datatypes)/sizeof(array_datatypes[0]); ++i)
-  	gen_array_reads(root,root,gen_mem_accesses,array_datatypes[i]);
+  	gen_array_reads(root,root,array_datatypes[i]);
 
   // Stencils
 
@@ -4446,3 +4697,5 @@ generate_mem_accesses(void)
 //  for(size_t i = 0; i < num_fields; ++i)
 //	  printf("has stencil op: %d\n",field_has_stencil_op[i + num_fields*k]);
 }
+
+
