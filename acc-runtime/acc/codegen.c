@@ -4143,7 +4143,6 @@ get_duplicate_dfuncs(const ASTNode* node)
   free_str_vec(&dfuncs);
   return res;
 }
-
 bool
 gen_type_info_base(ASTNode* node, const ASTNode* root, ASTNode* func_base)
 {
@@ -4213,19 +4212,23 @@ gen_type_info_base(ASTNode* node, const ASTNode* root, ASTNode* func_base)
 	}
 	else if(node->type & NODE_FUNCTION_CALL)
 	{
-		const int num_params = count_num_of_nodes_in_list(node->rhs);
+		Symbol* sym = (Symbol*)get_symbol(NODE_DFUNCTION_ID | NODE_FUNCTION_ID ,get_node_by_token(IDENTIFIER,node->lhs)->buffer,NULL);
 		const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-		if(num_params == 1)
+		if(node->rhs && count_num_of_nodes_in_list(node->rhs) == 1 && sym)
 		{
-
-			//string_vec duplicate_dfuncs = get_duplicate_dfuncs(root);
-			//if(!str_vec_contains(duplicate_dfuncs,func_name))
-			//{
-			//	printf("HI: %s\n",func_name);
-			//}
-			//free_str_vec(&duplicate_dfuncs);
+			string_vec duplicate_dfuncs = get_duplicate_dfuncs(root);
+			if(!str_vec_contains(duplicate_dfuncs,func_name))
+			{
+				const char* expr_type = get_expr_type(node->rhs,root);
+				if(expr_type)
+				{
+					if(!strcmp("contract",func_name))
+						printf("HI: %s,%s\n",func_name,expr_type);
+					push(&sym->tqualifiers,expr_type);
+				}
+			}
+			free_str_vec(&duplicate_dfuncs);
 		}
-		const Symbol* sym = get_symbol(NODE_DFUNCTION_ID | NODE_FUNCTION_ID ,get_node_by_token(IDENTIFIER,node->lhs)->buffer,NULL);
 		if(sym && sym->tqualifiers.size > 0)
 		{
   			const char* builtin_datatypes[] = {"int","AcReal","int3","AcReal3","Field","Field3"};
