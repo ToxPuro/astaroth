@@ -20,3 +20,4 @@ intrinsic max
 
 intrinsic ceil
 intrinsic random_uniform
+intrinsic atomicAdd

@@ -27,6 +27,9 @@
 
 #include <mpi.h>
 #include <vector>
+#include "matplotlib-cpp/matplotlibcpp.h"
+namespace plt = matplotlibcpp;
+
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 #define NUM_INTEGRATION_STEPS (100)
@@ -143,6 +146,12 @@ main(void)
     std::vector<std::vector<double>> atoms_per_area;
     std::vector<std::vector<double>> box_center_x;
     bool exists[npoints];
+    for(size_t i = 0; i < simlen.size(); ++i)
+    {
+    	std::vector<double> tmp(boxesx-1);
+    	atoms_per_area.push_back(tmp);
+    	box_center_x.push_back(tmp);
+    }
     for (size_t ww = 0; ww < simlen.size(); ww++) 
     {
         const int nsteps = (ww == 0) ? simlen[ww] : simlen[ww]-simlen[ww-1];
@@ -176,6 +185,22 @@ main(void)
                 box_center_x[ww][ii] = boxcentersx[ii][boxesy/2];
         }
     }
+    for(size_t i = 0; i < simlen.size(); ++i)
+    {
+    	char name_buffer[4000];
+    	sprintf(name_buffer, "%d steps",simlen[i]);
+    	plt::named_plot(name_buffer,box_center_x[i], atoms_per_area[i]);
+    }
+    plt::xlabel("x coordinate [a]");
+    plt::ylabel("Atoms/area [1/$a^2$]");
+    plt::legend();
+
+    char name_buffer[4000];
+    sprintf(name_buffer,"res_%d",sf);
+    plt::save(name_buffer);
+
+    plt::show();
+    
 
     return EXIT_SUCCESS;
 }

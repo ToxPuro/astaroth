@@ -45,7 +45,7 @@
 
 #if defined(__CUDACC__) || defined(__HIPCC__)
 #define HOST_DEVICE __host__ __device__ UNUSED
-#define HOST_DEVICE_INLINE __host__ __device__ __forceinline__ UNUSED
+#define HOST_DEVICE_INLINE __host__ __device__ __forceinline__ constexpr UNUSED
 #define HOST_INLINE __host__  __forceinline__ UNUSED
 #else
 #define HOST_DEVICE UNUSED
@@ -56,6 +56,16 @@
 #define ENABLE_COMPLEX_DATATYPE (1)
 #if ENABLE_COMPLEX_DATATYPE
 
+#if AC_USE_HIP
+#else
+static HOST_DEVICE_INLINE void
+operator -=(int3& lhs, const int3& rhs)
+{
+	lhs.x -= rhs.x;
+	lhs.y -= rhs.y;
+	lhs.z -= rhs.z;
+}
+#endif
 static HOST_DEVICE_INLINE AcComplex
 exp(const AcComplex& val)
 {
@@ -553,27 +563,28 @@ is_valid(const AcReal3& a)
 template <typename T, std::size_t N>
 class AcArray{
 public:
-    constexpr T& operator[](std::size_t index) {
+    HOST_DEVICE constexpr T& operator[](const std::size_t index) {
         return arr_[index];
     }
 
-    constexpr const T& operator[](std::size_t index) const {
+    HOST_DEVICE const constexpr T& operator[](const std::size_t index) const {
         return arr_[index];
     }
+
 
     // Additional functions to interact with the internal array
-    constexpr std::size_t size() const noexcept {
+    HOST_DEVICE constexpr std::size_t size() const noexcept {
         return N;
     }
 
-    constexpr T* data() noexcept {
+    HOST_DEVICE constexpr T* data() noexcept {
         return arr_;
     }
 
-    constexpr const T* data() const noexcept {
+    HOST_DEVICE constexpr const T* data() const noexcept {
         return arr_;
     }
-    constexpr AcArray(std::initializer_list<T> init) : arr_{}{
+    HOST_DEVICE constexpr AcArray(std::initializer_list<T> init) : arr_{}{
         std::size_t i = 0;
         for (auto it = init.begin(); it != init.end() && i < N; ++it, ++i) {
             arr_[i] = *it;

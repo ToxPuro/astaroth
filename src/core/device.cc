@@ -1147,6 +1147,7 @@ acDeviceGetKernelOutput(const Device device)
 AcResult
 acDeviceSetRealInput(const Device device, const AcRealInputParam param, const AcReal val)
 {
+	if constexpr (NUM_REAL_INPUT_PARAMS== 0) return AC_FAILURE;
 	device->input.real_params[param] = val;
 	return AC_SUCCESS;
 }
@@ -1154,6 +1155,7 @@ acDeviceSetRealInput(const Device device, const AcRealInputParam param, const Ac
 AcResult
 acDeviceSetIntInput(const Device device, const AcIntInputParam param, const int val)
 {
+	if constexpr (NUM_INT_INPUT_PARAMS == 0) return AC_FAILURE;
 	device->input.int_params[param] = val;
 	return AC_SUCCESS;
 }
@@ -1161,23 +1163,27 @@ acDeviceSetIntInput(const Device device, const AcIntInputParam param, const int 
 AcReal
 acDeviceGetRealInput(const Device device, const AcRealInputParam param)
 {
+	if constexpr (NUM_REAL_INPUT_PARAMS == 0) return AC_FAILURE;
 	return device->input.real_params[param];
 }
 
 int
 acDeviceGetIntInput(const Device device, const AcIntInputParam param)
 {
+	if constexpr (NUM_INT_INPUT_PARAMS == 0) return AC_FAILURE;
 	return device->input.int_params[param];
 }
 
 int
 acDeviceGetIntOutput(const Device device, const AcIntOutputParam param)
 {
+	if constexpr (NUM_INT_OUTPUTS == 0) return AC_FAILURE;
 	return device->output.int_outputs[param];
 }
 AcReal
 acDeviceGetRealOutput(const Device device, const AcRealOutputParam param)
 {
+	if constexpr (NUM_REAL_OUTPUTS == 0) return AC_FAILURE;
 	return device->output.real_outputs[param];
 }
 

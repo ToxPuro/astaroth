@@ -33,8 +33,6 @@ const char* dir_backup;
 //These are used to evaluate constant int expressions 
 static string_vec const_ints;
 static string_vec const_int_values;
-static int_vec tinyexpr_cache;
-static string_vec tinyexpr_cache_str;
 
 
 void
@@ -73,7 +71,7 @@ void set_identifier_prefix(const char* prefix, ASTNode* curr);
 void set_identifier_infix(const char* infix, ASTNode* curr);
 ASTNode* get_node(const NodeType type, ASTNode* node);
 ASTNode* get_node_by_token(const int token, const ASTNode* node);
-static inline int eval_int(const char* str);
+static inline int eval_int(ASTNode* node);
 static bool has_qualifier(const ASTNode* node, const char* qualifier);
 
 
@@ -251,7 +249,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
           const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
 		 "device_mesh_info_decl.h",  "array_decl.h", "comp_decl.h","comp_loaded_decl.h", "input_decl.h","get_device_array.h","get_config_arrays.h","get_config_param.h",
 		 "get_arrays.h","dconst_decl.h","dconst_accesses_decl.h","get_address.h","load_and_store_array.h","dconst_arrays_decl.h","memcpy_to_gmem_array.h","memcpy_from_gmem_array.h",
-		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","get_gmem_arrays.h",
+		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
 		 "load_and_store_uniform_overloads.h","load_and_store_uniform_funcs.h","load_and_store_uniform_header.h","get_array_info.h","get_from_comp_config.h","get_param_name.h","to_str_funcs.h","get_default_value.h",
 		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_loaders.h", "user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin"};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
@@ -344,8 +342,6 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 int
 main(int argc, char** argv)
 {
-    init_int_vec(&tinyexpr_cache);
-    init_str_vec(&tinyexpr_cache_str);
     atexit(&cleanup);
     string_vec filenames;
     init_str_vec(&filenames);
@@ -376,7 +372,7 @@ main(int argc, char** argv)
 	fprintf(stderr,"Did not find file: %s in %s\n",argv[argc-1],dirname(argv[1]));
         return EXIT_FAILURE;
     }
-    char stage0[strlen(file)];
+    char stage0[strlen(file)+1];
     strcpy(stage0, file);
     const char* stage1 = "user_kernels.ac.pp_stage1";
     const char* stage2 = "user_kernels.ac.pp_stage2";
@@ -387,7 +383,7 @@ main(int argc, char** argv)
     
     {
     	char extern_kernels_filename[10000];
-    	char command[10000];
+    	char command[10000 + 100];
 	sprintf(extern_kernels_filename,"%s/%s",dir,"extern_kernels.h");
 	if(file_exists(extern_kernels_filename))
 		sprintf(command,"cp %s %s\n",extern_kernels_filename,"extern_kernels.h");
@@ -426,6 +422,7 @@ main(int argc, char** argv)
 %nonassoc ':'
 %left '-'
 %left '+'
+%left '&'
 %left BINARY_OP
 %%
 
@@ -482,9 +479,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
 		if(are_arrays)
 		{
-			char* num_fields_str = malloc(1000*sizeof(char));
-			combine_all(declaration_list_head->lhs->rhs, num_fields_str);
-			const int num_fields = eval_int(num_fields_str);
+			const int num_fields = eval_int(declaration_list_head->lhs->rhs);
 			ASTNode* copy = astnode_dup(declaration_list_head->lhs,declaration_list_head);
 			char* index = malloc(100*sizeof(char));
 			ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
@@ -562,7 +557,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 			//$$ = astnode_create(NODE_UNKNOWN,tmp,new_declaration);
 			$$ = astnode_create(NODE_UNKNOWN,tmp,var_definitions);
 			tmp = $$;
-			free(num_fields_str);
 			free(index);
 			free(array_val);
 			free(array_val_tmp);
@@ -589,8 +583,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 			while(base->rhs)
 			{
 			  ASTNode* array_len_node = base->rhs;
-			  combine_all(array_len_node,tmp);
-			  const int array_len = eval_int(tmp);
+			  const int array_len = eval_int(array_len_node);
 			  set_buffers_empty(array_len_node);
 			  array_len_node -> buffer = itoa(array_len);
 			  base = base->lhs;
@@ -620,24 +613,16 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 			{
 				ASTNode* def = def_list_head->rhs;
 				char* name  = get_node_by_token(IDENTIFIER, def)->buffer;
-				combine_all(def->rhs,assignment_val);
-				if(!strstr(assignment_val,","))
-				{
-				  int val = eval_int(assignment_val);
-				  push(&const_ints,name);
-				  push(&const_int_values,itoa(val));
-				  def_list_head = def_list_head->lhs;
-				}
+				int val = eval_int(def->rhs);
+				push(&const_ints,name);
+				push(&const_int_values,itoa(val));
+				def_list_head = def_list_head->lhs;
 			}
 			ASTNode* def = def_list_head->lhs;
 			char* name  = get_node_by_token(IDENTIFIER, def)->buffer;
-			combine_all(def->rhs,assignment_val);
-			if(!strstr(assignment_val,","))
-			{
-				int val = eval_int(assignment_val);
-				push(&const_ints,name);
-				push(&const_int_values,itoa(val));
-			}
+			int val = eval_int(def->rhs);
+			push(&const_ints,name);
+			push(&const_int_values,itoa(val));
 			free(assignment_val);
 		}
 	
@@ -834,13 +819,15 @@ type_qualifiers: type_qualifiers type_qualifier {$$ = astnode_create(NODE_UNKNOW
 //Plus and minus have to be in the parser since based on context they are unary or binary ops
 binary_op: '+'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; }
          | '-'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; }
+         | '&'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; }
          | BINARY_OP   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
          ;
 
 unary_op: '-'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
-        | '!'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
         | '+'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
-         | UNARY_OP  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
+        | '!'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
+        | '&'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
+        | UNARY_OP  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
         ;
 
 assignment_op: ASSIGNOP    { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
@@ -1291,89 +1278,35 @@ bool is_whole_word(const char *str, const char *sub, int pos) {
     return true;
 }
 
-// Function to replace whole word substrings
-void change(char *str, const char *old, const char *new_str) {
-    int old_len = strlen(old);
-    int new_len = strlen(new_str);
-    int len_diff = new_len - old_len;
 
-    char *result;
-    char *temp = malloc(strlen(str) + 1);
-    if (temp == NULL) {
-        free(temp);
-        printf("Memory allocation failed\n");
-        return;
-    }
-    int i, j = 0, found = 0;
 
-    for (i = 0; str[i] != '\0'; i++) {
-        // Check for substring match and if it's a whole word
-        if (strncmp(&str[i], old, old_len) == 0 && is_whole_word(str, old, i)) {
-            found = 1;
-            result = temp;
-            strcpy(&result[j], new_str);
-            j += new_len;
-            i += old_len - 1;
-        } else {
-            result[j++] = str[i];
-        }
-    }
-    result[j] = '\0';
-
-    if (found) {
-        strcpy(str, result);
-    }
-
-    free(result);
+void
+replace_const_ints(ASTNode* node, const string_vec values, const string_vec names)
+{
+	if(node->token != IDENTIFIER || !node->buffer) return;
+	const int index = str_vec_get_index(values,node->buffer);
+	if(index == -1) return;
+	node->buffer = strdup(names.data[index]);
 }
 
-static inline int eval_int(const char* str)
+static inline int eval_int(ASTNode* node)
 {
-	if(is_number(str))
-		return atoi(str);
-	const int index = str_vec_get_index(tinyexpr_cache_str,str);
-	if(index > -1)
-		return tinyexpr_cache.data[index];
-	char* copy = strdup(str);
+	replace_const_ints(node,const_int_values,const_ints);
+	return 0;
+	char* copy = malloc(sizeof(char)*10000);
+	combine_all(node,copy);
 	strip_whitespace(copy);
         double* vals = malloc(sizeof(double)*const_ints.size);
-	bool is_included[const_ints.size];
-	size_t final_vars_size = 0;
-        for(size_t i = 0; i < const_ints.size; ++i)
-        {
-                vals[i] = (double)atoi(const_int_values.data[i]);
-		is_included[i] = strstr(copy, const_ints.data[i]) != NULL;
-                final_vars_size += is_included[i];
-		change(copy,const_ints.data[i], const_int_values.data[i]);
-        }
-        te_variable* final_vars = malloc(sizeof(te_variable)*final_vars_size);
-	int j = 0;
-        for(size_t i = 0; i < const_ints.size; ++i)
-        {
-		if(is_included[i])
-		{
-                      final_vars[j].name = const_ints.data[i];
-                      final_vars[j].address = vals +i;
-		      final_vars[j].context = NULL;
-		      ++j;
-		}
-        }
         int err;
-        te_expr* expr = te_compile(copy, final_vars, (int)final_vars_size, &err);
+        te_expr* expr = te_compile(copy, NULL, 0, &err);
         if(!expr)
         {
                 fprintf(stderr,"Parse error at tinyexpr\n");
-		fprintf(stderr,"Was not able to parse: %s\n",str);
-		fprintf(stderr,"place %d\n",err);
-		fprintf(stderr,"symbol %c\n",str[err]);
+		fprintf(stderr,"Was not able to parse: %s\n",copy);
                 exit(EXIT_FAILURE);
         }
         int res = (int) round(te_eval(expr));
         te_free(expr);
 	free(copy);
-	free(vals);
-	free(final_vars);
-	push_int(&tinyexpr_cache,res);
-	push(&tinyexpr_cache_str,str);
         return res;
 }

@@ -437,7 +437,8 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
   	            fprintf(fp,"\n#ifndef %s_offset\n#define %s_offset (%s)\n#endif\n",symbol_table[i].identifier,symbol_table[i].identifier,running_offset);
   	            char array_length_str[4098];
   	            get_array_var_length(symbol_table[i].identifier,root,array_length_str);
-  	            sprintf(running_offset,"%s+%s",running_offset,array_length_str);
+		    strcat(running_offset,"+");
+		    strcat(running_offset,array_length_str);
   	    }
   	  }
   	  fprintf(fp,"\n#ifndef D_%s_ARRAYS_LEN\n#define D_%s_ARRAYS_LEN (%s)\n#endif\n", strupr(define_name), strupr(define_name),running_offset);
@@ -467,7 +468,8 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
         if(str_vec_contains(symbol_table[i].tqualifiers,"dconst"))
   	{
   	        fprintf(fp,"%s,",running_offset);
-  	        sprintf(running_offset,"%s+%s",running_offset,array_length_str);
+		strcat(running_offset,"+");
+		strcat(running_offset,array_length_str);
   	}
 	else
 	{
@@ -521,6 +523,8 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
 	fprintf(fp,"%s","},");
     }
   }
+  //pad one extra to silence warnings
+  fprintf(fp,"{-1,false,-1,-1,{-1,-1,-1},\"AC_EXTRA_PADDING\"}");
   fprintf(fp, "};");
 
 }
@@ -604,7 +608,7 @@ gen_array_declarations(const char* datatype_scalar, const bool gen_mem_accesses)
 {
 	char tmp[7000];
 
-	sprintf(tmp,"%s* %s_arrays[NUM_%s_ARRAYS];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	sprintf(tmp,"%s* %s_arrays[NUM_%s_ARRAYS+1];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
 	file_append("array_decl.h",tmp);
 
 	sprintf(tmp,"if constexpr(std::is_same<P,%sArrayParam>::value) return vba.%s_arrays[(int)param];\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
@@ -690,7 +694,7 @@ gen_array_declarations(const char* datatype_scalar, const bool gen_mem_accesses)
 	if(gen_mem_accesses)
 		fprintf(fp,"%s gmem_%s_arrays[NUM_%s_ARRAYS][1000] {};\n",datatype_scalar, convert_to_define_name(datatype_scalar), strupr(convert_to_define_name(datatype_scalar)));
 	else
-		fprintf(fp,"__device__ __constant__ %s* gmem_%s_arrays[NUM_%s_ARRAYS];\n",datatype_scalar, convert_to_define_name(datatype_scalar), strupr(convert_to_define_name(datatype_scalar)));
+		fprintf(fp,"__device__ __constant__ %s* gmem_%s_arrays[NUM_%s_ARRAYS+1];\n",datatype_scalar, convert_to_define_name(datatype_scalar), strupr(convert_to_define_name(datatype_scalar)));
 	fclose(fp);
 
 
@@ -904,7 +908,7 @@ check_for_vtxbuf(const ASTNode* node)
 		return false;
 	return true;
 }
-static int log2(int x)
+static int int_log2(int x)
 {
 
 	int res = 0;
@@ -1186,7 +1190,7 @@ read_user_structs(const ASTNode* root)
 }
 
 void
-process_param_codegen(ASTNode* kernel_root, const ASTNode* param, char* structs_info, string_vec* added_params_to_stencil_accesses, const bool gen_mem_accesses)
+process_param_codegen(ASTNode* kernel_root, const ASTNode* param, char* structs_info_str, string_vec* added_params_to_stencil_accesses, const bool gen_mem_accesses)
 {
 				char* param_type = malloc(4096*sizeof(char));
                                 combine_buffers(param->lhs, param_type);
@@ -1194,7 +1198,7 @@ process_param_codegen(ASTNode* kernel_root, const ASTNode* param, char* structs_
 				param_str[0] = '\0';
                               	sprintf(param_str,"%s %s;",param_type, param->rhs->buffer);
 				add_node_type(NODE_INPUT, kernel_root,param->rhs->buffer);
-				strprepend(structs_info,param_str);
+				strprepend(structs_info_str,param_str);
 				if(str_vec_contains(*added_params_to_stencil_accesses,param->rhs->buffer))
 					return;
 				push(added_params_to_stencil_accesses,strdup(param->rhs->buffer));
@@ -1226,22 +1230,22 @@ gen_kernel_structs_recursive(const ASTNode* node, string_vec* added_params_to_st
         ASTNode* param_list_head = node->rhs->lhs;
         ASTNode* compound_statement = node->rhs->rhs;
         param_list_head->type |= NODE_NO_OUT;
-	char* structs_info = malloc(sizeof(char)*10000);
-	structs_info[0] = '\0';
+	char* structs_info_str = malloc(sizeof(char)*10000);
+	structs_info_str[0] = '\0';
         while(param_list_head->rhs)
         {
-	  process_param_codegen(compound_statement,param_list_head->rhs,structs_info,added_params_to_stencil_accesses,gen_mem_accesses);
+	  process_param_codegen(compound_statement,param_list_head->rhs,structs_info_str,added_params_to_stencil_accesses,gen_mem_accesses);
           param_list_head = param_list_head->lhs;
         }
 
         ASTNode* fn_identifier = get_node_by_token(IDENTIFIER, node->lhs);
-	process_param_codegen(compound_statement,param_list_head->lhs,structs_info,added_params_to_stencil_accesses,gen_mem_accesses);
+	process_param_codegen(compound_statement,param_list_head->lhs,structs_info_str,added_params_to_stencil_accesses,gen_mem_accesses);
 	char* kernel_params_struct = malloc(10000*sizeof(char));
-	sprintf(kernel_params_struct,"typedef struct %sInputParams {%s} %sInputParams;\n",fn_identifier->buffer,structs_info,fn_identifier->buffer);
+	sprintf(kernel_params_struct,"typedef struct %sInputParams {%s} %sInputParams;\n",fn_identifier->buffer,structs_info_str,fn_identifier->buffer);
 
 	strcat(kernel_params_struct,"\n");
 	file_prepend("user_input_typedefs.h",kernel_params_struct);
-	free(structs_info);
+	free(structs_info_str);
 
 	char* tmp = malloc(4096*sizeof(char));
 	sprintf(tmp,"%sInputParams %s;\n", fn_identifier->buffer,fn_identifier->buffer);
@@ -1535,9 +1539,8 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 		const bool field_in  = (read_fields[field + num_fields*kernel_index] || field_has_stencil_op[field + num_fields*kernel_index]);
 		const bool field_out = (written_fields[field + num_fields*kernel_index]);
 		const char* field_str = get_symbol_by_index(NODE_VARIABLE_ID,field,"Field")->identifier;
-		strcat(all_fields,",");
-		strcat(all_fields,field_str);
 		sprintf(tmp,"%s,",field_str);
+		strcat(all_fields,tmp);
 		if(field_in)
 			strcat(fields_in_str,tmp);
 		if(field_out)
@@ -2227,7 +2230,7 @@ typedef struct
 {
 	int* nums;
 	string_vec* vals;
-} combinations;
+} param_combinations;
 
 typedef struct
 {
@@ -2279,7 +2282,7 @@ add_param_combinations(const variable var, const int kernel_index,const char* pr
 
 
 void
-gen_all_possibilities(string_vec res, int kernel_index, size_t my_index,combinations combinations,combinatorial_params combinatorials)
+gen_all_possibilities(string_vec res, int kernel_index, size_t my_index,param_combinations combinations,combinatorial_params combinatorials)
 {
 	if(my_index == combinatorials.names[kernel_index].size-1)
 	{
@@ -2304,7 +2307,7 @@ gen_all_possibilities(string_vec res, int kernel_index, size_t my_index,combinat
 	}
 }
 void 
-gen_combinations(int kernel_index,combinations combinations ,combinatorial_params combinatorials)
+gen_combinations(int kernel_index,param_combinations combinations ,combinatorial_params combinatorials)
 {
 	string_vec base = VEC_INITIALIZER;
 	if(combinatorials.names[kernel_index].size > 0)
@@ -2312,7 +2315,7 @@ gen_combinations(int kernel_index,combinations combinations ,combinatorial_param
 	free_str_vec(&base);
 }
 void
-gen_kernel_num_of_combinations_recursive(const ASTNode* node, combinations combinations, user_enums_info user_enums, string_vec* user_kernels_with_input_params,combinatorial_params combinatorials, structs_info struct_info)
+gen_kernel_num_of_combinations_recursive(const ASTNode* node, param_combinations combinations, user_enums_info user_enums, string_vec* user_kernels_with_input_params,combinatorial_params combinatorials, structs_info struct_info)
 {
 	if(node->lhs)
 	{
@@ -2346,7 +2349,7 @@ gen_kernel_num_of_combinations_recursive(const ASTNode* node, combinations combi
 	}
 }
 void
-gen_kernel_num_of_combinations(const ASTNode* root, combinations combinations, string_vec* user_kernels_with_input_params,string_vec* user_kernel_combinatorial_params)
+gen_kernel_num_of_combinations(const ASTNode* root, param_combinations combinations, string_vec* user_kernels_with_input_params,string_vec* user_kernel_combinatorial_params)
 {
   	user_enums_info user_enums = read_user_enums(root);
 
@@ -2488,12 +2491,12 @@ get_dfuncs_reduce_info(const ASTNode* node,reduce_info* src)
 	free(func_name);
 }
 void
-gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses, reduce_info* dfuncs_info,reduce_info* kernel_reduce_info)
+gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses, reduce_info* dfuncs_info,reduce_info* kernel_reduce_infos)
 {
 	if(node->lhs)
-		gen_kernel_postfixes_recursive(node->lhs,gen_mem_accesses,dfuncs_info,kernel_reduce_info);
+		gen_kernel_postfixes_recursive(node->lhs,gen_mem_accesses,dfuncs_info,kernel_reduce_infos);
 	if(node->rhs)
-		gen_kernel_postfixes_recursive(node->rhs,gen_mem_accesses,dfuncs_info,kernel_reduce_info);
+		gen_kernel_postfixes_recursive(node->rhs,gen_mem_accesses,dfuncs_info,kernel_reduce_infos);
 	if(!(node->type & NODE_KFUNCTION))
 		return;
 	ASTNode* compound_statement = node->rhs->rhs;
@@ -2505,10 +2508,10 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses, reduc
 	  compound_statement->postfix = strdup(new_postfix);
 	  return;
 	}
-	reduce_info reduce_info = REDUCE_INFO_INITIALIZER;
+	reduce_info kernel_reduce_info = REDUCE_INFO_INITIALIZER;
 
-	get_reduce_info(node,&reduce_info,dfuncs_info);
-	if(reduce_info.ops.size == 0)
+	get_reduce_info(node,&kernel_reduce_info,dfuncs_info);
+	if(kernel_reduce_info.ops.size == 0)
 	{
 	  strcat(new_postfix,"}");
 	  compound_statement->postfix = strdup(new_postfix);
@@ -2516,7 +2519,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses, reduc
 	}
 	const ASTNode* fn_identifier = get_node(NODE_FUNCTION_ID,node);
 	const int kernel_index = get_symbol_index(NODE_FUNCTION_ID,fn_identifier->buffer,"Kernel");
-	assert(reduce_info.ops.size  == reduce_info.outputs.size && reduce_info.ops.size == reduce_info.conditions.size);
+	assert(kernel_reduce_info.ops.size  == kernel_reduce_info.outputs.size && kernel_reduce_info.ops.size == kernel_reduce_info.conditions.size);
 
 	char* tmp = malloc(sizeof(char)*4096);
 	char* res_name   = malloc(sizeof(char)*4096);
@@ -2531,13 +2534,13 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses, reduc
 	const char* warp_id= "const size_t warp_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) / warp_size\n;";
 #endif
 
-	for(size_t i = 0; i < reduce_info.ops.size; ++i)
+	for(size_t i = 0; i < kernel_reduce_info.ops.size; ++i)
 	{
-		ReduceOp reduce_op = reduce_info.ops.data[i];
-		char* condition = reduce_info.conditions.data[i];
-		char* output = reduce_info.outputs.data[i];
-		push_op(&kernel_reduce_info[kernel_index].ops,  reduce_op);
-		push(&kernel_reduce_info[kernel_index].outputs,  output);
+		ReduceOp reduce_op = kernel_reduce_info.ops.data[i];
+		char* condition = kernel_reduce_info.conditions.data[i];
+		char* output = kernel_reduce_info.outputs.data[i];
+		push_op(&kernel_reduce_infos[kernel_index].ops,  reduce_op);
+		push(&kernel_reduce_infos[kernel_index].outputs,  output);
 	 	//HACK!
 	 	if(!strstr(condition,fn_identifier->buffer))
 	 	{
@@ -2607,9 +2610,9 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses, reduc
 	}
 	strcat(new_postfix,"}");
 	compound_statement->postfix = strdup(new_postfix);
-	free_op_vec(&reduce_info.ops);
-	free_str_vec(&reduce_info.conditions);
-	free_str_vec(&reduce_info.outputs);
+	free_op_vec(&kernel_reduce_info.ops);
+	free_str_vec(&kernel_reduce_info.conditions);
+	free_str_vec(&kernel_reduce_info.outputs);
 	free(new_postfix);
 	free(tmp);
 	free(res_name);
@@ -2638,8 +2641,10 @@ gen_kernel_reduce_outputs(reduce_info* kernel_reduce_info)
   for (size_t i = 0; i < num_symbols[0]; ++i)
     if (!strcmp(symbol_table[i].tspecifier, "AcReal") && str_vec_contains(symbol_table[i].tqualifiers,"output"))
 	    ++num_real_reduce_output;
-  fprintf(fp,"%s","static const int kernel_reduce_outputs[NUM_KERNELS][NUM_REAL_OUTPUTS] = { ");
+  //extra padding to help some compilers
+  fprintf(fp,"%s","static const int kernel_reduce_outputs[NUM_KERNELS][NUM_REAL_OUTPUTS+1] = { ");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  {
     if (!strcmp(symbol_table[i].tspecifier,"Kernel"))
     {
       fprintf(fp,"%s","{");
@@ -2650,13 +2655,16 @@ gen_kernel_reduce_outputs(reduce_info* kernel_reduce_info)
       	else
 	      	fprintf(fp,"(int)%s,",kernel_reduce_info[kernel_iterator].outputs.data[j]);
       }
+      fprintf(fp,"-1");
       fprintf(fp,"%s","},");
       ++kernel_iterator;
     }
+  }
   fprintf(fp,"%s","};\n");
 
   fprintf(fp,"%s","typedef enum KernelReduceOp\n{\n\tNO_REDUCE,\n\tREDUCE_MIN,\n\tREDUCE_MAX,\n\tREDUCE_SUM,\n} KernelReduceOp;\n");
-  fprintf(fp,"%s","static const KernelReduceOp kernel_reduce_ops[NUM_KERNELS][NUM_REAL_OUTPUTS] = { ");
+  //extra padding to help some compilers
+  fprintf(fp,"%s","static const KernelReduceOp kernel_reduce_ops[NUM_KERNELS][NUM_REAL_OUTPUTS+1] = { ");
   int iterator = 0;
   for (size_t i = 0; i < num_symbols[0]; ++i)
     if (!strcmp(symbol_table[i].tspecifier,"Kernel"))
@@ -2686,6 +2694,7 @@ gen_kernel_reduce_outputs(reduce_info* kernel_reduce_info)
       		}
 	}
       }
+      fprintf(fp,"NO_REDUCE");
       fprintf(fp,"%s","},");
       ++iterator;
     }
@@ -2715,7 +2724,7 @@ gen_kernel_postfixes_and_reduce_outputs(ASTNode* root, const bool gen_mem_access
   }
 }
 void
-gen_kernel_ifs(ASTNode* node, const combinations combinations, string_vec user_kernels_with_input_params,string_vec* user_kernel_combinatorial_params)
+gen_kernel_ifs(ASTNode* node, const param_combinations combinations, string_vec user_kernels_with_input_params,string_vec* user_kernel_combinatorial_params)
 {
 	if(node->lhs)
 		gen_kernel_ifs(node->lhs,combinations,user_kernels_with_input_params,user_kernel_combinatorial_params);
@@ -3041,6 +3050,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node)
 
 	ASTNode* array_access = (ASTNode*)get_parent_node(NODE_ARRAY_ACCESS,node);
 	if(!array_access || get_node_by_id(node->id,array_access->lhs)->id != node->id)	return;
+	while(get_parent_node(NODE_ARRAY_ACCESS,array_access)) array_access = (ASTNode*) get_parent_node(NODE_ARRAY_ACCESS,array_access);
 
 	string_vec array_accesses = get_array_accesses(array_access);
 	array_access->rhs = NULL;
@@ -3323,6 +3333,18 @@ gen_user_defines(const ASTNode* root, const char* out, const bool gen_mem_access
     else
     	fprintf(fp, "%s,", "false");
   fprintf(fp, "};");
+  FILE* fp_vtxbuf_is_comm_func = fopen("vtxbuf_is_communicated_func.h","a");
+  fprintf(fp_vtxbuf_is_comm_func ,"static __device__ constexpr __forceinline__ bool is_communicated(Field field) {\n"
+             "switch(field)"
+	     "{");
+  for(int i=0;i<num_of_fields;++i)
+  {
+    const char* ret_val = (field_is_communicated[i]) ? "true" : "false";
+    fprintf(fp_vtxbuf_is_comm_func,"case(%s): return %s;\n", field_names.data[i], ret_val);
+  }
+  fprintf(fp_vtxbuf_is_comm_func, "}\n}\n");
+
+  fclose(fp_vtxbuf_is_comm_func);
 
   //free_str_vec(&field_names);
 
@@ -3855,7 +3877,7 @@ gen_kernel_combinatorial_optimizations_and_input(ASTNode* root, const bool gen_m
 
   int nums[100] = {0};
   string_vec* vals = malloc(sizeof(string_vec)*MAX_KERNELS*MAX_COMBINATIONS);
-  combinations param_in = {nums, vals};
+  param_combinations param_in = {nums, vals};
 
   gen_kernel_num_of_combinations(root,param_in,&user_kernels_with_input_params,user_kernel_combinatorial_params);
   if(optimize_conditionals)
@@ -4163,6 +4185,7 @@ get_duplicate_dfuncs(ASTNode* node)
   for(size_t i = 0; i < dfuncs.size; ++i)
   {
 	  const int index = get_symbol_index(NODE_DFUNCTION_ID,dfuncs.data[i],NULL);
+	  if(index == -1) continue;
 	  if(n_entries[index] > 1) push(&res,get_symbol_by_index(NODE_DFUNCTION_ID,index,NULL)->identifier);
   }
   free_str_vec(&dfuncs);

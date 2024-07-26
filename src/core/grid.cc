@@ -219,7 +219,7 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 #endif
     submesh_config.int3_params[AC_multigpu_offset] = pid3d *
                                                      (int3){submesh_nx, submesh_ny, submesh_nz};
-    submesh_config.int3_params[AC_domain_decomposition] = (int3){decomp.x, decomp.y, decomp.z};
+    submesh_config.int3_params[AC_domain_decomposition] = (int3){(int)decomp.x, (int)decomp.y, (int)decomp.z};
     submesh_config.int3_params[AC_domain_coordinates] = (int3){pid3d.x, pid3d.y, pid3d.z};
     acHostUpdateBuiltinParams(&submesh_config);
     return submesh_config;

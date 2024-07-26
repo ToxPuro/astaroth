@@ -16,10 +16,12 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include "vtxbuf_is_communicated_func.h"
 #pragma once
 struct GpuVtxBufHandles 
 {
-	VertexBufferHandle data[NUM_COMMUNICATED_FIELDS];
+	//we pad by one in case there is no communicated fields
+	VertexBufferHandle data[NUM_COMMUNICATED_FIELDS+1];
 };
 static __global__ void
 kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 dims,
@@ -54,7 +56,7 @@ kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 d
     {
       const int dst_idx = packed_idx + i * vtxbuf_offset;
       packed[dst_idx] = vba.in[j][unpacked_idx];
-      i += vtxbuf_is_communicated[j];
+      i += is_communicated(static_cast<Field>(j));
     }
 }
 
@@ -108,7 +110,7 @@ kernel_unpack_data(const AcRealPacked* packed, const int3 vba_start, const int3 
 
       vba.in[j][unpacked_idx] += add;
 #endif
-      i += vtxbuf_is_communicated[j];
+      i += is_communicated(static_cast<Field>(j));
     }
 }
 
@@ -336,7 +338,6 @@ AcResult
 acKernelMoveData(const cudaStream_t stream, const int3 src_start, const int3 dst_start, const int3 src_dims, const int3 dst_dims, VertexBufferArray vba,
                           const VertexBufferHandle* vtxbufs, const size_t num_vtxbufs)
 {
-    assert(src_dims == dst_dims);
     if(src_dims != dst_dims)
     {
 	    fprintf(stderr,"src and dst dims have to be the same\n");

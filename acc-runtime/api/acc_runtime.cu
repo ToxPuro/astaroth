@@ -42,7 +42,7 @@ typedef struct
 
 
 
-constexpr Field3 
+constexpr __device__ __forceinline__ Field3 
 MakeField3(const Field& x, const Field& y, const Field& z)
 {
 	return (Field3){x,y,z};

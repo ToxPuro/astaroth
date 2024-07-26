@@ -15,7 +15,6 @@ const real Aat = AC_REAL_PI* (dx / 3.0 / 2.0)*(dx / 3.0 / 2.0); // Area of one a
 const real ceq = -Aat;
 const int POINTS_PER_THREAD = 1
 const int ADVANCEMENTS_PER_UPDATE = 1
-
 Kernel
 solve(int step_num)
 {

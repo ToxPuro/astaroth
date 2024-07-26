@@ -18,6 +18,7 @@
   */
   #pragma once
   #include <stdio.h>
+  #include <stdbool.h>
   #if AC_MPI_ENABLED
   #include <mpi.h>
   #endif

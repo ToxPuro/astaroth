@@ -336,7 +336,7 @@ get_node_by_id(const int id, const ASTNode* node)
     res = get_node_by_id(id, node->rhs);
   return res;
 }
-static const inline ASTNode*
+static inline const ASTNode*
 get_parent_node(const NodeType type, const ASTNode* node)
 {
   if(!node->parent)
@@ -345,7 +345,7 @@ get_parent_node(const NodeType type, const ASTNode* node)
     return node->parent;
   return get_parent_node(type, node->parent);
 }
-static const inline ASTNode*
+static inline const ASTNode*
 get_parent_node_exclusive(const NodeType type, const ASTNode* node)
 {
   if(!node->parent)

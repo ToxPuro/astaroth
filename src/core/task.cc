@@ -43,6 +43,7 @@
 #include <mpi.h>
 #include <stdlib.h>
 #include <vector>
+#include <cstring>
 
 #include "decomposition.h" //getPid and friends
 #include "errchk.h"

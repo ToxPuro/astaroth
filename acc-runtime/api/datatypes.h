@@ -20,11 +20,12 @@
 
 #include <float.h> // DBL/FLT_EPSILON
 
-//#if AC_USE_HIP
-//  #include "hip.h"
-//#else
-//  #include <vector_types.h> // CUDA vector types
-//#endif
+#include <math.h>
+#if AC_USE_HIP
+  #include "hip.h"
+#else
+  #include <vector_types.h> // CUDA vector types
+#endif
 
 
 #if AC_DOUBLE_PRECISION
