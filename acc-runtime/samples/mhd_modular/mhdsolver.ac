@@ -243,17 +243,17 @@ output real timestep_out1;
 output real timestep_out2;
 const int test_arr_size = 6;
 #if LTEST
-real AC_test_arr[test_arr_size];
-real AC_test_arr_2[(2-1)*2+1];
-int AC_test_int_arr[test_arr_size/2];
+dconst real AC_test_arr[test_arr_size];
+dconst real AC_test_arr_2[(2-1)*2+1];
+dconst int AC_test_int_arr[test_arr_size/2];
 #endif
 
 
 
-#define UU MakeField3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
+const Field3 UU = MakeField3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
 
 #if LMAGNETIC
-#define AA MakeField3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
+const Field3 AA  = MakeField3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
 #endif
 
 
@@ -483,9 +483,6 @@ Stencil der6z_upwd {
 
 
 
-vecvalue_abs(Field3 v) {
-    return +real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
-}
 
 gradient(s) {
     return real3(derx(s), dery(s), derz(s))
@@ -521,7 +518,7 @@ veclaplace(v) {
 
 #if LMAGNETIC
 induction() {
-    return cross(vecvalue(UU), curl(AA)) + AC_eta * veclaplace(AA)
+    return cross(value(UU), curl(AA)) + AC_eta * veclaplace(AA)
 }
 #endif
 
@@ -557,9 +554,6 @@ contract(mat) {
            dot(mat.row(2), mat.row(2))
 }
 
-length(v1,v2) {
-    return sqrt( dot(v1-v2,v1-v2) )
-}
 
 grid_position() {
     return real3((globalVertexIdx.x - AC_nx_min) * AC_dsx, 
@@ -586,8 +580,8 @@ helical_forcing(k_force, xx, ff_re, ff_im, phi)
 
     cos_phi     = cos(phi)
     sin_phi     = sin(phi)
-    cos_k_dot_x = cos(dot(k_force, yy))
-    sin_k_dot_x = sin(dot(k_force, yy))
+    cos_k_dot_x = cos(overloaded_dot(k_force, yy))
+    sin_k_dot_x = sin(overloaded_dot(k_force, yy))
     real_comp_phase = cos_k_dot_x * cos_phi - sin_k_dot_x * sin_phi
     imag_comp_phase = cos_k_dot_x * sin_phi + sin_k_dot_x * cos_phi
 
@@ -626,9 +620,9 @@ forcing(dt)
 
 
 continuity() {
-    return -dot(vecvalue(UU), gradient(VTXBUF_LNRHO)) - divergence(UU)
+    return -overloaded_dot(UU, gradient(VTXBUF_LNRHO)) - divergence(UU)
 #if LUPWD
-           + dot(vecvalue_abs(UU), gradient6_upwd(VTXBUF_LNRHO))
+           + overloaded_dot(abs(UU), gradient6_upwd(VTXBUF_LNRHO))
 #endif
 
 }
@@ -648,9 +642,9 @@ momentum() {
     inv_rho = 1. / exp(value(VTXBUF_LNRHO))
 #endif
 
-    mom = - gradients(UU) * vecvalue(UU)
+    mom = - gradients(UU) * value(UU)
 #if LUPWD
-          + gradients_upwd(UU) * vecvalue_abs(UU)
+          + gradients_upwd(UU) * abs(UU)
 #endif
 #if LENTROPY 
           - cs2 * ((1. / AC_cp_sound) * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO))
@@ -690,7 +684,7 @@ heat_conduction() {
     //chi = AC_THERMAL_CONDUCTIVITY / (exp(value(VTXBUF_LNRHO)) * AC_cp_sound)
     chi = AC_K_heatcond / (exp(value(VTXBUF_LNRHO)) * AC_cp_sound)
 
-    return AC_cp_sound * chi * (first_term + dot(second_term, third_term))
+    return AC_cp_sound * chi * (first_term + overloaded_dot(second_term, third_term))
 }
 
 entropy() {
@@ -706,12 +700,12 @@ entropy() {
 #else
     entshock = 0.0
 #endif
-    RHS = (0) - (0) + AC_eta * AC_mu0 * dot(j, j) +
+    RHS = (0) - (0) + AC_eta * AC_mu0 * overloaded_dot(j, j) +
                        2. * exp(value(VTXBUF_LNRHO)) * AC_nu_visc * contract(S) +
                        entshock +
                        AC_zeta * exp(value(VTXBUF_LNRHO)) * divergence(UU) * divergence(UU)
 
-    return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
+    return -overloaded_dot(value(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
 }
 #endif
 
@@ -1058,7 +1052,7 @@ Kernel haatouken() {
     // AC_init_shell_radius
     // AC_init_shell_width
 
-    uu = vecvalue(UU)
+    uu = value(UU)
 
     xx = grid_position()
 
@@ -1163,7 +1157,7 @@ Kernel prescribed_derivative_boundcond(int3 normal, VtxBuffer vtxbuf, real der_v
 }
 
 
-beltrami(ampl, ex, ey, ez, kx, ky, kz, phase) {
+beltrami(real ampl, ex, ey, ez, kx, ky, kz, phase) {
     // Based on Pencil Code beltrami_general() 
     // https://github.com/pencil-code/pencil-code/blob/43f0b658a905bbeb641daa0ccf88720a20f0c562/src/initcond.f90#L1818C16-L1818C32
 

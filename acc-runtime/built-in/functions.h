@@ -46,3 +46,18 @@ write(Field3 dst, real3 src)
 	write(dst.y, src.y)
 	write(dst.z, src.z)
 }
+abs(Field3 v) {
+    return real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
+}
+dot(real3 a, real3 b)
+{
+	return AC_dot(a,b)
+}
+overloaded_dot(Field3 field, real3 vec)
+{
+	return AC_dot(value(field), vec)
+}
+overloaded_dot(real3 a, real3 b)
+{
+	return AC_dot(a,b)
+}

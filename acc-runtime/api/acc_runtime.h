@@ -333,6 +333,7 @@
   } // extern "C"
     //
     //
+#ifndef AC_RUNTIME_SOURCE
 #include <type_traits>
 
   template <typename P>
@@ -473,7 +474,6 @@
 
   
 
-#ifndef AC_RUNTIME_SOURCE
 #include "load_and_store_uniform_overloads.h"
   
   template<typename T, typename... Ts>

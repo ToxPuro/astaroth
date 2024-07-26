@@ -49,10 +49,3 @@ Plane3D_y_coefficient(real4 a, real4 b, real4 c, real3 precomputed)
         const real tmp3 = b.w*c.x - b.x*c.w;
         return  a.x*(-tmp1) + a.z*(tmp3)  + a.w*(precomputed.y);
 }
-Plane3D_z_coefficient(real4 a, real4 b, real4 c, real3 precomputed)
-{
-        const real tmp2 = b.y*c.w - b.w*c.y;
-        const real tmp3 = b.w*c.x - b.x*c.w;
-        return a.x*(-tmp2) + a.y*(-tmp3) + a.w*(precomputed.z);
-}
-

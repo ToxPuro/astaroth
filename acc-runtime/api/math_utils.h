@@ -435,7 +435,7 @@ operator/(const AcReal2& a, const AcReal& b)
 
 
 static HOST_DEVICE_INLINE AcReal
-dot(const AcReal2& a, const AcReal2& b)
+AC_dot(const AcReal2& a, const AcReal2& b)
 {
   return a.x * b.x + a.y * b.y;
 }
@@ -534,7 +534,7 @@ sum(const AcReal3& a)
 }
 
 static HOST_DEVICE_INLINE AcReal
-dot(const AcReal3& a, const AcReal3& b)
+AC_dot(const AcReal3& a, const AcReal3& b)
 {
   return a.x * b.x + a.y * b.y + a.z * b.z;
 }
@@ -630,9 +630,9 @@ typedef struct AcMatrix {
   HOST_DEVICE constexpr AcReal3 operator*(const AcReal3& v) const
   {
     return (AcReal3){
-        dot(row(0), v),
-        dot(row(1), v),
-        dot(row(2), v),
+        AC_dot(row(0), v),
+        AC_dot(row(1), v),
+        AC_dot(row(2), v),
     };
   }
 
@@ -732,7 +732,7 @@ operator +(const AcArray<T, N>& lhs) {
 
 template <typename T, std::size_t N>
 static constexpr  T
-dot(const AcArray<T,N>& a, const AcArray<T,N>& b)
+AC_dot(const AcArray<T,N>& a, const AcArray<T,N>& b)
 {
         T res = 0;
         for(size_t i = 0; i < N; ++i)
@@ -761,7 +761,7 @@ public:
    {
      AcArray<AcReal,N> res{};
      for(size_t i = 0; i < N; ++i)
-	     res[i] = dot(data[i],v);
+	     res[i] = AC_dot(data[i],v);
      return res;
    }
    constexpr AcMatrixN<N> operator-() const

@@ -444,25 +444,11 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             assert(declaration_list);
 
 	    ASTNode* declaration_list_head = declaration_list;
-	    bool are_arrays = false;
+	    const bool are_arrays = (get_node(NODE_ARRAY_ACCESS,declaration) != NULL) ||
+				    (get_node(NODE_ARRAY_INITIALIZER,declaration) != NULL);
 	    ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
             ASTNode* assignment = get_node(NODE_ASSIGNMENT, variable_definition);
-	    if(type_specifier && assignment == NULL)
-	    {
-		    while(declaration_list_head->rhs)
-		    {
-			const ASTNode* 	declaration_postfix_expression = declaration_list_head->rhs;
-			if(declaration_postfix_expression->rhs && declaration_postfix_expression->rhs->type != NODE_MEMBER_ID)
-				are_arrays = true;
-			declaration_list_head = declaration_list_head->lhs;
-		    }	
-
-		    const ASTNode* 	declaration_postfix_expression = declaration_list_head->lhs;
-		    if(declaration_postfix_expression->rhs && declaration_postfix_expression->rhs->type != NODE_MEMBER_ID)
-			are_arrays = true;
-		//    if(are_arrays)
-		//	assert(!strcmp(type_specifier->lhs->buffer,"int") || !strcmp(type_specifier->lhs->buffer,"AcReal"));
-	    }
+	
             //if (assignment) {
 	    //    
             //    fprintf(stderr, "FATAL ERROR: Device constant assignment is not supported. Load the value at runtime with ac[Grid|Device]Load[Int|Int3|Real|Real3]Uniform-type API functions or use #define.\n");
@@ -1261,38 +1247,22 @@ get_node(const NodeType type, ASTNode* node)
     return NULL;
 }
 
-// Function to check if a substring is a standalone word
-bool is_whole_word(const char *str, const char *sub, int pos) {
-    int sub_len = strlen(sub);
-
-    // Check if the preceding character is not alphanumeric or at the start of the string
-    if (pos > 0 && (isalnum(str[pos - 1]) || str[pos - 1] == '_')) {
-        return false;
-    }
-
-    // Check if the following character is not alphanumeric or at the end of the string
-    if (isalnum(str[pos + sub_len]) || str[pos + sub_len] == '_') {
-        return false;
-    }
-
-    return true;
-}
-
-
-
 void
 replace_const_ints(ASTNode* node, const string_vec values, const string_vec names)
 {
+	if(node->lhs)
+		replace_const_ints(node->lhs,values,names);
+	if(node->rhs)
+		replace_const_ints(node->rhs,values,names);
 	if(node->token != IDENTIFIER || !node->buffer) return;
-	const int index = str_vec_get_index(values,node->buffer);
+	const int index = str_vec_get_index(names,node->buffer);
 	if(index == -1) return;
-	node->buffer = strdup(names.data[index]);
+	node->buffer = strdup(values.data[index]);
 }
 
 static inline int eval_int(ASTNode* node)
 {
 	replace_const_ints(node,const_int_values,const_ints);
-	return 0;
 	char* copy = malloc(sizeof(char)*10000);
 	combine_all(node,copy);
 	strip_whitespace(copy);
@@ -1303,6 +1273,10 @@ static inline int eval_int(ASTNode* node)
         {
                 fprintf(stderr,"Parse error at tinyexpr\n");
 		fprintf(stderr,"Was not able to parse: %s\n",copy);
+		fprintf(stderr,"Was not able to parse: %s\n",const_ints.data[0]);
+		fprintf(stderr,"Was not able to parse: %s\n",const_ints.data[1]);
+		fprintf(stderr,"Was not able to parse: %s\n",const_ints.data[2]);
+		fprintf(stderr,"Was not able to parse: %s\n",const_ints.data[3]);
                 exit(EXIT_FAILURE);
         }
         int res = (int) round(te_eval(expr));
