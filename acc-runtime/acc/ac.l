@@ -63,6 +63,7 @@ void strip_whitespace(char *str) {
 
 "Kernel"                { return KERNEL; } /* Type qualifiers */
 "inline"                { return INLINE; } /* Type qualifiers */
+"elemental"             { return ELEMENTAL; } /* Type qualifiers */
 "boundary_condition"    { return BOUNDARY_CONDITION; } /* Type qualifiers */
 "Sum"                   { return SUM; }
 "Max"                   { return MAX; }
@@ -149,7 +150,8 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 {D}+[.]{D}*               { return REALNUMBER; }
 {D}+[.]?{D}*(e[-+]?{D}+)   { return REALNUMBER; }
 {D}+[.]?{D}*(e[-+]?{D}+)?[d]  { return DOUBLENUMBER; } /* Numbers */
-{D}+[.]?{D}*(e[-+]?{D}+)?[f]?  { return NUMBER; }      /* Numbers */
+{D}+[.]?{D}*(e[-+]?{D}+)[f]? { return REALNUMBER; }      /* Numbers */
+{D}+[.]?{D}*  		      { return NUMBER; }      /* Numbers */
 0[xX][0-9a-fA-F]+[ulUL]*      { return NUMBER; }      /* Hex */
 
 

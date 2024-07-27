@@ -33,7 +33,7 @@
 
 
 #define USE_COMPRESSIBLE_MEMORY (0)
-typedef struct
+typedef struct Field3
 {
 	VertexBufferHandle x;
 	VertexBufferHandle y;
@@ -42,13 +42,13 @@ typedef struct
 
 
 
-constexpr __device__ __forceinline__ Field3 
+HOST_DEVICE_INLINE Field3 
 MakeField3(const Field& x, const Field& y, const Field& z)
 {
 	return (Field3){x,y,z};
 }
 template <size_t N>
-constexpr __device__ __forceinline__
+HOST_DEVICE_INLINE
 std::array<Field3,N>
 MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
 {

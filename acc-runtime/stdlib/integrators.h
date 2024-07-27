@@ -31,6 +31,14 @@ rk3(real3 f,real3 w,real3 roc,int step_num,real dt){
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
+rk3(Field field, real roc, int step_num, real dt) {
+	return rk3(previous(field), value(field), roc, step_num, dt)
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk3(Field3 field, real3 roc, int step_num, real dt) {
+	return rk3(previous(field), value(field), roc, step_num, dt)
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_intermediate(real w, real roc, int step_num, real dt) {
     real alpha = 0., -5./9., -153./128.
 
@@ -52,6 +60,16 @@ rk3_intermediate(real3 w,real3 roc,int step_num,real dt){
               )
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
+rk3_intermediate(Field field, real roc, int step_num, real dt)
+{
+	return rk3_intermediate(previous(field), roc, step_num, dt)
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk3_intermediate(Field3 field, real3 roc, int step_num, real dt)
+{
+	return rk3_intermediate(previous(field), roc, step_num, dt)
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_final(real f, real w, int step_num) {
     real beta = 1./3., 15./16., 8./15.
     return f + beta[step_num] * w
@@ -63,6 +81,19 @@ rk3_final(real3 f,real3 w,int step_num){
                 rk3_final(f.z,w.z,step_num)
               )
 }
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk3_final(Field field, int step_num) {
+    real beta = 1./3., 15./16., 8./15.
+    return previous(field) + beta[step_num] * value(field)
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
+rk3_final(Field3 field, int step_num) {
+  return real3( rk3_final(field.x,step_num),
+                rk3_final(field.y,step_num),
+                rk3_final(field.z,step_num)
+              )
+}
+/*--------------------------------------------------------------------------------------------------------------------------*/
 euler(real f, real update, real dt_in)
 {
 	return f + update*dt_in

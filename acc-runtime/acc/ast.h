@@ -34,7 +34,6 @@ typedef enum {
   NODE_DFUNCTION          = (1 << 1),
   NODE_KFUNCTION          = (1 << 2),
   NODE_FUNCTION_ID        = (1 << 3),
-  NODE_FUNCTION           = NODE_DFUNCTION | NODE_KFUNCTION,
   NODE_FUNCTION_PARAM     = (1 << 4),
   NODE_BINARY             = (1 << 5),
   NODE_BEGIN_SCOPE        = (1 << 6),
@@ -53,15 +52,16 @@ typedef enum {
   NODE_ASSIGNMENT         = (1 << 19),
   NODE_INPUT              = (1 << 20),
   NODE_DEF                = (1 << 21) | NODE_BEGIN_SCOPE,
-  NODE_RETURN             = (1 << 22),
+
   NODE_ARRAY_ACCESS       = (1 << 23),
-  NODE_STRUCT_INITIALIZER = (1 << 24),
+
   NODE_IF                 = (1 << 25),
   NODE_FUNCTION_CALL      = (1 << 26),
   NODE_DFUNCTION_ID       = (1 << 27),
   NODE_ASSIGN_LIST        = (1 << 28),
   NODE_NO_OUT             = (1 << 29),
   NODE_STRUCT_EXPRESSION  = (1 << 30),
+  NODE_FUNCTION           = NODE_DFUNCTION | NODE_KFUNCTION,
   NODE_ENUM_DEF           = (NODE_DEF + 0 + NODE_NO_OUT),
   NODE_STRUCT_DEF         = (NODE_DEF + 1 + NODE_NO_OUT),
   NODE_TASKGRAPH_DEF      = (NODE_DEF + 2 + NODE_NO_OUT),
@@ -263,6 +263,10 @@ static inline void combine_all(const ASTNode* node, char* res){
   res[0] = '\0';	
   combine_all_recursive(node,res);
   strip_whitespace(res);
+}
+static inline void combine_all_with_whitespace(const ASTNode* node, char* res){
+  res[0] = '\0';	
+  combine_all_recursive(node,res);
 }
 
 static inline ASTNode*
@@ -509,6 +513,16 @@ count_num_of_nodes_in_list(const ASTNode* list_head)
 	}
 	res += (list_head->lhs != NULL);
 	return res;
+}
+static ASTNode*
+get_node_in_list(const ASTNode* list_head, int index)
+{
+	bool last_elem = count_num_of_nodes_in_list(list_head) == index + 1;
+	while(--index)
+	{
+		list_head = list_head->lhs;
+	}
+	return last_elem ? list_head->lhs : list_head->rhs;
 }
 static bool has_qualifier(const ASTNode* node, const char* qualifier)
 {

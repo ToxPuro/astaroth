@@ -69,15 +69,6 @@
 #define DER4i2j_2 -27.0
 #define DER4i2j_3 2.0
 
-#define DER1_3 (1.0 / 60.)
-#define DER1_2 (-3. / 20.)
-#define DER1_1 (3. / 4.)
-#define DER1_0 (0)
-
-#define DER2_3 (1.0 / 90.)
-#define DER2_2 (-3. / 20.)
-#define DER2_1 (3. / 2.)
-#define DER2_0 (-49. / 18.)
 
 #define DERX_3 (2. / 720.)
 #define DERX_2 (-27. / 720.)
@@ -470,3 +461,25 @@ der6z_upwd(Field field)
 	return 0.0
 }
 #endif
+
+
+elemental laplace(Field s) {
+    return derxx(s) + deryy(s) + derzz(s)
+}
+
+
+elemental gradient(Field s) {
+    return real3(derx(s), dery(s), derz(s))
+}
+
+elemental gradient_upwd(Field s) {
+    return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
+}
+
+divergence(Field3 v) {
+    return derx(v.x) + dery(v.y) + derz(v.z)
+}
+
+curl(Field3 v) {
+    return real3(dery(v.z) - derz(v.y), derz(v.x) - derx(v.z), derx(v.y) - dery(v.x))
+}
