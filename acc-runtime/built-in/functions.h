@@ -72,3 +72,8 @@ cross(real3 a, real3 b)
 	return AC_cross(a,b)
 }
 
+cross(Field3 a, Field3 b)
+{
+	return AC_cross(value(a),value(b))
+}
+

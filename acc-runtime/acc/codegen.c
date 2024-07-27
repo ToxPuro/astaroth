@@ -4362,6 +4362,13 @@ mangle_dfunc_name(ASTNode* node, const char* dfunc_name, string_vec* dst, const 
 	free(tmp);
 	++(*counter);
 }
+int
+strcmp_null_ok(const char* a, const char* b)
+{
+	if(a == NULL) return -1;
+	if(b == NULL) return -1;
+	return strcmp(a,b);
+}
 bool
 resolve_overloaded_calls(ASTNode* node, const ASTNode* root, const char* dfunc_name, string_vec* dfunc_possible_types,const int dfunc_index)
 {
@@ -4391,7 +4398,7 @@ resolve_overloaded_calls(ASTNode* node, const ASTNode* root, const char* dfunc_n
 		if(possible)
 			push_int(&possible_indexes,start);
 	}
-	if(!strcmp(dfunc_name,"dot") && call_info.types.size == 2 && !strcmp(call_info.types.data[0],"AcRealArray") && !strcmp(call_info.types.data[1],"AcRealArray"))
+	if(!strcmp(dfunc_name,"dot") && call_info.types.size == 2 && !strcmp_null_ok(call_info.types.data[0],"AcRealArray") && !strcmp_null_ok(call_info.types.data[1],"AcRealArray"))
 	{
 		get_node_by_token(IDENTIFIER,node->lhs)->buffer = strdup("AC_dot");
 		return true;
