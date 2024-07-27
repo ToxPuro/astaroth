@@ -540,7 +540,7 @@ AC_dot(const AcReal3& a, const AcReal3& b)
 }
 
 static HOST_DEVICE_INLINE AcReal3
-cross(const AcReal3& a, const AcReal3& b)
+AC_cross(const AcReal3& a, const AcReal3& b)
 {
   return
   {
@@ -640,7 +640,10 @@ typedef struct AcMatrix {
   {
     return AcMatrix(-row(0), -row(1), -row(2));
   }
-  HOST_DEVICE constexpr AcArray<AcReal,3>& operator[](size_t index) {
+  HOST_DEVICE const constexpr AcArray<AcReal,3>& operator[](const size_t index) const {
+	  return data[index];
+  }
+  HOST_DEVICE constexpr AcArray<AcReal,3>& operator[](const size_t index) {
 	  return data[index];
   }
 } AcMatrix;
@@ -731,7 +734,7 @@ operator +(const AcArray<T, N>& lhs) {
 }
 
 template <typename T, std::size_t N>
-static constexpr  T
+static HOST_DEVICE_INLINE T
 AC_dot(const AcArray<T,N>& a, const AcArray<T,N>& b)
 {
         T res = 0;

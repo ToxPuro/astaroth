@@ -245,7 +245,7 @@ symboltable_reset(void)
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write_w");
   add_symbol(NODE_FUNCTION_ID, field3_tq, 1, NULL, "MakeField3"); // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, real_tq,  1, NULL, "AC_dot");    // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, real3_tq, 1, NULL, "cross");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, real3_tq, 1, NULL, "AC_cross");  // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, real_tq,  1, NULL, "len");    // TODO RECHECK
 
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "uint64_t");   // TODO RECHECK
@@ -3061,7 +3061,9 @@ get_expr_type(ASTNode* node, const ASTNode* root)
 	if(node->type & NODE_ARRAY_ACCESS)
 	{
 		const char* base_type = get_expr_type(node->lhs,root);
-		res = (!base_type)   ? NULL : remove_substring(strdup(base_type),"*");
+		res = (!base_type)   ? NULL : 
+			!strcmp(base_type,"AcMatrix") ? "AcRealArray" :
+			remove_substring(strdup(base_type),"*");
 	}
 	else if(node->type == NODE_PRIMARY_EXPRESSION)
 	{
@@ -3090,8 +3092,6 @@ get_expr_type(ASTNode* node, const ASTNode* root)
 		get_user_struct_member_expr(node,root);
 
 	}
-	//else if(node->type == NODE_PRIMARY_EXPRESSION && node->expr_type)
-	//	res = node->expr_type;
 	else if(node->type == NODE_BINARY_EXPRESSION)
 	{
 		char* lhs_res = get_expr_type(node->lhs,root);
@@ -3122,7 +3122,7 @@ get_expr_type(ASTNode* node, const ASTNode* root)
 
 		Symbol* sym = (Symbol*)get_symbol(NODE_DFUNCTION_ID | NODE_FUNCTION_ID ,get_node_by_token(IDENTIFIER,node->lhs)->buffer,NULL);
 		const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-		if(node->rhs && count_num_of_nodes_in_list(node->rhs) == 1 && sym)
+		if(node->rhs && count_num_of_nodes_in_list(node->rhs) == 1 && sym && sym->tqualifiers.size == 0)
 		{
 			string_vec duplicate_dfuncs = get_duplicate_dfuncs(root);
 			if(!str_vec_contains(duplicate_dfuncs,func_name))
@@ -3141,27 +3141,24 @@ get_expr_type(ASTNode* node, const ASTNode* root)
 							{
 								const char* param_name = get_node_by_token(IDENTIFIER,param_decl)->buffer;
 								param_decl->expr_type = strdup(expr_type);
-								printf("HMM NAME: %s\n",param_name);
 								set_primary_expression_types(func_node, expr_type, param_name);
 							}
 						}
 					}
-					//push(&sym->tqualifiers,expr_type);
 				}
 			}
 			free_str_vec(&duplicate_dfuncs);
 		}
-		if(sym && sym->tqualifiers.size > 0)
+		const Symbol* stencil = get_symbol(NODE_VARIABLE_ID,func_name,"Stencil");
+		if(sym && sym->tqualifiers.size == 1)
+			node->expr_type = strdup(sym -> tqualifiers.data[0]);
+		else if(sym && sym->tqualifiers.size > 1)
 		{
   			const char* builtin_datatypes[] = {"int","AcReal","int3","AcReal3","Field","Field3"};
   			for (size_t i = 0; i < sizeof(builtin_datatypes)/sizeof(builtin_datatypes[0]); ++i)
 				if(str_vec_contains(sym -> tqualifiers,builtin_datatypes[i])) node->expr_type = strdup(builtin_datatypes[i]);
 		}
-		const Symbol* stencil = get_symbol(NODE_VARIABLE_ID,func_name,"Stencil");
-		if(stencil)
-			node->expr_type = "AcReal";
-		//if(node->expr_type)
-			//printf("HMM FUNC: %s,%s\n",func_name,node->expr_type);
+		else if(stencil) node->expr_type = "AcReal";
 		
 	}
 	else
@@ -4230,15 +4227,7 @@ gen_type_info_base(ASTNode* node, const ASTNode* root, ASTNode* func_base)
 		const char* func_name = get_node(NODE_DFUNCTION_ID,dfunc_start)->buffer;
 		Symbol* func_sym = (Symbol*)get_symbol(NODE_DFUNCTION_ID,func_name,NULL);
 		if(func_sym && expr_type && !str_vec_contains(func_sym->tqualifiers,expr_type))
-		{
-			if(!strcmp(func_name,"stress_tensor"))
-			{
-				printf("HMM: %s\n",expr_type);
-				exit(EXIT_FAILURE);
-			}
-			printf("FUNC NAME: %s\n",func_name);
 			push(&func_sym->tqualifiers,expr_type);
-		}
 	}
 	if(node->expr_type) return res;
 	if(node->type == NODE_PRIMARY_EXPRESSION)
@@ -4253,24 +4242,26 @@ gen_type_info_base(ASTNode* node, const ASTNode* root, ASTNode* func_base)
 	else if(node->type & NODE_DECLARATION && get_node(NODE_TSPEC,node))
 	{
 		node->expr_type = get_node(NODE_TSPEC,node)->lhs->buffer;
+		const char* var_name = get_node_by_token(IDENTIFIER,node)->buffer;
 		if(func_base && node->expr_type)
-			set_primary_expression_types(func_base, node->expr_type, get_node_by_token(IDENTIFIER,node)->buffer);
+			set_primary_expression_types(func_base, node->expr_type, var_name);
 	}
 	else if(node->type & NODE_ASSIGNMENT && node->rhs && func_base &&  !get_node(NODE_MEMBER_ID,node->lhs))
 	{
 
-		const char* identifier = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-	       	if(get_expr_type(node->rhs,root))
+		const ASTNode* decl = get_node(NODE_DECLARATION,node->lhs);
+		const ASTNode* tspec = get_node(NODE_TSPEC,decl);
+		const char* var_name = get_node_by_token(IDENTIFIER,decl)->buffer;
+		if(tspec)
+		{
+			node->expr_type = tspec->lhs->buffer;
+			if(func_base && node->expr_type)
+				set_primary_expression_types(func_base, node->expr_type, var_name);
+		}
+		else if(get_expr_type(node->rhs,root))
 		{
 			node->expr_type = get_expr_type(node->rhs,root);
-			set_primary_expression_types(func_base, node->expr_type, identifier);
-			if(!strcmp(identifier,"S"))
-			{
-				char tmp[10000];
-				combine_all(node->rhs,tmp);
-				printf("HMM: %s: %s\n",node->expr_type,tmp);
-				exit(EXIT_FAILURE);
-			}
+			set_primary_expression_types(func_base, node->expr_type, var_name);
 			return true;
 		}
 
@@ -4400,11 +4391,15 @@ resolve_overloaded_calls(ASTNode* node, const ASTNode* root, const char* dfunc_n
 		if(possible)
 			push_int(&possible_indexes,start);
 	}
+	if(!strcmp(dfunc_name,"dot") && call_info.types.size == 2 && !strcmp(call_info.types.data[0],"AcRealArray") && !strcmp(call_info.types.data[1],"AcRealArray"))
+	{
+		get_node_by_token(IDENTIFIER,node->lhs)->buffer = strdup("AC_dot");
+		return true;
+	}
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
 		combine_all(node->rhs,tmp); 
 		printf("Not able to resolve: %s\n",tmp); 
-		//printf("HMM: %s\n",call_info.types.data[0]);
 		return res;
 	}
 	string_vec types = dfunc_possible_types[possible_indexes.data[0]];

@@ -525,17 +525,17 @@ induction() {
 stress_tensor(v) {
     Matrix S
 
-    S.data[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))
-    S.data[0][1] = (1.0 / 2.0) * (dery(v.x) + derx(v.y))
-    S.data[0][2] = (1.0 / 2.0) * (derz(v.x) + derx(v.z))
+    S[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))
+    S[0][1] = (1.0 / 2.0) * (dery(v.x) + derx(v.y))
+    S[0][2] = (1.0 / 2.0) * (derz(v.x) + derx(v.z))
 
-    S.data[1][0] = S.data[0][1]
-    S.data[1][1] = (2.0 / 3.0) * dery(v.y) - (1.0 / 3.0) * (derx(v.x) + derz(v.z))
-    S.data[1][2] = (1.0 / 2.0) * (derz(v.y) + dery(v.z))
+    S[1][0] = S.data[0][1]
+    S[1][1] = (2.0 / 3.0) * dery(v.y) - (1.0 / 3.0) * (derx(v.x) + derz(v.z))
+    S[1][2] = (1.0 / 2.0) * (derz(v.y) + dery(v.z))
 
-    S.data[2][0] = S.data[0][2]
-    S.data[2][1] = S.data[1][2]
-    S.data[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
+    S[2][0] = S.data[0][2]
+    S[2][1] = S.data[1][2]
+    S[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
 
     return S
 }
@@ -548,10 +548,10 @@ gradient_of_divergence(v) {
     )
 }
 
-contract(mat) {
-    return overloaded_dot(mat.row(-1), mat.row(0)) +
-           overloaded_dot(mat.row(1), mat.row(1)) +
-           overloaded_dot(mat.row(2), mat.row(2))
+contract(Matrix mat) {
+    return dot(mat[0], mat[0]) +
+           dot(mat[1], mat[1]) +
+           dot(mat[2], mat[2])
 }
 
 
@@ -580,8 +580,8 @@ helical_forcing(k_force, xx, ff_re, ff_im, phi)
 
     cos_phi     = cos(phi)
     sin_phi     = sin(phi)
-    cos_k_dot_x = cos(overloaded_dot(k_force, yy))
-    sin_k_dot_x = sin(overloaded_dot(k_force, yy))
+    cos_k_dot_x = cos(dot(k_force, yy))
+    sin_k_dot_x = sin(dot(k_force, yy))
     real_comp_phase = cos_k_dot_x * cos_phi - sin_k_dot_x * sin_phi
     imag_comp_phase = cos_k_dot_x * sin_phi + sin_k_dot_x * cos_phi
 
@@ -620,9 +620,9 @@ forcing(dt)
 
 
 continuity() {
-    return -overloaded_dot(UU, gradient(VTXBUF_LNRHO)) - divergence(UU)
+    return -dot(UU, gradient(VTXBUF_LNRHO)) - divergence(UU)
 #if LUPWD
-           + overloaded_dot(abs(UU), gradient6_upwd(VTXBUF_LNRHO))
+           + dot(abs(UU), gradient6_upwd(VTXBUF_LNRHO))
 #endif
 
 }
@@ -684,7 +684,7 @@ heat_conduction() {
     //chi = AC_THERMAL_CONDUCTIVITY / (exp(value(VTXBUF_LNRHO)) * AC_cp_sound)
     chi = AC_K_heatcond / (exp(value(VTXBUF_LNRHO)) * AC_cp_sound)
 
-    return AC_cp_sound * chi * (first_term + overloaded_dot(second_term, third_term))
+    return AC_cp_sound * chi * (first_term + dot(second_term, third_term))
 }
 
 entropy() {
@@ -700,12 +700,12 @@ entropy() {
 #else
     entshock = 0.0
 #endif
-    RHS = (0) - (0) + AC_eta * AC_mu0 * overloaded_dot(j, j) +
+    RHS = (0) - (0) + AC_eta * AC_mu0 * dot(j, j) +
                        2. * exp(value(VTXBUF_LNRHO)) * AC_nu_visc * contract(S) +
                        entshock +
                        AC_zeta * exp(value(VTXBUF_LNRHO)) * divergence(UU) * divergence(UU)
 
-    return -overloaded_dot(value(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
+    return -dot(value(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
 }
 #endif
 

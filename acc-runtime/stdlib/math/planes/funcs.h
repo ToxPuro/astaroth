@@ -16,9 +16,12 @@ Get4DNormal(real4 a, real4 b, real4 c)
 PlaneCoefficients3D(real4 c, real4 b, real4 a)
 {
         const real4 normal = Get4DNormal(a,b,c);
-        const real3 a_coords = {a.x, a.y, a.z};
+        //const real3 a_coords = {a.x, a.y, a.z};
+	const real3 a_coords = {a.x, a.y, a.z};
         const real3 b_coords = {b.x, b.y, b.z};
         const real3 c_coords = {c.x, c.y, c.z};
+
+        //const real inv = AC_dot(a_coords, cross(c_coords,b_coords));
         const real inv = dot(a_coords, cross(c_coords,b_coords));
         return real3(
                 -normal.x/inv,
