@@ -448,6 +448,7 @@ template <typename T, std::size_t N>
 static HOST_DEVICE_INLINE int
 size(const AcArray<T,N>& arr)
 {
+	(void)arr;
 	return N;
 }
 
