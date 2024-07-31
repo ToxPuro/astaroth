@@ -92,7 +92,9 @@ static te_expr *new_expr(const int type, const te_expr *parameters[]) {
     const int arity = ARITY(type);
     const int psize = sizeof(void*) * arity;
     const int size = (sizeof(te_expr) - sizeof(void*)) + psize + (IS_CLOSURE(type) ? sizeof(void*) : 0);
-    te_expr *ret = malloc(size);
+    //NOT ORIGINAL SOURCE CODE
+    //TP: for some reason in the original source the malloc size can be too small that the compiler warns about it
+    te_expr *ret = malloc(size*2);
     CHECK_NULL(ret);
 
     memset(ret, 0, size);

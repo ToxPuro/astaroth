@@ -1,12 +1,9 @@
-//enum AcCoordinatesType
-//{
-//	AcCartesianCoordinates
-//}
-//enum AcGridType
-//{
-//	AcEulerianGrid,
-//	AcLagrangianGrid
-//}
+struct int3 
+{
+	int x;
+	int y;
+	int z;
+}
 
 typedef AcReal2 struct real2
 {
@@ -33,4 +30,7 @@ typedef AcComplex struct complex
 	real x;
 	real y;
 }
-
+//Copy int3's here since they need the struct declaration
+int3 AC_domain_decomposition
+int3 AC_multigpu_offset
+int3 AC_domain_coordinates

@@ -36,11 +36,6 @@ template <>
 const char*
 get_datatype<AcReal>()  {return "real";};
 
-template <>
-const char*
-get_datatype<int3>()    {return "int3";};
-
-
 char*
 to_str(const int value)
 {
@@ -65,13 +60,6 @@ to_str(const bool value)
 	return res;
 }
 
-char*
-to_str(const int3 value)
-{
-	char* res = (char*)malloc(sizeof(char)*4098);
-	sprintf(res,"{%d,%d,%d}\n",value.x, value.y, value.z);
-	return res;
-}
 
 
 template <typename V>

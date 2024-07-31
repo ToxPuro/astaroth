@@ -50,9 +50,6 @@ real AC_ylen
 real AC_zlen
 #endif
 
-int3 AC_domain_decomposition
-int3 AC_multigpu_offset
-int3 AC_domain_coordinates
 
 int AC_proc_mapping_strategy
 int AC_decompose_strategy

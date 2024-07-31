@@ -52,7 +52,7 @@ typedef enum {
   NODE_ASSIGNMENT         = (1 << 19),
   NODE_INPUT              = (1 << 20),
   NODE_DEF                = (1 << 21) | NODE_BEGIN_SCOPE,
-
+  NODE_STRUCT_INITIALIZER = (1 << 22),
   NODE_ARRAY_ACCESS       = (1 << 23),
 
   NODE_IF                 = (1 << 25),
@@ -348,6 +348,22 @@ get_parent_node(const NodeType type, const ASTNode* node)
   if (node->parent->type & type)
     return node->parent;
   return get_parent_node(type, node->parent);
+}
+
+static bool
+is_left_child(const NodeType type, const ASTNode* node)
+{
+	const ASTNode* parent = get_parent_node(type,node);
+	if(!parent) return false;
+	return get_node_by_id(node->id,parent->lhs) != NULL;
+}
+
+static bool
+is_right_child(const NodeType type, const ASTNode* node)
+{
+	const ASTNode* parent = get_parent_node(type,node);
+	if(!parent) return false;
+	return get_node_by_id(node->id,parent->rhs) != NULL;
 }
 static inline const ASTNode*
 get_parent_node_exclusive(const NodeType type, const ASTNode* node)

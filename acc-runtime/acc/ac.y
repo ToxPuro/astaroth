@@ -424,7 +424,7 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
-%token INT UINT INT3 REAL MATRIX FIELD FIELD3 STENCIL WORK_BUFFER BOOL INTRINSIC 
+%token INT UINT REAL MATRIX FIELD FIELD3 STENCIL WORK_BUFFER BOOL INTRINSIC 
 %token KERNEL INLINE ELEMENTAL BOUNDARY_CONDITION SUM MAX COMMUNICATED AUXILIARY DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL_MEMORY_QL OUTPUT INPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS EXTERN
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE
@@ -574,7 +574,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 		if(!has_qualifier($$->rhs,"const"))
 		{
                   fprintf(stderr, "FATAL ERROR: assignment to a global variable only allowed for constant values\n");
-                  assert(is_const);
+                  assert(!has_qualifier($$->rhs,"const"));
 		  exit(EXIT_FAILURE);
 		}
                 variable_definition->type |= NODE_VARIABLE;
@@ -668,7 +668,6 @@ auxiliary: AUXILIARY   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 extern: EXTERN { $$ = astnode_create(NODE_NO_OUT, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int: INT               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
-int3: INT3             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 real: REAL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 bool: BOOL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("bool", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcMatrix", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -734,11 +733,22 @@ enum_definition: enum_name '{' expression_list '}'{
  * Types
  * =============================================================================
 */
-type_specifier: int          { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+scalar_type_specifier: 
+		int            { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | uint         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | int3         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | bool         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+
+type_specifier: 
+	        scalar_type_specifier {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
+	      | scalar_type_specifier '[' ']' {
+				$$ = astnode_create(NODE_UNKNOWN,$1,NULL); 
+				const char* old_tspec = $1->lhs->buffer;
+				char tmp[strlen(old_tspec) + 1];
+				sprintf(tmp,"%s*",old_tspec);
+				free($1->lhs->buffer);
+				$1->lhs->buffer = strdup(tmp);
+			}
               | matrix       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | matrix '[' expression ']'
 		{ 
@@ -798,7 +808,7 @@ type_qualifiers: type_qualifiers type_qualifier {$$ = astnode_create(NODE_UNKNOW
 binary_op: '+'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; }
          | '-'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; }
          | '&'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; }
-         | BINARY_OP   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
+         | BINARY_OP   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; }
          ;
 
 unary_op: '-'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
@@ -822,7 +832,7 @@ primary_expression: identifier         { $$ = astnode_create(NODE_PRIMARY_EXPRES
                   ;
 
 struct_initializer: 
-                  '{' expression_list '}' { $$ = astnode_create(NODE_UNKNOWN, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
+                  '{' expression_list '}' { $$ = astnode_create(NODE_STRUCT_INITIALIZER, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
 		  ;
 
 postfix_expression: primary_expression                         { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
@@ -831,7 +841,13 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
                   | postfix_expression '(' expression_list ')' { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); } 
                   | postfix_expression '.' identifier          { $$ = astnode_create(NODE_STRUCT_EXPRESSION, $1, $3); astnode_set_infix(".", $$); set_identifier_type(NODE_MEMBER_ID, $$->rhs); }
                   | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); char tmp[1000]; combine_all($$->lhs,tmp); $$->expr_type = strdup(tmp); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); $$->lhs->type ^= NODE_TSPEC; /* Unset NODE_TSPEC flag, casts are handled as functions */ }
-                  | '(' type_specifier ')'  struct_initializer { $$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); astnode_set_postfix(")",$$); char tmp[1000]; combine_all($$->lhs,tmp); astnode_set_buffer(strdup(tmp),$$); }
+                  | '(' type_specifier ')'  struct_initializer { 
+						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
+						astnode_set_postfix(")",$$); char tmp[1000]; 
+						combine_all($$->lhs,tmp); 
+						astnode_set_buffer(strdup(tmp),$$); 
+						$$->rhs->expr_type = strdup(tmp);
+						}
                   | '[' expression_list ']' { $$ = astnode_create(NODE_ARRAY_INITIALIZER, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
 		  | struct_initializer {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
                   | '(' expression ')' { $$ = astnode_create(NODE_UNKNOWN, $2, NULL); astnode_set_prefix("(", $$); astnode_set_postfix(")", $$); }
@@ -943,6 +959,18 @@ assignment: declaration assignment_body {
 					tspec->lhs->buffer = tmp;
 				}
 			}
+			if(get_node(NODE_ARRAY_INITIALIZER,$2))
+			{
+				ASTNode* tspec = get_node(NODE_TSPEC,$1);
+				if(tspec)
+				{
+					const size_t old_size = strlen(tspec->lhs->buffer);
+					char* tmp = malloc(sizeof(char)*(old_size + 1000));
+					sprintf(tmp,"AcArray<%s,%d>",tspec->lhs->buffer,count_num_of_nodes_in_list(get_node(NODE_ARRAY_INITIALIZER,$2)->lhs));
+					free(tspec->lhs->buffer);
+					tspec->lhs->buffer = tmp;
+				}
+			}
 			const int num_of_elems = count_num_of_nodes_in_list($1->rhs);
 			if(num_of_elems > 1)
 			{
@@ -976,11 +1004,13 @@ statement: selection_statement  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
 	 | non_selection_statement {$$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
          ;
 
-non_selection_statement: variable_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
+non_selection_statement: 
+	   variable_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
          | iteration_statement  { $$ = astnode_create(NODE_BEGIN_SCOPE, $1, NULL); }
          | return expression    { $$ = astnode_create(NODE_UNKNOWN, $1, $2); astnode_set_postfix(";", $$); }
          | function_call        { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
          ;
+
 
 
 
@@ -1015,6 +1045,8 @@ else_statement: else compound_statement { $$ = astnode_create(NODE_UNKNOWN, $1, 
 
 iteration_statement: while_statement compound_statement { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
                    | for_statement compound_statement   { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+                   | for_statement variable_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+                   | for_statement function_call        { $$ = astnode_create(NODE_UNKNOWN, $1, $2); astnode_set_postfix(";",$$); }
                    ;
 
 while_statement: while expression { $$ = astnode_create(NODE_UNKNOWN, $1, $2); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }

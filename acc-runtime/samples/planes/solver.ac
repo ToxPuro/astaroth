@@ -90,8 +90,8 @@ Kernel initial_condition()
 	const real accumulated_time = nsteps*dt;
         const real final_time = inittime + accumulated_time;
 
-	write(U, get_diffusion_val(inittime,distance_to_center_squared))
-	write(SOLUTION, get_diffusion_val(final_time,distance_to_center_squared))
+	write(U, real(get_diffusion_val(inittime,distance_to_center_squared)))
+	write(SOLUTION, real(get_diffusion_val(final_time,distance_to_center_squared)))
 
 }
 Kernel singlepass_solve()
@@ -282,6 +282,6 @@ Kernel singlepass_solve()
         const real Dyy = 2*(partials0yy + partials1yy + partials2yy + partials3yy + partials4yy + partials5yy + partials6yy + partials7yy)*totalVolumeInv;
         const real Dzz = 2*(partials0zz + partials1zz + partials2zz + partials3zz + partials4zz + partials5zz + partials6zz + partials7zz)*totalVolumeInv;
 	update_val = dt*D*(Dxx + Dyy+ Dzz)
-	write(U, value(U) + update_val)
+	write(U, U + update_val)
 }	
 

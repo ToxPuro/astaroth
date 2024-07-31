@@ -41,17 +41,7 @@
 #endif
 #endif
 
-#define UNUSED __attribute__((unused))
-
-#if defined(__CUDACC__) || defined(__HIPCC__)
-#define HOST_DEVICE __host__ __device__ UNUSED
-#define HOST_DEVICE_INLINE __host__ __device__ __forceinline__ constexpr UNUSED
-#define HOST_INLINE __host__  __forceinline__ UNUSED
-#else
-#define HOST_DEVICE UNUSED
-#define HOST_DEVICE_INLINE inline constexpr UNUSED
-#define HOST_INLINE  __forceinline__ UNUSED
-#endif // __CUDACC__ || __HIPCC__
+#include "func_attributes.h"
 
 #define ENABLE_COMPLEX_DATATYPE (1)
 #if ENABLE_COMPLEX_DATATYPE
@@ -72,17 +62,6 @@ exp(const AcComplex& val)
   return AcComplex(exp(val.x) * cos(val.y), exp(val.x) * sin(val.y));
 }
 
-static HOST_DEVICE_INLINE AcComplex
-operator+(const AcComplex& a)
-{
-	return (AcComplex){a.x, a.y};
-}
-
-static HOST_DEVICE_INLINE AcComplex
-operator-(const AcComplex& a)
-{
-	return AcComplex{-a.x,-a.y};
-}
 
 static HOST_DEVICE_INLINE AcComplex
 operator*(const AcComplex& a, const AcComplex& b)
@@ -90,11 +69,6 @@ operator*(const AcComplex& a, const AcComplex& b)
   return (AcComplex){a.x*b.x - a.y*b.y,a.x*b.y + b.x*a.y};
 }
 
-static HOST_DEVICE_INLINE AcComplex
-operator*(const AcReal& a, const AcComplex& b)
-{
-  return (AcComplex){a * b.x, a * b.y};
-}
 static HOST_DEVICE_INLINE AcComplex
 operator*(const AcComplex& a, const AcReal& b)
 {
@@ -199,12 +173,6 @@ operator-(const int3& a)
   return (int3){-a.x, -a.y, -a.z};
 }
 
-static HOST_DEVICE_INLINE int3
-operator+(const int3& a)
-{
-  return (int3){a.x, a.y, a.z};
-}
-
 
 static HOST_DEVICE_INLINE int3
 operator*(const int3& a, const int3& b)
@@ -212,12 +180,6 @@ operator*(const int3& a, const int3& b)
   return (int3){a.x * b.x, a.y * b.y, a.z * b.z};
 }
 
-
-static HOST_DEVICE_INLINE AcReal3
-operator*(const AcReal3& a, const AcReal3& b)
-{
-  return (AcReal3){a.x * b.x, a.y * b.y, a.z * b.z};
-}
 
 static HOST_DEVICE_INLINE AcReal3
 operator*(const int3& a, const AcReal3& b)
@@ -255,11 +217,11 @@ operator-(const int3& a, const int3& b)
     return (int3){a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
-static HOST_DEVICE_INLINE int3
-operator-(const int3& a, const int b)
-{
-    return (int3){a.x - b, a.y - b, a.z - b};
-}
+//static HOST_DEVICE_INLINE int3
+//operator-(const int3& a, const int b)
+//{
+//    return (int3){a.x - b, a.y - b, a.z - b};
+//}
 
 static HOST_DEVICE_INLINE int3
 operator-(const int a, const int3& b)
@@ -372,67 +334,6 @@ is_valid(const AcReal a)
   return !isnan(a) && !isinf(a);
 }
 
-/*
- * AcReal2
- */
-static HOST_DEVICE_INLINE AcReal2
-operator+(const AcReal2& a, const AcReal2& b)
-{
-  return (AcReal2){a.x + b.x, a.y + b.y};
-}
-
-
-static HOST_DEVICE_INLINE void
-operator+=(AcReal2& lhs, const AcReal2& rhs)
-{
-  lhs.x += rhs.x;
-  lhs.y += rhs.y;
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator-(const AcReal2& a, const AcReal2& b)
-{
-  return (AcReal2){a.x - b.x, a.y - b.y};
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator+(const AcReal2& a)
-{
-  return (AcReal2){a.x,a.y};
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator-(const AcReal2& a)
-{
-  return (AcReal2){-a.x, -a.y};
-}
-
-static HOST_DEVICE_INLINE void
-operator-=(AcReal2& lhs, const AcReal2& rhs)
-{
-  lhs.x -= rhs.x;
-  lhs.y -= rhs.y;
-}
-
-
-static HOST_DEVICE_INLINE AcReal2
-operator*(const AcReal& a, const AcReal2& b)
-{
-  return (AcReal2){a * b.x, a * b.y};
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator*(const AcReal2& b, const AcReal& a)
-{
-  return (AcReal2){a * b.x, a * b.y};
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator/(const AcReal2& a, const AcReal& b)
-{
-  return (AcReal2){a.x / b, a.y / b};
-}
-
 
 static HOST_DEVICE_INLINE AcReal
 AC_dot(const AcReal2& a, const AcReal2& b)
@@ -449,84 +350,31 @@ is_valid(const AcReal2& a)
 /*
  * AcReal3
  */
-static HOST_DEVICE_INLINE AcReal3
-operator+(const AcReal3& a, const AcReal3& b)
-{
-  return (AcReal3){a.x + b.x, a.y + b.y, a.z + b.z};
-}
-
-static HOST_DEVICE_INLINE void
-operator+=(AcReal3& lhs, const AcReal3& rhs)
-{
-  lhs.x += rhs.x;
-  lhs.y += rhs.y;
-  lhs.z += rhs.z;
-}
-
-static HOST_DEVICE_INLINE AcBool3 
-operator!=(const AcReal3& a, const AcReal b)
-{
-  return (AcBool3){
-      a.x != b,
-      a.y != b,
-      a.z != b
-  };
-}
 
 
-static HOST_DEVICE_INLINE AcBool3 
-operator==(const AcReal3& a, const AcReal b)
-{
-  return (AcBool3){
-      a.x == b,
-      a.y == b,
-      a.z == b
-  };
-}
+//static HOST_DEVICE_INLINE AcBool3 
+//operator!=(const AcReal3& a, const AcReal b)
+//{
+//  return (AcBool3){
+//      a.x != b,
+//      a.y != b,
+//      a.z != b
+//  };
+//}
+//
+//
+//static HOST_DEVICE_INLINE AcBool3 
+//operator==(const AcReal3& a, const AcReal b)
+//{
+//  return (AcBool3){
+//      a.x == b,
+//      a.y == b,
+//      a.z == b
+//  };
+//}
 
-static HOST_DEVICE_INLINE AcReal3
-operator-(const AcReal3& a, const AcReal3& b)
-{
-  return (AcReal3){a.x - b.x, a.y - b.y, a.z - b.z};
-}
 
-static HOST_DEVICE_INLINE AcReal3
-operator-(const AcReal3& a)
-{
-  return (AcReal3){-a.x, -a.y, -a.z};
-}
 
-static HOST_DEVICE_INLINE AcReal3
-operator+(const AcReal3& a)
-{
-  return (AcReal3){a.x, a.y, a.z};
-}
-
-static HOST_DEVICE_INLINE void
-operator-=(AcReal3& lhs, const AcReal3& rhs)
-{
-  lhs.x -= rhs.x;
-  lhs.y -= rhs.y;
-  lhs.z -= rhs.z;
-}
-
-static HOST_DEVICE_INLINE AcReal3
-operator*(const AcReal& a, const AcReal3& b)
-{
-  return (AcReal3){a * b.x, a * b.y, a * b.z};
-}
-
-static HOST_DEVICE_INLINE AcReal3
-operator*(const AcReal3& b, const AcReal& a)
-{
-  return (AcReal3){a * b.x, a * b.y, a * b.z};
-}
-
-static HOST_DEVICE_INLINE AcReal3
-operator/(const AcReal3& a, const AcReal& b)
-{
-  return (AcReal3){a.x / b, a.y / b, a.z / b};
-}
 static HOST_DEVICE_INLINE AcReal
 sum(const AcReal3& a)
 {
@@ -591,9 +439,17 @@ public:
         }
     }
 
+    HOST_DEVICE constexpr AcArray(void) : arr_{}{}
+
 private:
     T arr_[N];
 };
+template <typename T, std::size_t N>
+static HOST_DEVICE_INLINE int
+size(const AcArray<T,N>& arr)
+{
+	return N;
+}
 
 typedef struct AcMatrix {
   //AcReal data[3][3] = {{0}};
@@ -778,7 +634,7 @@ public:
 };
 template <const size_t N>
 constexpr static AcMatrixN<N>
-operator*(const double& v, const AcMatrixN<N>& m)
+operator*(const AcReal& v, const AcMatrixN<N>& m)
 {
 	AcMatrixN<N> res;
 	for(size_t i = 0; i < N; ++i)

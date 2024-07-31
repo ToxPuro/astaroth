@@ -94,8 +94,8 @@ const int AC_const_int_2nd = 4
 auxiliary Field BFIELDX
 auxiliary Field BFIELDY
 auxiliary Field BFIELDZ
-//const Field3 BFIELD = MakeField3(BFIELDX, BFIELDY, BFIELDZ)
-#define BFIELD MakeField3(BFIELDX,BFIELDY,BFIELDZ)
+const Field3 BFIELD = MakeField3(BFIELDX, BFIELDY, BFIELDZ)
+//#define BFIELD MakeField3(BFIELDX,BFIELDY,BFIELDZ)
 #endif
 
 #if LSHOCK 
@@ -272,7 +272,7 @@ induction() {
 }
 #endif
 
-stress_tensor(Field3 v) {
+stress_tensor(v) {
     Matrix S
 
     S[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))
@@ -622,9 +622,8 @@ Kernel twopass_solve_final(int step_num, real current_time) {
 // TODO ensure AC_scaling_factor is set!
 real AC_scaling_factor
 Kernel scale() {
-    for field in 0:NUM_FIELDS {
+    for field in 0:NUM_FIELDS
         write(Field(field), Field(field))
-    }
 
 #if LMAGNETIC
     write(AA, AC_scaling_factor*AA)
@@ -874,11 +873,11 @@ Kernel constant() {
 }
 Kernel test()
 {
-	if(AC_second_bool)
-	{
-		val = AC_real_gmem_arr[0]
-		vec_val = AC_const_real3
-	}
+	real arr = [1.0,2.0]
+	arr_2 = abs(arr)
+
+	real arr_3 = [1.0,2.0,3.0]
+	arr_4 = abs(arr_3)
 }
 
 

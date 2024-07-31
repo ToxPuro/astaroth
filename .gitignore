@@ -25,7 +25,7 @@ makefile~
 build/
 build*/
 benchmark-data/
-
+acc-runtime/dynamic
 # Clangd files
 .cache/
 

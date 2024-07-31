@@ -46,7 +46,6 @@ void strip_whitespace(char *str) {
 
 "int"                   { return INT; } /* Type specifiers */
 "uint"                  { return UINT; }
-"int3"                  { return INT3; }
 "real"                  { return REAL; }
 "bool"                  { return BOOL; }
 "Matrix"                { return MATRIX; }

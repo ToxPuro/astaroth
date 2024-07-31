@@ -112,8 +112,11 @@ main(void)
     acGridInit(info);
 
     // Load/Store
-    acGridLoadMesh(STREAM_DEFAULT, model);
-    acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    //acGridLoadMesh(STREAM_DEFAULT, model);
+    acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT,model);
+    acGridSynchronizeStream(STREAM_ALL);
+    //acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
     if (pid == 0) {
         const AcResult res = acVerifyMesh("Load/Store", model, candidate);
         if (res != AC_SUCCESS) {
@@ -122,6 +125,8 @@ main(void)
         }
     }
     fflush(stdout);
+    ac_MPI_Finalize();
+    return 0;
 
     if (pid == 0) {
         acHostMeshDestroy(&model);
@@ -133,10 +138,6 @@ main(void)
 		    	acCompute(KERNEL_solve,all_fields)
 		    });
 
-    acGridQuit();
-    ac_MPI_Finalize();
-    fflush(stdout);
-    finalized = true;
 
     if (pid == 0)
         fprintf(stderr, "MPITEST complete: %s\n",
@@ -200,6 +201,11 @@ main(void)
     plt::save(name_buffer);
 
     plt::show();
+
+    acGridQuit();
+    ac_MPI_Finalize();
+    fflush(stdout);
+    finalized = true;
     
 
     return EXIT_SUCCESS;
