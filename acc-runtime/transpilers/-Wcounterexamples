@@ -1,0 +1,3263 @@
+Nonterminals useless in grammar
+
+    struct_name
+    enum_name
+    if
+    elif
+    else
+    while
+    for
+    in
+    communicated
+    dconst_ql
+    const_ql
+    shared
+    dynamic
+    constexpr
+    run_const
+    output
+    input
+    global_ql
+    auxiliary
+    extern
+    return
+    computesteps
+    boundconds
+    inline
+    elemental
+    boundary_condition
+    sum
+    max
+    hostdefine
+    declaration_postfix_expression
+    declarations
+    non_null_declaration
+    declaration
+    declaration_list
+    assignment
+    statement
+    statement_list
+
+
+Terminals unused in grammar
+
+    IF
+    ELIF
+    ELSE
+    WHILE
+    FOR
+    RETURN
+    IN
+    BREAK
+    CONTINUE
+    QUESTION
+    INLINE
+    ELEMENTAL
+    BOUNDARY_CONDITION
+    SUM
+    MAX
+    COMMUNICATED
+    AUXILIARY
+    DCONST_QL
+    CONST_QL
+    SHARED
+    DYNAMIC_QL
+    CONSTEXPR
+    RUN_CONST
+    GLOBAL_MEMORY_QL
+    OUTPUT
+    INPUT
+    COMPUTESTEPS
+    BOUNDCONDS
+    EXTERN
+    HOSTDEFINE
+    STRUCT_NAME
+    ENUM_NAME
+    ','
+
+
+Rules useless in grammar
+
+  127 struct_name: STRUCT_NAME
+
+  128 enum_name: ENUM_NAME
+
+  129 if: IF
+
+  130 elif: ELIF
+
+  131 else: ELSE
+
+  132 while: WHILE
+
+  133 for: FOR
+
+  134 in: IN
+
+  135 communicated: COMMUNICATED
+
+  136 dconst_ql: DCONST_QL
+
+  137 const_ql: CONST_QL
+
+  138 shared: SHARED
+
+  139 dynamic: DYNAMIC_QL
+
+  140 constexpr: CONSTEXPR
+
+  141 run_const: RUN_CONST
+
+  142 output: OUTPUT
+
+  143 input: INPUT
+
+  144 global_ql: GLOBAL_MEMORY_QL
+
+  145 auxiliary: AUXILIARY
+
+  146 extern: EXTERN
+
+  147 return: RETURN
+
+  148 computesteps: COMPUTESTEPS
+
+  149 boundconds: BOUNDCONDS
+
+  150 inline: INLINE
+
+  151 elemental: ELEMENTAL
+
+  152 boundary_condition: BOUNDARY_CONDITION
+
+  153 sum: SUM
+
+  154 max: MAX
+
+  155 hostdefine: HOSTDEFINE
+
+  156 declaration_postfix_expression: identifier
+  157                               | declaration_postfix_expression '[' expression ']'
+  158                               | declaration_postfix_expression '.' identifier
+
+  159 declarations: declarations declaration
+  160             | declaration
+
+  161 non_null_declaration: type_declaration declaration_list
+
+  162 declaration: type_declaration declaration_list
+
+  163 declaration_list: declaration_postfix_expression
+  164                 | declaration_list ',' declaration_postfix_expression
+
+  165 assignment: declaration assignment_body
+
+  166 statement: ε
+  167          | use_statement
+
+  168 statement_list: statement
+  169               | statement_list statement
+
+
+State 37 conflicts: 1 shift/reduce
+State 39 conflicts: 1 shift/reduce
+State 165 conflicts: 4 shift/reduce
+
+
+Grammar
+
+    0 $accept: root $end
+
+    1 root: program
+
+    2 program: ε
+    3        | program variable_definitions
+    4        | program module_declaration
+    5        | program use_statement
+    6        | program module_statements
+    7        | program end_module
+    8        | program function_definition
+
+    9 procedure: MODULE_PROCEDURE identifier
+
+   10 procedures: procedure
+   11           | procedures procedure
+
+   12 namelist: NAMELIST
+
+   13 module_statements: IMPLICIT NONE
+   14                  | PUBLIC
+   15                  | PRIVATE
+   16                  | PUBLIC ':' ':' expression_list
+   17                  | namelist '/' identifier '/' expression_list
+   18                  | INTERFACE identifier procedures ENDINTERFACE identifier
+   19                  | CONTAINS
+
+   20 identifier: IDENTIFIER
+
+   21 number: NUMBER
+   22       | REALNUMBER
+   23       | DOUBLENUMBER
+
+   24 string: STRING
+
+   25 allocatable: ALLOCATABLE
+
+   26 volatile: VOLATILE
+
+   27 pointer: POINTER
+
+   28 module: MODULE
+
+   29 use: USE
+
+   30 parameter: PARAMETER
+
+   31 target: TARGET
+
+   32 int: INT
+
+   33 complex: COMPLEX
+
+   34 uint: UINT
+
+   35 real: REAL
+
+   36 bool: BOOL
+
+   37 char: CHAR
+
+   38 matrix: MATRIX
+
+   39 field: FIELD
+
+   40 field3: FIELD3
+
+   41 work_buffer: WORK_BUFFER
+
+   42 stencil: STENCIL
+
+   43 kernel: KERNEL
+
+   44 vtxbuffer: VTXBUFFER
+
+   45 intrinsic: INTRINSIC
+
+   46 struct_type: STRUCT_TYPE
+
+   47 enum_type: ENUM_TYPE
+
+   48 real_type: KIND assignment_op REAL_KIND
+
+   49 scalar_type_specifier: int
+   50                      | uint
+   51                      | real
+   52                      | real '(' real_type ')'
+   53                      | bool
+   54                      | char '(' LEN assignment_op expression ')'
+   55                      | char
+   56                      | complex
+
+   57 type_specifier: scalar_type_specifier
+   58               | scalar_type_specifier '[' ']'
+   59               | matrix
+   60               | matrix '[' expression ']'
+   61               | field
+   62               | field3
+   63               | work_buffer
+   64               | stencil
+   65               | struct_type
+   66               | enum_type
+   67               | vtxbuffer
+   68               | intrinsic
+   69               | kernel
+
+   70 type_qualifier: ε
+   71               | DIMENSION '(' expression_list ')'
+   72               | allocatable
+   73               | volatile
+   74               | pointer
+   75               | parameter
+   76               | target
+
+   77 type_qualifiers: type_qualifiers COMMA type_qualifier
+   78                | type_qualifier
+
+   79 module_declaration: module identifier
+
+   80 end_module: ENDMODULE
+   81           | ENDMODULE identifier
+
+   82 use_statement: use identifier
+   83              | use identifier COMMA ONLY ':' expression_list
+
+   84 binary_op: '+'
+   85          | '-'
+   86          | '&'
+   87          | BINARY_OP
+
+   88 unary_op: '-'
+   89         | '+'
+   90         | '!'
+   91         | '&'
+   92         | UNARY_OP
+
+   93 assignment_op: ASSIGNOP
+
+   94 primary_expression: identifier
+   95                   | number
+   96                   | string
+   97                   | ':'
+
+   98 struct_initializer: '{' expression_list '}'
+
+   99 postfix_expression: primary_expression
+  100                   | postfix_expression '[' expression ']'
+  101                   | postfix_expression '(' ')'
+  102                   | postfix_expression '(' expression_list ')'
+  103                   | postfix_expression '.' identifier
+  104                   | type_specifier '(' expression_list ')'
+  105                   | '(' expression ')'
+  106                   | '(' type_specifier ')' struct_initializer
+  107                   | ARR_START expression_list ARR_END
+  108                   | struct_initializer
+  109                   | postfix_expression ':' postfix_expression
+
+  110 unary_expression: postfix_expression
+  111                 | unary_op postfix_expression
+
+  112 binary_expression: binary_op unary_expression
+
+  113 expression: unary_expression
+  114           | expression binary_expression
+
+  115 expression_list: expression
+  116                | expression_list COMMA expression
+
+  117 var_declaration: identifier
+  118                | identifier assignment_body
+  119                | identifier '(' expression_list ')'
+
+  120 var_declarations: var_declaration
+  121                 | var_declarations COMMA var_declaration
+
+  122 variable_definitions: type_declaration ':' ':' var_declarations
+
+  123 type_declaration: type_specifier
+  124                 | type_specifier COMMA type_qualifiers
+
+  125 assignment_body: assignment_op expression
+
+  126 function_definition: SUBROUTINE identifier ENDSUBROUTINE
+
+
+Terminals, with rules where they appear
+
+    $end (0) 0
+    '!' (33) 90
+    '&' (38) 86 91
+    '(' (40) 52 54 71 101 102 104 105 106 119
+    ')' (41) 52 54 71 101 102 104 105 106 119
+    '+' (43) 84 89
+    ',' (44)
+    '-' (45) 85 88
+    '.' (46) 103
+    '/' (47) 17
+    ':' (58) 16 83 97 109 122
+    '[' (91) 58 60 100
+    ']' (93) 58 60 100
+    '{' (123) 98
+    '}' (125) 98
+    error (256)
+    DIMENSION (258) 71
+    COMMA (259) 77 83 116 121 124
+    ARR_START (260) 107
+    ARR_END (261) 107
+    ALLOCATABLE (262) 25
+    PARAMETER (263) 30
+    TARGET (264) 31
+    VOLATILE (265) 26
+    POINTER (266) 27
+    KIND (267) 48
+    REAL_KIND (268) 48
+    LEN (269) 54
+    MODULE (270) 28
+    USE (271) 29
+    NAMELIST (272) 12
+    INTERFACE (273) 18
+    ENDINTERFACE (274) 18
+    MODULE_PROCEDURE (275) 9
+    CONTAINS (276) 19
+    IMPLICIT (277) 13
+    NONE (278) 13
+    PUBLIC (279) 14 16
+    ENDMODULE (280) 80 81
+    ONLY (281) 83
+    PRIVATE (282) 15
+    SUBROUTINE (283) 126
+    ENDSUBROUTINE (284) 126
+    IDENTIFIER (285) 20
+    STRING (286) 24
+    NUMBER (287) 21
+    REALNUMBER (288) 22
+    DOUBLENUMBER (289) 23
+    IF (290)
+    ELIF (291)
+    ELSE (292)
+    WHILE (293)
+    FOR (294)
+    RETURN (295)
+    IN (296)
+    BREAK (297)
+    CONTINUE (298)
+    BINARY_OP (299) 87
+    ASSIGNOP (300) 93
+    QUESTION (301)
+    UNARY_OP (302) 92
+    INT (303) 32
+    COMPLEX (304) 33
+    UINT (305) 34
+    REAL (306) 35
+    MATRIX (307) 38
+    FIELD (308) 39
+    FIELD3 (309) 40
+    STENCIL (310) 42
+    WORK_BUFFER (311) 41
+    BOOL (312) 36
+    INTRINSIC (313) 45
+    CHAR (314) 37
+    KERNEL (315) 43
+    INLINE (316)
+    ELEMENTAL (317)
+    BOUNDARY_CONDITION (318)
+    SUM (319)
+    MAX (320)
+    COMMUNICATED (321)
+    AUXILIARY (322)
+    DCONST_QL (323)
+    CONST_QL (324)
+    SHARED (325)
+    DYNAMIC_QL (326)
+    CONSTEXPR (327)
+    RUN_CONST (328)
+    GLOBAL_MEMORY_QL (329)
+    OUTPUT (330)
+    INPUT (331)
+    VTXBUFFER (332) 44
+    COMPUTESTEPS (333)
+    BOUNDCONDS (334)
+    EXTERN (335)
+    HOSTDEFINE (336)
+    STRUCT_NAME (337)
+    STRUCT_TYPE (338) 46
+    ENUM_NAME (339)
+    ENUM_TYPE (340) 47
+
+
+Nonterminals, with rules where they appear
+
+    $accept (100)
+        on left: 0
+    root (101)
+        on left: 1
+        on right: 0
+    program (102)
+        on left: 2 3 4 5 6 7 8
+        on right: 1 3 4 5 6 7 8
+    procedure (103)
+        on left: 9
+        on right: 10 11
+    procedures (104)
+        on left: 10 11
+        on right: 11 18
+    namelist (105)
+        on left: 12
+        on right: 17
+    module_statements (106)
+        on left: 13 14 15 16 17 18 19
+        on right: 6
+    identifier (107)
+        on left: 20
+        on right: 9 17 18 79 81 82 83 94 103 117 118 119 126
+    number (108)
+        on left: 21 22 23
+        on right: 95
+    string (109)
+        on left: 24
+        on right: 96
+    allocatable (110)
+        on left: 25
+        on right: 72
+    volatile (111)
+        on left: 26
+        on right: 73
+    pointer (112)
+        on left: 27
+        on right: 74
+    module (113)
+        on left: 28
+        on right: 79
+    use (114)
+        on left: 29
+        on right: 82 83
+    parameter (115)
+        on left: 30
+        on right: 75
+    target (116)
+        on left: 31
+        on right: 76
+    int (117)
+        on left: 32
+        on right: 49
+    complex (118)
+        on left: 33
+        on right: 56
+    uint (119)
+        on left: 34
+        on right: 50
+    real (120)
+        on left: 35
+        on right: 51 52
+    bool (121)
+        on left: 36
+        on right: 53
+    char (122)
+        on left: 37
+        on right: 54 55
+    matrix (123)
+        on left: 38
+        on right: 59 60
+    field (124)
+        on left: 39
+        on right: 61
+    field3 (125)
+        on left: 40
+        on right: 62
+    work_buffer (126)
+        on left: 41
+        on right: 63
+    stencil (127)
+        on left: 42
+        on right: 64
+    kernel (128)
+        on left: 43
+        on right: 69
+    vtxbuffer (129)
+        on left: 44
+        on right: 67
+    intrinsic (130)
+        on left: 45
+        on right: 68
+    struct_type (131)
+        on left: 46
+        on right: 65
+    enum_type (132)
+        on left: 47
+        on right: 66
+    real_type (133)
+        on left: 48
+        on right: 52
+    scalar_type_specifier (134)
+        on left: 49 50 51 52 53 54 55 56
+        on right: 57 58
+    type_specifier (135)
+        on left: 57 58 59 60 61 62 63 64 65 66 67 68 69
+        on right: 104 106 123 124
+    type_qualifier (136)
+        on left: 70 71 72 73 74 75 76
+        on right: 77 78
+    type_qualifiers (137)
+        on left: 77 78
+        on right: 77 124
+    module_declaration (138)
+        on left: 79
+        on right: 4
+    end_module (139)
+        on left: 80 81
+        on right: 7
+    use_statement (140)
+        on left: 82 83
+        on right: 5
+    binary_op (141)
+        on left: 84 85 86 87
+        on right: 112
+    unary_op (142)
+        on left: 88 89 90 91 92
+        on right: 111
+    assignment_op (143)
+        on left: 93
+        on right: 48 54 125
+    primary_expression (144)
+        on left: 94 95 96 97
+        on right: 99
+    struct_initializer (145)
+        on left: 98
+        on right: 106 108
+    postfix_expression (146)
+        on left: 99 100 101 102 103 104 105 106 107 108 109
+        on right: 100 101 102 103 109 110 111
+    unary_expression (147)
+        on left: 110 111
+        on right: 112 113
+    binary_expression (148)
+        on left: 112
+        on right: 114
+    expression (149)
+        on left: 113 114
+        on right: 54 60 100 105 114 115 116 125
+    expression_list (150)
+        on left: 115 116
+        on right: 16 17 71 83 98 102 104 107 116 119
+    var_declaration (151)
+        on left: 117 118 119
+        on right: 120 121
+    var_declarations (152)
+        on left: 120 121
+        on right: 121 122
+    variable_definitions (153)
+        on left: 122
+        on right: 3
+    type_declaration (154)
+        on left: 123 124
+        on right: 122
+    assignment_body (155)
+        on left: 125
+        on right: 118
+    function_definition (156)
+        on left: 126
+        on right: 8
+
+
+State 0
+
+    0 $accept: • root $end
+
+    $default  reduce using rule 2 (program)
+
+    root     go to state 1
+    program  go to state 2
+
+
+State 1
+
+    0 $accept: root • $end
+
+    $end  shift, and go to state 3
+
+
+State 2
+
+    1 root: program •
+    3 program: program • variable_definitions
+    4        | program • module_declaration
+    5        | program • use_statement
+    6        | program • module_statements
+    7        | program • end_module
+    8        | program • function_definition
+
+    MODULE       shift, and go to state 4
+    USE          shift, and go to state 5
+    NAMELIST     shift, and go to state 6
+    INTERFACE    shift, and go to state 7
+    CONTAINS     shift, and go to state 8
+    IMPLICIT     shift, and go to state 9
+    PUBLIC       shift, and go to state 10
+    ENDMODULE    shift, and go to state 11
+    PRIVATE      shift, and go to state 12
+    SUBROUTINE   shift, and go to state 13
+    INT          shift, and go to state 14
+    COMPLEX      shift, and go to state 15
+    UINT         shift, and go to state 16
+    REAL         shift, and go to state 17
+    MATRIX       shift, and go to state 18
+    FIELD        shift, and go to state 19
+    FIELD3       shift, and go to state 20
+    STENCIL      shift, and go to state 21
+    WORK_BUFFER  shift, and go to state 22
+    BOOL         shift, and go to state 23
+    INTRINSIC    shift, and go to state 24
+    CHAR         shift, and go to state 25
+    KERNEL       shift, and go to state 26
+    VTXBUFFER    shift, and go to state 27
+    STRUCT_TYPE  shift, and go to state 28
+    ENUM_TYPE    shift, and go to state 29
+
+    $default  reduce using rule 1 (root)
+
+    namelist               go to state 30
+    module_statements      go to state 31
+    module                 go to state 32
+    use                    go to state 33
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 51
+    module_declaration     go to state 52
+    end_module             go to state 53
+    use_statement          go to state 54
+    variable_definitions   go to state 55
+    type_declaration       go to state 56
+    function_definition    go to state 57
+
+
+State 3
+
+    0 $accept: root $end •
+
+    $default  accept
+
+
+State 4
+
+   28 module: MODULE •
+
+    $default  reduce using rule 28 (module)
+
+
+State 5
+
+   29 use: USE •
+
+    $default  reduce using rule 29 (use)
+
+
+State 6
+
+   12 namelist: NAMELIST •
+
+    $default  reduce using rule 12 (namelist)
+
+
+State 7
+
+   18 module_statements: INTERFACE • identifier procedures ENDINTERFACE identifier
+
+    IDENTIFIER  shift, and go to state 58
+
+    identifier  go to state 59
+
+
+State 8
+
+   19 module_statements: CONTAINS •
+
+    $default  reduce using rule 19 (module_statements)
+
+
+State 9
+
+   13 module_statements: IMPLICIT • NONE
+
+    NONE  shift, and go to state 60
+
+
+State 10
+
+   14 module_statements: PUBLIC •
+   16                  | PUBLIC • ':' ':' expression_list
+
+    ':'  shift, and go to state 61
+
+    $default  reduce using rule 14 (module_statements)
+
+
+State 11
+
+   80 end_module: ENDMODULE •
+   81           | ENDMODULE • identifier
+
+    IDENTIFIER  shift, and go to state 58
+
+    $default  reduce using rule 80 (end_module)
+
+    identifier  go to state 62
+
+
+State 12
+
+   15 module_statements: PRIVATE •
+
+    $default  reduce using rule 15 (module_statements)
+
+
+State 13
+
+  126 function_definition: SUBROUTINE • identifier ENDSUBROUTINE
+
+    IDENTIFIER  shift, and go to state 58
+
+    identifier  go to state 63
+
+
+State 14
+
+   32 int: INT •
+
+    $default  reduce using rule 32 (int)
+
+
+State 15
+
+   33 complex: COMPLEX •
+
+    $default  reduce using rule 33 (complex)
+
+
+State 16
+
+   34 uint: UINT •
+
+    $default  reduce using rule 34 (uint)
+
+
+State 17
+
+   35 real: REAL •
+
+    $default  reduce using rule 35 (real)
+
+
+State 18
+
+   38 matrix: MATRIX •
+
+    $default  reduce using rule 38 (matrix)
+
+
+State 19
+
+   39 field: FIELD •
+
+    $default  reduce using rule 39 (field)
+
+
+State 20
+
+   40 field3: FIELD3 •
+
+    $default  reduce using rule 40 (field3)
+
+
+State 21
+
+   42 stencil: STENCIL •
+
+    $default  reduce using rule 42 (stencil)
+
+
+State 22
+
+   41 work_buffer: WORK_BUFFER •
+
+    $default  reduce using rule 41 (work_buffer)
+
+
+State 23
+
+   36 bool: BOOL •
+
+    $default  reduce using rule 36 (bool)
+
+
+State 24
+
+   45 intrinsic: INTRINSIC •
+
+    $default  reduce using rule 45 (intrinsic)
+
+
+State 25
+
+   37 char: CHAR •
+
+    $default  reduce using rule 37 (char)
+
+
+State 26
+
+   43 kernel: KERNEL •
+
+    $default  reduce using rule 43 (kernel)
+
+
+State 27
+
+   44 vtxbuffer: VTXBUFFER •
+
+    $default  reduce using rule 44 (vtxbuffer)
+
+
+State 28
+
+   46 struct_type: STRUCT_TYPE •
+
+    $default  reduce using rule 46 (struct_type)
+
+
+State 29
+
+   47 enum_type: ENUM_TYPE •
+
+    $default  reduce using rule 47 (enum_type)
+
+
+State 30
+
+   17 module_statements: namelist • '/' identifier '/' expression_list
+
+    '/'  shift, and go to state 64
+
+
+State 31
+
+    6 program: program module_statements •
+
+    $default  reduce using rule 6 (program)
+
+
+State 32
+
+   79 module_declaration: module • identifier
+
+    IDENTIFIER  shift, and go to state 58
+
+    identifier  go to state 65
+
+
+State 33
+
+   82 use_statement: use • identifier
+   83              | use • identifier COMMA ONLY ':' expression_list
+
+    IDENTIFIER  shift, and go to state 58
+
+    identifier  go to state 66
+
+
+State 34
+
+   49 scalar_type_specifier: int •
+
+    $default  reduce using rule 49 (scalar_type_specifier)
+
+
+State 35
+
+   56 scalar_type_specifier: complex •
+
+    $default  reduce using rule 56 (scalar_type_specifier)
+
+
+State 36
+
+   50 scalar_type_specifier: uint •
+
+    $default  reduce using rule 50 (scalar_type_specifier)
+
+
+State 37
+
+   51 scalar_type_specifier: real •
+   52                      | real • '(' real_type ')'
+
+    '('  shift, and go to state 67
+
+    '('       [reduce using rule 51 (scalar_type_specifier)]
+    $default  reduce using rule 51 (scalar_type_specifier)
+
+
+State 38
+
+   53 scalar_type_specifier: bool •
+
+    $default  reduce using rule 53 (scalar_type_specifier)
+
+
+State 39
+
+   54 scalar_type_specifier: char • '(' LEN assignment_op expression ')'
+   55                      | char •
+
+    '('  shift, and go to state 68
+
+    '('       [reduce using rule 55 (scalar_type_specifier)]
+    $default  reduce using rule 55 (scalar_type_specifier)
+
+
+State 40
+
+   59 type_specifier: matrix •
+   60               | matrix • '[' expression ']'
+
+    '['  shift, and go to state 69
+
+    $default  reduce using rule 59 (type_specifier)
+
+
+State 41
+
+   61 type_specifier: field •
+
+    $default  reduce using rule 61 (type_specifier)
+
+
+State 42
+
+   62 type_specifier: field3 •
+
+    $default  reduce using rule 62 (type_specifier)
+
+
+State 43
+
+   63 type_specifier: work_buffer •
+
+    $default  reduce using rule 63 (type_specifier)
+
+
+State 44
+
+   64 type_specifier: stencil •
+
+    $default  reduce using rule 64 (type_specifier)
+
+
+State 45
+
+   69 type_specifier: kernel •
+
+    $default  reduce using rule 69 (type_specifier)
+
+
+State 46
+
+   67 type_specifier: vtxbuffer •
+
+    $default  reduce using rule 67 (type_specifier)
+
+
+State 47
+
+   68 type_specifier: intrinsic •
+
+    $default  reduce using rule 68 (type_specifier)
+
+
+State 48
+
+   65 type_specifier: struct_type •
+
+    $default  reduce using rule 65 (type_specifier)
+
+
+State 49
+
+   66 type_specifier: enum_type •
+
+    $default  reduce using rule 66 (type_specifier)
+
+
+State 50
+
+   57 type_specifier: scalar_type_specifier •
+   58               | scalar_type_specifier • '[' ']'
+
+    '['  shift, and go to state 70
+
+    $default  reduce using rule 57 (type_specifier)
+
+
+State 51
+
+  123 type_declaration: type_specifier •
+  124                 | type_specifier • COMMA type_qualifiers
+
+    COMMA  shift, and go to state 71
+
+    $default  reduce using rule 123 (type_declaration)
+
+
+State 52
+
+    4 program: program module_declaration •
+
+    $default  reduce using rule 4 (program)
+
+
+State 53
+
+    7 program: program end_module •
+
+    $default  reduce using rule 7 (program)
+
+
+State 54
+
+    5 program: program use_statement •
+
+    $default  reduce using rule 5 (program)
+
+
+State 55
+
+    3 program: program variable_definitions •
+
+    $default  reduce using rule 3 (program)
+
+
+State 56
+
+  122 variable_definitions: type_declaration • ':' ':' var_declarations
+
+    ':'  shift, and go to state 72
+
+
+State 57
+
+    8 program: program function_definition •
+
+    $default  reduce using rule 8 (program)
+
+
+State 58
+
+   20 identifier: IDENTIFIER •
+
+    $default  reduce using rule 20 (identifier)
+
+
+State 59
+
+   18 module_statements: INTERFACE identifier • procedures ENDINTERFACE identifier
+
+    MODULE_PROCEDURE  shift, and go to state 73
+
+    procedure   go to state 74
+    procedures  go to state 75
+
+
+State 60
+
+   13 module_statements: IMPLICIT NONE •
+
+    $default  reduce using rule 13 (module_statements)
+
+
+State 61
+
+   16 module_statements: PUBLIC ':' • ':' expression_list
+
+    ':'  shift, and go to state 76
+
+
+State 62
+
+   81 end_module: ENDMODULE identifier •
+
+    $default  reduce using rule 81 (end_module)
+
+
+State 63
+
+  126 function_definition: SUBROUTINE identifier • ENDSUBROUTINE
+
+    ENDSUBROUTINE  shift, and go to state 77
+
+
+State 64
+
+   17 module_statements: namelist '/' • identifier '/' expression_list
+
+    IDENTIFIER  shift, and go to state 58
+
+    identifier  go to state 78
+
+
+State 65
+
+   79 module_declaration: module identifier •
+
+    $default  reduce using rule 79 (module_declaration)
+
+
+State 66
+
+   82 use_statement: use identifier •
+   83              | use identifier • COMMA ONLY ':' expression_list
+
+    COMMA  shift, and go to state 79
+
+    $default  reduce using rule 82 (use_statement)
+
+
+State 67
+
+   52 scalar_type_specifier: real '(' • real_type ')'
+
+    KIND  shift, and go to state 80
+
+    real_type  go to state 81
+
+
+State 68
+
+   54 scalar_type_specifier: char '(' • LEN assignment_op expression ')'
+
+    LEN  shift, and go to state 82
+
+
+State 69
+
+   60 type_specifier: matrix '[' • expression ']'
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 105
+
+
+State 70
+
+   58 type_specifier: scalar_type_specifier '[' • ']'
+
+    ']'  shift, and go to state 106
+
+
+State 71
+
+  124 type_declaration: type_specifier COMMA • type_qualifiers
+
+    DIMENSION    shift, and go to state 107
+    ALLOCATABLE  shift, and go to state 108
+    PARAMETER    shift, and go to state 109
+    TARGET       shift, and go to state 110
+    VOLATILE     shift, and go to state 111
+    POINTER      shift, and go to state 112
+
+    $default  reduce using rule 70 (type_qualifier)
+
+    allocatable      go to state 113
+    volatile         go to state 114
+    pointer          go to state 115
+    parameter        go to state 116
+    target           go to state 117
+    type_qualifier   go to state 118
+    type_qualifiers  go to state 119
+
+
+State 72
+
+  122 variable_definitions: type_declaration ':' • ':' var_declarations
+
+    ':'  shift, and go to state 120
+
+
+State 73
+
+    9 procedure: MODULE_PROCEDURE • identifier
+
+    IDENTIFIER  shift, and go to state 58
+
+    identifier  go to state 121
+
+
+State 74
+
+   10 procedures: procedure •
+
+    $default  reduce using rule 10 (procedures)
+
+
+State 75
+
+   11 procedures: procedures • procedure
+   18 module_statements: INTERFACE identifier procedures • ENDINTERFACE identifier
+
+    ENDINTERFACE      shift, and go to state 122
+    MODULE_PROCEDURE  shift, and go to state 73
+
+    procedure  go to state 123
+
+
+State 76
+
+   16 module_statements: PUBLIC ':' ':' • expression_list
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 124
+    expression_list        go to state 125
+
+
+State 77
+
+  126 function_definition: SUBROUTINE identifier ENDSUBROUTINE •
+
+    $default  reduce using rule 126 (function_definition)
+
+
+State 78
+
+   17 module_statements: namelist '/' identifier • '/' expression_list
+
+    '/'  shift, and go to state 126
+
+
+State 79
+
+   83 use_statement: use identifier COMMA • ONLY ':' expression_list
+
+    ONLY  shift, and go to state 127
+
+
+State 80
+
+   48 real_type: KIND • assignment_op REAL_KIND
+
+    ASSIGNOP  shift, and go to state 128
+
+    assignment_op  go to state 129
+
+
+State 81
+
+   52 scalar_type_specifier: real '(' real_type • ')'
+
+    ')'  shift, and go to state 130
+
+
+State 82
+
+   54 scalar_type_specifier: char '(' LEN • assignment_op expression ')'
+
+    ASSIGNOP  shift, and go to state 128
+
+    assignment_op  go to state 131
+
+
+State 83
+
+  107 postfix_expression: ARR_START • expression_list ARR_END
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 124
+    expression_list        go to state 132
+
+
+State 84
+
+   24 string: STRING •
+
+    $default  reduce using rule 24 (string)
+
+
+State 85
+
+   21 number: NUMBER •
+
+    $default  reduce using rule 21 (number)
+
+
+State 86
+
+   22 number: REALNUMBER •
+
+    $default  reduce using rule 22 (number)
+
+
+State 87
+
+   23 number: DOUBLENUMBER •
+
+    $default  reduce using rule 23 (number)
+
+
+State 88
+
+   92 unary_op: UNARY_OP •
+
+    $default  reduce using rule 92 (unary_op)
+
+
+State 89
+
+   88 unary_op: '-' •
+
+    $default  reduce using rule 88 (unary_op)
+
+
+State 90
+
+   89 unary_op: '+' •
+
+    $default  reduce using rule 89 (unary_op)
+
+
+State 91
+
+   91 unary_op: '&' •
+
+    $default  reduce using rule 91 (unary_op)
+
+
+State 92
+
+   97 primary_expression: ':' •
+
+    $default  reduce using rule 97 (primary_expression)
+
+
+State 93
+
+  105 postfix_expression: '(' • expression ')'
+  106                   | '(' • type_specifier ')' struct_initializer
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 133
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 134
+
+
+State 94
+
+   90 unary_op: '!' •
+
+    $default  reduce using rule 90 (unary_op)
+
+
+State 95
+
+   98 struct_initializer: '{' • expression_list '}'
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 124
+    expression_list        go to state 135
+
+
+State 96
+
+   94 primary_expression: identifier •
+
+    $default  reduce using rule 94 (primary_expression)
+
+
+State 97
+
+   95 primary_expression: number •
+
+    $default  reduce using rule 95 (primary_expression)
+
+
+State 98
+
+   96 primary_expression: string •
+
+    $default  reduce using rule 96 (primary_expression)
+
+
+State 99
+
+  104 postfix_expression: type_specifier • '(' expression_list ')'
+
+    '('  shift, and go to state 136
+
+
+State 100
+
+  111 unary_expression: unary_op • postfix_expression
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 137
+
+
+State 101
+
+   99 postfix_expression: primary_expression •
+
+    $default  reduce using rule 99 (postfix_expression)
+
+
+State 102
+
+  108 postfix_expression: struct_initializer •
+
+    $default  reduce using rule 108 (postfix_expression)
+
+
+State 103
+
+  100 postfix_expression: postfix_expression • '[' expression ']'
+  101                   | postfix_expression • '(' ')'
+  102                   | postfix_expression • '(' expression_list ')'
+  103                   | postfix_expression • '.' identifier
+  109                   | postfix_expression • ':' postfix_expression
+  110 unary_expression: postfix_expression •
+
+    ':'  shift, and go to state 138
+    '('  shift, and go to state 139
+    '['  shift, and go to state 140
+    '.'  shift, and go to state 141
+
+    $default  reduce using rule 110 (unary_expression)
+
+
+State 104
+
+  113 expression: unary_expression •
+
+    $default  reduce using rule 113 (expression)
+
+
+State 105
+
+   60 type_specifier: matrix '[' expression • ']'
+  114 expression: expression • binary_expression
+
+    BINARY_OP  shift, and go to state 142
+    '-'        shift, and go to state 143
+    '+'        shift, and go to state 144
+    '&'        shift, and go to state 145
+    ']'        shift, and go to state 146
+
+    binary_op          go to state 147
+    binary_expression  go to state 148
+
+
+State 106
+
+   58 type_specifier: scalar_type_specifier '[' ']' •
+
+    $default  reduce using rule 58 (type_specifier)
+
+
+State 107
+
+   71 type_qualifier: DIMENSION • '(' expression_list ')'
+
+    '('  shift, and go to state 149
+
+
+State 108
+
+   25 allocatable: ALLOCATABLE •
+
+    $default  reduce using rule 25 (allocatable)
+
+
+State 109
+
+   30 parameter: PARAMETER •
+
+    $default  reduce using rule 30 (parameter)
+
+
+State 110
+
+   31 target: TARGET •
+
+    $default  reduce using rule 31 (target)
+
+
+State 111
+
+   26 volatile: VOLATILE •
+
+    $default  reduce using rule 26 (volatile)
+
+
+State 112
+
+   27 pointer: POINTER •
+
+    $default  reduce using rule 27 (pointer)
+
+
+State 113
+
+   72 type_qualifier: allocatable •
+
+    $default  reduce using rule 72 (type_qualifier)
+
+
+State 114
+
+   73 type_qualifier: volatile •
+
+    $default  reduce using rule 73 (type_qualifier)
+
+
+State 115
+
+   74 type_qualifier: pointer •
+
+    $default  reduce using rule 74 (type_qualifier)
+
+
+State 116
+
+   75 type_qualifier: parameter •
+
+    $default  reduce using rule 75 (type_qualifier)
+
+
+State 117
+
+   76 type_qualifier: target •
+
+    $default  reduce using rule 76 (type_qualifier)
+
+
+State 118
+
+   78 type_qualifiers: type_qualifier •
+
+    $default  reduce using rule 78 (type_qualifiers)
+
+
+State 119
+
+   77 type_qualifiers: type_qualifiers • COMMA type_qualifier
+  124 type_declaration: type_specifier COMMA type_qualifiers •
+
+    COMMA  shift, and go to state 150
+
+    $default  reduce using rule 124 (type_declaration)
+
+
+State 120
+
+  122 variable_definitions: type_declaration ':' ':' • var_declarations
+
+    IDENTIFIER  shift, and go to state 58
+
+    identifier        go to state 151
+    var_declaration   go to state 152
+    var_declarations  go to state 153
+
+
+State 121
+
+    9 procedure: MODULE_PROCEDURE identifier •
+
+    $default  reduce using rule 9 (procedure)
+
+
+State 122
+
+   18 module_statements: INTERFACE identifier procedures ENDINTERFACE • identifier
+
+    IDENTIFIER  shift, and go to state 58
+
+    identifier  go to state 154
+
+
+State 123
+
+   11 procedures: procedures procedure •
+
+    $default  reduce using rule 11 (procedures)
+
+
+State 124
+
+  114 expression: expression • binary_expression
+  115 expression_list: expression •
+
+    BINARY_OP  shift, and go to state 142
+    '-'        shift, and go to state 143
+    '+'        shift, and go to state 144
+    '&'        shift, and go to state 145
+
+    $default  reduce using rule 115 (expression_list)
+
+    binary_op          go to state 147
+    binary_expression  go to state 148
+
+
+State 125
+
+   16 module_statements: PUBLIC ':' ':' expression_list •
+  116 expression_list: expression_list • COMMA expression
+
+    COMMA  shift, and go to state 155
+
+    $default  reduce using rule 16 (module_statements)
+
+
+State 126
+
+   17 module_statements: namelist '/' identifier '/' • expression_list
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 124
+    expression_list        go to state 156
+
+
+State 127
+
+   83 use_statement: use identifier COMMA ONLY • ':' expression_list
+
+    ':'  shift, and go to state 157
+
+
+State 128
+
+   93 assignment_op: ASSIGNOP •
+
+    $default  reduce using rule 93 (assignment_op)
+
+
+State 129
+
+   48 real_type: KIND assignment_op • REAL_KIND
+
+    REAL_KIND  shift, and go to state 158
+
+
+State 130
+
+   52 scalar_type_specifier: real '(' real_type ')' •
+
+    $default  reduce using rule 52 (scalar_type_specifier)
+
+
+State 131
+
+   54 scalar_type_specifier: char '(' LEN assignment_op • expression ')'
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 159
+
+
+State 132
+
+  107 postfix_expression: ARR_START expression_list • ARR_END
+  116 expression_list: expression_list • COMMA expression
+
+    COMMA    shift, and go to state 155
+    ARR_END  shift, and go to state 160
+
+
+State 133
+
+  104 postfix_expression: type_specifier • '(' expression_list ')'
+  106                   | '(' type_specifier • ')' struct_initializer
+
+    '('  shift, and go to state 136
+    ')'  shift, and go to state 161
+
+
+State 134
+
+  105 postfix_expression: '(' expression • ')'
+  114 expression: expression • binary_expression
+
+    BINARY_OP  shift, and go to state 142
+    '-'        shift, and go to state 143
+    '+'        shift, and go to state 144
+    '&'        shift, and go to state 145
+    ')'        shift, and go to state 162
+
+    binary_op          go to state 147
+    binary_expression  go to state 148
+
+
+State 135
+
+   98 struct_initializer: '{' expression_list • '}'
+  116 expression_list: expression_list • COMMA expression
+
+    COMMA  shift, and go to state 155
+    '}'    shift, and go to state 163
+
+
+State 136
+
+  104 postfix_expression: type_specifier '(' • expression_list ')'
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 124
+    expression_list        go to state 164
+
+
+State 137
+
+  100 postfix_expression: postfix_expression • '[' expression ']'
+  101                   | postfix_expression • '(' ')'
+  102                   | postfix_expression • '(' expression_list ')'
+  103                   | postfix_expression • '.' identifier
+  109                   | postfix_expression • ':' postfix_expression
+  111 unary_expression: unary_op postfix_expression •
+
+    ':'  shift, and go to state 138
+    '('  shift, and go to state 139
+    '['  shift, and go to state 140
+    '.'  shift, and go to state 141
+
+    $default  reduce using rule 111 (unary_expression)
+
+
+State 138
+
+  109 postfix_expression: postfix_expression ':' • postfix_expression
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 165
+
+
+State 139
+
+  101 postfix_expression: postfix_expression '(' • ')'
+  102                   | postfix_expression '(' • expression_list ')'
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    ')'           shift, and go to state 166
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 124
+    expression_list        go to state 167
+
+
+State 140
+
+  100 postfix_expression: postfix_expression '[' • expression ']'
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 168
+
+
+State 141
+
+  103 postfix_expression: postfix_expression '.' • identifier
+
+    IDENTIFIER  shift, and go to state 58
+
+    identifier  go to state 169
+
+
+State 142
+
+   87 binary_op: BINARY_OP •
+
+    $default  reduce using rule 87 (binary_op)
+
+
+State 143
+
+   85 binary_op: '-' •
+
+    $default  reduce using rule 85 (binary_op)
+
+
+State 144
+
+   84 binary_op: '+' •
+
+    $default  reduce using rule 84 (binary_op)
+
+
+State 145
+
+   86 binary_op: '&' •
+
+    $default  reduce using rule 86 (binary_op)
+
+
+State 146
+
+   60 type_specifier: matrix '[' expression ']' •
+
+    $default  reduce using rule 60 (type_specifier)
+
+
+State 147
+
+  112 binary_expression: binary_op • unary_expression
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 170
+
+
+State 148
+
+  114 expression: expression binary_expression •
+
+    $default  reduce using rule 114 (expression)
+
+
+State 149
+
+   71 type_qualifier: DIMENSION '(' • expression_list ')'
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 124
+    expression_list        go to state 171
+
+
+State 150
+
+   77 type_qualifiers: type_qualifiers COMMA • type_qualifier
+
+    DIMENSION    shift, and go to state 107
+    ALLOCATABLE  shift, and go to state 108
+    PARAMETER    shift, and go to state 109
+    TARGET       shift, and go to state 110
+    VOLATILE     shift, and go to state 111
+    POINTER      shift, and go to state 112
+
+    $default  reduce using rule 70 (type_qualifier)
+
+    allocatable     go to state 113
+    volatile        go to state 114
+    pointer         go to state 115
+    parameter       go to state 116
+    target          go to state 117
+    type_qualifier  go to state 172
+
+
+State 151
+
+  117 var_declaration: identifier •
+  118                | identifier • assignment_body
+  119                | identifier • '(' expression_list ')'
+
+    ASSIGNOP  shift, and go to state 128
+    '('       shift, and go to state 173
+
+    $default  reduce using rule 117 (var_declaration)
+
+    assignment_op    go to state 174
+    assignment_body  go to state 175
+
+
+State 152
+
+  120 var_declarations: var_declaration •
+
+    $default  reduce using rule 120 (var_declarations)
+
+
+State 153
+
+  121 var_declarations: var_declarations • COMMA var_declaration
+  122 variable_definitions: type_declaration ':' ':' var_declarations •
+
+    COMMA  shift, and go to state 176
+
+    $default  reduce using rule 122 (variable_definitions)
+
+
+State 154
+
+   18 module_statements: INTERFACE identifier procedures ENDINTERFACE identifier •
+
+    $default  reduce using rule 18 (module_statements)
+
+
+State 155
+
+  116 expression_list: expression_list COMMA • expression
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 177
+
+
+State 156
+
+   17 module_statements: namelist '/' identifier '/' expression_list •
+  116 expression_list: expression_list • COMMA expression
+
+    COMMA  shift, and go to state 155
+
+    $default  reduce using rule 17 (module_statements)
+
+
+State 157
+
+   83 use_statement: use identifier COMMA ONLY ':' • expression_list
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 124
+    expression_list        go to state 178
+
+
+State 158
+
+   48 real_type: KIND assignment_op REAL_KIND •
+
+    $default  reduce using rule 48 (real_type)
+
+
+State 159
+
+   54 scalar_type_specifier: char '(' LEN assignment_op expression • ')'
+  114 expression: expression • binary_expression
+
+    BINARY_OP  shift, and go to state 142
+    '-'        shift, and go to state 143
+    '+'        shift, and go to state 144
+    '&'        shift, and go to state 145
+    ')'        shift, and go to state 179
+
+    binary_op          go to state 147
+    binary_expression  go to state 148
+
+
+State 160
+
+  107 postfix_expression: ARR_START expression_list ARR_END •
+
+    $default  reduce using rule 107 (postfix_expression)
+
+
+State 161
+
+  106 postfix_expression: '(' type_specifier ')' • struct_initializer
+
+    '{'  shift, and go to state 95
+
+    struct_initializer  go to state 180
+
+
+State 162
+
+  105 postfix_expression: '(' expression ')' •
+
+    $default  reduce using rule 105 (postfix_expression)
+
+
+State 163
+
+   98 struct_initializer: '{' expression_list '}' •
+
+    $default  reduce using rule 98 (struct_initializer)
+
+
+State 164
+
+  104 postfix_expression: type_specifier '(' expression_list • ')'
+  116 expression_list: expression_list • COMMA expression
+
+    COMMA  shift, and go to state 155
+    ')'    shift, and go to state 181
+
+
+State 165
+
+  100 postfix_expression: postfix_expression • '[' expression ']'
+  101                   | postfix_expression • '(' ')'
+  102                   | postfix_expression • '(' expression_list ')'
+  103                   | postfix_expression • '.' identifier
+  109                   | postfix_expression • ':' postfix_expression
+  109                   | postfix_expression ':' postfix_expression •
+
+    ':'  shift, and go to state 138
+    '('  shift, and go to state 139
+    '['  shift, and go to state 140
+    '.'  shift, and go to state 141
+
+    ':'       [reduce using rule 109 (postfix_expression)]
+    '('       [reduce using rule 109 (postfix_expression)]
+    '['       [reduce using rule 109 (postfix_expression)]
+    '.'       [reduce using rule 109 (postfix_expression)]
+    $default  reduce using rule 109 (postfix_expression)
+
+
+State 166
+
+  101 postfix_expression: postfix_expression '(' ')' •
+
+    $default  reduce using rule 101 (postfix_expression)
+
+
+State 167
+
+  102 postfix_expression: postfix_expression '(' expression_list • ')'
+  116 expression_list: expression_list • COMMA expression
+
+    COMMA  shift, and go to state 155
+    ')'    shift, and go to state 182
+
+
+State 168
+
+  100 postfix_expression: postfix_expression '[' expression • ']'
+  114 expression: expression • binary_expression
+
+    BINARY_OP  shift, and go to state 142
+    '-'        shift, and go to state 143
+    '+'        shift, and go to state 144
+    '&'        shift, and go to state 145
+    ']'        shift, and go to state 183
+
+    binary_op          go to state 147
+    binary_expression  go to state 148
+
+
+State 169
+
+  103 postfix_expression: postfix_expression '.' identifier •
+
+    $default  reduce using rule 103 (postfix_expression)
+
+
+State 170
+
+  112 binary_expression: binary_op unary_expression •
+
+    $default  reduce using rule 112 (binary_expression)
+
+
+State 171
+
+   71 type_qualifier: DIMENSION '(' expression_list • ')'
+  116 expression_list: expression_list • COMMA expression
+
+    COMMA  shift, and go to state 155
+    ')'    shift, and go to state 184
+
+
+State 172
+
+   77 type_qualifiers: type_qualifiers COMMA type_qualifier •
+
+    $default  reduce using rule 77 (type_qualifiers)
+
+
+State 173
+
+  119 var_declaration: identifier '(' • expression_list ')'
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 124
+    expression_list        go to state 185
+
+
+State 174
+
+  125 assignment_body: assignment_op • expression
+
+    ARR_START     shift, and go to state 83
+    IDENTIFIER    shift, and go to state 58
+    STRING        shift, and go to state 84
+    NUMBER        shift, and go to state 85
+    REALNUMBER    shift, and go to state 86
+    DOUBLENUMBER  shift, and go to state 87
+    UNARY_OP      shift, and go to state 88
+    INT           shift, and go to state 14
+    COMPLEX       shift, and go to state 15
+    UINT          shift, and go to state 16
+    REAL          shift, and go to state 17
+    MATRIX        shift, and go to state 18
+    FIELD         shift, and go to state 19
+    FIELD3        shift, and go to state 20
+    STENCIL       shift, and go to state 21
+    WORK_BUFFER   shift, and go to state 22
+    BOOL          shift, and go to state 23
+    INTRINSIC     shift, and go to state 24
+    CHAR          shift, and go to state 25
+    KERNEL        shift, and go to state 26
+    VTXBUFFER     shift, and go to state 27
+    STRUCT_TYPE   shift, and go to state 28
+    ENUM_TYPE     shift, and go to state 29
+    '-'           shift, and go to state 89
+    '+'           shift, and go to state 90
+    '&'           shift, and go to state 91
+    ':'           shift, and go to state 92
+    '('           shift, and go to state 93
+    '!'           shift, and go to state 94
+    '{'           shift, and go to state 95
+
+    identifier             go to state 96
+    number                 go to state 97
+    string                 go to state 98
+    int                    go to state 34
+    complex                go to state 35
+    uint                   go to state 36
+    real                   go to state 37
+    bool                   go to state 38
+    char                   go to state 39
+    matrix                 go to state 40
+    field                  go to state 41
+    field3                 go to state 42
+    work_buffer            go to state 43
+    stencil                go to state 44
+    kernel                 go to state 45
+    vtxbuffer              go to state 46
+    intrinsic              go to state 47
+    struct_type            go to state 48
+    enum_type              go to state 49
+    scalar_type_specifier  go to state 50
+    type_specifier         go to state 99
+    unary_op               go to state 100
+    primary_expression     go to state 101
+    struct_initializer     go to state 102
+    postfix_expression     go to state 103
+    unary_expression       go to state 104
+    expression             go to state 186
+
+
+State 175
+
+  118 var_declaration: identifier assignment_body •
+
+    $default  reduce using rule 118 (var_declaration)
+
+
+State 176
+
+  121 var_declarations: var_declarations COMMA • var_declaration
+
+    IDENTIFIER  shift, and go to state 58
+
+    identifier       go to state 151
+    var_declaration  go to state 187
+
+
+State 177
+
+  114 expression: expression • binary_expression
+  116 expression_list: expression_list COMMA expression •
+
+    BINARY_OP  shift, and go to state 142
+    '-'        shift, and go to state 143
+    '+'        shift, and go to state 144
+    '&'        shift, and go to state 145
+
+    $default  reduce using rule 116 (expression_list)
+
+    binary_op          go to state 147
+    binary_expression  go to state 148
+
+
+State 178
+
+   83 use_statement: use identifier COMMA ONLY ':' expression_list •
+  116 expression_list: expression_list • COMMA expression
+
+    COMMA  shift, and go to state 155
+
+    $default  reduce using rule 83 (use_statement)
+
+
+State 179
+
+   54 scalar_type_specifier: char '(' LEN assignment_op expression ')' •
+
+    $default  reduce using rule 54 (scalar_type_specifier)
+
+
+State 180
+
+  106 postfix_expression: '(' type_specifier ')' struct_initializer •
+
+    $default  reduce using rule 106 (postfix_expression)
+
+
+State 181
+
+  104 postfix_expression: type_specifier '(' expression_list ')' •
+
+    $default  reduce using rule 104 (postfix_expression)
+
+
+State 182
+
+  102 postfix_expression: postfix_expression '(' expression_list ')' •
+
+    $default  reduce using rule 102 (postfix_expression)
+
+
+State 183
+
+  100 postfix_expression: postfix_expression '[' expression ']' •
+
+    $default  reduce using rule 100 (postfix_expression)
+
+
+State 184
+
+   71 type_qualifier: DIMENSION '(' expression_list ')' •
+
+    $default  reduce using rule 71 (type_qualifier)
+
+
+State 185
+
+  116 expression_list: expression_list • COMMA expression
+  119 var_declaration: identifier '(' expression_list • ')'
+
+    COMMA  shift, and go to state 155
+    ')'    shift, and go to state 188
+
+
+State 186
+
+  114 expression: expression • binary_expression
+  125 assignment_body: assignment_op expression •
+
+    BINARY_OP  shift, and go to state 142
+    '-'        shift, and go to state 143
+    '+'        shift, and go to state 144
+    '&'        shift, and go to state 145
+
+    $default  reduce using rule 125 (assignment_body)
+
+    binary_op          go to state 147
+    binary_expression  go to state 148
+
+
+State 187
+
+  121 var_declarations: var_declarations COMMA var_declaration •
+
+    $default  reduce using rule 121 (var_declarations)
+
+
+State 188
+
+  119 var_declaration: identifier '(' expression_list ')' •
+
+    $default  reduce using rule 119 (var_declaration)
