@@ -843,10 +843,11 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
                   | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); char tmp[1000]; combine_all($$->lhs,tmp); $$->expr_type = strdup(tmp); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); $$->lhs->type ^= NODE_TSPEC; /* Unset NODE_TSPEC flag, casts are handled as functions */ }
                   | '(' type_specifier ')'  struct_initializer { 
 						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
-						astnode_set_postfix(")",$$); char tmp[1000]; 
+						astnode_set_postfix(")",$$); 
+						char tmp[1000]; 
 						combine_all($$->lhs,tmp); 
 						astnode_set_buffer(strdup(tmp),$$); 
-						$$->rhs->expr_type = strdup(tmp);
+						//$$->rhs->expr_type = strdup(tmp);
 						}
                   | '[' expression_list ']' { $$ = astnode_create(NODE_ARRAY_INITIALIZER, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
 		  | struct_initializer {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }

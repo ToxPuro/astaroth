@@ -1,4 +1,4 @@
-hostdefine NGHOST (STENCIL_ORDER/2)
+const int NGHOST_VAL = 3
 real AC_dsx
 real AC_dsy
 real AC_dsz

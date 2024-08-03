@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include "vecs.h"
 
 #define BUFFER_SIZE (4096)
 
@@ -84,7 +85,7 @@ typedef struct astnode_s {
   char* infix;   // to divide it into max two-child rules
   char* postfix; // (which makes it much harder to read)
   bool is_constexpr; //Whether the node represents information known at compile time
-  char* expr_type; //The type of the expr the node represent
+  const char* expr_type; //The type of the expr the node represent
   bool no_auto;
 } ASTNode;
 
@@ -98,17 +99,13 @@ astnode_dup(const ASTNode* node, ASTNode* parent)
 	res->parent = parent;
 	res -> token = node->token;
 	res -> is_constexpr = node->is_constexpr;
-	res -> expr_type = node->expr_type;
+	res -> expr_type = strdupnullok(node->expr_type);
 	res -> no_auto = node->no_auto;
-
-	if(node->buffer)
-		res->buffer = strdup(node->buffer);
-	if(node->prefix)
-		res->prefix= strdup(node->prefix);
-	if(node->infix)
-		res->infix = strdup(node->infix);
-	if(node->postfix)
-		res->postfix = strdup(node->postfix);
+	res -> expr_type = strdupnullok(node->expr_type);
+	res->buffer = strdupnullok(node->buffer);
+	res->prefix=  strdupnullok(node->prefix);
+	res->infix =  strdupnullok(node->infix);
+	res->postfix= strdupnullok(node->postfix);
 	if(node->lhs)
 		res->lhs= astnode_dup(node->lhs,res);
 	if(node->rhs)
@@ -209,7 +206,6 @@ astnode_print(const ASTNode* node)
   printf("\tinfix:   %p (\"%s\")\n", node->infix, node->infix);
   printf("\tpostfix: %p (\"%s\")\n", node->postfix, node->postfix);
 }
-#include "vecs.h"
 
 
 static inline  void combine_buffers_recursive(const ASTNode* node, char* res){

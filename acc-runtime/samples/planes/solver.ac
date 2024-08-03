@@ -65,11 +65,10 @@ get_diffusion_val(real time, real distance_2)
 
 GetCoordsBase(i,j,k)
 {
-
-	real res_x =  AC_dsx*(i-((AC_nxgrid+1)/2.0));
-	real res_y =  AC_dsy*(j-((AC_nygrid+1)/2.0));
-	real res_z =  AC_dsz*(k-((AC_nzgrid+1)/2.0));
-        return (real3){res_x,res_y, res_z};
+	x  = (AC_dsx*(i-((AC_nxgrid+1)/2.0)))
+	y  = (AC_dsy*(j-((AC_nygrid+1)/2.0)))
+	z  = (AC_dsz*(k-((AC_nzgrid+1)/2.0)))
+        return (real3){x,y,z};
 }
 GetCoords(i,j,k)
 {
@@ -80,7 +79,7 @@ Field U
 Field SOLUTION
 Kernel initial_condition()
 {
-	x,y,z = GetCoords(globalVertexIdx.x+1-NGHOST,globalVertexIdx.y+1-NGHOST,globalVertexIdx.z+1-NGHOST)
+	x,y,z = GetCoords(globalVertexIdx.x+1-NGHOST_VAL,globalVertexIdx.y+1-NGHOST_VAL,globalVertexIdx.z+1-NGHOST_VAL)
 	write(COORDS_X,x)
 	write(COORDS_Y,y)
 	write(COORDS_Z,z)

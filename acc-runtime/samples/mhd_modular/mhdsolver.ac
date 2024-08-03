@@ -761,16 +761,16 @@ get_boundary_from_normal(normal_in)
     return 
     (int3)
     {
-    	(normal_in.x ==  1) ? NGHOST + AC_nx - 1 :
-	(normal_in.x == -1) ? NGHOST :
+    	(normal_in.x ==  1) ? NGHOST_VAL + AC_nx - 1 :
+	(normal_in.x == -1) ? NGHOST_VAL :
 	vertexIdx.x,
 
-    	normal_in.y ==  1 ? NGHOST + AC_ny - 1 :
-    	normal_in.y == -1 ? NGHOST :
+    	normal_in.y ==  1 ? NGHOST_VAL + AC_ny - 1 :
+    	normal_in.y == -1 ? NGHOST_VAL :
     	vertexIdx.y,
 
-    	normal_in.z ==  1 ? NGHOST + AC_nz - 1 :
-    	normal_in.z == -1 ? NGHOST :
+    	normal_in.z ==  1 ? NGHOST_VAL + AC_nz - 1 :
+    	normal_in.z == -1 ? NGHOST_VAL :
     	vertexIdx.z;
     }	
 }
@@ -783,7 +783,7 @@ Kernel prescribed_derivative_boundcond(int3 normal, VtxBuffer vtxbuf, real der_v
     int3 boundary = get_boundary_from_normal(normal)
     int3 ghost  = boundary
     int3 domain = boundary
-    for  i  in 0:NGHOST {
+    for  i  in 0:NGHOST_VAL {
         domain = domain - normal
         ghost  = ghost + normal
 	distance = 2 * (i + 1)*d
