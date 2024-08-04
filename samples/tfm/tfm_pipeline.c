@@ -391,6 +391,25 @@ main(int argc, char** argv)
     acDeviceSynchronizeStream(device, STREAM_ALL);
     cudaProfilerStop();
 
+    // Simulation loop
+    // NOTE: should initialize all fields and profiles when used for production
+    const size_t nsteps          = 200;
+    const size_t output_interval = 100;
+    for (size_t step = 1; step <= nsteps; ++step) {
+        // Simulate
+        tfm_pipeline(device, info);
+
+        // Output
+        if ((step % output_interval) == 0) {
+            for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+                char filepath[4096];
+                sprintf(filepath, "debug-step-%012zu-tfm-%s.data", step, vtxbuf_names[i]);
+                printf("Writing %s\n", filepath);
+                acDeviceWriteMeshToDisk(device, i, filepath);
+            }
+        }
+    }
+
     // Free
     fclose(fp);
     acDeviceDestroy(device);

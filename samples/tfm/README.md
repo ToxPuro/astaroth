@@ -7,7 +7,6 @@
         - amplitude
     - TFM reset time to reset the solution
     - Separate $\eta$ for test fields
-- Code to output the computed test fields
 - Multi-GPU implementation of the pipeline with concurrency. A draft of the desired order of computations exists but has not been coded. The individual components required for implementing the pipeline on multiple nodes (similar to `tfm_pipeline` function in `samples/tfm/tfm_pipeline.c`) already exist, such as `acGridReduceXYAverages`.
 - Further testing of the correctness
 
@@ -57,6 +56,10 @@ mkdir build && cd build # Create a build directory and move there
 # F.ex. for Nvidia ../samples/tfm/build.sh -DUSE_HIP=OFF
 $SRUN_COMMAND ./tfm_pipeline # Run tfm_pipeline
 ```
+
+## Production and testing
+
+There is a simple simulation loop at the end of `tfm_pipelines.c` which writes all fields to disk at specified intervals. A simple example on how to visualize the fields is in `scripts/visualize-debug.py`. Astaroth's other Python visualization tools also likely work. The simulation loop can be modified as needed, e.g., by adding diagnostics or changing the write-out interval.
 
 ### Implementation notes
 
