@@ -1305,3 +1305,26 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
     return AC_FAILURE;
 #endif
 }
+
+/** Note: very inefficient. Should only be used for testing. */
+AcResult
+acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf, const char* filepath)
+{
+    AcMesh host_mesh;
+    acHostMeshCreate(device->local_config, &host_mesh);
+
+    acDeviceStoreMesh(device, STREAM_DEFAULT, &host_mesh);
+    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+
+    FILE* fp = fopen(filepath, "w");
+    ERRCHK_ALWAYS(fp);
+
+    const size_t count         = acVertexBufferSize(device->local_config);
+    const size_t count_written = fwrite(host_mesh.vertex_buffer[vtxbuf], sizeof(AcReal), count, fp);
+    ERRCHK_ALWAYS(count_written == count);
+
+    fclose(fp);
+
+    acHostMeshDestroy(&host_mesh);
+    return AC_SUCCESS;
+}

@@ -1201,6 +1201,10 @@ AcResult acDeviceVolumeCopy(const Device device, const Stream stream,           
                             const AcReal* in, const int3 in_offset, const int3 in_volume, //
                             AcReal* out, const int3 out_offset, const int3 out_volume);
 
+/** */
+AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf,
+                                 const char* filepath);
+
 /*
  * =============================================================================
  * Helper functions
@@ -1244,9 +1248,7 @@ acCompute(AcKernel kernel, Field (&fields_in)[num_fields_in], Field (&fields_out
 }
 
 /** */
-template <size_t num_fields>
-AcTaskDefinition
-acHaloExchange(Field (&fields)[num_fields])
+template <size_t num_fields> AcTaskDefinition acHaloExchange(Field (&fields)[num_fields])
 {
     return acHaloExchange(fields, num_fields);
 }
