@@ -149,14 +149,10 @@ astnode_destroy(ASTNode* node)
     astnode_destroy(node->lhs);
   if (node->rhs)
     astnode_destroy(node->rhs);
-  if (node->buffer)
-    free(node->buffer);
-  if (node->prefix)
-    free(node->prefix);
-  if (node->infix)
-    free(node->infix);
-  if (node->postfix)
-    free(node->postfix);
+  free(node->buffer);
+  free(node->prefix);
+  free(node->infix);
+  free(node->postfix);
   free(node);
 }
 

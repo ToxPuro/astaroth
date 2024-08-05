@@ -437,15 +437,15 @@ get_node(const NodeType type, const ASTNode* node)
   else
     return NULL;
 }
-const char*
+char*
 convert_to_enum_name(const char* name)
 {
-	if(strstr(name,"Ac")) return name;
+	if(strstr(name,"Ac")) return strdup(name);
 	char* res = malloc(sizeof(char)* (strlen(name) + strlen("Ac") + 100));
 	sprintf(res,"Ac%s",to_upper_case(name));
 	return res;
 }
-const char*
+char*
 convert_to_define_name(const char* name)
 {
 	char* res = strdup(name);
@@ -681,78 +681,82 @@ gen_array_declarations(const char* datatype_scalar)
 {
 	char tmp[7000];
 
-	sprintf(tmp,"%s* %s_arrays[NUM_%s_ARRAYS+1];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	char* define_name = convert_to_define_name(datatype_scalar);
+	char* uppr_name =       strupr(define_name);
+	char* upper_case_name = to_upper_case(define_name);
+	char* enum_name = convert_to_enum_name(datatype_scalar);
+	sprintf(tmp,"%s* %s_arrays[NUM_%s_ARRAYS+1];\n",datatype_scalar,define_name,uppr_name);
 	file_append("array_decl.h",tmp);
 
-	sprintf(tmp,"if constexpr(std::is_same<P,%sArrayParam>::value) return vba.%s_arrays[(int)param];\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	sprintf(tmp,"if constexpr(std::is_same<P,%sArrayParam>::value) return vba.%s_arrays[(int)param];\n",enum_name,define_name);
 	file_append("get_vba_array.h",tmp);
 
-	sprintf(tmp,"if constexpr(std::is_same<P,%sCompParam>::value) return (%s){};\n",convert_to_enum_name(datatype_scalar),datatype_scalar);
+	sprintf(tmp,"if constexpr(std::is_same<P,%sCompParam>::value) return (%s){};\n",enum_name,datatype_scalar);
 	file_append("get_default_value.h",tmp);
 
-	sprintf(tmp,"if constexpr(std::is_same<P,%sCompArrayParam>::value) return (%s){};\n",convert_to_enum_name(datatype_scalar),datatype_scalar);
+	sprintf(tmp,"if constexpr(std::is_same<P,%sCompArrayParam>::value) return (%s){};\n",enum_name,datatype_scalar);
 	file_append("get_default_value.h",tmp);
 
 
-	sprintf(tmp,"if constexpr(std::is_same<P,%sCompArrayParam>::value) return config.%s_arrays[(int)param];\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	sprintf(tmp,"if constexpr(std::is_same<P,%sCompArrayParam>::value) return config.%s_arrays[(int)param];\n",enum_name,define_name);
 	file_append("get_from_comp_config.h",tmp);
 
-	sprintf(tmp,"if constexpr(std::is_same<P,%sCompParam>::value) return config.%s_params[(int)param];\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	sprintf(tmp,"if constexpr(std::is_same<P,%sCompParam>::value) return config.%s_params[(int)param];\n",enum_name,define_name);
 	file_append("get_from_comp_config.h",tmp);
 
 
 	FILE* fp = fopen("get_config_param.h","a");
-	fprintf(fp,"if constexpr(std::is_same<P,%sParam>::value) return config.%s_params[(int)param];\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
-	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) return config.%s_arrays[(int)param];\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	fprintf(fp,"if constexpr(std::is_same<P,%sParam>::value) return config.%s_params[(int)param];\n",     enum_name,define_name);
+	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) return config.%s_arrays[(int)param];\n",enum_name,define_name);
 	fclose(fp);
 
 	fp = fopen("memcpy_to_gmem_arrays.h","a");
-	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) cudaMemcpyToSymbol(gmem_%s_arrays[(int)param], &ptr, sizeof(ptr), 0, cudaMemcpyHostToDevice);\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) cudaMemcpyToSymbol(gmem_%s_arrays[(int)param], &ptr, sizeof(ptr), 0, cudaMemcpyHostToDevice);\n",enum_name,define_name);
 	fclose(fp);
 
 	fp = fopen("memcpy_from_gmem_arrays.h","a");
-	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) cudaMemcpyFromSymbol(&ptr,gmem_%s_arrays[(int)param],sizeof(ptr), 0, cudaMemcpyDeviceToHost);\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) cudaMemcpyFromSymbol(&ptr,gmem_%s_arrays[(int)param],sizeof(ptr), 0, cudaMemcpyDeviceToHost);\n",enum_name,define_name);
 	fclose(fp);
 
 
-	sprintf(tmp,"if constexpr(std::is_same<P,%sCompParam>::value) return %s_comp_param_names[(int)param];\n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	sprintf(tmp,"if constexpr(std::is_same<P,%sCompParam>::value) return %s_comp_param_names[(int)param];\n",enum_name,define_name);
 	file_append("get_param_name.h",tmp);
 
 
 	fp = fopen("get_num_params.h","a");
-	fprintf(fp," (std::is_same<P,%sParam>::value)      ? NUM_%s_PARAMS : \n",convert_to_enum_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
-	fprintf(fp," (std::is_same<P,%sArrayParam>::value) ? NUM_%s_ARRAYS : \n",convert_to_enum_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp," (std::is_same<P,%sParam>::value)      ? NUM_%s_PARAMS : \n",enum_name,uppr_name);
+	fprintf(fp," (std::is_same<P,%sArrayParam>::value) ? NUM_%s_ARRAYS : \n",enum_name,uppr_name);
 
-	fprintf(fp," (std::is_same<P,%sCompParam>::value)      ? NUM_%s_COMP_PARAMS : \n",convert_to_enum_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
-	fprintf(fp," (std::is_same<P,%sCompArrayParam>::value) ? NUM_%s_COMP_ARRAYS : \n",convert_to_enum_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp," (std::is_same<P,%sCompParam>::value)      ? NUM_%s_COMP_PARAMS : \n",enum_name,uppr_name);
+	fprintf(fp," (std::is_same<P,%sCompArrayParam>::value) ? NUM_%s_COMP_ARRAYS : \n",enum_name,uppr_name);
 	fclose(fp);
-	
+
 	fp = fopen("get_array_info.h","a");
-	fprintf(fp," if(std::is_same<P,%sArrayParam>::value) return %s_array_info[(int)array]; \n",convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar));
+	fprintf(fp," if(std::is_same<P,%sArrayParam>::value) return %s_array_info[(int)array]; \n",enum_name,define_name);
 	fprintf(fp," if(std::is_same<P,%sCompArrayParam>::value) return %s_array_info[(int)array + NUM_%s_ARRAYS]; \n",
-	convert_to_enum_name(datatype_scalar),convert_to_define_name(datatype_scalar), strupr(convert_to_define_name(datatype_scalar)));
+	enum_name,define_name, uppr_name);
 	fclose(fp);
 
 	fp = fopen("dconst_decl.h","a");
 	fprintf(fp,"%s __device__ __forceinline__ DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
-			,datatype_scalar, convert_to_enum_name(datatype_scalar), convert_to_define_name(datatype_scalar));
+			,datatype_scalar, enum_name, define_name);
 	fclose(fp);
 
 	fp = fopen("dconst_accesses_decl.h","a");
 	fprintf(fp,"%s  DCONST(const %sParam& param){%s res{}; return res; }\n"
-			,datatype_scalar, convert_to_enum_name(datatype_scalar), datatype_scalar);
+			,datatype_scalar, enum_name, datatype_scalar);
 	fclose(fp);
 	fp = fopen("get_address.h","a");
 	fprintf(fp,"size_t  get_address(const %sParam& param){ return (size_t)&d_mesh_info.%s_params[(int)param];}\n"
-			,convert_to_enum_name(datatype_scalar), convert_to_define_name(datatype_scalar));
+			,enum_name, define_name);
 	fclose(fp);
 	fp = fopen("load_and_store_array.h","a");
 	fprintf(fp,"cudaError_t load_array(const %s* values, const size_t bytes, const size_t offset)"
 			"{ return cudaMemcpyToSymbol(d_%s_arrays,values,bytes,offset,cudaMemcpyHostToDevice); }\n"
-			,datatype_scalar, convert_to_define_name(datatype_scalar));
+			,datatype_scalar, define_name);
 	fprintf(fp,"cudaError_t store_array(%s* values, const size_t bytes, const size_t offset)"
 			"{ return cudaMemcpyFromSymbol(values,d_%s_arrays,bytes,offset,cudaMemcpyDeviceToHost); }\n"
-			,datatype_scalar, convert_to_define_name(datatype_scalar));
+			,datatype_scalar, define_name);
 	fclose(fp);
 
 
@@ -762,74 +766,81 @@ gen_array_declarations(const char* datatype_scalar)
 	fp = fopen("load_and_store_uniform_overloads.h","a");
 	fprintf(fp,"static AcResult __attribute ((unused))"
 	        "acLoadUniform(const cudaStream_t stream, const %sParam param, const %s value) { return acLoad%sUniform(stream,param,value);}\n"
-		,convert_to_enum_name(datatype_scalar), datatype_scalar, to_upper_case(convert_to_define_name(datatype_scalar)));
+		,enum_name, datatype_scalar, upper_case_name);
 
 	fprintf(fp,"static AcResult __attribute ((unused))"
 	        "acLoadUniform(const cudaStream_t stream, const %sArrayParam param, const %s* values, const size_t length) { return acLoad%sArrayUniform(stream,param,values,length);}\n"
-		,convert_to_enum_name(datatype_scalar), datatype_scalar, to_upper_case(convert_to_define_name(datatype_scalar)));
+		,enum_name, datatype_scalar, upper_case_name);
 
 	fprintf(fp,"static AcResult __attribute ((unused))"
 	        "acStoreUniform(const cudaStream_t stream, const %sParam param, %s* value) { return acStore%sUniform(stream,param,value);}\n"
-		,convert_to_enum_name(datatype_scalar), datatype_scalar, to_upper_case(convert_to_define_name(datatype_scalar)));
+		,enum_name, datatype_scalar, upper_case_name);
 
 	fprintf(fp,"static AcResult __attribute ((unused))"
 	        "acStoreUniform(const %sArrayParam param, %s* values, const size_t length) { return acStore%sArrayUniform(param,values,length);}\n"
-		,convert_to_enum_name(datatype_scalar), datatype_scalar, to_upper_case(convert_to_define_name(datatype_scalar)));
+		,enum_name, datatype_scalar, upper_case_name);
 	fclose(fp);
 
 	fp = fopen("load_and_store_uniform_funcs.h","a");
 	fprintf(fp, "AcResult acLoad%sUniform(const cudaStream_t, const %sParam param, const %s value) { return acLoadUniform(param,value); }\n",
-			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+			upper_case_name, enum_name, datatype_scalar);
 	fprintf(fp, "AcResult acLoad%sArrayUniform(const cudaStream_t, const %sArrayParam param, const %s* values, const size_t length) { return acLoadArrayUniform(param ,values, length); }\n",
-			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+			upper_case_name, enum_name, datatype_scalar);
 	fprintf(fp, "AcResult acStore%sUniform(const cudaStream_t, const %sParam param, %s* value) { return acStoreUniform(param,value); }\n",
-			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+			upper_case_name, enum_name, datatype_scalar);
 	fprintf(fp, "AcResult acStore%sArrayUniform(const %sArrayParam param, %s* values, const size_t length) { return acStoreArrayUniform(param ,values, length); }\n",
-			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+			upper_case_name, enum_name, datatype_scalar);
 
 	fclose(fp);
-	
+
+	//char* define_name = convert_to_define_name(datatype_scalar);
+	//char* uppr_name = strupr(define_name);
+	//char* enum_name = convert_to_enum_name(datatype_scalar);
+
 	fp = fopen("load_and_store_uniform_header.h","a");
 	fprintf(fp, "FUNC_DEFINE(AcResult, acLoad%sUniform,(const cudaStream_t, const %sParam param, const %s value));\n",
-			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+			upper_case_name, enum_name, datatype_scalar);
 
 	fprintf(fp, "FUNC_DEFINE(AcResult, acLoad%sArrayUniform, (const cudaStream_t, const %sArrayParam param, const %s* values, const size_t length));\n",
-			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+			upper_case_name, enum_name, datatype_scalar);
 
 	fprintf(fp, "FUNC_DEFINE(AcResult, acStore%sUniform,(const cudaStream_t, const %sParam param, %s* value));\n",
-			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+			upper_case_name, enum_name, datatype_scalar);
 
 	fprintf(fp, "FUNC_DEFINE(AcResult, acStore%sArrayUniform, (const %sArrayParam param, %s* values, const size_t length));\n",
-			to_upper_case(convert_to_define_name(datatype_scalar)), convert_to_enum_name(datatype_scalar), datatype_scalar); 
+			upper_case_name, enum_name, datatype_scalar);
 	fclose(fp);
 
 	//we pad with 1 since zero sized arrays are not allowed with some CUDA compilers
 	fp = fopen("dconst_arrays_decl.h","a");
-	fprintf(fp,"__device__ __constant__  %s d_%s_arrays[D_%s_ARRAYS_LEN+1];\n",datatype_scalar, convert_to_define_name(datatype_scalar), strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp,"__device__ __constant__  %s d_%s_arrays[D_%s_ARRAYS_LEN+1];\n",datatype_scalar, define_name, uppr_name);
 	fclose(fp);
 
 	fp = fopen("gmem_arrays_decl.h","a");
-	fprintf(fp,"DECLARE_GMEM_ARRAY(%s,%s,%s);\n",datatype_scalar, convert_to_define_name(datatype_scalar), strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp,"DECLARE_GMEM_ARRAY(%s,%s,%s);\n",datatype_scalar, define_name, uppr_name);
 	fclose(fp);
 
 
-	if(!strcmp(datatype_scalar,"int")) return;
-	fp = fopen("scalar_types.h","a");
-	fprintf(fp,"%sParam,\n",convert_to_enum_name(datatype_scalar));
-	fclose(fp);
+	if(strcmp(datatype_scalar,"int"))
+	{
+		fp = fopen("scalar_types.h","a");
+		fprintf(fp,"%sParam,\n",enum_name);
+		fclose(fp);
 
-	fp = fopen("scalar_comp_types.h","a");
-	fprintf(fp,"%sCompParam,\n",convert_to_enum_name(datatype_scalar));
-	fclose(fp);
+		fp = fopen("scalar_comp_types.h","a");
+		fprintf(fp,"%sCompParam,\n",enum_name);
+		fclose(fp);
 
-	fp = fopen("array_types.h","a");
-	fprintf(fp,"%sArrayParam,\n",convert_to_enum_name(datatype_scalar));
-	fclose(fp);
+		fp = fopen("array_types.h","a");
+		fprintf(fp,"%sArrayParam,\n",enum_name);
+		fclose(fp);
 
-	fp = fopen("array_comp_types.h","a");
-	fprintf(fp,"%sCompArrayParam,\n",convert_to_enum_name(datatype_scalar));
-	fclose(fp);
+		fp = fopen("array_comp_types.h","a");
+		fprintf(fp,"%sCompArrayParam,\n",enum_name);
+		fclose(fp);
+	}
 }
+
 
 void
 gen_comp_declarations(const char* datatype_scalar)
@@ -4927,14 +4938,11 @@ gen_ssa_in_basic_blocks(ASTNode* node)
 	if(!get_node_by_id(first_decl->id,begin_scope)) return;
 	char* new_name = malloc((strlen(var_name)+1)*sizeof(char));
 	sprintf(new_name,"%s_",var_name);
-	char tmp[1000];
-	combine_all(node,tmp);
 	const bool final_node = is_left_child(NODE_STATEMENT_LIST_HEAD,node);
 	rename_variables_in_statements(
 					final_node ? head : head->parent,
 					new_name,var_name
 				      );
-	combine_all(node,tmp);
 	get_node_by_token(IDENTIFIER,node->lhs)->buffer = strdup(new_name);
 	free(new_name);
 }

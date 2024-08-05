@@ -338,6 +338,8 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
         generate(root, fp, gen_mem_accesses, optimize_conditionals);
+	astnode_destroy(root);
+	root = NULL;
 	
         fclose(fp);
 
