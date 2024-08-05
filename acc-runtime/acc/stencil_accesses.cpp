@@ -116,12 +116,18 @@ __ballot(bool val)
 	return 0;
 }
 #endif
+#undef  __device__
+#define __device__
+
+#undef  __constant__
+#define __constant__
 
 #include "math_utils.h"
  
 #include "acc_runtime.h"
 #include "user_constants.h"
 #include "dconst_arrays_decl.h"
+#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) DATATYPE gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1][1000] {}
 #include "gmem_arrays_decl.h"
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
@@ -135,8 +141,13 @@ static int written_fields_stencil_accesses[NUM_FIELDS] = {0};
 static AcMeshInfo d_mesh_info;
 #include "user_dfuncs.h"
 #define suppress_unused_warning(X) (void)X
+
+#define constexpr
 #include "user_kernels.h"
+#undef  constexpr
+
 #include "extern_kernels.h"
+
 
 
 VertexBufferArray

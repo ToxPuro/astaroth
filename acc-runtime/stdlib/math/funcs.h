@@ -1,3 +1,4 @@
+
 norm(real3 vec)
 {
 	return sqrt(dot(vec,vec))

@@ -396,23 +396,23 @@ momentum() {
 #if LUPWD
           + gradient_upwd(UU) * abs(UU)
 #endif
-#if LENTROPY 
-          - cs2 * ((1. / AC_cp_sound) * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO))
-#else
-          - cs2 * gradient(VTXBUF_LNRHO)
-#endif
-#if LMAGNETIC
-          + inv_rho * cross(j, B)
-#endif
-          + AC_nu_visc * (laplace(UU) + (1. / 3.) * gradient_of_divergence(UU)
-                       + 2. * S * gradient(VTXBUF_LNRHO))
-          + AC_zeta * gradient_of_divergence(UU)
-#if LSHOCK
-          + AC_nu_shock * (VTXBUF_SHOCK * (divergence(UU) * gradient(VTXBUF_LNRHO) +
-                                           gradient_of_divergence(UU)) +
-                           divergence(UU) * gradient(VTXBUF_SHOCK))
-#endif
-
+//#if LENTROPY 
+//          - cs2 * ((1. / AC_cp_sound) * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO))
+//#else
+//          - cs2 * gradient(VTXBUF_LNRHO)
+//#endif
+//#if LMAGNETIC
+//          + inv_rho * cross(j, B)
+//#endif
+//          + AC_nu_visc * (laplace(UU) + (1. / 3.) * gradient_of_divergence(UU)
+//                       + 2. * S * gradient(VTXBUF_LNRHO))
+//          + AC_zeta * gradient_of_divergence(UU)
+//#if LSHOCK
+//          + AC_nu_shock * (VTXBUF_SHOCK * (divergence(UU) * gradient(VTXBUF_LNRHO) +
+//                                           gradient_of_divergence(UU)) +
+//                           divergence(UU) * gradient(VTXBUF_SHOCK))
+//#endif
+//
     return mom
 }
 
@@ -873,11 +873,13 @@ Kernel constant() {
 }
 Kernel test()
 {
-	real arr = [1.0,2.0]
-	arr_2 = abs(arr)
-
-	real arr_3 = [1.0,2.0,3.0]
-	arr_4 = abs(arr_3)
+	x = 2;
+	if(x > 4)
+	{	
+		z = 2;
+		print("HI\n");
+	}
+	uu_val = VTXBUF_UUX[0][0][0]
 }
 
 

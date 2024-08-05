@@ -335,7 +335,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 		return EXIT_SUCCESS;
 	}
         // generate(root, stdout);
-        FILE* fp = fopen("user_kernels.h.raw", "a");
+        FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
         generate(root, fp, gen_mem_accesses, optimize_conditionals);
 	
@@ -427,7 +427,8 @@ main(int argc, char** argv)
 %token INT UINT REAL MATRIX FIELD FIELD3 STENCIL WORK_BUFFER BOOL INTRINSIC 
 %token KERNEL INLINE ELEMENTAL BOUNDARY_CONDITION SUM MAX COMMUNICATED AUXILIARY DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL_MEMORY_QL OUTPUT INPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS EXTERN
 %token HOSTDEFINE
-%token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE
+%token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE 
+%token STATEMENT_LIST_HEAD STATEMENT
 
 %nonassoc QUESTION
 %nonassoc ':'
@@ -454,6 +455,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             ASTNode* declaration_list = declaration->rhs;
             assert(declaration_list);
 
+
 	    ASTNode* declaration_list_head = declaration_list;
 	    const bool are_arrays = (get_node(NODE_ARRAY_ACCESS,declaration) != NULL) ||
 				    (get_node(NODE_ARRAY_INITIALIZER,declaration) != NULL);
@@ -465,13 +467,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             //    fprintf(stderr, "FATAL ERROR: Device constant assignment is not supported. Load the value at runtime with ac[Grid|Device]Load[Int|Int3|Real|Real3]Uniform-type API functions or use #define.\n");
             //    assert(!assignment);
             //}
-            //user specified intrinsic function provided by the GPU library
-	    if(type_specifier && !strcmp(type_specifier->lhs->buffer,"intrinsic"))
-	    {
-                variable_definition->type |= NODE_NO_OUT;
-                set_identifier_type(NODE_FUNCTION_ID, declaration_list);
-	    }
-            else if (get_node_by_token(FIELD, variable_definition)) {
+            if (get_node_by_token(FIELD, variable_definition)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
 		if(are_arrays)
@@ -615,10 +611,10 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             }
 
          }
-       | program function_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
-       | program stencil_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
-       | program hostdefine          { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
-       //for now simply discard the struct definition info since not needed
+       | program intrinsic_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+       | program function_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+       | program stencil_definition   { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+       | program hostdefine           { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
        | program struct_definition   { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
        | program steps_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
        | program boundconds_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
@@ -629,7 +625,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
  * Terminals
  * =============================================================================
  */
-struct_name : STRUCT_NAME { $$ = astnode_create(NODE_TSPEC, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
+struct_name : STRUCT_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; $$->token = IDENTIFIER;};
 enum_name: ENUM_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 identifier: IDENTIFIER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
 number: NUMBER         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
@@ -708,11 +704,10 @@ steps_definition: computesteps steps_definition_call '{' function_call_csv_list 
 	       ;
 
 
-struct_definition:     struct_name '{' declarations '}' {
+struct_definition:     struct_name'{' declarations '}' {
                         $$ = astnode_create(NODE_STRUCT_DEF,$1,$3);
-			ASTNode* struct_type = get_node(NODE_TSPEC,$$);
-			remove_substring(struct_type->buffer,"struct");
-			strip_whitespace(struct_type->buffer);
+			remove_substring($$->lhs->buffer,"struct");
+			strip_whitespace($$->lhs->buffer);
                  }
 		 ;
 enum_definition: enum_name '{' expression_list '}'{
@@ -768,9 +763,12 @@ type_specifier:
               | struct_type  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | enum_type    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | vtxbuffer    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | intrinsic    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
 	      | kernel       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               ;
+
+type_specifiers: type_specifiers ',' type_specifier {$$ = astnode_create(NODE_UNKNOWN,$1,$3); }
+	       | type_specifier  {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
+	       ;
 
 type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | max          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
@@ -885,6 +883,20 @@ expression_list: expression                     { $$ = astnode_create(NODE_UNKNO
 variable_definition: declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
                    | assignment  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
                    ;
+
+intrinsic_body: identifier {$$ = astnode_create(NODE_UNKNOWN, $1,NULL); }
+	      | identifier '(' type_specifiers ')' {  $$ = astnode_create(NODE_UNKNOWN,$1,$3); }
+	      ;
+
+intrinsic_type_declaration: type_declaration intrinsic
+			    {$$ = astnode_create(NODE_UNKNOWN,$1,$2);  }
+intrinsic_definition:  
+		    intrinsic_type_declaration intrinsic_body {
+		    		$$ = astnode_create(NODE_DECLARATION, $1, $2);
+				$$ -> type |= NODE_NO_OUT;
+                		set_identifier_type(NODE_FUNCTION_ID, $2);
+		    }
+		     ;
 variable_definitions: non_null_declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
                    |  type_declaration assignment_list  
 				{ 
@@ -1001,22 +1013,24 @@ assignment_body: assignment_op expression_list
  * =============================================================================
 */
 
-statement: selection_statement  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
-	 | non_selection_statement {$$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
-         ;
-
-non_selection_statement: 
+basic_statement: 
 	   variable_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
-         | iteration_statement  { $$ = astnode_create(NODE_BEGIN_SCOPE, $1, NULL); }
          | return expression    { $$ = astnode_create(NODE_UNKNOWN, $1, $2); astnode_set_postfix(";", $$); }
          | function_call        { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
          ;
 
+non_selection_statement: 
+	   basic_statement { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
+         | iteration_statement  { $$ = astnode_create(NODE_BEGIN_SCOPE, $1, NULL); }
+         ;
 
+statement: selection_statement     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
+	 | non_selection_statement {$$ = astnode_create(NODE_UNKNOWN, $1, NULL);  }
+         ;
 
 
 statement_list: statement                { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
-              | statement_list statement { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
+              | statement_list statement { $$ = astnode_create(NODE_STATEMENT_LIST_HEAD, $1, $2);}
               ;
 
 
@@ -1033,8 +1047,17 @@ if_root: compound_statement else_statement { $$ = astnode_create(NODE_UNKNOWN, $
        | non_selection_statement else_statement { $$ = astnode_create(NODE_UNKNOWN, $1, $2);}
        | compound_statement elif_statement { $$ = astnode_create(NODE_UNKNOWN, $1, $2);}
        | non_selection_statement elif_statement { $$ = astnode_create(NODE_UNKNOWN, $1, $2);}       
-       | compound_statement { $$ = astnode_create(NODE_UNKNOWN, $1, NULL);}
-       | statement          { $$ = astnode_create(NODE_UNKNOWN, $1, NULL);}
+       | compound_statement { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); 
+				if($$->lhs->lhs)
+				{
+					const int n_statements = count_num_of_nodes_in_list($$->lhs->lhs);
+					if(n_statements == 1)
+					{
+						$$->lhs->type = NODE_UNKNOWN;
+					}
+				}
+			    }
+       | statement 	    { $$ = astnode_create(NODE_UNKNOWN, $1, NULL);}
          ;
 
 elif_statement: elif if_statement                 { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }

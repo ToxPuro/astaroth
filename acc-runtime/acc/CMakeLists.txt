@@ -10,13 +10,14 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 option(OPTIMIZE_MEM_ACCESSES "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time." OFF)
 option(OPTIMIZE_CONDITIONALS "Optimizes conditionals based on kernel input parameters by making copies of kernels for each combination of input params, works well with OPTIMIZE_MEM_ACCESSES since reduces the number of conditional accesses to kernels" OFF)
 
+add_compile_options(-pg)
 ## Find dependencies
 find_package(BISON)
 find_package(FLEX)
 add_library(tinyexpr STATIC tinyexpr.c)
 target_link_libraries(tinyexpr PUBLIC m)
 
-bison_target(parser ac.y ${PROJECT_BINARY_DIR}/tab.c VERBOSE) # COMPILE_FLAGS -Wcounterexamples) # Counterexamples need relatively new Bison (at least 3.7 works)
+bison_target(parser ac.y ${PROJECT_BINARY_DIR}/tab.c VERBOSE COMPILE_FLAGS -Wcounterexamples) # Counterexamples need relatively new Bison (at least 3.7 works)
 flex_target(scanner ac.l ${PROJECT_BINARY_DIR}/yy.c)
 add_flex_bison_dependency(scanner parser)
 

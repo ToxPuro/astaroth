@@ -238,6 +238,8 @@ get_smem(const Volume tpb, const size_t stencil_order,
 
 __device__ __constant__ AcMeshInfo d_mesh_info;
 #include "dconst_arrays_decl.h"
+//TP: We do this ugly macro because I want to keep the generated headers the same if we are compiling cpu analysis and for the actual gpu comp
+#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1] 
 #include "gmem_arrays_decl.h"
 
 

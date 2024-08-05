@@ -46,6 +46,10 @@ write(Field3 dst, real3 src)
 	write(dst.z, src.z)
 }
 
+real3 intrinsic AC_cross
+real intrinsic AC_dot
+
+
 elemental 
 cross(real3 a, real3 b)
 {
@@ -57,5 +61,3 @@ dot(real3 a, real3 b)
 {
 	return AC_dot(a, b)
 }
-
-

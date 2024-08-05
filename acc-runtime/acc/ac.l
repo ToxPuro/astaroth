@@ -137,6 +137,12 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 				}
 				if(str_vec_contains(enum_names,yytext))
 					return ENUM_TYPE;
+				if(yytext[strlen(yytext)-1] == '_')
+				{
+					fprintf(stderr,"Fatal error: Identifiers ending in _ are not allowed: %s\n",yytext);
+					exit(EXIT_FAILURE);
+				}
+					
 				return IDENTIFIER; 
 			  }   
 \"(\\.|[^"\\])*\"         { return STRING; }       /* String literal */

@@ -30,46 +30,46 @@
 #define BUFFER_SIZE (4096)
 
 typedef enum {
-  NODE_UNKNOWN            = 0,
-  NODE_PRIMARY_EXPRESSION = (1 << 0),
-  NODE_DFUNCTION          = (1 << 1),
-  NODE_KFUNCTION          = (1 << 2),
-  NODE_FUNCTION_ID        = (1 << 3),
-  NODE_FUNCTION_PARAM     = (1 << 4),
-  NODE_BINARY             = (1 << 5),
-  NODE_BEGIN_SCOPE        = (1 << 6),
-  NODE_DECLARATION        = (1 << 7),
-  NODE_TSPEC              = (1 << 8),
-  NODE_TQUAL              = (1 << 9),
-  NODE_STENCIL            = (1 << 10),
-  NODE_EXPRESSION         = (1 << 11),
-  NODE_VARIABLE           = (1 << 12),
-  NODE_VARIABLE_ID        = (1 << 13),
-  NODE_ARRAY_INITIALIZER  = (1 << 14),
-  NODE_DCONST             = (1 << 15),
-  NODE_TERNARY            = (1 << 16),
-  NODE_MEMBER_ID          = (1 << 17),
-  NODE_HOSTDEFINE         = (1 << 18),
-  NODE_ASSIGNMENT         = (1 << 19),
-  NODE_INPUT              = (1 << 20),
-  NODE_DEF                = (1 << 21) | NODE_BEGIN_SCOPE,
-  NODE_STRUCT_INITIALIZER = (1 << 22),
-  NODE_ARRAY_ACCESS       = (1 << 23),
-
-  NODE_IF                 = (1 << 25),
-  NODE_FUNCTION_CALL      = (1 << 26),
-  NODE_DFUNCTION_ID       = (1 << 27),
-  NODE_ASSIGN_LIST        = (1 << 28),
-  NODE_NO_OUT             = (1 << 29),
-  NODE_STRUCT_EXPRESSION  = (1 << 30),
-  NODE_FUNCTION           = NODE_DFUNCTION | NODE_KFUNCTION,
-  NODE_ENUM_DEF           = (NODE_DEF + 0 + NODE_NO_OUT),
-  NODE_STRUCT_DEF         = (NODE_DEF + 1 + NODE_NO_OUT),
-  NODE_TASKGRAPH_DEF      = (NODE_DEF + 2 + NODE_NO_OUT),
-  NODE_BOUNDCONDS_DEF     = (NODE_DEF + 3 + NODE_NO_OUT),
-  NODE_BINARY_EXPRESSION  = (NODE_BINARY + NODE_EXPRESSION),
-  NODE_TERNARY_EXPRESSION = (NODE_TERNARY+ NODE_EXPRESSION),
-  NODE_ANY                = ~0,
+  NODE_UNKNOWN             = 0,
+  NODE_PRIMARY_EXPRESSION  = (1 << 0),
+  NODE_DFUNCTION           = (1 << 1),
+  NODE_KFUNCTION           = (1 << 2),
+  NODE_FUNCTION_ID         = (1 << 3),
+  NODE_FUNCTION_PARAM      = (1 << 4),
+  NODE_BINARY              = (1 << 5),
+  NODE_BEGIN_SCOPE         = (1 << 6),
+  NODE_DECLARATION         = (1 << 7),
+  NODE_TSPEC               = (1 << 8),
+  NODE_TQUAL               = (1 << 9),
+  NODE_STENCIL             = (1 << 10),
+  NODE_EXPRESSION          = (1 << 11),
+  NODE_VARIABLE            = (1 << 12),
+  NODE_VARIABLE_ID         = (1 << 13),
+  NODE_ARRAY_INITIALIZER   = (1 << 14),
+  NODE_DCONST              = (1 << 15),
+  NODE_TERNARY             = (1 << 16),
+  NODE_MEMBER_ID           = (1 << 17),
+  NODE_HOSTDEFINE          = (1 << 18),
+  NODE_ASSIGNMENT          = (1 << 19),
+  NODE_INPUT               = (1 << 20),
+  NODE_DEF                 = (1 << 21) | NODE_BEGIN_SCOPE,
+  NODE_STRUCT_INITIALIZER  = (1 << 22),
+  NODE_ARRAY_ACCESS        = (1 << 23),
+  NODE_STATEMENT_LIST_HEAD = (1 << 24),
+  NODE_IF                  = (1 << 25),
+  NODE_FUNCTION_CALL       = (1 << 26),
+  NODE_DFUNCTION_ID        = (1 << 27),
+  NODE_ASSIGN_LIST         = (1 << 28),
+  NODE_NO_OUT              = (1 << 29),
+  NODE_STRUCT_EXPRESSION   = (1 << 30),
+  NODE_FUNCTION            = NODE_DFUNCTION | NODE_KFUNCTION,
+  NODE_ENUM_DEF            = (NODE_DEF + 0 + NODE_NO_OUT),
+  NODE_STRUCT_DEF          = (NODE_DEF + 1 + NODE_NO_OUT),
+  NODE_TASKGRAPH_DEF       = (NODE_DEF + 2 + NODE_NO_OUT),
+  NODE_BOUNDCONDS_DEF      = (NODE_DEF + 3 + NODE_NO_OUT),
+  NODE_BINARY_EXPRESSION   = (NODE_BINARY + NODE_EXPRESSION),
+  NODE_TERNARY_EXPRESSION  = (NODE_TERNARY+ NODE_EXPRESSION),
+  NODE_ANY                 = ~0,
 } NodeType;
 
 typedef struct astnode_s {
@@ -422,6 +422,17 @@ static inline void strprepend(char* dst, const char* src)
 {	
     memmove(dst + strlen(src), dst, strlen(dst)+ 1); // Move existing data including null terminator
     memcpy(dst, src, strlen(src)); // Copy src to the beginning of dst
+}
+static inline void
+strcatprintf(char* dst, const char* format, ...)
+{
+	static char buffer[10000];
+	va_list args;
+	va_start(args,format);
+	int ret = vsprintf(buffer, format, args);
+	va_end(args);
+	strcat(dst,buffer);
+	
 }
 static inline char* readFile(const char *filename) {
     FILE *file = fopen(filename, "rb"); // Open the file in binary mode
