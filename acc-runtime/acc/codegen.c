@@ -144,7 +144,7 @@ typedef struct {
   //We keep this as int_vec since makes comparisons so much faster
   int_vec tqualifiers;
   char tspecifier[MAX_ID_LEN];
-  int int_tspecifier;
+  int tspecifier_token;
   char identifier[MAX_ID_LEN];
   } Symbol;
 
@@ -217,6 +217,15 @@ get_symbol(const NodeType type, const char* symbol, const char* tspecifier)
 			  return &symbol_table[i];
   return NULL;
 }
+
+static const Symbol*
+get_symbol_token(const NodeType type, const char* symbol, const int tspecifier)
+{
+  for (size_t i = 0; i < num_symbols[0]; ++i)
+	  if(symbol_table[i].type & type && !strcmp(symbol,symbol_table[i].identifier) && (!tspecifier || tspecifier == symbol_table[i].tspecifier_token))
+			  return &symbol_table[i];
+  return NULL;
+}
 #define REAL_SPECIFIER  (1 << 0)
 #define INT_SPECIFIER   (1 << 1)
 #define BOOL_SPECIFIER  (1 << 2)
@@ -225,7 +234,7 @@ get_symbol(const NodeType type, const char* symbol, const char* tspecifier)
 
 static int 
 add_symbol(const NodeType type, const int* tqualifiers, const size_t n_tqualifiers, const char* tspecifier,
-           const char* id)
+           const int tspecifier_token, const char* id)
 {
   assert(num_symbols[current_nest] < SYMBOL_TABLE_SIZE);
   symbol_table[num_symbols[current_nest]].type          = type;
@@ -235,11 +244,14 @@ add_symbol(const NodeType type, const int* tqualifiers, const size_t n_tqualifie
       	push_int(&symbol_table[num_symbols[current_nest]].tqualifiers,tqualifiers[i]);
 
   if (tspecifier)
+  {
     strcpy(symbol_table[num_symbols[current_nest]].tspecifier, tspecifier);
+    symbol_table[num_symbols[current_nest]].tspecifier_token  = tspecifier_token;
+  }
   strcpy(symbol_table[num_symbols[current_nest]].identifier, id);
 
   ++num_symbols[current_nest];
-  const bool is_field_without_type_qualifiers = tspecifier && !strcmp(tspecifier,"Field") && symbol_table[num_symbols[current_nest]].tqualifiers.size == 0;
+  const bool is_field_without_type_qualifiers = tspecifier_token && tspecifier_token == FIELD && symbol_table[num_symbols[current_nest]].tqualifiers.size == 0;
   const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
   if(!is_field_without_type_qualifiers)
   	return num_symbols[current_nest]-1;
@@ -292,88 +304,81 @@ symboltable_reset(void)
   int const_tq[1]  =  {CONST_QL};
 
   // Add built-in variables (TODO consider NODE_BUILTIN)
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "print");           // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "threadIdx");       // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "blockIdx");        // TODO REMOVE
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "vertexIdx");       // TODO REMOVE
-  int vertex_index = add_symbol(NODE_VARIABLE_ID, NULL, 0, "int3", "globalVertexIdx"); // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "print");           // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "threadIdx");       // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "blockIdx");        // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "vertexIdx");       // TODO REMOVE
+  int vertex_index = add_symbol(NODE_VARIABLE_ID, NULL, 0, "int3", INT3, "globalVertexIdx"); // TODO REMOVE
   symbol_table[vertex_index].tqualifiers.size = 0;
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "globalGridN");     // TODO REMOVE
-								  
-  add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL, "AC_INTERNAL_big_real_array");
-  add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL, "AC_INTERNAL_big_int_array");
-
-  // add_symbol(NODE_UNKNOWN, NULL, NULL, "true");
-  // add_symbol(NODE_UNKNOWN, NULL, NULL, "false");
-
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "write_base");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "globalGridN");     // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "write_base");  // TODO RECHECK
 							 //
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "reduce_sum");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "reduce_min");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "reduce_max");  // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, "int", "size");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "reduce_sum");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "reduce_min");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "reduce_max");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0,"int", 0, "size");  // TODO RECHECK
   //In develop
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "read_w");
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write_w");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, "Field3", "MakeField3"); // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, "real", "len");    // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, "Field3",0, "MakeField3"); // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, "real",  0, "len");    // TODO RECHECK
 
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "uint64_t");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "UINT64_MAX"); // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"uint64_t");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"UINT64_MAX"); // TODO RECHECK
 
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, "AcReal", "rand_uniform");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, "AcReal", "previous_base");  // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, "AcReal", REAL,"rand_uniform");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, "AcReal", REAL,"previous_base");  // TODO RECHECK
 
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "multm2_sym");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "diagonal");   // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "sum");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"multm2_sym");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"diagonal");   // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"sum");   // TODO RECHECK
 
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "AC_REAL_PI");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "NUM_FIELDS");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "NUM_VTXBUF_HANDLES");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "NUM_ALL_FIELDS");
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, "AcReal", REAL,"AC_REAL_PI");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"NUM_FIELDS");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"NUM_VTXBUF_HANDLES");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"NUM_ALL_FIELDS");
 
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "FIELD_IN");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "FIELD_OUT");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, "IDX");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, "AcReal3", "AcReal3");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"FIELD_IN");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"FIELD_OUT");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"IDX");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, "AcReal3", REAL3,"AcReal3");
 
-  add_symbol(NODE_VARIABLE_ID, const_tq, 1, "bool", "true");
-  add_symbol(NODE_VARIABLE_ID, const_tq, 1, "bool", "false");
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, "bool", BOOL,"true");
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, "bool", BOOL,"false");
 
   // Astaroth 2.0 backwards compatibility START
   // (should be actually built-in externs in acc-runtime/api/acc-runtime.h)
   int tqualifiers[1] = {DCONST_QL};
   int const_qualifier[1] = {CONST_QL};
 
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1,"int", "AC_xy_plate_bufsize");
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1,"int", "AC_xz_plate_bufsize");
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1,"int", "AC_yz_plate_bufsize");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1,"int", INT,"AC_xy_plate_bufsize");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1,"int", INT,"AC_xz_plate_bufsize");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1,"int", INT,"AC_yz_plate_bufsize");
 
 
   //For special reductions
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "AcReal", "AC_center_x");
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "AcReal", "AC_center_y");
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "AcReal", "AC_center_z");
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "AcReal", "AC_sum_radius");
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "AcReal", "AC_window_radius");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "AcReal", REAL,"AC_center_x");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "AcReal", REAL,"AC_center_y");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "AcReal", REAL,"AC_center_z");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "AcReal", REAL,"AC_sum_radius");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "AcReal", REAL,"AC_window_radius");
 
   // (BC types do not belong here, BCs not handled with the DSL)
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_bc_type_bot_x");
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_bc_type_bot_y");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", INT,"AC_bc_type_bot_x");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", INT,"AC_bc_type_bot_y");
 #if TWO_D == 0
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_bc_type_bot_z");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", INT,"AC_bc_type_bot_z");
 #endif
 
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_bc_type_top_x");
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_bc_type_top_y");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", INT,"AC_bc_type_top_x");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", INT,"AC_bc_type_top_y");
 #if TWO_D == 0
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_bc_type_top_z");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", INT,"AC_bc_type_top_z");
 #endif
-  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", "AC_init_type");
-  add_symbol(NODE_VARIABLE_ID, const_qualifier, 1, "int", "STENCIL_ORDER");
+  add_symbol(NODE_VARIABLE_ID, tqualifiers, 1, "int", INT,"AC_init_type");
+  add_symbol(NODE_VARIABLE_ID, const_qualifier, 1, "int", INT,"STENCIL_ORDER");
   // Astaroth 2.0 backwards compatibility END
-  int index = add_symbol(NODE_VARIABLE_ID, NULL, 0 , "int3", "blockDim");
+  int index = add_symbol(NODE_VARIABLE_ID, NULL, 0 , "int3", INT3,"blockDim");
   symbol_table[index].tqualifiers.size = 0;
 }
 
@@ -401,12 +406,12 @@ print_symbol_table(void)
 
     if (symbol_table[i].type & NODE_FUNCTION_ID)
       printf("(%s function)",
-             !strcmp(symbol_table[i].tspecifier,"Kernel") ? "kernel" : "device");
+             symbol_table[i].tspecifier_token == KERNEL ? "kernel" : "device");
 
     if (int_vec_contains(symbol_table[i].tqualifiers,DCONST_QL))
       printf("(dconst)");
 
-    if (!strcmp(symbol_table[i].tspecifier,"Stencil"))
+    if (symbol_table[i].tspecifier_token == STENCIL)
       printf("(stencil)");
 
     printf("\n");
@@ -948,12 +953,22 @@ check_symbol(const NodeType type, const char* name, const char* tspecifier, cons
 	  int_vec_contains(sym->tqualifiers,tqualifier);
 }
 
+bool
+check_symbol_token(const NodeType type, const char* name, const int tspecifier, const int tqualifier)
+{
+  const Symbol* sym = get_symbol_token(type,name,tspecifier);
+  return 
+	  !sym ? false :
+	  !tqualifier ? true :
+	  int_vec_contains(sym->tqualifiers,tqualifier);
+}
+
 
 bool
 check_for_vtxbuf(const ASTNode* node)
 {
-	//global vtxbuf
-	if(check_symbol(NODE_VARIABLE_ID, node->buffer, "Field", 0) || check_symbol(NODE_VARIABLE_ID, node->buffer, "Field*", 0))
+	//global vtxbuf we exclude arrays for now
+	if(check_symbol_token(NODE_VARIABLE_ID, node->buffer, FIELD, 0) && !check_symbol(NODE_VARIABLE_ID, node->buffer, "Field*", 0))
 		return true;
 	const ASTNode* func = get_parent_node(NODE_FUNCTION,node);
 	if(!func) return false;
@@ -1392,7 +1407,7 @@ get_func_call_params_info(const ASTNode* func_call, const ASTNode* root);
 void gen_loader(const ASTNode* func_call, const ASTNode* root, const char* prefix, string_vec* input_symbols, string_vec* input_types)
 {
 		const char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
-		const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,func_name,NULL,0);
+		const bool is_dfunc = check_symbol_token(NODE_DFUNCTION_ID,func_name,0,0);
 		if(!strcmp(func_name,"periodic"))
 			return;
 		ASTNode* param_list_head = func_call->rhs;
@@ -1533,14 +1548,14 @@ get_taskgraph_kernel_calls(const ASTNode* function_call_list_head, int n)
 	int_vec calls = VEC_INITIALIZER;
 	ASTNode* function_call = function_call_list_head->lhs;
 	char* func_name = get_node_by_token(IDENTIFIER,function_call)->buffer;
-	if(check_symbol(NODE_FUNCTION_ID,func_name,NULL,0))
+	if(check_symbol_token(NODE_FUNCTION_ID,func_name,0,0))
 		push_int(&calls,get_symbol_index(NODE_FUNCTION_ID,func_name,"Kernel"));
 	while(--n)
 	{
 		function_call_list_head = function_call_list_head->parent;
 		function_call = function_call_list_head->rhs;
 		func_name = get_node_by_token(IDENTIFIER,function_call)->buffer;
-		if(check_symbol(NODE_FUNCTION_ID,func_name,"Kernel",0))
+		if(check_symbol_token(NODE_FUNCTION_ID,func_name,KERNEL,0))
 			push_int(&calls,get_symbol_index(NODE_FUNCTION_ID,func_name,"Kernel"));
 	}
 	return calls;
@@ -1649,7 +1664,7 @@ process_boundcond(const ASTNode* func_call, char** res, const ASTNode* root, con
 
 	func_params_info call_info = get_func_call_params_info(func_call,root);
 	bool* fields_included = get_fields_included(call_info);
-	const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,func_name,NULL,0);
+	const bool is_dfunc = check_symbol_token(NODE_DFUNCTION_ID,func_name,0,0);
 	char* prefix = malloc(sizeof(char)*4000);
 	char* full_name = malloc(sizeof(char)*4000);
 	for(int bc = 0;  bc < num_boundaries; ++bc) 
@@ -1710,7 +1725,7 @@ gen_dfunc_bc_kernel(const ASTNode* func_call, FILE* fp, const ASTNode* root, con
 	if(!strcmp(func_name,"periodic"))
 		return;
 	char* prefix = malloc(sizeof(char)*4000);
-	const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,func_name,NULL,0);
+	const bool is_dfunc = check_symbol_token(NODE_DFUNCTION_ID,func_name,0,0);
 	char* full_name = malloc(sizeof(char)*4000);
 	for(int bc = 0;  bc < num_boundaries; ++bc) 
 	{
@@ -2806,6 +2821,7 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
     }
     else if (!symbol) {
       char* tspec = NULL;
+      int tspec_token = 0;
       int* tqualifiers = malloc(sizeof(int)*MAX_ID_LEN);
       size_t n_tqualifiers = 0;
 
@@ -2816,6 +2832,7 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 
         if (tspec_node && tspec_node->lhs){
           tspec = tspec_node->lhs->buffer;
+	  tspec_token = tspec_node->lhs->token;
         }
         if (tqual_node && tqual_node->lhs)
 	{
@@ -2886,7 +2903,7 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
       }
       if (!(node->type & NODE_MEMBER_ID))
       {
-        add_symbol(node->type, tqualifiers, n_tqualifiers, tspec, node->buffer);
+        add_symbol(node->type, tqualifiers, n_tqualifiers, tspec, tspec_token, node->buffer);
       }
 
       free(tqualifiers);
@@ -3132,16 +3149,17 @@ get_binary_expr_type(const ASTNode* node, const ASTNode* root)
 				                                            : node->lhs;
 	const char* lhs_res = get_expr_type(lhs_node,root);
 	const char* rhs_res = get_expr_type(node->rhs,root);
+	if(!lhs_res || !rhs_res) return NULL;
+	const bool lhs_real = !strcmp(lhs_res,"AcReal");
+	const bool rhs_real = !strcmp(rhs_res,"AcReal");
 	return
-		!lhs_res  ? NULL :
-		!rhs_res  ? NULL :
-		op && !strcmp(op,"/") && !strcmp(lhs_res,"AcReal") ? "AcReal" :
-		op && !strcmp(op,"/") && !strcmp(lhs_res,"int") && !strcmp(rhs_res,"AcReal") ? "AcReal" :
+		op && !strcmp(op,"/") && lhs_real ? "AcReal" :
+		op && !strcmp(op,"/") && !strcmp(lhs_res,"int") && rhs_real ? "AcReal" :
 		op && !strcmp(op,"*") && !strcmp(lhs_res,"AcMatrix") &&  !strcmp(rhs_res,"AcReal3") ? "AcReal3" :
 		!strcmp(lhs_res,"AcComplex") || !strcmp(rhs_res,"AcComplex")   ? "AcComplex"  :
-		!strcmp(rhs_res,"AcReal")      ?  "AcReal"  :
-		!strcmp(lhs_res,"AcReal") && !strcmp(rhs_res,"int")    ?  "AcReal"  :
-		op && !strcmp(op,"*") && !strcmp(lhs_res,"AcReal") && strcmp(rhs_res,"int")  ?  rhs_res   :
+		rhs_real      ?  "AcReal"  :
+		lhs_real && !strcmp(rhs_res,"int")    ?  "AcReal"  :
+		op && !strcmp(op,"*") && lhs_real && strcmp(rhs_res,"int")  ?  rhs_res   :
 		!strcmp(lhs_res,rhs_res) ? lhs_res :
 		NULL;
 
@@ -3240,11 +3258,11 @@ gen_type_info_base(ASTNode* node, const ASTNode* root);
 const char*
 get_func_call_expr_type(ASTNode* node, const ASTNode* root)
 {
-	Symbol* sym = (Symbol*)get_symbol(NODE_DFUNCTION_ID | NODE_FUNCTION_ID ,get_node_by_token(IDENTIFIER,node->lhs)->buffer,NULL);
 	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-	if(get_symbol(NODE_VARIABLE_ID,func_name,"Stencil"))
+	Symbol* sym = (Symbol*)get_symbol(NODE_VARIABLE_ID | NODE_FUNCTION_ID ,func_name,NULL);
+	if(sym && sym->tspecifier_token == STENCIL)
 		return "AcReal";
-	if(sym)
+	if(sym && sym->type & NODE_FUNCTION_ID)
 	{
 		if(dfunc_nodes.size == 0)
 			get_dfunc_nodes(root,&dfunc_nodes,&dfunc_names);
@@ -3394,7 +3412,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node)
 	//discard global const declarations
 	if(node->parent->parent->parent->type & NODE_ASSIGN_LIST)
 		return;
-	if(!check_for_vtxbuf(node) && !check_symbol(NODE_VARIABLE_ID,node->buffer,"Field",0))
+	if(!check_for_vtxbuf(node) && !check_symbol_token(NODE_VARIABLE_ID,node->buffer,FIELD,0))
 		return;
 
 	ASTNode* array_access = (ASTNode*)get_parent_node(NODE_ARRAY_ACCESS,node);
@@ -3960,9 +3978,9 @@ replace_dynamic_coeffs_stencilpoint(ASTNode* node)
 {
   TRAVERSE_PREAMBLE(replace_dynamic_coeffs_stencilpoint);
   if(!node->buffer) return;
-  if(!check_symbol(NODE_VARIABLE_ID, node->buffer, "AcReal", DCONST_QL) && !check_symbol(NODE_VARIABLE_ID, node->buffer, "int", DCONST_QL)) return;
+  if(!check_symbol_token(NODE_VARIABLE_ID, node->buffer, REAL, DCONST_QL) && !check_symbol_token(NODE_VARIABLE_ID, node->buffer, INT, DCONST_QL)) return;
   //replace with zero to compile the stencil
-  node->buffer = strdup("1.0");
+  node->buffer = strdup("NAN");
   node->prefix=strdup("AcReal(");
   node->postfix = strdup(")");
 }
@@ -4021,8 +4039,8 @@ do_not_rename(const ASTNode* node, const char* str_to_check)
 	if(!node->buffer)                                            return true;
 	if(node->token != IDENTIFIER)                                return true;
 	if(node->type & NODE_FUNCTION_CALL)                          return true;
-	if(check_symbol(NODE_ANY, node->buffer, "Stencil", 0))       return true;
-	if(check_symbol(NODE_FUNCTION_ID, node->buffer, NULL, 0))    return true;
+	if(check_symbol_token(NODE_ANY, node->buffer, STENCIL, 0))       return true;
+	if(check_symbol_token(NODE_FUNCTION_ID, node->buffer, 0, 0))    return true;
 	if(strcmp(node->buffer,str_to_check))                        return true;
 	if(strstr(node->buffer,"AC_INTERNAL"))                       return true;
 	return false;
@@ -4135,7 +4153,7 @@ gen_dfunc_macros_recursive(ASTNode* node)
 	TRAVERSE_PREAMBLE(gen_dfunc_macros_recursive);
 	if(!(node->type & NODE_DFUNCTION))
 		return;
-	if(!check_symbol(NODE_DFUNCTION_ID, get_node_by_token(IDENTIFIER,node->lhs)->buffer, NULL, INLINE))
+	if(!check_symbol_token(NODE_DFUNCTION_ID, get_node_by_token(IDENTIFIER,node->lhs)->buffer, 0, INLINE))
 		return;
 	FILE* fp = fopen("user_dfuncs.h","a");
 	if(node->rhs->lhs)
@@ -4303,11 +4321,11 @@ gen_constexpr_info_base(ASTNode* node)
 		res |= gen_constexpr_info_base(node->rhs);
 	if(node->token == IDENTIFIER && node->buffer && !node->is_constexpr)
 	{
-		node->is_constexpr |= check_symbol(NODE_ANY,node->buffer,NULL,CONST_QL);
+		node->is_constexpr |= check_symbol_token(NODE_ANY,node->buffer,0,CONST_QL);
 		//if array access that means we are accessing the vtxbuffer which obviously is not constexpr
  		if(!get_parent_node(NODE_ARRAY_ACCESS,node))
-			node->is_constexpr |= check_symbol(NODE_VARIABLE_ID,node->buffer,"Field",0);
-		node->is_constexpr |= check_symbol(NODE_DFUNCTION_ID,node->buffer,NULL,CONSTEXPR);
+			node->is_constexpr |= check_symbol_token(NODE_VARIABLE_ID,node->buffer,FIELD,0);
+		node->is_constexpr |= check_symbol_token(NODE_DFUNCTION_ID,node->buffer,FIELD,CONSTEXPR);
 		res |= node->is_constexpr;
 	}
 	if(node->type & NODE_IF && all_identifiers_are_constexpr(node->lhs) && !node->is_constexpr)
@@ -4386,7 +4404,8 @@ gen_type_info_base(ASTNode* node, const ASTNode* root)
 			ASTNode* dfunc_start = (ASTNode*) get_parent_node(NODE_DFUNCTION,node);
 			const char* func_name = get_node(NODE_DFUNCTION_ID,dfunc_start)->buffer;
 			Symbol* func_sym = (Symbol*)get_symbol(NODE_DFUNCTION_ID,func_name,NULL);
-			if(func_sym && !int_vec_contains(func_sym->tqualifiers,str_to_qualifier(expr_type)))
+			const int token = str_to_qualifier(expr_type);
+			if(func_sym && !int_vec_contains(func_sym->tqualifiers,token))
 				dfunc_start -> expr_type = expr_type;
 		}
 	}
