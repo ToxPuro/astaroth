@@ -72,9 +72,8 @@ void set_identifier_infix(const char* infix, ASTNode* curr);
 ASTNode* get_node(const NodeType type, ASTNode* node);
 ASTNode* get_node_by_token(const int token, const ASTNode* node);
 static inline int eval_int(ASTNode* node);
-static ASTNode* create_type_declaration(const char* tqual, const char* tspec);
-
-
+static ASTNode* create_type_declaration(const char* tqual, const char* tspec, const int token);
+static ASTNode* create_type_qualifiers(const char* tqual,int token);
 
 bool is_directory(const char *path) {
     if(!path) return false;
@@ -337,7 +336,9 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         // generate(root, stdout);
         FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
+
         generate(root, fp, gen_mem_accesses, optimize_conditionals);
+
 	astnode_destroy(root);
 	root = NULL;
 	
@@ -412,9 +413,10 @@ main(int argc, char** argv)
  
 
     code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, false, false, true); 
-    if (OPTIMIZE_MEM_ACCESSES) {
-      code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, true, OPTIMIZE_CONDITIONALS, false); // Uncomment to enable stencil mem access checking
-      generate_mem_accesses(); // Uncomment to enable stencil mem access checking
+    if(OPTIMIZE_MEM_ACCESSES)
+    {
+    		code_generation_pass(stage0, stage1, stage2, stage3, stage4,  dir, true, OPTIMIZE_CONDITIONALS, false);
+     		generate_mem_accesses(); // Uncomment to enable stencil mem access checking
     }
     code_generation_pass(stage0, stage1, stage2, stage3, stage4,  dir, false, OPTIMIZE_CONDITIONALS, false);
     
@@ -431,6 +433,7 @@ main(int argc, char** argv)
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE 
 %token STATEMENT_LIST_HEAD STATEMENT
+%token REAL3 INT3
 
 %nonassoc QUESTION
 %nonassoc ':'
@@ -505,7 +508,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 			}
 			ASTNode* tmp = $$;
 
-			ASTNode* type_declaration = create_type_declaration("const","VertexBufferHandle*");
+			ASTNode* type_declaration = create_type_declaration("const","VertexBufferHandle*",CONST_QL);
 
 			ASTNode* var_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
 			var_identifier->buffer = malloc(sizeof(char)*4098);
@@ -910,6 +913,16 @@ variable_definitions: non_null_declaration { $$ = astnode_create(NODE_UNKNOWN, $
 					ASTNode* tspec = get_node(NODE_TSPEC,$1);
 					strcat(tspec->lhs->buffer,"*");
 				  }
+				  if(!$$->lhs->rhs)
+				  {
+					const char* tspec = get_node(NODE_TSPEC,$$->lhs)->lhs->buffer;
+					if(strcmps(tspec,"Field","Field3"))
+					{
+						ASTNode* tqualifiers = create_type_qualifiers("dconst",DCONST_QL);
+						tqualifiers -> parent = $$->lhs;
+						$$->lhs->rhs = tqualifiers;
+					}
+				  }
 				}
                    ;
 
@@ -930,6 +943,16 @@ non_null_declaration: type_declaration declaration_list {
 					fprintf(stderr,"Fatal error: all global variables have to have a type specifier\n");
 					fprintf(stderr,"Offending variable: %s\n",get_node_by_token(IDENTIFIER,$2)->buffer);
 					exit(EXIT_FAILURE);
+				}
+				if(!$$->lhs->rhs)
+				{
+				    const char* tspec = get_node(NODE_TSPEC,$$->lhs)->lhs->buffer;
+				    if(strcmps(tspec,"Field","Field3"))
+				    {
+				    	ASTNode* tqualifiers = create_type_qualifiers("dconst",DCONST_QL);
+				    	tqualifiers -> parent = $$->lhs;
+				    	$$->lhs->rhs = tqualifiers;
+				    }
 				}
 			}
            ;
@@ -1336,12 +1359,12 @@ static inline int eval_int(ASTNode* node)
         return res;
 }
 static ASTNode*
-create_type_qualifiers(const char* tqual)
+create_type_qualifiers(const char* tqual, const int token)
 {
 	if(!tqual) return NULL;
 	ASTNode* tqual_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
 	tqual_identifier -> buffer = strdup(tqual);
-	tqual_identifier -> token = IDENTIFIER;
+	tqual_identifier -> token = token;
 	ASTNode* type_qualifier  = astnode_create(NODE_TQUAL,tqual_identifier,NULL);
 	ASTNode* type_qualifiers = astnode_create(NODE_UNKNOWN,type_qualifier,NULL);
 	return type_qualifiers;
@@ -1356,9 +1379,9 @@ create_tspec(const char* tspec_str)
 	return tspec;
 }
 static ASTNode*
-create_type_declaration(const char* tqual, const char* tspec)
+create_type_declaration(const char* tqual, const char* tspec, const int token)
 {
 
-	ASTNode* type_declaration = astnode_create(NODE_UNKNOWN,create_tspec(tspec),create_type_qualifiers(tqual));
+	ASTNode* type_declaration = astnode_create(NODE_UNKNOWN,create_tspec(tspec),create_type_qualifiers(tqual,token));
 	return type_declaration;
 }

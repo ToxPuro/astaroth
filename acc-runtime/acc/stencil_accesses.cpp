@@ -153,7 +153,8 @@ static AcMeshInfo d_mesh_info;
 VertexBufferArray
 vbaCreate(const size_t count)
 {
-  VertexBufferArray vba;
+  VertexBufferArray vba{};
+  memset(&vba, 0, sizeof(vba));
 
   const size_t bytes = sizeof(vba.in[0][0]) * count;
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {

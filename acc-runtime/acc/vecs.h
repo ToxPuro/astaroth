@@ -88,6 +88,19 @@ int_vec_contains(const int_vec vec, const int val)
 {
 	return int_vec_get_index(vec,val) >= 0;
 }
+
+static inline bool
+int_vec_contains_arr(int_vec vec,const int* elems,const int n_elems)
+{
+	for(int i = 0; i < n_elems; ++i)
+		if(int_vec_get_index(vec,elems[i]) >= 0) return true;
+	return false;
+}
+
+#define int_vec_contains(F, ...) int_vec_contains_arr( \
+	F, (const int[]){ __VA_ARGS__ }, \
+	sizeof (const int[]){ __VA_ARGS__ } / sizeof (const int) \
+)
 static inline void
 init_op_vec(op_vec* vec)
 {
