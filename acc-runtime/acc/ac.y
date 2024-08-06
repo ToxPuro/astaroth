@@ -275,7 +275,10 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
        	  	process_includes(1, dir, ACC_GEN_PATH"/extra_dfuncs.h", out);
 	  if(file_exists(ACC_OVERRIDES_PATH) && !AC_RUNTIME_COMPILATION)
        	  	process_includes(1, dir, ACC_OVERRIDES_PATH, out);
+	  if(gen_extra_dfuncs) printf("HI\n");
+	  //the actual includes
           process_includes(0, dir, stage0, out);
+
 	  if(file_exists(ACC_GEN_PATH"/boundcond_kernels.h"))
        	  	process_includes(1, dir, ACC_GEN_PATH"/boundcond_kernels.h", out);
        	  process_includes(1, dir, ACC_BUILTIN_KERNELS, out);

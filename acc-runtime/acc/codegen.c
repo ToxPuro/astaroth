@@ -3228,8 +3228,9 @@ all_primary_expressions_and_func_calls_have_type(const ASTNode* node)
 	return res;
 }
 
-static node_vec dfunc_nodes = VEC_INITIALIZER;
-static string_vec  dfunc_names = VEC_INITIALIZER;
+static node_vec    dfunc_nodes      = VEC_INITIALIZER;
+static string_vec  dfunc_names      = VEC_INITIALIZER;
+static string_vec  duplicate_dfuncs = VEC_INITIALIZER;
 
 bool
 gen_type_info_base(ASTNode* node, const ASTNode* root);
@@ -3262,7 +3263,6 @@ get_func_call_expr_type(ASTNode* node, const ASTNode* root)
 				if(know_all_types)
 				{
 					func_params_info info = get_function_param_types_and_names(func,func_name);
-  					string_vec duplicate_dfuncs = get_duplicate_dfuncs(root);
 					if(!str_vec_contains(duplicate_dfuncs,func_name) && call_info.types.size == info.expr.size)
 					{
 						ASTNode* func_copy = astnode_dup(func,NULL);
@@ -3274,7 +3274,6 @@ get_func_call_expr_type(ASTNode* node, const ASTNode* root)
 						astnode_destroy(func_copy);
 					}
 					free_func_params_info(&info);
-					free_str_vec(&duplicate_dfuncs);
 				}
 				free_func_params_info(&call_info);
 			}
@@ -4404,7 +4403,6 @@ gen_type_info(ASTNode* root)
 	int iter = 0;
 	while(has_changed)
 	{
-		//printf("ITEER: %d\n",iter++);
 		has_changed = gen_type_info_base(root,root);
 	}
 }
@@ -4558,7 +4556,6 @@ void
 gen_overloads(ASTNode* root)
 {
   bool overloaded_something = true;
-  string_vec duplicate_dfuncs = get_duplicate_dfuncs(root);
   string_vec dfunc_possible_types[MAX_DFUNCS * duplicate_dfuncs.size];
   memset(dfunc_possible_types,0,sizeof(string_vec)*MAX_DFUNCS*duplicate_dfuncs.size);
   for(size_t i = 0; i < duplicate_dfuncs.size; ++i)
@@ -4579,7 +4576,6 @@ gen_overloads(ASTNode* root)
   	for(size_t i = 0; i < duplicate_dfuncs.size; ++i)
   	        overloaded_something |= resolve_overloaded_calls(root,root,duplicate_dfuncs.data[i],dfunc_possible_types,i);
   }
-  free_str_vec(&duplicate_dfuncs);
   for(size_t i = 0; i < MAX_DFUNCS*duplicate_dfuncs.size; ++i)
 	  free_str_vec(&dfunc_possible_types[i]);
 }
@@ -4837,18 +4833,20 @@ transform_field_intrinsic_func_calls_and_binary_ops(ASTNode* root)
 void
 gen_extra_func_definitions(const ASTNode* root_in, FILE* stream)
 {
-
 	push(&tspecifier_mappings,"int");
 	push(&tspecifier_mappings,"AcReal");
 	push(&tspecifier_mappings,"bool");
   	ASTNode* root = astnode_dup(root_in,NULL);
+
 	symboltable_reset();
   	traverse(root, NODE_NO_OUT, NULL);
+        duplicate_dfuncs = get_duplicate_dfuncs(root);
   	assert(root);
   	s_info = read_user_structs(root);
 	e_info = read_user_enums(root);
 	gen_type_info(root);
 	gen_extra_func_definitions_recursive(root,root,stream);
+	free_str_vec(&duplicate_dfuncs);
 }
 void
 canonalize_assignments(ASTNode* node)
@@ -4963,10 +4961,14 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 { 
   ASTNode* root = astnode_dup(root_in,NULL);
   assert(root);
+
+
   transform_runtime_vars(root);
   transform_field_intrinsic_func_calls_and_binary_ops(root);
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
+  traverse(root, NODE_NO_OUT, NULL);
+  duplicate_dfuncs = get_duplicate_dfuncs(root);
 
   //Used to help in constexpr deduction
   canonalize(root);
