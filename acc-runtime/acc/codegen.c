@@ -4692,15 +4692,6 @@ create_ternary_expr(ASTNode* conditional, ASTNode* lhs_value, ASTNode* rhs_value
 			);
 }
 
-const ASTNode*
-get_intrinsic_def(const char* func_name, const ASTNode* node)
-{
-	if(node->type & NODE_DECLARATION && node->lhs && get_node_by_token(INTRINSIC,node->lhs) && !strcmp(get_node_by_token(IDENTIFIER,node->rhs)->buffer, func_name)) return node;
-	const ASTNode* lhs_res = node->lhs ? get_intrinsic_def(func_name,node->lhs) : NULL;
-	if(lhs_res) return lhs_res;
-	const ASTNode* rhs_res = node->rhs ? get_intrinsic_def(func_name,node->rhs) : NULL;
-	return rhs_res;
-}
 void
 transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* root)
 {
@@ -4712,25 +4703,20 @@ transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* roo
 	const ASTNode* identifier_node = get_node_by_token(IDENTIFIER,node->lhs);
 	if(!identifier_node) return;
 	const char* func_name = identifier_node->buffer;
-	const ASTNode* intrinsic_def = get_intrinsic_def(func_name,root);
-	if(!intrinsic_def) return;
-	if(!get_node(NODE_TSPEC,intrinsic_def -> rhs)) return;
-	node_vec types = get_nodes_in_list(intrinsic_def->rhs->rhs);
-	if(types.size == 1 && !strcmp(get_node(NODE_TSPEC,types.data[0])->lhs->buffer, "AcReal"))
+	const Symbol* sym = get_symbol(NODE_FUNCTION_ID, func_name, NULL);
+	if(!sym) return;
+	if(!int_vec_contains(sym -> tqualifiers,REAL)) return;
+	func_params_info param_info = get_func_call_params_info(node,root);
+	if(!strcmp_null_ok(param_info.types.data[0],"Field"))
 	{
-		func_params_info param_info = get_func_call_params_info(node,root);
-		if(!strcmp_null_ok(param_info.types.data[0],"Field"))
-		{
-			ASTNode* func_call = create_func_call("value",param_info.expr.data[0]);
-			ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
-			ASTNode* expression         = astnode_create(NODE_EXPRESSION,unary_expression,NULL);
-			ASTNode* expression_list = astnode_create(NODE_UNKNOWN,expression,NULL);
+		ASTNode* func_call = create_func_call("value",param_info.expr.data[0]);
+		ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
+		ASTNode* expression         = astnode_create(NODE_EXPRESSION,unary_expression,NULL);
+		ASTNode* expression_list = astnode_create(NODE_UNKNOWN,expression,NULL);
 
-			node->rhs = expression_list;
-		}
-		free_func_params_info(&param_info);
-	} 
-	free_node_vec(&types);
+		node->rhs = expression_list;
+	}
+	free_func_params_info(&param_info);
 }
 
 void
@@ -4839,7 +4825,7 @@ gen_extra_func_definitions(const ASTNode* root_in, FILE* stream)
   	ASTNode* root = astnode_dup(root_in,NULL);
 
 	symboltable_reset();
-  	traverse(root, NODE_NO_OUT, NULL);
+  	traverse(root, 0, NULL);
         duplicate_dfuncs = get_duplicate_dfuncs(root);
   	assert(root);
   	s_info = read_user_structs(root);
@@ -4967,7 +4953,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   transform_field_intrinsic_func_calls_and_binary_ops(root);
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
-  traverse(root, NODE_NO_OUT, NULL);
+  traverse(root, 0, NULL);
   duplicate_dfuncs = get_duplicate_dfuncs(root);
 
   //Used to help in constexpr deduction

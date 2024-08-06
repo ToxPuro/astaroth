@@ -74,6 +74,7 @@ ASTNode* get_node_by_token(const int token, const ASTNode* node);
 static inline int eval_int(ASTNode* node);
 static ASTNode* create_type_declaration(const char* tqual, const char* tspec, const int token);
 static ASTNode* create_type_qualifiers(const char* tqual,int token);
+static ASTNode* create_type_qualifier(const char* tqual, const int token);
 
 bool is_directory(const char *path) {
     if(!path) return false;
@@ -275,7 +276,6 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
        	  	process_includes(1, dir, ACC_GEN_PATH"/extra_dfuncs.h", out);
 	  if(file_exists(ACC_OVERRIDES_PATH) && !AC_RUNTIME_COMPILATION)
        	  	process_includes(1, dir, ACC_OVERRIDES_PATH, out);
-	  if(gen_extra_dfuncs) printf("HI\n");
 	  //the actual includes
           process_includes(0, dir, stage0, out);
 
@@ -897,12 +897,24 @@ intrinsic_body: identifier {$$ = astnode_create(NODE_UNKNOWN, $1,NULL); }
 	      ;
 
 intrinsic_type_declaration: type_declaration intrinsic
-			    {$$ = astnode_create(NODE_UNKNOWN,$1,$2);  }
+			    {
+				$$ = astnode_create(NODE_UNKNOWN,$1,$2);  
+			    }
 intrinsic_definition:  
 		    intrinsic_type_declaration intrinsic_body {
 		    		$$ = astnode_create(NODE_DECLARATION, $1, $2);
 				$$ -> type |= NODE_NO_OUT;
                 		set_identifier_type(NODE_FUNCTION_ID, $2);
+				if($$->lhs->lhs)
+				{
+					if(count_num_of_nodes_in_list($$->lhs->lhs) == 1 && !strcmp(get_node(NODE_TSPEC,$$->lhs->lhs)->lhs->buffer,"AcReal"))
+					{
+						ASTNode* base = astnode_create(NODE_UNKNOWN,create_type_qualifier("intrinsic",INTRINSIC),NULL);
+						ASTNode* tqualifiers = astnode_create(NODE_UNKNOWN,base,create_type_qualifier("AcReal",REAL));
+						$$->rhs->lhs->rhs = tqualifiers;
+						tqualifiers->parent = $$->rhs->lhs->rhs;
+					}
+				}
 		    }
 		     ;
 variable_definitions: non_null_declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
@@ -1362,14 +1374,19 @@ static inline int eval_int(ASTNode* node)
         return res;
 }
 static ASTNode*
-create_type_qualifiers(const char* tqual, const int token)
+create_type_qualifier(const char* tqual, const int token)
 {
 	if(!tqual) return NULL;
 	ASTNode* tqual_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
 	tqual_identifier -> buffer = strdup(tqual);
 	tqual_identifier -> token = token;
 	ASTNode* type_qualifier  = astnode_create(NODE_TQUAL,tqual_identifier,NULL);
-	ASTNode* type_qualifiers = astnode_create(NODE_UNKNOWN,type_qualifier,NULL);
+	return type_qualifier;
+}
+static ASTNode*
+create_type_qualifiers(const char* tqual, const int token)
+{
+	ASTNode* type_qualifiers = astnode_create(NODE_UNKNOWN,create_type_qualifier(tqual,token),NULL);
 	return type_qualifiers;
 }
 static ASTNode*
