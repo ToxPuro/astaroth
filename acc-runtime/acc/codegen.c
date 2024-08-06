@@ -222,7 +222,7 @@ static const Symbol*
 get_symbol_token(const NodeType type, const char* symbol, const int tspecifier)
 {
   for (size_t i = 0; i < num_symbols[0]; ++i)
-	  if(symbol_table[i].type & type && !strcmp(symbol,symbol_table[i].identifier) && (!tspecifier || tspecifier == symbol_table[i].tspecifier_token))
+	  if((!tspecifier || tspecifier == symbol_table[i].tspecifier_token) && symbol_table[i].type & type && !strcmp(symbol,symbol_table[i].identifier))
 			  return &symbol_table[i];
   return NULL;
 }
@@ -2865,7 +2865,7 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 
         if (tspec) 
 	{
-	  if(strcmp(tspec,"Kernel") )
+	  if(tspec_token != KERNEL)
             fprintf(stream, "%s ", tspec);
         }
         else if (!get_parent_node_exclusive(NODE_STENCIL, node) &&
@@ -3079,7 +3079,7 @@ node_is_struct_access_expr(const ASTNode* node)
 bool
 test_type(ASTNode* node, const char* type, const ASTNode* root);
 
-char*
+const char*
 get_primary_expr_type(const ASTNode* node)
 {
 	const ASTNode* identifier = get_node_by_token(IDENTIFIER,node);
