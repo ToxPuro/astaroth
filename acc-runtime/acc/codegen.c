@@ -212,7 +212,10 @@ get_symbol_by_index(const NodeType type, const int index, const char* tspecifier
 static const Symbol*
 get_symbol(const NodeType type, const char* symbol, const char* tspecifier)
 {
-	return get_symbol_by_index(type,get_symbol_index(type,symbol,tspecifier), tspecifier);
+  for (size_t i = 0; i < num_symbols[0]; ++i)
+	  if(symbol_table[i].type & type && !strcmp(symbol,symbol_table[i].identifier) && (!tspecifier || !strcmp(symbol_table[i].tspecifier,tspecifier)))
+			  return &symbol_table[i];
+  return NULL;
 }
 #define REAL_SPECIFIER  (1 << 0)
 #define INT_SPECIFIER   (1 << 1)
@@ -938,11 +941,11 @@ gen_param_names(FILE* fp, const char* datatype_scalar)
 bool
 check_symbol(const NodeType type, const char* name, const char* tspecifier, const int tqualifier)
 {
-  for (size_t i = 0; i < num_symbols[0]; ++i)
-    if (symbol_table[i].type & type && !strcmp(symbol_table[i].identifier,name) 
-        && (!tqualifier || int_vec_contains(symbol_table[i].tqualifiers,tqualifier)) && (!tspecifier || !strcmp(symbol_table[i].tspecifier,tspecifier)))
-	    return true;
-  return false;
+  const Symbol* sym = get_symbol(type,name,tspecifier);
+  return 
+	  !sym ? false :
+	  !tqualifier ? true :
+	  int_vec_contains(sym->tqualifiers,tqualifier);
 }
 
 
