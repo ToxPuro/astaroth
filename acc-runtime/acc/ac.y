@@ -89,7 +89,7 @@ bool is_directory(const char *path) {
 
 
 void
-process_includes(const size_t depth, const char* dir, const char* file, FILE* out)
+process_includes(const size_t depth, const char* dir, const char* file, FILE* out, const bool log)
 {
   if(is_directory(file)) 
   {
@@ -100,7 +100,7 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
 		{
 		        char* file_path = malloc((strlen(file) + strlen(dir_entry->d_name) + 1000)*sizeof(char));
 			sprintf(file_path,"%s/%s",file,dir_entry->d_name);
-		        process_includes(depth+1,dir,file_path,out);
+		        process_includes(depth+1,dir,file_path,out,log);
 			free(file_path);
 		}
 
@@ -112,7 +112,7 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
     exit(EXIT_FAILURE);
   }
 
-  printf("Building AC object %s\n", file);
+  if(log) printf("Building AC object %s\n", file);
   FILE* in = fopen(file, "r");
   if (!in) {
     fprintf(stderr, "FATAL ERROR: could not open include file '%s'\n", file);
@@ -136,7 +136,7 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
       sprintf(path, "%s/%s", dir, incl);
 
       fprintf(out, "// Include file %s start\n", path);
-      process_includes(depth+1, dir, path, out);
+      process_includes(depth+1, dir, path, out,log);
       fprintf(out, "// Included file %s end\n", path);
 
     } else {
@@ -239,13 +239,9 @@ make_dir(const char* dirname)
 		exit(EXIT_FAILURE);
 	}
 }
-
-int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* stage4, const char* dir, const bool gen_mem_accesses, const bool optimize_conditionals, const bool gen_extra_dfuncs)
+void
+reset_files()
 {
-	init_str_vec(&const_ints);
-	init_str_vec(&const_int_values);
-        // Stage 0: Clear all generated files to ensure acc failure can be detected later
-        {
           const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
 		 "device_mesh_info_decl.h",  "array_decl.h", "comp_decl.h","comp_loaded_decl.h", "input_decl.h","get_device_array.h","get_config_arrays.h","get_config_param.h",
 		 "get_arrays.h","dconst_decl.h","dconst_accesses_decl.h","get_address.h","load_and_store_array.h","dconst_arrays_decl.h","memcpy_to_gmem_array.h","memcpy_from_gmem_array.h",
@@ -257,32 +253,38 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	    check_file(fp,files[i]);
             fclose(fp);
           }
-	  if(!file_exists(ACC_GEN_PATH))
-		make_dir(ACC_GEN_PATH);
-	  
-        }
+}
+
+
+int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* stage4, const char* dir, const bool gen_mem_accesses, const bool optimize_conditionals, const bool gen_extra_dfuncs)
+{
+	init_str_vec(&const_ints);
+	init_str_vec(&const_int_values);
+	if(!file_exists(ACC_GEN_PATH))
+	  make_dir(ACC_GEN_PATH);
         // Stage 1: Preprocess includes
         {
+	  const bool log = !gen_extra_dfuncs;
           FILE* out = fopen(stage1, "w");
           assert(out);
 	  fprintf(out,"#define AC_LAGRANGIAN_GRID (%d)\n",AC_LAGRANGIAN_GRID);
 	  fprintf(out,"#define TWO_D (%d)\n",TWO_D);
-       	  process_includes(1, dir, ACC_BUILTIN_VARIABLES, out);
-       	  process_includes(1, dir, ACC_BUILTIN_TYPEDEFS, out);
-       	  process_includes(1, dir, ACC_BUILTIN_FUNCS, out);
-       	  process_includes(1, dir, ACC_MATH_DIR, out);
-       	  process_includes(1, dir, ACC_UTILS_INTRINSICS, out);
+       	  process_includes(1, dir, ACC_BUILTIN_VARIABLES, out,log);
+       	  process_includes(1, dir, ACC_BUILTIN_TYPEDEFS, out,log);
+       	  process_includes(1, dir, ACC_BUILTIN_FUNCS, out,log);
+       	  process_includes(1, dir, ACC_MATH_DIR, out,log);
+       	  process_includes(1, dir, ACC_UTILS_INTRINSICS, out,log);
 	  if(file_exists(ACC_GEN_PATH"/extra_dfuncs.h"))
-       	  	process_includes(1, dir, ACC_GEN_PATH"/extra_dfuncs.h", out);
+       	  	process_includes(1, dir, ACC_GEN_PATH"/extra_dfuncs.h", out,log);
 	  if(file_exists(ACC_OVERRIDES_PATH) && !AC_RUNTIME_COMPILATION)
-       	  	process_includes(1, dir, ACC_OVERRIDES_PATH, out);
+       	  	process_includes(1, dir, ACC_OVERRIDES_PATH, out,log);
 	  //the actual includes
-          process_includes(0, dir, stage0, out);
+          process_includes(0, dir, stage0, out,log);
 
 	  if(file_exists(ACC_GEN_PATH"/boundcond_kernels.h"))
-       	  	process_includes(1, dir, ACC_GEN_PATH"/boundcond_kernels.h", out);
-       	  process_includes(1, dir, ACC_BUILTIN_KERNELS, out);
-       	  process_includes(1, dir, ACC_BUILTIN_DEFAULT_VALUES, out);
+       	  	process_includes(1, dir, ACC_GEN_PATH"/boundcond_kernels.h", out,log);
+       	  process_includes(1, dir, ACC_BUILTIN_KERNELS, out,log);
+       	  process_includes(1, dir, ACC_BUILTIN_DEFAULT_VALUES, out,log);
           fclose(out);
         }
 
@@ -337,10 +339,25 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 		return EXIT_SUCCESS;
 	}
         // generate(root, stdout);
+
+        // Stage 0: Clear all generated files to ensure acc failure can be detected later
+	ASTNode* new_root = astnode_dup(root,NULL);
+	preprocess(new_root);
+	reset_files();
+	if(OPTIMIZE_MEM_ACCESSES)
+	{
+        	FILE* fp_cpu = fopen("user_cpu_kernels.h.raw", "w");
+        	assert(fp_cpu);
+        	generate(new_root, fp_cpu, true, optimize_conditionals);
+		fclose(fp_cpu);
+        	format_source("user_cpu_kernels.h.raw", "user_kernels.h");
+     		generate_mem_accesses(); // Uncomment to enable stencil mem access checking
+	}
+	reset_files();
+
         FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
-
-        generate(root, fp, gen_mem_accesses, optimize_conditionals);
+        generate(new_root, fp, gen_mem_accesses, optimize_conditionals);
 
 	astnode_destroy(root);
 	root = NULL;
@@ -416,11 +433,6 @@ main(int argc, char** argv)
  
 
     code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, false, false, true); 
-    if(OPTIMIZE_MEM_ACCESSES)
-    {
-    		code_generation_pass(stage0, stage1, stage2, stage3, stage4,  dir, true, OPTIMIZE_CONDITIONALS, false);
-     		generate_mem_accesses(); // Uncomment to enable stencil mem access checking
-    }
     code_generation_pass(stage0, stage1, stage2, stage3, stage4,  dir, false, OPTIMIZE_CONDITIONALS, false);
     
 

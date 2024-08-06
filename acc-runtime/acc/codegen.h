@@ -26,3 +26,5 @@ void generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses, co
 void generate_mem_accesses(void);
 
 void gen_extra_func_definitions(const ASTNode* root, FILE* stream);
+
+void preprocess(ASTNode* root);
