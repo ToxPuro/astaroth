@@ -38,6 +38,7 @@
 
   //copied from the sample setup
   #include "user_defines.h"
+  #include "kernel_reduce_outputs.h"
   #include "user_input_typedefs.h"
 
 #if AC_RUNTIME_COMPILATION

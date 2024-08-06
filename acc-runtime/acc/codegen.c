@@ -2534,7 +2534,7 @@ void
 gen_kernel_reduce_outputs(reduce_info* kernel_reduce_info)
 {
   size_t kernel_iterator = 0;
-  FILE* fp = fopen("user_defines.h","a");
+  FILE* fp = fopen("kernel_reduce_outputs.h","w");
 
   int num_real_reduce_output = 0;
   for (size_t i = 0; i < num_symbols[0]; ++i)
@@ -3625,6 +3625,16 @@ gen_kernels(const ASTNode* node, char** dfunctions,
   	symboltable_reset();
 }
 
+void
+gen_names(const char* datatype, const int token, FILE* fp)
+{
+	fprintf(fp,"static const char* %s_names[] __attribute__((unused)) = {",datatype);
+	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+		if(symbol_table[i].tspecifier_token == token)
+  	    		fprintf(fp, "\"%s\",", symbol_table[i].identifier);
+	fprintf(fp,"};");
+}
+
 // Generate User Defines
 static void
 gen_user_defines(const ASTNode* root, const char* out)
@@ -3751,36 +3761,11 @@ gen_user_defines(const ASTNode* root, const char* out)
 
 
   // Enum strings (convenience)
-  fprintf(fp, "static const char* stencil_names[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if(symbol_table[i].tspecifier_token == STENCIL)
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
+  gen_names("stencil",STENCIL,fp);
+  gen_names("field", FIELD,fp);
+  gen_names("work_buffer",WORK_BUFFER,fp);
+  gen_names("kernel",KERNEL,fp);
 
-  fprintf(fp, "static const char* field_names[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if(symbol_table[i].tspecifier_token == FIELD)
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
-
-
-
-
-
-  fprintf(fp, "static const char* work_buffer_names[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if(!strcmp(symbol_table[i].tspecifier,"WorkBuffer"))
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
-
-
-
-
-  fprintf(fp, "static const char* kernel_names[] __attribute__((unused)) = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].tspecifier_token == KERNEL)
-      fprintf(fp, "\"%s\",", symbol_table[i].identifier);
-  fprintf(fp, "};");
 
   for (size_t i = 0; i < s_info.user_structs.size; ++i)
   {
@@ -4978,59 +4963,14 @@ preprocess(ASTNode* root)
   free_structs_info(&s_info);
 }
 
-
 void
-generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool optimize_conditionals)
-{ 
-  ASTNode* root = astnode_dup(root_in,NULL);
-  //preprocess(root);
-  s_info = read_user_structs(root);
-  e_info = read_user_enums(root);
-
-
-  //Used to help in constexpr deduction
-  canonalize(root);
-  gen_ssa_in_basic_blocks(root);
-  gen_constexpr_info(root);
-
-  make_enum_options_non_auto(root,root);
-  gen_multidimensional_field_accesses_recursive(root);
-
-  gen_user_structs();
-  gen_user_defines(root, "user_defines.h");
-  gen_kernel_structs(root);
-  file_prepend("user_typedefs.h","#include \"func_attributes.h\"\n");
-  gen_user_kernels("user_declarations.h");
-
-  gen_kernel_combinatorial_optimizations_and_input(root,optimize_conditionals);
-
-  // Fill the symbol table
-  traverse(root, NODE_NO_OUT, NULL);
-
-  gen_kernel_postfixes_and_reduce_outputs(root,gen_mem_accesses);
-
-  // print_symbol_table();
-
-  // Generate user_kernels.h
-  fprintf(stream, "#pragma once\n");
-
+stencilgen(ASTNode* root)
+{
   size_t num_stencils = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if(symbol_table[i].tspecifier_token == STENCIL)
       ++num_stencils;
 
-
-
-
-  // Device constants
-  // gen_dconsts(root, stream);
-  const char* array_datatypes[] = {"int","AcReal","bool","int3","AcReal3"};
-  for (size_t i = 0; i < sizeof(array_datatypes)/sizeof(array_datatypes[0]); ++i)
-  	gen_array_reads(root,root,array_datatypes[i]);
-
-  // Stencils
-
-  // Stencil generator
   FILE* stencilgen = fopen(STENCILGEN_HEADER, "w");
   assert(stencilgen);
 
@@ -5099,6 +5039,71 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
            stencilgen);
   fprintf(stencilgen, "};");
   fclose(stencilgen);
+}
+
+//These are the same for mem_accesses pass and normal pass
+void
+gen_output_files(ASTNode* root)
+{
+  traverse(root, 0, NULL);
+  s_info = read_user_structs(root);
+  e_info = read_user_enums(root);
+
+  gen_user_structs();
+  gen_user_defines(root, "user_defines.h");
+  gen_kernel_structs(root);
+  file_prepend("user_typedefs.h","#include \"func_attributes.h\"\n");
+  gen_user_kernels("user_declarations.h");
+  stencilgen(root);
+}
+
+
+void
+generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool optimize_conditionals)
+{ 
+  ASTNode* root = astnode_dup(root_in,NULL);
+  //preprocess(root);
+  s_info = read_user_structs(root);
+  e_info = read_user_enums(root);
+
+  //Used to help in constexpr deduction
+  canonalize(root);
+  gen_ssa_in_basic_blocks(root);
+  gen_constexpr_info(root);
+
+  make_enum_options_non_auto(root,root);
+  gen_multidimensional_field_accesses_recursive(root);
+
+
+  gen_kernel_combinatorial_optimizations_and_input(root,optimize_conditionals);
+
+  // Fill the symbol table
+  traverse(root, NODE_NO_OUT, NULL);
+
+  gen_kernel_postfixes_and_reduce_outputs(root,gen_mem_accesses);
+
+  // print_symbol_table();
+
+  // Generate user_kernels.h
+  fprintf(stream, "#pragma once\n");
+
+  size_t num_stencils = 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if(symbol_table[i].tspecifier_token == STENCIL)
+      ++num_stencils;
+
+
+
+
+  // Device constants
+  // gen_dconsts(root, stream);
+  const char* array_datatypes[] = {"int","AcReal","bool","int3","AcReal3"};
+  for (size_t i = 0; i < sizeof(array_datatypes)/sizeof(array_datatypes[0]); ++i)
+  	gen_array_reads(root,root,array_datatypes[i]);
+
+  // Stencils
+
+  // Stencil generator
 
   // Compile
   if (gen_mem_accesses || !OPTIMIZE_MEM_ACCESSES) {
@@ -5216,9 +5221,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   gen_dfunc_internal_names(root);
   gen_dfunc_macros(astnode_dup(root,NULL));
 
-
-
-  
 
   symboltable_reset();
   traverse(root,

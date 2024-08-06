@@ -240,9 +240,19 @@ make_dir(const char* dirname)
 	}
 }
 void
-reset_files()
+reset_diff_files()
 {
-          const char* files[] = {"user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
+		const char* files[] = {};
+          	//for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
+          	//  FILE* fp = fopen(files[i], "w");
+	  	//  check_file(fp,files[i]);
+          	//  fclose(fp);
+          	//}
+}
+void
+reset_all_files()
+{
+          const char* files[] = {"kernel_reduce_outputs.h","user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
 		 "device_mesh_info_decl.h",  "array_decl.h", "comp_decl.h","comp_loaded_decl.h", "input_decl.h","get_device_array.h","get_config_arrays.h","get_config_param.h",
 		 "get_arrays.h","dconst_decl.h","dconst_accesses_decl.h","get_address.h","load_and_store_array.h","dconst_arrays_decl.h","memcpy_to_gmem_array.h","memcpy_from_gmem_array.h",
 		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
@@ -343,9 +353,13 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
 	ASTNode* new_root = astnode_dup(root,NULL);
 	preprocess(new_root);
-	reset_files();
+
+	reset_all_files();
+  	gen_output_files(new_root);
+
 	if(OPTIMIZE_MEM_ACCESSES)
 	{
+	
         	FILE* fp_cpu = fopen("user_cpu_kernels.h.raw", "w");
         	assert(fp_cpu);
         	generate(new_root, fp_cpu, true, optimize_conditionals);
@@ -353,8 +367,6 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         	format_source("user_cpu_kernels.h.raw", "user_kernels.h");
      		generate_mem_accesses(); // Uncomment to enable stencil mem access checking
 	}
-	reset_files();
-
         FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
         generate(new_root, fp, gen_mem_accesses, optimize_conditionals);
