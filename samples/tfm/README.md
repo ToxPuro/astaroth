@@ -2,13 +2,18 @@
 
 ## Work-in-progress
 - Capability to modify the four parameters
-    - Function for initializing $\overline{B}$ and parameters
-        - wavenumber $k_z$
-        - amplitude
     - TFM reset time to reset the solution
     - Separate $\eta$ for test fields
 - Multi-GPU implementation of the pipeline with concurrency. A draft of the desired order of computations exists but has not been coded. The individual components required for implementing the pipeline on multiple nodes (similar to `tfm_pipeline` function in `samples/tfm/tfm_pipeline.c`) already exist, such as `acGridReduceXYAverages`.
 - Further testing of the correctness
+
+# Initializing B-field profiles
+Added functions for initializing the B-field profiles to sine/cosine waves with commit c89363e5df2b2f7c015cb04c9283aa2f982b458a. Currently the amplitude and wavenumber are compile-time parameters, see
+```C
+const AcReal amplitude  = 1.0;
+const AcReal wavenumber = 1.0;
+```
+in `tfm_pipeline.c`.
 
 ## Overview
 
