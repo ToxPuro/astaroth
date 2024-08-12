@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import glob
 
-files = glob.glob("../build/*.data")
+files = glob.glob("../../build/*.data")
 
 for file in files:
     arr = np.fromfile(

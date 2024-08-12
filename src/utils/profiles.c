@@ -97,3 +97,50 @@ acHostReduceXYAverage(const AcReal* in, const AcMeshDims dims, AcReal* out)
     }
     return AC_SUCCESS;
 }
+
+/** box_size: size of the simulation box in real physical units (usually 2*M_PI)
+    nz: number of indices in the computational domain in the z direction
+    offset: offset for the first index off the computational domain (usually the radius of the
+   stencil) */
+AcResult
+acHostInitProfileToCosineWave(const long double box_size, const size_t nz, const long offset,
+                              const AcReal amplitude, const AcReal wavenumber,
+                              const size_t profile_count, AcReal* profile)
+{
+    const long double spacing = box_size / (nz - 1);
+    for (size_t i = 0; i < profile_count; ++i) {
+        profile[i] = amplitude * cos(wavenumber * spacing * ((long)i - offset));
+    }
+    return AC_SUCCESS;
+}
+
+/** See acHostInitProfileToCosineWave */
+AcResult
+acHostInitProfileToSineWave(const long double box_size, const size_t nz, const long offset,
+                            const AcReal amplitude, const AcReal wavenumber,
+                            const size_t profile_count, AcReal* profile)
+{
+    const long double spacing = box_size / (nz - 1);
+    for (size_t i = 0; i < profile_count; ++i) {
+        profile[i] = amplitude * sin(wavenumber * spacing * ((long)i - offset));
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acHostInitProfileToValue(const long double value, const size_t profile_count, AcReal* profile)
+{
+    for (size_t i = 0; i < profile_count; ++i) {
+        profile[i] = value;
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acHostWriteProfileToFile(const char* filepath, const AcReal* profile, const size_t profile_count)
+{
+    FILE* fp                   = fopen(filepath, "w");
+    const size_t count_written = fwrite(profile, sizeof(profile[0]), profile_count, fp);
+    ERRCHK_ALWAYS(count_written == count_written);
+    fclose(fp);
+}

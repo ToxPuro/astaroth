@@ -391,6 +391,53 @@ main(int argc, char** argv)
     acDeviceSynchronizeStream(device, STREAM_ALL);
     cudaProfilerStop();
 
+    // Test profile initialization
+    // Can view the output profile by running bfield-init-function-test.py
+    const AcReal box_size = 2 * M_PI; // Note: not fetched from the config
+    // const size_t nz            = info.int_params[AC_nz];
+    const size_t offset        = info.int_params[AC_nz_min];
+    const size_t profile       = PROFILE_B22mean_z;
+    const size_t profile_count = dims.m1.z;
+    AcReal host_profile[profile_count];
+
+    const AcReal amplitude  = 1.0;
+    const AcReal wavenumber = 1.0;
+    acHostInitProfileToCosineWave(box_size, nz, offset, amplitude, wavenumber, profile_count,
+                                  host_profile);
+    acHostWriteProfileToFile("cosine-profile.out", host_profile, profile_count);
+
+    acHostInitProfileToSineWave(box_size, nz, offset, amplitude, wavenumber, profile_count,
+                                host_profile);
+    acHostWriteProfileToFile("sine-profile.out", host_profile, profile_count);
+
+    // Initialize B-field profiles
+    // All to zero
+    acHostInitProfileToValue(0, profile_count, host_profile);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B11mean_x);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B11mean_y);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B11mean_z);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B12mean_x);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B12mean_y);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B12mean_z);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B21mean_x);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B21mean_y);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B21mean_z);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B22mean_x);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B22mean_y);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B22mean_z);
+
+    // B1c (here B11) and B2c (here B21) to cosine
+    acHostInitProfileToCosineWave(box_size, nz, offset, amplitude, wavenumber, profile_count,
+                                  host_profile);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B11mean_x);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B21mean_y);
+
+    // B1s (here B12) and B2s (here B22)
+    acHostInitProfileToSineWave(box_size, nz, offset, amplitude, wavenumber, profile_count,
+                                host_profile);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B12mean_x);
+    acDeviceLoadProfile(device, host_profile, profile_count, PROFILE_B22mean_y);
+
     // Simulation loop
     // NOTE: should initialize all fields and profiles when used for production
     const size_t nsteps          = 200;

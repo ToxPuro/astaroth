@@ -1226,6 +1226,25 @@ AcResult acHostMeshDestroy(AcMesh* mesh);
  * parameters derived from them (mx, my, mz, nx_min, and others) */
 AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
 
+/** Inits the profile to cosine wave */
+AcResult acHostInitProfileToCosineWave(const long double box_size, const size_t nz,
+                                       const long offset, const AcReal amplitude,
+                                       const AcReal wavenumber, const size_t profile_count,
+                                       AcReal* profile);
+
+/** Inits the profile to sine wave */
+AcResult acHostInitProfileToSineWave(const long double box_size, const size_t nz, const long offset,
+                                     const AcReal amplitude, const AcReal wavenumber,
+                                     const size_t profile_count, AcReal* profile);
+
+/** Initialize a profile to a constant value */
+AcResult acHostInitProfileToValue(const long double value, const size_t profile_count,
+                                  AcReal* profile);
+
+/** Writes the host profile to a file */
+AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
+                                  const size_t profile_count);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
