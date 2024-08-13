@@ -645,7 +645,7 @@ main(int argc, char* argv[])
 
     // Input parameters
     fprintf(stderr, "Usage: ./benchmark <computational domain length> <radius> <stride> <jobid> "
-                    "<num_samples> <salt>\n");
+                    "<num_samples> <salt> <benchmark>\n");
     const size_t domain_length = (argc > 1) ? (size_t)atol(argv[1])
                                             : 128 * pow(1024, 2) / sizeof(real);
     const size_t radius        = (argc > 2) ? (size_t)atol(argv[2]) : 1;
@@ -653,6 +653,7 @@ main(int argc, char* argv[])
     const size_t jobid         = (argc > 4) ? (size_t)atol(argv[4]) : 0;
     const size_t num_samples   = (argc > 5) ? (size_t)atol(argv[5]) : 100;
     const size_t salt          = (argc > 6) ? (size_t)atol(argv[6]) : 42;
+    const size_t do_benchmark  = (argc > 7) ? (size_t)atol(argv[7]) : 1;
 
     // Derived values
     ERRCHK_ALWAYS(stride == 1); // Not implemented yet
@@ -708,6 +709,8 @@ main(int argc, char* argv[])
     // Benchmark pipeline
     KernelConfig c = autotune(array_length, domain_length, pad, radius, stride);
     verify(c);
-    benchmark(c, jobid, seed, num_samples);
+    if (do_benchmark)
+        benchmark(c, jobid, seed, num_samples);
+
     return EXIT_SUCCESS;
 }
