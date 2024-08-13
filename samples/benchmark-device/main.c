@@ -20,7 +20,7 @@ main(int argc, char** argv)
     cudaProfilerStop();
 
     fprintf(stderr,
-            "Usage: ./benchmark-device <nx> <ny> <nz> <jobid> <num_samples> <verify> <salt>\n");
+            "Usage: ./benchmark-device <nx> <ny> <nz> <jobid> <num_samples> <verify> <salt> <do_benchmark>\n");
     const size_t nx          = (argc > 1) ? (size_t)atol(argv[1]) : 256;
     const size_t ny          = (argc > 2) ? (size_t)atol(argv[2]) : 256;
     const size_t nz          = (argc > 3) ? (size_t)atol(argv[3]) : 256;
@@ -28,6 +28,7 @@ main(int argc, char** argv)
     const size_t num_samples = (argc > 5) ? (size_t)atol(argv[5]) : 100;
     const size_t verify      = (argc > 6) ? (size_t)atol(argv[6]) : 0;
     const size_t salt        = (argc > 7) ? (size_t)atol(argv[7]) : 42;
+    const size_t do_benchmark = (argc > 8) ? (size_t)atol(argv[8]) : 1;
     const size_t seed        = 12345 + salt +
                         (1 + nx + ny + nz + jobid + num_samples + verify) * time(NULL);
 
@@ -146,9 +147,11 @@ main(int argc, char** argv)
 
         // Benchmark
         timer_reset(&t);
-        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
-        // acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, dims.n0, dims.n1, dt);
-        acDeviceSynchronizeStream(device, STREAM_ALL);
+        if (do_benchmark) {
+            acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
+            // acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, dims.n0, dims.n1, dt);
+            acDeviceSynchronizeStream(device, STREAM_ALL);
+        }
         const double milliseconds = timer_diff_nsec(t) / 1e6;
 
         const Volume tpb = acKernelLaunchGetLastTPB();

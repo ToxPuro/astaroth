@@ -502,7 +502,7 @@ verify(const KernelConfig c)
 }
 
 static void
-benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const size_t num_samples)
+benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const size_t num_samples, const size_t do_benchmark)
 {
     // Allocate
     Array a = arrayCreate(c.array_length, true);
@@ -535,13 +535,15 @@ benchmark(const KernelConfig c, const size_t jobid, const size_t seed, const siz
 
     for (size_t i = 0; i < num_samples; ++i) {
         cudaDeviceSynchronize();
-	timer_reset(&t);
-        //cudaEventRecord(tstart); // Timing start
-        unrolled_kernel(c.bpg, c.tpb, c.smem, c.domain_length, c.pad, c.radius, c.stride, a, b);
-        //cudaEventRecord(tstop); // Timing stop
-        //cudaEventSynchronize(tstop);
-	cudaDeviceSynchronize();
-	const long double milliseconds = timer_diff_nsec(t)/1e6l;
+	    timer_reset(&t);
+        if (do_benchmark) {
+            //cudaEventRecord(tstart); // Timing start
+            unrolled_kernel(c.bpg, c.tpb, c.smem, c.domain_length, c.pad, c.radius, c.stride, a, b);
+            //cudaEventRecord(tstop); // Timing stop
+            //cudaEventSynchronize(tstop);
+	        cudaDeviceSynchronize();
+        }
+	    const long double milliseconds = timer_diff_nsec(t)/1e6l;
         ERRCHK_CUDA_KERNEL_ALWAYS();
 
         //float milliseconds = 0;
@@ -709,8 +711,7 @@ main(int argc, char* argv[])
     // Benchmark pipeline
     KernelConfig c = autotune(array_length, domain_length, pad, radius, stride);
     verify(c);
-    if (do_benchmark)
-        benchmark(c, jobid, seed, num_samples);
+    benchmark(c, jobid, seed, num_samples, do_benchmark);
 
     return EXIT_SUCCESS;
 }
