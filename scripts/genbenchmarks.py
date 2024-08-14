@@ -298,6 +298,21 @@ def gen_microbenchmarks(system):
             #     print(f'srun {system.srun_params} ./microbenchmark-nn {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
             #     stride *= 2
 
+    with open(f'{scripts_dir}/microbenchmark-cudahip-problemsize.sh', 'w') as f:
+        with redirect_stdout(f):
+            # Create the batch script
+            system.print_sbatch_header(ntasks=1)
+            
+            # Problem size
+            domain_length     = 1
+            stride            = 1
+            radius            = 1024
+            #max_domain_length = 2*8*test_domain_length # 1 GiB with single, 2 * 8 * 128 MiB = 2 GiB with f64
+            max_domain_length = int(64 * 1024**3 / 4)
+            while domain_length <= max_domain_length:
+                print(f'srun {system.srun_params} ./microbenchmark {domain_length} {radius} {stride} $SLURM_JOB_ID {args.num_samples} {np.random.randint(0, 65535)}')
+                domain_length *= 2
+
 # Linear stencil benchmarks
 def gen_convolutionbenchmarks(system):
     
