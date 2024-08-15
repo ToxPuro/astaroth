@@ -323,6 +323,12 @@ main(int argc, char** argv)
         }
     }
 
+    // Profile
+    cudaProfilerStart();
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, kernel, dims.n0, dims.n1);
+    acDeviceSynchronizeStream(device, STREAM_ALL);
+    cudaProfilerStop();
+
     // Free
     fclose(fp);
     acDeviceDestroy(device);
