@@ -1675,7 +1675,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 	    Region full_input_region = getinputregions({full_region},fields_in)[0];
             //for (int tag = Region::min_comp_tag; tag < 1; tag++) {
 	    //TP: if only a single GPU then now point in splitting the domain, simply process it as one large one
-	    if(comm_size == 1 && false)
+	    if(comm_size == 1)
 	    {
 	      auto task = std::make_shared<ComputeTask>(op,0,full_input_region,full_region,device,swap_offset);
               graph->all_tasks.push_back(task);

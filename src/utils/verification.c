@@ -213,7 +213,7 @@ get_max_abs_error(const AcReal* model, const AcReal* candidate, const AcMeshInfo
 	{
     		for (int z = z_start; z < z_end; ++z) 
 		{
-			const size_t i = x+y*mm.x+z*mm.y*mm.z;
+			const size_t i = x+y*mm.x+z*mm.x*mm.y;
         		Error curr_error = acGetError(model[i], candidate[i]);
         		if (curr_error.abs_error > error.abs_error)
 			{

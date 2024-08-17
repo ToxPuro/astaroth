@@ -172,5 +172,4 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 [.]?{D}+(e[-]?{D}+)       { return REALNUMBER; }
 {D}?[.]+{D}*(e[-]?{D}+)?[f]?  { return NUMBER; }
 {D}?[.]+{D}*(e[-]?{D}+)?[d]  { return DOUBLENUMBER; }
-struct\s{L}({L}|{D})* {printf("Found it\n"); exit(0); }
 */

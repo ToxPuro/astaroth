@@ -103,8 +103,7 @@ const int AC_const_int_2nd = 4
 Field BFIELDX
 Field BFIELDY
 Field BFIELDZ
-const Field3 BFIELD = MakeField3(BFIELDX, BFIELDY, BFIELDZ)
-//#define BFIELD MakeField3(BFIELDX,BFIELDY,BFIELDZ)
+#define BFIELD Field3(BFIELDX,BFIELDY,BFIELDZ)
 #endif
 
 #if LSHOCK 
@@ -264,12 +263,10 @@ dconst int AC_test_int_arr[test_arr_size/2];
 
 
 
-const Field3 UU = MakeField3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
-//#define UU MakeField3(VTXBUF_UUX,VTXBUF_UUY,VTXBUF_UUZ)
+#define UU Field3(VTXBUF_UUX,VTXBUF_UUY,VTXBUF_UUZ)
 
 #if LMAGNETIC
-const Field3 AA  = MakeField3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
-//#define AA MakeField3(VTXBUF_AX,VTXBUF_AY,VTXBUF_AZ)
+#define AA Field3(VTXBUF_AX,VTXBUF_AY,VTXBUF_AZ)
 #endif
 
 

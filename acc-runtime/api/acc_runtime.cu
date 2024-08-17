@@ -38,6 +38,7 @@ typedef struct Field3
 	VertexBufferHandle x;
 	VertexBufferHandle y;
 	VertexBufferHandle z;
+        HOST_DEVICE_INLINE Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
 } Field3;
 
 

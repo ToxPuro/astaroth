@@ -293,9 +293,17 @@ add_symbol(const NodeType type, const int* tqualifiers, const size_t n_tqualifie
 	   is_communicated |= field_has_stencil_op[field_index + num_fields*k];
    }
    if(is_auxiliary)
-	   push_int(&symbol_table[num_symbols[current_nest]-1].tqualifiers, AUXILIARY);
-   if(is_communicated)
+   {
+	push_int(&symbol_table[num_symbols[current_nest]-1].tqualifiers, AUXILIARY);
+   	if(is_communicated)
+   		push_int(&symbol_table[num_symbols[current_nest]-1].tqualifiers, COMMUNICATED);
+   }
+   else
+   {
    	push_int(&symbol_table[num_symbols[current_nest]-1].tqualifiers, COMMUNICATED);
+   }
+
+
 
   //return the index of the lastly added symbol
   return num_symbols[current_nest]-1;
@@ -334,8 +342,8 @@ symboltable_reset(void)
   //In develop
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "read_w");
   //add_symbol(NODE_FUNCTION_ID, NULL, NULL, "write_w");
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, "Field3",0, "MakeField3"); // TODO RECHECK
-  add_symbol(NODE_FUNCTION_ID, NULL, 0, "real",  0, "len");    // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, "Field3",FIELD3, "MakeField3"); // TODO RECHECK
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, "int",  INT, "len");    // TODO RECHECK
 
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"uint64_t");   // TODO RECHECK
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"UINT64_MAX"); // TODO RECHECK
@@ -1398,6 +1406,7 @@ get_function_param_types_and_names_recursive(const ASTNode* node, const char* fu
 	}
 	free_node_vec(&params);
 }
+
 func_params_info
 get_function_param_types_and_names(const ASTNode* node, const char* func_name)
 {
@@ -1405,6 +1414,7 @@ get_function_param_types_and_names(const ASTNode* node, const char* func_name)
 	get_function_param_types_and_names_recursive(node,func_name,&res.types,&res.expr);
 	return res;
 }
+
 
 
 
@@ -1652,8 +1662,10 @@ typedef struct
 bc_fields;
 
 bc_fields 
-get_fields_included(const func_params_info call_info, const char* boundconds_name, const char* func_name)
+get_fields_included(const ASTNode* func_call, const char* boundconds_name)
 {
+	func_params_info call_info = get_func_call_params_info(func_call);
+	char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
 	bc_fields res;
 	char* full_name = malloc((strlen(boundconds_name) + strlen(func_name) + 500)*sizeof(char));
 	sprintf(full_name,"%s__%s",boundconds_name,func_name);
@@ -1668,7 +1680,8 @@ get_fields_included(const func_params_info call_info, const char* boundconds_nam
 			res.out[field] |= written_fields[field + num_fields*kernel_index];
 			res.in[field]  |= read_fields[field + num_fields*kernel_index];
 		}
-	//if rest_fields include all /p 
+	//if rest_fields include all 
+	//at the moment not supported
 	const bool all_included = str_vec_contains(call_info.expr,"REST_FIELDS") || !strcmp(func_name,"periodic");
 	if (str_vec_contains(call_info.expr,"REST_FIELDS"))
 	{
@@ -1681,6 +1694,7 @@ get_fields_included(const func_params_info call_info, const char* boundconds_nam
 		res.in[field]  |= all_included;
 	}
 	free(full_name);
+	free_func_params_info(&call_info);
 	return res;
 }
 void
@@ -1693,8 +1707,7 @@ process_boundcond(const ASTNode* func_call, char** res, const ASTNode* root, con
 	const int num_boundaries = 6;
 
 
-	func_params_info call_info = get_func_call_params_info(func_call);
-	bc_fields fields  = get_fields_included(call_info,boundconds_name,func_name);
+	bc_fields fields  = get_fields_included(func_call,boundconds_name);
 	const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,func_name,0,0);
 	char* prefix = malloc(sizeof(char)*4000);
 	char* full_name = malloc(sizeof(char)*4000);
@@ -1756,7 +1769,7 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
         free_func_params_info(&params_info);
 	fprintf(fp,"Kernel %s_%s()\n{\n",prefix,func_name);
 	fprintf(fp,"\t%s(",dfunc_name);
-	for(size_t j = 0; j < num_of_rest_params; ++j)
+	for(size_t j = 0; j <num_of_rest_params; ++j)
 	{
 		fprintf(fp,"%s",call_info.expr.data[j+call_param_offset]);
 		if(j < num_of_rest_params-1) fprintf(fp,",");
@@ -2020,25 +2033,6 @@ make_unique_bc_calls(ASTNode* node)
 		identifier->buffer = new_name;
 	}
 	free_node_vec(&func_calls);
-	//if(!head) return;
-	//const ASTNode* decl = get_node(NODE_DECLARATION,node->lhs);
-	//char tmp[1000];
-	//combine_all(node,tmp);
-	//const int n_variables_declared = count_num_of_nodes_in_list(decl->rhs);
-	//if(n_variables_declared != 1) return;
-	//if(get_node(NODE_MEMBER_ID,decl->rhs)) return;
-	//if(get_node(NODE_ARRAY_ACCESS,decl->rhs)) return;
-	//const char* function_name = get_node_by_token(IDENTIFIER,function->lhs)->buffer;
-	//const char* var_name = strdup(get_node_by_token(IDENTIFIER,node->lhs)->buffer);
-	//const ASTNode* first_decl = get_node_decl(function,var_name);
-	//const ASTNode* begin_scope = get_parent_node(NODE_BEGIN_SCOPE,node);
-	//if(!get_node_by_id(first_decl->id,begin_scope)) return;
-	//char* new_name = malloc((strlen(var_name)+1)*sizeof(char));
-	//sprintf(new_name,"%s_",var_name);
-	//rename_variables_in_statements(
-	//				final_node ? head : head->parent,
-	//				new_name,node->expr_type, var_name
-	//			      );
 }
 void
 gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* input_symbols, string_vec* input_types)
@@ -3405,7 +3399,11 @@ get_func_call_expr_type(ASTNode* node)
 		for(size_t i = 0; i < dfunc_nodes.size; ++i)
 			if(!strcmp(dfunc_names.data[i],func_name)) func = dfunc_nodes.data[i];
 		if(strlen(sym->tspecifier))
+		{
+			if(sym && !strcmp(func_name,"MakeField3"))
+				printf("HI: \n");
 			return strdup(sym->tspecifier);
+		}
 		else if(func && func->expr_type)
 			return strdup(func->expr_type);
 		if(!node->expr_type)
@@ -3810,7 +3808,74 @@ gen_names(const char* datatype, const int token, FILE* fp)
 	fprintf(fp,"};\n");
 	free_str_vec(&names);
 }
+static void
+gen_field_info(FILE* fp)
+{
+  num_fields = 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if(symbol_table[i].tspecifier_token == FIELD)
+      ++num_fields;
 
+
+
+  // Enums
+  int num_of_communicated_fields=0;
+  int num_of_fields=0;
+  bool field_is_auxiliary[256];
+  bool field_is_communicated[256];
+  string_vec field_names = VEC_INITIALIZER;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  {
+    if(symbol_table[i].tspecifier_token == FIELD){
+      push(&field_names, symbol_table[i].identifier);
+      const char* name = symbol_table[i].identifier;
+      const bool is_aux = int_vec_contains(symbol_table[i].tqualifiers,AUXILIARY);
+      field_is_auxiliary[num_of_fields] = is_aux;
+      const bool is_comm = int_vec_contains(symbol_table[i].tqualifiers,COMMUNICATED);
+      num_of_communicated_fields += is_comm;
+      field_is_communicated[num_of_fields] = is_comm;
+      ++num_of_fields;
+    }
+  }
+  fprintf(fp, "typedef enum {");
+  //first communicated fields
+  for(int i=0;i<num_of_fields;++i)
+        fprintf(fp, "%s,",field_names.data[i]);
+
+  fprintf(fp, "NUM_FIELDS=%d,", num_of_fields);
+  fprintf(fp, "NUM_COMMUNICATED_FIELDS=%d,", num_of_communicated_fields);
+  fprintf(fp, "} Field;\n");
+
+  fprintf(fp, "static const bool vtxbuf_is_auxiliary[] = {");
+
+  for(int i=0;i<num_of_fields;++i)
+    if(field_is_auxiliary[i])
+        fprintf(fp, "%s,", "true");
+    else
+        fprintf(fp, "%s,", "false");
+  fprintf(fp, "};");
+
+  fprintf(fp, "static const bool vtxbuf_is_communicated[] = {");
+  for(int i=0;i<num_of_fields;++i)
+    if(field_is_communicated[i])
+        fprintf(fp, "%s,", "true");
+    else
+        fprintf(fp, "%s,", "false");
+  fprintf(fp, "};");
+  FILE* fp_vtxbuf_is_comm_func = fopen("vtxbuf_is_communicated_func.h","w");
+  fprintf(fp_vtxbuf_is_comm_func ,"static __device__ constexpr __forceinline__ bool is_communicated(Field field) {\n"
+             "switch(field)"
+             "{");
+  for(int i=0;i<num_of_fields;++i)
+  {
+    const char* ret_val = (field_is_communicated[i]) ? "true" : "false";
+    fprintf(fp_vtxbuf_is_comm_func,"case(%s): return %s;\n", field_names.data[i], ret_val);
+  }
+  fprintf(fp_vtxbuf_is_comm_func,"default: return false;\n");
+  fprintf(fp_vtxbuf_is_comm_func, "}\n}\n");
+
+  fclose(fp_vtxbuf_is_comm_func);
+}
 // Generate User Defines
 static void
 gen_user_defines(const ASTNode* root, const char* out)
@@ -3845,71 +3910,10 @@ gen_user_defines(const ASTNode* root, const char* out)
       fprintf(fp, "stencil_%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_STENCILS} Stencil;");
 
+  //TP: fields info is generated separately since it is different between 
+  //analysis generation and normal generation
+  fprintf(fp,"\n#include \"fields_info.h\"\n");
   // Enums
-  int num_of_communicated_fields=0;
-  int num_of_fields=0;
-  bool field_is_auxiliary[256];
-  bool field_is_communicated[256];
-  string_vec field_names = VEC_INITIALIZER;
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  {
-    if(symbol_table[i].tspecifier_token == FIELD){
-      push(&field_names, symbol_table[i].identifier);
-      const char* name = symbol_table[i].identifier;
-      const bool is_aux = int_vec_contains(symbol_table[i].tqualifiers,AUXILIARY);
-      field_is_auxiliary[num_of_fields] = is_aux;
-      const bool is_comm = int_vec_contains(symbol_table[i].tqualifiers,COMMUNICATED);
-      num_of_communicated_fields += is_comm;
-      field_is_communicated[num_of_fields] = is_comm;
-      ++num_of_fields;
-    }
-  }
-  fprintf(fp, "typedef enum {");
-  //first communicated fields
-  for(int i=0;i<num_of_fields;++i)
-	fprintf(fp, "%s,",field_names.data[i]);
-
-  fprintf(fp, "NUM_FIELDS=%d,", num_of_fields);
-  fprintf(fp, "NUM_COMMUNICATED_FIELDS=%d,", num_of_communicated_fields);
-  fprintf(fp, "} Field;\n");
-
-
-
-  fprintf(fp, "static const bool vtxbuf_is_auxiliary[] = {");
-  for(int i=0;i<num_of_fields;++i)
-    if(field_is_auxiliary[i])
-    	fprintf(fp, "%s,", "true");
-    else
-    	fprintf(fp, "%s,", "false");
-  fprintf(fp, "};");
-
-  fprintf(fp, "static const bool vtxbuf_is_communicated[] = {");
-  for(int i=0;i<num_of_fields;++i)
-    if(field_is_communicated[i])
-    	fprintf(fp, "%s,", "true");
-    else
-    	fprintf(fp, "%s,", "false");
-  fprintf(fp, "};");
-  FILE* fp_vtxbuf_is_comm_func = fopen("vtxbuf_is_communicated_func.h","a");
-  fprintf(fp_vtxbuf_is_comm_func ,"static __device__ constexpr __forceinline__ bool is_communicated(Field field) {\n"
-             "switch(field)"
-	     "{");
-  for(int i=0;i<num_of_fields;++i)
-  {
-    const char* ret_val = (field_is_communicated[i]) ? "true" : "false";
-    fprintf(fp_vtxbuf_is_comm_func,"case(%s): return %s;\n", field_names.data[i], ret_val);
-  }
-  fprintf(fp_vtxbuf_is_comm_func,"default: return false;\n");
-  fprintf(fp_vtxbuf_is_comm_func, "}\n}\n");
-
-  fclose(fp_vtxbuf_is_comm_func);
-
-  //free_str_vec(&field_names);
-
-
-
-
-
 
   // Enums for work_buffers 
   fprintf(fp, "typedef enum {");
@@ -4721,11 +4725,12 @@ resolve_overloaded_calls(ASTNode* node, const char* dfunc_name, string_vec* dfun
 	}
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
-		//combine_all(node->rhs,tmp); 
-		//if(!strcmp(dfunc_name,"rk3"))
+		//if(!strcmp(dfunc_name,"value"))
 		//{
-		//	printf("Not able to resolve: %s\n",tmp); 
-		//	printf("HMM: %s,%s,%s\n",call_info.types.data[0],call_info.types.data[1],call_info.types.data[2]);
+		//	char my_tmp[10000];
+		//	my_tmp[0] = '\0';
+		//	combine_all(node->rhs,my_tmp); 
+		//	printf("Not able to resolve: %s\n",my_tmp); 
 		//}
 		return res;
 	}
@@ -4801,21 +4806,13 @@ create_binary_expression(ASTNode* expression , ASTNode* unary_expression, const 
 }
 
 static ASTNode* 
-create_func_call(const char* func_name, const char* param_name)
+create_func_call(const char* func_name, const ASTNode* param)
 {
+
 	ASTNode* postfix_expression = astnode_create(NODE_UNKNOWN,
-				      create_primary_expression(param_name),
-				      NULL);
-
-	ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,postfix_expression,NULL);
-	ASTNode* expression         = astnode_create(NODE_EXPRESSION,unary_expression,NULL);
-	ASTNode* expression_list = astnode_create(NODE_UNKNOWN,expression,NULL);
-
-	postfix_expression = astnode_create(NODE_UNKNOWN,
 			     create_primary_expression(func_name),
 			     NULL);
-	
-	ASTNode* func_call = astnode_create(NODE_FUNCTION_CALL,postfix_expression,expression_list);
+	ASTNode* func_call = astnode_create(NODE_FUNCTION_CALL,postfix_expression,astnode_dup(param,NULL));
 	astnode_set_infix("(",func_call); 
 	astnode_set_postfix(")",func_call); 
 	return func_call;
@@ -4887,9 +4884,9 @@ transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* roo
 	if(!sym) return;
 	if(!int_vec_contains(sym -> tqualifiers,REAL)) return;
 	func_params_info param_info = get_func_call_params_info(node);
-	if(!strcmp_null_ok(param_info.types.data[0],"Field"))
+	if(!strcmp_null_ok(param_info.types.data[0],"Field") && param_info.expr.size == 1)
 	{
-		ASTNode* func_call = create_func_call("value",param_info.expr.data[0]);
+		ASTNode* func_call = create_func_call("value",node->rhs);
 		ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
 		ASTNode* expression         = astnode_create(NODE_EXPRESSION,unary_expression,NULL);
 		ASTNode* expression_list = astnode_create(NODE_UNKNOWN,expression,NULL);
@@ -4914,9 +4911,7 @@ transform_field_binary_ops_recursive(ASTNode* node)
 	if(!strcmp_null_ok(lhs_expr,"Field") || !strcmp_null_ok(lhs_expr,"Field3"))
 	{
 
-		char field_expr[10000];
-		combine_all(node->lhs,field_expr);
-		ASTNode* func_call = create_func_call("value",field_expr);
+		ASTNode* func_call = create_func_call("value",node->lhs);
 		ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
 		ASTNode* expression         = astnode_create(NODE_EXPRESSION,unary_expression,NULL);
 		node->lhs = expression;
@@ -4924,9 +4919,7 @@ transform_field_binary_ops_recursive(ASTNode* node)
 	if(!strcmp_null_ok(rhs_expr,"Field") || !strcmp_null_ok(rhs_expr,"Field3"))
 	{
 
-		char field_expr[10000];
-		combine_all(node->rhs->rhs,field_expr);
-		ASTNode* func_call = create_func_call("value",field_expr);
+		ASTNode* func_call = create_func_call("value",node->rhs->rhs);
 		ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
 		node->rhs->rhs = unary_expression;
 	}
@@ -4981,7 +4974,7 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 	{
 		char func_body[10000];
 		combine_all_with_whitespace(node->rhs->rhs->lhs,func_body);
-		fprintf(stream,"%s_AC_INTERNAL_COPY (real3 %s, real3 %s){%s}\n",dfunc_name,info.expr.data[1],info.expr.data[0],func_body);
+		fprintf(stream,"%s_AC_INTERNAL_COPY (real3 %s, real3 %s){%s}\n",dfunc_name,info.expr.data[0],info.expr.data[1],func_body);
 		fprintf(stream,"%s (Field3 field, real3 vec){return %s_AC_INTERNAL_COPY(value(field), vec) }\n",dfunc_name,dfunc_name);
 		fprintf(stream,"%s (real3  vec,   Field3 field){return %s_AC_INTERNAL_COPY(vec, value(field)) }\n",dfunc_name,dfunc_name);
 		fprintf(stream,"%s (Field3 a, Field3 b){return %s_AC_INTERNAL_COPY(value(a), value(b)) }\n",dfunc_name,dfunc_name);
@@ -5444,6 +5437,12 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   }
 
   traverse(root, NODE_NO_OUT, NULL);
+  {
+          FILE* fp = fopen("fields_info.h","w");
+          gen_field_info(fp);
+          fclose(fp);
+  }
+
   gen_multidimensional_field_accesses_recursive(root,gen_mem_accesses);
 
 

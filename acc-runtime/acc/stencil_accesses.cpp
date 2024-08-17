@@ -17,11 +17,12 @@
 #include "datatypes.h"
 #include "user_defines.h"
 
-typedef struct
+typedef struct Field3
 {
 	VertexBufferHandle x;
 	VertexBufferHandle y;
 	VertexBufferHandle z;
+	constexpr Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
 } Field3;
 
 #include <array>
@@ -239,7 +240,7 @@ void
 execute_kernel(const int kernel)
 {
     VertexBufferArray vba = vbaCreate(1000);
-    kernels[kernel]((int3){NGHOST, NGHOST, NGHOST}, (int3){NGHOST+1, NGHOST+1, NGHOST+1}, vba);
+    kernels[kernel]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
     vbaDestroy(&vba);
 }
 int

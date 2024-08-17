@@ -21,15 +21,25 @@ elemental previous(Field s)
 {
 	return previous_base(s)
 }
-//previous(Field3 s)
-//{
-//	return 
-//		real3(
-//				previous(s.x),
-//				previous(s.y),
-//				previous(s.z)
-//		) 
-//}
+
+vecvalue(Field3 v)
+{
+	return
+		real3(
+		   value_stencil(v.x),
+		   value_stencil(v.y),
+		   value_stencil(v.z)
+		)
+}
+vecprevious(Field3 v)
+{
+	return
+		real3(
+		   previous_base(v.x),
+		   previous_base(v.y),
+		   previous_base(v.z)
+		)
+}
 
 write(Field dst, real src)
 {
@@ -47,6 +57,12 @@ write(Field3 dst, real3 src)
 	write(dst.z, src.z)
 }
 
+vecwrite(Field3 dst, real3 src)
+{
+	write_base(dst.x, src.x)
+	write_base(dst.y, src.y)
+	write_base(dst.z, src.z)
+}
 real3 intrinsic AC_cross
 real intrinsic AC_dot
 
