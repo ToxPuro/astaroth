@@ -461,7 +461,11 @@ gen_stencil_functions(const int curr_kernel)
     //TP: don't gen stencil function at all if no fields use it. Done to declutter the resulting code and to speedup compilation
     bool gen_stencil = false;
     for (int field = 0; field < NUM_FIELDS; ++field) gen_stencil |= stencils_accessed[curr_kernel][field][stencil];
-    if(!gen_stencil) continue;
+    if(!gen_stencil)
+    {
+	    printf("const auto %s __attribute__((unused)) = [&](const auto& field) { (void) field; return (AcReal)NAN;};",stencil_names[stencil]);
+	    continue;
+    }
     printf("const auto %s __attribute__((unused)) = [&](const auto& field){",
            stencil_names[stencil]);
     printf("switch (field) {");

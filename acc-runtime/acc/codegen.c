@@ -1235,7 +1235,7 @@ gen_kernel_structs_recursive(const ASTNode* node, char* user_kernel_params_struc
 	free_node_vec(&params);
 
         ASTNode* fn_identifier = get_node_by_token(IDENTIFIER, node->lhs);
-	char* kernel_params_struct = malloc(10000*sizeof(char));
+	char kernel_params_struct[10000];
 	sprintf(kernel_params_struct,"typedef struct %sInputParams {%s} %sInputParams;\n",fn_identifier->buffer,structs_info_str,fn_identifier->buffer);
 
 	file_prepend("user_input_typedefs.h",kernel_params_struct);
@@ -1451,7 +1451,7 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root, const char* prefi
 
 		func_params_info params_info =  get_function_param_types_and_names(root,func_name);
 
-		char* loader_str = malloc(sizeof(char)*4000);
+		char loader_str[10000];
 		sprintf(loader_str,"auto %s_%s_loader = [](ParamLoadingInfo p){\n",prefix, func_name);
 		const int params_offset = is_boundcond ? 2 : 0;
 		if(!is_boundcond)
@@ -1490,11 +1490,12 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root, const char* prefi
 		//	strcat(loader_str,tmp);
 		//}
 		strcat(loader_str,"};\n");
-		file_prepend("user_loaders.h",loader_str);
+		FILE* fp = fopen("user_loaders.h","a");
+		fprintf(fp,"%s",loader_str);
+		fclose(fp);
 
 		free_func_params_info(&params_info);
 		free_func_params_info(&call_info);
-		free(loader_str);
 }
 	 
 void
@@ -1888,7 +1889,7 @@ gen_halo_exchange_and_boundconds(
 		strcat(communicated_fields_str,"}");
 		if(need_to_communicate)
 		{
-			strcatprintf(res,"acHaloExchange(%s)\n",communicated_fields_str);
+			strcatprintf(res,"acHaloExchange(%s),\n",communicated_fields_str);
 
 			const char* x_boundcond = field_boundconds[0 + num_fields*0];
 			const char* y_boundcond = field_boundconds[0 + num_fields*1];
@@ -5244,6 +5245,7 @@ gen_ssa_in_basic_blocks(ASTNode* node)
 void
 canonalize(ASTNode* node)
 {
+	(void)node;
 	//canonalize_assignments(node);
 	//canonalize_if_assignments(node);
 }

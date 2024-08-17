@@ -1,10 +1,10 @@
 #include "../stdlib/derivs.h"
 
-u_dot_grad_vec(m,v){
+u_dot_grad_vec(Matrix m,real3 v){
   //!!!return real3(dot(v,m.row(0)),dot(v,m.col(1)),dot(v,m.col(2)))
   return real3(dot(v,m.col(0)),dot(v,m.col(1)),dot(v,m.col(2)))
 }
-curl_from_matrix(m) {
+curl_from_matrix(Matrix m) {
   return real3(m.data[2][1]-m.data[1][2], m.data[0][2] - m.data[2][0], m.data[1][0] - m.data[0][1])
 }
 
@@ -20,7 +20,7 @@ gradients_upwd(v) {
     return Matrix(gradient6_upwd(v.x), gradient6_upwd(v.y), gradient6_upwd(v.z))
 }
 
-gradients(v) {
+gradients(Field3 v) {
     return Matrix(gradient(v.x), gradient(v.y), gradient(v.z))
 }
 
@@ -51,7 +51,7 @@ laplace(s) {
     return derxx(s) + deryy(s) + derzz(s)
 }
 
-veclaplace(v) {
+veclaplace(Field3 v) {
     return real3(laplace(v.x), laplace(v.y), laplace(v.z))
 }
 
@@ -100,13 +100,13 @@ gradient_of_divergence(v) {
     )
 }
 
-contract(mat) {
-    return dot(mat.row(0), mat.row(0)) +
-           dot(mat.row(1), mat.row(1)) +
-           dot(mat.row(2), mat.row(2))
+contract(Matrxi mat) {
+    return dot(mat[0], mat[0]) +
+           dot(mat[1], mat[1]) +
+           dot(mat[2], mat[2])
 }
 
-norm2(v) {
+norm2(real3 v) {
     return ( dot(v,v) )
 }
 
