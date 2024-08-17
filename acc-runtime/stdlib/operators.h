@@ -100,7 +100,7 @@ gradient_of_divergence(v) {
     )
 }
 
-contract(Matrxi mat) {
+contract(Matrix mat) {
     return dot(mat[0], mat[0]) +
            dot(mat[1], mat[1]) +
            dot(mat[2], mat[2])
