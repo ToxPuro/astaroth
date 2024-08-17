@@ -199,7 +199,6 @@ AC_INTERNAL_read_field(const Field& field, const AcReal& val)
 	return AcReal(1.0);
 }
 static AcMeshInfo d_mesh_info{};
-#include "user_dfuncs.h"
 #define suppress_unused_warning(X) (void)X
 
 static std::vector<int> executed_conditionals{};

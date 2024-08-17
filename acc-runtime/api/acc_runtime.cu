@@ -320,7 +320,6 @@ IDX(const int3 idx)
 
 #include "random.cuh"
 
-#include "user_dfuncs.h"
 #define suppress_unused_warning(X) (void)X
 #include "user_kernels.h"
 #include "extern_kernels.h"
@@ -1175,7 +1174,7 @@ getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 Kernel
 GetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
 {
-	#include "user_kernel_ifs.h"
+	//#include "user_kernel_ifs.h"
 	//silence unused warnings
 	(void)vba;
 	return kernels[(int) kernel_enum];
