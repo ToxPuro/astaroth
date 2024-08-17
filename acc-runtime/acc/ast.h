@@ -468,15 +468,6 @@ static inline char* readFile(const char *filename) {
 
     return buffer;
 }
-static inline void
-file_prepend(const char* filename, const char* str_to_prepend)
-{
-	const char* file_tmp = readFile(filename);
-	FILE* fp = fopen(filename,"w");
-	fprintf(fp,"%s%s",str_to_prepend,file_tmp);
-	fclose(fp);
-	free((void*)file_tmp);
-}
 
 static inline void
 file_append(const char* filename, const char* str_to_append)

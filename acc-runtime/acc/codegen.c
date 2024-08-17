@@ -1238,7 +1238,7 @@ gen_kernel_structs_recursive(const ASTNode* node, char* user_kernel_params_struc
 	char kernel_params_struct[10000];
 	sprintf(kernel_params_struct,"typedef struct %sInputParams {%s} %sInputParams;\n",fn_identifier->buffer,structs_info_str,fn_identifier->buffer);
 
-	file_prepend("user_input_typedefs.h",kernel_params_struct);
+	file_append("user_input_typedefs.h",kernel_params_struct);
 	free(structs_info_str);
 	strcatprintf(user_kernel_params_struct_str,"%sInputParams %s;\n", fn_identifier->buffer,fn_identifier->buffer);
 }
@@ -1291,6 +1291,38 @@ create_unary_op(const structs_info info, const int i, const char* op, FILE* fp)
 		fprintf(fp,"\t};\n}\n");
 }
 
+void
+gen_user_enums()
+{
+  user_enums_info enum_info = e_info;
+  for (size_t i = 0; i < enum_info.names.size; ++i)
+  {
+	  char res[7000];
+	  char tmp[7000];
+	  sprintf(res,"%s {\n","typedef enum");
+	  for(size_t j = 0; j < enum_info.options[i].size; ++j)
+	  {
+		  const char* separator = (j < enum_info.options[i].size - 1) ? ",\n" : "";
+		  strcatprintf(res,"%s%s",enum_info.options[i].data[j],separator);
+	  }
+	  strcatprintf(res,"} %s;\n",enum_info.names.data[i]);
+  	  file_append("user_typedefs.h",res);
+
+	  sprintf(res,"char* to_str(const %s value)\n"
+		       "{\n"
+		       "switch(value)\n"
+		       "{\n"
+		       ,enum_info.names.data[i]);
+
+	  for(size_t j = 0; j < enum_info.options[i].size; ++j)
+		  strcatprintf(res,"case %s: return strdup(\"%s\");\n",enum_info.options[i].data[j],enum_info.options[i].data[j]);
+	  strcat(res,"}\n}\n");
+	  file_append("to_str_funcs.h",res);
+
+	  sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n",enum_info.names.data[i], enum_info.names.data[i]);
+	  file_append("to_str_funcs.h",res);
+  }
+}
 static structs_info s_info;
 void
 gen_user_structs()
@@ -1310,7 +1342,7 @@ gen_user_structs()
 				strcatprintf(struct_def, "%s %s;", type, name);
 			}
 			strcatprintf(struct_def, "} %s;\n", s_info.user_structs.data[i]);
-        		file_prepend("user_typedefs.h",struct_def);
+        		file_append("user_typedefs.h",struct_def);
         		free(struct_def);
 		}
 
@@ -1321,7 +1353,7 @@ gen_user_structs()
 			all_reals        &= !strcmp( s_info.user_struct_field_types[i].data[j],"AcReal");
 			all_scalar_types &= !strcmps(s_info.user_struct_field_types[i].data[j],"AcReal","int");
 		}
-		if(!all_scalar_types) return;
+		if(!all_scalar_types) continue;
 		FILE* fp = fopen("user_typedefs.h","a");
 		fprintf(fp,"#ifdef __cplusplus\n");
 
@@ -1490,9 +1522,7 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root, const char* prefi
 		//	strcat(loader_str,tmp);
 		//}
 		strcat(loader_str,"};\n");
-		FILE* fp = fopen("user_loaders.h","a");
-		fprintf(fp,"%s",loader_str);
-		fclose(fp);
+		file_append("user_loaders.h",loader_str);
 
 		free_func_params_info(&params_info);
 		free_func_params_info(&call_info);
@@ -2080,7 +2110,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	}
 
 	const char* name = node->lhs->lhs->buffer;
-	char* res = malloc(sizeof(char)*10000);
+	char res[10000];
 	sprintf(res, "AcTaskGraph* %s = acGridBuildTaskGraph({\n",name);
 	const ASTNode* function_call_list_head = node->rhs;
 	//have to traverse in reverse order to generate the right order in taskgraph
@@ -2223,8 +2253,10 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	}
 	free(field_written_out_before);
 	strcat(res,"});\n");
-	file_prepend("user_taskgraphs.h", res);
-	free(res);
+
+	file_append("user_taskgraphs.h",res);
+
+
 	free_int_vec(&kernel_calls);
 	free_int_vec(&kernel_calls_in_level_order);
 }
@@ -4002,34 +4034,7 @@ gen_user_defines(const ASTNode* root, const char* out)
 
   user_enums_info enum_info =read_user_enums(root);
   for (size_t i = 0; i < enum_info.names.size; ++i)
-  {
-	  char res[7000];
-	  char tmp[7000];
-	  sprintf(res,"%s {\n","typedef enum");
-	  for(size_t j = 0; j < enum_info.options[i].size; ++j)
-	  {
-		  const char* separator = (j < enum_info.options[i].size - 1) ? ",\n" : "";
-		  strcatprintf(res,"%s%s",enum_info.options[i].data[j],separator);
-	  }
-	  strcatprintf(res,"} %s;\n",enum_info.names.data[i]);
-  	  file_prepend("user_typedefs.h",res);
-
-	  sprintf(res,"char* to_str(const %s value)\n"
-		       "{\n"
-		       "switch(value)\n"
-		       "{\n"
-		       ,enum_info.names.data[i]);
-
-	  for(size_t j = 0; j < enum_info.options[i].size; ++j)
-		  strcatprintf(res,"case %s: return strdup(\"%s\");\n",enum_info.options[i].data[j],enum_info.options[i].data[j]);
-	  strcat(res,"}\n}\n");
-	  file_prepend("to_str_funcs.h",res);
-
-	  sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n",enum_info.names.data[i], enum_info.names.data[i]);
-	  file_prepend("to_str_funcs.h",res);
-
 	  push(&datatypes,enum_info.names.data[i]);
-  }
 
 
   for (size_t i = 0; i < datatypes.size; ++i)
@@ -5351,10 +5356,11 @@ gen_output_files(ASTNode* root)
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
 
+  file_append("user_typedefs.h","#include \"func_attributes.h\"\n");
+  gen_user_enums();
   gen_user_structs();
   gen_user_defines(root, "user_defines.h");
   gen_kernel_structs(root);
-  file_prepend("user_typedefs.h","#include \"func_attributes.h\"\n");
   gen_user_kernels("user_declarations.h");
   stencilgen(root);
 }
