@@ -9,8 +9,7 @@
     (at your option) any later version.
 
     Astaroth is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -26,50 +25,51 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include "vecs.h"
 
 #define BUFFER_SIZE (4096)
 
 typedef enum {
-  NODE_UNKNOWN        = 0,
-  NODE_FUNCTION       = (1 << 0),
-  NODE_DFUNCTION      = (1 << 1),
-  NODE_KFUNCTION      = (1 << 2),
-  NODE_FUNCTION_ID    = (1 << 3),
-  NODE_FUNCTION_PARAM = (1 << 4),
-  NODE_RANGE          = (1 << 5),
-  NODE_BEGIN_SCOPE    = (1 << 6),
-  NODE_DECLARATION    = (1 << 7),
-  NODE_TSPEC          = (1 << 8),
-  NODE_TQUAL          = (1 << 9),
-  NODE_STENCIL        = (1 << 10),
-  NODE_STENCIL_ID     = (1 << 11),
-  NODE_VARIABLE       = (1 << 12),
-  NODE_VARIABLE_ID    = (1 << 13),
-  NODE_KFUNCTION_ID   = (1 << 14),
-  NODE_DCONST         = (1 << 15),
-  NODE_DCONST_ID      = (1 << 16),
-  NODE_MEMBER_ID      = (1 << 17),
-  NODE_HOSTDEFINE     = (1 << 18),
-  NODE_ASSIGNMENT     = (1 << 19),
-  NODE_INPUT          = (1 << 20),
-  NODE_DEF            = (1 << 21),
-  NODE_STRUCT         = (1 << 22),
-  NODE_ENUM           = (1 << 23),
-  //NODE_SELECTION_STATEMENT = (1 << 24),
-  NODE_BOUNDCOND      = (1 << 24),
-  NODE_IF             = (1 << 25),
-  NODE_FUNCTION_CALL  = (1 << 26),
-  NODE_DFUNCTION_ID   = (1 << 27),
-  NODE_ASSIGN_LIST    = (1 << 28),
-  NODE_NO_AUTO        = (1 << 29),
-  NODE_NO_OUT         = (1 << 30),
-  NODE_TASKGRAPH      = (1 << 31),
-  //NODE_BOUNDCOND      = (1 << 32),
-  NODE_ENUM_DEF       = NODE_DEF + NODE_ENUM   + NODE_NO_OUT,
-  NODE_STRUCT_DEF     = NODE_DEF + NODE_STRUCT + NODE_NO_OUT,
-  NODE_TASKGRAPH_DEF =  NODE_DEF + NODE_TASKGRAPH + NODE_NO_OUT,
-  NODE_BOUNDCONDS_DEF = NODE_DEF + NODE_BOUNDCOND + NODE_NO_OUT,
-  NODE_ANY            = ~0,
+  NODE_UNKNOWN             = 0,
+  NODE_PRIMARY_EXPRESSION  = (1 << 0),
+  NODE_DFUNCTION           = (1 << 1),
+  NODE_KFUNCTION           = (1 << 2),
+  NODE_FUNCTION_ID         = (1 << 3),
+  NODE_RANGE               = (1 << 4),
+  NODE_BINARY              = (1 << 5),
+  NODE_BEGIN_SCOPE         = (1 << 6),
+  NODE_DECLARATION         = (1 << 7),
+  NODE_TSPEC               = (1 << 8),
+  NODE_TQUAL               = (1 << 9),
+  NODE_STENCIL             = (1 << 10),
+  NODE_EXPRESSION          = (1 << 11),
+  NODE_VARIABLE            = (1 << 12),
+  NODE_VARIABLE_ID         = (1 << 13),
+  NODE_ARRAY_INITIALIZER   = (1 << 14),
+  NODE_DCONST              = (1 << 15),
+  NODE_TERNARY             = (1 << 16),
+  NODE_MEMBER_ID           = (1 << 17),
+  NODE_HOSTDEFINE          = (1 << 18),
+  NODE_ASSIGNMENT          = (1 << 19),
+  NODE_INPUT               = (1 << 20),
+  NODE_DEF                 = (1 << 21) | NODE_BEGIN_SCOPE,
+  NODE_STRUCT_INITIALIZER  = (1 << 22),
+  NODE_ARRAY_ACCESS        = (1 << 23),
+  NODE_STATEMENT_LIST_HEAD = (1 << 24),
+  NODE_IF                  = (1 << 25),
+  NODE_FUNCTION_CALL       = (1 << 26),
+  NODE_DFUNCTION_ID        = (1 << 27),
+  NODE_ASSIGN_LIST         = (1 << 28),
+  NODE_NO_OUT              = (1 << 29),
+  NODE_STRUCT_EXPRESSION   = (1 << 30),
+  NODE_FUNCTION            = NODE_DFUNCTION | NODE_KFUNCTION,
+  NODE_ENUM_DEF            = (NODE_DEF + 0 + NODE_NO_OUT),
+  NODE_STRUCT_DEF          = (NODE_DEF + 1 + NODE_NO_OUT),
+  NODE_TASKGRAPH_DEF       = (NODE_DEF + 2 + NODE_NO_OUT),
+  NODE_BOUNDCONDS_DEF      = (NODE_DEF + 3 + NODE_NO_OUT),
+  NODE_BINARY_EXPRESSION   = (NODE_BINARY + NODE_EXPRESSION),
+  NODE_TERNARY_EXPRESSION  = (NODE_TERNARY+ NODE_EXPRESSION),
+  NODE_ANY                 = ~0,
 } NodeType;
 
 typedef struct astnode_s {
@@ -84,6 +84,9 @@ typedef struct astnode_s {
   char* prefix;  // Strings. Also makes the grammar since we don't have
   char* infix;   // to divide it into max two-child rules
   char* postfix; // (which makes it much harder to read)
+  bool is_constexpr; //Whether the node represents information known at compile time
+  const char* expr_type; //The type of the expr the node represent
+  bool no_auto;
 } ASTNode;
 
 
@@ -95,14 +98,14 @@ astnode_dup(const ASTNode* node, ASTNode* parent)
 	res->type = node->type;
 	res->parent = parent;
 	res -> token = node->token;
-	if(node->buffer)
-		res->buffer = strdup(node->buffer);
-	if(node->prefix)
-		res->prefix= strdup(node->prefix);
-	if(node->infix)
-		res->infix = strdup(node->infix);
-	if(node->postfix)
-		res->postfix = strdup(node->postfix);
+	res -> is_constexpr = node->is_constexpr;
+	res -> expr_type = strdupnullok(node->expr_type);
+	res -> no_auto = node->no_auto;
+	res -> expr_type = strdupnullok(node->expr_type);
+	res->buffer = strdupnullok(node->buffer);
+	res->prefix=  strdupnullok(node->prefix);
+	res->infix =  strdupnullok(node->infix);
+	res->postfix= strdupnullok(node->postfix);
 	if(node->lhs)
 		res->lhs= astnode_dup(node->lhs,res);
 	if(node->rhs)
@@ -123,6 +126,9 @@ astnode_create(const NodeType type, ASTNode* lhs, ASTNode* rhs)
   node->lhs             = lhs;
   node->rhs             = rhs;
   node->buffer          = NULL;
+  node->is_constexpr    = false;
+  node->no_auto         = false;
+  node->expr_type            = NULL;
 
   node->token  = 0;
   node->prefix = node->infix = node->postfix = NULL;
@@ -143,14 +149,10 @@ astnode_destroy(ASTNode* node)
     astnode_destroy(node->lhs);
   if (node->rhs)
     astnode_destroy(node->rhs);
-  if (node->buffer)
-    free(node->buffer);
-  if (node->prefix)
-    free(node->prefix);
-  if (node->infix)
-    free(node->infix);
-  if (node->postfix)
-    free(node->postfix);
+  free(node->buffer);
+  free(node->prefix);
+  free(node->infix);
+  free(node->postfix);
   free(node);
 }
 
@@ -201,172 +203,6 @@ astnode_print(const ASTNode* node)
   printf("\tpostfix: %p (\"%s\")\n", node->postfix, node->postfix);
 }
 
-typedef enum ReduceOp
-{
-	NO_REDUCE,
-	REDUCE_MIN,
-	REDUCE_MAX,
-	REDUCE_SUM,
-} ReduceOp;
-
-typedef struct string_vec
-{
-	//char* data[256];
-	char** data;
-	size_t size;
-	int capacity;
-
-} string_vec;
-typedef struct int_vec 
-{
-	int* data;
-	size_t size;
-	int capacity;
-
-} int_vec;
-
-typedef struct op_vec 
-{
-	ReduceOp* data;
-	size_t size;
-	int capacity;
-
-} op_vec;
-
-static inline void
-init_str_vec(string_vec* vec)
-{
-	//for(size_t i = 0; i < vec->size; ++i)
-	//	free(vec->data[i]);
-	vec -> size = 0;
-	vec -> capacity = 1;
-	vec -> data = malloc(sizeof(char*)*vec ->capacity);
-}
-
-static inline void
-free_str_vec(string_vec* vec)
-{
-	free(vec->data);
-	vec -> size = 0;
-	vec -> capacity = 0;
-	vec -> data = NULL;
-	//vec -> data = malloc(sizeof(char*)*vec ->capacity);
-}
-static inline void
-free_int_vec(int_vec* vec)
-{
-	free(vec->data);
-	vec -> size = 0;
-	vec -> capacity = 0;
-	vec -> data = NULL;
-	//vec -> data = malloc(sizeof(char*)*vec ->capacity);
-}
-static inline void
-free_op_vec(op_vec* vec)
-{
-	free(vec->data);
-	vec -> size = 0;
-	vec -> capacity = 0;
-	vec -> data = NULL;
-	vec = NULL;
-	//vec -> data = malloc(sizeof(char*)*vec ->capacity);
-}
-static inline void
-init_int_vec(int_vec* vec)
-{
-	vec -> size = 0;
-	vec -> capacity = 1;
-	vec -> data = malloc(sizeof(int)*vec ->capacity);
-}
-static inline int
-int_vec_get_index(const int_vec vec, const int val)
-{
-	for(size_t i = 0; i <  vec.size; ++i)
-		if(vec.data[i] == val) return i;
-	return -1;
-}
-static inline bool
-int_vec_contains(const int_vec vec, const int val)
-{
-	return int_vec_get_index(vec,val) >= 0;
-}
-static inline void
-init_op_vec(op_vec* vec)
-{
-	vec -> size = 0;
-	vec -> capacity = 1;
-	vec -> data = malloc(sizeof(ReduceOp)*vec ->capacity);
-}
-static inline int
-str_vec_get_index(string_vec vec, const char* str)
-{
-	for(size_t i = 0; i <  vec.size; ++i)
-		if(!strcmp(vec.data[i],str)) return i;
-	return -1;
-}
-static inline bool
-str_vec_contains(string_vec vec, const char* str)
-{
-	return str_vec_get_index(vec,str) >= 0;
-}
-static inline int 
-push(string_vec* dst, const char* src)
-{
-	dst->data[dst->size] = strdup(src);
-	++(dst->size);
-	if(dst->size == (size_t)dst->capacity)
-	{
-		dst->capacity = dst->capacity*2;
-		char** tmp = malloc(sizeof(char*)*dst->capacity);
-		for(size_t i = 0; i < dst->size; ++i)
-			tmp[i] = dst->data[i];
-		free(dst->data);
-		dst->data = tmp;
-	}
-	return dst->size-1;
-}
-static inline int 
-push_int(int_vec* dst, int src)
-{
-	dst->data[dst->size] = src;
-	++(dst->size);
-	if(dst->size == (size_t)dst->capacity)
-	{
-		dst->capacity = dst->capacity*2;
-		int* tmp = malloc(sizeof(int)*dst->capacity);
-		for(size_t i = 0; i < dst->size; ++i)
-			tmp[i] = dst->data[i];
-		free(dst->data);
-		dst->data = tmp;
-	}
-	return dst->size-1;
-}
-static inline string_vec
-str_vec_copy(string_vec vec)
-{
-        string_vec copy;
-	init_str_vec(&copy);
-        for(size_t i = 0; i<vec.size; ++i)
-                push(&copy,vec.data[i]);
-        return copy;
-}
-
-static inline int
-push_op(op_vec* dst, ReduceOp src)
-{
-	dst->data[dst->size] = src;
-	++(dst->size);
-	if(dst->size == (size_t)dst->capacity)
-	{
-		dst->capacity = dst->capacity*2;
-		ReduceOp* tmp = malloc(sizeof(ReduceOp)*dst->capacity);
-		for(size_t i = 0; i < dst->size; ++i)
-			tmp[i] = dst->data[i];
-		free(dst->data);
-		dst->data = tmp;
-	}
-	return dst->size-1;
-}
 
 static inline  void combine_buffers_recursive(const ASTNode* node, char* res){
   if(node->buffer)
@@ -394,7 +230,33 @@ static inline void combine_all_recursive(const ASTNode* node, char* res){
   if(node->postfix)
     strcat(res,node->postfix);
 }
+static inline void 
+strip_whitespace(char *str) {
+    char *dest = str; // Destination pointer to overwrite the original string
+    char *src = str;  // Source pointer to traverse the original string
+
+    // Skip leading whitespace
+    while (isspace((unsigned char)(*src))) {
+        src++;
+    }
+
+    // Copy non-whitespace characters to the destination
+    while (*src) {
+        if (!isspace((unsigned char)(*src))) {
+            *dest++ = *src;
+        }
+        src++;
+    }
+
+    // Null-terminate the destination string
+    *dest = '\0';
+}
 static inline void combine_all(const ASTNode* node, char* res){
+  res[0] = '\0';	
+  combine_all_recursive(node,res);
+  strip_whitespace(res);
+}
+static inline void combine_all_with_whitespace(const ASTNode* node, char* res){
   res[0] = '\0';	
   combine_all_recursive(node,res);
 }
@@ -441,6 +303,21 @@ get_node_by_buffer_and_type(const char* test, const NodeType type, const ASTNode
     res = get_node_by_buffer_and_type(test, type, node->rhs);
   return res;
 }
+
+static inline ASTNode*
+get_node_by_buffer_and_token(const char* test, const int token, const ASTNode* node)
+{
+  assert(node);
+
+  ASTNode* res = NULL;
+  if (node->buffer && !strcmp(test,node->buffer) && node->token == token)
+    res =  (ASTNode*) node;
+  if (node->lhs && !res)
+    res = get_node_by_buffer_and_token(test, token, node->lhs);
+  if (node->rhs && !res)
+    res = get_node_by_buffer_and_token(test, token, node->rhs);
+  return res;
+}
 static inline ASTNode*
 get_node_by_id(const int id, const ASTNode* node)
 {
@@ -455,15 +332,39 @@ get_node_by_id(const int id, const ASTNode* node)
     res = get_node_by_id(id, node->rhs);
   return res;
 }
-static const inline ASTNode*
+static inline const ASTNode*
 get_parent_node(const NodeType type, const ASTNode* node)
 {
-  if (node->type & type)
-    return node;
-  else if (node->parent)
-    return get_parent_node(type, node->parent);
-  else
+  if(!node->parent)
     return NULL;
+  if (node->parent->type & type)
+    return node->parent;
+  return get_parent_node(type, node->parent);
+}
+
+static bool
+is_left_child(const NodeType type, const ASTNode* node)
+{
+	const ASTNode* parent = get_parent_node(type,node);
+	if(!parent) return false;
+	return get_node_by_id(node->id,parent->lhs) != NULL;
+}
+
+static bool
+is_right_child(const NodeType type, const ASTNode* node)
+{
+	const ASTNode* parent = get_parent_node(type,node);
+	if(!parent) return false;
+	return get_node_by_id(node->id,parent->rhs) != NULL;
+}
+static inline const ASTNode*
+get_parent_node_exclusive(const NodeType type, const ASTNode* node)
+{
+  if(!node->parent)
+    return NULL;
+  if (node->parent->type == type)
+    return node->parent;
+  return get_parent_node(type, node->parent);
 }
 typedef struct CodeGenInput
 {
@@ -471,27 +372,6 @@ typedef struct CodeGenInput
 	string_vec const_int_values;
 } CodeGenInput;
 
-static inline void 
-strip_whitespace(char *str) {
-    char *dest = str; // Destination pointer to overwrite the original string
-    char *src = str;  // Source pointer to traverse the original string
-
-    // Skip leading whitespace
-    while (isspace((unsigned char)(*src))) {
-        src++;
-    }
-
-    // Copy non-whitespace characters to the destination
-    while (*src) {
-        if (!isspace((unsigned char)(*src))) {
-            *dest++ = *src;
-        }
-        src++;
-    }
-
-    // Null-terminate the destination string
-    *dest = '\0';
-}
 static inline char* itoa(const int x)
 {
 	char* tmp = (char*)malloc(100*sizeof(char));
@@ -524,10 +404,31 @@ add_node_type(const NodeType type, ASTNode* node, const char* str_to_check)
 	if(!str_to_check || (node->buffer && !strcmp(node->buffer,str_to_check)))
 		node->type |= type;
 }
+static inline void
+add_no_auto(ASTNode* node, const char* str_to_check)
+{
+	if(node->lhs)
+		add_no_auto(node->lhs,str_to_check);
+	if(node->rhs)
+		add_no_auto(node->rhs,str_to_check);
+	if(!str_to_check || (node->buffer && !strcmp(node->buffer,str_to_check)))
+		node->no_auto = true;
+}
 static inline void strprepend(char* dst, const char* src)
 {	
     memmove(dst + strlen(src), dst, strlen(dst)+ 1); // Move existing data including null terminator
     memcpy(dst, src, strlen(src)); // Copy src to the beginning of dst
+}
+static inline void
+strcatprintf(char* dst, const char* format, ...)
+{
+	static char buffer[10000];
+	va_list args;
+	va_start(args,format);
+	int ret = vsprintf(buffer, format, args);
+	va_end(args);
+	strcat(dst,buffer);
+	
 }
 static inline char* readFile(const char *filename) {
     FILE *file = fopen(filename, "rb"); // Open the file in binary mode
@@ -577,15 +478,25 @@ file_prepend(const char* filename, const char* str_to_prepend)
 	free((void*)file_tmp);
 }
 
-static inline char* remove_substring(char *str, const char *sub) {
-	int len = strlen(sub);
-	char *found = strstr(str, sub); // Find the first occurrence of the substring
+static inline void
+file_append(const char* filename, const char* str_to_append)
+{
+	FILE* fp = fopen(filename,"a");
+	fprintf(fp,"%s",str_to_append);
+	fclose(fp);
+}
 
-	while (found) {
-		memmove(found, found + len, strlen(found + len) + 1); // Shift characters to overwrite the substring
-		found = strstr(found, sub); // Find the next occurrence of the substring
-	}
-	return str;
+static void
+remove_substrings(ASTNode* node, const char* sub)
+{
+	if(node->lhs)
+		remove_substrings(node->lhs,sub);
+	if(node->rhs)
+		remove_substrings(node->rhs,sub);
+	if(node->prefix)  remove_substring(node->prefix,sub);
+	if(node->postfix) remove_substring(node->postfix,sub);
+	if(node->infix)   remove_substring(node->infix,sub);
+	if(node->buffer)  remove_substring(node->buffer,sub);
 }
 
 static inline bool
@@ -602,7 +513,67 @@ is_real(const char* str)
 {
 	char* tmp = strdup(str);
 	remove_substring(tmp,".");
+	remove_substring(tmp,"(");
+	remove_substring(tmp,")");
+	remove_substring(tmp,"AcReal");
 	const bool res = is_number(tmp);
 	free(tmp);
 	return res;
+}
+
+static int
+count_num_of_nodes_in_list(const ASTNode* list_head)
+{
+	int res = 0;
+	while(list_head->rhs)
+	{
+		list_head = list_head->lhs;
+		++res;
+	}
+	res += (list_head->lhs != NULL);
+	return res;
+}
+static ASTNode*
+get_node_in_list(const ASTNode* list_head, int index)
+{
+	bool last_elem = count_num_of_nodes_in_list(list_head) == index + 1;
+	while(--index)
+	{
+		list_head = list_head->lhs;
+	}
+	return last_elem ? list_head->lhs : list_head->rhs;
+}
+static bool has_qualifier(const ASTNode* node, const char* qualifier)
+{
+	bool res = false;
+	if(node->lhs)
+		res |= has_qualifier(node->lhs,qualifier);
+	if(node->rhs)
+		res |= has_qualifier(node->rhs,qualifier);
+	if(node->type & NODE_TQUAL)
+		res |= !strcmp(node->lhs->buffer,qualifier);
+	return res;
+}
+
+static void
+format_source(const char* file_in, const char* file_out)
+{
+   FILE* in = fopen(file_in, "r");
+  assert(in);
+
+  FILE* out = fopen(file_out, "w");
+  assert(out);
+
+  while (!feof(in)) {
+    const char c = fgetc(in);
+    if (c == EOF)
+      break;
+
+    fprintf(out, "%c", c);
+    if (c == ';' || c == '{')
+      fprintf(out, "\n");
+  }
+
+  fclose(in);
+  fclose(out);
 }

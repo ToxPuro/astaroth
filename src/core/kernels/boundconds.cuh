@@ -29,15 +29,23 @@ kernel_symmetric_boundconds(const int3 region_id, const int3 normal, const int3 
                                                 : region_id.x == -1 ? 0 : NGHOST),
                               (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
                                                 : region_id.y == -1 ? 0 : NGHOST),
+#if TWO_D == 0
                               (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
                                                 : region_id.z == -1 ? 0 : NGHOST)};
+#else
+    			       0};
+#endif
 
     const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
                                              : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
                                normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
                                              : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+#if TWO_D == 0
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+#else
+				0};
+#endif
 
     int3 domain = boundary;
     int3 ghost  = boundary;
@@ -85,15 +93,23 @@ kernel_antisymmetric_boundconds(const int3 region_id, const int3 normal, const i
                                                 : region_id.x == -1 ? 0 : NGHOST),
                               (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
                                                 : region_id.y == -1 ? 0 : NGHOST),
+#if TWO_D == 0
                               (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
                                                 : region_id.z == -1 ? 0 : NGHOST)};
+#else
+    			       0};
+#endif
 
     const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
                                              : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
                                normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
                                              : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+#if TWO_D == 0
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+#else
+				0};
+#endif
 
     int3 domain = boundary;
     int3 ghost  = boundary;
@@ -144,15 +160,23 @@ kernel_a2_boundconds(const int3 region_id, const int3 normal, const int3 dims, A
                                                 : region_id.x == -1 ? 0 : NGHOST),
                               (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
                                                 : region_id.y == -1 ? 0 : NGHOST),
+#if TWO_D == 0
                               (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
                                                 : region_id.z == -1 ? 0 : NGHOST)};
+#else
+    			       0};
+#endif
 
     const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
                                              : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
                                normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
                                              : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+#if TWO_D == 0
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+#else
+				0};
+#endif
 
     const int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
 
@@ -204,15 +228,23 @@ kernel_const_boundconds(const int3 region_id, const int3 normal, const int3 dims
                                                 : region_id.x == -1 ? 0 : NGHOST),
                               (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
                                                 : region_id.y == -1 ? 0 : NGHOST),
+#if TWO_D == 0
                               (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
                                                 : region_id.z == -1 ? 0 : NGHOST)};
+#else
+    			       0};
+#endif
 
     const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
                                              : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
                                normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
                                              : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+#if TWO_D == 0
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+#else
+				0};
+#endif
 
     int3 ghost  = boundary;
 
@@ -261,15 +293,23 @@ kernel_prescribed_derivative_boundconds(const int3 region_id, const int3 normal,
                                                 : region_id.x == -1 ? 0 : NGHOST),
                               (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
                                                 : region_id.y == -1 ? 0 : NGHOST),
+#if TWO_D == 0
                               (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
                                                 : region_id.z == -1 ? 0 : NGHOST)};
+#else
+    			       0};
+#endif
 
     const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
                                              : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
                                normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
                                              : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+#if TWO_D == 0
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+#else
+				0};
+#endif
 
     int3 domain = boundary;
     int3 ghost  = boundary;
@@ -338,15 +378,23 @@ kernel_outflow_boundconds(const int3 region_id, const int3 normal, const int3 di
                                                 : region_id.x == -1 ? 0 : NGHOST),
                               (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
                                                 : region_id.y == -1 ? 0 : NGHOST),
+#if TWO_D == 0
                               (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
                                                 : region_id.z == -1 ? 0 : NGHOST)};
+#else
+    			       0};
+#endif
 
     const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
                                              : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
                                normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
                                              : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+#if TWO_D == 0
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+#else
+				0};
+#endif
 
     int3 domain = boundary;
     int3 ghost  = boundary;
@@ -399,15 +447,23 @@ kernel_inflow_boundconds(const int3 region_id, const int3 normal, const int3 dim
                                                 : region_id.x == -1 ? 0 : NGHOST),
                               (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
                                                 : region_id.y == -1 ? 0 : NGHOST),
+#if TWO_D == 0
                               (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
                                                 : region_id.z == -1 ? 0 : NGHOST)};
+#else
+    			       0};
+#endif
 
     const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
                                              : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
                                normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
                                              : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+#if TWO_D == 0
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+#else
+				0};
+#endif
 
     int3 domain = boundary;
     int3 ghost  = boundary;
@@ -469,15 +525,23 @@ kernel_entropy_const_temperature_boundconds(const int3 region_id, const int3 nor
                                                 : region_id.x == -1 ? 0 : NGHOST),
                               (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
                                                 : region_id.y == -1 ? 0 : NGHOST),
+#if TWO_D == 0
                               (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
                                                 : region_id.z == -1 ? 0 : NGHOST)};
+#else
+    			       0};
+#endif
 
     const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
                                              : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
                                normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
                                              : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+#if TWO_D == 0
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+#else
+				0};
+#endif
 
     const int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
 
@@ -549,15 +613,23 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
                                                 : region_id.x == -1 ? 0 : NGHOST),
                               (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
                                                 : region_id.y == -1 ? 0 : NGHOST),
+#if TWO_D == 0
                               (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
                                                 : region_id.z == -1 ? 0 : NGHOST)};
+#else
+    			       0};
+#endif
 
     const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
                                              : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
                                normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
                                              : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+#if TWO_D == 0
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+#else
+				0};
+#endif
 
     const int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
 
@@ -664,15 +736,23 @@ kernel_entropy_prescribed_heat_flux_boundconds(const int3 region_id, const int3 
                                                 : region_id.x == -1 ? 0 : NGHOST),
                               (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
                                                 : region_id.y == -1 ? 0 : NGHOST),
+#if TWO_D == 0
                               (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
                                                 : region_id.z == -1 ? 0 : NGHOST)};
+#else
+    			       0};
+#endif
 
     const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
                                              : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
                                normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
                                              : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+#if TWO_D == 0
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+#else
+				0};
+#endif
 
     const int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
 
@@ -771,15 +851,23 @@ kernel_entropy_prescribed_normal_and_turbulent_heat_flux_boundconds(
                                                 : region_id.x == -1 ? 0 : NGHOST),
                               (region_id.y == 1 ? NGHOST + DCONST(AC_ny)
                                                 : region_id.y == -1 ? 0 : NGHOST),
+#if TWO_D == 0
                               (region_id.z == 1 ? NGHOST + DCONST(AC_nz)
                                                 : region_id.z == -1 ? 0 : NGHOST)};
+#else
+    			       0};
+#endif
 
     const int3 boundary = int3{normal.x == 1 ? NGHOST + DCONST(AC_nx) - 1
                                              : normal.x == -1 ? NGHOST : start.x + vertexIdx.x,
                                normal.y == 1 ? NGHOST + DCONST(AC_ny) - 1
                                              : normal.y == -1 ? NGHOST : start.y + vertexIdx.y,
+#if TWO_D == 0
                                normal.z == 1 ? NGHOST + DCONST(AC_nz) - 1
                                              : normal.z == -1 ? NGHOST : start.z + vertexIdx.z};
+#else
+				0};
+#endif
 
     const int boundary_idx = DEVICE_VTXBUF_IDX(boundary.x, boundary.y, boundary.z);
 

@@ -37,6 +37,8 @@
  \return Index in range 0...n if the keyword is in names. -1 if the keyword was
  not found.
  */
+extern "C"
+{
 static int
 find_str(const char keyword[], const char* names[], const int n)
 {
@@ -46,13 +48,24 @@ find_str(const char keyword[], const char* names[], const int n)
 
     return -1;
 }
+static int
+find_array(const char keyword[], const array_info* info, const int n)
+{
+	for(int i = 0; i < n; ++i)
+        	if (!strcmp(keyword, info[i].name))
+			return i;
+	return -1;
+}
 
 static bool
 is_bctype(const int idx)
 {
     return idx == AC_bc_type_top_x || idx == AC_bc_type_bot_x || //
-           idx == AC_bc_type_top_y || idx == AC_bc_type_bot_y || //
-           idx == AC_bc_type_top_z || idx == AC_bc_type_bot_z;
+           idx == AC_bc_type_top_y || idx == AC_bc_type_bot_y 
+#if TWO_D == 0
+	   || idx == AC_bc_type_top_z || idx == AC_bc_type_bot_z
+#endif
+	  ;
 }
 
 static bool
@@ -146,17 +159,17 @@ parse_config(const char* path, AcMeshInfo* config)
             // OL: should we fail here? Could be dangerous to continue
             config->real_params[idx] = real_val;
         }
-        else if ((idx = find_str(keyword, int_array_param_names, NUM_INT_ARRAYS)) >= 0) {
-		if(!int_array_is_dconst[idx])
+        else if ((idx = find_array(keyword, int_array_info, NUM_INT_ARRAYS)) >= 0) {
+		if(!int_array_info[idx].is_dconst)
 			fprintf(stderr,"ERROR PARSING CONFIG: can't assign to global array: \"%s\": SKIPPING\n",keyword);
-		char* array_vals[int_array_lengths[idx]];
+		char* array_vals[int_array_info[idx].length];
 		const int n_vals = get_entries(array_vals, value);
-		if(n_vals != int_array_lengths[idx])
-			fprintf(stderr,"ERROR PARSING CONFIG: gave %d values to array %s which of size %d: SKIPPING\n",n_vals,keyword,int_array_lengths[idx]);
+		if(n_vals != int_array_info[idx].length)
+			fprintf(stderr,"ERROR PARSING CONFIG: gave %d values to array %s which of size %d: SKIPPING\n",n_vals,keyword,int_array_info[idx].length);
 		else
 		{
-			config->int_arrays[idx] = malloc(sizeof(AcReal)*int_array_lengths[idx]);
-			for(int i = 0; i < int_array_lengths[idx]; ++i)
+			config->int_arrays[idx] = (int*)malloc(sizeof(AcReal)*int_array_info[idx].length);
+			for(int i = 0; i < int_array_info[idx].length; ++i)
 			{
 				config->int_arrays[idx][i] =  atoi(array_vals[i]);
 				free(array_vals[i]);
@@ -165,18 +178,18 @@ parse_config(const char* path, AcMeshInfo* config)
 
 
 	}
-        else if ((idx = find_str(keyword, real_array_param_names, NUM_REAL_ARRAYS)) >= 0) {
-		if(!real_array_is_dconst[idx])
+        else if ((idx = find_array(keyword, real_array_info, NUM_REAL_ARRAYS)) >= 0) {
+		if(!real_array_info[idx].is_dconst)
 			fprintf(stderr,"ERROR PARSING CONFIG: can't assign to global array: \"%s\": SKIPPING\n",keyword);
-		char* array_vals[real_array_lengths[idx]];
+		char* array_vals[real_array_info[idx].length];
 		const int n_vals = get_entries(array_vals, value);
-		if(n_vals != real_array_lengths[idx])
-			fprintf(stderr,"ERROR PARSING CONFIG: gave %d values to array %s which of size %d: SKIPPING\n",n_vals,keyword,real_array_lengths[idx]);
+		if(n_vals != real_array_info[idx].length)
+			fprintf(stderr,"ERROR PARSING CONFIG: gave %d values to array %s which of size %d: SKIPPING\n",n_vals,keyword,real_array_info[idx].length);
 		else
 		{
 			fprintf(stderr,"Reading in real array: %s\n",keyword);
-			config->real_arrays[idx] = malloc(sizeof(AcReal)*real_array_lengths[idx]);
-			for(int i = 0; i < real_array_lengths[idx]; ++i)
+			config->real_arrays[idx] = (AcReal*)malloc(sizeof(AcReal)*real_array_info[idx].length);
+			for(int i = 0; i < real_array_info[idx].length; ++i)
 			{
 				config->real_arrays[idx][i] =  atof(array_vals[i]);
 				free(array_vals[i]);
@@ -207,10 +220,11 @@ acLoadConfig(const char* config_path, AcMeshInfo* config)
     //these are set to nullpointers for the users convenience that the user doesn't have to set them to null elsewhere
     //if they are present in the config then they are initialized correctly
     //sticks to the old API since we anyways overwrite the whole config
-    for(int i = 0; i < NUM_REAL_ARRAYS; ++i)
-	    config->real_arrays[i] = NULL;
-    for(int i = 0; i < NUM_INT_ARRAYS; ++i)
-	    config->int_arrays[i] = NULL;
+    memset(config->real_arrays, 0,NUM_REAL_ARRAYS *sizeof(AcReal*));
+    memset(config->int_arrays,  0,NUM_INT_ARRAYS  *sizeof(int*));
+    memset(config->bool_arrays, 0,NUM_BOOL_ARRAYS *sizeof(bool*));
+    memset(config->int3_arrays, 0,NUM_INT3_ARRAYS *sizeof(int*));
+    memset(config->real3_arrays,0,NUM_REAL3_ARRAYS*sizeof(int*));
 
     parse_config(config_path, config);
     acHostUpdateBuiltinParams(config);
@@ -238,4 +252,5 @@ acLoadConfig(const char* config_path, AcMeshInfo* config)
 #endif
 
     return uninitialized_config_val ? AC_FAILURE : AC_SUCCESS;
+}
 }

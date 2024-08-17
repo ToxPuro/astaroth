@@ -41,38 +41,27 @@
 #endif
 #endif
 
-#define UNUSED __attribute__((unused))
-
-#if defined(__CUDACC__) || defined(__HIPCC__)
-#define HOST_DEVICE __host__ __device__ UNUSED
-#define HOST_DEVICE_INLINE __host__ __device__ __forceinline__ UNUSED
-#define HOST_INLINE __host__  __forceinline__ UNUSED
-#else
-#define HOST_DEVICE UNUSED
-#define HOST_DEVICE_INLINE inline UNUSED
-#define HOST_INLINE  __forceinline__ UNUSED
-#endif // __CUDACC__ || __HIPCC__
+#include "func_attributes.h"
 
 #define ENABLE_COMPLEX_DATATYPE (1)
 #if ENABLE_COMPLEX_DATATYPE
 
+#if AC_USE_HIP
+#else
+static HOST_DEVICE_INLINE void
+operator -=(int3& lhs, const int3& rhs)
+{
+	lhs.x -= rhs.x;
+	lhs.y -= rhs.y;
+	lhs.z -= rhs.z;
+}
+#endif
 static HOST_DEVICE_INLINE AcComplex
 exp(const AcComplex& val)
 {
   return AcComplex(exp(val.x) * cos(val.y), exp(val.x) * sin(val.y));
 }
 
-static HOST_DEVICE_INLINE AcComplex
-operator+(const AcComplex& a)
-{
-	return (AcComplex){a.x, a.y};
-}
-
-static HOST_DEVICE_INLINE AcComplex
-operator-(const AcComplex& a)
-{
-	return AcComplex{-a.x,-a.y};
-}
 
 static HOST_DEVICE_INLINE AcComplex
 operator*(const AcComplex& a, const AcComplex& b)
@@ -80,11 +69,6 @@ operator*(const AcComplex& a, const AcComplex& b)
   return (AcComplex){a.x*b.x - a.y*b.y,a.x*b.y + b.x*a.y};
 }
 
-static HOST_DEVICE_INLINE AcComplex
-operator*(const AcReal& a, const AcComplex& b)
-{
-  return (AcComplex){a * b.x, a * b.y};
-}
 static HOST_DEVICE_INLINE AcComplex
 operator*(const AcComplex& a, const AcReal& b)
 {
@@ -108,28 +92,28 @@ typedef struct uint3_64 {
 } uint3_64;
 
 template <class T>
-static HOST_DEVICE_INLINE constexpr const T
+static HOST_DEVICE_INLINE const T
 val(const T& a)
 {
   return a;
 }
 
 template <class T>
-static HOST_DEVICE_INLINE constexpr const T
+static HOST_DEVICE_INLINE const T
 sum(const T& a, const T& b)
 {
   return a + b;
 }
 
 template <class T>
-static HOST_DEVICE_INLINE constexpr const T
+static HOST_DEVICE_INLINE const T
 max(const T& a, const T& b)
 {
   return a > b ? a : b;
 }
 
 template <class T>
-static HOST_DEVICE_INLINE constexpr const T
+static HOST_DEVICE_INLINE const T
 min(const T& a, const T& b)
 {
   return a < b ? a : b;
@@ -189,12 +173,6 @@ operator-(const int3& a)
   return (int3){-a.x, -a.y, -a.z};
 }
 
-static HOST_DEVICE_INLINE int3
-operator+(const int3& a)
-{
-  return (int3){a.x, a.y, a.z};
-}
-
 
 static HOST_DEVICE_INLINE int3
 operator*(const int3& a, const int3& b)
@@ -204,7 +182,13 @@ operator*(const int3& a, const int3& b)
 
 
 static HOST_DEVICE_INLINE AcReal3
-operator*(const AcReal3& a, const AcReal3& b)
+operator*(const int3& a, const AcReal3& b)
+{
+  return (AcReal3){a.x * b.x, a.y * b.y, a.z * b.z};
+}
+
+static HOST_DEVICE_INLINE AcReal3
+operator*(const AcReal3& a, const int3& b)
 {
   return (AcReal3){a.x * b.x, a.y * b.y, a.z * b.z};
 }
@@ -233,11 +217,6 @@ operator-(const int3& a, const int3& b)
     return (int3){a.x - b.x, a.y - b.y, a.z - b.z};
 }
 
-static HOST_DEVICE_INLINE int3
-operator-(const int3& a, const int b)
-{
-    return (int3){a.x - b, a.y - b, a.z - b};
-}
 
 static HOST_DEVICE_INLINE int3
 operator-(const int a, const int3& b)
@@ -350,71 +329,9 @@ is_valid(const AcReal a)
   return !isnan(a) && !isinf(a);
 }
 
-/*
- * AcReal2
- */
-#if defined(__CUDACC__)
-static HOST_DEVICE_INLINE AcReal2
-operator+(const AcReal2& a, const AcReal2& b)
-{
-  return (AcReal2){a.x + b.x, a.y + b.y};
-}
-
-static HOST_DEVICE_INLINE void
-operator+=(AcReal2& lhs, const AcReal2& rhs)
-{
-  lhs.x += rhs.x;
-  lhs.y += rhs.y;
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator-(const AcReal2& a, const AcReal2& b)
-{
-  return (AcReal2){a.x - b.x, a.y - b.y};
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator+(const AcReal2& a)
-{
-  return (AcReal2){a.x,a.y};
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator-(const AcReal2& a)
-{
-  return (AcReal2){-a.x, -a.y};
-}
-
-static HOST_DEVICE_INLINE void
-operator-=(AcReal2& lhs, const AcReal2& rhs)
-{
-  lhs.x -= rhs.x;
-  lhs.y -= rhs.y;
-}
-
-
-static HOST_DEVICE_INLINE AcReal2
-operator*(const AcReal& a, const AcReal2& b)
-{
-  return (AcReal2){a * b.x, a * b.y};
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator*(const AcReal2& b, const AcReal& a)
-{
-  return (AcReal2){a * b.x, a * b.y};
-}
-
-static HOST_DEVICE_INLINE AcReal2
-operator/(const AcReal2& a, const AcReal& b)
-{
-  return (AcReal2){a.x / b, a.y / b};
-}
-
-#endif
 
 static HOST_DEVICE_INLINE AcReal
-dot(const AcReal2& a, const AcReal2& b)
+AC_dot(const AcReal2& a, const AcReal2& b)
 {
   return a.x * b.x + a.y * b.y;
 }
@@ -428,106 +345,45 @@ is_valid(const AcReal2& a)
 /*
  * AcReal3
  */
-static constexpr HOST_DEVICE_INLINE AcReal3
-operator+(const AcReal3& a, const AcReal3& b)
-{
-  return (AcReal3){a.x + b.x, a.y + b.y, a.z + b.z};
-}
-
-//Do not compile if using HIP since it already somes from HIP
-#if AC_USE_HIP 
-#else
-static constexpr HOST_DEVICE_INLINE void
-operator+=(AcReal3& lhs, const AcReal3& rhs)
-{
-  lhs.x += rhs.x;
-  lhs.y += rhs.y;
-  lhs.z += rhs.z;
-}
-#endif
-
-static constexpr HOST_DEVICE_INLINE AcBool3 
-operator!=(const AcReal3& a, const AcReal b)
-{
-  return (AcBool3){
-      a.x != b,
-      a.y != b,
-      a.z != b
-  };
-}
 
 
-static constexpr HOST_DEVICE_INLINE AcBool3 
-operator==(const AcReal3& a, const AcReal b)
-{
-  return (AcBool3){
-      a.x == b,
-      a.y == b,
-      a.z == b
-  };
-}
+//static HOST_DEVICE_INLINE AcBool3 
+//operator!=(const AcReal3& a, const AcReal b)
+//{
+//  return (AcBool3){
+//      a.x != b,
+//      a.y != b,
+//      a.z != b
+//  };
+//}
+//
+//
+//static HOST_DEVICE_INLINE AcBool3 
+//operator==(const AcReal3& a, const AcReal b)
+//{
+//  return (AcBool3){
+//      a.x == b,
+//      a.y == b,
+//      a.z == b
+//  };
+//}
 
-static constexpr HOST_DEVICE_INLINE AcReal3
-operator-(const AcReal3& a, const AcReal3& b)
-{
-  return (AcReal3){a.x - b.x, a.y - b.y, a.z - b.z};
-}
 
-static constexpr HOST_DEVICE_INLINE AcReal3
-operator-(const AcReal3& a)
-{
-  return (AcReal3){-a.x, -a.y, -a.z};
-}
 
-static constexpr HOST_DEVICE_INLINE AcReal3
-operator+(const AcReal3& a)
-{
-  return (AcReal3){a.x, a.y, a.z};
-}
-
-//Do not compile if using HIP since it already somes from HIP
-#if AC_USE_HIP 
-#else
-static constexpr HOST_DEVICE_INLINE void
-operator-=(AcReal3& lhs, const AcReal3& rhs)
-{
-  lhs.x -= rhs.x;
-  lhs.y -= rhs.y;
-  lhs.z -= rhs.z;
-}
-#endif
-
-static constexpr HOST_DEVICE_INLINE AcReal3
-operator*(const AcReal& a, const AcReal3& b)
-{
-  return (AcReal3){a * b.x, a * b.y, a * b.z};
-}
-
-static constexpr HOST_DEVICE_INLINE AcReal3
-operator*(const AcReal3& b, const AcReal& a)
-{
-  return (AcReal3){a * b.x, a * b.y, a * b.z};
-}
-
-static constexpr HOST_DEVICE_INLINE AcReal3
-operator/(const AcReal3& a, const AcReal& b)
-{
-  return (AcReal3){a.x / b, a.y / b, a.z / b};
-}
-static constexpr HOST_DEVICE_INLINE AcReal
+static HOST_DEVICE_INLINE AcReal
 sum(const AcReal3& a)
 {
     return a.x+a.y+a.z;
 }
 
-static constexpr HOST_DEVICE_INLINE AcReal
-dot(const AcReal3& a, const AcReal3& b)
+static HOST_DEVICE_INLINE AcReal
+AC_dot(const AcReal3& a, const AcReal3& b)
 {
   return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
-static constexpr HOST_DEVICE_INLINE AcReal3
-cross(const AcReal3& a, const AcReal3& b)
+static HOST_DEVICE_INLINE AcReal3
+AC_cross(const AcReal3& a, const AcReal3& b)
 {
   return
   {
@@ -546,10 +402,55 @@ is_valid(const AcReal3& a)
 /*
  * AcMatrix
  */
+
+template <typename T, std::size_t N>
+class AcArray{
+public:
+    HOST_DEVICE constexpr T& operator[](const std::size_t index) {
+        return arr_[index];
+    }
+
+    HOST_DEVICE const constexpr T& operator[](const std::size_t index) const {
+        return arr_[index];
+    }
+
+
+    // Additional functions to interact with the internal array
+    HOST_DEVICE constexpr std::size_t size() const noexcept {
+        return N;
+    }
+
+    HOST_DEVICE constexpr T* data() noexcept {
+        return arr_;
+    }
+
+    HOST_DEVICE constexpr const T* data() const noexcept {
+        return arr_;
+    }
+    HOST_DEVICE constexpr AcArray(std::initializer_list<T> init) : arr_{}{
+        std::size_t i = 0;
+        for (auto it = init.begin(); it != init.end() && i < N; ++it, ++i) {
+            arr_[i] = *it;
+        }
+    }
+
+    HOST_DEVICE constexpr AcArray(void) : arr_{}{}
+
+private:
+    T arr_[N];
+};
+template <typename T, std::size_t N>
+static HOST_DEVICE_INLINE int
+size(const AcArray<T,N>& arr)
+{
+	(void)arr;
+	return N;
+}
+
 typedef struct AcMatrix {
   //AcReal data[3][3] = {{0}};
   //TP: default initializer will initialize all values to 0.0
-  std::array<std::array<AcReal,3>,3> data = {};
+  AcArray<AcArray<AcReal,3>,3> data = {};
 
   HOST_DEVICE AcMatrix() {}
 
@@ -581,15 +482,21 @@ typedef struct AcMatrix {
   HOST_DEVICE constexpr AcReal3 operator*(const AcReal3& v) const
   {
     return (AcReal3){
-        dot(row(0), v),
-        dot(row(1), v),
-        dot(row(2), v),
+        AC_dot(row(0), v),
+        AC_dot(row(1), v),
+        AC_dot(row(2), v),
     };
   }
 
   HOST_DEVICE AcMatrix operator-() const
   {
     return AcMatrix(-row(0), -row(1), -row(2));
+  }
+  HOST_DEVICE const constexpr AcArray<AcReal,3>& operator[](const size_t index) const {
+	  return data[index];
+  }
+  HOST_DEVICE constexpr AcArray<AcReal,3>& operator[](const size_t index) {
+	  return data[index];
   }
 } AcMatrix;
 
@@ -616,32 +523,32 @@ operator*(const AcReal& v, const AcMatrix& m)
 #define GEN_STD_ARRAY_OPERATOR(OPERATOR)  \
 template <typename T, const size_t N, typename F> \
 static constexpr  void \
-operator OPERATOR##=(std::array<T, N>& lhs, const F& rhs) {\
+operator OPERATOR##=(AcArray<T, N>& lhs, const F& rhs) {\
     for (std::size_t i = 0; i < N; ++i) \
         lhs[i] OPERATOR##= rhs;\
 }\
 template <typename T, const size_t N, typename F> \
-static constexpr  std::array<T, N>  \
-operator OPERATOR (const std::array<T, N>& lhs, const F& rhs) {\
-    std::array<T, N> result = {}; \
+static constexpr  AcArray<T, N>  \
+operator OPERATOR (const AcArray<T, N>& lhs, const F& rhs) {\
+    AcArray<T, N> result = {}; \
     for (std::size_t i = 0; i < N; ++i) {\
         result[i] = lhs[i] OPERATOR rhs;\
     }\
     return result; \
 }\
 template <typename T, const size_t N, typename F> \
-static constexpr  std::array<T, N>  \
-operator OPERATOR (const F& rhs,const std::array<T, N>& lhs) {\
-    std::array<T, N> result = {}; \
+static constexpr  AcArray<T, N>  \
+operator OPERATOR (const F& rhs,const AcArray<T, N>& lhs) {\
+    AcArray<T, N> result = {}; \
     for (std::size_t i = 0; i < N; ++i) {\
         result[i] = lhs[i] OPERATOR rhs;\
     }\
     return result; \
 }\
 template <typename T, const size_t N> \
-static constexpr  std::array<T, N>  \
-operator OPERATOR (const std::array<T, N>& lhs, const std::array<T, N>& rhs) {\
-    std::array<T, N> result = {}; \
+static constexpr  AcArray<T, N>  \
+operator OPERATOR (const AcArray<T, N>& lhs, const AcArray<T, N>& rhs) {\
+    AcArray<T, N> result = {}; \
     for (std::size_t i = 0; i < N; ++i) {\
         result[i] = lhs[i] OPERATOR rhs[i];\
     }\
@@ -649,7 +556,7 @@ operator OPERATOR (const std::array<T, N>& lhs, const std::array<T, N>& rhs) {\
 }\
 template <typename T, const size_t N> \
 static constexpr  void \
-operator OPERATOR##=(std::array<T, N>& lhs, const std::array<T, N>& rhs) {\
+operator OPERATOR##=(AcArray<T, N>& lhs, const AcArray<T, N>& rhs) {\
     for (std::size_t i = 0; i < N; ++i) \
         lhs[i] OPERATOR##= rhs[i];\
 }\
@@ -662,9 +569,9 @@ GEN_STD_ARRAY_OPERATOR(+)
 GEN_STD_ARRAY_OPERATOR(-)
 
 template <typename T, std::size_t N>
-static HOST_DEVICE std::array<T, N>  
-operator -(const std::array<T, N>& lhs) {
-    std::array<T, N> result; 
+static HOST_DEVICE AcArray<T, N>  
+operator -(const AcArray<T, N>& lhs) {
+    AcArray<T, N> result; 
     for (std::size_t i = 0; i < N; ++i) {
         result[i] = -lhs[i];
     }
@@ -672,15 +579,15 @@ operator -(const std::array<T, N>& lhs) {
 }
 
 template <typename T, std::size_t N>
-static HOST_DEVICE std::array<T, N>  
-operator +(const std::array<T, N>& lhs) {
-    std::array<T, N> result = lhs; 
+static HOST_DEVICE AcArray<T, N>  
+operator +(const AcArray<T, N>& lhs) {
+    AcArray<T, N> result = lhs; 
     return result;
 }
 
 template <typename T, std::size_t N>
-static constexpr  T
-dot(const std::array<T,N>& a, const std::array<T,N>& b)
+static HOST_DEVICE_INLINE T
+AC_dot(const AcArray<T,N>& a, const AcArray<T,N>& b)
 {
         T res = 0;
         for(size_t i = 0; i < N; ++i)
@@ -691,25 +598,25 @@ dot(const std::array<T,N>& a, const std::array<T,N>& b)
 template <size_t N>
 class AcMatrixN {
 public:
-    std::array<std::array<AcReal, N>, N> data;
+    AcArray<AcArray<AcReal, N>, N> data;
     template<typename... Args,typename = std::enable_if_t<sizeof...(Args) == N>>
     constexpr AcMatrixN(Args&&... args) : data{std::forward<Args>(args)...} {
 	     static_assert(sizeof...(Args) == N, "You need to pass N vectors of length N");
     }
     constexpr AcMatrixN(): data{} {}
-    constexpr std::array<AcReal,N> row(const size_t row)  const { return data[row];}
-    constexpr std::array<AcReal,N> col(const size_t col)  const
+    constexpr AcArray<AcReal,N> row(const size_t row)  const { return data[row];}
+    constexpr AcArray<AcReal,N> col(const size_t col)  const
     { 
-	    std::array<AcReal,N> res{};
+	    AcArray<AcReal,N> res{};
 	    for(size_t i = 0; i < N; ++i)
 		    res[i] = data[i][col];
 	    return res;
     }
-   constexpr std::array<AcReal,N> operator*(const std::array<AcReal,N>& v) const
+   constexpr AcArray<AcReal,N> operator*(const AcArray<AcReal,N>& v) const
    {
-     std::array<AcReal,N> res{};
+     AcArray<AcReal,N> res{};
      for(size_t i = 0; i < N; ++i)
-	     res[i] = dot(data[i],v);
+	     res[i] = AC_dot(data[i],v);
      return res;
    }
    constexpr AcMatrixN<N> operator-() const
@@ -723,7 +630,7 @@ public:
 };
 template <const size_t N>
 constexpr static AcMatrixN<N>
-operator*(const double& v, const AcMatrixN<N>& m)
+operator*(const AcReal& v, const AcMatrixN<N>& m)
 {
 	AcMatrixN<N> res;
 	for(size_t i = 0; i < N; ++i)
@@ -812,7 +719,7 @@ operator-(const AcMatrix& A, const AcMatrix& B)
                   A.row(1) - B.row(1), //
                   A.row(2) - B.row(2));
 }
-static constexpr HOST_DEVICE_INLINE AcReal
+static HOST_DEVICE_INLINE AcReal
 multm2_sym(const AcMatrix& m)
 {
 //Squared sum of symmetric matix
@@ -825,11 +732,12 @@ multm2_sym(const AcMatrix& m)
   }
   return res;
 }
-static constexpr HOST_DEVICE_INLINE AcReal3
+static HOST_DEVICE_INLINE AcReal3
 diagonal(const AcMatrix& m)
 {
   return (AcReal3){m.data[0][0], m.data[1][1], m.data[2][2]};
 }
+
 
 /*
  * AcTensor

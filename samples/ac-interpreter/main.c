@@ -107,6 +107,24 @@ cmdReduceAll(const Device device)
     return retval;
 }
 
+int3
+get_nn_min(AcMeshInfo info)
+{
+#if TWO_D == 0
+	return acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
+#else
+	return (int3){info.int_params[AC_nx_min],info.int_params[AC_ny_min],0};
+#endif
+}
+int3
+get_nn_max(AcMeshInfo info)
+{
+#if TWO_D == 0
+	return acConstructInt3Param(AC_nx_max, AC_ny_max, AC_nz_max, info);
+#else
+	return (int3){info.int_params[AC_nx_max],info.int_params[AC_ny_max],1};
+#endif
+}
 AcResult
 cmdLaunchKernel(const Device device, const AcMeshInfo info, const char* str)
 {
@@ -129,8 +147,8 @@ cmdLaunchKernel(const Device device, const AcMeshInfo info, const char* str)
         return AC_FAILURE;
     }
 
-    const int3 start      = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
-    const int3 end        = acConstructInt3Param(AC_nx_max, AC_ny_max, AC_nz_max, info);
+    const int3 start      = get_nn_min(info);
+    const int3 end        = get_nn_max(info);
     const AcResult retval = acDeviceLaunchKernel(device, STREAM_DEFAULT, kernels[kernel], start,
                                                  end);
 

@@ -25,7 +25,6 @@
 #if AC_MPI_ENABLED
 #include "astaroth.h"
 #include "astaroth_utils.h"
-#include "stencil_loader.h"
 
 #include "timer_hires.h"
 
@@ -1029,11 +1028,6 @@ main(int argc, char** argv)
     info.int_params[AC_decompose_strategy]    = (int)AcDecomposeStrategy::Default;
     acGridInit(info);
 
-    // Compute stencil coefficients from `info` and load to device
-    acLogFromRootProc(pid, "Loading stencils (load_stencil_from_config)\n");
-    load_stencil_from_config(info);
-    acLogFromRootProc(pid, "Stencils loaded (load_stencil_from_config)\n");
-
     ///////////////////////////////////////////////////
     // Test kernels: scale, solve, reset, randomize. //
     // then reset                                    //
@@ -1167,6 +1161,9 @@ main(int argc, char** argv)
         sim = Simulation::Hydro_Heatduct_Solve;
         acLogFromRootProc(pid, "PhysicsConfiguration HydroHeatduct !\n");
         break;
+    }
+    case PhysicsConfiguration::Default: {
+	break;
     }
     }
 

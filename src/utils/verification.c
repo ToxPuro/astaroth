@@ -113,9 +113,9 @@ acEvalError(const char* label, const Error error)
 
     printf("%-15s... %s ", label, acceptable ? GRN "OK! " RESET : RED "FAIL! " RESET);
 
-    printf("| %.3Lg (abs), %.3Lg (ulps), %.3Lg (rel). Range: [%.3g, %.3g]\n", //
+    printf("| %.3Lg (abs), %.3Lg (ulps), %.3Lg (rel). Range: [%.3g, %.3g]\tpoint: %d,%d,%d\n", //
            error.abs_error, error.ulp_error, error.rel_error,                 //
-           (double)error.minimum_magnitude, (double)error.maximum_magnitude);
+           (double)error.minimum_magnitude, (double)error.maximum_magnitude,error.x,error.y,error.z);
     print_error_to_file(label, error, "verification.out");
 
     return acceptable;
@@ -126,13 +126,17 @@ get_maximum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
 {
     AcReal maximum = (AcReal)-INFINITY;
 
-    const int x_start = communicated_field ? 3 : 0;
-    const int y_start = communicated_field ? 3 : 0;
-    const int z_start = communicated_field ? 3 : 0;
+    const int3 nn_min = acGetMinNN(info);
+    const int x_start = communicated_field ? 0 : nn_min.x;
+    const int y_start = communicated_field ? 0 : nn_min.y;
+    const int z_start = communicated_field ? 0 : nn_min.z;
 
-    const int x_end = communicated_field ? info.int_params[AC_nx] : info.int_params[AC_mx];
-    const int y_end = communicated_field ? info.int_params[AC_ny] : info.int_params[AC_my];
-    const int z_end = communicated_field ? info.int_params[AC_nz] : info.int_params[AC_mz];
+    const int3 nn = acGetLocalNN(info);
+    const int3 mm = acGetLocalMM(info);
+
+    const int x_end = communicated_field ? mm.x : nn.x;
+    const int y_end = communicated_field ? mm.y : nn.y;
+    const int z_end = communicated_field ? mm.z : nn.z;
 
     for (int x = x_start; x < x_end; ++x) 
     {
@@ -153,13 +157,18 @@ get_minimum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
 {
     AcReal minimum = (AcReal)INFINITY;
 
-    const int x_start = communicated_field ? 3 : 0;
-    const int y_start = communicated_field ? 3 : 0;
-    const int z_start = communicated_field ? 3 : 0;
+    const int3 nn_min = acGetMinNN(info);
+    const int x_start = communicated_field ? 0 : nn_min.x;
+    const int y_start = communicated_field ? 0 : nn_min.y;
+    const int z_start = communicated_field ? 0 : nn_min.z;
 
-    const int x_end = communicated_field ? info.int_params[AC_nx] : info.int_params[AC_mx];
-    const int y_end = communicated_field ? info.int_params[AC_ny] : info.int_params[AC_my];
-    const int z_end = communicated_field ? info.int_params[AC_nz] : info.int_params[AC_mz];
+    const int3 nn = acGetLocalNN(info);
+    const int3 mm = acGetLocalMM(info);
+
+    const int x_end = communicated_field ? mm.x : nn.x;
+    const int y_end = communicated_field ? mm.y : nn.y;
+    const int z_end = communicated_field ? mm.z : nn.z;
+
 
     for (int x = x_start; x < x_end; ++x) 
     {
@@ -186,13 +195,17 @@ get_max_abs_error(const AcReal* model, const AcReal* candidate, const AcMeshInfo
     Error error = {.abs_error = -1};
 
 
-    const int x_start = communicated_field ? 3 : 0;
-    const int y_start = communicated_field ? 3 : 0;
-    const int z_start = communicated_field ? 3 : 0;
+    const int3 nn_min = acGetMinNN(info);
+    const int x_start = communicated_field ? 0 : nn_min.x;
+    const int y_start = communicated_field ? 0 : nn_min.y;
+    const int z_start = communicated_field ? 0 : nn_min.z;
 
-    const int x_end = communicated_field ? info.int_params[AC_nx] : info.int_params[AC_mx];
-    const int y_end = communicated_field ? info.int_params[AC_ny] : info.int_params[AC_my];
-    const int z_end = communicated_field ? info.int_params[AC_nz] : info.int_params[AC_mz];
+    const int3 nn = acGetLocalNN(info);
+    const int3 mm = acGetLocalMM(info);
+
+    const int x_end = communicated_field ? mm.x : nn.x;
+    const int y_end = communicated_field ? mm.y : nn.y;
+    const int z_end = communicated_field ? mm.z : nn.z;
 
     for (int x = x_start; x < x_end; ++x) 
     {
@@ -200,10 +213,15 @@ get_max_abs_error(const AcReal* model, const AcReal* candidate, const AcMeshInfo
 	{
     		for (int z = z_start; z < z_end; ++z) 
 		{
-			const size_t i = x+y*info.int_params[AC_mx]+z*info.int_params[AC_mx]*info.int_params[AC_my];
+			const size_t i = x+y*mm.x+z*mm.x*mm.y;
         		Error curr_error = acGetError(model[i], candidate[i]);
         		if (curr_error.abs_error > error.abs_error)
+			{
             			error = curr_error;
+				error.x = x;
+				error.y = y;
+				error.z = z;
+			}
 		}
 	}
     }
@@ -224,7 +242,7 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
     int errors_found = 0;
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
         const Error error = get_max_abs_error(model.vertex_buffer[i], candidate.vertex_buffer[i],
-                                              model.info, i>=NUM_COMMUNICATED_FIELDS);
+                                              model.info, vtxbuf_is_communicated[i]);
         const bool acceptable = acEvalError(vtxbuf_names[i], error);
         if (!acceptable)
             ++errors_found;
@@ -237,6 +255,7 @@ acVerifyMesh(const char* label, const AcMesh model, const AcMesh candidate)
 }
 
 /** Writes an error slice in the z direction */
+#if TWO_D == 0
 AcResult
 acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candidate, const size_t z)
 {
@@ -265,6 +284,7 @@ acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candida
     fclose(fp);
     return AC_SUCCESS;
 }
+#endif
 
 /** Writes out the entire diff of two meshes */
 AcResult
@@ -277,9 +297,10 @@ acMeshDiffWrite(const char* path, const AcMesh model, const AcMesh candidate)
     FILE* fp = fopen(path, "w");
     ERRCHK_ALWAYS(fp);
 
-    const size_t mx = info.int_params[AC_mx];
-    const size_t my = info.int_params[AC_my];
-    const size_t mz = info.int_params[AC_mz];
+    const int3 mm = acGetMaxNN(info);
+    const size_t mx = mm.x;
+    const size_t my = mm.y;
+    const size_t mz = mm.z;
     for (size_t z = 0; z < mz; ++z) {
         for (size_t y = 0; y < my; ++y) {
             for (size_t x = 0; x < mx; ++x) {

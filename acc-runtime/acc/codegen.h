@@ -24,3 +24,9 @@
 void generate(const ASTNode* root, FILE* stream, const bool gen_mem_accesses, const bool optimize_conditionals);
 
 void generate_mem_accesses(void);
+
+void gen_extra_funcs(const ASTNode* root, FILE* stream);
+
+void preprocess(ASTNode* root);
+
+void gen_output_files(ASTNode* root);

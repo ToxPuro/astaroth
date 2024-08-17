@@ -8,6 +8,8 @@ option(BUILD_ACC_RUNTIME_LIBRARY "Builds the standalone acc runtime library" OFF
 # NO! ../acc/mhd_solver
 # YES! acc/mhd_solver
 #
+
+
 set(DSL_MODULE $ENV{DSL_MODULE})
 if (DEFINED DSL_MODULE)
     set(DSL_MODULE_DIR ${PROJECT_SOURCE_DIR}/${DSL_MODULE})
@@ -34,7 +36,9 @@ set(DSL_HEADERS "user_kernels.h"
                 "stencil_accesses.h"
                 "user_taskgraphs.h"
                 "user_loaders.h"
-                "stencilgen.h")
+                "stencilgen.h"
+		"coeffs.h"
+		)
 if (NOT DEFINED DSL_MODULE_FILE)
   if (SINGLEPASS_INTEGRATION) 
   add_custom_command (

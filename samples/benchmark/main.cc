@@ -261,7 +261,7 @@ main(int argc, char** argv)
 
     // Percentiles
     const size_t num_iters      = 100;
-    const double nth_percentile = 0.90;
+    const double nth_percentile = 0.50;
     std::vector<double> results; // ms
     results.reserve(num_iters);
 
@@ -321,13 +321,21 @@ main(int argc, char** argv)
     if (!pid)
         fprintf(stderr, "\nSanity performance check:\n");
 
+    //timer_event_launch();
+    //acGridPeriodicBoundconds(STREAM_DEFAULT);
+    //timer_event_stop("acGridPeriodicBoundconds: ");
+
+    const AcMeshDims dims = acGetMeshDims(info);
     timer_event_launch();
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acDevicePeriodicBoundconds(acGridGetDevice(), STREAM_DEFAULT, dims.m0, dims.m1);
     timer_event_stop("acGridPeriodicBoundconds: ");
 
+    	
+    cudaProfilerStart();
     timer_event_launch();
     acGridIntegrate(STREAM_DEFAULT, dt);
     timer_event_stop("acGridIntegrate: ");
+    cudaProfilerStop();
 
     timer_event_launch();
     AcReal candval;

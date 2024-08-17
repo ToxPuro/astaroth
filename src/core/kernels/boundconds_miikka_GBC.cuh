@@ -11,6 +11,7 @@
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+#if TWO_D == 0
 static __global__ void
 kernel_symmetric_boundconds(const int3 start, const int3 end, AcReal* vtxbuf, const int3 bindex,
                             const int sign)
@@ -132,6 +133,7 @@ kernel_symmetric_boundconds(const int3 start, const int3 end, AcReal* vtxbuf, co
     vtxbuf[dst_idx]   = sign * vtxbuf[src_idx] * (AcReal)0.0 +
                       (AcReal)1.0; // sign = 1 symmetric, sign = -1 antisymmetric
 }
+#endif
 
 static __global__ void
 kernel_periodic_boundconds(const int3 start, const int3 end, AcReal* vtxbuf)
@@ -150,30 +152,43 @@ kernel_periodic_boundconds(const int3 start, const int3 end, AcReal* vtxbuf)
 
     // If destination index is inside the computational domain, return since
     // the boundary conditions are only applied to the ghost zones
-    if (i_dst >= DCONST(AC_nx_min) && i_dst < DCONST(AC_nx_max) && j_dst >= DCONST(AC_ny_min) &&
-        j_dst < DCONST(AC_ny_max) && k_dst >= DCONST(AC_nz_min) && k_dst < DCONST(AC_nz_max))
+    if (
+	i_dst >= DCONST(AC_nx_min) && i_dst < DCONST(AC_nx_max) && 
+	j_dst >= DCONST(AC_ny_min) && j_dst < DCONST(AC_ny_max) 
+#if TWO_D == 0
+	&& 
+	k_dst >= DCONST(AC_nz_min) && k_dst < DCONST(AC_nz_max)
+#endif
+        )
         return;
 
     // Find the source index
     // Map to nx, ny, nz coordinates
     int i_src = i_dst - DCONST(AC_nx_min);
     int j_src = j_dst - DCONST(AC_ny_min);
-    int k_src = k_dst - DCONST(AC_nz_min);
+
 
     // Translate (s.t. the index is always positive)
     i_src += DCONST(AC_nx);
     j_src += DCONST(AC_ny);
-    k_src += DCONST(AC_nz);
 
     // Wrap
     i_src %= DCONST(AC_nx);
     j_src %= DCONST(AC_ny);
-    k_src %= DCONST(AC_nz);
 
     // Map to mx, my, mz coordinates
     i_src += DCONST(AC_nx_min);
+
+    //Z-dimension done separately to make it easier to mask it out
+#if TWO_D == 0
+    int k_src = k_dst - DCONST(AC_nz_min);
+    k_src += DCONST(AC_nz);
+    k_src %= DCONST(AC_nz);
     j_src += DCONST(AC_ny_min);
     k_src += DCONST(AC_nz_min);
+#else
+    int k_src = 0;
+#endif
 
     const int src_idx = DEVICE_VTXBUF_IDX(i_src, j_src, k_src);
     const int dst_idx = DEVICE_VTXBUF_IDX(i_dst, j_dst, k_dst);
@@ -194,6 +209,8 @@ acKernelPeriodicBoundconds(const cudaStream_t stream, const int3 start, const in
     return AC_SUCCESS;
 }
 
+
+#if TWO_D == 0
 AcResult
 acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int3 end,
                           AcReal* vtxbuf, const VertexBufferHandle vtxbuf_handle,
@@ -241,3 +258,4 @@ acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int
 
     return AC_SUCCESS;
 }
+#endif

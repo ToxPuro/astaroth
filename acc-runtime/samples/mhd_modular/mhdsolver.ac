@@ -1,6 +1,9 @@
-const int AC_const_ints = {1,2,3}
+#include "../../stdlib/integrators.h"
+const int AC_2d_ints = [[1,2,3], [2,3,4]]
+const int AC_const_ints = [1,2,3]
 const int AC_const_ints_len = 3
 const real AC_const_real = 2.0
+const int3 AC_const_int3 = {1,2,3}
 enum IHEATCOND
 {
 	NOTHING,
@@ -19,18 +22,39 @@ struct EnumParams
 	bool test;
 	IHEATCOND heatcond;
 }  
+enum TOP_BOT
+{
+	AC_top,
+	AC_bot	
+}
 
-const real AC_const_reals = {1.0,2,0,3.0}
+
+const real AC_const_reals = [1.0,2,0,3.0]
 
 const bool AC_const_bool = false
 const bool AC_const_bool_true = true
-const bool AC_const_bool_arr = {true,false}
+const bool AC_const_bool_arr = [true,false]
 //const int AC_first = 1, AC_second = 2
 const int AC_first = 2
 const int AC_second = 2
 const bool AC_first_bool = false, AC_second_bool = true
-const bool AC_first_bool_arr = {false,false}, AC_third_bool= true
-#define NGHOST (3)
+const bool AC_first_bool_arr = [false,false], AC_third_bool= true
+
+dconst real4 AC_real_4
+dconst complex AC_complex_dconst
+const real3 AC_const_real3 = {1.0, 2.0, 3.0}
+const real3 AC_const_real3_arr = [ {1.0, 2.0, 3.0}, {1.0, 2.0, 3.0}]
+const real3 AC_const_real3_arr_2 = [AC_const_real3, AC_const_real3]
+
+gmem real AC_real_gmem_arr[AC_nx]
+gmem int  AC_int_gmem_arr[AC_nx]
+
+gmem real3 AC_real3_gmem_arr[AC_nx]
+
+
+
+const int AC_const_int = 2
+int AC_2d_int[2][AC_const_int*2]
 
 int AC_step_number
 real AC_dt
@@ -52,7 +76,7 @@ hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
-hostdefine LTEST (0)
+hostdefine LTEST (1)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
 
@@ -71,15 +95,15 @@ Field VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ
 Field VTXBUF_ENTROPY
 #endif
 
-const int AC_const_int = 2
 const int AC_const_int_2nd = 4
-//const int nghost = 3
+//const int NGHOST_VAL = 3
 //Field CHEMISTRY_FIELDS[5]
 
 #if LBFIELD
-auxiliary Field BFIELDX
-auxiliary Field BFIELDY
-auxiliary Field BFIELDZ
+Field BFIELDX
+Field BFIELDY
+Field BFIELDZ
+#define BFIELD Field3(BFIELDX,BFIELDY,BFIELDZ)
 #endif
 
 #if LSHOCK 
@@ -113,8 +137,17 @@ real AC_forcing_period_t
 // Initial time step index, default should be 0
 int AC_start_step
 
-real AC_dsx, AC_dsy, AC_dsz 
 
+run_const real  AC_runtime_real_arr[4]
+run_const int   AC_runtime_int_arr[2]
+
+run_const bool  AC_runtime_bool_arr[2]
+
+run_const int   AC_runtime_int
+run_const real  AC_runtime_real
+run_const int3  AC_runtime_int3
+run_const real3 AC_runtime_real3
+run_const bool  AC_lspherical_coords
 
 // Real params
 // Spacing
@@ -155,6 +188,8 @@ real AC_cs_sound
 real AC_eta
 real AC_mu0
 real AC_cp_sound
+real AC_cp
+real AC_cv
 real AC_gamma
 real AC_cv_sound
 real AC_lnT0
@@ -221,302 +256,44 @@ output real timestep_out1;
 output real timestep_out2;
 const int test_arr_size = 6;
 #if LTEST
-real AC_test_arr[test_arr_size];
-real AC_test_arr_2[(2-1)*2+1];
-int AC_test_int_arr[test_arr_size/2];
+dconst real AC_test_arr[test_arr_size];
+dconst real AC_test_arr_2[(2-1)*2+1];
+dconst int AC_test_int_arr[test_arr_size/2];
 #endif
 
 
 
-#define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)
+#define UU Field3(VTXBUF_UUX,VTXBUF_UUY,VTXBUF_UUZ)
 
 #if LMAGNETIC
-#define AA Field3(VTXBUF_AX, VTXBUF_AY, VTXBUF_AZ)
+#define AA Field3(VTXBUF_AX,VTXBUF_AY,VTXBUF_AZ)
 #endif
 
-
-#define DER1_3 (1. / 60.)
-#define DER1_2 (-3. / 20.)
-#define DER1_1 (3. / 4.)
-#define DER1_0 (0)
-
-#define DER2_3 (1. / 90.)
-#define DER2_2 (-3. / 20.)
-#define DER2_1 (3. / 2.)
-#define DER2_0 (-49. / 18.)
-
-#define DERX_3 (2. / 720.)
-#define DERX_2 (-27. / 720.)
-#define DERX_1 (270. / 720.)
-#define DERX_0 (0)
-
-#define DER6UPWD_3 (  1. / 60.)  
-#define DER6UPWD_2 ( -6. / 60.)   
-#define DER6UPWD_1 ( 15. / 60.)     
-#define DER6UPWD_0 (-20. / 60.)  
 
 #if LSHOCK
-
 #include "smooth_kernel.ach" 
-
 #endif 
-
-
-/*
-// A hax to access close by stencil values
-Stencil value_xm3 {
-    [0][0][-3] = 1
-}
-Stencil value_xm2 {
-    [0][0][-2] = 1
-}
-Stencil value_xm1 {
-    [0][0][-1] = 1
-}
-Stencil value_xp1 {
-    [0][0][1] = 1
-}
-Stencil value_xp2 {
-    [0][0][2] = 1
-}
-Stencil value_xp3 {
-    [0][0][3] = 1
-}
-
-Stencil value_ym3 {
-    [0][-3][0] = 1
-}
-Stencil value_ym2 {
-    [0][-2][0] = 1
-}
-Stencil value_ym1 {
-    [0][-1][0] = 1 }
-Stencil value_yp1 {
-    [0][1][0] = 1
-}
-Stencil value_yp2 {
-    [0][2][0] = 1
-}
-Stencil value_yp3 {
-    [0][3][0] = 1
-}
-
-Stencil value_zm3 {
-    [-3][0][0] = 1
-}
-Stencil value_zm2 {
-    [-2][0][0] = 1
-}
-Stencil value_zm1 {
-    [-1][0][0] = 1
-}
-Stencil value_zp1 {
-    [1][0][0] = 1
-}
-Stencil value_zp2 {
-    [2][0][0] = 1
-}
-Stencil value_zp3 {
-    [3][0][0] = 1
-}
-*/
-
-//MV: Based on the standard rules of multiplications, why -(1.0/AC_dsx) etc could
-//MV: not be outside of the stencil operation? 
-
-Stencil derx {
-    [0][0][-3] = -(1.0/AC_dsx) * DER1_3,
-    [0][0][-2] = -(1.0/AC_dsx) * DER1_2,
-    [0][0][-1] = -(1.0/AC_dsx) * DER1_1,
-    [0][0][1]  = (1.0/AC_dsx) * DER1_1,
-    [0][0][2]  = (1.0/AC_dsx) * DER1_2,
-    [0][0][3]  = (1.0/AC_dsx) * DER1_3
-}
-
-Stencil dery {
-    [0][-3][0] = -(1.0/AC_dsy) * DER1_3,
-    [0][-2][0] = -(1.0/AC_dsy) * DER1_2,
-    [0][-1][0] = -(1.0/AC_dsy) * DER1_1,
-    [0][1][0]  = (1.0/AC_dsy) * DER1_1,
-    [0][2][0]  = (1.0/AC_dsy) * DER1_2,
-    [0][3][0]  = (1.0/AC_dsy) * DER1_3
-}
-
-Stencil derz {
-    [-3][0][0] = -(1.0/AC_dsz) * DER1_3,
-    [-2][0][0] = -(1.0/AC_dsz) * DER1_2,
-    [-1][0][0] = -(1.0/AC_dsz) * DER1_1,
-    [1][0][0]  = (1.0/AC_dsz) * DER1_1,
-    [2][0][0]  = (1.0/AC_dsz) * DER1_2,
-    [3][0][0]  = (1.0/AC_dsz) * DER1_3
-}
-
-Stencil derxx {
-    [0][0][-3] = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_3,
-    [0][0][-2] = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_2,
-    [0][0][-1] = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_1,
-    [0][0][0]  = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_0,
-    [0][0][1]  = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_1,
-    [0][0][2]  = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_2,
-    [0][0][3]  = (1.0/AC_dsx) * (1.0/AC_dsx) * DER2_3
-}
-
-Stencil deryy {
-    [0][-3][0] = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_3,
-    [0][-2][0] = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_2,
-    [0][-1][0] = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_1,
-    [0][0][0]  = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_0,
-    [0][1][0]  = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_1,
-    [0][2][0]  = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_2,
-    [0][3][0]  = (1.0/AC_dsy) * (1.0/AC_dsy) * DER2_3
-}
-
-Stencil derzz {
-    [-3][0][0] = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_3,
-    [-2][0][0] = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_2,
-    [-1][0][0] = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_1,
-    [0][0][0]  = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_0,
-    [1][0][0]  = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_1,
-    [2][0][0]  = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_2,
-    [3][0][0]  = (1.0/AC_dsz) * (1.0/AC_dsz) * DER2_3
-}
-
-Stencil derxy {
-    [0][-3][-3] = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_3,
-    [0][-2][-2] = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_2,
-    [0][-1][-1] = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_1,
-    [0][0][0]  = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_0,
-    [0][1][1]  = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_1,
-    [0][2][2]  = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_2,
-    [0][3][3]  = (1.0/AC_dsx) * (1.0/AC_dsy) * DERX_3,
-    [0][-3][3] = -(1.0/AC_dsx) * (1.0/AC_dsy) * DERX_3,
-    [0][-2][2] = -(1.0/AC_dsx) * (1.0/AC_dsy) * DERX_2,
-    [0][-1][1] = -(1.0/AC_dsx) * (1.0/AC_dsy) * DERX_1,
-    [0][1][-1] = -(1.0/AC_dsx) * (1.0/AC_dsy) * DERX_1,
-    [0][2][-2] = -(1.0/AC_dsx) * (1.0/AC_dsy) * DERX_2,
-    [0][3][-3] = -(1.0/AC_dsx) * (1.0/AC_dsy) * DERX_3
-}
-
-Stencil derxz {
-    [-3][0][-3] = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_3,
-    [-2][0][-2] = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_2,
-    [-1][0][-1] = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_1,
-    [0][0][0]  = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_0,
-    [1][0][1]  = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_1,
-    [2][0][2]  = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_2,
-    [3][0][3]  = (1.0/AC_dsx) * (1.0/AC_dsz) * DERX_3,
-    [-3][0][3] = -(1.0/AC_dsx) * (1.0/AC_dsz) * DERX_3,
-    [-2][0][2] = -(1.0/AC_dsx) * (1.0/AC_dsz) * DERX_2,
-    [-1][0][1] = -(1.0/AC_dsx) * (1.0/AC_dsz) * DERX_1,
-    [1][0][-1] = -(1.0/AC_dsx) * (1.0/AC_dsz) * DERX_1,
-    [2][0][-2] = -(1.0/AC_dsx) * (1.0/AC_dsz) * DERX_2,
-    [3][0][-3] = -(1.0/AC_dsx) * (1.0/AC_dsz) * DERX_3
-}
-
-Stencil deryz {
-    [-3][-3][0] = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_3,
-    [-2][-2][0] = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_2,
-    [-1][-1][0] = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_1,
-    [0][0][0]  = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_0,
-    [1][1][0]  = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_1,
-    [2][2][0]  = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_2,
-    [3][3][0]  = (1.0/AC_dsy) * (1.0/AC_dsz) * DERX_3,
-    [-3][3][0] = -(1.0/AC_dsy) * (1.0/AC_dsz) * DERX_3,
-    [-2][2][0] = -(1.0/AC_dsy) * (1.0/AC_dsz) * DERX_2,
-    [-1][1][0] = -(1.0/AC_dsy) * (1.0/AC_dsz) * DERX_1,
-    [1][-1][0] = -(1.0/AC_dsy) * (1.0/AC_dsz) * DERX_1,
-    [2][-2][0] = -(1.0/AC_dsy) * (1.0/AC_dsz) * DERX_2,
-    [3][-3][0] = -(1.0/AC_dsy) * (1.0/AC_dsz) * DERX_3
-}
-
-Stencil der6x_upwd {
-    [0][0][-3] =  (1.0/AC_dsx) * DER6UPWD_3,
-    [0][0][-2] =  (1.0/AC_dsx) * DER6UPWD_2,
-    [0][0][-1] =  (1.0/AC_dsx) * DER6UPWD_1,
-    [0][0][0]  =  (1.0/AC_dsx) * DER6UPWD_0,
-    [0][0][1]  =  (1.0/AC_dsx) * DER6UPWD_1,
-    [0][0][2]  =  (1.0/AC_dsx) * DER6UPWD_2,
-    [0][0][3]  =  (1.0/AC_dsx) * DER6UPWD_3
-}
-
-Stencil der6y_upwd {
-    [0][-3][0] =  (1.0/AC_dsy) * DER6UPWD_3,
-    [0][-2][0] =  (1.0/AC_dsy) * DER6UPWD_2,
-    [0][-1][0] =  (1.0/AC_dsy) * DER6UPWD_1,
-    [0][0][0]  =  (1.0/AC_dsy) * DER6UPWD_0,
-    [0][1][0]  =  (1.0/AC_dsy) * DER6UPWD_1,
-    [0][2][0]  =  (1.0/AC_dsy) * DER6UPWD_2,
-    [0][3][0]  =  (1.0/AC_dsy) * DER6UPWD_3
-}
-
-Stencil der6z_upwd {
-    [-3][0][0] =  (1.0/AC_dsz) * DER6UPWD_3,
-    [-2][0][0] =  (1.0/AC_dsz) * DER6UPWD_2,
-    [-1][0][0] =  (1.0/AC_dsz) * DER6UPWD_1,
-    [0][0][0]  =  (1.0/AC_dsz) * DER6UPWD_0,
-    [1][0][0]  =  (1.0/AC_dsz) * DER6UPWD_1,
-    [2][0][0]  =  (1.0/AC_dsz) * DER6UPWD_2,
-    [3][0][0]  =  (1.0/AC_dsz) * DER6UPWD_3
-}
-
-
-
-vecvalue_abs(v) {
-    return +real3(fabs(value(v.x)), fabs(value(v.y)), fabs(value(v.z)))
-}
-
-gradient(s) {
-    return real3(derx(s), dery(s), derz(s))
-}
-
-gradient6_upwd(s) {
-    return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
-}
-
-gradients_upwd(v) {
-    return Matrix(gradient6_upwd(v.x), gradient6_upwd(v.y), gradient6_upwd(v.z))
-}
-
-gradients(v) {
-    return Matrix(gradient(v.x), gradient(v.y), gradient(v.z))
-}
-
-divergence(v) {
-    return derx(v.x) + dery(v.y) + derz(v.z)
-}
-
-curl(v) {
-    return real3(dery(v.z) - derz(v.y), derz(v.x) - derx(v.z), derx(v.y) - dery(v.x))
-}
-
-laplace(s) {
-    return derxx(s) + deryy(s) + derzz(s)
-}
-
-veclaplace(v) {
-    return real3(laplace(v.x), laplace(v.y), laplace(v.z))
-}
-
+#include "../../stdlib/derivs.h"
 #if LMAGNETIC
 induction() {
-    return cross(vecvalue(UU), curl(AA)) + AC_eta * veclaplace(AA)
+    return cross(UU, curl(AA)) + AC_eta * laplace(AA)
 }
 #endif
 
 traceless_rateof_strain(v) {
     Matrix S
 
-    S.data[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))
-    S.data[0][1] = (1.0 / 2.0) * (dery(v.x) + derx(v.y))
-    S.data[0][2] = (1.0 / 2.0) * (derz(v.x) + derx(v.z))
+    S[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))
+    S[0][1] = (1.0 / 2.0) * (dery(v.x) + derx(v.y))
+    S[0][2] = (1.0 / 2.0) * (derz(v.x) + derx(v.z))
 
-    S.data[1][0] = S.data[0][1]
-    S.data[1][1] = (2.0 / 3.0) * dery(v.y) - (1.0 / 3.0) * (derx(v.x) + derz(v.z))
-    S.data[1][2] = (1.0 / 2.0) * (derz(v.y) + dery(v.z))
+    S[1][0] = S.data[0][1]
+    S[1][1] = (2.0 / 3.0) * dery(v.y) - (1.0 / 3.0) * (derx(v.x) + derz(v.z))
+    S[1][2] = (1.0 / 2.0) * (derz(v.y) + dery(v.z))
 
-    S.data[2][0] = S.data[0][2]
-    S.data[2][1] = S.data[1][2]
-    S.data[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
+    S[2][0] = S.data[0][2]
+    S[2][1] = S.data[1][2]
+    S[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
 
     return S
 }
@@ -529,15 +306,12 @@ gradient_of_divergence(v) {
     )
 }
 
-contract(mat) {
-    return dot(mat.row(0), mat.row(0)) +
-           dot(mat.row(1), mat.row(1)) +
-           dot(mat.row(2), mat.row(2))
+contract(Matrix mat) {
+    return dot(mat[0], mat[0]) +
+           dot(mat[1], mat[1]) +
+           dot(mat[2], mat[2])
 }
 
-length(v1,v2) {
-    return sqrt( dot(v1-v2,v1-v2) )
-}
 
 grid_position() {
     return real3((globalVertexIdx.x - AC_nx_min) * AC_dsx, 
@@ -604,9 +378,9 @@ forcing(dt)
 
 
 continuity() {
-    return -dot(vecvalue(UU), gradient(VTXBUF_LNRHO)) - divergence(UU)
+    return -dot(UU, gradient(VTXBUF_LNRHO)) - divergence(UU)
 #if LUPWD
-           + dot(vecvalue_abs(UU), gradient6_upwd(VTXBUF_LNRHO))
+           + dot(abs(UU), gradient_upwd(VTXBUF_LNRHO))
 #endif
 
 }
@@ -615,20 +389,19 @@ momentum() {
     S = traceless_rateof_strain(UU)
     cs2_sound = AC_cs_sound * AC_cs_sound
 #if LENTROPY 
-    cs2 = cs2_sound * exp(AC_gamma * value(VTXBUF_ENTROPY) / AC_cp_sound + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0))
+    cs2 = cs2_sound * exp(AC_gamma * VTXBUF_ENTROPY / AC_cp_sound + (AC_gamma - 1.) * (VTXBUF_LNRHO - AC_lnrho0))
 #else
     cs2 = cs2_sound
 #endif
-
 #if LMAGNETIC
-    j = (1. / AC_mu0) * (gradient_of_divergence(AA) - veclaplace(AA))
+    j = (1. / AC_mu0) * (gradient_of_divergence(AA) - laplace(AA))
     B = curl(AA)
-    inv_rho = 1. / exp(value(VTXBUF_LNRHO))
+    inv_rho = 1. / exp(VTXBUF_LNRHO)
 #endif
 
-    mom = - gradients(UU) * vecvalue(UU)
+    mom = - gradient(UU) * UU
 #if LUPWD
-          + gradients_upwd(UU) * vecvalue_abs(UU)
+          + gradient_upwd(UU) * abs(UU)
 #endif
 #if LENTROPY 
           - cs2 * ((1. / AC_cp_sound) * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO))
@@ -638,11 +411,11 @@ momentum() {
 #if LMAGNETIC
           + inv_rho * cross(j, B)
 #endif
-          + AC_nu_visc * (veclaplace(UU) + (1. / 3.) * gradient_of_divergence(UU)
+          + AC_nu_visc * (laplace(UU) + (1. / 3.) * gradient_of_divergence(UU)
                        + 2. * S * gradient(VTXBUF_LNRHO))
           + AC_zeta * gradient_of_divergence(UU)
 #if LSHOCK
-          + AC_nu_shock * (value(VTXBUF_SHOCK) * (divergence(UU) * gradient(VTXBUF_LNRHO) +
+          + AC_nu_shock * (VTXBUF_SHOCK * (divergence(UU) * gradient(VTXBUF_LNRHO) +
                                            gradient_of_divergence(UU)) +
                            divergence(UU) * gradient(VTXBUF_SHOCK))
 #endif
@@ -653,8 +426,8 @@ momentum() {
 #if LENTROPY 
 lnT() {
     return AC_lnT0
-         + AC_gamma * value(VTXBUF_ENTROPY) / AC_cp_sound
-         + (AC_gamma - 1.) * (value(VTXBUF_LNRHO) - AC_lnrho0)
+         + AC_gamma * VTXBUF_ENTROPY / AC_cp_sound
+         + (AC_gamma - 1.) * (VTXBUF_LNRHO - AC_lnrho0)
 }
 
 heat_conduction() {
@@ -665,31 +438,31 @@ heat_conduction() {
     second_term = AC_gamma * inv_AC_cp_sound * gradient(VTXBUF_ENTROPY) + (AC_gamma - 1.) * gradient(VTXBUF_LNRHO)
     third_term = AC_gamma * (inv_AC_cp_sound * gradient(VTXBUF_ENTROPY) + gradient(VTXBUF_LNRHO)) + grad_ln_chi
 
-    //chi = AC_THERMAL_CONDUCTIVITY / (exp(value(VTXBUF_LNRHO)) * AC_cp_sound)
-    chi = AC_K_heatcond / (exp(value(VTXBUF_LNRHO)) * AC_cp_sound)
+    //chi = AC_THERMAL_CONDUCTIVITY / (exp(VTXBUF_LNRHO) * AC_cp_sound)
+    chi = AC_K_heatcond / (exp(VTXBUF_LNRHO) * AC_cp_sound)
 
     return AC_cp_sound * chi * (first_term + dot(second_term, third_term))
 }
 
 entropy() {
     S = traceless_rateof_strain(UU)
-    inv_pT = 1. / (exp(value(VTXBUF_LNRHO)) * exp(lnT()))
+    inv_pT = 1. / (exp(VTXBUF_LNRHO) * exp(lnT()))
 #if LMAGNETIC
-    j = (1. / AC_mu0) * (gradient_of_divergence(AA) - veclaplace(AA))
+    j = (1. / AC_mu0) * (gradient_of_divergence(AA) - laplace(AA))
 #else
     j = real3(0,0,0)
 #endif
 #if LSHOCK
-    entshock = AC_nu_shock * value(VTXBUF_SHOCK) * (divergence(UU) * divergence(UU))  
+    entshock = AC_nu_shock * VTXBUF_SHOCK * (divergence(UU) * divergence(UU))  
 #else
     entshock = 0.0
 #endif
     RHS = (0) - (0) + AC_eta * AC_mu0 * dot(j, j) +
-                       2. * exp(value(VTXBUF_LNRHO)) * AC_nu_visc * contract(S) +
+                       2. * exp(VTXBUF_LNRHO) * AC_nu_visc * contract(S) +
                        entshock +
-                       AC_zeta * exp(value(VTXBUF_LNRHO)) * divergence(UU) * divergence(UU)
+                       AC_zeta * exp(VTXBUF_LNRHO) * divergence(UU) * divergence(UU)
 
-    return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
+    return -dot(UU, gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
 }
 #endif
 
@@ -738,32 +511,6 @@ Kernel shock_3_smooth()
 #endif
 
 
-rk3(s0, s1, roc, step_num, dt) {
-    // Workaround
-    real alpha = {0., -5./9., -153. / 128.}
-    real beta  = {1., 1. / 3., 15./ 16., 8. / 15.}
-
-    /*
-    // Commented out, BUG that NDEBUG is not enabled during code generation s.t. the following conditional
-    // is evaluated, this destroys the performance
-    #ifndef NDEBUG
-    if (step_num >= len(alpha) || step_num + 1 >= len(beta)) {
-        print("step_num invalid: '%d'\n", step_num)
-    }
-    #endif
-    */
-
-    return s1 + beta[step_num + 1] * ((alpha[step_num] / beta[step_num]) * (s1 - s0) + roc * dt)
-    /*
-    if step_num == 0 {
-        return s1 + (1. / 3.) * roc * dt
-    } else if step_num == 1 {
-        return s1 + (15./16.) * (((-5./9.) / (1./3.)) * (s1 - s0) + roc * dt)
-    } else {
-        return s1 + (8./15.) * (((-153./128.) / (15./16.)) * (s1 - s0) + roc * dt)
-    }
-    */
-}
 
 reduce_test(step_num)
 {
@@ -784,13 +531,11 @@ Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums, 
 	{
 		print("BYE\n")
 	}
-    write(VTXBUF_LNRHO, rk3(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), continuity(), step_num, time_params.dt))
+    write(VTXBUF_LNRHO, rk3(VTXBUF_LNRHO, continuity(), step_num, time_params.dt))
 
 #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), entropy(), step_num, time_params.dt))
+    write(VTXBUF_ENTROPY, rk3(VTXBUF_ENTROPY, entropy(), step_num, time_params.dt))
 #endif 
-    mom = momentum()
-
 #if LFORCING
     //Add the forcing component to the velocity field at the last integration step.
     //Important to init to zero here: ohterwise will produce numerical garbage! 
@@ -800,110 +545,48 @@ Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums, 
             forcing_step = forcing(time_params.dt)
         }
     }
-    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x, step_num, time_params.dt) + forcing_step.x)
-    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y, step_num, time_params.dt) + forcing_step.y)
-    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z, step_num, time_params.dt) + forcing_step.z)
+    write(UU, rk3(UU, momentum(), step_num,time_params.dt) + forcing_step)
 #else 
-    write(VTXBUF_UUX, rk3(previous(VTXBUF_UUX), value(VTXBUF_UUX), mom.x, step_num, time_params.dt))
-    write(VTXBUF_UUY, rk3(previous(VTXBUF_UUY), value(VTXBUF_UUY), mom.y, step_num, time_params.dt))
-    write(VTXBUF_UUZ, rk3(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), mom.z, step_num, time_params.dt))
+    write(UU, rk3(UU, momentum(), step_num,time_params.dt))
 #endif
 
 #if LMAGNETIC
-    ind = induction()
-    write(VTXBUF_AX, rk3(previous(VTXBUF_AX), value(VTXBUF_AX), ind.x, step_num, time_params.dt))
-    write(VTXBUF_AY, rk3(previous(VTXBUF_AY), value(VTXBUF_AY), ind.y, step_num, time_params.dt))
-    write(VTXBUF_AZ, rk3(previous(VTXBUF_AZ), value(VTXBUF_AZ), ind.z, step_num, time_params.dt))
+    write(AA, rk3(AA, induction(), step_num, time_params.dt))
 #endif
 
 #if LBFIELD
     if step_num == 2 {
-        bfield = curl(AA) 
-        write(BFIELDX, bfield.x)
-        write(BFIELDY, bfield.y)
-        write(BFIELDZ, bfield.z)
+        write(BFIELD, curl(AA))	
     }
 #endif
 
 #if LSHOCK
     // Required for buffers to match correctly. 
-    write(VTXBUF_SHOCK, value(VTXBUF_SHOCK))
+    write(VTXBUF_SHOCK, VTXBUF_SHOCK)
 #endif
     reduce_min(step_num == 0, 2.0, timestep_out1)
     reduce_test(step_num)
     reduce_max(step_num == 0, 2.0, timestep_out2)
 }
 
-rk3_intermediate(w, roc, step_num,dt) {
-    real alpha = 0., -5./9., -153. / 128.
-    return alpha[step_num] * w + roc * dt 
-
-    /*
-    #ifndef NDEBUG
-    if (step_num >= len(alpha)) {
-        print("step_num invalid: '%d'\n", step_num)
-    }
-    #endif
-
-    // return alpha[step_num] * w + roc * dt
-    // TODO NOTE abysmal performance on AMD, needs a workaround like in rk3() 
-    if step_num > 0 {
-        return alpha[step_num] * w + roc * dt
-    } else {
-        return roc * dt
-    }
-    */
-}
-array_val(field_array, size)
-{
-	real res[size]
-	for i in 0:size
-	{
-		res[i] = value(field_array[i])
-	}
-	return res
-}
-
-rk3_final(f, w, step_num) {
-    real beta = 1. / 3., 15./ 16., 8. / 15.
-
-    /*
-    #ifndef NDEBUG
-    if (step_num >= len(beta)) {
-        print("step_num invalid: '%d'\n", step_num)
-    }
-    #endif
-    */
-
-    return f + beta[step_num] * w
-}
 
 
 Kernel twopass_solve_intermediate(int step_num, real dt) {
-    write(VTXBUF_LNRHO, rk3_intermediate(previous(VTXBUF_LNRHO), continuity(), step_num, dt))
+    write(VTXBUF_LNRHO, rk3_intermediate(VTXBUF_LNRHO, continuity(), step_num, dt))
 
     #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3_intermediate(previous(VTXBUF_ENTROPY), entropy(), step_num, dt))
+    write(VTXBUF_ENTROPY, rk3_intermediate(VTXBUF_ENTROPY, entropy(), step_num, dt))
     #endif
 
-    mom = momentum()
-    write(VTXBUF_UUX, rk3_intermediate(previous(VTXBUF_UUX), mom.x, step_num, dt))
-    write(VTXBUF_UUY, rk3_intermediate(previous(VTXBUF_UUY), mom.y, step_num, dt))
-    write(VTXBUF_UUZ, rk3_intermediate(previous(VTXBUF_UUZ), mom.z, step_num, dt))
+    write(UU, rk3_intermediate(UU, momentum(), step_num, dt))
 
     #if LMAGNETIC
-    ind = induction()
-    write(VTXBUF_AX, rk3_intermediate(previous(VTXBUF_AX), ind.x, step_num, dt))
-    write(VTXBUF_AY, rk3_intermediate(previous(VTXBUF_AY), ind.y, step_num, dt))
-    write(VTXBUF_AZ, rk3_intermediate(previous(VTXBUF_AZ), ind.z, step_num, dt))
+    write(AA, rk3_intermediate(AA, induction(), step_num, dt))
     #endif
 
     #if LBFIELD
     if step_num == 2 {
-        bfield = curl(AA) 
-        write(BFIELDX, bfield.x)
-        write(BFIELDY, bfield.y)
-        write(BFIELDZ, bfield.z)
+	write(BFIELD,curl(AA))
     }
     #endif
 
@@ -921,10 +604,10 @@ Kernel twopass_solve_intermediate(int step_num, real dt) {
 }
 
 Kernel twopass_solve_final(int step_num, real current_time) {
-    write(VTXBUF_LNRHO, rk3_final(previous(VTXBUF_LNRHO), value(VTXBUF_LNRHO), step_num))
+    write(VTXBUF_LNRHO, rk3_final(VTXBUF_LNRHO, step_num))
 
     #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3_final(previous(VTXBUF_ENTROPY), value(VTXBUF_ENTROPY), step_num))
+    write(VTXBUF_ENTROPY, rk3_final(VTXBUF_ENTROPY, step_num))
     #endif
 
     forcing_step = real3(0.0, 0.0, 0.0)
@@ -935,14 +618,10 @@ Kernel twopass_solve_final(int step_num, real current_time) {
         }
     }
     #endif
-    write(VTXBUF_UUX, rk3_final(previous(VTXBUF_UUX), value(VTXBUF_UUX), step_num) + forcing_step.x)
-    write(VTXBUF_UUY, rk3_final(previous(VTXBUF_UUY), value(VTXBUF_UUY), step_num) + forcing_step.y)
-    write(VTXBUF_UUZ, rk3_final(previous(VTXBUF_UUZ), value(VTXBUF_UUZ), step_num) + forcing_step.z)
+    write(UU, rk3_final(UU, step_num) + forcing_step)
 
     #if LMAGNETIC
-    write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX), step_num))
-    write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY), step_num))
-    write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ), step_num))
+    write(AA, rk3_final(AA, step_num))
     #endif
 }
 
@@ -950,14 +629,11 @@ Kernel twopass_solve_final(int step_num, real current_time) {
 // TODO ensure AC_scaling_factor is set!
 real AC_scaling_factor
 Kernel scale() {
-    for field in 0:NUM_FIELDS {
-        write(Field(field), value(field))
-    }
+    for field in 0:NUM_FIELDS
+        write(Field(field), Field(field))
 
 #if LMAGNETIC
-    write(VTXBUF_AX, AC_scaling_factor * value(VTXBUF_AX))
-    write(VTXBUF_AY, AC_scaling_factor * value(VTXBUF_AY))
-    write(VTXBUF_AZ, AC_scaling_factor * value(VTXBUF_AZ))
+    write(AA, AC_scaling_factor*AA)
 #else
     if vertexIdx.x == AC_mx/2 && vertexIdx.y == AC_my/2 && vertexIdx.z == AC_mz/2 {
         print("WARNING: scale kernel called but LMAGNETIC was not enabled. Scale will have no effect.")
@@ -967,7 +643,7 @@ Kernel scale() {
 
 Kernel reset() {
     for field in 0:NUM_FIELDS {
-        write(Field(field), 0.0)
+       write(Field(field), 0.0)
     }
 }
 
@@ -1004,6 +680,7 @@ Kernel randomize() {
         r = 2.0 * xorshift(i) / UINT64_MAX - 1.0
         write(Field(field), AC_rng_scale * r)
     }
+    real r = 2.0 * xorshift(0) / UINT64_MAX - 1.0
 }
 */
 
@@ -1036,20 +713,12 @@ Kernel haatouken() {
     // AC_init_shell_radius
     // AC_init_shell_width
 
-    uu = vecvalue(UU)
+    xx = grid_position()  -  grid_centre()
 
-    xx = grid_position()
+    rr = norm(xx) 
 
-    centre = grid_centre()
-
-    xx.x = xx.x - centre.x
-    xx.y = xx.y - centre.y
-    xx.z = xx.z - centre.z
-
-    rr = sqrt(xx.x*xx.x +  xx.y*xx.y + xx.z*xx.z)
-
-    theta = real(atan2(xx.z, xx.x))
-    phi   = real(atan2(xx.y, xx.x))
+    theta = atan2(xx.z, xx.x)
+    phi   = atan2(xx.y, xx.x)
 
     uu_radial = 0.0
 
@@ -1068,128 +737,73 @@ Kernel haatouken() {
     //    }
     //} 
 
-    uu.x = uu.x + uu_radial * cos(theta) * cos(phi)
-    uu.y = uu.y + uu_radial * cos(theta) * sin(phi)
-    uu.z = uu.z + uu_radial * cos(theta) 
+    
+    uu_addition = 
+    uu_radial * (real3){
+	cos(theta) * cos(phi),
+	cos(theta) * sin(phi),
+	cos(theta)
+    }
 
-    write(VTXBUF_UUX, uu.x)
-    write(VTXBUF_UUY, uu.y)
-    write(VTXBUF_UUZ, uu.z)
+    write(UU, UU + uu_addition)
 }
 
 get_d_from_normal(normal)
 {
-    real d_out
-    if normal.x != 0.0
-    {
-	d_out = AC_dsx
-    }
-    if normal.y != 0.0
-    {
-	d_out = AC_dsy
-    }
-    if normal.z != 0.0
-    {
-	d_out = AC_dsz
-    }
-    return d_out
+    return 
+    	normal.x != 0.0 ? AC_dsx :
+	normal.y != 0.0 ? AC_dsy :
+	AC_dsz
 }
 get_uudir(boundary_in, int3 normal_in, VtxBuffer vtxbuf)
 {
-    real uudir_out
-    if normal_in.x != 0
-    {
-        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.x
-    }
-    if(normal_in.y != 0)
-    {
-        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.y
-    }
-    if(normal_in.z != 0)
-    {
-        uudir_out = vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.z
-    }
+    real uudir_out = (normal_in.x != 0) ? vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.x :
+		     (normal_in.y != 0) ? vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.y :
+		     vtxbuf[boundary_in.x][boundary_in.y][boundary_in.z]*normal_in.z
     return uudir_out
 }
 
 get_boundary_from_normal(normal_in)
 {
-    int3 boundary_out
-    if normal_in.x == 1
+    return 
+    (int3)
     {
-	boundary_out.x = NGHOST + AC_nx -1
-    }
-    if normal_in.x == 0
-    {
-	boundary_out.x = vertexIdx.x
-    }
-    if normal_in.x == -1
-    {
-	boundary_out.x = NGHOST
-    }
+    	(normal_in.x ==  1) ? NGHOST_VAL + AC_nx - 1 :
+	(normal_in.x == -1) ? NGHOST_VAL :
+	vertexIdx.x,
 
+    	normal_in.y ==  1 ? NGHOST_VAL + AC_ny - 1 :
+    	normal_in.y == -1 ? NGHOST_VAL :
+    	vertexIdx.y,
 
-    if normal_in.y == 1
-    {
-	boundary_out.y = NGHOST + AC_ny -1
-    }
-    if normal_in.y == 0
-    {
-	boundary_out.y = vertexIdx.y
-    }
-    if normal_in.y == -1
-    {
-	boundary_out.y = NGHOST
-    }
-
-
-    if normal_in.z == 1
-    {
-	boundary_out.z = NGHOST + AC_nz -1
-    }
-    if normal_in.z == 0
-    {
-	boundary_out.z = vertexIdx.z
-    }
-    if normal_in.z == -1
-    {
-	boundary_out.z = NGHOST
-    }
-    return boundary_out
+    	normal_in.z ==  1 ? NGHOST_VAL + AC_nz - 1 :
+    	normal_in.z == -1 ? NGHOST_VAL :
+    	vertexIdx.z;
+    }	
 }
 Kernel prescribed_derivative_boundcond(int3 normal, VtxBuffer vtxbuf, real der_val)
 {
     d = get_d_from_normal(normal)
-    real direction
-    if(normal.x != 0)
-    {
-        direction = normal.x
-    }
-    if(normal.y != 0)
-    {
-	direction = normal.y
-    }
-    if(normal.z != 0)
-    {
-	direction = normal.z
-    }
+    real direction = (normal.x != 0) ? normal.x :
+		     (normal.y != 0) ? normal.y : 
+		     normal.z;
     int3 boundary = get_boundary_from_normal(normal)
     int3 ghost  = boundary
     int3 domain = boundary
-    for  i  in 0:NGHOST {
+    for  i  in 0:NGHOST_VAL {
         domain = domain - normal
         ghost  = ghost + normal
 	distance = 2 * (i + 1)*d
+	//distance = direction < 0.0 ? -distance : distance
 	if direction < 0.0
-	{
 		distance = -distance
-	}
+	distance = 2 ? 1 : 0
 	vtxbuf[ghost.x][ghost.y][ghost.z] = vtxbuf[domain.x][domain.y][domain.z] + distance*der_val
     }
 }
 
 
-beltrami(ampl, ex, ey, ez, kx, ky, kz, phase) {
+beltrami(real ampl, ex, ey, ez, kx, ky, kz, phase) {
     // Based on Pencil Code beltrami_general() 
     // https://github.com/pencil-code/pencil-code/blob/43f0b658a905bbeb641daa0ccf88720a20f0c562/src/initcond.f90#L1818C16-L1818C32
 
@@ -1219,30 +833,19 @@ Kernel beltrami_initcond() {
     //uu = beltrami(1e-5, 0.0, 0.0, 1.0, 3.0, 2.0, 3.0, 0.0)
     aa = beltrami(1e-5, 0.0, 0.0, 1.0, 6.0, 4.0, 6.0, 0.0)
 
-    //write(VTXBUF_UUX, uu.x)
-    //write(VTXBUF_UUY, uu.y)
-    //write(VTXBUF_UUZ, uu.z)
-    write(VTXBUF_AX, aa.x)
-    write(VTXBUF_AY, aa.y)
-    write(VTXBUF_AZ, aa.z)
+    //write(UU, uu)
+    write(AA, aa)
 }
 
 radial_vector_field(ampl) {
-    xx = grid_position()
-    centre = grid_centre()
-
-    xx.x = xx.x - centre.x
-    xx.y = xx.y - centre.y
-    xx.z = xx.z - centre.z
-
+    xx = grid_position() - grid_centre()
     rr = sqrt(xx.x*xx.x + xx.y*xx.y + xx.z*xx.z)
     rr_xy = sqrt(xx.x*xx.x + xx.y*xx.y )
-
     field = real3(0.0,
                   0.0,
                   0.0)
 
-    if rr >= 2.0*AC_dsx{
+    if (rr >= 2.0*AC_dsx){
 
         theta = real(atan2(rr_xy, xx.z))
 
@@ -1257,11 +860,7 @@ radial_vector_field(ampl) {
 }
 
 Kernel radial_vec_initcond() {
-    uu = radial_vector_field(-1e-5) 
-
-    write(VTXBUF_UUX, uu.x)
-    write(VTXBUF_UUY, uu.y)
-    write(VTXBUF_UUZ, uu.z)
+    write(UU, radial_vector_field(-1e-5))
 }
 
 Kernel constant() {
@@ -1272,5 +871,392 @@ Kernel constant() {
         write(Field(field), AC_value)
     }
 }
+real AC_density_scale_cgs
+real AC_impossible
+real AC_unit_length
+real AC_density_scale_factor
+int AC_ldensity_nolog
 
+
+
+gmem real AC_z[AC_nz]
+const bool ldensity_nolog = false
+const int n1 = NGHOST_VAL + 1
+int n2
+
+
+bc_steady_z(topbot,VtxBuffer j)
+{
+  int i;
+  if(topbot == AC_bot) {
+    if (j[vertexIdx.x][vertexIdx.y][n1-1] <= 0.0) {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][vertexIdx.y][n1-i-1]=j[vertexIdx.x][vertexIdx.y][n1-1];
+      }
+    }
+    else {
+      if (j[vertexIdx.x][vertexIdx.y][n1-1] > j[vertexIdx.x][vertexIdx.y][n1+1-1]) {
+        j[vertexIdx.x][vertexIdx.y][n1-1-1]=0.5*(j[vertexIdx.x][vertexIdx.y][n1-1]    +j[vertexIdx.x][vertexIdx.y][1+n1-1]);
+      }
+      else {
+        j[vertexIdx.x][vertexIdx.y][n1-1-1]=2.0* j[vertexIdx.x][vertexIdx.y][n1-1]    -j[vertexIdx.x][vertexIdx.y][1+n1-1];
+      }
+      for i in 2:NGHOST_VAL+1 {
+        j[vertexIdx.x][vertexIdx.y][n1-i-1]=2.0* j[vertexIdx.x][vertexIdx.y][n1-i+1-1]-j[vertexIdx.x][vertexIdx.y][n1-i+2-1];
+      }
+    }
+  }
+  else if(topbot == AC_top) {
+    if (j[vertexIdx.x][vertexIdx.y][n2-1] >= 0.0) {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][vertexIdx.y][n2+i-1]=j[vertexIdx.x][vertexIdx.y][n2-1];
+      }
+    }
+    else {
+      if (j[vertexIdx.x][vertexIdx.y][n2-1] < j[vertexIdx.x][vertexIdx.y][n2-1-1]) {
+        j[vertexIdx.x][vertexIdx.y][1+n2-1]=0.5*(j[vertexIdx.x][vertexIdx.y][n2-1]    +j[vertexIdx.x][vertexIdx.y][n2-1-1]);
+      }
+      else {
+        j[vertexIdx.x][vertexIdx.y][1+n2-1]=2.0* j[vertexIdx.x][vertexIdx.y][n2-1]    -j[vertexIdx.x][vertexIdx.y][n2-1-1];
+      }
+      for i in 2:NGHOST_VAL+1 {
+        j[vertexIdx.x][vertexIdx.y][n2+i-1]=2.0* j[vertexIdx.x][vertexIdx.y][n2+i-1-1]-j[vertexIdx.x][vertexIdx.y][n2+i-2-1];
+      }
+    }
+  }
+  else {
+  }
+}
+real fbotkbot
+real ftopktop
+real fbot
+real ftop
+real nkramers
+real hcond0_kramers
+int lheatc_chiconst
+int lheatc_kramers
+int AC_pretend_lntt
+
+real AC_cs20
+real AC_gamma_m1
+real AC_cv1
+real AC_dz2_bound[7]
+bc_ss_flux(topbot)
+{
+  real tmp_xy;
+  real cs2_xy;
+  real rho_xy;
+  int i;
+  if(topbot == AC_bot) {
+    if (AC_pretend_lntt) {
+      tmp_xy=-fbotkbot/exp(AC_iss[vertexIdx.x][vertexIdx.y][AC_n1-1]);
+      for i in 1:NGHOST_VAL+1 {
+        AC_iss[vertexIdx.x][vertexIdx.y][AC_n1-i-1]=AC_iss[vertexIdx.x][vertexIdx.y][AC_n1+i-1]-AC_dz2_bound[-i+NGHOST_VAL]*tmp_xy;
+      }
+    }
+    else {
+      if (AC_ldensity_nolog) {
+          rho_xy=AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n1-1];
+      }
+      else {
+        rho_xy=exp(AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n1-1]);
+      }
+      cs2_xy = AC_iss[vertexIdx.x][vertexIdx.y][AC_n1-1];
+      if (AC_ldensity_nolog) {
+        cs2_xy=AC_cs20*exp(AC_gamma_m1*(log(rho_xy)-AC_lnrho0)+AC_cv1*cs2_xy);
+      }
+      else {
+        cs2_xy=AC_cs20*exp(AC_gamma_m1*(AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n1-1]-AC_lnrho0)+AC_cv1*cs2_xy);
+      }
+      if (lheatc_chiconst) {
+        tmp_xy=fbot/(rho_xy*AC_chi*cs2_xy);
+      }
+      else if (lheatc_kramers) {
+        tmp_xy=fbot*pow(rho_xy,(2*nkramers))*pow((AC_cp*AC_gamma_m1),(6.5*nkramers))  /(hcond0_kramers*pow(cs2_xy,(6.5*nkramers+1.)));
+      }
+      else {
+        tmp_xy=fbotkbot/cs2_xy;
+      }
+      for i in 1:NGHOST_VAL+1 {
+        rho_xy = AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n1+i-1]-AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n1-i-1];
+        if (AC_ldensity_nolog) {
+            rho_xy = rho_xy/AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n1-1];
+        }
+        AC_iss[vertexIdx.x][vertexIdx.y][AC_n1-i-1]=AC_iss[vertexIdx.x][vertexIdx.y][AC_n1+i-1]+AC_cp*(AC_cp-AC_cv)*(rho_xy+AC_dz2_bound[-i+NGHOST_VAL]*tmp_xy);
+      }
+    }
+  }
+  else if(topbot == AC_top) {
+    if (AC_pretend_lntt) {
+      tmp_xy=-ftopktop/exp(AC_iss[vertexIdx.x][vertexIdx.y][AC_n2-1]);
+      for i in 1:NGHOST_VAL+1 {
+        AC_iss[vertexIdx.x][vertexIdx.y][AC_n2-i-1]=AC_iss[vertexIdx.x][vertexIdx.y][AC_n2+i-1]-AC_dz2_bound[i+NGHOST_VAL]*tmp_xy;
+      }
+    }
+    else {
+      if (AC_ldensity_nolog) {
+          rho_xy=AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n2-1];
+      }
+      else {
+        rho_xy=exp(AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n2-1]);
+      }
+      cs2_xy = AC_iss[vertexIdx.x][vertexIdx.y][AC_n2-1];
+      if (AC_ldensity_nolog) {
+        cs2_xy=AC_cs20*exp(AC_gamma_m1*(log(rho_xy)-AC_lnrho0)+AC_cv1*cs2_xy);
+      }
+      else {
+        cs2_xy=AC_cs20*exp(AC_gamma_m1*(AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n2-1]-AC_lnrho0)+AC_cv1*cs2_xy);
+      }
+      if (lheatc_chiconst) {
+        tmp_xy=ftop/(rho_xy*AC_chi*cs2_xy);
+      }
+      else if (lheatc_kramers) {
+        tmp_xy=ftop*pow(rho_xy,(2*nkramers))*pow((AC_cp*AC_gamma_m1),(6.5*nkramers))  /(hcond0_kramers*pow(cs2_xy,(6.5*nkramers+1.)));
+      }
+      else {
+        tmp_xy=ftopktop/cs2_xy;
+      }
+      for i in 1:NGHOST_VAL+1 {
+        rho_xy = AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n2+i-1]-AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n2-i-1];
+        if (AC_ldensity_nolog) {
+            rho_xy = rho_xy/AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n2-1];
+        }
+        AC_iss[vertexIdx.x][vertexIdx.y][AC_n2+i-1]=AC_iss[vertexIdx.x][vertexIdx.y][AC_n2-i-1]+AC_cp*(AC_cp-AC_cv)*(-rho_xy-AC_dz2_bound[i+NGHOST_VAL]*tmp_xy);
+      }
+    }
+  }
+  else {
+  }
+}
+
+int AC_n2
+int AC_n1
+
+int AC_l2
+int AC_l1
+
+int AC_m2
+int AC_m1
+
+
+bc_sym_x(sgn,topbot,VtxBuffer j,rel)
+{
+  int i;
+  if(topbot == AC_bot) {
+    if (rel) {
+      for i in 1:NGHOST_VAL+1 {
+        j[AC_l1-i-1][vertexIdx.y][vertexIdx.z]=2*j[AC_l1-1][vertexIdx.y][vertexIdx.z]+sgn*j[AC_l1+i-1][vertexIdx.y][vertexIdx.z];
+      }
+    }
+    else {
+      for i in 1:NGHOST_VAL+1 {
+        j[AC_l1-i-1][vertexIdx.y][vertexIdx.z]=              sgn*j[AC_l1+i-1][vertexIdx.y][vertexIdx.z];
+      }
+      if (sgn<0) {
+        j[AC_l1-1][vertexIdx.y][vertexIdx.z] = 0.;
+      }
+    }
+  }
+  else if(topbot == AC_top) {
+    if (rel) {
+      for i in 1:NGHOST_VAL+1 {
+        j[AC_l2+i-1][vertexIdx.y][vertexIdx.z]=2*j[AC_l2-1][vertexIdx.y][vertexIdx.z]+sgn*j[AC_l2-i-1][vertexIdx.y][vertexIdx.z];
+      }
+    }
+    else {
+      for i in 1:NGHOST_VAL+1 {
+        j[AC_l2+i-1][vertexIdx.y][vertexIdx.z]=              sgn*j[AC_l2-i-1][vertexIdx.y][vertexIdx.z];
+      }
+      if (sgn<0) {
+        j[AC_l2-1][vertexIdx.y][vertexIdx.z] = 0.;
+      }
+    }
+  }
+  else {
+  }
+}
+
+bc_sym_y(sgn,topbot,VtxBuffer j,rel)
+{
+  int i;
+  if(topbot == AC_bot) {
+    if (rel) {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][AC_m1-i-1][vertexIdx.z]=2*j[vertexIdx.x][AC_m1-1][vertexIdx.z]+sgn*j[vertexIdx.x][AC_m1+i-1][vertexIdx.z];
+      }
+    }
+    else {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][AC_m1-i-1][vertexIdx.z]=              sgn*j[vertexIdx.x][AC_m1+i-1][vertexIdx.z];
+      }
+      if (sgn<0) {
+        j[vertexIdx.x][AC_m1-1][vertexIdx.z] = 0.;
+      }
+    }
+  }
+  else if(topbot == AC_top) {
+    if (rel) {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][AC_m2+i-1][vertexIdx.z]=2*j[vertexIdx.x][AC_m2-1][vertexIdx.z]+sgn*j[vertexIdx.x][AC_m2-i-1][vertexIdx.z];
+      }
+    }
+    else {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][AC_m2+i-1][vertexIdx.z]=              sgn*j[vertexIdx.x][AC_m2-i-1][vertexIdx.z];
+      }
+      if (sgn<0) {
+        j[vertexIdx.x][AC_m2-1][vertexIdx.z] = 0.;
+      }
+    }
+  }
+  else {
+  }
+}
+
+const VtxBuffer AC_iss    = VTXBUF_ENTROPY
+const VtxBuffer AC_ilnrho = VTXBUF_LNRHO
+const VtxBuffer AC_irho = VTXBUF_LNRHO
+
+bc_ism(topbot,VtxBuffer j)
+{
+  int k;
+  real density_scale1;
+  real density_scale;
+  if (AC_density_scale_factor==AC_impossible) {
+    density_scale=AC_density_scale_cgs/AC_unit_length;
+  }
+  else {
+    density_scale=AC_density_scale_factor;
+  }
+  density_scale1=1./density_scale;
+  if(topbot == AC_bot) {
+    for k in 1:NGHOST_VAL+1 {
+      if (j==AC_irho  ||  j==AC_ilnrho) {
+        if (AC_ldensity_nolog) {
+          j[vertexIdx.x][vertexIdx.y][k-1]=j[vertexIdx.x][vertexIdx.y][AC_n1-1]*exp(-(AC_z[AC_n1]-AC_z[k])*density_scale1);
+        }
+        else {
+          j[vertexIdx.x][vertexIdx.y][k-1]=j[vertexIdx.x][vertexIdx.y][AC_n1-1] - (AC_z[AC_n1]-AC_z[k])*density_scale1;
+        }
+      }
+      else if (j==AC_iss) {
+        if (AC_ldensity_nolog) {
+          j[vertexIdx.x][vertexIdx.y][AC_n1-k-1]=j[vertexIdx.x][vertexIdx.y][AC_n1-1]+(AC_cp-AC_cv)*(log(AC_irho[vertexIdx.x][vertexIdx.y][AC_n1-1])-log(AC_irho[vertexIdx.x][vertexIdx.y][AC_n1-k-1])) +  AC_cv*log((AC_z[AC_n1]-AC_z[AC_n1-k])*density_scale+1.);
+        }
+        else {
+          j[vertexIdx.x][vertexIdx.y][AC_n1-k-1]=j[vertexIdx.x][vertexIdx.y][AC_n1-1]+(AC_cp-AC_cv)*(AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n1-1]-AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n1-k-1])+  AC_cv*log((AC_z[AC_n1]-AC_z[AC_n1-k])*density_scale+1.);
+        }
+      }
+      else {
+      }
+    }
+  }
+  else if(topbot == AC_top) {
+    for k in 1:NGHOST_VAL+1 {
+      if (j==AC_irho  ||  j==AC_ilnrho) {
+        if (AC_ldensity_nolog) {
+          j[vertexIdx.x][vertexIdx.y][AC_n2+k-1]=j[vertexIdx.x][vertexIdx.y][AC_n2-1]*exp(-(AC_z[AC_n2+k]-AC_z[AC_n2])*density_scale1);
+        }
+        else {
+          j[vertexIdx.x][vertexIdx.y][AC_n2+k-1]=j[vertexIdx.x][vertexIdx.y][AC_n2-1] - (AC_z[AC_n2+k]-AC_z[AC_n2])*density_scale1;
+        }
+      }
+      else if (j==AC_iss) {
+        if (AC_ldensity_nolog) {
+          j[vertexIdx.x][vertexIdx.y][AC_n2+k-1]=j[vertexIdx.x][vertexIdx.y][AC_n2-1]+(AC_cp-AC_cv)*(log(AC_irho[vertexIdx.x][vertexIdx.y][AC_n2-1])-log(AC_irho[vertexIdx.x][vertexIdx.y][AC_n2+k-1]))+  AC_cv*log((AC_z[AC_n2+k]-AC_z[AC_n2])*density_scale+1.);
+        }
+        else {
+          j[vertexIdx.x][vertexIdx.y][AC_n2+k-1]=j[vertexIdx.x][vertexIdx.y][AC_n2-1]+(AC_cp-AC_cv)*(AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n2-1]-AC_ilnrho[vertexIdx.x][vertexIdx.y][AC_n2+k-1])+  AC_cv*log((AC_z[AC_n2+k]-AC_z[AC_n2])*density_scale+1.);
+        }
+      }
+      else {
+      }
+    }
+  }
+  else {
+  }
+}
+
+
+bc_sym_z(sgn,topbot,VtxBuffer j,rel)
+{
+  int i;
+  if(topbot == AC_bot) {
+    if (rel) {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][vertexIdx.y][AC_n1-i-1]=2*j[vertexIdx.x][vertexIdx.y][AC_n1-1]+sgn*j[vertexIdx.x][vertexIdx.y][AC_n1+i-1];
+      }
+    }
+    else {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][vertexIdx.y][AC_n1-i-1]=              sgn*j[vertexIdx.x][vertexIdx.y][AC_n1+i-1];
+      }
+      if (sgn<0) {
+        j[vertexIdx.x][vertexIdx.y][AC_n1-1] = 0.;
+      }
+    }
+  }
+  else if(topbot == AC_top) {
+    if (rel) {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][vertexIdx.y][AC_n2+i-1]=j[vertexIdx.x][vertexIdx.y][AC_n2-1]+(j[vertexIdx.x][vertexIdx.y][AC_n2-1]+sgn*j[vertexIdx.x][vertexIdx.y][AC_n2-i-1]);
+      }
+    }
+    else {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][vertexIdx.y][AC_n2+i-1]=              sgn*j[vertexIdx.x][vertexIdx.y][AC_n2-i-1];
+      }
+      if (sgn<0) {
+        j[vertexIdx.x][vertexIdx.y][AC_n2-1] = 0.;
+      }
+    }
+  }
+  else {
+  }
+}
+
+
+
+
+
+test_func()
+{}
+
+
+BoundConds boundconds{
+  periodic(BOUNDARY_XY)
+  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_UUY,false)
+  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_UUZ,false)
+
+  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AX,false)
+  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AY,false)
+  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AZ,false)
+
+  bc_ss_flux(BOUNDARY_Z_TOP, AC_top)
+
+
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_UUY,false)
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_UUZ,false)
+
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AX,false)
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AY,false)
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AZ,false)
+
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_ENTROPY,false)
+
+  bc_steady_z(BOUNDARY_Z_TOP, AC_top,VTXBUF_UUX)
+  bc_steady_z(BOUNDARY_Z_BOT, AC_bot,VTXBUF_UUX)
+
+  bc_ism(BOUNDARY_Z_BOT, AC_bot,VTXBUF_LNRHO)
+  bc_ism(BOUNDARY_Z_TOP, AC_top,VTXBUF_LNRHO)
+
+}
+
+
+
+ComputeSteps AC_rhs(boundconds)
+{
+        twopass_solve_intermediate(1,0.0)
+        twopass_solve_final(1.0,0.0)
+}
 

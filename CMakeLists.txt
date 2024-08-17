@@ -22,10 +22,12 @@ option(USE_HIP     "Use HIP as the underlying GPGPU library instead of CUDA" OFF
 option(BUILD_SHARED_LIBS "Build Astaroth as a collection of shared libraries instead of statically built modules" OFF)
 option(PACKED_DATA_TRANSFERS    "Enables kernel for packed data transfers"          OFF)
 option(ADJACENT_VERTEX_BUFFERS "Allocate vertex buffers such that they form a single massive" OFF)
-
+option(LAGRANGIAN_GRID "Use Lagrangian grid instead of Eulerian" OFF)
+option(2D  "Compile Astaroth for 2D simulation" OFF)
 option(USE_PERFSTUBS "Build with perfstubs" OFF)
 option(USE_VENDORED_PERFSTUBS "Use the vendored perfstubs in 3rd_party/perfstubs" ON)
 option(DEBUG_SYNC "Whether to sync after all tasks in default ops" OFF)
+option(RUNTIME_COMPILATION "Compile version of Astaroth compiled at runtime" OFF)
 
 if (USE_HIP)
     find_program(CMAKE_HIP_COMPILER hipcc REQUIRED)
@@ -40,20 +42,34 @@ project(astaroth C CXX)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Project-wide compilation flags
-# -Werror TODO readd
+# -Werror TODO read
 set(COMMON_FLAGS "-DOMPI_SKIP_MPICXX -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result -Wno-cast-function-type") #-DOMPI_SKIP_MPICXX is to force OpenMPI to use the C interface
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # For IDE highlighting (clangd)
-
+add_definitions(-DAC_OVERRIDES_PATH="${CMAKE_SOURCE_DIR}/acc-runtime/overrides.h")
+add_definitions(-DAC_BASE_PATH="${CMAKE_SOURCE_DIR}")
+set(AC_BASE_PATH "${CMAKE_SOURCE_DIR}")
 ## Build type
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release") # Default
 endif()
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
+
+if(RUNTIME_COMPILATION)
+	add_definitions(-DAC_RUNTIME_COMPILATION=1)
+else()
+	add_definitions(-DAC_RUNTIME_COMPILATION=0)
+endif()
+
+if(LAGRANGIAN_GRID)
+	add_definitions(-DAC_LAGRANGIAN_GRID=1)
+else()
+	add_definitions(-DAC_LAGRANGIAN_GRID=0)
+endif()
 
 ## CUDA/HIP
 if (USE_HIP)
@@ -171,6 +187,12 @@ else ()
     add_definitions(-DAC_ADJACENT_VERTEX_BUFFERS=0)
 endif ()
 
+if (2D)
+     add_definitions(-DTWO_D=1)
+else () 
+     add_definitions(-DTWO_D=0)
+endif ()
+
 add_definitions(-DAC_DEFAULT_CONFIG="${CMAKE_SOURCE_DIR}/config/astaroth.conf")
 
 ## Includes
@@ -187,23 +209,38 @@ endif()
 
 ## Subdirectories
 add_subdirectory(acc-runtime)
-add_subdirectory(src/core/kernels)
+if (NOT RUNTIME_COMPILATION)
+  add_subdirectory(src/core/kernels)
+endif()
 add_subdirectory(src/core)
 if (NOT BUILD_SHARED_LIBS)
-    add_subdirectory(samples/ac-interpreter)
+    if(NOT 2D)
+    	add_subdirectory(samples/ac-interpreter)
+    endif()
+endif()
+
+if(BUILD_TESTS)
+	add_subdirectory(test)
+	add_definitions(-DINCLUDE_MODEL_SOLVER=0)
+else()
+	add_definitions(-DINCLUDE_MODEL_SOLVER=1)
 endif()
 
 if (BUILD_UTILS)
     add_subdirectory(src/utils)
 endif()
 
+if (RUNTIME_COMPILATION)
+	add_subdirectory(runtime_compilation)
+endif()
+
 ## Have this as a separate option when no other "samples" aree needed.
 ## Useful e.g. when compilation time is long e.g. with shock viscosity. 
-if (BUILD_STANDALONE)
+if (BUILD_STANDALONE AND NOT BUILD_TESTS)
     add_subdirectory(samples/standalone_mpi)
 endif()
 
-if (BUILD_SAMPLES)
+if (BUILD_SAMPLES AND NOT BUILD_TESTS)
     add_subdirectory(samples/ctest)
     add_subdirectory(samples/cpptest)
     add_subdirectory(samples/benchmark)
@@ -226,7 +263,10 @@ if (BUILD_SAMPLES)
         # add_subdirectory(samples/standalone_mpi)
         add_subdirectory(samples/mpitest)
         add_subdirectory(samples/devicetest)
-        add_subdirectory(samples/stencil-loader)
+	if(TWO_D)
+	else()
+        	add_subdirectory(samples/stencil-loader)
+	endif()
     endif()
 
   # add_subdirectory(samples/standalone)
@@ -251,7 +291,4 @@ if (BUILD_SAMPLES)
   #if (MPI_ENABLED)
   #  add_subdirectory(samples/bwtest)
   #endif()
-endif()
-if(BUILD_TESTS)
-	add_subdirectory(test)
 endif()

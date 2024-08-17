@@ -152,13 +152,23 @@ reduce_sum(const AcReal& a, const AcReal& b)
     return a + b;
 }
 
+bool __device__
+bound_check(const int3 end)
+{
+#if TWO_D == 0
+    return ((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+#else
+    return ((end <= (int3){DCONST(AC_mx), DCONST(AC_my), 1}));
+#endif
+}
+
 /** Map data from a 3D array into a 1D array */
 template <MapFn map_fn>
 __global__ void
 map(const AcReal* in, const int3 start, const int3 end, AcReal* out)
 {
     assert((start >= (int3){0, 0, 0}));
-    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+    assert(bound_check(end));
 
     const int3 tid = (int3){
         threadIdx.x + blockIdx.x * blockDim.x,
@@ -183,7 +193,7 @@ map_vec(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int3 star
         AcReal* out)
 {
     assert((start >= (int3){0, 0, 0}));
-    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+    assert(bound_check(end));
 
     const int3 tid = (int3){
         threadIdx.x + blockIdx.x * blockDim.x,
@@ -208,7 +218,7 @@ map_vec_scal(const AcReal* in0, const AcReal* in1, const AcReal* in2, const AcRe
              const int3 start, const int3 end, AcReal* out)
 {
     assert((start >= (int3){0, 0, 0}));
-    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+    assert(bound_check(end));
 
     const int3 tid = (int3){
         threadIdx.x + blockIdx.x * blockDim.x,
@@ -232,7 +242,7 @@ __global__ void
 map_coord(const AcReal* in, const int3 start, const int3 end, AcReal* out)
 {
     assert((start >= (int3){0, 0, 0}));
-    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+    assert(bound_check(end));
 
 
     const int3 tid = (int3){
@@ -272,7 +282,7 @@ map_vec_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, const int
               AcReal* out)
 {
     assert((start >= (int3){0, 0, 0}));
-    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+    assert(bound_check(end));
 
     const int3 tid = (int3){
         threadIdx.x + blockIdx.x * blockDim.x,
@@ -311,7 +321,7 @@ map_vec_scal_coord(const AcReal* in0, const AcReal* in1, const AcReal* in2, cons
                    const int3 start, const int3 end, AcReal* out)
 {
     assert((start >= (int3){0, 0, 0}));
-    assert((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+    assert(bound_check(end));
 
     const int3 tid = (int3){
         threadIdx.x + blockIdx.x * blockDim.x,

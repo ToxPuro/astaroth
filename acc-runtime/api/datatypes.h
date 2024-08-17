@@ -20,6 +20,7 @@
 
 #include <float.h> // DBL/FLT_EPSILON
 
+#include <math.h>
 #if AC_USE_HIP
   #include "hip.h"
 #else
@@ -29,25 +30,21 @@
 
 #if AC_DOUBLE_PRECISION
 typedef double AcReal;
-typedef double2 AcReal2;
-typedef double3 AcReal3;
 #define AC_REAL_MAX (DBL_MAX)
 #define AC_REAL_MIN (DBL_MIN)
-#define AcReal3(x, y, z) make_double3(x, y, z)
 #define AC_REAL_EPSILON (DBL_EPSILON)
 #define AC_REAL_MPI_TYPE (MPI_DOUBLE)
 #define AC_REAL_INVALID_VALUE (DBL_MAX)
 #else
 typedef float AcReal;
-typedef float2 AcReal2;
-typedef float3 AcReal3;
 #define AC_REAL_MAX (FLT_MAX)
 #define AC_REAL_MIN (FLT_MIN)
-#define AcReal3(x, y, z) make_float3(x, y, z)
 #define AC_REAL_EPSILON (FLT_EPSILON)
 #define AC_REAL_MPI_TYPE (MPI_FLOAT)
 #define AC_REAL_INVALID_VALUE (FLT_MAX)
 #endif
+
+#define AcReal3(x, y, z) ((AcReal3){x,y,z})
 
 #define AC_REAL_PI ((AcReal)M_PI)
 
@@ -56,7 +53,6 @@ typedef float3 AcReal3;
 #define TOACREAL3(arr) TOVEC3(AcReal3,arr)
 #define AcVector AcReal3
 
-typedef struct AcComplex {AcReal x; AcReal y;} AcComplex;
 #define AcComplex(x,y) (AcComplex){x,y} 
 
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
@@ -65,3 +61,4 @@ typedef struct {
   size_t x, y, z;
 } Volume;
 
+#include "user_typedefs.h"
