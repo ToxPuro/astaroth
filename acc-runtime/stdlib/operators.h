@@ -2,7 +2,7 @@
 
 u_dot_grad_vec(Matrix m,real3 v){
   //!!!return real3(dot(v,m.row(0)),dot(v,m.col(1)),dot(v,m.col(2)))
-  return real3(dot(v,m.col(0)),dot(v,m.col(1)),dot(v,m.col(2)))
+  return real3(AC_dot(v,m.col(0)),AC_dot(v,m.col(1)),AC_dot(v,m.col(2)))
 }
 curl_from_matrix(Matrix m) {
   return real3(m.data[2][1]-m.data[1][2], m.data[0][2] - m.data[2][0], m.data[1][0] - m.data[0][1])
