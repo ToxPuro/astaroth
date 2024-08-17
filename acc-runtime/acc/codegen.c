@@ -1335,6 +1335,11 @@ gen_user_structs()
 			create_unary_op (s_info,i,"+",fp);
 		}
 
+		if(!strcmp(struct_name,"AcComplex")) 
+		{
+			fprintf(fp,"#endif\n");
+			continue;
+		}
 		
 		if(!all_reals)  fprintf(fp,"#endif\n");
 		if(!all_reals)  continue;
@@ -1354,6 +1359,16 @@ gen_user_structs()
 			,struct_name,struct_name,struct_name);
 		for(size_t j = 0; j < s_info.user_struct_field_names[i].size; ++j)
 			fprintf(fp,"\t\ta*b.%s,\n",s_info.user_struct_field_names[i].data[j]);
+		fprintf(fp,"\t};\n}\n");
+		//TP: originally had the idea that scalar* struct would only be legal i.e. struct*scalar would not be
+		//But with hindsight seems to be too pedantic and doesn't really give help that much
+		fprintf(fp,"static HOST_DEVICE_INLINE %s\n"
+			   "operator*(const %s& a, const AcReal& b)\n"
+			   "{\n"
+			   "\treturn (%s){\n"
+			,struct_name,struct_name,struct_name);
+		for(size_t j = 0; j < s_info.user_struct_field_names[i].size; ++j)
+			fprintf(fp,"\t\tb*a.%s,\n",s_info.user_struct_field_names[i].data[j]);
 		fprintf(fp,"\t};\n}\n");
 
 
@@ -3286,11 +3301,13 @@ get_binary_expr_type(const ASTNode* node)
 	return
 		op && !strcmp(op,"/") && lhs_real ? "AcReal" :
 		op && !strcmp(op,"/") && !strcmp(lhs_res,"int") && rhs_real ? "AcReal" :
+		op && !strcmp(op,"/") && rhs_real ?  lhs_res :
 		op && !strcmp(op,"*") && !strcmp(lhs_res,"AcMatrix") &&  !strcmp(rhs_res,"AcReal3") ? "AcReal3" :
 		!strcmp(lhs_res,"AcComplex") || !strcmp(rhs_res,"AcComplex")   ? "AcComplex"  :
 		rhs_real      ?  "AcReal"  :
 		lhs_real && !strcmp(rhs_res,"int")    ?  "AcReal"  :
 		op && !strcmp(op,"*") && lhs_real && strcmp(rhs_res,"int")  ?  rhs_res   :
+		op && !strcmp(op,"*") && rhs_real && strcmp(lhs_res,"int")  ?  lhs_res   :
 		!strcmp(lhs_res,rhs_res) ? lhs_res :
 		NULL;
 
