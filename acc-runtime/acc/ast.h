@@ -35,7 +35,7 @@ typedef enum {
   NODE_DFUNCTION           = (1 << 1),
   NODE_KFUNCTION           = (1 << 2),
   NODE_FUNCTION_ID         = (1 << 3),
-  NODE_FUNCTION_PARAM      = (1 << 4),
+  NODE_RANGE               = (1 << 4),
   NODE_BINARY              = (1 << 5),
   NODE_BEGIN_SCOPE         = (1 << 6),
   NODE_DECLARATION         = (1 << 7),
@@ -553,4 +553,27 @@ static bool has_qualifier(const ASTNode* node, const char* qualifier)
 	if(node->type & NODE_TQUAL)
 		res |= !strcmp(node->lhs->buffer,qualifier);
 	return res;
+}
+
+static void
+format_source(const char* file_in, const char* file_out)
+{
+   FILE* in = fopen(file_in, "r");
+  assert(in);
+
+  FILE* out = fopen(file_out, "w");
+  assert(out);
+
+  while (!feof(in)) {
+    const char c = fgetc(in);
+    if (c == EOF)
+      break;
+
+    fprintf(out, "%c", c);
+    if (c == ';' || c == '{')
+      fprintf(out, "\n");
+  }
+
+  fclose(in);
+  fclose(out);
 }

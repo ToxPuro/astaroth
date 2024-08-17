@@ -70,12 +70,12 @@ void strip_whitespace(char *str) {
 "dconst"          { return DCONST_QL; }
 "const"          { return CONST_QL; }
 "dynamic"          { return DYNAMIC_QL; }
+"input"          { return INPUT; }
 "constexpr"      { return CONSTEXPR; }
 "output"          { return OUTPUT; }
 "run_const"          { return RUN_CONST; }
 "gmem"          { return GLOBAL_MEMORY_QL; }
 "auxiliary"             { return AUXILIARY; }
-"extern"             { return EXTERN; }
 
 "if"        { return IF; } /* Keywords */
 "if constexpr"        { return IF; } /* Keywords */

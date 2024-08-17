@@ -90,9 +90,9 @@
 
   //pad by one to avoid 0 length arrays that might not work
   typedef struct {
-	  AcReal real_params[NUM_REAL_INPUT_PARAMS];
-	  int    int_params[NUM_INT_INPUT_PARAMS];
-	  bool   bool_params[NUM_BOOL_INPUT_PARAMS];
+	  AcReal real_params[NUM_REAL_INPUT_PARAMS+1];
+	  int    int_params[NUM_INT_INPUT_PARAMS+1];
+	  bool   bool_params[NUM_BOOL_INPUT_PARAMS+1];
   } AcInputs;
 
   typedef struct {

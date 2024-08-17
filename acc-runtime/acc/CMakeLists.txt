@@ -10,7 +10,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 option(OPTIMIZE_MEM_ACCESSES "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time." OFF)
 option(OPTIMIZE_CONDITIONALS "Optimizes conditionals based on kernel input parameters by making copies of kernels for each combination of input params, works well with OPTIMIZE_MEM_ACCESSES since reduces the number of conditional accesses to kernels" OFF)
 
-add_compile_options(-pg)
 ## Find dependencies
 find_package(BISON)
 find_package(FLEX)
@@ -39,6 +38,7 @@ target_compile_definitions(acc PRIVATE -DACC_GEN_PATH="${AC_BASE_PATH}/acc-runti
 target_compile_definitions(acc PRIVATE -DACC_MATH_DIR="${AC_BASE_PATH}/acc-runtime/stdlib/math")
 target_compile_definitions(acc PRIVATE -DACC_UTILS_INTRINSICS="${AC_BASE_PATH}/acc-runtime/stdlib/utils/intrinsics.h")
 target_compile_definitions(acc PRIVATE -DACC_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_definitions(acc PRIVATE -DACC_OUTPUT_DIR="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
 #target_compile_definitions(acc PRIVATE -DACC_DIR="${CMAKE_CURRENT_SOURCE_DIR}" -DACC_MATH_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../stdlib/math" -DACC_UTILS_INTRINSICS="${CMAKE_CURRENT_SOURCE_DIR}/../stdlib/utils/intrinsics.h")
 target_link_libraries(acc PRIVATE tinyexpr)

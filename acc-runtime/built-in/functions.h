@@ -1,6 +1,6 @@
 #if TWO_D
 Stencil value_stencil
-{
+{ 
 	[0][0] = 1
 }
 #else
@@ -11,11 +11,12 @@ Stencil value_stencil
 #endif
 
 
-elemental 
+elemental
 value(Field s)
 {
 	return value_stencil(s)
 }
+
 elemental previous(Field s)
 {
 	return previous_base(s)
