@@ -323,7 +323,6 @@ IDX(const int3 idx)
 
 #define suppress_unused_warning(X) (void)X
 #include "user_kernels.h"
-#include "extern_kernels.h"
 
 
 typedef struct {

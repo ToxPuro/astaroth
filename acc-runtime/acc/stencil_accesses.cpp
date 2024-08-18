@@ -207,8 +207,6 @@ static std::vector<int> executed_conditionals{};
 #include "user_kernels.h"
 #undef  constexpr
 
-#include "extern_kernels.h"
-
 
 
 VertexBufferArray
