@@ -3261,9 +3261,15 @@ node_is_function_param(const ASTNode* node)
 static bool
 node_is_binary_expr(const ASTNode* node)
 {
-	//return (node->type & NODE_EXPRESSION) && node->rhs && node->rhs->lhs && node->rhs->lhs->token == BINARY_OP;
 	return node->type == NODE_BINARY_EXPRESSION;
 }
+
+static bool
+node_is_unary_expr(const ASTNode* node)
+{
+	return node->type == NODE_EXPRESSION && node->lhs && node->lhs->token == UNARY_OP;
+}
+
 static bool
 node_is_struct_access_expr(const ASTNode* node)
 {
@@ -3348,6 +3354,8 @@ get_binary_expr_type(const ASTNode* node)
 	const bool lhs_real = !strcmp(lhs_res,"AcReal");
 	const bool rhs_real = !strcmp(rhs_res,"AcReal");
 	return
+		op && !strcmps(op,"+","-","*","/") && (!strcmp(lhs_res,"Field") || !strcmp(rhs_res,"Field"))   ? "AcReal"  :
+		op && !strcmps(op,"+","-","*","/") && (!strcmp(lhs_res,"Field3") || !strcmp(rhs_res,"Field3")) ? "AcReal3" :
 		op && !strcmp(op,"/") && lhs_real ? "AcReal" :
 		op && !strcmp(op,"/") && !strcmp(lhs_res,"int") && rhs_real ? "AcReal" :
 		op && !strcmp(op,"/") && rhs_real ?  lhs_res :
@@ -4941,12 +4949,26 @@ transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* roo
 }
 
 void
-transform_field_binary_ops_recursive(ASTNode* node)
+transform_field_unary_ops(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(transform_field_unary_ops);
+	if(!node_is_unary_expr(node)) return;
+	const char* base_expr = get_expr_type(node->rhs);
+	const char* unary_op = get_node_by_token(UNARY_OP,node->lhs)->buffer;
+	if(strcmps(unary_op,"+","-")) return;
+	if(strcmp_null_ok(base_expr,"Field") && strcmp_null_ok(base_expr,"Field3")) return;
+
+	ASTNode*  func_call = create_func_call("value",node->rhs);
+	ASTNode*  unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
+	node->rhs = unary_expression;
+}
+void
+transform_field_binary_ops(ASTNode* node)
 {
 	if(node->lhs)
-		transform_field_binary_ops_recursive(node->lhs);
+		transform_field_binary_ops(node->lhs);
 	if(node->rhs)
-		transform_field_binary_ops_recursive(node->rhs);
+		transform_field_binary_ops(node->rhs);
 	if(!node_is_binary_expr(node)) return;
 
 	const char* lhs_expr = get_expr_type(node->lhs);
@@ -5027,11 +5049,12 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 }
 
 void
-transform_field_intrinsic_func_calls_and_binary_ops(ASTNode* root)
+transform_field_intrinsic_func_calls_and_ops(ASTNode* root)
 {
   	traverse(root, NODE_NO_OUT, NULL);
+	transform_field_unary_ops(root);
 	transform_field_intrinsic_func_calls_recursive(root,root);
-	transform_field_binary_ops_recursive(root);
+	transform_field_binary_ops(root);
 }
 void
 gen_extra_funcs(const ASTNode* root_in, FILE* stream)
@@ -5284,7 +5307,7 @@ preprocess(ASTNode* root)
   e_info = read_user_enums(root);
 
   transform_runtime_vars(root);
-  transform_field_intrinsic_func_calls_and_binary_ops(root);
+  transform_field_intrinsic_func_calls_and_ops(root);
   traverse(root, 0, NULL);
   duplicate_dfuncs = get_duplicate_dfuncs(root);
   gen_overloads(root);

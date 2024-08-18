@@ -1220,8 +1220,10 @@ bc_sym_z(sgn,topbot,VtxBuffer j,rel)
 
 
 
-test_func()
-{}
+Kernel test_func()
+{
+	ss_handle = +VTXBUF_ENTROPY;
+}
 
 
 BoundConds boundconds{

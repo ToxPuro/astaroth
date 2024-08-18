@@ -813,11 +813,11 @@ binary_op: '+'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
          | BINARY_OP   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; }
          ;
 
-unary_op: '-'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
-        | '+'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
-        | '!'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
-        | '&'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
-        | UNARY_OP  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
+unary_op: '-'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = UNARY_OP; }
+        | '+'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = UNARY_OP; }
+        | '!'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = UNARY_OP; }
+        | '&'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = UNARY_OP; }
+        | UNARY_OP  { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$);  $$->token = UNARY_OP; }
         ;
 
 assignment_op: ASSIGNOP    { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
@@ -862,7 +862,7 @@ declaration_postfix_expression: identifier                                      
                               ;
 
 unary_expression: postfix_expression          { $$ = astnode_create(NODE_EXPRESSION, $1, NULL); }
-                | unary_op postfix_expression { $$ = astnode_create(NODE_EXPRESSION, $1, $2); }
+                | unary_op postfix_expression { $$ = astnode_create(NODE_EXPRESSION, $1, $2);}
                 ;
 
 binary_expression: binary_op unary_expression { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
