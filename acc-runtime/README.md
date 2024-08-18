@@ -374,16 +374,17 @@ This is still a experimental feature that only works if MPI is enabled and which
 
 `ComputeSteps` are used to declare steps of kernel call invocations from which a `TaskGraph` is produced for the user.
 ```
+input real ac_input_val
 ComputeSteps(boundconds)
 {
-	kernel_call_1(...)
-	kernel_call_2(...)
+	kernel_call_1(ac_input_val,2.0)
+	kernel_call_2()
 	...
 	...
 	...
 }
 ```
-`ComputeSteps` take in a ´BoundConds` which is used to calculate the values of `Field`s when the values at the boundaries are needed.
+`ComputeSteps` take in a `BoundConds` which is used to calculate the values of `Field`s when the values at the boundaries are needed.
 
 ```
 Field x
