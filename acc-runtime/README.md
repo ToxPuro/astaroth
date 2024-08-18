@@ -74,6 +74,9 @@ hostdefine ONE  (1) // Visible in both device and host code
 ```
 real var    // Explicit type declaration
 real dconst // The type of device constants must be explicitly specified
+run_const value_to_be_given //Value that will be constant during the run of the program. Used in runtime-compilation
+input  real input_val  //Variable only used as input to e.g. `ComputeSteps`
+output int output_val //Variable only used as output from e.g. reduce operation
 
 var0 = 1    // The type of local variables can be left out (implicit typing)
 var1 = 1.0  // Implicit precision (determined based on compilation flags)
@@ -88,9 +91,10 @@ var6 = "Hello"
 
 #### Arrays
 ```
-int arr0 = 1, 2, 3 // The type of arrays must be explicitly specified
-real arr1 = 1.0, 2.0, 3.0
-len(arr1) // Length of an array
+int arr0 = [1, 2, 3] // The type of arrays must be explicitly specified
+real arr1 = [1.0, 2.0, 3.0]
+int arr2 = [[1,2,3], [3,4,5]] //Multidimensional arrays are supported
+size(arr1) // Length of an array
 ```
 
 #### Casting
@@ -270,7 +274,7 @@ Kernel kernel() {
     field3_val  = value(uu)   // Gets the value of ux,uy,uz from the input buffer at the current vertex
     unary_expr  = -ux         // is equivalent to -value(ux)
     binary_expr = -ux*2.0*uz  // is equivalent to -value(ux)*2.0*value(uz)
-    exp_val     = exp(uz)     //
+    exp_val     = exp(uz)     // is equivalent to exp(value(uz))
 }
 ```
 
@@ -343,3 +347,84 @@ To enable additional API functions in the Astaroth Core library for integration 
 The stencil order can be set by the user by `hostdefine STENCIL_ORDER (x)`, where `x` is the total number of cells on both sides of the center point per axis. For example, a simple von Neumann stencil is of order 2.
 
 > Note: The size of the halo surrounding the computational domain depends on `STENCIL_ORDER`.
+
+
+## Reductions
+This is still a experimental feature that only works if MPI is enabled and which still possibly changes in the future.
+
+Reductions work only if the kernel is called at each vertex point of the domain.
+```
+output real max_derux
+Field ux
+Kernel reduce_kernel()
+{
+	reduce_max(true,derx(ux),max_derux)
+}
+```
+* The reduce function parameters take three parameters:
+	* Whether to reduce or not during this call
+	* The value to at this vertex
+	* The output value to which to store the reduced value
+
+After executing the kernels the reduction has to be finalized with calling either `acGridFinalizeReduceLocal(graph)`, which reduces the values only on the local subdomain, or `acGridFinalize` which will reduce the value across processes.
+The reduced values can be accessed with `acDeviceGetOutput`.
+
+##ComputeSteps
+This is still a experimental feature that only works if MPI is enabled and which still possibly changes in the future.
+
+`ComputeSteps` are used to declare steps of kernel call invocations from which a `TaskGraph` is produced for the user.
+```
+ComputeSteps(boundconds)
+{
+	kernel_call_1(...)
+	kernel_call_2(...)
+	...
+	...
+	...
+}
+```
+`ComputeSteps` take in a ´BoundConds` which is used to calculate the values of `Field`s when the values at the boundaries are needed.
+
+Field x
+Field y
+NGHOST_VAL = 3
+int z_top
+int z_bot
+bc_sym_z(Field x, bool bottom)
+{
+	if(bottom)
+	{
+		for i in 1:NGHOST_VAL+1 {
+        		field[vertexIdx.x][vertexIdx.y][z_bot-i]=field[vertexIdx.x][vertexIdx.y][z_bot+i];
+      		}
+
+	}
+	else
+	{
+		for i in 1:NGHOST_VAL+1 {
+        		field[vertexIdx.x][vertexIdx.y][z_bot-i]=field[vertexIdx.x][vertexIdx.y][z_top+i];
+      		}
+	}
+}
+set_y_z_bc(bool bottom)
+{
+	for i in 1:NGHOST_VAL+1 {
+        	y[vertexIdx.x][vertexIdx.y][z_bot-i]=y[vertexIdx.x][vertexIdx.y][z_bot+i];
+      	}
+
+	for i in 1:NGHOST_VAL+1 {
+        	y[vertexIdx.x][vertexIdx.y][z_bot-i]=y[vertexIdx.x][vertexIdx.y][z_top+i];
+      	}
+}
+BoundConds(boundconds)
+{
+	periodic(BOUNDARY_XY)
+	bc_sym_z(BOUNDARY_Z_TOP,x,false)
+	bc_sym_z(BOUNDARY_Z_BOT,x,true)
+	set_y_z_bc(BOUNDARY_Z)
+}
+```
+The functions are called as normally in `BoundConds` except the first parameter represents which boundary the function is being used on.
+The DSL compiler inserts calls to functions in `BoundConds` and communications between the processes as needed by the data dependencies of the `Stencil` operations inside the called kernels.
+
+
