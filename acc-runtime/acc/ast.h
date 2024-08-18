@@ -28,6 +28,7 @@
 #include "vecs.h"
 
 #define BUFFER_SIZE (4096)
+#define FATAL_ERROR_MESSAGE "\n FATAL AC ERROR: "
 
 typedef enum {
   NODE_UNKNOWN             = 0,
