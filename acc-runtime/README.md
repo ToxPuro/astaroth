@@ -162,17 +162,17 @@ The `elemental` type qualifier on a function means that it is a pure function th
 In the previous example functions we had some duplicate code since `func3` basically applies `func2` to all of its members. 
 Since the `abs` function that takes in real value has been declared `elemental` it can be called also on `real3` and will produce the same effect if `abs` was called on all of the members of the parameter.
 
-A `elemental` function taking a `real` parameter can be called with:
+* A `elemental` function taking a `real` parameter can be called with:
 	* `real`
 	* `real3`
 	* `Field`
 	* `Field3`
 
-A `elemental` function taking a `real3` parameter can be called with:
+* A `elemental` function taking a `real3` parameter can be called with:
 	* `real3`
 	* `Field3`
 
-A `elemental` function taking two `real3` parameters can be called with:
+* A `elemental` function taking two `real3` parameters can be called with:
 	* `real3`,`real3`
 	* `real3`,`Field3`
 	* `Field3`,`real3`
