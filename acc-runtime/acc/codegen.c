@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+
 void
 get_executed_conditionals(void);
 
@@ -72,6 +73,10 @@ push_node(node_vec* dst, const ASTNode* src)
 	}
 	return dst->size-1;
 }
+static node_vec    dfunc_nodes      = VEC_INITIALIZER;
+static string_vec  dfunc_names      = VEC_INITIALIZER;
+static string_vec  duplicate_dfuncs = VEC_INITIALIZER;
+
 node_vec
 get_nodes_in_list(const ASTNode* head)
 {
@@ -3068,7 +3073,12 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 		{
 			char tmp[10000];
 		        combine_all(func_call_node,tmp);
-			fprintf(stderr,"Undeclared function used: %s\n",tmp);
+			const char* func_name = get_node_by_token(IDENTIFIER,func_call_node->lhs)->buffer;
+                        if(str_vec_contains(duplicate_dfuncs,func_name))
+                                fprintf(stderr,"FATAL ERROR: Unable to resolve overloaded function: %s\nIn:\t%s\n",func_name,tmp);
+                        else
+                                fprintf(stderr,"FATAL ERROR: Undeclared function used: %s\nIn:\t%s\n",func_name,tmp);
+ 
 			exit(EXIT_FAILURE);
 		}
 
@@ -3430,15 +3440,20 @@ all_primary_expressions_and_func_calls_have_type(const ASTNode* node)
 	return res;
 }
 
-static node_vec    dfunc_nodes      = VEC_INITIALIZER;
-static string_vec  dfunc_names      = VEC_INITIALIZER;
-static string_vec  duplicate_dfuncs = VEC_INITIALIZER;
 
 bool
 gen_type_info_base(ASTNode* node, const ASTNode* root);
 const char*
 get_func_call_expr_type(ASTNode* node)
 {
+	if(node->lhs->type == NODE_STRUCT_EXPRESSION)
+	{
+	       const ASTNode* struct_expr   = node->lhs;
+               const char* struct_func_name = get_node(NODE_MEMBER_ID,struct_expr->rhs)->buffer;
+               const char* base_type        = get_expr_type(struct_expr->lhs);
+               if(!strcmp(base_type,"AcMatrix") && !strcmps(struct_func_name,"col","row"))
+                       return "AcReal3";
+	}
 	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
 	Symbol* sym = (Symbol*)get_symbol(NODE_VARIABLE_ID | NODE_FUNCTION_ID ,func_name,NULL);
 	if(sym && sym->tspecifier_token == STENCIL)

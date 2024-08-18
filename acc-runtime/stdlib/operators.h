@@ -2,10 +2,10 @@
 
 u_dot_grad_vec(Matrix m,real3 v){
   //!!!return real3(dot(v,m.row(0)),dot(v,m.col(1)),dot(v,m.col(2)))
-  return real3(AC_dot(v,m.col(0)),AC_dot(v,m.col(1)),AC_dot(v,m.col(2)))
+  return real3(dot(v,m.col(0)),dot(v,m.col(1)),dot(v,m.col(2)))
 }
 curl_from_matrix(Matrix m) {
-  return real3(m.data[2][1]-m.data[1][2], m.data[0][2] - m.data[2][0], m.data[1][0] - m.data[0][1])
+  return real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
 }
 
 gradient(s) {
@@ -59,10 +59,10 @@ traceless_strain(uij,divu)
 {
   Matrix sij
   for row in 0:3{
-    sij.data[row][row] = uij.data[row][row] - (1.0/3.0)*divu
+    sij[row][row] = uij[row][row] - (1.0/3.0)*divu
     for col in row+1:3{
-      sij.data[col][row] = 0.5*(uij.data[col][row]+uij.data[row][col])
-      sij.data[row][col] = sij.data[col][row]
+      sij[col][row] = 0.5*(uij[col][row]+uij[row][col])
+      sij[row][col] = sij[col][row]
     }
   }
   return sij
@@ -77,17 +77,17 @@ gij5(v) {
 traceless_rateof_strain(v) {
     Matrix S
 
-    S.data[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))
-    S.data[0][1] = (1.0 / 2.0) * (dery(v.x) + derx(v.y))
-    S.data[0][2] = (1.0 / 2.0) * (derz(v.x) + derx(v.z))
+    S[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))
+    S[0][1] = (1.0 / 2.0) * (dery(v.x) + derx(v.y))
+    S[0][2] = (1.0 / 2.0) * (derz(v.x) + derx(v.z))
 
-    S.data[1][0] = S.data[0][1]
-    S.data[1][1] = (2.0 / 3.0) * dery(v.y) - (1.0 / 3.0) * (derx(v.x) + derz(v.z))
-    S.data[1][2] = (1.0 / 2.0) * (derz(v.y) + dery(v.z))
+    S[1][0] = S[0][1]
+    S[1][1] = (2.0 / 3.0) * dery(v.y) - (1.0 / 3.0) * (derx(v.x) + derz(v.z))
+    S[1][2] = (1.0 / 2.0) * (derz(v.y) + dery(v.z))
 
-    S.data[2][0] = S.data[0][2]
-    S.data[2][1] = S.data[1][2]
-    S.data[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
+    S[2][0] = S[0][2]
+    S[2][1] = S[1][2]
+    S[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
 
     return S
 }
