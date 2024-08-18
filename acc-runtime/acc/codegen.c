@@ -1550,7 +1550,7 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 	const int kernel_index = get_symbol_index(NODE_FUNCTION_ID,func_name,KERNEL);
 	if(kernel_index == -1)
 	{
-		fprintf(stderr,"Undeclared kernel %s used in ComputeSteps %s\n",func_name,taskgraph_name);
+		fprintf(stderr,FATAL_ERROR_MESSAGE"Undeclared kernel %s used in ComputeSteps %s\n",func_name,taskgraph_name);
 		exit(EXIT_FAILURE);
 	}
 	char* all_fields = malloc(sizeof(char)*4000);
@@ -1670,7 +1670,7 @@ get_boundary_int(const char* boundary_in)
 	int res = 0;
 	if(!strstr(boundary_in,"BOUNDARY_"))
 	{
-		fprintf(stderr,"incorrect boundary specification: %s\n",boundary_in);
+		fprintf(stderr,FATAL_ERROR_MESSAGE"incorrect boundary specification: %s\n",boundary_in);
 		exit(EXIT_FAILURE);
 	}
 	char* boundary = remove_substring(strdup(boundary_in),"BOUNDARY");
@@ -1736,7 +1736,7 @@ get_fields_included(const ASTNode* func_call, const char* boundconds_name)
 	const bool all_included = str_vec_contains(call_info.expr,"REST_FIELDS") || !strcmp(func_name,"periodic");
 	if (str_vec_contains(call_info.expr,"REST_FIELDS"))
 	{
-		fprintf(stderr,"Fatal error: REST_FIELDS not supported right now\n");
+		fprintf(stderr,FATAL_ERROR_MESSAGE"REST_FIELDS not supported right now\n");
 		exit(EXIT_FAILURE);
 	}
 	for(size_t field = 0; field < num_fields; ++field)
@@ -1812,7 +1812,7 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
 	func_params_info params_info = get_function_param_types_and_names(root,dfunc_name);
 	if(call_info.expr.size-1 != params_info.expr.size)
 	{
-		fprintf(stderr,"Number of inputs for %s in BoundConds does not match the number of input params\n", dfunc_name);
+		fprintf(stderr,FATAL_ERROR_MESSAGE"Number of inputs for %s in BoundConds does not match the number of input params\n", dfunc_name);
 		exit(EXIT_FAILURE);
 
 	}
@@ -2108,7 +2108,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 		for(int bc = 0; bc < num_boundaries; ++bc)
 			if(!field_boundconds[field + num_fields*bc])
 			{
-				fprintf(stderr,"Fatal error: Missing boundcond for field: %lu at boundary: %d\n",field,bc);
+				fprintf(stderr,FATAL_ERROR_MESSAGE"Missing boundcond for field: %lu at boundary: %d\n",field,bc);
 				exit(EXIT_FAILURE);
 
 			}
@@ -2188,7 +2188,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 			all_processed &= (call_level_set[k] != -1);
 		if((size_t) n_level_sets > kernel_calls.size)
 		{
-			fprintf(stderr,"Bug in the compiler aborting\n");
+			fprintf(stderr,FATAL_ERROR_MESSAGE"Bug in the compiler aborting\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -3059,11 +3059,12 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 	  const ASTNode* range_node = get_parent_node(NODE_RANGE,node);
 	  if(range_node)
 	  {
-		fprintf(stderr,"Undeclared variable or function used on a range expression\n");
+		fprintf(stderr,FATAL_ERROR_MESSAGE"Undeclared variable or function used on a range expression\n");
 		char tmp[10000];
 		combine_all(range_node, tmp);
 		fprintf(stderr,"Range: %s\n",tmp);
 		fprintf(stderr,"Var: %s\n",node->buffer);
+		fprintf(stderr,"\n");
 		exit(EXIT_FAILURE);
 	  }
 	  const ASTNode* func_call_node = get_parent_node(NODE_FUNCTION_CALL,node);
@@ -3074,11 +3075,15 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 			char tmp[10000];
 		        combine_all(func_call_node,tmp);
 			const char* func_name = get_node_by_token(IDENTIFIER,func_call_node->lhs)->buffer;
+			fprintf(stderr,FATAL_ERROR_MESSAGE);
                         if(str_vec_contains(duplicate_dfuncs,func_name))
-                                fprintf(stderr,"FATAL ERROR: Unable to resolve overloaded function: %s\nIn:\t%s\n",func_name,tmp);
+                                fprintf(stderr,"Unable to resolve overloaded function: %s\nIn:\t%s\n",func_name,tmp);
                         else
-                                fprintf(stderr,"FATAL ERROR: Undeclared function used: %s\nIn:\t%s\n",func_name,tmp);
- 
+                                fprintf(stderr,"Undeclared function used: %s\nIn:\t%s\n",func_name,tmp);
+			const ASTNode* surrounding_func = get_parent_node(NODE_FUNCTION,node);
+			if(surrounding_func)
+                                fprintf(stderr,"Inside %s",get_node_by_token(IDENTIFIER,surrounding_func->lhs)->buffer);
+			fprintf(stderr,"\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -3087,11 +3092,12 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 	  const bool used_in_assignment = is_right_child(NODE_ASSIGNMENT,node);
 	  if(used_in_assignment)
 	  {
-		fprintf(stderr,"Undeclared variable or function used on the right hand side of an assignment\n");
+		fprintf(stderr,FATAL_ERROR_MESSAGE"Undeclared variable or function used on the right hand side of an assignment\n");
 		char tmp[10000];
 		combine_all(get_parent_node(NODE_ASSIGNMENT,node), tmp);
 		fprintf(stderr,"Assignment: %s\n",tmp);
 		fprintf(stderr,"Var: %s\n",node->buffer);
+		fprintf(stderr,"\n");
 		exit(EXIT_FAILURE);
 	  }
 	}
@@ -3451,7 +3457,7 @@ get_func_call_expr_type(ASTNode* node)
 	       const ASTNode* struct_expr   = node->lhs;
                const char* struct_func_name = get_node(NODE_MEMBER_ID,struct_expr->rhs)->buffer;
                const char* base_type        = get_expr_type(struct_expr->lhs);
-               if(!strcmp(base_type,"AcMatrix") && !strcmps(struct_func_name,"col","row"))
+               if(!strcmp_null_ok(base_type,"AcMatrix") && !strcmps(struct_func_name,"col","row"))
                        return "AcReal3";
 	}
 	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
@@ -5004,7 +5010,7 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 		}
 		else
 		{
-			printf("FATAL ERROR: Missing elemental case for func: %s\n",dfunc_name);
+			fprintf(stderr,FATAL_ERROR_MESSAGE"Missing elemental case for func: %s\n",dfunc_name);
 			exit(EXIT_FAILURE);
 		}
 	}

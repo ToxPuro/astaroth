@@ -115,7 +115,7 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
   if(log) printf("Building AC object %s\n", file);
   FILE* in = fopen(file, "r");
   if (!in) {
-    fprintf(stderr, "FATAL ERROR: could not open include file '%s'\n", file);
+    fprintf(stderr, FATAL_ERROR_MESSAGE"could not open include file '%s'\n", file);
     assert(in);
     exit(EXIT_FAILURE);
   }
@@ -416,24 +416,6 @@ main(int argc, char** argv)
     const char* dir = dirname(file); // WARNING: dirname has side effects!
     dir_backup = dir;
     
-    {
-    	char extern_kernels_filename[10000];
-    	char command[10000 + 100];
-	sprintf(extern_kernels_filename,"%s/%s",dir,"extern_kernels.h");
-	if(file_exists(extern_kernels_filename))
-		sprintf(command,"cp %s %s\n",extern_kernels_filename,"extern_kernels.h");
-	else
-		sprintf(command,"touch %s\n","extern_kernels.h");
-	int res = system(command);
-	if(res)
-	{
-		fprintf(stderr,"%s\n","FATAL ERROR");
-		exit(EXIT_FAILURE);
-	}
-    }
-   
- 
-
     reset_extra_files();
     code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, false, false, true); 
     code_generation_pass(stage0, stage1, stage2, stage3, stage4,  dir, false, OPTIMIZE_CONDITIONALS, false);
@@ -593,7 +575,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    {
 		if(!has_qualifier($$->rhs,"const"))
 		{
-                  fprintf(stderr, "FATAL ERROR: assignment to a global variable only allowed for constant values\n");
+                  fprintf(stderr, FATAL_ERROR_MESSAGE"assignment to a global variable only allowed for constant values\n");
                   assert(!has_qualifier($$->rhs,"const"));
 		  exit(EXIT_FAILURE);
 		}
