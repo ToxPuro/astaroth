@@ -2087,6 +2087,15 @@ acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Fiel
     return BASE_FUNC_NAME(acDSLBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
 }
 
+static inline
+AcTaskDefinition
+acBoundaryCondition(const AcBoundary boundary, AcKernel kernel, std::vector<Field> fields)
+{
+    std::function<void(ParamLoadingInfo)> loader = [](const ParamLoadingInfo& p){(void)p;};
+    return BASE_FUNC_NAME(acDSLBoundaryCondition)(boundary, kernel, fields.data(), fields.size(), fields.data(), fields.size(), loader);
+}
+
+
 
 /** */
 template <size_t num_fields, size_t num_parameters>

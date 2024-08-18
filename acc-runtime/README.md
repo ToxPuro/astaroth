@@ -262,7 +262,7 @@ gradient(field) {
 
 A `Field` is a scalar array that can be used in conjuction with `Stencil` operations. For convenience, a vector field can be constructed from three scalar fields by declaring them a `Field3` structure.
 To get the value of a `Field` or `Field3` at the current vertex use the built-in function `value`
-A `Field` can be used in unary expressions and binary arithmetic expresions which is equivalent to calling `value` on the `Field`
+A `Field` can be used in unary expressions and binary arithmetic expressions (`+`, `-`, `/`,`*`)  which is equivalent to calling `value` on the `Field`
 Calling a built-in math functions with `Field` is equivalent first calling `value` on the `Field`
 ```
 Field ux, uy, uz // Three scalar fields `ux`, `uy`, and `uz`

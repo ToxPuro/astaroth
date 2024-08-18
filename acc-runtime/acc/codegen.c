@@ -1748,6 +1748,19 @@ get_fields_included(const ASTNode* func_call, const char* boundconds_name)
 	free_func_params_info(&call_info);
 	return res;
 }
+const char*
+boundary_str(const int bc)
+{
+       return
+               bc == 0 ? "BOUNDARY_X_BOT" :
+               bc == 1 ? "BOUNDARY_Y_BOT" :
+               bc == 2 ? "BOUNDARY_Z_BOT" :
+               bc == 3 ? "BOUNDARY_X_TOP" :
+               bc == 4 ? "BOUNDARY_Y_TOP" :
+               bc == 5 ? "BOUNDARY_Z_TOP" :
+               NULL;
+}
+
 void
 process_boundcond(const ASTNode* func_call, char** res, const ASTNode* root, const char* boundconds_name, string_vec* input_symbols,string_vec* input_types)
 {
@@ -1812,7 +1825,7 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
 	func_params_info params_info = get_function_param_types_and_names(root,dfunc_name);
 	if(call_info.expr.size-1 != params_info.expr.size)
 	{
-		fprintf(stderr,FATAL_ERROR_MESSAGE"Number of inputs for %s in BoundConds does not match the number of input params\n", dfunc_name);
+		fprintf(stderr,FATAL_ERROR_MESSAGE"Number of inputs %lu for %s in BoundConds does not match the number of input params %lu \n", call_info.expr.size-1, dfunc_name, params_info.expr.size);
 		exit(EXIT_FAILURE);
 
 	}
@@ -2108,7 +2121,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 		for(int bc = 0; bc < num_boundaries; ++bc)
 			if(!field_boundconds[field + num_fields*bc])
 			{
-				fprintf(stderr,FATAL_ERROR_MESSAGE"Missing boundcond for field: %lu at boundary: %d\n",field,bc);
+				fprintf(stderr,FATAL_ERROR_MESSAGE"Missing boundcond for field: %s at boundary: %s\n",field_sym->identifier,boundary_str(bc));
 				exit(EXIT_FAILURE);
 
 			}
@@ -4973,6 +4986,9 @@ transform_field_binary_ops(ASTNode* node)
 
 	const char* lhs_expr = get_expr_type(node->lhs);
 	const char* rhs_expr = get_expr_type(node->rhs);
+	const char* op = node->rhs->lhs->buffer;
+        if(!op) return;
+        if(strcmps(op,"+","-","/","*")) return;
 
 	if(!strcmp_null_ok(lhs_expr,"Field") || !strcmp_null_ok(lhs_expr,"Field3"))
 	{
