@@ -361,6 +361,7 @@ Kernel reduce_kernel()
 	reduce_max(true,derx(ux),max_derux)
 }
 ```
+
 * The reduce function parameters take three parameters:
 	* Whether to reduce or not during this call
 	* The value to at this vertex
