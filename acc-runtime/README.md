@@ -132,6 +132,24 @@ func2(val) {
     return val
 }
 
+func3(real x) {
+	return fabs(x)
+}
+
+func3(real3 v) {
+	return 
+		real3
+		(
+			fabs(v.x),
+			fabs(v.y),
+			fabs(v.z)
+		)
+}
+elemental abs(real x)
+{
+	return fabs(x)
+}
+
 # Note `Kernel` type qualifier
 Kernel func3() {
     func("Hello!")
@@ -140,7 +158,27 @@ Kernel func3() {
 
 > Note: Function parameters are **passed by constant reference**. Therefore input parameters **cannot be modified** and one may need to allocate temporary storage for intermediate values when performing more complex calculations.
 
-> Note: Overloading is not allowed, all function identifiers must be unique
+The `elemental` type qualifier on a function means that it is a pure function that returns a value and it can be compossed on structures containing it
+In the previous example functions we had some duplicate code since `func3` basically applies `func2` to all of its members. 
+Since the `abs` function that takes in real value has been declared `elemental` it can be called also on `real3` and will produce the same effect if `abs` was called on all of the members of the parameter.
+
+A `elemental` function taking a `real` parameter can be called with:
+	* `real`
+	* `real3`
+	* `Field`
+	* `Field3`
+
+A `elemental` function taking a `real3` parameter can be called with:
+	* `real3`
+	* `Field3`
+
+A `elemental` function taking two `real3` parameters can be called with:
+	* `real3`,`real3`
+	* `real3`,`Field3`
+	* `Field3`,`real3`
+	* `Field3`,`Field3`
+
+The semantics of passing a `Field` value to `elemental` functions is always the same as if `value` (explained in Fields section) was first called on the field
 
 #### Stencils
 ```
@@ -182,23 +220,27 @@ Max Stencil largest_neighbor {
     [0][0][-1] = 1,
 }
 
+real AC_dsx 
+real AC_dsy 
+real AC_dsz 
+
 Stencil derx {
-    [0][0][-3] = -DER1_3,
-    [0][0][-2] = -DER1_2,
-    [0][0][-1] = -DER1_1,
-    [0][0][1]  = DER1_1,
-    [0][0][2]  = DER1_2,
-    [0][0][3]  = DER1_3
+    [0][0][-3] = AC_dsx*-DER1_3,
+    [0][0][-2] = AC_dsx*-DER1_2,
+    [0][0][-1] = AC_dsx*-DER1_1,
+    [0][0][1]  = AC_dsx*DER1_1,
+    [0][0][2]  = AC_dsx*DER1_2,
+    [0][0][3]  = AC_dsx*DER1_3
 }
 
 Stencil dery {
-    [0][-3][0] = -DER1_3,
-    [0][-2][0] = -DER1_2,
+    [0][-3][0] = AC_dsy*-DER1_3,
+    [0][-2][0] = AC_dsy*-DER1_2,
     [0][-1][0] = ...
 }
 
 Stencil derz {
-    [-3][0][0] = -DER1_3,
+    [-3][0][0] = AC_dsz*-DER1_3,
     [-2][0][0] = ...
 }
 
@@ -207,20 +249,28 @@ gradient(field) {
 }
 ```
 
-> Note: Stencil coefficients supplied in the DSL source must be compile-time constants. To set up coefficients at runtime, see [instructions below](#loading-and-storing-stencil-coefficients-at-runtime).
+> Note: Stencil coefficients supplied in the DSL source must be either compile-time constants or device constants. For device constants the values are looked up from the loaded config. Stencil coefficients can also be set up coefficients at runtime with API calls, see [instructions below](#loading-and-storing-stencil-coefficients-at-runtime).
 
-> Note: To reduce redundant communication or to enable larger stencils, the stencil order can be changed by modifying `static const size_t stencil_order = ...` in `acc-runtime/acc/codegen.c`. Modifying the stencil order with the DSL is currently not supported.
+> Note: To reduce redundant communication or to enable larger stencils, the stencil order can be changed by declaring `#DEFINE STENCIL\_ORDER (YOUR VALUE)` in DSL. Modifying the stencil order with the DSL is currently not supported.
 
 
 #### Fields
 
 A `Field` is a scalar array that can be used in conjuction with `Stencil` operations. For convenience, a vector field can be constructed from three scalar fields by declaring them a `Field3` structure.
+To get the value of a `Field` or `Field3` at the current vertex use the built-in function `value`
+A `Field` can be used in unary expressions and binary arithmetic expresions which is equivalent to calling `value` on the `Field`
+Calling a built-in math functions with `Field` is equivalent first calling `value` on the `Field`
 ```
 Field ux, uy, uz // Three scalar fields `ux`, `uy`, and `uz`
 #define uu Field3(ux, uy, uz) // A vector field `uu` consisting of components `ux`, `uy`, and `uz`
 
 Kernel kernel() {
-    write(ux, derx(ux)) // Writes the x derivative of the field `ux` to the output buffer
+    write(ux, derx(ux))       // Writes the x derivative of the field `ux` to the output buffer
+    field_val   = value(ux)   // Gets the value of ux from the input buffer at the current vertex
+    field3_val  = value(uu)   // Gets the value of ux,uy,uz from the input buffer at the current vertex
+    unary_expr  = -ux         // is equivalent to -value(ux)
+    binary_expr = -ux*2.0*uz  // is equivalent to -value(ux)*2.0*value(uz)
+    exp_val     = exp(uz)     //
 }
 ```
 
@@ -240,7 +290,7 @@ real dot(real3, real3)   // Dot product
 real3 cross(real3 a, real3 b) // Right-hand-side cross product a x b
 size_t len(arr) // Returns the length of an array `arr`
 
-// Trigonometric functions
+// Trigonometric functions (Accessible from stdlib/math)
 exp
 sin
 cos
@@ -258,25 +308,26 @@ real AC_REAL_PI // Value of pi using the same precision as `real`
 
 # Advanced
 
-The input and output arrays can also be accessed without declaring a `Stencil` as follows.
+The input arrays can also be accessed without declaring a `Stencil` as follows.
 
 ```
 Field field0
+Field field1
 
 Kernel kernel() {
   // The example showcases two ways of accessing a field element without the Stencil structure
-  a = FIELD_IN[field0][IDX(vertexIdx)] // Note that IDX() here accepts the 3D spatial index
-  b = FIELD_OUT[field0][IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z)] // And also individual index components
+  int3 coord = ...
+  //Writing to the input array is inherently unsafe so it really only be done inside boundary conditions
+  field0[coord.x][coord.y][coord.y] = field1[coord.x][coord.y][coord.z]
 }
 ```
 
-> Note: Accessing field elements using `FIELD_IN` and `FIELD_OUT` does not cache the reads and is significantly less efficient than using a `Stencil`.
+> Note: Accessing field elements this way is suboptimal compared to accessing then using a `Stencil` or calling `value` since the reads are not cached. Only access field elements this way if otherwise not possible.
 
 # Interaction with the Astaroth Core and Utils libraries
 
 ## Loading and storing stencil coefficients at runtime
-
-The stencil coefficients defined in the DSL syntax must be known at compile time for simplicity. However, the Astaroth Runtime API provides the functions `acLoadStencil` and `acStoreStencil` for loading/storing stencil coefficients at runtime. This is useful for, say, trying out different coefficients without the need for recompilation and for setting the coefficients programmatically if too cumbersome by hand.
+The Astaroth Runtime API provides the functions `acLoadStencil` and `acStoreStencil` for loading/storing stencil coefficients at runtime. This is useful for, say, for setting the coefficients programmatically if too cumbersome by hand. We however highly recommend to use device constant variables in the stencils instead of separately loading stencil coefficients at runtime, since it eliminates error where the actual stencil coefficients are calculated separately from the stencil declarations.
 
 See also the functions `acDeviceLoadStencil`, `acDeviceStoreStencil`, `acGridLoadStencil`, and `acGridStoreStencil` provided by the Astaroth Core library.
 
