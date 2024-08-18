@@ -369,7 +369,7 @@ Kernel reduce_kernel()
 After executing the kernels the reduction has to be finalized with calling either `acGridFinalizeReduceLocal(graph)`, which reduces the values only on the local subdomain, or `acGridFinalize` which will reduce the value across processes.
 The reduced values can be accessed with `acDeviceGetOutput`.
 
-##ComputeSteps
+## ComputeSteps
 This is still a experimental feature that only works if MPI is enabled and which still possibly changes in the future.
 
 `ComputeSteps` are used to declare steps of kernel call invocations from which a `TaskGraph` is produced for the user.
@@ -385,6 +385,7 @@ ComputeSteps(boundconds)
 ```
 `ComputeSteps` take in a ´BoundConds` which is used to calculate the values of `Field`s when the values at the boundaries are needed.
 
+```
 Field x
 Field y
 NGHOST_VAL = 3
