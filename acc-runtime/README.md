@@ -396,25 +396,25 @@ bc_sym_z(Field x, bool bottom)
 {
 	if(bottom)
 	{
-		for i in 1:NGHOST_VAL+1 {
+		for i in 0:NGHOST_VAL {
         		field[vertexIdx.x][vertexIdx.y][z_bot-i]=field[vertexIdx.x][vertexIdx.y][z_bot+i];
       		}
 
 	}
 	else
 	{
-		for i in 1:NGHOST_VAL+1 {
+		for i in 0:NGHOST_VAL {
         		field[vertexIdx.x][vertexIdx.y][z_bot-i]=field[vertexIdx.x][vertexIdx.y][z_top+i];
       		}
 	}
 }
 set_y_z_bc(bool bottom)
 {
-	for i in 1:NGHOST_VAL+1 {
+	for i in 0:NGHOST_VAL {
         	y[vertexIdx.x][vertexIdx.y][z_bot-i]=y[vertexIdx.x][vertexIdx.y][z_bot+i];
       	}
 
-	for i in 1:NGHOST_VAL+1 {
+	for i in 0:NGHOST_VAL {
         	y[vertexIdx.x][vertexIdx.y][z_bot-i]=y[vertexIdx.x][vertexIdx.y][z_top+i];
       	}
 }
