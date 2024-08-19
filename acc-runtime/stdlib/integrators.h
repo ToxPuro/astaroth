@@ -3,14 +3,14 @@
 rk3(real s0, real s1, real roc, int step_num, real dt) {
 #if RK_ORDER == 1
     // Euler
-    real alpha= 0.0, 0.0, 0.0, 0.0
-    real beta = 0.0, 1.0, 0.0, 0.0
+    alpha = [0.0, 0.0, 0.0, 0.0]
+    beta  = [0.0, 1.0, 0.0, 0.0]
 #elif RK_ORDER == 2
-    real alpha= 0.0,     0.0, -1.0/2.0, 0.0
-    real beta = 0.0, 1.0/2.0,      1.0, 0.0
+    alpha = [0.0,     0.0, -1.0/2.0, 0.0]
+    beta  = [0.0, 1.0/2.0,      1.0, 0.0]
 #elif RK_ORDER == 3
-    real alpha = 0., -5./9., -153./128.
-    real beta = 1./3., 15./ 16., 8./15.
+    alpha =[ 0., -5./9., -153./128. ]
+    beta  =[ 1./3., 15./ 16., 8./15.]
 #endif
     /*
     // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below
@@ -40,7 +40,7 @@ rk3(Field3 field, real3 roc, int step_num, real dt) {
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_intermediate(real w, real roc, int step_num, real dt) {
-    real alpha = 0., -5./9., -153./128.
+    real alpha = [0., -5./9., -153./128.]
 
     // return alpha[AC_step_number] * w + roc * AC_dt
     // This conditional has abysmal performance on AMD for some reason, better performance on NVIDIA than the workaround below
@@ -71,7 +71,7 @@ rk3_intermediate(Field3 field, real3 roc, int step_num, real dt)
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_final(real f, real w, int step_num) {
-    real beta = 1./3., 15./16., 8./15.
+    beta = [1./3., 15./16., 8./15.]
     return f + beta[step_num] * w
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
@@ -83,7 +83,7 @@ rk3_final(real3 f,real3 w,int step_num){
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/
 rk3_final(Field field, int step_num) {
-    real beta = 1./3., 15./16., 8./15.
+    real beta = [1./3., 15./16., 8./15.]
     return previous(field) + beta[step_num] * value(field)
 }
 /*--------------------------------------------------------------------------------------------------------------------------*/

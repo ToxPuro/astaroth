@@ -431,6 +431,16 @@ strcatprintf(char* dst, const char* format, ...)
 	strcat(dst,buffer);
 	
 }
+static inline char*
+sprintf_new(const char* format, ...)
+{
+	static char buffer[10000];
+	va_list args;
+	va_start(args,format);
+	int res = vsprintf(buffer,format,args);
+	va_end(args);
+	return strdup(buffer);
+}
 static inline char* readFile(const char *filename) {
     FILE *file = fopen(filename, "rb"); // Open the file in binary mode
 

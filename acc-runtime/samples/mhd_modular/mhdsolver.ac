@@ -1222,7 +1222,8 @@ bc_sym_z(sgn,topbot,VtxBuffer j,rel)
 
 Kernel test_func()
 {
-	ss_handle = +VTXBUF_ENTROPY;
+	int3 test = {0,1,2}
+	test.x += VTXBUF_ENTROPY;
 }
 
 

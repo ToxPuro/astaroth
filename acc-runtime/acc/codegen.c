@@ -3068,7 +3068,10 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 		 )
 	{
 	  if(node->is_constexpr && !(node->type & NODE_FUNCTION_ID)) fprintf(stream, " constexpr ");
-          fprintf(stream, "auto ");
+	  if(node->expr_type)
+		  fprintf(stream, "%s ",node->expr_type);
+	  else
+          	fprintf(stream, "auto ");
 	  const ASTNode* range_node = get_parent_node(NODE_RANGE,node);
 	  if(range_node)
 	  {
@@ -3254,9 +3257,10 @@ set_primary_expression_types(ASTNode* node, const char* type, const char* identi
 		set_primary_expression_types(node->rhs,type,identifier);
 	if(node->type != NODE_PRIMARY_EXPRESSION)
 		return;
-	const ASTNode* identifier_node = get_node_by_token(IDENTIFIER,node);
+	ASTNode* identifier_node = get_node_by_token(IDENTIFIER,node);
 	if(!identifier_node || strcmp(identifier_node->buffer,identifier)) return;
 	node->expr_type = type;
+	identifier_node->expr_type = type;
 }
 static int
 strcmp_null_ok(const char* a, const char* b)
@@ -3491,11 +3495,7 @@ get_func_call_expr_type(ASTNode* node)
 		for(size_t i = 0; i < dfunc_nodes.size; ++i)
 			if(!strcmp(dfunc_names.data[i],func_name)) func = dfunc_nodes.data[i];
 		if(strlen(sym->tspecifier))
-		{
-			if(sym && !strcmp(func_name,"MakeField3"))
-				printf("HI: \n");
 			return strdup(sym->tspecifier);
-		}
 		else if(func && func->expr_type)
 			return strdup(func->expr_type);
 		if(!node->expr_type)
@@ -3528,6 +3528,18 @@ get_func_call_expr_type(ASTNode* node)
 	}
 	return node->expr_type;
 	
+}
+const char*
+get_array_initializer_type(ASTNode* node)
+{
+	//TP: do not consider more than 1d arrays for the moment
+	if(get_node(NODE_ARRAY_INITIALIZER,node->lhs)) return NULL;
+	node_vec elems = get_nodes_in_list(node->lhs);
+	const char* expr = get_expr_type((ASTNode*) elems.data[0]);
+	if(!expr) return NULL;
+	const char* res = sprintf_new("AcArray<%s,%lu>",expr,elems.size);
+	free_node_vec(&elems);
+	return res;
 }
 const char*
 get_struct_initializer_type(ASTNode* node)
@@ -3576,6 +3588,8 @@ get_expr_type(ASTNode* node)
 	const char* res = node->expr_type;
 	if(node->type == NODE_PRIMARY_EXPRESSION)
 		res = get_primary_expr_type(node);
+	else if(node->type & NODE_ARRAY_INITIALIZER)
+		res = get_array_initializer_type(node);
 	else if(node->type & NODE_STRUCT_INITIALIZER)
 		res = get_struct_initializer_type(node);
 	else if(node->type & NODE_ARRAY_ACCESS)
@@ -4360,7 +4374,7 @@ get_dfunc(const char* name)
 		return NULL;
 }
 static ASTNode*
-create_assignment(const char* identifier, const ASTNode* assign_expr, const char* op);
+create_assignment(const ASTNode* lhs, const ASTNode* assign_expr, const char* op);
 void
 add_to_node_list(ASTNode* head, const ASTNode* new_node)
 {
@@ -4910,15 +4924,21 @@ create_assignment_body(const ASTNode* assign_expr, const char* op)
 				);
 }
 static ASTNode*
-create_assignment(const char* identifier, const ASTNode* assign_expr, const char* op)
+create_declaration(const char* identifier)
 {
-
 	ASTNode* empty       = astnode_create(NODE_UNKNOWN,NULL,NULL);
 	ASTNode* decl_vars   = astnode_create(NODE_UNKNOWN,create_identifier_node(identifier),NULL);
 	ASTNode* declaration = astnode_create(NODE_DECLARATION,empty,decl_vars);
+	return declaration;
+}
+
+static ASTNode*
+create_assignment(const ASTNode* lhs, const ASTNode* assign_expr, const char* op)
+{
+
 	ASTNode* res = 	
 		astnode_create(NODE_ASSIGNMENT,
-			      astnode_dup(declaration,NULL),
+			      astnode_dup(lhs,NULL),
 			      create_assignment_body(assign_expr,op)
 			      );
 	astnode_set_postfix(";",res);
@@ -5110,11 +5130,10 @@ canonalize_assignments(ASTNode* node)
 	char* op = strdup(node->rhs->lhs->buffer);
 	if(strcmps(op,"*=","-=","+=","/="))   return;
 	if(count_num_of_nodes_in_list(node->rhs->rhs) != 1)   return;
-	const char* var_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
 	ASTNode* assign_expression = node->rhs->rhs->lhs;
 	remove_substring(op,"=");
-	ASTNode* binary_expression = create_binary_expression(assign_expression, create_primary_expression(var_name), op);
-	ASTNode* assignment        = create_assignment(var_name, binary_expression, "="); 
+	ASTNode* binary_expression = create_binary_expression(node->lhs, assign_expression, op);
+	ASTNode* assignment        = create_assignment(node->lhs, binary_expression, "="); 
 	assignment->parent = node->parent;
 	node->parent->lhs = assignment;
 }
@@ -5203,7 +5222,7 @@ convert_to_ternary(ASTNode* node)
 		//same as below except now : condition is the else condition
 		//ASTNode* ternary_expr = create_ternary_expr(conditional, assign_expression ,second_assign_expr);
 		ASTNode* ternary_expr = create_ternary_expr(conditional, assign_expression,second_assign_expr);
-		ASTNode* assignment =   create_assignment(var_name,ternary_expr,"=");
+		ASTNode* assignment =   create_assignment(node->lhs,ternary_expr,"=");
 		assignment->parent = if_node->parent->parent;
 		if_node->parent->parent->lhs = assignment;
 
@@ -5212,7 +5231,7 @@ convert_to_ternary(ASTNode* node)
 
 
 	ASTNode* ternary_expr = create_ternary_expr(conditional, assign_expression ,create_primary_expression(var_name));
-	ASTNode* assignment =   create_assignment(var_name,ternary_expr,"=");
+	ASTNode* assignment =   create_assignment(node->lhs,ternary_expr,"=");
 	assignment->parent = if_node->parent->parent;
 	if_node->parent->parent->lhs = assignment;
 }
@@ -5310,8 +5329,7 @@ gen_ssa_in_basic_blocks(ASTNode* node)
 void
 canonalize(ASTNode* node)
 {
-	(void)node;
-	//canonalize_assignments(node);
+	canonalize_assignments(node);
 	//canonalize_if_assignments(node);
 }
 void
@@ -5321,6 +5339,7 @@ preprocess(ASTNode* root)
   free_str_vec(&dfunc_names);
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
+  canonalize(root);
 
   transform_runtime_vars(root);
   transform_field_intrinsic_func_calls_and_ops(root);
@@ -5515,7 +5534,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   //Used to help in constexpr deduction
   if(gen_mem_accesses)
   {
-  	canonalize(root);
   	//gen_ssa_in_basic_blocks(root);
   	gen_constexpr_info(root);
 	//remove_dead_writes(root);
