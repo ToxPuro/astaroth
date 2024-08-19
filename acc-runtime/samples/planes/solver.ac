@@ -1,4 +1,4 @@
-#include "../../stdlib/integrators.h"
+#include "../../stdlib/math"
 hostdefine STENCIL_ORDER (2)
 hostdefine AC_INTEGRATION_ENABLED
 real AC_current_time
@@ -46,13 +46,12 @@ Stencil diff_left
 	[0][0][0]  = -1
 }
 
-const real dt=(0.25*0.5)/8;
+const real sim_dt=(0.25*0.5)/8;
 const real M=0.1;
 const real D=1.0;
-const real SimTime=dt*1000;
+const real SimTime=sim_dt*1000;
 const int Lengthscale = 162
 const int nsteps = 1000
-const real inittime = 1.0
 
 Kernel twopass_solve_intermediate(int step_num, real dt) {
 }
@@ -79,6 +78,7 @@ Field U
 Field SOLUTION
 Kernel initial_condition()
 {
+	const inittime = 1.0
 	x,y,z = GetCoords(globalVertexIdx.x+1-NGHOST_VAL,globalVertexIdx.y+1-NGHOST_VAL,globalVertexIdx.z+1-NGHOST_VAL)
 	write(COORDS_X,x)
 	write(COORDS_Y,y)
@@ -86,7 +86,7 @@ Kernel initial_condition()
 	x_center, y_center, z_center = GetCoords(AC_nxgrid/2, AC_nygrid/2, AC_nzgrid/2);
 	distance_to_center_squared = pow(x-x_center,2.0) + pow(y-y_center,2.0) + pow(z-z_center,2.0)
 
-	const real accumulated_time = nsteps*dt;
+	const real accumulated_time = nsteps*sim_dt;
         const real final_time = inittime + accumulated_time;
 
 	write(U, real(get_diffusion_val(inittime,distance_to_center_squared)))
@@ -280,7 +280,7 @@ Kernel singlepass_solve()
 	const real Dxx = 2*(partials0xx + partials1xx + partials2xx + partials3xx + partials4xx + partials5xx + partials6xx + partials7xx)*totalVolumeInv;
         const real Dyy = 2*(partials0yy + partials1yy + partials2yy + partials3yy + partials4yy + partials5yy + partials6yy + partials7yy)*totalVolumeInv;
         const real Dzz = 2*(partials0zz + partials1zz + partials2zz + partials3zz + partials4zz + partials5zz + partials6zz + partials7zz)*totalVolumeInv;
-	update_val = dt*D*(Dxx + Dyy+ Dzz)
+	update_val = sim_dt*D*(Dxx + Dyy+ Dzz)
 	write(U, U + update_val)
 }	
 
