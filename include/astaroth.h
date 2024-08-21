@@ -388,6 +388,16 @@ acGetLengths(const AcMeshInfo info)
 		info.real_params[AC_zlen]
 	};
 }
+static inline int3
+acGetGridNN(const AcMeshInfo info)
+{
+	return (int3)
+	{
+		info.int_params[AC_nxgrid],
+		info.int_params[AC_nygrid],
+		info.int_params[AC_nzgrid]
+	};
+}
 #else
 static inline int3
 acGetLocalMM(const AcMeshInfo info)
@@ -438,6 +448,16 @@ acGetLengths(const AcMeshInfo info)
 		info.real_params[AC_xlen],
 		info.real_params[AC_ylen],
 		-1.0
+	};
+}
+static inline int3
+acGetGridNN(const AcMeshInfo info)
+{
+	return (int3)
+	{
+		info.int_params[AC_nxgrid],
+		info.int_params[AC_nygrid],
+		1
 	};
 }
 #endif

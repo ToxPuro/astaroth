@@ -40,6 +40,25 @@ PlaneCoefficients3D_without_inv(real4 a, real4 b, real4 c, real3 precomputed)
         const real z = a.x*(-tmp2) + a.y*(-tmp3) + a.w*(precomputed.z);
         return (real3){x, y, z};
 }
+PlaneCoeffients2D_without_inv(real3 a, real3 b)
+{
+	//TP: not z coordinate is the relative function value compared to the middle point
+	return (real2){
+		a.z*b.y  - b.z*a.y
+		-a.z*b.x - b.z*a.x
+	}
+}
+
+Plane2D_x_coefficient(real3 a, real3 b)
+{
+	//TP: not z coordinate is the relative function value compared to the middle point
+	return a.z*b.y  - b.z*a.y
+}
+Plane2D_y_coefficient(real3 a, real3 b)
+{
+	//TP: not z coordinate is the relative function value compared to the middle point
+	return -a.z*b.x - b.z*a.x
+}
 Plane3D_x_coefficient(real4 a, real4 b, real4 c, real3 precomputed)
 {
         const real tmp1 = b.w*c.z-b.z*c.w;

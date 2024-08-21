@@ -386,8 +386,7 @@ acGridInit(AcMeshInfo info)
     };
     AcTaskDefinition default_ops[] = {
 	    acHaloExchange(all_fields),
-            acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC,
-                                all_fields),
+            acBoundaryCondition((!TWO_D ? BOUNDARY_XYZ : BOUNDARY_XY), BOUNDCOND_PERIODIC,all_fields),
 	    acComputeWithParams(KERNEL_twopass_solve_intermediate, all_fields,intermediate_loader),
 	    acComputeWithParams(KERNEL_twopass_solve_final, all_fields,final_loader)
     };
@@ -1301,6 +1300,7 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
 
     bool error   = false;
     bool warning = false;
+    const int FULL_BOUNDARY = (TWO_D) ? BOUNDARY_XY : BOUNDARY_XYZ;
 
     std::string task_graph_repr = "{";
 
@@ -1326,7 +1326,7 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
                 compute_before_halo_exchange = true;
                 warning                      = true;
             }
-            if (boundaries_defined != BOUNDARY_XYZ) {
+            if (boundaries_defined != FULL_BOUNDARY) {
                 compute_before_boundary_condition = true;
                 warning                           = true;
             }
@@ -1347,7 +1347,7 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
         error = true;
     }
 
-    if ((boundaries_defined != BOUNDARY_XYZ && !TWO_D) || (boundaries_defined != BOUNDARY_XY && TWO_D)) {
+    if (boundaries_defined != FULL_BOUNDARY) {
         error = true;
     }
     if ((boundaries_defined & BOUNDARY_X_TOP) != BOUNDARY_X_TOP) {

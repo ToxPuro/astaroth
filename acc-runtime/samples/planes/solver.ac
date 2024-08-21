@@ -191,10 +191,7 @@ Kernel singlepass_solve()
         real4 p5 = {v5x,v5y,v5z,v5f};
 
 
-	partials_first = PlaneCoefficients3D_without_inv(p4,p0,p1,V0_precomputed);
-	partials0x = partials_first.x
-	partials0y = partials_first.y
-	partials0z = partials_first.z
+	partials0x, partials0y, partials0z = PlaneCoefficients3D_without_inv(p4,p0,p1,V0_precomputed);
         partials1x, partials1y, partials1z = PlaneCoefficients3D_without_inv(p4,p1,p2,V1_precomputed);
         partials2x, partials2y, partials2z = PlaneCoefficients3D_without_inv(p4,p2,p3,V2_precomputed);
         partials3x, partials3y, partials3z = PlaneCoefficients3D_without_inv(p4,p3,p0,V3_precomputed);

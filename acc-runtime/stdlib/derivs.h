@@ -406,10 +406,6 @@ Stencil deryy {
     [2][0]  = AC_inv_dsy_2 * DER2_2,
     [3][0]  = AC_inv_dsy_2 * DER2_3
 }
-derzz(Field field)
-{
-	return 0.0
-}
 
 Stencil derxy {
     [-3][-3] = AC_inv_dsx * AC_inv_dsy * DERX_3,
@@ -427,14 +423,11 @@ Stencil derxy {
     [3][-3] = -AC_inv_dsx * AC_inv_dsy * DERX_3
 }
 
-derxz(Field field)
-{
-	return 0.0
-}
-deryz(Field field)
-{
-	return 0.0
-}
+#define derz(VAL)  (0.0)
+#define derzz(VAL) (0.0)
+#define derxz(VAL) (0.0)
+#define deryz(VAL) (0.0)
+#define der6z_upwd(VAL) (0.0)
 
 Stencil der6x_upwd {
     [0][-3] =  AC_inv_dsx * DER6UPWD_3,
@@ -456,10 +449,6 @@ Stencil der6y_upwd {
     [3][0]  =  AC_inv_dsy * DER6UPWD_3
 }
 
-der6z_upwd(Field field)
-{
-	return 0.0
-}
 #endif
 
 

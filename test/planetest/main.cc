@@ -39,9 +39,9 @@
 #include "math_utils.h"
 #include "user_constants.h"
 
-const int npointsx_grid = 64*2;
-const int npointsy_grid = 64*2;
-const int npointsz_grid = 64*2;
+const int npointsx_grid = 100;
+const int npointsy_grid = 100;
+const int npointsz_grid = 100;
 
 const int npointsx = npointsx_grid;
 const int npointsy = npointsy_grid;
@@ -81,7 +81,7 @@ IDX_WITH_HALO(const int i, const int j, const int k)
 int 
 IDX_COMP_DOMAIN(const int i, const int j, const int k)
 {
-	return IDX_WITH_HALO(NGHOST+i, NGHOST+j, NGHOST+k);
+	return IDX_WITH_HALO(NGHOST_X+i, NGHOST_Y+j, NGHOST_Z+k);
 }
 
 
@@ -177,19 +177,16 @@ main(void)
     for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i) all_fields.push_back((Field)i);
     AcTaskGraph* initialize = acGridBuildTaskGraph({ 
 		    acHaloExchange(all_fields),
-		    acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
+		    acBoundaryCondition((!TWO_D ? BOUNDARY_XYZ : BOUNDARY_XY), BOUNDCOND_PERIODIC, all_fields),
 		    acCompute(KERNEL_initial_condition, all_fields)
     });
 
     AcTaskGraph* integrate = acGridBuildTaskGraph({ 
 		    acHaloExchange(all_fields),
-		    acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields),
+		    acBoundaryCondition((!TWO_D ? BOUNDARY_XYZ : BOUNDARY_XY), BOUNDCOND_PERIODIC, all_fields),
 		    acCompute(KERNEL_singlepass_solve, all_fields)
     });
 
-    AcTaskGraph* periodic = acGridBuildTaskGraph({ 
-		    acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_PERIODIC, all_fields)
-    });
 
     // Boundconds
     if (pid == 0)
@@ -199,7 +196,7 @@ main(void)
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridSynchronizeStream(STREAM_ALL);
 
-    acGridPeriodicBoundconds(STREAM_ALL);
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
     acGridSynchronizeStream(STREAM_ALL);
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (pid == 0) {
@@ -217,87 +214,10 @@ main(void)
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     acGridSynchronizeStream(STREAM_ALL);
 
-    auto IDX = [&](const int i, const int j, const int k)
-    {
-	    return acVertexBufferIdx(i,j,k,model.info);
-    };
-
-    auto calc_derxx = [&](const int i, const int j, const int k, const AcReal* arr, const AcReal dsx)
-    {
-	    const AcReal inv_dsx2 = (1.0/dsx)*(1.0/dsx);
-	    return
-		    arr[IDX(i-3,j,k)]*(inv_dsx2*DER2_3) +
-		    arr[IDX(i-2,j,k)]*(inv_dsx2*DER2_2) +
-		    arr[IDX(i-1,j,k)]*(inv_dsx2*DER2_1) +
-		    arr[IDX(i,j,k)]  *(inv_dsx2*DER2_0) +
-		    arr[IDX(i+1,j,k)]*(inv_dsx2*DER2_1) +
-		    arr[IDX(i+2,j,k)]*(inv_dsx2*DER2_2) +
-		    arr[IDX(i+3,j,k)]*(inv_dsx2*DER2_3);
-
-    };
-
-    auto calc_deryy = [&](const int i, const int j, const int k, const AcReal* arr, const AcReal dsy)
-    {
-	    const AcReal inv_dsy2 = (1.0/dsy)*(1.0/dsy);
-	    return
-		    arr[IDX(i,j-3,k)]*(inv_dsy2*DER2_3) +
-		    arr[IDX(i,j-2,k)]*(inv_dsy2*DER2_2) +
-		    arr[IDX(i,j-1,k)]*(inv_dsy2*DER2_1) +
-		    arr[IDX(i,j,k)]  *(inv_dsy2*DER2_0) +
-		    arr[IDX(i,j+1,k)]*(inv_dsy2*DER2_1) +
-		    arr[IDX(i,j+2,k)]*(inv_dsy2*DER2_2) +
-		    arr[IDX(i,j+3,k)]*(inv_dsy2*DER2_3);
-
-    };
-
-    auto calc_derzz = [&](const int i, const int j, const int k, const AcReal* arr, const AcReal dsz)
-    {
-	    const AcReal inv_dsz2 = (1.0/dsz)*(1.0/dsz);
-	    return
-		    arr[IDX(i,j,k-3)]*(inv_dsz2*DER2_3) +
-		    arr[IDX(i,j,k-2)]*(inv_dsz2*DER2_2) +
-		    arr[IDX(i,j,k-1)]*(inv_dsz2*DER2_1) +
-		    arr[IDX(i,j,k)]  *(inv_dsz2*DER2_0) +
-		    arr[IDX(i,j,k+1)]*(inv_dsz2*DER2_1) +
-		    arr[IDX(i,j,k+2)]*(inv_dsz2*DER2_2) +
-		    arr[IDX(i,j,k+3)]*(inv_dsz2*DER2_3);
-
-    };
-
-
-    const int nx_min = info.int_params[AC_nx_min];
-    const int ny_min = info.int_params[AC_ny_min];
-    const int nz_min = info.int_params[AC_nz_min];
-
-    const int nx_max = info.int_params[AC_nx_max];
-    const int ny_max = info.int_params[AC_ny_max];
-    const int nz_max = info.int_params[AC_nz_max];
-    AcReal* update = (AcReal*)malloc(sizeof(AcReal)*acVertexBufferSize(info));
     for (int i = 0; i < nsteps; ++i)
     {
 	    acGridExecuteTaskGraph(integrate, 1);
 	    acGridSynchronizeStream(STREAM_ALL);
-	    //
-    	    //acHostMeshApplyPeriodicBounds(&candidate);
-            //for (int k = nz_min; k < nz_max; ++k) {
-            //  for (int j = ny_min; j < ny_max; ++j) {
-            //      for (int i = nx_min; i < nx_max; ++i) {
-            //    	const int index = IDX(i,j,k);
-            //    	const AcReal derxx = calc_derxx(i,j,k,candidate.vertex_buffer[U],model.info.real_params[AC_dsx]);
-            //    	const AcReal deryy = calc_deryy(i,j,k,candidate.vertex_buffer[U],model.info.real_params[AC_dsy]);
-            //    	const AcReal derzz = calc_derzz(i,j,k,candidate.vertex_buffer[U],model.info.real_params[AC_dsz]);
-            //    	update[index] = D*(derxx + deryy + derzz);
-            //      }
-            //  }
-            //}
-            //for (int k = nz_min; k < nz_max; ++k) {
-            //  for (int j = ny_min; j < ny_max; ++j) {
-            //      for (int i = nx_min; i < nx_max; ++i) {
-            //    	const int index = IDX(i,j,k);
-            //    	candidate.vertex_buffer[U][index] += dt*update[index];
-            //      }
-            //  }
-            //}
     }
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     acGridSynchronizeStream(STREAM_ALL);
@@ -306,12 +226,9 @@ main(void)
 
     if(pid  == 0)
     {
-	    const int npointsx_grid = candidate.info.int_params[AC_nxgrid];
-	    const int npointsy_grid = candidate.info.int_params[AC_nygrid];
-	    const int npointsz_grid = candidate.info.int_params[AC_nzgrid];
             std::vector<AcReal> x(npointsx_grid);
             std::vector<AcReal> u(npointsx_grid);
-            std::vector<AcReal> a(npointsx_grid);
+            std::vector<AcReal> analytical(npointsx_grid);
 	    FILE* fp_a = fopen("a.dat","w");
 	    FILE* fp_u = fopen("u.dat","w");
 	    FILE* fp_x = fopen("x.dat","w");
@@ -320,9 +237,9 @@ main(void)
 		const int idx = IDX_COMP_DOMAIN(i, npointsy_grid/2,npointsz_grid/2);
             	x[i] = candidate.vertex_buffer[COORDS_X][idx];
                 u[i] = candidate.vertex_buffer[U][idx];
-                a[i] = candidate.vertex_buffer[SOLUTION][idx];
+                analytical[i] = candidate.vertex_buffer[SOLUTION][idx];
 
-		fprintf(fp_a,"%.14e",a[i]);
+		fprintf(fp_a,"%.14e",analytical[i]);
 		if(i < npointsx_grid -1 ) fprintf(fp_a,"%s",",");
 
 		fprintf(fp_u,"%.14e",u[i]);
