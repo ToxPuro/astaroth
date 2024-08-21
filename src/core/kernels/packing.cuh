@@ -253,7 +253,9 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
      {
 	     const int j = vtxbufs.data[i];
 	     vba.in[j][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
+#if AC_LAGRANGIAN_GRID
              vba.in[j][unpacked_idx] += lagrangian_correction(j, (int3){i_unpacked, j_unpacked, k_unpacked});
+#endif
      }
 
 }
