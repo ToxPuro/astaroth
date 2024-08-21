@@ -3370,18 +3370,21 @@ get_binary_expr_type(const ASTNode* node)
 	if(!lhs_res || !rhs_res) return NULL;
 	const bool lhs_real = !strcmp(lhs_res,"AcReal");
 	const bool rhs_real = !strcmp(rhs_res,"AcReal");
+	const bool lhs_int   = !strcmp(lhs_res,"int");
+	const bool rhs_int   = !strcmp(rhs_res,"int");
 	return
 		op && !strcmps(op,"+","-","*","/") && (!strcmp(lhs_res,"Field") || !strcmp(rhs_res,"Field"))   ? "AcReal"  :
 		op && !strcmps(op,"+","-","*","/") && (!strcmp(lhs_res,"Field3") || !strcmp(rhs_res,"Field3")) ? "AcReal3" :
-		op && !strcmp(op,"/") && lhs_real ? "AcReal" :
-		op && !strcmp(op,"/") && !strcmp(lhs_res,"int") && rhs_real ? "AcReal" :
-		op && !strcmp(op,"/") && rhs_real ?  lhs_res :
-		op && !strcmp(op,"*") && !strcmp(lhs_res,"AcMatrix") &&  !strcmp(rhs_res,"AcReal3") ? "AcReal3" :
+		!strcmp_null_ok(op,"/") && lhs_real ? "AcReal" :
+                (lhs_real || rhs_real) && (lhs_int || rhs_int) ? "AcReal" :
+                !strcmp_null_ok(op,"/") && !strcmp(lhs_res,"int") && rhs_real ? "AcReal" :
+                !strcmp_null_ok(op,"/") && rhs_real ?  lhs_res :
+                !strcmp_null_ok(op,"*") && !strcmp(lhs_res,"AcMatrix") &&  !strcmp(rhs_res,"AcReal3") ? "AcReal3" :
 		!strcmp(lhs_res,"AcComplex") || !strcmp(rhs_res,"AcComplex")   ? "AcComplex"  :
 		rhs_real      ?  "AcReal"  :
 		lhs_real && !strcmp(rhs_res,"int")    ?  "AcReal"  :
-		op && !strcmp(op,"*") && lhs_real && strcmp(rhs_res,"int")  ?  rhs_res   :
-		op && !strcmp(op,"*") && rhs_real && strcmp(lhs_res,"int")  ?  lhs_res   :
+		!strcmp_null_ok(op,"*")     && lhs_real && !rhs_int  ?  rhs_res   :
+		op && !strcmps(op,"*","/")  && rhs_real && !lhs_int  ?  lhs_res   :
 		!strcmp(lhs_res,rhs_res) ? lhs_res :
 		NULL;
 
