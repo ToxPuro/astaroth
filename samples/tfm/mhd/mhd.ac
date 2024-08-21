@@ -1,6 +1,5 @@
 // Defines
 hostdefine AC_INTEGRATION_ENABLED (1) // Enables acIntegrate() and other non-generic library functions
-hostdefine AC_TFM_ENABLED (1)
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (0)
@@ -26,6 +25,8 @@ Field VTXBUF_ENTROPY
 #endif
 
 #if LTFM
+hostdefine AC_TFM_ENABLED (1)
+
 // Aliases for VTXBUF_UU to avoid confusion with the notation convention
 // for mean and fluctuating fields
 #define FIELD_u_x (VTXBUF_UUX)
@@ -33,6 +34,17 @@ Field VTXBUF_ENTROPY
 #define FIELD_u_z (VTXBUF_UUZ)
 
 // Test fields
+Field TF_a11_x, TF_a11_y, TF_a11_z
+Field TF_a12_x, TF_a12_y, TF_a12_z
+Field TF_a21_x, TF_a21_y, TF_a21_z
+Field TF_a22_x, TF_a22_y, TF_a22_z
+
+#define TF_a11 Field3(TF_a11_x, TF_a11_y, TF_a11_z)
+#define TF_a12 Field3(TF_a12_x, TF_a12_y, TF_a12_z)
+#define TF_a21 Field3(TF_a21_x, TF_a21_y, TF_a21_z)
+#define TF_a22 Field3(TF_a22_x, TF_a22_y, TF_a22_z)
+
+// Derived fields
 Field TF_b11_x, TF_b11_y, TF_b11_z
 Field TF_b12_x, TF_b12_y, TF_b12_z
 Field TF_b21_x, TF_b21_y, TF_b21_z
@@ -549,20 +561,6 @@ roc_TF_b22_y() {
 roc_TF_b22_z() {
     return AC_eta*(derxx(TF_b22_z) + deryy(TF_b22_z) + derzz(TF_b22_z)) - value(FIELD_u_x)*derx(TF_b22_z) - value(FIELD_u_y)*dery(TF_b22_z) + value(FIELD_u_z)*derx(TF_b22_x) + value(FIELD_u_z)*dery(TF_b22_y) + value(PROFILE_B22mean_x)*derx(FIELD_u_z) + value(PROFILE_B22mean_y)*dery(FIELD_u_z) - value(PROFILE_B22mean_z)*derx(FIELD_u_x) - value(PROFILE_B22mean_z)*dery(FIELD_u_y) - value(PROFILE_Umean_x)*derx(TF_b22_z) - value(PROFILE_Umean_y)*dery(TF_b22_z) + value(PROFILE_Umean_z)*derx(TF_b22_x) + value(PROFILE_Umean_z)*dery(TF_b22_y) + value(TF_b22_x)*derx(FIELD_u_z) + value(TF_b22_y)*dery(FIELD_u_z) - value(TF_b22_z)*derx(FIELD_u_x) - value(TF_b22_z)*dery(FIELD_u_y)
 }
-tfm_singlepass() {
-    write(TF_b21_x, rk3(previous(TF_b21_x), value(TF_b21_x), roc_TF_b21_x()))
-    write(TF_b21_y, rk3(previous(TF_b21_y), value(TF_b21_y), roc_TF_b21_y()))
-    write(TF_b21_z, rk3(previous(TF_b21_z), value(TF_b21_z), roc_TF_b21_z()))
-    write(TF_b11_x, rk3(previous(TF_b11_x), value(TF_b11_x), roc_TF_b11_x()))
-    write(TF_b11_y, rk3(previous(TF_b11_y), value(TF_b11_y), roc_TF_b11_y()))
-    write(TF_b11_z, rk3(previous(TF_b11_z), value(TF_b11_z), roc_TF_b11_z()))
-    write(TF_b12_x, rk3(previous(TF_b12_x), value(TF_b12_x), roc_TF_b12_x()))
-    write(TF_b12_y, rk3(previous(TF_b12_y), value(TF_b12_y), roc_TF_b12_y()))
-    write(TF_b12_z, rk3(previous(TF_b12_z), value(TF_b12_z), roc_TF_b12_z()))
-    write(TF_b22_x, rk3(previous(TF_b22_x), value(TF_b22_x), roc_TF_b22_x()))
-    write(TF_b22_y, rk3(previous(TF_b22_y), value(TF_b22_y), roc_TF_b22_y()))
-    write(TF_b22_z, rk3(previous(TF_b22_z), value(TF_b22_z), roc_TF_b22_z()))
-}
 Kernel singlepass_solve_tfm_b21(){
     write(TF_b21_x, rk3(previous(TF_b21_x), value(TF_b21_x), roc_TF_b21_x()))
     write(TF_b21_y, rk3(previous(TF_b21_y), value(TF_b21_y), roc_TF_b21_y()))
@@ -582,34 +580,6 @@ Kernel singlepass_solve_tfm_b22(){
     write(TF_b22_x, rk3(previous(TF_b22_x), value(TF_b22_x), roc_TF_b22_x()))
     write(TF_b22_y, rk3(previous(TF_b22_y), value(TF_b22_y), roc_TF_b22_y()))
     write(TF_b22_z, rk3(previous(TF_b22_z), value(TF_b22_z), roc_TF_b22_z()))
-}
-tfm_twopass_intermediate() {
-    write(TF_b21_x, rk3_intermediate(previous(TF_b21_x), roc_TF_b21_x()))
-    write(TF_b21_y, rk3_intermediate(previous(TF_b21_y), roc_TF_b21_y()))
-    write(TF_b21_z, rk3_intermediate(previous(TF_b21_z), roc_TF_b21_z()))
-    write(TF_b11_x, rk3_intermediate(previous(TF_b11_x), roc_TF_b11_x()))
-    write(TF_b11_y, rk3_intermediate(previous(TF_b11_y), roc_TF_b11_y()))
-    write(TF_b11_z, rk3_intermediate(previous(TF_b11_z), roc_TF_b11_z()))
-    write(TF_b12_x, rk3_intermediate(previous(TF_b12_x), roc_TF_b12_x()))
-    write(TF_b12_y, rk3_intermediate(previous(TF_b12_y), roc_TF_b12_y()))
-    write(TF_b12_z, rk3_intermediate(previous(TF_b12_z), roc_TF_b12_z()))
-    write(TF_b22_x, rk3_intermediate(previous(TF_b22_x), roc_TF_b22_x()))
-    write(TF_b22_y, rk3_intermediate(previous(TF_b22_y), roc_TF_b22_y()))
-    write(TF_b22_z, rk3_intermediate(previous(TF_b22_z), roc_TF_b22_z()))
-}
-tfm_twopass_final() {
-    write(TF_b21_x, rk3_final(previous(TF_b21_x), value(TF_b21_x)))
-    write(TF_b21_y, rk3_final(previous(TF_b21_y), value(TF_b21_y)))
-    write(TF_b21_z, rk3_final(previous(TF_b21_z), value(TF_b21_z)))
-    write(TF_b11_x, rk3_final(previous(TF_b11_x), value(TF_b11_x)))
-    write(TF_b11_y, rk3_final(previous(TF_b11_y), value(TF_b11_y)))
-    write(TF_b11_z, rk3_final(previous(TF_b11_z), value(TF_b11_z)))
-    write(TF_b12_x, rk3_final(previous(TF_b12_x), value(TF_b12_x)))
-    write(TF_b12_y, rk3_final(previous(TF_b12_y), value(TF_b12_y)))
-    write(TF_b12_z, rk3_final(previous(TF_b12_z), value(TF_b12_z)))
-    write(TF_b22_x, rk3_final(previous(TF_b22_x), value(TF_b22_x)))
-    write(TF_b22_y, rk3_final(previous(TF_b22_y), value(TF_b22_y)))
-    write(TF_b22_z, rk3_final(previous(TF_b22_z), value(TF_b22_z)))
 }
 #endif
 
