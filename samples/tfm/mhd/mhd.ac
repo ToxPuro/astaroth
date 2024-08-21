@@ -8,8 +8,9 @@ hostdefine LENTROPY (0)
 hostdefine LTEMPERATURE (0)
 hostdefine LFORCING (0)
 hostdefine LUPWD (1)
-hostdefine R_PI (AC_REAL_PI)
 hostdefine LTFM (1)
+
+hostdefine R_PI (AC_REAL_PI)
 
 // Fields
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
@@ -416,11 +417,6 @@ momentum() {
           + AC_nu_visc * (veclaplace(UU) + (1. / 3.) * gradient_of_divergence(UU)
                        + 2. * S * gradient(VTXBUF_LNRHO))
           + AC_zeta * gradient_of_divergence(UU)
-#if LSHOCK
-          + AC_nu_shock * (value(VTXBUF_SHOCK) * (divergence(UU) * gradient(VTXBUF_LNRHO) +
-                                           gradient_of_divergence(UU)) +
-                           divergence(UU) * gradient(VTXBUF_SHOCK))
-#endif
 
     return mom
 }
@@ -460,14 +456,8 @@ entropy() {
 #else
     j = real3(0,0,0)
 #endif
-#if LSHOCK
-    entshock = AC_nu_shock * value(VTXBUF_SHOCK) * (divergence(UU) * divergence(UU))  
-#else
-    entshock = 0.0
-#endif
     RHS = (0) - (0) + AC_eta * AC_mu0 * dot(j, j) +
                        2. * exp(value(VTXBUF_LNRHO)) * AC_nu_visc * contract(S) +
-                       entshock +
                        AC_zeta * exp(value(VTXBUF_LNRHO)) * divergence(UU) * divergence(UU)
 
     return -dot(vecvalue(UU), gradient(VTXBUF_ENTROPY)) + inv_pT * RHS + heat_conduction()
@@ -676,27 +666,6 @@ Kernel twopass_solve_intermediate() {
     write(VTXBUF_AZ, rk3_intermediate(previous(VTXBUF_AZ), ind.z))
     #endif
 
-    #if LBFIELD
-    if AC_step_number == 2 {
-        bfield = curl(AA) 
-        write(BFIELDX, bfield.x)
-        write(BFIELDY, bfield.y)
-        write(BFIELDZ, bfield.z)
-    }
-    #endif
-
-    // %JP: TODO NOTE IMPORTANT (MV please check)
-    // LSHOCK not yet adapted to two-pass integration.
-    // Unclear how should be written to memory to ensure proper swapping!
-    // 1) In the single-pass approach need to write the shock field to `out`
-    // because buffers are swapped afterwards
-    // 2) In the two-pass approach this may not be necessary: if the shock
-    // field is in `in` buffer and we swap twice, the correct shock values are
-    // still in the `in` buffer
-    //
-    // Is this correct?
-    //
-
     #if LTFM
         tfm_twopass_intermediate()
     #endif
@@ -725,14 +694,6 @@ Kernel twopass_solve_final() {
     write(VTXBUF_AX, rk3_final(previous(VTXBUF_AX), value(VTXBUF_AX)))
     write(VTXBUF_AY, rk3_final(previous(VTXBUF_AY), value(VTXBUF_AY)))
     write(VTXBUF_AZ, rk3_final(previous(VTXBUF_AZ), value(VTXBUF_AZ)))
-    #endif
-
-    #if LBFIELD
-    if AC_step_number == 2 {
-        write(BFIELDX, value(BFIELDX))
-        write(BFIELDY, value(BFIELDY))
-        write(BFIELDZ, value(BFIELDZ))
-    }
     #endif
 
     #if LTFM
