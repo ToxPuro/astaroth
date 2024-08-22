@@ -154,8 +154,8 @@ get_preprocessed_file(const char* filename, char* file_buf)
         fclose(out);
 	fclose(in);
 	process_hostdefines(stage0,stage1);
-	expand_macros(stage1,stage2);
-	in = fopen(stage2,"r");
+	//expand_macros(stage1,stage2);
+	in = fopen(stage1,"r");
 	size_t size = 0;
 	out = open_memstream(&file_buf,&size);
   	while (fgets(buf, len, in)) {
