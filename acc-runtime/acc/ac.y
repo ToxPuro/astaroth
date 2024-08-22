@@ -148,7 +148,9 @@ get_preprocessed_file(const char* filename, char* file_buf)
   	  char* line = buf;
 	  // Remove whitespace
   	  while (strlen(line) > 0 && line[0] == ' ') ++line;
-    	  replacestr(line,"#include",AC_INCLUDE);
+	  remove_substring(line,";");
+          if (!strncmp(line, "#include", strlen("#include")))
+    	  	replacestr(line,"#include",AC_INCLUDE);
 	  fprintf(out,"%s",line);
 	}
         fclose(out);
@@ -194,9 +196,8 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
   char* file_buf = NULL;
   FILE* in = get_preprocessed_file(file,file_buf);
   if (!in) {
-    fprintf(stderr, FATAL_ERROR_MESSAGE"could not open include file '%s'\n", file);
-    assert(in);
-    exit(EXIT_FAILURE);
+    fprintf(out,"AC_FATAL_ERROR: could not open include file '%s'\n",file);
+    return;
   }
 
   const size_t  len = 4096;
@@ -338,25 +339,26 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
         // Stage 2: Preprocess everything else
         {
 	  expand_macros(stage1,stage2);
+	  FILE* f_check = fopen(stage2,"r");
+          char line[4098];
+ 	  while (fgets(line, sizeof(line), f_check) != NULL) {
+          	if (!strncmp(line, "AC_FATAL_ERROR", strlen("AC_FATAL_ERROR")))
+		{
+			const size_t len = 4098;
+      			char message[len];
+      			sscanf(line, "AC_FATAL_ERROR: %[^\"]\n", message);
+		        printf("%s %s\n",FATAL_ERROR_MESSAGE,message);	
+			exit(EXIT_FAILURE);
+		}
+	  }
+          fclose(f_check);
         }
-	FILE* f_in = fopen(stage2,"r");
-	FILE* f_out = fopen(stage3,"w");
-        char* line = malloc(10000*sizeof(char));	
-
-
- 	while (fgets(line, sizeof(line), f_in) != NULL) {
-		remove_substring(line,";");
-		fprintf(f_out,"%s",line);
-    	}
-	free(line);
-	fclose(f_in);
-	fclose(f_out);
 
         // Generate code
-        yyin = fopen(stage3, "r");
+        yyin = fopen(stage2, "r");
 
-	stage4_name_backup = stage3;
-        yyin_backup = fopen(stage3, "r");
+	stage4_name_backup = stage2;
+        yyin_backup = fopen(stage2, "r");
         if (!yyin)
             return EXIT_FAILURE;
 

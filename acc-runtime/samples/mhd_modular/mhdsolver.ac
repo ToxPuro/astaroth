@@ -31,7 +31,6 @@ enum TOP_BOT
 #define NO (0)
 #if NO
 #include "rubbish"
-#else
 #endif
 
 
@@ -1266,6 +1265,6 @@ BoundConds boundconds{
 ComputeSteps AC_rhs(boundconds)
 {
         twopass_solve_intermediate(1,0.0)
-        twopass_solve_final(1.0,0.0)
+        twopass_solve_final(1.0,0.0);
 }
 
