@@ -28,6 +28,8 @@ Field VTXBUF_ENTROPY
 hostdefine AC_TFM_ENABLED (1)
 
 real AC_eta_tfm
+real AC_profile_amplitude, AC_profile_wavenumber
+
 
 // Aliases for VTXBUF_UU to avoid confusion with the notation convention
 // for mean and fluctuating fields
