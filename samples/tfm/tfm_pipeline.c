@@ -75,9 +75,9 @@ minl(const long double a, const long double b)
 AcReal
 calc_timestep(const Device device, const AcMeshInfo info)
 {
-    AcReal uumax     = 0.0;
-    AcReal vAmax     = 0.0;
-    AcReal shock_max = 0.0;
+    AcReal uumax = 0.0;
+    AcReal vAmax = 0.0;
+    // AcReal shock_max = 0.0;
     acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
                       &uumax);
 
@@ -87,12 +87,12 @@ calc_timestep(const Device device, const AcMeshInfo info)
     const long double cs2_sound = (long double)info.real_params[AC_cs2_sound];
     const long double nu_visc   = (long double)info.real_params[AC_nu_visc];
     const long double eta       = (long double)info.real_params[AC_eta];
-    const long double chi      = 0; // (long double)info.real_params[AC_chi]; // TODO not calculated
-    const long double gamma    = (long double)info.real_params[AC_gamma];
-    const long double dsmin    = (long double)min(info.real_params[AC_dsx],
+    const long double chi   = 0; // (long double)info.real_params[AC_chi]; // TODO not calculated
+    const long double gamma = (long double)info.real_params[AC_gamma];
+    const long double dsmin = (long double)min(info.real_params[AC_dsx],
                                                min(info.real_params[AC_dsy],
                                                    info.real_params[AC_dsz]));
-    const long double nu_shock = (long double)info.real_params[AC_nu_shock];
+    // const long double nu_shock = (long double)info.real_params[AC_nu_shock];
 
     // Old ones from legacy Astaroth
     // const long double uu_dt   = cdt * (dsmin / (uumax + cs_sound));
@@ -103,9 +103,8 @@ calc_timestep(const Device device, const AcMeshInfo info)
     const long double uu_dt = cdt * dsmin /
                               (fabsl((long double)uumax) +
                                sqrtl(cs2_sound + (long double)vAmax * (long double)vAmax));
-    const long double visc_dt = cdtv * dsmin * dsmin /
-                                (maxl(maxl(nu_visc, eta), gamma * chi) +
-                                 nu_shock * (long double)shock_max);
+    const long double visc_dt = cdtv * dsmin * dsmin / (maxl(maxl(nu_visc, eta), gamma * chi));
+    //+ nu_shock * (long double)shock_max);
 
     const long double dt = minl(uu_dt, visc_dt);
     // ERRCHK_ALWAYS(is_valid((AcReal)dt));
@@ -396,7 +395,7 @@ main(int argc, char** argv)
     // Can view the output profile by running bfield-init-function-test.py
     const AcReal box_size = 2 * M_PI; // Note: not fetched from the config
     // const size_t nz            = info.int_params[AC_nz];
-    const size_t offset        = info.int_params[AC_nz_min];
+    const size_t offset        = -info.int_params[AC_nz_min];
     const size_t profile       = PROFILE_B22mean_z;
     const size_t profile_count = dims.m1.z;
     AcReal host_profile[profile_count];
