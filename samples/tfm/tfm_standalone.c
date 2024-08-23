@@ -516,6 +516,7 @@ main(int argc, char* argv[])
             acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, dims.n0, dims.n1, dt);
             acDeviceSwapBuffers(device);
         }
+        // tfm_run_pipeline(device); // OK if set dt to same as with host
     }
 
     acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
@@ -541,6 +542,11 @@ main(int argc, char* argv[])
     //---------------------------------
 
     // Simulation loop
+    acDeviceResetMesh(device, STREAM_DEFAULT);
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+    acDeviceSwapBuffers(device);
+    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+
     const size_t nsteps          = 200;
     const size_t output_interval = 10;
     for (size_t step = 1; step <= nsteps; ++step) {
