@@ -1205,6 +1205,9 @@ AcResult acDeviceVolumeCopy(const Device device, const Stream stream,           
 AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf,
                                  const char* filepath);
 
+/** */
+AcMeshInfo acDeviceGetLocalConfig(const Device device);
+
 /*
  * =============================================================================
  * Helper functions
