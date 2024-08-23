@@ -87,12 +87,9 @@ real AC_eta
 real AC_mu0
 real AC_cp_sound
 real AC_gamma
-real AC_cv_sound
 real AC_lnT0
 real AC_lnrho0
 real AC_zeta
-real AC_trans
-real AC_nu_shock
 real AC_K_heatcond
 
 //  Forcing parameters. User configured.
@@ -117,17 +114,9 @@ real AC_ff_hel_imz
 
 // Backwards compatibility (boundconds.cuh depends on these, not used here)
 real AC_cs2_sound
-real AC_hcond0_kramers
-real AC_hflux
-real AC_n_kramers
-real AC_sigma_SBt
-real AC_chi
-real AC_chi_t
-real AC_chi_t_prof1
 real AC_center_x
 real AC_center_y
 real AC_center_z
-// real AC_sum_radius
 real AC_window_radius
 
 // Stencils
