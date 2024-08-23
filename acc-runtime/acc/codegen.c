@@ -3628,6 +3628,17 @@ test_type(ASTNode* node, const char* type)
 		if(!str_vec_contains(info.user_structs,type)) return false;
 		const string_vec types = info.user_struct_field_types[str_vec_get_index(info.user_structs,type)];
 		node_vec nodes = get_nodes_in_list(node->lhs);
+		if(types.size != nodes.size)
+		{
+			char tmp[10000];
+			combine_all(node,tmp);
+			if(nodes.size == 1)
+				fprintf(stderr,FATAL_ERROR_MESSAGE"Incorrect number of initializers\n%s expects %lu members but there was only one initializer\n",type,types.size);
+			else
+				fprintf(stderr,FATAL_ERROR_MESSAGE"Incorrect number of initializers\n%s expects %lu members but there were %lu initializers\n",type,types.size,nodes.size);
+			fprintf(stderr,"%s\n\n",tmp);
+			exit(EXIT_FAILURE);
+		}
 		bool res = true;
 		if(nodes.size != types.size) return false;
 		for(size_t i = 0; i < nodes.size; ++i)
