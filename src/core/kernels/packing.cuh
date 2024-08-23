@@ -88,10 +88,10 @@ lagrangian_correction(const int j, const int3 coords)
 #if TWO_D == 0
       const AcReal z_coeff = on_boundary.z*(j == COORDS_Z)*DCONST(AC_zlen);
 #endif
-      return  x_coeff*((coords.x > DCONST(AC_nx_max)) - (coords.x < DCONST(AC_nx_min)))
-                       + y_coeff*((coords.y > DCONST(AC_ny_max)) - (coords.y < DCONST(AC_ny_min)))
+      return  x_coeff*((coords.x >= DCONST(AC_nx_max)) - (coords.x < DCONST(AC_nx_min)))
+                       + y_coeff*((coords.y >= DCONST(AC_ny_max)) - (coords.y < DCONST(AC_ny_min)))
 #if TWO_D == 0
-                       + z_coeff*((coords.z > DCONST(AC_nz_max)) - (coords.z < DCONST(AC_nz_min)))
+                       + z_coeff*((coords.z >= DCONST(AC_nz_max)) - (coords.z < DCONST(AC_nz_min)))
 #endif
                        ;
 }
@@ -206,9 +206,11 @@ kernel_partial_move_data(const VertexBufferArray vba, const int3 src_start, cons
         vba.in[vtxbufs.data[i]][dst_idx] = vba.in[vtxbufs.data[i]][unpacked_idx];
     }
 #if AC_LAGRANGIAN_GRID
-    vba.in[COORDS_X][dst_idx] += DCONST(AC_xlen)*((i_dst > DCONST(AC_nx_max)) -(i_dst < DCONST(AC_nx_min)));
-    vba.in[COORDS_Y][dst_idx] += DCONST(AC_ylen)*((j_dst > DCONST(AC_ny_max)) -(j_dst < DCONST(AC_ny_min)));
-    vba.in[COORDS_Z][dst_idx] += DCONST(AC_zlen)*((k_dst > DCONST(AC_nz_max)) -(k_dst < DCONST(AC_nz_min)));
+    vba.in[COORDS_X][dst_idx] += DCONST(AC_xlen)*((i_dst >= DCONST(AC_nx_max)) -(i_dst < DCONST(AC_nx_min)));
+    vba.in[COORDS_Y][dst_idx] += DCONST(AC_ylen)*((j_dst >= DCONST(AC_ny_max)) -(j_dst < DCONST(AC_ny_min)));
+#if TWO_D == 0
+    vba.in[COORDS_Z][dst_idx] += DCONST(AC_zlen)*((k_dst >= DCONST(AC_nz_max)) -(k_dst < DCONST(AC_nz_min)));
+#endif
 #endif
 }
 
@@ -240,15 +242,6 @@ kernel_partial_unpack_data(const AcRealPacked* packed, const int3 vba_start, con
     const size_t vtxbuf_offset = dims.x * dims.y * dims.z;
 
     //#pragma unroll
-    // Note explicit cast size_t to int
-    /**
-    for (int i = 0; i < (int)num_vtxbufs; ++i) {
-        int vtxbuf_id                   = vtxbufs[i];
-        vba.in[vtxbuf_id][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
-    }
-    for (int i = 0; i < NUM_COMMUNICATED_FIELDS; ++i)
-        vba.in[i][unpacked_idx] = packed[packed_idx + i * vtxbuf_offset];
-    **/
      for (size_t i = 0; i < num_vtxbufs; ++i)
      {
 	     const int j = vtxbufs.data[i];
