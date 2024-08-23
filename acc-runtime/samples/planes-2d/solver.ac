@@ -1,0 +1,164 @@
+#include "../../stdlib/math"
+#include "../../stdlib/derivs.h"
+hostdefine STENCIL_ORDER (6)
+hostdefine AC_INTEGRATION_ENABLED
+real AC_current_time
+real AC_dt
+int AC_step_num
+
+Stencil diff_up
+{
+	[1][0]  =  1,
+	[0][0]  = -1
+}
+
+Stencil diff_down
+{
+	[-1][0] =  1,
+	[0][0]  = -1
+}
+
+Stencil diff_right
+{
+	[0][1]  =  1,
+	[0][0]  = -1
+}
+
+Stencil diff_left
+{
+	[0][-1] =  1,
+	[0][0]  = -1
+}
+
+const real sim_dt=(0.25*0.5)/8;
+const real M=0.1;
+const real D=1.0;
+const int Lengthscale = 162
+const int nsteps = 1000
+const real SimTime=sim_dt*nsteps;
+
+Kernel twopass_solve_intermediate(int step_num, real dt) {
+}
+Kernel twopass_solve_final(int step_num, real current_time) {
+}
+get_diffusion_val(real time, real distance_2)
+{
+	return M/(4*AC_REAL_PI*time*D)*exp(-distance_2/(4*D*time));
+}
+
+GetCoordsBase(i,j)
+{
+	x  = (AC_dsx*(i-((AC_nxgrid+1)/2.0)))
+	y  = (AC_dsy*(j-((AC_nygrid+1)/2.0)))
+        return (real2){x,y};
+}
+GetCoords(i,j)
+{
+	return GetCoordsBase(i,j)
+}
+
+Field U
+Field SOLUTION
+Kernel initial_condition()
+{
+	const inittime = 1.0
+	real2 coords = GetCoords(globalVertexIdx.x+1-NGHOST_VAL,globalVertexIdx.y+1-NGHOST_VAL)
+	write(COORDS_X,coords.x)
+	write(COORDS_Y,coords.y)
+	x_center, y_center = GetCoords(AC_nxgrid/2, AC_nygrid/2);
+	distance_to_center_squared = pow(coords.x-x_center,2.0) + pow(coords.y-y_center,2.0)
+
+	const real accumulated_time = nsteps*sim_dt;
+        const real final_time = inittime + accumulated_time;
+
+	write(U, get_diffusion_val(inittime,distance_to_center_squared))
+	write(SOLUTION, get_diffusion_val(final_time,distance_to_center_squared))
+
+}
+Kernel singlepass_solve()
+{	
+	const real v0x     = diff_left(COORDS_X)
+	const real v1x     = diff_down(COORDS_X)
+	const real v2x     = diff_right(COORDS_X)
+	const real v3x     = diff_up(COORDS_X)
+
+	const real v0y     = diff_left(COORDS_Y)
+	const real v1y     = diff_down(COORDS_Y)
+	const real v2y     = diff_right(COORDS_Y)
+	const real v3y     = diff_up(COORDS_Y)
+
+
+
+	const v0f     =  diff_left(U)
+	const v1f     =  diff_down(U)
+	const v2f     =  diff_right(U)
+	const v3f     =  diff_up(U)
+
+	const p0_coords = (real2){v0x,v0y}
+        const p1_coords = (real2){v1x,v1y}
+        const p2_coords = (real2){v2x,v2y}
+        const p3_coords = (real2){v3x,v3y}
+
+	const real A0  = (p0_coords.x*p1_coords.y - p0_coords.y*p1_coords.x);
+	const real A1  = (p1_coords.x*p2_coords.y - p1_coords.y*p2_coords.x);
+	const real A2  = (p2_coords.x*p3_coords.y - p2_coords.y*p3_coords.x);
+	const real A3  = (p3_coords.x*p0_coords.y - p3_coords.y*p0_coords.x);
+
+        const real totalAreaInv = 1.0/(A0 + A1 + A2 + A3);
+
+        const real p0_area_inv = 1.0/(A0 + A3);
+        const real p1_area_inv = 1.0/(A1 + A0);
+        const real p2_area_inv = 1.0/(A2 + A1);
+        const real p3_area_inv = 1.0/(A3 + A2);
+
+	real3 p0 = {v0x,v0y,v0f};
+        real3 p1 = {v1x,v1y,v1f};
+        real3 p2 = {v2x,v2y,v2f};
+        real3 p3 = {v3x,v3y,v3f};
+
+
+	partials0x,partials0y = PlaneCoeffients_without_inv(p0,p1);
+	partials1x,partials1y = PlaneCoeffients_without_inv(p1,p2);
+	partials2x,partials2y = PlaneCoeffients_without_inv(p2,p3);
+	partials3x,partials3y = PlaneCoeffients_without_inv(p3,p0);
+
+	const real p0x_local = (partials0x + partials1x + partials2x + partials3x)*totalAreaInv;
+        const real p0y_local = (partials0y + partials1y + partials2y + partials3y)*totalAreaInv;
+
+        const real p0x = (partials0x + partials3x)*p0_area_inv - p0x_local;
+        const real p1x = (partials1x + partials0x)*p1_area_inv - p0x_local;
+        const real p2x = (partials2x + partials1x)*p2_area_inv - p0x_local;
+        const real p3x = (partials3x + partials2x)*p3_area_inv - p0x_local;
+
+        const real p0y = (partials0y + partials3y)*p0_area_inv - p0y_local;
+        const real p1y = (partials1y + partials0y)*p1_area_inv - p0y_local;
+        const real p2y = (partials2y + partials1y)*p2_area_inv - p0y_local;
+        const real p3y = (partials3y + partials2y)*p3_area_inv - p0y_local;
+
+	p0 = {v0x,v0y,p0x};
+        p1 = {v1x,v1y,p1x};
+        p2 = {v2x,v2y,p2x};
+        p3 = {v3x,v3y,p3x};
+
+	partials0xx = Plane_x_coefficient(p0,p1);
+        partials1xx = Plane_x_coefficient(p1,p2);
+        partials2xx = Plane_x_coefficient(p2,p3);
+        partials3xx = Plane_x_coefficient(p3,p0);
+
+
+        p0 = {v0x,v0y,p0y};
+        p1 = {v1x,v1y,p1y};
+        p2 = {v2x,v2y,p2y};
+        p3 = {v3x,v3y,p3y};
+
+        partials0yy = Plane_y_coefficient(p0,p1);
+        partials1yy = Plane_y_coefficient(p1,p2);
+        partials2yy = Plane_y_coefficient(p2,p3);
+        partials3yy = Plane_y_coefficient(p3,p0);
+
+	const real Dxx = 2*(partials0xx + partials1xx + partials2xx + partials3xx)*totalAreaInv;
+        const real Dyy = 2*(partials0yy + partials1yy + partials2yy + partials3yy)*totalAreaInv;
+        update_val = sim_dt*D*(Dxx+Dyy)
+	write(U, U + update_val)
+}	
+
