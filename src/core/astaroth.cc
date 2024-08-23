@@ -277,6 +277,14 @@ acHostUpdateBuiltinParams(AcMeshInfo* config)
     config->int_params[AC_nxy]  = config->int_params[AC_nx] * config->int_params[AC_ny];
     config->int_params[AC_nxyz] = config->int_params[AC_nxy] * config->int_params[AC_nz];
 
+    /* Multi-GPU params */
+    config->int3_params[AC_multigpu_offset] = (int3){0, 0, 0};
+    config->int3_params[AC_global_grid_n]   = (int3){
+        config->int_params[AC_nx],
+        config->int_params[AC_ny],
+        config->int_params[AC_nz],
+    };
+
     return AC_SUCCESS;
 }
 
