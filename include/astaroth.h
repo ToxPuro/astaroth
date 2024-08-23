@@ -639,6 +639,9 @@ AcResult acGridReduceVecScal(const Stream stream, const ReductionType rtype,
 /** */
 AcResult acGridReduceXYAverage(const Stream stream, const Field field, const Profile profile);
 
+/** */
+AcResult acGridReduceXYAverages(const Stream stream);
+
 typedef enum {
     ACCESS_READ,
     ACCESS_WRITE,

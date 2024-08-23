@@ -720,10 +720,10 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
     }
   }
   ERRCHK_ALWAYS(id < NUM_KERNELS);
-  // printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
-  //        "(%d):\n",
-  //        kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
-  // fflush(stdout);
+  printf("Autotuning kernel '%s' (%p), block (%d, %d, %d), implementation "
+         "(%d):\n",
+         kernel_names[id], kernel, dims.x, dims.y, dims.z, IMPLEMENTATION);
+  fflush(stdout);
 
 #if 0
   cudaDeviceProp prop;

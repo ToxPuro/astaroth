@@ -8,6 +8,7 @@ enum class Simulation {
     Shock_Singlepass_Solve,
     Hydro_Heatduct_Solve,
     Bound_Test_Solve,
+    TF_Solve,
     Default = Solve
 };
 
@@ -27,6 +28,9 @@ log_simulation_choice(int pid, Simulation sim)
         break;
     case Simulation::Bound_Test_Solve:
         sim_label = "Boundary test with doublepass solve";
+        break;
+    case Simulation::TF_Solve:
+        sim_label = "TF solve";
         break;
     default:
         sim_label = "WARNING: No label exists for simulation";
@@ -165,6 +169,48 @@ get_simulation_graph(int pid, Simulation sim)
             AcTaskGraph* my_taskgraph = acGridBuildTaskGraph(boundtest_ops);
             acGraphPrintDependencies(my_taskgraph);
             return my_taskgraph;
+        }
+        case Simulation::TF_Solve: {
+#if LTFM
+            // VertexBufferHandle tfs[] = {
+            //     TF_a11_x, TF_a11_y, TF_a11_z, TF_b11_x, TF_b11_y, TF_b11_z, TF_a12_x, TF_a12_y,
+            //     TF_a12_z, TF_b12_x, TF_b12_y, TF_b12_z, TF_a21_x, TF_a21_y, TF_a21_z, TF_b21_x,
+            //     TF_b21_y, TF_b21_z, TF_a22_x, TF_a22_y, TF_a22_z, TF_b22_x, TF_b22_y, TF_b22_z,
+            // };
+
+            VertexBufferHandle tf11[] = {
+                TF_a11_x, TF_a11_y, TF_a11_z, TF_b11_x, TF_b11_y, TF_b11_z,
+            };
+            VertexBufferHandle tf12[] = {
+                TF_a12_x, TF_a12_y, TF_a12_z, TF_b12_x, TF_b12_y, TF_b12_z,
+            };
+            VertexBufferHandle tf21[] = {
+                TF_a21_x, TF_a21_y, TF_a21_z, TF_b21_x, TF_b21_y, TF_b21_z,
+            };
+            VertexBufferHandle tf22[] = {
+                TF_a22_x, TF_a22_y, TF_a22_z, TF_b22_x, TF_b22_y, TF_b22_z,
+            };
+
+            AcTaskDefinition tf_ops[] = {
+                acHaloExchange(tf11),
+                acHaloExchange(tf12),
+                acHaloExchange(tf21),
+                acHaloExchange(tf22),
+                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, tf11),
+                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, tf12),
+                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, tf21),
+                acBoundaryCondition(BOUNDARY_XYZ, BOUNDCOND_SYMMETRIC, tf22),
+
+                acCompute(KERNEL_singlepass_solve_tfm_b11, tf11),
+                acCompute(KERNEL_singlepass_solve_tfm_b12, tf12),
+                acCompute(KERNEL_singlepass_solve_tfm_b21, tf21),
+                acCompute(KERNEL_singlepass_solve_tfm_b22, tf22),
+            };
+            acLogFromRootProc(pid, "Creating tf solve task graph\n");
+            AcTaskGraph* my_taskgraph = acGridBuildTaskGraph(tf_ops);
+            acGraphPrintDependencies(my_taskgraph);
+            return my_taskgraph;
+#endif
         }
         default:
             acLogFromRootProc(pid, "ERROR: no custom task graph exists for selected simulation. "

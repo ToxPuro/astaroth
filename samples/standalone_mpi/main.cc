@@ -198,12 +198,12 @@ print_diagnostics_header_from_root_proc(int pid, FILE* diag_file)
         }
 #if LSPECIAL_REDUCTIONS
         for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-            fprintf(diag_file, "%s_min_wl  %s_sum_wl  %s_max_wl  ", vtxbuf_names[i], vtxbuf_names[i],
-                    vtxbuf_names[i]);
+            fprintf(diag_file, "%s_min_wl  %s_sum_wl  %s_max_wl  ", vtxbuf_names[i],
+                    vtxbuf_names[i], vtxbuf_names[i]);
         }
         for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-            fprintf(diag_file, "%s_min_wg  %s_sum_wg  %s_max_wg  ", vtxbuf_names[i], vtxbuf_names[i],
-                    vtxbuf_names[i]);
+            fprintf(diag_file, "%s_min_wg  %s_sum_wg  %s_max_wg  ", vtxbuf_names[i],
+                    vtxbuf_names[i], vtxbuf_names[i]);
         }
 #endif
 
@@ -285,7 +285,7 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
 #if LSPECIAL_REDUCTIONS
     // These reductions are for locations sensitive special windowed
     // reductions, made for the purpose of making more localized reductions
-    // possible. As such, no concern for a default user. 
+    // possible. As such, no concern for a default user.
 
     // Calculate rms, min and max from the variables as scalars with windowing (TEST)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
@@ -293,8 +293,9 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
         acGridReduceScal(STREAM_DEFAULT, RTYPE_RADIAL_WINDOW_MIN, VertexBufferHandle(i), &buf_min);
         acGridReduceScal(STREAM_DEFAULT, RTYPE_RADIAL_WINDOW_SUM, VertexBufferHandle(i), &buf_rms);
 
-        acLogFromRootProc(pid, "WINDOW LINEAR %*s: min %.3e,\tsum %.3e,\tmax %.3e\n", max_name_width,
-                          vtxbuf_names[i], double(buf_min), double(buf_rms), double(buf_max));
+        acLogFromRootProc(pid, "WINDOW LINEAR %*s: min %.3e,\tsum %.3e,\tmax %.3e\n",
+                          max_name_width, vtxbuf_names[i], double(buf_min), double(buf_rms),
+                          double(buf_max));
         if (pid == 0) {
             fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
         }
@@ -306,12 +307,16 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
 
     // Calculate rms, min and max from the variables as scalars with windowing (TEST)
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-        acGridReduceScal(STREAM_DEFAULT, RTYPE_GAUSSIAN_WINDOW_MAX, VertexBufferHandle(i), &buf_max);
-        acGridReduceScal(STREAM_DEFAULT, RTYPE_GAUSSIAN_WINDOW_MIN, VertexBufferHandle(i), &buf_min);
-        acGridReduceScal(STREAM_DEFAULT, RTYPE_GAUSSIAN_WINDOW_SUM, VertexBufferHandle(i), &buf_rms);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_GAUSSIAN_WINDOW_MAX, VertexBufferHandle(i),
+                         &buf_max);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_GAUSSIAN_WINDOW_MIN, VertexBufferHandle(i),
+                         &buf_min);
+        acGridReduceScal(STREAM_DEFAULT, RTYPE_GAUSSIAN_WINDOW_SUM, VertexBufferHandle(i),
+                         &buf_rms);
 
-        acLogFromRootProc(pid, "WINDOW GAUSSIAN  %*s: min %.3e,\tsum %.3e,\tmax %.3e\n", max_name_width,
-                          vtxbuf_names[i], double(buf_min), double(buf_rms), double(buf_max));
+        acLogFromRootProc(pid, "WINDOW GAUSSIAN  %*s: min %.3e,\tsum %.3e,\tmax %.3e\n",
+                          max_name_width, vtxbuf_names[i], double(buf_min), double(buf_rms),
+                          double(buf_max));
         if (pid == 0) {
             fprintf(diag_file, "%e %e %e ", double(buf_min), double(buf_rms), double(buf_max));
         }
@@ -321,7 +326,7 @@ print_diagnostics(const int pid, const int step, const AcReal dt, const AcReal s
         }
     }
 
-#endif 
+#endif
 
     if ((sink_mass >= AcReal(0.0)) || (accreted_mass >= AcReal(0.0))) {
         if (pid == 0) {
@@ -1071,7 +1076,7 @@ main(int argc, char** argv)
         acLogFromRootProc(pid, "Boundary test \n");
         AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
         acGridLaunchKernel(STREAM_DEFAULT, constant, dims.n0, dims.n1);
-        //acGridLaunchKernel(STREAM_DEFAULT, beltrami_initcond, dims.n0, dims.n1);
+        // acGridLaunchKernel(STREAM_DEFAULT, beltrami_initcond, dims.n0, dims.n1);
         acGridLaunchKernel(STREAM_DEFAULT, radial_vec_initcond, dims.n0, dims.n1);
         acGridSwapBuffers();
         acLogFromRootProc(pid, "Communicating halos\n");
@@ -1153,8 +1158,7 @@ main(int argc, char** argv)
                       Simulation::Shock_Singlepass_Solve);
     acLogFromRootProc(pid, "Simulation::Hydro_Heatduct_Solve = %i\n",
                       Simulation::Hydro_Heatduct_Solve);
-    acLogFromRootProc(pid, "Simulation::Bound_Test_Solve = %i\n",
-                      Simulation::Bound_Test_Solve);
+    acLogFromRootProc(pid, "Simulation::Bound_Test_Solve = %i\n", Simulation::Bound_Test_Solve);
     acLogFromRootProc(pid, "PhysicsConfiguration::Default = %i\n", PhysicsConfiguration::Default);
     acLogFromRootProc(pid, "PhysicsConfiguration::ShockSinglepass = %i\n",
                       PhysicsConfiguration::ShockSinglepass);
@@ -1165,6 +1169,7 @@ main(int argc, char** argv)
 
     log_simulation_choice(pid, sim);
     AcTaskGraph* simulation_graph = get_simulation_graph(pid, sim);
+    AcTaskGraph* tf_graph         = get_simulation_graph(pid, Simulation::TF_Solve);
 
     ////////////////////////////////////////////////////////
     // Simulation loop setup: defining events and actions //
@@ -1381,10 +1386,24 @@ main(int argc, char** argv)
         //                                                                 //
         /////////////////////////////////////////////////////////////////////
 
-        // Execute the active task graph for 3 iterations
-        // in the case that simulation_graph = acGridGetDefaultTaskGraph(), then this is equivalent
-        // to acGridIntegrate(STREAM_DEFAULT, dt)
+#if LTFM
+        for (size_t i = 0; i < 3; ++i) {
+            // AC_step_number should be correctly
+            // updated based on the loop_cntr here
+            acGridExecuteTaskGraph(simulation_graph, 1);
+            acGridExecuteTaskGraph(tf_graph, 1);
+            acGridSynchronizeStream(STREAM_ALL);
+            acGridSwapBuffers();
+            acGridReduceXYAverages(STREAM_DEFAULT); // Must not depend on halo elements
+            acGridSynchronizeStream(STREAM_ALL);
+        }
+#else // Regular simulation
+      // Execute the active task graph for 3 iterations
+      // in the case that simulation_graph = acGridGetDefaultTaskGraph(), then this is equivalent
+      // to acGridIntegrate(STREAM_DEFAULT, dt)
         acGridExecuteTaskGraph(simulation_graph, 3);
+#endif
+
         simulation_time += dt;
         set_simulation_timestamp(i, simulation_time);
 

@@ -18,6 +18,8 @@ hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
+hostdefine LTFM (1)
+
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
 
@@ -838,6 +840,7 @@ Kernel singlepass_solve() {
 
 #if LTFM
 roc_TF_a22_x() {
+    print("HEllo\n")
     return AC_eta_tfm*deryy(TF_a22_x) + AC_eta_tfm*derzz(TF_a22_x) - AC_eta_tfm*derxy(TF_a22_y) - AC_eta_tfm*derxz(TF_a22_z) + value(FIELD_u_y)*value(PROFILE_B22mean_z) - value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*value(PROFILE_B22mean_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z) - value(PROFILE_Umean_y)*dery(TF_a22_x) + value(PROFILE_Umean_y)*derx(TF_a22_y) - value(PROFILE_Umean_z)*derz(TF_a22_x) + value(PROFILE_Umean_z)*derx(TF_a22_z) - value(PROFILE_ucrossb22mean_x)
 }
 roc_TF_a22_y() {
@@ -1171,6 +1174,7 @@ beltrami(ampl, ex, ey, ez, kx, ky, kz, phase) {
     return field
 }
 
+#if LMAGNETIC
 Kernel beltrami_initcond() {
     //uu = beltrami(1e-5, 0.0, 0.0, 1.0, 3.0, 2.0, 3.0, 0.0)
     aa = beltrami(1e-5, 0.0, 0.0, 1.0, 6.0, 4.0, 6.0, 0.0)
@@ -1182,6 +1186,7 @@ Kernel beltrami_initcond() {
     write(VTXBUF_AY, aa.y)
     write(VTXBUF_AZ, aa.z)
 }
+#endif
 
 radial_vector_field(ampl) {
     xx = grid_position()
