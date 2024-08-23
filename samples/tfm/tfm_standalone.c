@@ -473,73 +473,73 @@ main(int argc, char* argv[])
     acDeviceSwapBuffers(device);
     tfm_init_profiles(device);
 
-    // Integration-----------------------------
-    int retval;
-    AcMesh model, candidate;
-    acHostMeshCreate(info, &model);
-    acHostMeshCreate(info, &candidate);
-    acHostMeshRandomize(&model);
-    acHostMeshRandomize(&candidate);
-
-    // BC
-    acDeviceLoadMesh(device, STREAM_DEFAULT, model);
-    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
-    acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
-    acHostMeshApplyPeriodicBounds(&model);
-    AcResult res = acVerifyMesh("Boundconds", model, candidate);
-    if (res != AC_SUCCESS) {
-        retval = res;
-        WARNCHK_ALWAYS(retval);
-    }
-
-    // INTEG
+    // // Integration-----------------------------
+    // int retval;
+    // AcMesh model, candidate;
+    // acHostMeshCreate(info, &model);
+    // acHostMeshCreate(info, &candidate);
     // acHostMeshRandomize(&model);
-    // acHostMeshApplyPeriodicBounds(&model);
-    // acDeviceResetMesh(device, STREAM_DEFAULT);
+    // acHostMeshRandomize(&candidate);
+
+    // // BC
     // acDeviceLoadMesh(device, STREAM_DEFAULT, model);
-    // // acDeviceSwapBuffers(device);
+    // acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+    // acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
+    // acHostMeshApplyPeriodicBounds(&model);
+    // AcResult res = acVerifyMesh("Boundconds", model, candidate);
+    // if (res != AC_SUCCESS) {
+    //     retval = res;
+    //     WARNCHK_ALWAYS(retval);
+    // }
+
+    // // INTEG
+    // // acHostMeshRandomize(&model);
+    // // acHostMeshApplyPeriodicBounds(&model);
+    // // acDeviceResetMesh(device, STREAM_DEFAULT);
     // // acDeviceLoadMesh(device, STREAM_DEFAULT, model);
-    acDeviceResetMesh(device, STREAM_DEFAULT);
-    acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
-    acDeviceSwapBuffers(device);
-    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
-    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
-    acDeviceStoreMesh(device, STREAM_DEFAULT, &model);
-    acDeviceSynchronizeStream(device, STREAM_ALL);
-    acHostMeshApplyPeriodicBounds(&model);
+    // // // acDeviceSwapBuffers(device);
+    // // // acDeviceLoadMesh(device, STREAM_DEFAULT, model);
+    // acDeviceResetMesh(device, STREAM_DEFAULT);
+    // acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+    // acDeviceSwapBuffers(device);
+    // acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+    // acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+    // acDeviceStoreMesh(device, STREAM_DEFAULT, &model);
+    // acDeviceSynchronizeStream(device, STREAM_ALL);
+    // acHostMeshApplyPeriodicBounds(&model);
 
-    const AcReal dt                    = 1e-5;
-    const size_t NUM_INTEGRATION_STEPS = 10;
-    for (size_t j = 0; j < NUM_INTEGRATION_STEPS; ++j) {
-        for (int i = 0; i < 3; ++i) {
-            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
-            acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, dims.n0, dims.n1, dt);
-            acDeviceSwapBuffers(device);
-        }
-        // tfm_run_pipeline(device); // OK if set dt to same as with host
-    }
+    // const AcReal dt                    = 1e-5;
+    // const size_t NUM_INTEGRATION_STEPS = 10;
+    // for (size_t j = 0; j < NUM_INTEGRATION_STEPS; ++j) {
+    //     for (int i = 0; i < 3; ++i) {
+    //         acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+    //         acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, dims.n0, dims.n1, dt);
+    //         acDeviceSwapBuffers(device);
+    //     }
+    //     // tfm_run_pipeline(device); // OK if set dt to same as with host
+    // }
 
-    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
-    acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
-    if (pid == 0) {
+    // acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+    // acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
+    // if (pid == 0) {
 
-        // Host integrate
-        for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
-            acHostIntegrateStep(model, dt);
+    //     // Host integrate
+    //     for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
+    //         acHostIntegrateStep(model, dt);
 
-        acHostMeshApplyPeriodicBounds(&model);
-        const AcResult res = acVerifyMesh("Integration", model, candidate);
-        if (res != AC_SUCCESS) {
-            retval = res;
-            WARNCHK_ALWAYS(retval);
-        }
+    //     acHostMeshApplyPeriodicBounds(&model);
+    //     const AcResult res = acVerifyMesh("Integration", model, candidate);
+    //     if (res != AC_SUCCESS) {
+    //         retval = res;
+    //         WARNCHK_ALWAYS(retval);
+    //     }
 
-        srand(123567);
-        acHostMeshRandomize(&model);
-        // acHostMeshSet((AcReal)1.0, &model);
-        acHostMeshApplyPeriodicBounds(&model);
-    }
-    //---------------------------------
+    //     srand(123567);
+    //     acHostMeshRandomize(&model);
+    //     // acHostMeshSet((AcReal)1.0, &model);
+    //     acHostMeshApplyPeriodicBounds(&model);
+    // }
+    // //---------------------------------
 
     // Simulation loop
     acDeviceResetMesh(device, STREAM_DEFAULT);
