@@ -5,21 +5,62 @@
 #include <unistd.h>
 
 #include "astaroth.h"
-// #include "host_forcing.h"
+#include "astaroth_forcing.h"
 
 #include "ini.h"
+#include "stencil_loader.h"
 
-static acHostUpdateTFMSpecificGlobalParams(AcMeshInfo* info)
+/** Takes the global info as parameter */
+static int
+acHostUpdateTFMSpecificGlobalParams(AcMeshInfo* info)
 {
     info->real_params[AC_dsx] = info->real_params[AC_box_size_x] / (info->int_params[AC_nx] - 1);
     info->real_params[AC_dsy] = info->real_params[AC_box_size_y] / (info->int_params[AC_ny] - 1);
     info->real_params[AC_dsz] = info->real_params[AC_box_size_z] / (info->int_params[AC_nz] - 1);
+
+    return EXIT_SUCCESS;
 }
 
-static acHostUpdateMHDSpecificParams(AcMeshInfo* info)
+static void
+loadForcingParamsToMeshInfo(const ForcingParams forcing_params, AcMeshInfo* info)
 {
-    // const ForcingParams forcing_params = generateForcingParams(*info);
-    // loadForcingParamsToMeshInfo(forcing_params, info);
+    info->real_params[AC_forcing_magnitude] = forcing_params.magnitude;
+    info->real_params[AC_forcing_phase]     = forcing_params.phase;
+
+    info->real_params[AC_k_forcex] = forcing_params.k_force.x;
+    info->real_params[AC_k_forcey] = forcing_params.k_force.y;
+    info->real_params[AC_k_forcez] = forcing_params.k_force.z;
+
+    info->real_params[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
+    info->real_params[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
+    info->real_params[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
+
+    info->real_params[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
+    info->real_params[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
+    info->real_params[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
+
+    info->real_params[AC_kaver] = forcing_params.kaver;
+}
+
+static int
+acHostUpdateMHDSpecificParams(AcMeshInfo* info)
+{
+    // Forcing
+    ForcingParams forcing_params = generateForcingParams(info->real_params[AC_relhel],
+                                                         info->real_params[AC_kmin],
+                                                         info->real_params[AC_kmax]);
+    loadForcingParamsToMeshInfo(forcing_params, info);
+
+    // Derived values
+    info->real_params[AC_cs2_sound] = info->real_params[AC_cs_sound] *
+                                      info->real_params[AC_cs_sound];
+
+    // Other
+    info->real_params[AC_center_x] = info->real_params[AC_box_size_x] / 2;
+    info->real_params[AC_center_y] = info->real_params[AC_box_size_y] / 2;
+    info->real_params[AC_center_z] = info->real_params[AC_box_size_z] / 2;
+
+    return EXIT_SUCCESS;
 }
 
 typedef struct {
@@ -132,18 +173,243 @@ acParseINI(const char* filepath, AcMeshInfo* info)
 
     // Update the rest of the parameters
     acHostUpdateBuiltinParams(info);
+
+    // Check for uninitialized values
+    for (size_t i = 0; i < NUM_INT_PARAMS; ++i)
+        if (info->int_params[i] == INT_MIN)
+            fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", intparam_names[i]);
+    for (size_t i = 0; i < NUM_REAL_PARAMS; ++i)
+        if (info->real_params[i] == (AcReal)NAN)
+            fprintf(stderr, "--- Warning: [%s] uninitialized ---\n", realparam_names[i]);
     return EXIT_SUCCESS;
 }
 
 static int
-setup_tfm(void)
+tfm_init_profiles(const Device device)
 {
+    const AcMeshInfo info  = acDeviceGetLocalConfig(device);
+    const AcReal global_lz = info.real_params[AC_box_size_z];
+    const size_t global_nz = as_size_t(info.int3_params[AC_global_grid_n].z);
+    const long offset      = -info.int_params[AC_nz_min]; // TODO take multigpu into account
+    const size_t local_mz  = as_size_t(info.int_params[AC_mz]);
+
+    const AcReal amplitude  = info.real_params[AC_profile_amplitude];
+    const AcReal wavenumber = info.real_params[AC_profile_wavenumber];
+
+    AcReal host_profile[local_mz];
+
+    // All to zero
+    acHostInitProfileToValue(0, local_mz, host_profile);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B11mean_x);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B11mean_y);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B11mean_z);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B12mean_x);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B12mean_y);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B12mean_z);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B21mean_x);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B21mean_y);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B21mean_z);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B22mean_x);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B22mean_y);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B22mean_z);
+
+    // B1c (here B11) and B2c (here B21) to cosine
+    acHostInitProfileToCosineWave(global_lz, global_nz, offset, amplitude, wavenumber, local_mz,
+                                  host_profile);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B11mean_x);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B21mean_y);
+
+    // B1s (here B12) and B2s (here B22)
+    acHostInitProfileToSineWave(global_lz, global_nz, offset, amplitude, wavenumber, local_mz,
+                                host_profile);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B12mean_x);
+    acDeviceLoadProfile(device, host_profile, local_mz, PROFILE_B22mean_y);
+
     return EXIT_SUCCESS;
 }
 
-static int
-run_tfm(void)
+static AcReal
+max(const AcReal a, const AcReal b)
 {
+    return a > b ? a : b;
+}
+
+static AcReal
+min(const AcReal a, const AcReal b)
+{
+    return a < b ? a : b;
+}
+
+static long double
+maxl(const long double a, const long double b)
+{
+    return a > b ? a : b;
+}
+
+static long double
+minl(const long double a, const long double b)
+{
+    return a < b ? a : b;
+}
+
+AcReal
+calc_timestep(const Device device, const AcMeshInfo info)
+{
+    AcReal uumax = 0.0;
+    AcReal vAmax = 0.0;
+    // AcReal shock_max = 0.0;
+    acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_MAX, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+                      &uumax);
+
+    const long double cdt  = (long double)info.real_params[AC_cdt];
+    const long double cdtv = (long double)info.real_params[AC_cdtv];
+    // const long double cdts     = (long double)info.real_params[AC_cdts];
+    const long double cs2_sound = (long double)info.real_params[AC_cs2_sound];
+    const long double nu_visc   = (long double)info.real_params[AC_nu_visc];
+    const long double eta       = (long double)info.real_params[AC_eta];
+    const long double chi   = 0; // (long double)info.real_params[AC_chi]; // TODO not calculated
+    const long double gamma = (long double)info.real_params[AC_gamma];
+    const long double dsmin = (long double)min(info.real_params[AC_dsx],
+                                               min(info.real_params[AC_dsy],
+                                                   info.real_params[AC_dsz]));
+    // const long double nu_shock = (long double)info.real_params[AC_nu_shock];
+
+    // Old ones from legacy Astaroth
+    // const long double uu_dt   = cdt * (dsmin / (uumax + cs_sound));
+    // const long double visc_dt = cdtv * dsmin * dsmin / nu_visc;
+
+    // New, closer to the actual Courant timestep
+    // See Pencil Code user manual p. 38 (timestep section)
+    const long double uu_dt = cdt * dsmin /
+                              (fabsl((long double)uumax) +
+                               sqrtl(cs2_sound + (long double)vAmax * (long double)vAmax));
+    const long double visc_dt = cdtv * dsmin * dsmin / (maxl(maxl(nu_visc, eta), gamma * chi));
+    //+ nu_shock * (long double)shock_max);
+
+    const long double dt = minl(uu_dt, visc_dt);
+    // ERRCHK_ALWAYS(is_valid((AcReal)dt));
+    return (AcReal)(dt);
+}
+
+int
+tfm_run_pipeline_original(const Device device)
+{
+    const AcMeshInfo info = acDeviceGetLocalConfig(device);
+    const AcMeshDims dims = acGetMeshDims(info);
+    const AcReal dt       = calc_timestep(device, info);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
+
+    for (size_t step_number = 0; step_number < 3; ++step_number) {
+        acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, step_number);
+
+        // Compute: hydrodynamics
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
+
+        // Boundary conditions: hydrodynamics
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_LNRHO, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_UUX, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_UUY, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_UUZ, dims.m0, dims.m1);
+
+        // Profile averages
+        acDeviceReduceXYAverages(device, STREAM_DEFAULT);
+
+        // Compute: test fields
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve_tfm_b11, dims.n0, dims.n1);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve_tfm_b12, dims.n0, dims.n1);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve_tfm_b21, dims.n0, dims.n1);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve_tfm_b22, dims.n0, dims.n1);
+
+        // Boundary conditions: test fields
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_z, dims.m0, dims.m1);
+
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_z, dims.m0, dims.m1);
+
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_z, dims.m0, dims.m1);
+
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_z, dims.m0, dims.m1);
+    }
+    return EXIT_SUCCESS;
+}
+
+int
+tfm_run_pipeline(const Device device)
+{
+    const AcMeshInfo info = acDeviceGetLocalConfig(device);
+    const AcMeshDims dims = acGetMeshDims(info);
+    const AcReal dt       = calc_timestep(device, info);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
+
+    for (int step_number = 0; step_number < 3; ++step_number) {
+        acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, step_number);
+
+        // Boundary conditions: hydrodynamics
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_LNRHO, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_UUX, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_UUY, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_UUZ, dims.m0, dims.m1);
+
+        // Boundary conditions: test fields
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_z, dims.m0, dims.m1);
+
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_z, dims.m0, dims.m1);
+
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_z, dims.m0, dims.m1);
+
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_z, dims.m0, dims.m1);
+
+        // Profile averages
+        acDeviceReduceXYAverages(device, STREAM_DEFAULT);
+
+        // Compute: hydrodynamics
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
+
+        // Compute: test fields
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve_tfm_b11, dims.n0, dims.n1);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve_tfm_b12, dims.n0, dims.n1);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve_tfm_b21, dims.n0, dims.n1);
+        acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve_tfm_b22, dims.n0, dims.n1);
+
+        acDeviceSwapBuffers(device);
+    }
+    // Boundary conditions: hydrodynamics
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_LNRHO, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_UUX, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_UUY, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, VTXBUF_UUZ, dims.m0, dims.m1);
+
+    // Boundary conditions: test fields
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_x, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_y, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_z, dims.m0, dims.m1);
+
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_x, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_y, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_z, dims.m0, dims.m1);
+
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_x, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_y, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_z, dims.m0, dims.m1);
+
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_x, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_y, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_z, dims.m0, dims.m1);
     return EXIT_SUCCESS;
 }
 
@@ -151,6 +417,7 @@ int
 main(int argc, char* argv[])
 {
     cudaProfilerStop();
+    printf("sizeof(AcReal): %zu\n", sizeof(AcReal));
 
     // Arguments
     Arguments args;
@@ -174,6 +441,122 @@ main(int argc, char* argv[])
     Device device;
     acDeviceCreate(0, info, &device);
     acDevicePrintInfo(device);
+
+    // Load stencil coefficients (NOTE global info)
+    AcReal* stencils = get_stencil_coeffs(info);
+    acDeviceLoadStencils(device, STREAM_DEFAULT, stencils);
+    free(stencils);
+
+    AcMeshInfo local_info = acDeviceGetLocalConfig(device);
+    const AcMeshDims dims = acGetMeshDims(local_info);
+    printf("Local MeshInfo:\n");
+    acPrintMeshInfo(local_info);
+    printf("\n");
+
+    // Random numbers
+    const size_t seed  = 12345;
+    const size_t pid   = 0;
+    const size_t count = acVertexBufferCompdomainSize(info);
+    acRandInitAlt(seed, count, pid);
+    srand(seed);
+
+    // Dryrun
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+    acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 0, dims.n0, dims.n1, 1e-5);
+    acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 1, dims.n0, dims.n1, 1e-5);
+    acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, dims.n0, dims.n1, 1e-5);
+    tfm_run_pipeline(device);
+
+    // Initialize
+    acDeviceResetMesh(device, STREAM_DEFAULT);
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+    acDeviceSwapBuffers(device);
+    tfm_init_profiles(device);
+
+    // Integration-----------------------------
+    int retval;
+    AcMesh model, candidate;
+    acHostMeshCreate(info, &model);
+    acHostMeshCreate(info, &candidate);
+    acHostMeshRandomize(&model);
+    acHostMeshRandomize(&candidate);
+
+    // BC
+    acDeviceLoadMesh(device, STREAM_DEFAULT, model);
+    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+    acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
+    acHostMeshApplyPeriodicBounds(&model);
+    AcResult res = acVerifyMesh("Boundconds", model, candidate);
+    if (res != AC_SUCCESS) {
+        retval = res;
+        WARNCHK_ALWAYS(retval);
+    }
+
+    // INTEG
+    // acHostMeshRandomize(&model);
+    // acHostMeshApplyPeriodicBounds(&model);
+    // acDeviceResetMesh(device, STREAM_DEFAULT);
+    // acDeviceLoadMesh(device, STREAM_DEFAULT, model);
+    // // acDeviceSwapBuffers(device);
+    // // acDeviceLoadMesh(device, STREAM_DEFAULT, model);
+    acDeviceResetMesh(device, STREAM_DEFAULT);
+    acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+    acDeviceSwapBuffers(device);
+    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+    acDeviceStoreMesh(device, STREAM_DEFAULT, &model);
+    acDeviceSynchronizeStream(device, STREAM_ALL);
+    acHostMeshApplyPeriodicBounds(&model);
+
+    const AcReal dt                    = 1e-5;
+    const size_t NUM_INTEGRATION_STEPS = 10;
+    for (size_t j = 0; j < NUM_INTEGRATION_STEPS; ++j) {
+        for (int i = 0; i < 3; ++i) {
+            acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+            acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, dims.n0, dims.n1, dt);
+            acDeviceSwapBuffers(device);
+        }
+    }
+
+    acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+    acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
+    if (pid == 0) {
+
+        // Host integrate
+        for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
+            acHostIntegrateStep(model, dt);
+
+        acHostMeshApplyPeriodicBounds(&model);
+        const AcResult res = acVerifyMesh("Integration", model, candidate);
+        if (res != AC_SUCCESS) {
+            retval = res;
+            WARNCHK_ALWAYS(retval);
+        }
+
+        srand(123567);
+        acHostMeshRandomize(&model);
+        // acHostMeshSet((AcReal)1.0, &model);
+        acHostMeshApplyPeriodicBounds(&model);
+    }
+    //---------------------------------
+
+    // Simulation loop
+    const size_t nsteps          = 200;
+    const size_t output_interval = 10;
+    for (size_t step = 1; step <= nsteps; ++step) {
+        // Simulate
+        tfm_run_pipeline(device);
+
+        // Output
+        if ((step % output_interval) == 0) {
+            for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+                char filepath[4096];
+                sprintf(filepath, "debug-step-%012zu-tfm-%s.data", step, vtxbuf_names[i]);
+                printf("Writing %s\n", filepath);
+                acDeviceWriteMeshToDisk(device, i, filepath);
+            }
+        }
+    }
 
     return EXIT_SUCCESS;
 }
