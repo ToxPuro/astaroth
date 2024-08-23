@@ -314,6 +314,27 @@ loadForcingParamsToHost(const ForcingParams& forcing_params, AcMesh* mesh)
     mesh->info.real_params[AC_kaver] = forcing_params.kaver;
 }
 
+void
+loadForcingParamsToMeshInfo(const ForcingParams& forcing_params, AcMeshInfo* info)
+{
+    info->real_params[AC_forcing_magnitude] = forcing_params.magnitude;
+    info->real_params[AC_forcing_phase]     = forcing_params.phase;
+
+    info->real_params[AC_k_forcex] = forcing_params.k_force.x;
+    info->real_params[AC_k_forcey] = forcing_params.k_force.y;
+    info->real_params[AC_k_forcez] = forcing_params.k_force.z;
+
+    info->real_params[AC_ff_hel_rex] = forcing_params.ff_hel_re.x;
+    info->real_params[AC_ff_hel_rey] = forcing_params.ff_hel_re.y;
+    info->real_params[AC_ff_hel_rez] = forcing_params.ff_hel_re.z;
+
+    info->real_params[AC_ff_hel_imx] = forcing_params.ff_hel_im.x;
+    info->real_params[AC_ff_hel_imy] = forcing_params.ff_hel_im.y;
+    info->real_params[AC_ff_hel_imz] = forcing_params.ff_hel_im.z;
+
+    info->real_params[AC_kaver] = forcing_params.kaver;
+}
+
 ForcingParams
 generateForcingParams(const AcMeshInfo& mesh_info)
 {
