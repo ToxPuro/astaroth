@@ -292,6 +292,7 @@ main(int argc, char** argv)
 
     // Warmup
     tfm_dryrun(device, info);
+    ERRCHK_CUDA_KERNEL_ALWAYS();
 
     // Benchmark
     Timer t;
