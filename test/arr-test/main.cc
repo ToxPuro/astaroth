@@ -145,7 +145,6 @@ main(void)
             for (int j = ny_min; j < ny_max; ++j) {
                 for (int i = nx_min; i < nx_max; ++i) {
 			model.vertex_buffer[VTXBUF_UUX][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0])*global_arr[i-NGHOST_X];
-			//model.vertex_buffer[VTXBUF_UUX][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0])*1;
 			model.vertex_buffer[VTXBUF_UUY][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1]);
 			model.vertex_buffer[VTXBUF_UUZ][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2]);
                 }
@@ -160,10 +159,12 @@ main(void)
     }
 
     fflush(stdout);
-
-
-
-
+    int read_global_arr[info.int_params[AC_nx]];
+    acStoreUniform(AC_global_arr, read_global_arr, get_array_length(AC_global_arr,model.info));
+    bool arrays_are_the_same = true;
+    for(int i = 0; i < info.int_params[AC_nx]; ++i)
+	    arrays_are_the_same &= (read_global_arr[i] == global_arr[i]);
+    printf("LOAD STORE GMEM ARRAY... %s \n", arrays_are_the_same ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     if (pid == 0) {
         acHostMeshDestroy(&model);
         acHostMeshDestroy(&candidate);

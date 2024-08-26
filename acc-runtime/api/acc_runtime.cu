@@ -895,7 +895,7 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 		void* src_ptr;
 		memcpy_from_gmem_array(array,src_ptr);
 		ERRCHK_ALWAYS(src_ptr != nullptr);
-		ERRCHK_CUDA_ALWAYS(cudaMemcpyFromSymbol(values, src_ptr, bytes, 0, cudaMemcpyDeviceToHost));
+		ERRCHK_CUDA_ALWAYS(cudaMemcpy(values, src_ptr, bytes, cudaMemcpyDeviceToHost));
 	}
 	else
 	{

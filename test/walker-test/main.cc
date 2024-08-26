@@ -113,14 +113,14 @@ main(void)
     info.bool_arrays[AC_exists] = exists;
     AcReal global_radius_host[1] = {init_radius};
     info.real_arrays[global_radius_start] = global_radius_host;
+    info.real_arrays[global_radius_tmp]   = global_radius_host;
     acGridInit(info);
 
     // Load/Store
     //acGridLoadMesh(STREAM_DEFAULT, model);
     acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT,model);
     acGridSynchronizeStream(STREAM_ALL);
-    //acGridStoreMesh(STREAM_DEFAULT, &candidate);
-    acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
+    acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (pid == 0) {
         const AcResult res = acVerifyMesh("Load/Store", model, candidate);
         if (res != AC_SUCCESS) {
@@ -129,10 +129,6 @@ main(void)
         }
     }
 
-    if (pid == 0) {
-        acHostMeshDestroy(&model);
-        acHostMeshDestroy(&candidate);
-    }
     std::array<Field,NUM_VTXBUF_HANDLES> fields_array = get_vtxbuf_handles();
     std::vector<Field> all_fields(fields_array.begin(), fields_array.end());
     int steps = 0;
@@ -145,10 +141,8 @@ main(void)
 		    });
 
 
-    if (pid == 0)
-        fprintf(stderr, "MPITEST complete: %s\n",
-                retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
-    const std::vector<int> simlen = {int_pow(10,3), int_pow(10,4)};
+    //const std::vector<int> simlen = {int_pow(10,3), int_pow(10,4)};
+    const std::vector<int> simlen = {int_pow(10,3)};
     //const std::vector<int> simlen = {int_pow(10,3),int_pow(10,4)};
     std::vector<std::vector<double>> atoms_per_area;
     std::vector<std::vector<double>> box_center_x;
@@ -169,6 +163,12 @@ main(void)
 	acGridSynchronizeStream(STREAM_ALL);
 	acStoreUniform(AC_exists, exists, get_array_length(AC_exists,model.info));
 	acGridSynchronizeStream(STREAM_ALL);
+    }
+    if (pid == 0)
+        fprintf(stderr, "MPITEST complete: %s\n",
+                retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
+    exit(EXIT_SUCCESS);
+    /**
 
 	 // calculate how many atoms are in each box (to get densities by dividing the number of atoms by the box size if necessary)
         for (int ii = 0; ii < boxesx - 1; ii++) {
@@ -215,6 +215,7 @@ main(void)
     
 
     return EXIT_SUCCESS;
+    **/
 }
 
 #else
