@@ -527,6 +527,7 @@ void
 gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
 {
 
+  //fprintf(fp,"typedef struct { bool is_dconst; int d_offset; int num_dims; AcArrayDims dims; const char* name;} array_info;\n");
   char datatype[1000];
   sprintf(datatype,"%s*",datatype_scalar);
   const char* define_name =  convert_to_define_name(datatype_scalar);
@@ -559,9 +560,6 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
 	get_array_var_length(symbol_table[i].identifier,root,array_length_str);
 	fprintf(fp,"%s","{");
 
-	if(int_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEMORY_QL)) fprintf(fp, "(int)%s,", array_length_str);
-	else fprintf(fp, "%s,", array_length_str);
-
         if(int_vec_contains(symbol_table[i].tqualifiers,DCONST_QL))  fprintf(fp,"true,");
         else fprintf(fp, "false,");
 
@@ -578,7 +576,7 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
 	string_vec dims = get_array_var_dims(symbol_table[i].identifier,root);
       	fprintf(fp, "%lu,", dims.size);
 
-	fprintf(fp,"%s","{");
+	fprintf(fp,"%s","{{");
 	for(size_t dim = 0; dim < 3; ++dim)
 	{
 		if(dim >= dims.size) fprintf(fp,"%s,","-1");
@@ -586,7 +584,10 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
 	}
 	fprintf(fp,"%s","},");
 
+	for(size_t dim = 0; dim < 3; ++dim)
+		fprintf(fp,"%s,",(dim >= dims.size || is_number(dims.data[dim])) ? "false" : "true");
 	free_str_vec(&dims);
+	fprintf(fp,"%s","},");
         fprintf(fp, "\"%s\",", symbol_table[i].identifier);
 	fprintf(fp,"%s","},");
     }
@@ -599,31 +600,31 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
         !strcmp(symbol_table[i].tspecifier, datatype))
     {
   	if(!int_vec_contains(symbol_table[i].tqualifiers,RUN_CONST)) continue;
-	char array_length_str[4098];
-	get_array_var_length(symbol_table[i].identifier,root,array_length_str);
 	fprintf(fp,"%s","{");
-      	fprintf(fp, "%s,", array_length_str);
         fprintf(fp, "false,");
   	fprintf(fp,"%d,",-1);
 
 	string_vec dims = get_array_var_dims(symbol_table[i].identifier,root);
       	fprintf(fp, "%lu,", dims.size);
 
-	fprintf(fp,"%s","{");
+	fprintf(fp,"%s","{{");
 	for(size_t dim = 0; dim < 3; ++dim)
 	{
 		if(dim >= dims.size) fprintf(fp,"%s,","-1");
 		else fprintf(fp,"%s,",dims.data[dim]);
 	}
 	fprintf(fp,"%s","},");
-	free_str_vec(&dims);
 
+	for(size_t dim = 0; dim < 3; ++dim)
+		fprintf(fp,"%s,",(dim >= dims.size || is_number(dims.data[dim])) ? "false" : "true");
+	fprintf(fp,"%s","},");
+	free_str_vec(&dims);
         fprintf(fp, "\"%s\",", symbol_table[i].identifier);
 	fprintf(fp,"%s","},");
     }
   }
   //pad one extra to silence warnings
-  fprintf(fp,"{-1,false,-1,-1,{-1,-1,-1},\"AC_EXTRA_PADDING\"}");
+  fprintf(fp,"{false,-1,-1,{{-1,-1,-1}, {false,false,false}},\"AC_EXTRA_PADDING\"}");
   fprintf(fp, "};");
 
 }
@@ -737,11 +738,11 @@ gen_array_declarations(const char* datatype_scalar)
 	fclose(fp);
 
 	fp = fopen("memcpy_to_gmem_arrays.h","a");
-	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) cudaMemcpyToSymbol(gmem_%s_arrays[(int)param], &ptr, sizeof(ptr), 0, cudaMemcpyHostToDevice);\n",enum_name,define_name);
+	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) cudaMemcpyToSymbol(gmem_%s_arrays, &ptr, sizeof(ptr), get_address(param)-(size_t)&gmem_%s_arrays, cudaMemcpyHostToDevice);\n",enum_name,define_name,define_name);
 	fclose(fp);
 
 	fp = fopen("memcpy_from_gmem_arrays.h","a");
-	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) cudaMemcpyFromSymbol(&ptr,gmem_%s_arrays[(int)param],sizeof(ptr), 0, cudaMemcpyDeviceToHost);\n",enum_name,define_name);
+	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) cudaMemcpyFromSymbol(&ptr,gmem_%s_arrays,sizeof(ptr), get_address(param)-(size_t)&gmem_%s_arrays, cudaMemcpyDeviceToHost);\n",enum_name,define_name,define_name);
 	fclose(fp);
 
 
@@ -774,6 +775,8 @@ gen_array_declarations(const char* datatype_scalar)
 	fclose(fp);
 	fp = fopen("get_address.h","a");
 	fprintf(fp,"size_t  get_address(const %sParam& param){ return (size_t)&d_mesh_info.%s_params[(int)param];}\n"
+			,enum_name, define_name);
+	fprintf(fp,"size_t  get_address(const %sArrayParam& param){ return (size_t)&gmem_%s_arrays[(int)param];}\n"
 			,enum_name, define_name);
 	fclose(fp);
 	fp = fopen("load_and_store_array.h","a");
@@ -1016,6 +1019,10 @@ char*
 get_index(const ASTNode* array_access_start, const string_vec var_dims, const bool has_dconst_dims)
 {
     string_vec array_accesses = get_array_accesses(array_access_start);
+    if(array_accesses.size != var_dims.size)
+    {
+	    return NULL;
+    }
     char* index = malloc(sizeof(char)*4098);
     sprintf(index,"%s","");
     for(size_t j = 0; j < array_accesses.size; ++j)
@@ -1055,10 +1062,19 @@ gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
     (!strcmp(symbol_table[i].tspecifier,datatype)) && !strcmp(array_name,symbol_table[i].identifier) && !int_vec_contains(symbol_table[i].tqualifiers,CONST_QL)))
 	    continue;
     ASTNode* array_access_start = node;
+    while(get_parent_node(NODE_ARRAY_ACCESS,array_access_start) && get_parent_node(NODE_ARRAY_ACCESS,array_access_start)->id != array_access_start->id)
+	    array_access_start = (ASTNode*)get_parent_node(NODE_ARRAY_ACCESS,array_access_start);
     string_vec var_dims = get_array_var_dims(array_name, root);
 	
     char* index = get_index(array_access_start,var_dims,
 		    int_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEMORY_QL));
+    if(!index)
+    {
+	    char tmp[10000];
+	    combine_all(node,tmp);
+	    fprintf(stderr,FATAL_ERROR_MESSAGE"Incorrect array access: %s\n",tmp);
+	    exit(EXIT_FAILURE);
+    }
     ASTNode* base = array_access_start;
     base->lhs=NULL;
     base->rhs=NULL;
@@ -2962,6 +2978,7 @@ qualifier_to_str(const int qualifier)
 	else if(qualifier == VTXBUFFER) return "VertexBuffer";
 	else if(qualifier == SUM)        return "Sum";
 	else if(qualifier == MAX)        return "Max";
+	else if(qualifier == SHARED)     return "__shared__";
 	return NULL;
 }
 
@@ -4117,7 +4134,8 @@ gen_user_defines(const ASTNode* root, const char* out)
   }
 
   fprintf(fp,"\n #ifdef __cplusplus\n");
-  fprintf(fp,"typedef struct { int length; bool is_dconst; int d_offset; int num_dims; int3 dims; const char* name;} array_info;\n");
+  fprintf(fp,"typedef struct {int3 len; AcBool3 from_config;} AcArrayDims;\n");
+  fprintf(fp,"typedef struct { bool is_dconst; int d_offset; int num_dims; AcArrayDims dims; const char* name;} array_info;\n");
   for (size_t i = 0; i < datatypes.size; ++i)
   	  gen_array_info(fp,datatypes.data[i],root);
   free_str_vec(&datatypes);

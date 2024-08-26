@@ -31,6 +31,12 @@ typedef AcComplex struct complex
 	real x;
 	real y;
 }
+typedef AcBool3 struct bool3
+{
+	bool x;
+	bool y;
+	bool z;
+}
 //Copy int3's here since they need the struct declaration
 int3 AC_domain_decomposition
 int3 AC_multigpu_offset

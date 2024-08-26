@@ -1,4 +1,4 @@
-/*
+/*/
     Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
@@ -306,11 +306,6 @@ volume_size(const T a)
 /*
  * AcBool3
  */
-typedef struct AcBool3 {
-    bool x;
-    bool y;
-    bool z;
-} AcBool3;
 static HOST_DEVICE bool
 any(const AcBool3& a){
     return a.x || a.y || a.z;

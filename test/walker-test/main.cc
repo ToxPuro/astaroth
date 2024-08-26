@@ -97,7 +97,7 @@ main(void)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
+    acSetMeshDims(npoints_x, npoints_y, 1, &info);
     //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;
@@ -109,6 +109,10 @@ main(void)
     }
 
     // GPU alloc & compute
+    bool exists[npoints] = {true};
+    info.bool_arrays[AC_exists] = exists;
+    AcReal global_radius_host[1] = {init_radius};
+    info.real_arrays[global_radius_start] = global_radius_host;
     acGridInit(info);
 
     // Load/Store
@@ -124,9 +128,6 @@ main(void)
             WARNCHK_ALWAYS(retval);
         }
     }
-    fflush(stdout);
-    ac_MPI_Finalize();
-    return 0;
 
     if (pid == 0) {
         acHostMeshDestroy(&model);
@@ -134,8 +135,13 @@ main(void)
     }
     std::array<Field,NUM_VTXBUF_HANDLES> fields_array = get_vtxbuf_handles();
     std::vector<Field> all_fields(fields_array.begin(), fields_array.end());
+    int steps = 0;
+    auto loader = [&](auto p)
+    {
+	    p.params -> solve.step_num = steps;
+    };
     AcTaskGraph* solve_graph = acGridBuildTaskGraph({
-		    	acCompute(KERNEL_solve,all_fields)
+		    	acCompute(KERNEL_solve,all_fields,loader)
 		    });
 
 
@@ -146,7 +152,6 @@ main(void)
     //const std::vector<int> simlen = {int_pow(10,3),int_pow(10,4)};
     std::vector<std::vector<double>> atoms_per_area;
     std::vector<std::vector<double>> box_center_x;
-    bool exists[npoints];
     for(size_t i = 0; i < simlen.size(); ++i)
     {
     	std::vector<double> tmp(boxesx-1);
@@ -155,6 +160,7 @@ main(void)
     }
     for (size_t ww = 0; ww < simlen.size(); ww++) 
     {
+	++steps;
         const int nsteps = (ww == 0) ? simlen[ww] : simlen[ww]-simlen[ww-1];
 	for(int step = 0; step < nsteps; ++step)
 		acGridExecuteTaskGraph(solve_graph,1);

@@ -94,6 +94,10 @@ main(void)
     //these are read from config
     //info.int_arrays[AC_test_int_arr] = (int*)test_int_arr;
     //info.real_arrays[AC_test_arr_2] = (AcReal*)test_arr_2;
+    int global_arr[info.int_params[AC_nx]];
+    for(int i = 0; i < info.int_params[AC_nx]; ++i)
+		    global_arr[i] = 1;
+    info.int_arrays[AC_global_arr] = global_arr;
     acGridInit(info);
 
     Field all_fields[NUM_VTXBUF_HANDLES];
@@ -140,7 +144,8 @@ main(void)
         for (int k = nz_min; k < nz_max; ++k) {
             for (int j = ny_min; j < ny_max; ++j) {
                 for (int i = nx_min; i < nx_max; ++i) {
-			model.vertex_buffer[VTXBUF_UUX][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0]);
+			model.vertex_buffer[VTXBUF_UUX][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0])*global_arr[i-NGHOST_X];
+			//model.vertex_buffer[VTXBUF_UUX][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0])*1;
 			model.vertex_buffer[VTXBUF_UUY][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1]);
 			model.vertex_buffer[VTXBUF_UUZ][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2]);
                 }
