@@ -1248,6 +1248,23 @@ AcResult acHostInitProfileToValue(const long double value, const size_t profile_
 AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
                                   const size_t profile_count);
 
+/*
+ * =============================================================================
+ * AcBuffer
+ * =============================================================================
+ */
+typedef struct {
+    AcReal* data;
+    size_t count;
+    bool on_device;
+} AcBuffer;
+
+AcBuffer acBufferCreate(const size_t count, const bool on_device);
+
+void acBufferDestroy(AcBuffer* buffer);
+
+AcResult acBufferMigrate(const AcBuffer in, AcBuffer* out);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

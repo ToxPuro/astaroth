@@ -367,3 +367,51 @@ acGetKernelIdByName(const char* name)
             name);
     return (size_t)-1;
 }
+
+AcBuffer
+acBufferCreate(const size_t count, const bool on_device)
+{
+    AcBuffer buffer    = {.count = count, .on_device = on_device};
+    const size_t bytes = sizeof(buffer.data[0]) * count;
+    if (buffer.on_device) {
+        ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&buffer.data, bytes));
+    }
+    else {
+        buffer.data = (AcReal*)malloc(bytes);
+    }
+    ERRCHK_ALWAYS(buffer.data);
+    return buffer;
+}
+
+void
+acBufferDestroy(AcBuffer* buffer)
+{
+    if (buffer->on_device)
+        cudaFree(buffer->data);
+    else
+        free(buffer->data);
+    buffer->data  = NULL;
+    buffer->count = 0;
+}
+
+AcResult
+acBufferMigrate(const AcBuffer in, AcBuffer* out)
+{
+    cudaMemcpyKind kind;
+    if (in.on_device) {
+        if (out->on_device)
+            kind = cudaMemcpyDeviceToDevice;
+        else
+            kind = cudaMemcpyDeviceToHost;
+    }
+    else {
+        if (out->on_device)
+            kind = cudaMemcpyHostToDevice;
+        else
+            kind = cudaMemcpyHostToHost;
+    }
+
+    ERRCHK_ALWAYS(in.count == out->count);
+    ERRCHK_CUDA_ALWAYS(cudaMemcpy(out->data, in.data, sizeof(in.data[0]) * in.count, kind));
+    return AC_SUCCESS;
+}
