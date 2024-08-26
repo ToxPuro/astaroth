@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import glob
 
-files = glob.glob("../../build/*UUX*.data")
+files = glob.glob("../../build/*LNRHO*.mesh")
 
 %matplotlib widget
 
@@ -35,7 +35,7 @@ def update(frame):
     return [im]
 
 
-anim = animation.FuncAnimation(fig, update, frames=len(frames), interval=100, blit=True)
+anim = animation.FuncAnimation(fig, update, frames=len(frames), interval=500, blit=True)
 plt.show()
 
 # %%
@@ -48,6 +48,31 @@ for file in files:
     arr = arr.reshape((38, 38, 38))
 
     plt.imshow(arr[:, :, 16])
+    plt.title(file)
+    # plt.colorbar()
+    plt.show()
+
+
+# %%
+# Profiles
+import matplotlib.pyplot as plt
+import numpy as np
+import glob
+
+files = glob.glob("../../build/*step*000000000*00*B11mean_x.profile")
+files += glob.glob("../../build/*step*000000000*00*B12mean_x.profile")
+files += glob.glob("../../build/*step*000000000*00*B21mean_y.profile")
+files += glob.glob("../../build/*step*000000000*00*B22mean_y.profile")
+files += glob.glob("../../build/*step*000000000*00*Umean*.profile")
+files += glob.glob("../../build/*step*000000000*00*ucross*.profile")
+
+for file in files:
+    arr = np.fromfile(
+        file,
+        dtype=np.double,
+    )
+
+    plt.plot(arr)
     plt.title(file)
     # plt.colorbar()
     plt.show()

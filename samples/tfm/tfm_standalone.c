@@ -185,6 +185,20 @@ acParseINI(const char* filepath, AcMeshInfo* info)
 }
 
 static int
+acDeviceWriteProfileToDisk(const Device device, const Profile profile, const char* filepath)
+{
+    const AcMeshInfo info = acDeviceGetLocalConfig(device);
+    const size_t mz       = as_size_t(info.int3_params[AC_global_grid_n].z +
+                                2 * ((STENCIL_DEPTH - 1) / 2));
+
+    AcBuffer host_profile = acBufferCreate(mz, false);
+    acDeviceStoreProfile(device, profile, host_profile.data, host_profile.count);
+    acHostWriteProfileToFile(filepath, host_profile.data, host_profile.count);
+    acBufferDestroy(&host_profile);
+    return EXIT_SUCCESS;
+}
+
+static int
 tfm_init_profiles(const Device device)
 {
     const AcMeshInfo info  = acDeviceGetLocalConfig(device);
@@ -376,6 +390,8 @@ tfm_run_pipeline(const Device device)
 
         // Profile averages
         acDeviceReduceXYAverages(device, STREAM_DEFAULT);
+        tfm_init_profiles(device); // TODO NOTE BUG: constant test fields are overwritten or
+                                   // incorrectly swapped for some reason - this is a workaround
 
         // Compute: hydrodynamics
         acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
@@ -411,6 +427,23 @@ tfm_run_pipeline(const Device device)
     acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_y, dims.m0, dims.m1);
     acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_z, dims.m0, dims.m1);
     return EXIT_SUCCESS;
+}
+
+static int
+write_diagnostic_step(const Device device, const size_t step)
+{
+    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+        char filepath[4096];
+        sprintf(filepath, "debug-step-%012zu-tfm-%s.mesh", step, vtxbuf_names[i]);
+        printf("Writing %s\n", filepath);
+        acDeviceWriteMeshToDisk(device, i, filepath);
+    }
+    for (int i = 0; i < NUM_PROFILES; ++i) {
+        char filepath[4096];
+        sprintf(filepath, "debug-step-%012zu-tfm-%s.profile", step, profile_names[i]);
+        printf("Writing %s\n", filepath);
+        acDeviceWriteProfileToDisk(device, (Profile)i, filepath);
+    }
 }
 
 int
@@ -472,6 +505,9 @@ main(int argc, char* argv[])
     acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
     acDeviceSwapBuffers(device);
     tfm_init_profiles(device);
+
+    // Write the initial step out for reference
+    write_diagnostic_step(device, 0);
 
     // // Integration-----------------------------
     // int retval;
@@ -554,14 +590,8 @@ main(int argc, char* argv[])
         tfm_run_pipeline(device);
 
         // Output
-        if ((step % output_interval) == 0) {
-            for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-                char filepath[4096];
-                sprintf(filepath, "debug-step-%012zu-tfm-%s.data", step, vtxbuf_names[i]);
-                printf("Writing %s\n", filepath);
-                acDeviceWriteMeshToDisk(device, i, filepath);
-            }
-        }
+        if ((step % output_interval) == 0)
+            write_diagnostic_step(device, step);
     }
 
     return EXIT_SUCCESS;
