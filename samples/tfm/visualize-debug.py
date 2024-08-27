@@ -58,21 +58,43 @@ for file in files:
 import matplotlib.pyplot as plt
 import numpy as np
 import glob
+import os
 
-files = glob.glob("../../build/*step*000000000*00*B11mean_x.profile")
-files += glob.glob("../../build/*step*000000000*00*B12mean_x.profile")
-files += glob.glob("../../build/*step*000000000*00*B21mean_y.profile")
-files += glob.glob("../../build/*step*000000000*00*B22mean_y.profile")
-files += glob.glob("../../build/*step*000000000*00*Umean*.profile")
-files += glob.glob("../../build/*step*000000000*00*ucross*.profile")
+# files = glob.glob("../../build/*step*000000000*00*B11mean_x.profile")
+# files += glob.glob("../../build/*step*000000000*00*B12mean_x.profile")
+# files += glob.glob("../../build/*step*000000000*00*B21mean_y.profile")
+# files += glob.glob("../../build/*step*000000000*00*B22mean_y.profile")
+# files += glob.glob("../../build/*step*000000000*00*Umean*.profile")
+# files += glob.glob("../../build/*step*000000000*00*ucross*.profile")
+#files = glob.glob("../../build/debug-step-000000000200-*ucrossb11mean*")
+#files = glob.glob("../../build/debug-step-000000000200-*.profile")
+# files = glob.glob("../../build/debug-step-000000000200-*ucrossb21mean_x*.profile")
+# files += glob.glob("../../build/debug-step-000000000100-*ucrossb22mean_y*.profile")
+# files += glob.glob("../../build/debug-step-000000000100-*Umean_x*.profile")
+#files = glob.glob("../../build/debug-step-000000000100-*ucrossb22mean_z*.profile")
 
-for file in files:
+fig, axs = plt.subplots(9,3, layout='constrained')
+fig.set_figheight(15)
+fig.set_figwidth(20)
+
+#for step in range(0, 10+1):
+step = 200
+files = glob.glob(f"../../build/debug-step-{str(step).zfill(12)}-*.profile")
+print(files)
+for i, file in enumerate(files):
     arr = np.fromfile(
         file,
         dtype=np.double,
     )
+    col = i %3
+    row = i//3
 
-    plt.plot(arr)
-    plt.title(file)
-    # plt.colorbar()
-    plt.show()
+    axs[row, col].plot(arr)
+    axs[row, col].set_title(os.path.basename(file))
+    # plt.plot(arr)
+    # plt.title(file)
+    # plt.show()
+
+plt.show()
+
+#ani = animation.FuncAnimation(fig, update)
