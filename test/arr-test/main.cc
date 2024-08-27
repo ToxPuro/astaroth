@@ -106,13 +106,13 @@ main(void)
     }
     auto null_loader = [&](ParamLoadingInfo l){(void)l;};
     AcTaskDefinition ops[] = {
-	    acComputeWithParams(KERNEL_test_dconst_arr,all_fields,null_loader)
+	    acComputeWithParams(KERNEL_test_arr,all_fields,null_loader)
     };
     AcTaskGraph* graph = acGridBuildTaskGraph(ops);
 
     acGridExecuteTaskGraph(graph,3);
 
-    // dconst arr test
+    // arr test
     if (pid == 0)
         acHostMeshRandomize(&model);
 
@@ -140,7 +140,7 @@ main(void)
 
     for (int step_number = 0; step_number < 1; ++step_number) {
 
-	//test dconst_arr with random compute
+	//test arr with random compute
         for (int k = nz_min; k < nz_max; ++k) {
             for (int j = ny_min; j < ny_max; ++j) {
                 for (int i = nx_min; i < nx_max; ++i) {
@@ -152,7 +152,7 @@ main(void)
         }
     }
 
-    const AcResult res = acVerifyMesh("dconst-arr", model, candidate);
+    const AcResult res = acVerifyMesh("arrays", model, candidate);
     if (res != AC_SUCCESS) {
         retval = res;
         WARNCHK_ALWAYS(retval);
@@ -176,7 +176,7 @@ main(void)
     finalized = true;
 
     if (pid == 0)
-        fprintf(stderr, "DCONST_ARR_TEST complete: %s\n",
+        fprintf(stderr, "ARR_TEST complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
     return EXIT_SUCCESS;

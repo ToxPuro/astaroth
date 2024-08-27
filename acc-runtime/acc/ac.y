@@ -964,7 +964,7 @@ variable_definitions: non_null_declaration { $$ = astnode_create(NODE_UNKNOWN, $
 				  $$ = astnode_create(NODE_ASSIGN_LIST, $1, $2); $$->type |= NODE_DECLARATION; astnode_set_postfix(";", $$); 
 				  //if list assignment make the type a pointer type
 				  ASTNode* assignment = get_node(NODE_ASSIGNMENT, $2);
-				  if(assignment->rhs->lhs->rhs)
+				  if(get_node(NODE_ARRAY_INITIALIZER,assignment->rhs))
 				  {
 					ASTNode* tspec = get_node(NODE_TSPEC,$1);
 					strcat(tspec->lhs->buffer,"*");

@@ -5,8 +5,8 @@ gmem dynamic bool AC_exists[AC_nx][AC_ny]
 #include "../../stdlib/utils"
 #include "../../stdlib/math"
 const int sf = 6; // scaling factor to keep number of atoms per geometry the same
-const int npoints_x = sf*100;
-const int npoints_y = sf*100;
+const int npoints_x = sf*114;
+const int npoints_y = sf*114;
 const int npoints = npoints_x*npoints_y; // number of atoms
 const int lsf = 1; // length scaling factor to increase geometry but not atoms
 const real  lengthx = lsf * sf * 400; // length of sim domain in x dir
@@ -20,6 +20,14 @@ const real ceq = -Aat;
 const int POINTS_PER_THREAD = 1
 const int ADVANCEMENTS_PER_UPDATE = 1
 const real init_radius = 10.0
+
+Kernel
+init()
+{
+	write(COORDS_X, (rand_uniform()-0.5)*lengthx);
+	write(COORDS_Y, (rand_uniform()-0.5)*lengthy);
+}
+
 Kernel
 solve(int step_num)
 {
@@ -35,26 +43,30 @@ solve(int step_num)
 
 	real xcoord_local = value(COORDS_X)
 	real ycoord_local = value(COORDS_Y)
-	//for i in 0:ADVANCEMENTS_PER_UPDATE 
-	//{
-		const real randx = rand_uniform()
-		const real randy = rand_uniform()
-                xcoord_local += ((randx > 0.75) - (randx < 0.25))*dx;
-                ycoord_local += ((randy > 0.75) - (randy < 0.25))*dy;
-                xcoord_local += ((xcoord_local < -lengthx/ 2.0) - (xcoord_local > lengthx/ 2.0))*lengthx;
-                ycoord_local += ((ycoord_local < -lengthy/ 2.0) - (ycoord_local > lengthy/ 2.0))*lengthy;
-                const bool inside = ((xcoord_local*xcoord_local) + (ycoord_local*ycoord_local) < global_radius_2);
-		// if atom is within radius, it is is assimilated to the precipitate which then grows
-                if (AC_exists[0][0] && inside)
-		{
-			const real aeq = AC_REAL_PI
-			const real beq = 2 * AC_REAL_PI*global_radius
-			// solve deltar from quadratic eq.
-                    	const real deltar = (-beq + sqrt(beq*beq - 4 * aeq * ceq)) / (2 * aeq); 
-			//increase precipitate radius
-		        radius_sum += deltar	
-		}
-	//}
+	const real randx = rand_uniform()
+	const real randy = rand_uniform()
+        xcoord_local += ((randx > 0.75) - (randx < 0.25))*dx;
+        ycoord_local += ((randy > 0.75) - (randy < 0.25))*dy;
+
+	//Periodic bcs
+        xcoord_local += ((xcoord_local < -lengthx/ 2.0) - (xcoord_local > lengthx/ 2.0))*lengthx;
+        ycoord_local += ((ycoord_local < -lengthy/ 2.0) - (ycoord_local > lengthy/ 2.0))*lengthy;
+        const bool inside = ((xcoord_local*xcoord_local) + (ycoord_local*ycoord_local) < global_radius_2);
+	// if atom is within radius, it is is assimilated to the precipitate which then grows
+        if (AC_exists[vertexIdx.x][vertexIdx.y] && inside)
+	{
+		AC_exists[vertexIdx.x][vertexIdx.y] = false;
+		const real aeq = AC_REAL_PI
+		const real beq = 2 * AC_REAL_PI*global_radius
+		// solve deltar from quadratic eq.
+            	const real deltar = (-beq + sqrt(beq*beq - 4 * aeq * ceq)) / (2 * aeq); 
+		//increase precipitate radius
+	        radius_sum += deltar	
+	}
+	
+	write(COORDS_X,xcoord_local)
+	write(COORDS_Y,ycoord_local)
+
 	write(COORDS_X,xcoord_local)
 	write(COORDS_Y,ycoord_local)
 	if(radius_sum != 0.0)

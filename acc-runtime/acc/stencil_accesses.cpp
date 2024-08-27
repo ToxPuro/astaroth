@@ -46,8 +46,8 @@ typedef struct Field3
 #define make_double3(x, y, z) ((double3){x, y, z})
 #define print printf
 #define len(arr) sizeof(arr) / sizeof(arr[0])
-#define rand_uniform()        (0.5065983774206012); // Chosen by a fair dice roll
-#define random_uniform(TID) (0.5065983774206012); // Chosen by a fair dice roll
+#define rand_uniform()        (0.5065983774206012) // Chosen by a fair dice roll
+#define random_uniform(TID) (0.5065983774206012) // Chosen by a fair dice roll
 #define __syncthreads() 
 
 #define vertexIdx ((int3){start.x, start.y, start.z})

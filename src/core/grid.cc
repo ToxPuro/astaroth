@@ -1389,11 +1389,11 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
                "before running kernels.\n";
     }
 
-    if (error) {
+    if (error && NGHOST>0) {
         // ERROR(("\nIncorrect task graph " + task_graph_repr + ":\n" + msg).c_str())
         WARNING(("\nIncorrect task graph " + task_graph_repr + ":\n" + msg).c_str())
     }
-    if (warning) {
+    if (warning && NGHOST>0) {
         WARNING(("\nUnusual task graph " + task_graph_repr + ":\n" + msg).c_str())
     }
 }

@@ -702,7 +702,7 @@ Kernel randomize() {
 }
 
 #if LTEST
-Kernel test_dconst_arr()
+Kernel test_arr()
 {
 	write(VTXBUF_UUX,AC_test_int_arr[0]*(AC_test_arr[0] + AC_test_arr[3] + AC_test_arr_2[0])*AC_global_arr[vertexIdx.x-NGHOST_VAL]);
 	write(VTXBUF_UUY,AC_test_int_arr[1]*(AC_test_arr[1] + AC_test_arr[4] + AC_test_arr_2[1]));
