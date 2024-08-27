@@ -444,6 +444,7 @@ write_diagnostic_step(const Device device, const size_t step)
         printf("Writing %s\n", filepath);
         acDeviceWriteProfileToDisk(device, (Profile)i, filepath);
     }
+    return EXIT_SUCCESS;
 }
 
 int
@@ -502,8 +503,10 @@ main(int argc, char* argv[])
 
     // Initialize
     acDeviceResetMesh(device, STREAM_DEFAULT);
-    acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
-    acDeviceSwapBuffers(device);
+    // acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+    // acDeviceSwapBuffers(device);
+    acDeviceResetMesh(device, STREAM_DEFAULT);
+    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
     tfm_init_profiles(device);
 
     // Write the initial step out for reference
