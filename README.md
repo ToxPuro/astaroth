@@ -1,4 +1,4 @@
-#Average Gradient Method Solver
+# Average Gradient Method Solver
 This is the reference implementation of the Average Gradient Method for PDEs.
 The 2d version of the method can be find in `acc-runtime/samples/planes-2d` and upcoming 3d version of the method in `acc-runtime/samples/planes`.
 You can build the 2d version of the code with:
