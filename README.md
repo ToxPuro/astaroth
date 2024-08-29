@@ -7,9 +7,9 @@ and the 3d version with:
 `mkdir build && cd build && cmake -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR=../acc-runtime/samples/planes -DLAGRANGIAN_GRID=ON -DBUILD_TESTS=ON .. && make planetest -j`  
 You can run the code with:  
 `mpiexec -n 1 planetest`  
-> **Note:** The first run for the 3d version can take some time since Astaroth will autotune the kernels which involves running them multiple times to find the best GPU configurations  
 Given that you have matplotlib installed, you can visualize the computed solutions against the analytical solutions with:  
 `python ../test/planetest/plot.py`   
+> **Note:** The first run for the 3d version can take some time since Astaroth will autotune the kernels which involves running them multiple times to find the best GPU configurations
 
 
 
