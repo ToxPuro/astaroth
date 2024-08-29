@@ -130,11 +130,11 @@ get_entries(char** dst, const char* line)
 static int
 length_from_dims(const AcArrayDims dims)
 {
-	const int3 lens = dims.len;
-	return
-		  (lens.x > 0 ? lens.x : 1) 
-		* (lens.y > 0 ? lens.y : 1)
-		* (lens.z > 0 ? lens.z : 1);
+	const auto lens = dims.len;
+	int res = 1;
+	for(auto& len : lens)
+		res *= std::max(len,1);
+	return res;
 }
 static void
 parse_config(const char* path, AcMeshInfo* config)

@@ -36,7 +36,7 @@ typedef enum {
   NODE_DFUNCTION           = (1 << 1),
   NODE_KFUNCTION           = (1 << 2),
   NODE_FUNCTION_ID         = (1 << 3),
-  NODE_RANGE               = (1 << 4),
+  //FREE TO USE
   NODE_BINARY              = (1 << 5),
   NODE_BEGIN_SCOPE         = (1 << 6),
   NODE_DECLARATION         = (1 << 7),
@@ -341,6 +341,16 @@ get_parent_node(const NodeType type, const ASTNode* node)
   if (node->parent->type & type)
     return node->parent;
   return get_parent_node(type, node->parent);
+}
+
+static inline const ASTNode*
+get_parent_node_by_token(const int token, const ASTNode* node)
+{
+  if(!node->parent)
+    return NULL;
+  if (node->parent->token == token)
+    return node->parent;
+  return get_parent_node_by_token(token, node->parent);
 }
 
 static bool

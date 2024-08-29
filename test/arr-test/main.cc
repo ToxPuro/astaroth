@@ -74,6 +74,8 @@ main(void)
         return EXIT_FAILURE;
     }
     acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
+    constexpr int nx = 2*9;
+    constexpr int ny = 2*11;
     //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;
@@ -94,10 +96,15 @@ main(void)
     //these are read from config
     //info.int_arrays[AC_test_int_arr] = (int*)test_int_arr;
     //info.real_arrays[AC_test_arr_2] = (AcReal*)test_arr_2;
-    int global_arr[info.int_params[AC_nx]];
-    for(int i = 0; i < info.int_params[AC_nx]; ++i)
+    int global_arr[nx];
+    AcReal twoD_real_arr[ny][nx];
+    for(int i = 0; i < nx; ++i)
 		    global_arr[i] = 1;
+    for(int j = 0; j < ny; ++j)
+    	for(int i = 0; i < nx; ++i)
+		twoD_real_arr[j][i] = (1.0*rand())/RAND_MAX;
     info.int_arrays[AC_global_arr] = global_arr;
+    info.real_arrays[AC_2d_reals]  = &twoD_real_arr[0][0];
     acGridInit(info);
 
     Field all_fields[NUM_VTXBUF_HANDLES];
@@ -144,9 +151,9 @@ main(void)
         for (int k = nz_min; k < nz_max; ++k) {
             for (int j = ny_min; j < ny_max; ++j) {
                 for (int i = nx_min; i < nx_max; ++i) {
-			model.vertex_buffer[VTXBUF_UUX][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0])*global_arr[i-NGHOST_X];
-			model.vertex_buffer[VTXBUF_UUY][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1]);
-			model.vertex_buffer[VTXBUF_UUZ][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2]);
+			model.vertex_buffer[FIELD_X][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0])*global_arr[i-NGHOST_X];
+			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr[j-NGHOST_Y][i-NGHOST_X]);
+			model.vertex_buffer[FIELD_Z][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2]);
                 }
             }
         }
@@ -159,7 +166,7 @@ main(void)
     }
 
     fflush(stdout);
-    int read_global_arr[info.int_params[AC_nx]];
+    int read_global_arr[nx];
     acStoreUniform(AC_global_arr, read_global_arr, get_array_length(AC_global_arr,model.info));
     bool arrays_are_the_same = true;
     for(int i = 0; i < info.int_params[AC_nx]; ++i)

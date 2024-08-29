@@ -1181,7 +1181,7 @@ for_expression: identifier in expression {
 	      }
 	      ;
 
-range: expression ':' expression { $$ = astnode_create(NODE_RANGE, $1, $3);}
+range: expression ':' expression { $$ = astnode_create(NODE_UNKNOWN, $1, $3); $$->token = RANGE;}
      ;
 
 /*

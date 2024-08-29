@@ -284,3 +284,45 @@ replace_substring(char** str, const char* sub, const char* replace)
 {
 	replacestr(*str,sub,replace);
 }
+static int
+vasprintf(char **strp, const char *fmt, va_list ap)
+{
+    va_list ap1;
+    int len;
+    char *buffer;
+    int res;
+
+    va_copy(ap1, ap);
+    len = vsnprintf(NULL, 0, fmt, ap1);
+
+    if (len < 0)
+        return len;
+
+    va_end(ap1);
+    buffer = malloc(len + 1);
+
+    if (!buffer)
+        return -1;
+
+    res = vsnprintf(buffer, len + 1, fmt, ap);
+
+    if (res < 0)
+        free(buffer);
+    else
+        *strp = buffer;
+
+    return res;
+}
+
+static int
+asprintf(char **strp, const char *fmt, ...)
+{
+    int error;
+    va_list ap;
+
+    va_start(ap, fmt);
+    error = vasprintf(strp, fmt, ap);
+    va_end(ap);
+
+    return error;
+}

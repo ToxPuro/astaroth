@@ -395,14 +395,11 @@
   constexpr static int
   get_array_length(const P array, const AcMeshInfo host_info)
   {
-	  const AcArrayDims dims = get_array_info(array).dims;
+	  AcArrayDims dims     = get_array_info(array).dims;
+	  int num_dims         = get_array_info(array).num_dims;
 	  int res = 1;
-	  if (dims.len.x != -1)
-		  res *= dims.from_config.x ? host_info.int_params[dims.len.x] : dims.len.x;
-	  if (dims.len.y != -1)                                                                
-		  res *= dims.from_config.y ? host_info.int_params[dims.len.y] : dims.len.y;
-	  if (dims.len.z != -1)                                                                
-		  res *= dims.from_config.z ? host_info.int_params[dims.len.z] : dims.len.z;
+	  for(int i = 0; i < num_dims; ++i)
+		  res *= dims.from_config[i] ? host_info.int_params[dims.len[i]] : dims.len[i];
 	  return res;
   }
 

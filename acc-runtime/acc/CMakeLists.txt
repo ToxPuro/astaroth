@@ -8,6 +8,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Options
 option(OPTIMIZE_MEM_ACCESSES "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time." OFF)
+option(ROW_MAJOR_ORDER"Uses row-major order instead of the default column-major-order" OFF)
 option(OPTIMIZE_CONDITIONALS "Optimizes conditionals based on kernel input parameters by making copies of kernels for each combination of input params, works well with OPTIMIZE_MEM_ACCESSES since reduces the number of conditional accesses to kernels" OFF)
 
 ## Find dependencies
@@ -44,20 +45,21 @@ target_compile_definitions(acc PRIVATE -DACC_OUTPUT_DIR="${CMAKE_RUNTIME_OUTPUT_
 target_link_libraries(acc PRIVATE tinyexpr)
 
 if (OPTIMIZE_MEM_ACCESSES)
-	if(OPTIMIZE_CONDITIONALS)
-		target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=1 -DOPTIMIZE_CONDITIONALS=1)
-	else()
-		target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=1 -DOPTIMIZE_CONDITIONALS=0)
-	endif()
+	set(OPTIMIZE_MEM_ACCESSES_VAL 1)
 else()
-	if(OPTIMIZE_CONDITIONALS)
-		target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=0 -DOPTIMIZE_CONDITIONALS=1)
-	else()
-		target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=0 -DOPTIMIZE_CONDITIONALS=0)
-	endif()
+	set(OPTIMIZE_MEM_ACCESSES_VAL 0)
 endif()
-#if (OPTIMIZE_CONDITIONALS)
-#    target_compile_definitions(acc PRIVATE -DOPTIMIZE_CONDITIONALS=1)
-#else()
-#    target_compile_definitions(acc PRIVATE -DOPTIMIZE_CONDITIIONALS=0)
-#endif()
+
+if (OPTIMIZE_CONDITIONALS)
+	set(OPTIMIZE_CONDITIONALS_VAL 1)
+else()
+	set(OPTIMIZE_CONDITIONALS_VAL 0)
+endif()
+
+if (ROW_MAJOR_ORDER)
+	set(ROW_MAJOR_ORDER_VAL 1)
+else()
+	set(ROW_MAJOR_ORDER_VAL 0)
+endif()
+
+target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=${OPTIMIZE_MEM_ACCESSES_VAL} -DOPTIMIZE_CONDITIONALS=${OPTIMIZE_CONDITIONALS_VAL} -DROW_MAJOR=${ROW_MAJOR_ORDER_VAL})
