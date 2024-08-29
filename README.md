@@ -1,15 +1,15 @@
 # Average Gradient Method Solver {#mainpage}
-This is the reference implementation of the Average Gradient Method for PDEs.
-The 2d version of the method can be find in `acc-runtime/samples/planes-2d` and upcoming 3d version of the method in `acc-runtime/samples/planes`.
-You can build the 2d version of the code with:
-`mkdir build && cd build && cmake -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR=../acc-runtime/samples/planes-2d -D2D=ON -DLAGRANGIAN_GRID=ON -DBUILD_TESTS=ON .. && make planetest -j`
-and the 3d version with:
-`mkdir build && cd build && cmake -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR=../acc-runtime/samples/planes -DLAGRANGIAN_GRID=ON -DBUILD_TESTS=ON .. && make planetest -j`
-You can run the code with:
-`mpiexec -n 1 planetest`
-> **Note:** The first run for the 3d version can take some time since Astaroth will autotune the kernels which involves running them multiple times to find the best GPU configurations
-Given that you have matplotlib installed, you can visualize the computed solutions against the analytical solutions with:
-`python ../test/planetest/plot.py` 
+This is the reference implementation of the Average Gradient Method for PDEs.  
+The 2d version of the method can be find in `acc-runtime/samples/planes-2d` and upcoming 3d version of the method in `acc-runtime/samples/planes`.  
+You can build the 2d version of the code with:  
+`mkdir build && cd build && cmake -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR=../acc-runtime/samples/planes-2d -D2D=ON -DLAGRANGIAN_GRID=ON -DBUILD_TESTS=ON .. && make planetest -j`  
+and the 3d version with:  
+`mkdir build && cd build && cmake -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON -DDSL_MODULE_DIR=../acc-runtime/samples/planes -DLAGRANGIAN_GRID=ON -DBUILD_TESTS=ON .. && make planetest -j`  
+You can run the code with:  
+`mpiexec -n 1 planetest`  
+> **Note:** The first run for the 3d version can take some time since Astaroth will autotune the kernels which involves running them multiple times to find the best GPU configurations  
+Given that you have matplotlib installed, you can visualize the computed solutions against the analytical solutions with:  
+`python ../test/planetest/plot.py`   
 
 
 
