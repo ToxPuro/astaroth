@@ -76,6 +76,11 @@ main(void)
     acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
     constexpr int nx = 2*9;
     constexpr int ny = 2*11;
+    constexpr int nz = 4*7;
+
+    constexpr int mx = 2*9  + 2*NGHOST;
+    constexpr int my = 2*11 + 2*NGHOST;
+    constexpr int mz = 4*7  + 2*NGHOST;
     //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;
@@ -97,14 +102,35 @@ main(void)
     //info.int_arrays[AC_test_int_arr] = (int*)test_int_arr;
     //info.real_arrays[AC_test_arr_2] = (AcReal*)test_arr_2;
     int global_arr[nx];
+#if AC_ROW_MAJOR_ORDER
+    AcReal twoD_real_arr[nx][ny];
+    AcReal threeD_real_arr[mx][my][mz];
+#else
     AcReal twoD_real_arr[ny][nx];
+    AcReal threeD_real_arr[mz][my][mx];
+#endif
+
     for(int i = 0; i < nx; ++i)
 		    global_arr[i] = 1;
     for(int j = 0; j < ny; ++j)
     	for(int i = 0; i < nx; ++i)
+#if AC_ROW_MAJOR_ORDER
+		twoD_real_arr[i][j] = (1.0*rand())/RAND_MAX;
+#else
 		twoD_real_arr[j][i] = (1.0*rand())/RAND_MAX;
+#endif
+
+    for(int k = 0; k < mz; ++k)
+    	for(int j = 0; j < my; ++j)
+    		for(int i = 0; i < mx; ++i)
+#if AC_ROW_MAJOR_ORDER
+			threeD_real_arr[i][j][k]  = (1.0*rand())/RAND_MAX;
+#else
+			threeD_real_arr[k][j][i]  = (1.0*rand())/RAND_MAX;
+#endif
     info.int_arrays[AC_global_arr] = global_arr;
     info.real_arrays[AC_2d_reals]  = &twoD_real_arr[0][0];
+    info.real_arrays[AC_3d_reals]  = &threeD_real_arr[0][0][0];
     acGridInit(info);
 
     Field all_fields[NUM_VTXBUF_HANDLES];
@@ -151,8 +177,15 @@ main(void)
         for (int k = nz_min; k < nz_max; ++k) {
             for (int j = ny_min; j < ny_max; ++j) {
                 for (int i = nx_min; i < nx_max; ++i) {
+			int comp_x = i - NGHOST_X;
+			int comp_y = j - NGHOST_Y;
+			int comp_z = j - NGHOST_Z;
 			model.vertex_buffer[FIELD_X][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0])*global_arr[i-NGHOST_X];
-			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr[j-NGHOST_Y][i-NGHOST_X]);
+#if AC_ROW_MAJOR_ORDER
+			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr[comp_x][comp_y] + threeD_real_arr[i][j][k]);
+#else
+			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr[comp_y][comp_x] + threeD_real_arr[k][j][i]);
+#endif
 			model.vertex_buffer[FIELD_Z][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2]);
                 }
             }

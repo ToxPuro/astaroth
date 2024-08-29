@@ -1103,21 +1103,35 @@ create_primary_expression(const char* identifier)
 }
 
 ASTNode*
-get_index_node(const ASTNode* array_access_start, const string_vec var_dims)
+get_index_node(const ASTNode* array_access_start, const string_vec var_dims_in)
 {
-    	node_vec array_accesses = VEC_INITIALIZER; 
+    	node_vec array_accesses = VEC_INITIALIZER;
 	get_array_access_nodes(array_access_start,&array_accesses);
 	
-    	if(array_accesses.size != var_dims.size)
+    	if(array_accesses.size != var_dims_in.size)
     	{
     	        return NULL;
     	}
+	string_vec var_dims = VEC_INITIALIZER;
+	if(!AC_ROW_MAJOR_ORDER)
+		var_dims = str_vec_copy(var_dims_in);
+	else
+		for(int i = var_dims_in.size - 1; i >= 0; --i)
+			push(&var_dims,var_dims_in.data[i]);
+
 	node_vec new_accesses = VEC_INITIALIZER;
-    	for(size_t j = 0; j < array_accesses.size; ++j)
-	{
-		ASTNode* prefix_node = astnode_create(NODE_UNKNOWN,NULL,NULL);
-		push_node(&new_accesses,astnode_create(NODE_UNKNOWN,prefix_node,(ASTNode*)array_accesses.data[j]));
-	}
+	if(!AC_ROW_MAJOR_ORDER)
+    		for(size_t j = 0; j < array_accesses.size; ++j)
+		{
+			ASTNode* prefix_node = astnode_create(NODE_UNKNOWN,NULL,NULL);
+			push_node(&new_accesses,astnode_create(NODE_UNKNOWN,prefix_node,(ASTNode*)array_accesses.data[j]));
+		}
+	else
+    		for(int j = array_accesses.size-1; j >= 0; --j)
+		{
+			ASTNode* prefix_node = astnode_create(NODE_UNKNOWN,NULL,NULL);
+			push_node(&new_accesses,astnode_create(NODE_UNKNOWN,prefix_node,(ASTNode*)array_accesses.data[j]));
+		}
     	for(size_t j = 0; j < array_accesses.size; ++j)
     	{
 		ASTNode* node = (ASTNode*) new_accesses.data[j];
@@ -1136,8 +1150,8 @@ get_index_node(const ASTNode* array_access_start, const string_vec var_dims)
 			dims_node->parent = dims_node;
 			prefix_node->postfix = strdup(")*");
     		}
-	    node->rhs->prefix = strdup("(");
-	    node->rhs->postfix = strdup(")");
+	    	node->rhs->prefix = strdup("(");
+	    	node->rhs->postfix = strdup(")");
     	}
 	ASTNode* res = build_list_node(new_accesses,"");
     	free_node_vec(&array_accesses);
@@ -1168,12 +1182,11 @@ gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
     if (!(symbol_table[i].type & NODE_VARIABLE_ID &&
     (!strcmp(symbol_table[i].tspecifier,datatype)) && !strcmp(array_name,symbol_table[i].identifier) && !int_vec_contains(symbol_table[i].tqualifiers,CONST_QL)))
 	    continue;
-    ASTNode* array_access_start = node;
-    while(get_parent_node(NODE_ARRAY_ACCESS,array_access_start) && get_parent_node(NODE_ARRAY_ACCESS,array_access_start)->id != array_access_start->id)
-	    array_access_start = (ASTNode*)get_parent_node(NODE_ARRAY_ACCESS,array_access_start);
+
+    if(get_parent_node(NODE_ARRAY_ACCESS,node)) return;
     string_vec var_dims = get_array_var_dims(array_name, root);
 	
-    ASTNode* elem_index         = get_index_node(array_access_start,var_dims);;
+    ASTNode* elem_index         = get_index_node(node,var_dims);
     if(!elem_index)
     {
 	    char tmp[10000];
@@ -1181,7 +1194,7 @@ gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
 	    fprintf(stderr,FATAL_ERROR_MESSAGE"Incorrect array access: %s\n",tmp);
 	    exit(EXIT_FAILURE);
     }
-    ASTNode* base = array_access_start;
+    ASTNode* base = node;
     base->lhs=NULL;
     base->rhs=NULL;
     base->prefix=NULL;
