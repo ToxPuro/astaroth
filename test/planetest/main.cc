@@ -39,10 +39,10 @@
 #include "math_utils.h"
 #include "user_constants.h"
 
-const int npointsx_grid = 100;
-const int npointsy_grid = 100;
+const int npointsx_grid = 64*2;
+const int npointsy_grid = 64*2;
 #if TWO_D == 0
-const int npointsz_grid = 100;
+const int npointsz_grid = 64*2;
 #else
 const int npointsz_grid = 1;
 #endif
