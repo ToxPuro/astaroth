@@ -592,6 +592,11 @@ main(int argc, char* argv[])
         // Simulate
         tfm_run_pipeline(device);
 
+        // AcReal urms;
+        // acDeviceReduceVec(device, STREAM_DEFAULT, RTYPE_RMS, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ,
+        //                   &urms);
+        // printf("urms: %.2g, step %zu\n", urms, step);
+
         // Output
         if ((step % output_interval) == 0)
             write_diagnostic_step(device, step);
