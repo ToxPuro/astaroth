@@ -1028,9 +1028,9 @@ acDeviceTest(const Device device)
         model.vertex_buffer[VTXBUF_UUX][i] = 0.5;
         model.vertex_buffer[VTXBUF_UUY][i] = 0.2;
         model.vertex_buffer[VTXBUF_UUZ][i] = 0.8;
-        model.vertex_buffer[TF_b11_x][i]   = 0.2;
-        model.vertex_buffer[TF_b11_y][i]   = 0.3;
-        model.vertex_buffer[TF_b11_z][i]   = -0.6;
+        model.vertex_buffer[TF_a11_x][i]   = 0.2;
+        model.vertex_buffer[TF_a11_y][i]   = 0.3;
+        model.vertex_buffer[TF_a11_z][i]   = -0.6;
     }
 #endif
     acDeviceLoadMesh(device, STREAM_DEFAULT, model);
@@ -1219,7 +1219,13 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
     };
 
     // Reindex
-    VertexBufferHandle reindex_fields[] = {VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ};
+    VertexBufferHandle reindex_fields[] = {
+        VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ, //
+        TF_uxb11_x, TF_uxb11_y, TF_uxb11_z, //
+        TF_uxb12_x, TF_uxb12_y, TF_uxb12_z, //
+        TF_uxb21_x, TF_uxb21_y, TF_uxb21_z, //
+        TF_uxb22_x, TF_uxb22_y, TF_uxb22_z, //
+    };
     for (size_t w = 0; w < ARRAY_SIZE(reindex_fields); ++w) {
         const AcIndex buffer_offset = {
             .x = 0,
@@ -1231,16 +1237,16 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
                   device->vba.in[reindex_fields[w]], in_offset, in_shape, //
                   buffer.data, buffer_offset, buffer_shape, block_shape);
     }
-    // Note no offset here: is applied in acMapCross instead due to how it works with SOA vectors.
-    const AcIndex buffer_offset = {
-        .x = 0,
-        .y = 0,
-        .z = 0,
-        .w = 0,
-    };
-    acReindexCross(device->streams[STREAM_DEFAULT],  //
-                   device->vba, in_offset, in_shape, //
-                   buffer.data, buffer_offset, buffer_shape, block_shape);
+    // // Note no offset here: is applied in acMapCross instead due to how it works with SOA
+    // vectors. const AcIndex buffer_offset = {
+    //     .x = 0,
+    //     .y = 0,
+    //     .z = 0,
+    //     .w = 0,
+    // };
+    // acReindexCross(device->streams[STREAM_DEFAULT],  //
+    //                device->vba, in_offset, in_shape, //
+    //                buffer.data, buffer_offset, buffer_shape, block_shape);
 
     // Reduce
     // Note the ordering of the fields. The ordering of the fields
