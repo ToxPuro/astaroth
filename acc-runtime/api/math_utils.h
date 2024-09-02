@@ -62,7 +62,6 @@ exp(const AcComplex& val)
   return AcComplex(exp(val.x) * cos(val.y), exp(val.x) * sin(val.y));
 }
 
-
 static HOST_DEVICE_INLINE AcComplex
 operator*(const AcComplex& a, const AcComplex& b)
 {
@@ -72,7 +71,13 @@ operator*(const AcComplex& a, const AcComplex& b)
 static HOST_DEVICE_INLINE AcComplex
 operator*(const AcComplex& a, const AcReal& b)
 {
-  return (AcComplex){a.x* b,a.y * b};
+  return (AcComplex){a.x * b,a.y * b};
+}
+
+static HOST_DEVICE_INLINE AcComplex
+operator*(const AcReal& b, const AcComplex& a)
+{
+  return (AcComplex){a.x * b,a.y * b};
 }
 
 #endif // ENABLE_COMPLEX_DATATYPE

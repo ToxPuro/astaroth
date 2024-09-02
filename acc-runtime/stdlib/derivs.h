@@ -1,3 +1,5 @@
+#include "../stdlib/grid.h"
+
 #define AC_inv_dsx  (1.0/AC_dsx)
 #define AC_inv_dsy  (1.0/AC_dsy)
 #define AC_inv_dsz  (1.0/AC_dsz)
