@@ -164,7 +164,8 @@ __ballot(bool val)
 #include "acc_runtime.h"
 #include "user_constants.h"
 #include "dconst_arrays_decl.h"
-#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) DATATYPE gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1][1000] {}
+//#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1][1000] {}
+#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[1000] {}
 #include "gmem_arrays_decl.h"
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at

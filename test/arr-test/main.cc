@@ -131,6 +131,7 @@ main(void)
     info.int_arrays[AC_global_arr] = global_arr;
     info.real_arrays[AC_2d_reals]  = &twoD_real_arr[0][0];
     info.real_arrays[AC_3d_reals]  = &threeD_real_arr[0][0][0];
+    info.int_params[AC_dconst_int] = nx-NGHOST_X;
     acGridInit(info);
 
     Field all_fields[NUM_VTXBUF_HANDLES];
@@ -182,9 +183,9 @@ main(void)
 			int comp_z = j - NGHOST_Z;
 			model.vertex_buffer[FIELD_X][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0])*global_arr[i-NGHOST_X];
 #if AC_ROW_MAJOR_ORDER
-			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr[comp_x][comp_y] + threeD_real_arr[i][j][k]);
+			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr[info.int_params[AC_dconst_int]][comp_y] + threeD_real_arr[i][j][k]);
 #else
-			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr[comp_y][comp_x] + threeD_real_arr[k][j][i]);
+			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr[comp_y][info.int_params[AC_dconst_int]] + threeD_real_arr[k][j][i]);
 #endif
 			model.vertex_buffer[FIELD_Z][IDX(i,j,k)] = test_int_arr[2]*(test_arr[2] + test_arr[5] + test_arr_2[2]);
                 }

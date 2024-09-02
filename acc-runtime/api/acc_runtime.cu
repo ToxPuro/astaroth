@@ -240,7 +240,8 @@ get_smem(const Volume tpb, const size_t stencil_order,
 __device__ __constant__ AcMeshInfo d_mesh_info;
 #include "dconst_arrays_decl.h"
 //TP: We do this ugly macro because I want to keep the generated headers the same if we are compiling cpu analysis and for the actual gpu comp
-#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1] 
+//#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1] 
+#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME 
 #include "gmem_arrays_decl.h"
 
 
@@ -255,8 +256,8 @@ __device__ __constant__ AcMeshInfo d_mesh_info;
 
 
 #include "get_address.h"
-
-#include "load_and_store_array.h"
+#include "load_dconst_arrays.h"
+#include "store_dconst_arrays.h"
 
 
 
@@ -475,19 +476,9 @@ device_free(T** dst, const int bytes)
 #endif
   *dst = NULL;
 }
-template <typename P>
-void
-memcpy_to_gmem_array(const P param, void* &ptr)
-{
 #include "memcpy_to_gmem_arrays.h"
-}
-template <typename P>
-void
-memcpy_from_gmem_array(const P param, void* &ptr)
-{
-#include "memcpy_from_gmem_arrays.h"
-}
 
+#include "memcpy_from_gmem_arrays.h"
 
 template <typename P>
 struct allocate_arrays
@@ -868,7 +859,7 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 	else
 	{
 		const size_t offset = (size_t) get_dconst_array_offset(array)*sizeof(V);
-		ERRCHK_CUDA_ALWAYS(load_array(values, bytes, offset));
+		ERRCHK_CUDA_ALWAYS(load_array(values, bytes, array));
 	}
 	return AC_SUCCESS;
 }
@@ -900,7 +891,7 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 	else
 	{
 		const size_t offset = (size_t) get_dconst_array_offset(array)*sizeof(V);
-		ERRCHK_CUDA_ALWAYS(store_array(values, bytes, offset));
+		ERRCHK_CUDA_ALWAYS(store_array(values, bytes, array));
 	}
 	return AC_SUCCESS;
 }

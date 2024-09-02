@@ -465,18 +465,6 @@ symboltable_reset(void)
   int index = add_symbol(NODE_VARIABLE_ID, NULL, 0 , "int3", INT3,"blockDim");
   symbol_table[index].tqualifiers.size = 0;
 
-  string_vec datatypes = get_all_datatypes();
-  for(size_t i = 0; i < datatypes.size; ++i)
-  {
-
-	  char arr_name[10000];
-	  sprintf(arr_name,"d_%s_arrays",convert_to_define_name(datatypes.data[i]));
-	  add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL, 0, arr_name);
-
-	  sprintf(arr_name,"gmem_%s_arrays",convert_to_define_name(datatypes.data[i]));
-	  add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL, 0, arr_name);
-  }
-  free_str_vec(&datatypes);
 }
 
 void
@@ -767,7 +755,7 @@ gen_dmesh_declarations(const char* datatype_scalar)
 }
 
 void
-gen_array_declarations(const char* datatype_scalar)
+gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 {
 	char tmp[7000];
 
@@ -800,12 +788,32 @@ gen_array_declarations(const char* datatype_scalar)
 	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) return config.%s_arrays[(int)param];\n",enum_name,define_name);
 	fclose(fp);
 
+	char datatype[4098];
+	sprintf(datatype,"%s*",datatype_scalar);
 	fp = fopen("memcpy_to_gmem_arrays.h","a");
-	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) cudaMemcpyToSymbol(gmem_%s_arrays, &ptr, sizeof(ptr), get_address(param)-(size_t)&gmem_%s_arrays, cudaMemcpyHostToDevice);\n",enum_name,define_name,define_name);
+	fprintf(fp,"void memcpy_to_gmem_array(const %sArrayParam param, void* &ptr)\n"
+		    "{\n", enum_name);
+	
+
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
+  	      !strcmp(symbol_table[i].tspecifier,datatype) && int_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEMORY_QL))
+		  fprintf(fp,"if (param == %s)\n ERRCHK_CUDA_ALWAYS(cudaMemcpyToSymbol(AC_INTERNAL_gmem_%s_arrays_%s,&ptr,sizeof(ptr),0,cudaMemcpyHostToDevice));\n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
+	fprintf(fp,"}\n");
+
 	fclose(fp);
 
+
 	fp = fopen("memcpy_from_gmem_arrays.h","a");
-	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) cudaMemcpyFromSymbol(&ptr,gmem_%s_arrays,sizeof(ptr), get_address(param)-(size_t)&gmem_%s_arrays, cudaMemcpyDeviceToHost);\n",enum_name,define_name,define_name);
+	fprintf(fp,"void memcpy_from_gmem_array(const %sArrayParam param, void* &ptr)\n"
+		    "{\n", enum_name);
+	
+
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
+  	      !strcmp(symbol_table[i].tspecifier,datatype) && int_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEMORY_QL))
+		  fprintf(fp,"if (param == %s)\n ERRCHK_CUDA_ALWAYS(cudaMemcpyFromSymbol(&ptr,AC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr),0,cudaMemcpyDeviceToHost));\n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
+	fprintf(fp,"}\n");
 	fclose(fp);
 
 
@@ -839,16 +847,41 @@ gen_array_declarations(const char* datatype_scalar)
 	fp = fopen("get_address.h","a");
 	fprintf(fp,"size_t  get_address(const %sParam& param){ return (size_t)&d_mesh_info.%s_params[(int)param];}\n"
 			,enum_name, define_name);
-	fprintf(fp,"size_t  get_address(const %sArrayParam& param){ return (size_t)&gmem_%s_arrays[(int)param];}\n"
-			,enum_name, define_name);
 	fclose(fp);
-	fp = fopen("load_and_store_array.h","a");
-	fprintf(fp,"cudaError_t load_array(const %s* values, const size_t bytes, const size_t offset)"
-			"{ return cudaMemcpyToSymbol(d_%s_arrays,values,bytes,offset,cudaMemcpyHostToDevice); }\n"
-			,datatype_scalar, define_name);
-	fprintf(fp,"cudaError_t store_array(%s* values, const size_t bytes, const size_t offset)"
-			"{ return cudaMemcpyFromSymbol(values,d_%s_arrays,bytes,offset,cudaMemcpyDeviceToHost); }\n"
-			,datatype_scalar, define_name);
+	fp = fopen("load_dconst_arrays.h","a");
+	fprintf(fp,"cudaError_t\n"
+		   "load_array(const %s* values, const size_t bytes, const %sArrayParam arr)\n"
+		    "{\n",
+		     datatype_scalar, enum_name);
+
+		     
+
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  	{
+  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
+  	      !strcmp(symbol_table[i].tspecifier,datatype) && int_vec_contains(symbol_table[i].tqualifiers,DCONST_QL))
+		  fprintf(fp,"if (arr == %s)\n return cudaMemcpyToSymbol(AC_INTERNAL_d_%s_arrays_%s,values,bytes,0,cudaMemcpyHostToDevice);\n",symbol_table[i].identifier,define_name, symbol_table[i].identifier);
+  	}
+	fprintf(fp,"return cudaSuccess;\n}\n");
+
+	fclose(fp);
+	fp = fopen("store_dconst_arrays.h","a");
+		  //fprintf(fp,"case %s: cudaMemcpyFromSymbol(values,AC_INTERNAL_d_%s_arrays_%s,bytes,0,cudaMemcpyHostToDevice); break;\n ",symbol_table[i].identifier,define_name, symbol_table[i].identifier);
+	fprintf(fp,"cudaError_t\n"
+		   "store_array(%s* values, const size_t bytes, const %sArrayParam arr)\n"
+		    "{\n",
+		     datatype_scalar, enum_name);
+
+		     
+
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  	{
+  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
+  	      !strcmp(symbol_table[i].tspecifier,datatype) && int_vec_contains(symbol_table[i].tqualifiers,DCONST_QL))
+		  fprintf(fp,"if (arr == %s)\n return cudaMemcpyFromSymbol(values,AC_INTERNAL_d_%s_arrays_%s,bytes,0,cudaMemcpyDeviceToHost);\n",symbol_table[i].identifier,define_name, symbol_table[i].identifier);
+  	}
+	fprintf(fp,"return cudaSuccess;\n}\n");
+
 	fclose(fp);
 
 
@@ -905,11 +938,30 @@ gen_array_declarations(const char* datatype_scalar)
 
 	//we pad with 1 since zero sized arrays are not allowed with some CUDA compilers
 	fp = fopen("dconst_arrays_decl.h","a");
-	fprintf(fp,"__device__ __constant__  %s d_%s_arrays[D_%s_ARRAYS_LEN+1];\n",datatype_scalar, define_name, uppr_name);
+	//fprintf(fp,"__device__ __constant__  %s d_%s_arrays[D_%s_ARRAYS_LEN+1];\n",datatype_scalar, define_name, uppr_name);
+  	{
+  		  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  		  {
+  		    if (symbol_table[i].type & NODE_VARIABLE_ID &&
+  		        !strcmp(symbol_table[i].tspecifier,datatype) && int_vec_contains(symbol_table[i].tqualifiers,DCONST_QL))
+  		    {
+  		            char array_length_str[4098];
+  		            get_array_var_length(symbol_table[i].identifier,root,array_length_str);
+			    fprintf(fp,"__device__ __constant__ %s AC_INTERNAL_d_%s_arrays_%s[%s];\n",datatype_scalar, define_name,symbol_table[i].identifier,array_length_str);
+  		    }
+  		  }
+  	}
 	fclose(fp);
 
 	fp = fopen("gmem_arrays_decl.h","a");
-	fprintf(fp,"DECLARE_GMEM_ARRAY(%s,%s,%s);\n",datatype_scalar, define_name, uppr_name);
+  	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  	{
+  	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
+  	      !strcmp(symbol_table[i].tspecifier,datatype) && int_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEMORY_QL))
+		fprintf(fp,"DECLARE_GMEM_ARRAY(%s,%s,%s);\n",datatype_scalar, define_name, symbol_table[i].identifier);
+	}
+
+	//fprintf(fp,"DECLARE_GMEM_ARRAY(%s,%s,%s);\n",datatype_scalar, define_name, uppr_name);
 	fclose(fp);
 
 
@@ -1202,9 +1254,9 @@ gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
     base->infix=NULL;
     char identifier[10000];
     if(int_vec_contains(symbol_table[i].tqualifiers,DCONST_QL))
-	    sprintf(identifier,"d_%s_arrays",convert_to_define_name(datatype_scalar));
+	    sprintf(identifier,"AC_INTERNAL_d_%s_arrays_%s",convert_to_define_name(datatype_scalar), symbol_table[i].identifier);
     else
-	    sprintf(identifier,"gmem_%s_arrays",convert_to_define_name(datatype_scalar));
+	    sprintf(identifier,"AC_INTERNAL_gmem_%s_arrays_%s",convert_to_define_name(datatype_scalar), symbol_table[i].identifier);
     ASTNode* identifier_node = create_primary_expression(identifier);
     identifier_node->parent = base;
     base->lhs =  identifier_node;
@@ -1219,15 +1271,15 @@ gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
     elem_access->postfix = strdup("]");
     if(int_vec_contains(symbol_table[i].tqualifiers,DCONST_QL))
     {
-	asprintf(&elem_access_offset->buffer,"%s_offset",array_name);
-	elem_access -> infix = strdup("+");
-	elem_index -> prefix  = strdup("(");
-	elem_index -> postfix = strdup(")");
+        //asprintf(&elem_access_offset->buffer,"%s_offset",array_name);
+        //elem_access -> infix = strdup("+");
+        //elem_index -> prefix  = strdup("(");
+        //elem_index -> postfix = strdup(")");
     }
     else if(int_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEMORY_QL))
     {
 	
-	asprintf(&pointer_access->buffer,"[(int)%s]",array_name);
+	//asprintf(&pointer_access->buffer,"[(int)%s]",array_name);
     	if(!int_vec_contains(symbol_table[i].tqualifiers,DYNAMIC_QL))
 	{
 		asprintf(&base->prefix,"%s%s",
@@ -3184,7 +3236,9 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
                  !(node->type & NODE_MEMBER_ID) &&
                  !(node->type & NODE_INPUT) &&
 		 !(node->no_auto) &&
-		 !(is_user_enum_option(node->buffer))
+		 !(is_user_enum_option(node->buffer)) &&
+		 !(strstr(node->buffer,"AC_INTERNAL_d")) &&
+		 !(strstr(node->buffer,"AC_INTERNAL_gmem"))
 		 )
 	{
 	  if(node->is_constexpr && !(node->type & NODE_FUNCTION_ID)) fprintf(stream, " constexpr ");
@@ -4244,7 +4298,7 @@ gen_user_defines(const ASTNode* root, const char* out)
 	  gen_enums(fp,datatype);
 
 	  gen_dmesh_declarations(datatype);
-	  gen_array_declarations(datatype);
+	  gen_array_declarations(datatype,root);
 	  gen_comp_declarations(datatype);
   }
 
