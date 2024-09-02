@@ -49,15 +49,15 @@ Field TF_a22_x, TF_a22_y, TF_a22_z
 #define TF_a22 Field3(TF_a22_x, TF_a22_y, TF_a22_z)
 
 // Derived fields
-Field TF_b11_x, TF_b11_y, TF_b11_z
-Field TF_b12_x, TF_b12_y, TF_b12_z
-Field TF_b21_x, TF_b21_y, TF_b21_z
-Field TF_b22_x, TF_b22_y, TF_b22_z
+Field TF_uxb11_x, TF_uxb11_y, TF_uxb11_z
+Field TF_uxb12_x, TF_uxb12_y, TF_uxb12_z
+Field TF_uxb21_x, TF_uxb21_y, TF_uxb21_z
+Field TF_uxb22_x, TF_uxb22_y, TF_uxb22_z
 
-#define TF_b11 Field3(TF_b11_x, TF_b11_y, TF_b11_z)
-#define TF_b12 Field3(TF_b12_x, TF_b12_y, TF_b12_z)
-#define TF_b21 Field3(TF_b21_x, TF_b21_y, TF_b21_z)
-#define TF_b22 Field3(TF_b22_x, TF_b22_y, TF_b22_z)
+#define TF_uxb11 Field3(TF_uxb11_x, TF_uxb11_y, TF_uxb11_z)
+#define TF_uxb12 Field3(TF_uxb12_x, TF_uxb12_y, TF_uxb12_z)
+#define TF_uxb21 Field3(TF_uxb21_x, TF_uxb21_y, TF_uxb21_z)
+#define TF_uxb22 Field3(TF_uxb22_x, TF_uxb22_y, TF_uxb22_z)
 
 // Mean-field profiles
 Profile PROFILE_Umean_x, PROFILE_Umean_y, PROFILE_Umean_z
@@ -559,37 +559,33 @@ Kernel singlepass_solve_tfm_b22(){
     write(TF_a22_x, rk3(previous(TF_a22_x), value(TF_a22_x), roc_TF_a22_x()))
     write(TF_a22_y, rk3(previous(TF_a22_y), value(TF_a22_y), roc_TF_a22_y()))
     write(TF_a22_z, rk3(previous(TF_a22_z), value(TF_a22_z), roc_TF_a22_z()))
-    curl_a22 = curl(TF_a22)
-    write(TF_b22_x, curl_a22.x)
-    write(TF_b22_y, curl_a22.y)
-    write(TF_b22_z, curl_a22.z)
+    write(TF_uxb22_x, -value(FIELD_u_y)*dery(TF_a22_x) + value(FIELD_u_y)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_x) + value(FIELD_u_z)*derx(TF_a22_z))
+    write(TF_uxb22_y, value(FIELD_u_x)*dery(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_y) - value(FIELD_u_z)*derz(TF_a22_y) + value(FIELD_u_z)*dery(TF_a22_z))
+    write(TF_uxb22_z, value(FIELD_u_x)*derz(TF_a22_x) - value(FIELD_u_x)*derx(TF_a22_z) + value(FIELD_u_y)*derz(TF_a22_y) - value(FIELD_u_y)*dery(TF_a22_z))
 }
 Kernel singlepass_solve_tfm_b12(){
     write(TF_a12_x, rk3(previous(TF_a12_x), value(TF_a12_x), roc_TF_a12_x()))
     write(TF_a12_y, rk3(previous(TF_a12_y), value(TF_a12_y), roc_TF_a12_y()))
     write(TF_a12_z, rk3(previous(TF_a12_z), value(TF_a12_z), roc_TF_a12_z()))
-    curl_a12 = curl(TF_a12)
-    write(TF_b12_x, curl_a12.x)
-    write(TF_b12_y, curl_a12.y)
-    write(TF_b12_z, curl_a12.z)
-}
-Kernel singlepass_solve_tfm_b21(){
-    write(TF_a21_x, rk3(previous(TF_a21_x), value(TF_a21_x), roc_TF_a21_x()))
-    write(TF_a21_y, rk3(previous(TF_a21_y), value(TF_a21_y), roc_TF_a21_y()))
-    write(TF_a21_z, rk3(previous(TF_a21_z), value(TF_a21_z), roc_TF_a21_z()))
-    curl_a21 = curl(TF_a21)
-    write(TF_b21_x, curl_a21.x)
-    write(TF_b21_y, curl_a21.y)
-    write(TF_b21_z, curl_a21.z)
+    write(TF_uxb12_x, -value(FIELD_u_y)*dery(TF_a12_x) + value(FIELD_u_y)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_x) + value(FIELD_u_z)*derx(TF_a12_z))
+    write(TF_uxb12_y, value(FIELD_u_x)*dery(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_y) - value(FIELD_u_z)*derz(TF_a12_y) + value(FIELD_u_z)*dery(TF_a12_z))
+    write(TF_uxb12_z, value(FIELD_u_x)*derz(TF_a12_x) - value(FIELD_u_x)*derx(TF_a12_z) + value(FIELD_u_y)*derz(TF_a12_y) - value(FIELD_u_y)*dery(TF_a12_z))
 }
 Kernel singlepass_solve_tfm_b11(){
     write(TF_a11_x, rk3(previous(TF_a11_x), value(TF_a11_x), roc_TF_a11_x()))
     write(TF_a11_y, rk3(previous(TF_a11_y), value(TF_a11_y), roc_TF_a11_y()))
     write(TF_a11_z, rk3(previous(TF_a11_z), value(TF_a11_z), roc_TF_a11_z()))
-    curl_a11 = curl(TF_a11)
-    write(TF_b11_x, curl_a11.x)
-    write(TF_b11_y, curl_a11.y)
-    write(TF_b11_z, curl_a11.z)
+    write(TF_uxb11_x, -value(FIELD_u_y)*dery(TF_a11_x) + value(FIELD_u_y)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_x) + value(FIELD_u_z)*derx(TF_a11_z))
+    write(TF_uxb11_y, value(FIELD_u_x)*dery(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_y) - value(FIELD_u_z)*derz(TF_a11_y) + value(FIELD_u_z)*dery(TF_a11_z))
+    write(TF_uxb11_z, value(FIELD_u_x)*derz(TF_a11_x) - value(FIELD_u_x)*derx(TF_a11_z) + value(FIELD_u_y)*derz(TF_a11_y) - value(FIELD_u_y)*dery(TF_a11_z))
+}
+Kernel singlepass_solve_tfm_b21(){
+    write(TF_a21_x, rk3(previous(TF_a21_x), value(TF_a21_x), roc_TF_a21_x()))
+    write(TF_a21_y, rk3(previous(TF_a21_y), value(TF_a21_y), roc_TF_a21_y()))
+    write(TF_a21_z, rk3(previous(TF_a21_z), value(TF_a21_z), roc_TF_a21_z()))
+    write(TF_uxb21_x, -value(FIELD_u_y)*dery(TF_a21_x) + value(FIELD_u_y)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_x) + value(FIELD_u_z)*derx(TF_a21_z))
+    write(TF_uxb21_y, value(FIELD_u_x)*dery(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_y) - value(FIELD_u_z)*derz(TF_a21_y) + value(FIELD_u_z)*dery(TF_a21_z))
+    write(TF_uxb21_z, value(FIELD_u_x)*derz(TF_a21_x) - value(FIELD_u_x)*derx(TF_a21_z) + value(FIELD_u_y)*derz(TF_a21_y) - value(FIELD_u_y)*dery(TF_a21_z))
 }
 #endif
 
