@@ -140,21 +140,21 @@ tfm_pipeline(const Device device, const AcMeshInfo info)
         acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve_tfm_b22, dims.n0, dims.n1);
 
         // Boundary conditions: test fields
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b11_x, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b11_y, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b11_z, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_z, dims.m0, dims.m1);
 
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b12_x, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b12_y, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b12_z, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_z, dims.m0, dims.m1);
 
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b21_x, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b21_y, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b21_z, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_z, dims.m0, dims.m1);
 
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b22_x, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b22_y, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b22_z, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_z, dims.m0, dims.m1);
     }
 }
 
@@ -368,21 +368,21 @@ main(int argc, char** argv)
 
         // Boundary conditions: test fields
         BENCHMARK_BEGIN();
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b11_x, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b11_y, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b11_z, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a11_z, dims.m0, dims.m1);
 
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b12_x, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b12_y, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b12_z, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a12_z, dims.m0, dims.m1);
 
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b21_x, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b21_y, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b21_z, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a21_z, dims.m0, dims.m1);
 
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b22_x, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b22_y, dims.m0, dims.m1);
-        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_b22_z, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_z, dims.m0, dims.m1);
         BENCHMARK_STOP("bc_tfs");
     }
     // Profile

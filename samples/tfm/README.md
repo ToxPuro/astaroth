@@ -26,10 +26,10 @@ The DSL code is in `astaroth/samples/tfm/mhd/mhd.ac`. The time integration of ea
 Test fields are stored in
 ```
 // Test fields
-Field TF_b11_x, TF_b11_y, TF_b11_z
-Field TF_b12_x, TF_b12_y, TF_b12_z
-Field TF_b21_x, TF_b21_y, TF_b21_z
-Field TF_b22_x, TF_b22_y, TF_b22_z
+Field TF_a11_x, TF_a11_y, TF_a11_z
+Field TF_a12_x, TF_a12_y, TF_a12_z
+Field TF_a21_x, TF_a21_y, TF_a21_z
+Field TF_a22_x, TF_a22_y, TF_a22_z
 ```
 defined in the beginning of tfm/mhd/mhd.ac.
 
