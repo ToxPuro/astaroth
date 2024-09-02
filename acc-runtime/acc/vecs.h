@@ -246,52 +246,83 @@ static inline char* remove_substring(char *str, const char *sub) {
 	return str;
 }
 
-static inline char* get_replaced_substring(const char *str, const char *sub, const char *replace) {
-    const char *pos; 
-    char *temp;
-    int len_sub = strlen(sub);
-    int len_replace = strlen(replace);
-    int len_str = strlen(str);
 
-    // Count occurrences of the substring
-    int count = 0;
-    pos = str;
-    while ((pos = strstr(pos, sub)) != NULL) {
-        count++;
-        pos += len_sub;
-    }
+static inline int replacestr(char *line, const char *search, const char *replace)
+{
+   int count;
+   char *sp; // start of pattern
 
-    // Allocate memory for the new string
-    temp = (char*)malloc(len_str + (len_replace - len_sub) * count + 1);
-    if (!temp) {
-        return NULL; // Memory allocation failed
-    }
+   //printf("replacestr(%s, %s, %s)\n", line, search, replace);
+   if ((sp = strstr(line, search)) == NULL) {
+      return(0);
+   }
+   count = 1;
+   int sLen = strlen(search);
+   int rLen = strlen(replace);
+   if (sLen > rLen) {
+      // move from right to left
+      char *src = sp + sLen;
+      char *dst = sp + rLen;
+      while((*dst = *src) != '\0') { dst++; src++; }
+   } else if (sLen < rLen) {
+      // move from left to right
+      int tLen = strlen(sp) - sLen;
+      char *stop = sp + rLen;
+      char *src = sp + sLen + tLen;
+      char *dst = sp + rLen + tLen;
+      while(dst >= stop) { *dst = *src; dst--; src--; }
+   }
+   memcpy(sp, replace, rLen);
 
-    char *current_pos = temp;
-    pos = str;
-    while ((pos = strstr(pos, sub)) != NULL) {
-        // Copy the part before the substring
-        int len_before_sub = pos - str;
-        memcpy(current_pos, str, len_before_sub);
-        current_pos += len_before_sub;
+   count += replacestr(sp + rLen, search, replace);
 
-        // Copy the replacement substring
-        memcpy(current_pos, replace, len_replace);
-        current_pos += len_replace;
-
-        // Move past the substring in the original string
-        str = pos + len_sub;
-        pos = str;
-    }
-    // Copy the remaining part of the original string
-    strcpy(current_pos, str);
-
-    return temp;
+   return(count);
 }
+
 static inline void 
 replace_substring(char** str, const char* sub, const char* replace)
 {
-	char* new_str  = get_replaced_substring(*str,sub,replace);
-	free(*str);
-	*str = new_str;
+	replacestr(*str,sub,replace);
+}
+static int
+vasprintf(char **strp, const char *fmt, va_list ap)
+{
+    va_list ap1;
+    int len;
+    char *buffer;
+    int res;
+
+    va_copy(ap1, ap);
+    len = vsnprintf(NULL, 0, fmt, ap1);
+
+    if (len < 0)
+        return len;
+
+    va_end(ap1);
+    buffer = malloc(len + 1);
+
+    if (!buffer)
+        return -1;
+
+    res = vsnprintf(buffer, len + 1, fmt, ap);
+
+    if (res < 0)
+        free(buffer);
+    else
+        *strp = buffer;
+
+    return res;
+}
+
+static int
+asprintf(char **strp, const char *fmt, ...)
+{
+    int error;
+    va_list ap;
+
+    va_start(ap, fmt);
+    error = vasprintf(strp, fmt, ap);
+    va_end(ap);
+
+    return error;
 }

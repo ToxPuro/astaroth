@@ -46,8 +46,8 @@ typedef struct Field3
 #define make_double3(x, y, z) ((double3){x, y, z})
 #define print printf
 #define len(arr) sizeof(arr) / sizeof(arr[0])
-#define rand_uniform()        (0.5065983774206012); // Chosen by a fair dice roll
-#define random_uniform(TID) (0.5065983774206012); // Chosen by a fair dice roll
+#define rand_uniform()        (0.5065983774206012) // Chosen by a fair dice roll
+#define random_uniform(TID) (0.5065983774206012) // Chosen by a fair dice roll
 #define __syncthreads() 
 
 #define vertexIdx ((int3){start.x, start.y, start.z})
@@ -164,7 +164,8 @@ __ballot(bool val)
 #include "acc_runtime.h"
 #include "user_constants.h"
 #include "dconst_arrays_decl.h"
-#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) DATATYPE gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1][1000] {}
+//#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1][1000] {}
+#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[1000] {}
 #include "gmem_arrays_decl.h"
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at

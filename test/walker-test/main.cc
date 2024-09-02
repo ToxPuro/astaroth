@@ -97,7 +97,7 @@ main(void)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
+    acSetMeshDims(npoints_x, npoints_y, 1, &info);
     //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;
@@ -109,14 +109,20 @@ main(void)
     }
 
     // GPU alloc & compute
+    bool exists[npoints];
+    for(int i = 0; i < npoints; ++i) exists[i] = true;
+
+    info.bool_arrays[AC_exists] = exists;
+    AcReal* global_radius_host = (AcReal*)malloc(sizeof(AcReal)*1);
+    global_radius_host[0] = init_radius;
+    info.real_arrays[global_radius_start] = global_radius_host;
+    info.real_arrays[global_radius_tmp]   = global_radius_host;
     acGridInit(info);
 
     // Load/Store
-    //acGridLoadMesh(STREAM_DEFAULT, model);
-    acDeviceLoadMesh(acGridGetDevice(), STREAM_DEFAULT,model);
+    acGridLoadMesh(STREAM_DEFAULT, model);
     acGridSynchronizeStream(STREAM_ALL);
-    //acGridStoreMesh(STREAM_DEFAULT, &candidate);
-    acDeviceStoreMesh(acGridGetDevice(), STREAM_DEFAULT,&candidate);
+    acGridStoreMesh(STREAM_DEFAULT, &candidate);
     if (pid == 0) {
         const AcResult res = acVerifyMesh("Load/Store", model, candidate);
         if (res != AC_SUCCESS) {
@@ -124,45 +130,61 @@ main(void)
             WARNCHK_ALWAYS(retval);
         }
     }
-    fflush(stdout);
-    ac_MPI_Finalize();
-    return 0;
 
-    if (pid == 0) {
-        acHostMeshDestroy(&model);
-        acHostMeshDestroy(&candidate);
-    }
+
     std::array<Field,NUM_VTXBUF_HANDLES> fields_array = get_vtxbuf_handles();
     std::vector<Field> all_fields(fields_array.begin(), fields_array.end());
+    int steps = 0;
+    auto loader = [&](auto p)
+    {
+	    p.params -> solve.step_num = steps;
+    };
     AcTaskGraph* solve_graph = acGridBuildTaskGraph({
-		    	acCompute(KERNEL_solve,all_fields)
-		    });
-
-
-    if (pid == 0)
-        fprintf(stderr, "MPITEST complete: %s\n",
-                retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
-    const std::vector<int> simlen = {int_pow(10,3), int_pow(10,4)};
-    //const std::vector<int> simlen = {int_pow(10,3),int_pow(10,4)};
+		    	acCompute(KERNEL_solve,all_fields,loader)
+		 });
+    AcTaskGraph* init = acGridBuildTaskGraph({
+		    	acCompute(KERNEL_init,all_fields)
+		 });
+    acGridExecuteTaskGraph(init,1);
+    acLoadUniform(0,global_radius_start, global_radius_host, size_t(1));
+    acLoadUniform(0,global_radius_tmp  , global_radius_host, size_t(1));
+    acLoadUniform(0,AC_exists, exists, npoints);
+    const std::vector<int> simlen = {int_pow(10,3), int_pow(10,4), int_pow(10,5)};
+    //const std::vector<int> simlen = {int_pow(10,3)};
     std::vector<std::vector<double>> atoms_per_area;
     std::vector<std::vector<double>> box_center_x;
-    bool exists[npoints];
     for(size_t i = 0; i < simlen.size(); ++i)
     {
     	std::vector<double> tmp(boxesx-1);
     	atoms_per_area.push_back(tmp);
     	box_center_x.push_back(tmp);
     }
+    //init box centers
+    for (int ii = 0; ii < boxesx - 1; ii++) {
+        for (int jj = 0; jj < boxesy - 1; jj++) {
+            double boxcenterx = boxxlength / 2.0 + ii * boxxlength - lengthx / 2.0;
+            double boxcentery = boxylength / 2.0 + jj * boxylength - lengthy / 2.0;
+            boxcentersx[ii][jj] = boxcenterx;
+            boxcentersy[ii][jj] = boxcentery;
+        }
+    }
     for (size_t ww = 0; ww < simlen.size(); ww++) 
     {
+	++steps;
         const int nsteps = (ww == 0) ? simlen[ww] : simlen[ww]-simlen[ww-1];
 	for(int step = 0; step < nsteps; ++step)
+	{
+		printf("step: %d/%d\n",step,nsteps-1);
 		acGridExecuteTaskGraph(solve_graph,1);
+	}
 	acGridSynchronizeStream(STREAM_ALL);
     	acGridStoreMesh(STREAM_DEFAULT, &model);
 	acGridSynchronizeStream(STREAM_ALL);
 	acStoreUniform(AC_exists, exists, get_array_length(AC_exists,model.info));
 	acGridSynchronizeStream(STREAM_ALL);
+	int do_not_exist = 0;
+	for(int i = 0; i < npoints; ++i)
+		do_not_exist += (!exists[i]);
 
 	 // calculate how many atoms are in each box (to get densities by dividing the number of atoms by the box size if necessary)
         for (int ii = 0; ii < boxesx - 1; ii++) {
@@ -172,7 +194,7 @@ main(void)
                     const double boxcenterx = boxcentersx[ii][jj];
                     const double boxcentery = boxcentersy[ii][jj];
                     int inside_box = ((model.vertex_buffer[COORDS_X][uu] > boxcenterx - boxxlength / 2.0 && model.vertex_buffer[COORDS_X][uu] < boxcenterx + boxxlength / 2.0) && (model.vertex_buffer[COORDS_Y][uu] > boxcentery - boxylength / 2.0 && model.vertex_buffer[COORDS_Y][uu] < boxcentery + boxylength / 2.0));
-                    natoms[ii][jj] += inside_box*(exists[uu] == 1);
+                    natoms[ii][jj] += inside_box*(exists[uu] == true);
                 }
             }
         }
@@ -184,8 +206,10 @@ main(void)
         {
                 atoms_per_area[ww][ii] = natoms[ii][boxesy/2]/(boxxlength*boxylength);
                 box_center_x[ww][ii] = boxcentersx[ii][boxesy/2];
+		//printf("atoms: %14e\tcenter: %14e\n",atoms_per_area[ww][ii], box_center_x[ww][ii]);
         }
     }
+    
     for(size_t i = 0; i < simlen.size(); ++i)
     {
     	char name_buffer[4000];
@@ -201,6 +225,9 @@ main(void)
     plt::save(name_buffer);
 
     plt::show();
+    if (pid == 0)
+        fprintf(stderr, "WALKER TEST complete: %s\n",
+                retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
     acGridQuit();
     ac_MPI_Finalize();

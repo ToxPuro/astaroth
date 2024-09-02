@@ -121,10 +121,10 @@ Kernel singlepass_solve()
 
 
 	const v0f     = diff_left(U)
-	const v1f     =  diff_down(U)
+	const v1f     = diff_down(U)
 	const v2f     = diff_right(U)
-	const v3f     =    diff_up(U)
-	const v4f     =  diff_back(U)
+	const v3f     = diff_up(U)
+	const v4f     = diff_back(U)
 	const v5f     = diff_front(U)
 
 	const real3 p0_coords = {v0x,v0y,v0z}
@@ -191,14 +191,14 @@ Kernel singlepass_solve()
         real4 p5 = {v5x,v5y,v5z,v5f};
 
 
-	partials0x, partials0y, partials0z = PlaneCoefficients3D_without_inv(p4,p0,p1,V0_precomputed);
-        partials1x, partials1y, partials1z = PlaneCoefficients3D_without_inv(p4,p1,p2,V1_precomputed);
-        partials2x, partials2y, partials2z = PlaneCoefficients3D_without_inv(p4,p2,p3,V2_precomputed);
-        partials3x, partials3y, partials3z = PlaneCoefficients3D_without_inv(p4,p3,p0,V3_precomputed);
-        partials4x, partials4y, partials4z = PlaneCoefficients3D_without_inv(p5,p1,p0,V4_precomputed);
-        partials5x, partials5y, partials5z = PlaneCoefficients3D_without_inv(p5,p2,p1,V5_precomputed);
-        partials6x, partials6y, partials6z = PlaneCoefficients3D_without_inv(p5,p3,p2,V6_precomputed);
-        partials7x, partials7y, partials7z = PlaneCoefficients3D_without_inv(p5,p0,p3,V7_precomputed);
+	partials0x, partials0y, partials0z = PlaneCoefficients_without_inv(p4,p0,p1,V0_precomputed);
+        partials1x, partials1y, partials1z = PlaneCoefficients_without_inv(p4,p1,p2,V1_precomputed);
+        partials2x, partials2y, partials2z = PlaneCoefficients_without_inv(p4,p2,p3,V2_precomputed);
+        partials3x, partials3y, partials3z = PlaneCoefficients_without_inv(p4,p3,p0,V3_precomputed);
+        partials4x, partials4y, partials4z = PlaneCoefficients_without_inv(p5,p1,p0,V4_precomputed);
+        partials5x, partials5y, partials5z = PlaneCoefficients_without_inv(p5,p2,p1,V5_precomputed);
+        partials6x, partials6y, partials6z = PlaneCoefficients_without_inv(p5,p3,p2,V6_precomputed);
+        partials7x, partials7y, partials7z = PlaneCoefficients_without_inv(p5,p0,p3,V7_precomputed);
 
 	const real p0x_local = (partials0x + partials1x + partials2x + partials3x + partials4x + partials5x + partials6x + partials7x)*totalVolumeInv;
         const real p0y_local = (partials0y + partials1y + partials2y + partials3y + partials4y + partials5y + partials6y + partials7y)*totalVolumeInv;
@@ -232,14 +232,14 @@ Kernel singlepass_solve()
         p4 = {v4x,v4y,v4z,p4x};
         p5 = {v5x,v5y,v5z,p5x};
 
-	partials0xx = Plane3D_x_coefficient(p4,p0,p1,V0_precomputed);
-        partials1xx = Plane3D_x_coefficient(p4,p1,p2,V1_precomputed);
-        partials2xx = Plane3D_x_coefficient(p4,p2,p3,V2_precomputed);
-        partials3xx = Plane3D_x_coefficient(p4,p3,p0,V3_precomputed);
-        partials4xx = Plane3D_x_coefficient(p5,p1,p0,V4_precomputed);
-        partials5xx = Plane3D_x_coefficient(p5,p2,p1,V5_precomputed);
-        partials6xx = Plane3D_x_coefficient(p5,p3,p2,V6_precomputed);
-        partials7xx = Plane3D_x_coefficient(p5,p0,p3,V7_precomputed);
+	partials0xx = Plane_x_coefficient(p4,p0,p1,V0_precomputed);
+        partials1xx = Plane_x_coefficient(p4,p1,p2,V1_precomputed);
+        partials2xx = Plane_x_coefficient(p4,p2,p3,V2_precomputed);
+        partials3xx = Plane_x_coefficient(p4,p3,p0,V3_precomputed);
+        partials4xx = Plane_x_coefficient(p5,p1,p0,V4_precomputed);
+        partials5xx = Plane_x_coefficient(p5,p2,p1,V5_precomputed);
+        partials6xx = Plane_x_coefficient(p5,p3,p2,V6_precomputed);
+        partials7xx = Plane_x_coefficient(p5,p0,p3,V7_precomputed);
 
 
         p0 = {v0x,v0y,v0z,p0y};
@@ -249,14 +249,14 @@ Kernel singlepass_solve()
         p4 = {v4x,v4y,v4z,p4y};
         p5 = {v5x,v5y,v5z,p5y};
 
-        partials0yy = Plane3D_y_coefficient(p4,p0,p1,V0_precomputed);
-        partials1yy = Plane3D_y_coefficient(p4,p1,p2,V1_precomputed);
-        partials2yy = Plane3D_y_coefficient(p4,p2,p3,V2_precomputed);
-        partials3yy = Plane3D_y_coefficient(p4,p3,p0,V3_precomputed);
-        partials4yy = Plane3D_y_coefficient(p5,p1,p0,V4_precomputed);
-        partials5yy = Plane3D_y_coefficient(p5,p2,p1,V5_precomputed);
-        partials6yy = Plane3D_y_coefficient(p5,p3,p2,V6_precomputed);
-        partials7yy = Plane3D_y_coefficient(p5,p0,p3,V7_precomputed);
+        partials0yy = Plane_y_coefficient(p4,p0,p1,V0_precomputed);
+        partials1yy = Plane_y_coefficient(p4,p1,p2,V1_precomputed);
+        partials2yy = Plane_y_coefficient(p4,p2,p3,V2_precomputed);
+        partials3yy = Plane_y_coefficient(p4,p3,p0,V3_precomputed);
+        partials4yy = Plane_y_coefficient(p5,p1,p0,V4_precomputed);
+        partials5yy = Plane_y_coefficient(p5,p2,p1,V5_precomputed);
+        partials6yy = Plane_y_coefficient(p5,p3,p2,V6_precomputed);
+        partials7yy = Plane_y_coefficient(p5,p0,p3,V7_precomputed);
 
 	p0 = {v0x,v0y,v0z,p0z};
         p1 = {v1x,v1y,v1z,p1z};
@@ -265,14 +265,14 @@ Kernel singlepass_solve()
         p4 = {v4x,v4y,v4z,p4z};
         p5 = {v5x,v5y,v5z,p5z};
 
-        partials0zz = Plane3D_z_coefficient(p4,p0,p1,V0_precomputed);
-        partials1zz = Plane3D_z_coefficient(p4,p1,p2,V1_precomputed);
-        partials2zz = Plane3D_z_coefficient(p4,p2,p3,V2_precomputed);
-        partials3zz = Plane3D_z_coefficient(p4,p3,p0,V3_precomputed);
-        partials4zz = Plane3D_z_coefficient(p5,p1,p0,V4_precomputed);
-        partials5zz = Plane3D_z_coefficient(p5,p2,p1,V5_precomputed);
-        partials6zz = Plane3D_z_coefficient(p5,p3,p2,V6_precomputed);
-        partials7zz = Plane3D_z_coefficient(p5,p0,p3,V7_precomputed);
+        partials0zz = Plane_z_coefficient(p4,p0,p1,V0_precomputed);
+        partials1zz = Plane_z_coefficient(p4,p1,p2,V1_precomputed);
+        partials2zz = Plane_z_coefficient(p4,p2,p3,V2_precomputed);
+        partials3zz = Plane_z_coefficient(p4,p3,p0,V3_precomputed);
+        partials4zz = Plane_z_coefficient(p5,p1,p0,V4_precomputed);
+        partials5zz = Plane_z_coefficient(p5,p2,p1,V5_precomputed);
+        partials6zz = Plane_z_coefficient(p5,p3,p2,V6_precomputed);
+        partials7zz = Plane_z_coefficient(p5,p0,p3,V7_precomputed);
 
 	const real Dxx = 2*(partials0xx + partials1xx + partials2xx + partials3xx + partials4xx + partials5xx + partials6xx + partials7xx)*totalVolumeInv;
         const real Dyy = 2*(partials0yy + partials1yy + partials2yy + partials3yy + partials4yy + partials5yy + partials6yy + partials7yy)*totalVolumeInv;

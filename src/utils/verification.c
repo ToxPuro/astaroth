@@ -30,15 +30,6 @@
 #define fabs(x) ((_Generic((x), float : fabsf, double : fabs, long double : fabsl))(x))
 
 // Defines for colored output
-#define RED "\x1B[31m"
-#define GRN "\x1B[32m"
-#define YEL "\x1B[33m"
-#define BLU "\x1B[34m"
-#define MAG "\x1B[35m"
-#define CYN "\x1B[36m"
-#define WHT "\x1B[37m"
-#define RESET "\x1B[0m"
-
 static inline bool
 is_valid(const AcReal a)
 {
@@ -111,7 +102,7 @@ acEvalError(const char* label, const Error error)
     else
         acceptable = false;
 
-    printf("%-15s... %s ", label, acceptable ? GRN "OK! " RESET : RED "FAIL! " RESET);
+    printf("%-15s... %s ", label, acceptable ? AC_GRN "OK! "AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
 
     printf("| %.3Lg (abs), %.3Lg (ulps), %.3Lg (rel). Range: [%.3g, %.3g]\tpoint: %d,%d,%d\n", //
            error.abs_error, error.ulp_error, error.rel_error,                 //

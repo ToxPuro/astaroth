@@ -395,10 +395,12 @@
   constexpr static int
   get_array_length(const P array, const AcMeshInfo host_info)
   {
-	  const array_info arr_info = get_array_info(array);
-	  if(is_dconst(array))
-		  return arr_info.length;
-	  return host_info.int_params[arr_info.length];
+	  AcArrayDims dims     = get_array_info(array).dims;
+	  int num_dims         = get_array_info(array).num_dims;
+	  int res = 1;
+	  for(int i = 0; i < num_dims; ++i)
+		  res *= dims.from_config[i] ? host_info.int_params[dims.len[i]] : dims.len[i];
+	  return res;
   }
 
   template <typename P>

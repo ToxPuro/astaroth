@@ -1,9 +1,11 @@
+//TP: note all the input coordinate and values are in a reference frame where the centre grid point is subtracted from the value
+//TP: the motivation is that this takes less compute
 TetrahedronVolume(real3 a, real3 b, real3 c)
 {
         return dot( cross(a,b), c);
 }
 
-Get4DNormal(real4 a, real4 b, real4 c)
+GetNormal(real4 a, real4 b, real4 c)
 {
         return
         (real4){
@@ -13,9 +15,9 @@ Get4DNormal(real4 a, real4 b, real4 c)
                 a.x*(b.z*c.y - b.y*c.z)  + a.y*(b.x*c.z - b.z*c.x)      + a.z*(b.y*c.x -b.x*c.y)
 	 };
 }
-PlaneCoefficients3D(real4 c, real4 b, real4 a)
+PlaneCoefficients(real4 c, real4 b, real4 a)
 {
-        const real4 normal = Get4DNormal(a,b,c);
+        const real4 normal = GetNormal(a,b,c);
         //const real3 a_coords = {a.x, a.y, a.z};
 	const real3 a_coords = {a.x, a.y, a.z};
         const real3 b_coords = {b.x, b.y, b.z};
@@ -29,7 +31,7 @@ PlaneCoefficients3D(real4 c, real4 b, real4 a)
                 -normal.z/inv
 	)
 }
-PlaneCoefficients3D_without_inv(real4 a, real4 b, real4 c, real3 precomputed)
+PlaneCoefficients_without_inv(real4 a, real4 b, real4 c, real3 precomputed)
 {
         const real tmp1 = b.w*c.z-b.z*c.w;
         const real tmp2 = b.y*c.w - b.w*c.y;
@@ -40,41 +42,40 @@ PlaneCoefficients3D_without_inv(real4 a, real4 b, real4 c, real3 precomputed)
         const real z = a.x*(-tmp2) + a.y*(-tmp3) + a.w*(precomputed.z);
         return (real3){x, y, z};
 }
-PlaneCoeffients2D_without_inv(real3 a, real3 b)
-{
-	//TP: not z coordinate is the relative function value compared to the middle point
-	return (real2){
-		a.z*b.y  - b.z*a.y
-		-a.z*b.x - b.z*a.x
-	}
-}
 
-Plane2D_x_coefficient(real3 a, real3 b)
-{
-	//TP: not z coordinate is the relative function value compared to the middle point
-	return a.z*b.y  - b.z*a.y
-}
-Plane2D_y_coefficient(real3 a, real3 b)
-{
-	//TP: not z coordinate is the relative function value compared to the middle point
-	return -a.z*b.x - b.z*a.x
-}
-Plane3D_x_coefficient(real4 a, real4 b, real4 c, real3 precomputed)
+Plane_x_coefficient(real4 a, real4 b, real4 c, real3 precomputed)
 {
         const real tmp1 = b.w*c.z-b.z*c.w;
         const real tmp2 = b.y*c.w - b.w*c.y;
         return a.y*(tmp1)  + a.z*(tmp2)  + a.w*(precomputed.x);
 }
-Plane3D_y_coefficient(real4 a, real4 b, real4 c, real3 precomputed)
+Plane_y_coefficient(real4 a, real4 b, real4 c, real3 precomputed)
 {
         const real tmp1 = b.w*c.z-b.z*c.w;
         const real tmp3 = b.w*c.x - b.x*c.w;
         return  a.x*(-tmp1) + a.z*(tmp3)  + a.w*(precomputed.y);
 }
-Plane3D_z_coefficient(real4 a, real4 b, real4 c, real3 precomputed)
+Plane_z_coefficient(real4 a, real4 b, real4 c, real3 precomputed)
 {
         real tmp2 = b.y*c.w - b.w*c.y;
         real tmp3 = b.w*c.x - b.x*c.w;
         return a.x*(-tmp2) + a.y*(-tmp3) + a.w*(precomputed.z);
 }
 
+PlaneCoeffients_without_inv(real3 a, real3 b)
+{
+	return (real2){
+		a.z*b.y  - b.z*a.y,
+		-(a.z*b.x) + b.z*a.x
+	}
+}
+
+
+Plane_x_coefficient(real3 a, real3 b)
+{
+	return a.z*b.y  - b.z*a.y
+}
+Plane_y_coefficient(real3 a, real3 b)
+{
+	return -a.z*b.x + b.z*a.x
+}

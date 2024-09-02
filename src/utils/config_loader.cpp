@@ -127,6 +127,15 @@ get_entries(char** dst, const char* line)
       return counter;
 }
 
+static int
+length_from_dims(const AcArrayDims dims)
+{
+	const auto lens = dims.len;
+	int res = 1;
+	for(auto& len : lens)
+		res *= std::max(len,1);
+	return res;
+}
 static void
 parse_config(const char* path, AcMeshInfo* config)
 {
@@ -162,14 +171,14 @@ parse_config(const char* path, AcMeshInfo* config)
         else if ((idx = find_array(keyword, int_array_info, NUM_INT_ARRAYS)) >= 0) {
 		if(!int_array_info[idx].is_dconst)
 			fprintf(stderr,"ERROR PARSING CONFIG: can't assign to global array: \"%s\": SKIPPING\n",keyword);
-		char* array_vals[int_array_info[idx].length];
+		char* array_vals[length_from_dims(int_array_info[idx].dims)];
 		const int n_vals = get_entries(array_vals, value);
-		if(n_vals != int_array_info[idx].length)
-			fprintf(stderr,"ERROR PARSING CONFIG: gave %d values to array %s which of size %d: SKIPPING\n",n_vals,keyword,int_array_info[idx].length);
+		if(n_vals != length_from_dims(int_array_info[idx].dims))
+			fprintf(stderr,"ERROR PARSING CONFIG: gave %d values to array %s which of size %d: SKIPPING\n",n_vals,keyword,length_from_dims(int_array_info[idx].dims));
 		else
 		{
-			config->int_arrays[idx] = (int*)malloc(sizeof(AcReal)*int_array_info[idx].length);
-			for(int i = 0; i < int_array_info[idx].length; ++i)
+			config->int_arrays[idx] = (int*)malloc(sizeof(AcReal)*length_from_dims(int_array_info[idx].dims));
+			for(int i = 0; i < length_from_dims(int_array_info[idx].dims); ++i)
 			{
 				config->int_arrays[idx][i] =  atoi(array_vals[i]);
 				free(array_vals[i]);
@@ -181,15 +190,14 @@ parse_config(const char* path, AcMeshInfo* config)
         else if ((idx = find_array(keyword, real_array_info, NUM_REAL_ARRAYS)) >= 0) {
 		if(!real_array_info[idx].is_dconst)
 			fprintf(stderr,"ERROR PARSING CONFIG: can't assign to global array: \"%s\": SKIPPING\n",keyword);
-		char* array_vals[real_array_info[idx].length];
+		char* array_vals[length_from_dims(real_array_info[idx].dims)];
 		const int n_vals = get_entries(array_vals, value);
-		if(n_vals != real_array_info[idx].length)
-			fprintf(stderr,"ERROR PARSING CONFIG: gave %d values to array %s which of size %d: SKIPPING\n",n_vals,keyword,real_array_info[idx].length);
+		if(n_vals != length_from_dims(real_array_info[idx].dims))
+			fprintf(stderr,"ERROR PARSING CONFIG: gave %d values to array %s which of size %d: SKIPPING\n",n_vals,keyword,length_from_dims(real_array_info[idx].dims));
 		else
 		{
-			fprintf(stderr,"Reading in real array: %s\n",keyword);
-			config->real_arrays[idx] = (AcReal*)malloc(sizeof(AcReal)*real_array_info[idx].length);
-			for(int i = 0; i < real_array_info[idx].length; ++i)
+			config->real_arrays[idx] = (AcReal*)malloc(sizeof(AcReal)*length_from_dims(real_array_info[idx].dims));
+			for(int i = 0; i < length_from_dims(real_array_info[idx].dims); ++i)
 			{
 				config->real_arrays[idx][i] =  atof(array_vals[i]);
 				free(array_vals[i]);

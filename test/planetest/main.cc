@@ -41,15 +41,19 @@
 
 const int npointsx_grid = 100;
 const int npointsy_grid = 100;
+#if TWO_D == 0
 const int npointsz_grid = 100;
+#else
+const int npointsz_grid = 1;
+#endif
 
 const int npointsx = npointsx_grid;
 const int npointsy = npointsy_grid;
 const int npointsz = npointsz_grid;
 
-const int mpointsx = npointsx + NGHOST;
-const int mpointsy = npointsy + NGHOST;
-const int mpointsz = npointsz + NGHOST;
+const int mpointsx = npointsx + 2*NGHOST_X;
+const int mpointsy = npointsy + 2*NGHOST_Y;
+const int mpointsz = npointsz + 2*NGHOST_Z;
 
 //Triangle with all angles 60 degree
 constexpr AcReal a=Lengthscale/(2.0*npointsx_grid); //length of one side of a triangle
@@ -210,8 +214,11 @@ main(void)
     fflush(stdout);
     acGridExecuteTaskGraph(initialize, 1);
     acGridSynchronizeStream(STREAM_ALL);
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
 
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    acHostMeshApplyPeriodicBounds(&candidate);
+    std::vector<AcReal> y(npointsx_grid);
     acGridSynchronizeStream(STREAM_ALL);
 
     for (int i = 0; i < nsteps; ++i)
@@ -232,22 +239,22 @@ main(void)
 	    FILE* fp_a = fopen("a.dat","w");
 	    FILE* fp_u = fopen("u.dat","w");
 	    FILE* fp_x = fopen("x.dat","w");
-            for(int i = 0; i< npointsx_grid; ++i)
+	    const int end = npointsx_grid;
+            for(int i = 0; i< end; ++i)
             {
-		const int idx = IDX_COMP_DOMAIN(i, npointsy_grid/2,npointsz_grid/2);
+		const int idx = IDX_COMP_DOMAIN(i, npointsy_grid/2, npointsz_grid/2);
             	x[i] = candidate.vertex_buffer[COORDS_X][idx];
                 u[i] = candidate.vertex_buffer[U][idx];
                 analytical[i] = candidate.vertex_buffer[SOLUTION][idx];
 
 		fprintf(fp_a,"%.14e",analytical[i]);
-		if(i < npointsx_grid -1 ) fprintf(fp_a,"%s",",");
+		if(i < end -1 ) fprintf(fp_a,"%s",",");
 
 		fprintf(fp_u,"%.14e",u[i]);
-		if(i < npointsx_grid -1 ) fprintf(fp_u,"%s",",");
+		if(i < end -1 ) fprintf(fp_u,"%s",",");
 
 		fprintf(fp_x,"%.14e",x[i]);
-		if(i < npointsx_grid -1 ) fprintf(fp_x,"%s",",");
-
+		if(i < end -1 ) fprintf(fp_x,"%s",",");
             }
 	    fclose(fp_a);
 	    fclose(fp_x);

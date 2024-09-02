@@ -23,6 +23,7 @@ int yylex();
 int yyparse();
 int yyerror(const char* str);
 int yyget_lineno();
+#define AC_INCLUDE "PREPROCESSOR_AC_INCLUDE" 
 
 
 //These are used to generate better error messages in case of errors
@@ -86,65 +87,18 @@ bool is_directory(const char *path) {
     return S_ISDIR(statbuf.st_mode);
 }
 
-
-
 void
-process_includes(const size_t depth, const char* dir, const char* file, FILE* out, const bool log)
+expand_macros(const char* file_in, const char* file_out)
 {
-  if(is_directory(file)) 
-  {
-	DIR* d = opendir(file);
-	struct dirent *dir_entry;
-	while((dir_entry = readdir(d)) != NULL)
-		if(strcmp(dir_entry->d_name,".") && strcmp(dir_entry->d_name,".."))
-		{
-		        char* file_path = malloc((strlen(file) + strlen(dir_entry->d_name) + 1000)*sizeof(char));
-			sprintf(file_path,"%s/%s",file,dir_entry->d_name);
-		        process_includes(depth+1,dir,file_path,out,log);
-			free(file_path);
-		}
-
-	return;
-  }
-  const size_t max_nests = 64;
-  if (depth >= max_nests) {
-    fprintf(stderr, "CRITICAL ERROR: Max nests %lu reached when processing includes. Aborting to avoid thrashing the disk. Possible reason: circular includes.\n", max_nests);
-    exit(EXIT_FAILURE);
-  }
-
-  if(log) printf("Building AC object %s\n", file);
-  FILE* in = fopen(file, "r");
-  if (!in) {
-    fprintf(stderr, FATAL_ERROR_MESSAGE"could not open include file '%s'\n", file);
-    assert(in);
-    exit(EXIT_FAILURE);
-  }
-
-  const size_t  len = 4096;
-  char* buf = malloc(len*sizeof(char));
-  while (fgets(buf, len, in)) {
-    char* line = buf;
-    while (strlen(line) > 0 && line[0] == ' ') // Remove whitespace
-      ++line;
-
-    if (!strncmp(line, "#include", strlen("#include"))) {
-
-      char incl[len];
-      sscanf(line, "#include \"%[^\"]\"\n", incl);
-
-      char path[len];
-      sprintf(path, "%s/%s", dir, incl);
-
-      fprintf(out, "// Include file %s start\n", path);
-      process_includes(depth+1, dir, path, out,log);
-      fprintf(out, "// Included file %s end\n", path);
-
-    } else {
-      fprintf(out, "%s", buf);
-    }
-  }
-  free(buf);
-  fclose(in);
+          const size_t cmdlen = 4096;
+	  char* cmd = malloc(cmdlen*sizeof(char));
+          snprintf(cmd, cmdlen, "gcc -x c -E %s > %s", file_in, file_out);
+          const int retval = system(cmd);
+	  free(cmd);
+          if (retval == -1) {
+              fprintf(stderr, "Catastrophic error: preprocessing failed.\n");
+              assert(retval != -1);
+          }
 }
 
 void
@@ -177,6 +131,100 @@ process_hostdefines(const char* file_in, const char* file_out)
   fclose(in);
   fclose(out);
 }
+
+
+FILE*
+get_preprocessed_file(const char* filename, char* file_buf)
+{
+	const char* stage0 = "AC_INTERNAL_TO_GCC_STAGE0";
+	const char* stage1 = "AC_INTERNAL_TO_GCC_STAGE1";
+	const char* stage2 = "AC_INTERNAL_FROM_GCC";
+	FILE* in = fopen(filename,"r");
+	if(!in) return NULL;
+	FILE* out = fopen(stage0,"w");
+  	const size_t  len = 4096;
+  	char* buf = malloc(len*sizeof(char));
+  	while (fgets(buf, len, in)) {
+  	  char* line = buf;
+	  // Remove whitespace
+  	  while (strlen(line) > 0 && line[0] == ' ') ++line;
+	  remove_substring(line,";");
+          if (!strncmp(line, "#include", strlen("#include")))
+    	  	replacestr(line,"#include",AC_INCLUDE);
+	  fprintf(out,"%s",line);
+	}
+        fclose(out);
+	fclose(in);
+	process_hostdefines(stage0,stage1);
+	//expand_macros(stage1,stage2);
+	in = fopen(stage1,"r");
+	size_t size = 0;
+	out = open_memstream(&file_buf,&size);
+  	while (fgets(buf, len, in)) {
+  	  char* line = buf;
+	  fprintf(out,"%s",line);
+	}
+	fclose(in);
+	return out;
+}
+
+void
+process_includes(const size_t depth, const char* dir, const char* file, FILE* out, const bool log)
+{
+  if(is_directory(file)) 
+  {
+	DIR* d = opendir(file);
+	struct dirent *dir_entry;
+	while((dir_entry = readdir(d)) != NULL)
+		if(strcmp(dir_entry->d_name,".") && strcmp(dir_entry->d_name,".."))
+		{
+		        char* file_path = malloc((strlen(file) + strlen(dir_entry->d_name) + 1000)*sizeof(char));
+			sprintf(file_path,"%s/%s",file,dir_entry->d_name);
+		        process_includes(depth+1,dir,file_path,out,log);
+			free(file_path);
+		}
+
+	return;
+  }
+  const size_t max_nests = 64;
+  if (depth >= max_nests) {
+    fprintf(stderr, "CRITICAL ERROR: Max nests %lu reached when processing includes. Aborting to avoid thrashing the disk. Possible reason: circular includes.\n", max_nests);
+    exit(EXIT_FAILURE);
+  }
+
+  if(log) printf("Building AC object %s\n", file);
+  char* file_buf = NULL;
+  FILE* in = get_preprocessed_file(file,file_buf);
+  if (!in) {
+    fprintf(out,"AC_FATAL_ERROR: could not open include file '%s'\n",file);
+    return;
+  }
+
+  const size_t  len = 4096;
+  char* buf = malloc(len*sizeof(char));
+  while (fgets(buf, len, in)) {
+    char* line = buf;
+    if (!strncmp(line, AC_INCLUDE, strlen(AC_INCLUDE))) {
+
+      char incl[len];
+      sscanf(line, AC_INCLUDE" \"%[^\"]\"\n", incl);
+
+      char path[len];
+      sprintf(path, "%s/%s", dir, incl);
+
+      fprintf(out, "// Include file %s start\n", path);
+      process_includes(depth+1, dir, path, out,log);
+      fprintf(out, "// Included file %s end\n", path);
+
+    } else {
+      fprintf(out, "%s", buf);
+    }
+  }
+  free(buf);
+  fclose(in);
+  free(file_buf);
+}
+
 
 void
 check_file(const FILE* fp, const char* filename)
@@ -243,7 +291,7 @@ reset_all_files()
 {
           const char* files[] = {"kernel_reduce_outputs.h","user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
 		 "device_mesh_info_decl.h",  "array_decl.h", "comp_decl.h","comp_loaded_decl.h", "input_decl.h","get_device_array.h","get_config_arrays.h","get_config_param.h",
-		 "get_arrays.h","dconst_decl.h","dconst_accesses_decl.h","get_address.h","load_and_store_array.h","dconst_arrays_decl.h","memcpy_to_gmem_arrays.h","memcpy_from_gmem_arrays.h",
+		 "get_arrays.h","dconst_decl.h","dconst_accesses_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h","memcpy_to_gmem_arrays.h","memcpy_from_gmem_arrays.h",
 		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
 		 "load_and_store_uniform_overloads.h","load_and_store_uniform_funcs.h","load_and_store_uniform_header.h","get_array_info.h","get_from_comp_config.h","get_param_name.h","to_str_funcs.h","get_default_value.h",
 		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_loaders.h", "user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
@@ -288,41 +336,29 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
           fclose(out);
         }
 
-        // Stage 2: Preprocess hostdefines
+        // Stage 2: Preprocess everything else
         {
-          process_hostdefines(stage1, stage2);
+	  expand_macros(stage1,stage2);
+	  FILE* f_check = fopen(stage2,"r");
+          char line[4098];
+ 	  while (fgets(line, sizeof(line), f_check) != NULL) {
+          	if (!strncmp(line, "AC_FATAL_ERROR", strlen("AC_FATAL_ERROR")))
+		{
+			const size_t len = 4098;
+      			char message[len];
+      			sscanf(line, "AC_FATAL_ERROR: %[^\"]\n", message);
+		        printf("%s %s\n",FATAL_ERROR_MESSAGE,message);	
+			exit(EXIT_FAILURE);
+		}
+	  }
+          fclose(f_check);
         }
-
-        // Stage 3: Preprocess everything else
-        {
-          const size_t cmdlen = 4096;
-	  char* cmd = malloc(cmdlen*sizeof(char));
-          snprintf(cmd, cmdlen, "gcc -x c -E %s > %s", stage2, stage3);
-          const int retval = system(cmd);
-	  free(cmd);
-          if (retval == -1) {
-              fprintf(stderr, "Catastrophic error: preprocessing failed.\n");
-              assert(retval != -1);
-          }
-        }
-	FILE* f_in = fopen(stage3,"r");
-	FILE* f_out = fopen(stage4,"w");
-        char* line = malloc(10000*sizeof(char));	
-
-
- 	while (fgets(line, sizeof(line), f_in) != NULL) {
-		remove_substring(line,";");
-		fprintf(f_out,"%s",line);
-    	}
-	free(line);
-	fclose(f_in);
-	fclose(f_out);
 
         // Generate code
-        yyin = fopen(stage4, "r");
+        yyin = fopen(stage2, "r");
 
-	stage4_name_backup = stage4;
-        yyin_backup = fopen(stage4, "r");
+	stage4_name_backup = stage2;
+        yyin_backup = fopen(stage2, "r");
         if (!yyin)
             return EXIT_FAILURE;
 
@@ -807,10 +843,10 @@ type_qualifiers: type_qualifiers type_qualifier {$$ = astnode_create(NODE_UNKNOW
 */
 
 //Plus and minus have to be in the parser since based on context they are unary or binary ops
-binary_op: '+'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("+", $$); $$->token = BINARY_OP; }
-         | '-'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("-", $$); $$->token = BINARY_OP; }
-         | '&'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("&", $$); $$->token = BINARY_OP; }
-         | BINARY_OP   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; }
+binary_op: '+'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("+", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
+         | '-'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("-", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
+         | '&'         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("&", $$);    $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
+         | BINARY_OP   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = BINARY_OP; astnode_set_prefix(" ",$$); astnode_set_postfix(" ",$$);}
          ;
 
 unary_op: '-'        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = UNARY_OP; }
@@ -928,7 +964,7 @@ variable_definitions: non_null_declaration { $$ = astnode_create(NODE_UNKNOWN, $
 				  $$ = astnode_create(NODE_ASSIGN_LIST, $1, $2); $$->type |= NODE_DECLARATION; astnode_set_postfix(";", $$); 
 				  //if list assignment make the type a pointer type
 				  ASTNode* assignment = get_node(NODE_ASSIGNMENT, $2);
-				  if(assignment->rhs->lhs->rhs)
+				  if(get_node(NODE_ARRAY_INITIALIZER,assignment->rhs))
 				  {
 					ASTNode* tspec = get_node(NODE_TSPEC,$1);
 					strcat(tspec->lhs->buffer,"*");
@@ -1145,7 +1181,7 @@ for_expression: identifier in expression {
 	      }
 	      ;
 
-range: expression ':' expression { $$ = astnode_create(NODE_RANGE, $1, $3);}
+range: expression ':' expression { $$ = astnode_create(NODE_UNKNOWN, $1, $3); $$->token = RANGE;}
      ;
 
 /*

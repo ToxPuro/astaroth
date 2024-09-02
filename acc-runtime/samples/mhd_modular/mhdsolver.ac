@@ -28,6 +28,10 @@ enum TOP_BOT
 	AC_top,
 	AC_bot	
 }
+#define NO (0)
+#if NO
+#include "rubbish"
+#endif
 
 
 const real AC_const_reals = [1.0,2,0,3.0]
@@ -77,7 +81,6 @@ hostdefine LUPWD (1)
 hostdefine LSINK (0)
 hostdefine LBFIELD (1 && LMAGNETIC) // bfield only relevant if magnetic is on
 hostdefine LSHOCK (0)
-hostdefine LTEST (1)
 //hostdefine AC_THERMAL_CONDUCTIVITY (0.001) // Now a config parameter, AC_K_heatcond, as it should be. 
 hostdefine R_PI (AC_REAL_PI)
 
@@ -255,12 +258,6 @@ real AC_current_time
 output real timestep_out;
 output real timestep_out1;
 output real timestep_out2;
-const int test_arr_size = 6;
-#if LTEST
-dconst real AC_test_arr[test_arr_size];
-dconst real AC_test_arr_2[(2-1)*2+1];
-dconst int AC_test_int_arr[test_arr_size/2];
-#endif
 
 
 
@@ -696,15 +693,6 @@ Kernel randomize() {
     }
 }
 
-#if LTEST
-Kernel test_dconst_arr()
-{
-	write(VTXBUF_UUX,AC_test_int_arr[0]*(AC_test_arr[0] + AC_test_arr[3] + AC_test_arr_2[0]));
-	write(VTXBUF_UUY,AC_test_int_arr[1]*(AC_test_arr[1] + AC_test_arr[4] + AC_test_arr_2[1]));
-	write(VTXBUF_UUZ,AC_test_int_arr[2]*(AC_test_arr[2] + AC_test_arr[5] + AC_test_arr_2[2]));
-
-}
-#endif
 
 
 Kernel haatouken() {
@@ -1224,6 +1212,8 @@ Kernel test_func()
 {
 	int3 test = {0,1,2}
 	test.x += VTXBUF_ENTROPY;
+	real my_test_arr[3]
+	my_test_arr[0] = 2.0
 }
 
 
@@ -1261,6 +1251,5 @@ BoundConds boundconds{
 ComputeSteps AC_rhs(boundconds)
 {
         twopass_solve_intermediate(1,0.0)
-        twopass_solve_final(1.0,0.0)
+        twopass_solve_final(1.0,0.0);
 }
-

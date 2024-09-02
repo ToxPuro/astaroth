@@ -158,3 +158,12 @@ static AcLibHandle __attribute__((unused)) acLoadUtils()
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+#define AC_RED   "\x1B[31m"
+#define AC_GRN   "\x1B[32m"
+#define AC_YEL   "\x1B[33m"
+#define AC_BLU   "\x1B[34m"
+#define AC_MAG   "\x1B[35m"
+#define AC_CYN   "\x1B[36m"
+#define AC_WHT   "\x1B[37m"
+#define AC_COL_RESET "\x1B[0m"
