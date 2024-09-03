@@ -387,7 +387,9 @@ symboltable_reset(void)
   int const_tq[1]  =  {CONST_QL};
 
   // Add built-in variables (TODO consider NODE_BUILTIN)
+  add_symbol(NODE_VARIABLE_ID, NULL, 0, NULL, 0, "stderr");           // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "print");           // TODO REMOVE
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "fprintf");           // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "threadIdx");       // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "blockIdx");        // TODO REMOVE
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, "vertexIdx");       // TODO REMOVE
@@ -840,10 +842,6 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 			,datatype_scalar, enum_name, define_name);
 	fclose(fp);
 
-	fp = fopen("dconst_accesses_decl.h","a");
-	fprintf(fp,"%s  DCONST(const %sParam& param){%s res{}; return res; }\n"
-			,datatype_scalar, enum_name, datatype_scalar);
-	fclose(fp);
 	fp = fopen("get_address.h","a");
 	fprintf(fp,"size_t  get_address(const %sParam& param){ return (size_t)&d_mesh_info.%s_params[(int)param];}\n"
 			,enum_name, define_name);
