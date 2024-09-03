@@ -612,6 +612,9 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 		if(!has_qualifier($$->rhs,"const"))
 		{
                   fprintf(stderr, FATAL_ERROR_MESSAGE"assignment to a global variable only allowed for constant values\n");
+		  char tmp[10000];
+		  combine_all(assignment,tmp);
+		  fprintf(stderr,"Incorrect assignment: %s\n",tmp);
                   assert(!has_qualifier($$->rhs,"const"));
 		  exit(EXIT_FAILURE);
 		}

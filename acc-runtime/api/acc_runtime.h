@@ -175,21 +175,6 @@
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
 #include "load_and_store_uniform_header.h"
 
-
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acStoreRealUniform,(const cudaStream_t stream, const AcRealParam param, AcReal* value));
-
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acStoreReal3Uniform,(const cudaStream_t stream, const AcReal3Param param, AcReal3* value));
-
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acStoreIntUniform,(const cudaStream_t stream, const AcIntParam param, int* value));
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acStoreBoolUniform,(const cudaStream_t stream, const AcBoolParam param, bool* value));
-
-  /** NOTE: stream unused. acUniform functions are completely synchronous. */
-  FUNC_DEFINE(AcResult, acStoreInt3Uniform,(const cudaStream_t stream, const AcInt3Param param, int3* value));
-
   // Diagnostics
   FUNC_DEFINE(Volume, acKernelLaunchGetLastTPB,(void));
 
@@ -306,7 +291,7 @@
   }
 
   template <typename P>
-  constexpr static int3
+  constexpr static auto
   get_array_dims(const P array)
   {
 	  return get_array_info(array).dims;
@@ -461,6 +446,7 @@
   >;
 
   using AcScalarCompTypes = ForEach<
+#include "scalar_comp_types.h"
   AcIntCompParam
   >;
   

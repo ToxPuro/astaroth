@@ -1555,7 +1555,7 @@ gen_user_enums()
 
 	  for(size_t j = 0; j < enum_info.options[i].size; ++j)
 		  strcatprintf(res,"case %s: return strdup(\"%s\");\n",enum_info.options[i].data[j],enum_info.options[i].data[j]);
-	  strcat(res,"}\n}\n");
+	  strcat(res,"}return NULL;\n}\n");
 	  file_append("to_str_funcs.h",res);
 
 	  sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n",enum_info.names.data[i], enum_info.names.data[i]);
@@ -4338,7 +4338,19 @@ gen_user_defines(const ASTNode* root, const char* out)
 			  "}\n"
 	  );
 	  file_append("to_str_funcs.h",res);
-	  sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], s_info.user_structs.data[i]);
+	  const char* name = s_info.user_structs.data[i];
+	  if(!strcmp(name,"AcReal2"))
+	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real2");
+	  else if(!strcmp(name,"AcReal3"))
+	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real3");
+	  else if(!strcmp(name,"AcReal4"))
+	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real4");
+	  else if(!strcmp(name,"AcComplex"))
+	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "complex");
+	  else if(!strcmp(name,"AcBool3"))
+	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "bool3");
+	  else
+	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], s_info.user_structs.data[i]);
 	  file_append("to_str_funcs.h",res);
   }
 
