@@ -1391,14 +1391,37 @@ read_user_structs(const ASTNode* root)
 	read_user_structs_recursive(root, &res);
 	return res;
 }
+void
+mark_as_input(ASTNode* kernel_root, const ASTNode* param)
+{
+	const char* param_name = param->rhs->buffer;
+	add_node_type(NODE_INPUT, kernel_root,param_name);
+}
 
 void
 process_param_codegen(ASTNode* kernel_root, const ASTNode* param, char* structs_info_str)
 {
-				const char* param_type = get_node(NODE_TSPEC,param->lhs)->lhs->buffer;
-				const char* param_name = param->rhs->buffer;
-				add_node_type(NODE_INPUT, kernel_root,param_name);
-				strcatprintf(structs_info_str,"%s %s;", param_type, param_name);
+	const char* param_type = get_node(NODE_TSPEC,param->lhs)->lhs->buffer;
+	const char* param_name = param->rhs->buffer;
+	strcatprintf(structs_info_str,"%s %s;", param_type, param_name);
+}
+void
+mark_kernel_inputs(const ASTNode* node)
+{
+	if(node->lhs)
+		mark_kernel_inputs(node->lhs);
+	if(node->rhs)
+		mark_kernel_inputs(node->rhs);
+	if(!(node->type & NODE_KFUNCTION))
+		return;
+	if(!node->rhs->lhs)
+		return;
+        ASTNode* param_list_head = node->rhs->lhs;
+	node_vec params = get_nodes_in_list(param_list_head);
+        ASTNode* compound_statement = node->rhs->rhs;
+	for(size_t i = 0; i < params.size; ++i)
+		mark_as_input(compound_statement,params.data[i]);
+	free_node_vec(&params);
 }
 
 void
@@ -2543,28 +2566,28 @@ typedef struct
 
 
 void
-add_param_combinations(const variable var, const int kernel_index,const char* prefix, user_enums_info user_enums, combinatorial_params combinatorials, const structs_info struct_info)
+add_param_combinations(const variable var, const int kernel_index,const char* prefix, combinatorial_params combinatorials)
 {
 	char full_name[4096];
 	sprintf(full_name,"%s%s",prefix,var.name);
-	if(str_vec_contains(struct_info.user_structs,var.type))
+	if(str_vec_contains(s_info.user_structs,var.type))
 	{
-	  const int struct_index = str_vec_get_index(struct_info.user_structs,var.type);
-	  string_vec struct_field_types = struct_info.user_struct_field_types[struct_index];
-	  string_vec struct_field_names = struct_info.user_struct_field_names[struct_index];
+	  const int struct_index = str_vec_get_index(s_info.user_structs,var.type);
+	  string_vec struct_field_types = s_info.user_struct_field_types[struct_index];
+	  string_vec struct_field_names = s_info.user_struct_field_names[struct_index];
 	  for(size_t i=0; i<struct_field_types.size; ++i)
 	  {
 		  char new_prefix[10000];
 		  sprintf(new_prefix, "%s%s.",prefix,var.name);
-		  add_param_combinations((variable){struct_field_types.data[i],struct_field_names.data[i]},kernel_index,new_prefix,user_enums,combinatorials,struct_info);
+		  add_param_combinations((variable){struct_field_types.data[i],struct_field_names.data[i]},kernel_index,new_prefix,combinatorials);
 	  }
 	}
-	if(str_vec_contains(user_enums.names,var.type))
+	if(str_vec_contains(e_info.names,var.type))
 	{
 		const int param_index = push(&combinatorials.names[kernel_index],full_name);
 
-		const int enum_index = str_vec_get_index(user_enums.names,var.type);
-		string_vec options  = user_enums.options[enum_index];
+		const int enum_index = str_vec_get_index(e_info.names,var.type);
+		string_vec options  = e_info.options[enum_index];
 		for(size_t i = 0; i < options.size; ++i)
 		{
 			push(&combinatorials.options[kernel_index+100*param_index],options.data[i]);
@@ -2615,14 +2638,28 @@ gen_combinations(int kernel_index,param_combinations combinations ,combinatorial
 	free_str_vec(&base);
 }
 void
-gen_kernel_num_of_combinations_recursive(const ASTNode* node, param_combinations combinations, user_enums_info user_enums, string_vec* user_kernels_with_input_params,combinatorial_params combinatorials, const structs_info struct_info)
+add_kernel_bool_dconst_to_combinations(const ASTNode* node, const int kernel_index, combinatorial_params dst)
+{
+	if(node->lhs)
+		add_kernel_bool_dconst_to_combinations(node->lhs,kernel_index,dst);
+	if(node->rhs)
+		add_kernel_bool_dconst_to_combinations(node->rhs,kernel_index,dst);
+	if(node->token != IDENTIFIER) return;
+  	if(!check_symbol(NODE_VARIABLE_ID, node->buffer, BOOL, DCONST_QL)) return;
+	if(str_vec_contains(dst.names[kernel_index], node->buffer)) return;
+	add_param_combinations((variable){"bool",node->buffer}, kernel_index,"", dst);
+
+
+}
+void
+gen_kernel_num_of_combinations_recursive(const ASTNode* node, param_combinations combinations, string_vec* user_kernels_with_input_params,combinatorial_params combinatorials)
 {
 	if(node->lhs)
 	{
-		gen_kernel_num_of_combinations_recursive(node->lhs,combinations,user_enums,user_kernels_with_input_params,combinatorials,struct_info);
+		gen_kernel_num_of_combinations_recursive(node->lhs,combinations,user_kernels_with_input_params,combinatorials);
 	}
 	if(node->rhs)
-		gen_kernel_num_of_combinations_recursive(node->rhs,combinations,user_enums,user_kernels_with_input_params,combinatorials,struct_info);
+		gen_kernel_num_of_combinations_recursive(node->rhs,combinations,user_kernels_with_input_params,combinatorials);
 	if(node->type & NODE_KFUNCTION && node->rhs->lhs)
 	{
 	   const char* kernel_name = get_node(NODE_FUNCTION_ID, node)->buffer;
@@ -2633,9 +2670,10 @@ gen_kernel_num_of_combinations_recursive(const ASTNode* node, param_combinations
 	   {
 		   const char* type = info.types.data[i]; 
 		   const char* name = info.expr.data[i];
-	           add_param_combinations((variable){type,name},kernel_index,"",user_enums,combinatorials,struct_info);
+	           add_param_combinations((variable){type,name},kernel_index,"",combinatorials);
 	   }
 	   free_func_params_info(&info);
+	   add_kernel_bool_dconst_to_combinations(node,kernel_index,combinatorials);
 	   gen_combinations(kernel_index,combinations,combinatorials);
 	}
 }
@@ -2644,7 +2682,7 @@ gen_kernel_num_of_combinations(const ASTNode* root, param_combinations combinati
 {
 
 	string_vec user_kernel_combinatorial_params_options[100*100] = { [0 ... 100*100 -1] = VEC_INITIALIZER};
-	gen_kernel_num_of_combinations_recursive(root,combinations,e_info,user_kernels_with_input_params,(combinatorial_params){user_kernel_combinatorial_params,user_kernel_combinatorial_params_options},s_info);
+	gen_kernel_num_of_combinations_recursive(root,combinations,user_kernels_with_input_params,(combinatorial_params){user_kernel_combinatorial_params,user_kernel_combinatorial_params_options});
 }
 
 int 
@@ -2818,18 +2856,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses, reduc
 		char* output = kernel_reduce_info.outputs.data[i];
 		push_op(&kernel_reduce_infos[kernel_index].ops,  reduce_op);
 		push(&kernel_reduce_infos[kernel_index].outputs,  output);
-	 	//HACK!
-	 	if(!strstr(condition,fn_identifier->buffer))
-	 	{
-	 	        char* ptr = strdup(strtok(condition, "=="));
-	 	        char* ptr2 = strtok(NULL, "==");
-			char* new_condition = malloc(sizeof(char)*4096);
-			remove_suffix(ptr,"___AC_INTERNAL");
-	 	        sprintf(new_condition, "vba.kernel_input_params.%s.%s == %s",fn_identifier->buffer,ptr,ptr2);
-	 	        condition = strdup(new_condition);
-			free(new_condition);
-	 	}
-	 	strcatprintf(new_postfix,"if(%s){"
+	 	strcatprintf(new_postfix,"if(should_reduce[(int)%s]){"
 						"%s"
 						"%s"
 						"const size_t lane_id = (threadIdx.x + threadIdx.y*blockDim.x + threadIdx.z*blockDim.x*blockDim.y) % warp_size;"
@@ -2837,7 +2864,7 @@ gen_kernel_postfixes_recursive(ASTNode* node, const bool gen_mem_accesses, reduc
 						"const int block_id = blockIdx.x + blockIdx.y*gridDim.x + blockIdx.z*gridDim.x*gridDim.y;"
 						"const int out_index =  vba.reduce_offset + warp_id + block_id*warps_per_block;"
 						"for(int offset = warp_size/2; offset > 0; offset /= 2){ \n"
-		,condition,warp_size,warp_id);
+		,output,warp_size,warp_id);
 		const char* array_name =
 			reduce_op == REDUCE_SUM ? "reduce_sum_res" :
 			reduce_op == REDUCE_MIN ? "reduce_min_res" :
@@ -2987,7 +3014,41 @@ gen_kernel_postfixes_and_reduce_outputs(ASTNode* root, const bool gen_mem_access
   }
 }
 void
-gen_kernel_ifs(ASTNode* node, const param_combinations combinations, string_vec user_kernels_with_input_params,string_vec* user_kernel_combinatorial_params)
+gen_optimized_kernel_decls(ASTNode* node, const param_combinations combinations, const string_vec user_kernels_with_input_params,string_vec* const user_kernel_combinatorial_params)
+{
+	if(node->lhs)
+		gen_optimized_kernel_decls(node->lhs,combinations,user_kernels_with_input_params,user_kernel_combinatorial_params);
+	if(node->rhs)
+		gen_optimized_kernel_decls(node->rhs,combinations,user_kernels_with_input_params,user_kernel_combinatorial_params);
+	if(!(node->type & NODE_KFUNCTION))
+		return;
+	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,get_node(NODE_FUNCTION_ID,node)->buffer);
+	if(kernel_index == -1)
+		return;
+	string_vec combination_params = user_kernel_combinatorial_params[kernel_index];
+	if(combination_params.size == 0)
+		return;
+	const bool left_child = (node->parent->lhs->id == node->id);
+	ASTNode* base = node->parent;
+	ASTNode* head = astnode_create(NODE_UNKNOWN,node,NULL);
+	if(left_child) 
+		base->lhs = head;
+	else
+		base->rhs = head;
+	head->parent = base;
+	node_vec optimized_decls = VEC_INITIALIZER;
+	for(int i = 0; i < combinations.nums[kernel_index]; ++i)
+	{
+		ASTNode* new_node = astnode_dup(node,NULL);
+		ASTNode* function_id = (ASTNode*) get_node(NODE_FUNCTION_ID,new_node->lhs);
+		asprintf(&function_id->buffer,"%s_optimized_%d",get_node(NODE_FUNCTION_ID,node)->buffer,i);
+		push_node(&optimized_decls,new_node);
+	}
+	head->rhs = build_list_node(optimized_decls,"");
+	free_node_vec(&optimized_decls);
+}
+void
+gen_kernel_ifs(ASTNode* node, const param_combinations combinations, const string_vec user_kernels_with_input_params,string_vec* const user_kernel_combinatorial_params)
 {
 	if(node->lhs)
 		gen_kernel_ifs(node->lhs,combinations,user_kernels_with_input_params,user_kernel_combinatorial_params);
@@ -3003,7 +3064,6 @@ gen_kernel_ifs(ASTNode* node, const param_combinations combinations, string_vec 
 		return;
 	FILE* fp = fopen("user_kernels_ifs.h","a");
 	FILE* fp_defs = fopen("user_defines.h","a");
-	ASTNode* old_parent = node->parent;
 	for(int i = 0; i < combinations.nums[kernel_index]; ++i)
 	{
 		string_vec combination_vals = combinations.vals[kernel_index + MAX_KERNELS*i];
@@ -3018,23 +3078,38 @@ gen_kernel_ifs(ASTNode* node, const param_combinations combinations, string_vec 
 		,get_node(NODE_FUNCTION_ID,node)->buffer,i);
 		fprintf(fp_defs,"%s_optimized_%d,",get_node(NODE_FUNCTION_ID,node)->buffer,i);
 		fprintf(fp,"%s",res);
-		bool is_left = (old_parent->lhs == node);
-		ASTNode* new_parent = astnode_create(NODE_UNKNOWN,node,astnode_dup(node,old_parent));
-		ASTNode* function_id = (ASTNode*) get_node(NODE_FUNCTION_ID,new_parent->rhs);
-		asprintf(&function_id->buffer,"%s_optimized_%d",get_node(NODE_FUNCTION_ID,node)->buffer,i);
-		new_parent->rhs->parent = new_parent;
-		node->parent = new_parent;
-		if(is_left)
-			old_parent ->lhs = new_parent;
-		else
-			old_parent ->rhs = new_parent;
-		old_parent = new_parent;
 		free(res);
 	}
+	
 	printf("NUM of combinations: %d\n",combinations.nums[kernel_index]);
 	fclose(fp);
 	fprintf(fp_defs,"}\n");
 	fclose(fp_defs);
+}
+void
+replace_boolean_dconsts_in_optimized(ASTNode* node, const string_vec* vals, string_vec user_kernels_with_input_params, string_vec* user_kernel_combinatorial_params)
+{
+	if(node->lhs)
+		replace_boolean_dconsts_in_optimized(node->lhs,vals,user_kernels_with_input_params,user_kernel_combinatorial_params);
+	if(node->rhs)
+		replace_boolean_dconsts_in_optimized(node->rhs,vals,user_kernels_with_input_params,user_kernel_combinatorial_params);
+	if(node->token != IDENTIFIER || !node->buffer) return;
+  	if(!check_symbol(NODE_VARIABLE_ID, node->buffer, BOOL, DCONST_QL)) return;
+	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
+	if(!function) return;
+	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,function->lhs);
+	char* kernel_name = strdup(fn_identifier->buffer);
+	const int combinations_index = get_suffix_int(kernel_name,"_optimized_");
+	remove_suffix(kernel_name,"_optimized_");
+	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,kernel_name);
+	if(combinations_index == -1)
+		return;
+	const string_vec combinations = vals[kernel_index + MAX_KERNELS*combinations_index];
+	const int param_index = str_vec_get_index(user_kernel_combinatorial_params[kernel_index],node->buffer);
+	if(param_index < 0) return;
+	asprintf(&node->buffer,"%s",combinations.data[param_index]);
+	node->lhs = NULL;
+	node->rhs = NULL;
 }
 void
 gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_kernels_with_input_params, string_vec* user_kernel_combinatorial_params)
@@ -3045,69 +3120,32 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 		gen_kernel_input_params(node->rhs,vals,user_kernels_with_input_params,user_kernel_combinatorial_params);
 	if(!(node->type & NODE_INPUT && node->buffer))
 		return;
-	const ASTNode* begin_scope = get_parent_node(NODE_BEGIN_SCOPE,node);
-	if(!begin_scope) return;
-	const ASTNode* fn_declaration= begin_scope->parent->parent->lhs;
-	if(!fn_declaration) return;
-	const ASTNode* fn_identifier = get_node(NODE_FUNCTION_ID,fn_declaration);
-	while(!fn_identifier)
-	{
-		begin_scope = get_parent_node(NODE_BEGIN_SCOPE,fn_declaration);
-		if(!begin_scope)
-			return;
-		fn_declaration= begin_scope->parent->parent->lhs;
-		if(!fn_declaration)
-			return;
-		fn_identifier = get_node(NODE_FUNCTION_ID,fn_declaration);
-	}
+	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
+	if(!function) return;
+	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,function->lhs);
 	char* kernel_name = strdup(fn_identifier->buffer);
 	const int combinations_index = get_suffix_int(kernel_name,"_optimized_");
 	remove_suffix(kernel_name,"_optimized_");
 	const int kernel_index = str_vec_get_index(user_kernels_with_input_params,kernel_name);
 
-	char* res = malloc(sizeof(char)*4096);
 	if(combinations_index == -1)
 	{
-	  	sprintf(res,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
-	  	node->buffer = strdup(res);
-		free(res);
+		asprintf(&node->buffer,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
 		return;
 	}
 	const string_vec combinations = vals[kernel_index + MAX_KERNELS*combinations_index];
-	char* full_name = malloc(sizeof(char)*4096);
-	if(node->parent->parent->parent->rhs)
+	const int param_index = str_vec_get_index(user_kernel_combinatorial_params[kernel_index],node->buffer);
+	if(param_index < 0)
 	{
-		char* member_str = malloc(sizeof(char)*4096);
-		member_str[0] = '\0';
-		combine_buffers(node->parent->parent->parent->rhs,member_str);
-		sprintf(full_name,"%s.%s",node->buffer,member_str);
-		free(member_str);
+		asprintf(&node->buffer,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
+		char tmp[10000];
+		combine_all(node->parent->parent->parent->parent->parent,tmp);
+		return;
 	}
-	else
-	{
-		sprintf(full_name,"%s",node->buffer);
-	}
-	const int param_index = str_vec_get_index(user_kernel_combinatorial_params[kernel_index],full_name);
-	if(param_index >= 0)
-	{
-	       sprintf(res,"%s",combinations.data[param_index]);
-	       node->parent->parent->parent->buffer = strdup(res);
-	       node->parent->parent->parent->buffer = strdup(res);
-
-	       node->parent->parent->parent->infix= NULL;
-	       node->parent->parent->parent->lhs = NULL;
-	       node->parent->parent->parent->rhs = NULL;
-	       ASTNode* if_statement = (ASTNode*) get_parent_node(NODE_IF,node);
-	       if(if_statement)
-		       if_statement->prefix= strdup(" constexpr (");
-	}
-	else
-	{
-		sprintf(res,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
-		node->buffer = strdup(res);
-	}
-	free(full_name);
-	free(res);
+	asprintf(&node->parent->parent->parent->buffer,"%s",combinations.data[param_index]);
+	node->parent->parent->parent->infix= NULL;
+	node->parent->parent->parent->lhs = NULL;
+	node->parent->parent->parent->rhs = NULL;
 }
 int
 str_to_qualifier(const char* str)
@@ -3727,18 +3765,6 @@ get_array_initializer_type(ASTNode* node)
 	if(!expr) return NULL;
 	const char* res = sprintf_new("AcArray<%s,%lu>",expr,elems.size);
 	free_node_vec(&elems);
-	//const ASTNode* decl  = get_parent_node(NODE_DECLARATION,node);
-	//if(decl)
-	//{
-	//	printf("HI\n");
-	//	const char* var_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-	//	ASTNode* func_base = (ASTNode*) get_parent_node(NODE_FUNCTION,node);
-	//	if(func_base)
-	//	{
-	//		printf("HI: %s\n",var_name);
-	//	 	//set_primary_expression_types(func_base, node->expr_type, var_name);
-	//	}
-	//}
 	return res;
 }
 const char*
@@ -4648,32 +4674,45 @@ transform_arrays_to_std_arrays(ASTNode* node)
 	//remove unneeded braces if assignment
 	if(node->parent->type & NODE_ASSIGNMENT && node->parent->rhs)
 		node->parent->rhs->prefix = NULL;
-	//char new_tmp[10000];
-	//combine_all(node,new_tmp);
-	//printf("HMM: %s\n",new_tmp);
+}
+typedef struct
+{
+	string_vec* kernel_combinatorial_params;
+	string_vec kernels_with_input_params;
+	param_combinations params;
+} combinatorial_params_info;
+
+combinatorial_params_info
+get_combinatorial_params_info(const ASTNode* root)
+{
+  string_vec* user_kernel_combinatorial_params = malloc(sizeof(string_vec)*100);
+  memset(user_kernel_combinatorial_params,0,100*sizeof(string_vec));
+  string_vec user_kernels_with_input_params = VEC_INITIALIZER;
+  int* nums = malloc(sizeof(int)*100);
+  memset(nums,0,sizeof(int)*100);
+  string_vec* vals = malloc(sizeof(string_vec)*MAX_KERNELS*MAX_COMBINATIONS);
+  param_combinations param_in = {nums, vals};
+  gen_kernel_num_of_combinations(root,param_in,&user_kernels_with_input_params,user_kernel_combinatorial_params);
+  return (combinatorial_params_info){user_kernel_combinatorial_params, user_kernels_with_input_params, param_in};
+}
+void
+free_combinatorial_params_info(combinatorial_params_info* info)
+{
+  free_str_vec(&info->kernels_with_input_params);
+  free(info->params.vals);
+  for(int i = 0; i < 100; ++i)
+	  free_str_vec(&info->kernel_combinatorial_params[i]);
 }
 void
 gen_kernel_combinatorial_optimizations_and_input(ASTNode* root, const bool optimize_conditionals)
 {
-  string_vec user_kernel_combinatorial_params[100] = {[0 ... 100 - 1] = VEC_INITIALIZER};
-  string_vec user_kernels_with_input_params = VEC_INITIALIZER;
-
-
-  int nums[100] = {0};
-  string_vec* vals = malloc(sizeof(string_vec)*MAX_KERNELS*MAX_COMBINATIONS);
-  param_combinations param_in = {nums, vals};
-
-  gen_kernel_num_of_combinations(root,param_in,&user_kernels_with_input_params,user_kernel_combinatorial_params);
+  combinatorial_params_info info = get_combinatorial_params_info(root);
   if(optimize_conditionals)
-  	gen_kernel_ifs(root,param_in,user_kernels_with_input_params,user_kernel_combinatorial_params);
-  gen_kernel_input_params(root,param_in.vals,user_kernels_with_input_params,user_kernel_combinatorial_params);
-
-
-
-  free_str_vec(&user_kernels_with_input_params);
-  free(param_in.vals);
-  for(int i = 0; i < 100; ++i)
-	  free_str_vec(&user_kernel_combinatorial_params[i]);
+  {
+  	gen_kernel_ifs(root,info.params,info.kernels_with_input_params,info.kernel_combinatorial_params);
+	gen_optimized_kernel_decls(root,info.params,info.kernels_with_input_params,info.kernel_combinatorial_params);
+  }
+  free_combinatorial_params_info(&info);
 }
 bool
 all_identifiers_are_constexpr(const ASTNode* node)
@@ -5518,7 +5557,7 @@ canonalize(ASTNode* node)
 	//canonalize_if_assignments(node);
 }
 void
-preprocess(ASTNode* root)
+preprocess(ASTNode* root, const bool optimize_conditionals)
 {
   free_node_vec(&dfunc_nodes);
   free_str_vec(&dfunc_names);
@@ -5531,6 +5570,8 @@ preprocess(ASTNode* root)
   traverse(root, 0, NULL);
   duplicate_dfuncs = get_duplicate_dfuncs(root);
   gen_overloads(root);
+  mark_kernel_inputs(root);
+  gen_kernel_combinatorial_optimizations_and_input(root,optimize_conditionals);
   free_structs_info(&s_info);
 }
 
@@ -5734,12 +5775,15 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   gen_multidimensional_field_accesses_recursive(root,gen_mem_accesses);
 
 
-  gen_kernel_combinatorial_optimizations_and_input(root,optimize_conditionals);
 
   // Fill the symbol table
   gen_user_taskgraphs(root);
-
+  combinatorial_params_info info = get_combinatorial_params_info(root);
+  gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
+  replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
+  free_combinatorial_params_info(&info);
   gen_kernel_postfixes_and_reduce_outputs(root,gen_mem_accesses);
+
 
   // print_symbol_table();
 

@@ -235,12 +235,12 @@ vbaDestroy(VertexBufferArray* vba)
     vba->out[i] = NULL;
   }
 }
+VertexBufferArray VBA = vbaCreate(1000);
+
 void
 execute_kernel(const int kernel)
 {
-    VertexBufferArray vba = vbaCreate(1000);
-    kernels[kernel]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
-    vbaDestroy(&vba);
+    kernels[kernel]((int3){0, 0, 0}, (int3){1, 1, 1}, VBA);
 }
 int
 get_executed_conditionals()
@@ -260,6 +260,9 @@ get_executed_conditionals()
 int
 main(int argc, char* argv[])
 {
+  //TP: Some Pencil Code code at the moment depends on the unsafe fact that all dconst ints are evaluated as 1 during analysis
+  //Will remove this comment when Pencil Code does not depend on this fact anymore
+  memset(&d_mesh_info.int_params,1,sizeof(int)*NUM_INT_PARAMS);
   if (argc != 2) {
     fprintf(stderr, "Usage: ./main <output_file>\n");
     return EXIT_FAILURE;

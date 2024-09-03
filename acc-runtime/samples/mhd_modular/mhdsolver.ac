@@ -515,8 +515,14 @@ reduce_test(step_num)
     reduce_sum(step_num == 0, 2.0, timestep_out)
 }
 
+bool bool_param
+Kernel empty(){}
 
-Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums, bool bool_param) {
+Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums) {
+	if bool_param
+	{
+		print("HI\n")
+	}
     if enums.heatcond == NOTHING 
     {
 	print("HI\n")
@@ -529,6 +535,7 @@ Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums, 
 	{
 		print("BYE\n")
 	}
+	
     write(VTXBUF_LNRHO, rk3(VTXBUF_LNRHO, continuity(), step_num, time_params.dt))
 
 #if LENTROPY 

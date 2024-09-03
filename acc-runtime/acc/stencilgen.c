@@ -256,16 +256,20 @@ gen_kernel_prefix(const int curr_kernel)
     for(int i = 0; i< NUM_REAL_OUTPUTS;  ++i)
             printf("1000000.0,");
     printf("};\n");
+    printf("bool should_reduce[NUM_REAL_OUTPUTS] = {\n");
+    	printf("false,");
+    printf("};\n");
+    
 
     printf("(void)reduce_sum_res;");
     printf("(void)reduce_min_res;");
     printf("(void)reduce_max_res;");
     printf("const auto reduce_sum __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-          	  "{ (void)condition; reduce_sum_res[(int)output] = val; };");
+          	  "{ should_reduce[(int)output] = true; reduce_sum_res[(int)output] = val; };");
     printf("const auto reduce_min __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-          	  "{ (void)condition; reduce_min_res[(int)output] = val; };");
+          	  "{ should_reduce[(int)output] = true; reduce_min_res[(int)output] = val; };");
     printf("const auto reduce_max __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-		  "{ (void)condition; reduce_max_res[(int)output] = val; };");
+		  "{ should_reduce[(int)output] = true; reduce_max_res[(int)output] = val; };");
   }
 }
 
@@ -294,7 +298,11 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses, cons
   //TP: don't gen previous at all if no fields use it. Done to declutter the resulting code and to speedup compilation
   bool gen_previous = false;
   for(int field = 0;  field < NUM_FIELDS; ++field) gen_previous |= previous_accessed[cur_kernel][field];
-  if(!gen_previous) return;
+  if(!gen_previous) 
+  {
+  	printf("const auto previous_base __attribute__((unused)) = [&](const Field& field) {return (AcReal)NAN;};");
+	return;
+  }
   for (int field = 0; field < NUM_FIELDS; ++field)
     if(previous_accessed[cur_kernel][field])
       printf("const auto f%d_prev = vba.out[%d][idx];", field, field);

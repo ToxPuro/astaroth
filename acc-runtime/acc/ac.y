@@ -378,7 +378,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
 	ASTNode* new_root = astnode_dup(root,NULL);
-	preprocess(new_root);
+	preprocess(new_root, optimize_conditionals);
 
 	reset_all_files();
   	gen_output_files(new_root);
