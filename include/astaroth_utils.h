@@ -125,8 +125,6 @@ static AcLibHandle __attribute__((unused)) acLoadUtils()
 	if(!acHostMeshApplyConstantBounds) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshApplyConstantBounds");
 	*(void**)(&acHostMeshClear) = dlsym(handle,"acHostMeshClear");
 	if(!acHostMeshClear) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshClear");
-	*(void**)(&acHostIntegrateStep) = dlsym(handle,"acHostIntegrateStep");
-	if(!acHostIntegrateStep) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostIntegrateStep");
 	*(void**)(&acHostReduceScal) = dlsym(handle,"acHostReduceScal");
 	if(!acHostReduceScal) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostReduceScal");
 	*(void**)(&acHostReduceVec) = dlsym(handle,"acHostReduceVec");
@@ -147,6 +145,10 @@ static AcLibHandle __attribute__((unused)) acLoadUtils()
 	if(!acHostMeshReadFromFile) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshReadFromFile");
 	*(void**)(&acGetError) = dlsym(handle,"acGetError");
 	if(!acGetError) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetError");
+
+	*(void**)(&acHostIntegrateStep) = dlsym(handle,"acHostIntegrateStep");
+	if(!acHostIntegrateStep) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostIntegrateStep");
+
 //#ifdef __cplusplus
 //	return AcLibHandle(handle);
 //#else

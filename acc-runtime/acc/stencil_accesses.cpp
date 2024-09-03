@@ -103,7 +103,6 @@ MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
 		res[i] = (Field3){x,y,z};
 	return res;
 }
-#include "dconst_accesses_decl.h"
 
 
 constexpr int
@@ -162,6 +161,22 @@ __ballot(bool val)
 #include "math_utils.h"
  
 #include "acc_runtime.h"
+
+constexpr AcMeshInfo
+get_d_mesh_info()
+{
+	//TP: DCONST ints and bools have to be evaluated to 1 since PC depends on conditionals like if(int) and if(bool) being true at analysis 
+	AcMeshInfo res{};
+  	for(int i = 0; i < NUM_INT_PARAMS; ++i)
+	  res.int_params[i] = 1;
+  	for(int i = 0; i < NUM_BOOL_PARAMS; ++i)
+	  res.bool_params[i] = true;
+	return res;
+}
+
+constexpr static AcMeshInfo d_mesh_info = get_d_mesh_info();
+#include "dconst_decl.h"
+
 #include "user_constants.h"
 #include "dconst_arrays_decl.h"
 //#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1][1000] {}
@@ -200,7 +215,6 @@ AC_INTERNAL_read_field(const Field& field, const AcReal& val)
 	stencils_accessed[field][stencil_value_stencil] = 1;
 	return AcReal(1.0);
 }
-static AcMeshInfo d_mesh_info{};
 #define suppress_unused_warning(X) (void)X
 
 static std::vector<int> executed_conditionals{};
@@ -235,12 +249,12 @@ vbaDestroy(VertexBufferArray* vba)
     vba->out[i] = NULL;
   }
 }
+VertexBufferArray VBA = vbaCreate(1000);
+
 void
 execute_kernel(const int kernel)
 {
-    VertexBufferArray vba = vbaCreate(1000);
-    kernels[kernel]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
-    vbaDestroy(&vba);
+    kernels[kernel]((int3){0, 0, 0}, (int3){1, 1, 1}, VBA);
 }
 int
 get_executed_conditionals()
@@ -260,6 +274,8 @@ get_executed_conditionals()
 int
 main(int argc, char* argv[])
 {
+  //TP: Some Pencil Code code at the moment depends on the unsafe fact that all dconst ints are evaluated as 1 during analysis
+  //Will remove this comment when Pencil Code does not depend on this fact anymore
   if (argc != 2) {
     fprintf(stderr, "Usage: ./main <output_file>\n");
     return EXIT_FAILURE;
@@ -274,7 +290,6 @@ main(int argc, char* argv[])
   FILE* fp_field_has_stencil_op = fopen("user_field_has_stencil_op.bin","wb");
   static int read_fields[NUM_FIELDS];
   static int field_has_stencil_op[NUM_FIELDS];
-
 
   fprintf(fp,
           "static int stencils_accessed[NUM_KERNELS][NUM_FIELDS][NUM_STENCILS] "

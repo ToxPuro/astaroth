@@ -27,6 +27,6 @@ void generate_mem_accesses(void);
 
 void gen_extra_funcs(const ASTNode* root, FILE* stream);
 
-void preprocess(ASTNode* root);
+void preprocess(ASTNode* root, const bool optimize_conditionals);
 
 void gen_output_files(ASTNode* root);

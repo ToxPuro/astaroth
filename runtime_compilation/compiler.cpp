@@ -1,5 +1,4 @@
 #include "acc_runtime.h"
-#include "user_array_dims.h"
 
 
 
@@ -56,7 +55,7 @@ char*
 to_str(const bool value)
 {
 	char* res = (char*)malloc(sizeof(char)*4098);
-	sprintf(res,"%d\n",value);
+	sprintf(res,"%s\n",(value) ? "true" : "false");
 	return res;
 }
 
@@ -68,7 +67,7 @@ to_str(const V value, const char* name)
 {
 	char* res = (char*)malloc(sizeof(char)*4098);
 	char* val_str = to_str(value);
-	sprintf(res,"%s %s = %s\n",get_datatype<V>(), name, val_str);
+	sprintf(res,"const %s %s = %s\n",get_datatype<V>(), name, val_str);
 	free(val_str);
 	return res;
 }
@@ -100,34 +99,34 @@ struct load_arrays
 			if(n_dims == 1)
 			{
 				fprintf(fp,"const %s %s = [",type,name);
-				const int3 dims = get_array_dims(array);
-				for(int j = 0; j < dims.x; ++j)
+				const AcArrayDims dims = get_array_dims(array);
+				for(int j = 0; j < dims.len[0]; ++j)
 				{
 					auto val = is_loaded ? loaded_val[j] : default_value;
 					char* val_string = to_str(val);
 					fprintf(fp,"%s",val_string);
 					free(val_string);
-					if(j < dims.x-1) fprintf(fp,"%s",",");
+					if(j < dims.len[0]-1) fprintf(fp,"%s",",");
 				}
 				fprintf(fp,"%s","]\n");
 			}
 			else if(n_dims == 2)
 			{
 				fprintf(fp,"const %s %s = [", type, name);
-				const int3 dims = get_array_dims(array);
-				for(int y = 0; y < dims.y; ++y)
+				const AcArrayDims dims = get_array_dims(array);
+				for(int y = 0; y < dims.len[1]; ++y)
 				{
 					fprintf(fp,"%s","[");
-					for(int x = 0; x < dims.x; ++x)
+					for(int x = 0; x < dims.len[0]; ++x)
 					{
-						auto val = is_loaded ? loaded_val[x + y*dims.x] : default_value;
+						auto val = is_loaded ? loaded_val[x + y*dims.len[0]] : default_value;
 						char* val_string = to_str(val);
 						fprintf(fp,"%s",val_string);
 						free(val_string);
-						if(x < dims.x-1) fprintf(fp,"%s",",");
+						if(x < dims.len[0]-1) fprintf(fp,"%s",",");
 					}
 					fprintf(fp,"%s","]");
-					if(y < dims.y-1) fprintf(fp,"%s",",");
+					if(y < dims.len[1]-1) fprintf(fp,"%s",",");
 				}
 				fprintf(fp,"]\n");
 			}

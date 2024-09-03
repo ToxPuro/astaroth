@@ -515,7 +515,7 @@ acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const
 	}
 	if(num_bools != NUM_BOOL_PARAMS)
 	{
-		fprintf(stderr,"Astaroth warning: mismatch in NUM_INT_PARAMS : %d|%d\n",num_bools,NUM_BOOL_PARAMS);
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_BOOL_PARAMS: %d|%d\n",num_bools,NUM_BOOL_PARAMS);
 	}
 	if(num_int_arrays != NUM_INT_ARRAYS)
 	{
@@ -523,11 +523,11 @@ acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const
 	}
 	if(num_bool_arrays != NUM_BOOL_ARRAYS)
 	{
-		fprintf(stderr,"Astaroth warning: mismatch in NUM_INT_ARRAYS: %d|%d\n",num_bool_arrays,NUM_BOOL_ARRAYS);
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_BOOL_ARRAYS: %d|%d\n",num_bool_arrays,NUM_BOOL_ARRAYS);
 	}
 	if(num_real_arrays != NUM_REAL_ARRAYS)
 	{
-		fprintf(stderr,"Astaroth warning: mismatch in NUM_INT_ARRAYS: %d|%d\n",num_real_arrays,NUM_REAL_ARRAYS);
+		fprintf(stderr,"Astaroth warning: mismatch in NUM_REAL_ARRAYS: %d|%d\n",num_real_arrays,NUM_REAL_ARRAYS);
 	}
 	return res;
 }

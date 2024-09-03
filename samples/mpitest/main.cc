@@ -68,7 +68,11 @@ main(void)
     	acLoadCompInfo(AC_runtime_real_arr,real_arr,&info);
     	acLoadCompInfo(AC_runtime_int_arr,int_arr,&info);
     	acLoadCompInfo(AC_runtime_bool_arr,bool_arr,&info);
+#if AC_USE_HIP
     	const char* build_str = "-DUSE_HIP=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
+#else
+    	const char* build_str = "-DUSE_HIP=OFF -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
+#endif
     	acCompile(build_str,info);
     }
     MPI_Barrier(MPI_COMM_WORLD);

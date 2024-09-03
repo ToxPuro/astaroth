@@ -291,11 +291,11 @@ reset_all_files()
 {
           const char* files[] = {"kernel_reduce_outputs.h","user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
 		 "device_mesh_info_decl.h",  "array_decl.h", "comp_decl.h","comp_loaded_decl.h", "input_decl.h","get_device_array.h","get_config_arrays.h","get_config_param.h",
-		 "get_arrays.h","dconst_decl.h","dconst_accesses_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h","memcpy_to_gmem_arrays.h","memcpy_from_gmem_arrays.h",
+		 "get_arrays.h","dconst_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h","memcpy_to_gmem_arrays.h","memcpy_from_gmem_arrays.h",
 		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
 		 "load_and_store_uniform_overloads.h","load_and_store_uniform_funcs.h","load_and_store_uniform_header.h","get_array_info.h","get_from_comp_config.h","get_param_name.h","to_str_funcs.h","get_default_value.h",
 		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_loaders.h", "user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
-		  "fields_info.h",
+		  "fields_info.h","is_comptime_param.h","push_to_config.h","load_comp_info.h","load_comp_info_overloads.h",
 		  };
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
 	    if(!file_exists(files[i])) continue;
@@ -378,7 +378,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
 	ASTNode* new_root = astnode_dup(root,NULL);
-	preprocess(new_root);
+	preprocess(new_root, optimize_conditionals);
 
 	reset_all_files();
   	gen_output_files(new_root);
@@ -612,6 +612,9 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 		if(!has_qualifier($$->rhs,"const"))
 		{
                   fprintf(stderr, FATAL_ERROR_MESSAGE"assignment to a global variable only allowed for constant values\n");
+		  char tmp[10000];
+		  combine_all(assignment,tmp);
+		  fprintf(stderr,"Incorrect assignment: %s\n",tmp);
                   assert(!has_qualifier($$->rhs,"const"));
 		  exit(EXIT_FAILURE);
 		}
@@ -693,11 +696,8 @@ dynamic: DYNAMIC_QL { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set
 constexpr: CONSTEXPR     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 run_const: RUN_CONST   { 						
 	 								$$ = astnode_create(NODE_UNKNOWN, NULL, NULL); 
-									if(AC_RUNTIME_COMPILATION)
-	 								      astnode_set_buffer("run_const", $$); 
-									else
-	 									astnode_set_buffer("dconst", $$); 
-									$$->token = 255 + yytoken; astnode_set_postfix(" ", $$); 
+  									astnode_set_buffer(AC_RUNTIME_COMPILATION ? "run_const" : "dconst", $$);
+                                                                        $$->token =  AC_RUNTIME_COMPILATION ? 255 + yytoken : DCONST_QL;
 		       };
 output: OUTPUT         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 input:  INPUT          { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
