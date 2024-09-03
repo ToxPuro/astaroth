@@ -1,4 +1,5 @@
 #include "acc_runtime.h"
+#include "astaroth_runtime_compilation.h"
 
 
 
@@ -147,6 +148,7 @@ struct load_scalars
 		}
 	}
 };
+
 void
 acCompile(const char* compilation_string, const AcCompInfo info)
 {

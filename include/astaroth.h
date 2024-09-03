@@ -1492,17 +1492,17 @@ FUNC_DEFINE(AcResult, acDeviceStoreIXYPlate,(const Device device, int3 start, in
 /** */
 FUNC_DEFINE(AcResult, acDeviceGetVBApointers,(Device device, AcReal *vbapointer[2]));
 
-OVERLOADED_FUNC_DEFINE(AcResult, acDeviceSetRealInput,(const Device device, const AcRealInputParam param, const AcReal val));
+FUNC_DEFINE(AcResult, acDeviceSetRealInput,(const Device device, const AcRealInputParam param, const AcReal val));
 
-OVERLOADED_FUNC_DEFINE(AcResult, acDeviceSetIntInput,(const Device device, const AcIntInputParam param, const int val));
+FUNC_DEFINE(AcResult, acDeviceSetIntInput,(const Device device, const AcIntInputParam param, const int val));
 
-OVERLOADED_FUNC_DEFINE(int, acDeviceGetIntOutput,(const Device device, const AcIntOutputParam param));
+FUNC_DEFINE(int, acDeviceGetIntOutput,(const Device device, const AcIntOutputParam param));
 
-OVERLOADED_FUNC_DEFINE(AcReal, acDeviceGetRealInput,(const Device device, const AcRealInputParam param));
+FUNC_DEFINE(AcReal, acDeviceGetRealInput,(const Device device, const AcRealInputParam param));
 
-OVERLOADED_FUNC_DEFINE(int, acDeviceGetIntInput,(const Device device, const AcIntInputParam param));
+FUNC_DEFINE(int, acDeviceGetIntInput,(const Device device, const AcIntInputParam param));
 
-OVERLOADED_FUNC_DEFINE(AcReal, acDeviceGetRealOutput,(const Device device, const AcRealOutputParam param));
+FUNC_DEFINE(AcReal, acDeviceGetRealOutput,(const Device device, const AcRealOutputParam param));
 
 /*
  * =============================================================================
@@ -1689,7 +1689,9 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	*(void**)(&BASE_FUNC_NAME(acBoundaryCondition)) = dlsym(handle,"acBoundaryCondition");
 	*(void**)(&acSync) = dlsym(handle,"acSync");
 	if(!acSync) fprintf(stderr,"Astaroth error: was not able to load %s\n","acSync");
+#ifdef AC_INTEGRATION_ENABLED
 	*(void**)(&BASE_FUNC_NAME(acSpecialMHDBoundaryCondition)) = dlsym(handle,"acSpecialMHDBoundaryCondition");
+#endif
 	*(void**)(&acGridGetDefaultTaskGraph) = dlsym(handle,"acGridGetDefaultTaskGraph");
 	if(!acGridGetDefaultTaskGraph) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridGetDefaultTaskGraph");
 	*(void**)(&acGridTaskGraphHasPeriodicBoundcondsX) = dlsym(handle,"acGridTaskGraphHasPeriodicBoundcondsX");
@@ -1907,12 +1909,12 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!acDeviceStoreIXYPlate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceStoreIXYPlate");
 	*(void**)(&acDeviceGetVBApointers) = dlsym(handle,"acDeviceGetVBApointers");
 	if(!acDeviceGetVBApointers) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceGetVBApointers");
-	*(void**)(&BASE_FUNC_NAME(acDeviceSetRealInput)) = dlsym(handle,"acDeviceSetRealInput");
-	*(void**)(&BASE_FUNC_NAME(acDeviceSetIntInput)) = dlsym(handle,"acDeviceSetIntInput");
-	*(void**)(&BASE_FUNC_NAME(acDeviceGetIntOutput)) = dlsym(handle,"acDeviceGetIntOutput");
-	*(void**)(&BASE_FUNC_NAME(acDeviceGetRealInput)) = dlsym(handle,"acDeviceGetRealInput");
-	*(void**)(&BASE_FUNC_NAME(acDeviceGetIntInput)) = dlsym(handle,"acDeviceGetIntInput");
-	*(void**)(&BASE_FUNC_NAME(acDeviceGetRealOutput)) = dlsym(handle,"acDeviceGetRealOutput");
+	*(void**)(&acDeviceSetRealInput) = dlsym(handle,"acDeviceSetRealInput");
+	*(void**)(&acDeviceSetIntInput) = dlsym(handle,"acDeviceSetIntInput");
+	*(void**)(&acDeviceGetIntOutput) = dlsym(handle,"acDeviceGetIntOutput");
+	*(void**)(&acDeviceGetRealInput) = dlsym(handle,"acDeviceGetRealInput");
+	*(void**)(&acDeviceGetIntInput) = dlsym(handle,"acDeviceGetIntInput");
+	*(void**)(&acDeviceGetRealOutput) = dlsym(handle,"acDeviceGetRealOutput");
 	*(void**)(&acHostUpdateBuiltinParams) = dlsym(handle,"acHostUpdateBuiltinParams");
 	if(!acHostUpdateBuiltinParams) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostUpdateBuiltinParams");
 	*(void**)(&acHostMeshCreate) = dlsym(handle,"acHostMeshCreate");
@@ -1962,25 +1964,25 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 static inline AcResult
 acDeviceSetInput(const Device device, const AcRealInputParam param, const AcReal val)
 {
-	return BASE_FUNC_NAME(acDeviceSetRealInput)(device,param,val);
+	return acDeviceSetRealInput(device,param,val);
 }
 
 static inline AcResult
 acDeviceSetInput(const Device device, const AcIntInputParam param, const int val)
 {
-	return BASE_FUNC_NAME(acDeviceSetIntInput)(device,param,val);
+	return acDeviceSetIntInput(device,param,val);
 }
 static inline int
 acDeviceGetOutput(const Device device, const AcIntOutputParam param)
 {
-	return BASE_FUNC_NAME(acDeviceGetIntOutput)(device,param);
+	return acDeviceGetIntOutput(device,param);
 }
 
 
 static inline AcReal
 acDeviceGetOutput(const Device device, const AcRealOutputParam param)
 {
-	return BASE_FUNC_NAME(acDeviceGetRealOutput)(device,param);
+	return acDeviceGetRealOutput(device,param);
 }
 
 #if AC_MPI_ENABLED
