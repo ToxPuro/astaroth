@@ -268,78 +268,27 @@
 #include <type_traits>
 #include <string.h>
 
+  #ifdef __cplusplus
+#include  "push_to_config.h"
+  #endif
   static AcCompInfo __attribute__((unused)) acInitCompInfo()
   {
 	  AcCompInfo res;
 	  memset(&res.is_loaded,0,sizeof(res.is_loaded));
 	  return res;
   }
-  static AcResult __attribute__((unused)) acLoadRealCompInfo(const AcRealCompParam param, const AcReal val, AcCompInfo* info)
-  {
-	  info->is_loaded.real_params[(int)param] = true;
-	  info->config.real_params[(int)param] = val;
-	  return AC_SUCCESS;
-  }
-  static AcResult __attribute__((unused)) acLoadIntCompInfo(const AcIntCompParam param, const int val, AcCompInfo* info)
-  {
-	  info->is_loaded.int_params[(int)param] = true;
-	  info->config.int_params[(int)param] = val;
-	  return AC_SUCCESS;
-  }
-  static AcResult __attribute__((unused)) acLoadReal3CompInfo(const AcReal3CompParam param, const AcReal3 val, AcCompInfo* info)
-  {
-	  info->is_loaded.real3_params[(int)param] = true;
-	  info->config.real3_params[(int)param] = val;
-	  return AC_SUCCESS;
-  }
-  static AcResult __attribute__((unused)) acLoadInt3CompInfo(const AcInt3CompParam param, const int3 val, AcCompInfo* info)
-  {
-	  info->is_loaded.int3_params[(int)param] = true;
-	  info->config.int3_params[(int)param] = val;
-	  return AC_SUCCESS;
-  }
+#include "load_comp_info.h"
 
-  static AcResult __attribute__((unused)) acLoadRealArrayCompInfo(const AcRealCompArrayParam param, const AcReal* val, AcCompInfo* info)
-  {
-	  info->is_loaded.real_arrays[(int)param] = true;
-	  info->config.real_arrays[(int)param] = val;
-	  return AC_SUCCESS;
-  }
-
-  static AcResult __attribute__((unused)) acLoadIntArrayCompInfo(const AcIntCompArrayParam param, const int* val, AcCompInfo* info)
-  {
-	  info->is_loaded.int_arrays[(int)param] = true;
-	  info->config.int_arrays[(int)param] = val;
-	  return AC_SUCCESS;
-  }
-  static AcResult __attribute__((unused)) acLoadBoolCompInfo(const AcBoolCompParam param, const bool val, AcCompInfo* info)
-  {
-	  info->is_loaded.bool_params[(int)param] = true;
-	  info->config.bool_params[(int)param] = val;
-	  return AC_SUCCESS;
-  }
-  static AcResult __attribute__((unused)) acLoadBoolArrayCompInfo(const AcBoolCompArrayParam param, const bool* val, AcCompInfo* info)
-  {
-	  info->is_loaded.bool_arrays[(int)param] = true;
-	  info->config.bool_arrays[(int)param] = val;
-	  return AC_SUCCESS;
-  }
 #ifdef __cplusplus
 #include "is_comptime_param.h"
 #endif
 
 #ifdef __cplusplus
+
 #define GEN_LOAD_COMP_INFO(PARAM_TYPE,VAL_TYPE,TYPE) \
   static AcResult __attribute__((unused)) acLoadCompInfo(const PARAM_TYPE param, const VAL_TYPE val, AcCompInfo* info) {return acLoad##TYPE##CompInfo(param,val,info);};
+#include "load_comp_info_overloads.h"
 
-  GEN_LOAD_COMP_INFO(AcBoolCompParam, bool, Bool)
-  GEN_LOAD_COMP_INFO(AcIntCompParam,  int, Int)
-  GEN_LOAD_COMP_INFO(AcInt3CompParam, int3, Int3)
-  GEN_LOAD_COMP_INFO(AcRealCompParam, AcReal,Real)
-  GEN_LOAD_COMP_INFO(AcReal3CompParam,AcReal3,Real3)
-  GEN_LOAD_COMP_INFO(AcRealCompArrayParam,AcReal*,RealArray)
-  GEN_LOAD_COMP_INFO(AcIntCompArrayParam,int*,IntArray)
-  GEN_LOAD_COMP_INFO(AcBoolCompArrayParam,bool*,BoolArray)
 #endif
 
   template <typename P>

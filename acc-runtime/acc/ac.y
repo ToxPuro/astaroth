@@ -295,7 +295,7 @@ reset_all_files()
 		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
 		 "load_and_store_uniform_overloads.h","load_and_store_uniform_funcs.h","load_and_store_uniform_header.h","get_array_info.h","get_from_comp_config.h","get_param_name.h","to_str_funcs.h","get_default_value.h",
 		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_loaders.h", "user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
-		  "fields_info.h","is_comptime_param.h",
+		  "fields_info.h","is_comptime_param.h","push_to_config.h","load_comp_info.h","load_comp_info_overloads.h",
 		  };
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
 	    if(!file_exists(files[i])) continue;

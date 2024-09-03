@@ -963,6 +963,30 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fclose(fp);
 
 
+	fp = fopen("push_to_config.h","a");
+	fprintf(fp,"constexpr static void acPushToConfig(AcMeshInfo& config, %sParam param, %s val)      {config.%s_params[(int)param] = val;}",enum_name,datatype_scalar, define_name);
+	fprintf(fp,"constexpr static void acPushToConfig(AcMeshInfo& config, %sArrayParam param, %s* val) {config.%s_arrays[(int)param] = val;}",enum_name,datatype_scalar,define_name);
+	fclose(fp);
+
+	fp = fopen("load_comp_info.h","a");
+	fprintf(fp,"static AcResult __attribute((unused)) acLoad%sCompInfo(const %sCompParam param, const %s val, AcCompInfo* info)      {\n"
+			"info->is_loaded.%s_params[(int)param] = true;\n"
+			"info->config.%s_params[(int)param] = val;\n"
+			"return AC_SUCCESS;\n"
+			"}\n",upper_case_name ,enum_name,datatype_scalar,define_name,define_name);
+
+	fprintf(fp,"static AcResult __attribute((unused)) acLoad%sArrayCompInfo(const %sCompArrayParam param, const %s* val, AcCompInfo* info)      {\n"
+			"info->is_loaded.%s_arrays[(int)param] = true;\n"
+			"info->config.%s_arrays[(int)param] = val;\n"
+			"return AC_SUCCESS;\n"
+			"}\n",upper_case_name ,enum_name,datatype_scalar,define_name,define_name);
+	fclose(fp);
+	fp = fopen("load_comp_info_overloads.h","a");
+	fprintf(fp,"GEN_LOAD_COMP_INFO(%sCompParam,%s,%s)\n", enum_name, datatype_scalar, upper_case_name);
+	fprintf(fp,"GEN_LOAD_COMP_INFO(%sCompArrayParam,%s*,%sArray)\n", enum_name, datatype_scalar, upper_case_name);
+	fclose(fp);
+
+
 	fp = fopen("is_comptime_param.h","a");
 	fprintf(fp,"constexpr static bool IsCompTimeParam(%sParam& param) {(void)param; return false;}\n",enum_name);
 	fprintf(fp,"constexpr static bool IsCompTimeParam(%sArrayParam& param) {(void)param; return false;}\n",enum_name);
