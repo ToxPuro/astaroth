@@ -963,6 +963,12 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fclose(fp);
 
 
+	fp = fopen("is_comptime_param.h","a");
+	fprintf(fp,"constexpr static bool IsCompTimeParam(%sParam& param) {(void)param; return false;}\n",enum_name);
+	fprintf(fp,"constexpr static bool IsCompTimeParam(%sArrayParam& param) {(void)param; return false;}\n",enum_name);
+	fprintf(fp,"constexpr static bool IsCompParam(%sCompArrayParam& param) {(void)param; return true;}\n",enum_name);
+	fprintf(fp,"constexpr static bool IsCompParam(%sCompParam& param) {(void)param; return true;}\n",enum_name);
+	fclose(fp);
 	if(strcmp(datatype_scalar,"int"))
 	{
 		fp = fopen("scalar_types.h","a");

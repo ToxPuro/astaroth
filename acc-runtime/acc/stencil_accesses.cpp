@@ -165,9 +165,12 @@ __ballot(bool val)
 constexpr AcMeshInfo
 get_d_mesh_info()
 {
+	//TP: DCONST ints and bools have to be evaluated to 1 since PC depends on conditionals like if(int) and if(bool) being true at analysis 
 	AcMeshInfo res{};
   	for(int i = 0; i < NUM_INT_PARAMS; ++i)
 	  res.int_params[i] = 1;
+  	for(int i = 0; i < NUM_BOOL_PARAMS; ++i)
+	  res.bool_params[i] = true;
 	return res;
 }
 

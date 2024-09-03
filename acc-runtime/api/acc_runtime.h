@@ -114,7 +114,7 @@
 
 #ifndef BASE_FUNC_NAME
 
-#if __cplusplus
+#ifdef __cplusplus
 #define BASE_FUNC_NAME(func_name) func_name##_BASE
 #else
 #define BASE_FUNC_NAME(func_name) func_name
@@ -258,6 +258,16 @@
 	if(!acGetKernelReduceScratchPadMinSize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelReduceScratchPadMinSize");
 	return AC_SUCCESS;
   }
+#endif
+
+  #ifdef __cplusplus
+  } // extern "C"
+    //
+    //
+#ifndef AC_RUNTIME_SOURCE
+#include <type_traits>
+#include <string.h>
+
   static AcCompInfo __attribute__((unused)) acInitCompInfo()
   {
 	  AcCompInfo res;
@@ -314,8 +324,11 @@
 	  info->config.bool_arrays[(int)param] = val;
 	  return AC_SUCCESS;
   }
+#ifdef __cplusplus
+#include "is_comptime_param.h"
+#endif
 
-#if __cplusplus
+#ifdef __cplusplus
 #define GEN_LOAD_COMP_INFO(PARAM_TYPE,VAL_TYPE,TYPE) \
   static AcResult __attribute__((unused)) acLoadCompInfo(const PARAM_TYPE param, const VAL_TYPE val, AcCompInfo* info) {return acLoad##TYPE##CompInfo(param,val,info);};
 
@@ -328,14 +341,6 @@
   GEN_LOAD_COMP_INFO(AcIntCompArrayParam,int*,IntArray)
   GEN_LOAD_COMP_INFO(AcBoolCompArrayParam,bool*,BoolArray)
 #endif
-#endif
-
-  #ifdef __cplusplus
-  } // extern "C"
-    //
-    //
-#ifndef AC_RUNTIME_SOURCE
-#include <type_traits>
 
   template <typename P>
   constexpr static array_info
