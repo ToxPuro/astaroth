@@ -4411,11 +4411,6 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "#define STENCIL_HEIGHT (STENCIL_ORDER+1)\n");
   fprintf(fp, "#define STENCIL_WIDTH (STENCIL_ORDER+1)\n");
   fprintf(fp, "#define NGHOST (STENCIL_ORDER/2)\n");
-//#if AC_RUNTIME_COMPILATION
-//  fprintf(fp, "#define AC_RUNTIME_COMPILATION (1)\n");
-//#else
-//  fprintf(fp, "#define AC_RUNTIME_COMPILATION (0)\n");
-//#endif
   char cwd[9000];
   cwd[0] = '\0';
   char* err = getcwd(cwd, sizeof(cwd));
@@ -4434,7 +4429,10 @@ gen_user_defines(const ASTNode* root, const char* out)
   sprintf(runtime_path,"%s",AC_BASE_PATH"/runtime_compilation/build");
   fprintf(fp,"__attribute__((unused)) static const char* runtime_astaroth_build_path = \"%s\";\n",runtime_path);
 
+  fprintf(fp,"__attribute__((unused)) static const char* acc_compiler_path = \"%s\";\n", ACC_COMPILER_PATH);
+
   fclose(fp);
+
   //Done to refresh the autotune file when recompiling DSL code
   fp = fopen(autotune_path,"w");
   fclose(fp);
