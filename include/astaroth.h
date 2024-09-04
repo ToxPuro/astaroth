@@ -1034,7 +1034,7 @@ FUNC_DEFINE(bool, acGridTaskGraphHasPeriodicBoundcondsZ,(AcTaskGraph* graph));
 OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGridBuildTaskGraph,(const AcTaskDefinition ops[], const size_t n_ops));
 
 /** */
-FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraph,());
+FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraph,(const AcDSLTaskGraph));
 
 
 /** */

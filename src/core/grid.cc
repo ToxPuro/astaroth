@@ -1930,8 +1930,9 @@ acGridDestroyTaskGraph(AcTaskGraph* graph)
     return AC_SUCCESS;
 }
 AcTaskGraph*
-acGetDSLTaskGraph()
+acGetDSLTaskGraph(const AcDSLTaskGraph graph)
 {
+	(void)graph;
 #include "user_loaders.h"
 #include "user_taskgraphs.h"
 	return NULL;

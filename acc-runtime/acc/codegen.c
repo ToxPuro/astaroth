@@ -2335,18 +2335,17 @@ make_unique_bc_calls(ASTNode* node)
 	free_node_vec(&func_calls);
 }
 void
-gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* input_symbols, string_vec* input_types, int* num_of_taskgraphs)
+gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* input_symbols, string_vec* input_types, string_vec* names)
 {
   	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
 	if(!has_optimization_info)
 		return;
 	if(node->lhs)
-		gen_user_taskgraphs_recursive(node->lhs,root,input_symbols,input_types,num_of_taskgraphs);
+		gen_user_taskgraphs_recursive(node->lhs,root,input_symbols,input_types,names);
 	if(node->rhs)
-		gen_user_taskgraphs_recursive(node->rhs,root,input_symbols,input_types,num_of_taskgraphs);
+		gen_user_taskgraphs_recursive(node->rhs,root,input_symbols,input_types,names);
 	if(node->type != NODE_TASKGRAPH_DEF)
 		return;
-	(*num_of_taskgraphs)++;
 	const char* boundconds_name = node->lhs->rhs->buffer;
 	char** field_boundconds = get_field_boundconds(root,boundconds_name,input_symbols,input_types);
 	const int num_boundaries = 6;
@@ -2365,8 +2364,10 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	}
 
 	const char* name = node->lhs->lhs->buffer;
+	push(names,name);
 	char res[10000];
-	sprintf(res, "AcTaskGraph* %s = acGridBuildTaskGraph({\n",name);
+	sprintf(res, "if (graph == %s)\n",name);
+	sprintf(res, "\treturn acGridBuildTaskGraph({\n");
 	const ASTNode* function_call_list_head = node->rhs;
 	//have to traverse in reverse order to generate the right order in taskgraph
 	int n_entries = 1;
@@ -2508,10 +2509,6 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	}
 	free(field_written_out_before);
 	strcat(res,"});\n");
-	//TP: this only work with a single taskgraph in the future have come up with other way for this
-	//TP: taskgraphs have to be accessed through API functions instead of header files because of runtime compilation
-	strcatprintf(res,"return %s;\n",name);
-
 	file_append("user_taskgraphs.h",res);
 
 
@@ -2566,15 +2563,17 @@ gen_user_taskgraphs(const ASTNode* root)
 		return;
 	string_vec input_symbols = VEC_INITIALIZER;
 	string_vec input_types   = VEC_INITIALIZER;
-	int num_of_taskgraphs = 0;
-	gen_user_taskgraphs_recursive(root,root,&input_symbols,&input_types,&num_of_taskgraphs);
-	if(num_of_taskgraphs > 1)
-	{
-		fprintf(stderr,FATAL_ERROR_MESSAGE"currently can define only single ComputeSteps\n");
-		exit(EXIT_FAILURE);
-	}
+	string_vec graph_names = VEC_INITIALIZER;
+	gen_user_taskgraphs_recursive(root,root,&input_symbols,&input_types,&graph_names);
+	FILE* fp = fopen("user_defines.h","a");
+	fprintf(fp,"typedef enum {");
+	for(size_t i = 0; i < graph_names.size; ++i)
+		fprintf(fp,"%s,",graph_names.data[i]);
+	fprintf(fp,"} AcDSLTaskGraph;\n");
+	fclose(fp);
 	free_str_vec(&input_symbols);
 	free_str_vec(&input_types);
+	free_str_vec(&graph_names);
 }
 
 ASTNode*
