@@ -59,7 +59,7 @@ set(DSL_HEADERS "user_kernels.h"
 if (NOT DEFINED DSL_MODULE_FILE)
 	set(ACC_COMPILER_ARGS "${DSL_MODULE_DIR}/*.ac" "${RUNTIME_COMPILATION_VAL}")
 else()
-	set(ACC_COMPILER_ARGS "${DSL_MODULE_DIR}/*.ac " "${DSL_MODULE_FILE}" "${RUNTIME_COMPILATION_VAL} ")
+	set(ACC_COMPILER_ARGS "${DSL_MODULE_DIR}/*.ac " "${DSL_MODULE_FILE}" "${RUNTIME_COMPILATION_VAL}")
 endif()
   add_custom_command (
       COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"

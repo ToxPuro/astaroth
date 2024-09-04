@@ -1929,6 +1929,13 @@ acGridDestroyTaskGraph(AcTaskGraph* graph)
     delete graph;
     return AC_SUCCESS;
 }
+AcTaskGraph*
+acGetDSLTaskGraph()
+{
+#include "user_loaders.h"
+#include "user_taskgraphs.h"
+	return NULL;
+}
 
 AcResult
 acGridFinalizeReduceLocal(AcTaskGraph* graph)

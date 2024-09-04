@@ -1033,6 +1033,9 @@ FUNC_DEFINE(bool, acGridTaskGraphHasPeriodicBoundcondsZ,(AcTaskGraph* graph));
 /** */
 OVERLOADED_FUNC_DEFINE(AcTaskGraph*, acGridBuildTaskGraph,(const AcTaskDefinition ops[], const size_t n_ops));
 
+/** */
+FUNC_DEFINE(AcTaskGraph*, acGetDSLTaskGraph,());
+
 
 /** */
 FUNC_DEFINE(AcResult, acGridDestroyTaskGraph,(AcTaskGraph* graph));
@@ -1711,6 +1714,8 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!acGridTaskGraphHasPeriodicBoundcondsZ) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridTaskGraphHasPeriodicBoundcondsZ");
 	*(void**)(&BASE_FUNC_NAME(acGridBuildTaskGraph)) = dlsym(handle,"acGridBuildTaskGraph");
 	*(void**)(&acGridDestroyTaskGraph) = dlsym(handle,"acGridDestroyTaskGraph");
+	*(void**)(&(acGetDSLTaskGraph)) = dlsym(handle,"acGetDSLTaskGraph");
+	if(!acGetDSLTaskGraph) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetDSLTaskGraph");
 	if(!acGridDestroyTaskGraph) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridDestroyTaskGraph");
 	*(void**)(&acGridExecuteTaskGraph) = dlsym(handle,"acGridExecuteTaskGraph");
 	if(!acGridExecuteTaskGraph) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridExecuteTaskGraph");

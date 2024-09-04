@@ -752,7 +752,7 @@ void
 gen_dmesh_declarations(const char* datatype_scalar)
 {
 	FILE* fp = fopen("device_mesh_info_decl.h","a");
-	fprintf(fp,"%s %s_params[NUM_%s_PARAMS];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp,"%s %s_params[NUM_%s_PARAMS+1];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
 	fclose(fp);
 }
 
@@ -839,6 +839,11 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 	fp = fopen("dconst_decl.h","a");
 	fprintf(fp,"%s __device__ __forceinline__ DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
+			,datatype_scalar, enum_name, define_name);
+	fclose(fp);
+
+	fp = fopen("rconst_decl.h","a");
+	fprintf(fp,"%s __device__ __forceinline__ RCONST(const %sCompParam& param){return d_mesh_info.%s_params[0];}\n"
 			,datatype_scalar, enum_name, define_name);
 	fclose(fp);
 
@@ -2330,17 +2335,18 @@ make_unique_bc_calls(ASTNode* node)
 	free_node_vec(&func_calls);
 }
 void
-gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* input_symbols, string_vec* input_types)
+gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* input_symbols, string_vec* input_types, int* num_of_taskgraphs)
 {
   	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
 	if(!has_optimization_info)
 		return;
 	if(node->lhs)
-		gen_user_taskgraphs_recursive(node->lhs,root,input_symbols,input_types);
+		gen_user_taskgraphs_recursive(node->lhs,root,input_symbols,input_types,num_of_taskgraphs);
 	if(node->rhs)
-		gen_user_taskgraphs_recursive(node->rhs,root,input_symbols,input_types);
+		gen_user_taskgraphs_recursive(node->rhs,root,input_symbols,input_types,num_of_taskgraphs);
 	if(node->type != NODE_TASKGRAPH_DEF)
 		return;
+	(*num_of_taskgraphs)++;
 	const char* boundconds_name = node->lhs->rhs->buffer;
 	char** field_boundconds = get_field_boundconds(root,boundconds_name,input_symbols,input_types);
 	const int num_boundaries = 6;
@@ -2502,6 +2508,9 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	}
 	free(field_written_out_before);
 	strcat(res,"});\n");
+	//TP: this only work with a single taskgraph in the future have come up with other way for this
+	//TP: taskgraphs have to be accessed through API functions instead of header files because of runtime compilation
+	strcatprintf(res,"return %s;\n",name);
 
 	file_append("user_taskgraphs.h",res);
 
@@ -2557,7 +2566,13 @@ gen_user_taskgraphs(const ASTNode* root)
 		return;
 	string_vec input_symbols = VEC_INITIALIZER;
 	string_vec input_types   = VEC_INITIALIZER;
-	gen_user_taskgraphs_recursive(root,root,&input_symbols,&input_types);
+	int num_of_taskgraphs = 0;
+	gen_user_taskgraphs_recursive(root,root,&input_symbols,&input_types,&num_of_taskgraphs);
+	if(num_of_taskgraphs > 1)
+	{
+		fprintf(stderr,FATAL_ERROR_MESSAGE"currently can define only single ComputeSteps\n");
+		exit(EXIT_FAILURE);
+	}
 	free_str_vec(&input_symbols);
 	free_str_vec(&input_types);
 }
@@ -3377,6 +3392,8 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
     const Symbol* symbol = symboltable_lookup(node->buffer);
     if (symbol && symbol->type & NODE_VARIABLE_ID && int_vec_contains(symbol->tqualifiers,DCONST_QL))
       fprintf(stream, "DCONST(%s)", node->buffer);
+    else if (symbol && symbol->type & NODE_VARIABLE_ID && int_vec_contains(symbol->tqualifiers,RUN_CONST))
+      fprintf(stream, "RCONST(%s)", node->buffer);
     else
       fprintf(stream, "%s", node->buffer);
   }
@@ -4051,7 +4068,11 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp)
 		}
 		else
 		{
-			fprintf(fp, "\n#ifdef __cplusplus\nconstexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
+		        //TP: define macros have greater portability then global constants, since they do not work on some CUDA compilers
+                        if(!strcmps(datatype_scalar,"AcReal","int","bool"))
+                                fprintf(fp, "\n#define %s (%s)\n", name, assignment_val);
+                        else
+                               fprintf(fp, "\n#ifdef __cplusplus\nconstexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
 		}
 		free(datatype_scalar);
 		free(assignment_val);
@@ -4958,41 +4979,6 @@ gen_type_info(ASTNode* root)
 		has_changed = gen_type_info_base(root,root);
 	}
 }
-void
-transform_runtime_vars_recursive(ASTNode* node)
-{
-	TRAVERSE_PREAMBLE(transform_runtime_vars_recursive);
-	if(!node->buffer) return;
-	if(!get_parent_node(NODE_FUNCTION,node)) return;
-	const Symbol* var = get_symbol(NODE_VARIABLE_ID,node->buffer,NULL);
-	if(!var) return;
-	if(!int_vec_contains(var->tqualifiers,RUN_CONST)) return;
-	char* new_buffer = (var->tspecifier_token == REAL) ? "0.0" :
-			   (!strcmp(var->tspecifier,"AcReal*")) ? "AC_INTERNAL_big_real_array": 
-			   (var->tspecifier_token == INT) ? "0": 
-			   (var->tspecifier_token == BOOL) ? "true": 
-			   (!strcmp(var->tspecifier,"int*")) ? "AC_INTERNAL_big_int_array": 
-			   (!strcmp(var->tspecifier,"AcReal3")) ? "AC_INTERNAL_global_real_vec": 
-			   (!strcmp(var->tspecifier,"int3")) ? "AC_INTERNAL_global_int_vec": 
-			   NULL;
-	if(!new_buffer)
-	{
-		fprintf(stderr,"Fatal error: missing default type for: %s\n",var->tspecifier);
-		exit(EXIT_FAILURE);
-	}
-	free(node->buffer);
-	node->buffer = strdup(new_buffer);
-	node->no_auto = true;
-	node->is_constexpr = true;
-}
-void
-transform_runtime_vars(ASTNode* root)
-{
-  symboltable_reset();
-  traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
-  transform_runtime_vars_recursive(root);
-  symboltable_reset();
-}
 const ASTNode*
 find_dfunc_start(const ASTNode* node, const char* dfunc_name)
 {
@@ -5605,7 +5591,6 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   e_info = read_user_enums(root);
   canonalize(root);
 
-  transform_runtime_vars(root);
   transform_field_intrinsic_func_calls_and_ops(root);
   traverse(root, 0, NULL);
   duplicate_dfuncs = get_duplicate_dfuncs(root);
