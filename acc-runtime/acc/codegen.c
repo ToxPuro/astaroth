@@ -1547,18 +1547,18 @@ gen_user_enums()
 	  strcatprintf(res,"} %s;\n",enum_info.names.data[i]);
   	  file_append("user_typedefs.h",res);
 
-	  sprintf(res,"char* to_str(const %s value)\n"
+	  sprintf(res,"std::string to_str(const %s value)\n"
 		       "{\n"
 		       "switch(value)\n"
 		       "{\n"
 		       ,enum_info.names.data[i]);
 
 	  for(size_t j = 0; j < enum_info.options[i].size; ++j)
-		  strcatprintf(res,"case %s: return strdup(\"%s\");\n",enum_info.options[i].data[j],enum_info.options[i].data[j]);
-	  strcat(res,"}return NULL;\n}\n");
+		  strcatprintf(res,"case %s: return \"%s\";\n",enum_info.options[i].data[j],enum_info.options[i].data[j]);
+	  strcat(res,"}return \"\";\n}\n");
 	  file_append("to_str_funcs.h",res);
 
-	  sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n",enum_info.names.data[i], enum_info.names.data[i]);
+	  sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n",enum_info.names.data[i], enum_info.names.data[i]);
 	  file_append("to_str_funcs.h",res);
   }
 }
@@ -4317,40 +4317,38 @@ gen_user_defines(const ASTNode* root, const char* out)
   for (size_t i = 0; i < s_info.user_structs.size; ++i)
   {
 	  char res[7000];
-	  sprintf(res,"char* to_str(const %s value)\n"
+	  sprintf(res,"std::string to_str(const %s value)\n"
 		       "{\n"
-		       "char* res = (char*)malloc(sizeof(char)*7000);\n"
-		       "char* tmp;\n"
-		       "res[0] = '{';\n"
+		       "std::string res = \"{\";"
+		       "std::string tmp;\n"
 		       ,s_info.user_structs.data[i]);
 
 	  for(size_t j = 0; j < s_info.user_struct_field_names[i].size; ++j)
 	  {
-		const char* middle = (j < s_info.user_struct_field_names[i].size -1) ? "strcat(res,\",\");\n" : "";
-		strcatprintf(res,"tmp = to_str(value.%s); strcat(res,tmp);\n"
+		const char* middle = (j < s_info.user_struct_field_names[i].size -1) ? "res += \",\";\n" : "";
+		strcatprintf(res,"res += to_str(value.%s);\n"
 				"%s"
-				"free(tmp);\n"
 		,s_info.user_struct_field_names[i].data[j],middle);
 	  }
 	  strcat(res,
-			  "strcat(res,\"}\");\n"
+			  "res += \"}\";\n"
 			  "return res;\n"
 			  "}\n"
 	  );
 	  file_append("to_str_funcs.h",res);
 	  const char* name = s_info.user_structs.data[i];
 	  if(!strcmp(name,"AcReal2"))
-	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real2");
+	  	sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real2");
 	  else if(!strcmp(name,"AcReal3"))
-	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real3");
+	  	sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real3");
 	  else if(!strcmp(name,"AcReal4"))
-	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real4");
+	  	sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real4");
 	  else if(!strcmp(name,"AcComplex"))
-	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "complex");
+	  	sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "complex");
 	  else if(!strcmp(name,"AcBool3"))
-	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "bool3");
+	  	sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "bool3");
 	  else
-	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], s_info.user_structs.data[i]);
+	  	sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], s_info.user_structs.data[i]);
 	  file_append("to_str_funcs.h",res);
   }
 

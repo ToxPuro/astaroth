@@ -1,5 +1,6 @@
 #include "acc_runtime.h"
 #include "astaroth_runtime_compilation.h"
+#include <string>
 
 
 
@@ -20,63 +21,63 @@ get_default_value()
 }
 
 template <typename V>
-const char*
+std::string
 get_datatype(){}
 
 template <>
-const char*
+std::string
 get_datatype<int>()     {return "int";};
 
 template <>
-const char*
+std::string
 get_datatype<bool>()    {return "bool";};
 
 
 template <>
-const char*
+std::string
 get_datatype<AcReal>()  {return "real";};
 
-char*
+std::string
 to_str(const int value)
 {
-	char* res = (char*)malloc(sizeof(char)*4098);
-	sprintf(res,"%d\n",value);
-	return res;
+	return std::to_string(value);
 }
 
-char*
+std::string
 to_str(const AcReal value)
 {
-	char* res = (char*)malloc(sizeof(char)*4098);
-	sprintf(res,"%.14e\n",value);
+	char* tmp;
+	asprintf(&tmp,"%.14e\n",value);
+	std::string res = tmp;
+	free(tmp);
 	return res;
 }
 
-char*
+std::string
 to_str(const bool value)
 {
-	char* res = (char*)malloc(sizeof(char)*4098);
-	sprintf(res,"%s\n",(value) ? "true" : "false");
+	char* tmp;
+	asprintf(&tmp,"%s\n",(value) ? "true" : "false");
+	std::string res = tmp;
+	free(tmp);
 	return res;
 }
 
 
 
 template <typename V>
-char*
+std::string
 to_str(const V value, const char* name)
 {
-	char* res = (char*)malloc(sizeof(char)*4098);
-	char* val_str = to_str(value);
-	sprintf(res,"const %s %s = %s\n",get_datatype<V>(), name, val_str);
-	free(val_str);
-	return res;
+	std::string val_str = to_str(value);
+	std::string name_str = name;
+	return "const " + get_datatype<V>() + " " + name + " = " + val_str + ";\n";
 }
 
 #include "to_str_funcs.h"
 
 template <typename V>
-const char*
+std::string
 get_value_type(V value)
 {
 	(void)value;
@@ -90,7 +91,7 @@ struct load_arrays
 	void operator()(const AcCompInfo info, FILE* fp)
 	{
 		auto default_value = get_default_value<P>();
-		const char* type = get_value_type(default_value);
+		std::string type = get_value_type(default_value);
 		for(P array : get_params<P>())
 		{
 			const int n_dims = get_array_n_dims(array);
@@ -99,21 +100,20 @@ struct load_arrays
 			auto* loaded_val = get_loaded_val(array,info.config);
 			if(n_dims == 1)
 			{
-				fprintf(fp,"const %s %s = [",type,name);
+				fprintf(fp,"const %s %s = [",type.c_str(),name);
 				const AcArrayDims dims = get_array_dims(array);
 				for(int j = 0; j < dims.len[0]; ++j)
 				{
 					auto val = is_loaded ? loaded_val[j] : default_value;
-					char* val_string = to_str(val);
-					fprintf(fp,"%s",val_string);
-					free(val_string);
+					std::string val_string = to_str(val);
+					fprintf(fp,"%s",val_string.c_str());
 					if(j < dims.len[0]-1) fprintf(fp,"%s",",");
 				}
 				fprintf(fp,"%s","]\n");
 			}
 			else if(n_dims == 2)
 			{
-				fprintf(fp,"const %s %s = [", type, name);
+				fprintf(fp,"const %s %s = [", type.c_str(), name);
 				const AcArrayDims dims = get_array_dims(array);
 				for(int y = 0; y < dims.len[1]; ++y)
 				{
@@ -121,9 +121,8 @@ struct load_arrays
 					for(int x = 0; x < dims.len[0]; ++x)
 					{
 						auto val = is_loaded ? loaded_val[x + y*dims.len[0]] : default_value;
-						char* val_string = to_str(val);
-						fprintf(fp,"%s",val_string);
-						free(val_string);
+						std::string val_string = to_str(val);
+						fprintf(fp,"%s",val_string.c_str());
 						if(x < dims.len[0]-1) fprintf(fp,"%s",",");
 					}
 					fprintf(fp,"%s","]");
@@ -142,9 +141,8 @@ struct load_scalars
 		for(P var : get_params<P>())
 		{
 			auto val =  get_is_loaded(var,info.is_loaded) ? get_loaded_val(var,info.config) : get_default_value<P>();
-			char* res = to_str(val,get_param_name(var));
-			fprintf(fp,"%s",res);
-			free(res);
+			std::string res = to_str(val,get_param_name(var));
+			fprintf(fp,"%s",res.c_str());
 		}
 	}
 };
