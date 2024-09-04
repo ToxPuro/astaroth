@@ -1559,6 +1559,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 
   static AcLibHandle __attribute__((unused)) acLoadLibrary()
   {
+	acLoadRunTime();
  	void* handle = dlopen(runtime_astaroth_path,RTLD_NOW);
 	if(!handle)
 	{
@@ -1947,7 +1948,6 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!acVA_DebugFromRootProc) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVA_DebugFromRootProc");
 	*(void**)(&acVerifyCompatibility) = dlsym(handle,"acVerifyCompatibility");
 	if(!acVerifyCompatibility) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVerifyCompatibility");
-	acLoadRunTime(handle);
 //#ifdef __cplusplus
 //	return AcLibHandle(handle);
 //#else

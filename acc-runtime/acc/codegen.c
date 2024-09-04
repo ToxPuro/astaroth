@@ -4421,6 +4421,9 @@ gen_user_defines(const ASTNode* root, const char* out)
   sprintf(runtime_path,"%s",AC_BASE_PATH"/runtime_compilation/build/src/core/libastaroth_core.so");
   fprintf(fp,"__attribute__((unused)) static const char* runtime_astaroth_path = \"%s\";\n",runtime_path);
 
+  sprintf(runtime_path,"%s",AC_BASE_PATH"/runtime_compilation/build/src/core/kernels/libkernels.so");
+  fprintf(fp,"__attribute__((unused)) static const char* runtime_astaroth_runtime_path = \"%s\";\n",runtime_path);
+
   sprintf(runtime_path,"%s",AC_BASE_PATH"/runtime_compilation/build/src/utils/libastaroth_utils.so");
   fprintf(fp,"__attribute__((unused)) static const char* runtime_astaroth_utils_path = \"%s\";\n",runtime_path);
 

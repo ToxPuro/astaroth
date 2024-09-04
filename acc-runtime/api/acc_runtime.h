@@ -187,8 +187,15 @@
   FUNC_DEFINE(int, acGetKernelReduceScratchPadMinSize,());
 
 #if AC_RUNTIME_COMPILATION
-  static AcResult __attribute__((unused)) acLoadRunTime(void* handle)
+  static AcResult __attribute__((unused)) acLoadRunTime()
   {
+ 	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_NOW | RTLD_GLOBAL);
+	if(!handle)
+	{
+    		fprintf(stderr,"%s","Fatal error was not able to load Astaroth runtime\n"); 
+		fprintf(stderr,"Error message: %s\n",dlerror());
+		exit(EXIT_FAILURE);
+	}
 	*(void**)(&acKernelFlush) = dlsym(handle,"acKernelFlush");
 	if(!acKernelFlush) fprintf(stderr,"Astaroth error: was not able to load %s\n","acKernelFlush");
 	*(void**)(&acVBAReset) = dlsym(handle,"acVBAReset");
