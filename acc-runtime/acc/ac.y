@@ -437,14 +437,6 @@ main(int argc, char** argv)
 	return EXIT_FAILURE;
     }
 	
-    bool found_file = false;
-    for(int i = 1; i < argc; ++i)
-	found_file |= !strcmp(argv[i], file);
-    if(!found_file)
-    {
-	fprintf(stderr,"Did not find file: %s in %s\n",argv[argc-1],dirname(argv[1]));
-        return EXIT_FAILURE;
-    }
     char stage0[strlen(file)+1];
     strcpy(stage0, file);
     const char* stage1 = "user_kernels.ac.pp_stage1";
