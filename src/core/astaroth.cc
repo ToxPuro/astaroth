@@ -568,6 +568,7 @@ acHostMeshDestroy(AcMesh* mesh)
 size_t
 acGetKernelId(const Kernel kernel)
 {
+    const Kernel* kernels = acGetKernels();
     for (size_t id = 0; id < NUM_KERNELS; ++id) {
         if (kernel == kernels[id])
             return id;

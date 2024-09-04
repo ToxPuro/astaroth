@@ -1458,6 +1458,7 @@ DSLBoundaryConditionTask::DSLBoundaryConditionTask(
 void
 DSLBoundaryConditionTask::populate_boundary_region()
 {
+     const Kernel* kernels = acGetKernels();
      for (auto variable : output_region.fields) {
      	params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable});
      	const int3 region_id = output_region.id;

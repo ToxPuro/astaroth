@@ -161,6 +161,7 @@ __ballot(bool val)
 #include "math_utils.h"
  
 #include "acc_runtime.h"
+#include "user_kernel_declarations.h"
 
 constexpr AcMeshInfo
 get_d_mesh_info()
@@ -176,6 +177,7 @@ get_d_mesh_info()
 
 constexpr static AcMeshInfo d_mesh_info = get_d_mesh_info();
 #include "dconst_decl.h"
+#include "rconst_decl.h"
 
 #include "user_constants.h"
 #include "dconst_arrays_decl.h"

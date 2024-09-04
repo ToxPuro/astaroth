@@ -142,6 +142,8 @@
   #endif
 
   #include "user_declarations.h"
+
+  FUNC_DEFINE(const Kernel*, acGetKernels,());
   FUNC_DEFINE(AcResult, acKernelFlush,(const cudaStream_t stream, AcReal* arr, const size_t n, const AcReal value));
 
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
@@ -185,8 +187,15 @@
   FUNC_DEFINE(int, acGetKernelReduceScratchPadMinSize,());
 
 #if AC_RUNTIME_COMPILATION
-  static AcResult __attribute__((unused)) acLoadRunTime(void* handle)
+  static AcResult __attribute__((unused)) acLoadRunTime()
   {
+ 	void* handle = dlopen(runtime_astaroth_runtime_path,RTLD_NOW | RTLD_GLOBAL);
+	if(!handle)
+	{
+    		fprintf(stderr,"%s","Fatal error was not able to load Astaroth runtime\n"); 
+		fprintf(stderr,"Error message: %s\n",dlerror());
+		exit(EXIT_FAILURE);
+	}
 	*(void**)(&acKernelFlush) = dlsym(handle,"acKernelFlush");
 	if(!acKernelFlush) fprintf(stderr,"Astaroth error: was not able to load %s\n","acKernelFlush");
 	*(void**)(&acVBAReset) = dlsym(handle,"acVBAReset");
@@ -241,6 +250,8 @@
 	if(!acGetKernelReduceScratchPadSize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelReduceScratchPadSize");
 	*(void**)(&acGetKernelReduceScratchPadMinSize) = dlsym(handle,"acGetKernelReduceScratchPadMinSize");
 	if(!acGetKernelReduceScratchPadMinSize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelReduceScratchPadMinSize");
+	*(void**)(&acGetKernels) = dlsym(handle,"acGetKernels");
+	if(!acGetKernels) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernels");
 	return AC_SUCCESS;
   }
 #endif

@@ -1217,10 +1217,8 @@ bc_sym_z(sgn,topbot,VtxBuffer j,rel)
 
 Kernel test_func()
 {
-	int3 test = {0,1,2}
-	test.x += VTXBUF_ENTROPY;
-	real my_test_arr[3]
-	my_test_arr[0] = 2.0
+	if(AC_lspherical_coords)
+		print("HI")
 }
 
 
@@ -1260,3 +1258,4 @@ ComputeSteps AC_rhs(boundconds)
         twopass_solve_intermediate(1,0.0)
         twopass_solve_final(1.0,0.0);
 }
+

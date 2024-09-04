@@ -14,6 +14,7 @@
 
 #define YYSTYPE ASTNode*
 
+bool RUNTIME_COMPILATION = false;
 ASTNode* root = NULL;
 
 extern FILE* yyin;
@@ -291,7 +292,7 @@ reset_all_files()
 {
           const char* files[] = {"kernel_reduce_outputs.h","user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
 		 "device_mesh_info_decl.h",  "array_decl.h", "comp_decl.h","comp_loaded_decl.h", "input_decl.h","get_device_array.h","get_config_arrays.h","get_config_param.h",
-		 "get_arrays.h","dconst_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h","memcpy_to_gmem_arrays.h","memcpy_from_gmem_arrays.h",
+		 "get_arrays.h","dconst_decl.h","rconst_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h","memcpy_to_gmem_arrays.h","memcpy_from_gmem_arrays.h",
 		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
 		 "load_and_store_uniform_overloads.h","load_and_store_uniform_funcs.h","load_and_store_uniform_header.h","get_array_info.h","get_from_comp_config.h","get_param_name.h","to_str_funcs.h","get_default_value.h",
 		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_loaders.h", "user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
@@ -324,7 +325,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
        	  process_includes(1, dir, ACC_BUILTIN_FUNCS, out,log);
 	  if(file_exists(ACC_GEN_PATH"/extra_dfuncs.h"))
        	  	process_includes(1, dir, ACC_GEN_PATH"/extra_dfuncs.h", out,log);
-	  if(file_exists(ACC_OVERRIDES_PATH) && !AC_RUNTIME_COMPILATION)
+	  if(file_exists(ACC_OVERRIDES_PATH) && !RUNTIME_COMPILATION)
        	  	process_includes(1, dir, ACC_OVERRIDES_PATH, out,log);
 	  //the actual includes
           process_includes(0, dir, stage0, out,log);
@@ -417,12 +418,13 @@ main(int argc, char** argv)
     string_vec filenames;
     init_str_vec(&filenames);
     char* file = NULL;
-    if(argc > 2)
+    RUNTIME_COMPILATION = !strcmp(argv[argc-1],"1"); 
+    if(argc > 3)
     {
-	file = malloc(sizeof(char)*(strlen(argv[1]) + strlen(argv[argc-1])));
-	sprintf(file,"%s/%s",dirname(strdup(argv[1])), argv[argc-1]);
+	file = malloc(sizeof(char)*(strlen(argv[1]) + strlen(argv[2])));
+	sprintf(file,"%s/%s",dirname(strdup(argv[1])), argv[2]);
     }
-    else if (argc == 2)
+    else if (argc == 3)
 	file = argv[1];
     else {
         puts("Usage: ./acc [source file]");
@@ -435,14 +437,6 @@ main(int argc, char** argv)
 	return EXIT_FAILURE;
     }
 	
-    bool found_file = false;
-    for(int i = 1; i < argc; ++i)
-	found_file |= !strcmp(argv[i], file);
-    if(!found_file)
-    {
-	fprintf(stderr,"Did not find file: %s in %s\n",argv[argc-1],dirname(argv[1]));
-        return EXIT_FAILURE;
-    }
     char stage0[strlen(file)+1];
     strcpy(stage0, file);
     const char* stage1 = "user_kernels.ac.pp_stage1";
@@ -696,8 +690,8 @@ dynamic: DYNAMIC_QL { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set
 constexpr: CONSTEXPR     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 run_const: RUN_CONST   { 						
 	 								$$ = astnode_create(NODE_UNKNOWN, NULL, NULL); 
-  									astnode_set_buffer(AC_RUNTIME_COMPILATION ? "run_const" : "dconst", $$);
-                                                                        $$->token =  AC_RUNTIME_COMPILATION ? 255 + yytoken : DCONST_QL;
+  									astnode_set_buffer(RUNTIME_COMPILATION ? "run_const" : "dconst", $$);
+                                                                        $$->token =  RUNTIME_COMPILATION ? 255 + yytoken : DCONST_QL;
 		       };
 output: OUTPUT         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 input:  INPUT          { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };

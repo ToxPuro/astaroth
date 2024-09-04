@@ -752,7 +752,7 @@ void
 gen_dmesh_declarations(const char* datatype_scalar)
 {
 	FILE* fp = fopen("device_mesh_info_decl.h","a");
-	fprintf(fp,"%s %s_params[NUM_%s_PARAMS];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fprintf(fp,"%s %s_params[NUM_%s_PARAMS+1];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
 	fclose(fp);
 }
 
@@ -839,6 +839,11 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 	fp = fopen("dconst_decl.h","a");
 	fprintf(fp,"%s __device__ __forceinline__ DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
+			,datatype_scalar, enum_name, define_name);
+	fclose(fp);
+
+	fp = fopen("rconst_decl.h","a");
+	fprintf(fp,"%s __device__ __forceinline__ RCONST(const %sCompParam& param){return d_mesh_info.%s_params[0];}\n"
 			,datatype_scalar, enum_name, define_name);
 	fclose(fp);
 
@@ -1547,18 +1552,18 @@ gen_user_enums()
 	  strcatprintf(res,"} %s;\n",enum_info.names.data[i]);
   	  file_append("user_typedefs.h",res);
 
-	  sprintf(res,"char* to_str(const %s value)\n"
+	  sprintf(res,"std::string to_str(const %s value)\n"
 		       "{\n"
 		       "switch(value)\n"
 		       "{\n"
 		       ,enum_info.names.data[i]);
 
 	  for(size_t j = 0; j < enum_info.options[i].size; ++j)
-		  strcatprintf(res,"case %s: return strdup(\"%s\");\n",enum_info.options[i].data[j],enum_info.options[i].data[j]);
-	  strcat(res,"}return NULL;\n}\n");
+		  strcatprintf(res,"case %s: return \"%s\";\n",enum_info.options[i].data[j],enum_info.options[i].data[j]);
+	  strcat(res,"}return \"\";\n}\n");
 	  file_append("to_str_funcs.h",res);
 
-	  sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n",enum_info.names.data[i], enum_info.names.data[i]);
+	  sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n",enum_info.names.data[i], enum_info.names.data[i]);
 	  file_append("to_str_funcs.h",res);
   }
 }
@@ -2330,15 +2335,15 @@ make_unique_bc_calls(ASTNode* node)
 	free_node_vec(&func_calls);
 }
 void
-gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* input_symbols, string_vec* input_types)
+gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* input_symbols, string_vec* input_types, string_vec* names)
 {
   	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
 	if(!has_optimization_info)
 		return;
 	if(node->lhs)
-		gen_user_taskgraphs_recursive(node->lhs,root,input_symbols,input_types);
+		gen_user_taskgraphs_recursive(node->lhs,root,input_symbols,input_types,names);
 	if(node->rhs)
-		gen_user_taskgraphs_recursive(node->rhs,root,input_symbols,input_types);
+		gen_user_taskgraphs_recursive(node->rhs,root,input_symbols,input_types,names);
 	if(node->type != NODE_TASKGRAPH_DEF)
 		return;
 	const char* boundconds_name = node->lhs->rhs->buffer;
@@ -2359,8 +2364,10 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	}
 
 	const char* name = node->lhs->lhs->buffer;
+	push(names,name);
 	char res[10000];
-	sprintf(res, "AcTaskGraph* %s = acGridBuildTaskGraph({\n",name);
+	sprintf(res, "if (graph == %s)\n",name);
+	sprintf(res, "\treturn acGridBuildTaskGraph({\n");
 	const ASTNode* function_call_list_head = node->rhs;
 	//have to traverse in reverse order to generate the right order in taskgraph
 	int n_entries = 1;
@@ -2502,7 +2509,6 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	}
 	free(field_written_out_before);
 	strcat(res,"});\n");
-
 	file_append("user_taskgraphs.h",res);
 
 
@@ -2557,9 +2563,17 @@ gen_user_taskgraphs(const ASTNode* root)
 		return;
 	string_vec input_symbols = VEC_INITIALIZER;
 	string_vec input_types   = VEC_INITIALIZER;
-	gen_user_taskgraphs_recursive(root,root,&input_symbols,&input_types);
+	string_vec graph_names = VEC_INITIALIZER;
+	gen_user_taskgraphs_recursive(root,root,&input_symbols,&input_types,&graph_names);
+	FILE* fp = fopen("user_defines.h","a");
+	fprintf(fp,"typedef enum {");
+	for(size_t i = 0; i < graph_names.size; ++i)
+		fprintf(fp,"%s,",graph_names.data[i]);
+	fprintf(fp,"} AcDSLTaskGraph;\n");
+	fclose(fp);
 	free_str_vec(&input_symbols);
 	free_str_vec(&input_types);
+	free_str_vec(&graph_names);
 }
 
 ASTNode*
@@ -3377,6 +3391,8 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
     const Symbol* symbol = symboltable_lookup(node->buffer);
     if (symbol && symbol->type & NODE_VARIABLE_ID && int_vec_contains(symbol->tqualifiers,DCONST_QL))
       fprintf(stream, "DCONST(%s)", node->buffer);
+    else if (symbol && symbol->type & NODE_VARIABLE_ID && int_vec_contains(symbol->tqualifiers,RUN_CONST))
+      fprintf(stream, "RCONST(%s)", node->buffer);
     else
       fprintf(stream, "%s", node->buffer);
   }
@@ -4051,7 +4067,11 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp)
 		}
 		else
 		{
-			fprintf(fp, "\n#ifdef __cplusplus\nconstexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
+		        //TP: define macros have greater portability then global constants, since they do not work on some CUDA compilers
+                        if(!strcmps(datatype_scalar,"AcReal","int","bool"))
+                                fprintf(fp, "\n#define %s (%s)\n", name, assignment_val);
+                        else
+                               fprintf(fp, "\n#ifdef __cplusplus\nconstexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
 		}
 		free(datatype_scalar);
 		free(assignment_val);
@@ -4317,40 +4337,38 @@ gen_user_defines(const ASTNode* root, const char* out)
   for (size_t i = 0; i < s_info.user_structs.size; ++i)
   {
 	  char res[7000];
-	  sprintf(res,"char* to_str(const %s value)\n"
+	  sprintf(res,"std::string to_str(const %s value)\n"
 		       "{\n"
-		       "char* res = (char*)malloc(sizeof(char)*7000);\n"
-		       "char* tmp;\n"
-		       "res[0] = '{';\n"
+		       "std::string res = \"{\";"
+		       "std::string tmp;\n"
 		       ,s_info.user_structs.data[i]);
 
 	  for(size_t j = 0; j < s_info.user_struct_field_names[i].size; ++j)
 	  {
-		const char* middle = (j < s_info.user_struct_field_names[i].size -1) ? "strcat(res,\",\");\n" : "";
-		strcatprintf(res,"tmp = to_str(value.%s); strcat(res,tmp);\n"
+		const char* middle = (j < s_info.user_struct_field_names[i].size -1) ? "res += \",\";\n" : "";
+		strcatprintf(res,"res += to_str(value.%s);\n"
 				"%s"
-				"free(tmp);\n"
 		,s_info.user_struct_field_names[i].data[j],middle);
 	  }
 	  strcat(res,
-			  "strcat(res,\"}\");\n"
+			  "res += \"}\";\n"
 			  "return res;\n"
 			  "}\n"
 	  );
 	  file_append("to_str_funcs.h",res);
 	  const char* name = s_info.user_structs.data[i];
 	  if(!strcmp(name,"AcReal2"))
-	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real2");
+	  	sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real2");
 	  else if(!strcmp(name,"AcReal3"))
-	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real3");
+	  	sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real3");
 	  else if(!strcmp(name,"AcReal4"))
-	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real4");
+	  	sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "real4");
 	  else if(!strcmp(name,"AcComplex"))
-	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "complex");
+	  	sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "complex");
 	  else if(!strcmp(name,"AcBool3"))
-	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "bool3");
+	  	sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], "bool3");
 	  else
-	  	sprintf(res,"template <>\n const char*\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], s_info.user_structs.data[i]);
+	  	sprintf(res,"template <>\n std::string\n get_datatype<%s>() {return \"%s\";};\n", s_info.user_structs.data[i], s_info.user_structs.data[i]);
 	  file_append("to_str_funcs.h",res);
   }
 
@@ -4411,11 +4429,6 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "#define STENCIL_HEIGHT (STENCIL_ORDER+1)\n");
   fprintf(fp, "#define STENCIL_WIDTH (STENCIL_ORDER+1)\n");
   fprintf(fp, "#define NGHOST (STENCIL_ORDER/2)\n");
-//#if AC_RUNTIME_COMPILATION
-//  fprintf(fp, "#define AC_RUNTIME_COMPILATION (1)\n");
-//#else
-//  fprintf(fp, "#define AC_RUNTIME_COMPILATION (0)\n");
-//#endif
   char cwd[9000];
   cwd[0] = '\0';
   char* err = getcwd(cwd, sizeof(cwd));
@@ -4428,13 +4441,19 @@ gen_user_defines(const ASTNode* root, const char* out)
   sprintf(runtime_path,"%s",AC_BASE_PATH"/runtime_compilation/build/src/core/libastaroth_core.so");
   fprintf(fp,"__attribute__((unused)) static const char* runtime_astaroth_path = \"%s\";\n",runtime_path);
 
+  sprintf(runtime_path,"%s",AC_BASE_PATH"/runtime_compilation/build/src/core/kernels/libkernels.so");
+  fprintf(fp,"__attribute__((unused)) static const char* runtime_astaroth_runtime_path = \"%s\";\n",runtime_path);
+
   sprintf(runtime_path,"%s",AC_BASE_PATH"/runtime_compilation/build/src/utils/libastaroth_utils.so");
   fprintf(fp,"__attribute__((unused)) static const char* runtime_astaroth_utils_path = \"%s\";\n",runtime_path);
 
   sprintf(runtime_path,"%s",AC_BASE_PATH"/runtime_compilation/build");
   fprintf(fp,"__attribute__((unused)) static const char* runtime_astaroth_build_path = \"%s\";\n",runtime_path);
 
+  fprintf(fp,"__attribute__((unused)) static const char* acc_compiler_path = \"%s\";\n", ACC_COMPILER_PATH);
+
   fclose(fp);
+
   //Done to refresh the autotune file when recompiling DSL code
   fp = fopen(autotune_path,"w");
   fclose(fp);
@@ -4462,18 +4481,19 @@ gen_user_kernels(const char* out)
 
   // Astaroth 2.0 backwards compatibility START
   // Handles are now used to get optimized kernels for specific input param combinations
-  fprintf(fp,"#include \"user_kernel_declarations.h\"\n");
-  fprintf(fp, "static const Kernel kernels[] = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].tspecifier_token == KERNEL)
-      fprintf(fp, "%s,", symbol_table[i].identifier); // Host layer handle
-  fprintf(fp, "};");
 
   const char* default_param_list=  "(const int3 start, const int3 end, VertexBufferArray vba";
   FILE* fp_dec = fopen("user_kernel_declarations.h","a");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier_token == KERNEL)
       fprintf(fp_dec, "void __global__ %s %s);\n", symbol_table[i].identifier, default_param_list);
+
+  fprintf(fp_dec, "static const Kernel kernels[] = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].tspecifier_token == KERNEL)
+      fprintf(fp_dec, "%s,", symbol_table[i].identifier); // Host layer handle
+  fprintf(fp_dec, "};");
+
   fclose(fp_dec);
 
   // Astaroth 2.0 backwards compatibility END
@@ -4957,41 +4977,6 @@ gen_type_info(ASTNode* root)
 	{
 		has_changed = gen_type_info_base(root,root);
 	}
-}
-void
-transform_runtime_vars_recursive(ASTNode* node)
-{
-	TRAVERSE_PREAMBLE(transform_runtime_vars_recursive);
-	if(!node->buffer) return;
-	if(!get_parent_node(NODE_FUNCTION,node)) return;
-	const Symbol* var = get_symbol(NODE_VARIABLE_ID,node->buffer,NULL);
-	if(!var) return;
-	if(!int_vec_contains(var->tqualifiers,RUN_CONST)) return;
-	char* new_buffer = (var->tspecifier_token == REAL) ? "0.0" :
-			   (!strcmp(var->tspecifier,"AcReal*")) ? "AC_INTERNAL_big_real_array": 
-			   (var->tspecifier_token == INT) ? "0": 
-			   (var->tspecifier_token == BOOL) ? "true": 
-			   (!strcmp(var->tspecifier,"int*")) ? "AC_INTERNAL_big_int_array": 
-			   (!strcmp(var->tspecifier,"AcReal3")) ? "AC_INTERNAL_global_real_vec": 
-			   (!strcmp(var->tspecifier,"int3")) ? "AC_INTERNAL_global_int_vec": 
-			   NULL;
-	if(!new_buffer)
-	{
-		fprintf(stderr,"Fatal error: missing default type for: %s\n",var->tspecifier);
-		exit(EXIT_FAILURE);
-	}
-	free(node->buffer);
-	node->buffer = strdup(new_buffer);
-	node->no_auto = true;
-	node->is_constexpr = true;
-}
-void
-transform_runtime_vars(ASTNode* root)
-{
-  symboltable_reset();
-  traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
-  transform_runtime_vars_recursive(root);
-  symboltable_reset();
 }
 const ASTNode*
 find_dfunc_start(const ASTNode* node, const char* dfunc_name)
@@ -5605,7 +5590,6 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   e_info = read_user_enums(root);
   canonalize(root);
 
-  transform_runtime_vars(root);
   transform_field_intrinsic_func_calls_and_ops(root);
   traverse(root, 0, NULL);
   duplicate_dfuncs = get_duplicate_dfuncs(root);

@@ -1,5 +1,12 @@
 ## Options
 option(BUILD_ACC_RUNTIME_LIBRARY "Builds the standalone acc runtime library" OFF)
+option(RUNTIME_COMPILATION "Compile version of Astaroth compiled at runtime" OFF)
+
+if(RUNTIME_COMPILATION)
+	set(RUNTIME_COMPILATION_VAL 1)
+else()
+	set(RUNTIME_COMPILATION_VAL 0)
+endif()
 
 ## DSL module dir
 
@@ -25,11 +32,20 @@ else()
     set(DSL_MODULE_DIR ${resolved_module_dir})
 endif()
 
+set(ACC_COMPILER_PATH $ENV{ACC_COMPILER_PATH})
+if(DEFINED ACC_COMPILER_PATH)
+	set(ACC_COMPILER ${ACC_COMPILER_PATH})
+else()
+	set(ACC_COMPILER ${PROJECT_BINARY_DIR}/acc/acc)
+endif()
+
+
 ## Generate acc-runtime-headers
 set(DSL_SOURCES "${DSL_MODULE_DIR}/*"
                 "${PROJECT_SOURCE_DIR}/acc/stencilgen.c"
                 "${PROJECT_SOURCE_DIR}/acc/stencil_accesses.cpp"
 		"${PROJECT_SOURCE_DIR}/${EXT_SOURCES}")
+
 set(DSL_HEADERS "user_kernels.h"
                 "user_defines.h"
                 "user_declarations.h"
@@ -39,41 +55,18 @@ set(DSL_HEADERS "user_kernels.h"
                 "stencilgen.h"
 		"coeffs.h"
 		)
+
 if (NOT DEFINED DSL_MODULE_FILE)
-  if (SINGLEPASS_INTEGRATION) 
-  add_custom_command (
-      COMMENT "Building ACC objects (singlepass): ${DSL_MODULE_DIR}"
-      COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*single.ac"
-      DEPENDS ${DSL_SOURCES} acc
-      OUTPUT ${DSL_HEADERS}
-  )
-  else ()
-  add_custom_command (
-      COMMENT "Building ACC objects (twopass): ${DSL_MODULE_DIR}"
-      COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac"
-      #COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*two.ac"
-      DEPENDS ${DSL_SOURCES} acc
-      OUTPUT ${DSL_HEADERS}
-  )
-  endif ()
+	set(ACC_COMPILER_ARGS "${DSL_MODULE_DIR}/*.ac" "${RUNTIME_COMPILATION_VAL}")
 else()
-  if (SINGLEPASS_INTEGRATION) 
-  add_custom_command (
-      COMMENT "Building ACC objects (singlepass): ${DSL_MODULE_DIR}"
-      COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*single.ac" "${DSL_MODULE_FILE}"
-      DEPENDS ${DSL_SOURCES} acc
-      OUTPUT ${DSL_HEADERS}
-  )
-  else ()
-  add_custom_command (
-      COMMENT "Building ACC objects (twopass): ${DSL_MODULE_DIR}"
-      COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*.ac" "${DSL_MODULE_FILE}"
-      #COMMAND ${PROJECT_BINARY_DIR}/acc/acc "${DSL_MODULE_DIR}/*two.ac"
-      DEPENDS ${DSL_SOURCES} acc
-      OUTPUT ${DSL_HEADERS}
-  )
-  endif()
+	set(ACC_COMPILER_ARGS "${DSL_MODULE_DIR}/*.ac " "${DSL_MODULE_FILE}" "${RUNTIME_COMPILATION_VAL}")
 endif()
+  add_custom_command (
+      COMMENT "Building ACC objects: ${DSL_MODULE_DIR}"
+      COMMAND  "${ACC_COMPILER}" ${ACC_COMPILER_ARGS}
+      DEPENDS ${DSL_SOURCES} acc
+      OUTPUT ${DSL_HEADERS}
+  )
 add_library(acc-runtime-headers INTERFACE ${DSL_HEADERS})
 target_include_directories(acc-runtime-headers INTERFACE . .. ${CMAKE_CURRENT_BINARY_DIR})
 target_compile_options(acc-runtime-headers INTERFACE -DIMPLEMENTATION=${IMPLEMENTATION})
