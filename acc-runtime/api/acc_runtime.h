@@ -142,6 +142,8 @@
   #endif
 
   #include "user_declarations.h"
+
+  FUNC_DEFINE(const Kernel*, acGetKernels,());
   FUNC_DEFINE(AcResult, acKernelFlush,(const cudaStream_t stream, AcReal* arr, const size_t n, const AcReal value));
 
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
@@ -241,6 +243,8 @@
 	if(!acGetKernelReduceScratchPadSize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelReduceScratchPadSize");
 	*(void**)(&acGetKernelReduceScratchPadMinSize) = dlsym(handle,"acGetKernelReduceScratchPadMinSize");
 	if(!acGetKernelReduceScratchPadMinSize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelReduceScratchPadMinSize");
+	*(void**)(&acGetKernels) = dlsym(handle,"acGetKernels");
+	if(!acGetKernels) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernels");
 	return AC_SUCCESS;
   }
 #endif

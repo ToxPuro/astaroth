@@ -71,7 +71,7 @@ main(void)
 #if AC_USE_HIP
     	const char* build_str = "-DUSE_HIP=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #else
-    	const char* build_str = "-DUSE_HIP=OFF -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
+    	const char* build_str = "-DUSE_HIP=OFF -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #endif
     	acCompile(build_str,info);
     }

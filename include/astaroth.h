@@ -484,6 +484,13 @@ FUNC_DEFINE(size_t, acGetKernelId,(const Kernel kernel));
 
 FUNC_DEFINE(size_t, acGetKernelIdByName,(const char* name));
 
+static Kernel __attribute__((unused))
+acGetKernelByName(const char* name)
+{
+	const size_t id = acGetKernelIdByName(name);
+   	return acGetKernels()[id];
+}
+
 FUNC_DEFINE(AcMeshInfo, acGridDecomposeMeshInfo,(const AcMeshInfo global_config));
 
 FUNC_DEFINE(VertexBufferArray, acGridGetVBA,(void));
@@ -1556,6 +1563,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!handle)
 	{
     		fprintf(stderr,"%s","Fatal error was not able to load Astaroth\n"); 
+		fprintf(stderr,"Error message: %s\n",dlerror());
 		exit(EXIT_FAILURE);
 	}
 	*(void**)(&acGetKernelId) = dlsym(handle,"acGetKernelId");

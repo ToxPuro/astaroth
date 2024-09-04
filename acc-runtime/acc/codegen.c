@@ -4458,18 +4458,19 @@ gen_user_kernels(const char* out)
 
   // Astaroth 2.0 backwards compatibility START
   // Handles are now used to get optimized kernels for specific input param combinations
-  fprintf(fp,"#include \"user_kernel_declarations.h\"\n");
-  fprintf(fp, "static const Kernel kernels[] = {");
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if (symbol_table[i].tspecifier_token == KERNEL)
-      fprintf(fp, "%s,", symbol_table[i].identifier); // Host layer handle
-  fprintf(fp, "};");
 
   const char* default_param_list=  "(const int3 start, const int3 end, VertexBufferArray vba";
   FILE* fp_dec = fopen("user_kernel_declarations.h","a");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if (symbol_table[i].tspecifier_token == KERNEL)
       fprintf(fp_dec, "void __global__ %s %s);\n", symbol_table[i].identifier, default_param_list);
+
+  fprintf(fp_dec, "static const Kernel kernels[] = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].tspecifier_token == KERNEL)
+      fprintf(fp_dec, "%s,", symbol_table[i].identifier); // Host layer handle
+  fprintf(fp_dec, "};");
+
   fclose(fp_dec);
 
   // Astaroth 2.0 backwards compatibility END

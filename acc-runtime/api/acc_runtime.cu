@@ -31,6 +31,8 @@
 #include <rocprim/rocprim.hpp>
 #endif
 
+#include "user_kernel_declarations.h"
+
 
 #define USE_COMPRESSIBLE_MEMORY (0)
 typedef struct Field3
@@ -1171,3 +1173,8 @@ GetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
 	return kernels[(int) kernel_enum];
 }
 
+const Kernel*
+acGetKernels()
+{
+	return kernels;
+}
