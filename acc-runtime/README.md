@@ -139,9 +139,12 @@ func2(val) {
     return val
 }
 
+//For overloading you have to specify the types of all input parameters
+
 func3(real x) {
 	return fabs(x)
 }
+
 
 func3(real3 v) {
 	return 
