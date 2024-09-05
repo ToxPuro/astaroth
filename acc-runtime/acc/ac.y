@@ -15,6 +15,7 @@
 #define YYSTYPE ASTNode*
 
 bool RUNTIME_COMPILATION = false;
+bool READ_OVERLOADS      = false;
 ASTNode* root = NULL;
 
 extern FILE* yyin;
@@ -326,7 +327,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
        	  process_includes(1, dir, ACC_BUILTIN_FUNCS, out,log);
 	  if(file_exists(ACC_GEN_PATH"/extra_dfuncs.h"))
        	  	process_includes(1, dir, ACC_GEN_PATH"/extra_dfuncs.h", out,log);
-	  if(file_exists(ACC_OVERRIDES_PATH) && !RUNTIME_COMPILATION)
+	  if(file_exists(ACC_OVERRIDES_PATH) && !RUNTIME_COMPILATION && READ_OVERLOADS)
        	  	process_includes(1, dir, ACC_OVERRIDES_PATH, out,log);
 	  //the actual includes
           process_includes(0, dir, stage0, out,log);
@@ -420,12 +421,13 @@ main(int argc, char** argv)
     init_str_vec(&filenames);
     char* file = NULL;
     RUNTIME_COMPILATION = !strcmp(argv[argc-1],"1"); 
-    if(argc > 3)
+    READ_OVERLOADS      = !strcmp(argv[argc-2],"1"); 
+    if(argc > 4)
     {
 	file = malloc(sizeof(char)*(strlen(argv[1]) + strlen(argv[2])));
 	sprintf(file,"%s/%s",dirname(strdup(argv[1])), argv[2]);
     }
-    else if (argc == 3)
+    else if (argc == 4)
 	file = argv[1];
     else {
         puts("Usage: ./acc [source file]");
