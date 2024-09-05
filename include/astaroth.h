@@ -40,6 +40,8 @@
 #define NGHOST_Z (0) // Astaroth 2.0 backwards compatibility
 #endif
 
+#define _UNUSED __attribute__((unused)) // Does not give a warning if unused
+
 
 typedef struct {
     AcReal* vertex_buffer[NUM_VTXBUF_HANDLES];
@@ -192,7 +194,6 @@ enum class AcMPICommStrategy:int{
 
 #undef AC_GEN_ID
 
-#define _UNUSED __attribute__((unused)) // Does not give a warning if unused
 #define AC_GEN_STR(X) #X,
 static const char* bctype_names[] _UNUSED       = {AC_FOR_BCTYPES(AC_GEN_STR) "-end-"};
 static const char* rtype_names[] _UNUSED        = {AC_FOR_RTYPES(AC_GEN_STR) "-end-"};
@@ -1508,8 +1509,60 @@ FUNC_DEFINE(AcResult, acDeviceGetVBApointers,(Device device, AcReal *vbapointer[
  * Helper functions
  * =============================================================================
  */
-/** Updates the built-in parameters based on nx, ny and nz */
-FUNC_DEFINE(AcResult, acHostUpdateBuiltinParams,(AcMeshInfo* config));
+static AcResult UNUSED
+acHostUpdateBuiltinParams(AcMeshInfo* config)
+{
+    ERRCHK_ALWAYS(config->int_params[AC_nx] > 0 || config->int_params[AC_nxgrid] > 0);
+    ERRCHK_ALWAYS(config->int_params[AC_ny] > 0 || config->int_params[AC_nxgrid] > 0);
+#if TWO_D == 0
+    ERRCHK_ALWAYS(config->int_params[AC_nz] > 0 || config->int_params[AC_nxgrid] > 0);
+#endif
+    if(config->int_params[AC_nx] <= 0)
+        config->int_params[AC_nx] = config->int_params[AC_nxgrid];
+    if(config->int_params[AC_ny] <= 0)
+        config->int_params[AC_ny] = config->int_params[AC_nygrid];
+#if TWO_D == 0
+    if(config->int_params[AC_nz] <= 0)
+        config->int_params[AC_nz] = config->int_params[AC_nzgrid];
+#endif
+
+    config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER;
+    ///////////// PAD TEST
+    // config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER + PAD_SIZE;
+    ///////////// PAD TEST
+    config->int_params[AC_my] = config->int_params[AC_ny] + STENCIL_ORDER;
+#if TWO_D == 0 
+    config->int_params[AC_mz] = config->int_params[AC_nz] + STENCIL_ORDER;
+#endif
+
+    // Bounds for the computational domain, i.e. nx_min <= i < nx_max
+    config->int_params[AC_nx_min] = STENCIL_ORDER / 2;
+    config->int_params[AC_ny_min] = STENCIL_ORDER / 2;
+#if TWO_D == 0
+    config->int_params[AC_nz_min] = STENCIL_ORDER / 2;
+#endif
+
+    config->int_params[AC_nx_max] = config->int_params[AC_nx_min] + config->int_params[AC_nx];
+    config->int_params[AC_ny_max] = config->int_params[AC_ny_min] + config->int_params[AC_ny];
+#if TWO_D == 0
+    config->int_params[AC_nz_max] = config->int_params[AC_nz_min] + config->int_params[AC_nz];
+#endif
+    /* Additional helper params */
+    // Int helpers
+    config->int_params[AC_mxy]  = config->int_params[AC_mx] * config->int_params[AC_my];
+    config->int_params[AC_nxy]  = config->int_params[AC_nx] * config->int_params[AC_ny];
+
+    config->real_params[AC_xlen] = config->int_params[AC_nxgrid]*config->real_params[AC_dsx];
+    config->real_params[AC_ylen] = config->int_params[AC_nygrid]*config->real_params[AC_dsy];
+#if TWO_D == 0
+    config->int_params[AC_nxyz] = config->int_params[AC_nxy] * config->int_params[AC_nz];
+    config->real_params[AC_zlen] = config->int_params[AC_nzgrid]*config->real_params[AC_dsz];
+#endif
+
+    return AC_SUCCESS;
+}
+
+
 
 /** Creates a mesh stored in host memory */
 FUNC_DEFINE(AcResult, acHostMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
@@ -1924,8 +1977,6 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	*(void**)(&acDeviceGetRealInput) = dlsym(handle,"acDeviceGetRealInput");
 	*(void**)(&acDeviceGetIntInput) = dlsym(handle,"acDeviceGetIntInput");
 	*(void**)(&acDeviceGetRealOutput) = dlsym(handle,"acDeviceGetRealOutput");
-	*(void**)(&acHostUpdateBuiltinParams) = dlsym(handle,"acHostUpdateBuiltinParams");
-	if(!acHostUpdateBuiltinParams) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostUpdateBuiltinParams");
 	*(void**)(&acHostMeshCreate) = dlsym(handle,"acHostMeshCreate");
 	if(!acHostMeshCreate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshCreate");
 	*(void**)(&acHostMeshRandomize) = dlsym(handle,"acHostMeshRandomize");

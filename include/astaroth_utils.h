@@ -57,9 +57,6 @@ typedef struct {
 #endif
 #endif
 
-/** Loads data from the config file */
-FUNC_DEFINE(AcResult, acLoadConfig, (const char* config_path, AcMeshInfo* config));
-
 /** */
 FUNC_DEFINE(AcResult, acHostVertexBufferSet,(const VertexBufferHandle handle, const AcReal value, AcMesh* mesh));
 
@@ -113,8 +110,6 @@ static AcLibHandle __attribute__((unused)) acLoadUtils()
     		fprintf(stderr,"%s","Fatal error was not able to load Astaroth utils\n"); 
 		exit(EXIT_FAILURE);
 	}
-	*(void**)(&acLoadConfig) = dlsym(handle,"acLoadConfig");
-	if(!acLoadConfig) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLoadConfig");
 	*(void**)(&acHostVertexBufferSet) = dlsym(handle,"acHostVertexBufferSet");
 	if(!acHostVertexBufferSet) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostVertexBufferSet");
 	*(void**)(&acHostMeshSet) = dlsym(handle,"acHostMeshSet");
@@ -169,3 +164,7 @@ static AcLibHandle __attribute__((unused)) acLoadUtils()
 #define AC_CYN   "\x1B[36m"
 #define AC_WHT   "\x1B[37m"
 #define AC_COL_RESET "\x1B[0m"
+
+#ifdef __cplusplus
+#include "../src/utils/config_loader.h"
+#endif

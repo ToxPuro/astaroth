@@ -65,7 +65,6 @@ int AC_step_number
 real AC_dt
 
 /*
-real AC_cs_sound, AC_cp_sound
 real AC_gamma, AC_nu_visc, AC_zeta, AC_eta
 real AC_lnrho0, AC_mu0, AC_lnT0
 */
@@ -184,24 +183,24 @@ real AC_soft
 real AC_accretion_range
 real AC_switch_accretion
 //  Run params
-real AC_cdt
-real AC_cdtv
-real AC_cdts
-real AC_nu_visc
-real AC_cs_sound
-real AC_eta
-real AC_mu0
-real AC_cp_sound
-real AC_cp
-real AC_cv
-real AC_gamma
-real AC_cv_sound
-real AC_lnT0
-real AC_lnrho0
-real AC_zeta
-real AC_trans
-real AC_nu_shock
-real AC_K_heatcond
+run_const real AC_cdt
+run_const real AC_cdtv
+run_const real AC_cdts
+run_const real AC_nu_visc
+run_const real AC_cs_sound
+run_const real AC_eta
+run_const real AC_mu0
+run_const real AC_cp_sound
+run_const real AC_cp
+run_const real AC_cv
+run_const real AC_gamma
+run_const real AC_cv_sound
+run_const real AC_lnT0
+run_const real AC_lnrho0
+run_const real AC_zeta
+run_const real AC_trans
+run_const real AC_nu_shock
+run_const real AC_K_heatcond
 
 //  Parameters for generic boundary conditions, this is a dummy variable for testing, please use different ones for each field
 real AC_boundary_derivative

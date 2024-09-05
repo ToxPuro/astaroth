@@ -25,6 +25,7 @@
  *
  */
 #include "astaroth_utils.h"
+#include "user_constants.h"
 
 #include <math.h>
 #include <stdbool.h>
@@ -116,6 +117,18 @@ static inline Scalar
 getReal(const AcRealParam param)
 {
     return (Scalar)mesh_info->real_params[param];
+}
+
+static inline Scalar
+getInt(const int val)
+{
+	return val;
+}
+
+static inline Scalar
+getReal(const AcReal val)
+{
+	return val;
 }
 
 static inline int

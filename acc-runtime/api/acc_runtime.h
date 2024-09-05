@@ -259,6 +259,17 @@
 
   #ifdef __cplusplus
 #include  "push_to_config.h"
+
+  template <typename P, typename V>
+  void
+  acPushToConfig(AcMeshInfo& config, AcCompInfo& comp_info, P param, V val)
+  {
+          if constexpr(IsCompParam(param))
+                  acLoadCompInfo(param, val, &comp_info);
+          else
+                  acPushToConfig(config, param, val);
+  }
+
   #endif
   static AcCompInfo __attribute__((unused)) acInitCompInfo()
   {
