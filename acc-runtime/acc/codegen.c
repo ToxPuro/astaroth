@@ -837,6 +837,73 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	enum_name,define_name, uppr_name);
 	fclose(fp);
 
+	fp = fopen("device_set_input.h","a");
+	fprintf(fp, "AcResult\nacDeviceSet%sInput(Device device, const %sInputParam param, const %s val)\n"
+		    "{\n"
+		    "\tif constexpr(NUM_%s_INPUT_PARAMS == 0) return AC_FAILURE;\n"
+		    "\tdevice->input.%s_params[param] = val;\n"
+		    "\treturn AC_SUCCESS;\n"
+		    "}\n"
+	,upper_case_name, enum_name, datatype_scalar, uppr_name, define_name);
+	fclose(fp);
+
+	fp = fopen("device_get_output.h","a");
+	fprintf(fp, "%s\nacDeviceGet%sOutput(Device device, const %sOutputParam param)\n"
+		    "{\n"
+		    "\tif constexpr(NUM_%s_OUTPUTS == 0) return (%s){};\n"
+		    "\treturn device->output.%s_outputs[param];\n"
+		    "}\n"
+	,datatype_scalar,upper_case_name, enum_name, uppr_name, datatype_scalar,define_name);
+	fclose(fp);
+
+	fp = fopen("device_get_input.h","a");
+	fprintf(fp, "%s\nacDeviceGet%sInput(Device device, const %sInputParam param)\n"
+		    "{\n"
+		    "\tif constexpr(NUM_%s_INPUT_PARAMS == 0) return (%s){};\n"
+		    "\treturn device->input.%s_params[param];\n"
+		    "}\n"
+	,datatype_scalar,upper_case_name, enum_name, uppr_name, datatype_scalar,define_name);
+	fclose(fp);
+
+	fp = fopen("device_set_input_decls.h","a");
+	fprintf(fp,"FUNC_DEFINE(AcResult, acDeviceSet%sInput,(Device device, const %sInputParam, const %s val));\n",upper_case_name,enum_name,datatype_scalar);	
+	fclose(fp);
+
+	fp = fopen("device_get_output_decls.h","a");
+	fprintf(fp,"FUNC_DEFINE(%s, acDeviceGet%sOutput,(Device device, const %sOutputParam));\n",datatype_scalar,upper_case_name,enum_name);	
+	fclose(fp);
+
+	fp = fopen("device_get_input_decls.h","a");
+	fprintf(fp,"FUNC_DEFINE(%s, acDeviceGet%sInput,(Device device, const %sInputParam));\n",datatype_scalar,upper_case_name,enum_name);	
+	fclose(fp);
+
+	fp = fopen("device_set_input_overloads.h","a");
+	fprintf(fp,"#ifdef __cplusplus\nstatic inline AcResult acDeviceSetInput(Device device, const %sInputParam& param, const %s& val){ return acDeviceSet%sInput(device,param,val); }\n#endif\n",enum_name, datatype_scalar, upper_case_name);	
+	fclose(fp);
+
+	fp = fopen("device_get_output_overloads.h","a");
+	fprintf(fp,"#ifdef __cplusplus\nstatic inline %s acDeviceGetOutput(Device device, const %sOutputParam& param){ return acDeviceGet%sOutput(device,param); }\n#endif\n",datatype_scalar,enum_name, upper_case_name);	
+	fclose(fp);
+
+	fp = fopen("device_get_input_overloads.h","a");
+	fprintf(fp,"#ifdef __cplusplus\nstatic inline %s acDeviceGetInput(Device device, const %sInputParam& param){ return acDeviceGet%sInput(device,param); }\n#endif\n",datatype_scalar,enum_name, upper_case_name);	
+	fclose(fp);
+	
+	fp = fopen("device_set_input_loads.h","a");
+	fprintf(fp,"*(void**)(&acDeviceSet%sInput) = dlsym(handle,\"acDeviceSet%sInput\");\n",upper_case_name,upper_case_name);
+	fprintf(fp,"if(!acDeviceSet%sInput) fprintf(stderr,\"Astaroth error was not able to load acDeviceSet%sInput\");\n",upper_case_name,upper_case_name);
+	fclose(fp);
+
+	fp = fopen("device_get_input_loads.h","a");
+	fprintf(fp,"*(void**)(&acDeviceGet%sInput) = dlsym(handle,\"acDeviceGet%sInput\");\n",upper_case_name,upper_case_name);
+	fprintf(fp,"if(!acDeviceGet%sInput) fprintf(stderr,\"Astaroth error was not able to load acDeviceGet%sInput\");\n",upper_case_name,upper_case_name);
+	fclose(fp);
+
+	fp = fopen("device_get_output_loads.h","a");
+	fprintf(fp,"*(void**)(&acDeviceGet%sOutput) = dlsym(handle,\"acDeviceGet%sOutput\");\n",upper_case_name,upper_case_name);
+	fprintf(fp,"if(!acDeviceGet%sOutput) fprintf(stderr,\"Astaroth error was not able to load acDeviceGet%sOutput\");\n",upper_case_name,upper_case_name);
+	fclose(fp);
+
 	fp = fopen("dconst_decl.h","a");
 	fprintf(fp,"%s __device__ __forceinline__ DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
 			,datatype_scalar, enum_name, define_name);
@@ -1026,21 +1093,20 @@ gen_comp_declarations(const char* datatype_scalar)
 	fprintf(fp,"%s %s_params[NUM_%s_COMP_PARAMS];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
 	fprintf(fp,"const %s* %s_arrays[NUM_%s_COMP_ARRAYS];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
 	fclose(fp);
+
 	fp = fopen("comp_loaded_decl.h","a");
 	fprintf(fp,"bool %s_params[NUM_%s_COMP_PARAMS];\n",convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
 	fprintf(fp,"bool  %s_arrays[NUM_%s_COMP_ARRAYS];\n",convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
 	fclose(fp);
-}
 
-void
-gen_input_declarations(const char* datatype_scalar)
-{
-	FILE* fp = fopen("input_decl.h","a");
-	fprintf(fp,"const %s %s_params[NUM_%s_INPUT_PARAMS+1];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fopen("input_decl.h","a");
+	fprintf(fp,"%s %s_params[NUM_%s_COMP_PARAMS+1];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
+	fclose(fp);
+
+	fp = fopen("output_decl.h","a");
+	fprintf(fp,"%s %s_outputs[NUM_%s_OUTPUTS+1];\n",datatype_scalar,convert_to_define_name(datatype_scalar),strupr(convert_to_define_name(datatype_scalar)));
 	fclose(fp);
 }
-
-
 
 
 void

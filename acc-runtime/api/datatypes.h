@@ -44,7 +44,6 @@ typedef float AcReal;
 #define AC_REAL_INVALID_VALUE (FLT_MAX)
 #endif
 
-#define AcReal3(x, y, z) ((AcReal3){x,y,z})
 
 #define AC_REAL_PI ((AcReal)M_PI)
 
@@ -53,7 +52,6 @@ typedef float AcReal;
 #define TOACREAL3(arr) TOVEC3(AcReal3,arr)
 #define AcVector AcReal3
 
-#define AcComplex(x,y) (AcComplex){x,y} 
 
 typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
 

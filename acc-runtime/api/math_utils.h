@@ -59,7 +59,7 @@ operator -=(int3& lhs, const int3& rhs)
 static HOST_DEVICE_INLINE AcComplex
 exp(const AcComplex& val)
 {
-  return AcComplex(exp(val.x) * cos(val.y), exp(val.x) * sin(val.y));
+  return (AcComplex){exp(val.x) * cos(val.y), exp(val.x) * sin(val.y)};
 }
 
 

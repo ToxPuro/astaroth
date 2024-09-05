@@ -58,11 +58,7 @@
 
 
   typedef struct {
-    AcReal real_outputs[NUM_REAL_OUTPUTS];
-    AcReal3 real3_outputs[NUM_REAL3_OUTPUTS];
-    int int_outputs[NUM_INT_OUTPUTS];
-    int3 int3_outputs[NUM_INT3_OUTPUTS];
-    bool bool_outputs[NUM_BOOL_OUTPUTS];
+#include "output_decl.h"
   } AcDeviceKernelOutput;
 
   //could combine these into base struct
@@ -88,11 +84,8 @@
 	  AcCompInfoLoaded is_loaded;
   } AcCompInfo;
 
-  //pad by one to avoid 0 length arrays that might not work
   typedef struct {
-	  AcReal real_params[NUM_REAL_INPUT_PARAMS+1];
-	  int    int_params[NUM_INT_INPUT_PARAMS+1];
-	  bool   bool_params[NUM_BOOL_INPUT_PARAMS+1];
+#include "input_decl.h"
   } AcInputs;
 
   typedef struct {

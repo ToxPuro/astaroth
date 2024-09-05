@@ -1502,17 +1502,6 @@ FUNC_DEFINE(AcResult, acDeviceStoreIXYPlate,(const Device device, int3 start, in
 /** */
 FUNC_DEFINE(AcResult, acDeviceGetVBApointers,(Device device, AcReal *vbapointer[2]));
 
-FUNC_DEFINE(AcResult, acDeviceSetRealInput,(const Device device, const AcRealInputParam param, const AcReal val));
-
-FUNC_DEFINE(AcResult, acDeviceSetIntInput,(const Device device, const AcIntInputParam param, const int val));
-
-FUNC_DEFINE(int, acDeviceGetIntOutput,(const Device device, const AcIntOutputParam param));
-
-FUNC_DEFINE(AcReal, acDeviceGetRealInput,(const Device device, const AcRealInputParam param));
-
-FUNC_DEFINE(int, acDeviceGetIntInput,(const Device device, const AcIntInputParam param));
-
-FUNC_DEFINE(AcReal, acDeviceGetRealOutput,(const Device device, const AcRealOutputParam param));
 
 /*
  * =============================================================================
@@ -1556,6 +1545,11 @@ FUNC_DEFINE(void, acVA_VerboseLogFromRootProc,(const int pid, const char* msg, v
 /* Log a message with a timestamp from the root proc (if pid == 0) in a debug build */
 FUNC_DEFINE(void, acDebugFromRootProc,(const int pid, const char* msg, ...));
 FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_list arg));
+
+
+#include "device_set_input_decls.h"
+#include "device_get_output_decls.h"
+#include "device_get_input_decls.h"
 
 #if AC_RUNTIME_COMPILATION
 #include "astaroth_lib.h"
@@ -1923,8 +1917,9 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!acDeviceStoreIXYPlate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceStoreIXYPlate");
 	*(void**)(&acDeviceGetVBApointers) = dlsym(handle,"acDeviceGetVBApointers");
 	if(!acDeviceGetVBApointers) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceGetVBApointers");
-	*(void**)(&acDeviceSetRealInput) = dlsym(handle,"acDeviceSetRealInput");
-	*(void**)(&acDeviceSetIntInput) = dlsym(handle,"acDeviceSetIntInput");
+#include "device_set_input_loads.h"
+#include "device_get_input_loads.h"
+#include "device_get_output_loads.h"
 	*(void**)(&acDeviceGetIntOutput) = dlsym(handle,"acDeviceGetIntOutput");
 	*(void**)(&acDeviceGetRealInput) = dlsym(handle,"acDeviceGetRealInput");
 	*(void**)(&acDeviceGetIntInput) = dlsym(handle,"acDeviceGetIntInput");
@@ -1972,31 +1967,13 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 } // extern "C"
 #endif
 
+
 #ifdef __cplusplus
 
-static inline AcResult
-acDeviceSetInput(const Device device, const AcRealInputParam param, const AcReal val)
-{
-	return acDeviceSetRealInput(device,param,val);
-}
+#include "device_set_input_overloads.h"
+#include "device_get_input_overloads.h"
+#include "device_get_output_overloads.h"
 
-static inline AcResult
-acDeviceSetInput(const Device device, const AcIntInputParam param, const int val)
-{
-	return acDeviceSetIntInput(device,param,val);
-}
-static inline int
-acDeviceGetOutput(const Device device, const AcIntOutputParam param)
-{
-	return acDeviceGetIntOutput(device,param);
-}
-
-
-static inline AcReal
-acDeviceGetOutput(const Device device, const AcRealOutputParam param)
-{
-	return acDeviceGetRealOutput(device,param);
-}
 
 #if AC_MPI_ENABLED
 /** Backwards compatible interface, input fields = output fields*/
