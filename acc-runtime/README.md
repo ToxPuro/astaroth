@@ -91,10 +91,13 @@ var6 = "Hello"
 
 #### Arrays
 ```
-int arr0 = [1, 2, 3] // The type of arrays must be explicitly specified
-real arr1 = [1.0, 2.0, 3.0]
+int arr0 = [1, 2, 3] 
+arr1 = [1.0, 2.0, 3.0] //inferred to be an array of reals
 int arr2 = [[1,2,3], [3,4,5]] //Multidimensional arrays are supported
 size(arr1) // Length of an array
+gmem arr[AC_nx] //declaration for global array stored in GPU global memory
+arr[3] (at global scope)         //equivalent to dconst arr[3]. Dimensions need to be known at compile time
+gmem arr[AC_mx][AC_my]           //Multidimensional global array are supported. By default arrays are stored in column-major format but by setting ROW_MAJOR_ORDER=ON to cmake arrays are stored in row-major order
 ```
 
 #### Casting
