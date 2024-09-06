@@ -187,7 +187,7 @@ Region::Region(RegionFamily family_, int tag_, int3 nn, Field fields_[], size_t 
     case RegionFamily::Exchange_input: {
         position = (int3){id.x == 1 ? nn.x : NGHOST, id.y == 1 ? nn.y : NGHOST,
                           id.z == 1 ? nn.z : NGHOST};
-        dims = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
+        dims     = (int3){id.x == 0 ? nn.x : NGHOST, id.y == 0 ? nn.y : NGHOST,
                       id.z == 0 ? nn.z : NGHOST};
         break;
     }
@@ -301,7 +301,7 @@ Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefini
     : device(device_), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
       order(order_), active(true), boundary(BOUNDARY_NONE), input_region(input_region_),
       output_region(output_region_),
-      input_parameters(op.parameters, op.parameters + op.num_parameters)
+      input_parameters(op.parameters, op.parameters + op.num_parameters), vba(device->vba)
 {
     MPI_Comm_rank(acGridMPIComm(), &rank);
 }
@@ -1174,10 +1174,10 @@ SpecialMHDBoundaryConditionTask::advance(const TraceFile* trace_file)
 AcBoundary
 boundary_from_normal(int3 normal)
 {
-    return (
-        AcBoundary)((normal.x == -1 ? BOUNDARY_X_BOT : 0) | (normal.x == 1 ? BOUNDARY_X_TOP : 0) |
-                    (normal.y == -1 ? BOUNDARY_Y_BOT : 0) | (normal.y == 1 ? BOUNDARY_Y_TOP : 0) |
-                    (normal.z == -1 ? BOUNDARY_Z_BOT : 0) | (normal.z == 1 ? BOUNDARY_Z_TOP : 0));
+    return (AcBoundary)(
+        (normal.x == -1 ? BOUNDARY_X_BOT : 0) | (normal.x == 1 ? BOUNDARY_X_TOP : 0) |
+        (normal.y == -1 ? BOUNDARY_Y_BOT : 0) | (normal.y == 1 ? BOUNDARY_Y_TOP : 0) |
+        (normal.z == -1 ? BOUNDARY_Z_BOT : 0) | (normal.z == 1 ? BOUNDARY_Z_TOP : 0));
 }
 
 int3
