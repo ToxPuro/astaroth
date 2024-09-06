@@ -6,7 +6,7 @@ import numpy as np
 import glob
 
 files = glob.glob("../../build/*LNRHO*.mesh")
-
+files.sort()
 %matplotlib widget
 
 
@@ -35,11 +35,16 @@ def update(frame):
     return [im]
 
 
-anim = animation.FuncAnimation(fig, update, frames=len(frames), interval=500, blit=True)
+anim = animation.FuncAnimation(fig, update, frames=len(frames), interval=10, blit=True)
 plt.show()
 
 # %%
 # Plot
+import matplotlib.pyplot as plt
+import numpy as np
+import glob
+
+files = glob.glob("../../build/*LNRHO*.mesh")
 for file in files:
     arr = np.fromfile(
         file,
