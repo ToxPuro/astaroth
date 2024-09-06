@@ -15,6 +15,7 @@
 #define YYSTYPE ASTNode*
 
 bool RUNTIME_COMPILATION = false;
+bool READ_OVERLOADS      = false;
 ASTNode* root = NULL;
 
 extern FILE* yyin;
@@ -291,12 +292,13 @@ void
 reset_all_files()
 {
           const char* files[] = {"kernel_reduce_outputs.h","user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
-		 "device_mesh_info_decl.h",  "array_decl.h", "comp_decl.h","comp_loaded_decl.h", "input_decl.h","get_device_array.h","get_config_arrays.h","get_config_param.h",
+		 "device_mesh_info_decl.h",  "array_decl.h", "comp_decl.h","output_decl.h","input_decl.h","comp_loaded_decl.h", "input_decl.h","get_device_array.h","get_config_arrays.h","get_config_param.h",
 		 "get_arrays.h","dconst_decl.h","rconst_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h","memcpy_to_gmem_arrays.h","memcpy_from_gmem_arrays.h",
 		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
 		 "load_and_store_uniform_overloads.h","load_and_store_uniform_funcs.h","load_and_store_uniform_header.h","get_array_info.h","get_from_comp_config.h","get_param_name.h","to_str_funcs.h","get_default_value.h",
 		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_loaders.h", "user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
-		  "fields_info.h","is_comptime_param.h","push_to_config.h","load_comp_info.h","load_comp_info_overloads.h",
+		  "fields_info.h","is_comptime_param.h","push_to_config.h","load_comp_info.h","load_comp_info_overloads.h","device_set_input_decls.h","device_set_input.h","device_set_input_loads.h","device_set_input_overloads.h",
+		  "device_get_output_decls.h","device_get_input_decls.h","device_get_output.h","device_get_input.h","device_get_output_overloads.h","device_get_input_overloads.h","device_get_input_loads.h","device_get_output_loads.h",
 		  };
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
 	    if(!file_exists(files[i])) continue;
@@ -325,7 +327,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
        	  process_includes(1, dir, ACC_BUILTIN_FUNCS, out,log);
 	  if(file_exists(ACC_GEN_PATH"/extra_dfuncs.h"))
        	  	process_includes(1, dir, ACC_GEN_PATH"/extra_dfuncs.h", out,log);
-	  if(file_exists(ACC_OVERRIDES_PATH) && !RUNTIME_COMPILATION)
+	  if(file_exists(ACC_OVERRIDES_PATH) && !RUNTIME_COMPILATION && READ_OVERLOADS)
        	  	process_includes(1, dir, ACC_OVERRIDES_PATH, out,log);
 	  //the actual includes
           process_includes(0, dir, stage0, out,log);
@@ -419,12 +421,13 @@ main(int argc, char** argv)
     init_str_vec(&filenames);
     char* file = NULL;
     RUNTIME_COMPILATION = !strcmp(argv[argc-1],"1"); 
-    if(argc > 3)
+    READ_OVERLOADS      = !strcmp(argv[argc-2],"1"); 
+    if(argc > 4)
     {
 	file = malloc(sizeof(char)*(strlen(argv[1]) + strlen(argv[2])));
 	sprintf(file,"%s/%s",dirname(strdup(argv[1])), argv[2]);
     }
-    else if (argc == 3)
+    else if (argc == 4)
 	file = argv[1];
     else {
         puts("Usage: ./acc [source file]");

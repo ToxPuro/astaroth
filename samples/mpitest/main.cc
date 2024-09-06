@@ -49,6 +49,12 @@ main(void)
     int nprocs, pid;
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
+
+    AcMeshInfo info;
+    AcCompInfo comp_info = acInitCompInfo();
+    acLoadConfig(AC_DEFAULT_CONFIG, &info, &comp_info);
+    info.int_params[AC_proc_mapping_strategy] = (int)AcProcMappingStrategy::Linear;
+
 #if AC_RUNTIME_COMPILATION
     if(pid == 0)
     {
@@ -59,21 +65,20 @@ main(void)
     		real_arr[i] = -i;
     	for(int i = 0; i < 2; ++i)
     		int_arr[i] = i;
-    	AcCompInfo info = acInitCompInfo();
-    	acLoadCompInfo(AC_lspherical_coords,true,&info);
-    	acLoadCompInfo(AC_runtime_int,1,&info);
-    	acLoadCompInfo(AC_runtime_real,0.12345,&info);
-    	acLoadCompInfo(AC_runtime_real3,{0.12345,0.12345,0.12345},&info);
-    	acLoadCompInfo(AC_runtime_int3,{0,1,2},&info);
-    	acLoadCompInfo(AC_runtime_real_arr,real_arr,&info);
-    	acLoadCompInfo(AC_runtime_int_arr,int_arr,&info);
-    	acLoadCompInfo(AC_runtime_bool_arr,bool_arr,&info);
+    	acLoadCompInfo(AC_lspherical_coords,true,&comp_info);
+    	acLoadCompInfo(AC_runtime_int,1,&comp_info);
+    	acLoadCompInfo(AC_runtime_real,0.12345,&comp_info);
+    	acLoadCompInfo(AC_runtime_real3,{0.12345,0.12345,0.12345},&comp_info);
+    	acLoadCompInfo(AC_runtime_int3,{0,1,2},&comp_info);
+    	acLoadCompInfo(AC_runtime_real_arr,real_arr,&comp_info);
+    	acLoadCompInfo(AC_runtime_int_arr,int_arr,&comp_info);
+    	acLoadCompInfo(AC_runtime_bool_arr,bool_arr,&comp_info);
 #if AC_USE_HIP
     	const char* build_str = "-DUSE_HIP=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #else
     	const char* build_str = "-DUSE_HIP=OFF -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #endif
-    	acCompile(build_str,info);
+    	acCompile(build_str,comp_info);
     }
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -90,9 +95,6 @@ main(void)
     srand(321654987);
 
     // CPU alloc
-    AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG, &info);
-    info.int_params[AC_proc_mapping_strategy] = (int)AcProcMappingStrategy::Linear;
 
     const int max_devices = 2 * 2 * 4;
     if (nprocs > max_devices) {

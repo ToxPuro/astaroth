@@ -15,7 +15,11 @@
 
 #include "errchk.h"
 #include "datatypes.h"
+
+#define AcReal3(x,y,z)   (AcReal3){x,y,z}
+#define AcComplex(x,y)   (AcComplex){x,y}
 #include "user_defines.h"
+
 
 typedef struct Field3
 {

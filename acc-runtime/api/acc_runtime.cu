@@ -17,6 +17,8 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "acc_runtime.h"
+#define AcReal3(x,y,z)   (AcReal3){x,y,z}
+#define AcComplex(x,y)   (AcComplex){x,y}
 
 #include <math.h> 
 #include <vector> // tbconfig

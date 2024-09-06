@@ -110,7 +110,7 @@ parse_intparam(const size_t idx, const char* value)
         return atoi(value);
     }
 }
-int
+static int
 get_entries(char** dst, const char* line)
 {
       char* line_copy = strdup(line);
@@ -137,7 +137,7 @@ length_from_dims(const AcArrayDims dims)
 	return res;
 }
 static void
-parse_config(const char* path, AcMeshInfo* config)
+parse_config(const char* path, AcMeshInfo* config, AcCompInfo* comp_info)
 {
     FILE* fp;
     fp = fopen(path, "r");
@@ -156,7 +156,10 @@ parse_config(const char* path, AcMeshInfo* config)
 
         int idx = -1;
         if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0) {
-            config->int_params[idx] = parse_intparam(idx, value);
+	    acPushToConfig(*config,*comp_info,static_cast<AcIntParam>(idx),parse_intparam(idx,value));
+        }
+        else if ((idx = find_str(keyword, int_comp_param_names, NUM_INT_COMP_PARAMS)) >= 0) {
+	    acPushToConfig(*config,*comp_info,static_cast<AcIntCompParam>(idx),parse_intparam(idx,value));
         }
         else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAMS)) >= 0) {
             AcReal real_val = atof(value);
@@ -166,7 +169,17 @@ parse_config(const char* path, AcMeshInfo* config)
                         keyword, value);
             }
             // OL: should we fail here? Could be dangerous to continue
-            config->real_params[idx] = real_val;
+	    acPushToConfig(*config,*comp_info,static_cast<AcRealParam>(idx),real_val);
+        }
+        else if ((idx = find_str(keyword, real_comp_param_names, NUM_REAL_COMP_PARAMS)) >= 0) {
+            AcReal real_val = atof(value);
+            if (isnan(real_val)) {
+                fprintf(stderr,
+                        "ERROR PARSING CONFIG: parameter \"%s\" value \"%s\" parsed as NAN\n",
+                        keyword, value);
+            }
+            // OL: should we fail here? Could be dangerous to continue
+	    acPushToConfig(*config,*comp_info,static_cast<AcRealCompParam>(idx),real_val);
         }
         else if ((idx = find_array(keyword, int_array_info, NUM_INT_ARRAYS)) >= 0) {
 		if(!int_array_info[idx].is_dconst)
@@ -215,8 +228,11 @@ parse_config(const char* path, AcMeshInfo* config)
 \brief Loads data from astaroth.conf into a config struct.
 \return AC_SUCCESS on success, AC_FAILURE if there are potentially uninitialized values.
 */
-AcResult
-acLoadConfig(const char* config_path, AcMeshInfo* config)
+
+#define _UNUSED __attribute__((unused)) // Does not give a warning if unused
+
+static AcResult UNUSED
+acLoadConfig(const char* config_path, AcMeshInfo* config, AcCompInfo* comp_info)
 {
     ERRCHK_ALWAYS(config_path);
 
@@ -234,7 +250,7 @@ acLoadConfig(const char* config_path, AcMeshInfo* config)
     memset(config->int3_arrays, 0,NUM_INT3_ARRAYS *sizeof(int*));
     memset(config->real3_arrays,0,NUM_REAL3_ARRAYS*sizeof(int*));
 
-    parse_config(config_path, config);
+    parse_config(config_path, config, comp_info);
     acHostUpdateBuiltinParams(config);
 #if AC_VERBOSE
     printf("###############################################################\n");
