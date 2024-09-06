@@ -10,6 +10,8 @@
 #include "ini.h"
 #include "stencil_loader.h"
 
+static AcReal current_time = 0;
+
 /** Takes the global info as parameter */
 static int
 acHostUpdateTFMSpecificGlobalParams(AcMeshInfo* info)
@@ -359,7 +361,12 @@ tfm_run_pipeline(const Device device)
 {
     const AcMeshInfo info = acDeviceGetLocalConfig(device);
     const AcMeshDims dims = acGetMeshDims(info);
-    const AcReal dt       = calc_timestep(device, info);
+
+    // Current time (temporary hack, TODO better)
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_current_time, current_time);
+
+    // Timestep
+    const AcReal dt = calc_timestep(device, info);
     acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
 
     for (int step_number = 0; step_number < 3; ++step_number) {
@@ -426,6 +433,9 @@ tfm_run_pipeline(const Device device)
     acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_x, dims.m0, dims.m1);
     acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_y, dims.m0, dims.m1);
     acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_z, dims.m0, dims.m1);
+
+    // Update current time
+    current_time += dt;
     return EXIT_SUCCESS;
 }
 
@@ -471,6 +481,9 @@ main(int argc, char* argv[])
     acPrintMeshInfo(info);
     printf("\n");
 
+    // Temporary workaround for saving the simulation time
+    current_time = info.real_params[AC_current_time];
+
     // Device
     Device device;
     acDeviceCreate(0, info, &device);
@@ -487,7 +500,7 @@ main(int argc, char* argv[])
     acPrintMeshInfo(local_info);
     printf("\n");
 
-    // Random numbers
+    // Initialize the random number generator
     const size_t seed  = 12345;
     const size_t pid   = 0;
     const size_t count = acVertexBufferCompdomainSize(info);
@@ -501,10 +514,7 @@ main(int argc, char* argv[])
     acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, dims.n0, dims.n1, 1e-5);
     tfm_run_pipeline(device);
 
-    // Initialize
-    acDeviceResetMesh(device, STREAM_DEFAULT);
-    // acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
-    // acDeviceSwapBuffers(device);
+    // Initialize the mesh and reload all device constants
     acDeviceResetMesh(device, STREAM_DEFAULT);
     acDeviceSynchronizeStream(device, STREAM_DEFAULT);
     tfm_init_profiles(device);
