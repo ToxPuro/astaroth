@@ -395,6 +395,23 @@ tfm_run_pipeline(const Device device)
         acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_y, dims.m0, dims.m1);
         acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_z, dims.m0, dims.m1);
 
+        // Boundary conditions: derived test fields
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb11_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb11_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb11_z, dims.m0, dims.m1);
+
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb12_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb12_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb12_z, dims.m0, dims.m1);
+
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb21_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb21_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb21_z, dims.m0, dims.m1);
+
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb22_x, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb22_y, dims.m0, dims.m1);
+        acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb22_z, dims.m0, dims.m1);
+
         // Profile averages
         acDeviceReduceXYAverages(device, STREAM_DEFAULT);
         tfm_init_profiles(device); // TODO NOTE BUG: constant test fields are overwritten or
@@ -433,6 +450,23 @@ tfm_run_pipeline(const Device device)
     acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_x, dims.m0, dims.m1);
     acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_y, dims.m0, dims.m1);
     acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_a22_z, dims.m0, dims.m1);
+
+    // Boundary conditions: derived test fields
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb11_x, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb11_y, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb11_z, dims.m0, dims.m1);
+
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb12_x, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb12_y, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb12_z, dims.m0, dims.m1);
+
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb21_x, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb21_y, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb21_z, dims.m0, dims.m1);
+
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb22_x, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb22_y, dims.m0, dims.m1);
+    acDevicePeriodicBoundcondStep(device, STREAM_DEFAULT, TF_uxb22_z, dims.m0, dims.m1);
 
     // Update current time
     current_time += dt;
