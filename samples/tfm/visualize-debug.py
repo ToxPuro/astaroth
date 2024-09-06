@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import glob
 
-files = glob.glob("../../build/*LNRHO*.mesh")
+files = glob.glob("../../build/*uxb11_x*.mesh")
 files.sort()
 %matplotlib widget
 
@@ -14,29 +14,26 @@ files.sort()
 import matplotlib.animation as animation
 import numpy as np
 
-frames = []
-for file in files:
+fig, ax = plt.subplots()
+ims = []
+for i, file in enumerate(files):
     arr = np.fromfile(
         file,
         dtype=np.double,
     )
     arr = arr.reshape((38, 38, 38))
 
-    frames.append(arr[:, :, 16])
+    data = arr[:, :, 16]
+    im = ax.imshow(data, animated=True)
+    if i == 0:
+        im = ax.imshow(data)
+    ims.append([im])
 
-fig, ax = plt.subplots()
-im = ax.imshow(frames[0])
-cbar = fig.colorbar(im, ax=ax)
+ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True, repeat_delay=1000)
+# plt.show()
+writer = animation.FFMpegWriter(fps=24, bitrate=1800)
+ani.save("uxb11.mp4", writer=writer)
 
-
-def update(frame):
-    im.set_array(frames[frame % len(frames)])
-    #ax.set_title(f"Frame {frame}")
-    return [im]
-
-
-anim = animation.FuncAnimation(fig, update, frames=len(frames), interval=10, blit=True)
-plt.show()
 
 # %%
 # Plot
