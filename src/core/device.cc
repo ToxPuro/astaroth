@@ -1256,6 +1256,13 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
     acSegmentedReduce(device->streams[STREAM_DEFAULT], //
                       buffer.data, buffer_size, num_segments, device->vba.profiles.in[0]);
 
+    // NOTE: Revisit this
+    const size_t gnx = as_size_t(device->local_config.int3_params[AC_global_grid_n].x);
+    const size_t gny = as_size_t(device->local_config.int3_params[AC_global_grid_n].y);
+    cudaSetDevice(device->id);
+    acMultiplyInplace(1. / (gnx * gny), NUM_PROFILES * device->vba.profiles.count,
+                      device->vba.profiles.in[0]);
+
     acBufferDestroy(&buffer);
     return AC_FAILURE;
 #else
