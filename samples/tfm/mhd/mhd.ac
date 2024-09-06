@@ -5,7 +5,7 @@ hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (0)
 hostdefine LENTROPY (0)
 hostdefine LTEMPERATURE (0)
-hostdefine LFORCING (0)
+hostdefine LFORCING (1)
 hostdefine LUPWD (1)
 hostdefine LTFM (1)
 
@@ -100,6 +100,7 @@ real AC_relhel
 real AC_kmin
 real AC_kmax
 real AC_switch_forcing
+real AC_current_time
 
 //  Forcing parameters. Set by the generator.
 real AC_forcing_phase
