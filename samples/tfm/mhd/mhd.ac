@@ -11,6 +11,10 @@ hostdefine LTFM (1)
 
 hostdefine R_PI (AC_REAL_PI)
 
+// Simulation control
+int AC_simulation_nsteps
+int AC_simulation_output_interval
+
 // Fields
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
 #define UU Field3(VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ)

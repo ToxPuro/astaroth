@@ -596,8 +596,8 @@ main(int argc, char* argv[])
     acDeviceSwapBuffers(device);
     acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
 
-    const size_t nsteps          = 200;
-    const size_t output_interval = 10;
+    const size_t nsteps          = info.int_params[AC_simulation_nsteps];
+    const size_t output_interval = info.int_params[AC_simulation_output_interval];
     for (size_t step = 1; step <= nsteps; ++step) {
         // Simulate
         tfm_run_pipeline(device);
