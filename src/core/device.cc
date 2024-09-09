@@ -1188,7 +1188,7 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
     AcMeshDims dims = acGetMeshDims(device->local_config);
 
     // Intermediate buffer
-    const size_t num_compute_profiles = 3 + 4 * 3;
+    const size_t num_compute_profiles = 5 * 3;
     const AcShape buffer_shape        = {
         .x = as_size_t(dims.nn.x),
         .y = as_size_t(dims.nn.y),
@@ -1260,7 +1260,7 @@ acDeviceReduceXYAverages(const Device device, const Stream stream)
     const size_t gnx = as_size_t(device->local_config.int3_params[AC_global_grid_n].x);
     const size_t gny = as_size_t(device->local_config.int3_params[AC_global_grid_n].y);
     cudaSetDevice(device->id);
-    acMultiplyInplace(1. / (gnx * gny), NUM_PROFILES * device->vba.profiles.count,
+    acMultiplyInplace(1. / (gnx * gny), num_compute_profiles * device->vba.profiles.count,
                       device->vba.profiles.in[0]);
 
     acBufferDestroy(&buffer);

@@ -369,6 +369,9 @@ tfm_run_pipeline(const Device device)
     const AcReal dt = calc_timestep(device, info);
     acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
 
+    // Apply forcing
+    // TODO
+
     for (int step_number = 0; step_number < 3; ++step_number) {
         acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, step_number);
 
@@ -414,8 +417,6 @@ tfm_run_pipeline(const Device device)
 
         // Profile averages
         acDeviceReduceXYAverages(device, STREAM_DEFAULT);
-        tfm_init_profiles(device); // TODO NOTE BUG: constant test fields are overwritten or
-                                   // incorrectly swapped for some reason - this is a workaround
 
         // Compute: hydrodynamics
         acDeviceLaunchKernel(device, STREAM_DEFAULT, singlepass_solve, dims.n0, dims.n1);
@@ -549,12 +550,10 @@ main(int argc, char* argv[])
     tfm_run_pipeline(device);
 
     // Initialize the mesh and reload all device constants
-    acDeviceResetMesh(device, STREAM_DEFAULT);
-    acDeviceSynchronizeStream(device, STREAM_DEFAULT);
-    tfm_init_profiles(device);
-
-    // Write the initial step out for reference
-    write_diagnostic_step(device, 0);
+    // acDeviceResetMesh(device, STREAM_DEFAULT);
+    // acDeviceSynchronizeStream(device, STREAM_DEFAULT);
+    // tfm_init_profiles(device);
+    // acDeviceSynchronizeStream(device, STREAM_ALL);
 
     // // Integration-----------------------------
     // int retval;
@@ -629,6 +628,10 @@ main(int argc, char* argv[])
     acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
     acDeviceSwapBuffers(device);
     acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
+    tfm_init_profiles(device);
+
+    // Write the initial step out for reference
+    write_diagnostic_step(device, 0);
 
     const size_t nsteps          = info.int_params[AC_simulation_nsteps];
     const size_t output_interval = info.int_params[AC_simulation_output_interval];
