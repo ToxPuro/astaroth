@@ -219,30 +219,37 @@ printForcingParams(const ForcingParams& forcing_params)
 }
 
 ForcingParams
-generateForcingParams(const AcReal relhel, const AcReal kmin, const AcReal kmax)
+generateForcingParams(const AcReal relhel, const AcReal magnitude, const AcReal kmin,
+                      const AcReal kmax)
 {
-    ForcingParams params = {};
-
-    params.kaver = (kmax - kmin) / AcReal(2.0);
-
-    // Generate forcing wave vector k_force
-    params.k_force = helical_forcing_k_generator(kmax, kmin);
+    // Forcing properties
+    const AcReal kaver = (kmax - kmin) / AcReal(2.0);
 
     // Randomize the phase
-    params.phase = AcReal(2.0) * AcReal(M_PI) * random_uniform_real_01();
+    const AcReal phase = AcReal(2.0) * AcReal(M_PI) * random_uniform_real_01();
+
+    // Generate forcing wave vector k_force
+    const AcReal3 k_force = helical_forcing_k_generator(kmax, kmin);
 
     // Generate e for k. Needed for the sake of isotrophy.
     AcReal3 e_force;
-    if ((params.k_force.y == AcReal(0.0)) && (params.k_force.z == AcReal(0.0))) {
+    if ((k_force.y == AcReal(0.0)) && (k_force.z == AcReal(0.0))) {
         e_force = (AcReal3){0.0, 1.0, 0.0};
     }
     else {
         e_force = (AcReal3){1.0, 0.0, 0.0};
     }
-    helical_forcing_e_generator(&e_force, params.k_force);
+    helical_forcing_e_generator(&e_force, k_force);
 
-    helical_forcing_special_vector(&params.ff_hel_re, &params.ff_hel_im, params.k_force, e_force,
-                                   relhel);
+    AcReal3 ff_hel_re, ff_hel_im;
+    helical_forcing_special_vector(&ff_hel_re, &ff_hel_im, k_force, e_force, relhel);
 
-    return params;
+    return (ForcingParams){
+        .magnitude = magnitude,
+        .k_force   = k_force,
+        .ff_hel_re = ff_hel_re,
+        .ff_hel_im = ff_hel_im,
+        .phase     = phase,
+        .kaver     = kaver,
+    };
 }

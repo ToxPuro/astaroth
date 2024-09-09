@@ -44,11 +44,58 @@ loadForcingParamsToMeshInfo(const ForcingParams forcing_params, AcMeshInfo* info
     info->real_params[AC_kaver] = forcing_params.kaver;
 }
 
+static void
+loadForcingParamsToDevice(const Device device, const ForcingParams forcing_params)
+{
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_forcing_magnitude,
+                              forcing_params.magnitude);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_forcing_phase, forcing_params.phase);
+
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_k_forcex, forcing_params.k_force.x);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_k_forcey, forcing_params.k_force.y);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_k_forcez, forcing_params.k_force.z);
+
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_ff_hel_rex, forcing_params.ff_hel_re.x);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_ff_hel_rey, forcing_params.ff_hel_re.y);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_ff_hel_rez, forcing_params.ff_hel_re.z);
+
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_ff_hel_imx, forcing_params.ff_hel_im.x);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_ff_hel_imy, forcing_params.ff_hel_im.y);
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_ff_hel_imz, forcing_params.ff_hel_im.z);
+
+    acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_kaver, forcing_params.kaver);
+    acDeviceSynchronizeStream(device, STREAM_ALL);
+}
+
+static void
+printForcingParams(const ForcingParams forcing_params)
+{
+    printf("Forcing parameters:\n"
+           " magnitude: %lf\n"
+           " phase: %lf\n"
+           " k force: %lf\n"
+           "          %lf\n"
+           "          %lf\n"
+           " ff hel real: %lf\n"
+           "            : %lf\n"
+           "            : %lf\n"
+           " ff hel imag: %lf\n"
+           "            : %lf\n"
+           "            : %lf\n"
+           " k aver: %lf\n"
+           "\n",
+           forcing_params.magnitude, forcing_params.phase, forcing_params.k_force.x,
+           forcing_params.k_force.y, forcing_params.k_force.z, forcing_params.ff_hel_re.x,
+           forcing_params.ff_hel_re.y, forcing_params.ff_hel_re.z, forcing_params.ff_hel_im.x,
+           forcing_params.ff_hel_im.y, forcing_params.ff_hel_im.z, forcing_params.kaver);
+}
+
 static int
 acHostUpdateMHDSpecificParams(AcMeshInfo* info)
 {
     // Forcing
     ForcingParams forcing_params = generateForcingParams(info->real_params[AC_relhel],
+                                                         info->real_params[AC_forcing_magnitude],
                                                          info->real_params[AC_kmin],
                                                          info->real_params[AC_kmax]);
     loadForcingParamsToMeshInfo(forcing_params, info);
@@ -625,7 +672,7 @@ main(int argc, char* argv[])
 
     // Simulation loop
     acDeviceResetMesh(device, STREAM_DEFAULT);
-    acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
+    // acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
     acDeviceSwapBuffers(device);
     acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
     tfm_init_profiles(device);
@@ -636,6 +683,14 @@ main(int argc, char* argv[])
     const size_t nsteps          = info.int_params[AC_simulation_nsteps];
     const size_t output_interval = info.int_params[AC_simulation_output_interval];
     for (size_t step = 1; step <= nsteps; ++step) {
+        // Generate forcing
+        ForcingParams forcing_params = generateForcingParams(info.real_params[AC_relhel],
+                                                             info.real_params[AC_forcing_magnitude],
+                                                             info.real_params[AC_kmin],
+                                                             info.real_params[AC_kmax]);
+        loadForcingParamsToDevice(device, forcing_params);
+        printForcingParams(forcing_params);
+
         // Simulate
         tfm_run_pipeline(device);
 

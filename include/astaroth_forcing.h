@@ -15,7 +15,8 @@ typedef struct {
 extern "C" {
 #endif
 
-ForcingParams generateForcingParams(const AcReal relhel, const AcReal kmin, const AcReal kmax);
+ForcingParams generateForcingParams(const AcReal relhel, const AcReal magnitude, const AcReal kmin,
+                                    const AcReal kmax);
 
 #ifdef __cplusplus
 } // extern "C"
