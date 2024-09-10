@@ -309,7 +309,7 @@ reset_all_files()
 }
 
 
-int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* stage4, const char* dir, const bool gen_mem_accesses, const bool optimize_conditionals, const bool gen_extra_dfuncs)
+int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* stage4, const char* dir, const bool gen_mem_accesses, const bool optimize_conditionals, const bool gen_extra_dfuncs, bool gen_bc_kernels)
 {
 	init_str_vec(&const_ints);
 	init_str_vec(&const_int_values);
@@ -317,7 +317,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	  make_dir(ACC_GEN_PATH);
         // Stage 1: Preprocess includes
         {
-	  const bool log = !gen_extra_dfuncs;
+	  const bool log = !(gen_extra_dfuncs || gen_bc_kernels);
           FILE* out = fopen(stage1, "w");
           assert(out);
 	  fprintf(out,"#define AC_LAGRANGIAN_GRID (%d)\n",AC_LAGRANGIAN_GRID);
@@ -377,6 +377,14 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 		fclose(fp);
 		return EXIT_SUCCESS;
 	}
+	if(gen_bc_kernels)
+	{
+		FILE* fp = fopen(ACC_GEN_PATH"/boundcond_kernels.h","w");
+		gen_boundcond_kernels(root, fp);
+		fclose(fp);
+		return EXIT_SUCCESS;
+	}
+
         // generate(root, stdout);
 
         // Stage 0: Clear all generated files to ensure acc failure can be detected later
@@ -450,8 +458,9 @@ main(int argc, char** argv)
     dir_backup = dir;
     
     reset_extra_files();
-    code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, false, false, true); 
-    code_generation_pass(stage0, stage1, stage2, stage3, stage4,  dir, false, OPTIMIZE_CONDITIONALS, false);
+    code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, false, false, true,false); 
+    code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, false, false, false,true); 
+    code_generation_pass(stage0, stage1, stage2, stage3, stage4,  dir, false, OPTIMIZE_CONDITIONALS, false,false);
     
 
     return EXIT_SUCCESS;

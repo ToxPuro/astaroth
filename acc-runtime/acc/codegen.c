@@ -1407,6 +1407,14 @@ is_user_enum_option(const char* identifier)
 	for(size_t i = 0; i < e_info.names.size; ++i)
 		if(str_vec_contains(e_info.options[i],identifier)) return true;
 	return false;
+
+}
+const char*
+get_enum(const char* option)
+{
+	for(size_t i = 0; i < e_info.names.size; ++i)
+		if(str_vec_contains(e_info.options[i],option)) return e_info.names.data[i];
+	return false;
 }
 void
 read_user_enums_recursive(const ASTNode* node,string_vec* user_enums, string_vec* user_enum_options)
@@ -3622,6 +3630,8 @@ const char*
 get_primary_expr_type(const ASTNode* node)
 {
 	const ASTNode* identifier = get_node_by_token(IDENTIFIER,node);
+  if (identifier &&  identifier->buffer && is_user_enum_option(identifier->buffer))
+    return get_enum(identifier->buffer);
 	const Symbol* sym = (!identifier || !identifier->buffer) ? NULL :
 	        (Symbol*)get_symbol(NODE_ANY, identifier->buffer,NULL);
 	return
@@ -5088,7 +5098,8 @@ compatible_types(const char* a, const char* b)
 {
 	return !strcmp(a,b) 
 	       || (!strcmp(a,"AcReal*") && strstr(b,"AcArray") && strstr(b,"AcReal")) ||
-	       (!strcmp(b,"AcReal*") && strstr(a,"AcArray") && strstr(a,"AcReal"))
+	          (!strcmp(b,"AcReal*") && strstr(a,"AcArray") && strstr(a,"AcReal")) ||
+            ((!strcmp(a,"Field") && !strcmp(b,"VertexBufferHandle")) || (!strcmp(b,"Field") && !strcmp(a,"VertexBufferHandle")))
 		;
 }
 bool
@@ -5116,29 +5127,45 @@ resolve_overloaded_calls(ASTNode* node, const char* dfunc_name, string_vec* dfun
 	int correct_types = -1;
 	int overload_index = MAX_DFUNCS*dfunc_index-1;
 	int_vec possible_indexes = VEC_INITIALIZER;
+  int param_offset = 0;
 	while(dfunc_possible_types[++overload_index].size > 0)
 	{
-		if(call_info.types.size != dfunc_possible_types[overload_index].size) continue;
 		bool possible = true;
-		for(size_t i = 0; i < call_info.types.size; ++i)
+    //TP: ugly hack to resolve calls in BoundConds
+    if(!strcmps(call_info.expr.data[0],
+            "BOUNDARY_X_TOP",
+            "BOUNDARY_X_BOT",
+            "BOUNDARY_Y_TOP",
+            "BOUNDARY_Y_BOT",
+            "BOUNDARY_Z_TOP",
+            "BOUNDARY_Z_BOT",
+            "BOUNDARY_X",
+            "BOUNDARY_Y",
+            "BOUNDARY_Z"
+    ))
+    {
+      param_offset = 1;
+    }
+		if(call_info.types.size - param_offset != dfunc_possible_types[overload_index].size) continue;
+		for(size_t i = param_offset; i < call_info.types.size; ++i)
 		{
-			const char* func_type = dfunc_possible_types[overload_index].data[i];
+			const char* func_type = dfunc_possible_types[overload_index].data[i-param_offset];
 			const char* call_type = call_info.types.data[i];
 			//The upper one is the less strict resolver and below is the more strict resolver
 			possible &= !call_type || !func_type || compatible_types(func_type,call_type);
-			//possible &= call_type && func_type && compatible_types(func_type,call_type);
 		}
 		if(possible)
 			push_int(&possible_indexes,overload_index);
 	}
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
-		//if(!strcmp(dfunc_name,"value"))
+		//if(!strcmp(dfunc_name,"bc_sym_x"))
 		//{
 		//	char my_tmp[10000];
 		//	my_tmp[0] = '\0';
 		//	combine_all(node->rhs,my_tmp); 
-		//	printf("Not able to resolve: %s\n",my_tmp); 
+		//	printf("Not able to resolve: %s,%d\n",my_tmp,param_offset); 
+		//	printf("Not able to resolve: %s,%d\n",call_info.types.data[4],param_offset); 
 		//}
 		return res;
 	}
@@ -5421,20 +5448,26 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
         duplicate_dfuncs = get_duplicate_dfuncs(root);
 
   	assert(root);
-  	s_info = read_user_structs(root);
+  s_info = read_user_structs(root);
 	e_info = read_user_enums(root);
 	gen_type_info(root);
 	gen_extra_func_definitions_recursive(root,root,stream);
 	free_str_vec(&duplicate_dfuncs);
-  	free_structs_info(&s_info);
+  free_structs_info(&s_info);
 
-	const char* path = ACC_GEN_PATH"/boundcond_kernels.h";
-	{
+}
+void gen_boundcond_kernels(const ASTNode* root_in, FILE* stream)
+{
+    ASTNode* root = astnode_dup(root_in,NULL);
+	  symboltable_reset();
+  	traverse(root, 0, NULL);
+    s_info = read_user_structs(root);
+	  e_info = read_user_enums(root);
+    duplicate_dfuncs = get_duplicate_dfuncs(root);
+    gen_overloads(root);
 		make_unique_bc_calls((ASTNode*) root);
-		FILE* fp = fopen(path,"w");
-		gen_dfunc_bc_kernels(root,root,fp);
-		fclose(fp);
-	}
+		gen_dfunc_bc_kernels(root,root,stream);
+    free_structs_info(&s_info);
 }
 void
 canonalize_assignments(ASTNode* node)
