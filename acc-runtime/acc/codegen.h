@@ -30,3 +30,5 @@ void gen_extra_funcs(const ASTNode* root, FILE* stream);
 void preprocess(ASTNode* root, const bool optimize_conditionals);
 
 void gen_output_files(ASTNode* root);
+
+void gen_boundcond_kernels(const ASTNode* root_in, FILE* stream);
