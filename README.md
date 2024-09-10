@@ -8,6 +8,9 @@ Astaroth is licenced under the terms of the GNU General Public Licence, version 
 (see [LICENCE.txt](LICENCE.md)). For contributing guidelines,
 see [Contributing](CONTRIBUTING.md).
 
+## Publication data
+
+The data used in the publication "Stencil Computations on AMD and Nvidia Graphics Processors: Performance and Tuning Strategies", J. Pekkilä, O. Lappi, F. Robertsén, and M. J. Korpi-Lagg. 2024. is available in directory `publication-data/2024-stencil-computations-on-amd-and-nvidia-graphics-processors-performance-and-tuning-strategies`.
 
 ## System Requirements
 * An NVIDIA GPU with support for compute capability 3.0 or higher (Kepler architecture or newer)

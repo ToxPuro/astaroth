@@ -1,0 +1,7 @@
+Method,A100,V100,MI250X,MI100
+HW-FP32,,,,
+HW-FP64,,,,
+SW-FP32,,,,
+SW-FP64,,,,
+PT-FP32,,,,
+TF-FP32,,,,
