@@ -3571,7 +3571,8 @@ get_duplicate_dfuncs(const ASTNode* node)
   {
 	  const int index = get_symbol_index(NODE_DFUNCTION_ID,dfuncs.data[i],0);
 	  if(index == -1) continue;
-	  if(n_entries[index] > 1) push(&res,get_symbol_by_index(NODE_DFUNCTION_ID,index,0)->identifier);
+	  const char* name = get_symbol_by_index(NODE_DFUNCTION_ID,index,0)->identifier;
+	  if(n_entries[index] > 1) push(&res,name);
   }
   free_str_vec(&dfuncs);
   return res;
@@ -5459,15 +5460,16 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 void gen_boundcond_kernels(const ASTNode* root_in, FILE* stream)
 {
     ASTNode* root = astnode_dup(root_in,NULL);
-	  symboltable_reset();
-  	traverse(root, 0, NULL);
+          symboltable_reset();
+        traverse(root, 0, NULL);
     s_info = read_user_structs(root);
-	  e_info = read_user_enums(root);
+    e_info = read_user_enums(root);
     duplicate_dfuncs = get_duplicate_dfuncs(root);
     gen_overloads(root);
-		make_unique_bc_calls((ASTNode*) root);
-		gen_dfunc_bc_kernels(root,root,stream);
+    make_unique_bc_calls((ASTNode*) root);
+    gen_dfunc_bc_kernels(root,root,stream);
     free_structs_info(&s_info);
+    //free_str_vec(&duplicate_dfuncs);
 }
 void
 canonalize_assignments(ASTNode* node)
@@ -5691,7 +5693,8 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
 
   transform_field_intrinsic_func_calls_and_ops(root);
   traverse(root, 0, NULL);
-  duplicate_dfuncs = get_duplicate_dfuncs(root);
+  //We use duplicate dfuncs from gen_boundcond_kernels
+  //duplicate_dfuncs = get_duplicate_dfuncs(root);
   gen_overloads(root);
   mark_kernel_inputs(root);
   gen_kernel_combinatorial_optimizations_and_input(root,optimize_conditionals);
