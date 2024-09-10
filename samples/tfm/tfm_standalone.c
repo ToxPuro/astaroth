@@ -409,15 +409,12 @@ tfm_run_pipeline(const Device device)
     const AcMeshInfo info = acDeviceGetLocalConfig(device);
     const AcMeshDims dims = acGetMeshDims(info);
 
-    // Current time (temporary hack, TODO better)
+    // Current time
     acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_current_time, current_time);
 
     // Timestep
     const AcReal dt = calc_timestep(device, info);
     acDeviceLoadScalarUniform(device, STREAM_DEFAULT, AC_dt, dt);
-
-    // Apply forcing
-    // TODO
 
     for (int step_number = 0; step_number < 3; ++step_number) {
         acDeviceLoadIntUniform(device, STREAM_DEFAULT, AC_step_number, step_number);
@@ -596,80 +593,6 @@ main(int argc, char* argv[])
     acDeviceIntegrateSubstep(device, STREAM_DEFAULT, 2, dims.n0, dims.n1, 1e-5);
     tfm_run_pipeline(device);
 
-    // Initialize the mesh and reload all device constants
-    // acDeviceResetMesh(device, STREAM_DEFAULT);
-    // acDeviceSynchronizeStream(device, STREAM_DEFAULT);
-    // tfm_init_profiles(device);
-    // acDeviceSynchronizeStream(device, STREAM_ALL);
-
-    // // Integration-----------------------------
-    // int retval;
-    // AcMesh model, candidate;
-    // acHostMeshCreate(info, &model);
-    // acHostMeshCreate(info, &candidate);
-    // acHostMeshRandomize(&model);
-    // acHostMeshRandomize(&candidate);
-
-    // // BC
-    // acDeviceLoadMesh(device, STREAM_DEFAULT, model);
-    // acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
-    // acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
-    // acHostMeshApplyPeriodicBounds(&model);
-    // AcResult res = acVerifyMesh("Boundconds", model, candidate);
-    // if (res != AC_SUCCESS) {
-    //     retval = res;
-    //     WARNCHK_ALWAYS(retval);
-    // }
-
-    // // INTEG
-    // // acHostMeshRandomize(&model);
-    // // acHostMeshApplyPeriodicBounds(&model);
-    // // acDeviceResetMesh(device, STREAM_DEFAULT);
-    // // acDeviceLoadMesh(device, STREAM_DEFAULT, model);
-    // // // acDeviceSwapBuffers(device);
-    // // // acDeviceLoadMesh(device, STREAM_DEFAULT, model);
-    // acDeviceResetMesh(device, STREAM_DEFAULT);
-    // acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
-    // acDeviceSwapBuffers(device);
-    // acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
-    // acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
-    // acDeviceStoreMesh(device, STREAM_DEFAULT, &model);
-    // acDeviceSynchronizeStream(device, STREAM_ALL);
-    // acHostMeshApplyPeriodicBounds(&model);
-
-    // const AcReal dt                    = 1e-5;
-    // const size_t NUM_INTEGRATION_STEPS = 10;
-    // for (size_t j = 0; j < NUM_INTEGRATION_STEPS; ++j) {
-    //     for (int i = 0; i < 3; ++i) {
-    //         acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
-    //         acDeviceIntegrateSubstep(device, STREAM_DEFAULT, i, dims.n0, dims.n1, dt);
-    //         acDeviceSwapBuffers(device);
-    //     }
-    //     // tfm_run_pipeline(device); // OK if set dt to same as with host
-    // }
-
-    // acDevicePeriodicBoundconds(device, STREAM_DEFAULT, dims.m0, dims.m1);
-    // acDeviceStoreMesh(device, STREAM_DEFAULT, &candidate);
-    // if (pid == 0) {
-
-    //     // Host integrate
-    //     for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
-    //         acHostIntegrateStep(model, dt);
-
-    //     acHostMeshApplyPeriodicBounds(&model);
-    //     const AcResult res = acVerifyMesh("Integration", model, candidate);
-    //     if (res != AC_SUCCESS) {
-    //         retval = res;
-    //         WARNCHK_ALWAYS(retval);
-    //     }
-
-    //     srand(123567);
-    //     acHostMeshRandomize(&model);
-    //     // acHostMeshSet((AcReal)1.0, &model);
-    //     acHostMeshApplyPeriodicBounds(&model);
-    // }
-    // //---------------------------------
-
     // Simulation loop
     acDeviceResetMesh(device, STREAM_DEFAULT);
     // acDeviceLaunchKernel(device, STREAM_DEFAULT, randomize, dims.n0, dims.n1);
@@ -689,7 +612,7 @@ main(int argc, char* argv[])
                                                              info.real_params[AC_kmin],
                                                              info.real_params[AC_kmax]);
         loadForcingParamsToDevice(device, forcing_params);
-        printForcingParams(forcing_params);
+        // printForcingParams(forcing_params);
 
         // Simulate
         tfm_run_pipeline(device);
