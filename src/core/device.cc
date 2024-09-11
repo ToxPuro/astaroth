@@ -550,6 +550,8 @@ acDeviceLoadVertexBufferWithOffset(const Device device, const Stream stream, con
                                    const VertexBufferHandle vtxbuf_handle, const int3 src,
                                    const int3 dst, const int num_vertices)
 {
+    //TP: to still allow loading the whole mesh even though some VertexBuffers are dead, loading dead VertexBuffers is a no-op
+    if (!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, host_mesh.info);
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, device->local_config);
@@ -584,10 +586,8 @@ acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh 
     const int3 src            = (int3){0, 0, 0};
     const int3 dst            = src;
     const size_t num_vertices = acVertexBufferSize(device->local_config);
-    acDeviceLoadVertexBufferWithOffset(device, stream, host_mesh, vtxbuf_handle, src, dst,
+    return acDeviceLoadVertexBufferWithOffset(device, stream, host_mesh, vtxbuf_handle, src, dst,
                                        num_vertices);
-
-    return AC_SUCCESS;
 }
 
 #define GEN_DEVICE_LOAD_ARRAY(PARAM_NAME, VAL_NAME, NAME_UPPER_CASE) \
@@ -607,6 +607,7 @@ AcResult
 acDeviceLoadMesh(const Device device, const Stream stream, const AcMesh host_mesh)
 {
     for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
+	if (!vtxbuf_is_alive[i]) continue;
         acDeviceLoadVertexBuffer(device, stream, host_mesh, (VertexBufferHandle)i);
     }
 
@@ -617,6 +618,7 @@ AcResult
 acDeviceSetVertexBuffer(const Device device, const Stream stream, const VertexBufferHandle handle,
                         const AcReal value)
 {
+    if(!vtxbuf_is_alive[handle]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
 
     const size_t count = acVertexBufferSize(device->local_config);
@@ -645,7 +647,10 @@ acDeviceFlushOutputBuffers(const Device device, const Stream stream)
 
     int retval = 0;
     for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+    {
+    	if(!vtxbuf_is_alive[i]) continue;
         retval |= acKernelFlush(device->streams[stream], device->vba.out[i], count, (AcReal)0.0);
+    }
 
     return (AcResult)retval;
 }
@@ -655,6 +660,8 @@ acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
                                     const VertexBufferHandle vtxbuf_handle, const int3 src,
                                     const int3 dst, const int num_vertices, AcMesh* host_mesh)
 {
+    //TP: to still allow storing the whole mesh back from the Device storing dead VertexBuffers is a no-op
+    if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, device->local_config);
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, host_mesh->info);
@@ -691,10 +698,8 @@ acDeviceStoreVertexBuffer(const Device device, const Stream stream,
     int3 dst                  = src;
     const size_t num_vertices = acVertexBufferSize(device->local_config);
 
-    acDeviceStoreVertexBufferWithOffset(device, stream, vtxbuf_handle, src, dst, num_vertices,
+    return acDeviceStoreVertexBufferWithOffset(device, stream, vtxbuf_handle, src, dst, num_vertices,
                                         host_mesh);
-
-    return AC_SUCCESS;
 }
 
 AcResult
@@ -712,6 +717,8 @@ acDeviceTransferVertexBufferWithOffset(const Device src_device, const Stream str
                                        const VertexBufferHandle vtxbuf_handle, const int3 src,
                                        const int3 dst, const int num_vertices, Device dst_device)
 {
+    //TP: to still allow transfering the whole mesh between devices transfering dead VertexBuffers is a no-op
+    if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     cudaSetDevice(src_device->id);
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, src_device->local_config);
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, dst_device->local_config);
@@ -745,9 +752,8 @@ acDeviceTransferVertexBuffer(const Device src_device, const Stream stream,
     int3 dst                  = src;
     const size_t num_vertices = acVertexBufferSize(src_device->local_config);
 
-    acDeviceTransferVertexBufferWithOffset(src_device, stream, vtxbuf_handle, src, dst,
+    return acDeviceTransferVertexBufferWithOffset(src_device, stream, vtxbuf_handle, src, dst,
                                            num_vertices, dst_device);
-    return AC_SUCCESS;
 }
 
 AcResult
@@ -859,6 +865,7 @@ acDevicePeriodicBoundcondStep(const Device device, const Stream stream,
                               const VertexBufferHandle vtxbuf_handle, const int3 start,
                               const int3 end)
 {
+    if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
     return acKernelPeriodicBoundconds(device->streams[stream], start, end,
                                       device->vba.in[vtxbuf_handle]);
@@ -879,6 +886,7 @@ acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
                              const VertexBufferHandle vtxbuf_handle, const int3 start,
                              const int3 end, const AcMeshInfo config, const int3 bindex)
 {
+    if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
 #if TWO_D == 1
 	fprintf(stderr,"acDeviceGeneralBoundCondStep not supported for 2d\n");
 	exit(EXIT_FAILURE);
@@ -914,6 +922,7 @@ AcResult
 acDeviceReduceScalNotAveraged(const Device device, const Stream stream, const ReductionType rtype,
                               const VertexBufferHandle vtxbuf_handle, AcReal* result)
 {
+    if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
 
     const int3 start = acGetMinNN(device->local_config);
@@ -928,6 +937,7 @@ AcResult
 acDeviceReduceScal(const Device device, const Stream stream, const ReductionType rtype,
                    const VertexBufferHandle vtxbuf_handle, AcReal* result)
 {
+    if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
     acDeviceReduceScalNotAveraged(device, stream, rtype, vtxbuf_handle, result);
 
     switch (rtype) {
@@ -952,6 +962,9 @@ acDeviceReduceVecNotAveraged(const Device device, const Stream stream, const Red
                              const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                              const VertexBufferHandle vtxbuf2, AcReal* result)
 {
+    if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
 
     const int3 start = acGetMinNN(device->local_config);
@@ -968,6 +981,9 @@ acDeviceReduceVec(const Device device, const Stream stream, const ReductionType 
                   const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                   const VertexBufferHandle vtxbuf2, AcReal* result)
 {
+    if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
     acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, result);
 
     switch (rtype) {
@@ -1000,6 +1016,10 @@ acDeviceReduceVecScalNotAveraged(const Device device, const Stream stream,
                                  const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
                                  const VertexBufferHandle vtxbuf3, AcReal* result)
 {
+    if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf3]) return AC_NOT_ALLOCATED;
     cudaSetDevice(device->id);
 
     const int3 start = acGetMinNN(device->local_config);
@@ -1018,6 +1038,10 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
                       const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
                       AcReal* result)
 {
+    if(!vtxbuf_is_alive[vtxbuf0]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf1]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf2]) return AC_NOT_ALLOCATED;
+    if(!vtxbuf_is_alive[vtxbuf3]) return AC_NOT_ALLOCATED;
     acDeviceReduceVecScalNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
                                      result);
 

@@ -2203,7 +2203,7 @@ acGridReduceScal(const Stream stream, const ReductionType rtype,
     acGridSynchronizeStream(STREAM_ALL);
 
     AcReal local_result;
-    acDeviceReduceScalNotAveraged(device, stream, rtype, vtxbuf_handle, &local_result);
+    if (acDeviceReduceScalNotAveraged(device, stream, rtype, vtxbuf_handle, &local_result) == AC_NOT_ALLOCATED) return AC_NOT_ALLOCATED;
 
     return distributedScalarReduction(local_result, rtype, result);
 }
@@ -2217,7 +2217,7 @@ acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBuff
     acGridSynchronizeStream(STREAM_ALL);
 
     AcReal local_result;
-    acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, &local_result);
+    if (acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, &local_result) == AC_NOT_ALLOCATED) return AC_NOT_ALLOCATED;
 
     return distributedScalarReduction(local_result, rtype, result);
 }
@@ -2233,8 +2233,8 @@ acGridReduceVecScal(const Stream stream, const ReductionType rtype,
     acGridSynchronizeStream(STREAM_ALL);
 
     AcReal local_result;
-    acDeviceReduceVecScalNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
-                                     &local_result);
+    if (acDeviceReduceVecScalNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
+                                     &local_result) == AC_NOT_ALLOCATED) return AC_NOT_ALLOCATED;
 
     return distributedScalarReduction(local_result, rtype, result);
 }
@@ -2889,6 +2889,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
     for (int field = 0; field < NUM_FIELDS; ++field) {
 
+
         acDeviceSynchronizeStream(device, STREAM_ALL);
 
         const int3 slice_volume = (int3){
@@ -3295,6 +3296,8 @@ AcResult
 acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* dir,
                                   const char* label, const AccessType type)
 {
+
+    if(!vtxbuf_is_alive[vtxbuf]) return AC_NOT_ALLOCATED;
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
@@ -3495,6 +3498,7 @@ AcResult
 acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, const char* dir,
                                              const char* label, const AccessType type)
 {
+    if(!vtxbuf_is_alive[vtxbuf]) return AC_NOT_ALLOCATED;
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
@@ -3599,6 +3603,7 @@ AcResult
 acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, const char* dir,
                                             const char* label, const AccessType type)
 {
+    if(!vtxbuf_is_alive[vtxbuf]) return AC_NOT_ALLOCATED;
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
@@ -3775,6 +3780,7 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
     ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
     for (size_t i = 0; i < num_fields; ++i) {
+    	if(!vtxbuf_is_alive[i]) continue;
         const Field field = fields[i];
 
         // Load from file to host memory

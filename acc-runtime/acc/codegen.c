@@ -292,21 +292,28 @@ add_symbol(const NodeType type, const int* tqualifiers, const size_t n_tqualifie
    const int field_index = get_symbol_index(NODE_VARIABLE_ID, id, FIELD);
    bool is_auxiliary = true;
    bool is_communicated = false;
+   bool is_dead         = true;
+   //TP: a field is dead if its existence does not have any observable effect on the DSL computation
+   //For now it means that the field is not read, no stencils called on it and not written out
    for(size_t k = 0; k < num_kernels; ++k)
    {
+	   const int written        = written_fields[field_index + num_fields*k];
+	   const int input_accessed = (read_fields[field_index + num_fields*k] || field_has_stencil_op[field_index + num_fields*k]);
 	   is_auxiliary &= (!written_fields[field_index + num_fields*k] || !field_has_stencil_op[field_index + num_fields*k]);
 	   is_communicated |= field_has_stencil_op[field_index + num_fields*k];
+	   const bool should_be_alive = written_fields[field_index + num_fields*k] || field_has_stencil_op[field_index + num_fields*k] || read_fields[field_index + num_fields*k];
+	   if(is_dead && field_index == 11 && should_be_alive)
+		   printf("NOT DEAD BECAUSE OF KERNEL: %ld,%d,%d\n",k,written,input_accessed);
+
+	   is_dead      &= !should_be_alive;
+
    }
-   if(is_auxiliary)
-   {
-	push_int(&symbol_table[num_symbols[current_nest]-1].tqualifiers, AUXILIARY);
-   	if(is_communicated)
-   		push_int(&symbol_table[num_symbols[current_nest]-1].tqualifiers, COMMUNICATED);
-   }
-   else
-   {
+   if(is_communicated)
    	push_int(&symbol_table[num_symbols[current_nest]-1].tqualifiers, COMMUNICATED);
-   }
+   if(is_auxiliary)
+	push_int(&symbol_table[num_symbols[current_nest]-1].tqualifiers, AUXILIARY);
+   if(is_dead)
+	push_int(&symbol_table[num_symbols[current_nest]-1].tqualifiers, DEAD);
 
 
 
@@ -2041,7 +2048,7 @@ get_fields_included(const ASTNode* func_call, const char* boundconds_name)
 		for(size_t field = 0; field < num_fields; ++field)
 		{
 			res.out[field] |= written_fields[field + num_fields*kernel_index];
-			res.in[field]  |= read_fields[field + num_fields*kernel_index];
+			res.in[field]  |= read_fields[field + num_fields*kernel_index] || field_has_stencil_op[field + num_fields*kernel_index];
 		}
 	//if rest_fields include all 
 	//at the moment not supported
@@ -2143,7 +2150,7 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
 	}
 	const size_t num_of_rest_params = params_info.expr.size;
         free_func_params_info(&params_info);
-	fprintf(fp,"Kernel %s_%s()\n{\n",prefix,func_name);
+	fprintf(fp,"boundary_condition Kernel %s_%s()\n{\n",prefix,func_name);
 	fprintf(fp,"\t%s(",dfunc_name);
 	for(size_t j = 0; j <num_of_rest_params; ++j)
 	{
@@ -2236,12 +2243,16 @@ gen_halo_exchange_and_boundconds(
 		bool need_to_communicate = false;
 		char communicated_fields_str[40000];
 		sprintf(communicated_fields_str,"{");
+		//TP: To check the boundary of periodicity we need some field that is communicated to check are the periodic boundaries
+		int one_communicated_field = -1;
 		for(size_t i = 0; i < fields.size; ++i)
 		{
 			const int field = fields.data[i];
-			need_to_communicate |= int_vec_contains(communicated_fields,field);
-			if(int_vec_contains(communicated_fields,field))
+			bool communicated = int_vec_contains(communicated_fields,field);
+			need_to_communicate |= communicated;
+			if(communicated)
 			{
+				one_communicated_field = field;
 				const char* field_str = get_symbol_by_index(NODE_VARIABLE_ID,field,FIELD)->identifier;
 				strcatprintf(communicated_fields_str,"%s,",field_str);
 			}
@@ -2251,9 +2262,9 @@ gen_halo_exchange_and_boundconds(
 		{
 			strcatprintf(res,"acHaloExchange(%s),\n",communicated_fields_str);
 
-			const char* x_boundcond = field_boundconds[0 + num_fields*0];
-			const char* y_boundcond = field_boundconds[0 + num_fields*1];
-			const char* z_boundcond = field_boundconds[0 + num_fields*2];
+			const char* x_boundcond = field_boundconds[one_communicated_field + num_fields*0];
+			const char* y_boundcond = field_boundconds[one_communicated_field + num_fields*1];
+			const char* z_boundcond = field_boundconds[one_communicated_field + num_fields*2];
 
 			if(!strcmp(x_boundcond,"periodic") || !strcmp(y_boundcond,"periodic") || !strcmp(z_boundcond,"periodic"))
 			{
@@ -3377,7 +3388,7 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
         if (n_tqualifiers)
 	  for(size_t i=0; i<n_tqualifiers;++i)
 	  {
-		if(tqualifiers[i] != BOUNDARY_CONDITION && tqualifiers[i] != ELEMENTAL)
+		if(tqualifiers[i] != BOUNDARY_CONDITION && tqualifiers[i] != ELEMENTAL && tqualifiers[i] != UTILITY)
           		fprintf(stream, "%s ", qualifier_to_str(tqualifiers[i]));
 	  }
 
@@ -4284,61 +4295,107 @@ gen_field_info(FILE* fp)
 
   // Enums
   int num_of_communicated_fields=0;
-  int num_of_fields=0;
+  size_t num_of_fields=0;
   bool field_is_auxiliary[256];
   bool field_is_communicated[256];
+  int_vec alive_fields = VEC_INITIALIZER;
+  int_vec dead_fields = VEC_INITIALIZER;
   string_vec field_names = VEC_INITIALIZER;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   {
     if(symbol_table[i].tspecifier_token == FIELD){
       push(&field_names, symbol_table[i].identifier);
       const char* name = symbol_table[i].identifier;
-      const bool is_aux = int_vec_contains(symbol_table[i].tqualifiers,AUXILIARY);
-      field_is_auxiliary[num_of_fields] = is_aux;
+      const bool is_aux  = int_vec_contains(symbol_table[i].tqualifiers,AUXILIARY);
       const bool is_comm = int_vec_contains(symbol_table[i].tqualifiers,COMMUNICATED);
-      num_of_communicated_fields += is_comm;
+      const bool is_dead = int_vec_contains(symbol_table[i].tqualifiers,DEAD);
+      field_is_auxiliary[num_of_fields]    = is_aux;
       field_is_communicated[num_of_fields] = is_comm;
+      num_of_communicated_fields           += is_comm;
+      if(is_dead) push_int(&dead_fields,num_of_fields);
+      else        push_int(&alive_fields,num_of_fields);
       ++num_of_fields;
     }
   }
   fprintf(fp, "typedef enum {");
-  //first communicated fields
-  for(int i=0;i<num_of_fields;++i)
-        fprintf(fp, "%s,",field_names.data[i]);
+  //TP: the compiler is allowed to move dead field declarations till the end
+  //TP: this way the user can easily get all alive fields with NUM_ALIVE_FIELDS
+  //TP: still a TODO should NUM_VTXBUF_HANDLES be the same as NUM_ALIVE_FIELDS, should try since would make live easier
+  for(size_t i = 0; i < alive_fields.size; ++i)
+	  fprintf(fp,"%s,",field_names.data[alive_fields.data[i]]);
+  for(size_t i = 0; i < dead_fields.size; ++i)
+	  fprintf(fp,"%s,",field_names.data[dead_fields.data[i]]);
 
-  fprintf(fp, "NUM_FIELDS=%d,", num_of_fields);
+  const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
+  if(has_optimization_info)
+  	fprintf(fp, "NUM_FIELDS=%ld,", alive_fields.size);
+  else
+  	fprintf(fp, "NUM_FIELDS=%ld,", num_of_fields);
+  fprintf(fp, "NUM_ALL_FIELDS=%ld,", num_of_fields);
+  fprintf(fp, "NUM_DEAD_FIELDS=%ld,", num_of_fields-alive_fields.size);
   fprintf(fp, "NUM_COMMUNICATED_FIELDS=%d,", num_of_communicated_fields);
   fprintf(fp, "} Field;\n");
 
   fprintf(fp, "static const bool vtxbuf_is_auxiliary[] = {");
 
-  for(int i=0;i<num_of_fields;++i)
-    if(field_is_auxiliary[i])
+  for(size_t i = 0; i < alive_fields.size; ++i)
+  {
+    if(field_is_auxiliary[alive_fields.data[i]])
         fprintf(fp, "%s,", "true");
     else
+        fprintf(fp, "%s,", "false");
+  }
+  for(size_t i = 0; i < dead_fields.size; ++i)
         fprintf(fp, "%s,", "false");
   fprintf(fp, "};");
 
   fprintf(fp, "static const bool vtxbuf_is_communicated[] = {");
-  for(int i=0;i<num_of_fields;++i)
-    if(field_is_communicated[i])
+  for(size_t i = 0; i < alive_fields.size; ++i)
+  {
+    if(field_is_communicated[alive_fields.data[i]])
         fprintf(fp, "%s,", "true");
     else
         fprintf(fp, "%s,", "false");
+  }
+  for(size_t i = 0; i < dead_fields.size; ++i)
+        fprintf(fp, "%s,", "false");
+
   fprintf(fp, "};");
+
+  fprintf(fp, "static const bool vtxbuf_is_alive[] = {");
+
+  for(size_t i = 0; i < alive_fields.size; ++i)
+        fprintf(fp, "%s,", "true");
+  for(size_t i = 0; i < dead_fields.size; ++i)
+        fprintf(fp, "%s,", "false");
+
+  fprintf(fp, "};");
+
   FILE* fp_vtxbuf_is_comm_func = fopen("vtxbuf_is_communicated_func.h","w");
   fprintf(fp_vtxbuf_is_comm_func ,"static __device__ constexpr __forceinline__ bool is_communicated(Field field) {\n"
              "switch(field)"
              "{");
-  for(int i=0;i<num_of_fields;++i)
+  for(size_t i=0;i<alive_fields.size;++i)
   {
-    const char* ret_val = (field_is_communicated[i]) ? "true" : "false";
-    fprintf(fp_vtxbuf_is_comm_func,"case(%s): return %s;\n", field_names.data[i], ret_val);
+    const int field = alive_fields.data[i];
+    const char* ret_val = (field_is_communicated[field]) ? "true" : "false";
+    fprintf(fp_vtxbuf_is_comm_func,"case(%s): return %s;\n", field_names.data[field], ret_val);
   }
   fprintf(fp_vtxbuf_is_comm_func,"default: return false;\n");
   fprintf(fp_vtxbuf_is_comm_func, "}\n}\n");
 
   fclose(fp_vtxbuf_is_comm_func);
+
+  //TP: names generated here since fields might be shuffled because of DEAD fields
+  fp = fopen("field_names.h","w");
+  fprintf(fp,"static const char* field_names[] __attribute__((unused)) = {");
+  for(size_t i = 0; i < alive_fields.size; ++i)
+	  fprintf(fp,"\"%s\",",field_names.data[alive_fields.data[i]]);
+  for(size_t i = 0; i < dead_fields.size; ++i)
+	  fprintf(fp,"\"%s\",",field_names.data[dead_fields.data[i]]);
+  fprintf(fp,"};\n");
+  fprintf(fp, "static const char** vtxbuf_names = field_names;\n");
+  fclose(fp);
 }
 // Generate User Defines
 static void
@@ -4400,15 +4457,28 @@ gen_user_defines(const ASTNode* root, const char* out)
     if (symbol_table[i].tspecifier_token == KERNEL)
       fprintf(fp, "KERNEL_%s,", symbol_table[i].identifier);
   fprintf(fp, "NUM_KERNELS} AcKernel;");
+
+  fprintf(fp, "static const bool skip_kernel_in_analysis[NUM_KERNELS] = {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].tspecifier_token == KERNEL)
+    {
+      if (int_vec_contains(symbol_table[i].tqualifiers,UTILITY))
+	      fprintf(fp,"true,");
+      else
+	      fprintf(fp,"false,");
+    }
+  fprintf(fp, "};");
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
   // START---------------------------
 
 
   // Enum strings (convenience)
   gen_names("stencil",STENCIL,fp);
-  gen_names("field", FIELD,fp);
   gen_names("work_buffer",WORK_BUFFER,fp);
   gen_names("kernel",KERNEL,fp);
+  //TP: field names have to be generated differently since they might get reorder because of dead fields
+  //gen_names("field", FIELD,fp);
+  fprintf(fp,"\n#include \"field_names.h\"\n");
 
 
   for (size_t i = 0; i < s_info.user_structs.size; ++i)
@@ -4479,7 +4549,6 @@ gen_user_defines(const ASTNode* root, const char* out)
   fprintf(fp, "\n// Redefined for backwards compatibility START\n");
   fprintf(fp, "#define NUM_VTXBUF_HANDLES (NUM_FIELDS)\n");
   fprintf(fp, "typedef Field VertexBufferHandle;\n");
-  fprintf(fp, "static const char** vtxbuf_names = field_names;\n");
   // ASTAROTH 2.0 BACKWARDS COMPATIBILITY BLOCK
   // END-----------------------------
 
@@ -5940,7 +6009,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
     assert(tmp);
     fprintf(tmp,
             "static int "
-            "stencils_accessed[NUM_KERNELS][NUM_FIELDS][NUM_STENCILS] = {");
+            "stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS][NUM_STENCILS] = {");
     for (size_t i = 0; i < num_kernels; ++i)
       for (size_t j = 0; j < num_fields; ++j)
         for (size_t k = 0; k < num_stencils; ++k)
@@ -5949,7 +6018,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 
     fprintf(tmp,
             "static int "
-            "previous_accessed[NUM_KERNELS][NUM_FIELDS] = {");
+            "previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS] = {");
     for (size_t i = 0; i < num_kernels; ++i)
       for (size_t j = 0; j < num_fields; ++j)
           fprintf(tmp, "[%lu][%lu] = 1,", i, j);
@@ -5965,7 +6034,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
       assert(tmp);
       fprintf(tmp,
               "static int "
-              "stencils_accessed[NUM_KERNELS][NUM_FIELDS][NUM_STENCILS] = {");
+              "stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS][NUM_STENCILS] = {");
       for (size_t i = 0; i < num_kernels; ++i)
         for (size_t j = 0; j < num_fields; ++j)
           for (size_t k = 0; k < num_stencils; ++k)
@@ -6048,7 +6117,6 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 
   //gen_dfunc_internal_names(root);
   //inline_dfuncs(root);
-
 
   symboltable_reset();
   traverse(root,

@@ -543,14 +543,12 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
   }
 #else
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    //Allocate auxilary fields
-    //They need only a single copy so out can point to in
+    device_malloc((void**) &vba.in[i],bytes);
+    //Auxiliary fields need only a single copy so out can point to in
     if (vtxbuf_is_auxiliary[i])
     {
-      device_malloc((void**) &vba.in[i],bytes);
       vba.out[i] = vba.in[i];
     }else{
-      device_malloc((void**) &vba.in[i],bytes);
       device_malloc((void**) &vba.out[i],bytes);
     }
   }
@@ -613,7 +611,9 @@ struct free_arrays
 void
 acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 {
-  for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) { device_free(&(vba->in[i]), vba->bytes);
+  for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) { 
+    //TP: if dead then not allocated and thus nothing to free
+    device_free(&(vba->in[i]), vba->bytes);
     if (vtxbuf_is_auxiliary[i])
       vba->out[i] = NULL;
     else

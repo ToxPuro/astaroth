@@ -64,6 +64,7 @@ void strip_whitespace(char *str) {
 "inline"                { return INLINE; } /* Type qualifiers */
 "elemental"             { return ELEMENTAL; } /* Type qualifiers */
 "boundary_condition"    { return BOUNDARY_CONDITION; } /* Type qualifiers */
+"utility"               { return UTILITY; } /* Type qualifiers */
 "Sum"                   { return SUM; }
 "Max"                   { return MAX; }
 "communicated"          { return COMMUNICATED; }
