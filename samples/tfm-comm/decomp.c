@@ -31,12 +31,12 @@ void
 acDecompositionInfoPrint(const AcDecompositionInfo info)
 {
     printf("AcDecompositionInfo %p\n", &info);
-    acPrint_size_t("\tndims", info.ndims);
-    acPrint_size_t("\tnlayers", info.nlayers);
-    acPrintArray_size_t("\tglobal_dims", info.ndims, info.global_dims);
-    acPrintArray_size_t("\tlocal_dims", info.ndims, info.local_dims);
-    acPrintArray_size_t("\tdecomposition", info.ndims * info.nlayers, info.decomposition);
-    acPrintArray_size_t("\tglobal_decomposition", info.ndims, info.global_decomposition);
+    print("\tndims", info.ndims);
+    print("\tnlayers", info.nlayers);
+    print_array("\tglobal_dims", info.ndims, info.global_dims);
+    print_array("\tlocal_dims", info.ndims, info.local_dims);
+    print_array("\tdecomposition", info.ndims * info.nlayers, info.decomposition);
+    print_array("\tglobal_decomposition", info.ndims, info.global_decomposition);
 }
 
 static void

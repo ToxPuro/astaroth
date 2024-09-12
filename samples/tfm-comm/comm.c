@@ -10,29 +10,19 @@
 #include <stdio.h>
 #include <string.h> // memset
 
+#define USE_RANK_REORDERING (1)
+
 #define SUCCESS (0)
 #define FAILURE (-1)
-
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
-#define USE_RANK_REORDERING (0)
 
-static void
-print(const char* label, const int count, const int* arr)
+static MPI_Comm
+create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
+                                const size_t global_dims[])
 {
-    printf("%s: (", label);
-    for (int i = 0; i < count; ++i)
-        printf("%d%s", arr[i], i < count - 1 ? ", " : "");
-    printf(")\n");
-}
-
-int
-comm_run(void)
-{
-    MPI_Init(NULL, NULL);
-
     int rank, nprocs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(parent, &rank);
+    MPI_Comm_size(parent, &nprocs);
 
 #if USE_RANK_REORDERING
     // Hierarchical decomposition
@@ -40,26 +30,16 @@ comm_run(void)
     const size_t gpus_per_node = 4;
     const size_t nnodes        = nprocs / (gcds_per_gpu * gpus_per_node);
     ERRCHK(gcds_per_gpu * gpus_per_node * nnodes == as_size_t(nprocs));
-    const size_t global_dims[]          = {128, 128, 128};
+
     const size_t partitions_per_layer[] = {gcds_per_gpu, gpus_per_node, nnodes};
-    const size_t ndims                  = ARRAY_SIZE(global_dims);
     const size_t nlayers                = ARRAY_SIZE(partitions_per_layer);
     AcDecompositionInfo info            = acDecompositionInfoCreate(ndims, global_dims, nlayers,
                                                                     partitions_per_layer);
     if (rank == 0)
         acDecompositionInfoPrint(info);
 
-    int dims[] = {
-        (int)info.global_decomposition[0],
-        (int)info.global_decomposition[1],
-        (int)info.global_decomposition[2],
-    };
-    const int periods[] = {1, 1, 1};
-
-    MPI_Dims_create(nprocs, ndims, dims);
-
     int keys[nprocs];
-    for (size_t i = 0; i < prod(info.ndims, info.global_decomposition); ++i) {
+    for (size_t i = 0; i < as_size_t(nprocs); ++i) {
 
         int64_t pid[info.ndims];
         acGetPid3D(i, info, info.ndims, pid);
@@ -79,34 +59,77 @@ comm_run(void)
             printf("%zu -> %zu", i, row_wise_i);
 
             reverse(info.ndims, pid_unsigned);
-            acPrintArray_size_t("", info.ndims, pid_unsigned);
-            fflush(stdout);
+            print_array("", info.ndims, pid_unsigned);
         }
     }
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    acDecompositionInfoDestroy(&info);
+    fflush(stdout);
+    MPI_Barrier(parent);
 
     MPI_Comm reordered_comm;
-    MPI_Comm_split(MPI_COMM_WORLD, 0, keys[rank], &reordered_comm);
+    MPI_Comm_split(parent, 0, keys[rank], &reordered_comm);
+
+    int dims[info.ndims], periods[info.ndims];
+    as_int_array(info.ndims, info.global_decomposition, dims);
+    iset(1, info.ndims, periods);
 
     MPI_Comm comm_cart;
     MPI_Cart_create(reordered_comm, ndims, dims, periods, 0, &comm_cart);
     MPI_Comm_free(&reordered_comm);
-#else
-    MPI_Comm reordered_comm = MPI_COMM_WORLD;
-    const int ndims         = 3;
-    int dims[ndims];
-    memset(dims, 0, ndims * sizeof(dims[0]));
 
+    // Check that the mapping is correct
+    // for (size_t i = 0; i < as_size_t(nprocs); ++i) {
+
+    //     int64_t a[info.ndims];
+    //     acGetPid3D(i, info, info.ndims, a);
+
+    //     int coords[info.ndims];
+    //     as_int_array
+    //     int new_rank;
+    //     MPI_Cart_rank(comm_cart, )
+
+    //     int new_rank;
+    //     MPI_Comm_rank(comm_cart, &new_rank);
+
+    //     int b[info.ndims];
+    //     MPI_Cart_coords(comm_cart, new_rank, info.ndims, b);
+
+    //     if (rank == 0)
+    //         for (size_t j = 0; j < info.ndims; ++j) {
+    //             print_i64_t_array("a", info.ndims, a);
+    //             print_array("b", info.ndims, b);
+    //             ERRCHK(a[j] == b[j]);
+    //         }
+    // }
+
+    acDecompositionInfoDestroy(&info);
+#else
+    (void)global_dims; // Unused
+    int dims[ndims], periods[ndims];
+    iset(0, ndims, dims);
+    iset(1, ndims, periods);
     MPI_Dims_create(nprocs, ndims, dims);
+
     if (rank == 0)
-        print("Mapping", ndims, dims);
-    int periods[] = {1, 1, 1};
+        print_array("Mapping", ndims, dims);
 
     MPI_Comm comm_cart;
-    MPI_Cart_create(reordered_comm, ndims, dims, periods, 0, &comm_cart);
+    MPI_Cart_create(parent, ndims, dims, periods, 0, &comm_cart);
 #endif
+    return comm_cart;
+}
+
+int
+comm_run(void)
+{
+    MPI_Init(NULL, NULL);
+
+    int rank, nprocs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+
+    const size_t global_dims[] = {128, 128, 128};
+    const size_t ndims         = ARRAY_SIZE(global_dims);
+    MPI_Comm comm_cart = create_rank_reordered_cart_comm(MPI_COMM_WORLD, ndims, global_dims);
 
     for (int i = 0; i < nprocs; ++i) {
         if (i == rank) {
@@ -115,7 +138,7 @@ comm_run(void)
             int coords[ndims];
             MPI_Cart_coords(comm_cart, new_rank, ndims, coords);
             printf("Hello from %d. New rank %d. ", rank, new_rank);
-            print("Mapping", ndims, coords);
+            print_array("Mapping", ndims, coords);
 
             fflush(stdout);
         }

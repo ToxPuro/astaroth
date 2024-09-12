@@ -1,5 +1,6 @@
 ## CMake settings
 cmake_minimum_required(VERSION 3.0)
+set(CMAKE_C_STANDARD 11)
 
 ## Project settings
 project(tfm-comm C)

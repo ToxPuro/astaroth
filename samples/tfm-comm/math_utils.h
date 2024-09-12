@@ -26,3 +26,5 @@ void reverse(const size_t count, size_t arr[]);
 void copy(const size_t count, const size_t in[], size_t out[]);
 
 void set(const size_t value, const size_t count, size_t arr[]);
+
+void iset(const int value, const size_t count, int arr[]);

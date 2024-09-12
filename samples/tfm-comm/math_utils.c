@@ -136,3 +136,10 @@ set(const size_t value, const size_t count, size_t arr[])
     for (size_t i = 0; i < count; ++i)
         arr[i] = value;
 }
+
+void
+iset(const int value, const size_t count, int arr[])
+{
+    for (size_t i = 0; i < count; ++i)
+        arr[i] = value;
+}
