@@ -1,10 +1,5 @@
 #include "comm.h"
 
-#define SUCCESS (0)
-#define FAILURE (-1)
-
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
-
 #include "decomp.h"
 #include "errchk.h"
 #include "math_utils.h"
@@ -13,6 +8,13 @@
 
 #include <mpi.h>
 #include <stdio.h>
+#include <string.h> // memset
+
+#define SUCCESS (0)
+#define FAILURE (-1)
+
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
+#define USE_RANK_REORDERING (0)
 
 static void
 print(const char* label, const int count, const int* arr)
@@ -32,18 +34,8 @@ comm_run(void)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
-    // Decompose
-    // int dims[NDIMS];
-    // decompose(nprocs, NDIMS, dims);
-    // const int periods[] = {[0 ... NDIMS - 1] = 1};
-    // // print("Periods", sizeof(periods)/sizeof(periods[0]), periods);
-
-    // MPI_Dims_create(nprocs, NDIMS, dims);
-    // if (rank == 0)
-    //     print("MPI dims", NDIMS, dims);
-    // MPI_Barrier(MPI_COMM_WORLD);
-
-    // Reorder
+#if USE_RANK_REORDERING
+    // Hierarchical decomposition
     const size_t gcds_per_gpu  = 2;
     const size_t gpus_per_node = 4;
     const size_t nnodes        = nprocs / (gcds_per_gpu * gpus_per_node);
@@ -85,6 +77,8 @@ comm_run(void)
 
         if (rank == 0) {
             printf("%zu -> %zu", i, row_wise_i);
+
+            reverse(info.ndims, pid_unsigned);
             acPrintArray_size_t("", info.ndims, pid_unsigned);
             fflush(stdout);
         }
@@ -98,11 +92,26 @@ comm_run(void)
 
     MPI_Comm comm_cart;
     MPI_Cart_create(reordered_comm, ndims, dims, periods, 0, &comm_cart);
+    MPI_Comm_free(&reordered_comm);
+#else
+    MPI_Comm reordered_comm = MPI_COMM_WORLD;
+    const int ndims         = 3;
+    int dims[ndims];
+    memset(dims, 0, ndims * sizeof(dims[0]));
+
+    MPI_Dims_create(nprocs, ndims, dims);
+    if (rank == 0)
+        print("Mapping", ndims, dims);
+    int periods[] = {1, 1, 1};
+
+    MPI_Comm comm_cart;
+    MPI_Cart_create(reordered_comm, ndims, dims, periods, 0, &comm_cart);
+#endif
 
     for (int i = 0; i < nprocs; ++i) {
         if (i == rank) {
             int new_rank;
-            MPI_Comm_rank(reordered_comm, &new_rank);
+            MPI_Comm_rank(comm_cart, &new_rank);
             int coords[ndims];
             MPI_Cart_coords(comm_cart, new_rank, ndims, coords);
             printf("Hello from %d. New rank %d. ", rank, new_rank);
@@ -112,6 +121,7 @@ comm_run(void)
         }
         MPI_Barrier(MPI_COMM_WORLD);
     }
+    MPI_Comm_free(&comm_cart);
 
     MPI_Finalize();
     return SUCCESS;
