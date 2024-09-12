@@ -76,29 +76,34 @@ create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
     MPI_Cart_create(reordered_comm, ndims, dims, periods, 0, &comm_cart);
     MPI_Comm_free(&reordered_comm);
 
-    // Check that the mapping is correct
+    // // Check that the mapping is correct (TODO)
     // for (size_t i = 0; i < as_size_t(nprocs); ++i) {
 
     //     int64_t a[info.ndims];
     //     acGetPid3D(i, info, info.ndims, a);
 
     //     int coords[info.ndims];
-    //     as_int_array
-    //     int new_rank;
-    //     MPI_Cart_rank(comm_cart, )
+    //     as_int_array(info.ndims, a, coords);
 
     //     int new_rank;
-    //     MPI_Comm_rank(comm_cart, &new_rank);
+    //     MPI_Cart_rank(comm_cart, coords, &new_rank);
 
-    //     int b[info.ndims];
-    //     MPI_Cart_coords(comm_cart, new_rank, info.ndims, b);
+    //     set(0, info.ndims, coords);
+    //     MPI_Cart_coords(comm_cart, new_rank, info.ndims, coords);
 
-    //     if (rank == 0)
-    //         for (size_t j = 0; j < info.ndims; ++j) {
-    //             print_i64_t_array("a", info.ndims, a);
-    //             print_array("b", info.ndims, b);
-    //             ERRCHK(a[j] == b[j]);
-    //         }
+    //     ERRCHK(i == new_rank);
+    //     //     int new_rank;
+    //     // MPI_Comm_rank(comm_cart, &new_rank);
+
+    //     // int b[info.ndims];
+    //     // MPI_Cart_coords(comm_cart, new_rank, info.ndims, b);
+
+    //     // if (rank == 0)
+    //     //     for (size_t j = 0; j < info.ndims; ++j) {
+    //     //         print_i64_t_array("a", info.ndims, a);
+    //     //         print_array("b", info.ndims, b);
+    //     //         ERRCHK(a[j] == b[j]);
+    //     //     }
     // }
 
     acDecompositionInfoDestroy(&info);
