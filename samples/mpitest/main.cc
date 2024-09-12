@@ -66,7 +66,7 @@ main(void)
     	for(int i = 0; i < 2; ++i)
     		int_arr[i] = i;
     	acLoadCompInfo(AC_lspherical_coords,true,&comp_info);
-    	acLoadCompInfo(AC_runtime_int,1,&comp_info);
+    	acLoadCompInfo(AC_runtime_int,0,&comp_info);
     	acLoadCompInfo(AC_runtime_real,0.12345,&comp_info);
     	acLoadCompInfo(AC_runtime_real3,{0.12345,0.12345,0.12345},&comp_info);
     	acLoadCompInfo(AC_runtime_int3,{0,1,2},&comp_info);
@@ -74,11 +74,11 @@ main(void)
     	acLoadCompInfo(AC_runtime_int_arr,int_arr,&comp_info);
     	acLoadCompInfo(AC_runtime_bool_arr,bool_arr,&comp_info);
 #if AC_USE_HIP
-    	const char* build_str = "-DUSE_HIP=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
+    	const char* build_str = "-DUSE_HIP=ON  -DOPTIMIZE_FIELDS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #else
-    	const char* build_str = "-DUSE_HIP=OFF -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
+    	const char* build_str = "-DUSE_HIP=OFF -DOPTIMIZE_FIELDS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #endif
-    	acCompile(build_str,comp_info);
+	acCompile(build_str,comp_info);
     }
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -148,7 +148,7 @@ main(void)
     }
     fflush(stdout);
 
-    // Dryrun
+    //// Dryrun
     const AcReal dt = (AcReal)FLT_EPSILON;
     acGridIntegrate(STREAM_DEFAULT, dt);
 
@@ -174,6 +174,40 @@ main(void)
 
         acHostMeshApplyPeriodicBounds(&model);
         const AcResult res = acVerifyMesh("Integration", model, candidate);
+        if (res != AC_SUCCESS) {
+            retval = res;
+            WARNCHK_ALWAYS(retval);
+        }
+    }
+    fflush(stdout);
+
+    AcTaskGraph* dsl_graph = acGetDSLTaskGraph(AC_rhs);
+    // Dryrun
+    acDeviceSetInput(acGridGetDevice(),AcInputdt,dt);
+    acGridExecuteTaskGraph(dsl_graph,1);
+
+    // Integration
+    if (pid == 0)
+        acHostMeshRandomize(&model);
+
+    acGridLoadMesh(STREAM_DEFAULT, model);
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+
+    // Device integrate
+    for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
+    	acGridExecuteTaskGraph(dsl_graph,3);
+
+    acGridPeriodicBoundconds(STREAM_DEFAULT);
+    acGridStoreMesh(STREAM_DEFAULT, &candidate);
+    if (pid == 0) {
+        acHostMeshApplyPeriodicBounds(&model);
+
+        // Host integrate
+        for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
+            acHostIntegrateStep(model, dt);
+
+        acHostMeshApplyPeriodicBounds(&model);
+        const AcResult res = acVerifyMesh("DSL ComputeSteps", model, candidate);
         if (res != AC_SUCCESS) {
             retval = res;
             WARNCHK_ALWAYS(retval);

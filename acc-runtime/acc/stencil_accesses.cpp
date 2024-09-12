@@ -1,4 +1,7 @@
 #define AC_RUNTIME_SOURCE
+#ifndef AC_IN_AC_LIBRARY
+#define AC_IN_AC_LIBRARY
+#endif
 
 #include <assert.h>
 /*
@@ -165,6 +168,7 @@ __ballot(bool val)
 #include "math_utils.h"
  
 #include "acc_runtime.h"
+typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 #include "user_kernel_declarations.h"
 
 constexpr AcMeshInfo

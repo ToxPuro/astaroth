@@ -16,6 +16,9 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifndef AC_INSIDE_AC_LIBRARY 
+#define AC_INSIDE_AC_LIBRARY 
+#endif
 #include "astaroth.h"
 
 #include <string.h> // strcmp
@@ -494,16 +497,9 @@ acHostMeshDestroy(AcMesh* mesh)
 */
 
 size_t
-acGetKernelId(const Kernel kernel)
+acGetKernelId(const AcKernel kernel)
 {
-    const Kernel* kernels = acGetKernels();
-    for (size_t id = 0; id < NUM_KERNELS; ++id) {
-        if (kernel == kernels[id])
-            return id;
-    }
-    fprintf(stderr, "acGetKernelId failed: did not find kernel %p from the list of kernels\n",
-            kernel);
-    return (size_t)-1;
+	return (size_t) kernel;
 }
 
 size_t
@@ -517,3 +513,5 @@ acGetKernelIdByName(const char* name)
             name);
     return (size_t)-1;
 }
+
+#include "get_vtxbufs_funcs.h"

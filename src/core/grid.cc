@@ -43,6 +43,9 @@
  * This file contains the grid interface, with algorithms and high level functionality
  * The nitty gritty of the MPI communication and the Task interface is defined in task.h/task.cc
  */
+#ifndef AC_INSIDE_AC_LIBRARY 
+#define AC_INSIDE_AC_LIBRARY 
+#endif
 
 #include "astaroth.h"
 #include "astaroth_utils.h"
@@ -1570,7 +1573,6 @@ get_spacings()
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 {
-    const Kernel* kernels = acGetKernels();
     // ERRCHK(grid.initialized);
     int rank;
     MPI_Comm_rank(astaroth_comm, &rank);
@@ -1681,7 +1683,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 	      auto task = std::make_shared<ComputeTask>(op,0,full_input_region,full_region,device,swap_offset);
               graph->all_tasks.push_back(task);
               //done here since we want to write only to out not to in what launching the taskgraph would do
-              acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, kernels[(int)op.kernel_enum], task->output_region.position, task->output_region.position + task->output_region.dims);
+              acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
 	    }
 	    else
 	    {
@@ -1692,7 +1694,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             	    auto task = std::make_shared<ComputeTask>(op, i, tag, grid_info.nn, device, swap_offset);
             	    graph->all_tasks.push_back(task);
             	    //done here since we want to write only to out not to in what launching the taskgraph would do
-            	    acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, kernels[(int)op.kernel_enum], task->output_region.position, task->output_region.position + task->output_region.dims);
+            	    acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
             	}
 	    }
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
@@ -1914,7 +1916,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
     //make sure after autotuning that out is 0
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-    acGridLaunchKernel(STREAM_DEFAULT, acGetKernelByName("AC_BUILTIN_RESET"), dims.n0,dims.n1);
+    acGridLaunchKernel(STREAM_DEFAULT, KERNEL_AC_BUILTIN_RESET, dims.n0,dims.n1);
     acGridSynchronizeStream(STREAM_ALL);
     return graph;
 }
@@ -2241,7 +2243,7 @@ acGridReduceVecScal(const Stream stream, const ReductionType rtype,
 
 /** */
 AcResult
-acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3 start, const int3 end)
+acGridLaunchKernel(const Stream stream, const AcKernel kernel, const int3 start, const int3 end)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);

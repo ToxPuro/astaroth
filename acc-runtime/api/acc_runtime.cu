@@ -16,7 +16,10 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
+#define AC_INSIDE_AC_LIBRARY 
+
 #include "acc_runtime.h"
+typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
 
@@ -648,9 +651,10 @@ get_kernel_index(const Kernel kernel)
 	return -1;
 }
 AcResult
-acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
+acLaunchKernel(AcKernel kernel_enum, const cudaStream_t stream, const int3 start,
                const int3 end, VertexBufferArray vba)
 {
+  const Kernel kernel = kernels[kernel_enum];
   const int3 n = end - start;
 
   const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
@@ -676,9 +680,10 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
 }
 
 AcResult
-acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
+acBenchmarkKernel(AcKernel kernel_enum, const int3 start, const int3 end,
                   VertexBufferArray vba)
 {
+  const Kernel kernel = kernels[kernel_enum];
   const int3 n = end - start;
 
   const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
@@ -1166,17 +1171,13 @@ getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   return c;
 }
 
-Kernel
-GetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
+AcKernel
+acGetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
 {
 	//#include "user_kernel_ifs.h"
 	//silence unused warnings
 	(void)vba;
-	return kernels[(int) kernel_enum];
-}
-
-const Kernel*
-acGetKernels()
-{
-	return kernels;
+	//TP: for now this is no-op in the future in some cases we choose which kernel to call passed on the input params
+	return kernel_enum;
+	//return kernels[(int) kernel_enum];
 }

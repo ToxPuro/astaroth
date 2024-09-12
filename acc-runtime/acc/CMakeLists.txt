@@ -7,8 +7,9 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 ## Options
-option(OPTIMIZE_MEM_ACCESSES "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time." OFF)
+option(OPTIMIZE_MEM_ACCESSES "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time, runtime compilation lessens this" OFF)
 option(OPTIMIZE_CONDITIONALS "Optimizes conditionals based on kernel input parameters by making copies of kernels for each combination of input params, works well with OPTIMIZE_MEM_ACCESSES since reduces the number of conditional accesses to kernels" OFF)
+option(OPTIMIZE_FIELDS       "Optimizes fields to be auxiliary,(non-)communicated and dead based on writes, reads and stencil accesses in kernels. Pitfalls are conditional accesses and writes, which runtime compilation can lessen" OFF)
 
 set(ACC_COMPILER_PATH $ENV{ACC_COMPILER_PATH})
 #TP: if defined the user already has the executable and has exported a path to it
@@ -60,7 +61,13 @@ else()
 	else()
 		set(OPTIMIZE_CONDITIONALS_VAL 0)
 	endif()
+
+	if (OPTIMIZE_FIELDS)
+		set(OPTIMIZE_FIELDS_VAL 1)
+	else()
+		set(OPTIMIZE_FIELDS_VAL 0)
+	endif()
 	
 	
-	target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=${OPTIMIZE_MEM_ACCESSES_VAL} -DOPTIMIZE_CONDITIONALS=${OPTIMIZE_CONDITIONALS_VAL})
+	target_compile_definitions(acc PRIVATE -DOPTIMIZE_MEM_ACCESSES=${OPTIMIZE_MEM_ACCESSES_VAL} -DOPTIMIZE_CONDITIONALS=${OPTIMIZE_CONDITIONALS_VAL} -DOPTIMIZE_FIELDS=${OPTIMIZE_FIELDS_VAL})
 endif()

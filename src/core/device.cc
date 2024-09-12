@@ -17,6 +17,10 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef AC_INSIDE_AC_LIBRARY 
+#define AC_INSIDE_AC_LIBRARY 
+#endif
+
 #include "astaroth.h"
 #include "../../acc-runtime/api/math_utils.h"
 #include "kernels/kernels.h"
@@ -766,7 +770,7 @@ acDeviceTransferMesh(const Device src_device, const Stream stream, Device dst_de
     return AC_SUCCESS;
 }
 AcResult
-acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kernel,
+acDeviceLaunchKernel(const Device device, const Stream stream, const AcKernel kernel,
                      const int3 start, const int3 end)
 {
     cudaSetDevice(device->id);
@@ -776,7 +780,7 @@ acDeviceLaunchKernel(const Device device, const Stream stream, const Kernel kern
 
 
 AcResult
-acDeviceBenchmarkKernel(const Device device, const Kernel kernel, const int3 start, const int3 end)
+acDeviceBenchmarkKernel(const Device device, const AcKernel kernel, const int3 start, const int3 end)
 {
     cudaSetDevice(device->id);
     return acBenchmarkKernel(kernel, start, end, device->vba);
@@ -834,8 +838,7 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
 
     device->vba.kernel_input_params.twopass_solve_intermediate.step_num = step_number;
     device->vba.kernel_input_params.twopass_solve_intermediate.dt = dt;
-    const Kernel twopass_solve_intermediate = acGetKernelByName("twopass_solve_intermediate");
-    const AcResult res = acLaunchKernel(twopass_solve_intermediate, device->streams[stream], start,
+    const AcResult res = acLaunchKernel(KERNEL_twopass_solve_intermediate, device->streams[stream], start,
                                         end, device->vba);
     if (res != AC_SUCCESS)
         return res;
@@ -845,8 +848,7 @@ acDeviceIntegrateSubstep(const Device device, const Stream stream, const int ste
 
     device->vba.kernel_input_params.twopass_solve_final.step_num = step_number;
     device->vba.kernel_input_params.twopass_solve_final.current_time= current_time;
-    const Kernel twopass_solve_final = acGetKernelByName("twopass_solve_final");
-    return acLaunchKernel(twopass_solve_final, device->streams[stream], start, end, device->vba);
+    return acLaunchKernel(KERNEL_twopass_solve_final, device->streams[stream], start, end, device->vba);
 #endif
 #else
     (void)device;      // Unused

@@ -22,6 +22,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+void
+gen_dlsym(FILE* fp, const char* func_name)
+{
+	fprintf(fp,"*(void**)(&%s) = dlsym(handle,\"%s\");\n",func_name,func_name);
+	fprintf(fp,"if(!%s) fprintf(stderr,\"Astaroth error was not able to load %s\\n\");\n",func_name,func_name);
+}
+
 
 void
 get_executed_conditionals(void);
@@ -275,8 +282,8 @@ add_symbol(const NodeType type, const int* tqualifiers, const size_t n_tqualifie
   symbol_table[num_symbols[current_nest]].tspecifier_token  = (tspecifier) ? tspecifier_token : 0;
   strcpy(symbol_table[num_symbols[current_nest]].identifier, id);
 
-  ++num_symbols[current_nest];
   const bool is_field_without_type_qualifiers = tspecifier_token && tspecifier_token == FIELD && symbol_table[num_symbols[current_nest]].tqualifiers.size == 0;
+  ++num_symbols[current_nest];
   const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
   if(!is_field_without_type_qualifiers)
   	return num_symbols[current_nest]-1;
@@ -299,17 +306,16 @@ add_symbol(const NodeType type, const int* tqualifiers, const size_t n_tqualifie
    {
 	   const int written        = written_fields[field_index + num_fields*k];
 	   const int input_accessed = (read_fields[field_index + num_fields*k] || field_has_stencil_op[field_index + num_fields*k]);
-	   is_auxiliary &= (!written_fields[field_index + num_fields*k] || !field_has_stencil_op[field_index + num_fields*k]);
-	   is_communicated |= field_has_stencil_op[field_index + num_fields*k];
-	   const bool should_be_alive = written_fields[field_index + num_fields*k] || field_has_stencil_op[field_index + num_fields*k] || read_fields[field_index + num_fields*k];
-	   if(is_dead && field_index == 11 && should_be_alive)
-		   printf("NOT DEAD BECAUSE OF KERNEL: %ld,%d,%d\n",k,written,input_accessed);
-
+	   is_auxiliary    &=  OPTIMIZE_FIELDS && (!written_fields[field_index + num_fields*k] || !field_has_stencil_op[field_index + num_fields*k]);
+	   is_communicated |=  !OPTIMIZE_FIELDS || field_has_stencil_op[field_index + num_fields*k];
+	   const bool should_be_alive = (!OPTIMIZE_FIELDS) || written_fields[field_index + num_fields*k] || field_has_stencil_op[field_index + num_fields*k] || read_fields[field_index + num_fields*k];
 	   is_dead      &= !should_be_alive;
 
    }
    if(is_communicated)
+   {
    	push_int(&symbol_table[num_symbols[current_nest]-1].tqualifiers, COMMUNICATED);
+   }
    if(is_auxiliary)
 	push_int(&symbol_table[num_symbols[current_nest]-1].tqualifiers, AUXILIARY);
    if(is_dead)
@@ -896,20 +902,23 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf(fp,"#ifdef __cplusplus\nstatic inline %s acDeviceGetInput(Device device, const %sInputParam& param){ return acDeviceGet%sInput(device,param); }\n#endif\n",datatype_scalar,enum_name, upper_case_name);	
 	fclose(fp);
 	
+	char* func_name;
 	fp = fopen("device_set_input_loads.h","a");
-	fprintf(fp,"*(void**)(&acDeviceSet%sInput) = dlsym(handle,\"acDeviceSet%sInput\");\n",upper_case_name,upper_case_name);
-	fprintf(fp,"if(!acDeviceSet%sInput) fprintf(stderr,\"Astaroth error was not able to load acDeviceSet%sInput\");\n",upper_case_name,upper_case_name);
+	asprintf(&func_name,"acDeviceSet%sInput",upper_case_name);
+	gen_dlsym(fp,func_name);
 	fclose(fp);
 
 	fp = fopen("device_get_input_loads.h","a");
-	fprintf(fp,"*(void**)(&acDeviceGet%sInput) = dlsym(handle,\"acDeviceGet%sInput\");\n",upper_case_name,upper_case_name);
-	fprintf(fp,"if(!acDeviceGet%sInput) fprintf(stderr,\"Astaroth error was not able to load acDeviceGet%sInput\");\n",upper_case_name,upper_case_name);
+	asprintf(&func_name,"acDeviceGet%sInput",upper_case_name);
+	gen_dlsym(fp,func_name);
 	fclose(fp);
 
 	fp = fopen("device_get_output_loads.h","a");
-	fprintf(fp,"*(void**)(&acDeviceGet%sOutput) = dlsym(handle,\"acDeviceGet%sOutput\");\n",upper_case_name,upper_case_name);
-	fprintf(fp,"if(!acDeviceGet%sOutput) fprintf(stderr,\"Astaroth error was not able to load acDeviceGet%sOutput\");\n",upper_case_name,upper_case_name);
+	asprintf(&func_name,"acDeviceGet%sOutput",upper_case_name);
+	gen_dlsym(fp,func_name);
 	fclose(fp);
+
+	free(func_name);
 
 	fp = fopen("dconst_decl.h","a");
 	fprintf(fp,"%s __device__ __forceinline__ DCONST(const %sParam& param){return d_mesh_info.%s_params[(int)param];}\n"
@@ -1821,20 +1830,23 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root, const char* prefi
 		for(int i = 0; i < (int)params_info.types.size-params_offset; ++i)
 		{
 			if(is_dfunc) continue;
-			if(is_number(call_info.expr.data[i]) || is_real(call_info.expr.data[i]))
-				strcatprintf(loader_str, "p.params -> %s.%s = %s;\n", func_name, params_info.expr.data[i], call_info.expr.data[i]);
-			else if(!strcmp(params_info.types.data[i],"AcReal"))
-				strcatprintf(loader_str, "p.params -> %s.%s = acDeviceGetRealInput(acGridGetDevice(),%s);\n", func_name,params_info.expr.data[i], call_info.expr.data[i]);
-			else if(!strcmp(params_info.types.data[i],"int"))
-				strcatprintf(loader_str, "p.params -> %s.%s = acDeviceGetIntInput(acGridGetDevice(),%s); \n", func_name,params_info.expr.data[i], call_info.expr.data[i]);
-			if(!str_vec_contains(*input_symbols,call_info.expr.data[i]))
-			{
-				if(!is_number(call_info.expr.data[i]) && !is_real(call_info.expr.data[i]))
-				{
-					push(input_symbols,call_info.expr.data[i]);
-					push(input_types,params_info.types.data[i]);
-				}
-			}
+
+			char* input_param = strdup(call_info.expr.data[i]);
+			replace_substring(&input_param,"AC_ITERATION_NUMBER","p.step_number");
+			if (is_number(call_info.expr.data[i]) || is_real(call_info.expr.data[i]) || !strcmp(input_param,"p.step_number"))
+				strcatprintf(loader_str, "p.params -> %s.%s = %s;\n", func_name, params_info.expr.data[i], input_param);
+			else
+				strcatprintf(loader_str, "p.params -> %s.%s = acDeviceGetInput(acGridGetDevice(),%s); \n", func_name,params_info.expr.data[i], input_param);
+			free(input_param);
+			//TP: not used anymore TODO: remove
+			//if(!str_vec_contains(*input_symbols,call_info.expr.data[i]))
+			//{
+			//	if(!is_number(call_info.expr.data[i]) && !is_real(call_info.expr.data[i]))
+			//	{
+			//		push(input_symbols,call_info.expr.data[i]);
+			//		push(input_types,params_info.types.data[i]);
+			//	}
+			//}
 		}
 		//TP: disabled for now
 		//add predefined input params for boundcond functions
@@ -1850,6 +1862,15 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root, const char* prefi
 
 		free_func_params_info(&params_info);
 		free_func_params_info(&call_info);
+}
+
+static int_vec field_remappings = VEC_INITIALIZER;
+
+const char*
+get_field_name(const int field)
+{
+	const int correct_field_index = int_vec_get_index(field_remappings,field);
+	return get_symbol_by_index(NODE_VARIABLE_ID,field,FIELD)->identifier;
 }
 	 
 void
@@ -1878,7 +1899,7 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 	{
 		const bool field_in  = (read_fields[field + num_fields*kernel_index] || field_has_stencil_op[field + num_fields*kernel_index]);
 		const bool field_out = (written_fields[field + num_fields*kernel_index]);
-		const char* field_str = get_symbol_by_index(NODE_VARIABLE_ID,field,FIELD)->identifier;
+		const char* field_str = get_field_name(field);
 		strcatprintf(all_fields,"%s,",field_str);
 		if(field_in)
 			strcatprintf(fields_in_str,"%s,",field_str);
@@ -2228,6 +2249,8 @@ get_field_boundconds(const ASTNode* root, const char* boundconds_name, string_ve
 	return res;
 }
 
+
+
 void
 gen_halo_exchange_and_boundconds(
 		char** field_boundconds,
@@ -2317,7 +2340,7 @@ gen_halo_exchange_and_boundconds(
 					for(size_t i = 0; i < fields.size; ++i)
 					{
 						if(!check_symbol_index(NODE_VARIABLE_ID, i, FIELD, COMMUNICATED)) continue;
-						const char* field_str = get_symbol_by_index(NODE_VARIABLE_ID,fields.data[i],FIELD)->identifier;
+						const char* field_str = get_field_name(fields.data[i]);
 						const char* boundcond_str = field_boundconds[fields.data[i] + num_fields*boundcond];
 						if(strcmp(boundcond_str,processed_boundcond)) continue;
 						if(field_boundconds_processed[fields.data[i] + num_fields*boundcond]) continue;
@@ -2437,12 +2460,11 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 
 	for(size_t field = 0; field < num_fields; ++field)
 	{
-		const Symbol* field_sym = get_symbol_by_index(NODE_VARIABLE_ID,field,FIELD);
 		if(!check_symbol_index(NODE_VARIABLE_ID, field, FIELD, COMMUNICATED)) continue;
 		for(int bc = 0; bc < num_boundaries; ++bc)
 			if(!field_boundconds[field + num_fields*bc])
 			{
-				fprintf(stderr,FATAL_ERROR_MESSAGE"Missing boundcond for field: %s at boundary: %s\n",field_sym->identifier,boundary_str(bc));
+				fprintf(stderr,FATAL_ERROR_MESSAGE"Missing boundcond for field: %s at boundary: %s\n",get_field_name(field),boundary_str(bc));
 				exit(EXIT_FAILURE);
 
 			}
@@ -2538,10 +2560,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	char all_fields[4000];
 	all_fields[0] = '\0';
 	for(size_t field = 0; field < num_fields; ++field)
-	{
-		const char* field_str = get_symbol_by_index(NODE_VARIABLE_ID,field,FIELD)->identifier;
-		strcatprintf(all_fields,"%s,",field_str);
-	}
+		strcatprintf(all_fields,"%s,",get_field_name(field));
 	bool* field_written_out_before = (bool*)malloc(sizeof(bool)*num_fields);
 	memset(field_written_out_before,0,sizeof(bool)*num_fields);
 	for(int level_set = 0; level_set < n_level_sets; ++level_set)
@@ -4298,103 +4317,142 @@ gen_field_info(FILE* fp)
   size_t num_of_fields=0;
   bool field_is_auxiliary[256];
   bool field_is_communicated[256];
-  int_vec alive_fields = VEC_INITIALIZER;
-  int_vec dead_fields = VEC_INITIALIZER;
+  bool field_is_dead[256];
+  size_t num_of_alive_fields=0;
   string_vec field_names = VEC_INITIALIZER;
+  string_vec original_names = VEC_INITIALIZER;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if(symbol_table[i].tspecifier_token == FIELD)
+	    push(&original_names,symbol_table[i].identifier);
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   {
     if(symbol_table[i].tspecifier_token == FIELD){
+      const bool is_dead = int_vec_contains(symbol_table[i].tqualifiers,DEAD);
+      if(is_dead) continue;
       push(&field_names, symbol_table[i].identifier);
       const char* name = symbol_table[i].identifier;
       const bool is_aux  = int_vec_contains(symbol_table[i].tqualifiers,AUXILIARY);
       const bool is_comm = int_vec_contains(symbol_table[i].tqualifiers,COMMUNICATED);
-      const bool is_dead = int_vec_contains(symbol_table[i].tqualifiers,DEAD);
       field_is_auxiliary[num_of_fields]    = is_aux;
       field_is_communicated[num_of_fields] = is_comm;
       num_of_communicated_fields           += is_comm;
-      if(is_dead) push_int(&dead_fields,num_of_fields);
-      else        push_int(&alive_fields,num_of_fields);
+      num_of_alive_fields                  += (!is_dead);
+      field_is_dead[num_of_fields]         = is_dead;
       ++num_of_fields;
     }
   }
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+  {
+    if(symbol_table[i].tspecifier_token == FIELD){
+      const bool is_dead = int_vec_contains(symbol_table[i].tqualifiers,DEAD);
+      if(!is_dead) continue;
+      push(&field_names, symbol_table[i].identifier);
+      const char* name = symbol_table[i].identifier;
+      const bool is_aux  = int_vec_contains(symbol_table[i].tqualifiers,AUXILIARY);
+      const bool is_comm = int_vec_contains(symbol_table[i].tqualifiers,COMMUNICATED);
+      field_is_auxiliary[num_of_fields]    = is_aux;
+      field_is_communicated[num_of_fields] = is_comm;
+      num_of_communicated_fields           += is_comm;
+      num_of_alive_fields                  += (!is_dead);
+      field_is_dead[num_of_fields]         = is_dead;
+      ++num_of_fields;
+    }
+  }
+  const size_t num_of_dead_fields = num_of_fields - num_of_alive_fields;
+  free_int_vec(&field_remappings);
+  for(size_t field = 0; field < num_fields; ++field)
+  {
+	  const char* new_name = field_names.data[field];
+	  const int old_index  = str_vec_get_index(original_names,new_name);
+	  push_int(&field_remappings,old_index);
+  }
   fprintf(fp, "typedef enum {");
+  //TP: IMPORTANT!! if there are dead fields NUM_VTXBUF_HANDLES is equal to alive fields not all fields.  
   //TP: the compiler is allowed to move dead field declarations till the end
-  //TP: this way the user can easily get all alive fields with NUM_ALIVE_FIELDS
-  //TP: still a TODO should NUM_VTXBUF_HANDLES be the same as NUM_ALIVE_FIELDS, should try since would make live easier
-  for(size_t i = 0; i < alive_fields.size; ++i)
-	  fprintf(fp,"%s,",field_names.data[alive_fields.data[i]]);
-  for(size_t i = 0; i < dead_fields.size; ++i)
-	  fprintf(fp,"%s,",field_names.data[dead_fields.data[i]]);
+  //TP: this way the user can easily loop all alive fields with the old 0:NUM_VTXBUF_HANDLES and same for the Astaroth library dead fields are skiped over automatically
+  for(size_t i = 0; i < num_of_fields; ++i)
+	  fprintf(fp,"%s,",field_names.data[i]);
 
   const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
   if(has_optimization_info)
-  	fprintf(fp, "NUM_FIELDS=%ld,", alive_fields.size);
+  	fprintf(fp, "NUM_FIELDS=%ld,", num_of_alive_fields);
   else
   	fprintf(fp, "NUM_FIELDS=%ld,", num_of_fields);
   fprintf(fp, "NUM_ALL_FIELDS=%ld,", num_of_fields);
-  fprintf(fp, "NUM_DEAD_FIELDS=%ld,", num_of_fields-alive_fields.size);
+  fprintf(fp, "NUM_DEAD_FIELDS=%ld,", num_of_fields-num_of_alive_fields);
   fprintf(fp, "NUM_COMMUNICATED_FIELDS=%d,", num_of_communicated_fields);
   fprintf(fp, "} Field;\n");
 
+  fprintf(fp,"static const int field_remappings[] = {");
+  {
+	  for(size_t field = 0; field < field_remappings.size; ++field)
+		  fprintf(fp,"%d,",field_remappings.data[field]);
+  }
+  fprintf(fp, "};");
+
   fprintf(fp, "static const bool vtxbuf_is_auxiliary[] = {");
 
-  for(size_t i = 0; i < alive_fields.size; ++i)
-  {
-    if(field_is_auxiliary[alive_fields.data[i]])
+  for(size_t i = 0; i < num_of_fields; ++i)
+    if(field_is_auxiliary[i])
         fprintf(fp, "%s,", "true");
     else
-        fprintf(fp, "%s,", "false");
-  }
-  for(size_t i = 0; i < dead_fields.size; ++i)
         fprintf(fp, "%s,", "false");
   fprintf(fp, "};");
 
   fprintf(fp, "static const bool vtxbuf_is_communicated[] = {");
-  for(size_t i = 0; i < alive_fields.size; ++i)
-  {
-    if(field_is_communicated[alive_fields.data[i]])
+  for(size_t i = 0; i < num_of_fields; ++i)
+    if(field_is_communicated[i])
         fprintf(fp, "%s,", "true");
     else
-        fprintf(fp, "%s,", "false");
-  }
-  for(size_t i = 0; i < dead_fields.size; ++i)
         fprintf(fp, "%s,", "false");
 
   fprintf(fp, "};");
 
   fprintf(fp, "static const bool vtxbuf_is_alive[] = {");
 
-  for(size_t i = 0; i < alive_fields.size; ++i)
+  for(size_t i = 0; i < num_of_fields; ++i)
+    if(!field_is_dead[i])
         fprintf(fp, "%s,", "true");
-  for(size_t i = 0; i < dead_fields.size; ++i)
+    else
         fprintf(fp, "%s,", "false");
-
   fprintf(fp, "};");
 
   FILE* fp_vtxbuf_is_comm_func = fopen("vtxbuf_is_communicated_func.h","w");
   fprintf(fp_vtxbuf_is_comm_func ,"static __device__ constexpr __forceinline__ bool is_communicated(Field field) {\n"
              "switch(field)"
              "{");
-  for(size_t i=0;i<alive_fields.size;++i)
+  for(size_t i=0;i<num_of_alive_fields;++i)
   {
-    const int field = alive_fields.data[i];
-    const char* ret_val = (field_is_communicated[field]) ? "true" : "false";
-    fprintf(fp_vtxbuf_is_comm_func,"case(%s): return %s;\n", field_names.data[field], ret_val);
+    const char* ret_val = (field_is_communicated[i]) ? "true" : "false";
+    fprintf(fp_vtxbuf_is_comm_func,"case(%s): return %s;\n", field_names.data[i], ret_val);
   }
   fprintf(fp_vtxbuf_is_comm_func,"default: return false;\n");
   fprintf(fp_vtxbuf_is_comm_func, "}\n}\n");
 
   fclose(fp_vtxbuf_is_comm_func);
 
-  //TP: names generated here since fields might be shuffled because of DEAD fields
   fp = fopen("field_names.h","w");
   fprintf(fp,"static const char* field_names[] __attribute__((unused)) = {");
-  for(size_t i = 0; i < alive_fields.size; ++i)
-	  fprintf(fp,"\"%s\",",field_names.data[alive_fields.data[i]]);
-  for(size_t i = 0; i < dead_fields.size; ++i)
-	  fprintf(fp,"\"%s\",",field_names.data[dead_fields.data[i]]);
+  for(size_t i=0;i<num_of_fields;++i)
+	  fprintf(fp,"\"%s\",",field_names.data[i]);
   fprintf(fp,"};\n");
   fprintf(fp, "static const char** vtxbuf_names = field_names;\n");
+  fclose(fp);
+
+  fp = fopen("get_vtxbufs_funcs.h","w");
+  for(size_t i = 0; i < num_of_fields; ++i)
+  	fprintf(fp,"VertexBufferHandle acGet%s() {return %s;}\n", field_names.data[i], field_names.data[i]);
+  fp = fopen("get_vtxbufs_declares.h","w");
+  for(size_t i = 0; i < num_of_fields; ++i)
+	fprintf(fp,"FUNC_DEFINE(VertexBufferHandle, acGet%s,());\n",field_names.data[i]);	
+  fp = fopen("get_vtxbufs_loads.h","w");
+  for(size_t i = 0; i < num_of_fields; ++i)
+  {
+	char* func_name;
+	asprintf(&func_name,"acGet%s",field_names.data[i]);
+	gen_dlsym(fp,func_name);
+	free(func_name);
+  }
   fclose(fp);
 }
 // Generate User Defines
@@ -5861,8 +5919,13 @@ gen_output_files(ASTNode* root)
   gen_user_structs();
   gen_user_defines(root, "user_defines.h");
   gen_kernel_structs(root);
+  FILE* fp = fopen("user_kernel_declarations.h","w");
+  fclose(fp);
   gen_user_kernels("user_declarations.h");
+  fp = fopen("user_kernel_declarations.h","a");
+  fclose(fp);
   stencilgen(root);
+
 }
 bool
 eliminate_conditionals_base(ASTNode* node)
@@ -5943,6 +6006,32 @@ gen_analysis_stencils(FILE* stream)
   free_str_vec(&stencil_names);
 }
 
+//void                     
+//reorder_dead_fields_last(ASTNode* node)
+//{
+//	TRAVERSE_PREAMBLE(reorder_dead_fields_last);
+//	if(!(node->type & NODE_DECLARATION)) return;
+//	if(!(node->type & NODE_GLOBAL))      return;
+//	const ASTNode* tspec = get_node(NODE_TSPEC,node->lhs);
+//	if(!tspec)  return;
+//	if(tspec->lhs->token != FIELD) return;
+//	node_vec identifiers = get_nodes_in_list(node->rhs);
+//	for(size_t field = 0; field < identifiers.size; field++)
+//	{
+//		const Symbol* sym = get_symbol_token(NODE_VARIABLE_ID,get_node_by_token(IDENTIFIER,node)->buffer, FIELD);
+//		if(int_vec_contains(sym->tqualifiers,DEAD))
+//		{
+//			ASTNode* identifier = (ASTNode*) identifiers.data[field];
+//			ASTNode* copy_node = astnode_dup(identifiers.data[field],NULL);
+//			identifier->lhs=NULL;
+//			identifier->rhs=NULL;
+//			printf("FOUND DEAD FIELD\n");
+//		}
+//	}
+//	free_node_vec(&identifiers);
+//
+//}
+
 void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool optimize_conditionals)
 { 
@@ -5962,6 +6051,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 
   traverse(root, NODE_NO_OUT, NULL);
   {
+  	  const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
+	  //if(has_optimization_info) reorder_dead_fields_last(root);
           FILE* fp = fopen("fields_info.h","w");
           gen_field_info(fp);
           fclose(fp);

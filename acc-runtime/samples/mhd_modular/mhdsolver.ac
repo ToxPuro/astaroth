@@ -6,8 +6,6 @@ const int AC_const_ints_len = 3
 const real AC_const_real = 2.0
 const int3 AC_const_int3 = {1,2,3}
 
-Field DEAD_FIELD
-
 
 enum IHEATCOND
 {
@@ -92,6 +90,7 @@ hostdefine R_PI (AC_REAL_PI)
 hostdefine LSPECIAL_REDUCTIONS (0)  
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
+Field DEAD_FIELD
 
 
 #if LMAGNETIC
@@ -106,10 +105,11 @@ const int AC_const_int_2nd = 4
 //const int NGHOST_VAL = 3
 //Field CHEMISTRY_FIELDS[5]
 
+
 #if LBFIELD
-Field BFIELDX
-Field BFIELDY
-Field BFIELDZ
+auxiliary Field BFIELDX
+auxiliary Field BFIELDY
+auxiliary Field BFIELDZ
 #define BFIELD Field3(BFIELDX,BFIELDY,BFIELDZ)
 #endif
 
@@ -261,6 +261,7 @@ real AC_current_time
 output real timestep_out;
 output real timestep_out1;
 output real timestep_out2;
+
 
 
 
@@ -510,6 +511,11 @@ Kernel shock_3_smooth()
 }
 
 #endif
+#
+Kernel test_func()
+{
+   if(AC_runtime_int) write(DEAD_FIELD,1.0)
+}
 
 
 
@@ -519,6 +525,7 @@ reduce_test(step_num)
 }
 
 bool bool_param
+
 
 Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums) {
 	if bool_param
@@ -589,9 +596,9 @@ Kernel twopass_solve_intermediate(int step_num, real dt) {
     #endif
 
     #if LBFIELD
-    if step_num == 2 {
+    //if step_num == 2 {
 	write(BFIELD,curl(AA))
-    }
+    ////}
     #endif
 
     // %JP: TODO NOTE IMPORTANT (MV please check)
@@ -1216,40 +1223,47 @@ bc_sym_z(sgn,topbot,VtxBuffer j,rel)
 
 
 
+//BoundConds boundconds{
+//  periodic(BOUNDARY_XY)
+//  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_UUY,false)
+//  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_UUZ,false)
+//
+//  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AX,false)
+//  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AY,false)
+//  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AZ,false)
+//
+//  bc_ss_flux(BOUNDARY_Z_TOP, AC_top)
+//
+//
+//  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_UUY,false)
+//  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_UUZ,false)
+//
+//  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AX,false)
+//  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AY,false)
+//  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AZ,false)
+//
+//  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_ENTROPY,false)
+//
+//  bc_steady_z(BOUNDARY_Z_TOP, AC_top,VTXBUF_UUX)
+//  bc_steady_z(BOUNDARY_Z_BOT, AC_bot,VTXBUF_UUX)
+//
+//  bc_ism(BOUNDARY_Z_BOT, AC_bot,VTXBUF_LNRHO)
+//  bc_ism(BOUNDARY_Z_TOP, AC_top,VTXBUF_LNRHO)
+//
+//}
+
 BoundConds boundconds{
-  periodic(BOUNDARY_XY)
-  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_UUY,false)
-  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_UUZ,false)
-
-  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AX,false)
-  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AY,false)
-  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AZ,false)
-
-  bc_ss_flux(BOUNDARY_Z_TOP, AC_top)
-
-
-  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_UUY,false)
-  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_UUZ,false)
-
-  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AX,false)
-  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AY,false)
-  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AZ,false)
-
-  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_ENTROPY,false)
-
-  bc_steady_z(BOUNDARY_Z_TOP, AC_top,VTXBUF_UUX)
-  bc_steady_z(BOUNDARY_Z_BOT, AC_bot,VTXBUF_UUX)
-
-  bc_ism(BOUNDARY_Z_BOT, AC_bot,VTXBUF_LNRHO)
-  bc_ism(BOUNDARY_Z_TOP, AC_top,VTXBUF_LNRHO)
-
+  periodic(BOUNDARY_XYZ)
 }
 
+input int  AcInputStepNum
+input real AcInputdt
+input real AcInputCurrentTime
 
 
 ComputeSteps AC_rhs(boundconds)
 {
-        twopass_solve_intermediate(1,0.0)
-        twopass_solve_final(1.0,0.0);
+        twopass_solve_intermediate(AC_ITERATION_NUMBER,AcInputdt)
+        twopass_solve_final(AC_ITERATION_NUMBER,AcInputCurrentTime);
 }
 

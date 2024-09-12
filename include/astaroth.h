@@ -44,7 +44,7 @@
 
 
 typedef struct {
-    AcReal* vertex_buffer[NUM_VTXBUF_HANDLES];
+    AcReal* vertex_buffer[NUM_ALL_FIELDS];
     AcMeshInfo info;
 } AcMesh;
 
@@ -481,20 +481,16 @@ acGetMeshDims(const AcMeshInfo info)
    };
 }
 
-FUNC_DEFINE(size_t, acGetKernelId,(const Kernel kernel));
+FUNC_DEFINE(size_t, acGetKernelId,(const AcKernel kernel));
 
 FUNC_DEFINE(size_t, acGetKernelIdByName,(const char* name));
 
-static Kernel __attribute__((unused))
-acGetKernelByName(const char* name)
-{
-	const size_t id = acGetKernelIdByName(name);
-   	return acGetKernels()[id];
-}
 
 FUNC_DEFINE(AcMeshInfo, acGridDecomposeMeshInfo,(const AcMeshInfo global_config));
 
+#if AC_RUNTIME_COMPILATION == 0
 FUNC_DEFINE(VertexBufferArray, acGridGetVBA,(void));
+#endif
 
 FUNC_DEFINE(AcMeshInfo, acGridGetLocalMeshInfo,(void));
 
@@ -604,7 +600,7 @@ acQueryScalarrays(void)
 static inline void
 acQueryVtxbufs(void)
 {
-    for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i)
+    for (int i = 0; i < NUM_ALL_FIELDS; ++i)
         printf("%s (%d)\n", vtxbuf_names[i], i);
 }
 
@@ -1049,7 +1045,7 @@ FUNC_DEFINE(AcResult, acGridFinalizeReduceLocal,(AcTaskGraph* graph));
 FUNC_DEFINE(AcResult, acGridFinalizeReduce,(AcTaskGraph* graph));
 
 /** */
-FUNC_DEFINE(AcResult, acGridLaunchKernel,(const Stream stream, const Kernel kernel, const int3 start,
+FUNC_DEFINE(AcResult, acGridLaunchKernel,(const Stream stream, const AcKernel kernel, const int3 start,
                             const int3 end));
 
 
@@ -1239,8 +1235,10 @@ FUNC_DEFINE(AcResult, acNodeStoreIXYPlate,(const Node node, const Stream stream,
 FUNC_DEFINE(AcResult, acNodeLoadPlateXcomp,(const Node node, const Stream stream, const int3 start, const int3 end, 
                               AcMesh* host_mesh, AcReal* plateBuffer, int plate));
 
+#if AC_RUNTIME_COMPILATION == 0
 /** */
 FUNC_DEFINE(AcResult, acNodeGetVBApointers,(Node* node_handle, AcReal *vbapointer[2]));
+#endif
 
 /*
  * =============================================================================
@@ -1460,11 +1458,11 @@ FUNC_DEFINE(AcDeviceKernelOutput, acDeviceGetKernelOutput,(const Device device))
 
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceLaunchKernel,(const Device device, const Stream stream, const Kernel kernel,
+FUNC_DEFINE(AcResult, acDeviceLaunchKernel,(const Device device, const Stream stream, const AcKernel kernel,
                               const int3 start, const int3 end));
 
 /** */
-FUNC_DEFINE(AcResult, acDeviceBenchmarkKernel,(const Device device, const Kernel kernel, const int3 start,
+FUNC_DEFINE(AcResult, acDeviceBenchmarkKernel,(const Device device, const AcKernel kernel, const int3 start,
                                  const int3 end));
 
 /** */
@@ -1500,8 +1498,10 @@ FUNC_DEFINE(AcResult, acDeviceStorePlateBuffer,(const Device device, int3 start,
 FUNC_DEFINE(AcResult, acDeviceStoreIXYPlate,(const Device device, int3 start, int3 end, int src_offset, const Stream stream, 
                                AcMesh *host_mesh));
 
+#if AC_RUNTIME_COMPILATION == 0
 /** */
 FUNC_DEFINE(AcResult, acDeviceGetVBApointers,(Device device, AcReal *vbapointer[2]));
+#endif
 
 
 /*
@@ -1603,6 +1603,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 #include "device_set_input_decls.h"
 #include "device_get_output_decls.h"
 #include "device_get_input_decls.h"
+#include "get_vtxbufs_declares.h"
 
 #if AC_RUNTIME_COMPILATION
 #include "astaroth_lib.h"
@@ -1623,8 +1624,6 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!acGetKernelIdByName) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelIdByName");
 	*(void**)(&acGridDecomposeMeshInfo) = dlsym(handle,"acGridDecomposeMeshInfo");
 	if(!acGridDecomposeMeshInfo) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridDecomposeMeshInfo");
-	*(void**)(&acGridGetVBA) = dlsym(handle,"acGridGetVBA");
-	if(!acGridGetVBA) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridGetVBA");
 	*(void**)(&acGridGetLocalMeshInfo) = dlsym(handle,"acGridGetLocalMeshInfo");
 	if(!acGridGetLocalMeshInfo) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridGetLocalMeshInfo");
 	*(void**)(&acInit) = dlsym(handle,"acInit");
@@ -1846,8 +1845,6 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!acNodeStoreIXYPlate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acNodeStoreIXYPlate");
 	*(void**)(&acNodeLoadPlateXcomp) = dlsym(handle,"acNodeLoadPlateXcomp");
 	if(!acNodeLoadPlateXcomp) fprintf(stderr,"Astaroth error: was not able to load %s\n","acNodeLoadPlateXcomp");
-	*(void**)(&acNodeGetVBApointers) = dlsym(handle,"acNodeGetVBApointers");
-	if(!acNodeGetVBApointers) fprintf(stderr,"Astaroth error: was not able to load %s\n","acNodeGetVBApointers");
 	*(void**)(&acDeviceCreate) = dlsym(handle,"acDeviceCreate");
 	if(!acDeviceCreate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceCreate");
 	*(void**)(&acDeviceDestroy) = dlsym(handle,"acDeviceDestroy");
@@ -1968,11 +1965,11 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!acDeviceStorePlateBuffer) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceStorePlateBuffer");
 	*(void**)(&acDeviceStoreIXYPlate) = dlsym(handle,"acDeviceStoreIXYPlate");
 	if(!acDeviceStoreIXYPlate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceStoreIXYPlate");
-	*(void**)(&acDeviceGetVBApointers) = dlsym(handle,"acDeviceGetVBApointers");
-	if(!acDeviceGetVBApointers) fprintf(stderr,"Astaroth error: was not able to load %s\n","acDeviceGetVBApointers");
 #include "device_set_input_loads.h"
 #include "device_get_input_loads.h"
 #include "device_get_output_loads.h"
+#include "get_vtxbufs_loads.h"
+
 	*(void**)(&acDeviceGetIntOutput) = dlsym(handle,"acDeviceGetIntOutput");
 	*(void**)(&acDeviceGetRealInput) = dlsym(handle,"acDeviceGetRealInput");
 	*(void**)(&acDeviceGetIntInput) = dlsym(handle,"acDeviceGetIntInput");

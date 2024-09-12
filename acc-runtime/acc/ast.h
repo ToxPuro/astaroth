@@ -36,7 +36,7 @@ typedef enum {
   NODE_DFUNCTION           = (1 << 1),
   NODE_KFUNCTION           = (1 << 2),
   NODE_FUNCTION_ID         = (1 << 3),
-  //FREE TO USE
+  NODE_GLOBAL              = (1 << 4),
   NODE_BINARY              = (1 << 5),
   NODE_BEGIN_SCOPE         = (1 << 6),
   NODE_DECLARATION         = (1 << 7),

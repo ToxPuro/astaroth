@@ -299,6 +299,7 @@ reset_all_files()
 		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_loaders.h", "user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
 		  "fields_info.h","is_comptime_param.h","push_to_config.h","load_comp_info.h","load_comp_info_overloads.h","device_set_input_decls.h","device_set_input.h","device_set_input_loads.h","device_set_input_overloads.h",
 		  "device_get_output_decls.h","device_get_input_decls.h","device_get_output.h","device_get_input.h","device_get_output_overloads.h","device_get_input_overloads.h","device_get_input_loads.h","device_get_output_loads.h",
+		  "get_vtxbufs_funcs.h","get_vtxbufs_declares.h","get_vtxbufs_loads.h"
 		  };
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
 	    if(!file_exists(files[i])) continue;
@@ -960,7 +961,10 @@ intrinsic_definition:
 				}
 		    }
 		     ;
-variable_definitions: non_null_declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
+variable_definitions: non_null_declaration { 
+		    		$$ = astnode_create(NODE_UNKNOWN, $1, NULL); 
+				astnode_set_postfix(";", $$); 
+			}
                    |  type_declaration assignment_list  
 				{ 
 				  if(!get_node(NODE_TSPEC,$1))
@@ -1010,7 +1014,7 @@ non_null_declaration: type_declaration declaration_list {
 					exit(EXIT_FAILURE);
 				}
 
-		    		$$ = astnode_create(NODE_DECLARATION, $1, $2); 
+		    		$$ = astnode_create(NODE_DECLARATION | NODE_GLOBAL, $1, $2); 
 				if(!$$->lhs->rhs)
 				{
 				    const char* tspec = get_node(NODE_TSPEC,$$->lhs)->lhs->buffer;
