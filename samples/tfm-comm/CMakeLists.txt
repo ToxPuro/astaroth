@@ -4,6 +4,9 @@ cmake_minimum_required(VERSION 3.0)
 ## Project settings
 project(tfm-comm C)
 
+## Project-wide compilation flags
+add_compile_options(-Werror -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result)
+
 ## Packages
 find_package(MPI REQUIRED COMPONENTS C)
 

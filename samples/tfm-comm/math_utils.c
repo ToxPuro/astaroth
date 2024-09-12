@@ -112,3 +112,27 @@ to_linear(const size_t ndims, const size_t index[], const size_t shape[])
     }
     return result;
 }
+
+void
+reverse(const size_t count, size_t arr[])
+{
+    for (size_t i = 0; i < count / 2; ++i) {
+        const size_t tmp   = arr[i];
+        arr[i]             = arr[count - i - 1];
+        arr[count - i - 1] = tmp;
+    }
+}
+
+void
+copy(const size_t count, const size_t in[], size_t out[])
+{
+    for (size_t i = 0; i < count; ++i)
+        out[i] = in[i];
+}
+
+void
+set(const size_t value, const size_t count, size_t arr[])
+{
+    for (size_t i = 0; i < count; ++i)
+        arr[i] = value;
+}

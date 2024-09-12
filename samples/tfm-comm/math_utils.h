@@ -20,3 +20,9 @@ void mod_pointwise(const size_t count, const int64_t* a, const int64_t* b, int64
 void to_spatial(const size_t index, const size_t ndims, const size_t shape[], size_t output[]);
 
 size_t to_linear(const size_t ndims, const size_t index[], const size_t shape[]);
+
+void reverse(const size_t count, size_t arr[]);
+
+void copy(const size_t count, const size_t in[], size_t out[]);
+
+void set(const size_t value, const size_t count, size_t arr[]);
