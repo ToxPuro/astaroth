@@ -494,7 +494,7 @@ struct allocate_arrays
 	{
 		for(P array : get_params<P>())
 		{
-			if(get_config_param(array,config) != nullptr && !is_dconst(array))
+			if(get_config_param(array,config) != nullptr && !is_dconst(array) && is_alive(array))
 			{
 				void* d_mem_ptr;
 			        device_malloc(&d_mem_ptr, sizeof(get_config_param(array,config)[0])*get_array_length(array,config));
@@ -575,7 +575,7 @@ struct update_arrays
 	{
 		for(P array : get_params<P>())
 		{
-			if(is_dconst(array)) continue;
+			if(is_dconst(array) || !is_alive(array)) continue;
 			auto config_array = get_config_param(array,config);
 			void* gmem_array;
 			memcpy_from_gmem_array(array,gmem_array);
@@ -605,7 +605,7 @@ struct free_arrays
 			auto config_array = get_config_param(array,config);
 			void* gmem_array;
 			memcpy_from_gmem_array(array,gmem_array);
-			if(config_array == nullptr ||is_dconst(array)) continue;
+			if(config_array == nullptr || is_dconst(array) || !is_alive(array)) continue;
 			device_free(&gmem_array, get_array_length(array,config));
 			memcpy_to_gmem_array(array,gmem_array);
 		}
@@ -860,12 +860,13 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 	const size_t bytes = length*sizeof(values[0]);
 	if(!is_dconst(array))
 	{
+		if(!is_alive(array)) return AC_NOT_ALLOCATED;
 		void* dst_ptr;
 		memcpy_from_gmem_array(array,dst_ptr);
 		ERRCHK_ALWAYS(dst_ptr != nullptr);
 		ERRCHK_CUDA_ALWAYS(cudaMemcpy(dst_ptr,values,bytes,cudaMemcpyHostToDevice));
 	}
-	else
+	else 
 	{
 		const size_t offset = (size_t) get_dconst_array_offset(array)*sizeof(V);
 		ERRCHK_CUDA_ALWAYS(load_array(values, bytes, array));
@@ -892,6 +893,7 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 	const size_t bytes = length*sizeof(values[0]);
 	if(!is_dconst(array))
 	{
+		if(!is_alive(array)) return AC_NOT_ALLOCATED;
 		void* src_ptr;
 		memcpy_from_gmem_array(array,src_ptr);
 		ERRCHK_ALWAYS(src_ptr != nullptr);

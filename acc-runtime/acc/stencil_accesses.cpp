@@ -189,8 +189,13 @@ constexpr static AcMeshInfo d_mesh_info = get_d_mesh_info();
 
 #include "user_constants.h"
 #include "dconst_arrays_decl.h"
+#include "gmem_arrays_accessed_decl.h"
 //#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1][1000] {}
-#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[1000] {}
+//#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[1000] {}
+//TP: new macro for some macro magic to make inference easy on whether a gmem array is used or not
+#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) static const DATATYPE ARR_NAME##return_var{}; \
+							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int i) {gmem_##DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
+							    static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
 #include "gmem_arrays_decl.h"
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
@@ -357,6 +362,8 @@ main(int argc, char* argv[])
 
 
   fclose(fp);
+
+#include "gmem_arrays_output_accesses.h"
 
 
   return EXIT_SUCCESS;

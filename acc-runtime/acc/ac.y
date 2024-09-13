@@ -238,12 +238,6 @@ check_file(const FILE* fp, const char* filename)
 	    exit(EXIT_FAILURE);
 	}
 }
-bool
-file_exists(const char* filename)
-{
-  struct stat   buffer;
-  return (stat (filename, &buffer) == 0);
-}
 void
 make_dir(const char* dirname)
 {
@@ -270,12 +264,11 @@ make_dir(const char* dirname)
 void
 reset_diff_files()
 {
-		const char* files[] = {};
-          	//for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
-          	//  FILE* fp = fopen(files[i], "w");
-	  	//  check_file(fp,files[i]);
-          	//  fclose(fp);
-          	//}
+		const char* files[] = {"memcpy_from_gmem_arrays.h","memcpy_to_gmem_arrays.h","gmem_arrays_decl.h","array_info.h"};
+          	for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
+          	  FILE* fp = fopen(files[i], "w");
+          	  fclose(fp);
+          	}
 }
 void
 reset_extra_files()
@@ -294,12 +287,12 @@ reset_all_files()
           const char* files[] = {"kernel_reduce_outputs.h","user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
 		 "device_mesh_info_decl.h",  "array_decl.h", "comp_decl.h","output_decl.h","input_decl.h","comp_loaded_decl.h", "input_decl.h","get_device_array.h","get_config_arrays.h","get_config_param.h",
 		 "get_arrays.h","dconst_decl.h","rconst_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h","memcpy_to_gmem_arrays.h","memcpy_from_gmem_arrays.h",
-		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
+		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","gmem_arrays_accessed_decl.h","gmem_arrays_output_accesses.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
 		 "load_and_store_uniform_overloads.h","load_and_store_uniform_funcs.h","load_and_store_uniform_header.h","get_array_info.h","get_from_comp_config.h","get_param_name.h","to_str_funcs.h","get_default_value.h",
 		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_loaders.h", "user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
 		  "fields_info.h","is_comptime_param.h","push_to_config.h","load_comp_info.h","load_comp_info_overloads.h","device_set_input_decls.h","device_set_input.h","device_set_input_loads.h","device_set_input_overloads.h",
 		  "device_get_output_decls.h","device_get_input_decls.h","device_get_output.h","device_get_input.h","device_get_output_overloads.h","device_get_input_overloads.h","device_get_input_loads.h","device_get_output_loads.h",
-		  "get_vtxbufs_funcs.h","get_vtxbufs_declares.h","get_vtxbufs_loads.h"
+		  "get_vtxbufs_funcs.h","get_vtxbufs_declares.h","get_vtxbufs_loads.h","array_info.h"
 		  };
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
 	    if(!file_exists(files[i])) continue;
@@ -405,6 +398,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
      		generate_mem_accesses(); // Uncomment to enable stencil mem access checking
         	system("cp user_kernels.h user_cpu_kernels.h");
 	}
+	reset_diff_files();
         FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
         generate(new_root, fp, gen_mem_accesses, optimize_conditionals);

@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include "vecs.h"
+#include <sys/stat.h>
 
 #define BUFFER_SIZE (4096)
 #define FATAL_ERROR_MESSAGE "\nFATAL AC ERROR: "
@@ -588,4 +589,11 @@ format_source(const char* file_in, const char* file_out)
 
   fclose(in);
   fclose(out);
+}
+
+static bool
+file_exists(const char* filename)
+{
+  struct stat   buffer;
+  return (stat (filename, &buffer) == 0);
 }

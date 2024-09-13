@@ -306,6 +306,13 @@
   }
 
   template <typename P>
+  constexpr static bool
+  is_alive(const P array)
+  {
+	  return get_array_info(array).is_alive;
+  }
+
+  template <typename P>
   constexpr static auto
   get_array_dims(const P array)
   {

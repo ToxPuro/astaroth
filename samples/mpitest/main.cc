@@ -74,9 +74,9 @@ main(void)
     	acLoadCompInfo(AC_runtime_int_arr,int_arr,&comp_info);
     	acLoadCompInfo(AC_runtime_bool_arr,bool_arr,&comp_info);
 #if AC_USE_HIP
-    	const char* build_str = "-DUSE_HIP=ON  -DOPTIMIZE_FIELDS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
+    	const char* build_str = "-DUSE_HIP=ON  -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #else
-    	const char* build_str = "-DUSE_HIP=OFF -DOPTIMIZE_FIELDS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
+    	const char* build_str = "-DUSE_HIP=OFF -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
 #endif
 	acCompile(build_str,comp_info);
     }
@@ -117,6 +117,9 @@ main(void)
     }
 
     // GPU alloc & compute
+    AcReal* gmem_arr = (AcReal*)malloc(sizeof(AcReal)*100);
+    memset(gmem_arr,0,sizeof(AcReal)*100);
+    info.real_arrays[AC_real_gmem_arr] = gmem_arr;
     acGridInit(info);
 
     // Load/Store
