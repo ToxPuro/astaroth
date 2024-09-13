@@ -18,8 +18,10 @@
 
 #define ERRCHK_MPI(retval)                                                                         \
     ERRCHK(retval);                                                                                \
-    MPI_Abort(MPI_COMM_WORLD, 0);                                                                  \
-    exit(EXIT_FAILURE);
+    if ((retval) == 0) {                                                                           \
+        MPI_Abort(MPI_COMM_WORLD, 0);                                                              \
+        exit(EXIT_FAILURE);                                                                        \
+    }
 
 static MPI_Comm
 create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
@@ -31,13 +33,11 @@ create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
 
 #if USE_RANK_REORDERING
     // Hierarchical decomposition
-    const size_t gcds_per_gpu  = 2;
-    const size_t gpus_per_node = 4;
-    const size_t nnodes        = nprocs / (gcds_per_gpu * gpus_per_node);
+    const size_t gcds_per_gpu  = as_size_t(min(nprocs, 2));
+    const size_t gpus_per_node = min(as_size_t(nprocs) / gcds_per_gpu, 4);
+    const size_t nnodes        = as_size_t(nprocs) / (gcds_per_gpu * gpus_per_node);
     ERRCHK_MPI(gcds_per_gpu * gpus_per_node * nnodes == as_size_t(nprocs));
     ERRCHK_MPI(nnodes >= 1);
-    print("nnodes", nnodes);
-    return NULL;
 
     const size_t partitions_per_layer[] = {gcds_per_gpu, gpus_per_node, nnodes};
     const size_t nlayers                = ARRAY_SIZE(partitions_per_layer);
@@ -61,7 +61,7 @@ create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
         reverse(info.ndims, decomposition);
 
         size_t row_wise_i = to_linear(info.ndims, pid_unsigned, decomposition);
-        keys[i]           = row_wise_i;
+        keys[i]           = as_int(row_wise_i);
 
         if (rank == 0) {
             printf("%zu -> %zu\n", i, row_wise_i);
@@ -83,7 +83,7 @@ create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
     iset(1, info.ndims, periods);
 
     MPI_Comm comm_cart;
-    MPI_Cart_create(reordered_comm, ndims, dims, periods, 0, &comm_cart);
+    MPI_Cart_create(reordered_comm, as_int(ndims), dims, periods, 0, &comm_cart);
     MPI_Comm_free(&reordered_comm);
 
     // // Check that the mapping is correct (TODO)
@@ -125,7 +125,7 @@ create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
     MPI_Dims_create(nprocs, ndims, dims);
 
     if (rank == 0)
-        print_array("Mapping", ndims, dims);
+        print_array("Mapping", as_size_t(ndims), dims);
 
     MPI_Comm comm_cart;
     MPI_Cart_create(parent, ndims, dims, periods, 0, &comm_cart);
@@ -148,7 +148,7 @@ test_indexing(const MPI_Comm comm_cart)
             int coords[ndims];
             MPI_Cart_coords(comm_cart, new_rank, ndims, coords);
             printf("Hello from %d. New rank %d. ", rank, new_rank);
-            print_array("Mapping", ndims, coords);
+            print_array("Mapping", as_size_t(ndims), coords);
 
             fflush(stdout);
         }

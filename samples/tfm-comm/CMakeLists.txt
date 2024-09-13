@@ -6,7 +6,20 @@ set(CMAKE_C_STANDARD 11)
 project(tfm-comm C)
 
 ## Project-wide compilation flags
-add_compile_options(-Werror -Wfatal-errors -Wall -Wextra -Wdouble-promotion -Wfloat-conversion -Wshadow -Wno-unused-result)
+add_compile_options(-Wfatal-errors 
+                    -Wall
+                    -Wextra
+                    -Wdouble-promotion
+                    -Wfloat-conversion
+                    -Wshadow
+                    -Wno-unused-result
+                    -Wimplicit-function-declaration
+                    -Wconversion
+                    -Wsign-conversion
+                    -Wimplicit-int
+                    -Werror=implicit-fallthrough
+                    -pedantic
+                    -pedantic-errors)
 
 ## Packages
 find_package(MPI REQUIRED COMPONENTS C)

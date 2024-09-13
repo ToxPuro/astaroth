@@ -30,7 +30,7 @@
 void
 acDecompositionInfoPrint(const AcDecompositionInfo info)
 {
-    printf("AcDecompositionInfo %p\n", &info);
+    printf("AcDecompositionInfo %p\n", (void*)&info);
     print("\tndims", info.ndims);
     print("\tnlayers", info.nlayers);
     print_array("\tglobal_dims", info.ndims, info.global_dims);

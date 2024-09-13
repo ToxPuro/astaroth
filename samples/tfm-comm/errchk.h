@@ -6,6 +6,7 @@
 
 #define ERROR(str)                                                                                 \
     {                                                                                              \
+        fflush(stdout);                                                                            \
         time_t terr;                                                                               \
         time(&terr);                                                                               \
         fprintf(stderr,                                                                            \
@@ -28,12 +29,12 @@
 // DO NOT REMOVE BRACKETS AROUND RETVAL. F.ex. if (!a < b) vs if (!(a < b)).
 #define ERRCHK(retval)                                                                             \
     {                                                                                              \
-        if (!(retval))                                                                             \
+        if ((retval) == 0)                                                                             \
             ERROR(#retval " was false");                                                           \
     }
 
 #define WARNCHK(retval)                                                                            \
     {                                                                                              \
-        if (!(retval))                                                                             \
+        if ((retval) == 0)                                                                             \
             WARNING(#retval " was false");                                                         \
     }
