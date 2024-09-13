@@ -16,6 +16,11 @@
 #define FAILURE (-1)
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
+#define ERRCHK_MPI(retval)                                                                         \
+    ERRCHK(retval);                                                                                \
+    MPI_Abort(MPI_COMM_WORLD, 0);                                                                  \
+    exit(EXIT_FAILURE);
+
 static MPI_Comm
 create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
                                 const size_t global_dims[])
@@ -29,7 +34,10 @@ create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
     const size_t gcds_per_gpu  = 2;
     const size_t gpus_per_node = 4;
     const size_t nnodes        = nprocs / (gcds_per_gpu * gpus_per_node);
-    ERRCHK(gcds_per_gpu * gpus_per_node * nnodes == as_size_t(nprocs));
+    ERRCHK_MPI(gcds_per_gpu * gpus_per_node * nnodes == as_size_t(nprocs));
+    ERRCHK_MPI(nnodes >= 1);
+    print("nnodes", nnodes);
+    return NULL;
 
     const size_t partitions_per_layer[] = {gcds_per_gpu, gpus_per_node, nnodes};
     const size_t nlayers                = ARRAY_SIZE(partitions_per_layer);
@@ -56,10 +64,12 @@ create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
         keys[i]           = row_wise_i;
 
         if (rank == 0) {
-            printf("%zu -> %zu", i, row_wise_i);
+            printf("%zu -> %zu\n", i, row_wise_i);
+
+            print_array("\tproper", info.ndims, pid);
 
             reverse(info.ndims, pid_unsigned);
-            print_array("", info.ndims, pid_unsigned);
+            print_array("\tmapped", info.ndims, pid_unsigned);
         }
     }
     fflush(stdout);
@@ -91,7 +101,7 @@ create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
     //     set(0, info.ndims, coords);
     //     MPI_Cart_coords(comm_cart, new_rank, info.ndims, coords);
 
-    //     ERRCHK(i == new_rank);
+    //     ERRCHK_MPI(i == new_rank);
     //     //     int new_rank;
     //     // MPI_Comm_rank(comm_cart, &new_rank);
 
@@ -102,7 +112,7 @@ create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
     //     //     for (size_t j = 0; j < info.ndims; ++j) {
     //     //         print_i64_t_array("a", info.ndims, a);
     //     //         print_array("b", info.ndims, b);
-    //     //         ERRCHK(a[j] == b[j]);
+    //     //         ERRCHK_MPI(a[j] == b[j]);
     //     //     }
     // }
 
@@ -123,23 +133,18 @@ create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
     return comm_cart;
 }
 
-int
-comm_run(void)
+static void
+test_indexing(const MPI_Comm comm_cart)
 {
-    MPI_Init(NULL, NULL);
-
     int rank, nprocs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
-    const size_t global_dims[] = {128, 128, 128};
-    const size_t ndims         = ARRAY_SIZE(global_dims);
-    MPI_Comm comm_cart = create_rank_reordered_cart_comm(MPI_COMM_WORLD, ndims, global_dims);
-
     for (int i = 0; i < nprocs; ++i) {
         if (i == rank) {
-            int new_rank;
+            int new_rank, ndims;
             MPI_Comm_rank(comm_cart, &new_rank);
+            MPI_Cartdim_get(comm_cart, &ndims);
             int coords[ndims];
             MPI_Cart_coords(comm_cart, new_rank, ndims, coords);
             printf("Hello from %d. New rank %d. ", rank, new_rank);
@@ -149,8 +154,20 @@ comm_run(void)
         }
         MPI_Barrier(MPI_COMM_WORLD);
     }
-    MPI_Comm_free(&comm_cart);
+}
 
+int
+comm_run(void)
+{
+    MPI_Init(NULL, NULL);
+
+    const size_t global_dims[] = {128, 128};
+    const size_t ndims         = ARRAY_SIZE(global_dims);
+    MPI_Comm comm_cart = create_rank_reordered_cart_comm(MPI_COMM_WORLD, ndims, global_dims);
+
+    test_indexing(comm_cart);
+
+    MPI_Comm_free(&comm_cart);
     MPI_Finalize();
     return SUCCESS;
 }
