@@ -156,16 +156,114 @@ test_indexing(const MPI_Comm comm_cart)
     }
 }
 
+static void
+get_local_dims(const size_t ndims, const size_t nn[], const MPI_Comm comm_cart, size_t local_nn[])
+{
+    int dims[ndims], periods[ndims], coords[ndims];
+    MPI_Cart_get(comm_cart, as_int(ndims), dims, periods, coords);
+
+    size_t decomp[ndims];
+    as_size_t_array(ndims, dims, decomp);
+
+    for (size_t i = 0; i < ndims; ++i)
+        local_nn[i] = nn[i] / decomp[i];
+
+    ERRCHK_MPI(prod(ndims, local_nn) * prod(ndims, decomp) == prod(ndims, nn));
+}
+
 int
 comm_run(void)
 {
     MPI_Init(NULL, NULL);
 
-    const size_t global_dims[] = {128, 128};
-    const size_t ndims         = ARRAY_SIZE(global_dims);
-    MPI_Comm comm_cart = create_rank_reordered_cart_comm(MPI_COMM_WORLD, ndims, global_dims);
-
+    const size_t global_nn[] = {8, 8};
+    const size_t ndims       = ARRAY_SIZE(global_nn);
+    MPI_Comm comm_cart       = create_rank_reordered_cart_comm(MPI_COMM_WORLD, ndims, global_nn);
     test_indexing(comm_cart);
+
+    // Global original rank
+    int rank, nprocs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+
+    // Allocate a buffer
+    size_t local_nn[ndims];
+    get_local_dims(ndims, global_nn, comm_cart, local_nn);
+
+    const size_t r = 2;
+    size_t local_mm[ndims];
+    copy(ndims, local_nn, local_mm);
+    add_to_array(2 * r, ndims, local_mm);
+
+    // print_array("Local nn", ndims, local_nn);
+    // print_array("Local mm", ndims, local_mm);
+    size_t* buffer = (size_t*)malloc(sizeof(buffer[0]) * prod(ndims, local_mm));
+    set(as_size_t(rank + 1), prod(ndims, local_mm), buffer);
+    // for (size_t i = 0; i < prod(ndims, local_mm); ++i)
+    //     buffer[i] = i;
+    ERRCHK_MPI(buffer);
+
+    int dims[ndims], periods[ndims], coords[ndims];
+    MPI_Cart_get(comm_cart, as_int(ndims), dims, periods, coords);
+
+    // Do halo comm
+    size_t domain[ndims], subdomain[ndims], offsets[ndims];
+    copy(ndims, local_mm, domain);
+    set(r, ndims, subdomain);
+    set(0, ndims, offsets);
+    subdomain[0] = local_nn[0]; // tmp debug hack
+
+    reverse(ndims, domain);
+    reverse(ndims, subdomain);
+    reverse(ndims, offsets);
+
+    int sizes[ndims], subsizes[ndims], starts[ndims];
+    as_int_array(ndims, domain, sizes);
+    as_int_array(ndims, subdomain, subsizes);
+    as_int_array(ndims, offsets, starts);
+
+    MPI_Datatype subarray_type;
+    MPI_Type_create_subarray(as_int(ndims), sizes, subsizes, starts, //
+                             MPI_ORDER_C, MPI_UNSIGNED_LONG_LONG, &subarray_type);
+    MPI_Type_commit(&subarray_type);
+
+    int up, down, left, right;
+    print("up", up);
+    print("down", down);
+    MPI_Cart_shift(comm_cart, 0, 1, &up, &down);
+    MPI_Cart_shift(comm_cart, 1, 1, &left, &right);
+
+    MPI_Sendrecv(&buffer[r + r * local_mm[0]], 1, subarray_type, down, 0,
+                 &buffer[r + (r + local_nn[1]) * local_mm[0]], 1, subarray_type, up, 0, //
+                 comm_cart, MPI_STATUS_IGNORE);
+    MPI_Sendrecv(&buffer[r + local_nn[1] * local_mm[0]], 1, subarray_type, up, 1, //
+                 &buffer[r], 1, subarray_type, down, 1,                           //
+                 comm_cart, MPI_STATUS_IGNORE);
+
+    MPI_Type_free(&subarray_type);
+
+    // print_array("Subdomain", ndims, subdomain);
+
+    MPI_Barrier(comm_cart);
+    for (int coordy = 0; coordy < dims[ndims - 2]; ++coordy) {
+        for (int coordx = 0; coordx < dims[ndims - 1]; ++coordx) {
+            if (coordx == coords[ndims - 1] && coordy == coords[ndims - 2]) {
+                print_array("Hello from", ndims, coords);
+                for (size_t j = local_mm[1] - 1; j < local_mm[0]; --j) {
+                    for (size_t i = 0; i < local_mm[0]; ++i) {
+                        printf("%zu ", buffer[i + j * local_mm[0]]);
+                    }
+                    printf("\n");
+                }
+                printf("\n");
+                fflush(stdout);
+            }
+            MPI_Barrier(comm_cart);
+            MPI_Barrier(MPI_COMM_WORLD);
+        }
+    }
+
+    free(buffer);
 
     MPI_Comm_free(&comm_cart);
     MPI_Finalize();
