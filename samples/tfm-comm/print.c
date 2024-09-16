@@ -11,7 +11,7 @@ print_size_t(const char* label, const size_t value)
 void
 print_int64_t(const char* label, const int64_t value)
 {
-    printf("%s: %ld\n", label, value);
+    printf("%s: %lld\n", label, value);
 }
 
 void
@@ -34,7 +34,7 @@ print_int64_t_array(const char* label, const size_t count, const int64_t arr[])
 {
     printf("%s: (", label);
     for (size_t i = 0; i < count; ++i)
-        printf("%ld%s", arr[i], i < count - 1 ? ", " : "");
+        printf("%lld%s", arr[i], i < count - 1 ? ", " : "");
     printf(")\n");
 }
 
