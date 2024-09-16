@@ -37,9 +37,9 @@ add_library(tfm-decomp SHARED decomp.c)
 target_link_libraries(tfm-decomp tfm-math-utils tfm-print tfm-type-conversion)
 
 add_library(tfm-comm SHARED comm.c)
-target_link_libraries(tfm-comm PRIVATE MPI::MPI_C)
+target_link_libraries(tfm-comm PRIVATE tfm-decomp MPI::MPI_C)
 
 
 ## Program
 add_executable(run main.c)
-target_link_libraries(run tfm-comm tfm-decomp tfm-print)
+target_link_libraries(run tfm-comm)
