@@ -247,8 +247,8 @@ get_smem(const Volume tpb, const size_t stencil_order,
 __device__ __constant__ AcMeshInfo d_mesh_info;
 #include "dconst_arrays_decl.h"
 //TP: We do this ugly macro because I want to keep the generated headers the same if we are compiling cpu analysis and for the actual gpu comp
-//#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1] 
 #define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME 
+#define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) __device__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[LEN]
 #include "gmem_arrays_decl.h"
 
 
@@ -472,6 +472,17 @@ device_malloc(void** dst, const int bytes)
 
 template <typename T>
 void
+device_malloc(T** dst, const int bytes)
+{
+ #if USE_COMPRESSIBLE_MEMORY 
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)dst, bytes));
+ #else
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)dst, bytes));
+  #endif
+}
+
+template <typename T>
+void
 device_free(T** dst, const int bytes)
 {
 #if USE_COMPRESSIBLE_MEMORY
@@ -494,10 +505,10 @@ struct allocate_arrays
 	{
 		for(P array : get_params<P>())
 		{
-			if(get_config_param(array,config) != nullptr && !is_dconst(array) && is_alive(array))
+			if(get_config_param(array,config) != nullptr && !is_dconst(array) && is_alive(array) && !has_const_dims(array))
 			{
-				void* d_mem_ptr;
-			        device_malloc(&d_mem_ptr, sizeof(get_config_param(array,config)[0])*get_array_length(array,config));
+				auto d_mem_ptr = get_empty_pointer(array);
+			        device_malloc(((void**)&d_mem_ptr), sizeof(get_config_param(array,config)[0])*get_array_length(array,config));
 				memcpy_to_gmem_array(array,d_mem_ptr);
 			}
 		}
@@ -575,9 +586,9 @@ struct update_arrays
 	{
 		for(P array : get_params<P>())
 		{
-			if(is_dconst(array) || !is_alive(array)) continue;
+			if(is_dconst(array) || !is_alive(array) || has_const_dims(array)) continue;
 			auto config_array = get_config_param(array,config);
-			void* gmem_array;
+			auto gmem_array   = get_empty_pointer(array);
 			memcpy_from_gmem_array(array,gmem_array);
 			size_t bytes = sizeof(config_array[0])*get_array_length(array,config);
 			if(config_array == nullptr && gmem_array != nullptr) 
@@ -603,9 +614,9 @@ struct free_arrays
 		for(P array: get_params<P>())
 		{
 			auto config_array = get_config_param(array,config);
-			void* gmem_array;
+			if(config_array == nullptr || is_dconst(array) || !is_alive(array) || has_const_dims(array)) continue;
+			auto gmem_array = get_empty_pointer(array);
 			memcpy_from_gmem_array(array,gmem_array);
-			if(config_array == nullptr || is_dconst(array) || !is_alive(array)) continue;
 			device_free(&gmem_array, get_array_length(array,config));
 			memcpy_to_gmem_array(array,gmem_array);
 		}
@@ -861,7 +872,12 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 	if(!is_dconst(array))
 	{
 		if(!is_alive(array)) return AC_NOT_ALLOCATED;
-		void* dst_ptr;
+		if(has_const_dims(array))
+		{
+			memcpy_to_gmem_array(array,values);
+			return AC_SUCCESS;
+		}
+		auto dst_ptr = get_empty_pointer(array);
 		memcpy_from_gmem_array(array,dst_ptr);
 		ERRCHK_ALWAYS(dst_ptr != nullptr);
 		ERRCHK_CUDA_ALWAYS(cudaMemcpy(dst_ptr,values,bytes,cudaMemcpyHostToDevice));
@@ -894,7 +910,12 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 	if(!is_dconst(array))
 	{
 		if(!is_alive(array)) return AC_NOT_ALLOCATED;
-		void* src_ptr;
+		if(has_const_dims(array))
+		{
+			memcpy_from_gmem_array(array,values);
+			return AC_SUCCESS;
+		}
+		auto src_ptr = get_empty_pointer(array);
 		memcpy_from_gmem_array(array,src_ptr);
 		ERRCHK_ALWAYS(src_ptr != nullptr);
 		ERRCHK_CUDA_ALWAYS(cudaMemcpy(values, src_ptr, bytes, cudaMemcpyDeviceToHost));

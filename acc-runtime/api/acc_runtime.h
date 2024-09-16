@@ -320,6 +320,18 @@
   }
 
   template <typename P>
+  constexpr static bool
+  has_const_dims(const P array)
+  {
+	  auto dims = get_array_dims(array);
+	  int num_dims         = get_array_info(array).num_dims;
+	  bool res = true;
+	  for(int i = 0; i < num_dims; ++i)
+		  res &= !dims.from_config[i];
+	  return res;
+  }
+
+  template <typename P>
   constexpr static int
   get_array_n_dims(const P array)
   {
@@ -351,6 +363,18 @@
   {
 #include "get_from_comp_config.h"
   };
+
+  template <typename P>
+  constexpr static int
+  get_const_dims_array_length(const P array)
+  {
+	  AcArrayDims dims     = get_array_info(array).dims;
+	  int num_dims         = get_array_info(array).num_dims;
+	  int res = 1;
+	  for(int i = 0; i < num_dims; ++i)
+		  res *= dims.len[i];
+	  return res;
+  }
 
   template <typename P>
   constexpr static int
@@ -434,6 +458,13 @@
   get_config_param(const P param, const AcMeshInfo& config)
   {
 #include "get_config_param.h"
+  }	  
+
+  template <typename P>
+  constexpr auto
+  get_empty_pointer(const P param)
+  {
+#include "get_empty_pointer.h"
   }	  
 
   

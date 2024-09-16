@@ -522,6 +522,23 @@ is_number(const char* str)
 	return res;
 }
 static inline bool
+is_number_expression(const char* str)
+{
+	const size_t n = strlen(str);
+	bool res = true;
+	for(size_t i = 0; i < n; ++i)
+		res &= (
+			  isdigit(str[i]) > 0
+			|| str[i] == ')'
+			|| str[i] == '('
+			|| str[i] == '+'
+			|| str[i] == '-'
+			|| str[i] == '/'
+			|| str[i] == '*'
+		       );
+	return res;
+}
+static inline bool
 is_real(const char* str)
 {
 	char* tmp = strdup(str);

@@ -4,7 +4,7 @@ const int AC_2d_ints = [[1,2,3], [2,3,4]]
 const int AC_const_ints = [1,2,3]
 const int AC_const_ints_len = 3
 const real AC_const_real = 2.0
-const int AC_const_int = 1
+const int AC_const_int = 3
 const int3 AC_const_int3 = {1,2,3}
 
 
@@ -54,15 +54,19 @@ const real3 AC_const_real3 = {1.0, 2.0, 3.0}
 const real3 AC_const_real3_arr = [ {1.0, 2.0, 3.0}, {1.0, 2.0, 3.0}]
 const real3 AC_const_real3_arr_2 = [AC_const_real3, AC_const_real3]
 
+const int AC_nx_const = 22
+const int AC_ny_const = 22
+
 gmem real AC_real_gmem_arr[AC_nx]
-gmem int  AC_int_gmem_arr[AC_nx]
+//gmem real AC_gmem_const_dims[AC_nx_const][AC_ny]
+gmem real AC_gmem_const_dims[AC_nx_const][AC_ny_const]
 
 gmem real3 AC_real3_gmem_arr[AC_nx]
 
 
 
 
-int AC_2d_int[2][AC_const_int*2]
+int AC_2d_int[AC_const_int][AC_const_int*2]
 
 int AC_step_number
 real AC_dt

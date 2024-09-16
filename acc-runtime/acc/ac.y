@@ -75,6 +75,7 @@ void set_identifier_infix(const char* infix, ASTNode* curr);
 ASTNode* get_node(const NodeType type, ASTNode* node);
 ASTNode* get_node_by_token(const int token, const ASTNode* node);
 static inline int eval_int(ASTNode* node);
+static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names);
 static ASTNode* create_type_declaration(const char* tqual, const char* tspec, const int token);
 static ASTNode* create_type_qualifiers(const char* tqual,int token);
 static ASTNode* create_type_qualifier(const char* tqual, const int token);
@@ -289,13 +290,12 @@ reset_all_files()
 		 "get_arrays.h","dconst_decl.h","rconst_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h","memcpy_to_gmem_arrays.h","memcpy_from_gmem_arrays.h",
 		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","gmem_arrays_accessed_decl.h","gmem_arrays_output_accesses.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
 		 "load_and_store_uniform_overloads.h","load_and_store_uniform_funcs.h","load_and_store_uniform_header.h","get_array_info.h","get_from_comp_config.h","get_param_name.h","to_str_funcs.h","get_default_value.h",
-		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_loaders.h", "user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
+		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
 		  "fields_info.h","is_comptime_param.h","push_to_config.h","load_comp_info.h","load_comp_info_overloads.h","device_set_input_decls.h","device_set_input.h","device_set_input_loads.h","device_set_input_overloads.h",
 		  "device_get_output_decls.h","device_get_input_decls.h","device_get_output.h","device_get_input.h","device_get_output_overloads.h","device_get_input_overloads.h","device_get_input_loads.h","device_get_output_loads.h",
-		  "get_vtxbufs_funcs.h","get_vtxbufs_declares.h","get_vtxbufs_loads.h","array_info.h"
-		  };
+		  "get_vtxbufs_funcs.h","get_vtxbufs_declares.h","get_vtxbufs_loads.h","array_info.h","get_empty_pointer.h"};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
-	    if(!file_exists(files[i])) continue;
+	    //if(!file_exists(files[i])) continue;
             FILE* fp = fopen(files[i], "w");
 	    check_file(fp,files[i]);
             fclose(fp);
@@ -472,6 +472,7 @@ main(int argc, char** argv)
 %token STATEMENT_LIST_HEAD STATEMENT
 %token REAL3 INT3
 %token RANGE
+%token CONST_DIMS
 
 %nonassoc QUESTION
 %nonassoc ':'
@@ -593,7 +594,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 		if(!tqual || has_qualifier(variable_definition,"dconst") || has_qualifier(variable_definition,"run_const"))
 		{
 			
-			char* tmp = malloc(1000*sizeof(char));
 			const ASTNode* base = variable_definition->lhs->rhs->lhs;
 			while(base->rhs)
 			{
@@ -603,8 +603,21 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 			  array_len_node -> buffer = itoa(array_len);
 			  base = base->lhs;
 			}
-			free(tmp);
 		}
+		//else if gmem simply replace const ints with numeric values to enable differentation of the const declarations
+		//and the array dims and also to notice easily if dims are known statically
+		else if(has_qualifier(variable_definition,"gmem"))
+		{
+			const ASTNode* base = variable_definition->lhs->rhs->lhs;
+			while(base->rhs)
+			{
+			  ASTNode* array_len_node = base->rhs;
+			  replace_const_ints(array_len_node,const_int_values,const_ints);
+			  base = base->lhs;
+			}
+		}	
+		
+		
 				
 	    }
 	    //assume is a dconst var
@@ -673,7 +686,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
  */
 struct_name : STRUCT_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; $$->token = IDENTIFIER;};
 enum_name: ENUM_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
-identifier: IDENTIFIER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
+identifier: IDENTIFIER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken;};
 number: NUMBER         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
       | REALNUMBER     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_prefix("AcReal(", $$); astnode_set_postfix(")", $$); }
       | DOUBLENUMBER   {
@@ -1386,8 +1399,7 @@ get_node(const NodeType type, ASTNode* node)
     return NULL;
 }
 
-void
-replace_const_ints(ASTNode* node, const string_vec values, const string_vec names)
+static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names)
 {
 	if(node->lhs)
 		replace_const_ints(node->lhs,values,names);
@@ -1397,6 +1409,8 @@ replace_const_ints(ASTNode* node, const string_vec values, const string_vec name
 	const int index = str_vec_get_index(names,node->buffer);
 	if(index == -1) return;
 	node->buffer = strdup(values.data[index]);
+	node->type |= NODE_VARIABLE_ID;
+	node->token = NUMBER;
 }
 
 static inline int eval_int(ASTNode* node)

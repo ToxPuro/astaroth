@@ -63,7 +63,8 @@ main(void)
 
     // CPU alloc
     AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    AcCompInfo comp_info = acInitCompInfo();
+    acLoadConfig(AC_DEFAULT_CONFIG, &info, &comp_info);
 
     const int max_devices = 1;
     if (nprocs > max_devices) {
@@ -201,10 +202,15 @@ main(void)
 
     fflush(stdout);
     int read_global_arr[nx];
+    AcReal read_2d[ny][nx];
     acStoreUniform(AC_global_arr, read_global_arr, get_array_length(AC_global_arr,model.info));
+    acStoreUniform(AC_2d_reals,&read_2d[0][0], get_array_length(AC_2d_reals,model.info));
     bool arrays_are_the_same = true;
     for(int i = 0; i < info.int_params[AC_nx]; ++i)
 	    arrays_are_the_same &= (read_global_arr[i] == global_arr[i]);
+    for(int i = 0; i < info.int_params[AC_nx]; ++i)
+    	for(int j = 0; j < info.int_params[AC_nx]; ++j)
+	    arrays_are_the_same &= (read_2d[j][i] == twoD_real_arr[j][i]);
     printf("LOAD STORE GMEM ARRAY... %s \n", arrays_are_the_same ? AC_GRN "OK! " AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
     if (pid == 0) {
         acHostMeshDestroy(&model);
