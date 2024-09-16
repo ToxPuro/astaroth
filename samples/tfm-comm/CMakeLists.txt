@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 set(CMAKE_C_STANDARD 11)
 
 ## Project settings
-project(tfm-comm C)
+project(tfm-comm)
 
 ## Project-wide compilation flags
 add_compile_options(-Wfatal-errors 
@@ -36,8 +36,10 @@ target_link_libraries(tfm-type-conversion)
 add_library(tfm-decomp SHARED decomp.c)
 target_link_libraries(tfm-decomp tfm-math-utils tfm-print tfm-type-conversion)
 
+add_library(tfm-pack SHARED pack.cc)
+
 add_library(tfm-comm SHARED comm.c)
-target_link_libraries(tfm-comm PRIVATE tfm-decomp MPI::MPI_C)
+target_link_libraries(tfm-comm PRIVATE tfm-decomp MPI::MPI_C tfm-pack)
 
 
 ## Program

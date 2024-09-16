@@ -6,6 +6,8 @@
 #include "print.h"
 #include "type_conversion.h"
 
+#include "pack.h"
+
 #include <mpi.h>
 #include <stdio.h>
 #include <string.h> // memset
@@ -264,6 +266,9 @@ comm_run(void)
     }
 
     free(buffer);
+
+    // Test packing
+    pack_test();
 
     MPI_Comm_free(&comm_cart);
     MPI_Finalize();
