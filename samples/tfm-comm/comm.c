@@ -228,10 +228,10 @@ comm_run(void)
     MPI_Type_commit(&subarray_type);
 
     int up, down, left, right;
-    print("up", up);
-    print("down", down);
     MPI_Cart_shift(comm_cart, 0, 1, &up, &down);
     MPI_Cart_shift(comm_cart, 1, 1, &left, &right);
+    print("up", up);
+    print("down", down);
 
     MPI_Sendrecv(&buffer[r + r * local_mm[0]], 1, subarray_type, down, 0,
                  &buffer[r + (r + local_nn[1]) * local_mm[0]], 1, subarray_type, up, 0, //
