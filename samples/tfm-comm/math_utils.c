@@ -2,12 +2,48 @@
 
 #include "errchk.h"
 
+/** Product */
 size_t
 prod(const size_t count, const size_t* arr)
 {
     size_t res = 1;
     for (size_t i = 0; i < count; ++i)
         res *= arr[i];
+    return res;
+}
+
+/** Cumulative product */
+void
+cumprod(const size_t count, const size_t in[], size_t out[])
+{
+    ERRCHK(count > 0);
+
+    out[0] = in[0];
+    for (size_t i = 1; i < count; ++i)
+        out[i] = in[i] * out[i - 1];
+}
+
+/** Shift array forward (right) and fill the remaining values.
+ * e.g., {1,2,3} -> {fill_value, 1, 2}
+ */
+void
+rshift(const size_t shift, const size_t fill_value, const size_t count, const size_t in[],
+       size_t out[])
+{
+    ERRCHK(shift < count);
+    for (size_t i = shift; i < count; ++i)
+        out[i] = in[i - shift];
+
+    for (size_t i = 0; i < shift; ++i)
+        out[i] = fill_value;
+}
+
+size_t
+dot(const size_t count, const size_t a[], const size_t b[])
+{
+    size_t res = 0;
+    for (size_t i = 0; i < count; ++i)
+        res += a[i] * b[i];
     return res;
 }
 

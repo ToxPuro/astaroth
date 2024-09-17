@@ -4,6 +4,13 @@
 
 size_t prod(const size_t count, const size_t* arr);
 
+void cumprod(const size_t count, const size_t in[], size_t out[]);
+
+void rshift(const size_t shift, const size_t fill_value, const size_t count, const size_t in[],
+            size_t out[]);
+
+size_t dot(const size_t count, const size_t a[], const size_t b[]);
+
 void factorize(const size_t n_initial, size_t* nfactors, size_t* factors);
 
 /** Requires that array is ordered */
