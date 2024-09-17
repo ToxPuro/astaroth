@@ -31,6 +31,7 @@ rshift(const size_t shift, const size_t fill_value, const size_t count, const si
        size_t out[])
 {
     ERRCHK(shift < count);
+    ERRCHK(in < out || in + count < out);
     for (size_t i = shift; i < count; ++i)
         out[i] = in[i - shift];
 
