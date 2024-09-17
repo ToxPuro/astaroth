@@ -1,4 +1,5 @@
 #pragma once
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -6,8 +7,7 @@ size_t prod(const size_t count, const size_t* arr);
 
 void cumprod(const size_t count, const size_t* restrict in, size_t* restrict out);
 
-void rshift(const size_t shift, const size_t fill_value, const size_t count,
-            const size_t* restrict in, size_t* restrict out);
+void rshift(const size_t shift, const size_t fill_value, const size_t count, size_t* arr);
 
 size_t dot(const size_t count, const size_t* a, const size_t* b);
 
@@ -59,3 +59,7 @@ int64_t min_int64_t(const int64_t a, const int64_t b);
 size_t min_size_t(const size_t a, const size_t b);
 float min_float(const float a, const float b);
 double min_double(const double a, const double b);
+
+/** Unit testing */
+bool equals(const size_t count, const size_t* a, const size_t* b);
+void test_math_utils(void);

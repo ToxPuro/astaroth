@@ -1,6 +1,10 @@
 #include "math_utils.h"
 
+#include <string.h> // memmove
+
 #include "errchk.h"
+
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
 /** Product */
 size_t
@@ -10,6 +14,21 @@ prod(const size_t count, const size_t* arr)
     for (size_t i = 0; i < count; ++i)
         res *= arr[i];
     return res;
+}
+
+static void
+test_prod(void)
+{
+    {
+        const size_t arr[] = {1, 2, 3, 4, 5};
+        const size_t count = ARRAY_SIZE(arr);
+        ERRCHK(prod(count, arr) == 120);
+    }
+    {
+        const size_t arr[] = {0};
+        const size_t count = ARRAY_SIZE(arr);
+        ERRCHK(prod(count, arr) == 0);
+    }
 }
 
 /** Cumulative product */
@@ -27,20 +46,70 @@ cumprod(const size_t count, const size_t* restrict in, size_t* restrict out)
         out[i] = in[i] * out[i - 1];
 }
 
+static void
+test_cumprod(void)
+{
+    {
+        const size_t a[]   = {0};
+        const size_t count = ARRAY_SIZE(a);
+        size_t b[count];
+        cumprod(count, a, b);
+        const size_t c[] = {0};
+        ERRCHK(equals(count, b, c));
+    }
+    {
+        const size_t a[]   = {2, 2, 2, 2};
+        const size_t count = ARRAY_SIZE(a);
+        size_t b[count];
+        cumprod(count, a, b);
+        const size_t c[] = {2, 4, 8, 16};
+        ERRCHK(equals(count, b, c));
+    }
+    {
+        const size_t a[]   = {2, 4, 8, 16};
+        const size_t count = ARRAY_SIZE(a);
+        size_t b[count];
+        cumprod(count, a, b);
+        const size_t c[] = {2, 2 * 4, 2 * 4 * 8, 2 * 4 * 8 * 16};
+        ERRCHK(equals(count, b, c));
+    }
+}
+
 /** Shift array forward (right) and fill the remaining values.
  * e.g., {1,2,3} -> {fill_value, 1, 2}
  */
 void
-rshift(const size_t shift, const size_t fill_value, const size_t count, const size_t* restrict in,
-       size_t* restrict out)
+rshift(const size_t shift, const size_t fill_value, const size_t count, size_t* arr)
 {
     ERRCHK(shift < count);
-    ERRCHK(in < out || in + count >= out);
-    for (size_t i = shift; i < count; ++i)
-        out[i] = in[i - shift];
+    memmove(&arr[shift], &arr[0], sizeof(arr[0]) * (count - shift));
+    set(fill_value, shift, arr);
+}
 
-    for (size_t i = 0; i < shift; ++i)
-        out[i] = fill_value;
+void
+test_rshift(void)
+{
+    {
+        size_t a[]         = {1};
+        const size_t count = ARRAY_SIZE(a);
+        rshift(0, 0, count, a);
+        const size_t b[] = {1};
+        ERRCHK(equals(count, a, b));
+    }
+    {
+        size_t a[]         = {1, 2, 3, 4};
+        const size_t count = ARRAY_SIZE(a);
+        rshift(1, 0, count, a);
+        const size_t b[] = {0, 1, 2, 3};
+        ERRCHK(equals(count, a, b));
+    }
+    {
+        size_t a[]         = {1, 2, 3, 4};
+        const size_t count = ARRAY_SIZE(a);
+        rshift(3, 5, count, a);
+        const size_t b[] = {5, 5, 5, 1};
+        ERRCHK(equals(count, a, b));
+    }
 }
 
 size_t
@@ -227,4 +296,24 @@ double
 min_double(const double a, const double b)
 {
     return a < b ? a : b;
+}
+
+/*
+ * Unit testing
+ */
+bool
+equals(const size_t count, const size_t* a, const size_t* b)
+{
+    for (size_t i = 0; i < count; ++i)
+        if (a[i] != b[i])
+            return false;
+    return true;
+}
+
+void
+test_math_utils(void)
+{
+    test_prod();
+    test_cumprod();
+    test_rshift();
 }
