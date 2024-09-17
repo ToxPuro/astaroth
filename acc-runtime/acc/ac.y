@@ -75,6 +75,7 @@ void set_identifier_infix(const char* infix, ASTNode* curr);
 ASTNode* get_node(const NodeType type, ASTNode* node);
 ASTNode* get_node_by_token(const int token, const ASTNode* node);
 static inline int eval_int(ASTNode* node);
+static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names);
 static ASTNode* create_type_declaration(const char* tqual, const char* tspec, const int token);
 static ASTNode* create_type_qualifiers(const char* tqual,int token);
 static ASTNode* create_type_qualifier(const char* tqual, const int token);
@@ -289,13 +290,12 @@ reset_all_files()
 		 "get_arrays.h","dconst_decl.h","rconst_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h","memcpy_to_gmem_arrays.h","memcpy_from_gmem_arrays.h",
 		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","gmem_arrays_accessed_decl.h","gmem_arrays_output_accesses.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
 		 "load_and_store_uniform_overloads.h","load_and_store_uniform_funcs.h","load_and_store_uniform_header.h","get_array_info.h","get_from_comp_config.h","get_param_name.h","to_str_funcs.h","get_default_value.h",
-		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_loaders.h", "user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
+		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
 		  "fields_info.h","is_comptime_param.h","push_to_config.h","load_comp_info.h","load_comp_info_overloads.h","device_set_input_decls.h","device_set_input.h","device_set_input_loads.h","device_set_input_overloads.h",
 		  "device_get_output_decls.h","device_get_input_decls.h","device_get_output.h","device_get_input.h","device_get_output_overloads.h","device_get_input_overloads.h","device_get_input_loads.h","device_get_output_loads.h",
-		  "get_vtxbufs_funcs.h","get_vtxbufs_declares.h","get_vtxbufs_loads.h","array_info.h"
-		  };
+		  "get_vtxbufs_funcs.h","get_vtxbufs_declares.h","get_vtxbufs_loads.h","array_info.h","get_empty_pointer.h"};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
-	    if(!file_exists(files[i])) continue;
+	    //if(!file_exists(files[i])) continue;
             FILE* fp = fopen(files[i], "w");
 	    check_file(fp,files[i]);
             fclose(fp);
@@ -472,6 +472,7 @@ main(int argc, char** argv)
 %token STATEMENT_LIST_HEAD STATEMENT
 %token REAL3 INT3
 %token RANGE
+%token CONST_DIMS
 
 %nonassoc QUESTION
 %nonassoc ':'
@@ -516,65 +517,44 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 		if(are_arrays)
 		{
 			const int num_fields = eval_int(declaration_list_head->lhs->rhs);
-			ASTNode* copy = astnode_dup(declaration_list_head->lhs,declaration_list_head);
-			char* index = malloc(100*sizeof(char));
 			ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
                         const char* field_name_str = strdup(field_name->buffer);
-			sprintf(index,"_%d",num_fields-1);
-			strcat(field_name->buffer,index);
-			char* array_val     = malloc(4098*sizeof(char));
-			char* array_val_tmp = malloc(4098*sizeof(char));
-			sprintf(array_val,"%s",field_name->buffer);
-			for(int i=num_fields-2; i>=0;--i)
+			node_vec nodes = VEC_INITIALIZER;
+			for(int i=0; i<num_fields;++i)
 			{
-				ASTNode* new_head = astnode_create(NODE_UNKNOWN,NULL,NULL);
-				new_head->lhs  = astnode_dup(copy,new_head);
-				new_head->parent=declaration_list_head;
-				declaration_list_head ->rhs = declaration_list_head->lhs;
-				declaration_list_head ->lhs=new_head;
-				declaration_list_head  = new_head;
-				ASTNode* field_name_inner = declaration_list_head->lhs->lhs->lhs;
-				sprintf(index,"_%d",i);
-				strcat(field_name_inner->buffer,index);
-				sprintf(array_val_tmp,"%s,%s",field_name_inner->buffer,array_val);
-				//swap
-				char* swap_tmp;
-				swap_tmp = array_val;
-				array_val = array_val_tmp;
-				array_val_tmp = swap_tmp;
-				
+
+				ASTNode* identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
+				identifier->token = IDENTIFIER;
+				asprintf(&identifier->buffer,"%s_%d",field_name_str,i);
+				ASTNode* primary_expression = astnode_create(NODE_PRIMARY_EXPRESSION,identifier,NULL);
+				ASTNode* node = astnode_create(NODE_UNKNOWN,primary_expression,NULL);
+				set_identifier_type(NODE_VARIABLE_ID,node);
+				push_node(&nodes,node);
 			}
-			ASTNode* tmp = $$;
 
-			ASTNode* type_declaration = create_type_declaration("const","VertexBufferHandle*",CONST_QL);
-
-			ASTNode* var_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
-			var_identifier->buffer = malloc(sizeof(char)*4098);
-			snprintf(var_identifier->buffer,4098,"%s",field_name_str);
-			var_identifier->token = IDENTIFIER;
-			var_identifier->type = NODE_VARIABLE_ID;
-			
-
-			ASTNode* expression_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
-			expression_identifier->buffer = strdup(array_val);
-			expression_identifier->token = IDENTIFIER;
-			ASTNode* expression = astnode_create(NODE_UNKNOWN,expression_identifier,NULL);
-			ASTNode* assign_expression = astnode_create(NODE_UNKNOWN,expression,NULL);
-
-			ASTNode* assign_leaf = astnode_create(NODE_ASSIGNMENT, var_identifier,assign_expression);
-
-			ASTNode* assignment_list = astnode_create(NODE_UNKNOWN, assign_leaf,NULL);
-
-			ASTNode* var_definitions = astnode_create(NODE_ASSIGN_LIST,type_declaration,assignment_list);
-			var_definitions -> type |= NODE_NO_OUT;
-			var_definitions -> type |= NODE_DECLARATION;
-			var_definitions->postfix = strdup(";");
-
-			$$ = astnode_create(NODE_UNKNOWN,tmp,var_definitions);
-			tmp = $$;
-			free(index);
-			free(array_val);
-			free(array_val_tmp);
+			ASTNode* elems = build_list_node(nodes,",");
+			free_node_vec(&nodes);
+			//TP: create the equivalent of const Field CHEMISTRY = [CHEMISTRY_0, CHEMISTRY_1,...,CHEMISTRY_N]
+				ASTNode* type_declaration = create_type_declaration("const","VertexBufferHandle*",CONST_QL);
+				ASTNode* var_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
+				var_identifier->buffer = malloc(sizeof(char)*4098);
+				snprintf(var_identifier->buffer,4098,"%s",field_name_str);
+				var_identifier->token = IDENTIFIER;
+				var_identifier->type = NODE_VARIABLE_ID;
+				ASTNode* arr_initializer = astnode_create(NODE_ARRAY_INITIALIZER,elems,NULL);
+				arr_initializer->prefix  = strdup("{");
+				arr_initializer->postfix = strdup("}");
+				ASTNode* expression = astnode_create(NODE_UNKNOWN,arr_initializer,NULL);
+				ASTNode* assign_expression = astnode_create(NODE_UNKNOWN,expression,NULL);
+				ASTNode* assign_leaf = astnode_create(NODE_ASSIGNMENT, var_identifier,assign_expression);
+				ASTNode* assignment_list = astnode_create(NODE_UNKNOWN, assign_leaf,NULL);
+				ASTNode* var_definitions = astnode_create(NODE_ASSIGN_LIST,type_declaration,assignment_list);
+				var_definitions -> type |= NODE_NO_OUT;
+				var_definitions -> type |= NODE_DECLARATION;
+				var_definitions->postfix = strdup(";");
+			//TP: replace the orignal field identifier e.g. CHEMISTRY with the list of declarations CHEMISTRY_0 ... CHEMISTRY_N
+			declaration->rhs = astnode_dup(elems,NULL);
+			$$ = astnode_create(NODE_UNKNOWN,$$,var_definitions);
 		}
             } 
             else if(get_node_by_token(WORK_BUFFER, variable_definition)) {
@@ -593,7 +573,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 		if(!tqual || has_qualifier(variable_definition,"dconst") || has_qualifier(variable_definition,"run_const"))
 		{
 			
-			char* tmp = malloc(1000*sizeof(char));
 			const ASTNode* base = variable_definition->lhs->rhs->lhs;
 			while(base->rhs)
 			{
@@ -603,8 +582,21 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 			  array_len_node -> buffer = itoa(array_len);
 			  base = base->lhs;
 			}
-			free(tmp);
 		}
+		//else if gmem simply replace const ints with numeric values to enable differentation of the const declarations
+		//and the array dims and also to notice easily if dims are known statically
+		else if(has_qualifier(variable_definition,"gmem"))
+		{
+			const ASTNode* base = variable_definition->lhs->rhs->lhs;
+			while(base->rhs)
+			{
+			  ASTNode* array_len_node = base->rhs;
+			  replace_const_ints(array_len_node,const_int_values,const_ints);
+			  base = base->lhs;
+			}
+		}	
+		
+		
 				
 	    }
 	    //assume is a dconst var
@@ -673,7 +665,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
  */
 struct_name : STRUCT_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; $$->token = IDENTIFIER;};
 enum_name: ENUM_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
-identifier: IDENTIFIER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
+identifier: IDENTIFIER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken;};
 number: NUMBER         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
       | REALNUMBER     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_prefix("AcReal(", $$); astnode_set_postfix(")", $$); }
       | DOUBLENUMBER   {
@@ -1386,8 +1378,7 @@ get_node(const NodeType type, ASTNode* node)
     return NULL;
 }
 
-void
-replace_const_ints(ASTNode* node, const string_vec values, const string_vec names)
+static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names)
 {
 	if(node->lhs)
 		replace_const_ints(node->lhs,values,names);
@@ -1397,6 +1388,8 @@ replace_const_ints(ASTNode* node, const string_vec values, const string_vec name
 	const int index = str_vec_get_index(names,node->buffer);
 	if(index == -1) return;
 	node->buffer = strdup(values.data[index]);
+	node->type |= NODE_VARIABLE_ID;
+	node->token = NUMBER;
 }
 
 static inline int eval_int(ASTNode* node)

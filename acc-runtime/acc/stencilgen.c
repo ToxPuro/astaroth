@@ -266,11 +266,11 @@ gen_kernel_prefix(const int curr_kernel)
     printf("(void)reduce_min_res;");
     printf("(void)reduce_max_res;");
     printf("const auto reduce_sum __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-          	  "{ should_reduce[(int)output] = true; reduce_sum_res[(int)output] = val; };");
+          	  "{ should_reduce[(int)output] = condition; reduce_sum_res[(int)output] = val; };");
     printf("const auto reduce_min __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-          	  "{ should_reduce[(int)output] = true; reduce_min_res[(int)output] = val; };");
+          	  "{ should_reduce[(int)output] = condition; reduce_min_res[(int)output] = val; };");
     printf("const auto reduce_max __attribute__((unused)) = [&](const bool& condition, const AcReal& val, const AcRealOutputParam& output)"
-		  "{ should_reduce[(int)output] = true; reduce_max_res[(int)output] = val; };");
+		  "{ should_reduce[(int)output] = condition; reduce_max_res[(int)output] = val; };");
   }
 }
 
@@ -278,7 +278,7 @@ static void
 gen_return_if_oob()
 {
   	printf("if (!(vertexIdx.x >= end.x || vertexIdx.y >= end.y || "
-         "vertexIdx.z >= end.z)){\n");
+         "vertexIdx.z >= end.z)){\n#include \"user_non_scalar_constants.h\"\n");
 }
 static int
 get_original_index(const int* mappings, const int field)
@@ -308,7 +308,7 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses, cons
   for(int field = 0;  field < NUM_ALL_FIELDS; ++field) gen_previous |= previous_accessed[cur_kernel][field];
   if(!gen_previous) 
   {
-  	printf("const auto previous_base __attribute__((unused)) = [&](const Field& field) {return (AcReal)NAN;};");
+  	printf("const auto previous_base __attribute__((unused)) = [&](const Field& field) {(void)field; return (AcReal)NAN;};");
 	return;
   }
   for (int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)

@@ -179,11 +179,15 @@ operator-(const int3& a)
 }
 
 
+//TP: HIP already provides this
+#if AC_USE_HIP
+#else
 static HOST_DEVICE_INLINE int3
 operator*(const int3& a, const int3& b)
 {
   return (int3){a.x * b.x, a.y * b.y, a.z * b.z};
 }
+#endif
 
 
 static HOST_DEVICE_INLINE AcReal3

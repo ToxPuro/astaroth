@@ -120,15 +120,15 @@ getReal(const AcRealParam param)
 }
 
 static inline Scalar
-getInt(const int val)
+UNUSED getInt(const int val)
 {
 	return val;
 }
 
 static inline Scalar
-getReal(const AcReal val)
+UNUSED getReal(const AcReal val)
 {
-	return val;
+	return (Scalar)val;
 }
 
 static inline int

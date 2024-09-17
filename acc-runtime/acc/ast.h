@@ -522,6 +522,23 @@ is_number(const char* str)
 	return res;
 }
 static inline bool
+is_number_expression(const char* str)
+{
+	const size_t n = strlen(str);
+	bool res = true;
+	for(size_t i = 0; i < n; ++i)
+		res &= (
+			  isdigit(str[i]) > 0
+			|| str[i] == ')'
+			|| str[i] == '('
+			|| str[i] == '+'
+			|| str[i] == '-'
+			|| str[i] == '/'
+			|| str[i] == '*'
+		       );
+	return res;
+}
+static inline bool
 is_real(const char* str)
 {
 	char* tmp = strdup(str);
@@ -596,4 +613,54 @@ file_exists(const char* filename)
 {
   struct stat   buffer;
   return (stat (filename, &buffer) == 0);
+}
+
+typedef struct node_vec
+{
+	const ASTNode** data;
+	size_t size;
+	int capacity;
+
+} node_vec;
+static inline void
+free_node_vec(node_vec* vec)
+{
+	free(vec->data);
+	vec -> size = 0;
+	vec -> capacity = 0;
+	vec -> data = NULL;
+}
+static inline int
+push_node(node_vec* dst, const ASTNode* src)
+{
+	if(dst->capacity == 0)
+	{
+		dst->capacity++;
+		dst->data = malloc(sizeof(ASTNode*)*dst->capacity);
+	}
+	dst->data[dst->size] = src;
+	++(dst->size);
+	if(dst->size == (size_t)dst->capacity)
+	{
+		dst->capacity = dst->capacity*2;
+		const ASTNode** tmp = malloc(sizeof(ASTNode*)*dst->capacity);
+		for(size_t i = 0; i < dst->size; ++i)
+			tmp[i] = dst->data[i];
+		free(dst->data);
+		dst->data = tmp;
+	}
+	return dst->size-1;
+}
+
+static ASTNode*
+build_list_node(const node_vec nodes, const char* separator)
+{
+	if(nodes.size == 0) return NULL;
+	ASTNode* list_head = astnode_create(NODE_UNKNOWN, astnode_dup(nodes.data[0],NULL),NULL);
+	for(size_t i = 1; i < nodes.size; ++i)
+	{
+		list_head = astnode_create(NODE_UNKNOWN,list_head, astnode_dup(nodes.data[i],NULL));
+		list_head->buffer = strdup(separator);
+	}
+	return list_head;
 }
