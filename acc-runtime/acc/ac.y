@@ -303,7 +303,7 @@ reset_all_files()
 }
 
 
-int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* stage4, const char* dir, const bool gen_mem_accesses, const bool optimize_conditionals, const bool gen_extra_dfuncs, bool gen_bc_kernels)
+int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* dir, const bool gen_mem_accesses, const bool optimize_conditionals, const bool gen_extra_dfuncs, bool gen_bc_kernels)
 {
 	init_str_vec(&const_ints);
 	init_str_vec(&const_int_values);
@@ -453,9 +453,9 @@ main(int argc, char** argv)
     dir_backup = dir;
     
     reset_extra_files();
-    code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, false, false, true,false); 
-    code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, false, false, false,true); 
-    code_generation_pass(stage0, stage1, stage2, stage3, stage4,  dir, false, OPTIMIZE_CONDITIONALS, false,false);
+    code_generation_pass(stage0, stage1, stage2,  dir, false, false, true,false); 
+    code_generation_pass(stage0, stage1, stage2,  dir, false, false, false,true); 
+    code_generation_pass(stage0, stage1, stage2,  dir, false, OPTIMIZE_CONDITIONALS, false,false);
     
 
     return EXIT_SUCCESS;

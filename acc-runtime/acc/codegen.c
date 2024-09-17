@@ -676,12 +676,12 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
 		if(dim >= dims.size) fprintf(fp,"%s,","-1");
 		else fprintf(fp,"%s,",dims.data[dim]);
 	}
-	fprintf(fp,"%s","},");
+	fprintf(fp,"%s","},{");
 
 	for(size_t dim = 0; dim < 3; ++dim)
 		fprintf(fp,"%s,",(dim >= dims.size || is_number(dims.data[dim])) ? "false" : "true");
 	free_str_vec(&dims);
-	fprintf(fp,"%s","},");
+	fprintf(fp,"%s","}},");
         fprintf(fp, "\"%s\",", symbol_table[i].identifier);
         fprintf(fp, "%s,",accesses[counter] ? "true" : "false");
 	fprintf(fp,"%s","},");
@@ -710,11 +710,11 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
 		if(dim >= dims.size) fprintf(fp,"%s,","-1");
 		else fprintf(fp,"%s,",dims.data[dim]);
 	}
-	fprintf(fp,"%s","},");
+	fprintf(fp,"%s","},{");
 
 	for(size_t dim = 0; dim < 3; ++dim)
 		fprintf(fp,"%s,",(dim >= dims.size || is_number(dims.data[dim])) ? "false" : "true");
-	fprintf(fp,"%s","},");
+	fprintf(fp,"%s","}},");
 	free_str_vec(&dims);
         fprintf(fp, "\"%s\",", symbol_table[i].identifier);
         fprintf(fp, "true,");
@@ -830,16 +830,21 @@ gen_gmem_array_declarations(const char* datatype_scalar)
 
 
 	fp = fopen("memcpy_from_gmem_arrays.h","a");
-	fprintf(fp,"void memcpy_from_gmem_array(const %sArrayParam param, void* &ptr)\n"
-		    "{\n", enum_name);
 	
-
+	bool outputted = false;
   	for (size_t i = 0; i < num_symbols[current_nest]; ++i)
   	  if (symbol_table[i].type & NODE_VARIABLE_ID &&
   	      !strcmp(symbol_table[i].tspecifier,datatype) && int_vec_contains(symbol_table[i].tqualifiers,GLOBAL_MEMORY_QL))
 		  if (!int_vec_contains(symbol_table[i].tqualifiers,DEAD))
+		  {
+			if(!outputted)
+				fprintf(fp,"void memcpy_from_gmem_array(const %sArrayParam param, void* &ptr)\n"
+		    		"{\n", enum_name);
+			outputted = true;
 		  	fprintf(fp,"if (param == %s)\n ERRCHK_CUDA_ALWAYS(cudaMemcpyFromSymbol(&ptr,AC_INTERNAL_gmem_%s_arrays_%s,sizeof(ptr),0,cudaMemcpyDeviceToHost));\n",symbol_table[i].identifier,define_name,symbol_table[i].identifier);
-	fprintf(fp,"}\n");
+		  }
+	if(outputted)
+		fprintf(fp,"}\n");
 	fclose(fp);
 
 	fp = fopen("gmem_arrays_decl.h","a");
@@ -1593,7 +1598,7 @@ mark_as_input(ASTNode* kernel_root, const ASTNode* param)
 }
 
 void
-process_param_codegen(ASTNode* kernel_root, const ASTNode* param, char* structs_info_str)
+process_param_codegen(const ASTNode* param, char* structs_info_str)
 {
 	const char* param_type = get_node(NODE_TSPEC,param->lhs)->lhs->buffer;
 	const char* param_name = param->rhs->buffer;
@@ -1637,7 +1642,7 @@ gen_kernel_structs_recursive(const ASTNode* node, char* user_kernel_params_struc
 	structs_info_str[0] = '\0';
 	node_vec params = get_nodes_in_list(param_list_head);
 	for(size_t i = 0; i < params.size; ++i)
-		process_param_codegen(compound_statement,params.data[i],structs_info_str);
+		process_param_codegen(params.data[i],structs_info_str);
 	free_node_vec(&params);
 
         ASTNode* fn_identifier = get_node_by_token(IDENTIFIER, node->lhs);
@@ -1871,7 +1876,7 @@ get_function_param_types_and_names(const ASTNode* node, const char* func_name)
 
 func_params_info
 get_func_call_params_info(const ASTNode* func_call);
-void gen_loader(const ASTNode* func_call, const ASTNode* root, const char* prefix, string_vec* input_symbols, string_vec* input_types)
+void gen_loader(const ASTNode* func_call, const ASTNode* root, const char* prefix)
 {
 		const char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
 		const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,func_name,0,0);
@@ -1945,7 +1950,7 @@ get_field_name(const int field)
 }
 	 
 void
-gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char* global_res, string_vec* input_symbols, string_vec* input_types, const char* taskgraph_name)
+gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char* global_res, const char* taskgraph_name)
 {
 	assert(kernel_call);
 	char* res = malloc(sizeof(char)*4000);
@@ -1983,7 +1988,7 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 		sprintf(res,"acCompute(KERNEL_%s,%s,%s,%s_%s_loader),\n",func_name,fields_in_str,fields_out_str,taskgraph_name,func_name);
 	else
 		sprintf(res,"acCompute(KERNEL_%s,%s,%s),\n",func_name,fields_in_str,fields_out_str);
-	gen_loader(kernel_call,root,taskgraph_name,input_symbols,input_types);
+	gen_loader(kernel_call,root,taskgraph_name);
 	free(all_fields);
 	free(fields_in_str);
 	free(fields_out_str);
@@ -2173,7 +2178,7 @@ boundary_str(const int bc)
 }
 
 void
-process_boundcond(const ASTNode* func_call, char** res, const ASTNode* root, const char* boundconds_name, string_vec* input_symbols,string_vec* input_types)
+process_boundcond(const ASTNode* func_call, char** res, const ASTNode* root, const char* boundconds_name)
 {
 	char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
 	const char* boundary = get_node_by_token(IDENTIFIER,func_call->rhs)->buffer;
@@ -2203,7 +2208,7 @@ process_boundcond(const ASTNode* func_call, char** res, const ASTNode* root, con
 			for(size_t field = 0; field < num_fields; ++field)
 	     	     		res[field + num_fields*bc] = (fields.out[field]) ? strdup(full_name) : res[field + num_fields*bc];
 			if(!strcmp(func_name,"periodic"))
-				gen_loader(func_call,root,prefix,input_symbols,input_types);
+				gen_loader(func_call,root,prefix);
 		}
 	}
 	free(fields.in);
@@ -2281,12 +2286,12 @@ gen_dfunc_bc_kernel(const ASTNode* func_call, FILE* fp, const ASTNode* root, con
 	free(full_name);
 }
 void
-get_field_boundconds_recursive(const ASTNode* node, const ASTNode* root, char** res, const char* boundconds_name, string_vec* input_symbols, string_vec* input_types)
+get_field_boundconds_recursive(const ASTNode* node, const ASTNode* root, char** res, const char* boundconds_name)
 {
 	if(node->lhs)
-		get_field_boundconds_recursive(node->lhs,root,res,boundconds_name,input_symbols,input_types);
+		get_field_boundconds_recursive(node->lhs,root,res,boundconds_name);
 	if(node->rhs)
-		get_field_boundconds_recursive(node->rhs,root,res,boundconds_name,input_symbols,input_types);
+		get_field_boundconds_recursive(node->rhs,root,res,boundconds_name);
 	if(node->type != NODE_BOUNDCONDS_DEF)
 		return;
 	if(strcmp(node->lhs->buffer,boundconds_name))
@@ -2299,15 +2304,15 @@ get_field_boundconds_recursive(const ASTNode* node, const ASTNode* root, char** 
 		++n_entries;
 		function_call_list_head = function_call_list_head->lhs;
 	}
-	process_boundcond(function_call_list_head->lhs,res,root,boundconds_name,input_symbols,input_types);
+	process_boundcond(function_call_list_head->lhs,res,root,boundconds_name);
 	while(--n_entries)
 	{
 		function_call_list_head = function_call_list_head->parent;
-		process_boundcond(function_call_list_head->rhs,res,root,boundconds_name,input_symbols,input_types);
+		process_boundcond(function_call_list_head->rhs,res,root,boundconds_name);
 	}
 }
 char**
-get_field_boundconds(const ASTNode* root, const char* boundconds_name, string_vec* input_symbols, string_vec* input_types)
+get_field_boundconds(const ASTNode* root, const char* boundconds_name)
 {
 	char** res = NULL;
   	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
@@ -2316,7 +2321,7 @@ get_field_boundconds(const ASTNode* root, const char* boundconds_name, string_ve
 	const int num_boundaries = 6;
 	res = malloc(sizeof(char*)*num_fields*num_boundaries);
 	memset(res,0,sizeof(char*)*num_fields*num_boundaries);
-	get_field_boundconds_recursive(root,root,res,boundconds_name,input_symbols,input_types);
+	get_field_boundconds_recursive(root,root,res,boundconds_name);
 	return res;
 }
 
@@ -2514,19 +2519,19 @@ make_unique_bc_calls(ASTNode* node)
 	free_node_vec(&func_calls);
 }
 void
-gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* input_symbols, string_vec* input_types, string_vec* names)
+gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* names)
 {
   	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
 	if(!has_optimization_info)
 		return;
 	if(node->lhs)
-		gen_user_taskgraphs_recursive(node->lhs,root,input_symbols,input_types,names);
+		gen_user_taskgraphs_recursive(node->lhs,root,names);
 	if(node->rhs)
-		gen_user_taskgraphs_recursive(node->rhs,root,input_symbols,input_types,names);
+		gen_user_taskgraphs_recursive(node->rhs,root,names);
 	if(node->type != NODE_TASKGRAPH_DEF)
 		return;
 	const char* boundconds_name = node->lhs->rhs->buffer;
-	char** field_boundconds = get_field_boundconds(root,boundconds_name,input_symbols,input_types);
+	char** field_boundconds = get_field_boundconds(root,boundconds_name);
 	const int num_boundaries = 6;
 
 	for(size_t field = 0; field < num_fields; ++field)
@@ -2669,7 +2674,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 				const ASTNode* kernel_call = get_list_elem_from_leaf(function_call_list_head,call);
 				gen_taskgraph_kernel_entry(
 						kernel_call,
-						root,res,input_symbols,input_types,name
+						root,res,name
 				);
 				const char* func_name = get_node_by_token(IDENTIFIER,kernel_call)->buffer;
 				const int kernel_index = get_symbol_index(NODE_FUNCTION_ID,func_name,KERNEL);
@@ -2736,18 +2741,14 @@ gen_user_taskgraphs(const ASTNode* root)
 	make_unique_bc_calls((ASTNode*) root);
 	if(!has_optimization_info)
 		return;
-	string_vec input_symbols = VEC_INITIALIZER;
-	string_vec input_types   = VEC_INITIALIZER;
 	string_vec graph_names = VEC_INITIALIZER;
-	gen_user_taskgraphs_recursive(root,root,&input_symbols,&input_types,&graph_names);
+	gen_user_taskgraphs_recursive(root,root,&graph_names);
 	FILE* fp = fopen("user_defines.h","a");
 	fprintf(fp,"typedef enum {");
 	for(size_t i = 0; i < graph_names.size; ++i)
 		fprintf(fp,"%s,",graph_names.data[i]);
 	fprintf(fp,"} AcDSLTaskGraph;\n");
 	fclose(fp);
-	free_str_vec(&input_symbols);
-	free_str_vec(&input_types);
 	free_str_vec(&graph_names);
 }
 
@@ -6101,6 +6102,7 @@ gen_analysis_stencils(FILE* stream)
 void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool optimize_conditionals)
 { 
+  (void)optimize_conditionals;
   symboltable_reset();
   ASTNode* root = astnode_dup(root_in,NULL);
   //preprocess(root);
