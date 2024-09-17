@@ -1,5 +1,6 @@
 #include "comm.h"
 
+#include "array.h"
 #include "decomp.h"
 #include "errchk.h"
 #include "math_utils.h"
@@ -273,4 +274,19 @@ comm_run(void)
     MPI_Comm_free(&comm_cart);
     MPI_Finalize();
     return SUCCESS;
+}
+
+int
+comm_run_other(void)
+{
+    // MPI_Init(NULL, NULL);
+
+    const size_t count = 8;
+    real* arr          = array_create(count, false);
+    ERRCHK(arr);
+    // print_array("Arr", count, arr);
+    array_destroy(&arr, false);
+
+    // MPI_Finalize();
+    return 0;
 }

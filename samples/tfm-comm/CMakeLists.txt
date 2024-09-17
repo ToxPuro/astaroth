@@ -42,7 +42,7 @@ add_library(tfm-pack SHARED pack.cc)
 add_library(tfm-array SHARED array.cc)
 
 add_library(tfm-comm SHARED comm.c)
-target_link_libraries(tfm-comm PRIVATE tfm-decomp MPI::MPI_C tfm-pack)
+target_link_libraries(tfm-comm PRIVATE tfm-decomp MPI::MPI_C tfm-pack tfm-array)
 
 ## Program
 add_executable(run main.c)
