@@ -93,8 +93,8 @@ if (USE_HIP)
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm)
     # Workaround for finding roctracer on Frontier
     list(APPEND CMAKE_PREFIX_PATH /opt/rocm-default/roctracer /opt/rocm-default)
-    include_directories(/opt/rocm-default/roctracer/include)
-    link_directories(/opt/rocm-default/roctracer/lib)
+    include_directories(/opt/rocm/roctracer/include)
+    link_directories(/opt/rocm/roctracer/lib)
 
     # Rocm
     #include_directories(/opt/rocm/include)
@@ -103,10 +103,10 @@ if (USE_HIP)
     # Roctracer
     #Deprecated (roctracer inlude will warn about deprecated header, better to include non deprecated header)
     #include_directories(/opt/rocm/roctracer/include)
-    #link_directories(/opt/rocm/roctracer/lib)
+    ##link_directories(/opt/rocm/roctracer/lib)
     #LUMI & Dardel
-    set(ROC_TRACER_PATH "/opt/rocm-5.2.3/include/roctracer")
-    #set(ROC_TRACER_PATH "/opt/rocm/include/roctracer")
+    #set(ROC_TRACER_PATH "/opt/rocm-5.2.3/include/roctracer")
+    set(ROC_TRACER_PATH "/opt/rocm/include/roctracer")
     include_directories(${ROC_TRACER_PATH})
     link_directories(${ROC_TRACER_PATH})
     list(APPEND CMAKE_PREFIX_PATH ${ROC_TRACER_PATH})

@@ -1,5 +1,7 @@
 #include "../../stdlib/integrators.h"
 #include "../../stdlib/math"
+#include "../../stdlib/grid.h"
+#
 const int AC_2d_ints = [[1,2,3], [2,3,4]]
 const int AC_const_ints = [1,2,3]
 const int AC_const_ints_len = 3
@@ -310,17 +312,6 @@ contract(Matrix mat) {
 }
 
 
-grid_position() {
-    return real3((globalVertexIdx.x - AC_nx_min) * AC_dsx, 
-                 (globalVertexIdx.y - AC_ny_min) * AC_dsy, 
-                 (globalVertexIdx.z - AC_nz_min) * AC_dsz)
-}
-
-grid_centre() {
-    return real3(((AC_nxgrid-1) * AC_dsx)/2.0, 
-                 ((AC_nygrid-1) * AC_dsy)/2.0, 
-                 ((AC_nzgrid-1) * AC_dsz)/2.0)
-}
 
 
 #if LFORCING
