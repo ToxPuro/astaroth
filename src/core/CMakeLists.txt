@@ -47,6 +47,9 @@ if (USE_PERFSTUBS)
         perfstubs
 	Threads::Threads
     )
+else()
+    find_package(Threads REQUIRED)
+    target_link_libraries(astaroth_core PRIVATE Threads::Threads)
 endif()
 
 ## Options
