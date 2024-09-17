@@ -52,7 +52,7 @@ fn_name = "print"
 generic_declaration = (
     f"#define {fn_name}(label, value) _Generic((value), GENERIC_ITEMS)(label, value)"
 )
-fn_definition = f'void {fn_name}_TYPE(const char* label, const TYPE value) {{ printf("%s: ", label); print_type(value); }}'
+fn_definition = f'void {fn_name}_TYPE(const char* label, const TYPE value) {{ printf("%s: ", label); print_type(value); printf("\\n"); }}'
 
 # Generics
 generic_items = [f"TYPE: {fn_name}_TYPE".replace("TYPE", type) for type in types]
@@ -79,7 +79,7 @@ print("")
 # print_array
 fn_name = "print_array"
 generic_declaration = f"#define {fn_name}(label, count, arr) _Generic((arr), GENERIC_ITEMS)(label, count, arr)"
-fn_definition = f'void {fn_name}_TYPE(const char* label, const size_t count, const TYPE* arr) {{ printf("%s: (", label); for (size_t i = 0; i < count; ++i) {{print_type(arr[i]); printf("%s", i < count - 1 ? ", " : ""); printf(")");}} }}'
+fn_definition = f'void {fn_name}_TYPE(const char* label, const size_t count, const TYPE* arr) {{ printf("%s: (", label); for (size_t i = 0; i < count; ++i) {{print_type(arr[i]); printf("%s", i < count - 1 ? ", " : "");}} printf(")\\n"); }}'
 
 # Generics
 generic_items = [f"TYPE*: {fn_name}_TYPE".replace("TYPE", type) for type in types]
