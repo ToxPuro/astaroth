@@ -1,6 +1,5 @@
 // Defines
 hostdefine AC_INTEGRATION_ENABLED (1) // Enables acIntegrate() and other non-generic library functions
-hostdefine AC_TFM_ENABLED (1)
 hostdefine LDENSITY (1)
 hostdefine LHYDRO (1)
 hostdefine LMAGNETIC (0)
