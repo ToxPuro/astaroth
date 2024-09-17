@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -31,12 +32,12 @@
 // DO NOT REMOVE BRACKETS AROUND RETVAL. F.ex. if (!a < b) vs if (!(a < b)).
 #define ERRCHK(retval)                                                                             \
     {                                                                                              \
-        if ((retval) == 0)                                                                         \
+        if ((retval) == false)                                                                     \
             ERROR(#retval " was false");                                                           \
     }
 
 #define WARNCHK(retval)                                                                            \
     {                                                                                              \
-        if ((retval) == 0)                                                                         \
+        if ((retval) == false)                                                                     \
             WARNING(#retval " was false");                                                         \
     }
