@@ -21,7 +21,7 @@ print_int(const char* label, const int value)
 }
 
 void
-print_size_t_array(const char* label, const size_t count, const size_t arr[])
+print_size_t_array(const char* label, const size_t count, const size_t* arr)
 {
     printf("%s: (", label);
     for (size_t i = 0; i < count; ++i)
@@ -30,7 +30,7 @@ print_size_t_array(const char* label, const size_t count, const size_t arr[])
 }
 
 void
-print_int64_t_array(const char* label, const size_t count, const int64_t arr[])
+print_int64_t_array(const char* label, const size_t count, const int64_t* arr)
 {
     printf("%s: (", label);
     for (size_t i = 0; i < count; ++i)
@@ -39,7 +39,7 @@ print_int64_t_array(const char* label, const size_t count, const int64_t arr[])
 }
 
 void
-print_int_array(const char* label, const size_t count, const int arr[])
+print_int_array(const char* label, const size_t count, const int* arr)
 {
     printf("%s: (", label);
     for (size_t i = 0; i < count; ++i)

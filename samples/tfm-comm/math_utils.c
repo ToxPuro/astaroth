@@ -14,7 +14,7 @@ prod(const size_t count, const size_t* arr)
 
 /** Cumulative product */
 void
-cumprod(const size_t count, const size_t in[], size_t out[])
+cumprod(const size_t count, const size_t* in, size_t* out)
 {
     ERRCHK(count > 0);
 
@@ -27,8 +27,8 @@ cumprod(const size_t count, const size_t in[], size_t out[])
  * e.g., {1,2,3} -> {fill_value, 1, 2}
  */
 void
-rshift(const size_t shift, const size_t fill_value, const size_t count, const size_t in[],
-       size_t out[])
+rshift(const size_t shift, const size_t fill_value, const size_t count, const size_t* in,
+       size_t* out)
 {
     ERRCHK(shift < count);
     ERRCHK(in < out || in + count < out);
@@ -40,7 +40,7 @@ rshift(const size_t shift, const size_t fill_value, const size_t count, const si
 }
 
 size_t
-dot(const size_t count, const size_t a[], const size_t b[])
+dot(const size_t count, const size_t* a, const size_t* b)
 {
     size_t res = 0;
     for (size_t i = 0; i < count; ++i)
@@ -127,7 +127,7 @@ mod_pointwise(const size_t count, const int64_t* a, const int64_t* b, int64_t* c
 }
 
 void
-to_spatial(const size_t index, const size_t ndims, const size_t shape[], size_t output[])
+to_spatial(const size_t index, const size_t ndims, const size_t* shape, size_t* output)
 {
     for (size_t j = 0; j < ndims; ++j) {
         size_t divisor = 1;
@@ -138,7 +138,7 @@ to_spatial(const size_t index, const size_t ndims, const size_t shape[], size_t 
 }
 
 size_t
-to_linear(const size_t ndims, const size_t index[], const size_t shape[])
+to_linear(const size_t ndims, const size_t* index, const size_t* shape)
 {
     size_t result = 0;
     for (size_t j = 0; j < ndims; ++j) {
@@ -151,7 +151,7 @@ to_linear(const size_t ndims, const size_t index[], const size_t shape[])
 }
 
 void
-reverse(const size_t count, size_t arr[])
+reverse(const size_t count, size_t* arr)
 {
     for (size_t i = 0; i < count / 2; ++i) {
         const size_t tmp   = arr[i];
@@ -161,35 +161,35 @@ reverse(const size_t count, size_t arr[])
 }
 
 void
-copy(const size_t count, const size_t in[], size_t out[])
+copy(const size_t count, const size_t* in, size_t* out)
 {
     for (size_t i = 0; i < count; ++i)
         out[i] = in[i];
 }
 
 void
-set(const size_t value, const size_t count, size_t arr[])
+set(const size_t value, const size_t count, size_t* arr)
 {
     for (size_t i = 0; i < count; ++i)
         arr[i] = value;
 }
 
 void
-iset(const int value, const size_t count, int arr[])
+iset(const int value, const size_t count, int* arr)
 {
     for (size_t i = 0; i < count; ++i)
         arr[i] = value;
 }
 
 void
-add_to_array(const size_t value, const size_t count, size_t arr[])
+add_to_array(const size_t value, const size_t count, size_t* arr)
 {
     for (size_t i = 0; i < count; ++i)
         arr[i] += value;
 }
 
 void
-add_arrays(const size_t count, const size_t a[], const size_t b[], size_t c[])
+add_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c)
 {
     for (size_t i = 0; i < count; ++i)
         c[i] = a[i] + b[i];

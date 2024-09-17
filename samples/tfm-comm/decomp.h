@@ -42,9 +42,9 @@ AcDecompositionInfo acDecompositionInfoCreate(const size_t ndims, const size_t* 
 
 void acDecompositionInfoDestroy(AcDecompositionInfo* info);
 
-size_t acGetPid(const size_t ndims, const int64_t pid_input[], const AcDecompositionInfo info);
+size_t acGetPid(const size_t ndims, const int64_t* pid_input, const AcDecompositionInfo info);
 
 void acGetPid3D(const size_t i, const AcDecompositionInfo info, const size_t ndims,
-                int64_t pid_output[]);
+                int64_t* pid_output);
 
 // void acVerifyDecomposition(const AcDecompositionInfo info);

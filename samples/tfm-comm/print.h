@@ -20,8 +20,8 @@ void print_int64_t(const char* label, const int64_t value);
 
 void print_int(const char* label, const int value);
 
-void print_size_t_array(const char* label, const size_t count, const size_t arr[]);
+void print_size_t_array(const char* label, const size_t count, const size_t* arr);
 
-void print_int64_t_array(const char* label, const size_t count, const int64_t arr[]);
+void print_int64_t_array(const char* label, const size_t count, const int64_t* arr);
 
-void print_int_array(const char* label, const size_t count, const int arr[]);
+void print_int_array(const char* label, const size_t count, const int* arr);

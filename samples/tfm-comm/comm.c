@@ -27,7 +27,7 @@
 
 static MPI_Comm
 create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
-                                const size_t global_dims[])
+                                const size_t* global_dims)
 {
     int rank, nprocs;
     MPI_Comm_rank(parent, &rank);
@@ -159,7 +159,7 @@ test_indexing(const MPI_Comm comm_cart)
 }
 
 static void
-get_local_dims(const size_t ndims, const size_t nn[], const MPI_Comm comm_cart, size_t local_nn[])
+get_local_dims(const size_t ndims, const size_t* nn, const MPI_Comm comm_cart, size_t* local_nn)
 {
     int dims[ndims], periods[ndims], coords[ndims];
     MPI_Cart_get(comm_cart, as_int(ndims), dims, periods, coords);

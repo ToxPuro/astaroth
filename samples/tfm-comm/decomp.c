@@ -198,7 +198,7 @@ acDecompositionInfoDestroy(AcDecompositionInfo* info)
 }
 
 size_t
-acGetPid(const size_t ndims, const int64_t pid_input[], const AcDecompositionInfo info)
+acGetPid(const size_t ndims, const int64_t* pid_input, const AcDecompositionInfo info)
 {
     const size_t nlayers = info.nlayers;
     ERRCHK(ndims == info.ndims);
@@ -227,7 +227,7 @@ acGetPid(const size_t ndims, const int64_t pid_input[], const AcDecompositionInf
 }
 
 void
-acGetPid3D(const size_t i, const AcDecompositionInfo info, const size_t ndims, int64_t pid_output[])
+acGetPid3D(const size_t i, const AcDecompositionInfo info, const size_t ndims, int64_t* pid_output)
 {
     const size_t nlayers = info.nlayers;
     ERRCHK(ndims == info.ndims);

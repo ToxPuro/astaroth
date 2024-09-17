@@ -46,37 +46,37 @@ int64_t_as_int(const int64_t i)
 }
 
 void
-int64_t_as_size_t_array(const size_t count, const int64_t a[], size_t b[])
+int64_t_as_size_t_array(const size_t count, const int64_t* a, size_t* b)
 {
     for (size_t i = 0; i < count; ++i)
         b[i] = as_size_t(a[i]);
 }
 void
-int_as_size_t_array(const size_t count, const int a[], size_t b[])
+int_as_size_t_array(const size_t count, const int* a, size_t* b)
 {
     for (size_t i = 0; i < count; ++i)
         b[i] = as_size_t(a[i]);
 }
 void
-size_t_as_int64_t_array(const size_t count, const size_t a[], int64_t b[])
+size_t_as_int64_t_array(const size_t count, const size_t* a, int64_t* b)
 {
     for (size_t i = 0; i < count; ++i)
         b[i] = as_int64_t(a[i]);
 }
 void
-int_as_int64_t_array(const size_t count, const int a[], int64_t b[])
+int_as_int64_t_array(const size_t count, const int* a, int64_t* b)
 {
     for (size_t i = 0; i < count; ++i)
         b[i] = as_int64_t(a[i]);
 }
 void
-size_t_as_int_array(const size_t count, const size_t a[], int b[])
+size_t_as_int_array(const size_t count, const size_t* a, int* b)
 {
     for (size_t i = 0; i < count; ++i)
         b[i] = as_int(a[i]);
 }
 void
-int64_t_as_int_array(const size_t count, const int64_t a[], int b[])
+int64_t_as_int_array(const size_t count, const int64_t* a, int* b)
 {
     for (size_t i = 0; i < count; ++i)
         b[i] = as_int(a[i]);
