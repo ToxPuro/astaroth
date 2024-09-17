@@ -53,7 +53,7 @@ typedef float AcReal;
 #define AcVector AcReal3
 
 
-typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1 } AcResult;
+typedef enum { AC_SUCCESS = 0, AC_FAILURE = 1, AC_NOT_ALLOCATED = 2} AcResult;
 
 typedef struct {
   size_t x, y, z;

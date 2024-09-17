@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include "vecs.h"
+#include <sys/stat.h>
 
 #define BUFFER_SIZE (4096)
 #define FATAL_ERROR_MESSAGE "\nFATAL AC ERROR: "
@@ -36,7 +37,7 @@ typedef enum {
   NODE_DFUNCTION           = (1 << 1),
   NODE_KFUNCTION           = (1 << 2),
   NODE_FUNCTION_ID         = (1 << 3),
-  //FREE TO USE
+  NODE_GLOBAL              = (1 << 4),
   NODE_BINARY              = (1 << 5),
   NODE_BEGIN_SCOPE         = (1 << 6),
   NODE_DECLARATION         = (1 << 7),
@@ -588,4 +589,11 @@ format_source(const char* file_in, const char* file_out)
 
   fclose(in);
   fclose(out);
+}
+
+static bool
+file_exists(const char* filename)
+{
+  struct stat   buffer;
+  return (stat (filename, &buffer) == 0);
 }

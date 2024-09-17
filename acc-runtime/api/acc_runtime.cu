@@ -16,7 +16,10 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
+#define AC_INSIDE_AC_LIBRARY 
+
 #include "acc_runtime.h"
+typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
 
@@ -491,7 +494,7 @@ struct allocate_arrays
 	{
 		for(P array : get_params<P>())
 		{
-			if(get_config_param(array,config) != nullptr && !is_dconst(array))
+			if(get_config_param(array,config) != nullptr && !is_dconst(array) && is_alive(array))
 			{
 				void* d_mem_ptr;
 			        device_malloc(&d_mem_ptr, sizeof(get_config_param(array,config)[0])*get_array_length(array,config));
@@ -543,14 +546,12 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
   }
 #else
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    //Allocate auxilary fields
-    //They need only a single copy so out can point to in
+    device_malloc((void**) &vba.in[i],bytes);
+    //Auxiliary fields need only a single copy so out can point to in
     if (vtxbuf_is_auxiliary[i])
     {
-      device_malloc((void**) &vba.in[i],bytes);
       vba.out[i] = vba.in[i];
     }else{
-      device_malloc((void**) &vba.in[i],bytes);
       device_malloc((void**) &vba.out[i],bytes);
     }
   }
@@ -574,7 +575,7 @@ struct update_arrays
 	{
 		for(P array : get_params<P>())
 		{
-			if(is_dconst(array)) continue;
+			if(is_dconst(array) || !is_alive(array)) continue;
 			auto config_array = get_config_param(array,config);
 			void* gmem_array;
 			memcpy_from_gmem_array(array,gmem_array);
@@ -604,7 +605,7 @@ struct free_arrays
 			auto config_array = get_config_param(array,config);
 			void* gmem_array;
 			memcpy_from_gmem_array(array,gmem_array);
-			if(config_array == nullptr ||is_dconst(array)) continue;
+			if(config_array == nullptr || is_dconst(array) || !is_alive(array)) continue;
 			device_free(&gmem_array, get_array_length(array,config));
 			memcpy_to_gmem_array(array,gmem_array);
 		}
@@ -613,7 +614,9 @@ struct free_arrays
 void
 acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 {
-  for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) { device_free(&(vba->in[i]), vba->bytes);
+  for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) { 
+    //TP: if dead then not allocated and thus nothing to free
+    device_free(&(vba->in[i]), vba->bytes);
     if (vtxbuf_is_auxiliary[i])
       vba->out[i] = NULL;
     else
@@ -648,9 +651,10 @@ get_kernel_index(const Kernel kernel)
 	return -1;
 }
 AcResult
-acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
+acLaunchKernel(AcKernel kernel_enum, const cudaStream_t stream, const int3 start,
                const int3 end, VertexBufferArray vba)
 {
+  const Kernel kernel = kernels[kernel_enum];
   const int3 n = end - start;
 
   const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
@@ -676,9 +680,10 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
 }
 
 AcResult
-acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
+acBenchmarkKernel(AcKernel kernel_enum, const int3 start, const int3 end,
                   VertexBufferArray vba)
 {
+  const Kernel kernel = kernels[kernel_enum];
   const int3 n = end - start;
 
   const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
@@ -855,12 +860,13 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 	const size_t bytes = length*sizeof(values[0]);
 	if(!is_dconst(array))
 	{
+		if(!is_alive(array)) return AC_NOT_ALLOCATED;
 		void* dst_ptr;
 		memcpy_from_gmem_array(array,dst_ptr);
 		ERRCHK_ALWAYS(dst_ptr != nullptr);
 		ERRCHK_CUDA_ALWAYS(cudaMemcpy(dst_ptr,values,bytes,cudaMemcpyHostToDevice));
 	}
-	else
+	else 
 	{
 		const size_t offset = (size_t) get_dconst_array_offset(array)*sizeof(V);
 		ERRCHK_CUDA_ALWAYS(load_array(values, bytes, array));
@@ -887,6 +893,7 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 	const size_t bytes = length*sizeof(values[0]);
 	if(!is_dconst(array))
 	{
+		if(!is_alive(array)) return AC_NOT_ALLOCATED;
 		void* src_ptr;
 		memcpy_from_gmem_array(array,src_ptr);
 		ERRCHK_ALWAYS(src_ptr != nullptr);
@@ -1166,17 +1173,13 @@ getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   return c;
 }
 
-Kernel
-GetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
+AcKernel
+acGetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
 {
 	//#include "user_kernel_ifs.h"
 	//silence unused warnings
 	(void)vba;
-	return kernels[(int) kernel_enum];
-}
-
-const Kernel*
-acGetKernels()
-{
-	return kernels;
+	//TP: for now this is no-op in the future in some cases we choose which kernel to call passed on the input params
+	return kernel_enum;
+	//return kernels[(int) kernel_enum];
 }

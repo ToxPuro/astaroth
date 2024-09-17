@@ -51,6 +51,7 @@
 
 #include "implementation.h"
 
+
 void
 raise_error(const char* str)
 {
@@ -68,7 +69,7 @@ raise_error(const char* str)
 void
 gen_stencil_definitions(void)
 {
-  if (!NUM_FIELDS)
+  if (!NUM_ALL_FIELDS)
     raise_error("Must declare at least one Field in the DSL code!");
 
   if (!NUM_STENCILS)
@@ -223,14 +224,14 @@ gen_kernel_common_prefix()
 #else
   // Buffered, no effect on performance
   // !Remember to emit write insructions in ac.y if this is enabled!
-  printf("AcReal out_buffer[NUM_FIELDS];");
-  for (int field = 0; field < NUM_FIELDS; ++field)
+  printf("AcReal out_buffer[NUM_ALL_FIELDS];");
+  for (int field = 0; field < NUM_ALL_FIELDS; ++field)
     printf("out_buffer[%d] = (AcReal)NAN;", field);
 
   printf("const auto write=[&](const Field field, const AcReal value)"
          "{ out_buffer[field] = value; };");
 /*
-for (int field = 0; field < NUM_FIELDS; ++field)
+for (int field = 0; field < NUM_ALL_FIELDS; ++field)
 printf("vba.out[%d][idx] = out_buffer[%d];", field, field);
 */
 #endif
@@ -279,6 +280,13 @@ gen_return_if_oob()
   	printf("if (!(vertexIdx.x >= end.x || vertexIdx.y >= end.y || "
          "vertexIdx.z >= end.z)){\n");
 }
+static int
+get_original_index(const int* mappings, const int field)
+{
+	for(int i = 0; i <= NUM_ALL_FIELDS; ++i)
+		if (mappings[i] == field) return i;
+	return -1;
+}
 
 static void
 prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses, const int cur_kernel)
@@ -297,21 +305,31 @@ prefetch_output_elements_and_gen_prev_function(const bool gen_mem_accesses, cons
   // SINGLEPASS_INTEGRATION=OFF, 4.77 ms (full step, 128^3)
   //TP: don't gen previous at all if no fields use it. Done to declutter the resulting code and to speedup compilation
   bool gen_previous = false;
-  for(int field = 0;  field < NUM_FIELDS; ++field) gen_previous |= previous_accessed[cur_kernel][field];
+  for(int field = 0;  field < NUM_ALL_FIELDS; ++field) gen_previous |= previous_accessed[cur_kernel][field];
   if(!gen_previous) 
   {
   	printf("const auto previous_base __attribute__((unused)) = [&](const Field& field) {return (AcReal)NAN;};");
 	return;
   }
-  for (int field = 0; field < NUM_FIELDS; ++field)
-    if(previous_accessed[cur_kernel][field])
-      printf("const auto f%d_prev = vba.out[%d][idx];", field, field);
+  for (int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
+  {
+    if(previous_accessed[cur_kernel][original_field])
+    {
+      const int field = get_original_index(field_remappings,original_field);
+      printf("const auto f%s_prev = vba.out[%s][idx];", field_names[field], field_names[field]);
+    }
+  }
 
   printf("const auto previous_base __attribute__((unused)) = [&](const Field& field)"
          "{ switch (field) {");
-  for (int field = 0; field < NUM_FIELDS; ++field)
-    if(previous_accessed[cur_kernel][field])
-      printf("case %d: { return f%d_prev; }", field, field);
+  for (int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
+  {
+    if(previous_accessed[cur_kernel][original_field])
+    {
+      const int field = get_original_index(field_remappings,original_field);
+      printf("case %s: { return f%s_prev; }", field_names[field], field_names[field]);
+    }
+  }
 
   printf("default: return (AcReal)NAN;"
          "}");
@@ -352,7 +370,7 @@ prefetch_stencil_coeffs(const int curr_kernel, const bool ct_const_weights)
         for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
 
           int stencil_accessed = 0;
-          for (int field = 0; field < NUM_FIELDS; ++field)
+          for (int field = 0; field < NUM_ALL_FIELDS; ++field)
             stencil_accessed |= stencils_accessed[curr_kernel][field][stencil];
           if (!stencil_accessed)
             continue;
@@ -380,9 +398,9 @@ static void
 prefetch_stencil_elements(const int curr_kernel)
 {
   // Prefetch stencil elements to local memory
-  int cell_initialized[NUM_FIELDS][STENCIL_DEPTH][STENCIL_HEIGHT]
+  int cell_initialized[NUM_ALL_FIELDS][STENCIL_DEPTH][STENCIL_HEIGHT]
                       [STENCIL_WIDTH] = {0};
-  for (int field = 0; field < NUM_FIELDS; ++field) {
+  for (int field = 0; field < NUM_ALL_FIELDS; ++field) {
     for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
       for (int height = 0; height < STENCIL_HEIGHT; ++height) {
         for (int width = 0; width < STENCIL_WIDTH; ++width) {
@@ -415,11 +433,11 @@ prefetch_stencil_elements(const int curr_kernel)
 static void
 compute_stencil_ops(const int curr_kernel)
 {
-  int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
+  int stencil_initialized[NUM_ALL_FIELDS][NUM_STENCILS] = {0};
   for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
     for (int height = 0; height < STENCIL_HEIGHT; ++height) {
       for (int width = 0; width < STENCIL_WIDTH; ++width) {
-        for (int field = 0; field < NUM_FIELDS; ++field) {
+        for (int field = 0; field < NUM_ALL_FIELDS; ++field) {
           for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
 
             // Skip if the stencil is not used
@@ -451,7 +469,7 @@ compute_stencil_ops(const int curr_kernel)
     }
   }
 
-  for (int field = 0; field < NUM_FIELDS; ++field)
+  for (int field = 0; field < NUM_ALL_FIELDS; ++field)
     for (int stencil = 0; stencil < NUM_STENCILS; ++stencil)
       if (stencil_initialized[field][stencil] !=
           stencils_accessed[curr_kernel][field][stencil])
@@ -468,7 +486,7 @@ gen_stencil_functions(const int curr_kernel)
   for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
     //TP: don't gen stencil function at all if no fields use it. Done to declutter the resulting code and to speedup compilation
     bool gen_stencil = false;
-    for (int field = 0; field < NUM_FIELDS; ++field) gen_stencil |= stencils_accessed[curr_kernel][field][stencil];
+    for (int field = 0; field < NUM_ALL_FIELDS; ++field) gen_stencil |= stencils_accessed[curr_kernel][field][stencil];
     if(!gen_stencil)
     {
 	    printf("const auto %s __attribute__((unused)) = [&](const auto& field) { (void) field; return (AcReal)NAN;};",stencil_names[stencil]);
@@ -477,9 +495,13 @@ gen_stencil_functions(const int curr_kernel)
     printf("const auto %s __attribute__((unused)) = [&](const auto& field){",
            stencil_names[stencil]);
     printf("switch (field) {");
-    for (int field = 0; field < NUM_FIELDS; ++field) {
-      if (stencils_accessed[curr_kernel][field][stencil])
-        printf("case %d: return f%d_s%d;", field, field, stencil);
+    for (int original_field = 0; original_field < NUM_ALL_FIELDS; ++original_field)
+    {
+      if (stencils_accessed[curr_kernel][original_field][stencil])
+      {
+        const int field = get_original_index(field_remappings,original_field);
+        printf("case %s: return f%s_s%s;", field_names[field], field_names[field], stencil_names[stencil]);
+      }
     }
     printf("default: return (AcReal)NAN;");
     printf("}");
@@ -555,7 +577,7 @@ gen_kernel_body(const int curr_kernel)
     gen_return_if_oob();
     prefetch_output_elements_and_gen_prev_function(gen_mem_accesses,curr_kernel);
 
-    int stencil_initialized[NUM_FIELDS][NUM_STENCILS] = {0};
+    int stencil_initialized[NUM_ALL_FIELDS][NUM_STENCILS] = {0};
 
     // const size_t nbx  = nearest_power_of_to_above(STENCIL_WIDTH);
     // const size_t nby  = nearest_power_of_to_above(STENCIL_HEIGHT);
@@ -594,7 +616,7 @@ gen_kernel_body(const int curr_kernel)
     //    f0_s1 += ...
     //    f1_s1 += ...
     //
-    // BLOCK_SIZE=NUM_FIELDS by default (the original implementation)
+    // BLOCK_SIZE=NUM_ALL_FIELDS by default (the original implementation)
     // tradeoff:
     //  A) larger BLOCK_SIZE
     //    + deeper instruction pipeline (instruction-level parallelism)
@@ -603,11 +625,11 @@ gen_kernel_body(const int curr_kernel)
     //    + smaller working set (better cache locality)
     //    - shallower instruction pipeline (more stalling due to data
     //    dependencies)
-    const int BLOCK_SIZE = NUM_FIELDS;
-    const int NUM_BLOCKS = (NUM_FIELDS + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    if (BLOCK_SIZE * NUM_BLOCKS < NUM_FIELDS)
+    const int BLOCK_SIZE = NUM_ALL_FIELDS;
+    const int NUM_BLOCKS = (NUM_ALL_FIELDS + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    if (BLOCK_SIZE * NUM_BLOCKS < NUM_ALL_FIELDS)
       raise_error("Invalid BLOCK_SIZE * NUM_BLOCKS, was smaller than "
-                  "NUM_FIELDS in stencilgen.c\n");
+                  "NUM_ALL_FIELDS in stencilgen.c\n");
 
 #if TWO_D == 0
       for (int depth = 0; depth < STENCIL_DEPTH; ++depth) {
@@ -617,7 +639,7 @@ gen_kernel_body(const int curr_kernel)
               for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
                 for (int foffset = 0; foffset < BLOCK_SIZE; ++foffset) {
                   const int field = foffset + field_block * BLOCK_SIZE;
-                  if (field >= NUM_FIELDS)
+                  if (field >= NUM_ALL_FIELDS)
                     break;
 
                   // Skip if the stencil is not used
@@ -626,15 +648,15 @@ gen_kernel_body(const int curr_kernel)
 
                   if (stencils[stencil][depth][height][width]) {
                     if (!stencil_initialized[field][stencil]) {
-                      printf("auto f%d_s%d = ", field, stencil);
+                      printf("auto f%s_s%s = ", field_names[get_original_index(field_remappings,field)], stencil_names[stencil]);
                       printf("stencils[%d][%d][%d][%d] *", //
                              stencil, depth, height, width);
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
-                      printf("vba.in[%d]"
+                      printf("vba.in[%s]"
                              "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                              "vertexIdx.z+(%d))])",
-                             field, -STENCIL_ORDER / 2 + width,
+                             field_names[get_original_index(field_remappings,field)], -STENCIL_ORDER / 2 + width,
                              -STENCIL_ORDER / 2 + height,
                              -STENCIL_ORDER / 2 + depth);
                       printf(")");
@@ -643,17 +665,17 @@ gen_kernel_body(const int curr_kernel)
                       stencil_initialized[field][stencil] = 1;
                     }
                     else {
-                      printf("f%d_s%d = ", field, stencil);
-                      printf("%s(f%d_s%d, ", stencil_binary_ops[stencil], field,
-                             stencil);
+                      printf("f%s_s%s = ", field_names[get_original_index(field_remappings,field)], stencil_names[stencil]);
+                      printf("%s(f%s_s%s, ", stencil_binary_ops[stencil], field_names[get_original_index(field_remappings,field)],
+                             stencil_names[stencil]);
                       printf("stencils[%d][%d][%d][%d] *", //
                              stencil, depth, height, width);
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
-                      printf("vba.in[%d]"
+                      printf("vba.in[%s]"
                              "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                              "vertexIdx.z+(%d))])",
-                             field, -STENCIL_ORDER / 2 + width,
+                             field_names[get_original_index(field_remappings,field)], -STENCIL_ORDER / 2 + width,
                              -STENCIL_ORDER / 2 + height,
                              -STENCIL_ORDER / 2 + depth);
                       printf(")");
@@ -673,7 +695,7 @@ gen_kernel_body(const int curr_kernel)
               for (int stencil = 0; stencil < NUM_STENCILS; ++stencil) {
                 for (int foffset = 0; foffset < BLOCK_SIZE; ++foffset) {
                   const int field = foffset + field_block * BLOCK_SIZE;
-                  if (field >= NUM_FIELDS)
+                  if (field >= NUM_ALL_FIELDS)
                     break;
 
                   // Skip if the stencil is not used
@@ -682,15 +704,15 @@ gen_kernel_body(const int curr_kernel)
 
                   if (stencils[stencil][height][width]) {
                     if (!stencil_initialized[field][stencil]) {
-                      printf("auto f%d_s%d = ", field, stencil);
+                      printf("auto f%s_s%s = ", field_names[get_original_index(field_remappings,field)], stencil_names[stencil]);
                       printf("stencils[%d][%d][%d] *", //
                              stencil, height, width);
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
-                      printf("vba.in[%d]"
+                      printf("vba.in[%s]"
                              "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                              "0)])",
-                             field, -STENCIL_ORDER / 2 + width,
+                             field_names[get_original_index(field_remappings,field)], -STENCIL_ORDER / 2 + width,
                              -STENCIL_ORDER / 2 + height);
                       printf(")");
                       printf(";");
@@ -698,17 +720,17 @@ gen_kernel_body(const int curr_kernel)
                       stencil_initialized[field][stencil] = 1;
                     }
                     else {
-                      printf("f%d_s%d = ", field, stencil);
-                      printf("%s(f%d_s%d, ", stencil_binary_ops[stencil], field,
+                      printf("f%s_s%s = ", field_names[get_original_index(field_remappings,field)], stencil_names[stencil]);
+                      printf("%s(f%s_s%s, ", stencil_binary_ops[stencil], field_names[get_original_index(field_remappings,field)],
                              stencil);
                       printf("stencils[%d][%d][%d] *", //
                              stencil, height, width);
                       printf("%s(", stencil_unary_ops[stencil]);
                       printf("__ldg(&");
-                      printf("vba.in[%d]"
+                      printf("vba.in[%s]"
                              "[IDX(vertexIdx.x+(%d),vertexIdx.y+(%d), "
                              "0)])",
-                             field, -STENCIL_ORDER / 2 + width,
+                             field_names[get_original_index(field_remappings,field)], -STENCIL_ORDER / 2 + width,
                              -STENCIL_ORDER / 2 + height);
                       printf(")");
                       printf(");");
