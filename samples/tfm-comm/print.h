@@ -8,8 +8,11 @@
 #define print_array(label, count, arr)                                                             \
     _Generic((arr),                                                                                \
         size_t *: print_size_t_array,                                                              \
-        int64_t *: print_int64_t_array,                                                            \
-        int*: print_int_array)(label, count, arr)
+        const size_t*: print_size_t_array,                                                         \
+        int64_t*: print_int64_t_array,                                                             \
+        const int64_t*: print_int64_t_array,                                                       \
+        int*: print_int_array,                                                                     \
+        const int*: print_int_array)(label, count, arr)
 
 void print_size_t(const char* label, const size_t value);
 
