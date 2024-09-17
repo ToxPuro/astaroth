@@ -43,8 +43,9 @@ static void
 dims_create(const size_t nprocs, const size_t ndims, const size_t* dims, //
             size_t* local_dims, size_t* decomposition)
 {
-    // Do not allow aliasing
-    ERRCHK(dims < local_dims || dims > local_dims + ndims);
+    // Disallow aliasing
+    ERRCHK(!(dims >= local_dims && dims < local_dims + ndims));
+    ERRCHK(!(dims + ndims >= local_dims && dims + ndims < local_dims + ndims));
 
     for (size_t i = 0; i < ndims; ++i) {
         local_dims[i]    = dims[i];

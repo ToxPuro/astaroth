@@ -17,7 +17,10 @@ void
 cumprod(const size_t count, const size_t* restrict in, size_t* restrict out)
 {
     ERRCHK(count > 0);
-    ERRCHK(in < out || in + count >= out);
+
+    // Disallow aliasing
+    ERRCHK(!(in >= out && in < out + count));
+    ERRCHK(!(in + count >= out && in + count < out + count));
 
     out[0] = in[0];
     for (size_t i = 1; i < count; ++i)
