@@ -38,10 +38,14 @@ target_link_libraries(tfm-decomp tfm-math-utils tfm-print tfm-type-conversion)
 
 add_library(tfm-pack SHARED pack.cc)
 
+add_library(tfm-array SHARED array.cc)
+
 add_library(tfm-comm SHARED comm.c)
 target_link_libraries(tfm-comm PRIVATE tfm-decomp MPI::MPI_C tfm-pack)
-
 
 ## Program
 add_executable(run main.c)
 target_link_libraries(run tfm-comm)
+
+add_executable(test test.c)
+target_link_libraries(test PRIVATE tfm-math-utils tfm-print)
