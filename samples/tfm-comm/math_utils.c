@@ -14,9 +14,10 @@ prod(const size_t count, const size_t* arr)
 
 /** Cumulative product */
 void
-cumprod(const size_t count, const size_t* in, size_t* out)
+cumprod(const size_t count, const size_t* restrict in, size_t* restrict out)
 {
     ERRCHK(count > 0);
+    ERRCHK(in < out || in + count >= out);
 
     out[0] = in[0];
     for (size_t i = 1; i < count; ++i)
@@ -27,11 +28,11 @@ cumprod(const size_t count, const size_t* in, size_t* out)
  * e.g., {1,2,3} -> {fill_value, 1, 2}
  */
 void
-rshift(const size_t shift, const size_t fill_value, const size_t count, const size_t* in,
-       size_t* out)
+rshift(const size_t shift, const size_t fill_value, const size_t count, const size_t* restrict in,
+       size_t* restrict out)
 {
     ERRCHK(shift < count);
-    ERRCHK(in < out || in + count < out);
+    ERRCHK(in < out || in + count >= out);
     for (size_t i = shift; i < count; ++i)
         out[i] = in[i - shift];
 
@@ -71,7 +72,10 @@ factorize(const size_t n_initial, size_t* nfactors, size_t* factors)
     *nfactors = count;
 }
 
-/** Requires that array is ordered */
+/** Requires that array is ordered
+ * Modifies `size_t *arr` inplace to hold only unique values
+ * and returns the number of unique values (or the new count) of arr.
+ */
 size_t
 unique(const size_t count, size_t* arr)
 {
