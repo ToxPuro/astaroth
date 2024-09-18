@@ -346,8 +346,8 @@ recurse_combinations(const size_t start, const size_t ndims, const size_t* combi
     return counter;
 }
 
-void
-gen_combinations(const size_t ndims)
+DynamicArray
+create_combinations(const size_t ndims)
 {
     const size_t ncombinations = count_combinations(ndims);
     const size_t count         = ndims * ncombinations;
@@ -360,10 +360,8 @@ gen_combinations(const size_t ndims)
 
     printf("Combinations:\n");
     print_multidim_array(2, (size_t[]){ndims, ncombinations}, combinations.data);
-    // const size_t dims[] = {};
-    // print_multidim_array()
 
-    array_destroy(&combinations);
+    return combinations;
 }
 
 int
@@ -396,9 +394,10 @@ comm_run(void)
     //     gen_combinations(i);
     //     print("Combinations", count_combinations(i));
     // }
-    gen_combinations(3);
+    DynamicArray combinations = create_combinations(3);
     print("Combinations", count_combinations(3));
     print("Hamming weight", popcount(ndims, local_nn));
+    array_destroy(&combinations);
 
     free(arr);
 
