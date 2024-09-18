@@ -218,8 +218,7 @@ test_popcount(void)
 size_t
 unique(const size_t count, size_t* arr)
 {
-    for (size_t i = 0; i < count - 1; ++i)
-        ERRCHK(arr[i + 1] >= arr[i]);
+    sort(count, arr);
 
     ERRCHK(count > 0);
     size_t num_unique = 0;
@@ -231,6 +230,32 @@ unique(const size_t count, size_t* arr)
     }
 
     return num_unique;
+}
+
+void
+test_unique(void)
+{
+    srand(12345);
+    const size_t nsamples  = 128;
+    const size_t max_count = 32;
+    for (size_t i = 0; i < nsamples; ++i) {
+        const size_t count = ((size_t)rand()) % max_count + 1;
+
+        size_t arr[count];
+        for (size_t j = 0; j < count; ++j)
+            arr[j] = (size_t)rand();
+
+        unique(count, arr);
+        for (size_t j = 0; j < count; ++j)
+            for (size_t k = j + 1; k < count; ++k)
+                ERRCHK(arr[j] != arr[k])
+    }
+}
+
+size_t
+unique_nd(const size_t ndims, const size_t* shape, const size_t* arr)
+{
+    return 0;
 }
 
 void
@@ -339,6 +364,13 @@ add_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c)
 }
 
 void
+mul(const size_t count, const size_t* a, const size_t* b, size_t* c)
+{
+    for (size_t i = 0; i < count; ++i)
+        c[i] = a[i] * b[i];
+}
+
+void
 swap(const size_t i, const size_t j, const size_t count, size_t* arr)
 {
     ERRCHK(i < count);
@@ -351,6 +383,7 @@ swap(const size_t i, const size_t j, const size_t count, size_t* arr)
 void
 sort(const size_t count, size_t* arr)
 {
+    ERRCHK(count > 0);
     for (size_t i = 0; i < count; ++i) {
         for (size_t j = i + 1; j < count; ++j) {
             if (arr[j] < arr[i])
@@ -366,7 +399,7 @@ test_sort(void)
     const size_t nsamples  = 128;
     const size_t max_count = 32;
     for (size_t i = 0; i < nsamples; ++i) {
-        const size_t count = ((size_t)rand()) % max_count;
+        const size_t count = ((size_t)rand()) % max_count + 1;
 
         size_t arr[count];
         for (size_t j = 0; j < count; ++j)
@@ -425,4 +458,5 @@ test_math_utils(void)
     test_popcount();
     test_binomial_coefficient();
     test_sort();
+    test_unique();
 }

@@ -22,6 +22,8 @@ size_t popcount(const size_t count, const size_t* arr);
 /** Requires that array is ordered */
 size_t unique(const size_t count, size_t* arr);
 
+size_t unique_nd(const size_t ndims, const size_t* shape, const size_t* arr);
+
 void transpose(const size_t* in, const size_t nrows, const size_t ncols, size_t* out);
 
 void contract(const size_t* in, const size_t length, const size_t factor, size_t* out);
@@ -45,6 +47,8 @@ void iset(const int value, const size_t count, int* arr);
 void add_to_array(const size_t value, const size_t count, size_t* arr);
 
 void add_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c);
+
+void mul(const size_t count, const size_t* a, const size_t* b, size_t* c);
 
 void swap(const size_t i, const size_t j, const size_t count, size_t* arr);
 
