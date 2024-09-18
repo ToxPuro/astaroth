@@ -46,7 +46,7 @@ target_link_libraries(tfm-comm PRIVATE tfm-decomp MPI::MPI_C tfm-pack tfm-array)
 
 ## Program
 add_executable(run main.c)
-target_link_libraries(run tfm-comm)
+target_link_libraries(run tfm-comm tfm-math-utils)
 
 add_executable(test test.c)
 target_link_libraries(test PRIVATE tfm-math-utils tfm-print)
