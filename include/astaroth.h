@@ -1578,7 +1578,11 @@ FUNC_DEFINE(AcResult, acHostMeshDestroy,(AcMesh* mesh));
 
 /** Sets the dimensions of the computational domain to (nx, ny, nz) and recalculates the built-in
  * parameters derived from them (mx, my, mz, nx_min, and others) */
+#if TWO_D == 0
 FUNC_DEFINE(AcResult, acSetMeshDims,(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info));
+#else
+FUNC_DEFINE(AcResult, acSetMeshDims,(const size_t nx, const size_t ny, AcMeshInfo* info));
+#endif
 
 /*
  * =============================================================================

@@ -274,6 +274,7 @@ if (BUILD_SAMPLES AND NOT BUILD_TESTS)
         	add_subdirectory(samples/stencil-loader)
 	endif()
     endif()
+    #add_subdirectory(samples/stress)
 
   # add_subdirectory(samples/standalone)
   #add_subdirectory(samples/standalone_mpi)

@@ -43,6 +43,14 @@ PlaneCoefficients_without_inv(real4 a, real4 b, real4 c, real3 precomputed)
         return (real3){x, y, z};
 }
 
+PlaneCoeffients_without_inv(real3 a, real3 b)
+{
+	return (real2){
+		a.z*b.y  - b.z*a.y,
+		-(a.z*b.x) + b.z*a.x
+	};
+}
+
 Plane_x_coefficient(real4 a, real4 b, real4 c, real3 precomputed)
 {
         const real tmp1 = b.w*c.z-b.z*c.w;
@@ -62,13 +70,6 @@ Plane_z_coefficient(real4 a, real4 b, real4 c, real3 precomputed)
         return a.x*(-tmp2) + a.y*(-tmp3) + a.w*(precomputed.z);
 }
 
-PlaneCoeffients_without_inv(real3 a, real3 b)
-{
-	return (real2){
-		a.z*b.y  - b.z*a.y,
-		-(a.z*b.x) + b.z*a.x
-	}
-}
 
 
 Plane_x_coefficient(real3 a, real3 b)
@@ -80,6 +81,7 @@ Plane_y_coefficient(real3 a, real3 b)
 	return -a.z*b.x + b.z*a.x
 }
 
+#if TWO_D == 1
 Stencil diff_up
 {
 	[1][0]  =  1,
@@ -150,3 +152,4 @@ get_first_order_derivatives(Field coordsx, Field coordsy, Field F)
         const real p0y_local = (partials0.y + partials1.y + partials2.y + partials3.y)*totalAreaInv;
 	return (real2){p0x_local,p0y_local}
 }
+#endif

@@ -1,11 +1,15 @@
 const int NGHOST_VAL = 3
 real AC_dsx
 real AC_dsy
+#if TWO_D == 0
 real AC_dsz
+#endif
 
 real AC_inv_dsx
 real AC_inv_dsy
+#if TWO_D == 0
 real AC_inv_dsz
+#endif
 
 int AC_mx
 int AC_my

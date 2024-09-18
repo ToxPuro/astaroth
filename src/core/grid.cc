@@ -1392,6 +1392,7 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
                "before running kernels.\n";
     }
 
+#if AC_VERBOSE
     if (error && NGHOST>0) {
         // ERROR(("\nIncorrect task graph " + task_graph_repr + ":\n" + msg).c_str())
         WARNING(("\nIncorrect task graph " + task_graph_repr + ":\n" + msg).c_str())
@@ -1399,6 +1400,10 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
     if (warning && NGHOST>0) {
         WARNING(("\nUnusual task graph " + task_graph_repr + ":\n" + msg).c_str())
     }
+#else
+    (void)error;
+    (void)warning;
+#endif
 }
 
 Region
@@ -1564,12 +1569,21 @@ testmydecomp(int3 nn, int decomp_level, std::vector<Field> fields_out)
 	bool passed = TestRegions(regions,target_volume);
 	if (!passed) exit(0);
 }
+#if TWO_D == 0
 static AcReal3 
 get_spacings()
 {
 	const AcMeshInfo info = grid.device -> local_config;
 	return (AcReal3){info.real_params[AC_dsx], info.real_params[AC_dsy], info.real_params[AC_dsz]};
 }
+#else
+static AcReal3 
+get_spacings()
+{
+	const AcMeshInfo info = grid.device -> local_config;
+	return (AcReal3){info.real_params[AC_dsx], info.real_params[AC_dsy], 0.0};
+}
+#endif
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 {
@@ -1935,8 +1949,10 @@ AcTaskGraph*
 acGetDSLTaskGraph(const AcDSLTaskGraph graph)
 {
 	(void)graph;
+	{
 #include "user_loaders.h"
 #include "user_taskgraphs.h"
+	}
 	return NULL;
 }
 
@@ -2174,12 +2190,16 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     }
 
 #ifdef AC_INTEGRATION_ENABLED
+
     if ( rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS ) {
         // MV NOTE: This has to be calculated here separately, because does not
         //          know what GPU is doing. 
         const AcReal cell_volume   = grid.device->local_config.real_params[AC_dsx] *
-                                     grid.device->local_config.real_params[AC_dsy] *
-                                     grid.device->local_config.real_params[AC_dsz];
+                                     grid.device->local_config.real_params[AC_dsy]
+#if TWO_D == 0
+                                     * grid.device->local_config.real_params[AC_dsz]
+#endif
+				     ;
 
         const AcReal sphere_volume = (4.0/3.0) * M_PI *
                                      grid.device->local_config.real_params[AC_window_radius] * 

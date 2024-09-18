@@ -1985,9 +1985,9 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 	strcat(fields_in_str,  "}");
 	strcat(fields_out_str, "}");
 	if(kernel_call->rhs)
-		sprintf(res,"acCompute(KERNEL_%s,%s,%s,%s_%s_loader),\n",func_name,fields_in_str,fields_out_str,taskgraph_name,func_name);
+		sprintf(res,"\tacCompute(KERNEL_%s,%s,%s,%s_%s_loader),\n",func_name,fields_in_str,fields_out_str,taskgraph_name,func_name);
 	else
-		sprintf(res,"acCompute(KERNEL_%s,%s,%s),\n",func_name,fields_in_str,fields_out_str);
+		sprintf(res,"\tacCompute(KERNEL_%s,%s,%s),\n",func_name,fields_in_str,fields_out_str);
 	gen_loader(kernel_call,root,taskgraph_name);
 	free(all_fields);
 	free(fields_in_str);
@@ -2170,12 +2170,14 @@ boundary_str(const int bc)
        return
                bc == 0 ? "BOUNDARY_X_BOT" :
                bc == 1 ? "BOUNDARY_Y_BOT" :
-               bc == 2 ? "BOUNDARY_Z_BOT" :
-               bc == 3 ? "BOUNDARY_X_TOP" :
-               bc == 4 ? "BOUNDARY_Y_TOP" :
+               bc == 2 ? "BOUNDARY_X_TOP" :
+               bc == 3 ? "BOUNDARY_Y_TOP" :
+               bc == 4 ? "BOUNDARY_Z_BOT" :
                bc == 5 ? "BOUNDARY_Z_TOP" :
                NULL;
 }
+
+const int boundaries[] = {BOUNDARY_X_BOT, BOUNDARY_Y_BOT,BOUNDARY_X_TOP,BOUNDARY_Y_TOP,BOUNDARY_Z_BOT, BOUNDARY_Z_TOP};
 
 void
 process_boundcond(const ASTNode* func_call, char** res, const ASTNode* root, const char* boundconds_name)
@@ -2183,8 +2185,7 @@ process_boundcond(const ASTNode* func_call, char** res, const ASTNode* root, con
 	char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
 	const char* boundary = get_node_by_token(IDENTIFIER,func_call->rhs)->buffer;
 	const int boundary_int = get_boundary_int(boundary);
-	const int boundaries[] = {BOUNDARY_X_BOT, BOUNDARY_Y_BOT,BOUNDARY_Z_BOT,BOUNDARY_X_TOP,BOUNDARY_Y_TOP,BOUNDARY_Z_TOP};
-	const int num_boundaries = 6;
+	const int num_boundaries = TWO_D ? 4 : 6;
 
 
 	bc_fields fields  = get_fields_included(func_call,boundconds_name);
@@ -2199,9 +2200,9 @@ process_boundcond(const ASTNode* func_call, char** res, const ASTNode* root, con
 			else sprintf(prefix,"%s_",boundconds_name);
 			if(bc == 0)  strcat(prefix,"X_BOT");
 			if(bc == 1)  strcat(prefix,"Y_BOT");
-			if(bc == 2)  strcat(prefix,"Z_BOT");
-			if(bc == 3)  strcat(prefix,"X_TOP");
-			if(bc == 4)  strcat(prefix,"Y_TOP");
+			if(bc == 2)  strcat(prefix,"X_TOP");
+			if(bc == 3)  strcat(prefix,"Y_TOP");
+			if(bc == 4)  strcat(prefix,"Z_BOT");
 			if(bc == 5)  strcat(prefix,"Z_TOP");
 			if(is_dfunc) sprintf(full_name,"%s_%s",prefix,func_name);
 			else         sprintf(full_name,"%s",func_name);
@@ -2265,8 +2266,7 @@ gen_dfunc_bc_kernel(const ASTNode* func_call, FILE* fp, const ASTNode* root, con
 		
 	const char* boundary = get_node_by_token(IDENTIFIER,func_call->rhs)->buffer;
 	const int boundary_int = get_boundary_int(boundary);
-	const int boundaries[] = {BOUNDARY_X_BOT, BOUNDARY_Y_BOT,BOUNDARY_Z_BOT,BOUNDARY_X_TOP,BOUNDARY_Y_TOP,BOUNDARY_Z_TOP};
-	const int num_boundaries = 6;
+	const int num_boundaries = TWO_D ? 4 : 6;
 
 
 	func_params_info call_info = get_func_call_params_info(func_call);
@@ -2318,7 +2318,7 @@ get_field_boundconds(const ASTNode* root, const char* boundconds_name)
   	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
 	if(!has_optimization_info)
 		return res;
-	const int num_boundaries = 6;
+	const int num_boundaries = TWO_D ? 4 : 6;
 	res = malloc(sizeof(char*)*num_fields*num_boundaries);
 	memset(res,0,sizeof(char*)*num_fields*num_boundaries);
 	get_field_boundconds_recursive(root,root,res,boundconds_name);
@@ -2336,7 +2336,7 @@ gen_halo_exchange_and_boundconds(
 		int_vec communicated_fields
 		)
 {
-		const int num_boundaries = 6;
+		const int num_boundaries = TWO_D ? 4 : 6;
 		bool* field_boundconds_processed = (bool*)malloc(num_fields*num_boundaries);
 		memset(field_boundconds_processed,0,num_fields*num_boundaries*sizeof(bool));
 		bool need_to_communicate = false;
@@ -2359,31 +2359,24 @@ gen_halo_exchange_and_boundconds(
 		strcat(communicated_fields_str,"}");
 		if(need_to_communicate)
 		{
-			strcatprintf(res,"acHaloExchange(%s),\n",communicated_fields_str);
+			strcatprintf(res,"\tacHaloExchange(%s),\n",communicated_fields_str);
 
 			const char* x_boundcond = field_boundconds[one_communicated_field + num_fields*0];
 			const char* y_boundcond = field_boundconds[one_communicated_field + num_fields*1];
-			const char* z_boundcond = field_boundconds[one_communicated_field + num_fields*2];
+			const char* z_boundcond = TWO_D ? NULL : field_boundconds[one_communicated_field + num_fields*4];
+			
+			const bool x_periodic = !strcmp(x_boundcond,"periodic");
+			const bool y_periodic = !strcmp(y_boundcond,"periodic");
+			const bool z_periodic = TWO_D ? false : !strcmp(z_boundcond,"periodic");
 
-			if(!strcmp(x_boundcond,"periodic") || !strcmp(y_boundcond,"periodic") || !strcmp(z_boundcond,"periodic"))
-			{
-				const char* boundary = (!strcmp(x_boundcond,"periodic") && !strcmp(y_boundcond,"periodic") && !strcmp(z_boundcond,"periodic")) 
-					               		? "XYZ" :
-						       (!strcmp(x_boundcond,"periodic") && !strcmp(y_boundcond,"periodic") && strcmp(z_boundcond,"periodic"))
-								? "XY"  :
-							(!strcmp(x_boundcond,"periodic") && strcmp(y_boundcond,"periodic") && !strcmp(z_boundcond,"periodic"))
-								? "XZ"  :
-							(!strcmp(x_boundcond,"periodic") && strcmp(y_boundcond,"periodic") && strcmp(z_boundcond,"periodic"))
-								? "X"   :
-							(strcmp(x_boundcond,"periodic") && !strcmp(y_boundcond,"periodic") && !strcmp(z_boundcond,"periodic"))
-								? "YZ"  :
-							(strcmp(x_boundcond,"periodic") && !strcmp(y_boundcond,"periodic") && strcmp(z_boundcond,"periodic"))
-								? "Y"   :
-							(strcmp(x_boundcond,"periodic") && strcmp(y_boundcond,"periodic") && !strcmp(z_boundcond,"periodic"))
-								? "Z"   :
-							NULL;
-				strcatprintf(res,"acBoundaryCondition(BOUNDARY_%s,BOUNDCOND_PERIODIC,%s),\n",boundary,communicated_fields_str);
-			}
+			char* boundary;
+			asprintf(&boundary,"%s%s%s",
+						x_periodic ? "X" : "",
+						y_periodic ? "Y" : "",
+						z_periodic ? "Z" : ""
+				);
+			if( x_periodic|| y_periodic || z_periodic)
+				strcatprintf(res,"\tacBoundaryCondition(BOUNDARY_%s,BOUNDCOND_PERIODIC,%s),\n",boundary,communicated_fields_str);
 
 			for(int boundcond = 0; boundcond < num_boundaries; ++boundcond)
 				for(size_t i = 0; i < fields.size; ++i)
@@ -2403,15 +2396,7 @@ gen_halo_exchange_and_boundconds(
 						processed_boundcond = !field_boundconds_processed[fields.data[i] + num_fields*boundcond] ? field_boundconds[fields.data[i] + num_fields*boundcond] : processed_boundcond;
 					}
 					if(!processed_boundcond) continue;
-					const char* boundary_str =
-						(boundcond == 0) ?  "X_BOT" :
-						(boundcond == 1) ?  "Y_BOT" :
-						(boundcond == 2) ?  "Z_BOT" :
-						(boundcond == 3) ?  "X_TOP" :
-						(boundcond == 4) ?  "Y_TOP" :
-						(boundcond == 5) ?  "Z_TOP" :
-						NULL;
-					strcatprintf(res,"acBoundaryCondition(BOUNDARY_%s,KERNEL_%s__%s,{",boundary_str,boundconds_name,processed_boundcond);
+					strcatprintf(res,"\tacBoundaryCondition(BOUNDARY_%s,KERNEL_%s__%s,{",boundary_str(boundcond),boundconds_name,processed_boundcond);
 
 					for(size_t i = 0; i < fields.size; ++i)
 					{
@@ -2532,7 +2517,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 		return;
 	const char* boundconds_name = node->lhs->rhs->buffer;
 	char** field_boundconds = get_field_boundconds(root,boundconds_name);
-	const int num_boundaries = 6;
+	const int num_boundaries = TWO_D ? 4 : 6;
 
 	for(size_t field = 0; field < num_fields; ++field)
 	{
@@ -2540,6 +2525,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 		for(int bc = 0; bc < num_boundaries; ++bc)
 			if(!field_boundconds[field + num_fields*bc])
 			{
+				printf("HMM :%d\n",bc);
 				fprintf(stderr,FATAL_ERROR_MESSAGE"Missing boundcond for field: %s at boundary: %s\n",get_field_name(field),boundary_str(bc));
 				exit(EXIT_FAILURE);
 
@@ -2549,8 +2535,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	const char* name = node->lhs->lhs->buffer;
 	push(names,name);
 	char res[10000];
-	sprintf(res, "if (graph == %s)\n",name);
-	sprintf(res, "\treturn acGridBuildTaskGraph({\n");
+	sprintf(res, "if (graph == %s)\n\treturn acGridBuildTaskGraph({\n",name);
 	const ASTNode* function_call_list_head = node->rhs;
 	//have to traverse in reverse order to generate the right order in taskgraph
 	int n_entries = 1;
@@ -2688,7 +2673,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 		free_int_vec(&communicated_fields);
 	}
 	free(field_written_out_before);
-	strcat(res,"});\n");
+	strcat(res,"\t});\n");
 	file_append("user_taskgraphs.h",res);
 
 
