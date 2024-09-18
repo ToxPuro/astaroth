@@ -29,7 +29,8 @@ void print_double(const char* label, const double value);
 #define print_array(label, count, arr)                                                             \
     _Generic((arr),                                                                                \
         size_t *: print_array_size_t,                                                              \
-        int64_t *: print_array_int64_t,                                                            \
+        const size_t*: print_array_size_t,                                                         \
+        int64_t*: print_array_int64_t,                                                             \
         int*: print_array_int,                                                                     \
         double*: print_array_double)(label, count, arr)
 
