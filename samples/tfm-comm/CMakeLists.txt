@@ -28,6 +28,8 @@ find_package(MPI REQUIRED COMPONENTS C)
 ## Libraries
 add_library(tfm-print SHARED print.c)
 
+add_library(tfm-dynamic-array SHARED dynamic_array.c)
+
 add_library(tfm-math-utils SHARED math_utils.c)
 target_link_libraries(tfm-math-utils)
 
@@ -42,7 +44,7 @@ add_library(tfm-pack SHARED pack.cc)
 add_library(tfm-array SHARED array.cc)
 
 add_library(tfm-comm SHARED comm.c)
-target_link_libraries(tfm-comm PRIVATE tfm-decomp MPI::MPI_C tfm-pack tfm-array)
+target_link_libraries(tfm-comm PRIVATE tfm-decomp MPI::MPI_C tfm-pack tfm-dynamic-array)
 
 ## Program
 add_executable(run main.c)

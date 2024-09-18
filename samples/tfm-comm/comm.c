@@ -2,6 +2,7 @@
 
 // #include "array.h"
 #include "decomp.h"
+#include "dynamic_array.h"
 #include "errchk.h"
 #include "math_utils.h"
 #include "print.h"
@@ -326,84 +327,21 @@ set_multidim_array(const size_t value, const size_t ndims, const size_t* start,
     }
 }
 
-typedef size_t datatype;
-
-typedef struct {
-    size_t len;
-    size_t capacity;
-    datatype* data;
-} array_s;
-
-array_s
-array_create(const size_t capacity)
-{
-    array_s arr = (array_s){
-        .len      = 0,
-        .capacity = capacity,
-        .data     = (datatype*)malloc(sizeof(arr.data[0]) * capacity),
-    };
-    ERRCHK(arr.data);
-    return arr;
-}
-
-void
-array_append(const datatype element, array_s* array)
-{
-    if (array->len == array->capacity) {
-        array->capacity += 128;
-        array->data = (datatype*)realloc(array->data, sizeof(array->data[0]) * array->capacity);
-        WARNING("Array too small, reallocated");
-        ERRCHK(array->data);
-    }
-    array->data[array->len] = element;
-    ++array->len;
-}
-
-void
-array_append_multiple(const size_t count, const datatype* elements, array_s* array)
-{
-    for (size_t i = 0; i < count; ++i)
-        array_append(elements[i], array);
-}
-
-void
-array_swap(const size_t a, const size_t b, array_s* array)
-{
-    const datatype tmp = array->data[a];
-    array->data[a]     = array->data[b];
-    array->data[b]     = tmp;
-}
-
-void
-array_remove(const size_t index, array_s* array)
-{
-    array_swap(index, array->len, array);
-    --array->len;
-}
-
-void
-array_destroy(array_s* array)
-{
-    free(array->data);
-    array->len      = 0;
-    array->capacity = 0;
-}
-
 size_t
 recurse_combinations(const size_t start, const size_t ndims, const size_t* combination,
-                     array_s* array)
+                     DynamicArray* combinations)
 {
     ERRCHK(ndims > 0);
 
     print_array("Combination", ndims, combination);
-    array_append_multiple(ndims, combination, array);
+    array_append_multiple(ndims, combination, combinations);
 
     size_t counter = 1;
     for (size_t i = start; i < ndims; ++i) {
         size_t new_combination[ndims];
         copy(ndims, combination, new_combination);
         new_combination[i] = 1;
-        counter += recurse_combinations(i + 1, ndims, new_combination, array);
+        counter += recurse_combinations(i + 1, ndims, new_combination, combinations);
     }
     return counter;
 }
@@ -411,42 +349,21 @@ recurse_combinations(const size_t start, const size_t ndims, const size_t* combi
 void
 gen_combinations(const size_t ndims)
 {
-    const size_t count = count_combinations(ndims);
-    array_s array      = array_create(ndims * count);
+    const size_t ncombinations = count_combinations(ndims);
+    const size_t count         = ndims * ncombinations;
+    DynamicArray combinations  = array_create(count);
 
     size_t initial_combination[ndims];
     set(0, ndims, initial_combination);
-    size_t counter = recurse_combinations(0, ndims, initial_combination, &array);
+    size_t counter = recurse_combinations(0, ndims, initial_combination, &combinations);
     print("Counter", counter);
 
-    for (size_t i = 0; i < count; ++i) {
-        print_type(i);
-        print_array("", ndims, &((size_t*)array.data)[ndims * i]);
-    }
+    printf("Combinations:\n");
+    print_multidim_array(2, (size_t[]){ndims, ncombinations}, combinations.data);
+    // const size_t dims[] = {};
+    // print_multidim_array()
 
-    array_destroy(&array);
-
-    // const size_t count = count_combinations(ndims);
-    // size_t combinations[ndims * count];
-    // for (size_t i = 0; i < ndims * count; ++i)
-    //     combinations[i] = i;
-
-    // size_t initial_combination[ndims];
-    // set(0, ndims, initial_combination);
-    // size_t counter = recurse_combinations(0, ndims, initial_combination, ndims * count,
-    //                                       combinations);
-    // print("Counter", counter);
-    // ERRCHK(count == counter);
-
-    // for (size_t i = 0; i < count; ++i) {
-    //     printf("%zu ", i);
-    //     print_array("Combination", ndims, &combinations[i * ndims]);
-    // }
-
-    // for (size_t i = 0; i < ndims; ++i)
-    //     recurse_combinations(i, ndims, combinations);
-
-    // print_array("Combinations", ndims, combinations);
+    array_destroy(&combinations);
 }
 
 int
@@ -474,7 +391,7 @@ comm_run(void)
         set_multidim_array(1, ndims, start, subdims, local_mm, arr);
     }
 
-    // print_multidim_array(ndims, local_mm, arr);
+    print_multidim_array(ndims, local_mm, arr);
     // for (size_t i = 1; i < 8; ++i) {
     //     gen_combinations(i);
     //     print("Combinations", count_combinations(i));
