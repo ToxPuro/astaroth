@@ -294,12 +294,14 @@ print_multidim_array(const size_t ndims, const size_t* dims, const size_t* arr)
     else {
         const size_t offset = prod(ndims - 1, dims);
         for (size_t i = 0; i < dims[ndims - 1]; ++i) {
-            if (ndims >= 3) {
-                printf("Dimension %zu", ndims - 1);
-                printf(" - ");
-                printf("Layer%s %zu", ndims >= 4 ? "s" : "", i);
-                printf("\n");
-            }
+            if (ndims > 4)
+                printf("%zu. %zu-dimensional hypercube:\n", i, ndims - 1);
+            if (ndims == 4)
+                printf("Cube %zu:\n", i);
+            if (ndims == 3)
+                printf("Layer %zu:\n", i);
+            if (ndims == 2)
+                printf("Row %zu:", i);
             print_multidim_array(ndims - 1, dims, &arr[i * offset]);
         }
         printf("\n");
