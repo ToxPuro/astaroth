@@ -1,6 +1,6 @@
 #include "comm.h"
 
-#include "array.h"
+// #include "array.h"
 #include "decomp.h"
 #include "errchk.h"
 #include "math_utils.h"
@@ -175,7 +175,7 @@ get_local_dims(const size_t ndims, const size_t* nn, const MPI_Comm comm_cart, s
 }
 
 int
-comm_run(void)
+comm_run_old(void)
 {
     MPI_Init(NULL, NULL);
 
@@ -231,13 +231,13 @@ comm_run(void)
     MPI_Type_commit(&subarray_type);
 
     int up, down, left, right;
-    MPI_Cart_shift(comm_cart, 0, 1, &up, &down);
-    MPI_Cart_shift(comm_cart, 1, 1, &left, &right);
+    MPI_Cart_shift(comm_cart, ndims - 2, 1, &down, &up);
+    MPI_Cart_shift(comm_cart, ndims - 1, 1, &left, &right);
     print("up", up);
     print("down", down);
 
-    MPI_Sendrecv(&buffer[r + r * local_mm[0]], 1, subarray_type, down, 0,
-                 &buffer[r + (r + local_nn[1]) * local_mm[0]], 1, subarray_type, up, 0, //
+    MPI_Sendrecv(&buffer[r + r * local_mm[0]], 1, subarray_type, up, 0,
+                 &buffer[r + (r + local_nn[1]) * local_mm[0]], 1, subarray_type, down, 0, //
                  comm_cart, MPI_STATUS_IGNORE);
     MPI_Sendrecv(&buffer[r + local_nn[1] * local_mm[0]], 1, subarray_type, up, 1, //
                  &buffer[r], 1, subarray_type, down, 1,                           //
@@ -276,16 +276,212 @@ comm_run(void)
     return SUCCESS;
 }
 
+void
+print_multidim_array(const size_t ndims, const size_t* dims, const size_t* arr)
+{
+    if (ndims == 1) {
+        for (size_t i = 0; i < dims[0]; ++i) {
+            const size_t len          = 128;
+            const int print_alignment = 3;
+            char str[len];
+            snprintf(str, len, "%zu", arr[i]);
+            printf("%*s ", print_alignment, str);
+            // print_type(arr[i]);
+            // printf(" ");
+        }
+        printf("\n");
+    }
+    else {
+        const size_t offset = prod(ndims - 1, dims);
+        for (size_t i = 0; i < dims[ndims - 1]; ++i) {
+            if (ndims >= 3) {
+                printf("Dimension %zu", ndims - 1);
+                printf(" - ");
+                printf("Layer%s %zu", ndims >= 4 ? "s" : "", i);
+                printf("\n");
+            }
+            print_multidim_array(ndims - 1, dims, &arr[i * offset]);
+        }
+        printf("\n");
+    }
+}
+
+void
+set_multidim_array(const size_t value, const size_t ndims, const size_t* start,
+                   const size_t* subdims, const size_t* dims, size_t* arr)
+{
+    if (ndims == 0) {
+        *arr = value;
+    }
+    else {
+        ERRCHK(start[ndims - 1] + subdims[ndims - 1] <= dims[ndims - 1]); // OOB
+        ERRCHK(dims[ndims - 1] > 0);                                      // Invalid dims
+        ERRCHK(subdims[ndims - 1] > 0);                                   // Invalid subdims
+
+        const size_t offset = prod(ndims - 1, dims);
+        for (size_t i = start[ndims - 1]; i < start[ndims - 1] + subdims[ndims - 1]; ++i)
+            set_multidim_array(value, ndims - 1, start, subdims, dims, &arr[i * offset]);
+    }
+}
+
+typedef size_t datatype;
+
+typedef struct {
+    size_t len;
+    size_t capacity;
+    datatype* data;
+} array_s;
+
+array_s
+array_create(const size_t capacity)
+{
+    array_s arr = (array_s){
+        .len      = 0,
+        .capacity = capacity,
+        .data     = (datatype*)malloc(sizeof(arr.data[0]) * capacity),
+    };
+    ERRCHK(arr.data);
+    return arr;
+}
+
+void
+array_append(const datatype element, array_s* array)
+{
+    if (array->len == array->capacity) {
+        array->capacity += 128;
+        array->data = (datatype*)realloc(array->data, sizeof(array->data[0]) * array->capacity);
+        WARNING("Array too small, reallocated");
+        ERRCHK(array->data);
+    }
+    array->data[array->len] = element;
+    ++array->len;
+}
+
+void
+array_append_multiple(const size_t count, const datatype* elements, array_s* array)
+{
+    for (size_t i = 0; i < count; ++i)
+        array_append(elements[i], array);
+}
+
+void
+array_swap(const size_t a, const size_t b, array_s* array)
+{
+    const datatype tmp = array->data[a];
+    array->data[a]     = array->data[b];
+    array->data[b]     = tmp;
+}
+
+void
+array_remove(const size_t index, array_s* array)
+{
+    array_swap(index, array->len, array);
+    --array->len;
+}
+
+void
+array_destroy(array_s* array)
+{
+    free(array->data);
+    array->len      = 0;
+    array->capacity = 0;
+}
+
+size_t
+recurse_combinations(const size_t start, const size_t ndims, const size_t* combination,
+                     array_s* array)
+{
+    ERRCHK(ndims > 0);
+
+    print_array("Combination", ndims, combination);
+    array_append_multiple(ndims, combination, array);
+
+    size_t counter = 1;
+    for (size_t i = start; i < ndims; ++i) {
+        size_t new_combination[ndims];
+        copy(ndims, combination, new_combination);
+        new_combination[i] = 1;
+        counter += recurse_combinations(i + 1, ndims, new_combination, array);
+    }
+    return counter;
+}
+
+void
+gen_combinations(const size_t ndims)
+{
+    const size_t count = count_combinations(ndims);
+    array_s array      = array_create(ndims * count);
+
+    size_t initial_combination[ndims];
+    set(0, ndims, initial_combination);
+    size_t counter = recurse_combinations(0, ndims, initial_combination, &array);
+    print("Counter", counter);
+
+    for (size_t i = 0; i < count; ++i) {
+        print_type(i);
+        print_array("", ndims, &((size_t*)array.data)[ndims * i]);
+    }
+
+    array_destroy(&array);
+
+    // const size_t count = count_combinations(ndims);
+    // size_t combinations[ndims * count];
+    // for (size_t i = 0; i < ndims * count; ++i)
+    //     combinations[i] = i;
+
+    // size_t initial_combination[ndims];
+    // set(0, ndims, initial_combination);
+    // size_t counter = recurse_combinations(0, ndims, initial_combination, ndims * count,
+    //                                       combinations);
+    // print("Counter", counter);
+    // ERRCHK(count == counter);
+
+    // for (size_t i = 0; i < count; ++i) {
+    //     printf("%zu ", i);
+    //     print_array("Combination", ndims, &combinations[i * ndims]);
+    // }
+
+    // for (size_t i = 0; i < ndims; ++i)
+    //     recurse_combinations(i, ndims, combinations);
+
+    // print_array("Combinations", ndims, combinations);
+}
+
 int
-comm_run_other(void)
+comm_run(void)
 {
     // MPI_Init(NULL, NULL);
 
-    const size_t count = 8;
-    real* arr          = array_create(count, false);
+    const size_t r          = 2;
+    const size_t local_nn[] = {4, 4, 2};
+    const size_t ndims      = ARRAY_SIZE(local_nn);
+
+    size_t local_mm[ndims];
+    copy(ndims, local_nn, local_mm);
+    add_to_array(2 * r, ndims, local_mm);
+
+    const size_t mm_count = prod(ndims, local_mm);
+
+    size_t* arr = (size_t*)malloc(sizeof(arr[0]) * mm_count);
     ERRCHK(arr);
-    // print_array("Arr", count, arr);
-    array_destroy(&arr, false);
+    set(0, mm_count, arr);
+
+    {
+        const size_t start[]   = {0, 0, 0};
+        const size_t subdims[] = {r, r, r};
+        set_multidim_array(1, ndims, start, subdims, local_mm, arr);
+    }
+
+    // print_multidim_array(ndims, local_mm, arr);
+    // for (size_t i = 1; i < 8; ++i) {
+    //     gen_combinations(i);
+    //     print("Combinations", count_combinations(i));
+    // }
+    gen_combinations(3);
+    print("Combinations", count_combinations(3));
+    print("Hamming weight", popcount(ndims, local_nn));
+
+    free(arr);
 
     // MPI_Finalize();
     return 0;
