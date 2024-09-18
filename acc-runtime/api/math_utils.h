@@ -420,9 +420,9 @@ typedef struct AcMatrix {
   //TP: default initializer will initialize all values to 0.0
   AcArray<AcArray<AcReal,3>,3> data = {};
 
-  HOST_DEVICE AcMatrix() {}
+  HOST_DEVICE_INLINE AcMatrix() {}
 
-  HOST_DEVICE AcMatrix(const AcReal3 row0, const AcReal3 row1,
+  HOST_DEVICE_INLINE AcMatrix(const AcReal3 row0, const AcReal3 row1,
                        const AcReal3 row2)
   {
     data[0][0] = row0.x;
@@ -438,16 +438,16 @@ typedef struct AcMatrix {
     data[2][2] = row2.z;
   }
 
-  HOST_DEVICE constexpr AcReal3 row(const int row) const
+  HOST_DEVICE_INLINE AcReal3 row(const int row) const
   {
     return (AcReal3){data[row][0], data[row][1], data[row][2]};
   }
-  HOST_DEVICE AcReal3 col(const int col) const
+  HOST_DEVICE_INLINE AcReal3 col(const int col) const
   {
     return (AcReal3){data[0][col], data[1][col], data[2][col]};
   }
 
-  HOST_DEVICE constexpr AcReal3 operator*(const AcReal3& v) const
+  HOST_DEVICE_INLINE AcReal3 operator*(const AcReal3& v) const
   {
     return (AcReal3){
         AC_dot(row(0), v),
@@ -456,19 +456,19 @@ typedef struct AcMatrix {
     };
   }
 
-  HOST_DEVICE AcMatrix operator-() const
+  HOST_DEVICE_INLINE AcMatrix operator-() const
   {
     return AcMatrix(-row(0), -row(1), -row(2));
   }
-  HOST_DEVICE const constexpr AcArray<AcReal,3>& operator[](const size_t index) const {
+  HOST_DEVICE_INLINE const AcArray<AcReal,3>& operator[](const size_t index) const {
 	  return data[index];
   }
-  HOST_DEVICE constexpr AcArray<AcReal,3>& operator[](const size_t index) {
+  HOST_DEVICE_INLINE AcArray<AcReal,3>& operator[](const size_t index) {
 	  return data[index];
   }
 } AcMatrix;
 
-static HOST_DEVICE AcMatrix
+static HOST_DEVICE_INLINE AcMatrix
 operator*(const AcReal& v, const AcMatrix& m)
 {
   AcMatrix out;

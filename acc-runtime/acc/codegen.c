@@ -3777,9 +3777,13 @@ get_array_elem_type(char* arr_type)
 char*
 get_node_array_access_type(const ASTNode* node)
 {
+	int counter = 1;
 	ASTNode* array_access_base = node->lhs;
 	while(array_access_base->type == NODE_ARRAY_ACCESS)
+	{
 		array_access_base = array_access_base->lhs;
+		++counter;
+	}
 	const char* base_type = get_expr_type(array_access_base);
 	if (!strcmp_null_ok(base_type,"AcReal"))
 	{
@@ -3788,6 +3792,7 @@ get_node_array_access_type(const ASTNode* node)
 		printf("WRONG %s\n",tmp);
 	}
 	return (!base_type)   ? NULL : 
+		counter == 2 && !strcmp(base_type,"AcMatrix") ? "AcReal" :
 		!strcmp(base_type,"AcMatrix") ? "AcRealArray" :
 		strstr(base_type,"*") ? remove_substring(strdup(base_type),"*") :
 		strstr(base_type,"AcArray") ? get_array_elem_type(strdup(base_type)) :
@@ -4224,11 +4229,17 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_non_s
 		if(!name) return;
         	const ASTNode* assignment = def->rhs;
 		if(!assignment) return;
-		combine_all(assignment,assignment_val);
+		const ASTNode* struct_initializer = get_node(NODE_STRUCT_INITIALIZER,assignment);
+		const ASTNode* array_initializer = get_node(NODE_ARRAY_INITIALIZER, assignment);
 		const char* datatype = tspec->lhs->buffer;
 		char* datatype_scalar = remove_substring(strdup(datatype),"*");
+		//TP: the C++ compiler is not always able to use the structs if you don't have the conversion from the initializer list
+		//TP: e.g. multiplying a matrix with a scalar won't work without the conversion
+		if(struct_initializer && !array_initializer)
+			if(!struct_initializer->parent->postfix)
+				asprintf(&struct_initializer->parent->prefix,"(%s)",datatype_scalar);
+		combine_all(assignment,assignment_val);
 		remove_substring(datatype_scalar,"*");
-		const ASTNode* array_initializer = get_node(NODE_ARRAY_INITIALIZER, assignment);
 		const int array_dim = array_initializer ? count_nest(array_initializer,NODE_ARRAY_INITIALIZER) : 0;
 		const int num_of_elems = array_initializer ? count_num_of_nodes_in_list(array_initializer->lhs) : 0;
 		if(array_initializer)
@@ -4255,7 +4266,9 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_non_s
                         if(!strcmps(datatype_scalar,"AcReal","int","bool"))
                                 fprintf(fp, "\n#define %s (%s)\n", name, assignment_val);
                         else
+			{
                                fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
+			}
 		}
 		free(datatype_scalar);
 		free(assignment_val);

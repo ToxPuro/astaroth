@@ -722,7 +722,7 @@ gen_kernel_body(const int curr_kernel)
                     else {
                       printf("f%s_s%s = ", field_names[get_original_index(field_remappings,field)], stencil_names[stencil]);
                       printf("%s(f%s_s%s, ", stencil_binary_ops[stencil], field_names[get_original_index(field_remappings,field)],
-                             stencil);
+                             stencil_names[stencil]);
                       printf("stencils[%d][%d][%d] *", //
                              stencil, height, width);
                       printf("%s(", stencil_unary_ops[stencil]);
