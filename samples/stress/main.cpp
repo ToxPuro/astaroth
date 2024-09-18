@@ -60,6 +60,7 @@ main(void)
     srand(321654987);
     // CPU alloc
     AcMeshInfo info;
+    acLoadConfig(AC_DEFAULT_CONFIG,&info,NULL);;
 
     info.real_params[AC_dsx] = dsx;
     info.real_params[AC_dsy] = dsy;
@@ -101,19 +102,8 @@ main(void)
 
     std::vector<Field> all_fields {};
     for(int i = 0; i < NUM_VTXBUF_HANDLES; ++i) all_fields.push_back((Field)i);
-    AcTaskGraph* initialize = acGridBuildTaskGraph({ 
-		    acHaloExchange(all_fields),
-		    acBoundaryCondition((!TWO_D ? BOUNDARY_XYZ : BOUNDARY_XY), BOUNDCOND_PERIODIC, all_fields),
-		    acCompute(KERNEL_initial_condition, all_fields)
-    });
-
-    AcTaskGraph* integrate = acGridBuildTaskGraph({ 
-		    acHaloExchange(all_fields),
-		    acBoundaryCondition((!TWO_D ? BOUNDARY_XYZ : BOUNDARY_XY), BOUNDCOND_PERIODIC, all_fields),
-		    acCompute(KERNEL_singlepass_solve, all_fields)
-    });
-
-
+    auto initialize = acGetDSLTaskGraph(AC_initialize);
+    auto update     = acGetDSLTaskGraph(AC_update);
     // Boundconds
     if (pid == 0)
         acHostMeshRandomize(&model);
@@ -145,7 +135,7 @@ main(void)
 
     for (int i = 0; i < nsteps; ++i)
     {
-	    acGridExecuteTaskGraph(integrate, 1);
+	    acGridExecuteTaskGraph(update, 1);
 	    acGridSynchronizeStream(STREAM_ALL);
     }
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
@@ -153,6 +143,7 @@ main(void)
     acHostMeshApplyPeriodicBounds(&candidate);
 
 
+    /**
     if(pid  == 0)
     {
             std::vector<AcReal> x(npointsx_grid);
@@ -182,6 +173,7 @@ main(void)
 	    fclose(fp_x);
 	    fclose(fp_u);
     }
+    **/
 
     if (pid == 0) {
         acHostMeshDestroy(&model);

@@ -1,4 +1,5 @@
 #include "../../stdlib/math"
+#
 const int Lengthscale = 162*2
 const real SimTime=3*25.0
 const int npoints =42*2
@@ -151,6 +152,12 @@ Kernel initial_condition()
 	write(VELOCITY_X,0.0)
 	write(VELOCITY_Y,0.0)
 }
+
+Kernel twopass_solve_intermediate(int step_num, real dt) {
+}
+Kernel twopass_solve_final(int step_num, real current_time) {
+}
+
 Kernel calc_displacement()
 {
 	write(UX, COORDS_X - ORIGINAL_COORDS_X)
@@ -208,8 +215,12 @@ BoundConds bcs
 {
 	periodic(BOUNDARY_XY)
 }
+ComputeSteps AC_initialize(bcs)
+{
+	initial_condition()
+}
 
-ComputeSteps update(bcs)
+ComputeSteps AC_update(bcs)
 {
 	calc_displacement()
 	calculate_stresses()
