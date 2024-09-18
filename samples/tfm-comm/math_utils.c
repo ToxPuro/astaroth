@@ -75,6 +75,41 @@ test_cumprod(void)
     }
 }
 
+size_t
+binomial_coefficient(const size_t n, const size_t k)
+{
+    ERRCHK(n >= k);
+    size_t numerator = 1;
+    for (size_t i = n; i > n - k; --i)
+        numerator *= i;
+    size_t denominator = 1;
+    for (size_t i = k; i > 0; --i)
+        denominator *= i;
+    return numerator / denominator;
+}
+
+size_t
+count_combinations(const size_t n)
+{
+    size_t result = 0;
+    for (size_t k = 0; k <= n; ++k)
+        result += binomial_coefficient(n, k);
+
+    return result;
+}
+
+static void
+test_binomial_coefficient(void)
+{
+    ERRCHK(binomial_coefficient(52, 5) == 2598960);
+    ERRCHK(binomial_coefficient(3, 1) == 3);
+    ERRCHK(binomial_coefficient(5, 3) == 10);
+
+    ERRCHK(count_combinations(1) == 2);
+    ERRCHK(count_combinations(2) == 4);
+    ERRCHK(count_combinations(3) == 8);
+}
+
 /** Shift array forward (right) and fill the remaining values.
  * e.g., {1,2,3} -> {fill_value, 1, 2}
  */
@@ -142,6 +177,38 @@ factorize(const size_t n_initial, size_t* nfactors, size_t* factors)
             }
     }
     *nfactors = count;
+}
+
+/** Computes the Hamming weight or population count of an array */
+size_t
+popcount(const size_t count, const size_t* arr)
+{
+    size_t popcount = 0;
+    for (size_t i = 0; i < count; ++i)
+        if (arr[i] > 0)
+            ++popcount;
+    return popcount;
+}
+
+static void
+test_popcount(void)
+{
+    {
+        const size_t arr[] = {0, 0, 0};
+        const size_t count = ARRAY_SIZE(arr);
+        ERRCHK(popcount(count, arr) == 0);
+    }
+
+    {
+        const size_t arr[] = {0, 1, 0};
+        const size_t count = ARRAY_SIZE(arr);
+        ERRCHK(popcount(count, arr) == 1);
+    }
+    {
+        const size_t arr[] = {0, 500, 123};
+        const size_t count = ARRAY_SIZE(arr);
+        ERRCHK(popcount(count, arr) == 2);
+    }
 }
 
 /** Requires that array is ordered
@@ -316,4 +383,6 @@ test_math_utils(void)
     test_prod();
     test_cumprod();
     test_rshift();
+    test_popcount();
+    test_binomial_coefficient();
 }

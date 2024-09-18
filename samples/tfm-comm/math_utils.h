@@ -7,11 +7,17 @@ size_t prod(const size_t count, const size_t* arr);
 
 void cumprod(const size_t count, const size_t* restrict in, size_t* restrict out);
 
+size_t binomial_coefficient(const size_t n, const size_t k);
+
+size_t count_combinations(const size_t n);
+
 void rshift(const size_t shift, const size_t fill_value, const size_t count, size_t* arr);
 
 size_t dot(const size_t count, const size_t* a, const size_t* b);
 
 void factorize(const size_t n_initial, size_t* nfactors, size_t* factors);
+
+size_t popcount(const size_t count, const size_t* arr);
 
 /** Requires that array is ordered */
 size_t unique(const size_t count, size_t* arr);
