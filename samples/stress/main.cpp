@@ -105,6 +105,7 @@ main(void)
     auto initialize = acGetDSLTaskGraph(AC_initialize);
     auto update     = acGetDSLTaskGraph(AC_update);
     // Boundconds
+    /**
     if (pid == 0)
         acHostMeshRandomize(&model);
 
@@ -123,14 +124,13 @@ main(void)
             WARNCHK_ALWAYS(retval);
         }
     }
+    **/
     fflush(stdout);
     acGridExecuteTaskGraph(initialize, 1);
     acGridSynchronizeStream(STREAM_ALL);
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
 
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     acHostMeshApplyPeriodicBounds(&candidate);
-    std::vector<AcReal> y(npointsx_grid);
     acGridSynchronizeStream(STREAM_ALL);
 
     for (int i = 0; i < nsteps; ++i)
@@ -140,8 +140,15 @@ main(void)
     }
     acGridStoreMesh(STREAM_DEFAULT, &candidate);
     acGridSynchronizeStream(STREAM_ALL);
-    acHostMeshApplyPeriodicBounds(&candidate);
-
+    FILE* fp = fopen("stress11.dat","w");
+    for(int x = NGHOST; x < npointsx_grid-NGHOST; ++x)
+    {
+		for(int y = NGHOST; y < npointsy_grid-NGHOST; ++y)
+		{
+			fprintf(fp,"%.7e %.7e %.7e\n",candidate.vertex_buffer[COORDS_X][x + npointsx_grid*y], candidate.vertex_buffer[COORDS_X][x + npointsx_grid*y],candidate.vertex_buffer[STRESS11][x + npointsx_grid*y]);
+		}
+    }
+    fclose(fp);
 
     /**
     if(pid  == 0)
