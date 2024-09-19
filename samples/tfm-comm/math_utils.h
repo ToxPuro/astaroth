@@ -7,6 +7,8 @@ size_t prod(const size_t count, const size_t* arr);
 
 void cumprod(const size_t count, const size_t* restrict in, size_t* restrict out);
 
+size_t powzu(const size_t base, const size_t exponent);
+
 size_t binomial_coefficient(const size_t n, const size_t k);
 
 size_t count_combinations(const size_t n);

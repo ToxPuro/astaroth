@@ -32,6 +32,25 @@ test_prod(void)
     }
 }
 
+size_t
+powzu(const size_t base, const size_t exponent)
+{
+    size_t res = 1;
+    for (size_t i = 0; i < exponent; ++i)
+        res *= base;
+    WARNING("powzu does not check for overflows");
+    return res;
+}
+
+void
+test_powzu(void)
+{
+    ERRCHK(powzu(2, 8) == 256);
+    ERRCHK(powzu(0, 1) == 0);
+    ERRCHK(powzu(128, 0) == 1);
+    ERRCHK(powzu(7, 5) == 16807);
+}
+
 /** Cumulative product */
 void
 cumprod(const size_t count, const size_t* restrict in, size_t* restrict out)
@@ -609,4 +628,5 @@ test_math_utils(void)
     test_unique();
     test_repeat();
     test_unique_subsets();
+    test_powzu();
 }

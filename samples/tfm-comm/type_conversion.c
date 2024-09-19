@@ -5,6 +5,16 @@
 #include "errchk.h"
 
 size_t
+double_as_size_t(const double x)
+{
+    ERRCHK(x < SIZE_T_MAX);
+    ERRCHK(x >= 0);
+    const size_t tmp = (size_t)x;
+    ERRCHK(tmp == x);
+    return (size_t)x;
+}
+
+size_t
 int64_t_as_size_t(const int64_t i)
 {
     ERRCHK(i >= 0);

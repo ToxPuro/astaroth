@@ -41,7 +41,15 @@ add_library(tfm-decomp SHARED decomp.c)
 target_link_libraries(tfm-decomp PRIVATE tfm-math-utils tfm-print tfm-type-conversion)
 
 add_library(tfm-comm SHARED comm.c)
-target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-math-utils tfm-type-conversion tfm-print tfm-decomp tfm-dynamic-array tfm-ndarray)
+target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-math-utils tfm-type-conversion tfm-print tfm-decomp tfm-dynamic-array tfm-ndarray tfm-comm-data m)
+
+### Communication abstractions
+add_library(tfm-buffer SHARED buffer.c)
+add_library(tfm-packed-data SHARED packed_data.c)
+target_link_libraries(tfm-packed-data PRIVATE tfm-buffer tfm-math-utils)
+
+add_library(tfm-comm-data SHARED comm_data.c)
+target_link_libraries(tfm-comm-data PRIVATE tfm-packed-data tfm-math-utils tfm-print)
 
 ## Program
 add_executable(run main.c)

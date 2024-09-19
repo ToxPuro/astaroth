@@ -1,6 +1,7 @@
 #include "comm.h"
 
 // #include "array.h"
+#include "comm_data.h"
 #include "decomp.h"
 #include "dynamic_array.h"
 #include "errchk.h"
@@ -454,61 +455,69 @@ commshape_destroy(CommShape* comm_shape)
 int
 comm_run(void)
 {
-    // Declare mesh dimensions
-    const size_t r          = 1;
-    const size_t local_nn[] = {4, 4, 4};
-    const size_t ndims      = ARRAY_SIZE(local_nn);
+    {
+        // Declare mesh dimensions
+        const size_t r          = 1;
+        const size_t local_nn[] = {4, 4, 4};
+        const size_t ndims      = ARRAY_SIZE(local_nn);
 
-    // Calculate mm
-    size_t local_mm[ndims];
-    copy(ndims, local_nn, local_mm);
-    size_t two_r[ndims];
-    repeat(1, (size_t[]){2 * r}, ndims, two_r);
-    add_arrays(ndims, two_r, local_nn, local_mm);
-    print_array("two_r", ndims, two_r);
-    print_array("local nn", ndims, local_nn);
-    print_array("local mm", ndims, local_mm);
+        // Calculate mm
+        size_t local_mm[ndims];
+        copy(ndims, local_nn, local_mm);
+        size_t two_r[ndims];
+        repeat(1, (size_t[]){2 * r}, ndims, two_r);
+        add_arrays(ndims, two_r, local_nn, local_mm);
+        print_array("two_r", ndims, two_r);
+        print_array("local nn", ndims, local_nn);
+        print_array("local mm", ndims, local_mm);
 
-    const size_t mm_count = prod(ndims, local_mm);
+        const size_t mm_count = prod(ndims, local_mm);
 
-    // Setup the mesh and print
-    size_t* arr = (size_t*)malloc(sizeof(arr[0]) * mm_count);
-    ERRCHK(arr);
-    set(0, mm_count, arr);
+        // Setup the mesh and print
+        size_t* arr = (size_t*)malloc(sizeof(arr[0]) * mm_count);
+        ERRCHK(arr);
+        set(0, mm_count, arr);
 
-    // print_ndarray("Mesh", ndims, local_mm, arr);
+        // print_ndarray("Mesh", ndims, local_mm, arr);
 
-    // Find the combinations for ndims
-    DynamicArray combinations  = create_combinations(ndims);
-    const size_t ncombinations = combinations.len / ndims;
-    // print_ndarray("Combinations", 2, (size_t[]){ndims, ncombinations}, combinations.data);
+        // Find the combinations for ndims
+        DynamicArray combinations  = create_combinations(ndims);
+        const size_t ncombinations = combinations.len / ndims;
+        // print_ndarray("Combinations", 2, (size_t[]){ndims, ncombinations}, combinations.data);
 
-    // For each combination, find
-    for (size_t i = 0; i < ncombinations; ++i) {
-        const size_t* current_combination = &combinations.data[i * ndims];
-        print_array("Current", ndims, current_combination);
+        // For each combination, find
+        for (size_t i = 0; i < ncombinations; ++i) {
+            const size_t* current_combination = &combinations.data[i * ndims];
+            print_array("Current", ndims, current_combination);
 
-        size_t current_repeated[ndims * ncombinations];
-        repeat(ndims, current_combination, ncombinations, current_repeated);
-        // print_ndarray("Current", 2, (size_t[]){ndims, ncombinations}, current_repeated);
+            size_t current_repeated[ndims * ncombinations];
+            repeat(ndims, current_combination, ncombinations, current_repeated);
+            // print_ndarray("Current", 2, (size_t[]){ndims, ncombinations}, current_repeated);
 
-        size_t hadamard[ndims * ncombinations];
-        mul(ndims * ncombinations, current_repeated, combinations.data, hadamard);
-        // print_ndarray("Hadamard", 2, (size_t[]){ndims, ncombinations}, hadamard);
+            size_t hadamard[ndims * ncombinations];
+            mul(ndims * ncombinations, current_repeated, combinations.data, hadamard);
+            // print_ndarray("Hadamard", 2, (size_t[]){ndims, ncombinations}, hadamard);
 
-        size_t unique_combinations[ndims * ncombinations];
-        const size_t nunique_combinations = unique_subsets(ndims * ncombinations, hadamard, ndims,
-                                                           unique_combinations);
-        const size_t nrows                = nunique_combinations / ndims;
-        print_ndarray("Unique combinations", 2, (size_t[]){ndims, nrows}, unique_combinations);
+            size_t unique_combinations[ndims * ncombinations];
+            const size_t nunique_combinations = unique_subsets(ndims * ncombinations, hadamard,
+                                                               ndims, unique_combinations);
+            const size_t nrows                = nunique_combinations / ndims;
+            print_ndarray("Unique combinations", 2, (size_t[]){ndims, nrows}, unique_combinations);
 
-        for (size_t j = 0; j < nrows; ++j) {
-            const size_t* current_row = &unique_combinations[j * ndims];
-            print_array("Current row:", ndims, current_row);
+            for (size_t j = 0; j < nrows; ++j) {
+                const size_t* current_row = &unique_combinations[j * ndims];
+                print_array("Current row:", ndims, current_row);
+            }
         }
+        array_destroy(&combinations);
+        free(arr);
     }
-    array_destroy(&combinations);
-    free(arr);
+
+    {
+        const size_t ndims = 3;
+        CommData comm_data = acCommDataCreate(ndims, 8);
+        acCommDataDestroy(&comm_data);
+    }
 
     return 0;
 }
