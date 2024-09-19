@@ -65,9 +65,9 @@ vertex shaders operate in graphics shading languages.
 
 
 #### Comments and preprocessor directives
-The Astaroth preprocessor works similar to the C preprocessor (gcc) with one exception:
-* By default include files are searched from DSL_MODULE_DIR only if the include is not found are C include rules used
-With two extensions.
+The Astaroth preprocessor works similar to the C preprocessor (gcc) with one exception: 
+  By default include files are searched from DSL_MODULE_DIR only if the include is not found are C include rules used
+With two extensions: 
 ```
 hostdefine ONE  (1) // Macro definition visible in both device and host code
 #include ../stdlib/math //Includes all files and directories in ../stdlib/math
