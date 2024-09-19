@@ -19,12 +19,12 @@ As ACC is in active development, compiler bugs and cryptic error messages are
 expected. In case of issues, please check the following files in
 `acc-runtime/api` in the build directory.
 
-Intermediate files:
+Intermediate files: 
 
 1. `user_kernels.ac.pp_stage*`. The DSL file after a specific preprocessing stage.
 2. `user_kernels.h.raw`. The generated CUDA kernels without formatting applied.
-3. `user_kernels_backup.h.`. The generated CUDA/CPU kernels with formatting applied.
-Final files:
+3. `user_kernels_backup.h.`. The generated CUDA/CPU kernels with formatting applied. 
+Final files: 
 
 1. `user_defines.h`. The project-wide defines generated with the DSL.
 2. `user_kernels.h`. The generated CUDA kernels.
@@ -66,7 +66,7 @@ vertex shaders operate in graphics shading languages.
 
 #### Comments and preprocessor directives
 The Astaroth preprocessor works similar to the C preprocessor (gcc) with one exception: 
-  By default include files are searched from DSL_MODULE_DIR only if the include is not found are C include rules used
+  By default include files are searched from DSL_MODULE_DIR only if the include is not found are C include rules used. 
 With two extensions: 
 ```
 hostdefine ONE  (1) // Macro definition visible in both device and host code
