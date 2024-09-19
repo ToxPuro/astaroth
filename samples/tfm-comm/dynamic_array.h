@@ -16,13 +16,3 @@ void array_append(const DATYPE element, DynamicArray* array);
 void array_append_multiple(const size_t count, const DATYPE* elements, DynamicArray* array);
 
 void array_destroy(DynamicArray* array);
-
-// typedef struct {
-//     size_t ndims;
-//     size_t* shape;
-// } Shape;
-
-// typedef struct {
-//     DynamicArray array;
-//     Shape shape;
-// } NdArray;
