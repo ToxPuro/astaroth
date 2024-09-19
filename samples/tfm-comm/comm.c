@@ -5,6 +5,7 @@
 #include "dynamic_array.h"
 #include "errchk.h"
 #include "math_utils.h"
+#include "ndarray.h"
 #include "print.h"
 #include "type_conversion.h"
 
@@ -272,54 +273,6 @@ comm_run_old(void)
     return SUCCESS;
 }
 
-void
-print_multidim_array(const size_t ndims, const size_t* dims, const size_t* arr)
-{
-    if (ndims == 1) {
-        for (size_t i = 0; i < dims[0]; ++i) {
-            const size_t len          = 128;
-            const int print_alignment = 3;
-            char str[len];
-            snprintf(str, len, format_specifier(arr[i]), arr[i]);
-            printf("%*s ", print_alignment, str);
-        }
-        printf("\n");
-    }
-    else {
-        const size_t offset = prod(ndims - 1, dims);
-        for (size_t i = 0; i < dims[ndims - 1]; ++i) {
-            if (ndims > 4)
-                printf("%zu. %zu-dimensional hypercube:\n", i, ndims - 1);
-            if (ndims == 4)
-                printf("Cube %zu:\n", i);
-            if (ndims == 3)
-                printf("Layer %zu:\n", i);
-            if (ndims == 2)
-                printf("Row %zu:", i);
-            print_multidim_array(ndims - 1, dims, &arr[i * offset]);
-        }
-        printf("\n");
-    }
-}
-
-void
-set_multidim_array(const size_t value, const size_t ndims, const size_t* start,
-                   const size_t* subdims, const size_t* dims, size_t* arr)
-{
-    if (ndims == 0) {
-        *arr = value;
-    }
-    else {
-        ERRCHK(start[ndims - 1] + subdims[ndims - 1] <= dims[ndims - 1]); // OOB
-        ERRCHK(dims[ndims - 1] > 0);                                      // Invalid dims
-        ERRCHK(subdims[ndims - 1] > 0);                                   // Invalid subdims
-
-        const size_t offset = prod(ndims - 1, dims);
-        for (size_t i = start[ndims - 1]; i < start[ndims - 1] + subdims[ndims - 1]; ++i)
-            set_multidim_array(value, ndims - 1, start, subdims, dims, &arr[i * offset]);
-    }
-}
-
 /** Writes the combinations to the output paramete and returns the number of combinations */
 size_t
 recurse_combinations(const size_t start, const size_t ndims, const size_t* combination,
@@ -351,7 +304,7 @@ create_combinations(const size_t ndims)
     ERRCHK(ncombinations == counter);
 
     printf("Combinations:\n");
-    print_multidim_array(2, (size_t[]){ndims, ncombinations}, combinations.data);
+    print_ndarray(2, (size_t[]){ndims, ncombinations}, combinations.data);
 
     return combinations;
 }
@@ -378,10 +331,10 @@ comm_run(void)
     {
         const size_t start[]   = {0, 0, 0};
         const size_t subdims[] = {r, r, r};
-        set_multidim_array(1, ndims, start, subdims, local_mm, arr);
+        set_ndarray(1, ndims, start, subdims, local_mm, arr);
     }
 
-    print_multidim_array(ndims, local_mm, arr);
+    print_ndarray(ndims, local_mm, arr);
 
     // DynamicArray combinations = create_combinations(3);
     // print("Combinations", count_combinations(3));
