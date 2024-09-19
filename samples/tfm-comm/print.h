@@ -2,6 +2,18 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define format_specifier(value)                                                                    \
+    _Generic((value),                                                                              \
+        size_t: format_specifier_size_t,                                                           \
+        int64_t: format_specifier_int64_t,                                                         \
+        int: format_specifier_int,                                                                 \
+        double: format_specifier_double)(value)
+
+const char* format_specifier_size_t(const size_t value);
+const char* format_specifier_int64_t(const int64_t value);
+const char* format_specifier_int(const int value);
+const char* format_specifier_double(const double value);
+
 #define print_type(value)                                                                          \
     _Generic((value),                                                                              \
         size_t: print_type_size_t,                                                                 \
@@ -29,10 +41,13 @@ void print_double(const char* label, const double value);
 #define print_array(label, count, arr)                                                             \
     _Generic((arr),                                                                                \
         size_t *: print_array_size_t,                                                              \
-        const size_t*: print_array_size_t,                                                         \
-        int64_t*: print_array_int64_t,                                                             \
+        int64_t *: print_array_int64_t,                                                            \
         int*: print_array_int,                                                                     \
-        double*: print_array_double)(label, count, arr)
+        double*: print_array_double,                                                               \
+        const size_t*: print_array_size_t,                                                         \
+        const int64_t*: print_array_int64_t,                                                       \
+        const int*: print_array_int,                                                               \
+        const double*: print_array_double)(label, count, arr)
 
 void print_array_size_t(const char* label, const size_t count, const size_t* arr);
 void print_array_int64_t(const char* label, const size_t count, const int64_t* arr);
