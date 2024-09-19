@@ -3,6 +3,8 @@
 #include <stdlib.h>
 
 #include "errchk.h"
+#include "math_utils.h"
+#include "ndarray.h"
 
 DynamicArray
 array_create(const size_t capacity)
@@ -43,3 +45,39 @@ array_destroy(DynamicArray* array)
     array->len      = 0;
     array->capacity = 0;
 }
+
+// DynamicNdArray
+// ndarray_create(const size_t ndims, const size_t* dims)
+// {
+//     DynamicNdArray ndarray = (DynamicNdArray){
+//         .ndims = ndims,
+//         .dims  = malloc(sizeof(ndarray.dims[0]) * ndims),
+//         .array = array_create(prod(ndims, dims)),
+//     };
+//     ERRCHK(ndarray.dims);
+//     copy(ndims, dims, ndarray.dims);
+
+//     return ndarray;
+// }
+
+// void
+// ndarray_destroy(DynamicNdArray* ndarray)
+// {
+//     array_destroy(&ndarray->array);
+//     free(ndarray->dims);
+//     ndarray->dims  = NULL;
+//     ndarray->ndims = 0;
+// }
+
+// void
+// ndarray_print(const char* label, const DynamicNdArray ndarray)
+// {
+//     printf("%s:\n", label);
+//     print_ndarray(ndarray.ndims, ndarray.dims, ndarray.array.data);
+// }
+
+// void
+// ndarray_append(const size_t ndims, const size_t* row, DynamicNdArray* ndarray)
+// {
+//     array_append_multiple(ndims, row, &ndarray->array);
+// }

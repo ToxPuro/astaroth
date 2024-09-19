@@ -3,6 +3,7 @@
 #include <string.h> // memmove
 
 #include "errchk.h"
+#include "print.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
@@ -252,11 +253,106 @@ test_unique(void)
     }
 }
 
-size_t
-unique_nd(const size_t ndims, const size_t* shape, const size_t* arr)
+bool
+contains_subset(const size_t subset_length, const size_t* subset, const size_t count,
+                const size_t* b)
 {
-    // TODO
-    return 0;
+    for (size_t i = 0; i < count; i += subset_length) {
+        if (equals(subset_length, subset, &b[i]))
+            return true;
+    }
+    return false;
+}
+
+size_t
+unique_subsets(const size_t count, const size_t* a, size_t subset_length, size_t* b)
+{
+    ERRCHK(b != NULL);
+    size_t nsubsets = 0;
+    for (size_t i = 0; i < count; i += subset_length) {
+        if (!contains_subset(subset_length, &a[i], subset_length * nsubsets, b)) {
+            copy(subset_length, &a[i], &b[subset_length * nsubsets]);
+            ++nsubsets;
+        }
+    }
+    return subset_length * nsubsets;
+}
+
+void
+test_unique_subsets(void)
+{
+    {
+        const size_t a[]           = {1, 2, 3, 4};
+        const size_t subset_length = 1;
+        const size_t model[]       = {1, 2, 3, 4};
+
+        const size_t count              = ARRAY_SIZE(a);
+        const size_t output_count_model = ARRAY_SIZE(model);
+        size_t b[count];
+        const size_t output_count = unique_subsets(count, a, subset_length, b);
+        ERRCHK(output_count == output_count_model);
+        ERRCHK(equals(output_count, b, model));
+    }
+    {
+        const size_t a[]           = {1, 1, 3, 4};
+        const size_t subset_length = 1;
+        const size_t model[]       = {1, 3, 4};
+
+        const size_t count              = ARRAY_SIZE(a);
+        const size_t output_count_model = ARRAY_SIZE(model);
+        size_t b[count];
+        const size_t output_count = unique_subsets(count, a, subset_length, b);
+        ERRCHK(output_count == output_count_model);
+        ERRCHK(equals(output_count, b, model));
+    }
+    {
+        const size_t a[]           = {1, 1, 2, 2, 1, 1};
+        const size_t subset_length = 2;
+        const size_t model[]       = {1, 1, 2, 2};
+
+        const size_t count              = ARRAY_SIZE(a);
+        const size_t output_count_model = ARRAY_SIZE(model);
+        size_t b[count];
+        const size_t output_count = unique_subsets(count, a, subset_length, b);
+        ERRCHK(output_count == output_count_model);
+        ERRCHK(equals(output_count, b, model));
+    }
+    {
+        const size_t a[]           = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3};
+        const size_t subset_length = 3;
+        const size_t model[]       = {1, 1, 1, 1, 2, 3};
+
+        const size_t count              = ARRAY_SIZE(a);
+        const size_t output_count_model = ARRAY_SIZE(model);
+        size_t b[count];
+        const size_t output_count = unique_subsets(count, a, subset_length, b);
+        ERRCHK(output_count == output_count_model);
+        ERRCHK(equals(output_count, b, model));
+    }
+    {
+        const size_t a[]           = {1, 2, 3, 3, 2, 1, 1, 2, 3};
+        const size_t subset_length = 3;
+        const size_t model[]       = {1, 2, 3, 3, 2, 1};
+
+        const size_t count              = ARRAY_SIZE(a);
+        const size_t output_count_model = ARRAY_SIZE(model);
+        size_t b[count];
+        const size_t output_count = unique_subsets(count, a, subset_length, b);
+        ERRCHK(output_count == output_count_model);
+        ERRCHK(equals(output_count, b, model));
+    }
+    {
+        const size_t a[]           = {1, 2, 3, 3, 2, 1, 1, 3, 2, 3, 2, 1};
+        const size_t subset_length = 3;
+        const size_t model[]       = {1, 2, 3, 3, 2, 1, 1, 3, 2};
+
+        const size_t count              = ARRAY_SIZE(a);
+        const size_t output_count_model = ARRAY_SIZE(model);
+        size_t b[count];
+        const size_t output_count = unique_subsets(count, a, subset_length, b);
+        ERRCHK(output_count == output_count_model);
+        ERRCHK(equals(output_count, b, model));
+    }
 }
 
 void
@@ -372,6 +468,48 @@ mul(const size_t count, const size_t* a, const size_t* b, size_t* c)
 }
 
 void
+repeat(const size_t count, const size_t* a, const size_t nrepeats, size_t* b)
+{
+    for (size_t i = 0; i < nrepeats; ++i)
+        copy(count, a, &b[i * count]);
+}
+
+void
+test_repeat(void)
+{
+    {
+        const size_t a[]      = {1, 2};
+        const size_t nrepeats = 3;
+        const size_t model[]  = {1, 2, 1, 2, 1, 2};
+
+        const size_t count = ARRAY_SIZE(a);
+        size_t b[count * nrepeats];
+        repeat(count, a, nrepeats, b);
+        ERRCHK(equals(count * nrepeats, b, model) == true);
+    }
+    {
+        const size_t a[]      = {1};
+        const size_t nrepeats = 3;
+        const size_t model[]  = {1, 1, 1};
+
+        const size_t count = ARRAY_SIZE(a);
+        size_t b[count * nrepeats];
+        repeat(count, a, nrepeats, b);
+        ERRCHK(equals(count * nrepeats, b, model) == true);
+    }
+    {
+        const size_t a[]      = {1, 2, 3, 4};
+        const size_t nrepeats = 2;
+        const size_t model[]  = {1, 2, 3, 4, 1, 2, 3, 4};
+
+        const size_t count = ARRAY_SIZE(a);
+        size_t b[count * nrepeats];
+        repeat(count, a, nrepeats, b);
+        ERRCHK(equals(count * nrepeats, b, model) == true);
+    }
+}
+
+void
 swap(const size_t i, const size_t j, const size_t count, size_t* arr)
 {
     ERRCHK(i < count);
@@ -450,6 +588,15 @@ equals(const size_t count, const size_t* a, const size_t* b)
     return true;
 }
 
+bool
+all_less_than(const size_t count, const size_t* a, const size_t* b)
+{
+    for (size_t i = 0; i < count; ++i)
+        if (a[i] >= b[i])
+            return false;
+    return true;
+}
+
 void
 test_math_utils(void)
 {
@@ -460,4 +607,6 @@ test_math_utils(void)
     test_binomial_coefficient();
     test_sort();
     test_unique();
+    test_repeat();
+    test_unique_subsets();
 }
