@@ -43,6 +43,6 @@ target_link_libraries(tfm-decomp PRIVATE tfm-math-utils tfm-print tfm-type-conve
 add_library(tfm-comm SHARED comm.c)
 target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-math-utils tfm-type-conversion tfm-print tfm-decomp tfm-dynamic-array tfm-ndarray)
 
-# ## Program
+## Program
 add_executable(run main.c)
 target_link_libraries(run tfm-comm tfm-math-utils tfm-ndarray)
