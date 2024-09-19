@@ -29,6 +29,9 @@ find_package(MPI REQUIRED COMPONENTS C)
 add_library(tfm-print SHARED print.c)
 add_library(tfm-type-conversion SHARED type_conversion.c)
 
+add_library(tfm-vec SHARED vec.c)
+target_link_libraries(tfm-vec PRIVATE tfm-print)
+
 add_library(tfm-math-utils SHARED math_utils.c)
 target_link_libraries(tfm-math-utils PRIVATE tfm-print)
 

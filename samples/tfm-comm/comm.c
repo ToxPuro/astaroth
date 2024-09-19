@@ -415,18 +415,59 @@ comm_runn(void)
     return 0;
 }
 
+typedef struct {
+    size_t ndims;
+    size_t* shape; // [ndims]
+
+    size_t npartitions;
+    size_t* partition_offsets; // [ndims * npartitions elements]
+} CommShape;
+
+CommShape
+commshape_create(const size_t ndims, const size_t* shape, const size_t npartitions,
+                 const size_t* partition_offsets)
+{
+    CommShape comm_shape = (CommShape){
+        .ndims             = ndims,
+        .shape             = malloc(sizeof(comm_shape.shape[0]) * ndims),
+        .npartitions       = npartitions,
+        .partition_offsets = malloc(sizeof(comm_shape.shape[0]) * ndims * npartitions),
+    };
+    ERRCHK(comm_shape.shape != NULL);
+    ERRCHK(comm_shape.partition_offsets != NULL);
+    copy(ndims, shape, comm_shape.shape);
+    copy(ndims * npartitions, partition_offsets, comm_shape.partition_offsets);
+    return comm_shape;
+}
+
+void
+commshape_destroy(CommShape* comm_shape)
+{
+    free(comm_shape->partition_offsets);
+    free(comm_shape->shape);
+    comm_shape->ndims             = 0;
+    comm_shape->shape             = NULL;
+    comm_shape->npartitions       = 0;
+    comm_shape->partition_offsets = NULL;
+}
+
 int
 comm_run(void)
 {
     // Declare mesh dimensions
-    const size_t r          = 2;
-    const size_t local_nn[] = {4, 4};
+    const size_t r          = 1;
+    const size_t local_nn[] = {4, 4, 4};
     const size_t ndims      = ARRAY_SIZE(local_nn);
 
     // Calculate mm
     size_t local_mm[ndims];
     copy(ndims, local_nn, local_mm);
-    add_to_array(2 * r, ndims, local_mm);
+    size_t two_r[ndims];
+    repeat(1, (size_t[]){2 * r}, ndims, two_r);
+    add_arrays(ndims, two_r, local_nn, local_mm);
+    print_array("two_r", ndims, two_r);
+    print_array("local nn", ndims, local_nn);
+    print_array("local mm", ndims, local_mm);
 
     const size_t mm_count = prod(ndims, local_mm);
 
@@ -435,12 +476,12 @@ comm_run(void)
     ERRCHK(arr);
     set(0, mm_count, arr);
 
-    print_ndarray("Mesh", ndims, local_mm, arr);
+    // print_ndarray("Mesh", ndims, local_mm, arr);
 
     // Find the combinations for ndims
     DynamicArray combinations  = create_combinations(ndims);
     const size_t ncombinations = combinations.len / ndims;
-    print_ndarray("Combinations", 2, (size_t[]){ndims, ncombinations}, combinations.data);
+    // print_ndarray("Combinations", 2, (size_t[]){ndims, ncombinations}, combinations.data);
 
     // For each combination, find
     for (size_t i = 0; i < ncombinations; ++i) {
@@ -453,43 +494,21 @@ comm_run(void)
 
         size_t hadamard[ndims * ncombinations];
         mul(ndims * ncombinations, current_repeated, combinations.data, hadamard);
-        print_ndarray("Hadamard", 2, (size_t[]){ndims, ncombinations}, hadamard);
+        // print_ndarray("Hadamard", 2, (size_t[]){ndims, ncombinations}, hadamard);
 
         size_t unique_combinations[ndims * ncombinations];
         const size_t nunique_combinations = unique_subsets(ndims * ncombinations, hadamard, ndims,
                                                            unique_combinations);
         const size_t nrows                = nunique_combinations / ndims;
         print_ndarray("Unique combinations", 2, (size_t[]){ndims, nrows}, unique_combinations);
+
+        for (size_t j = 0; j < nrows; ++j) {
+            const size_t* current_row = &unique_combinations[j * ndims];
+            print_array("Current row:", ndims, current_row);
+        }
     }
     array_destroy(&combinations);
     free(arr);
 
-    // const size_t r          = 2;
-    // const size_t local_nn[] = {4, 4, 2};
-    // const size_t ndims      = ARRAY_SIZE(local_nn);
-
-    // size_t local_mm[ndims];
-    // copy(ndims, local_nn, local_mm);
-    // add_to_array(2 * r, ndims, local_mm);
-
-    // DynamicArray combinations = create_combinations();
-
-    // const size_t capacity = 4;
-    // DynamicArray array    = array_create(capacity);
-
-    // const size_t elems[] = {1, 2, 4};
-    // const size_t nelems  = ARRAY_SIZE(elems);
-
-    // array_append_multiple(nelems, elems, &array);
-    // array_append_multiple(nelems, elems, &array);
-    // print_array("Array", array.len, array.data);
-    // print_ndarray("Ndarray", 2, (size_t[]){3, capacity}, array.data);
-
-    // const size_t nrows = array.len / nelems;
-    // for (size_t i = 0; i < nrows; ++i) {
-    //     array.data[i*]
-    // }
-
-    // array_destroy(&array);
     return 0;
 }
