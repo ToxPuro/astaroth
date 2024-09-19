@@ -1,13 +1,14 @@
 # Building ACC runtime (incl. DSL files)
 
-The DSL source files should have a postfix `*.ac` and there should be only one
-`.ac` file per directory.
+The DSL source files should have a postfix `*.ac` and by default there should be only one
+`*.ac` file per directory. Optionally you can give the `*.ac` file to be compiled.
 
     * `mkdir build`
 
     * `cd build`
 
-    * `cmake -DDSL_MODULE_DIR=<optional path to the dir containing DSL sources> ..`
+    * `cmake -DDSL_MODULE_DIR=<path to the dir containing DSL sources> \
+             -DSL_MODULE_FILE=<you can optionally give the file in DSL_MODULE_DIR to be compiled> ..`
 
     * `make -j`
 
@@ -21,13 +22,12 @@ expected. In case of issues, please check the following files in
 Intermediate files:
 
 1. `user_kernels.ac.pp_stage*`. The DSL file after a specific preprocessing stage.
-1. `user_kernels.h.raw`. The raw generated CUDA kernels without formatting applied.
-
+2. `user_kernels.h.raw`. The generated CUDA kernels without formatting applied.
+3. `user_kernels_backup.h.`. The generated CUDA/CPU kernels with formatting applied.
 Final files:
 
 1. `user_defines.h`. The project-wide defines generated with the DSL.
-1. `user_declarations.h`. Forward declarations of user kernels.
-1. `user_kernels.h`. The generated CUDA kernels.
+2. `user_kernels.h`. The generated CUDA kernels.
 
 To make inspecting the code easier, we recommend using an
 autoformatting tool, for example, `clang-format` or GNU `indent`.
@@ -46,7 +46,7 @@ autoformatting tool, for example, `clang-format` or GNU `indent`.
 
 # The Astaroth Domain-Specific Language
 
-The Astaroth Domain-Specific Language (DSL) is a high-level GPGPU language
+The Astaroth Domain-Specific Language (DSL) is a high-level general-purpose(GP)GPU language
 designed for improved productivity and performance in stencil computations. The
 Astaroth DSL compiler (acc) is a source-to-source compiler, which converts
 DSL kernels into CUDA/HIP kernels. The generated kernels provide performance
@@ -58,16 +58,19 @@ which makes manual caching notoriously difficult.
 The Astaroth DSL is based on the stream processing model, where an array of
 instructions is executed on streams of data in parallel. A kernel is a small
 GPU program, which defines the operations performed on a number of data streams.
-In our case, data streams correspond to a vertices in a grid, similar to how
+In our case, data streams correspond to vertices in a grid, similar to how
 vertex shaders operate in graphics shading languages.
 
 # Syntax
 
+
 #### Comments and preprocessor directives
+The Astaroth preprocessor works similar to the C preprocessor (gcc) with one exception:
+* By default include files are searched from DSL_MODULE_DIR only if the include is not found are C include rules used
+With two extensions.
 ```
-// This is a comment
-#define    ZERO (0)   // Visible only in device code
-hostdefine ONE  (1) // Visible in both device and host code
+hostdefine ONE  (1) // Macro definition visible in both device and host code
+#include ../stdlib/math //Includes all files and directories in ../stdlib/math
 ```
 
 #### Variables
