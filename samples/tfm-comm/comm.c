@@ -280,10 +280,8 @@ print_multidim_array(const size_t ndims, const size_t* dims, const size_t* arr)
             const size_t len          = 128;
             const int print_alignment = 3;
             char str[len];
-            snprintf(str, len, "%zu", arr[i]);
+            snprintf(str, len, format_specifier(arr[i]), arr[i]);
             printf("%*s ", print_alignment, str);
-            // print_type(arr[i]);
-            // printf(" ");
         }
         printf("\n");
     }
