@@ -8,8 +8,6 @@
 #include "print.h"
 #include "type_conversion.h"
 
-#include "pack.h"
-
 #include <mpi.h>
 #include <stdio.h>
 #include <string.h> // memset
@@ -269,9 +267,6 @@ comm_run_old(void)
 
     free(buffer);
 
-    // Test packing
-    pack_test();
-
     MPI_Comm_free(&comm_cart);
     MPI_Finalize();
     return SUCCESS;
@@ -327,14 +322,12 @@ set_multidim_array(const size_t value, const size_t ndims, const size_t* start,
     }
 }
 
+/** Writes the combinations to the output paramete and returns the number of combinations */
 size_t
 recurse_combinations(const size_t start, const size_t ndims, const size_t* combination,
                      DynamicArray* combinations)
 {
     ERRCHK(ndims > 0);
-
-    print_array("Combination", ndims, combination);
-    array_append_multiple(ndims, combination, combinations);
 
     size_t counter = 1;
     for (size_t i = start; i < ndims; ++i) {
@@ -343,6 +336,7 @@ recurse_combinations(const size_t start, const size_t ndims, const size_t* combi
         new_combination[i] = 1;
         counter += recurse_combinations(i + 1, ndims, new_combination, combinations);
     }
+    array_append_multiple(ndims, combination, combinations);
     return counter;
 }
 
@@ -356,7 +350,7 @@ create_combinations(const size_t ndims)
     size_t initial_combination[ndims];
     set(0, ndims, initial_combination);
     size_t counter = recurse_combinations(0, ndims, initial_combination, &combinations);
-    print("Counter", counter);
+    ERRCHK(ncombinations == counter);
 
     printf("Combinations:\n");
     print_multidim_array(2, (size_t[]){ndims, ncombinations}, combinations.data);
@@ -390,14 +384,62 @@ comm_run(void)
     }
 
     print_multidim_array(ndims, local_mm, arr);
-    // for (size_t i = 1; i < 8; ++i) {
-    //     gen_combinations(i);
-    //     print("Combinations", count_combinations(i));
+
+    // DynamicArray combinations = create_combinations(3);
+    // print("Combinations", count_combinations(3));
+    // print("Hamming weight", popcount(ndims, local_nn));
+    // array_destroy(&combinations);
+
+    // Subsizes: these except the one where the Hamming weight is equal to ndims
+    printf("Subsizes:\n");
+    DynamicArray subsizes = create_combinations(ndims);
+    print("nsubsizes", count_combinations(ndims));
+    array_destroy(&subsizes);
+
+    // Starts
+    // The combination of free variables
+    // E.g. (r, r, r): all variables are free, loop over
+    // combinations of (a(rx+nx), b(ry+ny), c(rz+nz))
+    //
+    // (nx, r, r): two variables are free, now can loop only
+    // combinations (r, b(ry+nx), c(rz+nz))
+    printf("Starts:\n");
+    DynamicArray starts  = create_combinations(ndims);
+    const size_t nstarts = count_combinations(ndims);
+    print("nstarts", nstarts);
+    array_destroy(&starts);
+
+    // Actual test
+    DynamicArray blocks  = create_combinations(ndims);
+    const size_t nblocks = count_combinations(ndims);
+    for (size_t i = 0; i < nblocks; ++i) {
+        const size_t* block = &blocks.data[i * ndims];
+        printf("%zu. ", i);
+        print_array("block", ndims, block);
+        for (size_t j = 0; j < nblocks; ++j) {
+            const size_t* offset = &blocks.data[j * ndims];
+            // printf("\t%zu.", j);
+            // print_array("offset", ndims, offset);
+
+            size_t output[ndims];
+            mul(ndims, block, offset, output);
+            print_array("\t\tOutput", ndims, output);
+        }
+    }
+    // const size_t nblocks = count_combinations(ndims);
+    // for (size_t i = 0; i < nstarts; ++i) {
+    //     const size_t* offset = &blocks.data[i * ndims];
+    //     // print_array("Offset", ndims, offset);
+    //     size_t output[ndims];
+    //     mul(ndims, block, offset, output);
+    //     print_array("\tOutput", ndims, output);
     // }
-    DynamicArray combinations = create_combinations(3);
-    print("Combinations", count_combinations(3));
-    print("Hamming weight", popcount(ndims, local_nn));
-    array_destroy(&combinations);
+    array_destroy(&blocks);
+    // for (size_t i= 0; i < ncombinations; ++i)
+    // const size_t offset[] = {1, 1, 1};
+    // size_t output[ndims];
+    // mul(ndims, block, offset, output);
+    // print_array("Current", ndims, output);
 
     free(arr);
 
