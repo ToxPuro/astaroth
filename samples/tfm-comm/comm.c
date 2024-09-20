@@ -41,11 +41,12 @@ acCommInit(void)
 int
 acCommRun(void)
 {
-    const size_t dims[]   = {4};
-    const size_t ndims    = ARRAY_SIZE(dims);
-    const size_t fields[] = {1, 2};
+    const size_t rr[]     = {1, 1, 1, 1};
+    const size_t nn[]     = {3, 3};
+    const size_t ndims    = ARRAY_SIZE(nn);
+    const size_t fields[] = {1, 2, 3};
     const size_t nfields  = ARRAY_SIZE(fields);
-    CommData comm_data    = acCommDataCreate(ndims, nfields);
+    CommData comm_data    = acCommDataCreate(ndims, rr, nn, nfields);
 
     acCommDataPrint("comm_data", comm_data);
 

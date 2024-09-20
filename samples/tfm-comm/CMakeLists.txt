@@ -51,7 +51,7 @@ add_library(tfm-packed-data SHARED packed_data.c)
 target_link_libraries(tfm-packed-data PRIVATE tfm-buffer tfm-math-utils tfm-print)
 
 add_library(tfm-comm-data SHARED comm_data.c)
-target_link_libraries(tfm-comm-data PRIVATE tfm-packed-data tfm-math-utils tfm-print)
+target_link_libraries(tfm-comm-data PRIVATE tfm-packed-data tfm-math-utils tfm-print tfm-dynamic-array tfm-ndarray)
 
 ## Program
 add_executable(run main.c)
