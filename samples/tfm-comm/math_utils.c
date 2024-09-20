@@ -35,16 +35,31 @@ test_prod(void)
 size_t
 powzu(const size_t base, const size_t exponent)
 {
-    size_t res = 1;
-    for (size_t i = 0; i < exponent; ++i)
-        res *= base;
-    WARNING("powzu does not check for overflows");
-    return res;
+    if (exponent == 0) {
+        return 1;
+    }
+    else if (base <= 1) {
+        return base;
+    }
+    else {
+        size_t res = 1;
+        for (size_t i = 0; i < exponent; ++i) {
+            ERRCHK(base <= SIZE_MAX / res); // Overflow
+            res *= base;
+        }
+        return res;
+    }
 }
 
 void
 test_powzu(void)
 {
+    ERRCHK(powzu(0, 0) == 1);
+    ERRCHK(powzu(0, 1) == 0);
+    ERRCHK(powzu(0, 123456) == 0);
+    ERRCHK(powzu(1, 0) == 1);
+    ERRCHK(powzu(1, 1) == 1);
+    ERRCHK(powzu(1, 123456) == 1);
     ERRCHK(powzu(2, 8) == 256);
     ERRCHK(powzu(0, 1) == 0);
     ERRCHK(powzu(128, 0) == 1);
