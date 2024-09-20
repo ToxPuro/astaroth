@@ -63,10 +63,7 @@ GPU program, which defines the operations performed on a number of data streams.
 In our case, data streams correspond to vertices in a grid, similar to how
 vertex shaders operate in graphics shading languages.
 
-# Syntax
-
-
-#### Comments and preprocessor directives
+## Comments and preprocessor directives
 The Astaroth preprocessor works similar to the C preprocessor (gcc) with one exception: 
 
 By default include files are searched relative to DSL_MODULE_DIR, (TODO) only if the include is not found are C include rules used. 
@@ -76,14 +73,14 @@ With two extensions:
 hostdefine ONE  (1) // Macro definition visible in both device and host code
 #include ../stdlib/math //Includes all files and directories in ../stdlib/math
 ```
-#### Datatypes
+## Datatypes
 The Astaroth DSL language is statically typed.
 All global variables require an explicit datatype declaration.
 Otherwise explicit typing is allowed but not required, with the exception of the parameters of overloaded functions.
 Some advanced features also require an explicit type declaration.
 By default we use C++ type inference rules (`auto`) with extensions where they would be ambiguous.
 
-#### Fields
+### Fields
 
 A `Field` is a scalar array that can be used in conjuction with `Stencil` operations. For convenience, 
 a vector field can be constructed from three scalar fields by declaring them a `Field3` structure.
@@ -110,7 +107,7 @@ for i 0:n_species
 }
 ```
 
-#### Primitive types
+### Primitive types
 The following primitive C++ types are usable: 
     * int
     * bool
@@ -118,7 +115,7 @@ The following primitive C++ types are usable:
     * long long
     * real (by default double, float if DOUBLE_PRECISION=OFF)
 
-#### Additional built-in types
+### Additional built-in types
     * complex
     * real2
     * real3
@@ -128,7 +125,7 @@ The following primitive C++ types are usable:
     
 We support `Matrix*real3`,`real*Matrix` and `-Matrix`.
 
-#### User-defined types
+### User-defined types
 Structures can be defined similar to the C syntax:
 ```
 struct your_struct
@@ -160,7 +157,7 @@ enum Characters
 }
 ```
 
-#### Type qualifiers
+### Type qualifiers
 
 const effectively the same as C++ const.
 
@@ -178,7 +175,7 @@ Variables that are constant during the execution context of Astaroth (e.g. durin
 By default the same as dconst, but with RUNTIME_COMPILATION=ON they will be effectively replaced by their value (C++ `constexpr`).
 
 
-#### Advanced
+### Advanced
 communicated
 The implicit qualifier for `Fields` if no qualifiers are defined, their halos are updated. 
 auxiliary
@@ -195,11 +192,11 @@ At the moment, restricted to `real` scalar quantities resulting from reductions 
 
 
 
-#### Variables
+## Variables
 Variable declaration and naming conventions follow C, except
 shadowing is not allowed: all identifiers within a scope must be unique.
 
-#### Arrays 
+### Arrays 
 Instead of `{` `}` initializer of C++ we use `[` `]` 
 ```
 int arr0 = [1, 2, 3] 
@@ -223,20 +220,14 @@ Kernel kernel() {
 }
 ```
 
-#### Casting
+### Casting
 One can use C++ casting.
 ```
 var7 = real(1)        // Cast
 vec0 = real3(1, 2, 3) // Cast
 ```
 
-#### Printing
-```
-// print is the same as `printf` in the C programming language
-print("Hello from thread (%d, %d, %d)\n", vertexIdx.x, vertexIdx.y, vertexIdx.z)
-```
-
-#### Looping
+## Looping
 Loops follow the Python style
 ```
 int arr = [1, 2, 3]
@@ -254,7 +245,7 @@ for i in 0:10 { // Note: 10 is exclusive
 }
 ```
 
-#### Functions
+## Functions
 Functions follow the C declaration syntax.
 We support overloading for functions for which all input parameter types are declared.
 ```
@@ -284,23 +275,8 @@ elemental abs(real x)
 {
 	return fabs(x)
 }
-```
-
-#### Kernels
-Kernels are functions visible outside of the DSL code, called by the host.
-Calling kernels is the only way to execute DSL code.
-
-> Note: Kernels can not be called from other kernels.
-> Note: Array input parameters are not supported
-> Note: The types of the input parameters have to be declared.
-> Note: There are different ways to pass input parameters to kernels through API functions.
 
 ```
-Kernel func3(input param) {
-
-}
-```
-
 > Note: Function parameters are **passed by constant reference**. Therefore input parameters **cannot be modified** and one may need to allocate temporary storage for intermediate values when performing more complex calculations.
 
 The `elemental` type qualifier on a function means that it is a pure function that returns a value,
@@ -327,8 +303,28 @@ The semantics of passing a `Field` parameter to `elemental` functions is always 
 	* `Field3`,`real3`
 	* `Field3`,`Field3`
 
+### Printing
+```
+// print is the same as `printf` in the C programming language
+print("Hello from thread (%d, %d, %d)\n", vertexIdx.x, vertexIdx.y, vertexIdx.z)
+```
 
-#### Stencils
+### Kernels
+Kernels are functions visible outside of the DSL code, called by the host.
+Calling kernels is the only way to execute DSL code.
+
+> Note: Kernels can not be called from other kernels.
+> Note: Array input parameters are not supported
+> Note: The types of the input parameters have to be declared.
+> Note: There are different ways to pass input parameters to kernels through API functions.
+
+```
+Kernel func3(input param) {
+
+}
+```
+
+### Stencils
 Stencils are functions that take in a `Field` input parameter and have an unique syntax and semantics. 
 **Importantly**, they are the only way to access other vertexes than the local of a `Field`.
 A stencil operation multiplies all points of the stencil by their corresponding coefficients and performs a binary reduction operation (`Sum` or `Max`) over these values.
@@ -415,7 +411,7 @@ gradient(field) {
 
 
 
-#### Built-in variables, functions and constants
+## Built-in variables, functions and constants
 ```
 // Variables
 int3 vertexIdx       // The vertex index that is iterated over, within the subdomain of the current device
@@ -456,14 +452,14 @@ real previous(Field) // Returns the value in the output buffer. Call after write
 
 
 ```
-#### Constants
+### Built-in constants
 ```
 real AC_REAL_PI // Value of pi using the same precision as `real`
 real AC_REAL_MAX // Either DBL_MAX or FLT_MAX base on precision of `real`
 real AC_REAL_MIN // Either DBL_MIN or FLT_MIN base on precision of `real`
 real AC_REAL_EPSILON // Either DBL_EPSILON or FLT_EPSILON base on precision of `real`
 ```
-#### Built-in dconsts
+### Built-in dconsts
 
 uniform spacings of the grid:
 real AC_dsx
@@ -503,7 +499,7 @@ Field COORDS_X
 Field COORDS_Y
 Field COORDS_Z
 
-#### Advanced
+## Advanced
 The input arrays can also be accessed without declaring a `Stencil` as follows.
 **Important!!** Do not use this if you do not know what you are doing.
 ```
@@ -519,32 +515,7 @@ Kernel kernel() {
 ```
 
 > Note: Accessing field elements this way is suboptimal compared to accessing then using a `Stencil` or calling `value` since the reads are not cached. Only access field elements this way if otherwise not possible.
-
-
-# Interaction with the Astaroth Core and Utils libraries
-## Loading and storing stencil coefficients at runtime
-The Astaroth Runtime API provides the functions `acLoadStencil` and `acStoreStencil` for loading/storing stencil coefficients at runtime. 
-This is useful for, say, for setting the coefficients programmatically if too cumbersome by hand. 
-We however highly recommend to use device constant variables in the stencil coefficients instead of separately loading stencil coefficients at runtime
-, since it eliminates coding errors where the actual stencil coefficients are calculated separately from the stencil declarations.
-
-See also the functions `acDeviceLoadStencil`, `acDeviceStoreStencil`, `acGridLoadStencil`, and `acGridStoreStencil` provided by the Astaroth Core library.
-
-
-## Additional physics-specific API functions
-
-To enable additional API functions in the Astaroth Core library for integration (`acIntegrate` function family) and MHD-specific tasks (automated testing, MHD samples), one must set `hostdefine AC_INTEGRATION_ENABLED (1)` in the DSL file. Note that if used in the DSL code, the hostdefine must not define anything that is not visible at compile-time. For example, `hostdefine R_PI (M_PI)`, where `M_PI` is defined is some host header, `M_PI` will not be visible in the DSL code and will result in a compilation error. Additionally, code such as `#if M_PI` will be always false in the DSL source if `M_PI` is not visible in the DSL file.
-
-> Note: The extended API depends on several hardcoded fields and device constants. It is not recommended to enable it unless you work on the MHD sample case (`acc-runtime/samples/mhd`) or its derivatives.
-
-## Stencil order
-
-The stencil order can be set by the user by `hostdefine STENCIL_ORDER (x)`, where `x` is the total number of cells on both sides of the center point per axis. For example, a simple von Neumann stencil is of order 2.
-
-> Note: The size of the halo surrounding the computational domain depends on `STENCIL_ORDER`.
-
-
-# Reductions
+### Reductions
 This is still an experimental feature that only works if MPI is enabled and which still possibly changes in the future.
 
 Reductions work only if the kernel is called at each vertex point of the domain.
@@ -565,7 +536,7 @@ Kernel reduce_kernel()
 After executing the kernels the reduction has to be finalized with calling either `acGridFinalizeReduceLocal(graph)`, which reduces the values only on the local subdomain, or `acGridFinalize` which will reduce the value across processes.
 The reduced values can be accessed with `acDeviceGetOutput`.
 
-# ComputeSteps
+### ComputeSteps
 **Requires that all conditionals are known at compile-time (Note compilation can happen at runtime)**
 This is still a experimental feature that only works if MPI is enabled and which still possibly changes in the future.
 
@@ -625,3 +596,24 @@ bc_sym_z(Field field, bool bottom)
 ```
 
 
+# Interaction with the Astaroth Core and Utils libraries
+## Loading and storing stencil coefficients at runtime
+The Astaroth Runtime API provides the functions `acLoadStencil` and `acStoreStencil` for loading/storing stencil coefficients at runtime. 
+This is useful for, say, for setting the coefficients programmatically if too cumbersome by hand. 
+We however highly recommend to use device constant variables in the stencil coefficients instead of separately loading stencil coefficients at runtime
+, since it eliminates coding errors where the actual stencil coefficients are calculated separately from the stencil declarations.
+
+See also the functions `acDeviceLoadStencil`, `acDeviceStoreStencil`, `acGridLoadStencil`, and `acGridStoreStencil` provided by the Astaroth Core library.
+
+
+## Additional physics-specific API functions
+
+To enable additional API functions in the Astaroth Core library for integration (`acIntegrate` function family) and MHD-specific tasks (automated testing, MHD samples), one must set `hostdefine AC_INTEGRATION_ENABLED (1)` in the DSL file. Note that if used in the DSL code, the hostdefine must not define anything that is not visible at compile-time. For example, `hostdefine R_PI (M_PI)`, where `M_PI` is defined is some host header, `M_PI` will not be visible in the DSL code and will result in a compilation error. Additionally, code such as `#if M_PI` will be always false in the DSL source if `M_PI` is not visible in the DSL file.
+
+> Note: The extended API depends on several hardcoded fields and device constants. It is not recommended to enable it unless you work on the MHD sample case (`acc-runtime/samples/mhd`) or its derivatives.
+
+## Stencil order
+
+The stencil order can be set by the user by `hostdefine STENCIL_ORDER (x)`, where `x` is the total number of cells on both sides of the center point per axis. For example, a simple von Neumann stencil is of order 2.
+
+> Note: The size of the halo surrounding the computational domain depends on `STENCIL_ORDER`.
