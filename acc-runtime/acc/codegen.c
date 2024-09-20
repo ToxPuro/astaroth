@@ -2699,16 +2699,20 @@ gen_user_taskgraphs(const ASTNode* root)
 {
   	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
 	make_unique_bc_calls((ASTNode*) root);
-	if(!has_optimization_info)
-		return;
 	string_vec graph_names = VEC_INITIALIZER;
-	gen_user_taskgraphs_recursive(root,root,&graph_names);
-	FILE* fp = fopen("user_defines.h","a");
+	if(has_optimization_info)
+	{
+		gen_user_taskgraphs_recursive(root,root,&graph_names);
+	}
+	FILE* fp = fopen("taskgraph_enums.h","w");
 	fprintf(fp,"typedef enum {");
 	for(size_t i = 0; i < graph_names.size; ++i)
 		fprintf(fp,"%s,",graph_names.data[i]);
 	fprintf(fp,"NUM_DSL_TASKGRAPHS} AcDSLTaskGraph;\n");
 	fclose(fp);
+	FILE* fp_defines = fopen("user_defines.h","a");
+	fprintf(fp_defines,"#include \"taskgraph_enums.h\"\n");
+	fclose(fp_defines);
 	free_str_vec(&graph_names);
 }
 
