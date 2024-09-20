@@ -50,7 +50,7 @@ autoformatting tool, for example, `clang-format` or GNU `indent`.
 
 The Astaroth Domain-Specific Language (DSL) is a high-level general-purpose(GP)GPU language
 designed for improved productivity and performance in stencil computations. The
-Astaroth DSL compiler (acc) is a source-to-source compiler, which converts
+Astaroth DSL compiler (< build dir >/acc-runtime/acc) is a source-to-source compiler, which converts
 DSL kernels into CUDA/HIP kernels. The generated kernels provide performance
 that is on-par with hand-tuned low-level GPGPU code in stencil computations.
 Special care has been taken to ensure efficient code generation in use cases
