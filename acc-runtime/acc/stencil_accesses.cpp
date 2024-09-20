@@ -2,6 +2,7 @@
 #ifndef AC_IN_AC_LIBRARY
 #define AC_IN_AC_LIBRARY
 #endif
+#define longlong long long
 
 #include <assert.h>
 /*

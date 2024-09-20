@@ -258,9 +258,18 @@ static inline void combine_all(const ASTNode* node, char* res){
   combine_all_recursive(node,res);
   strip_whitespace(res);
 }
-static inline void combine_all_with_whitespace(const ASTNode* node, char* res){
+static inline const char*combine_all_new(const ASTNode* node){
+  static char res[10000];
   res[0] = '\0';	
   combine_all_recursive(node,res);
+  strip_whitespace(res);
+  return res;
+}
+static inline const char* combine_all_new_with_whitespace(const ASTNode* node){
+  static char res[10000];
+  res[0] = '\0';	
+  combine_all_recursive(node,res);
+  return res;
 }
 
 static inline ASTNode*
@@ -663,4 +672,48 @@ build_list_node(const node_vec nodes, const char* separator)
 		list_head->buffer = strdup(separator);
 	}
 	return list_head;
+}
+
+static node_vec
+get_nodes_in_list(const ASTNode* head)
+{
+	node_vec res = VEC_INITIALIZER;
+	const int num_of_nodes = count_num_of_nodes_in_list(head);
+	int counter = num_of_nodes;
+	while(--counter)
+		head = head -> lhs;
+	push_node(&res,head->lhs);
+	counter = num_of_nodes;
+	while(--counter)
+	{
+		head = head->parent;
+		push_node(&res,head->rhs);
+	}
+	return res;
+}
+
+static const ASTNode*
+get_node(const NodeType type, const ASTNode* node)
+{
+  assert(node);
+
+  if (node->type & type)
+    return node;
+  else if (node->lhs && get_node(type, node->lhs))
+    return get_node(type, node->lhs);
+  else if (node->rhs && get_node(type, node->rhs))
+    return get_node(type, node->rhs);
+  else
+    return NULL;
+}
+
+static void
+get_array_access_nodes(const ASTNode* node, node_vec* dst)
+{
+	if(node->lhs)
+		get_array_access_nodes(node->lhs,dst);
+	if(node->rhs)
+		get_array_access_nodes(node->rhs,dst);
+	if(node->type == NODE_ARRAY_ACCESS)
+		push_node(dst,node->rhs);
 }

@@ -330,7 +330,9 @@ IDX(const int3 idx)
 #include "random.cuh"
 
 #define suppress_unused_warning(X) (void)X
+#define longlong long long
 #include "user_kernels.h"
+#undef longlong
 
 
 typedef struct {
@@ -507,6 +509,11 @@ struct allocate_arrays
 		{
 			if(get_config_param(array,config) != nullptr && !is_dconst(array) && is_alive(array) && !has_const_dims(array))
 			{
+
+#if AC_VERBOSE
+				fprintf(stderr,"Allocating %s|%d\n",get_name(array),get_array_length(array,config));
+				fflush(stderr);
+#endif
 				auto d_mem_ptr = get_empty_pointer(array);
 			        device_malloc(((void**)&d_mem_ptr), sizeof(get_config_param(array,config)[0])*get_array_length(array,config));
 				memcpy_to_gmem_array(array,d_mem_ptr);
@@ -866,6 +873,10 @@ template <typename P, typename V>
 static AcResult
 acLoadArrayUniform(const P array, const V* values, const size_t length)
 {
+#if AC_VERBOSE
+	fprintf(stderr,"Loading %s\n",get_name(array));
+	fflush(stderr);
+#endif
 	cudaDeviceSynchronize();
 	ERRCHK_ALWAYS(values  != nullptr);
 	const size_t bytes = length*sizeof(values[0]);
@@ -874,16 +885,29 @@ acLoadArrayUniform(const P array, const V* values, const size_t length)
 		if(!is_alive(array)) return AC_NOT_ALLOCATED;
 		if(has_const_dims(array))
 		{
-			memcpy_to_gmem_array(array,values);
+			memcpy_to_const_dims_gmem_array(array,values);
 			return AC_SUCCESS;
 		}
 		auto dst_ptr = get_empty_pointer(array);
 		memcpy_from_gmem_array(array,dst_ptr);
 		ERRCHK_ALWAYS(dst_ptr != nullptr);
+		if(dst_ptr == nullptr)
+		{
+			fprintf(stderr,"FATAL AC ERROR from acLoadArrayUniform\n");
+			exit(EXIT_FAILURE);
+		}
+#if AC_VERBOSE
+		fprintf(stderr,"Calling (cuda/hip)memcpy %s|%ld\n",get_name(array),length);
+		fflush(stderr);
+#endif
 		ERRCHK_CUDA_ALWAYS(cudaMemcpy(dst_ptr,values,bytes,cudaMemcpyHostToDevice));
 	}
 	else 
 		ERRCHK_CUDA_ALWAYS(load_array(values, bytes, array));
+#if AC_VERBOSE
+	fprintf(stderr,"Loaded %s\n",get_name(array));
+	fflush(stderr);
+#endif
 	return AC_SUCCESS;
 }
 

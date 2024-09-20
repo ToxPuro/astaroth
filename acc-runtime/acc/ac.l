@@ -45,6 +45,8 @@ void strip_whitespace(char *str) {
 %%
 
 "int"                   { return INT; } /* Type specifiers */
+"long"                  { return LONG; } /* Type specifiers */
+"long long"             { return LONG_LONG; } /* Type specifiers */
 "uint"                  { return UINT; }
 "real"                  { return REAL; }
 "bool"                  { return BOOL; }
@@ -154,9 +156,9 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 (==)|(>=)|(<=)|(!=)|(^=)  { return BINARY_OP; }    /* Operators */
 [-+*/:;=\[\]{}(),\.<>|&!] { return yytext[0]; }    /* Characters */
 {D}+[.]{D}*               { return REALNUMBER; }
-{D}+[.]?{D}*(e[-+]?{D}+)   { return REALNUMBER; }
-{D}+[.]?{D}*(e[-+]?{D}+)?[d]  { return DOUBLENUMBER; } /* Numbers */
-{D}+[.]?{D}*(e[-+]?{D}+)[f]? { return REALNUMBER; }      /* Numbers */
+{D}+[.]?{D}*([eE][-+]?{D}+)   { return REALNUMBER; }
+{D}+[.]?{D}*([eE][-+]?{D}+)?[d]  { return DOUBLENUMBER; } /* Numbers */
+{D}+[.]?{D}*([eE][-+]?{D}+)[f]? { return REALNUMBER; }      /* Numbers */
 {D}+[.]?{D}*  		      { return NUMBER; }      /* Numbers */
 0[xX][0-9a-fA-F]+[ulUL]*      { return NUMBER; }      /* Hex */
 

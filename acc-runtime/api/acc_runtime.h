@@ -299,6 +299,13 @@
   }
 
   template <typename P>
+  constexpr static const char*
+  get_name(const P array)
+  {
+	  return get_array_info(array).name;
+  }
+
+  template <typename P>
   constexpr static bool
   is_dconst(const P array)
   {

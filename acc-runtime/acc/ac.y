@@ -69,12 +69,13 @@ astnode_hostdefine(const char* buffer, const int token)
 }
 
 
+static void process_global_assignment(ASTNode* node, ASTNode* variable_definition, ASTNode* assignment, ASTNode* declaration_list);
+static void process_global_array_declaration(ASTNode* variable_definition, ASTNode* declaration_list, const ASTNode* type_specifier);
 void set_identifier_type(const NodeType type, ASTNode* curr);
 void set_identifier_prefix(const char* prefix, ASTNode* curr);
 void set_identifier_infix(const char* infix, ASTNode* curr);
-ASTNode* get_node(const NodeType type, ASTNode* node);
 ASTNode* get_node_by_token(const int token, const ASTNode* node);
-static inline int eval_int(ASTNode* node);
+static inline int eval_int(ASTNode* node, const bool failure_fatal, int* error_code);
 static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names);
 static ASTNode* create_type_declaration(const char* tqual, const char* tspec, const int token);
 static ASTNode* create_type_qualifiers(const char* tqual,int token);
@@ -199,7 +200,7 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
   char* file_buf = NULL;
   FILE* in = get_preprocessed_file(file,file_buf);
   if (!in) {
-    fprintf(out,"AC_FATAL_ERROR: could not open include file '%s'\n",file);
+    fprintf(out,"AC_FATAL_ERROR: could not open include file %s\n",file);
     return;
   }
 
@@ -210,7 +211,16 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
     if (!strncmp(line, AC_INCLUDE, strlen(AC_INCLUDE))) {
 
       char incl[len];
+      incl[0] = '\0';
       sscanf(line, AC_INCLUDE" \"%[^\"]\"\n", incl);
+      //Also take into account the <> syntax
+      if(incl[0] == '\0')
+      	sscanf(line, AC_INCLUDE" <%[^\">]\n", incl);
+      if(incl[0] == '\0')
+      {
+	fprintf(stderr,FATAL_ERROR_MESSAGE"empty_include\n");
+	exit(EXIT_FAILURE);
+      }
 
       char path[len];
       sprintf(path, "%s/%s", dir, incl);
@@ -465,7 +475,7 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
-%token INT UINT REAL MATRIX FIELD FIELD3 STENCIL WORK_BUFFER BOOL INTRINSIC 
+%token INT UINT REAL MATRIX FIELD FIELD3 STENCIL WORK_BUFFER BOOL INTRINSIC LONG_LONG LONG
 %token KERNEL INLINE ELEMENTAL BOUNDARY_CONDITION UTILITY SUM MAX COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE 
@@ -493,7 +503,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             ASTNode* variable_definition = $$->rhs;
             assert(variable_definition);
 
-            ASTNode* declaration = get_node(NODE_DECLARATION, variable_definition);
+            ASTNode* declaration = (ASTNode*)get_node(NODE_DECLARATION, variable_definition);
             assert(declaration);
 
             ASTNode* declaration_list = declaration->rhs;
@@ -503,8 +513,8 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    ASTNode* declaration_list_head = declaration_list;
 	    const bool are_arrays = (get_node(NODE_ARRAY_ACCESS,declaration) != NULL) ||
 				    (get_node(NODE_ARRAY_INITIALIZER,declaration) != NULL);
-	    ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
-            ASTNode* assignment = get_node(NODE_ASSIGNMENT, variable_definition);
+	    const ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
+            ASTNode* assignment = (ASTNode*)get_node(NODE_ASSIGNMENT, variable_definition);
 	
             //if (assignment) {
 	    //    
@@ -516,7 +526,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
 		if(are_arrays)
 		{
-			const int num_fields = eval_int(declaration_list_head->lhs->rhs);
+			const int num_fields = eval_int(declaration_list_head->lhs->rhs,true,NULL);
 			ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
                         const char* field_name_str = strdup(field_name->buffer);
 			node_vec nodes = VEC_INITIALIZER;
@@ -562,81 +572,9 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             }
 	    else if(are_arrays)
-	    {
-                variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-		//make it an array type i.e. pointer
-		strcat(type_specifier->lhs->buffer,"*");
-
-		//if dconst or runtime array evaluate the dimension to a single integer to make further transformations easier
-		const ASTNode* tqual = get_node(NODE_TQUAL,variable_definition);
-		if(!tqual || has_qualifier(variable_definition,"dconst") || has_qualifier(variable_definition,"run_const"))
-		{
-			
-			const ASTNode* base = variable_definition->lhs->rhs->lhs;
-			while(base->rhs)
-			{
-			  ASTNode* array_len_node = base->rhs;
-			  const int array_len = eval_int(array_len_node);
-			  set_buffers_empty(array_len_node);
-			  array_len_node -> buffer = itoa(array_len);
-			  base = base->lhs;
-			}
-		}
-		//else if gmem simply replace const ints with numeric values to enable differentation of the const declarations
-		//and the array dims and also to notice easily if dims are known statically
-		else if(has_qualifier(variable_definition,"gmem"))
-		{
-			const ASTNode* base = variable_definition->lhs->rhs->lhs;
-			while(base->rhs)
-			{
-			  ASTNode* array_len_node = base->rhs;
-			  replace_const_ints(array_len_node,const_int_values,const_ints);
-			  base = base->lhs;
-			}
-		}	
-		
-		
-				
-	    }
-	    //assume is a dconst var
+		process_global_array_declaration(variable_definition,declaration_list, type_specifier);
 	    else if (assignment)
-	    {
-		if(!has_qualifier($$->rhs,"const"))
-		{
-                  fprintf(stderr, FATAL_ERROR_MESSAGE"assignment to a global variable only allowed for constant values\n");
-		  char tmp[10000];
-		  combine_all(assignment,tmp);
-		  fprintf(stderr,"Incorrect assignment: %s\n",tmp);
-                  assert(!has_qualifier($$->rhs,"const"));
-		  exit(EXIT_FAILURE);
-		}
-                variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-		const char* spec = get_node(NODE_TSPEC,$$->rhs)->lhs->buffer;
-		if(!strcmp(spec,"int"))
-		{	
-
-			char* assignment_val = malloc(4098*sizeof(char));
-			ASTNode* def_list_head = get_node(NODE_ASSIGN_LIST,$$->rhs)->rhs;
-			while(def_list_head->rhs)
-			{
-				ASTNode* def = def_list_head->rhs;
-				char* name  = get_node_by_token(IDENTIFIER, def)->buffer;
-				int val = eval_int(def->rhs);
-				push(&const_ints,name);
-				push(&const_int_values,itoa(val));
-				def_list_head = def_list_head->lhs;
-			}
-			ASTNode* def = def_list_head->lhs;
-			char* name  = get_node_by_token(IDENTIFIER, def)->buffer;
-			int val = eval_int(def->rhs);
-			push(&const_ints,name);
-			push(&const_int_values,itoa(val));
-			free(assignment_val);
-		}
-	
-	    }
+		process_global_assignment($$,assignment,variable_definition,declaration_list);
 
 	    else if(has_qualifier($$->rhs,"run_const") || has_qualifier($$->rhs,"output"))
 	    {
@@ -697,6 +635,8 @@ input:  INPUT          { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 global_ql: GLOBAL_MEMORY_QL{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 auxiliary: AUXILIARY   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int: INT               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+long_long: LONG_LONG   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+long     : LONG        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 real: REAL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 bool: BOOL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("bool", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -764,8 +704,10 @@ enum_definition: enum_name '{' expression_list '}'{
  * =============================================================================
 */
 scalar_type_specifier: 
-		int            { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+		int          { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | uint         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | long         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | long_long    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | bool         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
 
@@ -773,23 +715,12 @@ type_specifier:
 	        scalar_type_specifier {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
 	      | scalar_type_specifier '[' ']' {
 				$$ = astnode_create(NODE_UNKNOWN,$1,NULL); 
-				const char* old_tspec = $1->lhs->buffer;
-				char tmp[strlen(old_tspec) + 1];
-				sprintf(tmp,"%s*",old_tspec);
-				free($1->lhs->buffer);
-				$1->lhs->buffer = strdup(tmp);
+				asprintf(&$1->lhs->buffer,"%s*",$1->lhs->buffer);
 			}
               | matrix       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | matrix '[' expression ']'
 		{ 
- 		   char* express_str = malloc(sizeof(char)*4098);
-		   combine_all($3, express_str);
-		   $$ = astnode_create(NODE_TSPEC, $1, NULL); 
-		   char* tmp = malloc(sizeof(char)*(strlen($1->buffer)+ strlen(express_str) + 100));  
-		   sprintf(tmp,"AcMatrixN<%s>",express_str);
-		   astnode_set_buffer(tmp,$1);
-		   free(tmp);
-		   free(express_str);
+		   asprintf(&$1->buffer,"AcMatrixN<%s>",combine_all_new($3));
   		}
               | field        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | field3       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
@@ -880,14 +811,10 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
                   | base_identifier '.' identifier          { $$ = astnode_create(NODE_STRUCT_EXPRESSION, $1, $3); astnode_set_infix(".", $$); set_identifier_type(NODE_MEMBER_ID, $$->rhs); }
                   | postfix_expression '(' ')'                 { $$ = astnode_create(NODE_FUNCTION_CALL, $1, NULL); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }
                   | postfix_expression '(' expression_list ')' { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); } 
-                  | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_UNKNOWN, $1, $3); char tmp[10000]; combine_all($$->lhs,tmp);  $$->expr_type = strdup(tmp); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); $$->lhs->type ^= NODE_TSPEC; /* Unset NODE_TSPEC flag, casts are handled as functions */ }
-                  | '(' type_specifier ')'  struct_initializer { 
+                  | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_UNKNOWN, $1, $3);   $$->expr_type = strdup(combine_all_new($$->lhs)); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); $$->lhs->type ^= NODE_TSPEC; /* Unset NODE_TSPEC flag, casts are handled as functions */ }
+                  | '(' type_specifier ')' postfix_expression { 
 						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
-						astnode_set_postfix(")",$$); 
-						char tmp[1000]; 
-						combine_all($$->lhs,tmp); 
-						astnode_set_buffer(strdup(tmp),$$); 
-						//$$->rhs->expr_type = strdup(tmp);
+						astnode_set_infix(")",$$); 
 						}
                   | '[' expression_list ']' { $$ = astnode_create(NODE_ARRAY_INITIALIZER, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
 		  | struct_initializer {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
@@ -961,10 +888,10 @@ variable_definitions: non_null_declaration {
 				  }
 				  $$ = astnode_create(NODE_ASSIGN_LIST, $1, $2); $$->type |= NODE_DECLARATION; astnode_set_postfix(";", $$); 
 				  //if list assignment make the type a pointer type
-				  ASTNode* assignment = get_node(NODE_ASSIGNMENT, $2);
+				  const ASTNode* assignment = get_node(NODE_ASSIGNMENT, $2);
 				  if(get_node(NODE_ARRAY_INITIALIZER,assignment->rhs))
 				  {
-					ASTNode* tspec = get_node(NODE_TSPEC,$1);
+					ASTNode* tspec = (ASTNode*) get_node(NODE_TSPEC,$1);
 					strcat(tspec->lhs->buffer,"*");
 				  }
 				  if(!$$->lhs->rhs)
@@ -1043,7 +970,7 @@ assignment: declaration assignment_body {
 			//If the std::array implementation was better on HIP could also not require type specifier since it could be inferred
 			if($2->prefix && !strcmp($2->prefix,"[]"))
 			{
-				ASTNode* tspec = get_node(NODE_TSPEC,$1);
+				ASTNode* tspec = (ASTNode*)get_node(NODE_TSPEC,$1);
 				if(tspec)
 				{
 					astnode_set_prefix("",$2);
@@ -1056,7 +983,7 @@ assignment: declaration assignment_body {
 			}
 			if(get_node(NODE_ARRAY_INITIALIZER,$2))
 			{
-				ASTNode* tspec = get_node(NODE_TSPEC,$1);
+				ASTNode* tspec = (ASTNode*)get_node(NODE_TSPEC,$1);
 				if(tspec)
 				{
 					const size_t old_size = strlen(tspec->lhs->buffer);
@@ -1363,20 +1290,6 @@ set_identifier_infix(const char* infix, ASTNode* curr)
       set_identifier_infix(infix, curr->lhs);
 }
 
-ASTNode*
-get_node(const NodeType type, ASTNode* node)
-{
-  assert(node);
-
-  if (node->type & type)
-    return node;
-  else if (node->lhs && get_node(type, node->lhs))
-    return get_node(type, node->lhs);
-  else if (node->rhs && get_node(type, node->rhs))
-    return get_node(type, node->rhs);
-  else
-    return NULL;
-}
 
 static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names)
 {
@@ -1392,28 +1305,27 @@ static void replace_const_ints(ASTNode* node, const string_vec values, const str
 	node->token = NUMBER;
 }
 
-static inline int eval_int(ASTNode* node)
+static inline int eval_int(ASTNode* node, const bool failure_fatal, int* error_code)
 {
 	replace_const_ints(node,const_int_values,const_ints);
-	char* copy = malloc(sizeof(char)*10000);
-	combine_all(node,copy);
-	strip_whitespace(copy);
+	const char* copy = combine_all_new(node);
         double* vals = malloc(sizeof(double)*const_ints.size);
         int err;
         te_expr* expr = te_compile(copy, NULL, 0, &err);
         if(!expr)
         {
-                fprintf(stderr,"Parse error at tinyexpr\n");
-		fprintf(stderr,"Was not able to parse: %s\n",copy);
-		fprintf(stderr,"Was not able to parse: %s\n",const_ints.data[0]);
-		fprintf(stderr,"Was not able to parse: %s\n",const_ints.data[1]);
-		fprintf(stderr,"Was not able to parse: %s\n",const_ints.data[2]);
-		fprintf(stderr,"Was not able to parse: %s\n",const_ints.data[3]);
-                exit(EXIT_FAILURE);
+		if(failure_fatal)
+		{
+                	fprintf(stderr,"Parse error at tinyexpr\n");
+			fprintf(stderr,"Was not able to parse: %s\n",copy);
+                	exit(EXIT_FAILURE);
+		}
+		*error_code = 1;
+		te_free(expr);
+		return -1;
         }
         int res = (int) round(te_eval(expr));
         te_free(expr);
-	free(copy);
         return res;
 }
 static ASTNode*
@@ -1448,3 +1360,82 @@ create_type_declaration(const char* tqual, const char* tspec, const int token)
 	ASTNode* type_declaration = astnode_create(NODE_UNKNOWN,create_tspec(tspec),create_type_qualifiers(tqual,token));
 	return type_declaration;
 }
+static void process_global_array_declaration(ASTNode* variable_definition, ASTNode* declaration_list, const ASTNode* type_specifier)
+{
+                variable_definition->type |= NODE_VARIABLE;
+                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
+		//make it an array type i.e. pointer
+		strcat(type_specifier->lhs->buffer,"*");
+
+		//if dconst or runtime array evaluate the dimension to a single integer to make further transformations easier
+		const ASTNode* tqual = get_node(NODE_TQUAL,variable_definition);
+		if(!tqual || has_qualifier(variable_definition,"dconst") || has_qualifier(variable_definition,"run_const"))
+		{
+			
+			node_vec dims = VEC_INITIALIZER;
+			get_array_access_nodes(variable_definition,&dims);
+			for(size_t i = 0; i < dims.size; ++i)
+			{
+				ASTNode* elem = (ASTNode*) dims.data[i];
+				const int array_len = eval_int(elem,true,NULL);
+				set_buffers_empty(elem);
+				elem->buffer = itoa(array_len);
+			}
+			free_node_vec(&dims);
+		}
+		//else if gmem simply replace const ints with numeric values to enable differentation of the const declarations
+		//and the array dims and also to notice easily if dims are known statically
+		else if(has_qualifier(variable_definition,"gmem"))
+		{
+			node_vec dims = VEC_INITIALIZER;
+			get_array_access_nodes(variable_definition,&dims);
+			for(size_t i = 0; i < dims.size; ++i)
+			{
+				ASTNode* elem = (ASTNode*) dims.data[i];
+				replace_const_ints(elem,const_int_values,const_ints);
+				//Try to eval int, such that later we can assume all const int expressions are only a single numerical value
+				//TP: for some reason does not work, for now can do without
+				/**
+				int err = 0;
+				const int array_len = eval_int(elem,false,&err);
+				if(!err)
+				{
+					set_buffers_empty(elem);
+					elem->buffer = itoa(array_len);
+				}
+				**/
+			}
+			free_node_vec(&dims);
+		}	
+}
+static void process_global_assignment(ASTNode* node, ASTNode* assignment, ASTNode* variable_definition, ASTNode* declaration_list)
+	    {
+		if(!has_qualifier(node->rhs,"const"))
+		{
+                  fprintf(stderr, FATAL_ERROR_MESSAGE"assignment to a global variable only allowed for constant values\n");
+		  fprintf(stderr,"Incorrect assignment: %s\n",combine_all_new(assignment));
+                  assert(!has_qualifier(node->rhs,"const"));
+		  exit(EXIT_FAILURE);
+		}
+                variable_definition->type |= NODE_VARIABLE;
+                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
+		const char* spec = get_node(NODE_TSPEC,node->rhs)->lhs->buffer;
+		if(!strcmp(spec,"int"))
+		{	
+
+			char* assignment_val = malloc(4098*sizeof(char));
+			ASTNode* def_list_head = get_node(NODE_ASSIGN_LIST,node->rhs)->rhs;
+			node_vec vars = get_nodes_in_list(def_list_head);
+			for(size_t i = 0; i < vars.size; ++i)
+			{
+				ASTNode* elem = (ASTNode*) vars.data[i];
+				const char* name = get_node_by_token(IDENTIFIER,elem)->buffer;
+				int val = eval_int(elem->rhs,true,NULL);
+				push(&const_ints,name);
+				push(&const_int_values,itoa(val));
+			}
+			free_node_vec(&vars);
+			free(assignment_val);
+		}
+	
+	    }
