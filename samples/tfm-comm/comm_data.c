@@ -43,7 +43,7 @@ create_combinations(const size_t ndims)
 }
 
 CommData
-acCommDataCreate(const size_t ndims, const size_t* rr, const size_t* nn, const size_t nfields)
+acCommDataCreate(const size_t ndims, const size_t* nn, const size_t* rr, const size_t nfields)
 {
     // Determine the number of halo partitions
     const size_t npackets = powzu(3, ndims) - 1; // The neighbor count

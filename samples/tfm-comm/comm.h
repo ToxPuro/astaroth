@@ -1,7 +1,9 @@
 #pragma once
+#include <stddef.h>
 
-int acCommInit(void);
+int acCommInit(const size_t ndims, const size_t* global_nn, const size_t* rr);
 
-int acCommRun(void);
+int acCommHaloExchange(const size_t ndims, const size_t* nn, const size_t* rr,
+                       const size_t nfields);
 
 int acCommQuit(void);

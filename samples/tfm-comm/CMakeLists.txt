@@ -40,7 +40,7 @@ target_link_libraries(tfm-dynamic-array PRIVATE tfm-ndarray tfm-math-utils)
 add_library(tfm-decomp SHARED decomp.c)
 target_link_libraries(tfm-decomp PRIVATE tfm-math-utils tfm-print tfm-type-conversion)
 
-add_library(tfm-comm SHARED comm.c)
+add_library(tfm-comm SHARED comm.c comm_cart.c)
 target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-math-utils tfm-type-conversion tfm-print tfm-decomp tfm-dynamic-array tfm-ndarray tfm-comm-data m)
 
 ### Communication abstractions

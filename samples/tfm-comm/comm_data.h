@@ -9,7 +9,7 @@ typedef struct {
     PackedData* remote_packets;
 } CommData;
 
-CommData acCommDataCreate(const size_t ndims, const size_t* rr, const size_t* nn,
+CommData acCommDataCreate(const size_t ndims, const size_t* nn, const size_t* rr,
                           const size_t nfields);
 
 void acCommDataPrint(const char* label, const CommData comm_data);
