@@ -110,7 +110,7 @@ for i 0:n_species
 }
 ```
 
-####Primitive types
+#### Primitive types
 The following primitive C++ types are usable: 
     * int
     * bool
@@ -118,7 +118,7 @@ The following primitive C++ types are usable:
     * long long
     * real (by default double, float if DOUBLE_PRECISION=OFF)
 
-####Additional built-in types
+#### Additional built-in types
     * complex
     * real2
     * real3
@@ -128,7 +128,7 @@ The following primitive C++ types are usable:
     
 We support `Matrix*real3`,`real*Matrix` and `-Matrix`.
 
-####User-defined types
+#### User-defined types
 Structures can be defined similar to the C syntax:
 ```
 struct your_struct
@@ -160,7 +160,7 @@ enum Characters
 }
 ```
 
-####Type qualifiers
+#### Type qualifiers
 
 const effectively the same as C++ const.
 
@@ -178,7 +178,7 @@ Variables that are constant during the execution context of Astaroth (e.g. durin
 By default the same as dconst, but with RUNTIME_COMPILATION=ON they will be effectively replaced by their value (C++ `constexpr`).
 
 
-##Advanced
+#### Advanced
 communicated
 The implicit qualifier for `Fields` if no qualifiers are defined, their halos are updated. 
 auxiliary
@@ -222,12 +222,6 @@ Kernel kernel() {
     exp_val     = exp(uz)     // is equivalent to exp(value(uz))
 }
 ```
-
-
-
-
-
-
 
 #### Casting
 One can use C++ casting.
@@ -291,28 +285,8 @@ elemental abs(real x)
 	return fabs(x)
 }
 ```
-loaders
 
-C++ lambda called before kernel execution
-
-Kernel singlepass(real dt)
-
-{
-
-}
-
-vba.p.singlepass.dt = 2.0
-acDeviceExecuteKernel(device,KERNEL_single);
-
-
-acDeviceSetInput();
-
-ComputeSteps(bcs)
-{
-    Kernel(AC_input)
-}
-
-####Kernels
+#### Kernels
 Kernels are functions visible outside of the DSL code, called by the host.
 Calling kernels is the only way to execute DSL code.
 
@@ -482,14 +456,14 @@ real previous(Field) // Returns the value in the output buffer. Call after write
 
 
 ```
-##Constants
+#### Constants
 ```
 real AC_REAL_PI // Value of pi using the same precision as `real`
 real AC_REAL_MAX // Either DBL_MAX or FLT_MAX base on precision of `real`
 real AC_REAL_MIN // Either DBL_MIN or FLT_MIN base on precision of `real`
 real AC_REAL_EPSILON // Either DBL_EPSILON or FLT_EPSILON base on precision of `real`
 ```
-##Built-in dconsts
+#### Built-in dconsts
 
 uniform spacings of the grid:
 real AC_dsx
@@ -529,7 +503,7 @@ Field COORDS_X
 Field COORDS_Y
 Field COORDS_Z
 
-# Advanced
+#### Advanced
 The input arrays can also be accessed without declaring a `Stencil` as follows.
 **Important!!** Do not use this if you do not know what you are doing.
 ```
@@ -570,7 +544,7 @@ The stencil order can be set by the user by `hostdefine STENCIL_ORDER (x)`, wher
 > Note: The size of the halo surrounding the computational domain depends on `STENCIL_ORDER`.
 
 
-## Reductions
+# Reductions
 This is still an experimental feature that only works if MPI is enabled and which still possibly changes in the future.
 
 Reductions work only if the kernel is called at each vertex point of the domain.
@@ -591,8 +565,8 @@ Kernel reduce_kernel()
 After executing the kernels the reduction has to be finalized with calling either `acGridFinalizeReduceLocal(graph)`, which reduces the values only on the local subdomain, or `acGridFinalize` which will reduce the value across processes.
 The reduced values can be accessed with `acDeviceGetOutput`.
 
-## ComputeSteps
-**Requires Analysis assumptions**
+# ComputeSteps
+**Requires that all conditionals are known at compile-time (Note compilation can happen at runtime)**
 This is still a experimental feature that only works if MPI is enabled and which still possibly changes in the future.
 
 The `BoundConds` construct is used to declare how to calculate the values of `Field`s when the boundary conditions are to be imposed.
