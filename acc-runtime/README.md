@@ -7,8 +7,8 @@ The DSL source files should have a postfix `*.ac` and by default there should be
 
     * `cd build`
 
-    * `cmake -DDSL_MODULE_DIR=<path to the dir containing DSL sources> \
-             -DSL_MODULE_FILE=<you can optionally give the file in DSL_MODULE_DIR to be compiled> ..`
+    * `cmake -DDSL_MODULE_DIR=<path (relative to the build directory) to the dir containing DSL sources> \
+             [-DSL_MODULE_FILE=<you can optionally give the file in DSL_MODULE_DIR to be compiled>] ..`
 
     * `make -j`
 
