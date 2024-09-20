@@ -90,6 +90,7 @@ which is equivalent to calling `value` on the `Field`.
 Also, calling a built-in math functions with `Field` is equivalent to first calling `value` on the `Field`.
 
 > Note: Internally, Field is an enum handle (VertexBufferHandle) referring to the input and output buffers (data cubes).
+> Note: The numerical value of the handle is monotonically increasing in the order of the declarations of the `Fields`.
 
 ```
 Field ux, uy, uz // Three scalar fields `ux`, `uy`, and `uz`
@@ -181,7 +182,10 @@ The implicit qualifier for `Fields` if no qualifiers are defined, their halos ar
 auxiliary
 `Fields` where the input and output buffers are the same (e.g. no stencil operations and writes in the same kernel).
 
-> Note: one can combine these to have communicated auxiliary `Fields`, without `communicated` `auxiliary` `Fields` are not communicated.
+> Note: one can combine these to have communicated auxiliary `Fields`, without `communicated`, `auxiliary` `Fields` are not communicated.
+
+The DSL compiler can also infer these qualifiers if OPTIMIZE_FIELDS=ON from `write`, `value` and `Stencil` calls.
+**Important** requires that all conditionals are known at compile-time.
 
 input
 designed for variables that are inputs to Kernels, but should not be allocated/loaded to the GPU.
@@ -209,6 +213,7 @@ gmem arr[AC_mx][AC_my]           //Multidimensional global array.
 ```
 > Note: By default arrays are stored in column-major format,
 but by setting ROW_MAJOR_ORDER=ON arrays are stored in row-major order
+If OPTIMIZE_ARRAYS=ON the DSL compiler will identify unused `gmem` arrays and will not allocate them on the GPU.
 
 ```
 Kernel kernel() {
@@ -500,9 +505,18 @@ Field COORDS_Y
 Field COORDS_Z
 
 ## Advanced features
+If OPTIMIZE_FIELDS=ON, the DSL compiler will identify unused `Fields` and will not allocate them on the GPU.
+To still enable a loop across all allocated `Fields` non-allocated `Fields` are not counted in `NUM_FIELDS`
+and their numerical index is higher than `NUM_FIELDS`. 
+
+**Important** If you use runtime-compilation this can mean that the index value
+of the main application that calls Astaroth and the index value inside it might not match. 
+To get the correct indexes, use API functions acGet< Field name >.
+
+
 The input arrays can also be accessed without declaring a `Stencil` as follows.
 **Important!!** Do not use this if you do not know what you are doing.
-```
+``` 
 Field field0
 Field field1
 
