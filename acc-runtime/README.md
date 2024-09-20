@@ -499,7 +499,7 @@ Field COORDS_X
 Field COORDS_Y
 Field COORDS_Z
 
-## Advanced
+## Advanced features
 The input arrays can also be accessed without declaring a `Stencil` as follows.
 **Important!!** Do not use this if you do not know what you are doing.
 ```
