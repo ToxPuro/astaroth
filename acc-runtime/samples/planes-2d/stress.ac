@@ -86,6 +86,7 @@ Field ORIGINAL_COORDS_X, ORIGINAL_COORDS_Y
 Field UX, UY
 Field STRESS11, STRESS12, STRESS21, STRESS22
 Field VELOCITY_X, VELOCITY_Y
+Field ACCELERATION_X, ACCELERATION_Y 
 hostdefine STENCIL_ORDER (2)
 real AC_current_time
 real AC_dt
@@ -199,14 +200,16 @@ Kernel calculate_acceleration()
 	ay = (dxstressyx + dystressyy)/ro - VELOCITY_Y*damping_coeff/ro
 	write(VELOCITY_X, VELOCITY_X + ax*eldt);
 	write(VELOCITY_Y, VELOCITY_Y + ay*eldt);
+	write(ACCELERATION_X,ax);
+	write(ACCELERATION_Y,ay);
 }
 Kernel smooth_velocities_and_update_coordinates()
 {
 	smoothed_vel_x  = smooth(VELOCITY_X)
 	smoothed_vel_y  = smooth(VELOCITY_Y)
 	
-	write(COORDS_X, COORDS_X + smoothed_vel_x)
-	write(COORDS_Y, COORDS_Y + smoothed_vel_y)
+	write(COORDS_X, COORDS_X + eldt*smoothed_vel_x + 0.5*eldt*eldt*ACCELERATION_X)
+	write(COORDS_Y, COORDS_Y + eldt*smoothed_vel_y + 0.5*eldt*eldt*ACCELERATION_Y)
 
 	write(VELOCITY_X, smoothed_vel_x)
 	write(VELOCITY_Y, smoothed_vel_y)

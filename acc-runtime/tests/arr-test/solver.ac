@@ -14,6 +14,7 @@ const int AC_ny_const = 2*11
 //TP: testing gmem arrays with const dims
 //If constant dimensions we can skip a pointer indirection when using the gmem arr
 gmem real AC_2d_reals[AC_nx_const][AC_ny_const]
+gmem real AC_2d_reals_dims_from_config[AC_nx][AC_ny]
 
 gmem real AC_3d_reals[AC_mx][AC_my][AC_mz]
 dconst int AC_dconst_int

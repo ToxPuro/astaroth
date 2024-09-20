@@ -131,6 +131,7 @@ main(void)
 #endif
     info.int_arrays[AC_global_arr] = global_arr;
     info.real_arrays[AC_2d_reals]  = &twoD_real_arr[0][0];
+    info.real_arrays[AC_2d_reals_dims_from_config]  = &twoD_real_arr[0][0];
     info.real_arrays[AC_3d_reals]  = &threeD_real_arr[0][0][0];
     info.int_params[AC_dconst_int] = nx-NGHOST_X;
     acGridInit(info);
