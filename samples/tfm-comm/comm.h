@@ -7,3 +7,5 @@ int acCommHaloExchange(const size_t ndims, const size_t* nn, const size_t* rr,
                        const size_t nfields);
 
 int acCommQuit(void);
+
+int acCommTest(void);

@@ -10,11 +10,12 @@
 int
 main(void)
 {
+    acCommTest();
     // Init
-    const size_t nn[]  = {4, 4, 4};
-    const size_t rr[]  = {1, 1, 1};
-    const size_t ndims = ARRAY_SIZE(nn);
-    acCommInit(ndims, nn, rr);
+    // const size_t nn[]  = {4, 4, 4};
+    // const size_t rr[]  = {1, 1, 1};
+    // const size_t ndims = ARRAY_SIZE(nn);
+    // acCommInit(ndims, nn, rr);
 
     // Compute
     // acCommHaloExchange(ndims);
@@ -22,7 +23,7 @@ main(void)
     ndarray_test();
 
     // Quit
-    acCommQuit();
+    // acCommQuit();
 
     return EXIT_SUCCESS;
 }

@@ -8,6 +8,7 @@
 #include "comm_data.h"
 #include "errchk.h"
 #include "math_utils.h"
+#include "ndarray.h"
 #include "print.h"
 #include "type_conversion.h"
 
@@ -100,25 +101,6 @@ get_local_dims(const size_t ndims, const size_t* global_nn, const MPI_Comm comm_
         local_nn[i] = global_nn[i] / dims[i];
 }
 
-static void
-dims_create(const int nprocs, const size_t ndims, size_t* dims, size_t* periods)
-{
-    int mpi_dims[ndims], mpi_periods[ndims];
-    iset(0, ndims, mpi_dims);
-    iset(1, ndims, mpi_periods);
-    ERRCHK_MPI_API(MPI_Dims_create(nprocs, as_int(ndims), mpi_dims));
-
-    to_astaroth_format(ndims, mpi_dims, dims);
-    to_astaroth_format(ndims, mpi_periods, periods);
-}
-
-static void
-get_local_nn(const size_t ndims, const size_t* global_nn, const size_t* dims, size_t* local_nn)
-{
-    for (size_t i = 0; i < ndims; ++i)
-        local_nn[i] = global_nn[i] / dims[i];
-}
-
 int
 acCommInit(const size_t ndims, const size_t* global_nn, const size_t* rr)
 {
@@ -198,4 +180,120 @@ acCommQuit(void)
     // state_destroy(&global_state);
     ERRCHK_MPI_API(MPI_Finalize());
     return SUCCESS;
+}
+
+/////////////////////
+
+static void
+dims_create(const int nprocs, const size_t ndims, size_t* dims, size_t* periods)
+{
+    int mpi_dims[ndims], mpi_periods[ndims];
+    iset(0, ndims, mpi_dims);
+    iset(1, ndims, mpi_periods);
+    ERRCHK_MPI_API(MPI_Dims_create(nprocs, as_int(ndims), mpi_dims));
+
+    to_astaroth_format(ndims, mpi_dims, dims);
+    to_astaroth_format(ndims, mpi_periods, periods);
+}
+
+static void
+get_local_nn(const size_t ndims, const size_t* global_nn, const size_t* dims, size_t* local_nn)
+{
+    for (size_t i = 0; i < ndims; ++i)
+        local_nn[i] = global_nn[i] / dims[i];
+}
+
+static void
+get_mm(const size_t ndims, const size_t* nn, const size_t* rr, size_t* mm)
+{
+    for (size_t i = 0; i < ndims; ++i)
+        mm[i] = 2 * rr[i] + nn[i];
+}
+
+int
+acCommTest(void)
+{
+    ERRCHK_MPI_API(MPI_Init(NULL, NULL));
+
+    // Global grid
+    const size_t global_nn[] = {3, 3};
+    const size_t ndims       = ARRAY_SIZE(global_nn);
+    const size_t rr[]        = {1, 1, 1};
+    const size_t fields[]    = {1};
+    const size_t nfields     = ARRAY_SIZE(fields);
+
+    // Get rank and process counts
+    int rank, nprocs;
+    ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
+    ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
+
+    // Decompose
+    size_t dims[ndims], periods[ndims];
+    dims_create(nprocs, ndims, dims, periods);
+
+    // Create communicator
+    int mpi_dims[ndims], mpi_periods[ndims];
+    to_mpi_format(ndims, dims, mpi_dims);
+    to_mpi_format(ndims, periods, mpi_periods);
+    MPI_Comm comm_cart;
+    ERRCHK_MPI_API(
+        MPI_Cart_create(MPI_COMM_WORLD, as_int(ndims), mpi_dims, mpi_periods, 0, &comm_cart));
+
+    // Get local dims
+    size_t local_nn[ndims];
+    get_local_nn(ndims, global_nn, dims, local_nn);
+
+    size_t local_mm[ndims];
+    get_mm(ndims, local_nn, rr, local_mm);
+
+    // Reserve resources
+    size_t* buffer     = malloc(sizeof(buffer[0]) * prod(ndims, local_mm));
+    CommData comm_data = acCommDataCreate(ndims, local_nn, rr, nfields);
+
+    // Print data
+    if (rank == 0) {
+        print_array("global_nn", ndims, global_nn);
+        print_array("rr", ndims, rr);
+        print_array("dims", ndims, dims);
+        print_array("local_nn", ndims, local_nn);
+        print_array("local_mm", ndims, local_mm);
+        print_ndarray("Mesh", ndims, local_mm, buffer);
+        // acCommDataPrint("comm_data", comm_data);
+    }
+
+    // Send packets
+    for (size_t i = 0; i < comm_data.npackets; ++i) {
+        int sizes[ndims], subsizes[ndims], starts[ndims];
+        to_mpi_format(ndims, local_mm, sizes);
+        to_mpi_format(ndims, comm_data.local_packets[i].dims, subsizes);
+        to_mpi_format(ndims, comm_data.local_packets[i].offset, starts);
+
+        MPI_Datatype subarray;
+        ERRCHK_MPI_API(MPI_Type_create_subarray(as_int(ndims), sizes, subsizes, starts, MPI_ORDER_C,
+                                                MPI_UNSIGNED_LONG_LONG, &subarray));
+        ERRCHK_MPI_API(MPI_Type_commit(&subarray));
+
+        // TODO get neighbor and tag
+        // MPI_Sendrecv(&buffer[0], 1, subarray, neighbor, tag, comm_cart, MPI_STATUS_IGNORE);
+        ERRCHK_MPI_API(MPI_Type_free(&subarray));
+    }
+
+    // Print data
+    if (rank == 0) {
+        print_array("global_nn", ndims, global_nn);
+        print_array("rr", ndims, rr);
+        print_array("dims", ndims, dims);
+        print_array("local_nn", ndims, local_nn);
+        print_array("local_mm", ndims, local_mm);
+        print_ndarray("Mesh", ndims, local_mm, buffer);
+        // acCommDataPrint("comm_data", comm_data);
+    }
+
+    // Release resources
+    acCommDataDestroy(&comm_data);
+    free(buffer);
+    ERRCHK_MPI_API(MPI_Comm_free(&comm_cart));
+
+    ERRCHK_MPI_API(MPI_Finalize());
+    return 0;
 }
