@@ -30,7 +30,7 @@ int int64_t_as_int(const int64_t i);
         size_t *: size_t_as_int_array,                                                             \
         const size_t*: size_t_as_int_array,                                                        \
         int64_t*: int64_t_as_int_array,                                                            \
-        const int64_t*: int64_t_as_int_array, )(count, a, b)
+        const int64_t*: int64_t_as_int_array)(count, a, b)
 
 void int64_t_as_size_t_array(const size_t count, const int64_t* a, size_t* b);
 void int_as_size_t_array(const size_t count, const int* a, size_t* b);
