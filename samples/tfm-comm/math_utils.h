@@ -40,6 +40,8 @@ size_t to_linear(const size_t ndims, const size_t* index, const size_t* shape);
 
 void reverse(const size_t count, size_t* arr);
 
+void reversei(const size_t count, int* arr);
+
 void copy(const size_t count, const size_t* in, size_t* out);
 
 void set(const size_t value, const size_t count, size_t* arr);

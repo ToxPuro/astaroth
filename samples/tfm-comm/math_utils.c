@@ -460,6 +460,16 @@ reverse(const size_t count, size_t* arr)
 }
 
 void
+reversei(const size_t count, int* arr)
+{
+    for (size_t i = 0; i < count / 2; ++i) {
+        const int tmp      = arr[i];
+        arr[i]             = arr[count - i - 1];
+        arr[count - i - 1] = tmp;
+    }
+}
+
+void
 copy(const size_t count, const size_t* in, size_t* out)
 {
     for (size_t i = 0; i < count; ++i)
