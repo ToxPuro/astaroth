@@ -8,9 +8,15 @@
 int
 main(void)
 {
-    comm_run();
+    // Init
+    acCommInit();
+
+    // Compute
     test_math_utils();
     ndarray_test();
+
+    // Quit
+    acCommQuit();
 
     return EXIT_SUCCESS;
 }

@@ -1,0 +1,523 @@
+#include "comm.h"
+
+// #include "array.h"
+#include "comm_data.h"
+#include "decomp.h"
+#include "dynamic_array.h"
+#include "errchk.h"
+#include "math_utils.h"
+#include "ndarray.h"
+#include "print.h"
+#include "type_conversion.h"
+
+#include <mpi.h>
+#include <stdio.h>
+#include <string.h> // memset
+
+#define USE_RANK_REORDERING (1)
+
+#define SUCCESS (0)
+#define FAILURE (-1)
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
+
+#define ERRCHK_MPI(retval)                                                                         \
+    ERRCHK(retval);                                                                                \
+    if ((retval) == 0) {                                                                           \
+        MPI_Abort(MPI_COMM_WORLD, 0);                                                              \
+        exit(EXIT_FAILURE);                                                                        \
+    }
+
+static MPI_Comm
+create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
+                                const size_t* global_dims)
+{
+    int rank, nprocs;
+    MPI_Comm_rank(parent, &rank);
+    MPI_Comm_size(parent, &nprocs);
+
+#if USE_RANK_REORDERING
+    // Hierarchical decomposition
+    const size_t gcds_per_gpu  = as_size_t(min(nprocs, 2));
+    const size_t gpus_per_node = min(as_size_t(nprocs) / gcds_per_gpu, 4);
+    const size_t nnodes        = as_size_t(nprocs) / (gcds_per_gpu * gpus_per_node);
+    ERRCHK_MPI(gcds_per_gpu * gpus_per_node * nnodes == as_size_t(nprocs));
+    ERRCHK_MPI(nnodes >= 1);
+
+    const size_t partitions_per_layer[] = {gcds_per_gpu, gpus_per_node, nnodes};
+    const size_t nlayers                = ARRAY_SIZE(partitions_per_layer);
+    AcDecompositionInfo info            = acDecompositionInfoCreate(ndims, global_dims, nlayers,
+                                                                    partitions_per_layer);
+    if (rank == 0)
+        acDecompositionInfoPrint(info);
+
+    int keys[nprocs];
+    for (size_t i = 0; i < as_size_t(nprocs); ++i) {
+
+        int64_t pid[info.ndims];
+        acGetPid3D(i, info, info.ndims, pid);
+
+        size_t pid_unsigned[info.ndims];
+        as_size_t_array(info.ndims, pid, pid_unsigned);
+        reverse(info.ndims, pid_unsigned);
+
+        size_t decomposition[info.ndims];
+        copy(info.ndims, info.global_decomposition, decomposition);
+        reverse(info.ndims, decomposition);
+
+        size_t row_wise_i = to_linear(info.ndims, pid_unsigned, decomposition);
+        keys[i]           = as_int(row_wise_i);
+
+        if (rank == 0) {
+            printf("%zu -> %zu\n", i, row_wise_i);
+
+            print_array("\tproper", info.ndims, pid);
+
+            reverse(info.ndims, pid_unsigned);
+            print_array("\tmapped", info.ndims, pid_unsigned);
+        }
+    }
+    fflush(stdout);
+    MPI_Barrier(parent);
+
+    MPI_Comm reordered_comm;
+    MPI_Comm_split(parent, 0, keys[rank], &reordered_comm);
+
+    int dims[info.ndims], periods[info.ndims];
+    as_int_array(info.ndims, info.global_decomposition, dims);
+    iset(1, info.ndims, periods);
+
+    MPI_Comm comm_cart;
+    MPI_Cart_create(reordered_comm, as_int(ndims), dims, periods, 0, &comm_cart);
+    MPI_Comm_free(&reordered_comm);
+
+    // // Check that the mapping is correct (TODO)
+    // for (size_t i = 0; i < as_size_t(nprocs); ++i) {
+
+    //     int64_t a[info.ndims];
+    //     acGetPid3D(i, info, info.ndims, a);
+
+    //     int coords[info.ndims];
+    //     as_int_array(info.ndims, a, coords);
+
+    //     int new_rank;
+    //     MPI_Cart_rank(comm_cart, coords, &new_rank);
+
+    //     set(0, info.ndims, coords);
+    //     MPI_Cart_coords(comm_cart, new_rank, info.ndims, coords);
+
+    //     ERRCHK_MPI(i == new_rank);
+    //     //     int new_rank;
+    //     // MPI_Comm_rank(comm_cart, &new_rank);
+
+    //     // int b[info.ndims];
+    //     // MPI_Cart_coords(comm_cart, new_rank, info.ndims, b);
+
+    //     // if (rank == 0)
+    //     //     for (size_t j = 0; j < info.ndims; ++j) {
+    //     //         print_i64_t_array("a", info.ndims, a);
+    //     //         print_array("b", info.ndims, b);
+    //     //         ERRCHK_MPI(a[j] == b[j]);
+    //     //     }
+    // }
+
+    acDecompositionInfoDestroy(&info);
+#else
+    (void)global_dims; // Unused
+    int dims[ndims], periods[ndims];
+    iset(0, ndims, dims);
+    iset(1, ndims, periods);
+    MPI_Dims_create(nprocs, ndims, dims);
+
+    if (rank == 0)
+        print_array("Mapping", as_size_t(ndims), dims);
+
+    MPI_Comm comm_cart;
+    MPI_Cart_create(parent, ndims, dims, periods, 0, &comm_cart);
+#endif
+    return comm_cart;
+}
+
+static void
+test_indexing(const MPI_Comm comm_cart)
+{
+    int rank, nprocs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+
+    for (int i = 0; i < nprocs; ++i) {
+        if (i == rank) {
+            int new_rank, ndims;
+            MPI_Comm_rank(comm_cart, &new_rank);
+            MPI_Cartdim_get(comm_cart, &ndims);
+            int coords[ndims];
+            MPI_Cart_coords(comm_cart, new_rank, ndims, coords);
+            printf("Hello from %d. New rank %d. ", rank, new_rank);
+            print_array("Mapping", as_size_t(ndims), coords);
+
+            fflush(stdout);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+}
+
+static void
+get_local_dims(const size_t ndims, const size_t* nn, const MPI_Comm comm_cart, size_t* local_nn)
+{
+    int dims[ndims], periods[ndims], coords[ndims];
+    MPI_Cart_get(comm_cart, as_int(ndims), dims, periods, coords);
+
+    size_t decomp[ndims];
+    as_size_t_array(ndims, dims, decomp);
+
+    for (size_t i = 0; i < ndims; ++i)
+        local_nn[i] = nn[i] / decomp[i];
+
+    ERRCHK_MPI(prod(ndims, local_nn) * prod(ndims, decomp) == prod(ndims, nn));
+}
+
+int
+comm_run_old(void)
+{
+    MPI_Init(NULL, NULL);
+
+    const size_t global_nn[] = {8, 8};
+    const size_t ndims       = ARRAY_SIZE(global_nn);
+    MPI_Comm comm_cart       = create_rank_reordered_cart_comm(MPI_COMM_WORLD, ndims, global_nn);
+    test_indexing(comm_cart);
+
+    // Global original rank
+    int rank, nprocs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+
+    // Allocate a buffer
+    size_t local_nn[ndims];
+    get_local_dims(ndims, global_nn, comm_cart, local_nn);
+
+    const size_t r = 2;
+    size_t local_mm[ndims];
+    copy(ndims, local_nn, local_mm);
+    add_to_array(2 * r, ndims, local_mm);
+
+    // print_array("Local nn", ndims, local_nn);
+    // print_array("Local mm", ndims, local_mm);
+    size_t* buffer = (size_t*)malloc(sizeof(buffer[0]) * prod(ndims, local_mm));
+    set(as_size_t(rank + 1), prod(ndims, local_mm), buffer);
+    // for (size_t i = 0; i < prod(ndims, local_mm); ++i)
+    //     buffer[i] = i;
+    ERRCHK_MPI(buffer);
+
+    int dims[ndims], periods[ndims], coords[ndims];
+    MPI_Cart_get(comm_cart, as_int(ndims), dims, periods, coords);
+
+    // Do halo comm
+    size_t domain[ndims], subdomain[ndims], offsets[ndims];
+    copy(ndims, local_mm, domain);
+    set(r, ndims, subdomain);
+    set(0, ndims, offsets);
+    subdomain[0] = local_nn[0]; // tmp debug hack
+
+    reverse(ndims, domain);
+    reverse(ndims, subdomain);
+    reverse(ndims, offsets);
+
+    int sizes[ndims], subsizes[ndims], starts[ndims];
+    as_int_array(ndims, domain, sizes);
+    as_int_array(ndims, subdomain, subsizes);
+    as_int_array(ndims, offsets, starts);
+
+    MPI_Datatype subarray_type;
+    MPI_Type_create_subarray(as_int(ndims), sizes, subsizes, starts, //
+                             MPI_ORDER_C, MPI_UNSIGNED_LONG_LONG, &subarray_type);
+    MPI_Type_commit(&subarray_type);
+
+    int up, down, left, right;
+    MPI_Cart_shift(comm_cart, ndims - 2, 1, &down, &up);
+    MPI_Cart_shift(comm_cart, ndims - 1, 1, &left, &right);
+    print("up", up);
+    print("down", down);
+
+    MPI_Sendrecv(&buffer[r + r * local_mm[0]], 1, subarray_type, up, 0,
+                 &buffer[r + (r + local_nn[1]) * local_mm[0]], 1, subarray_type, down, 0, //
+                 comm_cart, MPI_STATUS_IGNORE);
+    MPI_Sendrecv(&buffer[r + local_nn[1] * local_mm[0]], 1, subarray_type, up, 1, //
+                 &buffer[r], 1, subarray_type, down, 1,                           //
+                 comm_cart, MPI_STATUS_IGNORE);
+
+    MPI_Type_free(&subarray_type);
+
+    // print_array("Subdomain", ndims, subdomain);
+
+    MPI_Barrier(comm_cart);
+    for (int coordy = 0; coordy < dims[ndims - 2]; ++coordy) {
+        for (int coordx = 0; coordx < dims[ndims - 1]; ++coordx) {
+            if (coordx == coords[ndims - 1] && coordy == coords[ndims - 2]) {
+                print_array("Hello from", ndims, coords);
+                for (size_t j = local_mm[1] - 1; j < local_mm[0]; --j) {
+                    for (size_t i = 0; i < local_mm[0]; ++i) {
+                        printf("%zu ", buffer[i + j * local_mm[0]]);
+                    }
+                    printf("\n");
+                }
+                printf("\n");
+                fflush(stdout);
+            }
+            MPI_Barrier(comm_cart);
+            MPI_Barrier(MPI_COMM_WORLD);
+        }
+    }
+
+    free(buffer);
+
+    MPI_Comm_free(&comm_cart);
+    MPI_Finalize();
+    return SUCCESS;
+}
+
+/** Writes the combinations to the output paramete and returns the number of combinations */
+size_t
+recurse_combinations(const size_t start, const size_t ndims, const size_t* combination,
+                     DynamicArray* combinations)
+{
+    ERRCHK(ndims > 0);
+
+    size_t counter = 1;
+    for (size_t i = start; i < ndims; ++i) {
+        size_t new_combination[ndims];
+        copy(ndims, combination, new_combination);
+        new_combination[i] = 1;
+        counter += recurse_combinations(i + 1, ndims, new_combination, combinations);
+    }
+    array_append_multiple(ndims, combination, combinations);
+    return counter;
+}
+
+DynamicArray
+create_combinations(const size_t ndims)
+{
+    const size_t ncombinations = count_combinations(ndims);
+    const size_t count         = ndims * ncombinations;
+    DynamicArray combinations  = array_create(count);
+
+    size_t initial_combination[ndims];
+    set(0, ndims, initial_combination);
+    size_t counter = recurse_combinations(0, ndims, initial_combination, &combinations);
+    ERRCHK(ncombinations == counter);
+
+    // print_ndarray("Combinations", 2, (size_t[]){ndims, ncombinations}, combinations.data);
+
+    return combinations;
+}
+
+int
+comm_runn(void)
+{
+    // MPI_Init(NULL, NULL);
+
+    const size_t r          = 2;
+    const size_t local_nn[] = {4, 4, 2};
+    const size_t ndims      = ARRAY_SIZE(local_nn);
+
+    size_t local_mm[ndims];
+    copy(ndims, local_nn, local_mm);
+    add_to_array(2 * r, ndims, local_mm);
+
+    const size_t mm_count = prod(ndims, local_mm);
+
+    size_t* arr = (size_t*)malloc(sizeof(arr[0]) * mm_count);
+    ERRCHK(arr);
+    set(0, mm_count, arr);
+
+    {
+        const size_t start[]   = {0, 0, 0};
+        const size_t subdims[] = {r, r, r};
+        set_ndarray(1, ndims, start, subdims, local_mm, arr);
+    }
+
+    print_ndarray("Test", ndims, local_mm, arr);
+
+    // DynamicArray combinations = create_combinations(3);
+    // print("Combinations", count_combinations(3));
+    // print("Hamming weight", popcount(ndims, local_nn));
+    // array_destroy(&combinations);
+
+    // Subsizes: these except the one where the Hamming weight is equal to ndims
+    printf("Subsizes:\n");
+    DynamicArray subsizes = create_combinations(ndims);
+    print("nsubsizes", count_combinations(ndims));
+    array_destroy(&subsizes);
+
+    // Starts
+    // The combination of free variables
+    // E.g. (r, r, r): all variables are free, loop over
+    // combinations of (a(rx+nx), b(ry+ny), c(rz+nz))
+    //
+    // (nx, r, r): two variables are free, now can loop only
+    // combinations (r, b(ry+nx), c(rz+nz))
+    printf("Starts:\n");
+    DynamicArray starts  = create_combinations(ndims);
+    const size_t nstarts = count_combinations(ndims);
+    print("nstarts", nstarts);
+    array_destroy(&starts);
+
+    // Actual test
+    DynamicArray blocks  = create_combinations(ndims);
+    const size_t nblocks = count_combinations(ndims);
+    DynamicArray outputs = array_create(nblocks);
+    for (size_t i = 0; i < nblocks; ++i) {
+        const size_t* block = &blocks.data[i * ndims];
+        printf("%zu. ", i);
+        print_array("block", ndims, block);
+        for (size_t j = 0; j < nblocks; ++j) {
+            const size_t* offset = &blocks.data[j * ndims];
+            // printf("\t%zu.", j);
+            // print_array("offset", ndims, offset);
+
+            size_t output[ndims];
+            mul(ndims, block, offset, output);
+            print_array("\t\tOutput", ndims, output);
+            array_append_multiple(ndims, output, &outputs);
+        }
+    }
+
+    const size_t* ndarray = outputs.data;
+    const size_t len      = outputs.len;
+    const size_t nx       = ndims;
+    const size_t ny       = len / nx;
+    const size_t dims[]   = {nx, ny};
+    const size_t nndims   = ARRAY_SIZE(dims);
+    for (size_t k = 0; k < ny; ++k) {
+        for (size_t w = k + 1; w < ny; ++w) {
+            const size_t a_offset[] = {0, k};
+            const size_t b_offset[] = {0, w};
+            const int res           = ndarray_equals(nx, nndims, a_offset, b_offset, dims, ndarray);
+            print("Result", res);
+        }
+    }
+    array_destroy(&outputs);
+    // const size_t nblocks = count_combinations(ndims);
+    // for (size_t i = 0; i < nstarts; ++i) {
+    //     const size_t* offset = &blocks.data[i * ndims];
+    //     // print_array("Offset", ndims, offset);
+    //     size_t output[ndims];
+    //     mul(ndims, block, offset, output);
+    //     print_array("\tOutput", ndims, output);
+    // }
+    array_destroy(&blocks);
+    // for (size_t i= 0; i < ncombinations; ++i)
+    // const size_t offset[] = {1, 1, 1};
+    // size_t output[ndims];
+    // mul(ndims, block, offset, output);
+    // print_array("Current", ndims, output);
+
+    free(arr);
+
+    // MPI_Finalize();
+    return 0;
+}
+
+typedef struct {
+    size_t ndims;
+    size_t* shape; // [ndims]
+
+    size_t npartitions;
+    size_t* partition_offsets; // [ndims * npartitions elements]
+} CommShape;
+
+CommShape
+commshape_create(const size_t ndims, const size_t* shape, const size_t npartitions,
+                 const size_t* partition_offsets)
+{
+    CommShape comm_shape = (CommShape){
+        .ndims             = ndims,
+        .shape             = malloc(sizeof(comm_shape.shape[0]) * ndims),
+        .npartitions       = npartitions,
+        .partition_offsets = malloc(sizeof(comm_shape.shape[0]) * ndims * npartitions),
+    };
+    ERRCHK(comm_shape.shape != NULL);
+    ERRCHK(comm_shape.partition_offsets != NULL);
+    copy(ndims, shape, comm_shape.shape);
+    copy(ndims * npartitions, partition_offsets, comm_shape.partition_offsets);
+    return comm_shape;
+}
+
+void
+commshape_destroy(CommShape* comm_shape)
+{
+    free(comm_shape->partition_offsets);
+    free(comm_shape->shape);
+    comm_shape->ndims             = 0;
+    comm_shape->shape             = NULL;
+    comm_shape->npartitions       = 0;
+    comm_shape->partition_offsets = NULL;
+}
+
+int
+comm_run(void)
+{
+    {
+        // Declare mesh dimensions
+        const size_t r          = 1;
+        const size_t local_nn[] = {4, 4, 4};
+        const size_t ndims      = ARRAY_SIZE(local_nn);
+
+        // Calculate mm
+        size_t local_mm[ndims];
+        copy(ndims, local_nn, local_mm);
+        size_t two_r[ndims];
+        repeat(1, (size_t[]){2 * r}, ndims, two_r);
+        add_arrays(ndims, two_r, local_nn, local_mm);
+        print_array("two_r", ndims, two_r);
+        print_array("local nn", ndims, local_nn);
+        print_array("local mm", ndims, local_mm);
+
+        const size_t mm_count = prod(ndims, local_mm);
+
+        // Setup the mesh and print
+        size_t* arr = (size_t*)malloc(sizeof(arr[0]) * mm_count);
+        ERRCHK(arr);
+        set(0, mm_count, arr);
+
+        // print_ndarray("Mesh", ndims, local_mm, arr);
+
+        // Find the combinations for ndims
+        DynamicArray combinations  = create_combinations(ndims);
+        const size_t ncombinations = combinations.len / ndims;
+        // print_ndarray("Combinations", 2, (size_t[]){ndims, ncombinations}, combinations.data);
+
+        // For each combination, find
+        for (size_t i = 0; i < ncombinations; ++i) {
+            const size_t* current_combination = &combinations.data[i * ndims];
+            print_array("Current", ndims, current_combination);
+
+            size_t current_repeated[ndims * ncombinations];
+            repeat(ndims, current_combination, ncombinations, current_repeated);
+            // print_ndarray("Current", 2, (size_t[]){ndims, ncombinations}, current_repeated);
+
+            size_t hadamard[ndims * ncombinations];
+            mul(ndims * ncombinations, current_repeated, combinations.data, hadamard);
+            // print_ndarray("Hadamard", 2, (size_t[]){ndims, ncombinations}, hadamard);
+
+            size_t unique_combinations[ndims * ncombinations];
+            const size_t nunique_combinations = unique_subsets(ndims * ncombinations, hadamard,
+                                                               ndims, unique_combinations);
+            const size_t nrows                = nunique_combinations / ndims;
+            print_ndarray("Unique combinations", 2, (size_t[]){ndims, nrows}, unique_combinations);
+
+            for (size_t j = 0; j < nrows; ++j) {
+                const size_t* current_row = &unique_combinations[j * ndims];
+                print_array("Current row:", ndims, current_row);
+            }
+        }
+        array_destroy(&combinations);
+        free(arr);
+    }
+
+    {
+        const size_t ndims = 3;
+        CommData comm_data = acCommDataCreate(ndims, 8);
+        acCommDataDestroy(&comm_data);
+    }
+
+    return 0;
+}

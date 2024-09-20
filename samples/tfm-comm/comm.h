@@ -1,3 +1,5 @@
 #pragma once
 
-int comm_run(void);
+int acCommInit(void);
+
+int acCommQuit(void);
