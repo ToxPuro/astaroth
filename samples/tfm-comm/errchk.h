@@ -10,6 +10,7 @@ fprintc_multiple(FILE* stream, const char c, const size_t count)
 {
     for (size_t i = 0; i < count; ++i)
         fprintf(stream, "%c", c);
+    fprintf(stream, "\n");
 }
 
 static inline void
@@ -21,9 +22,9 @@ print_error(const char* function, const char* file, const size_t line, const cha
     time_t terr;
     time(&terr);
 
-    fprintc_multiple(stderr, '\n', 4);
-    fprintf(stderr, "┌──────────────────────── ERROR ───────────────────────────┐\n");
     fprintc_multiple(stderr, '\n', 3);
+    fprintf(stderr, "┌──────────────────────── ERROR ───────────────────────────┐\n");
+    fprintc_multiple(stderr, '\n', 2);
     fprintf(stderr, "%s\n", ctime(&terr));
     if (expression)
         fprintf(stderr, "Expression '%s' evaluated false\n", expression);
@@ -32,9 +33,9 @@ print_error(const char* function, const char* file, const size_t line, const cha
     fprintf(stderr, "Function '%s',\n", function);
     fprintf(stderr, "File '%s',\n", file);
     fprintf(stderr, "On line '%zu'\n", line);
-    fprintc_multiple(stderr, '\n', 3);
+    fprintc_multiple(stderr, '\n', 2);
     fprintf(stderr, "└──────────────────────── ERROR ───────────────────────────┘\n");
-    fprintc_multiple(stderr, '\n', 4);
+    fprintc_multiple(stderr, '\n', 3);
     fflush(stdout);
     fflush(stderr);
 }
@@ -46,7 +47,7 @@ print_warning(const char* function, const char* file, const size_t line, const c
     time_t terr;
     time(&terr);
 
-    fprintc_multiple(stderr, '\n', 1);
+    fprintf(stderr, "\n");
     fprintf(stderr, "──────────────────────── Warning ─────────────────────────────\n");
     fprintf(stderr, "%s\n", ctime(&terr));
     if (expression)
@@ -57,7 +58,7 @@ print_warning(const char* function, const char* file, const size_t line, const c
     fprintf(stderr, "file '%s',\n", file);
     fprintf(stderr, "on line '%zu.'\n", line);
     fprintf(stderr, "───────────────────────── Warning ────────────────────────────\n");
-    fprintc_multiple(stderr, '\n', 1);
+    fprintf(stderr, "\n");
     fflush(stdout);
     fflush(stderr);
 }

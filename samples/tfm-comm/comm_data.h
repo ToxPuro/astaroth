@@ -11,4 +11,6 @@ typedef struct {
 
 CommData acCommDataCreate(const size_t ndims, const size_t nfields);
 
+void acCommDataPrint(const char* label, const CommData comm_data);
+
 void acCommDataDestroy(CommData* comm_data);

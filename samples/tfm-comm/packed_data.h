@@ -18,4 +18,6 @@ typedef struct {
 PackedData acCreatePackedData(const size_t ndims, const size_t* dims, const size_t* offset,
                               const size_t nfields);
 
+void acPackedDataPrint(const char* label, const PackedData packed_data);
+
 void acDestroyPackedData(PackedData* data);

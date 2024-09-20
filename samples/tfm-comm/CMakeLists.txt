@@ -45,8 +45,10 @@ target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-math-utils tfm-type-conver
 
 ### Communication abstractions
 add_library(tfm-buffer SHARED buffer.c)
+target_link_libraries(tfm-buffer PRIVATE tfm-math-utils tfm-print)
+
 add_library(tfm-packed-data SHARED packed_data.c)
-target_link_libraries(tfm-packed-data PRIVATE tfm-buffer tfm-math-utils)
+target_link_libraries(tfm-packed-data PRIVATE tfm-buffer tfm-math-utils tfm-print)
 
 add_library(tfm-comm-data SHARED comm_data.c)
 target_link_libraries(tfm-comm-data PRIVATE tfm-packed-data tfm-math-utils tfm-print)

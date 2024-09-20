@@ -12,6 +12,7 @@ main(void)
     acCommInit();
 
     // Compute
+    acCommRun();
     test_math_utils();
     ndarray_test();
 

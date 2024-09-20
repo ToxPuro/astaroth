@@ -3,6 +3,8 @@
 #include <stdlib.h>
 
 #include "errchk.h"
+#include "math_utils.h"
+#include "print.h"
 
 Buffer
 acBufferCreate(const size_t length)
@@ -13,6 +15,16 @@ acBufferCreate(const size_t length)
     };
     ERRCHK(buf.data);
     return buf;
+}
+
+void
+acBufferPrint(const char* label, const Buffer buffer)
+{
+    printf("Buffer %s:\n", label);
+    print("\tlength", buffer.length);
+
+    const size_t max_print_elements = 5;
+    print_array("\tdata (max first 5 elems)", min(buffer.length, max_print_elements), buffer.data);
 }
 
 void
