@@ -1,3 +1,4 @@
+
 # Building ACC runtime (incl. DSL files)
 
 The DSL source files should have a postfix `*.ac` and by default there should be only one
@@ -66,7 +67,8 @@ vertex shaders operate in graphics shading languages.
 ## Comments and preprocessor directives
 The Astaroth preprocessor works similar to the C preprocessor (gcc) with one exception: 
 
-By default include files are searched relative to DSL_MODULE_DIR, (TODO) only if the include is not found are C include rules used. 
+By default include files are searched relative to DSL_MODULE_DIR. 
+(TODO) only if the include is not found are C include rules used. 
 
 With two extensions: 
 ```
@@ -115,6 +117,8 @@ The following primitive C++ types are usable:
     * long
     * long long
     * real (by default double, float if DOUBLE_PRECISION=OFF)
+    
+> Note: Whenever possible one should prefer using bools compared to e.g. integers which only have the values 0 and 1, since using bools gives the DSL compiler more information, which it can use to perform optimizations.
 
 ### Additional built-in types
     * complex
@@ -127,6 +131,7 @@ The following primitive C++ types are usable:
 We support `Matrix*real3`,`real*Matrix` and `-Matrix`.
 
 ### User-defined types
+#### Structures
 Structures can be defined similar to the C syntax:
 ```
 struct your_struct
@@ -145,9 +150,12 @@ They can be initialized as in C, except for type inference an explicit cast migh
 
 > Note: Currently, declaring multiple members from a single type specifier is not allowed.
 
-If all of the members of the structure are `real` or `int` we provide member-wise arithmetic operations with `real` and `int` scalars.
+##### Operators 
+If all of the members of the structure are `real` we provide member-wise arithmetic operators (`+`, `-`, `/`, `*`) with `real` scalars.
 Additionally `+` and `-` are supported between structures of the same type, all of the members of which are `real` or `int`.
+For all operators the corresponding compound assignment operator is also supported. 
 
+#### Enums
 Enums are declared in the C syntax
 ```
 enum Characters
@@ -157,6 +165,7 @@ enum Characters
     C
 }
 ```
+> Note: Whenever possible one should prefer using enums compared e.g. named integers, since using enums gives the DSL compile more information which it can use to perform optimizations.
 
 ### Type qualifiers
 
@@ -167,9 +176,8 @@ Their values are loaded through the Astaroth config.
 
 gmem used for arrays to be allocated on the global memory of GPU
 
->Note: for performance reasons you should use gmem when all at different vertices different indexes are used 
-at the same time.
-
+>Note: For performance reasons you should use gmem arrays when different indexes are used at different vertices at the same time. 
+Additionally too large arrays on the device constant memory can degrade performance by limiting the amount of available cache too much.
 
 run_const
 Variables that are constant during the execution context of Astaroth (e.g. during a timeloop in a simulation).
@@ -521,10 +529,15 @@ Field field0
 Field field1
 
 Kernel kernel() {
-  // The example showcases two ways of accessing a field element without the Stencil structure
   int3 coord = ...
   //Writing to the input array is inherently unsafe so it really only be done inside boundary conditions
   field0[coord.x][coord.y][coord.y] = field1[coord.x][coord.y][coord.z]
+}
+//Since the input parameter f has explicitly been given the type of Field one can access with it the input buffer,
+which would not be possible without the explicit type declaration.
+func(Field f)
+{
+    return field[vertexIdx.x][vertexIdx.y][vertexIdx.z]
 }
 ```
 
