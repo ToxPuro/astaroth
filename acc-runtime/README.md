@@ -25,7 +25,6 @@ Intermediate files:
 1. `user_kernels.ac.pp_stage*`. The DSL file after a specific preprocessing stage.
 2. `user_kernels.h.raw`. The generated CUDA kernels without formatting applied.
 3. `user_kernels_backup.h.`. The generated CUDA/CPU kernels with formatting applied. 
-(TODO) move API generation funcs to dir and mention that
 
 Final files: 
 
@@ -71,7 +70,6 @@ To make a recommendation/request for a new feature make pull request where you o
 The Astaroth preprocessor works similar to the C preprocessor (gcc) with one exception: 
 
 By default include files are searched relative to DSL_MODULE_DIR. 
-(TODO) only if the include is not found are C include rules used. 
 
 With two extensions: 
 ```
