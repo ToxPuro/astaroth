@@ -72,6 +72,12 @@ else()
           perfstubs
   	Threads::Threads
       )
+  else()
+      find_package(Threads)
+      target_link_libraries(astaroth_core
+  	PUBLIC
+  	Threads::Threads
+      )
   endif()
   
   ## Definitions

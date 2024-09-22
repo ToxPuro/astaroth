@@ -5,7 +5,17 @@ gmem int AC_global_arr[AC_nx]
 dconst real AC_test_arr[test_arr_size];
 dconst real AC_test_arr_2[(2-1)*2+1];
 dconst int AC_test_int_arr[test_arr_size/2];
-gmem real AC_2d_reals[AC_nx][AC_ny]
+
+
+const int AC_nx_const = 2*9
+const int AC_ny_const = 2*11
+
+//gmem real AC_2d_reals[AC_nx][AC_ny]
+//TP: testing gmem arrays with const dims
+//If constant dimensions we can skip a pointer indirection when using the gmem arr
+gmem real AC_2d_reals[AC_nx_const][AC_ny_const]
+gmem real AC_2d_reals_dims_from_config[AC_nx][AC_ny]
+
 gmem real AC_3d_reals[AC_mx][AC_my][AC_mz]
 dconst int AC_dconst_int
 

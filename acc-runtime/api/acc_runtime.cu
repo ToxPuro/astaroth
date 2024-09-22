@@ -16,7 +16,10 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
+#define AC_INSIDE_AC_LIBRARY 
+
 #include "acc_runtime.h"
+typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 #define AcReal3(x,y,z)   (AcReal3){x,y,z}
 #define AcComplex(x,y)   (AcComplex){x,y}
 
@@ -244,8 +247,8 @@ get_smem(const Volume tpb, const size_t stencil_order,
 __device__ __constant__ AcMeshInfo d_mesh_info;
 #include "dconst_arrays_decl.h"
 //TP: We do this ugly macro because I want to keep the generated headers the same if we are compiling cpu analysis and for the actual gpu comp
-//#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1] 
 #define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE* AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME 
+#define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, LEN) __device__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[LEN]
 #include "gmem_arrays_decl.h"
 
 
@@ -327,7 +330,9 @@ IDX(const int3 idx)
 #include "random.cuh"
 
 #define suppress_unused_warning(X) (void)X
+#define longlong long long
 #include "user_kernels.h"
+#undef longlong
 
 
 typedef struct {
@@ -469,6 +474,17 @@ device_malloc(void** dst, const int bytes)
 
 template <typename T>
 void
+device_malloc(T** dst, const int bytes)
+{
+ #if USE_COMPRESSIBLE_MEMORY 
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)dst, bytes));
+ #else
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)dst, bytes));
+  #endif
+}
+
+template <typename T>
+void
 device_free(T** dst, const int bytes)
 {
 #if USE_COMPRESSIBLE_MEMORY
@@ -491,10 +507,15 @@ struct allocate_arrays
 	{
 		for(P array : get_params<P>())
 		{
-			if(get_config_param(array,config) != nullptr && !is_dconst(array))
+			if(get_config_param(array,config) != nullptr && !is_dconst(array) && is_alive(array) && !has_const_dims(array))
 			{
-				void* d_mem_ptr;
-			        device_malloc(&d_mem_ptr, sizeof(get_config_param(array,config)[0])*get_array_length(array,config));
+
+#if AC_VERBOSE
+				fprintf(stderr,"Allocating %s|%d\n",get_name(array),get_array_length(array,config));
+				fflush(stderr);
+#endif
+				auto d_mem_ptr = get_empty_pointer(array);
+			        device_malloc(((void**)&d_mem_ptr), sizeof(get_config_param(array,config)[0])*get_array_length(array,config));
 				memcpy_to_gmem_array(array,d_mem_ptr);
 			}
 		}
@@ -543,14 +564,12 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
   }
 #else
   for (size_t i = 0; i < NUM_VTXBUF_HANDLES; ++i) {
-    //Allocate auxilary fields
-    //They need only a single copy so out can point to in
+    device_malloc((void**) &vba.in[i],bytes);
+    //Auxiliary fields need only a single copy so out can point to in
     if (vtxbuf_is_auxiliary[i])
     {
-      device_malloc((void**) &vba.in[i],bytes);
       vba.out[i] = vba.in[i];
     }else{
-      device_malloc((void**) &vba.in[i],bytes);
       device_malloc((void**) &vba.out[i],bytes);
     }
   }
@@ -574,9 +593,9 @@ struct update_arrays
 	{
 		for(P array : get_params<P>())
 		{
-			if(is_dconst(array)) continue;
+			if(is_dconst(array) || !is_alive(array) || has_const_dims(array)) continue;
 			auto config_array = get_config_param(array,config);
-			void* gmem_array;
+			auto gmem_array   = get_empty_pointer(array);
 			memcpy_from_gmem_array(array,gmem_array);
 			size_t bytes = sizeof(config_array[0])*get_array_length(array,config);
 			if(config_array == nullptr && gmem_array != nullptr) 
@@ -602,9 +621,9 @@ struct free_arrays
 		for(P array: get_params<P>())
 		{
 			auto config_array = get_config_param(array,config);
-			void* gmem_array;
+			if(config_array == nullptr || is_dconst(array) || !is_alive(array) || has_const_dims(array)) continue;
+			auto gmem_array = get_empty_pointer(array);
 			memcpy_from_gmem_array(array,gmem_array);
-			if(config_array == nullptr ||is_dconst(array)) continue;
 			device_free(&gmem_array, get_array_length(array,config));
 			memcpy_to_gmem_array(array,gmem_array);
 		}
@@ -613,7 +632,9 @@ struct free_arrays
 void
 acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 {
-  for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) { device_free(&(vba->in[i]), vba->bytes);
+  for (int i = 0; i < NUM_VTXBUF_HANDLES; ++i) { 
+    //TP: if dead then not allocated and thus nothing to free
+    device_free(&(vba->in[i]), vba->bytes);
     if (vtxbuf_is_auxiliary[i])
       vba->out[i] = NULL;
     else
@@ -648,9 +669,10 @@ get_kernel_index(const Kernel kernel)
 	return -1;
 }
 AcResult
-acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
+acLaunchKernel(AcKernel kernel_enum, const cudaStream_t stream, const int3 start,
                const int3 end, VertexBufferArray vba)
 {
+  const Kernel kernel = kernels[kernel_enum];
   const int3 n = end - start;
 
   const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
@@ -676,9 +698,10 @@ acLaunchKernel(Kernel kernel, const cudaStream_t stream, const int3 start,
 }
 
 AcResult
-acBenchmarkKernel(Kernel kernel, const int3 start, const int3 end,
+acBenchmarkKernel(AcKernel kernel_enum, const int3 start, const int3 end,
                   VertexBufferArray vba)
 {
+  const Kernel kernel = kernels[kernel_enum];
   const int3 n = end - start;
 
   const TBConfig tbconf = getOptimalTBConfig(kernel, n, vba);
@@ -850,21 +873,41 @@ template <typename P, typename V>
 static AcResult
 acLoadArrayUniform(const P array, const V* values, const size_t length)
 {
+#if AC_VERBOSE
+	fprintf(stderr,"Loading %s\n",get_name(array));
+	fflush(stderr);
+#endif
 	cudaDeviceSynchronize();
 	ERRCHK_ALWAYS(values  != nullptr);
 	const size_t bytes = length*sizeof(values[0]);
 	if(!is_dconst(array))
 	{
-		void* dst_ptr;
+		if(!is_alive(array)) return AC_NOT_ALLOCATED;
+		if(has_const_dims(array))
+		{
+			memcpy_to_const_dims_gmem_array(array,values);
+			return AC_SUCCESS;
+		}
+		auto dst_ptr = get_empty_pointer(array);
 		memcpy_from_gmem_array(array,dst_ptr);
 		ERRCHK_ALWAYS(dst_ptr != nullptr);
+		if(dst_ptr == nullptr)
+		{
+			fprintf(stderr,"FATAL AC ERROR from acLoadArrayUniform\n");
+			exit(EXIT_FAILURE);
+		}
+#if AC_VERBOSE
+		fprintf(stderr,"Calling (cuda/hip)memcpy %s|%ld\n",get_name(array),length);
+		fflush(stderr);
+#endif
 		ERRCHK_CUDA_ALWAYS(cudaMemcpy(dst_ptr,values,bytes,cudaMemcpyHostToDevice));
 	}
-	else
-	{
-		const size_t offset = (size_t) get_dconst_array_offset(array)*sizeof(V);
+	else 
 		ERRCHK_CUDA_ALWAYS(load_array(values, bytes, array));
-	}
+#if AC_VERBOSE
+	fprintf(stderr,"Loaded %s\n",get_name(array));
+	fflush(stderr);
+#endif
 	return AC_SUCCESS;
 }
 
@@ -887,16 +930,19 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 	const size_t bytes = length*sizeof(values[0]);
 	if(!is_dconst(array))
 	{
-		void* src_ptr;
+		if(!is_alive(array)) return AC_NOT_ALLOCATED;
+		if(has_const_dims(array))
+		{
+			memcpy_from_gmem_array(array,values);
+			return AC_SUCCESS;
+		}
+		auto src_ptr = get_empty_pointer(array);
 		memcpy_from_gmem_array(array,src_ptr);
 		ERRCHK_ALWAYS(src_ptr != nullptr);
 		ERRCHK_CUDA_ALWAYS(cudaMemcpy(values, src_ptr, bytes, cudaMemcpyDeviceToHost));
 	}
 	else
-	{
-		const size_t offset = (size_t) get_dconst_array_offset(array)*sizeof(V);
 		ERRCHK_CUDA_ALWAYS(store_array(values, bytes, array));
-	}
 	return AC_SUCCESS;
 }
 
@@ -1166,17 +1212,13 @@ getOptimalTBConfig(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   return c;
 }
 
-Kernel
-GetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
+AcKernel
+acGetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
 {
 	//#include "user_kernel_ifs.h"
 	//silence unused warnings
 	(void)vba;
-	return kernels[(int) kernel_enum];
-}
-
-const Kernel*
-acGetKernels()
-{
-	return kernels;
+	//TP: for now this is no-op in the future in some cases we choose which kernel to call passed on the input params
+	return kernel_enum;
+	//return kernels[(int) kernel_enum];
 }

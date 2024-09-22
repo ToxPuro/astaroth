@@ -5,29 +5,6 @@ real AC_current_time
 real AC_dt
 int AC_step_num
 
-Stencil diff_up
-{
-	[1][0]  =  1,
-	[0][0]  = -1
-}
-
-Stencil diff_down
-{
-	[-1][0] =  1,
-	[0][0]  = -1
-}
-
-Stencil diff_right
-{
-	[0][1]  =  1,
-	[0][0]  = -1
-}
-
-Stencil diff_left
-{
-	[0][-1] =  1,
-	[0][0]  = -1
-}
 
 const real sim_dt=(0.25*0.5)/8;
 const real M=0.1;
@@ -160,4 +137,18 @@ Kernel singlepass_solve()
         update_val = sim_dt*D*(Dxx+Dyy)
 	write(U, U + update_val)
 }	
+BoundConds bcs
+{
+	periodic(BOUNDARY_XY)
+}
+
+
+ComputeSteps AC_initialize(bcs)
+{
+	initial_condition()
+}
+ComputeSteps AC_solve(bcs)
+{
+	singlepass_solve()
+}
 

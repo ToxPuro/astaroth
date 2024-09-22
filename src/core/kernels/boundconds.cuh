@@ -344,7 +344,10 @@ kernel_prescribed_derivative_boundconds(const int3 region_id, const int3 normal,
 
     const AcReal d = normal.x != 0 ? VAL(AC_dsx) :
 	   	     normal.y != 0 ? VAL(AC_dsy) :
-		     normal.z != 0 ? VAL(AC_dsz) : 0.0;
+#if TWO_D == 0
+		     normal.z != 0 ? VAL(AC_dsz) :
+#endif
+		     0.0;
     const AcReal direction = normal.x != 0 ? normal.x : 
     			     normal.y != 0 ? normal.y :
 			     normal.z != 0 ? normal.z : 0.0;
@@ -706,7 +709,10 @@ kernel_entropy_blackbody_radiation_kramer_conductivity_boundconds(const int3 reg
 
     const AcReal d = normal.x != 0 ? VAL(AC_dsx) :
 	   	     normal.y != 0 ? VAL(AC_dsy) :
-		     normal.z != 0 ? VAL(AC_dsz) : 0.0;
+#if TWO_D == 0
+		      normal.z != 0 ? VAL(AC_dsz) :
+#endif
+		     0.0;
     int3 domain = boundary;
     int3 ghost  = boundary;
 
@@ -819,7 +825,10 @@ kernel_entropy_prescribed_heat_flux_boundconds(const int3 region_id, const int3 
 
     const AcReal d = normal.x != 0 ? VAL(AC_dsx) :
 	   	     normal.y != 0 ? VAL(AC_dsy) :
-		     normal.z != 0 ? VAL(AC_dsz) : 0.0;
+#if TWO_D == 0
+		      normal.z != 0 ? VAL(AC_dsz) :
+#endif
+		     0.0;
     int3 domain = boundary;
     int3 ghost  = boundary;
 
@@ -936,8 +945,11 @@ kernel_entropy_prescribed_normal_and_turbulent_heat_flux_boundconds(
 
 
     const AcReal d = normal.x != 0 ? VAL(AC_dsx) :
-	   	     normal.y != 0 ? VAL(AC_dsy) :
-		     normal.z != 0 ? VAL(AC_dsz) : 0.0;
+	   	     normal.y != 0 ? VAL(AC_dsy)
+#if TWO_D == 0
+		     : normal.z != 0 ? VAL(AC_dsz) : 0.0
+#endif
+		     ;
     int3 domain = boundary;
     int3 ghost  = boundary;
 

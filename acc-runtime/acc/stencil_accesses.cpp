@@ -1,4 +1,8 @@
 #define AC_RUNTIME_SOURCE
+#ifndef AC_IN_AC_LIBRARY
+#define AC_IN_AC_LIBRARY
+#endif
+#define longlong long long
 
 #include <assert.h>
 /*
@@ -165,6 +169,7 @@ __ballot(bool val)
 #include "math_utils.h"
  
 #include "acc_runtime.h"
+typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 #include "user_kernel_declarations.h"
 
 constexpr AcMeshInfo
@@ -185,8 +190,17 @@ constexpr static AcMeshInfo d_mesh_info = get_d_mesh_info();
 
 #include "user_constants.h"
 #include "dconst_arrays_decl.h"
+#include "gmem_arrays_accessed_decl.h"
 //#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1][1000] {}
-#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[1000] {}
+//#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) __device__ __constant__ DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME[1000] {}
+//TP: new macro for some macro magic to make inference easy on whether a gmem array is used or not
+#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) static const DATATYPE ARR_NAME##return_var{}; \
+							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int i) {gmem_##DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
+							    static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
+
+#define DECLARE_CONST_DIMS_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME, DIMS) static const DATATYPE ARR_NAME##return_var{}; \
+							    struct tmp_struct_##ARR_NAME {const DATATYPE& operator[](const int i) {gmem_##DEFINE_NAME##_arrays_accessed[ARR_NAME] = 1; return ARR_NAME##return_var;}}; \
+							    static tmp_struct_##ARR_NAME AC_INTERNAL_gmem_##DEFINE_NAME##_arrays_##ARR_NAME {};
 #include "gmem_arrays_decl.h"
 
 AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
@@ -194,9 +208,9 @@ AcReal smem[8 * 1024 * 1024]; // NOTE: arbitrary limit: need to allocate at
 static AcReal3 AC_INTERNAL_global_real_vec = {0.0,0.0,0.0};
 static int3 AC_INTERNAL_global_int_vec = {0,0,0};
 
-static int stencils_accessed[NUM_FIELDS][NUM_STENCILS] = {{0}};
-static int previous_accessed[NUM_FIELDS] = {0};
-static int written_fields[NUM_FIELDS] = {0};
+static int stencils_accessed[NUM_ALL_FIELDS][NUM_STENCILS] = {{0}};
+static int previous_accessed[NUM_ALL_FIELDS] = {0};
+static int written_fields[NUM_ALL_FIELDS] = {0};
 #include "analysis_stencils.h"
 void
 write_base (const Field& field, const AcReal& value)
@@ -294,35 +308,39 @@ main(int argc, char* argv[])
   FILE* fp_fields_read = fopen("user_read_fields.bin","wb");
   FILE* fp_written_fields = fopen("user_written_fields.bin", "wb");
   FILE* fp_field_has_stencil_op = fopen("user_field_has_stencil_op.bin","wb");
-  static int read_fields[NUM_FIELDS];
-  static int field_has_stencil_op[NUM_FIELDS];
+  static int read_fields[NUM_ALL_FIELDS];
+  static int field_has_stencil_op[NUM_ALL_FIELDS];
 
   fprintf(fp,
-          "static int stencils_accessed[NUM_KERNELS][NUM_FIELDS][NUM_STENCILS] "
+          "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS][NUM_STENCILS] "
           "= {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     memset(stencils_accessed, 0,
-           sizeof(stencils_accessed[0][0]) * NUM_FIELDS * NUM_STENCILS);
-    memset(read_fields,0, sizeof(read_fields[0]) * NUM_FIELDS);
-    memset(field_has_stencil_op,0, sizeof(field_has_stencil_op[0]) * NUM_FIELDS);
-    memset(written_fields, 0,
-           sizeof(written_fields[0]) * NUM_FIELDS);
-    execute_kernel(k);
-    for (size_t j = 0; j < NUM_FIELDS; ++j)
+           sizeof(stencils_accessed[0][0]) * NUM_ALL_FIELDS * NUM_STENCILS);
+    memset(read_fields,0, sizeof(read_fields[0]) * NUM_ALL_FIELDS);
+    memset(field_has_stencil_op,0, sizeof(field_has_stencil_op[0]) * NUM_ALL_FIELDS);
+    memset(written_fields, 0,    sizeof(written_fields[0]) * NUM_ALL_FIELDS);
+    memset(previous_accessed, 0, sizeof(previous_accessed[0]) * NUM_ALL_FIELDS);
+    if (!skip_kernel_in_analysis[k])
     {
-      for (size_t i = 0; i < NUM_STENCILS; ++i)
-      {
-        if (stencils_accessed[j][i])
-	{
-	  read_fields[j] = (i == 0);
-	  field_has_stencil_op[j] = (i != 0);
-          fprintf(fp, "[%lu][%lu][%lu] = 1,", k, j, i);
-	}
-      }
+    	execute_kernel(k);
+    	for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
+    	{
+    	  for (size_t i = 0; i < NUM_STENCILS; ++i)
+    	  {
+    	    if (stencils_accessed[j][i])
+    	    {
+    	      read_fields[j] |= (i == 0);
+    	      field_has_stencil_op[j] |= (i != 0);
+    	      fprintf(fp, "[%lu][%lu][%lu] = 1,", k, j, i);
+    	    }
+    	    read_fields[j] |= previous_accessed[j];
+    	  }
+    	}
     }
-    fwrite(read_fields,sizeof(int), NUM_FIELDS,fp_fields_read);
-    fwrite(field_has_stencil_op,sizeof(int), NUM_FIELDS,fp_field_has_stencil_op);
-    fwrite(written_fields,sizeof(int),NUM_FIELDS,fp_written_fields);
+    fwrite(read_fields,sizeof(int), NUM_ALL_FIELDS,fp_fields_read);
+    fwrite(field_has_stencil_op,sizeof(int), NUM_ALL_FIELDS,fp_field_has_stencil_op);
+    fwrite(written_fields,sizeof(int),NUM_ALL_FIELDS,fp_written_fields);
   }
 
 
@@ -332,16 +350,16 @@ main(int argc, char* argv[])
   fclose(fp_field_has_stencil_op);
 
   fprintf(fp,
-          "static int previous_accessed[NUM_KERNELS][NUM_FIELDS] "
+          "static int previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS] "
           "= {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     memset(previous_accessed, 0,
-           sizeof(previous_accessed[0]) * NUM_FIELDS);
+           sizeof(previous_accessed[0]) * NUM_ALL_FIELDS);
     VertexBufferArray vba = vbaCreate(1000);
     kernels[k]((int3){0, 0, 0}, (int3){1, 1, 1}, vba);
     vbaDestroy(&vba);
 
-    for (size_t j = 0; j < NUM_FIELDS; ++j)
+    for (size_t j = 0; j < NUM_ALL_FIELDS; ++j)
         if (previous_accessed[j])
           fprintf(fp, "[%lu][%lu] = 1,", k, j);
   }
@@ -349,6 +367,8 @@ main(int argc, char* argv[])
 
 
   fclose(fp);
+
+#include "gmem_arrays_output_accesses.h"
 
 
   return EXIT_SUCCESS;

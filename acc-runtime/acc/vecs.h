@@ -284,6 +284,8 @@ replace_substring(char** str, const char* sub, const char* replace)
 {
 	replacestr(*str,sub,replace);
 }
+//TP: if the user has enabled GNU_SOURCE then we already have vasprintf and asprintf
+#ifndef _GNU_SOURCE
 static int
 vasprintf(char **strp, const char *fmt, va_list ap)
 {
@@ -326,3 +328,4 @@ asprintf(char **strp, const char *fmt, ...)
 
     return error;
 }
+#endif

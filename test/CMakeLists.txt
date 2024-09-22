@@ -2,5 +2,6 @@ add_subdirectory(runtime_compilation_test)
 add_subdirectory(arr-test)
 add_subdirectory(2d-test)
 add_subdirectory(planetest)
-add_subdirectory(walker-test)
+#TP: walker-test is not include by default since it needs Python env
+#add_subdirectory(walker-test)
 add_subdirectory(bwtest)

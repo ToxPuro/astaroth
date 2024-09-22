@@ -34,8 +34,15 @@
  * This all happens in grid.cc:GridIntegrate
  */
 
+#ifndef AC_INSIDE_AC_LIBRARY 
+#define AC_INSIDE_AC_LIBRARY 
+#endif
+
 #include "task.h"
 #include "astaroth.h"
+
+AcKernel acGetOptimizedKernel(const AcKernel, const VertexBufferArray vba);
+
 #include "astaroth_utils.h"
 
 #include <cassert>
@@ -686,7 +693,7 @@ void
 ComputeTask::compute()
 {
     params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i, {}, {}});
-    acLaunchKernel(GetOptimizedKernel(params.kernel_enum,vba), params.stream, params.start, params.end, vba);
+    acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, params.start, params.end, vba);
 }
 
 bool
@@ -1458,7 +1465,6 @@ DSLBoundaryConditionTask::DSLBoundaryConditionTask(
 void
 DSLBoundaryConditionTask::populate_boundary_region()
 {
-     const Kernel* kernels = acGetKernels();
      for (auto variable : output_region.fields) {
      	params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable});
      	const int3 region_id = output_region.id;
@@ -1473,7 +1479,7 @@ DSLBoundaryConditionTask::populate_boundary_region()
 				 0};
 #endif
      	const int3 end = start + boundary_dims;
-     	acLaunchKernel(kernels[(int)params.kernel_enum], params.stream, start, end, vba);
+     	acLaunchKernel(acGetOptimizedKernel(params.kernel_enum,vba), params.stream, start, end, vba);
      }
 }
 

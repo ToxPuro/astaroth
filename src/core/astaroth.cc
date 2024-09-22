@@ -16,6 +16,9 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifndef AC_INSIDE_AC_LIBRARY 
+#define AC_INSIDE_AC_LIBRARY 
+#endif
 #include "astaroth.h"
 
 #include <string.h> // strcmp
@@ -384,26 +387,34 @@ acGetNode(void)
 }
 
 
+#if TWO_D == 0
 AcResult
 acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info)
 {
-#if TWO_D == 1
-	(void)nz;
-#endif
     info->int_params[AC_nxgrid] = nx;
     info->int_params[AC_nygrid] = ny;
-#if TWO_D == 0
     info->int_params[AC_nzgrid] = nz;
-#endif
     
     //needed to keep since before acGridInit the user can call this arbitary number of times
     info->int_params[AC_nx] = nx;
     info->int_params[AC_ny] = ny;
-#if TWO_D  == 0
     info->int_params[AC_nz] = nz;
-#endif
     return acHostUpdateBuiltinParams(info);
 }
+
+#else
+AcResult
+acSetMeshDims(const size_t nx, const size_t ny, AcMeshInfo* info)
+{
+    info->int_params[AC_nxgrid] = nx;
+    info->int_params[AC_nygrid] = ny;
+    
+    //needed to keep since before acGridInit the user can call this arbitary number of times
+    info->int_params[AC_nx] = nx;
+    info->int_params[AC_ny] = ny;
+    return acHostUpdateBuiltinParams(info);
+}
+#endif
 
 AcResult
 acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
@@ -494,16 +505,9 @@ acHostMeshDestroy(AcMesh* mesh)
 */
 
 size_t
-acGetKernelId(const Kernel kernel)
+acGetKernelId(const AcKernel kernel)
 {
-    const Kernel* kernels = acGetKernels();
-    for (size_t id = 0; id < NUM_KERNELS; ++id) {
-        if (kernel == kernels[id])
-            return id;
-    }
-    fprintf(stderr, "acGetKernelId failed: did not find kernel %p from the list of kernels\n",
-            kernel);
-    return (size_t)-1;
+	return (size_t) kernel;
 }
 
 size_t
@@ -517,3 +521,5 @@ acGetKernelIdByName(const char* name)
             name);
     return (size_t)-1;
 }
+
+#include "get_vtxbufs_funcs.h"

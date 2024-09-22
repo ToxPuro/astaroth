@@ -43,6 +43,9 @@
  * This file contains the grid interface, with algorithms and high level functionality
  * The nitty gritty of the MPI communication and the Task interface is defined in task.h/task.cc
  */
+#ifndef AC_INSIDE_AC_LIBRARY 
+#define AC_INSIDE_AC_LIBRARY 
+#endif
 
 #include "astaroth.h"
 #include "astaroth_utils.h"
@@ -1389,6 +1392,7 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
                "before running kernels.\n";
     }
 
+#if AC_VERBOSE
     if (error && NGHOST>0) {
         // ERROR(("\nIncorrect task graph " + task_graph_repr + ":\n" + msg).c_str())
         WARNING(("\nIncorrect task graph " + task_graph_repr + ":\n" + msg).c_str())
@@ -1396,6 +1400,10 @@ check_ops(const AcTaskDefinition ops[], const size_t n_ops)
     if (warning && NGHOST>0) {
         WARNING(("\nUnusual task graph " + task_graph_repr + ":\n" + msg).c_str())
     }
+#else
+    (void)error;
+    (void)warning;
+#endif
 }
 
 Region
@@ -1561,16 +1569,24 @@ testmydecomp(int3 nn, int decomp_level, std::vector<Field> fields_out)
 	bool passed = TestRegions(regions,target_volume);
 	if (!passed) exit(0);
 }
+#if TWO_D == 0
 static AcReal3 
 get_spacings()
 {
 	const AcMeshInfo info = grid.device -> local_config;
 	return (AcReal3){info.real_params[AC_dsx], info.real_params[AC_dsy], info.real_params[AC_dsz]};
 }
+#else
+static AcReal3 
+get_spacings()
+{
+	const AcMeshInfo info = grid.device -> local_config;
+	return (AcReal3){info.real_params[AC_dsx], info.real_params[AC_dsy], 0.0};
+}
+#endif
 AcTaskGraph*
 acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 {
-    const Kernel* kernels = acGetKernels();
     // ERRCHK(grid.initialized);
     int rank;
     MPI_Comm_rank(astaroth_comm, &rank);
@@ -1629,7 +1645,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     // The tasks start at different offsets from the beginning of the iteration
     // this array of bools keep track of that state
     std::array<bool, NUM_VTXBUF_HANDLES> swap_offset{false};
-    int num_comp_tasks = 0;
+    //int num_comp_tasks = 0;
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks: %lu ops\n", n_ops);
     for (size_t i = 0; i < n_ops; i++) {
         acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks for op %lu\n", i);
@@ -1681,7 +1697,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 	      auto task = std::make_shared<ComputeTask>(op,0,full_input_region,full_region,device,swap_offset);
               graph->all_tasks.push_back(task);
               //done here since we want to write only to out not to in what launching the taskgraph would do
-              acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, kernels[(int)op.kernel_enum], task->output_region.position, task->output_region.position + task->output_region.dims);
+              acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
 	    }
 	    else
 	    {
@@ -1692,14 +1708,14 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             	    auto task = std::make_shared<ComputeTask>(op, i, tag, grid_info.nn, device, swap_offset);
             	    graph->all_tasks.push_back(task);
             	    //done here since we want to write only to out not to in what launching the taskgraph would do
-            	    acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, kernels[(int)op.kernel_enum], task->output_region.position, task->output_region.position + task->output_region.dims);
+            	    acDeviceLaunchKernel(grid.device, STREAM_DEFAULT, op.kernel_enum, task->output_region.position, task->output_region.position + task->output_region.dims);
             	}
 	    }
             acVerboseLogFromRootProc(rank, "Compute tasks created\n");
             for (size_t buf = 0; buf < op.num_fields_out; buf++) {
                 swap_offset[op.fields_out[buf]] = !swap_offset[op.fields_out[buf]];
             }
-	    ++num_comp_tasks;
+	    //++num_comp_tasks;
             break;
         }
 
@@ -1914,7 +1930,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
     //make sure after autotuning that out is 0
     AcMeshDims dims = acGetMeshDims(acGridGetLocalMeshInfo());
-    acGridLaunchKernel(STREAM_DEFAULT, acGetKernelByName("AC_BUILTIN_RESET"), dims.n0,dims.n1);
+    acGridLaunchKernel(STREAM_DEFAULT, KERNEL_AC_BUILTIN_RESET, dims.n0,dims.n1);
     acGridSynchronizeStream(STREAM_ALL);
     return graph;
 }
@@ -1933,8 +1949,10 @@ AcTaskGraph*
 acGetDSLTaskGraph(const AcDSLTaskGraph graph)
 {
 	(void)graph;
+	{
 #include "user_loaders.h"
 #include "user_taskgraphs.h"
+	}
 	return NULL;
 }
 
@@ -2172,12 +2190,16 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     }
 
 #ifdef AC_INTEGRATION_ENABLED
+
     if ( rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS ) {
         // MV NOTE: This has to be calculated here separately, because does not
         //          know what GPU is doing. 
         const AcReal cell_volume   = grid.device->local_config.real_params[AC_dsx] *
-                                     grid.device->local_config.real_params[AC_dsy] *
-                                     grid.device->local_config.real_params[AC_dsz];
+                                     grid.device->local_config.real_params[AC_dsy]
+#if TWO_D == 0
+                                     * grid.device->local_config.real_params[AC_dsz]
+#endif
+				     ;
 
         const AcReal sphere_volume = (4.0/3.0) * M_PI *
                                      grid.device->local_config.real_params[AC_window_radius] * 
@@ -2203,7 +2225,7 @@ acGridReduceScal(const Stream stream, const ReductionType rtype,
     acGridSynchronizeStream(STREAM_ALL);
 
     AcReal local_result;
-    acDeviceReduceScalNotAveraged(device, stream, rtype, vtxbuf_handle, &local_result);
+    if (acDeviceReduceScalNotAveraged(device, stream, rtype, vtxbuf_handle, &local_result) == AC_NOT_ALLOCATED) return AC_NOT_ALLOCATED;
 
     return distributedScalarReduction(local_result, rtype, result);
 }
@@ -2217,7 +2239,7 @@ acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBuff
     acGridSynchronizeStream(STREAM_ALL);
 
     AcReal local_result;
-    acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, &local_result);
+    if (acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, &local_result) == AC_NOT_ALLOCATED) return AC_NOT_ALLOCATED;
 
     return distributedScalarReduction(local_result, rtype, result);
 }
@@ -2233,15 +2255,15 @@ acGridReduceVecScal(const Stream stream, const ReductionType rtype,
     acGridSynchronizeStream(STREAM_ALL);
 
     AcReal local_result;
-    acDeviceReduceVecScalNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
-                                     &local_result);
+    if (acDeviceReduceVecScalNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, vtxbuf3,
+                                     &local_result) == AC_NOT_ALLOCATED) return AC_NOT_ALLOCATED;
 
     return distributedScalarReduction(local_result, rtype, result);
 }
 
 /** */
 AcResult
-acGridLaunchKernel(const Stream stream, const Kernel kernel, const int3 start, const int3 end)
+acGridLaunchKernel(const Stream stream, const AcKernel kernel, const int3 start, const int3 end)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
@@ -2889,6 +2911,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
     for (int field = 0; field < NUM_FIELDS; ++field) {
 
+
         acDeviceSynchronizeStream(device, STREAM_ALL);
 
         const int3 slice_volume = (int3){
@@ -3295,6 +3318,8 @@ AcResult
 acGridAccessMeshOnDiskSynchronous(const VertexBufferHandle vtxbuf, const char* dir,
                                   const char* label, const AccessType type)
 {
+
+    if(!vtxbuf_is_alive[vtxbuf]) return AC_NOT_ALLOCATED;
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
@@ -3495,6 +3520,7 @@ AcResult
 acGridAccessMeshOnDiskSynchronousDistributed(const VertexBufferHandle vtxbuf, const char* dir,
                                              const char* label, const AccessType type)
 {
+    if(!vtxbuf_is_alive[vtxbuf]) return AC_NOT_ALLOCATED;
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
@@ -3599,6 +3625,7 @@ AcResult
 acGridAccessMeshOnDiskSynchronousCollective(const VertexBufferHandle vtxbuf, const char* dir,
                                             const char* label, const AccessType type)
 {
+    if(!vtxbuf_is_alive[vtxbuf]) return AC_NOT_ALLOCATED;
 #define BUFFER_DISK_WRITE_THROUGH_CPU (1)
 
     ERRCHK(grid.initialized);
@@ -3775,6 +3802,7 @@ acGridReadVarfileToMesh(const char* file, const Field fields[], const size_t num
     ERRCHK_ALWAYS(retval == MPI_SUCCESS);
 
     for (size_t i = 0; i < num_fields; ++i) {
+    	if(!vtxbuf_is_alive[i]) continue;
         const Field field = fields[i];
 
         // Load from file to host memory

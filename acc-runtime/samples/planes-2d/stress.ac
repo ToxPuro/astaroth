@@ -1,0 +1,232 @@
+#include "../../stdlib/math"
+#
+const int Lengthscale = 162*2
+const real SimTime=3*25.0
+const int npoints =42*2
+const int npointsx_grid = npoints
+const int npointsy_grid = npoints
+const real dsx = Lengthscale/npointsx_grid
+const real dsy = Lengthscale/npointsy_grid
+
+
+const int nsteps=1000;
+const real eldt=2*pow(10.0,-12.0);
+
+//Density
+const real ro=7800.0;
+const real ro1 = 1.0/ro
+//Elastic constant
+const real Eg=200.0 * 1000000000.0;
+//Another elastic constant (Poisson ratio)
+const real vg=1.0/3.0;
+const real cg_diagonal = (1-vg);
+const real cg_off_diagonal= vg;
+const real cg_non_main= 0.5*(1-2*vg);
+const real matrix_coeff = Eg/((1+vg)*(1-2*vg));
+const Matrix cg11 =
+matrix_coeff*{
+	{1-vg, 0.0, 0.0},
+	{0.0,vg, 0.0},
+	{0.0, 0.0,vg}
+};
+
+const Matrix cg22 =
+matrix_coeff*{
+	{vg, 0.0, 0.0},
+	{0.0,1-vg, 0.0},
+	{0.0, 0.0, vg}
+};
+const Matrix cg33 =
+matrix_coeff*{
+	{vg, 0.0, 0.0},
+	{0.0,vg, 0.0},
+	{0.0, 0.0, 1-vg}
+};
+
+const Matrix cg12 =
+matrix_coeff*{
+	{0.0, 0.5*(1-2*vg), 0.0},
+	{0.0, 0.0, 0.0},
+	{0.0, 0.0, 0.0}
+};
+const Matrix cg21 =
+matrix_coeff*{
+	{0.0, 0.0, 0.0},
+	{0.5*(1-2*vg), 0.0, 0.0},
+	{0.0, 0.0, 0.0}
+};
+const Matrix cg13 =
+matrix_coeff*{
+	{0.0, 0.0, 0.5*(1-2*vg)},
+	{0.0, 0.0, 0.0},
+	{0.0, 0.0, 0.0}
+};
+const Matrix cg31 =
+matrix_coeff*{
+	{0.0, 0.0, 0.0},
+	{0.0, 0.0, 0.0},
+	{0.5*(1-2*vg), 0.0, 0.0}
+};
+
+const Matrix cg23 =
+matrix_coeff*{
+	{0.0, 0.0, 0.0},
+	{0.0, 0.0, 0.5*(1-2*vg)},
+	{0.0, 0.0, 0.0}
+};
+const Matrix cg32 =
+matrix_coeff*{
+	{0.0, 0.0, 0.0},
+	{0.0, 0.0, 0.0},
+	{0.0, 0.5*(1-2*vg), 0.0}
+};
+
+Field PHI
+Field ORIGINAL_COORDS_X, ORIGINAL_COORDS_Y
+Field UX, UY
+Field STRESS11, STRESS12, STRESS21, STRESS22
+Field VELOCITY_X, VELOCITY_Y
+Field ACCELERATION_X, ACCELERATION_Y 
+hostdefine STENCIL_ORDER (2)
+real AC_current_time
+real AC_dt
+int AC_step_num
+
+
+Stencil smooth
+{
+	[0][1] = 0.20,
+	[0][-1] = 0.20,
+	[0][0] = 0.20,
+	[1][0] = 0.20,
+	[-1][0] = 0.20
+}
+
+
+const Matrix TrStr =
+{
+        {0.01, 0.00, 0.00},
+        {0.00, 0.01, 0.00},
+        {0.00, 0.00, 0.01}
+}
+
+GetCoordsBase(i,j)
+{
+	x  = (AC_dsx*(i-((AC_nxgrid+1)/2.0)))
+	y  = (AC_dsy*(j-((AC_nygrid+1)/2.0)))
+        return (real2){x,y};
+}
+GetCoords(i,j)
+{
+	return GetCoordsBase(i,j)
+}
+
+
+Field U
+Field SOLUTION
+Kernel initial_condition()
+{
+	real2 coords = GetCoords(globalVertexIdx.x+1-NGHOST_VAL,globalVertexIdx.y+1-NGHOST_VAL)
+	write(COORDS_X,coords.x)
+	write(COORDS_Y,coords.y)
+
+	write(ORIGINAL_COORDS_X,coords.x)
+	write(ORIGINAL_COORDS_Y,coords.y)
+
+	x_center, y_center = GetCoords(AC_nxgrid/2, AC_nygrid/2);
+	distance_to_center = sqrt(pow(coords.x-x_center,2.0) + pow(coords.y-y_center,2.0))
+	const real initial_phi_size = 0.5*pow(10.0,-7.0)
+	const real transitlength = 5*AC_dsx*pow(10.0,-8.0)
+	const real magic_coeff = 0.51*AC_dsx*pow(10.0,-8)
+	if(distance_to_center < initial_phi_size + transitlength + magic_coeff)
+	{
+		if(distance_to_center < initial_phi_size + magic_coeff)
+			write(PHI,1.0)
+		else
+		{
+			phi_val = 0.5*(1 + cos(distance_to_center- initial_phi_size*AC_REAL_PI/transitlength))
+			if(phi_val < pow(10.0,-308)) phi_val = 0.0
+			write(PHI,phi_val)
+		}
+	}
+
+	write(VELOCITY_X,0.0)
+	write(VELOCITY_Y,0.0)
+}
+
+Kernel twopass_solve_intermediate(int step_num, real dt) {
+}
+Kernel twopass_solve_final(int step_num, real current_time) {
+}
+
+Kernel calc_displacement()
+{
+	write(UX, COORDS_X - ORIGINAL_COORDS_X)
+	write(UY, COORDS_Y - ORIGINAL_COORDS_Y)
+}
+
+Kernel calculate_stresses()
+{
+	simple_shear_x = get_first_order_derivatives(ORIGINAL_COORDS_X,ORIGINAL_COORDS_Y, UX)
+	simple_shear_y = get_first_order_derivatives(ORIGINAL_COORDS_X,ORIGINAL_COORDS_Y, UY)
+
+	//TP: calc strains
+	real strainxx = simple_shear_x.x-PHI*TrStr[0][0]
+	real strainxy = 0.5*(simple_shear_x.y+simple_shear_y.x)-PHI*TrStr[0][1]
+	real strainyx = 0.5*(simple_shear_y.x+simple_shear_x.y)-PHI*TrStr[1][0]
+	real strainyy = simple_shear_y.y-PHI*TrStr[1][1]
+
+	//TP: from strains get stresses
+	stress11 = cg11[0][0]*strainxx+cg11[1][1]*strainyy
+	stress12 = cg12[0][1]*strainxy
+	stress21 = cg21[1][0]*strainyx
+	stress22 = cg22[1][1]*strainyy + cg22[0][0]*strainxx
+
+	write(STRESS11,stress11)
+	write(STRESS12,stress12)
+	write(STRESS21,stress21)
+	write(STRESS22,stress22)
+}
+
+Kernel calculate_acceleration()
+{	
+	dxstressxx, dystressxx = get_first_order_derivatives(COORDS_X, COORDS_Y, STRESS11)
+	dxstressxy, dystressxy = get_first_order_derivatives(COORDS_X, COORDS_Y, STRESS12)
+	dxstressyx, dystressyx = get_first_order_derivatives(COORDS_X, COORDS_Y, STRESS21)
+	dxstressyy, dystressyy = get_first_order_derivatives(COORDS_X, COORDS_Y, STRESS22)
+	
+	const real damping_coeff = pow(10.0,15.0)
+	ax = (dxstressxx + dystressxy)/ro - VELOCITY_X*damping_coeff/ro
+	ay = (dxstressyx + dystressyy)/ro - VELOCITY_Y*damping_coeff/ro
+	write(VELOCITY_X, VELOCITY_X + ax*eldt);
+	write(VELOCITY_Y, VELOCITY_Y + ay*eldt);
+	write(ACCELERATION_X,ax);
+	write(ACCELERATION_Y,ay);
+}
+Kernel smooth_velocities_and_update_coordinates()
+{
+	smoothed_vel_x  = smooth(VELOCITY_X)
+	smoothed_vel_y  = smooth(VELOCITY_Y)
+	
+	write(COORDS_X, COORDS_X + eldt*smoothed_vel_x + 0.5*eldt*eldt*ACCELERATION_X)
+	write(COORDS_Y, COORDS_Y + eldt*smoothed_vel_y + 0.5*eldt*eldt*ACCELERATION_Y)
+
+	write(VELOCITY_X, smoothed_vel_x)
+	write(VELOCITY_Y, smoothed_vel_y)
+}
+BoundConds bcs
+{
+	periodic(BOUNDARY_XY)
+}
+ComputeSteps AC_initialize(bcs)
+{
+	initial_condition()
+}
+
+ComputeSteps AC_update(bcs)
+{
+	calc_displacement()
+	calculate_stresses()
+	calculate_acceleration()
+	smooth_velocities_and_update_coordinates()
+}

@@ -11,6 +11,7 @@
 #include "tinyexpr.h"
 #include <dirent.h>
 #include <math.h>
+#include <limits.h>
 
 #define YYSTYPE ASTNode*
 
@@ -69,12 +70,14 @@ astnode_hostdefine(const char* buffer, const int token)
 }
 
 
+static void process_global_assignment(ASTNode* node, ASTNode* variable_definition, ASTNode* assignment, ASTNode* declaration_list);
+static void process_global_array_declaration(ASTNode* variable_definition, ASTNode* declaration_list, const ASTNode* type_specifier);
 void set_identifier_type(const NodeType type, ASTNode* curr);
 void set_identifier_prefix(const char* prefix, ASTNode* curr);
 void set_identifier_infix(const char* infix, ASTNode* curr);
-ASTNode* get_node(const NodeType type, ASTNode* node);
 ASTNode* get_node_by_token(const int token, const ASTNode* node);
-static inline int eval_int(ASTNode* node);
+static inline int eval_int(ASTNode* node, const bool failure_fatal, int* error_code);
+static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names);
 static ASTNode* create_type_declaration(const char* tqual, const char* tspec, const int token);
 static ASTNode* create_type_qualifiers(const char* tqual,int token);
 static ASTNode* create_type_qualifier(const char* tqual, const int token);
@@ -198,7 +201,7 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
   char* file_buf = NULL;
   FILE* in = get_preprocessed_file(file,file_buf);
   if (!in) {
-    fprintf(out,"AC_FATAL_ERROR: could not open include file '%s'\n",file);
+    fprintf(out,"AC_FATAL_ERROR: could not open include file %s\n",file);
     return;
   }
 
@@ -209,7 +212,16 @@ process_includes(const size_t depth, const char* dir, const char* file, FILE* ou
     if (!strncmp(line, AC_INCLUDE, strlen(AC_INCLUDE))) {
 
       char incl[len];
+      incl[0] = '\0';
       sscanf(line, AC_INCLUDE" \"%[^\"]\"\n", incl);
+      //Also take into account the <> syntax
+      if(incl[0] == '\0')
+      	sscanf(line, AC_INCLUDE" <%[^\">]\n", incl);
+      if(incl[0] == '\0')
+      {
+	fprintf(stderr,FATAL_ERROR_MESSAGE"empty_include\n");
+	exit(EXIT_FAILURE);
+      }
 
       char path[len];
       sprintf(path, "%s/%s", dir, incl);
@@ -238,12 +250,6 @@ check_file(const FILE* fp, const char* filename)
 	    exit(EXIT_FAILURE);
 	}
 }
-bool
-file_exists(const char* filename)
-{
-  struct stat   buffer;
-  return (stat (filename, &buffer) == 0);
-}
 void
 make_dir(const char* dirname)
 {
@@ -270,12 +276,11 @@ make_dir(const char* dirname)
 void
 reset_diff_files()
 {
-		const char* files[] = {};
-          	//for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
-          	//  FILE* fp = fopen(files[i], "w");
-	  	//  check_file(fp,files[i]);
-          	//  fclose(fp);
-          	//}
+		const char* files[] = {"memcpy_from_gmem_arrays.h","memcpy_to_gmem_arrays.h","gmem_arrays_decl.h","array_info.h","taskgraph_enums.h"};
+          	for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
+          	  FILE* fp = fopen(files[i], "w");
+          	  fclose(fp);
+          	}
 }
 void
 reset_extra_files()
@@ -293,23 +298,24 @@ reset_all_files()
 {
           const char* files[] = {"kernel_reduce_outputs.h","user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
 		 "device_mesh_info_decl.h",  "array_decl.h", "comp_decl.h","output_decl.h","input_decl.h","comp_loaded_decl.h", "input_decl.h","get_device_array.h","get_config_arrays.h","get_config_param.h",
-		 "get_arrays.h","dconst_decl.h","rconst_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h","memcpy_to_gmem_arrays.h","memcpy_from_gmem_arrays.h",
-		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
+		 "get_arrays.h","dconst_decl.h","rconst_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h",
+		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","gmem_arrays_accessed_decl.h","gmem_arrays_output_accesses.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",
 		 "load_and_store_uniform_overloads.h","load_and_store_uniform_funcs.h","load_and_store_uniform_header.h","get_array_info.h","get_from_comp_config.h","get_param_name.h","to_str_funcs.h","get_default_value.h",
-		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_loaders.h", "user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
+		 "user_kernel_ifs.h", "user_dfuncs.h","user_kernels.h.raw","user_taskgraphs.h","user_loaders.h","user_read_fields.bin","user_written_fields.bin","user_field_has_stencil_op.bin",
 		  "fields_info.h","is_comptime_param.h","push_to_config.h","load_comp_info.h","load_comp_info_overloads.h","device_set_input_decls.h","device_set_input.h","device_set_input_loads.h","device_set_input_overloads.h",
 		  "device_get_output_decls.h","device_get_input_decls.h","device_get_output.h","device_get_input.h","device_get_output_overloads.h","device_get_input_overloads.h","device_get_input_loads.h","device_get_output_loads.h",
-		  };
+		  "get_vtxbufs_funcs.h","get_vtxbufs_declares.h","get_vtxbufs_loads.h","get_empty_pointer.h"};
           for (size_t i = 0; i < sizeof(files)/sizeof(files[0]); ++i) {
-	    if(!file_exists(files[i])) continue;
+	    //if(!file_exists(files[i])) continue;
             FILE* fp = fopen(files[i], "w");
 	    check_file(fp,files[i]);
             fclose(fp);
           }
+	reset_diff_files();
 }
 
 
-int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* stage3, const char* stage4, const char* dir, const bool gen_mem_accesses, const bool optimize_conditionals, const bool gen_extra_dfuncs, bool gen_bc_kernels)
+int code_generation_pass(const char* stage0, const char* stage1, const char* stage2, const char* dir, const bool gen_mem_accesses, const bool optimize_conditionals, const bool gen_extra_dfuncs, bool gen_bc_kernels)
 {
 	init_str_vec(&const_ints);
 	init_str_vec(&const_int_values);
@@ -404,6 +410,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
      		generate_mem_accesses(); // Uncomment to enable stencil mem access checking
         	system("cp user_kernels.h user_cpu_kernels.h");
 	}
+	reset_diff_files();
         FILE* fp = fopen("user_kernels.h.raw", "w");
         assert(fp);
         generate(new_root, fp, gen_mem_accesses, optimize_conditionals);
@@ -458,9 +465,9 @@ main(int argc, char** argv)
     dir_backup = dir;
     
     reset_extra_files();
-    code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, false, false, true,false); 
-    code_generation_pass(stage0, stage1, stage2, stage3, stage4, dir, false, false, false,true); 
-    code_generation_pass(stage0, stage1, stage2, stage3, stage4,  dir, false, OPTIMIZE_CONDITIONALS, false,false);
+    code_generation_pass(stage0, stage1, stage2,  dir, false, false, true,false); 
+    code_generation_pass(stage0, stage1, stage2,  dir, false, false, false,true); 
+    code_generation_pass(stage0, stage1, stage2,  dir, false, OPTIMIZE_CONDITIONALS, false,false);
     
 
     return EXIT_SUCCESS;
@@ -470,13 +477,14 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
-%token INT UINT REAL MATRIX FIELD FIELD3 STENCIL WORK_BUFFER BOOL INTRINSIC 
-%token KERNEL INLINE ELEMENTAL BOUNDARY_CONDITION SUM MAX COMMUNICATED AUXILIARY DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT
+%token INT UINT REAL MATRIX FIELD FIELD3 STENCIL WORK_BUFFER BOOL INTRINSIC LONG_LONG LONG
+%token KERNEL INLINE ELEMENTAL BOUNDARY_CONDITION UTILITY SUM MAX COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE 
 %token STATEMENT_LIST_HEAD STATEMENT
 %token REAL3 INT3
 %token RANGE
+%token CONST_DIMS
 
 %nonassoc QUESTION
 %nonassoc ':'
@@ -497,7 +505,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             ASTNode* variable_definition = $$->rhs;
             assert(variable_definition);
 
-            ASTNode* declaration = get_node(NODE_DECLARATION, variable_definition);
+            ASTNode* declaration = (ASTNode*)get_node(NODE_DECLARATION, variable_definition);
             assert(declaration);
 
             ASTNode* declaration_list = declaration->rhs;
@@ -507,8 +515,8 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 	    ASTNode* declaration_list_head = declaration_list;
 	    const bool are_arrays = (get_node(NODE_ARRAY_ACCESS,declaration) != NULL) ||
 				    (get_node(NODE_ARRAY_INITIALIZER,declaration) != NULL);
-	    ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
-            ASTNode* assignment = get_node(NODE_ASSIGNMENT, variable_definition);
+	    const ASTNode* type_specifier= get_node(NODE_TSPEC, declaration);
+            ASTNode* assignment = (ASTNode*)get_node(NODE_ASSIGNMENT, variable_definition);
 	
             //if (assignment) {
 	    //    
@@ -520,66 +528,45 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
 		if(are_arrays)
 		{
-			const int num_fields = eval_int(declaration_list_head->lhs->rhs);
-			ASTNode* copy = astnode_dup(declaration_list_head->lhs,declaration_list_head);
-			char* index = malloc(100*sizeof(char));
+			const int num_fields = eval_int(declaration_list_head->lhs->rhs,true,NULL);
 			ASTNode* field_name = declaration_list_head->lhs->lhs->lhs;
                         const char* field_name_str = strdup(field_name->buffer);
-			sprintf(index,"_%d",num_fields-1);
-			strcat(field_name->buffer,index);
-			char* array_val     = malloc(4098*sizeof(char));
-			char* array_val_tmp = malloc(4098*sizeof(char));
-			sprintf(array_val,"%s",field_name->buffer);
-			for(int i=num_fields-2; i>=0;--i)
+			node_vec nodes = VEC_INITIALIZER;
+			for(int i=0; i<num_fields;++i)
 			{
-				ASTNode* new_head = astnode_create(NODE_UNKNOWN,NULL,NULL);
-				new_head->lhs  = astnode_dup(copy,new_head);
-				new_head->parent=declaration_list_head;
-				declaration_list_head ->rhs = declaration_list_head->lhs;
-				declaration_list_head ->lhs=new_head;
-				declaration_list_head  = new_head;
-				ASTNode* field_name_inner = declaration_list_head->lhs->lhs->lhs;
-				sprintf(index,"_%d",i);
-				strcat(field_name_inner->buffer,index);
-				sprintf(array_val_tmp,"%s,%s",field_name_inner->buffer,array_val);
-				//swap
-				char* swap_tmp;
-				swap_tmp = array_val;
-				array_val = array_val_tmp;
-				array_val_tmp = swap_tmp;
-				
+
+				ASTNode* identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
+				identifier->token = IDENTIFIER;
+				asprintf(&identifier->buffer,"%s_%d",field_name_str,i);
+				ASTNode* primary_expression = astnode_create(NODE_PRIMARY_EXPRESSION,identifier,NULL);
+				ASTNode* node = astnode_create(NODE_UNKNOWN,primary_expression,NULL);
+				set_identifier_type(NODE_VARIABLE_ID,node);
+				push_node(&nodes,node);
 			}
-			ASTNode* tmp = $$;
 
-			ASTNode* type_declaration = create_type_declaration("const","VertexBufferHandle*",CONST_QL);
-
-			ASTNode* var_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
-			var_identifier->buffer = malloc(sizeof(char)*4098);
-			snprintf(var_identifier->buffer,4098,"%s",field_name_str);
-			var_identifier->token = IDENTIFIER;
-			var_identifier->type = NODE_VARIABLE_ID;
-			
-
-			ASTNode* expression_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
-			expression_identifier->buffer = strdup(array_val);
-			expression_identifier->token = IDENTIFIER;
-			ASTNode* expression = astnode_create(NODE_UNKNOWN,expression_identifier,NULL);
-			ASTNode* assign_expression = astnode_create(NODE_UNKNOWN,expression,NULL);
-
-			ASTNode* assign_leaf = astnode_create(NODE_ASSIGNMENT, var_identifier,assign_expression);
-
-			ASTNode* assignment_list = astnode_create(NODE_UNKNOWN, assign_leaf,NULL);
-
-			ASTNode* var_definitions = astnode_create(NODE_ASSIGN_LIST,type_declaration,assignment_list);
-			var_definitions -> type |= NODE_NO_OUT;
-			var_definitions -> type |= NODE_DECLARATION;
-			var_definitions->postfix = strdup(";");
-
-			$$ = astnode_create(NODE_UNKNOWN,tmp,var_definitions);
-			tmp = $$;
-			free(index);
-			free(array_val);
-			free(array_val_tmp);
+			ASTNode* elems = build_list_node(nodes,",");
+			free_node_vec(&nodes);
+			//TP: create the equivalent of const Field CHEMISTRY = [CHEMISTRY_0, CHEMISTRY_1,...,CHEMISTRY_N]
+				ASTNode* type_declaration = create_type_declaration("const","VertexBufferHandle*",CONST_QL);
+				ASTNode* var_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
+				var_identifier->buffer = malloc(sizeof(char)*4098);
+				snprintf(var_identifier->buffer,4098,"%s",field_name_str);
+				var_identifier->token = IDENTIFIER;
+				var_identifier->type = NODE_VARIABLE_ID;
+				ASTNode* arr_initializer = astnode_create(NODE_ARRAY_INITIALIZER,elems,NULL);
+				arr_initializer->prefix  = strdup("{");
+				arr_initializer->postfix = strdup("}");
+				ASTNode* expression = astnode_create(NODE_UNKNOWN,arr_initializer,NULL);
+				ASTNode* assign_expression = astnode_create(NODE_UNKNOWN,expression,NULL);
+				ASTNode* assign_leaf = astnode_create(NODE_ASSIGNMENT, var_identifier,assign_expression);
+				ASTNode* assignment_list = astnode_create(NODE_UNKNOWN, assign_leaf,NULL);
+				ASTNode* var_definitions = astnode_create(NODE_ASSIGN_LIST,type_declaration,assignment_list);
+				var_definitions -> type |= NODE_NO_OUT;
+				var_definitions -> type |= NODE_DECLARATION;
+				var_definitions->postfix = strdup(";");
+			//TP: replace the orignal field identifier e.g. CHEMISTRY with the list of declarations CHEMISTRY_0 ... CHEMISTRY_N
+			declaration->rhs = astnode_dup(elems,NULL);
+			$$ = astnode_create(NODE_UNKNOWN,$$,var_definitions);
 		}
             } 
             else if(get_node_by_token(WORK_BUFFER, variable_definition)) {
@@ -587,69 +574,9 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             }
 	    else if(are_arrays)
-	    {
-                variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-		//make it an array type i.e. pointer
-		strcat(type_specifier->lhs->buffer,"*");
-
-		//if dconst or runtime array evaluate the dimension to a single integer to make further transformations easier
-		const ASTNode* tqual = get_node(NODE_TQUAL,variable_definition);
-		if(!tqual || has_qualifier(variable_definition,"dconst") || has_qualifier(variable_definition,"run_const"))
-		{
-			
-			char* tmp = malloc(1000*sizeof(char));
-			const ASTNode* base = variable_definition->lhs->rhs->lhs;
-			while(base->rhs)
-			{
-			  ASTNode* array_len_node = base->rhs;
-			  const int array_len = eval_int(array_len_node);
-			  set_buffers_empty(array_len_node);
-			  array_len_node -> buffer = itoa(array_len);
-			  base = base->lhs;
-			}
-			free(tmp);
-		}
-				
-	    }
-	    //assume is a dconst var
+		process_global_array_declaration(variable_definition,declaration_list, type_specifier);
 	    else if (assignment)
-	    {
-		if(!has_qualifier($$->rhs,"const"))
-		{
-                  fprintf(stderr, FATAL_ERROR_MESSAGE"assignment to a global variable only allowed for constant values\n");
-		  char tmp[10000];
-		  combine_all(assignment,tmp);
-		  fprintf(stderr,"Incorrect assignment: %s\n",tmp);
-                  assert(!has_qualifier($$->rhs,"const"));
-		  exit(EXIT_FAILURE);
-		}
-                variable_definition->type |= NODE_VARIABLE;
-                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
-		const char* spec = get_node(NODE_TSPEC,$$->rhs)->lhs->buffer;
-		if(!strcmp(spec,"int"))
-		{	
-
-			char* assignment_val = malloc(4098*sizeof(char));
-			ASTNode* def_list_head = get_node(NODE_ASSIGN_LIST,$$->rhs)->rhs;
-			while(def_list_head->rhs)
-			{
-				ASTNode* def = def_list_head->rhs;
-				char* name  = get_node_by_token(IDENTIFIER, def)->buffer;
-				int val = eval_int(def->rhs);
-				push(&const_ints,name);
-				push(&const_int_values,itoa(val));
-				def_list_head = def_list_head->lhs;
-			}
-			ASTNode* def = def_list_head->lhs;
-			char* name  = get_node_by_token(IDENTIFIER, def)->buffer;
-			int val = eval_int(def->rhs);
-			push(&const_ints,name);
-			push(&const_int_values,itoa(val));
-			free(assignment_val);
-		}
-	
-	    }
+		process_global_assignment($$,assignment,variable_definition,declaration_list);
 
 	    else if(has_qualifier($$->rhs,"run_const") || has_qualifier($$->rhs,"output"))
 	    {
@@ -678,7 +605,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
  */
 struct_name : STRUCT_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; $$->token = IDENTIFIER;};
 enum_name: ENUM_NAME { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
-identifier: IDENTIFIER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
+identifier: IDENTIFIER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken;};
 number: NUMBER         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
       | REALNUMBER     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_prefix("AcReal(", $$); astnode_set_postfix(")", $$); }
       | DOUBLENUMBER   {
@@ -710,6 +637,8 @@ input:  INPUT          { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 global_ql: GLOBAL_MEMORY_QL{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 auxiliary: AUXILIARY   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 int: INT               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+long_long: LONG_LONG   { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+long     : LONG        { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 real: REAL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 bool: BOOL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("bool", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -727,6 +656,7 @@ intrinsic: INTRINSIC{ $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set
 inline: INLINE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("inline", $$); $$->token = 255 + yytoken; };
 elemental: ELEMENTAL { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("elemental", $$); $$->token = 255 + yytoken; };
 boundary_condition: BOUNDARY_CONDITION { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("boundary_condition", $$); $$->token = 255 + yytoken;};
+utility: UTILITY { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("", $$); $$->token = 255 + yytoken;};
 sum: SUM               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("sum", $$); $$->token = 255 + yytoken; };
 max: MAX               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("max", $$); $$->token = 255 + yytoken; };
 struct_type: STRUCT_TYPE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
@@ -776,8 +706,10 @@ enum_definition: enum_name '{' expression_list '}'{
  * =============================================================================
 */
 scalar_type_specifier: 
-		int            { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+		int          { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | uint         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | long         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | long_long    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | real         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | bool         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
 
@@ -785,23 +717,12 @@ type_specifier:
 	        scalar_type_specifier {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
 	      | scalar_type_specifier '[' ']' {
 				$$ = astnode_create(NODE_UNKNOWN,$1,NULL); 
-				const char* old_tspec = $1->lhs->buffer;
-				char tmp[strlen(old_tspec) + 1];
-				sprintf(tmp,"%s*",old_tspec);
-				free($1->lhs->buffer);
-				$1->lhs->buffer = strdup(tmp);
+				asprintf(&$1->lhs->buffer,"%s*",$1->lhs->buffer);
 			}
               | matrix       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | matrix '[' expression ']'
 		{ 
- 		   char* express_str = malloc(sizeof(char)*4098);
-		   combine_all($3, express_str);
-		   $$ = astnode_create(NODE_TSPEC, $1, NULL); 
-		   char* tmp = malloc(sizeof(char)*(strlen($1->buffer)+ strlen(express_str) + 100));  
-		   sprintf(tmp,"AcMatrixN<%s>",express_str);
-		   astnode_set_buffer(tmp,$1);
-		   free(tmp);
-		   free(express_str);
+		   asprintf(&$1->buffer,"AcMatrixN<%s>",combine_all_new($3));
   		}
               | field        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | field3       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
@@ -833,6 +754,7 @@ type_qualifier: sum          { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | inline       { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | elemental    { $$ = astnode_create(NODE_TQUAL, $1, NULL); }
               | boundary_condition     { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
+              | utility                { $$ = astnode_create(NODE_TQUAL, $1, NULL);}
               ;
 
 type_qualifiers: type_qualifiers type_qualifier {$$ = astnode_create(NODE_UNKNOWN,$1,$2); }
@@ -891,14 +813,14 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
                   | base_identifier '.' identifier          { $$ = astnode_create(NODE_STRUCT_EXPRESSION, $1, $3); astnode_set_infix(".", $$); set_identifier_type(NODE_MEMBER_ID, $$->rhs); }
                   | postfix_expression '(' ')'                 { $$ = astnode_create(NODE_FUNCTION_CALL, $1, NULL); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }
                   | postfix_expression '(' expression_list ')' { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); } 
-                  | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_UNKNOWN, $1, $3); char tmp[10000]; combine_all($$->lhs,tmp);  $$->expr_type = strdup(tmp); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); $$->lhs->type ^= NODE_TSPEC; /* Unset NODE_TSPEC flag, casts are handled as functions */ }
-                  | '(' type_specifier ')'  struct_initializer { 
+                  | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_UNKNOWN, $1, $3);   $$->expr_type = strdup(combine_all_new($$->lhs)); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); $$->lhs->type ^= NODE_TSPEC; /* Unset NODE_TSPEC flag, casts are handled as functions */ }
+                  | '(' type_specifier ')' struct_initializer { 
 						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
-						astnode_set_postfix(")",$$); 
-						char tmp[1000]; 
-						combine_all($$->lhs,tmp); 
-						astnode_set_buffer(strdup(tmp),$$); 
-						//$$->rhs->expr_type = strdup(tmp);
+						astnode_set_infix(")",$$); 
+						}
+                  | '(' type_specifier ')' primary_expression { 
+						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
+						astnode_set_infix(")",$$); 
 						}
                   | '[' expression_list ']' { $$ = astnode_create(NODE_ARRAY_INITIALIZER, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
 		  | struct_initializer {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
@@ -958,7 +880,10 @@ intrinsic_definition:
 				}
 		    }
 		     ;
-variable_definitions: non_null_declaration { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
+variable_definitions: non_null_declaration { 
+		    		$$ = astnode_create(NODE_UNKNOWN, $1, NULL); 
+				astnode_set_postfix(";", $$); 
+			}
                    |  type_declaration assignment_list  
 				{ 
 				  if(!get_node(NODE_TSPEC,$1))
@@ -969,10 +894,10 @@ variable_definitions: non_null_declaration { $$ = astnode_create(NODE_UNKNOWN, $
 				  }
 				  $$ = astnode_create(NODE_ASSIGN_LIST, $1, $2); $$->type |= NODE_DECLARATION; astnode_set_postfix(";", $$); 
 				  //if list assignment make the type a pointer type
-				  ASTNode* assignment = get_node(NODE_ASSIGNMENT, $2);
+				  const ASTNode* assignment = get_node(NODE_ASSIGNMENT, $2);
 				  if(get_node(NODE_ARRAY_INITIALIZER,assignment->rhs))
 				  {
-					ASTNode* tspec = get_node(NODE_TSPEC,$1);
+					ASTNode* tspec = (ASTNode*) get_node(NODE_TSPEC,$1);
 					strcat(tspec->lhs->buffer,"*");
 				  }
 				  if(!$$->lhs->rhs)
@@ -1008,7 +933,7 @@ non_null_declaration: type_declaration declaration_list {
 					exit(EXIT_FAILURE);
 				}
 
-		    		$$ = astnode_create(NODE_DECLARATION, $1, $2); 
+		    		$$ = astnode_create(NODE_DECLARATION | NODE_GLOBAL, $1, $2); 
 				if(!$$->lhs->rhs)
 				{
 				    const char* tspec = get_node(NODE_TSPEC,$$->lhs)->lhs->buffer;
@@ -1051,7 +976,7 @@ assignment: declaration assignment_body {
 			//If the std::array implementation was better on HIP could also not require type specifier since it could be inferred
 			if($2->prefix && !strcmp($2->prefix,"[]"))
 			{
-				ASTNode* tspec = get_node(NODE_TSPEC,$1);
+				ASTNode* tspec = (ASTNode*)get_node(NODE_TSPEC,$1);
 				if(tspec)
 				{
 					astnode_set_prefix("",$2);
@@ -1064,7 +989,7 @@ assignment: declaration assignment_body {
 			}
 			if(get_node(NODE_ARRAY_INITIALIZER,$2))
 			{
-				ASTNode* tspec = get_node(NODE_TSPEC,$1);
+				ASTNode* tspec = (ASTNode*)get_node(NODE_TSPEC,$1);
 				if(tspec)
 				{
 					const size_t old_size = strlen(tspec->lhs->buffer);
@@ -1371,23 +1296,8 @@ set_identifier_infix(const char* infix, ASTNode* curr)
       set_identifier_infix(infix, curr->lhs);
 }
 
-ASTNode*
-get_node(const NodeType type, ASTNode* node)
-{
-  assert(node);
 
-  if (node->type & type)
-    return node;
-  else if (node->lhs && get_node(type, node->lhs))
-    return get_node(type, node->lhs);
-  else if (node->rhs && get_node(type, node->rhs))
-    return get_node(type, node->rhs);
-  else
-    return NULL;
-}
-
-void
-replace_const_ints(ASTNode* node, const string_vec values, const string_vec names)
+static void replace_const_ints(ASTNode* node, const string_vec values, const string_vec names)
 {
 	if(node->lhs)
 		replace_const_ints(node->lhs,values,names);
@@ -1397,30 +1307,70 @@ replace_const_ints(ASTNode* node, const string_vec values, const string_vec name
 	const int index = str_vec_get_index(names,node->buffer);
 	if(index == -1) return;
 	node->buffer = strdup(values.data[index]);
+	node->type |= NODE_VARIABLE_ID;
+	node->token = NUMBER;
 }
 
-static inline int eval_int(ASTNode* node)
+static void eval_ternaries(ASTNode* node, const string_vec values, const string_vec names)
+{
+	if(node->lhs)
+		eval_ternaries(node->lhs,values,names);
+	if(node->rhs)
+		eval_ternaries(node->rhs,values,names);
+	if(node->type != NODE_TERNARY_EXPRESSION) return;
+	//TP: for now consider only that expr is a < b
+	//TP: where a and b are const int expressions
+	//printf("ORIG: %s\n",combine_all_new(node));
+	const ASTNode* cond = node->lhs;
+	if(cond->type != NODE_BINARY_EXPRESSION) return;
+	const char* op = get_node_by_token(BINARY_OP,cond->rhs)->buffer;
+	if(!op) return;
+	const bool less = !strcmp(op,"<");
+	const bool more = !strcmp(op,">");
+	if(!less && !more) return;
+	const int lhs = eval_int(cond->lhs,true,NULL);
+	const int rhs = eval_int(cond->rhs->rhs,true,NULL);
+	const bool is_left_child = node->parent->lhs && node->parent->lhs->id == node->id;
+	ASTNode* correct_node =  less ? 
+					(lhs < rhs) ? node->rhs->lhs : node->rhs->rhs
+				:more ? 
+					(lhs > rhs) ? node->rhs->lhs : node->rhs->rhs
+				     : NULL;
+	if(!correct_node) return;
+	correct_node->prefix = NULL;
+	if(is_left_child)
+		node->parent->lhs = correct_node; 
+	else
+		node->parent->rhs = correct_node; 
+	correct_node->parent = node->parent;
+	//printf("HMM: %d,%d,%d\n",lhs,rhs,more);
+	//printf("RES: %s\n",combine_all_new(correct_node));
+}
+
+static inline int eval_int(ASTNode* node, const bool failure_fatal, int* error_code)
 {
 	replace_const_ints(node,const_int_values,const_ints);
-	char* copy = malloc(sizeof(char)*10000);
-	combine_all(node,copy);
-	strip_whitespace(copy);
+	eval_ternaries(node,const_int_values,const_ints);
+	const char* copy = combine_all_new(node);
+	if(!strcmp(copy,"INT_MAX"))
+		return INT_MAX;
         double* vals = malloc(sizeof(double)*const_ints.size);
         int err;
         te_expr* expr = te_compile(copy, NULL, 0, &err);
         if(!expr)
         {
-                fprintf(stderr,"Parse error at tinyexpr\n");
-		fprintf(stderr,"Was not able to parse: %s\n",copy);
-		fprintf(stderr,"Was not able to parse: %s\n",const_ints.data[0]);
-		fprintf(stderr,"Was not able to parse: %s\n",const_ints.data[1]);
-		fprintf(stderr,"Was not able to parse: %s\n",const_ints.data[2]);
-		fprintf(stderr,"Was not able to parse: %s\n",const_ints.data[3]);
-                exit(EXIT_FAILURE);
+		if(failure_fatal)
+		{
+                	fprintf(stderr,"Parse error at tinyexpr\n");
+			fprintf(stderr,"Was not able to parse: %s\n",copy);
+                	exit(EXIT_FAILURE);
+		}
+		*error_code = 1;
+		te_free(expr);
+		return -1;
         }
         int res = (int) round(te_eval(expr));
         te_free(expr);
-	free(copy);
         return res;
 }
 static ASTNode*
@@ -1455,3 +1405,82 @@ create_type_declaration(const char* tqual, const char* tspec, const int token)
 	ASTNode* type_declaration = astnode_create(NODE_UNKNOWN,create_tspec(tspec),create_type_qualifiers(tqual,token));
 	return type_declaration;
 }
+static void process_global_array_declaration(ASTNode* variable_definition, ASTNode* declaration_list, const ASTNode* type_specifier)
+{
+                variable_definition->type |= NODE_VARIABLE;
+                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
+		//make it an array type i.e. pointer
+		strcat(type_specifier->lhs->buffer,"*");
+
+		//if dconst or runtime array evaluate the dimension to a single integer to make further transformations easier
+		const ASTNode* tqual = get_node(NODE_TQUAL,variable_definition);
+		if(!tqual || has_qualifier(variable_definition,"dconst") || has_qualifier(variable_definition,"run_const"))
+		{
+			
+			node_vec dims = VEC_INITIALIZER;
+			get_array_access_nodes(variable_definition,&dims);
+			for(size_t i = 0; i < dims.size; ++i)
+			{
+				ASTNode* elem = (ASTNode*) dims.data[i];
+				const int array_len = eval_int(elem,true,NULL);
+				set_buffers_empty(elem);
+				elem->buffer = itoa(array_len);
+			}
+			free_node_vec(&dims);
+		}
+		//else if gmem simply replace const ints with numeric values to enable differentation of the const declarations
+		//and the array dims and also to notice easily if dims are known statically
+		else if(has_qualifier(variable_definition,"gmem"))
+		{
+			node_vec dims = VEC_INITIALIZER;
+			get_array_access_nodes(variable_definition,&dims);
+			for(size_t i = 0; i < dims.size; ++i)
+			{
+				ASTNode* elem = (ASTNode*) dims.data[i];
+				replace_const_ints(elem,const_int_values,const_ints);
+				//Try to eval int, such that later we can assume all const int expressions are only a single numerical value
+				//TP: for some reason does not work, for now can do without
+				/**
+				int err = 0;
+				const int array_len = eval_int(elem,false,&err);
+				if(!err)
+				{
+					set_buffers_empty(elem);
+					elem->buffer = itoa(array_len);
+				}
+				**/
+			}
+			free_node_vec(&dims);
+		}	
+}
+static void process_global_assignment(ASTNode* node, ASTNode* assignment, ASTNode* variable_definition, ASTNode* declaration_list)
+	    {
+		if(!has_qualifier(node->rhs,"const"))
+		{
+                  fprintf(stderr, FATAL_ERROR_MESSAGE"assignment to a global variable only allowed for constant values\n");
+		  fprintf(stderr,"Incorrect assignment: %s\n",combine_all_new(assignment));
+                  assert(!has_qualifier(node->rhs,"const"));
+		  exit(EXIT_FAILURE);
+		}
+                variable_definition->type |= NODE_VARIABLE;
+                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
+		const char* spec = get_node(NODE_TSPEC,node->rhs)->lhs->buffer;
+		if(!strcmp(spec,"int"))
+		{	
+
+			char* assignment_val = malloc(4098*sizeof(char));
+			ASTNode* def_list_head = get_node(NODE_ASSIGN_LIST,node->rhs)->rhs;
+			node_vec vars = get_nodes_in_list(def_list_head);
+			for(size_t i = 0; i < vars.size; ++i)
+			{
+				ASTNode* elem = (ASTNode*) vars.data[i];
+				const char* name = get_node_by_token(IDENTIFIER,elem)->buffer;
+				int val = eval_int(elem->rhs,true,NULL);
+				push(&const_ints,name);
+				push(&const_int_values,itoa(val));
+			}
+			free_node_vec(&vars);
+			free(assignment_val);
+		}
+	
+	    }

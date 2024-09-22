@@ -1,12 +1,8 @@
 // physical grid
-real AC_xlen
-real AC_ylen
-real AC_zlen
 real AC_xorig
 real AC_yorig
 real AC_zorig
 
-real AC_dsx, AC_dsy, AC_dsz
 real AC_dsmin
 
 gmem real AC_x[AC_mx]

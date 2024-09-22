@@ -101,7 +101,7 @@
   } VertexBufferArray;
 
 
-  typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
+
 
 #if AC_RUNTIME_COMPILATION
 
@@ -136,7 +136,7 @@
 
   #include "user_declarations.h"
 
-  FUNC_DEFINE(const Kernel*, acGetKernels,());
+  FUNC_DEFINE(const AcKernel*, acGetKernels,());
   FUNC_DEFINE(AcResult, acKernelFlush,(const cudaStream_t stream, AcReal* arr, const size_t n, const AcReal value));
 
   FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
@@ -151,9 +151,9 @@
 
   FUNC_DEFINE(void, acRandQuit,(void));
 
-  FUNC_DEFINE(AcResult, acLaunchKernel,(Kernel func, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray));
+  FUNC_DEFINE(AcResult, acLaunchKernel,(AcKernel func, const cudaStream_t stream, const int3 start, const int3 end, VertexBufferArray));
 
-  FUNC_DEFINE(AcResult, acBenchmarkKernel,(Kernel kernel, const int3 start, const int3 end, VertexBufferArray vba));
+  FUNC_DEFINE(AcResult, acBenchmarkKernel,(AcKernel kernel, const int3 start, const int3 end, VertexBufferArray vba));
 
   /** NOTE: stream unused. acUniform functions are completely synchronous. */
 #if TWO_D == 0
@@ -173,7 +173,7 @@
   // Diagnostics
   FUNC_DEFINE(Volume, acKernelLaunchGetLastTPB,(void));
 
-  FUNC_DEFINE(Kernel, GetOptimizedKernel,(const AcKernel, const VertexBufferArray vba));
+  FUNC_DEFINE(AcKernel, GetOptimizedKernel,(const AcKernel, const VertexBufferArray vba));
 
   FUNC_DEFINE(int, acGetKernelReduceScratchPadSize,(const AcKernel kernel));
 
@@ -299,6 +299,13 @@
   }
 
   template <typename P>
+  constexpr static const char*
+  get_name(const P array)
+  {
+	  return get_array_info(array).name;
+  }
+
+  template <typename P>
   constexpr static bool
   is_dconst(const P array)
   {
@@ -306,10 +313,29 @@
   }
 
   template <typename P>
+  constexpr static bool
+  is_alive(const P array)
+  {
+	  return get_array_info(array).is_alive;
+  }
+
+  template <typename P>
   constexpr static auto
   get_array_dims(const P array)
   {
 	  return get_array_info(array).dims;
+  }
+
+  template <typename P>
+  constexpr static bool
+  has_const_dims(const P array)
+  {
+	  auto dims = get_array_dims(array);
+	  int num_dims         = get_array_info(array).num_dims;
+	  bool res = true;
+	  for(int i = 0; i < num_dims; ++i)
+		  res &= !dims.from_config[i];
+	  return res;
   }
 
   template <typename P>
@@ -344,6 +370,18 @@
   {
 #include "get_from_comp_config.h"
   };
+
+  template <typename P>
+  constexpr static int
+  get_const_dims_array_length(const P array)
+  {
+	  AcArrayDims dims     = get_array_info(array).dims;
+	  int num_dims         = get_array_info(array).num_dims;
+	  int res = 1;
+	  for(int i = 0; i < num_dims; ++i)
+		  res *= dims.len[i];
+	  return res;
+  }
 
   template <typename P>
   constexpr static int
@@ -427,6 +465,14 @@
   get_config_param(const P param, const AcMeshInfo& config)
   {
 #include "get_config_param.h"
+  }	  
+
+  template <typename P>
+  constexpr auto
+  get_empty_pointer(const P param)
+  {
+   (void)param;
+#include "get_empty_pointer.h"
   }	  
 
   

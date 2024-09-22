@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include "vecs.h"
+#include <sys/stat.h>
 
 #define BUFFER_SIZE (4096)
 #define FATAL_ERROR_MESSAGE "\nFATAL AC ERROR: "
@@ -36,7 +37,7 @@ typedef enum {
   NODE_DFUNCTION           = (1 << 1),
   NODE_KFUNCTION           = (1 << 2),
   NODE_FUNCTION_ID         = (1 << 3),
-  //FREE TO USE
+  NODE_GLOBAL              = (1 << 4),
   NODE_BINARY              = (1 << 5),
   NODE_BEGIN_SCOPE         = (1 << 6),
   NODE_DECLARATION         = (1 << 7),
@@ -257,9 +258,18 @@ static inline void combine_all(const ASTNode* node, char* res){
   combine_all_recursive(node,res);
   strip_whitespace(res);
 }
-static inline void combine_all_with_whitespace(const ASTNode* node, char* res){
+static inline const char*combine_all_new(const ASTNode* node){
+  static char res[10000];
   res[0] = '\0';	
   combine_all_recursive(node,res);
+  strip_whitespace(res);
+  return res;
+}
+static inline const char* combine_all_new_with_whitespace(const ASTNode* node){
+  static char res[10000];
+  res[0] = '\0';	
+  combine_all_recursive(node,res);
+  return res;
 }
 
 static inline ASTNode*
@@ -521,6 +531,23 @@ is_number(const char* str)
 	return res;
 }
 static inline bool
+is_number_expression(const char* str)
+{
+	const size_t n = strlen(str);
+	bool res = true;
+	for(size_t i = 0; i < n; ++i)
+		res &= (
+			  isdigit(str[i]) > 0
+			|| str[i] == ')'
+			|| str[i] == '('
+			|| str[i] == '+'
+			|| str[i] == '-'
+			|| str[i] == '/'
+			|| str[i] == '*'
+		       );
+	return res;
+}
+static inline bool
 is_real(const char* str)
 {
 	char* tmp = strdup(str);
@@ -588,4 +615,105 @@ format_source(const char* file_in, const char* file_out)
 
   fclose(in);
   fclose(out);
+}
+
+static bool
+file_exists(const char* filename)
+{
+  struct stat   buffer;
+  return (stat (filename, &buffer) == 0);
+}
+
+typedef struct node_vec
+{
+	const ASTNode** data;
+	size_t size;
+	int capacity;
+
+} node_vec;
+static inline void
+free_node_vec(node_vec* vec)
+{
+	free(vec->data);
+	vec -> size = 0;
+	vec -> capacity = 0;
+	vec -> data = NULL;
+}
+static inline int
+push_node(node_vec* dst, const ASTNode* src)
+{
+	if(dst->capacity == 0)
+	{
+		dst->capacity++;
+		dst->data = malloc(sizeof(ASTNode*)*dst->capacity);
+	}
+	dst->data[dst->size] = src;
+	++(dst->size);
+	if(dst->size == (size_t)dst->capacity)
+	{
+		dst->capacity = dst->capacity*2;
+		const ASTNode** tmp = malloc(sizeof(ASTNode*)*dst->capacity);
+		for(size_t i = 0; i < dst->size; ++i)
+			tmp[i] = dst->data[i];
+		free(dst->data);
+		dst->data = tmp;
+	}
+	return dst->size-1;
+}
+
+static ASTNode*
+build_list_node(const node_vec nodes, const char* separator)
+{
+	if(nodes.size == 0) return NULL;
+	ASTNode* list_head = astnode_create(NODE_UNKNOWN, astnode_dup(nodes.data[0],NULL),NULL);
+	for(size_t i = 1; i < nodes.size; ++i)
+	{
+		list_head = astnode_create(NODE_UNKNOWN,list_head, astnode_dup(nodes.data[i],NULL));
+		list_head->buffer = strdup(separator);
+	}
+	return list_head;
+}
+
+static node_vec
+get_nodes_in_list(const ASTNode* head)
+{
+	node_vec res = VEC_INITIALIZER;
+	const int num_of_nodes = count_num_of_nodes_in_list(head);
+	int counter = num_of_nodes;
+	while(--counter)
+		head = head -> lhs;
+	push_node(&res,head->lhs);
+	counter = num_of_nodes;
+	while(--counter)
+	{
+		head = head->parent;
+		push_node(&res,head->rhs);
+	}
+	return res;
+}
+
+static const ASTNode*
+get_node(const NodeType type, const ASTNode* node)
+{
+  assert(node);
+
+  if (node->type & type)
+    return node;
+  else if (node->lhs && get_node(type, node->lhs))
+    return get_node(type, node->lhs);
+  else if (node->rhs && get_node(type, node->rhs))
+    return get_node(type, node->rhs);
+  else
+    return NULL;
+}
+
+static void
+get_array_access_nodes(const ASTNode* node, node_vec* dst)
+{
+	if(node->lhs)
+		get_array_access_nodes(node->lhs,dst);
+	if(node->rhs)
+		get_array_access_nodes(node->rhs,dst);
+	if(node->type == NODE_ARRAY_ACCESS)
+		push_node(dst,node->rhs);
 }

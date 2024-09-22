@@ -90,7 +90,11 @@ cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, co
 {
     *coord_x1 = AcReal(globalVertexIdx.x - STENCIL_ORDER/2)*DCONST(AC_dsx);
     *coord_y1 = AcReal(globalVertexIdx.y - STENCIL_ORDER/2)*DCONST(AC_dsy);
+#if TWO_D == 0
     *coord_z1 = AcReal(globalVertexIdx.z - STENCIL_ORDER/2)*DCONST(AC_dsz);
+#else
+    *coord_z1 = AcReal(0.0);
+#endif
 }
 
 static __device__ inline AcReal
