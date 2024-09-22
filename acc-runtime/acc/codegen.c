@@ -2710,9 +2710,6 @@ gen_user_taskgraphs(const ASTNode* root)
 		fprintf(fp,"%s,",graph_names.data[i]);
 	fprintf(fp,"NUM_DSL_TASKGRAPHS} AcDSLTaskGraph;\n");
 	fclose(fp);
-	FILE* fp_defines = fopen("user_defines.h","a");
-	fprintf(fp_defines,"#include \"taskgraph_enums.h\"\n");
-	fclose(fp_defines);
 	free_str_vec(&graph_names);
 }
 
@@ -4643,6 +4640,7 @@ gen_user_defines(const ASTNode* root, const char* out)
   }
 
   fprintf(fp,"\n#include \"array_info.h\"\n");
+  fprintf(fp,"\n#include \"taskgraph_enums.h\"\n");
 
   free_str_vec(&datatypes);
   free_structs_info(&s_info);
