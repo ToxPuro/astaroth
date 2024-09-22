@@ -640,7 +640,7 @@ Currently the missing dimension is always the z-dimension. The main difference b
 Some API functions that previously took three-dimensional arrays or three parameters related to the spatial dimensions now take two-dimensional arrays and only two parameters.
 Additionally those built-in variables related to the z spatial dimension (e.g. `AC_nz`)  are suppressed.
 When using `BoundConds` one does not need to declare boundary conditions on the z-boundaries and if they are they will be skipped.
-One can find in `acc-runtime/samples/2d/2d-test.ac` and `test/2d-test/main.cc` a simple test two-dimensional setup.
+One can find in `acc-runtime/samples/2d/2d-test.ac` and `test/2d-test/main.cc` a simple two-dimensional test setup.
 
 
 
