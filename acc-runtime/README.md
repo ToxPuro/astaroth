@@ -64,6 +64,9 @@ GPU program, which defines the operations performed on a number of data streams.
 In our case, data streams correspond to vertices in a grid, similar to how
 vertex shaders operate in graphics shading languages.
 
+Since the language is still an active development user recommendations/requests for new features are **highly desirable**.
+To make a recommendation/request for a new feature make pull request where you outline the new feature and the use case it would be needed in.
+
 ## Comments and preprocessor directives
 The Astaroth preprocessor works similar to the C preprocessor (gcc) with one exception: 
 
@@ -112,21 +115,30 @@ for i 0:n_species
 
 ### Primitive types
 The following primitive C++ types are usable: 
-    * int
-    * bool
-    * long
-    * long long
-    * real (by default double, float if DOUBLE_PRECISION=OFF)
+* `int`
+
+* `bool`
+
+* `long`
+
+* `long long`
+
+* `real` (by default double, float if DOUBLE_PRECISION=OFF)
     
 > Note: Whenever possible one should prefer using bools compared to e.g. integers which only have the values 0 and 1, since using bools gives the DSL compiler more information, which it can use to perform optimizations.
 
 ### Additional built-in types
-    * complex
-    * real2
-    * real3
-    * real4
-    * int3
-    * Matrix (3x3 matrix of reals)
+* `complex`
+
+* `real2`
+
+* `real3`
+
+* `real4`
+
+* `int3`
+
+* `Matrix` (3x3 matrix of reals)
     
 We support `Matrix*real3`,`real*Matrix` and `-Matrix`.
 
