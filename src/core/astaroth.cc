@@ -387,18 +387,27 @@ acGetNode(void)
 }
 
 
+void
+set_info_val(AcMeshInfo* info, const AcIntParam param, const int value)
+{
+	info->int_params[param] = value;
+}
+
+void
+set_info_val(AcMeshInfo* , const int , const int ){}
+
 #if TWO_D == 0
 AcResult
 acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info)
 {
-    info->int_params[AC_nxgrid] = nx;
-    info->int_params[AC_nygrid] = ny;
-    info->int_params[AC_nzgrid] = nz;
+    set_info_val(info,AC_nxgrid,nx);
+    set_info_val(info,AC_nygrid,ny);
+    set_info_val(info,AC_nzgrid,nz);
     
     //needed to keep since before acGridInit the user can call this arbitary number of times
-    info->int_params[AC_nx] = nx;
-    info->int_params[AC_ny] = ny;
-    info->int_params[AC_nz] = nz;
+    set_info_val(info,AC_nx,nx);
+    set_info_val(info,AC_ny,ny);
+    set_info_val(info,AC_nz,nz);
     return acHostUpdateBuiltinParams(info);
 }
 
@@ -406,15 +415,16 @@ acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* inf
 AcResult
 acSetMeshDims(const size_t nx, const size_t ny, AcMeshInfo* info)
 {
-    info->int_params[AC_nxgrid] = nx;
-    info->int_params[AC_nygrid] = ny;
+    set_info_val(info,AC_nxgrid,nx);
+    set_info_val(info,AC_nygrid,ny);
     
     //needed to keep since before acGridInit the user can call this arbitary number of times
-    info->int_params[AC_nx] = nx;
-    info->int_params[AC_ny] = ny;
+    set_info_val(info,AC_nx,nx);
+    set_info_val(info,AC_ny,ny);
     return acHostUpdateBuiltinParams(info);
 }
 #endif
+
 
 AcResult
 acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
@@ -521,5 +531,71 @@ acGetKernelIdByName(const char* name)
             name);
     return (size_t)-1;
 }
+
+int3
+acGetLocalNN(const AcMeshInfo info)
+{
+#if TWO_D == 0
+	const AcIntParam z = AC_nz;
+#else
+	auto z = 1;
+#endif
+    return acConstructInt3Param(AC_nx, AC_ny, z, info);
+}
+
+int3
+acGetLocalMM(const AcMeshInfo info)
+{
+#if TWO_D == 0
+	const AcIntParam z = AC_mz;
+#else
+	auto z = 1;
+#endif
+    return acConstructInt3Param(AC_mx, AC_my, z, info);
+}
+
+int3
+acGetGridNN(const AcMeshInfo info)
+{
+#if TWO_D == 0
+	const AcIntParam z = AC_nzgrid;
+#else
+	auto z = 1;
+#endif
+    return acConstructInt3Param(AC_nxgrid, AC_nygrid, z, info);
+}
+int3
+acGetMinNN(const AcMeshInfo info)
+{
+#if TWO_D == 0
+	const AcIntParam z = AC_nz_min;
+#else
+	auto z = 0;
+#endif
+    return acConstructInt3Param(AC_nx_min, AC_ny_min, z, info);
+}
+
+int3
+acGetMaxNN(const AcMeshInfo info)
+{
+#if TWO_D == 0
+	const AcIntParam z = AC_nz_max;
+#else
+	auto z = 1;
+#endif
+    return acConstructInt3Param(AC_nx_max, AC_ny_max, z, info);
+}
+
+AcReal3
+acGetLengths(const AcMeshInfo info)
+{
+#if TWO_D == 0
+	const AcRealParam z = AC_zlen;
+#else
+	auto z = -1.0;
+#endif
+	return acConstructReal3Param(AC_xlen,AC_ylen,z,info);
+}
+
 
 #include "get_vtxbufs_funcs.h"

@@ -40,34 +40,10 @@ typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 
 
 #define USE_COMPRESSIBLE_MEMORY (0)
-typedef struct Field3
-{
-	VertexBufferHandle x;
-	VertexBufferHandle y;
-	VertexBufferHandle z;
-        HOST_DEVICE_INLINE Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
-} Field3;
 
 
-
-HOST_DEVICE_INLINE Field3 
-MakeField3(const Field& x, const Field& y, const Field& z)
-{
-	return (Field3){x,y,z};
-}
-template <size_t N>
-HOST_DEVICE_INLINE
-std::array<Field3,N>
-MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
-{
-	std::array<int3,N> res{};
-	for(size_t i = 0; i < N; ++i)
-		res[i] = (Field3){x,y,z};
-	return res;
-}
 
 #include "acc/implementation.h"
-#include "user_constants.h"
 
 static dim3 last_tpb = (dim3){0, 0, 0};
 static AcReal3 AC_INTERNAL_global_real_vec = {0.0,0.0,0.0};
@@ -261,6 +237,32 @@ __device__ __constant__ AcMeshInfo d_mesh_info;
 
 #include "dconst_decl.h"
 
+#define DEVICE_INLINE __device__ __forceinline__
+
+DEVICE_INLINE AcReal
+VAL(const AcRealParam& param)
+{
+	return DCONST(param);
+}
+
+DEVICE_INLINE AcReal
+VAL(const AcReal& val)
+{
+	return val;
+}
+
+DEVICE_INLINE int
+VAL(const AcIntParam& param)
+{
+	return DCONST(param);
+}
+
+DEVICE_INLINE int
+VAL(const int& val)
+{
+	return val;
+}
+
 
 #include "get_address.h"
 #include "load_dconst_arrays.h"
@@ -274,7 +276,7 @@ __device__ __constant__ AcMeshInfo d_mesh_info;
 __device__ int
 LOCAL_COMPDOMAIN_IDX(const int3 coord)
 {
-  return (coord.x) + (coord.y) * DCONST(AC_nx) + (coord.z) * DCONST(AC_nxy);
+  return (coord.x) + (coord.y) * VAL(AC_nx) + (coord.z) * VAL(AC_nxy);
 }
 
 __device__ constexpr int
@@ -320,7 +322,6 @@ IDX(const int3 idx)
   return DEVICE_VTXBUF_IDX(idx.x, idx.y, idx.z);
 }
 
-//#define Field3(x, y, z) make_int3((x), (y), (z))
 #define print printf                          // TODO is this a good idea?
 #define len(arr) sizeof(arr) / sizeof(arr[0]) // Leads to bugs if the user
 // passes an array into a device function and then calls len (need to modify
@@ -1029,7 +1030,10 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         //   continue;
 
         const dim3 tpb(x, y, z);
-        const dim3 bpg    = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
+        const dim3 bpg    = to_dim3(
+				get_bpg(to_volume(dims), 
+				to_volume(tpb))
+				);
         const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER,
                                      sizeof(AcReal));
 

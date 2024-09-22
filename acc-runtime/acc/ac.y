@@ -296,7 +296,7 @@ reset_extra_files()
 void
 reset_all_files()
 {
-          const char* files[] = {"kernel_reduce_outputs.h","user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
+          const char* files[] = {"user_constants.h","user_built-in_constants","kernel_reduce_outputs.h","user_declarations.h", "user_defines.h", "user_kernels.h", "user_kernel_declarations.h",  "user_input_typedefs.h", "user_typedefs.h","user_kernel_ifs.h",
 		 "device_mesh_info_decl.h",  "array_decl.h", "comp_decl.h","output_decl.h","input_decl.h","comp_loaded_decl.h", "input_decl.h","get_device_array.h","get_config_arrays.h","get_config_param.h",
 		 "get_arrays.h","dconst_decl.h","rconst_decl.h","get_address.h","load_dconst_arrays.h","store_dconst_arrays.h","dconst_arrays_decl.h",
 		  "array_types.h","scalar_types.h","scalar_comp_types.h","array_comp_types.h","get_num_params.h","gmem_arrays_decl.h","gmem_arrays_accessed_decl.h","gmem_arrays_output_accesses.h","get_gmem_arrays.h","vtxbuf_is_communicated_func.h",

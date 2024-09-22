@@ -37,7 +37,35 @@
   #include "errchk.h"
 
   //copied from the sample setup
+  #include "user_built-in_constants.h"
   #include "user_defines.h"
+
+#ifdef __cplusplus
+typedef struct Field3
+{
+	VertexBufferHandle x;
+	VertexBufferHandle y;
+	VertexBufferHandle z;
+	constexpr Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
+} Field3;
+
+constexpr Field3 
+MakeField3(const Field& x, const Field& y, const Field& z)
+{
+	return (Field3){x,y,z};
+}
+template <size_t N>
+constexpr __device__ __forceinline__
+std::array<Field3,N>
+MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
+{
+	std::array<int3,N> res{};
+	for(size_t i = 0; i < N; ++i)
+		res[i] = (Field3){x,y,z};
+	return res;
+}
+#endif
+
   #include "kernel_reduce_outputs.h"
   #include "user_input_typedefs.h"
 

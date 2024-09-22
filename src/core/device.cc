@@ -231,14 +231,12 @@ acDeviceLoadMeshInfo(const Device device, const AcMeshInfo config)
     AcMeshInfo device_config = config;
     acHostUpdateBuiltinParams(&device_config);
 
-    ERRCHK_ALWAYS(device_config.int_params[AC_nx] == device->local_config.int_params[AC_nx]);
-    ERRCHK_ALWAYS(device_config.int_params[AC_ny] == device->local_config.int_params[AC_ny]);
+    ERRCHK_ALWAYS(acGetInfoValue(device_config,AC_nx) == acGetInfoValue(device->local_config,AC_nx));
+    ERRCHK_ALWAYS(acGetInfoValue(device_config,AC_ny) == acGetInfoValue(device->local_config,AC_ny));
 #if TWO_D == 0
-    ERRCHK_ALWAYS(device_config.int_params[AC_nz] == device->local_config.int_params[AC_nz]);
+    ERRCHK_ALWAYS(acGetInfoValue(device_config,AC_nz) == acGetInfoValue(device->local_config,AC_nz));
 #endif
-    ERRCHK_ALWAYS(device_config.int_params[AC_multigpu_offset] ==
-                  device->local_config.int_params[AC_multigpu_offset]);
-
+    ERRCHK_ALWAYS(acGetInfoValue(device_config,AC_multigpu_offset) == acGetInfoValue(device->local_config,AC_multigpu_offset));
 
     AcScalarTypes::run<load_all_scalars_uniform>(device,device_config);
     AcArrayTypes::run<load_all_arrays_uniform>(device, device_config);
@@ -356,6 +354,13 @@ acDeviceLoadStencilsFromConfig(const Device device, const Stream stream)
 	return acDeviceLoadStencils(device, stream, stencils);
 }
 #endif
+void
+acCopyFromInfo(const AcMeshInfo src, AcMeshInfo dst, AcIntParam param)
+{
+	dst.int_params[param] = src.int_params[param];
+}
+void
+acCopyFromInfo(const AcMeshInfo, AcMeshInfo, const int){}
 
 AcResult
 acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_handle)
@@ -383,10 +388,11 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
 
     // Check that AC_global_grid_n and AC_multigpu_offset are valid
     // Replace if not and give a warning otherwise
-    if (device->local_config.int_params[AC_nxgrid] <= 0 ||
-        device->local_config.int_params[AC_nygrid] <= 0 ||
+    if (
+        acGetInfoValue(device->local_config,AC_nxgrid) <= 0 ||
+        acGetInfoValue(device->local_config,AC_nygrid) <= 0 ||
 #if TWO_D == 0
-        device->local_config.int_params[AC_nzgrid] <= 0 ||
+        acGetInfoValue(device->local_config,AC_nzgrid) <= 0 ||
 #endif
         device->local_config.int3_params[AC_multigpu_offset].x < 0 ||
         device->local_config.int3_params[AC_multigpu_offset].y < 0 ||
@@ -395,10 +401,10 @@ acDeviceCreate(const int id, const AcMeshInfo device_config, Device* device_hand
                 "acDeviceCreate. Replacing with AC_global_grid_n = local grid size and "
                 "AC_multigpu_offset = (int3){0,0,0}.");
         device->local_config.int3_params[AC_multigpu_offset] = (int3){0, 0, 0};
-	device->local_config.int_params[AC_nxgrid] = device_config.int_params[AC_nxgrid];
-	device->local_config.int_params[AC_nygrid] = device_config.int_params[AC_nygrid];
+	acCopyFromInfo(device_config,device->local_config,AC_nxgrid);
+	acCopyFromInfo(device_config,device->local_config,AC_nygrid);
 #if TWO_D == 0
-	device->local_config.int_params[AC_nzgrid] = device_config.int_params[AC_nzgrid];
+	acCopyFromInfo(device_config,device->local_config,AC_nzgrid);
 #endif
     }
 
@@ -1128,7 +1134,7 @@ acDeviceStoreIXYPlate(const Device device, int3 start, int3 end, int src_offset,
 {
     cudaSetDevice(device->id);     // use first device
 
-    int px=host_mesh->info.int_params[AC_mx]*sizeof(AcReal), sx=host_mesh->info.int_params[AC_nx]*sizeof(AcReal);
+    int px=host_mesh->info.int_params[AC_mx]*sizeof(AcReal), sx=acGetInfoValue(host_mesh,AC_nx)*sizeof(AcReal);
 
     size_t start_idx;
     void *dest, *src;

@@ -86,6 +86,56 @@ static constexpr int astaroth_comm_split_key = 666;
 // In case some old programs still  use MPI_Init or MPI_Init_thread, we don't want to break them
 static MPI_Comm astaroth_comm;
 
+
+static int
+ac_pid()
+{
+    int pid;
+    MPI_Comm_rank(astaroth_comm, &pid);
+    return pid;
+}
+static AcProcMappingStrategy
+ac_proc_mapping_strategy()
+{
+	return (AcProcMappingStrategy)acGetInfoValue(grid.submesh.info,AC_proc_mapping_strategy);
+}
+static int 
+ac_nprocs()
+{
+    int nprocs;
+    MPI_Comm_size(astaroth_comm, &nprocs);
+    return nprocs;
+}
+
+static uint3_64
+get_decomp(const AcMeshInfo global_config)
+{
+    switch((AcDecomposeStrategy)acGetInfoValue(global_config,AC_decompose_strategy))
+    {
+	    case AcDecomposeStrategy::Default:
+		return decompose(ac_nprocs());
+	    case AcDecomposeStrategy::External:
+		return static_cast<uint3_64>(global_config.int3_params[AC_domain_decomposition]);
+	    default:
+		fprintf(stderr,"Unknown decompose strategy\n");
+		exit(EXIT_FAILURE);
+
+    }
+    return (uint3_64){0,0,0};
+}
+int3
+getPid3D(const AcMeshInfo config)
+{
+    return getPid3D(ac_pid(), get_decomp(config), 
+                   (AcProcMappingStrategy)acGetInfoValue(config,AC_proc_mapping_strategy));
+}
+
+int3
+getPid3D(const int pid)
+{
+    return getPid3D(pid, grid.decomposition,ac_proc_mapping_strategy()); 
+}
+
 AcResult
 ac_MPI_Init()
 {
@@ -186,26 +236,30 @@ acGridGetDevice()
     return grid.device;
 }
 
+
+
+
+
+void
+set_info_val(AcMeshInfo info, const AcIntParam param, const int value)
+{
+	info.int_params[param] = value;
+}
+
+void
+set_info_val(AcMeshInfo , const int , const int ){}
+
 AcMeshInfo
 acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 {
     AcMeshInfo submesh_config = global_config;
 
-    int nprocs, pid;
-    MPI_Comm_size(astaroth_comm, &nprocs);
-    MPI_Comm_rank(astaroth_comm, &pid);
+    const uint3_64 decomp = get_decomp(global_config);
 
-    const uint3_64 decomp = ((AcDecomposeStrategy) global_config.int_params[AC_decompose_strategy] == AcDecomposeStrategy::Default) ?
-    				        decompose(nprocs)             :
-				            ((AcDecomposeStrategy) global_config.int_params[AC_decompose_strategy] == AcDecomposeStrategy::External) ?
-				            static_cast<uint3_64>(global_config.int3_params[AC_domain_decomposition]) :
-				            (uint3_64){0,0,0};
-    const int3 pid3d = getPid3D(pid, decomp, (AcProcMappingStrategy)global_config.int_params[AC_proc_mapping_strategy]);
-
-    ERRCHK_ALWAYS(submesh_config.int_params[AC_nx] % decomp.x == 0);
-    ERRCHK_ALWAYS(submesh_config.int_params[AC_ny] % decomp.y == 0);
+    ERRCHK_ALWAYS(acGetInfoValue(submesh_config,AC_nx) % decomp.x == 0);
+    ERRCHK_ALWAYS(acGetInfoValue(submesh_config,AC_ny) % decomp.y == 0);
 #if TWO_D == 0
-    ERRCHK_ALWAYS(submesh_config.int_params[AC_nz] % decomp.z == 0);
+    ERRCHK_ALWAYS(acGetInfoValue(submesh_config,AC_nz) % decomp.z == 0);
 #else
     ERRCHK_ALWAYS(decomp.z == 1);
 #endif
@@ -215,15 +269,15 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     const int submesh_ny = nn.y / decomp.y;
     const int submesh_nz = nn.z / decomp.z;
 
-    submesh_config.int_params[AC_nx]               = submesh_nx;
-    submesh_config.int_params[AC_ny]               = submesh_ny;
+    set_info_val(submesh_config,AC_nx,submesh_nx);
+    set_info_val(submesh_config,AC_ny,submesh_ny);
 #if TWO_D == 0
-    submesh_config.int_params[AC_nz]               = submesh_nz;
+    set_info_val(submesh_config,AC_nz,submesh_nz);
 #endif
-    submesh_config.int3_params[AC_multigpu_offset] = pid3d *
+    submesh_config.int3_params[AC_multigpu_offset] = getPid3D(global_config)*
                                                      (int3){submesh_nx, submesh_ny, submesh_nz};
     submesh_config.int3_params[AC_domain_decomposition] = (int3){(int)decomp.x, (int)decomp.y, (int)decomp.z};
-    submesh_config.int3_params[AC_domain_coordinates] = (int3){pid3d.x, pid3d.y, pid3d.z};
+    submesh_config.int3_params[AC_domain_coordinates] = getPid3D(global_config);
     acHostUpdateBuiltinParams(&submesh_config);
     return submesh_config;
 }
@@ -235,63 +289,15 @@ get_global_nn()
 #if TWO_D == 0
 	return acConstructInt3Param(AC_nxgrid, AC_nygrid, AC_nzgrid, info);
 #else
-	return {info.int_params[AC_nxgrid], info.int_params[AC_nygrid], 1};
+	return acConstructInt3Param(AC_nxgrid, AC_nygrid, 1, info);
 #endif
 }
 
 
-
-AcResult
-acGridInit(AcMeshInfo info)
+void
+check_that_decomp_valid(const AcMeshInfo info)
 {
-    ERRCHK(!grid.initialized);
-    if (!grid.mpi_initialized)
-    {
-      if ((AcMPICommStrategy)info.int_params[AC_MPI_comm_strategy] == AcMPICommStrategy::DuplicateMPICommWorld)
-      {
-      	ERRCHK_ALWAYS(MPI_Comm_dup(MPI_COMM_WORLD,&astaroth_comm) == MPI_SUCCESS);
-      }
-      else
-      {
-        ERRCHK_ALWAYS((AcMPICommStrategy)info.int_params[AC_MPI_comm_strategy] == AcMPICommStrategy::DuplicateUserComm);
-      	ERRCHK_ALWAYS(MPI_Comm_dup(info.comm,&astaroth_comm) == MPI_SUCCESS);
-      }
-      MPI_Barrier(astaroth_comm);
-      grid.mpi_initialized = true;
-    }
-
-    // Check that MPI is initialized
-    int nprocs, pid;
-    MPI_Comm_size(astaroth_comm, &nprocs);
-    MPI_Comm_rank(astaroth_comm, &pid);
-
-    char processor_name[MPI_MAX_PROCESSOR_NAME];
-    int name_len;
-    MPI_Get_processor_name(processor_name, &name_len);
-
-    // Check that device allocation is valid
-    int device_count = -1;
-    cudaGetDeviceCount(&device_count);
-    if (device_count > nprocs) {
-        fprintf(stderr,
-                "Invalid device-task allocation: Must allocate one MPI task per GPU but got %d "
-                "devices per node and only %d task(s).",
-                device_count, nprocs);
-        ERRCHK_ALWAYS(device_count <= nprocs);
-    }
-    MPI_Barrier(acGridMPIComm());
-
-    // Decompose
-    const uint3_64 decomp = ((AcDecomposeStrategy)info.int_params[AC_decompose_strategy] == AcDecomposeStrategy::Default) ?
-    				        decompose(nprocs)             :
-				            ((AcDecomposeStrategy)info.int_params[AC_decompose_strategy] == AcDecomposeStrategy::External) ?
-				            static_cast<uint3_64>(info.int3_params[AC_domain_decomposition]) :
-				            (uint3_64){0,0,0};
-
-    // Done in order to copy AC_nxgrid -> AC_nx that will be decomposed
-    // This way you can use AC_nxgrid to get the global dimensions in the DSL and device layer
-    acHostUpdateBuiltinParams(&info);
-    // Check that the decomposition is valid
+    const uint3_64 decomp = get_decomp(info);
     const int3 nn = acGetLocalNN(info);
     const bool nx_valid = nn.x % decomp.x == 0;
     const bool ny_valid = nn.y % decomp.y == 0;
@@ -314,65 +320,12 @@ acGridInit(AcMeshInfo info)
         fprintf(stderr, "Divisible: (%d, %d)\n", nx_valid, ny_valid);
 #endif
     }
-    if (nn.x < STENCIL_WIDTH)
-        fprintf(stderr, "nn.x %d too small, must be >= %d (stencil width)\n", nn.x, STENCIL_WIDTH);
-    if (nn.y < STENCIL_HEIGHT)
-        fprintf(stderr, "nn.y %d too small, must be >= %d (stencil height)\n", nn.y,
-                STENCIL_HEIGHT);
-#if TWO_D == 0
-    if (nn.z < STENCIL_DEPTH)
-        fprintf(stderr, "nn.z %d too small, must be >= %d (stencil depth)\n", nn.z, STENCIL_DEPTH);
-#endif
-
-    MPI_Barrier(astaroth_comm);
-
-#if AC_VERBOSE
-    const int3 pid3d = getPid3D(pid, decomp, (AcProcMappingStrategy)info.int_params[AC_proc_mapping_strategy]);
-    printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, pid, nprocs, pid3d.x,
-           pid3d.y, pid3d.z);
-    printf("Decomposition: %lu, %lu, %lu\n", decomp.x, decomp.y, decomp.z);
-    printf("Mesh size: %d, %d, %d\n", info.int_params[AC_nx], info.int_params[AC_ny],
-           info.int_params[AC_nz]);
-    fflush(stdout);
-    MPI_Barrier(astaroth_comm);
-#endif
-
-    // Check that mixed precision is correctly configured, AcRealPacked == AC_REAL_MPI_TYPE
-    // CAN BE REMOVED IF MIXED PRECISION IS SUPPORTED AS A PREPROCESSOR FLAG
-    int mpi_type_size;
-    MPI_Type_size(AC_REAL_MPI_TYPE, &mpi_type_size);
-    ERRCHK_ALWAYS(sizeof(AcRealPacked) == mpi_type_size);
-
-    // Decompose config (divide dimensions by decomposition)
-    AcMeshInfo submesh_info = acGridDecomposeMeshInfo(info);
-
-    // GPU alloc
-    int devices_per_node = -1;
-    cudaGetDeviceCount(&devices_per_node);
-
-    acLogFromRootProc(pid, "acGridInit: Calling acDeviceCreate\n");
-    Device device;
-    acDeviceCreate(pid % devices_per_node, submesh_info, &device);
-    acLogFromRootProc(pid, "acGridInit: Returned from acDeviceCreate\n");
-
-    // CPU alloc
-    acLogFromRootProc(pid, "acGridInit: Allocating CPU mesh\n");
-    AcMesh submesh;
-    acHostMeshCreate(submesh_info, &submesh);
-    acLogFromRootProc(pid, "acGridInit: Done allocating CPU mesh\n");
-
-    // Setup the global grid structure
-    grid.device        = device;
-    grid.submesh       = submesh;
-    grid.decomposition = decomp;
-
-    // Configure
-    grid.nn = acGetLocalNN(device->local_config);
-    grid.mpi_tag_space_count = 0;
-
-    acDeviceUpdate(device,device->local_config);
-    acLogFromRootProc(pid, "acGridInit: Creating default task graph\n");
+}
 #ifdef AC_INTEGRATION_ENABLED
+void
+gen_default_taskgraph()
+{
+    acLogFromRootProc(ac_pid(), "acGridInit: Creating default task graph\n");
     Field all_fields[NUM_VTXBUF_HANDLES];
     for (int i = 0; i < NUM_VTXBUF_HANDLES; i++) {
         all_fields[i] = (Field)i;
@@ -393,8 +346,13 @@ acGridInit(AcMeshInfo info)
 	    acComputeWithParams(KERNEL_twopass_solve_intermediate, all_fields,intermediate_loader),
 	    acComputeWithParams(KERNEL_twopass_solve_final, all_fields,final_loader)
     };
+    grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
+    acLogFromRootProc(ac_pid(), "acGridInit: Done creating default task graph\n");
+}
 #endif
-
+void
+initialize_random_number_generation(const AcMeshInfo submesh_info)
+{
     // Random number generator
     // const auto rr            = (int3){STENCIL_WIDTH, STENCIL_HEIGHT, STENCIL_DEPTH};
     // const auto local_m       = acConstructInt3Param(AC_mx, AC_my, AC_mz, submesh_info);
@@ -402,17 +360,146 @@ acGridInit(AcMeshInfo info)
     // const auto global_offset = submesh_info.int3_params[AC_multigpu_offset];
     // acRandInit(1234UL, to_volume(local_m), to_volume(global_m), to_volume(global_offset));
     const size_t count = acVertexBufferCompdomainSize(submesh_info);
-    acRandInitAlt(1234UL, count, pid);
+    acRandInitAlt(1234UL, count, ac_pid());
+}
+void
+log_grid_debug_info(const AcMeshInfo info)
+{
 
+    char processor_name[MPI_MAX_PROCESSOR_NAME];
+    int name_len;
+    MPI_Get_processor_name(processor_name, &name_len);
+
+    const int3 nn = acGetLocalNN(info);
+    const int3 pid3d = getPid3D(info);
+    const auto decomp = get_decomp(info);
+
+    printf("Processor %s. Process %d of %d: (%d, %d, %d)\n", processor_name, ac_pid(), ac_nprocs(), pid3d.x,
+           pid3d.y, pid3d.z);
+    printf("Decomposition: %lu, %lu, %lu\n", decomp.x, decomp.y, decomp.z);
+    printf("Mesh size: %d, %d, %d\n", nn.x,nn.y,nn.z);
+    fflush(stdout);
+    MPI_Barrier(astaroth_comm);
+}
+
+void
+create_astaroth_comm(const AcMeshInfo info)
+{
+      switch((AcMPICommStrategy)acGetInfoValue(info,AC_MPI_comm_strategy))
+      {
+	case AcMPICommStrategy::DuplicateMPICommWorld:
+      		ERRCHK_ALWAYS(MPI_Comm_dup(MPI_COMM_WORLD,&astaroth_comm) == MPI_SUCCESS);
+		break;
+	case AcMPICommStrategy::DuplicateUserComm:
+      		ERRCHK_ALWAYS(MPI_Comm_dup(info.comm,&astaroth_comm) == MPI_SUCCESS);
+		break;
+	default:
+		fprintf(stderr,"Unknown MPICommStrategy\n");
+		exit(EXIT_FAILURE);
+      }
+      MPI_Barrier(astaroth_comm);
+      grid.mpi_initialized = true;
+}
+
+void
+check_that_device_allocation_valid()
+{
+    int device_count = -1;
+    cudaGetDeviceCount(&device_count);
+    if (device_count > ac_nprocs()) {
+        fprintf(stderr,
+                "Invalid device-task allocation: Must allocate one MPI task per GPU but got %d "
+                "devices per node and only %d task(s).",
+                device_count, ac_nprocs());
+        ERRCHK_ALWAYS(device_count <= ac_nprocs());
+    }
+}
+void 
+check_that_mesh_large_enough(const AcMeshInfo info)
+{
+    const int3 nn = acGetLocalNN(info);
+    if (nn.x < STENCIL_WIDTH)
+        fprintf(stderr, "nn.x %d too small, must be >= %d (stencil width)\n", nn.x, STENCIL_WIDTH);
+    if (nn.y < STENCIL_HEIGHT)
+        fprintf(stderr, "nn.y %d too small, must be >= %d (stencil height)\n", nn.y,
+                STENCIL_HEIGHT);
+#if TWO_D == 0
+    if (nn.z < STENCIL_DEPTH)
+        fprintf(stderr, "nn.z %d too small, must be >= %d (stencil depth)\n", nn.z, STENCIL_DEPTH);
+#endif
+}
+
+
+AcResult
+acGridInit(AcMeshInfo info)
+{
+    ERRCHK(!grid.initialized);
+    if (!grid.mpi_initialized)
+      create_astaroth_comm(info);
+
+    // Check that MPI is initialized
+    char processor_name[MPI_MAX_PROCESSOR_NAME];
+    int name_len;
+    MPI_Get_processor_name(processor_name, &name_len);
+
+    check_that_device_allocation_valid();
+    check_that_decomp_valid(info);
+
+    //TP:  Done in order to copy AC_nxgrid -> AC_nx that will be decomposed
+    //     This way you can use AC_nxgrid to get the global dimensions in the DSL and device layer
+    acHostUpdateBuiltinParams(&info);
+    check_that_mesh_large_enough(info);
+    MPI_Barrier(astaroth_comm);
+
+#if AC_VERBOSE
+    log_grid_debug_info();
+#endif
+
+    // Check that mixed precision is correctly configured, AcRealPacked == AC_REAL_MPI_TYPE
+    // CAN BE REMOVED IF MIXED PRECISION IS SUPPORTED AS A PREPROCESSOR FLAG
+    int mpi_type_size;
+    MPI_Type_size(AC_REAL_MPI_TYPE, &mpi_type_size);
+    ERRCHK_ALWAYS(sizeof(AcRealPacked) == mpi_type_size);
+
+    // Decompose config (divide dimensions by decomposition)
+    AcMeshInfo submesh_info = acGridDecomposeMeshInfo(info);
+    check_that_mesh_large_enough(submesh_info);
+
+    // GPU alloc
+    int devices_per_node = -1;
+    cudaGetDeviceCount(&devices_per_node);
+
+    acLogFromRootProc(ac_pid(), "acGridInit: Calling acDeviceCreate\n");
+    Device device;
+    acDeviceCreate(ac_pid() % devices_per_node, submesh_info, &device);
+    acLogFromRootProc(ac_pid() , "acGridInit: Returned from acDeviceCreate\n");
+
+    // CPU alloc
+    acLogFromRootProc(ac_pid(), "acGridInit: Allocating CPU mesh\n");
+    AcMesh submesh;
+    acHostMeshCreate(submesh_info, &submesh);
+    acLogFromRootProc(ac_pid(), "acGridInit: Done allocating CPU mesh\n");
+
+    // Setup the global grid structure
+    grid.device        = device;
+    grid.submesh       = submesh;
+    grid.decomposition = get_decomp(info);
+
+    // Configure
+    grid.nn = acGetLocalNN(device->local_config);
+    grid.mpi_tag_space_count = 0;
+
+    acDeviceUpdate(device,device->local_config);
+
+    initialize_random_number_generation(submesh_info);
     grid.initialized   = true;
 
-    acVerboseLogFromRootProc(pid, "acGridInit: Synchronizing streams\n");
+    acVerboseLogFromRootProc(ac_pid(), "acGridInit: Synchronizing streams\n");
     acGridSynchronizeStream(STREAM_ALL);
-    acVerboseLogFromRootProc(pid, "acGridInit: Done synchronizing streams\n");
+    acVerboseLogFromRootProc(ac_pid(), "acGridInit: Done synchronizing streams\n");
 
 #ifdef AC_INTEGRATION_ENABLED
-    grid.default_tasks = std::shared_ptr<AcTaskGraph>(acGridBuildTaskGraph(default_ops));
-    acLogFromRootProc(pid, "acGridInit: Done creating default task graph\n");
+    gen_default_taskgraph();
 #endif
     return AC_SUCCESS;
 }
@@ -532,17 +619,14 @@ acGridLoadMeshWorking(const Stream stream, const AcMesh host_mesh)
                              MPI_ORDER_C, AC_REAL_MPI_TYPE, &distributed_subarray);
     MPI_Type_commit(&distributed_subarray);
 
-    int nprocs, pid;
-    MPI_Comm_size(acGridMPIComm(), &nprocs);
-    MPI_Comm_rank(acGridMPIComm(), &pid);
 
     MPI_Request recv_reqs[NUM_VTXBUF_HANDLES];
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         MPI_Irecv(grid.submesh.vertex_buffer[vtxbuf], 1, distributed_subarray, 0, vtxbuf,
                   acGridMPIComm(), &recv_reqs[vtxbuf]);
-        if (pid == 0) {
-            for (int tgt = 0; tgt < nprocs; ++tgt) {
-                const int3 tgt_pid3d = getPid3D(tgt, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]);
+        if (ac_pid() == 0) {
+            for (int tgt = 0; tgt < ac_nprocs(); ++tgt) {
+                const int3 tgt_pid3d = getPid3D(tgt);
                 const size_t idx     = acVertexBufferIdx(tgt_pid3d.x * distributed_nn.x, //
                                                          tgt_pid3d.y * distributed_nn.y, //
                                                          tgt_pid3d.z * distributed_nn.z, //
@@ -743,17 +827,15 @@ get_subarray(const int pid, //
              int monolithic_offset_arr[3], //
              int distributed_mm_arr[3], int distributed_nn_arr[3], int distributed_offset_arr[3])
 {
-    int nprocs;
-    MPI_Comm_size(acGridMPIComm(), &nprocs);
 
     const Device device   = grid.device;
     const AcMeshInfo info = device->local_config;
 
-    const int3 pid3d = getPid3D(pid, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]);
+    const int3 pid3d = getPid3D(pid);
     const int3 rr = get_rr();
 
     const int3 min = (int3){0, 0, 0};
-    const int3 max = getPid3D(nprocs - 1, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]); // inclusive
+    const int3 max = getPid3D(ac_nprocs() - 1); // inclusive
     const int3 base_distributed_nn = acGetLocalNN(grid.device->local_config);
     int3 distributed_nn     = acGetLocalNN(grid.device->local_config);
     int3 distributed_offset = rr;
@@ -808,11 +890,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
-
-    int pid, nprocs;
-    MPI_Comm_rank(acGridMPIComm(), &pid);
-    MPI_Comm_size(acGridMPIComm(), &nprocs);
-
+    const int pid = ac_pid();
     // Datatype:
     // 1) All processes: Local subarray (sending)
     //  1.1) function that takes the pid and outputs the local subarray
@@ -838,7 +916,8 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
         MPI_Type_free(&distributed_subarray);
     }
 
-    if (pid == 0) {
+    const int nprocs = ac_nprocs();
+    if (pid  == 0) {
         for (int tgt = 0; tgt < nprocs; ++tgt) {
             for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
                 int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
@@ -877,10 +956,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
     acDeviceStoreMesh(grid.device, stream, &grid.submesh);
     acDeviceSynchronizeStream(grid.device, stream);
 
-    int pid, nprocs;
-    MPI_Comm_rank(acGridMPIComm(), &pid);
-    MPI_Comm_size(acGridMPIComm(), &nprocs);
-
+    const int pid = ac_pid();
     // Datatype:
     // 1) All processes: Local subarray (sending)
     //  1.1) function that takes the pid and outputs the local subarray
@@ -907,7 +983,7 @@ acGridStoreMesh(const Stream stream, AcMesh* host_mesh)
     }
 
     if (pid == 0) {
-        for (int src = 0; src < nprocs; ++src) {
+        for (int src = 0; src < ac_nprocs(); ++src) {
             for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
                 int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
                 int distributed_mm[3], distributed_nn[3], distributed_offset[3];
@@ -1013,17 +1089,15 @@ acGridStoreMeshWorking(const Stream stream, AcMesh* host_mesh)
                              MPI_ORDER_C, AC_REAL_MPI_TYPE, &distributed_subarray);
     MPI_Type_commit(&distributed_subarray);
 
-    int nprocs, pid;
-    MPI_Comm_size(acGridMPIComm(), &nprocs);
-    MPI_Comm_rank(acGridMPIComm(), &pid);
+    const int pid = ac_pid();
 
     MPI_Request send_reqs[NUM_VTXBUF_HANDLES];
     for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
         MPI_Isend(grid.submesh.vertex_buffer[vtxbuf], 1, distributed_subarray, 0, vtxbuf,
                   acGridMPIComm(), &send_reqs[vtxbuf]);
         if (pid == 0) {
-            for (int tgt = 0; tgt < nprocs; ++tgt) {
-                const int3 tgt_pid3d = getPid3D(tgt, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]);
+            for (int tgt = 0; tgt < ac_nprocs(); ++tgt) {
+                const int3 tgt_pid3d = getPid3D(tgt);
                 const size_t idx     = acVertexBufferIdx(tgt_pid3d.x * distributed_nn.x, //
                                                          tgt_pid3d.y * distributed_nn.y, //
                                                          tgt_pid3d.z * distributed_nn.z, //
@@ -1089,10 +1163,7 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
     fflush(stdout);
 #endif
 
-    int pid, nprocs;
-    MPI_Comm_rank(astaroth_comm, &pid);
-    MPI_Comm_size(astaroth_comm, &nprocs);
-
+    const int pid = ac_pid();
     ERRCHK_ALWAYS(&grid.submesh);
 
     // Submesh nn
@@ -1131,8 +1202,8 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
                              0, 0, astaroth_comm, &status);
                 }
                 else {
-                    for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
-                        const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]);
+                    for (int tgt_pid = 1; tgt_pid < ac_nprocs(); ++tgt_pid) {
+                        const int3 tgt_pid3d = getPid3D(tgt_pid);
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
                                                               j + tgt_pid3d.y * nn.y, //
                                                               k + tgt_pid3d.z * nn.z, //
@@ -1167,9 +1238,7 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
     fflush(stdout);
 #endif
 
-    int pid, nprocs;
-    MPI_Comm_rank(astaroth_comm, &pid);
-    MPI_Comm_size(astaroth_comm, &nprocs);
+    const int pid = ac_pid();
 
     if (pid == 0)
         ERRCHK_ALWAYS(host_mesh);
@@ -1223,8 +1292,8 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
                 const int count = mm.x;
 
                 if (pid == 0) {
-                    for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
-                        const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]);
+                    for (int tgt_pid = 1; tgt_pid < ac_nprocs(); ++tgt_pid) {
+                        const int3 tgt_pid3d = getPid3D(tgt_pid);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
                                                               j + tgt_pid3d.y * nn.y, //
                                                               k + tgt_pid3d.z * nn.z, //
@@ -1252,8 +1321,8 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
             const int count = mm.x;
 
             if (pid == 0) {
-                for (int tgt_pid = 1; tgt_pid < nprocs; ++tgt_pid) {
-                    const int3 tgt_pid3d = getPid3D(tgt_pid, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]);
+                for (int tgt_pid = 1; tgt_pid < ac_nprocs(); ++tgt_pid) {
+                    const int3 tgt_pid3d = getPid3D(tgt_pid);
                     const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
                                                           j + tgt_pid3d.y * nn.y, //
                                                           1 + tgt_pid3d.z * nn.z, //
@@ -1612,7 +1681,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
 
     uint3_64 decomp = grid.decomposition;
-    int3 pid3d      = getPid3D(rank, grid.decomposition, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]);
+    int3 pid3d      = getPid3D(rank);
     Device device   = grid.device;
 
     auto boundary_normal = [&decomp, &pid3d](int tag) -> int3 {
@@ -1724,7 +1793,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             int tag0 = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
 		if(TWO_D && Region::tag_to_id(tag).z != 0) continue;
-                if (!Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy])) {
+                if (!Region::is_on_boundary(decomp, rank, tag, BOUNDARY_XYZ, ac_proc_mapping_strategy())) {
                     auto task = std::make_shared<HaloExchangeTask>(op, i, tag0, tag, grid_info, decomp,
                                                                    device, swap_offset);
                     graph->halo_tasks.push_back(task);
@@ -1742,7 +1811,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
             int tag0       = grid.mpi_tag_space_count * Region::max_halo_tag;
             for (int tag = Region::min_halo_tag; tag < Region::max_halo_tag; tag++) {
 		if(TWO_D && Region::tag_to_id(tag).z != 0) continue;
-                if (Region::is_on_boundary(decomp, rank, tag, op.boundary, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy])) {
+                if (Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy())) {
                     if (bc == BOUNDCOND_PERIODIC) {
                         acVerboseLogFromRootProc(rank, "Creating periodic bc task with tag%d\n",
                                                  tag);
@@ -1783,8 +1852,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                 acVerboseLogFromRootProc(rank,
                                          "acGridBuildTaskGraph: Region::is_on_boundary(decomp, "
                                          "rank, tag, op.boundary) = %i \n",
-                                         Region::is_on_boundary(decomp, rank, tag, op.boundary, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]));
-                if (Region::is_on_boundary(decomp, rank, tag, op.boundary, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy])) {
+                                         Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy()));
+                if (Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy())) {
                     auto task = std::make_shared<SpecialMHDBoundaryConditionTask>(op,
                                                                                   boundary_normal(
                                                                                       tag),
@@ -1807,8 +1876,8 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                 acVerboseLogFromRootProc(rank,
                                          "acGridBuildTaskGraph: Region::is_on_boundary(decomp, "
                                          "rank, tag, op.boundary) = %i \n",
-                                         Region::is_on_boundary(decomp, rank, tag, op.boundary, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy]));
-                if (Region::is_on_boundary(decomp, rank, tag, op.boundary, (AcProcMappingStrategy)grid.submesh.info.int_params[AC_proc_mapping_strategy])) {
+                                         Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy()));
+                if (Region::is_on_boundary(decomp, rank, tag, op.boundary, ac_proc_mapping_strategy())) {
                     auto task = std::make_shared<DSLBoundaryConditionTask>(op,
                                                                            boundary_normal(tag),
                                                                            i, tag, grid_info.nn,
@@ -2914,11 +2983,7 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
 
         acDeviceSynchronizeStream(device, STREAM_ALL);
 
-        const int3 slice_volume = (int3){
-            info.int_params[AC_nx],
-            info.int_params[AC_ny],
-            1,
-        };
+	const int3 slice_volume = acConstructInt3Param(AC_nx,AC_ny,1,info);
         const int3 slice_offset = (int3){0, 0, local_z};
 
         const AcReal* in     = device->vba.in[field];
@@ -2949,8 +3014,6 @@ acGridWriteSlicesToDiskLaunch(const char* dir, const char* label)
                 global_nn.y, label);
 #endif
 
-        int pid;
-        MPI_Comm_rank(astaroth_comm, &pid);
         // if (color != MPI_UNDEFINED)
         //     fprintf(stderr, "Writing field %d, proc %d, to %s\n", field, pid, filepath);
 
@@ -3079,11 +3142,7 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
 
         acDeviceSynchronizeStream(device, STREAM_ALL);
 
-        const int3 slice_volume = (int3){
-            info.int_params[AC_nx],
-            info.int_params[AC_ny],
-            1,
-        };
+	const int3 slice_volume = acConstructInt3Param(AC_nx,AC_ny,1,info);
         const int3 slice_offset = (int3){0, 0, local_z};
 
 	const AcReal* in = device->vba.in[field];
@@ -3109,8 +3168,6 @@ acGridWriteSlicesToDiskCollectiveSynchronous(const char* dir, const char* label)
         sprintf(filepath, "%s/%s-dims_%d_%d-%s.slice", dir, vtxbuf_names[field], global_nn.x,
                 global_nn.y, label);
 
-        int pid;
-        MPI_Comm_rank(astaroth_comm, &pid);
         // if (color != MPI_UNDEFINED)
         //     fprintf(stderr, "Writing field %d, proc %d, to %s\n", field, pid, filepath);
 

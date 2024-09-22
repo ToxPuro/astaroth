@@ -69,7 +69,7 @@ main(void)
 
     // CPU alloc
     AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    acLoadConfig(AC_DEFAULT_CONFIG, &info, NULL);
 
     const int max_devices = 8;
     if (nprocs > max_devices) {
@@ -79,16 +79,12 @@ main(void)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    acSetMeshDims(64, 64, 1, &info);
+    acSetMeshDims(64, 64, &info);
     //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {
-    printf("Before create host mesh\n");
-    fflush(stdout);
         acHostMeshCreate(info, &model);
-    printf("After create host mesh\n");
-    fflush(stdout);
         acHostMeshCreate(info, &candidate);
         acHostMeshRandomize(&model);
         acHostMeshRandomize(&candidate);
@@ -239,7 +235,16 @@ main(void)
           retval = res;
           WARNCHK_ALWAYS(retval);
       }
-
+      for (int k = nz_min; k < nz_max; ++k) {
+             for (int j = ny_min; j < ny_max; ++j) {
+                 for (int i = nx_min; i < nx_max; ++i) {
+          		const int index = IDX(i,j,k);
+			auto val = model.vertex_buffer[UU][index]; 
+			if(!std::isfinite(val))
+				printf("WRONG\n");
+		 }
+	     }
+      }
       fflush(stdout);
     }
 

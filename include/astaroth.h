@@ -265,75 +265,58 @@ typedef struct {
 #endif
 
 #ifdef __cplusplus
+
+static inline int
+acGetInfoValue(const AcMeshInfo, const int val)
+{
+	return val;
+}
+
+static inline int
+acGetInfoValue(const AcMeshInfo info, const AcIntParam param)
+{
+	return info.int_params[param];
+}
+
+static inline AcReal
+acGetInfoValue(const AcMeshInfo, const AcReal val)
+{
+	return val;
+}
+
+static inline AcReal
+acGetInfoValue(const AcMeshInfo info, const AcRealParam param)
+{
+	return info.real_params[param];
+}
+
+
+template <typename T1, typename T2, typename T3>
+static inline int3
+acConstructInt3Param(const T1 a, const T2 b, const T3 c, const AcMeshInfo info)
+{
+	return (int3)
+	{
+		acGetInfoValue(info,a),
+		acGetInfoValue(info,b),
+		acGetInfoValue(info,c)
+	};
+}
+
+template <typename T1, typename T2, typename T3>
+static inline AcReal3 
+acConstructReal3Param(const T1 a, const T2 b, const T3 c, const AcMeshInfo info)
+{
+	return (AcReal3)
+	{
+		acGetInfoValue(info,a),
+		acGetInfoValue(info,b),
+		acGetInfoValue(info,c)
+	};
+}
+
 extern "C" {
 #endif
-
-/*
- * =============================================================================
- * Helper functions
- * =============================================================================
- */
-#if TWO_D == 0
-static inline size_t
-acVertexBufferSize(const AcMeshInfo info)
-{
-    return as_size_t(info.int_params[AC_mx]) * as_size_t(info.int_params[AC_my]) *
-           as_size_t(info.int_params[AC_mz]);
-}
-
-static inline int3
-acVertexBufferDims(const AcMeshInfo info)
-{
-    return (int3){
-        (info.int_params[AC_mx]), 
-        (info.int_params[AC_my]), 
-        (info.int_params[AC_mz])
-    };
-}
-#else
-static inline size_t
-acVertexBufferSize(const AcMeshInfo info)
-{
-    return as_size_t(info.int_params[AC_mx]) * as_size_t(info.int_params[AC_my]) * 1;
-}
-
-static inline int3
-acVertexBufferDims(const AcMeshInfo info)
-{
-    return (int3){
-        (info.int_params[AC_mx]), 
-        (info.int_params[AC_my]), 
-	1,
-    };
-}
-#endif
-
-static inline size_t
-acVertexBufferSizeBytes(const AcMeshInfo info)
-{
-    return sizeof(AcReal) * acVertexBufferSize(info);
-}
-
-#if TWO_D == 0
-static inline size_t
-acVertexBufferCompdomainSize(const AcMeshInfo info)
-{
-    return as_size_t(info.int_params[AC_nx]) * as_size_t(info.int_params[AC_ny]) *
-           as_size_t(info.int_params[AC_nz]);
-}
-#else
-static inline size_t
-acVertexBufferCompdomainSize(const AcMeshInfo info)
-{
-    return as_size_t(info.int_params[AC_nx]) * as_size_t(info.int_params[AC_ny]) * 1;
-}
-#endif
-
-static inline size_t
-acVertexBufferCompdomainSizeBytes(const AcMeshInfo info)
-{
-    return sizeof(AcReal) * acVertexBufferCompdomainSize(info);
-}
 
 static inline int3
 acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
@@ -346,122 +329,74 @@ acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
     };
 }
 
+static inline AcReal3
+acConstructReal3Param(const AcRealParam a, const AcRealParam b, const AcRealParam c,
+                     const AcMeshInfo info)
+{
+    return (AcReal3){
+        info.real_params[a],
+        info.real_params[b],
+        info.real_params[c],
+    };
+}
+
+/*
+ * =============================================================================
+ * Helper functions
+ * =============================================================================
+ */
+
+FUNC_DEFINE(int3, acGetLocalNN, (const AcMeshInfo info));
+FUNC_DEFINE(int3, acGetLocalMM, (const AcMeshInfo info));
+FUNC_DEFINE(int3, acGetGridNN, (const AcMeshInfo info));
+FUNC_DEFINE(int3, acGetMinNN, (const AcMeshInfo info));
+FUNC_DEFINE(int3, acGetMaxNN, (const AcMeshInfo info));
+FUNC_DEFINE(AcReal3, acGetLengths, (const AcMeshInfo info));
+
+
+static inline size_t
+acVertexBufferSize(const AcMeshInfo info)
+{
+    const int3 mm = acGetLocalMM(info);
+    return as_size_t(mm.x)*as_size_t(mm.y)*as_size_t(mm.z);
+}
+
+static inline int3
+acVertexBufferDims(const AcMeshInfo info)
+{
+    return acGetLocalMM(info);
+}
+
+static inline size_t
+acVertexBufferSizeBytes(const AcMeshInfo info)
+{
+    return sizeof(AcReal) * acVertexBufferSize(info);
+}
+
+
+static inline size_t
+acVertexBufferCompdomainSize(const AcMeshInfo info)
+{
+    const int3 nn = acGetLocalNN(info);
+    return as_size_t(nn.x)*as_size_t(nn.y)*as_size_t(nn.z);
+}
+
+static inline size_t
+acVertexBufferCompdomainSizeBytes(const AcMeshInfo info)
+{
+    return sizeof(AcReal) * acVertexBufferCompdomainSize(info);
+}
+
+
+
 typedef struct {
     int3 n0, n1;
     int3 m0, m1;
     int3 nn;
 } AcMeshDims;
 
-#if TWO_D == 0
-static inline int3
-acGetLocalMM(const AcMeshInfo info)
-{
-    return acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
-}
-static inline int3
-acGetLocalNN(const AcMeshInfo info)
-{
-    return acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
-}
 
-static inline int3
-acGetMinNN(const AcMeshInfo info)
-{
-    return acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
-}
-static inline int3
-acGetMaxNN(const AcMeshInfo info)
-{
-    return (int3)
-    {
-	    info.int_params[AC_nx_max],
-	    info.int_params[AC_ny_max],
-	    info.int_params[AC_nz_max],
-    };
-}
-static inline AcReal3
-acGetLengths(const AcMeshInfo info)
-{
-	return (AcReal3)
-	{
-		info.real_params[AC_xlen],
-		info.real_params[AC_ylen],
-		info.real_params[AC_zlen]
-	};
-}
-static inline int3
-acGetGridNN(const AcMeshInfo info)
-{
-	return (int3)
-	{
-		info.int_params[AC_nxgrid],
-		info.int_params[AC_nygrid],
-		info.int_params[AC_nzgrid]
-	};
-}
-#else
-static inline int3
-acGetLocalMM(const AcMeshInfo info)
-{
-    return (int3)
-    {
-	    info.int_params[AC_mx],
-	    info.int_params[AC_my],
-	    1
-    };
-}
-static inline int3
-acGetLocalNN(const AcMeshInfo info)
-{
-    return (int3)
-    {
-	    info.int_params[AC_nx],
-	    info.int_params[AC_ny],
-	    1
-    };
-}
-static inline int3
-acGetMinNN(const AcMeshInfo info)
-{
-    return (int3)
-    {
-	    info.int_params[AC_nx_min],
-	    info.int_params[AC_ny_min],
-	    0
-    };
-}
 
-static inline int3
-acGetMaxNN(const AcMeshInfo info)
-{
-    return (int3)
-    {
-	    info.int_params[AC_nx_max],
-	    info.int_params[AC_ny_max],
-	    1
-    };
-}
-static inline AcReal3
-acGetLengths(const AcMeshInfo info)
-{
-	return (AcReal3)
-	{
-		info.real_params[AC_xlen],
-		info.real_params[AC_ylen],
-		-1.0
-	};
-}
-static inline int3
-acGetGridNN(const AcMeshInfo info)
-{
-	return (int3)
-	{
-		info.int_params[AC_nxgrid],
-		info.int_params[AC_nygrid],
-		1
-	};
-}
-#endif
 
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info)
@@ -494,13 +429,28 @@ FUNC_DEFINE(VertexBufferArray, acGridGetVBA,(void));
 
 FUNC_DEFINE(AcMeshInfo, acGridGetLocalMeshInfo,(void));
 
+#ifdef __cplusplus
+//TP: this is done for perf optim since if acVertexBufferIdx is called often
+//Making it an external function call is quite expensive
 static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
+    const int x = acGetInfoValue(info,AC_mx);
+    const int y = acGetInfoValue(info,AC_my);
     return as_size_t(i) +                          //
-           as_size_t(j) * info.int_params[AC_mx] + //
-           as_size_t(k) * info.int_params[AC_mx] * info.int_params[AC_my];
+           as_size_t(j) * x + //
+           as_size_t(k) * x * y;
 }
+#else
+static inline size_t
+acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
+{
+    const int3 mm = acGetLocalMM(info);
+    return as_size_t(i) +                          //
+           as_size_t(j) * mm.x + //
+           as_size_t(k) * mm.x * mm.y;
+}
+#endif
 
 static inline int3
 acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
@@ -2021,6 +1971,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 
 
 #ifdef __cplusplus
+
 
 #include "device_set_input_overloads.h"
 #include "device_get_input_overloads.h"
