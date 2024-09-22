@@ -3502,7 +3502,7 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 	  if(used_in_assignment)
 	  {
 		fprintf(stderr,FATAL_ERROR_MESSAGE"Undeclared variable or function used on the right hand side of an assignment\n");
-		fprintf(stderr,"Assignment: %s\n",combine_all_new(get_node(NODE_ASSIGNMENT,node)));
+		fprintf(stderr,"Assignment: %s\n",combine_all_new(get_parent_node(NODE_ASSIGNMENT,node)));
 		fprintf(stderr,"Var: %s\n",node->buffer);
 		fprintf(stderr,"\n");
 		exit(EXIT_FAILURE);
