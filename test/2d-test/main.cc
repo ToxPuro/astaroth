@@ -69,7 +69,7 @@ main(void)
 
     // CPU alloc
     AcMeshInfo info;
-    acLoadConfig(AC_DEFAULT_CONFIG, &info);
+    acLoadConfig(AC_DEFAULT_CONFIG, &info, NULL);
 
     const int max_devices = 8;
     if (nprocs > max_devices) {
@@ -79,7 +79,7 @@ main(void)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    acSetMeshDims(64, 64, 1, &info);
+    acSetMeshDims(64, 64,  &info);
     //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;
@@ -257,7 +257,7 @@ main(void)
     finalized = true;
 
     if (pid == 0)
-        fprintf(stderr, "DCONST_ARR_TEST complete: %s\n",
+        fprintf(stderr, "2D-TEST complete: %s\n",
                 retval == AC_SUCCESS ? "No errors found" : "One or more errors found");
 
     return EXIT_SUCCESS;

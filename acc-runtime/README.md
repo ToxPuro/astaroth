@@ -632,6 +632,16 @@ bc_sym_z(Field field, bool bottom)
 	}
 }
 ```
+### 2D-setups
+This is still an experimental feature and not all other features like reductions have been tested with this.
+By setting `2D=ON` one can build Astaroth specifically for a two-dimensional setup.
+Currently the missing dimension is always the z-dimension. The main difference between setting `AC_nzgrid=1` and an explicit two-dimensional setup is that in the latter no halo regions are allocated in the z-dimension, which is an considerable memory saving.
+`Stencils` work the same as usual, expect when declaring them one uses only the x and y -offsets.
+Some API functions that previously took three-dimensional arrays or three parameters related to the spatial dimensions now take two-dimensional arrays and only two parameters.
+Additionally those built-in variables related to the z spatial dimension (e.g. `AC_nz`)  are suppressed.
+When using `BoundConds` one does not need to declare boundary conditions on the z-boundaries and if they are they will be skipped.
+One can find in `acc-runtime/samples/2d/2d-test.ac` and `test/2d-test/main.cc` a simple test two-dimensional setup.
+
 
 
 # Interaction with the Astaroth Core and Utils libraries
