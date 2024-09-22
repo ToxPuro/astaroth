@@ -483,6 +483,7 @@ real AC_REAL_EPSILON // Either DBL_EPSILON or FLT_EPSILON base on precision of `
 ```
 ### Built-in dconsts
 
+```
 uniform spacings of the grid:
 real AC_dsx
 real AC_dsy
@@ -491,7 +492,7 @@ and their inverses:
 real AC_inv_dsx
 real AC_inv_dsy
 real AC_inv_dsz
-Subdomain size (not incl. halos)
+ubdomain size (not incl. halos)
 int AC_nx
 int AC_ny
 int AC_nz
@@ -504,14 +505,14 @@ int AC_nxgrid
 int AC_nygrid
 int AC_nzgrid
 Derivatives of subdomain sizes
-int AC_mxy //AC_mx*AC_my
-int AC_nxy //AC_nx*AC_ny
+int AC_mxy  //AC_mx*AC_my
+int AC_nxy  //AC_nx*AC_ny
 int AC_nxyz //AC_nx*AC_ny*AC_nz
 Physical domain extents
 real AC_xlen
 real AC_ylen
 real AC_zlen
-Library config parameters (explained on the library documentation)
+Library config parameters (explained in the library documentation)
 Not meaningful for DSL
 int AC_proc_mapping_strategy
 int AC_decompose_strategy
@@ -520,6 +521,7 @@ Coordinate vectors of a Lagrangian grid (need LAGRANGIAN_GRID=ON)
 Field COORDS_X
 Field COORDS_Y
 Field COORDS_Z
+```
 
 ## Advanced features
 If OPTIMIZE_FIELDS=ON, the DSL compiler will identify unused `Fields` and will not allocate them on the GPU.
