@@ -3958,14 +3958,7 @@ get_array_initializer_type(ASTNode* node)
 const char*
 get_struct_initializer_type(ASTNode* node)
 {
-	if(node->parent->lhs && get_node(NODE_TSPEC,node->parent->lhs))
-	{
-		const char* type = get_node(NODE_TSPEC,node->parent->lhs)->lhs->buffer;
-		const bool test = test_type(node, type);
-		if(test)
-			return type;
-	}
-	else if(all_primary_expressions_and_func_calls_have_type(node->lhs))
+	if(all_primary_expressions_and_func_calls_have_type(node->lhs))
 	{
 		node_vec nodes = get_nodes_in_list(node->lhs);
 		string_vec types = VEC_INITIALIZER;
@@ -3995,12 +3988,21 @@ get_struct_initializer_type(ASTNode* node)
 	return node->expr_type;
 }
 const char*
+get_cast_expr_type(ASTNode* node)
+{
+	const char* res = strdup(combine_all_new(node->lhs));
+	test_type(node->rhs,res);
+	return res;
+}
+const char*
 get_expr_type(ASTNode* node)
 {
 
 	if(node->expr_type) return node->expr_type;
 	const char* res = node->expr_type;
-	if(node->type & NODE_ARRAY_INITIALIZER)
+	if(node->token == CAST)
+		res = get_cast_expr_type(node);
+	else if(node->type & NODE_ARRAY_INITIALIZER)
 		res = get_array_initializer_type(node);
 	else if(node->type == NODE_PRIMARY_EXPRESSION)
 		res = get_primary_expr_type(node);
@@ -4077,7 +4079,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 	if(!node->parent)
 		return;
 	//discard global const declarations
-	if(node->parent->parent->parent->type & NODE_ASSIGN_LIST)
+	if(get_parent_node(NODE_GLOBAL,node))
 		return;
 	const char* type = get_expr_type(node->parent);
 	if(!type || strcmps(type,"Field","VertexBufferHandle"))
@@ -5102,7 +5104,7 @@ bool
 gen_constexpr_info_base(ASTNode* node)
 {
 	bool res = false;
-	if(node->type & NODE_ASSIGN_LIST)
+	if(node->type & NODE_GLOBAL)
 		return res;
 	if(node->lhs)
 		res |= gen_constexpr_info_base(node->lhs);
@@ -5185,7 +5187,7 @@ bool
 gen_type_info_base(ASTNode* node, const ASTNode* root)
 {
 	bool res = false;
-	if(node->type & NODE_ASSIGN_LIST)
+	if(node->type & NODE_GLOBAL)
 		return res;
 	if(node->lhs)
 		res |= gen_type_info_base(node->lhs,root);
@@ -5869,14 +5871,20 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   free_structs_info(&s_info);
 }
 
-void
-stencilgen(ASTNode* root)
+static size_t
+count_stencils()
 {
   size_t num_stencils = 0;
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
     if(symbol_table[i].tspecifier_token == STENCIL)
       ++num_stencils;
+  return num_stencils;
+}
 
+void
+stencilgen(ASTNode* root)
+{
+  const size_t num_stencils = count_stencils();
   FILE* stencilgen = fopen(STENCILGEN_HEADER, "w");
   assert(stencilgen);
 
@@ -6122,90 +6130,22 @@ check_global_array_dimensions(const ASTNode* node)
 }
 
 void
-generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool optimize_conditionals)
-{ 
-  (void)optimize_conditionals;
-  symboltable_reset();
-  ASTNode* root = astnode_dup(root_in,NULL);
-  //preprocess(root);
-  s_info = read_user_structs(root);
-  e_info = read_user_enums(root);
-  gen_type_info(root);
-  //Used to help in constexpr deduction
-  if(gen_mem_accesses)
-  {
-  	//gen_ssa_in_basic_blocks(root);
-  	gen_constexpr_info(root);
-	//remove_dead_writes(root);
-  }
-
-  traverse(root, NODE_NO_OUT, NULL);
-  check_global_array_dimensions(root);
-
-  gen_multidimensional_field_accesses_recursive(root,gen_mem_accesses);
-
-
-
-  // Fill the symbol table
-  gen_user_taskgraphs(root);
-  combinatorial_params_info info = get_combinatorial_params_info(root);
-  gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
-  replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
-  free_combinatorial_params_info(&info);
-  gen_kernel_postfixes_and_reduce_outputs(root,gen_mem_accesses);
-
-
-  // print_symbol_table();
-
-  // Generate user_kernels.h
-  fprintf(stream, "#pragma once\n");
-
-  size_t num_stencils = 0;
-  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-    if(symbol_table[i].tspecifier_token == STENCIL)
-      ++num_stencils;
-
-
-
-
-  // Device constants
-  // gen_dconsts(root, stream);
-  traverse(root, NODE_NO_OUT, NULL);
-  {
-  	  const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
-	  //if(has_optimization_info) reorder_dead_fields_last(root);
-          FILE* fp = fopen("fields_info.h","w");
-          gen_field_info(fp);
-          fclose(fp);
-
-	  symboltable_reset();
-  	  traverse(root, NODE_NO_OUT, NULL);
-	  string_vec datatypes = get_all_datatypes();
-
-  	  FILE* fp_info = fopen("array_info.h","w");
-  	  fprintf(fp_info,"\n #ifdef __cplusplus\n");
-  	  fprintf(fp_info,"\n#include <array>\n");
-  	  fprintf(fp_info,"typedef struct {std::array<int,3>  len; std::array<bool,3> from_config;} AcArrayDims;\n");
-  	  fprintf(fp_info,"typedef struct { bool is_dconst; int d_offset; int num_dims; AcArrayDims dims; const char* name; bool is_alive;} array_info;\n");
-  	  for (size_t i = 0; i < datatypes.size; ++i)
-  	  	  gen_array_info(fp_info,datatypes.data[i],root);
-  	  fprintf(fp_info,"\n #endif\n");
-  	  fclose(fp_info);
-
-	  //TP: !IMPORTANT! gen_array_info will temporarily update the nodes to push DEAD type qualifiers to dead gmem arrays.
-	  //This info is used in gen_gmem_array_declarations so they should be called after each other, maybe will simply combine them into a single function
-  	  for (size_t i = 0; i < datatypes.size; ++i)
-	  	gen_gmem_array_declarations(datatypes.data[i],root);
-  }
-  const char* array_datatypes[] = {"int","AcReal","bool","int3","AcReal3","long","long long"};
-  for (size_t i = 0; i < sizeof(array_datatypes)/sizeof(array_datatypes[0]); ++i)
-  	gen_array_reads(root,root,array_datatypes[i]);
-
-  // Stencils
-
-  // Stencil generator
-
-  // Compile
+debug_prints(const ASTNode* node)
+{
+	(void) node;
+	/**
+	TRAVERSE_PREAMBLE(debug_prints);
+	if(node->type == NODE_ASSIGNMENT)
+	{
+		if(strstr(combine_all_new(node), "uu_addition"))
+			printf("HMM: %s\n",combine_all_new(node));
+	}
+	**/
+}
+void
+gen_stencils(const bool gen_mem_accesses, FILE* stream)
+{
+  const size_t num_stencils = count_stencils();
   if (gen_mem_accesses || !OPTIMIZE_MEM_ACCESSES) {
     FILE* tmp = fopen("stencil_accesses.h", "w+");
     assert(tmp);
@@ -6277,11 +6217,11 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
     fprintf(stream, "%s", buf);
 
   pclose(proc);
+}
 
-
-  // Device functions
-  symboltable_reset();
-  traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
+char**
+get_dfunc_strs(const ASTNode* root)
+{
   char** dfunc_strs = malloc(sizeof(char*)*num_dfuncs);
   FILE* dfunc_fps[num_dfuncs];
   const ASTNode* dfunc_heads[num_dfuncs];
@@ -6305,16 +6245,105 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
 	else
 		fprintf(dfunc_fps[i],"%s","");
   	fflush(dfunc_fps[i]);
+	fclose(dfunc_fps[i]);
   }
+  return dfunc_strs;
+}
+
+void
+generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool optimize_conditionals)
+{ 
+  (void)optimize_conditionals;
+  symboltable_reset();
+  ASTNode* root = astnode_dup(root_in,NULL);
+  //preprocess(root);
+  s_info = read_user_structs(root);
+  e_info = read_user_enums(root);
+  gen_type_info(root);
+  //Used to help in constexpr deduction
+  if(gen_mem_accesses)
+  {
+  	//gen_ssa_in_basic_blocks(root);
+  	gen_constexpr_info(root);
+	//remove_dead_writes(root);
+  }
+
+  traverse(root, NODE_NO_OUT, NULL);
+  check_global_array_dimensions(root);
+
+  gen_multidimensional_field_accesses_recursive(root,gen_mem_accesses);
+
+
+
+  // Fill the symbol table
+  gen_user_taskgraphs(root);
+  combinatorial_params_info info = get_combinatorial_params_info(root);
+  gen_kernel_input_params(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
+  replace_boolean_dconsts_in_optimized(root,info.params.vals,info.kernels_with_input_params,info.kernel_combinatorial_params);
+  free_combinatorial_params_info(&info);
+  gen_kernel_postfixes_and_reduce_outputs(root,gen_mem_accesses);
+
+
+  // print_symbol_table();
+
+  // Generate user_kernels.h
+  fprintf(stream, "#pragma once\n");
+
+
+
+
+
+  // Device constants
+  // gen_dconsts(root, stream);
+  traverse(root, NODE_NO_OUT, NULL);
+  {
+  	  const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
+	  //if(has_optimization_info) reorder_dead_fields_last(root);
+          FILE* fp = fopen("fields_info.h","w");
+          gen_field_info(fp);
+          fclose(fp);
+
+	  symboltable_reset();
+  	  traverse(root, NODE_NO_OUT, NULL);
+	  string_vec datatypes = get_all_datatypes();
+
+  	  FILE* fp_info = fopen("array_info.h","w");
+  	  fprintf(fp_info,"\n #ifdef __cplusplus\n");
+  	  fprintf(fp_info,"\n#include <array>\n");
+  	  fprintf(fp_info,"typedef struct {std::array<int,3>  len; std::array<bool,3> from_config;} AcArrayDims;\n");
+  	  fprintf(fp_info,"typedef struct { bool is_dconst; int d_offset; int num_dims; AcArrayDims dims; const char* name; bool is_alive;} array_info;\n");
+  	  for (size_t i = 0; i < datatypes.size; ++i)
+  	  	  gen_array_info(fp_info,datatypes.data[i],root);
+  	  fprintf(fp_info,"\n #endif\n");
+  	  fclose(fp_info);
+
+	  //TP: !IMPORTANT! gen_array_info will temporarily update the nodes to push DEAD type qualifiers to dead gmem arrays.
+	  //This info is used in gen_gmem_array_declarations so they should be called after each other, maybe will simply combine them into a single function
+  	  for (size_t i = 0; i < datatypes.size; ++i)
+	  	gen_gmem_array_declarations(datatypes.data[i],root);
+  }
+  const char* array_datatypes[] = {"int","AcReal","bool","int3","AcReal3","long","long long"};
+  for (size_t i = 0; i < sizeof(array_datatypes)/sizeof(array_datatypes[0]); ++i)
+  	gen_array_reads(root,root,array_datatypes[i]);
+
+  // Stencils
+
+  // Stencil generator
+
+  // Compile
+  gen_stencils(gen_mem_accesses,stream);
+
+
+  // Device functions
+  symboltable_reset();
+  traverse(root, NODE_DCONST | NODE_VARIABLE | NODE_FUNCTION | NODE_STENCIL | NODE_NO_OUT, NULL);
+  char** dfunc_strs = get_dfunc_strs(root);
 	
-
-
-
   // Kernels
   symboltable_reset();
   gen_kernels(root, dfunc_strs, gen_mem_accesses);
   for(size_t i = 0; i < num_dfuncs; ++i)
-	  fclose(dfunc_fps[i]);
+  	free(dfunc_strs[i]);
   free(dfunc_strs);
 
   //gen_dfunc_internal_names(root);

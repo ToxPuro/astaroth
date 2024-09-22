@@ -485,6 +485,7 @@ main(int argc, char** argv)
 %token REAL3 INT3
 %token RANGE
 %token CONST_DIMS
+%token CAST
 
 %nonassoc QUESTION
 %nonassoc ':'
@@ -813,14 +814,18 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
                   | base_identifier '.' identifier          { $$ = astnode_create(NODE_STRUCT_EXPRESSION, $1, $3); astnode_set_infix(".", $$); set_identifier_type(NODE_MEMBER_ID, $$->rhs); }
                   | postfix_expression '(' ')'                 { $$ = astnode_create(NODE_FUNCTION_CALL, $1, NULL); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }
                   | postfix_expression '(' expression_list ')' { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); } 
-                  | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_UNKNOWN, $1, $3);   $$->expr_type = strdup(combine_all_new($$->lhs)); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); $$->lhs->type ^= NODE_TSPEC; /* Unset NODE_TSPEC flag, casts are handled as functions */ }
+                  | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_UNKNOWN, $1, $3);   $$->expr_type = strdup(combine_all_new($$->lhs)); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); $$->lhs->type ^= NODE_TSPEC; $$->token = CAST; /* Unset NODE_TSPEC flag, casts are handled as functions */ }
                   | '(' type_specifier ')' struct_initializer { 
 						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
 						astnode_set_infix(")",$$); 
+						$$->lhs->type ^= NODE_TSPEC;
+						$$->token = CAST;
 						}
                   | '(' type_specifier ')' primary_expression { 
 						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
 						astnode_set_infix(")",$$); 
+						$$->lhs->type ^= NODE_TSPEC;
+						$$->token = CAST;
 						}
                   | '[' expression_list ']' { $$ = astnode_create(NODE_ARRAY_INITIALIZER, $2, NULL); astnode_set_prefix("{", $$); astnode_set_postfix("}", $$); }
 		  | struct_initializer {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }

@@ -61,7 +61,7 @@ typedef enum {
   NODE_IF                  = (1 << 25),
   NODE_FUNCTION_CALL       = (1 << 26),
   NODE_DFUNCTION_ID        = (1 << 27),
-  NODE_ASSIGN_LIST         = (1 << 28),
+  NODE_ASSIGN_LIST         = (1 << 28 | NODE_GLOBAL), 
   NODE_NO_OUT              = (1 << 29),
   NODE_STRUCT_EXPRESSION   = (1 << 30),
   NODE_FUNCTION            = NODE_DFUNCTION | NODE_KFUNCTION,
