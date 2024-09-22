@@ -169,25 +169,25 @@ enum Characters
 
 ### Type qualifiers
 
-const effectively the same as C++ const.
+* `const` Effectively the same as C++ const.
 
-dconst the implicit qualifier if no qualifiers are defined, for global variables, stored in the device constant memory of the GPU, which makes accesses fast.
+* `dconst` The implicit qualifier if no qualifiers are defined, for global variables, stored in the device constant memory of the GPU, which makes accesses fast.
 Their values are loaded through the Astaroth config.
 
-gmem used for arrays to be allocated on the global memory of GPU
+* `gmem` Used for arrays to be allocated on the global memory of GPU
 
 >Note: For performance reasons you should use gmem arrays when different indexes are used at different vertices at the same time. 
 Additionally too large arrays on the device constant memory can degrade performance by limiting the amount of available cache too much.
 
-run_const
+* `run_const`
 Variables that are constant during the execution context of Astaroth (e.g. during a timeloop in a simulation).
 By default the same as dconst, but with RUNTIME_COMPILATION=ON they will be effectively replaced by their value (C++ `constexpr`).
 
 
 ### Advanced
-communicated
+* `communicated`
 The implicit qualifier for `Fields` if no qualifiers are defined, their halos are updated. 
-auxiliary
+* `auxiliary`
 `Fields` where the input and output buffers are the same (e.g. no stencil operations and writes in the same kernel).
 
 > Note: one can combine these to have communicated auxiliary `Fields`, without `communicated`, `auxiliary` `Fields` are not communicated.
@@ -195,10 +195,10 @@ auxiliary
 The DSL compiler can also infer these qualifiers if OPTIMIZE_FIELDS=ON from `write`, `value` and `Stencil` calls.
 **Important** requires that all conditionals are known at compile-time.
 
-input
-designed for variables that are inputs to Kernels, but should not be allocated/loaded to the GPU.
+* `input`
+Designed for variables that are inputs to Kernels, but should not be allocated/loaded to the GPU.
 > Note: At the moment, mostly useful for `ComputeSteps`
-output
+* `output`
 At the moment, restricted to `real` scalar quantities resulting from reductions across the whole subdomain.
 > Note: implicitly allocates memory on the GPU to perform reductions.
 
