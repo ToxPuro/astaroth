@@ -282,6 +282,83 @@ get_mpi_coords_neighbor_inv(const size_t ndims, const size_t* nn, const size_t* 
         mpi_coords_neighbor[i] += mpi_coords[i];
 }
 
+// static void haloExchange(const MPI_Comm comm_cart, CommData comm_data)
+
+//     size_t launch_counter = 0;
+
+// const size_t ndims = comm_data.local_packets[0].ndims;
+// for (size_t i = 0; i < comm_data.npackets; ++i) {
+//     int sizes[ndims], subsizes[ndims], starts[ndims];
+//     to_mpi_format(ndims, local_mm, sizes);
+//     to_mpi_format(ndims, comm_data.local_packets[i].dims, subsizes);
+//     to_mpi_format(ndims, comm_data.local_packets[i].offset, starts);
+// }
+// ++launch_counter;
+// }
+
+static void
+haloExchange(const MPI_Comm comm_cart, const size_t ndims, const size_t* local_nn,
+             const size_t* local_mm, const size_t* rr, CommData comm_data, size_t* buffer)
+{
+    static size_t launch_counter = 0;
+
+    int rank;
+    ERRCHK_MPI_API(MPI_Comm_rank(comm_cart, &rank));
+
+    MPI_Request reqs[comm_data.npackets];
+    for (size_t i = 0; i < comm_data.npackets; ++i) {
+        int sizes[ndims], subsizes[ndims], send_starts[ndims], recv_starts[ndims];
+        to_mpi_format(ndims, local_mm, sizes);
+        to_mpi_format(ndims, comm_data.local_packets[i].dims, subsizes);
+        to_mpi_format(ndims, comm_data.local_packets[i].offset, recv_starts);
+
+        for (size_t j = 0; j < ndims; ++j)
+            send_starts[j] = as_int(mod(as_int64_t(recv_starts[j]) - as_int64_t(rr[ndims - 1 - j]),
+                                        as_int64_t(local_nn[ndims - 1 - j])) +
+                                    as_int64_t(rr[ndims - 1 - j]));
+
+        MPI_Datatype send_subarray, recv_subarray;
+        ERRCHK_MPI_API(MPI_Type_create_subarray(as_int(ndims), sizes, subsizes, send_starts,
+                                                MPI_ORDER_C, MPI_UNSIGNED_LONG_LONG,
+                                                &send_subarray));
+        ERRCHK_MPI_API(MPI_Type_commit(&send_subarray));
+        ERRCHK_MPI_API(MPI_Type_create_subarray(as_int(ndims), sizes, subsizes, recv_starts,
+                                                MPI_ORDER_C, MPI_UNSIGNED_LONG_LONG,
+                                                &recv_subarray));
+        ERRCHK_MPI_API(MPI_Type_commit(&recv_subarray));
+
+        // Get tag
+        const int tag = get_tag(i, comm_data.npackets, launch_counter);
+
+        // Get neighbors
+        int mpi_coords[ndims];
+        ERRCHK_MPI_API(MPI_Cart_coords(comm_cart, rank, as_int(ndims), mpi_coords));
+
+        const size_t* offset = comm_data.local_packets[i].offset;
+        int mpi_coords_send_neighbor[ndims];
+        get_mpi_coords_neighbor(ndims, local_nn, rr, offset, mpi_coords, mpi_coords_send_neighbor);
+
+        int send_neighbor;
+        ERRCHK_MPI_API(MPI_Cart_rank(comm_cart, mpi_coords_send_neighbor, &send_neighbor));
+
+        int mpi_coords_recv_neighbor[ndims];
+        get_mpi_coords_neighbor_inv(ndims, local_nn, rr, offset, mpi_coords,
+                                    mpi_coords_recv_neighbor);
+
+        int recv_neighbor;
+        ERRCHK_MPI_API(MPI_Cart_rank(comm_cart, mpi_coords_recv_neighbor, &recv_neighbor));
+
+        ERRCHK_MPI_API(MPI_Isendrecv(buffer, 1, send_subarray, send_neighbor, tag, buffer, 1,
+                                     recv_subarray, recv_neighbor, tag, comm_cart, &reqs[i]));
+
+        ERRCHK_MPI_API(MPI_Type_free(&send_subarray));
+        ERRCHK_MPI_API(MPI_Type_free(&recv_subarray));
+    }
+    ERRCHK_MPI_API(MPI_Waitall(as_int(comm_data.npackets), reqs, MPI_STATUSES_IGNORE));
+
+    ++launch_counter;
+}
+
 int
 acCommTest(void)
 {
@@ -373,6 +450,11 @@ acCommTest(void)
     }
 #endif
 
+    haloExchange(comm_cart, ndims, local_nn, local_mm, rr, comm_data, buffer);
+    haloExchange(comm_cart, ndims, local_nn, local_mm, rr, comm_data, buffer);
+    haloExchange(comm_cart, ndims, local_nn, local_mm, rr, comm_data, buffer);
+    haloExchange(comm_cart, ndims, local_nn, local_mm, rr, comm_data, buffer);
+#if 0
     MPI_Request send_reqs[comm_data.npackets];
     MPI_Request recv_reqs[comm_data.npackets];
     size_t launch_counter = 0;
@@ -464,6 +546,7 @@ acCommTest(void)
         ERRCHK_MPI_API(MPI_Type_free(&send_subarray));
     }
     ++launch_counter;
+#endif
 
     // Print data
     if (rank == 0) {
