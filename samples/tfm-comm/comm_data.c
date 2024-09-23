@@ -42,6 +42,66 @@ create_combinations(const size_t ndims)
     return combinations;
 }
 
+static void
+get_mm(const size_t ndims, const size_t* nn, const size_t* rr, size_t* mm)
+{
+    for (size_t i = 0; i < ndims; ++i)
+        mm[i] = 2 * rr[i] + nn[i];
+}
+
+void
+acCommDataTest(const size_t ndims, const size_t* nn, const size_t* rr, const CommData comm_data)
+{
+    // Ensure that
+    // 1. none of the segments overlap
+    // 2. the number of points covered by the segments encompass the whole
+    //    ghost zone
+    // 3. all of the segments are within mm
+
+    { // Local packets
+        size_t mm[ndims];
+        get_mm(ndims, nn, rr, mm);
+        const size_t model_count = prod(ndims, mm) - prod(ndims, nn);
+
+        size_t count = 0;
+        for (size_t i = 0; i < comm_data.npackets; ++i) {
+            const PackedData a = comm_data.local_packets[i];
+            ERRCHK(ndims == a.ndims);
+            for (size_t j = i + 1; j < comm_data.npackets; ++j) {
+                const PackedData b = comm_data.local_packets[j];
+
+                ERRCHK(intersect_box(ndims, a.offset, a.dims, b.offset, b.dims) == false);
+            }
+            count += prod(ndims, a.dims);
+
+            for (size_t j = 0; j < ndims; ++j)
+                ERRCHK(a.offset[j] + a.dims[j] <= mm[j]);
+        }
+        ERRCHK(count == model_count);
+    }
+    { // Remote packets
+        size_t mm[ndims];
+        get_mm(ndims, nn, rr, mm);
+        const size_t model_count = prod(ndims, mm) - prod(ndims, nn);
+
+        size_t count = 0;
+        for (size_t i = 0; i < comm_data.npackets; ++i) {
+            const PackedData a = comm_data.remote_packets[i];
+            ERRCHK(ndims == a.ndims);
+            for (size_t j = i + 1; j < comm_data.npackets; ++j) {
+                const PackedData b = comm_data.remote_packets[j];
+
+                ERRCHK(intersect_box(ndims, a.offset, a.dims, b.offset, b.dims) == false);
+            }
+            count += prod(ndims, a.dims);
+
+            for (size_t j = 0; j < ndims; ++j)
+                ERRCHK(a.offset[j] + a.dims[j] <= mm[j]);
+        }
+        ERRCHK(count == model_count);
+    }
+}
+
 CommData
 acCommDataCreate(const size_t ndims, const size_t* nn, const size_t* rr, const size_t nfields)
 {
@@ -102,13 +162,16 @@ acCommDataCreate(const size_t ndims, const size_t* nn, const size_t* rr, const s
                 offset[k] = combination[k] * (rr[k] + nn[k]) +
                             (1 - combination[k]) * (1 - segment[k]) * rr[k];
             // print_array("Current projected offset", ndims, offset);
-            ERRCHKK(curr <= npackets, "Packet counter OOB")
+            ERRCHKK(curr <= npackets, "Packet counter OOB");
             comm_data.local_packets[curr]  = acCreatePackedData(ndims, dims, offset, nfields);
             comm_data.remote_packets[curr] = acCreatePackedData(ndims, dims, offset, nfields);
+            // print_array("Local packet offset offset", ndims,
+            // comm_data.local_packets[curr].offset);
             ++curr;
         }
     }
     ERRCHKK(curr == npackets, "Did not created the expected number of packets");
+    acCommDataTest(ndims, nn, rr, comm_data);
     array_destroy(&segments);
 
     // for (size_t i = 0; i < npackets; ++i) {
