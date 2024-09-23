@@ -512,6 +512,10 @@ Physical domain extents
 real AC_xlen
 real AC_ylen
 real AC_zlen
+Multi-GPU parameters
+int3 AC_domain_decomposition //How the domain is decomposed to multiple GPUs
+int3 AC_domain_coordinates   //Local coordinate of the current device in the grid of GPUs
+int3 AC_multigpu_offset      //AC_domain_coordinates*int3(AC_nx,AC_ny_AC_nz)
 Library config parameters (explained in the library documentation)
 Not meaningful for DSL
 int AC_proc_mapping_strategy
