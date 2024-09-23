@@ -218,7 +218,7 @@ get_mm(const size_t ndims, const size_t* nn, const size_t* rr, size_t* mm)
 static int
 get_tag(const size_t packet, const size_t npackets, const size_t launch)
 {
-    ERRCHK(packet < npackets);
+    ERRCHK_MPI(packet < npackets);
     const size_t tag = (packet + launch * npackets) % (as_size_t(INT_MAX) + as_size_t(1));
     return as_int(tag);
 }
@@ -238,24 +238,24 @@ test_get_tag(void)
     //         printf("%zu, %zu -> %d\n", launch, packet, get_tag(packet, npackets, launch));
     //     }
     // }
-    // ERRCHK(get_tag(0, 1, get_tag(0, 1, INT_MAX + 1)) == 0);
-    // ERRCHK(get_tag(0, 1, get_tag(0, 1, INT_MAX)) == INT_MAX);
-    // ERRCHK(get_tag(0, 1, get_tag(0, 1, INT_MAX - 1)) == INT_MAX - 1);
-    // ERRCHK(get_tag(0, 1, as_size_t(INT_MAX) + as_size_t(1)) == 0);
-    ERRCHK(get_tag(0, 1, SIZE_MAX) == INT_MAX);
-    ERRCHK(get_tag(0, 1, SIZE_MAX + 1) == 0);
-    ERRCHK(get_tag(6, 7, SIZE_MAX) == INT_MAX);
-    ERRCHK(get_tag(0, 7, SIZE_MAX + 1) == 0);
-    ERRCHK(get_tag(20, 21, SIZE_MAX) == INT_MAX);
-    ERRCHK(get_tag(0, 21, SIZE_MAX + 1) == 0);
-    ERRCHK(get_tag(20, 21, SIZE_MAX + 1) == 20);
-    ERRCHK(get_tag(0, 1, INT_MAX) == INT_MAX);
-    ERRCHK(get_tag(0, 1, INT_MAX + 1) == 0);
-    ERRCHK(get_tag(6, 7, INT_MAX) == INT_MAX);
-    ERRCHK(get_tag(0, 7, INT_MAX + 1) == 0);
-    ERRCHK(get_tag(20, 21, INT_MAX) == INT_MAX);
-    ERRCHK(get_tag(0, 21, INT_MAX + 1) == 0);
-    ERRCHK(get_tag(20, 21, INT_MAX + 1) == 20);
+    // ERRCHK_MPI(get_tag(0, 1, get_tag(0, 1, INT_MAX + 1)) == 0);
+    // ERRCHK_MPI(get_tag(0, 1, get_tag(0, 1, INT_MAX)) == INT_MAX);
+    // ERRCHK_MPI(get_tag(0, 1, get_tag(0, 1, INT_MAX - 1)) == INT_MAX - 1);
+    // ERRCHK_MPI(get_tag(0, 1, as_size_t(INT_MAX) + as_size_t(1)) == 0);
+    ERRCHK_MPI(get_tag(0, 1, SIZE_MAX) == INT_MAX);
+    ERRCHK_MPI(get_tag(0, 1, SIZE_MAX + 1) == 0);
+    ERRCHK_MPI(get_tag(6, 7, SIZE_MAX) == INT_MAX);
+    ERRCHK_MPI(get_tag(0, 7, SIZE_MAX + 1) == 0);
+    ERRCHK_MPI(get_tag(20, 21, SIZE_MAX) == INT_MAX);
+    ERRCHK_MPI(get_tag(0, 21, SIZE_MAX + 1) == 0);
+    ERRCHK_MPI(get_tag(20, 21, SIZE_MAX + 1) == 20);
+    ERRCHK_MPI(get_tag(0, 1, INT_MAX) == INT_MAX);
+    ERRCHK_MPI(get_tag(0, 1, INT_MAX + 1) == 0);
+    ERRCHK_MPI(get_tag(6, 7, INT_MAX) == INT_MAX);
+    ERRCHK_MPI(get_tag(0, 7, INT_MAX + 1) == 0);
+    ERRCHK_MPI(get_tag(20, 21, INT_MAX) == INT_MAX);
+    ERRCHK_MPI(get_tag(0, 21, INT_MAX + 1) == 0);
+    ERRCHK_MPI(get_tag(20, 21, INT_MAX + 1) == 20);
 }
 
 static void
