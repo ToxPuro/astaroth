@@ -627,7 +627,7 @@ bc_sym_z(Field field, bool bottom)
 	else
 	{
 		for i in 0:NGHOST {
-        		field[vertexIdx.x][vertexIdx.y][AC_nz+i]=field[vertexIdx.x][vertexIdx.y][AC_nz-i];
+        		field[vertexIdx.x][vertexIdx.y][AC_nz_max+i]=field[vertexIdx.x][vertexIdx.y][AC_nz_max-i];
       		}
 	}
 }
