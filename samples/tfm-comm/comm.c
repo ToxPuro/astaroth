@@ -17,10 +17,12 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
 #define ERRCHK_MPI(retval)                                                                         \
-    ERRCHK(retval);                                                                                \
-    if ((retval) == 0) {                                                                           \
-        MPI_Abort(MPI_COMM_WORLD, 0);                                                              \
-        exit(EXIT_FAILURE);                                                                        \
+    {                                                                                              \
+        ERRCHK(retval);                                                                            \
+        if ((retval) == 0) {                                                                       \
+            MPI_Abort(MPI_COMM_WORLD, 0);                                                          \
+            exit(EXIT_FAILURE);                                                                    \
+        }                                                                                          \
     }
 
 #define ERRCHK_MPI_API(errorcode)                                                                  \
@@ -256,6 +258,28 @@ test_get_tag(void)
     ERRCHK(get_tag(20, 21, INT_MAX + 1) == 20);
 }
 
+static void
+get_mpi_coords_neighbor(const size_t ndims, const size_t* nn, const size_t* rr,
+                        const size_t* offset, const int* mpi_coords, int* mpi_coords_neighbor)
+{
+    for (size_t i = 0; i < ndims; ++i)
+        mpi_coords_neighbor[i] = offset[i] < rr[i] ? -1 : offset[i] >= rr[i] + nn[i] ? 1 : 0;
+    reversei(ndims, mpi_coords_neighbor);
+    for (size_t i = 0; i < ndims; ++i)
+        mpi_coords_neighbor[i] += mpi_coords[i];
+}
+
+static void
+get_mpi_coords_neighbor_inv(const size_t ndims, const size_t* nn, const size_t* rr,
+                            const size_t* offset, const int* mpi_coords, int* mpi_coords_neighbor)
+{
+    for (size_t i = 0; i < ndims; ++i)
+        mpi_coords_neighbor[i] = offset[i] < rr[i] ? 1 : offset[i] >= rr[i] + nn[i] ? -1 : 0;
+    reversei(ndims, mpi_coords_neighbor);
+    for (size_t i = 0; i < ndims; ++i)
+        mpi_coords_neighbor[i] += mpi_coords[i];
+}
+
 int
 acCommTest(void)
 {
@@ -266,9 +290,9 @@ acCommTest(void)
     ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
 
     // Global grid
-    const size_t global_nn[] = {2, 4};
+    const size_t global_nn[] = {8, 8, 8};
     const size_t ndims       = ARRAY_SIZE(global_nn);
-    const size_t rr[]        = {1, 1, 1};
+    const size_t rr[]        = {3, 3, 3, 3};
     const size_t fields[]    = {1};
     const size_t nfields     = ARRAY_SIZE(fields);
 
@@ -291,12 +315,15 @@ acCommTest(void)
     // Get local dims
     size_t local_nn[ndims];
     get_local_nn(ndims, global_nn, dims, local_nn);
+    for (size_t i = 0; i < ndims; ++i)
+        ERRCHK_MPI(local_nn[i] >= rr[i]);
 
     size_t local_mm[ndims];
     get_mm(ndims, local_nn, rr, local_mm);
 
     // Reserve resources
-    size_t* buffer     = malloc(sizeof(buffer[0]) * prod(ndims, local_mm));
+    size_t* buffer = malloc(sizeof(buffer[0]) * prod(ndims, local_mm));
+    set(as_size_t(rank + 1), prod(ndims, local_mm), buffer);
     CommData comm_data = acCommDataCreate(ndims, local_nn, rr, nfields);
 
     // Print data
@@ -320,11 +347,20 @@ acCommTest(void)
             print_array("\tCoords", ndims, mpi_coords);
 
             for (size_t j = 0; j < comm_data.npackets; ++j) {
-                size_t* offset = comm_data.local_packets[j].offset;
-                size_t* dims   = comm_data.local_packets[j].dims;
+                const size_t* offset = comm_data.local_packets[j].offset;
+                const size_t* dims   = comm_data.local_packets[j].dims;
                 print("\t\tPacket", j);
                 print_array("\t\tDims", ndims, dims);
                 print_array("\t\t\tOffset", ndims, offset);
+
+                int mpi_coords_neighbor[ndims];
+                get_mpi_coords_neighbor(ndims, local_nn, rr, offset, mpi_coords,
+                                        mpi_coords_neighbor);
+                print_array("\t\t\tMPI coordinate offset", ndims, mpi_coords_neighbor);
+                // if (any)
+                int neighbor;
+                ERRCHK_MPI_API(MPI_Cart_rank(comm_cart, mpi_coords_neighbor, &neighbor));
+                print("\t\t\tNeighbor rank", neighbor);
             }
 
             printf("\n");
@@ -333,7 +369,8 @@ acCommTest(void)
         MPI_Barrier(comm_cart);
     }
 
-    /*
+    MPI_Request send_reqs[comm_data.npackets];
+    MPI_Request recv_reqs[comm_data.npackets];
     size_t launch_counter = 0;
     for (size_t i = 0; i < comm_data.npackets; ++i) {
         int sizes[ndims], subsizes[ndims], starts[ndims];
@@ -341,10 +378,11 @@ acCommTest(void)
         to_mpi_format(ndims, comm_data.local_packets[i].dims, subsizes);
         to_mpi_format(ndims, comm_data.local_packets[i].offset, starts);
 
-        MPI_Datatype subarray;
+        // Subarrays
+        MPI_Datatype recv_subarray;
         ERRCHK_MPI_API(MPI_Type_create_subarray(as_int(ndims), sizes, subsizes, starts, MPI_ORDER_C,
-                                                MPI_UNSIGNED_LONG_LONG, &subarray));
-        ERRCHK_MPI_API(MPI_Type_commit(&subarray));
+                                                MPI_UNSIGNED_LONG_LONG, &recv_subarray));
+        ERRCHK_MPI_API(MPI_Type_commit(&recv_subarray));
 
         // Get tag
         const int tag = get_tag(i, comm_data.npackets, launch_counter);
@@ -352,21 +390,73 @@ acCommTest(void)
         // Get source
         int mpi_coords[ndims];
         ERRCHK_MPI_API(MPI_Cart_coords(comm_cart, rank, as_int(ndims), mpi_coords));
-        // for (size_t i = 0; i < ndims; ++i)
-        //     mpi_coords[ndims] += starts[i] < rr[i] ? -1 : starts[i] > rr[i] ? 1 : 0;
-        int source;
-        // ERRCHK_MPI_API(MPI_Cart_rank(comm_cart, mpi_coords, &source));
-        // if (rank == 0) {
-        print_array("coords", ndims, mpi_coords);
-        // }
+
+        const size_t* offset = comm_data.local_packets[i].offset;
+        int mpi_coords_neighbor[ndims];
+        get_mpi_coords_neighbor(ndims, local_nn, rr, offset, mpi_coords, mpi_coords_neighbor);
+
+        int neighbor;
+        ERRCHK_MPI_API(MPI_Cart_rank(comm_cart, mpi_coords_neighbor, &neighbor));
+
+        MPI_Irecv(buffer, 1, recv_subarray, neighbor, tag, comm_cart, &recv_reqs[i]);
+        // MPI_Sendrecv(buffer, 1, recv_subarray, neighbor, tag, &buffer[0], 1, recv_subarray,
+        //              neighbor, tag, comm_cart, MPI_STATUS_IGNORE);
+
+        // Get source
+        // int mpi_coords[ndims];
+        // ERRCHK_MPI_API(MPI_Cart_coords(comm_cart, rank, as_int(ndims), mpi_coords));
+        // // for (size_t i = 0; i < ndims; ++i)
+        // //     mpi_coords[ndims] += starts[i] < rr[i] ? -1 : starts[i] > rr[i] ? 1 : 0;
+        // int source;
+        // // ERRCHK_MPI_API(MPI_Cart_rank(comm_cart, mpi_coords, &source));
+        // // if (rank == 0) {
+        // print_array("coords", ndims, mpi_coords);
+        // // }
 
         // ERRCHK_MPI_API(MPI_Irecv(buffer, 1, subarray, source, tag, comm_cart,
         // MPI_STATUS_IGNORE)); MPI_Sendrecv(&buffer[0], 1, subarray, neighbor, tag, comm_cart,
         // MPI_STATUS_IGNORE);
-        ERRCHK_MPI_API(MPI_Type_free(&subarray));
+        ERRCHK_MPI_API(MPI_Type_free(&recv_subarray));
+    }
+    for (size_t i = 0; i < comm_data.npackets; ++i) {
+        int sizes[ndims], subsizes[ndims], starts[ndims];
+        to_mpi_format(ndims, local_mm, sizes);
+        to_mpi_format(ndims, comm_data.local_packets[i].dims, subsizes);
+        to_mpi_format(ndims, comm_data.local_packets[i].offset, starts);
+
+        for (size_t j = 0; j < ndims; ++j)
+            starts[j] = mod(starts[j] - rr[ndims - 1 - j], local_nn[ndims - 1 - j]) +
+                        rr[ndims - 1 - j];
+
+        // Subarrays
+        MPI_Datatype send_subarray;
+        ERRCHK_MPI_API(MPI_Type_create_subarray(as_int(ndims), sizes, subsizes, starts, MPI_ORDER_C,
+                                                MPI_UNSIGNED_LONG_LONG, &send_subarray));
+        ERRCHK_MPI_API(MPI_Type_commit(&send_subarray));
+
+        // Get tag
+        const int tag = get_tag(i, comm_data.npackets, launch_counter);
+
+        // Get source
+        int mpi_coords[ndims];
+        ERRCHK_MPI_API(MPI_Cart_coords(comm_cart, rank, as_int(ndims), mpi_coords));
+
+        const size_t* offset = comm_data.local_packets[i].offset;
+        int mpi_coords_neighbor[ndims];
+        get_mpi_coords_neighbor_inv(ndims, local_nn, rr, offset, mpi_coords, mpi_coords_neighbor);
+
+        int neighbor;
+        ERRCHK_MPI_API(MPI_Cart_rank(comm_cart, mpi_coords_neighbor, &neighbor));
+
+        MPI_Isend(buffer, 1, send_subarray, neighbor, tag, comm_cart, &send_reqs[i]);
+
+        MPI_Wait(&send_reqs[i], MPI_STATUS_IGNORE);
+        MPI_Wait(&recv_reqs[i], MPI_STATUS_IGNORE);
+        // MPI_Waitall(comm_data.npackets, send_reqs, MPI_STATUSES_IGNORE);
+        // MPI_Waitall(comm_data.npackets, recv_reqs, MPI_STATUSES_IGNORE);
+        ERRCHK_MPI_API(MPI_Type_free(&send_subarray));
     }
     ++launch_counter;
-    */
 
     // Print data
     if (rank == 0) {
