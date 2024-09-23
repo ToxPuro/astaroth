@@ -73,7 +73,7 @@ state_destroy(State* state)
     state->ndims = 0;
 }
 
-static State global_state;
+// static State global_state;
 
 void
 to_mpi_format(const size_t ndims, const size_t* dims, int* mpi_dims)
@@ -89,25 +89,27 @@ to_astaroth_format(const size_t ndims, const int* mpi_dims, size_t* dims)
     reverse(ndims, dims);
 }
 
-static void
-get_local_dims(const size_t ndims, const size_t* global_nn, const MPI_Comm comm_cart,
-               size_t* local_nn)
-{
-    int mpi_dims[ndims], mpi_periods[ndims], mpi_coords[ndims];
-    MPI_Cart_get(comm_cart, as_int(ndims), mpi_dims, mpi_periods, mpi_coords);
+// static void
+// get_local_dims(const size_t ndims, const size_t* global_nn, const MPI_Comm comm_cart,
+//                size_t* local_nn)
+// {
+//     int mpi_dims[ndims], mpi_periods[ndims], mpi_coords[ndims];
+//     MPI_Cart_get(comm_cart, as_int(ndims), mpi_dims, mpi_periods, mpi_coords);
 
-    size_t dims[ndims];
-    to_astaroth_format(ndims, mpi_dims, dims);
+//     size_t dims[ndims];
+//     to_astaroth_format(ndims, mpi_dims, dims);
 
-    for (size_t i = 0; i < ndims; ++i)
-        local_nn[i] = global_nn[i] / dims[i];
-}
+//     for (size_t i = 0; i < ndims; ++i)
+//         local_nn[i] = global_nn[i] / dims[i];
+// }
 
 int
 acCommInit(const size_t ndims, const size_t* global_nn, const size_t* rr)
 {
     ERRCHK_MPI_API(MPI_Init(NULL, NULL));
-
+    (void)ndims;
+    (void)global_nn;
+    (void)rr;
     // int nprocs;
     // ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
 
@@ -243,19 +245,19 @@ test_get_tag(void)
     // ERRCHK_MPI(get_tag(0, 1, get_tag(0, 1, INT_MAX - 1)) == INT_MAX - 1);
     // ERRCHK_MPI(get_tag(0, 1, as_size_t(INT_MAX) + as_size_t(1)) == 0);
     ERRCHK_MPI(get_tag(0, 1, SIZE_MAX) == INT_MAX);
-    ERRCHK_MPI(get_tag(0, 1, SIZE_MAX + 1) == 0);
+    ERRCHK_MPI(get_tag(0, 1, SIZE_MAX + (size_t)1) == 0);
     ERRCHK_MPI(get_tag(6, 7, SIZE_MAX) == INT_MAX);
-    ERRCHK_MPI(get_tag(0, 7, SIZE_MAX + 1) == 0);
+    ERRCHK_MPI(get_tag(0, 7, SIZE_MAX + (size_t)1) == 0);
     ERRCHK_MPI(get_tag(20, 21, SIZE_MAX) == INT_MAX);
-    ERRCHK_MPI(get_tag(0, 21, SIZE_MAX + 1) == 0);
-    ERRCHK_MPI(get_tag(20, 21, SIZE_MAX + 1) == 20);
+    ERRCHK_MPI(get_tag(0, 21, SIZE_MAX + (size_t)1) == 0);
+    ERRCHK_MPI(get_tag(20, 21, SIZE_MAX + (size_t)1) == 20);
     ERRCHK_MPI(get_tag(0, 1, INT_MAX) == INT_MAX);
-    ERRCHK_MPI(get_tag(0, 1, INT_MAX + 1) == 0);
+    ERRCHK_MPI(get_tag(0, 1, INT_MAX + (size_t)1) == 0);
     ERRCHK_MPI(get_tag(6, 7, INT_MAX) == INT_MAX);
-    ERRCHK_MPI(get_tag(0, 7, INT_MAX + 1) == 0);
+    ERRCHK_MPI(get_tag(0, 7, INT_MAX + (size_t)1) == 0);
     ERRCHK_MPI(get_tag(20, 21, INT_MAX) == INT_MAX);
-    ERRCHK_MPI(get_tag(0, 21, INT_MAX + 1) == 0);
-    ERRCHK_MPI(get_tag(20, 21, INT_MAX + 1) == 20);
+    ERRCHK_MPI(get_tag(0, 21, INT_MAX + (size_t)1) == 0);
+    ERRCHK_MPI(get_tag(20, 21, INT_MAX + (size_t)1) == 20);
 }
 
 static void
@@ -337,7 +339,8 @@ acCommTest(void)
         // acCommDataPrint("comm_data", comm_data);
     }
 
-    // Send packets
+// Send packets
+#if 0
     for (int i = 0; i < nprocs; ++i) {
         MPI_Barrier(comm_cart);
         if (rank == i) {
@@ -368,6 +371,7 @@ acCommTest(void)
         }
         MPI_Barrier(comm_cart);
     }
+#endif
 
     MPI_Request send_reqs[comm_data.npackets];
     MPI_Request recv_reqs[comm_data.npackets];
@@ -426,8 +430,9 @@ acCommTest(void)
         to_mpi_format(ndims, comm_data.local_packets[i].offset, starts);
 
         for (size_t j = 0; j < ndims; ++j)
-            starts[j] = mod(starts[j] - rr[ndims - 1 - j], local_nn[ndims - 1 - j]) +
-                        rr[ndims - 1 - j];
+            starts[j] = as_int(mod(as_int64_t(starts[j]) - as_int64_t(rr[ndims - 1 - j]),
+                                   as_int64_t(local_nn[ndims - 1 - j])) +
+                               as_int64_t(rr[ndims - 1 - j]));
 
         // Subarrays
         MPI_Datatype send_subarray;
