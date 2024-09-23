@@ -194,6 +194,7 @@ dims_create(const int nprocs, const size_t ndims, size_t* dims, size_t* periods)
 
     to_astaroth_format(ndims, mpi_dims, dims);
     to_astaroth_format(ndims, mpi_periods, periods);
+    ERRCHK_MPI(prod(ndims, dims) == as_size_t(nprocs));
 }
 
 static void
@@ -210,22 +211,66 @@ get_mm(const size_t ndims, const size_t* nn, const size_t* rr, size_t* mm)
         mm[i] = 2 * rr[i] + nn[i];
 }
 
+#include <limits.h>
+
+static int
+get_tag(const size_t packet, const size_t npackets, const size_t launch)
+{
+    ERRCHK(packet < npackets);
+    const size_t tag = (packet + launch * npackets) % (as_size_t(INT_MAX) + as_size_t(1));
+    return as_int(tag);
+}
+
+static void
+test_get_tag(void)
+{
+    // Criteria:
+    // Given npackets and nlaunches
+    //  1. At any given starting index, the (npackets*nlaunches) subsequent tags should be unique
+    // const size_t npackets = 7;
+    // for (size_t i = 0; i < 128; ++i) {
+    //     for (size_t j = 0; j < npackets; ++j) {
+    //         // const size_t launch = INT_MAX - 50 + i;
+    //         const size_t launch = SIZE_MAX - 50 + i;
+    //         const size_t packet = j;
+    //         printf("%zu, %zu -> %d\n", launch, packet, get_tag(packet, npackets, launch));
+    //     }
+    // }
+    // ERRCHK(get_tag(0, 1, get_tag(0, 1, INT_MAX + 1)) == 0);
+    // ERRCHK(get_tag(0, 1, get_tag(0, 1, INT_MAX)) == INT_MAX);
+    // ERRCHK(get_tag(0, 1, get_tag(0, 1, INT_MAX - 1)) == INT_MAX - 1);
+    // ERRCHK(get_tag(0, 1, as_size_t(INT_MAX) + as_size_t(1)) == 0);
+    ERRCHK(get_tag(0, 1, SIZE_MAX) == INT_MAX);
+    ERRCHK(get_tag(0, 1, SIZE_MAX + 1) == 0);
+    ERRCHK(get_tag(6, 7, SIZE_MAX) == INT_MAX);
+    ERRCHK(get_tag(0, 7, SIZE_MAX + 1) == 0);
+    ERRCHK(get_tag(20, 21, SIZE_MAX) == INT_MAX);
+    ERRCHK(get_tag(0, 21, SIZE_MAX + 1) == 0);
+    ERRCHK(get_tag(20, 21, SIZE_MAX + 1) == 20);
+    ERRCHK(get_tag(0, 1, INT_MAX) == INT_MAX);
+    ERRCHK(get_tag(0, 1, INT_MAX + 1) == 0);
+    ERRCHK(get_tag(6, 7, INT_MAX) == INT_MAX);
+    ERRCHK(get_tag(0, 7, INT_MAX + 1) == 0);
+    ERRCHK(get_tag(20, 21, INT_MAX) == INT_MAX);
+    ERRCHK(get_tag(0, 21, INT_MAX + 1) == 0);
+    ERRCHK(get_tag(20, 21, INT_MAX + 1) == 20);
+}
+
 int
 acCommTest(void)
 {
     ERRCHK_MPI_API(MPI_Init(NULL, NULL));
 
+    // Get nprocs
+    int nprocs;
+    ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
+
     // Global grid
-    const size_t global_nn[] = {3, 3};
+    const size_t global_nn[] = {2, 4};
     const size_t ndims       = ARRAY_SIZE(global_nn);
     const size_t rr[]        = {1, 1, 1};
     const size_t fields[]    = {1};
     const size_t nfields     = ARRAY_SIZE(fields);
-
-    // Get rank and process counts
-    int rank, nprocs;
-    ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
-    ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
 
     // Decompose
     size_t dims[ndims], periods[ndims];
@@ -238,6 +283,10 @@ acCommTest(void)
     MPI_Comm comm_cart;
     ERRCHK_MPI_API(
         MPI_Cart_create(MPI_COMM_WORLD, as_int(ndims), mpi_dims, mpi_periods, 0, &comm_cart));
+
+    // Get rank
+    int rank;
+    ERRCHK_MPI_API(MPI_Comm_rank(comm_cart, &rank));
 
     // Get local dims
     size_t local_nn[ndims];
@@ -262,6 +311,30 @@ acCommTest(void)
     }
 
     // Send packets
+    for (int i = 0; i < nprocs; ++i) {
+        MPI_Barrier(comm_cart);
+        if (rank == i) {
+            print("Rank", i);
+            int mpi_coords[ndims];
+            ERRCHK_MPI_API(MPI_Cart_coords(comm_cart, rank, as_int(ndims), mpi_coords));
+            print_array("\tCoords", ndims, mpi_coords);
+
+            for (size_t j = 0; j < comm_data.npackets; ++j) {
+                size_t* offset = comm_data.local_packets[j].offset;
+                size_t* dims   = comm_data.local_packets[j].dims;
+                print("\t\tPacket", j);
+                print_array("\t\tDims", ndims, dims);
+                print_array("\t\t\tOffset", ndims, offset);
+            }
+
+            printf("\n");
+            fflush(stdout);
+        }
+        MPI_Barrier(comm_cart);
+    }
+
+    /*
+    size_t launch_counter = 0;
     for (size_t i = 0; i < comm_data.npackets; ++i) {
         int sizes[ndims], subsizes[ndims], starts[ndims];
         to_mpi_format(ndims, local_mm, sizes);
@@ -273,10 +346,27 @@ acCommTest(void)
                                                 MPI_UNSIGNED_LONG_LONG, &subarray));
         ERRCHK_MPI_API(MPI_Type_commit(&subarray));
 
-        // TODO get neighbor and tag
-        // MPI_Sendrecv(&buffer[0], 1, subarray, neighbor, tag, comm_cart, MPI_STATUS_IGNORE);
+        // Get tag
+        const int tag = get_tag(i, comm_data.npackets, launch_counter);
+
+        // Get source
+        int mpi_coords[ndims];
+        ERRCHK_MPI_API(MPI_Cart_coords(comm_cart, rank, as_int(ndims), mpi_coords));
+        // for (size_t i = 0; i < ndims; ++i)
+        //     mpi_coords[ndims] += starts[i] < rr[i] ? -1 : starts[i] > rr[i] ? 1 : 0;
+        int source;
+        // ERRCHK_MPI_API(MPI_Cart_rank(comm_cart, mpi_coords, &source));
+        // if (rank == 0) {
+        print_array("coords", ndims, mpi_coords);
+        // }
+
+        // ERRCHK_MPI_API(MPI_Irecv(buffer, 1, subarray, source, tag, comm_cart,
+        // MPI_STATUS_IGNORE)); MPI_Sendrecv(&buffer[0], 1, subarray, neighbor, tag, comm_cart,
+        // MPI_STATUS_IGNORE);
         ERRCHK_MPI_API(MPI_Type_free(&subarray));
     }
+    ++launch_counter;
+    */
 
     // Print data
     if (rank == 0) {
@@ -288,6 +378,8 @@ acCommTest(void)
         print_ndarray("Mesh", ndims, local_mm, buffer);
         // acCommDataPrint("comm_data", comm_data);
     }
+
+    test_get_tag();
 
     // Release resources
     acCommDataDestroy(&comm_data);
