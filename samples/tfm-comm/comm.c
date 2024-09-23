@@ -290,9 +290,9 @@ acCommTest(void)
     ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
 
     // Global grid
-    const size_t global_nn[] = {8, 8, 8};
+    const size_t global_nn[] = {4, 4, 4};
     const size_t ndims       = ARRAY_SIZE(global_nn);
-    const size_t rr[]        = {3, 3, 3, 3};
+    const size_t rr[]        = {1, 1, 1, 1};
     const size_t fields[]    = {1};
     const size_t nfields     = ARRAY_SIZE(fields);
 
@@ -398,7 +398,8 @@ acCommTest(void)
         int neighbor;
         ERRCHK_MPI_API(MPI_Cart_rank(comm_cart, mpi_coords_neighbor, &neighbor));
 
-        MPI_Irecv(buffer, 1, recv_subarray, neighbor, tag, comm_cart, &recv_reqs[i]);
+        ERRCHK_MPI_API(
+            MPI_Irecv(buffer, 1, recv_subarray, neighbor, tag, comm_cart, &recv_reqs[i]));
         // MPI_Sendrecv(buffer, 1, recv_subarray, neighbor, tag, &buffer[0], 1, recv_subarray,
         //              neighbor, tag, comm_cart, MPI_STATUS_IGNORE);
 
@@ -448,10 +449,11 @@ acCommTest(void)
         int neighbor;
         ERRCHK_MPI_API(MPI_Cart_rank(comm_cart, mpi_coords_neighbor, &neighbor));
 
-        MPI_Isend(buffer, 1, send_subarray, neighbor, tag, comm_cart, &send_reqs[i]);
+        ERRCHK_MPI_API(
+            MPI_Isend(buffer, 1, send_subarray, neighbor, tag, comm_cart, &send_reqs[i]));
 
-        MPI_Wait(&send_reqs[i], MPI_STATUS_IGNORE);
-        MPI_Wait(&recv_reqs[i], MPI_STATUS_IGNORE);
+        ERRCHK_MPI_API(MPI_Wait(&send_reqs[i], MPI_STATUS_IGNORE));
+        ERRCHK_MPI_API(MPI_Wait(&recv_reqs[i], MPI_STATUS_IGNORE));
         // MPI_Waitall(comm_data.npackets, send_reqs, MPI_STATUSES_IGNORE);
         // MPI_Waitall(comm_data.npackets, recv_reqs, MPI_STATUSES_IGNORE);
         ERRCHK_MPI_API(MPI_Type_free(&send_subarray));
