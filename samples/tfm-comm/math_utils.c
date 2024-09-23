@@ -7,6 +7,67 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
+bool
+any(const size_t count, const bool* arr)
+{
+    bool res = false;
+    for (size_t i = 0; i < count; ++i)
+        res = res || arr[i];
+    return res;
+}
+
+void
+test_any(void)
+{
+    {
+        const bool arr[]   = {false, false, false};
+        const size_t count = ARRAY_SIZE(arr);
+        ERRCHK(any(count, arr) == false);
+    }
+    {
+        const bool arr[]   = {false, true, false};
+        const size_t count = ARRAY_SIZE(arr);
+        ERRCHK(any(count, arr) == true);
+    }
+    {
+        const bool arr[] = {true};
+        ERRCHK(any(0, arr) == false);
+    }
+}
+
+bool
+all(const size_t count, const bool* arr)
+{
+    bool res = true;
+    for (size_t i = 0; i < count; ++i)
+        res = res && arr[i];
+    return res;
+}
+
+void
+test_all(void)
+{
+    {
+        const bool arr[]   = {false, false, false};
+        const size_t count = ARRAY_SIZE(arr);
+        ERRCHK(all(count, arr) == false);
+    }
+    {
+        const bool arr[]   = {true, false, true};
+        const size_t count = ARRAY_SIZE(arr);
+        ERRCHK(all(count, arr) == false);
+    }
+    {
+        const bool arr[]   = {true, true, true};
+        const size_t count = ARRAY_SIZE(arr);
+        ERRCHK(all(count, arr) == true);
+    }
+    {
+        const bool arr[] = {true};
+        ERRCHK(all(0, arr) == true);
+    }
+}
+
 /** Product */
 size_t
 prod(const size_t count, const size_t* arr)
@@ -624,6 +685,49 @@ intersect_box(const size_t ndims, const size_t* a_start, const size_t* a_dims,
     return all_intersect;
 }
 
+/** Check if coords are within the box spanned by box_min (inclusive) and box_max (exclusive) */
+bool
+within_box(const size_t ndims, const size_t* coords, const size_t* box_min, const size_t* box_max)
+{
+    bool res = true;
+    for (size_t i = 0; i < ndims; ++i)
+        res = res && coords[i] >= box_min[i] && coords[i] < box_max[i];
+    return res;
+}
+
+void
+test_within_box(void)
+{
+    {
+        const size_t box_min[] = {0, 0, 0};
+        const size_t box_max[] = {10, 10, 10};
+        const size_t coords[]  = {0, 0, 0};
+        const size_t ndims     = ARRAY_SIZE(coords);
+        ERRCHK(within_box(ndims, coords, box_min, box_max) == true);
+    }
+    {
+        const size_t box_min[] = {0, 0, 0};
+        const size_t box_max[] = {10, 10, 10};
+        const size_t coords[]  = {0, 10, 0};
+        const size_t ndims     = ARRAY_SIZE(coords);
+        ERRCHK(within_box(ndims, coords, box_min, box_max) == false);
+    }
+    {
+        const size_t box_min[] = {0, 0, 0};
+        const size_t box_max[] = {10, 10, 10};
+        const size_t coords[]  = {11, 11, 11};
+        const size_t ndims     = ARRAY_SIZE(coords);
+        ERRCHK(within_box(ndims, coords, box_min, box_max) == false);
+    }
+    {
+        const size_t box_min[] = {0, 0, 0, 0, 0, 0, 0};
+        const size_t box_max[] = {1, 2, 3, 4, 5, 6, 7};
+        const size_t coords[]  = {0, 1, 2, 3, 4, 5, 6};
+        const size_t ndims     = ARRAY_SIZE(coords);
+        ERRCHK(within_box(ndims, coords, box_min, box_max) == true);
+    }
+}
+
 void
 test_intersect_box(void)
 {
@@ -764,4 +868,7 @@ test_math_utils(void)
     test_powzu();
     test_intersect_lines();
     test_intersect_box();
+    test_any();
+    test_all();
+    test_within_box();
 }
