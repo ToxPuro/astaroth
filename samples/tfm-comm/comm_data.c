@@ -65,10 +65,10 @@ acCommDataTest(const size_t ndims, const size_t* nn, const size_t* rr, const Com
 
         size_t count = 0;
         for (size_t i = 0; i < comm_data.npackets; ++i) {
-            const PackedData a = comm_data.local_packets[i];
+            const HaloSegment a = comm_data.local_packets[i];
             ERRCHK(ndims == a.ndims);
             for (size_t j = i + 1; j < comm_data.npackets; ++j) {
-                const PackedData b = comm_data.local_packets[j];
+                const HaloSegment b = comm_data.local_packets[j];
 
                 ERRCHK(intersect_box(ndims, a.offset, a.dims, b.offset, b.dims) == false);
             }
@@ -86,10 +86,10 @@ acCommDataTest(const size_t ndims, const size_t* nn, const size_t* rr, const Com
 
         size_t count = 0;
         for (size_t i = 0; i < comm_data.npackets; ++i) {
-            const PackedData a = comm_data.remote_packets[i];
+            const HaloSegment a = comm_data.remote_packets[i];
             ERRCHK(ndims == a.ndims);
             for (size_t j = i + 1; j < comm_data.npackets; ++j) {
-                const PackedData b = comm_data.remote_packets[j];
+                const HaloSegment b = comm_data.remote_packets[j];
 
                 ERRCHK(intersect_box(ndims, a.offset, a.dims, b.offset, b.dims) == false);
             }
@@ -163,8 +163,8 @@ acCommDataCreate(const size_t ndims, const size_t* nn, const size_t* rr, const s
                             (1 - combination[k]) * (1 - segment[k]) * rr[k];
             // print_array("Current projected offset", ndims, offset);
             ERRCHKK(curr <= npackets, "Packet counter OOB");
-            comm_data.local_packets[curr]  = acCreatePackedData(ndims, dims, offset, nfields);
-            comm_data.remote_packets[curr] = acCreatePackedData(ndims, dims, offset, nfields);
+            comm_data.local_packets[curr]  = acCreateHaloSegment(ndims, dims, offset, nfields);
+            comm_data.remote_packets[curr] = acCreateHaloSegment(ndims, dims, offset, nfields);
             // print_array("Local packet offset offset", ndims,
             // comm_data.local_packets[curr].offset);
             ++curr;
@@ -177,8 +177,8 @@ acCommDataCreate(const size_t ndims, const size_t* nn, const size_t* rr, const s
     // for (size_t i = 0; i < npackets; ++i) {
     //     const size_t dims[]         = {3, 3, 3};
     //     const size_t offset[]       = {0, 0, 0};
-    //     comm_data.local_packets[i]  = acCreatePackedData(ndims, dims, offset, nfields);
-    //     comm_data.remote_packets[i] = acCreatePackedData(ndims, dims, offset, nfields);
+    //     comm_data.local_packets[i]  = acCreateHaloSegment(ndims, dims, offset, nfields);
+    //     comm_data.remote_packets[i] = acCreateHaloSegment(ndims, dims, offset, nfields);
     // }
 
     return comm_data;
@@ -195,12 +195,12 @@ acCommDataPrint(const char* label, const CommData comm_data)
 
     for (size_t i = 0; i < comm_data.npackets; ++i) {
         snprintf(buf, buflen, "local_packets[%zu]", i);
-        acPackedDataPrint(buf, comm_data.local_packets[i]);
+        acHaloSegmentPrint(buf, comm_data.local_packets[i]);
     }
 
     for (size_t i = 0; i < comm_data.npackets; ++i) {
         snprintf(buf, buflen, "remote_packets[%zu]", i);
-        acPackedDataPrint(buf, comm_data.remote_packets[i]);
+        acHaloSegmentPrint(buf, comm_data.remote_packets[i]);
     }
 }
 
@@ -208,8 +208,8 @@ void
 acCommDataDestroy(CommData* comm_data)
 {
     for (size_t i = 0; i < comm_data->npackets; ++i) {
-        acDestroyPackedData(&comm_data->local_packets[i]);
-        acDestroyPackedData(&comm_data->remote_packets[i]);
+        acDestroyHaloSegment(&comm_data->local_packets[i]);
+        acDestroyHaloSegment(&comm_data->remote_packets[i]);
     }
     free(comm_data->remote_packets);
     free(comm_data->local_packets);
