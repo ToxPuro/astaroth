@@ -1,4 +1,4 @@
-#include "comm_data.h"
+#include "halo_segment_batch.h"
 
 #include "dynamic_array.h"
 #include "errchk.h"
@@ -50,7 +50,8 @@ get_mm(const size_t ndims, const size_t* nn, const size_t* rr, size_t* mm)
 }
 
 void
-acCommDataTest(const size_t ndims, const size_t* nn, const size_t* rr, const CommData comm_data)
+acHaloSegmentBatchTest(const size_t ndims, const size_t* nn, const size_t* rr,
+                       const HaloSegmentBatch batch)
 {
     // Ensure that
     // 1. none of the segments overlap
@@ -64,11 +65,11 @@ acCommDataTest(const size_t ndims, const size_t* nn, const size_t* rr, const Com
         const size_t model_count = prod(ndims, mm) - prod(ndims, nn);
 
         size_t count = 0;
-        for (size_t i = 0; i < comm_data.npackets; ++i) {
-            const HaloSegment a = comm_data.local_packets[i];
+        for (size_t i = 0; i < batch.npackets; ++i) {
+            const HaloSegment a = batch.local_packets[i];
             ERRCHK(ndims == a.ndims);
-            for (size_t j = i + 1; j < comm_data.npackets; ++j) {
-                const HaloSegment b = comm_data.local_packets[j];
+            for (size_t j = i + 1; j < batch.npackets; ++j) {
+                const HaloSegment b = batch.local_packets[j];
 
                 ERRCHK(intersect_box(ndims, a.offset, a.dims, b.offset, b.dims) == false);
             }
@@ -85,11 +86,11 @@ acCommDataTest(const size_t ndims, const size_t* nn, const size_t* rr, const Com
         const size_t model_count = prod(ndims, mm) - prod(ndims, nn);
 
         size_t count = 0;
-        for (size_t i = 0; i < comm_data.npackets; ++i) {
-            const HaloSegment a = comm_data.remote_packets[i];
+        for (size_t i = 0; i < batch.npackets; ++i) {
+            const HaloSegment a = batch.remote_packets[i];
             ERRCHK(ndims == a.ndims);
-            for (size_t j = i + 1; j < comm_data.npackets; ++j) {
-                const HaloSegment b = comm_data.remote_packets[j];
+            for (size_t j = i + 1; j < batch.npackets; ++j) {
+                const HaloSegment b = batch.remote_packets[j];
 
                 ERRCHK(intersect_box(ndims, a.offset, a.dims, b.offset, b.dims) == false);
             }
@@ -102,21 +103,22 @@ acCommDataTest(const size_t ndims, const size_t* nn, const size_t* rr, const Com
     }
 }
 
-CommData
-acCommDataCreate(const size_t ndims, const size_t* nn, const size_t* rr, const size_t nfields)
+HaloSegmentBatch
+acHaloSegmentBatchCreate(const size_t ndims, const size_t* nn, const size_t* rr,
+                         const size_t nfields)
 {
     // Determine the number of halo partitions
     const size_t npackets = powzu(3, ndims) - 1; // The neighbor count
     print("Creating npackets", npackets);
 
-    // Create CommData
-    CommData comm_data = (CommData){
+    // Create HaloSegmentBatch
+    HaloSegmentBatch batch = (HaloSegmentBatch){
         .npackets       = npackets,
-        .local_packets  = malloc(sizeof(comm_data.local_packets[0]) * npackets),
-        .remote_packets = malloc(sizeof(comm_data.remote_packets[0]) * npackets),
+        .local_packets  = malloc(sizeof(batch.local_packets[0]) * npackets),
+        .remote_packets = malloc(sizeof(batch.remote_packets[0]) * npackets),
     };
-    ERRCHK(comm_data.local_packets);
-    ERRCHK(comm_data.remote_packets);
+    ERRCHK(batch.local_packets);
+    ERRCHK(batch.remote_packets);
 
     DynamicArray segments  = create_combinations(ndims);
     const size_t nsegments = segments.len / ndims;
@@ -163,55 +165,55 @@ acCommDataCreate(const size_t ndims, const size_t* nn, const size_t* rr, const s
                             (1 - combination[k]) * (1 - segment[k]) * rr[k];
             // print_array("Current projected offset", ndims, offset);
             ERRCHKK(curr <= npackets, "Packet counter OOB");
-            comm_data.local_packets[curr]  = acCreateHaloSegment(ndims, dims, offset, nfields);
-            comm_data.remote_packets[curr] = acCreateHaloSegment(ndims, dims, offset, nfields);
+            batch.local_packets[curr]  = acCreateHaloSegment(ndims, dims, offset, nfields);
+            batch.remote_packets[curr] = acCreateHaloSegment(ndims, dims, offset, nfields);
             // print_array("Local packet offset offset", ndims,
-            // comm_data.local_packets[curr].offset);
+            // batch.local_packets[curr].offset);
             ++curr;
         }
     }
     ERRCHKK(curr == npackets, "Did not created the expected number of packets");
-    acCommDataTest(ndims, nn, rr, comm_data);
+    acHaloSegmentBatchTest(ndims, nn, rr, batch);
     array_destroy(&segments);
 
     // for (size_t i = 0; i < npackets; ++i) {
     //     const size_t dims[]         = {3, 3, 3};
     //     const size_t offset[]       = {0, 0, 0};
-    //     comm_data.local_packets[i]  = acCreateHaloSegment(ndims, dims, offset, nfields);
-    //     comm_data.remote_packets[i] = acCreateHaloSegment(ndims, dims, offset, nfields);
+    //     batch.local_packets[i]  = acCreateHaloSegment(ndims, dims, offset, nfields);
+    //     batch.remote_packets[i] = acCreateHaloSegment(ndims, dims, offset, nfields);
     // }
 
-    return comm_data;
+    return batch;
 }
 
 void
-acCommDataPrint(const char* label, const CommData comm_data)
+acHaloSegmentBatchPrint(const char* label, const HaloSegmentBatch batch)
 {
-    printf("CommData %s:\n", label);
-    print("\tnpackets", comm_data.npackets);
+    printf("HaloSegmentBatch %s:\n", label);
+    print("\tnpackets", batch.npackets);
 
     const size_t buflen = 128;
     char buf[buflen];
 
-    for (size_t i = 0; i < comm_data.npackets; ++i) {
+    for (size_t i = 0; i < batch.npackets; ++i) {
         snprintf(buf, buflen, "local_packets[%zu]", i);
-        acHaloSegmentPrint(buf, comm_data.local_packets[i]);
+        acHaloSegmentPrint(buf, batch.local_packets[i]);
     }
 
-    for (size_t i = 0; i < comm_data.npackets; ++i) {
+    for (size_t i = 0; i < batch.npackets; ++i) {
         snprintf(buf, buflen, "remote_packets[%zu]", i);
-        acHaloSegmentPrint(buf, comm_data.remote_packets[i]);
+        acHaloSegmentPrint(buf, batch.remote_packets[i]);
     }
 }
 
 void
-acCommDataDestroy(CommData* comm_data)
+acHaloSegmentBatchDestroy(HaloSegmentBatch* batch)
 {
-    for (size_t i = 0; i < comm_data->npackets; ++i) {
-        acDestroyHaloSegment(&comm_data->local_packets[i]);
-        acDestroyHaloSegment(&comm_data->remote_packets[i]);
+    for (size_t i = 0; i < batch->npackets; ++i) {
+        acDestroyHaloSegment(&batch->local_packets[i]);
+        acDestroyHaloSegment(&batch->remote_packets[i]);
     }
-    free(comm_data->remote_packets);
-    free(comm_data->local_packets);
-    comm_data->npackets = 0;
+    free(batch->remote_packets);
+    free(batch->local_packets);
+    batch->npackets = 0;
 }

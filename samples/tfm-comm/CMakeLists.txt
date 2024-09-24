@@ -41,7 +41,7 @@ add_library(tfm-decomp SHARED decomp.c)
 target_link_libraries(tfm-decomp PRIVATE tfm-math-utils tfm-print tfm-type-conversion)
 
 add_library(tfm-comm SHARED comm.c comm_cart.c)
-target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-math-utils tfm-type-conversion tfm-print tfm-decomp tfm-dynamic-array tfm-ndarray tfm-comm-data m)
+target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-math-utils tfm-type-conversion tfm-print tfm-decomp tfm-dynamic-array tfm-ndarray tfm-halo-segment-batch m)
 
 ### Communication abstractions
 add_library(tfm-buffer SHARED buffer.c)
@@ -50,8 +50,8 @@ target_link_libraries(tfm-buffer PRIVATE tfm-math-utils tfm-print)
 add_library(tfm-halo-segment SHARED halo_segment.c)
 target_link_libraries(tfm-halo-segment PRIVATE tfm-buffer tfm-math-utils tfm-print)
 
-add_library(tfm-comm-data SHARED comm_data.c)
-target_link_libraries(tfm-comm-data PRIVATE tfm-halo-segment tfm-math-utils tfm-print tfm-dynamic-array tfm-ndarray)
+add_library(tfm-halo-segment-batch SHARED halo_segment_batch.c)
+target_link_libraries(tfm-halo-segment-batch PRIVATE tfm-halo-segment tfm-math-utils tfm-print tfm-dynamic-array tfm-ndarray)
 
 ## Program
 add_executable(run main.c)

@@ -1,7 +1,7 @@
 #include "comm.h"
 
 // #include "array.h"
-#include "comm_data.h"
+#include "halo_segment_batch.h"
 #include "decomp.h"
 #include "dynamic_array.h"
 #include "errchk.h"
@@ -515,8 +515,8 @@ comm_run(void)
 
     {
         const size_t ndims = 3;
-        CommData comm_data = acCommDataCreate(ndims, 8);
-        acCommDataDestroy(&comm_data);
+        HaloSegmentBatch batch = acHaloSegmentBatchCreate(ndims, 8);
+        acHaloSegmentBatchDestroy(&batch);
     }
 
     return 0;

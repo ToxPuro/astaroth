@@ -5,8 +5,8 @@
 #include <mpi.h>
 
 #include "comm_cart.h"
-#include "comm_data.h"
 #include "errchk.h"
+#include "halo_segment_batch.h"
 #include "math_utils.h"
 #include "ndarray.h"
 #include "print.h"
@@ -169,9 +169,9 @@ acCommHaloExchange(const size_t ndims, const size_t* nn, const size_t* rr, const
     //     print
     // }
 
-    CommData comm_data = acCommDataCreate(ndims, nn, rr, nfields);
-    // acCommDataPrint("comm_data", comm_data);
-    acCommDataDestroy(&comm_data);
+    HaloSegmentBatch batch = acHaloSegmentBatchCreate(ndims, nn, rr, nfields);
+    // acHaloSegmentBatchPrint("batch", batch);
+    acHaloSegmentBatchDestroy(&batch);
 
     // Release resources
     ERRCHK_MPI_API(MPI_Comm_free(&comm_cart));
@@ -282,35 +282,35 @@ get_mpi_coords_neighbor_inv(const size_t ndims, const size_t* nn, const size_t* 
         mpi_coords_neighbor[i] += mpi_coords[i];
 }
 
-// static void haloExchange(const MPI_Comm comm_cart, CommData comm_data)
+// static void haloExchange(const MPI_Comm comm_cart, HaloSegmentBatch batch)
 
 //     size_t launch_counter = 0;
 
-// const size_t ndims = comm_data.local_packets[0].ndims;
-// for (size_t i = 0; i < comm_data.npackets; ++i) {
+// const size_t ndims = batch.local_packets[0].ndims;
+// for (size_t i = 0; i < batch.npackets; ++i) {
 //     int sizes[ndims], subsizes[ndims], starts[ndims];
 //     to_mpi_format(ndims, local_mm, sizes);
-//     to_mpi_format(ndims, comm_data.local_packets[i].dims, subsizes);
-//     to_mpi_format(ndims, comm_data.local_packets[i].offset, starts);
+//     to_mpi_format(ndims, batch.local_packets[i].dims, subsizes);
+//     to_mpi_format(ndims, batch.local_packets[i].offset, starts);
 // }
 // ++launch_counter;
 // }
 
 static void
 haloExchange(const MPI_Comm comm_cart, const size_t ndims, const size_t* local_nn,
-             const size_t* local_mm, const size_t* rr, CommData comm_data, size_t* buffer)
+             const size_t* local_mm, const size_t* rr, HaloSegmentBatch batch, size_t* buffer)
 {
     static size_t launch_counter = 0;
 
     int rank;
     ERRCHK_MPI_API(MPI_Comm_rank(comm_cart, &rank));
 
-    MPI_Request reqs[comm_data.npackets];
-    for (size_t i = 0; i < comm_data.npackets; ++i) {
+    MPI_Request reqs[batch.npackets];
+    for (size_t i = 0; i < batch.npackets; ++i) {
         int sizes[ndims], subsizes[ndims], send_starts[ndims], recv_starts[ndims];
         to_mpi_format(ndims, local_mm, sizes);
-        to_mpi_format(ndims, comm_data.local_packets[i].dims, subsizes);
-        to_mpi_format(ndims, comm_data.local_packets[i].offset, recv_starts);
+        to_mpi_format(ndims, batch.local_packets[i].dims, subsizes);
+        to_mpi_format(ndims, batch.local_packets[i].offset, recv_starts);
 
         for (size_t j = 0; j < ndims; ++j)
             send_starts[j] = as_int(mod(as_int64_t(recv_starts[j]) - as_int64_t(rr[ndims - 1 - j]),
@@ -328,13 +328,13 @@ haloExchange(const MPI_Comm comm_cart, const size_t ndims, const size_t* local_n
         ERRCHK_MPI_API(MPI_Type_commit(&recv_subarray));
 
         // Get tag
-        const int tag = get_tag(i, comm_data.npackets, launch_counter);
+        const int tag = get_tag(i, batch.npackets, launch_counter);
 
         // Get neighbors
         int mpi_coords[ndims];
         ERRCHK_MPI_API(MPI_Cart_coords(comm_cart, rank, as_int(ndims), mpi_coords));
 
-        const size_t* offset = comm_data.local_packets[i].offset;
+        const size_t* offset = batch.local_packets[i].offset;
         int mpi_coords_send_neighbor[ndims];
         get_mpi_coords_neighbor(ndims, local_nn, rr, offset, mpi_coords, mpi_coords_send_neighbor);
 
@@ -354,7 +354,7 @@ haloExchange(const MPI_Comm comm_cart, const size_t ndims, const size_t* local_n
         ERRCHK_MPI_API(MPI_Type_free(&send_subarray));
         ERRCHK_MPI_API(MPI_Type_free(&recv_subarray));
     }
-    ERRCHK_MPI_API(MPI_Waitall(as_int(comm_data.npackets), reqs, MPI_STATUSES_IGNORE));
+    ERRCHK_MPI_API(MPI_Waitall(as_int(batch.npackets), reqs, MPI_STATUSES_IGNORE));
 
     ++launch_counter;
 }
@@ -403,7 +403,7 @@ acCommTest(void)
     // Reserve resources
     size_t* buffer = malloc(sizeof(buffer[0]) * prod(ndims, local_mm));
     set(as_size_t(rank + 1), prod(ndims, local_mm), buffer);
-    CommData comm_data = acCommDataCreate(ndims, local_nn, rr, nfields);
+    HaloSegmentBatch batch = acHaloSegmentBatchCreate(ndims, local_nn, rr, nfields);
 
     // Print data
     if (rank == 0) {
@@ -413,7 +413,7 @@ acCommTest(void)
         print_array("local_nn", ndims, local_nn);
         print_array("local_mm", ndims, local_mm);
         print_ndarray("Mesh", ndims, local_mm, buffer);
-        // acCommDataPrint("comm_data", comm_data);
+        // acHaloSegmentBatchPrint("batch", batch);
     }
 
 // Send packets
@@ -426,9 +426,9 @@ acCommTest(void)
             ERRCHK_MPI_API(MPI_Cart_coords(comm_cart, rank, as_int(ndims), mpi_coords));
             print_array("\tCoords", ndims, mpi_coords);
 
-            for (size_t j = 0; j < comm_data.npackets; ++j) {
-                const size_t* offset = comm_data.local_packets[j].offset;
-                const size_t* dims   = comm_data.local_packets[j].dims;
+            for (size_t j = 0; j < batch.npackets; ++j) {
+                const size_t* offset = batch.local_packets[j].offset;
+                const size_t* dims   = batch.local_packets[j].dims;
                 print("\t\tPacket", j);
                 print_array("\t\tDims", ndims, dims);
                 print_array("\t\t\tOffset", ndims, offset);
@@ -450,19 +450,19 @@ acCommTest(void)
     }
 #endif
 
-    haloExchange(comm_cart, ndims, local_nn, local_mm, rr, comm_data, buffer);
-    haloExchange(comm_cart, ndims, local_nn, local_mm, rr, comm_data, buffer);
-    haloExchange(comm_cart, ndims, local_nn, local_mm, rr, comm_data, buffer);
-    haloExchange(comm_cart, ndims, local_nn, local_mm, rr, comm_data, buffer);
+    haloExchange(comm_cart, ndims, local_nn, local_mm, rr, batch, buffer);
+    haloExchange(comm_cart, ndims, local_nn, local_mm, rr, batch, buffer);
+    haloExchange(comm_cart, ndims, local_nn, local_mm, rr, batch, buffer);
+    haloExchange(comm_cart, ndims, local_nn, local_mm, rr, batch, buffer);
 #if 0
-    MPI_Request send_reqs[comm_data.npackets];
-    MPI_Request recv_reqs[comm_data.npackets];
+    MPI_Request send_reqs[batch.npackets];
+    MPI_Request recv_reqs[batch.npackets];
     size_t launch_counter = 0;
-    for (size_t i = 0; i < comm_data.npackets; ++i) {
+    for (size_t i = 0; i < batch.npackets; ++i) {
         int sizes[ndims], subsizes[ndims], starts[ndims];
         to_mpi_format(ndims, local_mm, sizes);
-        to_mpi_format(ndims, comm_data.local_packets[i].dims, subsizes);
-        to_mpi_format(ndims, comm_data.local_packets[i].offset, starts);
+        to_mpi_format(ndims, batch.local_packets[i].dims, subsizes);
+        to_mpi_format(ndims, batch.local_packets[i].offset, starts);
 
         // Subarrays
         MPI_Datatype recv_subarray;
@@ -471,13 +471,13 @@ acCommTest(void)
         ERRCHK_MPI_API(MPI_Type_commit(&recv_subarray));
 
         // Get tag
-        const int tag = get_tag(i, comm_data.npackets, launch_counter);
+        const int tag = get_tag(i, batch.npackets, launch_counter);
 
         // Get source
         int mpi_coords[ndims];
         ERRCHK_MPI_API(MPI_Cart_coords(comm_cart, rank, as_int(ndims), mpi_coords));
 
-        const size_t* offset = comm_data.local_packets[i].offset;
+        const size_t* offset = batch.local_packets[i].offset;
         int mpi_coords_neighbor[ndims];
         get_mpi_coords_neighbor(ndims, local_nn, rr, offset, mpi_coords, mpi_coords_neighbor);
 
@@ -505,11 +505,11 @@ acCommTest(void)
         // MPI_STATUS_IGNORE);
         ERRCHK_MPI_API(MPI_Type_free(&recv_subarray));
     }
-    for (size_t i = 0; i < comm_data.npackets; ++i) {
+    for (size_t i = 0; i < batch.npackets; ++i) {
         int sizes[ndims], subsizes[ndims], starts[ndims];
         to_mpi_format(ndims, local_mm, sizes);
-        to_mpi_format(ndims, comm_data.local_packets[i].dims, subsizes);
-        to_mpi_format(ndims, comm_data.local_packets[i].offset, starts);
+        to_mpi_format(ndims, batch.local_packets[i].dims, subsizes);
+        to_mpi_format(ndims, batch.local_packets[i].offset, starts);
 
         for (size_t j = 0; j < ndims; ++j)
             starts[j] = as_int(mod(as_int64_t(starts[j]) - as_int64_t(rr[ndims - 1 - j]),
@@ -523,13 +523,13 @@ acCommTest(void)
         ERRCHK_MPI_API(MPI_Type_commit(&send_subarray));
 
         // Get tag
-        const int tag = get_tag(i, comm_data.npackets, launch_counter);
+        const int tag = get_tag(i, batch.npackets, launch_counter);
 
         // Get source
         int mpi_coords[ndims];
         ERRCHK_MPI_API(MPI_Cart_coords(comm_cart, rank, as_int(ndims), mpi_coords));
 
-        const size_t* offset = comm_data.local_packets[i].offset;
+        const size_t* offset = batch.local_packets[i].offset;
         int mpi_coords_neighbor[ndims];
         get_mpi_coords_neighbor_inv(ndims, local_nn, rr, offset, mpi_coords, mpi_coords_neighbor);
 
@@ -541,8 +541,8 @@ acCommTest(void)
 
         ERRCHK_MPI_API(MPI_Wait(&send_reqs[i], MPI_STATUS_IGNORE));
         ERRCHK_MPI_API(MPI_Wait(&recv_reqs[i], MPI_STATUS_IGNORE));
-        // MPI_Waitall(comm_data.npackets, send_reqs, MPI_STATUSES_IGNORE);
-        // MPI_Waitall(comm_data.npackets, recv_reqs, MPI_STATUSES_IGNORE);
+        // MPI_Waitall(batch.npackets, send_reqs, MPI_STATUSES_IGNORE);
+        // MPI_Waitall(batch.npackets, recv_reqs, MPI_STATUSES_IGNORE);
         ERRCHK_MPI_API(MPI_Type_free(&send_subarray));
     }
     ++launch_counter;
@@ -556,13 +556,13 @@ acCommTest(void)
         print_array("local_nn", ndims, local_nn);
         print_array("local_mm", ndims, local_mm);
         print_ndarray("Mesh", ndims, local_mm, buffer);
-        // acCommDataPrint("comm_data", comm_data);
+        // acHaloSegmentBatchPrint("batch", batch);
     }
 
     test_get_tag();
 
     // Release resources
-    acCommDataDestroy(&comm_data);
+    acHaloSegmentBatchDestroy(&batch);
     free(buffer);
     ERRCHK_MPI_API(MPI_Comm_free(&comm_cart));
 
