@@ -328,13 +328,13 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
           assert(out);
 	  fprintf(out,"#define AC_LAGRANGIAN_GRID (%d)\n",AC_LAGRANGIAN_GRID);
 	  fprintf(out,"#define TWO_D (%d)\n",TWO_D);
-       	  process_includes(1, dir, ACC_BUILTIN_VARIABLES, out,log);
        	  process_includes(1, dir, ACC_BUILTIN_TYPEDEFS, out,log);
+	  if(file_exists(ACC_OVERRIDES_PATH) && !RUNTIME_COMPILATION && READ_OVERLOADS)
+       	  	process_includes(1, dir, ACC_OVERRIDES_PATH, out,log);
+       	  process_includes(1, dir, ACC_BUILTIN_VARIABLES, out,log);
        	  process_includes(1, dir, ACC_BUILTIN_FUNCS, out,log);
 	  if(file_exists(ACC_GEN_PATH"/extra_dfuncs.h"))
        	  	process_includes(1, dir, ACC_GEN_PATH"/extra_dfuncs.h", out,log);
-	  if(file_exists(ACC_OVERRIDES_PATH) && !RUNTIME_COMPILATION && READ_OVERLOADS)
-       	  	process_includes(1, dir, ACC_OVERRIDES_PATH, out,log);
 	  //the actual includes
           process_includes(0, dir, stage0, out,log);
 

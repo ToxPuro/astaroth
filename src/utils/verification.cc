@@ -102,7 +102,7 @@ acEvalError(const char* label, const Error error)
     else
         acceptable = false;
 
-    printf("%-15s... %s ", label, acceptable ? AC_GRN "OK! "AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
+    printf("%-15s... %s ", label, acceptable ? AC_GRN "OK!" AC_COL_RESET : AC_RED "FAIL! " AC_COL_RESET);
 
     printf("| %.3Lg (abs), %.3Lg (ulps), %.3Lg (rel). Range: [%.3g, %.3g]\tpoint: %d,%d,%d\n", //
            error.abs_error, error.ulp_error, error.rel_error,                 //
@@ -135,7 +135,7 @@ get_maximum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
 	{
     		for (int z = z_start; z < z_end; ++z) 
 		{
-			const size_t i = x+y*info.int_params[AC_mx]+z*info.int_params[AC_mx]*info.int_params[AC_my];
+			const size_t i = x+y*mm.x+z*mm.y*mm.z;
         		maximum = max(maximum, fabs(field[i]));
 		}
 	}
@@ -167,7 +167,7 @@ get_minimum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
 	{
     		for (int z = z_start; z < z_end; ++z) 
 		{
-			const size_t i = x+y*info.int_params[AC_mx]+z*info.int_params[AC_mx]*info.int_params[AC_my];
+			const size_t i = x+y*mm.x+z*mm.x*mm.y;
         		minimum = min(minimum, fabs(field[i]));
 		}
 	}
@@ -253,17 +253,18 @@ acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candida
     ERRCHK_ALWAYS(NUM_VTXBUF_HANDLES > 0);
 
     const AcMeshInfo info = model.info;
-    ERRCHK_ALWAYS((int)z < info.int_params[AC_mz]);
+    const int3 mm = acGetLocalMM(info);
+    ERRCHK_ALWAYS((int)z < mm.z);
 
     FILE* fp = fopen(path, "w");
     ERRCHK_ALWAYS(fp);
 
-    const size_t mx = info.int_params[AC_mx];
-    const size_t my = info.int_params[AC_my];
+    const size_t mx = mm.x;
+    const size_t my = mm.y;
     for (size_t y = 0; y < my; ++y) {
         for (size_t x = 0; x < mx; ++x) {
             const size_t idx                = acVertexBufferIdx(x, y, z, info);
-            const VertexBufferHandle vtxbuf = 0;
+            const VertexBufferHandle vtxbuf = (VertexBufferHandle)0;
             const AcReal m                  = model.vertex_buffer[vtxbuf][idx];
             const AcReal c                  = candidate.vertex_buffer[vtxbuf][idx];
             const Error error               = acGetError(m, c);
@@ -296,7 +297,7 @@ acMeshDiffWrite(const char* path, const AcMesh model, const AcMesh candidate)
         for (size_t y = 0; y < my; ++y) {
             for (size_t x = 0; x < mx; ++x) {
                 const size_t idx                = acVertexBufferIdx(x, y, z, info);
-                const VertexBufferHandle vtxbuf = 0;
+                const VertexBufferHandle vtxbuf = (VertexBufferHandle)0;
                 const AcReal m                  = model.vertex_buffer[vtxbuf][idx];
                 const AcReal c                  = candidate.vertex_buffer[vtxbuf][idx];
                 const Error error               = acGetError(m, c);

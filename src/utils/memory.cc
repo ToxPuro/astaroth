@@ -35,7 +35,7 @@ AcResult
 acHostMeshSet(const AcReal value, AcMesh* mesh)
 {
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w)
-        acHostVertexBufferSet(w, value, mesh);
+        acHostVertexBufferSet((VertexBufferHandle)w, value, mesh);
 
     return AC_SUCCESS;
 }

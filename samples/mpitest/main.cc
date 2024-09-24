@@ -53,7 +53,11 @@ main(void)
     AcMeshInfo info;
     AcCompInfo comp_info = acInitCompInfo();
     acLoadConfig(AC_DEFAULT_CONFIG, &info, &comp_info);
-    info.int_params[AC_proc_mapping_strategy] = (int)AcProcMappingStrategy::Linear;
+    acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info, &comp_info);
+    acPushToConfig(info,comp_info,AC_proc_mapping_strategy, (int)AcProcMappingStrategy::Linear);
+    acPushToConfig(info,comp_info,AC_decompose_strategy,    (int)AcDecomposeStrategy::Default);
+    acPushToConfig(info,comp_info,AC_MPI_comm_strategy,    (int)AcMPICommStrategy::DuplicateMPICommWorld);
+    comp_info.comm = MPI_COMM_WORLD;
 
 #if AC_RUNTIME_COMPILATION
     if(pid == 0)
@@ -105,7 +109,6 @@ main(void)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
     //acSetMeshDims(44, 44, 44, &info);
 
     AcMesh model, candidate;

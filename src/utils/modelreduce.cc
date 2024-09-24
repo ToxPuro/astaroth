@@ -25,6 +25,7 @@
  *
  */
 #include "astaroth.h"
+#include "astaroth_utils.h"
 
 #include <math.h>
 
@@ -85,12 +86,12 @@ int
 get_initial_idx(AcMeshInfo info)
 {
 #if TWO_D == 0
-    const int initial_idx = acVertexBufferIdx(info.int_params[AC_nx_min],
-                                              info.int_params[AC_ny_min],
-                                              info.int_params[AC_nz_min], info);
+    const int initial_idx = acVertexBufferIdx(NGHOST_X,
+                                              NGHOST_Y,
+                                              NGHOST_Z, info);
 #else
-    const int initial_idx = acVertexBufferIdx(info.int_params[AC_nx_min],
-                                              info.int_params[AC_ny_min],
+    const int initial_idx = acVertexBufferIdx(NGHOST_X,
+                                              NGHOST_Y,
                                               0,info);
 #endif
     return initial_idx;
@@ -100,11 +101,11 @@ long double
 get_inv_n(AcMeshInfo info)
 {
 #if TWO_D == 0
-        const long double inv_n = (long double)1.0l / info.int_params[AC_nxyz];
+	const int n_grid_points = acGetInfoValue(info,AC_nxyz);
 #else
-        const long double inv_n = (long double)1.0l / info.int_params[AC_nxy];
+	const int n_grid_points = acGetInfoValue(info,AC_nxy);
 #endif
-	return inv_n;
+        return (long double)1.0l / n_grid_points;
 }
 
 AcReal
@@ -150,13 +151,11 @@ acHostReduceScal(const AcMesh mesh, const ReductionType rtype, const VertexBuffe
     else
         res = 0;
 
-#if TWO_D == 0
-    for (int k = mesh.info.int_params[AC_nz_min]; k < mesh.info.int_params[AC_nz_max]; ++k) {
-#else
-    for (int k = 0; k < 1; ++k) {
-#endif
-        for (int j = mesh.info.int_params[AC_ny_min]; j < mesh.info.int_params[AC_ny_max]; ++j) {
-            for (int i = mesh.info.int_params[AC_nx_min]; i < mesh.info.int_params[AC_nx_max];
+    const int3 mins = acGetMinNN(mesh.info);
+    const int3 maxs = acGetMaxNN(mesh.info);
+    for (int k = mins.z; k < maxs.z; ++k) {
+        for (int j = mins.y; j < maxs.y; ++j) {
+            for (int i = mins.x; i < maxs.x;
                  ++i) {
                 const int idx              = acVertexBufferIdx(i, j, k, mesh.info);
                 const long double curr_val = reduce_initial(
@@ -221,14 +220,12 @@ acHostReduceVec(const AcMesh mesh, const ReductionType rtype, const VertexBuffer
                              (long double)mesh.vertex_buffer[c][initial_idx]);
     else
         res = 0;
+    const int3 mins = acGetMinNN(mesh.info);
+    const int3 maxs = acGetMaxNN(mesh.info);
 
-#if TWO_D == 0
-    for (int k = mesh.info.int_params[AC_nz_min]; k < mesh.info.int_params[AC_nz_max]; ++k) {
-#else
-    for (int k = 0; k < 1; ++k) {
-#endif
-        for (int j = mesh.info.int_params[AC_ny_min]; j < mesh.info.int_params[AC_ny_max]; j++) {
-            for (int i = mesh.info.int_params[AC_nx_min]; i < mesh.info.int_params[AC_nx_max];
+    for (int k = mins.z; k < maxs.z; ++k) {
+        for (int j = mins.y; j < maxs.y; j++) {
+            for (int i = mins.x; i < maxs.x;
                  i++) {
                 const int idx              = acVertexBufferIdx(i, j, k, mesh.info);
                 const long double curr_val = reduce_initial((long double)mesh.vertex_buffer[a][idx],
@@ -291,13 +288,11 @@ acHostReduceVecScal(const AcMesh mesh, const ReductionType rtype, const VertexBu
     else
         res = 0;
 
-#if TWO_D == 0
-    for (int k = mesh.info.int_params[AC_nz_min]; k < mesh.info.int_params[AC_nz_max]; ++k) {
-#else
-    for (int k = 0; k < 1; ++k) {
-#endif
-        for (int j = mesh.info.int_params[AC_ny_min]; j < mesh.info.int_params[AC_ny_max]; j++) {
-            for (int i = mesh.info.int_params[AC_nx_min]; i < mesh.info.int_params[AC_nx_max];
+    const int3 mins = acGetMinNN(mesh.info);
+    const int3 maxs = acGetMaxNN(mesh.info);
+    for (int k = mins.z; k < maxs.z; ++k) {
+        for (int j = mins.y; j < maxs.y; j++) {
+            for (int i = mins.x; i < maxs.x;
                  i++) {
                 const int idx              = acVertexBufferIdx(i, j, k, mesh.info);
                 const long double curr_val = reduce_initial((long double)mesh.vertex_buffer[a][idx],

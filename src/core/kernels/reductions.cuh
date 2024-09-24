@@ -88,10 +88,10 @@ map_square_alf(const AcReal& a, const AcReal& b, const AcReal& c, const AcReal& 
 static __device__ inline void
 cartesian_grid_location(AcReal* coord_x1, AcReal* coord_y1, AcReal* coord_z1, const int3& globalVertexIdx)
 {
-    *coord_x1 = AcReal(globalVertexIdx.x - STENCIL_ORDER/2)*DCONST(AC_dsx);
-    *coord_y1 = AcReal(globalVertexIdx.y - STENCIL_ORDER/2)*DCONST(AC_dsy);
+    *coord_x1 = AcReal(globalVertexIdx.x - STENCIL_ORDER/2)*VAL(AC_dsx);
+    *coord_y1 = AcReal(globalVertexIdx.y - STENCIL_ORDER/2)*VAL(AC_dsy);
 #if TWO_D == 0
-    *coord_z1 = AcReal(globalVertexIdx.z - STENCIL_ORDER/2)*DCONST(AC_dsz);
+    *coord_z1 = AcReal(globalVertexIdx.z - STENCIL_ORDER/2)*VAL(AC_dsz);
 #else
     *coord_z1 = AcReal(0.0);
 #endif
@@ -112,10 +112,10 @@ radial_window(const AcReal3& coordinate)
     AcReal loc_weight = 0.0;
 
     const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
-                                   DCONST(AC_center_x), DCONST(AC_center_y), 
-                                   DCONST(AC_center_z)); 
+                                   VAL(AC_center_x), VAL(AC_center_y), 
+                                   VAL(AC_center_z)); 
 
-    if (radius <= DCONST(AC_window_radius)) loc_weight = 1.0;  
+    if (radius <= VAL(AC_window_radius)) loc_weight = 1.0;  
     //if (radius <= DCONST(AC_window_radius)) printf("Condition met radial_window \n");  OKOK
 
     return loc_weight; 
@@ -125,9 +125,9 @@ static __device__ inline AcReal
 gaussian_window(const AcReal3& coordinate)
 {
     const AcReal radius = distance(coordinate.x, coordinate.y,  coordinate.z,
-                                   DCONST(AC_center_x), DCONST(AC_center_y), 
-                                   DCONST(AC_center_z)); 
-    const AcReal rscale = DCONST(AC_window_radius);
+                                   VAL(AC_center_x), VAL(AC_center_y), 
+                                   VAL(AC_center_z)); 
+    const AcReal rscale = VAL(AC_window_radius);
 
     //if (radius <= DCONST(AC_window_radius)) printf("Condition met gaussian_window \n");  OKOK
 
@@ -160,9 +160,9 @@ bool __device__
 bound_check(const int3 end)
 {
 #if TWO_D == 0
-    return ((end <= (int3){DCONST(AC_mx), DCONST(AC_my), DCONST(AC_mz)}));
+    return ((end <= (int3){VAL(AC_mx), VAL(AC_my), VAL(AC_mz)}));
 #else
-    return ((end <= (int3){DCONST(AC_mx), DCONST(AC_my), 1}));
+    return ((end <= (int3){VAL(AC_mx), VAL(AC_my), 1}));
 #endif
 }
 

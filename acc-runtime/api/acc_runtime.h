@@ -110,6 +110,9 @@ MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
   typedef struct {
 	  AcCompInfoConfig config;
 	  AcCompInfoLoaded is_loaded;
+#if AC_MPI_ENABLED
+    	  MPI_Comm comm;
+#endif
   } AcCompInfo;
 
   typedef struct {
@@ -286,12 +289,14 @@ MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
 #include <string.h>
 
   #ifdef __cplusplus
+#include "is_comptime_param.h"
 #include  "push_to_config.h"
 
   template <typename P, typename V>
   void
   acPushToConfig(AcMeshInfo& config, AcCompInfo& comp_info, P param, V val)
   {
+	  static_assert(!std::is_same<P,int>::value);
           if constexpr(IsCompParam(param))
                   acLoadCompInfo(param, val, &comp_info);
           else
@@ -306,10 +311,6 @@ MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
 	  return res;
   }
 #include "load_comp_info.h"
-
-#ifdef __cplusplus
-#include "is_comptime_param.h"
-#endif
 
 #ifdef __cplusplus
 
@@ -390,6 +391,7 @@ MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
   get_is_loaded(const P param, const AcCompInfoLoaded config)
   {
 #include "get_from_comp_config.h"
+	  return false;
   };
 
   template <typename P>

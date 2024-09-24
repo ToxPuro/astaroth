@@ -387,43 +387,6 @@ acGetNode(void)
 }
 
 
-void
-set_info_val(AcMeshInfo* info, const AcIntParam param, const int value)
-{
-	info->int_params[param] = value;
-}
-
-void
-set_info_val(AcMeshInfo* , const int , const int ){}
-
-#if TWO_D == 0
-AcResult
-acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info)
-{
-    set_info_val(info,AC_nxgrid,nx);
-    set_info_val(info,AC_nygrid,ny);
-    set_info_val(info,AC_nzgrid,nz);
-    
-    //needed to keep since before acGridInit the user can call this arbitary number of times
-    set_info_val(info,AC_nx,nx);
-    set_info_val(info,AC_ny,ny);
-    set_info_val(info,AC_nz,nz);
-    return acHostUpdateBuiltinParams(info);
-}
-
-#else
-AcResult
-acSetMeshDims(const size_t nx, const size_t ny, AcMeshInfo* info)
-{
-    set_info_val(info,AC_nxgrid,nx);
-    set_info_val(info,AC_nygrid,ny);
-    
-    //needed to keep since before acGridInit the user can call this arbitary number of times
-    set_info_val(info,AC_nx,nx);
-    set_info_val(info,AC_ny,ny);
-    return acHostUpdateBuiltinParams(info);
-}
-#endif
 
 
 AcResult
@@ -536,7 +499,7 @@ int3
 acGetLocalNN(const AcMeshInfo info)
 {
 #if TWO_D == 0
-	const AcIntParam z = AC_nz;
+	auto z = AC_nz;
 #else
 	auto z = 1;
 #endif
@@ -547,7 +510,7 @@ int3
 acGetLocalMM(const AcMeshInfo info)
 {
 #if TWO_D == 0
-	const AcIntParam z = AC_mz;
+	auto z = AC_mz;
 #else
 	auto z = 1;
 #endif
@@ -558,7 +521,7 @@ int3
 acGetGridNN(const AcMeshInfo info)
 {
 #if TWO_D == 0
-	const AcIntParam z = AC_nzgrid;
+	auto z = AC_nzgrid;
 #else
 	auto z = 1;
 #endif
@@ -567,19 +530,14 @@ acGetGridNN(const AcMeshInfo info)
 int3
 acGetMinNN(const AcMeshInfo info)
 {
-#if TWO_D == 0
-	const AcIntParam z = AC_nz_min;
-#else
-	auto z = 0;
-#endif
-    return acConstructInt3Param(AC_nx_min, AC_ny_min, z, info);
+    return acConstructInt3Param(NGHOST_X, NGHOST_Y, NGHOST_Z, info);
 }
 
 int3
 acGetMaxNN(const AcMeshInfo info)
 {
 #if TWO_D == 0
-	const AcIntParam z = AC_nz_max;
+	auto z = AC_nz_max;
 #else
 	auto z = 1;
 #endif
@@ -590,7 +548,7 @@ AcReal3
 acGetLengths(const AcMeshInfo info)
 {
 #if TWO_D == 0
-	const AcRealParam z = AC_zlen;
+	auto z = AC_zlen;
 #else
 	auto z = -1.0;
 #endif

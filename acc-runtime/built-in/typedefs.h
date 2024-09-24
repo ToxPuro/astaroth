@@ -37,7 +37,3 @@ typedef AcBool3 struct bool3
 	bool y;
 	bool z;
 }
-//Copy int3's here since they need the struct declaration
-int3 AC_domain_decomposition
-int3 AC_multigpu_offset
-int3 AC_domain_coordinates

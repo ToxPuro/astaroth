@@ -91,10 +91,8 @@ main(void)
     }
 
     // GPU alloc & compute
-    printf("Ac_dsx: %f\n",info.real_params[AC_dsx]);
-    //these are read from config
-    //info.int_arrays[AC_test_int_arr] = (int*)test_int_arr;
-    //info.real_arrays[AC_test_arr_2] = (AcReal*)test_arr_2;
+    //printf("Ac_dsx: %14e\n",info.real_params[AC_dsx]);
+    //printf("Ac_dsy: %14e\n",info.real_params[AC_dsy]);
     acGridInit(info);
 
     std::vector<Field> all_fields;
@@ -199,11 +197,12 @@ main(void)
 
     };
 
+    const int3 mm = acGetLocalMM(model.info);
     if(pid == 0)
     {
-      AcReal* derxx = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mx]*model.info.int_params[AC_my]);
-      AcReal* deryy = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mx]*model.info.int_params[AC_my]);
-      AcReal* temp  = (AcReal*)malloc(sizeof(AcReal)*model.info.int_params[AC_mx]*model.info.int_params[AC_my]);
+      AcReal* derxx = (AcReal*)malloc(sizeof(AcReal)*mm.x*mm.y);
+      AcReal* deryy = (AcReal*)malloc(sizeof(AcReal)*mm.x*mm.y);
+      AcReal* temp  = (AcReal*)malloc(sizeof(AcReal)*mm.x*mm.y);
 
       for (int step_number = 0; step_number < NUM_INTEGRATION_STEPS; ++step_number) {
           acHostMeshApplyPeriodicBounds(&model);
@@ -211,8 +210,8 @@ main(void)
               for (int j = ny_min; j < ny_max; ++j) {
                   for (int i = nx_min; i < nx_max; ++i) {
           		const int index = IDX(i,j,k);
-          		derxx[index] = calc_derxx(i,j,k,model.vertex_buffer[UU],model.info.real_params[AC_dsx]);
-          		deryy[index] = calc_deryy(i,j,k,model.vertex_buffer[UU],model.info.real_params[AC_dsy]);
+          		derxx[index] = calc_derxx(i,j,k,model.vertex_buffer[UU],acGetInfoValue(model.info,AC_dsx));
+          		deryy[index] = calc_deryy(i,j,k,model.vertex_buffer[UU],acGetInfoValue(model.info,AC_dsy));
           		temp[index] = model.vertex_buffer[UU][IDX(i-1,j,k)];
                   }
               }

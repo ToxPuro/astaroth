@@ -61,6 +61,7 @@
 #include "errchk.h"
 #include "math_utils.h"
 #include "timer_hires.h"
+#include "user_builtin_non_scalar_constants.h"
 
 #ifdef USE_PERFSTUBS
 #define PERFSTUBS_USE_TIMER
@@ -115,7 +116,7 @@ get_decomp(const AcMeshInfo global_config)
 	    case AcDecomposeStrategy::Default:
 		return decompose(ac_nprocs());
 	    case AcDecomposeStrategy::External:
-		return static_cast<uint3_64>(global_config.int3_params[AC_domain_decomposition]);
+		return static_cast<uint3_64>(acGetInfoValue(global_config,AC_domain_decomposition));
 	    default:
 		fprintf(stderr,"Unknown decompose strategy\n");
 		exit(EXIT_FAILURE);
@@ -239,15 +240,23 @@ acGridGetDevice()
 
 
 
-
 void
 set_info_val(AcMeshInfo info, const AcIntParam param, const int value)
 {
 	info.int_params[param] = value;
 }
+void
+set_info_val(AcMeshInfo info, const AcInt3Param param, const int3 value)
+{
+	info.int3_params[param] = value;
+}
 
 void
 set_info_val(AcMeshInfo , const int , const int ){}
+
+void
+set_info_val(AcMeshInfo , const int3 , const int3 ){}
+
 
 AcMeshInfo
 acGridDecomposeMeshInfo(const AcMeshInfo global_config)
@@ -276,7 +285,7 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
 #endif
     submesh_config.int3_params[AC_multigpu_offset] = getPid3D(global_config)*
                                                      (int3){submesh_nx, submesh_ny, submesh_nz};
-    submesh_config.int3_params[AC_domain_decomposition] = (int3){(int)decomp.x, (int)decomp.y, (int)decomp.z};
+    set_info_val(submesh_config,AC_domain_decomposition,(int3){(int)decomp.x, (int)decomp.y, (int)decomp.z});
     submesh_config.int3_params[AC_domain_coordinates] = getPid3D(global_config);
     acHostUpdateBuiltinParams(&submesh_config);
     return submesh_config;
@@ -1642,15 +1651,13 @@ testmydecomp(int3 nn, int decomp_level, std::vector<Field> fields_out)
 static AcReal3 
 get_spacings()
 {
-	const AcMeshInfo info = grid.device -> local_config;
-	return (AcReal3){info.real_params[AC_dsx], info.real_params[AC_dsy], info.real_params[AC_dsz]};
+	return acConstructReal3Param(AC_dsx,AC_dsy,AC_dsz,grid.device->local_config);
 }
 #else
 static AcReal3 
 get_spacings()
 {
-	const AcMeshInfo info = grid.device -> local_config;
-	return (AcReal3){info.real_params[AC_dsx], info.real_params[AC_dsy], 0.0};
+	return acConstructReal3Param(AC_dsx,AC_dsy,0.0,grid.device->local_config);
 }
 #endif
 AcTaskGraph*
@@ -2263,10 +2270,10 @@ distributedScalarReduction(const AcReal local_result, const ReductionType rtype,
     if ( rtype == RTYPE_ALFVEN_RADIAL_WINDOW_RMS ) {
         // MV NOTE: This has to be calculated here separately, because does not
         //          know what GPU is doing. 
-        const AcReal cell_volume   = grid.device->local_config.real_params[AC_dsx] *
-                                     grid.device->local_config.real_params[AC_dsy]
+	const AcReal3 spacings = get_spacings();
+	const AcReal cell_volume   = spacings.x*spacings.y
 #if TWO_D == 0
-                                     * grid.device->local_config.real_params[AC_dsz]
+				     *spacings.z
 #endif
 				     ;
 

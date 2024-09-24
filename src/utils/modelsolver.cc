@@ -108,18 +108,18 @@ operator*(const Scalar& a, const Vector& b)
 static AcMeshInfo* mesh_info = NULL;
 
 static inline int
-getInt(const AcIntParam param)
+UNUSED getInt(const AcIntParam param)
 {
     return mesh_info->int_params[param];
 }
 
 static inline Scalar
-getReal(const AcRealParam param)
+UNUSED getReal(const AcRealParam param)
 {
     return (Scalar)mesh_info->real_params[param];
 }
 
-static inline Scalar
+static inline int 
 UNUSED getInt(const int val)
 {
 	return val;
@@ -1129,9 +1129,9 @@ checkConfiguration(const AcMeshInfo info)
     }
 #endif
 
-    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info.real_params[AC_dsx]));
-    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info.real_params[AC_dsy]));
-    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)info.real_params[AC_dsz]));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)acGetInfoValue(info,AC_dsx)));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)acGetInfoValue(info,AC_dsy)));
+    ERRCHK_ALWAYS(is_valid((Scalar)1. / (Scalar)acGetInfoValue(info,AC_dsz)));
     // ERRCHK_ALWAYS(is_valid(info.real_params[AC_cs2_sound]));
 }
 

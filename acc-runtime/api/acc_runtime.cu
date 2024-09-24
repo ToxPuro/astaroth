@@ -271,7 +271,7 @@ VAL(const int& val)
 
 
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
-  ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mxy))
+  ((i) + (j)*VAL(AC_mx) + (k)*VAL(AC_mxy))
 
 __device__ int
 LOCAL_COMPDOMAIN_IDX(const int3 coord)
@@ -523,25 +523,37 @@ struct allocate_arrays
 	}
 };
 
+int
+get_val(const AcMeshInfo, const int val)
+{
+	return val;
+}
+
+int
+get_val(const AcMeshInfo config, const AcIntParam param)
+{
+	return config.int_params[param];
+}
+
+
+int3
+buffer_dims(const AcMeshInfo config)
+{
+	const int x = get_val(config,AC_mx);
+	const int y = get_val(config,AC_my);
+#if TWO_D == 0
+	const int z = get_val(config,AC_mz);
+#else
+	const int z = 0;
+#endif
+	return (int3){x,y,z};
+}
 
 VertexBufferArray
 acVBACreate(const AcMeshInfo config)
 {
-  //can't use acVertexBufferDims because of linking issues
-#if TWO_D == 0
-  const int3 counts = (int3){
-        (config.int_params[AC_mx]),
-        (config.int_params[AC_my]),
-        (config.int_params[AC_mz])
-  };
-#else
-  const int3 counts = (int3){
-        (config.int_params[AC_mx]),
-        (config.int_params[AC_my]),
-	1,
-  };
-#endif
-
+  //TP: cannot call normal acVertexBufferDims since that would make us depend on astaroth core
+  const int3 counts = buffer_dims(config);
   VertexBufferArray vba;
   size_t count = counts.x*counts.y*counts.z;
   size_t bytes = sizeof(vba.in[0][0]) * count;

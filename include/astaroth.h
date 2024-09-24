@@ -272,10 +272,44 @@ acGetInfoValue(const AcMeshInfo, const int val)
 	return val;
 }
 
+static inline int3
+acGetInfoValue(const AcMeshInfo, const int3 val)
+{
+	return val;
+}
+
+static inline int3
+acGetInfoValue(const AcMeshInfo info, const AcInt3Param param)
+{
+	return info.int3_params[param];
+}
+
 static inline int
 acGetInfoValue(const AcMeshInfo info, const AcIntParam param)
 {
 	return info.int_params[param];
+}
+
+static inline int
+acGetInfoValue(const AcMeshInfo, const AcCompInfo, const int val)
+{
+	return val;
+}
+static inline int
+acGetInfoValue(const AcMeshInfo info, const AcCompInfo, const AcIntParam param)
+{
+	return info.int_params[param];
+}
+
+static inline int
+acGetInfoValue(const AcMeshInfo, const AcCompInfo comp_info, const AcIntCompParam param)
+{
+	if(!comp_info.is_loaded.int_params[param])
+	{
+		fprintf(stderr,"FATAL AC ERROR: Trying to get not loaded %s AcIntCompParam\n",int_comp_param_names[param]);
+		ERRCHK_ALWAYS(comp_info.is_loaded.int_params[param]);
+	}
+	return comp_info.config.int_params[param];
 }
 
 static inline AcReal
@@ -288,6 +322,24 @@ static inline AcReal
 acGetInfoValue(const AcMeshInfo info, const AcRealParam param)
 {
 	return info.real_params[param];
+}
+
+static inline AcReal
+acGetInfoValue(const AcMeshInfo, const AcCompInfo, const AcReal val)
+{
+	return val;
+}
+static inline AcReal
+acGetInfoValue(const AcMeshInfo info, const AcCompInfo, const AcRealParam param)
+{
+	return info.real_params[param];
+}
+
+static inline AcReal
+acGetInfoValue(const AcMeshInfo, const AcCompInfo comp_info, const AcRealCompParam param)
+{
+	ERRCHK_ALWAYS(comp_info.is_loaded.real_params[param]);
+	return comp_info.config.real_params[param];
 }
 
 
@@ -314,6 +366,8 @@ acConstructReal3Param(const T1 a, const T2 b, const T3 c, const AcMeshInfo info)
 		acGetInfoValue(info,c)
 	};
 }
+/** Sets the dimensions of the computational domain to (nx, ny, nz) and recalculates the built-in
+ * parameters derived from them (mx, my, mz, nx_min, and others) */
 
 extern "C" {
 #endif
@@ -1459,58 +1513,12 @@ FUNC_DEFINE(AcResult, acDeviceGetVBApointers,(Device device, AcReal *vbapointer[
  * Helper functions
  * =============================================================================
  */
-static AcResult UNUSED
-acHostUpdateBuiltinParams(AcMeshInfo* config)
-{
-    ERRCHK_ALWAYS(config->int_params[AC_nx] > 0 || config->int_params[AC_nxgrid] > 0);
-    ERRCHK_ALWAYS(config->int_params[AC_ny] > 0 || config->int_params[AC_nxgrid] > 0);
-#if TWO_D == 0
-    ERRCHK_ALWAYS(config->int_params[AC_nz] > 0 || config->int_params[AC_nxgrid] > 0);
-#endif
-    if(config->int_params[AC_nx] <= 0)
-        config->int_params[AC_nx] = config->int_params[AC_nxgrid];
-    if(config->int_params[AC_ny] <= 0)
-        config->int_params[AC_ny] = config->int_params[AC_nygrid];
-#if TWO_D == 0
-    if(config->int_params[AC_nz] <= 0)
-        config->int_params[AC_nz] = config->int_params[AC_nzgrid];
-#endif
-
-    config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER;
-    ///////////// PAD TEST
-    // config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER + PAD_SIZE;
-    ///////////// PAD TEST
-    config->int_params[AC_my] = config->int_params[AC_ny] + STENCIL_ORDER;
-#if TWO_D == 0 
-    config->int_params[AC_mz] = config->int_params[AC_nz] + STENCIL_ORDER;
-#endif
-
-    // Bounds for the computational domain, i.e. nx_min <= i < nx_max
-    config->int_params[AC_nx_min] = STENCIL_ORDER / 2;
-    config->int_params[AC_ny_min] = STENCIL_ORDER / 2;
-#if TWO_D == 0
-    config->int_params[AC_nz_min] = STENCIL_ORDER / 2;
-#endif
-
-    config->int_params[AC_nx_max] = config->int_params[AC_nx_min] + config->int_params[AC_nx];
-    config->int_params[AC_ny_max] = config->int_params[AC_ny_min] + config->int_params[AC_ny];
-#if TWO_D == 0
-    config->int_params[AC_nz_max] = config->int_params[AC_nz_min] + config->int_params[AC_nz];
-#endif
-    /* Additional helper params */
-    // Int helpers
-    config->int_params[AC_mxy]  = config->int_params[AC_mx] * config->int_params[AC_my];
-    config->int_params[AC_nxy]  = config->int_params[AC_nx] * config->int_params[AC_ny];
-
-    config->real_params[AC_xlen] = config->int_params[AC_nxgrid]*config->real_params[AC_dsx];
-    config->real_params[AC_ylen] = config->int_params[AC_nygrid]*config->real_params[AC_dsy];
-#if TWO_D == 0
-    config->int_params[AC_nxyz] = config->int_params[AC_nxy] * config->int_params[AC_nz];
-    config->real_params[AC_zlen] = config->int_params[AC_nzgrid]*config->real_params[AC_dsz];
-#endif
-
-    return AC_SUCCESS;
-}
+AcResult 
+acHostUpdateBuiltinParams(AcMeshInfo* config);
+AcResult 
+acHostUpdateBuiltinBothParams(AcMeshInfo* config, AcCompInfo* comp_config);
+AcResult 
+acHostUpdateBuiltinCompParams(AcCompInfo* comp_config);
 
 
 
@@ -1529,9 +1537,14 @@ FUNC_DEFINE(AcResult, acHostMeshDestroy,(AcMesh* mesh));
 /** Sets the dimensions of the computational domain to (nx, ny, nz) and recalculates the built-in
  * parameters derived from them (mx, my, mz, nx_min, and others) */
 #if TWO_D == 0
-FUNC_DEFINE(AcResult, acSetMeshDims,(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info));
+AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
 #else
-FUNC_DEFINE(AcResult, acSetMeshDims,(const size_t nx, const size_t ny, AcMeshInfo* info));
+AcResult acSetMeshDims(const size_t nx, const size_t ny, AcMeshInfo* info);
+#endif
+#if TWO_D == 0
+AcResult acSetMeshDimsBoth(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info, AcCompInfo* comp_info);
+#else
+AcResult acSetMeshDimsBoth(const size_t nx, const size_t ny, AcMeshInfo* info, AcCompInfo* comp_info);
 #endif
 
 /*
@@ -1562,6 +1575,9 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 #if AC_RUNTIME_COMPILATION
 #include "astaroth_lib.h"
 
+#define LOAD_DSYM(FUNC_NAME) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
+			     if(!FUNC_NAME) fprintf(stderr,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
+
   static AcLibHandle __attribute__((unused)) acLoadLibrary()
   {
 	acLoadRunTime();
@@ -1572,6 +1588,12 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 		fprintf(stderr,"Error message: %s\n",dlerror());
 		exit(EXIT_FAILURE);
 	}
+	LOAD_DSYM(acGetLocalNN)
+	LOAD_DSYM(acGetLocalMM)
+	LOAD_DSYM(acGetGridNN)
+	LOAD_DSYM(acGetMinNN)
+	LOAD_DSYM(acGetMaxNN)
+	LOAD_DSYM(acGetLengths)
 	*(void**)(&acGetKernelId) = dlsym(handle,"acGetKernelId");
 	if(!acGetKernelId) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelId");
 	*(void**)(&acGetKernelIdByName) = dlsym(handle,"acGetKernelIdByName");
@@ -1934,8 +1956,6 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!acHostMeshRandomize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshRandomize");
 	*(void**)(&acHostMeshDestroy) = dlsym(handle,"acHostMeshDestroy");
 	if(!acHostMeshDestroy) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshDestroy");
-	*(void**)(&acSetMeshDims) = dlsym(handle,"acSetMeshDims");
-	if(!acSetMeshDims) fprintf(stderr,"Astaroth error: was not able to load %s\n","acSetMeshDims");
 	*(void**)(&acLogFromRootProc) = dlsym(handle,"acLogFromRootProc");
 	if(!acLogFromRootProc) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLogFromRootProc");
 	*(void**)(&acVA_LogFromRootProc) = dlsym(handle,"acVA_LogFromRootProc");
@@ -1971,6 +1991,24 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 
 
 #ifdef __cplusplus
+
+#if TWO_D == 0
+static UNUSED AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info, AcCompInfo* comp_info)
+{
+	return acSetMeshDimsBoth(nx,ny,nz,info,comp_info);
+}
+#else
+static UNUSED AcResult acSetMeshDims(const size_t nx, const size_t ny, AcMeshInfo* info, AcCompInfo* comp_info)
+{
+	return acSetMeshDimsBoth(nx,ny,nz,info,comp_info);
+}
+#endif
+
+static UNUSED AcResult 
+acHostUpdateBuiltinParams(AcMeshInfo* config, AcCompInfo* comp_config)
+{
+	return acHostUpdateBuiltinBothParams(config, comp_config);
+}
 
 
 #include "device_set_input_overloads.h"
