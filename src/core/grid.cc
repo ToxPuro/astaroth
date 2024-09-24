@@ -241,21 +241,21 @@ acGridGetDevice()
 
 
 void
-set_info_val(AcMeshInfo info, const AcIntParam param, const int value)
+set_info_val(AcMeshInfo& info, const AcIntParam param, const int value)
 {
 	info.int_params[param] = value;
 }
 void
-set_info_val(AcMeshInfo info, const AcInt3Param param, const int3 value)
+set_info_val(AcMeshInfo& info, const AcInt3Param param, const int3 value)
 {
 	info.int3_params[param] = value;
 }
 
 void
-set_info_val(AcMeshInfo , const int , const int ){}
+set_info_val(AcMeshInfo& , const int , const int ){}
 
 void
-set_info_val(AcMeshInfo , const int3 , const int3 ){}
+set_info_val(AcMeshInfo& , const int3 , const int3 ){}
 
 
 AcMeshInfo
@@ -273,10 +273,12 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     ERRCHK_ALWAYS(decomp.z == 1);
 #endif
 
+
     const int3 nn = acGetLocalNN(submesh_config);
     const int submesh_nx = nn.x / decomp.x;
     const int submesh_ny = nn.y / decomp.y;
     const int submesh_nz = nn.z / decomp.z;
+
 
     set_info_val(submesh_config,AC_nx,submesh_nx);
     set_info_val(submesh_config,AC_ny,submesh_ny);
@@ -829,7 +831,79 @@ to_mpi_array_order_c(const int3 v, int arr[3])
 //    printf("%s: (%d, %d, %d)\n", str, arr[2], arr[1], arr[0]);
 //}
 
+static void
+get_subarray(const int pid, //
+             int monolithic_mm_arr[3], int monolithic_nn_arr[3],
+             int monolithic_offset_arr[3], //
+             int distributed_mm_arr[3], int distributed_nn_arr[3], int distributed_offset_arr[3])
+{
+    int nprocs;
+    MPI_Comm_size(acGridMPIComm(), &nprocs);
 
+    const Device device   = grid.device;
+    const AcMeshInfo info = device->local_config;
+
+    const int3 pid3d = getPid3D(pid);
+    const int3 rr    = (int3){
+	 NGHOST_X,
+	 NGHOST_Y,
+	 NGHOST_Z
+    };
+
+    const int3 min = (int3){0, 0, 0};
+    const int3 max = getPid3D(nprocs - 1); // inclusive
+
+    const int3 base_distributed_nn = acGetLocalNN(info);
+    int3 distributed_nn     = acGetLocalNN(info);
+    int3 distributed_offset = rr;
+
+    if (pid3d.x == min.x) {
+        distributed_offset.x -= rr.x;
+        distributed_nn.x += rr.x;
+    }
+    if (pid3d.x == max.x) {
+        distributed_nn.x += rr.x;
+    }
+    if (pid3d.y == min.y) {
+        distributed_offset.y -= rr.y;
+        distributed_nn.y += rr.y;
+    }
+    if (pid3d.y == max.y) {
+        distributed_nn.y += rr.y;
+    }
+    if (pid3d.z == min.z) {
+        distributed_offset.z -= rr.z;
+        distributed_nn.z += rr.z;
+    }
+    if (pid3d.z == max.z) {
+        distributed_nn.z += rr.z;
+    }
+
+    // Monolithic
+    to_mpi_array_order_c(acGetGridNN(info) + 2 * rr, monolithic_mm_arr);
+    to_mpi_array_order_c(distributed_nn, monolithic_nn_arr);
+    to_mpi_array_order_c(pid3d * base_distributed_nn + distributed_offset, monolithic_offset_arr);
+
+    // Distributed
+    to_mpi_array_order_c(acGetLocalMM(info), distributed_mm_arr);
+    to_mpi_array_order_c(distributed_nn, distributed_nn_arr);
+    to_mpi_array_order_c(distributed_offset, distributed_offset_arr);
+
+    /*
+    printf("------\n");
+    printf("pid %d\n", pid);
+    print_mpi_array("monol mm", monolithic_mm_arr);
+    print_mpi_array("monol nn", monolithic_nn_arr);
+    print_mpi_array("monol os", monolithic_offset_arr);
+
+    print_mpi_array("distr mm", distributed_mm_arr);
+    print_mpi_array("distr nn", distributed_nn_arr);
+    print_mpi_array("distr os", distributed_offset_arr);
+    printf("------\n");
+    */
+}
+
+/**
 static void
 get_subarray(const int pid, //
              int monolithic_mm_arr[3], int monolithic_nn_arr[3],
@@ -892,14 +966,18 @@ get_subarray(const int pid, //
     //print_mpi_array("distr os", distributed_offset_arr);
     //printf("------\n");
 }
+**/
 
 // With ghost zone
+//
 AcResult
 acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
 {
     ERRCHK(grid.initialized);
     acGridSynchronizeStream(stream);
+
     const int pid = ac_pid();
+    const int nprocs = ac_nprocs();
     // Datatype:
     // 1) All processes: Local subarray (sending)
     //  1.1) function that takes the pid and outputs the local subarray
@@ -925,8 +1003,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
         MPI_Type_free(&distributed_subarray);
     }
 
-    const int nprocs = ac_nprocs();
-    if (pid  == 0) {
+    if (pid == 0) {
         for (int tgt = 0; tgt < nprocs; ++tgt) {
             for (int vtxbuf = 0; vtxbuf < NUM_VTXBUF_HANDLES; ++vtxbuf) {
                 int monolithic_mm[3], monolithic_nn[3], monolithic_offset[3];
@@ -955,6 +1032,7 @@ acGridLoadMesh(const Stream stream, const AcMesh host_mesh)
 
     return acDeviceLoadMesh(grid.device, stream, grid.submesh);
 }
+
 
 // Working with ghost zone
 AcResult

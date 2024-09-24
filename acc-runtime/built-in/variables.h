@@ -29,6 +29,12 @@ run_const int AC_nygrid
 run_const int AC_nzgrid
 #endif
 
+run_const int AC_mxgrid
+run_const int AC_mygrid
+#if TWO_D == 0
+run_const int AC_mzgrid
+#endif
+
 run_const int AC_nx_min
 run_const int AC_ny_min
 #if TWO_D == 0
@@ -41,10 +47,19 @@ run_const int AC_ny_max
 run_const int AC_nz_max
 #endif
 
+run_const int AC_nxgrid_max
+run_const int AC_nygrid_max
+#if TWO_D == 0
+run_const int AC_nzgrid_max
+#endif
+
 run_const int AC_mxy
+run_const int AC_mxygrid
 run_const int AC_nxy
+run_const int AC_nxygrid
 #if TWO_D == 0
 run_const int AC_nxyz
+run_const int AC_nxyzgrid
 #endif
 
 

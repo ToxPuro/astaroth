@@ -113,10 +113,10 @@ main(void)
 
     AcMesh model, candidate;
     if (pid == 0) {
-        acHostMeshCreate(info, &model);
-        acHostMeshCreate(info, &candidate);
-        acHostMeshRandomize(&model);
-        acHostMeshRandomize(&candidate);
+        acHostGridMeshCreate(info, &model);
+        acHostGridMeshCreate(info, &candidate);
+        acHostGridMeshRandomize(&model);
+        acHostGridMeshRandomize(&candidate);
     }
 
     // GPU alloc & compute
@@ -136,10 +136,9 @@ main(void)
         }
     }
     fflush(stdout);
-
     // Boundconds
     if (pid == 0)
-        acHostMeshRandomize(&model);
+        acHostGridMeshRandomize(&model);
 
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
@@ -160,7 +159,7 @@ main(void)
 
     // Integration
     if (pid == 0)
-        acHostMeshRandomize(&model);
+        acHostGridMeshRandomize(&model);
 
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
@@ -194,7 +193,7 @@ main(void)
 
     // Integration
     if (pid == 0)
-        acHostMeshRandomize(&model);
+        acHostGridMeshRandomize(&model);
 
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
@@ -224,7 +223,7 @@ main(void)
     // Scalar reductions
     if (pid == 0) {
         printf("---Test: Scalar reductions---\n");
-        acHostMeshRandomize(&model);
+        acHostGridMeshRandomize(&model);
         acHostMeshApplyPeriodicBounds(&model);
     }
     fflush(stdout);

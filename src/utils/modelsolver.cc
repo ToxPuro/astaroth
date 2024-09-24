@@ -134,7 +134,7 @@ UNUSED getReal(const AcReal val)
 static inline int
 IDX(const int i, const int j, const int k)
 {
-    return acVertexBufferIdx(i, j, k, (*mesh_info));
+    return acGridVertexBufferIdx(i, j, k, (*mesh_info));
 }
 
 typedef struct {
@@ -932,9 +932,9 @@ Vector
 helical_forcing(Scalar magnitude, Vector k_force, Vector xx, Vector ff_re, Vector ff_im, Scalar phi)
 {
     (void)magnitude; // WARNING: unused
-    xx.x = xx.x * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsx) * getInt(AC_nx)));
-    xx.y = xx.y * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsy) * getInt(AC_ny)));
-    xx.z = xx.z * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsz) * getInt(AC_nz)));
+    xx.x = xx.x * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsx) * getInt(AC_nxgrid)));
+    xx.y = xx.y * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsy) * getInt(AC_nygrid)));
+    xx.z = xx.z * ((Scalar)2.0 * SCALAR_PI / (getReal(AC_dsz) * getInt(AC_nzgrid)));
 
     Scalar cos_phi     = cos(phi);
     Scalar sin_phi     = sin(phi);
@@ -956,9 +956,9 @@ helical_forcing(Scalar magnitude, Vector k_force, Vector xx, Vector ff_re, Vecto
 Vector
 forcing(int3 globalVertexIdx, Scalar dt)
 {
-    Vector a = (Scalar)(.5) * (Vector){getInt(AC_nx) * getReal(AC_dsx),
-                                       getInt(AC_ny) * getReal(AC_dsy),
-                                       getInt(AC_nz) * getReal(AC_dsz)}; // source (origin)
+    Vector a = (Scalar)(.5) * (Vector){getInt(AC_nxgrid) * getReal(AC_dsx),
+                                       getInt(AC_nygrid) * getReal(AC_dsy),
+                                       getInt(AC_nzgrid) * getReal(AC_dsz)}; // source (origin)
     (void)a;                                                             // WARNING: not used
     Vector xx = (Vector){
         (globalVertexIdx.x - getInt(AC_nx_min)) * getReal(AC_dsx),
@@ -1005,7 +1005,7 @@ static void
 solve_alpha_step(AcMesh in, const int step_number, const AcReal dt, const int i, const int j,
                  const int k, AcMesh* out)
 {
-    const int idx = acVertexBufferIdx(i, j, k, in.info);
+    const int idx = acGridVertexBufferIdx(i, j, k, in.info);
 
     const ScalarData lnrho = read_scal_data(i, j, k, in.vertex_buffer, VTXBUF_LNRHO);
     const VectorData uu    = read_vec_data(i, j, k, in.vertex_buffer,
@@ -1074,7 +1074,7 @@ static void
 solve_beta_step(const AcMesh in, const int step_number, const AcReal dt, const int i, const int j,
                 const int k, AcMesh* out)
 {
-    const int idx = acVertexBufferIdx(i, j, k, in.info);
+    const int idx = acGridVertexBufferIdx(i, j, k, in.info);
 
     // Williamson (1980) NOTE: older version of astaroth used inhomogenous
     const Scalar beta[] = {(Scalar)(1. / 3.), (Scalar)(15. / 16.), (Scalar)(8. / 15.)};
@@ -1149,16 +1149,16 @@ acHostIntegrateStep(AcMesh mesh, const AcReal dt)
     checkConfiguration(*mesh_info);
 
     AcMesh intermediate_mesh;
-    acHostMeshCreate(mesh.info, &intermediate_mesh);
+    acHostGridMeshCreate(mesh.info, &intermediate_mesh);
 
     const int nx_min = getInt(AC_nx_min);
-    const int nx_max = getInt(AC_nx_max);
+    const int nx_max = getInt(AC_nxgrid_max);
 
     const int ny_min = getInt(AC_ny_min);
-    const int ny_max = getInt(AC_ny_max);
+    const int ny_max = getInt(AC_nygrid_max);
 
     const int nz_min = getInt(AC_nz_min);
-    const int nz_max = getInt(AC_nz_max);
+    const int nz_max = getInt(AC_nzgrid_max);
 
     for (int step_number = 0; step_number < 3; ++step_number) {
 

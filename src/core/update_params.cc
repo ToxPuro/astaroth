@@ -62,15 +62,33 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config, AcCompInfo& comp_info)
 #if TWO_D == 0
     push_val(AC_nz_max,get_val(nz_param) + NGHOST_Z); 
 #endif
+
+    ERRCHK_ALWAYS(!IsCompParam(AC_nxgrid)  || is_loaded(AC_nxgrid));
+    ERRCHK_ALWAYS(!IsCompParam(AC_nygrid)  || is_loaded(AC_nygrid));
+    ERRCHK_ALWAYS(!IsCompParam(AC_nzgrid)  || is_loaded(AC_nzgrid));
+
+    push_val(AC_nxgrid_max,get_val(AC_nxgrid) + NGHOST_X); 
+    push_val(AC_nygrid_max,get_val(AC_nygrid) + NGHOST_Y); 
+#if TWO_D == 0
+    push_val(AC_nzgrid_max,get_val(AC_nzgrid) + NGHOST_Z); 
+#endif
+
+    push_val(AC_mxgrid,get_val(AC_nxgrid) + 2*NGHOST_X); 
+    push_val(AC_mygrid,get_val(AC_nygrid) + 2*NGHOST_Y); 
+#if TWO_D == 0
+    push_val(AC_mzgrid,get_val(AC_nzgrid) + 2*NGHOST_Z); 
+#endif
     /* Additional helper params */
     // Int helpers
     push_val(AC_mxy,get_val(AC_mx)*get_val(AC_my)); 
     push_val(AC_nxy,get_val(AC_nx)*get_val(AC_ny)); 
+    push_val(AC_nxygrid,get_val(AC_nxgrid)*get_val(AC_nygrid)); 
 
     push_val(AC_xlen,get_val(AC_nxgrid)*get_val(AC_dsx)); 
     push_val(AC_ylen,get_val(AC_nygrid)*get_val(AC_dsy)); 
 #if TWO_D == 0
     push_val(AC_nxyz,get_val(AC_nxy)*get_val(nz_param)); 
+    push_val(AC_nxyzgrid,get_val(AC_nxygrid)*get_val(AC_nzgrid)); 
     push_val(AC_zlen,get_val(AC_nzgrid)*get_val(AC_dsz)); 
 #endif
     return AC_SUCCESS;

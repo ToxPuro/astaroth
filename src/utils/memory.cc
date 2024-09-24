@@ -51,9 +51,9 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
     for (int w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
 	if (!vtxbuf_is_communicated[w]) continue;
         const int3 start = (int3){0, 0, 0};
-	const int3 end = acGetLocalMM(info);
+	const int3 end = acGetGridMM(info);
 
-	const int3 nn = acGetLocalNN(info);
+	const int3 nn = acGetGridNN(info);
 	const int nx = nn.x;
 	const int ny = nn.y;
 	const int nz = nn.z;
@@ -66,7 +66,7 @@ acHostMeshApplyPeriodicBounds(AcMesh* mesh)
 
 
         // The old kxt was inclusive, but our mx_max is exclusive
-	const int3 nn_max  = acGetMaxNN(info);
+	const int3 nn_max  = acGetGridMaxNN(info);
         const int nx_max = nn_max.x;
         const int ny_max = nn_max.y;
         const int nz_max = nn_max.z;
@@ -125,7 +125,7 @@ AcResult
 acHostMeshApplyConstantBounds(const AcReal value, AcMesh* mesh)
 {
     const AcMeshInfo info = mesh->info;
-    const AcMeshDims dims = acGetMeshDims(info);
+    const AcMeshDims dims = acGetGridMeshDims(info);
 
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         for (size_t k = 0; k < as_size_t(dims.m1.z); ++k) {
@@ -154,7 +154,7 @@ acHostMeshClear(AcMesh* mesh)
 AcResult
 acHostMeshWriteToFile(const AcMesh mesh, const size_t id)
 {
-    const int3 mm = acGetLocalMM(mesh.info);
+    const int3 mm = acGetGridMM(mesh.info);
     FILE* header = fopen(dataformat_path, "w");
     ERRCHK_ALWAYS(header);
     fprintf(header, "use_double, mx, my, mz\n");
@@ -193,7 +193,7 @@ acHostMeshReadFromFile(const size_t id, AcMesh* mesh)
     fgets(buf, len, header);
     fscanf(header, "%d, %d, %d, %d\n", &use_double, &mx, &my, &mz);
     fclose(header);
-    const int3 mm = acGetLocalMM(mesh->info);
+    const int3 mm = acGetGridMM(mesh->info);
 
     ERRCHK_ALWAYS(use_double == (sizeof(AcReal) == 8));
     ERRCHK_ALWAYS(mx == mm.x);

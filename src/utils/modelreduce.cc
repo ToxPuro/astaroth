@@ -86,11 +86,11 @@ int
 get_initial_idx(AcMeshInfo info)
 {
 #if TWO_D == 0
-    const int initial_idx = acVertexBufferIdx(NGHOST_X,
+    const int initial_idx = acGridVertexBufferIdx(NGHOST_X,
                                               NGHOST_Y,
                                               NGHOST_Z, info);
 #else
-    const int initial_idx = acVertexBufferIdx(NGHOST_X,
+    const int initial_idx = acGridVertexBufferIdx(NGHOST_X,
                                               NGHOST_Y,
                                               0,info);
 #endif
@@ -101,9 +101,9 @@ long double
 get_inv_n(AcMeshInfo info)
 {
 #if TWO_D == 0
-	const int n_grid_points = acGetInfoValue(info,AC_nxyz);
+	const int n_grid_points = acGetInfoValue(info,AC_nxyzgrid);
 #else
-	const int n_grid_points = acGetInfoValue(info,AC_nxy);
+	const int n_grid_points = acGetInfoValue(info,AC_nxygrid);
 #endif
         return (long double)1.0l / n_grid_points;
 }
@@ -152,12 +152,12 @@ acHostReduceScal(const AcMesh mesh, const ReductionType rtype, const VertexBuffe
         res = 0;
 
     const int3 mins = acGetMinNN(mesh.info);
-    const int3 maxs = acGetMaxNN(mesh.info);
+    const int3 maxs = acGetGridMaxNN(mesh.info);
     for (int k = mins.z; k < maxs.z; ++k) {
         for (int j = mins.y; j < maxs.y; ++j) {
             for (int i = mins.x; i < maxs.x;
                  ++i) {
-                const int idx              = acVertexBufferIdx(i, j, k, mesh.info);
+                const int idx              = acGridVertexBufferIdx(i, j, k, mesh.info);
                 const long double curr_val = reduce_initial(
                     (long double)mesh.vertex_buffer[a][idx]);
                 res = reduce(res, curr_val);
@@ -221,13 +221,13 @@ acHostReduceVec(const AcMesh mesh, const ReductionType rtype, const VertexBuffer
     else
         res = 0;
     const int3 mins = acGetMinNN(mesh.info);
-    const int3 maxs = acGetMaxNN(mesh.info);
+    const int3 maxs = acGetGridMaxNN(mesh.info);
 
     for (int k = mins.z; k < maxs.z; ++k) {
         for (int j = mins.y; j < maxs.y; j++) {
             for (int i = mins.x; i < maxs.x;
                  i++) {
-                const int idx              = acVertexBufferIdx(i, j, k, mesh.info);
+                const int idx              = acGridVertexBufferIdx(i, j, k, mesh.info);
                 const long double curr_val = reduce_initial((long double)mesh.vertex_buffer[a][idx],
                                                             (long double)mesh.vertex_buffer[b][idx],
                                                             (long double)
@@ -289,12 +289,12 @@ acHostReduceVecScal(const AcMesh mesh, const ReductionType rtype, const VertexBu
         res = 0;
 
     const int3 mins = acGetMinNN(mesh.info);
-    const int3 maxs = acGetMaxNN(mesh.info);
+    const int3 maxs = acGetGridMaxNN(mesh.info);
     for (int k = mins.z; k < maxs.z; ++k) {
         for (int j = mins.y; j < maxs.y; j++) {
             for (int i = mins.x; i < maxs.x;
                  i++) {
-                const int idx              = acVertexBufferIdx(i, j, k, mesh.info);
+                const int idx              = acGridVertexBufferIdx(i, j, k, mesh.info);
                 const long double curr_val = reduce_initial((long double)mesh.vertex_buffer[a][idx],
                                                             (long double)mesh.vertex_buffer[b][idx],
                                                             (long double)mesh.vertex_buffer[c][idx],

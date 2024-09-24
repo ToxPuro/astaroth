@@ -401,6 +401,19 @@ acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 
     return AC_SUCCESS;
 }
+
+AcResult
+acHostGridMeshCreate(const AcMeshInfo info, AcMesh* mesh)
+{
+    mesh->info = info;
+    const size_t n_cells = acGridVertexBufferSize(mesh->info);
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        mesh->vertex_buffer[w] = (AcReal*)calloc(n_cells, sizeof(AcReal));
+        ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
+    }
+
+    return AC_SUCCESS;
+}
 AcResult
 acVerifyCompatibility(const size_t mesh_size, const size_t mesh_info_size, const int num_reals, 
 		      const int num_ints, const int num_bools, const int num_real_arrays,
@@ -455,6 +468,18 @@ AcResult
 acHostMeshRandomize(AcMesh* mesh)
 {
     const size_t n = acVertexBufferSize(mesh->info);
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+        for (size_t i = 0; i < n; ++i) {
+            mesh->vertex_buffer[w][i] = randf();
+        }
+    }
+
+    return AC_SUCCESS;
+}
+AcResult
+acHostGridMeshRandomize(AcMesh* mesh)
+{
+    const size_t n = acGridVertexBufferSize(mesh->info);
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         for (size_t i = 0; i < n; ++i) {
             mesh->vertex_buffer[w][i] = randf();
@@ -527,6 +552,18 @@ acGetGridNN(const AcMeshInfo info)
 #endif
     return acConstructInt3Param(AC_nxgrid, AC_nygrid, z, info);
 }
+
+int3
+acGetGridMM(const AcMeshInfo info)
+{
+#if TWO_D == 0
+	auto z = AC_mzgrid;
+#else
+	auto z = 1;
+#endif
+    return acConstructInt3Param(AC_mxgrid, AC_mygrid, z, info);
+}
+
 int3
 acGetMinNN(const AcMeshInfo info)
 {
@@ -542,6 +579,17 @@ acGetMaxNN(const AcMeshInfo info)
 	auto z = 1;
 #endif
     return acConstructInt3Param(AC_nx_max, AC_ny_max, z, info);
+}
+
+int3
+acGetGridMaxNN(const AcMeshInfo info)
+{
+#if TWO_D == 0
+	auto z = AC_nzgrid_max;
+#else
+	auto z = 1;
+#endif
+    return acConstructInt3Param(AC_nxgrid_max, AC_nygrid_max, z, info);
 }
 
 AcReal3

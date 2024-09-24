@@ -122,8 +122,8 @@ get_maximum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
     const int y_start = communicated_field ? 0 : nn_min.y;
     const int z_start = communicated_field ? 0 : nn_min.z;
 
-    const int3 nn = acGetLocalNN(info);
-    const int3 mm = acGetLocalMM(info);
+    const int3 nn = acGetGridNN(info);
+    const int3 mm = acGetGridMM(info);
 
     const int x_end = communicated_field ? mm.x : nn.x;
     const int y_end = communicated_field ? mm.y : nn.y;
@@ -153,8 +153,8 @@ get_minimum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
     const int y_start = communicated_field ? 0 : nn_min.y;
     const int z_start = communicated_field ? 0 : nn_min.z;
 
-    const int3 nn = acGetLocalNN(info);
-    const int3 mm = acGetLocalMM(info);
+    const int3 nn = acGetGridNN(info);
+    const int3 mm = acGetGridMM(info);
 
     const int x_end = communicated_field ? mm.x : nn.x;
     const int y_end = communicated_field ? mm.y : nn.y;
@@ -187,12 +187,13 @@ get_max_abs_error(const AcReal* model, const AcReal* candidate, const AcMeshInfo
 
 
     const int3 nn_min = acGetMinNN(info);
+
+    const int3 nn = acGetGridNN(info);
+    const int3 mm = acGetGridMM(info);
+
     const int x_start = communicated_field ? 0 : nn_min.x;
     const int y_start = communicated_field ? 0 : nn_min.y;
     const int z_start = communicated_field ? 0 : nn_min.z;
-
-    const int3 nn = acGetLocalNN(info);
-    const int3 mm = acGetLocalMM(info);
 
     const int x_end = communicated_field ? mm.x : nn.x;
     const int y_end = communicated_field ? mm.y : nn.y;
@@ -253,7 +254,7 @@ acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candida
     ERRCHK_ALWAYS(NUM_VTXBUF_HANDLES > 0);
 
     const AcMeshInfo info = model.info;
-    const int3 mm = acGetLocalMM(info);
+    const int3 mm = acGetGridMM(info);
     ERRCHK_ALWAYS((int)z < mm.z);
 
     FILE* fp = fopen(path, "w");
@@ -263,7 +264,7 @@ acMeshDiffWriteSliceZ(const char* path, const AcMesh model, const AcMesh candida
     const size_t my = mm.y;
     for (size_t y = 0; y < my; ++y) {
         for (size_t x = 0; x < mx; ++x) {
-            const size_t idx                = acVertexBufferIdx(x, y, z, info);
+            const size_t idx                = acGridVertexBufferIdx(x, y, z, info);
             const VertexBufferHandle vtxbuf = (VertexBufferHandle)0;
             const AcReal m                  = model.vertex_buffer[vtxbuf][idx];
             const AcReal c                  = candidate.vertex_buffer[vtxbuf][idx];
@@ -289,14 +290,14 @@ acMeshDiffWrite(const char* path, const AcMesh model, const AcMesh candidate)
     FILE* fp = fopen(path, "w");
     ERRCHK_ALWAYS(fp);
 
-    const int3 mm = acGetMaxNN(info);
+    const int3 mm = acGetGridMaxNN(info);
     const size_t mx = mm.x;
     const size_t my = mm.y;
     const size_t mz = mm.z;
     for (size_t z = 0; z < mz; ++z) {
         for (size_t y = 0; y < my; ++y) {
             for (size_t x = 0; x < mx; ++x) {
-                const size_t idx                = acVertexBufferIdx(x, y, z, info);
+                const size_t idx                = acGridVertexBufferIdx(x, y, z, info);
                 const VertexBufferHandle vtxbuf = (VertexBufferHandle)0;
                 const AcReal m                  = model.vertex_buffer[vtxbuf][idx];
                 const AcReal c                  = candidate.vertex_buffer[vtxbuf][idx];

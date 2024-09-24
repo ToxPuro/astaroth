@@ -403,8 +403,10 @@ acConstructReal3Param(const AcRealParam a, const AcRealParam b, const AcRealPara
 FUNC_DEFINE(int3, acGetLocalNN, (const AcMeshInfo info));
 FUNC_DEFINE(int3, acGetLocalMM, (const AcMeshInfo info));
 FUNC_DEFINE(int3, acGetGridNN, (const AcMeshInfo info));
+FUNC_DEFINE(int3, acGetGridMM, (const AcMeshInfo info));
 FUNC_DEFINE(int3, acGetMinNN, (const AcMeshInfo info));
 FUNC_DEFINE(int3, acGetMaxNN, (const AcMeshInfo info));
+FUNC_DEFINE(int3, acGetGridMaxNN, (const AcMeshInfo info));
 FUNC_DEFINE(AcReal3, acGetLengths, (const AcMeshInfo info));
 
 
@@ -412,6 +414,12 @@ static inline size_t
 acVertexBufferSize(const AcMeshInfo info)
 {
     const int3 mm = acGetLocalMM(info);
+    return as_size_t(mm.x)*as_size_t(mm.y)*as_size_t(mm.z);
+}
+static inline size_t
+acGridVertexBufferSize(const AcMeshInfo info)
+{
+    const int3 mm = acGetGridMM(info);
     return as_size_t(mm.x)*as_size_t(mm.y)*as_size_t(mm.z);
 }
 
@@ -470,6 +478,24 @@ acGetMeshDims(const AcMeshInfo info)
    };
 }
 
+static inline AcMeshDims
+acGetGridMeshDims(const AcMeshInfo info)
+{
+   const int3 n0 = acGetMinNN(info);
+   const int3 n1 = acGetGridMaxNN(info);
+   const int3 m0 = (int3){0, 0, 0};
+   const int3 m1 = acGetGridMM(info);
+   const int3 nn = acGetGridNN(info);
+
+   return (AcMeshDims){
+       .n0 = n0,
+       .n1 = n1,
+       .m0 = m0,
+       .m1 = m1,
+       .nn = nn,
+   };
+}
+
 FUNC_DEFINE(size_t, acGetKernelId,(const AcKernel kernel));
 
 FUNC_DEFINE(size_t, acGetKernelIdByName,(const char* name));
@@ -487,6 +513,15 @@ FUNC_DEFINE(AcMeshInfo, acGridGetLocalMeshInfo,(void));
 //TP: this is done for perf optim since if acVertexBufferIdx is called often
 //Making it an external function call is quite expensive
 static inline size_t
+acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
+{
+    const int x = acGetInfoValue(info,AC_mxgrid);
+    const int y = acGetInfoValue(info,AC_mygrid);
+    return as_size_t(i) +                          //
+           as_size_t(j) * x + //
+           as_size_t(k) * x * y;
+}
+static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
     const int x = acGetInfoValue(info,AC_mx);
@@ -500,6 +535,14 @@ static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
     const int3 mm = acGetLocalMM(info);
+    return as_size_t(i) +                          //
+           as_size_t(j) * mm.x + //
+           as_size_t(k) * mm.x * mm.y;
+}
+static inline size_t
+acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
+{
+    const int3 mm = acGetGridMM(info);
     return as_size_t(i) +                          //
            as_size_t(j) * mm.x + //
            as_size_t(k) * mm.x * mm.y;
@@ -1524,12 +1567,16 @@ acHostUpdateBuiltinCompParams(AcCompInfo* comp_config);
 
 /** Creates a mesh stored in host memory */
 FUNC_DEFINE(AcResult, acHostMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
+/** Creates a mesh stored in host memory (size of the whole grid) */
+FUNC_DEFINE(AcResult, acHostGridMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
 
 /** Checks that the loaded dynamic Astaroth is binary compatible with the loader */
 FUNC_DEFINE(AcResult, acVerifyCompatibility, (const size_t mesh_size, const size_t mesh_info_size, const int num_reals, const int num_ints, const int num_bools, const int num_real_arrays, const int num_int_arrays, const int num_bool_arrays));
 
 /** Randomizes a host mesh */
 FUNC_DEFINE(AcResult, acHostMeshRandomize,(AcMesh* mesh));
+/** Randomizes a host mesh (uses n[xyz]grid params)*/
+FUNC_DEFINE(AcResult, acHostGridMeshRandomize,(AcMesh* mesh));
 
 /** Destroys a mesh stored in host memory */
 FUNC_DEFINE(AcResult, acHostMeshDestroy,(AcMesh* mesh));
@@ -1591,8 +1638,10 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	LOAD_DSYM(acGetLocalNN)
 	LOAD_DSYM(acGetLocalMM)
 	LOAD_DSYM(acGetGridNN)
+	LOAD_DSYM(acGetGridMM)
 	LOAD_DSYM(acGetMinNN)
 	LOAD_DSYM(acGetMaxNN)
+	LOAD_DSYM(acGetGridMaxNN)
 	LOAD_DSYM(acGetLengths)
 	*(void**)(&acGetKernelId) = dlsym(handle,"acGetKernelId");
 	if(!acGetKernelId) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelId");
@@ -1950,10 +1999,10 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	*(void**)(&acDeviceGetRealInput) = dlsym(handle,"acDeviceGetRealInput");
 	*(void**)(&acDeviceGetIntInput) = dlsym(handle,"acDeviceGetIntInput");
 	*(void**)(&acDeviceGetRealOutput) = dlsym(handle,"acDeviceGetRealOutput");
-	*(void**)(&acHostMeshCreate) = dlsym(handle,"acHostMeshCreate");
-	if(!acHostMeshCreate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshCreate");
-	*(void**)(&acHostMeshRandomize) = dlsym(handle,"acHostMeshRandomize");
-	if(!acHostMeshRandomize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshRandomize");
+	LOAD_DSYM(acHostMeshCreate)
+	LOAD_DSYM(acHostGridMeshCreate)
+	LOAD_DSYM(acHostMeshRandomize);
+	LOAD_DSYM(acHostGridMeshRandomize);
 	*(void**)(&acHostMeshDestroy) = dlsym(handle,"acHostMeshDestroy");
 	if(!acHostMeshDestroy) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshDestroy");
 	*(void**)(&acLogFromRootProc) = dlsym(handle,"acLogFromRootProc");
