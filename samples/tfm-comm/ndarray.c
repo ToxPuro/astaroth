@@ -1,10 +1,9 @@
 #include "ndarray.h"
 
+#include "array.h"
 #include "errchk.h"
 #include "math_utils.h"
 #include "print.h"
-
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
 void
 set_ndarray(const size_t value, const size_t ndims, const size_t* start, const size_t* subdims,

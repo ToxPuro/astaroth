@@ -11,32 +11,50 @@ DynamicArray
 array_create(const size_t capacity)
 {
     DynamicArray arr = (DynamicArray){
-        .len      = 0,
+        .length   = 0,
         .capacity = capacity,
-        .data     = (DATYPE*)malloc(sizeof(arr.data[0]) * capacity),
+        .data     = (size_t*)malloc(sizeof(arr.data[0]) * capacity),
     };
     ERRCHK(arr.data);
     return arr;
 }
 
 void
-array_append(const DATYPE element, DynamicArray* array)
+array_append(const size_t element, DynamicArray* array)
 {
-    if (array->len == array->capacity) {
+    if (array->length == array->capacity) {
         array->capacity += 128;
-        array->data = (DATYPE*)realloc(array->data, sizeof(array->data[0]) * array->capacity);
+        array->data = (size_t*)realloc(array->data, sizeof(array->data[0]) * array->capacity);
         // WARNING("Array too small, reallocated");
         ERRCHK(array->data);
     }
-    array->data[array->len] = element;
-    ++array->len;
+    array->data[array->length] = element;
+    ++array->length;
 }
 
 void
-array_append_multiple(const size_t count, const DATYPE* elements, DynamicArray* array)
+array_append_multiple(const size_t count, const size_t* elements, DynamicArray* array)
 {
     for (size_t i = 0; i < count; ++i)
         array_append(elements[i], array);
+}
+
+void
+array_remove(const size_t index, DynamicArray* array)
+{
+    ERRCHK(index < array->length);
+
+    const size_t count = array->length - index - 1;
+    if (count > 0)
+        memmove(&array->data[index], &array->data[index + 1], count * sizeof(array->data[0]));
+    --array->length;
+}
+
+size_t
+array_get(const DynamicArray array, const size_t index)
+{
+    ERRCHK(index < array.length);
+    return array.data[index];
 }
 
 void
@@ -50,7 +68,7 @@ void
 array_destroy(DynamicArray* array)
 {
     free(array->data);
-    array->len      = 0;
+    array->length   = 0;
     array->capacity = 0;
 }
 

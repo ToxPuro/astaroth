@@ -29,8 +29,8 @@
     }
 
 // Disable all MPI API calls
-// #undef ERRCHK_MPI_API
-// #define ERRCHK_MPI_API(x)
+#undef ERRCHK_MPI_API
+#define ERRCHK_MPI_API(x)
 
 void
 acCommInit(void)
@@ -44,42 +44,37 @@ acCommQuit(void)
     ERRCHK_MPI_API(MPI_Finalize());
 }
 
-static void
-get_nn(const size_t ndims, const size_t* mm, const size_t* rr, size_t* nn)
-{
-    for (size_t i = 0; i < ndims; ++i)
-        nn[i] = mm[i] - 2 * rr[i];
-}
+struct HaloExchangeTask_s {
+    HaloSegmentBatch batch;
+};
 
-acHaloExchangeTask
-acHaloExchangeTaskCreate(const size_t ndims, const size_t* local_mm, const size_t* rr,
-                         const size_t nfields)
+HaloExchangeTask*
+acHaloExchangeTaskCreate(const size_t ndims, const size_t* mm, const size_t* nn, const size_t* rr,
+                         const size_t nbuffers)
 {
-    size_t local_nn[ndims];
-    get_nn(ndims, local_mm, rr, local_nn);
-    acHaloExchangeTask task = (acHaloExchangeTask){
-        .batch = acHaloSegmentBatchCreate(ndims, local_nn, rr, nfields),
-    };
+    HaloExchangeTask* task = malloc(sizeof(HaloExchangeTask));
+    ERRCHK(task != NULL);
+
+    task->batch = acHaloSegmentBatchCreate(ndims, mm, nn, rr, nbuffers);
 
     return task;
 }
 
 void
-acHaloExchangeTaskLaunch(const acHaloExchangeTask task, const size_t nbuffers,
-                         const size_t* buffers)
+acHaloExchangeTaskLaunch(const HaloExchangeTask* task, const size_t nbuffers,
+                         size_t* buffers[nbuffers])
 {
-    return;
 }
 
 void
-acHaloExchangeTaskSynchronize(const acHaloExchangeTask task)
+acHaloExchangeTaskSynchronize(const HaloExchangeTask* task)
 {
-    return;
 }
 
 void
-acHaloExchangeTaskDestroy(acHaloExchangeTask* task)
+acHaloExchangeTaskDestroy(HaloExchangeTask** task)
 {
-    acHaloSegmentBatchDestroy(&task->batch);
-    return;
+    acHaloSegmentBatchDestroy(&((*task)->batch));
+    free(*task);
+    *task = NULL;
 }

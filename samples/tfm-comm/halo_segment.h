@@ -10,13 +10,12 @@ typedef struct {
     size_t* dims;
     size_t* offset;
 
-    size_t nfields;
-
+    size_t nbuffers;
     Buffer buffer;
 } HaloSegment;
 
 HaloSegment acCreateHaloSegment(const size_t ndims, const size_t* dims, const size_t* offset,
-                                const size_t nfields);
+                                const size_t nbuffers);
 
 void acHaloSegmentPrint(const char* label, const HaloSegment halo_segment);
 

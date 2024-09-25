@@ -1,23 +1,18 @@
 #pragma once
 #include <stddef.h>
 
-// typedef struct acHaloExchangeTask_s acHaloExchangeTask;
-
-#include "halo_segment_batch.h"
-
 void acCommInit(void);
+
 void acCommQuit(void);
 
-typedef struct {
-    HaloSegmentBatch batch;
-} acHaloExchangeTask;
+typedef struct HaloExchangeTask_s HaloExchangeTask;
 
-acHaloExchangeTask acHaloExchangeTaskCreate(const size_t ndims, const size_t* local_mm,
-                                            const size_t* rr, const size_t nbuffers);
+HaloExchangeTask* acHaloExchangeTaskCreate(const size_t ndims, const size_t* mm, const size_t* nn,
+                                           const size_t* rr, const size_t nbuffers);
 
-void acHaloExchangeTaskLaunch(const acHaloExchangeTask task, const size_t nbuffers,
-                              const size_t* buffers);
+void acHaloExchangeTaskLaunch(const HaloExchangeTask* task, const size_t nbuffers,
+                              size_t* buffers[nbuffers]);
 
-void acHaloExchangeTaskSynchronize(const acHaloExchangeTask task);
+void acHaloExchangeTaskSynchronize(const HaloExchangeTask* task);
 
-void acHaloExchangeTaskDestroy(acHaloExchangeTask* task);
+void acHaloExchangeTaskDestroy(HaloExchangeTask** task);
