@@ -491,6 +491,12 @@ Kernel test_func()
 }
 **/
 
+test()
+{
+	real var
+	return var + 2.0
+}
+
 
 
 reduce_test(step_num)
@@ -917,6 +923,7 @@ real AC_cs20
 real AC_gamma_m1
 real AC_cv1
 real AC_dz2_bound[7]
+/**
 bc_ss_flux(topbot)
 {
   real tmp_xy;
@@ -1004,6 +1011,7 @@ bc_ss_flux(topbot)
   else {
   }
 }
+**/
 
 int AC_n2
 int AC_n1

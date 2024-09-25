@@ -312,7 +312,7 @@ get_node_by_buffer_and_type(const char* test, const NodeType type, const ASTNode
   assert(node);
 
   ASTNode* res = NULL;
-  if (node->buffer && !strcmp(test,node->buffer) && node->type & type)
+  if (node->buffer && node->type & type && !strcmp(test,node->buffer))
     res =  (ASTNode*) node;
   if (node->lhs && !res)
     res = get_node_by_buffer_and_type(test, type, node->lhs);

@@ -38,7 +38,7 @@ init_str_vec(string_vec* vec)
 {
 	vec -> size = 0;
 	vec -> capacity = 1;
-	vec -> data = malloc(sizeof(char*)*vec ->capacity);
+	vec -> data = (char**)malloc(sizeof(char*)*vec ->capacity);
 }
 
 static inline void
@@ -74,7 +74,7 @@ init_int_vec(int_vec* vec)
 {
 	vec -> size = 0;
 	vec -> capacity = 1;
-	vec -> data = malloc(sizeof(int)*vec ->capacity);
+	vec -> data = (int*)malloc(sizeof(int)*vec ->capacity);
 }
 static inline int
 int_vec_get_index(const int_vec vec, const int val)
@@ -106,7 +106,7 @@ init_op_vec(op_vec* vec)
 {
 	vec -> size = 0;
 	vec -> capacity = 1;
-	vec -> data = malloc(sizeof(ReduceOp)*vec ->capacity);
+	vec -> data = (ReduceOp*)malloc(sizeof(ReduceOp)*vec ->capacity);
 }
 static inline int
 str_vec_get_index(string_vec vec, const char* str)
@@ -151,14 +151,14 @@ push(string_vec* dst, const char* src)
 	if(dst->capacity == 0)
 	{
 		dst->capacity++;
-		dst->data = malloc(sizeof(char*)*dst->capacity);
+		dst->data = (char**)malloc(sizeof(char*)*dst->capacity);
 	}
 	dst->data[dst->size] = strdupnullok(src);
 	++(dst->size);
 	if(dst->size == (size_t)dst->capacity)
 	{
 		dst->capacity = dst->capacity*2;
-		char** tmp = malloc(sizeof(char*)*dst->capacity);
+		char** tmp = (char**)malloc(sizeof(char*)*dst->capacity);
 		for(size_t i = 0; i < dst->size; ++i)
 			tmp[i] = dst->data[i];
 		free(dst->data);
@@ -196,14 +196,14 @@ push_int(int_vec* dst, int src)
 	if(dst->capacity == 0)
 	{
 		dst->capacity++;
-		dst->data = malloc(sizeof(int)*dst->capacity);
+		dst->data = (int*)malloc(sizeof(int)*dst->capacity);
 	}
 	dst->data[dst->size] = src;
 	++(dst->size);
 	if(dst->size == (size_t)dst->capacity)
 	{
 		dst->capacity = dst->capacity*2;
-		int* tmp = malloc(sizeof(int)*dst->capacity);
+		int* tmp = (int*)malloc(sizeof(int)*dst->capacity);
 		for(size_t i = 0; i < dst->size; ++i)
 			tmp[i] = dst->data[i];
 		free(dst->data);
@@ -219,14 +219,14 @@ push_op(op_vec* dst, ReduceOp src)
 	if(dst->capacity == 0)
 	{
 		dst->capacity++;
-		dst->data = malloc(sizeof(ReduceOp)*dst->capacity);
+		dst->data = (ReduceOp*)malloc(sizeof(ReduceOp)*dst->capacity);
 	}
 	dst->data[dst->size] = src;
 	++(dst->size);
 	if(dst->size == (size_t)dst->capacity)
 	{
 		dst->capacity = dst->capacity*2;
-		ReduceOp* tmp = malloc(sizeof(ReduceOp)*dst->capacity);
+		ReduceOp* tmp = (ReduceOp*)malloc(sizeof(ReduceOp)*dst->capacity);
 		for(size_t i = 0; i < dst->size; ++i)
 			tmp[i] = dst->data[i];
 		free(dst->data);

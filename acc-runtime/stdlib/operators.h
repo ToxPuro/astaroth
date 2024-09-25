@@ -70,6 +70,13 @@ elemental del4(Field s) {
 elemental del6(Field s) {
   return der6x(s) + der6y(s) + der6z(s)
 }
+del6_masked(Field s, int mask)
+{
+	x = mask == 1 ? 0.0 : der6x(s)
+	y = mask == 2 ? 0.0 : der6y(s)
+	z = mask == 3 ? 0.0 : der6z(s)
+	return x + y + z
+}
 elemental del6_strict(Field s) {
 	print("NOT IMPLEMENTED del6_strict\n")
 	return 0.0
@@ -167,4 +174,8 @@ del2fi_dxjk(Field3 v)
 			hessian(v.y),
 			hessian(v.z)
 		     )
+}
+del6fj(Field f, real3 vec)
+{
+	return vec.x*der6x(f) + vec.y*der6y(f) + vec.z*der6z(f)
 }

@@ -331,6 +331,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
        	  process_includes(1, dir, ACC_BUILTIN_TYPEDEFS, out,log);
 	  if(file_exists(ACC_OVERRIDES_PATH) && !RUNTIME_COMPILATION && READ_OVERLOADS)
        	  	process_includes(1, dir, ACC_OVERRIDES_PATH, out,log);
+       	  process_includes(1, dir, ACC_BUILTIN_INTRINSICS, out,log);
        	  process_includes(1, dir, ACC_BUILTIN_VARIABLES, out,log);
        	  process_includes(1, dir, ACC_BUILTIN_FUNCS, out,log);
 	  if(file_exists(ACC_GEN_PATH"/extra_dfuncs.h"))
