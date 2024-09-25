@@ -56,6 +56,8 @@ void add_to_array(const size_t value, const size_t count, size_t* arr);
 
 void add_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c);
 
+void subtract_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c);
+
 /** Calculates the element-wise product (Hadamard product) of two flattened matrices */
 void mul(const size_t count, const size_t* a, const size_t* b, size_t* c);
 

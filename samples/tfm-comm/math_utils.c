@@ -566,6 +566,13 @@ add_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c)
 }
 
 void
+subtract_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c)
+{
+    for (size_t i = 0; i < count; ++i)
+        c[i] = a[i] - b[i];
+}
+
+void
 mul(const size_t count, const size_t* a, const size_t* b, size_t* c)
 {
     for (size_t i = 0; i < count; ++i)
