@@ -28,8 +28,10 @@ find_package(MPI REQUIRED COMPONENTS C)
 ## Libraries
 add_library(tfm-print SHARED print.c)
 add_library(tfm-type-conversion SHARED type_conversion.c)
-
 add_library(tfm-math-utils SHARED math_utils.c)
+
+add_library(tfm-partition SHARED partition.c)
+target_link_libraries(tfm-partition PRIVATE tfm-math-utils tfm-print tfm-dynamic-array tfm-ndarray)
 
 add_library(tfm-ndarray SHARED ndarray.c)
 target_link_libraries(tfm-ndarray PRIVATE tfm-math-utils tfm-print)
@@ -55,4 +57,7 @@ target_link_libraries(tfm-halo-segment-batch PRIVATE tfm-halo-segment tfm-math-u
 
 ## Program
 add_executable(run main.c)
-target_link_libraries(run tfm-comm tfm-math-utils tfm-ndarray)
+target_link_libraries(run tfm-comm tfm-math-utils tfm-ndarray tfm-partition)
+
+
+add_library(tfm-array SHARED array.c)

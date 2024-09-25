@@ -49,6 +49,13 @@ get_mm(const size_t ndims, const size_t* nn, const size_t* rr, size_t* mm)
         mm[i] = 2 * rr[i] + nn[i];
 }
 
+static void
+get_nn(const size_t ndims, const size_t* mm, const size_t* rr, size_t* nn)
+{
+    for (size_t i = 0; i < ndims; ++i)
+        nn[i] = mm[i] - 2 * rr[i];
+}
+
 void
 acHaloSegmentBatchTest(const size_t ndims, const size_t* nn, const size_t* rr,
                        const HaloSegmentBatch batch)

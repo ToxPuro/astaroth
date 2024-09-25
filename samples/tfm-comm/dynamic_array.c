@@ -1,6 +1,7 @@
 #include "dynamic_array.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "errchk.h"
 #include "math_utils.h"
@@ -24,7 +25,7 @@ array_append(const DATYPE element, DynamicArray* array)
     if (array->len == array->capacity) {
         array->capacity += 128;
         array->data = (DATYPE*)realloc(array->data, sizeof(array->data[0]) * array->capacity);
-        WARNING("Array too small, reallocated");
+        // WARNING("Array too small, reallocated");
         ERRCHK(array->data);
     }
     array->data[array->len] = element;
@@ -36,6 +37,13 @@ array_append_multiple(const size_t count, const DATYPE* elements, DynamicArray* 
 {
     for (size_t i = 0; i < count; ++i)
         array_append(elements[i], array);
+}
+
+void
+to_static_array(const DynamicArray in, const size_t nrows, const size_t ncols,
+                size_t out[nrows][ncols])
+{
+    memmove(out, in.data, sizeof(out[0][0]) * nrows * ncols);
 }
 
 void

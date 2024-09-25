@@ -15,6 +15,9 @@ void array_append(const DATYPE element, DynamicArray* array);
 
 void array_append_multiple(const size_t count, const DATYPE* elements, DynamicArray* array);
 
+void to_static_array(const DynamicArray in, const size_t nrows, const size_t ncols,
+                     size_t out[nrows][ncols]);
+
 void array_destroy(DynamicArray* array);
 
 // typedef struct {
