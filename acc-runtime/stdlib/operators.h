@@ -1,59 +1,89 @@
-#include "../stdlib/derivs.h"
-
 u_dot_grad_vec(Matrix m,real3 v){
   //!!!return real3(dot(v,m.row(0)),dot(v,m.col(1)),dot(v,m.col(2)))
   return real3(dot(v,m.col(0)),dot(v,m.col(1)),dot(v,m.col(2)))
 }
-curl_from_matrix(Matrix m) {
-  return real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
-}
 
-gradient(s) {
+
+elemental gradient(Field s) {
     return real3(derx(s), dery(s), derz(s))
 }
 
-gradient6_upwd(s) {
+elemental gradient_upwd(Field s) {
     return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
 }
 
-gradients_upwd(v) {
-    return Matrix(gradient6_upwd(v.x), gradient6_upwd(v.y), gradient6_upwd(v.z))
+
+
+elemental gradient2(Field s) {
+    return real3(derxx(s), deryy(s), derzz(s))
 }
 
-gradients(Field3 v) {
-    return Matrix(gradient(v.x), gradient(v.y), gradient(v.z))
+/**
+elemental gradient3(Field s) {
+    return real3(derx(s), dery(s), derz(s))
 }
 
-divergence(v) {
+elemental gradient4(Field s) {
+    return real3(derx(s), dery(s), derz(s))
+}
+**/
+
+elemental gradient5(Field s) {
+    return real3(der5x(s), der5y(s), der5z(s))
+}
+
+
+elemental gradient6_upwd(s) {
+    return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
+}
+
+
+divergence(Field3 v) {
     return derx(v.x) + dery(v.y) + derz(v.z)
 }
+divergence(Matrix m)
+{
+	return m[0][0] + m[1][1] + m[2][2]
+}
 
-curl(v) {
+curl(Field3 v) {
     return real3(dery(v.z) - derz(v.y), derz(v.x) - derx(v.z), derx(v.y) - dery(v.x))
 }
-del4(s) {
+bij(Field3 v)
+{
+	Matrix res;
+	print("Not implemented bij\n")
+	return res;
+}
+
+curl(Matrix m) {
+  return real3(m[2][1]-m[1][2], m[0][2] - m[2][0], m[1][0] - m[0][1])
+}
+
+
+
+
+elemental del4(Field s) {
   return der4x(s) + der4y(s) + der4z(s)
 }
 
-del6(s) {
+elemental del6(Field s) {
   return der6x(s) + der6y(s) + der6z(s)
 }
-
-del6v(v) {
-  return real3(del6(v.x), del6(v.y), del6(v.z))
+elemental del6_strict(Field s) {
+	print("NOT IMPLEMENTED del6_strict\n")
+	return 0.0
 }
 
-del6_upwd(s) {
+
+elemental del6_upwd(Field s) {
   return der6x_upwd(s) + der6y_upwd(s) + der6z_upwd(s)
 }
 
-laplace(s) {
+elemental laplace(Field s) {
     return derxx(s) + deryy(s) + derzz(s)
 }
 
-veclaplace(Field3 v) {
-    return real3(laplace(v.x), laplace(v.y), laplace(v.z))
-}
 
 traceless_strain(uij,divu)
 {
@@ -112,4 +142,29 @@ norm2(real3 v) {
 
 length(v) {
     return sqrt( norm2(v) )
+}
+d2fi_dxj(Field3 v)
+{
+	return Matrix(
+			gradient2(v.x),
+			gradient2(v.y),
+			gradient2(v.z)
+		     )
+}
+
+hessian(Field v)
+{
+	return Matrix(
+			real3(derxx(v), derxy(v), derxz(v)),
+			real3(derxy(v), deryy(v), deryz(v)),
+			real3(derxz(v), deryz(v), derzz(v))
+		     )
+}
+del2fi_dxjk(Field3 v)
+{
+	return Tensor(
+			hessian(v.x),
+			hessian(v.y),
+			hessian(v.z)
+		     )
 }

@@ -39,6 +39,7 @@
   //copied from the sample setup
   #include "user_built-in_constants.h"
   #include "user_defines.h"
+  #include "func_attributes.h"
 
 #ifdef __cplusplus
 typedef struct Field3
@@ -46,7 +47,7 @@ typedef struct Field3
 	VertexBufferHandle x;
 	VertexBufferHandle y;
 	VertexBufferHandle z;
-	constexpr Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
+	HOST_DEVICE_INLINE Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
 } Field3;
 
 constexpr Field3 

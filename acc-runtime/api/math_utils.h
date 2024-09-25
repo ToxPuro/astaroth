@@ -715,3 +715,26 @@ diagonal(const AcMatrix& m)
 /*
  * AcTensor
  */
+
+typedef struct AcTensor {
+  //AcReal data[3][3] = {{0}};
+  //TP: default initializer will initialize all values to 0.0
+  AcArray<AcMatrix,3> data = {};
+
+  HOST_DEVICE_INLINE AcMatrix() {}
+
+  HOST_DEVICE_INLINE AcMatrix(const AcMatrix mat0, const AcMatrix mat1,
+                       const AcMatrix mat2)
+  {
+    data[0] = mat0;
+    data[1] = mat1;
+    data[2] = mat2;
+  }
+
+  HOST_DEVICE_INLINE const AcMatrix& operator[](const size_t index) const {
+	  return data[index];
+  }
+  HOST_DEVICE_INLINE AcMatrix& operator[](const size_t index) {
+	  return data[index];
+  }
+} AcMatrix;

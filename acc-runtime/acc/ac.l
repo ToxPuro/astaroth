@@ -50,6 +50,7 @@ void strip_whitespace(char *str) {
 "uint"                  { return UINT; }
 "real"                  { return REAL; }
 "bool"                  { return BOOL; }
+"Tensor"                { return TENSOR; }
 "Matrix"                { return MATRIX; }
 "Field"                 { return FIELD; }
 "Field3"                { return FIELD3; }

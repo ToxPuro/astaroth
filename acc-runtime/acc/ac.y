@@ -477,7 +477,7 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
-%token INT UINT REAL MATRIX FIELD FIELD3 STENCIL WORK_BUFFER BOOL INTRINSIC LONG_LONG LONG
+%token INT UINT REAL MATRIX TENSOR FIELD FIELD3 STENCIL WORK_BUFFER BOOL INTRINSIC LONG_LONG LONG
 %token KERNEL INLINE ELEMENTAL BOUNDARY_CONDITION UTILITY SUM MAX COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE 
@@ -644,6 +644,7 @@ uint: UINT             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 real: REAL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcReal", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 bool: BOOL             { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("bool", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 matrix: MATRIX         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcMatrix", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
+tensor: TENSOR { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("AcTensor", $$); /* astnode_set_buffer(yytext, $$); */ $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 field: FIELD           { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 field3: FIELD3         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 work_buffer: WORK_BUFFER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
@@ -721,6 +722,7 @@ type_specifier:
 				asprintf(&$1->lhs->buffer,"%s*",$1->lhs->buffer);
 			}
               | matrix       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | tensor       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | matrix '[' expression ']'
 		{ 
 		   asprintf(&$1->buffer,"AcMatrixN<%s>",combine_all_new($3));

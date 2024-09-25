@@ -2593,10 +2593,6 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	free(field_stencil_ops_at_next_level_set);
 	free(next_level_set);
 	free(field_need_to_communicate);
-	char all_fields[4000];
-	all_fields[0] = '\0';
-	for(size_t field = 0; field < num_fields; ++field)
-		strcatprintf(all_fields,"%s,",get_field_name(field));
 	bool* field_written_out_before = (bool*)malloc(sizeof(bool)*num_fields);
 	memset(field_written_out_before,0,sizeof(bool)*num_fields);
 	for(int level_set = 0; level_set < n_level_sets; ++level_set)
