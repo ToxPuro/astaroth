@@ -37,7 +37,36 @@
   #include "errchk.h"
 
   //copied from the sample setup
+  #include "user_built-in_constants.h"
   #include "user_defines.h"
+  #include "func_attributes.h"
+
+#ifdef __cplusplus
+typedef struct Field3
+{
+	VertexBufferHandle x;
+	VertexBufferHandle y;
+	VertexBufferHandle z;
+	HOST_DEVICE_INLINE Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
+} Field3;
+
+constexpr Field3 
+MakeField3(const Field& x, const Field& y, const Field& z)
+{
+	return (Field3){x,y,z};
+}
+template <size_t N>
+constexpr __device__ __forceinline__
+std::array<Field3,N>
+MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
+{
+	std::array<int3,N> res{};
+	for(size_t i = 0; i < N; ++i)
+		res[i] = (Field3){x,y,z};
+	return res;
+}
+#endif
+
   #include "kernel_reduce_outputs.h"
   #include "user_input_typedefs.h"
 
@@ -82,6 +111,9 @@
   typedef struct {
 	  AcCompInfoConfig config;
 	  AcCompInfoLoaded is_loaded;
+#if AC_MPI_ENABLED
+    	  MPI_Comm comm;
+#endif
   } AcCompInfo;
 
   typedef struct {
@@ -258,12 +290,14 @@
 #include <string.h>
 
   #ifdef __cplusplus
+#include "is_comptime_param.h"
 #include  "push_to_config.h"
 
   template <typename P, typename V>
   void
   acPushToConfig(AcMeshInfo& config, AcCompInfo& comp_info, P param, V val)
   {
+	  static_assert(!std::is_same<P,int>::value);
           if constexpr(IsCompParam(param))
                   acLoadCompInfo(param, val, &comp_info);
           else
@@ -278,10 +312,6 @@
 	  return res;
   }
 #include "load_comp_info.h"
-
-#ifdef __cplusplus
-#include "is_comptime_param.h"
-#endif
 
 #ifdef __cplusplus
 
@@ -362,6 +392,7 @@
   get_is_loaded(const P param, const AcCompInfoLoaded config)
   {
 #include "get_from_comp_config.h"
+	  return false;
   };
 
   template <typename P>

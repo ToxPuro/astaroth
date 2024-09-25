@@ -25,13 +25,7 @@
 #include "user_defines.h"
 
 
-typedef struct Field3
-{
-	VertexBufferHandle x;
-	VertexBufferHandle y;
-	VertexBufferHandle z;
-	constexpr Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
-} Field3;
+
 
 #include <array>
 
@@ -96,21 +90,6 @@ atomicAdd(T* dst, T val)
 // Just nasty: Must evaluate all code branches given arbitrary input
 // if we want automated stencil generation to work in every case
 #define d_multigpu_offset ((int3){0, 0, 0})
-constexpr Field3 
-MakeField3(const Field& x, const Field& y, const Field& z)
-{
-	return (Field3){x,y,z};
-}
-template <size_t N>
-constexpr __device__ __forceinline__
-std::array<Field3,N>
-MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
-{
-	std::array<int3,N> res{};
-	for(size_t i = 0; i < N; ++i)
-		res[i] = (Field3){x,y,z};
-	return res;
-}
 
 
 constexpr int
@@ -188,7 +167,6 @@ constexpr static AcMeshInfo d_mesh_info = get_d_mesh_info();
 #include "dconst_decl.h"
 #include "rconst_decl.h"
 
-#include "user_constants.h"
 #include "dconst_arrays_decl.h"
 #include "gmem_arrays_accessed_decl.h"
 //#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1][1000] {}

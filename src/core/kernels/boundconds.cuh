@@ -3,31 +3,6 @@
 // TODO remove clang-format on/off
 // clang-format off
 
-#define DEVICE_INLINE __device__ __forceinline__
-
-DEVICE_INLINE AcReal
-VAL(const AcRealParam& param)
-{
-	return DCONST(param);
-}
-
-DEVICE_INLINE AcReal
-VAL(const AcReal& val)
-{
-	return val;
-}
-
-DEVICE_INLINE int
-VAL(const AcIntParam& param)
-{
-	return DCONST(param);
-}
-
-DEVICE_INLINE int
-VAL(const int& val)
-{
-	return val;
-}
 
 extern "C" {
 /**************************

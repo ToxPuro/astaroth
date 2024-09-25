@@ -839,7 +839,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     syncVBA();
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done syncing VBA\n");
 
-    counterpart_rank = getPid(getPid3D(rank, decomp, (AcProcMappingStrategy)device->local_config.int_params[AC_proc_mapping_strategy]) + output_region.id, decomp, (AcProcMappingStrategy)device->local_config.int_params[AC_proc_mapping_strategy]);
+    const auto proc_strategy = (AcProcMappingStrategy)acGetInfoValue(device->local_config,AC_proc_mapping_strategy);
+    counterpart_rank = getPid(getPid3D(rank, decomp, proc_strategy) + output_region.id, decomp, proc_strategy);
     // MPI tags are namespaced to avoid collisions with other MPI tasks
     send_tag = tag_0 + input_region.tag;
     recv_tag = tag_0 + Region::id_to_tag(-output_region.id);
@@ -1465,15 +1466,16 @@ DSLBoundaryConditionTask::DSLBoundaryConditionTask(
 void
 DSLBoundaryConditionTask::populate_boundary_region()
 {
+     const int3 nn = acGetLocalNN(device->local_config);
      for (auto variable : output_region.fields) {
      	params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable});
      	const int3 region_id = output_region.id;
-     	const int3 start = (int3){(region_id.x == 1 ? NGHOST_X + device->local_config.int_params[AC_nx]
+     	const int3 start = (int3){(region_id.x == 1 ? NGHOST_X + nn.x
      	                                           : region_id.x == -1 ? 0 : NGHOST_X),
-     	                         (region_id.y == 1 ? NGHOST_Y + device->local_config.int_params[AC_ny]
+     	                         (region_id.y == 1 ? NGHOST_Y + nn.y
      	                                           : region_id.y == -1 ? 0 : NGHOST_Y),
 #if TWO_D == 0
-     	                         (region_id.z == 1 ? NGHOST_Z + device->local_config.int_params[AC_nz]
+     	                         (region_id.z == 1 ? NGHOST_Z + nn.z
      	                                           : region_id.z == -1 ? 0 : NGHOST_Z)};
 #else
 				 0};

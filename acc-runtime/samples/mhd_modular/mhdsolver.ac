@@ -97,7 +97,6 @@ hostdefine R_PI (AC_REAL_PI)
 hostdefine LSPECIAL_REDUCTIONS (0)  
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
-Field DEAD_FIELD
 //const int NCHEM=20
 //Field CHEMISTRY[NCHEM]
 
@@ -510,6 +509,7 @@ Kernel shock_3_smooth()
 
 #endif
 #
+/**
 Kernel test_func()
 {
    if(AC_runtime_int) 
@@ -517,6 +517,7 @@ Kernel test_func()
 	write(DEAD_FIELD,AC_real_gmem_arr[0])
    }
 }
+**/
 
 
 

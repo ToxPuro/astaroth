@@ -1108,10 +1108,11 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 
 
 	fp = fopen("is_comptime_param.h","a");
-	fprintf(fp,"constexpr static bool IsCompParam(%sParam& param) {(void)param; return false;}\n",enum_name);
-	fprintf(fp,"constexpr static bool IsCompParam(%sArrayParam& param) {(void)param; return false;}\n",enum_name);
-	fprintf(fp,"constexpr static bool IsCompParam(%sCompArrayParam& param) {(void)param; return true;}\n",enum_name);
-	fprintf(fp,"constexpr static bool IsCompParam(%sCompParam& param) {(void)param; return true;}\n",enum_name);
+	fprintf(fp,"constexpr static bool IsCompParam(const %s&) {return false;}\n",datatype_scalar);
+	fprintf(fp,"constexpr static bool IsCompParam(const %sParam&) {return false;}\n",enum_name);
+	fprintf(fp,"constexpr static bool IsCompParam(const %sArrayParam&) {return false;}\n",enum_name);
+	fprintf(fp,"constexpr static bool IsCompParam(const %sCompArrayParam&) {return true;}\n",enum_name);
+	fprintf(fp,"constexpr static bool IsCompParam(const %sCompParam&) {return true;}\n",enum_name);
 	fclose(fp);
 	if(strcmp(datatype_scalar,"int"))
 	{
@@ -2559,10 +2560,6 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 	free(field_stencil_ops_at_next_level_set);
 	free(next_level_set);
 	free(field_need_to_communicate);
-	char all_fields[4000];
-	all_fields[0] = '\0';
-	for(size_t field = 0; field < num_fields; ++field)
-		strcatprintf(all_fields,"%s,",get_field_name(field));
 	bool* field_written_out_before = (bool*)malloc(sizeof(bool)*num_fields);
 	memset(field_written_out_before,0,sizeof(bool)*num_fields);
 	for(int level_set = 0; level_set < n_level_sets; ++level_set)
@@ -4208,9 +4205,8 @@ count_nest(const ASTNode* node,const NodeType type)
 	return max(lhs_res,rhs_res) + (node->type == type);
 }
 void
-gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_non_scalar_constants)
+gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_builtin, FILE* fp_non_scalar_constants, FILE* fp_non_scalar_builtin)
 {
-		(void)fp;
 		const char* name  = get_node_by_token(IDENTIFIER, def)->buffer;
 		if(!name) return;
         	const ASTNode* assignment = def->rhs;
@@ -4234,11 +4230,13 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_non_s
 			if(array_dim == 1)
 			{
 				fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
+				fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
 			}
 			else if(array_dim == 2)
 			{
 				const int num_of_elems_in_list = count_num_of_nodes_in_list(second_array_initializer->lhs);
 				fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
+				fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
 			}
 			else
 			{
@@ -4251,21 +4249,32 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_non_s
 		        //TP: define macros have greater portability then global constants, since they do not work on some CUDA compilers
 			//TP: actually can not make macros since if the user e.g. writes const nx = 3 then that define would conflict with variables in hip
                         if(is_primitive_datatype(datatype_scalar))
-                                fprintf(fp_non_scalar_constants, "[[maybe_unused]] constexpr %s %s = %s;\n", datatype_scalar, name, assignment_val);
+			{
+				if(strlen(name) > 2 && name[0] == 'A' && name[1] == 'C')
+                                	fprintf(fp_builtin, "#define %s ((%s)%s)\n",name, datatype_scalar, assignment_val);
+				else
+				{
+                                	fprintf(fp_non_scalar_constants, "[[maybe_unused]] constexpr %s %s = %s;\n", datatype_scalar, name, assignment_val);
+                                	fprintf(fp, "[[maybe_unused]] constexpr %s %s = %s;\n", datatype_scalar, name, assignment_val);
+				}
+			}
                         else
 			{
                                fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
+                               fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
+			       if(strlen(name) > 2 && name[0] == 'A' && name[1] == 'C')
+                               		fprintf(fp_non_scalar_builtin, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
 			}
 		}
 		free(datatype_scalar);
 }
 void
-gen_const_variables(const ASTNode* node, FILE* fp,FILE* fp_non_scalars)
+gen_const_variables(const ASTNode* node, FILE* fp, FILE* fp_bi,FILE* fp_non_scalars,FILE* fp_bi_non_scalars)
 {
 	if(node->lhs)
-		gen_const_variables(node->lhs,fp,fp_non_scalars);
+		gen_const_variables(node->lhs,fp,fp_bi,fp_non_scalars,fp_bi_non_scalars);
 	if(node->rhs)
-		gen_const_variables(node->rhs,fp,fp_non_scalars);
+		gen_const_variables(node->rhs,fp,fp_bi,fp_non_scalars,fp_bi_non_scalars);
 	if(!(node->type & NODE_ASSIGN_LIST)) return;
 	if(!has_qualifier(node,"const")) return;
 	const ASTNode* tspec = get_node(NODE_TSPEC,node);
@@ -4273,10 +4282,10 @@ gen_const_variables(const ASTNode* node, FILE* fp,FILE* fp_non_scalars)
 	const ASTNode* def_list_head = node->rhs;
 	while(def_list_head -> rhs)
 	{
-		gen_const_def(def_list_head->rhs,tspec,fp,fp_non_scalars);
+		gen_const_def(def_list_head->rhs,tspec,fp,fp_bi,fp_non_scalars,fp_bi_non_scalars);
 		def_list_head = def_list_head -> lhs;
 	}
-	gen_const_def(def_list_head->lhs,tspec,fp,fp_non_scalars);
+	gen_const_def(def_list_head->lhs,tspec,fp,fp_bi,fp_non_scalars, fp_bi_non_scalars);
 }
 
 static int curr_kernel = 0;
@@ -4735,9 +4744,11 @@ gen_user_defines(const ASTNode* root, const char* out)
   fclose(fp);
 
   fp = fopen("user_constants.h","w");
+  FILE* fp_built_in  = fopen("user_built-in_constants.h","w");
   FILE* fp_non_scalar_constants = fopen("user_non_scalar_constants.h","w");
-  gen_const_variables(root,fp,fp_non_scalar_constants);
-  fclose(fp);
+  FILE* fp_bi_non_scalar_constants = fopen("user_builtin_non_scalar_constants.h","w");
+  gen_const_variables(root,fp,fp_built_in,fp_non_scalar_constants,fp_bi_non_scalar_constants);
+  fclose(fp_built_in);
   fclose(fp_non_scalar_constants);
 }
 

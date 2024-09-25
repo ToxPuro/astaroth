@@ -177,9 +177,9 @@ gen_kernel_common_prefix()
          "d_multigpu_offset.z + vertexIdx.z,"
          "};");
 #if TWO_D == 0
-  printf("const int3 globalGridN = (int3){d_mesh_info.int_params[AC_nxgrid], d_mesh_info.int_params[AC_nygrid], d_mesh_info.int_params[AC_nzgrid]};");
+  printf("const int3 globalGridN = (int3){VAL(AC_nxgrid),VAL(AC_nygrid), VAL(AC_nzgrid)};");
 #else
-  printf("const int3 globalGridN = (int3){d_mesh_info.int_params[AC_nxgrid], d_mesh_info.int_params[AC_nygrid], 1};");
+  printf("const int3 globalGridN = (int3){VAL(AC_nxgrid), VAL(AC_nygrid), 1};");
 #endif
   printf("const int idx = IDX(vertexIdx.x, vertexIdx.y, vertexIdx.z);");
 

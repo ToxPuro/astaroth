@@ -64,13 +64,13 @@ kernel_pack_data(const VertexBufferArray vba, const int3 vba_start, const int3 d
 static inline __device__ int3
 is_on_boundary()
 {
-    const int x = (DCONST(AC_domain_coordinates).x == DCONST(AC_domain_decomposition).x - 1 ||
-                                DCONST(AC_domain_coordinates).x == 0);
-    const int y = (DCONST(AC_domain_coordinates).y == DCONST(AC_domain_decomposition).y - 1 ||
-                                DCONST(AC_domain_coordinates).y == 0);
+    const int x = (VAL(AC_domain_coordinates).x == VAL(AC_domain_decomposition).x - 1 ||
+                                VAL(AC_domain_coordinates).x == 0);
+    const int y = (VAL(AC_domain_coordinates).y == VAL(AC_domain_decomposition).y - 1 ||
+                                VAL(AC_domain_coordinates).y == 0);
 #if TWO_D == 0
-    const int z = (DCONST(AC_domain_coordinates).z == DCONST(AC_domain_decomposition).z - 1 ||
-                                DCONST(AC_domain_coordinates).z == 0);
+    const int z = (VAL(AC_domain_coordinates).z == VAL(AC_domain_decomposition).z - 1 ||
+                                VAL(AC_domain_coordinates).z == 0);
 #else
     const int z = 0;
 #endif
@@ -83,15 +83,15 @@ static inline __device__ AcReal
 lagrangian_correction(const int j, const int3 coords)
 {
       const int3 on_boundary = is_on_boundary();
-      const AcReal x_coeff = on_boundary.x*(j == COORDS_X)*DCONST(AC_xlen);
-      const AcReal y_coeff = on_boundary.y*(j == COORDS_Y)*DCONST(AC_ylen);
+      const AcReal x_coeff = on_boundary.x*(j == COORDS_X)*VAL(AC_xlen);
+      const AcReal y_coeff = on_boundary.y*(j == COORDS_Y)*VAL(AC_ylen);
 #if TWO_D == 0
-      const AcReal z_coeff = on_boundary.z*(j == COORDS_Z)*DCONST(AC_zlen);
+      const AcReal z_coeff = on_boundary.z*(j == COORDS_Z)*VAL(AC_zlen);
 #endif
-      return  x_coeff*((coords.x >= DCONST(AC_nx_max)) - (coords.x < DCONST(AC_nx_min)))
-                       + y_coeff*((coords.y >= DCONST(AC_ny_max)) - (coords.y < DCONST(AC_ny_min)))
+      return  x_coeff*((coords.x >= VAL(AC_nx_max)) - (coords.x < VAL(AC_nx_min)))
+                       + y_coeff*((coords.y >= VAL(AC_ny_max)) - (coords.y < VAL(AC_ny_min)))
 #if TWO_D == 0
-                       + z_coeff*((coords.z >= DCONST(AC_nz_max)) - (coords.z < DCONST(AC_nz_min)))
+                       + z_coeff*((coords.z >= VAL(AC_nz_max)) - (coords.z < VAL(AC_nz_min)))
 #endif
                        ;
 }
@@ -206,10 +206,10 @@ kernel_partial_move_data(const VertexBufferArray vba, const int3 src_start, cons
         vba.in[vtxbufs.data[i]][dst_idx] = vba.in[vtxbufs.data[i]][unpacked_idx];
     }
 #if AC_LAGRANGIAN_GRID
-    vba.in[COORDS_X][dst_idx] += DCONST(AC_xlen)*((i_dst >= DCONST(AC_nx_max)) -(i_dst < DCONST(AC_nx_min)));
-    vba.in[COORDS_Y][dst_idx] += DCONST(AC_ylen)*((j_dst >= DCONST(AC_ny_max)) -(j_dst < DCONST(AC_ny_min)));
+    vba.in[COORDS_X][dst_idx] += VAL(AC_xlen)*((i_dst >= VAL(AC_nx_max)) -(i_dst < VAL(AC_nx_min)));
+    vba.in[COORDS_Y][dst_idx] += VAL(AC_ylen)*((j_dst >= VAL(AC_ny_max)) -(j_dst < VAL(AC_ny_min)));
 #if TWO_D == 0
-    vba.in[COORDS_Z][dst_idx] += DCONST(AC_zlen)*((k_dst >= DCONST(AC_nz_max)) -(k_dst < DCONST(AC_nz_min)));
+    vba.in[COORDS_Z][dst_idx] += VAL(AC_zlen)*((k_dst >= VAL(AC_nz_max)) -(k_dst < VAL(AC_nz_min)));
 #endif
 #endif
 }

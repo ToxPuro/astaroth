@@ -2,7 +2,7 @@
 
 if(RUNTIME_COMPILATION)
    
-  add_library(astaroth_core empty.c)
+  add_library(astaroth_core update_params.cc)
   target_link_libraries(astaroth_core PUBLIC acc-runtime-headers dl acc_runtime_compiler)
   if(MPI_ENABLED)
     target_link_libraries(astaroth_core
@@ -25,7 +25,7 @@ if(RUNTIME_COMPILATION)
       endif()
   endif()
 else()
-  add_library(astaroth_core device.cc grid.cc task.cc node.cc astaroth.cc debug.cc logging.c)
+  add_library(astaroth_core device.cc grid.cc task.cc node.cc astaroth.cc debug.cc update_params.cc logging.c)
   if (USE_HIP)
       find_package(hip)
       target_link_libraries(astaroth_core

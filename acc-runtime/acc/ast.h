@@ -218,6 +218,12 @@ static inline  void combine_buffers(const ASTNode* node, char* res){
   res[0] = '\0';	
   combine_buffers_recursive(node,res);
 }
+static const char* combine_buffers_new(const ASTNode* node)
+{
+	static char res[4098];
+	combine_buffers(node,res);
+	return res;
+}
 static inline void combine_all_recursive(const ASTNode* node, char* res){
   if(node->prefix)
     strcat(res,node->prefix);
@@ -451,6 +457,18 @@ strcatprintf(char* dst, const char* format, ...)
 	strcat(dst,buffer);
 	
 }
+
+static inline void
+fprintf_filename(const char* filename, const char* format, ...)
+{
+	FILE* fp = fopen(filename,"a");
+	va_list args;
+	va_start(args,format);
+	int ret = vfprintf(fp, format, args);
+	va_end(args);
+	fclose(fp);
+}
+
 static inline char*
 sprintf_new(const char* format, ...)
 {

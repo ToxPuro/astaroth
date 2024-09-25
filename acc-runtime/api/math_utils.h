@@ -295,10 +295,15 @@ operator==(const uint3_64& a, const uint3_64& b)
  */
 template <class T>
 static Volume
-to_volume(const T a)
+TO_VOLUME(const T a, const char* file, const int line)
 {
+  INDIRECT_ERRCHK_ALWAYS(a.x >= 0,file,line);
+  INDIRECT_ERRCHK_ALWAYS(a.y >= 0,file,line);
+  INDIRECT_ERRCHK_ALWAYS(a.z >= 0,file,line);
   return (Volume){as_size_t(a.x), as_size_t(a.y), as_size_t(a.z)};
 }
+
+#define to_volume(a) TO_VOLUME(a, __FILE__, __LINE__)
 
 static inline dim3
 to_dim3(const Volume v)
@@ -710,3 +715,26 @@ diagonal(const AcMatrix& m)
 /*
  * AcTensor
  */
+
+typedef struct AcTensor {
+  //AcReal data[3][3] = {{0}};
+  //TP: default initializer will initialize all values to 0.0
+  AcArray<AcMatrix,3> data = {};
+
+  HOST_DEVICE_INLINE AcMatrix() {}
+
+  HOST_DEVICE_INLINE AcMatrix(const AcMatrix mat0, const AcMatrix mat1,
+                       const AcMatrix mat2)
+  {
+    data[0] = mat0;
+    data[1] = mat1;
+    data[2] = mat2;
+  }
+
+  HOST_DEVICE_INLINE const AcMatrix& operator[](const size_t index) const {
+	  return data[index];
+  }
+  HOST_DEVICE_INLINE AcMatrix& operator[](const size_t index) {
+	  return data[index];
+  }
+} AcMatrix;

@@ -156,25 +156,7 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
   }
 // #endif // __CUDA_RUNTIME_API_H__
 
-#ifdef __cplusplus
-template <typename T>
-static inline size_t
-as_size_t(const T i)
-{
-  ERRCHK_ALWAYS(i >= 0);
-  ERRCHK_ALWAYS(static_cast<long double>(i) <
-                static_cast<long double>(SIZE_MAX));
-  return static_cast<size_t>(i);
-}
-//overloaded with unsigned int to remove compiler warnings about unneeded checks
-static inline size_t
-as_size_t(unsigned int i)
-{
-  ERRCHK_ALWAYS(static_cast<long double>(i) <
-                static_cast<long double>(SIZE_MAX));
-  return static_cast<size_t>(i);
-}
-#else
+#define as_size_t(i) AS_SIZE_T(i, __FILE__, __LINE__)
 // TODO: cleanup and integrate with the errors above someday
 #define INDIRECT_ERROR(str, file, line)                                                                          \
   {                                                                                                              \
@@ -205,5 +187,22 @@ AS_SIZE_T(const int i, const char* file, const int line)
 
   return (size_t)(i);
 }
-#define as_size_t(i) AS_SIZE_T(i, __FILE__, __LINE__)
+#ifdef __cplusplus
+template <typename T>
+static inline size_t
+AS_SIZE_T(const T i, const char* file, const int line)
+{
+  INDIRECT_ERRCHK_ALWAYS(i >= 0,file,line);
+  INDIRECT_ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(SIZE_MAX),file,line);
+  return static_cast<size_t>(i);
+}
+//overloaded with unsigned int to remove compiler warnings about unneeded checks
+static inline size_t
+AS_SIZE_T(unsigned int i, const char* file, const int line)
+{
+  INDIRECT_ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(SIZE_MAX),file,line);
+  return static_cast<size_t>(i);
+}
 #endif
