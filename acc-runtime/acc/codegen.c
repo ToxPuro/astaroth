@@ -3894,6 +3894,17 @@ get_dfunc_nodes(const ASTNode* node, node_vec* nodes, string_vec* names)
 	push_node(nodes,node);
 	push(names,get_node_by_token(IDENTIFIER,node->lhs)->buffer);
 }
+void
+get_stencil_nodes(const ASTNode* node, node_vec* nodes, string_vec* names)
+{
+	if(node->lhs)
+		get_stencil_nodes(node->lhs,nodes,names);
+	if(node->rhs)
+		get_stencil_nodes(node->rhs,nodes,names);
+	if(!(node->type & NODE_STENCIL)) return;
+	push_node(nodes,node);
+	push(names,get_node_by_token(IDENTIFIER,node->lhs)->buffer);
+}
 bool
 all_primary_expressions_and_func_calls_have_type(const ASTNode* node)
 {
@@ -6295,6 +6306,46 @@ get_dfunc_strs(const ASTNode* root)
   }
   return dfunc_strs;
 }
+void
+check_that_dfuncs_unique(const ASTNode* root)
+{
+	node_vec nodes = VEC_INITIALIZER;
+	string_vec names = VEC_INITIALIZER;
+	get_dfunc_nodes(root,&nodes,&names);
+	for(size_t i = 0; i < names.size; ++i)
+	{
+		for(size_t j = 0; j < names.size; ++j)
+		{
+			if(i == j) continue;
+			if(!strcmp(names.data[i],names.data[j]))
+			{
+				fprintf(stderr,FATAL_ERROR_MESSAGE"multiple definitions of function: %s\n",names.data[i]);
+				exit(EXIT_FAILURE);
+			}
+
+		}
+	}
+}
+void
+check_that_stencils_unique(const ASTNode* root)
+{
+	node_vec nodes = VEC_INITIALIZER;
+	string_vec names = VEC_INITIALIZER;
+	get_stencil_nodes(root,&nodes,&names);
+	for(size_t i = 0; i < names.size; ++i)
+	{
+		for(size_t j = 0; j < names.size; ++j)
+		{
+			if(i == j) continue;
+			if(!strcmp(names.data[i],names.data[j]))
+			{
+				fprintf(stderr,FATAL_ERROR_MESSAGE"multiple definitions of stencil: %s\n",names.data[i]);
+				exit(EXIT_FAILURE);
+			}
+
+		}
+	}
+}
 
 void
 generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, const bool optimize_conditionals)
@@ -6302,6 +6353,8 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   (void)optimize_conditionals;
   symboltable_reset();
   ASTNode* root = astnode_dup(root_in,NULL);
+  check_that_dfuncs_unique(root);
+  check_that_stencils_unique(root);
   //preprocess(root);
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);

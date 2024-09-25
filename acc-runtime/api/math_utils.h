@@ -721,9 +721,9 @@ typedef struct AcTensor {
   //TP: default initializer will initialize all values to 0.0
   AcArray<AcMatrix,3> data = {};
 
-  HOST_DEVICE_INLINE AcMatrix() {}
+  HOST_DEVICE_INLINE AcTensor() {}
 
-  HOST_DEVICE_INLINE AcMatrix(const AcMatrix mat0, const AcMatrix mat1,
+  HOST_DEVICE_INLINE AcTensor(const AcMatrix mat0, const AcMatrix mat1,
                        const AcMatrix mat2)
   {
     data[0] = mat0;
@@ -737,4 +737,4 @@ typedef struct AcTensor {
   HOST_DEVICE_INLINE AcMatrix& operator[](const size_t index) {
 	  return data[index];
   }
-} AcMatrix;
+} AcTensor;
