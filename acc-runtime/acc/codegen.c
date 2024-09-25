@@ -46,7 +46,15 @@ get_executed_conditionals(void);
 
 static node_vec    dfunc_nodes      = VEC_INITIALIZER;
 static string_vec  dfunc_names      = VEC_INITIALIZER;
-static string_vec  duplicate_dfuncs = VEC_INITIALIZER;
+typedef struct
+{
+	string_vec names;
+	int_vec    counts;
+} overloaded_dfuncs;
+static overloaded_dfuncs duplicate_dfuncs = {
+						.names = VEC_INITIALIZER,
+						.counts = VEC_INITIALIZER
+					   };
 
 //node_vec
 //get_nodes_in_list_in_reverse_order(const ASTNode* head)
@@ -480,13 +488,13 @@ print_symbol_table(void)
 
 
 
-char*
+const char*
 convert_to_enum_name(const char* name)
 {
+	static char res[4098];
 	if(!strcmp(name,"long long"))
 		return "AcLongLong";
-	if(strstr(name,"Ac")) return strdup(name);
-	char* res = malloc(sizeof(char)* (strlen(name) + strlen("Ac") + 100));
+	if(strstr(name,"Ac")) return name;
 	sprintf(res,"Ac%s",to_upper_case(name));
 	return res;
 }
@@ -499,11 +507,7 @@ get_array_accesses(const ASTNode* base)
 	    node_vec nodes = VEC_INITIALIZER;
 	    get_array_access_nodes(base,&nodes);
 	    for(size_t i = 0; i < nodes.size; ++i)
-	    {
-		char* tmp = malloc(sizeof(char)*10000);
-		combine_all(nodes.data[i],tmp);
-		push(&dst,tmp);
-	    }
+		push(&dst,combine_all_new(nodes.data[i]));
 	    free_node_vec(&nodes);
 	    return dst;
 }
@@ -526,38 +530,34 @@ get_array_var_length(const char* var, const ASTNode* root, char* dst)
 	    free_str_vec(&tmp);
 }
 
-int*
+int default_accesses[10000] = { [0 ... 10000-1] = 1};
+int read_accesses[10000] = { [0 ... 10000-1] = 0};
+
+const  int*
 get_arr_accesses(const char* datatype_scalar)
 {
+
 	char* filename;
 	const char* define_name =  convert_to_define_name(strdup(datatype_scalar));
-	asprintf(&filename,"%s_arr_accesses",define_name);
 	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
-	int* accesses;
-	if(file_exists(filename) && has_optimization_info && OPTIMIZE_ARRAYS) 
-	{
-		FILE* fp = fopen(filename,"rb");
-		int size = 1;
-		fread(&size, sizeof(int), 1, fp);
-		accesses = (int*)malloc(sizeof(int)*size);
-		fread(accesses, sizeof(int), size, fp);
-		fclose(fp);
-	}
-	else
-	{
-		accesses = (int*)malloc(sizeof(int)*10000);
-	      for(int l=0; l < 10000; ++l) accesses[l] = 1;
-	
-	}
-	return accesses;
+	asprintf(&filename,"%s_arr_accesses",define_name);
+  	if(!file_exists(filename) || !has_optimization_info || !OPTIMIZE_ARRAYS)
+		return default_accesses;
+
+	FILE* fp = fopen(filename,"rb");
+	int size = 1;
+	fread(&size, sizeof(int), 1, fp);
+	fread(read_accesses, sizeof(int), size, fp);
+	fclose(fp);
+	return read_accesses;
 }
 
 void
 gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
 {
 
-  //fprintf(fp,"typedef struct { bool is_dconst; int d_offset; int num_dims; AcArrayDims dims; const char* name;} array_info;\n");
-  int* accesses = get_arr_accesses(datatype_scalar);
+ 
+  const int* accesses = get_arr_accesses(datatype_scalar);
   char datatype[1000];
   sprintf(datatype,"%s*",datatype_scalar);
   const char* define_name =  convert_to_define_name(datatype_scalar);
@@ -668,7 +668,6 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
   //pad one extra to silence warnings
   fprintf(fp,"{false,-1,-1,{{-1,-1,-1}, {false,false,false}},\"AC_EXTRA_PADDING\",true}");
   fprintf(fp, "};");
-  free(accesses);
 }
 
 /**
@@ -748,12 +747,10 @@ void
 
 gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 {
-	char* tmp = malloc(sizeof(char)*7000);
-
 	char* define_name = convert_to_define_name(datatype_scalar);
 	char* uppr_name =       strupr(define_name);
 	char* upper_case_name = to_upper_case(define_name);
-	char* enum_name = convert_to_enum_name(datatype_scalar);
+	const char* enum_name = convert_to_enum_name(datatype_scalar);
 
 	char datatype[4098];
 	sprintf(datatype,"%s*",datatype_scalar);
@@ -832,37 +829,27 @@ gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	  }
 	}
 	fclose(fp);
-	free(tmp);
 }
 
 void
 gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 {
 
-	char* tmp = malloc(sizeof(char)*7000);
 	char* define_name = convert_to_define_name(datatype_scalar);
 	char* uppr_name =       strupr(define_name);
 	char* upper_case_name = to_upper_case(define_name);
-	char* enum_name = convert_to_enum_name(datatype_scalar);
-	sprintf(tmp,"%s* %s_arrays[NUM_%s_ARRAYS+1];\n",datatype_scalar,define_name,uppr_name);
-	file_append("array_decl.h",tmp);
+	const char* enum_name = convert_to_enum_name(datatype_scalar);
+	fprintf_filename("array_decl.h","%s* %s_arrays[NUM_%s_ARRAYS+1];\n",datatype_scalar,define_name,uppr_name);
 
-	sprintf(tmp,"if constexpr(std::is_same<P,%sArrayParam>::value) return vba.%s_arrays[(int)param];\n",enum_name,define_name);
-	file_append("get_vba_array.h",tmp);
+	fprintf_filename("get_vba_array.h","if constexpr(std::is_same<P,%sArrayParam>::value) return vba.%s_arrays[(int)param];\n",enum_name,define_name);
 
-	sprintf(tmp,"if constexpr(std::is_same<P,%sCompParam>::value) return (%s){};\n",enum_name,datatype_scalar);
-	file_append("get_default_value.h",tmp);
+	fprintf_filename("get_default_value.h","if constexpr(std::is_same<P,%sCompParam>::value) return (%s){};\n",enum_name,datatype_scalar);
 
-	sprintf(tmp,"if constexpr(std::is_same<P,%sCompArrayParam>::value) return (%s){};\n",enum_name,datatype_scalar);
-	file_append("get_default_value.h",tmp);
+	fprintf_filename("get_default_value.h","if constexpr(std::is_same<P,%sCompArrayParam>::value) return (%s){};\n",enum_name,datatype_scalar);
 
+	fprintf_filename("get_from_comp_config.h","if constexpr(std::is_same<P,%sCompArrayParam>::value) return config.%s_arrays[(int)param];\n",enum_name,define_name);
 
-	sprintf(tmp,"if constexpr(std::is_same<P,%sCompArrayParam>::value) return config.%s_arrays[(int)param];\n",enum_name,define_name);
-	file_append("get_from_comp_config.h",tmp);
-
-	sprintf(tmp,"if constexpr(std::is_same<P,%sCompParam>::value) return config.%s_params[(int)param];\n",enum_name,define_name);
-	file_append("get_from_comp_config.h",tmp);
-
+	fprintf_filename("get_from_comp_config.h","if constexpr(std::is_same<P,%sCompParam>::value) return config.%s_params[(int)param];\n",enum_name,define_name);
 
 	FILE* fp = fopen("get_config_param.h","a");
 	fprintf(fp,"if constexpr(std::is_same<P,%sParam>::value) return config.%s_params[(int)param];\n",     enum_name,define_name);
@@ -872,13 +859,11 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fp = fopen("get_empty_pointer.h","a");
 	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) return (%s*){};\n",enum_name,datatype_scalar);
 
-
 	char datatype[4098];
 	sprintf(datatype,"%s*",datatype_scalar);
 
 
-	sprintf(tmp,"if constexpr(std::is_same<P,%sCompParam>::value) return %s_comp_param_names[(int)param];\n",enum_name,define_name);
-	file_append("get_param_name.h",tmp);
+	fprintf_filename("get_param_name.h","if constexpr(std::is_same<P,%sCompParam>::value) return %s_comp_param_names[(int)param];\n",enum_name,define_name);
 
 
 	fp = fopen("get_num_params.h","a");
@@ -1146,7 +1131,6 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 		fprintf(fp,"%sCompArrayParam,\n",enum_name);
 		fclose(fp);
 	}
-	free(tmp);
 }
 
 
@@ -1344,9 +1328,7 @@ get_index_node(const ASTNode* array_access_start, const string_vec var_dims_in)
     		if(j)
     		{
 			ASTNode* prefix_node = node->lhs;
-			prefix_node->buffer = malloc(sizeof(char)*4098);
-			char* prefix = prefix_node->buffer;
-    			sprintf(prefix,"%s","");
+    			asprintf(&prefix_node->buffer,"%s","");
 			prefix_node->prefix = strdup("+(");
 			node_vec dim_nodes = VEC_INITIALIZER;
     			for(size_t k = 0; k < j; ++k)
@@ -1380,8 +1362,8 @@ gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
   if(!node->lhs) return;
   if(get_parent_node(NODE_VARIABLE,node)) return;
   char* array_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-  char* datatype = malloc(sizeof(char)*(1000));
-  sprintf(datatype,"%s*",datatype_scalar);
+  char* datatype;
+  asprintf(&datatype,"%s*",datatype_scalar);
   const int l_current_nest = 0;
   for (size_t i = 0; i < num_symbols[l_current_nest]; ++i)
   {
@@ -1570,11 +1552,11 @@ mark_as_input(ASTNode* kernel_root, const ASTNode* param)
 }
 
 void
-process_param_codegen(const ASTNode* param, char* structs_info_str)
+process_param_codegen(const ASTNode* param, FILE* stream)
 {
 	const char* param_type = get_node(NODE_TSPEC,param->lhs)->lhs->buffer;
 	const char* param_name = param->rhs->buffer;
-	strcatprintf(structs_info_str,"%s %s;", param_type, param_name);
+	fprintf(stream,"%s %s;", param_type, param_name);
 }
 void
 mark_kernel_inputs(const ASTNode* node)
@@ -1596,12 +1578,12 @@ mark_kernel_inputs(const ASTNode* node)
 }
 
 void
-gen_kernel_structs_recursive(const ASTNode* node, char* user_kernel_params_struct_str)
+gen_kernel_structs_recursive(const ASTNode* node, FILE* stream)
 {
 	if(node->lhs)
-		gen_kernel_structs_recursive(node->lhs,user_kernel_params_struct_str);
+		gen_kernel_structs_recursive(node->lhs,stream);
 	if(node->rhs)
-		gen_kernel_structs_recursive(node->rhs,user_kernel_params_struct_str);
+		gen_kernel_structs_recursive(node->rhs,stream);
 	if(!(node->type & NODE_KFUNCTION))
 		return;
 	if(!node->rhs->lhs)
@@ -1610,34 +1592,29 @@ gen_kernel_structs_recursive(const ASTNode* node, char* user_kernel_params_struc
         ASTNode* param_list_head = node->rhs->lhs;
         ASTNode* compound_statement = node->rhs->rhs;
         param_list_head->type |= NODE_NO_OUT;
-	char* structs_info_str = malloc(sizeof(char)*10000);
-	structs_info_str[0] = '\0';
+
+        const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER, node->lhs);
+	FILE* fp = fopen("user_input_typedefs.h","a");
+	fprintf(fp,"typedef struct %sInputParams {", fn_identifier->buffer);
+
 	node_vec params = get_nodes_in_list(param_list_head);
 	for(size_t i = 0; i < params.size; ++i)
-		process_param_codegen(params.data[i],structs_info_str);
+		process_param_codegen(params.data[i],fp);
 	free_node_vec(&params);
 
-        ASTNode* fn_identifier = get_node_by_token(IDENTIFIER, node->lhs);
-	char* kernel_params_struct = malloc(sizeof(char)*10000);
-	sprintf(kernel_params_struct,"typedef struct %sInputParams {%s} %sInputParams;\n",fn_identifier->buffer,structs_info_str,fn_identifier->buffer);
+	fprintf(fp,"} %sInputParams;\n",fn_identifier->buffer);
+	fclose(fp);
 
-	file_append("user_input_typedefs.h",kernel_params_struct);
-	free(structs_info_str);
-	strcatprintf(user_kernel_params_struct_str,"%sInputParams %s;\n", fn_identifier->buffer,fn_identifier->buffer);
-	free(kernel_params_struct);
+	fprintf(stream,"%sInputParams %s;\n", fn_identifier->buffer,fn_identifier->buffer);
 
 }
 void
 gen_kernel_structs(const ASTNode* root)
 {
-	char user_kernel_params_struct_str[10000];
-	user_kernel_params_struct_str[0] = '\0';
-	sprintf(user_kernel_params_struct_str,"typedef union acKernelInputParams {\n");
-	gen_kernel_structs_recursive(root,user_kernel_params_struct_str);
-	strcat(user_kernel_params_struct_str,"} acKernelInputParams;\n");
-
 	FILE* fp_structs = fopen("user_input_typedefs.h","a");
-	fprintf(fp_structs,"\n%s\n",user_kernel_params_struct_str);
+	fprintf(fp_structs,"typedef union acKernelInputParams {\n\n");
+	gen_kernel_structs_recursive(root,fp_structs);
+	fprintf(fp_structs,"} acKernelInputParams;\n\n");
 	fclose(fp_structs);
 }
 
@@ -1713,20 +1690,19 @@ gen_user_structs()
 	for(size_t i = 0; i < s_info.user_structs.size; ++i)
 	{
 		const char* struct_name = s_info.user_structs.data[i];
-		char* struct_def = malloc(sizeof(char)*5000);
+		FILE* struct_def = fopen("user_typedefs.h","a");
 		//TP: we use the struct coming from HIP/CUDA
 		if(strcmp(struct_name,"int3"))
 		{
-			sprintf(struct_def,"typedef struct %s {",struct_name);
+			fprintf(struct_def,"typedef struct %s {",struct_name);
 			for(size_t j = 0; j < s_info.user_struct_field_names[i].size; ++j)
 			{
 				const char* type = s_info.user_struct_field_types[i].data[j];
 				const char* name = s_info.user_struct_field_names[i].data[j];
-				strcatprintf(struct_def, "%s %s;", type, name);
+				fprintf(struct_def, "%s %s;", type, name);
 			}
-			strcatprintf(struct_def, "} %s;\n", s_info.user_structs.data[i]);
-        		file_append("user_typedefs.h",struct_def);
-        		free(struct_def);
+			fprintf(struct_def, "} %s;\n", s_info.user_structs.data[i]);
+        		fclose(struct_def);
 		}
 
 		bool all_reals = true;
@@ -1827,12 +1803,9 @@ get_function_param_types_and_names_recursive(const ASTNode* node, const char* fu
 	node_vec params = get_nodes_in_list(node->rhs->lhs);
 	for(size_t i = 0; i < params.size; ++i)
 	{
-		char* param_type = malloc(4096*sizeof(char));
 	  	const ASTNode* param = params.data[i];
-          	combine_buffers(param->lhs, param_type);
-	  	push(types_dst,param_type);
+	  	push(types_dst,combine_buffers_new(param->lhs));
 	  	push(names_dst,param->rhs->buffer);
-		free(param_type);
 	}
 	free_node_vec(&params);
 }
@@ -1924,10 +1897,9 @@ get_field_name(const int field)
 }
 	 
 void
-gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char* global_res, const char* taskgraph_name)
+gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char* res, const char* taskgraph_name)
 {
 	assert(kernel_call);
-	char* res = malloc(sizeof(char)*4000);
 	const char* func_name = get_node_by_token(IDENTIFIER,kernel_call)->buffer;
 	char* fields_in_str  = malloc(sizeof(char)*4000);
 	char* fields_out_str = malloc(sizeof(char)*4000);
@@ -1959,15 +1931,13 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 	strcat(fields_in_str,  "}");
 	strcat(fields_out_str, "}");
 	if(kernel_call->rhs)
-		sprintf(res,"\tacCompute(KERNEL_%s,%s,%s,%s_%s_loader),\n",func_name,fields_in_str,fields_out_str,taskgraph_name,func_name);
+		strcatprintf(res,"\tacCompute(KERNEL_%s,%s,%s,%s_%s_loader),\n",func_name,fields_in_str,fields_out_str,taskgraph_name,func_name);
 	else
-		sprintf(res,"\tacCompute(KERNEL_%s,%s,%s),\n",func_name,fields_in_str,fields_out_str);
+		strcatprintf(res,"\tacCompute(KERNEL_%s,%s,%s),\n",func_name,fields_in_str,fields_out_str);
 	gen_loader(kernel_call,root,taskgraph_name);
 	free(all_fields);
 	free(fields_in_str);
 	free(fields_out_str);
-	strcat(global_res,res);
-	free(res);
 }
 //void
 //gen_taskgraph_entry(const ASTNode* function_call, const ASTNode* root, char* global_res)
@@ -2247,17 +2217,14 @@ gen_dfunc_bc_kernel(const ASTNode* func_call, FILE* fp, const ASTNode* root, con
 
 	if(!strcmp(func_name,"periodic"))
 		return;
-	char* prefix = malloc(sizeof(char)*4000);
+	char* prefix;
 	const bool is_dfunc = check_symbol(NODE_DFUNCTION_ID,func_name,0,0);
-	char* full_name = malloc(sizeof(char)*4000);
 
-	if(is_dfunc) sprintf(prefix,"%s_AC_KERNEL_",boundconds_name);
-	else sprintf(prefix,"%s_",boundconds_name);
+	if(is_dfunc) asprintf(&prefix,"%s_AC_KERNEL_",boundconds_name);
+	else asprintf(&prefix,"%s_",boundconds_name);
 	write_dfunc_bc_kernel(root,prefix,func_name,call_info,fp);
 
 	free_func_params_info(&call_info);
-	free(prefix);
-	free(full_name);
 }
 void
 get_field_boundconds_recursive(const ASTNode* node, const ASTNode* root, char** res, const char* boundconds_name)
@@ -3355,86 +3322,81 @@ qualifier_to_str(const int qualifier)
 	else if(qualifier == SHARED)     return "__shared__";
 	return NULL;
 }
-
 static void
-traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
+check_for_undeclared_use_in_range(const ASTNode* node)
 {
-  if(node->type == NODE_ENUM_DEF)   return;
-  if(node->type == NODE_STRUCT_DEF) return;
-  if (node->type & exclude)
-	  stream = NULL;
-  // Do not translate tqualifiers or tspecifiers immediately
-  if (node->parent &&
-      (node->parent->type & NODE_TQUAL || node->parent->type & NODE_TSPEC))
-    return;
-
-  // Prefix translation
-  // Prefix translation
-  if (stream)
-    if (node->prefix)
-      fprintf(stream, "%s", node->prefix);
-
-  // Prefix logic
-  if (node->type & NODE_BEGIN_SCOPE) {
-    assert(current_nest < MAX_NESTS);
-
-    ++current_nest;
-    num_symbols[current_nest] = num_symbols[current_nest - 1];
-  }
-
-  // Traverse LHS
-  if (node->lhs)
-    traverse(node->lhs, exclude, stream);
-
-  // Add symbols to symbol table
-  if (node->buffer && node->token == IDENTIFIER && !(node->type & exclude)) {
-    //New test for shadowing
-    if(symboltable_lookup_surrounding_scope(node->buffer) && is_right_child(NODE_DECLARATION,node) && !get_parent_node(NODE_FUNCTION_CALL,node) && get_node(NODE_TSPEC,get_parent_node(NODE_DECLARATION,node)->lhs))
-    {
-      // Do not allow shadowing.
-      //
-      // Note that if we want to allow shadowing, then the symbol table must
-      // be searched in reverse order
-      fprintf(stderr,
-              "Error! Symbol '%s' already present in symbol table. Shadowing "
-              "is not allowed.\n",
-              node->buffer);
-      exit(EXIT_FAILURE);
-      assert(0);
-    }
-    if (!symboltable_lookup(node->buffer)) {
-      char* tspec = NULL;
-      int tspec_token = 0;
-      int* tqualifiers = malloc(sizeof(int)*MAX_ID_LEN);
-      size_t n_tqualifiers = 0;
-
-      const ASTNode* decl = get_parent_node(NODE_DECLARATION, node);
-      if (decl) {
-        const ASTNode* tspec_node = get_node(NODE_TSPEC, decl);
-        const ASTNode* tqual_node = get_node(NODE_TQUAL, decl);
-
-        if (tspec_node && tspec_node->lhs){
-          tspec = tspec_node->lhs->buffer;
-	  tspec_token = tspec_node->lhs->token;
-        }
-        if (tqual_node && tqual_node->lhs)
-	{
-	  const ASTNode* tqual_list_node = tqual_node->parent;
-	  //backtrack to the start of the list
-	  while(tqual_list_node->parent && tqual_list_node->parent->rhs && tqual_list_node->parent->rhs->type & NODE_TQUAL)
-		  tqual_list_node = tqual_list_node->parent;
-	  while(tqual_list_node->rhs)
+	  const ASTNode* range_node = get_parent_node_by_token(RANGE,node);
+	  if(range_node)
 	  {
-		  tqualifiers[n_tqualifiers] = tqual_list_node->rhs->lhs->token;
-		  ++n_tqualifiers;
-		  tqual_list_node = tqual_list_node->lhs;
+		fprintf(stderr,FATAL_ERROR_MESSAGE"Undeclared variable or function used on a range expression\n");
+		fprintf(stderr,"Range: %s\n",combine_all_new(range_node));
+		fprintf(stderr,"Var: %s\n",node->buffer);
+		fprintf(stderr,"\n");
+		exit(EXIT_FAILURE);
 	  }
-	  tqualifiers[n_tqualifiers] = tqual_list_node->lhs->lhs->token;
-	  ++n_tqualifiers;
-	}
-      }
+}	
+static void
+check_for_undeclared_function(const ASTNode* node)
+{
+	  const ASTNode* func_call_node = get_parent_node(NODE_FUNCTION_CALL,node);
+	  if(func_call_node)
+	  {
+		if(get_node_by_token(IDENTIFIER,func_call_node->lhs)->id == node->id)
+		{
+			const char* tmp = combine_all_new(func_call_node);
+			const char* func_name = get_node_by_token(IDENTIFIER,func_call_node->lhs)->buffer;
+			fprintf(stderr,FATAL_ERROR_MESSAGE);
+                        if(str_vec_contains(duplicate_dfuncs.names,func_name))
+                                fprintf(stderr,"Unable to resolve overloaded function: %s\nIn:\t%s\n",func_name,tmp);
+                        else
+                                fprintf(stderr,"Undeclared function used: %s\nIn:\t%s\n",func_name,tmp);
+			const ASTNode* surrounding_func = get_parent_node(NODE_FUNCTION,node);
+			if(surrounding_func)
+                                fprintf(stderr,"Inside %s",get_node_by_token(IDENTIFIER,surrounding_func->lhs)->buffer);
+			fprintf(stderr,"\n");
+			exit(EXIT_FAILURE);
+		}
 
-      if (stream) {
+	  }
+}
+static void
+check_for_undeclared_use_in_assignment(const ASTNode* node)
+{
+	
+	  const bool used_in_assignment = is_right_child(NODE_ASSIGNMENT,node);
+	  if(used_in_assignment)
+	  {
+		fprintf(stderr,FATAL_ERROR_MESSAGE"Undeclared variable or function used on the right hand side of an assignment\n");
+		fprintf(stderr,"Assignment: %s\n",combine_all_new(get_parent_node(NODE_ASSIGNMENT,node)));
+		fprintf(stderr,"Var: %s\n",node->buffer);
+		fprintf(stderr,"\n");
+		exit(EXIT_FAILURE);
+	  }
+}
+static void
+check_for_undeclared(const ASTNode* node)
+{
+	 check_for_undeclared_use_in_range(node);
+	 check_for_undeclared_function(node);
+	 check_for_undeclared_use_in_assignment(node);
+
+}
+static void
+translate_buffer_body(FILE* stream, const ASTNode* node)
+{
+  if (stream && node->buffer) {
+    const Symbol* symbol = symboltable_lookup(node->buffer);
+    if (symbol && symbol->type & NODE_VARIABLE_ID && int_vec_contains(symbol->tqualifiers,DCONST_QL))
+      fprintf(stream, "DCONST(%s)", node->buffer);
+    else if (symbol && symbol->type & NODE_VARIABLE_ID && int_vec_contains(symbol->tqualifiers,RUN_CONST))
+      fprintf(stream, "RCONST(%s)", node->buffer);
+    else
+      fprintf(stream, "%s", node->buffer);
+  }
+}
+static void
+output_qualifiers(FILE* stream, const ASTNode* node, const int* tqualifiers, const size_t n_tqualifiers)
+{
         const ASTNode* is_dconst = get_parent_node_exclusive(NODE_DCONST, node);
         if (is_dconst)
           fprintf(stream, "__device__ ");
@@ -3445,11 +3407,20 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 		if(tqualifiers[i] != BOUNDARY_CONDITION && tqualifiers[i] != ELEMENTAL && tqualifiers[i] != UTILITY)
           		fprintf(stream, "%s ", qualifier_to_str(tqualifiers[i]));
 	  }
+}
+typedef struct
+{
+	const char* id;
+	int token;
+} tspecifier;
 
-        if (tspec) 
+void
+output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node, const bool do_undeclared_check)
+{
+        if (tspec.id) 
 	{
-	  if(tspec_token != KERNEL)
-            fprintf(stream, "%s ", tspec);
+	  if(tspec.token != KERNEL)
+            fprintf(stream, "%s ", tspec.id);
         }
         else if (!get_parent_node_exclusive(NODE_STENCIL, node) &&
                  !(node->type & NODE_MEMBER_ID) &&
@@ -3465,75 +3436,125 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
 		  fprintf(stream, "%s ",node->expr_type);
 	  else
           	fprintf(stream, "auto ");
-	  const ASTNode* range_node = get_parent_node_by_token(RANGE,node);
-	  if(range_node)
-	  {
-		fprintf(stderr,FATAL_ERROR_MESSAGE"Undeclared variable or function used on a range expression\n");
-		fprintf(stderr,"Range: %s\n",combine_all_new(range_node));
-		fprintf(stderr,"Var: %s\n",node->buffer);
-		fprintf(stderr,"\n");
-		exit(EXIT_FAILURE);
-	  }
-	  const ASTNode* func_call_node = get_parent_node(NODE_FUNCTION_CALL,node);
-	  if(func_call_node)
-	  {
-		if(get_node_by_token(IDENTIFIER,func_call_node->lhs)->id == node->id)
-		{
-			const char* tmp = combine_all_new(func_call_node);
-			const char* func_name = get_node_by_token(IDENTIFIER,func_call_node->lhs)->buffer;
-			fprintf(stderr,FATAL_ERROR_MESSAGE);
-                        if(str_vec_contains(duplicate_dfuncs,func_name))
-                                fprintf(stderr,"Unable to resolve overloaded function: %s\nIn:\t%s\n",func_name,tmp);
-                        else
-                                fprintf(stderr,"Undeclared function used: %s\nIn:\t%s\n",func_name,tmp);
-			const ASTNode* surrounding_func = get_parent_node(NODE_FUNCTION,node);
-			if(surrounding_func)
-                                fprintf(stderr,"Inside %s",get_node_by_token(IDENTIFIER,surrounding_func->lhs)->buffer);
-			fprintf(stderr,"\n");
-			exit(EXIT_FAILURE);
-		}
-
-	  }
-
-	  const bool used_in_assignment = is_right_child(NODE_ASSIGNMENT,node);
-	  if(used_in_assignment)
-	  {
-		fprintf(stderr,FATAL_ERROR_MESSAGE"Undeclared variable or function used on the right hand side of an assignment\n");
-		fprintf(stderr,"Assignment: %s\n",combine_all_new(get_parent_node(NODE_ASSIGNMENT,node)));
-		fprintf(stderr,"Var: %s\n",node->buffer);
-		fprintf(stderr,"\n");
-		exit(EXIT_FAILURE);
-	  }
+	  if(do_undeclared_check) check_for_undeclared(node);
 	}
+}
+
+tspecifier
+get_tspec(const ASTNode* node)
+{
+      const ASTNode* decl = get_parent_node(NODE_DECLARATION, node);
+      if(!decl) return (tspecifier){NULL, 0};
+      const ASTNode* tspec_node = get_node(NODE_TSPEC, decl);
+      const ASTNode* tqual_node = get_node(NODE_TQUAL, decl);
+      if(!tspec_node || !tspec_node->lhs) return (tspecifier){NULL,0};
+      return 
+	     (tspecifier)
+	      {
+		      tspec_node->lhs->buffer,
+		      tspec_node->lhs->token
+	      };
+}
+size_t
+get_qualifiers(const ASTNode* node, int* tqualifiers)
+{
+      const ASTNode* decl = get_parent_node(NODE_DECLARATION, node);
+      if(!decl) return 0;
+      const ASTNode* tqual_node = get_node(NODE_TQUAL, decl);
+      if(!tqual_node || !tqual_node->lhs) return 0;
+      size_t n_tqualifiers = 0;
+
+	  const ASTNode* tqual_list_node = tqual_node->parent;
+	  //backtrack to the start of the list
+	  while(tqual_list_node->parent && tqual_list_node->parent->rhs && tqual_list_node->parent->rhs->type & NODE_TQUAL)
+		  tqual_list_node = tqual_list_node->parent;
+	  while(tqual_list_node->rhs)
+	  {
+		  tqualifiers[n_tqualifiers] = tqual_list_node->rhs->lhs->token;
+		  ++n_tqualifiers;
+		  tqual_list_node = tqual_list_node->lhs;
+	  }
+	  tqualifiers[n_tqualifiers] = tqual_list_node->lhs->lhs->token;
+	  ++n_tqualifiers;
+
+      return n_tqualifiers;
+}
+void static 
+check_for_shadowing(const ASTNode* node)
+{
+    if(symboltable_lookup_surrounding_scope(node->buffer) && is_right_child(NODE_DECLARATION,node) && !get_parent_node(NODE_FUNCTION_CALL,node) && get_node(NODE_TSPEC,get_parent_node(NODE_DECLARATION,node)->lhs))
+    {
+      // Do not allow shadowing.
+      //
+      // Note that if we want to allow shadowing, then the symbol table must
+      // be searched in reverse order
+      fprintf(stderr,
+              "Error! Symbol '%s' already present in symbol table. Shadowing "
+              "is not allowed.\n",
+              node->buffer);
+      exit(EXIT_FAILURE);
+      assert(0);
+    }
+}
+void
+traverse_base(const ASTNode* node, const NodeType exclude, FILE* stream, bool do_checks)
+{
+  if(node->type == NODE_ENUM_DEF)   return;
+  if(node->type == NODE_STRUCT_DEF) return;
+  if (node->type & exclude)
+	  stream = NULL;
+  // Do not translate tqualifiers or tspecifiers immediately
+  if (node->parent &&
+      (node->parent->type & NODE_TQUAL || node->parent->type & NODE_TSPEC))
+    return;
+
+  // Prefix translation
+  // Prefix translation
+  if (stream && node->prefix)
+      fprintf(stream, "%s", node->prefix);
+
+  // Prefix logic
+  if (node->type & NODE_BEGIN_SCOPE) {
+    assert(current_nest < MAX_NESTS);
+
+    ++current_nest;
+    num_symbols[current_nest] = num_symbols[current_nest - 1];
+  }
+
+  // Traverse LHS
+  if (node->lhs)
+    traverse_base(node->lhs, exclude, stream, do_checks);
+
+  // Add symbols to symbol table
+  if (node->buffer && node->token == IDENTIFIER && !(node->type & exclude)) {
+    //New test for shadowing
+    if (do_checks) check_for_shadowing(node);
+    if (!symboltable_lookup(node->buffer)) {
+      static int tqualifiers[MAX_ID_LEN];
+      size_t n_tqualifiers = get_qualifiers(node,tqualifiers);
+      tspecifier tspec = get_tspec(node);
+
+
+      if (stream) {
+	output_qualifiers(stream,node,tqualifiers,n_tqualifiers);
+	output_specifier(stream,tspec,node,do_checks);
       }
       if (!(node->type & NODE_MEMBER_ID))
       {
-        add_symbol(node->type, tqualifiers, n_tqualifiers, tspec, tspec_token, node->buffer);
+        add_symbol(node->type, tqualifiers, n_tqualifiers, tspec.id, tspec.token, node->buffer);
       }
-
-      free(tqualifiers);
     }
   }
 
   // Infix translation
-  if (stream)
-    if (node->infix)
-      fprintf(stream, "%s", node->infix);
-
+  if (stream && node->infix) 
+    fprintf(stream, "%s", node->infix);
   // Translate buffer body
-  if (stream && node->buffer) {
-    const Symbol* symbol = symboltable_lookup(node->buffer);
-    if (symbol && symbol->type & NODE_VARIABLE_ID && int_vec_contains(symbol->tqualifiers,DCONST_QL))
-      fprintf(stream, "DCONST(%s)", node->buffer);
-    else if (symbol && symbol->type & NODE_VARIABLE_ID && int_vec_contains(symbol->tqualifiers,RUN_CONST))
-      fprintf(stream, "RCONST(%s)", node->buffer);
-    else
-      fprintf(stream, "%s", node->buffer);
-  }
+  translate_buffer_body(stream, node);
 
   // Traverse RHS
   if (node->rhs)
-    traverse(node->rhs, exclude, stream);
+    traverse_base(node->rhs, exclude, stream,do_checks);
 
   // Postfix logic
   if (node->type & NODE_BEGIN_SCOPE) {
@@ -3542,10 +3563,13 @@ traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
   }
 
   // Postfix translation
-  if (stream) {
-    if (node->postfix)
-      fprintf(stream, "%s", node->postfix);
-  }
+  if (stream && node->postfix) 
+    fprintf(stream, "%s", node->postfix);
+}
+static inline void
+traverse(const ASTNode* node, const NodeType exclude, FILE* stream)
+{
+	traverse_base(node,exclude,stream,false);
 }
 
 func_params_info
@@ -3618,7 +3642,7 @@ get_dfunc_identifiers(const ASTNode* node)
 }
 
 
-string_vec
+overloaded_dfuncs
 get_duplicate_dfuncs(const ASTNode* node)
 {
   string_vec dfuncs = get_dfunc_identifiers(node);
@@ -3627,15 +3651,17 @@ get_duplicate_dfuncs(const ASTNode* node)
   for(size_t i = 0; i < dfuncs.size; ++i)
 	  n_entries[get_symbol_index(NODE_DFUNCTION_ID,dfuncs.data[i],0)]++;
   string_vec res = VEC_INITIALIZER;
+  int_vec    count_res = VEC_INITIALIZER;
   for(size_t i = 0; i < dfuncs.size; ++i)
   {
 	  const int index = get_symbol_index(NODE_DFUNCTION_ID,dfuncs.data[i],0);
 	  if(index == -1) continue;
 	  const char* name = get_symbol_by_index(NODE_DFUNCTION_ID,index,0)->identifier;
 	  if(n_entries[index] > 1) push(&res,name);
+	  if(n_entries[index] > 1) push_int(&count_res,n_entries[index]);
   }
   free_str_vec(&dfuncs);
-  return res;
+  return (overloaded_dfuncs){res,count_res};
 }
 void
 set_primary_expression_types(ASTNode* node, const char* type, const char* identifier)
@@ -3923,7 +3949,7 @@ get_func_call_expr_type(ASTNode* node)
 				if(know_all_types)
 				{
 					func_params_info info = get_function_param_types_and_names(func,func_name);
-					if(!str_vec_contains(duplicate_dfuncs,func_name) && call_info.types.size == info.expr.size)
+					if(!str_vec_contains(duplicate_dfuncs.names,func_name) && call_info.types.size == info.expr.size)
 					{
 						ASTNode* func_copy = astnode_dup(func,NULL);
 						for(size_t i = 0; i < info.expr.size; ++i)
@@ -5240,34 +5266,40 @@ find_dfunc_start(const ASTNode* node, const char* dfunc_name)
 	       node->rhs ? find_dfunc_start(node->rhs,dfunc_name) :
 	       NULL;
 }
+char*
+get_mangled_name(const char* dfunc_name, const string_vec types)
+{
+		char* tmp;
+		asprintf(&tmp,"%s_AC_MANGLED_NAME_",dfunc_name);
+		for(size_t i = 0; i < types.size; ++i)
+			asprintf(&tmp,"%s_%s",tmp,types.data[i]);
+		tmp = realloc(tmp,sizeof(char)*(strlen(tmp) + 5*types.size));
+		replace_substring(&tmp,"*","ARRAY");
+		return tmp;
+}
 void
-mangle_dfunc_name(ASTNode* node, const char* dfunc_name, string_vec* dst, const int dfunc_index, int* counter)
+mangle_dfunc_names(ASTNode* node, string_vec* dst, int* counters)
 {
 	if(node->lhs)
-		mangle_dfunc_name(node->lhs,dfunc_name,dst,dfunc_index,counter);
+		mangle_dfunc_names(node->lhs,dst,counters);
 	if(node->rhs)
-		mangle_dfunc_name(node->rhs,dfunc_name,dst,dfunc_index,counter);
+		mangle_dfunc_names(node->rhs,dst,counters);
 	if(!(node->type & NODE_DFUNCTION))
 		return;
-	if(strcmp(get_node_by_token(IDENTIFIER,node->lhs)->buffer, dfunc_name))
+	const int dfunc_index = str_vec_get_index(duplicate_dfuncs.names,get_node_by_token(IDENTIFIER,node->lhs)->buffer);
+	if(dfunc_index == -1)
 		return;
-
-
+	const char* dfunc_name = duplicate_dfuncs.names.data[dfunc_index];
+	const int overload_index = counters[dfunc_index];
 	func_params_info params_info = get_function_param_types_and_names(node,dfunc_name);
-	char* tmp = malloc(sizeof(char)*10000);
-	sprintf(tmp,"%s_AC_MANGLED_NAME_",dfunc_name);
+	counters[dfunc_index]++;
 	for(size_t i = 0; i < params_info.types.size; ++i)
 	{
-		push(&dst[*counter + MAX_DFUNCS*dfunc_index], params_info.types.data[i]);
-		strcatprintf(tmp,"_%s",params_info.types.data[i]);
+		push(&dst[overload_index + MAX_DFUNCS*dfunc_index], params_info.types.data[i]);
 	}
-	replace_substring(&tmp,"*","ARRAY");
 	free(get_node_by_token(IDENTIFIER,node->lhs)->buffer);
-	get_node_by_token(IDENTIFIER,node->lhs)->buffer = strdup(tmp);
-	
+	get_node_by_token(IDENTIFIER,node->lhs)->buffer = get_mangled_name(dfunc_name,params_info.types);
 	free_func_params_info(&params_info);
-	free(tmp);
-	++(*counter);
 }
 static bool
 compatible_types(const char* a, const char* b)
@@ -5279,27 +5311,28 @@ compatible_types(const char* a, const char* b)
 		;
 }
 bool
-resolve_overloaded_calls(ASTNode* node, const char* dfunc_name, string_vec* dfunc_possible_types,const int dfunc_index)
+//resolve_overloaded_calls(ASTNode* node, const char* dfunc_name, string_vec* dfunc_possible_types,const int dfunc_index)
+resolve_overloaded_calls(ASTNode* node, string_vec* dfunc_possible_types)
 {
 	bool res = false;
 	if(node->lhs)
-		res |= resolve_overloaded_calls(node->lhs,dfunc_name,dfunc_possible_types,dfunc_index);
+		res |= resolve_overloaded_calls(node->lhs,dfunc_possible_types);
 	if(node->rhs)
-		res |= resolve_overloaded_calls(node->rhs,dfunc_name,dfunc_possible_types,dfunc_index);
+		res |= resolve_overloaded_calls(node->rhs,dfunc_possible_types);
 	if(!(node->type & NODE_FUNCTION_CALL))
 		return res;
 	if(!get_node_by_token(IDENTIFIER,node->lhs))
 		return res;
-	if(strcmp(get_node_by_token(IDENTIFIER,node->lhs)->buffer, dfunc_name))
+	const int dfunc_index = str_vec_get_index(duplicate_dfuncs.names,get_node_by_token(IDENTIFIER,node->lhs)->buffer);
+	if(dfunc_index == -1)
 		return res;
+	const char* dfunc_name = duplicate_dfuncs.names.data[dfunc_index];
 	func_params_info call_info = get_func_call_params_info(node);
 	if(!strcmp(dfunc_name,"dot") && call_info.types.size == 2 && !strcmp_null_ok(call_info.types.data[0],"AcRealArray") && !strcmp_null_ok(call_info.types.data[1],"AcRealArray"))
 	{
 		get_node_by_token(IDENTIFIER,node->lhs)->buffer = strdup("AC_dot");
 		return true;
 	}
-	char* tmp = malloc(sizeof(char)*10000);
-	sprintf(tmp,"%s_AC_MANGLED_NAME_",dfunc_name);
 	int correct_types = -1;
 	int overload_index = MAX_DFUNCS*dfunc_index-1;
 	int_vec possible_indexes = VEC_INITIALIZER;
@@ -5345,14 +5378,16 @@ resolve_overloaded_calls(ASTNode* node, const char* dfunc_name, string_vec* dfun
 		//}
 		return res;
 	}
-	string_vec types = dfunc_possible_types[possible_indexes.data[0]];
-	for(size_t i = 0; i < types.size; ++i)
-		strcatprintf(tmp,"_%s",types.data[i]);
-	replace_substring(&tmp,"*","ARRAY");
-	free(get_node_by_token(IDENTIFIER,node->lhs)->buffer);
-	get_node_by_token(IDENTIFIER,node->lhs)->buffer = strdup(tmp);
+	{
+		free(get_node_by_token(IDENTIFIER,node->lhs)->buffer);
+		//TP: do not have to strdup since tmp is not used after
+		//TP: tmp should really always point to the src buffer but if I do that
+		//TP: for some reason the code slows down
+		const string_vec types = dfunc_possible_types[possible_indexes.data[0]];
+		get_node_by_token(IDENTIFIER,node->lhs)->buffer = get_mangled_name(dfunc_name,types);
 
-	free(tmp);
+	}
+
 	free_str_vec(&call_info.expr);
 	free_str_vec(&call_info.types);
 	free_int_vec(&possible_indexes);
@@ -5363,13 +5398,11 @@ void
 gen_overloads(ASTNode* root)
 {
   bool overloaded_something = true;
-  string_vec dfunc_possible_types[MAX_DFUNCS * duplicate_dfuncs.size];
-  memset(dfunc_possible_types,0,sizeof(string_vec)*MAX_DFUNCS*duplicate_dfuncs.size);
-  for(size_t i = 0; i < duplicate_dfuncs.size; ++i)
-  {
-	int counter = 0;
-  	mangle_dfunc_name(root,duplicate_dfuncs.data[i], dfunc_possible_types, i, &counter);
-  }
+  string_vec dfunc_possible_types[MAX_DFUNCS * duplicate_dfuncs.names.size];
+  memset(dfunc_possible_types,0,sizeof(string_vec)*MAX_DFUNCS*duplicate_dfuncs.names.size);
+  int counters[duplicate_dfuncs.names.size];
+  memset(counters,0,sizeof(int)*duplicate_dfuncs.names.size);
+  mangle_dfunc_names(root,dfunc_possible_types,counters);
   
   symboltable_reset();
   traverse(root, NODE_NO_OUT, NULL);
@@ -5378,10 +5411,11 @@ gen_overloads(ASTNode* root)
   {
 	overloaded_something = false;
   	gen_type_info(root);
-  	for(size_t i = 0; i < duplicate_dfuncs.size; ++i)
-  	        overloaded_something |= resolve_overloaded_calls(root,duplicate_dfuncs.data[i],dfunc_possible_types,i);
+	overloaded_something |= resolve_overloaded_calls(root,dfunc_possible_types);
+  	//for(size_t i = 0; i < duplicate_dfuncs.size; ++i)
+  	        //overloaded_something |= resolve_overloaded_calls(root,duplicate_dfuncs.data[i],dfunc_possible_types,i);
   }
-  for(size_t i = 0; i < MAX_DFUNCS*duplicate_dfuncs.size; ++i)
+  for(size_t i = 0; i < MAX_DFUNCS*duplicate_dfuncs.names.size; ++i)
 	  free_str_vec(&dfunc_possible_types[i]);
 }
 static ASTNode*
@@ -5615,7 +5649,7 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
   	ASTNode* root = astnode_dup(root_in,NULL);
 
 	symboltable_reset();
-  	traverse(root, 0, NULL);
+  	traverse_base(root, 0, NULL, true);
         duplicate_dfuncs = get_duplicate_dfuncs(root);
 
   	assert(root);
@@ -5623,7 +5657,8 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 	e_info = read_user_enums(root);
 	gen_type_info(root);
 	gen_extra_func_definitions_recursive(root,root,stream);
-	free_str_vec(&duplicate_dfuncs);
+	free_str_vec(&duplicate_dfuncs.names);
+	free_int_vec(&duplicate_dfuncs.counts);
   free_structs_info(&s_info);
 
 }
