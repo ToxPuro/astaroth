@@ -464,7 +464,6 @@ Kernel shock_1_divu()
 
 Kernel shock_2_max()
 {
-
     write(VTXBUF_SHOCK, max5_shock())
 }
 

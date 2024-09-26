@@ -27,7 +27,7 @@
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
-#define fabs(x) ((_Generic((x), float : fabsf, double : fabs, long double : fabsl))(x))
+#define fabs(x) ((_Generic((x), float: fabsf, double: fabs, long double: fabsl))(x))
 
 // Defines for colored output
 static inline bool

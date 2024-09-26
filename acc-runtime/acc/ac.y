@@ -594,7 +594,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
                 variable_definition->type |= NODE_DCONST;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             }
-
          }
        | program intrinsic_definition { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }
        | program function_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, $2); }

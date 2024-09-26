@@ -155,7 +155,7 @@ typedef class Task {
   public:
     Task(int order_, Region input_region_, Region output_region, AcTaskDefinition op,
          Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
-    virtual ~Task(){};
+    virtual ~Task() {};
 
     virtual bool test()                               = 0;
     virtual void advance(const TraceFile* trace_file) = 0;
@@ -298,7 +298,8 @@ typedef class BoundaryConditionTask : public Task {
 
 typedef class SyncTask : public Task {
   public:
-    SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
+    SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_,
+             std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_);
     void advance(const TraceFile* trace_file);
     bool test();
 } SyncTask;
