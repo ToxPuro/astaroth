@@ -170,12 +170,14 @@ typedef enum {
 
 #ifdef __cplusplus
 enum class AcProcMappingStrategy:int{
-    Morton = -1, //The default
-    Linear = 1,
+    Morton = -1,//The default
+    Linear  = 1,
+    Hierarchical= 2, 
 };
 enum class AcDecomposeStrategy:int{
-    Default = -1, 
+    Morton = -1, 
     External = 1,
+    Hierarchical= 2, 
 };
 enum class AcMPICommStrategy:int{
 	DuplicateMPICommWorld = -1,

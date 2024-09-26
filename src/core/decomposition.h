@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2024, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -17,170 +17,43 @@
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
 #pragma once
-#if AC_MPI_ENABLED
-#include "astaroth.h"
-
 #include <stdint.h> //uint64_t
 
 #include "errchk.h"
-#include "math_utils.h"
+#include "math_utils.h" //uint64_t, uint3_64
+#include "astaroth.h"
 
+typedef struct {
+    size_t ndims;
+    size_t* global_dims; // [ndims]
+    size_t* local_dims;  // [ndims]
 
-#if TWO_D == 0
-#define MPI_DECOMPOSITION_AXES (3)
-#else
-#define MPI_DECOMPOSITION_AXES (2)
-#endif
+    size_t nlayers;
+    size_t* decomposition;        // [nlayers*ndims]
+    size_t* global_decomposition; // [ndims]
+} AcDecompositionInfo;
 
-static inline uint3_64
-morton3D(const uint64_t pid)
-{
-    uint64_t i, j, k;
-    i = j = k = 0;
+void acDecompositionInfoPrint(const AcDecompositionInfo info);
 
-    if (MPI_DECOMPOSITION_AXES == 3) {
-        for (int bit = 0; bit <= 21; ++bit) {
-            const uint64_t mask = 0x1l << 3 * bit;
-            k |= ((pid & (mask << 0)) >> 2 * bit) >> 0;
-            j |= ((pid & (mask << 1)) >> 2 * bit) >> 1;
-            i |= ((pid & (mask << 2)) >> 2 * bit) >> 2;
-        }
-    }
-    // Just a quick copy/paste for other decomp dims
-    else if (MPI_DECOMPOSITION_AXES == 2) {
-        for (int bit = 0; bit <= 21; ++bit) {
-            const uint64_t mask = 0x1l << 2 * bit;
-#if TWO_D == 0
-            j |= ((pid & (mask << 0)) >> 1 * bit) >> 0;
-            k |= ((pid & (mask << 1)) >> 1 * bit) >> 1;
-#else
-            i |= ((pid & (mask << 0)) >> 1 * bit) >> 0;
-            j |= ((pid & (mask << 1)) >> 1 * bit) >> 1;
-#endif
-        }
-    }
-    else if (MPI_DECOMPOSITION_AXES == 1) {
-        for (int bit = 0; bit <= 21; ++bit) {
-            const uint64_t mask = 0x1l << 1 * bit;
-            k |= ((pid & (mask << 0)) >> 0 * bit) >> 0;
-        }
-    }
-    else {
-        fprintf(stderr, "Invalid MPI_DECOMPOSITION_AXES\n");
-        ERRCHK_ALWAYS(0);
-    }
+AcDecompositionInfo acDecompositionInfoCreate(const size_t ndims, const size_t* global_dims,
+                                              const size_t nlayers,
+                                              const size_t* partitions_per_layer);
 
-    return (uint3_64){i, j, k};
-}
+void acDecompositionInfoDestroy(AcDecompositionInfo* info);
 
-static inline uint64_t
-morton1D(const uint3_64 pid)
-{
-    uint64_t i = 0;
+int acGetPid(const int3 pid_input, const AcDecompositionInfo info);
 
-    if (MPI_DECOMPOSITION_AXES == 3) {
-        for (int bit = 0; bit <= 21; ++bit) {
-            const uint64_t mask = 0x1l << bit;
-            i |= ((pid.z & mask) << 0) << 2 * bit;
-            i |= ((pid.y & mask) << 1) << 2 * bit;
-            i |= ((pid.x & mask) << 2) << 2 * bit;
-        }
-    }
-    else if (MPI_DECOMPOSITION_AXES == 2) {
-        for (int bit = 0; bit <= 21; ++bit) {
-            const uint64_t mask = 0x1l << bit;
-#if TWO_D == 0
-            i |= ((pid.y & mask) << 0) << 1 * bit;
-            i |= ((pid.z & mask) << 1) << 1 * bit;
-#else
-            i |= ((pid.x & mask) << 0) << 1 * bit;
-            i |= ((pid.y & mask) << 1) << 1 * bit;
-#endif
-        }
-    }
-    else if (MPI_DECOMPOSITION_AXES == 1) {
-        for (int bit = 0; bit <= 21; ++bit) {
-            const uint64_t mask = 0x1l << bit;
-            i |= ((pid.z & mask) << 0) << 0 * bit;
-        }
-    }
-    else {
-        fprintf(stderr, "Invalid MPI_DECOMPOSITION_AXES\n");
-        ERRCHK_ALWAYS(0);
-    }
+int3 acGetPid3D(const int i, const AcDecompositionInfo info);
 
-    return i;
-}
+// --------------------
+// Backwards compatibility
+// --------------------
+void compat_acDecompositionInit(const size_t ndims, const size_t* global_dims, const size_t nlayers,
+                                const size_t* partitions_per_layer);
+void compat_acDecompositionQuit(void);
 
-static inline uint3_64
-decompose(const uint64_t target)
-{
-    // This is just so beautifully elegant. Complex and efficient decomposition
-    // in just one line of code.
-    uint3_64 p = morton3D(target - 1) + (uint3_64){1, 1, 1};
+uint3_64 decompose(const uint64_t target, const AcDecomposeStrategy decompose_strategy);
 
-    ERRCHK_ALWAYS(p.x * p.y * p.z == target);
-    return p;
-}
+int getPid(const int3 pid_raw, const uint3_64 decomp,const int proc_mapping_strategy);
 
-static inline uint3_64
-wrap(const int3 i, const uint3_64 n)
-{
-    return (uint3_64){
-        mod(i.x, n.x),
-        mod(i.y, n.y),
-        mod(i.z, n.z),
-    };
-}
-
-static inline int
-getPid(const int3 pid_raw, const uint3_64 decomp, AcProcMappingStrategy proc_mapping_strategy)
-{
-    const uint3_64 pid = wrap(pid_raw, decomp);
-    switch(proc_mapping_strategy)
-    {
-        case AcProcMappingStrategy::Linear:
-            return (int)pid.x + (int)pid.y*decomp.x + (int)pid.z*decomp.x*decomp.y;
-        case AcProcMappingStrategy::Morton:
-            return (int)morton1D(pid);
-        default:
-            printf("Missing proc mapping strategy\n");
-            ERRCHK_ALWAYS(false);
-    }
-}
-
-static inline uint3_64
-get_uintPid3D(const uint64_t pid, const uint3_64 decomp, AcProcMappingStrategy proc_mapping_strategy)
-{
-    switch(proc_mapping_strategy)
-    {
-        case AcProcMappingStrategy::Linear:
-            return (uint3_64){pid % decomp.x, (pid/decomp.x) % decomp.y, (pid/(decomp.x*decomp.y)) % decomp.z};
-        case AcProcMappingStrategy::Morton:
-            return morton3D(pid);
-        default:
-            printf("Missing proc mapping strategy\n");
-            ERRCHK_ALWAYS(false);
-    }
-}
-static inline int3
-getPid3D(const uint64_t pid, const uint3_64 decomp, AcProcMappingStrategy proc_mapping_strategy)
-{
-    const uint3_64 pid3D = get_uintPid3D(pid, decomp, proc_mapping_strategy);
-    ERRCHK_ALWAYS(getPid(static_cast<int3>(pid3D), decomp, proc_mapping_strategy) == (int)pid);
-    return (int3){(int)pid3D.x, (int)pid3D.y, (int)pid3D.z};
-}
-
-/** Assumes that contiguous pids are on the same node and there is one process per GPU. */
-static inline bool
-onTheSameNode(const uint64_t pid_a, const uint64_t pid_b)
-{
-    int devices_per_node = -1;
-    cudaGetDeviceCount(&devices_per_node);
-
-    const uint64_t node_a = pid_a / devices_per_node;
-    const uint64_t node_b = pid_b / devices_per_node;
-
-    return node_a == node_b;
-}
-#endif // AC_MPI_ENABLED
+int3 getPid3D(const uint64_t pid, const uint3_64 decomp,const int proc_mapping_strategy);

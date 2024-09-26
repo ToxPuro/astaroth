@@ -54,7 +54,7 @@ main(void)
     acLoadConfig(AC_DEFAULT_CONFIG, &info, &comp_info);
     acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info, &comp_info);
     acPushToConfig(info,comp_info,AC_proc_mapping_strategy, (int)AcProcMappingStrategy::Linear);
-    acPushToConfig(info,comp_info,AC_decompose_strategy,    (int)AcDecomposeStrategy::Default);
+    acPushToConfig(info,comp_info,AC_decompose_strategy,    (int)AcDecomposeStrategy::Morton);
     acPushToConfig(info,comp_info,AC_MPI_comm_strategy,    (int)AcMPICommStrategy::DuplicateMPICommWorld);
     comp_info.comm = MPI_COMM_WORLD;
 

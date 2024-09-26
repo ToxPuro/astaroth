@@ -71,8 +71,8 @@
 /* Internal interface to grid (a global variable)  */
 typedef struct Grid {
     Device device;
-    AcMesh submesh; // Submesh in host memory. Used as scratch space.
-    uint3_64 decomposition;
+    AcMesh submesh;         // Submesh in host memory. Used as scratch space.
+    uint3_64 decomposition; // For backwards compatibility. Should use AcDecompositionInfo.
     bool initialized;
     int3 nn;
     std::shared_ptr<AcTaskGraph> default_tasks;
@@ -100,6 +100,11 @@ ac_proc_mapping_strategy()
 {
 	return (AcProcMappingStrategy)acGetInfoValue(grid.submesh.info,AC_proc_mapping_strategy);
 }
+static AcDecomposeStrategy
+ac_decomp_strategy()
+{
+	return (AcDecomposeStrategy)acGetInfoValue(grid.submesh.info,AC_decompose_strategy);
+}
 static int 
 ac_nprocs()
 {
@@ -108,19 +113,17 @@ ac_nprocs()
     return nprocs;
 }
 
+
+
 static uint3_64
 get_decomp(const AcMeshInfo global_config)
 {
     switch((AcDecomposeStrategy)acGetInfoValue(global_config,AC_decompose_strategy))
     {
-	    case AcDecomposeStrategy::Default:
-		return decompose(ac_nprocs());
 	    case AcDecomposeStrategy::External:
 		return static_cast<uint3_64>(acGetInfoValue(global_config,AC_domain_decomposition));
 	    default:
-		fprintf(stderr,"Unknown decompose strategy\n");
-		exit(EXIT_FAILURE);
-
+		return decompose(ac_nprocs(),(AcDecomposeStrategy)acGetInfoValue(global_config,AC_decompose_strategy));
     }
     return (uint3_64){0,0,0};
 }
@@ -128,19 +131,19 @@ int3
 getPid3D(const AcMeshInfo config)
 {
     return getPid3D(ac_pid(), get_decomp(config), 
-                   (AcProcMappingStrategy)acGetInfoValue(config,AC_proc_mapping_strategy));
+                   acGetInfoValue(config,AC_proc_mapping_strategy));
 }
 
 int3
 getPid3D(const int pid, const uint3_64 decomp)
 {
-    return getPid3D(pid, decomp,ac_proc_mapping_strategy()); 
+    return getPid3D(pid, decomp,(int)ac_proc_mapping_strategy()); 
 }
 
 int3
 getPid3D(const int pid)
 {
-    return getPid3D(pid, grid.decomposition,ac_proc_mapping_strategy()); 
+    return getPid3D(pid, grid.decomposition,(int)ac_proc_mapping_strategy()); 
 }
 
 AcResult
@@ -429,6 +432,7 @@ check_that_device_allocation_valid()
                 device_count, ac_nprocs());
         ERRCHK_ALWAYS(device_count <= ac_nprocs());
     }
+    MPI_Barrier(acGridMPIComm());
 }
 void 
 check_that_mesh_large_enough(const AcMeshInfo info)
@@ -459,6 +463,26 @@ acGridInit(AcMeshInfo info)
     MPI_Get_processor_name(processor_name, &name_len);
 
     check_that_device_allocation_valid();
+
+    if(info.int_params[AC_decompose_strategy] == (int)AcDecomposeStrategy::Hierarchical)
+    {
+        int device_count = -1;
+        cudaGetDeviceCount(&device_count);
+    	const AcMeshDims mesh_dims = acGetMeshDims(info);
+    	const size_t global_dims[] = {
+        	as_size_t(mesh_dims.nn.x),
+        	as_size_t(mesh_dims.nn.y),
+        	as_size_t(mesh_dims.nn.z),
+    	};
+    	const size_t ndims                  = ARRAY_SIZE(global_dims);
+    	const size_t node_count             = as_size_t((ac_nprocs() + device_count - 1) / device_count);
+    	const size_t partitions_per_layer[] = {as_size_t(device_count), as_size_t(node_count)};
+    	const size_t nlayers                = ARRAY_SIZE(partitions_per_layer);
+    	compat_acDecompositionInit(ndims, global_dims, nlayers, partitions_per_layer);
+    }
+
+    // grid.decomposition_info = acDecompositionInit(ndims, global_dims,
+    // nlayers,partitions_per_layer);
     check_that_decomp_valid(info);
 
     //TP:  Done in order to copy AC_nxgrid -> AC_nx that will be decomposed
@@ -535,6 +559,8 @@ acGridQuit(void)
     grid.decomposition = (uint3_64){0, 0, 0};
     acHostMeshDestroy(&grid.submesh);
     acDeviceDestroy(grid.device);
+    compat_acDecompositionQuit();
+    // acDecompositionInfoDestroy(&grid.decomposition_info);
 
     return AC_SUCCESS;
 }
@@ -2433,7 +2459,7 @@ acGridReduceXYAverage(const Stream stream, const Field field, const Profile prof
     MPI_Comm_size(astaroth_comm, &nprocs);
     MPI_Comm_rank(astaroth_comm, &pid);
 
-    const uint3_64 decomp = decompose(nprocs);
+    const uint3_64 decomp = decompose(nprocs,ac_decomp_strategy());
     const int3 pid3d      = getPid3D(pid, decomp);
     MPI_Comm xy_neighbors;
     MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
@@ -4445,3 +4471,4 @@ acGridIntegrateNonperiodic(const Stream stream, const AcReal dt)
 */
 
 #endif // AC_MPI_ENABLED
+       //
