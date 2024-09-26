@@ -33,3 +33,4 @@ benchmark-data/
 compile_commands.json
 .DS_Store
 samples/tfm-comm/.vscode
+stash*/

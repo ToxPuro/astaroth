@@ -37,10 +37,13 @@ main(void)
     size_t* buffers[]     = {buf0, buf1};
     const size_t nbuffers = ARRAY_SIZE(buffers);
     print("nbuffers", nbuffers);
+    print_ndarray("Mesh", ndims, mm, buf0);
 
     HaloExchangeTask* task = acHaloExchangeTaskCreate(ndims, mm, nn, rr, nbuffers);
     acHaloExchangeTaskLaunch(task, nbuffers, buffers);
     acHaloExchangeTaskSynchronize(task);
+
+    print_ndarray("Mesh", ndims, mm, buf0);
     acHaloExchangeTaskDestroy(&task);
 
     acCommQuit();

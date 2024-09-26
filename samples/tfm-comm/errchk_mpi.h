@@ -21,5 +21,5 @@
     }
 
 // Debug: Disable all MPI API calls
-#undef ERRCHK_MPI_API
-#define ERRCHK_MPI_API(x)
+// #undef ERRCHK_MPI_API
+// #define ERRCHK_MPI_API(x)

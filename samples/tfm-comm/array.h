@@ -7,4 +7,6 @@
 
 void copy(const size_t count, const size_t* in, size_t* out);
 
+void copyi(const size_t count, const int* in, int* out);
+
 void test_array(void);
