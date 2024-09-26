@@ -80,9 +80,15 @@ acHaloSegmentBatchCreate(const size_t ndims, const size_t* mm, const size_t* nn,
         .npackets       = npackets,
         .local_packets  = malloc(sizeof(batch.local_packets[0]) * npackets),
         .remote_packets = malloc(sizeof(batch.remote_packets[0]) * npackets),
+        .requests       = malloc(sizeof(batch.requests[0]) * npackets),
+        .send_subarrays = malloc(sizeof(batch.send_subarrays[0]) * npackets),
+        .recv_subarrays = malloc(sizeof(batch.recv_subarrays[0]) * npackets),
     };
     ERRCHK(batch.local_packets);
     ERRCHK(batch.remote_packets);
+    ERRCHK(batch.requests);
+    ERRCHK(batch.send_subarrays);
+    ERRCHK(batch.recv_subarrays);
 
     for (size_t i = 0; i < npackets; ++i) {
         const size_t* dims      = dims_matrix[i];
@@ -93,6 +99,21 @@ acHaloSegmentBatchCreate(const size_t ndims, const size_t* mm, const size_t* nn,
 
     acHaloSegmentBatchVerify(ndims, mm, nn, batch);
     return batch;
+}
+
+void
+acHaloSegmentBatchDestroy(HaloSegmentBatch* batch)
+{
+    for (size_t i = 0; i < batch->npackets; ++i) {
+        acHaloSegmentDestroy(&batch->local_packets[i]);
+        acHaloSegmentDestroy(&batch->remote_packets[i]);
+    }
+    free(batch->recv_subarrays);
+    free(batch->send_subarrays);
+    free(batch->requests);
+    free(batch->remote_packets);
+    free(batch->local_packets);
+    batch->npackets = 0;
 }
 
 void
@@ -113,16 +134,4 @@ acHaloSegmentBatchPrint(const char* label, const HaloSegmentBatch batch)
         snprintf(buf, buflen, "remote_packets[%zu]", i);
         acHaloSegmentPrint(buf, batch.remote_packets[i]);
     }
-}
-
-void
-acHaloSegmentBatchDestroy(HaloSegmentBatch* batch)
-{
-    for (size_t i = 0; i < batch->npackets; ++i) {
-        acHaloSegmentDestroy(&batch->local_packets[i]);
-        acHaloSegmentDestroy(&batch->remote_packets[i]);
-    }
-    free(batch->remote_packets);
-    free(batch->local_packets);
-    batch->npackets = 0;
 }

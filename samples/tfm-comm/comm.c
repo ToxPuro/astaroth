@@ -63,6 +63,14 @@ acHaloExchangeTaskCreate(const size_t ndims, const size_t* mm, const size_t* nn,
     return task;
 }
 
+void
+acHaloExchangeTaskDestroy(HaloExchangeTask** task)
+{
+    acHaloSegmentBatchDestroy(&((*task)->batch));
+    free(*task);
+    *task = NULL;
+}
+
 /**
  * At each call, returns the next integer in range [0, INT_MAX].
  * If the counter overflows, the counter wraps around and starts again from 0.
@@ -102,14 +110,6 @@ acHaloExchangeTaskLaunch(const HaloExchangeTask* task, const size_t nbuffers,
 void
 acHaloExchangeTaskSynchronize(const HaloExchangeTask* task)
 {
-}
-
-void
-acHaloExchangeTaskDestroy(HaloExchangeTask** task)
-{
-    acHaloSegmentBatchDestroy(&((*task)->batch));
-    free(*task);
-    *task = NULL;
 }
 
 void
