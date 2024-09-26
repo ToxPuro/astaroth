@@ -8,24 +8,49 @@
 #include "partition.h"
 #include "print.h"
 
+// static size_t
+// get_halo_partitions(const size_t ndims, const size_t* mm, const size_t* nn, const size_t*
+// nn_offset,
+//                     const size_t npackets, size_t dims_matrix[npackets][ndims],
+//                     size_t offset_matrix[npackets][ndims])
+// {
+//     if (npartitions == 0 || dims == NULL || offsets == NULL)
+//         return partition(ndims, mm, nn, nn_offset, 0, NULL, NULL) - 1;
+
+//     const size_t npartitions;
+// }
+
 HaloSegmentBatch
 acHaloSegmentBatchCreate(const size_t ndims, const size_t* mm, const size_t* nn,
-                         const size_t* nn_offset, const size_t nfields)
+                         const size_t* nn_offset, const size_t nbuffers)
 {
     // Determine the number of halo partitions
     const size_t npartitions = partition(ndims, mm, nn, nn_offset, 0, NULL, NULL);
-    size_t dims[npartitions][ndims];
-    size_t offsets[npartitions][ndims];
-    partition(ndims, mm, nn, nn_offset, npartitions, dims, offsets);
-    print_matrix("Dims in segment", npartitions, ndims, dims);
-    print_matrix("offsets in segment", npartitions, ndims, offsets);
+    size_t dims_matrix[npartitions][ndims];
+    size_t offset_matrix[npartitions][ndims];
+    partition(ndims, mm, nn, nn_offset, npartitions, dims_matrix, offset_matrix);
 
-    size_t row[ndims];
-    matrix_get_row(22, npartitions, ndims, dims, row);
-    print_array("row", ndims, row);
-    // TODO REMOVE THE computational domain MIDDLE and determine npackets
     size_t npackets = 0;
-    WARNING("TODO determine how to remove center block")
+    for (size_t i = 0; i < npartitions; ++i) {
+        size_t dims[ndims];
+        matrix_get_row(i, npartitions, ndims, dims_matrix, dims);
+        size_t offset[ndims];
+        matrix_get_row(i, npartitions, ndims, offset_matrix, offset);
+
+        // Remove the packet with the computatinal domain
+        // A more elegant way would probably be to check for an overlap with the
+        // computational domain instead
+        if (equals(ndims, nn, dims) && equals(ndims, nn_offset, offset)) {
+            matrix_remove_row(i, npartitions, ndims, dims_matrix, dims_matrix);
+            matrix_remove_row(i, npartitions, ndims, offset_matrix, offset_matrix);
+            npackets = npartitions - 1;
+            break;
+        }
+    }
+    ERRCHK(npackets > 0);
+    ERRCHK(npackets < npartitions);
+    print_matrix("dims_matrix", npartitions, ndims, dims_matrix);
+    print_matrix("offset_matrix", npartitions, ndims, offset_matrix);
 
     print("Creating npackets", npackets);
 
@@ -39,10 +64,10 @@ acHaloSegmentBatchCreate(const size_t ndims, const size_t* mm, const size_t* nn,
     ERRCHK(batch.remote_packets);
 
     for (size_t i = 0; i < npackets; ++i) {
-        const size_t dims[]     = {3, 3, 3};
-        const size_t offset[]   = {0, 0, 0};
-        batch.local_packets[i]  = acHaloSegmentCreate(ndims, dims, offset, nfields);
-        batch.remote_packets[i] = acHaloSegmentCreate(ndims, dims, offset, nfields);
+        const size_t* dims      = dims_matrix[i];
+        const size_t* offset    = offset_matrix[i];
+        batch.local_packets[i]  = acHaloSegmentCreate(ndims, dims, offset, nbuffers);
+        batch.remote_packets[i] = acHaloSegmentCreate(ndims, dims, offset, nbuffers);
     }
 
     return batch;
