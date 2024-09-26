@@ -222,10 +222,11 @@ get_symbol_token(const NodeType type, const char* symbol, const int tspecifier)
 	if(sym->type & type && sym->tspecifier_token == tspecifier) return sym;
 	return NULL;
 	**/
-
   for (size_t i = 0; i < num_symbols[0]; ++i)
+  {
 	  if((!tspecifier || tspecifier == symbol_table[i].tspecifier_token) && symbol_table[i].type & type && !strcmp(symbol,symbol_table[i].identifier))
 			  return &symbol_table[i];
+  }
   return NULL;
 }
 
@@ -1307,7 +1308,7 @@ create_identifier_node(const char* identifier)
 		identifier_node->token    = NUMBER;
 	else
 		identifier_node->token    = IDENTIFIER;
-	identifier_node->buffer   = strdup(identifier);
+	astnode_set_buffer(identifier,identifier_node);
 	return identifier_node;
 }
 static ASTNode*
@@ -1352,7 +1353,7 @@ get_index_node(const ASTNode* array_access_start, const string_vec var_dims_in)
     		if(j)
     		{
 			ASTNode* prefix_node = node->lhs;
-    			asprintf(&prefix_node->buffer,"%s","");
+    			astnode_sprintf(prefix_node,"%s","");
 			prefix_node->prefix = strdup("+(");
 			node_vec dim_nodes = VEC_INITIALIZER;
     			for(size_t k = 0; k < j; ++k)
@@ -1385,7 +1386,7 @@ gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
 	  return;
   if(!node->lhs) return;
   if(get_parent_node(NODE_VARIABLE,node)) return;
-  char* array_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+  const char* array_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
   char* datatype;
   asprintf(&datatype,"%s*",datatype_scalar);
   const int l_current_nest = 0;
@@ -1403,7 +1404,7 @@ gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
 	    node = node->parent;
 	    node->lhs = NULL;
 	    node->rhs = NULL;
-	    asprintf(&node->buffer,"(%s){}",datatype_scalar);
+	    astnode_sprintf(node,"(%s){}",datatype_scalar);
 	    return;
     }
     string_vec var_dims = get_array_var_dims(array_name, root);
@@ -2013,7 +2014,7 @@ get_taskgraph_kernel_calls(const ASTNode* function_call_list_head, int n)
 
 	int_vec calls = VEC_INITIALIZER;
 	ASTNode* function_call = function_call_list_head->lhs;
-	char* func_name = get_node_by_token(IDENTIFIER,function_call)->buffer;
+	const char* func_name = get_node_by_token(IDENTIFIER,function_call)->buffer;
 	if(check_symbol(NODE_FUNCTION_ID,func_name,0,0))
 		push_int(&calls,get_symbol_index(NODE_FUNCTION_ID,func_name,KERNEL));
 	while(--n)
@@ -2115,7 +2116,7 @@ bc_fields
 get_fields_included(const ASTNode* func_call, const char* boundconds_name)
 {
 	func_params_info call_info = get_func_call_params_info(func_call);
-	char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
+	const char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
 	bc_fields res;
 	char* full_name = malloc((strlen(boundconds_name) + strlen(func_name) + 500)*sizeof(char));
 	sprintf(full_name,"%s__%s",boundconds_name,func_name);
@@ -2165,7 +2166,7 @@ const int boundaries[] = {BOUNDARY_X_BOT, BOUNDARY_Y_BOT,BOUNDARY_X_TOP,BOUNDARY
 void
 process_boundcond(const ASTNode* func_call, char** res, const ASTNode* root, const char* boundconds_name)
 {
-	char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
+	const char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
 	const char* boundary = get_node_by_token(IDENTIFIER,func_call->rhs)->buffer;
 	const int boundary_int = get_boundary_int(boundary);
 	const int num_boundaries = TWO_D ? 4 : 6;
@@ -2428,8 +2429,7 @@ rename_variables(ASTNode* node, const char* new_name, const char* new_expr, cons
 	if(node->rhs)
 		rename_variables(node->rhs,new_name,new_expr,old_name);
 	if(do_not_rename(node,old_name)) return;
-	free(node->buffer);
-	node->buffer = strdup(new_name);
+	astnode_set_buffer(new_name,node);
 	node->expr_type = new_expr;
 }
 
@@ -2478,8 +2478,7 @@ make_unique_bc_calls(ASTNode* node)
 					lhs_node ? head : head->parent,
 					new_name,NULL,func_name
 				);
-		free(identifier->buffer);
-		identifier->buffer = new_name;
+		astnode_set_buffer(new_name,identifier);
 	}
 	free_node_vec(&func_calls);
 }
@@ -2968,7 +2967,7 @@ get_dfuncs_called_dfuncs(const ASTNode* node, int_vec* src)
 		get_dfuncs_called_dfuncs(node->rhs,src);
 	if(!(node->type & NODE_DFUNCTION))
 		return;
-	char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
         const int dfunc_index = get_symbol_index(NODE_DFUNCTION_ID,func_name,0);
 	if(dfunc_index > 0)
 	    get_called_dfuncs(node,&src[dfunc_index],src);
@@ -3222,7 +3221,7 @@ gen_optimized_kernel_decls(ASTNode* node, const param_combinations combinations,
 	{
 		ASTNode* new_node = astnode_dup(node,NULL);
 		ASTNode* function_id = (ASTNode*) get_node(NODE_FUNCTION_ID,new_node->lhs);
-		asprintf(&function_id->buffer,"%s_optimized_%d",get_node(NODE_FUNCTION_ID,node)->buffer,i);
+		astnode_sprintf(function_id,"%s_optimized_%d",get_node(NODE_FUNCTION_ID,node)->buffer,i);
 		push_node(&optimized_decls,new_node);
 	}
 	head->rhs = build_list_node(optimized_decls,"");
@@ -3288,7 +3287,7 @@ replace_boolean_dconsts_in_optimized(ASTNode* node, const string_vec* vals, stri
 	const string_vec combinations = vals[kernel_index + MAX_KERNELS*combinations_index];
 	const int param_index = str_vec_get_index(user_kernel_combinatorial_params[kernel_index],node->buffer);
 	if(param_index < 0) return;
-	asprintf(&node->buffer,"%s",combinations.data[param_index]);
+	astnode_sprintf(node,"%s",combinations.data[param_index]);
 	node->lhs = NULL;
 	node->rhs = NULL;
 }
@@ -3311,17 +3310,17 @@ gen_kernel_input_params(ASTNode* node, const string_vec* vals, string_vec user_k
 
 	if(combinations_index == -1)
 	{
-		asprintf(&node->buffer,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
+		astnode_sprintf(node,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
 		return;
 	}
 	const string_vec combinations = vals[kernel_index + MAX_KERNELS*combinations_index];
 	const int param_index = str_vec_get_index(user_kernel_combinatorial_params[kernel_index],node->buffer);
 	if(param_index < 0)
 	{
-		asprintf(&node->buffer,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
+		astnode_sprintf(node,"vba.kernel_input_params.%s.%s",kernel_name,node->buffer);
 		return;
 	}
-	asprintf(&node->parent->parent->parent->buffer,"%s",combinations.data[param_index]);
+	astnode_sprintf(node->parent->parent->parent,"%s",combinations.data[param_index]);
 	node->parent->parent->parent->infix= NULL;
 	node->parent->parent->parent->lhs = NULL;
 	node->parent->parent->parent->rhs = NULL;
@@ -3920,10 +3919,9 @@ get_node_decl(const ASTNode* node, const char* var_name)
 	return NULL;
 }
 
-bool is_first_decl(const ASTNode* node, const ASTNode* begin_scope)
+bool is_first_decl(const ASTNode* node)
 {
-	const ASTNode* first_decl = get_node_decl(begin_scope,get_node_by_token(IDENTIFIER,node)->buffer);
-	return first_decl ? first_decl->id == node->id : true;
+	return node->type & NODE_DECLARATION && node->token == FIRST;
 }
 const char*
 get_assignment_expr_type(ASTNode* node)
@@ -3957,12 +3955,10 @@ get_assignment_expr_type(ASTNode* node)
 		else
 		{
 			//TP should only consider the first declaration since that sets the type
-			const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
-			if(function && function->rhs && is_first_decl(decl,function->rhs))
+			if(is_first_decl(decl))
 			{
 		      		node->expr_type = get_expr_type(node->rhs);
 		      		decl->expr_type = node->expr_type;
-			      	//printf("HMM: %s,%s\n",node->expr_type,combine_all_new(node));
 			}
 		}
 	}
@@ -4922,9 +4918,9 @@ replace_dynamic_coeffs_stencilpoint(ASTNode* node)
   if(!node->buffer) return;
   if(!check_symbol(NODE_VARIABLE_ID, node->buffer, REAL, DCONST_QL) && !check_symbol(NODE_VARIABLE_ID, node->buffer, INT, DCONST_QL)) return;
   //replace with zero to compile the stencil
-  node->buffer = strdup("NAN");
-  node->prefix=strdup("AcReal(");
-  node->postfix = strdup(")");
+  astnode_set_buffer("NAN",node);
+  astnode_set_prefix("AcReal(",node);
+  astnode_set_postfix(")",node);
 }
 void replace_dynamic_coeffs(ASTNode* node)
 {
@@ -4985,8 +4981,7 @@ rename_identifiers(ASTNode* node, const char* old_name, const char* new_name)
 	if(node->token != IDENTIFIER) return;
 	if(strcmp(node->buffer,old_name)) return;
 	printf("renamed :%s\n",old_name);
-	free(node->buffer);
-	node->buffer = strdup(new_name);
+	astnode_set_buffer(new_name,node);
 }
 void
 append_to_identifiers(const char* str_to_append, ASTNode* node, const char* str_to_check)
@@ -4996,11 +4991,7 @@ append_to_identifiers(const char* str_to_append, ASTNode* node, const char* str_
 	if(node->rhs)
 		append_to_identifiers(str_to_append,node->rhs,str_to_check);
 	if(do_not_rename(node,str_to_check)) return;
-	char* new_name = malloc(sizeof(char)*4000);
-	sprintf(new_name,"%s___AC_INTERNAL_%s",node->buffer,str_to_append);
-	free(node->buffer);
-	node->buffer = strdup(new_name);
-	free(new_name);
+	astnode_sprintf(node,"%s___AC_INTERNAL_%s",node->buffer,str_to_append);
 }
 
 void
@@ -5012,7 +5003,7 @@ rename_local_vars(const char* str_to_append, ASTNode* node, ASTNode* root)
 		rename_local_vars(str_to_append,node->rhs,root);
 	if(!(node->type & NODE_DECLARATION))
 		return;
-	const char* name = strdup(get_node_by_token(IDENTIFIER,node)->buffer);
+	const char* name = get_node_by_token(IDENTIFIER,node)->buffer;
 	//const ASTNode* tspec = get_node(NODE_TSPEC,node);
 	append_to_identifiers(str_to_append,root,name);
 }
@@ -5032,27 +5023,6 @@ void
 gen_dfunc_internal_names(ASTNode* root)
 {
   gen_dfunc_internal_names_recursive(root);
-}
-void
-rename_all(const char* to_rename, const char* new_name, ASTNode* node)
-{
-	if(node->lhs)
-		rename_all(to_rename, new_name,node->lhs);
-	if(node->rhs)
-		rename_all(to_rename, new_name,node->rhs);
-	char** src;
-	if(node->buffer && !strcmp(to_rename,node->buffer))
-		src = &node->buffer;
-	else if(node->infix && !strcmp(to_rename,node->infix))
-		src = &node->infix;
-	else if(node->postfix && !strcmp(to_rename,node->postfix))
-		src = &node->postfix;
-	else if(node->prefix&& !strcmp(to_rename,node->prefix))
-		src = &node->prefix;
-	else
-		return;
-	free(*src);
-	*src = strdup(new_name);
 }
 void
 remove_nodes(const NodeType type, ASTNode* node)
@@ -5135,7 +5105,7 @@ transform_arrays_to_std_arrays(ASTNode* node)
 	const ASTNode* tspec = get_node(NODE_TSPEC,node->lhs);
 	if(!tspec)
 		return;
-	asprintf(&tspec->lhs->buffer,"AcArray<%s,%s>",tspec->lhs->buffer,combine_all_new(node->rhs->lhs->rhs));
+	astnode_sprintf(tspec->lhs,"AcArray<%s,%s>",tspec->lhs->buffer,combine_all_new(node->rhs->lhs->rhs));
 	node->rhs->lhs->infix = NULL;
 	node->rhs->lhs->postfix= NULL;
 	node->rhs->lhs->rhs = NULL;
@@ -5313,10 +5283,7 @@ gen_constexpr_in_func(ASTNode* node, const string_vec names, const int_vec assig
 	  if(is_constexpr && get_node(NODE_TSPEC,node->lhs))
 	  {
 		  ASTNode* tspec = (ASTNode*) get_node(NODE_TSPEC,node->lhs);
-		  char* new_type = malloc(sizeof(char)* (strlen(tspec->lhs->buffer) + 100));
-		  sprintf(new_type," constexpr %s",tspec->lhs->buffer);
-		  free(tspec->lhs->buffer);
-		  tspec->lhs->buffer = new_type;
+		  astnode_sprintf(tspec->lhs," constexpr %s",tspec->lhs->buffer);
 	  }
 	}
 	if(is_return_node(node) && !node->is_constexpr)
@@ -5565,8 +5532,8 @@ mangle_dfunc_names(ASTNode* node, string_vec* dst, int* counters)
 	{
 		push(&dst[overload_index + MAX_DFUNCS*dfunc_index], params_info.types.data[i]);
 	}
-	free(get_node_by_token(IDENTIFIER,node->lhs)->buffer);
-	get_node_by_token(IDENTIFIER,node->lhs)->buffer = get_mangled_name(dfunc_name,params_info.types);
+	ASTNode* identifier = get_node_by_token(IDENTIFIER,node->lhs);
+	astnode_set_buffer(get_mangled_name(dfunc_name,params_info.types),identifier);
 	free_func_params_info(&params_info);
 }
 static bool
@@ -5647,12 +5614,8 @@ resolve_overloaded_calls(ASTNode* node, string_vec* dfunc_possible_types)
 		return res;
 	}
 	{
-		free(get_node_by_token(IDENTIFIER,node->lhs)->buffer);
-		//TP: do not have to strdup since tmp is not used after
-		//TP: tmp should really always point to the src buffer but if I do that
-		//TP: for some reason the code slows down
 		const string_vec types = dfunc_possible_types[possible_indexes.data[0]];
-		get_node_by_token(IDENTIFIER,node->lhs)->buffer = get_mangled_name(dfunc_name,types);
+		astnode_set_buffer(get_mangled_name(dfunc_name,types), get_node_by_token(IDENTIFIER,node->lhs));
 
 	}
 
@@ -5691,7 +5654,7 @@ create_binary_op_expr(const char* op)
 {
 	ASTNode* res = astnode_create(NODE_UNKNOWN,NULL,NULL);
 	res->token = BINARY_OP;
-	res->buffer = strdup(op);
+	astnode_set_buffer(op,res);
 	return res;
 }
 static ASTNode*
@@ -5909,6 +5872,38 @@ transform_field_intrinsic_func_calls_and_ops(ASTNode* root)
 	transform_field_binary_ops(root);
 }
 void
+mark_first_declarations_in_funcs(ASTNode* node, string_vec* names)
+{
+	if(node->lhs)
+		mark_first_declarations_in_funcs(node->lhs,names);
+	if(node->type & NODE_DECLARATION)
+	{
+		const char* var_name = get_node_by_token(IDENTIFIER,node)->buffer;
+		if(!str_vec_contains(*names,var_name))
+		{
+			push(names,var_name);
+			node->token = FIRST;
+		}
+	}
+	if(node->rhs)
+		mark_first_declarations_in_funcs(node->rhs,names);
+
+}
+void
+mark_first_declarations(ASTNode* node)
+{
+	if(node->lhs)
+		mark_first_declarations(node->lhs);
+	if(node->type & NODE_FUNCTION)
+	{
+		string_vec names = VEC_INITIALIZER;
+		mark_first_declarations_in_funcs(node,&names);
+		free_str_vec(&names);
+	}
+	if(node->rhs)
+		mark_first_declarations(node->rhs);
+}
+void
 gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 {
 
@@ -5924,6 +5919,8 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 	symboltable_reset();
   	traverse_base(root, 0, NULL, true);
         duplicate_dfuncs = get_duplicate_dfuncs(root);
+
+	mark_first_declarations(root);
 
   	assert(root);
   s_info = read_user_structs(root);
@@ -6009,7 +6006,7 @@ transform_broadcast_assignments(ASTNode* node)
 	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
 	if(!function) return;
 	const char* function_name = get_node_by_token(IDENTIFIER,function->lhs)->buffer;
-	char* op = strdup(node->rhs->lhs->buffer);
+	const char* op = strdup(node->rhs->lhs->buffer);
 	if(strcmp(op,"=")) return;
 	if(count_num_of_nodes_in_list(node->rhs->rhs) != 1)   return;
 	const char* lhs_type = get_expr_type(node->lhs);
@@ -6032,7 +6029,7 @@ remove_unnecessary_assignments(ASTNode* node)
 	if(!if_node) return false;
 	if(count_num_of_nodes_in_list(node->rhs->rhs) != 1)   return false;
 	if(strcmp(node->rhs->lhs->buffer,"="))   return false;
-	if(!(if_node->rhs->lhs->type & NODE_BEGIN_SCOPE) && is_first_decl(node->lhs,function->rhs->rhs))
+	if(!(if_node->rhs->lhs->type & NODE_BEGIN_SCOPE) && is_first_decl(node->lhs))
 	{
 		//remove the if node
 		if(!if_node->rhs->rhs)
@@ -6175,9 +6172,12 @@ gen_ssa_in_basic_blocks(ASTNode* node)
 	if(get_node(NODE_ARRAY_ACCESS,decl->rhs)) return;
 	const char* function_name = get_node_by_token(IDENTIFIER,function->lhs)->buffer;
 	const char* var_name = strdup(get_node_by_token(IDENTIFIER,node->lhs)->buffer);
+
+	//TP: checks is the var declared before this scope
 	const ASTNode* first_decl = get_node_decl(function,var_name);
 	const ASTNode* begin_scope = get_parent_node(NODE_BEGIN_SCOPE,node);
 	if(!get_node_by_id(first_decl->id,begin_scope)) return;
+	
 	char* new_name = malloc((strlen(var_name)+1)*sizeof(char));
 	sprintf(new_name,"%s_",var_name);
 	const bool final_node = is_left_child(NODE_STATEMENT_LIST_HEAD,node);
@@ -6186,7 +6186,7 @@ gen_ssa_in_basic_blocks(ASTNode* node)
 					final_node ? head : head->parent,
 					new_name,node->expr_type, var_name
 				      );
-	get_node_by_token(IDENTIFIER,node->lhs)->buffer = strdup(new_name);
+	astnode_set_buffer(new_name,get_node_by_token(IDENTIFIER,node->lhs));
 	free(new_name);
 }
 void
@@ -6209,6 +6209,7 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   traverse(root, 0, NULL);
   //We use duplicate dfuncs from gen_boundcond_kernels
   //duplicate_dfuncs = get_duplicate_dfuncs(root);
+  mark_first_declarations(root);
   gen_overloads(root);
   transform_broadcast_assignments(root);
   mark_kernel_inputs(root);

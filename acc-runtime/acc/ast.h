@@ -28,6 +28,21 @@
 #include "vecs.h"
 #include <sys/stat.h>
 
+/**
+static unsigned long
+    hash(char *str)
+    {
+	if(!str) return -1;
+        unsigned long hash = 5381;
+        int c;
+
+        while ((c = *str++))
+            hash = ((hash << 5) + hash) + c; // hash * 33 + c
+
+        return hash;
+    }
+**/
+
 #define BUFFER_SIZE (4096)
 #define FATAL_ERROR_MESSAGE "\nFATAL AC ERROR: "
 
@@ -82,6 +97,7 @@ typedef struct astnode_s {
   NodeType type; // Type of the AST node
   char* buffer;  // Indentifiers and other strings (empty by default)
 
+
   int token;     // Type of a terminal (that is not a simple char)
   char* prefix;  // Strings. Also makes the grammar since we don't have
   char* infix;   // to divide it into max two-child rules
@@ -130,7 +146,7 @@ astnode_create(const NodeType type, ASTNode* lhs, ASTNode* rhs)
   node->buffer          = NULL;
   node->is_constexpr    = false;
   node->no_auto         = false;
-  node->expr_type            = NULL;
+  node->expr_type       = NULL;
 
   node->token  = 0;
   node->prefix = node->infix = node->postfix = NULL;
@@ -165,6 +181,17 @@ astnode_set_buffer(const char* buffer, ASTNode* node)
     free(node->buffer);
   node->buffer = strdup(buffer);
 }
+static inline void
+astnode_sprintf(ASTNode* node, const char* format, ...)
+{
+	static char buffer[10000];
+	va_list args;
+	va_start(args,format);
+	int ret = vsprintf(buffer, format, args);
+	va_end(args);
+	astnode_set_buffer(buffer,node);
+}
+
 
 static inline void
 astnode_set_prefix(const char* prefix, ASTNode* node)
@@ -190,6 +217,17 @@ astnode_set_postfix(const char* postfix, ASTNode* node)
   node->postfix = strdup(postfix);
 }
 
+
+static inline void
+astnode_sprintf_postfix(ASTNode* node, const char* format, ...)
+{
+	static char buffer[10000];
+	va_list args;
+	va_start(args,format);
+	int ret = vsprintf(buffer, format, args);
+	va_end(args);
+	astnode_set_postfix(buffer,node);
+}
 static inline void
 astnode_print(const ASTNode* node)
 {

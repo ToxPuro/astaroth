@@ -64,6 +64,7 @@ astnode_hostdefine(const char* buffer, const int token)
             res->buffer[i] = ' ';
         strcpy(res->buffer, def_out);
         res->buffer[strlen(def_out)] = ' ';
+	astnode_sprintf(res,"%s",res->buffer);
 
         astnode_set_postfix("\n", res);
 	return res;
@@ -483,7 +484,7 @@ main(int argc, char** argv)
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE 
 %token STATEMENT_LIST_HEAD STATEMENT
-%token REAL3 INT3
+%token REAL3 INT3 FIRST
 %token RANGE
 %token CONST_DIMS
 %token CAST
@@ -539,7 +540,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 
 				ASTNode* identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
 				identifier->token = IDENTIFIER;
-				asprintf(&identifier->buffer,"%s_%d",field_name_str,i);
+				astnode_sprintf(identifier,"%s_%d",field_name_str,i);
 				ASTNode* primary_expression = astnode_create(NODE_PRIMARY_EXPRESSION,identifier,NULL);
 				ASTNode* node = astnode_create(NODE_UNKNOWN,primary_expression,NULL);
 				set_identifier_type(NODE_VARIABLE_ID,node);
@@ -551,8 +552,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 			//TP: create the equivalent of const Field CHEMISTRY = [CHEMISTRY_0, CHEMISTRY_1,...,CHEMISTRY_N]
 				ASTNode* type_declaration = create_type_declaration("const","VertexBufferHandle*",CONST_QL);
 				ASTNode* var_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
-				var_identifier->buffer = malloc(sizeof(char)*4098);
-				snprintf(var_identifier->buffer,4098,"%s",field_name_str);
+				astnode_sprintf(var_identifier,"%s",field_name_str);
 				var_identifier->token = IDENTIFIER;
 				var_identifier->type = NODE_VARIABLE_ID;
 				ASTNode* arr_initializer = astnode_create(NODE_ARRAY_INITIALIZER,elems,NULL);
@@ -614,6 +614,7 @@ number: NUMBER         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
             $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken;
             astnode_set_prefix("double(", $$); astnode_set_postfix(")", $$);
             $$->buffer[strlen($$->buffer) - 1] = '\0'; // Drop the 'd' postfix
+	    astnode_sprintf($$,"%s",$$->buffer);
         }
       ;
 string: STRING         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
@@ -688,12 +689,14 @@ struct_definition:     struct_name'{' declarations '}' {
                         $$ = astnode_create(NODE_STRUCT_DEF,$1,$3);
 			remove_substring($$->lhs->buffer,"struct");
 			strip_whitespace($$->lhs->buffer);
+			astnode_sprintf($$->lhs,$$->lhs->buffer);
                  }
 		 ;
 enum_definition: enum_name '{' expression_list '}'{
                         $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
 		        remove_substring($1->buffer,"enum");
 		        strip_whitespace($1->buffer);
+			astnode_sprintf($1,$1->buffer);
 		}
 		//| enum_name '{' expression_list '}' enum_type {
                 //        $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
@@ -720,13 +723,13 @@ type_specifier:
 	        scalar_type_specifier {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
 	      | scalar_type_specifier '[' ']' {
 				$$ = astnode_create(NODE_UNKNOWN,$1,NULL); 
-				asprintf(&$1->lhs->buffer,"%s*",$1->lhs->buffer);
+				astnode_sprintf($1->lhs,"%s*",$1->lhs->buffer);
 			}
               | matrix       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | tensor       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | matrix '[' expression ']'
 		{ 
-		   asprintf(&$1->buffer,"AcMatrixN<%s>",combine_all_new($3));
+		   astnode_sprintf($1,"AcMatrixN<%s>",combine_all_new($3));
   		}
               | field        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | field3       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
@@ -906,7 +909,7 @@ variable_definitions: non_null_declaration {
 				  if(get_node(NODE_ARRAY_INITIALIZER,assignment->rhs))
 				  {
 					ASTNode* tspec = (ASTNode*) get_node(NODE_TSPEC,$1);
-					strcat(tspec->lhs->buffer,"*");
+					astnode_sprintf(tspec->lhs,"%s*",tspec->lhs->buffer);
 				  }
 				  if(!$$->lhs->rhs)
 				  {
@@ -988,11 +991,7 @@ assignment: declaration assignment_body {
 				if(tspec)
 				{
 					astnode_set_prefix("",$2);
-					const size_t old_size = strlen(tspec->lhs->buffer);
-					char* tmp = malloc(sizeof(char)*(old_size + 1000));
-					sprintf(tmp,"AcArray<%s,%d>",tspec->lhs->buffer,count_num_of_nodes_in_list($2->rhs));
-					free(tspec->lhs->buffer);
-					tspec->lhs->buffer = tmp;
+					astnode_sprintf(tspec->lhs,"AcArray<%s,%d>",tspec->lhs->buffer,count_num_of_nodes_in_list($2->rhs));
 				}
 			}
 			if(get_node(NODE_ARRAY_INITIALIZER,$2))
@@ -1000,11 +999,7 @@ assignment: declaration assignment_body {
 				ASTNode* tspec = (ASTNode*)get_node(NODE_TSPEC,$1);
 				if(tspec)
 				{
-					const size_t old_size = strlen(tspec->lhs->buffer);
-					char* tmp = malloc(sizeof(char)*(old_size + 1000));
-					sprintf(tmp,"AcArray<%s,%d>",tspec->lhs->buffer,count_num_of_nodes_in_list(get_node(NODE_ARRAY_INITIALIZER,$2)->lhs));
-					free(tspec->lhs->buffer);
-					tspec->lhs->buffer = tmp;
+					astnode_sprintf(tspec->lhs,"AcArray<%s,%d>",tspec->lhs->buffer,count_num_of_nodes_in_list(get_node(NODE_ARRAY_INITIALIZER,$2)->lhs));
 				}
 			}
 			const int num_of_elems = count_num_of_nodes_in_list($1->rhs);
@@ -1108,15 +1103,8 @@ for_expression: identifier in expression {
 	      | identifier in range {
     			$$ = astnode_create(NODE_UNKNOWN, $1, $3);
     			astnode_set_infix("=", $$);
-
-    			const size_t padding = 32;
-    			char* tmp = malloc(strlen($1->buffer) + padding);
-    			sprintf(tmp, ";%s<", $1->buffer);
-    			astnode_set_buffer(tmp, $$->rhs);
-
-    			sprintf(tmp, ";++%s", $1->buffer);
-    			astnode_set_postfix(tmp, $$);
-    			free(tmp);
+			astnode_sprintf($$->rhs,";%s<", $1->buffer);
+    			astnode_sprintf_postfix($$, ";++%s", $1->buffer);
 	      }
 	      ;
 
@@ -1314,7 +1302,7 @@ static void replace_const_ints(ASTNode* node, const string_vec values, const str
 	if(node->token != IDENTIFIER || !node->buffer) return;
 	const int index = str_vec_get_index(names,node->buffer);
 	if(index == -1) return;
-	node->buffer = strdup(values.data[index]);
+	astnode_set_buffer(values.data[index],node);
 	node->type |= NODE_VARIABLE_ID;
 	node->token = NUMBER;
 }
@@ -1418,7 +1406,7 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
 		//make it an array type i.e. pointer
-		strcat(type_specifier->lhs->buffer,"*");
+		astnode_sprintf(type_specifier->lhs,"%s*",type_specifier->lhs->buffer);
 
 		//if dconst or runtime array evaluate the dimension to a single integer to make further transformations easier
 		const ASTNode* tqual = get_node(NODE_TQUAL,variable_definition);
@@ -1431,8 +1419,7 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 			{
 				ASTNode* elem = (ASTNode*) dims.data[i];
 				const int array_len = eval_int(elem,true,NULL);
-				set_buffers_empty(elem);
-				elem->buffer = itoa(array_len);
+				astnode_set_buffer(itoa(array_len),elem);
 			}
 			free_node_vec(&dims);
 		}
