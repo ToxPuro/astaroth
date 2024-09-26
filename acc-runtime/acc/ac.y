@@ -515,7 +515,6 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
             ASTNode* declaration_list = declaration->rhs;
             assert(declaration_list);
 
-
 	    ASTNode* declaration_list_head = declaration_list;
 	    const bool are_arrays = (get_node(NODE_ARRAY_ACCESS,declaration) != NULL) ||
 				    (get_node(NODE_ARRAY_INITIALIZER,declaration) != NULL);
@@ -665,6 +664,7 @@ inline: INLINE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buff
 elemental: ELEMENTAL { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("elemental", $$); $$->token = 255 + yytoken; };
 boundary_condition: BOUNDARY_CONDITION { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("boundary_condition", $$); $$->token = 255 + yytoken;};
 utility: UTILITY { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("", $$); $$->token = 255 + yytoken;};
+profile: PROFILE       { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_postfix(" ", $$); };
 sum: SUM               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("sum", $$); $$->token = 255 + yytoken; };
 max: MAX               { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer("max", $$); $$->token = 255 + yytoken; };
 struct_type: STRUCT_TYPE { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
@@ -743,6 +743,7 @@ type_specifier:
               | enum_type    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | vtxbuffer    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
 	      | kernel       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | profile { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               ;
 
 type_specifiers: type_specifiers ',' type_specifier {$$ = astnode_create(NODE_UNKNOWN,$1,$3); }

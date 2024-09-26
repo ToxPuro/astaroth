@@ -99,6 +99,14 @@ FUNC_DEFINE(AcResult, acHostMeshWriteToFile,(const AcMesh mesh, const size_t id)
 FUNC_DEFINE(AcResult, acHostMeshReadFromFile,(const size_t id, AcMesh* mesh));
 
 FUNC_DEFINE(Error, acGetError,(const AcReal model, const AcReal candidate));
+// Profiles
+FUNC_DEFINE(AcResult, acHostProfileDerz,(const AcReal* in, const size_t count, const AcReal grid_spacing,
+                           AcReal* out));
+
+FUNC_DEFINE(AcResult, acHostProfileDerzz,(const AcReal* in, const size_t count, const AcReal grid_spacing,
+                            AcReal* out));
+
+FUNC_DEFINE(AcResult, acHostReduceXYAverage,(const AcReal* in, const AcMeshDims dims, AcReal* out));
 
 #if AC_RUNTIME_COMPILATION
 #include "astaroth_lib.h"
@@ -140,7 +148,6 @@ static AcLibHandle __attribute__((unused)) acLoadUtils()
 	if(!acHostMeshReadFromFile) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshReadFromFile");
 	*(void**)(&acGetError) = dlsym(handle,"acGetError");
 	if(!acGetError) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetError");
-
 	*(void**)(&acHostIntegrateStep) = dlsym(handle,"acHostIntegrateStep");
 	if(!acHostIntegrateStep) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostIntegrateStep");
 

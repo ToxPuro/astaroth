@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2014-2021, Johannes Pekkila, Miikka Vaisala.
+    Copyright (C) 2014-2024, Johannes Pekkila, Miikka Vaisala.
 
     This file is part of Astaroth.
 
@@ -16,18 +16,16 @@
     You should have received a copy of the GNU General Public License
     along with Astaroth.  If not, see <http://www.gnu.org/licenses/>.
 */
-/**
-    Running: mpirun -np <num processes> <executable>
-*/
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
 
 #if AC_MPI_ENABLED
-
 #include <mpi.h>
-#include <vector>
 
+#include "stencil_loader.h"
+
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 #define NUM_INTEGRATION_STEPS (100)
 
 static bool finalized = false;
@@ -43,61 +41,21 @@ acAbort(void)
 int
 main(void)
 {
-
-    MPI_Init(NULL,NULL);
-    int nprocs, pid;
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
-    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
-
-    AcMeshInfo info;
-    AcCompInfo comp_info = acInitCompInfo();
-    acLoadConfig(AC_DEFAULT_CONFIG, &info, &comp_info);
-    acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info, &comp_info);
-    acPushToConfig(info,comp_info,AC_proc_mapping_strategy, (int)AcProcMappingStrategy::Linear);
-    acPushToConfig(info,comp_info,AC_decompose_strategy,    (int)AcDecomposeStrategy::Default);
-    acPushToConfig(info,comp_info,AC_MPI_comm_strategy,    (int)AcMPICommStrategy::DuplicateMPICommWorld);
-    comp_info.comm = MPI_COMM_WORLD;
-
-#if AC_RUNTIME_COMPILATION
-    if(pid == 0)
-    {
-    	AcReal real_arr[4];
-    	int int_arr[2];
-    	bool bool_arr[2] = {false,true};
-    	for(int i = 0; i < 4; ++i)
-    		real_arr[i] = -i;
-    	for(int i = 0; i < 2; ++i)
-    		int_arr[i] = i;
-    	acLoadCompInfo(AC_lspherical_coords,true,&comp_info);
-    	acLoadCompInfo(AC_runtime_int,0,&comp_info);
-    	acLoadCompInfo(AC_runtime_real,0.12345,&comp_info);
-    	acLoadCompInfo(AC_runtime_real3,{0.12345,0.12345,0.12345},&comp_info);
-    	acLoadCompInfo(AC_runtime_int3,{0,1,2},&comp_info);
-    	acLoadCompInfo(AC_runtime_real_arr,real_arr,&comp_info);
-    	acLoadCompInfo(AC_runtime_int_arr,int_arr,&comp_info);
-    	acLoadCompInfo(AC_runtime_bool_arr,bool_arr,&comp_info);
-#if AC_USE_HIP
-    	const char* build_str = "-DUSE_HIP=ON  -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
-#else
-    	const char* build_str = "-DUSE_HIP=OFF -DOPTIMIZE_FIELDS=ON -DOPTIMIZE_ARRAYS=ON -DBUILD_SAMPLES=OFF -DBUILD_STANDALONE=OFF -DBUILD_SHARED_LIBS=ON -DMPI_ENABLED=ON -DOPTIMIZE_MEM_ACCESSES=ON";
-#endif
-	acCompile(build_str,comp_info);
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    acLoadLibrary();
-    acLoadUtils();
-#endif
     atexit(acAbort);
     int retval = 0;
 
+    ac_MPI_Init();
 
-
+    int nprocs, pid;
+    MPI_Comm_size(acGridMPIComm(), &nprocs);
+    MPI_Comm_rank(acGridMPIComm(), &pid);
 
     // Set random seed for reproducibility
     srand(321654987);
 
     // CPU alloc
+    AcMeshInfo info;
+    acLoadConfig(AC_DEFAULT_CONFIG, &info);
 
     const int max_devices = 2 * 2 * 4;
     if (nprocs > max_devices) {
@@ -108,21 +66,22 @@ main(void)
         MPI_Abort(acGridMPIComm(), EXIT_FAILURE);
         return EXIT_FAILURE;
     }
-    //acSetMeshDims(44, 44, 44, &info);
+    acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
+    // acSetMeshDims(32, 32, 32, &info);
 
     AcMesh model, candidate;
     if (pid == 0) {
-        acHostGridMeshCreate(info, &model);
-        acHostGridMeshCreate(info, &candidate);
-        acHostGridMeshRandomize(&model);
-        acHostGridMeshRandomize(&candidate);
+        acHostMeshCreate(info, &model);
+        acHostMeshCreate(info, &candidate);
+        acHostMeshRandomize(&model);
+        acHostMeshRandomize(&candidate);
     }
 
     // GPU alloc & compute
-    AcReal* gmem_arr = (AcReal*)malloc(sizeof(AcReal)*100);
-    memset(gmem_arr,0,sizeof(AcReal)*100);
-    info.real_arrays[AC_real_gmem_arr] = gmem_arr;
     acGridInit(info);
+    AcReal* stencils = get_stencil_coeffs(info);
+    acGridLoadStencils(STREAM_DEFAULT, stencils);
+    free(stencils);
 
     // Load/Store
     acGridLoadMesh(STREAM_DEFAULT, model);
@@ -135,9 +94,10 @@ main(void)
         }
     }
     fflush(stdout);
+
     // Boundconds
     if (pid == 0)
-        acHostGridMeshRandomize(&model);
+        acHostMeshRandomize(&model);
 
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
@@ -152,13 +112,13 @@ main(void)
     }
     fflush(stdout);
 
-    //// Dryrun
+    // Dryrun
     const AcReal dt = (AcReal)FLT_EPSILON;
     acGridIntegrate(STREAM_DEFAULT, dt);
 
     // Integration
     if (pid == 0)
-        acHostGridMeshRandomize(&model);
+        acHostMeshRandomize(&model);
 
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridPeriodicBoundconds(STREAM_DEFAULT);
@@ -185,44 +145,10 @@ main(void)
     }
     fflush(stdout);
 
-    AcTaskGraph* dsl_graph = acGetDSLTaskGraph(AC_rhs);
-    // Dryrun
-    acDeviceSetInput(acGridGetDevice(),AcInputdt,dt);
-    acGridExecuteTaskGraph(dsl_graph,1);
-
-    // Integration
-    if (pid == 0)
-        acHostGridMeshRandomize(&model);
-
-    acGridLoadMesh(STREAM_DEFAULT, model);
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
-
-    // Device integrate
-    for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
-    	acGridExecuteTaskGraph(dsl_graph,3);
-
-    acGridPeriodicBoundconds(STREAM_DEFAULT);
-    acGridStoreMesh(STREAM_DEFAULT, &candidate);
-    if (pid == 0) {
-        acHostMeshApplyPeriodicBounds(&model);
-
-        // Host integrate
-        for (size_t i = 0; i < NUM_INTEGRATION_STEPS; ++i)
-            acHostIntegrateStep(model, dt);
-
-        acHostMeshApplyPeriodicBounds(&model);
-        const AcResult res = acVerifyMesh("DSL ComputeSteps", model, candidate);
-        if (res != AC_SUCCESS) {
-            retval = res;
-            WARNCHK_ALWAYS(retval);
-        }
-    }
-    fflush(stdout);
-
     // Scalar reductions
     if (pid == 0) {
         printf("---Test: Scalar reductions---\n");
-        acHostGridMeshRandomize(&model);
+        acHostMeshRandomize(&model);
         acHostMeshApplyPeriodicBounds(&model);
     }
     fflush(stdout);
@@ -316,6 +242,11 @@ main(void)
         }
     }
     fflush(stdout);
+
+    // Profiles
+    // const AcResult mean = acGridReduceXYAverage(STREAM_DEFAULT, VTXBUF_UUX, MEAN_UUX);
+    // printf("Mean result: %d\n", mean);
+    // fflush(stdout);
 
     if (pid == 0) {
         acHostMeshDestroy(&model);

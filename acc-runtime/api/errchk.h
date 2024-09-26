@@ -90,6 +90,8 @@
       ERROR(#retval " was false");                                             \
   }
 
+#define as_size_t(i) AS_SIZE_T(i, __FILE__, __LINE__)
+
 /*
  * =============================================================================
  * CUDA-specific error checking
@@ -156,7 +158,29 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
   }
 // #endif // __CUDA_RUNTIME_API_H__
 
-#define as_size_t(i) AS_SIZE_T(i, __FILE__, __LINE__)
+#ifdef __cplusplus
+template <typename T>
+static inline size_t
+as_int64_t(const T i)
+{
+  ERRCHK_ALWAYS(static_cast<long double>(i) >
+                static_cast<long double>(INT64_MIN));
+  ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(INT64_MAX));
+  return static_cast<int64_t>(i);
+}
+
+template <typename T>
+static inline size_t
+as_int(const T i)
+{
+  ERRCHK_ALWAYS(static_cast<long double>(i) >
+                static_cast<long double>(INT_MIN));
+  ERRCHK_ALWAYS(static_cast<long double>(i) <
+                static_cast<long double>(INT_MAX));
+  return static_cast<int>(i);
+}
+#endif
 // TODO: cleanup and integrate with the errors above someday
 #define INDIRECT_ERROR(str, file, line)                                                                          \
   {                                                                                                              \
@@ -177,6 +201,7 @@ cuda_assert(cudaError_t code, const char* file, int line, bool abort)
     if (!(retval))                                                             \
       INDIRECT_ERROR(#retval " was false", file, line);                        \
   }
+
 
 static inline size_t
 AS_SIZE_T(const int i, const char* file, const int line)

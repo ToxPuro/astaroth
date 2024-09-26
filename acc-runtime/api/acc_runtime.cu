@@ -445,6 +445,55 @@ freeCompressible(void* ptr, const size_t requested_bytes)
 #endif
 
 AcResult
+acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba)
+{
+  // Set pba.in data to all-nan and pba.out to 0
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    acKernelFlush(stream, pba->in[i], pba->count, (AcReal)NAN);
+    acKernelFlush(stream, pba->out[i], pba->count, (AcReal)0.0);
+  }
+  return AC_SUCCESS;
+}
+
+ProfileBufferArray
+acPBACreate(const size_t count)
+{
+  ProfileBufferArray pba = {.count = count};
+
+  const size_t bytes = sizeof(pba.in[0][0]) * count;
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+#if USE_COMPRESSIBLE_MEMORY
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&pba.in[i], bytes));
+    ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&pba.out[i], bytes));
+#else
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&pba.in[i], bytes));
+    ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&pba.out[i], bytes));
+#endif
+  }
+
+  acPBAReset(0, &pba);
+  cudaDeviceSynchronize();
+  return pba;
+}
+
+void
+acPBADestroy(ProfileBufferArray* pba)
+{
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+#if USE_COMPRESSIBLE_MEMORY
+    freeCompressible(pba->in[i], sizeof(pba.in[0][0]) * pba->count);
+    freeCompressible(pba->out[i], sizeof(pba.out[0][0]) * pba->count);
+#else
+    cudaFree(pba->in[i]);
+    cudaFree(pba->out[i]);
+#endif
+    pba->in[i]  = NULL;
+    pba->out[i] = NULL;
+  }
+  pba->count = 0;
+}
+
+AcResult
 acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
   const size_t count = vba->bytes / sizeof(vba->in[0][0]);
@@ -460,6 +509,8 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
     }
   }
   memset(&vba->kernel_input_params,0,sizeof(acKernelInputParams));
+  // Note: should be moved out when refactoring VBA to KernelParameterArray
+  acPBAReset(stream, &vba->profiles);
   return AC_SUCCESS;
 }
 
@@ -594,6 +645,9 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
 
   AcArrayTypes::run<allocate_arrays>(config);
 
+  // Note: should be moved out when refactoring VBA to KernelParameterArray
+  vba.profiles = acPBACreate(counts.z);
+
   acVBAReset(0, &vba);
   cudaDeviceSynchronize();
   return vba;
@@ -626,6 +680,7 @@ acVBAUpdate(VertexBufferArray* vba, const AcMeshInfo config)
   AcArrayTypes::run<update_arrays>(config);
 }
 
+
 template <typename P>
 struct free_arrays
 {
@@ -642,6 +697,7 @@ struct free_arrays
 		}
 	}
 };
+
 void
 acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 {
@@ -660,7 +716,10 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
   //Free arrays
   AcArrayTypes::run<free_arrays>(config);
   vba->bytes = 0;
+  // Note: should be moved out when refactoring VBA to KernelParameterArray
+  acPBADestroy(&vba->profiles);
 }
+
 int
 get_num_of_reduce_output(const dim3 bpg, const dim3 tpb)
 {
@@ -1013,7 +1072,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                                         ? min(props.maxThreadsPerBlock,
                                               MAX_THREADS_PER_BLOCK)
                                         : props.maxThreadsPerBlock;
-  const size_t max_smem           = props.sharedMemPerBlock;
+  const size_t max_smem = props.sharedMemPerBlock;
 
   // Old heuristic
   // for (int z = 1; z <= max_threads_per_block; ++z) {

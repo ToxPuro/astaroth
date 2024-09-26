@@ -120,6 +120,12 @@ MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
 #include "input_decl.h"
   } AcInputs;
 
+typedef struct {
+  AcReal* in[NUM_PROFILES];
+  AcReal* out[NUM_PROFILES];
+  size_t count;
+} ProfileBufferArray;
+
   typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
@@ -130,6 +136,7 @@ MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
     AcReal* reduce_scratchpads[NUM_REAL_OUTPUTS+1][NUM_REDUCE_SCRATCHPADS];
     int reduce_offset;
     size_t scratchpad_size;
+    ProfileBufferArray profiles;
   } VertexBufferArray;
 
 
@@ -348,6 +355,15 @@ MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
   {
 	  return get_array_info(array).is_alive;
   }
+
+  FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba));
+
+  FUNC_DEFINE(ProfileBufferArray, acPBACreate,(const size_t count));
+
+  FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba));
+
+  FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
+
 
   template <typename P>
   constexpr static auto

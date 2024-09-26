@@ -28,7 +28,6 @@
 #include <mpi.h>
 #include <vector>
 
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 #define NUM_INTEGRATION_STEPS (100)
 
 

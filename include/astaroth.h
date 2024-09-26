@@ -908,6 +908,9 @@ FUNC_DEFINE(AcResult, acGridReduceVecScal,(const Stream stream, const ReductionT
                              const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
                              AcReal* result));
 
+/** */
+AcResult acGridReduceXYAverage(const Stream stream, const Field field, const Profile profile);
+
 typedef enum {
     ACCESS_READ,
     ACCESS_WRITE,
@@ -1319,6 +1322,7 @@ FUNC_DEFINE(AcResult, acDeviceSwapBuffers,(const Device device));
 /** */
 FUNC_DEFINE(AcResult, acDeviceLoadScalarUniform,(const Device device, const Stream stream,
                                    const AcRealParam param, const AcReal value));
+FUNC_DEFINE(AcResult, acDevicePrintProfiles,(const Device device));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceLoadVectorUniform,(const Device device, const Stream stream,
@@ -1494,6 +1498,29 @@ FUNC_DEFINE(AcResult, acDeviceReduceVecScal,(const Device device, const Stream s
                                const ReductionType rtype, const VertexBufferHandle vtxbuf0,
                                const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
                                const VertexBufferHandle vtxbuf3, AcReal* result));
+
+/** */
+FUNC_DEFINE(AcResult, acDeviceReduceXYAverage,(const Device device, const Stream stream, const Field field,
+                                 const Profile profile));
+
+/** */
+FUNC_DEFINE(AcResult, acDeviceSwapProfileBuffer,(const Device device, const Profile handle));
+
+/** */
+FUNC_DEFINE(AcResult, acDeviceSwapProfileBuffers,(const Device device, const Profile* profiles,
+                                    const size_t num_profiles));
+
+/** */
+FUNC_DEFINE(AcResult, acDeviceSwapAllProfileBuffers,(const Device device));
+
+/** */
+FUNC_DEFINE(AcResult, acDeviceLoadProfile,(const Device device, const AcReal* hostprofile,
+                             const size_t hostprofile_count, const Profile profile));
+
+/** */
+FUNC_DEFINE(AcResult, acDeviceStoreProfile,(const Device device, const Profile profile, AcReal* hostprofile,
+                              const size_t hostprofile_count));
+
 /** */
 FUNC_DEFINE(AcResult,  acDeviceFinishReduce,(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcRealOutputParam output));
 

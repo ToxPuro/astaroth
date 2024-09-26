@@ -60,7 +60,7 @@ void strip_whitespace(char *str) {
 "BoundConds"          {return BOUNDCONDS; }
 "intrinsic"          {return INTRINSIC; }
 "__shared__"          {return SHARED; }
-
+"Profile"               { return PROFILE; }
 "Stencil"               { return STENCIL; }
 
 "Kernel"                { return KERNEL; } /* Type qualifiers */

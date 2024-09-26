@@ -425,6 +425,7 @@ symboltable_reset(void)
 
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, "AcReal", REAL,"AC_REAL_PI");
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"NUM_FIELDS");
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"NUM_PROFILES");
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"NUM_VTXBUF_HANDLES");
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"NUM_ALL_FIELDS");
 
@@ -3437,6 +3438,8 @@ translate_buffer_body(FILE* stream, const ASTNode* node)
       fprintf(stream, "DCONST(%s)", node->buffer);
     else if (symbol && symbol->type & NODE_VARIABLE_ID && int_vec_contains(symbol->tqualifiers,RUN_CONST))
       fprintf(stream, "RCONST(%s)", node->buffer);
+    else if (symbol && symbol->type & NODE_VARIABLE_ID && !strcmp(symbol->tspecifier,"Profile"))
+      fprintf(stream, "(NUM_FIELDS+%s)", node->buffer);
     else
       fprintf(stream, "%s", node->buffer);
   }
@@ -4715,6 +4718,13 @@ gen_user_defines(const ASTNode* root, const char* out)
 
 
 
+  // Profiles
+  fprintf(fp, "typedef enum {");
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].tspecifier_token == PROFILE)
+      fprintf(fp, "%s,", symbol_table[i].identifier);
+  fprintf(fp, "NUM_PROFILES} Profile;");
+
   // Kernels
   fprintf(fp, "typedef enum {");
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -4738,6 +4748,7 @@ gen_user_defines(const ASTNode* root, const char* out)
 
   // Enum strings (convenience)
   gen_names("stencil",STENCIL,fp);
+  gen_names("profile",PROFILE,fp);
   gen_names("work_buffer",WORK_BUFFER,fp);
   gen_names("kernel",KERNEL,fp);
   //TP: field names have to be generated differently since they might get reorder because of dead fields
@@ -4816,15 +4827,17 @@ gen_user_defines(const ASTNode* root, const char* out)
   // Would be cleaner to declare dconsts as extern and refer to the symbols
   // directly instead of using handles like above, but for backwards
   // compatibility and user convenience commented out for now
-  //
-  //for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
-  //  if (!(symbol_table[i].type & NODE_FUNCTION_ID) &&
-  //      !(symbol_table[i].type & NODE_VARIABLE_ID) &&
-  //      !(symbol_table[i].type & NODE_STENCIL_ID)) {
-  //    fprintf(fp, "// extern __device__ %s %s;\n", symbol_table[i].tspecifier,
-  //            symbol_table[i].identifier);
-  //  }
-  //}
+  /**
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i) {
+    if (!(symbol_table[i].type & NODE_FUNCTION_ID) &&
+        !(symbol_table[i].type & NODE_FIELD_ID) &&
+        !(symbol_table[i].type & NODE_PROFILE_ID) &&
+        !(symbol_table[i].type & NODE_STENCIL_ID)) {
+      fprintf(fp, "// extern __device__ %s %s;\n", symbol_table[i].tspecifier,
+              symbol_table[i].identifier);
+    }
+  }
+  **/
 
   // Stencil order
   fprintf(fp, "#ifndef STENCIL_ORDER\n");
@@ -6231,6 +6244,19 @@ void
 stencilgen(ASTNode* root)
 {
   const size_t num_stencils = count_stencils();
+
+  size_t num_profiles = 0;
+  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
+    if (symbol_table[i].tspecifier_token == PROFILE)
+      ++num_profiles;
+  (void)num_profiles;
+
+  // Device constants
+  // gen_dconsts(root, stream);
+
+  // Stencils
+
+  // Stencil generator
   FILE* stencilgen = fopen(STENCILGEN_HEADER, "w");
   assert(stencilgen);
 
@@ -6631,7 +6657,6 @@ check_that_stencils_unique(const ASTNode* root)
 				fprintf(stderr,FATAL_ERROR_MESSAGE"multiple definitions of stencil: %s\n",names.data[i]);
 				exit(EXIT_FAILURE);
 			}
-
 		}
 	}
 }

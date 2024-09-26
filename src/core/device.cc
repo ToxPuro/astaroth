@@ -1077,6 +1077,110 @@ acDeviceReduceVecScal(const Device device, const Stream stream, const ReductionT
     return AC_SUCCESS;
 }
 
+/** XY averages */
+AcResult
+acDeviceReduceXYAverage(const Device device, const Stream stream, const Field field,
+                        const Profile profile)
+{
+    cudaSetDevice(device->id);
+    acDeviceSynchronizeStream(device, stream);
+
+    const AcMeshDims dims = acGetMeshDims(device->local_config);
+
+    for (int k = 0; k < dims.m1.z; ++k) {
+        const int3 start    = (int3){dims.n0.x, dims.n0.y, k};
+        const int3 end      = (int3){dims.n1.x, dims.n1.y, k + 1};
+        const size_t nxy    = (end.x - start.x) * (end.y - start.y);
+        const AcReal result = (1. / nxy) * acKernelReduceScal(device->streams[stream], RTYPE_SUM,
+                                                              device->vba.in[field], start, end,
+                                                              device->vba.reduce_scratchpads[0],
+                                                              device->vba.scratchpad_size);
+        // printf("%zu Profile: %g\n", k, result);
+        // Could be optimized by performing the reduction completely in
+        // device memory without the redundant device-host-device transfer
+        cudaMemcpy(&device->vba.profiles.in[profile][k], &result, sizeof(result),
+                   cudaMemcpyHostToDevice);
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceSwapProfileBuffer(const Device device, const Profile handle)
+{
+    cudaSetDevice(device->id);
+
+    AcReal* tmp                      = device->vba.profiles.in[handle];
+    device->vba.profiles.in[handle]  = device->vba.profiles.out[handle];
+    device->vba.profiles.out[handle] = tmp;
+
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceSwapProfileBuffers(const Device device, const Profile* profiles, const size_t num_profiles)
+{
+    int retval = AC_SUCCESS;
+    for (size_t i = 0; i < num_profiles; ++i)
+        retval |= acDeviceSwapProfileBuffer(device, profiles[i]);
+
+    return (AcResult)retval;
+}
+
+AcResult
+acDeviceSwapAllProfileBuffers(const Device device)
+{
+    int retval = AC_SUCCESS;
+    for (size_t i = 0; i < NUM_PROFILES; ++i)
+        retval |= acDeviceSwapProfileBuffer(device, (Profile)i);
+
+    return (AcResult)retval;
+}
+
+AcResult
+acDeviceLoadProfile(const Device device, const AcReal* hostprofile, const size_t hostprofile_count,
+                    const Profile profile)
+{
+    cudaSetDevice(device->id);
+    ERRCHK_ALWAYS(hostprofile_count == device->vba.profiles.count);
+    ERRCHK_CUDA(cudaMemcpy(device->vba.profiles.in[profile], hostprofile,
+                           sizeof(device->vba.profiles.in[profile][0]) * device->vba.profiles.count,
+                           cudaMemcpyHostToDevice));
+    return AC_SUCCESS;
+}
+
+AcResult
+acDeviceStoreProfile(const Device device, const Profile profile, AcReal* hostprofile,
+                     const size_t hostprofile_count)
+{
+    cudaSetDevice(device->id);
+    ERRCHK_ALWAYS(hostprofile_count == device->vba.profiles.count);
+    ERRCHK_CUDA(cudaMemcpy(hostprofile, device->vba.profiles.in[profile],
+                           sizeof(device->vba.profiles.in[profile][0]) * device->vba.profiles.count,
+                           cudaMemcpyDeviceToHost));
+    return AC_SUCCESS;
+}
+
+AcResult
+acDevicePrintProfiles(const Device device)
+{
+    // int3 multigpu_offset;
+    // acStoreInt3Uniform(device->streams[STREAM_DEFAULT], AC_multigpu_offset, &multigpu_offset);
+    // printf("%d, %d, %d\n", multigpu_offset.x, multigpu_offset.y, multigpu_offset.z);
+    // printf("Num profiles: %zu\n", NUM_PROFILES);
+    for (size_t i = 0; i < NUM_PROFILES; ++i) {
+        const size_t count = device->vba.profiles.count;
+        AcReal host_profile[count];
+        cudaMemcpy(host_profile, device->vba.profiles.in[i], sizeof(AcReal) * count,
+                   cudaMemcpyDeviceToHost);
+        printf("Profile %s (%zu)-----------------\n", profile_names[i], i);
+        for (size_t j = 0; j < count; ++j) {
+            printf("%g (%zu), ", host_profile[j], j);
+        }
+        printf("\n");
+    }
+    return AC_SUCCESS;
+}
+
 AcResult
 acDeviceVolumeCopy(const Device device, const Stream stream,                     //
                    const AcReal* in, const int3 in_offset, const int3 in_volume, //

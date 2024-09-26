@@ -234,6 +234,10 @@ vbaCreate(const size_t count)
     vba.in[i]  = (AcReal*)malloc(bytes);
     vba.out[i] = (AcReal*)malloc(bytes);
   }
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    vba.profiles.in[i]  = (AcReal*)malloc(bytes);
+    vba.profiles.out[i] = (AcReal*)malloc(bytes);
+  }
 
   return vba;
 }
@@ -246,6 +250,12 @@ vbaDestroy(VertexBufferArray* vba)
     free(vba->out[i]);
     vba->in[i]  = NULL;
     vba->out[i] = NULL;
+  }
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    free(vba->profiles.in[i]);
+    free(vba->profiles.out[i]);
+    vba->profiles.in[i]  = NULL;
+    vba->profiles.out[i] = NULL;
   }
 }
 VertexBufferArray VBA = vbaCreate(1000);
@@ -291,7 +301,7 @@ main(int argc, char* argv[])
   static int field_has_stencil_op[NUM_ALL_FIELDS];
 
   fprintf(fp,
-          "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS][NUM_STENCILS] "
+          "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
           "= {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     memset(stencils_accessed, 0,
@@ -329,7 +339,7 @@ main(int argc, char* argv[])
   fclose(fp_field_has_stencil_op);
 
   fprintf(fp,
-          "static int previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS] "
+          "static int previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] "
           "= {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     memset(previous_accessed, 0,
