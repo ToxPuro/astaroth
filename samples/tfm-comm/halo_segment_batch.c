@@ -37,8 +37,8 @@ acHaloSegmentBatchCreate(const size_t ndims, const size_t* mm, const size_t* nn,
     for (size_t i = 0; i < npackets; ++i) {
         const size_t dims[]     = {3, 3, 3};
         const size_t offset[]   = {0, 0, 0};
-        batch.local_packets[i]  = acCreateHaloSegment(ndims, dims, offset, nfields);
-        batch.remote_packets[i] = acCreateHaloSegment(ndims, dims, offset, nfields);
+        batch.local_packets[i]  = acHaloSegmentCreate(ndims, dims, offset, nfields);
+        batch.remote_packets[i] = acHaloSegmentCreate(ndims, dims, offset, nfields);
     }
 
     return batch;
@@ -68,8 +68,8 @@ void
 acHaloSegmentBatchDestroy(HaloSegmentBatch* batch)
 {
     for (size_t i = 0; i < batch->npackets; ++i) {
-        acDestroyHaloSegment(&batch->local_packets[i]);
-        acDestroyHaloSegment(&batch->remote_packets[i]);
+        acHaloSegmentDestroy(&batch->local_packets[i]);
+        acHaloSegmentDestroy(&batch->remote_packets[i]);
     }
     free(batch->remote_packets);
     free(batch->local_packets);
