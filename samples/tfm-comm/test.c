@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "array.h"
+#include "comm.h"
 #include "math_utils.h"
 #include "matrix.h"
 #include "ndarray.h"
@@ -13,5 +14,6 @@ main(void)
     test_ndarray();
     test_math_utils();
     test_matrix();
+    test_comm();
     return EXIT_SUCCESS;
 }

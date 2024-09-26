@@ -43,4 +43,4 @@ add_executable(run main.c)
 target_link_libraries(run PRIVATE tfm-comm tfm-utils)
 
 add_executable(test test.c)
-target_link_libraries(test PRIVATE tfm-utils)
+target_link_libraries(test PRIVATE tfm-utils tfm-comm)

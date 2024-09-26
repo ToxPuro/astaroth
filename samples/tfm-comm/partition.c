@@ -59,8 +59,8 @@ partition_recursive(const size_t ndims, const size_t* mmin, const size_t* nmin, 
             size_t new_mmax[ndims];
             copy(ndims, mmax, new_mmax);
 
-            new_mmin[axis] = nmin[axis];
-            new_mmax[axis] = nmax[axis];
+            new_mmin[axis] = nmax[axis];
+            new_mmax[axis] = mmax[axis];
             if (volume(ndims, new_mmin, new_mmax) > 0)
                 npartitions += partition_recursive(ndims, new_mmin, nmin, nmax, new_mmax, axis + 1,
                                                    dimensions, offsets);
@@ -72,8 +72,8 @@ partition_recursive(const size_t ndims, const size_t* mmin, const size_t* nmin, 
             size_t new_mmax[ndims];
             copy(ndims, mmax, new_mmax);
 
-            new_mmin[axis] = nmax[axis];
-            new_mmax[axis] = mmax[axis];
+            new_mmin[axis] = nmin[axis];
+            new_mmax[axis] = nmax[axis];
             if (volume(ndims, new_mmin, new_mmax) > 0)
                 npartitions += partition_recursive(ndims, new_mmin, nmin, nmax, new_mmax, axis + 1,
                                                    dimensions, offsets);

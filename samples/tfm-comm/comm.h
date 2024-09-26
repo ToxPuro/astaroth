@@ -16,3 +16,5 @@ void acHaloExchangeTaskLaunch(const HaloExchangeTask* task, const size_t nbuffer
 void acHaloExchangeTaskSynchronize(const HaloExchangeTask* task);
 
 void acHaloExchangeTaskDestroy(HaloExchangeTask** task);
+
+void test_comm(void);
