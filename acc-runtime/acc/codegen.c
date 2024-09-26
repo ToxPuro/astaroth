@@ -1642,6 +1642,8 @@ gen_kernel_structs(const ASTNode* root)
 	fclose(fp_structs);
 }
 
+
+
 static void
 create_binary_op(const structs_info info, const int i, const char* op, FILE* fp)
 {
@@ -1661,6 +1663,39 @@ create_binary_op(const structs_info info, const int i, const char* op, FILE* fp)
 			,op,struct_name,struct_name);
 		for(size_t j = 0; j < info.user_struct_field_names[i].size; ++j)
 			fprintf(fp,"\ta.%s %s= b.%s;\n",info.user_struct_field_names[i].data[j],op,info.user_struct_field_names[i].data[j]);
+		fprintf(fp,"\n}\n");
+}
+
+static void
+create_broadcast_op(const structs_info info, const int i, const char* op, FILE* fp)
+{
+		const char* struct_name = info.user_structs.data[i];
+		fprintf(fp,"static HOST_DEVICE_INLINE %s\n"
+			   "operator%s(const %s& a, const %s& b)\n"
+			   "{\n"
+			   "\treturn (%s){\n"
+			,struct_name,op,struct_name,"AcReal",struct_name);
+		for(size_t j = 0; j < info.user_struct_field_names[i].size; ++j)
+			fprintf(fp,"\t\ta.%s %s b,\n",info.user_struct_field_names[i].data[j],op);
+		fprintf(fp,"\t};\n}\n");
+
+
+		fprintf(fp,"static HOST_DEVICE_INLINE %s\n"
+			   "operator%s(const %s& a, const %s& b)\n"
+			   "{\n"
+			   "\treturn (%s){\n"
+			,struct_name,op,"AcReal",struct_name,struct_name);
+
+		for(size_t j = 0; j < info.user_struct_field_names[i].size; ++j)
+			fprintf(fp,"\t\ta %s b.%s,\n",op,info.user_struct_field_names[i].data[j]);
+		fprintf(fp,"\t};\n}\n");
+
+		fprintf(fp,"static HOST_DEVICE_INLINE void\n"
+			   "operator%s=(%s& a, const %s& b)\n"
+			   "{\n"
+			,op,struct_name,"AcReal");
+		for(size_t j = 0; j < info.user_struct_field_names[i].size; ++j)
+			fprintf(fp,"\ta.%s %s= b;\n",info.user_struct_field_names[i].data[j],op);
 		fprintf(fp,"\n}\n");
 }
 static void
@@ -1750,42 +1785,22 @@ gen_user_structs()
 			create_unary_op (s_info,i,"+",fp);
 		}
 
+		
+		if(!all_reals)  fprintf(fp,"#endif\n");
+		if(!all_reals)  continue;
+		create_broadcast_op(s_info,i,"/",fp);
+		create_broadcast_op(s_info,i,"*",fp);
+		create_broadcast_op(s_info,i,"+",fp);
+		create_broadcast_op(s_info,i,"-",fp);
 		if(!strcmp(struct_name,"AcComplex")) 
 		{
 			fprintf(fp,"#endif\n");
 			continue;
 		}
+
+		create_binary_op(s_info,i,"/",fp);
+		create_binary_op(s_info,i,"*",fp);
 		
-		if(!all_reals)  fprintf(fp,"#endif\n");
-		if(!all_reals)  continue;
-		fprintf(fp,"static HOST_DEVICE_INLINE %s\n"
-			   "operator/(const %s& a, const AcReal& b)\n"
-			   "{\n"
-			   "\treturn (%s){\n"
-			,struct_name,struct_name,struct_name);
-		for(size_t j = 0; j < s_info.user_struct_field_names[i].size; ++j)
-			fprintf(fp,"\t\ta.%s/b,\n",s_info.user_struct_field_names[i].data[j]);
-		fprintf(fp,"\t};\n}\n");
-
-		fprintf(fp,"static HOST_DEVICE_INLINE %s\n"
-			   "operator*(const AcReal& a, const %s& b)\n"
-			   "{\n"
-			   "\treturn (%s){\n"
-			,struct_name,struct_name,struct_name);
-		for(size_t j = 0; j < s_info.user_struct_field_names[i].size; ++j)
-			fprintf(fp,"\t\ta*b.%s,\n",s_info.user_struct_field_names[i].data[j]);
-		fprintf(fp,"\t};\n}\n");
-		//TP: originally had the idea that scalar* struct would only be legal i.e. struct*scalar would not be
-		//But with hindsight seems to be too pedantic and doesn't really give help that much
-		fprintf(fp,"static HOST_DEVICE_INLINE %s\n"
-			   "operator*(const %s& a, const AcReal& b)\n"
-			   "{\n"
-			   "\treturn (%s){\n"
-			,struct_name,struct_name,struct_name);
-		for(size_t j = 0; j < s_info.user_struct_field_names[i].size; ++j)
-			fprintf(fp,"\t\tb*a.%s,\n",s_info.user_struct_field_names[i].data[j]);
-		fprintf(fp,"\t};\n}\n");
-
 
 		fprintf(fp,"#endif\n");
 
@@ -3630,10 +3645,29 @@ string_vec
 get_struct_field_types(const char* struct_name)
 {
 		const structs_info info = s_info;
-		string_vec res;
+		string_vec res = VEC_INITIALIZER;
 		for(size_t i = 0; i < info.user_structs.size; ++i)
 			if(!strcmp(info.user_structs.data[i],struct_name)) res = str_vec_copy(info.user_struct_field_types[i]);
 		return res;
+}
+size_t
+get_number_of_members(const char* struct_name)
+{
+	string_vec types = get_struct_field_types(struct_name);
+	size_t res = types.size;
+	free_str_vec(&types);
+	return res;
+}
+bool
+all_real_struct(const char* struct_name)
+{
+	if(is_primitive_datatype(struct_name)) return false;
+	bool res = true;
+	string_vec types = get_struct_field_types(struct_name);
+	for(size_t i = 0; i < types.size; ++i)
+		res &= (types.data[i] && !strcmp(types.data[i],"AcReal"));
+	free_str_vec(&types);
+	return res;
 }
 
 char*
@@ -3924,15 +3958,11 @@ get_assignment_expr_type(ASTNode* node)
 		{
 			//TP should only consider the first declaration since that sets the type
 			const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
-			if(function && function->rhs->lhs && is_first_decl(decl,function->rhs->lhs))
+			if(function && function->rhs && is_first_decl(decl,function->rhs))
 			{
 		      		node->expr_type = get_expr_type(node->rhs);
 		      		decl->expr_type = node->expr_type;
-		      		if(!strcmp(var_name,"DF_UVEC"))
-		      		{
-			      		printf("HMM: %s,%s\n",node->expr_type,combine_all_new(node));
-			      		exit(EXIT_FAILURE);
-		      		}
+			      	//printf("HMM: %s,%s\n",node->expr_type,combine_all_new(node));
 			}
 		}
 	}
@@ -5406,6 +5436,7 @@ flow_type_info_in_func(ASTNode* node,string_vec* names, string_vec* types)
 			{
 				//const char* func_name = get_node_by_token(IDENTIFIER,get_parent_node(NODE_FUNCTION,node))->buffer;
 				//if(strstr(func_name,"mom"))
+					//printf("SOURCE: %s\n",var_name);
 				push(names,var_name);
 				push(types,node->expr_type);
 			}
@@ -5937,6 +5968,59 @@ canonalize_assignments(ASTNode* node)
 	assignment->parent = node->parent;
 	node->parent->lhs = assignment;
 }
+ASTNode*
+create_struct_tspec(const char* datatype)
+{
+	ASTNode* struct_type = astnode_create(NODE_UNKNOWN,NULL,NULL); 
+	astnode_set_buffer(datatype,struct_type);
+	struct_type->token = STRUCT_TYPE;
+	return astnode_create(NODE_TSPEC,struct_type,NULL);
+}
+ASTNode*
+create_broadcast_initializer(const ASTNode* expr, const char* datatype)
+{
+	node_vec nodes = VEC_INITIALIZER;
+
+
+	const size_t n_initializer= get_number_of_members(datatype);
+	for(size_t i = 0; i < n_initializer; ++i)
+		push_node(&nodes,expr);
+
+	ASTNode* expression_list = build_list_node(nodes,",");
+	ASTNode* initializer = astnode_create(NODE_STRUCT_INITIALIZER, expression_list,NULL); 
+	astnode_set_prefix("{",initializer);
+	astnode_set_postfix("}",initializer);
+	free_node_vec(&nodes);
+
+
+	ASTNode* tspec = create_struct_tspec(datatype);
+	ASTNode* res = astnode_create(NODE_UNKNOWN,tspec,initializer);
+	astnode_set_prefix("(",res);
+	astnode_set_infix(")",res);
+	res->lhs->type ^= NODE_TSPEC;
+	res->token     = CAST;
+	return res;
+}
+void
+transform_broadcast_assignments(ASTNode* node)
+{
+	TRAVERSE_PREAMBLE(transform_broadcast_assignments);
+	if(!(node->type & NODE_ASSIGNMENT)) return;
+	const ASTNode* function = get_parent_node(NODE_FUNCTION,node);
+	if(!function) return;
+	const char* function_name = get_node_by_token(IDENTIFIER,function->lhs)->buffer;
+	char* op = strdup(node->rhs->lhs->buffer);
+	if(strcmp(op,"=")) return;
+	if(count_num_of_nodes_in_list(node->rhs->rhs) != 1)   return;
+	const char* lhs_type = get_expr_type(node->lhs);
+	const char* rhs_type = get_expr_type(node->rhs);
+	if(!lhs_type || !rhs_type) return;
+	if(all_real_struct(lhs_type) && !strcmp(rhs_type,"AcReal"))
+	{
+		const ASTNode* expr = node->rhs->rhs->lhs;
+		node->rhs->rhs->lhs = create_broadcast_initializer(expr,lhs_type);
+	}
+}
 bool
 remove_unnecessary_assignments(ASTNode* node)
 {
@@ -6126,6 +6210,7 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   //We use duplicate dfuncs from gen_boundcond_kernels
   //duplicate_dfuncs = get_duplicate_dfuncs(root);
   gen_overloads(root);
+  transform_broadcast_assignments(root);
   mark_kernel_inputs(root);
   gen_kernel_combinatorial_optimizations_and_input(root,optimize_conditionals);
   free_structs_info(&s_info);

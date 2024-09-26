@@ -3,6 +3,7 @@
 #define AC_IN_AC_LIBRARY
 #endif
 #define longlong long long
+#include "func_attributes.h"
 
 #include <assert.h>
 /*

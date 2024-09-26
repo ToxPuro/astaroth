@@ -68,18 +68,6 @@ operator*(const AcComplex& a, const AcComplex& b)
   return (AcComplex){a.x*b.x - a.y*b.y,a.x*b.y + b.x*a.y};
 }
 
-static HOST_DEVICE_INLINE AcComplex
-operator*(const AcComplex& a, const AcReal& b)
-{
-  return (AcComplex){a.x * b,a.y * b};
-}
-
-static HOST_DEVICE_INLINE AcComplex
-operator*(const AcReal& b, const AcComplex& a)
-{
-  return (AcComplex){a.x * b,a.y * b};
-}
-
 #endif // ENABLE_COMPLEX_DATATYPE
 
 typedef struct uint3_64 {
@@ -493,6 +481,7 @@ operator*(const AcReal& v, const AcMatrix& m)
   return out;
 }
 
+
 #define GEN_STD_ARRAY_OPERATOR(OPERATOR)  \
 template <typename T, const size_t N, typename F> \
 static constexpr  void \
@@ -691,6 +680,13 @@ operator-(const AcMatrix& A, const AcMatrix& B)
   return AcMatrix(A.row(0) - B.row(0), //
                   A.row(1) - B.row(1), //
                   A.row(2) - B.row(2));
+}
+static HOST_DEVICE AcMatrix
+operator+(const AcMatrix& A, const AcMatrix& B)
+{
+  return AcMatrix(A.row(0) + B.row(0), //
+                  A.row(1) + B.row(1), //
+                  A.row(2) + B.row(2));
 }
 static HOST_DEVICE_INLINE AcReal
 multm2_sym(const AcMatrix& m)

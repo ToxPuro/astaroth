@@ -491,11 +491,6 @@ Kernel test_func()
 }
 **/
 
-test()
-{
-	real var
-	return var + 2.0
-}
 
 
 
@@ -563,6 +558,11 @@ Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums) 
 
 
 Kernel twopass_solve_intermediate(int step_num, real dt) {
+
+	real3 var = real3(0.0,0.0,0.0)
+	var = 0.0
+	real4 var4 = (real4){0.0,0.0,0.0,0.0}
+	var4 = 0.0
     write(VTXBUF_LNRHO, rk3_intermediate(VTXBUF_LNRHO, continuity(), step_num, dt))
 
     #if LENTROPY 
