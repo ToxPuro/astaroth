@@ -19,6 +19,10 @@ acHaloSegmentBatchCreate(const size_t ndims, const size_t* mm, const size_t* nn,
     partition(ndims, mm, nn, nn_offset, npartitions, dims, offsets);
     print_matrix("Dims in segment", npartitions, ndims, dims);
     print_matrix("offsets in segment", npartitions, ndims, offsets);
+
+    size_t row[ndims];
+    matrix_get_row(22, npartitions, ndims, dims, row);
+    print_array("row", ndims, row);
     // TODO REMOVE THE computational domain MIDDLE and determine npackets
     size_t npackets = 0;
     WARNING("TODO determine how to remove center block")

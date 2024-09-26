@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 
+#include "array.h"
 #include "errchk.h"
 #include "math_utils.h"
 #include "print.h"

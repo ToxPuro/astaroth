@@ -4,3 +4,7 @@
 
 // Macros
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
+
+void copy(const size_t count, const size_t* in, size_t* out);
+
+void test_array(void);

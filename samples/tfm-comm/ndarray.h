@@ -11,4 +11,4 @@ bool ndarray_equals(const size_t count, const size_t ndims, const size_t* a_offs
 
 void print_ndarray(const char* label, const size_t ndims, const size_t* dims, const size_t* arr);
 
-void ndarray_test(void);
+void test_ndarray(void);

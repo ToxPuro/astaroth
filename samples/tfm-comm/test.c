@@ -1,0 +1,17 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "array.h"
+#include "math_utils.h"
+#include "matrix.h"
+#include "ndarray.h"
+
+int
+main(void)
+{
+    test_array();
+    test_ndarray();
+    test_math_utils();
+    test_matrix();
+    return EXIT_SUCCESS;
+}

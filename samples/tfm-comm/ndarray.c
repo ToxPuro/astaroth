@@ -151,7 +151,7 @@ print_ndarray(const char* label, const size_t ndims, const size_t* dims, const s
 }
 
 void
-ndarray_test(void)
+test_ndarray(void)
 {
     test_nd_to_1d();
     test_ndarray_equals();

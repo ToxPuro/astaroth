@@ -2,6 +2,7 @@
 
 #include <string.h> // memmove
 
+#include "array.h"
 #include "errchk.h"
 #include "print.h"
 
@@ -528,13 +529,6 @@ reversei(const size_t count, int* arr)
         arr[i]             = arr[count - i - 1];
         arr[count - i - 1] = tmp;
     }
-}
-
-void
-copy(const size_t count, const size_t* in, size_t* out)
-{
-    for (size_t i = 0; i < count; ++i)
-        out[i] = in[i];
 }
 
 void
