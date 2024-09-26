@@ -133,6 +133,7 @@ cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Tri
 | USE_CUDA_AWARE_MPI | Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory | ON |
 | MULTIGPU_ENABLED | Enables Astaroth to use multiple GPUs on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only. | ON |
 | DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `acc-runtime/samples/mhd_modular` |
+| DSL_MODULE_FILE | Optionally can specify which wile in DSL_MODULE_DIR to compile 
 | PROGRAM_MODULE_DIR | Can be used to declare additional host-side program modules (also known as Thrones) | empty |
 | VERBOSE | Enables various non-critical warning and status messages. | OFF |
 | BUILD_UTILS | "Builds the utility library. | ON |
@@ -141,6 +142,8 @@ cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Tri
 | SINGLEPASS_INTEGRATION| "Perform integration in a single pass. Improves performance by ~20% but may introduce slightly larger floating-point arithmetic error than the conventional approach" | ON |
 | OPTIMIZE_MEM_ACCESSES | "Optimizes memory accesses by computing only the bare minimum number of stencils but can introduce errors in some use cases, f.ex. if a stencil is accessed conditionally based on a value not known at compile time" | OFF |
 | BUILD_SHARED_LIBS | "Builds Astaroth as a collection of shared libraries instead of statically built modules" | OFF |
+| BUILD_TESTS | "Builds Astaroth test samples" | OFF |
+| 2D | "Specifies that Astaroth is being compiled for a two-dimensional setup" | OFF |
 
 
 ## Standalone Module
