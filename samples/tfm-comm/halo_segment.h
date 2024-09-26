@@ -3,8 +3,6 @@
 
 #include "buffer.h"
 
-typedef size_t FIELDDATATYPE;
-
 typedef struct {
     size_t ndims;
     size_t* dims;
