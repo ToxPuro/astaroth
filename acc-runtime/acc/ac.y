@@ -479,7 +479,8 @@ main(int argc, char** argv)
 %token IDENTIFIER STRING NUMBER REALNUMBER DOUBLENUMBER
 %token IF ELIF ELSE WHILE FOR RETURN IN BREAK CONTINUE
 %token BINARY_OP ASSIGNOP QUESTION UNARY_OP
-%token INT UINT REAL MATRIX TENSOR FIELD FIELD3 STENCIL WORK_BUFFER BOOL INTRINSIC LONG_LONG LONG
+%token INT UINT REAL MATRIX TENSOR FIELD FIELD3 STENCIL WORK_BUFFER PROFILE
+%token BOOL INTRINSIC LONG_LONG LONG 
 %token KERNEL INLINE ELEMENTAL BOUNDARY_CONDITION UTILITY SUM MAX COMMUNICATED AUXILIARY DEAD DCONST_QL CONST_QL SHARED DYNAMIC_QL CONSTEXPR RUN_CONST GLOBAL_MEMORY_QL OUTPUT VTXBUFFER COMPUTESTEPS BOUNDCONDS INPUT
 %token HOSTDEFINE
 %token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE 
@@ -572,6 +573,10 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 		}
             } 
             else if(get_node_by_token(WORK_BUFFER, variable_definition)) {
+                variable_definition->type |= NODE_VARIABLE;
+                set_identifier_type(NODE_VARIABLE_ID, declaration_list);
+            }
+            else if(get_node_by_token(PROFILE, variable_definition)) {
                 variable_definition->type |= NODE_VARIABLE;
                 set_identifier_type(NODE_VARIABLE_ID, declaration_list);
             }
