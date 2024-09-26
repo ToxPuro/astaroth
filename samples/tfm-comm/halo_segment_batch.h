@@ -18,6 +18,8 @@ typedef struct {
 HaloSegmentBatch acHaloSegmentBatchCreate(const size_t ndims, const size_t* mm, const size_t* nn,
                                           const size_t* nn_offset, const size_t nfields);
 
+void acHaloSegmentBatchDestroy(HaloSegmentBatch* batch);
+
 void acHaloSegmentBatchPrint(const char* label, const HaloSegmentBatch batch);
 
-void acHaloSegmentBatchDestroy(HaloSegmentBatch* batch);
+void acHaloSegmentBatchWait(const HaloSegmentBatch batch);

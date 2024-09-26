@@ -5,6 +5,7 @@
 #include "comm.h"
 #include "math_utils.h"
 #include "matrix.h"
+#include "mpi_utils.h"
 #include "ndarray.h"
 
 int
@@ -14,6 +15,6 @@ main(void)
     test_ndarray();
     test_math_utils();
     test_matrix();
-    test_comm();
+    test_mpi_utils();
     return EXIT_SUCCESS;
 }

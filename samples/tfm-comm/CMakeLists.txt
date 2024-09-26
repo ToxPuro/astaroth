@@ -33,7 +33,7 @@ find_package(MPI REQUIRED COMPONENTS C)
 add_library(tfm-utils SHARED print.c math_utils.c type_conversion.c ndarray.c buffer.c halo_segment.c partition.c dynamic_array.c matrix.c array.c)
 #target_link_libraries(tfm-utils INTERFACE tfm-print tfm-math-utils)
 
-add_library(tfm-comm SHARED comm.c halo_segment_batch.c)
+add_library(tfm-comm SHARED comm.c halo_segment_batch.c mpi_utils.c)
 target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-utils)
 
 #add_library(tfm-math-utils SHARED math_utils.c)

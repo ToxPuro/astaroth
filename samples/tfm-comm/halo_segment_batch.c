@@ -1,12 +1,14 @@
 #include "halo_segment_batch.h"
 
 #include "dynamic_array.h"
-#include "errchk.h"
+#include "errchk_mpi.h"
 #include "math_utils.h"
 #include "matrix.h"
+#include "mpi_utils.h"
 #include "ndarray.h"
 #include "partition.h"
 #include "print.h"
+#include "type_conversion.h"
 
 static void
 acHaloSegmentBatchVerify(const size_t ndims, const size_t* mm, const size_t* nn,
@@ -24,18 +26,18 @@ acHaloSegmentBatchVerify(const size_t ndims, const size_t* mm, const size_t* nn,
         size_t count = 0;
         for (size_t i = 0; i < batch.npackets; ++i) {
             const HaloSegment a = batch.local_packets[i];
-            ERRCHK(ndims == a.ndims);
+            ERRCHK_MPI(ndims == a.ndims);
             for (size_t j = i + 1; j < batch.npackets; ++j) {
                 const HaloSegment b = batch.local_packets[j];
 
-                ERRCHK(intersect_box(ndims, a.offset, a.dims, b.offset, b.dims) == false);
+                ERRCHK_MPI(intersect_box(ndims, a.offset, a.dims, b.offset, b.dims) == false);
             }
             count += prod(ndims, a.dims);
 
             for (size_t j = 0; j < ndims; ++j)
-                ERRCHK(a.offset[j] + a.dims[j] <= mm[j]);
+                ERRCHK_MPI(a.offset[j] + a.dims[j] <= mm[j]);
         }
-        ERRCHK(count == model_count);
+        ERRCHK_MPI(count == model_count);
     }
     { // Remote packets
         const size_t model_count = prod(ndims, mm) - prod(ndims, nn);
@@ -43,18 +45,18 @@ acHaloSegmentBatchVerify(const size_t ndims, const size_t* mm, const size_t* nn,
         size_t count = 0;
         for (size_t i = 0; i < batch.npackets; ++i) {
             const HaloSegment a = batch.remote_packets[i];
-            ERRCHK(ndims == a.ndims);
+            ERRCHK_MPI(ndims == a.ndims);
             for (size_t j = i + 1; j < batch.npackets; ++j) {
                 const HaloSegment b = batch.remote_packets[j];
 
-                ERRCHK(intersect_box(ndims, a.offset, a.dims, b.offset, b.dims) == false);
+                ERRCHK_MPI(intersect_box(ndims, a.offset, a.dims, b.offset, b.dims) == false);
             }
             count += prod(ndims, a.dims);
 
             for (size_t j = 0; j < ndims; ++j)
-                ERRCHK(a.offset[j] + a.dims[j] <= mm[j]);
+                ERRCHK_MPI(a.offset[j] + a.dims[j] <= mm[j]);
         }
-        ERRCHK(count == model_count);
+        ERRCHK_MPI(count == model_count);
     }
 }
 
@@ -70,8 +72,8 @@ acHaloSegmentBatchCreate(const size_t ndims, const size_t* mm, const size_t* nn,
     // Quick solution: assume the last partition is the innermost domain
     // and that the other partitions do not overlap the computational domain
     const size_t npackets = npartitions - 1;
-    ERRCHK(equals(ndims, nn, dims_matrix[npackets]) &&
-           equals(ndims, nn_offset, offset_matrix[npackets]));
+    ERRCHK_MPI(equals(ndims, nn, dims_matrix[npackets]) &&
+               equals(ndims, nn_offset, offset_matrix[npackets]));
     print_matrix("dims_matrix", npackets, ndims, dims_matrix);
     print_matrix("offset_matrix", npackets, ndims, offset_matrix);
 
@@ -84,17 +86,55 @@ acHaloSegmentBatchCreate(const size_t ndims, const size_t* mm, const size_t* nn,
         .send_subarrays = malloc(sizeof(batch.send_subarrays[0]) * npackets),
         .recv_subarrays = malloc(sizeof(batch.recv_subarrays[0]) * npackets),
     };
-    ERRCHK(batch.local_packets);
-    ERRCHK(batch.remote_packets);
-    ERRCHK(batch.requests);
-    ERRCHK(batch.send_subarrays);
-    ERRCHK(batch.recv_subarrays);
+    ERRCHK_MPI(batch.local_packets);
+    ERRCHK_MPI(batch.remote_packets);
+    ERRCHK_MPI(batch.requests);
+    ERRCHK_MPI(batch.send_subarrays);
+    ERRCHK_MPI(batch.recv_subarrays);
 
+    MPI_Datatype dtype = MPI_UNSIGNED_LONG_LONG;
+    WARNING("MPI_Datatype hardcoded to MPI_UNSIGNED_LONG_LONG");
     for (size_t i = 0; i < npackets; ++i) {
-        const size_t* dims      = dims_matrix[i];
-        const size_t* offset    = offset_matrix[i];
-        batch.local_packets[i]  = acHaloSegmentCreate(ndims, dims, offset, nbuffers);
-        batch.remote_packets[i] = acHaloSegmentCreate(ndims, dims, offset, nbuffers);
+        const size_t* dims        = dims_matrix[i];
+        const size_t* recv_offset = offset_matrix[i];
+        batch.local_packets[i]    = acHaloSegmentCreate(ndims, dims, recv_offset, nbuffers);
+        batch.remote_packets[i]   = acHaloSegmentCreate(ndims, dims, recv_offset, nbuffers);
+
+        // Subarrays
+        int sizes[ndims], subsizes[ndims], recv_starts[ndims], send_starts[ndims];
+        to_mpi_format(ndims, mm, sizes);
+        to_mpi_format(ndims, dims, subsizes);
+        to_mpi_format(ndims, recv_offset, recv_starts);
+
+        // Each recv_offset maps to a coordinates in the computational domain of a neighboring
+        // process, written as send_offset.
+        //
+        // The equation is
+        //      a = (b - r) mod n + r,
+        //  where a is the send_offset, b the recv_offset, r the nn_offset, and n the size of the
+        //  computational domain.
+        //
+        // Intuitively:
+        //  1. Map b to coordinates in the halo-less computational domain
+        //  2. Wrap the resulting out-of-bounds coordinates around the computational domain
+        //  3. Map the result back to coordinates in the buffer that includes the halo
+        //
+        // The computation is implemented as a = (n + b - r) mod n + r to avoid
+        // unsigned integer underflow.
+        size_t send_offset[ndims];
+        for (size_t j = 0; j < ndims; ++j)
+            send_offset[j] = ((nn[j] + recv_offset[j] - nn_offset[j]) % nn[j]) + nn_offset[j];
+        to_mpi_format(ndims, send_offset, send_starts);
+
+        // Subarrays: receive
+        ERRCHK_MPI_API(MPI_Type_create_subarray(as_int(ndims), sizes, subsizes, recv_starts,
+                                                MPI_ORDER_C, dtype, &batch.recv_subarrays[i]));
+        ERRCHK_MPI_API(MPI_Type_commit(&batch.recv_subarrays[i]));
+
+        // Subarrays: send
+        ERRCHK_MPI_API(MPI_Type_create_subarray(as_int(ndims), sizes, subsizes, send_starts,
+                                                MPI_ORDER_C, dtype, &batch.send_subarrays[i]));
+        ERRCHK_MPI_API(MPI_Type_commit(&batch.send_subarrays[i]));
     }
 
     acHaloSegmentBatchVerify(ndims, mm, nn, batch);
@@ -104,7 +144,10 @@ acHaloSegmentBatchCreate(const size_t ndims, const size_t* mm, const size_t* nn,
 void
 acHaloSegmentBatchDestroy(HaloSegmentBatch* batch)
 {
+
     for (size_t i = 0; i < batch->npackets; ++i) {
+        ERRCHK_MPI_API(MPI_Type_free(&batch->send_subarrays[i]));
+        ERRCHK_MPI_API(MPI_Type_free(&batch->recv_subarrays[i]));
         acHaloSegmentDestroy(&batch->local_packets[i]);
         acHaloSegmentDestroy(&batch->remote_packets[i]);
     }
@@ -134,4 +177,13 @@ acHaloSegmentBatchPrint(const char* label, const HaloSegmentBatch batch)
         snprintf(buf, buflen, "remote_packets[%zu]", i);
         acHaloSegmentPrint(buf, batch.remote_packets[i]);
     }
+}
+
+void
+acHaloSegmentBatchWait(const HaloSegmentBatch batch)
+{
+    MPI_Status statuses[batch.npackets];
+    ERRCHK_MPI_API(MPI_Waitall(as_int(batch.npackets), batch.requests, statuses));
+    for (size_t i = 0; i < batch.npackets; ++i)
+        ERRCHK_MPI_API(statuses[i].MPI_ERROR);
 }
