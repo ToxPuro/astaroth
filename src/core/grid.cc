@@ -63,6 +63,8 @@
 #include "timer_hires.h"
 #include "user_builtin_non_scalar_constants.h"
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
 #ifdef USE_PERFSTUBS
 #define PERFSTUBS_USE_TIMER
 #include "perfstubs_api/timer.h"
@@ -464,10 +466,12 @@ acGridInit(AcMeshInfo info)
 
     check_that_device_allocation_valid();
 
-    if(info.int_params[AC_decompose_strategy] == (int)AcDecomposeStrategy::Hierarchical)
+    if(acGetInfoValue(info,AC_decompose_strategy) == (int)AcDecomposeStrategy::Hierarchical)
+
     {
         int device_count = -1;
         cudaGetDeviceCount(&device_count);
+    	// Decompose
     	const AcMeshDims mesh_dims = acGetMeshDims(info);
     	const size_t global_dims[] = {
         	as_size_t(mesh_dims.nn.x),
@@ -479,6 +483,9 @@ acGridInit(AcMeshInfo info)
     	const size_t partitions_per_layer[] = {as_size_t(device_count), as_size_t(node_count)};
     	const size_t nlayers                = ARRAY_SIZE(partitions_per_layer);
     	compat_acDecompositionInit(ndims, global_dims, nlayers, partitions_per_layer);
+    	// grid.decomposition_info = acDecompositionInit(ndims, global_dims,
+    	// nlayers,partitions_per_layer);
+    	acVerifyDecomposition(decompose(ac_nprocs(),AcDecomposeStrategy::Hierarchical),(int)ac_proc_mapping_strategy());
     }
 
     // grid.decomposition_info = acDecompositionInit(ndims, global_dims,
@@ -670,9 +677,9 @@ acGridLoadMeshWorking(const Stream stream, const AcMesh host_mesh)
             for (int tgt = 0; tgt < ac_nprocs(); ++tgt) {
                 const int3 tgt_pid3d = getPid3D(tgt);
                 const size_t idx     = acVertexBufferIdx(tgt_pid3d.x * distributed_nn.x, //
-                                                     tgt_pid3d.y * distributed_nn.y, //
-                                                     tgt_pid3d.z * distributed_nn.z, //
-                                                     host_mesh.info);
+                                                         tgt_pid3d.y * distributed_nn.y, //
+                                                         tgt_pid3d.z * distributed_nn.z, //
+                                                         host_mesh.info);
                 MPI_Send(&host_mesh.vertex_buffer[vtxbuf][idx], 1, monolithic_subarray, tgt, vtxbuf,
                          acGridMPIComm());
             }
@@ -1217,9 +1224,9 @@ acGridStoreMeshWorking(const Stream stream, AcMesh* host_mesh)
             for (int tgt = 0; tgt < ac_nprocs(); ++tgt) {
                 const int3 tgt_pid3d = getPid3D(tgt);
                 const size_t idx     = acVertexBufferIdx(tgt_pid3d.x * distributed_nn.x, //
-                                                     tgt_pid3d.y * distributed_nn.y, //
-                                                     tgt_pid3d.z * distributed_nn.z, //
-                                                     host_mesh->info);
+                                                         tgt_pid3d.y * distributed_nn.y, //
+                                                         tgt_pid3d.z * distributed_nn.z, //
+                                                         host_mesh->info);
                 MPI_Recv(&host_mesh->vertex_buffer[vtxbuf][idx], 1, monolithic_subarray, tgt,
                          vtxbuf, acGridMPIComm(), MPI_STATUS_IGNORE);
             }
@@ -1323,9 +1330,9 @@ acGridLoadMeshOld(const Stream stream, const AcMesh host_mesh)
                     for (int tgt_pid = 1; tgt_pid < ac_nprocs(); ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid);
                         const int src_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                              j + tgt_pid3d.y * nn.y, //
-                                                              k + tgt_pid3d.z * nn.z, //
-                                                              host_mesh.info);
+                                                                 j + tgt_pid3d.y * nn.y, //
+                                                                 k + tgt_pid3d.z * nn.z, //
+                                                                 host_mesh.info);
 
                         // Send
                         MPI_Send(&host_mesh.vertex_buffer[vtxbuf][src_idx], count, AC_REAL_MPI_TYPE,
@@ -1413,9 +1420,9 @@ acGridStoreMeshAA(const Stream stream, AcMesh* host_mesh)
                     for (int tgt_pid = 1; tgt_pid < ac_nprocs(); ++tgt_pid) {
                         const int3 tgt_pid3d = getPid3D(tgt_pid);
                         const int dst_idx    = acVertexBufferIdx(i + tgt_pid3d.x * nn.x, //
-                                                              j + tgt_pid3d.y * nn.y, //
-                                                              k + tgt_pid3d.z * nn.z, //
-                                                              host_mesh->info);
+                                                                 j + tgt_pid3d.y * nn.y, //
+                                                                 k + tgt_pid3d.z * nn.z, //
+                                                                 host_mesh->info);
 
                         // Recv
                         MPI_Status status;
@@ -2478,6 +2485,51 @@ acGridReduceXYAverage(const Stream stream, const Field field, const Profile prof
     return AC_SUCCESS;
 }
 
+AcResult
+acGridReduceXYAverages(const Stream stream)
+{
+    ERRCHK(grid.initialized);
+    const Device device = grid.device;
+    acGridSynchronizeStream(STREAM_ALL);
+
+    // Strategy:
+    // 1) Reduce the local result to device->vba.profiles.in
+    acDeviceReduceXYAverages(device, stream);
+
+    // 2) Create communicator that encompasses the processes that are neighbors in the xy direction
+    int nprocs, pid;
+    MPI_Comm_size(astaroth_comm, &nprocs);
+    MPI_Comm_rank(astaroth_comm, &pid);
+
+    const uint3_64 decomp = decompose(nprocs,ac_decomp_strategy());
+    const int3 pid3d      = getPid3D(pid, decomp);
+    MPI_Comm xy_neighbors;
+    MPI_Comm_split(acGridMPIComm(), pid3d.z, pid, &xy_neighbors);
+
+    // 3) Allreduce
+    MPI_Allreduce(MPI_IN_PLACE, device->vba.profiles.in, NUM_PROFILES * device->vba.profiles.count,
+                  AC_REAL_MPI_TYPE, MPI_SUM, xy_neighbors);
+
+    // 4) Average
+    // auto array_begin = thrust::device_pointer_cast(device->vba.profiles.in);
+    // auto array_end = thrust::device_pointer_cast(device->vba.profiles.in + NUM_PROFILES *
+    // device->vba.profiles.count);
+    const size_t gnx = (size_t)acGetInfoValue(device->local_config,AC_nxgrid);
+    const size_t gny = (size_t)acGetInfoValue(device->local_config,AC_nygrid);
+    cudaSetDevice(device->id);
+    acMultiplyInplace(1. / (gnx * gny), NUM_PROFILES * device->vba.profiles.count,
+                      device->vba.profiles.in[0]);
+
+    // 5) Optional: Test
+    // AcReal arr[device->vba.profiles.count];
+    // cudaMemcpy(arr, device->vba.profiles.in[profile], device->vba.profiles.count,
+    //            cudaMemcpyDeviceToHost);
+    // for (size_t i = 0; i < device->vba.profiles.count; ++i)
+    //     printf("%i: %g\n", i, arr[i]);
+
+    return AC_SUCCESS;
+}
+
 /** */
 AcResult
 acGridLaunchKernel(const Stream stream, const AcKernel kernel, const int3 start, const int3 end)
@@ -3412,12 +3464,12 @@ acGridDiskAccessLaunch(const AccessType type)
         cudaDeviceSynchronize();
 
         const AcMeshInfo info = device->local_config;
-        AcReal* host_buffer = grid.submesh.vertex_buffer[i];
+        AcReal* host_buffer   = grid.submesh.vertex_buffer[i];
 
-        const AcReal* in = device->vba.in[i];
-        const int3 in_offset = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
-        const int3 in_volume = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
-        AcReal* out = device->vba.out[i];
+        const AcReal* in      = device->vba.in[i];
+        const int3 in_offset  = acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
+        const int3 in_volume  = acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
+        AcReal* out           = device->vba.out[i];
         const int3 out_offset = (int3){0, 0, 0};
         const int3 out_volume = acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
         acDeviceVolumeCopy(device, STREAM_DEFAULT, in, in_offset, in_volume, out, out_offset,
@@ -3432,7 +3484,7 @@ acGridDiskAccessLaunch(const AccessType type)
 
         const int3 offset = info.int3_params[AC_multigpu_offset]; // Without halo
 #if USE_DISTRIBUTED_IO
-        int mode = MPI_MODE_CREATE | MPI_MODE_WRONLY;
+        int mode           = MPI_MODE_CREATE | MPI_MODE_WRONLY;
         char outfile[4096] = "";
         snprintf(outfile, 4096, "segment-%d_%d_%d-%s", offset.x, offset.y, offset.z, path);
 

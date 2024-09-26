@@ -45,6 +45,8 @@ int acGetPid(const int3 pid_input, const AcDecompositionInfo info);
 
 int3 acGetPid3D(const int i, const AcDecompositionInfo info);
 
+// void acVerifyDecomposition(const AcDecompositionInfo info);
+
 // --------------------
 // Backwards compatibility
 // --------------------
@@ -57,3 +59,4 @@ uint3_64 decompose(const uint64_t target, const AcDecomposeStrategy decompose_st
 int getPid(const int3 pid_raw, const uint3_64 decomp,const int proc_mapping_strategy);
 
 int3 getPid3D(const uint64_t pid, const uint3_64 decomp,const int proc_mapping_strategy);
+void acVerifyDecomposition(const uint3_64 decomp, const int proc_mapping_strategy);

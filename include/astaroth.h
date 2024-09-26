@@ -1507,6 +1507,8 @@ FUNC_DEFINE(AcResult, acDeviceReduceXYAverage,(const Device device, const Stream
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceSwapProfileBuffer,(const Device device, const Profile handle));
+/** */
+FUNC_DEFINE(AcResult, acDeviceReduceXYAverages,(const Device device, const Stream stream));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceSwapProfileBuffers,(const Device device, const Profile* profiles,
@@ -1579,6 +1581,10 @@ FUNC_DEFINE(AcResult, acDeviceStoreIXYPlate,(const Device device, int3 start, in
 FUNC_DEFINE(AcResult, acDeviceGetVBApointers,(Device device, AcReal *vbapointer[2]));
 #endif
 
+
+/** */
+AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf,
+                                 const char* filepath);
 
 /*
  * =============================================================================
@@ -2062,6 +2068,25 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	return handle;
   }
 #endif
+
+/** Inits the profile to cosine wave */
+AcResult acHostInitProfileToCosineWave(const long double box_size, const size_t nz,
+                                       const long offset, const AcReal amplitude,
+                                       const AcReal wavenumber, const size_t profile_count,
+                                       AcReal* profile);
+
+/** Inits the profile to sine wave */
+AcResult acHostInitProfileToSineWave(const long double box_size, const size_t nz, const long offset,
+                                     const AcReal amplitude, const AcReal wavenumber,
+                                     const size_t profile_count, AcReal* profile);
+
+/** Initialize a profile to a constant value */
+AcResult acHostInitProfileToValue(const long double value, const size_t profile_count,
+                                  AcReal* profile);
+
+/** Writes the host profile to a file */
+AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
+                                  const size_t profile_count);
 
 #ifdef __cplusplus
 } // extern "C"

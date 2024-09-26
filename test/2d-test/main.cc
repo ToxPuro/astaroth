@@ -90,8 +90,6 @@ main(void)
     }
 
     // GPU alloc & compute
-    //printf("Ac_dsx: %14e\n",info.real_params[AC_dsx]);
-    //printf("Ac_dsy: %14e\n",info.real_params[AC_dsy]);
     acGridInit(info);
 
     std::vector<Field> all_fields;
@@ -116,7 +114,8 @@ main(void)
     //printf("Build taskgraphs\n");
 
 
-    acHostMeshRandomize(&model);
+    if (pid == 0)
+    	acHostMeshRandomize(&model);
     acGridLoadMesh(STREAM_DEFAULT, model);
     acGridExecuteTaskGraph(comm_graph,1);
     acGridSynchronizeStream(STREAM_ALL);

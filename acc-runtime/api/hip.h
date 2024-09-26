@@ -48,8 +48,11 @@
 #define cudaStreamCreate hipStreamCreate
 #define cudaStreamCreateWithPriority hipStreamCreateWithPriority
 #define cudaStreamDestroy hipStreamDestroy
-#define cudaMemcpyDeviceToHost hipMemcpyDeviceToHost
+#define cudaMemcpyKind hipMemcpyKind
 #define cudaMemcpyHostToDevice hipMemcpyHostToDevice
+#define cudaMemcpyDeviceToHost hipMemcpyDeviceToHost
+#define cudaMemcpyDeviceToDevice hipMemcpyDeviceToDevice
+#define cudaMemcpyHostToHost hipMemcpyHostToHost
 #define cudaSetDevice hipSetDevice
 #define cudaMemcpy hipMemcpy
 #define cudaMemcpyAsync hipMemcpyAsync

@@ -6,7 +6,6 @@ if [[ -z "${ASTAROTH}" ]]; then
 fi
 
 BUILD_OPTIONS="\
--DUSE_HIP=ON \
 -DOPTIMIZE_MEM_ACCESSES=ON \
 -DMPI_ENABLED=ON \
 -DSINGLEPASS_INTEGRATION=OFF \
@@ -14,11 +13,9 @@ BUILD_OPTIONS="\
 -DBUILD_MHD_SAMPLES=OFF \
 -DBUILD_SAMPLES=OFF \
 -DDSL_MODULE_DIR=$ASTAROTH/samples/tfm/mhd \
--DPROGRAM_MODULE_DIR=$ASTAROTH/samples/tfm \
+-DPROGRAM_MODULE_DIR=$ASTAROTH/samples/benchmark-thrust \
+-DCUDA_ARCHITECTURES=61\
 " # NOTE CUDA_ARCHITECTURE to build for the work machine
-# -DCUDA_ARCHITECTURES=61 \
-# -DCUB_PATH=${CUB_PATH} \
-# -DTHRUST_PATH=${THRUST_PATH} \
 
 cmake $BUILD_OPTIONS $@ $ASTAROTH && make -j # Build Astaroth
 #cmake $BUILD_OPTIONS $@ $ASTAROTH/acc-runtime && make -j # Build ACC runtime only

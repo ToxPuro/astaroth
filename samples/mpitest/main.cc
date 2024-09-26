@@ -29,6 +29,7 @@
 #include <vector>
 
 #define NUM_INTEGRATION_STEPS (100)
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 static bool finalized = false;
 

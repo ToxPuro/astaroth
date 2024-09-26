@@ -22,6 +22,7 @@
 
 #include "stencil_loader.h"
 
+#ifdef LTFM
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 #define NUM_INTEGRATION_STEPS (100)
 
@@ -346,3 +347,14 @@ main(void)
 
     return EXIT_SUCCESS;
 }
+#else // LTFM
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+main(void)
+{
+    printf("Error: LTFM was not enabled.\n");
+    return EXIT_FAILURE;
+}
+#endif

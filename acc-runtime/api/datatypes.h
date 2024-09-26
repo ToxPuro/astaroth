@@ -100,4 +100,3 @@ private:
     T arr_[N];
 };
 #endif
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))

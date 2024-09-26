@@ -166,7 +166,6 @@ operator-(const int3& a)
   return (int3){-a.x, -a.y, -a.z};
 }
 
-
 //TP: HIP already provides this
 #if AC_USE_HIP
 #else

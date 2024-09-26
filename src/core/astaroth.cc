@@ -388,7 +388,6 @@ acGetNode(void)
 
 
 
-
 AcResult
 acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 {
@@ -537,7 +536,7 @@ acGetLocalMM(const AcMeshInfo info)
 #if TWO_D == 0
 	auto z = AC_mz;
 #else
-	auto z = 1;
+	int z = 1;
 #endif
     return acConstructInt3Param(AC_mx, AC_my, z, info);
 }
