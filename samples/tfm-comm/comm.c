@@ -26,6 +26,21 @@ acCommQuit(void)
     ERRCHK_MPI_API(MPI_Finalize());
 }
 
+void
+acCommGetProcInfo(int* rank, int* nprocs)
+{
+    *rank   = 0;
+    *nprocs = 1;
+    ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, rank));
+    ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, nprocs));
+}
+
+void
+acCommBarrier(void)
+{
+    ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+}
+
 struct HaloExchangeTask_s {
     HaloSegmentBatch batch;
 

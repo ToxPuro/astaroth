@@ -5,6 +5,10 @@ void acCommInit(void);
 
 void acCommQuit(void);
 
+void acCommGetProcInfo(int* rank, int* nprocs);
+
+void acCommBarrier(void);
+
 typedef struct HaloExchangeTask_s HaloExchangeTask;
 
 HaloExchangeTask* acHaloExchangeTaskCreate(const size_t ndims, const size_t* mm, const size_t* nn,
