@@ -133,9 +133,9 @@ cmake -DBUILD_SHARED_LIBS=ON .. && make -j  # Hangs with the hip compiler on Tri
 | USE_CUDA_AWARE_MPI | Uses GPUDirect RDMA for direct GPU-GPU communication instead of routing communication through host memory | ON |
 | MULTIGPU_ENABLED | Enables Astaroth to use multiple GPUs on a single node. Uses peer-to-peer communication instead of MPI. Affects Legacy & Node layers only. | ON |
 | DSL_MODULE_DIR | Defines the directory to be scanned when looking for DSL files. | `acc-runtime/samples/mhd_modular` |
-| DSL_MODULE_FILE | Optionally can specify which wile in DSL_MODULE_DIR to compile 
+| DSL_MODULE_FILE | Optionally can specify which file in DSL_MODULE_DIR to compile | empty |
 | PROGRAM_MODULE_DIR | Can be used to declare additional host-side program modules (also known as Thrones) | empty |
-| VERBOSE | Enables various non-critical warning and status messages. | OFF |
+| VERBOSE | Enables various non-critical warning and status messages. | OFF | 
 | BUILD_UTILS | "Builds the utility library. | ON |
 | BUILD_ACC_RUNTIME_LIBRARY | "Builds the standalone acc runtime library" | OFF |
 | USE_HIP | "Use HIP as the underlying GPGPU library instead of CUDA" | OFF |
