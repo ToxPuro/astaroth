@@ -544,7 +544,7 @@ buffer_dims(const AcMeshInfo config)
 #if TWO_D == 0
 	const int z = get_val(config,AC_mz);
 #else
-	const int z = 0;
+	const int z = 1;
 #endif
 	return (int3){x,y,z};
 }

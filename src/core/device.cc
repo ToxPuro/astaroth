@@ -896,6 +896,13 @@ acDeviceGeneralBoundcondStep(const Device device, const Stream stream,
 {
     if(!vtxbuf_is_alive[vtxbuf_handle]) return AC_NOT_ALLOCATED;
 #if TWO_D == 1
+        (void)device;
+	(void)stream;
+	(void)vtxbuf_handle;
+	(void)start;
+	(void)end;
+	(void)config;
+	(void)bindex;
 	fprintf(stderr,"acDeviceGeneralBoundCondStep not supported for 2d\n");
 	exit(EXIT_FAILURE);
 #else

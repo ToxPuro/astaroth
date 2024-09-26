@@ -23,8 +23,10 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config, AcCompInfo& comp_info)
 	    	    : is_loaded(AC_nx) ? AC_nx : AC_nxgrid;
     auto ny_param = !IsCompParam(AC_ny) ? AC_ny
 	    	    : is_loaded(AC_ny) ? AC_ny : AC_nygrid;
+#if TWO_D == 0
     auto nz_param = !IsCompParam(AC_nz) ? AC_nz
 	    	    : is_loaded(AC_nz) ? AC_nz : AC_nzgrid;
+#endif
 
     ERRCHK_ALWAYS(get_val(nx_param));
     ERRCHK_ALWAYS(get_val(ny_param));
@@ -65,7 +67,9 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config, AcCompInfo& comp_info)
 
     ERRCHK_ALWAYS(!IsCompParam(AC_nxgrid)  || is_loaded(AC_nxgrid));
     ERRCHK_ALWAYS(!IsCompParam(AC_nygrid)  || is_loaded(AC_nygrid));
+#if TWO_D == 0
     ERRCHK_ALWAYS(!IsCompParam(AC_nzgrid)  || is_loaded(AC_nzgrid));
+#endif
 
     push_val(AC_nxgrid_max,get_val(AC_nxgrid) + NGHOST_X); 
     push_val(AC_nygrid_max,get_val(AC_nygrid) + NGHOST_Y); 
@@ -169,7 +173,7 @@ acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* inf
 }
 #else
 AcResult
-acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info)
+acSetMeshDims(const size_t nx, const size_t ny, AcMeshInfo* info)
 {
 	AcCompInfo comp_info = acInitCompInfo();
 	return acSetMeshDimsBase(nx,ny,*info,comp_info);
@@ -184,7 +188,7 @@ acSetMeshDimsBoth(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo*
 }
 #else
 AcResult
-acSetMeshDimsBoth(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info, AcCompInfo* comp_info)
+acSetMeshDimsBoth(const size_t nx, const size_t ny, AcMeshInfo* info, AcCompInfo* comp_info)
 {
 	return acSetMeshDimsBase(nx,ny,*info,*comp_info);
 }

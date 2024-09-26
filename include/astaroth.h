@@ -2049,7 +2049,7 @@ static UNUSED AcResult acSetMeshDims(const size_t nx, const size_t ny, const siz
 #else
 static UNUSED AcResult acSetMeshDims(const size_t nx, const size_t ny, AcMeshInfo* info, AcCompInfo* comp_info)
 {
-	return acSetMeshDimsBoth(nx,ny,nz,info,comp_info);
+	return acSetMeshDimsBoth(nx,ny,info,comp_info);
 }
 #endif
 

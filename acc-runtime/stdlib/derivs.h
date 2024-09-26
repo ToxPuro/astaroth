@@ -467,10 +467,6 @@ Stencil dery {
     [2][0]  = AC_inv_dsy * DER1_2,
     [3][0]  = AC_inv_dsy * DER1_3
 }
-der6z(Field field)
-{
-	return 0.0
-}
 
 Stencil derxx {
     [0][-3] = AC_inv_dsx_2 * DER2_3,
