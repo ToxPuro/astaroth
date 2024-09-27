@@ -82,13 +82,15 @@ acHaloSegmentBatchCreate(const size_t ndims, const size_t* mm, const size_t* nn,
         .npackets       = npackets,
         .local_packets  = malloc(sizeof(batch.local_packets[0]) * npackets),
         .remote_packets = malloc(sizeof(batch.remote_packets[0]) * npackets),
-        .requests       = malloc(sizeof(batch.requests[0]) * npackets),
+        .send_reqs      = malloc(sizeof(batch.send_reqs[0]) * npackets),
+        .recv_reqs      = malloc(sizeof(batch.recv_reqs[0]) * npackets),
         .send_subarrays = malloc(sizeof(batch.send_subarrays[0]) * npackets),
         .recv_subarrays = malloc(sizeof(batch.recv_subarrays[0]) * npackets),
     };
     ERRCHK_MPI(batch.local_packets);
     ERRCHK_MPI(batch.remote_packets);
-    ERRCHK_MPI(batch.requests);
+    ERRCHK_MPI(batch.send_reqs);
+    ERRCHK_MPI(batch.recv_reqs);
     ERRCHK_MPI(batch.send_subarrays);
     ERRCHK_MPI(batch.recv_subarrays);
 
@@ -153,7 +155,8 @@ acHaloSegmentBatchDestroy(HaloSegmentBatch* batch)
     }
     free(batch->recv_subarrays);
     free(batch->send_subarrays);
-    free(batch->requests);
+    free(batch->send_reqs);
+    free(batch->recv_reqs);
     free(batch->remote_packets);
     free(batch->local_packets);
     batch->npackets = 0;
@@ -182,8 +185,13 @@ acHaloSegmentBatchPrint(const char* label, const HaloSegmentBatch batch)
 void
 acHaloSegmentBatchWait(const HaloSegmentBatch batch)
 {
-    MPI_Status statuses[batch.npackets];
-    ERRCHK_MPI_API(MPI_Waitall(as_int(batch.npackets), batch.requests, statuses));
+    MPI_Status send_statuses[batch.npackets];
+    ERRCHK_MPI_API(MPI_Waitall(as_int(batch.npackets), batch.send_reqs, send_statuses));
     for (size_t i = 0; i < batch.npackets; ++i)
-        ERRCHK_MPI_API(statuses[i].MPI_ERROR);
+        ERRCHK_MPI_API(send_statuses[i].MPI_ERROR);
+
+    MPI_Status recv_statuses[batch.npackets];
+    ERRCHK_MPI_API(MPI_Waitall(as_int(batch.npackets), batch.recv_reqs, recv_statuses));
+    for (size_t i = 0; i < batch.npackets; ++i)
+        ERRCHK_MPI_API(recv_statuses[i].MPI_ERROR);
 }

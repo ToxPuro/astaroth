@@ -20,8 +20,8 @@ void
 test_get_row(void)
 {
     {
-        const size_t nrows            = 5;
-        const size_t ncols            = 2;
+        #define nrows (5)
+        #define ncols (2)
         const size_t in[nrows][ncols] = {
             {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
         };
@@ -29,10 +29,12 @@ test_get_row(void)
         size_t out[ncols];
         matrix_get_row(3, nrows, ncols, in, out);
         ERRCHK(equals(ncols, row, out));
+        #undef nrows
+        #undef ncols
     }
     {
-        const size_t nrows            = 5;
-        const size_t ncols            = 2;
+        #define nrows (5)
+        #define ncols (2)
         const size_t in[nrows][ncols] = {
             {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
         };
@@ -40,10 +42,12 @@ test_get_row(void)
         size_t out[ncols];
         matrix_get_row(0, nrows, ncols, in, out);
         ERRCHK(equals(ncols, row, out));
+        #undef nrows
+        #undef ncols
     }
     {
-        const size_t nrows            = 5;
-        const size_t ncols            = 2;
+        #define nrows (5)
+        #define ncols (2)
         const size_t in[nrows][ncols] = {
             {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
         };
@@ -51,6 +55,8 @@ test_get_row(void)
         size_t out[ncols];
         matrix_get_row(nrows - 1, nrows, ncols, in, out);
         ERRCHK(equals(ncols, row, out));
+        #undef nrows
+        #undef ncols
     }
 }
 
@@ -71,8 +77,8 @@ void
 test_remove_row(void)
 {
     {
-        const size_t nrows            = 5;
-        const size_t ncols            = 2;
+        #define nrows (5)
+        #define ncols (2)
         const size_t in[nrows][ncols] = {
             {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
         };
@@ -85,10 +91,12 @@ test_remove_row(void)
         size_t out[nrows - 1][ncols];
         matrix_remove_row(2, nrows, ncols, in, out);
         ERRCHK(equals((nrows - 1) * ncols, (size_t*)model, (size_t*)out));
+        #undef nrows
+        #undef ncols
     }
     {
-        const size_t nrows            = 5;
-        const size_t ncols            = 2;
+        #define nrows (5)
+        #define ncols (2)
         const size_t in[nrows][ncols] = {
             {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
         };
@@ -101,15 +109,19 @@ test_remove_row(void)
         size_t out[nrows - 1][ncols];
         matrix_remove_row(0, nrows, ncols, in, out);
         ERRCHK(equals((nrows - 1) * ncols, (size_t*)model, (size_t*)out));
+        #undef nrows
+        #undef ncols
     }
     {
-        const size_t nrows                   = 5;
-        const size_t ncols                   = 2;
+        #define nrows (5)
+        #define ncols (2)
         const size_t in[nrows][ncols]        = {{1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10}};
         const size_t model[nrows - 1][ncols] = {{1, 2}, {3, 4}, {5, 6}, {7, 8}};
         size_t out[nrows - 1][ncols];
         matrix_remove_row(nrows - 1, nrows, ncols, in, out);
         ERRCHK(equals((nrows - 1) * ncols, (size_t*)model, (size_t*)out));
+        #undef nrows
+        #undef ncols
     }
 }
 

@@ -1,7 +1,7 @@
 ## CMake settings
 cmake_minimum_required(VERSION 3.5)
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_BUILD_TYPE Debug)
 
 ## Project settings
@@ -22,6 +22,7 @@ add_compile_options(-Wfatal-errors
                     -Werror=implicit-fallthrough
                     -Wpedantic
                     -pedantic-errors
+                    #-Weverything
                     )
 
 ## Packages
@@ -48,3 +49,10 @@ add_executable(test test.c)
 target_link_libraries(test PRIVATE tfm-utils tfm-comm)
 
 add_executable(cpptest cpptest.cc)
+
+
+find_package(hip REQUIRED)
+enable_language(HIP)
+add_executable(tfm-gpu gpu.cu)
+target_link_libraries(tfm-gpu PRIVATE hip::host hip::device)
+set_source_files_properties(gpu.cu PROPERTIES LANGUAGE HIP)

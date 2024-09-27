@@ -7,10 +7,11 @@
 size_t
 double_as_size_t(const double x)
 {
-    ERRCHK(x < SIZE_T_MAX);
     ERRCHK(x >= 0);
+    ERRCHK((size_t)x <= SIZE_MAX);
+    ERRCHK(x <= (double)SIZE_MAX);
     const size_t tmp = (size_t)x;
-    ERRCHK(tmp == x);
+    ERRCHK((double)tmp == x);
     return (size_t)x;
 }
 

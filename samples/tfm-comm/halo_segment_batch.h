@@ -10,7 +10,8 @@ typedef struct {
     HaloSegment* local_packets;
     HaloSegment* remote_packets;
 
-    MPI_Request* requests;
+    MPI_Request* send_reqs;
+    MPI_Request* recv_reqs;
     MPI_Datatype* send_subarrays;
     MPI_Datatype* recv_subarrays;
 } HaloSegmentBatch;

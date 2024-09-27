@@ -21,7 +21,7 @@ main(void)
     acCommInit();
 
     const size_t nn[]  = {3, 3};
-    const size_t rr[]  = {2, 2, 2, 2};
+    const size_t rr[]  = {1, 1, 1, 1};
     const size_t ndims = ARRAY_SIZE(nn);
 
     size_t mm[ndims];
@@ -35,7 +35,7 @@ main(void)
     acCommGetProcInfo(&rank, &nprocs);
 
     for (size_t i = 0; i < count; ++i) {
-        buf0[i] = as_size_t(rank);
+        buf0[i] = i; // as_size_t(rank);
         buf1[i] = 2 * i;
     }
     size_t* buffers[]     = {buf0, buf1};

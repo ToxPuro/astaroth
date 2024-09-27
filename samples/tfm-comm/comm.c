@@ -186,9 +186,13 @@ acHaloExchangeTaskLaunch(const HaloExchangeTask* task, const size_t nbuffers,
 
         for (size_t j = 0; j < nbuffers; ++j) {
             const int tag = get_tag();
-            ERRCHK_MPI_API(MPI_Isendrecv(buffers[j], 1, send_subarray, send_neighbor, tag,
-                                         buffers[j], 1, recv_subarray, recv_neighbor, tag,
-                                         comm_cart, &batch->requests[i]));
+            // ERRCHK_MPI_API(MPI_Isendrecv(buffers[j], 1, send_subarray, send_neighbor, tag,
+            //                              buffers[j], 1, recv_subarray, recv_neighbor, tag,
+            //                              comm_cart, &batch->requests[i]));
+            ERRCHK_MPI_API(MPI_Isend(buffers[j], 1, send_subarray, send_neighbor, tag, comm_cart,
+                                     &batch->send_reqs[i]));
+            ERRCHK_MPI_API(MPI_Irecv(buffers[j], 1, recv_subarray, recv_neighbor, tag, comm_cart,
+                                     &batch->recv_reqs[i]));
         }
     }
 }
