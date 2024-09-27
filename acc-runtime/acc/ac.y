@@ -5,6 +5,9 @@
 #include <libgen.h> // dirname
 #include <sys/stat.h>
 
+
+extern struct hashmap_s string_intern_hashmap;
+#include <hash.h>
 #include "ast.h"
 #include "codegen.h"
 #include <ctype.h>
@@ -12,6 +15,7 @@
 #include <dirent.h>
 #include <math.h>
 #include <limits.h>
+
 
 #define YYSTYPE ASTNode*
 
@@ -49,7 +53,6 @@ ASTNode*
 astnode_hostdefine(const char* buffer, const int token)
 {
         ASTNode* res = astnode_create(NODE_HOSTDEFINE, NULL, NULL);
-        astnode_set_buffer(buffer,res);
         res->token = 255 + token;
 
         astnode_set_prefix("#",res); 
@@ -60,13 +63,12 @@ astnode_hostdefine(const char* buffer, const int token)
         assert(strlen(def_in) > strlen(def_out));
         assert(!strncmp(res->buffer, def_in, strlen(def_in)));
 
-        for (size_t i = 0; i < strlen(def_in); ++i)
-            res->buffer[i] = ' ';
-        strcpy(res->buffer, def_out);
-        res->buffer[strlen(def_out)] = ' ';
-	astnode_sprintf(res,"%s",res->buffer);
 
+	char* tmp = strdup(buffer);
+	replace_substring(&tmp,def_in,def_out);
+	astnode_set_buffer(tmp,res);
         astnode_set_postfix("\n", res);
+	free(tmp);
 	return res;
 }
 
@@ -467,6 +469,9 @@ main(int argc, char** argv)
     dir_backup = dir;
     
     reset_extra_files();
+
+    const unsigned initial_size = 2000;
+    hashmap_create(initial_size, &string_intern_hashmap);
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, true,false); 
     code_generation_pass(stage0, stage1, stage2,  dir, false, false, false,true); 
     code_generation_pass(stage0, stage1, stage2,  dir, false, OPTIMIZE_CONDITIONALS, false,false);
@@ -614,10 +619,12 @@ identifier: IDENTIFIER { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_
 number: NUMBER         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; };
       | REALNUMBER     { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; astnode_set_prefix("AcReal(", $$); astnode_set_postfix(")", $$); }
       | DOUBLENUMBER   {
-            $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken;
+            $$ = astnode_create(NODE_UNKNOWN, NULL, NULL);  $$->token = 255 + yytoken;
             astnode_set_prefix("double(", $$); astnode_set_postfix(")", $$);
-            $$->buffer[strlen($$->buffer) - 1] = '\0'; // Drop the 'd' postfix
-	    astnode_sprintf($$,"%s",$$->buffer);
+            char* tmp = strdup(yytext);
+	    tmp[strlen(tmp)-1] = '\0'; // Drop the 'd' postfix
+	    astnode_set_buffer(tmp, $$);
+	    free(tmp);
         }
       ;
 string: STRING         { $$ = astnode_create(NODE_UNKNOWN, NULL, NULL); astnode_set_buffer(yytext, $$); $$->token = 255 + yytoken; }
@@ -691,16 +698,20 @@ steps_definition: computesteps steps_definition_call '{' function_call_list '}' 
 
 struct_definition:     struct_name'{' declarations '}' {
                         $$ = astnode_create(NODE_STRUCT_DEF,$1,$3);
-			remove_substring($$->lhs->buffer,"struct");
-			strip_whitespace($$->lhs->buffer);
-			astnode_sprintf($$->lhs,$$->lhs->buffer);
+			char* tmp = strdup($$->lhs->buffer);
+			remove_substring(tmp,"struct");
+			strip_whitespace(tmp);
+			astnode_set_buffer(tmp,$$->lhs);
+			free(tmp);
                  }
 		 ;
 enum_definition: enum_name '{' expression_list '}'{
                         $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
-		        remove_substring($1->buffer,"enum");
-		        strip_whitespace($1->buffer);
-			astnode_sprintf($1,$1->buffer);
+			char* tmp = strdup($1->buffer);
+		        remove_substring(tmp,"enum");
+		        strip_whitespace(tmp);
+			astnode_set_buffer(tmp,$1);
+			free(tmp);
 		}
 		//| enum_name '{' expression_list '}' enum_type {
                 //        $$ = astnode_create(NODE_ENUM_DEF,$1,$3);

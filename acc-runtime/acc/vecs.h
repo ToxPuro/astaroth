@@ -12,7 +12,7 @@ typedef enum ReduceOp
 typedef struct string_vec
 {
 	//char* data[256];
-	char** data;
+	const char** data;
 	size_t size;
 	int capacity;
 
@@ -38,7 +38,7 @@ init_str_vec(string_vec* vec)
 {
 	vec -> size = 0;
 	vec -> capacity = 1;
-	vec -> data = (char**)malloc(sizeof(char*)*vec ->capacity);
+	vec -> data = (const char**)malloc(sizeof(char*)*vec ->capacity);
 }
 
 static inline void
@@ -48,7 +48,6 @@ free_str_vec(string_vec* vec)
 	vec -> size = 0;
 	vec -> capacity = 0;
 	vec -> data = NULL;
-	//vec -> data = malloc(sizeof(char*)*vec ->capacity);
 }
 static inline void
 free_int_vec(int_vec* vec)
@@ -151,14 +150,14 @@ push(string_vec* dst, const char* src)
 	if(dst->capacity == 0)
 	{
 		dst->capacity++;
-		dst->data = (char**)malloc(sizeof(char*)*dst->capacity);
+		dst->data = (const char**)malloc(sizeof(char*)*dst->capacity);
 	}
-	dst->data[dst->size] = strdupnullok(src);
+	dst->data[dst->size] = intern(src);
 	++(dst->size);
 	if(dst->size == (size_t)dst->capacity)
 	{
 		dst->capacity = dst->capacity*2;
-		char** tmp = (char**)malloc(sizeof(char*)*dst->capacity);
+		const char** tmp = (const char**)malloc(sizeof(char*)*dst->capacity);
 		for(size_t i = 0; i < dst->size; ++i)
 			tmp[i] = dst->data[i];
 		free(dst->data);

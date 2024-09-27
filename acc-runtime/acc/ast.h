@@ -95,13 +95,14 @@ typedef struct astnode_s {
   struct astnode_s* lhs;
   struct astnode_s* rhs;
   NodeType type; // Type of the AST node
-  char* buffer;  // Indentifiers and other strings (empty by default)
+  const char* buffer;  // Indentifiers and other strings (empty by default)
+  const char* buffer_token;  // Indentifiers and other strings (empty by default)
 
 
   int token;     // Type of a terminal (that is not a simple char)
-  char* prefix;  // Strings. Also makes the grammar since we don't have
-  char* infix;   // to divide it into max two-child rules
-  char* postfix; // (which makes it much harder to read)
+  const char* prefix;  // Strings. Also makes the grammar since we don't have
+  const char* infix;   // to divide it into max two-child rules
+  const char* postfix; // (which makes it much harder to read)
   bool is_constexpr; //Whether the node represents information known at compile time
   const char* expr_type; //The type of the expr the node represent
   bool no_auto;
@@ -167,20 +168,38 @@ astnode_destroy(ASTNode* node)
     astnode_destroy(node->lhs);
   if (node->rhs)
     astnode_destroy(node->rhs);
-  free(node->buffer);
-  free(node->prefix);
-  free(node->infix);
-  free(node->postfix);
+  node->buffer  = NULL;
+  node->prefix  = NULL;
+  node->infix   = NULL;
+  node->postfix = NULL;
   free(node);
 }
 
 static inline void
 astnode_set_buffer(const char* buffer, ASTNode* node)
 {
-  if (node->buffer)
-    free(node->buffer);
-  node->buffer = strdup(buffer);
+  node->buffer = intern(buffer);
 }
+
+
+static inline void
+astnode_set_prefix(const char* prefix, ASTNode* node)
+{
+  node->prefix= intern(prefix);
+}
+
+static inline void
+astnode_set_infix(const char* infix, ASTNode* node)
+{
+  node->infix = intern(infix);
+}
+
+static inline void
+astnode_set_postfix(const char* postfix, ASTNode* node)
+{
+  node->postfix = intern(postfix);
+}
+
 static inline void
 astnode_sprintf(ASTNode* node, const char* format, ...)
 {
@@ -194,31 +213,6 @@ astnode_sprintf(ASTNode* node, const char* format, ...)
 
 
 static inline void
-astnode_set_prefix(const char* prefix, ASTNode* node)
-{
-  if (node->prefix)
-    free(node->prefix);
-  node->prefix = strdup(prefix);
-}
-
-static inline void
-astnode_set_infix(const char* infix, ASTNode* node)
-{
-  if (node->infix)
-    free(node->infix);
-  node->infix = strdup(infix);
-}
-
-static inline void
-astnode_set_postfix(const char* postfix, ASTNode* node)
-{
-  if (node->postfix)
-    free(node->postfix);
-  node->postfix = strdup(postfix);
-}
-
-
-static inline void
 astnode_sprintf_postfix(ASTNode* node, const char* format, ...)
 {
 	static char buffer[10000];
@@ -227,6 +221,17 @@ astnode_sprintf_postfix(ASTNode* node, const char* format, ...)
 	int ret = vsprintf(buffer, format, args);
 	va_end(args);
 	astnode_set_postfix(buffer,node);
+}
+
+static inline void
+astnode_sprintf_prefix(ASTNode* node, const char* format, ...)
+{
+	static char buffer[10000];
+	va_list args;
+	va_start(args,format);
+	int ret = vsprintf(buffer, format, args);
+	va_end(args);
+	astnode_set_prefix(buffer,node);
 }
 static inline void
 astnode_print(const ASTNode* node)
@@ -564,18 +569,6 @@ file_append(const char* filename, const char* str_to_append)
 	fclose(fp);
 }
 
-static void
-remove_substrings(ASTNode* node, const char* sub)
-{
-	if(node->lhs)
-		remove_substrings(node->lhs,sub);
-	if(node->rhs)
-		remove_substrings(node->rhs,sub);
-	if(node->prefix)  remove_substring(node->prefix,sub);
-	if(node->postfix) remove_substring(node->postfix,sub);
-	if(node->infix)   remove_substring(node->infix,sub);
-	if(node->buffer)  remove_substring(node->buffer,sub);
-}
 
 static inline bool
 is_number(const char* str)

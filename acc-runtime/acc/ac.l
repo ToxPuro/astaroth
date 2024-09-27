@@ -11,6 +11,8 @@ S [\s]
 #include "tab.h"
 #include <ctype.h>
 #include <stdbool.h>
+struct hashmap_s string_intern_hashmap;
+#include <hash.h>
 #include "vecs.h"
 %}
 %{
