@@ -1488,7 +1488,7 @@ static void process_global_assignment(ASTNode* node, ASTNode* assignment, ASTNod
 				const char* name = get_node_by_token(IDENTIFIER,elem)->buffer;
 				int val = eval_int(elem->rhs,true,NULL);
 				push(&const_ints,name);
-				push(&const_int_values,itoa(val));
+				push(&const_int_values,intern(itoa(val)));
 			}
 			free_node_vec(&vars);
 			free(assignment_val);

@@ -111,7 +111,7 @@ static inline int
 str_vec_get_index(string_vec vec, const char* str)
 {
 	for(size_t i = 0; i <  vec.size; ++i)
-		if(!strcmp(vec.data[i],str)) return i;
+		if(vec.data[i] == str) return i;
 	return -1;
 }
 static inline bool
@@ -152,7 +152,15 @@ push(string_vec* dst, const char* src)
 		dst->capacity++;
 		dst->data = (const char**)malloc(sizeof(char*)*dst->capacity);
 	}
-	dst->data[dst->size] = intern(src);
+	/**
+	if(src != intern(src))
+	{
+		printf("WRONG: %s\n",src);
+		void* NULL_PTR= NULL;
+		printf("HMM :%s\n",((char*) NULL_PTR)[10]);
+	}
+	**/
+	dst->data[dst->size] = src;
 	++(dst->size);
 	if(dst->size == (size_t)dst->capacity)
 	{

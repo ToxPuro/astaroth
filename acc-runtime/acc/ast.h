@@ -118,13 +118,12 @@ astnode_dup(const ASTNode* node, ASTNode* parent)
 	res->parent = parent;
 	res -> token = node->token;
 	res -> is_constexpr = node->is_constexpr;
-	res -> expr_type = strdupnullok(node->expr_type);
 	res -> no_auto = node->no_auto;
-	res -> expr_type = strdupnullok(node->expr_type);
-	res->buffer = strdupnullok(node->buffer);
-	res->prefix=  strdupnullok(node->prefix);
-	res->infix =  strdupnullok(node->infix);
-	res->postfix= strdupnullok(node->postfix);
+	res -> expr_type = node->expr_type;
+	res->buffer = node->buffer;
+	res->prefix=  node->prefix;
+	res->infix =  node->infix;
+	res->postfix= node->postfix;
 	if(node->lhs)
 		res->lhs= astnode_dup(node->lhs,res);
 	if(node->rhs)
