@@ -1,276 +1,200 @@
 #include "comm.h"
 
-#include "decomp.h"
-#include "errchk.h"
-#include "math_utils.h"
-#include "print.h"
-#include "type_conversion.h"
-
-#include "pack.h"
-
 #include <mpi.h>
-#include <stdio.h>
-#include <string.h> // memset
-
-#define USE_RANK_REORDERING (1)
 
 #define SUCCESS (0)
 #define FAILURE (-1)
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
-#define ERRCHK_MPI(retval)                                                                         \
-    ERRCHK(retval);                                                                                \
-    if ((retval) == 0) {                                                                           \
-        MPI_Abort(MPI_COMM_WORLD, 0);                                                              \
-        exit(EXIT_FAILURE);                                                                        \
-    }
+#include "array.h"
+#include "errchk_mpi.h"
+#include "halo_segment_batch.h"
+#include "math_utils.h"
+#include "mpi_utils.h"
+#include "print.h"
+#include "type_conversion.h"
 
-static MPI_Comm
-create_rank_reordered_cart_comm(const MPI_Comm parent, const size_t ndims,
-                                const size_t* global_dims)
+void
+acCommInit(void)
 {
-    int rank, nprocs;
-    MPI_Comm_rank(parent, &rank);
-    MPI_Comm_size(parent, &nprocs);
+    ERRCHK_MPI_API(MPI_Init(NULL, NULL));
+}
 
-#if USE_RANK_REORDERING
-    // Hierarchical decomposition
-    const size_t gcds_per_gpu  = as_size_t(min(nprocs, 2));
-    const size_t gpus_per_node = min(as_size_t(nprocs) / gcds_per_gpu, 4);
-    const size_t nnodes        = as_size_t(nprocs) / (gcds_per_gpu * gpus_per_node);
-    ERRCHK_MPI(gcds_per_gpu * gpus_per_node * nnodes == as_size_t(nprocs));
-    ERRCHK_MPI(nnodes >= 1);
+void
+acCommQuit(void)
+{
+    ERRCHK_MPI_API(MPI_Finalize());
+}
 
-    const size_t partitions_per_layer[] = {gcds_per_gpu, gpus_per_node, nnodes};
-    const size_t nlayers                = ARRAY_SIZE(partitions_per_layer);
-    AcDecompositionInfo info            = acDecompositionInfoCreate(ndims, global_dims, nlayers,
-                                                                    partitions_per_layer);
-    if (rank == 0)
-        acDecompositionInfoPrint(info);
+void
+acCommGetProcInfo(int* rank, int* nprocs)
+{
+    *rank   = 0;
+    *nprocs = 1;
+    ERRCHK_MPI_API(MPI_Comm_rank(MPI_COMM_WORLD, rank));
+    ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, nprocs));
+}
 
-    int keys[nprocs];
-    for (size_t i = 0; i < as_size_t(nprocs); ++i) {
+void
+acCommBarrier(void)
+{
+    ERRCHK_MPI_API(MPI_Barrier(MPI_COMM_WORLD));
+}
 
-        int64_t pid[info.ndims];
-        acGetPid3D(i, info, info.ndims, pid);
+struct HaloExchangeTask_s {
+    HaloSegmentBatch batch;
 
-        size_t pid_unsigned[info.ndims];
-        as_size_t_array(info.ndims, pid, pid_unsigned);
-        reverse(info.ndims, pid_unsigned);
-
-        size_t decomposition[info.ndims];
-        copy(info.ndims, info.global_decomposition, decomposition);
-        reverse(info.ndims, decomposition);
-
-        size_t row_wise_i = to_linear(info.ndims, pid_unsigned, decomposition);
-        keys[i]           = as_int(row_wise_i);
-
-        if (rank == 0) {
-            printf("%zu -> %zu\n", i, row_wise_i);
-
-            print_array("\tproper", info.ndims, pid);
-
-            reverse(info.ndims, pid_unsigned);
-            print_array("\tmapped", info.ndims, pid_unsigned);
-        }
-    }
-    fflush(stdout);
-    MPI_Barrier(parent);
-
-    MPI_Comm reordered_comm;
-    MPI_Comm_split(parent, 0, keys[rank], &reordered_comm);
-
-    int dims[info.ndims], periods[info.ndims];
-    as_int_array(info.ndims, info.global_decomposition, dims);
-    iset(1, info.ndims, periods);
+    size_t ndims;
+    size_t* mm;
+    size_t* nn;
+    size_t* rr;
 
     MPI_Comm comm_cart;
-    MPI_Cart_create(reordered_comm, as_int(ndims), dims, periods, 0, &comm_cart);
-    MPI_Comm_free(&reordered_comm);
+};
 
-    // // Check that the mapping is correct (TODO)
-    // for (size_t i = 0; i < as_size_t(nprocs); ++i) {
+static void
+dims_create(const int nprocs, const size_t ndims, size_t* dims, size_t* periods)
+{
+    int mpi_dims[ndims], mpi_periods[ndims];
+    iset(0, ndims, mpi_dims);
+    iset(1, ndims, mpi_periods);
+    ERRCHK_MPI_API(MPI_Dims_create(nprocs, as_int(ndims), mpi_dims));
 
-    //     int64_t a[info.ndims];
-    //     acGetPid3D(i, info, info.ndims, a);
+    to_astaroth_format(ndims, mpi_dims, dims);
+    to_astaroth_format(ndims, mpi_periods, periods);
+    ERRCHK_MPI(prod(ndims, dims) == as_size_t(nprocs));
+}
 
-    //     int coords[info.ndims];
-    //     as_int_array(info.ndims, a, coords);
+HaloExchangeTask*
+acHaloExchangeTaskCreate(const size_t ndims, const size_t* mm, const size_t* nn, const size_t* rr,
+                         const size_t nbuffers)
+{
+    HaloExchangeTask* task = malloc(sizeof(HaloExchangeTask));
+    ERRCHK(task != NULL);
 
-    //     int new_rank;
-    //     MPI_Cart_rank(comm_cart, coords, &new_rank);
+    task->batch = acHaloSegmentBatchCreate(ndims, mm, nn, rr, nbuffers);
 
-    //     set(0, info.ndims, coords);
-    //     MPI_Cart_coords(comm_cart, new_rank, info.ndims, coords);
+    task->ndims = ndims;
+    task->mm    = malloc(sizeof(task->mm[0]) * ndims);
+    task->nn    = malloc(sizeof(task->nn[0]) * ndims);
+    task->rr    = malloc(sizeof(task->rr[0]) * ndims);
+    copy(ndims, mm, task->mm);
+    copy(ndims, nn, task->nn);
+    copy(ndims, rr, task->rr);
 
-    //     ERRCHK_MPI(i == new_rank);
-    //     //     int new_rank;
-    //     // MPI_Comm_rank(comm_cart, &new_rank);
+    // Get nprocs
+    int nprocs;
+    ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
 
-    //     // int b[info.ndims];
-    //     // MPI_Cart_coords(comm_cart, new_rank, info.ndims, b);
+    // Decompose
+    size_t dims[ndims], periods[ndims];
+    dims_create(nprocs, ndims, dims, periods);
 
-    //     // if (rank == 0)
-    //     //     for (size_t j = 0; j < info.ndims; ++j) {
-    //     //         print_i64_t_array("a", info.ndims, a);
-    //     //         print_array("b", info.ndims, b);
-    //     //         ERRCHK_MPI(a[j] == b[j]);
-    //     //     }
-    // }
+    // Create communicator
+    int mpi_dims[ndims], mpi_periods[ndims];
+    to_mpi_format(ndims, dims, mpi_dims);
+    to_mpi_format(ndims, periods, mpi_periods);
+    ERRCHK_MPI_API(
+        MPI_Cart_create(MPI_COMM_WORLD, as_int(ndims), mpi_dims, mpi_periods, 0, &task->comm_cart));
 
-    acDecompositionInfoDestroy(&info);
-#else
-    (void)global_dims; // Unused
-    int dims[ndims], periods[ndims];
-    iset(0, ndims, dims);
-    iset(1, ndims, periods);
-    MPI_Dims_create(nprocs, ndims, dims);
+    return task;
+}
 
-    if (rank == 0)
-        print_array("Mapping", as_size_t(ndims), dims);
-
-    MPI_Comm comm_cart;
-    MPI_Cart_create(parent, ndims, dims, periods, 0, &comm_cart);
-#endif
-    return comm_cart;
+void
+acHaloExchangeTaskDestroy(HaloExchangeTask** task)
+{
+    ERRCHK_MPI_API(MPI_Comm_free(&(*task)->comm_cart));
+    free((*task)->rr);
+    free((*task)->nn);
+    free((*task)->mm);
+    acHaloSegmentBatchDestroy(&((*task)->batch));
+    free(*task);
+    *task = NULL;
 }
 
 static void
-test_indexing(const MPI_Comm comm_cart)
+get_mpi_coords_forward(const size_t ndims, const size_t* nn, const size_t* nn_offset,
+                       const size_t* offset, const int* mpi_coords, int* mpi_neighbor_coords)
 {
-    int rank, nprocs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    int mpi_nn[ndims], mpi_nn_offset[ndims], mpi_offset[ndims];
+    to_mpi_format(ndims, nn, mpi_nn);
+    to_mpi_format(ndims, nn_offset, mpi_nn_offset);
+    to_mpi_format(ndims, offset, mpi_offset);
 
-    for (int i = 0; i < nprocs; ++i) {
-        if (i == rank) {
-            int new_rank, ndims;
-            MPI_Comm_rank(comm_cart, &new_rank);
-            MPI_Cartdim_get(comm_cart, &ndims);
-            int coords[ndims];
-            MPI_Cart_coords(comm_cart, new_rank, ndims, coords);
-            printf("Hello from %d. New rank %d. ", rank, new_rank);
-            print_array("Mapping", as_size_t(ndims), coords);
+    copyi(ndims, mpi_coords, mpi_neighbor_coords);
 
-            fflush(stdout);
-        }
-        MPI_Barrier(MPI_COMM_WORLD);
+    for (size_t i = 0; i < ndims; ++i) {
+        if (mpi_offset[i] < mpi_nn_offset[i])
+            mpi_neighbor_coords[i] -= 1;
+        else if (mpi_offset[i] >= mpi_nn_offset[i] + mpi_nn[i])
+            mpi_neighbor_coords[i] += 1;
     }
 }
 
 static void
-get_local_dims(const size_t ndims, const size_t* nn, const MPI_Comm comm_cart, size_t* local_nn)
+get_mpi_coords_backward(const size_t ndims, const size_t* nn, const size_t* nn_offset,
+                        const size_t* offset, const int* mpi_coords, int* mpi_neighbor_coords)
 {
-    int dims[ndims], periods[ndims], coords[ndims];
-    MPI_Cart_get(comm_cart, as_int(ndims), dims, periods, coords);
+    int mpi_nn[ndims], mpi_nn_offset[ndims], mpi_offset[ndims];
+    to_mpi_format(ndims, nn, mpi_nn);
+    to_mpi_format(ndims, nn_offset, mpi_nn_offset);
+    to_mpi_format(ndims, offset, mpi_offset);
 
-    size_t decomp[ndims];
-    as_size_t_array(ndims, dims, decomp);
+    copyi(ndims, mpi_coords, mpi_neighbor_coords);
 
-    for (size_t i = 0; i < ndims; ++i)
-        local_nn[i] = nn[i] / decomp[i];
-
-    ERRCHK_MPI(prod(ndims, local_nn) * prod(ndims, decomp) == prod(ndims, nn));
+    for (size_t i = 0; i < ndims; ++i) {
+        if (mpi_offset[i] < mpi_nn_offset[i])
+            mpi_neighbor_coords[i] += 1;
+        else if (mpi_offset[i] >= mpi_nn_offset[i] + mpi_nn[i])
+            mpi_neighbor_coords[i] -= 1;
+    }
 }
 
-int
-comm_run(void)
+void
+acHaloExchangeTaskLaunch(const HaloExchangeTask* task, const size_t nbuffers,
+                         size_t* buffers[nbuffers])
 {
-    MPI_Init(NULL, NULL);
 
-    const size_t global_nn[] = {8, 8};
-    const size_t ndims       = ARRAY_SIZE(global_nn);
-    MPI_Comm comm_cart       = create_rank_reordered_cart_comm(MPI_COMM_WORLD, ndims, global_nn);
-    test_indexing(comm_cart);
+    const HaloSegmentBatch* batch = &task->batch;
+    const size_t ndims            = task->ndims;
+    const size_t* mm              = task->mm;
+    const size_t* nn              = task->nn;
+    const size_t* rr              = task->rr;
+    MPI_Comm comm_cart            = task->comm_cart;
 
-    // Global original rank
-    int rank, nprocs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    int rank;
+    ERRCHK_MPI_API(MPI_Comm_rank(comm_cart, &rank));
 
-    // Allocate a buffer
-    size_t local_nn[ndims];
-    get_local_dims(ndims, global_nn, comm_cart, local_nn);
+    for (size_t i = 0; i < batch->npackets; ++i) {
 
-    const size_t r = 2;
-    size_t local_mm[ndims];
-    copy(ndims, local_nn, local_mm);
-    add_to_array(2 * r, ndims, local_mm);
+        // Offset and subarrays
+        const size_t* offset             = batch->local_packets[i].offset;
+        const MPI_Datatype send_subarray = batch->send_subarrays[i];
+        const MPI_Datatype recv_subarray = batch->recv_subarrays[i];
 
-    // print_array("Local nn", ndims, local_nn);
-    // print_array("Local mm", ndims, local_mm);
-    size_t* buffer = (size_t*)malloc(sizeof(buffer[0]) * prod(ndims, local_mm));
-    set(as_size_t(rank + 1), prod(ndims, local_mm), buffer);
-    // for (size_t i = 0; i < prod(ndims, local_mm); ++i)
-    //     buffer[i] = i;
-    ERRCHK_MPI(buffer);
+        // Coordinates
+        int mpi_coords[ndims];
+        ERRCHK_MPI_API(MPI_Cart_coords(comm_cart, rank, as_int(ndims), mpi_coords));
 
-    int dims[ndims], periods[ndims], coords[ndims];
-    MPI_Cart_get(comm_cart, as_int(ndims), dims, periods, coords);
+        int mpi_coords_send_neighbor[ndims], send_neighbor;
+        get_mpi_coords_forward(ndims, nn, rr, offset, mpi_coords, mpi_coords_send_neighbor);
+        ERRCHK_MPI_API(MPI_Cart_rank(comm_cart, mpi_coords_send_neighbor, &send_neighbor));
 
-    // Do halo comm
-    size_t domain[ndims], subdomain[ndims], offsets[ndims];
-    copy(ndims, local_mm, domain);
-    set(r, ndims, subdomain);
-    set(0, ndims, offsets);
-    subdomain[0] = local_nn[0]; // tmp debug hack
+        int mpi_coords_recv_neighbor[ndims], recv_neighbor;
+        get_mpi_coords_backward(ndims, nn, rr, offset, mpi_coords, mpi_coords_recv_neighbor);
+        ERRCHK_MPI_API(MPI_Cart_rank(comm_cart, mpi_coords_recv_neighbor, &recv_neighbor));
 
-    reverse(ndims, domain);
-    reverse(ndims, subdomain);
-    reverse(ndims, offsets);
-
-    int sizes[ndims], subsizes[ndims], starts[ndims];
-    as_int_array(ndims, domain, sizes);
-    as_int_array(ndims, subdomain, subsizes);
-    as_int_array(ndims, offsets, starts);
-
-    MPI_Datatype subarray_type;
-    MPI_Type_create_subarray(as_int(ndims), sizes, subsizes, starts, //
-                             MPI_ORDER_C, MPI_UNSIGNED_LONG_LONG, &subarray_type);
-    MPI_Type_commit(&subarray_type);
-
-    int up, down, left, right;
-    MPI_Cart_shift(comm_cart, 0, 1, &up, &down);
-    MPI_Cart_shift(comm_cart, 1, 1, &left, &right);
-    print("up", up);
-    print("down", down);
-
-    MPI_Sendrecv(&buffer[r + r * local_mm[0]], 1, subarray_type, down, 0,
-                 &buffer[r + (r + local_nn[1]) * local_mm[0]], 1, subarray_type, up, 0, //
-                 comm_cart, MPI_STATUS_IGNORE);
-    MPI_Sendrecv(&buffer[r + local_nn[1] * local_mm[0]], 1, subarray_type, up, 1, //
-                 &buffer[r], 1, subarray_type, down, 1,                           //
-                 comm_cart, MPI_STATUS_IGNORE);
-
-    MPI_Type_free(&subarray_type);
-
-    // print_array("Subdomain", ndims, subdomain);
-
-    MPI_Barrier(comm_cart);
-    for (int coordy = 0; coordy < dims[ndims - 2]; ++coordy) {
-        for (int coordx = 0; coordx < dims[ndims - 1]; ++coordx) {
-            if (coordx == coords[ndims - 1] && coordy == coords[ndims - 2]) {
-                print_array("Hello from", ndims, coords);
-                for (size_t j = local_mm[1] - 1; j < local_mm[0]; --j) {
-                    for (size_t i = 0; i < local_mm[0]; ++i) {
-                        printf("%zu ", buffer[i + j * local_mm[0]]);
-                    }
-                    printf("\n");
-                }
-                printf("\n");
-                fflush(stdout);
-            }
-            MPI_Barrier(comm_cart);
-            MPI_Barrier(MPI_COMM_WORLD);
+        for (size_t j = 0; j < nbuffers; ++j) {
+            const int tag = get_tag();
+            ERRCHK_MPI_API(MPI_Isendrecv(buffers[j], 1, send_subarray, send_neighbor, tag,
+                                         buffers[j], 1, recv_subarray, recv_neighbor, tag,
+                                         comm_cart, &batch->requests[i]));
         }
     }
+}
 
-    free(buffer);
-
-    // Test packing
-    pack_test();
-
-    MPI_Comm_free(&comm_cart);
-    MPI_Finalize();
-    return SUCCESS;
+void
+acHaloExchangeTaskSynchronize(const HaloExchangeTask* task)
+{
+    acHaloSegmentBatchWait(task->batch);
 }
