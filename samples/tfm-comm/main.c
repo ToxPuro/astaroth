@@ -6,6 +6,7 @@
 #include "math_utils.h"
 #include "ndarray.h"
 #include "print.h"
+#include "type_conversion.h"
 
 static void
 get_mm(const size_t ndims, const size_t* nn, const size_t* rr, size_t* mm)
@@ -34,7 +35,7 @@ main(void)
     acCommGetProcInfo(&rank, &nprocs);
 
     for (size_t i = 0; i < count; ++i) {
-        buf0[i] = rank;
+        buf0[i] = as_size_t(rank);
         buf1[i] = 2 * i;
     }
     size_t* buffers[]     = {buf0, buf1};
