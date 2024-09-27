@@ -182,7 +182,7 @@ typedef struct {
 
   FUNC_DEFINE(VertexBufferArray, acVBACreate,(const AcMeshInfo config));
 
-  FUNC_DEFINE(void, acVBAUpdate,(VertexBufferArray* vba, const AcMeshInfo config));
+  FUNC_DEFINE(void, acUpdateArrays ,(const AcMeshInfo config));
 
   FUNC_DEFINE(void, acVBADestroy,(VertexBufferArray* vba, const AcMeshInfo config));
 
@@ -234,8 +234,8 @@ typedef struct {
 	if(!acVBAReset) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBAReset");
 	*(void**)(&acVBACreate) = dlsym(handle,"acVBACreate");
 	if(!acVBACreate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBACreate");
-	*(void**)(&acVBAUpdate) = dlsym(handle,"acVBAUpdate");
-	if(!acVBAUpdate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBAUpdate");
+	*(void**)(&acUpdateArrays) = dlsym(handle,"acUpdateArrays");
+	if(!acUpdateArrays) fprintf(stderr,"Astaroth error: was not able to load %s\n","acUpdateArrays");
 	*(void**)(&acVBADestroy) = dlsym(handle,"acVBADestroy");
 	if(!acVBADestroy) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBADestroy");
 	*(void**)(&acRandInitAlt) = dlsym(handle,"acRandInitAlt");

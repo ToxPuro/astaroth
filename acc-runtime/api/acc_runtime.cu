@@ -682,9 +682,8 @@ struct update_arrays
 	}
 };
 void
-acVBAUpdate(VertexBufferArray* vba, const AcMeshInfo config)
+acUpdateArrays(const AcMeshInfo config)
 {
-  (void)vba;
   AcArrayTypes::run<update_arrays>(config);
 }
 

@@ -592,7 +592,7 @@ get_array_accesses(const ASTNode* base)
 	    node_vec nodes = VEC_INITIALIZER;
 	    get_array_access_nodes(base,&nodes);
 	    for(size_t i = 0; i < nodes.size; ++i)
-		push(&dst,combine_all_new(nodes.data[i]));
+		push(&dst,intern(combine_all_new(nodes.data[i])));
 	    free_node_vec(&nodes);
 	    return dst;
 }
@@ -643,8 +643,9 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
 
  
   const int* accesses = get_arr_accesses(datatype_scalar);
-  char datatype[1000];
-  sprintf(datatype,"%s*",datatype_scalar);
+  char tmp[1000];
+  sprintf(tmp,"%s*",datatype_scalar);
+  const char* datatype = intern(tmp);
   const char* define_name =  convert_to_define_name(datatype_scalar);
   {
   	char running_offset[4096];
@@ -696,7 +697,7 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
 	for(size_t dim = 0; dim < 3; ++dim)
 	{
 		if(dim >= dims.size) fprintf(fp,"%s,","-1");
-		else fprintf(fp,"%s,",dims.data[dim]);
+		else {fprintf(fp,"%s,",dims.data[dim]);printf("HMM: %s\n",dims.data[dim]);}
 	}
 	fprintf(fp,"%s","},{");
 
@@ -837,8 +838,10 @@ gen_gmem_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	const char* upper_case_name = to_upper_case(define_name);
 	const char* enum_name = convert_to_enum_name(datatype_scalar);
 
-	char datatype[4098];
-	sprintf(datatype,"%s*",datatype_scalar);
+	char tmp[4098];
+	sprintf(tmp,"%s*",datatype_scalar);
+	const char* datatype = intern(tmp);
+
 
 	FILE* fp = fopen("memcpy_to_gmem_arrays.h","a");
 	
@@ -944,8 +947,9 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fp = fopen("get_empty_pointer.h","a");
 	fprintf(fp,"if constexpr(std::is_same<P,%sArrayParam>::value) return (%s*){};\n",enum_name,datatype_scalar);
 
-	char datatype[4098];
-	sprintf(datatype,"%s*",datatype_scalar);
+	char tmp[4098];
+	sprintf(tmp,"%s*",datatype_scalar);
+	const char* datatype = intern(tmp);
 
 
 	fprintf_filename("get_param_name.h","if constexpr(std::is_same<P,%sCompParam>::value) return %s_comp_param_names[(int)param];\n",enum_name,define_name);
@@ -1199,7 +1203,7 @@ gen_array_declarations(const char* datatype_scalar, const ASTNode* root)
 	fprintf(fp,"constexpr static bool IsCompParam(const %sCompArrayParam&) {return true;}\n",enum_name);
 	fprintf(fp,"constexpr static bool IsCompParam(const %sCompParam&) {return true;}\n",enum_name);
 	fclose(fp);
-	if(datatype_scalar == INT_STR)
+	if(datatype_scalar != INT_STR)
 	{
 		fp = fopen("scalar_types.h","a");
 		fprintf(fp,"%sParam,\n",enum_name);
@@ -1453,8 +1457,8 @@ gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
   char* datatype;
   asprintf(&datatype,"%s*",datatype_scalar);
   const int l_current_nest = 0;
-  const Symbol* sym = get_symbol(NODE_VARIABLE_ID,array_name,datatype);
-  if(!sym || !int_vec_contains(sym->tqualifiers,CONST_QL))
+  const Symbol* sym = get_symbol(NODE_VARIABLE_ID,intern(array_name),intern(datatype));
+  if(!sym || int_vec_contains(sym->tqualifiers,CONST_QL))
 	  return;
   {
     

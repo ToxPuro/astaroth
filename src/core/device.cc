@@ -177,7 +177,7 @@ GEN_DEVICE_STORE_UNIFORM(AcBoolParam, bool, Bool)
 AcResult
 acDeviceUpdate(Device device, const AcMeshInfo config)
 {
-    acVBAUpdate(&(device->vba),config);
+    acUpdateArrays(config);
     acDeviceLoadMeshInfo(device,config);
     return AC_SUCCESS;
 }

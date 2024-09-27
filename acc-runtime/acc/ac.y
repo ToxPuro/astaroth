@@ -61,7 +61,7 @@ astnode_hostdefine(const char* buffer, const int token)
         const char* def_in = "hostdefine";
         const char* def_out = "define";
         assert(strlen(def_in) > strlen(def_out));
-        assert(!strncmp(res->buffer, def_in, strlen(def_in)));
+        assert(!strncmp(buffer, def_in, strlen(def_in)));
 
 
 	char* tmp = strdup(buffer);
@@ -1435,6 +1435,7 @@ static void process_global_array_declaration(ASTNode* variable_definition, ASTNo
 			{
 				ASTNode* elem = (ASTNode*) dims.data[i];
 				const int array_len = eval_int(elem,true,NULL);
+				set_buffers_empty(elem);
 				astnode_set_buffer(itoa(array_len),elem);
 			}
 			free_node_vec(&dims);
