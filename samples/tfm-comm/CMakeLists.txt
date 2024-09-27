@@ -1,6 +1,7 @@
 ## CMake settings
 cmake_minimum_required(VERSION 3.5)
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Debug)
 
 ## Project settings
@@ -44,3 +45,5 @@ target_link_libraries(run PRIVATE tfm-comm tfm-utils)
 
 add_executable(test test.c)
 target_link_libraries(test PRIVATE tfm-utils tfm-comm)
+
+add_executable(cpptest cpptest.cc)
