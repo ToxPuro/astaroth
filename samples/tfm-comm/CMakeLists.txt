@@ -20,8 +20,9 @@ add_compile_options(-Wfatal-errors
                     -Wsign-conversion
                     -Wimplicit-int
                     -Werror=implicit-fallthrough
-                    -pedantic
-                    -pedantic-errors)
+                    -Wpedantic
+                    -pedantic-errors
+                    )
 
 ## Packages
 find_package(MPI REQUIRED COMPONENTS C)
