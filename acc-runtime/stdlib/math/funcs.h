@@ -21,7 +21,7 @@ epsilon(real x)
 	return AC_REAL_EPSILON;
 }
 
-matmul_transpose(Matrix a, Matrix b)
+matmul_transpose(Matrix a, real3 b)
 {
 	print("Not implemented matmul_tranpose")
 	return real3(0.0,0.0,0.0)

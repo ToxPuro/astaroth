@@ -142,6 +142,11 @@ contract(Matrix mat) {
            dot(mat[1], mat[1]) +
            dot(mat[2], mat[2])
 }
+contract(Matrix a, Matrix b) {
+    return dot(a[0], b[0]) +
+           dot(a[1], b[1]) +
+           dot(a[2], b[2])
+}
 
 norm2(real3 v) {
     return ( dot(v,v) )

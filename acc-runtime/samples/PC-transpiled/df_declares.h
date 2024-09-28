@@ -27,8 +27,14 @@ real  DF_SS            = 0.0
 real  DF_TT            = 0.0
 real  DF_ETH           = 0.0
 real  DF_RUN_AVER      = 0.0
-real3 DF_PHIUU         = real3(0.0,0.0,0.0)
+real DF_PHIUU         = 0.0
 real DF_SS_RUN_AVER    = 0.0
+real DF_RHO            = 0.0
 #define DF_LNTT DF_TT
 #define DF_LNRHO DF_RHO
 #define DF_UU DF_UVEC
+
+#define DF_UX DF_UU.x
+#define DF_UY DF_UU.y
+#define DF_UZ DF_UU.z
+#define AC_0 (0)

@@ -424,6 +424,7 @@ symboltable_reset(void)
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"sum");   // TODO RECHECK
 
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, "AcReal", REAL,"AC_REAL_PI");
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, "AcReal", REAL,"AC_REAL_EPSILON");
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"NUM_FIELDS");
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"NUM_PROFILES");
   add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0,"NUM_VTXBUF_HANDLES");
@@ -3578,7 +3579,7 @@ traverse_base(const ASTNode* node, const NodeType exclude, FILE* stream, bool do
   // Add symbols to symbol table
   if (node->buffer && node->token == IDENTIFIER && !(node->type & exclude)) {
     //New test for shadowing
-    if (do_checks) check_for_shadowing(node);
+    //if (do_checks) check_for_shadowing(node);
     if (!symboltable_lookup(node->buffer)) {
       static int tqualifiers[MAX_ID_LEN];
       size_t n_tqualifiers = get_qualifiers(node,tqualifiers);
@@ -3883,17 +3884,18 @@ get_binary_expr_type(const ASTNode* node)
 	const bool rhs_real = !strcmp(rhs_res,"AcReal");
 	const bool lhs_int   = !strcmp(lhs_res,"int");
 	const bool rhs_int   = !strcmp(rhs_res,"int");
-	return
+	const char* res = 	
 		op && !strcmps(op,"+","-","*","/") && (!strcmp(lhs_res,"Field") || !strcmp(rhs_res,"Field"))   ? "AcReal"  :
 		op && !strcmps(op,"+","-","*","/") && (!strcmp(lhs_res,"Field3") || !strcmp(rhs_res,"Field3")) ? "AcReal3" :
                 (lhs_real || rhs_real) && (lhs_int || rhs_int) ? "AcReal" :
                 !strcmp_null_ok(op,"*") && !strcmp(lhs_res,"AcMatrix") &&  !strcmp(rhs_res,"AcReal3") ? "AcReal3" :
 		!strcmp(lhs_res,"AcComplex") || !strcmp(rhs_res,"AcComplex")   ? "AcComplex"  :
 		lhs_real && !strcmps(rhs_res,"int","long","long long")    ?  "AcReal"  :
-		!strcmp_null_ok(op,"*")     && lhs_real && !rhs_int  ?  rhs_res   :
-		op && !strcmps(op,"*","/")  && rhs_real && !lhs_int  ?  lhs_res   :
+		op && !strcmps(op,"*","-","/","+")     && lhs_real && !rhs_int  ?  rhs_res   :
+		op && !strcmps(op,"*","/","-","+")  && rhs_real && !lhs_int  ?  lhs_res   :
 		!strcmp(lhs_res,rhs_res) ? lhs_res :
 		NULL;
+	return res;
 
 }
 const char*
@@ -4353,14 +4355,14 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 			const ASTNode* second_array_initializer = get_node(NODE_ARRAY_INITIALIZER, array_initializer->lhs);
 			if(array_dim == 1)
 			{
-				fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
-				fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
+				fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
+				fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<%s,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems, name, assignment_val);
 			}
 			else if(array_dim == 2)
 			{
 				const int num_of_elems_in_list = count_num_of_nodes_in_list(second_array_initializer->lhs);
-				fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
-				fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
+				fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
+				fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
 			}
 			else
 			{
@@ -4378,16 +4380,16 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
                                 	fprintf(fp_builtin, "#define %s ((%s)%s)\n",name, datatype_scalar, assignment_val);
 				else
 				{
-                                	fprintf(fp_non_scalar_constants, "[[maybe_unused]] constexpr %s %s = %s;\n", datatype_scalar, name, assignment_val);
+                                	fprintf(fp_non_scalar_constants, "[[maybe_unused]] const constexpr %s %s = %s;\n", datatype_scalar, name, assignment_val);
                                 	fprintf(fp, "[[maybe_unused]] constexpr %s %s = %s;\n", datatype_scalar, name, assignment_val);
 				}
 			}
                         else
 			{
-                               fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
+                               fprintf(fp_non_scalar_constants, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
                                fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
 			       if(strlen(name) > 2 && name[0] == 'A' && name[1] == 'C')
-                               		fprintf(fp_non_scalar_builtin, "\n#ifdef __cplusplus\n[[maybe_unused]] constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
+                               		fprintf(fp_non_scalar_builtin, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr %s %s = %s;\n#endif\n",datatype_scalar, name, assignment_val);
 			}
 		}
 		free(datatype_scalar);
@@ -5118,7 +5120,13 @@ transform_arrays_to_std_arrays(ASTNode* node)
 	const ASTNode* tspec = get_node(NODE_TSPEC,node->lhs);
 	if(!tspec)
 		return;
-	astnode_sprintf(tspec->lhs,"AcArray<%s,%s>",tspec->lhs->buffer,combine_all_new(node->rhs->lhs->rhs));
+	const char* dim = combine_all_new(node->rhs->lhs->rhs);
+	//TP: at least some CUDA compilers do not allow zero-sized objects in device code so have to pad the array length
+	if(!strcmp(dim,"(0)"))
+	{
+		dim = "(1)";
+	}
+	astnode_sprintf(tspec->lhs,"AcArray<%s,%s>",tspec->lhs->buffer,dim);
 	node->rhs->lhs->infix = NULL;
 	node->rhs->lhs->postfix= NULL;
 	node->rhs->lhs->rhs = NULL;
@@ -6150,8 +6158,9 @@ remove_dead_writes(ASTNode* node)
 	const ASTNode* func = get_parent_node(NODE_FUNCTION,node);
 	if(!func) return;
 	if(!(node->type & NODE_ASSIGNMENT)) return;
-	const char* var_name = strdup(get_node_by_token(IDENTIFIER,node->lhs)->buffer);
+	const char* var_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
 	const ASTNode* begin_scope = get_parent_node(NODE_BEGIN_SCOPE,node);
+	//TP: only consider writes in the first nest
 	if(begin_scope -> id != func->rhs->rhs->id) return;
 	const ASTNode* head = get_parent_node(NODE_STATEMENT_LIST_HEAD,node);
 	const bool final_node = is_left_child(NODE_STATEMENT_LIST_HEAD,node);
