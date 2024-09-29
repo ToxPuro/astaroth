@@ -180,13 +180,10 @@ get_decomp(const AcCompInfo info)
     MPI_Comm_size(info.comm, &nprocs);
     switch((AcDecomposeStrategy)global_config.int_params[AC_decompose_strategy])
     {
-	    case AcDecomposeStrategy::Default:
-		return decompose(nprocs);
 	    case AcDecomposeStrategy::External:
 		return static_cast<uint3_64>(global_config.int3_params[AC_domain_decomposition]);
 	    default:
-		fprintf(stderr,"Unknown decompose strategy\n");
-		exit(EXIT_FAILURE);
+		return decompose(nprocs,(AcDecomposeStrategy)global_config.int_params[AC_decompose_strategy]);
 
     }
     return (uint3_64){0,0,0};
@@ -237,7 +234,7 @@ check_that_built_ins_loaded(const AcCompInfo info)
 }
 
 void
-acCompile(const char* compilation_string, AcCompInfo info)
+acLoadRunConsts(AcCompInfo info)
 {
 	check_that_built_ins_loaded(info);
 	acHostUpdateBuiltinCompParams(&info);
@@ -250,6 +247,10 @@ acCompile(const char* compilation_string, AcCompInfo info)
 	AcArrayCompTypes::run<load_arrays>(info, fp);
 
 	fclose(fp);
+}
+void
+acCompile(const char* compilation_string, AcCompInfo info)
+{
 	char cmd[10000];
 
 	sprintf(cmd,"rm -rf %s",runtime_astaroth_build_path);
