@@ -23,6 +23,7 @@ static struct hashmap_s hashmap;
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <math.h>
 
 void
 gen_dlsym(FILE* fp, const char* func_name)
@@ -33,7 +34,7 @@ gen_dlsym(FILE* fp, const char* func_name)
 
 
 void
-get_executed_conditionals(void);
+get_executed_conditionals(const int round);
 
 #include "ast.h"
 #include "tab.h"
@@ -545,6 +546,48 @@ get_array_var_dims(const char* var, const ASTNode* root)
 
 	    const ASTNode* access_start = get_node(NODE_ARRAY_ACCESS,decl);
 	    return get_array_accesses(access_start);
+}
+const char*
+get_var_val(const char* var, const ASTNode* node)
+{
+	if(node->lhs)
+	{
+		const char* lhs_val = get_var_val(var,node->lhs);
+		if(lhs_val) return lhs_val;
+	}
+	if(node->type & NODE_ASSIGN_LIST && has_qualifier(node,"const") && get_node(NODE_TSPEC,node))
+	{
+		node_vec assignments = get_nodes_in_list(node->rhs);
+		for(size_t i = 0; i < assignments.size; ++i)
+		{
+			const ASTNode* elem = assignments.data[i];
+			const ASTNode* assignment = get_node(NODE_ASSIGNMENT,elem);
+			const ASTNode* id = get_node_by_token(IDENTIFIER,assignment);
+			if(!id) continue;
+			const char* name = id->buffer;
+			if(!strcmp(name,var))
+			{
+				const ASTNode* val = get_node_by_token(REALNUMBER,assignment->rhs);
+				if(val)
+				{
+					return val->buffer;
+				}
+				val = get_node_by_token(IDENTIFIER,assignment->rhs);
+				if(val && val->buffer)
+				{
+					return val->buffer;
+				}
+			}
+		}
+		free_node_vec(&assignments);
+	}
+	if(node->rhs)
+	{
+		const char* rhs_val = get_var_val(var,node->rhs);
+		if(rhs_val) return rhs_val;
+	}
+	return NULL;
+
 }
 void
 get_array_var_length(const char* var, const ASTNode* root, char* dst)
@@ -1273,6 +1316,15 @@ bool
 check_symbol(const NodeType type, const char* name, const int tspecifier, const int tqualifier)
 {
   const Symbol* sym = get_symbol_token(type,name,tspecifier);
+  return 
+	  !sym ? false :
+	  !tqualifier ? true :
+	  int_vec_contains(sym->tqualifiers,tqualifier);
+}
+bool
+check_symbol_string(const NodeType type, const char* name, const char* tspecifier, const int tqualifier)
+{
+  const Symbol* sym = get_symbol(type,name,tspecifier);
   return 
 	  !sym ? false :
 	  !tqualifier ? true :
@@ -5173,9 +5225,97 @@ gen_kernel_combinatorial_optimizations_and_input(ASTNode* root, const bool optim
   }
   free_combinatorial_params_info(&info);
 }
+void
+eval_ands(ASTNode* node, const ASTNode* root)
+{
+	const char* lhs_val = combine_all_new(node->lhs);
+	if(!strcmp(lhs_val,"false") || !strcmp(lhs_val,"(false)"))
+	{
+		ASTNode* res = create_primary_expression("false");
+		if(node->parent->lhs->id == node->id)
+			node->parent->lhs = res;
+		else
+			node->parent->rhs = res;
+		res->parent = node->parent;
+		return;
+	}
+	/**
+	if(strstr(lhs_val,"false") && !strstr(lhs_val,"!"))
+	{
+		printf("HI: %s\n",lhs_val);
+		printf("HI: %s\n",combine_all_new(node));
+		exit(EXIT_FAILURE);
+	}
+	**/
+}
+void
+eval_comparisons(ASTNode* node, const ASTNode* root, const char* op)
+{
+	if(!node->lhs->lhs) return;
+	if(!node->lhs->lhs->lhs) return;
+	if(!node->lhs->lhs->lhs->lhs) return;
+	if(!(node->lhs->lhs->lhs->lhs->type & NODE_PRIMARY_EXPRESSION)) return;
+	ASTNode* primary_expr = node->lhs->lhs->lhs->lhs;
+	if(primary_expr->lhs->token != IDENTIFIER) return;
+	const char* lhs_var = primary_expr->lhs->buffer;
+	if(!check_symbol(NODE_VARIABLE_ID,lhs_var,REAL,CONST_QL)) return;
+	if(strcmp_null_ok(get_expr_type(primary_expr),"AcReal")) return;
+	if(!node->rhs->rhs->lhs) return;
+	if(!node->rhs->rhs->lhs->lhs) return;
+	if(!(node->rhs->rhs->lhs->lhs->type & NODE_PRIMARY_EXPRESSION)) return;
+	if(node->rhs->rhs->lhs->lhs->lhs->token != REALNUMBER) return;
+	const char* real_number = node->rhs->rhs->lhs->lhs->lhs->buffer;
+	const char* lhs_val = get_var_val(lhs_var,root);
+	double lhs_double = atof(lhs_val);
+	double rhs_double = atof(real_number);
+	const bool success = 
+			!strcmp(op,"!=") ? lhs_double != rhs_double :
+			!strcmp(op,"<")  ? lhs_double < rhs_double :
+			!strcmp(op,">")  ? lhs_double > rhs_double : false;
+
+		ASTNode* res = create_primary_expression(success ? "true" : "false");
+		if(node->parent->lhs->id == node->id)
+			node->parent->lhs = res;
+		else
+			node->parent->rhs = res;
+		res->parent = node->parent;
+}
+void
+eval_conditionals(ASTNode* node, const ASTNode* root)
+{
+	if(node->lhs)
+		eval_conditionals(node->lhs,root);
+	if(node->rhs)
+		eval_conditionals(node->rhs,root);
+	if(node->token == IDENTIFIER && node->buffer && !get_parent_node(NODE_DECLARATION,node))
+	{
+		if(strcmp(node->buffer,"false") && strcmp(node->buffer,"true"))
+		{
+			const char* id = node->buffer;
+			if(check_symbol_string(NODE_VARIABLE_ID,id,"bool",CONST_QL))
+			{
+				const char* val = strdup(get_var_val(id,root));
+				if(val)
+				{
+					astnode_set_buffer(val,node);
+					return;
+				}
+			}
+			/**
+			**/
+		}
+	}
+	if(!node_is_binary_expr(node)) return;
+	const char* op = get_node_by_token(BINARY_OP,node->rhs->lhs)->buffer;
+	if(!op) return;
+	if(!strcmp(op,"!=") || !strcmp(op,"<") ||!strcmp(op,">")) eval_comparisons(node,root,op);
+	if(!strcmp(op,"&&")) eval_ands(node,root);
+}
 bool
 all_identifiers_are_constexpr(const ASTNode* node)
 {
+	if(node->type & NODE_MEMBER_ID)
+		return true;
 	bool res = true;
 	if(node->lhs)
 		res &= all_identifiers_are_constexpr(node->lhs);
@@ -5260,9 +5400,27 @@ count_num_of_assignments(const ASTNode* node, string_vec* names, int_vec* counts
 
 }
 bool
+inside_conditional_scope(const ASTNode* node)
+{
+                const ASTNode* begin_scope = get_parent_node(NODE_BEGIN_SCOPE,node);
+		while(!(begin_scope->parent->parent->type & NODE_FUNCTION))
+		{
+			//Else node	
+			if(begin_scope->parent->parent->lhs && begin_scope->parent->parent->lhs->token == ELSE) return true;
+			//If and Elif node
+			if(begin_scope->parent->parent->type & NODE_IF) return true;
+                	begin_scope = get_parent_node(NODE_BEGIN_SCOPE,begin_scope);
+		}
+		return false;
+}
+bool
 gen_constexpr_in_func(ASTNode* node, const string_vec names, const int_vec assign_counts)
 {
 	bool res = false;
+	if(node->lhs)
+		res |= gen_constexpr_in_func(node->lhs,names,assign_counts);
+	if(node->rhs)
+		res |= gen_constexpr_in_func(node->rhs,names,assign_counts);
 	if(node->token == IDENTIFIER && node->buffer && !node->is_constexpr)
 	{
 		node->is_constexpr |= check_symbol(NODE_ANY,node->buffer,0,CONST_QL);
@@ -5274,14 +5432,17 @@ gen_constexpr_in_func(ASTNode* node, const string_vec names, const int_vec assig
 	}
 	if(node->type & NODE_IF && all_identifiers_are_constexpr(node->lhs) && !node->is_constexpr)
 	{
-		//TP: simplification for now only consider conditionals that are not in nested scopes
-		const ASTNode* begin_scope = get_parent_node(NODE_BEGIN_SCOPE,node);
-		if(begin_scope->parent->parent->type & NODE_FUNCTION)
+		//TP: we only consider conditionals that are not inside other conditionals
+		if(!inside_conditional_scope(node))
 		{
 			node->is_constexpr = true;
 			node->prefix= strdup(" constexpr (");
 			if(node->rhs->lhs->type & NODE_BEGIN_SCOPE)
+			{
+				printf("FOUND CONSTEXPR if: %s,%d\n",combine_all_new(node->lhs),node->id);
 				asprintf(&node->rhs->lhs->prefix,"{executed_conditionals.push_back(%d);",node->id);
+				//printf("HMM :%s\n",combine_all_new(node));
+			}
 		}
 	}
 	//TP: below sets the constexpr value of lhs the same as rhs for: lhs = rhs
@@ -6233,6 +6394,7 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   //duplicate_dfuncs = get_duplicate_dfuncs(root);
   mark_first_declarations(root);
   gen_overloads(root);
+  eval_conditionals(root,root);
   transform_broadcast_assignments(root);
   mark_kernel_inputs(root);
   gen_kernel_combinatorial_optimizations_and_input(root,optimize_conditionals);
@@ -6363,9 +6525,7 @@ eliminate_conditionals_base(ASTNode* node)
 	bool res = false;
 	if(node->lhs)
 		res |= eliminate_conditionals_base(node->lhs);
-	if(node->rhs)
-		res |= eliminate_conditionals_base(node->rhs);
-	if(node->type & NODE_IF && node->is_constexpr)
+	if((node->type & NODE_IF && node->is_constexpr))
 	{
 		const bool is_executed = int_vec_contains(executed_conditionals,node->id);
 		const bool is_elif = get_node_by_token(ELIF,node->parent->lhs)  != NULL;
@@ -6374,15 +6534,15 @@ eliminate_conditionals_base(ASTNode* node)
 			//TP: now we know that this constexpr conditional is taken
 			//TP: this means that its condition has to be always true given its constexpr nature, thus if the previous conditionals were not taken this is always taken
 			//TP: since we iterate the conditionals in order we can remove the conditionals on the right that can not be taken
-			res |= node->rhs->rhs != NULL;
 			node->rhs->rhs = NULL;
 			//TP: if is not elif this is the base case and there is only a single redundant check left
 			if(!is_elif)
 			{
 				node->rhs->lhs->parent = node->parent->parent;
 				node->parent->parent->lhs = node->rhs->lhs;
-				return true;
 			}
+			node->type ^= NODE_IF;
+			return true;
 		}
 		else
 		{
@@ -6395,26 +6555,42 @@ eliminate_conditionals_base(ASTNode* node)
 				node->parent->rhs = elif_if_statement;
 			}
 			//Else is the only possibility take it
-			else if(node->rhs->rhs->lhs->token == ELSE)
+			else if(node->rhs->rhs && node->rhs->rhs->lhs->token == ELSE)
 			{
 				ASTNode* else_node = node->rhs->rhs;
 				ASTNode* statement = node->parent->parent;
 				statement->lhs = else_node->rhs;
 				else_node->rhs->parent = statement;
 			}
+			//Conditional with only a single case that is not taken, simple remove the whole conditional
+			else
+			{
+				ASTNode* statement = node->parent->parent;
+				statement->lhs = NULL;
+			}
+			//node->type ^= NODE_IF;
 			return true;
 		}
 	}
+	if(node->rhs)
+		res |= eliminate_conditionals_base(node->rhs);
 	return res;
 
 }
-void
+bool
 eliminate_conditionals(ASTNode* node)
 {
-	eliminate_conditionals_base(node);
 	bool process = true;
+	bool eliminated_something = false;
+	int round_num = 0;
 	while(process)
-		process = eliminate_conditionals_base(node);
+	{
+		const bool eliminated_something_this_round = eliminate_conditionals_base(node);
+		process = eliminated_something_this_round;
+		eliminated_something = eliminated_something || eliminated_something_this_round;
+		printf("ELIMINATED SOMETHING THIS ROUND: %d,%d\n",eliminated_something_this_round,round_num++);
+	}
+	return eliminated_something;
 }
 
 
@@ -6781,16 +6957,34 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   {
 	  fflush(stream);
 	  //This is used to eliminate known constexpr conditionals
-	  //get_executed_conditionals();
-	  //eliminate_conditionals(root);
+	  bool eliminated_something = true;
+	  int round = 0;
+  	  gen_constexpr_info(root);
+	  while(eliminated_something)
+	  {
+		printf("ELIMINATION ROUND: %d\n",round++);
+	  	clean_stream(stream);
+
+		symboltable_reset();
+  	  	traverse(root,
+           		NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
+               		NODE_HOSTDEFINE | NODE_NO_OUT,
+           	stream);
+	  	fflush(stream);
+	  	get_executed_conditionals(round-1);
+	  	eliminated_something = eliminate_conditionals(root);
+		gen_constexpr_info(root);
+	  }
 
 
-	  //clean_stream(stream);
+	  clean_stream(stream);
 
-  	  //traverse(root,
-          // NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
-          //     NODE_HOSTDEFINE | NODE_NO_OUT,
-          // stream);
+	  symboltable_reset();
+  	  traverse(root,
+           NODE_DCONST | NODE_VARIABLE | NODE_STENCIL | NODE_DFUNCTION |
+               NODE_HOSTDEFINE | NODE_NO_OUT,
+           stream);
+	  fflush(stream);
   }
 
   // print_symbol_table();
@@ -6857,9 +7051,12 @@ compile_helper(void)
 }
 
 void
-get_executed_conditionals(void)
+get_executed_conditionals(const int round)
 {
 	compile_helper();
+	char cmd[4096];
+	sprintf(cmd,"cp user_kernels.h user_kernels_round_%d.h",round);
+        system(cmd);
   	FILE* proc = popen("./" STENCILACC_EXEC " -C", "r");
   	assert(proc);
   	pclose(proc);

@@ -9,6 +9,17 @@ gmem real AC_nphis2__mod__cdata[AC_mx__mod__cparam]
 //
 #include "var_declares.h"
 bool AC_lpencil__mod__cparam[AC_npencils__mod__cparam]
+bool AC_cant_know_value
+/**
+Kernel rhs()
+{
+	const int3 val = {0,0,0}
+	if(val.x == 0)
+	{
+		print("I AM taken\n")
+	}
+}
+**/
 Kernel rhs(){
 #include "static_var_declares.h"
 #include "df_declares.h"

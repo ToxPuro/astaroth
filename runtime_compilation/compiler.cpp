@@ -274,7 +274,7 @@ acCompile(const char* compilation_string, AcCompInfo info)
 	}
 
 
-	sprintf(cmd,"cd %s && cmake %s -DREAD_OVERLOADS=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s  && make -j",
+	sprintf(cmd,"cd %s && cmake %s -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s  && make -j",
 			runtime_astaroth_build_path, AC_BASE_PATH, acc_compiler_path, compilation_string);
 	retval = system(cmd);
 	if(retval)

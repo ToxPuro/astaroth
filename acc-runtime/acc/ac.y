@@ -16,7 +16,7 @@
 #define YYSTYPE ASTNode*
 
 bool RUNTIME_COMPILATION = false;
-bool READ_OVERLOADS      = false;
+bool READ_OVERRIDES      = false;
 ASTNode* root = NULL;
 
 extern FILE* yyin;
@@ -330,7 +330,7 @@ int code_generation_pass(const char* stage0, const char* stage1, const char* sta
 	  fprintf(out,"#define AC_LAGRANGIAN_GRID (%d)\n",AC_LAGRANGIAN_GRID);
 	  fprintf(out,"#define TWO_D (%d)\n",TWO_D);
        	  process_includes(1, dir, ACC_BUILTIN_TYPEDEFS, out,log);
-	  if(file_exists(ACC_OVERRIDES_PATH) && !RUNTIME_COMPILATION && READ_OVERLOADS)
+	  if(file_exists(ACC_OVERRIDES_PATH) && !RUNTIME_COMPILATION && READ_OVERRIDES)
        	  	process_includes(1, dir, ACC_OVERRIDES_PATH, out,log);
        	  process_includes(1, dir, ACC_BUILTIN_INTRINSICS, out,log);
        	  process_includes(1, dir, ACC_BUILTIN_VARIABLES, out,log);
@@ -438,7 +438,7 @@ main(int argc, char** argv)
     init_str_vec(&filenames);
     char* file = NULL;
     RUNTIME_COMPILATION = !strcmp(argv[argc-1],"1"); 
-    READ_OVERLOADS      = !strcmp(argv[argc-2],"1"); 
+    READ_OVERRIDES      = !strcmp(argv[argc-2],"1"); 
     if(argc > 4)
     {
 	file = malloc(sizeof(char)*(strlen(argv[1]) + strlen(argv[2])));
@@ -1076,7 +1076,7 @@ if_root: compound_statement else_statement { $$ = astnode_create(NODE_UNKNOWN, $
 					const int n_statements = count_num_of_nodes_in_list($$->lhs->lhs);
 					if(n_statements == 1)
 					{
-						$$->lhs->type = NODE_UNKNOWN;
+						//$$->lhs->type = NODE_UNKNOWN;
 					}
 				}
 			    }
