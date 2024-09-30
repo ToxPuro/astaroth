@@ -1,14 +1,14 @@
 ## CMake settings
 cmake_minimum_required(VERSION 3.5)
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_BUILD_TYPE Debug)
 
 ## Project settings
 project(tfm-comm)
 
 ## Project-wide compilation flags
-add_compile_options(-Wfatal-errors 
+add_compile_options(#-Werror
+                    -Wfatal-errors 
                     -Wall
                     -Wextra
                     -Wdouble-promotion
@@ -22,37 +22,33 @@ add_compile_options(-Wfatal-errors
                     -Werror=implicit-fallthrough
                     -Wpedantic
                     -pedantic-errors
-                    #-Weverything
+                    -Wvla
+                    -Wabi
+                    -Waggregate-return
+                    -Wbad-function-cast
+                    -Wbad-function-cast
+                    -Wcast-align
+                    -Wcast-qual
+                    -Wfloat-equal
+                    -Wformat=2
+                    -Wmissing-declarations
+                    -Wmissing-include-dirs
+                    -Wmissing-prototypes
+                    -Wnested-externs
+                    -Wpointer-arith
+                    -Wredundant-decls
+                    -Wsequence-point
+                    -Wswitch
+                    -Wundef
+                    -Wunreachable-code
+                    -Wunused-but-set-parameter
+                    -Wwrite-strings
+                    #-Wunsafe-loop-optimizations
+                    #-Weffc++
                     )
 
 ## Packages
-find_package(MPI REQUIRED COMPONENTS C)
-
-## Libraries
-# add_library(tfm-print SHARED print.c)
-# add_library(tfm-type-conversion SHARED type_conversion.c)
-# add_library(tfm-math-utils SHARED math_utils.c)
-
-add_library(tfm-utils SHARED print.c math_utils.c type_conversion.c ndarray.c buffer.c halo_segment.c partition.c dynamic_array.c matrix.c array.c)
-#target_link_libraries(tfm-utils INTERFACE tfm-print tfm-math-utils)
-
-add_library(tfm-comm SHARED comm.c halo_segment_batch.c mpi_utils.c)
-target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-utils)
-
-#add_library(tfm-math-utils SHARED math_utils.c)
-
-## Program
-add_executable(run main.c)
-target_link_libraries(run PRIVATE tfm-comm tfm-utils)
+add_library(tfm-utils SHARED mpi_utils.c type_conversion.c math_utils.c)
 
 add_executable(test test.c)
-target_link_libraries(test PRIVATE tfm-utils tfm-comm)
-
-add_executable(cpptest cpptest.cc)
-
-
-find_package(hip REQUIRED)
-enable_language(HIP)
-add_executable(tfm-gpu gpu.cu)
-target_link_libraries(tfm-gpu PRIVATE hip::host hip::device)
-set_source_files_properties(gpu.cu PROPERTIES LANGUAGE HIP)
+target_link_libraries(test PRIVATE tfm-utils)

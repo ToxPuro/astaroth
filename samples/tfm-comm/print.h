@@ -1,30 +1,98 @@
 #pragma once
-#include <stddef.h>
-#include <stdint.h>
 
-#define format_specifier(value)                                                                    \
-    _Generic((value),                                                                              \
-        size_t: format_specifier_size_t,                                                           \
-        int64_t: format_specifier_int64_t,                                                         \
-        int: format_specifier_int,                                                                 \
-        double: format_specifier_double)(value)
+#include <stdio.h>
 
-const char* format_specifier_size_t(const size_t value);
-const char* format_specifier_int64_t(const int64_t value);
-const char* format_specifier_int(const int value);
-const char* format_specifier_double(const double value);
+static const char type_specifier_size_t[]  = "%zu";
+static const char type_specifier_int[]     = "%d";
+static const char type_specifier_int64_t[] = "%lld";
+static const char type_specifier_double[]  = "%g";
 
-#define print_type(value)                                                                          \
-    _Generic((value),                                                                              \
-        size_t: print_type_size_t,                                                                 \
-        int64_t: print_type_int64_t,                                                               \
-        int: print_type_int,                                                                       \
-        double: print_type_double)(value)
+#define CREATE_PRINT_FUNCTION(type)                                                                \
+    static inline void print_##type(const char* label, const type value)                           \
+    {                                                                                              \
+        printf("%s: ", label);                                                                     \
+        printf(type_specifier_##type, value);                                                      \
+        printf("\n");                                                                              \
+    }
 
-void print_type_size_t(const size_t value);
-void print_type_int64_t(const int64_t value);
-void print_type_int(const int value);
-void print_type_double(const double value);
+#define CREATE_PRINT_ARRAY_FUNCTION(type)                                                          \
+    static inline void print_array_##type(const char* label, const size_t count, const type* arr)  \
+    {                                                                                              \
+        printf("%s: (", label);                                                                    \
+        for (size_t i = 0; i < count; ++i) {                                                       \
+            printf(type_specifier_##type, arr[i]);                                                 \
+            printf("%s", i < count - 1 ? ", " : "");                                               \
+        }                                                                                          \
+        printf(")\n");                                                                             \
+    }
+
+static inline size_t
+print_prod_todo_remove(const size_t count, const size_t* arr)
+{
+    size_t res = 1;
+    for (size_t i = 0; i < count; ++i)
+        res *= arr[i];
+    return res;
+}
+
+#define CREATE_PRINT_NDARRAY_RECURSIVE_FUNCTION(type)                                              \
+    static inline void print_ndarray_recursive_##type(const size_t ndims, const size_t* dims,      \
+                                                      const type* arr)                             \
+    {                                                                                              \
+        if (ndims == 1) {                                                                          \
+            for (size_t i = 0; i < dims[0]; ++i) {                                                 \
+                const size_t len          = 128;                                                   \
+                const int print_alignment = 3;                                                     \
+                char str[len];                                                                     \
+                snprintf(str, len, type_specifier_##type, arr[i]);                                 \
+                printf("%*s ", print_alignment, str);                                              \
+            }                                                                                      \
+            printf("\n");                                                                          \
+        }                                                                                          \
+        else {                                                                                     \
+            const size_t offset = print_prod_todo_remove(ndims - 1, dims);                         \
+            for (size_t i = 0; i < dims[ndims - 1]; ++i) {                                         \
+                if (ndims > 4)                                                                     \
+                    printf("%zu. %zu-dimensional hypercube:\n", i, ndims - 1);                     \
+                if (ndims == 4)                                                                    \
+                    printf("Cube %zu:\n", i);                                                      \
+                if (ndims == 3)                                                                    \
+                    printf("Layer %zu:\n", i);                                                     \
+                if (ndims == 2)                                                                    \
+                    printf("Row %zu:", i);                                                         \
+                print_ndarray_recursive_##type(ndims - 1, dims, &arr[i * offset]);                 \
+            }                                                                                      \
+            printf("\n");                                                                          \
+        }                                                                                          \
+    }
+
+#define CREATE_PRINT_NDARRAY_FUNCTION(type)                                                        \
+    static inline void print_ndarray_##type(const char* label, const size_t ndims,                 \
+                                            const size_t* dims, const type* arr)                   \
+    {                                                                                              \
+        printf("%s:\n", label);                                                                    \
+        print_ndarray_recursive_##type(ndims, dims, arr);                                          \
+    }
+
+CREATE_PRINT_FUNCTION(size_t)
+CREATE_PRINT_ARRAY_FUNCTION(size_t)
+CREATE_PRINT_NDARRAY_RECURSIVE_FUNCTION(size_t)
+CREATE_PRINT_NDARRAY_FUNCTION(size_t)
+
+CREATE_PRINT_FUNCTION(int)
+CREATE_PRINT_ARRAY_FUNCTION(int)
+CREATE_PRINT_NDARRAY_RECURSIVE_FUNCTION(int)
+CREATE_PRINT_NDARRAY_FUNCTION(int)
+
+CREATE_PRINT_FUNCTION(int64_t)
+CREATE_PRINT_ARRAY_FUNCTION(int64_t)
+CREATE_PRINT_NDARRAY_RECURSIVE_FUNCTION(int64_t)
+CREATE_PRINT_NDARRAY_FUNCTION(int64_t)
+
+CREATE_PRINT_FUNCTION(double)
+CREATE_PRINT_ARRAY_FUNCTION(double)
+CREATE_PRINT_NDARRAY_RECURSIVE_FUNCTION(double)
+CREATE_PRINT_NDARRAY_FUNCTION(double)
 
 #define print(label, value)                                                                        \
     _Generic((value),                                                                              \
@@ -32,11 +100,6 @@ void print_type_double(const double value);
         int64_t: print_int64_t,                                                                    \
         int: print_int,                                                                            \
         double: print_double)(label, value)
-
-void print_size_t(const char* label, const size_t value);
-void print_int64_t(const char* label, const int64_t value);
-void print_int(const char* label, const int value);
-void print_double(const char* label, const double value);
 
 #define print_array(label, count, arr)                                                             \
     _Generic((arr),                                                                                \
@@ -48,8 +111,3 @@ void print_double(const char* label, const double value);
         const int64_t*: print_array_int64_t,                                                       \
         const int*: print_array_int,                                                               \
         const double*: print_array_double)(label, count, arr)
-
-void print_array_size_t(const char* label, const size_t count, const size_t* arr);
-void print_array_int64_t(const char* label, const size_t count, const int64_t* arr);
-void print_array_int(const char* label, const size_t count, const int* arr);
-void print_array_double(const char* label, const size_t count, const double* arr);
