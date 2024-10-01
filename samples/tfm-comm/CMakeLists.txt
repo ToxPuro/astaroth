@@ -51,7 +51,7 @@ add_compile_options(#-Werror
                     )
 
 ## Packages
-add_library(tfm-utils SHARED mpi_utils.c type_conversion.c math_utils.c print.c)
+add_library(tfm-utils SHARED mpi_utils.c type_conversion.c math_utils.c print.c partition.c)
 
 add_library(tfm-pack SHARED pack.c)
 target_link_libraries(tfm-pack PRIVATE tfm-utils)
