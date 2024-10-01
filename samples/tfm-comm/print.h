@@ -24,6 +24,13 @@ DECLARE_GENERIC_FUNCTIONS(int)
 DECLARE_GENERIC_FUNCTIONS(double)
 
 // Generics
+#define print(label, value)                                                                        \
+    _Generic((value),                                                                              \
+        size_t: print_size_t,                                                                      \
+        int64_t: print_int64_t,                                                                    \
+        int: print_int,                                                                            \
+        double: print_double)(label, value)
+
 #define print_array(label, count, array)                                                           \
     _Generic((array[0]),                                                                           \
         size_t: print_array_size_t,                                                                \

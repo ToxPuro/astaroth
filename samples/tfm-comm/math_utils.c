@@ -516,6 +516,17 @@ to_spatial(const size_t index, const size_t ndims, const size_t* shape, size_t* 
             divisor *= shape[i];
         output[j] = (index / divisor) % shape[j];
     }
+
+    // Alternative
+    // size_t* basis;
+    // alloc(ndims, basis);
+    // cumprod(ndims, shape, basis);
+    // rshift(1, 1, ndims, basis);
+
+    // for (size_t i = 0; i < ndims; ++i)
+    //     output[i] = (index / basis[i]) % shape[i];
+
+    // dealloc(basis);
 }
 
 size_t
@@ -529,6 +540,142 @@ to_linear(const size_t ndims, const size_t* index, const size_t* shape)
         result += index[j] * factor;
     }
     return result;
+
+    // Alternative
+    // size_t* basis;
+    // alloc(ndims, basis);
+    // cumprod(ndims, shape, basis);
+    // rshift(1, 1, ndims, basis);
+    // const size_t result = dot(ndims, index, basis);
+    // dealloc(basis);
+    // return result;
+}
+
+static void
+test_to_spatial_to_linear(void)
+{
+    {
+
+        const size_t index          = 0;
+        const size_t shape[]        = {8, 8, 8};
+        const size_t ndims          = ARRAY_SIZE(shape);
+        const size_t model_coords[] = {0, 0, 0};
+
+        size_t* coords;
+        alloc(ndims, coords);
+        to_spatial(index, ndims, shape, coords);
+        ERRCHK(equals(ndims, coords, model_coords));
+        ERRCHK(to_linear(ndims, coords, shape) == index);
+        dealloc(coords);
+    }
+    {
+
+        const size_t index          = 1;
+        const size_t shape[]        = {8, 8, 8};
+        const size_t ndims          = ARRAY_SIZE(shape);
+        const size_t model_coords[] = {1, 0, 0};
+
+        size_t* coords;
+        alloc(ndims, coords);
+        to_spatial(index, ndims, shape, coords);
+        ERRCHK(equals(ndims, coords, model_coords));
+        ERRCHK(to_linear(ndims, coords, shape) == index);
+        dealloc(coords);
+    }
+    {
+
+        const size_t index          = 8;
+        const size_t shape[]        = {8, 8, 8};
+        const size_t ndims          = ARRAY_SIZE(shape);
+        const size_t model_coords[] = {0, 1, 0};
+
+        size_t* coords;
+        alloc(ndims, coords);
+        to_spatial(index, ndims, shape, coords);
+        ERRCHK(equals(ndims, coords, model_coords));
+        ERRCHK(to_linear(ndims, coords, shape) == index);
+        dealloc(coords);
+    }
+    {
+
+        const size_t index          = 8 * 8;
+        const size_t shape[]        = {8, 8, 8};
+        const size_t ndims          = ARRAY_SIZE(shape);
+        const size_t model_coords[] = {0, 0, 1};
+
+        size_t* coords;
+        alloc(ndims, coords);
+        to_spatial(index, ndims, shape, coords);
+        ERRCHK(equals(ndims, coords, model_coords));
+        ERRCHK(to_linear(ndims, coords, shape) == index);
+        dealloc(coords);
+    }
+    {
+
+        const size_t shape[]        = {5, 7, 9};
+        const size_t model_coords[] = {1, 2, 3};
+        const size_t index          = model_coords[0] + model_coords[1] * shape[0] +
+                             model_coords[2] * shape[0] * shape[1];
+        const size_t ndims = ARRAY_SIZE(shape);
+
+        size_t* coords;
+        alloc(ndims, coords);
+        to_spatial(index, ndims, shape, coords);
+        ERRCHK(equals(ndims, coords, model_coords));
+        ERRCHK(to_linear(ndims, coords, shape) == index);
+        dealloc(coords);
+    }
+    {
+
+        const size_t shape[]        = {4701, 12, 525};
+        const size_t model_coords[] = {591, 5, 255};
+        const size_t index          = model_coords[0] + model_coords[1] * shape[0] +
+                             model_coords[2] * shape[0] * shape[1];
+        const size_t ndims = ARRAY_SIZE(shape);
+
+        size_t* coords;
+        alloc(ndims, coords);
+        to_spatial(index, ndims, shape, coords);
+        ERRCHK(equals(ndims, coords, model_coords));
+        ERRCHK(to_linear(ndims, coords, shape) == index);
+        dealloc(coords);
+    }
+    {
+
+        const size_t shape[]        = {500, 250};
+        const size_t model_coords[] = {499, 249};
+        const size_t index          = model_coords[0] + model_coords[1] * shape[0];
+        const size_t ndims          = ARRAY_SIZE(shape);
+
+        size_t* coords;
+        alloc(ndims, coords);
+        to_spatial(index, ndims, shape, coords);
+        ERRCHK(equals(ndims, coords, model_coords));
+        ERRCHK(to_linear(ndims, coords, shape) == index);
+        dealloc(coords);
+    }
+    {
+
+        const size_t shape[]        = {2, 2};
+        const size_t model_coords[] = {1, 0};
+        const size_t index          = 1;
+        const size_t ndims          = ARRAY_SIZE(shape);
+
+        size_t* coords;
+        alloc(ndims, coords);
+        to_spatial(index, ndims, shape, coords);
+        ERRCHK(equals(ndims, coords, model_coords));
+        ERRCHK(to_linear(ndims, coords, shape) == index);
+        dealloc(coords);
+    }
+    {
+        const size_t ndims = 2;
+        size_t* coords;
+        alloc(ndims, coords);
+        to_spatial(1, ndims, (size_t[]){2, 2}, coords);
+        ERRCHK(equals(ndims, coords, (size_t[]){1, 0}));
+        dealloc(coords);
+    }
 }
 
 void
@@ -573,6 +720,17 @@ add_to_array(const size_t value, const size_t count, size_t* arr)
 }
 
 void
+add(const size_t count, const size_t* a, size_t* b)
+{
+    // Disallow aliasing
+    ERRCHK(!(a >= b && a < b + count));
+    ERRCHK(!(a + count >= b && a + count < b + count));
+
+    for (size_t i = 0; i < count; ++i)
+        b[i] += a[i];
+}
+
+void
 add_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c)
 {
     for (size_t i = 0; i < count; ++i)
@@ -582,8 +740,19 @@ add_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c)
 void
 subtract_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c)
 {
-    for (size_t i = 0; i < count; ++i)
+    for (size_t i = 0; i < count; ++i) {
+        ERRCHK(a[i] >= b[i]);
         c[i] = a[i] - b[i];
+    }
+}
+
+void
+subtract_value(const size_t value, const size_t count, size_t* arr)
+{
+    for (size_t i = 0; i < count; ++i) {
+        ERRCHK(arr[i] >= value);
+        arr[i] -= value;
+    }
 }
 
 void
@@ -893,6 +1062,7 @@ set_ndarray(const size_t value, const size_t ndims, const size_t* start, const s
     }
 }
 
+/** Note: duplicate with to_linear and to_spatial */
 static size_t
 nd_to_1d(const size_t ndims, const size_t* coords, const size_t* dims)
 {
@@ -1028,4 +1198,5 @@ test_math_utils(void)
     test_next_positive_integer();
     test_nd_to_1d();
     test_ndarray_equals();
+    test_to_spatial_to_linear();
 }

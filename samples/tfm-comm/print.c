@@ -49,7 +49,7 @@
                 if (ndims == 3)                                                                    \
                     printf("Layer %zu:\n", i);                                                     \
                 if (ndims == 2)                                                                    \
-                    printf("Row %zu:", i);                                                         \
+                    printf("Row %zu: ", i);                                                        \
                 print_ndarray_recursive_##type(ndims - 1, dims, &array[i * offset]);               \
             }                                                                                      \
             printf("\n");                                                                          \

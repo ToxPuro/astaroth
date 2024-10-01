@@ -54,3 +54,10 @@
         alloc((count), (out));                                                                     \
         copy((count), (in), (out))                                                                 \
     }
+
+/**
+ * Compare two blocks of memory.
+ * The arrays must have the same length and element size.
+ * cmp(const size_t count, const void* a, const void* b)
+ */
+#define cmp(count, a, b) (memcmp((a), (b), sizeof((a)[0]) * (count)) == 0 ? true : false)

@@ -38,8 +38,10 @@ int64_t mod(const int64_t a, const int64_t b);
 
 void mod_pointwise(const size_t count, const int64_t* a, const int64_t* b, int64_t* c);
 
+/** Calculates a projection from a linear index to spatial coordinates within the shape */
 void to_spatial(const size_t index, const size_t ndims, const size_t* shape, size_t* output);
 
+/** Calculates a projection from spatial coordinates within shape to a linear index */
 size_t to_linear(const size_t ndims, const size_t* index, const size_t* shape);
 
 void reverse(const size_t count, size_t* arr);
@@ -52,9 +54,13 @@ void iset(const int value, const size_t count, int* arr);
 
 void add_to_array(const size_t value, const size_t count, size_t* arr);
 
+void add(const size_t count, const size_t* a, size_t* b);
+
 void add_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c);
 
 void subtract_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c);
+
+void subtract_value(const size_t value, const size_t count, size_t* arr);
 
 /** Calculates the element-wise product (Hadamard product) of two flattened matrices */
 void mul(const size_t count, const size_t* a, const size_t* b, size_t* c);
