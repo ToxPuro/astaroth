@@ -83,6 +83,14 @@ bool within_box(const size_t ndims, const size_t* coords, const size_t* box_min,
  */
 int next_positive_integer(int counter);
 
+/** Ndarray */
+void set_ndarray(const size_t value, const size_t ndims, const size_t* start, const size_t* subdims,
+                 const size_t* dims, size_t* arr);
+
+/** Checks whether all of the `count` elements starting from start_a and start_b are equal */
+bool ndarray_equals(const size_t count, const size_t ndims, const size_t* a_offset,
+                    const size_t* b_offset, const size_t* dims, const size_t* arr);
+
 /** Unit testing */
 bool equals(const size_t count, const size_t* a, const size_t* b);
 bool all_less_than(const size_t count, const size_t* a, const size_t* b);
