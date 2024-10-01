@@ -10,6 +10,7 @@
 #include "errchk_mpi.h"
 #include "halo_segment_batch.h"
 #include "math_utils.h"
+#include "misc.h"
 #include "mpi_utils.h"
 #include "print.h"
 #include "type_conversion.h"

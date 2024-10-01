@@ -6,7 +6,7 @@
 #include "errchk.h"
 #include "print.h"
 
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
+#include "misc.h"
 
 bool
 any(const size_t count, const bool* arr)
