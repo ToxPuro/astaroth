@@ -1,7 +1,6 @@
 #include "math_utils.h"
 
 #include <limits.h> // INT_MAX
-#include <string.h> // memmove
 
 #include "alloc.h"
 #include "errchk.h"
@@ -150,26 +149,32 @@ test_cumprod(void)
     {
         const size_t a[]   = {0};
         const size_t count = ARRAY_SIZE(a);
-        size_t b[count];
+        size_t* b;
+        alloc(count, b);
         cumprod(count, a, b);
         const size_t c[] = {0};
         ERRCHK(equals(count, b, c));
+        dealloc(b);
     }
     {
         const size_t a[]   = {2, 2, 2, 2};
         const size_t count = ARRAY_SIZE(a);
-        size_t b[count];
+        size_t* b;
+        alloc(count, b);
         cumprod(count, a, b);
         const size_t c[] = {2, 4, 8, 16};
         ERRCHK(equals(count, b, c));
+        dealloc(b);
     }
     {
         const size_t a[]   = {2, 4, 8, 16};
         const size_t count = ARRAY_SIZE(a);
-        size_t b[count];
+        size_t* b;
+        alloc(count, b);
         cumprod(count, a, b);
         const size_t c[] = {2, 2 * 4, 2 * 4 * 8, 2 * 4 * 8 * 16};
         ERRCHK(equals(count, b, c));
+        dealloc(b);
     }
 }
 
@@ -387,10 +392,12 @@ test_unique_subsets(void)
 
         const size_t count              = ARRAY_SIZE(a);
         const size_t output_count_model = ARRAY_SIZE(model);
-        size_t b[count];
+        size_t* b;
+        alloc(count, b);
         const size_t output_count = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
+        dealloc(b);
     }
     {
         const size_t a[]           = {1, 1, 3, 4};
@@ -399,10 +406,12 @@ test_unique_subsets(void)
 
         const size_t count              = ARRAY_SIZE(a);
         const size_t output_count_model = ARRAY_SIZE(model);
-        size_t b[count];
+        size_t* b;
+        alloc(count, b);
         const size_t output_count = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
+        dealloc(b);
     }
     {
         const size_t a[]           = {1, 1, 2, 2, 1, 1};
@@ -411,10 +420,12 @@ test_unique_subsets(void)
 
         const size_t count              = ARRAY_SIZE(a);
         const size_t output_count_model = ARRAY_SIZE(model);
-        size_t b[count];
+        size_t* b;
+        alloc(count, b);
         const size_t output_count = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
+        dealloc(b);
     }
     {
         const size_t a[]           = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3};
@@ -423,10 +434,12 @@ test_unique_subsets(void)
 
         const size_t count              = ARRAY_SIZE(a);
         const size_t output_count_model = ARRAY_SIZE(model);
-        size_t b[count];
+        size_t* b;
+        alloc(count, b);
         const size_t output_count = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
+        dealloc(b);
     }
     {
         const size_t a[]           = {1, 2, 3, 3, 2, 1, 1, 2, 3};
@@ -435,10 +448,12 @@ test_unique_subsets(void)
 
         const size_t count              = ARRAY_SIZE(a);
         const size_t output_count_model = ARRAY_SIZE(model);
-        size_t b[count];
+        size_t* b;
+        alloc(count, b);
         const size_t output_count = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
+        dealloc(b);
     }
     {
         const size_t a[]           = {1, 2, 3, 3, 2, 1, 1, 3, 2, 3, 2, 1};
@@ -447,10 +462,12 @@ test_unique_subsets(void)
 
         const size_t count              = ARRAY_SIZE(a);
         const size_t output_count_model = ARRAY_SIZE(model);
-        size_t b[count];
+        size_t* b;
+        alloc(count, b);
         const size_t output_count = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
+        dealloc(b);
     }
 }
 
@@ -592,9 +609,11 @@ test_repeat(void)
         const size_t model[]  = {1, 2, 1, 2, 1, 2};
 
         const size_t count = ARRAY_SIZE(a);
-        size_t b[count * nrepeats];
+        size_t* b;
+        alloc(count * nrepeats, b);
         repeat(count, a, nrepeats, b);
         ERRCHK(equals(count * nrepeats, b, model) == true);
+        dealloc(b);
     }
     {
         const size_t a[]      = {1};
@@ -602,9 +621,11 @@ test_repeat(void)
         const size_t model[]  = {1, 1, 1};
 
         const size_t count = ARRAY_SIZE(a);
-        size_t b[count * nrepeats];
+        size_t* b;
+        alloc(count * nrepeats, b);
         repeat(count, a, nrepeats, b);
         ERRCHK(equals(count * nrepeats, b, model) == true);
+        dealloc(b);
     }
     {
         const size_t a[]      = {1, 2, 3, 4};
@@ -612,9 +633,11 @@ test_repeat(void)
         const size_t model[]  = {1, 2, 3, 4, 1, 2, 3, 4};
 
         const size_t count = ARRAY_SIZE(a);
-        size_t b[count * nrepeats];
+        size_t* b;
+        alloc(count * nrepeats, b);
         repeat(count, a, nrepeats, b);
         ERRCHK(equals(count * nrepeats, b, model) == true);
+        dealloc(b);
     }
 }
 

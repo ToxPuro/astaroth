@@ -1,113 +1,45 @@
 #pragma once
+#include <stddef.h>
+#include <stdint.h>
 
-#include <stdio.h>
+// Prototypes
+#define DECLARE_GENERIC_FUNCTION_PRINT(type) void print_##type(const char* label, const type value);
 
-static const char type_specifier_size_t[]  = "%zu";
-static const char type_specifier_int[]     = "%d";
-static const char type_specifier_int64_t[] = "%lld";
-static const char type_specifier_double[]  = "%g";
+#define DECLARE_GENERIC_FUNCTION_PRINT_ARRAY(type)                                                 \
+    void print_array_##type(const char* label, const size_t count, const type* array);
 
-#define CREATE_PRINT_FUNCTION(type)                                                                \
-    static inline void print_##type(const char* label, const type value)                           \
-    {                                                                                              \
-        printf("%s: ", label);                                                                     \
-        printf(type_specifier_##type, value);                                                      \
-        printf("\n");                                                                              \
-    }
+#define DECLARE_GENERIC_FUNCTION_PRINT_NDARRAY(type)                                               \
+    void print_ndarray_##type(const char* label, const size_t ndims, const size_t* dims,           \
+                              const type* array);
 
-#define CREATE_PRINT_ARRAY_FUNCTION(type)                                                          \
-    static inline void print_array_##type(const char* label, const size_t count, const type* arr)  \
-    {                                                                                              \
-        printf("%s: (", label);                                                                    \
-        for (size_t i = 0; i < count; ++i) {                                                       \
-            printf(type_specifier_##type, arr[i]);                                                 \
-            printf("%s", i < count - 1 ? ", " : "");                                               \
-        }                                                                                          \
-        printf(")\n");                                                                             \
-    }
+#define DECLARE_GENERIC_FUNCTIONS(type)                                                            \
+    DECLARE_GENERIC_FUNCTION_PRINT(type)                                                           \
+    DECLARE_GENERIC_FUNCTION_PRINT_ARRAY(type)                                                     \
+    DECLARE_GENERIC_FUNCTION_PRINT_NDARRAY(type)
 
-static inline size_t
-print_prod_todo_remove(const size_t count, const size_t* arr)
-{
-    size_t res = 1;
-    for (size_t i = 0; i < count; ++i)
-        res *= arr[i];
-    return res;
-}
+// Declarations
+DECLARE_GENERIC_FUNCTIONS(size_t)
+DECLARE_GENERIC_FUNCTIONS(int64_t)
+DECLARE_GENERIC_FUNCTIONS(int)
+DECLARE_GENERIC_FUNCTIONS(double)
 
-#define CREATE_PRINT_NDARRAY_RECURSIVE_FUNCTION(type)                                              \
-    static inline void print_ndarray_recursive_##type(const size_t ndims, const size_t* dims,      \
-                                                      const type* arr)                             \
-    {                                                                                              \
-        if (ndims == 1) {                                                                          \
-            for (size_t i = 0; i < dims[0]; ++i) {                                                 \
-                const size_t len          = 128;                                                   \
-                const int print_alignment = 3;                                                     \
-                char str[len];                                                                     \
-                snprintf(str, len, type_specifier_##type, arr[i]);                                 \
-                printf("%*s ", print_alignment, str);                                              \
-            }                                                                                      \
-            printf("\n");                                                                          \
-        }                                                                                          \
-        else {                                                                                     \
-            const size_t offset = print_prod_todo_remove(ndims - 1, dims);                         \
-            for (size_t i = 0; i < dims[ndims - 1]; ++i) {                                         \
-                if (ndims > 4)                                                                     \
-                    printf("%zu. %zu-dimensional hypercube:\n", i, ndims - 1);                     \
-                if (ndims == 4)                                                                    \
-                    printf("Cube %zu:\n", i);                                                      \
-                if (ndims == 3)                                                                    \
-                    printf("Layer %zu:\n", i);                                                     \
-                if (ndims == 2)                                                                    \
-                    printf("Row %zu:", i);                                                         \
-                print_ndarray_recursive_##type(ndims - 1, dims, &arr[i * offset]);                 \
-            }                                                                                      \
-            printf("\n");                                                                          \
-        }                                                                                          \
-    }
+// Generics
+#define print_array(label, count, array)                                                           \
+    _Generic((array[0]),                                                                           \
+        size_t: print_array_size_t,                                                                \
+        int64_t: print_array_int64_t,                                                              \
+        int: print_array_int,                                                                      \
+        double: print_array_double)(label, count, array)
 
-#define CREATE_PRINT_NDARRAY_FUNCTION(type)                                                        \
-    static inline void print_ndarray_##type(const char* label, const size_t ndims,                 \
-                                            const size_t* dims, const type* arr)                   \
-    {                                                                                              \
-        printf("%s:\n", label);                                                                    \
-        print_ndarray_recursive_##type(ndims, dims, arr);                                          \
-    }
+#define print_ndarray(label, ndims, dims, array)                                                   \
+    _Generic((array[0]),                                                                           \
+        size_t: print_ndarray_size_t,                                                              \
+        int64_t: print_ndarray_int64_t,                                                            \
+        int: print_ndarray_int,                                                                    \
+        double: print_ndarray_double)(label, ndims, dims, array)
 
-CREATE_PRINT_FUNCTION(size_t)
-CREATE_PRINT_ARRAY_FUNCTION(size_t)
-CREATE_PRINT_NDARRAY_RECURSIVE_FUNCTION(size_t)
-CREATE_PRINT_NDARRAY_FUNCTION(size_t)
-
-CREATE_PRINT_FUNCTION(int)
-CREATE_PRINT_ARRAY_FUNCTION(int)
-CREATE_PRINT_NDARRAY_RECURSIVE_FUNCTION(int)
-CREATE_PRINT_NDARRAY_FUNCTION(int)
-
-CREATE_PRINT_FUNCTION(int64_t)
-CREATE_PRINT_ARRAY_FUNCTION(int64_t)
-CREATE_PRINT_NDARRAY_RECURSIVE_FUNCTION(int64_t)
-CREATE_PRINT_NDARRAY_FUNCTION(int64_t)
-
-CREATE_PRINT_FUNCTION(double)
-CREATE_PRINT_ARRAY_FUNCTION(double)
-CREATE_PRINT_NDARRAY_RECURSIVE_FUNCTION(double)
-CREATE_PRINT_NDARRAY_FUNCTION(double)
-
-#define print(label, value)                                                                        \
-    _Generic((value),                                                                              \
-        size_t: print_size_t,                                                                      \
-        int64_t: print_int64_t,                                                                    \
-        int: print_int,                                                                            \
-        double: print_double)(label, value)
-
-#define print_array(label, count, arr)                                                             \
-    _Generic((arr),                                                                                \
-        size_t *: print_array_size_t,                                                              \
-        int64_t *: print_array_int64_t,                                                            \
-        int*: print_array_int,                                                                     \
-        double*: print_array_double,                                                               \
-        const size_t*: print_array_size_t,                                                         \
-        const int64_t*: print_array_int64_t,                                                       \
-        const int*: print_array_int,                                                               \
-        const double*: print_array_double)(label, count, arr)
+// Cleanup
+#undef DECLARE_GENERIC_FUNCTIONS
+#undef DECLARE_GENERIC_FUNCTION_PRINT
+#undef DECLARE_GENERIC_FUNCTION_PRINT_ARRAY
+#undef DECLARE_GENERIC_FUNCTION_PRINT_NDARRAY

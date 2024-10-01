@@ -19,6 +19,7 @@ print_error(const char* function, const char* file, const size_t line, const cha
 {
     fflush(stdout);
     fflush(stderr);
+
     time_t terr;
     time(&terr);
 

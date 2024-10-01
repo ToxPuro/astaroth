@@ -45,10 +45,13 @@ add_compile_options(#-Werror
                     -Wwrite-strings
                     #-Wunsafe-loop-optimizations
                     #-Weffc++
+                    #-std=c11
+                    -Weverything
+                    -Wno-declaration-after-statement
                     )
 
 ## Packages
-add_library(tfm-utils SHARED mpi_utils.c type_conversion.c math_utils.c)
+add_library(tfm-utils SHARED mpi_utils.c type_conversion.c math_utils.c print.c)
 
 add_executable(test test.c)
 target_link_libraries(test PRIVATE tfm-utils)
