@@ -4,7 +4,6 @@
 
 #define SUCCESS (0)
 #define FAILURE (-1)
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
 #include "array.h"
 #include "errchk_mpi.h"
