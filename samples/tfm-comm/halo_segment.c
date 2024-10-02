@@ -20,8 +20,8 @@ acHaloSegmentCreate(const size_t ndims, const size_t* dims, const size_t* offset
     };
     ERRCHK(segment.dims);
     ERRCHK(segment.offset);
-    copy(ndims, dims, segment.dims);
-    copy(ndims, offset, segment.offset);
+    ncopy(ndims, dims, segment.dims);
+    ncopy(ndims, offset, segment.offset);
     return segment;
 }
 

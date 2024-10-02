@@ -78,9 +78,9 @@ acHaloExchangeTaskCreate(const size_t ndims, const size_t* mm, const size_t* nn,
     task->mm    = malloc(sizeof(task->mm[0]) * ndims);
     task->nn    = malloc(sizeof(task->nn[0]) * ndims);
     task->rr    = malloc(sizeof(task->rr[0]) * ndims);
-    copy(ndims, mm, task->mm);
-    copy(ndims, nn, task->nn);
-    copy(ndims, rr, task->rr);
+    ncopy(ndims, mm, task->mm);
+    ncopy(ndims, nn, task->nn);
+    ncopy(ndims, rr, task->rr);
 
     // Get nprocs
     int nprocs;

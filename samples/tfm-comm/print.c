@@ -2,8 +2,8 @@
 
 #include <stdio.h>
 
-#include "alloc.h"
 #include "math_utils.h"
+#include "nalloc.h"
 
 // Prototypes
 #define DEFINE_GENERIC_FUNCTION_PRINT(type, format)                                                \
@@ -32,10 +32,10 @@
                 const size_t len          = 128;                                                   \
                 const int print_alignment = 3;                                                     \
                 char* str;                                                                         \
-                alloc(len, str);                                                                   \
+                nalloc(len, str);                                                                  \
                 snprintf(str, len, format, array[i]);                                              \
                 printf("%*s ", print_alignment, str);                                              \
-                dealloc(str);                                                                      \
+                ndealloc(str);                                                                     \
             }                                                                                      \
             printf("\n");                                                                          \
         }                                                                                          \

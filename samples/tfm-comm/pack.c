@@ -1,8 +1,8 @@
 #include "pack.h"
 
-#include "alloc.h"
 #include "math_utils.h"
 #include "misc.h"
+#include "nalloc.h"
 #include "print.h"
 
 static void
@@ -10,13 +10,13 @@ check_input_valid(const size_t ndims, const size_t* input_dims, const size_t* in
                   const size_t* output_dims)
 {
     size_t* max_coords;
-    alloc(ndims, max_coords);
+    nalloc(ndims, max_coords);
 
     add_arrays(ndims, input_offset, output_dims, max_coords);
     subtract_value(1, ndims, max_coords);
     ERRCHK(all_less_than(ndims, max_coords, input_dims));
 
-    dealloc(max_coords);
+    ndealloc(max_coords);
 }
 
 void
@@ -27,9 +27,9 @@ segment_copy(const size_t ndims,                                                
     check_input_valid(ndims, input_dims, input_offset, output_dims);
 
     size_t *coords, *out_coords, *in_coords;
-    alloc(ndims, coords);
-    alloc(ndims, out_coords);
-    alloc(ndims, in_coords);
+    nalloc(ndims, coords);
+    nalloc(ndims, out_coords);
+    nalloc(ndims, in_coords);
 
     const size_t count = prod(ndims, output_dims);
     for (size_t i = 0; i < count; ++i) {
@@ -41,9 +41,9 @@ segment_copy(const size_t ndims,                                                
         const size_t in_idx  = to_linear(ndims, in_coords, input_dims);
         output[out_idx]      = input[in_idx];
     }
-    dealloc(coords);
-    dealloc(out_coords);
-    dealloc(in_coords);
+    ndealloc(coords);
+    ndealloc(out_coords);
+    ndealloc(in_coords);
 }
 
 void
@@ -60,20 +60,20 @@ test_pack(void)
         const double model_output[]  = {0, 1, 8, 9};
 
         double *input, *output;
-        alloc(input_count, input);
-        alloc(output_count, output);
+        nalloc(input_count, input);
+        nalloc(output_count, output);
 
         for (size_t i = 0; i < input_count; ++i)
             input[i] = (double)i;
 
         segment_copy(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
-        ERRCHK(cmp(ndims, output, model_output));
+        ERRCHK(ncmp(ndims, output, model_output));
 
         // print_ndarray("input", ndims, input_dims, input);
         // print_ndarray("output", ndims, output_dims, output);
 
-        dealloc(input);
-        dealloc(output);
+        ndealloc(input);
+        ndealloc(output);
     }
     {
         const size_t input_dims[]    = {4, 3, 2};
@@ -86,20 +86,20 @@ test_pack(void)
         const double model_output[]  = {5, 6, 17, 18};
 
         double *input, *output;
-        alloc(input_count, input);
-        alloc(output_count, output);
+        nalloc(input_count, input);
+        nalloc(output_count, output);
 
         for (size_t i = 0; i < input_count; ++i)
             input[i] = (double)i;
 
         segment_copy(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
-        ERRCHK(cmp(ndims, output, model_output));
+        ERRCHK(ncmp(ndims, output, model_output));
 
         // print_ndarray("input", ndims, input_dims, input);
         // print_ndarray("output", ndims, output_dims, output);
 
-        dealloc(input);
-        dealloc(output);
+        ndealloc(input);
+        ndealloc(output);
     }
     {
         const size_t input_dims[]    = {8, 7, 4};
@@ -114,8 +114,8 @@ test_pack(void)
         };
 
         double *input, *output;
-        alloc(input_count, input);
-        alloc(output_count, output);
+        nalloc(input_count, input);
+        nalloc(output_count, output);
 
         for (size_t i = 0; i < input_count; ++i)
             input[i] = (double)i;
@@ -123,12 +123,12 @@ test_pack(void)
         segment_copy(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
         segment_copy(ndims, input_dims, (size_t[]){5, 5, 0}, input, (size_t[]){3, 2, 1},
                      (size_t[]){0, 0, 1}, output);
-        ERRCHK(cmp(ndims, output, model_output));
+        ERRCHK(ncmp(ndims, output, model_output));
 
         // print_ndarray("input", ndims, input_dims, input);
         // print_ndarray("output", ndims, output_dims, output);
 
-        dealloc(input);
-        dealloc(output);
+        ndealloc(input);
+        ndealloc(output);
     }
 }

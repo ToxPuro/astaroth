@@ -1,7 +1,7 @@
 #pragma once
 
-#include "alloc.h"
 #include "errchk.h"
+#include "nalloc.h"
 #include "type_conversion.h"
 
 #define dynarr(T)                                                                                  \
@@ -19,14 +19,14 @@
             .capacity = capacity,                                                                  \
             .data     = NULL,                                                                      \
         };                                                                                         \
-        alloc(capacity, arr.data);                                                                 \
+        nalloc(capacity, arr.data);                                                                \
         return arr;                                                                                \
     }
 
 #define dynarr_destroy(T)                                                                          \
     static inline void dynarr_destroy_##T(dynarr_##T* array)                                       \
     {                                                                                              \
-        dealloc(array->data);                                                                      \
+        ndealloc(array->data);                                                                     \
         array->length   = 0;                                                                       \
         array->capacity = 0;                                                                       \
     }
@@ -56,7 +56,7 @@
         ERRCHK(index < array->length);                                                             \
         const size_t count = array->length - index - 1;                                            \
         if (count > 0)                                                                             \
-            copy(count, &array->data[index + 1], &array->data[index]);                             \
+            ncopy(count, &array->data[index + 1], &array->data[index]);                            \
         --array->length;                                                                           \
     }
 
@@ -82,7 +82,7 @@
             ERRCHK(dynarr_get_##T(arr, 1) == 3);                                                   \
             T* elems;                                                                              \
             const size_t count = 2;                                                                \
-            alloc(2, elems);                                                                       \
+            nalloc(2, elems);                                                                      \
             for (size_t i = 0; i < count; ++i)                                                     \
                 elems[i] = as_##T(10 + i);                                                         \
             dynarr_append_multiple_##T(count, elems, &arr);                                        \
@@ -90,7 +90,7 @@
             ERRCHK(dynarr_get_##T(arr, 1) == 3);                                                   \
             ERRCHK(dynarr_get_##T(arr, 2) == 10);                                                  \
             ERRCHK(dynarr_get_##T(arr, 3) == 11);                                                  \
-            dealloc(elems);                                                                        \
+            ndealloc(elems);                                                                       \
             dynarr_destroy_##T(&arr);                                                              \
         }                                                                                          \
     }

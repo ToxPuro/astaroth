@@ -2,8 +2,8 @@
 
 #include <limits.h> // INT_MAX
 
-#include "alloc.h"
 #include "errchk.h"
+#include "nalloc.h"
 #include "print.h"
 
 #include "misc.h"
@@ -150,31 +150,31 @@ test_cumprod(void)
         const size_t a[]   = {0};
         const size_t count = ARRAY_SIZE(a);
         size_t* b;
-        alloc(count, b);
+        nalloc(count, b);
         cumprod(count, a, b);
         const size_t c[] = {0};
         ERRCHK(equals(count, b, c));
-        dealloc(b);
+        ndealloc(b);
     }
     {
         const size_t a[]   = {2, 2, 2, 2};
         const size_t count = ARRAY_SIZE(a);
         size_t* b;
-        alloc(count, b);
+        nalloc(count, b);
         cumprod(count, a, b);
         const size_t c[] = {2, 4, 8, 16};
         ERRCHK(equals(count, b, c));
-        dealloc(b);
+        ndealloc(b);
     }
     {
         const size_t a[]   = {2, 4, 8, 16};
         const size_t count = ARRAY_SIZE(a);
         size_t* b;
-        alloc(count, b);
+        nalloc(count, b);
         cumprod(count, a, b);
         const size_t c[] = {2, 2 * 4, 2 * 4 * 8, 2 * 4 * 8 * 16};
         ERRCHK(equals(count, b, c));
-        dealloc(b);
+        ndealloc(b);
     }
 }
 
@@ -345,7 +345,7 @@ test_unique(void)
         const size_t count = ((size_t)rand()) % max_count + 1;
 
         size_t* arr;
-        alloc(count, arr);
+        nalloc(count, arr);
         for (size_t j = 0; j < count; ++j)
             arr[j] = (size_t)rand();
 
@@ -353,7 +353,7 @@ test_unique(void)
         for (size_t j = 0; j < count; ++j)
             for (size_t k = j + 1; k < count; ++k)
                 ERRCHK(arr[j] != arr[k]);
-        dealloc(arr);
+        ndealloc(arr);
     }
 }
 
@@ -375,7 +375,7 @@ unique_subsets(const size_t count, const size_t* a, size_t subset_length, size_t
     size_t nsubsets = 0;
     for (size_t i = 0; i < count; i += subset_length) {
         if (!contains_subset(subset_length, &a[i], subset_length * nsubsets, b)) {
-            copy(subset_length, &a[i], &b[subset_length * nsubsets]);
+            ncopy(subset_length, &a[i], &b[subset_length * nsubsets]);
             ++nsubsets;
         }
     }
@@ -393,11 +393,11 @@ test_unique_subsets(void)
         const size_t count              = ARRAY_SIZE(a);
         const size_t output_count_model = ARRAY_SIZE(model);
         size_t* b;
-        alloc(count, b);
+        nalloc(count, b);
         const size_t output_count = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
-        dealloc(b);
+        ndealloc(b);
     }
     {
         const size_t a[]           = {1, 1, 3, 4};
@@ -407,11 +407,11 @@ test_unique_subsets(void)
         const size_t count              = ARRAY_SIZE(a);
         const size_t output_count_model = ARRAY_SIZE(model);
         size_t* b;
-        alloc(count, b);
+        nalloc(count, b);
         const size_t output_count = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
-        dealloc(b);
+        ndealloc(b);
     }
     {
         const size_t a[]           = {1, 1, 2, 2, 1, 1};
@@ -421,11 +421,11 @@ test_unique_subsets(void)
         const size_t count              = ARRAY_SIZE(a);
         const size_t output_count_model = ARRAY_SIZE(model);
         size_t* b;
-        alloc(count, b);
+        nalloc(count, b);
         const size_t output_count = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
-        dealloc(b);
+        ndealloc(b);
     }
     {
         const size_t a[]           = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3};
@@ -435,11 +435,11 @@ test_unique_subsets(void)
         const size_t count              = ARRAY_SIZE(a);
         const size_t output_count_model = ARRAY_SIZE(model);
         size_t* b;
-        alloc(count, b);
+        nalloc(count, b);
         const size_t output_count = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
-        dealloc(b);
+        ndealloc(b);
     }
     {
         const size_t a[]           = {1, 2, 3, 3, 2, 1, 1, 2, 3};
@@ -449,11 +449,11 @@ test_unique_subsets(void)
         const size_t count              = ARRAY_SIZE(a);
         const size_t output_count_model = ARRAY_SIZE(model);
         size_t* b;
-        alloc(count, b);
+        nalloc(count, b);
         const size_t output_count = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
-        dealloc(b);
+        ndealloc(b);
     }
     {
         const size_t a[]           = {1, 2, 3, 3, 2, 1, 1, 3, 2, 3, 2, 1};
@@ -463,11 +463,11 @@ test_unique_subsets(void)
         const size_t count              = ARRAY_SIZE(a);
         const size_t output_count_model = ARRAY_SIZE(model);
         size_t* b;
-        alloc(count, b);
+        nalloc(count, b);
         const size_t output_count = unique_subsets(count, a, subset_length, b);
         ERRCHK(output_count == output_count_model);
         ERRCHK(equals(output_count, b, model));
-        dealloc(b);
+        ndealloc(b);
     }
 }
 
@@ -519,14 +519,14 @@ to_spatial(const size_t index, const size_t ndims, const size_t* shape, size_t* 
 
     // Alternative
     // size_t* basis;
-    // alloc(ndims, basis);
+    // nalloc(ndims, basis);
     // cumprod(ndims, shape, basis);
     // rshift(1, 1, ndims, basis);
 
     // for (size_t i = 0; i < ndims; ++i)
     //     output[i] = (index / basis[i]) % shape[i];
 
-    // dealloc(basis);
+    // ndealloc(basis);
 }
 
 size_t
@@ -543,11 +543,11 @@ to_linear(const size_t ndims, const size_t* index, const size_t* shape)
 
     // Alternative
     // size_t* basis;
-    // alloc(ndims, basis);
+    // nalloc(ndims, basis);
     // cumprod(ndims, shape, basis);
     // rshift(1, 1, ndims, basis);
     // const size_t result = dot(ndims, index, basis);
-    // dealloc(basis);
+    // ndealloc(basis);
     // return result;
 }
 
@@ -562,11 +562,11 @@ test_to_spatial_to_linear(void)
         const size_t model_coords[] = {0, 0, 0};
 
         size_t* coords;
-        alloc(ndims, coords);
+        nalloc(ndims, coords);
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        dealloc(coords);
+        ndealloc(coords);
     }
     {
 
@@ -576,11 +576,11 @@ test_to_spatial_to_linear(void)
         const size_t model_coords[] = {1, 0, 0};
 
         size_t* coords;
-        alloc(ndims, coords);
+        nalloc(ndims, coords);
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        dealloc(coords);
+        ndealloc(coords);
     }
     {
 
@@ -590,11 +590,11 @@ test_to_spatial_to_linear(void)
         const size_t model_coords[] = {0, 1, 0};
 
         size_t* coords;
-        alloc(ndims, coords);
+        nalloc(ndims, coords);
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        dealloc(coords);
+        ndealloc(coords);
     }
     {
 
@@ -604,11 +604,11 @@ test_to_spatial_to_linear(void)
         const size_t model_coords[] = {0, 0, 1};
 
         size_t* coords;
-        alloc(ndims, coords);
+        nalloc(ndims, coords);
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        dealloc(coords);
+        ndealloc(coords);
     }
     {
 
@@ -619,11 +619,11 @@ test_to_spatial_to_linear(void)
         const size_t ndims = ARRAY_SIZE(shape);
 
         size_t* coords;
-        alloc(ndims, coords);
+        nalloc(ndims, coords);
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        dealloc(coords);
+        ndealloc(coords);
     }
     {
 
@@ -634,11 +634,11 @@ test_to_spatial_to_linear(void)
         const size_t ndims = ARRAY_SIZE(shape);
 
         size_t* coords;
-        alloc(ndims, coords);
+        nalloc(ndims, coords);
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        dealloc(coords);
+        ndealloc(coords);
     }
     {
 
@@ -648,11 +648,11 @@ test_to_spatial_to_linear(void)
         const size_t ndims          = ARRAY_SIZE(shape);
 
         size_t* coords;
-        alloc(ndims, coords);
+        nalloc(ndims, coords);
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        dealloc(coords);
+        ndealloc(coords);
     }
     {
 
@@ -662,19 +662,19 @@ test_to_spatial_to_linear(void)
         const size_t ndims          = ARRAY_SIZE(shape);
 
         size_t* coords;
-        alloc(ndims, coords);
+        nalloc(ndims, coords);
         to_spatial(index, ndims, shape, coords);
         ERRCHK(equals(ndims, coords, model_coords));
         ERRCHK(to_linear(ndims, coords, shape) == index);
-        dealloc(coords);
+        ndealloc(coords);
     }
     {
         const size_t ndims = 2;
         size_t* coords;
-        alloc(ndims, coords);
+        nalloc(ndims, coords);
         to_spatial(1, ndims, (size_t[]){2, 2}, coords);
         ERRCHK(equals(ndims, coords, (size_t[]){1, 0}));
-        dealloc(coords);
+        ndealloc(coords);
     }
 }
 
@@ -766,7 +766,7 @@ void
 repeat(const size_t count, const size_t* a, const size_t nrepeats, size_t* b)
 {
     for (size_t i = 0; i < nrepeats; ++i)
-        copy(count, a, &b[i * count]);
+        ncopy(count, a, &b[i * count]);
 }
 
 static void
@@ -779,10 +779,10 @@ test_repeat(void)
 
         const size_t count = ARRAY_SIZE(a);
         size_t* b;
-        alloc(count * nrepeats, b);
+        nalloc(count * nrepeats, b);
         repeat(count, a, nrepeats, b);
         ERRCHK(equals(count * nrepeats, b, model) == true);
-        dealloc(b);
+        ndealloc(b);
     }
     {
         const size_t a[]      = {1};
@@ -791,10 +791,10 @@ test_repeat(void)
 
         const size_t count = ARRAY_SIZE(a);
         size_t* b;
-        alloc(count * nrepeats, b);
+        nalloc(count * nrepeats, b);
         repeat(count, a, nrepeats, b);
         ERRCHK(equals(count * nrepeats, b, model) == true);
-        dealloc(b);
+        ndealloc(b);
     }
     {
         const size_t a[]      = {1, 2, 3, 4};
@@ -803,10 +803,10 @@ test_repeat(void)
 
         const size_t count = ARRAY_SIZE(a);
         size_t* b;
-        alloc(count * nrepeats, b);
+        nalloc(count * nrepeats, b);
         repeat(count, a, nrepeats, b);
         ERRCHK(equals(count * nrepeats, b, model) == true);
-        dealloc(b);
+        ndealloc(b);
     }
 }
 
@@ -842,13 +842,13 @@ test_sort(void)
         const size_t count = ((size_t)rand()) % max_count + 1;
 
         size_t* arr;
-        alloc(count, arr);
+        nalloc(count, arr);
         for (size_t j = 0; j < count; ++j)
             arr[j] = (size_t)rand();
         sort(count, arr);
         for (size_t j = 1; j < count; ++j)
             ERRCHK(arr[j] >= arr[j - 1]);
-        dealloc(arr);
+        ndealloc(arr);
     }
 }
 
@@ -1068,11 +1068,11 @@ nd_to_1d(const size_t ndims, const size_t* coords, const size_t* dims)
 {
     ERRCHK(all_less_than(ndims, coords, dims));
     size_t* offset;
-    alloc(ndims, offset);
+    nalloc(ndims, offset);
     cumprod(ndims, dims, offset);
     rshift(1, 1, ndims, offset);
     const size_t res = dot(ndims, coords, offset);
-    dealloc(offset);
+    ndealloc(offset);
     return res;
 }
 

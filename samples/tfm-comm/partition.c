@@ -1,6 +1,6 @@
 #include "partition.h"
 
-#include "alloc.h"
+#include "nalloc.h"
 
 // static Partition
 // partition_create(const size_t ndims)
@@ -10,16 +10,16 @@
 //         .dims   = NULL,
 //         .offset = NULL,
 //     };
-//     alloc(ndims, partition.dims);
-//     alloc(ndims, partition.offset);
+//     nalloc(ndims, partition.dims);
+//     nalloc(ndims, partition.offset);
 //     return partition;
 // }
 
 // static void
 // partition_destroy(Partition* partition)
 // {
-//     dealloc(partition->offset);
-//     dealloc(partition->dims);
+//     ndealloc(partition->offset);
+//     ndealloc(partition->dims);
 //     partition->dims   = NULL;
 //     partition->offset = NULL;
 //     partition->ndims  = 0;
@@ -34,10 +34,10 @@
 //                   const size_t npartitions, Partition* partitions)
 // {
 //     size_t *mmin, *nmin, *nmax, *mmax;
-//     alloc(ndims, mmin);
-//     alloc(ndims, nmin);
-//     alloc(ndims, nmax);
-//     alloc(ndims, mmax);
+//     nalloc(ndims, mmin);
+//     nalloc(ndims, nmin);
+//     nalloc(ndims, nmax);
+//     nalloc(ndims, mmax);
 
 //     for (size_t i = 0; i < ndims; ++i) {
 //         mmin[i] = 0;
@@ -50,10 +50,10 @@
 //         ERRCHK(nmax[i] <= mmax[i]);
 //     }
 
-//     dealloc(mmin);
-//     dealloc(nmin);
-//     dealloc(nmax);
-//     dealloc(mmax);
+//     ndealloc(mmin);
+//     ndealloc(nmin);
+//     ndealloc(nmax);
+//     ndealloc(mmax);
 // }
 
 // void
@@ -73,12 +73,12 @@ test_partition(void)
     const size_t nrows = 3;
     const size_t ncols = 2;
     size_t* arr;
-    alloc(nrows * ncols, arr);
+    nalloc(nrows * ncols, arr);
 
     print_ndarray("arr", 2, ((size_t[]){ncols, nrows}), arr);
 
     size_t(*mat)[ncols] = (size_t(*)[ncols])arr; // 2D array from dynamically allocated memory
     print_array("mat row", ncols, mat[0]);
 
-    dealloc(arr);
+    ndealloc(arr);
 }
