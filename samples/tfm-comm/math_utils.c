@@ -352,7 +352,7 @@ test_unique(void)
         unique(count, arr);
         for (size_t j = 0; j < count; ++j)
             for (size_t k = j + 1; k < count; ++k)
-                ERRCHK(arr[j] != arr[k])
+                ERRCHK(arr[j] != arr[k]);
         dealloc(arr);
     }
 }
@@ -847,7 +847,7 @@ test_sort(void)
             arr[j] = (size_t)rand();
         sort(count, arr);
         for (size_t j = 1; j < count; ++j)
-            ERRCHK(arr[j] >= arr[j - 1])
+            ERRCHK(arr[j] >= arr[j - 1]);
         dealloc(arr);
     }
 }
@@ -1021,7 +1021,7 @@ test_next_positive_integer(void)
         for (size_t i = 0; i < nsamples; ++i) {
             int curr = next_positive_integer(prev);
             if (prev == INT_MAX)
-                ERRCHK(curr == 0)
+                ERRCHK(curr == 0);
             else
                 ERRCHK(curr > prev);
             prev = curr;
@@ -1033,7 +1033,7 @@ test_next_positive_integer(void)
         for (size_t i = 0; i < nsamples; ++i) {
             int curr = next_positive_integer(prev);
             if (prev == INT_MAX)
-                ERRCHK(curr == 0)
+                ERRCHK(curr == 0);
             else
                 ERRCHK(curr > prev);
             prev = curr;

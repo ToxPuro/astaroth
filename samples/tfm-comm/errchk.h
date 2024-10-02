@@ -65,36 +65,36 @@ print_warning(const char* function, const char* file, const size_t line, const c
 }
 
 #define ERROR(description)                                                                         \
-    {                                                                                              \
+    do {                                                                                           \
         print_error(__func__, __FILE__, __LINE__, NULL, description);                              \
-    }
+    } while (0)
 
 #define WARNING(description)                                                                       \
-    {                                                                                              \
+    do {                                                                                           \
         print_warning(__func__, __FILE__, __LINE__, NULL, description);                            \
-    }
+    } while (0)
 
 // DO NOT REMOVE BRACKETS AROUND RETVAL. F.ex. if (!a < b) vs if (!(a < b)).
 #define ERRCHK(expression)                                                                         \
-    {                                                                                              \
+    do {                                                                                           \
         if ((expression) == false)                                                                 \
             print_error(__func__, __FILE__, __LINE__, #expression, NULL);                          \
-    }
+    } while (0)
 
 #define WARNCHK(expression)                                                                        \
-    {                                                                                              \
+    do {                                                                                           \
         if ((expression) == false)                                                                 \
             print_warning(__func__, __FILE__, __LINE__, #expression, NULL);                        \
-    }
+    } while (0)
 
 #define ERRCHKK(expression, description)                                                           \
-    {                                                                                              \
+    do {                                                                                           \
         if ((expression) == false)                                                                 \
             print_error(__func__, __FILE__, __LINE__, #expression, description);                   \
-    }
+    } while (0)
 
 #define WARNCHKK(expression, description)                                                          \
-    {                                                                                              \
+    do {                                                                                           \
         if ((expression) == false)                                                                 \
             print_warning(__func__, __FILE__, __LINE__, #expression, description);                 \
-    }
+    } while (0)

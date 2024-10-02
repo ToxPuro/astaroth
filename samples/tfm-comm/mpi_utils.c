@@ -41,7 +41,7 @@ test_get_tag(void)
         for (size_t i = 0; i < 1000; ++i) {
             int curr = get_tag();
             if (prev == INT_MAX)
-                ERRCHK(curr == 0)
+                ERRCHK(curr == 0);
             else
                 ERRCHK(curr > prev);
             prev = curr;

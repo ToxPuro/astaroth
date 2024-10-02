@@ -8,52 +8,52 @@
  * alloc(const size_t count, void** ptr)
  */
 #define alloc(count, ptr)                                                                          \
-    {                                                                                              \
+    do {                                                                                           \
         (ptr) = malloc(sizeof((ptr)[0]) * (count));                                                \
         ERRCHK((ptr) != NULL);                                                                     \
-    }
+    } while (0)
 
 /**
  * Deallocate an array
  * dealloc(void** ptr)
  */
 #define dealloc(ptr)                                                                               \
-    {                                                                                              \
+    do {                                                                                           \
         ERRCHK((ptr) != NULL);                                                                     \
         free((ptr));                                                                               \
         (ptr) = NULL;                                                                              \
-    }
+    } while (0)
 
 /**
  * Resize an array
  * realloc(const size_t count, void** ptr)
  */
 #define realloc(count, ptr)                                                                        \
-    {                                                                                              \
+    do {                                                                                           \
         (ptr) = realloc((ptr), sizeof((ptr)[0]) * (count));                                        \
         ERRCHK((ptr) != NULL);                                                                     \
-    }
+    } while (0)
 
 /**
  * Copy an array
  * copy(const size_t count, void* in, void* out)
  */
 #define copy(count, in, out)                                                                       \
-    {                                                                                              \
+    do {                                                                                           \
         ERRCHK((in) != NULL);                                                                      \
         ERRCHK((out) != NULL);                                                                     \
         memmove((out), (in), sizeof((in)[0]) * (count));                                           \
-    }
+    } while (0)
 
 /**
  * Allocate and duplicate an array.
  * dup(const size_t count, const void* in, void* out)
  */
 #define dup(count, in, out)                                                                        \
-    {                                                                                              \
+    do {                                                                                           \
         alloc((count), (out));                                                                     \
         copy((count), (in), (out))                                                                 \
-    }
+    } while (0)
 
 /**
  * Compare two blocks of memory.
