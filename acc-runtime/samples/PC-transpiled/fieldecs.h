@@ -1,5 +1,5 @@
 Field F_UX, F_UY, F_UZ
-Field F_PHIUX, F_PHIUY, F_PHIUZ
+Field F_PHIUU
 Field F_U0X, F_U0Y, F_U0Z
 Field F_RHO
 #define F_LNRHO F_RHO
@@ -55,7 +55,6 @@ const Field3 F_GLOBAL_GLNTVEC = Field3(F_GLOBAL_GLNTX,F_GLOBAL_GLNTY,F_GLOBAL_GL
 const Field3 F_AVEC    = Field3(F_AX, F_AY, F_AZ)
 const Field3 F_UVEC    = Field3(F_UX,F_UY,F_UZ)
 const Field3 F_UU      = Field3(F_UX,F_UY,F_UZ)
-const Field3 F_PHIUU    = Field3(F_PHIUX,F_PHIUY,F_PHIUZ)
 const Field3 F_U0VEC   = Field3(F_U0X, F_U0Y, F_U0Z)
 const Field3 F_OVEC    = Field3(F_OX, F_OY, F_OZ)
 const Field3 F_UU_SPH_VEC  = Field3(F_UU_SPHX, F_UU_SPHY, F_UU_SPHZ)

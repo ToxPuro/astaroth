@@ -107,9 +107,25 @@ max(const T& a, const T& b)
 
 template <class T>
 static HOST_DEVICE_INLINE const T
+max(const T& a, const T& b, const T& c)
+{
+	const auto tmp = a > b ? a : b;
+	return (tmp > c) ? tmp : c;
+}
+
+template <class T>
+static HOST_DEVICE_INLINE const T
 min(const T& a, const T& b)
 {
   return a < b ? a : b;
+}
+
+template <class T>
+static HOST_DEVICE_INLINE const T
+min(const T& a, const T& b, const T& c)
+{
+	const auto tmp = a < b ? a : b;
+	return (tmp < c) ? tmp : c;
 }
 
 static inline const int3

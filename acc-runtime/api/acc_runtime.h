@@ -400,9 +400,6 @@ AcResult acMultiplyInplace(const AcReal value, const size_t count,
 
   FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba));
 
-  FUNC_DEFINE(AcResult, acVBAReset,(const cudaStream_t stream, VertexBufferArray* vba));
-
-
   template <typename P>
   constexpr static auto
   get_array_dims(const P array)

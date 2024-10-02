@@ -267,7 +267,9 @@ execute_kernel(const int kernel)
 }
 int
 get_executed_conditionals()
-{
+{ 
+  fprintf(stderr,"Getting executed conditionals\n");
+  fflush(stderr);
   executed_conditionals = {};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
 	  execute_kernel(k);
@@ -277,6 +279,8 @@ get_executed_conditionals()
   fwrite(&size, sizeof(int), 1, fp_executed_conditionals);
   fwrite(executed_conditionals.data(), sizeof(int), executed_conditionals.size(), fp_executed_conditionals);
   fclose(fp_executed_conditionals);
+  fprintf(stderr,"Got executed conditionals\n");
+  fflush(stderr);
   return EXIT_SUCCESS;
 }	
 

@@ -95,6 +95,12 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config, AcCompInfo& comp_info)
     push_val(AC_nxyzgrid,get_val(AC_nxygrid)*get_val(AC_nzgrid)); 
     push_val(AC_zlen,get_val(AC_nzgrid)*get_val(AC_dsz)); 
 #endif
+
+    push_val(AC_inv_dsx,1.0/get_val(AC_dsx));
+    push_val(AC_inv_dsy,1.0/get_val(AC_dsy));
+#if TWO_D == 0
+    push_val(AC_inv_dsz,1.0/get_val(AC_dsz));
+#endif
     return AC_SUCCESS;
 }
 
