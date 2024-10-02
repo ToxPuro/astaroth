@@ -2,6 +2,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+size_t size_t_as_size_t(const size_t i);
+int int_as_int(const int i);
 size_t int64_t_as_size_t(const int64_t i);
 size_t int_as_size_t(const int i);
 int64_t size_t_as_int64_t(const size_t i);
@@ -9,9 +11,10 @@ int64_t int_as_int64_t(const int i);
 int size_t_as_int(const size_t i);
 int int64_t_as_int(const int64_t i);
 
-#define as_size_t(x) _Generic((x), int64_t: int64_t_as_size_t, int: int_as_size_t)(x)
+#define as_size_t(x)                                                                               \
+    _Generic((x), size_t: size_t_as_size_t, int64_t: int64_t_as_size_t, int: int_as_size_t)(x)
 #define as_int64_t(x) _Generic((x), size_t: size_t_as_int64_t, int: int_as_int64_t)(x)
-#define as_int(x) _Generic((x), size_t: size_t_as_int, int64_t: int64_t_as_int)(x)
+#define as_int(x) _Generic((x), size_t: size_t_as_int, int64_t: int64_t_as_int, int: int_as_int)(x)
 
 void int64_t_as_size_t_array(const size_t count, const int64_t* a, size_t* b);
 void int_as_size_t_array(const size_t count, const int* a, size_t* b);

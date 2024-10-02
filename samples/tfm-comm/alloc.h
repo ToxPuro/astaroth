@@ -28,7 +28,7 @@
  * Resize an array
  * realloc(const size_t count, void** ptr)
  */
-#define realloc(count, ptr)                                                                        \
+#define nrealloc(count, ptr)                                                                       \
     do {                                                                                           \
         (ptr) = realloc((ptr), sizeof((ptr)[0]) * (count));                                        \
         ERRCHK((ptr) != NULL);                                                                     \

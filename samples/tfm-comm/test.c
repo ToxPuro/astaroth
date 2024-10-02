@@ -4,6 +4,7 @@
 // #include "array.h"
 // #include "comm.h"
 // #include "matrix.h"
+#include "dynarr.h"
 #include "math_utils.h"
 #include "mpi_utils.h"
 #include "pack.h"
@@ -18,5 +19,6 @@ main(void)
     test_mpi_utils();
     test_pack();
     test_partition();
+    test_dynarr();
     return EXIT_SUCCESS;
 }

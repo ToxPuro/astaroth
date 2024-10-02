@@ -16,6 +16,18 @@
 // }
 
 size_t
+size_t_as_size_t(const size_t i)
+{
+    return i;
+}
+
+int
+int_as_int(const int i)
+{
+    return i;
+}
+
+size_t
 int64_t_as_size_t(const int64_t i)
 {
     ERRCHK(i >= 0);
