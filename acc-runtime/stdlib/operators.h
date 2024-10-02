@@ -4,8 +4,15 @@ u_dot_grad_vec(Matrix m,real3 v){
 }
 
 
-elemental gradient(Field s) {
+gradient(Field s) {
     return real3(derx(s), dery(s), derz(s))
+}
+gradient_tensor(Field3 v) {
+	return Matrix(
+			gradient(v.x),
+			gradient(v.y),
+			gradient(v.z)
+		     )
 }
 
 elemental gradient_upwd(Field s) {

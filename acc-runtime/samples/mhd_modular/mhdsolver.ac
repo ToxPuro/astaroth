@@ -370,7 +370,7 @@ momentum() {
     inv_rho = 1. / exp(VTXBUF_LNRHO)
 #endif
 
-    mom = - gradient(UU) * UU
+    mom = - gradient_tensor(UU) * UU
 #if LUPWD
           + gradient_upwd(UU) * abs(UU)
 #endif
