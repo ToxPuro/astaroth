@@ -1,6 +1,9 @@
 #pragma once
 #include <stddef.h>
 
+#include "dynarr.h"
+typedef dynarr_s(size_t) DynamicArray;
+
 /** Partitions the domain mm into subdomains divided by nn
  *  Returns the number of partitions
  * offsets and dims must be large enough to hold nelems elements
@@ -22,24 +25,23 @@
  *
  *
  * Usage:
- * // Get the size for offsets and dims arrays
- * size_t nelems;
- * partition(..., &nelems, NULL, NULL);
- * size_t *offsets, *dims;
- * nalloc(nelems, offsets);
- * nalloc(nelems, dims);
+ *
+ * // Create dynamic arrays for the partitioning
+ * DynamicArray segment_dims, segment_offsets;
+ * dynarr_create(&segment_dims);
+ * dynarr_create(&segment_offsets);
  *
  * // Fill offsets and dims with the partitioning
- * const size_t npartitions = partition(..., &nelems, offsets, dims);
+ * const size_t npartitions = partition(..., segment_dims, segment_offsets);
  *
  * // Visualize the output arranged in dims-first ordering
- * print_ndarray("offsets", 2, ((size_t[]){ndims, npartitions}), offsets));
+ * print_ndarray("offsets", 2, ((size_t[]){ndims, npartitions}), offsets.data));
  *
  * // Deallocate
- * dealloc(offsets);
- * dealloc(dims);
+ * dynarr_destroy(&offsets);
+ * dynarr_destroy(&dims);
  */
 size_t partition(const size_t ndims, const size_t* mm, const size_t* nn, const size_t* nn_offset,
-                 size_t* nelems, size_t* dims, size_t* offsets);
+                 DynamicArray* segment_dims, DynamicArray* segment_offsets);
 
 void test_partition(void);
