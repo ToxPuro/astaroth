@@ -265,4 +265,29 @@ test_partition(void)
         ndealloc(dims);
         ndealloc(offsets);
     }
+    // {
+    //     const size_t mm[]        = {4, 4};
+    //     const size_t nn[]        = {1, 1};
+    //     const size_t nn_offset[] = {2, 2};
+    //     const size_t ndims       = ARRAY_SIZE(mm);
+
+    //     size_t nelems;
+    //     partition(ndims, mm, nn, nn_offset, &nelems, NULL, NULL);
+
+    //     size_t *dims, *offsets;
+    //     nalloc(nelems, dims);
+    //     nalloc(nelems, offsets);
+    //     const size_t npartitions = partition(ndims, mm, nn, nn_offset, &nelems, dims, offsets);
+    //     print("npartitions", npartitions);
+    //     print_ndarray("segment_dims", 2, ((size_t[]){ndims, npartitions}), dims);
+    //     print_ndarray("segment_offsets", 2, ((size_t[]){ndims, npartitions}), offsets);
+
+    //     size_t(*mat_offsets)[ndims] = (size_t(*)[ndims])offsets;
+    //     for (size_t i = 0; i < npartitions; ++i) {
+    //         print_array("hello", ndims, mat_offsets[i]);
+    //     }
+
+    //     ndealloc(dims);
+    //     ndealloc(offsets);
+    // }
 }

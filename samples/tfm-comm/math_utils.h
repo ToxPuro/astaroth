@@ -25,6 +25,8 @@ void factorize(const size_t n_initial, size_t* nfactors, size_t* factors);
 
 size_t popcount(const size_t count, const size_t* arr);
 
+void arange(const size_t start_value, const size_t count, size_t* arr);
+
 /** Requires that array is ordered */
 size_t unique(const size_t count, size_t* arr);
 
@@ -96,6 +98,16 @@ void set_ndarray(const size_t value, const size_t ndims, const size_t* start, co
 /** Checks whether all of the `count` elements starting from start_a and start_b are equal */
 bool ndarray_equals(const size_t count, const size_t ndims, const size_t* a_offset,
                     const size_t* b_offset, const size_t* dims, const size_t* arr);
+
+/** Matrix */
+void matrix_get_row(const size_t row, const size_t nrows, const size_t ncols, const size_t* mat,
+                    size_t* cols);
+
+void matrix_remove_row(const size_t row, const size_t nrows, const size_t ncols, const size_t* in,
+                       size_t* out);
+
+bool matrix_row_equals(const size_t row, const size_t nrows, const size_t ncols, const size_t* mat,
+                       const size_t* cols);
 
 /** Unit testing */
 bool equals(const size_t count, const size_t* a, const size_t* b);

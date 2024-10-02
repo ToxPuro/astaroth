@@ -1,9 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// #include "array.h"
-// #include "comm.h"
-// #include "matrix.h"
 #include "dynarr.h"
 #include "math_utils.h"
 #include "mpi_utils.h"
@@ -15,10 +12,10 @@
 int
 main(void)
 {
+    test_dynarr();
     test_math_utils();
     test_mpi_utils();
     test_pack();
     test_partition();
-    test_dynarr();
     return EXIT_SUCCESS;
 }

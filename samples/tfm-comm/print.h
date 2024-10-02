@@ -50,3 +50,9 @@ DECLARE_GENERIC_FUNCTIONS(double)
 #undef DECLARE_GENERIC_FUNCTION_PRINT
 #undef DECLARE_GENERIC_FUNCTION_PRINT_ARRAY
 #undef DECLARE_GENERIC_FUNCTION_PRINT_NDARRAY
+
+static inline void
+print_matrix(const char* label, const size_t nrows, const size_t ncols, const size_t* matrix)
+{
+    print_ndarray(label, 2, ((size_t[]){ncols, nrows}), matrix);
+}

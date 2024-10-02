@@ -314,6 +314,13 @@ test_popcount(void)
     }
 }
 
+void
+arange(const size_t start_value, const size_t count, size_t* arr)
+{
+    for (size_t i = 0; i < count; ++i)
+        arr[i] = start_value + i;
+}
+
 /** Requires that array is ordered
  * Modifies `size_t *arr` inplace to hold only unique values
  * and returns the number of unique values (or the new count) of arr.
@@ -1157,6 +1164,173 @@ test_ndarray_equals(void)
 }
 
 /*
+ * Matrix
+ */
+void
+matrix_get_row(const size_t row, const size_t nrows, const size_t ncols, const size_t* mat,
+               size_t* cols)
+{
+    ERRCHK(row < nrows);
+    ncopy(ncols, &mat[row * ncols], cols);
+}
+
+static void
+test_get_row(void)
+{
+    {
+#define nrows (5)
+#define ncols (2)
+        const size_t in[nrows][ncols] = {
+            {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
+        };
+        const size_t row[ncols] = {7, 8};
+        size_t out[ncols];
+        matrix_get_row(3, nrows, ncols, (const size_t*)in, out);
+        ERRCHK(equals(ncols, row, out));
+#undef nrows
+#undef ncols
+    }
+    {
+#define nrows (5)
+#define ncols (2)
+        const size_t in[nrows][ncols] = {
+            {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
+        };
+        const size_t row[ncols] = {1, 2};
+        size_t out[ncols];
+        matrix_get_row(0, nrows, ncols, (const size_t*)in, out);
+        ERRCHK(equals(ncols, row, out));
+#undef nrows
+#undef ncols
+    }
+    {
+#define nrows (5)
+#define ncols (2)
+        const size_t in[nrows][ncols] = {
+            {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
+        };
+        const size_t row[ncols] = {9, 10};
+        size_t out[ncols];
+        matrix_get_row(nrows - 1, nrows, ncols, (const size_t*)in, out);
+        ERRCHK(equals(ncols, row, out));
+#undef nrows
+#undef ncols
+    }
+}
+
+void
+matrix_remove_row(const size_t row, const size_t nrows, const size_t ncols, const size_t* in,
+                  size_t* out)
+{
+    ERRCHK(row < nrows);
+    ncopy(row * ncols, in, out);
+
+    const size_t count = (nrows - row - 1) * ncols;
+    if (count > 0)
+        ncopy(count, &in[(row + 1) * ncols], &out[row * ncols]);
+}
+
+static void
+test_remove_row(void)
+{
+    {
+        const size_t row       = 2;
+        const size_t nrows     = 5;
+        const size_t ncols     = 2;
+        const size_t count     = nrows * ncols;
+        const size_t out_nrows = nrows - 1;
+        const size_t out_count = out_nrows * ncols;
+
+        size_t *in, *model, *out;
+        nalloc(count, in);
+        nalloc(out_count, model);
+        nalloc(out_count, out);
+
+        arange(1, count, in);
+        arange(1, 4, model);
+        arange(7, 4, &model[row * ncols]);
+        matrix_remove_row(row, nrows, ncols, in, out);
+        ERRCHK(equals(out_count, model, out));
+        print_array("out", out_count, out);
+        print_array("model", out_count, model);
+
+        ndealloc(in);
+        ndealloc(model);
+        ndealloc(out);
+    }
+
+    {
+        const size_t ncols       = 2;
+        const size_t in[][ncols] = {
+            {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
+        };
+        const size_t nrows          = ARRAY_SIZE(in);
+        const size_t model[][ncols] = {
+            {3, 4},
+            {5, 6},
+            {7, 8},
+            {9, 10},
+        };
+
+        const size_t out_count = (nrows - 1) * ncols;
+        size_t* out;
+        nalloc(out_count, out);
+        matrix_remove_row(0, nrows, ncols, &in[0][0], out);
+        ERRCHK(equals(out_count, &model[0][0], out));
+        ndealloc(out);
+    }
+    {
+        const size_t ncols       = 2;
+        const size_t in[][ncols] = {
+            {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
+        };
+        const size_t model[][ncols] = {{1, 2}, {3, 4}, {5, 6}, {7, 8}};
+        const size_t nrows          = ARRAY_SIZE(in);
+
+        const size_t out_count = (nrows - 1) * ncols;
+        size_t* out;
+        nalloc(out_count, out);
+        matrix_remove_row(nrows - 1, nrows, ncols, &in[0][0], out);
+        ERRCHK(equals(out_count, &model[0][0], out));
+        ndealloc(out);
+    }
+}
+
+bool
+matrix_row_equals(const size_t row, const size_t nrows, const size_t ncols, const size_t* mat,
+                  const size_t* cols)
+{
+    ERRCHK(row < nrows);
+    return equals(ncols, &mat[row * ncols], cols);
+}
+
+static void
+test_matrix_row_equals(void)
+{
+    {
+        const size_t ncols        = 3;
+        const size_t mat[][ncols] = {
+            {1, 2, 3},
+            {4, 5, 6},
+            {7, 8, 9},
+        };
+        const size_t nrows = ARRAY_SIZE(mat);
+
+        ERRCHK(matrix_row_equals(0, nrows, ncols, &mat[0][0], (size_t[]){1, 2, 3}));
+        ERRCHK(matrix_row_equals(1, nrows, ncols, &mat[0][0], (size_t[]){4, 5, 6}));
+        ERRCHK(matrix_row_equals(2, nrows, ncols, &mat[0][0], (size_t[]){7, 8, 9}));
+    }
+}
+
+static void
+test_matrix(void)
+{
+    test_get_row();
+    test_remove_row();
+    test_matrix_row_equals();
+}
+
+/*
  * Unit testing
  */
 bool
@@ -1199,4 +1373,5 @@ test_math_utils(void)
     test_nd_to_1d();
     test_ndarray_equals();
     test_to_spatial_to_linear();
+    test_matrix();
 }
