@@ -1,6 +1,8 @@
 #include "../../stdlib/integrators.h"
 #include "../../stdlib/math"
 #include "../../stdlib/grid.h"
+#include "../../stdlib/derivs.h"
+#include "../../stdlib/operators.h"
 #
 const int AC_2d_ints = [[1,2,3], [2,3,4]]
 const int AC_const_ints = [1,2,3]
@@ -97,7 +99,6 @@ hostdefine R_PI (AC_REAL_PI)
 hostdefine LSPECIAL_REDUCTIONS (0)  
 
 Field VTXBUF_LNRHO, VTXBUF_UUX, VTXBUF_UUY, VTXBUF_UUZ
-Field DEAD_FIELD
 //const int NCHEM=20
 //Field CHEMISTRY[NCHEM]
 
@@ -284,44 +285,14 @@ const Field3 AA  = Field3(VTXBUF_AX,VTXBUF_AY,VTXBUF_AZ)
 #if LSHOCK
 #include "smooth_kernel.ach" 
 #endif 
-#include "../../stdlib/derivs.h"
 #if LMAGNETIC
 induction() {
     return cross(UU, curl(AA)) + AC_eta * laplace(AA)
 }
 #endif
 
-traceless_rateof_strain(v) {
-    Matrix S
 
-    S[0][0] = (2.0 / 3.0) * derx(v.x) - (1.0 / 3.0) * (dery(v.y) + derz(v.z))
-    S[0][1] = (1.0 / 2.0) * (dery(v.x) + derx(v.y))
-    S[0][2] = (1.0 / 2.0) * (derz(v.x) + derx(v.z))
 
-    S[1][0] = S.data[0][1]
-    S[1][1] = (2.0 / 3.0) * dery(v.y) - (1.0 / 3.0) * (derx(v.x) + derz(v.z))
-    S[1][2] = (1.0 / 2.0) * (derz(v.y) + dery(v.z))
-
-    S[2][0] = S.data[0][2]
-    S[2][1] = S.data[1][2]
-    S[2][2] = (2.0 / 3.0) * derz(v.z) - (1.0 / 3.0) * (derx(v.x) + dery(v.y))
-
-    return S
-}
-
-gradient_of_divergence(v) {
-    return real3(
-        derxx(v.x) + derxy(v.y) + derxz(v.z),
-        derxy(v.x) + deryy(v.y) + deryz(v.z),
-        derxz(v.x) + deryz(v.y) + derzz(v.z)
-    )
-}
-
-contract(Matrix mat) {
-    return dot(mat[0], mat[0]) +
-           dot(mat[1], mat[1]) +
-           dot(mat[2], mat[2])
-}
 
 
 
@@ -399,7 +370,7 @@ momentum() {
     inv_rho = 1. / exp(VTXBUF_LNRHO)
 #endif
 
-    mom = - gradient(UU) * UU
+    mom = - gradient_tensor(UU) * UU
 #if LUPWD
           + gradient_upwd(UU) * abs(UU)
 #endif
@@ -493,7 +464,6 @@ Kernel shock_1_divu()
 
 Kernel shock_2_max()
 {
-
     write(VTXBUF_SHOCK, max5_shock())
 }
 
@@ -510,6 +480,7 @@ Kernel shock_3_smooth()
 
 #endif
 #
+/**
 Kernel test_func()
 {
    if(AC_runtime_int) 
@@ -517,6 +488,8 @@ Kernel test_func()
 	write(DEAD_FIELD,AC_real_gmem_arr[0])
    }
 }
+**/
+
 
 
 
@@ -549,7 +522,7 @@ Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums) 
     write(VTXBUF_LNRHO, rk3(VTXBUF_LNRHO, continuity(), step_num, time_params.dt))
 
 #if LENTROPY 
-    write(VTXBUF_ENTROPY, rk3(VTXBUF_ENTROPY, entropy(), step_num, time_params.dt))
+    write(VTXBUF_ENTROPY, rk3(VTXBUF_ENTROPY, entropy(),step_num, time_params.dt))
 #endif 
 #if LFORCING
     //Add the forcing component to the velocity field at the last integration step.
@@ -584,6 +557,11 @@ Kernel singlepass_solve(int step_num, TimeParams time_params, EnumParams enums) 
 
 
 Kernel twopass_solve_intermediate(int step_num, real dt) {
+
+	real3 var = real3(0.0,0.0,0.0)
+	var = 0.0
+	real4 var4 = (real4){0.0,0.0,0.0,0.0}
+	var4 = 0.0
     write(VTXBUF_LNRHO, rk3_intermediate(VTXBUF_LNRHO, continuity(), step_num, dt))
 
     #if LENTROPY 
@@ -944,6 +922,7 @@ real AC_cs20
 real AC_gamma_m1
 real AC_cv1
 real AC_dz2_bound[7]
+/**
 bc_ss_flux(topbot)
 {
   real tmp_xy;
@@ -1031,6 +1010,7 @@ bc_ss_flux(topbot)
   else {
   }
 }
+**/
 
 int AC_n2
 int AC_n1

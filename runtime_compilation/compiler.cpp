@@ -1,6 +1,9 @@
-#include "acc_runtime.h"
+#include "astaroth.h"
 #include "astaroth_runtime_compilation.h"
 #include <string>
+#if AC_MPI_ENABLED
+#include "../src/core/decomposition.h"
+#endif
 
 
 
@@ -22,7 +25,7 @@ get_default_value()
 
 template <typename V>
 std::string
-get_datatype(){}
+get_datatype(){return{};}
 
 template <>
 std::string
@@ -37,8 +40,29 @@ template <>
 std::string
 get_datatype<AcReal>()  {return "real";};
 
+template <>
+std::string
+get_datatype<long>()  {return "long";};
+
+template <>
+std::string
+get_datatype<long long>()  {return "long long";};
+
+
 std::string
 to_str(const int value)
+{
+	return std::to_string(value);
+}
+
+std::string
+to_str(const long value)
+{
+	return std::to_string(value);
+}
+
+std::string
+to_str(const long long value)
 {
 	return std::to_string(value);
 }
@@ -146,16 +170,87 @@ struct load_scalars
 		}
 	}
 };
+#if AC_MPI_ENABLED
+static uint3_64
+get_decomp(const AcCompInfo info)
+{
+
+    const auto global_config = info.config;
+    int nprocs;
+    MPI_Comm_size(info.comm, &nprocs);
+    switch((AcDecomposeStrategy)global_config.int_params[AC_decompose_strategy])
+    {
+	    case AcDecomposeStrategy::External:
+		return static_cast<uint3_64>(global_config.int3_params[AC_domain_decomposition]);
+	    default:
+		return decompose(nprocs,(AcDecomposeStrategy)global_config.int_params[AC_decompose_strategy]);
+
+    }
+    return (uint3_64){0,0,0};
+}
 
 void
-acCompile(const char* compilation_string, const AcCompInfo info)
+decompose_info(AcCompInfo& info)
 {
+  auto decomp = get_decomp(info);
+  auto& config = info.config;
+  ERRCHK_ALWAYS(config.int_params[AC_nx] % decomp.x == 0);
+  ERRCHK_ALWAYS(config.int_params[AC_ny] % decomp.y == 0);
+#if TWO_D == 0
+  ERRCHK_ALWAYS(config.int_params[AC_nz] % decomp.z == 0);
+#else
+  ERRCHK_ALWAYS(config.int_params[AC_nz]  == 1);
+#endif
+  const int3 nn = (int3){config.int_params[AC_nx], config.int_params[AC_ny], config.int_params[AC_nz]};
+  const int submesh_nx = nn.x / decomp.x;
+  const int submesh_ny = nn.y / decomp.y;
+  const int submesh_nz = nn.z / decomp.z;
+
+  acLoadCompInfo(AC_nx,submesh_nx,&info);
+  acLoadCompInfo(AC_ny,submesh_ny,&info);
+#if TWO_D == 0
+  acLoadCompInfo(AC_nz,submesh_nz,&info);
+#endif
+  acLoadCompInfo(AC_domain_decomposition,(int3){(int)decomp.x, (int)decomp.y, (int)decomp.z},&info);
+  acHostUpdateBuiltinCompParams(&info);
+}
+
+#endif
+
+void
+check_that_built_ins_loaded(const AcCompInfo info)
+{
+	ERRCHK_ALWAYS(info.is_loaded.int_params[AC_nx] || info.is_loaded.int_params[AC_nxgrid]);
+	ERRCHK_ALWAYS(info.is_loaded.int_params[AC_ny] || info.is_loaded.int_params[AC_nygrid]);
+	ERRCHK_ALWAYS(info.is_loaded.int_params[AC_nz] || info.is_loaded.int_params[AC_nzgrid]);
+
+#if AC_MPI_ENABLED
+	ERRCHK_ALWAYS(info.is_loaded.int_params[AC_proc_mapping_strategy]);
+	ERRCHK_ALWAYS(info.is_loaded.int_params[AC_decompose_strategy]);
+	ERRCHK_ALWAYS(info.is_loaded.int_params[AC_MPI_comm_strategy]);
+	if(info.config.int_params[AC_decompose_strategy]  ==  (int)AcDecomposeStrategy::External)
+		ERRCHK_ALWAYS(info.is_loaded.int3_params[AC_domain_decomposition]);
+#endif
+}
+
+void
+acLoadRunConsts(AcCompInfo info)
+{
+	check_that_built_ins_loaded(info);
+	acHostUpdateBuiltinCompParams(&info);
+#if AC_MPI_ENABLED
+	decompose_info(info);
+#endif
 	FILE* fp = fopen(AC_OVERRIDES_PATH,"w");
 
 	AcScalarCompTypes::run<load_scalars>(info, fp);
 	AcArrayCompTypes::run<load_arrays>(info, fp);
 
 	fclose(fp);
+}
+void
+acCompile(const char* compilation_string, AcCompInfo info)
+{
 	char cmd[10000];
 
 	sprintf(cmd,"rm -rf %s",runtime_astaroth_build_path);
@@ -179,7 +274,7 @@ acCompile(const char* compilation_string, const AcCompInfo info)
 	}
 
 
-	sprintf(cmd,"cd %s && cmake %s -DREAD_OVERLOADS=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s  && make -j",
+	sprintf(cmd,"cd %s && cmake %s -DREAD_OVERRIDES=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DACC_COMPILER_PATH=%s %s  && make -j",
 			runtime_astaroth_build_path, AC_BASE_PATH, acc_compiler_path, compilation_string);
 	retval = system(cmd);
 	if(retval)

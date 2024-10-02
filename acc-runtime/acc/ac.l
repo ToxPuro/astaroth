@@ -11,6 +11,8 @@ S [\s]
 #include "tab.h"
 #include <ctype.h>
 #include <stdbool.h>
+struct hashmap_s string_intern_hashmap;
+#include <hash.h>
 #include "vecs.h"
 %}
 %{
@@ -50,6 +52,7 @@ void strip_whitespace(char *str) {
 "uint"                  { return UINT; }
 "real"                  { return REAL; }
 "bool"                  { return BOOL; }
+"Tensor"                { return TENSOR; }
 "Matrix"                { return MATRIX; }
 "Field"                 { return FIELD; }
 "Field3"                { return FIELD3; }
@@ -59,7 +62,7 @@ void strip_whitespace(char *str) {
 "BoundConds"          {return BOUNDCONDS; }
 "intrinsic"          {return INTRINSIC; }
 "__shared__"          {return SHARED; }
-
+"Profile"               { return PROFILE; }
 "Stencil"               { return STENCIL; }
 
 "Kernel"                { return KERNEL; } /* Type qualifiers */
@@ -98,8 +101,8 @@ struct[[:space:]]{L}({L}|{D})* {
 					remove_substring(name,"struct");
 					remove_substring(name,"typedef");
 					strip_whitespace(name);
-					push(&struct_names, name);
-					push(&struct_datatype_names,name);
+					push(&struct_names, intern(name));
+					push(&struct_datatype_names,intern(name));
 					return STRUCT_NAME;
 				}
 typedef[[:space:]]{L}({L}|{D})*[[:space:]]struct[[:space:]]{L}({L}|{D})* {
@@ -107,8 +110,8 @@ typedef[[:space:]]{L}({L}|{D})*[[:space:]]struct[[:space:]]{L}({L}|{D})* {
 					char* datatype_name = strtok(NULL," ");
 					strtok(NULL, " ");
 					const char* dsl_name = strtok(NULL, " ");
-					push(&struct_names,dsl_name);
-					push(&struct_datatype_names,datatype_name);
+					push(&struct_names,intern(dsl_name));
+					push(&struct_datatype_names,intern(datatype_name));
 					yytext = datatype_name;
 					return STRUCT_NAME;
 				}
@@ -117,7 +120,7 @@ enum[[:space:]]{L}({L}|{D})* {
 				remove_substring(name,"enum");
 				remove_substring(name,"typedef");
 				strip_whitespace(name);
-				push(&enum_names, name);
+				push(&enum_names, intern(name));
 				return ENUM_NAME;
 			}
 typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
@@ -125,20 +128,20 @@ typedef[[:space:]]enum[[:space:]]{L}({L}|{D})* {
 				remove_substring(name,"enum");
 				remove_substring(name,"typedef");
 				strip_whitespace(name);
-				push(&enum_names, name);
+				push(&enum_names, intern(name));
 				return ENUM_NAME;
 			}
 
 "hostdefine".*        { return HOSTDEFINE; }
 
 {L}({L}|{D})*             {  /* Literals */
-				const int struct_index = str_vec_get_index(struct_names,yytext);
+				const int struct_index = str_vec_get_index(struct_names,intern(yytext));
 				if(struct_index >= 0)
 				{
 					yytext =  strdup(struct_datatype_names.data[struct_index]);
 					return STRUCT_TYPE;
 				}
-				if(str_vec_contains(enum_names,yytext))
+				if(str_vec_contains(enum_names,intern(yytext)))
 					return ENUM_TYPE;
 				if(yytext[strlen(yytext)-1] == '_')
 				{

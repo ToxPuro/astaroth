@@ -3,31 +3,6 @@
 // TODO remove clang-format on/off
 // clang-format off
 
-#define DEVICE_INLINE __device__ __forceinline__
-
-DEVICE_INLINE AcReal
-VAL(const AcRealParam& param)
-{
-	return DCONST(param);
-}
-
-DEVICE_INLINE AcReal
-VAL(const AcReal& val)
-{
-	return val;
-}
-
-DEVICE_INLINE int
-VAL(const AcIntParam& param)
-{
-	return DCONST(param);
-}
-
-DEVICE_INLINE int
-VAL(const int& val)
-{
-	return val;
-}
 
 extern "C" {
 /**************************
@@ -990,9 +965,9 @@ acKernelEntropyPrescribedNormalAndTurbulentHeatFluxBoundconds(
 
 #else
 AcResult
-acKernelPrescribedDerivativeBoundconds(const cudaStream_t stream, const int3 region_id,
-                                       const int3 normal, const int3 dims, AcReal* vtxbuf,
-                                       AcRealParam der_val_param)
+acKernelPrescribedDerivativeBoundconds(const cudaStream_t , const int3 ,
+                                       const int3 , const int3 , AcReal* ,
+                                       AcRealParam )
 {
     fprintf(stderr, "acKernelPrescribedDerivativeBoundconds() called but AC_INTEGRATION_ENABLED "
                     "was false\n");

@@ -170,12 +170,14 @@ typedef enum {
 
 #ifdef __cplusplus
 enum class AcProcMappingStrategy:int{
-    Morton = -1, //The default
-    Linear = 1,
+    Morton = -1,//The default
+    Linear  = 1,
+    Hierarchical= 2, 
 };
 enum class AcDecomposeStrategy:int{
-    Default = -1, 
+    Morton = -1, 
     External = 1,
+    Hierarchical= 2, 
 };
 enum class AcMPICommStrategy:int{
 	DuplicateMPICommWorld = -1,
@@ -265,75 +267,112 @@ typedef struct {
 #endif
 
 #ifdef __cplusplus
+
+static inline int
+acGetInfoValue(const AcMeshInfo, const int val)
+{
+	return val;
+}
+
+static inline int3
+acGetInfoValue(const AcMeshInfo, const int3 val)
+{
+	return val;
+}
+
+static inline int3
+acGetInfoValue(const AcMeshInfo info, const AcInt3Param param)
+{
+	return info.int3_params[param];
+}
+
+static inline int
+acGetInfoValue(const AcMeshInfo info, const AcIntParam param)
+{
+	return info.int_params[param];
+}
+
+static inline int
+acGetInfoValue(const AcMeshInfo, const AcCompInfo, const int val)
+{
+	return val;
+}
+static inline int
+acGetInfoValue(const AcMeshInfo info, const AcCompInfo, const AcIntParam param)
+{
+	return info.int_params[param];
+}
+
+static inline int
+acGetInfoValue(const AcMeshInfo, const AcCompInfo comp_info, const AcIntCompParam param)
+{
+	if(!comp_info.is_loaded.int_params[param])
+	{
+		fprintf(stderr,"FATAL AC ERROR: Trying to get not loaded %s AcIntCompParam\n",int_comp_param_names[param]);
+		ERRCHK_ALWAYS(comp_info.is_loaded.int_params[param]);
+	}
+	return comp_info.config.int_params[param];
+}
+
+static inline AcReal
+acGetInfoValue(const AcMeshInfo, const AcReal val)
+{
+	return val;
+}
+
+static inline AcReal
+acGetInfoValue(const AcMeshInfo info, const AcRealParam param)
+{
+	return info.real_params[param];
+}
+
+static inline AcReal
+acGetInfoValue(const AcMeshInfo, const AcCompInfo, const AcReal val)
+{
+	return val;
+}
+static inline AcReal
+acGetInfoValue(const AcMeshInfo info, const AcCompInfo, const AcRealParam param)
+{
+	return info.real_params[param];
+}
+
+static inline AcReal
+acGetInfoValue(const AcMeshInfo, const AcCompInfo comp_info, const AcRealCompParam param)
+{
+	ERRCHK_ALWAYS(comp_info.is_loaded.real_params[param]);
+	return comp_info.config.real_params[param];
+}
+
+
+template <typename T1, typename T2, typename T3>
+static inline int3
+acConstructInt3Param(const T1 a, const T2 b, const T3 c, const AcMeshInfo info)
+{
+	return (int3)
+	{
+		acGetInfoValue(info,a),
+		acGetInfoValue(info,b),
+		acGetInfoValue(info,c)
+	};
+}
+
+template <typename T1, typename T2, typename T3>
+static inline AcReal3 
+acConstructReal3Param(const T1 a, const T2 b, const T3 c, const AcMeshInfo info)
+{
+	return (AcReal3)
+	{
+		acGetInfoValue(info,a),
+		acGetInfoValue(info,b),
+		acGetInfoValue(info,c)
+	};
+}
+/** Sets the dimensions of the computational domain to (nx, ny, nz) and recalculates the built-in
+ * parameters derived from them (mx, my, mz, nx_min, and others) */
+
 extern "C" {
 #endif
-
-/*
- * =============================================================================
- * Helper functions
- * =============================================================================
- */
-#if TWO_D == 0
-static inline size_t
-acVertexBufferSize(const AcMeshInfo info)
-{
-    return as_size_t(info.int_params[AC_mx]) * as_size_t(info.int_params[AC_my]) *
-           as_size_t(info.int_params[AC_mz]);
-}
-
-static inline int3
-acVertexBufferDims(const AcMeshInfo info)
-{
-    return (int3){
-        (info.int_params[AC_mx]), 
-        (info.int_params[AC_my]), 
-        (info.int_params[AC_mz])
-    };
-}
-#else
-static inline size_t
-acVertexBufferSize(const AcMeshInfo info)
-{
-    return as_size_t(info.int_params[AC_mx]) * as_size_t(info.int_params[AC_my]) * 1;
-}
-
-static inline int3
-acVertexBufferDims(const AcMeshInfo info)
-{
-    return (int3){
-        (info.int_params[AC_mx]), 
-        (info.int_params[AC_my]), 
-	1,
-    };
-}
-#endif
-
-static inline size_t
-acVertexBufferSizeBytes(const AcMeshInfo info)
-{
-    return sizeof(AcReal) * acVertexBufferSize(info);
-}
-
-#if TWO_D == 0
-static inline size_t
-acVertexBufferCompdomainSize(const AcMeshInfo info)
-{
-    return as_size_t(info.int_params[AC_nx]) * as_size_t(info.int_params[AC_ny]) *
-           as_size_t(info.int_params[AC_nz]);
-}
-#else
-static inline size_t
-acVertexBufferCompdomainSize(const AcMeshInfo info)
-{
-    return as_size_t(info.int_params[AC_nx]) * as_size_t(info.int_params[AC_ny]) * 1;
-}
-#endif
-
-static inline size_t
-acVertexBufferCompdomainSizeBytes(const AcMeshInfo info)
-{
-    return sizeof(AcReal) * acVertexBufferCompdomainSize(info);
-}
 
 static inline int3
 acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
@@ -346,122 +385,82 @@ acConstructInt3Param(const AcIntParam a, const AcIntParam b, const AcIntParam c,
     };
 }
 
+static inline AcReal3
+acConstructReal3Param(const AcRealParam a, const AcRealParam b, const AcRealParam c,
+                     const AcMeshInfo info)
+{
+    return (AcReal3){
+        info.real_params[a],
+        info.real_params[b],
+        info.real_params[c],
+    };
+}
+
+/*
+ * =============================================================================
+ * Helper functions
+ * =============================================================================
+ */
+
+FUNC_DEFINE(int3, acGetLocalNN, (const AcMeshInfo info));
+FUNC_DEFINE(int3, acGetLocalMM, (const AcMeshInfo info));
+FUNC_DEFINE(int3, acGetGridNN, (const AcMeshInfo info));
+FUNC_DEFINE(int3, acGetGridMM, (const AcMeshInfo info));
+FUNC_DEFINE(int3, acGetMinNN, (const AcMeshInfo info));
+FUNC_DEFINE(int3, acGetMaxNN, (const AcMeshInfo info));
+FUNC_DEFINE(int3, acGetGridMaxNN, (const AcMeshInfo info));
+FUNC_DEFINE(AcReal3, acGetLengths, (const AcMeshInfo info));
+
+
+static inline size_t
+acVertexBufferSize(const AcMeshInfo info)
+{
+    const int3 mm = acGetLocalMM(info);
+    return as_size_t(mm.x)*as_size_t(mm.y)*as_size_t(mm.z);
+}
+static inline size_t
+acGridVertexBufferSize(const AcMeshInfo info)
+{
+    const int3 mm = acGetGridMM(info);
+    return as_size_t(mm.x)*as_size_t(mm.y)*as_size_t(mm.z);
+}
+
+static inline int3
+acVertexBufferDims(const AcMeshInfo info)
+{
+    return acGetLocalMM(info);
+}
+
+static inline size_t
+acVertexBufferSizeBytes(const AcMeshInfo info)
+{
+    return sizeof(AcReal) * acVertexBufferSize(info);
+}
+
+
+static inline size_t
+acVertexBufferCompdomainSize(const AcMeshInfo info)
+{
+    const int3 nn = acGetLocalNN(info);
+    return as_size_t(nn.x)*as_size_t(nn.y)*as_size_t(nn.z);
+}
+
+static inline size_t
+acVertexBufferCompdomainSizeBytes(const AcMeshInfo info)
+{
+    return sizeof(AcReal) * acVertexBufferCompdomainSize(info);
+}
+
+
+
 typedef struct {
     int3 n0, n1;
     int3 m0, m1;
     int3 nn;
 } AcMeshDims;
 
-#if TWO_D == 0
-static inline int3
-acGetLocalMM(const AcMeshInfo info)
-{
-    return acConstructInt3Param(AC_mx, AC_my, AC_mz, info);
-}
-static inline int3
-acGetLocalNN(const AcMeshInfo info)
-{
-    return acConstructInt3Param(AC_nx, AC_ny, AC_nz, info);
-}
 
-static inline int3
-acGetMinNN(const AcMeshInfo info)
-{
-    return acConstructInt3Param(AC_nx_min, AC_ny_min, AC_nz_min, info);
-}
-static inline int3
-acGetMaxNN(const AcMeshInfo info)
-{
-    return (int3)
-    {
-	    info.int_params[AC_nx_max],
-	    info.int_params[AC_ny_max],
-	    info.int_params[AC_nz_max],
-    };
-}
-static inline AcReal3
-acGetLengths(const AcMeshInfo info)
-{
-	return (AcReal3)
-	{
-		info.real_params[AC_xlen],
-		info.real_params[AC_ylen],
-		info.real_params[AC_zlen]
-	};
-}
-static inline int3
-acGetGridNN(const AcMeshInfo info)
-{
-	return (int3)
-	{
-		info.int_params[AC_nxgrid],
-		info.int_params[AC_nygrid],
-		info.int_params[AC_nzgrid]
-	};
-}
-#else
-static inline int3
-acGetLocalMM(const AcMeshInfo info)
-{
-    return (int3)
-    {
-	    info.int_params[AC_mx],
-	    info.int_params[AC_my],
-	    1
-    };
-}
-static inline int3
-acGetLocalNN(const AcMeshInfo info)
-{
-    return (int3)
-    {
-	    info.int_params[AC_nx],
-	    info.int_params[AC_ny],
-	    1
-    };
-}
-static inline int3
-acGetMinNN(const AcMeshInfo info)
-{
-    return (int3)
-    {
-	    info.int_params[AC_nx_min],
-	    info.int_params[AC_ny_min],
-	    0
-    };
-}
 
-static inline int3
-acGetMaxNN(const AcMeshInfo info)
-{
-    return (int3)
-    {
-	    info.int_params[AC_nx_max],
-	    info.int_params[AC_ny_max],
-	    1
-    };
-}
-static inline AcReal3
-acGetLengths(const AcMeshInfo info)
-{
-	return (AcReal3)
-	{
-		info.real_params[AC_xlen],
-		info.real_params[AC_ylen],
-		-1.0
-	};
-}
-static inline int3
-acGetGridNN(const AcMeshInfo info)
-{
-	return (int3)
-	{
-		info.int_params[AC_nxgrid],
-		info.int_params[AC_nygrid],
-		1
-	};
-}
-#endif
 
 static inline AcMeshDims
 acGetMeshDims(const AcMeshInfo info)
@@ -471,6 +470,24 @@ acGetMeshDims(const AcMeshInfo info)
    const int3 m0 = (int3){0, 0, 0};
    const int3 m1 = acGetLocalMM(info);
    const int3 nn = acGetLocalNN(info);
+
+   return (AcMeshDims){
+       .n0 = n0,
+       .n1 = n1,
+       .m0 = m0,
+       .m1 = m1,
+       .nn = nn,
+   };
+}
+
+static inline AcMeshDims
+acGetGridMeshDims(const AcMeshInfo info)
+{
+   const int3 n0 = acGetMinNN(info);
+   const int3 n1 = acGetGridMaxNN(info);
+   const int3 m0 = (int3){0, 0, 0};
+   const int3 m1 = acGetGridMM(info);
+   const int3 nn = acGetGridNN(info);
 
    return (AcMeshDims){
        .n0 = n0,
@@ -494,13 +511,45 @@ FUNC_DEFINE(VertexBufferArray, acGridGetVBA,(void));
 
 FUNC_DEFINE(AcMeshInfo, acGridGetLocalMeshInfo,(void));
 
+#ifdef __cplusplus
+//TP: this is done for perf optim since if acVertexBufferIdx is called often
+//Making it an external function call is quite expensive
+static inline size_t
+acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
+{
+    const int x = acGetInfoValue(info,AC_mxgrid);
+    const int y = acGetInfoValue(info,AC_mygrid);
+    return as_size_t(i) +                          //
+           as_size_t(j) * x + //
+           as_size_t(k) * x * y;
+}
 static inline size_t
 acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
 {
+    const int x = acGetInfoValue(info,AC_mx);
+    const int y = acGetInfoValue(info,AC_my);
     return as_size_t(i) +                          //
-           as_size_t(j) * info.int_params[AC_mx] + //
-           as_size_t(k) * info.int_params[AC_mx] * info.int_params[AC_my];
+           as_size_t(j) * x + //
+           as_size_t(k) * x * y;
 }
+#else
+static inline size_t
+acVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
+{
+    const int3 mm = acGetLocalMM(info);
+    return as_size_t(i) +                          //
+           as_size_t(j) * mm.x + //
+           as_size_t(k) * mm.x * mm.y;
+}
+static inline size_t
+acGridVertexBufferIdx(const int i, const int j, const int k, const AcMeshInfo info)
+{
+    const int3 mm = acGetGridMM(info);
+    return as_size_t(i) +                          //
+           as_size_t(j) * mm.x + //
+           as_size_t(k) * mm.x * mm.y;
+}
+#endif
 
 static inline int3
 acVertexBufferSpatialIdx(const size_t i, const AcMeshInfo info)
@@ -860,6 +909,9 @@ FUNC_DEFINE(AcResult, acGridReduceVecScal,(const Stream stream, const ReductionT
                              const VertexBufferHandle vtxbuf0, const VertexBufferHandle vtxbuf1,
                              const VertexBufferHandle vtxbuf2, const VertexBufferHandle vtxbuf3,
                              AcReal* result));
+
+/** */
+AcResult acGridReduceXYAverage(const Stream stream, const Field field, const Profile profile);
 
 typedef enum {
     ACCESS_READ,
@@ -1272,6 +1324,7 @@ FUNC_DEFINE(AcResult, acDeviceSwapBuffers,(const Device device));
 /** */
 FUNC_DEFINE(AcResult, acDeviceLoadScalarUniform,(const Device device, const Stream stream,
                                    const AcRealParam param, const AcReal value));
+FUNC_DEFINE(AcResult, acDevicePrintProfiles,(const Device device));
 
 /** */
 FUNC_DEFINE(AcResult, acDeviceLoadVectorUniform,(const Device device, const Stream stream,
@@ -1447,6 +1500,31 @@ FUNC_DEFINE(AcResult, acDeviceReduceVecScal,(const Device device, const Stream s
                                const ReductionType rtype, const VertexBufferHandle vtxbuf0,
                                const VertexBufferHandle vtxbuf1, const VertexBufferHandle vtxbuf2,
                                const VertexBufferHandle vtxbuf3, AcReal* result));
+
+/** */
+FUNC_DEFINE(AcResult, acDeviceReduceXYAverage,(const Device device, const Stream stream, const Field field,
+                                 const Profile profile));
+
+/** */
+FUNC_DEFINE(AcResult, acDeviceSwapProfileBuffer,(const Device device, const Profile handle));
+/** */
+FUNC_DEFINE(AcResult, acDeviceReduceXYAverages,(const Device device, const Stream stream));
+
+/** */
+FUNC_DEFINE(AcResult, acDeviceSwapProfileBuffers,(const Device device, const Profile* profiles,
+                                    const size_t num_profiles));
+
+/** */
+FUNC_DEFINE(AcResult, acDeviceSwapAllProfileBuffers,(const Device device));
+
+/** */
+FUNC_DEFINE(AcResult, acDeviceLoadProfile,(const Device device, const AcReal* hostprofile,
+                             const size_t hostprofile_count, const Profile profile));
+
+/** */
+FUNC_DEFINE(AcResult, acDeviceStoreProfile,(const Device device, const Profile profile, AcReal* hostprofile,
+                              const size_t hostprofile_count));
+
 /** */
 FUNC_DEFINE(AcResult,  acDeviceFinishReduce,(Device device, const Stream stream, AcReal* result,const AcKernel kernel, const KernelReduceOp reduce_op, const AcRealOutputParam output));
 
@@ -1504,74 +1582,36 @@ FUNC_DEFINE(AcResult, acDeviceGetVBApointers,(Device device, AcReal *vbapointer[
 #endif
 
 
+/** */
+AcResult acDeviceWriteMeshToDisk(const Device device, const VertexBufferHandle vtxbuf,
+                                 const char* filepath);
+
 /*
  * =============================================================================
  * Helper functions
  * =============================================================================
  */
-static AcResult UNUSED
-acHostUpdateBuiltinParams(AcMeshInfo* config)
-{
-    ERRCHK_ALWAYS(config->int_params[AC_nx] > 0 || config->int_params[AC_nxgrid] > 0);
-    ERRCHK_ALWAYS(config->int_params[AC_ny] > 0 || config->int_params[AC_nxgrid] > 0);
-#if TWO_D == 0
-    ERRCHK_ALWAYS(config->int_params[AC_nz] > 0 || config->int_params[AC_nxgrid] > 0);
-#endif
-    if(config->int_params[AC_nx] <= 0)
-        config->int_params[AC_nx] = config->int_params[AC_nxgrid];
-    if(config->int_params[AC_ny] <= 0)
-        config->int_params[AC_ny] = config->int_params[AC_nygrid];
-#if TWO_D == 0
-    if(config->int_params[AC_nz] <= 0)
-        config->int_params[AC_nz] = config->int_params[AC_nzgrid];
-#endif
-
-    config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER;
-    ///////////// PAD TEST
-    // config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER + PAD_SIZE;
-    ///////////// PAD TEST
-    config->int_params[AC_my] = config->int_params[AC_ny] + STENCIL_ORDER;
-#if TWO_D == 0 
-    config->int_params[AC_mz] = config->int_params[AC_nz] + STENCIL_ORDER;
-#endif
-
-    // Bounds for the computational domain, i.e. nx_min <= i < nx_max
-    config->int_params[AC_nx_min] = STENCIL_ORDER / 2;
-    config->int_params[AC_ny_min] = STENCIL_ORDER / 2;
-#if TWO_D == 0
-    config->int_params[AC_nz_min] = STENCIL_ORDER / 2;
-#endif
-
-    config->int_params[AC_nx_max] = config->int_params[AC_nx_min] + config->int_params[AC_nx];
-    config->int_params[AC_ny_max] = config->int_params[AC_ny_min] + config->int_params[AC_ny];
-#if TWO_D == 0
-    config->int_params[AC_nz_max] = config->int_params[AC_nz_min] + config->int_params[AC_nz];
-#endif
-    /* Additional helper params */
-    // Int helpers
-    config->int_params[AC_mxy]  = config->int_params[AC_mx] * config->int_params[AC_my];
-    config->int_params[AC_nxy]  = config->int_params[AC_nx] * config->int_params[AC_ny];
-
-    config->real_params[AC_xlen] = config->int_params[AC_nxgrid]*config->real_params[AC_dsx];
-    config->real_params[AC_ylen] = config->int_params[AC_nygrid]*config->real_params[AC_dsy];
-#if TWO_D == 0
-    config->int_params[AC_nxyz] = config->int_params[AC_nxy] * config->int_params[AC_nz];
-    config->real_params[AC_zlen] = config->int_params[AC_nzgrid]*config->real_params[AC_dsz];
-#endif
-
-    return AC_SUCCESS;
-}
+AcResult 
+acHostUpdateBuiltinParams(AcMeshInfo* config);
+AcResult 
+acHostUpdateBuiltinBothParams(AcMeshInfo* config, AcCompInfo* comp_config);
+AcResult 
+acHostUpdateBuiltinCompParams(AcCompInfo* comp_config);
 
 
 
 /** Creates a mesh stored in host memory */
 FUNC_DEFINE(AcResult, acHostMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
+/** Creates a mesh stored in host memory (size of the whole grid) */
+FUNC_DEFINE(AcResult, acHostGridMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
 
 /** Checks that the loaded dynamic Astaroth is binary compatible with the loader */
 FUNC_DEFINE(AcResult, acVerifyCompatibility, (const size_t mesh_size, const size_t mesh_info_size, const int num_reals, const int num_ints, const int num_bools, const int num_real_arrays, const int num_int_arrays, const int num_bool_arrays));
 
 /** Randomizes a host mesh */
 FUNC_DEFINE(AcResult, acHostMeshRandomize,(AcMesh* mesh));
+/** Randomizes a host mesh (uses n[xyz]grid params)*/
+FUNC_DEFINE(AcResult, acHostGridMeshRandomize,(AcMesh* mesh));
 
 /** Destroys a mesh stored in host memory */
 FUNC_DEFINE(AcResult, acHostMeshDestroy,(AcMesh* mesh));
@@ -1579,9 +1619,14 @@ FUNC_DEFINE(AcResult, acHostMeshDestroy,(AcMesh* mesh));
 /** Sets the dimensions of the computational domain to (nx, ny, nz) and recalculates the built-in
  * parameters derived from them (mx, my, mz, nx_min, and others) */
 #if TWO_D == 0
-FUNC_DEFINE(AcResult, acSetMeshDims,(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info));
+AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info);
 #else
-FUNC_DEFINE(AcResult, acSetMeshDims,(const size_t nx, const size_t ny, AcMeshInfo* info));
+AcResult acSetMeshDims(const size_t nx, const size_t ny, AcMeshInfo* info);
+#endif
+#if TWO_D == 0
+AcResult acSetMeshDimsBoth(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info, AcCompInfo* comp_info);
+#else
+AcResult acSetMeshDimsBoth(const size_t nx, const size_t ny, AcMeshInfo* info, AcCompInfo* comp_info);
 #endif
 
 /*
@@ -1612,6 +1657,9 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 #if AC_RUNTIME_COMPILATION
 #include "astaroth_lib.h"
 
+#define LOAD_DSYM(FUNC_NAME) *(void**)(&FUNC_NAME) = dlsym(handle,#FUNC_NAME); \
+			     if(!FUNC_NAME) fprintf(stderr,"Astaroth error: was not able to load %s\n",#FUNC_NAME);
+
   static AcLibHandle __attribute__((unused)) acLoadLibrary()
   {
 	acLoadRunTime();
@@ -1622,6 +1670,14 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 		fprintf(stderr,"Error message: %s\n",dlerror());
 		exit(EXIT_FAILURE);
 	}
+	LOAD_DSYM(acGetLocalNN)
+	LOAD_DSYM(acGetLocalMM)
+	LOAD_DSYM(acGetGridNN)
+	LOAD_DSYM(acGetGridMM)
+	LOAD_DSYM(acGetMinNN)
+	LOAD_DSYM(acGetMaxNN)
+	LOAD_DSYM(acGetGridMaxNN)
+	LOAD_DSYM(acGetLengths)
 	*(void**)(&acGetKernelId) = dlsym(handle,"acGetKernelId");
 	if(!acGetKernelId) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGetKernelId");
 	*(void**)(&acGetKernelIdByName) = dlsym(handle,"acGetKernelIdByName");
@@ -1978,14 +2034,12 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	*(void**)(&acDeviceGetRealInput) = dlsym(handle,"acDeviceGetRealInput");
 	*(void**)(&acDeviceGetIntInput) = dlsym(handle,"acDeviceGetIntInput");
 	*(void**)(&acDeviceGetRealOutput) = dlsym(handle,"acDeviceGetRealOutput");
-	*(void**)(&acHostMeshCreate) = dlsym(handle,"acHostMeshCreate");
-	if(!acHostMeshCreate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshCreate");
-	*(void**)(&acHostMeshRandomize) = dlsym(handle,"acHostMeshRandomize");
-	if(!acHostMeshRandomize) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshRandomize");
+	LOAD_DSYM(acHostMeshCreate)
+	LOAD_DSYM(acHostGridMeshCreate)
+	LOAD_DSYM(acHostMeshRandomize);
+	LOAD_DSYM(acHostGridMeshRandomize);
 	*(void**)(&acHostMeshDestroy) = dlsym(handle,"acHostMeshDestroy");
 	if(!acHostMeshDestroy) fprintf(stderr,"Astaroth error: was not able to load %s\n","acHostMeshDestroy");
-	*(void**)(&acSetMeshDims) = dlsym(handle,"acSetMeshDims");
-	if(!acSetMeshDims) fprintf(stderr,"Astaroth error: was not able to load %s\n","acSetMeshDims");
 	*(void**)(&acLogFromRootProc) = dlsym(handle,"acLogFromRootProc");
 	if(!acLogFromRootProc) fprintf(stderr,"Astaroth error: was not able to load %s\n","acLogFromRootProc");
 	*(void**)(&acVA_LogFromRootProc) = dlsym(handle,"acVA_LogFromRootProc");
@@ -2015,12 +2069,50 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
   }
 #endif
 
+/** Inits the profile to cosine wave */
+AcResult acHostInitProfileToCosineWave(const long double box_size, const size_t nz,
+                                       const long offset, const AcReal amplitude,
+                                       const AcReal wavenumber, const size_t profile_count,
+                                       AcReal* profile);
+
+/** Inits the profile to sine wave */
+AcResult acHostInitProfileToSineWave(const long double box_size, const size_t nz, const long offset,
+                                     const AcReal amplitude, const AcReal wavenumber,
+                                     const size_t profile_count, AcReal* profile);
+
+/** Initialize a profile to a constant value */
+AcResult acHostInitProfileToValue(const long double value, const size_t profile_count,
+                                  AcReal* profile);
+
+/** Writes the host profile to a file */
+AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
+                                  const size_t profile_count);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
 
 #ifdef __cplusplus
+
+#if TWO_D == 0
+static UNUSED AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info, AcCompInfo* comp_info)
+{
+	return acSetMeshDimsBoth(nx,ny,nz,info,comp_info);
+}
+#else
+static UNUSED AcResult acSetMeshDims(const size_t nx, const size_t ny, AcMeshInfo* info, AcCompInfo* comp_info)
+{
+	return acSetMeshDimsBoth(nx,ny,info,comp_info);
+}
+#endif
+
+static UNUSED AcResult 
+acHostUpdateBuiltinParams(AcMeshInfo* config, AcCompInfo* comp_config)
+{
+	return acHostUpdateBuiltinBothParams(config, comp_config);
+}
+
 
 #include "device_set_input_overloads.h"
 #include "device_get_input_overloads.h"

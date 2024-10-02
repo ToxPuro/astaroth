@@ -27,8 +27,8 @@ kernel_symmetric_boundconds(const int3 start, const int3 end, AcReal* vtxbuf, co
 
     // If destination index is inside the computational domain, return since
     // the boundary conditions are only applied to the ghost zones
-    if (i_dst >= DCONST(AC_nx_min) && i_dst < DCONST(AC_nx_max) && j_dst >= DCONST(AC_ny_min) &&
-        j_dst < DCONST(AC_ny_max) && k_dst >= DCONST(AC_nz_min) && k_dst < DCONST(AC_nz_max))
+    if (i_dst >= VAL(AC_nx_min) && i_dst < VAL(AC_nx_max) && j_dst >= VAL(AC_ny_min) &&
+        j_dst < VAL(AC_ny_max) && k_dst >= VAL(AC_nz_min) && k_dst < VAL(AC_nz_max))
         return;
 
     // Find the source index
@@ -44,9 +44,9 @@ kernel_symmetric_boundconds(const int3 start, const int3 end, AcReal* vtxbuf, co
     boundlocx0 = bsize;
     boundlocy0 = bsize;
     boundlocz0 = bsize;
-    boundlocx1 = DCONST(AC_nx_max) - 1;
-    boundlocy1 = DCONST(AC_ny_max) - 1;
-    boundlocz1 = DCONST(AC_nz_max) - 1;
+    boundlocx1 = VAL(AC_nx_max) - 1;
+    boundlocy1 = VAL(AC_ny_max) - 1;
+    boundlocz1 = VAL(AC_nz_max) - 1;
 
     // Defaults
     i_src = i_dst;
@@ -147,45 +147,45 @@ kernel_periodic_boundconds(const int3 start, const int3 end, AcReal* vtxbuf)
     if (i_dst >= end.x || j_dst >= end.y || k_dst >= end.z)
         return;
 
-    // if (i_dst >= DCONST(AC_mx) || j_dst >= DCONST(AC_my) || k_dst >= DCONST(AC_mz))
+    // if (i_dst >= VAL(AC_mx) || j_dst >= VAL(AC_my) || k_dst >= VAL(AC_mz))
     //    return;
 
     // If destination index is inside the computational domain, return since
     // the boundary conditions are only applied to the ghost zones
     if (
-	i_dst >= DCONST(AC_nx_min) && i_dst < DCONST(AC_nx_max) && 
-	j_dst >= DCONST(AC_ny_min) && j_dst < DCONST(AC_ny_max) 
+	i_dst >= VAL(AC_nx_min) && i_dst < VAL(AC_nx_max) && 
+	j_dst >= VAL(AC_ny_min) && j_dst < VAL(AC_ny_max) 
 #if TWO_D == 0
 	&& 
-	k_dst >= DCONST(AC_nz_min) && k_dst < DCONST(AC_nz_max)
+	k_dst >= VAL(AC_nz_min) && k_dst < VAL(AC_nz_max)
 #endif
         )
         return;
 
     // Find the source index
     // Map to nx, ny, nz coordinates
-    int i_src = i_dst - DCONST(AC_nx_min);
-    int j_src = j_dst - DCONST(AC_ny_min);
+    int i_src = i_dst - VAL(AC_nx_min);
+    int j_src = j_dst - VAL(AC_ny_min);
 
 
     // Translate (s.t. the index is always positive)
-    i_src += DCONST(AC_nx);
-    j_src += DCONST(AC_ny);
+    i_src += VAL(AC_nx);
+    j_src += VAL(AC_ny);
 
     // Wrap
-    i_src %= DCONST(AC_nx);
-    j_src %= DCONST(AC_ny);
+    i_src %= VAL(AC_nx);
+    j_src %= VAL(AC_ny);
 
     // Map to mx, my, mz coordinates
-    i_src += DCONST(AC_nx_min);
+    i_src += VAL(AC_nx_min);
 
     //Z-dimension done separately to make it easier to mask it out
 #if TWO_D == 0
-    int k_src = k_dst - DCONST(AC_nz_min);
-    k_src += DCONST(AC_nz);
-    k_src %= DCONST(AC_nz);
-    j_src += DCONST(AC_ny_min);
-    k_src += DCONST(AC_nz_min);
+    int k_src = k_dst - VAL(AC_nz_min);
+    k_src += VAL(AC_nz);
+    k_src %= VAL(AC_nz);
+    j_src += VAL(AC_ny_min);
+    k_src += VAL(AC_nz_min);
 #else
     int k_src = 0;
 #endif
@@ -226,10 +226,10 @@ acKernelGeneralBoundconds(const cudaStream_t stream, const int3 start, const int
     int3 bc_bot = {config.int_params[AC_bc_type_bot_x], config.int_params[AC_bc_type_bot_y],
                    config.int_params[AC_bc_type_bot_z]};
 
-    //#if AC_MPI_ENABLED
-    //    printf( "WARNING : NON-PERIODIC BOUNDARY CONDITIONS NOT SUPPORTER BY MPI! Only working at
-    //    node level.\n"); return AC_FAILURE;
-    //#endif
+    // #if AC_MPI_ENABLED
+    //     printf( "WARNING : NON-PERIODIC BOUNDARY CONDITIONS NOT SUPPORTER BY MPI! Only working at
+    //     node level.\n"); return AC_FAILURE;
+    // #endif
 
     if (vtxbuf_handle != -1) // This is a dummy to make swithing boundary condition with respect to
                              // more possible later

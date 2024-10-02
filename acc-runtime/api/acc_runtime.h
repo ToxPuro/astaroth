@@ -37,7 +37,36 @@
   #include "errchk.h"
 
   //copied from the sample setup
+  #include "user_built-in_constants.h"
   #include "user_defines.h"
+  #include "func_attributes.h"
+
+#ifdef __cplusplus
+typedef struct Field3
+{
+	VertexBufferHandle x;
+	VertexBufferHandle y;
+	VertexBufferHandle z;
+	HOST_DEVICE_INLINE Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
+} Field3;
+
+constexpr Field3 
+MakeField3(const Field& x, const Field& y, const Field& z)
+{
+	return (Field3){x,y,z};
+}
+template <size_t N>
+constexpr __device__ __forceinline__
+std::array<Field3,N>
+MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
+{
+	std::array<int3,N> res{};
+	for(size_t i = 0; i < N; ++i)
+		res[i] = (Field3){x,y,z};
+	return res;
+}
+#endif
+
   #include "kernel_reduce_outputs.h"
   #include "user_input_typedefs.h"
 
@@ -82,22 +111,32 @@
   typedef struct {
 	  AcCompInfoConfig config;
 	  AcCompInfoLoaded is_loaded;
+#if AC_MPI_ENABLED
+    	  MPI_Comm comm;
+#endif
   } AcCompInfo;
 
   typedef struct {
 #include "input_decl.h"
   } AcInputs;
 
+typedef struct {
+  AcReal* in[NUM_PROFILES];
+  AcReal* out[NUM_PROFILES];
+  size_t count;
+} ProfileBufferArray;
+
   typedef struct {
     AcReal* in[NUM_VTXBUF_HANDLES];
     AcReal* out[NUM_VTXBUF_HANDLES];
     AcReal* w[NUM_WORK_BUFFERS];
-
     size_t bytes;
+    size_t mx, my, mz;
     acKernelInputParams kernel_input_params;
     AcReal* reduce_scratchpads[NUM_REAL_OUTPUTS+1][NUM_REDUCE_SCRATCHPADS];
     int reduce_offset;
     size_t scratchpad_size;
+    ProfileBufferArray profiles;
   } VertexBufferArray;
 
 
@@ -143,7 +182,7 @@
 
   FUNC_DEFINE(VertexBufferArray, acVBACreate,(const AcMeshInfo config));
 
-  FUNC_DEFINE(void, acVBAUpdate,(VertexBufferArray* vba, const AcMeshInfo config));
+  FUNC_DEFINE(void, acUpdateArrays ,(const AcMeshInfo config));
 
   FUNC_DEFINE(void, acVBADestroy,(VertexBufferArray* vba, const AcMeshInfo config));
 
@@ -195,8 +234,8 @@
 	if(!acVBAReset) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBAReset");
 	*(void**)(&acVBACreate) = dlsym(handle,"acVBACreate");
 	if(!acVBACreate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBACreate");
-	*(void**)(&acVBAUpdate) = dlsym(handle,"acVBAUpdate");
-	if(!acVBAUpdate) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBAUpdate");
+	*(void**)(&acUpdateArrays) = dlsym(handle,"acUpdateArrays");
+	if(!acUpdateArrays) fprintf(stderr,"Astaroth error: was not able to load %s\n","acUpdateArrays");
 	*(void**)(&acVBADestroy) = dlsym(handle,"acVBADestroy");
 	if(!acVBADestroy) fprintf(stderr,"Astaroth error: was not able to load %s\n","acVBADestroy");
 	*(void**)(&acRandInitAlt) = dlsym(handle,"acRandInitAlt");
@@ -258,12 +297,14 @@
 #include <string.h>
 
   #ifdef __cplusplus
+#include "is_comptime_param.h"
 #include  "push_to_config.h"
 
   template <typename P, typename V>
   void
   acPushToConfig(AcMeshInfo& config, AcCompInfo& comp_info, P param, V val)
   {
+	  static_assert(!std::is_same<P,int>::value);
           if constexpr(IsCompParam(param))
                   acLoadCompInfo(param, val, &comp_info);
           else
@@ -279,9 +320,43 @@
   }
 #include "load_comp_info.h"
 
-#ifdef __cplusplus
-#include "is_comptime_param.h"
-#endif
+void acVBASwapBuffer(const Field field, VertexBufferArray* vba);
+
+void acVBASwapBuffers(VertexBufferArray* vba);
+
+void acPBASwapBuffer(const Profile profile, VertexBufferArray* vba);
+
+void acPBASwapBuffers(VertexBufferArray* vba);
+
+void acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream);
+
+// Testing
+typedef struct {
+  size_t x, y, z, w;
+} AcShape;
+typedef AcShape AcIndex;
+
+// Returns the number of elements contained within shape
+size_t acShapeSize(const AcShape shape);
+
+AcResult acReindex(const cudaStream_t stream, //
+                   const AcReal* in, const AcIndex in_offset,
+                   const AcIndex in_shape, //
+                   AcReal* out, const AcIndex out_offset,
+                   const AcIndex out_shape, const AcShape block_shape);
+
+AcResult acReindexCross(const cudaStream_t stream, //
+                        const VertexBufferArray vba, const AcIndex in_offset,
+                        const AcShape in_shape, //
+                        AcReal* out, const AcIndex out_offset,
+                        const AcShape out_shape, const AcShape block_shape);
+
+AcResult acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
+                           const size_t count, const size_t num_segments,
+                           AcReal* d_out);
+
+AcResult acMultiplyInplace(const AcReal value, const size_t count,
+                           AcReal* array);
 
 #ifdef __cplusplus
 
@@ -318,6 +393,12 @@
   {
 	  return get_array_info(array).is_alive;
   }
+
+  FUNC_DEFINE(AcResult, acPBAReset,(const cudaStream_t stream, ProfileBufferArray* pba));
+
+  FUNC_DEFINE(ProfileBufferArray, acPBACreate,(const size_t count));
+
+  FUNC_DEFINE(void, acPBADestroy,(ProfileBufferArray* pba));
 
   template <typename P>
   constexpr static auto
@@ -362,6 +443,7 @@
   get_is_loaded(const P param, const AcCompInfoLoaded config)
   {
 #include "get_from_comp_config.h"
+	  return false;
   };
 
   template <typename P>

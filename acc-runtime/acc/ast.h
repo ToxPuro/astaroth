@@ -28,6 +28,21 @@
 #include "vecs.h"
 #include <sys/stat.h>
 
+/**
+static unsigned long
+    hash(char *str)
+    {
+	if(!str) return -1;
+        unsigned long hash = 5381;
+        int c;
+
+        while ((c = *str++))
+            hash = ((hash << 5) + hash) + c; // hash * 33 + c
+
+        return hash;
+    }
+**/
+
 #define BUFFER_SIZE (4096)
 #define FATAL_ERROR_MESSAGE "\nFATAL AC ERROR: "
 
@@ -80,12 +95,14 @@ typedef struct astnode_s {
   struct astnode_s* lhs;
   struct astnode_s* rhs;
   NodeType type; // Type of the AST node
-  char* buffer;  // Indentifiers and other strings (empty by default)
+  const char* buffer;  // Indentifiers and other strings (empty by default)
+  const char* buffer_token;  // Indentifiers and other strings (empty by default)
+
 
   int token;     // Type of a terminal (that is not a simple char)
-  char* prefix;  // Strings. Also makes the grammar since we don't have
-  char* infix;   // to divide it into max two-child rules
-  char* postfix; // (which makes it much harder to read)
+  const char* prefix;  // Strings. Also makes the grammar since we don't have
+  const char* infix;   // to divide it into max two-child rules
+  const char* postfix; // (which makes it much harder to read)
   bool is_constexpr; //Whether the node represents information known at compile time
   const char* expr_type; //The type of the expr the node represent
   bool no_auto;
@@ -101,13 +118,12 @@ astnode_dup(const ASTNode* node, ASTNode* parent)
 	res->parent = parent;
 	res -> token = node->token;
 	res -> is_constexpr = node->is_constexpr;
-	res -> expr_type = strdupnullok(node->expr_type);
 	res -> no_auto = node->no_auto;
-	res -> expr_type = strdupnullok(node->expr_type);
-	res->buffer = strdupnullok(node->buffer);
-	res->prefix=  strdupnullok(node->prefix);
-	res->infix =  strdupnullok(node->infix);
-	res->postfix= strdupnullok(node->postfix);
+	res -> expr_type = node->expr_type;
+	res->buffer = node->buffer;
+	res->prefix=  node->prefix;
+	res->infix =  node->infix;
+	res->postfix= node->postfix;
 	if(node->lhs)
 		res->lhs= astnode_dup(node->lhs,res);
 	if(node->rhs)
@@ -130,7 +146,7 @@ astnode_create(const NodeType type, ASTNode* lhs, ASTNode* rhs)
   node->buffer          = NULL;
   node->is_constexpr    = false;
   node->no_auto         = false;
-  node->expr_type            = NULL;
+  node->expr_type       = NULL;
 
   node->token  = 0;
   node->prefix = node->infix = node->postfix = NULL;
@@ -151,45 +167,71 @@ astnode_destroy(ASTNode* node)
     astnode_destroy(node->lhs);
   if (node->rhs)
     astnode_destroy(node->rhs);
-  free(node->buffer);
-  free(node->prefix);
-  free(node->infix);
-  free(node->postfix);
+  node->buffer  = NULL;
+  node->prefix  = NULL;
+  node->infix   = NULL;
+  node->postfix = NULL;
   free(node);
 }
 
 static inline void
 astnode_set_buffer(const char* buffer, ASTNode* node)
 {
-  if (node->buffer)
-    free(node->buffer);
-  node->buffer = strdup(buffer);
+  node->buffer = intern(buffer);
 }
+
 
 static inline void
 astnode_set_prefix(const char* prefix, ASTNode* node)
 {
-  if (node->prefix)
-    free(node->prefix);
-  node->prefix = strdup(prefix);
+  node->prefix= intern(prefix);
 }
 
 static inline void
 astnode_set_infix(const char* infix, ASTNode* node)
 {
-  if (node->infix)
-    free(node->infix);
-  node->infix = strdup(infix);
+  node->infix = intern(infix);
 }
 
 static inline void
 astnode_set_postfix(const char* postfix, ASTNode* node)
 {
-  if (node->postfix)
-    free(node->postfix);
-  node->postfix = strdup(postfix);
+  node->postfix = intern(postfix);
 }
 
+static inline void
+astnode_sprintf(ASTNode* node, const char* format, ...)
+{
+	static char buffer[10000];
+	va_list args;
+	va_start(args,format);
+	int ret = vsprintf(buffer, format, args);
+	va_end(args);
+	astnode_set_buffer(buffer,node);
+}
+
+
+static inline void
+astnode_sprintf_postfix(ASTNode* node, const char* format, ...)
+{
+	static char buffer[10000];
+	va_list args;
+	va_start(args,format);
+	int ret = vsprintf(buffer, format, args);
+	va_end(args);
+	astnode_set_postfix(buffer,node);
+}
+
+static inline void
+astnode_sprintf_prefix(ASTNode* node, const char* format, ...)
+{
+	static char buffer[10000];
+	va_list args;
+	va_start(args,format);
+	int ret = vsprintf(buffer, format, args);
+	va_end(args);
+	astnode_set_prefix(buffer,node);
+}
 static inline void
 astnode_print(const ASTNode* node)
 {
@@ -217,6 +259,12 @@ static inline  void combine_buffers_recursive(const ASTNode* node, char* res){
 static inline  void combine_buffers(const ASTNode* node, char* res){
   res[0] = '\0';	
   combine_buffers_recursive(node,res);
+}
+static const char* combine_buffers_new(const ASTNode* node)
+{
+	static char res[4098];
+	combine_buffers(node,res);
+	return res;
 }
 static inline void combine_all_recursive(const ASTNode* node, char* res){
   if(node->prefix)
@@ -306,7 +354,7 @@ get_node_by_buffer_and_type(const char* test, const NodeType type, const ASTNode
   assert(node);
 
   ASTNode* res = NULL;
-  if (node->buffer && !strcmp(test,node->buffer) && node->type & type)
+  if (node->buffer && node->type & type && !strcmp(test,node->buffer))
     res =  (ASTNode*) node;
   if (node->lhs && !res)
     res = get_node_by_buffer_and_type(test, type, node->lhs);
@@ -451,6 +499,18 @@ strcatprintf(char* dst, const char* format, ...)
 	strcat(dst,buffer);
 	
 }
+
+static inline void
+fprintf_filename(const char* filename, const char* format, ...)
+{
+	FILE* fp = fopen(filename,"a");
+	va_list args;
+	va_start(args,format);
+	int ret = vfprintf(fp, format, args);
+	va_end(args);
+	fclose(fp);
+}
+
 static inline char*
 sprintf_new(const char* format, ...)
 {
@@ -508,18 +568,6 @@ file_append(const char* filename, const char* str_to_append)
 	fclose(fp);
 }
 
-static void
-remove_substrings(ASTNode* node, const char* sub)
-{
-	if(node->lhs)
-		remove_substrings(node->lhs,sub);
-	if(node->rhs)
-		remove_substrings(node->rhs,sub);
-	if(node->prefix)  remove_substring(node->prefix,sub);
-	if(node->postfix) remove_substring(node->postfix,sub);
-	if(node->infix)   remove_substring(node->infix,sub);
-	if(node->buffer)  remove_substring(node->buffer,sub);
-}
 
 static inline bool
 is_number(const char* str)

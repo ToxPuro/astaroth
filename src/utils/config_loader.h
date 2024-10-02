@@ -75,9 +75,9 @@ is_initcondtype(const int idx)
 }
 
 static int
-parse_intparam(const size_t idx, const char* value)
+parse_intparam(const size_t idx, const char* value, const bool run_const)
 {
-    if (is_bctype(idx)) {
+    if (is_bctype(idx) && !run_const) {
         int bctype = -1;
         if ((bctype = find_str(value, bctype_names, NUM_BCTYPES)) >= 0)
             return bctype;
@@ -91,7 +91,7 @@ parse_intparam(const size_t idx, const char* value)
             return 0;
         }
     }
-    else if (is_initcondtype(idx)) {
+    else if (is_initcondtype(idx) && !run_const) {
         int initcondtype = -1;
         if ((initcondtype = find_str(value, initcondtype_names, NUM_INIT_TYPES)) >= 0)
             return initcondtype;
@@ -156,10 +156,10 @@ parse_config(const char* path, AcMeshInfo* config, AcCompInfo* comp_info)
 
         int idx = -1;
         if ((idx = find_str(keyword, intparam_names, NUM_INT_PARAMS)) >= 0) {
-	    acPushToConfig(*config,*comp_info,static_cast<AcIntParam>(idx),parse_intparam(idx,value));
+	    acPushToConfig(*config,*comp_info,static_cast<AcIntParam>(idx),parse_intparam(idx,value,false));
         }
         else if ((idx = find_str(keyword, int_comp_param_names, NUM_INT_COMP_PARAMS)) >= 0) {
-	    acPushToConfig(*config,*comp_info,static_cast<AcIntCompParam>(idx),parse_intparam(idx,value));
+	    acPushToConfig(*config,*comp_info,static_cast<AcIntCompParam>(idx),parse_intparam(idx,value,true));
         }
         else if ((idx = find_str(keyword, realparam_names, NUM_REAL_PARAMS)) >= 0) {
             AcReal real_val = atof(value);
@@ -251,7 +251,7 @@ acLoadConfig(const char* config_path, AcMeshInfo* config, AcCompInfo* comp_info)
     memset(config->real3_arrays,0,NUM_REAL3_ARRAYS*sizeof(int*));
 
     parse_config(config_path, config, comp_info);
-    acHostUpdateBuiltinParams(config);
+    acHostUpdateBuiltinParams(config,comp_info);
 #if AC_VERBOSE
     printf("###############################################################\n");
     printf("Config dimensions loaded:\n");

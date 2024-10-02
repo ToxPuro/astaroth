@@ -1,7 +1,3 @@
-#define AC_inv_dsx  (1.0/AC_dsx)
-#define AC_inv_dsy  (1.0/AC_dsy)
-#define AC_inv_dsz  (1.0/AC_dsz)
-
 #define AC_inv_dsx_2 AC_inv_dsx*AC_inv_dsx
 #define AC_inv_dsy_2 AC_inv_dsy*AC_inv_dsy
 #define AC_inv_dsz_2 AC_inv_dsz*AC_inv_dsz
@@ -10,6 +6,10 @@
 #define AC_inv_dsx_6 AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx
 #define AC_inv_dsy_6 AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy
 #define AC_inv_dsz_6 AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz
+
+#define AC_dsx_6 AC_dsx*AC_dsx*AC_dsx*AC_dsx*AC_dsx*AC_dsx
+#define AC_dsy_6 AC_dsy*AC_dsy*AC_dsy*AC_dsy*AC_dsy*AC_dsy
+#define AC_dsz_6 AC_dsz*AC_dsz*AC_dsz*AC_dsz*AC_dsz*AC_dsz
 
 #define AC_inv_dsx_5 AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx
 #define AC_inv_dsy_5 AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy
@@ -106,6 +106,37 @@ Stencil der5z {
     [2][0][0]  = AC_inv_dsz_5 * DER5_2,
     [3][0][0]  = AC_inv_dsz_5 * DER5_3
 }
+
+der5x1y(Field f)
+{
+	print("NOT implemented der5x1y\n")
+	return 0.0
+}
+der5x1z(Field f)
+{
+	print("NOT implemented der5x1z\n")
+	return 0.0
+}
+der5y1x(Field f)
+{
+	print("NOT implemented der5y1x\n")
+	return 0.0
+}
+der5y1z(Field f)
+{
+	print("NOT implemented der5y1z\n")
+	return 0.0
+}
+der5z1x(Field f)
+{
+	print("NOT implemented der5z1x\n")
+	return 0.0
+}
+der5z1y(Field f)
+{
+	print("NOT implemented der5z1y\n")
+	return 0.0
+}
 //TP: corresponds to der4 in Pencil Code
 Stencil der4x {
     [0][0][-3] = AC_inv_dsx_4 * DER4_3,
@@ -163,6 +194,56 @@ Stencil der6z {
     [3][0][0]  = AC_inv_dsz_6 * DER6_3
 }
 
+//TP: we do it this way since these most probably called less often
+//Thus these should be less performant then the normal versions
+der6x_ignore_spacing(Field f)
+{
+	return AC_dsx_6*der6x(f)
+}
+der6y_ignore_spacing(Field f)
+{
+	return AC_dsx_6*der6y(f)
+}
+der6z_ignore_spacing(Field f)
+{
+	return AC_dsz_6*der6z(f)
+}
+
+der4x2y(Field f)
+{
+	print("NOT implemented der4x2y\n")
+	return 0.0
+}
+der4x2z(Field f)
+{
+	print("NOT implemented der4x2z\n")
+	return 0.0
+}
+der4y2x(Field f)
+{
+	print("NOT implemented der4y2x\n")
+	return 0.0
+}
+der4y2z(Field f)
+{
+	print("NOT implemented der4y2z\n")
+	return 0.0
+}
+der4z2x(Field f)
+{
+	print("NOT implemented der4z2x\n")
+	return 0.0
+}
+der4z2y(Field f)
+{
+	print("NOT implemented der4z2y\n")
+	return 0.0
+}
+der2i2j2k(Field f)
+{
+	print("NOT implemented der2i2j2k\n")
+	return 0.0
+}
 Stencil derx {
     [0][0][-3] = -AC_inv_dsx * DER1_3,
     [0][0][-2] = -AC_inv_dsx * DER1_2,
@@ -382,10 +463,6 @@ Stencil dery {
     [2][0]  = AC_inv_dsy * DER1_2,
     [3][0]  = AC_inv_dsy * DER1_3
 }
-der6z(Field field)
-{
-	return 0.0
-}
 
 Stencil derxx {
     [0][-3] = AC_inv_dsx_2 * DER2_3,
@@ -452,23 +529,5 @@ Stencil der6y_upwd {
 #endif
 
 
-elemental laplace(Field s) {
-    return derxx(s) + deryy(s) + derzz(s)
-}
 
 
-elemental gradient(Field s) {
-    return real3(derx(s), dery(s), derz(s))
-}
-
-elemental gradient_upwd(Field s) {
-    return real3(der6x_upwd(s), der6y_upwd(s), der6z_upwd(s))
-}
-
-divergence(Field3 v) {
-    return derx(v.x) + dery(v.y) + derz(v.z)
-}
-
-curl(Field3 v) {
-    return real3(dery(v.z) - derz(v.y), derz(v.x) - derx(v.z), derx(v.y) - dery(v.x))
-}

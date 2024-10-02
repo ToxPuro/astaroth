@@ -2,5 +2,7 @@ extern "C"
 {
 
 void
-acCompile(const char* compilation_string, const AcCompInfo info);
+acCompile(const char* compilation_string, AcCompInfo info);
+void
+acLoadRunConsts(AcCompInfo info);
 }

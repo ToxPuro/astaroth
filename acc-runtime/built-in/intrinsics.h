@@ -22,4 +22,3 @@ intrinsic ceil
 real intrinsic random_uniform
 real intrinsic atomicAdd
 
-

@@ -3,6 +3,7 @@
 #define AC_IN_AC_LIBRARY
 #endif
 #define longlong long long
+#include "func_attributes.h"
 
 #include <assert.h>
 /*
@@ -25,13 +26,7 @@
 #include "user_defines.h"
 
 
-typedef struct Field3
-{
-	VertexBufferHandle x;
-	VertexBufferHandle y;
-	VertexBufferHandle z;
-	constexpr Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
-} Field3;
+
 
 #include <array>
 
@@ -96,21 +91,6 @@ atomicAdd(T* dst, T val)
 // Just nasty: Must evaluate all code branches given arbitrary input
 // if we want automated stencil generation to work in every case
 #define d_multigpu_offset ((int3){0, 0, 0})
-constexpr Field3 
-MakeField3(const Field& x, const Field& y, const Field& z)
-{
-	return (Field3){x,y,z};
-}
-template <size_t N>
-constexpr __device__ __forceinline__
-std::array<Field3,N>
-MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
-{
-	std::array<int3,N> res{};
-	for(size_t i = 0; i < N; ++i)
-		res[i] = (Field3){x,y,z};
-	return res;
-}
 
 
 constexpr int
@@ -188,7 +168,6 @@ constexpr static AcMeshInfo d_mesh_info = get_d_mesh_info();
 #include "dconst_decl.h"
 #include "rconst_decl.h"
 
-#include "user_constants.h"
 #include "dconst_arrays_decl.h"
 #include "gmem_arrays_accessed_decl.h"
 //#define DECLARE_GMEM_ARRAY(DATATYPE, DEFINE_NAME, ARR_NAME) DATATYPE AC_INTERNAL_gmem_##DEFINE_NAME##_arrays[NUM_##ARR_NAME##_ARRAYS+1][1000] {}
@@ -255,6 +234,10 @@ vbaCreate(const size_t count)
     vba.in[i]  = (AcReal*)malloc(bytes);
     vba.out[i] = (AcReal*)malloc(bytes);
   }
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    vba.profiles.in[i]  = (AcReal*)malloc(bytes);
+    vba.profiles.out[i] = (AcReal*)malloc(bytes);
+  }
 
   return vba;
 }
@@ -268,6 +251,12 @@ vbaDestroy(VertexBufferArray* vba)
     vba->in[i]  = NULL;
     vba->out[i] = NULL;
   }
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    free(vba->profiles.in[i]);
+    free(vba->profiles.out[i]);
+    vba->profiles.in[i]  = NULL;
+    vba->profiles.out[i] = NULL;
+  }
 }
 VertexBufferArray VBA = vbaCreate(1000);
 
@@ -278,7 +267,9 @@ execute_kernel(const int kernel)
 }
 int
 get_executed_conditionals()
-{
+{ 
+  fprintf(stderr,"Getting executed conditionals\n");
+  fflush(stderr);
   executed_conditionals = {};
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
 	  execute_kernel(k);
@@ -288,6 +279,8 @@ get_executed_conditionals()
   fwrite(&size, sizeof(int), 1, fp_executed_conditionals);
   fwrite(executed_conditionals.data(), sizeof(int), executed_conditionals.size(), fp_executed_conditionals);
   fclose(fp_executed_conditionals);
+  fprintf(stderr,"Got executed conditionals\n");
+  fflush(stderr);
   return EXIT_SUCCESS;
 }	
 
@@ -312,7 +305,7 @@ main(int argc, char* argv[])
   static int field_has_stencil_op[NUM_ALL_FIELDS];
 
   fprintf(fp,
-          "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS][NUM_STENCILS] "
+          "static int stencils_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES][NUM_STENCILS] "
           "= {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     memset(stencils_accessed, 0,
@@ -350,7 +343,7 @@ main(int argc, char* argv[])
   fclose(fp_field_has_stencil_op);
 
   fprintf(fp,
-          "static int previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS] "
+          "static int previous_accessed[NUM_KERNELS][NUM_ALL_FIELDS+NUM_PROFILES] "
           "= {");
   for (size_t k = 0; k < NUM_KERNELS; ++k) {
     memset(previous_accessed, 0,

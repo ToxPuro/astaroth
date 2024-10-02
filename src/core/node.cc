@@ -170,38 +170,14 @@ print(const AcMeshInfo config)
         printf("[%s]: %g\n", realparam_names[i], double(config.real_params[i]));
 }
 
-static void
-update_builtin_params(AcMeshInfo* config)
-{
-    config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER;
-    ///////////// PAD TEST
-    // config->int_params[AC_mx] = config->int_params[AC_nx] + STENCIL_ORDER + PAD_SIZE;
-    ///////////// PAD TEST
-    config->int_params[AC_my] = config->int_params[AC_ny] + STENCIL_ORDER;
-    config->int_params[AC_mz] = config->int_params[AC_nz] + STENCIL_ORDER;
-
-    // Bounds for the computational domain, i.e. nx_min <= i < nx_max
-    config->int_params[AC_nx_min] = NGHOST;
-    config->int_params[AC_nx_max] = config->int_params[AC_nx_min] + config->int_params[AC_nx];
-    config->int_params[AC_ny_min] = NGHOST;
-    config->int_params[AC_ny_max] = config->int_params[AC_ny] + NGHOST;
-    config->int_params[AC_nz_min] = NGHOST;
-    config->int_params[AC_nz_max] = config->int_params[AC_nz] + NGHOST;
-
-    /* Additional helper params */
-    // Int helpers
-    config->int_params[AC_mxy]  = config->int_params[AC_mx] * config->int_params[AC_my];
-    config->int_params[AC_nxy]  = config->int_params[AC_nx] * config->int_params[AC_ny];
-    config->int_params[AC_nxyz] = config->int_params[AC_nxy] * config->int_params[AC_nz];
-}
 
 static GridDims
 createGridDims(const AcMeshInfo config)
 {
     GridDims grid;
 
-    grid.m = (int3){config.int_params[AC_mx], config.int_params[AC_my], config.int_params[AC_mz]};
-    grid.n = (int3){config.int_params[AC_nx], config.int_params[AC_ny], config.int_params[AC_nz]};
+    grid.m = acGetLocalMM(config);
+    grid.n = acGetLocalNN(config);
 
     return grid;
 }
@@ -239,7 +215,7 @@ acNodeCreate(const int id, const AcMeshInfo node_config, Node* node_handle)
     // Subgrids
     AcMeshInfo subgrid_config = node->config;
     subgrid_config.int_params[AC_nz] /= node->num_devices;
-    update_builtin_params(&subgrid_config);
+    acHostUpdateBuiltinParams(&subgrid_config);
 #if AC_VERBOSE
     printf("###############################################################\n");
     printf("Config dimensions recalculated:\n");

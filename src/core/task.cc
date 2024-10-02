@@ -127,7 +127,7 @@ AcTaskDefinition
 acSync()
 {
     AcTaskDefinition task_def{};
-    task_def.task_type      = TASKTYPE_SYNC;
+    task_def.task_type = TASKTYPE_SYNC;
     return task_def;
 }
 
@@ -385,14 +385,14 @@ Region::fields_overlap(const Region* other)
 AcBoundary
 Region::boundary(uint3_64 decomp, int pid, AcProcMappingStrategy proc_mapping_strategy)
 {
-    int3 pid3d = getPid3D(pid, decomp, proc_mapping_strategy);
+    int3 pid3d = getPid3D(pid, decomp, (int)proc_mapping_strategy);
     return boundary(decomp, pid3d, id);
 }
 
 bool
 Region::is_on_boundary(uint3_64 decomp, int pid, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy)
 {
-    int3 pid3d = getPid3D(pid, decomp, proc_mapping_strategy);
+    int3 pid3d = getPid3D(pid, decomp, (int)proc_mapping_strategy);
     return is_on_boundary(decomp, pid3d, id, boundary);
 }
 // Static functions
@@ -415,7 +415,7 @@ Region::tag_to_id(int _tag)
 AcBoundary
 Region::boundary(uint3_64 decomp, int pid, int tag, AcProcMappingStrategy proc_mapping_strategy)
 {
-    int3 pid3d = getPid3D(pid, decomp, proc_mapping_strategy);
+    int3 pid3d = getPid3D(pid, decomp, (int)proc_mapping_strategy);
     int3 id    = tag_to_id(tag);
     return boundary(decomp, pid3d, id);
 }
@@ -435,7 +435,7 @@ Region::boundary(uint3_64 decomp, int3 pid3d, int3 id)
 bool
 Region::is_on_boundary(uint3_64 decomp, int pid, int tag, AcBoundary boundary, AcProcMappingStrategy proc_mapping_strategy)
 {
-    int3 pid3d     = getPid3D(pid, decomp, proc_mapping_strategy);
+    int3 pid3d     = getPid3D(pid, decomp, (int)proc_mapping_strategy);
     int3 region_id = tag_to_id(tag);
     return is_on_boundary(decomp, pid3d, region_id, boundary);
 }
@@ -450,7 +450,7 @@ Region::is_on_boundary(uint3_64 decomp, int3 pid3d, int3 id, AcBoundary boundary
 /* Task interface */
 Task::Task(int order_, Region input_region_, Region output_region_, AcTaskDefinition op,
            Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
-    : device(device_), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
+    : device(device_), vba(device->vba), swap_offset(swap_offset_), state(wait_state), dep_cntr(), loop_cntr(),
       order(order_), active(true), boundary(BOUNDARY_NONE), input_region(input_region_),
       output_region(output_region_),
       input_parameters(op.parameters, op.parameters + op.num_parameters)
@@ -839,7 +839,8 @@ HaloExchangeTask::HaloExchangeTask(AcTaskDefinition op, int order_, int tag_0, i
     syncVBA();
     acVerboseLogFromRootProc(rank, "Halo exchange task ctor: done syncing VBA\n");
 
-    counterpart_rank = getPid(getPid3D(rank, decomp, (AcProcMappingStrategy)device->local_config.int_params[AC_proc_mapping_strategy]) + output_region.id, decomp, (AcProcMappingStrategy)device->local_config.int_params[AC_proc_mapping_strategy]);
+    const auto proc_strategy = acGetInfoValue(device->local_config,AC_proc_mapping_strategy);
+    counterpart_rank = getPid(getPid3D(rank, decomp, proc_strategy) + output_region.id, decomp, proc_strategy);
     // MPI tags are namespaced to avoid collisions with other MPI tasks
     send_tag = tag_0 + input_region.tag;
     recv_tag = tag_0 + Region::id_to_tag(-output_region.id);
@@ -1262,28 +1263,28 @@ BoundaryConditionTask::advance(const TraceFile* trace_file)
         ERROR("BoundaryConditionTask in an invalid state.");
     }
 }
-SyncTask::SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_, std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
+SyncTask::SyncTask(AcTaskDefinition op, int order_, int3 nn, Device device_,
+                   std::array<bool, NUM_VTXBUF_HANDLES> swap_offset_)
     : Task(order_,
            Region({0,0,0},{2*NGHOST_X+nn.x,2*NGHOST_Y+nn.y,2*NGHOST_Z+nn.z}, 0, {}),
            Region({0,0,0},{2*NGHOST_X+nn.x,2*NGHOST_Y+nn.y,2*NGHOST_Z+nn.z}, 0, {}),
            op, device_, swap_offset_)
 {
 
-    //Synctask is on default stream
+    // Synctask is on default stream
     {
         stream = STREAM_DEFAULT;
     }
     syncVBA();
 
-
-    name = "SyncTask" + std::to_string(order_);
+    name      = "SyncTask" + std::to_string(order_);
     task_type = TASKTYPE_SYNC;
 }
 
 bool
 SyncTask::test()
 {
-    //always ready
+    // always ready
     return true;
 }
 
@@ -1465,15 +1466,16 @@ DSLBoundaryConditionTask::DSLBoundaryConditionTask(
 void
 DSLBoundaryConditionTask::populate_boundary_region()
 {
+     const int3 nn = acGetLocalNN(device->local_config);
      for (auto variable : output_region.fields) {
      	params.load_func->loader({&vba.kernel_input_params, device, (int)loop_cntr.i, boundary_normal, variable});
      	const int3 region_id = output_region.id;
-     	const int3 start = (int3){(region_id.x == 1 ? NGHOST_X + device->local_config.int_params[AC_nx]
+     	const int3 start = (int3){(region_id.x == 1 ? NGHOST_X + nn.x
      	                                           : region_id.x == -1 ? 0 : NGHOST_X),
-     	                         (region_id.y == 1 ? NGHOST_Y + device->local_config.int_params[AC_ny]
+     	                         (region_id.y == 1 ? NGHOST_Y + nn.y
      	                                           : region_id.y == -1 ? 0 : NGHOST_Y),
 #if TWO_D == 0
-     	                         (region_id.z == 1 ? NGHOST_Z + device->local_config.int_params[AC_nz]
+     	                         (region_id.z == 1 ? NGHOST_Z + nn.z
      	                                           : region_id.z == -1 ? 0 : NGHOST_Z)};
 #else
 				 0};
@@ -1520,10 +1522,10 @@ DSLBoundaryConditionTask::advance(const TraceFile* trace_file)
 AcBoundary
 boundary_from_normal(int3 normal)
 {
-    return (
-        AcBoundary)((normal.x == -1 ? BOUNDARY_X_BOT : 0) | (normal.x == 1 ? BOUNDARY_X_TOP : 0) |
-                    (normal.y == -1 ? BOUNDARY_Y_BOT : 0) | (normal.y == 1 ? BOUNDARY_Y_TOP : 0) |
-                    (normal.z == -1 ? BOUNDARY_Z_BOT : 0) | (normal.z == 1 ? BOUNDARY_Z_TOP : 0));
+    return (AcBoundary)(
+        (normal.x == -1 ? BOUNDARY_X_BOT : 0) | (normal.x == 1 ? BOUNDARY_X_TOP : 0) |
+        (normal.y == -1 ? BOUNDARY_Y_BOT : 0) | (normal.y == 1 ? BOUNDARY_Y_TOP : 0) |
+        (normal.z == -1 ? BOUNDARY_Z_BOT : 0) | (normal.z == 1 ? BOUNDARY_Z_TOP : 0));
 }
 
 int3

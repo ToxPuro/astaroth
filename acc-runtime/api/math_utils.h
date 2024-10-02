@@ -68,18 +68,6 @@ operator*(const AcComplex& a, const AcComplex& b)
   return (AcComplex){a.x*b.x - a.y*b.y,a.x*b.y + b.x*a.y};
 }
 
-static HOST_DEVICE_INLINE AcComplex
-operator*(const AcComplex& a, const AcReal& b)
-{
-  return (AcComplex){a.x * b,a.y * b};
-}
-
-static HOST_DEVICE_INLINE AcComplex
-operator*(const AcReal& b, const AcComplex& a)
-{
-  return (AcComplex){a.x * b,a.y * b};
-}
-
 #endif // ENABLE_COMPLEX_DATATYPE
 
 typedef struct uint3_64 {
@@ -119,9 +107,25 @@ max(const T& a, const T& b)
 
 template <class T>
 static HOST_DEVICE_INLINE const T
+max(const T& a, const T& b, const T& c)
+{
+	const auto tmp = a > b ? a : b;
+	return (tmp > c) ? tmp : c;
+}
+
+template <class T>
+static HOST_DEVICE_INLINE const T
 min(const T& a, const T& b)
 {
   return a < b ? a : b;
+}
+
+template <class T>
+static HOST_DEVICE_INLINE const T
+min(const T& a, const T& b, const T& c)
+{
+	const auto tmp = a < b ? a : b;
+	return (tmp < c) ? tmp : c;
 }
 
 static inline const int3
@@ -177,7 +181,6 @@ operator-(const int3& a)
 {
   return (int3){-a.x, -a.y, -a.z};
 }
-
 
 //TP: HIP already provides this
 #if AC_USE_HIP
@@ -295,10 +298,15 @@ operator==(const uint3_64& a, const uint3_64& b)
  */
 template <class T>
 static Volume
-to_volume(const T a)
+TO_VOLUME(const T a, const char* file, const int line)
 {
+  INDIRECT_ERRCHK_ALWAYS(a.x >= 0,file,line);
+  INDIRECT_ERRCHK_ALWAYS(a.y >= 0,file,line);
+  INDIRECT_ERRCHK_ALWAYS(a.z >= 0,file,line);
   return (Volume){as_size_t(a.x), as_size_t(a.y), as_size_t(a.z)};
 }
+
+#define to_volume(a) TO_VOLUME(a, __FILE__, __LINE__)
 
 static inline dim3
 to_dim3(const Volume v)
@@ -487,6 +495,7 @@ operator*(const AcReal& v, const AcMatrix& m)
 
   return out;
 }
+
 
 #define GEN_STD_ARRAY_OPERATOR(OPERATOR)  \
 template <typename T, const size_t N, typename F> \
@@ -687,6 +696,13 @@ operator-(const AcMatrix& A, const AcMatrix& B)
                   A.row(1) - B.row(1), //
                   A.row(2) - B.row(2));
 }
+static HOST_DEVICE AcMatrix
+operator+(const AcMatrix& A, const AcMatrix& B)
+{
+  return AcMatrix(A.row(0) + B.row(0), //
+                  A.row(1) + B.row(1), //
+                  A.row(2) + B.row(2));
+}
 static HOST_DEVICE_INLINE AcReal
 multm2_sym(const AcMatrix& m)
 {
@@ -710,3 +726,26 @@ diagonal(const AcMatrix& m)
 /*
  * AcTensor
  */
+
+typedef struct AcTensor {
+  //AcReal data[3][3] = {{0}};
+  //TP: default initializer will initialize all values to 0.0
+  AcArray<AcMatrix,3> data = {};
+
+  HOST_DEVICE_INLINE AcTensor() {}
+
+  HOST_DEVICE_INLINE AcTensor(const AcMatrix mat0, const AcMatrix mat1,
+                       const AcMatrix mat2)
+  {
+    data[0] = mat0;
+    data[1] = mat1;
+    data[2] = mat2;
+  }
+
+  HOST_DEVICE_INLINE const AcMatrix& operator[](const size_t index) const {
+	  return data[index];
+  }
+  HOST_DEVICE_INLINE AcMatrix& operator[](const size_t index) {
+	  return data[index];
+  }
+} AcTensor;

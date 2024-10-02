@@ -40,34 +40,10 @@ typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 
 
 #define USE_COMPRESSIBLE_MEMORY (0)
-typedef struct Field3
-{
-	VertexBufferHandle x;
-	VertexBufferHandle y;
-	VertexBufferHandle z;
-        HOST_DEVICE_INLINE Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
-} Field3;
 
 
-
-HOST_DEVICE_INLINE Field3 
-MakeField3(const Field& x, const Field& y, const Field& z)
-{
-	return (Field3){x,y,z};
-}
-template <size_t N>
-HOST_DEVICE_INLINE
-std::array<Field3,N>
-MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
-{
-	std::array<int3,N> res{};
-	for(size_t i = 0; i < N; ++i)
-		res[i] = (Field3){x,y,z};
-	return res;
-}
 
 #include "acc/implementation.h"
-#include "user_constants.h"
 
 static dim3 last_tpb = (dim3){0, 0, 0};
 static AcReal3 AC_INTERNAL_global_real_vec = {0.0,0.0,0.0};
@@ -261,6 +237,32 @@ __device__ __constant__ AcMeshInfo d_mesh_info;
 
 #include "dconst_decl.h"
 
+#define DEVICE_INLINE __device__ __forceinline__
+
+DEVICE_INLINE AcReal
+VAL(const AcRealParam& param)
+{
+	return DCONST(param);
+}
+
+DEVICE_INLINE AcReal
+VAL(const AcReal& val)
+{
+	return val;
+}
+
+DEVICE_INLINE int
+VAL(const AcIntParam& param)
+{
+	return DCONST(param);
+}
+
+DEVICE_INLINE int
+VAL(const int& val)
+{
+	return val;
+}
+
 
 #include "get_address.h"
 #include "load_dconst_arrays.h"
@@ -269,12 +271,12 @@ __device__ __constant__ AcMeshInfo d_mesh_info;
 
 
 #define DEVICE_VTXBUF_IDX(i, j, k)                                             \
-  ((i) + (j)*DCONST(AC_mx) + (k)*DCONST(AC_mxy))
+  ((i) + (j)*VAL(AC_mx) + (k)*VAL(AC_mxy))
 
 __device__ int
 LOCAL_COMPDOMAIN_IDX(const int3 coord)
 {
-  return (coord.x) + (coord.y) * DCONST(AC_nx) + (coord.z) * DCONST(AC_nxy);
+  return (coord.x) + (coord.y) * VAL(AC_nx) + (coord.z) * VAL(AC_nxy);
 }
 
 __device__ constexpr int
@@ -320,7 +322,6 @@ IDX(const int3 idx)
   return DEVICE_VTXBUF_IDX(idx.x, idx.y, idx.z);
 }
 
-//#define Field3(x, y, z) make_int3((x), (y), (z))
 #define print printf                          // TODO is this a good idea?
 #define len(arr) sizeof(arr) / sizeof(arr[0]) // Leads to bugs if the user
 // passes an array into a device function and then calls len (need to modify
@@ -444,6 +445,60 @@ freeCompressible(void* ptr, const size_t requested_bytes)
 #endif
 
 AcResult
+acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba)
+{
+  // Set pba.in data to all-nan and pba.out to 0
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    acKernelFlush(stream, pba->in[i], pba->count, (AcReal)NAN);
+    acKernelFlush(stream, pba->out[i], pba->count, (AcReal)0.0);
+  }
+  return AC_SUCCESS;
+}
+
+ProfileBufferArray
+acPBACreate(const size_t count)
+{
+  ProfileBufferArray pba = {.count = count};
+
+  const size_t bytes = sizeof(pba.in[0][0]) * pba.count * NUM_PROFILES;
+  AcReal *in, *out;
+#if USE_COMPRESSIBLE_MEMORY
+  ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&in, bytes));
+  ERRCHK_CUDA_ALWAYS(mallocCompressible((void**)&out, bytes));
+#else
+  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&in, bytes));
+  ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&out, bytes));
+#endif
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    pba.in[i]  = &in[i * pba.count];
+    pba.out[i] = &out[i * pba.count];
+  }
+
+  acPBAReset(0, &pba);
+  cudaDeviceSynchronize();
+  return pba;
+}
+
+void
+acPBADestroy(ProfileBufferArray* pba)
+{
+#if USE_COMPRESSIBLE_MEMORY
+  freeCompressible(pba->in[0],
+                   sizeof(pba.in[0][0]) * pba->count * NUM_PROFILES);
+  freeCompressible(pba->out[0],
+                   sizeof(pba.out[0][0]) * pba->count * NUM_PROFILES);
+#else
+  cudaFree(pba->in[0]);
+  cudaFree(pba->out[0]);
+#endif
+  for (size_t i = 0; i < NUM_PROFILES; ++i) {
+    pba->in[i]  = NULL;
+    pba->out[i] = NULL;
+  }
+  pba->count = 0;
+}
+
+AcResult
 acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
 {
   const size_t count = vba->bytes / sizeof(vba->in[0][0]);
@@ -459,6 +514,8 @@ acVBAReset(const cudaStream_t stream, VertexBufferArray* vba)
     }
   }
   memset(&vba->kernel_input_params,0,sizeof(acKernelInputParams));
+  // Note: should be moved out when refactoring VBA to KernelParameterArray
+  acPBAReset(stream, &vba->profiles);
   return AC_SUCCESS;
 }
 
@@ -522,29 +579,44 @@ struct allocate_arrays
 	}
 };
 
+int
+get_val(const AcMeshInfo, const int val)
+{
+	return val;
+}
+
+int
+get_val(const AcMeshInfo config, const AcIntParam param)
+{
+	return config.int_params[param];
+}
+
+
+int3
+buffer_dims(const AcMeshInfo config)
+{
+	const int x = get_val(config,AC_mx);
+	const int y = get_val(config,AC_my);
+#if TWO_D == 0
+	const int z = get_val(config,AC_mz);
+#else
+	const int z = 1;
+#endif
+	return (int3){x,y,z};
+}
 
 VertexBufferArray
 acVBACreate(const AcMeshInfo config)
 {
-  //can't use acVertexBufferDims because of linking issues
-#if TWO_D == 0
-  const int3 counts = (int3){
-        (config.int_params[AC_mx]),
-        (config.int_params[AC_my]),
-        (config.int_params[AC_mz])
-  };
-#else
-  const int3 counts = (int3){
-        (config.int_params[AC_mx]),
-        (config.int_params[AC_my]),
-	1,
-  };
-#endif
-
+  //TP: cannot call normal acVertexBufferDims since that would make us depend on astaroth core
+  const int3 counts = buffer_dims(config);
   VertexBufferArray vba;
   size_t count = counts.x*counts.y*counts.z;
   size_t bytes = sizeof(vba.in[0][0]) * count;
   vba.bytes          = bytes;
+  vba.mx             = counts.x;
+  vba.my             = counts.y;
+  vba.mz             = counts.z;
 #if AC_ADJACENT_VERTEX_BUFFERS
   const size_t allbytes = bytes*NUM_VTXBUF_HANDLES;
   AcReal *allbuf_in, *allbuf_out;
@@ -581,6 +653,9 @@ printf("i,vbas[i]= %zu %p %p\n",i,vba.in[i],vba.out[i]);
 
   AcArrayTypes::run<allocate_arrays>(config);
 
+  // Note: should be moved out when refactoring VBA to KernelParameterArray
+  vba.profiles = acPBACreate(counts.z);
+
   acVBAReset(0, &vba);
   cudaDeviceSynchronize();
   return vba;
@@ -607,9 +682,8 @@ struct update_arrays
 	}
 };
 void
-acVBAUpdate(VertexBufferArray* vba, const AcMeshInfo config)
+acUpdateArrays(const AcMeshInfo config)
 {
-  (void)vba;
   AcArrayTypes::run<update_arrays>(config);
 }
 
@@ -629,6 +703,7 @@ struct free_arrays
 		}
 	}
 };
+
 void
 acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
 {
@@ -647,7 +722,13 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
   //Free arrays
   AcArrayTypes::run<free_arrays>(config);
   vba->bytes = 0;
+  vba->mx    = 0;
+  vba->my    = 0;
+  vba->mz    = 0;
+  // Note: should be moved out when refactoring VBA to KernelParameterArray
+  acPBADestroy(&vba->profiles);
 }
+
 int
 get_num_of_reduce_output(const dim3 bpg, const dim3 tpb)
 {
@@ -946,7 +1027,6 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 	return AC_SUCCESS;
 }
 
-
 #include "load_and_store_uniform_funcs.h"
 
 
@@ -1000,7 +1080,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
                                         ? min(props.maxThreadsPerBlock,
                                               MAX_THREADS_PER_BLOCK)
                                         : props.maxThreadsPerBlock;
-  const size_t max_smem           = props.sharedMemPerBlock;
+  const size_t max_smem = props.sharedMemPerBlock;
 
   // Old heuristic
   // for (int z = 1; z <= max_threads_per_block; ++z) {
@@ -1029,7 +1109,10 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
         //   continue;
 
         const dim3 tpb(x, y, z);
-        const dim3 bpg    = to_dim3(get_bpg(to_volume(dims), to_volume(tpb)));
+        const dim3 bpg    = to_dim3(
+				get_bpg(to_volume(dims), 
+				to_volume(tpb))
+				);
         const size_t smem = get_smem(to_volume(tpb), STENCIL_ORDER,
                                      sizeof(AcReal));
 
@@ -1221,4 +1304,405 @@ acGetOptimizedKernel(const AcKernel kernel_enum, const VertexBufferArray vba)
 	//TP: for now this is no-op in the future in some cases we choose which kernel to call passed on the input params
 	return kernel_enum;
 	//return kernels[(int) kernel_enum];
+}
+void
+acVBASwapBuffer(const Field field, VertexBufferArray* vba)
+{
+  AcReal* tmp     = vba->in[field];
+  vba->in[field]  = vba->out[field];
+  vba->out[field] = tmp;
+}
+
+void
+acVBASwapBuffers(VertexBufferArray* vba)
+{
+  for (size_t i = 0; i < NUM_FIELDS; ++i)
+    acVBASwapBuffer((Field)i, vba);
+}
+
+void
+acPBASwapBuffer(const Profile profile, VertexBufferArray* vba)
+{
+  AcReal* tmp                = vba->profiles.in[profile];
+  vba->profiles.in[profile]  = vba->profiles.out[profile];
+  vba->profiles.out[profile] = tmp;
+}
+
+void
+acPBASwapBuffers(VertexBufferArray* vba)
+{
+  for (size_t i = 0; i < NUM_PROFILES; ++i)
+    acPBASwapBuffer((Profile)i, vba);
+}
+
+void
+acLoadMeshInfo(const AcMeshInfo info, const cudaStream_t stream)
+{
+  for (int i = 0; i < NUM_INT_PARAMS; ++i)
+    acLoadIntUniform(stream, (AcIntParam)i, info.int_params[i]);
+
+  for (int i = 0; i < NUM_INT3_PARAMS; ++i)
+    acLoadInt3Uniform(stream, (AcInt3Param)i, info.int3_params[i]);
+
+  for (int i = 0; i < NUM_REAL_PARAMS; ++i)
+    acLoadRealUniform(stream, (AcRealParam)i, info.real_params[i]);
+
+  for (int i = 0; i < NUM_REAL3_PARAMS; ++i)
+    acLoadReal3Uniform(stream, (AcReal3Param)i, info.real3_params[i]);
+}
+
+//---------------
+// static __host__ __device__ constexpr size_t
+// acShapeSize(const AcShape& shape)
+size_t
+acShapeSize(const AcShape shape)
+{
+  return shape.x * shape.y * shape.z * shape.w;
+}
+
+static __host__ __device__ constexpr bool
+acOutOfBounds(const AcIndex& index, const AcShape& shape)
+{
+  return (index.x >= shape.x) || //
+         (index.y >= shape.y) || //
+         (index.z >= shape.z) || //
+         (index.w >= shape.w);
+}
+
+static __host__ __device__ constexpr AcIndex
+min(const AcIndex& a, const AcIndex& b)
+{
+  return (AcIndex){
+      a.x < b.x ? a.x : b.x,
+      a.y < b.y ? a.y : b.y,
+      a.z < b.z ? a.z : b.z,
+      a.w < b.w ? a.w : b.w,
+  };
+}
+
+static __host__ __device__ constexpr AcIndex
+operator+(const AcIndex& a, const AcIndex& b)
+{
+  return (AcIndex){
+      a.x + b.x,
+      a.y + b.y,
+      a.z + b.z,
+      a.w + b.w,
+  };
+}
+
+static __host__ __device__ constexpr AcIndex
+operator-(const AcIndex& a, const AcIndex& b)
+{
+  return (AcIndex){
+      a.x - b.x,
+      a.y - b.y,
+      a.z - b.z,
+      a.w - b.w,
+  };
+}
+
+static __host__ __device__ constexpr AcIndex
+to_spatial(const size_t i, const AcShape& shape)
+{
+  return (AcIndex){
+      .x = i % shape.x,
+      .y = (i / shape.x) % shape.y,
+      .z = (i / (shape.x * shape.y)) % shape.z,
+      .w = i / (shape.x * shape.y * shape.z),
+  };
+}
+
+static __host__ __device__ constexpr size_t
+to_linear(const AcIndex& index, const AcShape& shape)
+{
+  return index.x +           //
+         index.y * shape.x + //
+         index.z * shape.x * shape.y + index.w * shape.x * shape.y * shape.z;
+}
+
+static __global__ void
+reindex(const AcReal* in, const AcIndex in_offset, const AcShape in_shape,
+        AcReal* out, const AcIndex out_offset, const AcShape out_shape,
+        const AcShape block_shape)
+{
+  const size_t i    = (size_t)threadIdx.x + blockIdx.x * blockDim.x;
+  const AcIndex idx = to_spatial(i, block_shape);
+
+  const AcIndex in_pos  = idx + in_offset;
+  const AcIndex out_pos = idx + out_offset;
+
+  if (acOutOfBounds(idx, block_shape) || //
+      acOutOfBounds(in_pos, in_shape) || //
+      acOutOfBounds(out_pos, out_shape))
+    return;
+
+  const size_t in_idx  = to_linear(in_pos, in_shape);
+  const size_t out_idx = to_linear(out_pos, out_shape);
+
+  out[out_idx] = in[in_idx];
+}
+
+AcResult
+acReindex(const cudaStream_t stream, //
+          const AcReal* in, const AcIndex in_offset, const AcShape in_shape,
+          AcReal* out, const AcIndex out_offset, const AcShape out_shape,
+          const AcShape block_shape)
+{
+  const size_t count = acShapeSize(block_shape);
+  const size_t tpb   = min(256ul, count);
+  const size_t bpg   = (count + tpb - 1) / tpb;
+
+  reindex<<<bpg, tpb, 0, stream>>>(in, in_offset, in_shape, //
+                                   out, out_offset, out_shape, block_shape);
+  ERRCHK_CUDA_KERNEL();
+
+  return AC_SUCCESS;
+}
+
+typedef struct {
+  AcReal *x, *y, *z;
+} SOAVector;
+
+typedef struct {
+  // Input vectors
+  SOAVector A[1];
+  size_t A_count;
+  SOAVector B[4];
+  size_t B_count;
+  // Note: more efficient with A_count < B_count
+
+  // Output vectors
+  SOAVector C[1 * 4];
+  // C count = A_count*B_count
+} CrossProductArrays;
+
+static __global__ void UNUSED
+reindex_cross(const CrossProductArrays arrays, const AcIndex in_offset,
+              const AcShape in_shape, const AcIndex out_offset,
+              const AcShape out_shape, const AcShape block_shape)
+{
+  const AcIndex idx = to_spatial((size_t)threadIdx.x + blockIdx.x * blockDim.x
+		  , block_shape);
+
+  const AcIndex in_pos  = idx + in_offset;
+  const AcIndex out_pos = idx + out_offset;
+
+  if (acOutOfBounds(idx, block_shape) || //
+      acOutOfBounds(in_pos, in_shape) || //
+      acOutOfBounds(out_pos, out_shape))
+    return;
+
+  const size_t in_idx  = to_linear(in_pos, in_shape);
+  const size_t out_idx = to_linear(out_pos, out_shape);
+
+  for (size_t j = 0; j < arrays.A_count; ++j) {
+    const AcReal3 a = {
+        arrays.A[j].x[in_idx],
+        arrays.A[j].y[in_idx],
+        arrays.A[j].z[in_idx],
+    };
+    for (size_t i = 0; i < arrays.B_count; ++i) {
+      const AcReal3 b = {
+          arrays.B[i].x[in_idx],
+          arrays.B[i].y[in_idx],
+          arrays.B[i].z[in_idx],
+      };
+      const AcReal3 res                           = AC_cross(a, b);
+      arrays.C[i + j * arrays.B_count].x[out_idx] = res.x;
+      arrays.C[i + j * arrays.B_count].y[out_idx] = res.y;
+      arrays.C[i + j * arrays.B_count].z[out_idx] = res.z;
+    }
+  }
+}
+
+#if 0
+__global__ void
+map_cross_product(const CrossProductInputs inputs, const AcIndex start,
+                  const AcIndex end)
+{
+
+  const AcIndex tid = {
+      .x = threadIdx.x + blockIdx.x * blockDim.x,
+      .y = threadIdx.y + blockIdx.y * blockDim.y,
+      .z = threadIdx.z + blockIdx.z * blockDim.z,
+      .w = 0,
+  };
+
+  const AcIndex in_idx3d = start + tid;
+  const size_t in_idx = DEVICE_VTXBUF_IDX(in_idx3d.x, in_idx3d.y, in_idx3d.z);
+
+  const AcShape dims   = end - start;
+  const size_t out_idx = tid.x + tid.y * dims.x + tid.z * dims.x * dims.y;
+
+  const bool within_bounds = in_idx3d.x < end.x && in_idx3d.y < end.y &&
+                             in_idx3d.z < end.z;
+  if (within_bounds) {
+    for (size_t i = 0; i < inputs.A_count; ++i) {
+      const AcReal3 a = (AcReal3){
+          inputs.A[i].x[in_idx],
+          inputs.A[i].y[in_idx],
+          inputs.A[i].z[in_idx],
+      };
+      for (size_t j = 0; j < inputs.B_count; ++j) {
+        const AcReal3 b = (AcReal3){
+            inputs.B[j].x[in_idx],
+            inputs.B[j].y[in_idx],
+            inputs.B[j].z[in_idx],
+        };
+        const AcReal3 res            = cross(a, b);
+        inputs.outputs[j].x[out_idx] = res.x;
+        inputs.outputs[j].y[out_idx] = res.y;
+        inputs.outputs[j].z[out_idx] = res.z;
+      }
+    }
+  }
+}
+#endif
+
+#ifdef AC_TFM_ENABLED
+AcResult
+acReindexCross(const cudaStream_t stream, //
+               const VertexBufferArray vba, const AcIndex in_offset,
+               const AcShape in_shape, //
+               AcReal* out, const AcIndex out_offset, const AcShape out_shape,
+               const AcShape block_shape)
+{
+  const SOAVector uu = {
+      .x = vba.in[VTXBUF_UUX],
+      .y = vba.in[VTXBUF_UUY],
+      .z = vba.in[VTXBUF_UUZ],
+  };
+  const SOAVector bb11 = {
+      .x = vba.in[TF_b11_x],
+      .y = vba.in[TF_b11_y],
+      .z = vba.in[TF_b11_z],
+  };
+  const SOAVector bb12 = {
+      .x = vba.in[TF_b12_x],
+      .y = vba.in[TF_b12_y],
+      .z = vba.in[TF_b12_z],
+  };
+  const SOAVector bb21 = {
+      .x = vba.in[TF_b21_x],
+      .y = vba.in[TF_b21_y],
+      .z = vba.in[TF_b21_z],
+  };
+  const SOAVector bb22 = {
+      .x = vba.in[TF_b22_x],
+      .y = vba.in[TF_b22_y],
+      .z = vba.in[TF_b22_z],
+  };
+
+  const size_t block_offset = out_shape.x * out_shape.y * out_shape.z;
+  const SOAVector out_bb11  = {
+      .x = &out[3 * block_offset],
+      .y = &out[4 * block_offset],
+      .z = &out[5 * block_offset],
+  };
+  const SOAVector out_bb12 = {
+      .x = &out[6 * block_offset],
+      .y = &out[7 * block_offset],
+      .z = &out[8 * block_offset],
+  };
+  const SOAVector out_bb21 = {
+      .x = &out[9 * block_offset],
+      .y = &out[10 * block_offset],
+      .z = &out[11 * block_offset],
+  };
+  const SOAVector out_bb22 = {
+      .x = &out[12 * block_offset],
+      .y = &out[13 * block_offset],
+      .z = &out[14 * block_offset],
+  };
+
+  const CrossProductArrays arrays = {
+      .A       = {uu},
+      .A_count = 1,
+      .B       = {bb11, bb12, bb21, bb22},
+      .B_count = 4,
+      .C       = {out_bb11, out_bb12, out_bb21, out_bb22},
+  };
+
+  const size_t count = acShapeSize(block_shape);
+  const size_t tpb   = min(256ul, count);
+  const size_t bpg   = (count + tpb - 1) / tpb;
+
+  reindex_cross<<<bpg, tpb, 0, stream>>>(arrays, in_offset, in_shape,
+                                         out_offset, out_shape, block_shape);
+  return AC_SUCCESS;
+#else
+AcResult
+acReindexCross(const cudaStream_t , //
+               const VertexBufferArray , const AcIndex ,
+               const AcShape , //
+               AcReal* , const AcIndex , const AcShape ,
+               const AcShape )
+{
+  ERROR("acReindexCross called but AC_TFM_ENABLED was false");
+  return AC_FAILURE;
+#endif
+}
+
+#if AC_USE_HIP
+#include <hipcub/hipcub.hpp>
+#define cub hipcub
+#else
+#include <cub/cub.cuh>
+#endif
+
+AcResult
+acSegmentedReduce(const cudaStream_t stream, const AcReal* d_in,
+                  const size_t count, const size_t num_segments, AcReal* d_out)
+{
+  size_t* offsets = (size_t*)malloc(sizeof(offsets[0]) * (num_segments + 1));
+  ERRCHK_ALWAYS(offsets);
+  for (size_t i = 0; i <= num_segments; ++i) {
+    offsets[i] = i * (count / num_segments);
+    // printf("Offset %zu: %zu\n", i, offsets[i]);
+  }
+
+  size_t* d_offsets = NULL;
+  cudaMalloc(&d_offsets, sizeof(d_offsets[0]) * (num_segments + 1));
+  ERRCHK_ALWAYS(d_offsets);
+  cudaMemcpy(d_offsets, offsets, sizeof(d_offsets[0]) * (num_segments + 1),
+             cudaMemcpyHostToDevice);
+
+  void* d_temp_storage      = NULL;
+  size_t temp_storage_bytes = 0;
+  cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+                                  d_out, num_segments, d_offsets, d_offsets + 1,
+                                  stream);
+  // printf("Temp storage: %zu bytes\n", temp_storage_bytes);
+  cudaMalloc(&d_temp_storage, temp_storage_bytes);
+  ERRCHK_ALWAYS(d_temp_storage);
+
+  cub::DeviceSegmentedReduce::Sum(d_temp_storage, temp_storage_bytes, d_in,
+                                  d_out, num_segments, d_offsets, d_offsets + 1,
+                                  stream);
+
+  cudaStreamSynchronize(
+      stream); // Note, would not be needed if allocated at initialization
+  cudaFree(d_temp_storage);
+  cudaFree(d_offsets);
+  free(offsets);
+  return AC_SUCCESS;
+}
+
+static __global__ void
+multiply_inplace(const AcReal value, const size_t count, AcReal* array)
+{
+  const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx < count)
+    array[idx] *= value;
+}
+
+AcResult
+acMultiplyInplace(const AcReal value, const size_t count, AcReal* array)
+{
+  const size_t tpb = 256;
+  const size_t bpg = (count + tpb - 1) / tpb;
+  multiply_inplace<<<bpg, tpb>>>(value, count, array);
+  ERRCHK_CUDA_KERNEL();
+  return AC_SUCCESS;
 }
