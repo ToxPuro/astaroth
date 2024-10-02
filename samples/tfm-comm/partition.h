@@ -1,22 +1,10 @@
 #pragma once
 #include <stddef.h>
 
-typedef struct {
-    size_t ndims;
-    size_t* dims;
-    size_t* offset;
-} Partition;
-
-// typedef struct {
-//     size_t nrows;
-//     size_t ncols;
-//     size_t* data;
-// } Matrix; // it's an ndarray
-
-/** Partition the domain mm into subdomains.
- * Returns the number of partitions.
- * If `partitions` is not null, uses it to allocate a new array of partitions
- * that must be freed with partitions_destroy afterwards.
+/** Partitions the domain mm into subdomains divided by nn
+ *  Returns the number of partitions
+ * offsets and dims must be large enough to hold nelems elements
+ *
  *
  * The domain mm is partitioned three subdomains in each dimension,
  * where the coordinates in dimension i are constructed from the combinations of
@@ -32,11 +20,26 @@ typedef struct {
  * |---|--------|---|
  * a   b        c   d
  *
+ *
+ * Usage:
+ * // Get the size for offsets and dims arrays
+ * size_t nelems;
+ * partition(..., &nelems, NULL, NULL);
+ * size_t *offsets, *dims;
+ * nalloc(nelems, offsets);
+ * nalloc(nelems, dims);
+ *
+ * // Fill offsets and dims with the partitioning
+ * const size_t npartitions = partition(..., &nelems, offsets, dims);
+ *
+ * // Visualize the output arranged in dims-first ordering
+ * print_ndarray("offsets", 2, ((size_t[]){ndims, npartitions}), offsets));
+ *
+ * // Deallocate
+ * dealloc(offsets);
+ * dealloc(dims);
  */
-// size_t partitions_create(const size_t ndims, const size_t* mm, const size_t* nn,
-//                          const size_t* nn_offset, const size_t npartitions, Partition*
-//                          partitions);
-
-// void partitions_destroy(const size_t npartitions, Partition** partitions);
+size_t partition(const size_t ndims, const size_t* mm, const size_t* nn, const size_t* nn_offset,
+                 size_t* nelems, size_t* dims, size_t* offsets);
 
 void test_partition(void);

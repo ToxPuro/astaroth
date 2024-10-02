@@ -5,10 +5,10 @@
 #include "type_conversion.h"
 
 /** Contents of the dynamic array
- * Declare new datatypes with typedef dynarr(type) name,
- * e.g., typedef dynarr(size_t) dynarr_size_t
+ * Declare new datatypes with typedef dynarr_s(type) name,
+ * e.g., typedef dynarr_s(size_t) dynarr_size_t
  */
-#define dynarr(T)                                                                                  \
+#define dynarr_s(T)                                                                                \
     struct {                                                                                       \
         size_t length;                                                                             \
         size_t capacity;                                                                           \
@@ -22,8 +22,8 @@
 #define dynarr_create(arr)                                                                         \
     do {                                                                                           \
         (arr)->length   = 0;                                                                       \
-        (arr)->capacity = 1;                                                                       \
-        nalloc(1, (arr)->data);                                                                    \
+        (arr)->capacity = 0;                                                                       \
+        (arr)->data     = NULL;                                                                    \
     } while (0)
 
 /** Destroy a dynamic array
@@ -31,7 +31,8 @@
  */
 #define dynarr_destroy(arr)                                                                        \
     do {                                                                                           \
-        ndealloc((arr)->data);                                                                     \
+        if ((arr)->data != NULL)                                                                   \
+            ndealloc((arr)->data);                                                                 \
         (arr)->capacity = 0;                                                                       \
         (arr)->length   = 0;                                                                       \
     } while (0)

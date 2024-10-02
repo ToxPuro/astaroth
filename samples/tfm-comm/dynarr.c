@@ -1,7 +1,7 @@
 #include "dynarr.h"
 
-typedef dynarr(int) dynarr_int;
-typedef dynarr(size_t) dynarr_size_t;
+typedef dynarr_s(int) dynarr_int;
+typedef dynarr_s(size_t) dynarr_size_t;
 
 void
 test_dynarr(void)

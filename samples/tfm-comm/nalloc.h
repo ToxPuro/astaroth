@@ -14,6 +14,16 @@
     } while (0)
 
 /**
+ * Allocate an array and set it to zero
+ * ncalloc(const size_t count, void** ptr)
+ */
+#define ncalloc(count, ptr)                                                                        \
+    do {                                                                                           \
+        (ptr) = calloc((count), sizeof((ptr)[0]));                                                 \
+        ERRCHK((ptr) != NULL);                                                                     \
+    } while (0)
+
+/**
  * Deallocate an array
  * ndealloc(void** ptr)
  */
@@ -52,7 +62,7 @@
 #define ndup(count, in, out)                                                                       \
     do {                                                                                           \
         nalloc((count), (out));                                                                    \
-        ncopy((count), (in), (out))                                                                \
+        ncopy((count), (in), (out));                                                               \
     } while (0)
 
 /**
