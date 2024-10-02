@@ -561,8 +561,8 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 				var_identifier->token = IDENTIFIER;
 				var_identifier->type = NODE_VARIABLE_ID;
 				ASTNode* arr_initializer = astnode_create(NODE_ARRAY_INITIALIZER,elems,NULL);
-				arr_initializer->prefix  = strdup("{");
-				arr_initializer->postfix = strdup("}");
+				astnode_set_prefix("{",arr_initializer);
+				astnode_set_postfix("}",arr_initializer);
 				ASTNode* expression = astnode_create(NODE_UNKNOWN,arr_initializer,NULL);
 				ASTNode* assign_expression = astnode_create(NODE_UNKNOWN,expression,NULL);
 				ASTNode* assign_leaf = astnode_create(NODE_ASSIGNMENT, var_identifier,assign_expression);
@@ -570,7 +570,7 @@ program: /* Empty*/                  { $$ = astnode_create(NODE_UNKNOWN, NULL, N
 				ASTNode* var_definitions = astnode_create(NODE_ASSIGN_LIST,type_declaration,assignment_list);
 				var_definitions -> type |= NODE_NO_OUT;
 				var_definitions -> type |= NODE_DECLARATION;
-				var_definitions->postfix = strdup(";");
+				astnode_set_postfix(";",var_definitions);
 			//TP: replace the orignal field identifier e.g. CHEMISTRY with the list of declarations CHEMISTRY_0 ... CHEMISTRY_N
 			declaration->rhs = astnode_dup(elems,NULL);
 			$$ = astnode_create(NODE_UNKNOWN,$$,var_definitions);
@@ -734,9 +734,16 @@ scalar_type_specifier:
               | real         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | bool         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
 
+
+field_type_specifier:
+               field        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
 type_specifier: 
 	        scalar_type_specifier {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
 	      | scalar_type_specifier '[' ']' {
+				$$ = astnode_create(NODE_UNKNOWN,$1,NULL); 
+				astnode_sprintf($1->lhs,"%s*",$1->lhs->buffer);
+			}
+	      | field_type_specifier '[' ']' {
 				$$ = astnode_create(NODE_UNKNOWN,$1,NULL); 
 				astnode_sprintf($1->lhs,"%s*",$1->lhs->buffer);
 			}
@@ -836,7 +843,7 @@ postfix_expression: primary_expression                         { $$ = astnode_cr
                   | base_identifier '.' identifier          { $$ = astnode_create(NODE_STRUCT_EXPRESSION, $1, $3); astnode_set_infix(".", $$); set_identifier_type(NODE_MEMBER_ID, $$->rhs); }
                   | postfix_expression '(' ')'                 { $$ = astnode_create(NODE_FUNCTION_CALL, $1, NULL); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); }
                   | postfix_expression '(' expression_list ')' { $$ = astnode_create(NODE_FUNCTION_CALL, $1, $3); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); } 
-                  | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_UNKNOWN, $1, $3);   $$->expr_type = strdup(combine_all_new($$->lhs)); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); $$->lhs->type ^= NODE_TSPEC; $$->token = CAST; /* Unset NODE_TSPEC flag, casts are handled as functions */ }
+                  | type_specifier '(' expression_list ')'     { $$ = astnode_create(NODE_UNKNOWN, $1, $3);   $$->expr_type = intern(combine_all_new($$->lhs)); astnode_set_infix("(", $$); astnode_set_postfix(")", $$); $$->lhs->type ^= NODE_TSPEC; $$->token = CAST; /* Unset NODE_TSPEC flag, casts are handled as functions */ }
                   | '(' type_specifier ')' struct_initializer { 
 						$$ = astnode_create(NODE_UNKNOWN, $2, $4); astnode_set_prefix("(",$$); 
 						astnode_set_infix(")",$$); 
@@ -1390,7 +1397,7 @@ create_type_qualifier(const char* tqual, const int token)
 {
 	if(!tqual) return NULL;
 	ASTNode* tqual_identifier = astnode_create(NODE_UNKNOWN,NULL,NULL);
-	tqual_identifier -> buffer = strdup(tqual);
+	astnode_set_buffer(tqual,tqual_identifier);
 	tqual_identifier -> token = token;
 	ASTNode* type_qualifier  = astnode_create(NODE_TQUAL,tqual_identifier,NULL);
 	return type_qualifier;
@@ -1405,7 +1412,7 @@ static ASTNode*
 create_tspec(const char* tspec_str)
 {
 	ASTNode* tspec_identifier  = astnode_create(NODE_UNKNOWN,NULL,NULL);
-	tspec_identifier -> buffer = strdup(tspec_str);
+	astnode_set_buffer(tspec_str,tspec_identifier);
 	tspec_identifier -> token = IDENTIFIER;
 	ASTNode* tspec  = astnode_create(NODE_TSPEC,tspec_identifier,NULL);
 	return tspec;

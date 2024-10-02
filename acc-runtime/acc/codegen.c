@@ -3563,7 +3563,10 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 {
         if (tspec.id) 
 	{
-	  if(tspec.token != KERNEL)
+          //TP: the pointer view is only internally used to mark arrays. for now simple lower to auto
+	  if(tspec.id[strlen(tspec.id)-1] == '*')
+            fprintf(stream, "%s ", "auto");
+	  else if(tspec.token != KERNEL)
             fprintf(stream, "%s ", tspec.id);
         }
         else if (!get_parent_node_exclusive(NODE_STENCIL, node) &&
@@ -3577,7 +3580,13 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 	{
 	  if(node->is_constexpr && !(node->type & NODE_FUNCTION_ID)) fprintf(stream, " constexpr ");
 	  if(node->expr_type)
+	  {
+          	//TP: the pointer view is only internally used to mark arrays. for now simple lower to auto
+	  	if(node->expr_type[strlen(node->expr_type)-1] == '*')
+            		fprintf(stream, "%s ", "auto");
+		else
 		  fprintf(stream, "%s ",node->expr_type);
+	  }
 	  else
           	fprintf(stream, "auto ");
 	}
@@ -5758,7 +5767,10 @@ compatible_types(const char* a, const char* b)
 	return !strcmp(a,b) 
 	       || (!strcmp(a,"AcReal*") && strstr(b,"AcArray") && strstr(b,REAL_STR)) ||
 	          (!strcmp(b,"AcReal*") && strstr(a,"AcArray") && strstr(a,REAL_STR)) ||
-            ((!strcmp(a,FIELD_STR) && !strcmp(b,"VertexBufferHandle")) || (!strcmp(b,FIELD_STR) && !strcmp(a,"VertexBufferHandle")))
+                  (!strcmp(a,FIELD_STR) && !strcmp(b,"VertexBufferHandle"))  ||
+		  (!strcmp(b,FIELD_STR) && !strcmp(a,"VertexBufferHandle"))  ||
+                  (!strcmp(a,"Field*") && !strcmp(b,"VertexBufferHandle*"))  ||
+		  (!strcmp(b,"Field*") && !strcmp(a,"VertexBufferHandle*"))
 		;
 }
 bool
@@ -5813,20 +5825,22 @@ resolve_overloaded_calls(ASTNode* node, string_vec* dfunc_possible_types)
 			const char* call_type = call_info.types.data[i];
 			//The upper one is the less strict resolver and below is the more strict resolver
 			possible &= !call_type || !func_type || compatible_types(func_type,call_type);
+			//if(!possible && !strcmp(dfunc_name,"write"))
+				//printf("HMM: %s|%s\n",call_type,func_type);
 		}
 		if(possible)
 			push_int(&possible_indexes,overload_index);
 	}
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
-		//if(!strcmp(dfunc_name,"bc_sym_x"))
-		//{
-		//	char my_tmp[10000];
-		//	my_tmp[0] = '\0';
-		//	combine_all(node->rhs,my_tmp); 
-		//	printf("Not able to resolve: %s,%d\n",my_tmp,param_offset); 
-		//	printf("Not able to resolve: %s,%d\n",call_info.types.data[4],param_offset); 
-		//}
+		if(!strcmp(dfunc_name,"write"))
+		{
+			char my_tmp[10000];
+			my_tmp[0] = '\0';
+			combine_all(node->rhs,my_tmp); 
+			printf("Not able to resolve: %s\n",my_tmp); 
+			printf("Not able to resolve: %s\n",call_info.types.data[0]); 
+		}
 		return res;
 	}
 	{
