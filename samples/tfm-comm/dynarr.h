@@ -61,13 +61,22 @@
  */
 #define dynarr_remove(index, arr)                                                                  \
     do {                                                                                           \
-        const size_t __dynarr_i__ = as_size_t((index));                                            \
-        ERRCHK((__dynarr_i__) < (arr)->length);                                                    \
-        const size_t __dynarr_count__ = (arr)->length - (__dynarr_i__) - 1;                        \
+        const size_t __dynarr_index__ = as_size_t((index));                                        \
+        ERRCHK((__dynarr_index__) < (arr)->length);                                                \
+        const size_t __dynarr_count__ = (arr)->length - (__dynarr_index__) - 1;                    \
         if (__dynarr_count__ > 0)                                                                  \
-            ncopy(__dynarr_count__, &(arr)->data[(__dynarr_i__) + 1],                              \
-                  &(arr)->data[(__dynarr_i__)]);                                                   \
+            ncopy(__dynarr_count__, &(arr)->data[(__dynarr_index__) + 1],                          \
+                  &(arr)->data[(__dynarr_index__)]);                                               \
         --(arr)->length;                                                                           \
+    } while (0)
+
+/** Remove multiple elements from a dynamic array
+ * dynarr_remove_multiple(const size_t index, const size_t count, void* arr)
+ */
+#define dynarr_remove_multiple(index, count, arr)                                                  \
+    do {                                                                                           \
+        for (size_t __dynarr_i__ = 0; __dynarr_i__ < as_size_t((count)); ++__dynarr_i__)           \
+            dynarr_remove((index), (arr));                                                         \
     } while (0)
 
 void test_dynarr(void);

@@ -58,6 +58,11 @@ test_dynarr(void)
         ERRCHK(arr.data[1] == 3);
         ERRCHK(arr.data[2] == 10);
         ERRCHK(arr.data[3] == 11);
+
+        dynarr_remove_multiple(1, 2, &arr);
+        ERRCHK(arr.data[0] == 1);
+        ERRCHK(arr.data[1] == 11);
+
         ndealloc(elems);
 
         dynarr_destroy(&arr);
