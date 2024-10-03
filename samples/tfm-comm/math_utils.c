@@ -1025,7 +1025,7 @@ test_next_positive_integer(void)
     {
         // Test ordering
         int prev = -500;
-        for (size_t i = 0; i < nsamples; ++i) {
+        for (int i = 0; i < nsamples; ++i) {
             int curr = next_positive_integer(prev);
             if (prev == INT_MAX)
                 ERRCHK(curr == 0);
@@ -1037,7 +1037,7 @@ test_next_positive_integer(void)
     {
         // Test wrap-around
         int prev = INT_MAX - nsamples / 2;
-        for (size_t i = 0; i < nsamples; ++i) {
+        for (int i = 0; i < nsamples; ++i) {
             int curr = next_positive_integer(prev);
             if (prev == INT_MAX)
                 ERRCHK(curr == 0);
@@ -1260,7 +1260,7 @@ test_remove_row(void)
     }
 
     {
-        const size_t ncols       = 2;
+#define ncols ((size_t)2)
         const size_t in[][ncols] = {
             {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
         };
@@ -1278,9 +1278,10 @@ test_remove_row(void)
         matrix_remove_row(0, nrows, ncols, &in[0][0], out);
         ERRCHK(equals(out_count, &model[0][0], out));
         ndealloc(out);
+#undef ncols
     }
     {
-        const size_t ncols       = 2;
+#define ncols ((size_t)2)
         const size_t in[][ncols] = {
             {1, 2}, {3, 4}, {5, 6}, {7, 8}, {9, 10},
         };
@@ -1293,6 +1294,7 @@ test_remove_row(void)
         matrix_remove_row(nrows - 1, nrows, ncols, &in[0][0], out);
         ERRCHK(equals(out_count, &model[0][0], out));
         ndealloc(out);
+#undef ncols
     }
 }
 
@@ -1308,7 +1310,7 @@ static void
 test_matrix_row_equals(void)
 {
     {
-        const size_t ncols        = 3;
+#define ncols ((size_t)3)
         const size_t mat[][ncols] = {
             {1, 2, 3},
             {4, 5, 6},
@@ -1319,6 +1321,7 @@ test_matrix_row_equals(void)
         ERRCHK(matrix_row_equals(0, nrows, ncols, &mat[0][0], (size_t[]){1, 2, 3}));
         ERRCHK(matrix_row_equals(1, nrows, ncols, &mat[0][0], (size_t[]){4, 5, 6}));
         ERRCHK(matrix_row_equals(2, nrows, ncols, &mat[0][0], (size_t[]){7, 8, 9}));
+#undef ncols
     }
 }
 

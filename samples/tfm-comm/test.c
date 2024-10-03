@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "comm.h"
 #include "dynarr.h"
 #include "math_utils.h"
 #include "mpi_utils.h"
@@ -14,7 +13,6 @@
 int
 main(void)
 {
-    test_comm();
     test_dynarr();
     test_math_utils();
     test_mpi_utils();
