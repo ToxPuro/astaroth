@@ -3,6 +3,31 @@
 typedef dynarr_s(int) dynarr_int;
 typedef dynarr_s(size_t) dynarr_size_t;
 
+typedef struct {
+    size_t count;
+    size_t* elems;
+} TestStruct;
+
+static TestStruct
+test_struct_create(const size_t count)
+{
+    TestStruct s = (TestStruct){
+        .count = count,
+        .elems = NULL,
+    };
+    nalloc(count, s.elems);
+    return s;
+}
+
+static void
+test_struct_destroy(TestStruct* s)
+{
+    ndealloc(s->elems);
+    s->count = 0;
+}
+
+typedef dynarr_s(TestStruct) dynarr_test_struct;
+
 void
 test_dynarr(void)
 {
@@ -64,6 +89,17 @@ test_dynarr(void)
         ERRCHK(arr.data[1] == 11);
 
         ndealloc(elems);
+
+        dynarr_destroy(&arr);
+    }
+    {
+        dynarr_test_struct arr;
+        dynarr_create_with_destructor(test_struct_destroy, &arr);
+
+        dynarr_append(test_struct_create(10), &arr);
+        dynarr_append(test_struct_create(11), &arr);
+        dynarr_append(test_struct_create(12), &arr);
+        dynarr_append(test_struct_create(13), &arr);
 
         dynarr_destroy(&arr);
     }
