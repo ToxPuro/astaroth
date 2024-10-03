@@ -57,7 +57,8 @@ static void
 packet_destroy(Packet* packet)
 {
     ERRCHK_MPI_API(MPI_Type_free(&packet->subarray));
-    ERRCHK_MPI_API(MPI_Request_free(&packet->req))
+    if (packet->req != MPI_REQUEST_NULL)
+        ERRCHK_MPI_API(MPI_Request_free(&packet->req));
     buffer_destroy(&packet->buffer);
     segment_destroy(&packet->segment);
 }
@@ -76,7 +77,7 @@ typedef struct {
     PacketArray recv_packets;
 } HaloSegmentBatch;
 
-HaloSegmentBatch
+static HaloSegmentBatch
 halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size_t* local_nn,
                           const size_t* local_nn_offset, const size_t n_aggregate_buffers)
 {
@@ -92,8 +93,6 @@ halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size
             --i;
         }
     }
-    const size_t nbuffers = 1;
-    WARNING("using hardcoded nbuffers = 1");
 
     HaloSegmentBatch batch;
     dynarr_create_with_destructor(packet_destroy, &batch.send_packets);
@@ -119,7 +118,7 @@ halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size
 
         // Recv packet
         const size_t* recv_offset = segments.data[i].offset;
-        dynarr_append(packet_create(ndims, local_mm, subdims, recv_offset, nbuffers),
+        dynarr_append(packet_create(ndims, local_mm, subdims, recv_offset, n_aggregate_buffers),
                       &batch.recv_packets);
 
         // Send packet
@@ -128,7 +127,7 @@ halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size
         for (size_t j = 0; j < ndims; ++j)
             send_offset[j] = ((local_nn[j] + recv_offset[j] - local_nn_offset[j]) % local_nn[j]) +
                              local_nn_offset[j];
-        dynarr_append(packet_create(ndims, local_mm, subdims, send_offset, nbuffers),
+        dynarr_append(packet_create(ndims, local_mm, subdims, send_offset, n_aggregate_buffers),
                       &batch.send_packets);
 
         ndealloc(send_offset);
@@ -140,14 +139,14 @@ halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size
     return batch;
 }
 
-void
+static void
 halo_segment_batch_destroy(HaloSegmentBatch* batch)
 {
     dynarr_destroy(&batch->send_packets);
     dynarr_destroy(&batch->recv_packets);
 }
 
-void
+static void
 test_halo_segment_batch(void)
 {
     const size_t mm[]        = {8, 8};
