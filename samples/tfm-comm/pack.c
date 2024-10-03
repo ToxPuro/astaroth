@@ -20,9 +20,9 @@ check_input_valid(const size_t ndims, const size_t* input_dims, const size_t* in
 }
 
 void
-segment_copy(const size_t ndims,                                                        //
-             const size_t* input_dims, const size_t* input_offset, const double* input, //
-             const size_t* output_dims, const size_t* output_offset, double* output)
+pack(const size_t ndims,                                                        //
+     const size_t* input_dims, const size_t* input_offset, const double* input, //
+     const size_t* output_dims, const size_t* output_offset, double* output)
 {
     check_input_valid(ndims, input_dims, input_offset, output_dims);
 
@@ -66,7 +66,7 @@ test_pack(void)
         for (size_t i = 0; i < input_count; ++i)
             input[i] = (double)i;
 
-        segment_copy(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
+        pack(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
         ERRCHK(ncmp(ndims, output, model_output));
 
         // print_ndarray("input", ndims, input_dims, input);
@@ -92,7 +92,7 @@ test_pack(void)
         for (size_t i = 0; i < input_count; ++i)
             input[i] = (double)i;
 
-        segment_copy(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
+        pack(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
         ERRCHK(ncmp(ndims, output, model_output));
 
         // print_ndarray("input", ndims, input_dims, input);
@@ -120,9 +120,9 @@ test_pack(void)
         for (size_t i = 0; i < input_count; ++i)
             input[i] = (double)i;
 
-        segment_copy(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
-        segment_copy(ndims, input_dims, (size_t[]){5, 5, 0}, input, (size_t[]){3, 2, 1},
-                     (size_t[]){0, 0, 1}, output);
+        pack(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
+        pack(ndims, input_dims, (size_t[]){5, 5, 0}, input, (size_t[]){3, 2, 1},
+             (size_t[]){0, 0, 1}, output);
         ERRCHK(ncmp(ndims, output, model_output));
 
         // print_ndarray("input", ndims, input_dims, input);

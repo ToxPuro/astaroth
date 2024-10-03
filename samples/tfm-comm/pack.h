@@ -1,9 +1,9 @@
 #pragma once
 #include <stddef.h>
 
-void segment_copy(const size_t ndims, const size_t* input_dims, const size_t* input_offset,
-                  const double* input, const size_t* output_dims, const size_t* output_offset,
-                  double* output);
+void pack(const size_t ndims, const size_t* input_dims, const size_t* input_offset,
+          const double* input, const size_t* output_dims, const size_t* output_offset,
+          double* output);
 
 void test_pack(void);
 
