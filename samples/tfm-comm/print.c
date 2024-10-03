@@ -1,5 +1,6 @@
 #include "print.h"
 
+#include <inttypes.h>
 #include <stdio.h>
 
 #include "math_utils.h"
@@ -72,7 +73,7 @@
 
 // Definitions
 DEFINE_GENERIC_FUNCTIONS(size_t, "%zu")
-DEFINE_GENERIC_FUNCTIONS(int64_t, "%lld")
+DEFINE_GENERIC_FUNCTIONS(int64_t, "%" PRId64)
 DEFINE_GENERIC_FUNCTIONS(int, "%d")
 DEFINE_GENERIC_FUNCTIONS(double, "%g")
 
