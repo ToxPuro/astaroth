@@ -6,8 +6,6 @@
 
 typedef dynarr_s(Segment) SegmentArray;
 
-typedef dynarr_s(size_t) DynamicArray;
-
 /** Partitions the domain mm into subdomains divided by nn
  *  Returns the number of partitions
  * offsets and dims must be large enough to hold nelems elements
@@ -34,7 +32,7 @@ typedef dynarr_s(size_t) DynamicArray;
  * // The array must be constructed with a destructor
  * // Otherwise the caller must manually destroy the elements afterwards
  * SegmentArray segments;
- * dynarr_create_with_destructor(segment_destroy, &segment_dims);
+ * dynarr_create_with_destructor(segment_destroy, &segments);
  *
  * // Fill offsets and dims with the partitioning
  * partition(..., segments);
