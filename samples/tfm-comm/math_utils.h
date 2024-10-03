@@ -79,11 +79,11 @@ void sort(const size_t count, size_t* arr);
 
 bool intersect_lines(const size_t a1, const size_t a2, const size_t b1, const size_t b2);
 
-bool intersect_box(const size_t ndims, const size_t* a_start, const size_t* a_dims,
-                   const size_t* b_start, const size_t* b_dims);
+bool intersect_box_note_changed(const size_t ndims, const size_t* a_dims, const size_t* a_offset,
+                                const size_t* b_dims, const size_t* b_offset);
 
-bool within_box(const size_t ndims, const size_t* coords, const size_t* box_min,
-                const size_t* box_max);
+bool within_box_note_changed(const size_t ndims, const size_t* coords, const size_t* box_dims,
+                             const size_t* box_offset);
 
 /**
  * Returns the next positive integer in range [0, INT_MAX].

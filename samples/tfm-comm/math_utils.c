@@ -879,57 +879,67 @@ test_intersect_lines(void)
 }
 
 bool
-intersect_box(const size_t ndims, const size_t* a_start, const size_t* a_dims,
-              const size_t* b_start, const size_t* b_dims)
+intersect_box_note_changed(const size_t ndims, const size_t* a_dims, const size_t* a_offset,
+                           const size_t* b_dims, const size_t* b_offset)
 {
     bool all_intersect = true;
     for (size_t i = 0; i < ndims; ++i)
-        all_intersect = all_intersect && intersect_lines(a_start[i], a_start[i] + a_dims[i],
-                                                         b_start[i], b_start[i] + b_dims[i]);
+        all_intersect = all_intersect && intersect_lines(a_offset[i], a_offset[i] + a_dims[i],
+                                                         b_offset[i], b_offset[i] + b_dims[i]);
 
     return all_intersect;
 }
 
 /** Check if coords are within the box spanned by box_min (inclusive) and box_max (exclusive) */
 bool
-within_box(const size_t ndims, const size_t* coords, const size_t* box_min, const size_t* box_max)
+within_box_note_changed(const size_t ndims, const size_t* coords, const size_t* box_dims,
+                        const size_t* box_offset)
 {
-    bool res = true;
     for (size_t i = 0; i < ndims; ++i)
-        res = res && coords[i] >= box_min[i] && coords[i] < box_max[i];
-    return res;
+        if (coords[i] < box_offset[i] || coords[i] >= box_offset[i] + box_dims[i])
+            return false;
+    return true;
 }
+// bool
+// within_box(const size_t ndims, const size_t* coords, const size_t* box_min, const size_t*
+// box_max)
+// {
+//     bool res = true;
+//     for (size_t i = 0; i < ndims; ++i)
+//         res = res && coords[i] >= box_min[i] && coords[i] < box_max[i];
+//     return res;
+// }
 
 static void
 test_within_box(void)
 {
     {
-        const size_t box_min[] = {0, 0, 0};
-        const size_t box_max[] = {10, 10, 10};
-        const size_t coords[]  = {0, 0, 0};
-        const size_t ndims     = ARRAY_SIZE(coords);
-        ERRCHK(within_box(ndims, coords, box_min, box_max) == true);
+        const size_t box_offset[] = {0, 0, 0};
+        const size_t box_dims[]   = {10, 10, 10};
+        const size_t coords[]     = {0, 0, 0};
+        const size_t ndims        = ARRAY_SIZE(coords);
+        ERRCHK(within_box_note_changed(ndims, coords, box_dims, box_offset) == true);
     }
     {
-        const size_t box_min[] = {0, 0, 0};
-        const size_t box_max[] = {10, 10, 10};
-        const size_t coords[]  = {0, 10, 0};
-        const size_t ndims     = ARRAY_SIZE(coords);
-        ERRCHK(within_box(ndims, coords, box_min, box_max) == false);
+        const size_t box_offset[] = {0, 0, 0};
+        const size_t box_dims[]   = {10, 10, 10};
+        const size_t coords[]     = {0, 10, 0};
+        const size_t ndims        = ARRAY_SIZE(coords);
+        ERRCHK(within_box_note_changed(ndims, coords, box_dims, box_offset) == false);
     }
     {
-        const size_t box_min[] = {0, 0, 0};
-        const size_t box_max[] = {10, 10, 10};
-        const size_t coords[]  = {11, 11, 11};
-        const size_t ndims     = ARRAY_SIZE(coords);
-        ERRCHK(within_box(ndims, coords, box_min, box_max) == false);
+        const size_t box_offset[] = {0, 0, 0};
+        const size_t box_dims[]   = {10, 10, 10};
+        const size_t coords[]     = {11, 11, 11};
+        const size_t ndims        = ARRAY_SIZE(coords);
+        ERRCHK(within_box_note_changed(ndims, coords, box_dims, box_offset) == false);
     }
     {
-        const size_t box_min[] = {0, 0, 0, 0, 0, 0, 0};
-        const size_t box_max[] = {1, 2, 3, 4, 5, 6, 7};
-        const size_t coords[]  = {0, 1, 2, 3, 4, 5, 6};
-        const size_t ndims     = ARRAY_SIZE(coords);
-        ERRCHK(within_box(ndims, coords, box_min, box_max) == true);
+        const size_t box_offset[] = {0, 0, 0, 0, 0, 0, 0};
+        const size_t box_dims[]   = {1, 2, 3, 4, 5, 6, 7};
+        const size_t coords[]     = {0, 1, 2, 3, 4, 5, 6};
+        const size_t ndims        = ARRAY_SIZE(coords);
+        ERRCHK(within_box_note_changed(ndims, coords, box_dims, box_offset) == true);
     }
 }
 
@@ -942,7 +952,7 @@ test_intersect_box(void)
         const size_t b[]      = {0, 0, 0};
         const size_t b_dims[] = {1, 1, 1};
         const size_t ndims    = ARRAY_SIZE(a);
-        ERRCHK(intersect_box(ndims, a, a_dims, b, b_dims) == true);
+        ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == true);
     }
     {
         const size_t a[]      = {0, 0};
@@ -950,8 +960,8 @@ test_intersect_box(void)
         const size_t b[]      = {1, 0};
         const size_t b_dims[] = {1, 1};
         const size_t ndims    = ARRAY_SIZE(a);
-        ERRCHK(intersect_box(ndims, a, a_dims, b, b_dims) == false);
-        ERRCHK(intersect_box(ndims, b, b_dims, a, a_dims) == false);
+        ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == false);
+        ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == false);
     }
     {
         const size_t a[]      = {0, 0};
@@ -959,8 +969,8 @@ test_intersect_box(void)
         const size_t b[]      = {1, 2};
         const size_t b_dims[] = {1, 1};
         const size_t ndims    = ARRAY_SIZE(a);
-        ERRCHK(intersect_box(ndims, a, a_dims, b, b_dims) == false);
-        ERRCHK(intersect_box(ndims, b, b_dims, a, a_dims) == false);
+        ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == false);
+        ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == false);
     }
     {
         const size_t a[]      = {0, 0};
@@ -968,8 +978,8 @@ test_intersect_box(void)
         const size_t b[]      = {1, 1};
         const size_t b_dims[] = {1, 1};
         const size_t ndims    = ARRAY_SIZE(a);
-        ERRCHK(intersect_box(ndims, a, a_dims, b, b_dims) == true);
-        ERRCHK(intersect_box(ndims, b, b_dims, a, a_dims) == true);
+        ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == true);
+        ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == true);
     }
     {
         const size_t a[]      = {0, 0, 0, 0, 0};
@@ -977,8 +987,8 @@ test_intersect_box(void)
         const size_t b[]      = {1, 1, 1, 1, 1};
         const size_t b_dims[] = {1, 1, 1, 1, 1};
         const size_t ndims    = ARRAY_SIZE(a);
-        ERRCHK(intersect_box(ndims, a, a_dims, b, b_dims) == true);
-        ERRCHK(intersect_box(ndims, b, b_dims, a, a_dims) == true);
+        ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == true);
+        ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == true);
     }
     {
         const size_t a[]      = {0, 0, 0, 0, 0};
@@ -986,8 +996,8 @@ test_intersect_box(void)
         const size_t b[]      = {1, 1, 2, 1, 1};
         const size_t b_dims[] = {1, 1, 1, 1, 1};
         const size_t ndims    = ARRAY_SIZE(a);
-        ERRCHK(intersect_box(ndims, a, a_dims, b, b_dims) == false);
-        ERRCHK(intersect_box(ndims, b, b_dims, a, a_dims) == false);
+        ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == false);
+        ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == false);
     }
     {
         const size_t a[]      = {1, 0};
@@ -995,8 +1005,8 @@ test_intersect_box(void)
         const size_t b[]      = {0, 1};
         const size_t b_dims[] = {3, 1};
         const size_t ndims    = ARRAY_SIZE(a);
-        ERRCHK(intersect_box(ndims, a, a_dims, b, b_dims) == true);
-        ERRCHK(intersect_box(ndims, b, b_dims, a, a_dims) == true);
+        ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == true);
+        ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == true);
     }
     {
         const size_t a[]      = {5, 0};
@@ -1004,8 +1014,8 @@ test_intersect_box(void)
         const size_t b[]      = {0, 5};
         const size_t b_dims[] = {10, 5};
         const size_t ndims    = ARRAY_SIZE(a);
-        ERRCHK(intersect_box(ndims, a, a_dims, b, b_dims) == true);
-        ERRCHK(intersect_box(ndims, b, b_dims, a, a_dims) == true);
+        ERRCHK(intersect_box_note_changed(ndims, a_dims, a, b_dims, b) == true);
+        ERRCHK(intersect_box_note_changed(ndims, b_dims, b, a_dims, a) == true);
     }
 }
 
