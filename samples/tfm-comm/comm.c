@@ -9,8 +9,8 @@
 #include "print.h"
 #include "type_conversion.h"
 
-static MPI_Comm comm_ = -1;
-// static int _ndims
+static MPI_Comm mpi_comm_ = MPI_COMM_NULL;
+static int mpi_ndims_     = -1;
 
 // static void
 // decompose(const size_t ndims, const size_t global_nn, const size_t nlayers,
@@ -32,11 +32,17 @@ acCommInit(const size_t ndims, const size_t* global_nn, size_t* local_nn, size_t
     ncalloc(ndims, mpi_dims);
     ERRCHK_MPI_API(MPI_Dims_create(nprocs, as_int(ndims), mpi_dims));
 
+    // Create the primary communicator
     int* mpi_periods;
     nalloc(ndims, mpi_periods);
     iset(1, ndims, mpi_periods);
-    ERRCHK_MPI_API(MPI_Cart_create(nprocs, as_int(ndims), mpi_dims, mpi_periods, 0, &comm_));
+    ERRCHK_MPI_API(
+        MPI_Cart_create(MPI_COMM_WORLD, as_int(ndims), mpi_dims, mpi_periods, 0, &mpi_comm_));
 
+    // Setup the rest of the global variables
+    mpi_ndims_ = as_int(ndims);
+
+    // Cleanup
     ndealloc(mpi_periods);
     ndealloc(mpi_dims);
 }
@@ -44,7 +50,7 @@ acCommInit(const size_t ndims, const size_t* global_nn, size_t* local_nn, size_t
 void
 acCommQuit(void)
 {
-    ERRCHK_MPI_API(MPI_Comm_free(&comm_));
+    ERRCHK_MPI_API(MPI_Comm_free(&mpi_comm_));
     ERRCHK_MPI_API(MPI_Finalize());
 }
 
@@ -53,14 +59,43 @@ acCommGetProcInfo(int* rank, int* nprocs)
 {
     *rank   = 0;
     *nprocs = 1;
-    ERRCHK_MPI_API(MPI_Comm_rank(comm_, rank));
-    ERRCHK_MPI_API(MPI_Comm_size(comm_, nprocs));
+    ERRCHK_MPI_API(MPI_Comm_rank(mpi_comm_, rank));
+    ERRCHK_MPI_API(MPI_Comm_size(mpi_comm_, nprocs));
+}
+
+void
+print_comm(void)
+{
+    int rank, nprocs;
+    ERRCHK_MPI_API(MPI_Comm_rank(mpi_comm_, &rank));
+    ERRCHK_MPI_API(MPI_Comm_size(mpi_comm_, &nprocs));
+
+    int *mpi_dims, *mpi_periods, *mpi_coords;
+    ncalloc(as_size_t(mpi_ndims_), mpi_dims);
+    ncalloc(as_size_t(mpi_ndims_), mpi_periods);
+    ncalloc(as_size_t(mpi_ndims_), mpi_coords);
+    ERRCHK_MPI_API(MPI_Cart_get(mpi_comm_, mpi_ndims_, mpi_dims, mpi_periods, mpi_coords));
+    // ERRCHK_MPI_API(MPI_Cart_coords(mpi_comm_, rank, mpi_ndims_, mpi_coords));
+
+    for (int i = 0; i < nprocs; ++i) {
+        acCommBarrier();
+        if (rank == i) {
+            printf("Rank %d of %d:\n", rank);
+            print_array("\t mpi_dims", as_size_t(mpi_ndims_), mpi_dims);
+            print_array("\t mpi_periods", as_size_t(mpi_ndims_), mpi_periods);
+            print_array("\t mpi_coords", as_size_t(mpi_ndims_), mpi_coords);
+        }
+        acCommBarrier();
+    }
+    ndealloc(mpi_dims);
+    ndealloc(mpi_periods);
+    ndealloc(mpi_coords);
 }
 
 void
 acCommBarrier(void)
 {
-    ERRCHK_MPI_API(MPI_Barrier(comm_));
+    ERRCHK_MPI_API(MPI_Barrier(mpi_comm_));
 }
 
 void
@@ -75,10 +110,7 @@ test_comm(void)
 
     acCommInit(ndims, nn, local_nn, global_nn_offset);
 
-    int rank, nprocs;
-    acCommGetProcInfo(&rank, &nprocs);
-    print("rank", rank);
-    print("nprocs", nprocs);
+    print_comm();
 
     acCommQuit();
 

@@ -18,6 +18,8 @@ void acCommGetProcInfo(int* rank, int* nprocs);
 
 void acCommBarrier(void);
 
+void print_comm(void);
+
 // typedef struct HaloExchangeTask_s HaloExchangeTask;
 
 // HaloExchangeTask* acHaloExchangeTaskCreate(const size_t ndims, const size_t* mm, const size_t*
