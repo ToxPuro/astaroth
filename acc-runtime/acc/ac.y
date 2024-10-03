@@ -493,7 +493,7 @@ main(int argc, char** argv)
 %token REAL3 INT3 FIRST
 %token RANGE
 %token CONST_DIMS
-%token CAST
+%token CAST BASIC_STATEMENT
 
 %nonassoc QUESTION
 %nonassoc ':'
@@ -1057,16 +1057,16 @@ assignment_body: assignment_op expression_list
 basic_statement: 
 	   variable_definition  { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
          | return expression    { $$ = astnode_create(NODE_UNKNOWN, $1, $2); astnode_set_postfix(";", $$); }
-         | function_call        { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$); }
+         | function_call        { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); astnode_set_postfix(";", $$);}
          ;
 
 non_selection_statement: 
-	   basic_statement { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
+	   basic_statement { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); $$->token = BASIC_STATEMENT;}
          | iteration_statement  { $$ = astnode_create(NODE_BEGIN_SCOPE, $1, NULL); }
          ;
 
-statement: selection_statement     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); }
-	 | non_selection_statement {$$ = astnode_create(NODE_UNKNOWN, $1, NULL);  }
+statement: selection_statement     { $$ = astnode_create(NODE_UNKNOWN, $1, NULL); $$->token = STATEMENT;}
+	 | non_selection_statement {$$ = astnode_create(NODE_UNKNOWN, $1, NULL);  $$->token = STATEMENT;}
          ;
 
 
@@ -1126,8 +1126,8 @@ for_expression: identifier in expression {
 	      | identifier in range {
     			$$ = astnode_create(NODE_UNKNOWN, $1, $3);
     			astnode_set_infix("=", $$);
-			astnode_sprintf($$->rhs,";%s<", $1->buffer);
-    			astnode_sprintf_postfix($$, ";++%s", $1->buffer);
+			astnode_sprintf_postfix($$->rhs->lhs,";%s<", $1->buffer);
+    			astnode_sprintf_postfix($$->rhs->rhs, ";++%s", $1->buffer);
 	      }
 	      ;
 

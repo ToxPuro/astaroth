@@ -2532,6 +2532,7 @@ do_not_rename(const ASTNode* node, const char* str_to_check)
 	if(node->token != IDENTIFIER)                                return true;
 	if(strcmp(node->buffer,str_to_check))                        return true;
 	if(strstr(node->buffer,"AC_INTERNAL"))                       return true;
+	if(strstr(node->buffer,"AC_MANGLED"))                       return true;
 	return false;
 }
 
@@ -3583,6 +3584,9 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 	  {
           	//TP: the pointer view is only internally used to mark arrays. for now simple lower to auto
 	  	if(node->expr_type[strlen(node->expr_type)-1] == '*')
+            		fprintf(stream, "%s ", "auto");
+		//TP: Hack
+		else if(strstr(node->expr_type,"WITH_INLINE"))
             		fprintf(stream, "%s ", "auto");
 		else
 		  fprintf(stream, "%s ",node->expr_type);
@@ -5092,7 +5096,6 @@ rename_identifiers(ASTNode* node, const char* old_name, const char* new_name)
 		rename_identifiers(node->rhs,old_name,new_name);
 	if(node->token != IDENTIFIER) return;
 	if(strcmp(node->buffer,old_name)) return;
-	printf("renamed :%s\n",old_name);
 	astnode_set_buffer(new_name,node);
 }
 void
@@ -5107,34 +5110,36 @@ append_to_identifiers(const char* str_to_append, ASTNode* node, const char* str_
 }
 
 void
-rename_local_vars(const char* str_to_append, ASTNode* node, ASTNode* root)
+rename_local_vars(const char* str_to_append, ASTNode* node, ASTNode* dfunc_start)
 {
 	if(node->lhs)
-		rename_local_vars(str_to_append,node->lhs,root);
+		rename_local_vars(str_to_append,node->lhs,dfunc_start);
+	if(node->type & NODE_DECLARATION)
+	{
+		const char* name = get_node_by_token(IDENTIFIER,node)->buffer;
+		append_to_identifiers(str_to_append,dfunc_start,name);
+	}
 	if(node->rhs)
-		rename_local_vars(str_to_append,node->rhs,root);
-	if(!(node->type & NODE_DECLARATION))
-		return;
-	const char* name = get_node_by_token(IDENTIFIER,node)->buffer;
-	//const ASTNode* tspec = get_node(NODE_TSPEC,node);
-	append_to_identifiers(str_to_append,root,name);
+		rename_local_vars(str_to_append,node->rhs,dfunc_start);
 }
 void
-gen_dfunc_internal_names_recursive(ASTNode* node)
+gen_dfunc_internal_names(ASTNode* node)
 {
 
-	TRAVERSE_PREAMBLE(gen_dfunc_internal_names_recursive);
+	if(node->lhs)
+		gen_dfunc_internal_names(node->lhs);
+	if(node->rhs)
+		gen_dfunc_internal_names(node->rhs);
 	if(!(node->type & NODE_DFUNCTION))
 		return;
-	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,node);
+	const char* func_name = get_node_by_token(IDENTIFIER,node)->buffer;
+	if(!func_name || !check_symbol(NODE_DFUNCTION_ID,func_name,0,INLINE)) return;
 	//to exclude input params
 	//rename_local_vars(fn_identifier->buffer,node->rhs->rhs,node->rhs->rhs);
-	rename_local_vars(fn_identifier->buffer,node->rhs,node->rhs);
-}
-void
-gen_dfunc_internal_names(ASTNode* root)
-{
-  gen_dfunc_internal_names_recursive(root);
+	char* prefix = NULL;
+	asprintf(&prefix,"%s_REPLACE_WITH_INLINE_COUNTER",func_name);
+	rename_local_vars(prefix,node,node);
+	free(prefix);
 }
 void
 remove_nodes(const NodeType type, ASTNode* node)
@@ -5157,6 +5162,8 @@ get_dfunc(const char* name)
 }
 static ASTNode*
 create_assignment(const ASTNode* lhs, const ASTNode* assign_expr, const char* op);
+static ASTNode*
+create_declaration(const char* identifier);
 void
 add_to_node_list(ASTNode* head, const ASTNode* new_node)
 {
@@ -5166,40 +5173,166 @@ add_to_node_list(ASTNode* head, const ASTNode* new_node)
 	ASTNode* node = astnode_create(NODE_UNKNOWN,new_last,last_elem);
 	*head = *node;
 }
-//void
-//inline_dfuncs_recursive(ASTNode* node)
-//{
-//	TRAVERSE_PREAMBLE(inline_dfuncs_recursive);
-//	if(!(node->type & NODE_FUNCTION_CALL) || !node->lhs ) return;
-//	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-//	const ASTNode* dfunc = get_dfunc(func_name);
-//	if(!dfunc) return;
-//	if(!dfunc->rhs->rhs->lhs) return;
-//	if(get_node_by_token(RETURN,dfunc->rhs->rhs)) return;
-//	ASTNode* new_dfunc = astnode_dup(dfunc,NULL);
-//	ASTNode* dfunc_statements = new_dfunc->rhs->rhs->lhs;
-//	if(!func_name || !check_symbol(NODE_DFUNCTION_ID,func_name,0,INLINE)) return;
-//	ASTNode* statement = (ASTNode*) get_parent_node(NODE_STATEMENT_LIST_HEAD,node);
-//	node_vec params = get_nodes_in_list(node->rhs);
-//	func_params_info params_info = get_function_param_types_and_names(dfunc,func_name);
-//	for(size_t i = 0; i < params.size; ++i)
-//	{
-//		ASTNode* copy_assignment = create_assignment(params_info.expr.data[i],params.data[i],EQ_STR);
-//		add_to_node_list(dfunc_statements,copy_assignment);
-//	}
-//	char tmp[10000];
-//	combine_all(new_dfunc->rhs->rhs,tmp);
-//  	gen_multidimensional_field_accesses_recursive(new_dfunc->rhs->rhs);
-//	node->parent->lhs = new_dfunc->rhs->rhs;
-//	free_func_params_info(&params_info);
-//	free_node_vec(&params);
-//}
-//void
-//inline_dfuncs(ASTNode* node)
-//{
-//  traverse(node,NODE_NO_OUT,NULL);
-//  inline_dfuncs_recursive(node);
-//}
+void
+replace_substrings(ASTNode* node, const char* to_replace, const char* replacement)
+{
+	if(node->lhs)
+		replace_substrings(node->lhs,to_replace,replacement);
+	if(node->rhs)
+		replace_substrings(node->rhs,to_replace,replacement);
+	if(node->expr_type)
+	{
+		char* tmp = strdup(node->expr_type);
+		replace_substring(&tmp,to_replace,replacement);
+		node->expr_type = intern(tmp);
+	}
+	if(node->prefix)
+	{
+		char* tmp = strdup(node->prefix);
+		replace_substring(&tmp,to_replace,replacement);
+		astnode_set_prefix(tmp,node);
+	}
+	if(node->infix)
+	{
+		char* tmp = strdup(node->infix);
+		replace_substring(&tmp,to_replace,replacement);
+		astnode_set_infix(tmp,node);
+	}
+	if(node->buffer)
+	{
+		char* tmp = strdup(node->buffer);
+		replace_substring(&tmp,to_replace,replacement);
+		astnode_set_buffer(tmp,node);
+	}
+	if(node->postfix)
+	{
+		char* tmp = strdup(node->postfix);
+		replace_substring(&tmp,to_replace,replacement);
+		astnode_set_postfix(tmp,node);
+	}
+}
+void
+inline_dfuncs_recursive(ASTNode* node, int* counter)
+{
+	if(node->lhs)
+		inline_dfuncs_recursive(node->lhs,counter);
+	if(node->rhs)
+		inline_dfuncs_recursive(node->rhs,counter);
+	if(!(node->type & NODE_ASSIGNMENT)) return;
+	ASTNode* func_node = (ASTNode*) get_node(NODE_FUNCTION_CALL,node->rhs);
+	ASTNode* decl_node = (ASTNode*) get_node(NODE_DECLARATION,node->lhs);
+	if(!decl_node) return;
+	if(!func_node) return;
+	if(!(func_node->type & NODE_FUNCTION_CALL) || !func_node->lhs ) return;
+	const char* func_name = get_node_by_token(IDENTIFIER,func_node->lhs)->buffer;
+	if(!func_name || !check_symbol(NODE_DFUNCTION_ID,func_name,0,INLINE)) return;
+	const ASTNode* dfunc = get_dfunc(func_name);
+	if(!dfunc) return;
+	if(!dfunc->rhs->rhs->lhs) return;
+	ASTNode* new_dfunc = astnode_dup(dfunc,NULL);
+	ASTNode* dfunc_statements = new_dfunc->rhs->rhs->lhs;
+	
+	ASTNode* return_node = get_node_by_token(RETURN,dfunc_statements);
+	if(return_node) return_node = return_node->parent;
+	if(return_node)
+	{
+		ASTNode* return_assignment = create_assignment(decl_node,return_node->rhs,EQ_STR);
+		if(return_node->parent->lhs && return_node->parent->lhs->id == return_node->id)
+			return_node->parent->lhs = return_assignment;
+		else
+			return_node->parent->rhs = return_assignment;
+		return_assignment->parent = return_node->parent;
+	}
+
+	node_vec params = get_nodes_in_list(func_node->rhs);
+	func_params_info params_info = get_function_param_types_and_names(dfunc,func_name);
+	for(size_t i = 0; i < params.size; ++i)
+	{
+		ASTNode* copy_assignment = create_assignment(create_declaration(params_info.expr.data[i]),params.data[i],EQ_STR);
+		add_to_node_list(dfunc_statements,copy_assignment);
+	}
+	char* replacement = itoa(*counter);
+	replace_substrings(new_dfunc,"REPLACE_WITH_INLINE_COUNTER",replacement);
+	free(replacement);
+
+	if(node->parent->lhs && node->parent->lhs->id == node->id)
+		node->parent->lhs = new_dfunc->rhs->rhs->lhs;
+	else
+		node->parent->rhs = new_dfunc->rhs->rhs->lhs;
+	new_dfunc->rhs->rhs->lhs->parent = node->parent;
+	astnode_set_prefix("//start of inlined func call\n",node->parent);
+	astnode_set_postfix("//end of inlined func call\n",node->parent);
+
+	free_func_params_info(&params_info);
+	free_node_vec(&params);
+	(*counter)++;
+}
+//TP: canonalizes inline func valls to var = f() and replaces the call with var. e.g. h(f()) ---> var = f(); h(var);
+void
+turn_inline_function_calls_to_assignments_in_statement(ASTNode* node, ASTNode* base_statement, int* counter)
+{
+	if(node->lhs)
+		turn_inline_function_calls_to_assignments_in_statement(node->lhs,base_statement,counter);
+	if(node->rhs)
+		turn_inline_function_calls_to_assignments_in_statement(node->rhs,base_statement,counter);
+	if(!(node->type & NODE_FUNCTION_CALL) || !node->lhs ) return;
+	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+	if(!func_name || !check_symbol(NODE_DFUNCTION_ID,func_name,0,INLINE)) return;
+	char* inline_var_name;
+	asprintf(&inline_var_name,"inlined_var_return_value_%d",*counter);
+	ASTNode* decl  = create_declaration(inline_var_name);
+	ASTNode* res = create_assignment(decl,node,"=");
+
+	ASTNode* expr = create_primary_expression(inline_var_name);
+
+	if(node->parent->lhs && node->parent->lhs->id == node->id)
+		node->parent->lhs = expr;
+	else
+		node->parent->rhs = expr;
+	expr->parent = node->parent;
+
+	ASTNode* head = base_statement->parent;
+	const bool last_statement = base_statement->parent->lhs && base_statement->parent->lhs->id == base_statement->id;
+	if(last_statement)
+	{
+		head->rhs = head->lhs;
+		head->type = NODE_STATEMENT_LIST_HEAD;
+		ASTNode* statement = astnode_create(NODE_UNKNOWN, res, NULL);
+		head->lhs=  statement;
+	}
+	else
+	{
+		ASTNode* new_lhs = astnode_create(NODE_STATEMENT_LIST_HEAD,head->lhs, res);
+		head->lhs = new_lhs;
+		new_lhs->parent = head;
+	}
+	(*counter)++;
+	free(inline_var_name);
+}
+void
+turn_inline_function_calls_to_assignments(ASTNode* node, int* counter)
+{
+	if(node->lhs)
+		turn_inline_function_calls_to_assignments(node->lhs,counter);
+	if(node->rhs)
+		turn_inline_function_calls_to_assignments(node->rhs,counter);
+
+	if(node->token != STATEMENT)
+		return;
+
+	ASTNode* basic_statement = get_node_by_token(BASIC_STATEMENT,node);
+	if(!basic_statement) return;
+	turn_inline_function_calls_to_assignments_in_statement(basic_statement,node,counter);
+}
+void
+inline_dfuncs(ASTNode* node)
+{
+  traverse(node,NODE_NO_OUT,NULL);
+  int var_counter = 0;
+  turn_inline_function_calls_to_assignments(node,&var_counter);
+  int counter = 0;
+  inline_dfuncs_recursive(node, &counter);
+}
 void
 transform_arrays_to_std_arrays_in_func(ASTNode* node)
 {
@@ -5703,6 +5836,7 @@ flow_type_info(ASTNode* node)
 void
 gen_type_info(ASTNode* root)
 {
+  	transform_arrays_to_std_arrays(root);
   	if(dfunc_nodes.size == 0)
   		get_dfunc_nodes(root,&dfunc_nodes,&dfunc_names);
 	bool has_changed = true;
@@ -5864,10 +5998,15 @@ gen_overloads(ASTNode* root)
   int counters[duplicate_dfuncs.names.size];
   memset(counters,0,sizeof(int)*duplicate_dfuncs.names.size);
   mangle_dfunc_names(root,dfunc_possible_types,counters);
+
   
+  //TP: refresh the symbol table with the mangled names
   symboltable_reset();
   traverse(root, NODE_NO_OUT, NULL);
-  int iter = 0;
+
+  //TP we have to create the internal names here since it has to be done after name mangling but before transformation to AcArray
+  gen_dfunc_internal_names(root);
+
   while(overloaded_something)
   {
 	overloaded_something = false;
@@ -6003,7 +6142,8 @@ transform_field_unary_ops(ASTNode* node)
 	const char* base_expr = get_expr_type(node->rhs);
 	const char* unary_op = get_node_by_token(UNARY_OP,node->lhs)->buffer;
 	if(strcmps(unary_op,PLUS_STR,MINUS_STR)) return;
-	if(base_expr != FIELD_STR && base_expr != FIELD3_STR) return;
+	if(!base_expr) return;
+	if(base_expr != FIELD_STR && base_expr != FIELD3_STR && strcmp(base_expr,"VertexBufferHandle*")) return;
 
 	ASTNode*  func_call = create_func_call("value",node->rhs);
 	ASTNode*  unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
@@ -6024,15 +6164,14 @@ transform_field_binary_ops(ASTNode* node)
         if(!op) return;
         if(strcmps(op,PLUS_STR,MINUS_STR,DIV_STR,MULT_STR)) return;
 
-	if(lhs_expr == FIELD_STR || lhs_expr == FIELD3_STR)
+	if(lhs_expr && (lhs_expr == FIELD_STR || lhs_expr == FIELD3_STR || !strcmp(lhs_expr,"VertexBufferHandle*")))
 	{
-
 		ASTNode* func_call = create_func_call("value",node->lhs);
 		ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
 		ASTNode* expression         = astnode_create(NODE_EXPRESSION,unary_expression,NULL);
 		node->lhs = expression;
 	}
-	if(rhs_expr == FIELD_STR || rhs_expr == FIELD3_STR)
+	if(rhs_expr && (rhs_expr == FIELD_STR || rhs_expr == FIELD3_STR || !strcmp(rhs_expr,"VertexBufferHandle*")))
 	{
 
 		ASTNode* func_call = create_func_call("value",node->rhs->rhs);
@@ -6059,8 +6198,9 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 		fprintf(stream,"%s (real3 v){return real3(%s_AC_INTERNAL_COPY(v.x), %s_AC_INTERNAL_COPY(v.y), %s_AC_INTERNAL_COPY(v.z))}\n",dfunc_name,dfunc_name,dfunc_name,dfunc_name);
 		fprintf(stream,"%s (Field field){return %s_AC_INTERNAL_COPY(value(field))}\n",dfunc_name,dfunc_name);
 		fprintf(stream,"%s (Field3 v){return real3(%s(v.x), %s(v.y), %s(v.z))}\n",dfunc_name,dfunc_name,dfunc_name,dfunc_name);
-		fprintf(stream,"%s(real[] arr){\nreal res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s_AC_INTERNAL_COPY(arr[i])\nreturn arr\n}\n",dfunc_name,dfunc_name);
+		fprintf(stream,"%s(real[] arr){\nreal res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s_AC_INTERNAL_COPY(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
 	}
+
 	else if(info.expr.size == 1 && info.types.data[0] == FIELD_STR && !strstr(dfunc_name,"AC_INTERNAL_COPY"))
 	{
 		if(intern(node->expr_type) == REAL_STR)
@@ -6068,6 +6208,7 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 			const char* func_body = combine_all_new_with_whitespace(node->rhs->rhs->lhs);
 			fprintf(stream,"%s_AC_INTERNAL_COPY (Field %s){%s}\n",dfunc_name,info.expr.data[0],func_body);
 			fprintf(stream,"%s (Field3 v){return real3(%s_AC_INTERNAL_COPY(v.x), %s_AC_INTERNAL_COPY(v.y), %s_AC_INTERNAL_COPY(v.z))}\n",dfunc_name,dfunc_name,dfunc_name,dfunc_name);
+			fprintf(stream,"inline %s(Field[] arr){\nreal res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s_AC_INTERNAL_COPY(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
 		}
 		else if(intern(node->expr_type) == REAL3_STR)
 		{
@@ -6212,7 +6353,6 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
   	assert(root);
   s_info = read_user_structs(root);
 	e_info = read_user_enums(root);
-  	transform_arrays_to_std_arrays(root);
 	gen_type_info(root);
 	gen_extra_func_definitions_recursive(root,root,stream);
 	free_str_vec(&duplicate_dfuncs.names);
@@ -6492,9 +6632,8 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   e_info = read_user_enums(root);
   canonalize(root);
 
-  transform_arrays_to_std_arrays(root);
-  transform_field_intrinsic_func_calls_and_ops(root);
   traverse(root, 0, NULL);
+  transform_field_intrinsic_func_calls_and_ops(root);
   //We use duplicate dfuncs from gen_boundcond_kernels
   //duplicate_dfuncs = get_duplicate_dfuncs(root);
   mark_first_declarations(root);
@@ -7051,7 +7190,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   free(dfunc_strs);
 
   //gen_dfunc_internal_names(root);
-  //inline_dfuncs(root);
+  inline_dfuncs(root);
 
   symboltable_reset();
   traverse(root,

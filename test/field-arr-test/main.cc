@@ -22,6 +22,7 @@
 #include "astaroth.h"
 #include "astaroth_utils.h"
 #include "errchk.h"
+#include "user_constants.h"
 
 #if AC_MPI_ENABLED
 
@@ -132,15 +133,13 @@ main(void)
     };
 
     std::array<AcReal,3> arr = {1.0,2.0,3.0};
-    for (int step_number = 0; step_number < 1; ++step_number) {
-
-	//test arr with random compute
+    for (int step_number = 0; step_number < NUM_INTEGRATION_STEPS; ++step_number) {
         for (int k = nz_min; k < nz_max; ++k) {
             for (int j = ny_min; j < ny_max; ++j) {
                 for (int i = nx_min; i < nx_max; ++i) {
-			for (int i = 0; i < Field_arr.size(); ++i)
+			for (size_t field = 0; field < Field_arr.size(); ++field)
 			{
-				model.vertex_buffer[field][IDX(i,j,k] = arr[i]
+				model.vertex_buffer[Field_arr[field]][IDX(i,j,k)] += arr[field];
 			}
                 }
             }

@@ -1,9 +1,7 @@
-#include "../../stdlib/math"
 Field Field_arr[3]
 
 Kernel test_arr()
 {
 	arr = [1.0,2.0,3.0]
-	arr_2 = abs(arr)
-	//write(Field_arr,arr)
+	write(Field_arr, Field_arr  + arr)
 }
