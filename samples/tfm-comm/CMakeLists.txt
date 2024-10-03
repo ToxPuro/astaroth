@@ -23,8 +23,6 @@ add_compile_options(#-Werror
                     -Wpedantic
                     -pedantic-errors
                     -Wvla
-                    -Wabi
-                    -Waggregate-return
                     -Wbad-function-cast
                     -Wbad-function-cast
                     -Wcast-align
@@ -43,11 +41,6 @@ add_compile_options(#-Werror
                     -Wunreachable-code
                     -Wunused-but-set-parameter
                     -Wwrite-strings
-                    #-Wunsafe-loop-optimizations
-                    #-Weffc++
-                    #-std=c11
-                    #-Weverything
-                    -Wno-declaration-after-statement
                     )
 
 ## Packages
