@@ -2,6 +2,10 @@
 #include <stddef.h>
 
 #include "dynarr.h"
+#include "segment.h"
+
+typedef dynarr_s(Segment) SegmentArray;
+
 typedef dynarr_s(size_t) DynamicArray;
 
 /** Partitions the domain mm into subdomains divided by nn
@@ -43,5 +47,8 @@ typedef dynarr_s(size_t) DynamicArray;
  */
 size_t partition(const size_t ndims, const size_t* mm, const size_t* nn, const size_t* nn_offset,
                  DynamicArray* segment_dims, DynamicArray* segment_offsets);
+
+void partition_new(const size_t ndims, const size_t* mm, const size_t* nn, const size_t* nn_offset,
+                   SegmentArray* segments);
 
 void test_partition(void);
