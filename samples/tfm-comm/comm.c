@@ -2,14 +2,175 @@
 
 #include <mpi.h>
 
+#include "buf.h"
 #include "errchk_mpi.h"
 #include "math_utils.h"
 #include "misc.h"
 #include "mpi_utils.h"
 #include "nalloc.h"
 #include "print.h"
+#include "segment.h"
 #include "type_conversion.h"
 
+/*
+ * HaloSegmentBatch
+ */
+#include "buf.h"
+#include "partition.h"
+
+#define COMM_DATATYPE (MPI_UNSIGNED_LONG_LONG)
+
+typedef struct {
+    Segment segment;
+    Buffer buffer;
+    MPI_Request req;
+    MPI_Datatype subarray;
+} Packet;
+
+static Packet
+packet_create(const size_t ndims, const size_t* local_mm, const size_t* subdims,
+              const size_t* offset, const size_t nbuffers)
+{
+    Packet packet;
+    packet.segment = segment_create(ndims, subdims, offset);
+    packet.buffer  = buffer_create(prod(ndims, subdims) * nbuffers);
+    packet.req     = MPI_REQUEST_NULL;
+
+    int *mpi_dims, *mpi_subdims, *mpi_offset;
+    ncalloc(ndims, mpi_dims);
+    ncalloc(ndims, mpi_subdims);
+    ncalloc(ndims, mpi_offset);
+    to_mpi_format(ndims, local_mm, mpi_dims);
+    to_mpi_format(ndims, subdims, mpi_subdims);
+    to_mpi_format(ndims, offset, mpi_offset);
+    ERRCHK_MPI_API(MPI_Type_create_subarray(as_int(ndims), mpi_dims, mpi_subdims, mpi_offset,
+                                            MPI_ORDER_C, COMM_DATATYPE, &packet.subarray));
+    ERRCHK_MPI_API(MPI_Type_commit(&packet.subarray));
+    ndealloc(mpi_dims);
+    ndealloc(mpi_subdims);
+    ndealloc(mpi_offset);
+
+    return packet;
+}
+
+static void
+packet_destroy(Packet* packet)
+{
+    ERRCHK_MPI_API(MPI_Type_free(&packet->subarray));
+    ERRCHK_MPI_API(MPI_Request_free(&packet->req))
+    buffer_destroy(&packet->buffer);
+    segment_destroy(&packet->segment);
+}
+
+static void
+print_packet(const char* label, const Packet packet)
+{
+    printf("%s:\n", label);
+    print_segment("", packet.segment);
+}
+
+typedef dynarr_s(Packet) PacketArray;
+
+typedef struct {
+    PacketArray send_packets;
+    PacketArray recv_packets;
+} HaloSegmentBatch;
+
+HaloSegmentBatch
+halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size_t* local_nn,
+                          const size_t* local_nn_offset, const size_t n_aggregate_buffers)
+{
+    // Partition the domain
+    SegmentArray segments;
+    dynarr_create_with_destructor(segment_destroy, &segments);
+    partition(ndims, local_mm, local_nn, local_nn_offset, &segments);
+
+    // Prune partitions within the computational domain
+    for (size_t i = 0; i < segments.length; ++i) {
+        if (within_box_note_changed(ndims, segments.data[i].offset, local_nn, local_nn_offset)) {
+            dynarr_remove(i, &segments);
+            --i;
+        }
+    }
+    const size_t nbuffers = 1;
+    WARNING("using hardcoded nbuffers = 1");
+
+    HaloSegmentBatch batch;
+    dynarr_create_with_destructor(packet_destroy, &batch.send_packets);
+    dynarr_create_with_destructor(packet_destroy, &batch.recv_packets);
+
+    for (size_t i = 0; i < segments.length; ++i) {
+        // Each recv_offset maps to a coordinates in the computational domain of a neighboring
+        // process, written as send_offset.
+        //
+        // The equation is
+        //      a = (b - r) mod n + r,
+        //  where a is the send_offset, b the recv_offset, r the nn_offset, and n the size of the
+        //  computational domain.
+        //
+        // Intuitively:
+        //  1. Map b to coordinates in the halo-less computational domain
+        //  2. Wrap the resulting out-of-bounds coordinates around the computational domain
+        //  3. Map the result back to coordinates in the buffer that includes the halo
+        //
+        // The computation is implemented as a = (n + b - r) mod n + r to avoid
+        // unsigned integer underflow.
+        const size_t* subdims = segments.data[i].dims;
+
+        // Recv packet
+        const size_t* recv_offset = segments.data[i].offset;
+        dynarr_append(packet_create(ndims, local_mm, subdims, recv_offset, nbuffers),
+                      &batch.recv_packets);
+
+        // Send packet
+        size_t* send_offset;
+        nalloc(ndims, send_offset);
+        for (size_t j = 0; j < ndims; ++j)
+            send_offset[j] = ((local_nn[j] + recv_offset[j] - local_nn_offset[j]) % local_nn[j]) +
+                             local_nn_offset[j];
+        dynarr_append(packet_create(ndims, local_mm, subdims, send_offset, nbuffers),
+                      &batch.send_packets);
+
+        ndealloc(send_offset);
+    }
+
+    // Cleanup
+    dynarr_destroy(&segments);
+
+    return batch;
+}
+
+void
+halo_segment_batch_destroy(HaloSegmentBatch* batch)
+{
+    dynarr_destroy(&batch->send_packets);
+    dynarr_destroy(&batch->recv_packets);
+}
+
+void
+test_halo_segment_batch(void)
+{
+    const size_t mm[]        = {8, 8};
+    const size_t nn[]        = {6, 6, 6};
+    const size_t nn_offset[] = {1, 1, 1};
+    const size_t ndims       = ARRAY_SIZE(mm);
+
+    HaloSegmentBatch batch = halo_segment_batch_create(ndims, mm, nn, nn_offset, 1);
+
+    printf("Created halo segments\n");
+    print("batch.send_packets.length", batch.send_packets.length);
+    for (size_t i = 0; i < batch.send_packets.length; ++i) {
+        printf("%zu:\n", i);
+        print_packet("Send", batch.send_packets.data[i]);
+        print_packet("Recv", batch.recv_packets.data[i]);
+    }
+
+    halo_segment_batch_destroy(&batch);
+}
+
+/*
+ * Comm
+ */
 static MPI_Comm mpi_comm_ = MPI_COMM_NULL;
 static int mpi_ndims_     = -1;
 
@@ -95,7 +256,6 @@ print_comm(void)
     ncalloc(as_size_t(mpi_ndims_), mpi_periods);
     ncalloc(as_size_t(mpi_ndims_), mpi_coords);
     ERRCHK_MPI_API(MPI_Cart_get(mpi_comm_, mpi_ndims_, mpi_dims, mpi_periods, mpi_coords));
-    // ERRCHK_MPI_API(MPI_Cart_coords(mpi_comm_, rank, mpi_ndims_, mpi_coords));
 
     for (int i = 0; i < nprocs; ++i) {
         acCommBarrier();
@@ -129,10 +289,11 @@ test_comm(void)
     nalloc(ndims, global_nn_offset);
 
     acCommInit(ndims, nn, local_nn, global_nn_offset);
+    test_halo_segment_batch();
 
     print_comm();
-    // print_array("local_nn", ndims, local_nn);
-    // print_array("global_nn_offset", ndims, global_nn_offset);
+    print_array("local_nn", ndims, local_nn);
+    print_array("global_nn_offset", ndims, global_nn_offset);
 
     acCommQuit();
 
