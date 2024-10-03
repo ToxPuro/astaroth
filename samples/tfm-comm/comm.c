@@ -5,18 +5,13 @@
 #include "errchk_mpi.h"
 #include "math_utils.h"
 #include "misc.h"
+#include "mpi_utils.h"
 #include "nalloc.h"
 #include "print.h"
 #include "type_conversion.h"
 
 static MPI_Comm mpi_comm_ = MPI_COMM_NULL;
 static int mpi_ndims_     = -1;
-
-// static void
-// decompose(const size_t ndims, const size_t global_nn, const size_t nlayers,
-//           const size_t* partitions_per_layer)
-// {
-// }
 
 void
 acCommInit(const size_t ndims, const size_t* global_nn, size_t* local_nn, size_t* global_nn_offset)
@@ -41,6 +36,31 @@ acCommInit(const size_t ndims, const size_t* global_nn, size_t* local_nn, size_t
 
     // Setup the rest of the global variables
     mpi_ndims_ = as_int(ndims);
+
+    // Compute local_nn
+    size_t* dims;
+    nalloc(ndims, dims);
+    to_astaroth_format(ndims, mpi_dims, dims);
+    for (size_t i = 0; i < ndims; ++i)
+        local_nn[i] = global_nn[i] / dims[i];
+    ndealloc(dims);
+
+    // Compute global_nn_offset
+    int rank;
+    ERRCHK_MPI_API(MPI_Comm_rank(mpi_comm_, &rank));
+
+    int* mpi_coords;
+    ncalloc(ndims, mpi_coords);
+    ERRCHK_MPI_API(MPI_Cart_coords(mpi_comm_, rank, mpi_ndims_, mpi_coords));
+
+    size_t* coords;
+    nalloc(ndims, coords);
+    to_astaroth_format(ndims, mpi_coords, coords);
+    for (size_t i = 0; i < ndims; ++i)
+        global_nn_offset[i] = local_nn[i] * coords[i];
+    ndealloc(coords);
+
+    ndealloc(mpi_coords);
 
     // Cleanup
     ndealloc(mpi_periods);
@@ -80,7 +100,7 @@ print_comm(void)
     for (int i = 0; i < nprocs; ++i) {
         acCommBarrier();
         if (rank == i) {
-            printf("Rank %d of %d:\n", rank);
+            printf("Rank %d of %d:\n", rank, nprocs);
             print_array("\t mpi_dims", as_size_t(mpi_ndims_), mpi_dims);
             print_array("\t mpi_periods", as_size_t(mpi_ndims_), mpi_periods);
             print_array("\t mpi_coords", as_size_t(mpi_ndims_), mpi_coords);
@@ -101,7 +121,7 @@ acCommBarrier(void)
 void
 test_comm(void)
 {
-    const size_t nn[]  = {2, 2, 2};
+    const size_t nn[]  = {8, 8, 8};
     const size_t ndims = ARRAY_SIZE(nn);
 
     size_t *local_nn, *global_nn_offset;
@@ -111,6 +131,8 @@ test_comm(void)
     acCommInit(ndims, nn, local_nn, global_nn_offset);
 
     print_comm();
+    // print_array("local_nn", ndims, local_nn);
+    // print_array("global_nn_offset", ndims, global_nn_offset);
 
     acCommQuit();
 
