@@ -31,24 +31,22 @@ typedef dynarr_s(size_t) DynamicArray;
  * Usage:
  *
  * // Create dynamic arrays for the partitioning
- * DynamicArray segment_dims, segment_offsets;
- * dynarr_create(&segment_dims);
- * dynarr_create(&segment_offsets);
+ * // The array must be constructed with a destructor
+ * // Otherwise the caller must manually destroy the elements afterwards
+ * SegmentArray segments;
+ * dynarr_create_with_destructor(segment_destroy, &segment_dims);
  *
  * // Fill offsets and dims with the partitioning
- * const size_t npartitions = partition(..., segment_dims, segment_offsets);
+ * partition(..., segments);
  *
  * // Visualize the output arranged in dims-first ordering
- * print_ndarray("offsets", 2, ((size_t[]){ndims, npartitions}), offsets.data));
+ * for (size_t i = 0; i < segments.length; ++i)
+ *      print_segment("-", segments.data[i]);
  *
  * // Deallocate
- * dynarr_destroy(&offsets);
- * dynarr_destroy(&dims);
+ * dynarr_destroy(&segments);
  */
-size_t partition(const size_t ndims, const size_t* mm, const size_t* nn, const size_t* nn_offset,
-                 DynamicArray* segment_dims, DynamicArray* segment_offsets);
-
-void partition_new(const size_t ndims, const size_t* mm, const size_t* nn, const size_t* nn_offset,
-                   SegmentArray* segments);
+void partition(const size_t ndims, const size_t* mm, const size_t* nn, const size_t* nn_offset,
+               SegmentArray* segments);
 
 void test_partition(void);
