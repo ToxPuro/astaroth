@@ -1251,8 +1251,8 @@ test_remove_row(void)
         arange(7, 4, &model[row * ncols]);
         matrix_remove_row(row, nrows, ncols, in, out);
         ERRCHK(equals(out_count, model, out));
-        print_array("out", out_count, out);
-        print_array("model", out_count, model);
+        // print_array("out", out_count, out);
+        // print_array("model", out_count, model);
 
         ndealloc(in);
         ndealloc(model);
