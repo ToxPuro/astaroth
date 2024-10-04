@@ -2675,10 +2675,19 @@ gen_user_boundcond_calls(const ASTNode* node, const ASTNode* root, string_vec* n
 		  communicated_fields,
 		  false
 		);
+	bool all_periodic = false;
+	if(communicated_fields.size > 0)
+	{
+		const int some_field = communicated_fields.data[0];
+		const char* x = field_boundconds[some_field + num_fields*0];
+		const char* y = field_boundconds[some_field + num_fields*1];
+		const char* z = TWO_D ? "periodic" : field_boundconds[some_field + num_fields*4];
+		all_periodic = !strcmp(x,"periodic") && !strcmp(y,"periodic") && !strcmp(z,"periodic");
+	}
 
 	free_int_vec(&fields);
 	free_int_vec(&communicated_fields);
-	fprintf(stream,"\t});\n");
+	fprintf(stream,"\t}%s);\n",all_periodic ? ",0" : "");
 	fclose(stream);
 }
 void
