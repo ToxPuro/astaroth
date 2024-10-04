@@ -2075,7 +2075,7 @@ get_field_name(const int field)
 }
 	 
 void
-gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char* res, const char* taskgraph_name)
+gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, FILE* stream, const char* taskgraph_name)
 {
 	assert(kernel_call);
 	const char* func_name = get_node_by_token(IDENTIFIER,kernel_call)->buffer;
@@ -2109,9 +2109,9 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, char
 	strcat(fields_in_str,  "}");
 	strcat(fields_out_str, "}");
 	if(kernel_call->rhs)
-		strcatprintf(res,"\tacCompute(KERNEL_%s,%s,%s,%s_%s_loader),\n",func_name,fields_in_str,fields_out_str,taskgraph_name,func_name);
+		fprintf(stream,"\tacCompute(KERNEL_%s,%s,%s,%s_%s_loader),\n",func_name,fields_in_str,fields_out_str,taskgraph_name,func_name);
 	else
-		strcatprintf(res,"\tacCompute(KERNEL_%s,%s,%s),\n",func_name,fields_in_str,fields_out_str);
+		fprintf(stream,"\tacCompute(KERNEL_%s,%s,%s),\n",func_name,fields_in_str,fields_out_str);
 	gen_loader(kernel_call,root,taskgraph_name);
 	free(all_fields);
 	free(fields_in_str);
@@ -2450,10 +2450,10 @@ get_field_boundconds(const ASTNode* root, const char* boundconds_name)
 void
 gen_halo_exchange_and_boundconds(
 		char** field_boundconds,
-		char* res,
+		FILE* stream,
 		const char* boundconds_name,
-		int_vec fields,
-		int_vec communicated_fields
+		const int_vec fields,
+		const int_vec communicated_fields
 		)
 {
 		const int num_boundaries = TWO_D ? 4 : 6;
@@ -2479,7 +2479,7 @@ gen_halo_exchange_and_boundconds(
 		strcat(communicated_fields_str,"}");
 		if(need_to_communicate)
 		{
-			strcatprintf(res,"\tacHaloExchange(%s),\n",communicated_fields_str);
+			fprintf(stream,"\tacHaloExchange(%s),\n",communicated_fields_str);
 
 			const char* x_boundcond = field_boundconds[one_communicated_field + num_fields*0];
 			const char* y_boundcond = field_boundconds[one_communicated_field + num_fields*1];
@@ -2496,7 +2496,7 @@ gen_halo_exchange_and_boundconds(
 						z_periodic ? "Z" : ""
 				);
 			if( x_periodic|| y_periodic || z_periodic)
-				strcatprintf(res,"\tacBoundaryCondition(BOUNDARY_%s,BOUNDCOND_PERIODIC,%s),\n",boundary,communicated_fields_str);
+				fprintf(stream,"\tacBoundaryCondition(BOUNDARY_%s,BOUNDCOND_PERIODIC,%s),\n",boundary,communicated_fields_str);
 
 			for(int boundcond = 0; boundcond < num_boundaries; ++boundcond)
 				for(size_t i = 0; i < fields.size; ++i)
@@ -2516,7 +2516,7 @@ gen_halo_exchange_and_boundconds(
 						processed_boundcond = !field_boundconds_processed[fields.data[i] + num_fields*boundcond] ? field_boundconds[fields.data[i] + num_fields*boundcond] : processed_boundcond;
 					}
 					if(!processed_boundcond) continue;
-					strcatprintf(res,"\tacBoundaryCondition(BOUNDARY_%s,KERNEL_%s__%s,{",boundary_str(boundcond),boundconds_name,processed_boundcond);
+					fprintf(stream,"\tacBoundaryCondition(%s,KERNEL_%s__%s,{",boundary_str(boundcond),boundconds_name,processed_boundcond);
 
 					for(size_t i = 0; i < fields.size; ++i)
 					{
@@ -2526,10 +2526,10 @@ gen_halo_exchange_and_boundconds(
 						if(strcmp(boundcond_str,processed_boundcond)) continue;
 						if(field_boundconds_processed[fields.data[i] + num_fields*boundcond]) continue;
 						field_boundconds_processed[fields.data[i] + num_fields*boundcond] |= true;
-						strcatprintf(res,"%s,",field_str);
+						fprintf(stream,"%s,",field_str);
 					}
 					//TP: no loaders at the moment
-					strcat(res,"}),\n");
+					fprintf(stream,"}),\n");
 					//strcatprintf(res,"},%s_%s_%s_loader),\n",boundconds_name,boundary_str,processed_boundcond);
 				}
 				all_are_processed = true;
@@ -2654,14 +2654,30 @@ gen_user_boundcond_calls(const ASTNode* node, const ASTNode* root, string_vec* n
 	char** field_boundconds = get_field_boundconds(root,name);
 	check_field_boundconds(field_boundconds);
 	const int num_boundaries = TWO_D ? 4 : 6;
-	for(size_t field = 0; field < num_fields; ++field)
+	FILE* fp = fopen("user_taskgraphs.h","a");
+	FILE* stream = fopen("user_taskgraphs.h","a");
+	fprintf(stream, "if (graph == %s)\n\treturn acGridBuildTaskGraph({\n",name);
+	fclose(fp);
+	int_vec fields              = VEC_INITIALIZER;
+	int_vec communicated_fields = VEC_INITIALIZER;
+	for(size_t i = 0; i < num_fields; ++i)
 	{
-		if(!check_symbol_index(NODE_VARIABLE_ID, field, FIELD, COMMUNICATED)) continue;
-		for(int bc = 0; bc < num_boundaries; ++bc)
-			;//printf("HMM: %s\n",field_boundconds[field + num_fields*bc]);
+		push_int(&fields, i);
+		if(check_symbol_index(NODE_VARIABLE_ID,i,FIELD,COMMUNICATED)) push_int(&communicated_fields,i);
 	}
 
+	gen_halo_exchange_and_boundconds(
+		  field_boundconds,
+		  stream,
+		  name,
+		  fields,
+		  communicated_fields
+		);
 
+	free_int_vec(&fields);
+	free_int_vec(&communicated_fields);
+	fprintf(stream,"\t});\n");
+	fclose(stream);
 }
 void
 gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* names)
@@ -2682,8 +2698,8 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 
 	const char* name = node->lhs->lhs->buffer;
 	push(names,name);
-	char* res = malloc(sizeof(char)*10000);
-	sprintf(res, "if (graph == %s)\n\treturn acGridBuildTaskGraph({\n",name);
+	FILE* stream = fopen("user_taskgraphs.h","a");
+	fprintf(stream, "if (graph == %s)\n\treturn acGridBuildTaskGraph({\n",name);
 	const ASTNode* function_call_list_head = node->rhs;
 	//have to traverse in reverse order to generate the right order in taskgraph
 	int n_entries = 1;
@@ -2784,14 +2800,14 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 		}
 		gen_halo_exchange_and_boundconds(
 		  field_boundconds,
-		  res,
+		  stream,
 		  boundconds_name,
 		  fields_written_to,
 		  communicated_fields
 		);
 		gen_halo_exchange_and_boundconds(
 		  field_boundconds,
-		  res,
+		  stream,
 		  boundconds_name,
 		  fields_not_written_to,
 		  communicated_fields
@@ -2803,7 +2819,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 				const ASTNode* kernel_call = get_list_elem_from_leaf(function_call_list_head,call);
 				gen_taskgraph_kernel_entry(
 						kernel_call,
-						root,res,name
+						root,stream,name
 				);
 				const char* func_name = get_node_by_token(IDENTIFIER,kernel_call)->buffer;
 				const int kernel_index = get_symbol_index(NODE_FUNCTION_ID,func_name,KERNEL);
@@ -2817,13 +2833,12 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 		free_int_vec(&communicated_fields);
 	}
 	free(field_written_out_before);
-	strcat(res,"\t});\n");
-	file_append("user_taskgraphs.h",res);
+	fprintf(stream,"\t});\n");
+	fclose(stream);
 
 
 	free_int_vec(&kernel_calls);
 	free_int_vec(&kernel_calls_in_level_order);
-	free(res);
 }
 
 
@@ -2874,20 +2889,18 @@ gen_user_taskgraphs(const ASTNode* root)
 	{
 		gen_user_taskgraphs_recursive(root,root,&graph_names);
 	}
-	FILE* fp = fopen("taskgraph_enums.h","w");
-	fprintf(fp,"typedef enum {");
-	for(size_t i = 0; i < graph_names.size; ++i)
-		fprintf(fp,"%s,",graph_names.data[i]);
-	fprintf(fp,"NUM_DSL_TASKGRAPHS} AcDSLTaskGraph;\n");
-	free_str_vec(&graph_names);
 	string_vec bc_names = VEC_INITIALIZER;
 	if(has_optimization_info)
 		gen_user_boundcond_calls(root,root,&bc_names);
 
+	FILE* fp = fopen("taskgraph_enums.h","w");
 	fprintf(fp,"typedef enum {");
+	for(size_t i = 0; i < graph_names.size; ++i)
+		fprintf(fp,"%s,",graph_names.data[i]);
 	for(size_t i = 0; i < bc_names.size; ++i)
 		fprintf(fp,"%s,",bc_names.data[i]);
-	fprintf(fp,"NUM_DSL_BCS} AcDSLBCs;\n");
+	fprintf(fp,"NUM_DSL_TASKGRAPHS} AcDSLTaskGraph;\n");
+	free_str_vec(&graph_names);
 	free_str_vec(&bc_names);
 	fclose(fp);
 }
@@ -6481,13 +6494,6 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 	symboltable_reset();
 	rename_scoped_variables(root,NULL,NULL);
 	symboltable_reset();
-	/***
-	FILE* fp = fopen("test.raw","w");
-	traverse(root, 0, fp);
-	fclose(fp);
-	format_source("test.raw","test");
-	exit(EXIT_FAILURE);
-	***/
 
   	traverse_base(root, 0, NULL, true,NULL);
         duplicate_dfuncs = get_duplicate_dfuncs(root);

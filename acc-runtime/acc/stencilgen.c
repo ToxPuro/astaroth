@@ -208,7 +208,7 @@ gen_kernel_common_prefix()
 // Write vba.out
 #if 1
   // Original
-  printf("const auto write_base=[&](const int handle, const AcReal value) {");
+  printf("const auto write_base __attribute__((unused)) = [&](const int handle, const AcReal value) {");
   printf("switch(handle) {\n");
   for (size_t i = 0; i < NUM_FIELDS; ++i)
     printf("case %zu: /* Fallthrough */\n", i);
