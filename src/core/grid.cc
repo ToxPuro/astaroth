@@ -583,6 +583,14 @@ acGridQuit(void)
     grid.decomposition = (uint3_64){0, 0, 0};
     if(!grid.copied_user_mesh)
     	acHostMeshDestroy(&grid.submesh);
+    //TP: make sure the grid submesh is invalid even if the user has given it 
+    else
+    {
+	    AcMesh new_mesh;
+	    for(int i = 0; i < NUM_ALL_FIELDS; ++i)
+		    new_mesh.vertex_buffer[i] = NULL;
+	    grid.submesh = new_mesh;
+    }
     acDeviceDestroy(grid.device);
     compat_acDecompositionQuit();
     // acDecompositionInfoDestroy(&grid.decomposition_info);
