@@ -1510,7 +1510,8 @@ static void
 check_ops(const AcTaskDefinition ops[], const size_t n_ops)
 {
     if (n_ops == 0) {
-        ERROR("\nIncorrect task graph {}:\n - Task graph is empty.\n")
+        WARNING("\nUnusual task graph {}:\n - Task graph is empty.\n")
+	return;
     }
 
     bool found_halo_exchange        = false;
