@@ -842,7 +842,17 @@ per node as there are GPUs on that node.
 
 Devices in the grid are configured based on the contents of AcMesh.
  */
-FUNC_DEFINE(AcResult, acGridInit,(const AcMeshInfo info));
+
+FUNC_DEFINE(AcResult, acGridInitBase, (const AcMesh mesh));
+static AcResult UNUSED 
+acGridInit(const AcMeshInfo info)
+{
+	AcMesh mesh;
+	for(int i = 0; i < NUM_ALL_FIELDS; ++i) mesh.vertex_buffer[i] = NULL;
+	mesh.info = info;
+	return acGridInitBase(mesh);
+}
+
 
 /**
 Resets all devices on the current grid.
@@ -1748,8 +1758,7 @@ FUNC_DEFINE(void, acVA_DebugFromRootProc,(const int pid, const char* msg, va_lis
 	if(!ac_MPI_Finalize) fprintf(stderr,"Astaroth error: was not able to load %s\n","ac_MPI_Finalize");
 	*(void**)(&acGridMPIComm) = dlsym(handle,"acGridMPIComm");
 	if(!acGridMPIComm) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridMPIComm");
-	*(void**)(&acGridInit) = dlsym(handle,"acGridInit");
-	if(!acGridInit) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridInit");
+	LOAD_DSYM(acGridInitBase);
 	*(void**)(&acGridQuit) = dlsym(handle,"acGridQuit");
 	if(!acGridQuit) fprintf(stderr,"Astaroth error: was not able to load %s\n","acGridQuit");
 	*(void**)(&acGridGetDevice) = dlsym(handle,"acGridGetDevice");
@@ -2095,6 +2104,12 @@ AcResult acHostWriteProfileToFile(const char* filepath, const AcReal* profile,
 
 #ifdef __cplusplus
 
+
+static UNUSED AcResult
+acGridInit(const AcMesh mesh)
+{
+	return acGridInitBase(mesh);
+}
 #if TWO_D == 0
 static UNUSED AcResult acSetMeshDims(const size_t nx, const size_t ny, const size_t nz, AcMeshInfo* info, AcCompInfo* comp_info)
 {

@@ -451,10 +451,29 @@ check_that_mesh_large_enough(const AcMeshInfo info)
 #endif
 }
 
+AcMesh
+create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
+{
+    AcMesh submesh;
+    if(user_mesh.vertex_buffer[0] != NULL)
+    {
+	    for(int i = 0; i < NUM_ALL_FIELDS; ++i) 
+			submesh.vertex_buffer[i] = user_mesh.vertex_buffer[i];
+	    submesh.info = submesh_info;
+    }
+    else
+    {
+    	acLogFromRootProc(ac_pid(), "acGridInit: Allocating CPU mesh\n");
+    	acHostMeshCreate(submesh_info, &submesh);
+    	acLogFromRootProc(ac_pid(), "acGridInit: Done allocating CPU mesh\n");
+    }
+    return submesh;
+}
 
 AcResult
-acGridInit(AcMeshInfo info)
+acGridInitBase(const AcMesh user_mesh)
 {
+    AcMeshInfo info = user_mesh.info;
     ERRCHK(!grid.initialized);
     if (!grid.mpi_initialized)
       create_astaroth_comm(info);
@@ -521,15 +540,9 @@ acGridInit(AcMeshInfo info)
     acDeviceCreate(ac_pid() % devices_per_node, submesh_info, &device);
     acLogFromRootProc(ac_pid() , "acGridInit: Returned from acDeviceCreate\n");
 
-    // CPU alloc
-    acLogFromRootProc(ac_pid(), "acGridInit: Allocating CPU mesh\n");
-    AcMesh submesh;
-    acHostMeshCreate(submesh_info, &submesh);
-    acLogFromRootProc(ac_pid(), "acGridInit: Done allocating CPU mesh\n");
-
     // Setup the global grid structure
     grid.device        = device;
-    grid.submesh       = submesh;
+    grid.submesh       = create_grid_submesh(submesh_info, user_mesh);
     grid.decomposition = get_decomp(info);
 
     // Configure
