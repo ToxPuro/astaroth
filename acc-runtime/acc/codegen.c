@@ -2453,7 +2453,8 @@ gen_halo_exchange_and_boundconds(
 		FILE* stream,
 		const char* boundconds_name,
 		const int_vec fields,
-		const int_vec communicated_fields
+		const int_vec communicated_fields,
+		const bool gen_comm
 		)
 {
 		const int num_boundaries = TWO_D ? 4 : 6;
@@ -2479,7 +2480,7 @@ gen_halo_exchange_and_boundconds(
 		strcat(communicated_fields_str,"}");
 		if(need_to_communicate)
 		{
-			fprintf(stream,"\tacHaloExchange(%s),\n",communicated_fields_str);
+			if(gen_comm) fprintf(stream,"\tacHaloExchange(%s),\n",communicated_fields_str);
 
 			const char* x_boundcond = field_boundconds[one_communicated_field + num_fields*0];
 			const char* y_boundcond = field_boundconds[one_communicated_field + num_fields*1];
@@ -2495,7 +2496,7 @@ gen_halo_exchange_and_boundconds(
 						y_periodic ? "Y" : "",
 						z_periodic ? "Z" : ""
 				);
-			if( x_periodic|| y_periodic || z_periodic)
+			if(gen_comm && (x_periodic|| y_periodic || z_periodic))
 				fprintf(stream,"\tacBoundaryCondition(BOUNDARY_%s,BOUNDCOND_PERIODIC,%s),\n",boundary,communicated_fields_str);
 
 			for(int boundcond = 0; boundcond < num_boundaries; ++boundcond)
@@ -2671,7 +2672,8 @@ gen_user_boundcond_calls(const ASTNode* node, const ASTNode* root, string_vec* n
 		  stream,
 		  name,
 		  fields,
-		  communicated_fields
+		  communicated_fields,
+		  false
 		);
 
 	free_int_vec(&fields);
@@ -2803,14 +2805,16 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 		  stream,
 		  boundconds_name,
 		  fields_written_to,
-		  communicated_fields
+		  communicated_fields,
+		  true
 		);
 		gen_halo_exchange_and_boundconds(
 		  field_boundconds,
 		  stream,
 		  boundconds_name,
 		  fields_not_written_to,
-		  communicated_fields
+		  communicated_fields,
+		  true
 		);
 		for(size_t call = 0; call < kernel_calls.size; ++call) 
 		{
