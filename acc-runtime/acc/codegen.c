@@ -2359,8 +2359,10 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
 
 	//TP: in bc call params jump over boundary
 	const int call_param_offset = 1;
-	char* dfunc_name = strdup(func_name);
-	remove_suffix(dfunc_name,"____");
+	char* tmp = strdup(func_name);
+	remove_suffix(tmp,"____");
+	const char* dfunc_name = intern(tmp);
+	free(tmp);
 	func_params_info params_info = get_function_param_types_and_names(root,dfunc_name);
 	if(call_info.expr.size-1 != params_info.expr.size)
 	{
@@ -2379,7 +2381,6 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
 	}
 	fprintf(fp,"%s\n",")");
 	fprintf(fp,"%s\n","}");
-	free(dfunc_name);
 }
 void
 gen_dfunc_bc_kernel(const ASTNode* func_call, FILE* fp, const ASTNode* root, const char* boundconds_name)
@@ -2622,6 +2623,47 @@ make_unique_bc_calls(ASTNode* node)
 	free_node_vec(&func_calls);
 }
 void
+check_field_boundconds(char*const * field_boundconds)
+{
+	const int num_boundaries = TWO_D ? 4 : 6;
+	for(size_t field = 0; field < num_fields; ++field)
+	{
+		if(!check_symbol_index(NODE_VARIABLE_ID, field, FIELD, COMMUNICATED)) continue;
+		for(int bc = 0; bc < num_boundaries; ++bc)
+			if(!field_boundconds[field + num_fields*bc])
+			{
+				fprintf(stderr,FATAL_ERROR_MESSAGE"Missing boundcond for field: %s at boundary: %s\n",get_field_name(field),boundary_str(bc));
+				exit(EXIT_FAILURE);
+
+			}
+	}
+}
+void
+gen_user_boundcond_calls(const ASTNode* node, const ASTNode* root, string_vec* names)
+{
+  	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
+	if(!has_optimization_info)
+		return;
+	if(node->lhs)
+		gen_user_boundcond_calls(node->lhs,root,names);
+	if(node->rhs)
+		gen_user_boundcond_calls(node->rhs,root,names);
+	if(node->type != NODE_BOUNDCONDS_DEF) return;
+	const char* name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+	push(names,name);
+	char** field_boundconds = get_field_boundconds(root,name);
+	check_field_boundconds(field_boundconds);
+	const int num_boundaries = TWO_D ? 4 : 6;
+	for(size_t field = 0; field < num_fields; ++field)
+	{
+		if(!check_symbol_index(NODE_VARIABLE_ID, field, FIELD, COMMUNICATED)) continue;
+		for(int bc = 0; bc < num_boundaries; ++bc)
+			;//printf("HMM: %s\n",field_boundconds[field + num_fields*bc]);
+	}
+
+
+}
+void
 gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_vec* names)
 {
   	const bool has_optimization_info = written_fields && read_fields && field_has_stencil_op && num_kernels && num_fields;
@@ -2635,20 +2677,8 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 		return;
 	const char* boundconds_name = node->lhs->rhs->buffer;
 	char** field_boundconds = get_field_boundconds(root,boundconds_name);
-	const int num_boundaries = TWO_D ? 4 : 6;
 
-	for(size_t field = 0; field < num_fields; ++field)
-	{
-		if(!check_symbol_index(NODE_VARIABLE_ID, field, FIELD, COMMUNICATED)) continue;
-		for(int bc = 0; bc < num_boundaries; ++bc)
-			if(!field_boundconds[field + num_fields*bc])
-			{
-				printf("HMM :%d\n",bc);
-				fprintf(stderr,FATAL_ERROR_MESSAGE"Missing boundcond for field: %s at boundary: %s\n",get_field_name(field),boundary_str(bc));
-				exit(EXIT_FAILURE);
-
-			}
-	}
+	check_field_boundconds(field_boundconds);
 
 	const char* name = node->lhs->lhs->buffer;
 	push(names,name);
@@ -2849,8 +2879,17 @@ gen_user_taskgraphs(const ASTNode* root)
 	for(size_t i = 0; i < graph_names.size; ++i)
 		fprintf(fp,"%s,",graph_names.data[i]);
 	fprintf(fp,"NUM_DSL_TASKGRAPHS} AcDSLTaskGraph;\n");
-	fclose(fp);
 	free_str_vec(&graph_names);
+	string_vec bc_names = VEC_INITIALIZER;
+	if(has_optimization_info)
+		gen_user_boundcond_calls(root,root,&bc_names);
+
+	fprintf(fp,"typedef enum {");
+	for(size_t i = 0; i < bc_names.size; ++i)
+		fprintf(fp,"%s,",bc_names.data[i]);
+	fprintf(fp,"NUM_DSL_BCS} AcDSLBCs;\n");
+	free_str_vec(&bc_names);
+	fclose(fp);
 }
 
 typedef struct
@@ -4433,7 +4472,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 	if(nodes.size == 3)
 	{
 		astnode_set_prefix("IDX(",idx_node);
-		astnode_set_prefix(")",idx_node);
+		astnode_set_postfix(")",idx_node);
 	}
 	ASTNode* indexes = build_list_node(nodes,",");
 	idx_node->lhs = indexes;
@@ -4445,7 +4484,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 	{
 		before_lhs = astnode_create(NODE_UNKNOWN,astnode_dup(node,NULL),NULL);
 		astnode_set_prefix("written_fields[",before_lhs);
-		astnode_set_prefix("] = 1;",before_lhs);
+		astnode_set_postfix("] = 1;",before_lhs);
 	}
 
 	array_access->rhs = NULL;
@@ -4475,7 +4514,7 @@ gen_multidimensional_field_accesses_recursive(ASTNode* node, const bool gen_mem_
 		astnode_set_postfix("]",rhs);
 
 		astnode_set_infix("vba.in[",lhs);
-		astnode_set_infix("]",lhs);
+		astnode_set_postfix("]",lhs);
 	}
 	lhs->parent = array_access;
 }

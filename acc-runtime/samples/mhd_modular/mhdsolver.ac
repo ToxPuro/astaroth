@@ -457,6 +457,7 @@ max5_shock()
     return max5(VTXBUF_SHOCK)
 }
 
+
 Kernel shock_1_divu()
 {
     write(VTXBUF_SHOCK, divu_shock())
@@ -489,6 +490,42 @@ Kernel test_func()
    }
 }
 **/
+bc_sym_z(sgn,topbot,VtxBuffer j,rel)
+{
+  int i;
+  if(topbot == AC_bot) {
+    if (rel) {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][vertexIdx.y][AC_n1-i-1]=2*j[vertexIdx.x][vertexIdx.y][AC_n1-1]+sgn*j[vertexIdx.x][vertexIdx.y][AC_n1+i-1];
+      }
+    }
+    else {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][vertexIdx.y][AC_n1-i-1]=              sgn*j[vertexIdx.x][vertexIdx.y][AC_n1+i-1];
+      }
+      if (sgn<0) {
+        j[vertexIdx.x][vertexIdx.y][AC_n1-1] = 0.;
+      }
+    }
+  }
+  else if(topbot == AC_top) {
+    if (rel) {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][vertexIdx.y][AC_n2+i-1]=j[vertexIdx.x][vertexIdx.y][AC_n2-1]+(j[vertexIdx.x][vertexIdx.y][AC_n2-1]+sgn*j[vertexIdx.x][vertexIdx.y][AC_n2-i-1]);
+      }
+    }
+    else {
+      for i in 1:NGHOST_VAL+1 {
+        j[vertexIdx.x][vertexIdx.y][AC_n2+i-1]=              sgn*j[vertexIdx.x][vertexIdx.y][AC_n2-i-1];
+      }
+      if (sgn<0) {
+        j[vertexIdx.x][vertexIdx.y][AC_n2-1] = 0.;
+      }
+    }
+  }
+  else {
+  }
+}
 
 
 
@@ -1161,77 +1198,43 @@ bc_ism(topbot,VtxBuffer j)
 }
 
 
-bc_sym_z(sgn,topbot,VtxBuffer j,rel)
-{
-  int i;
-  if(topbot == AC_bot) {
-    if (rel) {
-      for i in 1:NGHOST_VAL+1 {
-        j[vertexIdx.x][vertexIdx.y][AC_n1-i-1]=2*j[vertexIdx.x][vertexIdx.y][AC_n1-1]+sgn*j[vertexIdx.x][vertexIdx.y][AC_n1+i-1];
-      }
-    }
-    else {
-      for i in 1:NGHOST_VAL+1 {
-        j[vertexIdx.x][vertexIdx.y][AC_n1-i-1]=              sgn*j[vertexIdx.x][vertexIdx.y][AC_n1+i-1];
-      }
-      if (sgn<0) {
-        j[vertexIdx.x][vertexIdx.y][AC_n1-1] = 0.;
-      }
-    }
-  }
-  else if(topbot == AC_top) {
-    if (rel) {
-      for i in 1:NGHOST_VAL+1 {
-        j[vertexIdx.x][vertexIdx.y][AC_n2+i-1]=j[vertexIdx.x][vertexIdx.y][AC_n2-1]+(j[vertexIdx.x][vertexIdx.y][AC_n2-1]+sgn*j[vertexIdx.x][vertexIdx.y][AC_n2-i-1]);
-      }
-    }
-    else {
-      for i in 1:NGHOST_VAL+1 {
-        j[vertexIdx.x][vertexIdx.y][AC_n2+i-1]=              sgn*j[vertexIdx.x][vertexIdx.y][AC_n2-i-1];
-      }
-      if (sgn<0) {
-        j[vertexIdx.x][vertexIdx.y][AC_n2-1] = 0.;
-      }
-    }
-  }
-  else {
-  }
+
+
+
+
+
+
+
+
+/**
+BoundConds boundconds{
+  periodic(BOUNDARY_XY)
+  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_UUX,false)
+  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_UUY,false)
+  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_UUZ,false)
+
+  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AX,false)
+  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AY,false)
+  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AZ,false)
+
+
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_UUX,false)
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_UUY,false)
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_UUZ,false)
+
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AX,false)
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AY,false)
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AZ,false)
+
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_ENTROPY,false)
+  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_ENTROPY,false)
+
+  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_LNRHO,false)
+  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_LNRHO,false)
+
+
 }
-
-
-
-
-
-
-
-//BoundConds boundconds{
-//  periodic(BOUNDARY_XY)
-//  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_UUY,false)
-//  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_UUZ,false)
-//
-//  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AX,false)
-//  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AY,false)
-//  bc_sym_z(BOUNDARY_Z_TOP, 1.0,AC_top,VTXBUF_AZ,false)
-//
-//  bc_ss_flux(BOUNDARY_Z_TOP, AC_top)
-//
-//
-//  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_UUY,false)
-//  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_UUZ,false)
-//
-//  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AX,false)
-//  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AY,false)
-//  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_AZ,false)
-//
-//  bc_sym_z(BOUNDARY_Z_BOT, 1.0,AC_bot,VTXBUF_ENTROPY,false)
-//
-//  bc_steady_z(BOUNDARY_Z_TOP, AC_top,VTXBUF_UUX)
-//  bc_steady_z(BOUNDARY_Z_BOT, AC_bot,VTXBUF_UUX)
-//
-//  bc_ism(BOUNDARY_Z_BOT, AC_bot,VTXBUF_LNRHO)
-//  bc_ism(BOUNDARY_Z_TOP, AC_top,VTXBUF_LNRHO)
-//
-//}
+**/
 
 BoundConds boundconds{
   periodic(BOUNDARY_XYZ)
