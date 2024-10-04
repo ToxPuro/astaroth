@@ -80,6 +80,7 @@ typedef struct Grid {
     std::shared_ptr<AcTaskGraph> default_tasks;
     size_t mpi_tag_space_count;
     bool mpi_initialized;
+    bool copied_user_mesh = false;
 } Grid;
 
 static Grid grid = {};
@@ -460,12 +461,15 @@ create_grid_submesh(const AcMeshInfo submesh_info, const AcMesh user_mesh)
 	    for(int i = 0; i < NUM_ALL_FIELDS; ++i) 
 			submesh.vertex_buffer[i] = user_mesh.vertex_buffer[i];
 	    submesh.info = submesh_info;
+	    grid.copied_user_mesh = true;
     }
     else
     {
     	acLogFromRootProc(ac_pid(), "acGridInit: Allocating CPU mesh\n");
     	acHostMeshCreate(submesh_info, &submesh);
     	acLogFromRootProc(ac_pid(), "acGridInit: Done allocating CPU mesh\n");
+	//TP: not strictly needed but does not hurth to be pedantic
+	grid.copied_user_mesh = false;
     }
     return submesh;
 }
@@ -577,7 +581,8 @@ acGridQuit(void)
 
     grid.initialized   = false;
     grid.decomposition = (uint3_64){0, 0, 0};
-    acHostMeshDestroy(&grid.submesh);
+    if(!grid.copied_user_mesh)
+    	acHostMeshDestroy(&grid.submesh);
     acDeviceDestroy(grid.device);
     compat_acDecompositionQuit();
     // acDecompositionInfoDestroy(&grid.decomposition_info);
