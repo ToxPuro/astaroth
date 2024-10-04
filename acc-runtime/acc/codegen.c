@@ -554,6 +554,18 @@ symboltable_reset(void)
   int index = add_symbol(NODE_VARIABLE_ID, NULL, 0 , INT3_STR, INT3,intern("blockDim"));
   symbol_table[index].tqualifiers.size = 0;
 
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, INT, intern("BOUNDARY_X"));
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, INT, intern("BOUNDARY_Y"));
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, INT, intern("BOUNDARY_Z"));
+
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, INT, intern("BOUNDARY_XY"));
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, INT, intern("BOUNDARY_XZ"));
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, INT, intern("BOUNDARY_YZ"));
+
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR, INT, intern("BOUNDARY_XYZ"));
+
+  add_symbol(NODE_FUNCTION_ID, NULL, 0, NULL, 0, intern("periodic"));
+
 }
 
 void
@@ -3686,14 +3698,22 @@ add_to_symbol_table(const ASTNode* node, const NodeType exclude, FILE* stream, b
     }
   }
 }
-void
-rename_scoped_variables(ASTNode* node, const NodeType exclude, FILE* stream, bool do_checks, const ASTNode* decl)
+static bool
+is_left_child_of(const ASTNode* parent, const ASTNode* node_to_search)
 {
-  if(node->type == NODE_ENUM_DEF)   return;
+	if(!parent) return false;
+	if(!parent->lhs) return false;
+	return get_node_by_id(node_to_search->id,parent->lhs) != NULL;
+}
+void
+rename_scoped_variables(ASTNode* node, const ASTNode* decl, const ASTNode* func_body)
+{
+  FILE* stream = NULL;
+  const bool do_checks = false;
+  const NodeType exclude = 0;
   if(node->type == NODE_STRUCT_DEF) return;
   if(node->type & NODE_DECLARATION) decl = node;
-  if (node->type & exclude)
-	  stream = NULL;
+  if(node->parent && node->parent->type & NODE_FUNCTION && node->parent->rhs->id == node->id) func_body = node;
   // Do not translate tqualifiers or tspecifiers immediately
   if (node->parent &&
       (node->parent->type & NODE_TQUAL || node->parent->type & NODE_TSPEC))
@@ -3710,11 +3730,15 @@ rename_scoped_variables(ASTNode* node, const NodeType exclude, FILE* stream, boo
   }
 
   // Traverse LHS
+  //TP: skip the lhs of func_body since that is input params
   if (node->lhs)
-    rename_scoped_variables(node->lhs, exclude, stream, do_checks,decl);
+    rename_scoped_variables(node->lhs, decl, func_body);
 
+  //TP: do not rename func params since it is not really needed and does not gel well together with kernel params
+  //TP: also skip func calls since they should anways always be in the symbol table except because of hacks
+  //TP: skip also enums since they are anyways unique
+  char* postfix = (is_left_child_of(func_body,node) || is_left_child(NODE_FUNCTION_CALL,node) || get_parent_node(NODE_ENUM_DEF,node)) ? NULL : itoa(nest_ids[current_nest]);
 
-  char* postfix = itoa(nest_ids[current_nest]);
   add_to_symbol_table(node,exclude,stream,do_checks,decl,postfix);
   free(postfix);
   if(node->buffer) 
@@ -3726,7 +3750,7 @@ rename_scoped_variables(ASTNode* node, const NodeType exclude, FILE* stream, boo
 
   // Traverse RHS
   if (node->rhs)
-    rename_scoped_variables(node->rhs, exclude, stream,do_checks,decl);
+    rename_scoped_variables(node->rhs, decl, func_body);
 
   // Postfix logic
   if (node->type & NODE_BEGIN_SCOPE) {
@@ -6029,6 +6053,7 @@ resolve_overloaded_calls(ASTNode* node, string_vec* dfunc_possible_types)
 	}
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
+		/**
 		if(!strcmp(dfunc_name,"write"))
 		{
 			char my_tmp[10000];
@@ -6037,6 +6062,7 @@ resolve_overloaded_calls(ASTNode* node, string_vec* dfunc_possible_types)
 			printf("Not able to resolve: %s\n",my_tmp); 
 			printf("Not able to resolve: %s\n",call_info.types.data[0]); 
 		}
+		**/
 		return res;
 	}
 	{
@@ -6414,7 +6440,7 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
   	ASTNode* root = astnode_dup(root_in,NULL);
 
 	symboltable_reset();
-	rename_scoped_variables(root,0,NULL,false,NULL);
+	rename_scoped_variables(root,NULL,NULL);
 	symboltable_reset();
 	/***
 	FILE* fp = fopen("test.raw","w");
@@ -6706,7 +6732,7 @@ void
 preprocess(ASTNode* root, const bool optimize_conditionals)
 {
   symboltable_reset();
-  rename_scoped_variables(root,0,NULL,false,NULL);
+  rename_scoped_variables(root,NULL,NULL);
   symboltable_reset();
 
   free_node_vec(&dfunc_nodes);
@@ -7169,7 +7195,7 @@ cache_func_calls_in_function(ASTNode* node, string_vec* cached_calls_expr, node_
 	if(node->lhs)
 		cache_func_calls_in_function(node->lhs,cached_calls_expr,cached_calls);
 
-	if(node->type & NODE_FUNCTION_CALL)
+	if(node->type & NODE_FUNCTION_CALL && node->lhs && get_node_by_token(IDENTIFIER,node->lhs) && node->rhs)
 	{
 		const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
 		if(!strcmp(func_name,"value_AC_MANGLED_NAME__FieldARRAY") || !strcmp(func_name,"value_AC_MANGLED_NAME__Field3ARRAY"))
@@ -7198,6 +7224,9 @@ void
 cache_func_calls(ASTNode* node)
 {
 	TRAVERSE_PREAMBLE(cache_func_calls);
+	if(!node->rhs) return;
+	if(!node->rhs->rhs) return;
+	if(!node->rhs->rhs->lhs) return;
 	if(node->type & NODE_FUNCTION && node->rhs->rhs->lhs)
 	{
 		string_vec cached_calls_expr = VEC_INITIALIZER;
@@ -7215,7 +7244,8 @@ cache_func_calls(ASTNode* node)
 			add_no_auto(res->rhs,NULL);
 			push_to_statement_list(head,res);
 		}
-		free_str_vec(&cached_calls);
+		free_str_vec(&cached_calls_expr);
+		free_node_vec(&cached_calls);
 	}
 }
 

@@ -706,7 +706,7 @@ struct_definition:     struct_name'{' declarations '}' {
 			free(tmp);
                  }
 		 ;
-enum_definition: enum_name '{' expression_list '}'{
+enum_definition: enum_name '{' declaration_list '}'{
                         $$ = astnode_create(NODE_ENUM_DEF,$1,$3);
 			char* tmp = strdup($1->buffer);
 		        remove_substring(tmp,"enum");
