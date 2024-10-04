@@ -112,4 +112,5 @@ bool matrix_row_equals(const size_t row, const size_t nrows, const size_t ncols,
 /** Unit testing */
 bool equals(const size_t count, const size_t* a, const size_t* b);
 bool all_less_than(const size_t count, const size_t* a, const size_t* b);
+bool all_less_or_equal_than(const size_t count, const size_t* a, const size_t* b);
 void test_math_utils(void);

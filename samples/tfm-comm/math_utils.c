@@ -1364,6 +1364,15 @@ all_less_than(const size_t count, const size_t* a, const size_t* b)
     return true;
 }
 
+bool
+all_less_or_equal_than(const size_t count, const size_t* a, const size_t* b)
+{
+    for (size_t i = 0; i < count; ++i)
+        if (a[i] > b[i])
+            return false;
+    return true;
+}
+
 void
 test_math_utils(void)
 {
