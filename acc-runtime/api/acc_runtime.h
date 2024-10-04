@@ -48,21 +48,22 @@ typedef struct Field3
 	VertexBufferHandle y;
 	VertexBufferHandle z;
 	HOST_DEVICE_INLINE Field3(const Field& a, const Field& b, const Field& c) : x(a), y(b), z(c) {}
+	HOST_DEVICE_INLINE Field3() : x{}, y{}, z{} {}
 } Field3;
 
-constexpr Field3 
+HOST_DEVICE_INLINE Field3 
 MakeField3(const Field& x, const Field& y, const Field& z)
 {
 	return (Field3){x,y,z};
 }
 template <size_t N>
-constexpr __device__ __forceinline__
-std::array<Field3,N>
-MakeField3(const Field (&x)[N], const Field (&y)[N], const Field (&z)[N])
+HOST_DEVICE_INLINE
+AcArray<Field3,N>
+MakeField3(const AcArray<Field,N>& x, const AcArray<Field,N>& y, const AcArray<Field,N>& z)
 {
-	std::array<int3,N> res{};
+	AcArray<Field3,N> res{};
 	for(size_t i = 0; i < N; ++i)
-		res[i] = (Field3){x,y,z};
+		res[i] = (Field3){x[i],y[i],z[i]};
 	return res;
 }
 #endif

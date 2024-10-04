@@ -84,6 +84,7 @@ static void replace_const_ints(ASTNode* node, const string_vec values, const str
 static ASTNode* create_type_declaration(const char* tqual, const char* tspec, const int token);
 static ASTNode* create_type_qualifiers(const char* tqual,int token);
 static ASTNode* create_type_qualifier(const char* tqual, const int token);
+#include "create_node_decl.h"
 
 bool is_directory(const char *path) {
     if(!path) return false;
@@ -491,7 +492,7 @@ main(int argc, char** argv)
 %token STRUCT_NAME STRUCT_TYPE ENUM_NAME ENUM_TYPE 
 %token STATEMENT_LIST_HEAD STATEMENT
 %token REAL3 INT3 FIRST
-%token RANGE
+%token RANGE IN_RANGE
 %token CONST_DIMS
 %token CAST BASIC_STATEMENT
 
@@ -735,15 +736,17 @@ scalar_type_specifier:
               | bool         { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
 
 
-field_type_specifier:
-               field        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+non_scalar_arr_types:
+                 field        { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+               | field3       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+               | struct_type  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
 type_specifier: 
 	        scalar_type_specifier {$$ = astnode_create(NODE_UNKNOWN,$1,NULL); }
 	      | scalar_type_specifier '[' ']' {
 				$$ = astnode_create(NODE_UNKNOWN,$1,NULL); 
 				astnode_sprintf($1->lhs,"%s*",$1->lhs->buffer);
 			}
-	      | field_type_specifier '[' ']' {
+	      | non_scalar_arr_types '[' ']' {
 				$$ = astnode_create(NODE_UNKNOWN,$1,NULL); 
 				astnode_sprintf($1->lhs,"%s*",$1->lhs->buffer);
 			}
@@ -757,11 +760,11 @@ type_specifier:
               | field3       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | work_buffer  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | stencil      { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
-              | struct_type  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | enum_type    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | vtxbuffer    { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
 	      | kernel       { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               | profile { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
+              | struct_type  { $$ = astnode_create(NODE_TSPEC, $1, NULL); }
               ;
 
 type_specifiers: type_specifiers ',' type_specifier {$$ = astnode_create(NODE_UNKNOWN,$1,$3); }
@@ -948,7 +951,7 @@ variable_definitions: non_null_declaration {
                    ;
 
 
-assignment_list_leaf: identifier assignment_op expression {
+assignment_list_leaf: base_identifier assignment_op expression {
 		    							$$ = astnode_create(NODE_ASSIGNMENT,$1,$3);
 								 }
 		    ;
@@ -980,6 +983,7 @@ non_null_declaration: type_declaration declaration_list {
 				}
 			}
            ;
+
 declaration: type_declaration  declaration_list { $$ = astnode_create(NODE_DECLARATION, $1, $2); }
 	   //| type_declaration  '{' declaration_list '}' { $$ = astnode_create(NODE_DECLARATION, $1, $2); }
            ;
@@ -1121,13 +1125,28 @@ for_statement: for for_expression { $$ = astnode_create(NODE_UNKNOWN, $1, $2); a
              ;
 
 for_expression: identifier in expression {
-    			$$ = astnode_create(NODE_UNKNOWN, $1, $3);
+			ASTNode* lhs = create_declaration($1->buffer);
+    			$$ = astnode_create(NODE_UNKNOWN, lhs, $3);
+			astnode_set_buffer(":",$$);
+			$$->token = IN_RANGE;
 	      }
 	      | identifier in range {
-    			$$ = astnode_create(NODE_UNKNOWN, $1, $3);
-    			astnode_set_infix("=", $$);
-			astnode_sprintf_postfix($$->rhs->lhs,";%s<", $1->buffer);
-    			astnode_sprintf_postfix($$->rhs->rhs, ";++%s", $1->buffer);
+			//TP: this is a little ugly but much better than having the identifier in infix and postfixes
+			//TODO: clean
+			ASTNode* init_expression = $3->lhs;
+			ASTNode* end_expression  = $3->rhs;
+
+			ASTNode* init = astnode_create(NODE_UNKNOWN,init_expression,astnode_dup($1,NULL));
+			astnode_set_prefix("=",init);
+			astnode_set_prefix(";",init->rhs);
+			astnode_set_postfix("<",init->rhs);
+
+			ASTNode* end = astnode_create(NODE_UNKNOWN,end_expression,astnode_dup($1,NULL));
+			astnode_set_infix(";++",end);
+
+			ASTNode* range = astnode_create(NODE_UNKNOWN,init,end);
+
+    			$$ = astnode_create(NODE_UNKNOWN, $1,range);
 	      }
 	      ;
 
@@ -1503,3 +1522,4 @@ static void process_global_assignment(ASTNode* node, ASTNode* assignment, ASTNod
 		}
 	
 	    }
+#include "create_node.h"

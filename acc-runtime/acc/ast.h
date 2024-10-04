@@ -198,6 +198,16 @@ astnode_set_postfix(const char* postfix, ASTNode* node)
 {
   node->postfix = intern(postfix);
 }
+static const char*
+sprintf_intern(const char* format, ...)
+{
+	static char buffer[10000];
+	va_list args;
+	va_start(args,format);
+	int ret = vsprintf(buffer, format, args);
+	va_end(args);
+	return intern(buffer);
+}
 
 static inline void
 astnode_sprintf(ASTNode* node, const char* format, ...)
@@ -764,4 +774,13 @@ get_array_access_nodes(const ASTNode* node, node_vec* dst)
 		get_array_access_nodes(node->rhs,dst);
 	if(node->type == NODE_ARRAY_ACCESS)
 		push_node(dst,node->rhs);
+}
+static void
+replace_node(ASTNode* original, ASTNode* replacement)
+{
+		if(original->parent->lhs && original->parent->lhs->id == original->id)
+			original->parent->lhs = replacement;
+		else
+			original->parent->rhs = replacement;
+		replacement->parent = original->parent;
 }

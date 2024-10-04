@@ -93,6 +93,22 @@ public:
             arr_[i] = *it;
         }
     }
+    HOST_DEVICE_INLINE const T* begin() const
+    {
+	    return arr_;
+    }
+    HOST_DEVICE_INLINE const T* end() const
+    {
+	    return arr_ + N;
+    }
+    HOST_DEVICE_INLINE T* begin()
+    {
+	    return arr_;
+    }
+    HOST_DEVICE_INLINE T* end()
+    {
+	    return arr_ + N;
+    }
 
     HOST_DEVICE constexpr AcArray(void) : arr_{}{}
 

@@ -133,6 +133,11 @@ main(void)
     };
 
     std::array<AcReal,3> arr = {1.0,2.0,3.0};
+    std::array<AcReal3,3> vec_arr = {
+	    				(AcReal3){1.0,2.0,3.0},
+	    				(AcReal3){4.0,5.0,6.0},
+	    				(AcReal3){7.0,8.0,9.0},
+    				    };
     for (int step_number = 0; step_number < NUM_INTEGRATION_STEPS; ++step_number) {
         for (int k = nz_min; k < nz_max; ++k) {
             for (int j = ny_min; j < ny_max; ++j) {
@@ -140,6 +145,13 @@ main(void)
 			for (size_t field = 0; field < Field_arr.size(); ++field)
 			{
 				model.vertex_buffer[Field_arr[field]][IDX(i,j,k)] += arr[field];
+			}
+			for(size_t field = 0; field < DUST.size(); ++field)
+			{
+
+				model.vertex_buffer[DUST[field].x][IDX(i,j,k)] += vec_arr[field].x;
+				model.vertex_buffer[DUST[field].y][IDX(i,j,k)] += vec_arr[field].y;
+				model.vertex_buffer[DUST[field].z][IDX(i,j,k)] += vec_arr[field].z;
 			}
                 }
             }

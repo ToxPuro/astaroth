@@ -1,7 +1,18 @@
 Field Field_arr[3]
+const int ndustspec = 3
+Field DUST_X[ndustspec]
+Field DUST_Y[ndustspec]
+Field DUST_Z[ndustspec]
 
+const Field3 DUST[ndustspec] = MakeField3(DUST_X,DUST_Y,DUST_Z)
 Kernel test_arr()
 {
 	arr = [1.0,2.0,3.0]
 	write(Field_arr, Field_arr  + arr)
+	vec_arr = [
+			real3(1.0,2.0,3.0),
+			real3(4.0,5.0,6.0),
+			real3(7.0,8.0,9.0)
+	]
+	write(DUST,DUST + vec_arr)
 }

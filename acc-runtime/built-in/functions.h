@@ -63,6 +63,13 @@ write(Field[] dst, real[] src)
 		write(dst[i],src[i])
 	}
 }
+write(Field3[] dst, real3[] src)
+{
+	for i in 0:size(dst)
+	{
+		write(dst[i],src[i])
+	}
+}
 
 vecwrite(Field3 dst, real3 src)
 {
