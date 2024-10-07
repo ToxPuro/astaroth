@@ -1,3 +1,4 @@
+#include "../../stdlib/math/funcs.h"
 Field Field_arr[3]
 const int ndustspec = 3
 Field DUST_X[ndustspec]
@@ -15,4 +16,8 @@ Kernel test_arr()
 			real3(7.0,8.0,9.0)
 	]
 	write(DUST,DUST + vec_arr)
+}
+Kernel test2()
+{
+	res_arr = abs(DUST)
 }

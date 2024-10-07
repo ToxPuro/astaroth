@@ -367,6 +367,12 @@ static string_vec primitive_datatypes = VEC_INITIALIZER;
 #define LONG_LONG_STR primitive_datatypes.data[4]
 
 static const char* REAL_ARR_STR = NULL;
+
+static const char* REAL_PTR_STR = NULL;
+static const char* REAL3_PTR_STR = NULL;
+static const char* FIELD3_PTR_STR = NULL;
+static const char* VTXBUF_PTR_STR = NULL;
+
 static const char* MATRIX_STR   = NULL;
 static const char* REAL3_STR    = NULL;
 static const char* INT3_STR     = NULL;
@@ -3157,7 +3163,7 @@ get_dfuncs_called_dfuncs(const ASTNode* node, int_vec* src)
 		return;
 	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
         const int dfunc_index = get_symbol_index(NODE_DFUNCTION_ID,func_name,0);
-	if(dfunc_index > 0)
+	if(dfunc_index >= 0) //&& !check_symbol(NODE_ANY,func_name,0,INLINE))
 	    get_called_dfuncs(node,&src[dfunc_index],src);
 }
 void
@@ -6024,6 +6030,8 @@ field_to_real_conversion(ASTNode* node, const ASTNode* root)
 		if(
 		      (params_info.types.data[i] == REAL3_STR && call_info.types.data[i] == FIELD3_STR)
 		   || (params_info.types.data[i] == REAL_STR && call_info.types.data[i] == FIELD_STR)
+		   || (params_info.types.data[i] == REAL_PTR_STR && call_info.types.data[i] == VTXBUF_PTR_STR)
+		   || (params_info.types.data[i] == REAL3_PTR_STR && call_info.types.data[i] == FIELD3_PTR_STR)
 		  )
 		{
 			ASTNode* expr = (ASTNode*)call_info.expr_nodes.data[i];
@@ -6107,14 +6115,15 @@ static bool
 compatible_types(const char* a, const char* b)
 {
 	return !strcmp(a,b) 
-	       || (!strcmp(a,"AcReal*") && strstr(b,"AcArray") && strstr(b,REAL_STR)) ||
-	          (!strcmp(b,"AcReal*") && strstr(a,"AcArray") && strstr(a,REAL_STR)) ||
+	       || (!strcmp(a,REAL_PTR_STR) && strstr(b,"AcArray") && strstr(b,REAL_STR)) ||
+	          (!strcmp(b,REAL_PTR_STR) && strstr(a,"AcArray") && strstr(a,REAL_STR)) ||
                   (!strcmp(a,FIELD_STR) && !strcmp(b,"VertexBufferHandle"))  ||
 		  (!strcmp(b,FIELD_STR) && !strcmp(a,"VertexBufferHandle"))  ||
-                  (!strcmp(a,"Field*") && !strcmp(b,"VertexBufferHandle*"))  ||
-		  (!strcmp(b,"Field*") && !strcmp(a,"VertexBufferHandle*"))
+                  (!strcmp(a,"Field*") && !strcmp(b,VTXBUF_PTR_STR))  ||
+		  (!strcmp(b,"Field*") && !strcmp(a,VTXBUF_PTR_STR))
 		  || (a == REAL3_STR && b == FIELD3_STR)
-		  || (a == REAL_STR && b == FIELD_STR)
+		  || (a == REAL_PTR_STR && b == VTXBUF_PTR_STR)
+		  || (a == REAL3_PTR_STR && b == FIELD3_PTR_STR)
 		;
 }
 bool 
@@ -6338,7 +6347,7 @@ transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* roo
 bool
 is_field_expr(const char* expr)
 {
-	return expr && (expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,"VertexBufferHandle*") || !strcmp(expr,"Field3*"));
+	return expr && (expr == FIELD_STR || expr == FIELD3_STR || !strcmp(expr,VTXBUF_PTR_STR) || !strcmp(expr,FIELD3_PTR_STR));
 }
 
 void
@@ -6404,7 +6413,8 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 
 		fprintf(stream,"%s_AC_INTERNAL_COPY (real %s){%s}\n",dfunc_name,info.expr.data[0],func_body);
 		fprintf(stream,"%s (real3 v){return real3(%s_AC_INTERNAL_COPY(v.x), %s_AC_INTERNAL_COPY(v.y), %s_AC_INTERNAL_COPY(v.z))}\n",dfunc_name,dfunc_name,dfunc_name,dfunc_name);
-		fprintf(stream,"%s(real[] arr){\nreal res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s_AC_INTERNAL_COPY(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
+		fprintf(stream,"inline %s(real[] arr){\nreal res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s_AC_INTERNAL_COPY(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
+		fprintf(stream,"inline %s(real3[] arr){\nreal3 res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
 	}
 
 	else if(info.expr.size == 1 && info.types.data[0] == FIELD_STR && !strstr(dfunc_name,"AC_INTERNAL_COPY"))
@@ -6495,6 +6505,12 @@ gen_global_strings()
 	COMPLEX_STR= intern("AcComplex");
 	REAL3_STR= intern("AcReal3");
 	REAL_ARR_STR = intern("AcRealArray");
+
+	REAL_PTR_STR = intern("AcReal*");
+	REAL3_PTR_STR = intern("AcReal3*");
+	FIELD3_PTR_STR = intern("Field3*");
+	VTXBUF_PTR_STR = intern("VertexBufferHandle*");
+
 	MATRIX_STR = intern("AcMatrix");
 	INT3_STR = intern("int3");
 	EQ_STR = intern("=");
