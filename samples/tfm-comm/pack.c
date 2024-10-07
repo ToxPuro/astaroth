@@ -28,7 +28,7 @@ test_pack(void)
             set_ndarray_double(2 + i * 4, ndims, mm, block_dims, ((size_t[]){6, 0}), buffers[i]);
             set_ndarray_double(3 + i * 4, ndims, mm, block_dims, ((size_t[]){0, 6}), buffers[i]);
             set_ndarray_double(4 + i * 4, ndims, mm, block_dims, ((size_t[]){6, 6}), buffers[i]);
-            printd_ndarray(ndims, mm, buffers[i]);
+            // printd_ndarray(ndims, mm, buffers[i]);
         }
 
         const size_t block_count = prod(ndims, block_dims);
@@ -36,16 +36,16 @@ test_pack(void)
         const size_t packlen = nbuffers * block_count;
         double* pack_buf;
         ncalloc(packlen, pack_buf);
-        printd_array(packlen, pack_buf);
+        // printd_array(packlen, pack_buf);
 
         pack(ndims, mm, block_dims, block_offset_a, nbuffers, (double*[]){buf0, buf2, buf1},
              pack_buf);
-        printd_array(packlen, pack_buf);
+        // printd_array(packlen, pack_buf);
 
         unpack(pack_buf, ndims, mm, block_dims, block_offset_b, nbuffers, buffers);
-        for (size_t i = 0; i < nbuffers; ++i) {
-            printd_ndarray(ndims, mm, buffers[i]);
-        }
+        // for (size_t i = 0; i < nbuffers; ++i) {
+        //     printd_ndarray(ndims, mm, buffers[i]);
+        // }
 
         const double model_pack_buf[] = {4,  4,  4,  4, 4, 4, 12, 12, 12,
                                          12, 12, 12, 8, 8, 8, 8,  8,  8};
