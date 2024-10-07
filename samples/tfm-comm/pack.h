@@ -1,22 +1,18 @@
 #pragma once
 #include <stddef.h>
 
-void pack(const size_t ndims, const size_t* input_dims, const size_t* input_offset,
-          const double* input, const size_t* output_dims, const size_t* output_offset,
-          double* output);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void pack(const size_t ndims, const size_t* mm, const size_t* block_shape,
+          const size_t* block_offset, const size_t ninputs, const double* inputs[], double* output);
+
+void unpack(const double* input, const size_t ndims, const size_t* mm, const size_t* block_shape,
+            const size_t* block_offset, const size_t noutputs, double* outputs[]);
 
 void test_pack(void);
 
-// typedef struct {
-//     const size_t ndims;
-//     size_t* dims;
-//     size_t* offset;
-//     double* data;
-// } SegmentInfo;
-
-// SegmentInfo segment_info_create(const size_t ndims);
-
-// void segment_info_destroy(SegmentInfo* info);
-
-// void segment_copy_batched(const size_t ninput_segments, SegmentInfo* input_segments,
-//                           const size_t noutput_segments, SegmentInfo* output_segments);
+#ifdef __cplusplus
+}
+#endif
