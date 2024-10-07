@@ -6019,13 +6019,15 @@ field_to_real_conversion(ASTNode* node, const ASTNode* root)
 
 	func_params_info params_info = get_function_params_info(root,func_name);
 	func_params_info call_info = get_func_call_params_info(node);
-	if(params_info.types.size != call_info.types.size) printf("WRONG: %s,%zu,%zu\n",func_name,call_info.types.size,params_info.types.size);
 	for(size_t i = 0; i < call_info.types.size; ++i)
 	{
-		if(params_info.types.data[i] == REAL3_STR && call_info.types.data[i] == FIELD3_STR)
+		if(
+		      (params_info.types.data[i] == REAL3_STR && call_info.types.data[i] == FIELD3_STR)
+		   || (params_info.types.data[i] == REAL_STR && call_info.types.data[i] == FIELD_STR)
+		  )
 		{
 			ASTNode* expr = (ASTNode*)call_info.expr_nodes.data[i];
-			expr->expr_type = REAL3_STR;
+			expr->expr_type = params_info.types.data[i];
 			replace_node(
 					expr,
 					create_func_call_expr(VALUE_STR,expr)
@@ -6112,6 +6114,7 @@ compatible_types(const char* a, const char* b)
                   (!strcmp(a,"Field*") && !strcmp(b,"VertexBufferHandle*"))  ||
 		  (!strcmp(b,"Field*") && !strcmp(a,"VertexBufferHandle*"))
 		  || (a == REAL3_STR && b == FIELD3_STR)
+		  || (a == REAL_STR && b == FIELD_STR)
 		;
 }
 bool 
