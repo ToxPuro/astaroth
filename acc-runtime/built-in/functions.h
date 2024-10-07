@@ -45,10 +45,6 @@ write(Field dst, real src)
 {
 	write_base(dst,src)
 }
-write(Field dst, Field src)
-{
-	write_base(dst,value(src))
-}
 
 write(Field3 dst, real3 src)
 {
