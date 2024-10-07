@@ -5,130 +5,72 @@
 #include "nalloc.h"
 #include "print.h"
 
-static void
-check_input_valid(const size_t ndims, const size_t* input_dims, const size_t* input_offset,
-                  const size_t* output_dims)
-{
-    size_t* max_coords;
-    nalloc(ndims, max_coords);
-
-    add_arrays(ndims, input_offset, output_dims, max_coords);
-    subtract_value(1, ndims, max_coords);
-    ERRCHK(all_less_than(ndims, max_coords, input_dims));
-
-    ndealloc(max_coords);
-}
-
-void
-pack(const size_t ndims,                                                        //
-     const size_t* input_dims, const size_t* input_offset, const double* input, //
-     const size_t* output_dims, const size_t* output_offset, double* output)
-{
-    check_input_valid(ndims, input_dims, input_offset, output_dims);
-
-    size_t *coords, *out_coords, *in_coords;
-    nalloc(ndims, coords);
-    nalloc(ndims, out_coords);
-    nalloc(ndims, in_coords);
-
-    const size_t count = prod(ndims, output_dims);
-    for (size_t i = 0; i < count; ++i) {
-        to_spatial(i, ndims, output_dims, coords);
-        add_arrays(ndims, output_offset, coords, out_coords);
-        add_arrays(ndims, input_offset, coords, in_coords);
-
-        const size_t out_idx = to_linear(ndims, out_coords, output_dims);
-        const size_t in_idx  = to_linear(ndims, in_coords, input_dims);
-        output[out_idx]      = input[in_idx];
-    }
-    ndealloc(coords);
-    ndealloc(out_coords);
-    ndealloc(in_coords);
-}
-
 void
 test_pack(void)
 {
     {
-        const size_t input_dims[]    = {8, 8};
-        const size_t input_offset[]  = {0, 0};
-        const size_t output_dims[]   = {2, 2};
-        const size_t output_offset[] = {0, 0};
-        const size_t ndims           = ARRAY_SIZE(input_dims);
-        const size_t input_count     = prod(ndims, input_dims);
-        const size_t output_count    = prod(ndims, output_dims);
-        const double model_output[]  = {0, 1, 8, 9};
+        const size_t mm[]             = {8, 9};
+        const size_t block_dims[]     = {2, 3};
+        const size_t block_offset_a[] = {6, 6};
+        const size_t block_offset_b[] = {2, 3};
+        const size_t ndims            = ARRAY_SIZE(mm);
+        const size_t count            = prod(ndims, mm);
 
-        double *input, *output;
-        nalloc(input_count, input);
-        nalloc(output_count, output);
+        double *buf0, *buf1, *buf2;
+        ncalloc(count, buf0);
+        ncalloc(count, buf1);
+        ncalloc(count, buf2);
+        double* buffers[]     = {buf0, buf1, buf2};
+        const size_t nbuffers = ARRAY_SIZE(buffers);
 
-        for (size_t i = 0; i < input_count; ++i)
-            input[i] = (double)i;
+        for (size_t i = 0; i < nbuffers; ++i) {
+            set_ndarray_double(1 + i * 4, ndims, mm, block_dims, ((size_t[]){0, 0}), buffers[i]);
+            set_ndarray_double(2 + i * 4, ndims, mm, block_dims, ((size_t[]){6, 0}), buffers[i]);
+            set_ndarray_double(3 + i * 4, ndims, mm, block_dims, ((size_t[]){0, 6}), buffers[i]);
+            set_ndarray_double(4 + i * 4, ndims, mm, block_dims, ((size_t[]){6, 6}), buffers[i]);
+            printd_ndarray(ndims, mm, buffers[i]);
+        }
 
-        pack(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
-        ERRCHK(ncmp(ndims, output, model_output));
+        const size_t block_count = prod(ndims, block_dims);
 
-        // print_ndarray("input", ndims, input_dims, input);
-        // print_ndarray("output", ndims, output_dims, output);
+        const size_t packlen = nbuffers * block_count;
+        double* pack_buf;
+        ncalloc(packlen, pack_buf);
+        printd_array(packlen, pack_buf);
 
-        ndealloc(input);
-        ndealloc(output);
-    }
-    {
-        const size_t input_dims[]    = {4, 3, 2};
-        const size_t input_offset[]  = {1, 1, 0};
-        const size_t output_dims[]   = {2, 1, 2};
-        const size_t output_offset[] = {0, 0, 0};
-        const size_t ndims           = ARRAY_SIZE(input_dims);
-        const size_t input_count     = prod(ndims, input_dims);
-        const size_t output_count    = prod(ndims, output_dims);
-        const double model_output[]  = {5, 6, 17, 18};
+        pack(ndims, mm, block_dims, block_offset_a, nbuffers, (double*[]){buf0, buf2, buf1},
+             pack_buf);
+        printd_array(packlen, pack_buf);
 
-        double *input, *output;
-        nalloc(input_count, input);
-        nalloc(output_count, output);
+        unpack(pack_buf, ndims, mm, block_dims, block_offset_b, nbuffers, buffers);
+        for (size_t i = 0; i < nbuffers; ++i) {
+            printd_ndarray(ndims, mm, buffers[i]);
+        }
 
-        for (size_t i = 0; i < input_count; ++i)
-            input[i] = (double)i;
+        const double model_pack_buf[] = {4,  4,  4,  4, 4, 4, 12, 12, 12,
+                                         12, 12, 12, 8, 8, 8, 8,  8,  8};
+        ERRCHK(ncmp(packlen, pack_buf, model_pack_buf));
 
-        pack(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
-        ERRCHK(ncmp(ndims, output, model_output));
+        const double model_buf0[] = {1, 1, 0, 0, 0, 0, 2, 2, 1, 1, 0, 0, 0, 0, 2, 2, 1, 1,
+                                     0, 0, 0, 0, 2, 2, 0, 0, 4, 4, 0, 0, 0, 0, 0, 0, 4, 4,
+                                     0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0,
+                                     4, 4, 3, 3, 0, 0, 0, 0, 4, 4, 3, 3, 0, 0, 0, 0, 4, 4};
+        const double model_buf1[] = {5, 5, 0, 0, 0, 0, 6,  6,  5,  5,  0, 0, 0, 0, 6, 6, 5,  5,
+                                     0, 0, 0, 0, 6, 6, 0,  0,  12, 12, 0, 0, 0, 0, 0, 0, 12, 12,
+                                     0, 0, 0, 0, 0, 0, 12, 12, 0,  0,  0, 0, 7, 7, 0, 0, 0,  0,
+                                     8, 8, 7, 7, 0, 0, 0,  0,  8,  8,  7, 7, 0, 0, 0, 0, 8,  8};
+        const double model_buf2[] = {9,  9, 0,  0,  0,  0,  10, 10, 9,  9,  0,  0,  0,  0, 10,
+                                     10, 9, 9,  0,  0,  0,  0,  10, 10, 0,  0,  8,  8,  0, 0,
+                                     0,  0, 0,  0,  8,  8,  0,  0,  0,  0,  0,  0,  8,  8, 0,
+                                     0,  0, 0,  11, 11, 0,  0,  0,  0,  12, 12, 11, 11, 0, 0,
+                                     0,  0, 12, 12, 11, 11, 0,  0,  0,  0,  12, 12};
+        ERRCHK(ncmp(count, model_buf0, buf0));
+        ERRCHK(ncmp(count, model_buf1, buf1));
+        ERRCHK(ncmp(count, model_buf2, buf2));
 
-        // print_ndarray("input", ndims, input_dims, input);
-        // print_ndarray("output", ndims, output_dims, output);
-
-        ndealloc(input);
-        ndealloc(output);
-    }
-    {
-        const size_t input_dims[]    = {8, 7, 4};
-        const size_t input_offset[]  = {2, 2, 1};
-        const size_t output_dims[]   = {3, 2, 3};
-        const size_t output_offset[] = {0, 0, 0};
-        const size_t ndims           = ARRAY_SIZE(input_dims);
-        const size_t input_count     = prod(ndims, input_dims);
-        const size_t output_count    = prod(ndims, output_dims);
-        const double model_output[]  = {
-            74, 75, 76, 82, 83, 84, 45, 46, 47, 53, 54, 55, 186, 187, 188, 194, 195, 196,
-        };
-
-        double *input, *output;
-        nalloc(input_count, input);
-        nalloc(output_count, output);
-
-        for (size_t i = 0; i < input_count; ++i)
-            input[i] = (double)i;
-
-        pack(ndims, input_dims, input_offset, input, output_dims, output_offset, output);
-        pack(ndims, input_dims, (size_t[]){5, 5, 0}, input, (size_t[]){3, 2, 1},
-             (size_t[]){0, 0, 1}, output);
-        ERRCHK(ncmp(ndims, output, model_output));
-
-        // print_ndarray("input", ndims, input_dims, input);
-        // print_ndarray("output", ndims, output_dims, output);
-
-        ndealloc(input);
-        ndealloc(output);
+        ndealloc(pack_buf);
+        ndealloc(buf0);
+        ndealloc(buf1);
+        ndealloc(buf2);
     }
 }

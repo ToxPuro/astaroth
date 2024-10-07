@@ -71,6 +71,25 @@ equals(const size_t count, const T* a, const T* b)
     return true;
 }
 
+template <typename T>
+void
+set_ndarray(const T value, const size_t ndims, const size_t* dims,
+                   const size_t* subdims, const size_t* start, T* arr)
+{
+    if (ndims == 0) {
+        *arr = value;
+    }
+    else {
+        ERRCHK(start[ndims - 1] + subdims[ndims - 1] <= dims[ndims - 1]); // OOB
+        ERRCHK(dims[ndims - 1] > 0);                                      // Invalid dims
+        ERRCHK(subdims[ndims - 1] > 0);                                   // Invalid subdims
+
+        const size_t offset = prod(ndims - 1, dims);
+        for (size_t i = start[ndims - 1]; i < start[ndims - 1] + subdims[ndims - 1]; ++i)
+            set_ndarray_size_t(value, ndims - 1, dims, subdims, start, &arr[i * offset]);
+    }
+}
+
 static void
 add_arrays(const size_t count, const size_t* a, const size_t* b, size_t* c)
 {
@@ -203,45 +222,4 @@ unpack(double* input, const size_t ndims, const size_t* mm, const size_t* block_
     PackKernelParams kp = to_static_pack_kernel_params(ndims, mm, block_shape, block_offset,
                                                        noutputs, outputs, input);
     unpack_(kp);
-}
-
-void
-test_pack(void)
-{
-
-    const size_t mm[]           = {8, 8};
-    const size_t block_shape[]  = {6, 6};
-    const size_t block_offset[] = {1, 1};
-    const size_t ndims          = ARRAY_SIZE(mm);
-    // print_array("mm", ndims, mm);
-
-    const size_t mm_count = prod(ndims, mm);
-    double* buf0 = new double[mm_count];
-    double* buf1 = new double[mm_count];
-    double* buf2 = new double[mm_count];
-
-    for range(i, 0, mm_count) {
-        buf0[i] = double(i + 0);
-        buf1[i] = double(i + 1*mm_count);
-        buf2[i] = double(i + 2*mm_count);
-    }
-
-    double* buffers[]     = {buf0, buf1, buf2};
-    const size_t nbuffers = ARRAY_SIZE(buffers);
-
-    const size_t pack_count = nbuffers * prod(ndims, block_shape);
-    double* pack_buffer = new double[pack_count];
-
-    pack(ndims, mm, block_shape, block_offset, nbuffers, buffers, pack_buffer);
-    unpack(pack_buffer, ndims, mm, block_shape, block_offset, nbuffers, buffers);
-
-    // printd_array(mm_count, buf0);
-    // printd_array(mm_count, buf1);
-    // printd_array(mm_count, buf2);
-    // printd_array(pack_count, pack_buffer);
-
-    delete pack_buffer;
-    delete buf0;
-    delete buf1;
-    delete buf2;
 }
