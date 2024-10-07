@@ -1,7 +1,13 @@
 #pragma once
 #include <stddef.h>
 
-/** Initialize the communicator module
+/** Initialize the communicator module.
+ * Should be called as early in the program as possible to avoid interference
+ * with the MPI implementation, such as opening files. Recommended by, e.g., MPICH.
+ */
+void acCommInit(void);
+
+/** Setup the communicator module
  * global_nn: dimensions of the global computational domain partitioned to multiple processors
  * local_nn: dimensions of the local computational domain
  * global_nn_offset: offset of the local domain in global scale, e.g.,
@@ -9,8 +15,8 @@
  *                  = local nn index + local_nn * decomposition
  * rr: extent of the halo surrounding the computational domain
  */
-void acCommInit(const size_t ndims, const size_t* global_nn, size_t* local_nn,
-                size_t* global_nn_offset);
+void acCommSetup(const size_t ndims, const size_t* global_nn, size_t* local_nn,
+                 size_t* global_nn_offset);
 
 void acCommQuit(void);
 
@@ -20,26 +26,16 @@ void acCommBarrier(void);
 
 void print_comm(void);
 
-// typedef struct HaloExchangeTask_s HaloExchangeTask;
+typedef struct HaloSegmentBatch_s* HaloSegmentBatch;
 
-// HaloExchangeTask* acHaloExchangeTaskCreate(const size_t ndims, const size_t* mm, const size_t*
-// nn,
-//                                            const size_t* rr, const size_t nbuffers);
+HaloSegmentBatch halo_segment_batch_create(const size_t ndims, const size_t* local_mm,
+                                           const size_t* local_nn, const size_t* local_nn_offset,
+                                           const size_t n_aggregate_buffers);
 
-// void acHaloExchangeTaskLaunch(const HaloExchangeTask* task, const size_t nbuffers,
-//                               size_t* buffers[nbuffers]);
+void halo_segment_batch_destroy(HaloSegmentBatch* batch);
 
-// void acHaloExchangeTaskSynchronize(const HaloExchangeTask* task);
+void halo_segment_batch_launch(HaloSegmentBatch batch);
 
-// void acHaloExchangeTaskDestroy(HaloExchangeTask** task);
+void halo_segment_batch_wait(HaloSegmentBatch batch);
 
 void test_comm(void);
-
-/*
-// Require that local_nn is also surrounded by rr.
-// This is implied:
-acCommInit(global_nn, rr, &local_nn)
-AcDeviceCreate(nn);
-DeviceGlobalOffset
-
-*/

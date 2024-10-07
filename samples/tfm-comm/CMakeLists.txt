@@ -47,7 +47,7 @@ add_compile_options(#-Werror
 ## Packages
 add_library(tfm-utils SHARED mpi_utils.c type_conversion.c math_utils.c print.c partition.c dynarr.c segment.c buf.c)
 
-add_library(tfm-pack SHARED pack.cc)
+add_library(tfm-pack SHARED pack.cc pack.c)
 target_link_libraries(tfm-pack PRIVATE tfm-utils)
 
 find_package(MPI REQUIRED COMPONENTS C)
@@ -56,3 +56,6 @@ target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-utils)
 
 add_executable(test test.c)
 target_link_libraries(test PRIVATE tfm-utils tfm-comm tfm-pack)
+
+add_executable(run main.c)
+target_link_libraries(run PRIVATE tfm-utils tfm-comm tfm-pack)

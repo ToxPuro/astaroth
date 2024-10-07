@@ -19,9 +19,14 @@ static MPI_Comm mpi_comm_ = MPI_COMM_NULL;
 static int mpi_ndims_     = -1;
 
 void
-acCommInit(const size_t ndims, const size_t* global_nn, size_t* local_nn, size_t* global_nn_offset)
+acCommInit(void)
 {
     ERRCHK_MPI_API(MPI_Init(NULL, NULL));
+}
+
+void
+acCommSetup(const size_t ndims, const size_t* global_nn, size_t* local_nn, size_t* global_nn_offset)
+{
 
     // Get nprocs
     int nprocs;
@@ -172,19 +177,19 @@ packet_destroy(Packet* packet)
     segment_destroy(&packet->segment);
 }
 
-typedef struct {
+struct HaloSegmentBatch_s {
     size_t ndims;
     size_t* local_mm;
 
     size_t npackets;
     Packet* local_packets;
     Packet* remote_packets;
-} HaloSegmentBatch;
+};
 
 static void halo_segment_batch_verify(const size_t ndims, const size_t* mm, const size_t* nn,
-                                      const HaloSegmentBatch batch);
+                                      const struct HaloSegmentBatch_s batch);
 
-static HaloSegmentBatch
+struct HaloSegmentBatch_s*
 halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size_t* local_nn,
                           const size_t* local_nn_offset, const size_t n_aggregate_buffers)
 {
@@ -201,13 +206,15 @@ halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size
         }
     }
 
-    HaloSegmentBatch batch;
-    batch.ndims = ndims;
-    ndup(ndims, local_mm, batch.local_mm);
+    struct HaloSegmentBatch_s* batch;
+    nalloc(1, batch);
 
-    batch.npackets = segments.length;
-    nalloc(batch.npackets, batch.local_packets);
-    nalloc(batch.npackets, batch.remote_packets);
+    batch->ndims = ndims;
+    ndup(ndims, local_mm, batch->local_mm);
+
+    batch->npackets = segments.length;
+    nalloc(batch->npackets, batch->local_packets);
+    nalloc(batch->npackets, batch->remote_packets);
 
     for (size_t i = 0; i < segments.length; ++i) {
         // Each recv_offset maps to a coordinates in the computational domain of a neighboring
@@ -229,7 +236,7 @@ halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size
 
         // Recv packet
         const size_t* recv_offset = segments.data[i].offset;
-        batch.remote_packets[i]   = packet_create(ndims, subdims, recv_offset, n_aggregate_buffers);
+        batch->remote_packets[i]  = packet_create(ndims, subdims, recv_offset, n_aggregate_buffers);
 
         // Send packet
         size_t* send_offset;
@@ -237,7 +244,7 @@ halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size
         for (size_t j = 0; j < ndims; ++j)
             send_offset[j] = ((local_nn[j] + recv_offset[j] - local_nn_offset[j]) % local_nn[j]) +
                              local_nn_offset[j];
-        batch.local_packets[i] = packet_create(ndims, subdims, send_offset, n_aggregate_buffers);
+        batch->local_packets[i] = packet_create(ndims, subdims, send_offset, n_aggregate_buffers);
         ndealloc(send_offset);
     }
 
@@ -245,26 +252,27 @@ halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size
     dynarr_destroy(&segments);
 
     // Sanity check: verify that the segments are within the expected bounds
-    halo_segment_batch_verify(ndims, local_mm, local_nn, batch);
+    halo_segment_batch_verify(ndims, local_mm, local_nn, *batch);
     return batch;
 }
 
-static void
-halo_segment_batch_destroy(HaloSegmentBatch* batch)
+void
+halo_segment_batch_destroy(struct HaloSegmentBatch_s** batch)
 {
-    ndealloc(batch->local_mm);
-    batch->ndims = 0;
-    for (size_t i = 0; i < batch->npackets; ++i) {
-        packet_destroy(&batch->local_packets[i]);
-        packet_destroy(&batch->remote_packets[i]);
+    ndealloc((*batch)->local_mm);
+    (*batch)->ndims = 0;
+    for (size_t i = 0; i < (*batch)->npackets; ++i) {
+        packet_destroy(&(*batch)->local_packets[i]);
+        packet_destroy(&(*batch)->remote_packets[i]);
     }
-    ndealloc(batch->local_packets);
-    ndealloc(batch->remote_packets);
-    batch->npackets = 0;
+    ndealloc((*batch)->local_packets);
+    ndealloc((*batch)->remote_packets);
+    (*batch)->npackets = 0;
+    ndealloc((*batch));
 }
 
-static void
-halo_segment_batch_wait(HaloSegmentBatch* batch)
+void
+halo_segment_batch_wait(struct HaloSegmentBatch_s* batch)
 {
     for (size_t i = 0; i < batch->npackets; ++i) {
         packet_wait(&batch->local_packets[i]);
@@ -323,10 +331,15 @@ halo_segment_batch_wait(HaloSegmentBatch* batch)
 //     ndealloc(zeros);
 // }
 
-static void
-halo_segment_batch_launch(const size_t nbuffers, const Buffer* buffers, HaloSegmentBatch* batch)
+void
+halo_segment_batch_launch(const size_t ninputs, const double* inputs[],
+                          struct HaloSegmentBatch_s* batch)
 {
     for (size_t i = 0; i < batch->npackets; ++i) {
+        Packet* packet = &batch->local_packets[i];
+        pack(batch->ndims, batch->local_mm, packet->segment.dims, packet->segment.offset, ninputs,
+             inputs, packet->buffer.data);
+        // TODO CONTINUE HERE
         // Post recv (asynchronous)
         // Pack packet (synchronous)
         // Send packet (asynchronous)
@@ -335,7 +348,7 @@ halo_segment_batch_launch(const size_t nbuffers, const Buffer* buffers, HaloSegm
 
 static void
 halo_segment_batch_verify(const size_t ndims, const size_t* mm, const size_t* nn,
-                          const HaloSegmentBatch batch)
+                          const struct HaloSegmentBatch_s batch)
 {
     // Ensure that
     // 1. none of the halo segments (remote_packets) overlap
@@ -419,6 +432,8 @@ test_halo_segment_batch(void)
 void
 test_comm(void)
 {
+    acCommInit();
+
     const size_t nn[]  = {8, 8, 8};
     const size_t ndims = ARRAY_SIZE(nn);
 
@@ -426,7 +441,7 @@ test_comm(void)
     nalloc(ndims, local_nn);
     nalloc(ndims, global_nn_offset);
 
-    acCommInit(ndims, nn, local_nn, global_nn_offset);
+    acCommSetup(ndims, nn, local_nn, global_nn_offset);
     test_halo_segment_batch();
 
     // print_comm();
