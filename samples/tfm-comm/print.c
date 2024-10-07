@@ -16,7 +16,7 @@
 #define DEFINE_GENERIC_FUNCTION_PRINT_ARRAY(type, format)                                          \
     void print_array_##type(const char* label, const size_t count, const type* array)              \
     {                                                                                              \
-        ERRCHK(array != NULL);\
+        ERRCHK(array != NULL);                                                                     \
         printf("%s: {", label);                                                                    \
         for (size_t i = 0; i < count; ++i) {                                                       \
             printf(format, array[i]);                                                              \
@@ -62,7 +62,7 @@
     void print_ndarray_##type(const char* label, const size_t ndims, const size_t* dims,           \
                               const type* array)                                                   \
     {                                                                                              \
-        ERRCHK(array != NULL);\
+        ERRCHK(array != NULL);                                                                     \
         printf("%s:\n", label);                                                                    \
         print_ndarray_recursive_##type(ndims, dims, array);                                        \
     }

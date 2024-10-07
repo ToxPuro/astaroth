@@ -1061,12 +1061,30 @@ test_next_positive_integer(void)
 /*
  * Ndarray
  */
+// void
+// set_ndarray_size_t(const size_t value, const size_t ndims, const size_t* dims,
+//                    const size_t* subdims, const size_t* start, size_t* arr)
+// {
+//     if (ndims == 0) {
+//         *arr = value;
+//     }
+//     else {
+//         ERRCHK(start[ndims - 1] + subdims[ndims - 1] <= dims[ndims - 1]); // OOB
+//         ERRCHK(dims[ndims - 1] > 0);                                      // Invalid dims
+//         ERRCHK(subdims[ndims - 1] > 0);                                   // Invalid subdims
+
+//         const size_t offset = prod(ndims - 1, dims);
+//         for (size_t i = start[ndims - 1]; i < start[ndims - 1] + subdims[ndims - 1]; ++i)
+//             set_ndarray_size_t(value, ndims - 1, dims, subdims, start, &arr[i * offset]);
+//     }
+// }
+
 void
-set_ndarray(const size_t value, const size_t ndims, const size_t* dims, const size_t* subdims,
-            const size_t* start, size_t* arr)
+set_ndarray_void(const size_t element_size, const void* value, const size_t ndims,
+                 const size_t* dims, const size_t* subdims, const size_t* start, char* arr)
 {
     if (ndims == 0) {
-        *arr = value;
+        memmove(arr, value, element_size);
     }
     else {
         ERRCHK(start[ndims - 1] + subdims[ndims - 1] <= dims[ndims - 1]); // OOB
@@ -1075,8 +1093,23 @@ set_ndarray(const size_t value, const size_t ndims, const size_t* dims, const si
 
         const size_t offset = prod(ndims - 1, dims);
         for (size_t i = start[ndims - 1]; i < start[ndims - 1] + subdims[ndims - 1]; ++i)
-            set_ndarray(value, ndims - 1, dims, subdims, start, &arr[i * offset]);
+            set_ndarray_void(element_size, value, ndims - 1, dims, subdims, start,
+                             &arr[i * offset * element_size]);
     }
+}
+
+void
+set_ndarray_double(const double value, const size_t ndims, const size_t* dims,
+                   const size_t* subdims, const size_t* start, double* arr)
+{
+    set_ndarray_void(sizeof(value), (double[]){value}, ndims, dims, subdims, start, (char*)arr);
+}
+
+void
+set_ndarray_size_t(const size_t value, const size_t ndims, const size_t* dims,
+                   const size_t* subdims, const size_t* start, size_t* arr)
+{
+    set_ndarray_void(sizeof(value), (size_t[]){value}, ndims, dims, subdims, start, (char*)arr);
 }
 
 /** Note: duplicate with to_linear and to_spatial */

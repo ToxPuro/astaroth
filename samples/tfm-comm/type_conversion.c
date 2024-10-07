@@ -15,7 +15,8 @@
 //     return (size_t)x;
 // }
 
-double size_t_as_double(const size_t x)
+double
+size_t_as_double(const size_t x)
 {
     const double y = (double)x;
     const size_t z = (size_t)y;

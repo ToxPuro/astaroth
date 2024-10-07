@@ -5,9 +5,8 @@
 extern "C" {
 #endif
 
-void
-pack(const size_t ndims, const size_t* mm, const size_t* block_shape, const size_t* block_offset,
-     const size_t ninputs, double* inputs[], double* output);
+void pack(const size_t ndims, const size_t* mm, const size_t* block_shape,
+          const size_t* block_offset, const size_t ninputs, double* inputs[], double* output);
 
 void unpack(double* input, const size_t ndims, const size_t* mm, const size_t* block_shape,
             const size_t* block_offset, const size_t noutputs, double* outputs[]);
