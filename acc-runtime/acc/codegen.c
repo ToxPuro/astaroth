@@ -6188,6 +6188,7 @@ resolve_overloaded_calls(ASTNode* node, string_vec* dfunc_possible_types)
 	const int_vec possible_indexes = possible_indexes_strict.size == 0 ? possible_indexes_conversion : possible_indexes_strict;
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
+		/**
 		if(!strcmp(dfunc_name,"abs"))
 		{
 			char my_tmp[10000];
@@ -6196,6 +6197,7 @@ resolve_overloaded_calls(ASTNode* node, string_vec* dfunc_possible_types)
 			printf("Not able to resolve: %s\n",my_tmp); 
 			printf("Not able to resolve: %s,%zu\n",call_info.types.data[0],possible_indexes.size); 
 		}
+		**/
 		return res;
 	}
 	{
