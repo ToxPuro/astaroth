@@ -61,6 +61,7 @@
  */
 #define ndup(count, in, out)                                                                       \
     do {                                                                                           \
+        ERRCHK((in) != NULL);                                                                      \
         nalloc((count), (out));                                                                    \
         ncopy((count), (in), (out));                                                               \
     } while (0)
