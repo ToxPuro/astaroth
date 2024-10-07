@@ -1062,8 +1062,8 @@ test_next_positive_integer(void)
  * Ndarray
  */
 void
-set_ndarray(const size_t value, const size_t ndims, const size_t* start, const size_t* subdims,
-            const size_t* dims, size_t* arr)
+set_ndarray(const size_t value, const size_t ndims, const size_t* dims, const size_t* subdims,
+            const size_t* start, size_t* arr)
 {
     if (ndims == 0) {
         *arr = value;
@@ -1075,7 +1075,7 @@ set_ndarray(const size_t value, const size_t ndims, const size_t* start, const s
 
         const size_t offset = prod(ndims - 1, dims);
         for (size_t i = start[ndims - 1]; i < start[ndims - 1] + subdims[ndims - 1]; ++i)
-            set_ndarray(value, ndims - 1, start, subdims, dims, &arr[i * offset]);
+            set_ndarray(value, ndims - 1, dims, subdims, start, &arr[i * offset]);
     }
 }
 

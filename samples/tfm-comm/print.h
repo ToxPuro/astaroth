@@ -45,6 +45,10 @@ DECLARE_GENERIC_FUNCTIONS(double)
         int: print_ndarray_int,                                                                    \
         double: print_ndarray_double)(label, ndims, dims, array)
 
+#define printd(x) print(#x, (x))
+#define printd_array(count, arr) print_array(#arr, (count), (arr))
+#define printd_ndarray(ndims, dims, arr) print_ndarray(#arr, (ndims), (dims), (arr))
+
 // Cleanup
 #undef DECLARE_GENERIC_FUNCTIONS
 #undef DECLARE_GENERIC_FUNCTION_PRINT

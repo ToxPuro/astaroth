@@ -2,6 +2,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+double size_t_as_double(const size_t x);
+#define as_double(x) _Generic((x), size_t: size_t_as_double)(x)
+
 size_t size_t_as_size_t(const size_t i);
 int int_as_int(const int i);
 size_t int64_t_as_size_t(const int64_t i);

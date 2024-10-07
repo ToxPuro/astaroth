@@ -429,9 +429,9 @@ test_comm(void)
     acCommInit(ndims, nn, local_nn, global_nn_offset);
     test_halo_segment_batch();
 
-    print_comm();
-    print_array("local_nn", ndims, local_nn);
-    print_array("global_nn_offset", ndims, global_nn_offset);
+    // print_comm();
+    // print_array("local_nn", ndims, local_nn);
+    // print_array("global_nn_offset", ndims, global_nn_offset);
 
     acCommQuit();
 
