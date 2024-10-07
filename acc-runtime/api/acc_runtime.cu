@@ -100,12 +100,18 @@ get_bpg(const Volume dims, const Volume tpb)
   }
 }
 
-bool
-is_valid_configuration(const Volume dims, const Volume tpb)
+size_t
+get_warp_size()
 {
   cudaDeviceProp props;
   cudaGetDeviceProperties(&props, 0);
-  const size_t warp_size = props.warpSize;
+  return props.warpSize;
+}
+
+bool
+is_valid_configuration(const Volume dims, const Volume tpb)
+{
+  const size_t warp_size = get_warp_size();
   const size_t xmax      = (size_t)(warp_size * ceil(1. * dims.x / warp_size));
   const size_t ymax      = (size_t)(warp_size * ceil(1. * dims.y / warp_size));
   const size_t zmax      = (size_t)(warp_size * ceil(1. * dims.z / warp_size));
@@ -729,14 +735,12 @@ acVBADestroy(VertexBufferArray* vba, const AcMeshInfo config)
   acPBADestroy(&vba->profiles);
 }
 
+
+
 int
 get_num_of_reduce_output(const dim3 bpg, const dim3 tpb)
 {
-#if AC_USE_HIP
-	const int warp_size = rocprim::host_warp_size();
-#else
-	const int warp_size = 32;
-#endif
+	const size_t warp_size = get_warp_size();
 	const int num_of_warps_per_block = (tpb.x*tpb.y*tpb.z + warp_size-1)/warp_size;
 	const int num_of_blocks = bpg.x*bpg.y*bpg.z;
 	return num_of_warps_per_block*num_of_blocks;
