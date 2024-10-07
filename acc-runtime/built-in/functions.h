@@ -81,14 +81,16 @@ real3 intrinsic AC_cross
 real intrinsic AC_dot
 
 
-elemental 
 cross(real3 a, real3 b)
 {
 	return AC_cross(a,b)
 }
 
-elemental 
 dot(real3 a, real3 b)
+{
+	return AC_dot(a, b)
+}
+dot(real[] a, real[] b)
 {
 	return AC_dot(a, b)
 }

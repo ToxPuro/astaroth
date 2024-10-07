@@ -1169,7 +1169,7 @@ acDevicePrintProfiles(const Device device)
     // printf("Num profiles: %zu\n", NUM_PROFILES);
     for (size_t i = 0; i < NUM_PROFILES; ++i) {
         const size_t count = device->vba.profiles.count;
-        AcReal host_profile[count];
+        AcReal* host_profile = (AcReal*)malloc(sizeof(AcReal)*count);
         cudaMemcpy(host_profile, device->vba.profiles.in[i], sizeof(AcReal) * count,
                    cudaMemcpyDeviceToHost);
         printf("Profile %s (%zu)-----------------\n", profile_names[i], i);
@@ -1177,6 +1177,7 @@ acDevicePrintProfiles(const Device device)
             printf("%g (%zu), ", host_profile[j], j);
         }
         printf("\n");
+	free(host_profile);
     }
     return AC_SUCCESS;
 }
@@ -1304,7 +1305,7 @@ typedef struct {
 AcBuffer
 acBufferCreate(const size_t count, const bool on_device)
 {
-    AcBuffer buffer    = {.count = count, .on_device = on_device};
+    AcBuffer buffer    = {.data = NULL, .count = count, .on_device = on_device};
     const size_t bytes = sizeof(buffer.data[0]) * count;
     if (buffer.on_device) {
         ERRCHK_CUDA_ALWAYS(cudaMalloc((void**)&buffer.data, bytes));

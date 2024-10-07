@@ -30,6 +30,7 @@
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
+#include <vector>
 #include "errchk.h"
 
 /**
@@ -110,21 +111,21 @@ parse_intparam(const size_t idx, const char* value, const bool run_const)
         return atoi(value);
     }
 }
-static int
-get_entries(char** dst, const char* line)
+static std::vector<std::string>
+get_entries(const char* line)
 {
+
+      std::vector<std::string> dst{};
       char* line_copy = strdup(line);
-      int counter = 0;
       char* token;
       token = strtok(line_copy,",");
       while(token != NULL)
       {
-              dst[counter] = strdup(token);
-              ++counter;
+	      dst.push_back(token);
               token = strtok(NULL,",");
       }
       free(line_copy);
-      return counter;
+      return dst;
 }
 
 static int
@@ -184,17 +185,16 @@ parse_config(const char* path, AcMeshInfo* config, AcCompInfo* comp_info)
         else if ((idx = find_array(keyword, int_array_info, NUM_INT_ARRAYS)) >= 0) {
 		if(!int_array_info[idx].is_dconst)
 			fprintf(stderr,"ERROR PARSING CONFIG: can't assign to global array: \"%s\": SKIPPING\n",keyword);
-		char* array_vals[length_from_dims(int_array_info[idx].dims)];
-		const int n_vals = get_entries(array_vals, value);
-		if(n_vals != length_from_dims(int_array_info[idx].dims))
-			fprintf(stderr,"ERROR PARSING CONFIG: gave %d values to array %s which of size %d: SKIPPING\n",n_vals,keyword,length_from_dims(int_array_info[idx].dims));
+
+		auto array_vals = get_entries(value);
+		if(array_vals.size() != (size_t)length_from_dims(int_array_info[idx].dims))
+			fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %d: SKIPPING\n",array_vals.size(),keyword,length_from_dims(int_array_info[idx].dims));
 		else
 		{
 			config->int_arrays[idx] = (int*)malloc(sizeof(AcReal)*length_from_dims(int_array_info[idx].dims));
 			for(int i = 0; i < length_from_dims(int_array_info[idx].dims); ++i)
 			{
-				config->int_arrays[idx][i] =  atoi(array_vals[i]);
-				free(array_vals[i]);
+				config->int_arrays[idx][i] =  atoi(array_vals[i].c_str());
 			}
 		}
 
@@ -203,17 +203,15 @@ parse_config(const char* path, AcMeshInfo* config, AcCompInfo* comp_info)
         else if ((idx = find_array(keyword, real_array_info, NUM_REAL_ARRAYS)) >= 0) {
 		if(!real_array_info[idx].is_dconst)
 			fprintf(stderr,"ERROR PARSING CONFIG: can't assign to global array: \"%s\": SKIPPING\n",keyword);
-		char* array_vals[length_from_dims(real_array_info[idx].dims)];
-		const int n_vals = get_entries(array_vals, value);
-		if(n_vals != length_from_dims(real_array_info[idx].dims))
-			fprintf(stderr,"ERROR PARSING CONFIG: gave %d values to array %s which of size %d: SKIPPING\n",n_vals,keyword,length_from_dims(real_array_info[idx].dims));
+		auto array_vals = get_entries(value);
+		if(array_vals.size() != (size_t)length_from_dims(real_array_info[idx].dims))
+			fprintf(stderr,"ERROR PARSING CONFIG: gave %zu values to array %s which of size %d: SKIPPING\n",array_vals.size(),keyword,length_from_dims(real_array_info[idx].dims));
 		else
 		{
 			config->real_arrays[idx] = (AcReal*)malloc(sizeof(AcReal)*length_from_dims(real_array_info[idx].dims));
 			for(int i = 0; i < length_from_dims(real_array_info[idx].dims); ++i)
 			{
-				config->real_arrays[idx][i] =  atof(array_vals[i]);
-				free(array_vals[i]);
+				config->real_arrays[idx][i] =  atof(array_vals[i].c_str());
 			}
 		}
 

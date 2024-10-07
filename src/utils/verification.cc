@@ -183,7 +183,8 @@ get_minimum_magnitude(const AcReal* field, const AcMeshInfo info, const bool com
 static Error
 get_max_abs_error(const AcReal* model, const AcReal* candidate, const AcMeshInfo info, const bool communicated_field)
 {
-    Error error = {.abs_error = -1};
+    Error error {};
+    error.abs_error = -1;
 
 
     const int3 nn_min = acGetMinNN(info);

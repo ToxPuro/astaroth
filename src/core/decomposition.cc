@@ -217,7 +217,7 @@ acHierarchicalDomainDecomposition(const size_t ndims, const size_t* dims,       
     // print("Partitions per layer", nlayers, partitions_per_layer);
     // print("Dimensions", ndims, dims);
 
-    size_t global_dims[ndims];
+    size_t* global_dims = (size_t*) malloc(sizeof(size_t)*ndims);;
     memcpy(global_dims, dims, ndims * sizeof(dims[0]));
 
     for (size_t j = nlayers - 1; j < nlayers; --j) {
@@ -231,6 +231,7 @@ acHierarchicalDomainDecomposition(const size_t ndims, const size_t* dims,       
         // print("\tDecomposition", ndims, &decompositions[j * ndims]);
         // printf("\n");
     }
+    free(global_dims);
     // print("Decomposition", ndims * nlayers, decompositions);
 
 #if 0
@@ -295,9 +296,12 @@ acDecompositionInfoCreate(const size_t ndims, const size_t* global_dims, //
     acHierarchicalDomainDecomposition(ndims, global_dims, nlayers, partitions_per_layer,
                                       info.local_dims, info.decomposition);
 
-    size_t decomposition_transposed[ndims * nlayers];
+    size_t* decomposition_transposed = (size_t*)malloc(sizeof(size_t)*(ndims * nlayers));
+
     transpose(info.decomposition, nlayers, ndims, decomposition_transposed);
     contract(decomposition_transposed, ndims * nlayers, nlayers, info.global_decomposition);
+
+    free(decomposition_transposed);
 
     acDecompositionInfoPrint(info);
     return info;
@@ -353,26 +357,32 @@ acGetPid(const int3 pid_input, const AcDecompositionInfo info)
         pid_input.y,
         pid_input.z,
     };
-    int64_t global_decomposition[ndims];
+    int64_t* global_decomposition = (int64_t*) malloc(sizeof(int64_t)*ndims);
     as_int64_t_array(ndims, info.global_decomposition, global_decomposition);
 
-    int64_t pid_wrapped[ndims];
+    int64_t* pid_wrapped = (int64_t*) malloc(sizeof(int64_t)*ndims);
     mod_pointwise(ndims, pid_unwrapped, global_decomposition, pid_wrapped);
 
-    size_t pid[ndims];
+    size_t* pid = (size_t*) malloc(sizeof(int64_t)*ndims);
     as_size_t_array(ndims, pid_wrapped, pid);
 
     size_t gi = to_linear(pid, ndims, info.global_decomposition);
 
-    size_t decomposition_transposed[ndims * nlayers];
+    size_t* decomposition_transposed = (size_t*) malloc(sizeof(int64_t)*ndims*nlayers);
     transpose(info.decomposition, nlayers, ndims, decomposition_transposed);
 
-    size_t spatial_index_transposed[ndims * nlayers];
-    size_t spatial_index[ndims * nlayers];
+    size_t* spatial_index_transposed = (size_t*) malloc(sizeof(int64_t)*ndims*nlayers);
+    size_t* spatial_index            = (size_t*) malloc(sizeof(int64_t)*ndims*nlayers);
     to_spatial(gi, ndims * nlayers, decomposition_transposed, spatial_index_transposed);
     transpose(spatial_index_transposed, ndims, nlayers, spatial_index);
 
     const size_t j = to_linear(spatial_index, ndims * nlayers, info.decomposition);
+
+    free(global_decomposition);
+    free(pid_wrapped);
+    free(decomposition_transposed);
+    free(spatial_index_transposed);
+    free(spatial_index);
     return as_int(j);
 }
 
@@ -383,11 +393,13 @@ acGetPid3D(const int i, const AcDecompositionInfo info)
     const size_t nlayers = info.nlayers;
     ERRCHK_ALWAYS(ndims == 3);
 
-    size_t spatial_index[ndims * nlayers];
-    size_t spatial_index_transposed[ndims * nlayers];
-    size_t decompositions_transposed[ndims * nlayers];
-    size_t global_decomposition[ndims];
-    size_t global_index[ndims];
+    size_t* spatial_index            = (size_t*) malloc(sizeof(int64_t)*ndims*nlayers);
+    size_t* spatial_index_transposed = (size_t*) malloc(sizeof(int64_t)*ndims*nlayers);
+    size_t* decompositions_transposed = (size_t*) malloc(sizeof(int64_t)*ndims*nlayers);
+
+    size_t* global_decomposition = (size_t*) malloc(sizeof(int64_t)*ndims);
+    size_t* global_index         = (size_t*) malloc(sizeof(int64_t)*ndims);
+
 
     to_spatial(i, ndims * nlayers, info.decomposition, spatial_index);
     transpose(spatial_index, nlayers, ndims, spatial_index_transposed);
@@ -396,6 +408,13 @@ acGetPid3D(const int i, const AcDecompositionInfo info)
     size_t gi = to_linear(spatial_index_transposed, ndims * nlayers, decompositions_transposed);
     contract(decompositions_transposed, ndims * nlayers, nlayers, global_decomposition);
     to_spatial(gi, ndims, global_decomposition, global_index);
+
+    free(spatial_index);
+    free(spatial_index_transposed);
+    free(decompositions_transposed);
+
+    free(global_decomposition);
+    free(global_index);
 
     return (int3){
         as_int(global_index[0]),

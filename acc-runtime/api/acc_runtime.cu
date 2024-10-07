@@ -458,7 +458,8 @@ acPBAReset(const cudaStream_t stream, ProfileBufferArray* pba)
 ProfileBufferArray
 acPBACreate(const size_t count)
 {
-  ProfileBufferArray pba = {.count = count};
+  ProfileBufferArray pba{};
+  pba.count = count;
 
   const size_t bytes = sizeof(pba.in[0][0]) * pba.count * NUM_PROFILES;
   AcReal *in, *out;

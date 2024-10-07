@@ -937,13 +937,14 @@ acNodeReduceScal(const Node node, const Stream stream, const ReductionType rtype
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
 
-    AcReal results[node->num_devices];
+    AcReal* results = (AcReal*)malloc(sizeof(AcReal)*node->num_devices);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
         acDeviceReduceScal(node->devices[i], stream, rtype, vtxbuf_handle, &results[i]);
     }
 
     *result = simple_final_reduce_scal(node, rtype, results, node->num_devices);
+    free(results);
     return AC_SUCCESS;
 }
 
@@ -954,13 +955,14 @@ acNodeReduceVec(const Node node, const Stream stream, const ReductionType rtype,
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
 
-    AcReal results[node->num_devices];
+    AcReal* results = (AcReal*)malloc(sizeof(AcReal)*node->num_devices);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
         acDeviceReduceVec(node->devices[i], stream, rtype, a, b, c, &results[i]);
     }
 
     *result = simple_final_reduce_scal(node, rtype, results, node->num_devices);
+    free(results);
     return AC_SUCCESS;
 }
 
@@ -971,13 +973,14 @@ acNodeReduceVecScal(const Node node, const Stream stream, const ReductionType rt
 {
     acNodeSynchronizeStream(node, STREAM_ALL);
 
-    AcReal results[node->num_devices];
+    AcReal* results = (AcReal*)malloc(sizeof(AcReal)*node->num_devices);
     // #pragma omp parallel for
     for (int i = 0; i < node->num_devices; ++i) {
         acDeviceReduceVecScal(node->devices[i], stream, rtype, a, b, c, d, &results[i]);
     }
 
     *result = simple_final_reduce_scal(node, rtype, results, node->num_devices);
+    free(results);
     return AC_SUCCESS;
 }
 #endif

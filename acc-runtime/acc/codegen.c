@@ -1951,23 +1951,25 @@ typedef struct
 {
 	string_vec types;
 	string_vec expr;
+	node_vec expr_nodes;
 } func_params_info;
 
-#define FUNC_PARAMS_INITIALIZER {.types = VEC_INITIALIZER, .expr = VEC_INITIALIZER}
+#define FUNC_PARAMS_INITIALIZER {.types = VEC_INITIALIZER, .expr = VEC_INITIALIZER, .expr_nodes = VEC_INITIALIZER}
 void
 free_func_params_info(func_params_info* info)
 {
 	free_str_vec(&info -> types);
 	free_str_vec(&info -> expr);
+	free_node_vec(&info -> expr_nodes);
 }
 
 void
-get_function_param_types_and_names_recursive(const ASTNode* node, const char* func_name, string_vec* types_dst, string_vec* names_dst)
+get_function_params_info_recursive(const ASTNode* node, const char* func_name, func_params_info* dst)
 {
 	if(node->lhs)
-		get_function_param_types_and_names_recursive(node->lhs,func_name,types_dst,names_dst);
+		get_function_params_info_recursive(node->lhs,func_name,dst);
 	if(node->rhs)
-		get_function_param_types_and_names_recursive(node->rhs,func_name,types_dst,names_dst);
+		get_function_params_info_recursive(node->rhs,func_name,dst);
 	if(!(node->type & NODE_FUNCTION))
 		return;
 	const ASTNode* fn_identifier = get_node_by_token(IDENTIFIER,node);
@@ -1982,17 +1984,17 @@ get_function_param_types_and_names_recursive(const ASTNode* node, const char* fu
 	{
 	  	const ASTNode* param = params.data[i];
 		const ASTNode* tspec = get_node(NODE_TSPEC,param->lhs);
-	  	push(types_dst,(tspec) ? tspec->lhs->buffer : NULL);
-	  	push(names_dst,param->rhs->buffer);
+	  	push(&dst->types,(tspec) ? tspec->lhs->buffer : NULL);
+	  	push(&dst->expr,param->rhs->buffer);
+	  	push_node(&dst->expr_nodes,param->rhs);
 	}
 	free_node_vec(&params);
 }
-
 func_params_info
-get_function_param_types_and_names(const ASTNode* node, const char* func_name)
+get_function_params_info(const ASTNode* node, const char* func_name)
 {
 	func_params_info res = FUNC_PARAMS_INITIALIZER;
-	get_function_param_types_and_names_recursive(node,func_name,&res.types,&res.expr);
+	get_function_params_info_recursive(node,func_name,&res);
 	return res;
 }
 
@@ -2015,7 +2017,7 @@ void gen_loader(const ASTNode* func_call, const ASTNode* root, const char* prefi
 		for(size_t i = 0; i< call_info.expr.size; ++i)
 			is_boundcond |= (strstr(call_info.expr.data[i],"BOUNDARY_") != NULL);
 
-		func_params_info params_info =  get_function_param_types_and_names(root,func_name);
+		func_params_info params_info =  get_function_params_info(root,func_name);
 
 		char loader_str[10000];
 		sprintf(loader_str,"auto %s_%s_loader = [](ParamLoadingInfo p){\n",prefix, func_name);
@@ -2363,7 +2365,7 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
 	remove_suffix(tmp,"____");
 	const char* dfunc_name = intern(tmp);
 	free(tmp);
-	func_params_info params_info = get_function_param_types_and_names(root,dfunc_name);
+	func_params_info params_info = get_function_params_info(root,dfunc_name);
 	if(call_info.expr.size-1 != params_info.expr.size)
 	{
 		fprintf(stderr,FATAL_ERROR_MESSAGE"Number of inputs %lu for %s in BoundConds does not match the number of input params %lu \n", call_info.expr.size-1, dfunc_name, params_info.expr.size);
@@ -3036,7 +3038,7 @@ gen_kernel_num_of_combinations_recursive(const ASTNode* node, param_combinations
 	   const char* kernel_name = get_node(NODE_FUNCTION_ID, node)->buffer;
 	   const int kernel_index = push(user_kernels_with_input_params,kernel_name);
 	   ASTNode* param_list_head = node->rhs->lhs;
-	   func_params_info info = get_function_param_types_and_names(node,kernel_name);
+	   func_params_info info = get_function_params_info(node,kernel_name);
 	   for(size_t i = 0; i < info.expr.size; ++i)
 	   {
 		   const char* type = info.types.data[i]; 
@@ -3276,6 +3278,7 @@ void
 gen_kernel_postfixes(ASTNode* root, const bool gen_mem_accesses,reduce_info* kernel_reduce_info)
 {
 	reduce_info dfuncs_info[MAX_DFUNCS] = { [0 ... MAX_DFUNCS-1] = REDUCE_INFO_INITIALIZER};
+
 	get_dfuncs_reduce_info(root,dfuncs_info);
 	gen_kernel_postfixes_recursive(root,gen_mem_accesses,dfuncs_info,kernel_reduce_info);
 	for(int i = 0; i < MAX_DFUNCS; ++i)
@@ -3889,14 +3892,10 @@ get_func_call_params_info(const ASTNode* func_call)
 		for(size_t i = 0; i < params.size; ++i)
 		{
 
-			char* param = malloc(sizeof(char)*10000);
-			combine_all(params.data[i],param);
-			assert(param);
-			push(&res.expr,intern(param));
-			free(param);
+			push(&res.expr,intern(combine_all_new(params.data[i])));
 			push(&res.types,intern(get_expr_type((ASTNode*) params.data[i])));
 	        }	
-		free_node_vec(&params);
+		res.expr_nodes = params;
 		return res;
 }
 
@@ -4286,7 +4285,7 @@ get_func_call_expr_type(ASTNode* node)
 					know_all_types &= call_info.types.data[i] != NULL;
 				if(know_all_types)
 				{
-					func_params_info info = get_function_param_types_and_names(func,func_name);
+					func_params_info info = get_function_params_info(func,func_name);
 					if(!str_vec_contains(duplicate_dfuncs.names,func_name) && call_info.types.size == info.expr.size)
 					{
 						ASTNode* func_copy = astnode_dup(func,NULL);
@@ -5392,7 +5391,7 @@ inline_dfuncs_recursive(ASTNode* node, int* counter)
 	}
 
 	node_vec params = get_nodes_in_list(func_node->rhs);
-	func_params_info params_info = get_function_param_types_and_names(dfunc,func_name);
+	func_params_info params_info = get_function_params_info(dfunc,func_name);
 	for(size_t i = 0; i < params.size; ++i)
 	{
 		ASTNode* copy_assignment = create_assignment(create_declaration(params_info.expr.data[i]),params.data[i],EQ_STR);
@@ -5984,6 +5983,61 @@ flow_type_info(ASTNode* node)
 	return res;
 }
 
+static ASTNode* 
+create_func_call(const char* func_name, const ASTNode* param)
+{
+
+	ASTNode* postfix_expression = astnode_create(NODE_UNKNOWN,
+			     create_primary_expression(func_name),
+			     NULL);
+	ASTNode* func_call = astnode_create(NODE_FUNCTION_CALL,postfix_expression,astnode_dup(param,NULL));
+	astnode_set_infix("(",func_call); 
+	astnode_set_postfix(")",func_call); 
+	return func_call;
+}
+
+static ASTNode* 
+create_func_call_expr(const char* func_name, const ASTNode* param)
+{
+	ASTNode* func_call = create_func_call(func_name,param);
+	ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
+	ASTNode* expression         = astnode_create(NODE_EXPRESSION,unary_expression,NULL);
+	return expression;
+}
+bool
+field_to_real_conversion(ASTNode* node, const ASTNode* root)
+{
+	bool res = false;
+	if(node->lhs)
+		res |= field_to_real_conversion(node->lhs,root);
+	if(node->rhs)
+		res |= field_to_real_conversion(node->rhs,root);
+	if(!(node->type & NODE_FUNCTION_CALL)) return res;
+	const char* func_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
+	if(!check_symbol(NODE_DFUNCTION_ID,func_name,0,0)) return res;
+	if(str_vec_contains(duplicate_dfuncs.names,func_name)) return res;
+
+	func_params_info params_info = get_function_params_info(root,func_name);
+	func_params_info call_info = get_func_call_params_info(node);
+	if(params_info.types.size != call_info.types.size) printf("WRONG: %s,%zu,%zu\n",func_name,call_info.types.size,params_info.types.size);
+	for(size_t i = 0; i < call_info.types.size; ++i)
+	{
+		if(params_info.types.data[i] == REAL3_STR && call_info.types.data[i] == FIELD3_STR)
+		{
+			ASTNode* expr = (ASTNode*)call_info.expr_nodes.data[i];
+			expr->expr_type = REAL3_STR;
+			replace_node(
+					expr,
+					create_func_call_expr(VALUE_STR,expr)
+				     );
+		}
+	}
+	free_func_params_info(&call_info);
+	free_func_params_info(&params_info);
+	return res;
+}
+
+
 void
 gen_type_info(ASTNode* root)
 {
@@ -5998,7 +6052,8 @@ gen_type_info(ASTNode* root)
 	while(has_changed)
 	{
 		has_changed = gen_local_type_info(root);
-		has_changed = flow_type_info(root);
+		has_changed |= field_to_real_conversion(root,root);
+		has_changed |= flow_type_info(root);
 	}
 }
 const ASTNode*
@@ -6036,7 +6091,7 @@ mangle_dfunc_names(ASTNode* node, string_vec* dst, int* counters)
 		return;
 	const char* dfunc_name = duplicate_dfuncs.names.data[dfunc_index];
 	const int overload_index = counters[dfunc_index];
-	func_params_info params_info = get_function_param_types_and_names(node,dfunc_name);
+	func_params_info params_info = get_function_params_info(node,dfunc_name);
 	counters[dfunc_index]++;
 	for(size_t i = 0; i < params_info.types.size; ++i)
 	{
@@ -6056,7 +6111,49 @@ compatible_types(const char* a, const char* b)
 		  (!strcmp(b,FIELD_STR) && !strcmp(a,"VertexBufferHandle"))  ||
                   (!strcmp(a,"Field*") && !strcmp(b,"VertexBufferHandle*"))  ||
 		  (!strcmp(b,"Field*") && !strcmp(a,"VertexBufferHandle*"))
+		  || (a == REAL3_STR && b == FIELD3_STR)
 		;
+}
+bool 
+is_boundary_param(const char* param)
+{
+    return !strcmps(param,
+            BOUNDARY_X_TOP_STR,
+	    BOUNDARY_X_BOT_STR,
+            BOUNDARY_Y_TOP_STR,
+            BOUNDARY_Y_BOT_STR,
+            BOUNDARY_Z_TOP_STR,
+            BOUNDARY_Z_BOT_STR,
+            BOUNDARY_X_STR,
+            BOUNDARY_Y_STR,
+            BOUNDARY_Z_STR
+    );
+}
+static int_vec
+get_possible_dfuncs(const func_params_info call_info, const string_vec* dfunc_possible_types, const int dfunc_index, const bool strict)
+{
+	int overload_index = MAX_DFUNCS*dfunc_index-1;
+	int_vec possible_indexes = VEC_INITIALIZER;
+    	//TP: ugly hack to resolve calls in BoundConds
+	const int param_offset = is_boundary_param(call_info.expr.data[0]) ? 1 : 0;
+	while(dfunc_possible_types[++overload_index].size > 0)
+	{
+		bool possible = true;
+		if(call_info.types.size - param_offset != dfunc_possible_types[overload_index].size) continue;
+		for(size_t i = param_offset; i < call_info.types.size; ++i)
+		{
+			const char* func_type = dfunc_possible_types[overload_index].data[i-param_offset];
+			const char* call_type = call_info.types.data[i];
+			if(strict)
+				possible &= !call_type || !func_type || !strcmp(func_type,call_type);
+			else
+				possible &= !call_type || !func_type || compatible_types(func_type,call_type);
+
+		}
+		if(possible)
+			push_int(&possible_indexes,overload_index);
+	}
+	return possible_indexes;
 }
 bool
 //resolve_overloaded_calls(ASTNode* node, const char* dfunc_name, string_vec* dfunc_possible_types,const int dfunc_index)
@@ -6082,52 +6179,20 @@ resolve_overloaded_calls(ASTNode* node, string_vec* dfunc_possible_types)
 		return true;
 	}
 	int correct_types = -1;
-	int overload_index = MAX_DFUNCS*dfunc_index-1;
-	int_vec possible_indexes = VEC_INITIALIZER;
-  int param_offset = 0;
-	while(dfunc_possible_types[++overload_index].size > 0)
-	{
-		bool possible = true;
-    //TP: ugly hack to resolve calls in BoundConds
-    if(!strcmps(call_info.expr.data[0],
-            BOUNDARY_X_TOP_STR,
-	    BOUNDARY_X_BOT_STR,
-            BOUNDARY_Y_TOP_STR,
-            BOUNDARY_Y_BOT_STR,
-            BOUNDARY_Z_TOP_STR,
-            BOUNDARY_Z_BOT_STR,
-            BOUNDARY_X_STR,
-            BOUNDARY_Y_STR,
-            BOUNDARY_Z_STR
-    ))
-    {
-      param_offset = 1;
-    }
-		if(call_info.types.size - param_offset != dfunc_possible_types[overload_index].size) continue;
-		for(size_t i = param_offset; i < call_info.types.size; ++i)
-		{
-			const char* func_type = dfunc_possible_types[overload_index].data[i-param_offset];
-			const char* call_type = call_info.types.data[i];
-			//The upper one is the less strict resolver and below is the more strict resolver
-			possible &= !call_type || !func_type || compatible_types(func_type,call_type);
-			//if(!possible && !strcmp(dfunc_name,"write"))
-				//printf("HMM: %s|%s\n",call_type,func_type);
-		}
-		if(possible)
-			push_int(&possible_indexes,overload_index);
-	}
+	int_vec possible_indexes_conversion = get_possible_dfuncs(call_info,dfunc_possible_types,dfunc_index,false);
+	int_vec possible_indexes_strict = get_possible_dfuncs(call_info,dfunc_possible_types,dfunc_index,true);
+	//TP: by default use the strict rules but if there no suitable ones use conversion rules
+	const int_vec possible_indexes = possible_indexes_strict.size == 0 ? possible_indexes_conversion : possible_indexes_strict;
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
-		/**
-		if(!strcmp(dfunc_name,"write"))
+		if(!strcmp(dfunc_name,"abs"))
 		{
 			char my_tmp[10000];
 			my_tmp[0] = '\0';
 			combine_all(node->rhs,my_tmp); 
 			printf("Not able to resolve: %s\n",my_tmp); 
-			printf("Not able to resolve: %s\n",call_info.types.data[0]); 
+			printf("Not able to resolve: %s,%zu\n",call_info.types.data[0],possible_indexes.size); 
 		}
-		**/
 		return res;
 	}
 	{
@@ -6138,7 +6203,8 @@ resolve_overloaded_calls(ASTNode* node, string_vec* dfunc_possible_types)
 
 	free_str_vec(&call_info.expr);
 	free_str_vec(&call_info.types);
-	free_int_vec(&possible_indexes);
+	free_int_vec(&possible_indexes_strict);
+	free_int_vec(&possible_indexes_conversion);
 	return true;
 }
 
@@ -6190,18 +6256,6 @@ create_binary_expression(ASTNode* expression , ASTNode* unary_expression, const 
 		astnode_create(NODE_BINARY_EXPRESSION,expression,rhs);
 }
 
-static ASTNode* 
-create_func_call(const char* func_name, const ASTNode* param)
-{
-
-	ASTNode* postfix_expression = astnode_create(NODE_UNKNOWN,
-			     create_primary_expression(func_name),
-			     NULL);
-	ASTNode* func_call = astnode_create(NODE_FUNCTION_CALL,postfix_expression,astnode_dup(param,NULL));
-	astnode_set_infix("(",func_call); 
-	astnode_set_postfix(")",func_call); 
-	return func_call;
-}
 
 static ASTNode*
 create_choose_node(ASTNode* lhs_value, ASTNode* rhs_value)
@@ -6269,11 +6323,8 @@ transform_field_intrinsic_func_calls_recursive(ASTNode* node, const ASTNode* roo
 	func_params_info param_info = get_func_call_params_info(node);
 	if(param_info.types.data[0] == FIELD_STR && param_info.expr.size == 1)
 	{
-		ASTNode* func_call = create_func_call(VALUE_STR,node->rhs);
-		ASTNode* unary_expression   = astnode_create(NODE_EXPRESSION,func_call,NULL);
-		ASTNode* expression         = astnode_create(NODE_EXPRESSION,unary_expression,NULL);
+		ASTNode* expression         = create_func_call_expr(VALUE_STR,node->rhs);
 		ASTNode* expression_list = astnode_create(NODE_UNKNOWN,expression,NULL);
-
 		node->rhs = expression_list;
 	}
 	free_func_params_info(&param_info);
@@ -6340,7 +6391,7 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 		gen_extra_func_definitions_recursive(node->rhs,root,stream);
 	if(node->type != NODE_DFUNCTION) return;
 	const char* dfunc_name = get_node_by_token(IDENTIFIER,node->lhs)->buffer;
-	func_params_info info = get_function_param_types_and_names(node,dfunc_name);
+	func_params_info info = get_function_params_info(node,dfunc_name);
 	if(!has_qualifier(node,"elemental")) return;
 	if(info.expr.size == 1 && info.types.data[0] == REAL_STR && !strstr(dfunc_name,"AC_INTERNAL_COPY"))
 	{
@@ -6348,8 +6399,6 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 
 		fprintf(stream,"%s_AC_INTERNAL_COPY (real %s){%s}\n",dfunc_name,info.expr.data[0],func_body);
 		fprintf(stream,"%s (real3 v){return real3(%s_AC_INTERNAL_COPY(v.x), %s_AC_INTERNAL_COPY(v.y), %s_AC_INTERNAL_COPY(v.z))}\n",dfunc_name,dfunc_name,dfunc_name,dfunc_name);
-		fprintf(stream,"%s (Field field){return %s_AC_INTERNAL_COPY(value(field))}\n",dfunc_name,dfunc_name);
-		fprintf(stream,"%s (Field3 v){return real3(%s(v.x), %s(v.y), %s(v.z))}\n",dfunc_name,dfunc_name,dfunc_name,dfunc_name);
 		fprintf(stream,"%s(real[] arr){\nreal res[size(arr)]\n for i in 0:size(arr)\n  res[i] = %s_AC_INTERNAL_COPY(arr[i])\nreturn res\n}\n",dfunc_name,dfunc_name);
 	}
 

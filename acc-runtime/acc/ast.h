@@ -784,3 +784,10 @@ replace_node(ASTNode* original, ASTNode* replacement)
 			original->parent->rhs = replacement;
 		replacement->parent = original->parent;
 }
+static inline bool
+node_vec_contains(const node_vec vec, const char* str)
+{
+	for(size_t i = 0; i < vec.size; ++i)
+		if(!strcmp(combine_all_new(vec.data[i]), str)) return true;
+	return false;
+}
