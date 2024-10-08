@@ -13,10 +13,11 @@
 #define ERRCHK_MPI_API(errorcode)                                                                  \
     do {                                                                                           \
         if ((errorcode) != MPI_SUCCESS) {                                                          \
-            char description[MPI_MAX_ERROR_STRING];                                                \
-            int resultlen;                                                                         \
-            MPI_Error_string(errorcode, description, &resultlen);                                  \
-            ERRCHKK((errorcode) == MPI_SUCCESS, description);                                      \
+            ERRCHK((errorcode) == MPI_SUCCESS);                                                    \
+            char description__[MPI_MAX_ERROR_STRING];                                              \
+            int resultlen__;                                                                       \
+            MPI_Error_string((errorcode), description__, &resultlen__);                            \
+            ERRCHKK((errorcode) == MPI_SUCCESS, description__);                                    \
             MPI_Abort(MPI_COMM_WORLD, 0);                                                          \
             exit(EXIT_FAILURE);                                                                    \
         }                                                                                          \
