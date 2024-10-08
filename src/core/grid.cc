@@ -1512,7 +1512,7 @@ static void
 check_ops(const AcTaskDefinition ops[], const size_t n_ops)
 {
     if (n_ops == 0) {
-        WARNING("\nUnusual task graph {}:\n - Task graph is empty.\n")
+	if(ac_pid() == 0) WARNING("\nUnusual task graph {}:\n - Task graph is empty.\n")
 	return;
     }
 
