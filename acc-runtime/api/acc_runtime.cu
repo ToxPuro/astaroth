@@ -1074,6 +1074,7 @@ logAutotuningStatus(const size_t counter, const size_t num_samples, const Kernel
     			fprintf(stderr,"\nAutotuning %s ",kernel_names[get_kernel_index(kernel)]);
     			printProgressBar(stderr,progress);
     			if(progress == 100) fprintf(stderr,"\n");
+			fflush(stderr);
 	      }
     }
 }

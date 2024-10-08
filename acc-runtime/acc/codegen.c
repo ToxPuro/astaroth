@@ -6121,6 +6121,7 @@ compatible_types(const char* a, const char* b)
 		  (!strcmp(b,FIELD_STR) && !strcmp(a,"VertexBufferHandle"))  ||
                   (!strcmp(a,"Field*") && !strcmp(b,VTXBUF_PTR_STR))  ||
 		  (!strcmp(b,"Field*") && !strcmp(a,VTXBUF_PTR_STR))
+		  || (a == REAL_STR && b == FIELD_STR)
 		  || (a == REAL3_STR && b == FIELD3_STR)
 		  || (a == REAL_PTR_STR && b == VTXBUF_PTR_STR)
 		  || (a == REAL3_PTR_STR && b == FIELD3_PTR_STR)
@@ -6198,13 +6199,13 @@ resolve_overloaded_calls(ASTNode* node, string_vec* dfunc_possible_types)
 	bool able_to_resolve = possible_indexes.size == 1;
 	if(!able_to_resolve) { 
 		/**
-		if(!strcmp(dfunc_name,"abs"))
+		if(!strcmp(dfunc_name,"write"))
 		{
 			char my_tmp[10000];
 			my_tmp[0] = '\0';
 			combine_all(node->rhs,my_tmp); 
 			printf("Not able to resolve: %s\n",my_tmp); 
-			printf("Not able to resolve: %s,%zu\n",call_info.types.data[0],possible_indexes.size); 
+			printf("Not able to resolve: %s,%zu\n",call_info.types.data[1],possible_indexes.size); 
 		}
 		**/
 		return res;
