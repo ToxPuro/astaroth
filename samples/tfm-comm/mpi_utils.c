@@ -4,6 +4,7 @@
 
 #include "errchk.h"
 #include "math_utils.h"
+#include "nalloc.h"
 #include "type_conversion.h"
 
 void
@@ -18,6 +19,24 @@ to_astaroth_format(const size_t ndims, const int* mpi_dims, size_t* dims)
 {
     as_size_t_array(ndims, mpi_dims, dims);
     reverse(ndims, dims);
+}
+
+int*
+to_mpi_format_alloc(const size_t ndims, const size_t* arr)
+{
+    int* mpi_arr;
+    nalloc(ndims, mpi_arr);
+    to_mpi_format(ndims, arr, mpi_arr);
+    return mpi_arr;
+}
+
+size_t*
+to_astaroth_format_alloc(const size_t ndims, const int* mpi_arr)
+{
+    size_t* arr;
+    nalloc(ndims, arr);
+    to_astaroth_format(ndims, mpi_arr, arr);
+    return arr;
 }
 
 /**

@@ -46,8 +46,8 @@ main(void)
     const size_t buflen = prod(ndims, local_mm);
 
     double *buf0, *buf1, *buf2;
-    nalloc_arange(0, buflen, buf0);
-    nalloc_arange(buflen, buflen, buf1);
+    nalloc_arange(0 * buflen, buflen, buf0);
+    nalloc_arange(1 * buflen, buflen, buf1);
     nalloc_arange(2 * buflen, buflen, buf2);
 
     printd_ndarray(ndims, local_mm, buf0);
@@ -59,7 +59,7 @@ main(void)
     const size_t nbuffers = ARRAY_SIZE(buffers);
 
     HaloSegmentBatch batch = halo_segment_batch_create(ndims, local_mm, local_nn, rr, nbuffers);
-    halo_segment_batch_launch(batch);
+    halo_segment_batch_launch(nbuffers, buffers, batch);
     halo_segment_batch_wait(batch);
     halo_segment_batch_destroy(&batch);
 

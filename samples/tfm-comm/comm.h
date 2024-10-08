@@ -34,7 +34,8 @@ HaloSegmentBatch halo_segment_batch_create(const size_t ndims, const size_t* loc
 
 void halo_segment_batch_destroy(HaloSegmentBatch* batch);
 
-void halo_segment_batch_launch(HaloSegmentBatch batch);
+void halo_segment_batch_launch(const size_t ninputs, double* inputs[],
+                               struct HaloSegmentBatch_s* batch);
 
 void halo_segment_batch_wait(HaloSegmentBatch batch);
 

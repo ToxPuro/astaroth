@@ -15,8 +15,9 @@
 /*
  * Comm
  */
-static MPI_Comm mpi_comm_ = MPI_COMM_NULL;
-static int mpi_ndims_     = -1;
+static MPI_Comm mpi_comm_            = MPI_COMM_NULL;
+static int mpi_ndims_                = -1;
+static const MPI_Datatype mpi_dtype_ = MPI_DOUBLE;
 
 void
 acCommInit(void)
@@ -137,18 +138,22 @@ acCommBarrier(void)
 #define COMM_DATATYPE (MPI_UNSIGNED_LONG_LONG)
 
 typedef struct {
-    Segment segment;
-    Buffer buffer;
-    MPI_Request req;
+    Segment segment; // Shape of the data block the packet represents
+    Buffer buffer;   // Buffer holding the data
+    MPI_Request req; // MPI request for handling synchronization
+    int peer;        // The counterparty of communication
 } Packet;
 
 static Packet
-packet_create(const size_t ndims, const size_t* dims, const size_t* offset, const size_t nbuffers)
+packet_create(const size_t ndims, const size_t* dims, const size_t* offset, const size_t nbuffers,
+              const int peer)
 {
     Packet packet;
+
     packet.segment = segment_create(ndims, dims, offset);
-    packet.buffer  = buffer_create(prod(ndims, dims) * nbuffers);
+    packet.buffer  = buffer_create(nbuffers * prod(ndims, dims));
     packet.req     = MPI_REQUEST_NULL;
+    packet.peer    = peer;
 
     return packet;
 }
@@ -188,6 +193,30 @@ struct HaloSegmentBatch_s {
 
 static void halo_segment_batch_verify(const size_t ndims, const size_t* mm, const size_t* nn,
                                       const struct HaloSegmentBatch_s batch);
+
+static int
+get_mpi_rank_neighbor(const size_t ndims, const int* nn, const int* rr, const int* offset)
+{
+    int rank;
+    ERRCHK_MPI_API(MPI_Comm_rank(mpi_comm_, &rank));
+
+    int* coords;
+    nalloc(ndims, coords);
+    ERRCHK_MPI_API(MPI_Cart_coords(mpi_comm_, rank, ndims, coords));
+
+    int* coords_neighbor;
+    ndup(ndims, coords, coords_neighbor);
+
+    for (size_t i = 0; i < ndims; ++i)
+        coords_neighbor[i] += offset[i] < rr[i] ? -1 : offset[i] >= rr[i] + nn[i] ? 1 : 0;
+
+    int neighbor;
+    ERRCHK_MPI_API(MPI_Cart_rank(mpi_comm_, coords_neighbor, &neighbor));
+
+    ndealloc(coords_neighbor);
+    ndealloc(coords);
+    return neighbor;
+}
 
 struct HaloSegmentBatch_s*
 halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size_t* local_nn,
@@ -233,10 +262,12 @@ halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size
         // The computation is implemented as a = (n + b - r) mod n + r to avoid
         // unsigned integer underflow.
         const size_t* subdims = segments.data[i].dims;
+        const int peer        = 0; // TODO
 
         // Recv packet
         const size_t* recv_offset = segments.data[i].offset;
-        batch->remote_packets[i]  = packet_create(ndims, subdims, recv_offset, n_aggregate_buffers);
+        batch->remote_packets[i]  = packet_create(ndims, subdims, recv_offset, n_aggregate_buffers,
+                                                  peer);
 
         // Send packet
         size_t* send_offset;
@@ -244,7 +275,8 @@ halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size
         for (size_t j = 0; j < ndims; ++j)
             send_offset[j] = ((local_nn[j] + recv_offset[j] - local_nn_offset[j]) % local_nn[j]) +
                              local_nn_offset[j];
-        batch->local_packets[i] = packet_create(ndims, subdims, send_offset, n_aggregate_buffers);
+        batch->local_packets[i] = packet_create(ndims, subdims, send_offset, n_aggregate_buffers,
+                                                peer);
         ndealloc(send_offset);
     }
 
@@ -332,17 +364,65 @@ halo_segment_batch_wait(struct HaloSegmentBatch_s* batch)
 // }
 
 void
-halo_segment_batch_launch(const size_t ninputs, const double* inputs[],
-                          struct HaloSegmentBatch_s* batch)
+halo_segment_batch_launch(const size_t ninputs, double* inputs[], struct HaloSegmentBatch_s* batch)
 {
     for (size_t i = 0; i < batch->npackets; ++i) {
-        Packet* packet = &batch->local_packets[i];
-        pack(batch->ndims, batch->local_mm, packet->segment.dims, packet->segment.offset, ninputs,
-             inputs, packet->buffer.data);
+
+        // Packets
+        Packet* local_packet  = &batch->local_packets[i];
+        Packet* remote_packet = &batch->remote_packets[i];
+        const int tag         = get_tag();
+
+        // Check that both local and remote packets have the same dimensions
+        // const size_t local_buflen  = prod(local_packet->segment.ndims,
+        // local_packet->segment.dims); const size_t remote_buflen =
+        // prod(remote_packet->segment.ndims,
+        //                                   remote_packet->segment.dims);
+        // ERRCHK(local_buflen == remote_buflen);
+        // Check that both local and remote buffers
+        // ERRCHK(local_packet->count == remote_packet->count);
+        // ERRCHK(prod(local_packet->segment.ndims, local_packet->segment.dims) ==
+        //        prod(remote_packet->segment.ndims, remote_packet->segment.dims));
+        // ERRCHK(ninputs * prod(local_packet->segment.ndims, local_packet->segment.dims) ==
+        //        local_packet->buffer.count);
+        // ERRCHK(ninputs * prod(remote_packet->segment.ndims, remote_packet->segment.dims) ==
+        //        remote_packet->buffer.count);
+
+        // Pack
+        pack(batch->ndims, batch->local_mm, local_packet->segment.dims,
+             local_packet->segment.offset, ninputs, inputs, local_packet->buffer.data);
+
+        // Setup coordinates
+        int *mpi_coords, *mpi_coords_src, *mpi_coords_dst;
+        nalloc(batch->ndims, mpi_coords);
+        nalloc(batch->ndims, mpi_coords_src);
+        nalloc(batch->ndims, mpi_coords_dst);
+
+        // ERRCHK_MPI_API(MPI_Cart_coords(mpi_comm_, rank, as_int(batch->ndims), mpi_coords));
+        // for (size_t j = 0; j < batch->ndims; ++j)
+        //     mpi_coords_src[j] = mpi_coords[j]; // JUMPHERE
+
+        // // Coordinates of the receiving process
+        // int dst;
+        // ERRCHK_MPI_API(MPI_Cart_rank(mpi_comm_, mpi_coords_dst, &dst));
+        ERRCHK_MPI_API(MPI_Isend(local_packet->buffer.data, local_packet->buffer.count, mpi_dtype_,
+                                 local_packet->peer, tag, mpi_comm_, &local_packet->req));
+
+        // // Coordinates of the process that is being received from
+        // int src;
+        // ERRCHK_MPI_API(MPI_Cart_rank(mpi_comm_, mpi_coords_src, &src));
+        ERRCHK_MPI_API(MPI_Irecv(remote_packet->buffer.data, remote_packet->buffer.count,
+                                 mpi_dtype_, remote_packet->peer, tag, mpi_comm_,
+                                 &remote_packet->req));
+
         // TODO CONTINUE HERE
         // Post recv (asynchronous)
         // Pack packet (synchronous)
         // Send packet (asynchronous)
+
+        ndealloc(mpi_coords_dst);
+        ndealloc(mpi_coords_src);
+        ndealloc(mpi_coords);
     }
 }
 
