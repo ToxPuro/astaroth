@@ -7,7 +7,7 @@
 #include <iostream>
 #include <cstring>
 
-#define MAX_NDIMS (3)
+#define MAX_NDIMS (4)
 #define MAX_NBUFFERS (7)
 #define range(i, min, max) (size_t i = (min); (i) < (max); ++(i))
 
@@ -199,7 +199,7 @@ pack(const size_t ndims, const size_t* mm, const size_t* block_shape, const size
                                                        ninputs, inputs, output);
     // printd(kp.ndims);
     // printd(ninputs);
-
+    ERRCHK(ndims  <= MAX_NDIMS);
     ERRCHK(ndims == kp.ndims);
     ERRCHK(equals(ndims, mm, kp.mm));
     ERRCHK(equals(ndims, block_shape, kp.block_shape));

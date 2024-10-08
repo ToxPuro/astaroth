@@ -8,6 +8,9 @@
 #include "print.h"
 #include "type_conversion.h"
 
+// Debug
+#include "partition.h"
+
 #define nalloc_ones(count, arr)                                                                    \
     do {                                                                                           \
         nalloc(count, arr);                                                                        \
@@ -22,6 +25,13 @@
             arr[__arange_counter__] = __arange_counter__ + min;                                    \
     } while (0)
 
+// static void
+// get_mm(const size_t ndims, const size_t* nn, const size_t* rr, size_t* mm)
+// {
+//     for (size_t i = 0; i < ndims; ++i)
+//         mm[i] = nn[i] + 2 * rr[i];
+// }
+
 int
 main(void)
 {
@@ -29,14 +39,18 @@ main(void)
     acCommInit();
 
     // Setup the communications module
-    const size_t global_nn[] = {3, 3, 3};
-    const size_t rr[]        = {1, 1, 1, 1};
+    const size_t global_nn[] = {4, 6};
+    const size_t rr[]        = {1, 2, 1, 1, 1};
     const size_t ndims       = ARRAY_SIZE(global_nn);
 
     size_t *local_nn, *global_nn_offset;
     nalloc(ndims, local_nn);
     nalloc(ndims, global_nn_offset);
     acCommSetup(ndims, global_nn, local_nn, global_nn_offset);
+
+    // Get communicator info
+    int rank, nprocs;
+    acCommGetProcInfo(&rank, &nprocs);
 
     // Setup the local buffers
     size_t* local_mm;
@@ -46,22 +60,57 @@ main(void)
     const size_t buflen = prod(ndims, local_mm);
 
     double *buf0, *buf1, *buf2;
-    nalloc_arange(0 * buflen, buflen, buf0);
-    nalloc_arange(1 * buflen, buflen, buf1);
-    nalloc_arange(2 * buflen, buflen, buf2);
-
-    printd_ndarray(ndims, local_mm, buf0);
-    printd_ndarray(ndims, local_mm, buf1);
-    printd_ndarray(ndims, local_mm, buf2);
+    nalloc(buflen, buf0);
+    nalloc(buflen, buf1);
+    nalloc(buflen, buf2);
 
     // Setup and launch the halo exchange
-    double* buffers[]     = {buf0, buf1, buf2};
+    // double* buffers[] = {buf0, buf1, buf2};
+    double* buffers[]     = {buf0};
     const size_t nbuffers = ARRAY_SIZE(buffers);
+
+    // Debug: partition the buffer
+    SegmentArray segments;
+    dynarr_create_with_destructor(segment_destroy, &segments);
+    partition(ndims, local_mm, local_nn, rr, &segments);
+    for (size_t j = 0; j < nbuffers; ++j) {
+        // for (size_t i = 0; i < buflen; ++i)
+        //     buffers[j][i] = as_double(i + j * buflen + rank * buflen * nbuffers);
+        for (size_t i = 0; i < segments.length; ++i)
+            set_ndarray_double(i + 1 + rank * segments.length, ndims, local_mm,
+                               segments.data[i].dims, segments.data[i].offset, buffers[j]);
+    }
+    dynarr_destroy(&segments);
+
+    // for (int i = 0; i < nprocs; ++i) {
+    //     acCommBarrier();
+    //     fflush(stdout);
+    //     if (rank == i) {
+    //         printf("Proc %d-------------\n", i);
+    //         for (size_t j = 0; j < nbuffers; ++j)
+    //             printd_ndarray(ndims, local_mm, buffers[j]);
+    //     }
+    //     fflush(stdout);
+    //     acCommBarrier();
+    // }
 
     HaloSegmentBatch batch = halo_segment_batch_create(ndims, local_mm, local_nn, rr, nbuffers);
     halo_segment_batch_launch(nbuffers, buffers, batch);
-    halo_segment_batch_wait(batch);
+    halo_segment_batch_wait(batch, nbuffers, buffers);
     halo_segment_batch_destroy(&batch);
+
+    // Print the result
+    for (int i = 0; i < nprocs; ++i) {
+        acCommBarrier();
+        fflush(stdout);
+        if (rank == i) {
+            printf("Proc %d-------------\n", i);
+            for (size_t j = 0; j < nbuffers; ++j)
+                printd_ndarray(ndims, local_mm, buffers[j]);
+        }
+        fflush(stdout);
+        acCommBarrier();
+    }
 
     // Cleanup
     ndealloc(local_mm);

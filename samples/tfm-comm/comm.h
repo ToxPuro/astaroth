@@ -37,6 +37,7 @@ void halo_segment_batch_destroy(HaloSegmentBatch* batch);
 void halo_segment_batch_launch(const size_t ninputs, double* inputs[],
                                struct HaloSegmentBatch_s* batch);
 
-void halo_segment_batch_wait(HaloSegmentBatch batch);
+void halo_segment_batch_wait(struct HaloSegmentBatch_s* batch, const size_t noutputs,
+                             double* outputs[]);
 
 void test_comm(void);
