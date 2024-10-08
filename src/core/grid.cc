@@ -544,6 +544,8 @@ acGridInitBase(const AcMesh user_mesh)
     acDeviceCreate(ac_pid() % devices_per_node, submesh_info, &device);
     acLogFromRootProc(ac_pid() , "acGridInit: Returned from acDeviceCreate\n");
 
+    acSetRuntimePid(ac_pid());
+
     // Setup the global grid structure
     grid.device        = device;
     grid.submesh       = create_grid_submesh(submesh_info, user_mesh);

@@ -176,6 +176,10 @@ typedef struct {
 
   #include "user_declarations.h"
 
+#if AC_MPI_ENABLED
+   FUNC_DEFINE(AcResult, acSetRuntimePid, (const int pid));
+#endif
+
   FUNC_DEFINE(const AcKernel*, acGetKernels,());
   FUNC_DEFINE(AcResult, acKernelFlush,(const cudaStream_t stream, AcReal* arr, const size_t n, const AcReal value));
 

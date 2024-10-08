@@ -55,6 +55,16 @@ static int AC_INTERNAL_big_int_array[8*1024*1024]{0};
 //the int key in the nested map corresponds to the starting vertexIdx linearized
 std::unordered_map<Kernel,std::unordered_map<int,int>> reduce_offsets;
 int kernel_running_reduce_offsets[NUM_KERNELS];
+static int grid_pid = 0;
+
+#if AC_MPI_ENABLED
+AcResult
+acSetRuntimePid(const int pid)
+{
+	grid_pid = pid;
+	return AC_SUCCESS;
+}
+#endif
 
 Volume
 acKernelLaunchGetLastTPB(void)
@@ -1034,6 +1044,40 @@ acStoreArrayUniform(const P array, V* values, const size_t length)
 
 #include "load_and_store_uniform_funcs.h"
 
+//TP: best would be to use carriage return to have a single line that simple keeps growing but that seems not to be always supported in SLURM environments. 
+// Or at least requires actions from the user
+void printProgressBar(FILE* stream, const int progress) {
+    int barWidth = 50;
+    fprintf(stream,"[");  // Start a new line
+    int pos = barWidth * progress / 100;
+
+    // Print the bar
+    for (int i = 0; i < barWidth; ++i) {
+        if (i < pos) {
+            fprintf(stream,"\033[1;32m=\033[0m");  // Green for completed parts
+        } else if (i == pos) {
+            fprintf(stream,"\033[1;33m>\033[0m");  // Yellow arrow for current position
+        } else {
+            fprintf(stream," ");
+        }
+    }
+    fprintf(stream,"] %d %%", progress);
+}
+void
+logAutotuningStatus(const size_t counter, const size_t num_samples, const Kernel kernel)
+{
+    const size_t percent_of_num_samples = num_samples/100;
+    for (size_t progress = 0; progress <= 100; ++progress)
+    {
+	      if(counter == percent_of_num_samples*progress  && grid_pid == 0 && (progress % 10 == 0))
+	      {
+    			fprintf(stderr,"\nAutotuning %s ",kernel_names[get_kernel_index(kernel)]);
+    			printProgressBar(stderr,progress);
+    			if(progress == 100) fprintf(stderr,"\n");
+	      }
+    }
+}
+
 
 static TBConfig
 autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
@@ -1094,13 +1138,20 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 
   // New: require that tpb.x is a multiple of the minimum transaction or L2
   // cache line size
+  const int minimum_transaction_size_in_elems = 32 / sizeof(AcReal);
+
+  const size_t num_samples = max_threads_per_block*max_threads_per_block;
+
+  size_t counter  = 0;
   for (int z = 1; z <= max_threads_per_block; ++z) {
     for (int y = 1; y <= max_threads_per_block; ++y) {
+      logAutotuningStatus(counter,num_samples,kernel);
+      counter++;
       // 64 bytes on NVIDIA but the minimum L1 cache transaction is 32
-      const int minimum_transaction_size_in_elems = 32 / sizeof(AcReal);
       for (int x = minimum_transaction_size_in_elems;
            x <= max_threads_per_block; x += minimum_transaction_size_in_elems) {
 
+	
         if (x * y * z > max_threads_per_block)
           break;
 
