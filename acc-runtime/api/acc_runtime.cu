@@ -1119,6 +1119,10 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
 #endif
   const int3 end = start + dims;
 
+
+  //TP: since autotuning should be quite fast when the dim is not NGHOST only log for actually 3d portions
+  const bool log = (dims.x > NGHOST_X && dims.y > NGHOST_Y && dims.z > NGHOST_Z);
+
   dim3 best_tpb(0, 0, 0);
   float best_time     = INFINITY;
   const int num_iters = 2;
@@ -1146,7 +1150,7 @@ autotune(const Kernel kernel, const int3 dims, VertexBufferArray vba)
   size_t counter  = 0;
   for (int z = 1; z <= max_threads_per_block; ++z) {
     for (int y = 1; y <= max_threads_per_block; ++y) {
-      logAutotuningStatus(counter,num_samples,kernel);
+      if(log) logAutotuningStatus(counter,num_samples,kernel);
       counter++;
       // 64 bytes on NVIDIA but the minimum L1 cache transaction is 32
       for (int x = minimum_transaction_size_in_elems;

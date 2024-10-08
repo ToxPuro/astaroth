@@ -482,6 +482,7 @@ acGridInitBase(const AcMesh user_mesh)
     if (!grid.mpi_initialized)
       create_astaroth_comm(info);
 
+    acSetRuntimePid(ac_pid());
     // Check that MPI is initialized
     char processor_name[MPI_MAX_PROCESSOR_NAME];
     int name_len;
@@ -544,7 +545,6 @@ acGridInitBase(const AcMesh user_mesh)
     acDeviceCreate(ac_pid() % devices_per_node, submesh_info, &device);
     acLogFromRootProc(ac_pid() , "acGridInit: Returned from acDeviceCreate\n");
 
-    acSetRuntimePid(ac_pid());
 
     // Setup the global grid structure
     grid.device        = device;
@@ -2055,8 +2055,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
     const size_t n_tasks               = graph->all_tasks.size();
     const size_t adjacancy_matrix_size = n_tasks * n_tasks;
-    bool* adjacent = (bool*)malloc(sizeof(bool)*adjacancy_matrix_size);
-    memset(adjacent, 0, adjacancy_matrix_size * sizeof(adjacent[0]));
+    std::vector<bool> adjacent{};
+    for(size_t i = 0; i< adjacancy_matrix_size; ++i)
+	    adjacent.push_back(false);
     for (size_t i = 0; i < adjacancy_matrix_size; ++i) { // Belt & suspenders safety
         ERRCHK_ALWAYS(adjacent[i] == false);
     }
@@ -2064,8 +2065,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
     //...and check if there is already a forward path that connects two tasks
     auto forward_search = [&adjacent, &op_indices, n_tasks,
                            n_ops](size_t preq, size_t dept, size_t preq_op, size_t path_len) {
-        bool* visited = (bool*)malloc(sizeof(bool)*n_tasks);
-        memset(visited, 0, n_tasks * sizeof(visited[0]));
+	std::vector<bool> visited{};
+	for(size_t i = 0; i < n_tasks; ++i)
+		visited.push_back(false);
         for (size_t i = 0; i < n_tasks; ++i) { // Belt & suspenders safety
             ERRCHK_ALWAYS(visited[i] == false);
         }
@@ -2095,11 +2097,9 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
                 }
             }
         }
-	free(visited);
         return false;
     };
 
-    free(adjacent);
     // We walk through all tasks, and compare tasks from pairs of operations at
     // a time. Pairs are considered in order of increasing distance between the
     // operations in the pair. The final set of pairs that are considered are
