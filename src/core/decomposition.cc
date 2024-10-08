@@ -19,6 +19,7 @@
 #include "decomposition.h"
 
 #include <string.h> // memcpy
+#include <memory>   // unique_ptr
 
 #define DECOMPOSITION_TYPE_ZORDER (1)
 #define DECOMPOSITION_TYPE_HIERARCHICAL (2)
@@ -217,21 +218,20 @@ acHierarchicalDomainDecomposition(const size_t ndims, const size_t* dims,       
     // print("Partitions per layer", nlayers, partitions_per_layer);
     // print("Dimensions", ndims, dims);
 
-    size_t* global_dims = (size_t*) malloc(sizeof(size_t)*ndims);;
-    memcpy(global_dims, dims, ndims * sizeof(dims[0]));
+    std::unique_ptr<size_t> global_dims = std::make_unique<size_t>(ndims);
+    memcpy(global_dims.get(), dims, ndims * sizeof(dims[0]));
 
     for (size_t j = nlayers - 1; j < nlayers; --j) {
         // size_t local_dims[ndims];
-        dims_create(partitions_per_layer[j], ndims, global_dims, local_dims,
+        dims_create(partitions_per_layer[j], ndims, global_dims.get(), local_dims,
                     &decompositions[j * ndims]);
-        memcpy(global_dims, local_dims, ndims * sizeof(dims[0]));
+        memcpy(global_dims.get(), local_dims, ndims * sizeof(dims[0]));
         // printf("\tLayer %zu\n", j);
         // print("\tGlobal dims", ndims, global_dims);
         // print("\tLocal dims", ndims, local_dims);
         // print("\tDecomposition", ndims, &decompositions[j * ndims]);
         // printf("\n");
     }
-    free(global_dims);
     // print("Decomposition", ndims * nlayers, decompositions);
 
 #if 0
@@ -296,12 +296,10 @@ acDecompositionInfoCreate(const size_t ndims, const size_t* global_dims, //
     acHierarchicalDomainDecomposition(ndims, global_dims, nlayers, partitions_per_layer,
                                       info.local_dims, info.decomposition);
 
-    size_t* decomposition_transposed = (size_t*)malloc(sizeof(size_t)*(ndims * nlayers));
+    std::unique_ptr<size_t> decomposition_transposed = std::make_unique<size_t>(ndims * nlayers);
 
-    transpose(info.decomposition, nlayers, ndims, decomposition_transposed);
-    contract(decomposition_transposed, ndims * nlayers, nlayers, info.global_decomposition);
-
-    free(decomposition_transposed);
+    transpose(info.decomposition, nlayers, ndims, decomposition_transposed.get());
+    contract(decomposition_transposed.get(), ndims * nlayers, nlayers, info.global_decomposition);
 
     acDecompositionInfoPrint(info);
     return info;
@@ -357,32 +355,27 @@ acGetPid(const int3 pid_input, const AcDecompositionInfo info)
         pid_input.y,
         pid_input.z,
     };
-    int64_t* global_decomposition = (int64_t*) malloc(sizeof(int64_t)*ndims);
-    as_int64_t_array(ndims, info.global_decomposition, global_decomposition);
+    std::unique_ptr<int64_t> global_decomposition = std::make_unique<int64_t>(ndims);
+    as_int64_t_array(ndims, info.global_decomposition, global_decomposition.get());
 
-    int64_t* pid_wrapped = (int64_t*) malloc(sizeof(int64_t)*ndims);
-    mod_pointwise(ndims, pid_unwrapped, global_decomposition, pid_wrapped);
+    std::unique_ptr<int64_t> pid_wrapped = std::make_unique<int64_t>(ndims);
+    mod_pointwise(ndims, pid_unwrapped, global_decomposition.get(), pid_wrapped.get());
 
-    size_t* pid = (size_t*) malloc(sizeof(int64_t)*ndims);
-    as_size_t_array(ndims, pid_wrapped, pid);
+    std::unique_ptr<size_t> pid = std::make_unique<size_t>(ndims);
+    as_size_t_array(ndims, pid_wrapped.get(), pid.get());
 
-    size_t gi = to_linear(pid, ndims, info.global_decomposition);
+    size_t gi = to_linear(pid.get(), ndims, info.global_decomposition);
 
-    size_t* decomposition_transposed = (size_t*) malloc(sizeof(int64_t)*ndims*nlayers);
-    transpose(info.decomposition, nlayers, ndims, decomposition_transposed);
+    std::unique_ptr<size_t> decomposition_transposed = std::make_unique<size_t>(ndims * nlayers);
+    transpose(info.decomposition, nlayers, ndims, decomposition_transposed.get());
 
-    size_t* spatial_index_transposed = (size_t*) malloc(sizeof(int64_t)*ndims*nlayers);
-    size_t* spatial_index            = (size_t*) malloc(sizeof(int64_t)*ndims*nlayers);
-    to_spatial(gi, ndims * nlayers, decomposition_transposed, spatial_index_transposed);
-    transpose(spatial_index_transposed, ndims, nlayers, spatial_index);
+    std::unique_ptr<size_t> spatial_index_transposed = std::make_unique<size_t>(ndims * nlayers);
+    to_spatial(gi, ndims * nlayers, decomposition_transposed.get(), spatial_index_transposed.get());
+    std::unique_ptr<size_t> spatial_index            = std::make_unique<size_t>(ndims * nlayers);
+    transpose(spatial_index_transposed.get(), ndims, nlayers, spatial_index.get());
 
-    const size_t j = to_linear(spatial_index, ndims * nlayers, info.decomposition);
+    const size_t j = to_linear(spatial_index.get(), ndims * nlayers, info.decomposition);
 
-    free(global_decomposition);
-    free(pid_wrapped);
-    free(decomposition_transposed);
-    free(spatial_index_transposed);
-    free(spatial_index);
     return as_int(j);
 }
 
