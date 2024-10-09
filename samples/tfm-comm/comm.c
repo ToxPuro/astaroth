@@ -13,23 +13,23 @@
 #include "type_conversion.h"
 
 #define MPI_SYNCHRONOUS_BLOCK_START                                                                \
-    {\
-    fflush(stdout);\
-    MPI_Barrier(mpi_comm_);\
-    int rank__, nprocs_;\
-    ERRCHK_MPI_API(MPI_Comm_rank(mpi_comm_, &rank__));\
-    ERRCHK_MPI_API(MPI_Comm_size(mpi_comm_, &nprocs_));\
-    for (int i__ = 0; i__ < nprocs_; ++i__){\
-        if (i__ == rank__){\
-            printf("---Rank %d---\n", rank__);\
+    {                                                                                              \
+        fflush(stdout);                                                                            \
+        MPI_Barrier(mpi_comm_);                                                                    \
+        int rank__, nprocs_;                                                                       \
+        ERRCHK_MPI_API(MPI_Comm_rank(mpi_comm_, &rank__));                                         \
+        ERRCHK_MPI_API(MPI_Comm_size(mpi_comm_, &nprocs_));                                        \
+        for (int i__ = 0; i__ < nprocs_; ++i__) {                                                  \
+            if (i__ == rank__) {                                                                   \
+                printf("---Rank %d---\n", rank__);
 
 #define MPI_SYNCHRONOUS_BLOCK_END                                                                  \
-    }\
-        fflush(stdout);\
-    MPI_Barrier(mpi_comm_);\
-    }\
-    MPI_Barrier(mpi_comm_);\
-}
+    }                                                                                              \
+    fflush(stdout);                                                                                \
+    MPI_Barrier(mpi_comm_);                                                                        \
+    }                                                                                              \
+    MPI_Barrier(mpi_comm_);                                                                        \
+    }
 
 /*
  * Comm
@@ -62,6 +62,9 @@ acCommSetup(const size_t ndims, const size_t* global_nn, size_t* local_nn, size_
     iset(1, ndims, mpi_periods);
     ERRCHK_MPI_API(
         MPI_Cart_create(MPI_COMM_WORLD, as_int(ndims), mpi_dims, mpi_periods, 0, &mpi_comm_));
+
+    // Set errors as non-fatal
+    ERRCHK_MPI_API(MPI_Comm_set_errhandler(mpi_comm_, MPI_ERRORS_RETURN));
 
     // Setup the rest of the global variables
     mpi_ndims_ = as_int(ndims);
@@ -156,7 +159,7 @@ typedef struct {
     Segment segment; // Shape of the data block the packet represents
     Buffer buffer;   // Buffer holding the data
     MPI_Request req; // MPI request for handling synchronization
-    //int peer;        // The counterparty of communication
+    // int peer;        // The counterparty of communication
 } Packet;
 
 static Packet
@@ -178,10 +181,12 @@ packet_wait(Packet* packet)
         // Note: MPI_Status needs to be initialized.
         // Otherwise leads to uninitialized memory access and causes spurious errors
         // because MPI_Wait does not modify the status on successful MPI_Wait
-        MPI_Status status = {0};
+        MPI_Status status = {.MPI_ERROR = MPI_SUCCESS};
         ERRCHK_MPI_API(MPI_Wait(&packet->req, &status));
         ERRCHK_MPI_API(status.MPI_ERROR);
-        ERRCHK_MPI_API(MPI_Request_free(&packet->req));
+        // Some MPI implementations free the request with MPI_Wait
+        if (packet->req != MPI_REQUEST_NULL)
+            ERRCHK_MPI_API(MPI_Request_free(&packet->req));
     }
     else {
         WARNING("packet_wait called but no there is packet to wait for");
@@ -408,9 +413,9 @@ halo_segment_batch_destroy(struct HaloSegmentBatch_s** batch)
 void
 halo_segment_batch_launch(const size_t ninputs, double* inputs[], struct HaloSegmentBatch_s* batch)
 {
-    const size_t ndims = batch->ndims;
-    const size_t* local_mm = batch->local_mm;
-    const size_t* local_nn = batch->local_nn;
+    const size_t ndims            = batch->ndims;
+    const size_t* local_mm        = batch->local_mm;
+    const size_t* local_nn        = batch->local_nn;
     const size_t* local_nn_offset = batch->local_nn_offset;
     for (size_t i = 0; i < batch->npackets; ++i) {
 
@@ -444,13 +449,11 @@ halo_segment_batch_launch(const size_t ninputs, double* inputs[], struct HaloSeg
 
         // Post recv
         ERRCHK_MPI_API(MPI_Irecv(remote_packet->buffer.data, as_int(remote_packet->buffer.count),
-                                 mpi_dtype_, recv_peer, tag, mpi_comm_,
-                                 &remote_packet->req));
+                                 mpi_dtype_, recv_peer, tag, mpi_comm_, &remote_packet->req));
 
         // Post send
         ERRCHK_MPI_API(MPI_Isend(local_packet->buffer.data, as_int(local_packet->buffer.count),
-                                 mpi_dtype_, send_peer, tag, mpi_comm_,
-                                 &local_packet->req));
+                                 mpi_dtype_, send_peer, tag, mpi_comm_, &local_packet->req));
 
         // MPI_Status status;
         // ERRCHK_MPI_API(MPI_Sendrecv(local_packet->buffer.data,
