@@ -37,8 +37,6 @@ if (USE_HIP)
     set(CMAKE_CXX_COMPILER ${CMAKE_HIP_COMPILER})
 endif()
 
-
-
 ## Project settings
 project(astaroth C CXX)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
