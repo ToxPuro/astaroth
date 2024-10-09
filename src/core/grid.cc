@@ -285,7 +285,6 @@ acGridDecomposeMeshInfo(const AcMeshInfo global_config)
     ERRCHK_ALWAYS(decomp.z == 1);
 #endif
 
-
     const int3 nn = acGetLocalNN(submesh_config);
     const int submesh_nx = nn.x / decomp.x;
     const int submesh_ny = nn.y / decomp.y;
@@ -2459,6 +2458,12 @@ acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBuff
     if (acDeviceReduceVecNotAveraged(device, stream, rtype, vtxbuf0, vtxbuf1, vtxbuf2, &local_result) == AC_NOT_ALLOCATED) return AC_NOT_ALLOCATED;
 
     return distributedScalarReduction(local_result, rtype, result);
+}
+
+AcResult
+acGridReduceVec(const Stream stream, const ReductionType rtype, const VertexBufferHandle* vtxbufs, AcReal* result)
+{
+    return acGridReduceVec(stream, rtype, vtxbufs[0], vtxbufs[1], vtxbufs[2], result);
 }
 
 AcResult

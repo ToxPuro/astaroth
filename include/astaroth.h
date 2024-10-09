@@ -89,58 +89,58 @@ typedef int Stream;
 enum {AC_H2D, AC_D2H};    // pack/unpack direction
 typedef enum {AC_XZ=0, AC_YZ=1, AC_BOT=0, AC_TOP=2, NUM_PLATE_BUFFERS=4} PlateType;
 
-#define AC_FOR_RTYPES(FUNC)                                                                        \
-    FUNC(RTYPE_MAX)                                                                                \
-    FUNC(RTYPE_MIN)                                                                                \
-    FUNC(RTYPE_SUM)                                                                                \
-    FUNC(RTYPE_RMS)                                                                                \
-    FUNC(RTYPE_RMS_EXP)                                                                            \
-    FUNC(RTYPE_ALFVEN_MAX)                                                                         \
-    FUNC(RTYPE_ALFVEN_MIN)                                                                         \
-    FUNC(RTYPE_ALFVEN_RMS)                                                                         \
-    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_MAX)                                                           \
-    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_MIN)                                                           \
-    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_RMS)                                                           \
-    FUNC(RTYPE_RADIAL_WINDOW_MAX)                                                                  \
-    FUNC(RTYPE_RADIAL_WINDOW_MIN)                                                                  \
-    FUNC(RTYPE_RADIAL_WINDOW_SUM)                                                                  \
-    FUNC(RTYPE_GAUSSIAN_WINDOW_MAX)                                                                \
-    FUNC(RTYPE_GAUSSIAN_WINDOW_MIN)                                                                \
+#define AC_FOR_RTYPES(FUNC)                                                       \
+    FUNC(RTYPE_MAX)                                                               \
+    FUNC(RTYPE_MIN)                                                               \
+    FUNC(RTYPE_SUM)                                                               \
+    FUNC(RTYPE_RMS)                                                               \
+    FUNC(RTYPE_RMS_EXP)                                                           \
+    FUNC(RTYPE_ALFVEN_MAX)                                                        \
+    FUNC(RTYPE_ALFVEN_MIN)                                                        \
+    FUNC(RTYPE_ALFVEN_RMS)                                                        \
+    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_MAX)                                          \
+    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_MIN)                                          \
+    FUNC(RTYPE_ALFVEN_RADIAL_WINDOW_RMS)                                          \
+    FUNC(RTYPE_RADIAL_WINDOW_MAX)                                                 \
+    FUNC(RTYPE_RADIAL_WINDOW_MIN)                                                 \
+    FUNC(RTYPE_RADIAL_WINDOW_SUM)                                                 \
+    FUNC(RTYPE_GAUSSIAN_WINDOW_MAX)                                               \
+    FUNC(RTYPE_GAUSSIAN_WINDOW_MIN)                                               \
     FUNC(RTYPE_GAUSSIAN_WINDOW_SUM)
 
 #define RTYPE_ISNAN (RTYPE_SUM)
 
-#define AC_FOR_BCTYPES(FUNC)                                                                       \
-    FUNC(BOUNDCOND_PERIODIC)                                                                       \
-    FUNC(BOUNDCOND_SYMMETRIC)                                                                      \
-    FUNC(BOUNDCOND_ANTISYMMETRIC)                                                                  \
-    FUNC(BOUNDCOND_A2)                                                                             \
-    FUNC(BOUNDCOND_INFLOW)                                                                         \
-    FUNC(BOUNDCOND_OUTFLOW)                                                                        \
-    FUNC(BOUNDCOND_CONST)                                                                          \
+#define AC_FOR_BCTYPES(FUNC)                                                      \
+    FUNC(BOUNDCOND_PERIODIC)                                                      \
+    FUNC(BOUNDCOND_SYMMETRIC)                                                     \
+    FUNC(BOUNDCOND_ANTISYMMETRIC)                                                 \
+    FUNC(BOUNDCOND_A2)                                                            \
+    FUNC(BOUNDCOND_INFLOW)                                                        \
+    FUNC(BOUNDCOND_OUTFLOW)                                                       \
+    FUNC(BOUNDCOND_CONST)                                                         \
     FUNC(BOUNDCOND_PRESCRIBED_DERIVATIVE)
 
 #ifdef AC_INTEGRATION_ENABLED
 
-#define AC_FOR_SPECIAL_MHD_BCTYPES(FUNC)                                                           \
-    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE)                                       \
-    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION)                                        \
-    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX)                                       \
+#define AC_FOR_SPECIAL_MHD_BCTYPES(FUNC)                                          \
+    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_CONSTANT_TEMPERATURE)                      \
+    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_BLACKBODY_RADIATION)                       \
+    FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_HEAT_FLUX)                      \
     FUNC(SPECIAL_MHD_BOUNDCOND_ENTROPY_PRESCRIBED_NORMAL_AND_TURBULENT_HEAT_FLUX)
 
 #endif
 
-#define AC_FOR_INIT_TYPES(FUNC)                                                                    \
-    FUNC(INIT_TYPE_RANDOM)                                                                         \
-    FUNC(INIT_TYPE_AA_RANDOM)                                                                      \
-    FUNC(INIT_TYPE_XWAVE)                                                                          \
-    FUNC(INIT_TYPE_GAUSSIAN_RADIAL_EXPL)                                                           \
-    FUNC(INIT_TYPE_ABC_FLOW)                                                                       \
-    FUNC(INIT_TYPE_SIMPLE_CORE)                                                                    \
-    FUNC(INIT_TYPE_KICKBALL)                                                                       \
-    FUNC(INIT_TYPE_VEDGE)                                                                          \
-    FUNC(INIT_TYPE_VEDGEX)                                                                         \
-    FUNC(INIT_TYPE_RAYLEIGH_TAYLOR)                                                                \
+#define AC_FOR_INIT_TYPES(FUNC)                                                   \
+    FUNC(INIT_TYPE_RANDOM)                                                        \
+    FUNC(INIT_TYPE_AA_RANDOM)                                                     \
+    FUNC(INIT_TYPE_XWAVE)                                                         \
+    FUNC(INIT_TYPE_GAUSSIAN_RADIAL_EXPL)                                          \
+    FUNC(INIT_TYPE_ABC_FLOW)                                                      \
+    FUNC(INIT_TYPE_SIMPLE_CORE)                                                   \
+    FUNC(INIT_TYPE_KICKBALL)                                                      \
+    FUNC(INIT_TYPE_VEDGE)                                                         \
+    FUNC(INIT_TYPE_VEDGEX)                                                        \
+    FUNC(INIT_TYPE_RAYLEIGH_TAYLOR)                                               \
     FUNC(INIT_TYPE_RAYLEIGH_BENARD)
 
 #define AC_GEN_ID(X) X,

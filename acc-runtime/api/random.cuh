@@ -185,7 +185,6 @@ random_uniform(const size_t idx)
 #if AC_DOUBLE_PRECISION
 		return curand_uniform_double(&states[idx]);
 #else
-		return curand_uniform(&states[idx])
-
+		return curand_uniform(&states[idx]);
 #endif
 }
