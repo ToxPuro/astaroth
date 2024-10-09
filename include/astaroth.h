@@ -1438,6 +1438,7 @@ FUNC_DEFINE(AcResult, acDeviceStoreVertexBuffer,(const Device device, const Stre
 /** */
 FUNC_DEFINE(AcResult, acDeviceStoreMesh,(const Device device, const Stream stream, AcMesh* host_mesh));
 
+
 /** */
 FUNC_DEFINE(AcResult, acDeviceTransferVertexBufferWithOffset,(const Device src_device, const Stream stream,
                                                 const VertexBufferHandle vtxbuf_handle,
@@ -1612,6 +1613,8 @@ acHostUpdateBuiltinCompParams(AcCompInfo* comp_config);
 
 /** Creates a mesh stored in host memory */
 FUNC_DEFINE(AcResult, acHostMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
+/** Copies a host mesh to a new host mesh */
+FUNC_DEFINE(AcResult, acHostMeshCopy,(const AcMesh src, AcMesh* dst));
 /** Creates a mesh stored in host memory (size of the whole grid) */
 FUNC_DEFINE(AcResult, acHostGridMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
 

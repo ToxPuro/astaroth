@@ -392,10 +392,23 @@ AcResult
 acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
 {
     mesh->info = info;
+    acHostUpdateBuiltinParams(&mesh->info);
     const size_t n_cells = acVertexBufferSize(mesh->info);
     for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
         mesh->vertex_buffer[w] = (AcReal*)calloc(n_cells, sizeof(AcReal));
         ERRCHK_ALWAYS(mesh->vertex_buffer[w]);
+    }
+
+    return AC_SUCCESS;
+}
+AcResult
+acHostMeshCopy(const AcMesh src, AcMesh* dst)
+{
+    ERRCHK_ALWAYS(acHostMeshCreate(src.info,dst) == AC_SUCCESS);
+
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+	ERRCHK_ALWAYS(src.vertex_buffer[w]);
+	memcpy(dst->vertex_buffer[w], src.vertex_buffer[w], acVertexBufferSizeBytes(src.info));
     }
 
     return AC_SUCCESS;

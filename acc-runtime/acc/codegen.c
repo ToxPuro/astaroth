@@ -421,6 +421,31 @@ static const char* BOUNDARY_X_STR = NULL;
 static const char* BOUNDARY_Y_STR = NULL; 
 static const char* BOUNDARY_Z_STR = NULL; 
 
+static const char*  BOUNDARY_XY_STR  = NULL;   
+static const char*  BOUNDARY_XZ_STR  = NULL;
+static const char*  BOUNDARY_YZ_STR  = NULL;
+static const char*  BOUNDARY_XYZ_STR = NULL;
+
+bool 
+is_boundary_param(const char* param)
+{
+    return !strcmps(param,
+            BOUNDARY_X_TOP_STR,
+	    BOUNDARY_X_BOT_STR,
+            BOUNDARY_Y_TOP_STR,
+            BOUNDARY_Y_BOT_STR,
+            BOUNDARY_Z_TOP_STR,
+            BOUNDARY_Z_BOT_STR,
+            BOUNDARY_X_STR,
+            BOUNDARY_Y_STR,
+            BOUNDARY_Z_STR,
+            BOUNDARY_XY_STR,
+            BOUNDARY_XZ_STR,
+            BOUNDARY_YZ_STR,
+            BOUNDARY_XYZ_STR
+    );
+}
+
 
 bool is_primitive_datatype(const char* type)
 {
@@ -1525,6 +1550,7 @@ get_index_node(const ASTNode* array_access_start, const string_vec var_dims_in)
 
 
 
+
 void
 gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
 {
@@ -1560,10 +1586,7 @@ gen_array_reads(const ASTNode* root, ASTNode* node, const char* datatype_scalar)
 	
     ASTNode* elem_index         = get_index_node(node,var_dims);
     if(!elem_index)
-    {
-	    fprintf(stderr,FATAL_ERROR_MESSAGE"Incorrect array access: %s\n",combine_all_new(node));
-	    exit(EXIT_FAILURE);
-    }
+	    fatal("Incorrect array access: %s\n",combine_all_new(node));
     ASTNode* base = node;
     base->lhs=NULL;
     base->rhs=NULL;
@@ -2097,10 +2120,7 @@ gen_taskgraph_kernel_entry(const ASTNode* kernel_call, const ASTNode* root, FILE
 	sprintf(communicated_fields_after, "%s", "{");
 	const int kernel_index = get_symbol_index(NODE_FUNCTION_ID,func_name,KERNEL);
 	if(kernel_index == -1)
-	{
-		fprintf(stderr,FATAL_ERROR_MESSAGE"Undeclared kernel %s used in ComputeSteps %s\n",func_name,taskgraph_name);
-		exit(EXIT_FAILURE);
-	}
+		fatal("Undeclared kernel %s used in ComputeSteps %s\n",func_name,taskgraph_name);
 	char* all_fields = malloc(sizeof(char)*4000);
 	all_fields[0] = '\0';
 	for(size_t field = 0; field < num_fields; ++field)
@@ -2215,10 +2235,7 @@ get_boundary_int(const char* boundary_in)
 {
 	int res = 0;
 	if(!strstr(boundary_in,"BOUNDARY_"))
-	{
-		fprintf(stderr,FATAL_ERROR_MESSAGE"incorrect boundary specification: %s\n",boundary_in);
-		exit(EXIT_FAILURE);
-	}
+		fatal("incorrect boundary specification: %s\n",boundary_in);
 	char* boundary = remove_substring(strdup(boundary_in),"BOUNDARY");
 	if(strstr(boundary,"BOT"))
 	{
@@ -2277,14 +2294,7 @@ get_fields_included(const ASTNode* func_call, const char* boundconds_name)
 			res.out[field] |= written_fields[field + num_fields*kernel_index];
 			res.in[field]  |= read_fields[field + num_fields*kernel_index] || field_has_stencil_op[field + num_fields*kernel_index];
 		}
-	//if rest_fields include all 
-	//at the moment not supported
-	const bool all_included = str_vec_contains(call_info.expr,"REST_FIELDS") || func_name == PERIODIC;
-	if (str_vec_contains(call_info.expr,"REST_FIELDS"))
-	{
-		fprintf(stderr,FATAL_ERROR_MESSAGE"REST_FIELDS not supported right now\n");
-		exit(EXIT_FAILURE);
-	}
+	const bool all_included =  func_name == PERIODIC;
 	for(size_t field = 0; field < num_fields; ++field)
 	{
 		res.out[field] |= all_included;
@@ -2373,11 +2383,7 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
 	free(tmp);
 	func_params_info params_info = get_function_params_info(root,dfunc_name);
 	if(call_info.expr.size-1 != params_info.expr.size)
-	{
-		fprintf(stderr,FATAL_ERROR_MESSAGE"Number of inputs %lu for %s in BoundConds does not match the number of input params %lu \n", call_info.expr.size-1, dfunc_name, params_info.expr.size);
-		exit(EXIT_FAILURE);
-
-	}
+		fatal("Number of inputs %lu for %s in BoundConds does not match the number of input params %lu \n", call_info.expr.size-1, dfunc_name, params_info.expr.size);
 	const size_t num_of_rest_params = params_info.expr.size;
         free_func_params_info(&params_info);
 	fprintf(fp,"boundary_condition Kernel %s_%s()\n{\n",prefix,func_name);
@@ -2393,8 +2399,11 @@ write_dfunc_bc_kernel(const ASTNode* root, const char* prefix, const char* func_
 void
 gen_dfunc_bc_kernel(const ASTNode* func_call, FILE* fp, const ASTNode* root, const char* boundconds_name)
 {
+
 	const char* func_name = get_node_by_token(IDENTIFIER,func_call)->buffer;
 		
+	if(!func_call->rhs)
+		fatal("need to declare boundary in bc func call: %s\n",combine_all_new(func_call));
 	const char* boundary = get_node_by_token(IDENTIFIER,func_call->rhs)->buffer;
 	const int boundary_int = get_boundary_int(boundary);
 	const int num_boundaries = TWO_D ? 4 : 6;
@@ -2587,7 +2596,10 @@ rename_while(const NodeType type, ASTNode* head, const char* new_name, const cha
 {
 	while(head->type == type)
 	{
-		rename_variables(head->rhs,new_name,new_expr,old_name);
+		if(head->rhs)
+			rename_variables(head->rhs,new_name,new_expr,old_name);
+		else
+			rename_variables(head->lhs,new_name,new_expr,old_name);
 		head = head->parent;
 	}
 }
@@ -2640,11 +2652,7 @@ check_field_boundconds(char*const * field_boundconds)
 		if(!check_symbol_index(NODE_VARIABLE_ID, field, FIELD, COMMUNICATED)) continue;
 		for(int bc = 0; bc < num_boundaries; ++bc)
 			if(!field_boundconds[field + num_fields*bc])
-			{
-				fprintf(stderr,FATAL_ERROR_MESSAGE"Missing boundcond for field: %s at boundary: %s\n",get_field_name(field),boundary_str(bc));
-				exit(EXIT_FAILURE);
-
-			}
+				fatal("Missing boundcond for field: %s at boundary: %s\n",get_field_name(field),boundary_str(bc));
 	}
 }
 void
@@ -2789,10 +2797,7 @@ gen_user_taskgraphs_recursive(const ASTNode* node, const ASTNode* root, string_v
 		for(size_t k = 0; k < kernel_calls.size; ++k)
 			all_processed &= (call_level_set[k] != -1);
 		if((size_t) n_level_sets > kernel_calls.size)
-		{
-			fprintf(stderr,FATAL_ERROR_MESSAGE"Bug in the compiler aborting\n");
-			exit(EXIT_FAILURE);
-		}
+			fatal("Bug in the compiler aborting\n");
 
 	}
 	
@@ -2886,19 +2891,10 @@ gen_dfunc_bc_kernels(const ASTNode* node, const ASTNode* root, FILE* fp)
 		gen_dfunc_bc_kernels(node->rhs,root,fp);
 	if(node->type != NODE_BOUNDCONDS_DEF) return;
 	const char* name = node->lhs->buffer;
-	const ASTNode* function_call_list_head = node->rhs;
-	int n_entries = 1;
-	while(function_call_list_head->rhs)
-	{
-		++n_entries;
-		function_call_list_head = function_call_list_head->lhs;
-	}
-	gen_dfunc_bc_kernel(function_call_list_head->lhs,fp,root,name);
-	while(--n_entries)
-	{
-		function_call_list_head = function_call_list_head->parent;
-		gen_dfunc_bc_kernel(function_call_list_head->rhs,fp,root,name);
-	}
+	node_vec func_calls = get_nodes_in_list(node->rhs);
+	for(size_t i = 0; i < func_calls.size; ++i)
+		gen_dfunc_bc_kernel(func_calls.data[i],fp,root,name);
+	free_node_vec(&func_calls);
 }
 void
 gen_user_taskgraphs(const ASTNode* root)
@@ -3548,13 +3544,11 @@ check_for_undeclared_use_in_range(const ASTNode* node)
 {
 	  const ASTNode* range_node = get_parent_node_by_token(RANGE,node);
 	  if(range_node)
-	  {
-		fprintf(stderr,FATAL_ERROR_MESSAGE"Undeclared variable or function used on a range expression\n");
-		fprintf(stderr,"Range: %s\n",combine_all_new(range_node));
-		fprintf(stderr,"Var: %s\n",node->buffer);
-		fprintf(stderr,"\n");
-		exit(EXIT_FAILURE);
-	  }
+		fatal("Undeclared variable or function used on a range expression\n"
+				"Range: %s\n"
+				"Var: %s\n"
+				"\n"
+				,combine_all_new(range_node),node->buffer);
 }	
 static void
 check_for_undeclared_function(const ASTNode* node)
@@ -3589,13 +3583,13 @@ check_for_undeclared_use_in_assignment(const ASTNode* node)
 	
 	  const bool used_in_assignment = is_right_child(NODE_ASSIGNMENT,node);
 	  if(used_in_assignment)
-	  {
-		fprintf(stderr,FATAL_ERROR_MESSAGE"Undeclared variable or function used on the right hand side of an assignment\n");
-		fprintf(stderr,"Assignment: %s\n",combine_all_new(get_parent_node(NODE_ASSIGNMENT,node)));
-		fprintf(stderr,"Var: %s\n",node->buffer);
-		fprintf(stderr,"\n");
-		exit(EXIT_FAILURE);
-	  }
+		  fatal(
+			"Undeclared variable or function used on the right hand side of an assignment\n"
+			"Assignment: %s\n"
+			"Var: %s\n"
+			"\n"
+				  ,combine_all_new(get_parent_node(NODE_ASSIGNMENT,node)),node->buffer
+			);
 }
 static void
 check_for_undeclared(const ASTNode* node)
@@ -4617,10 +4611,7 @@ gen_const_def(const ASTNode* def, const ASTNode* tspec, FILE* fp, FILE* fp_built
 				fprintf(fp, "\n#ifdef __cplusplus\n[[maybe_unused]] const constexpr AcArray<AcArray<%s,%d>,%d> %s = %s;\n#endif\n",datatype_scalar, num_of_elems_in_list, num_of_elems, name, assignment_val);
 			}
 			else
-			{
-				fprintf(stderr,FATAL_ERROR_MESSAGE"todo add 3d const arrays\n");
-				exit(EXIT_FAILURE);
-			}
+				fatal("todo add 3d const arrays\n");
 		}
 		else if(array_access)
 		{
@@ -6025,17 +6016,21 @@ field_to_real_conversion(ASTNode* node, const ASTNode* root)
 
 	func_params_info params_info = get_function_params_info(root,func_name);
 	func_params_info call_info = get_func_call_params_info(node);
-	for(size_t i = 0; i < call_info.types.size; ++i)
+	if(call_info.types.size == 0) return res;
+	const int offset = is_boundary_param(call_info.expr.data[0]) ? 1 : 0;
+	if(params_info.types.size != call_info.types.size-offset)
+		fatal("number of parameters does not match, expected %zu but got %zu in %s\n",params_info.types.size, call_info.types.size, combine_all_new(node));
+	for(size_t i = offset; i < call_info.types.size; ++i)
 	{
 		if(
-		      (params_info.types.data[i] == REAL3_STR && call_info.types.data[i] == FIELD3_STR)
-		   || (params_info.types.data[i] == REAL_STR && call_info.types.data[i] == FIELD_STR)
-		   || (params_info.types.data[i] == REAL_PTR_STR && call_info.types.data[i] == VTXBUF_PTR_STR)
-		   || (params_info.types.data[i] == REAL3_PTR_STR && call_info.types.data[i] == FIELD3_PTR_STR)
+		      (params_info.types.data[i-offset] == REAL3_STR && call_info.types.data[i] == FIELD3_STR)
+		   || (params_info.types.data[i-offset] == REAL_STR && call_info.types.data[i] == FIELD_STR)
+		   || (params_info.types.data[i-offset] == REAL_PTR_STR && call_info.types.data[i] == VTXBUF_PTR_STR)
+		   || (params_info.types.data[i-offset] == REAL3_PTR_STR && call_info.types.data[i] == FIELD3_PTR_STR)
 		  )
 		{
 			ASTNode* expr = (ASTNode*)call_info.expr_nodes.data[i];
-			expr->expr_type = params_info.types.data[i];
+			expr->expr_type = params_info.types.data[i-offset];
 			replace_node(
 					expr,
 					create_func_call_expr(VALUE_STR,expr)
@@ -6126,21 +6121,6 @@ compatible_types(const char* a, const char* b)
 		  || (a == REAL_PTR_STR && b == VTXBUF_PTR_STR)
 		  || (a == REAL3_PTR_STR && b == FIELD3_PTR_STR)
 		;
-}
-bool 
-is_boundary_param(const char* param)
-{
-    return !strcmps(param,
-            BOUNDARY_X_TOP_STR,
-	    BOUNDARY_X_BOT_STR,
-            BOUNDARY_Y_TOP_STR,
-            BOUNDARY_Y_BOT_STR,
-            BOUNDARY_Z_TOP_STR,
-            BOUNDARY_Z_BOT_STR,
-            BOUNDARY_X_STR,
-            BOUNDARY_Y_STR,
-            BOUNDARY_Z_STR
-    );
 }
 static int_vec
 get_possible_dfuncs(const func_params_info call_info, const string_vec* dfunc_possible_types, const int dfunc_index, const bool strict)
@@ -6436,10 +6416,7 @@ gen_extra_func_definitions_recursive(const ASTNode* node, const ASTNode* root, F
 			fprintf(stream,"%s (Field3 v){return Matrix(%s_AC_INTERNAL_COPY(v.x), %s_AC_INTERNAL_COPY(v.y), %s_AC_INTERNAL_COPY(v.z))}\n",dfunc_name,dfunc_name,dfunc_name,dfunc_name);
 		}
 		else
-		{
-			fprintf(stderr,FATAL_ERROR_MESSAGE"Missing elemental case for func: %s\n",dfunc_name);
-			exit(EXIT_FAILURE);
-		}
+			fatal("Missing elemental case for func: %s\n",dfunc_name);
 	}
 	else if(info.expr.size == 2 && info.types.data[0] == REAL3_STR && info.types.data[1] == REAL3_STR && !strstr(dfunc_name,"AC_INTERNAL_COPY"))
 	{
@@ -6557,6 +6534,11 @@ gen_global_strings()
  	BOUNDARY_X_STR = intern("BOUNDARY_X"); 
  	BOUNDARY_Y_STR = intern("BOUNDARY_Y"); 
  	BOUNDARY_Z_STR = intern("BOUNDARY_Z"); 
+
+	BOUNDARY_XY_STR  = intern("BOUNDARY_XY");   
+	BOUNDARY_XZ_STR  = intern("BOUNDARY_XZ");
+	BOUNDARY_YZ_STR  = intern("BOUNDARY_YZ");
+	BOUNDARY_XYZ_STR = intern("BOUNDARY_XYZ");
 }
 void
 gen_extra_funcs(const ASTNode* root_in, FILE* stream)
@@ -7128,20 +7110,19 @@ check_array_dim_identifiers(const char* id, const ASTNode* node)
 	if(node->rhs) check_array_dim_identifiers(id,node->rhs);
 
 	if(node->type & NODE_BINARY_EXPRESSION && node->rhs && node->rhs->lhs && get_node_by_token(IDENTIFIER,node))
-	{
-		fprintf(stderr,FATAL_ERROR_MESSAGE"Only arithmetic expressions consisting of const integers allowed in global array dimensions\n");
-		fprintf(stderr,"Wrong expression (%s) in dimension of variable: %s\n\n",combine_all_new(node),id);
-		exit(EXIT_FAILURE);
-	}
-
+		fatal(
+				"Only arithmetic expressions consisting of const integers allowed in global array dimensions\n"
+				"Wrong expression (%s) in dimension of variable: %s\n\n"
+				,combine_all_new(node),id
+		);
 	if(node->token != IDENTIFIER) return;
 	const bool is_int_var = check_symbol(NODE_VARIABLE_ID,node->buffer,INT,0);
 	if(!is_int_var)
-	{
-		fprintf(stderr,FATAL_ERROR_MESSAGE"Only dconst and const integer variables allowed in array dimensions\n");
-		fprintf(stderr,"Wrong dimension (%s) for variable: %s\n\n",node->buffer,id);
-		exit(EXIT_FAILURE);
-	}
+		fatal(
+			"Only dconst and const integer variables allowed in array dimensions\n"
+			"Wrong dimension (%s) for variable: %s\n\n"
+			,node->buffer,id
+		);
 
 }
 void
@@ -7301,10 +7282,7 @@ check_uniquenes(const ASTNode* root, const NodeType type, const char* message_na
 		{
 			if(i == j) continue;
 			if(names.data[i] == names.data[j])
-			{
-				fprintf(stderr,FATAL_ERROR_MESSAGE"multiple definitions of %s: %s\n",message_name,names.data[i]);
-				exit(EXIT_FAILURE);
-			}
+				fatal("multiple definitions of %s: %s\n",message_name,names.data[i]);
 
 		}
 	}

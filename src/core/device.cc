@@ -596,6 +596,7 @@ acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh 
     const int3 src            = (int3){0, 0, 0};
     const int3 dst            = src;
     const size_t num_vertices = acVertexBufferSize(device->local_config);
+    ERRCHK_ALWAYS(num_vertices == acVertexBufferSize(host_mesh.info));
     return acDeviceLoadVertexBufferWithOffset(device, stream, host_mesh, vtxbuf_handle, src, dst,
                                        num_vertices);
 }
@@ -676,6 +677,7 @@ acDeviceStoreVertexBufferWithOffset(const Device device, const Stream stream,
     const size_t src_idx = acVertexBufferIdx(src.x, src.y, src.z, device->local_config);
     const size_t dst_idx = acVertexBufferIdx(dst.x, dst.y, dst.z, host_mesh->info);
 
+
     const AcReal* src_ptr = &device->vba.in[vtxbuf_handle][src_idx];
     AcReal* dst_ptr       = &host_mesh->vertex_buffer[vtxbuf_handle][dst_idx];
     const size_t bytes    = num_vertices * sizeof(src_ptr[0]);
@@ -707,6 +709,7 @@ acDeviceStoreVertexBuffer(const Device device, const Stream stream,
     int3 src                  = (int3){0, 0, 0};
     int3 dst                  = src;
     const size_t num_vertices = acVertexBufferSize(device->local_config);
+    ERRCHK_ALWAYS(num_vertices == acVertexBufferSize(host_mesh->info));
 
     return acDeviceStoreVertexBufferWithOffset(device, stream, vtxbuf_handle, src, dst, num_vertices,
                                         host_mesh);

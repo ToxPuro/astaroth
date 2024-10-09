@@ -791,3 +791,13 @@ node_vec_contains(const node_vec vec, const char* str)
 		if(!strcmp(combine_all_new(vec.data[i]), str)) return true;
 	return false;
 }
+static const char*
+fatal(const char* format, ...)
+{
+	va_list args;
+	va_start(args,format);
+	fprintf(stderr,FATAL_ERROR_MESSAGE);
+	vfprintf(stderr,format,args);
+	va_end(args);
+	exit(EXIT_FAILURE);
+}
