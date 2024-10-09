@@ -12,6 +12,25 @@
 #include "segment.h"
 #include "type_conversion.h"
 
+#define MPI_SYNCHRONOUS_BLOCK_START                                                                \
+    {                                                                                              \
+        int rank__, nprocs__;                                                                      \
+        ERRCHK_MPI_API(MPI_Comm_rank(mpi_comm_, &rank__));                                         \
+        ERRCHK_MPI_API(MPI_Comm_size(mpi_comm_, &nprocs__));                                       \
+        for (int j__ = 0; j__ < nprocs__; ++j__) {                                                 \
+            MPI_Barrier(MPI_COMM_WORLD);                                                           \
+            fflush(stdout);                                                                        \
+            if (j__ == rank__) {                                                                   \
+                printf("---------------\n");                                                       \
+                printf("---Rank %d\n", rank__);
+
+#define MPI_SYNCHRONOUS_BLOCK_END                                                                  \
+    }                                                                                              \
+    fflush(stdout);                                                                                \
+    MPI_Barrier(MPI_COMM_WORLD);                                                                   \
+    }                                                                                              \
+    }
+
 /*
  * Comm
  */
@@ -28,7 +47,6 @@ acCommInit(void)
 void
 acCommSetup(const size_t ndims, const size_t* global_nn, size_t* local_nn, size_t* global_nn_offset)
 {
-
     // Get nprocs
     int nprocs;
     ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
@@ -69,11 +87,10 @@ acCommSetup(const size_t ndims, const size_t* global_nn, size_t* local_nn, size_
     to_astaroth_format(ndims, mpi_coords, coords);
     for (size_t i = 0; i < ndims; ++i)
         global_nn_offset[i] = local_nn[i] * coords[i];
-    ndealloc(coords);
-
-    ndealloc(mpi_coords);
 
     // Cleanup
+    ndealloc(coords);
+    ndealloc(mpi_coords);
     ndealloc(mpi_periods);
     ndealloc(mpi_dims);
 }
@@ -159,15 +176,22 @@ packet_create(const size_t ndims, const size_t* dims, const size_t* offset, cons
 static void
 packet_wait(Packet* packet)
 {
+    // MPI_SYNCHRONOUS_BLOCK_START
     if (packet->req != MPI_REQUEST_NULL) {
         MPI_Status status;
         ERRCHK_MPI_API(MPI_Wait(&packet->req, &status));
+
+        int count;
+        WARNCHK(MPI_Get_count(&status, mpi_dtype_, &count) == as_int(packet->buffer.count));
+        if (count == 0)
+            WARNING("Packet count was 0, this may be a firewall issue or, e.g., tag mismatch");
         ERRCHK_MPI_API(status.MPI_ERROR);
         ERRCHK_MPI_API(MPI_Request_free(&packet->req));
     }
     else {
         WARNING("packet_wait called but no there is packet to wait for");
     }
+    // MPI_SYNCHRONOUS_BLOCK_END
 }
 
 static void
@@ -315,32 +339,22 @@ halo_segment_batch_create(const size_t ndims, const size_t* local_mm, const size
         batch->local_packets[i] = packet_create(ndims, subdims, send_offset, n_aggregate_buffers,
                                                 send_peer);
 
-        // int rank, nprocs;
-        // ERRCHK_MPI_API(MPI_Comm_rank(mpi_comm_, &rank));
-        // ERRCHK_MPI_API(MPI_Comm_size(mpi_comm_, &nprocs));
-        // for (int j = 0; j < nprocs; ++j) {
-        //     MPI_Barrier(MPI_COMM_WORLD);
-        //     fflush(stdout);
-        //     if (j == rank) {
-        //         printf("---------------\n");
-        //         printf("---Rank %d\n", rank);
-        //         printd_array(ndims, subdims);
-        //         printd(send_peer);
-        //         printd(recv_peer);
-        //         printf("Rank %d sends packet %zu to neighbor %d in offset ", rank, i,
-        //                batch->local_packets[i].peer);
-        //         printd_array(ndims, send_offset);
-        //         printf("\n");
-        //         printf("Rank %d receives packet %zu from neighbor %d in offset ", rank, i,
-        //                batch->remote_packets[i].peer);
-        //         printd_array(ndims, recv_offset);
-        //         printf("\n");
-        //         printf("The packets use the same tag");
-        //         printf("---------------\n");
-        //     }
-        //     fflush(stdout);
-        //     MPI_Barrier(MPI_COMM_WORLD);
-        // }
+        MPI_SYNCHRONOUS_BLOCK_START
+        printd_array(ndims, subdims);
+        printd(send_peer);
+        printd(recv_peer);
+        printf("Rank %d sends packet %zu to neighbor %d in offset ", rank__, i,
+               batch->local_packets[i].peer);
+        printd_array(ndims, send_offset);
+        printf("\n");
+        printf("Rank %d receives packet %zu from neighbor %d in offset ", rank__, i,
+               batch->remote_packets[i].peer);
+        printd_array(ndims, recv_offset);
+        printf("\n");
+        printf("The packets use the same tag");
+        printf("---------------\n");
+        MPI_SYNCHRONOUS_BLOCK_END
+
         ndealloc(send_offset);
     }
 
@@ -435,34 +449,58 @@ halo_segment_batch_launch(const size_t ninputs, double* inputs[], struct HaloSeg
         pack(batch->ndims, batch->local_mm, local_packet->segment.dims,
              local_packet->segment.offset, ninputs, inputs, local_packet->buffer.data);
 
-        // Post recv
-        // ERRCHK_MPI_API(MPI_Irecv(remote_packet->buffer.data, as_int(remote_packet->buffer.count),
-        //                          mpi_dtype_, remote_packet->peer, tag, mpi_comm_,
-        //                          &remote_packet->req));
+        // Error check
+        ERRCHK_MPI(as_int(remote_packet->buffer.count) == as_int(local_packet->buffer.count));
+        const size_t count = ninputs *
+                             prod(local_packet->segment.ndims, local_packet->segment.dims);
+        ERRCHK_MPI(count == local_packet->buffer.count);
 
-        // // Post send
-        // ERRCHK_MPI_API(MPI_Isend(local_packet->buffer.data, as_int(local_packet->buffer.count),
-        //                          mpi_dtype_, local_packet->peer, tag, mpi_comm_,
-        //                          &local_packet->req));
-        MPI_Status status;
-        ERRCHK_MPI_API(MPI_Sendrecv(local_packet->buffer.data, as_int(local_packet->buffer.count),
-                                    mpi_dtype_, local_packet->peer, tag, remote_packet->buffer.data,
-                                    as_int(remote_packet->buffer.count), mpi_dtype_,
-                                    remote_packet->peer, tag, mpi_comm_, &status));
+        // Post recv
+        ERRCHK_MPI_API(MPI_Irecv(remote_packet->buffer.data, as_int(remote_packet->buffer.count),
+                                 mpi_dtype_, remote_packet->peer, tag, mpi_comm_,
+                                 &remote_packet->req));
+
+        // Post send
+        ERRCHK_MPI_API(MPI_Isend(local_packet->buffer.data, as_int(local_packet->buffer.count),
+                                 mpi_dtype_, local_packet->peer, tag, mpi_comm_,
+                                 &local_packet->req));
+
+        // MPI_Status status;
+        // ERRCHK_MPI_API(MPI_Sendrecv(local_packet->buffer.data,
+        // as_int(local_packet->buffer.count),
+        //                             mpi_dtype_, local_packet->peer, tag,
+        //                             remote_packet->buffer.data,
+        //                             as_int(remote_packet->buffer.count), mpi_dtype_,
+        //                             remote_packet->peer, tag, mpi_comm_, &status));
+
         // ERRCHK_MPI_API(MPI_Isend(local_packet->buffer.data, 1, mpi_dtype_, local_packet->peer,
         // tag,
         //                          mpi_comm_, &local_packet->req));
         // ERRCHK_MPI_API(MPI_Irecv(remote_packet->buffer.data, 1, mpi_dtype_, remote_packet->peer,
         //                          tag, mpi_comm_, &remote_packet->req));
     }
+    //
+    // TODO continue here
+    // for (size_t i = 0; i < batch->npackets; ++i) {
+    //     MPI_Status send_status, recv_status;
+    //     MPI_Wait(&batch->local_packets[i].req, &send_status);
+    //     MPI_Wait(&batch->remote_packets[i].req, &recv_status);
+    //     int send_count, recv_count;
+    //     MPI_Get_count(&send_status, mpi_dtype_, &send_count);
+    //     MPI_Get_count(&recv_status, mpi_dtype_, &recv_count);
+    //     printd(send_count);
+    //     printd(recv_count);
+    //     printf("\n");
+    //     ERRCHK_MPI(send_count == recv_count);
+    // }
 }
 
 void
 halo_segment_batch_wait(struct HaloSegmentBatch_s* batch, const size_t noutputs, double* outputs[])
 {
     for (size_t i = 0; i < batch->npackets; ++i) {
-        // packet_wait(&batch->local_packets[i]);
-        // packet_wait(&batch->remote_packets[i]);
+        packet_wait(&batch->local_packets[i]);
+        packet_wait(&batch->remote_packets[i]);
 
         Packet* remote_packet = &batch->remote_packets[i];
         unpack(remote_packet->buffer.data, batch->ndims, batch->local_mm,

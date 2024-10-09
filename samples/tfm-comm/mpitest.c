@@ -41,6 +41,9 @@ main(void)
     MPI_Isendrecv(a, n, MPI_DOUBLE, (rank + 1) % nprocs, (rank + 1) % nprocs, b, n, MPI_DOUBLE,
                   (rank + 1) % nprocs, rank, MPI_COMM_WORLD, &req);
     MPI_Wait(&req, &status);
+    if (status.MPI_ERROR != MPI_SUCCESS) // Firewall blocks sender getting information of the send
+                                         // count (do with 2, otherwise dining philosophers)
+        fprintf(stderr, "Failure\n");
 
     for (int i = 0; i < nprocs; ++i) {
         MPI_Barrier(MPI_COMM_WORLD);

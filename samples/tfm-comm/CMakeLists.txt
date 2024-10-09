@@ -59,3 +59,7 @@ target_link_libraries(test PRIVATE tfm-utils tfm-comm tfm-pack)
 
 add_executable(run main.c)
 target_link_libraries(run PRIVATE tfm-utils tfm-comm tfm-pack)
+
+# Test that the MPI installation works
+add_executable(mpitest mpitest.c)
+target_link_libraries(mpitest PRIVATE MPI::MPI_C)
