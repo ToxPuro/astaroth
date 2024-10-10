@@ -2616,31 +2616,8 @@ make_unique_bc_calls(ASTNode* node)
 	{
 		ASTNode* identifier = (ASTNode*) get_node_by_token(IDENTIFIER, func_calls.data[i]);
 		const char* func_name = identifier->buffer;
-		ASTNode* head = func_calls.data[i]->parent;
-		const bool lhs_node = func_calls.data[i]->parent->rhs == NULL;
 		if(func_name == PERIODIC) continue;
-		if(!head) continue;
-		char* new_name = malloc(sizeof(char)*(strlen(func_name)+10));
-		int index = strlen(func_name);
-		while(isdigit(func_name[--index]));
-		if(strlen(func_name) >=5 && func_name[index] == '_' && func_name[index-1] == '_' && func_name[index-2] == '_' && func_name[index-3] == '_')
-		{
-			int num = atoi(&func_name[index+1]);
-			char* tmp = strdup(func_name);
-			remove_suffix(tmp,"____");
-			sprintf(new_name,"%s____%d",tmp,num+1);
-			free(tmp);
-		}
-		else
-		{
-			sprintf(new_name,"%s____1",func_name);
-		}
-		rename_while(
-					NODE_UNKNOWN,
-					lhs_node ? head : head->parent,
-					new_name,NULL,func_name
-				);
-		astnode_set_buffer(new_name,identifier);
+		astnode_sprintf(identifier,"%s____%zu",identifier->buffer,i);
 	}
 	free_node_vec(&func_calls);
 }
