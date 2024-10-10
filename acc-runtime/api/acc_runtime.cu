@@ -41,6 +41,14 @@ typedef void (*Kernel)(const int3, const int3, VertexBufferArray vba);
 
 #define USE_COMPRESSIBLE_MEMORY (0)
 
+//TP: unfortunately cannot use color output since it might not be supported in each env
+const bool useColor = false;
+
+#define GREEN "\033[1;32m"
+#define YELLOW "\033[1;33m"
+#define RESET "\033[0m"
+
+#define COLORIZE(symbol, color) (useColor ? color symbol RESET : symbol)
 
 
 #include "acc/implementation.h"
@@ -1051,12 +1059,11 @@ void printProgressBar(FILE* stream, const int progress) {
     fprintf(stream,"[");  // Start a new line
     int pos = barWidth * progress / 100;
 
-    // Print the bar
     for (int i = 0; i < barWidth; ++i) {
         if (i < pos) {
-            fprintf(stream,"\033[1;32m=\033[0m");  // Green for completed parts
+            fprintf(stream,COLORIZE("=",GREEN));  
         } else if (i == pos) {
-            fprintf(stream,"\033[1;33m>\033[0m");  // Yellow arrow for current position
+            fprintf(stream,COLORIZE(">",YELLOW));  
         } else {
             fprintf(stream," ");
         }
