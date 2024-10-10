@@ -1,12 +1,8 @@
-#define AC_inv_dsx  (1.0/AC_dsx)
-#define AC_inv_dsy  (1.0/AC_dsy)
-#define AC_inv_dsz  (1.0/AC_dsz)
-
 #define AC_inv_dsx_2 AC_inv_dsx*AC_inv_dsx
 #define AC_inv_dsy_2 AC_inv_dsy*AC_inv_dsy
 #define AC_inv_dsz_2 AC_inv_dsz*AC_inv_dsz
 
-//TP for pencil
+//for Pencil Code
 #define AC_inv_dsx_6 AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx
 #define AC_inv_dsy_6 AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy
 #define AC_inv_dsz_6 AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz
