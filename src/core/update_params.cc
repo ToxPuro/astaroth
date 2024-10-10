@@ -101,6 +101,36 @@ acHostUpdateBuiltInParamsBase(AcMeshInfo& config, AcCompInfo& comp_info)
 #if TWO_D == 0
     push_val(AC_inv_dsz,1.0/get_val(AC_dsz));
 #endif
+
+    push_val(AC_inv_dsx_2,get_val(AC_inv_dsx)*get_val(AC_inv_dsx));
+    push_val(AC_inv_dsy_2,get_val(AC_inv_dsy)*get_val(AC_inv_dsy));
+#if TWO_D == 0
+    push_val(AC_inv_dsz_2,get_val(AC_inv_dsz)*get_val(AC_inv_dsz));
+#endif
+
+    push_val(AC_inv_dsx_3,get_val(AC_inv_dsx_2)*get_val(AC_inv_dsx));
+    push_val(AC_inv_dsy_3,get_val(AC_inv_dsy_2)*get_val(AC_inv_dsy));
+#if TWO_D == 0
+    push_val(AC_inv_dsz_3,get_val(AC_inv_dsz_2)*get_val(AC_inv_dsz));
+#endif
+
+    push_val(AC_inv_dsx_4,get_val(AC_inv_dsx_2)*get_val(AC_inv_dsx_2));
+    push_val(AC_inv_dsy_4,get_val(AC_inv_dsy_2)*get_val(AC_inv_dsy_2));
+#if TWO_D == 0
+    push_val(AC_inv_dsz_4,get_val(AC_inv_dsz_2)*get_val(AC_inv_dsz_2));
+#endif
+
+    push_val(AC_inv_dsx_5,get_val(AC_inv_dsx_3)*get_val(AC_inv_dsx_2));
+    push_val(AC_inv_dsy_5,get_val(AC_inv_dsy_3)*get_val(AC_inv_dsy_2));
+#if TWO_D == 0
+    push_val(AC_inv_dsz_5,get_val(AC_inv_dsz_3)*get_val(AC_inv_dsz_2));
+#endif
+
+    push_val(AC_inv_dsx_6,get_val(AC_inv_dsx_3)*get_val(AC_inv_dsx_3));
+    push_val(AC_inv_dsy_6,get_val(AC_inv_dsy_3)*get_val(AC_inv_dsy_3));
+#if TWO_D == 0
+    push_val(AC_inv_dsz_6,get_val(AC_inv_dsz_3)*get_val(AC_inv_dsz_3));
+#endif
     return AC_SUCCESS;
 }
 

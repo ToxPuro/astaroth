@@ -1,24 +1,3 @@
-#define AC_inv_dsx_2 AC_inv_dsx*AC_inv_dsx
-#define AC_inv_dsy_2 AC_inv_dsy*AC_inv_dsy
-#define AC_inv_dsz_2 AC_inv_dsz*AC_inv_dsz
-
-//for Pencil Code
-#define AC_inv_dsx_6 AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx
-#define AC_inv_dsy_6 AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy
-#define AC_inv_dsz_6 AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz
-
-#define AC_dsx_6 AC_dsx*AC_dsx*AC_dsx*AC_dsx*AC_dsx*AC_dsx
-#define AC_dsy_6 AC_dsy*AC_dsy*AC_dsy*AC_dsy*AC_dsy*AC_dsy
-#define AC_dsz_6 AC_dsz*AC_dsz*AC_dsz*AC_dsz*AC_dsz*AC_dsz
-
-#define AC_inv_dsx_5 AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx
-#define AC_inv_dsy_5 AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy
-#define AC_inv_dsz_5 AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz
-
-#define AC_inv_dsx_4 AC_inv_dsx*AC_inv_dsx*AC_inv_dsx*AC_inv_dsx
-#define AC_inv_dsy_4 AC_inv_dsy*AC_inv_dsy*AC_inv_dsy*AC_inv_dsy
-#define AC_inv_dsz_4 AC_inv_dsz*AC_inv_dsz*AC_inv_dsz*AC_inv_dsz
-
 #define DER1_3 (1. / 60.)
 #define DER1_2 (-3. / 20.)
 #define DER1_1 (3. / 4.)

@@ -11,6 +11,36 @@ run_const real AC_inv_dsy
 run_const real AC_inv_dsz
 #endif
 
+run_const real AC_inv_dsx_2
+run_const real AC_inv_dsy_2
+#if TWO_D == 0
+run_const real AC_inv_dsz_2
+#endif
+
+run_const real AC_inv_dsx_3
+run_const real AC_inv_dsy_3
+#if TWO_D == 0
+run_const real AC_inv_dsz_3
+#endif
+
+run_const real AC_inv_dsx_4
+run_const real AC_inv_dsy_4
+#if TWO_D == 0
+run_const real AC_inv_dsz_4
+#endif
+
+run_const real AC_inv_dsx_5
+run_const real AC_inv_dsy_5
+#if TWO_D == 0
+run_const real AC_inv_dsz_5
+#endif
+
+run_const real AC_inv_dsx_6
+run_const real AC_inv_dsy_6
+#if TWO_D == 0
+run_const real AC_inv_dsz_6
+#endif
+
 run_const int AC_mx
 run_const int AC_my
 #if TWO_D == 0
