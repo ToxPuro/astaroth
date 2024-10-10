@@ -595,10 +595,11 @@ acDeviceLoadVertexBuffer(const Device device, const Stream stream, const AcMesh 
 {
     const int3 src            = (int3){0, 0, 0};
     const int3 dst            = src;
-    const size_t num_vertices = acVertexBufferSize(device->local_config);
-    ERRCHK_ALWAYS(num_vertices == acVertexBufferSize(host_mesh.info));
+    const size_t device_num_vertices = acVertexBufferSize(device->local_config);
+    const size_t host_num_vertices   = acVertexBufferSize(host_mesh.info);
+    ERRCHK_ALWAYS(device_num_vertices == host_num_vertices);
     return acDeviceLoadVertexBufferWithOffset(device, stream, host_mesh, vtxbuf_handle, src, dst,
-                                       num_vertices);
+                                       host_num_vertices);
 }
 
 #define GEN_DEVICE_LOAD_ARRAY(PARAM_NAME, VAL_NAME, NAME_UPPER_CASE) \
@@ -708,10 +709,11 @@ acDeviceStoreVertexBuffer(const Device device, const Stream stream,
 {
     int3 src                  = (int3){0, 0, 0};
     int3 dst                  = src;
-    const size_t num_vertices = acVertexBufferSize(device->local_config);
-    ERRCHK_ALWAYS(num_vertices == acVertexBufferSize(host_mesh->info));
+    const size_t device_num_vertices = acVertexBufferSize(device->local_config);
+    const size_t host_num_vertices = acVertexBufferSize(host_mesh->info);
+    ERRCHK_ALWAYS(device_num_vertices == host_num_vertices);
 
-    return acDeviceStoreVertexBufferWithOffset(device, stream, vtxbuf_handle, src, dst, num_vertices,
+    return acDeviceStoreVertexBufferWithOffset(device, stream, vtxbuf_handle, src, dst, host_num_vertices,
                                         host_mesh);
 }
 

@@ -402,15 +402,20 @@ acHostMeshCreate(const AcMeshInfo info, AcMesh* mesh)
     return AC_SUCCESS;
 }
 AcResult
+acHostMeshCopyVertexBuffers(const AcMesh src, AcMesh dst)
+{
+    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
+	ERRCHK_ALWAYS(src.vertex_buffer[w]);
+	memcpy(dst.vertex_buffer[w], src.vertex_buffer[w], acVertexBufferSizeBytes(src.info));
+    }
+    return AC_SUCCESS;
+}
+
+AcResult
 acHostMeshCopy(const AcMesh src, AcMesh* dst)
 {
     ERRCHK_ALWAYS(acHostMeshCreate(src.info,dst) == AC_SUCCESS);
-
-    for (size_t w = 0; w < NUM_VTXBUF_HANDLES; ++w) {
-	ERRCHK_ALWAYS(src.vertex_buffer[w]);
-	memcpy(dst->vertex_buffer[w], src.vertex_buffer[w], acVertexBufferSizeBytes(src.info));
-    }
-
+    ERRCHK_ALWAYS(acHostMeshCopyVertexBuffers(src,*dst) == AC_SUCCESS);
     return AC_SUCCESS;
 }
 

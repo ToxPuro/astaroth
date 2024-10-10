@@ -1613,6 +1613,8 @@ acHostUpdateBuiltinCompParams(AcCompInfo* comp_config);
 
 /** Creates a mesh stored in host memory */
 FUNC_DEFINE(AcResult, acHostMeshCreate,(const AcMeshInfo mesh_info, AcMesh* mesh));
+/** Copies the VertexBuffers from src to dst*/
+FUNC_DEFINE(AcResult, acHostMeshCopyVertexBuffers,(const AcMesh src, AcMesh dst));
 /** Copies a host mesh to a new host mesh */
 FUNC_DEFINE(AcResult, acHostMeshCopy,(const AcMesh src, AcMesh* dst));
 /** Creates a mesh stored in host memory (size of the whole grid) */
