@@ -72,6 +72,10 @@ void
 acBufferPrint(const char* label, const AcBuffer buffer)
 {
     std::cout << label << ": ";
-    for (size_t i = 0; i < buffer.count; ++i)
-        std::cout << buffer.data[i] << ((i + 1 < buffer.count) ? ", " : "\n");
+
+    AcBuffer tmp;
+    acBufferMigrate(buffer, &tmp);
+    for (size_t i = 0; i < tmp.count; ++i)
+        std::cout << tmp.data[i] << ((i + 1 < tmp.count) ? ", " : "\n");
+    acBufferDestroy(&tmp);
 }
