@@ -1,5 +1,8 @@
 #include "buffer.h"
 
+#include "hip.h"
+#include <hip/hip_runtime.h>
+
 #include <iostream>
 
 #include "errchk_gpu.h"
@@ -7,7 +10,11 @@
 AcBuffer
 acBufferCreate(const size_t count, const bool on_device)
 {
-    AcBuffer buffer    = {.on_device = on_device, .count = count, .data = NULL,};
+    AcBuffer buffer = {
+        .on_device = on_device,
+        .count     = count,
+        .data      = NULL,
+    };
     const size_t bytes = sizeof(buffer.data[0]) * count;
     if (buffer.on_device) {
         ERRCHK_GPU_API(cudaMalloc((void**)&buffer.data, bytes));
@@ -55,9 +62,10 @@ acBufferMigrate(const AcBuffer in, AcBuffer* out)
         ERRCHK_GPU_API(cudaMemcpy(out->data, in.data, sizeof(in.data[0]) * in.count, kind));
 }
 
-void acBufferPrint(const char* label, const AcBuffer buffer)
+void
+acBufferPrint(const char* label, const AcBuffer buffer)
 {
     std::cout << label << ": ";
-    for (size_t i=0; i < buffer.count; ++i)
-        std::cout << buffer.data[i] << ((i+1 < buffer.count) ? ", " : "\n");
+    for (size_t i = 0; i < buffer.count; ++i)
+        std::cout << buffer.data[i] << ((i + 1 < buffer.count) ? ", " : "\n");
 }

@@ -7,9 +7,6 @@ set(CMAKE_BUILD_TYPE Debug)
 ## Project settings
 project(tfm-comm)
 
-## Find packages
-find_package(MPI REQUIRED COMPONENTS C)
-
 ## Project-wide compilation flags
 add_compile_options(# C/CXX/CUDA/HIP
                     $<$<COMPILE_LANGUAGE:C,CXX,CUDA,HIP>:-Wfatal-errors>
@@ -66,14 +63,24 @@ add_executable(run main.c)
 target_link_libraries(run PRIVATE tfm-utils tfm-comm tfm-pack)
 
 # Test that the MPI installation works
+find_package(MPI REQUIRED COMPONENTS C)
 add_executable(mpitest mpitest.c)
 target_link_libraries(mpitest PRIVATE MPI::MPI_C)
 
 # Test CUDA-aware MPI
-find_package(CUDAToolkit REQUIRED)
-enable_language(CUDA)
+# find_package(CUDAToolkit REQUIRED)
+# enable_language(CUDA)
+# add_library(buffer SHARED buffer.cu)
+# set_target_properties(buffer PROPERTIES CUDA_ARCHITECTURES "80")
+
+find_package(hip REQUIRED)
+enable_language(HIP)
 add_library(buffer SHARED buffer.cu)
-set_target_properties(buffer PROPERTIES CUDA_ARCHITECTURES "80")
+target_link_libraries(buffer PRIVATE hip::host hip::device)
+set_source_files_properties(buffer.cu PROPERTIES LANGUAGE HIP)
+set_target_properties(buffer PROPERTIES HIP_ARCHITECTURES "gfx90a")
+
+
 
 add_executable(ca-mpi cuda-aware-mpi-test.c)
 target_link_libraries(ca-mpi PRIVATE MPI::MPI_C buffer)

@@ -84,7 +84,8 @@ main_basic(void)
     return EXIT_SUCCESS;
 }
 
-int main(void)
+int
+main(void)
 {
     ERRCHK_MPI_API(MPI_Init(NULL, NULL));
 
@@ -93,14 +94,13 @@ int main(void)
     ERRCHK_MPI_API(MPI_Comm_size(MPI_COMM_WORLD, &nprocs));
 
     const size_t count = 5;
-    AcBuffer a = acBufferCreate(count, false);
-    AcBuffer b = acBufferCreate(count, false);
+    AcBuffer a         = acBufferCreate(count, false);
+    AcBuffer b         = acBufferCreate(count, false);
 
     for (size_t i = 0; i < count; ++i) {
         a.data[i] = rank;
         b.data[i] = -1;
     }
-
 
     MPI_SYNCHRONOUS_BLOCK_START
     acBufferPrint("a", a);
@@ -115,8 +115,8 @@ int main(void)
     MPI_Request send_req, recv_req;
     ERRCHK_MPI_API(MPI_Irecv(db.data, count, MPI_DOUBLE, (nprocs + rank + 1) % nprocs,
                              (nprocs + rank + 1) % nprocs, MPI_COMM_WORLD, &recv_req));
-    ERRCHK_MPI_API(MPI_Isend(da.data, count, MPI_DOUBLE, (nprocs + rank - 1) % nprocs, rank, MPI_COMM_WORLD,
-                             &send_req));
+    ERRCHK_MPI_API(MPI_Isend(da.data, count, MPI_DOUBLE, (nprocs + rank - 1) % nprocs, rank,
+                             MPI_COMM_WORLD, &send_req));
 
     MPI_Status send_status = {0}, recv_status = {0};
     ERRCHK_MPI_API(MPI_Wait(&recv_req, &recv_status));

@@ -62,7 +62,7 @@
 #define cudaMemcpyFromSymbolAsync hipMemcpyFromSymbolAsync
 #define cudaMemcpyDefault hipMemcpyDefault
 #define cudaMemset hipMemset
-#define cudaMnalloc .hipMalloc
+#define cudaMalloc hipMalloc
 #define cudaMallocHost hipMallocHost
 #define cudaFree hipFree
 #define cudaDeviceProp hipDeviceProp_t
