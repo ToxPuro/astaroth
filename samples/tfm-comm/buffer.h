@@ -1,6 +1,6 @@
 #pragma once
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,14 +12,11 @@ typedef struct {
     double* data;
 } AcBuffer;
 
-AcBuffer
-acBufferCreate(const size_t count, const bool on_device);
+AcBuffer acBufferCreate(const size_t count, const bool on_device);
 
-void
-acBufferDestroy(AcBuffer* buffer);
+void acBufferDestroy(AcBuffer* buffer);
 
-void
-acBufferMigrate(const AcBuffer in, AcBuffer* out);
+void acBufferMigrate(const AcBuffer in, AcBuffer* out);
 
 void acBufferPrint(const char* label, const AcBuffer buffer);
 
