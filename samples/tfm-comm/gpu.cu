@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "hip.h"
-#include <hip/hip_runtime.h>
+// #include "hip.h"
+// #include <hip/hip_runtime.h>
+
+// #include <cuda_runtime.h>
 
 #include "errchk_gpu.h"
 
@@ -58,8 +60,6 @@ acBufferMigrate(const AcBuffer in, AcBuffer* out)
     ERRCHK(out->count >= in.count);
     ERRCHK_GPU_API(cudaMemcpy(out->data, in.data, sizeof(in.data[0]) * in.count, kind));
 }
-
-#include <iostream>
 
 void
 acBufferPrint(const char* label, const AcBuffer buffer)
