@@ -51,7 +51,7 @@ add_library(tfm-pack SHARED pack.cc pack.c)
 target_link_libraries(tfm-pack PRIVATE tfm-utils)
 
 find_package(MPI REQUIRED COMPONENTS C)
-add_library(tfm-comm SHARED comm.c)
+add_library(tfm-comm SHARED comm.c packet.c)
 target_link_libraries(tfm-comm PRIVATE MPI::MPI_C tfm-utils tfm-pack)
 
 add_executable(test test.c)
