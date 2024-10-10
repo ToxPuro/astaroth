@@ -1,4 +1,3 @@
-const int NGHOST_VAL = 3
 run_const real AC_dsx
 run_const real AC_dsy
 #if TWO_D == 0

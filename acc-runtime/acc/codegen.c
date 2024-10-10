@@ -549,6 +549,7 @@ symboltable_reset(void)
 
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, BOOL_STR, BOOL,intern("true"));
   add_symbol(NODE_VARIABLE_ID, const_tq, 1, BOOL_STR, BOOL,intern("false"));
+  add_symbol(NODE_VARIABLE_ID, const_tq, 1, INT_STR,  INT,intern("NGHOST"));
 
   // Astaroth 2.0 backwards compatibility START
   // (should be actually built-in externs in acc-runtime/api/acc-runtime.h)

@@ -126,7 +126,7 @@ Field U
 Field SOLUTION
 Kernel initial_condition()
 {
-	real2 coords = GetCoords(globalVertexIdx.x+1-NGHOST_VAL,globalVertexIdx.y+1-NGHOST_VAL)
+	real2 coords = GetCoords(globalVertexIdx.x+1-NGHOST,globalVertexIdx.y+1-NGHOST)
 	write(COORDS_X,coords.x)
 	write(COORDS_Y,coords.y)
 

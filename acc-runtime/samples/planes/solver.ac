@@ -79,7 +79,7 @@ Field SOLUTION
 Kernel initial_condition()
 {
 	const inittime = 1.0
-	x,y,z = GetCoords(globalVertexIdx.x+1-NGHOST_VAL,globalVertexIdx.y+1-NGHOST_VAL,globalVertexIdx.z+1-NGHOST_VAL)
+	x,y,z = GetCoords(globalVertexIdx.x+1-NGHOST,globalVertexIdx.y+1-NGHOST,globalVertexIdx.z+1-NGHOST)
 	write(COORDS_X,x)
 	write(COORDS_Y,y)
 	write(COORDS_Z,z)
