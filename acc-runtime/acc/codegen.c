@@ -755,24 +755,6 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
   sprintf(tmp,"%s*",datatype_scalar);
   const char* datatype = intern(tmp);
   const char* define_name =  convert_to_define_name(datatype_scalar);
-  {
-  	char running_offset[4096];
-  	  sprintf(running_offset,"0");
-  	  for (size_t i = 0; i < num_symbols[current_nest]; ++i)
-  	  {
-  	    if (symbol_table[i].type & NODE_VARIABLE_ID &&
-  	        symbol_table[i].tspecifier == datatype && int_vec_contains(symbol_table[i].tqualifiers,DCONST_QL))
-  	    {
-  	            fprintf(fp,"\n#ifndef %s_offset\n#define %s_offset (%s)\n#endif\n",symbol_table[i].identifier,symbol_table[i].identifier,running_offset);
-  	            char array_length_str[4098];
-  	            get_array_var_length(symbol_table[i].identifier,root,array_length_str);
-		    strcatprintf(running_offset,"+ %s",array_length_str);
-  	    }
-  	  }
-  	  fprintf(fp,"\n#ifndef D_%s_ARRAYS_LEN\n#define D_%s_ARRAYS_LEN (%s)\n#endif\n", strupr(define_name), strupr(define_name),running_offset);
-  }
-  char running_offset[4096];
-  sprintf(running_offset,"0");
   int counter = 0;
   fprintf(fp, "static const array_info %s_array_info[] __attribute__((unused)) = {", convert_to_define_name(datatype_scalar));
   for (size_t i = 0; i < num_symbols[current_nest]; ++i)
@@ -788,15 +770,6 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
         if(int_vec_contains(symbol_table[i].tqualifiers,DCONST_QL))  fprintf(fp,"true,");
         else fprintf(fp, "false,");
 
-        if(int_vec_contains(symbol_table[i].tqualifiers,DCONST_QL))
-  	{
-  	        fprintf(fp,"%s,",running_offset);
-		strcatprintf(running_offset,"+ %s",array_length_str);
-  	}
-	else
-	{
-  		fprintf(fp,"%d,",-1);
-	}
 
 	string_vec dims = get_array_var_dims(symbol_table[i].identifier,root);
       	fprintf(fp, "%lu,", dims.size);
@@ -837,7 +810,6 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
   	if(!int_vec_contains(symbol_table[i].tqualifiers,RUN_CONST)) continue;
 	fprintf(fp,"%s","{");
         fprintf(fp, "false,");
-  	fprintf(fp,"%d,",-1);
 
 	string_vec dims = get_array_var_dims(symbol_table[i].identifier,root);
       	fprintf(fp, "%lu,", dims.size);
@@ -860,7 +832,7 @@ gen_array_info(FILE* fp, const char* datatype_scalar, const ASTNode* root)
     }
   }
   //pad one extra to silence warnings
-  fprintf(fp,"{false,-1,-1,{{-1,-1,-1}, {false,false,false}},\"AC_EXTRA_PADDING\",true}");
+  fprintf(fp,"{false,-1,{{-1,-1,-1}, {false,false,false}},\"AC_EXTRA_PADDING\",true}");
   fprintf(fp, "};");
 }
 
@@ -4115,7 +4087,7 @@ get_binary_expr_type(const ASTNode* node)
                 !strcmp_null_ok(op,MULT_STR) && !strcmp(lhs_res,MATRIX_STR) &&  !strcmp(rhs_res,REAL3_STR) ? REAL3_STR :
 		!strcmp(lhs_res,COMPLEX_STR) || !strcmp(rhs_res,COMPLEX_STR)   ? COMPLEX_STR  :
 		lhs_real && !strcmps(rhs_res,INT_STR,LONG_STR,LONG_LONG_STR)    ?  REAL_STR  :
-		!strcmps(op,MULT_STR,DIV_STR,PLUS_STR,MINUS_STR)     && lhs_real && !rhs_int  ?  rhs_res   :
+		op && !strcmps(op,MULT_STR,DIV_STR,PLUS_STR,MINUS_STR)     && lhs_real && !rhs_int  ?  rhs_res   :
 		op && !strcmps(op,MULT_STR,DIV_STR,PLUS_STR,MINUS_STR)  && rhs_real && !lhs_int  ?  lhs_res   :
 		!strcmp(lhs_res,rhs_res) ? lhs_res :
 		NULL;
@@ -7398,7 +7370,7 @@ generate(const ASTNode* root_in, FILE* stream, const bool gen_mem_accesses, cons
   	  fprintf(fp_info,"\n #ifdef __cplusplus\n");
   	  fprintf(fp_info,"\n#include <array>\n");
   	  fprintf(fp_info,"typedef struct {std::array<int,3>  len; std::array<bool,3> from_config;} AcArrayDims;\n");
-  	  fprintf(fp_info,"typedef struct { bool is_dconst; int d_offset; int num_dims; AcArrayDims dims; const char* name; bool is_alive;} array_info;\n");
+  	  fprintf(fp_info,"typedef struct { bool is_dconst; int num_dims; AcArrayDims dims; const char* name; bool is_alive;} array_info;\n");
   	  for (size_t i = 0; i < datatypes.size; ++i)
   	  	  gen_array_info(fp_info,datatypes.data[i],root);
   	  fprintf(fp_info,"\n #endif\n");

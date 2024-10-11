@@ -76,7 +76,7 @@ main(void)
     acSetMeshDims(2 * 9, 2 * 11, 4 * 7, &info);
     constexpr int nx = 2*9;
     constexpr int ny = 2*11;
-    constexpr int nz = 4*7;
+    [[maybe_unused]] constexpr int nz = 4*7;
 
     constexpr int mx = 2*9  + 2*NGHOST;
     constexpr int my = 2*11 + 2*NGHOST;
@@ -179,9 +179,9 @@ main(void)
         for (int k = nz_min; k < nz_max; ++k) {
             for (int j = ny_min; j < ny_max; ++j) {
                 for (int i = nx_min; i < nx_max; ++i) {
-			int comp_x = i - NGHOST_X;
+			[[maybe_unused]] int comp_x = i - NGHOST_X;
 			int comp_y = j - NGHOST_Y;
-			int comp_z = j - NGHOST_Z;
+			[[maybe_unused]] int comp_z = j - NGHOST_Z;
 			model.vertex_buffer[FIELD_X][IDX(i,j,k)] = test_int_arr[0]*(test_arr[0] + test_arr[3] + test_arr_2[0])*global_arr[i-NGHOST_X];
 #if AC_ROW_MAJOR_ORDER
 			model.vertex_buffer[FIELD_Y][IDX(i,j,k)] = test_int_arr[1]*(test_arr[1] + test_arr[4] + test_arr_2[1] + twoD_real_arr[info.int_params[AC_dconst_int]][comp_y] + threeD_real_arr[i][j][k]);
