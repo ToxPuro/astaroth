@@ -173,6 +173,16 @@ astnode_destroy(ASTNode* node)
   node->postfix = NULL;
   free(node);
 }
+static inline void
+astnode_free(ASTNode* node)
+{
+	node->lhs = NULL;
+	node->rhs = NULL;
+	node->buffer = NULL;
+	node->prefix= NULL;
+	node->infix= NULL;
+	node->postfix= NULL;
+}
 
 static inline void
 astnode_set_buffer(const char* buffer, ASTNode* node)
@@ -800,4 +810,14 @@ fatal(const char* format, ...)
 	vfprintf(stderr,format,args);
 	va_end(args);
 	exit(EXIT_FAILURE);
+}
+static void
+append_to_file(const char* filename, const char* format, ...)
+{
+	FILE* fp = fopen(filename,"a");
+	va_list args;
+	va_start(args,format);
+	vfprintf(fp,format,args);
+	va_end(args);
+	fclose(fp);
 }
