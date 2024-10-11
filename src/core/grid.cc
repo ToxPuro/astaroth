@@ -1864,7 +1864,7 @@ acGridBuildTaskGraph(const AcTaskDefinition ops[], const size_t n_ops)
 
     // The tasks start at different offsets from the beginning of the iteration
     // this array of bools keep track of that state
-    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset{false};
+    std::array<bool, NUM_VTXBUF_HANDLES> swap_offset{};
     //int num_comp_tasks = 0;
     acVerboseLogFromRootProc(rank, "acGridBuildTaskGraph: Creating tasks: %lu ops\n", n_ops);
     for (size_t i = 0; i < n_ops; i++) {

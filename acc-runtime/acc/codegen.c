@@ -3368,21 +3368,40 @@ check_for_undeclared_use_in_assignment(const ASTNode* node)
 				  ,combine_all_new(get_parent_node(NODE_ASSIGNMENT,node)),node->buffer
 			);
 }
-static void
-check_for_undeclared(const ASTNode* node)
+bool
+add_auto(const ASTNode* node)
 {
-        if (!get_parent_node_exclusive(NODE_STENCIL, node) &&
+	return !get_parent_node_exclusive(NODE_STENCIL, node) &&
                  !(node->type & NODE_MEMBER_ID) &&
                  !(node->type & NODE_INPUT) &&
 		 !(node->no_auto) &&
 		 !(is_user_enum_option(node->buffer)) &&
 		 !(strstr(node->buffer,"AC_INTERNAL_d")) &&
-		 !(strstr(node->buffer,"AC_INTERNAL_gmem"))
-		 )
+		 !(strstr(node->buffer,"AC_INTERNAL_gmem"));
+}
+static void
+check_for_undeclared_conditional(const ASTNode* node)
+{
+
+         const bool used_in_conditional = is_left_child(NODE_IF,node);
+         if(used_in_conditional)
+                 fatal(
+                       "Undeclared variable or function used on in a conditional\n"
+                       "Conditional: %s\n"
+                       "Var: %s\n"
+                       "\n"
+                                 ,combine_all_new(get_parent_node(NODE_IF,node)->lhs),node->buffer
+                       );
+}
+static void
+check_for_undeclared(const ASTNode* node)
+{
+	if(add_auto(node))
 	{
 	 check_for_undeclared_use_in_range(node);
 	 check_for_undeclared_function(node);
 	 check_for_undeclared_use_in_assignment(node);
+	 check_for_undeclared_conditional(node);
 	}
 
 }
@@ -3433,14 +3452,7 @@ output_specifier(FILE* stream, const tspecifier tspec, const ASTNode* node)
 	  else if(tspec.token != KERNEL)
             fprintf(stream, "%s ", tspec.id);
         }
-        else if (!get_parent_node_exclusive(NODE_STENCIL, node) &&
-                 !(node->type & NODE_MEMBER_ID) &&
-                 !(node->type & NODE_INPUT) &&
-		 !(node->no_auto) &&
-		 !(is_user_enum_option(node->buffer)) &&
-		 !(strstr(node->buffer,"AC_INTERNAL_d")) &&
-		 !(strstr(node->buffer,"AC_INTERNAL_gmem"))
-		 )
+        else if (add_auto(node))
 	{
 	  if(node->is_constexpr && !(node->type & NODE_FUNCTION_ID)) fprintf(stream, " constexpr ");
 	  if(node->expr_type)
@@ -6288,6 +6300,8 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 	push(&tspecifier_mappings,REAL_STR);
 	push(&tspecifier_mappings,BOOL_STR);
   	ASTNode* root = astnode_dup(root_in,NULL);
+  	s_info = read_user_structs(root);
+	e_info = read_user_enums(root);
 
 	symboltable_reset();
 	rename_scoped_variables(root,NULL,NULL);
@@ -6299,8 +6313,6 @@ gen_extra_funcs(const ASTNode* root_in, FILE* stream)
 	mark_first_declarations(root);
 
   	assert(root);
-  s_info = read_user_structs(root);
-	e_info = read_user_enums(root);
 	gen_type_info(root);
 	gen_extra_func_definitions_recursive(root,root,stream);
 	free_str_vec(&duplicate_dfuncs.names);
@@ -6583,6 +6595,7 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   s_info = read_user_structs(root);
   e_info = read_user_enums(root);
   canonalize(root);
+  mark_kernel_inputs(root);
 
 
   traverse(root, 0, NULL);
@@ -6593,7 +6606,6 @@ preprocess(ASTNode* root, const bool optimize_conditionals)
   gen_overloads(root);
   eval_conditionals(root,root);
   transform_broadcast_assignments(root);
-  mark_kernel_inputs(root);
   gen_kernel_combinatorial_optimizations_and_input(root,optimize_conditionals);
   free_structs_info(&s_info);
   gen_calling_info(root);
