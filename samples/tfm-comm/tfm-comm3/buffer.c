@@ -4,7 +4,7 @@
 #include "print.h"
 
 Buffer
-bufferCreate(const size_t count)
+buffer_create(const size_t count)
 {
     Buffer buffer = (Buffer){
         .count = count,
@@ -14,7 +14,7 @@ bufferCreate(const size_t count)
 }
 
 void
-bufferDestroy(Buffer* buffer)
+buffer_destroy(Buffer* buffer)
 {
     ac_free(buffer->data);
     buffer->data  = NULL;

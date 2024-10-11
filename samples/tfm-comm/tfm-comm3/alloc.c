@@ -44,13 +44,13 @@ ac_copy(const size_t count, const size_t size, const void* in, void* out)
     memmove(out, in, count * size);
 }
 
-void
-ac_dup(const size_t count, const size_t size, const void* in, void* out)
+void*
+ac_dup(const size_t count, const size_t size, const void* in)
 {
     ERRCHK(in != NULL);
-    ERRCHK(out != NULL);
-    ac_calloc(count, size);
+    void* out = ac_calloc(count, size);
     ac_copy(count, size, in, out);
+    return out;
 }
 
 bool

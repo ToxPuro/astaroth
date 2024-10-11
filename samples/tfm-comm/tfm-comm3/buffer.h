@@ -6,6 +6,14 @@ typedef struct {
     double* data;
 } Buffer;
 
-Buffer bufferCreate(const size_t count);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-void bufferDestroy(Buffer* buffer);
+Buffer buffer_create(const size_t count);
+
+void buffer_destroy(Buffer* buffer);
+
+#ifdef __cplusplus
+}
+#endif
