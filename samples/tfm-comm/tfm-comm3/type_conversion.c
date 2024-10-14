@@ -8,7 +8,7 @@
     T_AS T_FROM##_as_##T_AS(const T_FROM x)                                                        \
     {                                                                                              \
         ERRCHK(x >= 0);                                                                            \
-        ERRCHK((T_AS)x <= MAX_AS);                                                                 \
+        ERRCHK((uintmax_t)x <= MAX_AS);                                                            \
         return (T_AS)x;                                                                            \
     }
 
